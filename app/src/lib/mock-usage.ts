@@ -23,7 +23,7 @@ const accountsOf = (box: string) =>
   (accounts[box] ??= (
     [
     { agent: "claude", id: "default", dir: `${HOME}/.claude`, exists: true, signed_in: true, email: "you@example.com", name: "You", org: null, billing: "stripe_subscription", tier: "default_claude_max_20x" },
-    { agent: "claude", id: "work", dir: `${HOME}/.berth/accounts/claude/work`, exists: true, signed_in: true, email: "you@acme.dev", name: "You", org: "Acme", billing: "stripe_subscription", tier: "default_claude_max_5x" },
+    { agent: "claude", id: "work", dir: `${HOME}/.berth/accounts/claude/work`, exists: true, signed_in: true, email: "you@work.example", name: "You", org: "Work", billing: "stripe_subscription", tier: "default_claude_max_5x" },
     { agent: "codex", id: "default", dir: `${HOME}/.codex`, exists: true, signed_in: true, method: "chatgpt", email: "you@example.com", plan: "pro" },
     { agent: "codex", id: "api", dir: `${HOME}/.berth/accounts/codex/api`, exists: true, signed_in: true, method: "api key", email: null, plan: null },
     ] as MockAccount[]

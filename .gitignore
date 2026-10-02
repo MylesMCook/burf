@@ -20,3 +20,6 @@ design/plugins/
 design/review/
 design/editors/
 design/audit-2/
+
+__pycache__/
+*.pyc

@@ -267,9 +267,14 @@ def report(days):
         except OSError:
             continue
         fresh[path] = {"key": key, "agent": agent, "account": account, "s": summary}
-    tmp = CACHE.with_suffix(".tmp")
-    tmp.write_text(json.dumps({"_version": CACHE_VERSION, **fresh}))
-    tmp.replace(CACHE)
+    # Two reads at once each write their own file; the last one wins, and a
+    # cache that can't be saved only means the next read is slower.
+    tmp = CACHE.with_name(f"files.{os.getpid()}.tmp")
+    try:
+        tmp.write_text(json.dumps({"_version": CACHE_VERSION, **fresh}))
+        tmp.replace(CACHE)
+    except OSError:
+        tmp.unlink(missing_ok=True)
 
     since = (dt.date.today() - dt.timedelta(days=days - 1)).isoformat()
     daily, sessions, limits = {}, {}, {}

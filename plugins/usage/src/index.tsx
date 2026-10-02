@@ -1,6 +1,6 @@
 import { definePlugin, useBoxes, useCurrentWorktree, useLocations, useStorage, type BerthPluginContext, type Location, type ScreenProps, type Session } from "@berth/plugin";
 import { Alert, AlertDescription, Button, Icon, Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger, Tabs, TabsList, TabsTab, ToggleGroup, ToggleGroupItem } from "@berth/plugin/ui";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AccountsView, type Choices } from "./accounts-view";
 import { ACCOUNT_VAR, runScript, where, type Account, type Accounts, type Report } from "./box";
@@ -58,8 +58,12 @@ function UsageScreen({ berth }: ScreenProps) {
   const [data, setData] = useState<Record<string, BoxData>>({});
   const patch = useCallback((box: string, p: Partial<BoxData>) => setData((d) => ({ ...d, [box]: { ...(d[box] ?? EMPTY), ...p } })), []);
 
+  // One read per box at a time.
+  const inflight = useRef(new Set<string>());
   const loadBox = useCallback(
     async (box: string) => {
+      if (inflight.current.has(box)) return;
+      inflight.current.add(box);
       patch(box, { loading: true, error: undefined });
       try {
         const loc = await where(berth, box, current?.box === box ? current.location : undefined);
@@ -75,6 +79,8 @@ function UsageScreen({ berth }: ScreenProps) {
         patch(box, { report, accounts: acc?.accounts, locations, sessions, loading: false });
       } catch (err) {
         patch(box, { loading: false, error: String((err as Error).message ?? err) });
+      } finally {
+        inflight.current.delete(box);
       }
     },
     [berth, current?.box, current?.location, patch],

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 
 import type { Account, Agent, Limits, Window } from "./box";
 import { DailyChart, OTHER_BOXES, SERIES, agentSeries, boxColor, boxSeries } from "./chart";
-import { AGENT_NAME, ago, compact, days, plan, summarize, total, usd, worktreeOf, type BoxSession, type Period, type Source } from "./data";
+import { AGENT_NAME, ago, compact, days, firstDay, plan, summarize, total, usd, worktreeOf, type BoxSession, type Period, type Source } from "./data";
 
 // What the screen knows about one box while reading it.
 export interface BoxState {
@@ -48,7 +48,7 @@ export function UsageView({ berth, period, sources, states, accounts, running, a
     }
     return null;
   }
-  const agents = (["claude", "codex"] as Agent[]).filter((a) => (sum.byAgent.get(a) ? total(sum.byAgent.get(a)!) > 0 : false) || sources.some((s) => s.report.limits.some((l) => l.agent === a)));
+  const agents = (["claude", "codex"] as Agent[]).filter((a) => (sum.byAgent.get(a) ? total(sum.byAgent.get(a)!) > 0 : false) || dedupeLimits(a, sources, accounts, period).length > 0);
   const where = multi ? (counted.length === 1 ? counted[0] : `${counted.length} boxes`) : counted[0];
   if (!agents.length) {
     return (
@@ -81,7 +81,7 @@ export function UsageView({ berth, period, sources, states, accounts, running, a
             perBox={showBox ? sum.byAgentBox.get(a) : undefined}
             allBoxes={allBoxes}
             plans={usedAccounts(a, sources, accounts)}
-            limits={dedupeLimits(a, sources, accounts)}
+            limits={dedupeLimits(a, sources, accounts, period)}
             period={period}
           />
         ))}
@@ -269,10 +269,12 @@ export interface SharedLimits {
 }
 
 // dedupeLimits keeps the newest limits Codex saw per login.
-function dedupeLimits(agent: Agent, sources: Source[], accounts: Record<string, Account[] | undefined>): SharedLimits[] {
+// Limits Codex saw before the period are left out, as its tokens are.
+function dedupeLimits(agent: Agent, sources: Source[], accounts: Record<string, Account[] | undefined>, period: Period): SharedLimits[] {
   const out = new Map<string, SharedLimits>();
   for (const { box, report } of sources) {
-    for (const l of report.limits.filter((x) => x.agent === agent)) {
+    const from = firstDay(report.today, period);
+    for (const l of report.limits.filter((x) => x.agent === agent && x.at.slice(0, 10) >= from)) {
       const a = accounts[box]?.find((x) => x.agent === agent && x.id === l.account);
       const k = identity(a, box, l.account);
       const label = a?.email ?? (l.account === "default" ? box : `${box} · ${l.account}`);
