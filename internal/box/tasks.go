@@ -112,6 +112,8 @@ type TaskRequest struct {
 	Agent   string `json:"agent,omitempty"`
 	Command string `json:"command,omitempty"`
 	Prompt  string `json:"prompt,omitempty"`
+	// FromSession names the session handing this work off, if any.
+	FromSession string `json:"from_session,omitempty"`
 }
 
 type Task struct {
@@ -155,7 +157,7 @@ func (b *Box) addTask(w http.ResponseWriter, r *http.Request) error {
 	}
 	b.publish(r, "task.created", map[string]any{
 		"location": req.Location, "name": wt.Name, "path": wt.Path, "branch": wt.Branch,
-		"session": sess.Name, "agent": req.Agent,
+		"session": sess.Name, "agent": req.Agent, "from_session": req.FromSession,
 	})
 	writeJSON(w, Task{Worktree: wt, Session: sess})
 	return nil

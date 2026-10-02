@@ -8,6 +8,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"strings"
@@ -259,5 +260,14 @@ func TestEmittedEventsReachTheStream(t *testing.T) {
 		}
 	case <-time.After(3 * time.Second):
 		t.Fatal("emitted event never reached the stream")
+	}
+}
+
+func TestEmptyListsAreArraysNotNull(t *testing.T) {
+	rec := httptest.NewRecorder()
+	var none []Service
+	writeJSON(rec, none)
+	if got := strings.TrimSpace(rec.Body.String()); got != "[]" {
+		t.Fatalf("empty list = %s", got)
 	}
 }

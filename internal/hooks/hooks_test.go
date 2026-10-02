@@ -153,3 +153,28 @@ func TestPluginHooksRunInThePluginsFolderUnlessDisabled(t *testing.T) {
 		t.Fatalf("a disabled plugin's hook ran: %v", err)
 	}
 }
+
+func TestSaveWritesOnlyYourOwnValidHooks(t *testing.T) {
+	plugins := t.TempDir()
+	os.MkdirAll(filepath.Join(plugins, "p"), 0o700)
+	os.WriteFile(filepath.Join(plugins, "p", PluginManifest), []byte(`{"hooks":[{"on":"agent.finished","run":"true"}]}`), 0o600)
+	r := &Runner{Path: filepath.Join(t.TempDir(), "hooks.json"), PluginsDir: plugins}
+	for _, bad := range []Hook{{On: "Worktree Created", Run: "x"}, {On: "agent.finished", Run: " "}, {On: "agent.*", Run: "x", Timeout: "soon"}} {
+		if err := r.Save([]Hook{bad}); err == nil {
+			t.Fatalf("saved %+v", bad)
+		}
+	}
+	cfg, _ := r.Load()
+	all := append(cfg.Hooks, Hook{On: "before:worktree.create", Run: "true", Timeout: "10s"})
+	if err := r.Save(all); err != nil {
+		t.Fatal(err)
+	}
+	b, _ := os.ReadFile(r.Path)
+	if strings.Contains(string(b), "plugin:") || !strings.Contains(string(b), "before:worktree.create") {
+		t.Fatalf("hooks.json = %s", b)
+	}
+	cfg, _ = r.Load()
+	if len(cfg.Hooks) != 2 || cfg.Hooks[1].Source != "plugin:p" {
+		t.Fatalf("loaded %+v", cfg.Hooks)
+	}
+}

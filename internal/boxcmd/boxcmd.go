@@ -47,6 +47,11 @@ Agent sessions
   %[1]s session new %[2]sLOC[/WORKTREE] [--name N] [-- COMMAND...]
                                                   Start COMMAND (default: a shell) there
   %[1]s session screen %[2]sNAME [--history N]          Print what the session shows
+  %[1]s session send %[2]sNAME TEXT [--no-enter]        Type a prompt into a session
+  %[1]s session wait %[2]sNAME [--for finished,waiting] Wait for its agent's turn to end
+  %[1]s exec %[2]sLOC[/WORKTREE] -- COMMAND...            Run a command there and print its output
+  %[1]s loop %[2]sSESSION --check CMD [--prompt TEXT] [--max 5]
+                                                  Prompt, wait, check, and feed failures back
   %[1]s session kill %[2]sNAME                          Stop a session
 
 Ports and sharing
@@ -66,7 +71,7 @@ Events
 // takes before its first argument.
 var Commands = map[string]int{
 	"locations": 1, "location": 2, "worktree": 2,
-	"sessions": 1, "session": 2, "task": 2, "agents": 1,
+	"sessions": 1, "session": 2, "task": 2, "agents": 1, "exec": 1, "loop": 1,
 	"services": 1, "info": 1, "stats": 1,
 	"ports": 1, "share": 1, "shares": 1, "unshare": 1,
 	"emit": 1, "events": 1,
@@ -221,6 +226,42 @@ func Run(ctx context.Context, c *box.Client, args []string, out io.Writer) error
 		return sessionNew(ctx, c, rest, out)
 	case "task new":
 		return taskNew(ctx, c, rest, out)
+	case "session send":
+		fs, _ := flags(rest)
+		noEnter := fs.Bool("no-enter", false, "type the text without pressing Enter")
+		pos, err := parse(fs, rest)
+		if err != nil || len(pos) != 2 {
+			return usageErr("session send NAME TEXT [--no-enter]")
+		}
+		if err := c.Send(ctx, pos[0], pos[1], !*noEnter); err != nil {
+			return err
+		}
+		fmt.Fprintf(out, "Sent to %s\n", pos[0])
+		return nil
+	case "session wait":
+		fs, asJSON := flags(rest)
+		states := fs.String("for", "finished,waiting", "states that end the wait")
+		timeout := fs.Duration("timeout", 30*time.Minute, "give up after this long")
+		pos, err := parse(fs, rest)
+		if err != nil || len(pos) != 1 {
+			return usageErr("session wait NAME [--for finished,waiting] [--timeout 30m]")
+		}
+		// Only what the agent reports from now on counts.
+		res, err := waitFor(ctx, c, pos[0], strings.Split(*states, ","), time.Now(), *timeout)
+		if err != nil {
+			return err
+		}
+		return show(out, *asJSON, res, func() {
+			if res.TimedOut {
+				fmt.Fprintf(out, "Still %s after %v\n", res.State, *timeout)
+				return
+			}
+			fmt.Fprintln(out, res.State)
+		})
+	case "exec":
+		return execCmd(ctx, c, rest, out)
+	case "loop":
+		return loop(ctx, c, rest, out)
 	case "agents":
 		fs, asJSON := flags(rest)
 		parse(fs, rest)
@@ -577,6 +618,113 @@ func sessionNew(ctx context.Context, c *box.Client, args []string, out io.Writer
 	return show(out, *asJSON, sess, func() {
 		fmt.Fprintf(out, "Started session %s in %s\n", sess.Name, sess.Dir)
 	})
+}
+
+// waitFor waits in steps, since one long request could outlive a proxy or a
+// network change between the laptop and the box.
+func waitFor(ctx context.Context, c *box.Client, session string, states []string, after time.Time, timeout time.Duration) (box.WaitResult, error) {
+	deadline := time.Now().Add(timeout)
+	for {
+		step := min(time.Until(deadline), 5*time.Minute)
+		res, err := c.Wait(ctx, session, states, after, max(step, time.Second))
+		if err != nil || !res.TimedOut || time.Now().After(deadline) {
+			return res, err
+		}
+	}
+}
+
+func execCmd(ctx context.Context, c *box.Client, args []string, out io.Writer) error {
+	var command []string
+	for i, a := range args {
+		if a == "--" {
+			command, args = args[i+1:], args[:i]
+			break
+		}
+	}
+	fs, asJSON := flags(args)
+	timeout := fs.String("timeout", "10m", "stop the command after this long")
+	pos, err := parse(fs, args)
+	if err != nil || len(pos) != 1 || len(command) == 0 {
+		return usageErr("exec LOC[/WORKTREE] [--timeout 10m] -- COMMAND...")
+	}
+	res, err := c.Exec(ctx, box.ExecRequest{Location: pos[0], Command: strings.Join(command, " "), Timeout: *timeout})
+	if err != nil {
+		return err
+	}
+	if *asJSON {
+		return show(out, true, res, nil)
+	}
+	fmt.Fprint(out, res.Output)
+	if res.ExitCode != 0 {
+		return fmt.Errorf("exited with %d", res.ExitCode)
+	}
+	return nil
+}
+
+// loop prompts an agent, waits for its turn to end, runs a check, and feeds
+// failures back until the check passes or the rounds run out.
+func loop(ctx context.Context, c *box.Client, args []string, out io.Writer) error {
+	fs, _ := flags(args)
+	prompt := fs.String("prompt", "", "the first prompt")
+	check := fs.String("check", "", "command that passes when the work is done, e.g. pnpm test")
+	rounds := fs.Int("max", 5, "most rounds to try")
+	timeout := fs.Duration("turn-timeout", 30*time.Minute, "longest an agent's turn may take")
+	pos, err := parse(fs, args)
+	usage := "loop SESSION --check COMMAND [--prompt TEXT] [--max 5]"
+	if err != nil || len(pos) != 1 || *check == "" {
+		return usageErr(usage)
+	}
+	session := pos[0]
+	all, err := c.Sessions(ctx)
+	if err != nil {
+		return err
+	}
+	where := ""
+	for _, s := range all {
+		if s.Name == session {
+			where = s.Location
+		}
+	}
+	if where == "" {
+		return fmt.Errorf("no session named %s", session)
+	}
+	text := *prompt
+	for round := 1; round <= *rounds; round++ {
+		if text != "" {
+			sent := time.Now()
+			if err := c.Send(ctx, session, text, true); err != nil {
+				return err
+			}
+			fmt.Fprintf(out, "Round %d: prompted %s, waiting for its turn to end…\n", round, session)
+			res, err := waitFor(ctx, c, session, []string{"finished", "waiting"}, sent, *timeout)
+			if err != nil {
+				return err
+			}
+			switch {
+			case res.TimedOut:
+				return fmt.Errorf("%s was still %s after %v", session, res.State, *timeout)
+			case res.State == "waiting":
+				return fmt.Errorf("%s is waiting for you; answer it, then run the loop again", session)
+			case res.State == "exited":
+				return fmt.Errorf("%s has exited", session)
+			}
+		}
+		fmt.Fprintf(out, "Round %d: checking with %q…\n", round, *check)
+		res, err := c.Exec(ctx, box.ExecRequest{Location: where, Command: *check, Timeout: "30m"})
+		if err != nil {
+			return err
+		}
+		if res.ExitCode == 0 {
+			fmt.Fprintf(out, "Passed after %d round(s).\n", round)
+			return nil
+		}
+		tail := res.Output
+		if len(tail) > 4000 {
+			tail = "…" + tail[len(tail)-4000:]
+		}
+		text = fmt.Sprintf("The check `%s` failed (exit %d):\n\n%s\n\nFix it.", *check, res.ExitCode, strings.TrimSpace(tail))
+	}
+	return fmt.Errorf("the check still fails after %d rounds", *rounds)
 }
 
 func taskNew(ctx context.Context, c *box.Client, args []string, out io.Writer) error {

@@ -211,6 +211,7 @@ func startAgentWith(t *testing.T, dir string, nets Networks) *runningAgent {
 			Now:            clk.Now,
 			Networks:       nets,
 			UIAddr:         uiAddr,
+			CLI:            filepath.Join(dir, "fake-berth"),
 			UserDir:        filepath.Join(dir, "user"),
 		})
 	}()

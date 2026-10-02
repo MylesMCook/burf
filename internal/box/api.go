@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"strconv"
 	"time"
@@ -79,6 +80,11 @@ func (b *Box) Mount(s *wire.Server) {
 	route("DELETE /v1/sessions/{name}", b.removeSession)
 	route("POST /v1/sessions/{name}/attach", b.attach)
 	route("GET /v1/sessions/{name}/screen", b.screen)
+	route("POST /v1/sessions/{name}/send", b.sendToSession)
+	route("GET /v1/sessions/{name}/wait", b.waitForSession)
+	route("POST /v1/exec", b.handleExec)
+	route("GET /v1/hooks", b.getHooks)
+	route("PUT /v1/hooks", b.putHooks)
 	route("GET /v1/shares", b.listShares)
 	route("POST /v1/shares", b.addShare)
 	route("DELETE /v1/shares/{id}", b.removeShare)
@@ -637,8 +643,13 @@ func splitFirst(command string) string {
 	return command
 }
 
+// writeJSON sends v, with an empty list as [] rather than null: every list
+// the box answers with is one the app and plugins iterate over.
 func writeJSON(w http.ResponseWriter, v any) {
 	w.Header().Set("Content-Type", "application/json")
+	if rv := reflect.ValueOf(v); rv.Kind() == reflect.Slice && rv.IsNil() {
+		v = []struct{}{}
+	}
 	json.NewEncoder(w).Encode(v)
 }
 

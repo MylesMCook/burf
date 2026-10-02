@@ -21,10 +21,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
 	"github.com/sean-brydon/berth/internal/events"
+	"github.com/sean-brydon/berth/internal/statefile"
 )
 
 type Hook struct {
@@ -40,6 +42,9 @@ type Hook struct {
 	Timeout string `json:"timeout,omitempty"`
 	// Dir is where Run runs: the plugin's folder for a plugin's hooks.
 	Dir string `json:"-"`
+	// Source is "plugin:<id>" for a plugin's hooks, which are edited by
+	// changing the plugin, never through hooks.json.
+	Source string `json:"source,omitempty"`
 }
 
 // BeforePrefix marks a hook that gates an action rather than following it.
@@ -167,6 +172,46 @@ func (r *Runner) Load() (Config, error) {
 	return c, nil
 }
 
+var validOn = regexp.MustCompile(`^(before:)?(\*|[a-z][a-z0-9-]*\.(\*|[a-z][a-z0-9.-]*))$`)
+
+// Validate reports the first thing wrong with hooks someone wrote.
+func Validate(hooks []Hook) error {
+	for i, h := range hooks {
+		if !validOn.MatchString(h.On) {
+			return fmt.Errorf("hook %d: %q is not an event, a prefix like worktree.*, *, or before: one of those", i+1, h.On)
+		}
+		if strings.TrimSpace(h.Run) == "" {
+			return fmt.Errorf("hook %d (%s): nothing to run", i+1, h.On)
+		}
+		if h.Timeout != "" {
+			if d, err := time.ParseDuration(h.Timeout); err != nil || d <= 0 {
+				return fmt.Errorf("hook %d (%s): timeout %q is not a duration like 30s or 5m", i+1, h.On, h.Timeout)
+			}
+		}
+	}
+	return nil
+}
+
+// Save replaces the hooks in hooks.json. Plugin hooks are not written there:
+// they belong to their plugins.
+func (r *Runner) Save(hooks []Hook) error {
+	own := []Hook{}
+	for _, h := range hooks {
+		if h.Source == "" {
+			h.Dir = ""
+			own = append(own, h)
+		}
+	}
+	if err := Validate(own); err != nil {
+		return err
+	}
+	b, err := json.MarshalIndent(Config{Hooks: own}, "", "  ")
+	if err != nil {
+		return err
+	}
+	return statefile.Write(r.Path, append(b, '\n'))
+}
+
 // PluginManifest is the file that makes a folder a plugin.
 const PluginManifest = "berth-plugin.json"
 
@@ -189,6 +234,7 @@ func pluginHooks(manifest string) ([]Hook, error) {
 	}
 	for i := range m.Hooks {
 		m.Hooks[i].Dir = dir
+		m.Hooks[i].Source = "plugin:" + filepath.Base(dir)
 	}
 	return m.Hooks, nil
 }

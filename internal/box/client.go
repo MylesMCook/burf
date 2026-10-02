@@ -13,6 +13,8 @@ import (
 	"net/url"
 	"os"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/sean-brydon/berth/internal/doctor"
 	"github.com/sean-brydon/berth/internal/events"
@@ -82,6 +84,23 @@ func (c *Client) AddLocation(ctx context.Context, name, path string) (out Locati
 
 func (c *Client) RemoveLocation(ctx context.Context, name string) error {
 	return c.call(ctx, http.MethodDelete, "/v1/locations/"+url.PathEscape(name), nil, nil)
+}
+
+func (c *Client) Send(ctx context.Context, session, text string, enter bool) error {
+	return c.call(ctx, http.MethodPost, "/v1/sessions/"+url.PathEscape(session)+"/send", map[string]any{"text": text, "enter": enter}, nil)
+}
+
+// Wait blocks until the session's agent reports one of states after after.
+func (c *Client) Wait(ctx context.Context, session string, states []string, after time.Time, timeout time.Duration) (out WaitResult, err error) {
+	q := url.Values{"for": {strings.Join(states, ",")}, "timeout": {timeout.String()}}
+	if !after.IsZero() {
+		q.Set("after", after.UTC().Format(time.RFC3339Nano))
+	}
+	return out, c.call(ctx, http.MethodGet, "/v1/sessions/"+url.PathEscape(session)+"/wait?"+q.Encode(), nil, &out)
+}
+
+func (c *Client) Exec(ctx context.Context, req ExecRequest) (out ExecResult, err error) {
+	return out, c.call(ctx, http.MethodPost, "/v1/exec", req, &out)
 }
 
 func (c *Client) AddTask(ctx context.Context, req TaskRequest) (out Task, err error) {

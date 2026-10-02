@@ -89,6 +89,7 @@ func (a *Agent) ui(token, hostport string, inner http.Handler) http.Handler {
 	mux.HandleFunc("GET /v1/plugins/{id}/{file...}", a.uiPluginFile)
 	mux.HandleFunc("/v1/boxes/{box}/api/{path...}", a.uiBoxAPI)
 	mux.HandleFunc("GET /v1/boxes/{box}/sessions/{name}/attach", a.uiAttach)
+	a.manageRoutes(mux)
 	mux.HandleFunc("POST /v1/stop", func(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "the app cannot stop the agent")
 	})

@@ -59,6 +59,9 @@ type Config struct {
 	// UIAddr is where the desktop app's API listens; "off" turns it off.
 	// Defaults to 127.0.0.1:1378.
 	UIAddr string
+	// CLI is the berth binary the app's box management runs. Defaults to
+	// this executable.
+	CLI string
 	// UserDir holds hooks, themes, templates and plugins. Defaults to
 	// ~/.berth.
 	UserDir string
@@ -147,6 +150,7 @@ type Status struct {
 
 type Agent struct {
 	cfg      Config
+	hooks    *hooks.Runner
 	id       *identity.Identity
 	boxes    *trust.Store
 	forwards forwardStore
@@ -228,7 +232,8 @@ func Run(ctx context.Context, cfg Config) error {
 	a.sync()
 	a.startSavedForwards(ctx)
 	go a.healthLoop(ctx)
-	go (&hooks.Runner{Path: filepath.Join(cfg.UserDir, "hooks.json"), PluginsDir: filepath.Join(cfg.UserDir, "plugins"), Log: cfg.Log}).Run(ctx, &a.bus)
+	a.hooks = &hooks.Runner{Path: filepath.Join(cfg.UserDir, "hooks.json"), PluginsDir: filepath.Join(cfg.UserDir, "plugins"), Log: cfg.Log}
+	go a.hooks.Run(ctx, &a.bus)
 
 	handler := a.api(cancel)
 	a.startUI(ctx, handler)
