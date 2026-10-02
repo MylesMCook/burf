@@ -3,6 +3,7 @@ import { useRef } from "react";
 import { boxLoad } from "@/components/sidebar/box-load";
 import type { BoxStatus } from "@/lib/api";
 import { useStore } from "@/lib/store";
+import { Tip } from "@/components/tip";
 import { cn } from "@/lib/utils";
 
 // BoxStrip is where the project will live: every box, how it is doing, and
@@ -49,7 +50,7 @@ function Tile({ box, selected, wide, onSelect }: { box: BoxStatus; selected: boo
   const online = box.state === "online";
   const load = online ? boxLoad(box.name) : "";
   const facts = online ? [box.latency_ms !== undefined ? `${box.latency_ms}ms` : "", projects !== undefined ? `${projects} ${projects === 1 ? "project" : "projects"}` : ""].filter(Boolean).join(" · ") : box.state;
-  return (
+  const tile = (
     <button
       type="button"
       role="radio"
@@ -57,7 +58,6 @@ function Tile({ box, selected, wide, onSelect }: { box: BoxStatus; selected: boo
       data-box={box.name}
       tabIndex={selected ? 0 : -1}
       disabled={!online && !selected}
-      title={load || undefined}
       onClick={onSelect}
       className={cn(
         "group relative flex h-13 min-w-0 shrink-0 flex-col justify-center gap-0.5 rounded-lg border px-3 text-left outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/40",
@@ -79,4 +79,5 @@ function Tile({ box, selected, wide, onSelect }: { box: BoxStatus; selected: boo
       <span className="truncate ps-4 text-muted-foreground text-xs tabular-nums">{facts}</span>
     </button>
   );
+  return load ? <Tip label={load} wrapClassName={wide ? "flex min-w-0 flex-1 basis-0" : undefined}>{tile}</Tip> : tile;
 }

@@ -55,11 +55,7 @@ const INTERACTIVE_ROLES = new Set(["button", "link", "tab", "menuitem", "option"
 // Files that may still carry a title on an interactive element, with why.
 // Keep it empty unless there is no way round it, and take a file out once
 // it is fixed.
-const ALLOW = new Map([
-  // Add a project is being redesigned; its chips move to Tip with that.
-  ["src/components/add-project/add-project-dialog.tsx", "being redesigned"],
-  ["src/components/add-project/box-strip.tsx", "being redesigned"],
-]);
+const ALLOW = new Map([]);
 
 async function* files(dir) {
   for (const e of await readdir(dir, { withFileTypes: true })) {

@@ -16,6 +16,7 @@ import { toastManager } from "@/components/ui/toast";
 import type { Location } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
 import { useStore } from "@/lib/store";
+import { Tip } from "@/components/tip";
 import { cn } from "@/lib/utils";
 import { selectWorktree } from "@/lib/workspaces";
 import { reloadKits, useKits } from "@/views/kits/kits-store";
@@ -567,12 +568,11 @@ function Moored({ box }: { box: string }) {
 }
 
 function Chip({ on, disabled, title, onClick, children }: { on: boolean; disabled?: boolean; title?: string; onClick(): void; children: React.ReactNode }) {
-  return (
+  const chip = (
     <button
       type="button"
       aria-pressed={on}
       disabled={disabled}
-      title={title}
       onClick={onClick}
       className={cn(
         "inline-flex h-6 shrink-0 items-center gap-1.5 rounded-md border px-2 text-xs transition-colors disabled:cursor-default",
@@ -584,4 +584,5 @@ function Chip({ on, disabled, title, onClick, children }: { on: boolean; disable
       {children}
     </button>
   );
+  return title ? <Tip label={title}>{chip}</Tip> : chip;
 }

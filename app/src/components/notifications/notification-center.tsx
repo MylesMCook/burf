@@ -32,6 +32,7 @@ import { Fragment, useEffect, useRef, useState } from "react";
 import { watchReviewNotes } from "@/components/notifications/review-source";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
+import { Scene } from "@/components/art/scenes";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Kbd } from "@/components/ui/kbd";
 import { Menu, MenuItem, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
@@ -436,8 +437,8 @@ export function NotificationCenter() {
           <div className="flex min-h-0 flex-1 items-center justify-center px-6 py-10">
             <Empty className="p-0">
               <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <BellIcon />
+                <EmptyMedia>
+                  <Scene name="bottle" width={128} className="text-muted-foreground" />
                 </EmptyMedia>
                 <EmptyTitle className="text-base">You're all caught up</EmptyTitle>
                 <EmptyDescription className="text-sm">
