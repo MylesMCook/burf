@@ -3,6 +3,7 @@ package main
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -41,6 +42,7 @@ func dirs(t *testing.T) (system, user string) {
 }
 
 func TestPortHolderNamesASystemJobAndItsScope(t *testing.T) {
+	darwinOnly(t)
 	system, _ := dirs(t)
 	plist(t, system, "io.tailmux.cal-worktrees", "127.0.0.1:80")
 
@@ -54,6 +56,7 @@ func TestPortHolderNamesASystemJobAndItsScope(t *testing.T) {
 }
 
 func TestPortHolderNamesAUserJob(t *testing.T) {
+	darwinOnly(t)
 	_, user := dirs(t)
 	plist(t, user, "com.example.proxy", "127.0.0.1:80")
 
@@ -64,6 +67,7 @@ func TestPortHolderNamesAUserJob(t *testing.T) {
 }
 
 func TestPortHolderIgnoresAJobOnAnotherPort(t *testing.T) {
+	darwinOnly(t)
 	system, _ := dirs(t)
 	plist(t, system, "com.example.elsewhere", "127.0.0.1:8080")
 
@@ -75,6 +79,7 @@ func TestPortHolderIgnoresAJobOnAnotherPort(t *testing.T) {
 // A bare port argument is not a port 80 listener just because "80" appears in
 // it; 8080 and 1080 must not match.
 func TestPortHolderDoesNotMatchAPortThatMerelyContainsTheDigits(t *testing.T) {
+	darwinOnly(t)
 	system, _ := dirs(t)
 	for _, listen := range []string{"127.0.0.1:8080", "127.0.0.1:1080", "0.0.0.0:800"} {
 		os.RemoveAll(system)
@@ -86,6 +91,7 @@ func TestPortHolderDoesNotMatchAPortThatMerelyContainsTheDigits(t *testing.T) {
 }
 
 func TestPortHolderPrefersTheSystemJobWhenBothExist(t *testing.T) {
+	darwinOnly(t)
 	system, user := dirs(t)
 	plist(t, system, "com.example.system", "127.0.0.1:80")
 	plist(t, user, "com.example.user", "127.0.0.1:80")
@@ -137,5 +143,13 @@ func TestUserJobFixDoesNotAskForRoot(t *testing.T) {
 		if !strings.Contains(fix, want) {
 			t.Fatalf("fix = %q; want it to contain %q", fix, want)
 		}
+	}
+}
+
+// darwinOnly skips tests of launchd, which only macOS has.
+func darwinOnly(t *testing.T) {
+	t.Helper()
+	if runtime.GOOS != "darwin" {
+		t.Skip("launchd is macOS only")
 	}
 }

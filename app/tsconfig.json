@@ -23,7 +23,9 @@
     "paths": {
       "@/*": ["./src/*"],
       "@berth/plugin": ["../packages/plugin-sdk/src/index.ts"],
-      "@berth/plugin/ui": ["../packages/plugin-sdk/src/ui.ts"]
+      "@berth/plugin/ui": ["../packages/plugin-sdk/src/ui.ts"],
+      "react": ["./node_modules/@types/react"],
+      "react/jsx-runtime": ["./node_modules/@types/react/jsx-runtime"]
     }
   },
   "include": ["src"],
