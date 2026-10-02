@@ -1,3 +1,4 @@
+import { BookMarkedIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { AgentIcon } from "@/components/agent-glyph";
@@ -15,6 +16,7 @@ import type { Session } from "@/lib/api";
 import { agentLabel, agentOf } from "@/lib/derive";
 import { errorMessage } from "@/lib/format";
 import { handoff, handoffPrompt, loop, review, reviewPrompt, send, sessionLocation } from "@/lib/orchestrate";
+import { openPromptPicker } from "@/lib/prompts";
 import { load, save } from "@/lib/storage";
 import { type OrchestrateDraft, useStore } from "@/lib/store";
 import { findSession, setPaneContent, splitPane } from "@/lib/workspaces";
@@ -56,7 +58,7 @@ function Body({ d, onDone }: { d: OrchestrateDraft; onDone(): void }) {
   const presets = agentPresets(d.box);
   const current = session ? agentOf(session) : undefined;
   const other = presets.find((p) => p.id !== current)?.id ?? presets[0]?.id ?? "claude";
-  let location = "";
+  let location = d.location ?? "";
   try {
     location = sessionLocation(d.box, d.session);
   } catch {
@@ -65,8 +67,8 @@ function Body({ d, onDone }: { d: OrchestrateDraft; onDone(): void }) {
   const worktree = location.split("/")[1] ?? location;
   const from = { worktree: worktree || d.session, path: session?.dir ?? "" };
 
-  const [text, setText] = useState(() => (d.kind === "handoff" ? handoffPrompt(from, true) : d.kind === "review" ? reviewPrompt(d.session) : ""));
-  const [edited, setEdited] = useState(false);
+  const [text, setText] = useState(() => d.prompt ?? (d.kind === "handoff" ? handoffPrompt(from, true) : d.kind === "review" ? reviewPrompt(d.session) : ""));
+  const [edited, setEdited] = useState(!!d.prompt);
   const [agent, setAgent] = useState(d.kind === "review" ? other : (current ?? presets[0]?.id ?? "claude"));
   const [newWorktree, setNewWorktree] = useState(false);
   const [name, setName] = useState("");
@@ -100,7 +102,7 @@ function Body({ d, onDone }: { d: OrchestrateDraft; onDone(): void }) {
         const at = !wt ? findSession(d.box, d.session) : undefined;
         const pane = at ? splitPane(at.key, at.tab, at.pane.id, "row", { kind: "starting", label: agentLabel(agent) }) : undefined;
         const started = (s: Session) => at && pane && setPaneContent(at.key, at.tab, pane, { kind: "terminal", box: d.box, session: s.name });
-        const start = d.kind === "review" ? review({ box: d.box, from: d.session, agent, prompt: text, onStarted: started }) : handoff({ box: d.box, from: d.session, agent, prompt: text, worktree: wt, onStarted: started });
+        const start = d.kind === "review" ? review({ box: d.box, from: d.session, agent, prompt: text, onStarted: started }) : handoff({ box: d.box, from: d.session, location: location || undefined, agent, prompt: text, worktree: wt, onStarted: started });
         void start.catch((err) => {
           if (at && pane) setPaneContent(at.key, at.tab, pane, { kind: "error", message: errorMessage(err) });
           else toastManager.add({ title: d.kind === "review" ? "Review failed" : "Hand off failed", description: errorMessage(err), type: "error" });
@@ -156,7 +158,30 @@ function Body({ d, onDone }: { d: OrchestrateDraft; onDone(): void }) {
             {newWorktree && <Input size="sm" className="ml-auto max-w-52 font-mono" value={name} placeholder="worktree name" aria-label="New worktree name" onChange={(e) => setName(e.target.value)} />}
           </div>
         )}
-        <Field label={d.kind === "loop" ? "First prompt" : "Prompt"}>
+        <Field
+          label={d.kind === "loop" ? "First prompt" : "Prompt"}
+          action={
+            <Button
+              type="button"
+              size="xs"
+              variant="ghost"
+              className="h-6 text-muted-foreground"
+              onClick={() =>
+                openPromptPicker({
+                  box: d.box,
+                  session: d.session,
+                  onInsert: (t) => {
+                    setText(text.trim() && edited ? `${text.trimEnd()}\n\n${t}` : t);
+                    setEdited(true);
+                  },
+                })
+              }
+            >
+              <BookMarkedIcon />
+              Saved prompts…
+            </Button>
+          }
+        >
           <Textarea
             autoFocus
             rows={d.kind === "send" ? 4 : 3}
@@ -200,10 +225,17 @@ function Body({ d, onDone }: { d: OrchestrateDraft; onDone(): void }) {
   );
 }
 
-function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Field({ label, hint, action, children }: { label: string; hint?: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="flex min-w-0 flex-col gap-1.5">
-      <span className="font-medium text-[13px]">{label}</span>
+      {action ? (
+        <span className="-my-0.5 flex items-center justify-between gap-2 font-medium text-[13px]">
+          {label}
+          {action}
+        </span>
+      ) : (
+        <span className="font-medium text-[13px]">{label}</span>
+      )}
       {children}
       {hint && <span className="text-muted-foreground text-xs">{hint}</span>}
     </div>

@@ -8,6 +8,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { Spinner } from "@/components/ui/spinner";
 import { toastManager } from "@/components/ui/toast";
 import { ago } from "@/lib/format";
+import { useNotifications } from "@/lib/notifications";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { focusSession } from "@/lib/workspaces";
@@ -37,6 +38,14 @@ export function ReviewView() {
     watchReview();
     void refreshReview();
   }, []);
+
+  // A notification's "Open review" picks its item.
+  const focus = useNotifications((s) => s.reviewFocus);
+  useEffect(() => {
+    if (!focus) return;
+    setSelectedKey(focus);
+    useNotifications.setState({ reviewFocus: undefined });
+  }, [focus]);
 
   const selected = entries.find((e) => e.key === selectedKey) ?? entries[0];
   const index = selected ? entries.indexOf(selected) : -1;

@@ -1,6 +1,7 @@
-import type { Activate, BerthPluginContext, EventHandler } from "@berth/plugin";
-import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import type { Activate, BerthPluginContext, EventHandler, Project } from "@berth/plugin";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
+import { useProjects as useAppProjects } from "@/lib/projects";
 import { NONE, useStore } from "@/lib/store";
 import { useWorkspaces } from "@/lib/workspaces";
 import { PluginReactContext, pluginStorage } from "@/plugins/context";
@@ -64,6 +65,23 @@ export function useStorage<T>(key: string, initial: T): [T, (value: T) => void] 
     [key, ctx?.id],
   );
   return [value, set];
+}
+
+// useProjects is the app's projects, trimmed to what plugins need.
+export function useProjects(): Project[] {
+  const { projects } = useAppProjects();
+  return useMemo(
+    () =>
+      projects.map((p) => ({
+        id: p.id,
+        name: p.name,
+        slug: p.slug,
+        remote: p.remote,
+        defaultBox: p.defaultBox,
+        members: p.members.map((m) => ({ box: m.box.name, online: m.box.state === "online", location: m.loc })),
+      })),
+    [projects],
+  );
 }
 
 export function worktreeLocation(w: { location: string; worktree: string; main?: boolean }) {

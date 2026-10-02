@@ -1,4 +1,6 @@
 import {
+  BellIcon,
+  BookMarkedIcon,
   CodeXmlIcon,
   ArrowUpRightIcon,
   CheckIcon,
@@ -7,6 +9,7 @@ import {
   GitBranchIcon,
   GitBranchPlusIcon,
   GlobeIcon,
+  HistoryIcon,
   LayoutDashboardIcon,
   PanelTopIcon,
   PuzzleIcon,
@@ -17,11 +20,12 @@ import {
   SquareTerminalIcon,
   PackageIcon,
   PackagePlusIcon,
+  UsersIcon,
   WorkflowIcon,
 } from "lucide-react";
 import { isMock } from "@/hooks/use-berth-connection";
 import { openAddKit } from "@/views/kits/kits-store";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
 import {
@@ -44,12 +48,16 @@ import { useAllSessions } from "@/hooks/use-agent-counts";
 import { useThemes } from "@/hooks/use-theme";
 import { openBrowserAt, resolveUrl, startSession } from "@/lib/actions";
 import { agentLabel, agentOf, sortedWorktrees, worktreeOf } from "@/lib/derive";
+import { around, groupMatches, historyTitle, type MatchGroup, searchHistory } from "@/lib/history";
+import { openBroadcast, openPromptPicker } from "@/lib/prompts";
+import { setNotificationsOpen } from "@/lib/notifications";
 import { useStore } from "@/lib/store";
 import { currentSpace, focusSession, recentWorktrees, refOf, selectWorktree, useWorkspaces } from "@/lib/workspaces";
 import { openCustomize, useArrangedNav } from "@/components/sidebar/nav";
 import { loadPlugins } from "@/plugins/host";
 import { useRegistry } from "@/plugins/registry";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
+import { Marked, SessionChips, SourceIcon } from "@/views/history/parts";
 
 interface Item {
   value: string;
@@ -63,11 +71,14 @@ interface Item {
   trailing?: React.ReactNode;
   // Highlighting a theme previews it.
   theme?: string;
+  // Shown instead of the label and detail.
+  render?: React.ReactNode;
   run(): void;
 }
 
 interface Group {
   value: string;
+  label?: React.ReactNode;
   items: Item[];
 }
 
@@ -88,6 +99,22 @@ export function CommandPalette() {
   const pluginCommands = useRegistry((s) => s.commands);
   const nav = useArrangedNav();
   const [query, setQuery] = useState("");
+  // "?" searches agent history on every box.
+  const historyQ = query.startsWith("?") ? query.replace(/^\?+/, "").trim() : undefined;
+  const [history, setHistory] = useState<{ q: string; groups?: MatchGroup[]; error?: string }>({ q: "" });
+  useEffect(() => {
+    if (!historyQ) return;
+    let stop = false;
+    const t = setTimeout(() => {
+      searchHistory(historyQ, { limit: 40 })
+        .then((r) => !stop && setHistory({ q: historyQ, groups: groupMatches(r.items), error: r.items.length ? undefined : r.failed[0]?.error }))
+        .catch((err) => !stop && setHistory({ q: historyQ, error: String(err) }));
+    }, 250);
+    return () => {
+      stop = true;
+      clearTimeout(t);
+    };
+  }, [historyQ]);
   // The theme in use when the palette opened, to put back after a preview.
   const before = useRef<string | undefined>(undefined);
 
@@ -106,6 +133,35 @@ export function CommandPalette() {
     };
     const q = query.trim();
 
+    if (historyQ !== undefined) {
+      const all: Item = {
+        value: "history:all",
+        label: historyQ ? `See every match for “${historyQ}” in History` : "Open History",
+        icon: slot(<HistoryIcon />),
+        run: go(() => st.setView({ kind: "history", q: historyQ || undefined })),
+      };
+      if (!historyQ) return [{ value: "Search agent history: type what to find", items: [all] }];
+      const current = history.q === historyQ ? history.groups : undefined;
+      const found: Group[] = (current ?? []).slice(0, 8).map((g) => ({
+        value: `${g.box}:${g.session.id}`,
+        label: (
+          <span className="flex min-w-0 items-center gap-1.5 normal-case">
+            <SourceIcon s={g.session} className="size-3" />
+            <span className="truncate">{historyTitle(g.session)}</span>
+            <SessionChips box={g.box} s={g.session} />
+          </span>
+        ),
+        items: g.matches.slice(0, 4).map((m, i) => ({
+          value: `history:${g.box}:${g.session.id}:${i}`,
+          label: m.line,
+          render: <Marked className="min-w-0 truncate font-mono text-xs" text={around(m.line, historyQ)} q={historyQ} />,
+          run: go(() => st.setView({ kind: "history", q: historyQ, open: { box: g.box, id: g.session.id, at: m.screen ? -1 - m.position : m.position } })),
+        })),
+      }));
+      const note = current === undefined ? "Searching…" : history.error ? history.error : !found.length ? "No matches" : "History";
+      return [...found, { value: note, items: [all] }];
+    }
+
     const actions: Item[] = [
       { value: "new-worktree", label: "New worktree…", icon: slot(<GitBranchPlusIcon />), shortcut: "⌘N", run: go(() => st.openNewWorktree()) },
       { value: "new-terminal", label: "New terminal", icon: slot(<SquareTerminalIcon />), shortcut: "⌘T", run: go(() => void startSession("")) },
@@ -115,9 +171,14 @@ export function CommandPalette() {
         if (ws) void openEditor({ box: ws.ref.box, path: ws.ref.path });
       }) },
       { value: "new-tab", label: "New tab…", icon: slot(<PanelTopIcon />), run: go(() => st.setNewTabMenuOpen(true)) },
+      { value: "send saved prompt library", label: "Send a saved prompt…", icon: slot(<BookMarkedIcon />), run: go(() => openPromptPicker()) },
+      { value: "broadcast prompt several agents", label: "Send a prompt to several agents…", icon: slot(<UsersIcon />), run: go(() => openBroadcast()) },
       { value: "add-location", label: "Add a project…", icon: slot(<FolderPlusIcon />), run: go(() => st.openAddProject()) },
       { value: "dashboard", label: "Agent Dashboard", icon: slot(<LayoutDashboardIcon />), shortcut: "⌘J", run: go(() => st.setView({ kind: "dashboard" })) },
+      { value: "notifications inbox bell", label: "Notifications", icon: slot(<BellIcon />), shortcut: "⌘⇧N", run: go(() => setNotificationsOpen(true)) },
+      { value: "notification settings do not disturb", label: "Notification settings", icon: slot(<BellIcon />), run: go(() => st.setView({ kind: "settings", section: "notifications" })) },
       { value: "worktrees", label: "Worktrees", icon: slot(<GitBranchIcon />), run: go(() => st.setView({ kind: "worktrees" })) },
+      { value: "search agent history transcripts", label: "Search agent history…", icon: slot(<HistoryIcon />), shortcut: "?", run: () => setQuery("?") },
       { value: "automations", label: "Automations", icon: slot(<WorkflowIcon />), run: go(() => st.setView({ kind: "automations" })) },
       { value: "kits", label: "Kits", icon: slot(<PackageIcon />), run: go(() => st.setView({ kind: "kits" })) },
       { value: "add kit from link", label: "Add a kit from a link…", icon: slot(<PackagePlusIcon />), run: go(() => openAddKit()) },
@@ -130,6 +191,9 @@ export function CommandPalette() {
     ];
     // Demo mode plays what agents on boxes do, to see the app react.
     const ws = currentSpace();
+    if (isMock()) {
+      actions.push({ value: "mock demo notifications every kind", label: "Demo: one of every notification", icon: slot(<BellIcon />), run: go(() => void import("@/lib/mock").then((m) => m.mockNotifications())) });
+    }
     if (isMock() && ws) {
       const where = ws.ref.main ? ws.ref.location : `${ws.ref.location}/${ws.ref.worktree}`;
       for (const how of ["split", "tab"] as const) {
@@ -249,7 +313,7 @@ export function CommandPalette() {
     ].filter((g) => g.items.length);
     // close is stable enough: it only reads refs and store setters.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessions, boxes, status, themes, themeId, spaces, pluginCommands, query, nav.hidden]);
+  }, [sessions, boxes, status, themes, themeId, spaces, pluginCommands, query, nav.hidden, historyQ, history]);
 
   return (
     <CommandDialog
@@ -264,6 +328,7 @@ export function CommandPalette() {
           items={groups}
           value={query}
           onValueChange={setQuery}
+          filter={historyQ !== undefined ? null : undefined}
           itemToStringValue={(i: unknown) => `${(i as Item).label} ${(i as Item).detail ?? ""} ${(i as Item).search ?? ""}`}
           onItemHighlighted={(i: unknown) => {
             // Highlighting a theme previews it; closing without choosing puts
@@ -274,18 +339,18 @@ export function CommandPalette() {
             useStore.getState().setTheme(t);
           }}
         >
-          <CommandInput placeholder="Jump to a session, worktree, or command…" />
+          <CommandInput placeholder="Jump to a session, worktree, or command… (? searches history)" />
           <CommandPanel>
             <CommandEmpty>Nothing matches.</CommandEmpty>
             <CommandList>
               {(group: Group) => (
                 <CommandGroup key={group.value} items={group.items}>
-                  <CommandGroupLabel>{group.value}</CommandGroupLabel>
+                  <CommandGroupLabel>{group.label ?? group.value}</CommandGroupLabel>
                   <CommandCollection>
                     {(item: Item) => (
                       <CommandItem key={item.value} value={item} className="gap-2" onClick={() => item.run()}>
                         {item.icon}
-                        <span className="truncate">{item.label}</span>
+                        {item.render ?? <span className="truncate">{item.label}</span>}
                         {item.detail && <span className="ml-auto min-w-0 shrink truncate text-muted-foreground text-xs">{item.detail}</span>}
                         {item.trailing}
                         {item.shortcut && <Kbd className={item.detail ? "" : "ml-auto"}>{item.shortcut}</Kbd>}

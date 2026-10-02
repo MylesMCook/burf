@@ -1,14 +1,15 @@
-import { toastManager } from "@/components/ui/toast";
 import type { BerthEvent, Location, Worktree } from "@/lib/api";
 import { hostSuffix, portUrl, worktreeHost } from "@/lib/browser-url";
 import { leaves } from "@/lib/layout";
+import { route } from "@/lib/notifications";
 import { useStore } from "@/lib/store";
 import { activateTab, focusPane, openBrowser, refOf, selectWorktree, setPaneContent, useWorkspaces, wsKey } from "@/lib/workspaces";
 
 // An agent on a box runs `berthd preview` to show the person a page: the
 // event names the worktree, the port and the path. The page opens beside the
 // person's terminal when they are looking at that worktree, and otherwise
-// waits behind a toast, so an agent never pulls them away from what they do.
+// waits behind a
+// notification, so an agent never pulls them away from what they do.
 
 export function previewUrl(box: string, loc: Location, wt: Worktree, port: number, urlPath = "/"): string {
   const store = useStore.getState();
@@ -90,16 +91,15 @@ function offer(box: string, loc: Location, wt: Worktree, port: number, urlPath?:
     showPreview(box, loc, wt, url);
     return;
   }
-  const id = toastManager.add({
+  route({
+    category: "opened",
     title: "Preview ready",
-    description: `${wt.main ? loc.name : wt.name} on ${box} · ${new URL(url).host}${urlPath && urlPath !== "/" ? urlPath : ""}`,
-    type: "info",
-    actionProps: {
-      children: "Open",
-      onClick: () => {
-        toastManager.close(id);
-        showPreview(box, loc, wt, url);
-      },
-    },
+    detail: `${new URL(url).host}${urlPath && urlPath !== "/" ? urlPath : ""}`,
+    box,
+    path: wt.path,
+    action: { kind: "worktree", box, path: wt.path },
+    label: "Open preview",
+    run: () => showPreview(box, loc, wt, url),
+    key: `preview|${box}|${url}`,
   });
 }

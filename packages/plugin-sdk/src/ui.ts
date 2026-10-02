@@ -1,7 +1,7 @@
 // The app's UI kit, shared with plugins so they look like the rest of Berth.
 // Components take the same props as in the app (coss ui, built on Base UI);
 // they are typed loosely here so the SDK does not depend on the app's source.
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 // biome-ignore lint/suspicious/noExplicitAny: see above.
 type Loose = ComponentType<any>;
@@ -70,6 +70,31 @@ export declare const MenuItem: Loose;
 export declare const MenuGroup: Loose;
 export declare const MenuGroupLabel: Loose;
 export declare const MenuSeparator: Loose;
+// A panel that slides in from an edge: <Sheet open onOpenChange><SheetPopup
+// side="right">…</SheetPopup></Sheet>, with SheetHeader, SheetPanel (the
+// scrolling middle) and SheetFooter inside.
+export declare const Sheet: Loose;
+export declare const SheetPopup: Loose;
+export declare const SheetHeader: Loose;
+export declare const SheetTitle: Loose;
+export declare const SheetDescription: Loose;
+export declare const SheetPanel: Loose;
+export declare const SheetFooter: Loose;
+export declare const SheetClose: Loose;
+export declare const Checkbox: Loose;
+// The app's own pickers, so a plugin's choices look like the app's.
+// PickOne: one of a few values, as a segmented control.
+export declare const PickOne: ComponentType<{
+  value: string;
+  options: { value: string; label: ReactNode; icon?: ReactNode }[];
+  onChange(value: string): void;
+  label?: string;
+  className?: string;
+}>;
+// AgentPicker: one of a box's agents (BoxInfo.agents), with their icons.
+export declare const AgentPicker: ComponentType<{ presets: { id: string; name: string }[]; value: string; onChange(id: string): void; allowNone?: boolean; className?: string }>;
+// AgentIcon: an agent's mark, by preset id ("claude", "codex", …).
+export declare const AgentIcon: ComponentType<{ agent?: string; className?: string }>;
 // Any lucide icon by name: <Icon name="Server" />.
 export declare const Icon: ComponentType<{ name: string; className?: string }>;
 export declare function cn(...classes: unknown[]): string;

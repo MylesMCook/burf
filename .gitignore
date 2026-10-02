@@ -20,6 +20,9 @@ design/plugins/
 design/review/
 design/editors/
 design/audit-2/
+design/prompts/
+design/history/
 
 __pycache__/
 *.pyc
+design/notifications/

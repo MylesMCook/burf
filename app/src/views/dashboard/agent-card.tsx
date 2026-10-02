@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { AgentIcon } from "@/components/agent-glyph";
 import { openOrchestrate, SessionActions } from "@/components/orchestrate/session-actions";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toastManager } from "@/components/ui/toast";
 import type { SessionEntry } from "@/hooks/use-agent-counts";
 import { boxApi } from "@/lib/api";
@@ -44,8 +45,9 @@ export function duration(ms: number): string {
 }
 
 // AgentCard is one agent on the board: where it works, how long it has been
-// in its state, the last thing it said, and what you can do about it.
-export function AgentCard({ entry }: { entry: SessionEntry }) {
+// in its state, the last thing it said, and what you can do about it. While
+// the board is selecting (or with ⌘ or ⇧ held), a click picks it instead.
+export function AgentCard({ entry, selecting, selected, onSelect }: { entry: SessionEntry; selecting?: boolean; selected?: boolean; onSelect?(): void }) {
   const { box, session, state } = entry;
   const locations = useStore((s) => s.boxes[box]?.locations);
   const where = worktreeOf(locations, session);
@@ -69,16 +71,19 @@ export function AgentCard({ entry }: { entry: SessionEntry }) {
     <article
       role="button"
       tabIndex={0}
-      onClick={open}
-      onKeyDown={(e) => e.key === "Enter" && e.target === e.currentTarget && open()}
+      aria-pressed={selecting ? !!selected : undefined}
+      onClick={(e) => (onSelect && (selecting || e.metaKey || e.shiftKey) ? onSelect() : open())}
+      onKeyDown={(e) => e.key === "Enter" && e.target === e.currentTarget && (selecting && onSelect ? onSelect() : open())}
       className={cn(
         "group relative flex cursor-pointer flex-col rounded-lg border bg-card text-left outline-none transition-[opacity,translate,border-color] duration-200 hover:border-ring/40 focus-visible:ring-2 focus-visible:ring-ring",
         shown ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0",
         state === "waiting" && "shadow-[inset_2px_0_0_var(--color-warning)]",
+        selected && "border-primary/60 ring-1 ring-primary/30 hover:border-primary/60",
       )}
     >
       <div className="px-3 pt-2.5">
         <div className="flex items-center gap-2">
+          {selecting && <Checkbox checked={!!selected} tabIndex={-1} aria-hidden className="pointer-events-none" />}
           <AgentIcon agent={agentOf(session)} />
           <span className="min-w-0 flex-1 truncate font-medium text-[13px]">{title}</span>
           <span className={cn("shrink-0 font-mono text-[11px] tabular-nums", state === "waiting" ? "text-warning" : "text-muted-foreground")} title={`Since ${new Date(since).toLocaleString()}`}>

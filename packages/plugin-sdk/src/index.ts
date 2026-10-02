@@ -156,11 +156,71 @@ export interface BerthOrchestrate {
   loop(opts: { box: string; session: string; prompt: string; check: string; max?: number; signal?: AbortSignal; onProgress?(p: LoopProgress): void }): { id: string; done: Promise<LoopResult> };
 }
 
+// Saved prompts: the library the app's prompt picker and broadcast use, one
+// document on this laptop (/v1/app/prompts). Bodies take {{variables}}: the
+// built-ins ({{branch}}, {{worktree.name}}, {{box}}, {{project}}…) fill in
+// from the session a prompt goes to; the rest people fill in when sending.
+export interface SavedPromptVariable {
+  name: string;
+  label?: string;
+  default?: string;
+  multiline?: boolean;
+}
+
+export interface SavedPrompt {
+  id: string;
+  title: string;
+  body: string;
+  tags: string[];
+  // A project's id (as the sidebar groups them) to offer it only there.
+  project?: string;
+  variables?: SavedPromptVariable[];
+  updated?: string;
+  uses?: number;
+  last_used?: string;
+}
+
+export interface PromptSegment {
+  text: string;
+  variable?: string;
+  missing?: boolean;
+}
+
+export interface PromptTarget {
+  box: string;
+  session: string;
+}
+
+export interface BerthPrompts {
+  // The library now. Until the laptop holds one, the starter prompts.
+  list(): SavedPrompt[];
+  // Re-reads the library from the laptop.
+  load(): Promise<SavedPrompt[]>;
+  save(prompts: SavedPrompt[]): Promise<void>;
+  // Calls listener whenever the library changes; returns how to stop.
+  subscribe(listener: () => void): Dispose;
+  readonly starters: SavedPrompt[];
+  readonly builtins: { name: string; label: string }[];
+  // The variables people fill in for a prompt (not the built-ins).
+  variables(prompt: Pick<SavedPrompt, "body" | "variables">): SavedPromptVariable[];
+  // A body with its variables filled, built-ins from target when given.
+  fill(body: string, values: Record<string, string | undefined>, target?: PromptTarget): string;
+  // The same as pieces, marking what each variable filled or that it is missing.
+  segments(body: string, values: Record<string, string | undefined>, target?: PromptTarget): PromptSegment[];
+  newId(): string;
+  // The app's picker: choose a prompt, fill it in, send it to a session
+  // (the focused one, or one the person chooses).
+  openPicker(opts?: { box?: string; session?: string; promptId?: string }): void;
+  // The app's broadcast: one prompt to several agents, with results.
+  openBroadcast(opts?: { promptId?: string; text?: string; targets?: PromptTarget[] }): void;
+}
+
 export interface BerthPluginContext {
   // The plugin's id from berth-plugin.json.
   readonly id: string;
   readonly api: BerthApi;
   readonly orchestrate: BerthOrchestrate;
+  readonly prompts: BerthPrompts;
   addSidebarItem(item: SidebarItem): Dispose;
   addScreen(screen: Screen): Dispose;
   addWorktreePanel(panel: WorktreePanel): Dispose;
@@ -202,6 +262,30 @@ export declare function useEvent(type: string, handler: EventHandler): void;
 export declare function useCurrentWorktree(): CurrentWorktree | undefined;
 // Like useState, kept in the plugin's storage.
 export declare function useStorage<T>(key: string, initial: T): [T, (value: T) => void];
+
+// A project is one repository wherever it is checked out, as the app's
+// sidebar shows it: "calcom/cal.com" on devl and on gpu is one project with
+// two members. defaultBox is where new work goes unless the person picks
+// another (the project's "Default box" in the app).
+export interface ProjectMember {
+  box: string;
+  online: boolean;
+  // The repository's main checkout on that box, with its worktrees.
+  location: Location;
+}
+
+export interface Project {
+  id: string;
+  name: string;
+  // owner/name on its forge, when it has one.
+  slug?: string;
+  remote?: string;
+  defaultBox: string;
+  members: ProjectMember[];
+}
+
+// Every project across every box, live, sorted by name.
+export declare function useProjects(): Project[];
 // How the box API names a worktree's location: "cal" for the main checkout,
 // "cal/billing" otherwise. For orchestrate.exec and box requests.
 export declare function worktreeLocation(w: { location: string; worktree: string; main?: boolean }): string;

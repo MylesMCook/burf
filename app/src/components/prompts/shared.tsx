@@ -1,0 +1,115 @@
+import { useEffect, useRef } from "react";
+
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { worktreeOf } from "@/lib/derive";
+import { type PromptVariable, type SavedPrompt, segments, variableLabel } from "@/lib/prompts";
+import { useStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
+import { useRegistry } from "@/plugins/registry";
+
+// The prompts plugin's library screen, when that plugin is on.
+export const LIBRARY_SCREEN = "prompt-library";
+
+export function openLibrary(): boolean {
+  if (!useRegistry.getState().screens.some((c) => c.item.id === LIBRARY_SCREEN)) return false;
+  useStore.getState().setView({ kind: "plugin", screen: LIBRARY_SCREEN });
+  return true;
+}
+
+// Where a session works, as people name it: the worktree, then its branch
+// and box.
+export function useTargetLabel(box: string, session: string) {
+  const d = useStore((s) => s.boxes[box]);
+  const s = d?.sessions?.find((x) => x.name === session);
+  const where = s && worktreeOf(d?.locations, s);
+  return {
+    session: s,
+    title: where ? (where.worktree.main ? where.location.name : where.worktree.name) : (s?.location ?? session),
+    detail: [where && !where.worktree.main ? where.location.name : undefined, where?.worktree.branch, box].filter(Boolean).join(" · "),
+  };
+}
+
+// PromptPreview is the prompt as it will be typed: what variables filled
+// is marked, and what is still missing stands out.
+export function PromptPreview({ body, values, className }: { body: string; values: Record<string, string | undefined>; className?: string }) {
+  return (
+    <div className={cn("whitespace-pre-wrap break-words rounded-lg border bg-muted/40 px-3 py-2.5 text-[13px] leading-relaxed", className)}>
+      {segments(body, values).map((s, i) =>
+        s.variable ? (
+          <span
+            key={i}
+            title={s.missing ? `{{${s.variable}}} has no value yet` : `{{${s.variable}}}`}
+            className={cn("rounded-[3px] px-0.5", s.missing ? "bg-warning/12 font-mono text-[12px] text-warning-foreground" : "bg-primary/10 text-foreground")}
+          >
+            {s.text}
+          </span>
+        ) : (
+          <span key={i}>{s.text}</span>
+        ),
+      )}
+    </div>
+  );
+}
+
+// VariableFields asks for a prompt's own variables; built-ins fill
+// themselves.
+export function VariableFields({ vars, values, onChange, autoFocus }: { vars: PromptVariable[]; values: Record<string, string>; onChange(name: string, value: string): void; autoFocus?: boolean }) {
+  if (!vars.length) return null;
+  return (
+    <div className="grid gap-3">
+      {vars.map((v, i) => (
+        <label key={v.name} className="flex min-w-0 flex-col gap-1.5">
+          <span className="flex items-baseline gap-2 font-medium text-[13px]">
+            {variableLabel(v)}
+            <span className="font-mono font-normal text-[11px] text-muted-foreground">{`{{${v.name}}}`}</span>
+          </span>
+          {v.multiline ? (
+            <Textarea autoFocus={autoFocus && i === 0} rows={3} value={values[v.name] ?? ""} placeholder={v.default} onChange={(e) => onChange(v.name, e.target.value)} />
+          ) : (
+            <Input autoFocus={autoFocus && i === 0} value={values[v.name] ?? ""} placeholder={v.default} onChange={(e) => onChange(v.name, e.target.value)} />
+          )}
+        </label>
+      ))}
+    </div>
+  );
+}
+
+// With nothing typed, a variable takes its default.
+export const withDefaults = (vars: PromptVariable[], values: Record<string, string>) =>
+  Object.fromEntries(vars.map((v) => [v.name, values[v.name]?.trim() ? values[v.name] : (v.default ?? "")]));
+
+// PromptRow is one prompt in a list: its title, tags, and how it starts.
+export function PromptRow({ p, active, onPick, onHover }: { p: SavedPrompt; active?: boolean; onPick(): void; onHover?(): void }) {
+  const ref = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (active) ref.current?.scrollIntoView({ block: "nearest" });
+  }, [active]);
+  return (
+    <button
+      ref={ref}
+      type="button"
+      role="option"
+      aria-selected={active}
+      onClick={onPick}
+      onMouseMove={onHover}
+      className={cn("flex w-full min-w-0 flex-col gap-0.5 rounded-md px-2.5 py-2 text-left outline-none", active ? "bg-accent" : "hover:bg-accent/50")}
+    >
+      <span className="flex min-w-0 items-center gap-2">
+        <span className="min-w-0 flex-1 truncate font-medium text-[13px]">{p.title}</span>
+        {p.project && (
+          <Badge size="sm" variant="info">
+            project
+          </Badge>
+        )}
+        {p.tags.slice(0, 3).map((t) => (
+          <Badge key={t} size="sm" variant="secondary">
+            {t}
+          </Badge>
+        ))}
+      </span>
+      <span className="truncate text-muted-foreground text-xs">{p.body.replace(/\s+/g, " ")}</span>
+    </button>
+  );
+}

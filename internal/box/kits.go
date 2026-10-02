@@ -204,7 +204,7 @@ func (b *Box) putKit(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	b.publish(r, "kit.installed", map[string]any{"location": location, "kit": res.Kit.ID, "version": res.Kit.Version, "source": res.Kit.Source})
+	b.publish(r, "kit.installed", map[string]any{"location": location, "kit": res.Kit.ID, "version": res.Kit.Version, "source": res.Kit.Source, "warnings": res.Warnings})
 	writeJSON(w, res)
 	return nil
 }

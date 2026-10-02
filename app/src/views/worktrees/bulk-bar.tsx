@@ -1,9 +1,12 @@
-import { AlertTriangleIcon, CheckIcon, PauseIcon, PlayIcon, SquareIcon, Trash2Icon, XIcon } from "lucide-react";
+import { AlertTriangleIcon, CheckIcon, PauseIcon, PlayIcon, SendIcon, SquareIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { Spinner } from "@/components/ui/spinner";
+import { agentOf } from "@/lib/derive";
+import { openBroadcast } from "@/lib/prompts";
+import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import type { SyncMode } from "@/lib/worktrees";
 import { SyncButton } from "@/views/worktrees/history-sheet";
@@ -38,6 +41,7 @@ export function BulkBar({
   onDismiss(): void;
 }) {
   const [details, setDetails] = useState(false);
+  const boxes = useStore((s) => s.boxes);
   const running = summary && !summary.done;
   if (!selected.length && !summary) return null;
 
@@ -103,6 +107,8 @@ export function BulkBar({
   const anyRunning = selected.some((r) => !r.paused && !r.main);
   const sessions = selected.reduce((n, r) => n + r.sessions, 0);
   const deletable = selected.filter((r) => !r.main).length;
+  // The agents working in the selected worktrees, to prompt them all.
+  const agents = selected.flatMap((r) => (boxes[r.box]?.sessions ?? []).filter((x) => x.dir === r.path && !x.exited && agentOf(x)).map((x) => ({ box: r.box, session: x.name })));
 
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
@@ -122,6 +128,10 @@ export function BulkBar({
             Resume
           </Button>
         )}
+        <Button size="xs" variant="outline" disabled={!agents.length} onClick={() => openBroadcast({ targets: agents })} title={agents.length ? `Send one prompt to ${agents.length} agent${agents.length === 1 ? "" : "s"}` : "No agents in these worktrees"}>
+          <SendIcon />
+          Prompt agents…
+        </Button>
         <Button size="xs" variant="outline" disabled={!sessions} onClick={onStop} title={sessions ? undefined : "No sessions running"}>
           <SquareIcon />
           Stop sessions

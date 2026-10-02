@@ -4,6 +4,7 @@ import { createContext } from "react";
 import { boxApi, type Client } from "@/lib/api";
 import { notify } from "@/lib/notify";
 import * as orchestrate from "@/lib/orchestrate";
+import { makePromptsApi } from "@/lib/prompts-api";
 import { openUrl } from "@/lib/open-url";
 import { useStore } from "@/lib/store";
 import { hostSuffix, portUrl } from "@/lib/browser-url";
@@ -84,6 +85,7 @@ export function makeContext(id: string, client: Client): BerthPluginContext {
       if (p) openPanel(id, panel, p.item.title, opts);
     },
     storage: pluginStorage(id),
+    prompts: makePromptsApi(),
     orchestrate: {
       send: orchestrate.send,
       wait: orchestrate.wait,

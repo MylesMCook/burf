@@ -194,6 +194,9 @@ export interface TaskRequest {
   agent?: string;
   command?: string;
   prompt?: string;
+  // Asks the app to show the new agent: as a tab of its worktree when the
+  // person is looking at it, otherwise as a toast that opens it.
+  open?: "split" | "tab";
 }
 
 export interface TaskResult {

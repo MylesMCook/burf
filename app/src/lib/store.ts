@@ -28,6 +28,9 @@ export type View =
   | { kind: "kits" }
   | { kind: "review" }
   | { kind: "worktrees" }
+  // History lists recorded sessions; q searches them, and open replays one,
+  // at a line or turn.
+  | { kind: "history"; q?: string; open?: { box: string; id: string; at?: number } }
   | { kind: "settings"; section?: string }
   | { kind: "plugin"; screen: string };
 
@@ -54,6 +57,10 @@ export interface OrchestrateDraft {
   kind: "send" | "handoff" | "review" | "loop";
   box: string;
   session: string;
+  // A hand-off's prompt to start from, such as one made from history.
+  prompt?: string;
+  // Where the session ran, for one that has ended.
+  location?: string;
 }
 
 interface State {

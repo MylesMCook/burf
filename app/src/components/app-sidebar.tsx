@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useMemo } from "react";
 
+import { NotificationBell } from "@/components/notifications/notification-center";
 import { newSection } from "@/components/sidebar/actions";
 import { Nav as PlacesNav, useArrangedNav } from "@/components/sidebar/nav";
 import { Projects, useSidebarPrefs } from "@/components/sidebar/projects";
@@ -50,7 +51,9 @@ export function AppSidebar() {
     <SidebarContext.Provider value={context}>
       <aside className="flex w-60 shrink-0 flex-col border-sidebar-border border-r bg-sidebar text-sidebar-foreground">
         {/* Room for the macOS traffic lights; the strip drags the window. */}
-        <div data-tauri-drag-region className="h-10 shrink-0" />
+        <div data-tauri-drag-region className="flex h-10 shrink-0 items-center justify-end px-2">
+          <NotificationBell />
+        </div>
 
         <div className="px-2 pb-1">
           <button
@@ -163,6 +166,7 @@ function Rail() {
       <div data-tauri-drag-region className="h-10 w-full shrink-0" />
       <div className="flex flex-col items-center gap-1">
         {item("Search (⌘K)", <SearchIcon />, false, () => useStore.getState().setPaletteOpen(true))}
+        <NotificationBell size="rail" />
         {pinned.map((n) => (
           <span key={n.id}>{item(n.label, n.icon, n.active, () => setView(n.view), n.badge?.count)}</span>
         ))}

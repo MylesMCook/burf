@@ -6,6 +6,7 @@ import {
   EyeOffIcon,
   GitBranchIcon,
   GripVerticalIcon,
+  HistoryIcon,
   InboxIcon,
   LayoutDashboardIcon,
   ListIcon,
@@ -56,6 +57,7 @@ export function useNavItems(): NavItem[] {
       { id: "worktrees", label: "Worktrees", icon: <GitBranchIcon />, view: { kind: "worktrees" }, active: view.kind === "worktrees" },
       { id: "automations", label: "Automations", icon: <WorkflowIcon />, view: { kind: "automations" }, active: view.kind === "automations" },
       { id: "kits", label: "Kits", icon: <PackageIcon />, view: { kind: "kits" }, active: view.kind === "kits" },
+      { id: "history", label: "History", icon: <HistoryIcon />, view: { kind: "history" }, active: view.kind === "history" },
       ...plugins.map(({ plugin, item }) => ({
         id: `plugin:${plugin}:${item.id}`,
         label: item.title,

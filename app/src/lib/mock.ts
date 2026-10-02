@@ -6,7 +6,9 @@ import { kitsCall, kitsStream } from "@/lib/mock-kits";
 import { reviewCall, reviewExec } from "@/lib/mock-review";
 import { editorsCall } from "@/lib/mock-editors";
 import { mockShell } from "@/lib/mock-shell";
+import { mockIssueTitle } from "@/lib/mock-issues";
 import { usageCall, usageExec } from "@/lib/mock-usage";
+import { historyCall } from "@/lib/mock-history";
 
 // Mock mode (?mock=1) runs the whole UI on fixtures, so it can be worked on
 // without an agent or a box. State is mutable: new tasks and sessions appear,
@@ -250,7 +252,9 @@ function mockProjects(box: string, method: string, path: string, body?: unknown)
     const issue = /\/issues\/(\d+)/.exec(text);
     let r: Record<string, unknown>;
     if (issue && kind !== "branch" && kind !== "name") {
-      r = { kind: "issue", name: `issue-${issue[1]}-login-loops`, branch: `issue-${issue[1]}-login-loops`, base: "main", title: "Login loops after password reset", url: text };
+      const title = mockIssueTitle(Number(issue[1])) ?? "Login loops after password reset";
+      const name = `issue-${issue[1]}-${slugOf(title).slice(0, 40).replace(/-$/, "")}`;
+      r = { kind: "issue", name, branch: name, base: "main", title, url: text };
     } else if (pr && kind !== "branch" && kind !== "name") {
       const n = Number(pr[1]);
       r = n === 404
@@ -344,6 +348,8 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
   if (phone) return phone;
   const usage = usageCall(box, method, path, body, delay);
   if (usage) return usage;
+  const history = historyCall(box, method, path, delay);
+  if (history) return history;
   const wts = worktreesCall(box, method, path, body, { locations, sessions }, emit, delay);
   if (wts) return wts;
   const review = reviewCall(box, method, path, sessions[box]);
@@ -403,14 +409,17 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
     return delay({ screen });
   }
   if (key === "POST tasks") {
-    const t = body as { location: string; name: string; branch?: string; agent?: string; command?: string };
+    const t = body as { location: string; name: string; branch?: string; agent?: string; command?: string; open?: string };
     const loc = locations[box].find((l) => l.name === t.location)!;
+    if (loc.worktrees?.some((w) => w.name === t.name)) return Promise.reject(new Error(`a worktree named ${t.name} already exists`));
     const wt = { name: t.name, path: `${loc.path}-${t.name}`, branch: t.branch || `sean/${t.name}` };
     loc.worktrees = [...(loc.worktrees ?? []), wt];
     const agent = t.agent || "claude";
     const session: Session = { name: `${t.name}-${agent}`, location: `${t.location}/${t.name}`, dir: wt.path, command: t.command ?? agent, created: new Date().toISOString(), attached: 0, exited: false, agent, agent_state: "running" };
     sessions[box].push(session);
     setTimeout(() => emit({ type: "worktree.created", box, data: { location: t.location, name: t.name, path: wt.path } }), 50);
+    setTimeout(() => emit({ type: "task.created", box, data: { location: t.location, name: t.name, path: wt.path, branch: wt.branch, session: session.name, agent } }), 60);
+    if (t.open) setTimeout(() => emit({ type: "session.open", box, data: { name: session.name, location: session.location, path: wt.path, open: t.open, agent } }), 120);
     return delay({ worktree: wt, session });
   }
   if (key === "POST sessions") {
@@ -759,3 +768,45 @@ export function mockAgentOpens(box: string, location: string, dir: string, open:
   emit({ type: "session.started", box, data: { name, location, path: dir, command: "claude" } });
   setTimeout(() => emit({ type: "session.open", box, data: { name, location, path: dir, open, agent: "claude" } }), 80);
 }
+
+// mockNotifications plays one of every event the notification centre turns
+// into a notification, a moment apart, so each kind shows: a waiting agent,
+// one that finished three times (one collapsed row), failures, the guard, a
+// kit with warnings, a flow's message, and an agent opening things.
+export function mockNotifications() {
+  const devl = "devl";
+  const plays: [number, Omit<BerthEvent, "time">][] = [
+    [0, { type: "agent.waiting", box: devl, origin: "claude", data: { path: "/home/sean/work/cal-billing-fix" } }],
+    [150, { type: "agent.finished", box: devl, origin: "claude", data: { path: "/home/sean/work/cal-booker-perf" } }],
+    [300, { type: "agent.finished", box: devl, origin: "claude", data: { path: "/home/sean/work/cal-booker-perf" } }],
+    [450, { type: "agent.finished", box: devl, origin: "claude", data: { path: "/home/sean/work/cal-booker-perf" } }],
+    [600, { type: "flow.finished", box: devl, origin: "flow:tests-after-turn", data: { flow: "tests-after-turn", scope: "repo:cal", run: "r3", status: "failed", path: "/home/sean/work/cal-billing-fix" } }],
+    [750, { type: "worktree.setup.failed", box: devl, data: { location: "cal", name: "qa-deck", path: "/home/sean/work/cal-qa-deck" }, error: "pnpm install exited with status 1: ERR_PNPM_FETCH_404" }],
+    [900, { type: "service.failed", box: devl, data: { location: "cal", name: "qa-deck", service: "storybook", error: "port 6006 is already in use" } }],
+    [1050, { type: "guard.acted", box: "gpu", origin: "guard", data: { action: "stop_services", location: "evals", name: "judge-v2", path: "/home/sean/evals-judge-v2", services: ["web", "worker"], memory_percent: 93.4, reason: "Memory at 93% for 2 minutes" } }],
+    [1200, { type: "kit.installed", box: devl, data: { location: "cal", kit: "cal-com", version: "3", source: "https://example.com/kits/cal-com.json", warnings: ["The .env.example has keys this kit does not set: STRIPE_WEBHOOK_SECRET", "yarn is not installed; used pnpm"] } }],
+    [1350, { type: "notify", box: devl, origin: "flow:nightly-e2e", data: { title: "Nightly e2e passed", body: "412 tests in 9m 12s", flow: "nightly-e2e", location: "cal" } }],
+    [1500, { type: "preview.open", box: devl, data: { location: "cal", name: "qa-deck", path: "/home/sean/work/cal-qa-deck", port: 4789, url_path: "/deck" } }],
+  ];
+  for (const [ms, e] of plays) setTimeout(() => emit(e), ms);
+  setTimeout(() => mockAgentOpens(devl, "cal/qa-deck", "/home/sean/work/cal-qa-deck", "split"), 1650);
+  // A plugin's notify, and a review-ready item, come from the app itself.
+  setTimeout(() => {
+    void import("@/lib/notify").then((m) => m.notify("Usage at 82% of the weekly limit", "Claude Code on your work account", "warning"));
+    void import("@/lib/notifications").then((m) =>
+      m.route({
+        category: "review",
+        title: "Claude Code left changes to review",
+        detail: "4 files · +128 −31 · sean/booker-perf",
+        tone: "success",
+        box: devl,
+        path: "/home/sean/work/cal-booker-perf",
+        action: { kind: "review", box: devl, path: "/home/sean/work/cal-booker-perf" },
+        key: `review|${devl}|/home/sean/work/cal-booker-perf`,
+      }),
+    );
+  }, 1800);
+}
+
+// ?notify=1 plays them on start.
+if (!fresh && new URLSearchParams(location.search).has("notify")) setTimeout(mockNotifications, 2500);

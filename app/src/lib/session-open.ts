@@ -1,14 +1,14 @@
-import { toastManager } from "@/components/ui/toast";
 import type { BerthEvent, Location, Worktree } from "@/lib/api";
 import { leaves } from "@/lib/layout";
+import { route } from "@/lib/notifications";
 import { useStore } from "@/lib/store";
 import { activateTab, findSession, focusPane, openTab, refOf, removePane, selectWorktree, splitPane, useWorkspaces, wsKey } from "@/lib/workspaces";
 
 // An agent on a box runs `berthd session new … --open split` (or a task with
 // --open tab) to put what it started in front of the person: a split beside
 // their focused pane, or a new tab. That happens only when they are looking at
-// that worktree, and never takes the keyboard from them; otherwise a toast
-// offers to open it.
+// that worktree, and never takes the keyboard from them; otherwise a
+// notification offers to open it.
 
 const agentNames: Record<string, string> = { claude: "Claude Code", codex: "Codex", opencode: "OpenCode", gemini: "Gemini", cursor: "Cursor" };
 
@@ -76,17 +76,17 @@ export function handleSessionOpen(e: BerthEvent) {
         place(box, hit.loc, hit.wt, d.name!, how, false);
         return;
       }
-      const id = toastManager.add({
-        title: `${agentLabel(box, d.agent)} started in ${hit.wt.main ? hit.loc.name : hit.wt.name} · ${box}`,
-        description: how === "split" ? "It asked to open beside your terminal." : "It asked to open in a new tab.",
-        type: "info",
-        actionProps: {
-          children: "Open",
-          onClick: () => {
-            toastManager.close(id);
-            place(box, hit.loc, hit.wt, d.name!, how, true);
-          },
-        },
+      route({
+        category: "opened",
+        title: `${agentLabel(box, d.agent)} started in ${hit.wt.main ? hit.loc.name : hit.wt.name}`,
+        detail: how === "split" ? "It asked to open beside your terminal." : "It asked to open in a new tab.",
+        box,
+        path: hit.wt.path,
+        session: d.name,
+        action: { kind: "session", box, session: d.name! },
+        label: "Open",
+        run: () => place(box, hit.loc, hit.wt, d.name!, how, true),
+        key: `opened|${box}|${d.name}`,
       });
     });
 }

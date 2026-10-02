@@ -21,6 +21,11 @@ import { Meter, MeterLabel, MeterTrack, MeterIndicator, MeterValue } from "@/com
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Menu, MenuTrigger, MenuPopup, MenuItem, MenuGroup, MenuGroupLabel, MenuSeparator } from "@/components/ui/menu";
+import { Sheet, SheetClose, SheetDescription, SheetFooter, SheetHeader, SheetPanel, SheetPopup, SheetTitle } from "@/components/ui/sheet";
+import { Checkbox } from "@/components/ui/checkbox";
+import { PickOne } from "@/components/pick-one";
+import { AgentPicker } from "@/components/new-worktree/agent-picker";
+import { AgentIcon } from "@/components/agent-glyph";
 import { cn } from "@/lib/utils";
 
 const known = new Set<string>(iconNames);
@@ -106,6 +111,18 @@ export const pluginUi = {
   MenuGroup,
   MenuGroupLabel,
   MenuSeparator,
+  Sheet,
+  SheetPopup,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+  SheetPanel,
+  SheetFooter,
+  SheetClose,
+  Checkbox,
+  PickOne,
+  AgentPicker,
+  AgentIcon,
   Icon,
   cn,
 };

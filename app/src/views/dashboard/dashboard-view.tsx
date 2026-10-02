@@ -1,13 +1,15 @@
-import { ChevronRightIcon, LayoutDashboardIcon, PlusIcon, TerminalIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ChevronRightIcon, LayoutDashboardIcon, ListChecksIcon, PlusIcon, SendIcon, TerminalIcon } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
+import { Kbd } from "@/components/ui/kbd";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { type SessionEntry, useAllSessions } from "@/hooks/use-agent-counts";
 import { agentOf, type SessionState, worktreeOf } from "@/lib/derive";
 import { ago } from "@/lib/format";
+import { openBroadcast } from "@/lib/prompts";
 import { load, save } from "@/lib/storage";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -44,6 +46,25 @@ export function DashboardView() {
   const rest = visible.filter((e) => !COLUMNS.some((c) => c.state === e.state));
   const agents = all.filter((e) => COLUMNS.some((c) => c.state === e.state));
   const filtered = shownBoxes.length < boxNames.length;
+  // Picked cards, to send them all one prompt. Undefined when not picking.
+  const [picked, setPicked] = useState<Set<string>>();
+  const keyOf = (e: SessionEntry) => `${e.box}/${e.session.name}`;
+  const pick = (keys: string[], on: boolean) =>
+    setPicked((s) => {
+      const n = new Set(s);
+      for (const k of keys) {
+        if (on) n.add(k);
+        else n.delete(k);
+      }
+      return n;
+    });
+  const pickedEntries = agents.filter((e) => picked?.has(keyOf(e)));
+  useEffect(() => {
+    if (!picked) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !document.querySelector("[role=dialog]") && setPicked(undefined);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [picked]);
 
   const setShown = (boxes: string[]) => {
     // Turning every box off means "show everything", not an empty board.
@@ -53,12 +74,19 @@ export function DashboardView() {
   };
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="relative flex h-full flex-col">
       <ViewHeader
         title="Agent Dashboard"
         description={filtered ? `Showing ${shownBoxes.join(", ")} only` : "Every agent on every box, by what it needs."}
         actions={
-          boxNames.length > 1 && (
+          <div className="flex items-center gap-2">
+            {agents.length > 0 && (
+              <Button size="xs" variant={picked ? "secondary" : "ghost"} aria-pressed={!!picked} onClick={() => setPicked(picked ? undefined : new Set())} title="Pick agents to send them all one prompt (or ⌘-click cards)">
+                <ListChecksIcon />
+                {picked ? "Done selecting" : "Select"}
+              </Button>
+            )}
+          {boxNames.length > 1 && (
             <div className="flex items-center gap-2">
               {filtered && (
                 <Button size="xs" variant="ghost" onClick={() => setShown(boxNames)}>
@@ -73,7 +101,8 @@ export function DashboardView() {
                 ))}
               </ToggleGroup>
             </div>
-          )
+          )}
+          </div>
         }
       />
 
@@ -101,13 +130,26 @@ export function DashboardView() {
                   <header className="mb-2 flex items-center gap-2 px-0.5">
                     <StateGlyph state={c.state} />
                     <h2 className="font-medium text-xs">{c.title}</h2>
-                    <span className={cn("ml-auto font-mono text-[11px] tabular-nums", items.length && c.state === "waiting" ? "text-warning" : "text-muted-foreground")}>{items.length}</span>
+                    {picked && items.length > 0 && (
+                      <button type="button" className="ml-auto text-muted-foreground text-xs hover:text-foreground" onClick={() => pick(items.map(keyOf), !items.every((e) => picked.has(keyOf(e))))}>
+                        {items.every((e) => picked.has(keyOf(e))) ? "None" : "All"}
+                      </button>
+                    )}
+                    <span className={cn("font-mono text-[11px] tabular-nums", !(picked && items.length) && "ml-auto", items.length && c.state === "waiting" ? "text-warning" : "text-muted-foreground")}>{items.length}</span>
                   </header>
                   <div className="space-y-2">
                     {items.length === 0 ? (
                       <p className="rounded-lg border border-dashed px-3 py-4 text-center text-muted-foreground/70 text-xs">{c.empty}</p>
                     ) : (
-                      items.map((e) => <AgentCard key={`${e.box}/${e.session.name}:${e.state}`} entry={e} />)
+                      items.map((e) => (
+                        <AgentCard
+                          key={`${e.box}/${e.session.name}:${e.state}`}
+                          entry={e}
+                          selecting={!!picked}
+                          selected={picked?.has(keyOf(e))}
+                          onSelect={() => pick([keyOf(e)], !picked?.has(keyOf(e)))}
+                        />
+                      ))
                     )}
                   </div>
                 </section>
@@ -131,6 +173,23 @@ export function DashboardView() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {picked && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
+          <div className="pointer-events-auto flex items-center gap-2 rounded-xl border bg-popover px-3 py-2 shadow-lg/10">
+            <span className="pr-1 text-sm tabular-nums">{pickedEntries.length ? `${pickedEntries.length} selected` : "Click cards to select them"}</span>
+            <Button size="xs" disabled={!pickedEntries.length} onClick={() => openBroadcast({ targets: pickedEntries.map((e) => ({ box: e.box, session: e.session.name })) })}>
+              <SendIcon />
+              {pickedEntries.length ? `Send to ${pickedEntries.length} agent${pickedEntries.length === 1 ? "" : "s"}…` : "Send to agents…"}
+            </Button>
+            <span className="h-5 w-px bg-border" />
+            <Button size="xs" variant="ghost" onClick={() => setPicked(undefined)}>
+              Cancel
+              <Kbd>Esc</Kbd>
+            </Button>
+          </div>
         </div>
       )}
     </div>

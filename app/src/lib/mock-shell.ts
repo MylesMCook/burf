@@ -1,4 +1,5 @@
 import type { ExecResult } from "@/lib/api";
+import { mockIssues } from "@/lib/mock-issues";
 
 // mockShell answers the git and gh commands the built-in plugins run through
 // exec, so they can be explored with ?mock=1. Anything else returns
@@ -93,6 +94,8 @@ function decodeBase64(b64: string) {
 }
 
 export function mockShell(box: string, location: string, command: string): ExecResult | undefined {
+  const issues = mockIssues(command);
+  if (issues) return issues;
   const key = `${box}:${location}`;
   // Main checkouts are clean; worktrees have work in them.
   const clean = !location.includes("/");

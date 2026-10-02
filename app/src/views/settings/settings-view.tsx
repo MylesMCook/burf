@@ -1,4 +1,4 @@
-import { BotIcon, InfoIcon, KeyboardIcon, PaletteIcon, PuzzleIcon, ServerIcon, SlidersHorizontalIcon, SmartphoneIcon, SquareTerminalIcon, WrenchIcon } from "lucide-react";
+import { BellIcon, BotIcon, InfoIcon, KeyboardIcon, PaletteIcon, PuzzleIcon, ServerIcon, SlidersHorizontalIcon, SmartphoneIcon, SquareTerminalIcon, WrenchIcon } from "lucide-react";
 import type { ComponentType } from "react";
 
 import { useStore } from "@/lib/store";
@@ -9,15 +9,17 @@ import { AppearanceSection } from "@/views/settings/appearance-section";
 import { BoxesSection } from "@/views/settings/boxes-section";
 import { DeveloperSection } from "@/views/settings/developer-section";
 import { GeneralSection } from "@/views/settings/general-section";
+import { NotificationsSection } from "@/views/settings/notifications-section";
 import { PhoneSection } from "@/views/settings/phone-section";
 import { PluginsSection } from "@/views/settings/plugins-section";
 import { ShortcutsSection } from "@/views/settings/shortcuts-section";
 import { TerminalSection } from "@/views/settings/terminal-section";
 
-export type SettingsSectionId = "general" | "appearance" | "terminal" | "boxes" | "phone" | "agents" | "plugins" | "shortcuts" | "about" | "developer";
+export type SettingsSectionId = "general" | "notifications" | "appearance" | "terminal" | "boxes" | "phone" | "agents" | "plugins" | "shortcuts" | "about" | "developer";
 
 const SECTIONS: { id: SettingsSectionId; title: string; icon: ComponentType<{ className?: string }>; Component: ComponentType }[] = [
   { id: "general", title: "General", icon: SlidersHorizontalIcon, Component: GeneralSection },
+  { id: "notifications", title: "Notifications", icon: BellIcon, Component: NotificationsSection },
   { id: "appearance", title: "Appearance", icon: PaletteIcon, Component: AppearanceSection },
   { id: "terminal", title: "Terminal", icon: SquareTerminalIcon, Component: TerminalSection },
   { id: "boxes", title: "Boxes", icon: ServerIcon, Component: BoxesSection },

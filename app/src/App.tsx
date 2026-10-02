@@ -5,8 +5,10 @@ import { AddLocationDialog } from "@/components/add-location-dialog";
 import { AppSidebar } from "@/components/app-sidebar";
 import { CommandPalette } from "@/components/command-palette";
 import { NewWorktreeDialog } from "@/components/new-worktree-dialog";
+import { NotificationCenter } from "@/components/notifications/notification-center";
 import { LoopsPanel } from "@/components/orchestrate/loops-panel";
 import { OrchestrateDialog } from "@/components/orchestrate/orchestrate-dialog";
+import { PromptDialogs } from "@/components/prompts";
 import { StatusBar } from "@/components/status-bar";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { AddToBoxDialog } from "@/components/sidebar/add-to-box-dialog";
@@ -28,6 +30,7 @@ import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { recentWorktrees, selectWorktree, useWorkspaces } from "@/lib/workspaces";
 import { AutomationsView } from "@/views/automations";
+import { HistoryView } from "@/views/history/history-view";
 import { WorktreesView } from "@/views/worktrees/worktrees-view";
 import { useKitDeepLinks } from "@/views/kits/deep-link";
 import { KitsView } from "@/views/kits/kits-view";
@@ -41,7 +44,7 @@ import { useOnboardingActive } from "@/views/onboarding/onboarding-state";
 import { OnboardingView } from "@/views/onboarding/onboarding-view";
 import { SettingsView } from "@/views/settings/settings-view";
 
-const viewTitles = { dashboard: "Agent Dashboard", review: "Review", worktrees: "Worktrees", automations: "Automations", kits: "Kits", project: "Project settings", settings: "Settings", plugin: "" } as const;
+const viewTitles = { dashboard: "Agent Dashboard", review: "Review", worktrees: "Worktrees", automations: "Automations", kits: "Kits", history: "History", project: "Project settings", settings: "Settings", plugin: "" } as const;
 
 export default function App() {
   useApplyTheme();
@@ -66,7 +69,7 @@ export default function App() {
             <div className="flex min-w-0 flex-1 flex-col">
               {workspace && !onboarding ? (
                 <TabStrip />
-              ) : view.kind === "dashboard" || view.kind === "review" || view.kind === "worktrees" || view.kind === "automations" || view.kind === "kits" ? null /* their ViewHeader is the strip */ : (
+              ) : view.kind === "dashboard" || view.kind === "review" || view.kind === "worktrees" || view.kind === "automations" || view.kind === "kits" || view.kind === "history" ? null /* their ViewHeader is the strip */ : (
                 // The page names itself; the strip only drags the window.
                 <div data-tauri-drag-region className="h-10 shrink-0 bg-background" title={view.kind === "workspace" ? undefined : viewTitles[view.kind as keyof typeof viewTitles]} />
               )}
@@ -86,12 +89,14 @@ export default function App() {
           <NewWorktreeDialog />
           <AddLocationDialog />
           <OrchestrateDialog />
+          <PromptDialogs />
           <LoopsPanel />
           <AddBoxDialog />
           <ConfirmHost />
           <AddToBoxDialog />
           <CustomizeSidebarSheet />
           <ReviewSheet />
+          <NotificationCenter />
         </ErrorBoundary>
       </ToastProvider>
     </TooltipProvider>
@@ -122,6 +127,7 @@ function MainView() {
     <div className="absolute inset-0 bg-background">
       {view.kind === "dashboard" && <DashboardView />}
       {view.kind === "automations" && <AutomationsView />}
+      {view.kind === "history" && <HistoryView />}
       {view.kind === "review" && <ReviewView />}
       {view.kind === "kits" && <KitsView />}
       {view.kind === "worktrees" && <WorktreesView />}

@@ -1,29 +1,21 @@
+import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { setPrefs, usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { Code, SettingsGroup, SettingsPage, SettingsRow, Value } from "@/views/settings/rows";
 
 export function GeneralSection() {
-  const notify = usePrefs((p) => p.notify);
   const confirmClose = usePrefs((p) => p.confirmCloseShells);
   const proxy = useStore((s) => s.status?.proxy);
-  const setNotify = (patch: Partial<typeof notify>) => setPrefs({ notify: { ...notify, ...patch } });
   const port = proxy?.url_port ?? 1377;
 
   return (
     <SettingsPage title="General">
-      <SettingsGroup title="Notifications" description="Shown in the app, and as system notifications while Berth is in the background.">
-        <SettingsRow label="An agent needs you" description="It asked a question or wants a permission.">
-          <Switch checked={notify.waiting} onCheckedChange={(waiting) => setNotify({ waiting })} />
-        </SettingsRow>
-        <SettingsRow label="An agent finished its turn">
-          <Switch checked={notify.finished} onCheckedChange={(finished) => setNotify({ finished })} />
-        </SettingsRow>
-        <SettingsRow label="A worktree's setup failed" description="Its setup script exited with an error.">
-          <Switch checked={notify.setupFailed} onCheckedChange={(setupFailed) => setNotify({ setupFailed })} />
-        </SettingsRow>
-        <SettingsRow label="Play a sound">
-          <Switch checked={notify.sound} onCheckedChange={(sound) => setNotify({ sound })} />
+      <SettingsGroup title="Notifications">
+        <SettingsRow label="Notifications and Do not disturb" description="What shows in the centre, as toasts and as system notifications, and quiet hours.">
+          <Button size="sm" variant="outline" onClick={() => useStore.getState().setView({ kind: "settings", section: "notifications" })}>
+            Open
+          </Button>
         </SettingsRow>
       </SettingsGroup>
 

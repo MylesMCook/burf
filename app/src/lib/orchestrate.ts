@@ -43,6 +43,8 @@ export interface HandoffOptions {
   prompt: string;
   // A new worktree for the next agent; without it, the same worktree.
   worktree?: { name: string; branch?: string; base?: string };
+  // Where from ran, when it may have ended since.
+  location?: string;
   // Called as soon as the new session exists.
   onStarted?(s: Session): void;
 }
@@ -55,7 +57,12 @@ function preset(box: string, location: string, id: string) {
 
 // handoff starts another agent on the work and returns its session.
 export async function handoff(o: HandoffOptions): Promise<Session> {
-  const location = sessionLocation(o.box, o.from);
+  let location = o.location ?? "";
+  try {
+    location = sessionLocation(o.box, o.from);
+  } catch (err) {
+    if (!location) throw err;
+  }
   const agent = o.worktree ? { id: o.agent, command: "" } : preset(o.box, location, o.agent);
   const s = await core.handoff(call, { box: o.box, fromSession: o.from, location, agent, prompt: o.prompt, worktree: o.worktree });
   o.onStarted?.(s);

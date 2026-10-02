@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { openEditor } from "@/components/editors/open";
 import { closePane, openBrowserAt, startSession } from "@/lib/actions";
 import { submitConfirm } from "@/components/sidebar/confirm";
+import { toggleNotifications } from "@/lib/notifications";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { activateTab, currentSpace, moveFocus, useWorkspaces } from "@/lib/workspaces";
@@ -12,7 +13,7 @@ import { activateTab, currentSpace, moveFocus, useWorkspaces } from "@/lib/works
 //   ⌘K palette        ⌘N new worktree     ⌘T new terminal    ⌘⇧B browser tab
 //   ⌘D split right    ⌘⇧D split down      ⌘W close pane       ⌘1–9 tabs
 //   ⌘⌥←↑→↓ move focus between panes       ⌘J agent dashboard
-//   ⌘⇧O open the worktree in your editor
+//   ⌘⇧O open the worktree in your editor   ⌘⇧N notifications
 export const SHORTCUTS: [keys: string, what: string][] = [
   ["⌘K", "Search and commands"],
   ["⌘N", "New worktree"],
@@ -24,6 +25,7 @@ export const SHORTCUTS: [keys: string, what: string][] = [
   ["⌘⌥ ←↑→↓", "Move between panes"],
   ["⌘1–9", "Go to tab"],
   ["⌘J", "Agent dashboard"],
+  ["⌘⇧N", "Notifications"],
   ["⌘⇧O", "Open this worktree in your editor"],
   ["⌘\\", "Show or hide the sidebar"],
 ];
@@ -48,6 +50,8 @@ export function useShortcuts() {
         usePrefs.setState((p) => ({ sidebarCollapsed: !p.sidebarCollapsed }));
       } else if (key === "k") {
         s.setPaletteOpen(!s.paletteOpen);
+      } else if (key === "n" && e.shiftKey) {
+        toggleNotifications();
       } else if (key === "n") {
         s.openNewWorktree(ws ? { box: ws.ref.box, location: ws.ref.location } : {});
       } else if (key === "j") {

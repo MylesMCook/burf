@@ -6,6 +6,7 @@ import { errorMessage } from "@/lib/format";
 import { mockClient } from "@/lib/mock";
 import { useStore } from "@/lib/store";
 import { loadNav } from "@/lib/nav";
+import { loadNotifications } from "@/lib/notifications";
 import { loadProjects } from "@/lib/project-groups";
 import { reloadKits } from "@/views/kits/kits-store";
 import { loadPlugins } from "@/plugins/host";
@@ -45,6 +46,7 @@ export function useBerthConnection() {
       void loadPlugins(client);
       void loadProjects();
       void loadNav();
+      void loadNotifications();
       // Project menus show each project's kit status.
       void reloadKits();
       client.events(handleEvent, () => void refreshAll(), abort.signal);

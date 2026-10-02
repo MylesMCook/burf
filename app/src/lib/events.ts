@@ -2,11 +2,10 @@ import { create } from "zustand";
 
 import type { BerthEvent } from "@/lib/api";
 import { agentLabel, agentOf } from "@/lib/derive";
-import { notify } from "@/lib/notify";
+import { flowKey, resolveFromEvent, route, serviceKey } from "@/lib/notifications";
 import { handlePreview } from "@/lib/preview";
 import { handleSessionOpen } from "@/lib/session-open";
 import { type BoxPart, scheduleRefresh, useStore } from "@/lib/store";
-import { focusSession } from "@/lib/workspaces";
 import { dispatch } from "@/plugins/registry";
 
 // What each kind of event invalidates on its box.
@@ -15,6 +14,8 @@ const refreshes: [prefix: string, parts: BoxPart[]][] = [
   ["worktree.", ["locations", "services"]],
   ["session.", ["sessions"]],
   ["agent.", ["sessions", "stats"]],
+  // A task is a new worktree and the agent in it.
+  ["task.", ["locations", "sessions"]],
 ];
 
 // The most recent events, newest first, for the Automations view.
@@ -38,27 +39,128 @@ export function handleEvent(e: BerthEvent) {
     }
   }
 
+  notifyFor(e);
+}
+
+// notifyFor turns the events that concern the person into notifications,
+// through the centre's router, and settles the ones whose cause cleared.
+function notifyFor(e: BerthEvent) {
+  resolveFromEvent(e);
+  const d = e.data ?? {};
+  const box = e.box;
+  const str = (v: unknown) => (v === undefined || v === null || v === "" ? undefined : String(v));
+
   if (e.type === "agent.waiting" || e.type === "agent.finished") {
     const where = describeAgent(e);
-    const open = where.session && e.box ? { label: "Open", run: () => void focusSession(e.box!, where.session!) } : undefined;
-    notify(e.type === "agent.waiting" ? `${where.agent} is waiting for you` : `${where.agent} finished`, where.place, e.type === "agent.waiting" ? "warning" : "success", open);
+    const waiting = e.type === "agent.waiting";
+    route({
+      category: waiting ? "waiting" : "finished",
+      title: waiting ? `${where.agent} is waiting for you` : `${where.agent} finished`,
+      tone: waiting ? "warning" : "success",
+      box,
+      path: where.path,
+      project: where.project,
+      worktree: where.worktree,
+      session: where.session,
+      action: where.session && box ? { kind: "session", box, session: where.session } : undefined,
+      key: `${waiting ? "waiting" : "finished"}|${box}|${where.path ?? where.session ?? where.agent}`,
+    });
   }
   if (e.type === "preview.open") handlePreview(e);
   if (e.type === "session.open") handleSessionOpen(e);
   if (e.type === "worktree.setup.failed") {
-    notify(`Setup failed for ${String(e.data?.name ?? "a worktree")}`, e.error, "error");
+    const name = str(d.name);
+    route({
+      category: "setupFailed",
+      title: `Setup failed for ${name ?? "a worktree"}`,
+      detail: e.error,
+      tone: "error",
+      box,
+      path: str(d.path),
+      project: str(d.location),
+      worktree: name !== d.location ? name : undefined,
+      action: box ? { kind: "worktree", box, path: str(d.path), location: str(d.location), worktree: name } : undefined,
+      key: `setupFailed|${box}|${d.path ?? `${d.location}/${name}`}`,
+    });
+  }
+  if (e.type === "service.failed" && box) {
+    const wt = str(d.name);
+    route({
+      category: "serviceFailed",
+      title: `${str(d.service) ?? "A service"} failed to start`,
+      detail: str(d.error) ?? e.error,
+      tone: "error",
+      box,
+      path: str(d.path),
+      project: str(d.location),
+      worktree: wt !== d.location ? wt : undefined,
+      action: { kind: "worktree", box, path: str(d.path), location: str(d.location), worktree: wt },
+      key: serviceKey(box, d.location, d.name, d.service),
+    });
+  }
+  if (e.type === "flow.finished" && d.status === "failed" && box) {
+    const flow = str(d.flow) ?? "An automation";
+    route({
+      category: "flowFailed",
+      title: `${flow} failed`,
+      detail: e.error ?? (d.run ? `Run ${String(d.run).slice(0, 8)}` : undefined),
+      tone: "error",
+      box,
+      path: str(d.path),
+      action: { kind: "run", box, flow: str(d.flow), scope: str(d.scope), run: str(d.run) },
+      key: flowKey(box, d.flow, d.scope),
+    });
+  }
+  if (e.type === "guard.acted" && box) {
+    const services = Array.isArray(d.services) ? (d.services as string[]) : [];
+    const place = [d.location, d.name !== d.location ? d.name : undefined].filter(Boolean).join("/");
+    route({
+      category: "guard",
+      title: d.action === "pause_worktree" ? `Paused ${place || "a worktree"} to free memory` : `Stopped ${services.join(", ") || "services"} to free memory`,
+      detail: str(d.reason) ?? (d.memory_percent ? `Memory was at ${Math.round(Number(d.memory_percent))}%` : undefined),
+      tone: "warning",
+      box,
+      path: str(d.path),
+      project: str(d.location),
+      worktree: d.name !== d.location ? str(d.name) : undefined,
+      action: { kind: "worktree", box, path: str(d.path), location: str(d.location), worktree: str(d.name) },
+      key: `guard|${box}|${d.action}|${d.path ?? place}`,
+    });
+  }
+  if (e.type === "kit.installed" && box && Array.isArray(d.warnings) && d.warnings.length) {
+    const warnings = d.warnings as string[];
+    route({
+      category: "kit",
+      title: `${str(d.kit) ?? "A kit"} installed with ${warnings.length === 1 ? "a warning" : `${warnings.length} warnings`}`,
+      detail: warnings[0],
+      tone: "warning",
+      box,
+      project: str(d.location),
+      action: d.location ? { kind: "project", box, location: String(d.location) } : undefined,
+      key: `kit|${box}|${d.location}|${d.kit}`,
+    });
   }
   // A flow's notify step: its own title and body, from whichever box.
   if (e.type === "notify") {
-    const title = String(e.data?.title ?? "Berth");
-    const body = [e.data?.body, e.box && `on ${e.box}`].filter(Boolean).join(" · ");
-    notify(title, body || undefined, "info");
+    const path = str(d.path);
+    const [loc, wt] = (str(d.location) ?? "").split("/");
+    route({
+      category: "notify",
+      title: str(d.title) ?? "Berth",
+      detail: str(d.body),
+      box,
+      path,
+      project: loc || undefined,
+      worktree: wt || undefined,
+      action: box && (path || loc) ? { kind: "worktree", box, path, location: loc || undefined, worktree: wt || undefined } : undefined,
+      key: `notify|${box}|${d.flow ?? ""}|${d.title}`,
+    });
   }
 }
 
 // describeAgent names an agent event's agent and place the same way every
 // time: "cal / qa-deck · devl".
-function describeAgent(e: BerthEvent): { agent: string; place: string; session?: string } {
+function describeAgent(e: BerthEvent): { agent: string; place: string; session?: string; path?: string; project?: string; worktree?: string } {
   const path = e.data?.path as string | undefined;
   const data = e.box ? useStore.getState().boxes[e.box] : undefined;
   const session = data?.sessions?.find((s) => s.dir === path);
@@ -67,5 +169,5 @@ function describeAgent(e: BerthEvent): { agent: string; place: string; session?:
   const raw = (session && agentOf(session)) ?? (e.data?.agent as string | undefined) ?? e.origin ?? "an agent";
   const where = loc && wt ? (wt.main ? loc.name : `${loc.name} / ${wt.name}`) : (path?.split("/").pop() ?? "");
   const place = [where, e.box].filter(Boolean).join(" · ");
-  return { agent: agentLabel(raw), place, session: session?.name };
+  return { agent: agentLabel(raw), place, session: session?.name, path, project: loc?.name ?? path?.split("/").pop(), worktree: wt && !wt.main ? wt.name : undefined };
 }

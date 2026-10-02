@@ -273,3 +273,10 @@
 .xterm {
   height: 100%;
 }
+
+/* The notification centre dims the window lightly, without the blur other
+   sheets use, so what it points at stays readable behind it. */
+[data-slot="sheet-backdrop"]:has(~ [data-slot="sheet-viewport"] [data-notification-center]) {
+  backdrop-filter: none;
+  background-color: rgb(0 0 0 / 0.12);
+}
