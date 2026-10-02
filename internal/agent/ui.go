@@ -14,6 +14,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -40,6 +41,10 @@ var uiOrigins = map[string]bool{
 	"https://tauri.localhost": true,
 	"http://localhost:1420":   true,
 }
+
+// devOrigin is Vite on the ports the app's developers use side by side.
+// The token, not the origin, is what keeps other pages out.
+var devOrigin = regexp.MustCompile(`^http://localhost:14[23][0-9]$`)
 
 // UIToken returns the app's token, creating it on first use.
 func UIToken(dir string) (string, error) {
@@ -104,7 +109,7 @@ func (a *Agent) ui(token, hostport string, inner http.Handler) http.Handler {
 			writeError(w, http.StatusForbidden, "unexpected host")
 			return
 		}
-		if o := r.Header.Get("Origin"); uiOrigins[o] {
+		if o := r.Header.Get("Origin"); uiOrigins[o] || devOrigin.MatchString(o) {
 			h := w.Header()
 			h.Set("Access-Control-Allow-Origin", o)
 			h.Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
@@ -220,7 +225,7 @@ func (a *Agent) uiAttach(w http.ResponseWriter, r *http.Request) {
 	cols, _ := strconv.Atoi(r.URL.Query().Get("cols"))
 	rows, _ := strconv.Atoi(r.URL.Query().Get("rows"))
 	ws, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-		OriginPatterns: []string{"localhost", "localhost:1420", "tauri.localhost"},
+		OriginPatterns: []string{"localhost", "localhost:14[23][0-9]", "tauri.localhost"},
 	})
 	if err != nil {
 		return
