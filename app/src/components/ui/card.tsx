@@ -15,6 +15,9 @@ import { cn } from "@/lib/utils";
 //   dialog, not for page sections.
 // - Column headers and small section labels are sentence case,
 //   text-[11px] text-muted-foreground: never uppercase or tracked.
+// - State is never a stripe down one side of a card or row (a coloured
+//   border-l or inset shadow bends round rounded corners). Tint the whole
+//   outline, or say it with a glyph or a word.
 export function Card({
   className,
   render,
