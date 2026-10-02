@@ -45,6 +45,8 @@ var (
 type Sessions struct {
 	// Config is the tmux configuration file for berth's server.
 	Config string
+	// trace, in tests, sees every tmux command line.
+	trace func(args []string)
 }
 
 const tmuxSocket = "berth"
@@ -75,6 +77,9 @@ func NewSessions(dir string) (*Sessions, error) {
 }
 
 func (s *Sessions) tmux(ctx context.Context, args ...string) ([]byte, error) {
+	if s.trace != nil {
+		s.trace(args)
+	}
 	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "tmux", append([]string{"-L", tmuxSocket, "-f", s.Config}, args...)...)
@@ -124,6 +129,13 @@ func parseSessions(out []byte) []Session {
 // Commands run through a login shell, so tools the user installed (claude,
 // codex) are on PATH even when berthd runs under systemd.
 func (s *Sessions) Create(ctx context.Context, name, location, dir, command string, env []string) (Session, error) {
+	return s.create(ctx, name, location, dir, command, env, nil)
+}
+
+// create is Create with the pane's program run behind wrap, a command that
+// replaces itself with it (`berthd secret exec … --`). The session's command,
+// which says which agent runs in it, stays the one asked for.
+func (s *Sessions) create(ctx context.Context, name, location, dir, command string, env, wrap []string) (Session, error) {
 	if !sessionName.MatchString(name) {
 		return Session{}, fmt.Errorf("invalid session name %q: use letters, digits, - and _", name)
 	}
@@ -142,7 +154,7 @@ func (s *Sessions) Create(ctx context.Context, name, location, dir, command stri
 	for _, kv := range env {
 		args = append(args, "-e", kv)
 	}
-	args = append(append(args, "--"), argv...)
+	args = append(append(append(args, "--"), wrap...), argv...)
 	if out, err := s.tmux(ctx, args...); err != nil {
 		return Session{}, fmt.Errorf("tmux new-session: %s", strings.TrimSpace(string(out)))
 	}

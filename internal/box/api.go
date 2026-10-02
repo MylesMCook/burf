@@ -62,8 +62,12 @@ type Box struct {
 	Phone *Phone
 	// Guard, when set, keeps the box usable when memory runs short.
 	Guard *Guard
-	// History, when set, keeps and searches what sessions showed.
-	History *History
+	// Secrets resolves secret references in worktree environments; nil
+	// uses a shared one.
+	Secrets *Secrets
+	// Socket is the box's local API socket, which programs berthd starts can
+	// report back through.
+	Socket string
 }
 
 func (b *Box) own(path string) {
@@ -110,6 +114,8 @@ func (b *Box) Mount(s *wire.Server) {
 	route("DELETE /v1/locations/{name}/kit", b.deleteKit)
 	route("GET /v1/env", b.getBoxEnv)
 	route("PUT /v1/env", b.putBoxEnv)
+	route("POST /v1/secrets/test", b.testSecret)
+	route("POST /v1/secrets/report", b.reportSecrets)
 	route("GET /v1/locations/{name}/config", b.getConfig)
 	route("PUT /v1/locations/{name}/config", b.putConfig)
 	route("GET /v1/locations/{name}/worktrees/{worktree}/services", b.listWorktreeServices)
@@ -147,8 +153,6 @@ func (b *Box) Mount(s *wire.Server) {
 	route("POST /v1/upgrade", b.handleUpgrade)
 	route("GET /v1/events", b.streamEvents)
 	route("POST /v1/events", b.emit)
-	route("GET /v1/history", b.handleHistory)
-	route("GET /v1/history/{id}", b.handleHistorySession)
 }
 
 type httpError struct {
@@ -457,7 +461,7 @@ func (b *Box) startSession(r *http.Request, name, location, dir, command string)
 	if err := b.before(r, "session.start", data); err != nil {
 		return Session{}, err
 	}
-	sess, err := b.Sessions.Create(r.Context(), name, location, dir, command, b.envForDir(r.Context(), dir))
+	sess, err := b.createSession(r.Context(), name, location, dir, command)
 	if err != nil {
 		return Session{}, err
 	}
@@ -474,7 +478,6 @@ func (b *Box) removeSession(w http.ResponseWriter, r *http.Request) error {
 	if err := b.before(r, "session.stop", map[string]any{"name": name}); err != nil {
 		return err
 	}
-	b.History.CaptureSession(r.Context(), b, name)
 	if err := b.Sessions.Kill(r.Context(), name); err != nil {
 		return err
 	}

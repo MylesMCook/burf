@@ -45,7 +45,7 @@ Everything here applies to each worktree of the repository:
   `BERTH_LOCATION`, `BERTH_ROOT_PATH`, `BERTH_WORKTREE_PATH`,
   `BERTH_WORKTREE_NAME`, `BERTH_WORKTREE_SLUG` (like `cal_fix_billing`, safe
   for database names), `BERTH_BRANCH` and the ports, then `env` with those
-  expanded.
+  expanded. A value can be a [secret reference](#secrets) instead.
 - **Services** run in each worktree as managed processes that survive the
   daemon restarting and come back if they crash, with their output in a log.
   `autostart` ones start when the worktree is created, after setup; all of
@@ -63,6 +63,68 @@ Everything here applies to each worktree of the repository:
 - `agents` adds ways to start agents in this repository, or replaces a
   built-in one with the same `id` (`claude`, `codex`, `opencode`, `gemini`,
   `cursor`).
+
+### Secrets
+
+An `env` value can name a secret instead of holding it, so the file, or a
+kit, can be shared, even publicly, without one in it:
+
+```json
+"env": {
+  "DATABASE_PASSWORD": "op://dev/cal-db/password",
+  "STRIPE_SECRET_KEY": "op://dev/Stripe test/secret key",
+  "OPENAI_API_KEY": "env://OPENAI_API_KEY"
+}
+```
+
+- `op://vault/item/field` (or `op://vault/item/section/field`, with
+  `?attribute=otp` and the like) is 1Password's own reference syntax,
+  read with the 1Password CLI on the box: `op read`. Install `op` on the
+  box; berthd finds it on its `PATH`, in `~/.local/bin`, `/opt/homebrew/bin`
+  or `/usr/local/bin`, or wherever `$BERTH_OP` says. It signs in with a
+  [service account](https://developer.1password.com/docs/service-accounts/)
+  when `OP_SERVICE_ACCOUNT_TOKEN` is set, in berthd's own environment or in
+  the box's `~/.berth/env.json` (which every worktree also gets, so berthd's
+  environment is the tighter place), and otherwise with the box user's own
+  signed-in `op`.
+- `env://NAME` passes on a variable from berthd's own environment, under
+  whatever name the project wants.
+
+The box reads a reference when it builds a worktree's environment for a
+hook, a flow, a setup script or `exec`, and keeps the value in memory for
+five minutes. It never writes a value to disk or
+puts one in a log, an event, the API or an error: config, `GET
+/v1/locations/{name}/config` and `GET /v1/env` show the reference. A value
+is not expanded, so a `$` in a password stays a `$`.
+
+If a reference cannot be read (no `op`, not signed in, no such item, a
+read that takes over 15 seconds), what needs it still starts, without that
+variable, and the box sends one `secret.failed` event with the variable,
+the reference and the reason, which the app shows as a notification. A
+failure is remembered for 30 seconds, so a broken reference does not run
+`op` for every hook.
+
+Terminals, agents and services don't get values from berthd at all: tmux
+takes a session's environment as command-line arguments, which other
+processes can read, and a service's unit file is on disk and restarted by
+the service manager without berthd. So they get the references, and their
+program runs behind `berthd secret exec`, which resolves them in its own
+memory and then replaces itself with the shell or agent (the pane's process
+and the session's command are the ones asked for). It prints which
+variables it could not set, and reports to the box, through its local
+socket, which resolved and which failed (never a value), so the box can
+announce failures. For a service, `env://` reads the service manager's
+environment. Each start reads `op` afresh, so a service that keeps
+crashing reads it on every restart.
+
+Check one from the app (Project settings → Environment → **Test**), or:
+
+```sh
+berth secret test devl op://dev/cal-db/password   # Resolved op://dev/cal-db/password: 24 characters
+```
+
+Either way the box reports only whether it could read it and how long the
+value is.
 
 ### This box only
 

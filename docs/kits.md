@@ -74,6 +74,12 @@ applied to, and `$BERTH_KIT_DIR` is where they are, so its scripts can run
 from there. Scripts starting with `#!` are made executable. A small kit can
 carry its files inside `kit.json` under `"files": {"scripts/setup.sh": "…"}`.
 
+Keep secrets out of a kit: give `env` a reference such as
+`op://dev/cal-db/password` and each box reads it from 1Password when a
+worktree needs it, so the kit can be shared, even publicly. See
+[Secrets](templates.md#secrets); a kit that uses `op://` should list
+`{ "tool": "op" }` in `requires`.
+
 `requires` lists tools a box needs. A missing one is reported when the kit
 is applied, not refused, since a setup script may install it.
 

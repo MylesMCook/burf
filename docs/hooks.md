@@ -64,6 +64,8 @@ which stops two integrations from bouncing events back and forth.
 | `box.upgraded` | box | `build` |
 | `preview.open` | box | `location`, `name`, `path`, `port`, `url_path`: an agent asks the app to show a page (`berthd preview`) |
 | `skills.installed`, `skills.removed` | box | `skills`, `agents`, `target`, `location`, `paths` |
+| `secret.failed` | box | `location`, `name`, `path`, `variable`, `ref`, `reason`: a [secret reference](templates.md#secrets) could not be read, so the variable was left unset; never the value |
+| `secret.resolved` | box | `location`, `name`, `path`, `variable`, `ref`: one that failed reads again |
 
 Box events reach the laptop too: the laptop agent relays every online box's
 events, with `box` set, so a laptop hook on `agent.waiting` hears about every

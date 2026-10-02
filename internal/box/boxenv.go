@@ -42,6 +42,9 @@ func saveBoxEnv(path string, e BoxEnv) error {
 			return fmt.Errorf("%q is not an environment variable name", k)
 		}
 	}
+	if err := validateEnvRefs(e.Env); err != nil {
+		return err
+	}
 	if e.Env == nil {
 		e.Env = map[string]string{}
 	}

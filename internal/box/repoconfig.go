@@ -57,6 +57,9 @@ func (c RepoConfig) validate() error {
 			return fmt.Errorf("%q is not an environment variable name", k)
 		}
 	}
+	if err := validateEnvRefs(c.Env); err != nil {
+		return err
+	}
 	if err := ValidateFlows(c.Flows); err != nil {
 		return err
 	}
@@ -268,15 +271,47 @@ func (p *PortAlloc) Release(dir string) {
 var nonIdent = regexp.MustCompile(`[^a-z0-9]+`)
 
 // WorktreeEnv is what everything run in a worktree gets: berth's variables
-// for it, then the location's env with those variables expanded.
+// for it, then the location's env with those variables expanded, with
+// secret references resolved. A reference that cannot be resolved leaves its
+// variable out, and the box announces it with a secret.failed event.
 func (b *Box) WorktreeEnv(ctx context.Context, location string, wt Worktree) ([]string, error) {
-	loc, err := b.Locations.Get(ctx, location)
+	p, err := b.worktreeEnv(ctx, location, wt)
 	if err != nil {
 		return nil, err
 	}
+	values := b.resolveWorktreeSecrets(ctx, p.location, wt, p.refs, p.opEnv)
+	keys := make([]string, 0, len(values))
+	for k := range values {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	env := p.env
+	for _, k := range keys {
+		env = append(env, k+"="+values[k])
+	}
+	return env, nil
+}
+
+// worktreeEnvParts is a worktree's environment before its secrets are
+// resolved.
+type worktreeEnvParts struct {
+	location string
+	// env is every variable that holds a value, as KEY=VALUE.
+	env []string
+	// refs are the variables that name a secret, with its reference.
+	refs map[string]string
+	// opEnv configures the 1Password CLI from the box's environment file.
+	opEnv []string
+}
+
+func (b *Box) worktreeEnv(ctx context.Context, location string, wt Worktree) (worktreeEnvParts, error) {
+	loc, err := b.Locations.Get(ctx, location)
+	if err != nil {
+		return worktreeEnvParts{}, err
+	}
 	cfg, err := b.Locations.Config(ctx, location)
 	if err != nil {
-		return nil, err
+		return worktreeEnvParts{}, err
 	}
 	vars := map[string]string{
 		"BERTH_BOX":           b.Name,
@@ -292,7 +327,7 @@ func (b *Box) WorktreeEnv(ctx context.Context, location string, wt Worktree) ([]
 		vars["BERTH_KIT_DIR"] = cfg.Kit.Dir
 	}
 	if port, err := b.Locations.Ports.For(wt.Path); err != nil {
-		return nil, err
+		return worktreeEnvParts{}, err
 	} else if port > 0 {
 		vars["BERTH_PORT"] = strconv.Itoa(port)
 		for i := 1; i < max(cfg.Effective.Ports, 1); i++ {
@@ -302,7 +337,7 @@ func (b *Box) WorktreeEnv(ctx context.Context, location string, wt Worktree) ([]
 	// The box's own environment comes first; the project's overrides it.
 	boxEnv, err := loadBoxEnv(b.EnvFile)
 	if err != nil {
-		return nil, err
+		return worktreeEnvParts{}, err
 	}
 	merged := map[string]string{}
 	for k, v := range boxEnv.Env {
@@ -316,21 +351,27 @@ func (b *Box) WorktreeEnv(ctx context.Context, location string, wt Worktree) ([]
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-	env := make([]string, 0, len(vars)+len(keys))
+	p := worktreeEnvParts{location: loc.Name, env: make([]string, 0, len(vars)+len(keys)), refs: map[string]string{}, opEnv: opEnvOf(boxEnv.Env)}
 	for k, v := range vars {
-		env = append(env, k+"="+v)
+		p.env = append(p.env, k+"="+v)
 	}
-	sort.Strings(env)
+	sort.Strings(p.env)
 	for _, k := range keys {
+		// A reference is resolved as it is: a secret's value is never
+		// expanded, so a $ in a password stays a $.
+		if IsSecretRef(merged[k]) {
+			p.refs[k] = merged[k]
+			continue
+		}
 		v := os.Expand(merged[k], func(name string) string {
 			if v, ok := vars[name]; ok {
 				return v
 			}
 			return os.Getenv(name)
 		})
-		env = append(env, k+"="+v)
+		p.env = append(p.env, k+"="+v)
 	}
-	return env, nil
+	return p, nil
 }
 
 // envForDir is the worktree environment for dir, or nothing when dir is not

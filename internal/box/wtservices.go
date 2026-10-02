@@ -119,24 +119,35 @@ func (b *Box) StartService(ctx context.Context, location, worktree, name string)
 	if svc == nil {
 		return ServiceStatus{}, ErrUnknownService
 	}
-	env, err := b.WorktreeEnv(ctx, loc.Name, wt)
+	parts, err := b.worktreeEnv(ctx, loc.Name, wt)
 	if err != nil {
 		return ServiceStatus{}, err
 	}
 	envMap := map[string]string{}
-	for _, kv := range env {
+	for _, kv := range parts.env {
 		k, v, _ := strings.Cut(kv, "=")
 		envMap[k] = v
 	}
 	// Many dev servers read PORT; give it the worktree's own.
-	if _, ok := envMap["PORT"]; !ok && envMap["BERTH_PORT"] != "" {
+	if _, ok := envMap["PORT"]; !ok && envMap["BERTH_PORT"] != "" && parts.refs["PORT"] == "" {
 		envMap["PORT"] = envMap["BERTH_PORT"]
+	}
+	program, args := loginShell(), []string{"-lc", "cd " + shellQuote(wt.Path) + " && " + svc.Run}
+	if len(parts.refs) > 0 {
+		// A unit file is on disk and the service manager restarts the
+		// service without berthd, so the unit keeps the references and
+		// resolves them each time it starts, in `berthd secret exec`.
+		wrap, err := b.secretWrap(envMap, parts.refs)
+		if err != nil {
+			return ServiceStatus{}, err
+		}
+		program, args = wrap[0], append(append(wrap[1:], program), args...)
 	}
 	unit := serviceUnit(loc.Name, wt.Name, name)
 	if _, err := b.Units.Install(ctx, UnitRequest{
 		Name:    unit,
-		Program: loginShell(),
-		Args:    []string{"-lc", "cd " + shellQuote(wt.Path) + " && " + svc.Run},
+		Program: program,
+		Args:    args,
 		Env:     envMap,
 	}); err != nil {
 		return ServiceStatus{}, err

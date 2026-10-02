@@ -662,7 +662,7 @@ func (b *Box) runStep(ctx context.Context, flow string, s Step, vars map[string]
 			b.Events.Publish(events.Event{Type: "worktree.created", Box: b.Name, Origin: origin, Data: map[string]any{"location": loc.Name, "name": nw.Name, "path": nw.Path, "branch": nw.Branch}})
 			dir, where = nw.Path, loc.Name+"/"+nw.Name
 		}
-		sess, err := b.Sessions.Create(ctx, defaultSessionName(where, command), where, dir, command, b.envForDir(ctx, dir))
+		sess, err := b.createSession(ctx, defaultSessionName(where, command), where, dir, command)
 		if err != nil {
 			return "", 0, err
 		}

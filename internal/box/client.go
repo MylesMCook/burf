@@ -304,6 +304,18 @@ func (c *Client) ServiceLog(ctx context.Context, location, worktree, service str
 	return io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 }
 
+// TestSecret asks the box to resolve a secret reference, and reports
+// whether it could and the value's length, never the value.
+func (c *Client) TestSecret(ctx context.Context, ref string) (out SecretTest, err error) {
+	return out, c.call(ctx, http.MethodPost, "/v1/secrets/test", map[string]string{"ref": ref}, &out)
+}
+
+// ReportSecrets tells the box what `berthd secret exec` resolved: failures
+// and fingerprints, never values. Only the box's own socket may.
+func (c *Client) ReportSecrets(ctx context.Context, r SecretReport) error {
+	return c.call(ctx, http.MethodPost, "/v1/secrets/report", r, nil)
+}
+
 func (c *Client) Emit(ctx context.Context, typ string, data map[string]any) error {
 	return c.call(ctx, http.MethodPost, "/v1/events", map[string]any{"type": typ, "data": data}, nil)
 }
