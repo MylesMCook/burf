@@ -418,11 +418,11 @@ func resolveInput(ctx context.Context, repo, input, kind string) (Resolution, er
 		switch m[2] {
 		case "pull":
 			if n, err := strconv.Atoi(strings.SplitN(m[3], "/", 2)[0]); err == nil {
-				return githubPR(ctx, repo, n), nil
+				return githubPR(ctx, repo, n, m[1]), nil
 			}
 		case "issues":
 			if n, err := strconv.Atoi(strings.SplitN(m[3], "/", 2)[0]); err == nil {
-				return githubIssue(ctx, repo, n, input), nil
+				return githubIssue(ctx, repo, n, input, m[1]), nil
 			}
 		case "tree":
 			return branchResolution(ctx, repo, m[3]), nil
@@ -510,7 +510,9 @@ func gh(ctx context.Context, repo string, out any, args ...string) error {
 	return json.Unmarshal(b, out)
 }
 
-func githubPR(ctx context.Context, repo string, n int) Resolution {
+// githubPR asks about PR n of the checkout's repository, or of other when a
+// link names another one.
+func githubPR(ctx context.Context, repo string, n int, other ...string) Resolution {
 	var pr struct {
 		HeadRefName string `json:"headRefName"`
 		Title       string `json:"title"`
@@ -518,7 +520,8 @@ func githubPR(ctx context.Context, repo string, n int) Resolution {
 		BaseRefName string `json:"baseRefName"`
 	}
 	r := Resolution{Kind: "pr", PR: n, Ref: fmt.Sprintf("pull/%d/head", n)}
-	if err := gh(ctx, repo, &pr, "pr", "view", strconv.Itoa(n), "--json", "headRefName,title,url,baseRefName"); err != nil || pr.HeadRefName == "" {
+	args := append([]string{"pr", "view", strconv.Itoa(n), "--json", "headRefName,title,url,baseRefName"}, repoFlag(other)...)
+	if err := gh(ctx, repo, &pr, args...); err != nil || pr.HeadRefName == "" {
 		r.Name, r.Branch = fmt.Sprintf("pr-%d", n), fmt.Sprintf("pr-%d", n)
 		r.Note = "the box could not ask GitHub about it (is gh installed and signed in?); the PR's head is fetched as pr-" + strconv.Itoa(n)
 		return r
@@ -529,14 +532,15 @@ func githubPR(ctx context.Context, repo string, n int) Resolution {
 	return r
 }
 
-func githubIssue(ctx context.Context, repo string, n int, link string) Resolution {
+func githubIssue(ctx context.Context, repo string, n int, link string, other ...string) Resolution {
 	var issue struct {
 		Title string `json:"title"`
 		URL   string `json:"url"`
 	}
 	name := fmt.Sprintf("issue-%d", n)
 	r := Resolution{Kind: "issue", Name: name, Branch: name, URL: link}
-	if err := gh(ctx, repo, &issue, "issue", "view", strconv.Itoa(n), "--json", "title,url"); err == nil && issue.Title != "" {
+	args := append([]string{"issue", "view", strconv.Itoa(n), "--json", "title,url"}, repoFlag(other)...)
+	if err := gh(ctx, repo, &issue, args...); err == nil && issue.Title != "" {
 		r.Title, r.URL = issue.Title, issue.URL
 		if s := slug(issue.Title, 40); s != "" {
 			r.Name = fmt.Sprintf("issue-%d-%s", n, s)
@@ -544,6 +548,13 @@ func githubIssue(ctx context.Context, repo string, n int, link string) Resolutio
 		}
 	}
 	return r
+}
+
+func repoFlag(other []string) []string {
+	if len(other) > 0 && other[0] != "" {
+		return []string{"--repo", other[0]}
+	}
+	return nil
 }
 
 // githubNumber is a bare #1234: a PR if GitHub knows one by that number,
