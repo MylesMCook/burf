@@ -108,6 +108,8 @@ type TaskRequest struct {
 	Name     string `json:"name"`
 	Branch   string `json:"branch,omitempty"`
 	Base     string `json:"base,omitempty"`
+	PR       int    `json:"pr,omitempty"`
+	Ref      string `json:"ref,omitempty"`
 	// Agent is a preset ID; Command, when set, is run instead.
 	Agent   string `json:"agent,omitempty"`
 	Command string `json:"command,omitempty"`
@@ -146,7 +148,7 @@ func (b *Box) addTask(w http.ResponseWriter, r *http.Request) error {
 	if err := b.before(r, "task.create", data); err != nil {
 		return err
 	}
-	wt, err := b.createWorktree(r, loc, WorktreeRequest{Name: req.Name, Branch: req.Branch, Base: req.Base})
+	wt, err := b.createWorktree(r, loc, WorktreeRequest{Name: req.Name, Branch: req.Branch, Base: req.Base, PR: req.PR, Ref: req.Ref})
 	if err != nil {
 		return err
 	}

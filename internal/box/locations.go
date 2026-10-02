@@ -32,6 +32,11 @@ type Location struct {
 	Scripts Scripts `json:"scripts"`
 	// Agents are the repository's own agent presets.
 	Agents []AgentPreset `json:"agents,omitempty"`
+	// Remote is origin's URL, Slug its "owner/repo", and DefaultBranch
+	// what new branches start from.
+	Remote        string `json:"remote,omitempty"`
+	Slug          string `json:"slug,omitempty"`
+	DefaultBranch string `json:"default_branch,omitempty"`
 }
 
 type Worktree struct {
@@ -164,6 +169,13 @@ func (l *Locations) Dir(ctx context.Context, ref string) (string, error) {
 // CreateWorktree adds a git worktree next to the repository, following the
 // <parent>/<repo>-<name> layout, on a new branch from base.
 func (l *Locations) CreateWorktree(ctx context.Context, location, name, branch, base string) (Worktree, error) {
+	return l.CreateWorktreeFrom(ctx, location, WorktreeRequest{Name: name, Branch: branch, Base: base})
+}
+
+// CreateWorktreeFrom makes a worktree for req: a new branch, an existing one
+// (fetched from origin first, so it is current), or a pull request's head.
+func (l *Locations) CreateWorktreeFrom(ctx context.Context, location string, req WorktreeRequest) (Worktree, error) {
+	name, branch, base := req.Name, req.Branch, req.Base
 	if !trust.ValidName(name) {
 		return Worktree{}, fmt.Errorf("invalid worktree name %q", name)
 	}
@@ -178,6 +190,19 @@ func (l *Locations) CreateWorktree(ctx context.Context, location, name, branch, 
 		branch = name
 	}
 	path := filepath.Join(filepath.Dir(loc.Path), filepath.Base(loc.Path)+"-"+name)
+	if !branchExists(ctx, loc.Path, "refs/heads/"+branch) && (req.PR > 0 || req.Ref != "" || branchExists(ctx, loc.Path, "refs/remotes/origin/"+branch)) {
+		// Bring origin's branch up to date; a PR's own branch may live there.
+		git(ctx, "-C", loc.Path, "fetch", "--quiet", "origin", branch)
+		if !branchExists(ctx, loc.Path, "refs/remotes/origin/"+branch) && (req.PR > 0 || req.Ref != "") {
+			ref := req.Ref
+			if ref == "" {
+				ref = fmt.Sprintf("pull/%d/head", req.PR)
+			}
+			if out, err := git(ctx, "-C", loc.Path, "fetch", "--quiet", "origin", ref+":"+branch); err != nil {
+				return Worktree{}, fmt.Errorf("git fetch %s: %s", ref, strings.TrimSpace(string(out)))
+			}
+		}
+	}
 	args := []string{"-C", loc.Path, "worktree", "add"}
 	switch {
 	case branchExists(ctx, loc.Path, "refs/heads/"+branch):
@@ -240,6 +265,9 @@ func describe(ctx context.Context, s savedLocation) Location {
 		return loc
 	}
 	loc.Repo = true
+	loc.Remote = remoteURL(ctx, s.Path)
+	loc.Slug = slugOf(loc.Remote)
+	loc.DefaultBranch = defaultBranch(ctx, s.Path)
 	if c, ok, _ := ReadRepoConfig(s.Path); ok {
 		loc.Agents = c.Agents
 	}

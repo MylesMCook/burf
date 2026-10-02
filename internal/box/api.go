@@ -72,6 +72,11 @@ func (b *Box) Mount(s *wire.Server) {
 	route("DELETE /v1/locations/{name}", b.removeLocation)
 	route("PUT /v1/locations/{name}/scripts", b.setScripts)
 	route("POST /v1/locations/{name}/worktrees", b.addWorktree)
+	route("POST /v1/locations/clone", b.cloneLocation)
+	route("POST /v1/locations/new", b.newLocation)
+	route("POST /v1/locations/{name}/resolve", b.resolve)
+	route("GET /v1/locations/{name}/branches", b.listBranches)
+	route("GET /v1/fs", b.listFolder)
 	route("DELETE /v1/locations/{name}/worktrees/{worktree}", b.removeWorktree)
 	route("POST /v1/tasks", b.addTask)
 	route("GET /v1/services", b.handleServices)
@@ -238,7 +243,7 @@ func (b *Box) createWorktree(r *http.Request, loc Location, req WorktreeRequest)
 	}); err != nil {
 		return Worktree{}, err
 	}
-	wt, err := b.Locations.CreateWorktree(r.Context(), loc.Name, req.Name, req.Branch, req.Base)
+	wt, err := b.Locations.CreateWorktreeFrom(r.Context(), loc.Name, req)
 	if err != nil {
 		return Worktree{}, err
 	}
