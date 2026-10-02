@@ -43,3 +43,11 @@ func TestAPrefixThatIsNotAPathBoundaryDoesNotMatch(t *testing.T) {
 		t.Fatalf("a sibling directory was claimed: %+v", got)
 	}
 }
+
+func TestAPortInAWorktreesBlockIsThatWorktreesWhereverItRuns(t *testing.T) {
+	locs := []Location{{Name: "cal", Repo: true, Worktrees: []Worktree{{Name: "billing", Path: "/w/cal-billing", Port: 41010}}}}
+	got := Services([]Port{{Port: 41012, Dir: "/var/lib/docker"}, {Port: 41020}}, locs)
+	if len(got) != 1 || got[0].Worktree != "billing" || got[0].Port != 41012 {
+		t.Fatalf("services = %+v", got)
+	}
+}

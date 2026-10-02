@@ -19,26 +19,35 @@ type Service struct {
 	Main bool `json:"main,omitempty"`
 }
 
-// Services joins listening ports with location worktrees. A process inside
-// nested paths belongs to the deepest worktree containing it.
+// Services joins listening ports with location worktrees. A port in a
+// worktree's own block ($BERTH_PORT…) is that worktree's, whatever runs it;
+// otherwise a process belongs to the deepest worktree containing its folder.
 func Services(ports []Port, locations []Location) []Service {
 	type tree struct {
 		location, name, path string
 		main                 bool
+		port                 int
 	}
 	var trees []tree
 	for _, l := range locations {
 		if !l.Repo {
-			trees = append(trees, tree{l.Name, l.Name, l.Path, true})
+			trees = append(trees, tree{location: l.Name, name: l.Name, path: l.Path, main: true})
 			continue
 		}
 		for _, w := range l.Worktrees {
-			trees = append(trees, tree{l.Name, w.Name, w.Path, w.Main})
+			trees = append(trees, tree{l.Name, w.Name, w.Path, w.Main, w.Port})
 		}
 	}
 	sort.Slice(trees, func(i, j int) bool { return len(trees[i].path) > len(trees[j].path) })
 	var out []Service
+next:
 	for _, p := range ports {
+		for _, t := range trees {
+			if t.port > 0 && p.Port >= t.port && p.Port < t.port+portBlock {
+				out = append(out, Service{Location: t.location, Worktree: t.name, Path: t.path, Port: p.Port, Process: p.Command, Main: t.main})
+				continue next
+			}
+		}
 		if p.Dir == "" {
 			continue
 		}
