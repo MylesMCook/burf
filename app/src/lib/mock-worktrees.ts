@@ -58,7 +58,7 @@ const baseSubjects = [
   "test(e2e): flaky availability spec",
   "feat(apps): Zoom webinar support",
 ];
-const authors = ["Sean Brydon", "Ada Moreno", "Jun Park", "Priya Nair", "Tomás Ruiz", "Lena Fischer"];
+const authors = ["me", "ada-m", "jun-p", "priya-n", "tomas-r", "lena-f"];
 
 function gitOf(box: string, loc: string, wt: string): Git {
   return (git[`${box}/${loc}/${wt}`] ??= { ahead: 0, behind: 0, changed: 0, untracked: 0 });
@@ -130,11 +130,11 @@ function history(box: string, loc: string, wt: string, branch: string | undefine
     let parents = [parent.sha];
     if (j === 1 && subjects.length > 2) {
       const sideSha = shaFor(`${wt}:side:${j}`);
-      out.push({ sha: sideSha, short: sideSha.slice(0, 7), subject: "wip: try a second approach", author: "Sean Brydon", time: new Date(new Date(parent.time).getTime() + 10 * 60_000).toISOString(), on_base: false, parents: [parent.sha], mine: true, refs: `${branch}-alt` });
+      out.push({ sha: sideSha, short: sideSha.slice(0, 7), subject: "wip: try a second approach", author: "me", time: new Date(new Date(parent.time).getTime() + 10 * 60_000).toISOString(), on_base: false, parents: [parent.sha], mine: true, refs: `${branch}-alt` });
       parents = [parent.sha, sideSha];
     }
     const sha = shaFor(`${wt}:${subject}`);
-    const node: Node = { sha, short: sha.slice(0, 7), subject: j === 1 && subjects.length > 2 ? `Merge branch '${branch}-alt' into ${branch}` : subject, author: "Sean Brydon", time, on_base: false, parents, mine: true };
+    const node: Node = { sha, short: sha.slice(0, 7), subject: j === 1 && subjects.length > 2 ? `Merge branch '${branch}-alt' into ${branch}` : subject, author: "me", time, on_base: false, parents, mine: true };
     out.push(node);
     parent = node;
   });

@@ -48,7 +48,7 @@ const committed: Record<string, Record<string, RepoConfig>> = {
 const local: Record<string, Record<string, RepoConfig>> = {
   devl: {
     cal: {
-      env: { STRIPE_PRIVATE_KEY: "sk_test_51Mock…", NEXT_PUBLIC_IS_E2E: "1" },
+      env: { STRIPE_PRIVATE_KEY: "op://dev/stripe/secret-key", NEXT_PUBLIC_IS_E2E: "1" },
       flows: [
         {
           id: "notify-when-waiting",
@@ -59,7 +59,7 @@ const local: Record<string, Record<string, RepoConfig>> = {
         },
       ],
     },
-    internal: {},
+    notes: {},
   },
   gpu: { evals: {} },
 };
@@ -77,7 +77,7 @@ const boxFlows: Record<string, Flow[]> = {
       id: "codex-review",
       name: "Codex reviews Claude's work",
       enabled: false,
-      trigger: { event: "agent.finished", where: { agent: "claude", branch: "sean/*" } },
+      trigger: { event: "agent.finished", where: { agent: "claude", branch: "me/*" } },
       steps: [{ kind: "start_agent", agent: "codex", text: "Review the uncommitted changes in {{worktree.path}}. Don't edit; list bugs and risks." }],
     },
   ],
@@ -95,7 +95,7 @@ const runs: Record<string, FlowRun[]> = {
       // The check failed and the on-failure prompt handled it, which the box
       // counts as the flow succeeding.
       status: "succeeded",
-      event: { type: "agent.finished", time: minutesAgo(6), box: "devl", origin: "claude", data: { path: "/home/sean/work/cal-billing-fix", agent: "claude" } },
+      event: { type: "agent.finished", time: minutesAgo(6), box: "devl", origin: "claude", data: { path: "/home/me/work/cal-billing-fix", agent: "claude" } },
       steps: [
         { id: "types", kind: "run", status: "failed", started: minutesAgo(6), duration: "48.2s", exit_code: 2, output: "packages/features/ee/billing/webhook.ts:41:7 - error TS2322: Type 'string | undefined' is not assignable to type 'string'.\n\nFound 1 error." },
         { id: "", kind: "prompt", status: "succeeded", started: minutesAgo(5), duration: "0.3s", exit_code: 0 },
@@ -108,7 +108,7 @@ const runs: Record<string, FlowRun[]> = {
       started: minutesAgo(41),
       finished: minutesAgo(41),
       status: "succeeded",
-      event: { type: "agent.waiting", time: minutesAgo(41), box: "devl", origin: "claude", data: { path: "/home/sean/work/cal-billing-fix" } },
+      event: { type: "agent.waiting", time: minutesAgo(41), box: "devl", origin: "claude", data: { path: "/home/me/work/cal-billing-fix" } },
       steps: [{ id: "", kind: "notify", status: "succeeded", duration: "2ms", exit_code: 0 }],
     },
     {
@@ -118,7 +118,7 @@ const runs: Record<string, FlowRun[]> = {
       started: minutesAgo(95),
       finished: minutesAgo(94),
       status: "succeeded",
-      event: { type: "agent.finished", time: minutesAgo(95), box: "devl", origin: "claude", data: { path: "/home/sean/work/cal-booker-perf", agent: "claude" } },
+      event: { type: "agent.finished", time: minutesAgo(95), box: "devl", origin: "claude", data: { path: "/home/me/work/cal-booker-perf", agent: "claude" } },
       steps: [
         { id: "types", kind: "run", status: "succeeded", duration: "52.9s", exit_code: 0, output: "Tasks: 41 successful, 41 total" },
         { id: "", kind: "prompt", status: "skipped", exit_code: 0 },
@@ -274,7 +274,7 @@ export function flowsCall(box: string, method: string, path: string, body: unkno
       local[box] = { ...local[box], [loc]: next };
       setTimeout(() => emit({ type: "config.changed", box, data: { location: loc } }), 20);
     }
-    const cfg: LocationConfig = { repo: committed[box]?.[loc] ?? null, repo_path: `/home/sean/work/${loc}/.berth/config.json`, kit: kitOn(box, loc), local: local[box]?.[loc] ?? {}, effective: merged(box, loc) };
+    const cfg: LocationConfig = { repo: committed[box]?.[loc] ?? null, repo_path: `/home/me/work/${loc}/.berth/config.json`, kit: kitOn(box, loc), local: local[box]?.[loc] ?? {}, effective: merged(box, loc) };
     return delay(cfg);
   }
   m = route.match(/^locations\/([^/]+)\/worktrees\/([^/]+)\/services(?:\/([^/]+)(?:\/([^/]+))?)?$/);

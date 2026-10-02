@@ -32,7 +32,7 @@ const COLORS: Record<string, string> = {
   infra: "5319e7",
 };
 
-const VIEWER = "sean-brydon";
+const VIEWER = "me";
 
 const ISSUES: Record<string, Fixture[]> = {
   "calcom/cal.com": [
@@ -154,7 +154,7 @@ const ISSUES: Record<string, Fixture[]> = {
       comments: [],
     },
   ],
-  "calcom/internal": [
+  "me/notes": [
     {
       number: 412,
       title: "Rotate the staging database credentials monthly",

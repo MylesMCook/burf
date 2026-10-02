@@ -20,6 +20,7 @@ design/plugins/
 design/review/
 design/editors/
 design/audit-2/
+design/audit-3/
 design/prompts/
 design/history/
 
@@ -38,3 +39,4 @@ design/brand/shots/
 
 # Landing page verification screenshots
 design/site-shots/
+/site/scripts/node_modules/

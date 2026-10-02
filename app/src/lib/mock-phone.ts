@@ -4,7 +4,7 @@ import type { PhoneChange, PhoneStatus } from "@/lib/phone";
 // tailnet address and token.
 
 const state: Record<string, PhoneStatus> = {};
-const addr: Record<string, string> = { devl: "100.64.0.11", gpu: "100.101.7.12", cal: "100.64.0.12", omarchy: "100.64.0.13" };
+const addr: Record<string, string> = { devl: "100.64.0.11", gpu: "100.64.0.12", cal: "100.64.0.12", omarchy: "100.64.0.13" };
 
 function token() {
   return Array.from({ length: 48 }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join("");
@@ -20,7 +20,7 @@ export function phoneCall(box: string, method: string, path: string, body: unkno
     if ((st.enabled && !st.token) || c.rotate) st.token = token();
     if (c.notify) st.notify = c.notify;
     if (c.clear_notify) st.notify = undefined;
-    st.url = st.enabled ? `http://${addr[box] ?? "100.70.0.1"}:1379/` : undefined;
+    st.url = st.enabled ? `http://${addr[box] ?? "100.64.0.1"}:1379/` : undefined;
     return delay({ ...st });
   }
   return undefined;

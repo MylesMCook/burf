@@ -5,7 +5,7 @@ import type { ExecResult } from "@/lib/api";
 // with made-up numbers so the screens can be explored.
 
 const env: Record<string, Record<string, string>> = { devl: {} };
-const HOME = "/home/sean";
+const HOME = "/home/me";
 
 interface MockAccount {
   agent: "claude" | "codex";
@@ -78,7 +78,7 @@ function report(box: string) {
   const r = rng(box.length * 7919);
   const now = new Date();
   const gpu = box !== "devl";
-  const WT = gpu ? [`${HOME}/evals-judge-v2`, `${HOME}/evals`, `${HOME}/scratch`] : [`${HOME}/work/cal-billing-fix`, `${HOME}/work/cal-qa-deck`, `${HOME}/work/cal-booker-perf`, `${HOME}/work/cal`, `${HOME}/work/internal`, `${HOME}/scratch`];
+  const WT = gpu ? [`${HOME}/evals-judge-v2`, `${HOME}/evals`, `${HOME}/scratch`] : [`${HOME}/work/cal-billing-fix`, `${HOME}/work/cal-qa-deck`, `${HOME}/work/cal-booker-perf`, `${HOME}/work/cal`, `${HOME}/work/notes`, `${HOME}/scratch`];
   const daily: unknown[][] = [];
   for (let i = 29; i >= 0; i--) {
     const d = new Date(now);

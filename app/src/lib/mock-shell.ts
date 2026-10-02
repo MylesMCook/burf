@@ -8,7 +8,7 @@ import { mockIssues } from "@/lib/mock-issues";
 const notes = new Map<string, string>([["devl:cal/billing-fix", "# billing\n\n- retries: cap at 3, exponential backoff\n- ask Codex to review the webhook handler before merging\n"]]);
 
 const STATUS = [
-  "## sean/fix-billing-retries...origin/sean/fix-billing-retries [ahead 2]",
+  "## me/fix-billing-retries...origin/me/fix-billing-retries [ahead 2]",
   " M apps/web/lib/billing/retry.ts",
   "M  packages/features/ee/payments/webhook.ts",
   "A  packages/lib/backoff.ts",
@@ -63,9 +63,9 @@ const PR = {
   state: "OPEN",
   isDraft: false,
   url: "https://github.com/calcom/cal/pull/9041",
-  author: { login: "sean-brydon" },
+  author: { login: "me" },
   reviewDecision: "REVIEW_REQUIRED",
-  headRefName: "sean/fix-billing-retries",
+  headRefName: "me/fix-billing-retries",
   baseRefName: "main",
   additions: 79,
   deletions: 14,
@@ -77,7 +77,7 @@ const PR = {
   ],
   comments: [
     { author: { login: "bailey" }, body: "Can we cap the total retry time too? A slow Stripe outage would hold the booking lock for ages.", createdAt: new Date(Date.now() - 1000 * 60 * 25).toISOString() },
-    { author: { login: "sean-brydon" }, body: "Good call, capping at 30s overall and surfacing a 'payment pending' state instead.", createdAt: new Date(Date.now() - 1000 * 60 * 12).toISOString() },
+    { author: { login: "me" }, body: "Good call, capping at 30s overall and surfacing a 'payment pending' state instead.", createdAt: new Date(Date.now() - 1000 * 60 * 12).toISOString() },
   ],
   statusCheckRollup: [
     { __typename: "CheckRun", name: "Type check", workflowName: "PR", status: "COMPLETED", conclusion: "SUCCESS", detailsUrl: "https://github.com/calcom/cal/actions/runs/1" },
@@ -106,7 +106,7 @@ export function mockShell(box: string, location: string, command: string): ExecR
   if (command.startsWith("git diff --no-color")) return { exit_code: 0, output: DIFF };
   if (command.startsWith("git log -1")) return { exit_code: 0, output: "fix(billing): retry declined charges with backoff\n" };
   if (command.startsWith("git add -A && git commit")) return { exit_code: 0, output: "" };
-  if (command.startsWith("git push")) return { exit_code: 0, output: "To github.com:calcom/cal.git\n * [new branch]  HEAD -> sean/fix-billing-retries\n" };
+  if (command.startsWith("git push")) return { exit_code: 0, output: "To github.com:calcom/cal.git\n * [new branch]  HEAD -> me/fix-billing-retries\n" };
   if (command.startsWith("gh pr view")) {
     if (/\/(billing|booker)/.test(location)) return { exit_code: 0, output: JSON.stringify(PR) };
     if (box === "gpu") return { exit_code: 127, output: "sh: gh: command not found\n" };

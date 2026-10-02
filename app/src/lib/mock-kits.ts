@@ -60,9 +60,9 @@ const calKit: KitInfo = {
     hooks: [{ on: "before:worktree.create", run: "test \"$BERTH_BRANCH\" != main || { echo 'Make a branch, not main'; exit 1; }" }],
   },
   origin: "user",
-  source: { src: "https://github.com/calcom/berth-kits/tree/main/cal-worktrees", commit: "4f2a9c1e8b7d3a6f5e4c2b1a0d9e8f7c6b5a4d3e", fetched: daysAgo(2) },
+  source: { src: "https://github.com/acme/kits/tree/main/cal-worktrees", commit: "4f2a9c1e8b7d3a6f5e4c2b1a0d9e8f7c6b5a4d3e", fetched: daysAgo(2) },
   hash: "c41e9a2b77f0",
-  path: "/Users/sean/.berth/kits/cal-worktrees",
+  path: "/Users/me/.berth/kits/cal-worktrees",
   file_list: [
     { path: "kit.json", size: 1420 },
     { path: "scripts/setup.sh", size: setupScript.length, text: setupScript },
@@ -82,7 +82,7 @@ const nodeKit: KitInfo = {
   },
   origin: "plugin:hello-ports",
   hash: "7d10b3c9e2aa",
-  path: "/Users/sean/.berth/plugins/hello-ports/kits/node-app",
+  path: "/Users/me/.berth/plugins/hello-ports/kits/node-app",
   file_list: [{ path: "kit.json", size: 240 }],
 };
 
@@ -94,7 +94,7 @@ const installedFor = (k: KitInfo, hash = k.hash, at = daysAgo(9)): InstalledKit 
   version: k.version,
   source: k.source?.src,
   hash,
-  dir: `/home/sean/.config/berth/box/kits/${k.id}`,
+  dir: `/home/me/.config/berth/box/kits/${k.id}`,
   config: k.config,
   installed_at: at,
 });
@@ -104,7 +104,7 @@ const installed: Record<string, InstalledKit> = {
   "devl/cal": installedFor(calKit, "9b0e11d4c2f3", daysAgo(9)),
 };
 
-const slugs: Record<string, string> = { "devl/cal": "calcom/cal.com", "devl/internal": "calcom/internal", "gpu/evals": "sean-brydon/evals" };
+const slugs: Record<string, string> = { "devl/cal": "calcom/cal.com", "devl/notes": "me/notes", "gpu/evals": "me/evals" };
 
 // kitOn is a project's installed kit, for the config mock.
 export function kitOn(box: string, location: string): InstalledKit | undefined {
@@ -135,7 +135,7 @@ function previewOf(src: string): KitInfo {
     origin: "user",
     source: { src, commit: src.includes("github") ? "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678" : undefined, fetched: new Date().toISOString() },
     hash: Math.random().toString(16).slice(2, 14),
-    path: `/Users/sean/.berth/kits/${id}`,
+    path: `/Users/me/.berth/kits/${id}`,
     file_list: [
       { path: "kit.json", size: 812 },
       { path: "setup.sh", size: 96, text: "#!/bin/sh\nset -eu\npnpm install\ncreatedb \"$BERTH_WORKTREE_SLUG\" || true\n" },
@@ -183,7 +183,7 @@ export function kitsCall(method: string, path: string, body: unknown, emit: Emit
   }
   if (key === "POST /v1/kits/save") {
     const r = body as KitTarget & { id: string; name: string; description?: string };
-    const kit: KitInfo = { ...previewOf(r.id), id: r.id, name: r.name, description: r.description, match: { slug: slugs[`${r.box}/${r.location}`] }, source: undefined, origin: "user", path: `/Users/sean/.berth/kits/${r.id}` };
+    const kit: KitInfo = { ...previewOf(r.id), id: r.id, name: r.name, description: r.description, match: { slug: slugs[`${r.box}/${r.location}`] }, source: undefined, origin: "user", path: `/Users/me/.berth/kits/${r.id}` };
     kept.push(kit);
     return delay(strip(kit));
   }

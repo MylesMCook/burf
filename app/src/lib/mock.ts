@@ -21,8 +21,8 @@ const GB = 1024 ** 3;
 
 const status: Status = {
   boxes: [
-    { name: "devl", address: "100.88.12.4:7444", fingerprint: "sha256:9f2c…", state: "online", latency_ms: 38, since: ago(140) },
-    { name: "gpu", address: "100.70.3.19:7444", network: "personal", fingerprint: "sha256:41ab…", state: "online", latency_ms: 112, since: ago(30) },
+    { name: "devl", address: "100.64.0.4:7444", fingerprint: "sha256:9f2c…", state: "online", latency_ms: 38, since: ago(140) },
+    { name: "gpu", address: "100.64.0.19:7444", network: "personal", fingerprint: "sha256:41ab…", state: "online", latency_ms: 112, since: ago(30) },
     { name: "old-vps", address: "203.0.113.7:7444", fingerprint: "sha256:c0de…", state: "offline", error: "dial tcp: i/o timeout", since: ago(600) },
   ],
   forwards: [{ id: "f1", box: "devl", local: 5432, remote: 5432, state: "listening" }],
@@ -41,53 +41,53 @@ const locations: Record<string, Location[]> = {
   devl: [
     {
       name: "cal",
-      path: "/home/sean/work/cal",
+      path: "/home/me/work/cal",
       repo: true,
       scripts: { setup: "yarn && yarn db-migrate", from: "repo" },
       remote: "git@github.com:calcom/cal.com.git",
       slug: "calcom/cal.com",
       default_branch: "main",
       worktrees: [
-        { name: "cal", path: "/home/sean/work/cal", branch: "main", main: true },
-        { name: "billing-fix", path: "/home/sean/work/cal-billing-fix", branch: "sean/billing-fix" },
-        { name: "qa-deck", path: "/home/sean/work/cal-qa-deck", branch: "sean/qa-deck" },
-        { name: "booker-perf", path: "/home/sean/work/cal-booker-perf", branch: "sean/booker-perf" },
-        { name: "transfer-billing", path: "/home/sean/work/cal-transfer-billing", branch: "sean/eng-1234-admin-billing-transfer" },
+        { name: "cal", path: "/home/me/work/cal", branch: "main", main: true },
+        { name: "billing-fix", path: "/home/me/work/cal-billing-fix", branch: "me/billing-fix" },
+        { name: "qa-deck", path: "/home/me/work/cal-qa-deck", branch: "me/qa-deck" },
+        { name: "booker-perf", path: "/home/me/work/cal-booker-perf", branch: "me/booker-perf" },
+        { name: "transfer-billing", path: "/home/me/work/cal-transfer-billing", branch: "me/admin-billing-transfer" },
       ],
     },
     {
-      name: "internal",
-      path: "/home/sean/work/internal",
+      name: "notes",
+      path: "/home/me/work/notes",
       repo: true,
-      remote: "git@github.com:calcom/internal.git",
-      slug: "calcom/internal",
+      remote: "git@github.com:me/notes.git",
+      slug: "me/notes",
       default_branch: "main",
       scripts: {},
-      worktrees: [{ name: "internal", path: "/home/sean/work/internal", branch: "main", main: true }],
+      worktrees: [{ name: "notes", path: "/home/me/work/notes", branch: "main", main: true }],
     },
   ],
   gpu: [
     {
       name: "cal",
-      path: "/home/sean/cal",
+      path: "/home/me/cal",
       repo: true,
       remote: "git@github.com:calcom/cal.com.git",
       slug: "calcom/cal.com",
       default_branch: "main",
       scripts: {},
       worktrees: [
-        { name: "cal", path: "/home/sean/cal", branch: "main", main: true },
-        { name: "ci-flake", path: "/home/sean/cal-ci-flake", branch: "sean/ci-flake" },
+        { name: "cal", path: "/home/me/cal", branch: "main", main: true },
+        { name: "ci-flake", path: "/home/me/cal-ci-flake", branch: "me/ci-flake" },
       ],
     },
     {
       name: "evals",
-      path: "/home/sean/evals",
+      path: "/home/me/evals",
       repo: true,
       scripts: {},
       worktrees: [
-        { name: "evals", path: "/home/sean/evals", branch: "main", main: true },
-        { name: "judge-v2", path: "/home/sean/evals-judge-v2", branch: "judge-v2" },
+        { name: "evals", path: "/home/me/evals", branch: "main", main: true },
+        { name: "judge-v2", path: "/home/me/evals-judge-v2", branch: "judge-v2" },
       ],
     },
   ],
@@ -95,20 +95,20 @@ const locations: Record<string, Location[]> = {
 
 const sessions: Record<string, Session[]> = {
   devl: [
-    { name: "billing-fix-claude", location: "cal/billing-fix", dir: "/home/sean/work/cal-billing-fix", command: "claude", created: ago(52), attached: 0, exited: false, agent: "claude", agent_state: "waiting", state_since: ago(4) },
-    { name: "qa-deck-codex", location: "cal/qa-deck", dir: "/home/sean/work/cal-qa-deck", command: "codex", created: ago(18), attached: 1, exited: false, agent: "codex", agent_state: "running", state_since: ago(2) },
-    { name: "cal-shell", location: "cal", dir: "/home/sean/work/cal", command: "", created: ago(300), attached: 0, exited: false },
-    { name: "booker-perf-claude", location: "cal/booker-perf", dir: "/home/sean/work/cal-booker-perf", command: "claude", created: ago(95), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(23) },
+    { name: "billing-fix-claude", location: "cal/billing-fix", dir: "/home/me/work/cal-billing-fix", command: "claude", created: ago(52), attached: 0, exited: false, agent: "claude", agent_state: "waiting", state_since: ago(4) },
+    { name: "qa-deck-codex", location: "cal/qa-deck", dir: "/home/me/work/cal-qa-deck", command: "codex", created: ago(18), attached: 1, exited: false, agent: "codex", agent_state: "running", state_since: ago(2) },
+    { name: "cal-shell", location: "cal", dir: "/home/me/work/cal", command: "", created: ago(300), attached: 0, exited: false },
+    { name: "booker-perf-claude", location: "cal/booker-perf", dir: "/home/me/work/cal-booker-perf", command: "claude", created: ago(95), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(23) },
     // Three agents in one worktree, so the board has to tell them apart.
-    { name: "transfer-billing-claude", location: "cal/transfer-billing", dir: "/home/sean/work/cal-transfer-billing", command: "claude 'Move the billing owner when a team is transferred'", created: ago(1700), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(1560) },
-    { name: "transfer-billing-claude-2", location: "cal/transfer-billing", dir: "/home/sean/work/cal-transfer-billing", command: "claude", created: ago(320), attached: 0, exited: false, agent: "claude", agent_state: "idle", state_since: ago(290) },
-    { name: "transfer-billing-claude-3", location: "cal/transfer-billing", dir: "/home/sean/work/cal-transfer-billing", command: "claude 'Add tests for the transfer webhook'", created: ago(140), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(75) },
-    { name: "internal-claude", location: "internal", dir: "/home/sean/work/internal", command: "claude", created: ago(700), attached: 0, exited: true, agent: "claude" },
+    { name: "transfer-billing-claude", location: "cal/transfer-billing", dir: "/home/me/work/cal-transfer-billing", command: "claude 'Move the billing owner when a team is transferred'", created: ago(1700), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(1560) },
+    { name: "transfer-billing-claude-2", location: "cal/transfer-billing", dir: "/home/me/work/cal-transfer-billing", command: "claude", created: ago(320), attached: 0, exited: false, agent: "claude", agent_state: "idle", state_since: ago(290) },
+    { name: "transfer-billing-claude-3", location: "cal/transfer-billing", dir: "/home/me/work/cal-transfer-billing", command: "claude 'Add tests for the transfer webhook'", created: ago(140), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(75) },
+    { name: "notes-claude", location: "notes", dir: "/home/me/work/notes", command: "claude", created: ago(700), attached: 0, exited: true, agent: "claude" },
   ],
   gpu: [
-    { name: "ci-flake-claude", location: "cal/ci-flake", dir: "/home/sean/cal-ci-flake", command: "claude", created: ago(30), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(6) },
-    { name: "judge-v2-claude", location: "evals/judge-v2", dir: "/home/sean/evals-judge-v2", command: "claude", created: ago(9), attached: 0, exited: false, agent: "claude", agent_state: "running", state_since: ago(1) },
-    { name: "evals-codex", location: "evals", dir: "/home/sean/evals", command: "codex", created: ago(3), attached: 0, exited: false, agent: "codex", agent_state: "idle", state_since: ago(3) },
+    { name: "ci-flake-claude", location: "cal/ci-flake", dir: "/home/me/cal-ci-flake", command: "claude", created: ago(30), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(6) },
+    { name: "judge-v2-claude", location: "evals/judge-v2", dir: "/home/me/evals-judge-v2", command: "claude", created: ago(9), attached: 0, exited: false, agent: "claude", agent_state: "running", state_since: ago(1) },
+    { name: "evals-codex", location: "evals", dir: "/home/me/evals", command: "codex", created: ago(3), attached: 0, exited: false, agent: "codex", agent_state: "idle", state_since: ago(3) },
   ],
 };
 
@@ -137,31 +137,31 @@ const stats: Record<string, Stats> = {
 
 const services: Record<string, Service[]> = {
   devl: [
-    { location: "cal", worktree: "cal", path: "/home/sean/work/cal", port: 3000, process: "node", main: true },
-    { location: "cal", worktree: "billing-fix", path: "/home/sean/work/cal-billing-fix", port: 3001, process: "node" },
-    { location: "cal", worktree: "qa-deck", path: "/home/sean/work/cal-qa-deck", port: 4789, process: "vite" },
+    { location: "cal", worktree: "cal", path: "/home/me/work/cal", port: 3000, process: "node", main: true },
+    { location: "cal", worktree: "billing-fix", path: "/home/me/work/cal-billing-fix", port: 3001, process: "node" },
+    { location: "cal", worktree: "qa-deck", path: "/home/me/work/cal-qa-deck", port: 4789, process: "vite" },
   ],
-  gpu: [{ location: "evals", worktree: "judge-v2", path: "/home/sean/evals-judge-v2", port: 8888, process: "jupyter" }],
+  gpu: [{ location: "evals", worktree: "judge-v2", path: "/home/me/evals-judge-v2", port: 8888, process: "jupyter" }],
 };
 
 // Hooks per machine, editable the way the agent and boxes allow.
 const hooksFiles: Record<string, HooksFile> = {
   laptop: {
-    path: "/Users/sean/.berth/hooks.json",
+    path: "/Users/me/.berth/hooks.json",
     hooks: [
       { on: "agent.waiting", run: `osascript -e "display notification \\"$BERTH_PATH\\" with title \\"An agent on $BERTH_EVENT_BOX needs you\\""` },
       { on: "agent.finished", run: "afplay /System/Library/Sounds/Glass.aiff", source: "plugin:hello-ports" },
     ],
   },
   devl: {
-    path: "/home/sean/.berth/hooks.json",
+    path: "/home/me/.berth/hooks.json",
     hooks: [
       { on: "worktree.created", run: 'cd "$BERTH_PATH" && pnpm install --frozen-lockfile', timeout: "10m" },
       { on: "before:worktree.create", run: '[ "${BERTH_BRANCH:-$BERTH_NAME}" != "main" ] || { echo "work on a branch, not main"; exit 1; }' },
       { on: "agent.finished", run: 'curl -fsS -X POST "$SLACK_HOOK" -d "{\\"text\\":\\"$BERTH_PATH done\\"}"', tool: "slack", timeout: "20s" },
     ],
   },
-  gpu: { path: "/home/sean/.berth/hooks.json", hooks: [] },
+  gpu: { path: "/home/me/.berth/hooks.json", hooks: [] },
 };
 
 const VALID_ON = /^(before:)?(\*|[a-z][a-z0-9-]*\.(\*|[a-z][a-z0-9.-]*))$/;
@@ -181,7 +181,7 @@ function saveHooks(machine: string, hooks: Hook[]): Promise<HooksFile> {
 
 // /v1/app documents, as the laptop agent keeps them. Projects start with a
 // Work section so sections show.
-const appDocs: Record<string, unknown> = fresh ? {} : { projects: { projects: [{ id: "calcom/cal.com", section: "Work", default_box: "devl" }, { id: "calcom/internal", section: "Work" }], sections: ["Work", "Personal"] } };
+const appDocs: Record<string, unknown> = fresh ? {} : { projects: { projects: [{ id: "calcom/cal.com", section: "Work", default_box: "devl" }, { id: "me/notes", section: "Work" }], sections: ["Work", "Personal"] } };
 
 const listeners = new Set<(e: BerthEvent) => void>();
 const emit = (e: Omit<BerthEvent, "time">) => listeners.forEach((l) => l({ ...e, time: new Date().toISOString() }));
@@ -206,21 +206,21 @@ const checksRun: Record<string, number> = {};
 // browse, clone, create, and make worktrees from names, branches, PRs and
 // issues.
 const mockFolders: Record<string, { git?: boolean; slug?: string }> = {
-  "/home/sean": {},
-  "/home/sean/work": {},
-  "/home/sean/work/cal": { git: true, slug: "calcom/cal.com" },
-  "/home/sean/work/internal": { git: true, slug: "calcom/internal" },
-  "/home/sean/work/ondine": { git: true, slug: "sean-brydon/ondine" },
-  "/home/sean/work/notes": {},
-  "/home/sean/work/scratch": {},
-  "/home/sean/learn": { git: true },
-  "/home/sean/go": {},
-  "/home/sean/orca": {},
-  "/home/sean/orca/projects": {},
-  "/home/sean/orca/projects/bean-app": { git: true, slug: "sean-brydon/bean-app" },
+  "/home/me": {},
+  "/home/me/work": {},
+  "/home/me/work/cal": { git: true, slug: "calcom/cal.com" },
+  "/home/me/work/notes": { git: true, slug: "me/notes" },
+  "/home/me/work/ondine": { git: true, slug: "me/ondine" },
+  "/home/me/work/drafts": {},
+  "/home/me/work/scratch": {},
+  "/home/me/learn": { git: true },
+  "/home/me/go": {},
+  "/home/me/orca": {},
+  "/home/me/orca/projects": {},
+  "/home/me/orca/projects/bean-app": { git: true, slug: "me/bean-app" },
 };
-const mockBranches = ["main", "sean/billing-fix", "sean/qa-deck", "sean/booker-perf", "feat/qa-app", "feat/pr-previews", "fix/impersonation-banner"];
-const HOME = "/home/sean";
+const mockBranches = ["main", "me/billing-fix", "me/qa-deck", "me/booker-perf", "feat/qa-app", "feat/pr-previews", "fix/impersonation-banner"];
+const HOME = "/home/me";
 const expand = (p: string) => (p === "~" ? HOME : p.startsWith("~/") ? `${HOME}${p.slice(1)}` : p.replace(/\/+$/, "") || "/");
 
 function mockProjects(box: string, method: string, path: string, body?: unknown): Promise<unknown> | undefined {
@@ -266,7 +266,7 @@ function mockProjects(box: string, method: string, path: string, body?: unknown)
       const n = Number(pr[1]);
       r = n === 404
         ? { kind: "pr", name: `pr-${n}`, branch: `pr-${n}`, pr: n, ref: `pull/${n}/head`, note: "gh is not installed on this box; using pull/404/head" }
-        : { kind: "pr", name: "fix-billing-retries", branch: "sean/fix-billing-retries", pr: n, ref: `pull/${n}/head`, title: "Fix billing retries without an idempotency key", url: `https://github.com/calcom/cal.com/pull/${n}` };
+        : { kind: "pr", name: "fix-billing-retries", branch: "me/fix-billing-retries", pr: n, ref: `pull/${n}/head`, title: "Fix billing retries without an idempotency key", url: `https://github.com/calcom/cal.com/pull/${n}` };
     } else if (kind !== "name" && mockBranches.includes(text)) {
       r = { kind: "branch", name: slugOf(text.split("/").pop()!), branch: text, exists: true };
     } else if (kind !== "name" && text === "release/v5.2") {
@@ -317,6 +317,14 @@ function mockOrchestration(box: string, method: string, path: string, body?: unk
       };
       tick();
     });
+  }
+  // secrets/test resolves a reference the way the box would, answering only
+  // whether it could and the value's length.
+  if (method === "POST" && path === "secrets/test") {
+    const { ref } = body as { ref: string };
+    if (!/^(op|env):\/\/[^/\s]+/.test(ref)) return delay({ ok: false, error: "not a secret reference: use op://vault/item/field or env://NAME" });
+    if (/missing|nope/.test(ref)) return delay({ ok: false, error: `"${ref.split("/").pop()}" isn't an item in this vault` });
+    return delay({ ok: true, length: 32 });
   }
   if (method === "POST" && path === "exec") {
     const r = body as { location: string; command: string };
@@ -369,7 +377,7 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
   if (svc) {
     const [, loc, wt, name, action] = svc.map((x) => x && decodeURIComponent(x));
     // The demo repository has none, to show the empty state.
-    if (loc === "internal") return delay([]);
+    if (loc === "notes") return delay([]);
     const list = worktreeServicesFixture(box, loc, wt);
     if (!name) return delay(list);
     const one = list.find((x) => x.name === name);
@@ -418,7 +426,7 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
     const t = body as { location: string; name: string; branch?: string; agent?: string; command?: string; open?: string };
     const loc = locations[box].find((l) => l.name === t.location)!;
     if (loc.worktrees?.some((w) => w.name === t.name)) return Promise.reject(new Error(`a worktree named ${t.name} already exists`));
-    const wt = { name: t.name, path: `${loc.path}-${t.name}`, branch: t.branch || `sean/${t.name}` };
+    const wt = { name: t.name, path: `${loc.path}-${t.name}`, branch: t.branch || `me/${t.name}` };
     loc.worktrees = [...(loc.worktrees ?? []), wt];
     const agent = t.agent || "claude";
     const session: Session = { name: `${t.name}-${agent}`, location: `${t.location}/${t.name}`, dir: wt.path, command: t.command ?? agent, created: new Date().toISOString(), attached: 0, exited: false, agent, agent_state: "running" };
@@ -486,7 +494,7 @@ function mockAttach(box: string, session: string, h: TerminalHandlers) {
     `\x1b[38;5;208m✻\x1b[0m Welcome to \x1b[1m${s?.agent ?? "shell"}\x1b[0m on \x1b[36m${box}\x1b[0m  \x1b[2m${s?.dir ?? ""}\x1b[0m\r\n\r\n`,
     "\x1b[33m●\x1b[0m Read \x1b[1mpackages/features/bookings/lib/handleNewBooking.ts\x1b[0m\r\n",
     "\x1b[2m  ⎿  Read 412 lines\x1b[0m\r\n\r\n",
-    "\x1b[37m●\x1b[0m The billing webhook retries without an idempotency key, so a slow Stripe\r\n  response can create two invoices. I'll add the key and a test.\r\n\r\n",
+    "\x1b[37m●\x1b[0m The billing webhook retries without an idempotency key,\r\n  so a slow response can create two invoices.\r\n  I will add the key and a test.\r\n\r\n",
     "\x1b[32m●\x1b[0m Update(\x1b[1mpackages/features/ee/billing/webhook.ts\x1b[0m)\r\n",
     "\x1b[2m  ⎿  Updated with \x1b[0m\x1b[32m12 additions\x1b[0m\x1b[2m and \x1b[0m\x1b[31m3 removals\x1b[0m\r\n\r\n",
     "\x1b[2m✻ Baked for 1m 12s · done\x1b[0m\r\n\r\n",
@@ -518,17 +526,17 @@ function mockAttach(box: string, session: string, h: TerminalHandlers) {
 // them, and tailnet sign-ins. Added boxes come online empty.
 
 const discovery = {
-  user: "sean",
+  user: "me",
   machines: [
     { name: "dev-box", dns_name: "dev-box.example-tailnet.ts.net", ip: "100.64.0.12", os: "linux", online: true },
     { name: "hetzner-ax41", dns_name: "hetzner-ax41.example-tailnet.ts.net", ip: "100.64.0.11", os: "linux", online: true },
-    { name: "gpu-runner", dns_name: "gpu-runner.example-tailnet.ts.net", ip: "100.70.3.19", os: "linux", online: false },
-    { name: "seans-macbook-pro", dns_name: "seans-macbook-pro.example-tailnet.ts.net", ip: "100.85.86.67", os: "macOS", online: true },
+    { name: "gpu-runner", dns_name: "gpu-runner.example-tailnet.ts.net", ip: "100.64.0.19", os: "linux", online: false },
+    { name: "my-laptop", dns_name: "my-laptop.example-tailnet.ts.net", ip: "100.64.0.67", os: "macOS", online: true },
   ] as { name: string; dns_name: string; ip: string; os: string; online: boolean; box?: string }[],
 };
 if (!fresh) discovery.machines[1].box = "devl";
 
-const mockNetworks = fresh ? [] : [{ name: "personal", state: "Running", tailnet: "brydon.io", ips: ["100.124.96.73"] }];
+const mockNetworks = fresh ? [] : [{ name: "personal", state: "Running", tailnet: "example.ts.net", ips: ["100.64.0.73"] }];
 
 const mockPlugins = [{ id: "hello-ports", name: "Hello ports", version: "0.1.0", main: "dist/index.js", description: "Every dev server on every box, one click from your browser.", entry: "/__dev-plugins/hello-ports/dist/index.js", enabled: false, defaultEnabled: false }];
 
@@ -595,7 +603,7 @@ async function mockStream(method: string, path: string, body: unknown, onValue: 
       return;
     }
     await say("Installing berthd-linux-amd64 (8 MB)…", 900);
-    await say(`  Installed /home/sean/.config/systemd/user/berthd.service; berthd is serving on 100.64.0.11:7444.`, 1400);
+    await say(`  Installed /home/me/.config/systemd/user/berthd.service; berthd is serving on 100.64.0.11:7444.`, 1400);
     const name = r.name || where.split(".")[0];
     await wait(700);
     addMockBox(name, `${where}:7444`, r.network);
@@ -617,7 +625,7 @@ async function mockStream(method: string, path: string, body: unknown, onValue: 
     await wait(500);
     onValue({ auth_url: "https://login.tailscale.com/a/mock-sign-in" });
     await wait(2500);
-    const info = { name, state: "Running", tailnet: "brydon.io", ips: ["100.124.96.73"] };
+    const info = { name, state: "Running", tailnet: "example.ts.net", ips: ["100.64.0.73"] };
     mockNetworks.push(info);
     onValue({ network: info });
     return;
@@ -731,7 +739,7 @@ function skillState(scope: string, skill: string, agent: string): MockSkillState
 
 function skillsReport(box: string, location?: string) {
   const agents = ["claude", "codex"];
-  const home = box === "mac-test" ? "/Users/sean" : "/home/sean";
+  const home = box === "mac-test" ? "/Users/me" : "/home/me";
   const repo = location ? (locations[box]?.find((l) => l.name === location)?.path ?? `${home}/work/${location}`) : undefined;
   return {
     agents,
@@ -789,20 +797,20 @@ export function mockAgentOpens(box: string, location: string, dir: string, open:
 export function mockNotifications() {
   const devl = "devl";
   const plays: [number, Omit<BerthEvent, "time">][] = [
-    [0, { type: "agent.waiting", box: devl, origin: "claude", data: { path: "/home/sean/work/cal-billing-fix" } }],
-    [150, { type: "agent.finished", box: devl, origin: "claude", data: { path: "/home/sean/work/cal-booker-perf" } }],
-    [300, { type: "agent.finished", box: devl, origin: "claude", data: { path: "/home/sean/work/cal-booker-perf" } }],
-    [450, { type: "agent.finished", box: devl, origin: "claude", data: { path: "/home/sean/work/cal-booker-perf" } }],
-    [600, { type: "flow.finished", box: devl, origin: "flow:tests-after-turn", data: { flow: "tests-after-turn", scope: "repo:cal", run: "r3", status: "failed", path: "/home/sean/work/cal-billing-fix" } }],
-    [750, { type: "worktree.setup.failed", box: devl, data: { location: "cal", name: "qa-deck", path: "/home/sean/work/cal-qa-deck" }, error: "pnpm install exited with status 1: ERR_PNPM_FETCH_404" }],
+    [0, { type: "agent.waiting", box: devl, origin: "claude", data: { path: "/home/me/work/cal-billing-fix" } }],
+    [150, { type: "agent.finished", box: devl, origin: "claude", data: { path: "/home/me/work/cal-booker-perf" } }],
+    [300, { type: "agent.finished", box: devl, origin: "claude", data: { path: "/home/me/work/cal-booker-perf" } }],
+    [450, { type: "agent.finished", box: devl, origin: "claude", data: { path: "/home/me/work/cal-booker-perf" } }],
+    [600, { type: "flow.finished", box: devl, origin: "flow:tests-after-turn", data: { flow: "tests-after-turn", scope: "repo:cal", run: "r3", status: "failed", path: "/home/me/work/cal-billing-fix" } }],
+    [750, { type: "worktree.setup.failed", box: devl, data: { location: "cal", name: "qa-deck", path: "/home/me/work/cal-qa-deck" }, error: "pnpm install exited with status 1: ERR_PNPM_FETCH_404" }],
     [900, { type: "service.failed", box: devl, data: { location: "cal", name: "qa-deck", service: "storybook", error: "port 6006 is already in use" } }],
-    [1050, { type: "guard.acted", box: "gpu", origin: "guard", data: { action: "stop_services", location: "evals", name: "judge-v2", path: "/home/sean/evals-judge-v2", services: ["web", "worker"], memory_percent: 93.4, reason: "Memory at 93% for 2 minutes" } }],
+    [1050, { type: "guard.acted", box: "gpu", origin: "guard", data: { action: "stop_services", location: "evals", name: "judge-v2", path: "/home/me/evals-judge-v2", services: ["web", "worker"], memory_percent: 93.4, reason: "Memory at 93% for 2 minutes" } }],
     [1200, { type: "kit.installed", box: devl, data: { location: "cal", kit: "cal-com", version: "3", source: "https://example.com/kits/cal-com.json", warnings: ["The .env.example has keys this kit does not set: STRIPE_WEBHOOK_SECRET", "yarn is not installed; used pnpm"] } }],
     [1350, { type: "notify", box: devl, origin: "flow:nightly-e2e", data: { title: "Nightly e2e passed", body: "412 tests in 9m 12s", flow: "nightly-e2e", location: "cal" } }],
-    [1500, { type: "preview.open", box: devl, data: { location: "cal", name: "qa-deck", path: "/home/sean/work/cal-qa-deck", port: 4789, url_path: "/deck" } }],
+    [1500, { type: "preview.open", box: devl, data: { location: "cal", name: "qa-deck", path: "/home/me/work/cal-qa-deck", port: 4789, url_path: "/deck" } }],
   ];
   for (const [ms, e] of plays) setTimeout(() => emit(e), ms);
-  setTimeout(() => mockAgentOpens(devl, "cal/qa-deck", "/home/sean/work/cal-qa-deck", "split"), 1650);
+  setTimeout(() => mockAgentOpens(devl, "cal/qa-deck", "/home/me/work/cal-qa-deck", "split"), 1650);
   // A plugin's notify, and a review-ready item, come from the app itself.
   setTimeout(() => {
     void import("@/lib/notify").then((m) => m.notify("Usage at 82% of the weekly limit", "Claude Code on your work account", "warning"));
@@ -810,12 +818,12 @@ export function mockNotifications() {
       m.route({
         category: "review",
         title: "Claude Code left changes to review",
-        detail: "4 files · +128 −31 · sean/booker-perf",
+        detail: "4 files · +128 −31 · me/booker-perf",
         tone: "success",
         box: devl,
-        path: "/home/sean/work/cal-booker-perf",
-        action: { kind: "review", box: devl, path: "/home/sean/work/cal-booker-perf" },
-        key: `review|${devl}|/home/sean/work/cal-booker-perf`,
+        path: "/home/me/work/cal-booker-perf",
+        action: { kind: "review", box: devl, path: "/home/me/work/cal-booker-perf" },
+        key: `review|${devl}|/home/me/work/cal-booker-perf`,
       }),
     );
   }, 1800);

@@ -28,7 +28,8 @@ export function StatusBar() {
 
   return (
     <footer className="flex h-6.5 shrink-0 items-center gap-3 border-t bg-sidebar px-3 text-[11px] text-muted-foreground">
-      {isMock() && (
+      {/* ?shots=1, used by site/scripts/capture.mjs, hides the badge. */}
+      {isMock() && !new URLSearchParams(location.search).has("shots") && (
         <Tip label="Showing made-up data (?mock=1)">
           <span className="rounded border border-warning/40 px-1 text-warning/80">mock</span>
         </Tip>

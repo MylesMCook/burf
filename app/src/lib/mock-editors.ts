@@ -14,7 +14,7 @@ const editors: Editor[] = [
 let written = false;
 
 const conf = (box: string, addr: string, net?: string) =>
-  `# Written by berth ssh-config for the box ${box}; berth rewrites it.\nHost berth-${box}\n  HostName ${addr}\n  User sean\n` +
+  `# Written by berth ssh-config for the box ${box}; berth rewrites it.\nHost berth-${box}\n  HostName ${addr}\n  User me\n` +
   (net ? `  ProxyCommand /Applications/Berth.app/Contents/MacOS/berth network proxy ${net} %h %p\n` : "");
 
 const plus = (s: string) =>
@@ -26,8 +26,8 @@ const plus = (s: string) =>
 
 function plan(): SSHPlan {
   const hosts = [
-    { box: "devl", host: "berth-devl", user: "sean", network: "personal", ready: written },
-    { box: "gpu", host: "berth-gpu", user: "sean", ready: written },
+    { box: "devl", host: "berth-devl", user: "me", network: "personal", ready: written },
+    { box: "gpu", host: "berth-gpu", user: "me", ready: written },
   ];
   if (written) return { dir: "/Users/you/.ssh", hosts, changes: [] };
   return {
@@ -35,7 +35,7 @@ function plan(): SSHPlan {
     hosts,
     changes: [
       { path: "/Users/you/.ssh/berth/devl.conf", action: "create", diff: plus(conf("devl", "100.64.0.11", "personal")) },
-      { path: "/Users/you/.ssh/berth/gpu.conf", action: "create", diff: plus(conf("gpu", "100.101.7.12")) },
+      { path: "/Users/you/.ssh/berth/gpu.conf", action: "create", diff: plus(conf("gpu", "100.64.0.12")) },
       {
         path: "/Users/you/.ssh/config",
         action: "update",

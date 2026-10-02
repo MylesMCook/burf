@@ -149,7 +149,7 @@
     <figure class="shot hero-shot">
       <picture>
           <source media="(prefers-color-scheme: light)" srcset="assets/shots/dashboard-light-1280.webp 1280w, assets/shots/dashboard-light-2240.webp 2240w" sizes="(min-width: 1168px) 1120px, calc(100vw - 32px)">
-          <img src="assets/shots/dashboard-dark-1280.webp" srcset="assets/shots/dashboard-dark-1280.webp 1280w, assets/shots/dashboard-dark-2240.webp 2240w" sizes="(min-width: 1168px) 1120px, calc(100vw - 32px)" width="1280" height="800" alt="Berth's agent dashboard. Agents on two boxes, devl and gpu, in columns: one needs you with a question and two answers, two are working, two are done, one is ready." fetchpriority="high" decoding="async">
+          <img src="assets/shots/dashboard-dark-1280.webp" srcset="assets/shots/dashboard-dark-1280.webp 1280w, assets/shots/dashboard-dark-2240.webp 2240w" sizes="(min-width: 1168px) 1120px, calc(100vw - 32px)" width="1280" height="800" alt="Berth's agent dashboard: agents on two boxes, devl and gpu, in four columns. The one that needs you is outlined in amber, with its question and two answers; two are working, four are done and two are ready." fetchpriority="high" decoding="async">
         </picture>
     </figure>
     <p class="caption">Screenshots are from Berth's demo mode, with invented boxes and repositories.</p>
@@ -309,9 +309,27 @@
       </figure>
     </article>
 
-    <article class="feature" aria-labelledby="f-wt">
+    <article class="feature" aria-labelledby="f-pr">
       <div class="copy">
-        <p class="eyebrow"><span class="n">02</span> Worktrees</p>
+        <p class="eyebrow"><span class="n">02</span> Projects</p>
+        <h2 id="f-pr">Add a project on any box.</h2>
+        <p>Projects live on your boxes. Pick one, then type one thing — a path, a git URL, <code>owner/repo</code>, a pull request or issue link, or a new name — and the box says exactly what Enter will do: add the folder, clone it, or start a new one.</p>
+        <ul class="points">
+          <li>“Also on” sets the same repository up on your other boxes, with its kit.</li>
+          <li>One repository on several boxes is one project in the sidebar, and a new worktree asks which box to run on.</li>
+        </ul>
+      </div>
+      <figure class="shot narrow small">
+        <picture>
+          <source media="(prefers-color-scheme: light)" srcset="assets/shots/project-light-648.webp 648w, assets/shots/project-light-1296.webp 1296w" sizes="(min-width: 940px) 560px, calc(100vw - 32px)">
+          <img src="assets/shots/project-dark-648.webp" srcset="assets/shots/project-dark-648.webp 648w, assets/shots/project-dark-1296.webp 1296w" sizes="(min-width: 940px) 560px, calc(100vw - 32px)" width="648" height="613" alt="Add a project: boxes as tiles (devl selected, gpu, and old-vps offline), one field holding acme/handbook, and the line under it saying Enter will clone github.com/acme/handbook into ~/work on devl." loading="lazy" decoding="async">
+        </picture>
+      </figure>
+    </article>
+
+    <article class="feature flip" aria-labelledby="f-wt">
+      <div class="copy">
+        <p class="eyebrow"><span class="n">03</span> Worktrees</p>
         <h2 id="f-wt">Worktrees across boxes, with their history.</h2>
         <p>One table for every worktree on every box: how far it is ahead of and behind its base, uncommitted changes, the last commit, the agents in it and its port. Open one for its commit graph against main, and rebase, pause or open it from there.</p>
         <ul class="points">
@@ -328,9 +346,9 @@
       </figure>
     </article>
 
-    <article class="feature flip" aria-labelledby="f-or">
+    <article class="feature" aria-labelledby="f-or">
       <div class="copy">
-        <p class="eyebrow"><span class="n">03</span> Orchestration</p>
+        <p class="eyebrow"><span class="n">04</span> Orchestration</p>
         <h2 id="f-or">Agents that drive agents.</h2>
         <p>Prompt a running agent, wait for its turn to end, run a check where it works, loop until the check passes, or hand the work to a fresh agent in a new worktree — from the app, the CLI, a hook, or another agent. Broadcast sends one prompt to many agents across boxes, and can wait for each turn.</p>
         <pre><code>berth loop devl/fix-login --check "pnpm test" \
@@ -342,14 +360,34 @@
       <figure class="shot narrow small">
         <picture>
           <source media="(prefers-color-scheme: light)" srcset="assets/shots/broadcast-light-752.webp 752w, assets/shots/broadcast-light-1504.webp 1504w" sizes="(min-width: 940px) 560px, calc(100vw - 32px)">
-          <img src="assets/shots/broadcast-dark-752.webp" srcset="assets/shots/broadcast-dark-752.webp 752w, assets/shots/broadcast-dark-1504.webp 1504w" sizes="(min-width: 940px) 560px, calc(100vw - 32px)" width="752" height="694" alt="The broadcast dialog: one prompt, &quot;Make the check pass&quot;, going to three agents on two boxes, then waiting for each turn to end." loading="lazy" decoding="async">
+          <img src="assets/shots/broadcast-dark-752.webp" srcset="assets/shots/broadcast-dark-752.webp 752w, assets/shots/broadcast-dark-1504.webp 1504w" sizes="(min-width: 940px) 560px, calc(100vw - 32px)" width="752" height="800" alt="The broadcast dialog: one prompt, &quot;Make the check pass&quot;, going to three agents on two boxes, then waiting for each turn to end." loading="lazy" decoding="async">
+        </picture>
+      </figure>
+    </article>
+
+    <article class="feature flip" aria-labelledby="f-aw">
+      <div class="copy">
+        <p class="eyebrow"><span class="n">05</span> Away</p>
+        <h2 id="f-aw">Prompts wait for the box.</h2>
+        <p>Boxes drop off: the laptop sleeps, Wi-Fi goes, a box restarts. A prompt for an agent on a box that can't be reached waits in a queue on your laptop instead of failing, and is typed in when the box is back — in order for each agent, after its current turn.</p>
+        <pre><code>berth session send devl/billing-claude "Rebase on main" --queue
+berth queue</code></pre>
+        <ul class="points">
+          <li>The queue survives the agent and the laptop restarting, and delivers with the app closed.</li>
+          <li>At most once: a prompt that may have arrived is never typed twice; it waits for you to retry.</li>
+        </ul>
+      </div>
+      <figure class="shot narrow small">
+        <picture>
+          <source media="(prefers-color-scheme: light)" srcset="assets/shots/queue-light-418.webp 418w, assets/shots/queue-light-836.webp 836w" sizes="(min-width: 940px) 560px, calc(100vw - 32px)">
+          <img src="assets/shots/queue-dark-418.webp" srcset="assets/shots/queue-dark-418.webp 418w, assets/shots/queue-dark-836.webp 836w" sizes="(min-width: 940px) 560px, calc(100vw - 32px)" width="418" height="309" alt="Queued prompts: two prompts for an agent on old-vps, which is offline, each waiting for the box, with Send now and discard." loading="lazy" decoding="async">
         </picture>
       </figure>
     </article>
 
     <article class="feature" aria-labelledby="f-au">
       <div class="copy">
-        <p class="eyebrow"><span class="n">04</span> Automations</p>
+        <p class="eyebrow"><span class="n">06</span> Automations</p>
         <h2 id="f-au">Flows that run on the box.</h2>
         <p>When something happens — an agent finishes or needs you, a worktree is created, a schedule fires, a pull request gets a review comment or a failing check — run steps: commands, prompts, waits, new agents, notifications, webhooks. Flows run on the box, so they keep going while your laptop sleeps.</p>
         <ul class="points">
@@ -368,7 +406,7 @@
 
     <article class="feature flip" aria-labelledby="f-kit">
       <div class="copy">
-        <p class="eyebrow"><span class="n">05</span> Kits</p>
+        <p class="eyebrow"><span class="n">07</span> Kits</p>
         <h2 id="f-kit">Set a project up the same way on every box.</h2>
         <p>A kit packages what a project needs around its code — setup and teardown scripts, environment, ports, services, hooks, flows and agent presets — and travels as a link: a git repository, a folder in one, a gist, or a <code>kit.json</code>. You see everything it does, and every file it carries, before anything is kept or run.</p>
         <pre><code>berth kit add https://github.com/acme/kits/tree/main/cal-com
@@ -385,9 +423,27 @@ berth kit apply cal-com devl/cal gpu/cal</code></pre>
       </figure>
     </article>
 
-    <article class="feature" aria-labelledby="f-no">
+    <article class="feature" aria-labelledby="f-env">
       <div class="copy">
-        <p class="eyebrow"><span class="n">06</span> Notifications</p>
+        <p class="eyebrow"><span class="n">08</span> Environment</p>
+        <h2 id="f-env">Secrets by reference, never in the file.</h2>
+        <p>Every worktree gets its project's environment, from the repository's <code>.berth/config.json</code>, its kit and the box's own values, each marked with where it came from. A value can name a secret instead: <code>op://vault/item/field</code> is read from 1Password on the box when something starts, so the file and the kit can be shared, even publicly.</p>
+        <ul class="points">
+          <li>Test asks the box to read a reference now, and reports only whether it could and how long the value is.</li>
+          <li>A reference that can't be read leaves the variable unset and says so, in a notification; the value never reaches a disk, a log, an event or the API.</li>
+        </ul>
+      </div>
+      <figure class="shot narrow small">
+        <picture>
+          <source media="(prefers-color-scheme: light)" srcset="assets/shots/env-light-744.webp 744w, assets/shots/env-light-1488.webp 1488w" sizes="(min-width: 940px) 560px, calc(100vw - 32px)">
+          <img src="assets/shots/env-dark-744.webp" srcset="assets/shots/env-dark-744.webp 744w, assets/shots/env-dark-1488.webp 1488w" sizes="(min-width: 940px) 560px, calc(100vw - 32px)" width="744" height="380" alt="Project settings, Environment: DATABASE_URL and NEXT_PUBLIC_WEBAPP_URL from the kit, PORT from the repository, and STRIPE_PRIVATE_KEY on devl set to the reference op://dev/stripe/secret-key, with a Test button." loading="lazy" decoding="async">
+        </picture>
+      </figure>
+    </article>
+
+    <article class="feature flip" aria-labelledby="f-no">
+      <div class="copy">
+        <p class="eyebrow"><span class="n">09</span> Notifications</p>
         <h2 id="f-no">Told when it matters.</h2>
         <p>Agents waiting for you, failures and finished work go to one notification centre, with a needs-you list that clears itself when the cause does, do not disturb on a schedule, and settings for each kind.</p>
         <ul class="points">
@@ -397,15 +453,15 @@ berth kit apply cal-com devl/cal gpu/cal</code></pre>
       </div>
       <figure class="shot narrow small">
         <picture>
-          <source media="(prefers-color-scheme: light)" srcset="assets/shots/notifications-light-720.webp 720w, assets/shots/notifications-light-1440.webp 1440w" sizes="(min-width: 940px) 560px, calc(100vw - 32px)">
-          <img src="assets/shots/notifications-dark-720.webp" srcset="assets/shots/notifications-dark-720.webp 720w, assets/shots/notifications-dark-1440.webp 1440w" sizes="(min-width: 940px) 560px, calc(100vw - 32px)" width="720" height="800" alt="The notification centre beside the dashboard: a needs-you list with a failed service, a failed setup, a failed flow and a waiting agent, then earlier notifications." loading="lazy" decoding="async">
+          <source media="(prefers-color-scheme: light)" srcset="assets/shots/notifications-light-636.webp 636w, assets/shots/notifications-light-1272.webp 1272w" sizes="(min-width: 940px) 560px, calc(100vw - 32px)">
+          <img src="assets/shots/notifications-dark-636.webp" srcset="assets/shots/notifications-dark-636.webp 636w, assets/shots/notifications-dark-1272.webp 1272w" sizes="(min-width: 940px) 560px, calc(100vw - 32px)" width="636" height="758" alt="The notification panel over the dashboard: four that need you first (a service that failed to start, a failed setup, a failed flow and a waiting agent), then today's." loading="lazy" decoding="async">
         </picture>
       </figure>
     </article>
 
-    <article class="feature flip" aria-labelledby="f-pl">
+    <article class="feature" aria-labelledby="f-pl">
       <div class="copy">
-        <p class="eyebrow"><span class="n">07</span> Plugins</p>
+        <p class="eyebrow"><span class="n">10</span> Plugins</p>
         <h2 id="f-pl">Extend it with plugins.</h2>
         <p>A plugin is an ES module that adds screens, panels, commands, status bar items and themes, and can carry hooks. The built-ins — git changes, pull requests, dev servers, box monitor, activity, notes — use the same API as yours.</p>
         <pre><code><span class="k">import</span> type { BerthPluginContext } <span class="k">from</span> "@berth/plugin";
@@ -420,7 +476,7 @@ berth kit apply cal-com devl/cal gpu/cal</code></pre>
       <figure class="shot narrow small">
         <picture>
           <source media="(prefers-color-scheme: light)" srcset="assets/shots/plugins-light-640.webp 640w, assets/shots/plugins-light-1280.webp 1280w" sizes="(min-width: 940px) 520px, calc(100vw - 32px)">
-          <img src="assets/shots/plugins-dark-640.webp" srcset="assets/shots/plugins-dark-640.webp 640w, assets/shots/plugins-dark-1280.webp 1280w" sizes="(min-width: 940px) 520px, calc(100vw - 32px)" width="640" height="700" alt="Settings, Plugins: the built-in plugins Activity, Box monitor, Dev servers, Git changes, Notes and Pull request, each with what it adds." loading="lazy" decoding="async">
+          <img src="assets/shots/plugins-dark-640.webp" srcset="assets/shots/plugins-dark-640.webp 640w, assets/shots/plugins-dark-1280.webp 1280w" sizes="(min-width: 940px) 520px, calc(100vw - 32px)" width="640" height="700" alt="Settings, Plugins: the built-in plugins Activity, Box monitor, Dev servers, Git changes, Issues and Notes, each with what it adds." loading="lazy" decoding="async">
         </picture>
       </figure>
     </article>

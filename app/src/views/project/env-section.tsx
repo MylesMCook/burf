@@ -55,28 +55,28 @@ function SecretTestButton({ box, value }: { box: string; value: string }) {
       setResult({ ok: false, error: errorMessage(err) });
     }
   };
+  // The result lives in the button, so the reference beside it keeps its
+  // width; the tooltip has the whole of it.
+  const done = result && result !== "testing" ? result : undefined;
+  const chars = (n: number) => `${n} ${n === 1 ? "character" : "characters"}`;
+  const said = !done ? undefined : done.ok ? (done.length ? `Resolved · ${chars(done.length ?? 0)}` : "Resolved, but empty") : (done.error ?? "Could not read it");
   return (
-    <span className="flex shrink-0 items-center gap-1.5">
-      <Tip label={`Ask ${box} to read it now`}>
-        <Button size="xs" variant="ghost" onClick={() => void test()} disabled={!client || result === "testing"}>
-          {result === "testing" ? <LoaderIcon className="animate-spin" /> : null}
-          Test
+    <span className="flex shrink-0 items-center">
+      <Tip label={said ? `${said}. Test again` : `Ask ${box} to read it now`}>
+        <Button
+          size="xs"
+          variant="ghost"
+          onClick={() => void test()}
+          disabled={!client || result === "testing"}
+          className={cn(done?.ok && "text-success-foreground dark:text-success", done && !done.ok && "text-destructive-foreground")}
+        >
+          {result === "testing" ? <LoaderIcon className="animate-spin" /> : done?.ok ? <CheckIcon /> : done ? <CircleAlertIcon /> : null}
+          {!done ? "Test" : done.ok ? (done.length ? `${done.length} chars` : "Empty") : "Failed"}
         </Button>
       </Tip>
-      {result && result !== "testing" && result.ok && (
-        <span className="flex items-center gap-1 text-success-foreground text-xs dark:text-success">
-          <CheckIcon className="size-3.5" />
-          {result.length === 0 ? "Resolved, but empty" : `Resolved · ${result.length} ${result.length === 1 ? "character" : "characters"}`}
-        </span>
-      )}
-      {result && result !== "testing" && !result.ok && (
-        <Tip label={result.error}>
-          <span className="flex max-w-56 items-center gap-1 text-destructive-foreground text-xs">
-            <CircleAlertIcon className="size-3.5 shrink-0" />
-            <span className="truncate">{result.error ?? "Could not read it"}</span>
-          </span>
-        </Tip>
-      )}
+      <span className="sr-only" aria-live="polite">
+        {said}
+      </span>
     </span>
   );
 }
@@ -89,7 +89,7 @@ function SecretInput({ name, value, onChange, box }: { name: string; value: stri
   const secret = SECRET.test(name) && !ref;
   const [shown, setShown] = useState(!SECRET.test(name));
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex min-w-0 items-center gap-1">
       {ref && <RefMark />}
       <Input value={value} type={shown || ref ? "text" : "password"} onChange={(e) => onChange(e.target.value)} size="sm" className="font-mono text-xs" spellCheck={false} autoComplete="off" />
       {secret && (

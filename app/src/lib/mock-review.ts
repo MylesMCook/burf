@@ -10,14 +10,14 @@ type Emit = (e: Omit<BerthEvent, "time">) => void;
 const ago = (min: number) => new Date(Date.now() - min * 60_000).toISOString();
 
 const work: Record<string, Omit<ReviewItem, "session" | "agent" | "agent_state" | "state_since">> = {
-  "devl|/home/sean/work/cal-billing-fix": {
+  "devl|/home/me/work/cal-billing-fix": {
     location: "cal",
     worktree: "billing-fix",
-    path: "/home/sean/work/cal-billing-fix",
-    branch: "sean/billing-fix",
+    path: "/home/me/work/cal-billing-fix",
+    branch: "me/billing-fix",
     head: "4f1c9e2",
     base: "origin/main",
-    upstream: "origin/sean/billing-fix",
+    upstream: "origin/me/billing-fix",
     ahead: 2,
     behind: 0,
     files: [
@@ -37,11 +37,11 @@ const work: Record<string, Omit<ReviewItem, "session" | "agent" | "agent_state" 
       { path: "packages/lib/backoff.ts", code: "A ", added: 41, removed: 0 },
     ],
   },
-  "devl|/home/sean/work/cal-booker-perf": {
+  "devl|/home/me/work/cal-booker-perf": {
     location: "cal",
     worktree: "booker-perf",
-    path: "/home/sean/work/cal-booker-perf",
-    branch: "sean/booker-perf",
+    path: "/home/me/work/cal-booker-perf",
+    branch: "me/booker-perf",
     head: "c0ffee1",
     base: "origin/main",
     ahead: 0,
@@ -128,7 +128,7 @@ export function reviewExec(box: string, location: string, command: string, emit:
       }
     })();
     w.committed = [...w.committed, ...w.files.map((f) => ({ ...f, code: f.code === "??" ? "A " : "M " }))];
-    w.commits = [{ sha: Math.random().toString(16).slice(2).padEnd(40, "0"), subject, author: "Sean", when: new Date().toISOString() }, ...w.commits];
+    w.commits = [{ sha: Math.random().toString(16).slice(2).padEnd(40, "0"), subject, author: "you", when: new Date().toISOString() }, ...w.commits];
     w.base_ahead += 1;
     w.ahead += 1;
     w.head = w.commits[0].sha.slice(0, 7);
