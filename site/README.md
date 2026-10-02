@@ -5,7 +5,10 @@ Berth's landing page: static HTML and CSS, no build step. Open
 
 - `index.html`, `styles.css`: the page. Light and dark follow the system.
 - `assets/shots/`: screenshots of the app, as WebP pairs per theme:
-  `<scene>-<dark|light>-<width>.webp`, at 1x and 2x.
+  `<scene>-<dark|light>-<width>.webp`, at 1x and 2x, and for phones a
+  readable crop of each wide one, `<scene>-<dark|light>-phone-<width>.webp`.
+- `assets/og.png`: the 1200×630 link preview (harbour and headline);
+  `assets/favicon.svg` and `assets/apple-touch-icon.png` (180px, opaque).
 - `assets/fonts/`: Inter and JetBrains Mono (SIL OFL, licences beside them).
 - `scripts/capture.mjs`: retakes the screenshots.
 
@@ -30,6 +33,7 @@ or that logs a console error in demo mode, makes it exit non-zero.
 node site/scripts/capture.mjs --only dashboard,env   # some scenes
 node site/scripts/capture.mjs --theme light           # one theme
 node site/scripts/capture.mjs --png /tmp/shots        # also keep the 2x PNGs to look at
+node site/scripts/capture.mjs --phone-only            # re-cut the phone crops, no app needed
 ```
 
 Also `--port N`, `--quality 0.8` (WebP), `--skip-plugins`, and the
@@ -37,9 +41,23 @@ environment variables `PLAYWRIGHT_CORE` (playwright-core's folder, if it
 is installed elsewhere) and `CHROME_CHANNEL` (default `chrome`).
 
 Each scene in `scripts/capture.mjs` stages one screen and returns the area
-to keep. Adding one there and a `<picture>` for it in `index.html` (a
-light `<source>`, a dark `<img>`, both with the two widths) is all a new
-screenshot takes. `&shots=1` in the demo's URL hides its "mock" badge.
+to keep: a dialog or panel on its own, not cut from the window around it.
+Adding one there and a `<picture>` for it in `index.html` (a light
+`<source>`, a dark `<img>`, both with the two widths) is all a new
+screenshot takes. A scene's `phone` area adds the phone crop; give it two
+more `<source>`s with `media="(max-width: 640px)"` (light first) and the
+`crop` class on the figure if the crop cuts through the screen.
+`&shots=1` in the demo's URL hides its "mock" badge.
+
+## Rules
+
+The page follows the brand board (`design/brand/index.html`): amber only
+for what needs you (the lit masthead, the "needs you" row), small labels in
+sentence case and never tracked, no stripe down one side of a card, the
+harbour by day, and the app's own words ("Send a prompt to several agents",
+not "Broadcast"). The drawings move by `transform` and `opacity` only, with
+fixed keyframes and no SVG masks over moving parts (both forced style and
+layout every frame), pause offscreen, and stop for reduced motion.
 
 Keep the page light: about 250 KB on first load and under 1 MB after
 scrolling to the end at 2x.

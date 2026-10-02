@@ -11,6 +11,13 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="Berth — coding agents on your own boxes">
 <meta property="og:description" content="Run Claude Code, Codex and other agents on your own dev boxes, and work with them as if they were on your laptop. They keep going when it sleeps.">
+<meta property="og:image" content="assets/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="berth: agents that keep working when your laptop sleeps, over a line drawing of a harbour.">
+<meta name="twitter:card" content="summary_large_image">
+<!-- og:url and <link rel="canonical"> go here once the page has its domain;
+     og:image is relative until then. -->
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <link rel="stylesheet" href="styles.css">
@@ -25,11 +32,14 @@
       berth
     </a>
     <nav class="site-nav" aria-label="Main">
-      <a class="opt" href="#why">Why</a>
-      <a class="opt" href="#how">How it works</a>
-      <a class="opt" href="#features">Features</a>
-      <a class="opt" href="#start">Get started</a>
-      <a class="gh" href="https://github.com/sean-brydon/berthd"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a>
+      <button class="menu-btn" type="button" aria-expanded="false" aria-controls="site-menu" hidden><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path class="l1" d="M2.5 5 H13.5"/><path class="l2" d="M2.5 11 H13.5"/></svg>Menu</button>
+      <div class="nav-links" id="site-menu">
+        <a href="#why">Why</a>
+        <a href="#how">How it works</a>
+        <a href="#features">Features</a>
+        <a href="#start">Get started</a>
+      </div>
+      <a class="gh" href="https://github.com/sean-brydon/berthd" aria-label="Berth on GitHub"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a>
     </nav>
   </div>
 </header>
@@ -49,32 +59,39 @@
     <p class="note">No releases yet: build it from source.</p>
 
     <div class="harbour art">
-      <svg viewBox="0 22 960 206" preserveAspectRatio="xMinYMid slice" role="img" aria-labelledby="harbour-title" fill="none" stroke-linecap="round" stroke-linejoin="round">
-        <title id="harbour-title">A harbour at night: a quay with a small shed, then berths between mooring posts. Two boats are moored, and one has its masthead lamp lit because it needs you. The third berth is empty, and a boat is out on the water, working.</title>
+      <svg viewBox="0 76 960 152" preserveAspectRatio="xMinYMid slice" role="img" aria-labelledby="harbour-title" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <title id="harbour-title">A harbour by day: a quay with a small shed, then berths between mooring posts. Two boats are moored, and one has its masthead lamp lit because it needs you. The third berth is empty, and a boat is out on the water, working.</title>
         <defs>
-          <linearGradient id="h-fade-g" x1="0" x2="1" y1="0" y2="0">
-            <stop offset="0" stop-color="#fff" stop-opacity="0"/>
-            <stop offset="0.06" stop-color="#fff"/>
-            <stop offset="0.9" stop-color="#fff"/>
-            <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+          <!-- Water and haze fade out at both ends. Painted over with the page's
+               own ground rather than masked: transforms inside a mask forced
+               style and layout on every frame. -->
+          <linearGradient id="h-edge-l" gradientUnits="userSpaceOnUse" x1="-40" x2="22" y1="0" y2="0">
+            <stop offset="0" style="stop-color: var(--bg)"/>
+            <stop offset="1" style="stop-color: var(--bg); stop-opacity: 0"/>
           </linearGradient>
-          <mask id="h-fade" maskUnits="userSpaceOnUse" x="-40" y="0" width="1040" height="250">
-            <rect x="-40" y="0" width="1040" height="250" fill="url(#h-fade-g)"/>
-          </mask>
+          <linearGradient id="h-edge-r" gradientUnits="userSpaceOnUse" x1="896" x2="1000" y1="0" y2="0">
+            <stop offset="0" style="stop-color: var(--bg); stop-opacity: 0"/>
+            <stop offset="1" style="stop-color: var(--bg)"/>
+          </linearGradient>
           <linearGradient id="h-rope" gradientUnits="userSpaceOnUse" x1="460" x2="540" y1="0" y2="0">
             <stop offset="0" stop-color="currentColor"/>
             <stop offset="0.6" stop-color="currentColor" stop-opacity="0.55"/>
             <stop offset="1" stop-color="currentColor" stop-opacity="0"/>
           </linearGradient>
-          <mask id="h-moon" maskUnits="userSpaceOnUse" x="660" y="20" width="80" height="70">
-            <rect x="660" y="20" width="80" height="70" fill="#fff"/>
-            <circle cx="709" cy="46" r="15" fill="#000"/>
-          </mask>
+          <clipPath id="h-wake" clipPathUnits="userSpaceOnUse">
+            <rect x="610" y="178" width="54" height="18"/>
+          </clipPath>
         </defs>
 
-        <!-- Sky: a crescent moon (the laptop is asleep), fog far out. -->
-        <circle cx="701" cy="52" r="16" fill="currentColor" opacity="0.55" mask="url(#h-moon)"/>
-        <g mask="url(#h-fade)" stroke="currentColor" stroke-width="1.6">
+        <!-- Sky: harbour by day, as in the app. A pale sun over the headland,
+             drawn in line (the one amber is the lamp below), gulls, and haze
+             far out. -->
+        <circle cx="858" cy="100" r="14" stroke="currentColor" stroke-width="1.8" opacity="0.45"/>
+        <g stroke="currentColor" stroke-width="1.6" opacity="0.6">
+          <path class="gull" d="M512 104 q4.2 -4.4 8.4 0 q4.2 -4.4 8.4 0"/>
+          <path class="gull b" d="M540 116 q3.2 -3.4 6.4 0 q3.2 -3.4 6.4 0" opacity="0.7"/>
+        </g>
+        <g stroke="currentColor" stroke-width="1.6">
           <path class="fog" d="M330 118 H940" stroke-dasharray="26 16" opacity="0.2"/>
           <path class="fog rev" d="M420 130 H920" stroke-dasharray="14 18" opacity="0.14"/>
         </g>
@@ -126,9 +143,11 @@
         <path d="M462 158 C 470 178, 490 190, 540 187" stroke="url(#h-rope)" stroke-width="1.8" stroke-dasharray="3.4 2.2"/>
 
         <!-- Out on the water, a boat at work, with a little wake. -->
-        <g stroke="currentColor">
-          <path class="wake" d="M612 184 H658" stroke-width="1.5" stroke-dasharray="7 6" opacity="0.5"/>
-          <path class="wake" d="M624 191 H662" stroke-width="1.3" stroke-dasharray="5 8" opacity="0.3"/>
+        <!-- The wake slides by one dash period inside a fixed clip, so only
+             transforms move (no dash offsets, no layout). -->
+        <g stroke="currentColor" clip-path="url(#h-wake)">
+          <path class="wake" d="M612 184 H671" stroke-width="1.5" stroke-dasharray="7 6" opacity="0.5"/>
+          <path class="wake" d="M624 191 H675" stroke-width="1.3" stroke-dasharray="5 8" opacity="0.3"/>
         </g>
         <g class="ride c" stroke="currentColor">
           <path class="hull" d="M664 177 H736 L728 188.5 H673 Z" stroke-width="2.3"/>
@@ -138,16 +157,20 @@
         </g>
 
         <!-- Open water: one long swell, then broken lines further out. -->
-        <g mask="url(#h-fade)" stroke="currentColor">
-          <path class="wave" style="--d:8s;--x:-24px" d="M-24 184 q6 -2.6 12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0" stroke-width="1.9" opacity="0.7"/>
-          <path class="wave rev" style="--d:12s;--x:-48px" d="M-24 197 q6 -2.2 12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0" stroke-width="1.7" opacity="0.4" stroke-dasharray="32 16"/>
-          <path class="wave" style="--d:16s;--x:-72px" d="M-24 210 q6 -2 12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0" stroke-width="1.6" opacity="0.2" stroke-dasharray="12 20 28 12"/>
+        <g stroke="currentColor">
+          <path class="wave x24" style="--d:8s" d="M-24 184 q6 -2.6 12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0" stroke-width="1.9" opacity="0.7"/>
+          <path class="wave rev x48" style="--d:12s" d="M-24 197 q6 -2.2 12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0" stroke-width="1.7" opacity="0.4" stroke-dasharray="32 16"/>
+          <path class="wave x72" style="--d:16s" d="M-24 210 q6 -2 12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0 t12 0" stroke-width="1.6" opacity="0.2" stroke-dasharray="12 20 28 12"/>
         </g>
+              <rect x="-40" y="76" width="62" height="152" fill="url(#h-edge-l)"/>
+        <rect x="896" y="76" width="104" height="152" fill="url(#h-edge-r)"/>
       </svg>
     </div>
 
     <figure class="shot hero-shot">
       <picture>
+          <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="assets/shots/dashboard-light-phone-300.webp 300w, assets/shots/dashboard-light-phone-600.webp 600w" sizes="calc(100vw - 32px)" width="300" height="206">
+          <source media="(max-width: 640px)" srcset="assets/shots/dashboard-dark-phone-300.webp 300w, assets/shots/dashboard-dark-phone-600.webp 600w" sizes="calc(100vw - 32px)" width="300" height="206">
           <source media="(prefers-color-scheme: light)" srcset="assets/shots/dashboard-light-1280.webp 1280w, assets/shots/dashboard-light-2240.webp 2240w" sizes="(min-width: 1168px) 1120px, calc(100vw - 32px)">
           <img src="assets/shots/dashboard-dark-1280.webp" srcset="assets/shots/dashboard-dark-1280.webp 1280w, assets/shots/dashboard-dark-2240.webp 2240w" sizes="(min-width: 1168px) 1120px, calc(100vw - 32px)" width="1280" height="800" alt="Berth's agent dashboard: agents on two boxes, devl and gpu, in four columns. The one that needs you is outlined in amber, with its question and two answers; two are working, four are done and two are ready." fetchpriority="high" decoding="async">
         </picture>
@@ -198,7 +221,7 @@
       <div class="cell">
         <svg class="glyph" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16 a4.5 4.5 0 0 0 6.4 0 l3.6 -3.6 a4.5 4.5 0 0 0 -6.4 -6.4 l-1.4 1.4"/><path d="M16 12 a4.5 4.5 0 0 0 -6.4 0 l-3.6 3.6 a4.5 4.5 0 0 0 6.4 6.4 l1.4 -1.4"/></svg>
         <h3>Private URLs, no DNS</h3>
-        <p>Every port on a box is at <code>http://3000.devl.localhost:1377/</code> on your laptop. <code>*.localhost</code> resolves to loopback everywhere, so there's no DNS zone or <code>/etc/hosts</code> edit, and dev servers need no configuration.</p>
+        <p>Every port on a box is at <code class="url">http://3000.devl.localhost:1377/</code> on your laptop. <code>*.localhost</code> resolves to loopback everywhere, so there's no DNS zone or <code>/etc/hosts</code> edit, and dev servers need no configuration.</p>
       </div>
       <div class="cell">
         <svg class="glyph" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="7" width="18" height="14" rx="2.5"/><path d="M5.5 8 L14 14.5 L22.5 8"/></svg>
@@ -241,16 +264,14 @@
       </div>
 
       <div class="link" aria-hidden="true">
-        <svg class="rope art" viewBox="0 0 2 56" preserveAspectRatio="none"><path class="wake" d="M1 0 V56" stroke="currentColor" stroke-width="2" stroke-dasharray="7 6"/></svg>
-        <svg class="rope-h art" viewBox="0 0 200 8" preserveAspectRatio="none"><path class="wake" d="M0 4 H200" stroke="currentColor" stroke-width="2" stroke-dasharray="7 6" vector-effect="non-scaling-stroke"/></svg>
+        <span class="rope art"></span>
         <div class="chips">
           <span class="chip">TLS 1.3, mutual</span>
           <span class="chip">pinned keys</span>
           <span class="chip">HTTP/2, one per box</span>
           <span class="chip">over your tailnet</span>
         </div>
-        <svg class="rope-h art" viewBox="0 0 200 8" preserveAspectRatio="none"><path class="wake" d="M0 4 H200" stroke="currentColor" stroke-width="2" stroke-dasharray="7 6" vector-effect="non-scaling-stroke"/></svg>
-        <svg class="rope art" viewBox="0 0 2 56" preserveAspectRatio="none"><path class="wake" d="M1 0 V56" stroke="currentColor" stroke-width="2" stroke-dasharray="7 6"/></svg>
+        <span class="rope art"></span>
       </div>
 
       <div class="boxes">
@@ -301,8 +322,10 @@
       <div class="copy">
         <p>Open a worktree and its terminals, splits and browser tabs are together. Terminals are ghostty-web, attached over a WebSocket: closing a tab detaches, and the session keeps running on the box. Each dev server is a tab away at a private URL, and each worktree gets its own ports, environment and services from the repository's <code>.berth/config.json</code>.</p>
       </div>
-      <figure class="shot">
+      <figure class="shot crop">
         <picture>
+          <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="assets/shots/workspace-light-phone-420.webp 420w, assets/shots/workspace-light-phone-840.webp 840w" sizes="calc(100vw - 32px)" width="420" height="340">
+          <source media="(max-width: 640px)" srcset="assets/shots/workspace-dark-phone-420.webp 420w, assets/shots/workspace-dark-phone-840.webp 840w" sizes="calc(100vw - 32px)" width="420" height="340">
           <source media="(prefers-color-scheme: light)" srcset="assets/shots/workspace-light-1280.webp 1280w, assets/shots/workspace-light-2240.webp 2240w" sizes="(min-width: 1168px) 1120px, calc(100vw - 32px)">
           <img src="assets/shots/workspace-dark-1280.webp" srcset="assets/shots/workspace-dark-1280.webp 1280w, assets/shots/workspace-dark-2240.webp 2240w" sizes="(min-width: 1168px) 1120px, calc(100vw - 32px)" width="1280" height="800" alt="A worktree's workspace: Claude Code in a terminal on the left, and the worktree's dev server in a browser tab on the right, at http://3110.devl.localhost:1377/." loading="lazy" decoding="async">
         </picture>
@@ -319,8 +342,10 @@
           <li>One repository on several boxes is one project in the sidebar, and a new worktree asks which box to run on.</li>
         </ul>
       </div>
-      <figure class="shot narrow small">
+      <figure class="shot crop narrow small">
         <picture>
+          <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="assets/shots/project-light-phone-400.webp 400w, assets/shots/project-light-phone-800.webp 800w" sizes="calc(100vw - 32px)" width="400" height="380">
+          <source media="(max-width: 640px)" srcset="assets/shots/project-dark-phone-400.webp 400w, assets/shots/project-dark-phone-800.webp 800w" sizes="calc(100vw - 32px)" width="400" height="380">
           <source media="(prefers-color-scheme: light)" srcset="assets/shots/project-light-648.webp 648w, assets/shots/project-light-1296.webp 1296w" sizes="(min-width: 940px) 560px, calc(100vw - 32px)">
           <img src="assets/shots/project-dark-648.webp" srcset="assets/shots/project-dark-648.webp 648w, assets/shots/project-dark-1296.webp 1296w" sizes="(min-width: 940px) 560px, calc(100vw - 32px)" width="648" height="613" alt="Add a project: boxes as tiles (devl selected, gpu, and old-vps offline), one field holding acme/handbook, and the line under it saying Enter will clone github.com/acme/handbook into ~/work on devl." loading="lazy" decoding="async">
         </picture>
@@ -338,8 +363,10 @@
           <li>Sync several at once; conflicts come back with fixes per worktree.</li>
         </ul>
       </div>
-      <figure class="shot narrow">
+      <figure class="shot crop narrow">
         <picture>
+          <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="assets/shots/graph-light-phone-420.webp 420w, assets/shots/graph-light-phone-840.webp 840w" sizes="calc(100vw - 32px)" width="420" height="420">
+          <source media="(max-width: 640px)" srcset="assets/shots/graph-dark-phone-420.webp 420w, assets/shots/graph-dark-phone-840.webp 840w" sizes="calc(100vw - 32px)" width="420" height="420">
           <source media="(prefers-color-scheme: light)" srcset="assets/shots/graph-light-760.webp 760w, assets/shots/graph-light-1400.webp 1400w" sizes="(min-width: 940px) 560px, calc(100vw - 32px)">
           <img src="assets/shots/graph-dark-760.webp" srcset="assets/shots/graph-dark-760.webp 760w, assets/shots/graph-dark-1400.webp 1400w" sizes="(min-width: 940px) 560px, calc(100vw - 32px)" width="760" height="760" alt="A worktree's commit graph: me/billing-fix is three commits ahead of origin/main and twelve behind, with Rebase, Pause and Open actions." loading="lazy" decoding="async">
         </picture>
@@ -350,17 +377,19 @@
       <div class="copy">
         <p class="eyebrow"><span class="n">04</span> Orchestration</p>
         <h2 id="f-or">Agents that drive agents.</h2>
-        <p>Prompt a running agent, wait for its turn to end, run a check where it works, loop until the check passes, or hand the work to a fresh agent in a new worktree — from the app, the CLI, a hook, or another agent. Broadcast sends one prompt to many agents across boxes, and can wait for each turn.</p>
+        <p>Prompt a running agent, wait for its turn to end, run a check where it works, loop until the check passes, or hand the work to a fresh agent in a new worktree — from the app, the CLI, a hook, or another agent. Send one prompt to several agents across boxes at once, and wait for each of their turns.</p>
         <pre><code>berth loop devl/fix-login --check "pnpm test" \
   --prompt "Make the tests pass"</code></pre>
         <ul class="points">
           <li>Berth's skills teach Claude Code and Codex the same commands, and never to answer another agent's question for you.</li>
         </ul>
       </div>
-      <figure class="shot narrow small">
+      <figure class="shot crop narrow small">
         <picture>
+          <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="assets/shots/broadcast-light-phone-400.webp 400w, assets/shots/broadcast-light-phone-800.webp 800w" sizes="calc(100vw - 32px)" width="400" height="420">
+          <source media="(max-width: 640px)" srcset="assets/shots/broadcast-dark-phone-400.webp 400w, assets/shots/broadcast-dark-phone-800.webp 800w" sizes="calc(100vw - 32px)" width="400" height="420">
           <source media="(prefers-color-scheme: light)" srcset="assets/shots/broadcast-light-752.webp 752w, assets/shots/broadcast-light-1504.webp 1504w" sizes="(min-width: 940px) 560px, calc(100vw - 32px)">
-          <img src="assets/shots/broadcast-dark-752.webp" srcset="assets/shots/broadcast-dark-752.webp 752w, assets/shots/broadcast-dark-1504.webp 1504w" sizes="(min-width: 940px) 560px, calc(100vw - 32px)" width="752" height="800" alt="The broadcast dialog: one prompt, &quot;Make the check pass&quot;, going to three agents on two boxes, then waiting for each turn to end." loading="lazy" decoding="async">
+          <img src="assets/shots/broadcast-dark-752.webp" srcset="assets/shots/broadcast-dark-752.webp 752w, assets/shots/broadcast-dark-1504.webp 1504w" sizes="(min-width: 940px) 560px, calc(100vw - 32px)" width="752" height="800" alt="Send to several agents: one prompt, &quot;Make the check pass&quot;, going to three agents on two boxes, then waiting for each turn to end." loading="lazy" decoding="async">
         </picture>
       </figure>
     </article>
@@ -377,10 +406,10 @@ berth queue</code></pre>
           <li>At most once: a prompt that may have arrived is never typed twice; it waits for you to retry.</li>
         </ul>
       </div>
-      <figure class="shot narrow small">
+      <figure class="shot narrow small native" style="--w: 414px">
         <picture>
-          <source media="(prefers-color-scheme: light)" srcset="assets/shots/queue-light-418.webp 418w, assets/shots/queue-light-836.webp 836w" sizes="(min-width: 940px) 560px, calc(100vw - 32px)">
-          <img src="assets/shots/queue-dark-418.webp" srcset="assets/shots/queue-dark-418.webp 418w, assets/shots/queue-dark-836.webp 836w" sizes="(min-width: 940px) 560px, calc(100vw - 32px)" width="418" height="309" alt="Queued prompts: two prompts for an agent on old-vps, which is offline, each waiting for the box, with Send now and discard." loading="lazy" decoding="async">
+          <source media="(prefers-color-scheme: light)" srcset="assets/shots/queue-light-414.webp 414w, assets/shots/queue-light-828.webp 828w" sizes="(min-width: 940px) 414px, calc(100vw - 32px)">
+          <img src="assets/shots/queue-dark-414.webp" srcset="assets/shots/queue-dark-414.webp 414w, assets/shots/queue-dark-828.webp 828w" sizes="(min-width: 940px) 414px, calc(100vw - 32px)" width="414" height="307" alt="Queued prompts: two prompts for an agent on old-vps, which is offline, each waiting for the box, with Send now and discard." loading="lazy" decoding="async">
         </picture>
       </figure>
     </article>
@@ -396,8 +425,10 @@ berth queue</code></pre>
           <li><code>before:</code> hooks can refuse any action, and an optional resource guard stops idle dev servers when a box runs short of memory.</li>
         </ul>
       </div>
-      <figure class="shot narrow small">
+      <figure class="shot crop narrow small">
         <picture>
+          <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="assets/shots/flow-light-phone-400.webp 400w, assets/shots/flow-light-phone-800.webp 800w" sizes="calc(100vw - 32px)" width="400" height="400">
+          <source media="(max-width: 640px)" srcset="assets/shots/flow-dark-phone-400.webp 400w, assets/shots/flow-dark-phone-800.webp 800w" sizes="calc(100vw - 32px)" width="400" height="400">
           <source media="(prefers-color-scheme: light)" srcset="assets/shots/flow-light-664.webp 664w, assets/shots/flow-light-1328.webp 1328w" sizes="(min-width: 940px) 560px, calc(100vw - 32px)">
           <img src="assets/shots/flow-dark-664.webp" srcset="assets/shots/flow-dark-664.webp 664w, assets/shots/flow-dark-1328.webp 1328w" sizes="(min-width: 940px) 560px, calc(100vw - 32px)" width="664" height="600" alt="The flow editor: a flow that runs for any calcom/cal.com on the boxes devl and gpu, starts when an agent finishes, and notifies you." loading="lazy" decoding="async">
         </picture>
@@ -415,8 +446,10 @@ berth kit apply cal-com devl/cal gpu/cal</code></pre>
           <li>The box's own settings always win, so you can change one value without forking the kit.</li>
         </ul>
       </div>
-      <figure class="shot narrow small">
+      <figure class="shot crop narrow small">
         <picture>
+          <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="assets/shots/kits-light-phone-400.webp 400w, assets/shots/kits-light-phone-800.webp 800w" sizes="calc(100vw - 32px)" width="400" height="460">
+          <source media="(max-width: 640px)" srcset="assets/shots/kits-dark-phone-400.webp 400w, assets/shots/kits-dark-phone-800.webp 800w" sizes="calc(100vw - 32px)" width="400" height="460">
           <source media="(prefers-color-scheme: light)" srcset="assets/shots/kits-light-640.webp 640w, assets/shots/kits-light-1280.webp 1280w" sizes="(min-width: 940px) 520px, calc(100vw - 32px)">
           <img src="assets/shots/kits-dark-640.webp" srcset="assets/shots/kits-dark-640.webp 640w, assets/shots/kits-dark-1280.webp 1280w" sizes="(min-width: 940px) 520px, calc(100vw - 32px)" width="640" height="800" alt="Reviewing a kit added from a link before keeping it: its setup and teardown scripts, environment, ports and services, with a warning that its scripts run on your boxes." loading="lazy" decoding="async">
         </picture>
@@ -433,8 +466,10 @@ berth kit apply cal-com devl/cal gpu/cal</code></pre>
           <li>A reference that can't be read leaves the variable unset and says so, in a notification; the value never reaches a disk, a log, an event or the API.</li>
         </ul>
       </div>
-      <figure class="shot narrow small">
+      <figure class="shot crop narrow small">
         <picture>
+          <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="assets/shots/env-light-phone-420.webp 420w, assets/shots/env-light-phone-840.webp 840w" sizes="calc(100vw - 32px)" width="420" height="380">
+          <source media="(max-width: 640px)" srcset="assets/shots/env-dark-phone-420.webp 420w, assets/shots/env-dark-phone-840.webp 840w" sizes="calc(100vw - 32px)" width="420" height="380">
           <source media="(prefers-color-scheme: light)" srcset="assets/shots/env-light-744.webp 744w, assets/shots/env-light-1488.webp 1488w" sizes="(min-width: 940px) 560px, calc(100vw - 32px)">
           <img src="assets/shots/env-dark-744.webp" srcset="assets/shots/env-dark-744.webp 744w, assets/shots/env-dark-1488.webp 1488w" sizes="(min-width: 940px) 560px, calc(100vw - 32px)" width="744" height="380" alt="Project settings, Environment: DATABASE_URL and NEXT_PUBLIC_WEBAPP_URL from the kit, PORT from the repository, and STRIPE_PRIVATE_KEY on devl set to the reference op://dev/stripe/secret-key, with a Test button." loading="lazy" decoding="async">
         </picture>
@@ -451,10 +486,10 @@ berth kit apply cal-com devl/cal gpu/cal</code></pre>
           <li>Push to your phone through ntfy. Notifications name the worktree and box, never what the agent wrote.</li>
         </ul>
       </div>
-      <figure class="shot narrow small">
+      <figure class="shot narrow small native" style="--w: 420px">
         <picture>
-          <source media="(prefers-color-scheme: light)" srcset="assets/shots/notifications-light-636.webp 636w, assets/shots/notifications-light-1272.webp 1272w" sizes="(min-width: 940px) 560px, calc(100vw - 32px)">
-          <img src="assets/shots/notifications-dark-636.webp" srcset="assets/shots/notifications-dark-636.webp 636w, assets/shots/notifications-dark-1272.webp 1272w" sizes="(min-width: 940px) 560px, calc(100vw - 32px)" width="636" height="758" alt="The notification panel over the dashboard: four that need you first (a service that failed to start, a failed setup, a failed flow and a waiting agent), then today's." loading="lazy" decoding="async">
+          <source media="(prefers-color-scheme: light)" srcset="assets/shots/notifications-light-420.webp 420w, assets/shots/notifications-light-840.webp 840w" sizes="(min-width: 940px) 420px, calc(100vw - 32px)">
+          <img src="assets/shots/notifications-dark-420.webp" srcset="assets/shots/notifications-dark-420.webp 420w, assets/shots/notifications-dark-840.webp 840w" sizes="(min-width: 940px) 420px, calc(100vw - 32px)" width="420" height="742" alt="The notification panel: four that need you first (a service that failed to start, a failed setup, a failed flow and a waiting agent), then today's." loading="lazy" decoding="async">
         </picture>
       </figure>
     </article>
@@ -473,8 +508,10 @@ berth kit apply cal-com devl/cal gpu/cal</code></pre>
   });
 }</code></pre>
       </div>
-      <figure class="shot narrow small">
+      <figure class="shot crop narrow small">
         <picture>
+          <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="assets/shots/plugins-light-phone-400.webp 400w, assets/shots/plugins-light-phone-800.webp 800w" sizes="calc(100vw - 32px)" width="400" height="440">
+          <source media="(max-width: 640px)" srcset="assets/shots/plugins-dark-phone-400.webp 400w, assets/shots/plugins-dark-phone-800.webp 800w" sizes="calc(100vw - 32px)" width="400" height="440">
           <source media="(prefers-color-scheme: light)" srcset="assets/shots/plugins-light-640.webp 640w, assets/shots/plugins-light-1280.webp 1280w" sizes="(min-width: 940px) 520px, calc(100vw - 32px)">
           <img src="assets/shots/plugins-dark-640.webp" srcset="assets/shots/plugins-dark-640.webp 640w, assets/shots/plugins-dark-1280.webp 1280w" sizes="(min-width: 940px) 520px, calc(100vw - 32px)" width="640" height="700" alt="Settings, Plugins: the built-in plugins Activity, Box monitor, Dev servers, Git changes, Issues and Notes, each with what it adds." loading="lazy" decoding="async">
         </picture>
@@ -492,7 +529,7 @@ berth kit apply cal-com devl/cal gpu/cal</code></pre>
     <div>
       <p class="eyebrow">Open source</p>
       <h2 id="oss-title" class="h2">Developed in the open, in one repository.</h2>
-      <p class="body-lg">The daemon and CLI in Go, the desktop app in Tauri and React, the built-in plugins and the plugin SDK all live in <a href="https://github.com/sean-brydon/berthd">sean-brydon/berthd</a> on GitHub. Read the design and the security model, or build it yourself.</p>
+      <p class="body-lg">The daemon and CLI in Go, the desktop app in Tauri and React, the built‑in plugins and the plugin SDK all live in <a href="https://github.com/sean-brydon/berthd">sean-brydon/berthd</a> on GitHub. Read the design and the security model, or build it yourself.</p>
       <dl class="layout-list">
         <dt>berthd</dt><dd>The daemon on each box: worktrees, sessions, services, hooks, flows, kits.</dd>
         <dt>berth</dt><dd>The laptop CLI and background agent: connections, private URLs, the app's API.</dd>
@@ -507,26 +544,31 @@ berth kit apply cal-com devl/cal gpu/cal</code></pre>
     </div>
     <svg class="art-end art" viewBox="0 16 160 52" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
       <defs>
-        <linearGradient id="e-fade-g" x1="0" x2="1" y1="0" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="0.18" stop-color="#fff"/><stop offset="0.82" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
-        <mask id="e-fade" maskUnits="userSpaceOnUse" x="0" y="0" width="160" height="72"><rect x="0" y="0" width="160" height="72" fill="url(#e-fade-g)"/></mask>
+        <!-- The water fades at both ends under the page's own ground (no mask,
+             so the waves' transforms stay cheap). -->
+        <linearGradient id="e-edge-l" gradientUnits="userSpaceOnUse" x1="0" x2="28.8" y1="0" y2="0"><stop offset="0" style="stop-color: var(--bg)"/><stop offset="1" style="stop-color: var(--bg); stop-opacity: 0"/></linearGradient>
+        <linearGradient id="e-edge-r" gradientUnits="userSpaceOnUse" x1="131.2" x2="160" y1="0" y2="0"><stop offset="0" style="stop-color: var(--bg); stop-opacity: 0"/><stop offset="1" style="stop-color: var(--bg)"/></linearGradient>
       </defs>
-      <g stroke="currentColor">
-        <path d="M8 36 H66" stroke-width="2.4"/>
-        <path d="M15 38 V48 M33 38 V48 M51 38 V48" stroke-width="2"/>
-        <path d="M15 51.5 V60 M33 51.5 V60 M51 51.5 V60" stroke-width="2" opacity="0.26"/>
-        <path d="M56.5 31.2 H65.5 M61 31.6 V34.4" stroke-width="2"/>
-        <path d="M64.5 32.6 Q 76 38.5 87.5 42.4" stroke-width="1.2"/>
-      </g>
       <g class="ride" stroke="currentColor">
         <path class="hull" d="M86 42.2 H131 L125.5 49.6 H92 Z" fill="var(--bg)" stroke-width="1.9"/>
         <path d="M99 42 V37.2 H110.5 L114 42" stroke-width="1.5"/>
         <path d="M106 37 V24.6" stroke-width="1.4"/>
         <circle cx="106" cy="22.6" r="2.2" stroke-width="1.2"/>
       </g>
-      <g mask="url(#e-fade)" stroke="currentColor" stroke-width="1.2">
-        <path class="wave" style="--d:7s;--x:-12px" d="M-12 49.4 q3 -1.3 6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0" opacity="0.72"/>
-        <path class="wave rev" style="--d:11s;--x:-24px" d="M-12 55.6 q3 -1.1 6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0" opacity="0.42" stroke-dasharray="16 8"/>
-        <path class="wave" style="--d:15s;--x:-36px" d="M-12 61.6 q3 -1 6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0" opacity="0.22" stroke-dasharray="6 10 14 6"/>
+      <g stroke="currentColor" stroke-width="1.2">
+        <path class="wave x12" style="--d:7s" d="M-12 49.4 q3 -1.3 6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0" opacity="0.72"/>
+        <path class="wave rev x24" style="--d:11s" d="M-12 55.6 q3 -1.1 6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0" opacity="0.42" stroke-dasharray="16 8"/>
+        <path class="wave x36" style="--d:15s" d="M-12 61.6 q3 -1 6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0" opacity="0.22" stroke-dasharray="6 10 14 6"/>
+      </g>
+      <rect x="0" y="16" width="28.8" height="52" fill="url(#e-edge-l)"/>
+      <rect x="131.2" y="16" width="28.8" height="52" fill="url(#e-edge-r)"/>
+      <!-- The jetty sits over the faded water, so its end doesn't fade. -->
+      <g stroke="currentColor">
+        <path d="M8 36 H66" stroke-width="2.4"/>
+        <path d="M15 38 V48 M33 38 V48 M51 38 V48" stroke-width="2"/>
+        <path d="M15 51.5 V60 M33 51.5 V60 M51 51.5 V60" stroke-width="2" opacity="0.26"/>
+        <path d="M56.5 31.2 H65.5 M61 31.6 V34.4" stroke-width="2"/>
+        <path d="M64.5 32.6 Q 76 38.5 87.5 42.4" stroke-width="1.2"/>
       </g>
     </svg>
   </div>
@@ -535,11 +577,27 @@ berth kit apply cal-com devl/cal gpu/cal</code></pre>
 <!-- Get started -->
 <section class="start" id="start" aria-labelledby="start-title">
   <div class="wrap start-grid">
-    <div>
+    <div class="start-head">
       <p class="eyebrow">Get started</p>
       <h2 id="start-title" class="h2">Build it from source.</h2>
+    </div>
+    <div class="start-copy">
       <p class="reqs">There are no releases yet. You need Go 1.27, Node 22 and pnpm, and Rust for the app. Then install berthd on a box over SSH, pair it, and start an agent.</p>
       <p class="reqs"><code>berth help</code> lists every command, and every listing takes <code>--json</code>.</p>
+    </div>
+    <div class="start-code">
+      <div class="code-block">
+        <div class="code-head"><span>From the repository's root</span><button class="copy-btn" type="button" data-copy="start-code" hidden>Copy</button></div>
+        <pre id="start-code" tabindex="0" aria-label="Build and install commands"><code><span class="c"># bin/berth, bin/berthd and the Linux daemons</span>
+make all
+<span class="c"># install berthd on a box over SSH, and pair</span>
+bin/berth add ssh me@my-box
+bin/berth location add my-box/app ~/work/app
+bin/berth task new my-box/app/fix-login --agent claude --prompt "Fix the login redirect"
+<span class="c"># the desktop app</span>
+cd app &amp;&amp; pnpm install &amp;&amp; pnpm tauri dev</code></pre>
+      </div>
+      <h3 class="docs-title">Read next</h3>
       <ul class="docs-list">
         <li><a href="https://github.com/sean-brydon/berthd/blob/main/docs/design.md">Architecture and security model</a></li>
         <li><a href="https://github.com/sean-brydon/berthd/blob/main/docs/templates.md">.berth/config.json: ports, env, services</a></li>
@@ -549,13 +607,14 @@ berth kit apply cal-com devl/cal gpu/cal</code></pre>
         <li><a href="https://github.com/sean-brydon/berthd/blob/main/docs/phone.md">The phone companion</a></li>
       </ul>
     </div>
-    <div class="code-block">
-      <div class="code-head"><span>From the repository's root</span><button class="copy-btn" type="button" data-copy="start-code" hidden>Copy</button></div>
-      <pre id="start-code"><code>make all                                   <span class="c"># bin/berth, bin/berthd, Linux daemons</span>
-bin/berth add ssh me@my-box                <span class="c"># install berthd on a box over SSH, and pair</span>
-bin/berth location add my-box/app ~/work/app
-bin/berth task new my-box/app/fix-login --agent claude --prompt "Fix the login redirect"
-cd app &amp;&amp; pnpm install &amp;&amp; pnpm tauri dev   <span class="c"># the desktop app</span></code></pre>
+  </div>
+  <div class="wrap">
+    <div class="closing">
+      <p><strong>Follow along.</strong> Watch the repository on GitHub for the first release, or open an issue with what you'd run on your boxes.</p>
+      <div class="actions row">
+        <a class="btn primary" href="https://github.com/sean-brydon/berthd">Watch on GitHub</a>
+        <a class="btn" href="https://github.com/sean-brydon/berthd/issues">Open an issue</a>
+      </div>
     </div>
   </div>
 </section>
@@ -564,18 +623,33 @@ cd app &amp;&amp; pnpm install &amp;&amp; pnpm tauri dev   <span class="c"># the
 
 <footer class="site-footer">
   <div class="wrap">
-    <span><span class="wordmark">berth</span> · where agents moor · <a href="https://github.com/sean-brydon/berthd">github.com/sean-brydon/berthd</a></span>
-    <span>Screenshots: demo mode, invented data.</span>
+    <span><span class="wordmark">berth</span> · where agents moor</span>
+    <nav class="foot-nav" aria-label="Footer">
+      <a href="https://github.com/sean-brydon/berthd">GitHub</a>
+      <a href="https://github.com/sean-brydon/berthd/tree/main/docs">Docs</a>
+      <a href="https://github.com/sean-brydon/berthd/blob/main/docs/design.md">Security model</a>
+      <a href="#top">Back to top</a>
+    </nav>
   </div>
 </footer>
 
 <script>
-  // The only script: copy buttons for code, shown when the clipboard is there.
+  // The page's only script. Everything works without it; it adds the copy
+  // buttons, the phone menu, the current section in the nav, and pauses the
+  // drawings while they're offscreen.
+
+  // Copy buttons for code, shown when the clipboard is there. Comment lines
+  // and trailing comments are left out.
   if (navigator.clipboard) {
     for (const b of document.querySelectorAll("[data-copy]")) {
       b.hidden = false;
       b.addEventListener("click", async () => {
-        const text = document.getElementById(b.dataset.copy).innerText.replace(/[ \t]+#.*$/gm, "");
+        const text = document
+          .getElementById(b.dataset.copy)
+          .innerText.split("\n")
+          .filter((l) => !/^\s*#/.test(l))
+          .map((l) => l.replace(/[ \t]+#.*$/, ""))
+          .join("\n");
         try {
           await navigator.clipboard.writeText(text);
           b.textContent = "Copied";
@@ -586,6 +660,49 @@ cd app &amp;&amp; pnpm install &amp;&amp; pnpm tauri dev   <span class="c"># the
       });
     }
   }
+
+  // Phone menu: a disclosure for the section links.
+  const header = document.querySelector(".site-header");
+  const menuBtn = document.querySelector(".menu-btn");
+  const menu = document.getElementById("site-menu");
+  const setMenu = (open) => {
+    menuBtn.setAttribute("aria-expanded", String(open));
+    header.classList.toggle("menu-open", open);
+  };
+  document.documentElement.classList.add("js");
+  menuBtn.hidden = false;
+  menuBtn.addEventListener("click", () => setMenu(menuBtn.getAttribute("aria-expanded") !== "true"));
+  menu.addEventListener("click", (e) => e.target.closest("a") && setMenu(false));
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && menuBtn.getAttribute("aria-expanded") === "true") {
+      setMenu(false);
+      menuBtn.focus();
+    }
+  });
+  document.addEventListener("click", (e) => !header.contains(e.target) && setMenu(false));
+  matchMedia("(min-width: 721px)").addEventListener("change", () => setMenu(false));
+
+  // The nav marks the section in view.
+  const navLinks = new Map([...menu.querySelectorAll("a")].map((a) => [a.hash.slice(1), a]));
+  const sectionIO = new IntersectionObserver(
+    (entries) => {
+      for (const e of entries) {
+        const a = navLinks.get(e.target.id);
+        if (a) e.isIntersecting ? a.setAttribute("aria-current", "true") : a.removeAttribute("aria-current");
+      }
+    },
+    { rootMargin: "-45% 0px -50% 0px" },
+  );
+  for (const id of navLinks.keys()) {
+    const el = document.getElementById(id);
+    if (el) sectionIO.observe(el);
+  }
+
+  // Drawings hold still while offscreen.
+  const artIO = new IntersectionObserver((entries) => {
+    for (const e of entries) e.target.classList.toggle("off", !e.isIntersecting);
+  });
+  for (const el of document.querySelectorAll(".art")) artIO.observe(el);
 </script>
 </body>
 </html>

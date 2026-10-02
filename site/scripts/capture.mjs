@@ -11,12 +11,19 @@
 //   node site/scripts/capture.mjs --only flow,env     some scenes
 //   node site/scripts/capture.mjs --theme dark        one theme
 //   node site/scripts/capture.mjs --png /tmp/shots    also keep the 2x PNGs
+//   node site/scripts/capture.mjs --phone-only        only re-cut the phone crops
+//                                                     from the WebPs already there
+//
+// A scene with a `phone` area also gets a crop for phones, shown below 640px
+// wide: <scene>-<theme>-phone-<width>.webp, at the area's 1x and 2x widths.
+// The area is in CSS pixels from the top left of the scene's clip, so it can
+// be re-cut from the saved 2x WebP without starting the app (--phone-only).
 //
 // Other flags: --port N (default 1456), --quality 0.8, --skip-plugins.
 // It needs Google Chrome and playwright-core; see site/README.md.
 
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -55,22 +62,33 @@ small{color:#888}</style></head><body><header><b>Billing</b><span>localhost · d
 
 // A scene opens the demo, stages one screen and returns the area to keep,
 // in CSS pixels. Widths are the WebP widths written; the default is the
-// clip's width and twice it.
+// clip's width and twice it. A scene whose widths are set also says its
+// clip's width (clipWidth), for --phone-only.
 const scenes = [
   {
     name: "dashboard",
     // Wide enough for all four columns.
     viewport: { width: 1440, height: 900 },
     widths: [1280, 2240],
+    clipWidth: 1440,
+    // The "Needs you" column: the waiting agent's card, its question and answers.
+    phone: { x: 251, y: 52, width: 300, height: 206 },
     async stage(s) {
       await s.view({ kind: "dashboard" });
+      await s.wait(600);
+      await s.quietQueue();
+      await s.page.mouse.move(1430, 450);
+      await s.wait(600);
       return s.full();
     },
   },
   {
     name: "workspace",
     widths: [1280, 2240],
+    clipWidth: 1280,
+    phone: { x: 220, y: 0, width: 420, height: 340 },
     async stage(s) {
+      await s.quietQueue();
       await s.page.getByText("billing-fix", { exact: true }).first().click();
       await s.wait(800);
       // The worktree's dev server, opened beside the agent.
@@ -81,6 +99,7 @@ const scenes = [
   },
   {
     name: "project",
+    phone: { x: 0, y: 0, width: 400, height: 380 },
     async stage(s) {
       await s.page.evaluate(() => window.__berthStore.getState().openAddProject());
       await s.wait(600);
@@ -92,17 +111,22 @@ const scenes = [
   {
     name: "graph",
     widths: [760, 1400],
+    clipWidth: 760,
+    phone: { x: 0, y: 0, width: 420, height: 420 },
     async stage(s) {
       await s.view({ kind: "worktrees" });
       await s.wait(800);
       await s.page.locator("main").getByText("billing-fix", { exact: true }).first().click();
       await s.wait(1000);
+      // A shot, not a dialog: no close button in the corner.
+      await s.page.addStyleTag({ content: '[role="dialog"] [aria-label="Close"], [role="dialog"] [data-slot="dialog-close"], [role="dialog"] [data-slot="sheet-close"] { visibility: hidden !important; }' });
       const box = await s.page.getByRole("dialog").boundingBox();
       return { x: box.x, y: 0, width: Math.min(box.width, 1280 - box.x), height: 760 };
     },
   },
   {
     name: "broadcast",
+    phone: { x: 0, y: 0, width: 400, height: 420 },
     async stage(s) {
       await s.view({ kind: "dashboard" });
       await s.wait(800);
@@ -128,11 +152,13 @@ const scenes = [
       const box = await pop.boundingBox();
       const next = await pop.getByText(/· online/).first().boundingBox();
       const bottom = next ? next.y - 12 : box.y + box.height;
-      return { x: box.x - 1, y: box.y - 1, width: box.width + 2, height: bottom - box.y + 1 };
+      // Inside the popover's own border, so nothing beside it shows.
+      return { x: box.x + 1, y: box.y + 1, width: box.width - 2, height: bottom - box.y - 1 };
     },
   },
   {
     name: "flow",
+    phone: { x: 0, y: 0, width: 400, height: 400 },
     async stage(s) {
       await s.view({ kind: "automations", open: { box: "*", scope: "project:calcom/cal.com" } });
       await s.wait(1000);
@@ -143,6 +169,7 @@ const scenes = [
   },
   {
     name: "kits",
+    phone: { x: 0, y: 0, width: 400, height: 460 },
     async stage(s) {
       await s.view({ kind: "kits" });
       await s.wait(800);
@@ -157,6 +184,7 @@ const scenes = [
   },
   {
     name: "env",
+    phone: { x: 0, y: 0, width: 420, height: 380 },
     async stage(s) {
       await s.view({ kind: "project", box: "devl", location: "cal" });
       await s.wait(1000);
@@ -178,13 +206,14 @@ const scenes = [
       await s.view({ kind: "dashboard" });
       await s.page.keyboard.press("Meta+Shift+N");
       await s.wait(900);
+      // The panel on its own: nothing of the dashboard behind it, cut mid-word.
       const box = await s.page.getByText("Mark all read").locator("xpath=ancestor::*[@data-side or @role='dialog'][1]").boundingBox();
-      const x = Math.max(0, box.x - 200);
-      return { x, y: 0, width: Math.min(1280, box.x + box.width + 16) - x, height: Math.min(800, box.y + box.height + 16) };
+      return { x: box.x, y: box.y, width: box.width, height: Math.min(800 - box.y, box.height) };
     },
   },
   {
     name: "plugins",
+    phone: { x: 0, y: 0, width: 400, height: 440 },
     async stage(s) {
       await s.view({ kind: "settings", section: "plugins" });
       await s.wait(800);
@@ -255,25 +284,67 @@ async function waitForServer(vite) {
 }
 
 // encode turns one 2x PNG into WebPs at the given widths, in the browser.
-async function encode(page, png, clip, widths) {
+// The source is a 2x image of the clip; `area` (CSS pixels within the clip)
+// cuts part of it, for the phone crops.
+async function encode(page, image, clip, widths, area, mime = "image/png") {
   return page.evaluate(
-    async ({ b64, clip, widths, quality }) => {
+    async ({ b64, mime, clip, widths, area, quality }) => {
       const img = new Image();
-      img.src = `data:image/png;base64,${b64}`;
+      img.src = `data:${mime};base64,${b64}`;
       await img.decode();
+      const k = img.width / clip.width;
+      const a = area ?? { x: 0, y: 0, width: clip.width, height: clip.height };
       return widths.map((w) => {
-        const h = Math.round((clip.height * w) / clip.width);
+        const h = Math.round((a.height * w) / a.width);
         const c = document.createElement("canvas");
         c.width = w;
         c.height = h;
         const ctx = c.getContext("2d");
         ctx.imageSmoothingQuality = "high";
-        ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, w, h);
+        ctx.drawImage(img, a.x * k, a.y * k, a.width * k, a.height * k, 0, 0, w, h);
         return { w, h, data: c.toDataURL("image/webp", quality).split(",")[1] };
       });
     },
-    { b64: png.toString("base64"), clip, widths, quality },
+    { b64: image.toString("base64"), mime, clip, widths, area, quality },
   );
+}
+
+function write(name, r) {
+  const file = join(outDir, `${name}-${r.w}.webp`);
+  writeFileSync(file, Buffer.from(r.data, "base64"));
+  console.log(`${name}-${r.w}.webp  ${r.w}x${r.h}  ${(statSync(file).size / 1024).toFixed(0)} KB`);
+}
+
+// phoneOnly re-cuts every phone crop from the 2x WebP already in assets/shots.
+async function phoneOnly() {
+  const { chromium } = await loadPlaywright();
+  const browser = await chromium.launch({ channel: process.env.CHROME_CHANNEL ?? "chrome", headless: true });
+  try {
+    const page = await browser.newPage();
+    for (const scene of scenes) {
+      if (!scene.phone || (only && !only.includes(scene.name))) continue;
+      for (const theme of themes) {
+        const re = new RegExp(`^${scene.name}-${theme}-(\\d+)\\.webp$`);
+        const sizes = readdirSync(outDir).map((f) => Number(f.match(re)?.[1])).filter(Boolean).sort((a, b) => b - a);
+        if (!sizes.length) throw new Error(`no ${scene.name}-${theme} WebP to cut a phone crop from`);
+        const big = readFileSync(join(outDir, `${scene.name}-${theme}-${sizes[0]}.webp`));
+        // The clip in CSS pixels: twice the widest WebP, unless the scene
+        // says (its widths are set, and the widest is under 2x).
+        const dims = await page.evaluate(async (b64) => {
+          const img = new Image();
+          img.src = `data:image/webp;base64,${b64}`;
+          await img.decode();
+          return { width: img.width, height: img.height };
+        }, big.toString("base64"));
+        const cw = scene.clipWidth ?? dims.width / 2;
+        const clip = { width: cw, height: (dims.height * cw) / dims.width };
+        const p = scene.phone;
+        for (const r of await encode(page, big, clip, [p.width, p.width * 2], p, "image/webp")) write(`${scene.name}-${theme}-phone`, r);
+      }
+    }
+  } finally {
+    await browser.close();
+  }
 }
 
 async function main() {
@@ -314,6 +385,21 @@ async function main() {
           wait,
           view: (v) => page.evaluate((v) => window.__berthStore.getState().setView(v), v),
           full: () => ({ x: 0, y: 0, ...viewport }),
+          // The demo starts with one queued prompt that failed; drop it, so
+          // the status bar shows the queue without a red error.
+          async quietQueue() {
+            await page.getByText(/^Queued/).first().click();
+            await wait(500);
+            const failed = page.getByRole("button", { name: "Retry" }).first();
+            if (await failed.count()) {
+              await failed.locator("xpath=ancestor::div[contains(@class,'border-b')][1]").getByRole("button", { name: "Discard" }).click();
+              await wait(500);
+            }
+            await page.keyboard.press("Escape");
+            // No focus ring left on the status bar's Queued button.
+            await page.evaluate(() => document.activeElement?.blur());
+            await wait(300);
+          },
           async around(locator, pad) {
             const b = await locator.first().boundingBox();
             const x = Math.max(0, b.x - pad);
@@ -330,10 +416,10 @@ async function main() {
           const png = await page.screenshot({ clip });
           if (pngDir) writeFileSync(join(pngDir, `${scene.name}-${theme}.png`), png);
           const widths = scene.widths ?? [Math.round(clip.width), Math.round(clip.width * 2)];
-          for (const r of await encode(encoder, png, clip, widths)) {
-            const file = join(outDir, `${scene.name}-${theme}-${r.w}.webp`);
-            writeFileSync(file, Buffer.from(r.data, "base64"));
-            console.log(`${scene.name}-${theme}-${r.w}.webp  ${r.w}x${r.h}  ${(statSync(file).size / 1024).toFixed(0)} KB`);
+          for (const r of await encode(encoder, png, clip, widths)) write(`${scene.name}-${theme}`, r);
+          if (scene.phone) {
+            const p = scene.phone;
+            for (const r of await encode(encoder, png, clip, [p.width, p.width * 2], p)) write(`${scene.name}-${theme}-phone`, r);
           }
           if (errors.length) {
             failed++;
@@ -357,7 +443,7 @@ async function main() {
   }
 }
 
-main().catch((err) => {
+(args.includes("--phone-only") ? phoneOnly() : main()).catch((err) => {
   console.error(err.message);
   process.exit(1);
 });
