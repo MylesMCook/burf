@@ -2,8 +2,10 @@ import { ArrowUpRightIcon, CodeXmlIcon, GlobeIcon, SquareTerminalIcon } from "lu
 import { useEffect, useRef, useState } from "react";
 
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
+import { Mooring } from "@/components/art/mooring";
 import { openEditor } from "@/components/editors/open";
 import { toastManager } from "@/components/ui/toast";
+import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { agentPresets, openBrowserAt, startSession } from "@/lib/actions";
@@ -101,6 +103,11 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
     <div className="absolute inset-0 overflow-y-auto bg-background">
       <div className="flex min-h-full items-start justify-center px-6 pt-[18vh] pb-10">
         <div ref={list} onKeyDown={onKeyDown} className="w-full max-w-[560px]">
+          {/* A boat tied up and ready: the same drawing language as a pane
+              whose session ended. Fixed size, so nothing below moves. */}
+          <div aria-hidden className="mb-3 px-1">
+            <Mooring variant="moored" />
+          </div>
           <header className="mb-4 px-2">
             <h1 className="truncate font-semibold text-lg tracking-tight" title={name}>
               {name}
@@ -112,18 +119,27 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
                 </span>
               )}
               <span className="shrink-0 rounded bg-accent px-1.5 py-px font-mono text-[11px]">{ref.box}</span>
-              <button
-                type="button"
-                title={`${ref.path} (click to copy)`}
-                onClick={() => {
-                  void navigator.clipboard.writeText(ref.path);
-                  toastManager.add({ title: "Copied the path", description: ref.path, type: "success" });
-                }}
-                // Truncated from the left, so the end of the path stays visible.
-                className="min-w-0 truncate text-left font-mono text-[11px] hover:text-foreground [direction:rtl]"
+              <Tip
+                className="max-w-md"
+                label={
+                  <span className="flex flex-col gap-0.5">
+                    <span className="break-all font-mono">{ref.path}</span>
+                    <span className="text-muted-foreground">Click to copy</span>
+                  </span>
+                }
               >
-                <bdi>{ref.path}</bdi>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(ref.path);
+                    toastManager.add({ title: "Copied the path", description: ref.path, type: "success" });
+                  }}
+                  // Truncated from the left, so the end of the path stays visible.
+                  className="min-w-0 truncate text-left font-mono text-[11px] hover:text-foreground [direction:rtl]"
+                >
+                  <bdi>{ref.path}</bdi>
+                </button>
+              </Tip>
             </div>
           </header>
 
@@ -153,14 +169,15 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
                     key={s.name}
                     data-row
                     tabIndex={0}
-                    title={s.name}
                     onKeyDown={(e) => e.key === "Enter" && openSession(ref.box, s)}
                     className="flex h-10 items-center gap-3 rounded-md px-2 text-sm outline-none hover:bg-accent focus-visible:bg-accent"
                   >
                     <span className="flex size-4 shrink-0 items-center justify-center">
                       <AgentIcon agent={agentOf(s)} className="size-4" />
                     </span>
-                    <span className="shrink-0">{agentLabel(agentOf(s)!)}</span>
+                    <Tip label={<span className="font-mono">{s.name}</span>}>
+                      <span className="shrink-0">{agentLabel(agentOf(s)!)}</span>
+                    </Tip>
                     <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-muted-foreground text-xs">
                       <StateGlyph state={state} className="size-3" />
                       <span className="truncate">

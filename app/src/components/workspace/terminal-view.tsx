@@ -1,19 +1,16 @@
-import { CloudOffIcon, RotateCwIcon, ServerIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
-import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { BoxOffline, SessionEnded } from "@/components/workspace/pane-state";
 import { useActiveTheme } from "@/hooks/use-theme";
-import { startSession } from "@/lib/actions";
 import type { TerminalConnection } from "@/lib/api";
-import { agentLabel } from "@/lib/derive";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { openEditor } from "@/components/editors/open";
 import { findPaths, resolveIn } from "@/lib/editor-paths";
+import { OVERLAYS } from "@/lib/overlays";
 import { createTerminal, type TermHandle } from "@/lib/terminal";
 import { cn } from "@/lib/utils";
-import { useWorkspaces } from "@/lib/workspaces";
 
 type ConnState = "connecting" | "open" | "reconnecting" | "offline" | "ended";
 
@@ -183,31 +180,9 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
   const blocked = state === "offline" || state === "ended";
   return (
     <div className="relative min-h-0 flex-1" style={{ background: theme.terminal.background }} onMouseDown={onFocus}>
-      <div ref={host} className={cn("absolute inset-0 overflow-hidden px-3 pt-2 pb-1 transition-opacity [&_canvas]:block", blocked && "pointer-events-none opacity-40")} />
-      {state === "offline" && (
-        <Card>
-          <CloudOffIcon className="size-5 text-muted-foreground" />
-          <p className="font-medium">{box} is offline</p>
-          <p className="max-w-xs text-muted-foreground text-xs">The session keeps running there; Berth reconnects on its own when the box is back.</p>
-          <div className="mt-1 flex gap-2">
-            <Button
-              size="sm"
-              onClick={() => {
-                void useStore.getState().refreshStatus();
-                setRetry((n) => n + 1);
-              }}
-            >
-              <RotateCwIcon />
-              Retry now
-            </Button>
-            <Button size="sm" variant="outline" onClick={() => useStore.getState().setView({ kind: "settings", section: "boxes" })}>
-              <ServerIcon />
-              Boxes
-            </Button>
-          </div>
-        </Card>
-      )}
-      {state === "ended" && <Ended box={box} session={session} agent={agent} command={command} wsKey={wsKey} tab={tab} pane={pane} onClose={onClose} />}
+      <div ref={host} className={cn("absolute inset-0 overflow-hidden px-3 pt-2 pb-1 transition-opacity [&_canvas]:block", blocked && "pointer-events-none", state === "offline" && "opacity-40", state === "ended" && "invisible")} />
+      {state === "offline" && <BoxOffline box={box} onRetry={() => setRetry((n) => n + 1)} />}
+      {state === "ended" && <SessionEnded box={box} session={session} agent={agent} command={command} wsKey={wsKey} tab={tab} pane={pane} onClose={onClose} />}
       {(state === "connecting" || state === "reconnecting") && (
         <div className="pointer-events-none absolute top-2 right-3 flex items-center gap-2 rounded-md border bg-popover/90 px-2 py-1 text-muted-foreground text-xs shadow-sm">
           <Spinner className="size-3" />
@@ -218,45 +193,10 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
   );
 }
 
-const OVERLAYS = "[role=dialog], [role=alertdialog], [role=menu], [role=listbox], [data-slot=popover-popup], [data-berth-overlay]";
-
 function somethingElseHasFocus(mine: HTMLElement | null): boolean {
   if (document.querySelector(OVERLAYS)) return true;
   const a = document.activeElement;
   if (a?.closest(OVERLAYS)) return true;
   if (!a || a === document.body || (mine && mine.contains(a))) return false;
   return a instanceof HTMLInputElement || a instanceof HTMLTextAreaElement || a instanceof HTMLSelectElement || (a as HTMLElement).isContentEditable;
-}
-
-function Card({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="absolute inset-0 flex items-center justify-center p-6">
-      <div className="flex flex-col items-center gap-2 rounded-xl border bg-popover/95 px-6 py-5 text-center text-sm shadow-lg/5">{children}</div>
-    </div>
-  );
-}
-
-// Ended says what stopped, and offers to start the same thing again in the
-// same worktree, in this pane.
-function Ended({ box, session, agent, command, wsKey, tab, pane, onClose }: { box: string; session: string; agent?: string; command?: string; wsKey: string; tab: string; pane: string; onClose(): void }) {
-  const ref = useWorkspaces((s) => s.spaces[wsKey]?.ref);
-  const what = agent ? agentLabel(agent) : "The shell";
-  const where = ref ? (ref.main ? ref.location : ref.worktree) : box;
-  return (
-    <Card>
-      <p className="font-medium">
-        {what} in {where} has ended
-      </p>
-      <p className="font-mono text-muted-foreground text-xs">{session}</p>
-      <div className="mt-1 flex gap-2">
-        <Button size="sm" onClick={() => void startSession(command ?? "", { kind: "replace", tab, pane }, agent ? agentLabel(agent) : "Shell")}>
-          <RotateCwIcon />
-          Start {agent ? agentLabel(agent) : "a shell"} again
-        </Button>
-        <Button size="sm" variant="ghost" onClick={onClose}>
-          Close pane
-        </Button>
-      </div>
-    </Card>
-  );
 }

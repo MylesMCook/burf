@@ -1,0 +1,118 @@
+/* Mooring: Berth's small line drawings for quiet states. Lines take
+   currentColor (muted by default); the buoy is the logo's amber dot, from the
+   theme's --warning so it follows every theme. Motion is slow and a pixel or
+   two at most, and stops entirely for reduced motion. */
+
+.berth-art {
+  color: var(--muted-foreground);
+  overflow: visible;
+}
+
+.berth-art .ba-wave {
+  animation: ba-drift var(--ba-d, 8s) linear infinite;
+}
+
+.berth-art .ba-wave.ba-rev {
+  animation-direction: reverse;
+}
+
+/* A wave slides by whole periods of its curve and dashes, then repeats. */
+@keyframes ba-drift {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(var(--ba-x, -12px));
+  }
+}
+
+.berth-art .ba-buoy {
+  transform-box: fill-box;
+  transform-origin: 50% 85%;
+  animation: ba-bob 4.4s ease-in-out infinite;
+}
+
+@keyframes ba-bob {
+  0%,
+  100% {
+    transform: translateY(-0.6px) rotate(-5deg);
+  }
+  50% {
+    transform: translateY(0.9px) rotate(4deg);
+  }
+}
+
+.berth-art .ba-glint {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ba-glint 4.4s ease-in-out infinite;
+}
+
+@keyframes ba-glint {
+  0%,
+  100% {
+    opacity: 0.22;
+    transform: scaleX(0.75);
+  }
+  50% {
+    opacity: 0.42;
+    transform: scaleX(1.1);
+  }
+}
+
+/* Moored: the boat rides the swell, a little slower than a buoy would. */
+.berth-art .ba-ride {
+  transform-box: fill-box;
+  transform-origin: 50% 90%;
+  animation: ba-ride 5.2s ease-in-out infinite;
+}
+
+@keyframes ba-ride {
+  0%,
+  100% {
+    transform: translateY(-0.4px) rotate(-1.4deg);
+  }
+  50% {
+    transform: translateY(0.6px) rotate(1.2deg);
+  }
+}
+
+/* Offline: the buoy's light turns slowly, as if looking for the box. */
+.berth-art .ba-beacon {
+  animation: ba-beacon 3.6s ease-in-out infinite;
+}
+
+@keyframes ba-beacon {
+  0%,
+  100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.berth-art .ba-fog {
+  animation: ba-fog 12s ease-in-out infinite alternate;
+}
+
+.berth-art .ba-fog.ba-rev {
+  animation-duration: 16s;
+  animation-direction: alternate-reverse;
+}
+
+@keyframes ba-fog {
+  from {
+    transform: translateX(-5px);
+  }
+  to {
+    transform: translateX(5px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .berth-art,
+  .berth-art * {
+    animation: none !important;
+  }
+}

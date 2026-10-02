@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 // FolderBrowser walks the box's folders. Git repositories are marked; Enter
 // on one adds it. Any folder can be added, though only git ones get
 // worktrees. Typing a path in the field jumps there.
-export function FolderBrowser({ box, onAdded }: { box: string; onAdded(loc: Location): Promise<void> }) {
+export function FolderBrowser({ box, start, onAdded }: { box: string; start?: string; onAdded(loc: Location): Promise<void> }) {
   const [listing, setListing] = useState<FsListing>();
   const [typed, setTyped] = useState("");
   const [active, setActive] = useState(-1);
@@ -44,9 +44,12 @@ export function FolderBrowser({ box, onAdded }: { box: string; onAdded(loc: Loca
     [box],
   );
 
-  // ~/work is where projects usually live; home when it is not there.
+  // Start where the field pointed, else ~/work, where projects usually
+  // live; home when it is not there.
   useEffect(() => {
-    void go("~/work", "~");
+    void (start ? go(start, "~/work") : go("~/work", "~"));
+    // Only where it starts; browsing moves on from there.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [go]);
 
   useEffect(() => {
