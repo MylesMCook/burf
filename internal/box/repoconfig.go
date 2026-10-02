@@ -57,6 +57,9 @@ func (c RepoConfig) validate() error {
 			return fmt.Errorf("%q is not an environment variable name", k)
 		}
 	}
+	if err := ValidateFlows(c.Flows); err != nil {
+		return err
+	}
 	return hooks.Validate(c.Hooks)
 }
 
@@ -87,6 +90,7 @@ func merge(repo, local RepoConfig) RepoConfig {
 	out.Services = mergeBy(repo.Services, local.Services, func(s WorktreeService) string { return s.Name })
 	out.Agents = mergeBy(repo.Agents, local.Agents, func(a AgentPreset) string { return a.ID })
 	out.Hooks = append(append([]hooks.Hook{}, repo.Hooks...), local.Hooks...)
+	out.Flows = mergeBy(repo.Flows, local.Flows, func(f Flow) string { return f.ID })
 	return out
 }
 

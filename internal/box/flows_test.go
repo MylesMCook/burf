@@ -1,0 +1,159 @@
+package box
+
+import (
+	"context"
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+
+	"github.com/sean-brydon/berth/internal/events"
+)
+
+func TestFlowsAreValidated(t *testing.T) {
+	ok := Flow{ID: "check", Name: "Check", Trigger: Trigger{Event: "agent.finished"}, Steps: []Step{{Kind: "run", Command: "pnpm test"}}}
+	if err := ValidateFlows([]Flow{ok}); err != nil {
+		t.Fatal(err)
+	}
+	for _, bad := range []Flow{
+		{ID: "Bad Id", Name: "x", Trigger: ok.Trigger, Steps: ok.Steps},
+		{ID: "a", Name: "x", Trigger: Trigger{Event: "before:worktree.create"}, Steps: ok.Steps},
+		{ID: "a", Name: "x", Trigger: ok.Trigger},
+		{ID: "a", Name: "x", Trigger: ok.Trigger, Steps: []Step{{Kind: "teleport"}}},
+		{ID: "a", Name: "x", Trigger: ok.Trigger, Steps: []Step{{Kind: "prompt"}}},
+		{ID: "a", Name: "x", Trigger: ok.Trigger, Steps: []Step{{Kind: "run", Command: "x", When: "sometimes"}}},
+		{ID: "a", Name: "x", Trigger: ok.Trigger, Steps: []Step{{Kind: "webhook", URL: "file:///etc/passwd"}}},
+	} {
+		if err := ValidateFlows([]Flow{bad}); err == nil {
+			t.Errorf("accepted %+v", bad)
+		}
+	}
+}
+
+// flowBox is a box with one repository, a stand-in agent session in a
+// worktree of it, and flows running.
+func flowBox(t *testing.T, flows []Flow) (*Box, Session, Worktree) {
+	t.Helper()
+	ctx, cancel := context.WithCancel(context.Background())
+	t.Cleanup(cancel)
+	repo := gitRepo(t)
+	writeRepoConfig(t, repo, RepoConfig{Flows: flows})
+	dir := t.TempDir()
+	b := &Box{Name: "devbox", Locations: NewLocations(filepath.Join(dir, "locations.json")), Events: &events.Bus{},
+		Sessions: testSessions(t), AgentStates: &AgentStates{}, Flows: &Flows{Path: filepath.Join(dir, "flows.json")}}
+	b.Locations.Add(ctx, "cal", repo)
+	wt, err := b.Locations.CreateWorktree(ctx, "cal", "billing", "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fake := filepath.Join(t.TempDir(), "claude")
+	os.WriteFile(fake, []byte("#!/bin/sh\nexec cat\n"), 0o755)
+	sess, err := b.Sessions.Create(ctx, "agent", "cal/billing", wt.Path, fake, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	go b.AgentStates.Run(ctx, b.Events)
+	go b.Flows.Run(ctx, b)
+	time.Sleep(100 * time.Millisecond)
+	return b, sess, wt
+}
+
+func waitRun(t *testing.T, b *Box, flow string) FlowRun {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for time.Now().Before(deadline) {
+		if runs := b.Flows.Runs(flow, 1); len(runs) == 1 && runs[0].Status != "running" {
+			return runs[0]
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	t.Fatalf("flow %s never finished", flow)
+	return FlowRun{}
+}
+
+func TestAFailedCheckIsSentBackToTheAgentThatFinished(t *testing.T) {
+	b, sess, wt := flowBox(t, []Flow{{
+		ID: "check", Name: "Check after each turn", Enabled: true,
+		Trigger: Trigger{Event: "agent.finished"},
+		Steps: []Step{
+			{ID: "test", Kind: "run", Command: "echo boom-on-$BERTH_WORKTREE_NAME; exit 2"},
+			{Kind: "prompt", When: "failure", Text: "The check failed ({{prev.exit_code}}): {{steps.test.output}}"},
+			{Kind: "notify", When: "always", Title: "Checked {{worktree.name}}"},
+		},
+	}})
+	notes, stop := b.Events.Subscribe()
+	defer stop()
+	b.Events.Publish(events.Event{Type: "agent.finished", Origin: "claude", Data: map[string]any{"path": wt.Path, "agent": "claude"}})
+
+	run := waitRun(t, b, "check")
+	if run.Status != "succeeded" || len(run.Steps) != 3 || run.Steps[0].Status != "failed" || run.Steps[1].Status != "succeeded" || run.Steps[2].Status != "succeeded" {
+		t.Fatalf("run = %+v", run)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		screen, _ := b.Sessions.Screen(context.Background(), sess.Name, 0)
+		if strings.Contains(screen, "The check failed (2): boom-on-billing") {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("the agent never got the failure: %q", screen)
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	for {
+		select {
+		case e := <-notes:
+			if e.Type == "notify" {
+				if e.Data["title"] != "Checked billing" || e.Origin != "flow:check" {
+					t.Fatalf("notify = %+v", e)
+				}
+				return
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatal("no notify event")
+		}
+	}
+}
+
+func TestRepoFlowsIgnoreOtherReposAndStopRunningAway(t *testing.T) {
+	b, _, wt := flowBox(t, []Flow{{
+		ID: "count", Name: "Count", Enabled: true, MaxRunsPerHour: 2,
+		Trigger: Trigger{Event: "worktree.*", Where: Where{Branch: "bill*"}},
+		Steps:   []Step{{Kind: "run", Command: "true"}},
+	}})
+	b.Events.Publish(events.Event{Type: "worktree.created", Data: map[string]any{"path": "/somewhere/else"}})
+	for range 4 {
+		b.Events.Publish(events.Event{Type: "worktree.changed", Data: map[string]any{"path": wt.Path}})
+		time.Sleep(300 * time.Millisecond)
+	}
+	if runs := b.Flows.Runs("count", 10); len(runs) != 2 {
+		t.Fatalf("%d runs, want the hourly limit of 2", len(runs))
+	}
+}
+
+func TestWebhooksPostTheRunsContext(t *testing.T) {
+	got := make(chan map[string]any, 1)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var m map[string]any
+		b, _ := io.ReadAll(r.Body)
+		json.Unmarshal(b, &m)
+		got <- m
+	}))
+	defer srv.Close()
+	b, _, wt := flowBox(t, []Flow{{ID: "hook", Name: "Tell Slack", Enabled: true, Trigger: Trigger{Event: "agent.waiting"},
+		Steps: []Step{{Kind: "webhook", URL: srv.URL, Text: `{"text":"{{worktree.name}} needs you"}`}}}})
+	b.Events.Publish(events.Event{Type: "agent.waiting", Data: map[string]any{"path": wt.Path}})
+	select {
+	case m := <-got:
+		if m["text"] != "billing needs you" {
+			t.Fatalf("body = %v", m)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("the webhook was never called")
+	}
+}

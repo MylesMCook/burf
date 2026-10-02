@@ -235,6 +235,7 @@ func serve(b boxHome, args []string) error {
 		Units:        &box.Units{Dir: filepath.Join(b.dir, "units")},
 		AgentStates:  agentStates,
 		Hooks:        hookRunner,
+		Flows:        box.FlowsAt(userDir, b.dir),
 		Update: &box.SelfUpdate{
 			Executable:    exe,
 			Fingerprint:   id.Fingerprint().String(),
@@ -243,6 +244,7 @@ func serve(b boxHome, args []string) error {
 	}
 	bx.Mount(s)
 	go bx.RunRepoHooks(ctx, logger)
+	go bx.Flows.Run(ctx, bx)
 
 	os.Remove(b.socket())
 	local, err := net.Listen("unix", b.socket())

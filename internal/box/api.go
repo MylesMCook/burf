@@ -48,6 +48,8 @@ type Box struct {
 	AgentStates *AgentStates
 	// Hooks, when set, may refuse actions through "before:" hooks.
 	Hooks *hooks.Runner
+	// Flows runs the box's and its repositories' automations.
+	Flows *Flows
 }
 
 func (b *Box) own(path string) {
@@ -77,6 +79,10 @@ func (b *Box) Mount(s *wire.Server) {
 	route("POST /v1/locations/{name}/resolve", b.resolve)
 	route("GET /v1/locations/{name}/branches", b.listBranches)
 	route("GET /v1/fs", b.listFolder)
+	route("GET /v1/flows", b.listFlows)
+	route("PUT /v1/flows", b.putFlows)
+	route("GET /v1/flows/runs", b.listFlowRuns)
+	route("POST /v1/flows/{id}/test", b.testFlow)
 	route("GET /v1/locations/{name}/config", b.getConfig)
 	route("PUT /v1/locations/{name}/config", b.putConfig)
 	route("GET /v1/locations/{name}/worktrees/{worktree}/services", b.listWorktreeServices)

@@ -45,6 +45,8 @@ type RepoConfig struct {
 	Services []WorktreeService `json:"services,omitempty"`
 	// Hooks run for this repository's events only, in the worktree.
 	Hooks []hooks.Hook `json:"hooks,omitempty"`
+	// Flows are automations for this repository's worktrees.
+	Flows []Flow `json:"flows,omitempty"`
 }
 
 // ReadRepoConfig reads repo's .berth/config.json; ok is false without one.
