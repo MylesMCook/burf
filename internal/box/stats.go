@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -16,6 +17,7 @@ import (
 	"time"
 
 	"github.com/sean-brydon/berth/internal/events"
+	"github.com/sean-brydon/berth/internal/statefile"
 )
 
 // Stats is a box at a glance: how loaded it is, and what its agents are doing.
@@ -63,6 +65,8 @@ var agentTools = map[string]string{"claude": "claude", "codex": "codex", "cursor
 // AgentStates remembers what each agent's hooks said last, by working
 // directory, from the box's event stream.
 type AgentStates struct {
+	// Path, when set, keeps the states across restarts and upgrades.
+	Path string
 	mu   sync.Mutex
 	last map[string]agentState
 }
@@ -72,8 +76,54 @@ type agentState struct {
 	at    time.Time
 }
 
+type savedAgentState struct {
+	State string    `json:"state"`
+	At    time.Time `json:"at"`
+}
+
+// agentStateTTL is how long a state is kept for an agent that never reports
+// again; its worktree is most likely gone.
+const agentStateTTL = 14 * 24 * time.Hour
+
+func (a *AgentStates) load() {
+	if a.Path == "" {
+		return
+	}
+	b, err := os.ReadFile(a.Path)
+	if err != nil {
+		return
+	}
+	var saved map[string]savedAgentState
+	if json.Unmarshal(b, &saved) != nil {
+		return
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.last = map[string]agentState{}
+	for path, st := range saved {
+		if time.Since(st.At) < agentStateTTL {
+			a.last[path] = agentState{st.State, st.At}
+		}
+	}
+}
+
+// save writes the states; the caller holds a.mu.
+func (a *AgentStates) save() {
+	if a.Path == "" {
+		return
+	}
+	saved := map[string]savedAgentState{}
+	for path, st := range a.last {
+		saved[path] = savedAgentState{st.state, st.at}
+	}
+	if b, err := json.Marshal(saved); err == nil {
+		statefile.Write(a.Path, b)
+	}
+}
+
 // Run follows bus until ctx ends.
 func (a *AgentStates) Run(ctx context.Context, bus *events.Bus) {
+	a.load()
 	ch, stop := bus.Subscribe()
 	defer stop()
 	for {
@@ -105,6 +155,7 @@ func (a *AgentStates) observe(e events.Event) {
 		at = time.Now()
 	}
 	a.last[filepath.Clean(path)] = agentState{state, at}
+	a.save()
 }
 
 func (a *AgentStates) get(path string) (agentState, bool) {

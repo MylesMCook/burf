@@ -539,6 +539,8 @@ func sessions(ctx context.Context, c *box.Client, args []string, out io.Writer) 
 			state := "running"
 			if s.Exited {
 				state = "exited"
+			} else if s.AgentState != "" {
+				state = s.Agent + " " + s.AgentState
 			}
 			if s.Attached > 0 {
 				state += ", attached"

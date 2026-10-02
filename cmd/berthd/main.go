@@ -207,7 +207,7 @@ func serve(b boxHome, args []string) error {
 	locations := box.NewLocations(filepath.Join(b.dir, "locations.json"))
 	watcher := &box.Watcher{Locations: locations, Events: bus, Box: hostname}
 	go watcher.Run(ctx)
-	agentStates := &box.AgentStates{}
+	agentStates := &box.AgentStates{Path: filepath.Join(b.dir, "agent-states.json")}
 	go agentStates.Run(ctx, bus)
 	exe, err := os.Executable()
 	if err != nil {

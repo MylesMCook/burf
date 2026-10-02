@@ -1,11 +1,14 @@
 package box
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/sean-brydon/berth/internal/events"
 	"github.com/sean-brydon/berth/internal/hooks"
 )
 
@@ -65,5 +68,28 @@ func TestAgentCommandsQuoteThePrompt(t *testing.T) {
 func TestSessionNamesUseTheProgramNotItsPath(t *testing.T) {
 	if n := defaultSessionName("cal/billing", "/home/me/.local/bin/claude --resume"); !strings.HasPrefix(n, "cal-billing-claude-") {
 		t.Fatalf("name = %s", n)
+	}
+}
+
+func TestAgentStatesSurviveARestart(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "agent-states.json")
+	bus := &events.Bus{}
+	ctx, cancel := context.WithCancel(context.Background())
+	first := &AgentStates{Path: path}
+	go first.Run(ctx, bus)
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		bus.Publish(events.Event{Type: "agent.finished", Data: map[string]any{"path": "/w/fix"}})
+		if _, err := os.Stat(path); err == nil || time.Now().After(deadline) {
+			break
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	cancel()
+
+	second := &AgentStates{Path: path}
+	second.load()
+	if st, ok := second.get("/w/fix"); !ok || st.state != "finished" {
+		t.Fatalf("after a restart: %+v, %v", st, ok)
 	}
 }
