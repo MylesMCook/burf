@@ -68,8 +68,8 @@ Everything here applies to each worktree of the repository:
 
 Some of it should not be committed: a database password, one box's paths.
 Each box keeps its own config for a location, laid over the file: scripts,
-ports and env entries replace the file's, services and agents replace by
-name, and hooks and flows add up. Edit it in the app's Project settings, or
+ports and env entries replace the file's; services, agents and flows replace by
+name; and hooks add up. Edit it in the app's Project settings, or
 `PUT /v1/locations/{name}/config` on the box.
 
 ## Task templates
