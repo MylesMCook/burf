@@ -362,7 +362,11 @@ func (b *Box) startSession(r *http.Request, name, location, dir, command string)
 		return Session{}, err
 	}
 	b.publish(r, "session.started", data)
-	return b.enrich(r.Context(), []Session{sess})[0], nil
+	sess = b.enrich(r.Context(), []Session{sess})[0]
+	if sess.Agent != "" {
+		go b.watchStartup(origin(r), sess)
+	}
+	return sess, nil
 }
 
 func (b *Box) removeSession(w http.ResponseWriter, r *http.Request) error {

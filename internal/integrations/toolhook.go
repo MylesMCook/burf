@@ -29,7 +29,10 @@ func Translate(tool, hookEvent string, payload []byte) (events.Event, bool) {
 			e.Type = "agent.finished"
 		case "Notification":
 			e.Type = "agent.waiting"
-		case "SessionStart", "UserPromptSubmit":
+		case "SessionStart":
+			// A new session sits at its prompt until someone types.
+			e.Type = "agent.ready"
+		case "UserPromptSubmit":
 			e.Type = "agent.started"
 		default:
 			return e, false

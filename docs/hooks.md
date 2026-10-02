@@ -55,7 +55,10 @@ which stops two integrations from bouncing events back and forth.
 | `task.created` | box | `location`, `name`, `path`, `branch`, `session`, `agent` |
 | `session.started` | box | `name`, `location`, `path`, `command` |
 | `session.stopped` | box | `name` |
-| `agent.started`, `agent.waiting`, `agent.finished` | box | `path`, `agent`, `session_id` |
+| `agent.ready` | box | `path`, `agent`, `session_id`: a new agent at its prompt |
+| `agent.started` | box | the same: working on a prompt |
+| `agent.waiting` | box | the same: needs you (a permission, a question, or `reason: "startup question"`) |
+| `agent.finished` | box | the same: done with its turn |
 | `share.started`, `share.stopped` | box | `id`, `port`, `url` |
 | `unit.started`, `unit.stopped`, `unit.restarted` | box | `name` |
 | `box.upgraded` | box | `build` |

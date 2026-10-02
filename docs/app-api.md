@@ -54,12 +54,12 @@ string and body included, and the box's answer is streamed back. The box API:
 | `GET stats` | `Stats`: memory, disks, load, agents |
 | `GET services` | `Service[]`: listening ports by worktree |
 | `GET ports` | `Port[]` |
-| `GET info` | `{ name, version, tools: string[], agents: AgentPreset[] }` |
+| `GET info` | `{ name, os, arch, build, tools: string[], agents: AgentPreset[] }` |
 | `GET doctor` | `Check[]` |
 
 `Session` carries the agent's state when an agent tool reports it:
-`agent` (`claude`, `codex`, …) and `agent_state` (`running`, `waiting`,
-`finished`). `exited` is true once the program has ended.
+`agent` (`claude`, `codex`, …) and `agent_state` (`idle`, `running`,
+`waiting`, `finished`). `exited` is true once the program has ended.
 
 ## Terminals
 
@@ -84,5 +84,5 @@ change by opening a new socket.
 Types the app reacts to: `box.connected`, `box.disconnected`,
 `location.*`, `worktree.created`, `worktree.removed`,
 `worktree.setup.{started,finished,failed}`, `session.started`,
-`session.stopped`, `agent.started`, `agent.waiting`, `agent.finished`,
+`session.stopped`, `agent.ready`, `agent.started`, `agent.waiting`, `agent.finished`,
 `share.*`, `forward.*`.

@@ -27,7 +27,7 @@ type Session struct {
 	Attached int       `json:"attached"`
 	Exited   bool      `json:"exited"`
 	// Agent is the coding agent the command runs, if any, and AgentState
-	// what its hooks said last: running, waiting, or finished.
+	// what its hooks said last: idle, running, waiting, or finished.
 	Agent      string    `json:"agent,omitempty"`
 	AgentState string    `json:"agent_state,omitempty"`
 	StateSince time.Time `json:"state_since,omitzero"`

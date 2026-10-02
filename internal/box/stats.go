@@ -53,8 +53,8 @@ type Agent struct {
 	Path     string `json:"path,omitempty"`
 	Location string `json:"location,omitempty"`
 	Worktree string `json:"worktree,omitempty"`
-	// State is "waiting" or "finished" when its hooks said so last, and
-	// "running" otherwise.
+	// State is "idle", "waiting" or "finished" when its hooks said so
+	// last, and "running" otherwise.
 	State string    `json:"state"`
 	Since time.Time `json:"since,omitempty"`
 }
@@ -141,7 +141,7 @@ func (a *AgentStates) observe(e events.Event) {
 	if path == "" {
 		return
 	}
-	state := map[string]string{"agent.waiting": "waiting", "agent.finished": "finished", "agent.started": "running"}[e.Type]
+	state := map[string]string{"agent.ready": "idle", "agent.waiting": "waiting", "agent.finished": "finished", "agent.started": "running"}[e.Type]
 	if state == "" {
 		return
 	}
