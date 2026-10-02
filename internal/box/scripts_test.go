@@ -38,8 +38,10 @@ func TestScriptsComeFromTheRepoUnlessTheLocationSetsItsOwn(t *testing.T) {
 		t.Fatal(err)
 	}
 	loc, _ = l.Get(ctx, "cal")
-	if loc.Scripts != (Scripts{Setup: "echo own", From: "berth"}) {
-		t.Fatalf("scripts = %+v, want the location's own", loc.Scripts)
+	// Each script layers on its own: the box's setup, the repository's
+	// teardown.
+	if loc.Scripts != (Scripts{Setup: "echo own", Archive: "echo repo-archive", From: "berth"}) {
+		t.Fatalf("scripts = %+v, want the location's setup over the repository's", loc.Scripts)
 	}
 	l.SetScripts("cal", "", "")
 	loc, _ = l.Get(ctx, "cal")
