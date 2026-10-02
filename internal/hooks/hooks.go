@@ -290,6 +290,12 @@ func (r *Runner) exec(ctx context.Context, h Hook, e events.Event) {
 
 // command runs h for e with the event on stdin, within h's timeout or def.
 func (r *Runner) command(ctx context.Context, h Hook, e events.Event, def time.Duration) ([]byte, error) {
+	return Exec(ctx, h, e, def, nil)
+}
+
+// Exec runs one hook for e: in h.Dir, with the event on stdin and in the
+// environment, plus extra variables, within h's timeout or def.
+func Exec(ctx context.Context, h Hook, e events.Event, def time.Duration, extra []string) ([]byte, error) {
 	timeout := def
 	if d, err := time.ParseDuration(h.Timeout); err == nil && d > 0 {
 		timeout = d
@@ -300,9 +306,10 @@ func (r *Runner) command(ctx context.Context, h Hook, e events.Event, def time.D
 	cmd := exec.CommandContext(ctx, "/bin/sh", "-c", h.Run)
 	cmd.Dir = h.Dir
 	cmd.Env = append(os.Environ(), Env(e, h.Tool)...)
-	if h.Dir != "" {
+	if strings.HasPrefix(h.Source, "plugin:") {
 		cmd.Env = append(cmd.Env, "BERTH_PLUGIN_DIR="+h.Dir)
 	}
+	cmd.Env = append(cmd.Env, extra...)
 	cmd.Stdin = bytes.NewReader(payload)
 	return cmd.CombinedOutput()
 }

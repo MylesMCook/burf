@@ -123,7 +123,7 @@ func parseSessions(out []byte) []Session {
 // Create starts command in dir. An empty command starts the user's shell.
 // Commands run through a login shell, so tools the user installed (claude,
 // codex) are on PATH even when berthd runs under systemd.
-func (s *Sessions) Create(ctx context.Context, name, location, dir, command string) (Session, error) {
+func (s *Sessions) Create(ctx context.Context, name, location, dir, command string, env []string) (Session, error) {
 	if !sessionName.MatchString(name) {
 		return Session{}, fmt.Errorf("invalid session name %q: use letters, digits, - and _", name)
 	}
@@ -138,7 +138,11 @@ func (s *Sessions) Create(ctx context.Context, name, location, dir, command stri
 	if command != "" {
 		argv = []string{shell, "-lc", command}
 	}
-	args := append([]string{"new-session", "-d", "-s", name, "-c", dir, "-x", "200", "-y", "50", "--"}, argv...)
+	args := []string{"new-session", "-d", "-s", name, "-c", dir, "-x", "200", "-y", "50"}
+	for _, kv := range env {
+		args = append(args, "-e", kv)
+	}
+	args = append(append(args, "--"), argv...)
 	if out, err := s.tmux(ctx, args...); err != nil {
 		return Session{}, fmt.Errorf("tmux new-session: %s", strings.TrimSpace(string(out)))
 	}

@@ -60,7 +60,7 @@ func TestSessionsLifecycle(t *testing.T) {
 		t.Fatalf("empty list = %+v, %v", all, err)
 	}
 	dir := t.TempDir()
-	sess, err := s.Create(ctx, "agent-1", "cal/billing", dir, "echo started-in-$(pwd); sleep 30")
+	sess, err := s.Create(ctx, "agent-1", "cal/billing", dir, "echo started-in-$(pwd); sleep 30", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,11 +68,11 @@ func TestSessionsLifecycle(t *testing.T) {
 	if sess.Location != "cal/billing" || (sess.Dir != dir && sess.Dir != resolved) || sess.Exited {
 		t.Fatalf("created session = %+v", sess)
 	}
-	if _, err := s.Create(ctx, "agent-1", "", dir, "true"); !errors.Is(err, ErrSessionExists) {
+	if _, err := s.Create(ctx, "agent-1", "", dir, "true", nil); !errors.Is(err, ErrSessionExists) {
 		t.Fatalf("duplicate session: %v", err)
 	}
 	for _, bad := range []string{"has space", "a.b", "a:b", ""} {
-		if _, err := s.Create(ctx, bad, "", dir, "true"); err == nil {
+		if _, err := s.Create(ctx, bad, "", dir, "true", nil); err == nil {
 			t.Errorf("created session named %q", bad)
 		}
 	}
@@ -87,7 +87,7 @@ func TestSessionsLifecycle(t *testing.T) {
 func TestAFinishedProgramStaysVisible(t *testing.T) {
 	s := testSessions(t)
 	ctx := context.Background()
-	if _, err := s.Create(ctx, "quick", "", t.TempDir(), "echo done"); err != nil {
+	if _, err := s.Create(ctx, "quick", "", t.TempDir(), "echo done", nil); err != nil {
 		t.Fatal(err)
 	}
 	deadline := time.Now().Add(5 * time.Second)
@@ -109,7 +109,7 @@ func TestAFinishedProgramStaysVisible(t *testing.T) {
 func TestAttachShowsTheSessionAndCarriesKeystrokes(t *testing.T) {
 	s := testSessions(t)
 	ctx := context.Background()
-	if _, err := s.Create(ctx, "echoer", "", t.TempDir(), "cat"); err != nil {
+	if _, err := s.Create(ctx, "echoer", "", t.TempDir(), "cat", nil); err != nil {
 		t.Fatal(err)
 	}
 	master, cmd, err := s.Attach(ctx, "echoer", 100, 30)
@@ -154,7 +154,7 @@ func (b *syncBuffer) String() string {
 func TestScreenShowsTheSessionsOutput(t *testing.T) {
 	s := testSessions(t)
 	ctx := context.Background()
-	if _, err := s.Create(ctx, "shows", "", t.TempDir(), "echo visible-output; sleep 30"); err != nil {
+	if _, err := s.Create(ctx, "shows", "", t.TempDir(), "echo visible-output; sleep 30", nil); err != nil {
 		t.Fatal(err)
 	}
 	deadline := time.Now().Add(5 * time.Second)

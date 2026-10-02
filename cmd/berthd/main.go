@@ -242,6 +242,7 @@ func serve(b boxHome, args []string) error {
 		},
 	}
 	bx.Mount(s)
+	go bx.RunRepoHooks(ctx, logger)
 
 	os.Remove(b.socket())
 	local, err := net.Listen("unix", b.socket())

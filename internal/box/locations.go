@@ -49,6 +49,8 @@ type Worktree struct {
 	// SettingUp is true when the tool that made it is still running its
 	// setup; a worktree.setup event follows.
 	SettingUp bool `json:"setting_up,omitempty"`
+	// Port is the first of the worktree's own ports ($BERTH_PORT).
+	Port int `json:"port,omitempty"`
 }
 
 var (
@@ -56,15 +58,24 @@ var (
 	ErrUnknownWorktree = errors.New("no worktree with that name in the location")
 )
 
-type Locations struct{ path string }
+type Locations struct {
+	path string
+	// Ports gives each worktree its own block of ports.
+	Ports *PortAlloc
+}
 
-func NewLocations(path string) *Locations { return &Locations{path: path} }
+func NewLocations(path string) *Locations {
+	return &Locations{path: path, Ports: &PortAlloc{Path: filepath.Join(filepath.Dir(path), "ports.json")}}
+}
 
 type savedLocation struct {
 	Name    string `json:"name"`
 	Path    string `json:"path"`
 	Setup   string `json:"setup,omitempty"`
 	Archive string `json:"archive,omitempty"`
+	// Config is this box's own config for the location, laid over the
+	// repository's.
+	Config *RepoConfig `json:"config,omitempty"`
 }
 
 func (l *Locations) Add(ctx context.Context, name, path string) (Location, error) {
@@ -130,9 +141,17 @@ func (l *Locations) List(ctx context.Context) ([]Location, error) {
 	}
 	out := make([]Location, 0, len(saved))
 	for _, s := range saved {
-		out = append(out, describe(ctx, s))
+		out = append(out, l.withPorts(describe(ctx, s)))
 	}
 	return out, nil
+}
+
+// withPorts adds each worktree's first port.
+func (l *Locations) withPorts(loc Location) Location {
+	for i := range loc.Worktrees {
+		loc.Worktrees[i].Port, _ = l.Ports.For(loc.Worktrees[i].Path)
+	}
+	return loc
 }
 
 func (l *Locations) Get(ctx context.Context, name string) (Location, error) {
@@ -142,7 +161,7 @@ func (l *Locations) Get(ctx context.Context, name string) (Location, error) {
 	}
 	for _, s := range saved {
 		if s.Name == name {
-			return describe(ctx, s), nil
+			return l.withPorts(describe(ctx, s)), nil
 		}
 	}
 	return Location{}, ErrUnknownLocation

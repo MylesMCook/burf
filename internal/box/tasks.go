@@ -192,16 +192,16 @@ func (b *Box) watchStartup(from string, sess Session) {
 	}
 }
 
-// before asks the hooks gating typ whether the request may go ahead.
+// before asks the hooks gating typ, the box's and then the repository's,
+// whether the request may go ahead.
 func (b *Box) before(r *http.Request, typ string, data map[string]any) error {
-	if b.Hooks == nil {
-		return nil
+	e := events.Event{Type: typ, Box: b.Name, Origin: origin(r), Data: data}
+	if b.Hooks != nil {
+		if err := b.Hooks.Before(r.Context(), e); err != nil {
+			return httpError{http.StatusForbidden, err.Error()}
+		}
 	}
-	err := b.Hooks.Before(r.Context(), events.Event{Type: typ, Box: b.Name, Origin: origin(r), Data: data})
-	if err != nil {
-		return httpError{http.StatusForbidden, err.Error()}
-	}
-	return nil
+	return b.beforeRepo(r, e)
 }
 
 // enrich adds what each session's agent last reported.

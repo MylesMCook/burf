@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"path/filepath"
 	"time"
+
+	"github.com/sean-brydon/berth/internal/hooks"
 )
 
 // Scripts are a location's worktree lifecycle commands. They get
@@ -33,6 +35,16 @@ type RepoConfig struct {
 	// Agents adds ways to start agents here, or replaces built-ins by ID,
 	// e.g. {"id": "claude", "command": "claude --model opus"}.
 	Agents []AgentPreset `json:"agents,omitempty"`
+	// Ports is how many ports each worktree needs ($BERTH_PORT,
+	// $BERTH_PORT_1, …). Every worktree has at least one.
+	Ports int `json:"ports,omitempty"`
+	// Env is added to everything run in a worktree, with $BERTH_* expanded:
+	// {"DATABASE_URL": "postgres://localhost/$BERTH_WORKTREE_SLUG"}.
+	Env map[string]string `json:"env,omitempty"`
+	// Services run in every worktree, such as its dev server.
+	Services []WorktreeService `json:"services,omitempty"`
+	// Hooks run for this repository's events only, in the worktree.
+	Hooks []hooks.Hook `json:"hooks,omitempty"`
 }
 
 // ReadRepoConfig reads repo's .berth/config.json; ok is false without one.
@@ -53,6 +65,11 @@ func ReadRepoConfig(repo string) (c RepoConfig, ok bool, err error) {
 // scriptsFor is the location's own scripts if set, otherwise the
 // repository's.
 func scriptsFor(saved savedLocation) Scripts {
+	if saved.Config != nil && (saved.Config.Setup != "" || saved.Config.Archive != "") {
+		rc, _, _ := ReadRepoConfig(saved.Path)
+		c := merge(rc, *saved.Config)
+		return Scripts{Setup: c.Setup, Archive: c.Archive, From: "berth"}
+	}
 	if saved.Setup != "" || saved.Archive != "" {
 		return Scripts{Setup: saved.Setup, Archive: saved.Archive, From: "berth"}
 	}
@@ -64,7 +81,7 @@ func scriptsFor(saved savedLocation) Scripts {
 
 // runScript runs a lifecycle script in the worktree through a login shell, so
 // tools the user installed are on PATH, logging to logPath.
-func runScript(ctx context.Context, script, repo, dir, name, logPath string, timeout time.Duration) error {
+func runScript(ctx context.Context, script, repo, dir, name, logPath string, timeout time.Duration, extra []string) error {
 	if err := os.MkdirAll(filepath.Dir(logPath), 0o700); err != nil {
 		return err
 	}
@@ -84,6 +101,7 @@ func runScript(ctx context.Context, script, repo, dir, name, logPath string, tim
 	cmd.Env = append(os.Environ(),
 		"BERTH_ROOT_PATH="+repo, "BERTH_WORKTREE_PATH="+dir, "BERTH_WORKTREE_NAME="+name,
 		"ORCA_ROOT_PATH="+repo, "ORCA_WORKTREE_PATH="+dir, "ORCA_WORKSPACE_NAME="+name)
+	cmd.Env = append(cmd.Env, extra...)
 	cmd.Stdout, cmd.Stderr = log, log
 	if err := cmd.Run(); err != nil {
 		return fmt.Errorf("%v (log: %s)", err, logPath)

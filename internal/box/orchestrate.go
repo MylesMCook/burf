@@ -205,6 +205,7 @@ func (b *Box) handleExec(w http.ResponseWriter, r *http.Request) error {
 	}
 	cmd := exec.CommandContext(ctx, shell, "-lc", req.Command)
 	cmd.Dir = dir
+	cmd.Env = append(os.Environ(), b.envForDir(ctx, dir)...)
 	var out tailBuffer
 	cmd.Stdout, cmd.Stderr = &out, &out
 	res := ExecResult{}

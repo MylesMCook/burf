@@ -77,6 +77,11 @@ func (b *Box) Mount(s *wire.Server) {
 	route("POST /v1/locations/{name}/resolve", b.resolve)
 	route("GET /v1/locations/{name}/branches", b.listBranches)
 	route("GET /v1/fs", b.listFolder)
+	route("GET /v1/locations/{name}/config", b.getConfig)
+	route("PUT /v1/locations/{name}/config", b.putConfig)
+	route("GET /v1/locations/{name}/worktrees/{worktree}/services", b.listWorktreeServices)
+	route("POST /v1/locations/{name}/worktrees/{worktree}/services/{service}/{action}", b.serviceAction)
+	route("GET /v1/locations/{name}/worktrees/{worktree}/services/{service}/log", b.serviceLog)
 	route("DELETE /v1/locations/{name}/worktrees/{worktree}", b.removeWorktree)
 	route("POST /v1/tasks", b.addTask)
 	route("GET /v1/services", b.handleServices)
@@ -251,8 +256,14 @@ func (b *Box) createWorktree(r *http.Request, loc Location, req WorktreeRequest)
 	b.publish(r, "worktree.created", map[string]any{
 		"location": loc.Name, "name": wt.Name, "path": wt.Path, "branch": wt.Branch,
 	})
+	// Services start once setup has made the worktree ready for them.
 	if loc.Scripts.Setup != "" {
-		go b.lifecycle(origin(r), "setup", loc, wt.Path, wt.Name, loc.Scripts.Setup, nil)
+		go b.lifecycle(origin(r), "setup", loc, wt.Path, wt.Name, loc.Scripts.Setup, func() error {
+			go b.startAutostart(loc.Name, wt.Name)
+			return nil
+		})
+	} else {
+		go b.startAutostart(loc.Name, wt.Name)
 	}
 	return wt, nil
 }
@@ -264,7 +275,7 @@ func (b *Box) lifecycle(from, kind string, loc Location, dir, name, script strin
 	b.Events.Publish(events.Event{Type: "worktree." + kind + ".started", Box: b.Name, Origin: from, Data: data})
 	logPath := filepath.Join(b.LogDir, kind+"-"+loc.Name+"-"+name+".log")
 	data["log"] = logPath
-	err := runScript(context.Background(), script, loc.Path, dir, name, logPath, 30*time.Minute)
+	err := runScript(context.Background(), script, loc.Path, dir, name, logPath, 30*time.Minute, b.envForDir(context.Background(), dir))
 	if err == nil && next != nil {
 		err = next()
 	}
@@ -299,7 +310,9 @@ func (b *Box) removeWorktree(w http.ResponseWriter, r *http.Request) error {
 			}
 		}
 	}
+	b.stopServices(location, name)
 	removed := func(ctx context.Context) {
+		b.Locations.Ports.Release(dir)
 		if branch != "" {
 			git(ctx, "-C", loc.Path, "branch", "-D", branch)
 		}
@@ -368,7 +381,7 @@ func (b *Box) startSession(r *http.Request, name, location, dir, command string)
 	if err := b.before(r, "session.start", data); err != nil {
 		return Session{}, err
 	}
-	sess, err := b.Sessions.Create(r.Context(), name, location, dir, command)
+	sess, err := b.Sessions.Create(r.Context(), name, location, dir, command, b.envForDir(r.Context(), dir))
 	if err != nil {
 		return Session{}, err
 	}
