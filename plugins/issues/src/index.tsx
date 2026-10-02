@@ -402,7 +402,6 @@ function IssueRow({
   onOpenRun(run: Run): void;
 }) {
   const openPR = row.prs.find((p) => p.state === "OPEN") ?? row.prs.find((p) => p.state === "MERGED") ?? row.prs[0];
-  const waiting = run?.session?.agent_state === "waiting";
   return (
     <li id={`issue-${row.key}`}>
       {/* biome-ignore lint/a11y/useSemanticElements: the row holds a checkbox, so it can't be a button. */}
@@ -415,7 +414,6 @@ function IssueRow({
         className={cn(
           "group flex w-full cursor-default gap-2.5 rounded-lg px-2.5 py-2 text-left outline-none hover:bg-accent/50",
           active && "bg-accent hover:bg-accent",
-          waiting && "shadow-[inset_2px_0_0_var(--color-warning)]",
         )}
       >
         <span className="relative mt-[3px] grid size-4 shrink-0 place-items-center">

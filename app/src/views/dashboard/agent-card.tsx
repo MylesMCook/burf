@@ -81,7 +81,8 @@ export function AgentCard({ entry, selecting, selected, onSelect }: { entry: Ses
       className={cn(
         "group relative flex cursor-pointer flex-col rounded-lg border bg-card text-left outline-none transition-[opacity,translate,border-color] duration-200 hover:border-ring/40 focus-visible:ring-2 focus-visible:ring-ring",
         shown ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0",
-        state === "waiting" && "shadow-[inset_2px_0_0_var(--color-warning)]",
+        // Waiting is said by the whole outline, never a stripe down one side.
+        state === "waiting" && "border-warning/45 hover:border-warning/70",
         selected && "border-primary/60 ring-1 ring-primary/30 hover:border-primary/60",
       )}
     >

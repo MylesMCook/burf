@@ -208,7 +208,6 @@ function Row({ entry, active, onSelect, onOpen }: { entry: ReviewEntry; active: 
         className={cn(
           "flex w-full flex-col gap-1 rounded-lg px-3 py-row-pad text-left outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring",
           active && "bg-accent hover:bg-accent",
-          waiting && "shadow-[inset_2px_0_0_var(--color-warning)]",
         )}
       >
         <span className="flex min-w-0 items-center gap-2">
