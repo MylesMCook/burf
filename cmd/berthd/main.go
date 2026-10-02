@@ -239,6 +239,7 @@ func serve(b boxHome, args []string) error {
 		KitsDir:      filepath.Join(b.dir, "kits"),
 		EnvFile:      filepath.Join(userDir, "env.json"),
 		Paused:       &box.PauseStore{Path: filepath.Join(b.dir, "paused.json")},
+		History:      &box.History{Dir: filepath.Join(b.dir, "history")},
 		Phone:        &box.Phone{Path: filepath.Join(b.dir, "phone.json"), Addr: tailnetAddr, Log: logger},
 		Guard:        &box.Guard{Path: filepath.Join(userDir, "guard.json")},
 		Update: &box.SelfUpdate{
@@ -252,6 +253,7 @@ func serve(b boxHome, args []string) error {
 	go bx.Flows.Run(ctx, bx)
 	go bx.Phone.Run(ctx, bx)
 	go bx.Guard.Run(ctx, bx)
+	go bx.History.Run(ctx, bx)
 
 	os.Remove(b.socket())
 	local, err := net.Listen("unix", b.socket())

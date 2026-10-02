@@ -62,6 +62,8 @@ type Box struct {
 	Phone *Phone
 	// Guard, when set, keeps the box usable when memory runs short.
 	Guard *Guard
+	// History, when set, keeps and searches what sessions showed.
+	History *History
 }
 
 func (b *Box) own(path string) {
@@ -145,6 +147,8 @@ func (b *Box) Mount(s *wire.Server) {
 	route("POST /v1/upgrade", b.handleUpgrade)
 	route("GET /v1/events", b.streamEvents)
 	route("POST /v1/events", b.emit)
+	route("GET /v1/history", b.handleHistory)
+	route("GET /v1/history/{id}", b.handleHistorySession)
 }
 
 type httpError struct {
@@ -470,6 +474,7 @@ func (b *Box) removeSession(w http.ResponseWriter, r *http.Request) error {
 	if err := b.before(r, "session.stop", map[string]any{"name": name}); err != nil {
 		return err
 	}
+	b.History.CaptureSession(r.Context(), b, name)
 	if err := b.Sessions.Kill(r.Context(), name); err != nil {
 		return err
 	}

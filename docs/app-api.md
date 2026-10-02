@@ -56,10 +56,19 @@ string and body included, and the box's answer is streamed back. The box API:
 | `GET ports` | `Port[]` |
 | `GET info` | `{ name, os, arch, build, tools: string[], agents: AgentPreset[] }` |
 | `GET doctor` | `Check[]` |
+| `GET history?agent=&location=&source=&since=&limit=` | `HistorySession[]`: recorded sessions, newest first, terminal captures (`term:…`) and Claude Code transcripts (`claude:…`), kept after the session ends |
+| `GET history?q=…&regexp=1&session=&agent=&location=&since=&limit=` | `HistoryMatch[]`: matching lines with two lines either side; case-insensitive, at most 200, stops after 5s |
+| `GET history/{id}?from=&limit=` | `Transcript`: a page of a terminal's `lines` (and its last `screen`), or a transcript's `turns` |
 
 `Session` carries the agent's state when an agent tool reports it:
 `agent` (`claude`, `codex`, …) and `agent_state` (`idle`, `running`,
 `waiting`, `finished`). `exited` is true once the program has ended.
+
+History is kept in the box's state folder (`history/`, about 20 MB per
+session, 30 days after it ends). Escape sequences are stripped, and lines
+that look like credentials (`KEY=` with a long value, well-known token
+shapes) come back as `[hidden: looks like a secret]`. `since` takes a time or
+an age such as `7d`.
 
 ## Terminals
 
