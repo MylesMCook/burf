@@ -70,11 +70,22 @@ Skills for agents
          [--target user|project] [--location LOC] [--commit]
                                                   Teach Claude Code and Codex to use berth
 
+Secrets
+  %[1]s secret test%[3]s REF                            Check this box can resolve op://vault/item/field or env://NAME
+                                                  (prints the value's length, never the value)
+
 Events
   %[1]s emit%[3]s TYPE [key=value...] [--origin TOOL]   Announce an event, e.g. agent.finished
   %[1]s events%[3]s [--json]                            Stream the box's events
 `, cmd, prefix, boxArg)
 }
+
+// Queue, when set, keeps a prompt that could not be sent for later: the
+// laptop's berth sets it to hand the prompt to its agent, which types it in
+// once the box is back. It returns the queued prompt's id, or cause itself
+// when the send failed for another reason (the prompt may have arrived, or
+// the box refused it). session send --queue uses it.
+var Queue func(ctx context.Context, session, text string, enter bool, cause error) (id string, err error)
 
 // Commands names every command this package handles and how many words it
 // takes before its first argument.
@@ -86,6 +97,7 @@ var Commands = map[string]int{
 	"emit": 1, "events": 1,
 	"skills": 1, "preview": 1, "service": 2,
 	"units": 1, "unit": 2,
+	"secret": 2,
 }
 
 // Run executes args, which start with the command words, against c.
@@ -125,6 +137,27 @@ func Run(ctx context.Context, c *box.Client, args []string, out io.Writer) error
 		return service(ctx, c, strings.TrimPrefix(cmd, "service "), rest, out)
 	case "skills":
 		return skills(ctx, c, rest, out)
+	case "secret test":
+		fs, asJSON := flags(rest)
+		pos, err := parse(fs, rest)
+		if err != nil || len(pos) != 1 {
+			return usageErr("secret test REF")
+		}
+		res, err := c.TestSecret(ctx, pos[0])
+		if err != nil {
+			return err
+		}
+		if err := show(out, *asJSON, res, func() {
+			if res.OK && res.Length != nil {
+				fmt.Fprintf(out, "Resolved %s: %d characters\n", pos[0], *res.Length)
+			}
+		}); err != nil {
+			return err
+		}
+		if !res.OK {
+			return fmt.Errorf("could not resolve %s: %s", pos[0], res.Error)
+		}
+		return nil
 	case "preview":
 		return preview(ctx, c, rest, out)
 	case "location scripts":
@@ -249,13 +282,26 @@ func Run(ctx context.Context, c *box.Client, args []string, out io.Writer) error
 		noEnter := fs.Bool("no-enter", false, "type the text without pressing Enter")
 		wait := fs.Bool("wait", false, "then wait for the turn it starts to end (finished or waiting)")
 		timeout := fs.Duration("timeout", 30*time.Minute, "with --wait, give up after this long")
+		queue := fs.Bool("queue", false, "if the box cannot be reached, queue the prompt to send when it is back")
 		pos, err := parse(fs, rest)
 		if err != nil || len(pos) != 2 {
-			return usageErr("session send NAME TEXT [--no-enter] [--wait [--timeout 30m]]")
+			return usageErr("session send NAME TEXT [--no-enter] [--wait [--timeout 30m]] [--queue]")
+		}
+		if *queue && Queue == nil {
+			return errors.New("--queue is for the laptop: berth session send BOX/NAME TEXT --queue")
 		}
 		sent := time.Now()
 		if err := c.Send(ctx, pos[0], pos[1], !*noEnter); err != nil {
-			return err
+			if !*queue {
+				return err
+			}
+			id, qerr := Queue(ctx, pos[0], pos[1], !*noEnter, err)
+			if qerr != nil {
+				return qerr
+			}
+			return show(out, *asJSON, map[string]any{"queued": true, "id": id}, func() {
+				fmt.Fprintf(out, "Could not reach the box (%v).\nQueued as %s: the berth agent types it into %s once the box is back. See berth queue.\n", err, id, pos[0])
+			})
 		}
 		if !*wait {
 			fmt.Fprintf(out, "Sent to %s\n", pos[0])
@@ -500,7 +546,7 @@ func Describe(e events.Event) string {
 	if e.Box != "" {
 		line += "  " + e.Box
 	}
-	for _, k := range []string{"location", "name", "path", "port", "url", "command"} {
+	for _, k := range []string{"location", "name", "path", "port", "url", "command", "variable", "ref"} {
 		if v, ok := e.Data[k]; ok && fmt.Sprint(v) != "" {
 			line += fmt.Sprintf("  %s=%v", k, v)
 		}

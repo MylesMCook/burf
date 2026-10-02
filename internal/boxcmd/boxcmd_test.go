@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -157,5 +158,61 @@ func TestWordsAfterDoubleDashKeepTheirQuoting(t *testing.T) {
 		if got := commandLine(strings.Split(words, "\x00")); got != want {
 			t.Errorf("%q → %s, want %s", words, got, want)
 		}
+	}
+}
+
+func TestSecretTestPrintsTheLengthNeverAValue(t *testing.T) {
+	r, out := run(t, `{"ok":true,"length":24}`, "secret", "test", "op://dev/db/password")
+	if r.method != "POST" || r.path != "/v1/secrets/test" || r.body["ref"] != "op://dev/db/password" {
+		t.Fatalf("request %s %s %v", r.method, r.path, r.body)
+	}
+	if out != "Resolved op://dev/db/password: 24 characters\n" {
+		t.Fatalf("out = %q", out)
+	}
+	rec := &recorder{reply: `{"ok":false,"error":"op: \"op://dev/x/y\" isn't an item in the \"dev\" vault"}`}
+	err := Run(context.Background(), &box.Client{Doer: rec}, []string{"secret", "test", "op://dev/x/y"}, io.Discard)
+	if err == nil || !strings.Contains(err.Error(), "isn't an item") {
+		t.Fatalf("a failed test gave %v", err)
+	}
+}
+
+type failingDoer struct{ err error }
+
+func (f failingDoer) DoWithHeader(context.Context, string, string, io.Reader, http.Header) (*http.Response, error) {
+	return nil, f.err
+}
+
+func TestSessionSendQueueHandsAFailedSendToTheQueue(t *testing.T) {
+	cause := errors.New("dial tcp 100.64.0.1:7444: connect: no route to host")
+	c := &box.Client{Doer: failingDoer{cause}}
+	var out bytes.Buffer
+	if err := Run(context.Background(), c, []string{"session", "send", "billing", "hi", "--queue"}, &out); err == nil || !strings.Contains(err.Error(), "laptop") {
+		t.Fatalf("--queue without a queue (on a box): %v", err)
+	}
+
+	var got struct {
+		session, text string
+		enter         bool
+		cause         error
+	}
+	Queue = func(ctx context.Context, session, text string, enter bool, err error) (string, error) {
+		got.session, got.text, got.enter, got.cause = session, text, enter, err
+		return "q1", nil
+	}
+	defer func() { Queue = nil }()
+	if err := Run(context.Background(), c, []string{"session", "send", "billing", "hi there", "--queue", "--no-enter"}, &out); err != nil {
+		t.Fatal(err)
+	}
+	if got.session != "billing" || got.text != "hi there" || got.enter || !errors.Is(got.cause, cause) {
+		t.Fatalf("queued %+v", got)
+	}
+	if !strings.Contains(out.String(), "Queued as q1") {
+		t.Fatalf("output %q", out.String())
+	}
+
+	// Without --queue a failed send is just an error.
+	got.session = ""
+	if err := Run(context.Background(), c, []string{"session", "send", "billing", "hi"}, &out); !errors.Is(err, cause) || got.session != "" {
+		t.Fatalf("plain send: %v (queued %q)", err, got.session)
 	}
 }

@@ -38,6 +38,8 @@ type testBox struct {
 	accepted atomic.Int32
 	cancel   context.CancelFunc
 	done     chan error
+	// extra mounts more box routes each time the box starts.
+	extra func(*wire.Server)
 }
 
 type countingListener struct {
@@ -55,7 +57,13 @@ func (l countingListener) Accept() (net.Conn, error) {
 
 func newBox(t *testing.T) *testBox {
 	t.Helper()
-	b := &testBox{t: t, dir: t.TempDir()}
+	return newBoxWith(t, nil)
+}
+
+// newBoxWith is newBox with more routes, such as sessions.
+func newBoxWith(t *testing.T, extra func(*wire.Server)) *testBox {
+	t.Helper()
+	b := &testBox{t: t, dir: t.TempDir(), extra: extra}
 	b.start("127.0.0.1:0")
 	t.Cleanup(b.stop)
 	return b
@@ -95,6 +103,9 @@ func (b *testBox) start(addr string) {
 			}
 		}
 	}))
+	if b.extra != nil {
+		b.extra(b.server)
+	}
 	var ln net.Listener
 	for i := 0; ; i++ {
 		ln, err = net.Listen("tcp", addr)

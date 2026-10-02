@@ -26,7 +26,8 @@ import (
 func splitBox(args []string, words int) (string, []string, error) {
 	// Commands that take a location reference name the box as its first
 	// segment, which also tells it apart from a flag's value.
-	needSlash := words == 2 && !(len(args) > 1 && (args[1] == "kill" || args[1] == "screen" || args[1] == "import"))
+	// A secret reference has slashes of its own, and comes after the box.
+	needSlash := words == 2 && !(len(args) > 1 && (args[1] == "kill" || args[1] == "screen" || args[1] == "import")) && args[0] != "secret"
 	for i := words; i < len(args); i++ {
 		a := args[i]
 		if a == "--" {
@@ -96,6 +97,7 @@ func runOnBox(l laptop, args []string) error {
 	defer wc.Reset()
 	ctx, stop := signalContext()
 	defer stop()
+	boxcmd.Queue = queueFor(l, name)
 	return boxcmd.Run(ctx, box.NewClient(wc), rest, os.Stdout)
 }
 

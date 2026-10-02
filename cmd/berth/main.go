@@ -66,6 +66,9 @@ Sessions
   berth attach BOX/SESSION               Attach this terminal to an agent session (detach: Ctrl-b d)
   berth terminal BOX/SESSION             Open a new terminal window attached to a session
   berth emit TYPE [key=value...]         Announce an event on this laptop, e.g. agent.finished
+  berth session send BOX/NAME TEXT --queue
+                                         If BOX cannot be reached, queue the prompt; the agent types it in once BOX is back
+  berth queue [--json]                   Prompts waiting for their box (berth queue rm|retry|send ID)
 
 Agent
   berth status [--json]                  Boxes, forwards and the proxy at a glance
@@ -227,6 +230,8 @@ func run(args []string) error {
 			return err
 		}
 		return integrations.Install(rest, exe, os.Stdout)
+	case "queue":
+		return queueCmd(l, rest)
 	case "emit":
 		// An event for this laptop, unless it names a paired box first.
 		if len(rest) > 0 {

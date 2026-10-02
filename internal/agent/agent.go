@@ -79,6 +79,11 @@ type Config struct {
 	// Networks reaches boxes on other tailnets. Defaults to embedded
 	// Tailscale nodes under Dir/networks.
 	Networks Networks
+	// QueueIdleTimeout is how long a queued prompt waits for a busy agent's
+	// turn to end before it is typed anyway (default 30 minutes), and
+	// QueueWaitStep how long one wait on the box lasts (default 5 minutes).
+	QueueIdleTimeout time.Duration
+	QueueWaitStep    time.Duration
 }
 
 // Networks is the set of other tailnets the agent can dial through.
@@ -166,6 +171,7 @@ type Agent struct {
 	bus      events.Bus
 	proxy    *proxy.Proxy
 	proxySt  ProxyStatus
+	queue    *promptQueue
 
 	// ctx lives as long as the agent; forwards added through the API run under
 	// it rather than under the request that created them.
@@ -224,6 +230,7 @@ func Run(ctx context.Context, cfg Config) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	a.ctx = ctx
+	a.queue = newPromptQueue(ctx, filepath.Join(cfg.Dir, "queue.json"), agentBoxes{a}, a.publish, cfg.Now, cfg.Log.Printf, cfg.QueueIdleTimeout, cfg.QueueWaitStep)
 
 	// Holding the agent lock means any socket file left here is stale.
 	os.Remove(cfg.Socket)
@@ -454,6 +461,8 @@ func (a *Agent) checkAll(ctx context.Context) {
 		}()
 	}
 	wg.Wait()
+	// Prompts queued while a box was away go once it answers again.
+	a.queue.kickAll()
 }
 
 func (a *Agent) check(ctx context.Context, name string, st *boxState) {
@@ -512,6 +521,7 @@ func (a *Agent) check(ctx context.Context, name string, st *boxState) {
 	case StateOnline:
 		a.proxy.ResetBox(name)
 		a.publish(Event{Type: EventBoxConnected, Box: name})
+		a.queue.kick(name)
 	case StateUntrusted:
 		a.publish(Event{Type: EventBoxUntrusted, Box: name, Error: err.Error()})
 	case StateOffline:

@@ -676,3 +676,43 @@ func TestClientsAndPairingUseTheGivenDialer(t *testing.T) {
 		t.Fatalf("client dialed %d times through the given dialer, want 2", dials.Load())
 	}
 }
+
+func TestUnsentTellsAClosedBoxFromADroppedRequest(t *testing.T) {
+	b := startBox(t)
+	c := paired(t, b)
+
+	// Nothing listens at the address: the request never left.
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	closed := ln.Addr().String()
+	ln.Close()
+	peer := b.peer()
+	peer.Address = closed
+	gone := NewClient(laptop(t), peer)
+	defer gone.Reset()
+	_, err = gone.Do(context.Background(), http.MethodGet, "/v1/ping", nil)
+	if err == nil || !Unsent(err) {
+		t.Fatalf("dialing a closed port: err %v, Unsent %v; want an unsent error", err, Unsent(err))
+	}
+
+	// The box takes the request, then the connection drops: it may have acted.
+	b.server.Handle("POST /v1/drop", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		io.Copy(io.Discard, r.Body)
+		conn, _, err := http.NewResponseController(w).Hijack()
+		if err == nil {
+			conn.Close()
+			return
+		}
+		panic(http.ErrAbortHandler)
+	}))
+	_, err = c.Do(context.Background(), http.MethodPost, "/v1/drop", strings.NewReader("hello"))
+	if err == nil || Unsent(err) {
+		t.Fatalf("a request dropped after it arrived: err %v, Unsent %v; want a sent (uncertain) error", err, Unsent(err))
+	}
+
+	if Unsent(nil) || Unsent(ErrUntrusted) {
+		t.Fatal("nil and ErrUntrusted are not unsent")
+	}
+}

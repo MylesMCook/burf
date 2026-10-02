@@ -25,6 +25,7 @@ import (
 	"github.com/sean-brydon/berthd/internal/hooks"
 	"github.com/sean-brydon/berthd/internal/statefile"
 	"github.com/sean-brydon/berthd/internal/terminal"
+	"github.com/sean-brydon/berthd/internal/wire"
 )
 
 // DefaultUIPort is where the agent serves the desktop app, on loopback only.
@@ -188,7 +189,13 @@ func (a *Agent) uiBoxAPI(w http.ResponseWriter, r *http.Request) {
 	resp, err := c.DoWithHeader(r.Context(), r.Method, target, body, header)
 	if err != nil {
 		a.checkSoon()
-		writeError(w, http.StatusBadGateway, err.Error())
+		// 503: the request never reached the box, so it is safe to queue
+		// or retry. 502: it may have; the box could have acted on it.
+		status := http.StatusBadGateway
+		if wire.Unsent(err) {
+			status = http.StatusServiceUnavailable
+		}
+		writeError(w, status, err.Error())
 		return
 	}
 	defer resp.Body.Close()

@@ -33,11 +33,28 @@ The agent serves the app on `http://127.0.0.1:1378`.
 | `GET /v1/templates` | `TaskTemplate[]` from `~/.berth/templates/*.json` |
 | `GET /v1/plugins` | `PluginInfo[]` from `~/.berth/plugins/*/berth-plugin.json` |
 | `GET /v1/plugins/{id}/{file}` | a file from that plugin's folder (its `main` module, assets) |
+| `GET /v1/queue` | `QueueItem[]`: prompts waiting for their box, oldest first |
+| `POST /v1/queue` | `{ id?, box, session, text, wait?, enter? }` → `QueueItem`; the same `id` again returns the item already queued |
+| `PATCH /v1/queue/{id}` | `{ box?, session?, text? }` → `QueueItem`: move or edit one; it goes back in line as `queued` |
+| `POST /v1/queue/{id}/retry` | `QueueItem`: a failed one back in line |
+| `POST /v1/queue/{id}/send` | `QueueItem` with `state` `delivered`, `failed` or `queued`: send it now, without waiting for the agent's turn; 409 while its box is offline |
+| `DELETE /v1/queue/{id}` | the discarded `QueueItem`; 409 while it is being sent |
+
+`QueueItem` is the offline prompt queue's entry ([orchestration.md](orchestration.md#when-a-box-is-away)):
+`{ id, box, session, text, enter, wait, state, error?, created, attempts?,
+last_attempt?, blocked?, seq }`. `state` is `queued` (waiting for the box),
+`waiting` (the box is back; waiting for the agent's turn to end), `sending`,
+or `failed` with `error`. `blocked` marks one held behind an earlier failed
+prompt to the same session. `wait` (default true) holds a prompt while the
+agent is mid-turn; `enter` (default true) presses Enter after it.
 
 ## Boxes
 
 `ANY /v1/boxes/{box}/api/{path}` is passed to the box as `/v1/{path}`, query
-string and body included, and the box's answer is streamed back. The box API:
+string and body included, and the box's answer is streamed back. When the
+box cannot be reached the agent answers itself: **503** when the request
+never reached the box (safe to retry or queue), **502** when the connection
+failed after it went out (the box may have acted on it). The box API:
 
 | Method and path | Returns |
 | --- | --- |
@@ -56,19 +73,15 @@ string and body included, and the box's answer is streamed back. The box API:
 | `GET ports` | `Port[]` |
 | `GET info` | `{ name, os, arch, build, tools: string[], agents: AgentPreset[] }` |
 | `GET doctor` | `Check[]` |
-| `GET history?agent=&location=&source=&since=&limit=` | `HistorySession[]`: recorded sessions, newest first, terminal captures (`term:…`) and Claude Code transcripts (`claude:…`), kept after the session ends |
-| `GET history?q=…&regexp=1&session=&agent=&location=&since=&limit=` | `HistoryMatch[]`: matching lines with two lines either side; case-insensitive, at most 200, stops after 5s |
-| `GET history/{id}?from=&limit=` | `Transcript`: a page of a terminal's `lines` (and its last `screen`), or a transcript's `turns` |
+| `POST secrets/test` | `{ ref }` → `{ ok, length?, error? }`: resolves a [secret reference](templates.md#secrets) on the box now (`op://…` or `env://…`), skipping its cache, and reports whether it could and the value's length, never the value. A malformed reference is `ok: false` with why |
+| `POST secrets/report` | Only on the box's own socket: what `berthd secret exec` resolved for a session or service, which variables resolved and which failed and why, never values |
 
 `Session` carries the agent's state when an agent tool reports it:
 `agent` (`claude`, `codex`, …) and `agent_state` (`idle`, `running`,
 `waiting`, `finished`). `exited` is true once the program has ended.
 
-History is kept in the box's state folder (`history/`, about 20 MB per
-session, 30 days after it ends). Escape sequences are stripped, and lines
-that look like credentials (`KEY=` with a long value, well-known token
-shapes) come back as `[hidden: looks like a secret]`. `since` takes a time or
-an age such as `7d`.
+`GET locations/{name}/config` and `GET env` return secret references as
+written, never their values.
 
 ## Terminals
 
@@ -94,4 +107,7 @@ Types the app reacts to: `box.connected`, `box.disconnected`,
 `location.*`, `worktree.created`, `worktree.removed`,
 `worktree.setup.{started,finished,failed}`, `session.started`,
 `session.stopped`, `agent.ready`, `agent.started`, `agent.waiting`, `agent.finished`,
-`share.*`, `forward.*`.
+`share.*`, `forward.*`, `queue.changed`, `queue.delivered` and
+`queue.failed` (`id`, `box`, `session`, and `reason` on a failure; never the
+prompt), and `secret.failed` / `secret.resolved` (`location`,
+`name`, `path`, `variable`, `ref`, and `reason` on a failure; never a value).

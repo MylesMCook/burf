@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -28,10 +29,50 @@ const dialTimeout = 15 * time.Second
 type DialFunc func(ctx context.Context, network, addr string) (net.Conn, error)
 
 func defaultDial(dial DialFunc) DialFunc {
-	if dial != nil {
-		return dial
+	if dial == nil {
+		dial = (&net.Dialer{Timeout: dialTimeout, KeepAlive: 30 * time.Second}).DialContext
 	}
-	return (&net.Dialer{Timeout: dialTimeout, KeepAlive: 30 * time.Second}).DialContext
+	return func(ctx context.Context, network, addr string) (net.Conn, error) {
+		c, err := dial(ctx, network, addr)
+		if err != nil {
+			return nil, &dialError{err}
+		}
+		return c, nil
+	}
+}
+
+// dialError marks a failure to open the connection at all, whatever the
+// dialer (the system's, or another tailnet's node) said.
+type dialError struct{ err error }
+
+func (e *dialError) Error() string { return e.err.Error() }
+func (e *dialError) Unwrap() error { return e.err }
+
+// Unsent reports whether a request's error shows it never reached the box:
+// the connection could not be opened, or its TLS handshake did not finish.
+// Anything later (a connection dropping mid-request, a timeout waiting for
+// the answer) may have happened after the box acted, so it is not unsent.
+// Callers retrying something that must not happen twice, such as typing a
+// prompt, retry only unsent requests.
+func Unsent(err error) bool {
+	if err == nil || errors.Is(err, ErrUntrusted) {
+		return false
+	}
+	var de *dialError
+	if errors.As(err, &de) {
+		return true
+	}
+	var op *net.OpError
+	if errors.As(err, &op) && op.Op == "dial" {
+		return true
+	}
+	var rh tls.RecordHeaderError
+	var alert tls.AlertError
+	if errors.As(err, &rh) || errors.As(err, &alert) {
+		return true
+	}
+	// http.Transport's handshake timeout has no exported type.
+	return strings.Contains(err.Error(), "TLS handshake timeout")
 }
 
 // ErrUntrusted means the box answered but no longer trusts this laptop.

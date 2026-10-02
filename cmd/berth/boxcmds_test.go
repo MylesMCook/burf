@@ -20,6 +20,9 @@ func TestSplitBox(t *testing.T) {
 		{[]string{"share", "devl", "3000"}, 1, "devl", []string{"share", "3000"}},
 		{[]string{"worktree", "new", "--base", "main", "devl/cal/x"}, 2, "devl", []string{"worktree", "new", "--base", "main", "cal/x"}},
 		{[]string{"session", "kill", "devl/cal-claude-1"}, 2, "devl", []string{"session", "kill", "cal-claude-1"}},
+		// A secret reference's slashes are not the box's.
+		{[]string{"secret", "test", "devl", "op://dev/db/password"}, 2, "devl", []string{"secret", "test", "op://dev/db/password"}},
+		{[]string{"secret", "test", "--json", "devl", "env://KEY"}, 2, "devl", []string{"secret", "test", "--json", "env://KEY"}},
 	} {
 		box, rest, err := splitBox(tc.args, tc.words)
 		if err != nil || box != tc.box || !reflect.DeepEqual(rest, tc.rest) {
