@@ -1,8 +1,8 @@
 #!/bin/sh
 # Install berth from GitHub releases.
 #
-#   On a box:     curl -fsSL https://raw.githubusercontent.com/sean-brydon/berth/main/install.sh | sh
-#   CLI only:     curl -fsSL https://raw.githubusercontent.com/sean-brydon/berth/main/install.sh | sh -s -- berth
+#   On a box:     curl -fsSL https://raw.githubusercontent.com/sean-brydon/berthd/main/install.sh | sh
+#   CLI only:     curl -fsSL https://raw.githubusercontent.com/sean-brydon/berthd/main/install.sh | sh -s -- berth
 #
 # The default installs berthd, starts it at boot, and prints a pairing link.
 # Every download is checked against the release's SHA256SUMS before it runs.
@@ -14,7 +14,7 @@
 #   BERTH_NO_PAIR   set to skip printing a pairing link
 set -eu
 
-REPO="sean-brydon/berth"
+REPO="sean-brydon/berthd"
 COMPONENT="${1:-berthd}"
 BIN_DIR="${BERTH_BIN_DIR:-$HOME/.local/bin}"
 VERSION="${BERTH_VERSION:-latest}"

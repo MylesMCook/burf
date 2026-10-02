@@ -13,8 +13,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/sean-brydon/berth/internal/hooks"
-	"github.com/sean-brydon/berth/internal/statefile"
+	"github.com/sean-brydon/berthd/internal/hooks"
+	"github.com/sean-brydon/berthd/internal/statefile"
 )
 
 // What a repository asks of every worktree: its own ports, environment,
@@ -299,8 +299,20 @@ func (b *Box) WorktreeEnv(ctx context.Context, location string, wt Worktree) ([]
 			vars["BERTH_PORT_"+strconv.Itoa(i)] = strconv.Itoa(port + i)
 		}
 	}
-	keys := make([]string, 0, len(cfg.Effective.Env))
-	for k := range cfg.Effective.Env {
+	// The box's own environment comes first; the project's overrides it.
+	boxEnv, err := loadBoxEnv(b.EnvFile)
+	if err != nil {
+		return nil, err
+	}
+	merged := map[string]string{}
+	for k, v := range boxEnv.Env {
+		merged[k] = v
+	}
+	for k, v := range cfg.Effective.Env {
+		merged[k] = v
+	}
+	keys := make([]string, 0, len(merged))
+	for k := range merged {
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
@@ -310,7 +322,7 @@ func (b *Box) WorktreeEnv(ctx context.Context, location string, wt Worktree) ([]
 	}
 	sort.Strings(env)
 	for _, k := range keys {
-		v := os.Expand(cfg.Effective.Env[k], func(name string) string {
+		v := os.Expand(merged[k], func(name string) string {
 			if v, ok := vars[name]; ok {
 				return v
 			}

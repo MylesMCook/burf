@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sean-brydon/berth/internal/box"
+	"github.com/sean-brydon/berthd/internal/box"
 )
 
 // kitRepo makes a git repository holding a kit in kits/cal.

@@ -3,6 +3,7 @@ package box
 import (
 	"context"
 	"os"
+	"os/user"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -53,5 +54,20 @@ func TestInstallRejectsABuildThatDoesNotRunHere(t *testing.T) {
 func TestBuildIDDistinguishesBuilds(t *testing.T) {
 	if BuildID([]byte("a")) == BuildID([]byte("b")) || len(BuildID([]byte("a"))) != 12 {
 		t.Fatal("build ids do not identify builds")
+	}
+}
+
+func TestInfoNamesTheAccountToLogInAs(t *testing.T) {
+	exe := filepath.Join(t.TempDir(), "berthd")
+	os.WriteFile(exe, []byte("build"), 0o755)
+	c, _ := servedBox(t, func(b *Box) { b.Update = &SelfUpdate{Executable: exe} })
+	var i Info
+	if status := call(t, c, "GET", "/v1/info", "", nil, &i); status != 200 {
+		t.Fatalf("info: %d", status)
+	}
+	me, _ := user.Current()
+	home, _ := os.UserHomeDir()
+	if i.User != me.Username || i.Home != home {
+		t.Fatalf("info = %+v, want user %s home %s", i, me.Username, home)
 	}
 }

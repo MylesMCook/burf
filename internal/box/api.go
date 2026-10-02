@@ -12,13 +12,14 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
-	"github.com/sean-brydon/berth/internal/doctor"
-	"github.com/sean-brydon/berth/internal/events"
-	"github.com/sean-brydon/berth/internal/hooks"
-	"github.com/sean-brydon/berth/internal/terminal"
-	"github.com/sean-brydon/berth/internal/wire"
+	"github.com/sean-brydon/berthd/internal/doctor"
+	"github.com/sean-brydon/berthd/internal/events"
+	"github.com/sean-brydon/berthd/internal/hooks"
+	"github.com/sean-brydon/berthd/internal/terminal"
+	"github.com/sean-brydon/berthd/internal/wire"
 )
 
 // OriginHeader names the tool a request comes from, so the events it causes
@@ -52,6 +53,15 @@ type Box struct {
 	Flows *Flows
 	// KitsDir holds installed kits' files, one folder per location and kit.
 	KitsDir string
+	// EnvFile is the box's own environment for every worktree,
+	// ~/.berth/env.json.
+	EnvFile string
+	// Paused remembers paused worktrees.
+	Paused *PauseStore
+	// Phone serves the phone app on the tailnet address, when turned on.
+	Phone *Phone
+	// Guard, when set, keeps the box usable when memory runs short.
+	Guard *Guard
 }
 
 func (b *Box) own(path string) {
@@ -81,13 +91,23 @@ func (b *Box) Mount(s *wire.Server) {
 	route("POST /v1/locations/{name}/resolve", b.resolve)
 	route("GET /v1/locations/{name}/branches", b.listBranches)
 	route("GET /v1/fs", b.listFolder)
+	route("GET /v1/guard", b.getGuard)
+	route("PUT /v1/guard", b.putGuard)
 	route("GET /v1/flows", b.listFlows)
 	route("PUT /v1/flows", b.putFlows)
 	route("GET /v1/flows/runs", b.listFlowRuns)
 	route("POST /v1/flows/{id}/test", b.testFlow)
+	route("GET /v1/worktrees", b.listWorktreeStatuses)
+	route("GET /v1/locations/{name}/worktrees/{worktree}/log", b.worktreeLog)
+	route("POST /v1/locations/{name}/worktrees/{worktree}/sync", b.syncWorktree)
+	route("POST /v1/locations/{name}/worktrees/{worktree}/{action}", b.pauseAction)
+	route("GET /v1/phone", b.getPhone)
+	route("PUT /v1/phone", b.putPhone)
 	route("GET /v1/kits", b.listKits)
 	route("PUT /v1/locations/{name}/kit", b.putKit)
 	route("DELETE /v1/locations/{name}/kit", b.deleteKit)
+	route("GET /v1/env", b.getBoxEnv)
+	route("PUT /v1/env", b.putBoxEnv)
 	route("GET /v1/locations/{name}/config", b.getConfig)
 	route("PUT /v1/locations/{name}/config", b.putConfig)
 	route("GET /v1/locations/{name}/worktrees/{worktree}/services", b.listWorktreeServices)
@@ -119,6 +139,7 @@ func (b *Box) Mount(s *wire.Server) {
 	route("POST /v1/units/{name}/restart", b.restartUnit)
 	route("GET /v1/units/{name}/log", b.unitLog)
 	route("GET /v1/stats", b.handleStats)
+	route("GET /v1/review", b.review)
 	route("GET /v1/info", b.handleInfo)
 	route("GET /v1/doctor", b.handleDoctor)
 	route("POST /v1/upgrade", b.handleUpgrade)
@@ -367,18 +388,43 @@ func (b *Box) listSessions(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+// SessionRequest starts a session: Command, or the Agent preset with its
+// first Prompt. Open asks the app to show it ("split" or "tab").
+type SessionRequest struct {
+	Name     string `json:"name,omitempty"`
+	Location string `json:"location"`
+	Command  string `json:"command,omitempty"`
+	Agent    string `json:"agent,omitempty"`
+	Prompt   string `json:"prompt,omitempty"`
+	Open     string `json:"open,omitempty"`
+}
+
 func (b *Box) addSession(w http.ResponseWriter, r *http.Request) error {
-	var req struct {
-		Name     string `json:"name"`
-		Location string `json:"location"`
-		Command  string `json:"command"`
-	}
+	var req SessionRequest
 	if err := decode(r, &req); err != nil {
 		return err
+	}
+	if req.Open != "" && req.Open != "split" && req.Open != "tab" {
+		return badRequest("open must be split or tab")
 	}
 	dir, err := b.Locations.Dir(r.Context(), req.Location)
 	if err != nil {
 		return err
+	}
+	if req.Agent != "" {
+		if req.Command != "" {
+			return badRequest("give an agent or a command, not both")
+		}
+		name, _, _ := strings.Cut(req.Location, "/")
+		loc, err := b.Locations.Get(r.Context(), name)
+		if err != nil {
+			return err
+		}
+		p, ok := presetFor(&loc, req.Agent)
+		if !ok {
+			return badRequest("unknown agent %q", req.Agent)
+		}
+		req.Command = AgentCommand(p, req.Prompt)
 	}
 	if req.Name == "" {
 		req.Name = defaultSessionName(req.Location, req.Command)
@@ -387,8 +433,18 @@ func (b *Box) addSession(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	b.announceOpen(r, sess, req.Open)
 	writeJSON(w, sess)
 	return nil
+}
+
+// announceOpen asks the app to show a new session, beside the terminal the
+// user is looking at or as a tab.
+func (b *Box) announceOpen(r *http.Request, sess Session, open string) {
+	if open == "" {
+		return
+	}
+	b.publish(r, "session.open", map[string]any{"name": sess.Name, "location": sess.Location, "path": sess.Dir, "open": open, "agent": sess.Agent})
 }
 
 // startSession runs command in dir once the hooks allow it.

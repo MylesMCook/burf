@@ -1,0 +1,92 @@
+# Phone
+
+Berth has a small phone app: which agents need you, across your boxes, and
+answering them, from your phone.
+
+## Setting it up
+
+1. Your phone runs the Tailscale app, signed in to the tailnet your boxes are
+   on.
+2. In Berth, **Settings → Phone**: turn on phone access for each box.
+3. Scan the code with the phone's camera. One code pairs every box that has
+   phone access on. Add the page to your home screen (Share → Add to Home
+   Screen) so it opens like an app.
+
+For notifications, install [ntfy](https://ntfy.sh) on the phone, make a
+topic in Settings → Phone (**New topic**), and subscribe to the same topic in
+the ntfy app. Boxes then push "Claude Code needs you · cal/billing on devl"
+when an agent waits for you, and tapping it opens that agent in the phone app.
+
+## How it works
+
+Each box serves the phone app itself, on its tailnet address, port 1379.
+Boxes are always on, so the phone works while your laptop is asleep or shut,
+which is when you want it. The page you pair with reads every box you paired,
+so one list covers all of them.
+
+The phone can:
+
+- list sessions and their agents' states (needs you, working, done, ready);
+- read a session's screen;
+- type a prompt into a session;
+- press Enter, Esc, Ctrl-C, arrows, Tab, the digits 1–9, and y/n, which is
+  what answering an agent's question takes.
+
+It cannot reach anything else on the box: not worktrees, locations,
+sessions' commands, hooks, flows, kits, shares, upgrades, or the box's own
+API. Those are different routes on a different port, and the phone listener
+does not serve them.
+
+## Threat model
+
+- **Off by default.** A box serves nothing for phones until a paired laptop
+  turns it on, over the box's authenticated (pinned mutual TLS) API.
+- **Tailnet only.** The listener binds the box's tailnet address, never every
+  interface, and berthd refuses to start it on a box without one. Tailnet
+  traffic is encrypted end to end by WireGuard, so the app is plain HTTP
+  inside it.
+- **A token per box.** 48 hex characters from the OS random source, kept in
+  the box's state directory and shown only to paired laptops, as the QR code.
+  The phone stores it in its browser storage for that page. Pairing puts it
+  in the URL's fragment, which browsers never send to a server, and the page
+  removes it from the address bar at once. **New code** in Settings replaces
+  it, and every phone paired with the old one stops working.
+- **Wrong tokens lock out.** Ten wrong tokens in a minute from one address
+  answer 429 until the minute is up.
+- **Host check.** Requests must name the box by its tailnet address, a
+  `*.ts.net` MagicDNS name, or its own hostname, so a website cannot rebind a
+  name it controls to the box's address and talk to it.
+- **Cross-origin reads only from your tailnet.** CORS allows pages served
+  from tailnet addresses and `*.ts.net` (your other boxes' phone apps), with
+  the token in a header, never a cookie. The app's page denies framing and
+  only loads its own scripts.
+- **What a stolen token allows.** Anyone on your tailnet with a box's token
+  can read its agents' screens and type into its sessions, which is enough to
+  instruct an agent. Treat the code like a password: make a new one if a
+  phone is lost, and turn phone access off on boxes you don't need it on.
+  `before:session.send` hooks see phone prompts (`from: "phone"`) and can
+  refuse them.
+- **Notifications** carry which worktree and box need you, never what the
+  agent wrote. An ntfy topic is readable by anyone who knows its name, so
+  the topic Berth makes is long and random; use your own ntfy server for
+  more.
+
+## What works where
+
+| | iOS (Safari, home screen) | Android (Chrome) |
+| --- | --- | --- |
+| The app over the tailnet | Yes | Yes |
+| Add to home screen | Yes, opens full screen | Yes |
+| Notifications through ntfy | Yes, with the ntfy app | Yes, with the ntfy app |
+| Web Push straight from a box | No | No |
+
+Web Push needs a secure context (HTTPS) for the service worker it relies on,
+and a tailnet address over HTTP is not one. Serving the app over HTTPS would
+take a certificate for each box's `*.ts.net` name (`tailscale cert`), which
+is the next step if notifications without ntfy are wanted.
+
+## Later
+
+The laptop could serve the same app for boxes that cannot run it, over its
+own tailnet address. The phone app already reads several origins, so a laptop
+listener would be one more entry in the list it pairs with.

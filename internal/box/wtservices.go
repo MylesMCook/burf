@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sean-brydon/berth/internal/events"
+	"github.com/sean-brydon/berthd/internal/events"
 )
 
 // A repository's services run in each worktree as managed units, so they

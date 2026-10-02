@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berth/internal/events"
+	"github.com/sean-brydon/berthd/internal/events"
 )
 
 func TestFlowsAreValidated(t *testing.T) {

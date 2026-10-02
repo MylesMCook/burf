@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sean-brydon/berth/internal/identity"
+	"github.com/sean-brydon/berthd/internal/identity"
 )
 
 const (

@@ -1,0 +1,121 @@
+// A tab's panes are a binary tree of splits. Leaves hold what a pane shows;
+// a split divides its rectangle between two children at ratio. These are
+// pure functions over that tree.
+
+// What a pane shows. Other parts of the app make these through the actions
+// in lib/workspaces (openTerminal, openBrowser, focusSession).
+export type PaneContent =
+  // agent and command are remembered from the session, so a pane can say
+  // what ended and start it again after the session is gone.
+  | { kind: "terminal"; box: string; session: string; agent?: string; command?: string }
+  | { kind: "browser"; url: string }
+  | { kind: "log"; box: string; location: string; worktree: string; service: string }
+  // A plugin's worktree panel, shown for the workspace's worktree.
+  | { kind: "panel"; plugin: string; panel: string; title: string }
+  | { kind: "starting"; label: string }
+  | { kind: "error"; message: string };
+
+export type Pane = PaneContent;
+
+export type PaneNode =
+  | { kind: "leaf"; id: string; content: PaneContent }
+  | { kind: "split"; id: string; dir: "row" | "col"; ratio: number; a: PaneNode; b: PaneNode };
+
+export type Leaf = Extract<PaneNode, { kind: "leaf" }>;
+
+export interface Rect {
+  x: number;
+  y: number;
+  w: number;
+  h: number;
+}
+
+export const newId = () => Math.random().toString(36).slice(2, 10);
+
+export const leaf = (content: PaneContent): Leaf => ({ kind: "leaf", id: newId(), content });
+
+export function leaves(node: PaneNode): Leaf[] {
+  return node.kind === "leaf" ? [node] : [...leaves(node.a), ...leaves(node.b)];
+}
+
+export function findLeaf(node: PaneNode, id: string): Leaf | undefined {
+  return leaves(node).find((l) => l.id === id);
+}
+
+// mapLeaf replaces the leaf with id by fn(leaf).
+export function mapLeaf(node: PaneNode, id: string, fn: (l: Leaf) => PaneNode): PaneNode {
+  if (node.kind === "leaf") return node.id === id ? fn(node) : node;
+  return { ...node, a: mapLeaf(node.a, id, fn), b: mapLeaf(node.b, id, fn) };
+}
+
+// split puts next beside (row) or below (col) the leaf with id.
+export function split(node: PaneNode, id: string, dir: "row" | "col", next: Leaf): PaneNode {
+  return mapLeaf(node, id, (l) => ({ kind: "split", id: newId(), dir, ratio: 0.5, a: l, b: next }));
+}
+
+// remove drops a leaf; its sibling takes the parent's place. Undefined when
+// the tree was that one leaf.
+export function remove(node: PaneNode, id: string): PaneNode | undefined {
+  if (node.kind === "leaf") return node.id === id ? undefined : node;
+  const a = remove(node.a, id);
+  const b = remove(node.b, id);
+  if (!a) return b;
+  if (!b) return a;
+  return a === node.a && b === node.b ? node : { ...node, a, b };
+}
+
+export function setRatio(node: PaneNode, splitId: string, ratio: number): PaneNode {
+  if (node.kind === "leaf") return node;
+  if (node.id === splitId) return { ...node, ratio: Math.min(0.9, Math.max(0.1, ratio)) };
+  return { ...node, a: setRatio(node.a, splitId, ratio), b: setRatio(node.b, splitId, ratio) };
+}
+
+export interface Divider {
+  id: string;
+  dir: "row" | "col";
+  // The split's whole rectangle, to turn a pointer position into a ratio.
+  area: Rect;
+  // Where the line is: x for a row split, y for a column split.
+  at: number;
+}
+
+// layout places every leaf and divider inside rect (fractions of the pane
+// area, 0 to 1).
+export function layout(node: PaneNode, rect: Rect = { x: 0, y: 0, w: 1, h: 1 }, out = { leaves: [] as { leaf: Leaf; rect: Rect }[], dividers: [] as Divider[] }) {
+  if (node.kind === "leaf") {
+    out.leaves.push({ leaf: node, rect });
+    return out;
+  }
+  if (node.dir === "row") {
+    const w = rect.w * node.ratio;
+    layout(node.a, { ...rect, w }, out);
+    layout(node.b, { ...rect, x: rect.x + w, w: rect.w - w }, out);
+    out.dividers.push({ id: node.id, dir: "row", area: rect, at: rect.x + w });
+  } else {
+    const h = rect.h * node.ratio;
+    layout(node.a, { ...rect, h }, out);
+    layout(node.b, { ...rect, y: rect.y + h, h: rect.h - h }, out);
+    out.dividers.push({ id: node.id, dir: "col", area: rect, at: rect.y + h });
+  }
+  return out;
+}
+
+// neighbor finds the pane next to from in a direction, by their centres.
+export function neighbor(node: PaneNode, from: string, dir: "left" | "right" | "up" | "down"): string | undefined {
+  const all = layout(node).leaves;
+  const me = all.find((l) => l.leaf.id === from);
+  if (!me) return undefined;
+  const cx = me.rect.x + me.rect.w / 2;
+  const cy = me.rect.y + me.rect.h / 2;
+  let best: { id: string; d: number } | undefined;
+  for (const { leaf: l, rect: r } of all) {
+    if (l.id === from) continue;
+    const x = r.x + r.w / 2;
+    const y = r.y + r.h / 2;
+    const ok = dir === "left" ? x < cx && r.x + r.w <= me.rect.x + 1e-6 : dir === "right" ? x > cx && r.x >= me.rect.x + me.rect.w - 1e-6 : dir === "up" ? y < cy && r.y + r.h <= me.rect.y + 1e-6 : y > cy && r.y >= me.rect.y + me.rect.h - 1e-6;
+    if (!ok) continue;
+    const d = Math.hypot(x - cx, y - cy);
+    if (!best || d < best.d) best = { id: l.id, d };
+  }
+  return best?.id;
+}

@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berth/internal/hooks"
+	"github.com/sean-brydon/berthd/internal/hooks"
 )
 
 // The pieces agents, hooks and the app orchestrate with: type into a session,

@@ -19,15 +19,15 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/sean-brydon/berth/internal/agent"
-	"github.com/sean-brydon/berth/internal/boxcmd"
-	"github.com/sean-brydon/berth/internal/events"
-	"github.com/sean-brydon/berth/internal/identity"
-	"github.com/sean-brydon/berth/internal/integrations"
-	"github.com/sean-brydon/berth/internal/pairing"
-	"github.com/sean-brydon/berth/internal/statefile"
-	"github.com/sean-brydon/berth/internal/trust"
-	"github.com/sean-brydon/berth/internal/wire"
+	"github.com/sean-brydon/berthd/internal/agent"
+	"github.com/sean-brydon/berthd/internal/boxcmd"
+	"github.com/sean-brydon/berthd/internal/events"
+	"github.com/sean-brydon/berthd/internal/identity"
+	"github.com/sean-brydon/berthd/internal/integrations"
+	"github.com/sean-brydon/berthd/internal/pairing"
+	"github.com/sean-brydon/berthd/internal/statefile"
+	"github.com/sean-brydon/berthd/internal/trust"
+	"github.com/sean-brydon/berthd/internal/wire"
 )
 
 const usage = `berth — connect this laptop to development boxes
@@ -43,6 +43,9 @@ Boxes
   berth ping <box>                       Check a box answers and still trusts you
   berth upgrade <box>                    Upgrade the box's daemon over berth (no SSH)
   berth kit add|apply|list|save …        Set projects up the same way on every box; see berth kit help
+  berth edit BOX/PROJECT[/WT] [FILE[:LINE]] [--in cursor]
+                                         Open a worktree, or a file at a line, in your editor
+  berth ssh-config [--write]             Show (then write) the SSH hosts editors use: berth-<box>
   berth forget <box>                     Remove a box from this laptop
 
 Reaching services
@@ -144,6 +147,10 @@ func run(args []string) error {
 		return upgrade(l, rest)
 	case "kit", "kits":
 		return kitCommand(l, rest)
+	case "ssh-config":
+		return sshConfigCommand(l, rest)
+	case "edit":
+		return editCommand(l, rest)
 	case "networks":
 		return listNetworks(l, rest)
 	case "add":

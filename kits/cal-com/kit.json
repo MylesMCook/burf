@@ -1,0 +1,30 @@
+{
+  "id": "cal-com",
+  "name": "Cal.com development",
+  "description": "Every worktree gets its own Postgres database (a copy of the main one when migrations match), its own .env, URL and ports, a dev server, and Prisma Studio on demand. Removing the worktree drops its database.",
+  "version": "1",
+  "match": { "slug": "calcom/cal" },
+  "requires": [
+    { "tool": "node", "hint": "Cal.com's Node version, e.g. through nvm or fnm" },
+    { "tool": "yarn", "hint": "corepack enable" },
+    { "tool": "python3" },
+    { "tool": "git" },
+    { "tool": "pg_dump", "hint": "optional: without it (or Postgres in Docker) worktrees migrate and seed a fresh database instead of copying the main one" }
+  ],
+  "config": {
+    "setup": "\"$BERTH_KIT_DIR/scripts/setup.sh\"",
+    "archive": "\"$BERTH_KIT_DIR/scripts/archive.sh\"",
+    "ports": 2,
+    "env": {
+      "CAL_PUBLIC_BOX": "$BERTH_BOX",
+      "CAL_URL_PORT": "1377"
+    },
+    "services": [
+      { "name": "web", "run": "\"$BERTH_KIT_DIR/scripts/dev.sh\"", "autostart": true },
+      { "name": "studio", "run": "\"$BERTH_KIT_DIR/scripts/studio.sh\"" }
+    ],
+    "hooks": [
+      { "on": "worktree.removed", "run": "python3 \"$BERTH_KIT_DIR/scripts/cal_kit.py\" reclaim", "timeout": "2m" }
+    ]
+  }
+}

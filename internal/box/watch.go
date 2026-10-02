@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berth/internal/events"
+	"github.com/sean-brydon/berthd/internal/events"
 )
 
 // Watcher notices worktrees that appear in or vanish from a location without

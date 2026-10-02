@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/sean-brydon/berth/internal/doctor"
+	"github.com/sean-brydon/berthd/internal/doctor"
 )
 
 // Doctor reports what this box can do and what is missing. Daemon-level

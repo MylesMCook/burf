@@ -29,6 +29,48 @@ like `worktree.*`. `where` narrows it: `location`, `agent` (`claude`,
 `codex`), and `branch` (a trailing `*` matches a prefix). A repository's
 flows only ever see that repository's events.
 
+### On a schedule
+
+```json
+{
+  "id": "nightly",
+  "name": "Nightly: rebase every worktree and run tests",
+  "enabled": true,
+  "trigger": { "schedule": "0 2 * * *", "each_worktree": true, "where": { "branch": "sean/*" } },
+  "steps": [
+    { "id": "rebase", "kind": "run", "command": "git fetch origin && git rebase origin/main" },
+    { "kind": "run", "when": "failure", "command": "git rebase --abort" },
+    { "kind": "run", "command": "pnpm test", "timeout": "20m" },
+    { "kind": "notify", "when": "failure", "title": "{{worktree.name}}: tests fail after rebasing" }
+  ]
+}
+```
+
+`schedule` is a cron expression (minute hour day month weekday, with `*`,
+`*/15`, `1-5` and lists) or a shortcut (`@hourly`, `@daily`, `@weekly`,
+`@monthly`), in the box's local time. When both day fields are restricted,
+either one matching runs it, as in cron. A scheduled flow runs once, in the
+repository's main checkout, unless `each_worktree` is set: then it runs once
+for every worktree (not the main checkout) matching `where.branch`. A box
+flow without `where.location` runs once in the box user's home. Runs carry
+`schedule.fired` with `schedule` and `time`.
+
+### On GitHub
+
+```json
+{ "trigger": { "github": { "on": "review_comment", "poll": "2m" } } }
+```
+
+The box checks each covered worktree's pull request with `gh` (installed
+and signed in on the box) every `poll` (at least 1m, default 2m), and starts
+the flow for what is new: `review_comment` (a comment on the PR or on a
+line), `pr_review` (a submitted review), `check_failed` (a check that fails),
+`pr_merged`. The first look only records what is already there, so turning
+a flow on does not replay a PR's history. Each new item is its own run, one
+after another, with `pr`, `url`, `title`, `author`, `body`, `file`, `line`,
+`check` and `state` as event data. A box without `gh` simply never starts
+these flows. One poll makes at most 20 `gh` calls, shared between flows.
+
 ## Steps
 
 | Kind | Does | Fields |
@@ -45,7 +87,7 @@ default), failed (`"failure"`), or `"always"`. A `run` step fails when its
 command exits non-zero. A flow fails when a step fails and no later step
 handles failure.
 
-Text fields take `{{event.FIELD}}` (any field of the event, like
+Text fields take `{{now}}`, `{{event.FIELD}}` (any field of the event, like
 `{{event.agent}}`), `{{worktree.name}}`, `{{worktree.path}}`,
 `{{worktree.branch}}`, `{{location}}`, `{{prev.output}}`,
 `{{prev.exit_code}}`, `{{steps.ID.output}}` and, after a wait,
@@ -60,6 +102,31 @@ Text fields take `{{event.FIELD}}` (any field of the event, like
 - Events a flow causes carry `origin: "flow:<id>"`, and `flow.started` and
   `flow.finished` never start flows.
 - `before:` hooks still gate what a flow does, like anything else.
+
+## Resource guard
+
+Each box can keep itself usable when memory runs short (`~/.berth/guard.json`
+on the box, or Settings → Boxes → ⋯ → Resource guard). It is off until you
+turn it on.
+
+```json
+{ "enabled": true, "memory_percent": 90, "sustain": "1m", "stop_services": true, "pause_agents": true }
+```
+
+Once memory has stayed above `memory_percent` for `sustain`, the guard takes
+one step, waits 30 seconds, and looks again:
+
+1. It stops the services of a worktree where no agent is working, the one
+   idle longest first. This frees memory at once.
+2. When none are left, it pauses a worktree whose live sessions are all
+   idle or finished agents. Paused agents use no CPU and the kernel can swap
+   them out; their memory is only freed if it does. Resume them from the
+   Worktrees view.
+
+It never touches an agent that is working or waiting for you, or a plain
+shell. Each step sends `guard.acted` (with what it stopped or paused and
+why) and a `notify`. The guard reads memory from `/proc`, so it works on
+Linux boxes; on a box without it, it stays idle.
 
 ## Runs
 

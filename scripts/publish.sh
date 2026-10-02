@@ -13,7 +13,7 @@ set -euo pipefail
 version="${VERSION:?set VERSION, e.g. make publish VERSION=0.3.0}"
 version="${version#v}"
 tag="v$version"
-repo="sean-brydon/berth"
+repo="sean-brydon/berthd"
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
 

@@ -20,9 +20,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berth/internal/box"
-	"github.com/sean-brydon/berth/internal/hooks"
-	"github.com/sean-brydon/berth/internal/statefile"
+	"github.com/sean-brydon/berthd/internal/box"
+	"github.com/sean-brydon/berthd/internal/hooks"
+	"github.com/sean-brydon/berthd/internal/statefile"
 )
 
 // Kits on the laptop: fetched from a link (a git repository, a gist, a

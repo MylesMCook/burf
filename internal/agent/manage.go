@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berth/internal/hooks"
+	"github.com/sean-brydon/berthd/internal/hooks"
 )
 
 // Adding, pairing, upgrading and forgetting boxes are the CLI's job, and the

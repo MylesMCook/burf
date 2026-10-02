@@ -8,7 +8,7 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/sean-brydon/berth/internal/agent"
+	"github.com/sean-brydon/berthd/internal/agent"
 )
 
 // routeCommand handles `berth route add|rm` and `berth routes`.

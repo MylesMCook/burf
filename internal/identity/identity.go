@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berth/internal/statefile"
+	"github.com/sean-brydon/berthd/internal/statefile"
 )
 
 // Fingerprint is the SHA-256 of a key's SubjectPublicKeyInfo.

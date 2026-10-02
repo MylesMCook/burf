@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/sean-brydon/berth/internal/events"
+	"github.com/sean-brydon/berthd/internal/events"
 )
 
 const Usage = `Integrations

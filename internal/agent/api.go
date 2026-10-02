@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/sean-brydon/berth/internal/forward"
+	"github.com/sean-brydon/berthd/internal/forward"
 )
 
 var (
@@ -21,6 +21,7 @@ var (
 func (a *Agent) api(stop context.CancelFunc) http.Handler {
 	mux := http.NewServeMux()
 	a.kitRoutes(mux)
+	a.editorRoutes(mux)
 	mux.HandleFunc("GET /v1/status", func(w http.ResponseWriter, r *http.Request) {
 		a.sync()
 		writeJSON(w, http.StatusOK, a.status())

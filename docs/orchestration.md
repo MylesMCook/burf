@@ -13,10 +13,11 @@ Four pieces on every box do it, the same from the app, the CLI and the API:
 - **send** pastes the text as one block (so a multi-line prompt is one
   prompt), then presses Enter. Prompts never appear in events or logs; only
   `session.sent` with the session's name.
-- **wait** returns when the agent reports `finished` or `waiting` (or the
-  states you ask for), or when its program exits. It only counts states
-  reported after `after`, so a wait started right after a send is not ended by
-  the previous turn's `finished`. The CLI passes "now" for you.
+- **wait** returns when the agent is `finished` or `waiting` (or the states
+  you ask for), or when its program exits. Over the API it only counts
+  states reported after `after`. `berth session wait` counts the state the
+  agent is in now; `berth session send … --wait` counts only what comes
+  after the prompt, so the previous turn's `finished` does not end it.
 - **exec** runs a command to completion through a login shell in the
   location or worktree, and returns its exit code and the last 64 KB of
   output. `before:exec` hooks can refuse it.

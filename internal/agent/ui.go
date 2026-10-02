@@ -21,10 +21,10 @@ import (
 
 	"github.com/coder/websocket"
 
-	"github.com/sean-brydon/berth/internal/box"
-	"github.com/sean-brydon/berth/internal/hooks"
-	"github.com/sean-brydon/berth/internal/statefile"
-	"github.com/sean-brydon/berth/internal/terminal"
+	"github.com/sean-brydon/berthd/internal/box"
+	"github.com/sean-brydon/berthd/internal/hooks"
+	"github.com/sean-brydon/berthd/internal/statefile"
+	"github.com/sean-brydon/berthd/internal/terminal"
 )
 
 // DefaultUIPort is where the agent serves the desktop app, on loopback only.

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Berth</title>
+    <!-- Plugins import React and the SDK by name; these resolve to the app's
+         own copies (see src/plugins/host.ts). Must precede every module. -->
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "/shims/react.js",
+          "react/jsx-runtime": "/shims/react-jsx-runtime.js",
+          "react/jsx-dev-runtime": "/shims/react-jsx-runtime.js",
+          "react-dom": "/shims/react-dom.js",
+          "@berth/plugin": "/shims/berth-plugin.js",
+          "@berth/plugin/ui": "/shims/berth-plugin-ui.js"
+        }
+      }
+    </script>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

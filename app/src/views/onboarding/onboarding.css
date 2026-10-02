@@ -1,0 +1,17 @@
+/* Each onboarding step rises in gently as it replaces the last. */
+@keyframes onboarding-step-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+.onboarding-step {
+  animation: onboarding-step-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-step {
+    animation: none;
+  }
+}

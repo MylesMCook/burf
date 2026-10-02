@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berth/internal/events"
+	"github.com/sean-brydon/berthd/internal/events"
 )
 
 // repoConfig writes the repository's own .berth/config.json.

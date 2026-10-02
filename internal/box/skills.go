@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/sean-brydon/berth/internal/integrations"
+	"github.com/sean-brydon/berthd/internal/integrations"
 )
 
 // Skills teach agent tools on this box to use berth. They install for the

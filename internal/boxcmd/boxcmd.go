@@ -16,8 +16,8 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/sean-brydon/berth/internal/box"
-	"github.com/sean-brydon/berth/internal/events"
+	"github.com/sean-brydon/berthd/internal/box"
+	"github.com/sean-brydon/berthd/internal/events"
 )
 
 // Usage lists the commands with box-relative references. prefix is "" on the
@@ -45,13 +45,13 @@ func Usage(cmd, prefix string) string {
 
 Agent sessions
   %[1]s sessions%[3]s [--json]                          List sessions
-  %[1]s task new %[2]sLOC/NAME [--agent ID] [--prompt TEXT] [--branch B] [--base REF]
+  %[1]s task new %[2]sLOC/NAME [--agent ID] [--prompt TEXT] [--open split|tab] [--branch B] [--base REF]
                                                   A worktree with an agent running in it
   %[1]s agents%[3]s [--json]                            Agent CLIs this box can start
-  %[1]s session new %[2]sLOC[/WORKTREE] [--name N] [-- COMMAND...]
-                                                  Start COMMAND (default: a shell) there
+  %[1]s session new %[2]sLOC[/WORKTREE] [--name N] [--agent ID [--prompt TEXT]] [--open split|tab] [-- COMMAND...]
+                                                  Start an agent or COMMAND (default: a shell) there
   %[1]s session screen %[2]sNAME [--history N]          Print what the session shows
-  %[1]s session send %[2]sNAME TEXT [--no-enter]        Type a prompt into a session
+  %[1]s session send %[2]sNAME TEXT [--no-enter] [--wait] Type a prompt into a session, and wait for its turn
   %[1]s session wait %[2]sNAME [--for finished,waiting] Wait for its agent's turn to end
   %[1]s exec %[2]sLOC[/WORKTREE] -- COMMAND...            Run a command there and print its output
   %[1]s loop %[2]sSESSION --check CMD [--prompt TEXT] [--max 5]
@@ -245,17 +245,35 @@ func Run(ctx context.Context, c *box.Client, args []string, out io.Writer) error
 	case "task new":
 		return taskNew(ctx, c, rest, out)
 	case "session send":
-		fs, _ := flags(rest)
+		fs, asJSON := flags(rest)
 		noEnter := fs.Bool("no-enter", false, "type the text without pressing Enter")
+		wait := fs.Bool("wait", false, "then wait for the turn it starts to end (finished or waiting)")
+		timeout := fs.Duration("timeout", 30*time.Minute, "with --wait, give up after this long")
 		pos, err := parse(fs, rest)
 		if err != nil || len(pos) != 2 {
-			return usageErr("session send NAME TEXT [--no-enter]")
+			return usageErr("session send NAME TEXT [--no-enter] [--wait [--timeout 30m]]")
 		}
+		sent := time.Now()
 		if err := c.Send(ctx, pos[0], pos[1], !*noEnter); err != nil {
 			return err
 		}
-		fmt.Fprintf(out, "Sent to %s\n", pos[0])
-		return nil
+		if !*wait {
+			fmt.Fprintf(out, "Sent to %s\n", pos[0])
+			return nil
+		}
+		// Only what the agent reports after the prompt counts, so the
+		// previous turn's "finished" does not end the wait.
+		res, err := waitFor(ctx, c, pos[0], []string{"finished", "waiting"}, sent, *timeout)
+		if err != nil {
+			return err
+		}
+		return show(out, *asJSON, res, func() {
+			if res.TimedOut {
+				fmt.Fprintf(out, "Still %s after %v\n", res.State, *timeout)
+				return
+			}
+			fmt.Fprintln(out, res.State)
+		})
 	case "session wait":
 		fs, asJSON := flags(rest)
 		states := fs.String("for", "finished,waiting", "states that end the wait")
@@ -264,8 +282,10 @@ func Run(ctx context.Context, c *box.Client, args []string, out io.Writer) error
 		if err != nil || len(pos) != 1 {
 			return usageErr("session wait NAME [--for finished,waiting] [--timeout 30m]")
 		}
-		// Only what the agent reports from now on counts.
-		res, err := waitFor(ctx, c, pos[0], strings.Split(*states, ","), time.Now(), *timeout)
+		// The agent's state now counts: waiting for an agent that is
+		// already idle returns at once. To wait for the turn a prompt
+		// starts, use session send --wait.
+		res, err := waitFor(ctx, c, pos[0], strings.Split(*states, ","), time.Time{}, *timeout)
 		if err != nil {
 			return err
 		}
@@ -624,18 +644,45 @@ func sessionNew(ctx context.Context, c *box.Client, args []string, out io.Writer
 		}
 	}
 	fs, asJSON := flags(args)
-	name := fs.String("name", "", "session name (default: location, command, and a suffix)")
+	var req box.SessionRequest
+	fs.StringVar(&req.Name, "name", "", "session name (default: location, command, and a suffix)")
+	fs.StringVar(&req.Agent, "agent", "", "start this agent (see: agents) instead of a command")
+	fs.StringVar(&req.Prompt, "prompt", "", "the agent's first prompt")
+	fs.StringVar(&req.Open, "open", "", "show it in the Berth app: split (beside the current terminal) or tab")
 	pos, err := parse(fs, args)
 	if err != nil || len(pos) != 1 {
-		return usageErr("session new LOC[/WORKTREE] [--name N] [-- COMMAND...]")
+		return usageErr("session new LOC[/WORKTREE] [--name N] [--agent ID [--prompt TEXT]] [--open split|tab] [-- COMMAND...]")
 	}
-	sess, err := c.AddSession(ctx, *name, pos[0], strings.Join(command, " "))
+	req.Location, req.Command = pos[0], commandLine(command)
+	sess, err := c.StartSession(ctx, req)
 	if err != nil {
 		return err
 	}
 	return show(out, *asJSON, sess, func() {
 		fmt.Fprintf(out, "Started session %s in %s\n", sess.Name, sess.Dir)
 	})
+}
+
+// commandLine turns the words after -- back into one shell command. A
+// single word is taken as a command line already, so `-- "a && b"` works;
+// several are quoted one by one, so `-- claude "fix it, don't stop"` gives
+// claude one argument, apostrophe and all.
+func commandLine(words []string) string {
+	if len(words) == 1 {
+		return words[0]
+	}
+	quoted := make([]string, len(words))
+	for i, w := range words {
+		quoted[i] = shellWord(w)
+	}
+	return strings.Join(quoted, " ")
+}
+
+func shellWord(w string) string {
+	if w != "" && strings.Trim(w, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-./:=@%+,") == "" {
+		return w
+	}
+	return "'" + strings.ReplaceAll(w, "'", `'\''`) + "'"
 }
 
 // waitFor waits in steps, since one long request could outlive a proxy or a
@@ -665,7 +712,7 @@ func execCmd(ctx context.Context, c *box.Client, args []string, out io.Writer) e
 	if err != nil || len(pos) != 1 || len(command) == 0 {
 		return usageErr("exec LOC[/WORKTREE] [--timeout 10m] -- COMMAND...")
 	}
-	res, err := c.Exec(ctx, box.ExecRequest{Location: pos[0], Command: strings.Join(command, " "), Timeout: *timeout})
+	res, err := c.Exec(ctx, box.ExecRequest{Location: pos[0], Command: commandLine(command), Timeout: *timeout})
 	if err != nil {
 		return err
 	}
@@ -749,7 +796,7 @@ func taskNew(ctx context.Context, c *box.Client, args []string, out io.Writer) e
 	var req box.TaskRequest
 	for i, a := range args {
 		if a == "--" {
-			req.Command = strings.Join(args[i+1:], " ")
+			req.Command = commandLine(args[i+1:])
 			args = args[:i]
 			break
 		}
@@ -757,10 +804,11 @@ func taskNew(ctx context.Context, c *box.Client, args []string, out io.Writer) e
 	fs, asJSON := flags(args)
 	fs.StringVar(&req.Agent, "agent", "", "agent to start (see: agents)")
 	fs.StringVar(&req.Prompt, "prompt", "", "the agent's first prompt")
+	fs.StringVar(&req.Open, "open", "", "show it in the Berth app: split or tab")
 	fs.StringVar(&req.Branch, "branch", "", "branch to create (default: the worktree name)")
 	fs.StringVar(&req.Base, "base", "", "ref to branch from")
 	pos, err := parse(fs, args)
-	usage := "task new LOC/NAME [--agent ID] [--prompt TEXT] [--branch B] [--base REF] [-- COMMAND...]"
+	usage := "task new LOC/NAME [--agent ID] [--prompt TEXT] [--open split|tab] [--branch B] [--base REF] [-- COMMAND...]"
 	if err != nil || len(pos) != 1 {
 		return usageErr(usage)
 	}

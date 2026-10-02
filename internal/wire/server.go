@@ -15,9 +15,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/sean-brydon/berth/internal/identity"
-	"github.com/sean-brydon/berth/internal/pairing"
-	"github.com/sean-brydon/berth/internal/trust"
+	"github.com/sean-brydon/berthd/internal/identity"
+	"github.com/sean-brydon/berthd/internal/pairing"
+	"github.com/sean-brydon/berthd/internal/trust"
 )
 
 // Rejections are deliberately uninformative: the caller learns that it was

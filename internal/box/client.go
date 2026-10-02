@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berth/internal/doctor"
-	"github.com/sean-brydon/berth/internal/events"
+	"github.com/sean-brydon/berthd/internal/doctor"
+	"github.com/sean-brydon/berthd/internal/events"
 )
 
 // Doer sends a request to a box: a wire.Client from a laptop, or a Local
@@ -146,6 +146,11 @@ func (c *Client) RemoveWorktree(ctx context.Context, location, name string, opts
 
 func (c *Client) Sessions(ctx context.Context) (out []Session, err error) {
 	return out, c.call(ctx, http.MethodGet, "/v1/sessions", nil, &out)
+}
+
+// StartSession starts a session: a command, or an agent with its prompt.
+func (c *Client) StartSession(ctx context.Context, req SessionRequest) (out Session, err error) {
+	return out, c.call(ctx, http.MethodPost, "/v1/sessions", req, &out)
 }
 
 func (c *Client) AddSession(ctx context.Context, name, location, command string) (out Session, err error) {

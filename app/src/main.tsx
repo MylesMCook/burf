@@ -1,0 +1,30 @@
+import React from "react";
+import ReactDOM from "react-dom/client";
+
+import App from "@/App";
+import { ErrorBoundary } from "@/components/error-boundary";
+import { isTauri } from "@/lib/api";
+import { openUrl } from "@/lib/open-url";
+import { installGlobals } from "@/plugins/host";
+import "@/index.css";
+
+// Plugins resolve React and the SDK through globals; set them before any
+// plugin can load.
+installGlobals();
+
+// Links clicked in a terminal open with window.open; in the app that would
+// navigate the webview, so send them to the system browser instead.
+if (isTauri()) {
+  window.open = (url?: string | URL) => {
+    if (url) void openUrl(String(url));
+    return null;
+  };
+}
+
+ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
+  <React.StrictMode>
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  </React.StrictMode>,
+);

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sean-brydon/berth/internal/integrations"
+	"github.com/sean-brydon/berthd/internal/integrations"
 )
 
 func TestSkillsInstallForTheUserAndForOneProject(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berth/internal/events"
+	"github.com/sean-brydon/berthd/internal/events"
 )
 
 // AgentPreset is a way to start a coding agent: what the app offers when it
@@ -116,6 +116,8 @@ type TaskRequest struct {
 	Prompt  string `json:"prompt,omitempty"`
 	// FromSession names the session handing this work off, if any.
 	FromSession string `json:"from_session,omitempty"`
+	// Open asks the app to show the new session: "split" or "tab".
+	Open string `json:"open,omitempty"`
 }
 
 type Task struct {
@@ -161,6 +163,7 @@ func (b *Box) addTask(w http.ResponseWriter, r *http.Request) error {
 		"location": req.Location, "name": wt.Name, "path": wt.Path, "branch": wt.Branch,
 		"session": sess.Name, "agent": req.Agent, "from_session": req.FromSession,
 	})
+	b.announceOpen(r, sess, req.Open)
 	writeJSON(w, Task{Worktree: wt, Session: sess})
 	return nil
 }

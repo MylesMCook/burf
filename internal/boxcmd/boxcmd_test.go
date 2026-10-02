@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sean-brydon/berth/internal/box"
+	"github.com/sean-brydon/berthd/internal/box"
 )
 
 // recorder is a fake box that records each request and replies with body.
@@ -145,5 +145,17 @@ func TestPreviewAnnouncesTheWorktreesPage(t *testing.T) {
 	data, _ = r.body["data"].(map[string]any)
 	if data["port"] != float64(5173) || data["path"] != "/w/cal" {
 		t.Fatalf("data = %v", data)
+	}
+}
+
+func TestWordsAfterDoubleDashKeepTheirQuoting(t *testing.T) {
+	for words, want := range map[string]string{
+		"claude\x00Create loop.sh, don't commit": `claude 'Create loop.sh, don'\''t commit'`,
+		"pnpm test && echo ok":                   "pnpm test && echo ok",
+		"ls\x00-la":                              "ls -la",
+	} {
+		if got := commandLine(strings.Split(words, "\x00")); got != want {
+			t.Errorf("%q → %s, want %s", words, got, want)
+		}
 	}
 }

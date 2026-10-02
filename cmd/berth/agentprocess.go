@@ -11,8 +11,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sean-brydon/berth/internal/agent"
-	"github.com/sean-brydon/berth/internal/service"
+	"github.com/sean-brydon/berthd/internal/agent"
+	"github.com/sean-brydon/berthd/internal/service"
 )
 
 func agentService(l laptop) (service.Spec, error) {

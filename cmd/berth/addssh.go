@@ -14,9 +14,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berth/internal/pairing"
-	"github.com/sean-brydon/berth/internal/trust"
-	"github.com/sean-brydon/berth/internal/wire"
+	"github.com/sean-brydon/berthd/internal/pairing"
+	"github.com/sean-brydon/berthd/internal/sshconfig"
+	"github.com/sean-brydon/berthd/internal/trust"
+	"github.com/sean-brydon/berthd/internal/wire"
 )
 
 // daemonFor maps `uname -sm` output to the berthd build for that box.
@@ -198,17 +199,7 @@ func addSSH(l laptop, args []string) error {
 }
 
 // onePasswordAgent is 1Password's SSH agent socket, when it is running.
-func onePasswordAgent() string {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	sock := filepath.Join(home, "Library", "Group Containers", "2BUA8C4S2C.com.1password", "t", "agent.sock")
-	if st, err := os.Stat(sock); err == nil && st.Mode()&os.ModeSocket != 0 {
-		return sock
-	}
-	return ""
-}
+func onePasswordAgent() string { return sshconfig.OnePasswordAgent() }
 
 // checkName refuses a --name that cannot be a hostname before any work is
 // done, suggesting one that can.

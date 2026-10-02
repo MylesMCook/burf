@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berth/internal/statefile"
-	"github.com/sean-brydon/berth/internal/trust"
+	"github.com/sean-brydon/berthd/internal/statefile"
+	"github.com/sean-brydon/berthd/internal/trust"
 )
 
 // Location is a named place on a box where work happens: a repository or any
@@ -289,9 +289,14 @@ func describe(ctx context.Context, s savedLocation) Location {
 	loc.Remote = remoteURL(ctx, s.Path)
 	loc.Slug = slugOf(loc.Remote)
 	loc.DefaultBranch = defaultBranch(ctx, s.Path)
-	if c, ok, _ := ReadRepoConfig(s.Path); ok {
-		loc.Agents = c.Agents
+	// Agent presets come from every layer: the repository's, its kit's,
+	// and this box's own.
+	repo, _, _ := ReadRepoConfig(s.Path)
+	local := RepoConfig{}
+	if s.Config != nil {
+		local = *s.Config
 	}
+	loc.Agents = layered(repo, s.Kit, local).Agents
 	loc.Worktrees = parseWorktrees(out, s.Path)
 	return loc
 }

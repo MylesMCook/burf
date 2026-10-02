@@ -10,7 +10,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/sean-brydon/berth/internal/service"
+	"github.com/sean-brydon/berthd/internal/service"
 )
 
 func daemonService(b boxHome, listen string) service.Spec {

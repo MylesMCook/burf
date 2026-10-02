@@ -1,0 +1,172 @@
+import { GlobeIcon, HistoryIcon, PlusIcon, PuzzleIcon, RadioIcon, Settings2Icon, SquareTerminalIcon } from "lucide-react";
+import { useMemo, useState } from "react";
+
+import { AgentIcon } from "@/components/agent-glyph";
+import { Command, CommandCollection, CommandEmpty, CommandGroup, CommandGroupLabel, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
+import { Kbd } from "@/components/ui/kbd";
+import { Popover, PopoverPopup, PopoverTrigger } from "@/components/ui/popover";
+import { agentLabel } from "@/components/workspace/pane";
+import { agentPresets, openBrowserAt, resolveUrl, startSession } from "@/lib/actions";
+import { leaves } from "@/lib/layout";
+import { useStore } from "@/lib/store";
+import { portUrl } from "@/lib/browser-url";
+import { activateTab, focusPane, openPanel, useWorkspaces } from "@/lib/workspaces";
+import { useRegistry } from "@/plugins/registry";
+import { Icon } from "@/plugins/ui";
+
+interface Item {
+  value: string;
+  label: string;
+  detail?: string;
+  // Also matched when searching, without being shown (a session's id).
+  search?: string;
+  icon: React.ReactNode;
+  shortcut?: string;
+  run(): void;
+}
+
+interface Group {
+  value: string;
+  label?: string;
+  items: Item[];
+}
+
+// NewTabMenu is the tab strip's "+", as in Orca: a search over open tabs,
+// dev servers, recent pages and agents, then quick ways to start a terminal,
+// a browser, or any agent in the current worktree.
+export function NewTabMenu() {
+  const open = useStore((s) => s.newTabMenuOpen);
+  const setOpen = useStore((s) => s.setNewTabMenuOpen);
+  const [query, setQuery] = useState("");
+  const current = useWorkspaces((s) => s.current);
+  const spaces = useWorkspaces((s) => s.spaces);
+  const recent = useWorkspaces((s) => s.recentUrls);
+  const ws = current ? spaces[current] : undefined;
+  const services = useStore((s) => (ws ? s.boxes[ws.ref.box]?.services : undefined));
+  const urlPort = useStore((s) => s.status?.proxy.url_port);
+  const boxData = useStore((s) => (ws ? s.boxes[ws.ref.box] : undefined));
+  const panels = useRegistry((s) => s.worktreePanels);
+
+  const groups = useMemo<Group[]>(() => {
+    const done = (fn: () => void) => () => {
+      setOpen(false);
+      setQuery("");
+      fn();
+    };
+    const q = query.trim();
+    const url = resolveUrl(q);
+    const top: Item[] = url ? [{ value: `open:${url}`, label: `Open ${url}`, icon: <GlobeIcon />, run: done(() => openBrowserAt(url)) }] : [];
+    const actions: Item[] = [
+      { value: "terminal", label: "New terminal", icon: <SquareTerminalIcon />, shortcut: "⌘T", run: done(() => void startSession("")) },
+      { value: "browser", label: "New browser tab", icon: <GlobeIcon />, shortcut: "⌘⇧B", run: done(() => openBrowserAt("")) },
+    ];
+    const agents: Item[] = ws
+      ? agentPresets(ws.ref.box, ws.ref.location).map((p) => ({ value: `agent:${p.id}`, label: p.name, icon: <AgentIcon agent={p.id} />, run: done(() => void startSession(p.command, { kind: "tab" }, p.name)) }))
+      : [];
+    const panelItems: Item[] = ws
+      ? panels.map(({ plugin, item }) => ({
+          value: `panel:${plugin}:${item.id}`,
+          label: item.title,
+          icon: item.icon ? <Icon name={item.icon} /> : <PuzzleIcon />,
+          run: done(() => openPanel(plugin, item.id, item.title)),
+        }))
+      : [];
+    const settings: Item[] = [{ value: "agent-settings", label: "Agent settings…", icon: <Settings2Icon />, run: done(() => useStore.getState().setView({ kind: "settings", section: "agents" })) }];
+    const history: Item[] = recent.map((u) => ({ value: `recent:${u}`, label: u.replace(/^https?:\/\//, "").replace(/\/$/, ""), search: u, icon: <HistoryIcon />, run: done(() => openBrowserAt(u)) }));
+    if (!q) {
+      return [
+        { value: "new", label: "New", items: actions },
+        { value: "agents", label: "Agents", items: agents },
+        { value: "panels", label: "Panels", items: panelItems },
+        { value: "recent", label: "Recent pages", items: history.slice(0, 3) },
+      ].filter((g) => g.items.length);
+    }
+
+    // Searching: everything, filtered by the command list.
+    const tabs: Item[] = Object.entries(spaces).flatMap(([key, space]) =>
+      space.tabs.map((t) => {
+        const focus = leaves(t.root).find((l) => l.id === t.focus) ?? leaves(t.root)[0];
+        const c = focus.content;
+        const agent = c.kind === "terminal" ? sessionAgent(c.box, c.session) : undefined;
+        const what = c.kind === "terminal" ? (agent ? agentLabel(agent) : "Shell") : c.kind === "browser" ? c.url.replace(/^https?:\/\//, "") || "Browser" : "Starting";
+        return {
+          value: `tab:${key}:${t.id}`,
+          label: `${what} — ${space.ref.main ? space.ref.location : space.ref.worktree}`,
+          detail: space.ref.box,
+          search: c.kind === "terminal" ? c.session : undefined,
+          icon: c.kind === "browser" ? <GlobeIcon /> : <AgentIcon agent={c.kind === "terminal" ? sessionAgent(c.box, c.session) : undefined} />,
+          run: done(() => {
+            useWorkspaces.setState((s) => ({ current: key, mounted: s.mounted.includes(key) ? s.mounted : [...s.mounted, key] }));
+            activateTab(key, t.id);
+            focusPane(key, t.id, focus.id);
+          }),
+        };
+      }),
+    );
+    const servers: Item[] =
+      ws
+        ? (services ?? [])
+            .filter((s) => s.path === ws.ref.path)
+            .map((s) => {
+              const u = portUrl(s.port, { ref: ws.ref, services, urlPort }) ?? "";
+              return { value: `svc:${s.port}`, label: `Open ${s.port}${s.process ? ` (${s.process})` : ""}`, detail: u, icon: <RadioIcon />, run: done(() => openBrowserAt(u)) };
+            })
+        : [];
+    return [
+      { value: "url", items: top },
+      { value: "tabs", label: "Open tabs", items: tabs },
+      { value: "servers", label: "Dev servers", items: servers },
+      { value: "history", label: "Recent", items: history },
+      { value: "agents", label: "Agents", items: agents },
+      { value: "panels", label: "Panels", items: panelItems },
+      { value: "actions", items: [...actions, ...settings] },
+    ].filter((g) => g.items.length);
+    // boxData keeps agent labels current as sessions change.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, ws, spaces, services, recent, urlPort, boxData, panels, setOpen]);
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o);
+        if (!o) setQuery("");
+      }}
+    >
+      <PopoverTrigger
+        render={<button type="button" aria-label="New tab" title="New tab (⌘T for a terminal)" className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground data-popup-open:bg-accent" />}
+      >
+        <PlusIcon className="size-4" />
+      </PopoverTrigger>
+      <PopoverPopup align="start" sideOffset={2} className="w-88 p-0 [&_[data-slot=popover-viewport]]:p-0">
+        <Command items={groups} value={query} onValueChange={setQuery} itemToStringValue={(i: unknown) => `${(i as Item).label} ${(i as Item).detail ?? ""} ${(i as Item).search ?? ""}`}>
+          <CommandInput placeholder="Search open tabs, history, URLs, agents…" className="text-sm" />
+          <CommandSeparator className="my-0" />
+          <CommandEmpty>Nothing matches. Type a port or a URL to open it.</CommandEmpty>
+          <CommandList className="max-h-96">
+            {(group: Group) => (
+              <CommandGroup key={group.value} items={group.items}>
+                {group.label && <CommandGroupLabel>{group.label}</CommandGroupLabel>}
+                <CommandCollection>
+                  {(item: Item) => (
+                    <CommandItem key={item.value} value={item} onClick={() => item.run()} className="gap-2.5 text-sm [&_svg]:size-4 [&_svg]:text-muted-foreground">
+                      {item.icon}
+                      <span className="truncate">{item.label}</span>
+                      {item.detail && <span className="ml-auto max-w-40 truncate text-muted-foreground text-xs">{item.detail}</span>}
+                      {item.shortcut && <Kbd className="ml-auto">{item.shortcut}</Kbd>}
+                    </CommandItem>
+                  )}
+                </CommandCollection>
+              </CommandGroup>
+            )}
+          </CommandList>
+        </Command>
+      </PopoverPopup>
+    </Popover>
+  );
+}
+
+function sessionAgent(box: string, session: string): string | undefined {
+  const s = useStore.getState().boxes[box]?.sessions?.find((x) => x.name === session);
+  return s?.agent;
+}

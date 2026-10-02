@@ -49,19 +49,32 @@ or `finished` (done with its turn).
 ## Make work
 
 ```sh
-berthd worktree new cal/fix-login --base main          # a worktree on a new branch
-berthd task new cal/fix-login --agent claude --prompt "Fix the login redirect loop"
-berthd session new cal/fix-login -- pnpm dev           # any command, in a terminal the user can open
-berthd session screen cal-fix-login-claude-1a2b --history 200   # read a terminal
+# An agent beside you, in a split pane of the user's window:
+berthd session new "$BERTH_LOCATION/$BERTH_WORKTREE_NAME" --agent claude --prompt "Review my diff" --open split
+# A new worktree with an agent in it, in a new tab:
+berthd task new cal/fix-login --agent claude --prompt "Fix the login redirect loop" --open tab
+# A worktree alone, or any command in a terminal:
+berthd worktree new cal/fix-login --base main
+berthd session new cal/fix-login -- pnpm dev
+# Read a terminal:
+berthd session screen cal-fix-login-claude-1a2b --history 200
 ```
+
+- Start agents with `--agent ID --prompt TEXT` (ids from `berthd agents`),
+  never `-- claude "…"`: berth builds and quotes the command for that agent.
+- `--open split` (beside the user's focused terminal) or `--open tab` shows
+  it in the user's Berth app when they are looking at that worktree, and
+  offers it otherwise. Use it whenever the user asks for an agent "beside
+  me", "in a split" or "in a new tab".
+- A new agent may stop at a question before it is ready, such as "do you
+  trust this folder?". Wait with `berthd session wait NAME --for idle,waiting`:
+  `idle` means it is at its prompt; `waiting` means it needs the user, so
+  tell them. Never poll the screen for a prompt.
 
 A branch that already exists, locally or on origin, is checked out as it is.
 Session names are printed when they start and listed by `sessions`. Do not run
 `berthd session attach` or `berth attach` yourself: they are interactive and
 meant for humans.
-
-The user sees every worktree, task and session in the Berth app as soon as it
-exists, and is told when an agent waits for them.
 
 ## A repository's config
 

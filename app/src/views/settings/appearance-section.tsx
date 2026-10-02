@@ -1,0 +1,162 @@
+import { CheckIcon } from "lucide-react";
+
+import { SYSTEM_THEME, useThemes } from "@/hooks/use-theme";
+import type { Theme } from "@/lib/api";
+import { setPrefs, usePrefs } from "@/lib/prefs";
+import { useStore } from "@/lib/store";
+import { cn } from "@/lib/utils";
+import { Segmented } from "@/views/settings/controls";
+import { Code, SettingsGroup, SettingsPage, SettingsRow } from "@/views/settings/rows";
+
+export function AppearanceSection() {
+  const themes = useThemes();
+  const themeId = useStore((s) => s.themeId);
+  const density = usePrefs((p) => p.density);
+  const uiFontSize = usePrefs((p) => p.uiFontSize);
+
+  return (
+    <SettingsPage title="Appearance">
+      <section>
+        <div className="mb-2">
+          <h2 className="font-medium text-[13px] text-muted-foreground">Theme</h2>
+          <p className="mt-0.5 text-muted-foreground/80 text-xs">
+            Add your own as JSON in <Code>~/.berth/themes/</Code>, or install a plugin that ships one.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-3 max-[900px]:grid-cols-1">
+          <SystemCard selected={themeId === SYSTEM_THEME} light={themes.find((t) => t.id === "berth-light")} dark={themes.find((t) => t.id === "berth-dark")} />
+          {themes.map((t) => (
+            <ThemeCard key={t.id} theme={t} selected={t.id === themeId} onSelect={() => useStore.getState().setTheme(t.id)} />
+          ))}
+        </div>
+      </section>
+
+      <SettingsGroup title="Interface">
+        <SettingsRow label="Text size" description="Everything outside the terminal.">
+          <Segmented
+            value={String(uiFontSize)}
+            options={[
+              { value: "12", label: "Small" },
+              { value: "13", label: "Default" },
+              { value: "14", label: "Large" },
+            ]}
+            onChange={(v) => setPrefs({ uiFontSize: Number(v) })}
+          />
+        </SettingsRow>
+        <SettingsRow label="Density" description="How tightly the sidebar and lists are packed.">
+          <Segmented
+            value={density}
+            options={[
+              { value: "compact", label: "Compact" },
+              { value: "comfortable", label: "Comfortable" },
+            ]}
+            onChange={(density) => setPrefs({ density })}
+          />
+        </SettingsRow>
+      </SettingsGroup>
+    </SettingsPage>
+  );
+}
+
+// SystemCard follows the computer's appearance: Berth Light by day, Berth
+// Dark when macOS is dark. Its preview is half of each.
+function SystemCard({ selected, light, dark }: { selected: boolean; light?: Theme; dark?: Theme }) {
+  if (!light || !dark) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => useStore.getState().setTheme(SYSTEM_THEME)}
+      aria-pressed={selected}
+      className={cn(
+        "col-span-full flex items-center overflow-hidden rounded-xl border text-left outline-none transition-[box-shadow,border-color] focus-visible:ring-2 focus-visible:ring-ring",
+        selected ? "border-ring ring-1 ring-ring" : "hover:border-foreground/25",
+      )}
+    >
+      <div className="relative h-14 w-28 shrink-0 border-r">
+        <Swatch theme={light} />
+        <div className="absolute inset-0 [clip-path:polygon(100%_0,100%_100%,0_100%)]">
+          <Swatch theme={dark} />
+        </div>
+      </div>
+      <div className="flex min-w-0 flex-1 items-center gap-2 px-3.5 text-[13px]">
+        <span className="min-w-0 flex-1">
+          <span className="block">Match system</span>
+          <span className="block text-[11px] text-muted-foreground">Berth Light by day, Berth Dark when macOS is dark</span>
+        </span>
+        {selected && <CheckIcon className="size-3.5" />}
+      </div>
+    </button>
+  );
+}
+
+// ThemeCard previews a theme with its own colors: a sidebar beside a
+// terminal, whatever theme the app itself is in.
+function ThemeCard({ theme, selected, onSelect }: { theme: Theme; selected: boolean; onSelect(): void }) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
+      className={cn("group overflow-hidden rounded-xl border text-left outline-none transition-[box-shadow,border-color] focus-visible:ring-2 focus-visible:ring-ring", selected ? "border-ring ring-1 ring-ring" : "hover:border-foreground/25")}
+    >
+      <div className="h-[104px]">
+        <Preview theme={theme} />
+      </div>
+      <div className="flex items-center gap-2 border-t bg-card px-3 py-2 text-[13px]">
+        <span className="min-w-0 flex-1 truncate">{theme.name}</span>
+        <span className="text-[11px] text-muted-foreground capitalize">{theme.appearance}</span>
+        {selected && <CheckIcon className="size-3.5" />}
+      </div>
+    </button>
+  );
+}
+
+// Preview draws a theme's sidebar beside its terminal, in its own colors.
+function Preview({ theme }: { theme: Theme }) {
+  const c = theme.colors;
+  const t = theme.terminal;
+  return (
+    <div className="flex h-full" style={{ background: c.background }}>
+      <div className="flex w-[38%] flex-col gap-1.5 border-r px-2.5 py-3" style={{ background: c.sidebar, borderColor: c.border }}>
+        <div className="h-1.5 w-4/5 rounded-full" style={{ background: c.sidebarForeground, opacity: 0.55 }} />
+        <div className="h-1.5 w-3/5 rounded-full" style={{ background: c.sidebarForeground, opacity: 0.3 }} />
+        <div className="flex items-center gap-1">
+          <span className="size-1.5 rounded-full" style={{ background: c.warning }} />
+          <div className="h-1.5 flex-1 rounded-full" style={{ background: c.accent }} />
+        </div>
+        <div className="h-1.5 w-2/3 rounded-full" style={{ background: c.sidebarForeground, opacity: 0.3 }} />
+      </div>
+      <div className="flex-1 px-2.5 py-2.5 font-mono text-[10px] leading-[1.5]" style={{ background: t.background, color: t.foreground }}>
+        <div>
+          <span style={{ color: t.green }}>●</span> tests pass
+        </div>
+        <div>
+          <span style={{ color: t.yellow }}>●</span> <span style={{ color: t.blue }}>~/work/cal</span>
+        </div>
+        <div>
+          <span style={{ color: t.magenta }}>❯</span> <span style={{ color: t.cyan }}>berth</span>
+          <span className="ml-0.5 inline-block h-2.5 w-1 align-middle" style={{ background: t.cursor }} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Swatch is a theme's colours without text, for a thumbnail too small to
+// read: sidebar, terminal, and an accent and a cursor.
+function Swatch({ theme }: { theme: Theme }) {
+  const c = theme.colors;
+  const t = theme.terminal;
+  return (
+    <div className="flex h-full">
+      <div className="flex w-2/5 flex-col gap-1 px-1.5 py-2" style={{ background: c.sidebar }}>
+        <div className="h-1 w-4/5 rounded-full" style={{ background: c.sidebarForeground, opacity: 0.5 }} />
+        <div className="h-1 w-3/5 rounded-full" style={{ background: c.accent }} />
+      </div>
+      <div className="flex-1 px-1.5 py-2" style={{ background: t.background }}>
+        <div className="h-1 w-3/4 rounded-full" style={{ background: t.green }} />
+        <div className="mt-1 h-1.5 w-1 rounded-[1px]" style={{ background: t.cursor }} />
+      </div>
+    </div>
+  );
+}

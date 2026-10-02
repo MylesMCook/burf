@@ -12,11 +12,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berth/internal/agent"
-	"github.com/sean-brydon/berth/internal/box"
-	"github.com/sean-brydon/berth/internal/doctor"
-	"github.com/sean-brydon/berth/internal/pfredirect"
-	"github.com/sean-brydon/berth/internal/service"
+	"github.com/sean-brydon/berthd/internal/agent"
+	"github.com/sean-brydon/berthd/internal/box"
+	"github.com/sean-brydon/berthd/internal/doctor"
+	"github.com/sean-brydon/berthd/internal/pfredirect"
+	"github.com/sean-brydon/berthd/internal/service"
 )
 
 // runDoctor checks this laptop, or with a box name, asks that box for its own

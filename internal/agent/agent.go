@@ -19,17 +19,17 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sean-brydon/berth/internal/box"
-	"github.com/sean-brydon/berth/internal/events"
-	"github.com/sean-brydon/berth/internal/forward"
-	"github.com/sean-brydon/berth/internal/hooks"
-	"github.com/sean-brydon/berth/internal/identity"
-	"github.com/sean-brydon/berth/internal/network"
-	"github.com/sean-brydon/berth/internal/pfredirect"
-	"github.com/sean-brydon/berth/internal/proxy"
-	"github.com/sean-brydon/berth/internal/statefile"
-	"github.com/sean-brydon/berth/internal/trust"
-	"github.com/sean-brydon/berth/internal/wire"
+	"github.com/sean-brydon/berthd/internal/box"
+	"github.com/sean-brydon/berthd/internal/events"
+	"github.com/sean-brydon/berthd/internal/forward"
+	"github.com/sean-brydon/berthd/internal/hooks"
+	"github.com/sean-brydon/berthd/internal/identity"
+	"github.com/sean-brydon/berthd/internal/network"
+	"github.com/sean-brydon/berthd/internal/pfredirect"
+	"github.com/sean-brydon/berthd/internal/proxy"
+	"github.com/sean-brydon/berthd/internal/statefile"
+	"github.com/sean-brydon/berthd/internal/trust"
+	"github.com/sean-brydon/berthd/internal/wire"
 )
 
 const (
@@ -62,6 +62,14 @@ type Config struct {
 	// CLI is the berth binary the app's box management runs. Defaults to
 	// this executable.
 	CLI string
+	// SSHDir is the SSH configuration editors use; defaults to ~/.ssh.
+	SSHDir string
+	// EditorRoots are where editor apps are looked for; defaults to
+	// /Applications and ~/Applications.
+	EditorRoots []string
+	// Run, when set, runs an editor command instead of starting it; tests
+	// use it to see what would run.
+	Run func(command []string) error
 	// UserDir holds hooks, themes, templates and plugins. Defaults to
 	// ~/.berth.
 	UserDir string

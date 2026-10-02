@@ -17,18 +17,18 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/sean-brydon/berth/internal/box"
-	"github.com/sean-brydon/berth/internal/boxcmd"
-	"github.com/sean-brydon/berth/internal/doctor"
-	"github.com/sean-brydon/berth/internal/events"
-	"github.com/sean-brydon/berth/internal/hooks"
-	"github.com/sean-brydon/berth/internal/identity"
-	"github.com/sean-brydon/berth/internal/integrations"
-	"github.com/sean-brydon/berth/internal/pairing"
-	"github.com/sean-brydon/berth/internal/service"
-	"github.com/sean-brydon/berth/internal/statefile"
-	"github.com/sean-brydon/berth/internal/trust"
-	"github.com/sean-brydon/berth/internal/wire"
+	"github.com/sean-brydon/berthd/internal/box"
+	"github.com/sean-brydon/berthd/internal/boxcmd"
+	"github.com/sean-brydon/berthd/internal/doctor"
+	"github.com/sean-brydon/berthd/internal/events"
+	"github.com/sean-brydon/berthd/internal/hooks"
+	"github.com/sean-brydon/berthd/internal/identity"
+	"github.com/sean-brydon/berthd/internal/integrations"
+	"github.com/sean-brydon/berthd/internal/pairing"
+	"github.com/sean-brydon/berthd/internal/service"
+	"github.com/sean-brydon/berthd/internal/statefile"
+	"github.com/sean-brydon/berthd/internal/trust"
+	"github.com/sean-brydon/berthd/internal/wire"
 )
 
 const (
@@ -237,6 +237,10 @@ func serve(b boxHome, args []string) error {
 		Hooks:        hookRunner,
 		Flows:        box.FlowsAt(userDir, b.dir),
 		KitsDir:      filepath.Join(b.dir, "kits"),
+		EnvFile:      filepath.Join(userDir, "env.json"),
+		Paused:       &box.PauseStore{Path: filepath.Join(b.dir, "paused.json")},
+		Phone:        &box.Phone{Path: filepath.Join(b.dir, "phone.json"), Addr: tailnetAddr, Log: logger},
+		Guard:        &box.Guard{Path: filepath.Join(userDir, "guard.json")},
 		Update: &box.SelfUpdate{
 			Executable:    exe,
 			Fingerprint:   id.Fingerprint().String(),
@@ -246,6 +250,8 @@ func serve(b boxHome, args []string) error {
 	bx.Mount(s)
 	go bx.RunRepoHooks(ctx, logger)
 	go bx.Flows.Run(ctx, bx)
+	go bx.Phone.Run(ctx, bx)
+	go bx.Guard.Run(ctx, bx)
 
 	os.Remove(b.socket())
 	local, err := net.Listen("unix", b.socket())

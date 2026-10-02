@@ -25,8 +25,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berth/internal/events"
-	"github.com/sean-brydon/berth/internal/statefile"
+	"github.com/sean-brydon/berthd/internal/events"
+	"github.com/sean-brydon/berthd/internal/statefile"
 )
 
 type Hook struct {

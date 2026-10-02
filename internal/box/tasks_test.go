@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berth/internal/events"
-	"github.com/sean-brydon/berth/internal/hooks"
+	"github.com/sean-brydon/berthd/internal/events"
+	"github.com/sean-brydon/berthd/internal/hooks"
 )
 
 func TestATaskIsAWorktreeWithItsAgentRunning(t *testing.T) {

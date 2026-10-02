@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/sean-brydon/berth/internal/statefile"
+	"github.com/sean-brydon/berthd/internal/statefile"
 )
 
 // InstallClaudeHooks adds berth's hooks to a Claude Code settings file,

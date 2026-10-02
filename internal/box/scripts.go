@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/sean-brydon/berth/internal/hooks"
+	"github.com/sean-brydon/berthd/internal/hooks"
 )
 
 // Scripts are a location's worktree lifecycle commands. They get

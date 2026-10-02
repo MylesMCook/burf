@@ -5,3 +5,17 @@
 /app/node_modules/
 /app/dist/
 .e2e/
+/app/src-tauri/gen/
+/packages/*/node_modules/
+/plugins/*/node_modules/
+/plugins/*/dist/
+
+# Built by app/scripts/build-plugins.mjs
+app/public/builtin-plugins/
+
+# Screenshots from UI work and audits can show real boxes and repositories;
+# they stay local. The logo sources are kept.
+design/audit/
+design/plugins/
+design/review/
+design/editors/

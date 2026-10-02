@@ -47,7 +47,7 @@ func TestResolveTurnsInputIntoAWorktree(t *testing.T) {
 		{"sean/fix-billing", "", Resolution{Kind: "name", Name: "fix-billing", Branch: "sean/fix-billing"}},
 		{"feat/qa-app", "", Resolution{Kind: "branch", Name: "qa-app", Branch: "feat/qa-app", Exists: true}},
 		{"https://github.com/calcom/cal/tree/feat/qa-app", "", Resolution{Kind: "branch", Name: "qa-app", Branch: "feat/qa-app", Exists: true}},
-		{"https://acme.atlassian.net/browse/ENG-5316", "", Resolution{Kind: "issue", Name: "eng-5316", Branch: "eng-5316", Title: "ENG-5316", URL: "https://acme.atlassian.net/browse/ENG-5316"}},
+		{"https://acme.atlassian.net/browse/ENG-1234", "", Resolution{Kind: "issue", Name: "eng-1234", Branch: "eng-1234", Title: "ENG-1234", URL: "https://acme.atlassian.net/browse/ENG-1234"}},
 		{"https://gitlab.com/acme/app/-/merge_requests/42", "", Resolution{Kind: "pr", PR: 42, Name: "mr-42", Branch: "mr-42", Ref: "merge-requests/42/head", URL: "https://gitlab.com/acme/app/-/merge_requests/42"}},
 		{"Whatever Name", "name", Resolution{Kind: "name", Name: "whatever-name", Branch: "whatever-name"}},
 	} {

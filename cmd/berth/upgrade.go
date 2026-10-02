@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/sean-brydon/berth/internal/box"
+	"github.com/sean-brydon/berthd/internal/box"
 )
 
 // upgrade replaces a box's daemon with the build shipped beside this berth,

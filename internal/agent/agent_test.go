@@ -17,13 +17,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berth/internal/box"
-	"github.com/sean-brydon/berth/internal/events"
-	"github.com/sean-brydon/berth/internal/identity"
-	"github.com/sean-brydon/berth/internal/network"
-	"github.com/sean-brydon/berth/internal/pairing"
-	"github.com/sean-brydon/berth/internal/trust"
-	"github.com/sean-brydon/berth/internal/wire"
+	"github.com/sean-brydon/berthd/internal/box"
+	"github.com/sean-brydon/berthd/internal/events"
+	"github.com/sean-brydon/berthd/internal/identity"
+	"github.com/sean-brydon/berthd/internal/network"
+	"github.com/sean-brydon/berthd/internal/pairing"
+	"github.com/sean-brydon/berthd/internal/trust"
+	"github.com/sean-brydon/berthd/internal/wire"
 )
 
 // testBox is a real berthd server on the loopback, restartable on the same
@@ -212,6 +212,9 @@ func startAgentWith(t *testing.T, dir string, nets Networks) *runningAgent {
 			Networks:       nets,
 			UIAddr:         uiAddr,
 			CLI:            filepath.Join(dir, "fake-berth"),
+			SSHDir:         filepath.Join(dir, "ssh"),
+			EditorRoots:    []string{filepath.Join(dir, "apps")},
+			Run:            recordRun,
 			UserDir:        filepath.Join(dir, "user"),
 		})
 	}()

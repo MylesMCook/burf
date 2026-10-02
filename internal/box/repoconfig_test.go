@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berth/internal/events"
-	"github.com/sean-brydon/berth/internal/hooks"
+	"github.com/sean-brydon/berthd/internal/events"
+	"github.com/sean-brydon/berthd/internal/hooks"
 )
 
 func writeRepoConfig(t *testing.T, repo string, c RepoConfig) {
@@ -154,5 +154,22 @@ func TestWorktreeServicesStartWithTheWorktreesEnvironmentAndStopWithIt(t *testin
 	all, _ := b.WorktreeServices(ctx, "cal", "billing")
 	if all[0].State != "stopped" {
 		t.Fatalf("after stopping: %+v", all[0])
+	}
+}
+
+func TestAgentPresetsComeFromEveryLayer(t *testing.T) {
+	ctx := context.Background()
+	repo := gitRepo(t)
+	writeRepoConfig(t, repo, RepoConfig{Agents: []AgentPreset{{ID: "claude", Name: "Repo Claude", Command: "claude --model opus"}}})
+	l := NewLocations(filepath.Join(t.TempDir(), "locations.json"))
+	l.Add(ctx, "cal", repo)
+	l.SetLocalConfig("cal", RepoConfig{Agents: []AgentPreset{{ID: "claude", Name: "Box Claude", Command: "claude --model sonnet"}, {ID: "fake", Name: "Fake", Command: "cat"}}})
+	loc, _ := l.Get(ctx, "cal")
+	p, ok := presetFor(&loc, "claude")
+	if !ok || p.Command != "claude --model sonnet" {
+		t.Fatalf("claude preset = %+v", p)
+	}
+	if p, ok := presetFor(&loc, "fake"); !ok || p.Command != "cat" {
+		t.Fatalf("a box-only preset was missed: %+v %v", p, ok)
 	}
 }

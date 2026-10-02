@@ -1,0 +1,7 @@
+{
+  "id": "hello-ports",
+  "name": "Hello ports (example)",
+  "version": "0.1.0",
+  "description": "Every dev server on every box, one click from your browser.",
+  "main": "dist/index.js"
+}

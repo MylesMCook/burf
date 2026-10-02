@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berth/internal/identity"
+	"github.com/sean-brydon/berthd/internal/identity"
 )
 
 func testToken(t *testing.T, address string) Token {

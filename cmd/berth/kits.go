@@ -10,7 +10,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/sean-brydon/berth/internal/agent"
+	"github.com/sean-brydon/berthd/internal/agent"
 )
 
 const kitUsage = `berth kit — set projects up the same way on every box

@@ -1,4 +1,4 @@
-module github.com/sean-brydon/berth
+module github.com/sean-brydon/berthd
 
 go 1.27.0
 

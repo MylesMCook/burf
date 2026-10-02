@@ -78,3 +78,14 @@ func advertise(listening string, ips []net.IP, hostname string) string {
 	}
 	return net.JoinHostPort(pickAddress(ips, hostname), port)
 }
+
+// tailnetAddr is this box's tailnet address, where the phone app listens:
+// a phone reaches it over the tailnet, and nothing else can.
+func tailnetAddr() (string, error) {
+	addr, err := defaultListen(interfaceIPs())
+	if err != nil {
+		return "", errors.New("phone access needs this box on a tailnet")
+	}
+	host, _, err := net.SplitHostPort(addr)
+	return host, err
+}

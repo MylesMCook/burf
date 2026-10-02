@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"os/user"
 	"runtime"
 	"strings"
 	"syscall"
@@ -22,10 +23,14 @@ const maxDaemonSize = 64 << 20
 // Info describes the running daemon, so a laptop can pick the right build to
 // upload and tell whether the box already runs it.
 type Info struct {
-	Name  string   `json:"name"`
-	OS    string   `json:"os"`
-	Arch  string   `json:"arch"`
-	Build string   `json:"build"`
+	Name  string `json:"name"`
+	OS    string `json:"os"`
+	Arch  string `json:"arch"`
+	Build string `json:"build"`
+	// User and Home are the account berthd runs as, which is the one to
+	// log in as over SSH, for editors.
+	User  string   `json:"user,omitempty"`
+	Home  string   `json:"home,omitempty"`
 	Tools []string `json:"tools"`
 	// Agents are the agent presets this box can start.
 	Agents []AgentPreset `json:"agents"`
@@ -98,6 +103,10 @@ func (b *Box) handleInfo(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	i.Name, i.Agents = b.Name, Presets(nil)
+	if u, err := user.Current(); err == nil {
+		i.User = u.Username
+	}
+	i.Home, _ = os.UserHomeDir()
 	if i.Agents == nil {
 		i.Agents = []AgentPreset{}
 	}

@@ -17,9 +17,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berth/internal/events"
-	"github.com/sean-brydon/berth/internal/hooks"
-	"github.com/sean-brydon/berth/internal/statefile"
+	"github.com/sean-brydon/berthd/internal/events"
+	"github.com/sean-brydon/berthd/internal/hooks"
+	"github.com/sean-brydon/berthd/internal/statefile"
 )
 
 // Flows are automations built from steps rather than shell scripts: when an
@@ -40,11 +40,29 @@ type Flow struct {
 	MaxRunsPerHour int `json:"max_runs_per_hour,omitempty"`
 }
 
-// Trigger is the event that starts a flow, narrowed by Where.
+// Trigger is what starts a flow, narrowed by Where: an event, a schedule,
+// or something happening on GitHub. Exactly one of the three is set.
 type Trigger struct {
-	Event string `json:"event"`
-	Where Where  `json:"where,omitempty"`
+	Event string `json:"event,omitempty"`
+	// Schedule is a cron expression (minute hour day month weekday) or a
+	// shortcut like @daily, in the box's local time.
+	Schedule string `json:"schedule,omitempty"`
+	// EachWorktree runs a scheduled flow once per worktree matching Where,
+	// rather than once at the repository's main checkout.
+	EachWorktree bool           `json:"each_worktree,omitempty"`
+	GitHub       *GitHubTrigger `json:"github,omitempty"`
+	Where        Where          `json:"where,omitempty"`
 }
+
+// GitHubTrigger watches the pull requests of a project's worktrees.
+type GitHubTrigger struct {
+	// On is review_comment, pr_review, check_failed or pr_merged.
+	On string `json:"on"`
+	// Poll is how often to look, at least 1m; default 2m.
+	Poll string `json:"poll,omitempty"`
+}
+
+var githubOns = map[string]bool{"review_comment": true, "pr_review": true, "check_failed": true, "pr_merged": true}
 
 // Where narrows a trigger; empty fields match anything. Branch takes a
 // trailing * for a prefix.
@@ -86,6 +104,41 @@ var (
 	stepKinds = map[string]bool{"run": true, "prompt": true, "wait": true, "start_agent": true, "notify": true, "webhook": true}
 )
 
+func validateTrigger(t Trigger) error {
+	set := 0
+	for _, on := range []bool{t.Event != "", t.Schedule != "", t.GitHub != nil} {
+		if on {
+			set++
+		}
+	}
+	if set != 1 {
+		return errors.New("a flow starts from exactly one of an event, a schedule, or GitHub")
+	}
+	switch {
+	case t.Event != "":
+		if err := hooks.Validate([]hooks.Hook{{On: t.Event, Run: "x"}}); err != nil || strings.HasPrefix(t.Event, hooks.BeforePrefix) {
+			return fmt.Errorf("%q is not an event to start from", t.Event)
+		}
+	case t.Schedule != "":
+		if _, err := ParseCron(t.Schedule); err != nil {
+			return err
+		}
+	default:
+		if !githubOns[t.GitHub.On] {
+			return fmt.Errorf("GitHub trigger %q must be review_comment, pr_review, check_failed or pr_merged", t.GitHub.On)
+		}
+		if t.GitHub.Poll != "" {
+			if d, err := time.ParseDuration(t.GitHub.Poll); err != nil || d < time.Minute {
+				return fmt.Errorf("GitHub poll %q must be a duration of at least 1m", t.GitHub.Poll)
+			}
+		}
+	}
+	if t.EachWorktree && t.Schedule == "" {
+		return errors.New("each_worktree only applies to scheduled flows")
+	}
+	return nil
+}
+
 // ValidateFlows reports the first thing wrong with flows someone wrote.
 func ValidateFlows(flows []Flow) error {
 	seen := map[string]bool{}
@@ -100,8 +153,8 @@ func ValidateFlows(flows []Flow) error {
 		if strings.TrimSpace(f.Name) == "" {
 			return fmt.Errorf("flow %s needs a name", f.ID)
 		}
-		if err := hooks.Validate([]hooks.Hook{{On: f.Trigger.Event, Run: "x"}}); err != nil || strings.HasPrefix(f.Trigger.Event, hooks.BeforePrefix) {
-			return fmt.Errorf("flow %s: %q is not an event to start from", f.ID, f.Trigger.Event)
+		if err := validateTrigger(f.Trigger); err != nil {
+			return fmt.Errorf("flow %s: %v", f.ID, err)
 		}
 		if len(f.Steps) == 0 {
 			return fmt.Errorf("flow %s has no steps", f.ID)
@@ -171,11 +224,19 @@ type Flows struct {
 	// RunsPath keeps recent runs across restarts.
 	RunsPath string
 
-	mu      sync.Mutex
-	runs    []FlowRun
-	recent  map[string][]time.Time // flow scope/id → start times this hour
-	running map[string]bool        // flow scope/id + worktree
-	loaded  bool
+	// GitHubPath keeps what GitHub flows have already seen.
+	GitHubPath string
+	// Now reads the clock; tests replace it.
+	Now func() time.Time
+
+	mu        sync.Mutex
+	runs      []FlowRun
+	recent    map[string][]time.Time // flow scope/id → start times this hour
+	running   map[string]bool        // flow scope/id + worktree
+	loaded    bool
+	lastFired map[string]time.Time // scheduled flow → minute it last fired
+	lastPoll  map[string]time.Time // GitHub flow → when it last looked
+	gh        map[string]*ghState  // GitHub flow + PR → what it has seen
 }
 
 const maxFlowRuns = 200
@@ -250,6 +311,8 @@ func (b *Box) AllFlows(ctx context.Context) ([]ScopedFlow, error) {
 
 // Run follows the box's events and starts the flows they trigger.
 func (f *Flows) Run(ctx context.Context, b *Box) {
+	go f.schedule(ctx, b)
+	go f.watchGitHub(ctx, b)
 	ch, stop := b.Events.Subscribe()
 	defer stop()
 	for {
@@ -276,7 +339,7 @@ func (f *Flows) Run(ctx context.Context, b *Box) {
 
 func (b *Box) flowMatches(ctx context.Context, sf ScopedFlow, e events.Event) bool {
 	t := sf.Flow.Trigger
-	if !hooks.Matches(hooks.Hook{On: t.Event, Run: "x"}, e) {
+	if t.Event == "" || !hooks.Matches(hooks.Hook{On: t.Event, Run: "x"}, e) {
 		return false
 	}
 	loc, wt, ok := b.eventScope(ctx, e.Data)
@@ -418,7 +481,7 @@ func (b *Box) runFlow(ctx context.Context, sf ScopedFlow, e events.Event) FlowRu
 	defer b.Flows.done(key, slot)
 
 	run := FlowRun{ID: newRunID(), Flow: sf.Flow.ID, Scope: sf.Scope, Started: time.Now().UTC(), Status: "running", Event: e}
-	vars := map[string]string{"event.type": e.Type, "event.box": e.Box, "event.origin": e.Origin}
+	vars := map[string]string{"event.type": e.Type, "event.box": e.Box, "event.origin": e.Origin, "now": time.Now().Format(time.RFC3339)}
 	for k, v := range e.Data {
 		vars["event."+k] = fmt.Sprint(v)
 	}
@@ -510,7 +573,7 @@ func (b *Box) sessionIn(ctx context.Context, dir string) string {
 		return ""
 	}
 	for _, s := range b.enrich(ctx, all) {
-		if s.Dir == dir && s.Agent != "" && !s.Exited {
+		if samePath(s.Dir, dir) && s.Agent != "" && !s.Exited {
 			return s.Name
 		}
 	}
@@ -720,7 +783,7 @@ func (b *Box) testFlow(w http.ResponseWriter, r *http.Request) error {
 	}
 	for _, sf := range all {
 		if sf.Flow.ID == r.PathValue("id") && (req.Scope == "" || sf.Scope == req.Scope) {
-			e := events.Event{Type: sf.Flow.Trigger.Event, Box: b.Name, Origin: origin(r), Time: time.Now(), Data: req.Data}
+			e := events.Event{Type: triggerType(sf.Flow.Trigger), Box: b.Name, Origin: origin(r), Time: time.Now(), Data: req.Data}
 			run := b.runFlow(context.WithoutCancel(r.Context()), sf, e)
 			writeJSON(w, run)
 			return nil
@@ -740,5 +803,5 @@ func (b *Box) listFlowRuns(w http.ResponseWriter, r *http.Request) error {
 
 // FlowsAt keeps a box's flows in userDir and their runs in stateDir.
 func FlowsAt(userDir, stateDir string) *Flows {
-	return &Flows{Path: filepath.Join(userDir, "flows.json"), RunsPath: filepath.Join(stateDir, "flow-runs.json")}
+	return &Flows{Path: filepath.Join(userDir, "flows.json"), RunsPath: filepath.Join(stateDir, "flow-runs.json"), GitHubPath: filepath.Join(stateDir, "flow-github.json")}
 }

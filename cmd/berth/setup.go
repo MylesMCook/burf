@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sean-brydon/berth/internal/agent"
-	"github.com/sean-brydon/berth/internal/pfredirect"
+	"github.com/sean-brydon/berthd/internal/agent"
+	"github.com/sean-brydon/berthd/internal/pfredirect"
 )
 
 // serviceURLFor is the private URL of a service; the port is left out once

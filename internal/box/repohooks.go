@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berth/internal/events"
-	"github.com/sean-brydon/berth/internal/hooks"
+	"github.com/sean-brydon/berthd/internal/events"
+	"github.com/sean-brydon/berthd/internal/hooks"
 )
 
 // A repository's hooks run only for its own events, inside the worktree the
