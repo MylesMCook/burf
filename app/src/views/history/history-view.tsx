@@ -1,6 +1,7 @@
 import { HistoryIcon, RefreshCwIcon, RegexIcon, SearchIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import { Tip } from "@/components/tip";
 import { SimpleSelect } from "@/components/simple-select";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
@@ -118,9 +119,11 @@ function HistoryList({ initialQuery }: { initialQuery: string }) {
         title="History"
         description="What your agents did on every box, kept after their sessions end."
         actions={
-          <Button size="sm" variant="ghost" onClick={() => setTick((n) => n + 1)} disabled={busy} title="Refresh">
-            <RefreshCwIcon className={busy ? "animate-spin" : undefined} />
-          </Button>
+          <Tip label="Refresh">
+            <Button size="sm" variant="ghost" onClick={() => setTick((n) => n + 1)} disabled={busy}>
+              <RefreshCwIcon className={busy ? "animate-spin" : undefined} />
+            </Button>
+          </Tip>
         }
       />
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b px-6 py-2.5">
@@ -130,9 +133,11 @@ function HistoryList({ initialQuery }: { initialQuery: string }) {
           </InputGroupAddon>
           <InputGroupInput autoFocus placeholder={regexp ? "Search with a regular expression…" : "Search what agents said and ran…"} value={q} onChange={(e) => setQ(e.target.value)} aria-label="Search history" />
           <InputGroupAddon align="inline-end">
-            <Toggle size="sm" pressed={regexp} onPressedChange={setRegexp} title="Regular expression" aria-label="Regular expression">
-              <RegexIcon />
-            </Toggle>
+            <Tip label="Regular expression">
+              <Toggle size="sm" pressed={regexp} onPressedChange={setRegexp} aria-label="Regular expression">
+                <RegexIcon />
+              </Toggle>
+            </Tip>
           </InputGroupAddon>
         </InputGroup>
         <SimpleSelect size="sm" className="w-auto min-w-28" value={filters.box} onChange={(v) => set({ box: v })} options={[{ value: "", label: "All boxes" }, ...online.map((b) => ({ value: b, label: b }))]} />

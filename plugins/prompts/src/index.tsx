@@ -20,6 +20,7 @@ import {
   MenuPopup,
   MenuSeparator,
   MenuTrigger,
+  ViewHeader,
   cn,
 } from "@berth/plugin/ui";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
@@ -90,16 +91,12 @@ function Library({ berth }: ScreenProps) {
   };
 
   return (
-    <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-5xl px-6 py-6">
-        <header className="mb-4 flex flex-wrap items-end gap-x-4 gap-y-3">
-          <div className="min-w-0 flex-1">
-            <h1 className="font-semibold text-lg tracking-tight">Prompts</h1>
-            <p className="mt-0.5 text-muted-foreground text-sm">
-              Prompts you send agents again and again. Send one from <b className="font-medium text-foreground">⌘K</b> or a pane's menu, or to several agents at once.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
+    <div>
+      <ViewHeader
+        title="Prompts"
+        description={<>Prompts you send agents again and again. Send one from <b className="font-medium text-foreground">⌘K</b> or a pane's menu, or to several agents at once.</>}
+        actions={
+          <>
             <Button size="sm" variant="outline" onClick={() => berth.prompts.openBroadcast()}>
               <Icon name="Users" />
               Send to several…
@@ -108,9 +105,10 @@ function Library({ berth }: ScreenProps) {
               <Icon name="Plus" />
               New prompt
             </Button>
-          </div>
-        </header>
-
+          </>
+        }
+      />
+      <div>
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <Input className="w-64" size="sm" placeholder="Search prompts…" aria-label="Search prompts" value={query} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)} />
           <div className="flex flex-wrap items-center gap-1">

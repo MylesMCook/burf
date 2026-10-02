@@ -5,7 +5,6 @@ import { SimpleSelect } from "@/components/simple-select";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
-import { Kbd } from "@/components/ui/kbd";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { load, save } from "@/lib/storage";
@@ -21,7 +20,7 @@ type Flag = "behind" | "changes" | "paused";
 type Sort = "recent" | "behind" | "changes" | "name";
 
 const SORTS: { value: Sort; label: string }[] = [
-  { value: "recent", label: "Recently committed" },
+  { value: "recent", label: "Last commit" },
   { value: "behind", label: "Most behind" },
   { value: "changes", label: "Most changes" },
   { value: "name", label: "Name" },
@@ -38,7 +37,9 @@ export function WorktreesView() {
   const { progress, summary, run, cancel, clear } = useBulk(onRowDone);
 
   const [query, setQuery] = useState("");
-  const [shownBoxes, setShownBoxes] = useState<string[]>([]);
+  // Boxes turned off; every box is on until one is turned off, as on the
+  // Agent Dashboard.
+  const [hiddenBoxes, setHiddenBoxes] = useState<string[]>(() => load("berth.worktrees.hiddenBoxes", []));
   const [project, setProject] = useState("");
   const [flags, setFlags] = useState<Flag[]>([]);
   const [sort, setSort] = useState<Sort>(() => load("berth.worktrees.sort", "recent"));
@@ -46,13 +47,22 @@ export function WorktreesView() {
   const [anchor, setAnchor] = useState<string>();
   const [openKey, setOpenKey] = useState<string>();
   const [deleting, setDeleting] = useState<Row[]>();
+  // The row order when a bulk action started: rows stay put under the
+  // pointer while their commits change, until its summary is dismissed.
+  const [frozen, setFrozen] = useState<string[]>();
+
+  const shownBoxes = boxes.filter((b) => !hiddenBoxes.includes(b));
+  const hideBoxes = (next: string[]) => {
+    setHiddenBoxes(next);
+    save("berth.worktrees.hiddenBoxes", next);
+  };
 
   const projects = useMemo(() => [...new Set(rows.map((r) => r.location))].sort(), [rows]);
   const q = query.trim().toLowerCase();
   const visible = useMemo(() => {
     const keep = rows.filter(
       (r) =>
-        (!shownBoxes.length || shownBoxes.includes(r.box)) &&
+        !hiddenBoxes.includes(r.box) &&
         (!project || r.location === project) &&
         (!flags.includes("behind") || r.behind > 0) &&
         (!flags.includes("changes") || r.changed + r.untracked > 0) &&
@@ -65,9 +75,11 @@ export function WorktreesView() {
       changes: (a, b) => b.changed + b.untracked - (a.changed + a.untracked),
       name: (a, b) => a.name.localeCompare(b.name),
     };
+    const at = new Map(frozen?.map((k, i) => [k, i]));
+    const pos = (r: Row) => at.get(r.key) ?? Number.MAX_SAFE_INTEGER;
     // The main checkout heads its project; the rest follow the sort.
-    return keep.sort((a, b) => Number(!!b.main) - Number(!!a.main) || by[sort](a, b));
-  }, [rows, shownBoxes, project, flags, q, sort]);
+    return keep.sort((a, b) => Number(!!b.main) - Number(!!a.main) || (frozen ? pos(a) - pos(b) : 0) || by[sort](a, b));
+  }, [rows, hiddenBoxes, project, flags, q, sort, frozen]);
 
   const groups = useMemo(() => {
     const map = new Map<string, Group>();
@@ -130,10 +142,22 @@ export function WorktreesView() {
   const selectedRows = rows.filter((r) => selected.has(r.key));
   const busy = !!summary && !summary.done;
   const act = (a: BulkAction, list: Row[]) => {
-    if (!busy) void run(a, list);
+    if (busy) return;
+    if (a.kind !== "delete") setFrozen(flat.map((r) => r.key));
+    void run(a, list);
+  };
+  const dismiss = () => {
+    clear();
+    setFrozen(undefined);
   };
   const open = rows.find((r) => r.key === openKey);
-  const filtered = !!(q || shownBoxes.length || project || flags.length);
+  const filtered = !!(q || hiddenBoxes.some((b) => boxes.includes(b)) || project || flags.length);
+  const clearFilters = () => {
+    setQuery("");
+    hideBoxes([]);
+    setProject("");
+    setFlags([]);
+  };
   const behind = rows.filter((r) => r.behind > 0).length;
   const paused = rows.filter((r) => r.paused).length;
 
@@ -142,17 +166,25 @@ export function WorktreesView() {
       <ViewHeader
         title="Worktrees"
         description={loaded ? [`${rows.length} on ${boxes.length} box${boxes.length === 1 ? "" : "es"}`, behind && `${behind} behind their base`, paused && `${paused} paused`].filter(Boolean).join(" · ") : undefined}
-        actions={
-          <div className="relative w-56">
-            <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 z-10 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input size="sm" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search" className="[&_input]:pl-8" aria-label="Search worktrees" />
-          </div>
-        }
       />
 
-      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b px-6 py-2">
+      {/* One row of filters, search first; it stays one row down to 1100px. */}
+      <div className="@container/toolbar flex shrink-0 items-center gap-2 border-b px-6 py-2">
+        <div className="relative w-56 min-w-36 shrink">
+          <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 z-10 size-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input size="sm" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search" className="[&_input]:pl-8" aria-label="Search worktrees" />
+        </div>
         {boxes.length > 1 && (
-          <ToggleGroup multiple size="sm" variant="outline" value={shownBoxes} onValueChange={(v) => setShownBoxes(v as string[])} aria-label="Boxes">
+          <ToggleGroup
+            multiple
+            size="sm"
+            variant="outline"
+            className="shrink-0"
+            value={shownBoxes}
+            // Turning every box off means "show everything", not an empty table.
+            onValueChange={(v) => hideBoxes((v as string[]).length ? boxes.filter((b) => !(v as string[]).includes(b)) : [])}
+            aria-label="Boxes to show"
+          >
             {boxes.map((b) => (
               <ToggleGroupItem key={b} value={b} className={toggleCls}>
                 {b}
@@ -160,49 +192,38 @@ export function WorktreesView() {
             ))}
           </ToggleGroup>
         )}
-        <div className="w-44">
-          <SimpleSelect value={project} onChange={setProject} options={[{ value: "", label: "All projects" }, ...projects.map((p) => ({ value: p, label: p }))]} />
+        <div className="w-40 min-w-28 shrink">
+          <SimpleSelect size="sm" className="min-w-0" value={project} onChange={setProject} options={[{ value: "", label: "All projects" }, ...projects.map((p) => ({ value: p, label: p }))]} />
         </div>
-        <ToggleGroup multiple size="sm" variant="outline" value={flags} onValueChange={(v) => setFlags(v as Flag[])} aria-label="Show only">
+        <ToggleGroup multiple size="sm" variant="outline" className="shrink-0" value={flags} onValueChange={(v) => setFlags(v as Flag[])} aria-label="Show only">
           <ToggleGroupItem value="behind" className={toggleCls}>
-            Behind base
+            Behind<span className="@max-[56rem]/toolbar:hidden"> base</span>
           </ToggleGroupItem>
           <ToggleGroupItem value="changes" className={toggleCls}>
-            Has changes
+            <span className="@max-[56rem]/toolbar:hidden">Has changes</span>
+            <span className="@min-[56rem]/toolbar:hidden">Changed</span>
           </ToggleGroupItem>
           <ToggleGroupItem value="paused" className={toggleCls}>
             Paused
           </ToggleGroupItem>
         </ToggleGroup>
         {filtered && (
-          <Button
-            size="xs"
-            variant="ghost"
-            onClick={() => {
-              setQuery("");
-              setShownBoxes([]);
-              setProject("");
-              setFlags([]);
-            }}
-          >
+          <Button size="xs" variant="ghost" className="shrink-0" onClick={clearFilters}>
             Clear filters
           </Button>
         )}
-        <span className="ml-auto flex items-center gap-2 text-muted-foreground text-xs">
-          <span className="hidden lg:inline">
-            <Kbd>⇧</Kbd> click selects a range · <Kbd>⌘A</Kbd> all
-          </span>
-          <div className="w-44">
-            <SimpleSelect
-              value={sort}
-              onChange={(v) => {
-                setSort(v as Sort);
-                save("berth.worktrees.sort", v);
-              }}
-              options={SORTS}
-            />
-          </div>
-        </span>
+        <div className="ml-auto w-44 min-w-32 shrink">
+          <SimpleSelect
+            size="sm"
+            className="min-w-0"
+            value={sort}
+            onChange={(v) => {
+              setSort(v as Sort);
+              save("berth.worktrees.sort", v);
+            }}
+            options={SORTS}
+          />
+        </div>
       </div>
 
       <div className="min-h-0 flex-1 overflow-auto pb-24">
@@ -225,11 +246,25 @@ export function WorktreesView() {
                 <GitBranchIcon />
               </EmptyMedia>
               <EmptyTitle>{filtered ? "No worktrees match" : "No worktrees yet"}</EmptyTitle>
-              <EmptyDescription>{filtered ? "Try fewer filters." : "Worktrees you make on any box show up here."}</EmptyDescription>
+              <EmptyDescription>{filtered ? "Nothing here passes every filter." : "Worktrees you make on any box show up here."}</EmptyDescription>
             </EmptyHeader>
+            {filtered && (
+              <Button size="sm" variant="outline" onClick={clearFilters}>
+                Clear filters
+              </Button>
+            )}
           </Empty>
         ) : (
-          <WorktreeTable groups={groups} selected={selected} progress={progress} onToggle={toggle} onToggleGroup={toggleGroup} onOpen={(r) => setOpenKey(r.key)} openKey={openKey} />
+          <WorktreeTable
+            groups={groups}
+            selected={selected}
+            progress={progress}
+            onToggle={toggle}
+            onToggleGroup={toggleGroup}
+            onToggleAll={(on) => setSelected(on ? new Set(flat.map((r) => r.key)) : new Set())}
+            onOpen={(r) => setOpenKey(r.key)}
+            openKey={openKey}
+          />
         )}
       </div>
 
@@ -237,14 +272,18 @@ export function WorktreesView() {
         selected={selectedRows}
         summary={summary && summary.action.kind !== "delete" ? summary : undefined}
         progress={progress}
-        onSync={(mode) => act({ kind: "sync", mode }, selectedRows)}
+        onSync={(mode, paused) => act({ kind: "sync", mode, paused }, selectedRows)}
         onPause={() => act({ kind: "pause" }, selectedRows)}
         onResume={() => act({ kind: "resume" }, selectedRows)}
         onStop={() => act({ kind: "stop" }, selectedRows)}
         onDelete={() => setDeleting(selectedRows)}
         onClear={() => setSelected(new Set())}
         onCancel={cancel}
-        onDismiss={clear}
+        onDismiss={dismiss}
+        onRetry={(a, list) => {
+          dismiss();
+          act(a, list);
+        }}
       />
 
       <HistorySheet

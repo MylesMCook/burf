@@ -18,6 +18,10 @@ import {
   MenuPopup,
   MenuSeparator,
   MenuTrigger,
+  Tooltip,
+  TooltipPopup,
+  TooltipTrigger,
+  ViewHeader,
   cn,
 } from "@berth/plugin/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -153,17 +157,22 @@ function ServersScreen({ berth }: ScreenProps) {
   }, [listening, configured, query]);
 
   return (
-    <div className="mx-auto max-w-5xl space-y-4 px-6 py-6">
-      <header className="mb-6 flex items-end gap-4">
-        <div className="min-w-0 flex-1">
-          <h1 className="font-semibold text-lg tracking-tight">Dev servers</h1>
-          <p className="mt-0.5 text-muted-foreground text-sm">Everything listening in a worktree on every box, and the services each repository runs.</p>
-        </div>
-        <Input className="w-56" size="sm" placeholder="Filter by worktree, port…" value={query} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)} />
-        <Button size="sm" variant="outline" onClick={reload} aria-label="Refresh">
-          <Icon name="RefreshCw" className="size-3.5" />
-        </Button>
-      </header>
+    <div className="space-y-4">
+      <ViewHeader
+        title="Dev servers"
+        description="Everything listening in a worktree on every box, and the services each repository runs."
+        actions={
+          <>
+            <Input className="w-56" size="sm" placeholder="Filter by worktree, port…" value={query} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)} />
+            <Tooltip>
+              <TooltipTrigger render={<Button size="icon-sm" variant="ghost" onClick={reload} aria-label="Refresh" />}>
+                <Icon name="RefreshCw" className="size-3.5" />
+              </TooltipTrigger>
+              <TooltipPopup>Refresh</TooltipPopup>
+            </Tooltip>
+          </>
+        }
+      />
 
       {!listening ? (
         <div className="space-y-3">
@@ -190,7 +199,7 @@ function ServersScreen({ berth }: ScreenProps) {
 function WorktreeGroup({ group: g, berth, here, onChanged }: { group: Group; berth: BerthPluginContext; here: boolean; onChanged(): void }) {
   const listeningPorts = new Set(g.listening.map((l) => l.port));
   return (
-    <Frame>
+    <Frame variant="card">
       <FrameHeader className="flex-row items-center gap-2 py-2.5">
         <Icon name="GitBranch" className="size-3.5 text-muted-foreground" />
         <FrameTitle className="truncate">{g.worktree}</FrameTitle>

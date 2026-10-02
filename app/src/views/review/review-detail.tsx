@@ -1,6 +1,7 @@
 import { CheckCheckIcon, CheckIcon, ChevronDownIcon, GitBranchIcon, GitCommitHorizontalIcon, GitPullRequestIcon, MessageSquareReplyIcon, SquareArrowOutUpRightIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { Tip } from "@/components/tip";
 import { AgentIcon } from "@/components/agent-glyph";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -116,11 +117,13 @@ export function ReviewDetail({ entry, actions }: { entry: ReviewEntry; actions: 
             Send back…
             <Kbd className="ml-0.5 hidden h-4.5 text-[10px] xl:inline-flex">S</Kbd>
           </Button>
-          <Button size="sm" variant="outline" onClick={actions.discard} disabled={!hasFiles} title={hasFiles ? undefined : "Nothing uncommitted to discard"}>
-            <Trash2Icon />
-            Discard…
-            <Kbd className="ml-0.5 hidden h-4.5 text-[10px] xl:inline-flex">D</Kbd>
-          </Button>
+          <Tip label={hasFiles ? undefined : "Nothing uncommitted to discard"}>
+            <Button size="sm" variant="outline" onClick={actions.discard} disabled={!hasFiles}>
+              <Trash2Icon />
+              Discard…
+              <Kbd className="ml-0.5 hidden h-4.5 text-[10px] xl:inline-flex">D</Kbd>
+            </Button>
+          </Tip>
           <span className="mx-1 h-5 w-px bg-border" />
           <Button size="sm" variant="ghost" onClick={actions.open}>
             <SquareArrowOutUpRightIcon />
@@ -128,11 +131,13 @@ export function ReviewDetail({ entry, actions }: { entry: ReviewEntry; actions: 
             <span className="xl:hidden">Open</span>
             <Kbd className="ml-0.5 hidden h-4.5 text-[10px] xl:inline-flex">↵</Kbd>
           </Button>
-          <Button size="sm" variant="ghost" className="ml-auto text-muted-foreground" onClick={actions.markReviewed} title="Mark reviewed (E): it comes back if the agent changes anything">
-            <CheckCheckIcon />
-            <span className="hidden xl:inline">Mark reviewed</span>
-            <Kbd className="ml-0.5 hidden h-4.5 text-[10px] xl:inline-flex">E</Kbd>
-          </Button>
+          <Tip label="Mark reviewed (E): it comes back if the agent changes anything">
+            <Button size="sm" variant="ghost" className="ml-auto text-muted-foreground" onClick={actions.markReviewed}>
+              <CheckCheckIcon />
+              <span className="hidden xl:inline">Mark reviewed</span>
+              <Kbd className="ml-0.5 hidden h-4.5 text-[10px] xl:inline-flex">E</Kbd>
+            </Button>
+          </Tip>
         </div>
       </header>
 
@@ -164,7 +169,7 @@ function LastWords({ entry }: { entry: ReviewEntry }) {
     };
   }, [client, entry.box, entry.session, entry.state_since]);
   return (
-    <Frame>
+    <Frame variant="card">
       <FrameHeader className="flex-row items-center gap-2 px-4 py-2.5">
         <AgentIcon agent={entry.agent} />
         <FrameTitle className="font-medium text-[13px]">{agentLabel(entry.agent)}'s last message</FrameTitle>
@@ -175,7 +180,7 @@ function LastWords({ entry }: { entry: ReviewEntry }) {
         ) : lines.length === 0 ? (
           <p className="text-muted-foreground text-sm">Nothing on its screen to show.</p>
         ) : (
-          <div className="max-h-56 overflow-y-auto font-mono text-[12px] leading-relaxed [font-variant-ligatures:none]">
+          <div className="max-h-56 overflow-y-auto font-mono text-[12px] leading-relaxed">
             {lines.map((l, i) => (
               <div key={i} className="whitespace-pre-wrap break-words">
                 {l || " "}
@@ -198,7 +203,7 @@ function LastCheck({ run, loop }: { run?: ReturnType<typeof useReview.getState>[
   const what = useLoop ? `Loop: ${loop!.check}` : `Flow: ${run!.flow}`;
   const when = useLoop ? ago(new Date(loop!.ended ?? loop!.started).toISOString()) : ago(run!.finished ?? run!.started);
   return (
-    <Frame>
+    <Frame variant="card">
       <FrameHeader className="flex-row items-center gap-2 px-4 py-2.5">
         <span className={cn("inline-flex size-4 items-center justify-center rounded-full", pending ? "bg-muted" : passed ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive")}>
           {pending ? <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground" /> : passed ? <CheckIcon className="size-3" /> : <XIcon className="size-3" />}
@@ -243,7 +248,7 @@ function Changes({ entry }: { entry: ReviewEntry }) {
   const added = current.files.reduce((n, f) => n + (f.added ?? 0), 0);
   const removed = current.files.reduce((n, f) => n + (f.removed ?? 0), 0);
   return (
-    <Frame>
+    <Frame variant="card">
       <FrameHeader className="flex-row items-center gap-1 px-2 py-1.5">
         {groups.map((g) => (
           <button
@@ -277,7 +282,7 @@ function Changes({ entry }: { entry: ReviewEntry }) {
 
 function Commits({ entry }: { entry: ReviewEntry }) {
   return (
-    <Frame>
+    <Frame variant="card">
       <FrameHeader className="flex-row items-center gap-2 px-4 py-2.5">
         <GitCommitHorizontalIcon className="size-3.5 text-muted-foreground" />
         <FrameTitle className="font-medium text-[13px]">

@@ -212,7 +212,7 @@ function DiffView({ file, run }: { file: FileChange; run: Run }) {
           <ToggleGroupItem value="split">Split</ToggleGroupItem>
         </ToggleGroup>
       </div>
-      <div className="min-h-0 flex-1 overflow-auto font-mono text-[12px] leading-5 [font-variant-ligatures:none]">
+      <div className="min-h-0 flex-1 overflow-auto font-mono text-[12px] leading-5">
         {diff.state === "loading" && <Centered><Spinner className="size-4" /></Centered>}
         {diff.state === "error" && <Centered>{diff.message}</Centered>}
         {diff.state === "ready" && diff.value.lines.length === 0 && <Centered>Nothing to show for this file.</Centered>}

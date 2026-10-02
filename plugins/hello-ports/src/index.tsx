@@ -45,11 +45,9 @@ function useServices(berth: BerthPluginContext): Row[] | undefined {
 function PortsScreen({ berth }: ScreenProps) {
   const rows = useServices(berth);
   return (
-    <div className="px-6 py-6">
-      <h1 className="font-semibold text-lg tracking-tight">Hello ports</h1>
-      <p className="mt-0.5 text-muted-foreground text-sm">Everything listening in a worktree, on every box. From the hello-ports plugin.</p>
+    <div>
       {!rows ? (
-        <Spinner className="mt-6" />
+        <Spinner />
       ) : rows.length === 0 ? (
         <Empty className="mt-10">
           <EmptyHeader>
@@ -58,7 +56,7 @@ function PortsScreen({ berth }: ScreenProps) {
           </EmptyHeader>
         </Empty>
       ) : (
-        <ul className="mt-5 divide-y rounded-lg border">
+        <ul className="divide-y rounded-lg border">
           {rows.map((r) => (
             <li key={`${r.box}:${r.port}`} className="flex items-center gap-3 px-3 py-2 text-sm">
               <span className="w-14 font-mono">{r.port}</span>
@@ -81,7 +79,7 @@ function PortsScreen({ berth }: ScreenProps) {
 }
 
 export default function activate(berth: BerthPluginContext) {
-  berth.addScreen({ id: "ports", title: "Hello ports", Component: PortsScreen });
+  berth.addScreen({ id: "ports", title: "Hello ports", description: "Everything listening in a worktree, on every box. From the hello-ports plugin.", Component: PortsScreen });
   berth.addSidebarItem({ id: "ports", title: "Hello ports", icon: "Radio", screen: "ports" });
   berth.addCommand({ id: "ports", title: "Show dev servers", group: "Hello ports", run: () => berth.openScreen("ports") });
   berth.on("worktree.created", (e) => berth.notify("New worktree", `${String(e.data?.name ?? "")} on ${e.box ?? "a box"}`));

@@ -489,11 +489,20 @@ function TestRun({ box, scope, flow, dirty, onRun }: { box: string; scope: Scope
 function RunBanner({ run, onClear }: { run: FlowRun; onClear(): void }) {
   const ok = run.status === "succeeded";
   const ran = run.steps.filter((s) => s.status !== "skipped").length;
+  // A step failed and a later on-failure step dealt with it, as designed.
+  const caught = ok ? run.steps.findIndex((s) => s.status === "failed") : -1;
+  const summary = run.error
+    ? `Test run failed: ${run.error}`
+    : run.status === "running"
+      ? `Test run still running: ${ran} of ${run.steps.length} steps ran so far.`
+      : caught >= 0
+        ? `Test run succeeded: step ${caught + 1} failed and the steps after it handled that, as designed. Results are on each step below.`
+        : `Test run ${run.status}: ${ran} of ${run.steps.length} steps ran. Results are on each step below.`;
   return (
     <div className={cn("mb-5 flex items-center gap-3 rounded-xl border px-4 py-3 text-sm", ok ? "border-success/30 bg-success/6" : "border-destructive/30 bg-destructive/6")}>
       <FlaskConicalIcon className={cn("size-4 shrink-0", ok ? "text-success" : "text-destructive-foreground")} />
       <span className="min-w-0 flex-1">
-        {run.error ? `Test run failed: ${run.error}` : `Test run ${run.status === "running" ? "still running" : run.status}: ${ran} of ${run.steps.length} steps ran. Results are on each step below.`}
+        {summary}
       </span>
       <Button size="xs" variant="ghost" onClick={onClear}>
         Clear

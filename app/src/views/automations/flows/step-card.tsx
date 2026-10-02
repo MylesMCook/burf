@@ -264,7 +264,7 @@ function ResultOutput({ result }: { result: StepRun }) {
         {result.error ? "Error" : "Output"}
       </button>
       {open && (
-        <pre className="mx-3.5 mb-3 max-h-56 overflow-auto rounded-md bg-muted/60 p-2 font-mono text-[11px] text-muted-foreground leading-snug [font-variant-ligatures:none]">
+        <pre className="mx-3.5 mb-3 max-h-56 overflow-auto rounded-md bg-muted/60 p-2 font-mono text-[11px] text-muted-foreground leading-snug">
           {[result.error, result.output].filter(Boolean).join("\n")}
         </pre>
       )}

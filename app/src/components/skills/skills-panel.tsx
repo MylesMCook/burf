@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { AgentIcon } from "@/components/agent-glyph";
 import { Button } from "@/components/ui/button";
-import { Card, CardFrame, CardFrameAction, CardFrameDescription, CardFrameFooter, CardFrameHeader, CardFrameTitle } from "@/components/ui/card";
+import { Card, CardFrameAction, CardFrameDescription, CardFrameFooter, CardFrameHeader, CardFrameTitle } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { toastManager } from "@/components/ui/toast";
@@ -71,7 +71,7 @@ export function SkillsPanel({ box, location, className, hideTitle }: { box: stri
   const dirs = target === "project" ? report?.project_dirs : report?.user_dirs;
 
   return (
-    <CardFrame className={className}>
+    <Card className={cn("overflow-hidden", className)}>
       <CardFrameHeader className="px-4 py-3">
         {!hideTitle && (
           <CardFrameTitle className="flex items-center gap-2">
@@ -90,7 +90,7 @@ export function SkillsPanel({ box, location, className, hideTitle }: { box: stri
         </CardFrameAction>
       </CardFrameHeader>
 
-      <Card className="overflow-hidden">
+      <div className="border-t">
         <div className="grid grid-cols-[minmax(0,1fr)_7.5rem_7.5rem] items-center border-b px-4 py-1.5 text-[11px] text-muted-foreground">
           <span>Skill</span>
           {(["claude", "codex"] as const).map((a) => (
@@ -133,9 +133,9 @@ export function SkillsPanel({ box, location, className, hideTitle }: { box: stri
             })}
           </div>
         ))}
-      </Card>
+      </div>
 
-      <CardFrameFooter className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5">
+      <CardFrameFooter className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-2.5">
         <span className="min-w-0 truncate font-mono text-[11px] text-muted-foreground" title={dirs ? `${dirs.claude}\n${dirs.codex}` : undefined}>
           {dirs ? `${shortDir(dirs.claude)} · ${shortDir(dirs.codex)}` : " "}
         </span>
@@ -146,7 +146,7 @@ export function SkillsPanel({ box, location, className, hideTitle }: { box: stri
           </label>
         )}
       </CardFrameFooter>
-    </CardFrame>
+    </Card>
   );
 }
 

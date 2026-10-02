@@ -89,7 +89,7 @@ export default definePlugin((berth) => {
   void sample();
   const timer = setInterval(() => void sample(), EVERY);
 
-  berth.addScreen({ id: "boxes", title: "Box monitor", Component: MonitorScreen });
+  berth.addScreen({ id: "boxes", title: "Box monitor", description: "Memory, disk and load on every online box, sampled every 15 seconds while Berth is open.", Component: MonitorScreen });
   berth.addSidebarItem({ id: "boxes", title: "Box monitor", icon: "Activity", screen: "boxes" });
   berth.addCommand({ id: "boxes", title: "Show box monitor", group: "Boxes", run: () => berth.openScreen("boxes") });
   return () => clearInterval(timer);
@@ -122,11 +122,7 @@ function MonitorScreen() {
   const all = useViews();
   const loaded = useReady();
   return (
-    <div className="mx-auto max-w-5xl space-y-5 px-6 py-6">
-      <header>
-        <h1 className="font-semibold text-lg tracking-tight">Box monitor</h1>
-        <p className="mt-0.5 text-muted-foreground text-sm">Memory, disk and load on every online box, sampled every 15 seconds while Berth is open.</p>
-      </header>
+    <>
       {!loaded ? (
         <div className="grid gap-4 md:grid-cols-2">
           <Skeleton className="h-44" />
@@ -146,7 +142,7 @@ function MonitorScreen() {
           ))}
         </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -154,7 +150,7 @@ function BoxCard({ view: v }: { view: BoxView }) {
   const s = v.stats;
   if (!s) {
     return (
-      <Frame>
+      <Frame variant="card">
         <FrameHeader className="py-3">
           <FrameTitle>{v.box}</FrameTitle>
         </FrameHeader>
@@ -167,7 +163,7 @@ function BoxCard({ view: v }: { view: BoxView }) {
   const working = s.agents.filter((a) => a.state === "running").length;
   const waiting = s.agents.filter((a) => a.state === "waiting").length;
   return (
-    <Frame>
+    <Frame variant="card">
       <FrameHeader className="flex-row items-center gap-2 py-2.5">
         <Icon name="Server" className="size-3.5 text-muted-foreground" />
         <FrameTitle>{v.box}</FrameTitle>

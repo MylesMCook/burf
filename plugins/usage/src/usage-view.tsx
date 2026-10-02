@@ -88,7 +88,7 @@ export function UsageView({ berth, period, sources, states, accounts, running, a
       </div>
 
       {period > 1 && (
-        <Frame>
+        <Frame variant="card">
           <FrameHeader className="flex-row items-center gap-2 py-3">
             <FrameTitle>Tokens per day</FrameTitle>
             {showBox && (
@@ -108,7 +108,7 @@ export function UsageView({ berth, period, sources, states, accounts, running, a
       )}
 
       <div className={cn("grid gap-4", !showBox && "lg:grid-cols-2")}>
-        <Frame>
+        <Frame variant="card">
           <FrameHeader className="py-3">
             <FrameTitle>By model</FrameTitle>
           </FrameHeader>
@@ -148,7 +148,7 @@ export function UsageView({ berth, period, sources, states, accounts, running, a
             </Table>
           </FramePanel>
         </Frame>
-        <Frame>
+        <Frame variant="card">
           <FrameHeader className="py-3">
             <FrameTitle>By project</FrameTitle>
           </FrameHeader>
@@ -183,7 +183,7 @@ export function UsageView({ berth, period, sources, states, accounts, running, a
         </Frame>
       </div>
 
-      <Frame>
+      <Frame variant="card">
         <FrameHeader className="flex-row items-center gap-2 py-3">
           <FrameTitle>Sessions</FrameTitle>
           <span className="ml-auto text-muted-foreground text-xs">
@@ -319,7 +319,7 @@ function AgentTile({
   const boxes = perBox ? [...perBox.entries()].filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]) : [];
   const sumBoxes = boxes.reduce((n, [, v]) => n + v, 0) || 1;
   return (
-    <Frame>
+    <Frame variant="card">
       <FrameHeader className="flex-row flex-wrap items-center gap-2 py-3">
         <span className={cn("size-2.5 rounded-[3px]", SERIES[agent].dot)} />
         <FrameTitle>{AGENT_NAME[agent]}</FrameTitle>

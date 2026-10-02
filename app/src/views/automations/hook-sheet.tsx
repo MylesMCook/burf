@@ -98,7 +98,7 @@ export function HookSheet({ editing, onSave, onClose }: { editing?: Editing; onS
               onChange={(e) => setHook({ ...hook, run: e.target.value })}
               placeholder={d.gate ? 'test "$BERTH_NAME" != main' : 'cd "$BERTH_PATH" && pnpm install'}
               rows={2}
-              className="font-mono text-xs [font-variant-ligatures:none] [&_textarea]:max-h-48 [&_textarea]:min-h-13"
+              className="font-mono text-xs [&_textarea]:max-h-48 [&_textarea]:min-h-13"
               spellCheck={false}
             />
             <p className="mt-2 text-muted-foreground text-xs">Through /bin/sh, with the event as JSON on stdin. Click to insert:</p>

@@ -5,6 +5,16 @@ import { useRender } from "@base-ui/react/use-render";
 import type React from "react";
 import { cn } from "@/lib/utils";
 
+// Cards in Berth: one outline per section.
+// - A section of a page is one Card, or a Frame with variant="card": its
+//   header row and its rows sit directly inside, divided by border-t (or
+//   divide-y on a list). Never put a bordered card inside another card.
+// - bg-muted/40 (no border) is for what is quoted inside a section: a
+//   transcript, a command's output, code.
+// - The inset Frame (muted tray, raised panels) is for grouped inputs in a
+//   dialog, not for page sections.
+// - Column headers and small section labels are sentence case,
+//   text-[11px] text-muted-foreground: never uppercase or tracked.
 export function Card({
   className,
   render,

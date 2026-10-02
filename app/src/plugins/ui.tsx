@@ -27,6 +27,7 @@ import { PickOne } from "@/components/pick-one";
 import { AgentPicker } from "@/components/new-worktree/agent-picker";
 import { AgentIcon } from "@/components/agent-glyph";
 import { cn } from "@/lib/utils";
+import { PluginPage, ViewHeader } from "@/views/view-header";
 
 const known = new Set<string>(iconNames);
 
@@ -124,5 +125,7 @@ export const pluginUi = {
   AgentPicker,
   AgentIcon,
   Icon,
+  ViewHeader,
+  PluginPage,
   cn,
 };

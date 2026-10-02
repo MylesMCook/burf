@@ -1,6 +1,7 @@
 import { ChevronRightIcon, EyeIcon, EyeOffIcon, PlusIcon, Trash2Icon, Undo2Icon } from "lucide-react";
 import { useState } from "react";
 
+import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { RepoConfig } from "@/lib/flows";
@@ -29,7 +30,7 @@ function SecretInput({ name, value, onChange }: { name: string; value: string; o
   const [shown, setShown] = useState(!secret);
   return (
     <div className="flex items-center gap-1">
-      <Input value={value} type={shown ? "text" : "password"} onChange={(e) => onChange(e.target.value)} size="sm" className="font-mono text-xs [font-variant-ligatures:none]" spellCheck={false} autoComplete="off" />
+      <Input value={value} type={shown ? "text" : "password"} onChange={(e) => onChange(e.target.value)} size="sm" className="font-mono text-xs" spellCheck={false} autoComplete="off" />
       {secret && (
         <Button size="icon-xs" variant="ghost" aria-label={shown ? `Hide ${name}` : `Show ${name}`} onClick={() => setShown(!shown)}>
           {shown ? <EyeOffIcon /> : <EyeIcon />}
@@ -88,21 +89,25 @@ export function EnvSection({ repo, draft, setDraft, box }: { repo: RepoConfig | 
                 {mine ? (
                   <SecretInput name={k} value={own[k]} onChange={(v) => put(k, v)} />
                 ) : (
-                  <code className="truncate px-2.5 font-mono text-muted-foreground text-xs [font-variant-ligatures:none]" title={committed[k]}>
+                  <code className="truncate px-2.5 font-mono text-muted-foreground text-xs" title={committed[k]}>
                     {committed[k]}
                   </code>
                 )}
                 <SourceBadge source={source} box={box} field="env" entry={k} />
                 <span className="flex justify-end">
                   {!mine && (
-                    <Button size="icon-xs" variant="ghost" aria-label={`Override ${k} on ${box}`} title={`Override on ${box}`} onClick={() => put(k, committed[k])}>
-                      <PlusIcon />
-                    </Button>
+                    <Tip label={`Override on ${box}`}>
+                      <Button size="icon-xs" variant="ghost" aria-label={`Override ${k} on ${box}`} onClick={() => put(k, committed[k])}>
+                        <PlusIcon />
+                      </Button>
+                    </Tip>
                   )}
                   {mine && inRepo && (
-                    <Button size="icon-xs" variant="ghost" aria-label={`Use the repo's ${k}`} title="Use the repo's value" onClick={() => drop(k)}>
-                      <Undo2Icon />
-                    </Button>
+                    <Tip label="Use the repo's value">
+                      <Button size="icon-xs" variant="ghost" aria-label={`Use the repo's ${k}`} onClick={() => drop(k)}>
+                        <Undo2Icon />
+                      </Button>
+                    </Tip>
                   )}
                   {mine && !inRepo && (
                     <Button size="icon-xs" variant="ghost" aria-label={`Remove ${k}`} onClick={() => drop(k)}>

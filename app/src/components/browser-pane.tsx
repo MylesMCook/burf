@@ -8,6 +8,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { isTauri } from "@/lib/api";
 import { berthUrlLabel, type BrowserContext, describeBerthUrl, resolveBrowserInput, suggestions } from "@/lib/browser-url";
 import { openUrl } from "@/lib/open-url";
+import { overlayOpen } from "@/lib/overlays";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { currentSpace, rememberUrl, useWorkspaces } from "@/lib/workspaces";
@@ -47,8 +48,22 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate }: Props) {
   const [at, setAt] = useState(url ? 0 : -1);
   const [nonce, setNonce] = useState(0);
   const native = useRef<NativeView>(null);
+  const address = useRef<HTMLInputElement>(null);
 
   useEffect(() => setInput(url), [url]);
+
+  // A new, empty tab (⌘⇧B) is for typing an address: take the keyboard from
+  // the terminal that had it, though never from a dialog or menu. The next
+  // frame, after the pane is shown.
+  useEffect(() => {
+    if (!visible || url) return;
+    const frame = requestAnimationFrame(() => {
+      if (!overlayOpen()) address.current?.focus();
+    });
+    return () => cancelAnimationFrame(frame);
+    // Only as the empty tab is shown, not on every keystroke.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
 
   const go = (next: string) => {
     rememberUrl(next);
@@ -95,6 +110,8 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate }: Props) {
             </span>
           )}
           <input
+            ref={address}
+            aria-label="Address"
             value={input}
             placeholder="Port (3000), or a URL"
             spellCheck={false}

@@ -160,7 +160,7 @@ function PRView({ pr, berth, onRefresh }: { pr: PR; berth: WorktreePanelProps["b
         </div>
       </header>
 
-      <Frame>
+      <Frame variant="card">
         <FrameHeader className="flex-row items-center gap-2 py-3">
           <FrameTitle>Checks</FrameTitle>
           <span className="ml-auto flex gap-3 text-xs tabular-nums">
@@ -198,7 +198,7 @@ function PRView({ pr, berth, onRefresh }: { pr: PR; berth: WorktreePanelProps["b
         </FramePanel>
       </Frame>
 
-      <Frame>
+      <Frame variant="card">
         <FrameHeader className="flex-row items-center gap-2 py-3">
           <FrameTitle>Reviews</FrameTitle>
           {pr.reviewDecision && decision[pr.reviewDecision] && <span className={cn("ml-auto text-xs", decision[pr.reviewDecision].tone)}>{decision[pr.reviewDecision].label}</span>}
@@ -222,7 +222,7 @@ function PRView({ pr, berth, onRefresh }: { pr: PR; berth: WorktreePanelProps["b
       </Frame>
 
       {comments.length > 0 && (
-        <Frame>
+        <Frame variant="card">
           <FrameHeader className="py-3">
             <FrameTitle>Latest comments</FrameTitle>
           </FrameHeader>

@@ -7,7 +7,7 @@ import { errorMessage } from "@/lib/format";
 import { builtinOn } from "@/lib/prefs";
 import { makeContext } from "@/plugins/context";
 import { pluginContexts } from "@/plugins/plugin-boundary";
-import { removePlugin, setPluginStatus } from "@/plugins/registry";
+import { removePlugin, setPluginOrder, setPluginStatus, usePluginsLoading } from "@/plugins/registry";
 import * as sdk from "@/plugins/sdk-runtime";
 import { pluginUi } from "@/plugins/ui";
 
@@ -103,6 +103,7 @@ export function unloadPlugin(id: string) {
 // loadPlugins (re)loads the built-in plugins that are on, and every enabled
 // plugin the agent lists. A user plugin replaces a built-in with its id.
 export async function loadPlugins(client: Client) {
+  usePluginsLoading.setState(true, true);
   const [user, builtins] = await Promise.all([
     client.plugins().catch((err) => {
       console.warn("could not list plugins", err);
@@ -113,5 +114,7 @@ export async function loadPlugins(client: Client) {
   for (const id of [...loaded.keys()]) unloadPlugin(id);
   const userIds = new Set(user.map((p) => p.id));
   const list = [...builtins.filter((b) => !userIds.has(b.id) && builtinOn(b)), ...user.filter((p) => p.enabled !== false)];
+  setPluginOrder(list.map((p) => p.id));
   await Promise.all(list.map((p) => loadPlugin(client, p)));
+  usePluginsLoading.setState(false, true);
 }

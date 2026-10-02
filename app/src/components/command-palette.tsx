@@ -47,7 +47,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { useAllSessions } from "@/hooks/use-agent-counts";
 import { useThemes } from "@/hooks/use-theme";
 import { openBrowserAt, resolveUrl, startSession } from "@/lib/actions";
-import { agentLabel, agentOf, sortedWorktrees, worktreeOf } from "@/lib/derive";
+import { agentOf, sessionName, sortedWorktrees, worktreeOf } from "@/lib/derive";
 import { around, groupMatches, historyTitle, type MatchGroup, searchHistory } from "@/lib/history";
 import { openBroadcast, openPromptPicker } from "@/lib/prompts";
 import { setNotificationsOpen } from "@/lib/notifications";
@@ -210,11 +210,10 @@ export function CommandPalette() {
     // different repositories cannot be confused.
     const sessionItem = ({ box, session, state }: (typeof sessions)[number]): Item => {
       const where = worktreeOf(boxes[box]?.locations, session);
-      const place = where ? (where.worktree.main ? where.location.name : `${where.location.name} / ${where.worktree.name}`) : (session.location ?? session.name);
       const agent = agentOf(session);
       return {
         value: `session:${box}/${session.name}`,
-        label: `${place} · ${agent ? agentLabel(agent) : "Shell"}`,
+        label: sessionName(session, { sessions: boxes[box]?.sessions, locations: boxes[box]?.locations, place: true }),
         detail: [where?.worktree.branch, box].filter(Boolean).join(" · "),
         search: session.name,
         icon: (

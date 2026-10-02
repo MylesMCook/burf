@@ -26,7 +26,7 @@ function Row({ label, children, mono }: { label?: ReactNode; children: ReactNode
   return (
     <div className="flex min-w-0 gap-3 px-3 py-2 text-sm">
       {label && <span className="w-24 shrink-0 text-muted-foreground text-xs leading-5">{label}</span>}
-      <div className={cn("min-w-0 flex-1", mono && "font-mono text-xs leading-5 [font-variant-ligatures:none]")}>{children}</div>
+      <div className={cn("min-w-0 flex-1", mono && "font-mono text-xs leading-5")}>{children}</div>
     </div>
   );
 }
@@ -47,7 +47,7 @@ function Item({ icon, name, meta, children }: { icon: ReactNode; name: ReactNode
 }
 
 function Code({ children }: { children: ReactNode }) {
-  return <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-5 [font-variant-ligatures:none]">{children}</pre>;
+  return <pre className="whitespace-pre-wrap break-words font-mono text-xs leading-5">{children}</pre>;
 }
 
 const eventLabel = (on: string) => CATALOG.find((c) => c.on === on)?.label ?? (on.startsWith("before:") ? `Before ${on.slice(7)}` : on);
@@ -84,7 +84,7 @@ export function KitSummary({ kit, filesOpen }: { kit: KitInfo; filesOpen?: boole
             </Row>
           ) : null}
           {env.map(([k, v]) => (
-            <div key={k} className="grid grid-cols-[minmax(6rem,auto)_minmax(0,1fr)] gap-x-4 px-3 py-2 font-mono text-xs leading-5 [font-variant-ligatures:none]">
+            <div key={k} className="grid grid-cols-[minmax(6rem,auto)_minmax(0,1fr)] gap-x-4 px-3 py-2 font-mono text-xs leading-5">
               <span className="max-w-64 truncate text-foreground/90" title={k}>
                 {k}
               </span>
@@ -181,7 +181,7 @@ function FileRow({ file, open }: { file: KitFile; open?: boolean }) {
         <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">{viewable ? formatBytes(file.size) : `${formatBytes(file.size)} · not shown`}</span>
       </button>
       {expanded && viewable && (
-        <pre className="max-h-80 overflow-auto border-t bg-muted/40 px-4 py-3 font-mono text-[11.5px] leading-relaxed [font-variant-ligatures:none]">{file.text || "(empty)"}</pre>
+        <pre className="max-h-80 overflow-auto border-t bg-muted/40 px-4 py-3 font-mono text-[11.5px] leading-relaxed">{file.text || "(empty)"}</pre>
       )}
     </div>
   );

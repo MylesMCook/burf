@@ -1,6 +1,7 @@
 import { GlobeIcon, HistoryIcon, PlusIcon, PuzzleIcon, RadioIcon, Settings2Icon, SquareTerminalIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
+import { Tip } from "@/components/tip";
 import { AgentIcon } from "@/components/agent-glyph";
 import { Command, CommandCollection, CommandEmpty, CommandGroup, CommandGroupLabel, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
 import { Kbd } from "@/components/ui/kbd";
@@ -133,11 +134,13 @@ export function NewTabMenu() {
         if (!o) setQuery("");
       }}
     >
-      <PopoverTrigger
-        render={<button type="button" aria-label="New tab" title="New tab (⌘T for a terminal)" className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground data-popup-open:bg-accent" />}
-      >
-        <PlusIcon className="size-4" />
-      </PopoverTrigger>
+      <Tip label="New tab (⌘T for a terminal)" side="bottom">
+        <PopoverTrigger
+          render={<button type="button" aria-label="New tab" className="inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground data-popup-open:bg-accent" />}
+        >
+          <PlusIcon className="size-4" />
+        </PopoverTrigger>
+      </Tip>
       <PopoverPopup align="start" sideOffset={2} className="w-88 p-0 [&_[data-slot=popover-viewport]]:p-0">
         <Command items={groups} value={query} onValueChange={setQuery} itemToStringValue={(i: unknown) => `${(i as Item).label} ${(i as Item).detail ?? ""} ${(i as Item).search ?? ""}`}>
           <CommandInput placeholder="Search open tabs, history, URLs, agents…" className="text-sm" />

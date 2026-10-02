@@ -1,11 +1,13 @@
-import { AlertTriangleIcon, ArrowDownIcon, ArrowUpIcon, CheckIcon, PauseIcon, XIcon } from "lucide-react";
-
+import { AlertTriangleIcon, ArrowDownIcon, ArrowUpIcon, CheckIcon, HouseIcon, PauseIcon, XIcon } from "lucide-react";
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
+import { Tip } from "@/components/tip";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Kbd } from "@/components/ui/kbd";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@/components/ui/tooltip";
-import { agentOf, sessionState } from "@/lib/derive";
+import { agentLabel, agentOf, sessionState } from "@/lib/derive";
 import { ago } from "@/lib/format";
+import { previewUrl } from "@/lib/preview";
 import { NONE, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { ProjectLabel } from "@/views/automations/flows/project-label";
@@ -19,17 +21,23 @@ export interface Group {
   rows: Row[];
 }
 
-// One grid for the header and every row, so the columns line up.
-export const COLS = "grid-cols-[2rem_minmax(0,1.5fr)_5.5rem_6.5rem_minmax(0,2fr)_7rem_3.5rem_1.75rem]";
+// One grid for the header and every row, so the columns line up. Below
+// 1024px of table the port moves into the worktree's tooltip and agents
+// narrow, so the last commit keeps room to be read.
+export const COLS =
+  "grid-cols-[2rem_minmax(180px,1.2fr)_6rem_6rem_minmax(240px,2fr)_5.5rem_4rem_1.5rem] @max-5xl:grid-cols-[2rem_minmax(160px,1.2fr)_5.5rem_5.5rem_minmax(200px,2fr)_4.5rem_1.5rem]";
 
-// WorktreeTable lists worktrees by project. Checkboxes select, shift-click
-// selects a range, and a row click opens its history.
+const stateWords: Record<string, string> = { ready: "ready", running: "working", waiting: "waiting for you", finished: "finished", exited: "exited", idle: "idle" };
+
+// WorktreeTable lists worktrees by project, one line each. Checkboxes
+// select, shift-click selects a range, and a row click opens its history.
 export function WorktreeTable({
   groups,
   selected,
   progress,
   onToggle,
   onToggleGroup,
+  onToggleAll,
   onOpen,
   openKey,
 }: {
@@ -38,36 +46,55 @@ export function WorktreeTable({
   progress: Record<string, RowProgress>;
   onToggle(r: Row, shift: boolean): void;
   onToggleGroup(g: Group, on: boolean): void;
+  onToggleAll(on: boolean): void;
   onOpen(r: Row): void;
   openKey?: string;
 }) {
+  const total = groups.reduce((n, g) => n + g.rows.length, 0);
   return (
-    <div className="@container min-w-[880px]">
-      <div className={cn("sticky top-0 z-10 grid items-center gap-3 border-b bg-background/95 px-4 py-1.5 text-[11px] text-muted-foreground backdrop-blur", COLS)}>
-        <span />
+    <div className="@container">
+      <div className={cn("sticky top-0 z-20 grid h-8 items-center gap-3 border-b bg-background px-4 text-[11px] text-muted-foreground", COLS)}>
+        <Tip
+          label={
+            <span className="flex items-center gap-1.5">
+              Select all <Kbd>⌘A</Kbd> · <Kbd>⇧</Kbd>-click selects a range
+            </span>
+          }
+        >
+          <span className="flex items-center">
+            <Checkbox checked={selected.size > 0 && selected.size === total} indeterminate={selected.size > 0 && selected.size < total} onCheckedChange={(on) => onToggleAll(!!on)} aria-label="Select every worktree shown" />
+          </span>
+        </Tip>
         <span>Worktree</span>
-        <span title="Commits ahead of and behind its base">vs base</span>
-        <span>Changes</span>
+        <Tip className="max-w-sm" label="Commits ahead of its base, and behind it">
+          <span className="w-fit">vs base</span>
+        </Tip>
+        <Tip className="max-w-sm" label="Uncommitted: modified and untracked files">
+          <span className="w-fit">Changes</span>
+        </Tip>
         <span>Last commit</span>
-        <span>Agents</span>
-        <span className="text-right">Port</span>
+        <Tip className="max-w-sm" label="Sessions in it, and dev servers it runs">
+          <span className="w-fit">Agents</span>
+        </Tip>
+        <Tip className="max-w-sm" label="Its first port, on its own box">
+          <span className="w-fit justify-self-end @max-5xl:hidden">Port</span>
+        </Tip>
         <span />
       </div>
       {groups.map((g) => {
-        const selectable = g.rows;
-        const n = selectable.filter((r) => selected.has(r.key)).length;
+        const n = g.rows.filter((r) => selected.has(r.key)).length;
         return (
           <section key={g.key} aria-label={`${g.location} on ${g.box}`}>
-            <header className={cn("grid items-center gap-3 border-b bg-muted/30 px-4 py-1.5", COLS)}>
+            <header className={cn("sticky top-8 z-10 grid h-8 items-center gap-3 border-b bg-[color-mix(in_srgb,var(--color-muted)_60%,var(--color-background))] px-4", COLS)}>
               <Checkbox
-                checked={n > 0 && n === selectable.length}
-                indeterminate={n > 0 && n < selectable.length}
+                checked={n > 0 && n === g.rows.length}
+                indeterminate={n > 0 && n < g.rows.length}
                 onCheckedChange={(on) => onToggleGroup(g, !!on)}
                 aria-label={`Select every worktree in ${g.location} on ${g.box}`}
               />
-              <span className="col-span-7 flex items-center gap-2 font-medium text-xs">
+              <span className="col-[2/-1] flex items-center gap-2 font-medium text-xs">
                 <ProjectLabel box={g.box} scope={`repo:${g.location}`} />
-                <span className="text-muted-foreground tabular-nums">{g.rows.length}</span>
+                <span className="font-normal text-muted-foreground tabular-nums">{g.rows.length}</span>
               </span>
             </header>
             <div role="list">
@@ -89,6 +116,9 @@ function WorktreeRow({ row: r, selected, progress, open, onToggle, onOpen }: { r
   const mine = sessions.filter((s) => s.dir === r.path && !s.exited);
   const serving = services.filter((s) => s.path === r.path);
   const c = r.last_commit;
+  const name = r.main ? r.location : r.name;
+  const base = r.base ?? "its base";
+  const s = (n: number) => (n === 1 ? "" : "s");
 
   return (
     <div
@@ -105,7 +135,7 @@ function WorktreeRow({ row: r, selected, progress, open, onToggle, onOpen }: { r
         }
       }}
       className={cn(
-        "group grid cursor-pointer items-center gap-3 border-b border-border/60 px-4 py-2 text-sm outline-none hover:bg-accent/40 focus-visible:bg-accent/40",
+        "group grid h-9 cursor-pointer items-center gap-3 border-b border-border/60 px-4 text-sm outline-none hover:bg-accent/40 focus-visible:bg-accent/40",
         COLS,
         selected && "bg-primary/[0.06] hover:bg-primary/[0.09]",
         open && "bg-accent/60",
@@ -120,13 +150,14 @@ function WorktreeRow({ row: r, selected, progress, open, onToggle, onOpen }: { r
         }}
         className="flex h-full items-center"
       >
-        <Checkbox checked={selected} tabIndex={-1} aria-label={`Select ${r.name}`} className="pointer-events-none" />
+        <Checkbox checked={selected} tabIndex={-1} aria-label={`Select ${name}`} className="pointer-events-none" />
       </span>
 
-      <div className="min-w-0">
-        <div className="flex items-center gap-1.5">
-          <span className="truncate font-medium">{r.main ? r.location : r.name}</span>
-          {r.main && <span className="shrink-0 rounded border px-1 text-[10px] text-muted-foreground">main checkout</span>}
+      <Tip className="max-w-sm" label={<NameTip row={r} />}>
+        <div className="flex min-w-0 items-center gap-1.5">
+          {r.main && <HouseIcon className="size-3.5 shrink-0 text-muted-foreground" aria-label="Main checkout" />}
+          <span className="max-w-full shrink-0 truncate font-medium">{name}</span>
+          {r.branch && r.branch !== name && <span className="min-w-0 truncate font-mono text-[11px] text-muted-foreground">{r.branch}</span>}
           {r.paused && (
             <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-warning/12 px-1.5 py-px text-[10px] text-warning">
               <PauseIcon className="size-2.5" />
@@ -134,77 +165,124 @@ function WorktreeRow({ row: r, selected, progress, open, onToggle, onOpen }: { r
             </span>
           )}
         </div>
-        {r.branch && <div className="truncate font-mono text-[11px] text-muted-foreground">{r.branch}</div>}
-      </div>
+      </Tip>
 
-      <div className="flex items-center gap-2 font-mono text-xs tabular-nums" title={r.base ? `vs ${r.base}` : undefined}>
-        <span className={cn("inline-flex items-center gap-0.5", r.ahead ? "text-foreground" : "text-muted-foreground/50")}>
-          <ArrowUpIcon className="size-3" />
-          {r.ahead}
-        </span>
-        <span className={cn("inline-flex items-center gap-0.5", r.behind >= 10 ? "text-warning" : r.behind ? "text-foreground" : "text-muted-foreground/50")}>
-          <ArrowDownIcon className="size-3" />
-          {r.behind}
-        </span>
-      </div>
+      <Tip className="max-w-sm" label={r.ahead || r.behind ? `${r.ahead} commit${s(r.ahead)} ahead of ${base}, ${r.behind} behind` : `Even with ${base}`}>
+        <div className="flex w-fit items-center gap-2 font-mono text-xs tabular-nums">
+          <span className={cn("inline-flex items-center gap-0.5", r.ahead ? "text-foreground" : "text-muted-foreground/50")}>
+            <ArrowUpIcon className="size-3" />
+            {r.ahead}
+          </span>
+          <span className={cn("inline-flex items-center gap-0.5", r.behind >= 10 ? "text-warning" : r.behind ? "text-foreground" : "text-muted-foreground/50")}>
+            <ArrowDownIcon className="size-3" />
+            {r.behind}
+          </span>
+        </div>
+      </Tip>
 
-      <div className="flex items-center gap-2 text-xs tabular-nums">
-        {r.changed === 0 && r.untracked === 0 ? (
-          <span className="text-muted-foreground/50">Clean</span>
-        ) : (
-          <>
-            {r.changed > 0 && (
-              <span className="inline-flex items-center gap-1" title={`${r.changed} changed`}>
-                <span className="size-1.5 rounded-full bg-warning" />
-                {r.changed}
-              </span>
-            )}
-            {r.untracked > 0 && (
-              <span className="text-success" title={`${r.untracked} untracked`}>
-                +{r.untracked}
-              </span>
-            )}
-          </>
-        )}
-      </div>
+      <Tip className="max-w-sm" label={r.changed || r.untracked ? [r.changed && `${r.changed} modified`, r.untracked && `${r.untracked} untracked`].filter(Boolean).join(", ") : "No uncommitted changes"}>
+        <div className="flex w-fit items-center gap-2 text-xs tabular-nums">
+          {r.changed === 0 && r.untracked === 0 ? (
+            <span className="text-muted-foreground/50">Clean</span>
+          ) : (
+            <>
+              {r.changed > 0 && (
+                <span className="inline-flex items-center gap-1">
+                  <span className="size-1.5 rounded-full bg-warning" />
+                  {r.changed}
+                </span>
+              )}
+              {r.untracked > 0 && <span className="text-success">+{r.untracked}</span>}
+            </>
+          )}
+        </div>
+      </Tip>
 
       <div className="min-w-0">
         {c ? (
-          <Tooltip>
-            <TooltipTrigger render={<div className="flex min-w-0 items-baseline gap-2" />}>
+          <Tip
+            label={
+              <>
+                <span className="font-mono">{c.short}</span> · {c.author} · {new Date(c.time).toLocaleString()}
+              </>
+            }
+          >
+            <div className="flex min-w-0 items-baseline gap-2">
               <span className="truncate">{c.subject}</span>
               <span className="shrink-0 text-muted-foreground text-xs">{ago(c.time)}</span>
-            </TooltipTrigger>
-            <TooltipPopup>
-              {c.short} · {c.author} · {new Date(c.time).toLocaleString()}
-            </TooltipPopup>
-          </Tooltip>
+            </div>
+          </Tip>
         ) : (
           <span className="text-muted-foreground text-xs">{r.error ?? "No commits"}</span>
         )}
       </div>
 
-      <div className="flex items-center gap-1.5">
-        {mine.slice(0, 3).map((s) => (
-          <span key={s.name} className="inline-flex items-center gap-0.5" title={`${s.name}${r.paused ? " (paused)" : ""}`}>
-            <AgentIcon agent={agentOf(s)} />
-            {!r.paused && <StateGlyph state={sessionState(s, stats)} className="size-3" />}
-          </span>
-        ))}
-        {mine.length > 3 && <span className="text-muted-foreground text-xs">+{mine.length - 3}</span>}
-        {serving.length > 0 && (
-          <span className="inline-flex items-center gap-1 text-muted-foreground text-xs" title={serving.map((s) => `:${s.port} ${s.process ?? ""}`).join("\n")}>
-            <span className={cn("size-1.5 rounded-full", r.paused ? "bg-muted-foreground/40" : "bg-success")} />
-            {serving.length}
-          </span>
-        )}
-        {mine.length === 0 && serving.length === 0 && <span className="text-muted-foreground/50 text-xs">—</span>}
-      </div>
+      {mine.length === 0 && serving.length === 0 ? (
+        <span className="text-muted-foreground/50 text-xs">—</span>
+      ) : (
+        <Tip
+          label={
+            <span className="flex flex-col gap-0.5">
+              {mine.map((x) => {
+                const a = agentOf(x);
+                return <span key={x.name}>{a ? `${agentLabel(a)} ${r.paused ? "paused" : stateWords[sessionState(x, stats)]}` : `Shell ${x.name}`}</span>;
+              })}
+              {serving.map((x) => (
+                <span key={x.port}>
+                  :{x.port} {x.process ?? "server"} {r.paused ? "stopped" : "running"}
+                </span>
+              ))}
+            </span>
+          }
+        >
+          <div className="flex w-fit items-center gap-1.5">
+            {mine.slice(0, 3).map((x) => (
+              <span key={x.name} className="inline-flex items-center gap-0.5">
+                <AgentIcon agent={agentOf(x)} />
+                {!r.paused && <StateGlyph state={sessionState(x, stats)} className="size-3" />}
+              </span>
+            ))}
+            {mine.length > 3 && <span className="text-muted-foreground text-xs">+{mine.length - 3}</span>}
+            {serving.length > 0 && (
+              <span className="inline-flex items-center gap-1 text-muted-foreground text-xs">
+                <span className={cn("size-1.5 rounded-full", r.paused ? "bg-muted-foreground/40" : "bg-success")} />
+                {serving.length}
+              </span>
+            )}
+          </div>
+        </Tip>
+      )}
 
-      <span className="text-right font-mono text-muted-foreground text-xs tabular-nums">{r.port ?? ""}</span>
+      <span className="text-right font-mono text-muted-foreground text-xs tabular-nums @max-5xl:hidden">{r.port ?? ""}</span>
 
       <ProgressMark p={progress} />
     </div>
+  );
+}
+
+// NameTip says where a worktree is: its branch, and the port and address
+// its dev server answers on, which are per box.
+function NameTip({ row: r }: { row: Row }) {
+  const loc = useStore((s) => s.boxes[r.box]?.locations?.find((l) => l.name === r.location));
+  const wt = loc?.worktrees?.find((w) => w.path === r.path);
+  return (
+    <span className="flex flex-col gap-0.5">
+      <span>
+        {r.main ? "Main checkout" : "Worktree"} on {r.box}
+        {r.branch && (
+          <>
+            {" · "}
+            <span className="font-mono">{r.branch}</span>
+          </>
+        )}
+      </span>
+      {r.port !== undefined && (
+        <span className="text-muted-foreground">
+          Port {r.port} on {r.box}
+          {loc && wt ? ` · ${previewUrl(r.box, loc, wt, r.port)}` : ""}
+        </span>
+      )}
+    </span>
   );
 }
 
@@ -224,10 +302,20 @@ function ProgressMark({ p }: { p?: RowProgress }) {
     ) : (
       <span className="text-[10px] text-muted-foreground">—</span>
     );
+  const label =
+    p.state === "queued"
+      ? "Waiting its turn"
+      : p.state === "running"
+        ? "Working…"
+        : p.conflicts?.length
+          ? `Conflicts in ${p.conflicts.length} file${p.conflicts.length === 1 ? "" : "s"}: ${p.conflicts.join(", ")}`
+          : p.state === "skipped"
+            ? `Skipped: ${p.message ?? ""}`
+            : (p.message ?? p.state);
   return (
     <Tooltip>
       <TooltipTrigger render={<span className="flex items-center justify-center" />}>{body}</TooltipTrigger>
-      <TooltipPopup className="max-w-sm">{p.conflicts?.length ? `Conflicts in ${p.conflicts.join(", ")}` : (p.message ?? p.state)}</TooltipPopup>
+      <TooltipPopup className="max-w-sm">{label}</TooltipPopup>
     </Tooltip>
   );
 }

@@ -26,7 +26,7 @@ export function RunsTab({ runs, names }: { runs: BoxRun[]; names: (box: string, 
     );
   return (
     <div className="overflow-hidden rounded-xl border bg-card">
-      <div className="grid grid-cols-[20px_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.2fr)_90px_60px] gap-3 border-b px-4 py-2 text-[11px] text-muted-foreground uppercase tracking-wide">
+      <div className="grid grid-cols-[20px_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.2fr)_90px_60px] gap-3 border-b px-4 py-2 text-[11px] text-muted-foreground">
         <span />
         <span>Flow</span>
         <span>Where</span>
@@ -93,7 +93,7 @@ function RunRow({ run, name }: { run: BoxRun; name: string }) {
                   {s.duration && <span className="font-mono text-[11px] text-muted-foreground">{s.duration}</span>}
                 </div>
                 {(s.output || s.error) && (
-                  <pre className="max-h-48 overflow-auto border-t px-3 py-2 font-mono text-[11px] text-muted-foreground leading-snug [font-variant-ligatures:none]">{[s.error, s.output].filter(Boolean).join("\n")}</pre>
+                  <pre className="max-h-48 overflow-auto border-t px-3 py-2 font-mono text-[11px] text-muted-foreground leading-snug">{[s.error, s.output].filter(Boolean).join("\n")}</pre>
                 )}
               </div>
             );

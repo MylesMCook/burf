@@ -123,18 +123,20 @@ function ConnectMachine({ machine, user: suggested, network, onDone }: { machine
   const [state, setState] = useState<"ready" | "running" | "done" | "failed">("ready");
   const [error, setError] = useState<string>();
   const abort = useRef<AbortController>(null);
+  const target = machine.dns_name || machine.ip;
+  const userError = sshUserError(user, machine.name);
 
   useEffect(() => () => abort.current?.abort(), []);
 
   const run = async () => {
-    if (!client) return;
+    if (!client || userError) return;
     abort.current = new AbortController();
     setLines([]);
     setError(undefined);
     setState("running");
     const box = name.trim() || machine.name;
     try {
-      const host = `${user.trim() ? `${user.trim()}@` : ""}${machine.dns_name || machine.ip}`;
+      const host = `${user.trim() ? `${user.trim()}@` : ""}${target}`;
       await laptopApi.addSsh(client, { host, name: name.trim() || undefined, network }, (l) => setLines((prev) => [...prev, l]), abort.current.signal);
       setState("done");
       await useStore.getState().refreshAll();
@@ -168,7 +170,19 @@ function ConnectMachine({ machine, user: suggested, network, onDone }: { machine
           <div className="grid grid-cols-2 gap-3">
             <label className="space-y-1.5">
               <span className="text-muted-foreground text-xs">SSH user</span>
-              <Input size="sm" value={user} onChange={(e) => setUser(e.target.value)} placeholder="sean" autoFocus />
+              <Input
+                size="sm"
+                value={user}
+                // "sean@dev-box" pasted whole: keep the user, the host is known.
+                onChange={(e) => setUser(stripHost(e.target.value, machine))}
+                placeholder="sean"
+                spellCheck={false}
+                autoCapitalize="off"
+                autoCorrect="off"
+                aria-invalid={userError ? true : undefined}
+                autoFocus
+              />
+              {userError && <span className="block text-destructive-foreground text-xs">{userError}</span>}
             </label>
             <label className="space-y-1.5">
               <span className="text-muted-foreground text-xs">Name in Berth</span>
@@ -176,10 +190,10 @@ function ConnectMachine({ machine, user: suggested, network, onDone }: { machine
             </label>
           </div>
           <p className="text-muted-foreground text-xs leading-relaxed">
-            Berth connects as <span className="font-mono text-foreground">{user || "you"}@{machine.dns_name || machine.ip}</span> once, using your SSH keys (and 1Password's agent if you use it), installs berthd as a user service, and pairs. After that it never needs SSH again.
+            Berth connects as <span className="font-mono text-foreground">{user.trim() || "you"}@{target}</span> once, using your SSH keys (and 1Password's agent if you use it), installs berthd as a user service, and pairs. After that it never needs SSH again.
           </p>
           {state === "failed" && <CommandLog lines={lines} error={error} />}
-          <Button size="sm" type="submit">
+          <Button size="sm" type="submit" disabled={!!userError}>
             {state === "failed" ? "Try again" : "Install and pair"}
           </Button>
         </form>
@@ -207,6 +221,24 @@ function ConnectMachine({ machine, user: suggested, network, onDone }: { machine
       )}
     </div>
   );
+}
+
+// stripHost drops "@host" from a typed user when host is this machine, so
+// "sean@dev-box" pasted from a terminal becomes "sean".
+function stripHost(value: string, machine: Machine): string {
+  const at = value.lastIndexOf("@");
+  if (at < 0) return value;
+  const host = value.slice(at + 1).trim().toLowerCase();
+  const names = [machine.name, machine.dns_name, machine.dns_name?.split(".")[0], machine.ip].filter(Boolean).map((n) => n!.toLowerCase().replace(/\.$/, ""));
+  return names.includes(host.replace(/\.$/, "")) ? value.slice(0, at) : value;
+}
+
+// sshUserError says what is wrong with a typed SSH user, if anything.
+function sshUserError(user: string, machine: string): string | undefined {
+  const u = user.trim();
+  if (u.includes("@")) return `Only the user, without @host: Berth connects to ${machine}.`;
+  if (/\s/.test(u)) return "A user name has no spaces.";
+  return undefined;
 }
 
 // boxName turns a machine name into a short box name: dev-box stays as is,

@@ -1,5 +1,6 @@
 import { BellIcon } from "lucide-react";
 
+import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -96,9 +97,11 @@ export function NotificationsSection() {
                 onValueChange={(v) => setQuietHours({ days: (v as string[]).map(Number).sort() })}
               >
                 {DAYS.map((d, i) => (
-                  <ToggleGroupItem key={DAY_NAMES[i]} value={String(i)} aria-label={DAY_NAMES[i]} title={DAY_NAMES[i]} className="min-w-7 px-0 text-xs">
-                    {d}
-                  </ToggleGroupItem>
+                  <Tip label={DAY_NAMES[i]}>
+                    <ToggleGroupItem key={DAY_NAMES[i]} value={String(i)} aria-label={DAY_NAMES[i]} className="min-w-7 px-0 text-xs">
+                      {d}
+                    </ToggleGroupItem>
+                  </Tip>
                 ))}
               </ToggleGroup>
             </div>

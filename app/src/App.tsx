@@ -57,7 +57,7 @@ export default function App() {
   const onboarding = useOnboardingActive();
 
   return (
-    <TooltipProvider>
+    <TooltipProvider delay={300}>
       {/* Toasts sit top-right under the tab strip: clear of the status bar
           and of the loop panel in the bottom-right corner. */}
       <ToastProvider position="top-right" viewportClassName="data-[position*=top]:top-12 data-[position*=right]:right-3">
@@ -68,10 +68,12 @@ export default function App() {
             </Disconnectable>
             <div className="flex min-w-0 flex-1 flex-col">
               {workspace && !onboarding ? (
-                <TabStrip />
-              ) : view.kind === "dashboard" || view.kind === "review" || view.kind === "worktrees" || view.kind === "automations" || view.kind === "kits" || view.kind === "history" ? null /* their ViewHeader is the strip */ : (
-                // The page names itself; the strip only drags the window.
-                <div data-tauri-drag-region className="h-10 shrink-0 bg-background" title={view.kind === "workspace" ? undefined : viewTitles[view.kind as keyof typeof viewTitles]} />
+                <Disconnectable className="shrink-0 flex-col">
+                  <TabStrip />
+                </Disconnectable>
+              ) : !workspace ? null /* every other view's ViewHeader is the strip */ : (
+                // Onboarding names itself; the strip only drags the window.
+                <div data-tauri-drag-region className="h-10 shrink-0 bg-background" />
               )}
               <main className="relative min-h-0 flex-1">
                 {/* Always mounted: terminals keep running behind other views. */}
@@ -182,10 +184,11 @@ function NoWorktree() {
 }
 
 // Disconnectable dims what cannot work until the agent answers.
-function Disconnectable({ children }: { children: React.ReactNode }) {
+// Inert as well, so the keyboard cannot reach it either.
+function Disconnectable({ children, className }: { children: React.ReactNode; className?: string }) {
   const offline = useStore((s) => !s.client);
   return (
-    <div className={cn("flex", offline && "pointer-events-none opacity-50")} aria-disabled={offline || undefined}>
+    <div className={cn("flex", className, offline && "pointer-events-none opacity-50")} aria-disabled={offline || undefined} inert={offline || undefined}>
       {children}
     </div>
   );

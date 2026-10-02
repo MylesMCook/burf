@@ -1,6 +1,7 @@
 import { ChevronRightIcon, LayoutDashboardIcon, ListChecksIcon, PlusIcon, SendIcon, TerminalIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import { Tip } from "@/components/tip";
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
@@ -81,10 +82,12 @@ export function DashboardView() {
         actions={
           <div className="flex items-center gap-2">
             {agents.length > 0 && (
-              <Button size="xs" variant={picked ? "secondary" : "ghost"} aria-pressed={!!picked} onClick={() => setPicked(picked ? undefined : new Set())} title="Pick agents to send them all one prompt (or ⌘-click cards)">
-                <ListChecksIcon />
-                {picked ? "Done selecting" : "Select"}
-              </Button>
+              <Tip label="Pick agents to send them all one prompt (or ⌘-click cards)">
+                <Button size="xs" variant={picked ? "secondary" : "ghost"} aria-pressed={!!picked} onClick={() => setPicked(picked ? undefined : new Set())}>
+                  <ListChecksIcon />
+                  {picked ? "Done selecting" : "Select"}
+                </Button>
+              </Tip>
             )}
           {boxNames.length > 1 && (
             <div className="flex items-center gap-2">

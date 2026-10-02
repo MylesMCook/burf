@@ -30,9 +30,17 @@ export interface ScreenProps {
   berth: BerthPluginContext;
 }
 
+// A screen opens in the main area under the app's header strip, which shows
+// title (and description) until the screen renders its own ViewHeader from
+// @berth/plugin/ui to add actions or a live description. By default the app
+// lays the screen out as a page, one width and left aligned like the app's
+// own; "fill" hands it the whole area below the strip instead, for tables
+// and split views that scroll themselves.
 export interface Screen {
   id: string;
   title: string;
+  description?: string;
+  layout?: "page" | "fill";
   Component: ComponentType<ScreenProps>;
 }
 
@@ -289,3 +297,8 @@ export declare function useProjects(): Project[];
 // How the box API names a worktree's location: "cal" for the main checkout,
 // "cal/billing" otherwise. For orchestrate.exec and box requests.
 export declare function worktreeLocation(w: { location: string; worktree: string; main?: boolean }): string;
+// What the app calls a session, so a plugin names it the same way: the
+// agent's name or "Shell", numbered when its worktree has several ("Claude
+// Code 2"); with place, where it runs too ("cal / billing-fix · Codex").
+// Pass the box's sessions for the number and its locations for the place.
+export declare function sessionName(session: Session, opts?: { sessions?: Session[]; locations?: Location[]; place?: boolean }): string;

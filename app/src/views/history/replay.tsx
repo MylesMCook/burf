@@ -1,6 +1,7 @@
 import { ArrowLeftIcon, ChevronDownIcon, ChevronRightIcon, ChevronUpIcon, CornerDownRightIcon, SearchIcon, SquareArrowOutUpRightIcon, WrenchIcon } from "lucide-react";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 
+import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { InputGroup, InputGroupAddon, InputGroupInput } from "@/components/ui/input-group";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -61,9 +62,11 @@ export function Replay({ box, id, at, q }: { box: string; id: string; at?: numbe
       <ViewHeader
         title={
           <span className="flex min-w-0 items-center gap-2">
-            <Button size="icon-sm" variant="ghost" onClick={back} aria-label="Back to history" title="Back to history">
-              <ArrowLeftIcon />
-            </Button>
+            <Tip label="Back to history">
+              <Button size="icon-sm" variant="ghost" onClick={back} aria-label="Back to history">
+                <ArrowLeftIcon />
+              </Button>
+            </Tip>
             {t ? <SourceIcon s={t.session} /> : null}
             <span className="max-w-[28rem] truncate">{t ? historyTitle(t.session) : "History"}</span>
           </span>
@@ -237,10 +240,12 @@ function Timeline({ box, t, at, q: q0 }: { box: string; t: Transcript; at?: numb
           </span>
         </div>
         <Find value={q} onChange={(v) => (setQ(v), setHit(0))} count={hits.length} index={hit} onStep={step} placeholder="Find in transcript" />
-        <Button size="sm" disabled={!canHandOff(t.session) || !steps.length} title={canHandOff(t.session) ? "Start another agent from the selected turn" : "Berth cannot tell which worktree this ran in"} onClick={() => handOff(box, t.session, handoffFrom(t.session, turns, steps[sel]?.result?.n ?? steps[sel]?.turn.n ?? 0))}>
-          <CornerDownRightIcon />
-          Hand off from here…
-        </Button>
+        <Tip label={canHandOff(t.session) ? "Start another agent from the selected turn" : "Berth cannot tell which worktree this ran in"}>
+          <Button size="sm" disabled={!canHandOff(t.session) || !steps.length} onClick={() => handOff(box, t.session, handoffFrom(t.session, turns, steps[sel]?.result?.n ?? steps[sel]?.turn.n ?? 0))}>
+            <CornerDownRightIcon />
+            Hand off from here…
+          </Button>
+        </Tip>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         <ol className="mx-auto grid max-w-4xl gap-1 px-6 pt-4 pb-24">
@@ -393,10 +398,12 @@ function Scrollback({ box, initial, at, q: q0 }: { box: string; initial: Transcr
       <div className="flex shrink-0 flex-wrap items-center gap-3 border-b px-6 py-2">
         <Find value={q} onChange={(v) => (setQ(v), setHit(0))} count={hits.length} index={hit} onStep={step} placeholder="Find in scrollback" />
         <span className="flex-1" />
-        <Button size="sm" disabled={!canHandOff(s)} title={canHandOff(s) ? "Start another agent with what this terminal showed up to the selected line" : "Berth cannot tell which worktree this ran in"} onClick={() => handOff(box, s, handoffFromLines(s, context()))}>
-          <CornerDownRightIcon />
-          Hand off from here…
-        </Button>
+        <Tip label={canHandOff(s) ? "Start another agent with what this terminal showed up to the selected line" : "Berth cannot tell which worktree this ran in"}>
+          <Button size="sm" disabled={!canHandOff(s)} onClick={() => handOff(box, s, handoffFromLines(s, context()))}>
+            <CornerDownRightIcon />
+            Hand off from here…
+          </Button>
+        </Tip>
       </div>
       <div ref={scroller} className="min-h-0 flex-1 overflow-auto bg-muted/15">
         <div className="px-4 py-3 font-mono text-xs leading-[1.55]">

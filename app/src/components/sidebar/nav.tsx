@@ -21,6 +21,7 @@ import { type ReactNode, useMemo } from "react";
 import { create } from "zustand";
 
 import { type Action, ContextRow } from "@/components/sidebar/actions";
+import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetDescription, SheetFooter, SheetHeader, SheetPanel, SheetPopup, SheetTitle } from "@/components/ui/sheet";
 import { SidebarMenu, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
@@ -152,12 +153,11 @@ function NavRow({ item, list, index, ids }: { item: NavItem; list: NavList; inde
           <span>{item.label}</span>
         </SidebarMenuButton>
         {item.badge && (
-          <SidebarMenuBadge
-            className={cn("top-1.25 h-4.5 min-w-4.5 rounded-full px-1 text-[10px] leading-none", item.badge.loud ? "bg-warning/15 text-warning-foreground" : "bg-sidebar-accent text-sidebar-foreground")}
-            title={item.badge.title}
-          >
-            {item.badge.count}
-          </SidebarMenuBadge>
+          <Tip label={item.badge.title} side="right">
+            <SidebarMenuBadge className={cn("top-1.25 h-4.5 min-w-4.5 rounded-full px-1 text-[10px] leading-none", item.badge.loud ? "bg-warning/15 text-warning-foreground" : "bg-sidebar-accent text-sidebar-foreground")}>
+              {item.badge.count}
+            </SidebarMenuBadge>
+          </Tip>
         )}
       </ContextRow>
     </SidebarMenuItem>
@@ -293,15 +293,16 @@ function CustomizeRow({ item, list, index, count, ids }: { item: NavItem; list: 
 
 function IconButton({ label, disabled, onClick, children }: { label: string; disabled?: boolean; onClick(): void; children: ReactNode }) {
   return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      disabled={disabled}
-      onClick={onClick}
-      className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30 [&_svg]:size-3.5"
-    >
-      {children}
-    </button>
+    <Tip label={label}>
+      <button
+        type="button"
+        aria-label={label}
+        disabled={disabled}
+        onClick={onClick}
+        className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-30 [&_svg]:size-3.5"
+      >
+        {children}
+      </button>
+    </Tip>
   );
 }

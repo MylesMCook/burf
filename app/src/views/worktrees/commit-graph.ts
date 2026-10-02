@@ -18,11 +18,17 @@ export interface Edge {
   color: number;
 }
 
+// Where a commit stands between the worktree's branch and its base: only
+// on the branch (ahead), only on the base (behind: the branch lacks it), or
+// on both.
+export type Side = "ahead" | "behind" | "shared";
+
 export interface GraphRow {
   commit: Commit;
   lane: number;
   color: number;
   merge: boolean;
+  side: Side;
   edges: Edge[];
 }
 
@@ -33,6 +39,9 @@ export interface Graph {
   // branched off, or last synced.
   mergeBase?: string;
   head?: string;
+  // How many of the loaded commits are ahead and behind.
+  ahead: number;
+  behind: number;
 }
 
 const clamp = (n: number) => Math.min(n, MAX_LANES - 1);
@@ -50,9 +59,7 @@ export function layout(commits: Commit[]): Graph {
     return i;
   };
 
-  // HEAD is "HEAD" or "HEAD -> branch" in the decoration; origin/HEAD is not it.
-  const isHead = (c: Commit) => (c.refs ?? "").split(",").some((r) => /^HEAD( -> |$)/.test(r.trim()));
-  const head = commits.find(isHead)?.sha ?? commits.find((c) => c.on_base === false)?.sha;
+  const head = headOf(commits);
   const fromHead = reachable(commits, head);
   const mergeBase = commits.find((c) => c.on_base !== false && fromHead.has(c.sha))?.sha;
 
@@ -63,7 +70,6 @@ export function layout(commits: Commit[]): Graph {
     let lane = lanes.indexOf(c.sha);
     // A lane opened for HEAD is the branch's; one for a base commit, the base's.
     if (lane < 0) lane = open(c.sha, c.sha === head || fromHead.has(c.sha) ? (c.on_base === false ? 0 : 1) : 1);
-    const color = colors[lane];
     const edges: Edge[] = [];
 
     // Lanes already waiting above: carry on, or end here if they wait for c.
@@ -71,6 +77,10 @@ export function layout(commits: Commit[]): Graph {
       if (sha === null) return;
       if (sha === c.sha) edges.push({ from: clamp(k), to: clamp(lane), start: "top", end: "mid", color: colors[k] });
     });
+    // The branch's line becomes the base's where it meets it: below the
+    // merge base, HEAD's history is the base's own.
+    if (colors[lane] === 0 && c.on_base !== false) colors[lane] = 1;
+    const color = colors[lane];
     for (let k = 0; k < lanes.length; k++) if (k !== lane && lanes[k] === c.sha) lanes[k] = null;
 
     const parents = c.parents ?? [];
@@ -100,10 +110,28 @@ export function layout(commits: Commit[]): Graph {
 
     while (lanes.length && lanes[lanes.length - 1] === null) lanes.pop();
     width = Math.max(width, lane + 1, lanes.length, ...before.map((s, k) => (s ? k + 1 : 0)));
-    rows.push({ commit: c, lane: clamp(lane), color, merge: parents.length > 1, edges });
+    const side: Side = c.on_base === false ? "ahead" : head && !fromHead.has(c.sha) ? "behind" : "shared";
+    rows.push({ commit: c, lane: clamp(lane), color, merge: parents.length > 1, side, edges });
   }
+  const count = (s: Side) => rows.filter((r) => r.side === s).length;
   // A worktree with no commits of its own sits on the merge base: HEAD says it.
-  return { rows, lanes: Math.min(Math.max(width, 1), MAX_LANES), mergeBase: mergeBase === head ? undefined : mergeBase, head };
+  return { rows, lanes: Math.min(Math.max(width, 1), MAX_LANES), mergeBase: mergeBase === head ? undefined : mergeBase, head, ahead: count("ahead"), behind: count("behind") };
+}
+
+// branchOnly keeps the commits HEAD has, dropping the base's newer ones, so
+// a branch far behind its base starts with its own work.
+export function branchOnly(commits: Commit[]): Commit[] {
+  const head = headOf(commits);
+  if (!head) return commits;
+  const keep = reachable(commits, head);
+  return commits.filter((c) => keep.has(c.sha));
+}
+
+// headOf finds the worktree's HEAD: "HEAD" or "HEAD -> branch" in the
+// decoration (origin/HEAD is not it), else its newest commit of its own.
+function headOf(commits: Commit[]): string | undefined {
+  const isHead = (c: Commit) => (c.refs ?? "").split(",").some((r) => /^HEAD( -> |$)/.test(r.trim()));
+  return commits.find(isHead)?.sha ?? commits.find((c) => c.on_base === false)?.sha;
 }
 
 // reachable walks first and other parents from sha, within what is loaded.

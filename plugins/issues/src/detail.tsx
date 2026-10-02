@@ -97,7 +97,7 @@ export function Detail({ berth, row, runs, viewer, onStart }: { berth: BerthPlug
 
       {detail && detail.prs.length > 0 && (
         <section className="flex flex-col rounded-lg border">
-          <h3 className="border-b px-3 py-1.5 font-medium text-[11px] text-muted-foreground uppercase tracking-wide">Pull requests that close it</h3>
+          <h3 className="border-b px-3 py-1.5 font-medium text-[11px] text-muted-foreground">Pull requests that close it</h3>
           {detail.prs.map((pr) => (
             <button key={pr.number} type="button" onClick={() => open(pr.url ?? gh.pullUrl(row.repo, pr.number))} className="flex items-center gap-2 px-3 py-2 text-left text-[13px] hover:bg-accent/50">
               <PrIcon pr={pr} />
@@ -143,7 +143,7 @@ export function Detail({ berth, row, runs, viewer, onStart }: { berth: BerthPlug
 function Runs({ berth, runs }: { berth: BerthPluginContext; runs: Run[] }) {
   return (
     <section className="flex flex-col rounded-lg border">
-      <h3 className="border-b px-3 py-1.5 font-medium text-[11px] text-muted-foreground uppercase tracking-wide">Agents on this issue</h3>
+      <h3 className="border-b px-3 py-1.5 font-medium text-[11px] text-muted-foreground">Agents on this issue</h3>
       {runs.map((r) => (
         <div key={`${r.box}:${r.path}`} className="flex items-center gap-2.5 px-3 py-2 text-[13px]">
           {r.session ? <AgentIcon agent={r.session.agent} /> : <Icon name="GitBranch" className="size-3.5 text-muted-foreground" />}

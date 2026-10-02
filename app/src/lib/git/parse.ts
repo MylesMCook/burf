@@ -152,3 +152,32 @@ export function diffCommand(f: FileChange): string {
 export function committedDiffCommand(f: FileChange, base: string): string {
   return `git diff --no-color --find-renames ${quote(`${base}...HEAD`)} -- ${f.from ? `${quote(f.from)} ` : ""}${quote(f.path)}`;
 }
+
+export const DETAIL_MARK = "\n--berth-stat--\n";
+
+// commitDetailCommand reads what a log line leaves out: the whole message
+// and how much the commit changed. A merge is counted against its first
+// parent, which is what it brought in; git before 2.31 counts nothing.
+export function commitDetailCommand(sha: string): string {
+  const s = quote(sha);
+  return `git show -s --format=%B ${s} && printf '\\n--berth-stat--\\n' && { git show --shortstat --format= --diff-merges=first-parent ${s} 2>/dev/null || git show --shortstat --format= ${s}; }`;
+}
+
+export interface CommitDetail {
+  // The message after the subject line, if there is any.
+  body: string;
+  files?: number;
+  added?: number;
+  removed?: number;
+}
+
+export function parseCommitDetail(output: string): CommitDetail {
+  const [message, stat = ""] = output.split(DETAIL_MARK);
+  const body = message.replace(/\r/g, "").split("\n").slice(1).join("\n").trim();
+  const n = (re: RegExp) => {
+    const m = re.exec(stat);
+    return m ? Number(m[1]) : undefined;
+  };
+  const files = n(/(\d+) files? changed/);
+  return { body, files, added: files === undefined ? undefined : (n(/(\d+) insertions?\(\+\)/) ?? 0), removed: files === undefined ? undefined : (n(/(\d+) deletions?\(-\)/) ?? 0) };
+}

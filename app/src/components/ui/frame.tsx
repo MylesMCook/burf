@@ -1,18 +1,30 @@
 import type * as React from "react";
 import { cn } from "@/lib/utils";
 
+// Frame has two looks. "inset" (the default) is coss's muted tray with
+// raised panels in it, for grouped inputs in dialogs. "card" is one bordered
+// card whose header and panels sit flat inside it, divided by a rule: use it
+// for a section of a page (Review, plugin screens), so the section has one
+// outline, not a card inside a card. See the guideline in card.tsx.
 export function Frame({
   className,
+  variant = "inset",
   ...props
-}: React.ComponentProps<"div">): React.ReactElement {
+}: React.ComponentProps<"div"> & { variant?: "inset" | "card" }): React.ReactElement {
   return (
     <div
       className={cn(
-        "relative flex flex-col rounded-2xl bg-muted/72 p-1",
-        "*:[[data-slot=frame-panel]+[data-slot=frame-panel]]:mt-1",
+        variant === "card"
+          ? [
+              "relative flex flex-col overflow-hidden rounded-xl border bg-card text-card-foreground shadow-xs/5",
+              "*:data-[slot=frame-panel]:rounded-none *:data-[slot=frame-panel]:border-0 *:data-[slot=frame-panel]:bg-transparent *:data-[slot=frame-panel]:shadow-none *:data-[slot=frame-panel]:before:hidden",
+              "*:data-[slot=frame-panel]:not-first:border-t *:data-[slot=frame-panel-footer]:border-t",
+            ]
+          : ["relative flex flex-col rounded-2xl bg-muted/72 p-1", "*:[[data-slot=frame-panel]+[data-slot=frame-panel]]:mt-1"],
         className,
       )}
       data-slot="frame"
+      data-variant={variant}
       {...props}
     />
   );

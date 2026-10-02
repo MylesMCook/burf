@@ -63,13 +63,16 @@ export function DeleteDialog({ rows, progress, running, onRun, onClose }: { rows
                 <span className="min-w-0 flex-1">
                   <span className="block truncate">{r.name}</span>
                   {p?.state === "failed" ? (
-                    <span className="block truncate text-destructive-foreground text-xs" title={p.message}>
+                    <span className="block whitespace-normal break-words text-destructive-foreground text-xs">
                       {p.message}
                     </span>
                   ) : (
                     <span className="block truncate font-mono text-[11px] text-muted-foreground">{r.branch}</span>
                   )}
                 </span>
+                {(r.changed > 0 || r.untracked > 0) && !p && (
+                  <span className="shrink-0 text-[11px] text-warning tabular-nums">{[r.changed && `${r.changed} changed`, r.untracked && `${r.untracked} untracked`].filter(Boolean).join(", ")}</span>
+                )}
                 <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{r.box}</span>
               </li>
             );

@@ -76,7 +76,7 @@ function HookRow({ hook, onEdit, onDelete }: { hook: Hook; onEdit(): void; onDel
         </div>
         <code className="mt-0.5 block truncate pl-5 font-mono text-[11px] text-muted-foreground">{hook.on}</code>
       </div>
-      <code className="block min-w-0 truncate rounded-md bg-muted/50 px-2 py-1 font-mono text-xs [font-variant-ligatures:none]" title={hook.run}>
+      <code className="block min-w-0 truncate rounded-md bg-muted/50 px-2 py-1 font-mono text-xs" title={hook.run}>
         {hook.run}
       </code>
       <div className="flex items-center justify-end gap-1.5">

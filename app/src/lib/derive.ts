@@ -35,10 +35,31 @@ export function worktreeOf(locations: Location[] | undefined, s: Session): { loc
   return undefined;
 }
 
-export function sessionTitle(s: Session, locations?: Location[]): string {
+// sessionName is what the app calls a session everywhere it lists one: the
+// agent's name, or "Shell", numbered when its worktree has more than one of
+// the same ("Claude Code 2", by when they started). Pass sessions (the
+// box's) for the number, and locations with place to say where it runs,
+// for lists outside the worktree's own tabs: "cal / billing-fix · Codex".
+// The raw session id belongs in tooltips and developer surfaces only.
+export function sessionName(s: Session, opts: { sessions?: Session[]; locations?: Location[]; place?: boolean } = {}): string {
+  const agent = agentOf(s);
+  let name = agent ? agentLabel(agent) : "Shell";
+  const same = (opts.sessions ?? []).filter((o) => o.dir === s.dir && agentOf(o) === agent && !o.exited);
+  if (same.length > 1) {
+    const order = same.sort((a, b) => a.created.localeCompare(b.created) || a.name.localeCompare(b.name));
+    const n = order.findIndex((o) => o.name === s.name) + 1;
+    if (n > 1) name += ` ${n}`;
+  }
+  if (!opts.place) return name;
+  return `${sessionPlace(s, opts.locations)} · ${name}`;
+}
+
+// sessionPlace is where a session runs: "cal" for a main checkout, "cal /
+// billing-fix" for a worktree.
+export function sessionPlace(s: Session, locations?: Location[]): string {
   const where = worktreeOf(locations, s);
-  const place = where?.worktree.branch ?? where?.worktree.name ?? s.location ?? s.name;
-  return `${place} · ${agentOf(s) ?? "shell"}`;
+  if (!where) return s.location ?? s.name;
+  return where.worktree.main ? where.location.name : `${where.location.name} / ${where.worktree.name}`;
 }
 
 // Worktrees are listed main first, then by name.

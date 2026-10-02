@@ -17,6 +17,7 @@ import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
 import { type Action, boxActions, ContextRow, DotsMenu, newSection, projectActions, projectGroupActions, worktreeActions } from "@/components/sidebar/actions";
 import { confirm } from "@/components/sidebar/confirm";
 import { type Project, projectActions as groupActions, useProjects } from "@/lib/project-groups";
+import { Tip } from "@/components/tip";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem } from "@/components/ui/sidebar";
 import { agentPresets, startSession } from "@/lib/actions";
@@ -137,23 +138,23 @@ function BoxHeader({ box, empty }: { box: BoxStatus; empty: boolean }) {
     <ContextRow items={() => boxActions(box)}>
       <div
         tabIndex={0}
-        className="group/row flex h-7 outline-none focus-visible:ring-2 focus-visible:ring-ring items-center gap-1.5 rounded-md pr-1 pl-2 font-medium text-[11px] text-muted-foreground uppercase tracking-wide hover:bg-sidebar-accent/40"
+        className="group/row relative flex h-7 outline-none focus-visible:ring-2 focus-visible:ring-ring items-center gap-1.5 rounded-md pr-1 pl-2 font-medium text-[11px] text-muted-foreground hover:bg-sidebar-accent"
       >
         {online ? <ServerIcon className="size-3" /> : <ServerOffIcon className="size-3" />}
         <span className="truncate normal-case tracking-normal">{box.name}</span>
         {online ? (
-          <span className="ml-auto flex items-center gap-1.5 font-normal normal-case tracking-normal tabular-nums group-hover/row:hidden">
+          <span className="ml-auto flex items-center gap-1.5 font-normal normal-case tracking-normal tabular-nums">
             {empty && <span>no projects</span>}
             {box.latency_ms !== undefined && <span>{box.latency_ms} ms</span>}
             <span className="size-1.5 rounded-full bg-success" />
           </span>
         ) : (
-          <span className="ml-auto flex items-center gap-1.5 font-normal normal-case tracking-normal group-hover/row:hidden">
+          <span className="ml-auto flex items-center gap-1.5 font-normal normal-case tracking-normal">
             {box.state === "untrusted" ? "not trusted" : box.state}
             <span className="size-1.5 rounded-full bg-muted-foreground/50" />
           </span>
         )}
-        <span className="ml-auto hidden group-hover/row:flex">
+        <RowOverlay className="rounded-r-md">
           {online ? (
             <RowButton label={`Add a project on ${box.name}`} onClick={() => useStore.getState().openAddLocation(box.name)}>
               <PlusIcon />
@@ -164,7 +165,7 @@ function BoxHeader({ box, empty }: { box: BoxStatus; empty: boolean }) {
             </RowButton>
           )}
           <DotsMenu label={`${box.name} actions`} items={() => boxActions(box)} />
-        </span>
+        </RowOverlay>
       </div>
     </ContextRow>
   );
@@ -174,18 +175,19 @@ function BoxHeader({ box, empty }: { box: BoxStatus; empty: boolean }) {
 // box is not online.
 function BoxChip({ box }: { box: BoxStatus }) {
   const online = box.state === "online";
-  return (
+  const chip = (
     <span
       className={cn(
         "inline-flex h-4 shrink-0 items-center gap-1 rounded px-1 font-mono font-normal text-[10px] leading-none",
         online ? "bg-sidebar-accent/70 text-muted-foreground" : "bg-sidebar-accent/40 text-muted-foreground/70",
       )}
-      title={online ? box.name : `${box.name} is ${box.state}`}
     >
       {!online && <span className="size-1.5 rounded-full bg-muted-foreground/50" />}
       {box.name}
     </span>
   );
+  // The name says it all while the box is up; otherwise say why it is dim.
+  return online ? chip : <Tip label={`${box.name} is ${box.state}`}>{chip}</Tip>;
 }
 
 function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; prefs: SidebarPrefs; update(p: Partial<SidebarPrefs>): void }) {
@@ -230,7 +232,7 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
           >
             <ChevronRightIcon className={cn("size-3 transition-transform", !collapsed && "rotate-90")} />
           </span>
-          <FolderGitIcon className="size-3.5 text-muted-foreground" />
+          <LeadIcon sessions={!all && main ? mainSessions : []} data={data} icon={<FolderGitIcon />} />
           <span className="min-w-0 truncate">{loc.name}</span>
           {chip && <BoxChip box={box} />}
           <span className="ml-auto" />
@@ -309,7 +311,7 @@ function WorktreeRow({
           title={`${wt.main ? "main checkout" : wt.name}${wt.branch && wt.branch !== wt.name ? `\n${wt.branch}` : ""}\n${wt.path}`}
           className="h-7 w-full text-[13px] [&>svg]:text-muted-foreground"
         >
-          {wt.main ? <HomeIcon className="size-3.5" /> : <GitBranchIcon className="size-3.5" />}
+          <LeadIcon sessions={sessions} data={data} icon={wt.main ? <HomeIcon /> : <GitBranchIcon />} />
           <span className="min-w-0 truncate">{wt.main ? (wt.branch ?? "main") : wt.name}</span>
           {chip && <BoxChip box={chip} />}
           {wt.setting_up && <span className="shrink-0 text-[10px] text-warning-foreground">setting up</span>}
@@ -322,34 +324,61 @@ function WorktreeRow({
   );
 }
 
-// Glyphs are a row's status: the most urgent agent's state, and how many
-// sessions run there when more than one does. Hovering the row makes room
-// for its actions, but the state stays.
+// Rows never change size or position on hover: a row's state lives in its
+// leading icon, its trailing glyphs stay put, and its actions fade in over
+// them on a background of their own (RowOverlay).
+
+// LeadIcon is a row's leading icon: the state of its most urgent agent while
+// one is working, waiting or done, and the row's own icon otherwise, in the
+// same 14px box.
+function LeadIcon({ sessions, data, icon }: { sessions: Session[]; data?: BoxData; icon: React.ReactNode }) {
+  const { state } = summary(sessions, data);
+  if (state === "running" || state === "waiting" || state === "finished") return <StateGlyph state={state} className="size-3.5" />;
+  return <span className="inline-flex size-3.5 shrink-0 items-center justify-center text-muted-foreground [&_svg]:size-3.5">{icon}</span>;
+}
+
+// Glyphs are what runs in a row: the most urgent agent's icon, or a dot for
+// shells alone, and how many sessions when more than one.
 function Glyphs({ sessions, data }: { sessions: Session[]; data?: BoxData }) {
   const { state, count } = summary(sessions, data);
-  const agent = sessions.find((s) => agentOf(s) && sessionState(s, data?.stats) === state);
   if (!state) return null;
+  const agent = sessions.find((s) => agentOf(s) && sessionState(s, data?.stats) === state) ?? sessions.find((s) => agentOf(s) && !s.exited);
   const shells = sessions.filter((s) => !agentOf(s)).length;
   return (
-    <span className="flex shrink-0 items-center gap-1 transition-[margin] group-hover/row:mr-13 group-focus-within/row:mr-13 group-has-[[data-popup-open]]/row:mr-13">
-      {state !== "idle" && agent && <AgentIcon agent={agentOf(agent)} className="size-3 opacity-80 group-hover/row:hidden" />}
-      {state !== "idle" ? (
-        <StateGlyph state={state} className="size-3" />
+    <span className="flex shrink-0 items-center gap-1">
+      {agent ? (
+        <AgentIcon agent={agentOf(agent)} className="size-3 opacity-80" />
       ) : (
-        <span className="size-1 rounded-full bg-muted-foreground/50" title={`${shells} shell${shells === 1 ? "" : "s"} open`} />
+        <Tip label={`${shells} shell${shells === 1 ? "" : "s"} open`}>
+          <span className="inline-flex size-3 items-center justify-center">
+            <span className="size-1 rounded-full bg-muted-foreground/50" />
+          </span>
+        </Tip>
       )}
       {count > 1 && <span className="text-[10px] text-muted-foreground tabular-nums">{count}</span>}
     </span>
   );
 }
 
+// RowOverlay holds a row's actions over its trailing end. It only fades
+// (opacity, 100ms), and paints the row's hover colour, opaque, with a short
+// fade on its left edge, so it covers chips, counts and glyphs under it and
+// nothing in the row moves.
+function RowOverlay({ className, children }: { className?: string; children: React.ReactNode }) {
+  return (
+    <div className={cn("pointer-events-none absolute inset-y-0 right-0 flex items-center rounded-r-lg pr-1 pl-4 opacity-0 transition-opacity duration-100 [background:linear-gradient(var(--sidebar-accent),var(--sidebar-accent)),var(--sidebar)] [mask-image:linear-gradient(to_right,transparent,black_16px)] focus-within:pointer-events-auto focus-within:opacity-100 group-hover/row:pointer-events-auto group-hover/row:opacity-100 has-[[data-popup-open]]:pointer-events-auto has-[[data-popup-open]]:opacity-100", className)}>
+      {children}
+    </div>
+  );
+}
+
 // RowActions are a row's buttons: start something here, and its ⋯ menu. They
-// fade in on hover or keyboard focus, beside the row's status.
+// fade in over the row's trailing end on hover or keyboard focus.
 function RowActions({ box, loc, wt, project, onNewWorktree }: { box: string; loc: Location; wt: Worktree; project?: boolean; onNewWorktree?: () => void }) {
   const select = () => selectWorktree(refOf(box, loc, wt));
 
   return (
-    <div className="absolute top-0.5 right-1 flex h-6.5 items-center opacity-0 transition-opacity focus-within:opacity-100 group-hover/row:opacity-100 has-[[data-popup-open]]:opacity-100">
+    <RowOverlay>
       {onNewWorktree && (
         <RowButton label={`New worktree in ${loc.name}`} onClick={onNewWorktree}>
           <PlusIcon />
@@ -392,19 +421,20 @@ function RowActions({ box, loc, wt, project, onNewWorktree }: { box: string; loc
         </Menu>
       )}
       <DotsMenu label={`${wt.main ? loc.name : wt.name} actions`} items={() => (project ? projectActions(box, loc) : worktreeActions(box, loc, wt))} />
-    </div>
+    </RowOverlay>
   );
 }
 
 function RowButton({ label, ...props }: React.ComponentProps<"button"> & { label: string }) {
   return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      {...props}
-      className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-foreground data-popup-open:bg-sidebar-accent [&_svg]:size-3.5"
-    />
+    <Tip label={label}>
+      <button
+        type="button"
+        aria-label={label}
+        {...props}
+        className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-foreground data-popup-open:bg-sidebar-accent [&_svg]:size-3.5"
+      />
+    </Tip>
   );
 }
 
@@ -447,7 +477,7 @@ function ProjectSections({ prefs, update }: { prefs: SidebarPrefs; update(p: Par
                 <button
                   type="button"
                   onClick={() => update({ collapsed: { ...prefs.collapsed, [key]: !closed } })}
-                  className="flex min-w-0 flex-1 items-center gap-1 font-medium text-[11px] text-muted-foreground uppercase tracking-wide"
+                  className="flex min-w-0 flex-1 items-center gap-1 font-medium text-[11px] text-muted-foreground"
                 >
                   <ChevronRightIcon className={cn("size-3 transition-transform", !closed && "rotate-90")} />
                   <span className="truncate">{name}</span>
@@ -554,7 +584,7 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
           >
             <ChevronRightIcon className={cn("size-3 transition-transform", !collapsed && "rotate-90")} />
           </span>
-          <FolderGitIcon className="size-3.5 text-muted-foreground" />
+          <LeadIcon sessions={!all ? glyphSessions : []} data={boxes[def.box.name]} icon={<FolderGitIcon />} />
           <span className="min-w-0 truncate">{p.name}</span>
           {chips && (
             <span className="flex min-w-0 shrink items-center gap-0.5 overflow-hidden">
@@ -568,7 +598,7 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
           {!all && <Glyphs sessions={glyphSessions} data={boxes[def.box.name]} />}
         </SidebarMenuButton>
         {online && (
-          <div className="absolute top-0.5 right-1 flex h-6.5 items-center opacity-0 transition-opacity focus-within:opacity-100 group-hover/row:opacity-100 has-[[data-popup-open]]:opacity-100">
+          <RowOverlay>
             <RowButton
               label={multi ? `New worktree on ${p.defaultBox}` : `New worktree in ${p.name}`}
               onClick={() => useStore.getState().openNewWorktree({ box: def.box.name, location: def.loc.name })}
@@ -576,7 +606,7 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
               <PlusIcon />
             </RowButton>
             <DotsMenu label={`${p.name} actions`} items={() => projectGroupActions(p)} />
-          </div>
+          </RowOverlay>
         )}
       </ContextRow>
 

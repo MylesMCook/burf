@@ -10,7 +10,7 @@ import { useStore } from "@/lib/store";
 import { hostSuffix, portUrl } from "@/lib/browser-url";
 import { focusSession, openBrowser, openPanel, selectWorktree } from "@/lib/workspaces";
 import { useRegistry } from "@/plugins/registry";
-import { contribute } from "@/plugins/registry";
+import { contribute, rememberScreenOwner } from "@/plugins/registry";
 
 // The context a plugin's components render under, so useBerth() finds it.
 export const PluginReactContext = createContext<BerthPluginContext | null>(null);
@@ -68,7 +68,10 @@ export function makeContext(id: string, client: Client): BerthPluginContext {
     id,
     api: makeApi(client),
     addSidebarItem: (item) => contribute("sidebarItems", tag(item)),
-    addScreen: (screen) => contribute("screens", tag(screen)),
+    addScreen: (screen) => {
+      rememberScreenOwner(screen.id, id);
+      return contribute("screens", tag(screen));
+    },
     addWorktreePanel: (panel) => contribute("worktreePanels", tag(panel)),
     addCommand: (command) => contribute("commands", tag(command)),
     addStatusBarItem: (item) => contribute("statusBarItems", tag(item)),

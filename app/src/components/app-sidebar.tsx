@@ -14,6 +14,8 @@ import { NotificationBell } from "@/components/notifications/notification-center
 import { newSection } from "@/components/sidebar/actions";
 import { Nav as PlacesNav, useArrangedNav } from "@/components/sidebar/nav";
 import { Projects, useSidebarPrefs } from "@/components/sidebar/projects";
+import { RailWorktrees } from "@/components/sidebar/rail-worktrees";
+import { Tip } from "@/components/tip";
 import { Kbd } from "@/components/ui/kbd";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { SidebarContext, type SidebarContextProps } from "@/components/ui/sidebar";
@@ -118,48 +120,52 @@ export function AppSidebar() {
         </div>
 
         <div className="flex h-9 shrink-0 items-center gap-1 border-sidebar-border border-t px-2">
-          <button
-            type="button"
-            // Shift-click goes straight to Developer.
-            onClick={(e) => setView({ kind: "settings", section: e.shiftKey ? "developer" : undefined })}
-            title="Settings (⇧-click: Developer)"
-            className={cn("inline-flex h-6.5 items-center gap-1.5 rounded-md px-1.5 text-muted-foreground text-xs hover:bg-sidebar-accent hover:text-foreground", view.kind === "settings" && "text-foreground")}
-          >
-            <SettingsIcon className="size-3.5" />
-            Settings
-          </button>
-          <button
-            type="button"
-            aria-label="Hide the sidebar"
-            title={"Hide the sidebar (⌘\\)"}
-            onClick={() => usePrefs.setState({ sidebarCollapsed: true })}
-            className="ml-auto inline-flex size-6.5 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
-          >
-            <PanelLeftCloseIcon className="size-3.5" />
-          </button>
+          <Tip label="⇧-click for Developer settings" side="top" align="start">
+            <button
+              type="button"
+              // Shift-click goes straight to Developer.
+              onClick={(e) => setView({ kind: "settings", section: e.shiftKey ? "developer" : undefined })}
+              className={cn("inline-flex h-6.5 items-center gap-1.5 rounded-md px-1.5 text-muted-foreground text-xs hover:bg-sidebar-accent hover:text-foreground", view.kind === "settings" && "text-foreground")}
+            >
+              <SettingsIcon className="size-3.5" />
+              Settings
+            </button>
+          </Tip>
+          <Tip label={"Hide the sidebar (⌘\\)"} side="top">
+            <button
+              type="button"
+              aria-label="Hide the sidebar"
+              onClick={() => usePrefs.setState({ sidebarCollapsed: true })}
+              className="ml-auto inline-flex size-6.5 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-foreground"
+            >
+              <PanelLeftCloseIcon className="size-3.5" />
+            </button>
+          </Tip>
         </div>
       </aside>
     </SidebarContext.Provider>
   );
 }
 
-// Rail is the sidebar folded away (⌘\): the window's controls, the places,
-// and a way back. It keeps clear of the traffic lights like the full one.
+// Rail is the sidebar folded away (⌘\): the window's controls, the places
+// in the sidebar's own order, the active worktrees, and a way back. It keeps
+// clear of the traffic lights like the full one, which is why it is 76px.
 function Rail() {
   const view = useStore((s) => s.view);
   const setView = useStore((s) => s.setView);
   const { pinned, more } = useArrangedNav();
   const item = (label: string, icon: React.ReactNode, active: boolean, onClick: () => void, badge?: number) => (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      onClick={onClick}
-      className={cn("relative inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-sidebar-accent hover:text-foreground [&_svg]:size-4", active && "bg-sidebar-accent text-foreground")}
-    >
-      {icon}
-      {badge ? <span className="absolute top-0.5 right-0.5 size-2 rounded-full bg-warning" /> : null}
-    </button>
+    <Tip label={label} side="right">
+      <button
+        type="button"
+        aria-label={label}
+        onClick={onClick}
+        className={cn("relative inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-sidebar-accent hover:text-foreground [&_svg]:size-4", active && "bg-sidebar-accent text-foreground")}
+      >
+        {icon}
+        {badge ? <span className="absolute top-0.5 right-0.5 size-2 rounded-full bg-warning" /> : null}
+      </button>
+    </Tip>
   );
   return (
     <aside className="flex w-19 shrink-0 flex-col items-center border-sidebar-border border-r bg-sidebar">
@@ -172,11 +178,13 @@ function Rail() {
         ))}
         {more.length > 0 && (
           <Menu>
-            <MenuTrigger
-              render={<button type="button" aria-label="More" title="More" className="inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-sidebar-accent hover:text-foreground data-popup-open:bg-sidebar-accent" />}
-            >
-              <EllipsisIcon className="size-4" />
-            </MenuTrigger>
+            <Tip label="More" side="right">
+              <MenuTrigger
+                render={<button type="button" aria-label="More" className="inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-sidebar-accent hover:text-foreground data-popup-open:bg-sidebar-accent" />}
+              >
+                <EllipsisIcon className="size-4" />
+              </MenuTrigger>
+            </Tip>
             <MenuPopup side="right" align="start" className="min-w-48">
               {more.map((n) => (
                 <MenuItem key={n.id} onClick={() => setView(n.view)}>
@@ -188,7 +196,10 @@ function Rail() {
           </Menu>
         )}
       </div>
-      <div className="mt-auto flex flex-col items-center gap-1 pb-2">
+      <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none]">
+        <RailWorktrees />
+      </div>
+      <div className="flex flex-col items-center gap-1 pt-1 pb-2">
         {item("Settings", <SettingsIcon />, view.kind === "settings", () => setView({ kind: "settings" }))}
         {item("Show the sidebar (⌘\\)", <PanelLeftOpenIcon />, false, () => usePrefs.setState({ sidebarCollapsed: false }))}
       </div>

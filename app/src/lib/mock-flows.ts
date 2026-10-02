@@ -92,7 +92,9 @@ const runs: Record<string, FlowRun[]> = {
       scope: "repo:cal",
       started: minutesAgo(6),
       finished: minutesAgo(5),
-      status: "failed",
+      // The check failed and the on-failure prompt handled it, which the box
+      // counts as the flow succeeding.
+      status: "succeeded",
       event: { type: "agent.finished", time: minutesAgo(6), box: "devl", origin: "claude", data: { path: "/home/sean/work/cal-billing-fix", agent: "claude" } },
       steps: [
         { id: "types", kind: "run", status: "failed", started: minutesAgo(6), duration: "48.2s", exit_code: 2, output: "packages/features/ee/billing/webhook.ts:41:7 - error TS2322: Type 'string | undefined' is not assignable to type 'string'.\n\nFound 1 error." },
@@ -177,13 +179,17 @@ function validate(flows: Flow[]): string | undefined {
 function simulate(box: string, sf: ScopedFlow, data: Record<string, unknown>, emit: Emit): FlowRun {
   const started = new Date().toISOString();
   let prevFailed = false;
-  const steps: StepRun[] = sf.flow.steps.map((s: Step) => {
+  // As the box decides: a failure that a later failure or always step
+  // handles is not the flow failing.
+  let failed = false;
+  const steps: StepRun[] = sf.flow.steps.map((s: Step, i) => {
     const when = s.when ?? "success";
     const runs = when === "always" || (when === "failure" ? prevFailed : !prevFailed);
     if (!runs) return { id: s.id ?? "", kind: s.kind, status: "skipped", exit_code: 0 };
     const fail = s.kind === "run" && /test|check|lint/.test(s.command ?? "");
     if (s.kind === "notify") emit({ type: "notify", box, origin: `flow:${sf.flow.id}`, data: { title: (s.title ?? "").replace(/\{\{[^}]+\}\}/g, String(data.name ?? "billing-fix")), body: s.text ?? "", flow: sf.flow.id, path: data.path } });
     prevFailed = fail;
+    failed = fail && !sf.flow.steps.slice(i + 1).some((r) => r.when === "failure" || r.when === "always");
     return {
       id: s.id ?? "",
       kind: s.kind,
@@ -194,7 +200,7 @@ function simulate(box: string, sf: ScopedFlow, data: Record<string, unknown>, em
       output: s.kind === "run" ? (fail ? `$ ${s.command}\n✗ 2 failing\n  billing › webhook retries without an idempotency key\n  billing › creates one invoice per event` : `$ ${s.command}\n✓ done`) : undefined,
     };
   });
-  const run: FlowRun = { id: `r${Date.now()}`, flow: sf.flow.id, scope: sf.scope, started, finished: new Date().toISOString(), status: steps.some((s) => s.status === "failed") ? "failed" : "succeeded", event: { type: triggerType(sf.flow.trigger), time: started, box, data }, steps };
+  const run: FlowRun = { id: `r${Date.now()}`, flow: sf.flow.id, scope: sf.scope, started, finished: new Date().toISOString(), status: failed ? "failed" : "succeeded", event: { type: triggerType(sf.flow.trigger), time: started, box, data }, steps };
   runs[box] = [run, ...(runs[box] ?? [])];
   emit({ type: "flow.started", box, origin: "app", data: { flow: sf.flow.id } });
   setTimeout(() => emit({ type: "flow.finished", box, data: { flow: sf.flow.id, status: run.status } }), 50);

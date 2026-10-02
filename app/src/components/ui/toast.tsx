@@ -7,10 +7,12 @@ import {
   InfoIcon,
   LoaderCircleIcon,
   TriangleAlertIcon,
+  XIcon,
 } from "lucide-react";
 import type React from "react";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
+import { useModalOpen } from "@/hooks/use-modal-open";
 
 const TOAST_ICONS = {
   error: CircleAlertIcon,
@@ -69,6 +71,11 @@ function Toasts({
   portalProps?: React.ComponentProps<typeof Toast.Portal>;
 }): React.ReactElement {
   const { toasts } = Toast.useToastManager();
+  // Toasts stay above everything, so feedback on a dialog's action shows,
+  // but while a dialog or sheet is open they move to the bottom-left corner,
+  // clear of its header and its buttons.
+  const modal = useModalOpen();
+  if (modal) position = "bottom-left";
   const swipeDirection = getSwipeDirection(position);
 
   return (
@@ -167,14 +174,25 @@ function Toasts({
                     />
                   </div>
                 </div>
-                {toast.actionProps && (
-                  <Toast.Action
-                    className={buttonVariants({ size: "xs" })}
-                    data-slot="toast-action"
-                  >
-                    {toast.actionProps.children}
-                  </Toast.Action>
-                )}
+                <div className="flex shrink-0 items-center gap-1">
+                  {toast.actionProps && (
+                    <Toast.Action
+                      className={buttonVariants({ size: "xs" })}
+                      data-slot="toast-action"
+                    >
+                      {toast.actionProps.children}
+                    </Toast.Action>
+                  )}
+                  {toast.type !== "loading" && (
+                    <Toast.Close
+                      aria-label="Dismiss"
+                      className="-me-1.5 inline-flex size-6 items-center justify-center rounded-md text-muted-foreground/70 hover:bg-accent hover:text-foreground"
+                      data-slot="toast-close"
+                    >
+                      <XIcon className="size-3.5" />
+                    </Toast.Close>
+                  )}
+                </div>
               </Toast.Content>
             </Toast.Root>
           );

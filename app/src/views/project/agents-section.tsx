@@ -1,5 +1,6 @@
 import { PlusIcon, Trash2Icon, Undo2Icon } from "lucide-react";
 
+import { Tip } from "@/components/tip";
 import { AgentIcon } from "@/components/agent-glyph";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,21 +45,25 @@ export function AgentsSection({ repo, draft, setDraft, box }: { repo: RepoConfig
                 {mine && !c ? <Input value={mine.id} onChange={(e) => update(i, { id: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "") })} size="sm" className="font-mono text-xs" aria-label="Preset id" /> : <code className="truncate font-mono text-xs">{id}</code>}
                 {mine ? <Input value={mine.name} onChange={(e) => update(i, { name: e.target.value })} placeholder="Name" size="sm" /> : <span className="truncate text-sm">{a.name}</span>}
                 {mine ? (
-                  <Input value={mine.command} onChange={(e) => update(i, { command: e.target.value })} placeholder="claude --model opus" size="sm" className="font-mono text-xs [font-variant-ligatures:none]" spellCheck={false} />
+                  <Input value={mine.command} onChange={(e) => update(i, { command: e.target.value })} placeholder="claude --model opus" size="sm" className="font-mono text-xs" spellCheck={false} />
                 ) : (
                   <code className="truncate px-2.5 font-mono text-muted-foreground text-xs">{a.command}</code>
                 )}
                 <SourceBadge source={source} box={box} field="agents" entry={id} />
                 <span className="flex justify-end">
                   {!mine && (
-                    <Button size="icon-xs" variant="ghost" title={`Override on ${box}`} aria-label={`Override ${id} on ${box}`} onClick={() => setOwn([...own, { ...c! }])}>
-                      <PlusIcon />
-                    </Button>
+                    <Tip label={`Override on ${box}`}>
+                      <Button size="icon-xs" variant="ghost" aria-label={`Override ${id} on ${box}`} onClick={() => setOwn([...own, { ...c! }])}>
+                        <PlusIcon />
+                      </Button>
+                    </Tip>
                   )}
                   {mine && (
-                    <Button size="icon-xs" variant="ghost" title={c ? "Use the repo's" : "Remove"} aria-label={c ? `Use the repo's ${id}` : `Remove ${id}`} onClick={() => setOwn(own.filter((_, j) => j !== i))}>
-                      {c ? <Undo2Icon /> : <Trash2Icon />}
-                    </Button>
+                    <Tip label={c ? "Use the repo's" : "Remove"}>
+                      <Button size="icon-xs" variant="ghost" aria-label={c ? `Use the repo's ${id}` : `Remove ${id}`} onClick={() => setOwn(own.filter((_, j) => j !== i))}>
+                        {c ? <Undo2Icon /> : <Trash2Icon />}
+                      </Button>
+                    </Tip>
                   )}
                 </span>
               </div>

@@ -4,7 +4,6 @@ import {
   ArrowUpRightIcon,
   BotIcon,
   CheckIcon,
-  FolderGitIcon,
   FolderInputIcon,
   MergeIcon,
   PackageIcon,
@@ -12,7 +11,6 @@ import {
   PlusIcon,
   ServerIcon,
   SplitIcon,
-  StarIcon,
   CodeXmlIcon,
   CopyIcon,
   EllipsisIcon,
@@ -39,6 +37,7 @@ import { AgentIcon } from "@/components/agent-glyph";
 import { EditorMenuItems } from "@/components/editors/editor-menu";
 import { SessionActionItems } from "@/components/orchestrate/session-actions";
 import { confirm, copy } from "@/components/sidebar/confirm";
+import { Tip } from "@/components/tip";
 import { ContextMenu, ContextMenuPopup, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { Kbd } from "@/components/ui/kbd";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuSub, MenuSubPopup, MenuSubTrigger, MenuTrigger } from "@/components/ui/menu";
@@ -121,18 +120,19 @@ export function ActionItems({ items }: { items: Action[] }) {
 export function DotsMenu({ label, items }: { label: string; items: () => Action[] }) {
   return (
     <Menu>
-      <MenuTrigger
-        render={
-          <button
-            type="button"
-            aria-label={label}
-            title={label}
-            className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-foreground data-popup-open:bg-sidebar-accent [&_svg]:size-3.5"
-          />
-        }
-      >
-        <EllipsisIcon />
-      </MenuTrigger>
+      <Tip label={label}>
+        <MenuTrigger
+          render={
+            <button
+              type="button"
+              aria-label={label}
+              className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-foreground data-popup-open:bg-sidebar-accent [&_svg]:size-3.5"
+            />
+          }
+        >
+          <EllipsisIcon />
+        </MenuTrigger>
+      </Tip>
       <MenuPopup align="start" className="min-w-56">
         <ActionItems items={items()} />
       </MenuPopup>
@@ -438,17 +438,12 @@ export function projectGroupActions(p: Project): Action[] {
   const gh = p.slug && p.remote && /github\.com/i.test(p.remote) ? p.slug : undefined;
   const items: Action[] = [];
 
+  // Kept to about ten entries: what you open or start first, then one
+  // submenu per object (its boxes, its kit, how it is organised), then
+  // removing, last and in red, never inside a submenu.
   const mm = def && main(def);
   if (mm) items.push(item(multi ? `Open main checkout on ${def.box.name}` : "Open main checkout", <HomeIcon />, () => selectWorktree(refOf(def.box.name, def.loc, mm))));
   if (def) items.push(item(multi ? `New worktree on ${def.box.name}…` : "New worktree…", <GitBranchPlusIcon />, () => st.openNewWorktree({ box: def.box.name, location: def.loc.name }), { shortcut: "⌘N" }));
-  if (online.length > 1) {
-    items.push({
-      type: "sub",
-      label: "New worktree on",
-      icon: <ServerIcon />,
-      items: online.map((m) => item(m.box.name, slot(m.box.name === p.defaultBox ? <CheckIcon /> : null), () => st.openNewWorktree({ box: m.box.name, location: m.loc.name }), { hint: boxLoad(m.box.name) })),
-    });
-  }
   if (def && mm && def.box.state === "online") {
     items.push({
       type: "sub",
@@ -462,13 +457,28 @@ export function projectGroupActions(p: Project): Action[] {
       ),
     });
   }
+
+  // Its boxes: where to make a worktree, which box is the default, and
+  // adding it to another.
+  const missingBoxes = (st.status?.boxes ?? []).filter((b) => b.state === "online" && !p.members.some((m) => m.box.name === b.name));
+  const addToBox = !!p.remote && missingBoxes.length > 0;
   if (multi) {
-    items.push({
-      type: "sub",
-      label: "Default box",
-      icon: <StarIcon />,
-      items: p.members.map((m) => item(m.box.name, slot(m.box.name === p.defaultBox ? <CheckIcon /> : null), () => void groupActions.setDefaultBox(p, m.box.name), { hint: boxLoad(m.box.name), disabled: m.box.state !== "online" })),
-    });
+    const boxes: Action[] = [];
+    if (online.length > 1) {
+      boxes.push(
+        { type: "label", label: "New worktree on" },
+        ...online.map((m) => item(m.box.name, slot(<GitBranchPlusIcon />), () => st.openNewWorktree({ box: m.box.name, location: m.loc.name }), { hint: boxLoad(m.box.name) })),
+        sep,
+      );
+    }
+    boxes.push(
+      { type: "label", label: "Default box" },
+      ...p.members.map((m) => item(m.box.name, slot(m.box.name === p.defaultBox ? <CheckIcon /> : null), () => void groupActions.setDefaultBox(p, m.box.name), { disabled: m.box.state !== "online" })),
+    );
+    if (addToBox) boxes.push(sep, item("Add to another box…", <PlusIcon />, () => openAddToBox(p)));
+    items.push({ type: "sub", label: "Boxes", icon: <ServerIcon />, items: boxes });
+  } else if (addToBox) {
+    items.push(item("Add to box…", <ServerIcon />, () => openAddToBox(p)));
   }
 
   // Its kit, across its boxes.
@@ -477,10 +487,10 @@ export function projectGroupActions(p: Project): Action[] {
     const missing = online.filter((m) => !kitOn.some((i) => i.box === m.box.name && i.location === m.loc.name)).map((m) => m.box.name);
     const parts = [outdated.length && `outdated on ${outdated.join(", ")}`, missing.length && `not on ${missing.join(", ")}`].filter(Boolean);
     const state = parts.length ? parts.join(" · ") : multi ? "on every box" : "applied";
-    items.push(sep, { type: "label", label: `${kit.name} kit · ${state}` });
+    const kitItems: Action[] = [{ type: "label", label: `${kit.name} · ${state}` }];
     if (outdated.length || missing.length) {
-      items.push(
-        item(multi ? "Apply kit to all boxes" : "Apply kit", <PackageIcon />, () => {
+      kitItems.push(
+        item(multi ? "Apply to all boxes" : "Apply", <PackageIcon />, () => {
           const client = useStore.getState().client;
           if (!client) return;
           const targets = online.map((m) => ({ box: m.box.name, location: m.loc.name }));
@@ -495,11 +505,10 @@ export function projectGroupActions(p: Project): Action[] {
         }),
       );
     }
+    kitItems.push(item("Open Kits", <ArrowUpRightIcon />, () => st.setView({ kind: "kits" })));
+    items.push({ type: "sub", label: outdated.length || missing.length ? "Kit (needs applying)" : "Kit", icon: <PackageIcon />, items: kitItems });
   }
 
-  items.push(sep);
-  const missingBoxes = (st.status?.boxes ?? []).filter((b) => b.state === "online" && !p.members.some((m) => m.box.name === b.name));
-  if (p.remote && missingBoxes.length) items.push(item("Add to box…", <ServerIcon />, () => openAddToBox(p)));
   if (multi) {
     items.push({
       type: "sub",
@@ -509,8 +518,8 @@ export function projectGroupActions(p: Project): Action[] {
     });
   } else if (def) items.push(item("Project settings", <Settings2Icon />, () => st.setView({ kind: "project", box: def.box.name, location: def.loc.name })));
 
-  items.push(
-    sep,
+  // How Berth shows it: its name, its section, and which projects it joins.
+  const organise: Action[] = [
     item("Rename…", <PencilIcon />, () =>
       confirm({
         title: `Rename ${p.name}`,
@@ -520,40 +529,26 @@ export function projectGroupActions(p: Project): Action[] {
         run: (_c, v) => groupActions.rename(p, v),
       }),
     ),
-    {
-      type: "sub",
-      label: "Move to section",
-      icon: <FolderInputIcon />,
-      items: [
-        ...sections.map((s) => item(s, slot(p.section === s ? <CheckIcon /> : null), () => void groupActions.setSection(p, s))),
-        item("No section", slot(!p.section ? <CheckIcon /> : null), () => void groupActions.setSection(p, undefined)),
-        sep,
-        item("New section…", <PlusIcon />, () => newSection(p)),
-      ],
-    },
-  );
-  if (others.length) items.push({ type: "sub", label: "Merge into", icon: <MergeIcon />, items: others.map((o) => item(o.name, slot(<FolderGitIcon />), () => void groupActions.merge(o, p), { hint: o.members.map((m) => m.box.name).join(", ") })) });
-  if (multi) items.push({ type: "sub", label: "Split off", icon: <SplitIcon />, items: p.members.map((m) => item(`The copy on ${m.box.name}`, slot(<ServerIcon />), () => void groupActions.split(p, m.box.name))) });
-  items.push(sep);
-  if (p.slug) items.push(item("Copy owner/repo", <CopyIcon />, () => copy(p.slug!, "repository name")));
+    sep,
+    { type: "label", label: "Section" },
+    ...sections.map((sec) => item(sec, slot(p.section === sec ? <CheckIcon /> : null), () => void groupActions.setSection(p, sec))),
+    item("No section", slot(!p.section ? <CheckIcon /> : null), () => void groupActions.setSection(p, undefined)),
+    item("New section…", <PlusIcon />, () => newSection(p)),
+  ];
+  if (others.length) organise.push(sep, { type: "label", label: "Merge into" }, ...others.map((o) => item(o.name, slot(<MergeIcon />), () => void groupActions.merge(o, p), { hint: o.members.map((m) => m.box.name).join(", ") })));
+  if (multi) organise.push(sep, { type: "label", label: "Split off" }, ...p.members.map((m) => item(`The copy on ${m.box.name}`, slot(<SplitIcon />), () => void groupActions.split(p, m.box.name))));
+  items.push(sep, { type: "sub", label: "Organise", icon: <FolderInputIcon />, items: organise });
+
   if (gh) items.push(item("Open on GitHub", <ExternalLinkIcon />, () => void import("@/lib/open-url").then((m) => m.openUrl(`https://github.com/${gh}`))));
+  if (p.slug) items.push(item("Copy owner/repo", <CopyIcon />, () => copy(p.slug!, "repository name")));
 
   // Removing works per box: each copy is its own folder.
   const removeFrom = (m: Member) => projectActions(m.box.name, m.loc).find((a) => a.type === "item" && a.destructive);
-  if (multi) {
-    items.push(sep, {
-      type: "sub",
-      label: "Remove from Berth",
-      icon: <Trash2Icon />,
-      items: p.members.flatMap((m) => {
-        const a = removeFrom(m);
-        return a && a.type === "item" ? [item(`On ${m.box.name}…`, slot(<ServerIcon />), a.run, { destructive: true })] : [];
-      }),
-    });
-  } else if (def) {
-    const a = removeFrom(def);
-    if (a) items.push(sep, a);
-  }
+  const removals = (multi ? p.members : def ? [def] : []).flatMap((m) => {
+    const a = removeFrom(m);
+    return a && a.type === "item" ? [multi ? { ...a, label: `Remove from ${m.box.name}…` } : a] : [];
+  });
+  if (removals.length) items.push(sep, ...removals);
   return items;
 }
 

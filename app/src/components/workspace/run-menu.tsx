@@ -1,6 +1,7 @@
 import { ChevronDownIcon, ExternalLinkIcon, PlayIcon, RotateCwIcon, ScrollTextIcon, Settings2Icon, SquareIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import { Tip } from "@/components/tip";
 import { openProjectSettings } from "@/components/skills/project-settings-dialog";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Spinner } from "@/components/ui/spinner";
@@ -109,16 +110,18 @@ export function RunMenu() {
 
   return (
     <div className="flex h-6.5 items-stretch rounded-md text-xs">
-      <button
-        type="button"
-        disabled={!primary || busy !== undefined}
-        onClick={onPrimary}
-        title={primary ? (running ? `Open ${primary.name}` : `Start ${primary.name}: ${primary.run}`) : "This repository defines no services"}
-        className="flex items-center gap-1.5 rounded-l-md px-2 text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-45 disabled:hover:bg-transparent"
-      >
-        {busy ? <Spinner className="size-3" /> : running ? <span className="size-1.5 rounded-full bg-success" /> : <PlayIcon className="size-3" />}
-        {running ? primary.name : "Run"}
-      </button>
+      <Tip label={primary ? (running ? `Open ${primary.name}` : `Start ${primary.name}: ${primary.run}`) : "This repository defines no services"} side="bottom">
+        <button
+          type="button"
+          // Not disabled when there is nothing to run, so the tooltip can say why.
+          aria-disabled={!primary || busy !== undefined}
+          onClick={() => primary && busy === undefined && onPrimary()}
+          className="flex items-center gap-1.5 rounded-l-md px-2 text-muted-foreground hover:bg-accent hover:text-foreground aria-disabled:opacity-45 aria-disabled:hover:bg-transparent"
+        >
+          {busy ? <Spinner className="size-3" /> : running ? <span className="size-1.5 rounded-full bg-success" /> : <PlayIcon className="size-3" />}
+          {running ? primary.name : "Run"}
+        </button>
+      </Tip>
       <Menu
         onOpenChange={(open) => {
           if (open) void reload();

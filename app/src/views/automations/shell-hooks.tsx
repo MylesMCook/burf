@@ -14,6 +14,8 @@ import { LAPTOP, useHooks } from "@/views/automations/use-hooks";
 const starterIcons: Record<string, typeof BellIcon> = { notify: BellIcon, deps: PackageIcon, "no-main": ShieldIcon };
 
 const machineLabel = (m: string) => (m === LAPTOP ? "This laptop" : m);
+// In a sentence: "on this laptop", "on devl".
+const machineInProse = (m: string) => (m === LAPTOP ? "this laptop" : m);
 
 // ShellHooks edits the raw hooks on this laptop and every online box: a
 // table per machine, an editor in a side sheet, and the live event stream
@@ -171,7 +173,7 @@ function DeleteHook({ target, hook, onClose, onConfirm }: { target?: { machine: 
         <AlertDialogHeader>
           <AlertDialogTitle>Delete this hook?</AlertDialogTitle>
           <AlertDialogDescription>
-            It stops running on {target && machineLabel(target.machine)} straight away.
+            It stops running on {target && machineInProse(target.machine)} straight away.
             {hook && <code className="mt-2 block truncate rounded-md bg-muted px-2 py-1 font-mono text-xs">{`${hook.on} → ${hook.run}`}</code>}
           </AlertDialogDescription>
         </AlertDialogHeader>

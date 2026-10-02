@@ -21,6 +21,7 @@ import {
   Tooltip,
   TooltipPopup,
   TooltipTrigger,
+  ViewHeader,
   cn,
 } from "@berth/plugin/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -36,7 +37,7 @@ import { type Run, askRefresh, isGitHubProject, listOf, loadList, refreshCount, 
 // first prompt. Rows show how that agent is doing from then on.
 
 export default definePlugin((berth) => {
-  berth.addScreen({ id: "issues", title: "Issues", Component: IssuesScreen });
+  berth.addScreen({ id: "issues", title: "Issues", layout: "fill", Component: IssuesScreen });
   berth.addSidebarItem({ id: "issues", title: "Issues", icon: "CircleDot", screen: "issues" });
   berth.addCommand({ id: "issues", title: "Show issues", group: "Issues", run: () => berth.openScreen("issues") });
   berth.addCommand({
@@ -191,25 +192,25 @@ function IssuesScreen({ berth }: ScreenProps) {
   const busyRuns = useMemo(() => [...runs.values()].filter((rs) => rs[0]?.session && rs[0].session.agent_state !== "finished").length, [runs]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col">
+    <div className="flex min-h-0 flex-1 flex-col">
       {boxes.map((b) => (
         <SessionFeed key={b} box={b} onSessions={onSessions} />
       ))}
-      <header data-tauri-drag-region className="flex min-h-12 shrink-0 items-center gap-3 border-b bg-sidebar/40 px-6 py-2">
-        <div data-tauri-drag-region className="flex min-w-0 flex-1 items-baseline gap-3">
-          <h1 className="shrink-0 font-medium text-sm">Issues</h1>
-          <p className="hidden min-w-0 truncate text-muted-foreground text-xs md:block">
-            {busyRuns > 0 ? `${busyRuns} agent${busyRuns === 1 ? " is" : "s are"} on issues right now.` : "Open GitHub issues, and an agent on any of them in one step."}
-          </p>
-        </div>
-        <ProjectPicker projects={projects} scope={scope} onChange={(id) => (setStored(id), setChecked(new Set()))} />
-        <Tooltip>
-          <TooltipTrigger render={<Button size="icon-sm" variant="ghost" aria-label="Refresh" onClick={refresh} disabled={!shown.length} />}>
-            <Icon name="RefreshCw" className={cn("size-3.5", loading && shown.length > 0 && "animate-spin")} />
-          </TooltipTrigger>
-          <TooltipPopup>Refresh</TooltipPopup>
-        </Tooltip>
-      </header>
+      <ViewHeader
+        title="Issues"
+        description={busyRuns > 0 ? `${busyRuns} agent${busyRuns === 1 ? " is" : "s are"} on issues right now.` : "Open GitHub issues, and an agent on any of them in one step."}
+        actions={
+          <>
+            <ProjectPicker projects={projects} scope={scope} onChange={(id) => (setStored(id), setChecked(new Set()))} />
+            <Tooltip>
+              <TooltipTrigger render={<Button size="icon-sm" variant="ghost" aria-label="Refresh" onClick={refresh} disabled={!shown.length} />}>
+                <Icon name="RefreshCw" className={cn("size-3.5", loading && shown.length > 0 && "animate-spin")} />
+              </TooltipTrigger>
+              <TooltipPopup>Refresh</TooltipPopup>
+            </Tooltip>
+          </>
+        }
+      />
 
       {projects.length === 0 ? (
         <Empty className="flex-1">

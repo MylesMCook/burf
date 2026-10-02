@@ -173,6 +173,31 @@ func TestProxyExplainsAClosedPort(t *testing.T) {
 	}
 }
 
+// The proxy's own pages often show inside the app's browser tab, so they
+// are styled HTML that follows the system's dark mode, never a bare white
+// page or plain text.
+func TestProxyErrorPagesAreStyledForLightAndDark(t *testing.T) {
+	p := newProxy()
+	for _, host := range []string{"evil.example:1377", "3000.unknown.localhost", "web.devl.localhost"} {
+		resp := get(t, p, host, "/", nil)
+		body, _ := io.ReadAll(resp.Body)
+		page := string(body)
+		if ct := resp.Header.Get("Content-Type"); !strings.HasPrefix(ct, "text/html") {
+			t.Errorf("%s: content type %q", host, ct)
+		}
+		for _, want := range []string{"<!doctype html>", `content="light dark"`, "prefers-color-scheme:dark", "<h1>", "· berth</footer>"} {
+			if !strings.Contains(page, want) {
+				t.Errorf("%s: page lacks %q:\n%s", host, want, page)
+			}
+		}
+	}
+	rec := httptest.NewRecorder()
+	page(rec, http.StatusBadGateway, "<b>devl</b>", "a & b")
+	if body := rec.Body.String(); strings.Contains(body, "<b>devl") || !strings.Contains(body, "&lt;b&gt;devl") || !strings.Contains(body, "a &amp; b") {
+		t.Errorf("not escaped: %s", body)
+	}
+}
+
 func TestProxyResolvesNamedServices(t *testing.T) {
 	port := app(t)
 	p := newProxy()

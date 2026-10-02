@@ -98,9 +98,9 @@ export function LayeredScript({
       </div>
       <p className="mb-2 text-muted-foreground text-xs">{hint}</p>
       {repo && !overriding ? (
-        <pre className="overflow-x-auto rounded-lg border bg-muted/40 px-3 py-2 font-mono text-xs leading-relaxed [font-variant-ligatures:none]">{repo}</pre>
+        <pre className="overflow-x-auto rounded-lg border bg-muted/40 px-3 py-2 font-mono text-xs leading-relaxed">{repo}</pre>
       ) : (
-        <Textarea value={local ?? ""} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="min-h-16 font-mono text-xs [font-variant-ligatures:none]" spellCheck={false} />
+        <Textarea value={local ?? ""} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="min-h-16 font-mono text-xs" spellCheck={false} />
       )}
     </div>
   );

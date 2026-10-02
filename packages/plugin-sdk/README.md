@@ -15,6 +15,16 @@ export default function activate(berth: BerthPluginContext) {
 }
 ```
 
+A screen opens under the app's header strip, which shows its `title` (and
+`description`) the way the app's own views do. Render `<ViewHeader title
+description actions />` from `@berth/plugin/ui` anywhere in the screen to put
+a live description or buttons in that strip. The app lays a screen out as a
+page, one width and left aligned like every other screen; pass `layout:
+"fill"` to `addScreen` for a table or split view that fills the area and
+scrolls itself. Use `<Frame variant="card">` for a section of a screen (one
+outline, rows directly inside), and `sessionName(session, …)` from
+`@berth/plugin` to name a session the way the app does.
+
 Bundle it as ESM with `react`, `react/jsx-runtime`, `react-dom`,
 `@berth/plugin` and `@berth/plugin/ui` left external: the app provides one
 shared copy of each, so plugin components are ordinary React components in

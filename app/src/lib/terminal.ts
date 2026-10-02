@@ -75,6 +75,43 @@ export async function createTerminal(host: HTMLElement, colors: TerminalColors, 
   }
 }
 
+// The parts of ghostty-web's renderer keepLastColumn reaches into.
+interface GhosttyRenderer {
+  render(buffer: unknown, full?: boolean, viewportY?: number, term?: unknown, scrollbarOpacity?: number): void;
+  renderScrollbar(viewportY: number, scrollback: number, rows: number, opacity?: number): void;
+}
+
+// keepLastColumn works around ghostty-web 0.4 painting its scrollbar over the
+// terminal's last columns. Its scrollbar is an overlay inside the canvas, and
+// drawing it first fills a 14px strip at the right edge with the background.
+// Terminal.resize renders without passing the scrollbar's opacity, so after
+// every fit (a pane split, a window resize) that strip was blanked even with
+// no scrollbar showing, and stayed blank on every row that did not change:
+// the last column or two of the text went missing. The same happened after
+// the scrollbar faded out. Here the strip is only painted while the
+// scrollbar shows, and the whole screen is redrawn once it is gone.
+function keepLastColumn(t: object) {
+  const r = (t as { renderer?: Partial<GhosttyRenderer> }).renderer;
+  if (typeof r?.render !== "function" || typeof r.renderScrollbar !== "function") return;
+  const render = r.render.bind(r);
+  const renderScrollbar = r.renderScrollbar.bind(r);
+  let barDrawn = false;
+  r.renderScrollbar = (viewportY, scrollback, rows, opacity = 1) => {
+    if (opacity <= 0 || scrollback === 0) return;
+    barDrawn = true;
+    renderScrollbar(viewportY, scrollback, rows, opacity);
+  };
+  r.render = (buffer, full = false, viewportY = 0, term, opacity) => {
+    const shown = opacity ?? (term as { scrollbarOpacity?: number } | undefined)?.scrollbarOpacity ?? 0;
+    // The bar was drawn over the text and is now gone: put the text back.
+    if (barDrawn && shown <= 0) {
+      barDrawn = false;
+      full = true;
+    }
+    render(buffer, full, viewportY, term, shown);
+  };
+}
+
 async function createGhostty(host: HTMLElement, colors: TerminalColors, prefs: TerminalPrefs): Promise<TermHandle> {
   const g = await loadGhostty();
   const t = new g.Terminal({
@@ -94,6 +131,7 @@ async function createGhostty(host: HTMLElement, colors: TerminalColors, prefs: T
   t.open(host);
   if (had && had !== document.body && had.isConnected) had.focus();
   else (document.activeElement as HTMLElement | null)?.blur();
+  keepLastColumn(t);
   return {
     get cols() {
       return t.cols;

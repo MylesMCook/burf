@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 import type { BerthEvent } from "@/lib/api";
 import { agentLabel, agentOf } from "@/lib/derive";
+import { isLive, useLoops } from "@/lib/loops";
 import { flowKey, resolveFromEvent, route, serviceKey } from "@/lib/notifications";
 import { handlePreview } from "@/lib/preview";
 import { handleSessionOpen } from "@/lib/session-open";
@@ -53,18 +54,24 @@ function notifyFor(e: BerthEvent) {
   if (e.type === "agent.waiting" || e.type === "agent.finished") {
     const where = describeAgent(e);
     const waiting = e.type === "agent.waiting";
-    route({
-      category: waiting ? "waiting" : "finished",
-      title: waiting ? `${where.agent} is waiting for you` : `${where.agent} finished`,
-      tone: waiting ? "warning" : "success",
-      box,
-      path: where.path,
-      project: where.project,
-      worktree: where.worktree,
-      session: where.session,
-      action: where.session && box ? { kind: "session", box, session: where.session } : undefined,
-      key: `${waiting ? "waiting" : "finished"}|${box}|${where.path ?? where.session ?? where.agent}`,
-    });
+    // A loop ends a turn every round and says itself how it went, so its
+    // agent finishing is not news.
+    const sessions = box ? useStore.getState().boxes[box]?.sessions : undefined;
+    const looped = !waiting && useLoops.getState().loops.some((l) => isLive(l) && l.box === box && (l.session === where.session || (!!where.path && sessions?.find((s) => s.name === l.session)?.dir === where.path)));
+    if (!looped) {
+      route({
+        category: waiting ? "waiting" : "finished",
+        title: waiting ? `${where.agent} is waiting for you` : `${where.agent} finished`,
+        tone: waiting ? "warning" : "success",
+        box,
+        path: where.path,
+        project: where.project,
+        worktree: where.worktree,
+        session: where.session,
+        action: where.session && box ? { kind: "session", box, session: where.session } : undefined,
+        key: `${waiting ? "waiting" : "finished"}|${box}|${where.path ?? where.session ?? where.agent}`,
+      });
+    }
   }
   if (e.type === "preview.open") handlePreview(e);
   if (e.type === "session.open") handleSessionOpen(e);

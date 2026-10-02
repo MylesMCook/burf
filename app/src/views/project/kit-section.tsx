@@ -1,6 +1,7 @@
 import { CopyIcon, LinkIcon, PackageIcon, PackagePlusIcon, RefreshCwIcon, SaveIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
 
+import { Tip } from "@/components/tip";
 import { AlertDialog, AlertDialogClose, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogPopup, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogPanel, DialogPopup, DialogTitle } from "@/components/ui/dialog";
@@ -73,10 +74,12 @@ export function KitSection({ box, location, kit, onChanged }: { box: string; loc
               <span className="shrink-0">· applied {new Date(kit.installed_at).toLocaleDateString()}</span>
             </p>
           </div>
-          <Button size="xs" variant={outdated ? "default" : "outline"} disabled={!kept} title={kept ? undefined : "This kit is not on this laptop. Add it to update."} onClick={() => openKit(kit.id, true, here)}>
-            <RefreshCwIcon />
-            {outdated ? "Update" : "Reapply"}
-          </Button>
+          <Tip label={kept ? undefined : "This kit is not on this laptop. Add it to update."}>
+            <Button size="xs" variant={outdated ? "default" : "outline"} disabled={!kept} onClick={() => openKit(kit.id, true, here)}>
+              <RefreshCwIcon />
+              {outdated ? "Update" : "Reapply"}
+            </Button>
+          </Tip>
           <Menu>
             <MenuTrigger render={<Button size="xs" variant="ghost">More</Button>} />
             <MenuPopup align="end" className="min-w-48">

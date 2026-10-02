@@ -49,8 +49,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if why == "" {
-			http.Error(w, "berth: unknown host; use http://<port>.<box>.localhost", status)
-			return
+			why = "Berth doesn't know this address"
 		}
 		page(w, status, why, "Use http://PORT.BOX.localhost or http://WORKTREE.LOCATION.BOX.localhost")
 		return
@@ -184,9 +183,22 @@ func (p *Proxy) ResetBox(box string) {
 	}
 }
 
+// PageStyle is the stylesheet of the small pages the laptop agent serves
+// itself: its errors and its index. They often show inside the app's browser
+// tab, so they follow the system's light or dark appearance like the app.
+const PageStyle = `<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light dark"><style>` +
+	`:root{--bg:#fff;--fg:#1c1c1f;--muted:#6e6e76;--line:#e4e4e8;--code:#f4f4f6}` +
+	`@media (prefers-color-scheme:dark){:root{--bg:#1c1d20;--fg:#ececee;--muted:#8d8e96;--line:#303136;--code:#26272b}}` +
+	`html{background:var(--bg);color:var(--fg);font:14px/1.55 system-ui,-apple-system,sans-serif}` +
+	`body{max-width:36rem;margin:0 auto;padding:16vh 1.5rem 3rem}` +
+	`h1{font-size:17px;font-weight:600;margin:0 0 .5rem}h2{font-size:15px;font-weight:600;margin:2rem 0 .25rem}` +
+	`p,li{color:var(--muted);margin:.35rem 0}a{color:var(--fg)}small{color:var(--muted);font-weight:400}` +
+	`code{font:12.5px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--fg);background:var(--code);border:1px solid var(--line);border-radius:5px;padding:.05rem .3rem;overflow-wrap:anywhere}` +
+	`footer{margin-top:2.5rem;padding-top:.75rem;border-top:1px solid var(--line);color:var(--muted);font-size:12px}</style>`
+
 func page(w http.ResponseWriter, status int, title, detail string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
-	fmt.Fprintf(w, `<!doctype html><title>%s</title><body style="font:15px system-ui;margin:3rem;color:#222"><h1 style="font-size:20px">%s</h1><p>%s</p><p style="color:#888">berth</p>`,
-		html.EscapeString(title), html.EscapeString(title), html.EscapeString(detail))
+	fmt.Fprintf(w, `<!doctype html><html lang="en"><meta charset="utf-8"><title>%s</title>%s<body><h1>%s</h1><p>%s</p><footer>%d %s · berth</footer>`,
+		html.EscapeString(title), PageStyle, html.EscapeString(title), html.EscapeString(detail), status, html.EscapeString(http.StatusText(status)))
 }

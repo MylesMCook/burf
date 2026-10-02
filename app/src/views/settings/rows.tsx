@@ -1,19 +1,28 @@
 import type { ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
+import { ViewHeader } from "@/views/view-header";
 
 // The pieces every settings section is made of: a titled page, groups of
 // rows, and rows of label, description and control.
 
 export function SettingsPage({ title, description, actions, children }: { title: string; description?: ReactNode; actions?: ReactNode; children: ReactNode }) {
   return (
-    <div className="mx-auto w-full max-w-2xl px-8 pt-8 pb-16 max-[1200px]:px-6">
-      <div className="flex items-start gap-4">
-        <h1 className="min-w-0 flex-1 font-semibold text-lg tracking-tight">{title}</h1>
-        {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
-      </div>
-      {description && <p className="mt-1 text-muted-foreground text-sm">{description}</p>}
-      <div className="mt-6 space-y-8">{children}</div>
+    <div className="mx-auto w-full max-w-2xl px-8 pt-6 pb-16 max-[1200px]:px-6">
+      {/* The section names itself in the view's strip, after "Settings". */}
+      <ViewHeader
+        title={
+          <span className="flex items-baseline gap-1.5">
+            <span className="text-muted-foreground">Settings</span>
+            <span className="text-muted-foreground/60">/</span>
+            {title}
+          </span>
+        }
+        actions={actions}
+      />
+      {/* Section descriptions run long, so they stay with the page. */}
+      {description && <p className="mb-6 text-muted-foreground text-sm">{description}</p>}
+      <div className="space-y-8">{children}</div>
     </div>
   );
 }

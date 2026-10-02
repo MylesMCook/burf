@@ -461,7 +461,8 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
   }
   if (key === "POST locations") {
     const r = body as { name: string; path: string };
-    const loc: Location = { name: r.name, path: r.path, repo: true, scripts: {}, worktrees: [{ name: r.name, path: r.path, branch: "main", main: true }] };
+    const slug = mockFolders[r.path]?.slug;
+    const loc: Location = { name: r.name, path: r.path, repo: true, scripts: {}, ...(slug ? { slug, remote: `git@github.com:${slug}.git` } : {}), worktrees: [{ name: r.name, path: r.path, branch: "main", main: true }] };
     locations[box].push(loc);
     return delay(loc);
   }

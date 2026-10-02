@@ -19,6 +19,7 @@ import { KitSection } from "@/views/project/kit-section";
 import { KitLayer, LayeredScript, Section, SourceBadge } from "@/views/project/parts";
 import { ServicesSection } from "@/views/project/services-section";
 import { clean, useProjectConfig } from "@/views/project/use-project-config";
+import { ViewHeader } from "@/views/view-header";
 
 const SECTIONS = [
   { id: "kit", label: "Kit" },
@@ -54,55 +55,59 @@ export function ProjectView({ box, location }: { box: string; location: string }
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex shrink-0 items-center gap-3 border-b px-6 py-3">
-        <FolderGitIcon className="size-4 text-muted-foreground" />
-        <div className="min-w-0 flex-1">
-          <h1 className="flex items-baseline gap-2 font-semibold text-[15px]">
+      <ViewHeader
+        title={
+          <span className="flex items-center gap-2">
+            <FolderGitIcon className="size-3.5 text-muted-foreground" />
             {location}
-            <span className="font-normal text-muted-foreground text-sm">on</span>
+            <span className="font-normal text-muted-foreground">on</span>
             <MemberSwitcher box={box} location={location} />
-          </h1>
-          <p className="flex min-w-0 items-center gap-1.5 text-muted-foreground text-xs">
-            {repo ? (
-              <>
-                <GitCommitHorizontalIcon className="size-3 shrink-0" />
-                <code className="truncate font-mono">{config?.repo_path}</code>
-                <span className="shrink-0 rounded-md border px-1.5 text-[11px]">committed in the repo</span>
-              </>
-            ) : config ? (
-              <span>No .berth/config.json in the repo yet. Everything here is {box}'s own.</span>
-            ) : null}
-          </p>
-        </div>
-        <Menu>
-          <MenuTrigger render={<Button size="sm" variant="ghost" disabled={!config} />}>
-            <CopyIcon />
-            Copy as .berth/config.json
-          </MenuTrigger>
-          <MenuPopup align="end" className="min-w-64">
-            <MenuItem onClick={() => copy("effective")}>
-              <span className="flex flex-col">
-                <span>Everything that applies</span>
-                <span className="text-muted-foreground text-xs">The repo's config with {box}'s changes</span>
-              </span>
-            </MenuItem>
-            <MenuItem onClick={() => copy("local")}>
-              <span className="flex flex-col">
-                <span>Only {box}'s changes</span>
-                <span className="text-muted-foreground text-xs">To move them into the repo</span>
-              </span>
-            </MenuItem>
-          </MenuPopup>
-        </Menu>
-        {dirty && (
-          <Button size="sm" variant="ghost" onClick={discard}>
-            Discard
-          </Button>
-        )}
-        <Button size="sm" onClick={() => void save()} loading={saving} disabled={!dirty}>
-          Save to {box}
-        </Button>
-      </header>
+          </span>
+        }
+        description={
+          repo ? (
+            <span className="flex min-w-0 items-center gap-1.5">
+              <GitCommitHorizontalIcon className="size-3 shrink-0" />
+              <code className="truncate font-mono">{config?.repo_path}</code>
+              <span className="shrink-0 rounded-md border px-1.5 text-[11px]">committed in the repo</span>
+            </span>
+          ) : config ? (
+            `No .berth/config.json in the repo yet. Everything here is ${box}'s own.`
+          ) : null
+        }
+        actions={
+          <>
+            <Menu>
+              <MenuTrigger render={<Button size="sm" variant="ghost" disabled={!config} />}>
+                <CopyIcon />
+                Copy as .berth/config.json
+              </MenuTrigger>
+              <MenuPopup align="end" className="min-w-64">
+                <MenuItem onClick={() => copy("effective")}>
+                  <span className="flex flex-col">
+                    <span>Everything that applies</span>
+                    <span className="text-muted-foreground text-xs">The repo's config with {box}'s changes</span>
+                  </span>
+                </MenuItem>
+                <MenuItem onClick={() => copy("local")}>
+                  <span className="flex flex-col">
+                    <span>Only {box}'s changes</span>
+                    <span className="text-muted-foreground text-xs">To move them into the repo</span>
+                  </span>
+                </MenuItem>
+              </MenuPopup>
+            </Menu>
+            {dirty && (
+              <Button size="sm" variant="ghost" onClick={discard}>
+                Discard
+              </Button>
+            )}
+            <Button size="sm" onClick={() => void save()} loading={saving} disabled={!dirty}>
+              Save to {box}
+            </Button>
+          </>
+        }
+      />
 
       <div className="flex min-h-0 flex-1">
         <nav className="hidden w-48 shrink-0 border-r px-3 py-6 lg:block">
@@ -201,9 +206,9 @@ function PortsSection({ repo, draft, setDraft, box }: { repo: RepoConfig | null;
 function MemberSwitcher({ box, location }: { box: string; location: string }) {
   const { projects } = useProjects();
   const p = projects.find((x) => x.members.some((m) => m.box.name === box && m.loc.name === location));
-  if (!p || p.members.length < 2) return <span className="font-normal text-muted-foreground text-sm">{box}</span>;
+  if (!p || p.members.length < 2) return <span className="font-normal text-muted-foreground">{box}</span>;
   return (
-    <span className="inline-flex items-center gap-0.5 rounded-md border p-0.5 font-normal text-xs">
+    <span className="inline-flex items-center gap-0.5 rounded-md border p-0.5 font-normal text-xs" role="group" aria-label="Box">
       {p.members.map((m) => (
         <button
           key={m.box.name}

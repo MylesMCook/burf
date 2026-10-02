@@ -1,5 +1,5 @@
 import { definePlugin, useStorage, type BerthEvent, type ScreenProps } from "@berth/plugin";
-import { Badge, Button, Empty, EmptyDescription, EmptyHeader, EmptyTitle, Icon, Input, ToggleGroup, ToggleGroupItem, cn } from "@berth/plugin/ui";
+import { Badge, Button, Empty, EmptyDescription, EmptyHeader, EmptyTitle, Icon, Input, ToggleGroup, ToggleGroupItem, ViewHeader, cn } from "@berth/plugin/ui";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 // Activity: everything that happened on every box, as sentences, newest
@@ -162,16 +162,12 @@ function ActivityScreen({ berth }: ScreenProps) {
   const unseen = mark ? shown.filter((e) => e.time > mark).length : 0;
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-6">
-      <header className="mb-4 flex items-end gap-4">
-        <div className="min-w-0 flex-1">
-          <h1 className="font-semibold text-lg tracking-tight">Activity</h1>
-          <p className="mt-0.5 text-muted-foreground text-sm">
-            What agents, worktrees and flows did on every box{unseen > 0 ? <>, with <b className="font-medium text-foreground">{unseen} new</b> since you last looked</> : null}.
-          </p>
-        </div>
-        <Input className="w-52" size="sm" placeholder="Search…" value={query} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)} />
-      </header>
+    <div>
+      <ViewHeader
+        title="Activity"
+        description={<>What agents, worktrees and flows did on every box{unseen > 0 ? <>, with <b className="font-medium text-foreground">{unseen} new</b> since you last looked</> : null}.</>}
+        actions={<Input className="w-52" size="sm" placeholder="Search…" value={query} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)} />}
+      />
       <div className="mb-3 flex flex-wrap items-center gap-2">
         <ToggleGroup size="sm" variant="outline" value={[kind]} onValueChange={(v: string[]) => v[0] && setKind(v[0] as Kind)}>
           <ToggleGroupItem value="all">All</ToggleGroupItem>

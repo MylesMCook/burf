@@ -25,7 +25,8 @@ export function EventsPanel({ onClose, onNewHook }: { onClose(): void; onNewHook
           <PanelRightCloseIcon />
         </Button>
       </header>
-      <div className="flex gap-1 overflow-x-auto px-3 pb-2 [scrollbar-width:none]">
+      {/* Wraps rather than scrolls: a hidden scrollbar read as chips cut off. */}
+      <div className="flex flex-wrap gap-1 px-3 pb-2">
         <Chip active={!prefix} onClick={() => setPrefix(undefined)} sans>
           All
         </Chip>

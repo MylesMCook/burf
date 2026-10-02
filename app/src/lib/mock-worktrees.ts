@@ -58,7 +58,7 @@ const baseSubjects = [
   "test(e2e): flaky availability spec",
   "feat(apps): Zoom webinar support",
 ];
-const authors = ["Sean Brydon", "Peer Richelsen", "Carina Wollendorfer", "Hariom Balhara", "Udit Takkar", "Keith Williams"];
+const authors = ["Sean Brydon", "Ada Moreno", "Jun Park", "Priya Nair", "Tomás Ruiz", "Lena Fischer"];
 
 function gitOf(box: string, loc: string, wt: string): Git {
   return (git[`${box}/${loc}/${wt}`] ??= { ahead: 0, behind: 0, changed: 0, untracked: 0 });
@@ -174,11 +174,29 @@ function statusOf(world: World, box: string, loc: Location, idx: number): Worktr
   };
 }
 
+// commitDetail answers the history sheet's `git show` for one commit: its
+// message (with a body for some) and a stat. Other commands fall through.
+function commitDetail(box: string, req: { location: string; command: string }, locs: Location[], delay: <T>(v: T) => Promise<T>): Promise<unknown> | undefined {
+  const sha = /^git show -s --format=%B '([0-9a-f]+)'/.exec(req.command)?.[1];
+  if (!sha) return undefined;
+  const [locName, wtName] = req.location.split("/");
+  const loc = locs.find((l) => l.name === locName);
+  const wt = loc?.worktrees?.find((w) => (wtName ? w.name === wtName : w.main));
+  const c = loc && wt ? history(box, loc.name, wt.name, wt.branch).find((n) => n.sha === sha) : undefined;
+  if (!c) return delay({ exit_code: 128, output: `fatal: bad object ${sha}\n` });
+  const seed = parseInt(sha.slice(0, 6), 16);
+  const body = c.parents.length > 1 ? "" : seed % 3 === 0 ? "" : `${["Keeps the old path working while the new one rolls out.", "Found while chasing a flaky e2e run; the fix is small."][seed % 2]}\n\nCo-authored-by: Claude <noreply@anthropic.com>`;
+  const files = 1 + (seed % 9);
+  const stat = ` ${files} file${files === 1 ? "" : "s"} changed, ${(seed % 180) + 4} insertions(+), ${seed % 61} deletions(-)`;
+  return new Promise((r) => setTimeout(() => r({ exit_code: 0, output: `${c.subject}\n\n${body}\n\n--berth-stat--\n${stat}\n` }), 250));
+}
+
 // worktreesCall answers the worktree status, log, sync and pause routes, or
 // returns undefined for anything else.
 export function worktreesCall(box: string, method: string, path: string, body: unknown, world: World, emit: Emit, delay: <T>(v: T) => Promise<T>): Promise<unknown> | undefined {
   const [route, query = ""] = path.split("?");
   const locs = world.locations[box] ?? [];
+  if (method === "POST" && route === "exec") return commitDetail(box, body as { location: string; command: string }, locs, delay);
   if (method === "GET" && route === "worktrees") {
     const only = new URLSearchParams(query).get("location");
     return delay(locs.filter((l) => !only || l.name === only).flatMap((l) => (l.worktrees ?? []).map((_, i) => statusOf(world, box, l, i))));

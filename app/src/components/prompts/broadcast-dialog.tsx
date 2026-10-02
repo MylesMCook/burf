@@ -1,6 +1,7 @@
 import { AlertTriangleIcon, CheckIcon, ChevronRightIcon, CircleDashedIcon, CircleIcon, CircleXIcon, ClockIcon, MessageCircleQuestionIcon, SendIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import { Tip } from "@/components/tip";
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
 import { VariableFields, useTargetLabel, withDefaults } from "@/components/prompts/shared";
 import { SimpleSelect } from "@/components/simple-select";
@@ -151,7 +152,7 @@ function Compose({ d, onStarted }: { d: BroadcastDraft; onStarted(): void }) {
             {byBox.length === 0 && <p className="px-3 py-6 text-center text-muted-foreground text-sm">{onlyFree && agents.length ? "Every agent is busy. Turn off the filter to queue behind them." : "No agents are running."}</p>}
             {byBox.map(([box, entries]) => (
               <div key={box}>
-                <div className="border-b bg-muted/40 px-3 py-1 font-medium text-[11px] text-muted-foreground uppercase tracking-wide">{box}</div>
+                <div className="border-b bg-muted/40 px-3 py-1 font-medium text-[11px] text-muted-foreground">{box}</div>
                 {entries.map((e) => {
                   const k = keyOf({ box: e.box, session: e.session.name });
                   return (
@@ -232,9 +233,11 @@ function TargetRow({
         )}
         {edited && <span className="shrink-0 text-[11px] text-info-foreground">edited</span>}
         <StateGlyph state={entry.state} className="size-3" />
-        <Button type="button" size="icon-xs" variant="ghost" aria-expanded={expanded} aria-label={`Prompt for ${title}`} title="See and edit this agent's prompt" onClick={onExpand}>
-          <ChevronRightIcon className={cn("transition-transform", expanded && "rotate-90")} />
-        </Button>
+        <Tip label="See and edit this agent's prompt">
+          <Button type="button" size="icon-xs" variant="ghost" aria-expanded={expanded} aria-label={`Prompt for ${title}`} onClick={onExpand}>
+            <ChevronRightIcon className={cn("transition-transform", expanded && "rotate-90")} />
+          </Button>
+        </Tip>
       </div>
       {expanded && (
         <div className="flex flex-col gap-1 px-3 pb-2.5 pl-10">

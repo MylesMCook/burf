@@ -130,7 +130,7 @@ function NotesPanel({ berth, box, location, worktree, main }: WorktreePanelProps
           }
         }}
         placeholder={`Plans, links, things to remember about ${worktree}…\n\nAgents working here can read this file too.`}
-        className="flex min-h-0 flex-1 font-mono text-[13px] leading-6 [font-variant-ligatures:none] [&_textarea]:h-full [&_textarea]:resize-none [&_textarea]:px-4 [&_textarea]:py-3 [&_textarea]:[field-sizing:fixed]"
+        className="flex min-h-0 flex-1 font-mono text-[13px] leading-6 [&_textarea]:h-full [&_textarea]:resize-none [&_textarea]:px-4 [&_textarea]:py-3 [&_textarea]:[field-sizing:fixed]"
       />
     </div>
   );

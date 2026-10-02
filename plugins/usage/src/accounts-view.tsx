@@ -1,4 +1,4 @@
-import { useCurrentWorktree, useSessions, worktreeLocation, type BerthPluginContext, type Location } from "@berth/plugin";
+import { sessionName, useCurrentWorktree, useSessions, worktreeLocation, type BerthPluginContext, type Location } from "@berth/plugin";
 import {
   Alert,
   AlertDescription,
@@ -64,7 +64,8 @@ export function AccountsView({
 }) {
   const current = useCurrentWorktree();
   const here = current?.box === box ? current : undefined;
-  const sessions = (useSessions(box) ?? []).filter((s) => !s.exited && (s.agent === "claude" || s.agent === "codex"));
+  const all = useSessions(box) ?? [];
+  const sessions = all.filter((s) => !s.exited && (s.agent === "claude" || s.agent === "codex"));
   const [adding, setAdding] = useState<Agent>();
   const [busy, setBusy] = useState<string>();
 
@@ -151,7 +152,7 @@ export function AccountsView({
         const list = data.accounts.filter((a) => a.agent === agent);
         const onBox = boxAccount(agent);
         return (
-          <Frame key={agent}>
+          <Frame key={agent} variant="card">
             <FrameHeader className="flex-row items-center gap-2 py-3">
               <span className={cn("size-2.5 rounded-[3px]", SERIES[agent].dot)} />
               <FrameTitle>{AGENT_NAME[agent]}</FrameTitle>
@@ -245,7 +246,7 @@ export function AccountsView({
         );
       })}
 
-      <Frame>
+      <Frame variant="card">
         <FrameHeader className="py-3">
           <FrameTitle>Running sessions</FrameTitle>
         </FrameHeader>
@@ -262,8 +263,7 @@ export function AccountsView({
                   <li key={s.name} className="flex items-center gap-3 px-4 py-2 text-sm">
                     <span className={cn("size-2 shrink-0 rounded-[2px]", SERIES[agent].dot)} aria-label={AGENT_NAME[agent]} />
                     <span className="min-w-0 flex-1 truncate">
-                      {s.name}
-                      <span className="ml-2 text-muted-foreground text-xs">{s.location}</span>
+                      {sessionName(s, { sessions: all, locations, place: true })}
                     </span>
                     <span className="truncate text-muted-foreground text-xs">{env ? (a ? `${a.id === "default" ? "Default" : a.id}${a.email ? ` · ${a.email}` : ""}` : (env[ACCOUNT_VAR[agent] as keyof typeof env] ?? "")) : "unknown"}</span>
                     <Button size="xs" variant="ghost" onClick={() => berth.openTerminal(box, s.name)}>

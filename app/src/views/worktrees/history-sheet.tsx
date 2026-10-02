@@ -1,34 +1,57 @@
-import { ArrowDownIcon, ArrowUpIcon, ChevronDownIcon, CornerDownLeftIcon, PauseIcon, PlayIcon, RefreshCwIcon, SquareIcon, Trash2Icon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { ArrowDownIcon, ArrowUpIcon, CheckIcon, CopyIcon, CornerDownLeftIcon, EllipsisIcon, PauseIcon, PlayIcon, SquareIcon, Trash2Icon } from "lucide-react";
+import { type CSSProperties, useEffect, useMemo, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Group, GroupSeparator } from "@/components/ui/group";
-import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuTrigger } from "@/components/ui/menu";
+import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
+import { Popover, PopoverPopup, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetDescription, SheetHeader, SheetPanel, SheetPopup, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { useActiveTheme } from "@/hooks/use-theme";
+import { boxApi } from "@/lib/api";
 import { ago, errorMessage } from "@/lib/format";
+import { type CommitDetail, commitDetailCommand, parseCommitDetail } from "@/lib/git/parse";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { refOf, selectWorktree } from "@/lib/workspaces";
-import { type Commit, SYNC_MODES, type SyncMode, worktreesApi } from "@/lib/worktrees";
+import { type Commit, worktreesApi } from "@/lib/worktrees";
 import { ProjectLabel } from "@/views/automations/flows/project-label";
-import { type GraphRow, layout } from "@/views/worktrees/commit-graph";
-import { GraphGutter, laneColor, ROW_H } from "@/views/worktrees/graph-gutter";
+import { branchOnly, type GraphRow, layout } from "@/views/worktrees/commit-graph";
+import { GraphGutter, gutterWidth, laneColor, laneVars, ROW_H } from "@/views/worktrees/graph-gutter";
+import { SyncButton } from "@/views/worktrees/sync-button";
 import type { BulkAction, RowProgress } from "@/views/worktrees/use-bulk";
-import type { Row } from "@/views/worktrees/use-worktrees";
+import { openWorktree, type Row } from "@/views/worktrees/use-worktrees";
 
 const PAGE = 80;
 
+// Past this many commits behind, the history starts on the branch's own
+// commits; the base's newer ones are a toggle away.
+const COLLAPSE_BEHIND = 5;
+
+type Scope = "all" | "branch";
+
+// A commit never changes, so what was read about one is kept for the session.
+const details = new Map<string, CommitDetail>();
+
+const toggleCls = "h-6 px-2 text-xs text-muted-foreground data-pressed:bg-background data-pressed:text-foreground data-pressed:shadow-xs dark:data-pressed:bg-input";
+
 // HistorySheet is one worktree: where it stands, what you can do with it,
-// and its commits, newest first, marking those not on its base yet.
+// and its commits, newest first, marking those not on its base yet and
+// those on the base it lacks.
 export function HistorySheet({ row, progress, busy, onClose, onAction, onDelete }: { row?: Row; progress?: RowProgress; busy: boolean; onClose(): void; onAction(a: BulkAction): void; onDelete(): void }) {
   const client = useStore((s) => s.client);
+  const dark = useActiveTheme().appearance === "dark";
   const [log, setLog] = useState<{ base: string; commits: Commit[] }>();
   const [error, setError] = useState<string>();
   const [limit, setLimit] = useState(PAGE);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [scope, setScope] = useState<Scope>("all");
 
-  useEffect(() => setLimit(PAGE), [row?.key]);
+  useEffect(() => {
+    setLimit(PAGE);
+    setScope(row && row.behind > COLLAPSE_BEHIND ? "branch" : "all");
+    // Only when another worktree opens, not when this one's counts move.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [row?.key]);
   useEffect(() => {
     if (limit === PAGE) {
       setLog(undefined);
@@ -55,22 +78,19 @@ export function HistorySheet({ row, progress, busy, onClose, onAction, onDelete 
     // Refetch when a sync or anything else moves the branch.
   }, [client, row?.key, row?.ahead, row?.behind, row?.last_commit?.sha, limit]);
 
-  const graph = useMemo(() => (log ? layout(log.commits) : undefined), [log]);
+  const graph = useMemo(() => (log ? layout(scope === "branch" ? branchOnly(log.commits) : log.commits) : undefined), [log, scope]);
+  const vars = useMemo(() => laneVars(dark), [dark]);
 
-  const open = () => {
-    if (!row) return;
-    const loc = useStore.getState().boxes[row.box]?.locations?.find((l) => l.name === row.location);
-    const wt = loc?.worktrees?.find((w) => w.path === row.path);
-    if (loc && wt) {
-      selectWorktree(refOf(row.box, loc, wt));
-      useStore.getState().setView({ kind: "workspace" });
-    }
-  };
-  const base = (log?.base ?? row?.base ?? "main").replace(/^origin\//, "");
+  const baseRef = log?.base ?? row?.base ?? "origin/main";
+  const base = baseRef.replace(/^origin\//, "");
+  const branch = row?.branch ?? row?.name ?? "";
+  // A main checkout is its own base: one line, one legend entry.
+  const sameAsBase = branch === base;
+  const showScope = !!row && row.behind > 0 && !sameAsBase;
 
   return (
     <Sheet open={!!row} onOpenChange={(o) => !o && onClose()}>
-      <SheetPopup className="w-[min(560px,100vw)] max-w-none">
+      <SheetPopup className="w-[min(760px,100vw)] max-w-none">
         {row && (
           <>
             <SheetHeader className="gap-1.5">
@@ -103,8 +123,9 @@ export function HistorySheet({ row, progress, busy, onClose, onAction, onDelete 
               </SheetDescription>
             </SheetHeader>
 
-            <div className="flex flex-wrap items-center gap-1.5 border-b px-6 pb-4">
-              <SyncButton disabled={busy} onSync={(mode) => onAction({ kind: "sync", mode })} />
+            {/* One line: the everyday actions, and the rest under ⋯. */}
+            <div className="flex items-center gap-1.5 border-b px-6 pb-4">
+              <SyncButton base={baseRef} disabled={busy} onSync={(mode) => onAction({ kind: "sync", mode, paused: true })} />
               {!row.main &&
                 (row.paused ? (
                   <Button size="sm" variant="outline" disabled={busy} onClick={() => onAction({ kind: "resume" })}>
@@ -117,62 +138,93 @@ export function HistorySheet({ row, progress, busy, onClose, onAction, onDelete 
                     Pause
                   </Button>
                 ))}
-              {row.sessions > 0 && (
-                <Button size="sm" variant="outline" disabled={busy} onClick={() => onAction({ kind: "stop" })}>
-                  <SquareIcon />
-                  Stop sessions
-                </Button>
-              )}
-              <Button size="sm" variant="ghost" onClick={open}>
+              <Button size="sm" variant="ghost" onClick={() => openWorktree(row)}>
                 <CornerDownLeftIcon />
                 Open
               </Button>
-              {!row.main && (
-                <Button size="sm" variant="ghost" className="ml-auto text-destructive-foreground" disabled={busy} onClick={onDelete}>
-                  <Trash2Icon />
-                  Delete…
-                </Button>
-              )}
+              <Menu>
+                <MenuTrigger render={<Button size="icon-sm" variant="ghost" className="ml-auto" aria-label="More actions" />}>
+                  <EllipsisIcon />
+                </MenuTrigger>
+                <MenuPopup align="end">
+                  <MenuItem disabled={busy || row.sessions === 0} onClick={() => onAction({ kind: "stop" })}>
+                    <SquareIcon />
+                    {row.sessions ? `Stop ${row.sessions} session${row.sessions === 1 ? "" : "s"}` : "No sessions running"}
+                  </MenuItem>
+                  {!row.main && (
+                    <>
+                      <MenuSeparator />
+                      <MenuItem variant="destructive" disabled={busy} onClick={onDelete}>
+                        <Trash2Icon />
+                        Delete…
+                      </MenuItem>
+                    </>
+                  )}
+                </MenuPopup>
+              </Menu>
             </div>
             {progress && progress.state !== "queued" && <ProgressLine p={progress} />}
 
-            <SheetPanel className="pt-3">
-              <h3 className="mb-2 flex items-center gap-3 font-medium text-muted-foreground text-xs">
-                Commits
-                <span className="flex items-center gap-1 font-normal">
-                  <span className="size-2 rounded-full" style={{ background: laneColor(0) }} />
-                  {row.branch ?? row.name}
+            <div className="flex h-10 shrink-0 items-center gap-3 border-b px-6 text-xs">
+              <span className="font-medium text-muted-foreground">Commits</span>
+              <span className="flex min-w-0 items-center gap-1.5">
+                <span className="size-2 shrink-0 rounded-full" style={{ background: laneColor(sameAsBase ? 1 : 0) }} />
+                <code className="truncate font-mono">{branch}</code>
+                {!sameAsBase && <span className="shrink-0 text-muted-foreground tabular-nums">{row.ahead} ahead</span>}
+              </span>
+              {!sameAsBase && (
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <span className="size-2 shrink-0 rounded-full border-[1.5px]" style={{ borderColor: laneColor(1) }} />
+                  <code className="truncate font-mono">{baseRef}</code>
+                  {row.behind > 0 && <span className="shrink-0 text-muted-foreground tabular-nums">{row.behind} not in this branch</span>}
                 </span>
-                <span className="flex items-center gap-1 font-normal">
-                  <span className="size-2 rounded-full opacity-60" style={{ background: laneColor(1) }} />
-                  {base}
-                </span>
-              </h3>
+              )}
+              {showScope && (
+                <ToggleGroup size="sm" variant="outline" className="ml-auto shrink-0" value={[scope]} onValueChange={(v) => v[0] && setScope(v[0] as Scope)} aria-label="Commits to show">
+                  <ToggleGroupItem value="branch" className={toggleCls}>
+                    This branch
+                  </ToggleGroupItem>
+                  <ToggleGroupItem value="all" className={toggleCls}>
+                    With {base}
+                  </ToggleGroupItem>
+                </ToggleGroup>
+              )}
+            </div>
+
+            <SheetPanel className="@container pt-2">
               {error ? (
-                <p className="text-destructive-foreground text-sm">{error}</p>
+                <p className="pt-2 text-destructive-foreground text-sm">{error}</p>
               ) : !log ? (
-                <div className="space-y-2">
-                  {[0, 1, 2, 3, 4].map((i) => (
-                    <Skeleton key={i} className="h-9" />
+                <div className="space-y-1 pt-1">
+                  {[0, 1, 2, 3, 4, 5, 6, 7].map((i) => (
+                    <Skeleton key={i} className="h-6" />
                   ))}
                 </div>
               ) : log.commits.length === 0 || !graph ? (
-                <p className="text-muted-foreground text-sm">No commits.</p>
+                <p className="pt-2 text-muted-foreground text-sm">No commits.</p>
               ) : (
-                <>
-                  <ol className="-mx-2">
-                    {graph.rows.map((g) => (
-                      <CommitRow key={g.commit.sha} row={g} lanes={graph.lanes} base={base} mergeBase={g.commit.sha === graph.mergeBase} branch={row.branch} />
-                    ))}
-                  </ol>
-                  {log.commits.length >= limit && (
-                    <div className="mt-3 flex justify-center">
-                      <Button size="sm" variant="ghost" loading={loadingMore} onClick={() => setLimit((l) => l + PAGE)}>
-                        Load more
-                      </Button>
-                    </div>
+                <ol className="-mx-3" style={vars}>
+                  {scope === "branch" && row.behind > 0 && (
+                    <li>
+                      <button type="button" className="flex h-7 w-full items-center gap-2 rounded-md px-3 text-left text-muted-foreground text-xs hover:bg-accent/50 hover:text-foreground" onClick={() => setScope("all")}>
+                        <ArrowDownIcon className="size-3.5" />
+                        {baseRef} has {row.behind} newer commit{row.behind === 1 ? "" : "s"} this branch doesn't. Show them
+                      </button>
+                    </li>
                   )}
-                </>
+                  {graph.rows.map((g) => (
+                    <CommitRow key={g.commit.sha} row={g} lanes={graph.lanes} base={baseRef} branch={branch} mergeBase={g.commit.sha === graph.mergeBase} where={row} vars={vars} />
+                  ))}
+                  <li className="flex h-9 items-center" style={{ paddingLeft: gutterWidth(graph.lanes) }}>
+                    {log.commits.length >= limit ? (
+                      <Button size="xs" variant="ghost" loading={loadingMore} onClick={() => setLimit((l) => l + PAGE)}>
+                        Load {PAGE} more
+                      </Button>
+                    ) : (
+                      <span className="px-2 text-muted-foreground text-xs">Start of history</span>
+                    )}
+                  </li>
+                </ol>
               )}
             </SheetPanel>
           </>
@@ -182,47 +234,174 @@ export function HistorySheet({ row, progress, busy, onClose, onAction, onDelete 
   );
 }
 
-function CommitRow({ row, lanes, base, mergeBase, branch }: { row: GraphRow; lanes: number; base: string; mergeBase: boolean; branch?: string }) {
+// CommitRow is one line, like `git log --graph --oneline`: graph, hash,
+// subject, refs, author, age. A click opens what the line leaves out.
+function CommitRow({ row, lanes, base, branch, mergeBase, where, vars }: { row: GraphRow; lanes: number; base: string; branch: string; mergeBase: boolean; where: Row; vars: CSSProperties }) {
   const c = row.commit;
-  const mine = c.on_base === false;
   const refs = parseRefs(c.refs);
+  const [open, setOpen] = useState(false);
   return (
-    <li className={cn("flex items-start rounded-md pr-2", mergeBase && "bg-info/[0.06]")} style={{ height: ROW_H }} title={`${c.sha}\n${c.author} · ${new Date(c.time).toLocaleString()}${row.merge ? `\nmerge of ${c.parents?.length} parents` : ""}`}>
-      <GraphGutter row={row} lanes={lanes} highlight={mergeBase} />
-      <div className="min-w-0 flex-1 pt-1.5">
-        <div className="flex items-baseline gap-2">
-          <code className={cn("shrink-0 font-mono text-[11px]", mine ? "text-foreground" : "text-muted-foreground")}>{c.short}</code>
-          <span className={cn("min-w-0 flex-1 truncate text-[13px]", row.merge ? "text-muted-foreground" : mine ? "text-foreground" : "text-foreground/80")}>{c.subject}</span>
-          <span className="shrink-0 text-muted-foreground text-xs tabular-nums">{ago(c.time)}</span>
-        </div>
-        <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-[11px] text-muted-foreground">
-          <span className="max-w-40 shrink-0 truncate">{c.author}</span>
-          {mergeBase && (
-            <span className="shrink-0 rounded border border-info/40 px-1 text-[10px] text-info" title={`Where ${branch ?? "this worktree"} last met ${base}`}>
-              Branched here
+    <li>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger
+          render={
+            <button
+              type="button"
+              className={cn(
+                "relative flex w-full items-center gap-2 rounded-md pr-3 text-left outline-none hover:bg-accent/50 focus-visible:bg-accent/60 data-popup-open:bg-accent/70",
+                mergeBase && "bg-info/[0.07]",
+              )}
+              style={{ height: ROW_H }}
+            />
+          }
+        >
+          {/* The branch's own commits carry a bar in its colour. */}
+          {row.side === "ahead" && <span className="absolute inset-y-1 left-0 w-0.5 rounded-full" style={{ background: laneColor(0) }} />}
+          <GraphGutter row={row} lanes={lanes} highlight={mergeBase} />
+          <code className={cn("w-[7ch] shrink-0 translate-y-px font-mono text-[11px]", row.side === "ahead" ? "text-foreground" : "text-muted-foreground")}>{c.short}</code>
+          <Subject commit={c} merge={row.merge} className={cn("min-w-0 flex-1 truncate text-[13px]", row.side === "behind" ? "text-muted-foreground" : row.side === "shared" && "text-foreground/85")} />
+          {mergeBase && <span className="shrink-0 rounded border border-info/40 px-1 text-[10px] text-info leading-4">Branched here</span>}
+          {refs.map((r) => (
+            <RefChip key={`${r.kind}:${r.name}`} r={r} />
+          ))}
+          <span className="hidden w-28 shrink-0 truncate text-muted-foreground text-xs @lg:block">{c.author}</span>
+          <span className="w-12 shrink-0 text-right text-muted-foreground text-xs tabular-nums">{ago(c.time)}</span>
+        </PopoverTrigger>
+        <PopoverPopup side="bottom" align="start" sideOffset={2} className="w-[min(28rem,var(--available-width))]" style={vars}>
+          {open && <CommitDetails row={row} base={base} branch={branch} mergeBase={mergeBase} where={where} />}
+        </PopoverPopup>
+      </Popover>
+    </li>
+  );
+}
+
+// Subject shows a merge's own words (the branch it brought in) at full
+// strength and git's boilerplate around them muted.
+function Subject({ commit: c, merge, className }: { commit: Commit; merge: boolean; className?: string }) {
+  const m = merge ? /^(Merge (?:pull request #\d+ from|remote-tracking branch|branch) )(.+?)( into .+)?$/.exec(c.subject) : null;
+  if (!m) return <span className={className}>{c.subject}</span>;
+  return (
+    <span className={className}>
+      <span className="text-muted-foreground">{m[1]}</span>
+      {m[2]}
+      {m[3] && <span className="text-muted-foreground">{m[3]}</span>}
+    </span>
+  );
+}
+
+// CommitDetails is what a log line leaves out: the whole message, how much
+// it changed, where it stands, and its full hash to copy.
+function CommitDetails({ row, base, branch, mergeBase, where }: { row: GraphRow; base: string; branch: string; mergeBase: boolean; where: Row }) {
+  const c = row.commit;
+  const client = useStore((s) => s.client);
+  const key = `${where.box}/${where.location}:${c.sha}`;
+  const [detail, setDetail] = useState<CommitDetail | "failed" | undefined>(() => details.get(key));
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!client || details.has(key)) return;
+    let cancelled = false;
+    boxApi.exec(client, where.box, where.main ? where.location : `${where.location}/${where.name}`, commitDetailCommand(c.sha), "20s").then(
+      (r) => {
+        const d = r.exit_code === 0 ? parseCommitDetail(r.output) : undefined;
+        if (d) details.set(key, d);
+        if (!cancelled) setDetail(d ?? "failed");
+      },
+      () => !cancelled && setDetail("failed"),
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [client, key, where.box, where.location, where.name, where.main, c.sha]);
+
+  const copy = () =>
+    navigator.clipboard.writeText(c.sha).then(
+      () => {
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1500);
+      },
+      () => {},
+    );
+
+  const standing = mergeBase
+    ? `Where ${branch} last met ${base}`
+    : row.side === "ahead"
+      ? `Only on ${branch}, not on ${base} yet`
+      : row.side === "behind"
+        ? `On ${base}; ${branch} doesn't have it yet`
+        : `On ${branch} and ${base}`;
+
+  return (
+    <div className="min-w-0 space-y-2.5 text-sm">
+      <div className="space-y-1">
+        <p className="break-words font-medium leading-snug">{c.subject}</p>
+        {detail === undefined ? (
+          <Skeleton className="h-3.5 w-2/3" />
+        ) : (
+          detail !== "failed" && detail.body && <p className="max-h-40 overflow-y-auto whitespace-pre-wrap break-words text-muted-foreground text-xs leading-relaxed">{detail.body}</p>
+        )}
+      </div>
+      <dl className="grid grid-cols-[5.5rem_minmax(0,1fr)] gap-x-3 gap-y-1 text-xs">
+        <dt className="text-muted-foreground">Author</dt>
+        <dd className="truncate">
+          {c.author} · {new Date(c.time).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}
+        </dd>
+        <dt className="text-muted-foreground">Changed</dt>
+        <dd>
+          {detail === undefined ? (
+            <Skeleton className="mt-0.5 h-3 w-32" />
+          ) : detail === "failed" || detail.files === undefined ? (
+            <span className="text-muted-foreground">{detail === "failed" ? "Couldn't read" : "Nothing"}</span>
+          ) : (
+            <span className="tabular-nums">
+              {detail.files} file{detail.files === 1 ? "" : "s"}
+              <span className="ml-2 text-success">+{detail.added}</span>
+              <span className="ml-1.5 text-destructive-foreground">−{detail.removed}</span>
+              {row.merge && <span className="ml-2 text-muted-foreground">vs its first parent</span>}
             </span>
           )}
-          {refs.map((r) => (
-            <span
-              key={r.name}
-              className={cn(
-                "min-w-0 truncate rounded border px-1 font-mono text-[10px]",
-                r.kind === "head" ? "border-info/50 bg-info/10 text-info" : r.kind === "tag" ? "border-warning/40 text-warning" : r.kind === "remote" ? "border-border text-muted-foreground" : "border-ring/30 text-foreground/80",
-              )}
-            >
-              {r.kind === "head" && "HEAD → "}
-              {r.name}
-            </span>
-          ))}
-        </div>
+        </dd>
+        <dt className="text-muted-foreground">Where</dt>
+        <dd className="flex min-w-0 items-center gap-1.5">
+          <span className="size-2 shrink-0 rounded-full" style={row.side === "behind" ? { border: `1.5px solid ${laneColor(row.color)}` } : { background: laneColor(row.color) }} />
+          <span className="truncate">{standing}</span>
+        </dd>
+        {row.merge && (
+          <>
+            <dt className="text-muted-foreground">Parents</dt>
+            <dd className="font-mono">{c.parents?.map((p) => p.slice(0, 7)).join(" + ")}</dd>
+          </>
+        )}
+      </dl>
+      <div className="flex items-center gap-2 border-t pt-2.5">
+        <code className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">{c.sha}</code>
+        <Button size="xs" variant="outline" onClick={copy}>
+          {copied ? <CheckIcon /> : <CopyIcon />}
+          {copied ? "Copied" : "Copy SHA"}
+        </Button>
       </div>
-    </li>
+    </div>
   );
 }
 
 interface Ref {
   name: string;
   kind: "head" | "tag" | "remote" | "branch";
+}
+
+function RefChip({ r }: { r: Ref }) {
+  return (
+    <span
+      className={cn(
+        "max-w-36 shrink-0 truncate rounded border px-1 font-mono text-[10px] leading-4",
+        r.kind === "head" ? "border-info/50 bg-info/10 text-info" : r.kind === "tag" ? "border-border bg-muted text-foreground/80" : r.kind === "remote" ? "border-border text-muted-foreground" : "border-ring/40 text-foreground/80",
+      )}
+    >
+      {r.kind === "head" && "HEAD → "}
+      {r.kind === "tag" && "tag "}
+      {r.name}
+    </span>
+  );
 }
 
 // parseRefs reads git's decoration, like "HEAD -> fix, origin/main, tag: v1".
@@ -237,38 +416,7 @@ function parseRefs(refs?: string): Ref[] {
       if (/^(origin|upstream)\//.test(r)) return { name: r, kind: "remote" };
       return { name: r, kind: "branch" };
     })
-    .slice(0, 4);
-}
-
-// SyncButton syncs with a rebase, or the mode picked from its menu.
-export function SyncButton({ disabled, onSync, size = "sm" }: { disabled?: boolean; onSync(mode: SyncMode): void; size?: "sm" | "xs" }) {
-  return (
-    <Group>
-      <Button size={size} variant="outline" disabled={disabled} onClick={() => onSync("rebase")}>
-        <RefreshCwIcon />
-        Sync
-      </Button>
-      <GroupSeparator />
-      <Menu>
-        <MenuTrigger render={<Button size={size === "sm" ? "icon-sm" : "icon-xs"} variant="outline" disabled={disabled} aria-label="Sync with…" />}>
-          <ChevronDownIcon />
-        </MenuTrigger>
-        <MenuPopup align="end" className="min-w-64">
-          <MenuGroup>
-            <MenuGroupLabel>Sync with the base by</MenuGroupLabel>
-            {SYNC_MODES.map((m) => (
-              <MenuItem key={m.value} onClick={() => onSync(m.value)}>
-                <span className="flex flex-col">
-                  <span>{m.label}</span>
-                  <span className="text-muted-foreground text-xs">{m.hint}</span>
-                </span>
-              </MenuItem>
-            ))}
-          </MenuGroup>
-        </MenuPopup>
-      </Menu>
-    </Group>
-  );
+    .slice(0, 3);
 }
 
 function ProgressLine({ p }: { p: RowProgress }) {

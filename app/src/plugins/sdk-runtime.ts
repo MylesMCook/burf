@@ -87,3 +87,7 @@ export function useProjects(): Project[] {
 export function worktreeLocation(w: { location: string; worktree: string; main?: boolean }) {
   return w.main ? w.location : `${w.location}/${w.worktree}`;
 }
+
+// sessionName is what the app calls a session: "Claude Code", "Shell 2", or
+// with place "cal / billing-fix · Codex". See lib/derive.ts.
+export { sessionName } from "@/lib/derive";

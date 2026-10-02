@@ -41,7 +41,7 @@ export function TemplateField({
     });
   };
 
-  const cls = cn(mono && "font-mono text-xs [font-variant-ligatures:none]");
+  const cls = cn(mono && "font-mono text-xs");
   return (
     <div>
       <span className="mb-1 flex items-center gap-2">

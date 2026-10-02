@@ -1,6 +1,7 @@
 import { EllipsisIcon, GlobeIcon, ScrollTextIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, XIcon } from "lucide-react";
 import { useEffect } from "react";
 
+import { Tip } from "@/components/tip";
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
 import { BrowserPane } from "@/components/browser-pane";
 import { SessionActionItems } from "@/components/orchestrate/session-actions";
@@ -11,7 +12,7 @@ import { LogView } from "@/components/workspace/log-view";
 import { PanelIcon, PanelPane } from "@/components/workspace/panel-pane";
 import { TerminalView } from "@/components/workspace/terminal-view";
 import { agentPresets, closePane, openBrowserAt, startSession } from "@/lib/actions";
-import { agentLabel, agentOf, sessionState } from "@/lib/derive";
+import { agentLabel, agentOf, sessionName, sessionState } from "@/lib/derive";
 import type { Leaf } from "@/lib/layout";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -52,9 +53,9 @@ export function Pane({ wsKey, tab, pane, visible, focused, split }: Props) {
     <div className="flex h-full min-h-0 flex-col" onMouseDownCapture={focus}>
       {split && (
         <div className={cn("group/header flex h-7 shrink-0 items-center gap-1.5 border-b px-2 text-xs", focused ? "bg-accent/50 text-foreground shadow-[inset_0_2px_0_var(--ring)]" : "text-muted-foreground")}>
-          <PaneTitle wsKey={wsKey} tab={tab} pane={pane} />
+          <PaneTitle pane={pane} />
           <div className={cn("ml-auto flex items-center transition-opacity", focused ? "opacity-100" : "opacity-0 group-hover/header:opacity-100 focus-within:opacity-100")}>
-            <PaneActions wsKey={wsKey} tab={tab} pane={pane} onClose={close} closable />
+            <PaneActions wsKey={wsKey} tab={tab} pane={pane} onClose={close} closable focused={focused} />
           </div>
         </div>
       )}
@@ -110,35 +111,29 @@ export function PaneIcon({ content, agent, className }: { content: Leaf["content
   return <AgentIcon agent={agent ?? (c.kind === "terminal" ? c.agent : undefined)} className={cn("size-3", className)} />;
 }
 
-function PaneTitle({ wsKey, tab, pane }: { wsKey: string; tab: string; pane: Leaf }) {
+function PaneTitle({ pane }: { pane: Leaf }) {
   const c = pane.content;
   const session = useStore((s) => (c.kind === "terminal" ? s.boxes[c.box]?.sessions?.find((x) => x.name === c.session) : undefined));
   const stats = useStore((s) => (c.kind === "terminal" ? s.boxes[c.box]?.stats : undefined));
-  // Shells are numbered within their tab: Shell, Shell 2.
-  const shellNo = useWorkspaces((s) => {
-    if (c.kind !== "terminal" || c.agent) return 0;
-    const t = s.spaces[wsKey]?.tabs.find((x) => x.id === tab);
-    const shells = t ? collect(t.root).filter((l) => l.content.kind === "terminal" && !l.content.agent) : [];
-    return shells.findIndex((l) => l.id === pane.id) + 1;
-  });
+  // Named as everywhere else: "Claude Code", "Shell 2" (sessionName).
+  const named = useStore((s) => (c.kind === "terminal" && session ? sessionName(session, { sessions: s.boxes[c.box]?.sessions }) : undefined));
   const agent = session ? agentOf(session) : undefined;
-  const label = paneLabel(c, agent) + (shellNo > 1 ? ` ${shellNo}` : "");
+  const label = named ?? paneLabel(c, agent);
   return (
-    <span className="flex min-w-0 items-center gap-1.5" title={c.kind === "terminal" ? c.session : undefined}>
-      <PaneIcon content={c} agent={agent} />
-      <span className="truncate">{label}</span>
-      {session && <StateGlyph state={sessionState(session, stats)} className="size-3" />}
-    </span>
+    <Tip label={c.kind === "terminal" ? `${c.session} on ${c.box}` : undefined} align="start">
+      <span className="flex min-w-0 items-center gap-1.5">
+        <PaneIcon content={c} agent={agent} />
+        <span className="truncate">{label}</span>
+        {session && <StateGlyph state={sessionState(session, stats)} className="size-3" />}
+      </span>
+    </Tip>
   );
-}
-
-function collect(n: import("@/lib/layout").PaneNode): Leaf[] {
-  return n.kind === "leaf" ? [n] : [...collect(n.a), ...collect(n.b)];
 }
 
 // PaneActions are a pane's split buttons and its ⋯ menu: in the pane's own
 // header when the tab is split, and in the tab strip when it is not.
-export function PaneActions({ wsKey, tab, pane, onClose, closable }: { wsKey: string; tab: string; pane: Leaf; onClose?: () => void; closable?: boolean }) {
+// ⌘W and ⌘D act on the focused pane, so only its buttons name them.
+export function PaneActions({ wsKey, tab, pane, onClose, closable, focused = true }: { wsKey: string; tab: string; pane: Leaf; onClose?: () => void; closable?: boolean; focused?: boolean }) {
   const c = pane.content;
   const session = useStore((s) => (c.kind === "terminal" ? s.boxes[c.box]?.sessions?.find((x) => x.name === c.session) : undefined));
   const ref = useWorkspaces((s) => s.spaces[wsKey]?.ref);
@@ -148,16 +143,18 @@ export function PaneActions({ wsKey, tab, pane, onClose, closable }: { wsKey: st
 
   return (
     <>
-      <HeaderButton label="Split right" keys="⌘D" onClick={() => void startSession("", beside("row"))}>
+      <HeaderButton label="Split right" keys={focused ? "⌘D" : undefined} onClick={() => void startSession("", beside("row"))}>
         <SquareSplitHorizontalIcon />
       </HeaderButton>
-      <HeaderButton label="Split down" keys="⌘⇧D" onClick={() => void startSession("", beside("col"))}>
+      <HeaderButton label="Split down" keys={focused ? "⌘⇧D" : undefined} onClick={() => void startSession("", beside("col"))}>
         <SquareSplitVerticalIcon />
       </HeaderButton>
       <Menu>
-        <MenuTrigger render={<button type="button" aria-label="Pane actions" title="Pane actions" className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground data-popup-open:bg-accent" />}>
-          <EllipsisIcon className="size-3.5" />
-        </MenuTrigger>
+        <Tip label="Pane actions">
+          <MenuTrigger render={<button type="button" aria-label="Pane actions" className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground data-popup-open:bg-accent" />}>
+            <EllipsisIcon className="size-3.5" />
+          </MenuTrigger>
+        </Tip>
         <MenuPopup align="end" className="min-w-56">
           {c.kind === "terminal" && agent && (
             <>
@@ -193,12 +190,12 @@ export function PaneActions({ wsKey, tab, pane, onClose, closable }: { wsKey: st
           <MenuItem onClick={close}>
             <XIcon />
             {closable ? "Close pane" : "Close tab"}
-            <MenuShortcut>⌘W</MenuShortcut>
+            {focused && <MenuShortcut>⌘W</MenuShortcut>}
           </MenuItem>
         </MenuPopup>
       </Menu>
       {closable && (
-        <HeaderButton label="Close pane" keys="⌘W" onClick={close}>
+        <HeaderButton label="Close pane" keys={focused ? "⌘W" : undefined} onClick={close}>
           <XIcon />
         </HeaderButton>
       )}
@@ -208,14 +205,22 @@ export function PaneActions({ wsKey, tab, pane, onClose, closable }: { wsKey: st
 
 function HeaderButton({ label, keys, onClick, children }: { label: string; keys?: string; onClick(): void; children: React.ReactNode }) {
   return (
-    <button
-      type="button"
-      title={keys ? `${label} (${keys})` : label}
-      aria-label={label}
-      onClick={onClick}
-      className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground [&_svg]:size-3.5"
+    <Tip
+      label={
+        <span className="flex items-center gap-2">
+          {label}
+          {keys && <span className="text-muted-foreground">{keys}</span>}
+        </span>
+      }
     >
-      {children}
-    </button>
+      <button
+        type="button"
+        aria-label={label}
+        onClick={onClick}
+        className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground [&_svg]:size-3.5"
+      >
+        {children}
+      </button>
+    </Tip>
   );
 }

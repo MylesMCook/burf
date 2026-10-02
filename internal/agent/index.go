@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/sean-brydon/berthd/internal/proxy"
 )
 
 // serveIndex lists what the proxy can reach, at plain http://localhost:1377/.
@@ -16,22 +18,20 @@ func (a *Agent) serveIndex(w http.ResponseWriter, r *http.Request) {
 		port = ""
 	}
 	var b strings.Builder
-	b.WriteString(`<!doctype html><meta charset="utf-8"><title>berth</title>
-<body style="font:15px system-ui;margin:3rem;max-width:44rem;color:#222">
-<h1 style="font-size:20px">berth</h1>`)
+	b.WriteString(`<!doctype html><html lang="en"><meta charset="utf-8"><title>berth</title>` + proxy.PageStyle + `<body><h1>berth</h1>`)
 	if len(s.Boxes) == 0 {
 		b.WriteString(`<p>No paired boxes. Run <code>berthd pair</code> on a box, then <code>berth pair '&lt;link&gt;'</code>.</p>`)
 	}
 	for _, box := range s.Boxes {
-		fmt.Fprintf(&b, `<h2 style="font-size:16px;margin-top:2rem">%s <small style="color:#888;font-weight:400">%s</small></h2>`,
+		fmt.Fprintf(&b, `<h2>%s <small>%s</small></h2>`,
 			html.EscapeString(box.Name), html.EscapeString(box.State))
 		example := fmt.Sprintf("http://3000.%s.localhost%s/", box.Name, port)
 		fmt.Fprintf(&b, `<p>Any port on this box: <a href="%s">%s</a></p>`, html.EscapeString(example), html.EscapeString(example))
 	}
 	if len(s.Forwards) > 0 {
-		b.WriteString(`<h2 style="font-size:16px;margin-top:2rem">Forwards</h2><ul>`)
+		b.WriteString(`<h2>Forwards</h2><ul>`)
 		for _, f := range s.Forwards {
-			fmt.Fprintf(&b, `<li>localhost:%d → %s:%d <small style="color:#888">%s</small></li>`,
+			fmt.Fprintf(&b, `<li>localhost:%d → %s:%d <small>%s</small></li>`,
 				f.Local, html.EscapeString(f.Box), f.Remote, html.EscapeString(f.State))
 		}
 		b.WriteString(`</ul>`)

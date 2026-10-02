@@ -1,8 +1,10 @@
 import { CheckIcon, ChevronRightIcon, CircleAlertIcon, HandIcon, RepeatIcon, SquareIcon, XIcon } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 
+import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { useSessionName } from "@/hooks/use-session-name";
 import { dismissLoop, isLive, type Loop, useLoops } from "@/lib/loops";
 import { cn } from "@/lib/utils";
 import { focusSession } from "@/lib/workspaces";
@@ -75,6 +77,7 @@ export function LoopsPanel() {
 function LoopCard({ loop: l }: { loop: Loop }) {
   const [open, setOpen] = useState(false);
   const live = isLive(l);
+  const name = useSessionName(l.box, l.session, true);
   return (
     <div
       className={cn(
@@ -91,14 +94,18 @@ function LoopCard({ loop: l }: { loop: Loop }) {
           Round {l.round} of {l.max}
         </span>
         {!live && (
-          <button type="button" className="ml-auto inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Dismiss" title="Dismiss" onClick={() => dismissLoop(l.id)}>
-            <XIcon className="size-3.5" />
-          </button>
+          <Tip label="Dismiss">
+            <button type="button" className="ml-auto inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Dismiss" onClick={() => dismissLoop(l.id)}>
+              <XIcon className="size-3.5" />
+            </button>
+          </Tip>
         )}
       </div>
-      <p className="mt-1 truncate font-mono text-muted-foreground text-xs" title={`${l.session} · ${l.check}`}>
-        {l.session} · {l.check}
-      </p>
+      <Tip label={`${l.session} on ${l.box}`} align="start">
+        <p className="mt-1 truncate text-muted-foreground text-xs">
+          {name} · <span className="font-mono">{l.check}</span>
+        </p>
+      </Tip>
       <p className="mt-1 text-[13px] text-foreground/80">{detail(l)}</p>
       {l.output !== undefined && (
         <>

@@ -1,5 +1,5 @@
 import { definePlugin, useBoxes, useCurrentWorktree, useLocations, useStorage, type BerthPluginContext, type Location, type ScreenProps, type Session } from "@berth/plugin";
-import { Alert, AlertDescription, Button, Icon, Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger, Tabs, TabsList, TabsTab, ToggleGroup, ToggleGroupItem } from "@berth/plugin/ui";
+import { Alert, AlertDescription, Button, Icon, Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger, Tabs, TabsList, TabsTab, ToggleGroup, ToggleGroupItem, Tooltip, TooltipPopup, TooltipTrigger, ViewHeader } from "@berth/plugin/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AccountsView, type Choices } from "./accounts-view";
@@ -143,41 +143,46 @@ function UsageScreen({ berth }: ScreenProps) {
   const single = usageBox !== ALL ? data[usageBox] : undefined;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5 px-6 py-6">
-      <header className="flex flex-wrap items-end gap-3">
-        <div className="min-w-0 flex-1">
-          <h1 className="font-semibold text-lg tracking-tight">Usage & accounts</h1>
-          <p className="mt-0.5 text-muted-foreground text-sm">Tokens Claude Code and Codex used on your boxes, from the transcripts they keep there, and which account new sessions sign in with.</p>
-        </div>
-        <Menu>
-          <MenuTrigger render={<Button variant="outline" size="sm" disabled={!paired.length} />}>
-            <Icon name={tab === "usage" && usageBox === ALL ? "Layers" : "Server"} />
-            {tab === "usage" ? (usageBox === ALL ? "All boxes" : usageBox) : accountsBox || "No box online"}
-            <Icon name="ChevronDown" className="opacity-60" />
-          </MenuTrigger>
-          <MenuPopup align="end">
-            {tab === "usage" && (
-              <>
-                <MenuItem onClick={() => setPicked(ALL)}>
-                  <Icon name="Layers" />
-                  All boxes
-                </MenuItem>
-                <MenuSeparator />
-              </>
-            )}
-            {paired.map((b) => (
-              <MenuItem key={b.name} disabled={b.state !== "online"} onClick={() => (tab === "usage" ? setPicked(b.name) : setPickedAccounts(b.name))}>
-                <Icon name="Server" />
-                {b.name}
-                {b.state !== "online" && <span className="ml-auto pl-3 text-muted-foreground text-xs">offline</span>}
-              </MenuItem>
-            ))}
-          </MenuPopup>
-        </Menu>
-        <Button variant="outline" size="icon-sm" aria-label="Refresh" disabled={!online.length} loading={loading} onClick={() => void (tab === "usage" ? loadUsage() : loadAccounts())}>
-          <Icon name="RefreshCw" />
-        </Button>
-      </header>
+    <>
+      <ViewHeader
+        title="Usage & accounts"
+        description="Tokens Claude Code and Codex used on your boxes, from the transcripts they keep there, and which account new sessions sign in with."
+        actions={
+          <>
+            <Menu>
+              <MenuTrigger render={<Button variant="outline" size="sm" disabled={!paired.length} />}>
+                <Icon name={tab === "usage" && usageBox === ALL ? "Layers" : "Server"} />
+                {tab === "usage" ? (usageBox === ALL ? "All boxes" : usageBox) : accountsBox || "No box online"}
+                <Icon name="ChevronDown" className="opacity-60" />
+              </MenuTrigger>
+              <MenuPopup align="end">
+                {tab === "usage" && (
+                  <>
+                    <MenuItem onClick={() => setPicked(ALL)}>
+                      <Icon name="Layers" />
+                      All boxes
+                    </MenuItem>
+                    <MenuSeparator />
+                  </>
+                )}
+                {paired.map((b) => (
+                  <MenuItem key={b.name} disabled={b.state !== "online"} onClick={() => (tab === "usage" ? setPicked(b.name) : setPickedAccounts(b.name))}>
+                    <Icon name="Server" />
+                    {b.name}
+                    {b.state !== "online" && <span className="ml-auto pl-3 text-muted-foreground text-xs">offline</span>}
+                  </MenuItem>
+                ))}
+              </MenuPopup>
+            </Menu>
+            <Tooltip>
+              <TooltipTrigger render={<Button variant="ghost" size="icon-sm" aria-label="Refresh" disabled={!online.length} loading={loading} onClick={() => void (tab === "usage" ? loadUsage() : loadAccounts())} />}>
+                <Icon name="RefreshCw" />
+              </TooltipTrigger>
+              <TooltipPopup>Refresh</TooltipPopup>
+            </Tooltip>
+          </>
+        }
+      />
 
       <div className="flex flex-wrap items-center gap-3">
         <Tabs value={tab} onValueChange={(v: "usage" | "accounts") => setTab(v)}>
@@ -226,7 +231,7 @@ function UsageScreen({ berth }: ScreenProps) {
       ) : (
         <AccountsView berth={berth} box={accountsBox} data={accounts} choices={choices} locations={accountsLocations} reload={loadAccounts} />
       )}
-    </div>
+    </>
   );
 }
 

@@ -1,6 +1,7 @@
 import { PlayIcon, PlusIcon, RotateCwIcon, SquareIcon, Trash2Icon, Undo2Icon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -53,7 +54,7 @@ export function ServicesSection({ repo, draft, setDraft, box, location, urlPort 
         </p>
       ) : (
         <div className="divide-y divide-border/70">
-          <div className="grid grid-cols-[9rem_minmax(0,1fr)_5.5rem_auto_3.5rem] gap-3 px-4 py-1.5 text-[11px] text-muted-foreground uppercase tracking-wide">
+          <div className="grid grid-cols-[9rem_minmax(0,1fr)_5.5rem_auto_3.5rem] gap-3 px-4 py-1.5 text-[11px] text-muted-foreground">
             <span>Name</span>
             <span>Run</span>
             <span>Autostart</span>
@@ -75,9 +76,9 @@ export function ServicesSection({ repo, draft, setDraft, box, location, urlPort 
                   <code className="truncate font-mono text-xs">{name}</code>
                 )}
                 {mine ? (
-                  <Input value={mine.run} onChange={(e) => update(name, { run: e.target.value })} placeholder="pnpm dev --port $BERTH_PORT" size="sm" className="font-mono text-xs [font-variant-ligatures:none]" spellCheck={false} />
+                  <Input value={mine.run} onChange={(e) => update(name, { run: e.target.value })} placeholder="pnpm dev --port $BERTH_PORT" size="sm" className="font-mono text-xs" spellCheck={false} />
                 ) : (
-                  <code className="truncate px-2.5 font-mono text-muted-foreground text-xs [font-variant-ligatures:none]" title={s.run}>
+                  <code className="truncate px-2.5 font-mono text-muted-foreground text-xs" title={s.run}>
                     {s.run}
                   </code>
                 )}
@@ -85,14 +86,18 @@ export function ServicesSection({ repo, draft, setDraft, box, location, urlPort 
                 <SourceBadge source={source} box={box} field="services" entry={name} />
                 <span className="flex justify-end">
                   {!mine && (
-                    <Button size="icon-xs" variant="ghost" title={`Override on ${box}`} aria-label={`Override ${name} on ${box}`} onClick={() => setOwn([...own, { ...c! }])}>
-                      <PlusIcon />
-                    </Button>
+                    <Tip label={`Override on ${box}`}>
+                      <Button size="icon-xs" variant="ghost" aria-label={`Override ${name} on ${box}`} onClick={() => setOwn([...own, { ...c! }])}>
+                        <PlusIcon />
+                      </Button>
+                    </Tip>
                   )}
                   {mine && (
-                    <Button size="icon-xs" variant="ghost" aria-label={c ? `Use the repo's ${name}` : `Remove ${name}`} title={c ? "Use the repo's" : "Remove"} onClick={() => setOwn(own.filter((x) => x.name !== name))}>
-                      {c ? <Undo2Icon /> : <Trash2Icon />}
-                    </Button>
+                    <Tip label={c ? "Use the repo's" : "Remove"}>
+                      <Button size="icon-xs" variant="ghost" aria-label={c ? `Use the repo's ${name}` : `Remove ${name}`} onClick={() => setOwn(own.filter((x) => x.name !== name))}>
+                        {c ? <Undo2Icon /> : <Trash2Icon />}
+                      </Button>
+                    </Tip>
                   )}
                 </span>
               </div>

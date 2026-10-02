@@ -6,7 +6,8 @@ import { scheduleRefresh, useStore } from "@/lib/store";
 import { type SyncMode, worktreesApi } from "@/lib/worktrees";
 import type { Row } from "@/views/worktrees/use-worktrees";
 
-export type BulkAction = { kind: "sync"; mode: SyncMode } | { kind: "pause" } | { kind: "resume" } | { kind: "stop" } | { kind: "delete"; force: boolean; branch: boolean };
+// A sync leaves paused worktrees alone unless paused is set.
+export type BulkAction = { kind: "sync"; mode: SyncMode; paused?: boolean } | { kind: "pause" } | { kind: "resume" } | { kind: "stop" } | { kind: "delete"; force: boolean; branch: boolean };
 
 export interface RowProgress {
   state: "queued" | "running" | "ok" | "conflict" | "failed" | "skipped";
@@ -27,6 +28,7 @@ export const actionLabel = (a: BulkAction) =>
 // skipReason says why an action doesn't apply to a row, or nothing.
 export function skipReason(a: BulkAction, r: Row): string | undefined {
   if (r.main && (a.kind === "pause" || a.kind === "resume" || a.kind === "delete")) return "the main checkout";
+  if (a.kind === "sync" && r.paused && !a.paused) return "paused";
   if (a.kind === "pause" && r.paused) return "already paused";
   if (a.kind === "resume" && !r.paused) return "not paused";
   if (a.kind === "stop" && r.sessions === 0) return "no sessions";

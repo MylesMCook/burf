@@ -33,6 +33,9 @@ export declare const TableCell: Loose;
 export declare const Tooltip: Loose;
 export declare const TooltipTrigger: Loose;
 export declare const TooltipPopup: Loose;
+// A section of a screen: <Frame variant="card"> with a FrameHeader and
+// FramePanels inside, one outline for the section. Without the variant,
+// Frame is a muted tray of raised panels, meant for grouped inputs.
 export declare const Frame: Loose;
 export declare const FramePanel: Loose;
 export declare const FrameHeader: Loose;
@@ -95,6 +98,13 @@ export declare const PickOne: ComponentType<{
 export declare const AgentPicker: ComponentType<{ presets: { id: string; name: string }[]; value: string; onChange(id: string): void; allowNone?: boolean; className?: string }>;
 // AgentIcon: an agent's mark, by preset id ("claude", "codex", …).
 export declare const AgentIcon: ComponentType<{ agent?: string; className?: string }>;
+// The strip at the top of a screen: <ViewHeader title description actions />.
+// Render it anywhere in a screen and it takes the app's strip, so the screen
+// names itself once, the way the app's own views do.
+export declare const ViewHeader: ComponentType<{ title: ReactNode; description?: ReactNode; actions?: ReactNode; children?: ReactNode }>;
+// The page body the app puts a screen in (max-w-5xl, left aligned). A
+// screen with layout "fill" can use it for parts of its area.
+export declare const PluginPage: ComponentType<{ className?: string; children?: ReactNode }>;
 // Any lucide icon by name: <Icon name="Server" />.
 export declare const Icon: ComponentType<{ name: string; className?: string }>;
 export declare function cn(...classes: unknown[]): string;

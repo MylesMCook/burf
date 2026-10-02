@@ -18,9 +18,12 @@ import { matchingTargets, ProjectPicker, type TargetResult, targetKey } from "@/
 
 export function ReviewSheet() {
   const review = useKits((s) => s.review);
+  // Focus the sheet itself as it opens, not its close button, where Enter
+  // would close it before it was read.
+  const popup = useRef<HTMLDivElement>(null);
   return (
     <Sheet open={!!review} onOpenChange={(open) => !open && closeReview()}>
-      <SheetPopup className="w-[min(640px,100vw)] max-w-none">{review && <ReviewBody key={review.kind === "link" ? review.src : review.id} />}</SheetPopup>
+      <SheetPopup ref={popup} initialFocus={popup} className="w-[min(640px,100vw)] max-w-none outline-none">{review && <ReviewBody key={review.kind === "link" ? review.src : review.id} />}</SheetPopup>
     </Sheet>
   );
 }
