@@ -32,16 +32,26 @@ berth sessions devl --json         # running agent sessions
 berth ports devl --json            # what is listening on the box
 ```
 
-## Create a worktree and start an agent in it
+## Hand work to another agent
+
+A task is a new worktree with an agent already running in it:
+
+```sh
+berth agents devl                  # agents the box can start: claude, codex, …
+berth task new devl/cal/fix-login --agent claude --base main \
+  --prompt "Fix the login redirect loop; see issue 123"
+```
+
+The person sees the new agent in the Berth app and is told when it waits for
+them. For the pieces separately:
 
 ```sh
 berth worktree new devl/cal/fix-login --base main
 berth session new devl/cal/fix-login --name fix-login -- claude
 ```
 
-`--provider orca` or `--provider herdr` creates the worktree through that tool
-instead of plain git, so it also appears there. With Orca, `--agent claude
---prompt "..."` starts the agent for you.
+A worktree's setup script (the repository's `.berth/config.json`) runs in the
+background after it is created.
 
 ## See what another agent is doing
 
@@ -85,3 +95,5 @@ paths in events, never prompts, secrets, or personal data.
 - `no paired box named X`: run `berth boxes`; the name may differ.
 - `box no longer trusts this laptop`: the box revoked access; a human must pair again.
 - `berthd serve is not running`: on a box, `berthd install` starts it.
+- `a "before:…" hook stopped …`: the user's hooks refused the action. The
+  message says why; do not try to work around it.

@@ -41,8 +41,11 @@ laptop                                                   box (any VPS)
   events, runs laptop hooks, and owns the embedded tailnet nodes. The CLI and
   the app talk to it over a private Unix socket, so closing the app drops
   nothing.
-- **The desktop app** is a Tauri shell. Every action runs the bundled `berth`
-  binary with `--json`; the app holds no logic of its own.
+- **The desktop app** is a Tauri shell around a React UI. It talks to the
+  laptop agent over a loopback HTTP and WebSocket API guarded by a token
+  ([app-api.md](app-api.md)): box APIs pass through the agent's one
+  connection per box, and terminals are bridged over WebSocket. The app holds
+  no connection and no state worth losing; it can crash or close at any time.
 
 ## Identity and transport
 
@@ -102,9 +105,14 @@ where `localhost` resolves first on macOS.
 
 A **location** is a named directory on a box, usually a git repository. Its
 worktrees are read from `git worktree list` and addressed as `location/name`.
-Worktrees are created by git (next to the repo, as `<repo>-<name>`), Orca, or
-Herdr. berthd watches locations, so worktrees made by any tool appear and
-produce events.
+Worktrees are created by git, next to the repo as `<repo>-<name>`, and then
+the repository's setup script runs (`.berth/config.json`, or one set on the
+location). berthd watches locations, so worktrees made by any other tool
+appear too and produce events.
+
+A **task** is a worktree with an agent already running in it, made in one
+request so a hook, the app or another agent can hand off work in a single
+step.
 
 A **session** runs a program, usually a coding agent, at a location, in
 berth's own tmux server with `remain-on-exit`. Sessions keep running when
@@ -130,8 +138,12 @@ supervisor sees no restart and sessions are untouched.
 One event model on both sides, each event recording the tool it came from.
 Hooks run commands for matching events; a hook that names the tool it drives
 never reacts to that tool's own events, which prevents loops between
-integrations. Agent tool hooks forward only identifiers and paths, never
-prompts. See [integrations.md](integrations.md).
+integrations. `before:` hooks gate actions on the box and can refuse them.
+Agent tool hooks forward only identifiers and paths, never prompts. See
+[hooks.md](hooks.md) and [integrations.md](integrations.md).
+
+Plugins extend the app (screens, panels, commands, status bar items, themes)
+and can carry hooks; see [plugins.md](plugins.md).
 
 ## Status
 
@@ -140,11 +152,12 @@ tailnets:
 
 - identity, pairing, pinned mutual TLS, HTTP/2 streams, rate limiting
 - laptop agent: health, sleep detection, forwards, `*.localhost` proxy, events
-- locations, worktrees (git, Orca, Herdr), change detection
+- locations, worktrees, setup scripts, change detection, tasks
 - sessions with attach and screen reading, surviving daemon restarts
+- agent state from Claude Code hooks (running, waiting, finished)
 - public shares, `add ssh`, self-upgrade, other tailnets
-- hooks, tool adapters, the agent skill
-- desktop app with onboarding
+- hooks and gates, the agent skill
+- the app API: passthrough, terminals over WebSocket, server-sent events
 
 ## Open questions
 

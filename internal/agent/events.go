@@ -4,7 +4,7 @@ import "github.com/sean-brydon/berth/internal/events"
 
 // Event types the agent publishes. Box events are relayed with their own.
 const (
-	EventAgentStarted    = "agent.started"
+	EventAgentStarted    = "laptop.started"
 	EventBoxConnected    = "box.connected"
 	EventBoxDisconnected = "box.disconnected"
 	EventBoxUntrusted    = "box.untrusted"
