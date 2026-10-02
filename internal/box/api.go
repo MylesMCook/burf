@@ -50,6 +50,8 @@ type Box struct {
 	Hooks *hooks.Runner
 	// Flows runs the box's and its repositories' automations.
 	Flows *Flows
+	// KitsDir holds installed kits' files, one folder per location and kit.
+	KitsDir string
 }
 
 func (b *Box) own(path string) {
@@ -83,6 +85,9 @@ func (b *Box) Mount(s *wire.Server) {
 	route("PUT /v1/flows", b.putFlows)
 	route("GET /v1/flows/runs", b.listFlowRuns)
 	route("POST /v1/flows/{id}/test", b.testFlow)
+	route("GET /v1/kits", b.listKits)
+	route("PUT /v1/locations/{name}/kit", b.putKit)
+	route("DELETE /v1/locations/{name}/kit", b.deleteKit)
 	route("GET /v1/locations/{name}/config", b.getConfig)
 	route("PUT /v1/locations/{name}/config", b.putConfig)
 	route("GET /v1/locations/{name}/worktrees/{worktree}/services", b.listWorktreeServices)
@@ -156,8 +161,10 @@ func (b *Box) publish(r *http.Request, typ string, data map[string]any) {
 	b.Events.Publish(events.Event{Type: typ, Box: b.Name, Origin: origin(r), Data: data})
 }
 
-func decode(r *http.Request, v any) error {
-	if err := json.NewDecoder(io.LimitReader(r.Body, 64<<10)).Decode(v); err != nil {
+func decode(r *http.Request, v any) error { return decodeLimit(r, v, 64<<10) }
+
+func decodeLimit(r *http.Request, v any, limit int64) error {
+	if err := json.NewDecoder(io.LimitReader(r.Body, limit)).Decode(v); err != nil {
 		return badRequest("invalid request body")
 	}
 	return nil

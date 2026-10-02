@@ -42,6 +42,7 @@ Boxes
   berth boxes [--json]                   List paired boxes and whether they are online
   berth ping <box>                       Check a box answers and still trusts you
   berth upgrade <box>                    Upgrade the box's daemon over berth (no SSH)
+  berth kit add|apply|list|save …        Set projects up the same way on every box; see berth kit help
   berth forget <box>                     Remove a box from this laptop
 
 Reaching services
@@ -141,6 +142,8 @@ func run(args []string) error {
 		return networkCommand(l, rest)
 	case "upgrade":
 		return upgrade(l, rest)
+	case "kit", "kits":
+		return kitCommand(l, rest)
 	case "networks":
 		return listNetworks(l, rest)
 	case "add":

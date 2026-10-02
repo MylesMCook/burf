@@ -236,6 +236,7 @@ func serve(b boxHome, args []string) error {
 		AgentStates:  agentStates,
 		Hooks:        hookRunner,
 		Flows:        box.FlowsAt(userDir, b.dir),
+		KitsDir:      filepath.Join(b.dir, "kits"),
 		Update: &box.SelfUpdate{
 			Executable:    exe,
 			Fingerprint:   id.Fingerprint().String(),

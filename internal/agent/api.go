@@ -20,6 +20,7 @@ var (
 // private to the user, so it is not reachable from browsers or other users.
 func (a *Agent) api(stop context.CancelFunc) http.Handler {
 	mux := http.NewServeMux()
+	a.kitRoutes(mux)
 	mux.HandleFunc("GET /v1/status", func(w http.ResponseWriter, r *http.Request) {
 		a.sync()
 		writeJSON(w, http.StatusOK, a.status())

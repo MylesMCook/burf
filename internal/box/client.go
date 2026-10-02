@@ -37,6 +37,11 @@ func NewClient(d Doer) *Client {
 	return &Client{Doer: d, Origin: os.Getenv("BERTH_ORIGIN")}
 }
 
+// Call makes a request to the box API and decodes its JSON answer into out.
+func (c *Client) Call(ctx context.Context, method, path string, in, out any) error {
+	return c.call(ctx, method, path, in, out)
+}
+
 func (c *Client) call(ctx context.Context, method, path string, in, out any) error {
 	var body io.Reader
 	if in != nil {

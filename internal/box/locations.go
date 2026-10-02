@@ -76,6 +76,8 @@ type savedLocation struct {
 	// Config is this box's own config for the location, laid over the
 	// repository's.
 	Config *RepoConfig `json:"config,omitempty"`
+	// Kit is a kit installed for the location, between the two.
+	Kit *InstalledKit `json:"kit,omitempty"`
 }
 
 func (l *Locations) Add(ctx context.Context, name, path string) (Location, error) {

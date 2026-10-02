@@ -65,6 +65,9 @@ func (c RepoConfig) validate() error {
 
 var envName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
+// Merge lays local over repo, as a box does with its own config.
+func Merge(repo, local RepoConfig) RepoConfig { return merge(repo, local) }
+
 // merge lays local over repo: scalars and env entries replace, services and
 // agents replace by name, and hooks add up.
 func merge(repo, local RepoConfig) RepoConfig {
@@ -115,6 +118,8 @@ type Config struct {
 	// Repo is the repository's .berth/config.json, read-only here.
 	Repo     *RepoConfig `json:"repo"`
 	RepoPath string      `json:"repo_path"`
+	// Kit is the kit installed for the location, if any.
+	Kit *InstalledKit `json:"kit,omitempty"`
 	// Local is this box's own config for the location.
 	Local     RepoConfig `json:"local"`
 	Effective RepoConfig `json:"effective"`
@@ -145,8 +150,18 @@ func (l *Locations) Config(ctx context.Context, name string) (Config, error) {
 	if saved.Archive != "" {
 		out.Local.Archive = saved.Archive
 	}
-	out.Effective = merge(repo, out.Local)
+	out.Kit = saved.Kit
+	out.Effective = layered(repo, saved.Kit, out.Local)
 	return out, nil
+}
+
+// layered is what a location runs with: the repository's config, then its
+// kit's, then this box's own.
+func layered(repo RepoConfig, kit *InstalledKit, local RepoConfig) RepoConfig {
+	if kit != nil {
+		repo = merge(repo, kit.Config)
+	}
+	return merge(repo, local)
 }
 
 func (l *Locations) saved(name string) (savedLocation, error) {
@@ -272,6 +287,9 @@ func (b *Box) WorktreeEnv(ctx context.Context, location string, wt Worktree) ([]
 		// Safe in database and container names: cal_fix_billing.
 		"BERTH_WORKTREE_SLUG": strings.Trim(nonIdent.ReplaceAllString(strings.ToLower(loc.Name+"_"+wt.Name), "_"), "_"),
 		"BERTH_BRANCH":        wt.Branch,
+	}
+	if cfg.Kit != nil {
+		vars["BERTH_KIT_DIR"] = cfg.Kit.Dir
 	}
 	if port, err := b.Locations.Ports.For(wt.Path); err != nil {
 		return nil, err

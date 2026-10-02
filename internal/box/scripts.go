@@ -20,7 +20,8 @@ type Scripts struct {
 	Setup   string `json:"setup,omitempty"`
 	Archive string `json:"archive,omitempty"`
 	// From says where the scripts came from: "berth" when set on the
-	// location, "repo" when read from the repository's .berth/config.json.
+	// location, "kit" from its kit, "repo" from the repository's
+	// .berth/config.json.
 	From string `json:"from,omitempty"`
 }
 
@@ -67,18 +68,22 @@ func ReadRepoConfig(repo string) (c RepoConfig, ok bool, err error) {
 // scriptsFor is the location's own scripts if set, otherwise the
 // repository's.
 func scriptsFor(saved savedLocation) Scripts {
-	if saved.Config != nil && (saved.Config.Setup != "" || saved.Config.Archive != "") {
-		rc, _, _ := ReadRepoConfig(saved.Path)
-		c := merge(rc, *saved.Config)
-		return Scripts{Setup: c.Setup, Archive: c.Archive, From: "berth"}
+	repo, _, _ := ReadRepoConfig(saved.Path)
+	local := RepoConfig{Setup: saved.Setup, Archive: saved.Archive}
+	if saved.Config != nil {
+		local = merge(local, *saved.Config)
 	}
-	if saved.Setup != "" || saved.Archive != "" {
-		return Scripts{Setup: saved.Setup, Archive: saved.Archive, From: "berth"}
+	c := layered(repo, saved.Kit, local)
+	from := ""
+	switch {
+	case local.Setup != "" || local.Archive != "":
+		from = "berth"
+	case saved.Kit != nil && (saved.Kit.Config.Setup != "" || saved.Kit.Config.Archive != ""):
+		from = "kit"
+	case repo.Setup != "" || repo.Archive != "":
+		from = "repo"
 	}
-	if c, ok, _ := ReadRepoConfig(saved.Path); ok && (c.Setup != "" || c.Archive != "") {
-		return Scripts{Setup: c.Setup, Archive: c.Archive, From: "repo"}
-	}
-	return Scripts{}
+	return Scripts{Setup: c.Setup, Archive: c.Archive, From: from}
 }
 
 // runScript runs a lifecycle script in the worktree through a login shell, so

@@ -145,6 +145,45 @@ func (c *Client) call(ctx context.Context, method, path string, in, out any) err
 	return json.NewDecoder(resp.Body).Decode(out)
 }
 
+// Stream sends a JSON request to path and hands each line of the NDJSON
+// reply to fn, for long requests that report as they go.
+func (c *Client) Stream(ctx context.Context, method, path string, in any, fn func(json.RawMessage)) error {
+	var body io.Reader
+	if in != nil {
+		b, err := json.Marshal(in)
+		if err != nil {
+			return err
+		}
+		body = bytes.NewReader(b)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, "http://agent"+path, body)
+	if err != nil {
+		return err
+	}
+	resp, err := c.http.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		var e struct {
+			Error string `json:"error"`
+		}
+		if json.NewDecoder(resp.Body).Decode(&e) == nil && e.Error != "" {
+			return errors.New(e.Error)
+		}
+		return fmt.Errorf("agent replied %s", resp.Status)
+	}
+	sc := bufio.NewScanner(resp.Body)
+	sc.Buffer(make([]byte, 64<<10), 4<<20)
+	for sc.Scan() {
+		if line := bytes.TrimSpace(sc.Bytes()); len(line) > 0 {
+			fn(append(json.RawMessage{}, line...))
+		}
+	}
+	return sc.Err()
+}
+
 // Dial returns a raw connection to addr through the agent's named network.
 func (c *Client) Dial(ctx context.Context, networkName, addr string) (net.Conn, error) {
 	conn, err := c.dialSocket(ctx)
