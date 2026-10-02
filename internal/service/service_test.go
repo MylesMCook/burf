@@ -85,12 +85,17 @@ func TestRenderEscapesValues(t *testing.T) {
 }
 
 func TestInstallIsIdempotentAndDetectsItself(t *testing.T) {
+	spec := spec
 	for _, os_ := range []string{"darwin", "linux"} {
 		_, calls := stub(t, os_)
+		spec.LogPath = filepath.Join(t.TempDir(), "not-yet", "berth.log")
 		if Installed(spec) {
 			t.Fatalf("%s: installed before install", os_)
 		}
 		path, err := Install(spec)
+		if _, statErr := os.Stat(filepath.Dir(spec.LogPath)); statErr != nil {
+			t.Fatalf("%s: the log's folder was not made before the first start: %v", os_, statErr)
+		}
 		if err != nil {
 			t.Fatalf("%s: %v", os_, err)
 		}

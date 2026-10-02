@@ -49,20 +49,27 @@ type Sessions struct {
 
 const tmuxSocket = "berth"
 
+// tmuxConfig is berth's own tmux server's. The status line is off because
+// the app draws its own chrome around every terminal.
 const tmuxConfig = `set -g remain-on-exit on
 set -g history-limit 50000
 set -g mouse on
 set -g default-terminal "tmux-256color"
+set -g status off
 `
 
 func NewSessions(dir string) (*Sessions, error) {
 	path := filepath.Join(dir, "tmux.conf")
+	s := &Sessions{Config: path}
 	if b, err := os.ReadFile(path); err != nil || string(b) != tmuxConfig {
 		if err := statefile.Write(path, []byte(tmuxConfig)); err != nil {
 			return nil, err
 		}
+		// A server still running from an older build reads the change now;
+		// without one, this fails and the next server reads the file.
+		s.tmux(context.Background(), "source-file", path)
 	}
-	return &Sessions{Config: path}, nil
+	return s, nil
 }
 
 func (s *Sessions) tmux(ctx context.Context, args ...string) ([]byte, error) {

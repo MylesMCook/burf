@@ -196,6 +196,13 @@ func Install(s Spec) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// systemd opens the log before starting the program, and fails the
+	// first start when its folder does not exist yet.
+	if s.LogPath != "" {
+		if err := os.MkdirAll(filepath.Dir(s.LogPath), 0o700); err != nil {
+			return "", err
+		}
+	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return "", err
 	}
