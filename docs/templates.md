@@ -12,30 +12,65 @@ Two kinds of template shape new work.
 
 ```json
 {
-  "setup": "pnpm install && cp ../cal/.env .env",
-  "archive": "docker compose down -v",
+  "setup": "pnpm install && createdb $BERTH_WORKTREE_SLUG",
+  "archive": "dropdb --if-exists $BERTH_WORKTREE_SLUG",
+  "ports": 2,
+  "env": {
+    "DATABASE_URL": "postgres://localhost/$BERTH_WORKTREE_SLUG",
+    "NEXT_PUBLIC_WEBAPP_URL": "http://localhost:$BERTH_PORT"
+  },
+  "services": [
+    { "name": "web", "run": "pnpm dev --port $BERTH_PORT", "autostart": true },
+    { "name": "worker", "run": "pnpm worker" }
+  ],
   "agents": [
-    { "id": "claude", "name": "Claude Code (Opus)", "command": "claude --model opus" },
-    { "id": "review", "name": "Codex review", "command": "codex --sandbox read-only" }
-  ]
+    { "id": "claude", "name": "Claude Code (Opus)", "command": "claude --model opus" }
+  ],
+  "hooks": [
+    { "on": "worktree.created", "run": "cp ../cal/.env .env" }
+  ],
+  "flows": []
 }
 ```
 
-- `setup` runs in a new worktree right after berth creates it, through a login
-  shell, logging to berthd's log directory. `worktree.setup.started`,
-  `.finished` and `.failed` report how it went.
-- `archive` runs before a worktree is removed; if it fails, the worktree stays.
-- Both get `BERTH_ROOT_PATH` (the repository), `BERTH_WORKTREE_PATH` and
-  `BERTH_WORKTREE_NAME`, and the same values under Orca's names
+Everything here applies to each worktree of the repository:
+
+- **Ports.** Every worktree has its own block of ports, stable for its life
+  and freed when it is removed: `$BERTH_PORT`, then `$BERTH_PORT_1`… up to
+  `ports` of them (at most 10). Any port in a worktree's block reaches it at
+  `http://<worktree>.<location>.<box>.localhost:1377/`, whatever process
+  listens on it, containers included.
+- **Environment.** Everything run in a worktree (setup and archive scripts,
+  terminals and agents, `exec`, hooks, services) gets `BERTH_BOX`,
+  `BERTH_LOCATION`, `BERTH_ROOT_PATH`, `BERTH_WORKTREE_PATH`,
+  `BERTH_WORKTREE_NAME`, `BERTH_WORKTREE_SLUG` (like `cal_fix_billing`, safe
+  for database names), `BERTH_BRANCH` and the ports, then `env` with those
+  expanded.
+- **Services** run in each worktree as managed processes that survive the
+  daemon restarting and come back if they crash, with their output in a log.
+  `autostart` ones start when the worktree is created, after setup; all of
+  them stop before the archive script runs. A service also gets `PORT`
+  unless `env` sets it. Start and stop them from the app's Run menu.
+- **Hooks** fire only for this repository's events, inside the worktree the
+  event is about, with its environment. `before:` gates here can refuse
+  actions in this repository.
+- **Flows** are this repository's automations; see
+  [automations.md](automations.md).
+- `setup` runs right after a worktree is created; `archive` before it is
+  removed, and the worktree stays if it fails. Both also get Orca's names
   (`ORCA_ROOT_PATH`, `ORCA_WORKTREE_PATH`, `ORCA_WORKSPACE_NAME`), so setup
   scripts written for Orca work unchanged.
 - `agents` adds ways to start agents in this repository, or replaces a
   built-in one with the same `id` (`claude`, `codex`, `opencode`, `gemini`,
-  `cursor`). `prompt_flag` names the flag that passes a first prompt, when it
-  is not simply the last argument.
+  `cursor`).
 
-Scripts set on the location win over the file:
-`berth location scripts devl/cal --setup '…'`, and `--clear` goes back to it.
+### This box only
+
+Some of it should not be committed: a database password, one box's paths.
+Each box keeps its own config for a location, laid over the file: scripts,
+ports and env entries replace the file's, services and agents replace by
+name, and hooks and flows add up. Edit it in the app's Project settings, or
+`PUT /v1/locations/{name}/config` on the box.
 
 ## Task templates
 
