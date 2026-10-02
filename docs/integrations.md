@@ -15,13 +15,16 @@ berthd integrations install claude    # on a box, where agents usually run
 berth integrations install all
 ```
 
-- **Claude Code**: installs the berth skill at `~/.claude/skills/berth/` and
-  `Stop` / `Notification` hooks in `~/.claude/settings.json`.
+- **Claude Code**: installs berth's skills in `~/.claude/skills/` and
+  `Stop` / `Notification` / `SessionStart` / `UserPromptSubmit` hooks in
+  `~/.claude/settings.json`.
 - **Cursor**: appends a `stop` hook to `~/.cursor/hooks.json`, after any hooks
   already there (Orca's are kept).
-- **Codex**: installs the skill at `~/.codex/skills/berth/` and prints the
-  `notify` line to add to `~/.codex/config.toml`, which berth does not edit
-  because it holds a single value you may already use.
+- **Codex**: installs berth's skills in `~/.agents/skills/`, where Codex
+  reads user skills (a copy an older berth left in `~/.codex/skills/` is
+  removed), and prints the `notify` line to add to `~/.codex/config.toml`,
+  which berth does not edit because it holds a single value you may already
+  use.
 
 Installs are idempotent, keep every existing setting, back up the previous
 file to `*.berth-backup`, and refuse to touch a file that is not valid JSON.
@@ -31,12 +34,46 @@ event (`agent.finished`, `agent.waiting`, `agent.started`). Only identifiers and
 the working directory are kept: prompts, messages, and transcripts never
 leave the tool. A hook never fails or blocks the tool that called it.
 
-### The skill
+### Skills
 
-The skill teaches agents to list boxes and locations, create worktrees, start
-sessions, read another session's screen, find a service's URL, and announce
-events, with `--json` output. It tells agents never to share a port publicly
-unless a person asked.
+berth ships four skills, embedded in the binary:
+
+| Skill | Teaches agents to |
+| --- | --- |
+| `berth` | find their way around: boxes, repos, worktrees, tasks, sessions, the worktree's `$BERTH_*` variables and ports, `.berth/config.json`, services |
+| `berth-orchestrate` | prompt, wait for, check, loop, hand off to and review with other agents, and never answer for the human |
+| `berth-preview` | run the dev server on the worktree's port and open it in the user's Berth app (`berthd preview`) |
+| `berth-hooks` | write hooks and gates at the right scope, with the event catalog |
+
+Install them for the box's user, or inside one repository for just that
+project, for Claude Code, Codex, or both:
+
+```sh
+berthd skills                                         # what is installed where
+berthd skills install                                 # all, for both agents, for this user
+berthd skills install berth-preview --agent claude --target project --location cal
+berthd skills install --target project --location cal --commit   # visible to git, to share
+berthd skills uninstall berth-hooks
+berth skills devl install                             # the same from a laptop
+```
+
+| Target | Claude Code | Codex |
+| --- | --- | --- |
+| user | `~/.claude/skills/<skill>/` | `~/.agents/skills/<skill>/` |
+| project | `<repo>/.claude/skills/<skill>/` | `<repo>/.agents/skills/<skill>/` |
+
+Project skills are listed in the repository's `.git/info/exclude` so they are
+not committed, unless installed with `--commit`. `berthd skills` reports each
+copy as installed, outdated (berth has a newer version: install again) or
+missing; the app shows the same in Settings → Agents and in a project's
+settings. Removing only deletes a folder whose `SKILL.md` is berth's skill of
+that name. The API is `GET /v1/skills[?location=L]`, `POST
+/v1/skills/install` and `POST /v1/skills/uninstall` with `{skills, agent,
+target, location, commit}`; changes announce `skills.installed` and
+`skills.removed`.
+
+The skills tell agents never to share a port publicly unless a person asked,
+and never to answer an agent's question on the user's behalf.
 
 ### Anything else
 

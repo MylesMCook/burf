@@ -12,7 +12,7 @@ import (
 
 const Usage = `Integrations
   %[1]s integrations install claude|cursor|codex|all
-                         Install the berth skill and agent hooks for a tool
+                         Install berth's skills and agent hooks for a tool
   %[1]s hook TOOL EVENT  What those hooks run: turns a tool's hook into a
                          berth event (agent.finished, agent.waiting)
 `
@@ -62,7 +62,7 @@ func Install(args []string, bin string, out io.Writer) error {
 	for _, tool := range tools {
 		switch tool {
 		case "claude":
-			skill, err := InstallSkill(filepath.Join(home, ".claude", "skills"))
+			skills, err := installAllSkills(home, "claude")
 			if err != nil {
 				return err
 			}
@@ -71,7 +71,7 @@ func Install(args []string, bin string, out io.Writer) error {
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(out, "Claude Code: skill at %s; hooks %s in %s\n", skill, verb(changed), settings)
+			fmt.Fprintf(out, "Claude Code: skills in %s; hooks %s in %s\n", skills, verb(changed), settings)
 		case "cursor":
 			hooks := filepath.Join(home, ".cursor", "hooks.json")
 			changed, err := InstallCursorHooks(hooks, bin)
@@ -80,11 +80,11 @@ func Install(args []string, bin string, out io.Writer) error {
 			}
 			fmt.Fprintf(out, "Cursor: stop hook %s in %s (existing hooks kept)\n", verb(changed), hooks)
 		case "codex":
-			skill, err := InstallSkill(filepath.Join(home, ".codex", "skills"))
+			skills, err := installAllSkills(home, "codex")
 			if err != nil {
 				return err
 			}
-			fmt.Fprintf(out, "Codex: skill at %s\n", skill)
+			fmt.Fprintf(out, "Codex: skills in %s\n", skills)
 			// config.toml has a single notify setting the user may already
 			// use, so berth suggests it rather than overwriting it.
 			fmt.Fprintf(out, "  To announce finished turns, add to ~/.codex/config.toml:\n    notify = [%q, \"hook\", \"codex\", \"notify\"]\n", bin)
@@ -93,6 +93,16 @@ func Install(args []string, bin string, out io.Writer) error {
 		}
 	}
 	return nil
+}
+
+// installAllSkills installs every skill berth ships for agent in home and
+// returns the folder they went to.
+func installAllSkills(home, agent string) (string, error) {
+	names, _ := SkillNames(nil)
+	if _, err := InstallSkills(home, agent, names); err != nil {
+		return "", err
+	}
+	return SkillDir(home, agent)
 }
 
 func verb(changed bool) string {

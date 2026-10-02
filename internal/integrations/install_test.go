@@ -96,17 +96,6 @@ func TestInstallCreatesMissingFilesAndRefusesBrokenOnes(t *testing.T) {
 	}
 }
 
-func TestSkillInstalls(t *testing.T) {
-	path, err := InstallSkill(t.TempDir())
-	if err != nil {
-		t.Fatal(err)
-	}
-	b, _ := os.ReadFile(path)
-	if !strings.HasPrefix(string(b), "---\nname: berth\n") {
-		t.Fatalf("skill file starts with %q", string(b)[:30])
-	}
-}
-
 func TestQuotedBinaryPaths(t *testing.T) {
 	if got := hookCommand("/Users/alex/Application Support/berth", "cursor", "stop"); got != "'/Users/alex/Application Support/berth' hook cursor stop" {
 		t.Fatalf("hookCommand = %q", got)

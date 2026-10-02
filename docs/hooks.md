@@ -62,6 +62,8 @@ which stops two integrations from bouncing events back and forth.
 | `share.started`, `share.stopped` | box | `id`, `port`, `url` |
 | `unit.started`, `unit.stopped`, `unit.restarted` | box | `name` |
 | `box.upgraded` | box | `build` |
+| `preview.open` | box | `location`, `name`, `path`, `port`, `url_path`: an agent asks the app to show a page (`berthd preview`) |
+| `skills.installed`, `skills.removed` | box | `skills`, `agents`, `target`, `location`, `paths` |
 
 Box events reach the laptop too: the laptop agent relays every online box's
 events, with `box` set, so a laptop hook on `agent.waiting` hears about every
@@ -83,6 +85,7 @@ Anything can announce its own events: `berth emit deploy.finished url=…`.
 | `before:task.create` | `location`, `name`, `branch`, `base`, `agent`, `command` |
 | `before:session.start` | `name`, `location`, `path`, `command` |
 | `before:session.stop` | `name` |
+| `before:skills.install`, `before:skills.uninstall` | `skills`, `agents`, `target`, `location` |
 
 A task runs `before:task.create`, then the worktree's and the session's own
 gates.

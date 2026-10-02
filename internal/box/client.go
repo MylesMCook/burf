@@ -246,6 +246,54 @@ func (c *Client) Upgrade(ctx context.Context, binary []byte) error {
 	return nil
 }
 
+func (c *Client) Skills(ctx context.Context, location string) (out SkillsReport, err error) {
+	path := "/v1/skills"
+	if location != "" {
+		path += "?location=" + url.QueryEscape(location)
+	}
+	return out, c.call(ctx, http.MethodGet, path, nil, &out)
+}
+
+// ChangeSkills installs (or, with install false, removes) skills.
+func (c *Client) ChangeSkills(ctx context.Context, req SkillsRequest, install bool) (out SkillsReport, err error) {
+	path := "/v1/skills/install"
+	if !install {
+		path = "/v1/skills/uninstall"
+	}
+	return out, c.call(ctx, http.MethodPost, path, req, &out)
+}
+
+func (c *Client) LocationConfig(ctx context.Context, location string) (out Config, err error) {
+	return out, c.call(ctx, http.MethodGet, "/v1/locations/"+url.PathEscape(location)+"/config", nil, &out)
+}
+
+func (c *Client) WorktreeServices(ctx context.Context, location, worktree string) (out []ServiceStatus, err error) {
+	return out, c.call(ctx, http.MethodGet, "/v1/locations/"+url.PathEscape(location)+"/worktrees/"+url.PathEscape(worktree)+"/services", nil, &out)
+}
+
+// ServiceAction starts, stops or restarts one of a worktree's services.
+func (c *Client) ServiceAction(ctx context.Context, location, worktree, service, action string) (out ServiceStatus, err error) {
+	return out, c.call(ctx, http.MethodPost, "/v1/locations/"+url.PathEscape(location)+"/worktrees/"+url.PathEscape(worktree)+"/services/"+url.PathEscape(service)+"/"+url.PathEscape(action), nil, &out)
+}
+
+func (c *Client) ServiceLog(ctx context.Context, location, worktree, service string) ([]byte, error) {
+	resp, err := c.Doer.DoWithHeader(ctx, http.MethodGet, "/v1/locations/"+url.PathEscape(location)+"/worktrees/"+url.PathEscape(worktree)+"/services/"+url.PathEscape(service)+"/log", nil, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		var e struct {
+			Error string `json:"error"`
+		}
+		if json.NewDecoder(io.LimitReader(resp.Body, 64<<10)).Decode(&e) == nil && e.Error != "" {
+			return nil, errors.New(e.Error)
+		}
+		return nil, fmt.Errorf("box replied %s", resp.Status)
+	}
+	return io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+}
+
 func (c *Client) Emit(ctx context.Context, typ string, data map[string]any) error {
 	return c.call(ctx, http.MethodPost, "/v1/events", map[string]any{"type": typ, "data": data}, nil)
 }

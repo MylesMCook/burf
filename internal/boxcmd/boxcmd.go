@@ -34,7 +34,11 @@ func Usage(cmd, prefix string) string {
   %[1]s location rm %[2]sNAME                           Forget a location (files are untouched)
   %[1]s location scripts %[2]sNAME [--setup CMD] [--archive CMD] [--clear]
                                                   Worktree setup/archive scripts (default: the repo's .berth/config.json)
+  %[1]s location config %[2]sNAME [--json]             The repo's, the box's and the effective config
   %[1]s services%[3]s [--json]                          Which worktree each running server belongs to
+  %[1]s service list|start|stop|restart|log %[2]sLOC/WORKTREE [SERVICE]
+                                                  A worktree's services from the repo's config
+  %[1]s preview %[2]s[LOC/WORKTREE] [PORT] [--path /x]  Open a worktree's page in the Berth app
   %[1]s worktree new %[2]sLOC/NAME [--branch B] [--base REF]
                                                   Create a git worktree and run its setup
   %[1]s worktree rm %[2]sLOC/NAME [--force]             Remove a worktree
@@ -61,6 +65,11 @@ Ports and sharing
   %[1]s shares%[3]s [--json]                            List public shares
   %[1]s unshare%[3]s ID                                 Stop a share
 
+Skills for agents
+  %[1]s skills%[3]s [list|install|uninstall] [SKILL...] [--agent claude|codex|all]
+         [--target user|project] [--location LOC] [--commit]
+                                                  Teach Claude Code and Codex to use berth
+
 Events
   %[1]s emit%[3]s TYPE [key=value...] [--origin TOOL]   Announce an event, e.g. agent.finished
   %[1]s events%[3]s [--json]                            Stream the box's events
@@ -75,6 +84,7 @@ var Commands = map[string]int{
 	"services": 1, "info": 1, "stats": 1,
 	"ports": 1, "share": 1, "shares": 1, "unshare": 1,
 	"emit": 1, "events": 1,
+	"skills": 1, "preview": 1, "service": 2,
 	"units": 1, "unit": 2,
 }
 
@@ -109,6 +119,14 @@ func Run(ctx context.Context, c *box.Client, args []string, out io.Writer) error
 			}
 			fmt.Fprintf(out, "Added location %s → %s (%s)\n", loc.Name, loc.Path, kind)
 		})
+	case "location config":
+		return locationConfig(ctx, c, rest, out)
+	case "service list", "service start", "service stop", "service restart", "service log":
+		return service(ctx, c, strings.TrimPrefix(cmd, "service "), rest, out)
+	case "skills":
+		return skills(ctx, c, rest, out)
+	case "preview":
+		return preview(ctx, c, rest, out)
 	case "location scripts":
 		fs, asJSON := flags(rest)
 		setup := fs.String("setup", "", "command to run after a worktree is created")

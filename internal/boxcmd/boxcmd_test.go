@@ -126,3 +126,24 @@ func TestUnitAddSendsTheCommandAfterDoubleDash(t *testing.T) {
 		t.Fatalf("args = %v; want [serve]", rec.body["args"])
 	}
 }
+
+func TestPreviewAnnouncesTheWorktreesPage(t *testing.T) {
+	locs := `[{"name":"cal","path":"/w/cal","repo":true,"worktrees":[{"name":"cal","path":"/w/cal","main":true,"port":41000},{"name":"billing","path":"/w/cal-billing","port":41010}]}]`
+	r, out := run(t, locs, "preview", "cal/billing", "--path", "settings")
+	if r.path != "/v1/events" || r.body["type"] != "preview.open" {
+		t.Fatalf("request %s %v", r.path, r.body)
+	}
+	data, _ := r.body["data"].(map[string]any)
+	if data["path"] != "/w/cal-billing" || data["port"] != float64(41010) || data["url_path"] != "/settings" || data["location"] != "cal" {
+		t.Fatalf("data = %v", data)
+	}
+	if !strings.Contains(out, "41010/settings") {
+		t.Fatalf("out = %q", out)
+	}
+	// A port given explicitly wins; a bare location means its main checkout.
+	r, _ = run(t, locs, "preview", "cal", "5173")
+	data, _ = r.body["data"].(map[string]any)
+	if data["port"] != float64(5173) || data["path"] != "/w/cal" {
+		t.Fatalf("data = %v", data)
+	}
+}

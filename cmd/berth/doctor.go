@@ -121,7 +121,7 @@ func laptopChecks(l laptop) []doctor.Check {
 	return append(checks,
 		integration("Claude Code", ".claude/settings.json", "hook claude Stop", "berth integrations install claude"),
 		integration("Cursor", ".cursor/hooks.json", "hook cursor stop", "berth integrations install cursor"),
-		integration("Codex", ".codex/skills/berth/SKILL.md", "name: berth", "berth integrations install codex"),
+		integration("Codex", ".agents/skills/berth/SKILL.md", "name: berth", "berth integrations install codex"),
 	)
 }
 

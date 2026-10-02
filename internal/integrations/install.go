@@ -1,7 +1,6 @@
 package integrations
 
 import (
-	_ "embed"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -10,19 +9,6 @@ import (
 
 	"github.com/sean-brydon/berth/internal/statefile"
 )
-
-//go:embed SKILL.md
-var Skill []byte
-
-// InstallSkill writes the berth skill where an agent tool discovers skills,
-// e.g. ~/.claude/skills/berth/SKILL.md.
-func InstallSkill(skillsDir string) (string, error) {
-	path := filepath.Join(skillsDir, "berth", "SKILL.md")
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return "", err
-	}
-	return path, os.WriteFile(path, Skill, 0o644)
-}
 
 // InstallClaudeHooks adds berth's hooks to a Claude Code settings file,
 // keeping every existing setting and hook. It reports whether it changed
