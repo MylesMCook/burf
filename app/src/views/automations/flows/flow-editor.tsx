@@ -10,9 +10,11 @@ import { Switch } from "@/components/ui/switch";
 import { sortedWorktrees } from "@/lib/derive";
 import { type Flow, type FlowRun, flowsApi, type GitHubOn, type Scope, type Step, type StepKind, scopeLocation, slug, type TriggerKind, triggerKind, triggerType } from "@/lib/flows";
 import { errorMessage } from "@/lib/format";
+import { useProjects } from "@/lib/project-groups";
 import { NONE, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { blankStep, describeCron, GITHUB_ONS, KIND_ORDER, SCHEDULE_PRESETS, STEP_KINDS, summary, TRIGGERS, variablesAt } from "@/views/automations/flows/model";
+import { EVERY_BOX, placesOf, scopeProject } from "@/views/automations/flows/everywhere";
 import { ProjectLabel, savedWhere } from "@/views/automations/flows/project-label";
 import { StepCard } from "@/views/automations/flows/step-card";
 
@@ -50,8 +52,10 @@ export function FlowEditor({
   const [run, setRun] = useState<FlowRun>();
   const readOnly = target.readOnly;
   const isNew = !target.savedId;
-  const data = useStore((s) => s.boxes[where.box]);
-  const agents = data?.info?.agents ?? NONE;
+  const { projects } = useProjects();
+  // A flow for every box is tested on, and offers the agents of, the first.
+  const first = placesOf(where.box, where.scope, projects)[0] ?? where;
+  const agents = useStore((s) => s.boxes[first.box]?.info?.agents) ?? NONE;
   const dirty = JSON.stringify(flow) !== JSON.stringify(target.flow) || where.scope !== target.scope || where.box !== target.box;
 
   const setStep = (i: number, s: Step) => setFlow((f) => ({ ...f, steps: f.steps.map((x, j) => (j === i ? s : x)) }));
@@ -69,7 +73,7 @@ export function FlowEditor({
     try {
       const id = flow.id || slug(flow.name);
       // A flow kept in a project already runs only there.
-      const trigger = scopeLocation(where.scope) && flow.trigger.where?.location ? { ...flow.trigger, where: { ...flow.trigger.where, location: undefined } } : flow.trigger;
+      const trigger = (scopeLocation(where.scope) || scopeProject(where.scope)) && flow.trigger.where?.location ? { ...flow.trigger, where: { ...flow.trigger.where, location: undefined } } : flow.trigger;
       await onSave(where.box, where.scope, { ...flow, trigger, id, name: flow.name.trim() || id }, target.savedId);
       onClose();
     } catch (err) {
@@ -100,7 +104,7 @@ export function FlowEditor({
           <Switch checked={flow.enabled} disabled={readOnly} onCheckedChange={(enabled) => setFlow({ ...flow, enabled })} />
           {flow.enabled ? "On" : "Off"}
         </label>
-        {!isNew && <TestRun box={where.box} scope={where.scope} flow={flow} dirty={dirty} onRun={setRun} />}
+        {!isNew && <TestRun box={first.box} scope={first.scope} flow={flow} dirty={dirty} onRun={setRun} />}
         {!readOnly && onDelete && (
           <Button size="icon-sm" variant="ghost" aria-label="Delete flow" onClick={() => void onDelete().then(onClose, (e) => setError(errorMessage(e)))}>
             <Trash2Icon />
@@ -203,7 +207,9 @@ function TriggerCard({
   setWhere(w: { box: string; scope: Scope }): void;
   scopes: { box: string; scope: Scope }[];
 }) {
-  const agents = useStore((s) => s.boxes[where.box]?.info?.agents) ?? NONE;
+  const { projects } = useProjects();
+  const places = placesOf(where.box, where.scope, projects);
+  const agents = useStore((s) => s.boxes[places[0]?.box ?? where.box]?.info?.agents) ?? NONE;
   const w = flow.trigger.where ?? {};
   const setW = (patch: Partial<typeof w>) => {
     const next = { ...w, ...patch };
@@ -232,7 +238,7 @@ function TriggerCard({
         <div className="col-span-2">
           <span className="mb-1 block font-medium text-muted-foreground text-xs">Runs for</span>
           <RunsFor value={where} options={scopes} disabled={readOnly} onChange={setWhere} />
-          <p className="mt-1.5 text-muted-foreground text-xs">{savedWhere(where.box, where.scope, readOnly)}</p>
+          <p className="mt-1.5 text-muted-foreground text-xs">{savedWhere(where.box, where.scope, readOnly, places)}</p>
           {where.scope === "box" && w.location && (
             <p className="mt-1 flex items-center gap-1.5 text-muted-foreground text-xs">
               Only events from {w.location}.
@@ -356,14 +362,16 @@ function RunsFor({ value, options, disabled, onChange }: { value: { box: string;
           <MenuGroup key={box}>
             {i > 0 && <MenuSeparator />}
             <MenuGroupLabel className="flex items-center gap-1.5">
-              <ServerIcon className="size-3" />
-              {box}
+              {box === EVERY_BOX ? <LayersIcon className="size-3" /> : <ServerIcon className="size-3" />}
+              {box === EVERY_BOX ? "On every box with it" : box}
             </MenuGroupLabel>
             {options
               .filter((o) => o.box === box)
               .map((o) => (
                 <MenuItem key={o.scope} onClick={() => onChange(o)} className={cn(o.box === value.box && o.scope === value.scope && "bg-accent")}>
-                  {o.scope === "box" ? (
+                  {o.box === EVERY_BOX ? (
+                    <ProjectLabel box={EVERY_BOX} scope={o.scope} />
+                  ) : o.scope === "box" ? (
                     <span className="flex items-center gap-1.5">
                       <LayersIcon className="size-3.5 text-muted-foreground" />
                       Any project on {box}
