@@ -80,11 +80,13 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
     .sort((a, b) => (b.state_since ?? b.created).localeCompare(a.state_since ?? a.created));
   const shown = all ? closed : closed.slice(0, 5);
 
-  // Take the keyboard on arrival, unless a dialog or field already has it.
+  // Take the keyboard on arrival, unless a dialog or a field has it. The
+  // sidebar row that opened the worktree gives it up.
   useEffect(() => {
     const t = window.setTimeout(() => {
-      const a = document.activeElement;
-      if (document.querySelector("[role=dialog], [role=alertdialog], [role=menu]") || (a && a !== document.body && !list.current?.contains(a))) return;
+      const a = document.activeElement as HTMLElement | null;
+      const typing = !!a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
+      if (document.querySelector("[role=dialog], [role=alertdialog], [role=menu]") || typing) return;
       list.current?.querySelector<HTMLElement>("[data-row]")?.focus();
     }, 50);
     return () => window.clearTimeout(t);
