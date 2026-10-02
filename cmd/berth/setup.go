@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sean-brydon/calport/internal/agent"
-	"github.com/sean-brydon/calport/internal/pfredirect"
+	"github.com/sean-brydon/berth/internal/agent"
+	"github.com/sean-brydon/berth/internal/pfredirect"
 )
 
 // serviceURLFor is the private URL of a service; the port is left out once
@@ -22,11 +22,11 @@ func serviceURLFor(service, box string, urlPort int) string {
 	return fmt.Sprintf("http://%s.%s.localhost:%s/", service, box, strconv.Itoa(urlPort))
 }
 
-// setup handles `calport setup port80 [--remove]`. The work needs root, so a
+// setup handles `berth setup port80 [--remove]`. The work needs root, so a
 // normal run asks macOS for an administrator password and reruns itself.
 func setup(args []string) error {
 	if len(args) == 0 || args[0] != "port80" {
-		return errors.New("usage: calport setup port80 [--remove]")
+		return errors.New("usage: berth setup port80 [--remove]")
 	}
 	if runtime.GOOS != "darwin" {
 		return errors.New("the port 80 redirect is macOS only; on Linux, grant the agent CAP_NET_BIND_SERVICE instead")
@@ -41,7 +41,7 @@ func setup(args []string) error {
 		if remove {
 			command += " --remove"
 		}
-		prompt := "Calport wants to redirect localhost port 80 so your box URLs need no port."
+		prompt := "Berth wants to redirect localhost port 80 so your box URLs need no port."
 		script := fmt.Sprintf("do shell script %q with prompt %q with administrator privileges", command, prompt)
 		out, err := exec.Command("osascript", "-e", script).CombinedOutput()
 		text := strings.TrimSpace(string(out))
@@ -62,7 +62,7 @@ func setup(args []string) error {
 		if err := pfredirect.Remove(); err != nil {
 			return err
 		}
-		fmt.Println("Removed the port 80 redirect; URLs use port 1355 again.")
+		fmt.Println("Removed the port 80 redirect; URLs use port 1377 again.")
 		return nil
 	}
 	ipv4, err := pfredirect.Install(agent.DefaultProxyPort)

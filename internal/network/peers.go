@@ -22,7 +22,7 @@ type Peer struct {
 	Online  bool   `json:"online"`
 }
 
-// boxOS reports whether calportd can run on a peer with this OS.
+// boxOS reports whether berthd can run on a peer with this OS.
 func boxOS(os string) bool { return os == "linux" || os == "macOS" }
 
 // peersFrom lists the peers of st that could be boxes, online ones first.

@@ -1,10 +1,8 @@
-// Package box is what calportd offers paired laptops beyond raw port streams:
+// Package box is what berthd offers paired laptops beyond raw port streams:
 // locations and worktrees, listening ports, agent sessions, and shares.
 package box
 
 import (
-	"github.com/sean-brydon/calport/internal/kit"
-
 	"bufio"
 	"bytes"
 	"context"
@@ -18,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/calport/internal/statefile"
-	"github.com/sean-brydon/calport/internal/trust"
+	"github.com/sean-brydon/berth/internal/statefile"
+	"github.com/sean-brydon/berth/internal/trust"
 )
 
 // Location is a named place on a box where work happens: a repository or any
@@ -28,11 +26,9 @@ type Location struct {
 	Name string `json:"name"`
 	Path string `json:"path"`
 	// Repo is true when Path is the root of a git repository.
-	Repo bool `json:"repo"`
-	// Cal is true for a Cal.com checkout, which the Cal.com kit can serve.
-	Cal       bool       `json:"cal,omitempty"`
+	Repo      bool       `json:"repo"`
 	Worktrees []Worktree `json:"worktrees,omitempty"`
-	// Scripts run when calport creates or removes worktrees here.
+	// Scripts run when berth creates or removes worktrees here.
 	Scripts Scripts `json:"scripts"`
 }
 
@@ -96,7 +92,7 @@ func (l *Locations) Add(ctx context.Context, name, path string) (Location, error
 }
 
 // SetScripts sets or, with empty values, clears a location's own lifecycle
-// scripts; cleared, it falls back to Orca's for the repository.
+// scripts.
 func (l *Locations) SetScripts(name, setup, archive string) error {
 	return l.update(func(all []savedLocation) ([]savedLocation, error) {
 		for i := range all {
@@ -209,18 +205,6 @@ func (l *Locations) RemoveWorktree(ctx context.Context, location, name string, f
 		if w.Main {
 			return errors.New("refusing to remove the repository's main checkout")
 		}
-		// Orca keeps its own records of the worktrees it made; removing one
-		// behind its back would leave them stale.
-		if orcaManaged(w.Path) {
-			// --run-hooks runs Orca's archive script, as removing it in the
-			// Orca app does; without it the worktree's services are left behind.
-			args := []string{"worktree", "rm", "--worktree", "path:" + w.Path, "--run-hooks", "--json"}
-			if force {
-				args = append(args, "--force")
-			}
-			_, err := runTool(ctx, nil, "orca", args...)
-			return err
-		}
 		args := []string{"-C", loc.Path, "worktree", "remove", w.Path}
 		if force {
 			args = append(args, "--force")
@@ -240,7 +224,6 @@ func describe(ctx context.Context, s savedLocation) Location {
 		return loc
 	}
 	loc.Repo = true
-	loc.Cal = kit.LooksLikeCal(s.Path)
 	loc.Worktrees = parseWorktrees(out, s.Path)
 	return loc
 }
@@ -340,12 +323,3 @@ func (l *Locations) update(change func([]savedLocation) ([]savedLocation, error)
 	}
 	return statefile.WriteWithBackup(l.path, append(b, '\n'))
 }
-
-func orcaManaged(path string) bool {
-	home, err := os.UserHomeDir()
-	return err == nil && strings.HasPrefix(path, filepath.Join(home, "orca", "workspaces")+string(filepath.Separator))
-}
-
-// OrcaManaged reports whether Orca made the worktree at path and so runs its
-// lifecycle scripts itself.
-func OrcaManaged(path string) bool { return orcaManaged(path) }

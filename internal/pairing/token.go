@@ -12,15 +12,15 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sean-brydon/calport/internal/identity"
+	"github.com/sean-brydon/berth/internal/identity"
 )
 
 const (
-	Scheme = "calport"
+	Scheme = "berth"
 	// ExporterLabel derives the TLS keying material a proof is bound to.
-	ExporterLabel = "EXPORTER-calport-pair-v1"
+	ExporterLabel = "EXPORTER-berth-pair-v1"
 	ExporterSize  = 32
-	proofContext  = "calport pair v1"
+	proofContext  = "berth pair v1"
 )
 
 // Code is a single-use pairing secret. It is never sent over the wire; the
@@ -49,7 +49,7 @@ type Token struct {
 	Code        Code
 }
 
-var errMalformed = errors.New("malformed pairing link; copy it again from `calportd pair`")
+var errMalformed = errors.New("malformed pairing link; copy it again from `berthd pair`")
 
 func (t Token) String() string {
 	q := url.Values{}

@@ -28,10 +28,10 @@ func TestParsePorts(t *testing.T) {
 
 func TestFlagsMayFollowPositionalArguments(t *testing.T) {
 	var name *string
-	fs, asJSON, err := flags("pair", []string{"calport://x", "--name", "devl", "--json"}, func(fs *flag.FlagSet) {
+	fs, asJSON, err := flags("pair", []string{"berth://x", "--name", "devl", "--json"}, func(fs *flag.FlagSet) {
 		name = fs.String("name", "", "")
 	})
-	if err != nil || !asJSON || *name != "devl" || fs.NArg() != 1 || fs.Arg(0) != "calport://x" {
+	if err != nil || !asJSON || *name != "devl" || fs.NArg() != 1 || fs.Arg(0) != "berth://x" {
 		t.Fatalf("flags = json %v name %q args %v err %v", asJSON, *name, fs.Args(), err)
 	}
 	if _, _, err := flags("x", []string{"a", "--bogus"}, nil); err == nil {

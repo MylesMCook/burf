@@ -1,23 +1,23 @@
 ---
-name: calport
-description: Use calport to work across development boxes — list and create worktrees at registered locations, start and read other agent sessions, find a service's private URL, forward ports, and announce events. Use when asked to spin up a worktree or agent on a box, check what another agent is doing, open a dev server running on a box, or hand work between machines.
+name: berth
+description: Use berth to work across development boxes — list and create worktrees at registered locations, start and read other agent sessions, find a service's private URL, forward ports, and announce events. Use when asked to spin up a worktree or agent on a box, check what another agent is doing, open a dev server running on a box, or hand work between machines.
 ---
 
-# calport
+# berth
 
-calport connects a laptop to development boxes. Each box runs `calportd`; each
-laptop runs `calport`. The same commands exist in both, with one difference:
+berth connects a laptop to development boxes. Each box runs `berthd`; each
+laptop runs `berth`. The same commands exist in both, with one difference:
 
-- **On a laptop**, name the box first: `calport worktree new devl/cal/fix-login`.
-- **On a box**, the box is implied: `calportd worktree new cal/fix-login`.
+- **On a laptop**, name the box first: `berth worktree new devl/cal/fix-login`.
+- **On a box**, the box is implied: `berthd worktree new cal/fix-login`.
 
-Check which you have with `command -v calport calportd`. Add `--json` to any
+Check which you have with `command -v berth berthd`. Add `--json` to any
 listing command for machine-readable output; prefer it when you will parse the
 result.
 
 ## Concepts
 
-- **Box**: a paired machine, e.g. `devl`. `calport boxes` lists them.
+- **Box**: a paired machine, e.g. `devl`. `berth boxes` lists them.
 - **Location**: a named directory on a box, usually a git repository, e.g.
   `cal` → `~/work/cal`. Its worktrees are addressed as `cal/<worktree>`.
 - **Session**: a long-running program (usually a coding agent) started at a
@@ -26,17 +26,17 @@ result.
 ## Find your way around
 
 ```sh
-calport boxes --json                 # which boxes are online
-calport locations devl --json        # locations and their worktrees
-calport sessions devl --json         # running agent sessions
-calport ports devl --json            # what is listening on the box
+berth boxes --json                 # which boxes are online
+berth locations devl --json        # locations and their worktrees
+berth sessions devl --json         # running agent sessions
+berth ports devl --json            # what is listening on the box
 ```
 
 ## Create a worktree and start an agent in it
 
 ```sh
-calport worktree new devl/cal/fix-login --base main
-calport session new devl/cal/fix-login --name fix-login -- claude
+berth worktree new devl/cal/fix-login --base main
+berth session new devl/cal/fix-login --name fix-login -- claude
 ```
 
 `--provider orca` or `--provider herdr` creates the worktree through that tool
@@ -46,10 +46,10 @@ instead of plain git, so it also appears there. With Orca, `--agent claude
 ## See what another agent is doing
 
 ```sh
-calport session screen devl/fix-login --history 200
+berth session screen devl/fix-login --history 200
 ```
 
-This prints the session's terminal. Do not attach (`calport attach`) from an
+This prints the session's terminal. Do not attach (`berth attach`) from an
 agent: it is interactive and meant for humans.
 
 ## Reach a dev server
@@ -57,23 +57,23 @@ agent: it is interactive and meant for humans.
 Every port on a box has a private URL on the laptop:
 
 ```sh
-calport url devl 3000        # → http://3000.devl.localhost:1355/
+berth url devl 3000        # → http://3000.devl.localhost:1377/
 ```
 
-For a fixed local port instead: `calport forward devl 3000`.
+For a fixed local port instead: `berth forward devl 3000`.
 
 ## Share publicly — only when a human asks
 
-`calport share devl 3000` makes a port reachable **by anyone on the
-internet** until `calport unshare devl <id>`. Never share on your own
+`berth share devl 3000` makes a port reachable **by anyone on the
+internet** until `berth unshare devl <id>`. Never share on your own
 initiative, and never share anything with real data. Confirm with the user
 first and tell them the URL and how to stop it.
 
 ## Announce what you did
 
 ```sh
-calport emit agent.finished path="$PWD" --origin=claude     # on a laptop
-calportd emit agent.finished path="$PWD" --origin claude    # on a box
+berth emit agent.finished path="$PWD" --origin=claude     # on a laptop
+berthd emit agent.finished path="$PWD" --origin claude    # on a box
 ```
 
 Hooks configured by the user react to these events (notifications, starting
@@ -82,6 +82,6 @@ paths in events, never prompts, secrets, or personal data.
 
 ## When something fails
 
-- `no paired box named X`: run `calport boxes`; the name may differ.
+- `no paired box named X`: run `berth boxes`; the name may differ.
 - `box no longer trusts this laptop`: the box revoked access; a human must pair again.
-- `calportd serve is not running`: on a box, `calportd install` starts it.
+- `berthd serve is not running`: on a box, `berthd install` starts it.

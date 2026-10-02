@@ -10,13 +10,13 @@ import (
 	"regexp"
 	"sort"
 
-	"github.com/sean-brydon/calport/internal/doctor"
-	"github.com/sean-brydon/calport/internal/service"
+	"github.com/sean-brydon/berth/internal/doctor"
+	"github.com/sean-brydon/berth/internal/service"
 )
 
-// Unit is a long-lived program calportd runs on the box under the platform's
+// Unit is a long-lived program berthd runs on the box under the platform's
 // service manager, so it survives reboots and restarts on failure. Its output
-// goes to a file calportd owns rather than the journal, because a program's
+// goes to a file berthd owns rather than the journal, because a program's
 // output can contain credentials.
 type Unit struct {
 	Name    string `json:"name"`
@@ -54,7 +54,7 @@ type serviceOps struct {
 	running func(service.Spec) bool
 }
 
-// Units installs and reports calportd's managed units. Dir holds one log per
+// Units installs and reports berthd's managed units. Dir holds one log per
 // unit, named after it.
 type Units struct {
 	Dir string
@@ -96,7 +96,7 @@ func (u *Units) spec(req UnitRequest) (service.Spec, error) {
 	}
 	return service.Spec{
 		Name:        req.Name,
-		Description: "calport managed unit " + req.Name,
+		Description: "berth managed unit " + req.Name,
 		Program:     program,
 		Args:        req.Args,
 		Env:         req.Env,

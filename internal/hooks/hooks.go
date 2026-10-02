@@ -1,10 +1,10 @@
-// Package hooks runs user commands when calport events happen, which is how
-// calport drives other tools (Orca, Herdr, Cursor, notifications).
+// Package hooks runs user commands when berth events happen, which is how
+// berth drives other tools (Orca, Herdr, Cursor, notifications).
 //
-// Loops are the risk when integrations run in both directions: calport creates
-// a worktree, a hook tells Orca, Orca tells calport, and so on. A hook names
+// Loops are the risk when integrations run in both directions: berth creates
+// a worktree, a hook tells Orca, Orca tells berth, and so on. A hook names
 // the tool it drives; events that came from that tool never trigger it, and
-// everything the hook does in calport is stamped with that tool as its origin.
+// everything the hook does in berth is stamped with that tool as its origin.
 package hooks
 
 import (
@@ -18,14 +18,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/calport/internal/events"
+	"github.com/sean-brydon/berth/internal/events"
 )
 
 type Hook struct {
 	// On is an event type, a prefix pattern such as "worktree.*", or "*".
 	On string `json:"on"`
 	// Run is a shell command. It gets the event as JSON on stdin and as
-	// CALPORT_* environment variables.
+	// BERTH_* environment variables.
 	Run string `json:"run"`
 	// Tool is the tool this hook drives. Events from it are skipped.
 	Tool    string `json:"tool,omitempty"`
@@ -36,9 +36,9 @@ type Config struct {
 	Hooks []Hook `json:"hooks"`
 }
 
-// OriginEnv carries the origin into commands hooks run, so calport requests
-// they make are attributed to the tool rather than to calport itself.
-const OriginEnv = "CALPORT_ORIGIN"
+// OriginEnv carries the origin into commands hooks run, so berth requests
+// they make are attributed to the tool rather than to berth itself.
+const OriginEnv = "BERTH_ORIGIN"
 
 // Matches reports whether h should run for e.
 func Matches(h Hook, e events.Event) bool {
@@ -64,9 +64,9 @@ func Env(e events.Event, tool string) []string {
 		origin = "hook"
 	}
 	env := []string{
-		"CALPORT_EVENT=" + e.Type,
-		"CALPORT_EVENT_BOX=" + e.Box,
-		"CALPORT_EVENT_ORIGIN=" + e.Origin,
+		"BERTH_EVENT=" + e.Type,
+		"BERTH_EVENT_BOX=" + e.Box,
+		"BERTH_EVENT_ORIGIN=" + e.Origin,
 		OriginEnv + "=" + origin,
 	}
 	reserved := map[string]bool{}
@@ -82,10 +82,10 @@ func Env(e events.Event, tool string) []string {
 		}, k))
 		// Event data must not replace the variables above: the origin is
 		// what stops a hook from reacting to its own events.
-		if reserved["CALPORT_"+key] {
+		if reserved["BERTH_"+key] {
 			continue
 		}
-		env = append(env, fmt.Sprintf("CALPORT_%s=%v", key, v))
+		env = append(env, fmt.Sprintf("BERTH_%s=%v", key, v))
 	}
 	return env
 }

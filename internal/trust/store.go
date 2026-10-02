@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/calport/internal/identity"
-	"github.com/sean-brydon/calport/internal/statefile"
+	"github.com/sean-brydon/berth/internal/identity"
+	"github.com/sean-brydon/berth/internal/statefile"
 )
 
 type Peer struct {

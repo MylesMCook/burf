@@ -93,11 +93,11 @@ func TestLockSerializesReadModifyWrite(t *testing.T) {
 }
 
 func TestHomeRejectsRelativeOverride(t *testing.T) {
-	t.Setenv("CALPORT_HOME", "relative/dir")
+	t.Setenv("BERTH_HOME", "relative/dir")
 	if _, err := Home(); err == nil {
-		t.Fatal("relative CALPORT_HOME accepted")
+		t.Fatal("relative BERTH_HOME accepted")
 	}
-	t.Setenv("CALPORT_HOME", "/abs/dir")
+	t.Setenv("BERTH_HOME", "/abs/dir")
 	if got, err := Home(); err != nil || got != "/abs/dir" {
 		t.Fatalf("Home() = %q, %v", got, err)
 	}

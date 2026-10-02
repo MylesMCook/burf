@@ -122,9 +122,9 @@ func TestAttachShowsTheSessionAndCarriesKeystrokes(t *testing.T) {
 	done := make(chan struct{})
 	go func() { io.Copy(&out, master); close(done) }()
 	time.Sleep(300 * time.Millisecond)
-	master.Write([]byte("typed-through-calport\r"))
+	master.Write([]byte("typed-through-berth\r"))
 	deadline := time.Now().Add(5 * time.Second)
-	for !strings.Contains(out.String(), "typed-through-calport") {
+	for !strings.Contains(out.String(), "typed-through-berth") {
 		if time.Now().After(deadline) {
 			t.Fatalf("keystrokes never echoed; screen: %q", out.String())
 		}

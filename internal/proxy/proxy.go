@@ -49,7 +49,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		if why == "" {
-			http.Error(w, "calport: unknown host; use http://<port>.<box>.localhost", status)
+			http.Error(w, "berth: unknown host; use http://<port>.<box>.localhost", status)
 			return
 		}
 		page(w, status, why, "Use http://PORT.BOX.localhost or http://WORKTREE.LOCATION.BOX.localhost")
@@ -187,6 +187,6 @@ func (p *Proxy) ResetBox(box string) {
 func page(w http.ResponseWriter, status int, title, detail string) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
-	fmt.Fprintf(w, `<!doctype html><title>%s</title><body style="font:15px system-ui;margin:3rem;color:#222"><h1 style="font-size:20px">%s</h1><p>%s</p><p style="color:#888">calport</p>`,
+	fmt.Fprintf(w, `<!doctype html><title>%s</title><body style="font:15px system-ui;margin:3rem;color:#222"><h1 style="font-size:20px">%s</h1><p>%s</p><p style="color:#888">berth</p>`,
 		html.EscapeString(title), html.EscapeString(title), html.EscapeString(detail))
 }

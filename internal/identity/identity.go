@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/calport/internal/statefile"
+	"github.com/sean-brydon/berth/internal/statefile"
 )
 
 // Fingerprint is the SHA-256 of a key's SubjectPublicKeyInfo.
@@ -126,7 +126,7 @@ func fromKey(key ed25519.PrivateKey) (*Identity, error) {
 	now := time.Now()
 	template := &x509.Certificate{
 		SerialNumber: serial,
-		Subject:      pkix.Name{CommonName: "calport"},
+		Subject:      pkix.Name{CommonName: "berth"},
 		NotBefore:    now.Add(-time.Hour),
 		NotAfter:     now.AddDate(10, 0, 0),
 		KeyUsage:     x509.KeyUsageDigitalSignature,

@@ -3,15 +3,11 @@
 package doctor
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
-	"time"
 )
 
 type Status string
@@ -39,7 +35,7 @@ type Check struct {
 var extraToolDirs = []string{"/opt/homebrew/bin", "/usr/local/bin"}
 
 // Tool finds an executable on PATH, in ~/.local/bin, or in a Homebrew
-// prefix, where Orca, Herdr, cloudflared, and agent CLIs install themselves.
+// prefix, where cloudflared and agent CLIs install themselves.
 func Tool(name string) (string, bool) {
 	if p, err := exec.LookPath(name); err == nil {
 		return p, true
@@ -57,7 +53,7 @@ func Tool(name string) (string, bool) {
 	return "", false
 }
 
-// ToolCheck reports a tool's presence. required marks tools calport cannot
+// ToolCheck reports a tool's presence. required marks tools berth cannot
 // work without; the rest are optional features.
 func ToolCheck(area, name, purpose, install string, required bool) Check {
 	if path, ok := Tool(name); ok {
@@ -68,42 +64,6 @@ func ToolCheck(area, name, purpose, install string, required bool) Check {
 		c.Status = Fail
 	}
 	return c
-}
-
-// OrcaChecks reports whether Orca is installed and running, and whether each
-// repository calport knows about is registered with it.
-func OrcaChecks(ctx context.Context, area string, repos []string) []Check {
-	orca, ok := Tool("orca")
-	if !ok {
-		return []Check{{Area: area, Name: "orca", Status: Info, Detail: "not installed; calport works without it", Fix: "Install the Orca CLI to use --provider orca"}}
-	}
-	checks := []Check{{Area: area, Name: "orca", Status: OK, Detail: orca}}
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	if err := exec.CommandContext(ctx, orca, "status", "--json").Run(); err != nil {
-		return append(checks, Check{Area: area, Name: "Orca runtime", Status: Warn, Detail: "not running", Fix: "orca serve  (or open the Orca app)"})
-	}
-	checks = append(checks, Check{Area: area, Name: "Orca runtime", Status: OK, Detail: "running"})
-	if len(repos) == 0 {
-		return checks
-	}
-	list, err := exec.CommandContext(ctx, orca, "repo", "list", "--json").Output()
-	if err != nil {
-		return checks
-	}
-	for _, repo := range repos {
-		quoted, _ := json.Marshal(repo)
-		if strings.Contains(string(list), `"path": `+string(quoted)) || strings.Contains(string(list), `"path":`+string(quoted)) {
-			checks = append(checks, Check{Area: area, Name: "Orca knows " + filepath.Base(repo), Status: OK, Detail: repo})
-			continue
-		}
-		checks = append(checks, Check{
-			Area: area, Name: "Orca knows " + filepath.Base(repo), Status: Info,
-			Detail: repo + " is not registered; calport registers it on first --provider orca",
-			Fix:    "orca repo add --path " + repo,
-		})
-	}
-	return checks
 }
 
 // Print writes checks for a person, grouped by area, with fixes indented.

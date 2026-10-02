@@ -10,7 +10,7 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/sean-brydon/calport/internal/service"
+	"github.com/sean-brydon/berth/internal/service"
 )
 
 func daemonService(b boxHome, listen string) service.Spec {
@@ -18,9 +18,9 @@ func daemonService(b boxHome, listen string) service.Spec {
 	if resolved, err := filepath.EvalSymlinks(exe); err == nil {
 		exe = resolved
 	}
-	name := "calportd"
+	name := "berthd"
 	if runtime.GOOS == "darwin" {
-		name = "com.calcom.calportd"
+		name = "com.calcom.berthd"
 	}
 	args := []string{"serve"}
 	if listen != "" {
@@ -28,11 +28,11 @@ func daemonService(b boxHome, listen string) service.Spec {
 	}
 	return service.Spec{
 		Name:         name,
-		Description:  "calport box daemon",
+		Description:  "berth box daemon",
 		Program:      exe,
 		Args:         args,
-		Env:          map[string]string{"CALPORT_HOME": filepath.Dir(b.dir)},
-		LogPath:      filepath.Join(b.dir, "calportd.log"),
+		Env:          map[string]string{"BERTH_HOME": filepath.Dir(b.dir)},
+		LogPath:      filepath.Join(b.dir, "berthd.log"),
 		KeepChildren: true,
 	}
 }
@@ -54,12 +54,12 @@ func install(b boxHome, args []string) error {
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Installed %s; calportd is serving on %s.\n", path, *listen)
+	fmt.Printf("Installed %s; berthd is serving on %s.\n", path, *listen)
 	if runtime.GOOS == "linux" && !lingering() {
-		fmt.Println("Warning: user lingering is off, so calportd stops when you log out.")
+		fmt.Println("Warning: user lingering is off, so berthd stops when you log out.")
 		fmt.Println("Enable it once with: sudo loginctl enable-linger " + currentUser())
 	}
-	fmt.Println("Next: calportd pair")
+	fmt.Println("Next: berthd pair")
 	return nil
 }
 

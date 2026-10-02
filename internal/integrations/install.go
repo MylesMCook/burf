@@ -8,23 +8,23 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/sean-brydon/calport/internal/statefile"
+	"github.com/sean-brydon/berth/internal/statefile"
 )
 
 //go:embed SKILL.md
 var Skill []byte
 
-// InstallSkill writes the calport skill where an agent tool discovers skills,
-// e.g. ~/.claude/skills/calport/SKILL.md.
+// InstallSkill writes the berth skill where an agent tool discovers skills,
+// e.g. ~/.claude/skills/berth/SKILL.md.
 func InstallSkill(skillsDir string) (string, error) {
-	path := filepath.Join(skillsDir, "calport", "SKILL.md")
+	path := filepath.Join(skillsDir, "berth", "SKILL.md")
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return "", err
 	}
 	return path, os.WriteFile(path, Skill, 0o644)
 }
 
-// InstallClaudeHooks adds calport's hooks to a Claude Code settings file,
+// InstallClaudeHooks adds berth's hooks to a Claude Code settings file,
 // keeping every existing setting and hook. It reports whether it changed
 // anything; running it again is a no-op.
 func InstallClaudeHooks(settingsPath, bin string) (bool, error) {
@@ -48,7 +48,7 @@ func InstallClaudeHooks(settingsPath, bin string) (bool, error) {
 	})
 }
 
-// InstallCursorHooks appends calport's hook to Cursor's hooks file, after any
+// InstallCursorHooks appends berth's hook to Cursor's hooks file, after any
 // hooks other tools (such as Orca) already registered there.
 func InstallCursorHooks(hooksPath, bin string) (bool, error) {
 	return editJSON(hooksPath, func(root map[string]any) bool {
@@ -105,7 +105,7 @@ func containsCommand(list []any, command string) bool {
 }
 
 // editJSON applies change to a JSON object file and writes it back only when
-// something changed, keeping the previous contents at path+".calport-backup".
+// something changed, keeping the previous contents at path+".berth-backup".
 // A file that is not a JSON object is left untouched.
 func editJSON(path string, change func(map[string]any) bool) (bool, error) {
 	root := map[string]any{}
@@ -113,7 +113,7 @@ func editJSON(path string, change func(map[string]any) bool) (bool, error) {
 	switch {
 	case err == nil:
 		if err := json.Unmarshal(before, &root); err != nil {
-			return false, fmt.Errorf("%s is not valid JSON, so calport left it alone: %w", path, err)
+			return false, fmt.Errorf("%s is not valid JSON, so berth left it alone: %w", path, err)
 		}
 	case !os.IsNotExist(err):
 		return false, err
@@ -129,7 +129,7 @@ func editJSON(path string, change func(map[string]any) bool) (bool, error) {
 		return false, err
 	}
 	if len(before) > 0 {
-		if err := os.WriteFile(path+".calport-backup", before, 0o600); err != nil {
+		if err := os.WriteFile(path+".berth-backup", before, 0o600); err != nil {
 			return false, err
 		}
 	}

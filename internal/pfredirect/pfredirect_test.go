@@ -9,10 +9,10 @@ import (
 )
 
 func TestRulesRedirectOnlyLoopbackPort80(t *testing.T) {
-	both := string(Rules(1355, true))
+	both := string(Rules(1377, true))
 	for _, want := range []string{
-		"rdr pass on lo0 inet6 proto tcp from any to ::1 port 80 -> ::1 port 1355\n",
-		"rdr pass on lo0 inet proto tcp from any to 127.0.0.1 port 80 -> 127.0.0.1 port 1355\n",
+		"rdr pass on lo0 inet6 proto tcp from any to ::1 port 80 -> ::1 port 1377\n",
+		"rdr pass on lo0 inet proto tcp from any to 127.0.0.1 port 80 -> 127.0.0.1 port 1377\n",
 	} {
 		if !strings.Contains(both, want) {
 			t.Errorf("rules missing %q:\n%s", want, both)
@@ -21,7 +21,7 @@ func TestRulesRedirectOnlyLoopbackPort80(t *testing.T) {
 	if strings.Contains(both, " on en") || strings.Contains(both, "from any to any") {
 		t.Fatalf("rules reach beyond loopback:\n%s", both)
 	}
-	v6 := string(Rules(1355, false))
+	v6 := string(Rules(1377, false))
 	if strings.Contains(v6, "127.0.0.1") {
 		t.Fatalf("IPv4 redirected although another program owns 127.0.0.1:80:\n%s", v6)
 	}
@@ -38,7 +38,7 @@ func TestBootJobLoadsAppleAnchorsOnlyWhenPfIsEmpty(t *testing.T) {
 		`grep -q 'com.apple/\*'`,
 		`[ -z "$($p -s nat 2>/dev/null)$($p -s rules 2>/dev/null)" ]`,
 		"then $p -f /etc/pf.conf; fi;",
-		"$p -E -a com.apple/calport -f /etc/pf.anchors/calport",
+		"$p -E -a com.apple/berth -f /etc/pf.anchors/berth",
 	} {
 		if !strings.Contains(script, want) {
 			t.Errorf("boot script missing %q:\n%s", want, script)
@@ -52,19 +52,19 @@ func TestBootJobLoadsAppleAnchorsOnlyWhenPfIsEmpty(t *testing.T) {
 }
 
 func TestInstalledMatchesThePort(t *testing.T) {
-	RulesPath = filepath.Join(t.TempDir(), "calport")
-	t.Cleanup(func() { RulesPath = "/etc/pf.anchors/calport" })
-	if Installed(1355) {
+	RulesPath = filepath.Join(t.TempDir(), "berth")
+	t.Cleanup(func() { RulesPath = "/etc/pf.anchors/berth" })
+	if Installed(1377) {
 		t.Fatal("reported installed with no rule file")
 	}
-	os.WriteFile(RulesPath, Rules(1355, false), 0o644)
-	if !Installed(1355) || Installed(8080) {
+	os.WriteFile(RulesPath, Rules(1377, false), 0o644)
+	if !Installed(1377) || Installed(8080) {
 		t.Fatal("Installed does not match the redirected port")
 	}
 	if CoversIPv4() {
 		t.Fatal("reported IPv4 coverage for an IPv6-only rule")
 	}
-	os.WriteFile(RulesPath, Rules(1355, true), 0o644)
+	os.WriteFile(RulesPath, Rules(1377, true), 0o644)
 	if !CoversIPv4() {
 		t.Fatal("IPv4 coverage not detected")
 	}
@@ -74,7 +74,7 @@ func TestInstallRefusesWithoutRoot(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("running as root")
 	}
-	if _, err := Install(1355); err == nil {
+	if _, err := Install(1377); err == nil {
 		t.Fatal("installed without root")
 	}
 	if err := Remove(); err == nil {

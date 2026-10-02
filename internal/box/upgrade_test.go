@@ -14,7 +14,7 @@ func daemonScript(fingerprint string) []byte {
 }
 
 func TestInstallSwapsInAVerifiedBuild(t *testing.T) {
-	exe := filepath.Join(t.TempDir(), "calportd")
+	exe := filepath.Join(t.TempDir(), "berthd")
 	os.WriteFile(exe, daemonScript("old-build-fp"), 0o755)
 	u := &SelfUpdate{Executable: exe, Fingerprint: "the-box-fp"}
 	next := daemonScript("the-box-fp")
@@ -31,7 +31,7 @@ func TestInstallSwapsInAVerifiedBuild(t *testing.T) {
 }
 
 func TestInstallRejectsABuildThatDoesNotRunHere(t *testing.T) {
-	exe := filepath.Join(t.TempDir(), "calportd")
+	exe := filepath.Join(t.TempDir(), "berthd")
 	original := daemonScript("the-box-fp")
 	os.WriteFile(exe, original, 0o755)
 	u := &SelfUpdate{Executable: exe, Fingerprint: "the-box-fp"}

@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
-# Publish a Calport release from this Mac: bump the version, build and sign
+# Publish a Berth release from this Mac: bump the version, build and sign
 # the app update, build the CLI and daemons, and create the GitHub release
 # the installed apps update from.
 #
 #   make publish VERSION=0.3.0 [NOTES="What changed"]
 #
 # The updater key comes from TAURI_SIGNING_PRIVATE_KEY, else from 1Password
-# (CALPORT_SIGNING_KEY_OP=op://Vault/Item/field), else ~/.tauri/calport.key,
-# else the "Calport updater signing key" item in 1Password's Private vault.
+# (BERTH_SIGNING_KEY_OP=op://Vault/Item/field), else ~/.tauri/berth.key,
+# else the "Berth updater signing key" item in 1Password's Private vault.
 set -euo pipefail
 
 version="${VERSION:?set VERSION, e.g. make publish VERSION=0.3.0}"
 version="${version#v}"
 tag="v$version"
-repo="sean-brydon/calport"
+repo="sean-brydon/berth"
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
 
@@ -24,14 +24,14 @@ die() { echo "publish: $*" >&2; exit 1; }
 gh release view "$tag" >/dev/null 2>&1 && die "$tag is already released"
 
 if [ -z "${TAURI_SIGNING_PRIVATE_KEY:-}" ]; then
-  if [ -n "${CALPORT_SIGNING_KEY_OP:-}" ]; then
-    TAURI_SIGNING_PRIVATE_KEY="$(op read "$CALPORT_SIGNING_KEY_OP")"
-  elif [ -f "$HOME/.tauri/calport.key" ]; then
-    TAURI_SIGNING_PRIVATE_KEY="$(cat "$HOME/.tauri/calport.key")"
-  elif command -v op >/dev/null && TAURI_SIGNING_PRIVATE_KEY="$(op read "op://Private/Calport updater signing key/private key" 2>/dev/null)"; then
+  if [ -n "${BERTH_SIGNING_KEY_OP:-}" ]; then
+    TAURI_SIGNING_PRIVATE_KEY="$(op read "$BERTH_SIGNING_KEY_OP")"
+  elif [ -f "$HOME/.tauri/berth.key" ]; then
+    TAURI_SIGNING_PRIVATE_KEY="$(cat "$HOME/.tauri/berth.key")"
+  elif command -v op >/dev/null && TAURI_SIGNING_PRIVATE_KEY="$(op read "op://Private/Berth updater signing key/private key" 2>/dev/null)"; then
     :
   else
-    die "no updater signing key: set TAURI_SIGNING_PRIVATE_KEY or CALPORT_SIGNING_KEY_OP"
+    die "no updater signing key: set TAURI_SIGNING_PRIVATE_KEY or BERTH_SIGNING_KEY_OP"
   fi
 fi
 export TAURI_SIGNING_PRIVATE_KEY TAURI_SIGNING_PRIVATE_KEY_PASSWORD="${TAURI_SIGNING_PRIVATE_KEY_PASSWORD:-}"
@@ -77,7 +77,7 @@ bundle="app/src-tauri/target/release/bundle"
 # An unsigned build installs and then refuses to open on anyone else's Mac, and
 # the only sign of it here is a line in codesign's output. Releases went out
 # ad-hoc signed for want of this check, so make it a condition of publishing.
-signed="$bundle/macos/Calport.app"
+signed="$bundle/macos/Berth.app"
 codesign -dv "$signed" 2>&1 | grep -q "^TeamIdentifier=not set" &&
   die "the app is ad-hoc signed, so Gatekeeper will refuse it; APPLE_SIGNING_IDENTITY did not reach the build"
 codesign --verify --strict "$signed" 2>/dev/null ||
@@ -85,22 +85,22 @@ codesign --verify --strict "$signed" 2>/dev/null ||
 
 tarball="$(ls "$bundle"/macos/*.app.tar.gz)"
 [ -f "$tarball.sig" ] || die "the updater bundle was not signed"
-cp "$tarball" dist/Calport-macos-arm64.app.tar.gz
-cp "$tarball.sig" dist/Calport-macos-arm64.app.tar.gz.sig
-cp "$bundle"/dmg/*.dmg dist/Calport-macos-arm64.dmg
+cp "$tarball" dist/Berth-macos-arm64.app.tar.gz
+cp "$tarball.sig" dist/Berth-macos-arm64.app.tar.gz.sig
+cp "$bundle"/dmg/*.dmg dist/Berth-macos-arm64.dmg
 
 python3 - "$version" "$tag" "$repo" "${NOTES:-}" <<'PY'
 import json, sys, datetime
 version, tag, repo, notes = sys.argv[1:5]
-sig = open("dist/Calport-macos-arm64.app.tar.gz.sig").read().strip()
+sig = open("dist/Berth-macos-arm64.app.tar.gz.sig").read().strip()
 feed = {
     "version": version,
-    "notes": notes or f"Calport {version}",
+    "notes": notes or f"Berth {version}",
     "pub_date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     "platforms": {
         "darwin-aarch64": {
             "signature": sig,
-            "url": f"https://github.com/{repo}/releases/download/{tag}/Calport-macos-arm64.app.tar.gz",
+            "url": f"https://github.com/{repo}/releases/download/{tag}/Berth-macos-arm64.app.tar.gz",
         }
     },
 }
@@ -111,5 +111,5 @@ git add app/package.json app/src-tauri/tauri.conf.json app/src-tauri/Cargo.toml 
 git commit -q -m "chore: release $tag"
 git tag "$tag"
 git push -q origin main "$tag"
-gh release create "$tag" dist/* --title "Calport $tag" --notes "${NOTES:-Calport $version}"
+gh release create "$tag" dist/* --title "Berth $tag" --notes "${NOTES:-Berth $version}"
 echo "Published $tag. Installed apps pick it up within a few hours, or from Settings → Updates → Check now."

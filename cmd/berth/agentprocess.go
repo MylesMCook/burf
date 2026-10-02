@@ -11,8 +11,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sean-brydon/calport/internal/agent"
-	"github.com/sean-brydon/calport/internal/service"
+	"github.com/sean-brydon/berth/internal/agent"
+	"github.com/sean-brydon/berth/internal/service"
 )
 
 func agentService(l laptop) (service.Spec, error) {
@@ -27,16 +27,16 @@ func agentService(l laptop) (service.Spec, error) {
 	if err != nil {
 		return service.Spec{}, err
 	}
-	name := "calport-agent"
+	name := "berth-agent"
 	if runtime.GOOS == "darwin" {
-		name = "com.calcom.calport.agent"
+		name = "com.calcom.berth.agent"
 	}
 	return service.Spec{
 		Name:        name,
-		Description: "calport agent",
+		Description: "berth agent",
 		Program:     exe,
 		Args:        []string{"agent"},
-		Env:         map[string]string{"CALPORT_HOME": home},
+		Env:         map[string]string{"BERTH_HOME": home},
 		LogPath:     filepath.Join(l.dir, "agent.log"),
 	}, nil
 }
@@ -66,7 +66,7 @@ func ensureAgent(l laptop) (*agent.Client, error) {
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
-	return nil, fmt.Errorf("the calport agent did not start; see %s", filepath.Join(l.dir, "agent.log"))
+	return nil, fmt.Errorf("the berth agent did not start; see %s", filepath.Join(l.dir, "agent.log"))
 }
 
 func spawnAgent(l laptop, exe string) error {
@@ -79,7 +79,7 @@ func spawnAgent(l laptop, exe string) error {
 	}
 	defer logFile.Close()
 	cmd := exec.Command(exe, "agent")
-	cmd.Env = append(os.Environ(), "CALPORT_HOME="+filepath.Dir(l.dir))
+	cmd.Env = append(os.Environ(), "BERTH_HOME="+filepath.Dir(l.dir))
 	cmd.Stdout, cmd.Stderr = logFile, logFile
 	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
 	if err := cmd.Start(); err != nil {
@@ -88,14 +88,14 @@ func spawnAgent(l laptop, exe string) error {
 	return cmd.Process.Release()
 }
 
-// runAgent is `calport agent`: the agent in the foreground, as a supervisor
+// runAgent is `berth agent`: the agent in the foreground, as a supervisor
 // runs it. Losing the singleton race exits cleanly so it is not restarted.
 func runAgent(l laptop) error {
 	ctx, stop := signalContext()
 	defer stop()
 	err := agent.Run(ctx, agent.Config{Dir: l.dir, Socket: l.socket()})
 	if errors.Is(err, agent.ErrAlreadyRunning) {
-		fmt.Fprintln(os.Stderr, "calport: an agent is already running for this home; exiting")
+		fmt.Fprintln(os.Stderr, "berth: an agent is already running for this home; exiting")
 		return nil
 	}
 	return err
@@ -120,7 +120,7 @@ func agentCommand(l laptop, args []string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Installed %s\nThe agent now starts at login and restarts after a crash; calport stop still stops it.\n", path)
+		fmt.Printf("Installed %s\nThe agent now starts at login and restarts after a crash; berth stop still stops it.\n", path)
 		return nil
 	case "uninstall":
 		path, err := service.Uninstall(spec)
@@ -141,5 +141,5 @@ func agentCommand(l laptop, args []string) error {
 		fmt.Printf("service installed: %v\nagent running: %v\n", service.Installed(spec), running)
 		return nil
 	}
-	return errors.New("usage: calport agent [install|uninstall|status]")
+	return errors.New("usage: berth agent [install|uninstall|status]")
 }

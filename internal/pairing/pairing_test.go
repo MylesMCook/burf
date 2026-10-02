@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/calport/internal/identity"
+	"github.com/sean-brydon/berth/internal/identity"
 )
 
 func testToken(t *testing.T, address string) Token {
@@ -23,7 +23,7 @@ func testToken(t *testing.T, address string) Token {
 }
 
 func TestTokenRoundTrip(t *testing.T) {
-	for _, address := range []string{"203.0.113.5:7443", "[2001:db8::1]:7443", "dev-alex.example:9000"} {
+	for _, address := range []string{"203.0.113.5:7444", "[2001:db8::1]:7444", "dev-alex.example:9000"} {
 		tok := testToken(t, address)
 		parsed, err := ParseToken("  " + tok.String() + "\n")
 		if err != nil {
@@ -36,22 +36,22 @@ func TestTokenRoundTrip(t *testing.T) {
 }
 
 func TestParseTokenRejectsMalformedLinks(t *testing.T) {
-	good := testToken(t, "203.0.113.5:7443").String()
+	good := testToken(t, "203.0.113.5:7444").String()
 	fp := identity.Fingerprint{}.String()
 	code := Code{}.String()
 	for _, bad := range []string{
 		"",
-		"https://203.0.113.5:7443?code=" + code + "&fp=" + fp,
-		"calport://203.0.113.5?code=" + code + "&fp=" + fp,
-		"calport://203.0.113.5:0?code=" + code + "&fp=" + fp,
-		"calport://203.0.113.5:70000?code=" + code + "&fp=" + fp,
-		"calport://:7443?code=" + code + "&fp=" + fp,
-		"calport://user@203.0.113.5:7443?code=" + code + "&fp=" + fp,
-		"calport://203.0.113.5:7443/extra?code=" + code + "&fp=" + fp,
-		"calport://203.0.113.5:7443?fp=" + fp,
-		"calport://203.0.113.5:7443?code=" + code,
-		"calport://203.0.113.5:7443?code=" + code[:10] + "&fp=" + fp,
-		strings.Replace(good, "calport://", "calport:", 1),
+		"https://203.0.113.5:7444?code=" + code + "&fp=" + fp,
+		"berth://203.0.113.5?code=" + code + "&fp=" + fp,
+		"berth://203.0.113.5:0?code=" + code + "&fp=" + fp,
+		"berth://203.0.113.5:70000?code=" + code + "&fp=" + fp,
+		"berth://:7444?code=" + code + "&fp=" + fp,
+		"berth://user@203.0.113.5:7444?code=" + code + "&fp=" + fp,
+		"berth://203.0.113.5:7444/extra?code=" + code + "&fp=" + fp,
+		"berth://203.0.113.5:7444?fp=" + fp,
+		"berth://203.0.113.5:7444?code=" + code,
+		"berth://203.0.113.5:7444?code=" + code[:10] + "&fp=" + fp,
+		strings.Replace(good, "berth://", "berth:", 1),
 	} {
 		if _, err := ParseToken(bad); err == nil {
 			t.Errorf("accepted malformed link %q", bad)

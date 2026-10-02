@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sean-brydon/calport/internal/box"
+	"github.com/sean-brydon/berth/internal/box"
 )
 
 // recorder is a fake box that records each request and replies with body.
@@ -43,11 +43,11 @@ func run(t *testing.T, reply string, args ...string) (*recorder, string) {
 
 func TestFlagsMayFollowTheReference(t *testing.T) {
 	r, _ := run(t, `{"name":"billing","path":"/w/cal-billing","branch":"alex/billing"}`,
-		"worktree", "new", "cal/billing", "--base", "main", "--provider", "orca", "--agent", "claude", "--branch", "alex/billing")
+		"worktree", "new", "cal/billing", "--base", "main", "--branch", "alex/billing")
 	if r.method != "POST" || r.path != "/v1/locations/cal/worktrees" {
 		t.Fatalf("request %s %s", r.method, r.path)
 	}
-	for k, want := range map[string]string{"name": "billing", "base": "main", "provider": "orca", "agent": "claude", "branch": "alex/billing"} {
+	for k, want := range map[string]string{"name": "billing", "base": "main", "branch": "alex/billing"} {
 		if r.body[k] != want {
 			t.Errorf("body[%s] = %v, want %s", k, r.body[k], want)
 		}
@@ -105,19 +105,19 @@ func TestUsageErrors(t *testing.T) {
 }
 
 func TestUnitsListsWhatTheBoxReports(t *testing.T) {
-	reply := `[{"name":"calport-orca","state":"installed","log_path":"/home/sean/.config/calport/units/calport-orca.log"}]`
+	reply := `[{"name":"berth-orca","state":"installed","log_path":"/home/sean/.config/berth/units/berth-orca.log"}]`
 	rec, out := run(t, reply, "units")
 	if rec.path != "/v1/units" {
 		t.Fatalf("called %q; want /v1/units", rec.path)
 	}
-	if !strings.Contains(out, "calport-orca") || !strings.Contains(out, "installed") {
+	if !strings.Contains(out, "berth-orca") || !strings.Contains(out, "installed") {
 		t.Fatalf("units output = %q; want the unit and its state", out)
 	}
 }
 
 func TestUnitAddSendsTheCommandAfterDoubleDash(t *testing.T) {
-	reply := `{"name":"calport-orca","state":"installed","log_path":"/tmp/calport-orca.log"}`
-	rec, _ := run(t, reply, "unit", "add", "calport-orca", "--", "orca", "serve")
+	reply := `{"name":"berth-orca","state":"installed","log_path":"/tmp/berth-orca.log"}`
+	rec, _ := run(t, reply, "unit", "add", "berth-orca", "--", "orca", "serve")
 	if rec.body["program"] != "orca" {
 		t.Fatalf("program = %v; want orca", rec.body["program"])
 	}

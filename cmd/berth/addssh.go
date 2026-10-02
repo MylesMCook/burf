@@ -14,12 +14,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/calport/internal/pairing"
-	"github.com/sean-brydon/calport/internal/trust"
-	"github.com/sean-brydon/calport/internal/wire"
+	"github.com/sean-brydon/berth/internal/pairing"
+	"github.com/sean-brydon/berth/internal/trust"
+	"github.com/sean-brydon/berth/internal/wire"
 )
 
-// daemonFor maps `uname -sm` output to the calportd build for that box.
+// daemonFor maps `uname -sm` output to the berthd build for that box.
 func daemonFor(uname string) (string, error) {
 	f := strings.Fields(strings.ToLower(uname))
 	if len(f) != 2 {
@@ -27,14 +27,14 @@ func daemonFor(uname string) (string, error) {
 	}
 	arch := map[string]string{"x86_64": "amd64", "amd64": "amd64", "aarch64": "arm64", "arm64": "arm64"}[f[1]]
 	if arch == "" || (f[0] != "linux" && f[0] != "darwin") {
-		return "", fmt.Errorf("calportd does not support %s", uname)
+		return "", fmt.Errorf("berthd does not support %s", uname)
 	}
-	return "calportd-" + f[0] + "-" + arch, nil
+	return "berthd-" + f[0] + "-" + arch, nil
 }
 
-var linkPattern = regexp.MustCompile(`calport://\S+`)
+var linkPattern = regexp.MustCompile(`berth://\S+`)
 
-// findLink pulls the pairing link out of `calportd pair` output.
+// findLink pulls the pairing link out of `berthd pair` output.
 func findLink(out []byte) (string, error) {
 	link := linkPattern.Find(out)
 	if link == nil {
@@ -43,8 +43,8 @@ func findLink(out []byte) (string, error) {
 	return strings.TrimRight(string(link), "'\""), nil
 }
 
-// addSSH installs calportd on a machine you can already SSH to and pairs
-// with it. SSH is used for this one setup only; afterwards calport talks to
+// addSSH installs berthd on a machine you can already SSH to and pairs
+// with it. SSH is used for this one setup only; afterwards berth talks to
 // the box directly and never needs your SSH agent again.
 func addSSH(l laptop, args []string) error {
 	var sshArgs []string
@@ -57,19 +57,19 @@ func addSSH(l laptop, args []string) error {
 	}
 	fs := flag.NewFlagSet("add ssh", flag.ContinueOnError)
 	name := fs.String("name", "", "local name for the box")
-	listen := fs.String("listen", "", "where calportd listens (default: the box's tailnet address only)")
+	listen := fs.String("listen", "", "where berthd listens (default: the box's tailnet address only)")
 	address := fs.String("address", "", "address this laptop dials, when it differs from --listen")
 	via := fs.String("network", "", "reach the box through this network, for SSH and afterwards")
 	pos, err := parseAnywhere(fs, args)
 	if err != nil || len(pos) != 1 {
-		return errors.New("usage: calport add ssh [user@]HOST [--name N] [--network NET] [--listen ADDR] [--address ADDR] [-- SSH OPTIONS]")
+		return errors.New("usage: berth add ssh [user@]HOST [--name N] [--network NET] [--listen ADDR] [--address ADDR] [-- SSH OPTIONS]")
 	}
 	target := pos[0]
 	if err := checkName(*name); err != nil {
 		return err
 	}
 	if *via != "" {
-		// SSH to the box through the same network calport will use.
+		// SSH to the box through the same network berth will use.
 		exe, err := os.Executable()
 		if err != nil {
 			return err
@@ -133,11 +133,11 @@ func addSSH(l laptop, args []string) error {
 	}
 
 	fmt.Printf("Installing %s (%d MB)…\n", daemon, len(binary)>>20)
-	upload := "mkdir -p ~/.local/bin && cat > ~/.local/bin/calportd.new && chmod +x ~/.local/bin/calportd.new && mv ~/.local/bin/calportd.new ~/.local/bin/calportd"
+	upload := "mkdir -p ~/.local/bin && cat > ~/.local/bin/berthd.new && chmod +x ~/.local/bin/berthd.new && mv ~/.local/bin/berthd.new ~/.local/bin/berthd"
 	if _, err := ssh(binary, upload); err != nil {
 		return err
 	}
-	install := "~/.local/bin/calportd install"
+	install := "~/.local/bin/berthd install"
 	if *listen != "" {
 		install += " --listen " + shellQuote(*listen)
 	}
@@ -145,10 +145,10 @@ func addSSH(l laptop, args []string) error {
 	if err != nil {
 		return err
 	}
-	// calportd install ends with "Next: calportd pair", which this command does itself.
-	fmt.Print(indent(strings.Replace(string(out), "Next: calportd pair\n", "", 1)))
+	// berthd install ends with "Next: berthd pair", which this command does itself.
+	fmt.Print(indent(strings.Replace(string(out), "Next: berthd pair\n", "", 1)))
 
-	pair := "sleep 1; ~/.local/bin/calportd pair"
+	pair := "sleep 1; ~/.local/bin/berthd pair"
 	if *address != "" {
 		pair += " --address " + shellQuote(*address)
 	}
@@ -177,7 +177,7 @@ func addSSH(l laptop, args []string) error {
 	}
 	reported, err := wire.PairVia(ctx, id, tok, trust.NameFromHostname(hostname, "laptop"), dial)
 	if err != nil {
-		return fmt.Errorf("calportd is installed but this laptop could not reach it at %s: %w\n"+
+		return fmt.Errorf("berthd is installed but this laptop could not reach it at %s: %w\n"+
 			"If the box is only reachable another way, rerun with --address", tok.Address, err)
 	}
 	peer := trust.Peer{Name: *name, Address: tok.Address, Network: *via, Fingerprint: tok.Fingerprint, PairedAt: time.Now().UTC()}
@@ -245,7 +245,7 @@ func sshError(target string, err error, stderr string) error {
 	case strings.Contains(stderr, "REMOTE HOST IDENTIFICATION HAS CHANGED"):
 		return fmt.Errorf("%s's host key has changed since you last connected. If the box was rebuilt, remove the old key with `ssh-keygen -R <host>` and try again; otherwise do not connect", target)
 	case strings.Contains(stderr, "Host key verification failed"):
-		return fmt.Errorf("%s's host key was not trusted, so calport did not connect", target)
+		return fmt.Errorf("%s's host key was not trusted, so berth did not connect", target)
 	case strings.Contains(stderr, "Permission denied"):
 		return fmt.Errorf("%s refused the login (%s). Check the user, and that your SSH agent (such as 1Password) offers the right key", target, lastLine(stderr))
 	}
@@ -283,8 +283,8 @@ func parseAnywhere(fs *flag.FlagSet, args []string) ([]string, error) {
 	}
 }
 
-// readDaemon finds the calportd build to upload: beside calport in a build
-// directory, or in Contents/Resources when calport runs inside the macOS app.
+// readDaemon finds the berthd build to upload: beside berth in a build
+// directory, or in Contents/Resources when berth runs inside the macOS app.
 func readDaemon(exe, daemon string) ([]byte, error) {
 	dir := filepath.Dir(exe)
 	for _, path := range []string{filepath.Join(dir, daemon), filepath.Join(dir, "..", "Resources", daemon)} {
@@ -292,5 +292,5 @@ func readDaemon(exe, daemon string) ([]byte, error) {
 			return b, nil
 		}
 	}
-	return nil, fmt.Errorf("no %s next to calport (%s); build it with `make daemons`", daemon, dir)
+	return nil, fmt.Errorf("no %s next to berth (%s); build it with `make daemons`", daemon, dir)
 }

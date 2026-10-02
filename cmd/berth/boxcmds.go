@@ -14,10 +14,10 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/sean-brydon/calport/internal/box"
-	"github.com/sean-brydon/calport/internal/boxcmd"
-	"github.com/sean-brydon/calport/internal/terminal"
-	"github.com/sean-brydon/calport/internal/wire"
+	"github.com/sean-brydon/berth/internal/box"
+	"github.com/sean-brydon/berth/internal/boxcmd"
+	"github.com/sean-brydon/berth/internal/terminal"
+	"github.com/sean-brydon/berth/internal/wire"
 )
 
 // splitBox finds the box a command targets: the first argument after the
@@ -67,7 +67,7 @@ func (l laptop) boxClient(name string) (*wire.Client, error) {
 		return nil, err
 	}
 	if !ok {
-		return nil, fmt.Errorf("no paired box named %q; see calport boxes", name)
+		return nil, fmt.Errorf("no paired box named %q; see berth boxes", name)
 	}
 	id, err := l.identity()
 	if err != nil {
@@ -103,7 +103,7 @@ func runOnBox(l laptop, args []string) error {
 // (tmux's Ctrl-b d) or the session ends.
 func attach(l laptop, args []string) error {
 	if len(args) != 1 || !strings.Contains(args[0], "/") {
-		return errors.New("usage: calport attach BOX/SESSION")
+		return errors.New("usage: berth attach BOX/SESSION")
 	}
 	name, session, _ := strings.Cut(args[0], "/")
 	wc, err := l.boxClient(name)
@@ -161,7 +161,7 @@ func attach(l laptop, args []string) error {
 // desktop app's Attach button.
 func openTerminal(args []string) error {
 	if len(args) != 1 || !strings.Contains(args[0], "/") {
-		return errors.New("usage: calport terminal BOX/SESSION")
+		return errors.New("usage: berth terminal BOX/SESSION")
 	}
 	exe, err := os.Executable()
 	if err != nil {

@@ -21,7 +21,7 @@ import (
 
 // Share makes one port on the box public through a Cloudflare quick tunnel.
 // It is the only way anything becomes public, it exists only on request, and
-// it ends when revoked or when calportd stops. The box runs the tunnel, so a
+// it ends when revoked or when berthd stops. The box runs the tunnel, so a
 // shared link keeps working while the laptop sleeps.
 type Share struct {
 	ID      string    `json:"id"`
@@ -175,7 +175,7 @@ func (s *Shares) Remove(id string) (Share, error) {
 	return sh.share, nil
 }
 
-// StopAll ends every share; calportd calls it on shutdown so nothing stays
+// StopAll ends every share; berthd calls it on shutdown so nothing stays
 // public after the daemon that manages it is gone.
 func (s *Shares) StopAll() {
 	s.mu.Lock()

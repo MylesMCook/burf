@@ -1,30 +1,30 @@
 #!/bin/sh
-# Install calport from GitHub releases.
+# Install berth from GitHub releases.
 #
-#   On a box:     curl -fsSL https://raw.githubusercontent.com/sean-brydon/calport/main/install.sh | sh
-#   CLI only:     curl -fsSL https://raw.githubusercontent.com/sean-brydon/calport/main/install.sh | sh -s -- calport
+#   On a box:     curl -fsSL https://raw.githubusercontent.com/sean-brydon/berth/main/install.sh | sh
+#   CLI only:     curl -fsSL https://raw.githubusercontent.com/sean-brydon/berth/main/install.sh | sh -s -- berth
 #
-# The default installs calportd, starts it at boot, and prints a pairing link.
+# The default installs berthd, starts it at boot, and prints a pairing link.
 # Every download is checked against the release's SHA256SUMS before it runs.
 #
 # Environment:
-#   CALPORT_VERSION   a release tag such as v0.1.0 (default: latest)
-#   CALPORT_BIN_DIR   where binaries go (default: ~/.local/bin)
-#   CALPORTD_LISTEN   address calportd listens on (default: this box's tailnet address)
-#   CALPORT_NO_PAIR   set to skip printing a pairing link
+#   BERTH_VERSION   a release tag such as v0.1.0 (default: latest)
+#   BERTH_BIN_DIR   where binaries go (default: ~/.local/bin)
+#   BERTHD_LISTEN   address berthd listens on (default: this box's tailnet address)
+#   BERTH_NO_PAIR   set to skip printing a pairing link
 set -eu
 
-REPO="sean-brydon/calport"
-COMPONENT="${1:-calportd}"
-BIN_DIR="${CALPORT_BIN_DIR:-$HOME/.local/bin}"
-VERSION="${CALPORT_VERSION:-latest}"
+REPO="sean-brydon/berth"
+COMPONENT="${1:-berthd}"
+BIN_DIR="${BERTH_BIN_DIR:-$HOME/.local/bin}"
+VERSION="${BERTH_VERSION:-latest}"
 
 say() { printf '%s\n' "$*"; }
-die() { printf 'calport install: %s\n' "$*" >&2; exit 1; }
+die() { printf 'berth install: %s\n' "$*" >&2; exit 1; }
 
 case "$COMPONENT" in
-calportd | calport) ;;
-*) die "unknown component \"$COMPONENT\"; use calportd or calport" ;;
+berthd | berth) ;;
+*) die "unknown component \"$COMPONENT\"; use berthd or berth" ;;
 esac
 
 os=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -37,8 +37,8 @@ x86_64 | amd64) arch=amd64 ;;
 aarch64 | arm64) arch=arm64 ;;
 *) die "unsupported CPU: $(uname -m)" ;;
 esac
-if [ "$COMPONENT" = calportd ] && [ "$os" != linux ]; then
-	die "calportd runs on Linux boxes; on a Mac install the Calport app or: sh -s -- calport"
+if [ "$COMPONENT" = berthd ] && [ "$os" != linux ]; then
+	die "berthd runs on Linux boxes; on a Mac install the Berth app or: sh -s -- berth"
 fi
 
 if [ "$VERSION" = latest ]; then
@@ -86,19 +86,19 @@ case ":$PATH:" in
 *) say "Note: $BIN_DIR is not on your PATH; add it to your shell profile." ;;
 esac
 
-[ "$COMPONENT" = calportd ] || exit 0
+[ "$COMPONENT" = berthd ] || exit 0
 
-if [ -n "${CALPORTD_LISTEN:-}" ]; then
-	"$BIN_DIR/calportd" install --listen "$CALPORTD_LISTEN"
+if [ -n "${BERTHD_LISTEN:-}" ]; then
+	"$BIN_DIR/berthd" install --listen "$BERTHD_LISTEN"
 else
-	"$BIN_DIR/calportd" install ||
-		die "calportd could not pick an address. If this box is not on a tailnet, rerun with CALPORTD_LISTEN=<ip>:7443"
+	"$BIN_DIR/berthd" install ||
+		die "berthd could not pick an address. If this box is not on a tailnet, rerun with BERTHD_LISTEN=<ip>:7444"
 fi
 # A reinstall replaces the binary under a running service; restart it onto the new build.
-if command -v systemctl >/dev/null 2>&1 && systemctl --user is-active --quiet calportd 2>/dev/null; then
-	systemctl --user restart calportd
+if command -v systemctl >/dev/null 2>&1 && systemctl --user is-active --quiet berthd 2>/dev/null; then
+	systemctl --user restart berthd
 fi
 
-[ -n "${CALPORT_NO_PAIR:-}" ] && exit 0
+[ -n "${BERTH_NO_PAIR:-}" ] && exit 0
 say ""
-"$BIN_DIR/calportd" pair
+"$BIN_DIR/berthd" pair

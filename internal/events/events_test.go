@@ -14,7 +14,7 @@ func TestPublishReachesEverySubscriberAndStampsDefaults(t *testing.T) {
 	b.Publish(Event{Type: "box.connected", Box: "devl"})
 	for _, ch := range []<-chan Event{a, c} {
 		e := <-ch
-		if e.Type != "box.connected" || e.Origin != "calport" || e.Time.IsZero() {
+		if e.Type != "box.connected" || e.Origin != "berth" || e.Time.IsZero() {
 			t.Fatalf("event = %+v", e)
 		}
 	}

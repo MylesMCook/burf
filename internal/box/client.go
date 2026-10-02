@@ -13,10 +13,9 @@ import (
 	"net/url"
 	"os"
 	"strconv"
-	"strings"
 
-	"github.com/sean-brydon/calport/internal/doctor"
-	"github.com/sean-brydon/calport/internal/events"
+	"github.com/sean-brydon/berth/internal/doctor"
+	"github.com/sean-brydon/berth/internal/events"
 )
 
 // Doer sends a request to a box: a wire.Client from a laptop, or a Local
@@ -26,14 +25,14 @@ type Doer interface {
 }
 
 // Client calls a box's API. Origin names the tool the calls are made for; it
-// defaults to CALPORT_ORIGIN, which hooks set for the commands they run.
+// defaults to BERTH_ORIGIN, which hooks set for the commands they run.
 type Client struct {
 	Doer   Doer
 	Origin string
 }
 
 func NewClient(d Doer) *Client {
-	return &Client{Doer: d, Origin: os.Getenv("CALPORT_ORIGIN")}
+	return &Client{Doer: d, Origin: os.Getenv("BERTH_ORIGIN")}
 }
 
 func (c *Client) call(ctx context.Context, method, path string, in, out any) error {
@@ -188,16 +187,12 @@ func (c *Client) SetScripts(ctx context.Context, location, setup, archive string
 	return out, c.call(ctx, http.MethodPut, "/v1/locations/"+url.PathEscape(location)+"/scripts", map[string]string{"setup": setup, "archive": archive}, &out)
 }
 
-func (c *Client) ImportOrca(ctx context.Context) (out []Location, err error) {
-	return out, c.call(ctx, http.MethodPost, "/v1/locations/import/orca", nil, &out)
+func (c *Client) Stats(ctx context.Context) (out Stats, err error) {
+	return out, c.call(ctx, http.MethodGet, "/v1/stats", nil, &out)
 }
 
 func (c *Client) Services(ctx context.Context) (out []Service, err error) {
 	return out, c.call(ctx, http.MethodGet, "/v1/services", nil, &out)
-}
-
-func (c *Client) OpenWorktree(ctx context.Context, location, worktree string, req OpenRequest) error {
-	return c.call(ctx, http.MethodPost, "/v1/locations/"+url.PathEscape(location)+"/worktrees/"+url.PathEscape(worktree)+"/open", req, nil)
 }
 
 func (c *Client) Doctor(ctx context.Context) (out []doctor.Check, err error) {
@@ -206,27 +201,6 @@ func (c *Client) Doctor(ctx context.Context) (out []doctor.Check, err error) {
 
 func (c *Client) Info(ctx context.Context) (out Info, err error) {
 	return out, c.call(ctx, http.MethodGet, "/v1/info", nil, &out)
-}
-
-// ErrHerdrUnsupported means the box runs a calportd from before it could
-// report Herdr; `calport upgrade BOX` fixes it.
-var ErrHerdrUnsupported = errors.New("this box's calportd predates Herdr support")
-
-func (c *Client) Herdr(ctx context.Context) (out HerdrStatus, err error) {
-	err = c.call(ctx, http.MethodGet, "/v1/herdr", nil, &out)
-	// An older daemon has no such route, and its mux answers in plain text.
-	if err != nil && strings.HasPrefix(err.Error(), "box replied 404") {
-		err = ErrHerdrUnsupported
-	}
-	return out, err
-}
-
-func (c *Client) UpdateHerdr(ctx context.Context) (out HerdrUpdate, err error) {
-	err = c.call(ctx, http.MethodPost, "/v1/herdr/update", nil, &out)
-	if err != nil && strings.HasPrefix(err.Error(), "box replied 404") {
-		err = ErrHerdrUnsupported
-	}
-	return out, err
 }
 
 // Upgrade uploads a daemon build; the box verifies it, swaps it in, and
@@ -280,7 +254,7 @@ func (c *Client) Events(ctx context.Context, fn func(events.Event)) error {
 	return io.ErrUnexpectedEOF
 }
 
-// Local reaches calportd on the box through its Unix socket.
+// Local reaches berthd on the box through its Unix socket.
 type Local struct{ http *http.Client }
 
 func NewLocal(socket string) *Local {
@@ -292,7 +266,7 @@ func NewLocal(socket string) *Local {
 }
 
 func (l *Local) DoWithHeader(ctx context.Context, method, path string, body io.Reader, header http.Header) (*http.Response, error) {
-	req, err := http.NewRequestWithContext(ctx, method, "http://calportd"+path, body)
+	req, err := http.NewRequestWithContext(ctx, method, "http://berthd"+path, body)
 	if err != nil {
 		return nil, err
 	}

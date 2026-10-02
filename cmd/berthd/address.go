@@ -51,7 +51,7 @@ func interfaceIPs() []net.IP {
 	return ips
 }
 
-// defaultListen is where calportd listens when --listen is not given: the
+// defaultListen is where berthd listens when --listen is not given: the
 // box's tailnet address only. Answering on every interface would expose the
 // daemon to the internet, which has to be asked for explicitly.
 func defaultListen(ips []net.IP) (string, error) {
@@ -61,12 +61,12 @@ func defaultListen(ips []net.IP) (string, error) {
 			return net.JoinHostPort(addr.Unmap().String(), defaultPort), nil
 		}
 	}
-	return "", errors.New("this box has no tailnet address, so calportd will not pick where to listen; " +
+	return "", errors.New("this box has no tailnet address, so berthd will not pick where to listen; " +
 		"pass --listen, e.g. --listen 0.0.0.0:" + defaultPort + " to accept connections from the internet")
 }
 
 // advertise is the address a pairing link tells laptops to dial. When
-// calportd listens on one specific address, that is the only one that works,
+// berthd listens on one specific address, that is the only one that works,
 // so it wins over any guess.
 func advertise(listening string, ips []net.IP, hostname string) string {
 	host, port, err := net.SplitHostPort(listening)

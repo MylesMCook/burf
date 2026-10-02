@@ -19,13 +19,13 @@ import (
 const (
 	// Anchor sits under Apple's rdr-anchor "com.apple/*", which the default
 	// /etc/pf.conf already evaluates, so pf.conf is never edited.
-	Anchor = "com.apple/calport"
-	Label  = "com.calcom.calport.pf"
+	Anchor = "com.apple/berth"
+	Label  = "com.calcom.berth.pf"
 )
 
 // Paths are variables so tests can redirect them.
 var (
-	RulesPath = "/etc/pf.anchors/calport"
+	RulesPath = "/etc/pf.anchors/berth"
 	PlistPath = "/Library/LaunchDaemons/" + Label + ".plist"
 	pfctl     = "/sbin/pfctl"
 )
@@ -34,7 +34,7 @@ var (
 // address. Addresses are fixed loopback literals, never user input.
 func Rules(port int, ipv4 bool) []byte {
 	var b bytes.Buffer
-	fmt.Fprintf(&b, "# calport: http://<port>.<box>.localhost/ without a port. Remove with: calport setup port80 --remove\n")
+	fmt.Fprintf(&b, "# berth: http://<port>.<box>.localhost/ without a port. Remove with: berth setup port80 --remove\n")
 	fmt.Fprintf(&b, "rdr pass on lo0 inet6 proto tcp from any to ::1 port 80 -> ::1 port %d\n", port)
 	if ipv4 {
 		fmt.Fprintf(&b, "rdr pass on lo0 inet proto tcp from any to 127.0.0.1 port 80 -> 127.0.0.1 port %d\n", port)
@@ -66,7 +66,7 @@ func Plist() []byte {
 }
 
 // ensureAppleAnchors loads the stock ruleset when pf has none, so the anchor
-// calport's rule lives in is actually evaluated. A ruleset some other tool
+// berth's rule lives in is actually evaluated. A ruleset some other tool
 // loaded is left alone and reported instead of replaced.
 func ensureAppleAnchors() error {
 	nat, _ := exec.Command(pfctl, "-s", "nat").Output()
@@ -144,7 +144,7 @@ func Remove() error {
 // writeRootFile writes a root-owned file others can read but not change: pf
 // loads the rule file as root, so no user may be able to edit it.
 func writeRootFile(path string, data []byte) error {
-	tmp := path + ".calport-tmp"
+	tmp := path + ".berth-tmp"
 	if err := os.WriteFile(tmp, data, 0o644); err != nil {
 		return err
 	}

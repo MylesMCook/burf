@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/calport/internal/events"
+	"github.com/sean-brydon/berth/internal/events"
 )
 
 func fakeProc(t *testing.T) string {

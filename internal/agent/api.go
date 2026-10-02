@@ -8,7 +8,7 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/sean-brydon/calport/internal/forward"
+	"github.com/sean-brydon/berth/internal/forward"
 )
 
 var (
@@ -123,7 +123,7 @@ func (a *Agent) api(stop context.CancelFunc) http.Handler {
 			return
 		}
 		if !validOrigin.MatchString(req.Origin) {
-			req.Origin = "calport"
+			req.Origin = "berth"
 		}
 		a.publish(Event{Type: req.Type, Origin: req.Origin, Data: req.Data})
 		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})

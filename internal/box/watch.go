@@ -5,13 +5,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/calport/internal/events"
+	"github.com/sean-brydon/berth/internal/events"
 )
 
 // Watcher notices worktrees that appear in or vanish from a location without
-// going through calport: made by Orca, Herdr, an agent, or plain git. That
+// going through berth: made by Orca, Herdr, an agent, or plain git. That
 // makes every tool's worktrees visible to hooks and the laptop, not only the
-// ones calport created.
+// ones berth created.
 type Watcher struct {
 	Locations *Locations
 	Events    *events.Bus
@@ -20,10 +20,10 @@ type Watcher struct {
 
 	mu    sync.Mutex
 	known map[string]map[string]Worktree // location → path → worktree
-	own   map[string]time.Time           // paths calport itself just changed
+	own   map[string]time.Time           // paths berth itself just changed
 }
 
-// Own records that calport changed path itself and has already announced it,
+// Own records that berth changed path itself and has already announced it,
 // so the next scan does not announce it a second time.
 func (w *Watcher) Own(path string) {
 	w.mu.Lock()
@@ -103,7 +103,7 @@ func (w *Watcher) Scan(ctx context.Context, announce bool) {
 	}
 }
 
-// claim reports whether calport itself made this change; w.mu is held.
+// claim reports whether berth itself made this change; w.mu is held.
 func (w *Watcher) claim(path string) bool {
 	if _, ok := w.own[path]; ok {
 		delete(w.own, path)

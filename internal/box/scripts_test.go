@@ -2,48 +2,49 @@ package box
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/calport/internal/events"
+	"github.com/sean-brydon/berth/internal/events"
 )
 
-// fakeOrca points Orca's settings at a file shaped like the real one.
-func fakeOrca(t *testing.T, repo, setup, archive string) {
+// repoConfig writes the repository's own .berth/config.json.
+func repoConfig(t *testing.T, repo, setup, archive string) {
 	t.Helper()
-	file := filepath.Join(t.TempDir(), "orca-data.json")
-	os.WriteFile(file, []byte(`{"schemaVersion":1,"repos":[{"id":"1","path":"`+repo+`","hookSettings":{"setupRunPolicy":"run-by-default","scripts":{"setup":"`+setup+`","archive":"`+archive+`"}}},{"id":"2","path":"/elsewhere"}]}`), 0o600)
-	old := orcaDataFiles
-	orcaDataFiles = func() []string { return []string{file} }
-	t.Cleanup(func() { orcaDataFiles = old })
+	os.MkdirAll(filepath.Join(repo, ".berth"), 0o755)
+	b, _ := json.Marshal(RepoConfig{Setup: setup, Archive: archive})
+	if err := os.WriteFile(filepath.Join(repo, RepoConfigFile), b, 0o600); err != nil {
+		t.Fatal(err)
+	}
 }
 
-func TestScriptsComeFromOrcaUnlessTheLocationSetsItsOwn(t *testing.T) {
+func TestScriptsComeFromTheRepoUnlessTheLocationSetsItsOwn(t *testing.T) {
 	repo := gitRepo(t)
-	fakeOrca(t, repo, "echo orca-setup", "echo orca-archive")
+	repoConfig(t, repo, "echo repo-setup", "echo repo-archive")
 	ctx := context.Background()
 	l := NewLocations(filepath.Join(t.TempDir(), "locations.json"))
 	loc, err := l.Add(ctx, "cal", repo)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if loc.Scripts != (Scripts{Setup: "echo orca-setup", Archive: "echo orca-archive", From: "orca"}) {
-		t.Fatalf("scripts = %+v, want Orca's", loc.Scripts)
+	if loc.Scripts != (Scripts{Setup: "echo repo-setup", Archive: "echo repo-archive", From: "repo"}) {
+		t.Fatalf("scripts = %+v, want the repository's", loc.Scripts)
 	}
 	if err := l.SetScripts("cal", "echo own", ""); err != nil {
 		t.Fatal(err)
 	}
 	loc, _ = l.Get(ctx, "cal")
-	if loc.Scripts != (Scripts{Setup: "echo own", From: "calport"}) {
+	if loc.Scripts != (Scripts{Setup: "echo own", From: "berth"}) {
 		t.Fatalf("scripts = %+v, want the location's own", loc.Scripts)
 	}
 	l.SetScripts("cal", "", "")
 	loc, _ = l.Get(ctx, "cal")
-	if loc.Scripts.From != "orca" {
-		t.Fatalf("clearing did not fall back to Orca: %+v", loc.Scripts)
+	if loc.Scripts.From != "repo" {
+		t.Fatalf("clearing did not fall back to the repository: %+v", loc.Scripts)
 	}
 }
 
@@ -65,7 +66,7 @@ func waitFor(t *testing.T, ch <-chan events.Event, typ string) events.Event {
 func TestSetupRunsInTheNewWorktreeWithOrcaCompatibleEnvironment(t *testing.T) {
 	repo := gitRepo(t)
 	t.Setenv("SHELL", "/bin/sh")
-	fakeOrca(t, repo, `echo \"$ORCA_ROOT_PATH|$ORCA_WORKTREE_PATH|$ORCA_WORKSPACE_NAME\" > setup-ran`, "")
+	repoConfig(t, repo, `echo "$ORCA_ROOT_PATH|$ORCA_WORKTREE_PATH|$ORCA_WORKSPACE_NAME" > setup-ran`, "")
 	ctx := context.Background()
 	bus := &events.Bus{}
 	ch, stop := bus.Subscribe()
@@ -76,7 +77,7 @@ func TestSetupRunsInTheNewWorktreeWithOrcaCompatibleEnvironment(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	go b.lifecycle("calport", "setup", loc, wt.Path, wt.Name, loc.Scripts.Setup, nil)
+	go b.lifecycle("berth", "setup", loc, wt.Path, wt.Name, loc.Scripts.Setup, nil)
 	waitFor(t, ch, "worktree.setup.finished")
 	got, err := os.ReadFile(filepath.Join(wt.Path, "setup-ran"))
 	if err != nil {
@@ -98,7 +99,7 @@ func TestArchiveRunsBeforeRemovalAndAFailureKeepsTheWorktree(t *testing.T) {
 	loc, _ := b.Locations.Add(ctx, "cal", repo)
 	wt, _ := b.Locations.CreateWorktree(ctx, "cal", "billing", "", "")
 
-	b.lifecycle("calport", "archive", loc, wt.Path, wt.Name, "exit 3", func() error {
+	b.lifecycle("berth", "archive", loc, wt.Path, wt.Name, "exit 3", func() error {
 		return b.Locations.RemoveWorktree(ctx, "cal", "billing", true)
 	})
 	failed := waitFor(t, ch, "worktree.archive.failed")
@@ -109,7 +110,7 @@ func TestArchiveRunsBeforeRemovalAndAFailureKeepsTheWorktree(t *testing.T) {
 		t.Fatal("a failed archive still removed the worktree")
 	}
 
-	b.lifecycle("calport", "archive", loc, wt.Path, wt.Name, "true", func() error {
+	b.lifecycle("berth", "archive", loc, wt.Path, wt.Name, "true", func() error {
 		return b.Locations.RemoveWorktree(ctx, "cal", "billing", true)
 	})
 	waitFor(t, ch, "worktree.archive.finished")

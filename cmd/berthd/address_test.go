@@ -35,7 +35,7 @@ func TestPickAddress(t *testing.T) {
 
 func TestDefaultListenIsTheTailnetAddressOnly(t *testing.T) {
 	got, err := defaultListen(ips("127.0.0.1", "203.0.113.5", "10.0.0.5", "100.101.102.103"))
-	if err != nil || got != "100.101.102.103:7443" {
+	if err != nil || got != "100.101.102.103:7444" {
 		t.Fatalf("defaultListen = %q, %v; want the tailnet address", got, err)
 	}
 	if got, err := defaultListen(ips("127.0.0.1", "203.0.113.5", "10.0.0.5")); err == nil {
@@ -46,12 +46,12 @@ func TestDefaultListenIsTheTailnetAddressOnly(t *testing.T) {
 func TestAdvertiseUsesTheAddressActuallyListenedOn(t *testing.T) {
 	all := ips("203.0.113.5", "100.101.102.103")
 	for listening, want := range map[string]string{
-		"100.101.102.103:7443": "100.101.102.103:7443",
-		"0.0.0.0:7443":         "203.0.113.5:7443",
+		"100.101.102.103:7444": "100.101.102.103:7444",
+		"0.0.0.0:7444":         "203.0.113.5:7444",
 		"[::]:9000":            "203.0.113.5:9000",
-		":7443":                "203.0.113.5:7443",
-		"":                     "203.0.113.5:7443",
-		"box.example:7443":     "box.example:7443",
+		":7444":                "203.0.113.5:7444",
+		"":                     "203.0.113.5:7444",
+		"box.example:7444":     "box.example:7444",
 	} {
 		if got := advertise(listening, all, "box.example"); got != want {
 			t.Errorf("advertise(%q) = %q, want %q", listening, got, want)

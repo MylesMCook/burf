@@ -8,10 +8,10 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/sean-brydon/calport/internal/agent"
+	"github.com/sean-brydon/berth/internal/agent"
 )
 
-// routeCommand handles `calport route add|rm` and `calport routes`.
+// routeCommand handles `berth route add|rm` and `berth routes`.
 func routeCommand(l laptop, args []string) error {
 	c, err := ensureAgent(l)
 	if err != nil {
@@ -36,7 +36,7 @@ func routeCommand(l laptop, args []string) error {
 		fmt.Printf("Removed route %s\n", args[1])
 		return nil
 	}
-	return errors.New("usage: calport route add '*.name.localhost' BOX PORT | calport route rm '*.name.localhost'")
+	return errors.New("usage: berth route add '*.name.localhost' BOX PORT | berth route rm '*.name.localhost'")
 }
 
 func listRoutes(l laptop, args []string) error {
@@ -56,7 +56,7 @@ func listRoutes(l laptop, args []string) error {
 		return printJSON(s.Routes)
 	}
 	if len(s.Routes) == 0 {
-		fmt.Println("No routes. Send a whole hostname pattern to a box with: calport route add '*.name.localhost' BOX PORT")
+		fmt.Println("No routes. Send a whole hostname pattern to a box with: berth route add '*.name.localhost' BOX PORT")
 		return nil
 	}
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)

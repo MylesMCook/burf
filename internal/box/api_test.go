@@ -14,15 +14,15 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/calport/internal/events"
-	"github.com/sean-brydon/calport/internal/identity"
-	"github.com/sean-brydon/calport/internal/pairing"
-	"github.com/sean-brydon/calport/internal/terminal"
-	"github.com/sean-brydon/calport/internal/trust"
-	"github.com/sean-brydon/calport/internal/wire"
+	"github.com/sean-brydon/berth/internal/events"
+	"github.com/sean-brydon/berth/internal/identity"
+	"github.com/sean-brydon/berth/internal/pairing"
+	"github.com/sean-brydon/berth/internal/terminal"
+	"github.com/sean-brydon/berth/internal/trust"
+	"github.com/sean-brydon/berth/internal/wire"
 )
 
-// servedBox runs calportd's server with the box routes mounted and returns a
+// servedBox runs berthd's server with the box routes mounted and returns a
 // client for a laptop paired with it.
 func servedBox(t *testing.T) (*wire.Client, *events.Bus) {
 	t.Helper()
@@ -141,7 +141,7 @@ func TestLocationsWorktreesSessionsAndAttachOverTheWire(t *testing.T) {
 		t.Fatalf("kill session: %d", status)
 	}
 
-	want := map[string]string{"location.added": "calport", "worktree.created": "orca", "session.started": "calport", "session.stopped": "calport"}
+	want := map[string]string{"location.added": "berth", "worktree.created": "orca", "session.started": "berth", "session.stopped": "berth"}
 	deadline = time.Now().Add(3 * time.Second)
 	for len(want) > 0 && time.Now().Before(deadline) {
 		select {
@@ -184,22 +184,22 @@ func TestUnitRoutesInstallListAndRemove(t *testing.T) {
 	c := NewClient(wc)
 	ctx := context.Background()
 
-	got, err := c.AddUnit(ctx, UnitRequest{Name: "calport-probe", Program: "/bin/sh", Args: []string{"-c", "true"}})
-	if err != nil || got.Name != "calport-probe" {
+	got, err := c.AddUnit(ctx, UnitRequest{Name: "berth-probe", Program: "/bin/sh", Args: []string{"-c", "true"}})
+	if err != nil || got.Name != "berth-probe" {
 		t.Fatalf("AddUnit() = %+v, %v", got, err)
 	}
 	all, err := c.Units(ctx)
 	if err != nil || len(all) != 1 {
 		t.Fatalf("Units() = %+v, %v; want one unit", all, err)
 	}
-	if _, err := c.RemoveUnit(ctx, "calport-probe"); err != nil {
+	if _, err := c.RemoveUnit(ctx, "berth-probe"); err != nil {
 		t.Fatalf("RemoveUnit() = %v", err)
 	}
 }
 
 func TestUnitRoutesReportAMissingUnitAsNotFound(t *testing.T) {
 	wc, _ := servedBox(t)
-	if _, err := NewClient(wc).Unit(context.Background(), "calport-missing"); err == nil {
+	if _, err := NewClient(wc).Unit(context.Background(), "berth-missing"); err == nil {
 		t.Fatal("Unit() on a missing unit succeeded; want an error")
 	}
 }
@@ -208,7 +208,7 @@ func TestUnitLogRoundTripsArbitraryBytes(t *testing.T) {
 	wc, _ := servedBox(t)
 	c := NewClient(wc)
 	ctx := context.Background()
-	unit, err := c.AddUnit(ctx, UnitRequest{Name: "calport-probe", Program: "/bin/sh", Args: []string{"-c", "true"}})
+	unit, err := c.AddUnit(ctx, UnitRequest{Name: "berth-probe", Program: "/bin/sh", Args: []string{"-c", "true"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -219,7 +219,7 @@ func TestUnitLogRoundTripsArbitraryBytes(t *testing.T) {
 	if err := os.WriteFile(unit.LogPath, want, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	got, err := c.UnitLog(ctx, "calport-probe", 1<<20)
+	got, err := c.UnitLog(ctx, "berth-probe", 1<<20)
 	if err != nil {
 		t.Fatalf("UnitLog() = %v", err)
 	}

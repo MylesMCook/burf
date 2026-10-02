@@ -1,8 +1,6 @@
 package box
 
 import (
-	"github.com/sean-brydon/calport/internal/kit"
-
 	"context"
 	"encoding/json"
 	"errors"
@@ -15,15 +13,15 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/sean-brydon/calport/internal/doctor"
-	"github.com/sean-brydon/calport/internal/events"
-	"github.com/sean-brydon/calport/internal/terminal"
-	"github.com/sean-brydon/calport/internal/wire"
+	"github.com/sean-brydon/berth/internal/doctor"
+	"github.com/sean-brydon/berth/internal/events"
+	"github.com/sean-brydon/berth/internal/terminal"
+	"github.com/sean-brydon/berth/internal/wire"
 )
 
 // OriginHeader names the tool a request comes from, so the events it causes
 // carry that origin and hooks driving the same tool skip them.
-const OriginHeader = "X-Calport-Origin"
+const OriginHeader = "X-Berth-Origin"
 
 var validOrigin = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,31}$`)
 
@@ -33,18 +31,16 @@ type Box struct {
 	Sessions  *Sessions
 	Shares    *Shares
 	Events    *events.Bus
-	// Watcher, when set, is told about calport's own worktree changes so it
+	// Watcher, when set, is told about berth's own worktree changes so it
 	// does not announce them a second time.
 	Watcher *Watcher
 	// Update, when set, lets paired laptops upgrade the daemon in place.
 	Update *SelfUpdate
-	// DaemonChecks adds calportd's own checks to Doctor.
+	// DaemonChecks adds berthd's own checks to Doctor.
 	DaemonChecks func() []doctor.Check
 	// LogDir holds the logs of lifecycle scripts.
 	LogDir string
-	// Kit installs the Cal.com worktree kit; nil where it cannot run.
-	Kit *kit.Installer
-	// Units runs calportd's managed units; nil where they cannot run.
+	// Units runs berthd's managed units; nil where they cannot run.
 	Units *Units
 	// AgentStates, when running, says which agents wait for someone.
 	AgentStates *AgentStates
@@ -70,11 +66,9 @@ func (b *Box) Mount(s *wire.Server) {
 	route("GET /v1/locations", b.listLocations)
 	route("POST /v1/locations", b.addLocation)
 	route("DELETE /v1/locations/{name}", b.removeLocation)
-	route("POST /v1/locations/import/orca", b.importOrca)
 	route("PUT /v1/locations/{name}/scripts", b.setScripts)
 	route("POST /v1/locations/{name}/worktrees", b.addWorktree)
 	route("DELETE /v1/locations/{name}/worktrees/{worktree}", b.removeWorktree)
-	route("POST /v1/locations/{name}/worktrees/{worktree}/open", b.handleOpen)
 	route("GET /v1/services", b.handleServices)
 	route("GET /v1/sessions", b.listSessions)
 	route("POST /v1/sessions", b.addSession)
@@ -91,13 +85,6 @@ func (b *Box) Mount(s *wire.Server) {
 	route("POST /v1/units/{name}/restart", b.restartUnit)
 	route("GET /v1/units/{name}/log", b.unitLog)
 	route("GET /v1/stats", b.handleStats)
-	route("GET /v1/kit", b.kitStatus)
-	route("POST /v1/kit/reclaim", b.handleReclaim)
-	route("POST /v1/kit", b.installKit)
-	route("GET /v1/kit/tools", b.kitTools)
-	route("POST /v1/kit/tools", b.setUpKitTools)
-	route("GET /v1/herdr", b.handleHerdr)
-	route("POST /v1/herdr/update", b.handleHerdrUpdate)
 	route("GET /v1/info", b.handleInfo)
 	route("GET /v1/doctor", b.handleDoctor)
 	route("POST /v1/upgrade", b.handleUpgrade)
@@ -133,7 +120,7 @@ func origin(r *http.Request) string {
 	if o := r.Header.Get(OriginHeader); validOrigin.MatchString(o) {
 		return o
 	}
-	return "calport"
+	return "berth"
 }
 
 func (b *Box) publish(r *http.Request, typ string, data map[string]any) {
@@ -152,7 +139,7 @@ func (b *Box) ports(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	// calportd's own listener is not a service anyone should open or share.
+	// berthd's own listener is not a service anyone should open or share.
 	own := os.Getpid()
 	visible := ports[:0]
 	for _, p := range ports {
@@ -184,21 +171,6 @@ func (b *Box) addLocation(w http.ResponseWriter, r *http.Request) error {
 	}
 	b.publish(r, "location.added", map[string]any{"location": loc.Name, "path": loc.Path})
 	writeJSON(w, loc)
-	return nil
-}
-
-func (b *Box) importOrca(w http.ResponseWriter, r *http.Request) error {
-	added, err := b.Locations.ImportOrcaRepos(r.Context())
-	if err != nil {
-		return err
-	}
-	for _, loc := range added {
-		b.publish(r, "location.added", map[string]any{"location": loc.Name, "path": loc.Path, "from": "orca"})
-	}
-	if added == nil {
-		added = []Location{}
-	}
-	writeJSON(w, added)
 	return nil
 }
 
@@ -234,33 +206,15 @@ func (b *Box) addWorktree(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	location := r.PathValue("name")
-	from := origin(r)
-	req.Settled = func(path string, err error) {
-		data := map[string]any{"location": location, "name": req.Name, "path": path}
-		if err != nil {
-			b.Events.Publish(events.Event{Type: "worktree.setup.failed", Box: b.Name, Origin: from, Error: err.Error(), Data: data})
-			return
-		}
-		b.Events.Publish(events.Event{Type: "worktree.setup.finished", Box: b.Name, Origin: from, Data: data})
-	}
-	wt, err := b.Locations.Create(r.Context(), location, req)
+	wt, err := b.Locations.CreateWorktree(r.Context(), location, req.Name, req.Branch, req.Base)
 	if err != nil {
 		return err
 	}
 	b.own(wt.Path)
-	provider := req.Provider
-	if provider == "" {
-		provider = "git"
-	}
 	b.publish(r, "worktree.created", map[string]any{
-		"location": location, "name": wt.Name, "path": wt.Path, "branch": wt.Branch, "provider": provider,
+		"location": location, "name": wt.Name, "path": wt.Path, "branch": wt.Branch,
 	})
-	if wt.SettingUp {
-		b.publish(r, "worktree.setup.started", map[string]any{"location": location, "name": wt.Name, "path": wt.Path})
-	}
-	// Orca and Herdr run the kit's setup themselves for worktrees they make
-	// once configured to; otherwise calport runs the location's.
-	if loc, err := b.Locations.Get(r.Context(), location); err == nil && loc.Scripts.Setup != "" && !b.toolRunsKitHooks(r.Context(), provider, loc) {
+	if loc, err := b.Locations.Get(r.Context(), location); err == nil && loc.Scripts.Setup != "" {
 		go b.lifecycle(origin(r), "setup", loc, wt.Path, wt.Name, loc.Scripts.Setup, nil)
 	}
 	writeJSON(w, wt)
@@ -297,7 +251,7 @@ func (b *Box) removeWorktree(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	// Only throwaway worktrees ask for their branch to go too (kit check).
+	// Only throwaway worktrees ask for their branch to go too.
 	var branch string
 	if r.URL.Query().Get("delete_branch") == "1" {
 		for _, wt := range loc.Worktrees {
@@ -310,11 +264,10 @@ func (b *Box) removeWorktree(w http.ResponseWriter, r *http.Request) error {
 		if branch != "" {
 			git(ctx, "-C", loc.Path, "branch", "-D", branch)
 		}
-		b.reclaimRemoved(loc, dir)
 	}
 	// A worktree with an archive script is torn down in the background: the
 	// script may take minutes, and removal only follows if it succeeds.
-	if (!OrcaManaged(dir) || !b.toolRunsKitHooks(r.Context(), "orca", loc)) && loc.Scripts.Archive != "" {
+	if loc.Scripts.Archive != "" {
 		from := origin(r)
 		go b.lifecycle(from, "archive", loc, dir, name, loc.Scripts.Archive, func() error {
 			if err := b.Locations.RemoveWorktree(context.Background(), location, name, force); err != nil {

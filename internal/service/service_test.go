@@ -24,12 +24,12 @@ func stub(t *testing.T, os_ string) (home string, calls *[]string) {
 }
 
 var spec = Spec{
-	Name:        "calport-agent",
-	Description: "calport agent",
-	Program:     "/opt/calport/bin/calport",
+	Name:        "berth-agent",
+	Description: "berth agent",
+	Program:     "/opt/berth/bin/berth",
 	Args:        []string{"agent"},
-	Env:         map[string]string{"CALPORT_HOME": "/Users/alex/Library/Application Support/calport"},
-	LogPath:     "/Users/alex/Library/Logs/calport.log",
+	Env:         map[string]string{"BERTH_HOME": "/Users/alex/Library/Application Support/berth"},
+	LogPath:     "/Users/alex/Library/Logs/berth.log",
 }
 
 func TestUnitsRestartOnlyAfterFailure(t *testing.T) {
@@ -41,8 +41,8 @@ func TestUnitsRestartOnlyAfterFailure(t *testing.T) {
 	for _, want := range []string{
 		"<key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>",
 		"<key>RunAtLoad</key><true/>",
-		"<string>/opt/calport/bin/calport</string>\n<string>agent</string>",
-		"<key>CALPORT_HOME</key><string>/Users/alex/Library/Application Support/calport</string>",
+		"<string>/opt/berth/bin/berth</string>\n<string>agent</string>",
+		"<key>BERTH_HOME</key><string>/Users/alex/Library/Application Support/berth</string>",
 	} {
 		if !strings.Contains(string(plist), want) {
 			t.Errorf("plist missing %q:\n%s", want, plist)
@@ -55,8 +55,8 @@ func TestUnitsRestartOnlyAfterFailure(t *testing.T) {
 	}
 	for _, want := range []string{
 		"Restart=on-failure",
-		"ExecStart=/opt/calport/bin/calport agent",
-		`Environment="CALPORT_HOME=/Users/alex/Library/Application Support/calport"`,
+		"ExecStart=/opt/berth/bin/berth agent",
+		`Environment="BERTH_HOME=/Users/alex/Library/Application Support/berth"`,
 		"WantedBy=default.target",
 	} {
 		if !strings.Contains(string(unit), want) {
@@ -98,7 +98,7 @@ func TestInstallIsIdempotentAndDetectsItself(t *testing.T) {
 			t.Fatalf("%s: not installed after install", os_)
 		}
 		other := spec
-		other.Env = map[string]string{"CALPORT_HOME": "/elsewhere"}
+		other.Env = map[string]string{"BERTH_HOME": "/elsewhere"}
 		if Installed(other) {
 			t.Fatalf("%s: a unit for another home counted as installed", os_)
 		}
@@ -123,7 +123,7 @@ func TestInstallIsIdempotentAndDetectsItself(t *testing.T) {
 
 func TestInstallRefusesTemporaryAndRelativeBinaries(t *testing.T) {
 	stub(t, "darwin")
-	for _, program := range []string{filepath.Join(os.TempDir(), "calport"), "/Users/alex/Library/Caches/go-build/ab/calport", "bin/calport"} {
+	for _, program := range []string{filepath.Join(os.TempDir(), "berth"), "/Users/alex/Library/Caches/go-build/ab/berth", "bin/berth"} {
 		s := spec
 		s.Program = program
 		if _, err := Install(s); err == nil {
@@ -164,18 +164,18 @@ func TestKeepChildrenSurvivesServiceRestarts(t *testing.T) {
 func TestLinuxUnitsWriteOutputToTheLogPath(t *testing.T) {
 	stub(t, "linux")
 	unit, err := Render(Spec{
-		Name:        "calport-orca",
+		Name:        "berth-orca",
 		Description: "Orca runtime",
 		Program:     "/usr/bin/orca",
 		Args:        []string{"serve"},
-		LogPath:     "/home/alex/.config/calport/units/calport-orca.log",
+		LogPath:     "/home/alex/.config/berth/units/berth-orca.log",
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{
-		"StandardOutput=append:/home/alex/.config/calport/units/calport-orca.log",
-		"StandardError=append:/home/alex/.config/calport/units/calport-orca.log",
+		"StandardOutput=append:/home/alex/.config/berth/units/berth-orca.log",
+		"StandardError=append:/home/alex/.config/berth/units/berth-orca.log",
 	} {
 		if !strings.Contains(string(unit), want) {
 			t.Fatalf("unit is missing %q:\n%s", want, unit)
@@ -185,7 +185,7 @@ func TestLinuxUnitsWriteOutputToTheLogPath(t *testing.T) {
 
 func TestLinuxUnitsWithoutALogPathRedirectNothing(t *testing.T) {
 	stub(t, "linux")
-	unit, err := Render(Spec{Name: "calport-agent", Program: "/usr/bin/calport", Args: []string{"agent"}})
+	unit, err := Render(Spec{Name: "berth-agent", Program: "/usr/bin/berth", Args: []string{"agent"}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,7 +194,7 @@ func TestLinuxUnitsWithoutALogPathRedirectNothing(t *testing.T) {
 	}
 }
 
-// calportd exits only when something is wrong, so on-failure is right for it:
+// berthd exits only when something is wrong, so on-failure is right for it:
 // restarting forever would hide a bad configuration. A managed unit is the
 // opposite - it exists to stay up, and the programs it runs can shut down
 // cleanly on their own. An Orca runtime did exactly that, exited 0, and
@@ -209,7 +209,7 @@ func TestUnitsThatMustStayUpRestartOnACleanExitToo(t *testing.T) {
 		t.Fatalf("a stay-up unit must restart on a clean exit:\n%s", always)
 	}
 
-	onFailure, err := Render(Spec{Name: "calport-agent", Program: "/usr/bin/calport"})
+	onFailure, err := Render(Spec{Name: "berth-agent", Program: "/usr/bin/berth"})
 	if err != nil {
 		t.Fatal(err)
 	}

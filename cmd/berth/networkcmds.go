@@ -10,8 +10,8 @@ import (
 	"runtime"
 	"text/tabwriter"
 
-	"github.com/sean-brydon/calport/internal/forward"
-	"github.com/sean-brydon/calport/internal/wire"
+	"github.com/sean-brydon/berth/internal/forward"
+	"github.com/sean-brydon/berth/internal/wire"
 )
 
 // networkDialer reaches addresses through the agent's named network, so the
@@ -31,12 +31,12 @@ func networkDialer(l laptop, name string) (wire.DialFunc, error) {
 
 func networkCommand(l laptop, args []string) error {
 	if len(args) == 0 {
-		return errors.New("usage: calport network login NAME | calport network proxy NAME HOST PORT")
+		return errors.New("usage: berth network login NAME | berth network proxy NAME HOST PORT")
 	}
 	switch args[0] {
 	case "login":
 		if len(args) != 2 {
-			return errors.New("usage: calport network login NAME")
+			return errors.New("usage: berth network login NAME")
 		}
 		c, err := ensureAgent(l)
 		if err != nil {
@@ -56,9 +56,9 @@ func networkCommand(l laptop, args []string) error {
 		fmt.Printf("Network %s is connected to %v as %v.\n", args[1], info["tailnet"], info["ips"])
 		return nil
 	case "proxy":
-		// For ssh's ProxyCommand: `-o ProxyCommand="calport network proxy NAME %h %p"`.
+		// For ssh's ProxyCommand: `-o ProxyCommand="berth network proxy NAME %h %p"`.
 		if len(args) != 4 {
-			return errors.New("usage: calport network proxy NAME HOST PORT")
+			return errors.New("usage: berth network proxy NAME HOST PORT")
 		}
 		c, err := ensureAgent(l)
 		if err != nil {
@@ -91,7 +91,7 @@ func listNetworks(l laptop, args []string) error {
 		return printJSON(nets)
 	}
 	if len(nets) == 0 {
-		fmt.Println("No networks. Reach a tailnet this laptop is not on with: calport network login NAME")
+		fmt.Println("No networks. Reach a tailnet this laptop is not on with: berth network login NAME")
 		return nil
 	}
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)

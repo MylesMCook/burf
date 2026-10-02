@@ -34,16 +34,16 @@ func (s *streamConn) Close() error {
 	return nil
 }
 
-func (s *streamConn) LocalAddr() net.Addr  { return streamAddr("calport") }
+func (s *streamConn) LocalAddr() net.Addr  { return streamAddr("berth") }
 func (s *streamConn) RemoteAddr() net.Addr { return s.remote }
 
 // Deadlines are not supported: a stream ends through Close, and every caller
-// in calport bounds its work with a context instead.
+// in berth bounds its work with a context instead.
 func (s *streamConn) SetDeadline(time.Time) error      { return nil }
 func (s *streamConn) SetReadDeadline(time.Time) error  { return nil }
 func (s *streamConn) SetWriteDeadline(time.Time) error { return nil }
 
 type streamAddr string
 
-func (a streamAddr) Network() string { return "calport" }
+func (a streamAddr) Network() string { return "berth" }
 func (a streamAddr) String() string  { return string(a) }

@@ -32,7 +32,7 @@ func readJSON(t *testing.T, path string) map[string]any {
 func TestCursorHooksAreAppendedAfterOrcasAndOnlyOnce(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "hooks.json")
 	os.WriteFile(path, []byte(orcaCursorHooks), 0o600)
-	changed, err := InstallCursorHooks(path, "/Users/alex/bin/calport")
+	changed, err := InstallCursorHooks(path, "/Users/alex/bin/berth")
 	if err != nil || !changed {
 		t.Fatalf("install: %v changed=%v", err, changed)
 	}
@@ -40,16 +40,16 @@ func TestCursorHooksAreAppendedAfterOrcasAndOnlyOnce(t *testing.T) {
 	hooks := root["hooks"].(map[string]any)
 	stop := hooks["stop"].([]any)
 	if len(stop) != 2 || !strings.Contains(stop[0].(map[string]any)["command"].(string), "orca") ||
-		stop[1].(map[string]any)["command"] != "/Users/alex/bin/calport hook cursor stop" {
+		stop[1].(map[string]any)["command"] != "/Users/alex/bin/berth hook cursor stop" {
 		t.Fatalf("stop hooks = %v", stop)
 	}
 	if len(hooks["beforeShellExecution"].([]any)) != 1 {
 		t.Fatal("an unrelated hook was changed")
 	}
-	if changed, _ := InstallCursorHooks(path, "/Users/alex/bin/calport"); changed {
+	if changed, _ := InstallCursorHooks(path, "/Users/alex/bin/berth"); changed {
 		t.Fatal("a second install changed the file again")
 	}
-	backup, err := os.ReadFile(path + ".calport-backup")
+	backup, err := os.ReadFile(path + ".berth-backup")
 	if err != nil || string(backup) != orcaCursorHooks {
 		t.Fatalf("backup = %q, %v", backup, err)
 	}
@@ -62,7 +62,7 @@ func TestCursorHooksAreAppendedAfterOrcasAndOnlyOnce(t *testing.T) {
 func TestClaudeHooksKeepExistingSettings(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "settings.json")
 	os.WriteFile(path, []byte(`{"model":"opus","hooks":{"Stop":[{"hooks":[{"type":"command","command":"say done"}]}]}}`), 0o644)
-	if _, err := InstallClaudeHooks(path, "/home/alex/.local/bin/calportd"); err != nil {
+	if _, err := InstallClaudeHooks(path, "/home/alex/.local/bin/berthd"); err != nil {
 		t.Fatal(err)
 	}
 	root := readJSON(t, path)
@@ -76,19 +76,19 @@ func TestClaudeHooksKeepExistingSettings(t *testing.T) {
 	if len(hooks["Notification"].([]any)) != 1 {
 		t.Fatal("Notification hook missing")
 	}
-	if changed, _ := InstallClaudeHooks(path, "/home/alex/.local/bin/calportd"); changed {
+	if changed, _ := InstallClaudeHooks(path, "/home/alex/.local/bin/berthd"); changed {
 		t.Fatal("a second install changed the file again")
 	}
 }
 
 func TestInstallCreatesMissingFilesAndRefusesBrokenOnes(t *testing.T) {
 	dir := t.TempDir()
-	if _, err := InstallClaudeHooks(filepath.Join(dir, "new", "settings.json"), "calport"); err != nil {
+	if _, err := InstallClaudeHooks(filepath.Join(dir, "new", "settings.json"), "berth"); err != nil {
 		t.Fatalf("missing settings file: %v", err)
 	}
 	broken := filepath.Join(dir, "broken.json")
 	os.WriteFile(broken, []byte("{ not json"), 0o644)
-	if _, err := InstallCursorHooks(broken, "calport"); err == nil {
+	if _, err := InstallCursorHooks(broken, "berth"); err == nil {
 		t.Fatal("rewrote a file that is not JSON")
 	}
 	if b, _ := os.ReadFile(broken); string(b) != "{ not json" {
@@ -102,13 +102,13 @@ func TestSkillInstalls(t *testing.T) {
 		t.Fatal(err)
 	}
 	b, _ := os.ReadFile(path)
-	if !strings.HasPrefix(string(b), "---\nname: calport\n") {
+	if !strings.HasPrefix(string(b), "---\nname: berth\n") {
 		t.Fatalf("skill file starts with %q", string(b)[:30])
 	}
 }
 
 func TestQuotedBinaryPaths(t *testing.T) {
-	if got := hookCommand("/Users/alex/Application Support/calport", "cursor", "stop"); got != "'/Users/alex/Application Support/calport' hook cursor stop" {
+	if got := hookCommand("/Users/alex/Application Support/berth", "cursor", "stop"); got != "'/Users/alex/Application Support/berth' hook cursor stop" {
 		t.Fatalf("hookCommand = %q", got)
 	}
 }

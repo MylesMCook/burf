@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/calport/internal/identity"
+	"github.com/sean-brydon/berth/internal/identity"
 )
 
 func fp() identity.Fingerprint {
@@ -19,7 +19,7 @@ func fp() identity.Fingerprint {
 
 func TestAddAndLookUpByKeyAndName(t *testing.T) {
 	s := NewStore(filepath.Join(t.TempDir(), "boxes.json"))
-	box := Peer{Name: "dev-alex", Address: "203.0.113.5:7443", Fingerprint: fp(), PairedAt: time.Now().UTC()}
+	box := Peer{Name: "dev-alex", Address: "203.0.113.5:7444", Fingerprint: fp(), PairedAt: time.Now().UTC()}
 	if err := s.Add(box); err != nil {
 		t.Fatal(err)
 	}

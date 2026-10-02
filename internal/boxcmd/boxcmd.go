@@ -1,6 +1,6 @@
 // Package boxcmd implements the commands that act on a box's locations,
-// worktrees, sessions, shares, and events. `calportd` runs them against its
-// own box; `calport` runs them against a paired box after stripping the box
+// worktrees, sessions, shares, and events. `berthd` runs them against its
+// own box; `berth` runs them against a paired box after stripping the box
 // name from the command line.
 package boxcmd
 
@@ -16,8 +16,8 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/sean-brydon/calport/internal/box"
-	"github.com/sean-brydon/calport/internal/events"
+	"github.com/sean-brydon/berth/internal/box"
+	"github.com/sean-brydon/berth/internal/events"
 )
 
 // Usage lists the commands with box-relative references. prefix is "" on the
@@ -32,14 +32,11 @@ func Usage(cmd, prefix string) string {
   %[1]s locations%[3]s [--json]                        List locations and their worktrees
   %[1]s location add %[2]sNAME PATH                     Register a repo or directory
   %[1]s location rm %[2]sNAME                           Forget a location (files are untouched)
-  %[1]s location import%[3]s orca                      Add every repository Orca knows as a location
   %[1]s location scripts %[2]sNAME [--setup CMD] [--archive CMD] [--clear]
-                                                  Worktree setup/archive scripts (default: Orca's)
+                                                  Worktree setup/archive scripts (default: the repo's .berth/config.json)
   %[1]s services%[3]s [--json]                          Which worktree each running server belongs to
-  %[1]s worktree open %[2]sLOC/NAME [--tool orca|herdr] [--agent claude|codex]
-                                                  Open a worktree in Orca or Herdr
   %[1]s worktree new %[2]sLOC/NAME [--branch B] [--base REF]
-         [--provider git|orca|herdr] [--agent ID] [--prompt TEXT]
+                                                  Create a git worktree and run its setup
   %[1]s worktree rm %[2]sLOC/NAME [--force]             Remove a worktree
 
 Agent sessions
@@ -108,7 +105,7 @@ func Run(ctx context.Context, c *box.Client, args []string, out io.Writer) error
 		fs, asJSON := flags(rest)
 		setup := fs.String("setup", "", "command to run after a worktree is created")
 		archive := fs.String("archive", "", "command to run before a worktree is removed")
-		clear := fs.Bool("clear", false, "remove this location's own scripts and use Orca's")
+		clear := fs.Bool("clear", false, "remove this location's own scripts and use the repository's")
 		pos, err := parse(fs, rest)
 		if err != nil || len(pos) != 1 {
 			return usageErr("location scripts NAME [--setup CMD] [--archive CMD] [--clear]")
@@ -128,44 +125,13 @@ func Run(ctx context.Context, c *box.Client, args []string, out io.Writer) error
 			}
 			return show(out, *asJSON, l.Scripts, func() {
 				if l.Scripts.Setup == "" && l.Scripts.Archive == "" {
-					fmt.Fprintf(out, "%s has no lifecycle scripts (none set here, none in Orca).\n", l.Name)
+					fmt.Fprintf(out, "%s has no lifecycle scripts (none set here, none in "+box.RepoConfigFile+").\n", l.Name)
 					return
 				}
 				fmt.Fprintf(out, "%s scripts (from %s):\n  setup:   %s\n  archive: %s\n", l.Name, l.Scripts.From, l.Scripts.Setup, l.Scripts.Archive)
 			})
 		}
 		return errors.New("no location with that name")
-	case "location import":
-		if len(rest) != 1 || rest[0] != "orca" {
-			return usageErr("location import orca")
-		}
-		added, err := c.ImportOrca(ctx)
-		if err != nil {
-			return err
-		}
-		if len(added) == 0 {
-			fmt.Fprintln(out, "Every Orca repository is already a location.")
-		}
-		for _, loc := range added {
-			fmt.Fprintf(out, "Added location %s → %s\n", loc.Name, loc.Path)
-		}
-		return nil
-	case "worktree open":
-		fs, _ := flags(rest)
-		var req box.OpenRequest
-		fs.StringVar(&req.Tool, "tool", "orca", "orca or herdr")
-		fs.StringVar(&req.Agent, "agent", "", "claude or codex, to start in it")
-		fs.StringVar(&req.HerdrSession, "herdr-session", "", "Herdr session to open it in")
-		pos, err := parse(fs, rest)
-		if err != nil || len(pos) != 1 || !strings.Contains(pos[0], "/") {
-			return usageErr("worktree open LOC/NAME [--tool orca|herdr] [--agent claude|codex]")
-		}
-		loc, name, _ := strings.Cut(pos[0], "/")
-		if err := c.OpenWorktree(ctx, loc, name, req); err != nil {
-			return err
-		}
-		fmt.Fprintf(out, "Opened %s/%s in %s\n", loc, name, req.Tool)
-		return nil
 	case "services":
 		fs, asJSON := flags(rest)
 		parse(fs, rest)
@@ -363,7 +329,7 @@ func Run(ctx context.Context, c *box.Client, args []string, out io.Writer) error
 		if len(rest) != 1 {
 			return usageErr("unit log NAME")
 		}
-		// The whole reason a unit writes to a file calportd owns is so this
+		// The whole reason a unit writes to a file berthd owns is so this
 		// can read it: a unit that will not stay up explains itself here.
 		log, err := c.UnitLog(ctx, rest[0], 1<<20)
 		if err != nil {
@@ -436,7 +402,7 @@ func Describe(e events.Event) string {
 			line += fmt.Sprintf("  %s=%v", k, v)
 		}
 	}
-	if e.Origin != "" && e.Origin != "calport" {
+	if e.Origin != "" && e.Origin != "berth" {
 		line += "  via " + e.Origin
 	}
 	if e.Error != "" {
@@ -513,13 +479,9 @@ func worktreeNew(ctx context.Context, c *box.Client, args []string, out io.Write
 	var req box.WorktreeRequest
 	fs.StringVar(&req.Branch, "branch", "", "branch to create (default: the worktree name)")
 	fs.StringVar(&req.Base, "base", "", "ref to branch from")
-	fs.StringVar(&req.Provider, "provider", "git", "who creates it: git, orca, or herdr")
-	fs.StringVar(&req.Agent, "agent", "", "agent for Orca to start in the worktree")
-	fs.StringVar(&req.Prompt, "prompt", "", "prompt for that agent")
-	fs.StringVar(&req.HerdrSession, "herdr-session", "", "Herdr session to open the workspace in")
 	pos, err := parse(fs, args)
 	if err != nil || len(pos) != 1 {
-		return usageErr("worktree new LOC/NAME [--branch B] [--base REF] [--provider git|orca|herdr] [--agent ID] [--prompt TEXT]")
+		return usageErr("worktree new LOC/NAME [--branch B] [--base REF]")
 	}
 	loc, name, ok := strings.Cut(pos[0], "/")
 	if !ok || name == "" {
@@ -531,7 +493,7 @@ func worktreeNew(ctx context.Context, c *box.Client, args []string, out io.Write
 		return err
 	}
 	return show(out, *asJSON, wt, func() {
-		fmt.Fprintf(out, "Created %s/%s at %s on %s (via %s)\n", loc, wt.Name, wt.Path, wt.Branch, req.Provider)
+		fmt.Fprintf(out, "Created %s/%s at %s on %s\n", loc, wt.Name, wt.Path, wt.Branch)
 	})
 }
 

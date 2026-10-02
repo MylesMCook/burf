@@ -10,7 +10,7 @@ import (
 	"strings"
 )
 
-// holder is the launchd job listening on a port calport wants.
+// holder is the launchd job listening on a port berth wants.
 type holder struct {
 	// Label is the job's launchd label, which is also how it is booted out.
 	Label string
@@ -116,7 +116,7 @@ func argNamesPort(arg string, port int) bool {
 	return arg[i+1:] == want
 }
 
-// holderFix is the sequence that frees the port and hands it to calport.
+// holderFix is the sequence that frees the port and hands it to berth.
 // bootout alone is not enough: a job with RunAtLoad returns at the next boot,
 // so disable is what makes it stick.
 func holderFix(h holder) string {
@@ -124,7 +124,7 @@ func holderFix(h holder) string {
 	if h.System {
 		target, sudo = "system/"+h.Label, "sudo "
 	}
-	return fmt.Sprintf("%slaunchctl bootout %s\n%slaunchctl disable %s\ncalport setup port80", sudo, target, sudo, target)
+	return fmt.Sprintf("%slaunchctl bootout %s\n%slaunchctl disable %s\nberth setup port80", sudo, target, sudo, target)
 }
 
 // holderDetail describes the job in the terms that decide how to free it.
@@ -132,7 +132,7 @@ func holderFix(h holder) string {
 // It says "configured to listen here" rather than naming the job as the one
 // answering: a job definition says what would listen, not what does, and a
 // definition left on disk after its job was booted out still matches. The
-// caller only reaches this after something non-calport answered, so the job is
+// caller only reaches this after something non-berth answered, so the job is
 // the likely culprit and the right thing to act on - but the wording should
 // not claim more than a plist can tell us.
 func holderDetail(h holder) string {

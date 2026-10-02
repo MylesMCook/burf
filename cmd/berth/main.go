@@ -1,4 +1,4 @@
-// Command calport runs on a laptop: it pairs with boxes, runs the background
+// Command berth runs on a laptop: it pairs with boxes, runs the background
 // agent, and manages forwards and URLs.
 package main
 
@@ -19,68 +19,61 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/sean-brydon/calport/internal/agent"
-	"github.com/sean-brydon/calport/internal/boxcmd"
-	"github.com/sean-brydon/calport/internal/events"
-	"github.com/sean-brydon/calport/internal/identity"
-	"github.com/sean-brydon/calport/internal/integrations"
-	"github.com/sean-brydon/calport/internal/pairing"
-	"github.com/sean-brydon/calport/internal/statefile"
-	"github.com/sean-brydon/calport/internal/trust"
-	"github.com/sean-brydon/calport/internal/wire"
+	"github.com/sean-brydon/berth/internal/agent"
+	"github.com/sean-brydon/berth/internal/boxcmd"
+	"github.com/sean-brydon/berth/internal/events"
+	"github.com/sean-brydon/berth/internal/identity"
+	"github.com/sean-brydon/berth/internal/integrations"
+	"github.com/sean-brydon/berth/internal/pairing"
+	"github.com/sean-brydon/berth/internal/statefile"
+	"github.com/sean-brydon/berth/internal/trust"
+	"github.com/sean-brydon/berth/internal/wire"
 )
 
-const usage = `calport — connect this laptop to development boxes
+const usage = `berth — connect this laptop to development boxes
 
 Boxes
-  calport add ssh [user@]HOST [--name N] [--network NET]
-                                           Install calportd on a box over SSH (once) and pair
-  calport network login NAME               Join another tailnet (e.g. a personal one) to reach its boxes
-  calport networks [--json]                List joined networks
-  calport pair '<link>' [--name N] [--network NET]
-                                           Pair with a box (link from calportd pair)
-  calport boxes [--json]                   List paired boxes and whether they are online
-  calport ping <box>                       Check a box answers and still trusts you
-  calport upgrade <box>                    Upgrade the box's daemon over calport (no SSH)
-  calport forget <box>                     Remove a box from this laptop
+  berth add ssh [user@]HOST [--name N] [--network NET]
+                                           Install berthd on a box over SSH (once) and pair
+  berth network login NAME               Join another tailnet (e.g. a personal one) to reach its boxes
+  berth networks [--json]                List joined networks
+  berth pair '<link>' [--name N] [--network NET]
+                                           Pair with a box (link from berthd pair)
+  berth boxes [--json]                   List paired boxes and whether they are online
+  berth ping <box>                       Check a box answers and still trusts you
+  berth upgrade <box>                    Upgrade the box's daemon over berth (no SSH)
+  berth forget <box>                     Remove a box from this laptop
 
 Reaching services
-  calport url <box> <port|service>         Print the private URL for a service
-  calport open <box> <port|service>        Open that URL in your browser
-  calport forward <box> <ports> [--json]   Forward local ports: 3000, 8080:3000, 3000-3005
-  calport forwards [--json]                List forwards
-  calport unforward <id>                   Stop and forget a forward
-  calport discover [--network NET]            Machines on the tailnet that could be boxes
-  calport kit install BOX/LOCATION            Set up Cal.com worktrees on a box: own port, database and URL each
-  calport kit tools BOX/LOCATION [--setup]    Make Orca, Cursor, Codex, Superset (and Herdr) run the kit's hooks
-  calport kit check BOX/LOCATION              Make a throwaway worktree, check setup, URL and archive, end to end
-  calport kit reclaim BOX [--dry-run] [--all] Free databases, ports and services of worktrees whose folder is gone
-  calport route add '*.x.localhost' BOX PORT  Send every matching host to a box port, Host unchanged
-  calport routes [--json]                  List routes (calport route rm PATTERN removes one)
-  calport orca connect BOX                 Let this computer's Orca app reach the box's runtime
-  calport orca serve|status|exec BOX       Run, check, or drive that runtime
-  calport herdr [status|setup|update|open] This computer's Herdr with every box in it; see calport herdr help
-  calport units BOX [--json]               Managed units on a box
-  calport unit add BOX/NAME -- COMMAND...  Install and start a unit
-  calport unit log BOX/NAME                What a unit has written, for one that will not stay up
-  calport unit restart BOX/NAME            Start a unit again
+  berth url <box> <port|service>         Print the private URL for a service
+  berth open <box> <port|service>        Open that URL in your browser
+  berth forward <box> <ports> [--json]   Forward local ports: 3000, 8080:3000, 3000-3005
+  berth forwards [--json]                List forwards
+  berth unforward <id>                   Stop and forget a forward
+  berth discover [--network NET]            Machines on the tailnet that could be boxes
+  berth route add '*.x.localhost' BOX PORT  Send every matching host to a box port, Host unchanged
+  berth routes [--json]                  List routes (berth route rm PATTERN removes one)
+  berth units BOX [--json]               Managed units on a box
+  berth unit add BOX/NAME -- COMMAND...  Install and start a unit
+  berth unit log BOX/NAME                What a unit has written, for one that will not stay up
+  berth unit restart BOX/NAME            Start a unit again
 
 Sessions
-  calport attach BOX/SESSION               Attach this terminal to an agent session (detach: Ctrl-b d)
-  calport terminal BOX/SESSION             Open a new terminal window attached to a session
-  calport emit TYPE [key=value...]         Announce an event on this laptop, e.g. agent.finished
+  berth attach BOX/SESSION               Attach this terminal to an agent session (detach: Ctrl-b d)
+  berth terminal BOX/SESSION             Open a new terminal window attached to a session
+  berth emit TYPE [key=value...]         Announce an event on this laptop, e.g. agent.finished
 
 Agent
-  calport status [--json]                  Boxes, forwards and the proxy at a glance
-  calport doctor [BOX] [--json]            Check this computer (or a box) and how to fix it
-  calport events [--json]                  Stream events as they happen
-  calport agent                            Run the agent in the foreground
-  calport agent install|uninstall|status   Run the agent at login, restart it on crashes
-  calport setup port80 [--remove]          Drop :1355 from URLs (asks for your admin password once)
-  calport stop                             Stop the agent (and every forward)
-  calport id                               Print this laptop's fingerprint
+  berth status [--json]                  Boxes, forwards and the proxy at a glance
+  berth doctor [BOX] [--json]            Check this computer (or a box) and how to fix it
+  berth events [--json]                  Stream events as they happen
+  berth agent                            Run the agent in the foreground
+  berth agent install|uninstall|status   Run the agent at login, restart it on crashes
+  berth setup port80 [--remove]          Drop :1377 from URLs (asks for your admin password once)
+  berth stop                             Stop the agent (and every forward)
+  berth id                               Print this laptop's fingerprint
 
-CALPORT_HOME overrides the state directory.
+BERTH_HOME overrides the state directory.
 `
 
 func main() {
@@ -94,13 +87,13 @@ func main() {
 	if len(os.Args) > 1 && (os.Args[1] == "help" || os.Args[1] == "-h" || os.Args[1] == "--help") {
 		fmt.Print(usage)
 		fmt.Println()
-		fmt.Print(boxcmd.Usage("calport", "BOX/"))
+		fmt.Print(boxcmd.Usage("berth", "BOX/"))
 		fmt.Println()
-		fmt.Printf(integrations.Usage, "calport")
+		fmt.Printf(integrations.Usage, "berth")
 		return
 	}
 	if err := run(os.Args[1:]); err != nil {
-		fmt.Fprintln(os.Stderr, "calport:", err)
+		fmt.Fprintln(os.Stderr, "berth:", err)
 		os.Exit(1)
 	}
 }
@@ -139,8 +132,6 @@ func run(args []string) error {
 		return runDoctor(l, rest)
 	case "route":
 		return routeCommand(l, rest)
-	case "kit":
-		return kitCommand(l, rest)
 	case "discover":
 		return discover(l, rest)
 	case "routes":
@@ -153,7 +144,7 @@ func run(args []string) error {
 		return listNetworks(l, rest)
 	case "add":
 		if len(rest) == 0 || rest[0] != "ssh" {
-			return errors.New("usage: calport add ssh [user@]HOST [--name N] [--listen ADDR] [--address ADDR] [-- SSH OPTIONS]")
+			return errors.New("usage: berth add ssh [user@]HOST [--name N] [--listen ADDR] [--address ADDR] [-- SSH OPTIONS]")
 		}
 		return addSSH(l, rest[1:])
 	case "boxes":
@@ -179,13 +170,13 @@ func run(args []string) error {
 	case "stop":
 		c := agent.NewClient(l.socket())
 		if !c.Running(context.Background()) {
-			fmt.Println("The calport agent is not running.")
+			fmt.Println("The berth agent is not running.")
 			return nil
 		}
 		if err := c.Stop(context.Background()); err != nil {
 			return err
 		}
-		fmt.Println("Stopped the calport agent.")
+		fmt.Println("Stopped the berth agent.")
 		return nil
 	case "id":
 		id, err := l.identity()
@@ -213,10 +204,6 @@ func run(args []string) error {
 			return err
 		}
 		return integrations.Install(rest, exe, os.Stdout)
-	case "orca":
-		return orcaCommand(l, rest)
-	case "herdr":
-		return herdrCommand(l, rest)
 	case "emit":
 		// An event for this laptop, unless it names a paired box first.
 		if len(rest) > 0 {
@@ -229,7 +216,7 @@ func run(args []string) error {
 	if _, ok := boxcmd.Commands[cmd]; ok {
 		return runOnBox(l, args)
 	}
-	return fmt.Errorf("unknown command %q; run calport help", cmd)
+	return fmt.Errorf("unknown command %q; run berth help", cmd)
 }
 
 // flags parses the common --json flag plus any command-specific ones. Flags
@@ -285,13 +272,13 @@ func pair(l laptop, args []string) error {
 	var name, via *string
 	fs, asJSON, err := flags("pair", args, func(fs *flag.FlagSet) {
 		name = fs.String("name", "", "local name for the box (default: the name the box reports)")
-		via = fs.String("network", "", "reach the box through this network (see calport networks)")
+		via = fs.String("network", "", "reach the box through this network (see berth networks)")
 	})
 	if err != nil {
 		return err
 	}
 	if fs.NArg() != 1 {
-		return errors.New("usage: calport pair '<link>' [--name NAME]")
+		return errors.New("usage: berth pair '<link>' [--name NAME]")
 	}
 	tok, err := pairing.ParseToken(fs.Arg(0))
 	if err != nil {
@@ -331,7 +318,7 @@ func pair(l laptop, args []string) error {
 		peer.Name, err = boxes.AddWithFreeName(peer)
 	}
 	if err != nil {
-		return fmt.Errorf("the box accepted this laptop, but saving it locally failed: %w; run calportd pair again", err)
+		return fmt.Errorf("the box accepted this laptop, but saving it locally failed: %w; run berthd pair again", err)
 	}
 	// Let a running agent pick the box up now rather than at its next check.
 	if c := agent.NewClient(l.socket()); c.Running(context.Background()) {
@@ -361,7 +348,7 @@ func listBoxes(l laptop, args []string) error {
 		return printJSON(s.Boxes)
 	}
 	if len(s.Boxes) == 0 {
-		fmt.Println("No paired boxes. On a box, run calportd pair, then calport pair '<link>' here.")
+		fmt.Println("No paired boxes. On a box, run berthd pair, then berth pair '<link>' here.")
 		return nil
 	}
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
@@ -378,7 +365,7 @@ func listBoxes(l laptop, args []string) error {
 
 func ping(l laptop, args []string) error {
 	if len(args) != 1 {
-		return errors.New("usage: calport ping <box>")
+		return errors.New("usage: berth ping <box>")
 	}
 	client, err := l.boxClient(args[0])
 	if err != nil {
@@ -396,7 +383,7 @@ func ping(l laptop, args []string) error {
 
 func forget(l laptop, args []string) error {
 	if len(args) != 1 {
-		return errors.New("usage: calport forget <box>")
+		return errors.New("usage: berth forget <box>")
 	}
 	p, err := l.boxes().Remove(args[0])
 	if err != nil {
@@ -405,13 +392,13 @@ func forget(l laptop, args []string) error {
 	if c := agent.NewClient(l.socket()); c.Running(context.Background()) {
 		c.Refresh(context.Background())
 	}
-	fmt.Printf("Forgot %s. On the box, calportd revoke removes this laptop's access too.\n", p.Name)
+	fmt.Printf("Forgot %s. On the box, berthd revoke removes this laptop's access too.\n", p.Name)
 	return nil
 }
 
 func serviceURL(l laptop, open bool, args []string) error {
 	if len(args) != 2 {
-		return errors.New("usage: calport url|open <box> <port|service>")
+		return errors.New("usage: berth url|open <box> <port|service>")
 	}
 	c, err := ensureAgent(l)
 	if err != nil {
@@ -442,7 +429,7 @@ func addForward(l laptop, args []string) error {
 		return err
 	}
 	if fs.NArg() != 2 {
-		return errors.New("usage: calport forward <box> <ports>  (3000, 8080:3000, 3000-3005)")
+		return errors.New("usage: berth forward <box> <ports>  (3000, 8080:3000, 3000-3005)")
 	}
 	maps, err := parsePorts(fs.Arg(1))
 	if err != nil {
@@ -486,7 +473,7 @@ func listForwards(l laptop, args []string) error {
 		return printJSON(s.Forwards)
 	}
 	if len(s.Forwards) == 0 {
-		fmt.Println("No forwards. Add one with calport forward <box> <ports>.")
+		fmt.Println("No forwards. Add one with berth forward <box> <ports>.")
 		return nil
 	}
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
@@ -503,7 +490,7 @@ func listForwards(l laptop, args []string) error {
 
 func removeForward(l laptop, args []string) error {
 	if len(args) != 1 {
-		return errors.New("usage: calport unforward <id>")
+		return errors.New("usage: berth unforward <id>")
 	}
 	c, err := ensureAgent(l)
 	if err != nil {
@@ -578,10 +565,10 @@ func streamEvents(l laptop, args []string) error {
 // the laptop (Cursor, a local Orca) to announce what they did.
 func emitLocal(l laptop, args []string) error {
 	if len(args) == 0 || !strings.Contains(args[0], ".") {
-		return errors.New("usage: calport emit TYPE [key=value...]   (or calport emit BOX TYPE ... for a box)")
+		return errors.New("usage: berth emit TYPE [key=value...]   (or berth emit BOX TYPE ... for a box)")
 	}
 	data := map[string]any{}
-	origin := os.Getenv("CALPORT_ORIGIN")
+	origin := os.Getenv("BERTH_ORIGIN")
 	for _, kv := range args[1:] {
 		if o, ok := strings.CutPrefix(kv, "--origin="); ok {
 			origin = o

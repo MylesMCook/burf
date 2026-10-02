@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/calport/internal/statefile"
-	"github.com/sean-brydon/calport/internal/terminal"
+	"github.com/sean-brydon/berth/internal/statefile"
+	"github.com/sean-brydon/berth/internal/terminal"
 )
 
 // Session is a long-running program, usually a coding agent, started at a
@@ -34,15 +34,15 @@ var (
 	sessionName       = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$`)
 )
 
-// Sessions runs programs in calport's own tmux server, separate from any tmux
+// Sessions runs programs in berth's own tmux server, separate from any tmux
 // the user runs. Finished programs stay visible until killed, so an agent's
 // last output is never lost.
 type Sessions struct {
-	// Config is the tmux configuration file for calport's server.
+	// Config is the tmux configuration file for berth's server.
 	Config string
 }
 
-const tmuxSocket = "calport"
+const tmuxSocket = "berth"
 
 const tmuxConfig = `set -g remain-on-exit on
 set -g history-limit 50000
@@ -67,7 +67,7 @@ func (s *Sessions) tmux(ctx context.Context, args ...string) ([]byte, error) {
 	return cmd.CombinedOutput()
 }
 
-const listFormat = "#{session_name}\t#{session_created}\t#{session_attached}\t#{@calport_location}\t#{@calport_command}\t#{pane_dead}\t#{pane_start_path}"
+const listFormat = "#{session_name}\t#{session_created}\t#{session_attached}\t#{@berth_location}\t#{@berth_command}\t#{pane_dead}\t#{pane_start_path}"
 
 func (s *Sessions) List(ctx context.Context) ([]Session, error) {
 	if _, err := exec.LookPath("tmux"); err != nil {
@@ -108,7 +108,7 @@ func parseSessions(out []byte) []Session {
 
 // Create starts command in dir. An empty command starts the user's shell.
 // Commands run through a login shell, so tools the user installed (claude,
-// codex, orca) are on PATH even when calportd runs under systemd.
+// codex, orca) are on PATH even when berthd runs under systemd.
 func (s *Sessions) Create(ctx context.Context, name, location, dir, command string) (Session, error) {
 	if !sessionName.MatchString(name) {
 		return Session{}, fmt.Errorf("invalid session name %q: use letters, digits, - and _", name)
@@ -129,8 +129,8 @@ func (s *Sessions) Create(ctx context.Context, name, location, dir, command stri
 		return Session{}, fmt.Errorf("tmux new-session: %s", strings.TrimSpace(string(out)))
 	}
 	// set-option takes a pane target, whose exact-match form needs the colon.
-	s.tmux(ctx, "set-option", "-t", "="+name+":", "@calport_location", location)
-	s.tmux(ctx, "set-option", "-t", "="+name+":", "@calport_command", command)
+	s.tmux(ctx, "set-option", "-t", "="+name+":", "@berth_location", location)
+	s.tmux(ctx, "set-option", "-t", "="+name+":", "@berth_command", command)
 	return s.Get(ctx, name)
 }
 

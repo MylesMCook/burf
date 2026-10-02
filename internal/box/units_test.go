@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sean-brydon/calport/internal/service"
+	"github.com/sean-brydon/berth/internal/service"
 )
 
 // fakeService models the unit files on disk rather than a set of installed
@@ -58,27 +58,27 @@ func TestInstallStartsAUnitAndReportsIt(t *testing.T) {
 	svc, calls := fakeService()
 	u := &Units{Dir: t.TempDir(), svc: svc}
 	got, err := u.Install(context.Background(), UnitRequest{
-		Name:    "calport-probe",
+		Name:    "berth-probe",
 		Program: "/bin/sh",
 		Args:    []string{"-c", "true"},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Name != "calport-probe" {
-		t.Fatalf("Install().Name = %q; want calport-probe", got.Name)
+	if got.Name != "berth-probe" {
+		t.Fatalf("Install().Name = %q; want berth-probe", got.Name)
 	}
-	if want := filepath.Join(u.Dir, "calport-probe.log"); got.LogPath != want {
+	if want := filepath.Join(u.Dir, "berth-probe.log"); got.LogPath != want {
 		t.Fatalf("Install().LogPath = %q; want %q", got.LogPath, want)
 	}
 	if got.State != "running" {
 		t.Fatalf("Install().State = %q; Install starts the unit, so it reports running", got.State)
 	}
 	all, err := u.List()
-	if err != nil || len(all) != 1 || all[0].Name != "calport-probe" {
+	if err != nil || len(all) != 1 || all[0].Name != "berth-probe" {
 		t.Fatalf("List() = %+v, %v; want the installed unit", all, err)
 	}
-	if len(*calls) != 2 || !strings.HasPrefix((*calls)[0], "install calport-probe") || (*calls)[1] != "start calport-probe" {
+	if len(*calls) != 2 || !strings.HasPrefix((*calls)[0], "install berth-probe") || (*calls)[1] != "start berth-probe" {
 		t.Fatalf("service calls = %v; want one install then one start", *calls)
 	}
 }
@@ -90,24 +90,24 @@ func TestInstallStartsAUnitAndReportsIt(t *testing.T) {
 func TestGetAndRemoveFindTheUnitInstallReported(t *testing.T) {
 	svc, _ := fakeService()
 	u := &Units{Dir: t.TempDir(), svc: svc}
-	if _, err := u.Install(context.Background(), UnitRequest{Name: "calport-probe", Program: "/bin/sh", Args: []string{"-c", "true"}}); err != nil {
+	if _, err := u.Install(context.Background(), UnitRequest{Name: "berth-probe", Program: "/bin/sh", Args: []string{"-c", "true"}}); err != nil {
 		t.Fatalf("Install() = %v", err)
 	}
-	got, err := u.Get("calport-probe")
+	got, err := u.Get("berth-probe")
 	if err != nil {
 		t.Fatalf("Get() after Install = %v; want the unit that was just installed", err)
 	}
-	if got.Name != "calport-probe" || got.State != "running" {
+	if got.Name != "berth-probe" || got.State != "running" {
 		t.Fatalf("Get() = %+v; want the unit that was just installed and started", got)
 	}
-	removed, err := u.Remove("calport-probe")
+	removed, err := u.Remove("berth-probe")
 	if err != nil {
 		t.Fatalf("Remove() = %v; want the unit removed", err)
 	}
 	if removed.State != "removed" {
 		t.Fatalf("Remove() = %+v; want state removed", removed)
 	}
-	if _, err := u.Get("calport-probe"); !errors.Is(err, ErrUnknownUnit) {
+	if _, err := u.Get("berth-probe"); !errors.Is(err, ErrUnknownUnit) {
 		t.Fatalf("Get() after Remove = %v; want ErrUnknownUnit", err)
 	}
 }
@@ -118,14 +118,14 @@ func TestGetAndRemoveFindTheUnitInstallReported(t *testing.T) {
 func TestInstallLeavesAnUnchangedUnitRunning(t *testing.T) {
 	svc, calls := fakeService()
 	u := &Units{Dir: t.TempDir(), svc: svc}
-	req := UnitRequest{Name: "calport-probe", Program: "/bin/sh", Args: []string{"-c", "true"}}
+	req := UnitRequest{Name: "berth-probe", Program: "/bin/sh", Args: []string{"-c", "true"}}
 	if _, err := u.Install(context.Background(), req); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := u.Install(context.Background(), req); err != nil {
 		t.Fatal(err)
 	}
-	want := []string{"install calport-probe /bin/sh", "start calport-probe", "start calport-probe"}
+	want := []string{"install berth-probe /bin/sh", "start berth-probe", "start berth-probe"}
 	if !reflect.DeepEqual(*calls, want) {
 		t.Fatalf("service calls = %v; want %v, with no second install", *calls, want)
 	}
@@ -134,10 +134,10 @@ func TestInstallLeavesAnUnchangedUnitRunning(t *testing.T) {
 func TestInstallReplacesAUnitWhoseSpecChanged(t *testing.T) {
 	svc, calls := fakeService()
 	u := &Units{Dir: t.TempDir(), svc: svc}
-	if _, err := u.Install(context.Background(), UnitRequest{Name: "calport-probe", Program: "/bin/sh", Args: []string{"-c", "true"}}); err != nil {
+	if _, err := u.Install(context.Background(), UnitRequest{Name: "berth-probe", Program: "/bin/sh", Args: []string{"-c", "true"}}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := u.Install(context.Background(), UnitRequest{Name: "calport-probe", Program: "/bin/sh", Args: []string{"-c", "false"}}); err != nil {
+	if _, err := u.Install(context.Background(), UnitRequest{Name: "berth-probe", Program: "/bin/sh", Args: []string{"-c", "false"}}); err != nil {
 		t.Fatal(err)
 	}
 	installs := 0
@@ -164,7 +164,7 @@ func TestUnitNamesMayNotEscapeTheUnitDirectory(t *testing.T) {
 func TestGetReportsAnUnknownUnit(t *testing.T) {
 	svc, _ := fakeService()
 	u := &Units{Dir: t.TempDir(), svc: svc}
-	if _, err := u.Get("calport-missing"); !errors.Is(err, ErrUnknownUnit) {
+	if _, err := u.Get("berth-missing"); !errors.Is(err, ErrUnknownUnit) {
 		t.Fatalf("Get() error = %v; want ErrUnknownUnit", err)
 	}
 }
@@ -173,7 +173,7 @@ func TestInstallRefusesAProgramTheBoxDoesNotHave(t *testing.T) {
 	svc, _ := fakeService()
 	u := &Units{Dir: t.TempDir(), svc: svc}
 	t.Setenv("PATH", t.TempDir())
-	_, err := u.Install(context.Background(), UnitRequest{Name: "calport-probe", Program: "definitely-not-installed"})
+	_, err := u.Install(context.Background(), UnitRequest{Name: "berth-probe", Program: "definitely-not-installed"})
 	if err == nil {
 		t.Fatal("Install() accepted a program that is not on the box; want an error naming it")
 	}
@@ -191,7 +191,7 @@ func TestInstallResolvesTheProgramToAnAbsolutePath(t *testing.T) {
 	t.Setenv("PATH", bin)
 	svc, _ := fakeService()
 	u := &Units{Dir: t.TempDir(), svc: svc}
-	spec, err := u.spec(UnitRequest{Name: "calport-probe", Program: "faketool"})
+	spec, err := u.spec(UnitRequest{Name: "berth-probe", Program: "faketool"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -205,10 +205,10 @@ func TestTailReturnsTheEndOfALargeLog(t *testing.T) {
 	svc, _ := fakeService()
 	u := &Units{Dir: dir, svc: svc}
 	body := strings.Repeat("x", 4096) + "\nLAST RECORD\n"
-	if err := os.WriteFile(filepath.Join(dir, "calport-probe.log"), []byte(body), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "berth-probe.log"), []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	out, err := u.Tail("calport-probe", 32)
+	out, err := u.Tail("berth-probe", 32)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,10 +222,10 @@ func TestTailReturnsWhateverIsThereWhenTheLogIsSmallerThanTheLimit(t *testing.T)
 	svc, _ := fakeService()
 	u := &Units{Dir: dir, svc: svc}
 	body := "short log\n"
-	if err := os.WriteFile(filepath.Join(dir, "calport-probe.log"), []byte(body), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "berth-probe.log"), []byte(body), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	out, err := u.Tail("calport-probe", 4096)
+	out, err := u.Tail("berth-probe", 4096)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -239,16 +239,16 @@ func TestGetTellsRunningFromStopped(t *testing.T) {
 	up := true
 	svc.running = func(service.Spec) bool { return up }
 	u := &Units{Dir: t.TempDir(), svc: svc}
-	if _, err := u.Install(context.Background(), UnitRequest{Name: "calport-probe", Program: "/bin/sh"}); err != nil {
+	if _, err := u.Install(context.Background(), UnitRequest{Name: "berth-probe", Program: "/bin/sh"}); err != nil {
 		t.Fatal(err)
 	}
 
-	got, err := u.Get("calport-probe")
+	got, err := u.Get("berth-probe")
 	if err != nil || got.State != "running" {
 		t.Fatalf("Get() = %+v, %v; want running", got, err)
 	}
 	up = false
-	if got, _ = u.Get("calport-probe"); got.State != "stopped" {
+	if got, _ = u.Get("berth-probe"); got.State != "stopped" {
 		t.Fatalf("Get().State = %q; a dead unit must not read as installed", got.State)
 	}
 }
@@ -256,7 +256,7 @@ func TestGetTellsRunningFromStopped(t *testing.T) {
 func TestManagedUnitsComeBackFromACleanExit(t *testing.T) {
 	svc, _ := fakeService()
 	u := &Units{Dir: t.TempDir(), svc: svc}
-	spec, err := u.spec(UnitRequest{Name: "calport-probe", Program: "/bin/sh"})
+	spec, err := u.spec(UnitRequest{Name: "berth-probe", Program: "/bin/sh"})
 	if err != nil {
 		t.Fatal(err)
 	}

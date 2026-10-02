@@ -116,7 +116,7 @@ func TestSystemJobFixNeedsRootAndSurvivesReboot(t *testing.T) {
 	for _, want := range []string{
 		"sudo launchctl bootout system/io.tailmux.cal-worktrees",
 		"sudo launchctl disable system/io.tailmux.cal-worktrees",
-		"calport setup port80",
+		"berth setup port80",
 	} {
 		if !strings.Contains(fix, want) {
 			t.Fatalf("fix = %q; want it to contain %q", fix, want)
@@ -132,7 +132,7 @@ func TestUserJobFixDoesNotAskForRoot(t *testing.T) {
 	for _, want := range []string{
 		"launchctl bootout gui/$(id -u)/com.example.proxy",
 		"launchctl disable gui/$(id -u)/com.example.proxy",
-		"calport setup port80",
+		"berth setup port80",
 	} {
 		if !strings.Contains(fix, want) {
 			t.Fatalf("fix = %q; want it to contain %q", fix, want)

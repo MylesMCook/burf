@@ -16,16 +16,16 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/calport/internal/box"
-	"github.com/sean-brydon/calport/internal/events"
-	"github.com/sean-brydon/calport/internal/identity"
-	"github.com/sean-brydon/calport/internal/network"
-	"github.com/sean-brydon/calport/internal/pairing"
-	"github.com/sean-brydon/calport/internal/trust"
-	"github.com/sean-brydon/calport/internal/wire"
+	"github.com/sean-brydon/berth/internal/box"
+	"github.com/sean-brydon/berth/internal/events"
+	"github.com/sean-brydon/berth/internal/identity"
+	"github.com/sean-brydon/berth/internal/network"
+	"github.com/sean-brydon/berth/internal/pairing"
+	"github.com/sean-brydon/berth/internal/trust"
+	"github.com/sean-brydon/berth/internal/wire"
 )
 
-// testBox is a real calportd server on the loopback, restartable on the same
+// testBox is a real berthd server on the loopback, restartable on the same
 // address so tests can take a box offline and bring it back.
 type testBox struct {
 	services []box.Service
@@ -523,7 +523,7 @@ func TestBoxEventsAndLocalEventsReachTheAgentStream(t *testing.T) {
 	}
 	// The relay subscribes once the box is online; give it a moment.
 	eventually(t, "relay subscribed", func() bool {
-		b.bus.Publish(events.Event{Type: "probe.ping", Box: "hostname-on-box", Origin: "calport"})
+		b.bus.Publish(events.Event{Type: "probe.ping", Box: "hostname-on-box", Origin: "berth"})
 		select {
 		case e := <-got:
 			return e.Type == "probe.ping"
@@ -578,11 +578,11 @@ func TestABoxOnAnotherTailnetIsReachedThroughItsNetwork(t *testing.T) {
 	// Re-address the box as the laptop would see it on another tailnet.
 	store := trust.NewStore(filepath.Join(dir, "boxes.json"))
 	peer, _, _ := store.ByName("devbox")
-	peer.Address, peer.Network = "devbox.personal:7443", "personal"
+	peer.Address, peer.Network = "devbox.personal:7444", "personal"
 	if err := store.Add(peer); err != nil {
 		t.Fatal(err)
 	}
-	nets := &fakeNetworks{routes: map[string]string{"devbox.personal:7443": b.address}}
+	nets := &fakeNetworks{routes: map[string]string{"devbox.personal:7444": b.address}}
 	a := startAgentWith(t, dir, nets)
 	eventually(t, "box online through the network", func() bool { return stateOf(t, a) == StateOnline })
 	if nets.dials.Load() == 0 {

@@ -10,20 +10,20 @@ import (
 )
 
 // askpass answers one of ssh's questions when there is no terminal to ask on,
-// as when the app runs `calport add ssh`: ssh runs `calport askpass PROMPT`
+// as when the app runs `berth add ssh`: ssh runs `berth askpass PROMPT`
 // and reads the answer from stdout. A new host's key is a yes/no question with
 // its fingerprint; anything else (a password, a key passphrase) is secret.
 func askpass(args []string) error {
 	prompt := strings.TrimSpace(strings.Join(args, " "))
 	if runtime.GOOS != "darwin" {
-		return errors.New("no terminal to ask on; run calport add ssh from a terminal")
+		return errors.New("no terminal to ask on; run berth add ssh from a terminal")
 	}
 	var script string
 	if hostKeyQuestion(prompt) {
-		script = `display dialog ` + appleString(prompt) + ` with title "Calport: trust this box?" buttons {"Cancel", "Trust and connect"} default button "Cancel" cancel button "Cancel" with icon caution
+		script = `display dialog ` + appleString(prompt) + ` with title "Berth: trust this box?" buttons {"Cancel", "Trust and connect"} default button "Cancel" cancel button "Cancel" with icon caution
 "yes"`
 	} else {
-		script = `text returned of (display dialog ` + appleString(prompt) + ` with title "Calport: SSH" default answer "" with hidden answer buttons {"Cancel", "OK"} default button "OK" cancel button "Cancel")`
+		script = `text returned of (display dialog ` + appleString(prompt) + ` with title "Berth: SSH" default answer "" with hidden answer buttons {"Cancel", "OK"} default button "OK" cancel button "Cancel")`
 	}
 	out, err := exec.Command("osascript", "-e", script).Output()
 	if err != nil {
@@ -44,10 +44,10 @@ func appleString(s string) string {
 	return `"` + strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(s) + `"`
 }
 
-// askpassMarker tells calport it was started by ssh as SSH_ASKPASS.
-const askpassMarker = "CALPORT_ASKPASS"
+// askpassMarker tells berth it was started by ssh as SSH_ASKPASS.
+const askpassMarker = "BERTH_ASKPASS"
 
-// askpassEnv makes ssh ask through `calport askpass` when this process has no
+// askpassEnv makes ssh ask through `berth askpass` when this process has no
 // terminal. With one, ssh prompts on it as usual.
 func askpassEnv(exe string) []string {
 	env := os.Environ()

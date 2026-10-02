@@ -12,11 +12,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/calport/internal/agent"
-	"github.com/sean-brydon/calport/internal/box"
-	"github.com/sean-brydon/calport/internal/doctor"
-	"github.com/sean-brydon/calport/internal/pfredirect"
-	"github.com/sean-brydon/calport/internal/service"
+	"github.com/sean-brydon/berth/internal/agent"
+	"github.com/sean-brydon/berth/internal/box"
+	"github.com/sean-brydon/berth/internal/doctor"
+	"github.com/sean-brydon/berth/internal/pfredirect"
+	"github.com/sean-brydon/berth/internal/service"
 )
 
 // runDoctor checks this laptop, or with a box name, asks that box for its own
@@ -57,22 +57,22 @@ func laptopChecks(l laptop) []doctor.Check {
 	if spec, err := agentService(l); err == nil && service.Installed(spec) {
 		checks = append(checks, doctor.Check{Area: mac, Name: "starts at login", Status: doctor.OK, Detail: "background agent installed"})
 	} else {
-		checks = append(checks, doctor.Check{Area: mac, Name: "starts at login", Status: doctor.Warn, Detail: "the agent only runs while something starts it", Fix: "calport agent install  (or open the Calport app)"})
+		checks = append(checks, doctor.Check{Area: mac, Name: "starts at login", Status: doctor.Warn, Detail: "the agent only runs while something starts it", Fix: "berth agent install  (or open the Berth app)"})
 	}
 	status, err := c.Status(context.Background())
 	if err != nil {
-		return append(checks, doctor.Check{Area: mac, Name: "agent", Status: doctor.Fail, Detail: "not running", Fix: "calport status  (starts it)"})
+		return append(checks, doctor.Check{Area: mac, Name: "agent", Status: doctor.Fail, Detail: "not running", Fix: "berth status  (starts it)"})
 	}
 	checks = append(checks, doctor.Check{Area: mac, Name: "agent", Status: doctor.OK, Detail: "running"})
 	if status.Proxy.Error != "" {
-		checks = append(checks, doctor.Check{Area: mac, Name: "local URLs", Status: doctor.Fail, Detail: status.Proxy.Error, Fix: "Free port 1355, then: calport stop && calport status"})
+		checks = append(checks, doctor.Check{Area: mac, Name: "local URLs", Status: doctor.Fail, Detail: status.Proxy.Error, Fix: "Free port 1377, then: berth stop && berth status"})
 	} else {
 		checks = append(checks, doctor.Check{Area: mac, Name: "local URLs", Status: doctor.OK, Detail: serviceURLFor("PORT", "BOX", status.Proxy.URLPort)})
 	}
 	if runtime.GOOS == "darwin" {
 		switch {
 		case !pfredirect.Installed(status.Proxy.Port):
-			checks = append(checks, doctor.Check{Area: mac, Name: "short URLs", Status: doctor.Info, Detail: "URLs include :1355", Fix: "calport setup port80"})
+			checks = append(checks, doctor.Check{Area: mac, Name: "short URLs", Status: doctor.Info, Detail: "URLs include :1377", Fix: "berth setup port80"})
 		default:
 			checks = append(checks, port80Checks(mac)...)
 		}
@@ -87,7 +87,7 @@ func laptopChecks(l laptop) []doctor.Check {
 		switch state {
 		case "Running":
 		case "NeedsLogin":
-			check.Status, check.Detail, check.Fix = doctor.Fail, "signed out", "calport network login "+name
+			check.Status, check.Detail, check.Fix = doctor.Fail, "signed out", "berth network login "+name
 		default:
 			check.Status, check.Detail = doctor.Warn, state
 		}
@@ -95,15 +95,15 @@ func laptopChecks(l laptop) []doctor.Check {
 	}
 
 	if len(status.Boxes) == 0 {
-		checks = append(checks, doctor.Check{Area: "Boxes", Name: "boxes", Status: doctor.Info, Detail: "none paired", Fix: "calport add ssh HOST"})
+		checks = append(checks, doctor.Check{Area: "Boxes", Name: "boxes", Status: doctor.Info, Detail: "none paired", Fix: "berth add ssh HOST"})
 	}
 	for _, b := range status.Boxes {
 		check := doctor.Check{Area: "Boxes", Name: b.Name, Status: doctor.OK, Detail: fmt.Sprintf("online, %dms", b.LatencyMs)}
 		switch b.State {
 		case agent.StateOffline:
-			check.Status, check.Detail, check.Fix = doctor.Warn, "offline: "+b.Error, "Check the box is on, then on it: calportd doctor"
+			check.Status, check.Detail, check.Fix = doctor.Warn, "offline: "+b.Error, "Check the box is on, then on it: berthd doctor"
 		case agent.StateUntrusted:
-			check.Status, check.Detail, check.Fix = doctor.Fail, "revoked this laptop", "calport add ssh "+b.Name+"  (pairs again)"
+			check.Status, check.Detail, check.Fix = doctor.Fail, "revoked this laptop", "berth add ssh "+b.Name+"  (pairs again)"
 		case agent.StateConnecting:
 			check.Status, check.Detail = doctor.Info, "connecting"
 		}
@@ -118,12 +118,11 @@ func laptopChecks(l laptop) []doctor.Check {
 		}
 		return doctor.Check{Area: "Tools on this computer", Name: name, Status: doctor.Info, Detail: "not connected", Fix: fix}
 	}
-	checks = append(checks,
-		integration("Claude Code", ".claude/settings.json", "hook claude Stop", "calport integrations install claude"),
-		integration("Cursor", ".cursor/hooks.json", "hook cursor stop", "calport integrations install cursor"),
-		integration("Codex", ".codex/skills/calport/SKILL.md", "name: calport", "calport integrations install codex"),
+	return append(checks,
+		integration("Claude Code", ".claude/settings.json", "hook claude Stop", "berth integrations install claude"),
+		integration("Cursor", ".cursor/hooks.json", "hook cursor stop", "berth integrations install cursor"),
+		integration("Codex", ".codex/skills/berth/SKILL.md", "name: berth", "berth integrations install codex"),
 	)
-	return append(checks, doctor.OrcaChecks(context.Background(), "Orca on this computer", nil)...)
 }
 
 // port80Checks asks port 80 on each loopback address who answers, because an
@@ -133,15 +132,15 @@ func port80Checks(area string) []doctor.Check {
 	for _, addr := range []string{"[::1]:80", "127.0.0.1:80"} {
 		name := "short URLs via " + strings.Trim(strings.TrimSuffix(addr, ":80"), "[]")
 		switch who := whoAnswers(addr); who {
-		case "calport":
-			checks = append(checks, doctor.Check{Area: area, Name: name, Status: doctor.OK, Detail: "reaches calport"})
+		case "berth":
+			checks = append(checks, doctor.Check{Area: area, Name: name, Status: doctor.OK, Detail: "reaches berth"})
 		case "":
-			checks = append(checks, doctor.Check{Area: area, Name: name, Status: doctor.Warn, Detail: "nothing answers, so browsers fall back to the other address", Fix: "calport setup port80"})
+			checks = append(checks, doctor.Check{Area: area, Name: name, Status: doctor.Warn, Detail: "nothing answers, so browsers fall back to the other address", Fix: "berth setup port80"})
 		default:
 			// Naming the launchd job turns "stop that program" into commands
 			// that can be run: the scope it sits in decides whether freeing it
 			// needs root, and that is not visible from the response.
-			detail, fix := "answered by another program: "+who, "Stop that program, then: calport setup port80"
+			detail, fix := "answered by another program: "+who, "Stop that program, then: berth setup port80"
 			if h, ok := portHolder(80); ok {
 				detail, fix = holderDetail(h), holderFix(h)
 			}
@@ -161,8 +160,8 @@ func whoAnswers(addr string) string {
 	}
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-	if strings.Contains(string(body), "<h1 style=\"font-size:20px\">calport</h1>") {
-		return "calport"
+	if strings.Contains(string(body), "<h1 style=\"font-size:20px\">berth</h1>") {
+		return "berth"
 	}
 	if s := resp.Header.Get("Server"); s != "" {
 		return s

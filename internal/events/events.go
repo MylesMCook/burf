@@ -50,7 +50,7 @@ func (b *Bus) Publish(e Event) {
 		}
 	}
 	if e.Origin == "" {
-		e.Origin = "calport"
+		e.Origin = "berth"
 	}
 	b.mu.Lock()
 	defer b.mu.Unlock()

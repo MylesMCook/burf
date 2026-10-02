@@ -43,12 +43,3 @@ func TestAPrefixThatIsNotAPathBoundaryDoesNotMatch(t *testing.T) {
 		t.Fatalf("a sibling directory was claimed: %+v", got)
 	}
 }
-
-func TestOpenInRejectsUnknownToolsAndAgents(t *testing.T) {
-	if err := OpenIn(t.Context(), OpenRequest{Tool: "vim"}, "/r", "/r", "x"); err == nil {
-		t.Fatal("unknown tool accepted")
-	}
-	if err := OpenIn(t.Context(), OpenRequest{Tool: "orca", Agent: "rm -rf"}, "/r", "/r", "x"); err == nil {
-		t.Fatal("arbitrary agent command accepted")
-	}
-}

@@ -1,4 +1,4 @@
-// Package service installs a calport process as a per-user OS service: a
+// Package service installs a berth process as a per-user OS service: a
 // launchd agent on macOS or a systemd user unit on Linux. The service starts
 // at login, restarts after a crash, and stays stopped after a clean exit, so a
 // deliberate stop is never fought by the supervisor.
@@ -25,11 +25,11 @@ type Spec struct {
 	Env         map[string]string
 	LogPath     string
 	// KeepChildren leaves processes the service started running when it
-	// stops or restarts, the way sshd keeps SSH sessions: calportd's agent
+	// stops or restarts, the way sshd keeps SSH sessions: berthd's agent
 	// sessions must survive the daemon being upgraded.
 	KeepChildren bool
 	// RestartAlways brings the service back even when it exits cleanly, for
-	// something whose job is to stay up. calportd leaves this off: it exits
+	// something whose job is to stay up. berthd leaves this off: it exits
 	// only when something is wrong, and restarting it forever would bury the
 	// reason. A program run as a managed unit can shut itself down on purpose
 	// and still need to come back.
@@ -106,7 +106,7 @@ func Render(s Spec) ([]byte, error) {
 		for _, k := range keys {
 			fmt.Fprintf(&b, "Environment=%s\n", systemdQuote(k+"="+s.Env[k]))
 		}
-		// systemd 240+. Keeping a unit's output in a file calportd owns keeps
+		// systemd 240+. Keeping a unit's output in a file berthd owns keeps
 		// credentials a program prints out of the journal, which is readable
 		// by the box user and persists.
 		if s.LogPath != "" {
@@ -166,7 +166,7 @@ func Installed(s Spec) bool {
 // and neither can stand in for the other. Installed is for a caller that holds
 // the Spec it is about to write and wants to know "is the unit on disk already
 // exactly mine?". InstalledByName is for a caller that holds only a name -
-// calportd's managed units are named over the wire, and the Spec they were
+// berthd's managed units are named over the wire, and the Spec they were
 // written from lives on the box - where an exact compare would render an empty
 // Spec and report every installed unit as missing.
 func InstalledByName(name string) bool {

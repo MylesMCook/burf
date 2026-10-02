@@ -66,41 +66,10 @@ func (b *Box) handleServices(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
-// OpenRequest hands a worktree to Orca or Herdr, optionally starting an agent
-// there. calport does not manage the session itself.
-type OpenRequest struct {
-	Tool  string `json:"tool"`
-	Agent string `json:"agent,omitempty"`
-	// HerdrSession selects the Herdr session to open the workspace in.
-	HerdrSession string `json:"herdr_session,omitempty"`
-}
-
-func (b *Box) handleOpen(w http.ResponseWriter, r *http.Request) error {
-	var req OpenRequest
-	if err := decode(r, &req); err != nil {
-		return err
-	}
-	location, worktree := r.PathValue("name"), r.PathValue("worktree")
-	loc, err := b.Locations.Get(r.Context(), location)
-	if err != nil {
-		return err
-	}
-	dir, err := b.Locations.Dir(r.Context(), location+"/"+worktree)
-	if err != nil {
-		return err
-	}
-	if err := OpenIn(r.Context(), req, loc.Path, dir, worktree); err != nil {
-		return err
-	}
-	b.publish(r, "worktree.opened", map[string]any{"location": location, "name": worktree, "path": dir, "tool": req.Tool, "agent": req.Agent})
-	writeJSON(w, map[string]string{"opened": dir, "tool": req.Tool})
-	return nil
-}
-
-// Tools reports which handoff targets and agents this box has.
+// Tools reports which agent CLIs this box has.
 func Tools() []string {
 	var have []string
-	for _, t := range []string{"orca", "herdr", "claude", "codex"} {
+	for _, t := range []string{"claude", "codex", "opencode", "gemini", "pi"} {
 		if _, err := toolPath(t); err == nil {
 			have = append(have, t)
 		}

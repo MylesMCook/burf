@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/calport/internal/events"
+	"github.com/sean-brydon/berth/internal/events"
 )
 
 func drain(ch <-chan events.Event) []events.Event {
@@ -22,7 +22,7 @@ func drain(ch <-chan events.Event) []events.Event {
 	}
 }
 
-func TestWatcherAnnouncesWorktreesMadeOutsideCalportOnce(t *testing.T) {
+func TestWatcherAnnouncesWorktreesMadeOutsideBerthOnce(t *testing.T) {
 	repo := gitRepo(t)
 	ctx := context.Background()
 	l := NewLocations(filepath.Join(t.TempDir(), "locations.json"))
@@ -46,7 +46,7 @@ func TestWatcherAnnouncesWorktreesMadeOutsideCalportOnce(t *testing.T) {
 		t.Fatalf("after an outside worktree appeared: %+v", got)
 	}
 
-	// calport's own worktree was already announced by the API.
+	// berth's own worktree was already announced by the API.
 	wt, err := l.CreateWorktree(ctx, "cal", "own", "", "")
 	if err != nil {
 		t.Fatal(err)
@@ -54,7 +54,7 @@ func TestWatcherAnnouncesWorktreesMadeOutsideCalportOnce(t *testing.T) {
 	w.Own(wt.Path)
 	w.Scan(ctx, true)
 	if got := drain(ch); len(got) != 0 {
-		t.Fatalf("calport's own worktree was announced again: %+v", got)
+		t.Fatalf("berth's own worktree was announced again: %+v", got)
 	}
 
 	if out, err := exec.Command("git", "-C", repo, "worktree", "remove", outside).CombinedOutput(); err != nil {

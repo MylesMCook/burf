@@ -11,8 +11,8 @@ import (
 func TestPrintGroupsByAreaAndShowsFixesOnlyForProblems(t *testing.T) {
 	var buf bytes.Buffer
 	problems := Print(&buf, []Check{
-		{Area: "Daemon", Name: "calportd service", Status: OK, Detail: "active", Fix: "never shown"},
-		{Area: "Daemon", Name: "listen address", Status: Warn, Detail: "0.0.0.0:7443 is public", Fix: "calportd install"},
+		{Area: "Daemon", Name: "berthd service", Status: OK, Detail: "active", Fix: "never shown"},
+		{Area: "Daemon", Name: "listen address", Status: Warn, Detail: "0.0.0.0:7444 is public", Fix: "berthd install"},
 		{Area: "Tools", Name: "tmux", Status: Fail, Detail: "not installed", Fix: "sudo apt install tmux"},
 		{Area: "Tools", Name: "herdr", Status: Info, Detail: "not installed", Fix: "optional"},
 	})
@@ -20,7 +20,7 @@ func TestPrintGroupsByAreaAndShowsFixesOnlyForProblems(t *testing.T) {
 	if problems != 2 {
 		t.Fatalf("problems = %d, want 2 (info is not a problem)", problems)
 	}
-	for _, want := range []string{"Daemon\n", "  ✓ calportd service  active\n", "  ! listen address", "      → calportd install\n", "\nTools\n", "  ✗ tmux", "  · herdr"} {
+	for _, want := range []string{"Daemon\n", "  ✓ berthd service  active\n", "  ! listen address", "      → berthd install\n", "\nTools\n", "  ✗ tmux", "  · herdr"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("output missing %q:\n%s", want, out)
 		}

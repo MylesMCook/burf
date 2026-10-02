@@ -1,4 +1,4 @@
-// Command calportd runs on a box: it holds the box identity, issues pairing
+// Command berthd runs on a box: it holds the box identity, issues pairing
 // links, and serves paired laptops.
 package main
 
@@ -17,45 +17,45 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/sean-brydon/calport/internal/box"
-	"github.com/sean-brydon/calport/internal/boxcmd"
-	"github.com/sean-brydon/calport/internal/doctor"
-	"github.com/sean-brydon/calport/internal/events"
-	"github.com/sean-brydon/calport/internal/hooks"
-	"github.com/sean-brydon/calport/internal/identity"
-	"github.com/sean-brydon/calport/internal/integrations"
-	"github.com/sean-brydon/calport/internal/pairing"
-	"github.com/sean-brydon/calport/internal/service"
-	"github.com/sean-brydon/calport/internal/statefile"
-	"github.com/sean-brydon/calport/internal/trust"
-	"github.com/sean-brydon/calport/internal/wire"
+	"github.com/sean-brydon/berth/internal/box"
+	"github.com/sean-brydon/berth/internal/boxcmd"
+	"github.com/sean-brydon/berth/internal/doctor"
+	"github.com/sean-brydon/berth/internal/events"
+	"github.com/sean-brydon/berth/internal/hooks"
+	"github.com/sean-brydon/berth/internal/identity"
+	"github.com/sean-brydon/berth/internal/integrations"
+	"github.com/sean-brydon/berth/internal/pairing"
+	"github.com/sean-brydon/berth/internal/service"
+	"github.com/sean-brydon/berth/internal/statefile"
+	"github.com/sean-brydon/berth/internal/trust"
+	"github.com/sean-brydon/berth/internal/wire"
 )
 
 const (
-	defaultPort = "7443"
+	defaultPort = "7444"
 	defaultTTL  = 10 * time.Minute
 )
 
-const usage = `calportd — the calport daemon for a development box
+const usage = `berthd — the berth daemon for a development box
 
-  calportd serve [--listen ADDR]            Serve paired laptops (default: tailnet address only)
-  calportd install [--listen ADDR]          Run serve as a user service (systemd/launchd)
-  calportd uninstall                        Remove that service
-  calportd pair [--address HOST[:PORT]] [--ttl 10m]
+  berthd serve [--listen ADDR]            Serve paired laptops (default: tailnet address only)
+  berthd install [--listen ADDR]          Run serve as a user service (systemd/launchd)
+  berthd uninstall                        Remove that service
+  berthd pair [--address HOST[:PORT]] [--ttl 10m]
                                             Print a single-use pairing link
-  calportd clients                          List paired laptops
-  calportd revoke <name|fingerprint>        Stop trusting a laptop
-  calportd id                               Print this box's fingerprint
-  calportd doctor [--json]                  Check this box's setup and how to fix it
-  calportd session attach NAME              Attach to a session in this terminal
+  berthd clients                          List paired laptops
+  berthd revoke <name|fingerprint>        Stop trusting a laptop
+  berthd id                               Print this box's fingerprint
+  berthd doctor [--json]                  Check this box's setup and how to fix it
+  berthd session attach NAME              Attach to a session in this terminal
 
 Hooks run from <state>/box/hooks.json; see docs/integrations.md.
-CALPORT_HOME overrides the state directory.
+BERTH_HOME overrides the state directory.
 `
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
-		fmt.Fprintln(os.Stderr, "calportd:", err)
+		fmt.Fprintln(os.Stderr, "berthd:", err)
 		os.Exit(1)
 	}
 }
@@ -64,7 +64,7 @@ type boxHome struct {
 	dir string
 }
 
-func (b boxHome) socket() string { return filepath.Join(b.dir, "calportd.sock") }
+func (b boxHome) socket() string { return filepath.Join(b.dir, "berthd.sock") }
 
 func (b boxHome) identity() (*identity.Identity, error) {
 	return identity.LoadOrCreate(filepath.Join(b.dir, "identity.pem"))
@@ -78,9 +78,9 @@ func run(args []string) error {
 	if len(args) == 0 || args[0] == "help" || args[0] == "-h" || args[0] == "--help" {
 		fmt.Print(usage)
 		fmt.Println()
-		fmt.Print(boxcmd.Usage("calportd", ""))
+		fmt.Print(boxcmd.Usage("berthd", ""))
 		fmt.Println()
-		fmt.Printf(integrations.Usage, "calportd")
+		fmt.Printf(integrations.Usage, "berthd")
 		return nil
 	}
 	home, err := statefile.Home()
@@ -101,7 +101,7 @@ func run(args []string) error {
 			return err
 		}
 		if path == "" {
-			fmt.Println("calportd is not installed as a service.")
+			fmt.Println("berthd is not installed as a service.")
 		} else {
 			fmt.Println("Removed " + path)
 		}
@@ -110,7 +110,7 @@ func run(args []string) error {
 		return listClients(b)
 	case "revoke":
 		if len(args) != 2 {
-			return errors.New("usage: calportd revoke <name|fingerprint>")
+			return errors.New("usage: berthd revoke <name|fingerprint>")
 		}
 		p, err := b.clients().Remove(args[1])
 		if err != nil {
@@ -139,8 +139,6 @@ func run(args []string) error {
 			return c.Emit(context.Background(), e.Type, e.Data)
 		})
 		return nil
-	case "kit":
-		return runKit(b, args[1:])
 	case "integrations":
 		exe, err := os.Executable()
 		if err != nil {
@@ -154,7 +152,7 @@ func run(args []string) error {
 	if _, ok := boxcmd.Commands[args[0]]; ok {
 		return runLocal(b, args)
 	}
-	return fmt.Errorf("unknown command %q; run calportd help", args[0])
+	return fmt.Errorf("unknown command %q; run berthd help", args[0])
 }
 
 func serve(b boxHome, args []string) error {
@@ -219,14 +217,6 @@ func serve(b boxHome, args []string) error {
 	if resolved, err := filepath.EvalSymlinks(exe); err == nil {
 		exe = resolved
 	}
-	kitInstall := kitInstaller(exe)
-	if kitInstall != nil {
-		if changed, err := kitInstall.Refresh(); err != nil {
-			log.Printf("refreshing the Cal.com kit: %v", err)
-		} else if changed {
-			log.Printf("refreshed the Cal.com kit's scripts from this build")
-		}
-	}
 	bx := &box.Box{
 		Name:         hostname,
 		Locations:    locations,
@@ -236,7 +226,6 @@ func serve(b boxHome, args []string) error {
 		Watcher:      watcher,
 		DaemonChecks: func() []doctor.Check { return daemonChecks(b, ln.Addr().String(), *listen) },
 		LogDir:       filepath.Join(b.dir, "logs"),
-		Kit:          kitInstall,
 		Units:        &box.Units{Dir: filepath.Join(b.dir, "units")},
 		AgentStates:  agentStates,
 		Update: &box.SelfUpdate{
@@ -246,8 +235,6 @@ func serve(b boxHome, args []string) error {
 		},
 	}
 	bx.Mount(s)
-	// Worktrees whose folder is gone keep a database and port until swept.
-	go bx.SweepKit(ctx, time.Hour)
 
 	os.Remove(b.socket())
 	local, err := net.Listen("unix", b.socket())
@@ -264,7 +251,7 @@ func serve(b boxHome, args []string) error {
 	go s.ServeLocal(ctx, local)
 	go (&hooks.Runner{Path: filepath.Join(b.dir, "hooks.json"), Log: logger}).Run(ctx, bus)
 
-	logger.Printf("calportd serving %s as %q (%s); local API %s", ln.Addr(), hostname, id.Fingerprint().Short(), b.socket())
+	logger.Printf("berthd serving %s as %q (%s); local API %s", ln.Addr(), hostname, id.Fingerprint().Short(), b.socket())
 	return s.Serve(ctx, ln)
 }
 
@@ -273,7 +260,7 @@ func runLocal(b boxHome, args []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	if _, err := os.Stat(b.socket()); err != nil {
-		return errors.New("calportd serve is not running on this box; start it with calportd install")
+		return errors.New("berthd serve is not running on this box; start it with berthd install")
 	}
 	return boxcmd.Run(ctx, box.NewClient(box.NewLocal(b.socket())), args, os.Stdout)
 }
@@ -282,13 +269,13 @@ func runLocal(b boxHome, args []string) error {
 // attaching on the box itself needs no stream at all.
 func attachLocal(args []string) error {
 	if len(args) != 1 {
-		return errors.New("usage: calportd session attach NAME")
+		return errors.New("usage: berthd session attach NAME")
 	}
 	tmux, err := exec.LookPath("tmux")
 	if err != nil {
 		return err
 	}
-	return syscall.Exec(tmux, []string{"tmux", "-L", "calport", "attach-session", "-t", "=" + args[0]}, os.Environ())
+	return syscall.Exec(tmux, []string{"tmux", "-L", "berth", "attach-session", "-t", "=" + args[0]}, os.Environ())
 }
 
 func pair(b boxHome, args []string) error {
@@ -320,9 +307,9 @@ func pair(b boxHome, args []string) error {
 	}
 	link := pairing.Token{Address: target, Fingerprint: id.Fingerprint(), Code: code}.String()
 	fmt.Printf("Pairing link (single use, valid for %s):\n\n  %s\n\n", ttl, link)
-	fmt.Printf("On your laptop:  calport pair '%s'\n\n", link)
+	fmt.Printf("On your laptop:  berth pair '%s'\n\n", link)
 	fmt.Println("Laptops will dial " + target + "; pass --address if that is not reachable.")
-	fmt.Println("calportd serve must be running on this box to accept the pairing.")
+	fmt.Println("berthd serve must be running on this box to accept the pairing.")
 	return nil
 }
 
@@ -332,7 +319,7 @@ func listClients(b boxHome) error {
 		return err
 	}
 	if len(peers) == 0 {
-		fmt.Println("No paired laptops. Run calportd pair to add one.")
+		fmt.Println("No paired laptops. Run berthd pair to add one.")
 		return nil
 	}
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)

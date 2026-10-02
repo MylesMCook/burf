@@ -19,20 +19,20 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sean-brydon/calport/internal/box"
-	"github.com/sean-brydon/calport/internal/events"
-	"github.com/sean-brydon/calport/internal/forward"
-	"github.com/sean-brydon/calport/internal/hooks"
-	"github.com/sean-brydon/calport/internal/identity"
-	"github.com/sean-brydon/calport/internal/network"
-	"github.com/sean-brydon/calport/internal/pfredirect"
-	"github.com/sean-brydon/calport/internal/proxy"
-	"github.com/sean-brydon/calport/internal/trust"
-	"github.com/sean-brydon/calport/internal/wire"
+	"github.com/sean-brydon/berth/internal/box"
+	"github.com/sean-brydon/berth/internal/events"
+	"github.com/sean-brydon/berth/internal/forward"
+	"github.com/sean-brydon/berth/internal/hooks"
+	"github.com/sean-brydon/berth/internal/identity"
+	"github.com/sean-brydon/berth/internal/network"
+	"github.com/sean-brydon/berth/internal/pfredirect"
+	"github.com/sean-brydon/berth/internal/proxy"
+	"github.com/sean-brydon/berth/internal/trust"
+	"github.com/sean-brydon/berth/internal/wire"
 )
 
 const (
-	DefaultProxyPort      = 1355
+	DefaultProxyPort      = 1377
 	defaultHealthInterval = 10 * time.Second
 	pingTimeout           = 8 * time.Second
 	// A tick arriving this much later than scheduled means the laptop slept.
@@ -52,7 +52,7 @@ type Config struct {
 	// Socket is the local API socket. Defaults to Dir/agent.sock.
 	Socket string
 	// ProxyAddrs are where the *.localhost proxy listens. Defaults to port
-	// 1355 on both loopback addresses.
+	// 1377 on both loopback addresses.
 	ProxyAddrs     []string
 	HealthInterval time.Duration
 	Log            *log.Logger
@@ -165,13 +165,13 @@ type runningForward struct {
 }
 
 // ErrAlreadyRunning means another agent owns this state directory.
-var ErrAlreadyRunning = errors.New("another calport agent is already running")
+var ErrAlreadyRunning = errors.New("another berth agent is already running")
 
 // Run serves until ctx is cancelled or a client asks the agent to stop.
 func Run(ctx context.Context, cfg Config) error {
 	cfg.defaults()
 	if len(cfg.Socket) > 100 {
-		return fmt.Errorf("agent socket path %s is too long for a Unix socket; set a shorter CALPORT_HOME", cfg.Socket)
+		return fmt.Errorf("agent socket path %s is too long for a Unix socket; set a shorter BERTH_HOME", cfg.Socket)
 	}
 	unlock, err := lockAgent(cfg.Dir)
 	if err != nil {
@@ -217,7 +217,7 @@ func Run(ctx context.Context, cfg Config) error {
 	stop := context.AfterFunc(ctx, func() { api.Close() })
 	defer stop()
 	a.publish(Event{Type: EventAgentStarted})
-	a.cfg.Log.Printf("calport agent running; API %s, proxy port %d", cfg.Socket, a.proxySt.Port)
+	a.cfg.Log.Printf("berth agent running; API %s, proxy port %d", cfg.Socket, a.proxySt.Port)
 	err = api.Serve(apiLn)
 	a.shutdown()
 	if errors.Is(err, http.ErrServerClosed) {

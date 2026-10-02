@@ -1,7 +1,7 @@
 // Package network lets the laptop reach boxes on tailnets it is not joined
 // to, such as a personal tailnet while the system Tailscale is on a work
 // one. Each named network is an embedded Tailscale node owned by the agent,
-// logged in once with a browser. calport's own pinned TLS still runs on top:
+// logged in once with a browser. berth's own pinned TLS still runs on top:
 // the tailnet only provides the route.
 package network
 
@@ -17,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/calport/internal/trust"
+	"github.com/sean-brydon/berth/internal/trust"
 	"tailscale.com/tsnet"
 )
 
@@ -29,7 +29,7 @@ type Info struct {
 	IPs     []string `json:"ips,omitempty"`
 }
 
-var ErrNeedsLogin = errors.New("network needs a login; run: calport network login")
+var ErrNeedsLogin = errors.New("network needs a login; run: berth network login")
 
 type Manager struct {
 	// Dir holds one state directory per network.
@@ -59,7 +59,7 @@ func (m *Manager) server(name string) (*tsnet.Server, error) {
 	}
 	s := &tsnet.Server{
 		Dir:      dir,
-		Hostname: "calport-" + name,
+		Hostname: "berth-" + name,
 		Logf:     func(string, ...any) {},
 	}
 	if m.Log != nil {

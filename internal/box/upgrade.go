@@ -42,7 +42,7 @@ type SelfUpdate struct {
 	// Fingerprint is what `<new build> id` must print: proof the new build
 	// runs on this box and reads the same identity.
 	Fingerprint string
-	// BeforeRestart runs just before the new build takes over; calportd
+	// BeforeRestart runs just before the new build takes over; berthd
 	// stops public shares so none outlive the daemon that manages them.
 	BeforeRestart func()
 	// Restart starts the new build in place of this process. The default
@@ -74,7 +74,7 @@ func (u *SelfUpdate) Install(ctx context.Context, binary []byte) error {
 		if err == nil {
 			err = errors.New("it reported a different identity")
 		}
-		return fmt.Errorf("the uploaded calportd does not run on this box: %v", err)
+		return fmt.Errorf("the uploaded berthd does not run on this box: %v", err)
 	}
 	return os.Rename(tmp, u.Executable)
 }
@@ -122,7 +122,7 @@ func (b *Box) handleUpgrade(w http.ResponseWriter, r *http.Request) error {
 			b.Update.BeforeRestart()
 		}
 		if err := b.Update.restart(); err != nil {
-			fmt.Fprintf(os.Stderr, "calportd: restarting into the new build failed: %v\n", err)
+			fmt.Fprintf(os.Stderr, "berthd: restarting into the new build failed: %v\n", err)
 		}
 	}()
 	return nil

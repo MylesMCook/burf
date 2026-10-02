@@ -1,4 +1,4 @@
-module github.com/sean-brydon/calport
+module github.com/sean-brydon/berth
 
 go 1.27.0
 

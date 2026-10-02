@@ -8,23 +8,23 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/sean-brydon/calport/internal/box"
-	"github.com/sean-brydon/calport/internal/doctor"
-	"github.com/sean-brydon/calport/internal/service"
+	"github.com/sean-brydon/berth/internal/box"
+	"github.com/sean-brydon/berth/internal/doctor"
+	"github.com/sean-brydon/berth/internal/service"
 )
 
-// daemonChecks runs inside calportd serve, where the listen address is known.
+// daemonChecks runs inside berthd serve, where the listen address is known.
 // daemonChecks describes the running daemon. listening is the bound address;
 // listenFlag is the --listen it was started with, which its unit names.
 func daemonChecks(b boxHome, listening, listenFlag string) []doctor.Check {
-	const area = "calportd"
+	const area = "berthd"
 	checks := []doctor.Check{}
 	host, _, _ := net.SplitHostPort(listening)
 	switch ip := net.ParseIP(host); {
 	case ip != nil && ip.IsUnspecified():
 		checks = append(checks, doctor.Check{Area: area, Name: "listening", Status: doctor.Warn,
 			Detail: listening + " answers on every interface, including the internet",
-			Fix:    "calportd install  (listens on the tailnet address only)"})
+			Fix:    "berthd install  (listens on the tailnet address only)"})
 	case ip != nil && ip.IsLoopback():
 		checks = append(checks, doctor.Check{Area: area, Name: "listening", Status: doctor.OK, Detail: listening + " (this box only; reach it through a tunnel)"})
 	default:
@@ -33,13 +33,13 @@ func daemonChecks(b boxHome, listening, listenFlag string) []doctor.Check {
 	if service.Installed(daemonService(b, listenFlag)) {
 		checks = append(checks, doctor.Check{Area: area, Name: "starts at boot", Status: doctor.OK, Detail: "installed as a user service"})
 	} else {
-		checks = append(checks, doctor.Check{Area: area, Name: "starts at boot", Status: doctor.Warn, Detail: "calportd runs, but not as a service", Fix: "calportd install"})
+		checks = append(checks, doctor.Check{Area: area, Name: "starts at boot", Status: doctor.Warn, Detail: "berthd runs, but not as a service", Fix: "berthd install"})
 	}
 	if runtime.GOOS == "linux" {
 		if lingering() {
 			checks = append(checks, doctor.Check{Area: area, Name: "survives logout", Status: doctor.OK, Detail: "user lingering is on"})
 		} else {
-			checks = append(checks, doctor.Check{Area: area, Name: "survives logout", Status: doctor.Warn, Detail: "calportd stops when you log out", Fix: "sudo loginctl enable-linger " + currentUser()})
+			checks = append(checks, doctor.Check{Area: area, Name: "survives logout", Status: doctor.Warn, Detail: "berthd stops when you log out", Fix: "sudo loginctl enable-linger " + currentUser()})
 		}
 	}
 	peers, err := b.clients().List()
@@ -47,7 +47,7 @@ func daemonChecks(b boxHome, listening, listenFlag string) []doctor.Check {
 	case err != nil:
 		checks = append(checks, doctor.Check{Area: area, Name: "paired laptops", Status: doctor.Fail, Detail: err.Error()})
 	case len(peers) == 0:
-		checks = append(checks, doctor.Check{Area: area, Name: "paired laptops", Status: doctor.Warn, Detail: "none yet", Fix: "calportd pair"})
+		checks = append(checks, doctor.Check{Area: area, Name: "paired laptops", Status: doctor.Warn, Detail: "none yet", Fix: "berthd pair"})
 	default:
 		checks = append(checks, doctor.Check{Area: area, Name: "paired laptops", Status: doctor.OK, Detail: fmt.Sprintf("%d", len(peers))})
 	}
@@ -65,7 +65,7 @@ func runDoctor(b boxHome, args []string) error {
 			return err
 		}
 	} else {
-		checks = append(checks, doctor.Check{Area: "calportd", Name: "running", Status: doctor.Fail, Detail: "calportd serve is not running", Fix: "calportd install"})
+		checks = append(checks, doctor.Check{Area: "berthd", Name: "running", Status: doctor.Fail, Detail: "berthd serve is not running", Fix: "berthd install"})
 		for _, t := range []string{"git", "tmux"} {
 			checks = append(checks, doctor.ToolCheck("Worktrees and sessions", t, t, "Install "+t+" with your package manager", true))
 		}

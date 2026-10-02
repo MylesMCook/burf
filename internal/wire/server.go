@@ -15,9 +15,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/sean-brydon/calport/internal/identity"
-	"github.com/sean-brydon/calport/internal/pairing"
-	"github.com/sean-brydon/calport/internal/trust"
+	"github.com/sean-brydon/berth/internal/identity"
+	"github.com/sean-brydon/berth/internal/pairing"
+	"github.com/sean-brydon/berth/internal/trust"
 )
 
 // Rejections are deliberately uninformative: the caller learns that it was
@@ -80,7 +80,7 @@ var LocalPeer = trust.Peer{Name: "local"}
 
 // ServeLocal serves the Handle'd routes on ln, a Unix socket that only the
 // box's user can open. Tools running on the box (Orca and Herdr hooks, the
-// calportd CLI) use it; file permissions are its authorization.
+// berthd CLI) use it; file permissions are its authorization.
 func (s *Server) ServeLocal(ctx context.Context, ln net.Listener) error {
 	s.init()
 	srv := &http.Server{Handler: s.local, ReadHeaderTimeout: headerTimeout}

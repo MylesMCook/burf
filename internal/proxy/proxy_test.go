@@ -14,7 +14,7 @@ import (
 
 func TestParseHost(t *testing.T) {
 	for host, want := range map[string]Target{
-		"3000.devl.localhost:1355": {Box: "devl", Label: "3000"},
+		"3000.devl.localhost:1377": {Box: "devl", Label: "3000"},
 		"web.dev-alex.localhost":   {Box: "dev-alex", Label: "web"},
 		"WEB.Dev-Alex.LOCALHOST.":  {Box: "dev-alex", Label: "web"},
 		"3000.devl.localhost:80":   {Box: "devl", Label: "3000"},
@@ -25,8 +25,8 @@ func TestParseHost(t *testing.T) {
 		}
 	}
 	for _, host := range []string{
-		"localhost:1355", "devl.localhost", "a.b.c.localhost", "evil.com", "3000.devl.localhost.evil.com",
-		".devl.localhost", "3000..localhost", "127.0.0.1:1355", "",
+		"localhost:1377", "devl.localhost", "a.b.c.localhost", "evil.com", "3000.devl.localhost.evil.com",
+		".devl.localhost", "3000..localhost", "127.0.0.1:1377", "",
 	} {
 		if got, ok := ParseHost(host); ok {
 			t.Errorf("ParseHost(%q) = %+v; want no route", host, got)
@@ -48,7 +48,7 @@ func TestTargetPort(t *testing.T) {
 }
 
 func TestRewrites(t *testing.T) {
-	const public = "3000.devl.localhost:1355"
+	const public = "3000.devl.localhost:1377"
 	for in, want := range map[string]string{
 		"http://" + public:              "http://localhost:3000",
 		"http://" + public + "/a?b":     "http://localhost:3000/a?b",
@@ -123,7 +123,7 @@ func get(t *testing.T, p http.Handler, host, path string, header http.Header) *h
 
 func TestProxyReachesTheBoxAsIfLocal(t *testing.T) {
 	port := app(t)
-	host := strconv.Itoa(port) + ".devl.localhost:1355"
+	host := strconv.Itoa(port) + ".devl.localhost:1377"
 	resp := get(t, newProxy(), host, "/", http.Header{"Origin": {"http://" + host}})
 	body, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK || string(body) != "hello from the box" {
@@ -142,7 +142,7 @@ func TestProxyReachesTheBoxAsIfLocal(t *testing.T) {
 
 func TestProxyRewritesTheAppsOwnRedirects(t *testing.T) {
 	port := app(t)
-	host := strconv.Itoa(port) + ".devl.localhost:1355"
+	host := strconv.Itoa(port) + ".devl.localhost:1377"
 	resp := get(t, newProxy(), host, "/login", nil)
 	if resp.StatusCode != http.StatusFound || resp.Header.Get("Location") != "http://"+host+"/dashboard" {
 		t.Fatalf("redirect = %d %q", resp.StatusCode, resp.Header.Get("Location"))
@@ -152,7 +152,7 @@ func TestProxyRewritesTheAppsOwnRedirects(t *testing.T) {
 func TestProxyRefusesUnknownHostsAndBoxes(t *testing.T) {
 	p := newProxy()
 	for host, want := range map[string]int{
-		"evil.example:1355":      http.StatusNotFound,
+		"evil.example:1377":      http.StatusNotFound,
 		"3000.unknown.localhost": http.StatusBadGateway,
 		"web.devl.localhost":     http.StatusNotFound,
 	} {
@@ -177,7 +177,7 @@ func TestProxyResolvesNamedServices(t *testing.T) {
 	port := app(t)
 	p := newProxy()
 	p.Service = func(box, name string) (int, bool) { return port, box == "devl" && name == "web" }
-	resp := get(t, p, "web.devl.localhost:1355", "/", nil)
+	resp := get(t, p, "web.devl.localhost:1377", "/", nil)
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("named service: %d", resp.StatusCode)
 	}
@@ -186,7 +186,7 @@ func TestProxyResolvesNamedServices(t *testing.T) {
 func TestPlainLocalhostServesTheIndex(t *testing.T) {
 	p := newProxy()
 	p.Index = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, "index") })
-	for _, host := range []string{"localhost:1355", "127.0.0.1:1355", "[::1]:1355"} {
+	for _, host := range []string{"localhost:1377", "127.0.0.1:1377", "[::1]:1377"} {
 		body, _ := io.ReadAll(get(t, p, host, "/", nil).Body)
 		if string(body) != "index" {
 			t.Errorf("%s served %q, want the index", host, body)

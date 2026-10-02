@@ -15,7 +15,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sean-brydon/calport/internal/events"
+	"github.com/sean-brydon/berth/internal/events"
 )
 
 // Stats is a box at a glance: how loaded it is, and what its agents are doing.
@@ -28,7 +28,7 @@ type Stats struct {
 	Swap     Usage     `json:"swap"`
 	Disks    []Disk    `json:"disks"`
 	Agents   []Agent   `json:"agents"`
-	// Hooks is true when an agent tool on the box reports to calportd, so
+	// Hooks is true when an agent tool on the box reports to berthd, so
 	// an agent's waiting or finished state is known.
 	Hooks bool `json:"hooks"`
 }
@@ -147,10 +147,10 @@ func worktreeFor(locs []Location, dir string) (location, worktree string) {
 	return location, worktree
 }
 
-// hooksInstalled reports whether Claude Code on this box reports to calportd.
+// hooksInstalled reports whether Claude Code on this box reports to berthd.
 func hooksInstalled(home string) bool {
 	b, err := os.ReadFile(filepath.Join(home, ".claude", "settings.json"))
-	return err == nil && bytes.Contains(b, []byte("calportd hook"))
+	return err == nil && bytes.Contains(b, []byte("berthd hook"))
 }
 
 func collectStats(proc string) Stats {

@@ -1,16 +1,16 @@
-// Package integrations connects calport to the tools around it: it turns
-// agent tools' hook payloads into calport events, installs those hooks, and
-// ships the skill that teaches agents to drive calport.
+// Package integrations connects berth to the tools around it: it turns
+// agent tools' hook payloads into berth events, installs those hooks, and
+// ships the skill that teaches agents to drive berth.
 package integrations
 
 import (
 	"encoding/json"
 	"strings"
 
-	"github.com/sean-brydon/calport/internal/events"
+	"github.com/sean-brydon/berth/internal/events"
 )
 
-// Translate turns a tool's hook payload into a calport event. It keeps only
+// Translate turns a tool's hook payload into a berth event. It keeps only
 // identifiers and the working directory: prompts, messages, and transcripts
 // never leave the tool, so they cannot leak into hooks or logs. ok is false
 // for payloads that are not worth announcing.
@@ -57,7 +57,7 @@ func Translate(tool, hookEvent string, payload []byte) (events.Event, bool) {
 		e.Data["path"] = str("cwd")
 		e.Data["turn_id"] = str("turn-id")
 	default:
-		// Any other tool names the calport event directly.
+		// Any other tool names the berth event directly.
 		if !strings.Contains(hookEvent, ".") {
 			return e, false
 		}

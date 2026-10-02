@@ -1,4 +1,4 @@
-// Package statefile reads and writes calport's private state: keys, trust
+// Package statefile reads and writes berth's private state: keys, trust
 // stores, and pending pairing codes.
 package statefile
 
@@ -10,12 +10,12 @@ import (
 	"syscall"
 )
 
-// Home returns the state directory: CALPORT_HOME when set, otherwise the OS
-// user config directory plus "calport".
+// Home returns the state directory: BERTH_HOME when set, otherwise the OS
+// user config directory plus "berth".
 func Home() (string, error) {
-	if dir := os.Getenv("CALPORT_HOME"); dir != "" {
+	if dir := os.Getenv("BERTH_HOME"); dir != "" {
 		if !filepath.IsAbs(dir) {
-			return "", fmt.Errorf("CALPORT_HOME must be an absolute path")
+			return "", fmt.Errorf("BERTH_HOME must be an absolute path")
 		}
 		return dir, nil
 	}
@@ -23,7 +23,7 @@ func Home() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(base, "calport"), nil
+	return filepath.Join(base, "berth"), nil
 }
 
 // Write replaces path atomically, so a crash or a concurrent reader never

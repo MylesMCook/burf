@@ -1,32 +1,32 @@
 # Integrations
 
-calport works with the tools around it in both directions: tools drive
-calport through its CLI, and calport drives tools through hooks. Every event
+berth works with the tools around it in both directions: tools drive
+berth through its CLI, and berth drives tools through hooks. Every event
 records the tool it came from, so a change never bounces back and forth
 between two tools.
 
-## Agent tools → calport
+## Agent tools → berth
 
 ### Claude Code, Cursor, Codex
 
 ```sh
-calport integrations install claude     # on a laptop
-calportd integrations install claude    # on a box, where agents usually run
-calport integrations install all
+berth integrations install claude     # on a laptop
+berthd integrations install claude    # on a box, where agents usually run
+berth integrations install all
 ```
 
-- **Claude Code**: installs the calport skill at `~/.claude/skills/calport/` and
+- **Claude Code**: installs the berth skill at `~/.claude/skills/berth/` and
   `Stop` / `Notification` hooks in `~/.claude/settings.json`.
 - **Cursor**: appends a `stop` hook to `~/.cursor/hooks.json`, after any hooks
   already there (Orca's are kept).
-- **Codex**: installs the skill at `~/.codex/skills/calport/` and prints the
-  `notify` line to add to `~/.codex/config.toml`, which calport does not edit
+- **Codex**: installs the skill at `~/.codex/skills/berth/` and prints the
+  `notify` line to add to `~/.codex/config.toml`, which berth does not edit
   because it holds a single value you may already use.
 
 Installs are idempotent, keep every existing setting, back up the previous
-file to `*.calport-backup`, and refuse to touch a file that is not valid JSON.
+file to `*.berth-backup`, and refuse to touch a file that is not valid JSON.
 
-The hooks run `calport hook TOOL EVENT`, which turns the tool's payload into an
+The hooks run `berth hook TOOL EVENT`, which turns the tool's payload into an
 event (`agent.finished`, `agent.waiting`, `agent.started`). Only identifiers and
 the working directory are kept: prompts, messages, and transcripts never
 leave the tool. A hook never fails or blocks the tool that called it.
@@ -43,63 +43,63 @@ unless a person asked.
 Any script can announce an event:
 
 ```sh
-calport emit agent.finished path="$PWD" --origin=mytool     # on a laptop
-calportd emit deploy.done url=https://… --origin mytool      # on a box
+berth emit agent.finished path="$PWD" --origin=mytool     # on a laptop
+berthd emit deploy.done url=https://… --origin mytool      # on a box
 ```
 
 ## Worktrees from any tool
 
-calportd watches its locations. A worktree created by Orca, Herdr, an agent,
-or plain `git worktree add` shows up in calport and produces a
+berthd watches its locations. A worktree created by Orca, Herdr, an agent,
+or plain `git worktree add` shows up in berth and produces a
 `worktree.created` event with origin `detected`. Nothing needs configuring in
 those tools.
 
-## calport → tools
+## berth → tools
 
 ### Creating worktrees through Orca or Herdr
 
 ```sh
-calport worktree new devl/cal/fix-login --provider orca --agent claude --prompt "…"
-calport worktree new devl/cal/fix-login --provider herdr --herdr-session agents
+berth worktree new devl/cal/fix-login --provider orca --agent claude --prompt "…"
+berth worktree new devl/cal/fix-login --provider herdr --herdr-session agents
 ```
 
 - **Orca**: registers the repository with Orca first if Orca does not know it
   (`orca repo add`), then `orca worktree create`. Orca decides where the
   worktree lives and runs the repository's `orca.yaml` setup policy. Removing it
-  through calport goes through `orca worktree rm`, so Orca's records stay right.
+  through berth goes through `orca worktree rm`, so Orca's records stay right.
 - **Herdr**: `herdr worktree create`, which also opens a workspace with a pane
   in the new worktree.
 
 ### Every box in this computer's Herdr
 
 Herdr 0.9 keeps local work and saved SSH machines in one window, with one
-agent list across them. `calport herdr setup` saves every paired box there:
+agent list across them. `berth herdr setup` saves every paired box there:
 
 ```sh
-calport herdr                 # each box's state, and what is in the way
-calport herdr setup [BOX...]  # add boxes; the default is every one that is ready
-calport herdr update BOX      # update Herdr on a box, over calport rather than SSH
-calport herdr open            # open Herdr in a terminal
+berth herdr                 # each box's state, and what is in the way
+berth herdr setup [BOX...]  # add boxes; the default is every one that is ready
+berth herdr update BOX      # update Herdr on a box, over berth rather than SSH
+berth herdr open            # open Herdr in a terminal
 ```
 
 Herdr reaches machines over SSH, so setup writes one SSH host per box,
-`calport-BOX`, in `~/.ssh/calport/BOX.conf`, and puts `Include
-calport/*.conf` at the top of `~/.ssh/config` (backed up once to
-`config.calport-backup`). Each host travels over the box's calport network
-through `calport network proxy`, so a box on a tailnet this computer is not on
-works too. Then it runs `herdr machine add calport-BOX --remote-session agents
+`berth-BOX`, in `~/.ssh/berth/BOX.conf`, and puts `Include
+berth/*.conf` at the top of `~/.ssh/config` (backed up once to
+`config.berth-backup`). Each host travels over the box's berth network
+through `berth network proxy`, so a box on a tailnet this computer is not on
+works too. Then it runs `herdr machine add berth-BOX --remote-session agents
 --label BOX`, which starts that session on the box if it is not running.
 
-Logging in stays yours: calport writes how to reach a box, never which key to
+Logging in stays yours: berth writes how to reach a box, never which key to
 use. A box that wants a particular key shows as `ssh` until you add it:
 
 ```text
-Host calport-devl
+Host berth-devl
   IdentityFile ~/.ssh/devl.pub
   IdentitiesOnly yes
 ```
 
-Both ends need Herdr 0.9 or later. `calport herdr update BOX` stops the box's
+Both ends need Herdr 0.9 or later. `berth herdr update BOX` stops the box's
 Herdr sessions first, since Herdr will not replace itself under a running
 server, and refuses while any of them hosts an agent. A Herdr a package
 manager installed (in `/usr/bin`, say) is left to that package manager.
@@ -107,48 +107,48 @@ Settings → Herdr in the app shows the same states, with the action for each.
 
 ### The Orca runtime on a box
 
-`calport orca connect BOX` lets this computer's own Orca app reach an Orca
+`berth orca connect BOX` lets this computer's own Orca app reach an Orca
 runtime running on a box:
 
 ```sh
-calport orca connect devl
+berth orca connect devl
 ```
 
 It installs and starts the runtime as a managed unit on the box if it is not
-already running, tunnels it over the same paired connection calport already
-uses to reach that box, and pairs the local Orca app with it. calport itself
-always reaches the runtime through that existing tunnel over calportd, so
-nothing needs forwarding or opening for calport's own use. But `orca serve`
+already running, tunnels it over the same paired connection berth already
+uses to reach that box, and pairs the local Orca app with it. berth itself
+always reaches the runtime through that existing tunnel over berthd, so
+nothing needs forwarding or opening for berth's own use. But `orca serve`
 has no flag to restrict its bind address, so the runtime listens on every
 interface on the box, not just loopback — anything else on the box's network
-can still reach its port directly. calport does not close that off, and does
+can still reach its port directly. berth does not close that off, and does
 not open it either: restricting the runtime's port, if that matters for a
-given box's network, remains a box-hardening concern that calport neither
+given box's network, remains a box-hardening concern that berth neither
 solves nor worsens.
 
 Orca is the one that holds the pairing credential, once it has paired;
-calport itself only ever stores the route (the runtime's identity and the
-local port it tunnels to) in `orca.json` under its state directory. calport
+berth itself only ever stores the route (the runtime's identity and the
+local port it tunnels to) in `orca.json` under its state directory. berth
 reads the credential out of the runtime's log and hands it straight to the
 local Orca CLI on this computer, once, to pair — `orca environment add` takes
 it only as a flag, so for that one call it is on this machine's process list
-while the call runs. calport never stores it, never sends it anywhere else,
-and no `calport orca` command prints it, logs it, or puts it in an error.
+while the call runs. berth never stores it, never sends it anywhere else,
+and no `berth orca` command prints it, logs it, or puts it in an error.
 
 A box's local port is fixed the first time it pairs, because the pairing
-code the local Orca app stores embeds that port. Reconnecting (`calport orca
+code the local Orca app stores embeds that port. Reconnecting (`berth orca
 connect BOX` again) restores the tunnel on the same port if it was lost; it
 does not move to a new one, and it leaves a runtime that is already serving
 on that port alone rather than restarting it.
 
 When a pairing stops working and reconnecting keeps failing the same way —
 the box was rebuilt, say, so the runtime answering the saved route is no
-longer the one this computer paired with — `calport orca disconnect BOX` is
+longer the one this computer paired with — `berth orca disconnect BOX` is
 the way out. It drops the saved route,
-pinned port included, and removes the tunnel, so the next `calport orca
+pinned port included, and removes the tunnel, so the next `berth orca
 connect BOX` starts over from nothing instead of reusing a route that cannot
-work. It leaves the runtime unit serving on the box (`calport unit rm
-BOX/calport-orca` stops that) and leaves the Orca environment alone; if Orca
+work. It leaves the runtime unit serving on the box (`berth unit rm
+BOX/berth-orca` stops that) and leaves the Orca environment alone; if Orca
 still lists one for the box, remove it in the Orca app.
 
 It does not, however, move a box to a different local port. The pinned port is
@@ -158,51 +158,51 @@ cannot bind will usually be pinned to that same port again. Disconnecting
 fixes a stale route or a runtime identity that no longer matches; it does not
 work around a port that is unavailable here.
 
-`calport orca status BOX` only reports whether
+`berth orca status BOX` only reports whether
 the runtime this computer already paired with is reachable — it neither
-installs nor pairs anything. `calport orca exec BOX -- ARGS` runs an `orca`
-command against that box's paired runtime, and `calport orca serve BOX`
+installs nor pairs anything. `berth orca exec BOX -- ARGS` runs an `orca`
+command against that box's paired runtime, and `berth orca serve BOX`
 starts the runtime without pairing to it.
 
 ### The Cal.com kit
 
-On a box with a Cal.com checkout, `calport kit install BOX/LOCATION` (or **Set
+On a box with a Cal.com checkout, `berth kit install BOX/LOCATION` (or **Set
 up** on the location in the app) installs the Cal.com worktree kit. Each new
 worktree then gets its own port, a copy of the dev database, its own `.env`,
 and a URL like `http://fix-login-a1b2c3.devl.cal.localhost`; archiving stops it.
 
 What it installs, as your user, with nothing needing root:
 
-- the scripts in `~/.local/share/cal-worktrees`, embedded in calportd, and
+- the scripts in `~/.local/share/cal-worktrees`, embedded in berthd, and
   `cal-worktree`, `cal-archive` and `cal-setup` links in `~/.local/bin` (a
-  script of the same name already there is kept as `NAME.calport-backup`);
-- `cal-worktree-proxy.service`, which is `calportd kit router`: it routes each
+  script of the same name already there is kept as `NAME.berth-backup`);
+- `cal-worktree-proxy.service`, which is `berthd kit router`: it routes each
   worktree hostname to its dev server on `127.0.0.1:18080`, and serves
   `/__worktree/logs` and Prisma Studio next to it;
 - with Orca, `cal-worktree-lifecycle.service`, which stops worktrees Orca
   archives and sets up ones it restores;
 - on the laptop, a route for the kit's hostnames to that router.
 
-Worktrees calport creates run the hooks itself. So worktrees other tools make
-run them too, `calport kit tools BOX/LOCATION --setup` (or **Set up all** under
+Worktrees berth creates run the hooks itself. So worktrees other tools make
+run them too, `berth kit tools BOX/LOCATION --setup` (or **Set up all** under
 **Worktree tools** in the app) writes each tool's per-repository config into
 the checkout and lists it in that clone's `.git/info/exclude`, so it is never
 committed and never shows up in a PR:
 
-| Tool | What calport does |
+| Tool | What berth does |
 | --- | --- |
-| Orca | `orca.yaml` with `scripts.setup`, `scripts.archive` and `setupAgentStartupPolicy: wait-for-setup`; Orca asks you to trust the scripts once. Hooks set in Orca's own settings take precedence, so when it has some calport writes nothing. |
+| Orca | `orca.yaml` with `scripts.setup`, `scripts.archive` and `setupAgentStartupPolicy: wait-for-setup`; Orca asks you to trust the scripts once. Hooks set in Orca's own settings take precedence, so when it has some berth writes nothing. |
 | Cursor | `.cursor/worktrees.json` (`setup-worktree`). Cursor has no teardown hook. |
 | Codex app | `.codex/environments/environment.toml` with setup and cleanup. Select the "Cal.com worktree kit" environment once in the app; Codex does not run setup over Remote SSH yet ([openai/codex#23648](https://github.com/openai/codex/issues/23648)). |
 | Superset | `.superset/config.json` with setup and teardown. |
-| Herdr | Opt-in (`--tool herdr`): Herdr has no repository file, so calport installs a plugin for your user in `~/.local/share/cal-worktrees/herdr-plugin` and links it with `herdr plugin link`. Its `worktree.created` and `worktree.removed` hooks run the kit's hooks for worktrees of the kit's checkout. |
+| Herdr | Opt-in (`--tool herdr`): Herdr has no repository file, so berth installs a plugin for your user in `~/.local/share/cal-worktrees/herdr-plugin` and links it with `herdr plugin link`. Its `worktree.created` and `worktree.removed` hooks run the kit's hooks for worktrees of the kit's checkout. |
 | Conductor | Skipped: it makes worktrees on your Mac only. |
 | Claude Code | Skipped: its `WorktreeCreate` hook replaces how it makes worktrees. Run `cal-setup` in one instead. |
 
 A file the repository commits, or one you wrote that runs other scripts, is
 left alone. The hooks read the main checkout and worktree from whichever tool
 runs them (`ORCA_*`, `CONDUCTOR_*`, `SUPERSET_*`, `CODEX_*`, Cursor's
-`ROOT_WORKTREE_PATH`), falling back to the current directory. `calport doctor
+`ROOT_WORKTREE_PATH`), falling back to the current directory. `berth doctor
 BOX` says when a tool on the box is not set up. Reinstalling keeps a box's URL
 label, so URLs in use keep working.
 
@@ -215,19 +215,19 @@ are re-read for every event.
 ```json
 {
   "hooks": [
-    { "on": "agent.finished", "run": "herdr notification show \"Agent finished in $CALPORT_PATH\"", "tool": "herdr" },
-    { "on": "worktree.created", "run": "orca worktree set --worktree path:$CALPORT_PATH --comment 'from calport'", "tool": "orca" },
-    { "on": "session.*", "run": "cat >> ~/calport-sessions.log" }
+    { "on": "agent.finished", "run": "herdr notification show \"Agent finished in $BERTH_PATH\"", "tool": "herdr" },
+    { "on": "worktree.created", "run": "orca worktree set --worktree path:$BERTH_PATH --comment 'from berth'", "tool": "orca" },
+    { "on": "session.*", "run": "cat >> ~/berth-sessions.log" }
   ]
 }
 ```
 
 - `on` is an event type, a prefix like `worktree.*`, or `*`.
-- The command gets the event as JSON on stdin and as `CALPORT_EVENT`,
-  `CALPORT_EVENT_BOX`, `CALPORT_EVENT_ORIGIN`, and `CALPORT_<FIELD>` (for
-  example `CALPORT_PATH`, `CALPORT_NAME`, `CALPORT_URL`).
+- The command gets the event as JSON on stdin and as `BERTH_EVENT`,
+  `BERTH_EVENT_BOX`, `BERTH_EVENT_ORIGIN`, and `BERTH_<FIELD>` (for
+  example `BERTH_PATH`, `BERTH_NAME`, `BERTH_URL`).
 - `tool` names the tool the hook drives. Events that came from that tool never
-  trigger it, and calport calls the hook makes are attributed to that tool.
+  trigger it, and berth calls the hook makes are attributed to that tool.
   This is what stops loops.
 - `timeout` (default `1m`) bounds each run.
 
@@ -244,4 +244,4 @@ are re-read for every event.
 | `box.upgraded` | box |
 | `agent.started`, `agent.finished`, `agent.waiting` | agent tool hooks |
 
-`calport events` streams every event from the laptop and all its boxes.
+`berth events` streams every event from the laptop and all its boxes.

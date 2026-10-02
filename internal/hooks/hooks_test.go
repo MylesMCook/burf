@@ -12,11 +12,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/calport/internal/events"
+	"github.com/sean-brydon/berth/internal/events"
 )
 
 func TestMatches(t *testing.T) {
-	created := events.Event{Type: "worktree.created", Origin: "calport"}
+	created := events.Event{Type: "worktree.created", Origin: "berth"}
 	fromOrca := events.Event{Type: "worktree.created", Origin: "orca"}
 	for _, tc := range []struct {
 		hook Hook
@@ -41,17 +41,17 @@ func TestMatches(t *testing.T) {
 }
 
 func TestEnvDescribesTheEventAndStampsTheOrigin(t *testing.T) {
-	e := events.Event{Type: "worktree.created", Box: "devl", Origin: "calport", Data: map[string]any{"path": "/home/alex/work/cal-x", "location": "cal", "first-port": 3000}}
+	e := events.Event{Type: "worktree.created", Box: "devl", Origin: "berth", Data: map[string]any{"path": "/home/alex/work/cal-x", "location": "cal", "first-port": 3000}}
 	env := Env(e, "orca")
 	for _, want := range []string{
-		"CALPORT_EVENT=worktree.created", "CALPORT_EVENT_BOX=devl", "CALPORT_EVENT_ORIGIN=calport",
-		"CALPORT_ORIGIN=orca", "CALPORT_PATH=/home/alex/work/cal-x", "CALPORT_LOCATION=cal", "CALPORT_FIRST_PORT=3000",
+		"BERTH_EVENT=worktree.created", "BERTH_EVENT_BOX=devl", "BERTH_EVENT_ORIGIN=berth",
+		"BERTH_ORIGIN=orca", "BERTH_PATH=/home/alex/work/cal-x", "BERTH_LOCATION=cal", "BERTH_FIRST_PORT=3000",
 	} {
 		if !slices.Contains(env, want) {
 			t.Errorf("env missing %s: %v", want, env)
 		}
 	}
-	if !slices.Contains(Env(e, ""), "CALPORT_ORIGIN=hook") {
+	if !slices.Contains(Env(e, ""), "BERTH_ORIGIN=hook") {
 		t.Error("a hook without a tool must still stamp an origin")
 	}
 }
@@ -59,14 +59,14 @@ func TestEnvDescribesTheEventAndStampsTheOrigin(t *testing.T) {
 // exec keeps the last of duplicate variables, so data named like a fixed
 // variable could otherwise replace the origin that stops hook loops.
 func TestEventDataCannotReplaceFixedVariables(t *testing.T) {
-	e := events.Event{Type: "agent.finished", Origin: "claude", Data: map[string]any{"origin": "calport", "event": "x.y", "path": "/w"}}
+	e := events.Event{Type: "agent.finished", Origin: "claude", Data: map[string]any{"origin": "berth", "event": "x.y", "path": "/w"}}
 	env := Env(e, "orca")
-	for _, bad := range []string{"CALPORT_ORIGIN=calport", "CALPORT_EVENT=x.y"} {
+	for _, bad := range []string{"BERTH_ORIGIN=berth", "BERTH_EVENT=x.y"} {
 		if slices.Contains(env, bad) {
 			t.Errorf("event data set %s: %v", bad, env)
 		}
 	}
-	if !slices.Contains(env, "CALPORT_ORIGIN=orca") || !slices.Contains(env, "CALPORT_PATH=/w") {
+	if !slices.Contains(env, "BERTH_ORIGIN=orca") || !slices.Contains(env, "BERTH_PATH=/w") {
 		t.Errorf("env = %v", env)
 	}
 }
@@ -75,7 +75,7 @@ func TestRunnerRunsMatchingHooksWithTheEventOnStdin(t *testing.T) {
 	dir := t.TempDir()
 	out := filepath.Join(dir, "out")
 	cfg := Config{Hooks: []Hook{
-		{On: "worktree.*", Run: "cat > " + out + "; echo \" $CALPORT_ORIGIN\" >> " + out, Tool: "herdr"},
+		{On: "worktree.*", Run: "cat > " + out + "; echo \" $BERTH_ORIGIN\" >> " + out, Tool: "herdr"},
 		{On: "session.started", Run: "echo should-not-run >> " + out},
 	}}
 	b, _ := json.Marshal(cfg)

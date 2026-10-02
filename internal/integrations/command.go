@@ -7,17 +7,17 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/sean-brydon/calport/internal/events"
+	"github.com/sean-brydon/berth/internal/events"
 )
 
 const Usage = `Integrations
   %[1]s integrations install claude|cursor|codex|all
-                         Install the calport skill and agent hooks for a tool
+                         Install the berth skill and agent hooks for a tool
   %[1]s hook TOOL EVENT  What those hooks run: turns a tool's hook into a
-                         calport event (agent.finished, agent.waiting)
+                         berth event (agent.finished, agent.waiting)
 `
 
-// Emit publishes an event on this machine's calport: the laptop agent or the
+// Emit publishes an event on this machine's berth: the laptop agent or the
 // box daemon, whichever the running binary talks to.
 type Emit func(events.Event) error
 
@@ -42,7 +42,7 @@ func Hook(args []string, stdin *os.File, stdout, stderr io.Writer, emit Emit) {
 		return
 	}
 	if err := emit(e); err != nil {
-		fmt.Fprintf(stderr, "calport hook: %v\n", err)
+		fmt.Fprintf(stderr, "berth hook: %v\n", err)
 	}
 }
 
@@ -86,7 +86,7 @@ func Install(args []string, bin string, out io.Writer) error {
 			}
 			fmt.Fprintf(out, "Codex: skill at %s\n", skill)
 			// config.toml has a single notify setting the user may already
-			// use, so calport suggests it rather than overwriting it.
+			// use, so berth suggests it rather than overwriting it.
 			fmt.Fprintf(out, "  To announce finished turns, add to ~/.codex/config.toml:\n    notify = [%q, \"hook\", \"codex\", \"notify\"]\n", bin)
 		default:
 			return fmt.Errorf("unknown tool %q; use claude, cursor, codex, or all", tool)

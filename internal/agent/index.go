@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-// serveIndex lists what the proxy can reach, at plain http://localhost:1355/.
+// serveIndex lists what the proxy can reach, at plain http://localhost:1377/.
 func (a *Agent) serveIndex(w http.ResponseWriter, r *http.Request) {
 	s := a.status()
 	port := ":" + strconv.Itoa(s.Proxy.URLPort)
@@ -16,11 +16,11 @@ func (a *Agent) serveIndex(w http.ResponseWriter, r *http.Request) {
 		port = ""
 	}
 	var b strings.Builder
-	b.WriteString(`<!doctype html><meta charset="utf-8"><title>calport</title>
+	b.WriteString(`<!doctype html><meta charset="utf-8"><title>berth</title>
 <body style="font:15px system-ui;margin:3rem;max-width:44rem;color:#222">
-<h1 style="font-size:20px">calport</h1>`)
+<h1 style="font-size:20px">berth</h1>`)
 	if len(s.Boxes) == 0 {
-		b.WriteString(`<p>No paired boxes. Run <code>calportd pair</code> on a box, then <code>calport pair '&lt;link&gt;'</code>.</p>`)
+		b.WriteString(`<p>No paired boxes. Run <code>berthd pair</code> on a box, then <code>berth pair '&lt;link&gt;'</code>.</p>`)
 	}
 	for _, box := range s.Boxes {
 		fmt.Fprintf(&b, `<h2 style="font-size:16px;margin-top:2rem">%s <small style="color:#888;font-weight:400">%s</small></h2>`,

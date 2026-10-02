@@ -15,14 +15,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/calport/internal/identity"
-	"github.com/sean-brydon/calport/internal/pairing"
-	"github.com/sean-brydon/calport/internal/trust"
+	"github.com/sean-brydon/berth/internal/identity"
+	"github.com/sean-brydon/berth/internal/pairing"
+	"github.com/sean-brydon/berth/internal/trust"
 )
 
 const dialTimeout = 15 * time.Second
 
-// DialFunc opens the TCP connection calport's TLS runs over. The default is
+// DialFunc opens the TCP connection berth's TLS runs over. The default is
 // the system network; a box on another tailnet is reached through that
 // tailnet's embedded node instead.
 type DialFunc func(ctx context.Context, network, addr string) (net.Conn, error)
@@ -77,7 +77,7 @@ func PairVia(ctx context.Context, id *identity.Identity, tok pairing.Token, clie
 	case http.StatusTooManyRequests:
 		return "", errors.New(errTooManyPairings)
 	default:
-		return "", errors.New("box refused pairing: the link may be expired, already used, or for another box; run `calportd pair` for a new one")
+		return "", errors.New("box refused pairing: the link may be expired, already used, or for another box; run `berthd pair` for a new one")
 	}
 }
 

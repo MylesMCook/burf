@@ -7,11 +7,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/sean-brydon/calport/internal/statefile"
+	"github.com/sean-brydon/berth/internal/statefile"
 )
 
 // Pending stores the codes a box has issued and not yet seen used. It is shared
-// by `calportd pair`, which issues codes, and `calportd serve`, which consumes
+// by `berthd pair`, which issues codes, and `berthd serve`, which consumes
 // them, so every change happens under the file lock.
 type Pending struct{ path string }
 

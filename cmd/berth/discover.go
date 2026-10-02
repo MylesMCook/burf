@@ -11,7 +11,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/sean-brydon/calport/internal/network"
+	"github.com/sean-brydon/berth/internal/network"
 )
 
 // candidate is a tailnet machine offered as a box.
@@ -27,12 +27,12 @@ type discovery struct {
 	Machines []candidate `json:"machines"`
 }
 
-// discover handles `calport discover [--network NET] [--json]`: the machines
-// on this computer's tailnet, or on one of calport's networks.
+// discover handles `berth discover [--network NET] [--json]`: the machines
+// on this computer's tailnet, or on one of berth's networks.
 func discover(l laptop, args []string) error {
 	var via string
 	_, asJSON, err := flags("discover", args, func(fs *flag.FlagSet) {
-		fs.StringVar(&via, "network", "", "list a calport network's machines instead of this computer's tailnet")
+		fs.StringVar(&via, "network", "", "list a berth network's machines instead of this computer's tailnet")
 	})
 	if err != nil {
 		return err
@@ -77,7 +77,7 @@ func discover(l laptop, args []string) error {
 		case m.Box != "":
 			state = "paired as " + m.Box
 		case m.Online:
-			state = "online: calport add ssh " + out.User + "@" + m.IP
+			state = "online: berth add ssh " + out.User + "@" + m.IP
 		}
 		fmt.Fprintf(w, "%s\t%s\t%s\t%s\n", m.Name, m.IP, m.OS, state)
 	}
