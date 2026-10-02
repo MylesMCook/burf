@@ -53,6 +53,20 @@ berth session new devl/cal/fix-login --name fix-login -- claude
 A worktree's setup script (the repository's `.berth/config.json`) runs in the
 background after it is created.
 
+## Drive another agent
+
+```sh
+berth session send devl/fix-login "Also cover the logout path."   # type a prompt
+berth session wait devl/fix-login                  # until its turn ends: finished or waiting
+berth exec devl/cal/fix-login -- pnpm test         # run a check in its worktree
+berth loop devl/fix-login --check "pnpm test" --prompt "Make the tests pass" --max 5
+```
+
+`loop` prompts, waits for the turn to end, runs the check, and sends the
+failure back until it passes. It stops when the agent is waiting for a human:
+tell the user rather than answering for them. Hand work to a fresh agent with
+`berth task new … --prompt "Continue from <session> in <path>: …"`.
+
 ## See what another agent is doing
 
 ```sh
