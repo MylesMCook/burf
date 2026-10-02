@@ -13,6 +13,7 @@ import {
   RefreshCwIcon,
   ServerIcon,
   SettingsIcon,
+  SlidersHorizontalIcon,
   SquareTerminalIcon,
   PackageIcon,
   PackagePlusIcon,
@@ -45,6 +46,7 @@ import { openBrowserAt, resolveUrl, startSession } from "@/lib/actions";
 import { agentLabel, agentOf, sortedWorktrees, worktreeOf } from "@/lib/derive";
 import { useStore } from "@/lib/store";
 import { currentSpace, focusSession, recentWorktrees, refOf, selectWorktree, useWorkspaces } from "@/lib/workspaces";
+import { openCustomize, useArrangedNav } from "@/components/sidebar/nav";
 import { loadPlugins } from "@/plugins/host";
 import { useRegistry } from "@/plugins/registry";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
@@ -84,6 +86,7 @@ export function CommandPalette() {
   const spaces = useWorkspaces((s) => s.spaces);
   const themes = useThemes();
   const pluginCommands = useRegistry((s) => s.commands);
+  const nav = useArrangedNav();
   const [query, setQuery] = useState("");
   // The theme in use when the palette opened, to put back after a preview.
   const before = useRef<string | undefined>(undefined);
@@ -121,6 +124,7 @@ export function CommandPalette() {
       { value: "settings", label: "Settings", icon: slot(<SettingsIcon />), run: go(() => st.setView({ kind: "settings" })) },
       { value: "add-box", label: "Add a box…", icon: slot(<ServerIcon />), run: go(openAddBox) },
       { value: "settings-developer", label: "Developer settings", icon: slot(<CodeIcon />), run: go(() => st.setView({ kind: "settings", section: "developer" })) },
+      { value: "customize-sidebar", label: "Customize sidebar…", icon: slot(<SlidersHorizontalIcon />), run: go(() => openCustomize()) },
       { value: "refresh", label: "Refresh everything", icon: slot(<RefreshCwIcon />), run: go(() => void st.refreshAll()) },
       { value: "reload-plugins", label: "Reload plugins", icon: slot(<PuzzleIcon />), run: go(() => st.client && void loadPlugins(st.client)) },
     ];
@@ -203,6 +207,15 @@ export function CommandPalette() {
       }),
     }));
 
+    // Places hidden from the sidebar stay reachable here.
+    const hiddenPlaces: Item[] = nav.hidden.map((n) => ({
+      value: `place:${n.id}`,
+      label: n.label,
+      detail: "Hidden from sidebar",
+      icon: slot(n.icon),
+      run: go(() => st.setView(n.view)),
+    }));
+
     if (!q) {
       const waiting = sessions.filter((s) => s.state === "waiting").map(sessionItem);
       const recent: Item[] = recentWorktrees(spaces, 5).map((w) => ({
@@ -231,11 +244,12 @@ export function CommandPalette() {
       { value: "Actions", items: actions },
       { value: "Plugins", items: pluginItems },
       { value: "Themes", items: themeItems },
+      { value: "Hidden from sidebar", items: hiddenPlaces },
       { value: "Make it", items: make },
     ].filter((g) => g.items.length);
     // close is stable enough: it only reads refs and store setters.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessions, boxes, status, themes, themeId, spaces, pluginCommands, query]);
+  }, [sessions, boxes, status, themes, themeId, spaces, pluginCommands, query, nav.hidden]);
 
   return (
     <CommandDialog

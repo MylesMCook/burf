@@ -3,16 +3,20 @@ import {
   FolderGitIcon,
   GitBranchIcon,
   HomeIcon,
+  PencilIcon,
   PlusIcon,
   RefreshCwIcon,
   ServerIcon,
   ServerOffIcon,
   SquareTerminalIcon,
+  Trash2Icon,
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
-import { boxActions, ContextRow, DotsMenu, projectActions, worktreeActions } from "@/components/sidebar/actions";
+import { type Action, boxActions, ContextRow, DotsMenu, newSection, projectActions, projectGroupActions, worktreeActions } from "@/components/sidebar/actions";
+import { confirm } from "@/components/sidebar/confirm";
+import { type Project, projectActions as groupActions, useProjects } from "@/lib/project-groups";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem } from "@/components/ui/sidebar";
 import { agentPresets, startSession } from "@/lib/actions";
@@ -29,7 +33,7 @@ import { refOf, selectWorktree, useWorkspaces, wsKey } from "@/lib/workspaces";
 // it with one status each. By default only worktrees with something in them
 // show; the rest are a click away.
 
-export type GroupBy = "repo" | "box";
+export type GroupBy = "project" | "box";
 export type Show = "active" | "all";
 
 interface SidebarPrefs {
@@ -40,7 +44,9 @@ interface SidebarPrefs {
 }
 
 const KEY = "berth.sidebar";
-const initial: SidebarPrefs = { groupBy: "repo", show: "active", collapsed: {}, expanded: {}, ...load<Partial<SidebarPrefs>>(KEY, {}) };
+const saved = load<Partial<SidebarPrefs> & { groupBy?: string }>(KEY, {});
+// "repo" was the old name for grouping by project.
+const initial: SidebarPrefs = { show: "active", collapsed: {}, expanded: {}, ...saved, groupBy: saved.groupBy === "box" ? "box" : "project" };
 
 // The sidebar's own preferences, kept on this computer.
 export function useSidebarPrefs() {
@@ -95,9 +101,9 @@ export function Projects({ prefs, update }: { prefs: SidebarPrefs; update(p: Par
 
   return (
     <>
-      {prefs.groupBy === "repo" ? (
+      {prefs.groupBy === "project" ? (
         <>
-          <SidebarMenu className="gap-px">{group(repos, boxes.length > 1)}</SidebarMenu>
+          <ProjectSections prefs={prefs} update={update} />
           {notable.length > 0 && (
             <div className="mt-3">
               {notable.map((b) => (
@@ -195,7 +201,7 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
   const mainSessions = main ? worktreeSessions(data?.sessions, main) : [];
   const mainSel = !!main && inWorkspace && current === wsKey(box.name, main.path);
   const rows = worktrees.map((wt) => ({ wt, sessions: worktreeSessions(data?.sessions, wt), selected: inWorkspace && current === wsKey(box.name, wt.path) }));
-  const active = rows.filter((r) => r.sessions.length > 0 || r.selected);
+  const active = rows.filter((r) => r.sessions.some((s) => !s.exited) || r.selected);
   const shown = expanded ? rows : active;
   const hidden = rows.length - shown.length;
   const open = (wt: Worktree) => selectWorktree(refOf(box.name, loc, wt));
@@ -281,6 +287,7 @@ function WorktreeRow({
   data,
   selected,
   onOpen,
+  chip,
 }: {
   box: string;
   loc: Location;
@@ -289,6 +296,8 @@ function WorktreeRow({
   data?: BoxData;
   selected: boolean;
   onOpen(): void;
+  // Shown when the project spans boxes, to tell its copies apart.
+  chip?: BoxStatus;
 }) {
   return (
     <SidebarMenuSubItem>
@@ -302,6 +311,7 @@ function WorktreeRow({
         >
           {wt.main ? <HomeIcon className="size-3.5" /> : <GitBranchIcon className="size-3.5" />}
           <span className="min-w-0 truncate">{wt.main ? (wt.branch ?? "main") : wt.name}</span>
+          {chip && <BoxChip box={chip} />}
           {wt.setting_up && <span className="shrink-0 text-[10px] text-warning-foreground">setting up</span>}
           <span className="ml-auto" />
           <Glyphs sessions={sessions} data={data} />
@@ -395,5 +405,235 @@ function RowButton({ label, ...props }: React.ComponentProps<"button"> & { label
       {...props}
       className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-sidebar-accent hover:text-foreground data-popup-open:bg-sidebar-accent [&_svg]:size-3.5"
     />
+  );
+}
+
+// ProjectSections lists projects under their sections (Work, Personal…);
+// projects in none come first. Drag a project onto a section to move it.
+function ProjectSections({ prefs, update }: { prefs: SidebarPrefs; update(p: Partial<SidebarPrefs>): void }) {
+  const { projects, sections } = useProjects();
+  const multiBox = useStore((s) => (s.status?.boxes.length ?? 0) > 1);
+  const [over, setOver] = useState<string>();
+  const loose = projects.filter((p) => !p.section);
+  const drop = (section?: string) => ({
+    onDragOver: (e: React.DragEvent) => {
+      if (!e.dataTransfer.types.includes("application/x-berth-project")) return;
+      e.preventDefault();
+      setOver(section ?? "");
+    },
+    onDragLeave: () => setOver(undefined),
+    onDrop: (e: React.DragEvent) => {
+      const id = e.dataTransfer.getData("application/x-berth-project");
+      setOver(undefined);
+      const p = projects.find((x) => x.id === id);
+      if (p && p.section !== section) void groupActions.setSection(p, section);
+    },
+  });
+  const list = (ps: Project[]) => ps.map((p) => <ProjectGroup key={p.id} project={p} chips={multiBox} prefs={prefs} update={update} />);
+
+  return (
+    <>
+      <div {...drop(undefined)} className={cn("rounded-md", over === "" && "bg-sidebar-accent/40 ring-1 ring-ring/40")}>
+        <SidebarMenu className="gap-px">{list(loose)}</SidebarMenu>
+      </div>
+      {sections.map((name) => {
+        const inside = projects.filter((p) => p.section === name);
+        const key = `section:${name}`;
+        const closed = prefs.collapsed[key] ?? false;
+        return (
+          <div key={name} {...drop(name)} className={cn("mt-2 rounded-md", over === name && "bg-sidebar-accent/40 ring-1 ring-ring/40")}>
+            <ContextRow items={() => sectionActions(name)}>
+              <div className="group/row flex h-7 items-center gap-1 rounded-md pr-1 pl-1.5 hover:bg-sidebar-accent/40">
+                <button
+                  type="button"
+                  onClick={() => update({ collapsed: { ...prefs.collapsed, [key]: !closed } })}
+                  className="flex min-w-0 flex-1 items-center gap-1 font-medium text-[11px] text-muted-foreground uppercase tracking-wide"
+                >
+                  <ChevronRightIcon className={cn("size-3 transition-transform", !closed && "rotate-90")} />
+                  <span className="truncate">{name}</span>
+                  <span className="font-normal normal-case tracking-normal">{inside.length || ""}</span>
+                </button>
+                <span className="opacity-0 group-hover/row:opacity-100 has-[[data-popup-open]]:opacity-100">
+                  <DotsMenu label={`${name} section`} items={() => sectionActions(name)} />
+                </span>
+              </div>
+            </ContextRow>
+            {!closed &&
+              (inside.length ? <SidebarMenu className="gap-px">{list(inside)}</SidebarMenu> : <p className="px-6 py-1 text-muted-foreground/70 text-xs">Drag a project here.</p>)}
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+function sectionActions(name: string): Action[] {
+  return [
+    {
+      type: "item",
+      label: "Rename section…",
+      icon: <PencilIcon />,
+      run: () =>
+        confirm({
+          title: `Rename ${name}`,
+          description: "Its projects move with it.",
+          input: { label: "Name", initial: name },
+          confirm: "Rename",
+          run: (_c, v) => groupActions.renameSection(name, v),
+        }),
+    },
+    { type: "item", label: "New section…", icon: <PlusIcon />, run: () => newSection() },
+    { type: "sep" },
+    {
+      type: "item",
+      label: "Remove section",
+      icon: <Trash2Icon />,
+      destructive: true,
+      run: () => void groupActions.removeSection(name),
+      hint: "projects stay",
+    },
+  ];
+}
+
+// ProjectGroup is one project: its row (name, its boxes, how its agents are
+// doing), and under it the worktrees from all its boxes.
+function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; chips: boolean; prefs: SidebarPrefs; update(p: Partial<SidebarPrefs>): void }) {
+  const boxes = useStore((s) => s.boxes);
+  const current = useWorkspaces((s) => s.current);
+  const inWorkspace = useStore((s) => s.view.kind === "workspace");
+  const key = `project:${p.id}`;
+  const collapsed = prefs.collapsed[key] ?? false;
+  const all = prefs.show === "all";
+  const expanded = all || (prefs.expanded[key] ?? false);
+  const multi = p.members.length > 1;
+  const def = p.members.find((m) => m.box.name === p.defaultBox) ?? p.members[0];
+  const defMain = def.loc.worktrees?.find((w) => w.main);
+
+  const rows = p.members.flatMap((m) => {
+    if (m.box.state !== "online") return [];
+    const data = boxes[m.box.name];
+    return (m.loc.worktrees ?? [])
+      .filter((w) => (multi ? true : !w.main))
+      .sort((a, b) => Number(!!b.main) - Number(!!a.main) || a.name.localeCompare(b.name))
+      .map((wt) => ({ m, wt, data, sessions: worktreeSessions(data?.sessions, wt), selected: inWorkspace && current === wsKey(m.box.name, wt.path) }));
+  });
+  const active = rows.filter((r) => r.sessions.some((s) => !s.exited) || r.selected);
+  const shown = expanded ? rows : active;
+  const hidden = rows.length - shown.length;
+  // With one box, the row itself is the main checkout.
+  const mainSel = !multi && !!defMain && inWorkspace && current === wsKey(def.box.name, defMain.path);
+  const allSessions = p.members.flatMap((m) => (boxes[m.box.name]?.sessions ?? []).filter((s) => m.loc.worktrees?.some((w) => w.path === s.dir)));
+  const glyphSessions = multi ? (collapsed ? allSessions : []) : defMain ? worktreeSessions(boxes[def.box.name]?.sessions, defMain) : [];
+  const online = p.members.some((m) => m.box.state === "online");
+
+  return (
+    <SidebarMenuItem>
+      <ContextRow items={() => projectGroupActions(p)} className="group/row relative">
+        <SidebarMenuButton
+          size="sm"
+          draggable
+          onDragStart={(e: React.DragEvent) => {
+            e.dataTransfer.setData("application/x-berth-project", p.id);
+            e.dataTransfer.effectAllowed = "move";
+          }}
+          isActive={mainSel && !all}
+          disabled={!online}
+          onClick={() => defMain && def.box.state === "online" && selectWorktree(refOf(def.box.name, def.loc, defMain))}
+          title={`${p.name}${p.slug ? ` (${p.slug})` : ""}\n${p.members.map((m) => `${m.box.name}: ${m.loc.path}`).join("\n")}`}
+          className={cn("h-7.5 gap-1.5 font-medium text-[13px] text-foreground", !online && "text-muted-foreground")}
+        >
+          <span
+            role="button"
+            tabIndex={-1}
+            aria-label={collapsed ? `Show ${p.name}` : `Hide ${p.name}`}
+            className="-ml-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+            onClick={(e) => {
+              e.stopPropagation();
+              update({ collapsed: { ...prefs.collapsed, [key]: !collapsed } });
+            }}
+          >
+            <ChevronRightIcon className={cn("size-3 transition-transform", !collapsed && "rotate-90")} />
+          </span>
+          <FolderGitIcon className="size-3.5 text-muted-foreground" />
+          <span className="min-w-0 truncate">{p.name}</span>
+          {chips && (
+            <span className="flex min-w-0 shrink items-center gap-0.5 overflow-hidden">
+              {p.members.slice(0, 3).map((m) => (
+                <BoxChip key={m.box.name} box={m.box} />
+              ))}
+              {p.members.length > 3 && <span className="text-[10px] text-muted-foreground">+{p.members.length - 3}</span>}
+            </span>
+          )}
+          <span className="ml-auto" />
+          {!all && <Glyphs sessions={glyphSessions} data={boxes[def.box.name]} />}
+        </SidebarMenuButton>
+        {online && (
+          <div className="absolute top-0.5 right-1 flex h-6.5 items-center opacity-0 transition-opacity focus-within:opacity-100 group-hover/row:opacity-100 has-[[data-popup-open]]:opacity-100">
+            <RowButton
+              label={multi ? `New worktree on ${p.defaultBox}` : `New worktree in ${p.name}`}
+              onClick={() => useStore.getState().openNewWorktree({ box: def.box.name, location: def.loc.name })}
+            >
+              <PlusIcon />
+            </RowButton>
+            <DotsMenu label={`${p.name} actions`} items={() => projectGroupActions(p)} />
+          </div>
+        )}
+      </ContextRow>
+
+      {!collapsed && online && (all || shown.length > 0 || hidden > 0) && (
+        <SidebarMenuSub className="mx-0 ml-[17px] gap-px py-0.5 pr-0 pl-1.5">
+          {!multi && all && defMain && (
+            <WorktreeRow
+              box={def.box.name}
+              loc={def.loc}
+              wt={defMain}
+              sessions={glyphSessions}
+              data={boxes[def.box.name]}
+              selected={mainSel}
+              onOpen={() => selectWorktree(refOf(def.box.name, def.loc, defMain))}
+            />
+          )}
+          {shown.map(({ m, wt, data, sessions, selected }) => (
+            <WorktreeRow
+              key={`${m.box.name}:${wt.path}`}
+              box={m.box.name}
+              loc={m.loc}
+              wt={wt}
+              sessions={sessions}
+              data={data}
+              selected={selected}
+              chip={multi ? m.box : undefined}
+              onOpen={() => selectWorktree(refOf(m.box.name, m.loc, wt))}
+            />
+          ))}
+          {hidden > 0 && (
+            <SidebarMenuSubItem>
+              <SidebarMenuSubButton
+                render={<button type="button" />}
+                size="sm"
+                className="h-6 w-full text-muted-foreground/80"
+                onClick={() => update({ expanded: { ...prefs.expanded, [key]: true } })}
+              >
+                <span>
+                  {hidden} more {hidden === 1 ? "worktree" : "worktrees"}
+                </span>
+              </SidebarMenuSubButton>
+            </SidebarMenuSubItem>
+          )}
+          {!all && expanded && rows.length > active.length && (
+            <SidebarMenuSubItem>
+              <SidebarMenuSubButton
+                render={<button type="button" />}
+                size="sm"
+                className="h-6 w-full text-muted-foreground/80"
+                onClick={() => update({ expanded: { ...prefs.expanded, [key]: false } })}
+              >
+                <span>Show fewer</span>
+              </SidebarMenuSubButton>
+            </SidebarMenuSubItem>
+          )}
+        </SidebarMenuSub>
+      )}
+    </SidebarMenuItem>
   );
 }

@@ -3,6 +3,16 @@ import {
   ArrowUpCircleIcon,
   ArrowUpRightIcon,
   BotIcon,
+  CheckIcon,
+  FolderGitIcon,
+  FolderInputIcon,
+  MergeIcon,
+  PackageIcon,
+  PencilIcon,
+  PlusIcon,
+  ServerIcon,
+  SplitIcon,
+  StarIcon,
   CodeXmlIcon,
   CopyIcon,
   EllipsisIcon,
@@ -43,6 +53,11 @@ import { scheduleRefresh, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { refOf, selectWorktree } from "@/lib/workspaces";
 import { useRegistry } from "@/plugins/registry";
+import { openAddToBox } from "@/components/sidebar/add-to-box-dialog";
+import { boxLoad } from "@/components/sidebar/box-load";
+import { kitsApi } from "@/lib/kits";
+import { deriveProjects, type Member, type Project, projectActions as groupActions, useProjectsDoc } from "@/lib/project-groups";
+import { reloadKits, useKits } from "@/views/kits/kits-store";
 
 // The sidebar's actions are defined once and drawn into either menu: the
 // ⋯ button on a row, or the row's right-click menu. Both show the same
@@ -404,4 +419,150 @@ export function boxActions(box: BoxStatus): Action[] {
     ),
   );
   return items;
+}
+
+// Projects across boxes: what a project row offers. New work goes to the
+// project's default box unless another is picked, and each box shows how
+// busy it is.
+export function projectGroupActions(p: Project): Action[] {
+  const st = useStore.getState();
+  const online = p.members.filter((m) => m.box.state === "online");
+  const def = p.members.find((m) => m.box.name === p.defaultBox) ?? online[0] ?? p.members[0];
+  const multi = p.members.length > 1;
+  const main = (m: Member) => m.loc.worktrees?.find((w) => w.main);
+  const { kits, installed } = useKits.getState();
+  const kit = kits?.find((k) => k.match?.slug && p.slug && k.match.slug.toLowerCase() === p.slug.toLowerCase());
+  const kitOn = (installed ?? []).filter((i) => p.members.some((m) => m.box.name === i.box && m.loc.name === i.location));
+  const others = deriveProjects(st.status?.boxes ?? [], st.boxes, useProjectsDoc.getState().doc).filter((x) => x.id !== p.id);
+  const sections = useProjectsDoc.getState().doc.sections;
+  const gh = p.slug && p.remote && /github\.com/i.test(p.remote) ? p.slug : undefined;
+  const items: Action[] = [];
+
+  const mm = def && main(def);
+  if (mm) items.push(item(multi ? `Open main checkout on ${def.box.name}` : "Open main checkout", <HomeIcon />, () => selectWorktree(refOf(def.box.name, def.loc, mm))));
+  if (def) items.push(item(multi ? `New worktree on ${def.box.name}…` : "New worktree…", <GitBranchPlusIcon />, () => st.openNewWorktree({ box: def.box.name, location: def.loc.name }), { shortcut: "⌘N" }));
+  if (online.length > 1) {
+    items.push({
+      type: "sub",
+      label: "New worktree on",
+      icon: <ServerIcon />,
+      items: online.map((m) => item(m.box.name, slot(m.box.name === p.defaultBox ? <CheckIcon /> : null), () => st.openNewWorktree({ box: m.box.name, location: m.loc.name }), { hint: boxLoad(m.box.name) })),
+    });
+  }
+  if (def && mm && def.box.state === "online") {
+    items.push({
+      type: "sub",
+      label: multi ? `New agent on ${def.box.name}` : "New agent",
+      icon: <BotIcon />,
+      items: agentPresets(def.box.name, def.loc).map((pr) =>
+        item(pr.name, slot(<AgentIcon agent={pr.id} />), () => {
+          selectWorktree(refOf(def.box.name, def.loc, mm));
+          void startSession(pr.command, { kind: "tab" }, pr.name);
+        }),
+      ),
+    });
+  }
+  if (multi) {
+    items.push({
+      type: "sub",
+      label: "Default box",
+      icon: <StarIcon />,
+      items: p.members.map((m) => item(m.box.name, slot(m.box.name === p.defaultBox ? <CheckIcon /> : null), () => void groupActions.setDefaultBox(p, m.box.name), { hint: boxLoad(m.box.name), disabled: m.box.state !== "online" })),
+    });
+  }
+
+  // Its kit, across its boxes.
+  if (kit) {
+    const outdated = kitOn.filter((i) => i.outdated).map((i) => i.box);
+    const missing = online.filter((m) => !kitOn.some((i) => i.box === m.box.name && i.location === m.loc.name)).map((m) => m.box.name);
+    const parts = [outdated.length && `outdated on ${outdated.join(", ")}`, missing.length && `not on ${missing.join(", ")}`].filter(Boolean);
+    const state = parts.length ? parts.join(" · ") : multi ? "on every box" : "applied";
+    items.push(sep, { type: "label", label: `${kit.name} kit · ${state}` });
+    if (outdated.length || missing.length) {
+      items.push(
+        item(multi ? "Apply kit to all boxes" : "Apply kit", <PackageIcon />, () => {
+          const client = useStore.getState().client;
+          if (!client) return;
+          const targets = online.map((m) => ({ box: m.box.name, location: m.loc.name }));
+          const id = toastManager.add({ title: `Applying ${kit.name} to ${p.name}…`, type: "loading" });
+          kitsApi.apply(client, kit.id, targets, () => {}).then(
+            (end) => {
+              toastManager.update(id, { title: end.error ? `${kit.name}: ${end.error}` : `Applied ${kit.name} to ${p.name}`, type: end.error ? "error" : "success" });
+              void reloadKits();
+            },
+            (e) => toastManager.update(id, { title: `Could not apply ${kit.name}`, description: errorMessage(e), type: "error" }),
+          );
+        }),
+      );
+    }
+  }
+
+  items.push(sep);
+  const missingBoxes = (st.status?.boxes ?? []).filter((b) => b.state === "online" && !p.members.some((m) => m.box.name === b.name));
+  if (p.remote && missingBoxes.length) items.push(item("Add to box…", <ServerIcon />, () => openAddToBox(p)));
+  if (multi) {
+    items.push({
+      type: "sub",
+      label: "Project settings",
+      icon: <Settings2Icon />,
+      items: p.members.map((m) => item(m.box.name, slot(<ServerIcon />), () => st.setView({ kind: "project", box: m.box.name, location: m.loc.name }))),
+    });
+  } else if (def) items.push(item("Project settings", <Settings2Icon />, () => st.setView({ kind: "project", box: def.box.name, location: def.loc.name })));
+
+  items.push(
+    sep,
+    item("Rename…", <PencilIcon />, () =>
+      confirm({
+        title: `Rename ${p.name}`,
+        description: "Only how Berth shows it; folders and repositories keep their names.",
+        input: { label: "Name", initial: p.name },
+        confirm: "Rename",
+        run: (_c, v) => groupActions.rename(p, v),
+      }),
+    ),
+    {
+      type: "sub",
+      label: "Move to section",
+      icon: <FolderInputIcon />,
+      items: [
+        ...sections.map((s) => item(s, slot(p.section === s ? <CheckIcon /> : null), () => void groupActions.setSection(p, s))),
+        item("No section", slot(!p.section ? <CheckIcon /> : null), () => void groupActions.setSection(p, undefined)),
+        sep,
+        item("New section…", <PlusIcon />, () => newSection(p)),
+      ],
+    },
+  );
+  if (others.length) items.push({ type: "sub", label: "Merge into", icon: <MergeIcon />, items: others.map((o) => item(o.name, slot(<FolderGitIcon />), () => void groupActions.merge(o, p), { hint: o.members.map((m) => m.box.name).join(", ") })) });
+  if (multi) items.push({ type: "sub", label: "Split off", icon: <SplitIcon />, items: p.members.map((m) => item(`The copy on ${m.box.name}`, slot(<ServerIcon />), () => void groupActions.split(p, m.box.name))) });
+  items.push(sep);
+  if (p.slug) items.push(item("Copy owner/repo", <CopyIcon />, () => copy(p.slug!, "repository name")));
+  if (gh) items.push(item("Open on GitHub", <ExternalLinkIcon />, () => void import("@/lib/open-url").then((m) => m.openUrl(`https://github.com/${gh}`))));
+
+  // Removing works per box: each copy is its own folder.
+  const removeFrom = (m: Member) => projectActions(m.box.name, m.loc).find((a) => a.type === "item" && a.destructive);
+  if (multi) {
+    items.push(sep, {
+      type: "sub",
+      label: "Remove from Berth",
+      icon: <Trash2Icon />,
+      items: p.members.flatMap((m) => {
+        const a = removeFrom(m);
+        return a && a.type === "item" ? [item(`On ${m.box.name}…`, slot(<ServerIcon />), a.run, { destructive: true })] : [];
+      }),
+    });
+  } else if (def) {
+    const a = removeFrom(def);
+    if (a) items.push(sep, a);
+  }
+  return items;
+}
+
+export function newSection(p?: Project) {
+  confirm({
+    title: "New section",
+    description: "Sections group projects in the sidebar, such as Work and Personal.",
+    input: { label: "Name", placeholder: "Work" },
+    confirm: "Add section",
+    run: (_c, v) => groupActions.addSection(v, p),
+  });
 }

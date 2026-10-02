@@ -1,32 +1,25 @@
 import {
   EllipsisIcon,
   FolderPlusIcon,
-  GitBranchIcon,
   GitBranchPlusIcon,
-  InboxIcon,
-  LayoutDashboardIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
   SearchIcon,
   ServerIcon,
   SettingsIcon,
-  PackageIcon,
-  WorkflowIcon,
 } from "lucide-react";
 import { useMemo } from "react";
 
+import { newSection } from "@/components/sidebar/actions";
+import { Nav as PlacesNav, useArrangedNav } from "@/components/sidebar/nav";
 import { Projects, useSidebarPrefs } from "@/components/sidebar/projects";
 import { Kbd } from "@/components/ui/kbd";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
-import { SidebarContext, type SidebarContextProps, SidebarMenu, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
-import { useAgentCounts } from "@/hooks/use-agent-counts";
+import { SidebarContext, type SidebarContextProps } from "@/components/ui/sidebar";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { useRegistry } from "@/plugins/registry";
-import { Icon } from "@/plugins/ui";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
-import { useReviewCount } from "@/views/review/review-store";
 
 // The sidebar is always open on a desktop window; coss ui's menu pieces only
 // need to know that.
@@ -45,16 +38,13 @@ const alwaysOpen: SidebarContextProps = {
 export function AppSidebar() {
   const view = useStore((s) => s.view);
   const setView = useStore((s) => s.setView);
-  const pluginItems = useRegistry((s) => s.sidebarItems);
-  const counts = useAgentCounts();
-  const toReview = useReviewCount();
   const [prefs, update] = useSidebarPrefs();
   const context = useMemo(() => alwaysOpen, []);
   // A new account has no projects to list; onboarding fills the main area.
   const noBoxes = useStore((s) => !!s.status && s.status.boxes.length === 0);
   const collapsed = usePrefs((p) => p.sidebarCollapsed);
 
-  if (collapsed) return <Rail waiting={counts.waiting} toReview={toReview} />;
+  if (collapsed) return <Rail />;
 
   return (
     <SidebarContext.Provider value={context}>
@@ -72,34 +62,7 @@ export function AppSidebar() {
             <span className="flex-1 text-left">Search</span>
             <Kbd className="h-4.5 text-[10px]">⌘K</Kbd>
           </button>
-          <SidebarMenu className="gap-px">
-            <Nav icon={<LayoutDashboardIcon />} label="Agent Dashboard" active={view.kind === "dashboard"} onClick={() => setView({ kind: "dashboard" })}>
-              {counts.waiting > 0 && (
-                <SidebarMenuBadge className="top-1.25 h-4.5 min-w-4.5 rounded-full bg-warning/15 px-1 text-[10px] text-warning-foreground leading-none" title={`${counts.waiting} waiting for you`}>
-                  {counts.waiting}
-                </SidebarMenuBadge>
-              )}
-            </Nav>
-            <Nav icon={<InboxIcon />} label="Review" active={view.kind === "review"} onClick={() => setView({ kind: "review" })}>
-              {toReview > 0 && (
-                <SidebarMenuBadge className="top-1.25 h-4.5 min-w-4.5 rounded-full bg-sidebar-accent px-1 text-[10px] text-sidebar-foreground leading-none" title={`${toReview} to review`}>
-                  {toReview}
-                </SidebarMenuBadge>
-              )}
-            </Nav>
-            <Nav icon={<WorkflowIcon />} label="Automations" active={view.kind === "automations"} onClick={() => setView({ kind: "automations" })} />
-            <Nav icon={<GitBranchIcon />} label="Worktrees" active={view.kind === "worktrees"} onClick={() => setView({ kind: "worktrees" })} />
-            <Nav icon={<PackageIcon />} label="Kits" active={view.kind === "kits"} onClick={() => setView({ kind: "kits" })} />
-            {pluginItems.map(({ plugin, item }) => (
-              <Nav
-                key={`${plugin}:${item.id}`}
-                icon={<Icon name={item.icon ?? "Puzzle"} />}
-                label={item.title}
-                active={view.kind === "plugin" && view.screen === item.screen}
-                onClick={() => setView({ kind: "plugin", screen: item.screen })}
-              />
-            ))}
-          </SidebarMenu>
+          <PlacesNav />
         </div>
 
         <div className={cn("flex items-center justify-between pt-4 pr-2 pb-1 pl-3", noBoxes && "hidden")}>
@@ -124,6 +87,10 @@ export function AppSidebar() {
                 <ServerIcon />
                 Add a box…
               </MenuItem>
+              <MenuItem onClick={() => newSection()}>
+                <FolderPlusIcon />
+                New section…
+              </MenuItem>
               <MenuSeparator />
               <MenuGroup>
                 <MenuGroupLabel>Show</MenuGroupLabel>
@@ -135,7 +102,7 @@ export function AppSidebar() {
               <MenuGroup>
                 <MenuGroupLabel>Group by</MenuGroupLabel>
                 <MenuRadioGroup value={prefs.groupBy} onValueChange={(v) => update({ groupBy: v as typeof prefs.groupBy })}>
-                  <MenuRadioItem value="repo">Repository</MenuRadioItem>
+                  <MenuRadioItem value="project">Project</MenuRadioItem>
                   <MenuRadioItem value="box">Box</MenuRadioItem>
                 </MenuRadioGroup>
               </MenuGroup>
@@ -173,23 +140,12 @@ export function AppSidebar() {
   );
 }
 
-function Nav({ icon, label, active, onClick, children }: { icon: React.ReactNode; label: string; active?: boolean; onClick(): void; children?: React.ReactNode }) {
-  return (
-    <SidebarMenuItem>
-      <SidebarMenuButton size="sm" isActive={active} onClick={onClick} className="h-7 text-[13px] data-[active=true]:font-normal [&>svg]:size-3.5 [&>svg]:text-muted-foreground">
-        {icon}
-        <span>{label}</span>
-      </SidebarMenuButton>
-      {children}
-    </SidebarMenuItem>
-  );
-}
-
 // Rail is the sidebar folded away (⌘\): the window's controls, the places,
 // and a way back. It keeps clear of the traffic lights like the full one.
-function Rail({ waiting, toReview }: { waiting: number; toReview: number }) {
+function Rail() {
   const view = useStore((s) => s.view);
   const setView = useStore((s) => s.setView);
+  const { pinned, more } = useArrangedNav();
   const item = (label: string, icon: React.ReactNode, active: boolean, onClick: () => void, badge?: number) => (
     <button
       type="button"
@@ -207,11 +163,26 @@ function Rail({ waiting, toReview }: { waiting: number; toReview: number }) {
       <div data-tauri-drag-region className="h-10 w-full shrink-0" />
       <div className="flex flex-col items-center gap-1">
         {item("Search (⌘K)", <SearchIcon />, false, () => useStore.getState().setPaletteOpen(true))}
-        {item("Agent Dashboard", <LayoutDashboardIcon />, view.kind === "dashboard", () => setView({ kind: "dashboard" }), waiting)}
-        {item("Review", <InboxIcon />, view.kind === "review", () => setView({ kind: "review" }), toReview)}
-        {item("Automations", <WorkflowIcon />, view.kind === "automations", () => setView({ kind: "automations" }))}
-        {item("Kits", <PackageIcon />, view.kind === "kits", () => setView({ kind: "kits" }))}
-        {item("Worktrees", <GitBranchIcon />, view.kind === "workspace", () => setView({ kind: "workspace" }))}
+        {pinned.map((n) => (
+          <span key={n.id}>{item(n.label, n.icon, n.active, () => setView(n.view), n.badge?.count)}</span>
+        ))}
+        {more.length > 0 && (
+          <Menu>
+            <MenuTrigger
+              render={<button type="button" aria-label="More" title="More" className="inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-sidebar-accent hover:text-foreground data-popup-open:bg-sidebar-accent" />}
+            >
+              <EllipsisIcon className="size-4" />
+            </MenuTrigger>
+            <MenuPopup side="right" align="start" className="min-w-48">
+              {more.map((n) => (
+                <MenuItem key={n.id} onClick={() => setView(n.view)}>
+                  <span className="flex size-4 items-center justify-center [&_svg]:size-4">{n.icon}</span>
+                  {n.label}
+                </MenuItem>
+              ))}
+            </MenuPopup>
+          </Menu>
+        )}
       </div>
       <div className="mt-auto flex flex-col items-center gap-1 pb-2">
         {item("Settings", <SettingsIcon />, view.kind === "settings", () => setView({ kind: "settings" }))}

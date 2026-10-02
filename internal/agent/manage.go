@@ -227,10 +227,15 @@ func (a *Agent) manageRoutes(mux *http.ServeMux) {
 		var err error
 		switch action {
 		case "enable":
+			// "enabled" also turns on a plugin that is off by default.
 			if err = os.Remove(marker); os.IsNotExist(err) {
 				err = nil
 			}
+			if err == nil {
+				err = os.WriteFile(filepath.Join(dir, "enabled"), nil, 0o600)
+			}
 		case "disable":
+			os.Remove(filepath.Join(dir, "enabled"))
 			err = os.WriteFile(marker, nil, 0o600)
 		default:
 			writeError(w, http.StatusNotFound, "use enable or disable")

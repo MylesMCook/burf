@@ -17,13 +17,17 @@ interface MockAccount {
 }
 
 const accounts: Record<string, MockAccount[]> = {};
+// devl has a second login per agent; other boxes sign in with the same
+// default logins, so the screen counts those once.
 const accountsOf = (box: string) =>
-  (accounts[box] ??= [
+  (accounts[box] ??= (
+    [
     { agent: "claude", id: "default", dir: `${HOME}/.claude`, exists: true, signed_in: true, email: "you@example.com", name: "You", org: null, billing: "stripe_subscription", tier: "default_claude_max_20x" },
     { agent: "claude", id: "work", dir: `${HOME}/.berth/accounts/claude/work`, exists: true, signed_in: true, email: "you@acme.dev", name: "You", org: "Acme", billing: "stripe_subscription", tier: "default_claude_max_5x" },
     { agent: "codex", id: "default", dir: `${HOME}/.codex`, exists: true, signed_in: true, method: "chatgpt", email: "you@example.com", plan: "pro" },
     { agent: "codex", id: "api", dir: `${HOME}/.berth/accounts/codex/api`, exists: true, signed_in: true, method: "api key", email: null, plan: null },
-  ]);
+    ] as MockAccount[]
+  ).filter((a) => box === "devl" || a.id === "default"));
 
 export function usageCall(box: string, method: string, path: string, body: unknown, delay: <T>(v: T) => Promise<T>): Promise<unknown> | undefined {
   if (path !== "env") return undefined;
@@ -73,17 +77,18 @@ const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart
 function report(box: string) {
   const r = rng(box.length * 7919);
   const now = new Date();
-  const WT = [`${HOME}/work/cal-billing-fix`, `${HOME}/work/cal-qa-deck`, `${HOME}/work/cal-booker-perf`, `${HOME}/work/cal`, `${HOME}/work/internal`, `${HOME}/evals-judge-v2`, `${HOME}/scratch`];
+  const gpu = box !== "devl";
+  const WT = gpu ? [`${HOME}/evals-judge-v2`, `${HOME}/evals`, `${HOME}/scratch`] : [`${HOME}/work/cal-billing-fix`, `${HOME}/work/cal-qa-deck`, `${HOME}/work/cal-booker-perf`, `${HOME}/work/cal`, `${HOME}/work/internal`, `${HOME}/scratch`];
   const daily: unknown[][] = [];
   for (let i = 29; i >= 0; i--) {
     const d = new Date(now);
     d.setDate(now.getDate() - i);
     const day = iso(d);
     const weekend = d.getDay() === 0 || d.getDay() === 6;
-    const busy = weekend ? 0.25 : 0.6 + r();
+    const busy = (weekend ? 0.25 : 0.6 + r()) * (gpu ? 0.35 : 1);
     const rows: [string, string, string, number][] = [
       ["claude", "default", "claude-opus-5-5", 1],
-      ["claude", "work", "claude-sonnet-5-5", 0.5],
+      ["claude", gpu ? "default" : "work", "claude-sonnet-5-5", 0.5],
       ["claude", "default", "claude-haiku-4-5-20251001", 0.08],
       ["codex", "default", "gpt-5.5-codex", 0.45],
     ];
@@ -116,23 +121,28 @@ function report(box: string) {
     tz: "Europe/London",
     partial: false,
     pending: 0,
-    files: 84,
+    files: gpu ? 23 : 84,
     daily,
-    sessions: [
+    sessions: gpu
+      ? [
+          s("claude", "default", WT[0], "Judge v2 rubric and eval harness", 0.02, 0.3, [12_007, 58_400, 4_112_904, 380_220], 6.11, ["claude-opus-5-5"]),
+          s("codex", "default", WT[1], "Sweep the eval seeds", 3, 0.6, [41_200, 22_310, 610_400, 0], null, ["gpt-5.5-codex"]),
+          s("claude", "default", WT[2], "Plot judge agreement", 49, 0.4, [8_120, 30_444, 2_204_100, 190_330], 3.02, ["claude-sonnet-5-5"]),
+        ]
+      : [
       s("claude", "work", WT[0], "Cap billing retries with exponential backoff", 0.1, 1.2, [61_204, 284_113, 21_402_118, 1_204_660], 18.42, ["claude-sonnet-5-5"]),
       s("codex", "default", WT[1], "Build the QA slide deck from the test plan", 0.05, 0.4, [148_220, 92_118, 1_310_720, 0], null, ["gpt-5.5-codex"]),
       s("claude", "default", WT[2], "Profile the booker's first render", 0.6, 2.4, [88_410, 402_877, 38_119_402, 2_008_114], 41.07, ["claude-opus-5-5", "claude-haiku-4-5-20251001"]),
-      s("claude", "default", WT[5], "Judge v2 rubric and eval harness", 0.02, 0.3, [12_007, 58_400, 4_112_904, 380_220], 6.11, ["claude-opus-5-5"]),
       s("claude", "default", WT[4], "Tidy the internal deploy script", 26, 0.8, [20_118, 77_040, 6_200_400, 512_331], 9.36, ["claude-opus-5-5"]),
       s("codex", "default", WT[3], "Review the webhook handler", 30, 0.5, [64_002, 31_877, 820_224, 0], null, ["gpt-5.5-codex"]),
-      s("claude", "work", WT[6], null, 52, 0.2, [3_400, 9_120, 410_022, 88_120], 0.94, ["claude-sonnet-5-5"]),
+      s("claude", "work", WT[5], null, 52, 0.2, [3_400, 9_120, 410_022, 88_120], 0.94, ["claude-sonnet-5-5"]),
       s("claude", "default", WT[0], "Reproduce the double-charge bug", 75, 1.6, [40_210, 190_442, 15_002_871, 902_114], 22.6, ["claude-opus-5-5"]),
     ],
     limits: [
       {
         agent: "codex",
         account: "default",
-        at: at(0.05),
+        at: at(gpu ? 5 : 0.05),
         limits: {
           plan_type: "pro",
           primary: { used_percent: 34, window_minutes: 300, resets_at: Math.round(now.getTime() / 1000 + 3 * 3600 + 1200) },

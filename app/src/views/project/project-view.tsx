@@ -7,6 +7,7 @@ import { Menu, MenuItem, MenuPopup, MenuTrigger } from "@/components/ui/menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toastManager } from "@/components/ui/toast";
 import type { RepoConfig } from "@/lib/flows";
+import { useProjects } from "@/lib/project-groups";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Stepper } from "@/views/settings/controls";
@@ -58,7 +59,8 @@ export function ProjectView({ box, location }: { box: string; location: string }
         <div className="min-w-0 flex-1">
           <h1 className="flex items-baseline gap-2 font-semibold text-[15px]">
             {location}
-            <span className="font-normal text-muted-foreground text-sm">on {box}</span>
+            <span className="font-normal text-muted-foreground text-sm">on</span>
+            <MemberSwitcher box={box} location={location} />
           </h1>
           <p className="flex min-w-0 items-center gap-1.5 text-muted-foreground text-xs">
             {repo ? (
@@ -191,5 +193,27 @@ function PortsSection({ repo, draft, setDraft, box }: { repo: RepoConfig | null;
         <Stepper value={value} min={1} max={10} onChange={(ports) => setDraft({ ...draft, ports: ports === (repo?.ports || 1) && !draft.ports ? undefined : ports })} />
       </div>
     </Section>
+  );
+}
+
+// MemberSwitcher picks which box's copy of the project these settings are
+// for: settings are each box's own, so a project on three boxes has three.
+function MemberSwitcher({ box, location }: { box: string; location: string }) {
+  const { projects } = useProjects();
+  const p = projects.find((x) => x.members.some((m) => m.box.name === box && m.loc.name === location));
+  if (!p || p.members.length < 2) return <span className="font-normal text-muted-foreground text-sm">{box}</span>;
+  return (
+    <span className="inline-flex items-center gap-0.5 rounded-md border p-0.5 font-normal text-xs">
+      {p.members.map((m) => (
+        <button
+          key={m.box.name}
+          type="button"
+          onClick={() => useStore.getState().setView({ kind: "project", box: m.box.name, location: m.loc.name })}
+          className={cn("rounded px-1.5 py-0.5", m.box.name === box ? "bg-accent text-foreground" : "text-muted-foreground hover:text-foreground", m.box.state !== "online" && "opacity-60")}
+        >
+          {m.box.name}
+        </button>
+      ))}
+    </span>
   );
 }

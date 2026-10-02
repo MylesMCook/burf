@@ -353,8 +353,8 @@ func (a *Agent) plugins() []PluginInfo {
 		if p.Name == "" {
 			p.Name = p.ID
 		}
-		_, err := os.Stat(filepath.Join(dir, "disabled"))
-		p.Enabled = err != nil
+		manifest, _ := os.ReadFile(m)
+		p.Enabled = hooks.PluginEnabled(dir, manifest)
 		if p.Main != "" {
 			p.Entry = "/v1/plugins/" + p.ID + "/" + path.Clean(p.Main)
 		}

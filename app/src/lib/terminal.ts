@@ -87,7 +87,13 @@ async function createGhostty(host: HTMLElement, colors: TerminalColors, prefs: T
   });
   const fit = new g.FitAddon();
   t.loadAddon(fit);
+  // ghostty-web focuses itself on open. Whoever had the keyboard (a dialog
+  // opened while this terminal was being made) keeps it; the pane focuses
+  // its terminal itself when it should.
+  const had = document.activeElement as HTMLElement | null;
   t.open(host);
+  if (had && had !== document.body && had.isConnected) had.focus();
+  else (document.activeElement as HTMLElement | null)?.blur();
   return {
     get cols() {
       return t.cols;

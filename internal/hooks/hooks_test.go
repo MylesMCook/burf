@@ -178,3 +178,19 @@ func TestSaveWritesOnlyYourOwnValidHooks(t *testing.T) {
 		t.Fatalf("loaded %+v", cfg.Hooks)
 	}
 }
+
+func TestAPluginOffByDefaultStaysOffUntilTurnedOn(t *testing.T) {
+	dir := t.TempDir()
+	off := []byte(`{"defaultEnabled": false}`)
+	if PluginEnabled(dir, off) || !PluginEnabled(dir, []byte(`{}`)) {
+		t.Fatal("defaultEnabled was not honoured")
+	}
+	os.WriteFile(filepath.Join(dir, "enabled"), nil, 0o600)
+	if !PluginEnabled(dir, off) {
+		t.Fatal("turning it on did not count")
+	}
+	os.WriteFile(filepath.Join(dir, "disabled"), nil, 0o600)
+	if PluginEnabled(dir, off) {
+		t.Fatal("disabled must win")
+	}
+}

@@ -55,6 +55,7 @@ const locations: Record<string, Location[]> = {
       name: "internal",
       path: "/home/sean/work/internal",
       repo: true,
+      remote: "git@github.com:calcom/internal.git",
       slug: "calcom/internal",
       default_branch: "main",
       scripts: {},
@@ -62,6 +63,19 @@ const locations: Record<string, Location[]> = {
     },
   ],
   gpu: [
+    {
+      name: "cal",
+      path: "/home/sean/cal",
+      repo: true,
+      remote: "git@github.com:calcom/cal.com.git",
+      slug: "calcom/cal.com",
+      default_branch: "main",
+      scripts: {},
+      worktrees: [
+        { name: "cal", path: "/home/sean/cal", branch: "main", main: true },
+        { name: "ci-flake", path: "/home/sean/cal-ci-flake", branch: "sean/ci-flake" },
+      ],
+    },
     {
       name: "evals",
       path: "/home/sean/evals",
@@ -84,6 +98,7 @@ const sessions: Record<string, Session[]> = {
     { name: "internal-claude", location: "internal", dir: "/home/sean/work/internal", command: "claude", created: ago(700), attached: 0, exited: true, agent: "claude" },
   ],
   gpu: [
+    { name: "ci-flake-claude", location: "cal/ci-flake", dir: "/home/sean/cal-ci-flake", command: "claude", created: ago(30), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(6) },
     { name: "judge-v2-claude", location: "evals/judge-v2", dir: "/home/sean/evals-judge-v2", command: "claude", created: ago(9), attached: 0, exited: false, agent: "claude", agent_state: "running", state_since: ago(1) },
     { name: "evals-codex", location: "evals", dir: "/home/sean/evals", command: "codex", created: ago(3), attached: 0, exited: false, agent: "codex", agent_state: "idle", state_since: ago(3) },
   ],
@@ -155,6 +170,10 @@ function saveHooks(machine: string, hooks: Hook[]): Promise<HooksFile> {
   setTimeout(() => emit({ type: "hooks.changed", box: machine === "laptop" ? undefined : machine }), 30);
   return delay(file);
 }
+
+// /v1/app documents, as the laptop agent keeps them. Projects start with a
+// Work section so sections show.
+const appDocs: Record<string, unknown> = fresh ? {} : { projects: { projects: [{ id: "calcom/cal.com", section: "Work", default_box: "devl" }, { id: "calcom/internal", section: "Work" }], sections: ["Work", "Personal"] } };
 
 const listeners = new Set<(e: BerthEvent) => void>();
 const emit = (e: Omit<BerthEvent, "time">) => listeners.forEach((l) => l({ ...e, time: new Date().toISOString() }));
@@ -494,7 +513,7 @@ if (!fresh) discovery.machines[1].box = "devl";
 
 const mockNetworks = fresh ? [] : [{ name: "personal", state: "Running", tailnet: "brydon.io", ips: ["100.124.96.73"] }];
 
-const mockPlugins = [{ id: "hello-ports", name: "Hello ports", version: "0.1.0", main: "dist/index.js", description: "Every dev server on every box, one click from your browser.", entry: "/__dev-plugins/hello-ports/dist/index.js", enabled: true }];
+const mockPlugins = [{ id: "hello-ports", name: "Hello ports", version: "0.1.0", main: "dist/index.js", description: "Every dev server on every box, one click from your browser.", entry: "/__dev-plugins/hello-ports/dist/index.js", enabled: false, defaultEnabled: false }];
 
 function addMockBox(name: string, address: string, network?: string) {
   if (!status.boxes.some((b) => b.name === name)) {
@@ -639,6 +658,13 @@ export function mockClient(): Client {
     laptop: <T,>(method: string, path: string, body?: unknown) => {
       if (method === "GET" && path === "/v1/hooks") return delay(hooksFiles.laptop) as Promise<T>;
       if (method === "PUT" && path === "/v1/hooks") return saveHooks("laptop", (body as { hooks: Hook[] }).hooks) as Promise<T>;
+      // The app's own documents (/v1/app/<key>), such as project groups.
+      const app = /^\/v1\/app\/([a-z0-9-]+)$/.exec(path);
+      if (app && method === "GET") return delay(appDocs[app[1]] ?? null) as Promise<T>;
+      if (app && method === "PUT") {
+        appDocs[app[1]] = structuredClone(body);
+        return delay(body) as Promise<T>;
+      }
       const boxes = laptopBoxes(method, path, body);
       if (boxes) return boxes as Promise<T>;
       const kits = kitsCall(method, path, body, emit, delay);

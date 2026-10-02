@@ -38,7 +38,8 @@ export function Picker({
   footer?: (close: () => void) => ReactNode;
   className?: string;
   // A form-height field, or a small chip for a dialog's header.
-  variant?: "field" | "chip";
+  // inline sits in a line of text, such as a dialog's context line.
+  variant?: "field" | "chip" | "inline";
   "aria-label"?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -75,24 +76,27 @@ export function Picker({
       <PopoverTrigger
         aria-label={ariaLabel}
         className={cn(
-          "flex min-w-0 items-center border border-input bg-background text-left shadow-xs/5 outline-none transition-[background-color,box-shadow] hover:bg-accent/50 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/24 data-popup-open:bg-accent/50 dark:bg-input/32 dark:hover:bg-input/48",
-          variant === "field" ? "h-9 w-full gap-2.5 rounded-lg px-3 text-sm sm:h-8" : "h-7 max-w-full gap-1.5 rounded-md px-2 text-[13px]",
+          variant === "inline" ? "inline-flex" : "flex",
+          "min-w-0 items-center border border-input bg-background text-left shadow-xs/5 outline-none transition-[background-color,box-shadow] hover:bg-accent/50 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/24 data-popup-open:bg-accent/50 dark:bg-input/32 dark:hover:bg-input/48",
+          variant === "field" && "h-9 w-full gap-2.5 rounded-lg px-3 text-sm sm:h-8",
+          variant === "chip" && "h-7 max-w-full gap-1.5 rounded-md px-2 text-[13px]",
+          variant === "inline" && "-my-0.5 h-6 max-w-full gap-1 rounded-md border-transparent bg-transparent px-1.5 align-middle font-medium text-[13px] text-foreground shadow-none dark:bg-transparent",
           className,
         )}
       >
         {current ? (
           <>
-            {current.icon}
+            {variant !== "inline" && current.icon}
             <span className="min-w-0 truncate">{current.label}</span>
-            {current.detail && <span className="min-w-0 truncate text-muted-foreground">{current.detail}</span>}
+            {current.detail && variant !== "inline" && <span className="min-w-0 truncate text-muted-foreground">{current.detail}</span>}
             {variant === "field" && <span className="ml-auto flex shrink-0 items-center gap-2 text-muted-foreground text-xs">{current.trailing}</span>}
           </>
         ) : (
           <span className="text-muted-foreground">{placeholder}</span>
         )}
-        <ChevronsUpDownIcon className={cn("size-3.5 shrink-0 text-muted-foreground", (variant === "chip" || !current?.trailing) && "ml-auto")} />
+        <ChevronsUpDownIcon className={cn("size-3.5 shrink-0 text-muted-foreground", variant === "inline" ? "size-3" : (variant === "chip" || !current?.trailing) && "ml-auto")} />
       </PopoverTrigger>
-      <PopoverPopup align={variant === "chip" ? "end" : "start"} className="w-(--anchor-width) min-w-72 p-0 [--viewport-inline-padding:0px] *:data-[slot=popover-viewport]:py-0">
+      <PopoverPopup align={variant === "chip" ? "end" : "start"} style={variant === "inline" ? { minWidth: "28rem" } : undefined} className="w-(--anchor-width) min-w-72 p-0 [--viewport-inline-padding:0px] *:data-[slot=popover-viewport]:py-0">
         <div className="flex flex-col">
           <input
             autoFocus

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AgentIcon } from "@/components/agent-glyph";
 import { Advanced, type AdvancedValues } from "@/components/new-worktree/advanced";
 import { Picker, PickerAction, type PickerItem } from "@/components/new-worktree/picker";
+import { RunOn, type RunOnOption } from "@/components/new-worktree/run-on";
 import { AgentSection } from "@/components/new-worktree/agent-section";
 import { StartFrom } from "@/components/new-worktree/smart-input";
 import { useBranches, useResolve } from "@/components/new-worktree/use-resolve";
@@ -13,18 +14,22 @@ import { Kbd } from "@/components/ui/kbd";
 import { Switch } from "@/components/ui/switch";
 import { toastManager } from "@/components/ui/toast";
 import { agentPresets } from "@/lib/actions";
-import type { Location, Session, TaskResult, Worktree } from "@/lib/api";
+import type { Session, TaskResult, Worktree } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
 import { promptFor, type ResolveKind, worktreeSlug } from "@/lib/projects";
+import { loadProjects, projectActions, useProjects, useProjectsDoc } from "@/lib/project-groups";
+import { type InstalledKitOn, kitsApi } from "@/lib/kits";
 import { load, save } from "@/lib/storage";
 import { useStore } from "@/lib/store";
 import { fill, templateVariables } from "@/lib/templates";
 import { focusSession, selectWorktree } from "@/lib/workspaces";
 
 const NO_AGENT = "";
-const SEP = "\u0000";
 const lastAgentKey = (box: string, loc: string) => `berth.newWorktree.agent.${box}/${loc}`;
-const lastProjectKey = "berth.newWorktree.project";
+// A project id from lib/projects now, not the box and location it used to be.
+const lastProjectKey = "berth.newWorktree.project.v2";
+const lastBoxKey = (project: string) => `berth.newWorktree.box.${project}`;
+const presetsOn = (box: string, location: string) => (box ? agentPresets(box, location) : []);
 
 const emptyAdvanced: AdvancedValues = { name: "", branch: "", base: "", prompt: "", template: "", vars: {} };
 
@@ -50,29 +55,57 @@ export function NewWorktreeDialog() {
 function Body() {
   const draft = useStore((s) => s.worktreeDraft)!;
   const status = useStore((s) => s.status);
-  const boxes = useStore((s) => s.boxes);
   const templates = useStore((s) => s.templates);
 
-  // Every repository on every online box, the draft's or the last used first.
-  const projects = useMemo(() => {
-    const out: { box: string; loc: Location }[] = [];
-    for (const b of status?.boxes ?? []) {
-      if (b.state !== "online") continue;
-      for (const loc of boxes[b.name]?.locations ?? []) if (loc.repo) out.push({ box: b.name, loc });
-    }
-    return out;
-  }, [status, boxes]);
+  // Each project once, however many boxes have it: lib/projects groups
+  // them, and keeps the person's merges, splits and default box.
+  const { projects: everything } = useProjects();
+  const loaded = useProjectsDoc((st) => st.loaded);
+  const projects = useMemo(
+    () =>
+      everything
+        .map((p) => ({ ...p, places: p.members.filter((m) => m.loc.repo).map((m): RunOnOption => ({ box: m.box.name, location: m.loc, online: m.box.state === "online" })) }))
+        .filter((p) => p.places.some((x) => x.online)),
+    [everything],
+  );
+  const [kits, setKits] = useState<InstalledKitOn[]>([]);
+  useEffect(() => {
+    const client = useStore.getState().client;
+    if (!client) return;
+    if (!useProjectsDoc.getState().loaded) void loadProjects();
+    kitsApi.installed(client).then(setKits, () => setKits([]));
+  }, []);
 
-  const initial = () => {
-    const want = draft.box && draft.location ? `${draft.box}${SEP}${draft.location}` : load(lastProjectKey, "");
-    if (projects.some((p) => `${p.box}${SEP}${p.loc.name}` === want)) return want;
-    const sameBox = draft.box && projects.find((p) => p.box === draft.box);
-    const p = sameBox || projects[0];
-    return p ? `${p.box}${SEP}${p.loc.name}` : "";
+  // The box a project's worktree goes to unless chosen: its default, the
+  // last one used for it, or the first online.
+  const pickBox = (id: string) => {
+    const p = projects.find((x) => x.id === id);
+    const online = p?.places.filter((x) => x.online) ?? [];
+    const has = (b?: string) => (b && online.some((x) => x.box === b) ? b : undefined);
+    return has(p?.defaultBox) ?? has(load(lastBoxKey(id), "")) ?? online[0]?.box ?? "";
   };
-  const [project, setProject] = useState(initial);
-  const [box, locName] = project ? project.split(SEP) : ["", ""];
-  const location = boxes[box]?.locations?.find((l) => l.name === locName);
+
+  const draftProject = draft.box && draft.location ? projects.find((p) => p.places.some((x) => x.box === draft.box && x.location.name === draft.location)) : undefined;
+  const [project, setProject] = useState(() => {
+    if (draftProject) return draftProject.id;
+    const last = load(lastProjectKey, "");
+    if (projects.some((p) => p.id === last)) return last;
+    const sameBox = draft.box && projects.find((p) => p.places.some((x) => x.box === draft.box));
+    return (sameBox || projects[0])?.id ?? "";
+  });
+  const [box, setBox] = useState(() => (draftProject ? draft.box! : pickBox(project)));
+  // Set once someone (or the caller) chose a box, so the project's default
+  // arriving late does not move it.
+  const [boxChosen, setBoxChosen] = useState(!!draftProject);
+  const current = projects.find((p) => p.id === project);
+  const location = current?.places.find((x) => x.box === box)?.location;
+  const locName = location?.name ?? "";
+
+  useEffect(() => {
+    if (!boxChosen && loaded && project) setBox(pickBox(project));
+    // Once the saved defaults arrive.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded]);
 
   const [input, setInput] = useState(draft.name ?? "");
   const [kind, setKind] = useState<ResolveKind>("smart");
@@ -134,10 +167,30 @@ function Body() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const chooseProject = (p: string) => {
-    setProject(p);
-    const [b, l] = p.split(SEP);
+  const chooseProject = (id: string) => {
+    setProject(id);
+    const b = pickBox(id);
+    setBox(b);
+    setBoxChosen(false);
+    const l = projects.find((p) => p.id === id)?.places.find((x) => x.box === b)?.location.name ?? "";
     setAgent(load(lastAgentKey(b, l), NO_AGENT));
+  };
+
+  const chooseBox = (b: string) => {
+    setBox(b);
+    setBoxChosen(true);
+    const l = current?.places.find((x) => x.box === b)?.location.name ?? "";
+    setAgent((a) => (presetsOn(b, l).some((p) => p.id === a) ? a : load(lastAgentKey(b, l), NO_AGENT)));
+  };
+
+  const setDefault = async (b: string) => {
+    if (!current) return;
+    try {
+      await projectActions.setDefaultBox(current, b);
+      toastManager.add({ title: `New ${current?.name ?? "project"} worktrees go to ${b}`, type: "success" });
+    } catch (err) {
+      toastManager.add({ title: "Could not save the default box", description: errorMessage(err), type: "error" });
+    }
   };
 
   const chooseAgent = (a: string) => {
@@ -145,13 +198,13 @@ function Body() {
     if (box) save(lastAgentKey(box, locName), a);
   };
 
-  const projectItems: PickerItem[] = projects.map(({ box: b, loc }) => ({
-    value: `${b}${SEP}${loc.name}`,
-    label: loc.name,
-    detail: `on ${b}`,
+  const projectItems: PickerItem[] = projects.map((p) => ({
+    value: p.id,
+    label: p.name,
+    detail: p.places.length > 1 ? `${p.places.length} boxes` : `on ${p.places[0].box}`,
     icon: <FolderGitIcon className="size-4 shrink-0 text-muted-foreground" />,
-    trailing: loc.slug ? <span className="font-mono">{loc.slug}</span> : undefined,
-    keywords: `${loc.path} ${loc.slug ?? ""}`,
+    trailing: p.slug ? <span className="font-mono">{p.slug}</span> : undefined,
+    keywords: p.places.map((x) => `${x.box} ${x.location.path}`).join(" "),
   }));
 
   const agentItems: PickerItem[] = [
@@ -195,6 +248,7 @@ function Body() {
         wt = await client.box<Worktree>(box, "POST", `locations/${encodeURIComponent(locName)}/worktrees`, body);
       }
       save(lastProjectKey, project);
+      save(lastBoxKey(project), box);
       await useStore.getState().refreshBox(box, ["locations", "sessions"]);
       selectWorktree({ box, location: locName, worktree: wt.name, path: wt.path, main: wt.main });
       if (session) void focusSession(box, session.name);
@@ -232,10 +286,16 @@ function Body() {
       <DialogHeader className="flex-row items-start gap-3 px-5 pt-5 pb-3">
         <div className="flex min-w-0 flex-1 flex-col gap-1.5">
           <DialogTitle className="text-base">New worktree</DialogTitle>
-          <DialogDescription className="truncate text-[13px]">
+          <DialogDescription render={<div />} className="flex min-w-0 items-center gap-1 whitespace-nowrap text-[13px]">
             {location ? (
               <>
-                In <span className="text-foreground">{location.slug ?? location.name}</span> on <span className="text-foreground">{box}</span> <span className="font-mono text-xs">{location.path}</span>
+                In <span className="truncate text-foreground">{location.slug ?? location.name}</span> on{" "}
+                {current && current.places.length > 1 ? (
+                  <RunOn options={current.places} value={box} onChange={chooseBox} defaultBox={current.defaultBox} onSetDefault={(b) => void setDefault(b)} kits={kits} />
+                ) : (
+                  <span className="text-foreground">{box}</span>
+                )}{" "}
+                <span className="min-w-0 truncate font-mono text-xs">{location.path}</span>
               </>
             ) : status ? (
               "Add a repository on an online box to make worktrees in it."

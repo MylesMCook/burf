@@ -223,6 +223,7 @@ const OVERLAYS = "[role=dialog], [role=alertdialog], [role=menu], [role=listbox]
 function somethingElseHasFocus(mine: HTMLElement | null): boolean {
   if (document.querySelector(OVERLAYS)) return true;
   const a = document.activeElement;
+  if (a?.closest(OVERLAYS)) return true;
   if (!a || a === document.body || (mine && mine.contains(a))) return false;
   return a instanceof HTMLInputElement || a instanceof HTMLTextAreaElement || a instanceof HTMLSelectElement || (a as HTMLElement).isContentEditable;
 }

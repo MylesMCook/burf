@@ -5,6 +5,9 @@ import { handleEvent } from "@/lib/events";
 import { errorMessage } from "@/lib/format";
 import { mockClient } from "@/lib/mock";
 import { useStore } from "@/lib/store";
+import { loadNav } from "@/lib/nav";
+import { loadProjects } from "@/lib/project-groups";
+import { reloadKits } from "@/views/kits/kits-store";
 import { loadPlugins } from "@/plugins/host";
 
 export const isMock = () => new URLSearchParams(location.search).has("mock");
@@ -40,6 +43,10 @@ export function useBerthConnection() {
       setClient(client);
       void refreshAll();
       void loadPlugins(client);
+      void loadProjects();
+      void loadNav();
+      // Project menus show each project's kit status.
+      void reloadKits();
       client.events(handleEvent, () => void refreshAll(), abort.signal);
       poll = window.setInterval(() => void refreshAll(), 15_000);
     });

@@ -126,3 +126,45 @@ export function promptFor(r: Resolution): string {
   if (r.kind === "pr") return `Pick up PR #${r.pr}${r.title ? ` (${r.title})` : ""}${r.url ? ` ${r.url}` : ""}. Read its description and review comments, then continue the work.`;
   return "";
 }
+
+// A project is one repository, wherever it is checked out: the same slug on
+// several boxes is one project. Locations without a forge slug are their own
+// project, by name.
+export const projectKey = (loc: Pick<Location, "name" | "slug">) => (loc.slug ? loc.slug.toLowerCase() : `name:${loc.name}`);
+
+// What the person set about a project, kept by the laptop agent
+// (/v1/app/projects): its display name, group, and the box new worktrees
+// go to by default.
+export interface AppProject {
+  id: string;
+  name?: string;
+  group?: string;
+  default_box?: string;
+  [extra: string]: unknown;
+}
+
+export interface AppProjects {
+  projects: AppProject[];
+  [extra: string]: unknown;
+}
+
+export const appProjectsApi = {
+  get: async (c: Client): Promise<AppProjects> => {
+    const doc = await c.laptop<AppProjects | null>("GET", "/v1/app/projects");
+    return { ...doc, projects: doc?.projects ?? [] };
+  },
+  // setDefaultBox changes one project's default box, re-reading the document
+  // first so other fields and other projects stay as they are.
+  async setDefaultBox(c: Client, id: string, box: string): Promise<AppProjects> {
+    const doc = await appProjectsApi.get(c);
+    const has = doc.projects.some((p) => p.id === id);
+    const projects = has ? doc.projects.map((p) => (p.id === id ? { ...p, default_box: box } : p)) : [...doc.projects, { id, default_box: box }];
+    const next = { ...doc, projects };
+    await c.laptop("PUT", "/v1/app/projects", next);
+    return next;
+  },
+};
+
+// What a project is across boxes (grouping, merges, sections) is in
+// lib/project-groups, built on projectKey and appProjectsApi above.
+export * from "@/lib/project-groups";

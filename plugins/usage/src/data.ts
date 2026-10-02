@@ -54,46 +54,85 @@ export function worktreeOf(dir: string | null, locations: Location[]): WorktreeN
   return best ?? { label: dir.replace(/^\/(home|Users)\/[^/]+/, "~") };
 }
 
-export interface Summary {
-  byAgent: Map<Agent, Tokens>;
-  byModel: { agent: Agent; model: string; tokens: Tokens }[];
-  byWorktree: { name: WorktreeName; tokens: Tokens; sessions: number }[];
-  byDay: Map<string, Map<Agent, number>>;
-  sessions: UsageSession[];
+// A box's answer, with what the summary needs to name its folders.
+export interface Source {
+  box: string;
+  report: Report;
+  locations: Location[];
 }
 
-export function summarize(r: Report, period: Period, locations: Location[]): Summary {
-  const from = firstDay(r.today, period);
+export interface BoxSession extends UsageSession {
+  box: string;
+}
+
+export interface Summary {
+  byAgent: Map<Agent, Tokens>;
+  // Each agent's tokens on each box.
+  byAgentBox: Map<Agent, Map<string, number>>;
+  byModel: { agent: Agent; model: string; box: string; tokens: Tokens }[];
+  byWorktree: { box: string; name: WorktreeName; tokens: Tokens; sessions: number }[];
+  // Tokens per day, by agent and by box.
+  byDay: Map<string, Map<Agent, number>>;
+  byDayBox: Map<string, Map<string, number>>;
+  sessions: BoxSession[];
+  // The latest box-local day among the boxes: the chart ends there.
+  today: string;
+}
+
+// summarize adds up the boxes' reports over a period. Each box's period
+// ends on its own today, in its own time zone.
+export function summarize(sources: Source[], period: Period): Summary {
   const byAgent = new Map<Agent, Tokens>();
-  const byModel = new Map<string, { agent: Agent; model: string; tokens: Tokens }>();
-  const byWorktree = new Map<string, { name: WorktreeName; tokens: Tokens; sessions: number }>();
+  const byAgentBox = new Map<Agent, Map<string, number>>();
+  const byModel = new Map<string, { agent: Agent; model: string; box: string; tokens: Tokens }>();
+  const byWorktree = new Map<string, { box: string; name: WorktreeName; tokens: Tokens; sessions: number }>();
   const byDay = new Map<string, Map<Agent, number>>();
-  for (const [day, agent, , model, cwd, ...t] of r.daily) {
-    if (day < from) continue;
-    byAgent.set(agent, add(byAgent.get(agent) ?? zero(), t));
-    const mk = `${agent}\u0000${model}`;
-    const m = byModel.get(mk) ?? { agent, model, tokens: zero() };
-    m.tokens = add(m.tokens, t);
-    byModel.set(mk, m);
-    const name = worktreeOf(cwd, locations);
-    const w = byWorktree.get(name.label) ?? { name, tokens: zero(), sessions: 0 };
-    w.tokens = add(w.tokens, t);
-    byWorktree.set(name.label, w);
-    const d = byDay.get(day) ?? new Map<Agent, number>();
-    d.set(agent, (d.get(agent) ?? 0) + t[0] + t[1] + t[2] + t[3]);
-    byDay.set(day, d);
-  }
-  const sessions = r.sessions.filter((s) => (s.last ?? "") >= from);
-  for (const s of sessions) {
-    const w = byWorktree.get(worktreeOf(s.cwd, locations).label);
-    if (w) w.sessions++;
+  const byDayBox = new Map<string, Map<string, number>>();
+  const sessions: BoxSession[] = [];
+  let today = "";
+  const bump = <K>(m: Map<string, Map<K, number>>, day: string, k: K, n: number) => {
+    const d = m.get(day) ?? new Map<K, number>();
+    d.set(k, (d.get(k) ?? 0) + n);
+    m.set(day, d);
+  };
+  for (const { box, report: r, locations } of sources) {
+    if (r.today > today) today = r.today;
+    const from = firstDay(r.today, period);
+    for (const [day, agent, , model, cwd, ...t] of r.daily) {
+      if (day < from) continue;
+      const n = t[0] + t[1] + t[2] + t[3];
+      byAgent.set(agent, add(byAgent.get(agent) ?? zero(), t));
+      const ab = byAgentBox.get(agent) ?? new Map<string, number>();
+      ab.set(box, (ab.get(box) ?? 0) + n);
+      byAgentBox.set(agent, ab);
+      const mk = `${agent}\u0000${model}\u0000${box}`;
+      const m = byModel.get(mk) ?? { agent, model, box, tokens: zero() };
+      m.tokens = add(m.tokens, t);
+      byModel.set(mk, m);
+      const name = worktreeOf(cwd, locations);
+      const wk = `${box}\u0000${name.label}`;
+      const w = byWorktree.get(wk) ?? { box, name, tokens: zero(), sessions: 0 };
+      w.tokens = add(w.tokens, t);
+      byWorktree.set(wk, w);
+      bump(byDay, day, agent, n);
+      bump(byDayBox, day, box, n);
+    }
+    for (const s of r.sessions) {
+      if ((s.last ?? "") < from) continue;
+      sessions.push({ ...s, box });
+      const w = byWorktree.get(`${box}\u0000${worktreeOf(s.cwd, locations).label}`);
+      if (w) w.sessions++;
+    }
   }
   return {
     byAgent,
+    byAgentBox,
     byModel: [...byModel.values()].sort((a, b) => total(b.tokens) - total(a.tokens)),
     byWorktree: [...byWorktree.values()].sort((a, b) => total(b.tokens) - total(a.tokens)),
     byDay,
-    sessions,
+    byDayBox,
+    sessions: sessions.sort((a, b) => (b.last ?? "").localeCompare(a.last ?? "")),
+    today,
   };
 }
 

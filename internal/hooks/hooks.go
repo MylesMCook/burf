@@ -215,16 +215,33 @@ func (r *Runner) Save(hooks []Hook) error {
 // PluginManifest is the file that makes a folder a plugin.
 const PluginManifest = "berth-plugin.json"
 
-// pluginHooks reads a plugin's hooks, which run in the plugin's folder. A
-// plugin is turned off by a file named "disabled" beside its manifest.
+// PluginEnabled says whether the plugin in dir is on: a file named
+// "disabled" beside its manifest turns it off, one named "enabled" turns it
+// on, and otherwise the manifest's defaultEnabled decides (on when unset).
+func PluginEnabled(dir string, manifest []byte) bool {
+	if _, err := os.Stat(filepath.Join(dir, "disabled")); err == nil {
+		return false
+	}
+	if _, err := os.Stat(filepath.Join(dir, "enabled")); err == nil {
+		return true
+	}
+	var m struct {
+		DefaultEnabled *bool `json:"defaultEnabled"`
+	}
+	json.Unmarshal(manifest, &m)
+	return m.DefaultEnabled == nil || *m.DefaultEnabled
+}
+
+// pluginHooks reads a plugin's hooks, which run in the plugin's folder, when
+// the plugin is on.
 func pluginHooks(manifest string) ([]Hook, error) {
 	dir := filepath.Dir(manifest)
-	if _, err := os.Stat(filepath.Join(dir, "disabled")); err == nil {
-		return nil, nil
-	}
 	b, err := os.ReadFile(manifest)
 	if err != nil {
 		return nil, err
+	}
+	if !PluginEnabled(dir, b) {
+		return nil, nil
 	}
 	var m struct {
 		Hooks []Hook `json:"hooks"`

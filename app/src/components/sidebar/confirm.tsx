@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { Button } from "@/components/ui/button";
 import { AlertDialog, AlertDialogClose, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogPopup, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
 import { toastManager } from "@/components/ui/toast";
 import { errorMessage } from "@/lib/format";
 
@@ -29,7 +30,9 @@ export interface ConfirmRequest {
   // The shortcut that opened it confirms it when pressed again (⌘W). Off
   // for anything that removes data.
   repeatConfirms?: boolean;
-  run(checked: Record<string, boolean>): Promise<void> | void;
+  // A text field, for asking a name: its value goes to run.
+  input?: { label: string; initial?: string; placeholder?: string };
+  run(checked: Record<string, boolean>, value: string): Promise<void> | void;
 }
 
 const useConfirm = create<{ req?: ConfirmRequest; submit: number }>()(() => ({ submit: 0 }));
@@ -55,6 +58,7 @@ function Body({ req }: { req: ConfirmRequest }) {
   const [checked, setChecked] = useState<Record<string, boolean>>({});
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  const [value, setValue] = useState(req.input?.initial ?? "");
   const button = useRef<HTMLButtonElement>(null);
   const submit = useConfirm((s) => s.submit);
   const first = useRef(submit);
@@ -67,8 +71,20 @@ function Body({ req }: { req: ConfirmRequest }) {
         <AlertDialogTitle>{req.title}</AlertDialogTitle>
         <AlertDialogDescription>{req.description}</AlertDialogDescription>
       </AlertDialogHeader>
-      {(req.detail || req.options?.length || error) && (
+      {(req.detail || req.options?.length || error || req.input) && (
         <div className="flex flex-col gap-3 px-6 pb-2 text-sm">
+          {req.input && (
+            <label className="flex flex-col gap-1.5">
+              <span className="font-medium text-xs">{req.input.label}</span>
+              <Input
+                autoFocus
+                value={value}
+                placeholder={req.input.placeholder}
+                onChange={(e) => setValue(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && button.current?.click()}
+              />
+            </label>
+          )}
           {req.detail && <div className="rounded-md bg-muted/60 px-3 py-2 font-mono text-xs leading-relaxed">{req.detail}</div>}
           {req.options?.map((o) => (
             <label key={o.id} className="flex items-start gap-2.5">
@@ -86,14 +102,15 @@ function Body({ req }: { req: ConfirmRequest }) {
         <AlertDialogClose render={<Button variant="ghost" />}>Cancel</AlertDialogClose>
         <Button
           ref={button}
-          autoFocus
+          autoFocus={!req.input}
+          disabled={!!req.input && !value.trim()}
           variant={req.destructive ? "destructive" : "default"}
           loading={busy}
           onClick={async () => {
             setBusy(true);
             setError(undefined);
             try {
-              await req.run(checked);
+              await req.run(checked, value);
               useConfirm.setState({ req: undefined });
             } catch (err) {
               setError(errorMessage(err));
