@@ -50,12 +50,14 @@ type Sessions struct {
 const tmuxSocket = "berth"
 
 // tmuxConfig is berth's own tmux server's. The status line is off because
-// the app draws its own chrome around every terminal.
+// the app draws its own chrome around every terminal; focus events pass
+// through so agents know when their pane is in front.
 const tmuxConfig = `set -g remain-on-exit on
 set -g history-limit 50000
 set -g mouse on
 set -g default-terminal "tmux-256color"
 set -g status off
+set -g focus-events on
 `
 
 func NewSessions(dir string) (*Sessions, error) {
