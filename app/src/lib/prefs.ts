@@ -21,6 +21,9 @@ export interface Prefs {
   sidebarCollapsed: boolean;
   // Ask before closing a pane or tab stops a shell on its box.
   confirmCloseShells: boolean;
+  // What closing an agent's pane or tab does to the agent: leave it running
+  // on its box, stop it, or ask each time.
+  closeAgents: "keep" | "stop" | "ask";
   // How many times "keeps running" was said on closing an agent; it stops
   // after a few.
   agentCloseTips: number;
@@ -36,6 +39,7 @@ const DEFAULTS: Prefs = {
   enabledPlugins: [],
   sidebarCollapsed: false,
   confirmCloseShells: true,
+  closeAgents: "keep",
   agentCloseTips: 0,
 };
 

@@ -32,6 +32,8 @@ export interface ConfirmRequest {
   repeatConfirms?: boolean;
   // A text field, for asking a name: its value goes to run.
   input?: { label: string; initial?: string; placeholder?: string };
+  // A second way through, beside the confirm button ("Keep running").
+  secondary?: { label: string; run(checked: Record<string, boolean>): Promise<void> | void };
   run(checked: Record<string, boolean>, value: string): Promise<void> | void;
 }
 
@@ -100,6 +102,23 @@ function Body({ req }: { req: ConfirmRequest }) {
       )}
       <AlertDialogFooter>
         <AlertDialogClose render={<Button variant="ghost" />}>Cancel</AlertDialogClose>
+        {req.secondary && (
+          <Button
+            variant="outline"
+            disabled={busy}
+            onClick={async () => {
+              setError(undefined);
+              try {
+                await req.secondary!.run(checked);
+                useConfirm.setState({ req: undefined });
+              } catch (err) {
+                setError(errorMessage(err));
+              }
+            }}
+          >
+            {req.secondary.label}
+          </Button>
+        )}
         <Button
           ref={button}
           autoFocus={!req.input}

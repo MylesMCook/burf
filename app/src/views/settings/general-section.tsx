@@ -1,3 +1,4 @@
+import { PickOne } from "@/components/pick-one";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { setPrefs, usePrefs } from "@/lib/prefs";
@@ -6,6 +7,7 @@ import { Code, SettingsGroup, SettingsPage, SettingsRow, Value } from "@/views/s
 
 export function GeneralSection() {
   const confirmClose = usePrefs((p) => p.confirmCloseShells);
+  const closeAgents = usePrefs((p) => p.closeAgents);
   const proxy = useStore((s) => s.status?.proxy);
   const port = proxy?.url_port ?? 1377;
 
@@ -20,7 +22,28 @@ export function GeneralSection() {
       </SettingsGroup>
 
       <SettingsGroup title="Terminals">
-        <SettingsRow label="Confirm before closing terminals" description="Closing a shell's pane or tab stops the shell on its box. Agents keep running when closed, so they never ask.">
+        <SettingsRow
+          label="Closing an agent's tab"
+          description={
+            closeAgents === "keep"
+              ? "The agent keeps running on its box; reopen it from the worktree or the dashboard."
+              : closeAgents === "stop"
+                ? "Stops the agent on its box, like closing a shell."
+                : "Asks whether to stop the agent or leave it running."
+          }
+        >
+          <PickOne
+            label="Closing an agent's tab"
+            value={closeAgents}
+            onChange={(v) => setPrefs({ closeAgents: v })}
+            options={[
+              { value: "keep", label: "Keep running" },
+              { value: "stop", label: "Stop it" },
+              { value: "ask", label: "Ask" },
+            ]}
+          />
+        </SettingsRow>
+        <SettingsRow label="Confirm before closing stops something" description="Closing a shell's pane or tab stops the shell on its box, and so does closing an agent when it's set to stop.">
           <Switch checked={confirmClose} onCheckedChange={(confirmCloseShells) => setPrefs({ confirmCloseShells })} />
         </SettingsRow>
       </SettingsGroup>
