@@ -1,6 +1,8 @@
 import { CopyIcon, EllipsisIcon, LinkIcon, PackageIcon, PackagePlusIcon, PuzzleIcon, RefreshCwIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
 
+import { Scene } from "@/components/art/scenes";
+import { Tip } from "@/components/tip";
 import { AlertDialog, AlertDialogClose, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogPopup, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -50,8 +52,8 @@ export function KitsView() {
           {kits?.length === 0 && (
             <Empty className="rounded-2xl border border-dashed py-14">
               <EmptyHeader>
-                <EmptyMedia variant="icon">
-                  <PackageIcon />
+                <EmptyMedia>
+                  <Scene name="dock" />
                 </EmptyMedia>
                 <EmptyTitle>No kits yet</EmptyTitle>
                 <EmptyDescription>
@@ -151,20 +153,20 @@ function KitCard({ kit, installed }: { kit: KitInfo; installed: InstalledKitOn[]
             <span className="text-[11px] text-muted-foreground">Not applied yet</span>
           ) : (
             installed.map((i) => (
-              <button
-                type="button"
-                key={`${i.box}/${i.location}`}
-                onClick={() => useStore.getState().setView({ kind: "project", box: i.box, location: i.location })}
-                title={i.outdated ? "Has an older version of this kit" : "Has this kit"}
-                className={cn(
-                  "inline-flex items-center gap-1 rounded-md border px-1.5 py-px text-[11px] hover:bg-accent",
-                  i.outdated ? "border-warning/30 text-warning-foreground" : "text-foreground/80",
-                )}
-              >
-                {i.location}
-                <span className="text-muted-foreground">· {i.box}</span>
-                {i.outdated && <span>· older</span>}
-              </button>
+              <Tip key={`${i.box}/${i.location}`} label={`${i.outdated ? "Has an older version of this kit" : "Has this kit"}. Open its project settings`}>
+                <button
+                  type="button"
+                  onClick={() => useStore.getState().setView({ kind: "project", box: i.box, location: i.location })}
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-md border px-1.5 py-px text-[11px] hover:bg-accent",
+                    i.outdated ? "border-warning/30 text-warning-foreground" : "text-foreground/80",
+                  )}
+                >
+                  {i.location}
+                  <span className="text-muted-foreground">· {i.box}</span>
+                  {i.outdated && <span>· older</span>}
+                </button>
+              </Tip>
             ))
           )}
         </div>

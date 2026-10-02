@@ -1,6 +1,7 @@
-import { PuzzleIcon, RefreshCwIcon } from "lucide-react";
+import { RefreshCwIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
+import { Scene } from "@/components/art/scenes";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Spinner } from "@/components/ui/spinner";
@@ -135,8 +136,9 @@ function MissingScreen({ screen }: { screen: string }) {
   return (
     <Empty className="h-full">
       <EmptyHeader>
-        <EmptyMedia variant="icon">
-          <PuzzleIcon />
+        <EmptyMedia>
+          {/* Off is at anchor; failed is weather; gone is an empty berth. */}
+          <Scene name={info && off ? "anchor" : failed ? "storm" : "ended"} />
         </EmptyMedia>
         <EmptyTitle>{title}</EmptyTitle>
         <EmptyDescription>{description}</EmptyDescription>

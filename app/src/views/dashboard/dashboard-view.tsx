@@ -1,12 +1,13 @@
-import { ChevronRightIcon, LayoutDashboardIcon, ListChecksIcon, PlusIcon, SendIcon, TerminalIcon } from "lucide-react";
+import { BrushCleaningIcon, ChevronRightIcon, ListChecksIcon, PlusIcon, SendIcon, SquareIcon, TerminalIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import { Scene } from "@/components/art/scenes";
+import { BoxFilter, shownBoxes as shownOf } from "@/components/box-filter";
 import { Tip } from "@/components/tip";
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Kbd } from "@/components/ui/kbd";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { type SessionEntry, useAllSessions } from "@/hooks/use-agent-counts";
 import { agentOf, type SessionState, worktreeOf } from "@/lib/derive";
 import { ago } from "@/lib/format";
@@ -16,6 +17,7 @@ import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { focusSession } from "@/lib/workspaces";
 import { AgentCard } from "@/views/dashboard/agent-card";
+import { ColumnMenu, openStop, StopDialog } from "@/views/dashboard/stop";
 import { ViewHeader } from "@/views/view-header";
 
 interface Column {
@@ -42,8 +44,8 @@ export function DashboardView() {
   const boxNames = useMemo(() => [...new Set(all.map((e) => e.box))].sort(), [all]);
   const [hidden, setHidden] = useState<string[]>(() => load("berth.dashboard.hiddenBoxes", []));
   const [showRest, setShowRest] = useState(false);
-  const shownBoxes = boxNames.filter((b) => !hidden.includes(b));
-  const visible = all.filter((e) => !hidden.includes(e.box));
+  const shownBoxes = shownOf(boxNames, hidden);
+  const visible = all.filter((e) => shownBoxes.includes(e.box));
   const rest = visible.filter((e) => !COLUMNS.some((c) => c.state === e.state));
   const agents = all.filter((e) => COLUMNS.some((c) => c.state === e.state));
   const filtered = shownBoxes.length < boxNames.length;
@@ -60,16 +62,29 @@ export function DashboardView() {
       return n;
     });
   const pickedEntries = agents.filter((e) => picked?.has(keyOf(e)));
+  // Clean up offers what sits in Done and Ready on the boxes shown; it never
+  // includes an agent that is working or waiting on you.
+  const idle = visible.filter((e) => e.state === "finished" || e.state === "ready");
+  const stopPicked = () => openStop({ kind: "stop", entries: pickedEntries });
   useEffect(() => {
     if (!picked) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !document.querySelector("[role=dialog]") && setPicked(undefined);
+    const onKey = (e: KeyboardEvent) => {
+      // A dialog or menu holds focus while open, and takes its own keys (a
+      // toast is a dialog too, so its mere presence doesn't count).
+      const t = e.target as HTMLElement | null;
+      if (t?.closest("[role=dialog],[role=alertdialog],[role=menu]")) return;
+      if (e.key === "Escape") setPicked(undefined);
+      // ⌫ or Delete on a selection asks to stop it, unless typing.
+      if ((e.key === "Backspace" || e.key === "Delete") && !t?.closest("input,textarea,select,[contenteditable=true]") && pickedEntries.length) {
+        e.preventDefault();
+        stopPicked();
+      }
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [picked]);
+  });
 
-  const setShown = (boxes: string[]) => {
-    // Turning every box off means "show everything", not an empty board.
-    const next = boxes.length ? boxNames.filter((b) => !boxes.includes(b)) : [];
+  const hide = (next: string[]) => {
     setHidden(next);
     save("berth.dashboard.hiddenBoxes", next);
   };
@@ -82,29 +97,27 @@ export function DashboardView() {
         actions={
           <div className="flex items-center gap-2">
             {agents.length > 0 && (
-              <Tip label="Pick agents to send them all one prompt (or ⌘-click cards)">
+              <Tip label="Pick agents to prompt or stop several at once (or ⌘-click cards)">
                 <Button size="xs" variant={picked ? "secondary" : "ghost"} aria-pressed={!!picked} onClick={() => setPicked(picked ? undefined : new Set())}>
                   <ListChecksIcon />
                   {picked ? "Done selecting" : "Select"}
                 </Button>
               </Tip>
             )}
-          {boxNames.length > 1 && (
-            <div className="flex items-center gap-2">
-              {filtered && (
-                <Button size="xs" variant="ghost" onClick={() => setShown(boxNames)}>
-                  Show all
+            {idle.length > 0 && (
+              <Tip label="Stop agents that have sat in Done or Ready for a while">
+                <Button size="xs" variant="ghost" onClick={() => openStop({ kind: "cleanup", entries: idle })}>
+                  <BrushCleaningIcon />
+                  Clean up…
                 </Button>
-              )}
-              <ToggleGroup multiple size="sm" variant="outline" value={shownBoxes} onValueChange={(v) => setShown(v as string[])} aria-label="Boxes to show">
-                {boxNames.map((b) => (
-                  <ToggleGroupItem key={b} value={b} className="px-2.5 text-muted-foreground text-xs data-pressed:bg-background data-pressed:text-foreground data-pressed:shadow-xs dark:data-pressed:bg-input">
-                    {b}
-                  </ToggleGroupItem>
-                ))}
-              </ToggleGroup>
-            </div>
-          )}
+              </Tip>
+            )}
+            {filtered && (
+              <Button size="xs" variant="ghost" onClick={() => hide([])}>
+                Show all
+              </Button>
+            )}
+            <BoxFilter boxes={boxNames} hidden={hidden} onChange={hide} />
           </div>
         }
       />
@@ -112,8 +125,8 @@ export function DashboardView() {
       {agents.length === 0 ? (
         <Empty className="mt-16">
           <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <LayoutDashboardIcon />
+            <EmptyMedia>
+              <Scene name="setting-out" />
             </EmptyMedia>
             <EmptyTitle>No agents yet</EmptyTitle>
             <EmptyDescription>Start one in a new worktree, or from any worktree's + menu.</EmptyDescription>
@@ -130,7 +143,7 @@ export function DashboardView() {
               const items = visible.filter((e) => e.state === c.state).sort((a, b) => sinceOf(a) - sinceOf(b));
               return (
                 <section key={c.state} aria-label={c.title} className="min-w-0">
-                  <header className="mb-2 flex items-center gap-2 px-0.5">
+                  <header className="mb-2 flex min-h-5 items-center gap-2 px-0.5">
                     <StateGlyph state={c.state} />
                     <h2 className="font-medium text-xs">{c.title}</h2>
                     {picked && items.length > 0 && (
@@ -139,8 +152,18 @@ export function DashboardView() {
                       </button>
                     )}
                     <span className={cn("font-mono text-[11px] tabular-nums", !(picked && items.length) && "ml-auto", items.length && c.state === "waiting" ? "text-warning" : "text-muted-foreground")}>{items.length}</span>
+                    {items.length > 0 && (
+                      <ColumnMenu
+                        title={c.title}
+                        items={items}
+                        cleanup={c.state === "finished" || c.state === "ready" ? idle : undefined}
+                        onPick={() => {
+                          setPicked((s) => new Set([...(s ?? []), ...items.map(keyOf)]));
+                        }}
+                      />
+                    )}
                   </header>
-                  <div className="space-y-2">
+                  <div className="flex flex-col gap-row-gap">
                     {items.length === 0 ? (
                       <p className="rounded-lg border border-dashed px-3 py-4 text-center text-muted-foreground/70 text-xs">{c.empty}</p>
                     ) : (
@@ -187,6 +210,12 @@ export function DashboardView() {
               <SendIcon />
               {pickedEntries.length ? `Send to ${pickedEntries.length} agent${pickedEntries.length === 1 ? "" : "s"}…` : "Send to agents…"}
             </Button>
+            <Tip label={pickedEntries.length ? "Stop the selected agents (⌫)" : undefined}>
+              <Button size="xs" variant="outline" className="text-destructive-foreground" disabled={!pickedEntries.length} onClick={stopPicked}>
+                <SquareIcon />
+                {pickedEntries.length ? `Stop ${pickedEntries.length}…` : "Stop…"}
+              </Button>
+            </Tip>
             <span className="h-5 w-px bg-border" />
             <Button size="xs" variant="ghost" onClick={() => setPicked(undefined)}>
               Cancel
@@ -195,6 +224,7 @@ export function DashboardView() {
           </div>
         </div>
       )}
+      <StopDialog />
     </div>
   );
 }

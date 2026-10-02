@@ -6,7 +6,6 @@ import {
   EyeOffIcon,
   GitBranchIcon,
   GripVerticalIcon,
-  HistoryIcon,
   InboxIcon,
   LayoutDashboardIcon,
   ListIcon,
@@ -58,7 +57,6 @@ export function useNavItems(): NavItem[] {
       { id: "worktrees", label: "Worktrees", icon: <GitBranchIcon />, view: { kind: "worktrees" }, active: view.kind === "worktrees" },
       { id: "automations", label: "Automations", icon: <WorkflowIcon />, view: { kind: "automations" }, active: view.kind === "automations" },
       { id: "kits", label: "Kits", icon: <PackageIcon />, view: { kind: "kits" }, active: view.kind === "kits" },
-      { id: "history", label: "History", icon: <HistoryIcon />, view: { kind: "history" }, active: view.kind === "history" },
       ...plugins.map(({ plugin, item }) => ({
         id: `plugin:${plugin}:${item.id}`,
         label: item.title,
@@ -147,14 +145,14 @@ function NavRow({ item, list, index, ids }: { item: NavItem; list: NavList; inde
           isActive={item.active}
           onClick={() => setView(item.view)}
           {...dragProps(item.id)}
-          className={cn("h-7 text-[13px] data-[active=true]:font-normal [&>svg]:size-3.5 [&>svg]:text-muted-foreground", dragging && "opacity-40")}
+          className={cn("h-side-row text-[13px] data-[active=true]:font-normal [&>svg]:size-3.5 [&>svg]:text-muted-foreground", dragging && "opacity-40")}
         >
           {item.icon}
           <span>{item.label}</span>
         </SidebarMenuButton>
         {item.badge && (
           <Tip label={item.badge.title} side="right">
-            <SidebarMenuBadge className={cn("top-1.25 h-4.5 min-w-4.5 rounded-full px-1 text-[10px] leading-none", item.badge.loud ? "bg-warning/15 text-warning-foreground" : "bg-sidebar-accent text-sidebar-foreground")}>
+            <SidebarMenuBadge className={cn("top-1/2 h-4.5 min-w-4.5 -translate-y-1/2 peer-data-[size=sm]/menu-button:top-1/2 rounded-full px-1 text-[10px] leading-none", item.badge.loud ? "bg-warning/15 text-warning-foreground" : "bg-sidebar-accent text-sidebar-foreground")}>
               {item.badge.count}
             </SidebarMenuBadge>
           </Tip>

@@ -2,6 +2,7 @@ import { ChevronLeftIcon, LibraryIcon, PencilIcon, UsersIcon } from "lucide-reac
 import { useEffect, useMemo, useState } from "react";
 
 import { AgentIcon } from "@/components/agent-glyph";
+import { QueueOffer, offlineOffer, queueLabel } from "@/components/queue/queue-offer";
 import { LIBRARY_SCREEN, PromptPreview, PromptRow, VariableFields, openLibrary, useTargetLabel, withDefaults } from "@/components/prompts/shared";
 import { SimpleSelect } from "@/components/simple-select";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { useAllSessions } from "@/hooks/use-agent-counts";
 import { agentLabel, agentOf, worktreeOf } from "@/lib/derive";
 import { errorMessage } from "@/lib/format";
 import { send } from "@/lib/orchestrate";
+import { type SendFailure, enqueue, sendFailure } from "@/lib/queue";
 import {
   askedVariables,
   closePromptPicker,
@@ -153,6 +155,10 @@ function Fill({ d, prompt, target, setTarget, onBack }: { d: PickerDraft; prompt
   const [edited, setEdited] = useState<string>();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  // A send to a box that is away offers to queue the prompt instead; the
+  // offer follows the chosen session's box.
+  const [failure, setFailure] = useState<{ box: string; f: SendFailure }>();
+  const offer = target && !insert ? (failure?.box === target.box ? failure.f : offlineOffer(target.box)) : undefined;
   // Subscribing keeps built-ins current while sessions and worktrees load.
   useStore((s) => (target ? s.boxes[target.box] : undefined));
   const builtins = target ? sessionValues(target.box, target.session) : {};
@@ -162,7 +168,7 @@ function Fill({ d, prompt, target, setTarget, onBack }: { d: PickerDraft; prompt
   // With nothing to fill in, the button has focus, so Enter sends.
   const nothingToFill = !vars.length && (insert || !!d.session);
 
-  const submit = async () => {
+  const submit = async (force?: "send") => {
     if (!ready || busy) return;
     if (insert) {
       d.onInsert?.(text);
@@ -174,12 +180,18 @@ function Fill({ d, prompt, target, setTarget, onBack }: { d: PickerDraft; prompt
     setBusy(true);
     setError(undefined);
     try {
-      await send(target.box, target.session, text);
+      if (offer && force !== "send") {
+        await enqueue({ box: target.box, session: target.session, text });
+      } else {
+        await send(target.box, target.session, text);
+        toastManager.add({ title: `Sent “${prompt.title}”`, description: builtins["worktree.name"] ?? target.session, type: "success" });
+      }
       usePrompts.getState().used([prompt.id]);
-      toastManager.add({ title: `Sent “${prompt.title}”`, description: builtins["worktree.name"] ?? target.session, type: "success" });
       closePromptPicker();
     } catch (err) {
-      setError(errorMessage(err));
+      const f = sendFailure(err, target.box);
+      setFailure(f && { box: target.box, f });
+      if (!f) setError(errorMessage(err));
     } finally {
       setBusy(false);
     }
@@ -239,6 +251,7 @@ function Fill({ d, prompt, target, setTarget, onBack }: { d: PickerDraft; prompt
           )}
           {!target && !insert && <span className="text-muted-foreground text-xs">Built-in variables like {"{{branch}}"} fill in once you choose a session.</span>}
         </div>
+        {offer && target && <QueueOffer failure={offer} box={target.box} />}
         {error && <p className="text-destructive text-sm">{error}</p>}
       </DialogPanel>
 
@@ -246,8 +259,13 @@ function Fill({ d, prompt, target, setTarget, onBack }: { d: PickerDraft; prompt
         <Button type="button" variant="ghost" onClick={closePromptPicker}>
           Cancel
         </Button>
+        {offer && (
+          <Button type="button" variant="outline" disabled={!ready || busy} onClick={() => void submit("send")}>
+            Try sending again
+          </Button>
+        )}
         <Button type="submit" loading={busy} disabled={!ready} autoFocus={nothingToFill}>
-          {insert ? "Insert" : "Send"}
+          {insert ? "Insert" : offer && target ? queueLabel(offer, target.box) : "Send"}
           <Kbd className="-me-1 bg-primary-foreground/16 text-primary-foreground/80">⌘↵</Kbd>
         </Button>
       </DialogFooter>

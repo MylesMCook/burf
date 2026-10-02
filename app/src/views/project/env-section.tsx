@@ -1,10 +1,13 @@
-import { ChevronRightIcon, EyeIcon, EyeOffIcon, PlusIcon, Trash2Icon, Undo2Icon } from "lucide-react";
-import { useState } from "react";
+import { CheckIcon, ChevronRightIcon, CircleAlertIcon, EyeIcon, EyeOffIcon, KeyRoundIcon, LoaderIcon, PlusIcon, Trash2Icon, Undo2Icon } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { boxApi, isSecretRef, type SecretTest } from "@/lib/api";
 import type { RepoConfig } from "@/lib/flows";
+import { errorMessage } from "@/lib/format";
+import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Section, SourceBadge } from "@/views/project/parts";
 
@@ -23,19 +26,78 @@ const VARIABLES: [string, string][] = [
 const NAME = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const SECRET = /KEY|SECRET|TOKEN|PASSWORD|PASS\b|CREDENTIAL/i;
 
+const REF_HELP = "A secret reference: the box reads it from 1Password (op://vault/item/field) or its own environment (env://NAME) when a worktree's environment is built. The value never leaves the box.";
+
+// RefMark marks a value that names a secret rather than holding one.
+function RefMark() {
+  return (
+    <Tip label={REF_HELP}>
+      <span className="inline-flex shrink-0 text-muted-foreground" aria-label="Secret reference">
+        <KeyRoundIcon className="size-3.5" />
+      </span>
+    </Tip>
+  );
+}
+
+// SecretTestButton asks the box to resolve a reference and says only
+// whether it could, and how long the value is.
+function SecretTestButton({ box, value }: { box: string; value: string }) {
+  const client = useStore((s) => s.client);
+  const [result, setResult] = useState<SecretTest | "testing">();
+  // A changed reference has not been tested.
+  useEffect(() => setResult(undefined), [value]);
+  const test = async () => {
+    if (!client) return;
+    setResult("testing");
+    try {
+      setResult(await boxApi.testSecret(client, box, value));
+    } catch (err) {
+      setResult({ ok: false, error: errorMessage(err) });
+    }
+  };
+  return (
+    <span className="flex shrink-0 items-center gap-1.5">
+      <Tip label={`Ask ${box} to read it now`}>
+        <Button size="xs" variant="ghost" onClick={() => void test()} disabled={!client || result === "testing"}>
+          {result === "testing" ? <LoaderIcon className="animate-spin" /> : null}
+          Test
+        </Button>
+      </Tip>
+      {result && result !== "testing" && result.ok && (
+        <span className="flex items-center gap-1 text-success-foreground text-xs dark:text-success">
+          <CheckIcon className="size-3.5" />
+          {result.length === 0 ? "Resolved, but empty" : `Resolved · ${result.length} ${result.length === 1 ? "character" : "characters"}`}
+        </span>
+      )}
+      {result && result !== "testing" && !result.ok && (
+        <Tip label={result.error}>
+          <span className="flex max-w-56 items-center gap-1 text-destructive-foreground text-xs">
+            <CircleAlertIcon className="size-3.5 shrink-0" />
+            <span className="truncate">{result.error ?? "Could not read it"}</span>
+          </span>
+        </Tip>
+      )}
+    </span>
+  );
+}
+
 // SecretInput hides values whose names look like secrets until asked, so a
-// screen share doesn't show them.
-function SecretInput({ name, value, onChange }: { name: string; value: string; onChange(v: string): void }) {
-  const secret = SECRET.test(name);
-  const [shown, setShown] = useState(!secret);
+// screen share doesn't show them. A reference is not a secret, so it shows,
+// marked, with a Test action.
+function SecretInput({ name, value, onChange, box }: { name: string; value: string; onChange(v: string): void; box: string }) {
+  const ref = isSecretRef(value);
+  const secret = SECRET.test(name) && !ref;
+  const [shown, setShown] = useState(!SECRET.test(name));
   return (
     <div className="flex items-center gap-1">
-      <Input value={value} type={shown ? "text" : "password"} onChange={(e) => onChange(e.target.value)} size="sm" className="font-mono text-xs" spellCheck={false} autoComplete="off" />
+      {ref && <RefMark />}
+      <Input value={value} type={shown || ref ? "text" : "password"} onChange={(e) => onChange(e.target.value)} size="sm" className="font-mono text-xs" spellCheck={false} autoComplete="off" />
       {secret && (
         <Button size="icon-xs" variant="ghost" aria-label={shown ? `Hide ${name}` : `Show ${name}`} onClick={() => setShown(!shown)}>
           {shown ? <EyeOffIcon /> : <EyeIcon />}
         </Button>
       )}
+      {ref && <SecretTestButton box={box} value={value} />}
     </div>
   );
 }
@@ -64,7 +126,7 @@ export function EnvSection({ repo, draft, setDraft, box }: { repo: RepoConfig | 
       title="Environment"
       description={
         <>
-          Added to everything that runs in a worktree: setup, services, agents, flows. <code className="font-mono">$BERTH_*</code> values are filled in per worktree.
+          Added to everything that runs in a worktree: setup, services, agents, flows. <code className="font-mono">$BERTH_*</code> values are filled in per worktree. A value can name a secret instead, like <code className="font-mono">op://vault/item/field</code>, which the box reads when it needs it.
         </>
       }
       actions={
@@ -87,7 +149,15 @@ export function EnvSection({ repo, draft, setDraft, box }: { repo: RepoConfig | 
                   {k}
                 </code>
                 {mine ? (
-                  <SecretInput name={k} value={own[k]} onChange={(v) => put(k, v)} />
+                  <SecretInput name={k} value={own[k]} onChange={(v) => put(k, v)} box={box} />
+                ) : isSecretRef(committed[k]) ? (
+                  <div className="flex min-w-0 items-center gap-1 pl-2.5">
+                    <RefMark />
+                    <code className="min-w-0 flex-1 truncate font-mono text-muted-foreground text-xs" title={committed[k]}>
+                      {committed[k]}
+                    </code>
+                    <SecretTestButton box={box} value={committed[k]} />
+                  </div>
                 ) : (
                   <code className="truncate px-2.5 font-mono text-muted-foreground text-xs" title={committed[k]}>
                     {committed[k]}
@@ -134,7 +204,7 @@ export function EnvSection({ repo, draft, setDraft, box }: { repo: RepoConfig | 
             <Input autoFocus value={adding.key} onChange={(e) => setAdding({ ...adding, key: e.target.value.toUpperCase().replace(/\s/g, "_") })} placeholder="NAME" size="sm" className="font-mono text-xs" aria-invalid={!!keyError} />
             {keyError && <p className="mt-1 text-destructive-foreground text-[11px]">{keyError}</p>}
           </div>
-          <Input value={adding.value} onChange={(e) => setAdding({ ...adding, value: e.target.value })} placeholder="value, e.g. postgres://localhost/$BERTH_WORKTREE_SLUG" size="sm" className="font-mono text-xs" />
+          <Input value={adding.value} onChange={(e) => setAdding({ ...adding, value: e.target.value })} placeholder="postgres://localhost/$BERTH_WORKTREE_SLUG, or a secret: op://vault/item/field" size="sm" className="font-mono text-xs" />
           <span className="flex gap-1">
             <Button size="sm" type="submit" disabled={!adding.key || !!keyError}>
               Add

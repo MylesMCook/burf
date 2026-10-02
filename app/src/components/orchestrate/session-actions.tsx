@@ -1,5 +1,7 @@
 import { ArrowRightLeftIcon, BookMarkedIcon, EllipsisIcon, RepeatIcon, ScanEyeIcon, SendIcon } from "lucide-react";
+import type { ReactNode } from "react";
 
+import { Tip } from "@/components/tip";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuTrigger } from "@/components/ui/menu";
 import { openPromptPicker } from "@/lib/prompts";
 import { type OrchestrateDraft, useStore } from "@/lib/store";
@@ -34,26 +36,29 @@ export function SessionActionItems({ box, session }: { box: string; session: str
   );
 }
 
-// SessionActions is a compact menu of them, for cards and rows.
-export function SessionActions({ box, session, className }: { box: string; session: string; className?: string }) {
+// SessionActions is a compact menu of them, for cards and rows; children go
+// after them (a card's "Stop agent…").
+export function SessionActions({ box, session, className, children }: { box: string; session: string; className?: string; children?: ReactNode }) {
   return (
     <Menu>
-      <MenuTrigger
-        render={
-          <button
-            type="button"
-            aria-label={`Orchestrate ${session}`}
-            title="Orchestrate"
-            className={cn("inline-flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground", className)}
-            // Inside a clickable card, opening the menu must not open the card.
-            onClick={(e) => e.stopPropagation()}
-          />
-        }
-      >
-        <EllipsisIcon className="size-3.5" />
-      </MenuTrigger>
+      <Tip label="Orchestrate">
+        <MenuTrigger
+          render={
+            <button
+              type="button"
+              aria-label={`Orchestrate ${session}`}
+              className={cn("inline-flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground", className)}
+              // Inside a clickable card, opening the menu must not open the card.
+              onClick={(e) => e.stopPropagation()}
+            />
+          }
+        >
+          <EllipsisIcon className="size-3.5" />
+        </MenuTrigger>
+      </Tip>
       <MenuPopup align="end" className="min-w-48">
         <SessionActionItems box={box} session={session} />
+        {children}
       </MenuPopup>
     </Menu>
   );

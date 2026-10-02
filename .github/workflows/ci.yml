@@ -38,4 +38,6 @@ jobs:
           cache-dependency-path: app/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck:plugins
+      # Tooltips are the app's own, never the HTML title attribute.
+      - run: pnpm check:titles
       - run: pnpm build

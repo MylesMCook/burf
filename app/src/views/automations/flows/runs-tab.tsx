@@ -1,8 +1,15 @@
-import { ChevronRightIcon, ClockIcon, GitPullRequestIcon, HistoryIcon } from "lucide-react";
+import { ChevronRightIcon, ClockIcon, GitPullRequestIcon } from "lucide-react";
 import { useState } from "react";
 
+import { Scene } from "@/components/art/scenes";
+import { BoxFilter, shownBoxes } from "@/components/box-filter";
+import { FilterChip } from "@/components/filter-chip";
+import { SimpleSelect } from "@/components/simple-select";
+import { Tip } from "@/components/tip";
+import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { ago } from "@/lib/format";
+import { load, save } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 import { STEP_KINDS } from "@/views/automations/flows/model";
 import { ProjectLabel } from "@/views/automations/flows/project-label";
@@ -10,35 +17,86 @@ import { RunStatus, runTook } from "@/views/automations/flows/run-status";
 import type { BoxRun } from "@/views/automations/flows/use-runs";
 
 // RunsTab is every flow run on every box, newest first: what started it,
-// and each step's outcome and output.
-export function RunsTab({ runs, names }: { runs: BoxRun[]; names: (box: string, scope: string, id: string) => string }) {
+// and each step's outcome and output. Filters work as everywhere: boxes all
+// on to start, a flow picked from a list, "Failed" narrowing.
+export function RunsTab({ runs, boxes, names }: { runs: BoxRun[]; boxes: string[]; names: (box: string, scope: string, id: string) => string }) {
+  const [hidden, setHidden] = useState<string[]>(() => load("berth.runs.hiddenBoxes", []));
+  const [flow, setFlow] = useState("");
+  const [failed, setFailed] = useState(false);
+  const hide = (next: string[]) => {
+    setHidden(next);
+    save("berth.runs.hiddenBoxes", next);
+  };
+
   if (runs.length === 0)
     return (
       <Empty className="mt-12">
         <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <HistoryIcon />
+          <EmptyMedia>
+            <Scene name="chart" />
           </EmptyMedia>
           <EmptyTitle>No runs yet</EmptyTitle>
           <EmptyDescription>When a flow's trigger fires, or you test one, its run shows up here with every step's output.</EmptyDescription>
         </EmptyHeader>
       </Empty>
     );
+
+  const on = shownBoxes(boxes, hidden);
+  const named = runs.map((r) => ({ run: r, name: names(r.box, r.scope, r.flow) }));
+  const flows = [...new Set(named.map((n) => n.name))].sort((a, b) => a.localeCompare(b));
+  const shown = named.filter(({ run, name }) => on.includes(run.box) && (!flow || name === flow) && (!failed || run.status === "failed"));
+  const filtered = on.length < boxes.length || !!flow || failed;
+  const clear = () => {
+    hide([]);
+    setFlow("");
+    setFailed(false);
+  };
+
   return (
-    <div className="overflow-hidden rounded-xl border bg-card">
-      <div className="grid grid-cols-[20px_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.2fr)_90px_60px] gap-3 border-b px-4 py-2 text-[11px] text-muted-foreground">
-        <span />
-        <span>Flow</span>
-        <span>Where</span>
-        <span>Started by</span>
-        <span>When</span>
-        <span className="text-right">Took</span>
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="w-48">
+          <SimpleSelect size="sm" className="min-w-0" value={flow} onChange={setFlow} options={[{ value: "", label: "All flows" }, ...flows.map((f) => ({ value: f, label: f }))]} />
+        </div>
+        <Tip label="Only runs that failed">
+          <FilterChip pressed={failed} onPressedChange={setFailed}>
+            Failed
+          </FilterChip>
+        </Tip>
+        {filtered && (
+          <Button size="xs" variant="ghost" onClick={clear}>
+            Clear filters
+          </Button>
+        )}
+        <BoxFilter className="ml-auto" boxes={boxes} hidden={hidden} onChange={hide} />
       </div>
-      <ol className="divide-y divide-border/70">
-        {runs.map((r) => (
-          <RunRow key={`${r.box}:${r.id}`} run={r} name={names(r.box, r.scope, r.flow)} />
-        ))}
-      </ol>
+      {shown.length === 0 ? (
+        <Empty className="rounded-xl border py-12">
+          <EmptyHeader>
+            <EmptyTitle>No runs match</EmptyTitle>
+            <EmptyDescription>None of the {runs.length} runs kept passes every filter.</EmptyDescription>
+          </EmptyHeader>
+          <Button size="sm" variant="outline" onClick={clear}>
+            Clear filters
+          </Button>
+        </Empty>
+      ) : (
+        <div className="overflow-hidden rounded-xl border bg-card">
+          <div className="grid grid-cols-[20px_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.2fr)_90px_60px] gap-3 border-b px-4 py-2 text-[11px] text-muted-foreground">
+            <span />
+            <span>Flow</span>
+            <span>Where</span>
+            <span>Started by</span>
+            <span>When</span>
+            <span className="text-right">Took</span>
+          </div>
+          <ol className="divide-y divide-border/70">
+            {shown.map(({ run, name }) => (
+              <RunRow key={`${run.box}:${run.id}`} run={run} name={name} />
+            ))}
+          </ol>
+        </div>
+      )}
     </div>
   );
 }
@@ -49,7 +107,7 @@ function RunRow({ run, name }: { run: BoxRun; name: string }) {
   const where = (d.name as string) || (d.location as string) || (d.path as string)?.split("/").pop();
   return (
     <li>
-      <button type="button" onClick={() => setOpen(!open)} className="grid w-full grid-cols-[20px_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.2fr)_90px_60px] items-center gap-3 px-4 py-2.5 text-left text-sm hover:bg-accent/40">
+      <button type="button" onClick={() => setOpen(!open)} className="grid w-full grid-cols-[20px_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.2fr)_90px_60px] min-h-row items-center gap-3 px-4 py-1 text-left text-sm hover:bg-accent/40">
         <RunStatus status={run.status} />
         <span className="flex min-w-0 items-center gap-1.5">
           <ChevronRightIcon className={cn("size-3 shrink-0 text-muted-foreground transition-transform", open && "rotate-90")} />

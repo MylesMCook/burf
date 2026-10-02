@@ -27,7 +27,10 @@ export type Category =
   | "kit"
   | "notify"
   | "opened"
-  | "plugin";
+  | "plugin"
+  | "secret"
+  | "queueDelivered"
+  | "queueFailed";
 
 export type Tone = "info" | "success" | "warning" | "error";
 
@@ -61,6 +64,9 @@ export const CATEGORIES: CategoryInfo[] = [
   { id: "notify", label: "Messages from automations", description: "A flow's notify step.", needs: false, defaults: all },
   { id: "opened", label: "An agent opened something", description: "A terminal or preview it asked to show while you were elsewhere.", needs: false, defaults: quietly },
   { id: "plugin", label: "Messages from plugins", description: "What plugins send with notify().", needs: false, defaults: all },
+  { id: "secret", label: "A secret could not be read", description: "A variable naming a 1Password or env secret was left unset.", needs: true, defaults: quietly },
+  { id: "queueDelivered", label: "A queued prompt was sent", description: "A prompt kept while its box was offline reached its agent.", needs: false, defaults: quietly },
+  { id: "queueFailed", label: "A queued prompt could not be sent", description: "Its session is gone, or it may have arrived already. Retry, move or discard it.", needs: true, defaults: all },
 ];
 
 export const categoryInfo = (id: Category) => CATEGORIES.find((c) => c.id === id) ?? CATEGORIES[CATEGORIES.length - 1];
@@ -470,6 +476,9 @@ export function resolveFromEvent(e: BerthEvent) {
     case "flow.finished":
       if (d.status === "succeeded") resolve((n) => n.category === "flowFailed" && same(n) && n.key === flowKey(e.box, d.flow, d.scope));
       return;
+    case "secret.resolved":
+      resolve((n) => n.category === "secret" && same(n) && n.key === secretKey(e.box, d.location, d.variable));
+      return;
     case "worktree.removed":
     case "worktree.setup.finished":
       resolve((n) => (n.category === "setupFailed" || (e.type === "worktree.removed" && n.category !== "notify")) && same(n) && (path ? n.path === path : n.project === d.location && n.worktree === d.name));
@@ -478,6 +487,7 @@ export function resolveFromEvent(e: BerthEvent) {
 }
 
 export const serviceKey = (box?: string, location?: unknown, worktree?: unknown, service?: unknown) => `serviceFailed|${box}|${location}|${worktree}|${service}`;
+export const secretKey = (box?: string, location?: unknown, variable?: unknown) => `secret|${box}|${location ?? ""}|${variable}`;
 export const flowKey = (box?: string, flow?: unknown, scope?: unknown) => `flowFailed|${box}|${scope ?? ""}|${flow}`;
 
 // A waiting note also clears when the box reports its agent working again,

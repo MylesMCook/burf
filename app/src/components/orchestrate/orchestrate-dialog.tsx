@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import { AgentIcon } from "@/components/agent-glyph";
 import { AgentPicker } from "@/components/new-worktree/agent-picker";
+import { QueueOffer, offlineOffer, queueLabel } from "@/components/queue/queue-offer";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogPanel, DialogPopup, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -17,6 +18,7 @@ import { agentLabel, agentOf } from "@/lib/derive";
 import { errorMessage } from "@/lib/format";
 import { handoff, handoffPrompt, loop, review, reviewPrompt, send, sessionLocation } from "@/lib/orchestrate";
 import { openPromptPicker } from "@/lib/prompts";
+import { type SendFailure, enqueue, sendFailure } from "@/lib/queue";
 import { load, save } from "@/lib/storage";
 import { type OrchestrateDraft, useStore } from "@/lib/store";
 import { findSession, setPaneContent, splitPane } from "@/lib/workspaces";
@@ -76,6 +78,8 @@ function Body({ d, onDone }: { d: OrchestrateDraft; onDone(): void }) {
   const [rounds, setRounds] = useState(5);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  // A send to a box that is away offers to queue the prompt instead.
+  const [offer, setOffer] = useState<SendFailure | undefined>(() => (d.kind === "send" ? offlineOffer(d.box) : undefined));
 
   // Until edited, a hand-off's prompt follows where the next agent works.
   useEffect(() => {
@@ -86,13 +90,23 @@ function Body({ d, onDone }: { d: OrchestrateDraft; onDone(): void }) {
 
   const ready = d.kind === "loop" ? !!check.trim() : !!text.trim() && (!newWorktree || !!name.trim());
 
-  const submit = async () => {
+  const submit = async (force?: "send") => {
     if (!ready || busy) return;
     setBusy(true);
     setError(undefined);
     try {
-      if (d.kind === "send") {
-        await send(d.box, d.session, text);
+      if (d.kind === "send" && offer && force !== "send") {
+        await enqueue({ box: d.box, session: d.session, text });
+      } else if (d.kind === "send") {
+        try {
+          await send(d.box, d.session, text);
+          setOffer(undefined);
+        } catch (err) {
+          const f = sendFailure(err, d.box);
+          setOffer(f);
+          if (!f) throw err;
+          return;
+        }
       } else if (d.kind === "loop") {
         save(checkKey(d.box, location), check.trim());
         loop({ box: d.box, session: d.session, prompt: text.trim(), check: check.trim(), max: rounds });
@@ -209,6 +223,7 @@ function Body({ d, onDone }: { d: OrchestrateDraft; onDone(): void }) {
             </Field>
           </div>
         )}
+        {offer && <QueueOffer failure={offer} box={d.box} />}
         {error && <p className="text-destructive text-sm">{error}</p>}
       </DialogPanel>
 
@@ -216,8 +231,13 @@ function Body({ d, onDone }: { d: OrchestrateDraft; onDone(): void }) {
         <Button type="button" variant="ghost" onClick={onDone}>
           Cancel
         </Button>
+        {offer && (
+          <Button type="button" variant="outline" disabled={!ready || busy} onClick={() => void submit("send")}>
+            Try sending again
+          </Button>
+        )}
         <Button type="submit" loading={busy} disabled={!ready}>
-          {actions[d.kind]}
+          {offer ? queueLabel(offer, d.box) : actions[d.kind]}
           <Kbd className="-me-1 bg-primary-foreground/16 text-primary-foreground/80">⌘↵</Kbd>
         </Button>
       </DialogFooter>

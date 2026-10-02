@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import { Dialog, DialogDescription, DialogHeader, DialogPanel, DialogPopup, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogPopup } from "@/components/ui/dialog";
 import { toastManager } from "@/components/ui/toast";
 import { AddBoxFlow } from "@/views/onboarding/add-box-flow";
 
@@ -17,21 +17,19 @@ export function AddBoxDialog() {
   const close = () => useAddBox.setState({ open: false });
   return (
     <Dialog open={open} onOpenChange={(o) => !o && close()}>
-      <DialogPopup className="sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle>Add a box</DialogTitle>
-          <DialogDescription>Any VPS or dev machine. Agents and dev servers run there; this computer only watches.</DialogDescription>
-        </DialogHeader>
-        <DialogPanel>
-          {open && (
-            <AddBoxFlow
-              onDone={(box) => {
-                close();
-                toastManager.add({ title: `${box} is ready`, description: "Paired and online. Add a repo on it to start working there.", type: "success" });
-              }}
-            />
-          )}
-        </DialogPanel>
+      {/* Anchored at the top: steps differ in height, and a centred dialog
+          would move its title with each one. */}
+      <DialogPopup className="sm:max-w-xl" anchored>
+        {open && (
+          <AddBoxFlow
+            variant="dialog"
+            intro={{ title: "Add a box", description: "Any VPS or dev machine. Agents and dev servers run there; this computer only watches." }}
+            onDone={(box) => {
+              close();
+              toastManager.add({ title: `${box} is ready`, description: "Paired and online. Add a repo on it to start working there.", type: "success" });
+            }}
+          />
+        )}
       </DialogPopup>
     </Dialog>
   );

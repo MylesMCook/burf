@@ -1,6 +1,7 @@
 import { RefreshCwIcon } from "lucide-react";
 import { useState } from "react";
 
+import { QueueIndicator } from "@/components/queue/queue-indicator";
 import { Tip } from "@/components/tip";
 import { useAgentCounts } from "@/hooks/use-agent-counts";
 import { isMock } from "@/hooks/use-berth-connection";
@@ -52,6 +53,7 @@ export function StatusBar() {
           </Item>
         </>
       )}
+      <QueueIndicator />
       {items
         .filter((i) => i.item.align !== "right")
         .map(({ plugin, item }) => (

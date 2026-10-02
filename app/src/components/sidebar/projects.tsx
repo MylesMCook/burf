@@ -212,32 +212,33 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
   return (
     <SidebarMenuItem>
       <ContextRow items={() => projectActions(box.name, loc)} className="group/row relative">
-        <SidebarMenuButton
-          size="sm"
-          isActive={mainSel && !all}
-          disabled={!online || !main}
-          onClick={() => main && open(main)}
-          title={`${loc.name} on ${box.name}\n${loc.path}`}
-          className={cn("h-7.5 gap-1.5 font-medium text-[13px] text-foreground", !online && "text-muted-foreground")}
-        >
-          <span
-            role="button"
-            tabIndex={-1}
-            aria-label={collapsed ? `Show ${loc.name}` : `Hide ${loc.name}`}
-            className="-ml-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground"
-            onClick={(e) => {
-              e.stopPropagation();
-              toggle();
-            }}
+        <Tip side="right" delay={700} wrapClassName="flex w-full min-w-0" label={<PlaceTip name={`${loc.name} on ${box.name}`} lines={[loc.path]} />}>
+          <SidebarMenuButton
+            size="sm"
+            isActive={mainSel && !all}
+            disabled={!online || !main}
+            onClick={() => main && open(main)}
+            className={cn("h-[calc(var(--side-row)+0.125rem)] gap-1.5 font-medium text-[13px] text-foreground", !online && "text-muted-foreground")}
           >
-            <ChevronRightIcon className={cn("size-3 transition-transform", !collapsed && "rotate-90")} />
-          </span>
-          <LeadIcon sessions={!all && main ? mainSessions : []} data={data} icon={<FolderGitIcon />} />
-          <span className="min-w-0 truncate">{loc.name}</span>
-          {chip && <BoxChip box={box} />}
-          <span className="ml-auto" />
-          {!all && main && <Glyphs sessions={mainSessions} data={data} />}
-        </SidebarMenuButton>
+            <span
+              role="button"
+              tabIndex={-1}
+              aria-label={collapsed ? `Show ${loc.name}` : `Hide ${loc.name}`}
+              className="-ml-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggle();
+              }}
+            >
+              <ChevronRightIcon className={cn("size-3 transition-transform", !collapsed && "rotate-90")} />
+            </span>
+            <LeadIcon sessions={!all && main ? mainSessions : []} data={data} icon={<FolderGitIcon />} />
+            <span className="min-w-0 truncate">{loc.name}</span>
+            {chip && <BoxChip box={box} />}
+            <span className="ml-auto" />
+            {!all && main && <Glyphs sessions={mainSessions} data={data} />}
+          </SidebarMenuButton>
+        </Tip>
         {online && main && (
           <RowActions box={box.name} loc={loc} wt={main} project onNewWorktree={() => useStore.getState().openNewWorktree({ box: box.name, location: loc.name })} />
         )}
@@ -304,20 +305,21 @@ function WorktreeRow({
   return (
     <SidebarMenuSubItem>
       <ContextRow items={() => worktreeActions(box, loc, wt)} className="group/row relative">
-        <SidebarMenuSubButton
-          render={<button type="button" />}
-          isActive={selected}
-          onClick={onOpen}
-          title={`${wt.main ? "main checkout" : wt.name}${wt.branch && wt.branch !== wt.name ? `\n${wt.branch}` : ""}\n${wt.path}`}
-          className="h-7 w-full text-[13px] [&>svg]:text-muted-foreground"
-        >
-          <LeadIcon sessions={sessions} data={data} icon={wt.main ? <HomeIcon /> : <GitBranchIcon />} />
-          <span className="min-w-0 truncate">{wt.main ? (wt.branch ?? "main") : wt.name}</span>
-          {chip && <BoxChip box={chip} />}
-          {wt.setting_up && <span className="shrink-0 text-[10px] text-warning-foreground">setting up</span>}
-          <span className="ml-auto" />
-          <Glyphs sessions={sessions} data={data} />
-        </SidebarMenuSubButton>
+        <Tip side="right" delay={700} label={<PlaceTip name={`${wt.main ? "Main checkout" : wt.name}${wt.branch && wt.branch !== wt.name ? ` · ${wt.branch}` : ""}`} lines={[wt.path]} />}>
+          <SidebarMenuSubButton
+            render={<button type="button" />}
+            isActive={selected}
+            onClick={onOpen}
+            className="h-side-row w-full text-[13px] sm:h-side-row [&>svg]:text-muted-foreground"
+          >
+            <LeadIcon sessions={sessions} data={data} icon={wt.main ? <HomeIcon /> : <GitBranchIcon />} />
+            <span className="min-w-0 truncate">{wt.main ? (wt.branch ?? "main") : wt.name}</span>
+            {chip && <BoxChip box={chip} />}
+            {wt.setting_up && <span className="shrink-0 text-[10px] text-warning-foreground">setting up</span>}
+            <span className="ml-auto" />
+            <Glyphs sessions={sessions} data={data} />
+          </SidebarMenuSubButton>
+        </Tip>
         <RowActions box={box} loc={loc} wt={wt} />
       </ContextRow>
     </SidebarMenuSubItem>
@@ -559,44 +561,45 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
   return (
     <SidebarMenuItem>
       <ContextRow items={() => projectGroupActions(p)} className="group/row relative">
-        <SidebarMenuButton
-          size="sm"
-          draggable
-          onDragStart={(e: React.DragEvent) => {
-            e.dataTransfer.setData("application/x-berth-project", p.id);
-            e.dataTransfer.effectAllowed = "move";
-          }}
-          isActive={mainSel && !all}
-          disabled={!online}
-          onClick={() => defMain && def.box.state === "online" && selectWorktree(refOf(def.box.name, def.loc, defMain))}
-          title={`${p.name}${p.slug ? ` (${p.slug})` : ""}\n${p.members.map((m) => `${m.box.name}: ${m.loc.path}`).join("\n")}`}
-          className={cn("h-7.5 gap-1.5 font-medium text-[13px] text-foreground", !online && "text-muted-foreground")}
-        >
-          <span
-            role="button"
-            tabIndex={-1}
-            aria-label={collapsed ? `Show ${p.name}` : `Hide ${p.name}`}
-            className="-ml-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground"
-            onClick={(e) => {
-              e.stopPropagation();
-              update({ collapsed: { ...prefs.collapsed, [key]: !collapsed } });
+        <Tip side="right" delay={700} wrapClassName="flex w-full min-w-0" label={<PlaceTip name={`${p.name}${p.slug ? ` (${p.slug})` : ""}`} lines={p.members.map((m) => `${m.box.name}: ${m.loc.path}`)} />}>
+          <SidebarMenuButton
+            size="sm"
+            draggable
+            onDragStart={(e: React.DragEvent) => {
+              e.dataTransfer.setData("application/x-berth-project", p.id);
+              e.dataTransfer.effectAllowed = "move";
             }}
+            isActive={mainSel && !all}
+            disabled={!online}
+            onClick={() => defMain && def.box.state === "online" && selectWorktree(refOf(def.box.name, def.loc, defMain))}
+            className={cn("h-[calc(var(--side-row)+0.125rem)] gap-1.5 font-medium text-[13px] text-foreground", !online && "text-muted-foreground")}
           >
-            <ChevronRightIcon className={cn("size-3 transition-transform", !collapsed && "rotate-90")} />
-          </span>
-          <LeadIcon sessions={!all ? glyphSessions : []} data={boxes[def.box.name]} icon={<FolderGitIcon />} />
-          <span className="min-w-0 truncate">{p.name}</span>
-          {chips && (
-            <span className="flex min-w-0 shrink items-center gap-0.5 overflow-hidden">
-              {p.members.slice(0, 3).map((m) => (
-                <BoxChip key={m.box.name} box={m.box} />
-              ))}
-              {p.members.length > 3 && <span className="text-[10px] text-muted-foreground">+{p.members.length - 3}</span>}
+            <span
+              role="button"
+              tabIndex={-1}
+              aria-label={collapsed ? `Show ${p.name}` : `Hide ${p.name}`}
+              className="-ml-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+              onClick={(e) => {
+                e.stopPropagation();
+                update({ collapsed: { ...prefs.collapsed, [key]: !collapsed } });
+              }}
+            >
+              <ChevronRightIcon className={cn("size-3 transition-transform", !collapsed && "rotate-90")} />
             </span>
-          )}
-          <span className="ml-auto" />
-          {!all && <Glyphs sessions={glyphSessions} data={boxes[def.box.name]} />}
-        </SidebarMenuButton>
+            <LeadIcon sessions={!all ? glyphSessions : []} data={boxes[def.box.name]} icon={<FolderGitIcon />} />
+            <span className="min-w-0 truncate">{p.name}</span>
+            {chips && (
+              <span className="flex min-w-0 shrink items-center gap-0.5 overflow-hidden">
+                {p.members.slice(0, 3).map((m) => (
+                  <BoxChip key={m.box.name} box={m.box} />
+                ))}
+                {p.members.length > 3 && <span className="text-[10px] text-muted-foreground">+{p.members.length - 3}</span>}
+              </span>
+            )}
+            <span className="ml-auto" />
+            {!all && <Glyphs sessions={glyphSessions} data={boxes[def.box.name]} />}
+          </SidebarMenuButton>
+        </Tip>
         {online && (
           <RowOverlay>
             <RowButton
@@ -665,5 +668,19 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
         </SidebarMenuSub>
       )}
     </SidebarMenuItem>
+  );
+}
+
+// PlaceTip says where a sidebar row is: its name, then its path on each box.
+function PlaceTip({ name, lines }: { name: string; lines: string[] }) {
+  return (
+    <span className="flex max-w-96 flex-col gap-0.5">
+      <span>{name}</span>
+      {lines.map((l) => (
+        <span key={l} className="break-all font-mono text-[11px] text-muted-foreground">
+          {l}
+        </span>
+      ))}
+    </span>
   );
 }

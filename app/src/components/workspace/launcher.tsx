@@ -2,7 +2,7 @@ import { ArrowUpRightIcon, CodeXmlIcon, GlobeIcon, SquareTerminalIcon } from "lu
 import { useEffect, useRef, useState } from "react";
 
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
-import { Mooring } from "@/components/art/mooring";
+import { Scene } from "@/components/art/scenes";
 import { openEditor } from "@/components/editors/open";
 import { toastManager } from "@/components/ui/toast";
 import { Tip } from "@/components/tip";
@@ -108,7 +108,7 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
           {/* A boat tied up and ready: the same drawing language as a pane
               whose session ended. Fixed size, so nothing below moves. */}
           <div aria-hidden className="mb-3 px-1">
-            <Mooring variant="moored" />
+            <Scene name="moored" width={144} />
           </div>
           <header className="mb-4 px-2">
             <h1 className="truncate font-semibold text-lg tracking-tight" title={name}>

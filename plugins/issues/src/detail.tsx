@@ -293,24 +293,14 @@ export function Problem({ problem, box, className }: { problem: gh.Problem; box?
   );
 }
 
-export function LabelChip({ label, active, onClick }: { label: gh.Label; active?: boolean; onClick?(): void }) {
-  const cls = cn(
-    "inline-flex max-w-44 shrink-0 items-center gap-1.5 rounded-full border px-2 py-px text-[11px] leading-[18px]",
-    onClick && "hover:bg-accent/60",
-    active ? "border-foreground/30 bg-accent text-foreground" : "text-foreground/80",
-  );
-  const inner = (
-    <>
+// LabelChip shows an issue's label in its colour. Filtering by labels is
+// FilterChip's, in the toolbar.
+export function LabelChip({ label }: { label: gh.Label }) {
+  return (
+    <span className="inline-flex max-w-44 shrink-0 items-center gap-1.5 rounded-full border px-2 py-px text-[11px] text-foreground/80 leading-[18px]">
       <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: `#${label.color}` }} />
       <span className="truncate">{label.name}</span>
-    </>
-  );
-  return onClick ? (
-    <button type="button" className={cls} onClick={onClick} aria-pressed={active}>
-      {inner}
-    </button>
-  ) : (
-    <span className={cls}>{inner}</span>
+    </span>
   );
 }
 

@@ -239,7 +239,9 @@ export function worktreeActions(box: string, loc: Location, wt: Worktree): Actio
   return items;
 }
 
-function removeWorktree(box: string, loc: Location, wt: Worktree) {
+// removeWorktree asks, then removes a worktree: the sidebar's "Remove
+// worktree…" and the dashboard's "Stop and remove worktree…".
+export function removeWorktree(box: string, loc: Location, wt: Worktree) {
   confirm({
     title: `Remove ${wt.name}?`,
     description: `Its folder on ${box} is deleted. The repository's teardown script runs first, and the worktree's services and sessions stop.`,

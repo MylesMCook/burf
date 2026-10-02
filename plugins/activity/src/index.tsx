@@ -1,5 +1,5 @@
 import { definePlugin, useStorage, type BerthEvent, type ScreenProps } from "@berth/plugin";
-import { Badge, Button, Empty, EmptyDescription, EmptyHeader, EmptyTitle, Icon, Input, ToggleGroup, ToggleGroupItem, ViewHeader, cn } from "@berth/plugin/ui";
+import { Badge, BoxFilter, Button, Empty, EmptyDescription, EmptyHeader, EmptyTitle, Icon, Input, PickOne, ViewHeader, cn } from "@berth/plugin/ui";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
 // Activity: everything that happened on every box, as sentences, newest
@@ -130,13 +130,16 @@ function ActivityScreen({ berth }: ScreenProps) {
   const all = useLog();
   const [kind, setKind] = useState<Kind>("all");
   const [query, setQuery] = useState("");
-  const [box, setBox] = useState<string>();
+  // Boxes turned off; every box is on until one is, as across the app.
+  const [hiddenBoxes, setHiddenBoxes] = useStorage<string[]>("hiddenBoxes", []);
   // Where you left off: the newest event when you last looked.
   const [lastSeen, setLastSeen] = useStorage<string>("lastSeen", "");
   const [mark] = useState(lastSeen);
   useEffect(() => () => setLastSeen(new Date().toISOString()), [setLastSeen]);
 
   const boxes = useMemo(() => [...new Set(all.map((e) => e.box).filter(Boolean) as string[])].sort(), [all]);
+  // A stored filter that hides every box there is now shows them all.
+  const hidden = useMemo(() => new Set(boxes.every((b) => hiddenBoxes.includes(b)) ? [] : hiddenBoxes), [boxes, hiddenBoxes]);
   const [names, setNames] = useState<Names>(new Map());
   const boxKey = boxes.join(",");
   useEffect(() => {
@@ -157,8 +160,8 @@ function ActivityScreen({ berth }: ScreenProps) {
   }, [boxKey, berth]);
   const shown = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return all.filter((e) => (kind === "all" || kindOf(e.type) === kind) && (!box || e.box === box) && (!q || `${e.type} ${where(e, names)} ${JSON.stringify(e.data ?? {})}`.toLowerCase().includes(q)));
-  }, [all, kind, box, query, names]);
+    return all.filter((e) => (kind === "all" || kindOf(e.type) === kind) && (!e.box || !hidden.has(e.box)) && (!q || `${e.type} ${where(e, names)} ${JSON.stringify(e.data ?? {})}`.toLowerCase().includes(q)));
+  }, [all, kind, hidden, query, names]);
   const unseen = mark ? shown.filter((e) => e.time > mark).length : 0;
 
   return (
@@ -169,20 +172,19 @@ function ActivityScreen({ berth }: ScreenProps) {
         actions={<Input className="w-52" size="sm" placeholder="Search…" value={query} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)} />}
       />
       <div className="mb-3 flex flex-wrap items-center gap-2">
-        <ToggleGroup size="sm" variant="outline" value={[kind]} onValueChange={(v: string[]) => v[0] && setKind(v[0] as Kind)}>
-          <ToggleGroupItem value="all">All</ToggleGroupItem>
-          <ToggleGroupItem value="agents">Agents</ToggleGroupItem>
-          <ToggleGroupItem value="worktrees">Worktrees</ToggleGroupItem>
-          <ToggleGroupItem value="flows">Flows</ToggleGroupItem>
-          <ToggleGroupItem value="boxes">Boxes</ToggleGroupItem>
-        </ToggleGroup>
-        <div className="ml-auto flex gap-1">
-          {boxes.map((b) => (
-            <Button key={b} size="xs" variant={box === b ? "secondary" : "ghost"} onClick={() => setBox(box === b ? undefined : b)}>
-              {b}
-            </Button>
-          ))}
-        </div>
+        <PickOne
+          label="Kind of event"
+          value={kind}
+          onChange={(v: string) => setKind(v as Kind)}
+          options={[
+            { value: "all", label: "All" },
+            { value: "agents", label: "Agents" },
+            { value: "worktrees", label: "Worktrees" },
+            { value: "flows", label: "Flows" },
+            { value: "boxes", label: "Boxes" },
+          ]}
+        />
+        <BoxFilter className="ml-auto" boxes={boxes} hidden={hiddenBoxes} onChange={setHiddenBoxes} />
       </div>
 
       {shown.length === 0 ? (
@@ -206,7 +208,7 @@ function ActivityScreen({ berth }: ScreenProps) {
                     <span className="h-px flex-1 bg-border" /> Since you were last here <span className="h-px flex-1 bg-border" />
                   </div>
                 )}
-                <div className={cn("group flex items-center gap-3 border-b px-4 py-2 text-sm last:border-b-0", i === 0 && "border-t-0")}>
+                <div className={cn("group flex min-h-row items-center gap-3 border-b px-4 py-1 text-sm last:border-b-0", i === 0 && "border-t-0")}>
                   <Icon name={line.icon} className={cn("size-4 shrink-0", line.tone)} />
                   <span className="min-w-0 flex-1 truncate text-muted-foreground">{line.text}</span>
                   {e.box && <Badge variant="outline" size="sm">{e.box}</Badge>}

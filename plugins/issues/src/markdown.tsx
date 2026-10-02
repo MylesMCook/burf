@@ -1,4 +1,4 @@
-import { Icon, cn } from "@berth/plugin/ui";
+import { Icon, Tip, cn } from "@berth/plugin/ui";
 import type { ReactNode } from "react";
 
 import { stripComments } from "./gh";
@@ -245,17 +245,18 @@ function shortUrl(url: string) {
 
 function Link({ url, ctx, icon, children }: { url: string; ctx: Ctx; icon?: string; children: ReactNode }) {
   return (
-    <a
-      href={url}
-      onClick={(e) => {
-        e.preventDefault();
-        ctx.onLink(url);
-      }}
-      className="inline-flex items-baseline gap-1 text-info-foreground underline-offset-2 hover:underline"
-      title={url}
-    >
-      {icon && <Icon name={icon} className="size-3 self-center" />}
-      {children}
-    </a>
+    <Tip label={<span className="break-all font-mono">{url}</span>} className="max-w-md">
+      <a
+        href={url}
+        onClick={(e) => {
+          e.preventDefault();
+          ctx.onLink(url);
+        }}
+        className="inline-flex items-baseline gap-1 text-info-foreground underline-offset-2 hover:underline"
+      >
+        {icon && <Icon name={icon} className="size-3 self-center" />}
+        {children}
+      </a>
+    </Tip>
   );
 }

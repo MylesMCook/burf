@@ -65,7 +65,7 @@ function HookRow({ hook, onEdit, onDelete }: { hook: Hook; onEdit(): void; onDel
       onKeyDown={(e) => !plugin && e.key === "Enter" && e.target === e.currentTarget && onEdit()}
       aria-label={plugin ? undefined : `Edit hook: ${d.label}`}
       className={cn(
-        "group grid grid-cols-1 gap-x-3 gap-y-1.5 px-4 py-2.5 outline-none @2xl:grid-cols-[minmax(0,15rem)_minmax(0,1fr)_auto] @2xl:items-center",
+        "group grid grid-cols-1 gap-x-3 gap-y-1.5 px-4 py-row-pad outline-none @2xl:grid-cols-[minmax(0,15rem)_minmax(0,1fr)_auto] @2xl:items-center",
         !plugin && "cursor-pointer hover:bg-accent/40 focus-visible:bg-accent/40",
       )}
     >

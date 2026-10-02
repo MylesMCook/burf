@@ -1,7 +1,6 @@
-import { GitBranchIcon, HomeIcon } from "lucide-react";
 import { useMemo } from "react";
 
-import { AgentIcon, StateGlyph, stateText } from "@/components/agent-glyph";
+import { stateText } from "@/components/agent-glyph";
 import { Tip } from "@/components/tip";
 import type { Location, Session, Worktree } from "@/lib/api";
 import { agentOf, type SessionState, sessionState, worktreeSessions } from "@/lib/derive";
@@ -24,9 +23,25 @@ interface Entry {
   selected: boolean;
 }
 
+// monogram is a worktree's two letters on the rail: "billing-fix" is BF,
+// "qa" is QA, a main checkout is its project's.
+export function monogram(name: string): string {
+  const words = name.split(/[^A-Za-z0-9]+/).filter((w) => w && !/^\d+$/.test(w));
+  const letters = words.length > 1 ? words[0][0] + words[1][0] : (words[0] ?? name).slice(0, 2);
+  return letters.toUpperCase();
+}
+
+// What a rail tile's corner dot says; ready and idle say nothing.
+const dot: Partial<Record<SessionState, string>> = {
+  waiting: "bg-warning",
+  running: "bg-info animate-pulse",
+  finished: "bg-success",
+};
+
 // RailWorktrees are the active worktrees in the folded sidebar: those with
 // a session running and the one open, most urgent first, so switching
-// worktree does not need the sidebar back. Each shows its agent and state.
+// worktree does not need the sidebar back. Each is a lettered tile, with a
+// dot in its corner when an agent there is working, waiting or done.
 export function RailWorktrees() {
   const boxes = useStore((s) => s.status?.boxes ?? NONE);
   const data = useStore((s) => s.boxes);
@@ -56,11 +71,12 @@ export function RailWorktrees() {
 
   if (!entries.length) return null;
   return (
-    <div className="mt-2 flex flex-col items-center gap-1 border-sidebar-border border-t pt-2">
+    <div className="mt-2 flex flex-col items-center gap-1.5 border-sidebar-border border-t pt-2.5">
       {entries.map((e) => {
         const name = e.wt.main ? `${e.loc.name} main checkout` : `${e.loc.name} / ${e.wt.name}`;
         const state = e.state && e.state !== "idle" ? stateText(e.state) : undefined;
         const label = `${name} · ${e.box}${state ? ` · ${state.toLowerCase()}` : ""}`;
+        const mark = e.state && dot[e.state];
         return (
           <Tip key={e.key} label={label} side="right">
             <button
@@ -69,16 +85,12 @@ export function RailWorktrees() {
               aria-current={e.selected || undefined}
               onClick={() => selectWorktree(refOf(e.box, e.loc, e.wt))}
               className={cn(
-                "relative inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-sidebar-accent hover:text-foreground",
-                e.selected && "bg-sidebar-accent text-foreground",
+                "relative inline-flex size-8 items-center justify-center rounded-lg border border-sidebar-border bg-sidebar-accent/40 font-medium text-[11px] text-muted-foreground tracking-wide outline-none hover:border-ring/40 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring",
+                e.selected && "border-foreground/25 bg-sidebar-accent text-foreground",
               )}
             >
-              {e.agent ? <AgentIcon agent={e.agent} className="size-4" /> : e.wt.main ? <HomeIcon className="size-4" /> : <GitBranchIcon className="size-4" />}
-              {e.state && e.state !== "idle" && (
-                <span className="-right-0.5 -bottom-0.5 absolute flex rounded-full bg-sidebar">
-                  <StateGlyph state={e.state} />
-                </span>
-              )}
+              {monogram(e.wt.main ? e.loc.name : e.wt.name)}
+              {mark && <span className={cn("absolute -top-0.5 -right-0.5 size-2 rounded-full ring-2 ring-sidebar", mark)} />}
             </button>
           </Tip>
         );

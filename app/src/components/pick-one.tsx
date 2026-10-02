@@ -7,11 +7,17 @@ export interface PickOneOption<T extends string> {
   value: T;
   label: ReactNode;
   icon?: ReactNode;
+  // For the rare option that needs a tone of its own when chosen.
+  className?: string;
 }
 
 // PickOne is the app's one control for picking one of a few values: a coss
 // ToggleGroup, 28px high, in a muted track, the chosen item raised and the
-// rest at 80% foreground. Settings, New worktree, Hand off and Review use it.
+// rest at 80% foreground. Settings, New worktree, Hand off, Review, the diff
+// layout, a flow step's "Runs" and the plugins' screens use it; a page's
+// filter with an "All" choice (Activity's kinds, Issues' assignee) is one
+// too. Which boxes a page covers is BoxFilter; narrowing by labels or tags,
+// any number at once, is FilterChip.
 //
 // Base UI's ToggleGroup never presses an item whose value is the empty
 // string, so "" (such as "No agent") travels through the group as NONE.
@@ -33,7 +39,10 @@ export function PickOne<T extends string>({ value, options, onChange, label, cla
         <ToggleGroupItem
           key={toItem(o.value)}
           value={toItem(o.value)}
-          className="gap-1.5 rounded-md px-2.5 font-normal text-[13px] text-foreground/80 hover:bg-background/60 hover:text-foreground data-pressed:bg-background data-pressed:font-medium data-pressed:text-foreground data-pressed:shadow-xs/5 dark:hover:bg-input/32 dark:data-pressed:bg-input"
+          className={cn(
+            "gap-1.5 rounded-md px-2.5 font-normal text-[13px] text-foreground/80 hover:bg-background/60 hover:text-foreground data-pressed:bg-background data-pressed:font-medium data-pressed:text-foreground data-pressed:shadow-xs/5 dark:hover:bg-input/32 dark:data-pressed:bg-input",
+            o.className,
+          )}
         >
           {o.icon}
           {o.label}

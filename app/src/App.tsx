@@ -1,8 +1,9 @@
-import { CheckIcon, CopyIcon, GitBranchIcon, PlugZapIcon, RotateCwIcon } from "lucide-react";
+import { CheckIcon, CopyIcon, GitBranchIcon, RotateCwIcon } from "lucide-react";
 import { useState } from "react";
 
 import { AddLocationDialog } from "@/components/add-location-dialog";
 import { AppSidebar } from "@/components/app-sidebar";
+import { Scene } from "@/components/art/scenes";
 import { CommandPalette } from "@/components/command-palette";
 import { NewWorktreeDialog } from "@/components/new-worktree-dialog";
 import { NotificationCenter } from "@/components/notifications/notification-center";
@@ -17,7 +18,6 @@ import { CustomizeSidebarSheet } from "@/components/sidebar/nav";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Kbd } from "@/components/ui/kbd";
-import { Spinner } from "@/components/ui/spinner";
 import { ToastProvider } from "@/components/ui/toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Launcher } from "@/components/workspace/launcher";
@@ -30,7 +30,6 @@ import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { recentWorktrees, selectWorktree, useWorkspaces } from "@/lib/workspaces";
 import { AutomationsView } from "@/views/automations";
-import { HistoryView } from "@/views/history/history-view";
 import { WorktreesView } from "@/views/worktrees/worktrees-view";
 import { useKitDeepLinks } from "@/views/kits/deep-link";
 import { KitsView } from "@/views/kits/kits-view";
@@ -44,7 +43,7 @@ import { useOnboardingActive } from "@/views/onboarding/onboarding-state";
 import { OnboardingView } from "@/views/onboarding/onboarding-view";
 import { SettingsView } from "@/views/settings/settings-view";
 
-const viewTitles = { dashboard: "Agent Dashboard", review: "Review", worktrees: "Worktrees", automations: "Automations", kits: "Kits", history: "History", project: "Project settings", settings: "Settings", plugin: "" } as const;
+const viewTitles = { dashboard: "Agent Dashboard", review: "Review", worktrees: "Worktrees", automations: "Automations", kits: "Kits", project: "Project settings", settings: "Settings", plugin: "" } as const;
 
 export default function App() {
   useApplyTheme();
@@ -58,9 +57,12 @@ export default function App() {
 
   return (
     <TooltipProvider delay={300}>
-      {/* Toasts sit top-right under the tab strip: clear of the status bar
-          and of the loop panel in the bottom-right corner. */}
-      <ToastProvider position="top-right" viewportClassName="data-[position*=top]:top-12 data-[position*=right]:right-3">
+      {/* Toasts sit bottom-right, as in other desktop tools: above the status
+          bar (26px) and above the loop panel when there is one, which says
+          how tall it is in --berth-loops-h. Top-right covered the headers of
+          pages (Review's, say). With a dialog or sheet open they move to
+          the bottom-left; see components/ui/toast.tsx. */}
+      <ToastProvider position="bottom-right" viewportClassName="data-[position=bottom-right]:bottom-[calc(38px+var(--berth-loops-h,0px))] data-[position=bottom-right]:right-3 data-[position=bottom-left]:bottom-[38px] data-[position=bottom-left]:left-3">
         <div className="flex h-svh flex-col overflow-hidden bg-background text-foreground">
           <div className="flex min-h-0 flex-1">
             <Disconnectable>
@@ -129,7 +131,6 @@ function MainView() {
     <div className="absolute inset-0 bg-background">
       {view.kind === "dashboard" && <DashboardView />}
       {view.kind === "automations" && <AutomationsView />}
-      {view.kind === "history" && <HistoryView />}
       {view.kind === "review" && <ReviewView />}
       {view.kind === "kits" && <KitsView />}
       {view.kind === "worktrees" && <WorktreesView />}
@@ -149,8 +150,8 @@ function NoWorktree() {
     <div className="absolute inset-0 flex items-center justify-center bg-background">
       <Empty>
         <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <GitBranchIcon />
+          <EmptyMedia>
+            <Scene name="dawn" />
           </EmptyMedia>
           <EmptyTitle>Pick a worktree</EmptyTitle>
           <EmptyDescription>Open one from the sidebar to see its terminals and agents, or start a new one.</EmptyDescription>
@@ -205,8 +206,8 @@ function Connecting({ state, error }: { state: string; error?: string }) {
       <div className="absolute inset-0 flex items-center justify-center bg-background">
         <Empty>
           <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <Spinner />
+            <EmptyMedia>
+              <Scene name="lighthouse" />
             </EmptyMedia>
             <EmptyTitle>Finding the Berth agent…</EmptyTitle>
           </EmptyHeader>
@@ -218,8 +219,8 @@ function Connecting({ state, error }: { state: string; error?: string }) {
     <div className="absolute inset-0 flex items-center justify-center bg-background">
       <Empty className="max-w-md">
         <EmptyHeader>
-          <EmptyMedia variant="icon">
-            <PlugZapIcon />
+          <EmptyMedia>
+            <Scene name="offline" />
           </EmptyMedia>
           <EmptyTitle>The Berth agent is not running</EmptyTitle>
           <EmptyDescription>It keeps your boxes connected while this window is closed. Run this in a terminal to start it; Berth connects as soon as it is up.</EmptyDescription>

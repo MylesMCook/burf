@@ -1,9 +1,10 @@
-import { ArrowLeftIcon, ChevronRightIcon, FolderGit2Icon, FolderOpenIcon, FolderPlusIcon, GitForkIcon } from "lucide-react";
+import { ChevronRightIcon, FolderGit2Icon, FolderOpenIcon, FolderPlusIcon, GitForkIcon } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
 import { CloneForm } from "@/components/add-project/clone-form";
 import { CreateForm } from "@/components/add-project/create-form";
 import { FolderBrowser } from "@/components/add-project/folder-browser";
+import { StepHeader } from "@/components/step-header";
 import { Button } from "@/components/ui/button";
 import type { Location } from "@/lib/api";
 import { NONE, useStore } from "@/lib/store";
@@ -11,6 +12,11 @@ import { NONE, useStore } from "@/lib/store";
 type Way = "browse" | "clone" | "create";
 
 const wayTitles: Record<Way, string> = { browse: "Browse folders", clone: "Clone from URL", create: "Create a new project" };
+const wayDetails = (box: string): Record<Way, string> => ({
+  browse: `A repository already cloned on ${box}`,
+  clone: "GitHub, GitLab or any git remote, cloned by the box",
+  create: "An empty repository, ready for worktrees",
+});
 
 // RepoStep adds the first project on the new box, the same three ways the
 // Add a project dialog offers: a repository already there, a clone, or a
@@ -27,16 +33,15 @@ export function RepoStep({ box, onDone }: { box: string; onDone(location: string
 
   return (
     <div>
-      <h1 className="font-semibold text-xl tracking-tight">Add a project on {box}</h1>
-      <p className="mt-2 text-muted-foreground text-sm leading-relaxed">
-        A git repository on the box. Each piece of work gets its own worktree beside it, so agents never trip over each other.
-      </p>
+      <StepHeader
+        variant="page"
+        title={way ? wayTitles[way] : `Add a project on ${box}`}
+        description={way ? wayDetails(box)[way] : "A git repository on the box. Each piece of work gets its own worktree beside it, so agents never trip over each other."}
+        onBack={way ? () => setWay(undefined) : undefined}
+      />
 
       {way ? (
         <div className="mt-6">
-          <Button size="xs" variant="ghost" className="-ml-2 mb-2 text-muted-foreground" onClick={() => setWay(undefined)}>
-            <ArrowLeftIcon /> {wayTitles[way]}
-          </Button>
           {/* The Add a project forms, in a frame shaped like their dialog. */}
           <div data-slot="dialog-popup" className="overflow-hidden rounded-2xl border bg-popover pt-1">
             {way === "browse" && <FolderBrowser box={box} onAdded={added} />}
@@ -67,9 +72,9 @@ export function RepoStep({ box, onDone }: { box: string; onDone(location: string
           )}
           <div className="mt-6 space-y-2">
             {existing.length > 0 && <div className="text-muted-foreground text-xs">Or add another</div>}
-            <WayButton icon={<FolderOpenIcon />} title="Browse folders" detail={`A repository already cloned on ${box}`} onClick={() => setWay("browse")} />
-            <WayButton icon={<GitForkIcon />} title="Clone from URL" detail="GitHub, GitLab or any git remote, cloned by the box" onClick={() => setWay("clone")} />
-            <WayButton icon={<FolderPlusIcon />} title="Create a new project" detail="An empty repository, ready for worktrees" onClick={() => setWay("create")} />
+            <WayButton icon={<FolderOpenIcon />} title={wayTitles.browse} detail={wayDetails(box).browse} onClick={() => setWay("browse")} />
+            <WayButton icon={<GitForkIcon />} title={wayTitles.clone} detail={wayDetails(box).clone} onClick={() => setWay("clone")} />
+            <WayButton icon={<FolderPlusIcon />} title={wayTitles.create} detail={wayDetails(box).create} onClick={() => setWay("create")} />
           </div>
         </>
       )}

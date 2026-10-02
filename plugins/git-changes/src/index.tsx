@@ -14,10 +14,10 @@ import {
   EmptyHeader,
   EmptyTitle,
   Icon,
+  PickOne,
   Spinner,
   Textarea,
-  ToggleGroup,
-  ToggleGroupItem,
+  Tip,
   cn,
 } from "@berth/plugin/ui";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -161,27 +161,28 @@ function FileRow({ file, active, onSelect }: { file: FileChange; active: boolean
   const dir = slash > 0 ? file.path.slice(0, slash) : "";
   return (
     <li>
-      <button
-        type="button"
-        onClick={onSelect}
-        title={`${label}: ${file.from ? `${file.from} → ` : ""}${file.path}`}
-        className={cn("flex w-full items-center gap-2 px-3 py-1 text-left text-xs hover:bg-accent/60", active && "bg-accent text-foreground")}
-      >
-        <span className={cn("w-3 shrink-0 text-center font-mono font-semibold", toneClass[tone])}>{file.code === "??" ? "U" : file.code.trim()[0]}</span>
-        <span className="min-w-0 flex-1 truncate">
-          {name}
-          {dir && <span className="ml-1.5 text-muted-foreground">{dir}</span>}
-        </span>
-        {file.binary ? (
-          <span className="text-muted-foreground">bin</span>
-        ) : (
-          (file.added !== undefined || file.removed !== undefined) && (
-            <span className="shrink-0 tabular-nums">
-              <span className="text-success">+{file.added ?? 0}</span> <span className="text-destructive">−{file.removed ?? 0}</span>
-            </span>
-          )
-        )}
-      </button>
+      <Tip side="right" label={`${label}: ${file.from ? `${file.from} → ` : ""}${file.path}`}>
+        <button
+          type="button"
+          onClick={onSelect}
+          className={cn("flex w-full items-center gap-2 px-3 py-1 text-left text-xs hover:bg-accent/60", active && "bg-accent text-foreground")}
+        >
+          <span className={cn("w-3 shrink-0 text-center font-mono font-semibold", toneClass[tone])}>{file.code === "??" ? "U" : file.code.trim()[0]}</span>
+          <span className="min-w-0 flex-1 truncate">
+            {name}
+            {dir && <span className="ml-1.5 text-muted-foreground">{dir}</span>}
+          </span>
+          {file.binary ? (
+            <span className="text-muted-foreground">bin</span>
+          ) : (
+            (file.added !== undefined || file.removed !== undefined) && (
+              <span className="shrink-0 tabular-nums">
+                <span className="text-success">+{file.added ?? 0}</span> <span className="text-destructive">−{file.removed ?? 0}</span>
+              </span>
+            )
+          )}
+        </button>
+      </Tip>
     </li>
   );
 }
@@ -207,10 +208,16 @@ function DiffView({ file, run }: { file: FileChange; run: Run }) {
       <div className="flex h-9 shrink-0 items-center gap-2 border-b px-3 text-xs">
         <span className="truncate font-mono">{file.from ? `${file.from} → ${file.path}` : file.path}</span>
         <Badge variant="outline" size="sm">{describeCode(file.code).label}</Badge>
-        <ToggleGroup className="ml-auto" size="sm" variant="outline" value={[mode]} onValueChange={(v: string[]) => v[0] && setMode(v[0] as "unified" | "split")}>
-          <ToggleGroupItem value="unified">Unified</ToggleGroupItem>
-          <ToggleGroupItem value="split">Split</ToggleGroupItem>
-        </ToggleGroup>
+        <PickOne
+          label="Diff layout"
+          className="ml-auto"
+          value={mode}
+          onChange={(v: string) => setMode(v as "unified" | "split")}
+          options={[
+            { value: "unified", label: "Unified" },
+            { value: "split", label: "Split" },
+          ]}
+        />
       </div>
       <div className="min-h-0 flex-1 overflow-auto font-mono text-[12px] leading-5">
         {diff.state === "loading" && <Centered><Spinner className="size-4" /></Centered>}

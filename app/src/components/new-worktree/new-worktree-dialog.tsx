@@ -45,7 +45,9 @@ export function NewWorktreeDialog() {
   const draft = useStore((s) => s.worktreeDraft);
   return (
     <Dialog open={!!draft} onOpenChange={(open) => !open && useStore.getState().closeNewWorktree()}>
-      <DialogPopup className="max-h-[min(88vh,56rem)] sm:max-w-[34rem]" showCloseButton={false}>
+      {/* Anchored at the top: Advanced and the agent's options open below,
+          and a centred dialog would move its title as they do. */}
+      <DialogPopup anchored className="max-h-[min(calc(88vh-2rem),56rem)] sm:max-w-[34rem]" showCloseButton={false}>
         {draft && <Body key={`${draft.box ?? ""}/${draft.location ?? ""}/${draft.template ?? ""}`} />}
       </DialogPopup>
     </Dialog>

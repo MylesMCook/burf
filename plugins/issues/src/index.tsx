@@ -6,6 +6,7 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  FilterChip,
   Icon,
   Input,
   Kbd,
@@ -18,6 +19,7 @@ import {
   MenuTrigger,
   PickOne,
   Skeleton,
+  Tip,
   Tooltip,
   TooltipPopup,
   TooltipTrigger,
@@ -248,7 +250,10 @@ function IssuesScreen({ berth }: ScreenProps) {
             <SortMenu sort={sort} onChange={setSort} />
             <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none]">
               {labelCounts.slice(0, 10).map((l) => (
-                <LabelChip key={l.name} label={l} active={labels.includes(l.name)} onClick={() => setLabels((ls) => (ls.includes(l.name) ? ls.filter((x) => x !== l.name) : [...ls, l.name]))} />
+                <FilterChip key={l.name} className="text-[11px]" pressed={labels.includes(l.name)} onPressedChange={(on: boolean) => setLabels((ls) => (on ? [...ls, l.name] : ls.filter((x) => x !== l.name)))}>
+                  <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: `#${l.color}` }} />
+                  <span className="truncate">{l.name}</span>
+                </FilterChip>
               ))}
             </div>
           </div>
@@ -432,17 +437,18 @@ function IssueRow({
             <span className="flex min-w-0 items-center gap-1 overflow-hidden">
               {run && (
                 // biome-ignore lint/a11y/useKeyWithClickEvents: the issue's own keys reach it.
-                <span
-                  className="inline-flex shrink-0 items-center gap-1 rounded-full border bg-background px-1.5 py-px hover:bg-accent"
-                  title={`${run.worktree} on ${run.box}: open it`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onOpenRun(run);
-                  }}
-                >
-                  <StatePill run={run} compact />
-                  <span className="max-w-28 truncate text-[11px] text-muted-foreground">{run.session ? run.box : run.worktree}</span>
-                </span>
+                <Tip label={`${run.worktree} on ${run.box}: open it`}>
+                  <span
+                    className="inline-flex shrink-0 items-center gap-1 rounded-full border bg-background px-1.5 py-px hover:bg-accent"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenRun(run);
+                    }}
+                  >
+                    <StatePill run={run} compact />
+                    <span className="max-w-28 truncate text-[11px] text-muted-foreground">{run.session ? run.box : run.worktree}</span>
+                  </span>
+                </Tip>
               )}
               {row.labels.slice(0, 3).map((l) => (
                 <LabelChip key={l.name} label={l} />

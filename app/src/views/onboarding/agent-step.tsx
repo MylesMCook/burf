@@ -1,6 +1,5 @@
-import { SparklesIcon } from "lucide-react";
-
 import { AgentIcon } from "@/components/agent-glyph";
+import { Scene } from "@/components/art/scenes";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { useStore } from "@/lib/store";
@@ -19,10 +18,9 @@ export function AgentStep({ box, location, onFinish }: { box: string; location: 
 
   return (
     <div>
-      <span className="flex size-10 items-center justify-center rounded-xl border bg-card text-muted-foreground">
-        <SparklesIcon className="size-5" />
-      </span>
-      <h1 className="mt-6 font-semibold text-xl tracking-tight">Start your first agent</h1>
+      {/* A boat under sail: the first piece of work setting out. */}
+      <Scene name="setting-out" width={152} className="-ml-1" />
+      <h1 className="mt-5 font-semibold text-xl tracking-tight">Start your first agent</h1>
       <p className="mt-2 text-muted-foreground text-sm leading-relaxed">
         A new worktree of <span className="text-foreground">{location}</span> on <span className="text-foreground">{box}</span>, with {first?.name ?? "an agent"} in it. It keeps going if you close Berth, and tells you when it needs you.
       </p>

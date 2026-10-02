@@ -1,5 +1,5 @@
 import { definePlugin, useBoxes, useCurrentWorktree, useLocations, useStorage, type BerthPluginContext, type Location, type ScreenProps, type Session } from "@berth/plugin";
-import { Alert, AlertDescription, Button, Icon, Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger, Tabs, TabsList, TabsTab, ToggleGroup, ToggleGroupItem, Tooltip, TooltipPopup, TooltipTrigger, ViewHeader } from "@berth/plugin/ui";
+import { Alert, AlertDescription, BoxFilter, Button, Icon, PickOne, Tooltip, TooltipPopup, TooltipTrigger, ViewHeader } from "@berth/plugin/ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AccountsView, type Choices } from "./accounts-view";
@@ -30,7 +30,6 @@ export default definePlugin((berth) => {
 // last ones while fresh ones are read.
 const reports = new Map<string, Report>();
 
-const ALL = "*";
 const EMPTY: BoxData = { locations: [], sessions: [], loading: false };
 
 interface BoxData {
@@ -49,9 +48,10 @@ function UsageScreen({ berth }: ScreenProps) {
   const current = useCurrentWorktree();
   const [tab, setTab] = useStorage<"usage" | "accounts">("tab", "usage");
   const [period, setPeriod] = useStorage<Period>("period", 7);
-  // Usage covers every box unless one is picked; accounts are always one box's.
-  const [picked, setPicked] = useStorage<string>("box", ALL);
-  const usageBox = picked !== ALL && allBoxes.includes(picked) ? picked : ALL;
+  // Usage covers every box but those turned off; accounts are always one box's.
+  const [hiddenBoxes, setHiddenBoxes] = useStorage<string[]>("hiddenBoxes", []);
+  const covered = allBoxes.filter((b) => !hiddenBoxes.includes(b)).length ? allBoxes.filter((b) => !hiddenBoxes.includes(b)) : allBoxes;
+  const multi = covered.length > 1;
   const [pickedAccounts, setPickedAccounts] = useStorage<string>("accountsBox", "");
   const accountsBox = online.includes(pickedAccounts) ? pickedAccounts : current && online.includes(current.box) ? current.box : (online[0] ?? "");
 
@@ -86,7 +86,7 @@ function UsageScreen({ berth }: ScreenProps) {
     [berth, current?.box, current?.location, patch],
   );
 
-  const targets = usageBox === ALL ? online : online.includes(usageBox) ? [usageBox] : [];
+  const targets = covered.filter((b) => online.includes(b));
   const targetKey = targets.join(",");
   const loadUsage = useCallback(() => Promise.all(targets.map((b) => loadBox(b))), [targetKey, loadBox]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -136,11 +136,10 @@ function UsageScreen({ berth }: ScreenProps) {
     void loadAccounts();
   }, [tab, accountsBox]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const covered = usageBox === ALL ? allBoxes : [usageBox];
   const states: BoxState[] = covered.map((b) => ({ box: b, online: online.includes(b), loading: Boolean(data[b]?.loading), error: data[b]?.error }));
   const sources: Source[] = targets.flatMap((b) => (data[b]?.report ? [{ box: b, report: data[b].report!, locations: data[b].locations }] : []));
   const loading = tab === "usage" ? states.some((s) => s.loading) : accountsLoading;
-  const single = usageBox !== ALL ? data[usageBox] : undefined;
+  const single = !multi ? data[covered[0]] : undefined;
 
   return (
     <>
@@ -149,31 +148,6 @@ function UsageScreen({ berth }: ScreenProps) {
         description="Tokens Claude Code and Codex used on your boxes, from the transcripts they keep there, and which account new sessions sign in with."
         actions={
           <>
-            <Menu>
-              <MenuTrigger render={<Button variant="outline" size="sm" disabled={!paired.length} />}>
-                <Icon name={tab === "usage" && usageBox === ALL ? "Layers" : "Server"} />
-                {tab === "usage" ? (usageBox === ALL ? "All boxes" : usageBox) : accountsBox || "No box online"}
-                <Icon name="ChevronDown" className="opacity-60" />
-              </MenuTrigger>
-              <MenuPopup align="end">
-                {tab === "usage" && (
-                  <>
-                    <MenuItem onClick={() => setPicked(ALL)}>
-                      <Icon name="Layers" />
-                      All boxes
-                    </MenuItem>
-                    <MenuSeparator />
-                  </>
-                )}
-                {paired.map((b) => (
-                  <MenuItem key={b.name} disabled={b.state !== "online"} onClick={() => (tab === "usage" ? setPicked(b.name) : setPickedAccounts(b.name))}>
-                    <Icon name="Server" />
-                    {b.name}
-                    {b.state !== "online" && <span className="ml-auto pl-3 text-muted-foreground text-xs">offline</span>}
-                  </MenuItem>
-                ))}
-              </MenuPopup>
-            </Menu>
             <Tooltip>
               <TooltipTrigger render={<Button variant="ghost" size="icon-sm" aria-label="Refresh" disabled={!online.length} loading={loading} onClick={() => void (tab === "usage" ? loadUsage() : loadAccounts())} />}>
                 <Icon name="RefreshCw" />
@@ -185,28 +159,43 @@ function UsageScreen({ berth }: ScreenProps) {
       />
 
       <div className="flex flex-wrap items-center gap-3">
-        <Tabs value={tab} onValueChange={(v: "usage" | "accounts") => setTab(v)}>
-          <TabsList>
-            <TabsTab value="usage">Usage</TabsTab>
-            <TabsTab value="accounts">Accounts</TabsTab>
-          </TabsList>
-        </Tabs>
-        {tab === "usage" && (
-          <ToggleGroup className="ml-auto" size="sm" variant="outline" value={[String(period)]} onValueChange={(v: string[]) => v[0] && setPeriod(Number(v[0]) as Period)}>
-            <ToggleGroupItem value="1">Today</ToggleGroupItem>
-            <ToggleGroupItem value="7">7 days</ToggleGroupItem>
-            <ToggleGroupItem value="30">30 days</ToggleGroupItem>
-          </ToggleGroup>
+        <PickOne
+          label="Show"
+          value={tab}
+          onChange={(v: string) => setTab(v as "usage" | "accounts")}
+          options={[
+            { value: "usage", label: "Usage" },
+            { value: "accounts", label: "Accounts" },
+          ]}
+        />
+        {tab === "usage" ? (
+          <>
+            <BoxFilter className="ml-auto" boxes={allBoxes} hidden={hiddenBoxes} onChange={setHiddenBoxes} />
+            <PickOne
+              label="Period"
+              className={allBoxes.length < 2 ? "ml-auto" : undefined}
+              value={String(period)}
+              onChange={(v: string) => setPeriod(Number(v) as Period)}
+              options={[
+                { value: "1", label: "Today" },
+                { value: "7", label: "7 days" },
+                { value: "30", label: "30 days" },
+              ]}
+            />
+          </>
+        ) : (
+          // Accounts are one box's at a time.
+          online.length > 1 && <PickOne label="Box" className="ml-auto" value={accountsBox} onChange={setPickedAccounts} options={online.map((b) => ({ value: b, label: b }))} />
         )}
       </div>
 
-      {tab === "usage" && usageBox === ALL && states.length > 0 && <BoxStatus states={states} files={Object.fromEntries(targets.map((b) => [b, data[b]?.report?.files]))} allBoxes={allBoxes} />}
+      {tab === "usage" && multi && states.length > 0 && <BoxStatus states={states} files={Object.fromEntries(targets.map((b) => [b, data[b]?.report?.files]))} allBoxes={allBoxes} />}
 
       {((tab === "usage" && single?.error) || (tab === "accounts" && accountsError)) && (
         <Alert variant="error">
           <Icon name="CircleAlert" />
           <AlertDescription>
-            Couldn't read {tab === "usage" ? `usage on ${usageBox}: ${single?.error}` : `accounts on ${accountsBox}: ${accountsError}`}
+            Couldn't read {tab === "usage" ? `usage on ${covered[0]}: ${single?.error}` : `accounts on ${accountsBox}: ${accountsError}`}
           </AlertDescription>
         </Alert>
       )}
@@ -214,8 +203,8 @@ function UsageScreen({ berth }: ScreenProps) {
       {!online.length ? (
         <p className="py-16 text-center text-muted-foreground text-sm">Connect a box to see its agents' usage.</p>
       ) : tab === "usage" ? (
-        usageBox !== ALL && !online.includes(usageBox) ? (
-          <p className="py-16 text-center text-muted-foreground text-sm">{usageBox} is offline; its usage shows once it's back.</p>
+        !multi && !online.includes(covered[0]) ? (
+          <p className="py-16 text-center text-muted-foreground text-sm">{covered[0]} is offline; its usage shows once it's back.</p>
         ) : (
           <UsageView
             berth={berth}
@@ -225,7 +214,7 @@ function UsageScreen({ berth }: ScreenProps) {
             accounts={Object.fromEntries(targets.map((b) => [b, data[b]?.accounts]))}
             running={Object.fromEntries(targets.map((b) => [b, data[b]?.sessions]))}
             allBoxes={allBoxes}
-            multi={usageBox === ALL}
+            multi={multi}
           />
         )
       ) : (

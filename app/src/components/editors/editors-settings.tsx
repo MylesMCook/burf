@@ -1,6 +1,7 @@
 import { CheckCircle2Icon, CodeXmlIcon, RefreshCwIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
+import { PickOne } from "@/components/pick-one";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { Spinner } from "@/components/ui/spinner";
@@ -76,21 +77,12 @@ export function EditorsSettings() {
       {editors && (
         <SettingsRow label="Open in" description={installed.length ? "Picking another in any Open in menu changes this too." : "Install Cursor, VS Code, Windsurf or Zed to open worktrees from Berth."}>
           {installed.length > 0 && (
-            <div className="flex rounded-md border bg-muted/40 p-0.5" role="radiogroup" aria-label="Preferred editor">
-              {installed.map((e) => (
-                <button
-                  key={e.id}
-                  type="button"
-                  role="radio"
-                  aria-checked={chosen?.id === e.id}
-                  onClick={() => setPreferredEditor(e.id)}
-                  className={cn("flex h-6 items-center gap-1.5 rounded px-2 text-xs", chosen?.id === e.id ? "bg-background shadow-xs" : "text-foreground/80 hover:text-foreground")}
-                >
-                  <CodeXmlIcon className="size-3" />
-                  {e.name}
-                </button>
-              ))}
-            </div>
+            <PickOne
+              label="Preferred editor"
+              value={chosen?.id ?? ""}
+              onChange={setPreferredEditor}
+              options={installed.map((e) => ({ value: e.id, label: e.name, icon: <CodeXmlIcon className="size-3.5" /> }))}
+            />
           )}
         </SettingsRow>
       )}

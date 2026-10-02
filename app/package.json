@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "tauri": "tauri",
     "build:plugins": "node scripts/build-plugins.mjs",
-    "typecheck:plugins": "tsc --noEmit -p ../plugins"
+    "typecheck:plugins": "tsc --noEmit -p ../plugins",
+    "check:titles": "node scripts/check-titles.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

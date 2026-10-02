@@ -1,13 +1,14 @@
 import { ArrowDownIcon, ArrowUpIcon, CheckIcon, CopyIcon, CornerDownLeftIcon, EllipsisIcon, PauseIcon, PlayIcon, SquareIcon, Trash2Icon } from "lucide-react";
 import { type CSSProperties, useEffect, useMemo, useState } from "react";
 
+import { PickOne } from "@/components/pick-one";
 import { Button } from "@/components/ui/button";
 import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Popover, PopoverPopup, PopoverTrigger } from "@/components/ui/popover";
 import { Sheet, SheetDescription, SheetHeader, SheetPanel, SheetPopup, SheetTitle } from "@/components/ui/sheet";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useActiveTheme } from "@/hooks/use-theme";
+import { useGraphRowHeight } from "@/lib/density";
 import { boxApi } from "@/lib/api";
 import { ago, errorMessage } from "@/lib/format";
 import { type CommitDetail, commitDetailCommand, parseCommitDetail } from "@/lib/git/parse";
@@ -16,7 +17,7 @@ import { cn } from "@/lib/utils";
 import { type Commit, worktreesApi } from "@/lib/worktrees";
 import { ProjectLabel } from "@/views/automations/flows/project-label";
 import { branchOnly, type GraphRow, layout } from "@/views/worktrees/commit-graph";
-import { GraphGutter, gutterWidth, laneColor, laneVars, ROW_H } from "@/views/worktrees/graph-gutter";
+import { GraphGutter, gutterWidth, laneColor, laneVars } from "@/views/worktrees/graph-gutter";
 import { SyncButton } from "@/views/worktrees/sync-button";
 import type { BulkAction, RowProgress } from "@/views/worktrees/use-bulk";
 import { openWorktree, type Row } from "@/views/worktrees/use-worktrees";
@@ -31,8 +32,6 @@ type Scope = "all" | "branch";
 
 // A commit never changes, so what was read about one is kept for the session.
 const details = new Map<string, CommitDetail>();
-
-const toggleCls = "h-6 px-2 text-xs text-muted-foreground data-pressed:bg-background data-pressed:text-foreground data-pressed:shadow-xs dark:data-pressed:bg-input";
 
 // HistorySheet is one worktree: where it stands, what you can do with it,
 // and its commits, newest first, marking those not on its base yet and
@@ -80,6 +79,7 @@ export function HistorySheet({ row, progress, busy, onClose, onAction, onDelete 
 
   const graph = useMemo(() => (log ? layout(scope === "branch" ? branchOnly(log.commits) : log.commits) : undefined), [log, scope]);
   const vars = useMemo(() => laneVars(dark), [dark]);
+  const rowH = useGraphRowHeight();
 
   const baseRef = log?.base ?? row?.base ?? "origin/main";
   const base = baseRef.replace(/^origin\//, "");
@@ -180,14 +180,16 @@ export function HistorySheet({ row, progress, busy, onClose, onAction, onDelete 
                 </span>
               )}
               {showScope && (
-                <ToggleGroup size="sm" variant="outline" className="ml-auto shrink-0" value={[scope]} onValueChange={(v) => v[0] && setScope(v[0] as Scope)} aria-label="Commits to show">
-                  <ToggleGroupItem value="branch" className={toggleCls}>
-                    This branch
-                  </ToggleGroupItem>
-                  <ToggleGroupItem value="all" className={toggleCls}>
-                    With {base}
-                  </ToggleGroupItem>
-                </ToggleGroup>
+                <PickOne<Scope>
+                  label="Commits to show"
+                  className="ml-auto shrink-0"
+                  value={scope}
+                  onChange={setScope}
+                  options={[
+                    { value: "branch", label: "This branch" },
+                    { value: "all", label: `With ${base}` },
+                  ]}
+                />
               )}
             </div>
 
@@ -212,8 +214,20 @@ export function HistorySheet({ row, progress, busy, onClose, onAction, onDelete 
                       </button>
                     </li>
                   )}
-                  {graph.rows.map((g) => (
-                    <CommitRow key={g.commit.sha} row={g} lanes={graph.lanes} base={baseRef} branch={branch} mergeBase={g.commit.sha === graph.mergeBase} where={row} vars={vars} />
+                  {graph.rows.map((g, i) => (
+                    <CommitRow
+                      key={g.commit.sha}
+                      row={g}
+                      lanes={graph.lanes}
+                      height={rowH}
+                      // The branch's own commits share one bar down their run.
+                      run={g.side === "ahead" ? { first: graph.rows[i - 1]?.side !== "ahead", last: graph.rows[i + 1]?.side !== "ahead" } : undefined}
+                      base={baseRef}
+                      branch={branch}
+                      mergeBase={g.commit.sha === graph.mergeBase}
+                      where={row}
+                      vars={vars}
+                    />
                   ))}
                   <li className="flex h-9 items-center" style={{ paddingLeft: gutterWidth(graph.lanes) }}>
                     {log.commits.length >= limit ? (
@@ -236,7 +250,27 @@ export function HistorySheet({ row, progress, busy, onClose, onAction, onDelete 
 
 // CommitRow is one line, like `git log --graph --oneline`: graph, hash,
 // subject, refs, author, age. A click opens what the line leaves out.
-function CommitRow({ row, lanes, base, branch, mergeBase, where, vars }: { row: GraphRow; lanes: number; base: string; branch: string; mergeBase: boolean; where: Row; vars: CSSProperties }) {
+function CommitRow({
+  row,
+  lanes,
+  height,
+  run,
+  base,
+  branch,
+  mergeBase,
+  where,
+  vars,
+}: {
+  row: GraphRow;
+  lanes: number;
+  height: number;
+  run?: { first: boolean; last: boolean };
+  base: string;
+  branch: string;
+  mergeBase: boolean;
+  where: Row;
+  vars: CSSProperties;
+}) {
   const c = row.commit;
   const refs = parseRefs(c.refs);
   const [open, setOpen] = useState(false);
@@ -251,13 +285,14 @@ function CommitRow({ row, lanes, base, branch, mergeBase, where, vars }: { row: 
                 "relative flex w-full items-center gap-2 rounded-md pr-3 text-left outline-none hover:bg-accent/50 focus-visible:bg-accent/60 data-popup-open:bg-accent/70",
                 mergeBase && "bg-info/[0.07]",
               )}
-              style={{ height: ROW_H }}
+              style={{ height }}
             />
           }
         >
-          {/* The branch's own commits carry a bar in its colour. */}
-          {row.side === "ahead" && <span className="absolute inset-y-1 left-0 w-0.5 rounded-full" style={{ background: laneColor(0) }} />}
-          <GraphGutter row={row} lanes={lanes} highlight={mergeBase} />
+          {/* The branch's own commits carry a bar in its colour, one line down
+              the run of them: it meets the next row's, rounded only at the ends. */}
+          {run && <span className={cn("absolute inset-y-0 left-0 w-0.5", run.first && "top-1 rounded-t-full", run.last && "bottom-1 rounded-b-full")} style={{ background: laneColor(0) }} />}
+          <GraphGutter row={row} lanes={lanes} height={height} highlight={mergeBase} />
           <code className={cn("w-[7ch] shrink-0 translate-y-px font-mono text-[11px]", row.side === "ahead" ? "text-foreground" : "text-muted-foreground")}>{c.short}</code>
           <Subject commit={c} merge={row.merge} className={cn("min-w-0 flex-1 truncate text-[13px]", row.side === "behind" ? "text-muted-foreground" : row.side === "shared" && "text-foreground/85")} />
           {mergeBase && <span className="shrink-0 rounded border border-info/40 px-1 text-[10px] text-info leading-4">Branched here</span>}

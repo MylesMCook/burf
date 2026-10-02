@@ -7,7 +7,7 @@ import { mergeProgress, type RunResult, runPlan } from "@/components/add-project
 import { shortPath, uniqueName } from "@/components/add-project/unique-name";
 import { type Destination, type Plan, type Row, usePlan } from "@/components/add-project/use-plan";
 import { BoxStrip } from "@/components/add-project/box-strip";
-import { Mooring } from "@/components/art/mooring";
+import { Scene } from "@/components/art/scenes";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogPanel, DialogPopup, DialogTitle } from "@/components/ui/dialog";
 import { Kbd } from "@/components/ui/kbd";
@@ -555,7 +555,7 @@ function Progress({ logs, busy }: { logs: Log[]; busy: boolean }) {
 function Moored({ box }: { box: string }) {
   return (
     <div className="flex h-[22.5rem] flex-col items-center justify-center gap-1 rounded-lg border border-dashed text-center">
-      <Mooring variant="offline" width={136} className="mb-3" />
+      <Scene name="offline" width={136} className="mb-3" />
       <p className="font-medium text-sm">{box ? `${box} is offline` : "No box is online"}</p>
       <p className="max-w-xs text-muted-foreground text-xs">Projects are added on a box that is online. Pick another above, or check on it in Boxes.</p>
       <Button size="sm" variant="outline" className="mt-3" onClick={() => useStore.getState().setView({ kind: "settings", section: "boxes" })}>

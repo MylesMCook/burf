@@ -25,6 +25,14 @@ scrolls itself. Use `<Frame variant="card">` for a section of a screen (one
 outline, rows directly inside), and `sessionName(session, …)` from
 `@berth/plugin` to name a session the way the app does.
 
+Choices and filters use the app's controls so they mean the same thing
+everywhere: `PickOne` for one of a few values (including a filter with an
+"All" choice), `BoxFilter` for which boxes a screen covers (every box on to
+start, unpress to hide), and `FilterChip` to narrow a list by labels or tags
+(off to start, any number on). Tooltips are `<Tip label>`, never the HTML
+`title` attribute; size list rows with `h-row` or `py-row-pad` so they follow
+the Density setting.
+
 Bundle it as ESM with `react`, `react/jsx-runtime`, `react-dom`,
 `@berth/plugin` and `@berth/plugin/ui` left external: the app provides one
 shared copy of each, so plugin components are ordinary React components in

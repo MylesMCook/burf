@@ -1,4 +1,4 @@
-import { AlertTriangleIcon, CheckIcon, ChevronRightIcon, CircleDashedIcon, CircleIcon, CircleXIcon, ClockIcon, MessageCircleQuestionIcon, SendIcon } from "lucide-react";
+import { AlertTriangleIcon, CheckIcon, ChevronRightIcon, CircleDashedIcon, CircleIcon, CircleXIcon, ClockIcon, CloudOffIcon, ListStartIcon, MessageCircleQuestionIcon, SendIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Tip } from "@/components/tip";
@@ -13,8 +13,9 @@ import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { type SessionEntry, useAllSessions } from "@/hooks/use-agent-counts";
-import { ENDED, type RowState, type RunRow, clearBroadcast, startBroadcast, stopBroadcast, summarize, useBroadcastRun } from "@/lib/broadcast";
-import { agentOf } from "@/lib/derive";
+import { ENDED, type RowState, type RunRow, clearBroadcast, queueRow, startBroadcast, stopBroadcast, summarize, useBroadcastRun } from "@/lib/broadcast";
+import { agentOf, sessionState } from "@/lib/derive";
+import { openQueue } from "@/lib/queue";
 import { load, save } from "@/lib/storage";
 import { type BroadcastDraft, askedVariables, builtinValues, closeBroadcast, fill, isBuiltin, promptsFor, type Target, usePromptUi, usePrompts, variablesIn } from "@/lib/prompts";
 import { useStore } from "@/lib/store";
@@ -61,6 +62,8 @@ function Compose({ d, onStarted }: { d: BroadcastDraft; onStarted(): void }) {
   const [overrides, setOverrides] = useState<Record<string, string>>({});
   const [open, setOpen] = useState<string>();
   const [waitTurns, setWaitTurns] = useState(() => load("berth.broadcast.wait", true));
+  const [queueOffline, setQueueOffline] = useState(true);
+  const status = useStore((s) => s.status);
 
   useEffect(() => {
     void usePrompts.getState().load();
@@ -73,8 +76,18 @@ function Compose({ d, onStarted }: { d: BroadcastDraft; onStarted(): void }) {
   const builtinsUsed = variablesIn(body).filter(isBuiltin);
 
   const agents = all.filter((e) => e.state !== "exited" && agentOf(e.session));
+  // Agents on boxes that are away, as the app last saw them: their prompts
+  // wait in the offline queue until the box is back.
+  const away = useMemo(() => {
+    const off = new Set(status?.boxes.filter((b) => b.state !== "online").map((b) => b.name));
+    return Object.entries(boxes)
+      .filter(([box]) => off.has(box))
+      .flatMap(([box, bd]) => (bd.sessions ?? []).map((session) => ({ box, session, state: sessionState(session, bd.stats) })))
+      .filter((e) => e.state !== "exited" && agentOf(e.session));
+  }, [boxes, status]);
+  const awayBoxes = new Set(away.map((e) => e.box));
   const preselected = new Set((d.targets ?? []).map(keyOf));
-  const shown = agents.filter((e) => !onlyFree || free(e) || preselected.has(keyOf({ box: e.box, session: e.session.name })));
+  const shown = [...agents.filter((e) => !onlyFree || free(e) || preselected.has(keyOf({ box: e.box, session: e.session.name }))), ...away];
   const byBox = [...new Set(shown.map((e) => e.box))].map((box) => [box, shown.filter((e) => e.box === box)] as const);
   const chosen = shown.filter((e) => selected.has(keyOf({ box: e.box, session: e.session.name })));
 
@@ -84,6 +97,7 @@ function Compose({ d, onStarted }: { d: BroadcastDraft; onStarted(): void }) {
     return builtinsUsed.filter((n) => !v[n]);
   };
   const ready = !!body.trim() && chosen.length > 0;
+  const chosenAway = chosen.filter((e) => awayBoxes.has(e.box)).length;
 
   const toggle = (k: string, on: boolean) =>
     setSelected((s) => {
@@ -100,6 +114,7 @@ function Compose({ d, onStarted }: { d: BroadcastDraft; onStarted(): void }) {
     startBroadcast({
       title: prompt?.title ?? (custom.trim().split("\n")[0].slice(0, 60) || "Prompt"),
       wait: waitTurns,
+      queueOffline,
       items: chosen.map((e) => ({ box: e.box, session: e.session.name, text: textFor(e) })),
     });
     onStarted();
@@ -152,7 +167,11 @@ function Compose({ d, onStarted }: { d: BroadcastDraft; onStarted(): void }) {
             {byBox.length === 0 && <p className="px-3 py-6 text-center text-muted-foreground text-sm">{onlyFree && agents.length ? "Every agent is busy. Turn off the filter to queue behind them." : "No agents are running."}</p>}
             {byBox.map(([box, entries]) => (
               <div key={box}>
-                <div className="border-b bg-muted/40 px-3 py-1 font-medium text-[11px] text-muted-foreground">{box}</div>
+                <div className="flex items-center gap-1.5 border-b bg-muted/40 px-3 py-1 font-medium text-[11px] text-muted-foreground">
+                  {awayBoxes.has(box) && <CloudOffIcon className="size-3" />}
+                  {box}
+                  {awayBoxes.has(box) && <span className="font-normal">· offline, as last seen</span>}
+                </div>
                 {entries.map((e) => {
                   const k = keyOf({ box: e.box, session: e.session.name });
                   return (
@@ -179,6 +198,12 @@ function Compose({ d, onStarted }: { d: BroadcastDraft; onStarted(): void }) {
           <Switch checked={waitTurns} onCheckedChange={setWaitTurns} />
           Then wait for each turn to end, and show what they said
         </label>
+        {chosenAway > 0 && (
+          <label className="-mt-2 flex cursor-pointer items-center gap-2 text-sm">
+            <Switch checked={queueOffline} onCheckedChange={setQueueOffline} />
+            Queue for the {chosenAway === 1 ? "agent" : `${chosenAway} agents`} on offline boxes, to send when they're back
+          </label>
+        )}
       </DialogPanel>
 
       <DialogFooter className="items-center px-5 py-3">
@@ -264,11 +289,14 @@ const stateInfo: Record<RowState, { label: string; Icon?: typeof CheckIcon; clas
   exited: { label: "Exited", Icon: CircleIcon, className: "text-muted-foreground" },
   failed: { label: "Failed", Icon: CircleXIcon, className: "text-destructive-foreground" },
   stopped: { label: "Not sent", Icon: CircleIcon, className: "text-muted-foreground" },
+  offline: { label: "Box offline", Icon: CloudOffIcon, className: "text-warning-foreground" },
+  deferred: { label: "Queued for later", Icon: ListStartIcon, className: "text-info-foreground" },
 };
 
 function RunView({ onAgain }: { onAgain(): void }) {
   const run = useBroadcastRun((s) => s.run)!;
-  const sent = run.rows.filter((r) => r.state !== "queued" && r.state !== "sending" && r.state !== "stopped" && r.state !== "failed").length;
+  const sent = run.rows.filter((r) => !["queued", "sending", "stopped", "failed", "offline", "deferred"].includes(r.state)).length;
+  const offline = run.rows.flatMap((r, i) => (r.state === "offline" ? [i] : []));
   const ended = run.rows.filter((r) => ENDED.includes(r.state) || (!run.wait && r.state === "sent")).length;
   const problems = run.rows.some((r) => r.state === "failed");
   return (
@@ -283,8 +311,8 @@ function RunView({ onAgain }: { onAgain(): void }) {
         </DialogDescription>
       </DialogHeader>
       <DialogPanel className="flex flex-col gap-2 px-5 pb-5">
-        {run.rows.map((r) => (
-          <ResultRow key={`${r.box}/${r.session}`} row={r} />
+        {run.rows.map((r, i) => (
+          <ResultRow key={`${r.box}/${r.session}`} row={r} onQueue={() => void queueRow(run.id, i)} />
         ))}
       </DialogPanel>
       <DialogFooter className="items-center px-5 py-3">
@@ -299,6 +327,12 @@ function RunView({ onAgain }: { onAgain(): void }) {
           </>
         ) : (
           <>
+            {offline.length > 0 && (
+              <Button type="button" variant="outline" onClick={() => offline.forEach((i) => void queueRow(run.id, i))}>
+                <ListStartIcon />
+                Queue {offline.length} for when {offline.length === 1 ? "its box is" : "their boxes are"} back
+              </Button>
+            )}
             <Button
               type="button"
               variant="ghost"
@@ -325,7 +359,7 @@ function RunView({ onAgain }: { onAgain(): void }) {
   );
 }
 
-function ResultRow({ row }: { row: RunRow }) {
+function ResultRow({ row, onQueue }: { row: RunRow; onQueue(): void }) {
   const { session, title, detail } = useTargetLabel(row.box, row.session);
   const info = stateInfo[row.state];
   return (
@@ -338,18 +372,40 @@ function ResultRow({ row }: { row: RunRow }) {
           {info.spin ? <Spinner className="size-3" /> : info.Icon && <info.Icon className="size-3.5" />}
           {info.label}
         </span>
-        <Button
-          type="button"
-          size="xs"
-          variant="ghost"
-          className="h-6 text-[11px]"
-          onClick={() => {
-            closeBroadcast();
-            void focusSession(row.box, row.session);
-          }}
-        >
-          Open
-        </Button>
+        {row.state === "offline" && (
+          <Tip label={`Send it when ${row.box} is back`}>
+            <Button type="button" size="xs" variant="outline" className="h-6 text-[11px]" onClick={onQueue}>
+              Queue
+            </Button>
+          </Tip>
+        )}
+        {row.state === "deferred" ? (
+          <Button
+            type="button"
+            size="xs"
+            variant="ghost"
+            className="h-6 text-[11px]"
+            onClick={() => {
+              closeBroadcast();
+              openQueue();
+            }}
+          >
+            View queue
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            size="xs"
+            variant="ghost"
+            className="h-6 text-[11px]"
+            onClick={() => {
+              closeBroadcast();
+              void focusSession(row.box, row.session);
+            }}
+          >
+            Open
+          </Button>
+        )}
       </div>
       {row.error && <p className="border-t px-3 py-1.5 text-destructive-foreground text-xs">{row.error}</p>}
       {row.tail && row.tail.length > 0 && (

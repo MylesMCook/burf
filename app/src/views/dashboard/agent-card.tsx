@@ -1,17 +1,21 @@
+import { SquareIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { AgentIcon } from "@/components/agent-glyph";
 import { openOrchestrate, SessionActions } from "@/components/orchestrate/session-actions";
+import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toastManager } from "@/components/ui/toast";
 import type { SessionEntry } from "@/hooks/use-agent-counts";
 import { boxApi } from "@/lib/api";
-import { agentOf, worktreeOf } from "@/lib/derive";
+import { agentOf } from "@/lib/derive";
 import { errorMessage } from "@/lib/format";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { focusSession } from "@/lib/workspaces";
+import { describeAgent, startedAt } from "@/views/dashboard/names";
+import { confirmStop, StopMenuItems } from "@/views/dashboard/stop";
 import { type Choice, useScreenTail } from "@/views/dashboard/use-screen-tail";
 
 // One clock for every card, so a board of them re-renders once a second at
@@ -50,7 +54,8 @@ export function duration(ms: number): string {
 export function AgentCard({ entry, selecting, selected, onSelect }: { entry: SessionEntry; selecting?: boolean; selected?: boolean; onSelect?(): void }) {
   const { box, session, state } = entry;
   const locations = useStore((s) => s.boxes[box]?.locations);
-  const where = worktreeOf(locations, session);
+  const sessions = useStore((s) => s.boxes[box]?.sessions);
+  const { where, place: title, name, crowded, prompt } = describeAgent(session, sessions, locations);
   const now = useNow();
   // A ready agent has said nothing yet: its screen is only a banner.
   const { tail, choices } = useScreenTail(box, session, 3, state === "running", state !== "ready");
@@ -62,7 +67,6 @@ export function AgentCard({ entry, selecting, selected, onSelect }: { entry: Ses
   }, []);
 
   const open = () => void focusSession(box, session.name);
-  const title = where?.worktree.main ? where.location.name : (where?.worktree.name ?? session.location ?? session.name);
   const asking = state === "waiting" && choices.length > 0;
   // The question, without the options the chips below already show.
   const lines = asking ? (tail ?? []).filter((l) => !/^\s*(?:[❯›>]\s*)?\d[.)]\s/.test(l)) : tail;
@@ -81,11 +85,19 @@ export function AgentCard({ entry, selecting, selected, onSelect }: { entry: Ses
         selected && "border-primary/60 ring-1 ring-primary/30 hover:border-primary/60",
       )}
     >
-      <div className="px-3 pt-2.5">
+      <div className="px-3 pt-row-pad">
         <div className="flex items-center gap-2">
           {selecting && <Checkbox checked={!!selected} tabIndex={-1} aria-hidden className="pointer-events-none" />}
           <AgentIcon agent={agentOf(session)} />
-          <span className="min-w-0 flex-1 truncate font-medium text-[13px]">{title}</span>
+          <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
+            <span className="min-w-0 truncate font-medium text-[13px]">{title}</span>
+            {/* Several agents in one worktree: which one this is. */}
+            {crowded && (
+              <span className="shrink-0 text-[11px] text-muted-foreground" title={session.name}>
+                {name}
+              </span>
+            )}
+          </span>
           <span className={cn("shrink-0 font-mono text-[11px] tabular-nums", state === "waiting" ? "text-warning" : "text-muted-foreground")} title={`Since ${new Date(since).toLocaleString()}`}>
             {duration(now - new Date(since).getTime())}
           </span>
@@ -93,8 +105,14 @@ export function AgentCard({ entry, selecting, selected, onSelect }: { entry: Ses
         <div className="mt-0.5 truncate pl-5.5 text-[11px] text-muted-foreground">
           {box}
           {where && ` · ${where.location.name}`}
+          {crowded && ` · started ${startedAt(session.created)}`}
           {where?.worktree.branch && where.worktree.branch !== title && <span className="opacity-70"> · {where.worktree.branch}</span>}
         </div>
+        {prompt && (
+          <div className="mt-1 truncate pl-5.5 text-[11px] text-foreground/70 italic" title={prompt}>
+            “{prompt}”
+          </div>
+        )}
         {lines && lines.length > 0 && state !== "ready" && (
           <div className={cn("mt-2 space-y-px rounded-md bg-muted/50 px-2 py-1.5 font-mono text-[11px] leading-snug", state === "waiting" ? "text-foreground/85" : "text-muted-foreground")}>
             {lines.map((l, i) => (
@@ -108,6 +126,20 @@ export function AgentCard({ entry, selecting, selected, onSelect }: { entry: Ses
       </div>
 
       <footer className="mt-2 flex items-center gap-1 border-t px-1.5 py-1">
+        {!selecting && (
+          <span className="flex" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
+            <Tip label="Stop agent…">
+              <button
+                type="button"
+                aria-label={`Stop ${name} in ${title}`}
+                onClick={() => confirmStop(entry)}
+                className="inline-flex size-6 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive-foreground focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
+              >
+                <SquareIcon className="size-3" />
+              </button>
+            </Tip>
+          </span>
+        )}
         <span className="ml-auto flex items-center gap-0.5" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
           <Button size="xs" variant="ghost" className="h-6 text-[11px]" onClick={open}>
             Open
@@ -115,7 +147,9 @@ export function AgentCard({ entry, selecting, selected, onSelect }: { entry: Ses
           <Button size="xs" variant="ghost" className="h-6 text-[11px]" onClick={() => openOrchestrate("send", box, session.name)}>
             {state === "ready" ? "Prompt…" : "Reply…"}
           </Button>
-          <SessionActions box={box} session={session.name} />
+          <SessionActions box={box} session={session.name}>
+            <StopMenuItems entry={entry} />
+          </SessionActions>
         </span>
       </footer>
     </article>
@@ -141,20 +175,21 @@ function Answers({ box, session, choices }: { box: string; session: string; choi
   return (
     <div className="mt-2 flex flex-wrap gap-1" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
       {choices.map((c) => (
-        <button
-          key={c.key}
-          type="button"
-          disabled={!!sent}
-          onClick={() => void answer(c)}
-          title={c.label}
-          className={cn(
-            "inline-flex h-6 max-w-full items-center gap-1.5 rounded-md border bg-background px-2 text-[11px] transition-colors hover:border-ring/50 disabled:opacity-50",
-            sent === c.key && "border-success/50 text-success",
-          )}
-        >
-          <span className="font-mono text-muted-foreground">{c.key}</span>
-          <span className="truncate">{c.label.length > 28 ? `${c.label.slice(0, 27)}…` : c.label}</span>
-        </button>
+        // The whole answer when it is cut short.
+        <Tip key={c.key} label={c.label.length > 28 ? c.label : undefined} wrapClassName="max-w-full">
+          <button
+            type="button"
+            disabled={!!sent}
+            onClick={() => void answer(c)}
+            className={cn(
+              "inline-flex h-6 max-w-full items-center gap-1.5 rounded-md border bg-background px-2 text-[11px] transition-colors hover:border-ring/50 disabled:opacity-50",
+              sent === c.key && "border-success/50 text-success",
+            )}
+          >
+            <span className="font-mono text-muted-foreground">{c.key}</span>
+            <span className="truncate">{c.label.length > 28 ? `${c.label.slice(0, 27)}…` : c.label}</span>
+          </button>
+        </Tip>
       ))}
     </div>
   );

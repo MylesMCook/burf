@@ -1,12 +1,14 @@
-import { GitBranchIcon, SearchIcon } from "lucide-react";
+import { SearchIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { Scene } from "@/components/art/scenes";
+import { BoxFilter, shownBoxes as shownOf } from "@/components/box-filter";
+import { FilterChip } from "@/components/filter-chip";
 import { SimpleSelect } from "@/components/simple-select";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { load, save } from "@/lib/storage";
 import { ViewHeader } from "@/views/view-header";
 import { BulkBar } from "@/views/worktrees/bulk-bar";
@@ -25,8 +27,6 @@ const SORTS: { value: Sort; label: string }[] = [
   { value: "changes", label: "Most changes" },
   { value: "name", label: "Name" },
 ];
-
-const toggleCls = "h-7 px-2.5 text-xs text-muted-foreground data-pressed:bg-background data-pressed:text-foreground data-pressed:shadow-xs dark:data-pressed:bg-input";
 
 // WorktreesView is every worktree on every box in one table, to see where
 // each stands against its base and act on many at once: sync, pause, stop,
@@ -51,7 +51,7 @@ export function WorktreesView() {
   // pointer while their commits change, until its summary is dismissed.
   const [frozen, setFrozen] = useState<string[]>();
 
-  const shownBoxes = boxes.filter((b) => !hiddenBoxes.includes(b));
+  const shownBoxes = shownOf(boxes, hiddenBoxes);
   const hideBoxes = (next: string[]) => {
     setHiddenBoxes(next);
     save("berth.worktrees.hiddenBoxes", next);
@@ -62,7 +62,7 @@ export function WorktreesView() {
   const visible = useMemo(() => {
     const keep = rows.filter(
       (r) =>
-        !hiddenBoxes.includes(r.box) &&
+        shownBoxes.includes(r.box) &&
         (!project || r.location === project) &&
         (!flags.includes("behind") || r.behind > 0) &&
         (!flags.includes("changes") || r.changed + r.untracked > 0) &&
@@ -79,7 +79,7 @@ export function WorktreesView() {
     const pos = (r: Row) => at.get(r.key) ?? Number.MAX_SAFE_INTEGER;
     // The main checkout heads its project; the rest follow the sort.
     return keep.sort((a, b) => Number(!!b.main) - Number(!!a.main) || (frozen ? pos(a) - pos(b) : 0) || by[sort](a, b));
-  }, [rows, hiddenBoxes, project, flags, q, sort, frozen]);
+  }, [rows, shownBoxes.join(","), project, flags, q, sort, frozen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const groups = useMemo(() => {
     const map = new Map<string, Group>();
@@ -151,7 +151,8 @@ export function WorktreesView() {
     setFrozen(undefined);
   };
   const open = rows.find((r) => r.key === openKey);
-  const filtered = !!(q || hiddenBoxes.some((b) => boxes.includes(b)) || project || flags.length);
+  const filtered = !!(q || shownBoxes.length < boxes.length || project || flags.length);
+  const flip = (f: Flag) => setFlags((fs) => (fs.includes(f) ? fs.filter((x) => x !== f) : [...fs, f]));
   const clearFilters = () => {
     setQuery("");
     hideBoxes([]);
@@ -174,39 +175,22 @@ export function WorktreesView() {
           <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 z-10 size-3.5 -translate-y-1/2 text-muted-foreground" />
           <Input size="sm" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search" className="[&_input]:pl-8" aria-label="Search worktrees" />
         </div>
-        {boxes.length > 1 && (
-          <ToggleGroup
-            multiple
-            size="sm"
-            variant="outline"
-            className="shrink-0"
-            value={shownBoxes}
-            // Turning every box off means "show everything", not an empty table.
-            onValueChange={(v) => hideBoxes((v as string[]).length ? boxes.filter((b) => !(v as string[]).includes(b)) : [])}
-            aria-label="Boxes to show"
-          >
-            {boxes.map((b) => (
-              <ToggleGroupItem key={b} value={b} className={toggleCls}>
-                {b}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
-        )}
+        <BoxFilter boxes={boxes} hidden={hiddenBoxes} onChange={hideBoxes} />
         <div className="w-40 min-w-28 shrink">
           <SimpleSelect size="sm" className="min-w-0" value={project} onChange={setProject} options={[{ value: "", label: "All projects" }, ...projects.map((p) => ({ value: p, label: p }))]} />
         </div>
-        <ToggleGroup multiple size="sm" variant="outline" className="shrink-0" value={flags} onValueChange={(v) => setFlags(v as Flag[])} aria-label="Show only">
-          <ToggleGroupItem value="behind" className={toggleCls}>
+        <div className="flex shrink-0 items-center gap-1" role="group" aria-label="Show only">
+          <FilterChip pressed={flags.includes("behind")} onPressedChange={() => flip("behind")}>
             Behind<span className="@max-[56rem]/toolbar:hidden"> base</span>
-          </ToggleGroupItem>
-          <ToggleGroupItem value="changes" className={toggleCls}>
+          </FilterChip>
+          <FilterChip pressed={flags.includes("changes")} onPressedChange={() => flip("changes")}>
             <span className="@max-[56rem]/toolbar:hidden">Has changes</span>
             <span className="@min-[56rem]/toolbar:hidden">Changed</span>
-          </ToggleGroupItem>
-          <ToggleGroupItem value="paused" className={toggleCls}>
+          </FilterChip>
+          <FilterChip pressed={flags.includes("paused")} onPressedChange={() => flip("paused")}>
             Paused
-          </ToggleGroupItem>
-        </ToggleGroup>
+          </FilterChip>
+        </div>
         {filtered && (
           <Button size="xs" variant="ghost" className="shrink-0" onClick={clearFilters}>
             Clear filters
@@ -242,8 +226,10 @@ export function WorktreesView() {
         ) : flat.length === 0 ? (
           <Empty className="mt-16">
             <EmptyHeader>
-              <EmptyMedia variant="icon">
-                <GitBranchIcon />
+              <EmptyMedia>
+                {/* Worktrees are berths: none yet is an empty one; none
+                    passing the filters, a beam finding nothing. */}
+                <Scene name={filtered ? "lighthouse" : "ended"} />
               </EmptyMedia>
               <EmptyTitle>{filtered ? "No worktrees match" : "No worktrees yet"}</EmptyTitle>
               <EmptyDescription>{filtered ? "Nothing here passes every filter." : "Worktrees you make on any box show up here."}</EmptyDescription>

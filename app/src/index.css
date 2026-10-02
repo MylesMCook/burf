@@ -64,6 +64,11 @@
     --radius-2xl: calc(var(--radius) * 1.8);
     --radius-3xl: calc(var(--radius) * 2.2);
     --radius-4xl: calc(var(--radius) * 2.6);
+    /* Density: h-row, py-row-pad, gap-row-gap, h-side-row. See below. */
+    --spacing-row: var(--row-h);
+    --spacing-row-pad: var(--row-pad);
+    --spacing-row-gap: var(--row-gap);
+    --spacing-side-row: var(--side-row);
   @keyframes skeleton {
   to {
     background-position: -200% 0;
@@ -278,6 +283,25 @@
 }
 .xterm {
   height: 100%;
+}
+
+/* Density (Settings → Appearance), set as data-density on the root. Tables
+   and lists size their rows from these rather than their own numbers:
+   h-row for a one-line row (Worktrees, flow runs), py-row-pad for a row of
+   two or three lines (Review, History, flows, hooks), gap-row-gap between
+   stacked cards (the Agent Dashboard), h-side-row for the sidebar's rows.
+   The commit graph draws in pixels; lib/density.ts has its row height. */
+:root {
+  --row-h: 2.25rem;
+  --row-pad: 0.5rem;
+  --row-gap: 0.5rem;
+  --side-row: 1.75rem;
+}
+:root[data-density="comfortable"] {
+  --row-h: 2.75rem;
+  --row-pad: 0.75rem;
+  --row-gap: 0.75rem;
+  --side-row: 2rem;
 }
 
 /* The notification centre dims the window lightly, without the blur other

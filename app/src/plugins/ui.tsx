@@ -24,6 +24,9 @@ import { Menu, MenuTrigger, MenuPopup, MenuItem, MenuGroup, MenuGroupLabel, Menu
 import { Sheet, SheetClose, SheetDescription, SheetFooter, SheetHeader, SheetPanel, SheetPopup, SheetTitle } from "@/components/ui/sheet";
 import { Checkbox } from "@/components/ui/checkbox";
 import { PickOne } from "@/components/pick-one";
+import { BoxFilter } from "@/components/box-filter";
+import { FilterChip } from "@/components/filter-chip";
+import { Tip } from "@/components/tip";
 import { AgentPicker } from "@/components/new-worktree/agent-picker";
 import { AgentIcon } from "@/components/agent-glyph";
 import { cn } from "@/lib/utils";
@@ -122,6 +125,9 @@ export const pluginUi = {
   SheetClose,
   Checkbox,
   PickOne,
+  BoxFilter,
+  FilterChip,
+  Tip,
   AgentPicker,
   AgentIcon,
   Icon,

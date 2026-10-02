@@ -1,5 +1,5 @@
 import type { BerthPluginContext, Location, Session } from "@berth/plugin";
-import { Badge, Button, Empty, EmptyDescription, EmptyHeader, EmptyTitle, Frame, FrameHeader, FramePanel, FrameTitle, Icon, Skeleton, Spinner, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, cn } from "@berth/plugin/ui";
+import { Badge, Button, Empty, EmptyDescription, EmptyHeader, EmptyTitle, Frame, FrameHeader, FramePanel, FrameTitle, Icon, PickOne, Skeleton, Spinner, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, cn } from "@berth/plugin/ui";
 import { useMemo, useState } from "react";
 
 import type { Account, Agent, Limits, Window } from "./box";
@@ -92,13 +92,16 @@ export function UsageView({ berth, period, sources, states, accounts, running, a
           <FrameHeader className="flex-row items-center gap-2 py-3">
             <FrameTitle>Tokens per day</FrameTitle>
             {showBox && (
-              <div className="ml-auto flex rounded-md border p-0.5 text-xs" role="radiogroup" aria-label="Stack by">
-                {(["agent", "box"] as const).map((k) => (
-                  <button key={k} type="button" role="radio" aria-checked={stackBy === k} className={cn("rounded-[5px] px-2 py-0.5", stackBy === k ? "bg-accent font-medium" : "text-muted-foreground hover:text-foreground")} onClick={() => setStackBy(k)}>
-                    By {k}
-                  </button>
-                ))}
-              </div>
+              <PickOne
+                label="Stack by"
+                className="ml-auto"
+                value={stackBy}
+                onChange={(v: string) => setStackBy(v as "agent" | "box")}
+                options={[
+                  { value: "agent", label: "By agent" },
+                  { value: "box", label: "By box" },
+                ]}
+              />
             )}
           </FrameHeader>
           <FramePanel className="p-4">

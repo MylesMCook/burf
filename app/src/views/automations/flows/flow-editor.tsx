@@ -3,6 +3,7 @@ import { Fragment, useMemo, useState } from "react";
 
 import { PickOne } from "@/components/pick-one";
 import { SimpleSelect } from "@/components/simple-select";
+import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
@@ -111,9 +112,11 @@ export function FlowEditor({
           </Button>
         )}
         {!readOnly && (
-          <Button size="sm" onClick={save} loading={saving} disabled={!flow.name.trim() || !dirty}>
-            {isNew ? "Create flow" : "Save"}
-          </Button>
+          <Tip label={!flow.name.trim() ? "Name it first" : !dirty ? "Nothing changed" : undefined}>
+            <Button size="sm" onClick={save} loading={saving} disabled={!flow.name.trim() || !dirty}>
+              {isNew ? "Create flow" : "Save"}
+            </Button>
+          </Tip>
         )}
       </header>
 

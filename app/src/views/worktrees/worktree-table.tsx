@@ -135,7 +135,7 @@ function WorktreeRow({ row: r, selected, progress, open, onToggle, onOpen }: { r
         }
       }}
       className={cn(
-        "group grid h-9 cursor-pointer items-center gap-3 border-b border-border/60 px-4 text-sm outline-none hover:bg-accent/40 focus-visible:bg-accent/40",
+        "group grid h-row cursor-pointer items-center gap-3 border-b border-border/60 px-4 text-sm outline-none hover:bg-accent/40 focus-visible:bg-accent/40",
         COLS,
         selected && "bg-primary/[0.06] hover:bg-primary/[0.09]",
         open && "bg-accent/60",

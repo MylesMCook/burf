@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 
+import { PickOne } from "@/components/pick-one";
+import { Tip } from "@/components/tip";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { ExecResult } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
 import { committedDiffCommand, describeCode, type DiffLine, diffCommand, type FileChange, parseDiff, splitRows } from "@/lib/git/parse";
@@ -24,25 +25,26 @@ export function FileRow({ file, active, onSelect }: { file: FileChange; active: 
   const dir = slash > 0 ? file.path.slice(0, slash) : "";
   return (
     <li>
-      <button
-        type="button"
-        onClick={onSelect}
-        title={`${label}: ${file.from ? `${file.from} → ` : ""}${file.path}`}
-        className={cn("flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs hover:bg-accent/60", active && "bg-accent text-foreground")}
-      >
-        <span className={cn("w-3 shrink-0 text-center font-mono font-semibold", toneClass[tone])}>{file.code === "??" ? "U" : file.code.trim()[0]}</span>
-        <span className="min-w-0 flex-1 truncate">
-          {name}
-          {dir && <span className="ml-1.5 text-muted-foreground">{dir}</span>}
-        </span>
-        {file.binary ? (
-          <span className="text-muted-foreground">bin</span>
-        ) : (
-          <span className="shrink-0 font-mono text-[11px] tabular-nums">
-            <span className="text-success">+{file.added ?? 0}</span> <span className="text-destructive">−{file.removed ?? 0}</span>
+      <Tip side="right" label={`${label}: ${file.from ? `${file.from} → ` : ""}${file.path}`}>
+        <button
+          type="button"
+          onClick={onSelect}
+          className={cn("flex w-full items-center gap-2 rounded-md px-2 py-1 text-left text-xs hover:bg-accent/60", active && "bg-accent text-foreground")}
+        >
+          <span className={cn("w-3 shrink-0 text-center font-mono font-semibold", toneClass[tone])}>{file.code === "??" ? "U" : file.code.trim()[0]}</span>
+          <span className="min-w-0 flex-1 truncate">
+            {name}
+            {dir && <span className="ml-1.5 text-muted-foreground">{dir}</span>}
           </span>
-        )}
-      </button>
+          {file.binary ? (
+            <span className="text-muted-foreground">bin</span>
+          ) : (
+            <span className="shrink-0 font-mono text-[11px] tabular-nums">
+              <span className="text-success">+{file.added ?? 0}</span> <span className="text-destructive">−{file.removed ?? 0}</span>
+            </span>
+          )}
+        </button>
+      </Tip>
     </li>
   );
 }
@@ -75,21 +77,19 @@ export function DiffView({ file, run, base }: { file: FileChange; run: Run; base
         <Badge variant="outline" size="sm">
           {describeCode(file.code).label}
         </Badge>
-        <ToggleGroup
+        <PickOne<"unified" | "split">
+          label="Diff layout"
           className="ml-auto"
-          size="sm"
-          variant="outline"
-          value={[mode]}
-          onValueChange={(v: string[]) => {
-            const m = v[0] as "unified" | "split" | undefined;
-            if (!m) return;
+          value={mode}
+          onChange={(m) => {
             setMode(m);
             save(MODE_KEY, m);
           }}
-        >
-          <ToggleGroupItem value="unified">Unified</ToggleGroupItem>
-          <ToggleGroupItem value="split">Split</ToggleGroupItem>
-        </ToggleGroup>
+          options={[
+            { value: "unified", label: "Unified" },
+            { value: "split", label: "Split" },
+          ]}
+        />
       </div>
       <div className="min-h-0 flex-1 overflow-auto font-mono text-[12px] leading-5 [font-variant-ligatures:none]">
         {diff.state === "loading" && (

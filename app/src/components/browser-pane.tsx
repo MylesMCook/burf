@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { ArrowLeftIcon, ArrowUpRightIcon, ArrowRightIcon, ExternalLinkIcon, GlobeIcon, RotateCwIcon } from "lucide-react";
 import { useEffect, useId, useImperativeHandle, useMemo, useRef, useState } from "react";
 
+import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { isTauri } from "@/lib/api";
@@ -105,9 +106,11 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate }: Props) {
         </ToolButton>
         <div className="flex h-6.5 min-w-0 flex-1 items-center rounded-md border bg-muted/50 focus-within:border-ring">
           {where && (
-            <span className="ml-1 shrink-0 rounded bg-accent px-1.5 py-px font-medium text-[10px] text-muted-foreground" title={url}>
-              {berthUrlLabel(where)}
-            </span>
+            // Tooltips here open upward: below the bar is the page, which in
+            // the app is a native view that would cover them.
+            <Tip label={<span className="break-all font-mono">{url}</span>} className="max-w-md">
+              <span className="ml-1 shrink-0 rounded bg-accent px-1.5 py-px font-medium text-[10px] text-muted-foreground">{berthUrlLabel(where)}</span>
+            </Tip>
           )}
           <input
             ref={address}
@@ -319,16 +322,17 @@ function useAppOverlay(): boolean {
 
 function ToolButton({ label, disabled, onClick, children }: { label: string; disabled?: boolean; onClick(): void; children: React.ReactNode }) {
   return (
-    <button
-      type="button"
-      title={label}
-      aria-label={label}
-      disabled={disabled}
-      onClick={onClick}
-      className={cn("inline-flex size-6.5 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-35 disabled:hover:bg-transparent [&_svg]:size-3.5")}
-    >
-      {children}
-    </button>
+    <Tip label={label}>
+      <button
+        type="button"
+        aria-label={label}
+        disabled={disabled}
+        onClick={onClick}
+        className={cn("inline-flex size-6.5 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-35 disabled:hover:bg-transparent [&_svg]:size-3.5")}
+      >
+        {children}
+      </button>
+    </Tip>
   );
 }
 

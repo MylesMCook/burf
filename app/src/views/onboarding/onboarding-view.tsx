@@ -30,7 +30,9 @@ export function OnboardingView() {
 
   return (
     <div className="relative flex h-full flex-col overflow-y-auto bg-background">
-      <div className="mx-auto flex w-full max-w-lg flex-1 flex-col justify-center px-6 py-16">
+      {/* Anchored at the top, as the launcher is: steps differ in height, and
+          centring them would move each title as the step changes. */}
+      <div className="mx-auto flex w-full max-w-lg flex-1 flex-col px-6 pt-[18vh] pb-16">
         <div className="mb-10 flex items-center">
           <Progress at={step.kind} />
           {/* Skipping makes sense once there is a box to work on. */}
@@ -43,11 +45,12 @@ export function OnboardingView() {
         <div key={step.kind} className="onboarding-step">
           {step.kind === "welcome" && <WelcomeStep onNext={() => setStep({ kind: "box" })} />}
           {step.kind === "box" && (
-            <div>
-              <h1 className="font-semibold text-xl tracking-tight">Where are your boxes?</h1>
-              <p className="mt-2 mb-6 text-muted-foreground text-sm leading-relaxed">Berth installs a small daemon on the box. It's the only thing that runs there; your code and agents stay as they are.</p>
-              <AddBoxFlow onDone={(box) => setStep({ kind: "repo", box })} onExit={() => setStep({ kind: "welcome" })} />
-            </div>
+            <AddBoxFlow
+              variant="page"
+              intro={{ title: "Where are your boxes?", description: "Berth installs a small daemon on the box. It's the only thing that runs there; your code and agents stay as they are." }}
+              onDone={(box) => setStep({ kind: "repo", box })}
+              onExit={() => setStep({ kind: "welcome" })}
+            />
           )}
           {step.kind === "repo" && <RepoStep box={step.box} onDone={(location) => setStep({ kind: "agent", box: step.box, location })} />}
           {step.kind === "agent" && <AgentStep box={step.box} location={step.location} onFinish={finish} />}

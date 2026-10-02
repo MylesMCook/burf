@@ -5,6 +5,7 @@ import { errorMessage } from "@/lib/format";
 import { Cancelled } from "@/lib/orchestrate-core";
 import { send, wait } from "@/lib/orchestrate";
 import { usePromptUi } from "@/lib/prompts";
+import { boxOffline, enqueue, sendFailure } from "@/lib/queue";
 import { meaningfulTail } from "@/lib/screen";
 import { useStore } from "@/lib/store";
 
@@ -12,7 +13,9 @@ import { useStore } from "@/lib/store";
 // that fails or is slow never leaves the rest half sent, then (if asked)
 // waits for every turn to end and keeps the last thing each agent said.
 
-export type RowState = "queued" | "sending" | "sent" | "working" | "finished" | "waiting" | "timed-out" | "exited" | "failed" | "stopped";
+// offline: its box is away and the prompt was not sent; deferred: handed to
+// the agent's offline queue, to be typed in once the box is back.
+export type RowState = "queued" | "sending" | "sent" | "working" | "finished" | "waiting" | "timed-out" | "exited" | "failed" | "stopped" | "offline" | "deferred";
 
 export interface RunRow {
   box: string;
@@ -39,7 +42,7 @@ interface RunState {
 
 export const useBroadcastRun = create<RunState>()(() => ({}));
 
-export const ENDED: RowState[] = ["finished", "waiting", "timed-out", "exited", "failed", "stopped"];
+export const ENDED: RowState[] = ["finished", "waiting", "timed-out", "exited", "failed", "stopped", "offline", "deferred"];
 
 const patch = (id: string, i: number, p: Partial<RunRow>) =>
   useBroadcastRun.setState((s) => (s.run?.id === id ? { run: { ...s.run, rows: s.run.rows.map((r, j) => (j === i ? { ...r, ...p } : r)) } } : s));
@@ -65,6 +68,8 @@ export function summarize(rows: RunRow[]): string {
     n("timed-out") && `${n("timed-out")} still going`,
     n("exited") && `${n("exited")} exited`,
     n("failed") && `${n("failed")} failed`,
+    n("deferred") && `${n("deferred")} queued for when ${n("deferred") === 1 ? "its box is" : "their boxes are"} back`,
+    n("offline") && `${n("offline")} on offline ${n("offline") === 1 ? "box" : "boxes"}`,
     n("stopped") && `${n("stopped")} not sent`,
   ];
   return parts.filter(Boolean).join(" · ");
@@ -72,7 +77,21 @@ export function summarize(rows: RunRow[]): string {
 
 // startBroadcast sends each item in turn. Waiting happens alongside: the
 // next send does not wait for the previous agent's turn.
-export function startBroadcast(o: { title: string; wait: boolean; timeout?: number; items: { box: string; session: string; text: string }[] }) {
+// queueRow hands one row whose box is away to the offline queue.
+export async function queueRow(runId: string, i: number) {
+  const row = useBroadcastRun.getState().run?.rows[i];
+  if (!row || useBroadcastRun.getState().run?.id !== runId) return;
+  try {
+    await enqueue({ box: row.box, session: row.session, text: row.text, toast: false });
+    patch(runId, i, { state: "deferred", error: undefined });
+  } catch (err) {
+    patch(runId, i, { state: "failed", error: errorMessage(err) });
+  }
+}
+
+// startBroadcast sends each item in turn; with queueOffline, prompts for
+// agents whose box is away go to the offline queue instead of failing.
+export function startBroadcast(o: { title: string; wait: boolean; timeout?: number; queueOffline?: boolean; items: { box: string; session: string; text: string }[] }) {
   useBroadcastRun.getState().controller?.abort();
   const controller = new AbortController();
   const { signal } = controller;
@@ -87,12 +106,19 @@ export function startBroadcast(o: { title: string; wait: boolean; timeout?: numb
         patch(id, i, { state: "stopped" });
         continue;
       }
+      const away = () => (o.queueOffline ? queueRow(id, i) : patch(id, i, { state: "offline", error: `${it.box} is offline` }));
+      if (boxOffline(it.box)) {
+        await away();
+        continue;
+      }
       patch(id, i, { state: "sending" });
       let at: string;
       try {
         at = await send(it.box, it.session, it.text);
       } catch (err) {
-        patch(id, i, { state: "failed", error: errorMessage(err) });
+        const f = sendFailure(err, it.box);
+        if (f?.kind === "offline") await away();
+        else patch(id, i, { state: "failed", error: f?.message ?? errorMessage(err) });
         continue;
       }
       if (!o.wait) {

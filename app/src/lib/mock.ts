@@ -8,7 +8,8 @@ import { editorsCall } from "@/lib/mock-editors";
 import { mockShell } from "@/lib/mock-shell";
 import { mockIssueTitle } from "@/lib/mock-issues";
 import { usageCall, usageExec } from "@/lib/mock-usage";
-import { historyCall } from "@/lib/mock-history";
+import { initMockQueue, queueCall } from "@/lib/mock-queue";
+import { ApiError } from "@/lib/api";
 
 // Mock mode (?mock=1) runs the whole UI on fixtures, so it can be worked on
 // without an agent or a box. State is mutable: new tasks and sessions appear,
@@ -51,6 +52,7 @@ const locations: Record<string, Location[]> = {
         { name: "billing-fix", path: "/home/sean/work/cal-billing-fix", branch: "sean/billing-fix" },
         { name: "qa-deck", path: "/home/sean/work/cal-qa-deck", branch: "sean/qa-deck" },
         { name: "booker-perf", path: "/home/sean/work/cal-booker-perf", branch: "sean/booker-perf" },
+        { name: "transfer-billing", path: "/home/sean/work/cal-transfer-billing", branch: "sean/eng-1234-admin-billing-transfer" },
       ],
     },
     {
@@ -97,6 +99,10 @@ const sessions: Record<string, Session[]> = {
     { name: "qa-deck-codex", location: "cal/qa-deck", dir: "/home/sean/work/cal-qa-deck", command: "codex", created: ago(18), attached: 1, exited: false, agent: "codex", agent_state: "running", state_since: ago(2) },
     { name: "cal-shell", location: "cal", dir: "/home/sean/work/cal", command: "", created: ago(300), attached: 0, exited: false },
     { name: "booker-perf-claude", location: "cal/booker-perf", dir: "/home/sean/work/cal-booker-perf", command: "claude", created: ago(95), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(23) },
+    // Three agents in one worktree, so the board has to tell them apart.
+    { name: "transfer-billing-claude", location: "cal/transfer-billing", dir: "/home/sean/work/cal-transfer-billing", command: "claude 'Move the billing owner when a team is transferred'", created: ago(1700), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(1560) },
+    { name: "transfer-billing-claude-2", location: "cal/transfer-billing", dir: "/home/sean/work/cal-transfer-billing", command: "claude", created: ago(320), attached: 0, exited: false, agent: "claude", agent_state: "idle", state_since: ago(290) },
+    { name: "transfer-billing-claude-3", location: "cal/transfer-billing", dir: "/home/sean/work/cal-transfer-billing", command: "claude 'Add tests for the transfer webhook'", created: ago(140), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(75) },
     { name: "internal-claude", location: "internal", dir: "/home/sean/work/internal", command: "claude", created: ago(700), attached: 0, exited: true, agent: "claude" },
   ],
   gpu: [
@@ -183,7 +189,8 @@ const emit = (e: Omit<BerthEvent, "time">) => listeners.forEach((l) => l({ ...e,
 // An agent finishes its turn, then starts again, so the board moves. A new
 // account has no agents, so nothing moves there.
 if (!fresh) setInterval(() => {
-  const s = sessions.devl[1];
+  const s = sessions.devl.find((x) => x.name === "qa-deck-codex");
+  if (!s) return;
   s.agent_state = s.agent_state === "running" ? "waiting" : "running";
   s.state_since = new Date().toISOString();
   emit({ type: s.agent_state === "waiting" ? "agent.waiting" : "agent.started", box: "devl", origin: s.agent, data: { path: s.dir } });
@@ -341,15 +348,14 @@ function worktreeServicesFixture(box: string, loc: string, wt: string) {
 
 function boxCall(box: string, method: string, path: string, body?: unknown): Promise<unknown> {
   const online = status.boxes.find((b) => b.name === box)?.state === "online";
-  if (!online) return Promise.reject(new Error(`${box} is offline`));
+  // 503, as the agent answers when a request never reached the box.
+  if (!online) return Promise.reject(new ApiError(`${box} is offline`, 503));
   const flows = flowsCall(box, method, path, body, emit, delay);
   if (flows) return flows;
   const phone = phoneCall(box, method, path, body, delay);
   if (phone) return phone;
   const usage = usageCall(box, method, path, body, delay);
   if (usage) return usage;
-  const history = historyCall(box, method, path, delay);
-  if (history) return history;
   const wts = worktreesCall(box, method, path, body, { locations, sessions }, emit, delay);
   if (wts) return wts;
   const review = reviewCall(box, method, path, sessions[box]);
@@ -457,6 +463,7 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
   if (method === "DELETE" && path.startsWith("sessions/")) {
     const name = decodeURIComponent(path.slice("sessions/".length));
     sessions[box] = sessions[box].filter((s) => s.name !== name);
+    setTimeout(() => emit({ type: "session.stopped", box, data: { name } }), 50);
     return delay({ removed: name });
   }
   if (key === "POST locations") {
@@ -639,6 +646,9 @@ async function mockStream(method: string, path: string, body: unknown, onValue: 
   throw new Error(`mock: no stream for ${method} ${path}`);
 }
 
+// The offline prompt queue and its box-offline simulator (lib/mock-queue).
+initMockQueue({ status, sessions, emit, delay, send: (box, session, text, enter) => boxCall(box, "POST", `sessions/${encodeURIComponent(session)}/send`, { text, enter }) }, fresh);
+
 export function mockClient(): Client {
   return {
     status: () => delay(status),
@@ -677,6 +687,8 @@ export function mockClient(): Client {
       }
       const boxes = laptopBoxes(method, path, body);
       if (boxes) return boxes as Promise<T>;
+      const queued = queueCall(method, path, body);
+      if (queued) return queued as Promise<T>;
       const kits = kitsCall(method, path, body, emit, delay);
       if (kits) return kits as Promise<T>;
       const eds = editorsCall(method, path, body, delay);

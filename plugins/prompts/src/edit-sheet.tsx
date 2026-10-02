@@ -1,5 +1,5 @@
 import { useProjects, type BerthPluginContext, type SavedPrompt, type SavedPromptVariable } from "@berth/plugin";
-import { Button, Input, Kbd, Menu, MenuItem, MenuPopup, MenuTrigger, Icon, Sheet, SheetDescription, SheetFooter, SheetHeader, SheetPanel, SheetPopup, SheetTitle, Switch, Textarea, cn } from "@berth/plugin/ui";
+import { Button, Input, Kbd, Menu, MenuItem, MenuPopup, MenuTrigger, Icon, Sheet, SheetDescription, SheetFooter, SheetHeader, SheetPanel, SheetPopup, SheetTitle, Switch, Textarea, Tip, cn } from "@berth/plugin/ui";
 import { useMemo, useRef, useState } from "react";
 
 // EditSheet writes one prompt: its text with {{variables}}, labels and
@@ -110,13 +110,17 @@ export function EditSheet({
               <div className="flex flex-wrap items-center gap-1">
                 <span className="mr-1 text-muted-foreground text-xs">Insert</span>
                 {berth.prompts.builtins.map((b) => (
-                  <button key={b.name} type="button" title={b.label} onClick={() => insert(`{{${b.name}}}`)} className="h-6 rounded-md bg-muted px-1.5 font-mono text-[11px] text-muted-foreground hover:text-foreground">
-                    {b.name}
-                  </button>
+                  <Tip key={b.name} label={b.label}>
+                    <button type="button" onClick={() => insert(`{{${b.name}}}`)} className="h-6 rounded-md bg-muted px-1.5 font-mono text-[11px] text-muted-foreground hover:text-foreground">
+                      {b.name}
+                    </button>
+                  </Tip>
                 ))}
-                <button type="button" title="A variable you fill in when sending" onClick={() => insert("{{focus}}")} className="h-6 rounded-md border border-dashed px-1.5 font-mono text-[11px] text-muted-foreground hover:text-foreground">
-                  + your own
-                </button>
+                <Tip label="A variable you fill in when sending">
+                  <button type="button" onClick={() => insert("{{focus}}")} className="h-6 rounded-md border border-dashed px-1.5 font-mono text-[11px] text-muted-foreground hover:text-foreground">
+                    + your own
+                  </button>
+                </Tip>
               </div>
             </div>
 
@@ -129,10 +133,12 @@ export function EditSheet({
                       <span className="truncate font-mono text-[12px]">{`{{${v.name}}}`}</span>
                       <Input size="sm" aria-label={`Label for ${v.name}`} placeholder="Label" value={meta[v.name]?.label ?? ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setVar(v.name, { label: e.target.value })} />
                       <Input size="sm" aria-label={`Default for ${v.name}`} placeholder="Default" value={meta[v.name]?.default ?? ""} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setVar(v.name, { default: e.target.value })} />
-                      <label className="flex cursor-pointer items-center gap-1.5 text-muted-foreground text-xs" title="Ask for it in a text box">
-                        <Switch checked={!!meta[v.name]?.multiline} onCheckedChange={(on: boolean) => setVar(v.name, { multiline: on })} />
-                        Long
-                      </label>
+                      <Tip label="Ask for it in a text box">
+                        <label className="flex cursor-pointer items-center gap-1.5 text-muted-foreground text-xs">
+                          <Switch checked={!!meta[v.name]?.multiline} onCheckedChange={(on: boolean) => setVar(v.name, { multiline: on })} />
+                          Long
+                        </label>
+                      </Tip>
                     </div>
                   ))}
                 </div>
@@ -180,16 +186,16 @@ export function EditSheet({
                     !s.variable ? (
                       <span key={i}>{s.text}</span>
                     ) : (
-                      <span
-                        key={i}
-                        title={builtin.has(s.variable) ? `Filled in from the agent it goes to` : s.missing ? "Asked for when sending" : "Its default"}
-                        className={cn(
-                          "rounded-[3px] px-0.5",
-                          builtin.has(s.variable) ? "bg-info/10 font-mono text-[12px] text-info-foreground" : s.missing ? "bg-warning/12 font-mono text-[12px] text-warning-foreground" : "bg-primary/10",
-                        )}
-                      >
-                        {builtin.has(s.variable) || s.missing ? s.variable : s.text}
-                      </span>
+                      <Tip key={i} label={builtin.has(s.variable) ? "Filled in from the agent it goes to" : s.missing ? "Asked for when sending" : "Its default"}>
+                        <span
+                          className={cn(
+                            "rounded-[3px] px-0.5",
+                            builtin.has(s.variable) ? "bg-info/10 font-mono text-[12px] text-info-foreground" : s.missing ? "bg-warning/12 font-mono text-[12px] text-warning-foreground" : "bg-primary/10",
+                          )}
+                        >
+                          {builtin.has(s.variable) || s.missing ? s.variable : s.text}
+                        </span>
+                      </Tip>
                     ),
                   )
                 ) : (

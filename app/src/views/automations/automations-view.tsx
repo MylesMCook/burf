@@ -142,7 +142,7 @@ export function AutomationsView() {
           )}
           {tab === "runs" && (
             <div className="h-full overflow-y-auto px-6 pt-5 pb-12">
-              <RunsTab runs={runs} names={nameOf} />
+              <RunsTab runs={runs} boxes={boxes} names={nameOf} />
             </div>
           )}
           {tab === "hooks" && (

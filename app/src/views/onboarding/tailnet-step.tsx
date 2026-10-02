@@ -44,16 +44,6 @@ export function TailnetStep({ network, picked, onPick, onDone }: { network?: str
 
   return (
     <div>
-      <p className="mb-4 text-muted-foreground text-sm">
-        {network ? (
-          <>
-            Machines on the <span className="text-foreground">{network}</span> tailnet.
-          </>
-        ) : (
-          "Machines on this computer's tailnet."
-        )}{" "}
-        Pick one you can SSH into; Berth installs itself there and pairs.
-      </p>
       <div className="overflow-hidden rounded-xl border">
         <div className="flex h-9 items-center gap-2 border-b bg-muted/30 pr-1.5 pl-3.5 text-muted-foreground text-xs">
           <span className="flex-1">Machines{found ? ` (${machines.length})` : ""}</span>

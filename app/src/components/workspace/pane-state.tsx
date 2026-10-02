@@ -1,6 +1,6 @@
 import { RotateCwIcon, ServerIcon } from "lucide-react";
 
-import { Mooring } from "@/components/art/mooring";
+import { Scene } from "@/components/art/scenes";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { startSession } from "@/lib/actions";
@@ -34,7 +34,7 @@ export function SessionEnded({ box, session, agent, command, wsKey, tab, pane, o
   const where = ref ? (ref.main ? ref.location : ref.worktree) : undefined;
   return (
     <PaneState
-      art={<Mooring variant="ended" />}
+      art={<Scene name="ended" width={144} />}
       title={
         // Named as its tab named it; the session's id is for the curious.
         <Tip label={`${session} on ${box}`}>
@@ -70,7 +70,7 @@ export function BoxOffline({ box, onRetry }: { box: string; onRetry(): void }) {
   return (
     <PaneState
       panel
-      art={<Mooring variant="offline" width={128} />}
+      art={<Scene name="offline" width={128} />}
       title={<p className="font-medium text-sm">{box} is offline</p>}
       detail={<p className="max-w-xs">The session keeps running there; Berth reconnects on its own when the box is back.</p>}
     >

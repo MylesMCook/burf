@@ -123,7 +123,22 @@ export const boxApi = {
   exec: (c: Client, box: string, location: string, command: string, timeout = "10m") => c.box<ExecResult>(box, "POST", "exec", { location, command, timeout }),
   hooks: (c: Client, box: string) => c.box<HooksFile>(box, "GET", "hooks"),
   saveHooks: (c: Client, box: string, hooks: Hook[]) => c.box<HooksFile>(box, "PUT", "hooks", { hooks }),
+  // testSecret asks the box to resolve a secret reference now. It reports
+  // whether it could and the value's length, never the value.
+  testSecret: (c: Client, box: string, ref: string) => c.box<SecretTest>(box, "POST", "secrets/test", { ref }),
 };
+
+export interface SecretTest {
+  ok: boolean;
+  length?: number;
+  error?: string;
+}
+
+// A value naming a secret rather than holding one: op://vault/item/field
+// (1Password, resolved by the box's op CLI) or env://NAME (a variable from
+// berthd's own environment).
+export const SECRET_SCHEMES = ["op", "env"] as const;
+export const isSecretRef = (v: string | undefined): boolean => !!v && SECRET_SCHEMES.some((s) => v.startsWith(`${s}://`));
 
 // A machine on a tailnet that could be a box (berth discover).
 export interface Machine {

@@ -1,6 +1,6 @@
-import { TriangleAlertIcon } from "lucide-react";
 import { Component, type ErrorInfo, type ReactNode } from "react";
 
+import { Scene } from "@/components/art/scenes";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 
@@ -42,8 +42,8 @@ export class ErrorBoundary extends Component<Props, State> {
       <div className="flex h-full min-h-0 items-center justify-center overflow-y-auto p-6">
         <Empty className="max-w-xl">
           <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <TriangleAlertIcon />
+            <EmptyMedia>
+              <Scene name="storm" />
             </EmptyMedia>
             <EmptyTitle>{scope ? `Something in ${scope} broke` : "Berth hit an error"}</EmptyTitle>
             <EmptyDescription>

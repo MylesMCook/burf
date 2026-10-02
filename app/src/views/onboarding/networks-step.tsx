@@ -1,6 +1,7 @@
 import { ExternalLinkIcon, NetworkIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
@@ -25,9 +26,6 @@ export function NetworksStep({ onPick }: { onPick(network: string): void }) {
 
   return (
     <div className="space-y-5">
-      <p className="text-muted-foreground text-sm">
-        A tailnet this computer isn't signed in to. Berth joins it as its own device, separate from the Tailscale app, so nothing changes for the rest of this Mac.
-      </p>
       {error && <p className="text-destructive-foreground text-sm">{error}</p>}
       {networks === undefined && !error ? (
         <div className="flex items-center gap-2 text-muted-foreground text-sm">
@@ -130,9 +128,11 @@ function SignIn({ existing, onJoined }: { existing: string[]; onJoined(network: 
           }}
         >
           <Input size="sm" className="max-w-56" value={name} onChange={(e) => setName(e.target.value)} placeholder="work, personal…" aria-label="Network name" aria-invalid={duplicate || undefined} />
-          <Button size="sm" type="submit" disabled={!name.trim() || duplicate}>
-            Sign in
-          </Button>
+          <Tip label={!name.trim() ? "Name the network first" : duplicate ? "There is a network by that name already" : undefined}>
+            <Button size="sm" type="submit" disabled={!name.trim() || duplicate}>
+              Sign in
+            </Button>
+          </Tip>
         </form>
       )}
       {duplicate && state !== "waiting" && <p className="mt-2 text-destructive-foreground text-xs">Berth already joined a tailnet called {name.trim()}. Browse it above, or pick another name.</p>}

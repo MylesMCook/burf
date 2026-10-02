@@ -1,7 +1,8 @@
-import { CheckIcon, GitPullRequestIcon, InboxIcon, RefreshCwIcon, XIcon } from "lucide-react";
+import { CheckIcon, GitPullRequestIcon, RefreshCwIcon, XIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { AgentIcon } from "@/components/agent-glyph";
+import { Scene } from "@/components/art/scenes";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Kbd } from "@/components/ui/kbd";
@@ -122,8 +123,8 @@ export function ReviewView() {
       ) : entries.length === 0 ? (
         <Empty className="flex-1">
           <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <InboxIcon />
+            <EmptyMedia>
+              <Scene name="calm" />
             </EmptyMedia>
             <EmptyTitle>Nothing to review</EmptyTitle>
             <EmptyDescription>When an agent finishes its turn and leaves changes, its work shows up here to approve, send back or discard.</EmptyDescription>
@@ -205,7 +206,7 @@ function Row({ entry, active, onSelect, onOpen }: { entry: ReviewEntry; active: 
         onDoubleClick={onOpen}
         aria-current={active || undefined}
         className={cn(
-          "flex w-full flex-col gap-1 rounded-lg px-3 py-2 text-left outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring",
+          "flex w-full flex-col gap-1 rounded-lg px-3 py-row-pad text-left outline-none hover:bg-accent/50 focus-visible:ring-2 focus-visible:ring-ring",
           active && "bg-accent hover:bg-accent",
           waiting && "shadow-[inset_2px_0_0_var(--color-warning)]",
         )}

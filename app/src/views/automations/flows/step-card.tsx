@@ -2,11 +2,11 @@ import { ArrowDownIcon, ArrowUpIcon, CheckIcon, ChevronRightIcon, EllipsisIcon, 
 import { useState } from "react";
 
 import { AgentIcon } from "@/components/agent-glyph";
+import { PickOne } from "@/components/pick-one";
 import { SimpleSelect } from "@/components/simple-select";
 import { Input } from "@/components/ui/input";
 import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Switch } from "@/components/ui/switch";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { AgentPreset } from "@/lib/api";
 import type { Step, StepRun, StepWhen } from "@/lib/flows";
 import { cn } from "@/lib/utils";
@@ -103,22 +103,13 @@ export function StepCard({
         ) : readOnly ? (
           <span className="text-xs">{WHENS.find((w) => w.value === when)?.label}</span>
         ) : (
-          <ToggleGroup
-            size="sm"
-            aria-label="Runs when"
-            value={[when]}
-            onValueChange={(v) => v[0] && set({ when: v[0] === "success" ? undefined : (v[0] as StepWhen) })}
-          >
-            {WHENS.map((w) => (
-              <ToggleGroupItem
-                key={w.value}
-                value={w.value}
-                className={cn("h-7 px-2.5 text-xs", w.value === "failure" ? "data-pressed:bg-warning/15 data-pressed:text-warning" : "data-pressed:bg-background data-pressed:shadow-xs dark:data-pressed:bg-input")}
-              >
-                {w.label}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
+          <PickOne<StepWhen>
+            label="Runs when"
+            value={when}
+            onChange={(w) => set({ when: w === "success" ? undefined : w })}
+            // Running only after a failure is the unusual case; it says so.
+            options={WHENS.map((w) => ({ ...w, className: w.value === "failure" ? "data-pressed:bg-warning/15 data-pressed:text-warning dark:data-pressed:bg-warning/15" : undefined }))}
+          />
         )}
         <span className="ml-auto flex items-center gap-1.5">
           <span className="text-muted-foreground text-xs">Name</span>

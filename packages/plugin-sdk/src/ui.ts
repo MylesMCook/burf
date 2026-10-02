@@ -94,6 +94,16 @@ export declare const PickOne: ComponentType<{
   label?: string;
   className?: string;
 }>;
+// BoxFilter: which boxes a screen covers. Pressed means shown; every box
+// starts pressed and the last one on stays on. `hidden` is what you keep.
+export declare const BoxFilter: ComponentType<{ boxes: string[]; hidden: string[]; onChange(hidden: string[]): void; label?: string; className?: string }>;
+// FilterChip: narrows a list to rows with a label, tag or state. Chips start
+// off; each one on narrows further. (One of a few values is PickOne.)
+export declare const FilterChip: ComponentType<{ pressed: boolean; onPressedChange(pressed: boolean): void; children?: ReactNode; className?: string }>;
+// Tip: the app's tooltip on one element, never the HTML title attribute,
+// which shows late and not at all for keyboard users. A disabled button
+// still shows its tip (why it is disabled, say).
+export declare const Tip: ComponentType<{ label: ReactNode; side?: "top" | "bottom" | "left" | "right"; align?: "start" | "center" | "end"; delay?: number; className?: string; wrapClassName?: string; children: ReactNode }>;
 // AgentPicker: one of a box's agents (BoxInfo.agents), with their icons.
 export declare const AgentPicker: ComponentType<{ presets: { id: string; name: string }[]; value: string; onChange(id: string): void; allowNone?: boolean; className?: string }>;
 // AgentIcon: an agent's mark, by preset id ("claude", "codex", …).

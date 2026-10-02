@@ -71,7 +71,10 @@ export function ServicesSection({ repo, draft, setDraft, box, location, urlPort 
               // By position, so renaming a service keeps its field focused.
               <div key={i} className="grid grid-cols-[9rem_minmax(0,1fr)_5.5rem_auto_3.5rem] items-center gap-3 px-4 py-2">
                 {mine && !c ? (
-                  <Input value={mine.name} onChange={(e) => update(name, { name: e.target.value })} size="sm" className="font-mono text-xs" aria-invalid={!!bad} title={bad ? "Lowercase letters, digits and dashes" : undefined} />
+                  // Always the same tooltip: switching it on as the name goes bad would remount the field mid-word.
+                  <Tip label="Lowercase letters, digits and dashes">
+                    <Input value={mine.name} onChange={(e) => update(name, { name: e.target.value })} size="sm" className="font-mono text-xs" aria-invalid={!!bad} />
+                  </Tip>
                 ) : (
                   <code className="truncate font-mono text-xs">{name}</code>
                 )}

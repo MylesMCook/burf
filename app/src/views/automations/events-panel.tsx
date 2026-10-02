@@ -1,6 +1,7 @@
 import { ActivityIcon, PanelRightCloseIcon, PlusIcon } from "lucide-react";
 import { useState } from "react";
 
+import { FilterChip } from "@/components/filter-chip";
 import { Button } from "@/components/ui/button";
 import type { BerthEvent } from "@/lib/api";
 import { useEventLog } from "@/lib/events";
@@ -12,8 +13,9 @@ const PREFIXES = ["agent", "worktree", "session", "task", "box", "hooks"];
 // needs: the exact type and the data it carries.
 export function EventsPanel({ onClose, onNewHook }: { onClose(): void; onNewHook(e: BerthEvent): void }) {
   const events = useEventLog((s) => s.events);
-  const [prefix, setPrefix] = useState<string>();
-  const shown = prefix ? events.filter((e) => e.type.startsWith(`${prefix}.`)) : events;
+  // Types to narrow to; none on means every event.
+  const [prefixes, setPrefixes] = useState<string[]>([]);
+  const shown = prefixes.length ? events.filter((e) => prefixes.some((p) => e.type.startsWith(`${p}.`))) : events;
 
   return (
     <aside className="flex w-[360px] shrink-0 flex-col border-l bg-sidebar/40">
@@ -26,14 +28,11 @@ export function EventsPanel({ onClose, onNewHook }: { onClose(): void; onNewHook
         </Button>
       </header>
       {/* Wraps rather than scrolls: a hidden scrollbar read as chips cut off. */}
-      <div className="flex flex-wrap gap-1 px-3 pb-2">
-        <Chip active={!prefix} onClick={() => setPrefix(undefined)} sans>
-          All
-        </Chip>
+      <div className="flex flex-wrap gap-1 px-3 pb-2" role="group" aria-label="Show only">
         {PREFIXES.map((p) => (
-          <Chip key={p} active={prefix === p} onClick={() => setPrefix(prefix === p ? undefined : p)}>
+          <FilterChip key={p} className="font-mono text-[11px]" pressed={prefixes.includes(p)} onPressedChange={(on) => setPrefixes((ps) => (on ? [...ps, p] : ps.filter((x) => x !== p)))}>
             {p}.*
-          </Chip>
+          </FilterChip>
         ))}
       </div>
       <ol className="min-h-0 flex-1 overflow-y-auto border-t">
@@ -44,19 +43,6 @@ export function EventsPanel({ onClose, onNewHook }: { onClose(): void; onNewHook
         )}
       </ol>
     </aside>
-  );
-}
-
-function Chip({ active, onClick, children, sans }: { active: boolean; onClick(): void; children: React.ReactNode; sans?: boolean }) {
-  return (
-    <button
-      type="button"
-      aria-pressed={active}
-      onClick={onClick}
-      className={cn("shrink-0 rounded-md border px-1.5 py-0.5 text-[11px] text-muted-foreground hover:text-foreground", !sans && "font-mono", active && "border-ring/50 bg-accent text-foreground")}
-    >
-      {children}
-    </button>
   );
 }
 

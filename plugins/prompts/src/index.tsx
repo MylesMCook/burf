@@ -13,6 +13,7 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  FilterChip,
   Icon,
   Input,
   Menu,
@@ -21,7 +22,6 @@ import {
   MenuSeparator,
   MenuTrigger,
   ViewHeader,
-  cn,
 } from "@berth/plugin/ui";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 
@@ -66,7 +66,8 @@ function Library({ berth }: ScreenProps) {
   const prompts = useLibrary(berth);
   const projects = useProjects();
   const [query, setQuery] = useState("");
-  const [tag, setTag] = useState<string>();
+  // Tags to narrow to; a prompt shows when it has every one.
+  const [picked, setPicked] = useState<string[]>([]);
   const [editing, setEditing] = useState<SavedPrompt | "new">();
   const [deleting, setDeleting] = useState<SavedPrompt>();
   const starters = prompts === berth.prompts.starters;
@@ -77,7 +78,7 @@ function Library({ berth }: ScreenProps) {
 
   const tags = useMemo(() => [...new Set(prompts.flatMap((p) => p.tags))].sort(), [prompts]);
   const words = query.toLowerCase().split(/\s+/).filter(Boolean);
-  const shown = prompts.filter((p) => (!tag || p.tags.includes(tag)) && words.every((w) => `${p.title} ${p.tags.join(" ")} ${p.body}`.toLowerCase().includes(w)));
+  const shown = prompts.filter((p) => picked.every((t) => p.tags.includes(t)) && words.every((w) => `${p.title} ${p.tags.join(" ")} ${p.body}`.toLowerCase().includes(w)));
   const projectName = (id?: string) => projects.find((p) => p.id === id)?.name ?? id;
   const missingStarters = berth.prompts.starters.filter((s) => !prompts.some((p) => p.id === s.id));
 
@@ -111,17 +112,11 @@ function Library({ berth }: ScreenProps) {
       <div>
         <div className="mb-4 flex flex-wrap items-center gap-2">
           <Input className="w-64" size="sm" placeholder="Search prompts…" aria-label="Search prompts" value={query} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)} />
-          <div className="flex flex-wrap items-center gap-1">
+          <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Tags">
             {tags.map((t) => (
-              <button
-                key={t}
-                type="button"
-                aria-pressed={tag === t}
-                onClick={() => setTag(tag === t ? undefined : t)}
-                className={cn("h-7 rounded-md px-2.5 text-xs transition-colors", tag === t ? "bg-foreground text-background" : "bg-muted text-muted-foreground hover:text-foreground")}
-              >
+              <FilterChip key={t} pressed={picked.includes(t)} onPressedChange={(on: boolean) => setPicked((ps) => (on ? [...ps, t] : ps.filter((x) => x !== t)))}>
                 {t}
-              </button>
+              </FilterChip>
             ))}
           </div>
           {missingStarters.length > 0 && !starters && (

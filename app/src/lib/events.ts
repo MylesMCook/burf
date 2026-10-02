@@ -3,8 +3,9 @@ import { create } from "zustand";
 import type { BerthEvent } from "@/lib/api";
 import { agentLabel, agentOf } from "@/lib/derive";
 import { isLive, useLoops } from "@/lib/loops";
-import { flowKey, resolveFromEvent, route, serviceKey } from "@/lib/notifications";
+import { flowKey, resolveFromEvent, route, secretKey, serviceKey } from "@/lib/notifications";
 import { handlePreview } from "@/lib/preview";
+import { handleQueueEvent } from "@/lib/queue";
 import { handleSessionOpen } from "@/lib/session-open";
 import { type BoxPart, scheduleRefresh, useStore } from "@/lib/store";
 import { dispatch } from "@/plugins/registry";
@@ -40,6 +41,8 @@ export function handleEvent(e: BerthEvent) {
     }
   }
 
+  // Prompts queued for a box that was away: the list, and what came of them.
+  if (e.type.startsWith("queue.")) handleQueueEvent(e);
   notifyFor(e);
 }
 
@@ -145,6 +148,24 @@ function notifyFor(e: BerthEvent) {
       project: str(d.location),
       action: d.location ? { kind: "project", box, location: String(d.location) } : undefined,
       key: `kit|${box}|${d.location}|${d.kit}`,
+    });
+  }
+  // A variable naming a secret was left unset. The event never carries the
+  // value, only which variable, its reference and why.
+  if (e.type === "secret.failed" && box) {
+    const variable = str(d.variable) ?? "A variable";
+    const wt = str(d.name);
+    route({
+      category: "secret",
+      title: `${variable} was left unset`,
+      detail: [str(d.reason) ?? e.error, str(d.ref)].filter(Boolean).join(" · ") || undefined,
+      tone: "warning",
+      box,
+      path: str(d.path),
+      project: str(d.location),
+      worktree: wt !== d.location ? wt : undefined,
+      action: d.location ? { kind: "project", box, location: String(d.location) } : undefined,
+      key: secretKey(box, d.location, d.variable),
     });
   }
   // A flow's notify step: its own title and body, from whichever box.
