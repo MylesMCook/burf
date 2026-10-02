@@ -21,6 +21,7 @@ var (
 func (a *Agent) api(stop context.CancelFunc) http.Handler {
 	mux := http.NewServeMux()
 	a.kitRoutes(mux)
+	a.appStateRoutes(mux)
 	a.editorRoutes(mux)
 	mux.HandleFunc("GET /v1/status", func(w http.ResponseWriter, r *http.Request) {
 		a.sync()
