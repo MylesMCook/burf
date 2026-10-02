@@ -84,6 +84,10 @@ func (c *Client) RemoveLocation(ctx context.Context, name string) error {
 	return c.call(ctx, http.MethodDelete, "/v1/locations/"+url.PathEscape(name), nil, nil)
 }
 
+func (c *Client) AddTask(ctx context.Context, req TaskRequest) (out Task, err error) {
+	return out, c.call(ctx, http.MethodPost, "/v1/tasks", req, &out)
+}
+
 func (c *Client) AddWorktree(ctx context.Context, location string, req WorktreeRequest) (out Worktree, err error) {
 	return out, c.call(ctx, http.MethodPost, "/v1/locations/"+url.PathEscape(location)+"/worktrees", req, &out)
 }

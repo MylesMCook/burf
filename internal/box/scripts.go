@@ -30,6 +30,9 @@ const RepoConfigFile = ".berth/config.json"
 type RepoConfig struct {
 	Setup   string `json:"setup,omitempty"`
 	Archive string `json:"archive,omitempty"`
+	// Agents adds ways to start agents here, or replaces built-ins by ID,
+	// e.g. {"id": "claude", "command": "claude --model opus"}.
+	Agents []AgentPreset `json:"agents,omitempty"`
 }
 
 // ReadRepoConfig reads repo's .berth/config.json; ok is false without one.

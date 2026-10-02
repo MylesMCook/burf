@@ -26,6 +26,11 @@ type Session struct {
 	Created  time.Time `json:"created"`
 	Attached int       `json:"attached"`
 	Exited   bool      `json:"exited"`
+	// Agent is the coding agent the command runs, if any, and AgentState
+	// what its hooks said last: running, waiting, or finished.
+	Agent      string    `json:"agent,omitempty"`
+	AgentState string    `json:"agent_state,omitempty"`
+	StateSince time.Time `json:"state_since,omitzero"`
 }
 
 var (
@@ -108,7 +113,7 @@ func parseSessions(out []byte) []Session {
 
 // Create starts command in dir. An empty command starts the user's shell.
 // Commands run through a login shell, so tools the user installed (claude,
-// codex, orca) are on PATH even when berthd runs under systemd.
+// codex) are on PATH even when berthd runs under systemd.
 func (s *Sessions) Create(ctx context.Context, name, location, dir, command string) (Session, error) {
 	if !sessionName.MatchString(name) {
 		return Session{}, fmt.Errorf("invalid session name %q: use letters, digits, - and _", name)

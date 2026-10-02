@@ -22,10 +22,13 @@ const maxDaemonSize = 64 << 20
 // Info describes the running daemon, so a laptop can pick the right build to
 // upload and tell whether the box already runs it.
 type Info struct {
+	Name  string   `json:"name"`
 	OS    string   `json:"os"`
 	Arch  string   `json:"arch"`
 	Build string   `json:"build"`
 	Tools []string `json:"tools"`
+	// Agents are the agent presets this box can start.
+	Agents []AgentPreset `json:"agents"`
 }
 
 // BuildID identifies a daemon build by its bytes.
@@ -93,6 +96,10 @@ func (b *Box) handleInfo(w http.ResponseWriter, r *http.Request) error {
 	i, err := b.Update.info()
 	if err != nil {
 		return err
+	}
+	i.Name, i.Agents = b.Name, Presets(nil)
+	if i.Agents == nil {
+		i.Agents = []AgentPreset{}
 	}
 	writeJSON(w, i)
 	return nil

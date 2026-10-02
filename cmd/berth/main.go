@@ -72,6 +72,7 @@ Agent
   berth setup port80 [--remove]          Drop :1377 from URLs (asks for your admin password once)
   berth stop                             Stop the agent (and every forward)
   berth id                               Print this laptop's fingerprint
+  berth ui-token                         The desktop app's API address and token, as JSON
 
 BERTH_HOME overrides the state directory.
 `
@@ -178,6 +179,18 @@ func run(args []string) error {
 		}
 		fmt.Println("Stopped the berth agent.")
 		return nil
+	case "ui-token":
+		// The desktop app's endpoint, for running its UI in a browser.
+		if _, err := ensureAgent(l); err != nil {
+			return err
+		}
+		tok, err := agent.UIToken(l.dir)
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(os.Stdout).Encode(map[string]string{
+			"url": fmt.Sprintf("http://127.0.0.1:%d", agent.DefaultUIPort), "token": tok,
+		})
 	case "id":
 		id, err := l.identity()
 		if err != nil {

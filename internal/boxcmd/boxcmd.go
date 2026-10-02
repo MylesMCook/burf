@@ -41,6 +41,9 @@ func Usage(cmd, prefix string) string {
 
 Agent sessions
   %[1]s sessions%[3]s [--json]                          List sessions
+  %[1]s task new %[2]sLOC/NAME [--agent ID] [--prompt TEXT] [--branch B] [--base REF]
+                                                  A worktree with an agent running in it
+  %[1]s agents%[3]s [--json]                            Agent CLIs this box can start
   %[1]s session new %[2]sLOC[/WORKTREE] [--name N] [-- COMMAND...]
                                                   Start COMMAND (default: a shell) there
   %[1]s session screen %[2]sNAME [--history N]          Print what the session shows
@@ -63,7 +66,7 @@ Events
 // takes before its first argument.
 var Commands = map[string]int{
 	"locations": 1, "location": 2, "worktree": 2,
-	"sessions": 1, "session": 2,
+	"sessions": 1, "session": 2, "task": 2, "agents": 1,
 	"services": 1, "info": 1, "stats": 1,
 	"ports": 1, "share": 1, "shares": 1, "unshare": 1,
 	"emit": 1, "events": 1,
@@ -216,6 +219,27 @@ func Run(ctx context.Context, c *box.Client, args []string, out io.Writer) error
 		return sessions(ctx, c, rest, out)
 	case "session new":
 		return sessionNew(ctx, c, rest, out)
+	case "task new":
+		return taskNew(ctx, c, rest, out)
+	case "agents":
+		fs, asJSON := flags(rest)
+		parse(fs, rest)
+		i, err := c.Info(ctx)
+		if err != nil {
+			return err
+		}
+		return show(out, *asJSON, i.Agents, func() {
+			if len(i.Agents) == 0 {
+				fmt.Fprintln(out, "No agent CLIs found on this box (claude, codex, opencode, gemini, cursor-agent).")
+				return
+			}
+			w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
+			fmt.Fprintln(w, "ID\tNAME\tCOMMAND")
+			for _, a := range i.Agents {
+				fmt.Fprintf(w, "%s\t%s\t%s\n", a.ID, a.Name, a.Command)
+			}
+			w.Flush()
+		})
 	case "session screen":
 		fs, _ := flags(rest)
 		history := fs.Int("history", 0, "earlier lines to include")
@@ -550,6 +574,40 @@ func sessionNew(ctx context.Context, c *box.Client, args []string, out io.Writer
 	}
 	return show(out, *asJSON, sess, func() {
 		fmt.Fprintf(out, "Started session %s in %s\n", sess.Name, sess.Dir)
+	})
+}
+
+func taskNew(ctx context.Context, c *box.Client, args []string, out io.Writer) error {
+	var req box.TaskRequest
+	for i, a := range args {
+		if a == "--" {
+			req.Command = strings.Join(args[i+1:], " ")
+			args = args[:i]
+			break
+		}
+	}
+	fs, asJSON := flags(args)
+	fs.StringVar(&req.Agent, "agent", "", "agent to start (see: agents)")
+	fs.StringVar(&req.Prompt, "prompt", "", "the agent's first prompt")
+	fs.StringVar(&req.Branch, "branch", "", "branch to create (default: the worktree name)")
+	fs.StringVar(&req.Base, "base", "", "ref to branch from")
+	pos, err := parse(fs, args)
+	usage := "task new LOC/NAME [--agent ID] [--prompt TEXT] [--branch B] [--base REF] [-- COMMAND...]"
+	if err != nil || len(pos) != 1 {
+		return usageErr(usage)
+	}
+	loc, name, ok := strings.Cut(pos[0], "/")
+	if !ok || name == "" {
+		return usageErr(usage)
+	}
+	req.Location, req.Name = loc, name
+	task, err := c.AddTask(ctx, req)
+	if err != nil {
+		return err
+	}
+	return show(out, *asJSON, task, func() {
+		fmt.Fprintf(out, "Created %s/%s at %s on %s\n", loc, task.Worktree.Name, task.Worktree.Path, task.Worktree.Branch)
+		fmt.Fprintf(out, "Started session %s\n", task.Session.Name)
 	})
 }
 

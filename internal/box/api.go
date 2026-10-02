@@ -15,6 +15,7 @@ import (
 
 	"github.com/sean-brydon/berth/internal/doctor"
 	"github.com/sean-brydon/berth/internal/events"
+	"github.com/sean-brydon/berth/internal/hooks"
 	"github.com/sean-brydon/berth/internal/terminal"
 	"github.com/sean-brydon/berth/internal/wire"
 )
@@ -44,6 +45,8 @@ type Box struct {
 	Units *Units
 	// AgentStates, when running, says which agents wait for someone.
 	AgentStates *AgentStates
+	// Hooks, when set, may refuse actions through "before:" hooks.
+	Hooks *hooks.Runner
 }
 
 func (b *Box) own(path string) {
@@ -69,6 +72,7 @@ func (b *Box) Mount(s *wire.Server) {
 	route("PUT /v1/locations/{name}/scripts", b.setScripts)
 	route("POST /v1/locations/{name}/worktrees", b.addWorktree)
 	route("DELETE /v1/locations/{name}/worktrees/{worktree}", b.removeWorktree)
+	route("POST /v1/tasks", b.addTask)
 	route("GET /v1/services", b.handleServices)
 	route("GET /v1/sessions", b.listSessions)
 	route("POST /v1/sessions", b.addSession)
@@ -165,6 +169,9 @@ func (b *Box) addLocation(w http.ResponseWriter, r *http.Request) error {
 	if err := decode(r, &req); err != nil {
 		return err
 	}
+	if err := b.before(r, "location.add", map[string]any{"location": req.Name, "path": req.Path}); err != nil {
+		return err
+	}
 	loc, err := b.Locations.Add(r.Context(), req.Name, req.Path)
 	if err != nil {
 		return err
@@ -205,20 +212,38 @@ func (b *Box) addWorktree(w http.ResponseWriter, r *http.Request) error {
 	if err := decode(r, &req); err != nil {
 		return err
 	}
-	location := r.PathValue("name")
-	wt, err := b.Locations.CreateWorktree(r.Context(), location, req.Name, req.Branch, req.Base)
+	loc, err := b.Locations.Get(r.Context(), r.PathValue("name"))
 	if err != nil {
 		return err
 	}
-	b.own(wt.Path)
-	b.publish(r, "worktree.created", map[string]any{
-		"location": location, "name": wt.Name, "path": wt.Path, "branch": wt.Branch,
-	})
-	if loc, err := b.Locations.Get(r.Context(), location); err == nil && loc.Scripts.Setup != "" {
-		go b.lifecycle(origin(r), "setup", loc, wt.Path, wt.Name, loc.Scripts.Setup, nil)
+	wt, err := b.createWorktree(r, loc, req)
+	if err != nil {
+		return err
 	}
 	writeJSON(w, wt)
 	return nil
+}
+
+// createWorktree makes a git worktree once the hooks allow it, then runs the
+// location's setup script in the background.
+func (b *Box) createWorktree(r *http.Request, loc Location, req WorktreeRequest) (Worktree, error) {
+	if err := b.before(r, "worktree.create", map[string]any{
+		"location": loc.Name, "name": req.Name, "branch": req.Branch, "base": req.Base,
+	}); err != nil {
+		return Worktree{}, err
+	}
+	wt, err := b.Locations.CreateWorktree(r.Context(), loc.Name, req.Name, req.Branch, req.Base)
+	if err != nil {
+		return Worktree{}, err
+	}
+	b.own(wt.Path)
+	b.publish(r, "worktree.created", map[string]any{
+		"location": loc.Name, "name": wt.Name, "path": wt.Path, "branch": wt.Branch,
+	})
+	if loc.Scripts.Setup != "" {
+		go b.lifecycle(origin(r), "setup", loc, wt.Path, wt.Name, loc.Scripts.Setup, nil)
+	}
+	return wt, nil
 }
 
 // lifecycle runs a setup or archive script in the background, announcing its
@@ -243,6 +268,9 @@ func (b *Box) removeWorktree(w http.ResponseWriter, r *http.Request) error {
 	location, name := r.PathValue("name"), r.PathValue("worktree")
 	dir, err := b.Locations.Dir(r.Context(), location+"/"+name)
 	if err != nil {
+		return err
+	}
+	if err := b.before(r, "worktree.remove", map[string]any{"location": location, "name": name, "path": dir}); err != nil {
 		return err
 	}
 	b.own(dir)
@@ -295,7 +323,7 @@ func (b *Box) listSessions(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	writeJSON(w, all)
+	writeJSON(w, b.enrich(r.Context(), all))
 	return nil
 }
 
@@ -315,17 +343,33 @@ func (b *Box) addSession(w http.ResponseWriter, r *http.Request) error {
 	if req.Name == "" {
 		req.Name = defaultSessionName(req.Location, req.Command)
 	}
-	sess, err := b.Sessions.Create(r.Context(), req.Name, req.Location, dir, req.Command)
+	sess, err := b.startSession(r, req.Name, req.Location, dir, req.Command)
 	if err != nil {
 		return err
 	}
-	b.publish(r, "session.started", map[string]any{"name": sess.Name, "location": req.Location, "path": dir, "command": req.Command})
 	writeJSON(w, sess)
 	return nil
 }
 
+// startSession runs command in dir once the hooks allow it.
+func (b *Box) startSession(r *http.Request, name, location, dir, command string) (Session, error) {
+	data := map[string]any{"name": name, "location": location, "path": dir, "command": command}
+	if err := b.before(r, "session.start", data); err != nil {
+		return Session{}, err
+	}
+	sess, err := b.Sessions.Create(r.Context(), name, location, dir, command)
+	if err != nil {
+		return Session{}, err
+	}
+	b.publish(r, "session.started", data)
+	return b.enrich(r.Context(), []Session{sess})[0], nil
+}
+
 func (b *Box) removeSession(w http.ResponseWriter, r *http.Request) error {
 	name := r.PathValue("name")
+	if err := b.before(r, "session.stop", map[string]any{"name": name}); err != nil {
+		return err
+	}
 	if err := b.Sessions.Kill(r.Context(), name); err != nil {
 		return err
 	}

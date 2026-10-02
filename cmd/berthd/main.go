@@ -49,7 +49,7 @@ const usage = `berthd — the berth daemon for a development box
   berthd doctor [--json]                  Check this box's setup and how to fix it
   berthd session attach NAME              Attach to a session in this terminal
 
-Hooks run from <state>/box/hooks.json; see docs/integrations.md.
+Hooks run from ~/.berth/hooks.json and ~/.berth/plugins; see docs/hooks.md.
 BERTH_HOME overrides the state directory.
 `
 
@@ -217,6 +217,12 @@ func serve(b boxHome, args []string) error {
 	if resolved, err := filepath.EvalSymlinks(exe); err == nil {
 		exe = resolved
 	}
+	userDir, err := statefile.UserDir()
+	if err != nil {
+		ln.Close()
+		return err
+	}
+	hookRunner := &hooks.Runner{Path: filepath.Join(userDir, "hooks.json"), PluginsDir: filepath.Join(userDir, "plugins"), Log: logger}
 	bx := &box.Box{
 		Name:         hostname,
 		Locations:    locations,
@@ -228,6 +234,7 @@ func serve(b boxHome, args []string) error {
 		LogDir:       filepath.Join(b.dir, "logs"),
 		Units:        &box.Units{Dir: filepath.Join(b.dir, "units")},
 		AgentStates:  agentStates,
+		Hooks:        hookRunner,
 		Update: &box.SelfUpdate{
 			Executable:    exe,
 			Fingerprint:   id.Fingerprint().String(),
@@ -249,7 +256,7 @@ func serve(b boxHome, args []string) error {
 		return err
 	}
 	go s.ServeLocal(ctx, local)
-	go (&hooks.Runner{Path: filepath.Join(b.dir, "hooks.json"), Log: logger}).Run(ctx, bus)
+	go hookRunner.Run(ctx, bus)
 
 	logger.Printf("berthd serving %s as %q (%s); local API %s", ln.Addr(), hostname, id.Fingerprint().Short(), b.socket())
 	return s.Serve(ctx, ln)

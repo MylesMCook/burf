@@ -1,5 +1,10 @@
 // Package hooks runs user commands when berth events happen, which is how
-// berth drives other tools (Orca, Herdr, Cursor, notifications).
+// berth drives other tools and how people script it.
+//
+// Hooks live in ~/.berth/hooks.json on the machine that should run them, and
+// plugins add their own from their manifests. Most hooks follow events after
+// the fact. A hook on "before:ACTION" runs first instead, and can refuse the
+// action by exiting non-zero: its output becomes the error the caller sees.
 //
 // Loops are the risk when integrations run in both directions: berth creates
 // a worktree, a hook tells Orca, Orca tells berth, and so on. A hook names
@@ -15,6 +20,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -23,6 +29,8 @@ import (
 
 type Hook struct {
 	// On is an event type, a prefix pattern such as "worktree.*", or "*".
+	// "before:" in front, as in "before:worktree.create", makes it a gate
+	// that runs before the action and can stop it.
 	On string `json:"on"`
 	// Run is a shell command. It gets the event as JSON on stdin and as
 	// BERTH_* environment variables.
@@ -30,7 +38,12 @@ type Hook struct {
 	// Tool is the tool this hook drives. Events from it are skipped.
 	Tool    string `json:"tool,omitempty"`
 	Timeout string `json:"timeout,omitempty"`
+	// Dir is where Run runs: the plugin's folder for a plugin's hooks.
+	Dir string `json:"-"`
 }
+
+// BeforePrefix marks a hook that gates an action rather than following it.
+const BeforePrefix = "before:"
 
 type Config struct {
 	Hooks []Hook `json:"hooks"`
@@ -42,19 +55,35 @@ const OriginEnv = "BERTH_ORIGIN"
 
 // Matches reports whether h should run for e.
 func Matches(h Hook, e events.Event) bool {
-	if h.Run == "" {
+	if h.Run == "" || strings.HasPrefix(h.On, BeforePrefix) {
 		return false
 	}
 	if h.Tool != "" && e.Origin == h.Tool {
 		return false
 	}
-	switch {
-	case h.On == "*":
-		return true
-	case strings.HasSuffix(h.On, ".*"):
-		return strings.HasPrefix(e.Type, strings.TrimSuffix(h.On, "*"))
+	return pattern(h.On, e.Type)
+}
+
+// MatchesBefore reports whether h gates the action e describes.
+func MatchesBefore(h Hook, e events.Event) bool {
+	on, ok := strings.CutPrefix(h.On, BeforePrefix)
+	if h.Run == "" || !ok {
+		return false
 	}
-	return h.On == e.Type
+	if h.Tool != "" && e.Origin == h.Tool {
+		return false
+	}
+	return pattern(on, e.Type)
+}
+
+func pattern(on, typ string) bool {
+	switch {
+	case on == "*":
+		return true
+	case strings.HasSuffix(on, ".*"):
+		return strings.HasPrefix(typ, strings.TrimSuffix(on, "*"))
+	}
+	return on == typ
 }
 
 // Env describes e to a hook command.
@@ -94,7 +123,9 @@ func Env(e events.Event, tool string) []string {
 // restart, and runs matching hooks one at a time off the event path.
 type Runner struct {
 	Path string
-	Log  *log.Logger
+	// PluginsDir holds plugins, whose berth-plugin.json may list hooks.
+	PluginsDir string
+	Log        *log.Logger
 }
 
 func (r *Runner) Run(ctx context.Context, bus *events.Bus) {
@@ -110,23 +141,87 @@ func (r *Runner) Run(ctx context.Context, bus *events.Bus) {
 	}
 }
 
-func (r *Runner) load() (Config, error) {
+// Load reads every hook: hooks.json first, then each plugin's.
+func (r *Runner) Load() (Config, error) {
 	var c Config
 	b, err := os.ReadFile(r.Path)
-	if os.IsNotExist(err) {
-		return c, nil
-	}
-	if err != nil {
+	if err != nil && !os.IsNotExist(err) {
 		return c, err
 	}
-	if err := json.Unmarshal(b, &c); err != nil {
-		return c, fmt.Errorf("%s: %w", r.Path, err)
+	if err == nil {
+		if err := json.Unmarshal(b, &c); err != nil {
+			return c, fmt.Errorf("%s: %w", r.Path, err)
+		}
+	}
+	if r.PluginsDir != "" {
+		manifests, _ := filepath.Glob(filepath.Join(r.PluginsDir, "*", PluginManifest))
+		for _, m := range manifests {
+			hooks, err := pluginHooks(m)
+			if err != nil {
+				r.logf("hooks: %v", err)
+				continue
+			}
+			c.Hooks = append(c.Hooks, hooks...)
+		}
 	}
 	return c, nil
 }
 
+// PluginManifest is the file that makes a folder a plugin.
+const PluginManifest = "berth-plugin.json"
+
+// pluginHooks reads a plugin's hooks, which run in the plugin's folder. A
+// plugin is turned off by a file named "disabled" beside its manifest.
+func pluginHooks(manifest string) ([]Hook, error) {
+	dir := filepath.Dir(manifest)
+	if _, err := os.Stat(filepath.Join(dir, "disabled")); err == nil {
+		return nil, nil
+	}
+	b, err := os.ReadFile(manifest)
+	if err != nil {
+		return nil, err
+	}
+	var m struct {
+		Hooks []Hook `json:"hooks"`
+	}
+	if err := json.Unmarshal(b, &m); err != nil {
+		return nil, fmt.Errorf("%s: %w", manifest, err)
+	}
+	for i := range m.Hooks {
+		m.Hooks[i].Dir = dir
+	}
+	return m.Hooks, nil
+}
+
+// Before runs the hooks gating e's action, in order, and returns the first
+// refusal. A nil Runner allows everything.
+func (r *Runner) Before(ctx context.Context, e events.Event) error {
+	if r == nil {
+		return nil
+	}
+	cfg, err := r.Load()
+	if err != nil {
+		// A config that cannot be read must not block work.
+		r.logf("hooks: %v", err)
+		return nil
+	}
+	for _, h := range cfg.Hooks {
+		if !MatchesBefore(h, e) {
+			continue
+		}
+		if out, err := r.command(ctx, h, e, 30*time.Second); err != nil {
+			msg := strings.TrimSpace(string(out))
+			if msg == "" {
+				msg = err.Error()
+			}
+			return fmt.Errorf("a %q hook stopped %s: %s", h.On, e.Type, msg)
+		}
+	}
+	return nil
+}
+
 func (r *Runner) handle(ctx context.Context, e events.Event) {
-	cfg, err := r.load()
+	cfg, err := r.Load()
 	if err != nil {
 		r.logf("hooks: %v", err)
 		return
@@ -139,7 +234,17 @@ func (r *Runner) handle(ctx context.Context, e events.Event) {
 }
 
 func (r *Runner) exec(ctx context.Context, h Hook, e events.Event) {
-	timeout := time.Minute
+	out, err := r.command(ctx, h, e, time.Minute)
+	if err != nil {
+		r.logf("hook %q for %s failed: %v: %s", h.On, e.Type, err, strings.TrimSpace(string(out)))
+		return
+	}
+	r.logf("hook %q ran for %s", h.On, e.Type)
+}
+
+// command runs h for e with the event on stdin, within h's timeout or def.
+func (r *Runner) command(ctx context.Context, h Hook, e events.Event, def time.Duration) ([]byte, error) {
+	timeout := def
 	if d, err := time.ParseDuration(h.Timeout); err == nil && d > 0 {
 		timeout = d
 	}
@@ -147,14 +252,13 @@ func (r *Runner) exec(ctx context.Context, h Hook, e events.Event) {
 	defer cancel()
 	payload, _ := json.Marshal(e)
 	cmd := exec.CommandContext(ctx, "/bin/sh", "-c", h.Run)
+	cmd.Dir = h.Dir
 	cmd.Env = append(os.Environ(), Env(e, h.Tool)...)
-	cmd.Stdin = bytes.NewReader(payload)
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		r.logf("hook %q for %s failed: %v: %s", h.On, e.Type, err, strings.TrimSpace(string(out)))
-		return
+	if h.Dir != "" {
+		cmd.Env = append(cmd.Env, "BERTH_PLUGIN_DIR="+h.Dir)
 	}
-	r.logf("hook %q ran for %s", h.On, e.Type)
+	cmd.Stdin = bytes.NewReader(payload)
+	return cmd.CombinedOutput()
 }
 
 func (r *Runner) logf(format string, args ...any) {

@@ -112,3 +112,44 @@ func TestABrokenConfigRunsNothingAndDoesNotCrash(t *testing.T) {
 	r := &Runner{Path: path, Log: log.New(io.Discard, "", 0)}
 	r.handle(context.Background(), events.Event{Type: "worktree.created"})
 }
+
+func TestBeforeHooksGateOnlyTheirAction(t *testing.T) {
+	dir := t.TempDir()
+	cfg := `{"hooks":[
+		{"on":"before:worktree.create","run":"echo 'branches must start with fix/' >&2; exit 1"},
+		{"on":"worktree.create","run":"exit 1"}
+	]}`
+	os.WriteFile(filepath.Join(dir, "hooks.json"), []byte(cfg), 0o600)
+	r := &Runner{Path: filepath.Join(dir, "hooks.json")}
+	err := r.Before(context.Background(), events.Event{Type: "worktree.create"})
+	if err == nil || !strings.Contains(err.Error(), "branches must start with fix/") {
+		t.Fatalf("err = %v, want the hook's refusal", err)
+	}
+	if err := r.Before(context.Background(), events.Event{Type: "session.start"}); err != nil {
+		t.Fatalf("an unrelated action was stopped: %v", err)
+	}
+	if Matches(Hook{On: "before:*", Run: "x"}, events.Event{Type: "worktree.create"}) {
+		t.Fatal("a before hook also ran as an event hook")
+	}
+	var nilRunner *Runner
+	if err := nilRunner.Before(context.Background(), events.Event{Type: "worktree.create"}); err != nil {
+		t.Fatalf("a nil runner refused: %v", err)
+	}
+}
+
+func TestPluginHooksRunInThePluginsFolderUnlessDisabled(t *testing.T) {
+	plugins := t.TempDir()
+	dir := filepath.Join(plugins, "notify")
+	os.MkdirAll(dir, 0o700)
+	os.WriteFile(filepath.Join(dir, PluginManifest), []byte(`{"id":"notify","hooks":[{"on":"before:session.start","run":"pwd; exit 3"}]}`), 0o600)
+	r := &Runner{Path: filepath.Join(t.TempDir(), "missing.json"), PluginsDir: plugins}
+	err := r.Before(context.Background(), events.Event{Type: "session.start"})
+	resolved, _ := filepath.EvalSymlinks(dir)
+	if err == nil || !strings.Contains(err.Error(), resolved) {
+		t.Fatalf("err = %v, want the hook to run in %s", err, resolved)
+	}
+	os.WriteFile(filepath.Join(dir, "disabled"), nil, 0o600)
+	if err := r.Before(context.Background(), events.Event{Type: "session.start"}); err != nil {
+		t.Fatalf("a disabled plugin's hook ran: %v", err)
+	}
+}

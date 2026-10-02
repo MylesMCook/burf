@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net"
@@ -148,6 +149,8 @@ type runningAgent struct {
 	cancel context.CancelFunc
 	done   chan error
 	proxy  string
+	ui     string
+	dir    string
 	now    *clock
 }
 
@@ -193,6 +196,7 @@ func startAgentWith(t *testing.T, dir string, nets Networks) *runningAgent {
 	}
 	proxyAddr := proxyLn.Addr().String()
 	proxyLn.Close()
+	uiAddr := fmt.Sprintf("127.0.0.1:%d", freePort(t))
 	socket := shortSocket(t)
 	clk := &clock{}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -206,9 +210,11 @@ func startAgentWith(t *testing.T, dir string, nets Networks) *runningAgent {
 			Log:            log.New(io.Discard, "", 0),
 			Now:            clk.Now,
 			Networks:       nets,
+			UIAddr:         uiAddr,
+			UserDir:        filepath.Join(dir, "user"),
 		})
 	}()
-	a := &runningAgent{client: NewClient(socket), cancel: cancel, done: done, proxy: proxyAddr, now: clk}
+	a := &runningAgent{client: NewClient(socket), cancel: cancel, done: done, proxy: proxyAddr, ui: uiAddr, dir: dir, now: clk}
 	deadline := time.Now().Add(5 * time.Second)
 	for !a.client.Running(context.Background()) {
 		select {
@@ -437,7 +443,7 @@ func TestOnlyOneAgentRunsPerStateDirectory(t *testing.T) {
 	b := newBox(t)
 	dir := b.pairLaptop()
 	startAgent(t, dir)
-	err := Run(context.Background(), Config{Dir: dir, Socket: shortSocket(t), ProxyAddrs: []string{}, Log: log.New(io.Discard, "", 0)})
+	err := Run(context.Background(), Config{Dir: dir, Socket: shortSocket(t), ProxyAddrs: []string{}, UIAddr: "off", Log: log.New(io.Discard, "", 0)})
 	if !errors.Is(err, ErrAlreadyRunning) {
 		t.Fatalf("second agent: %v, want ErrAlreadyRunning", err)
 	}

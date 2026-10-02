@@ -30,6 +30,8 @@ type Location struct {
 	Worktrees []Worktree `json:"worktrees,omitempty"`
 	// Scripts run when berth creates or removes worktrees here.
 	Scripts Scripts `json:"scripts"`
+	// Agents are the repository's own agent presets.
+	Agents []AgentPreset `json:"agents,omitempty"`
 }
 
 type Worktree struct {
@@ -224,6 +226,9 @@ func describe(ctx context.Context, s savedLocation) Location {
 		return loc
 	}
 	loc.Repo = true
+	if c, ok, _ := ReadRepoConfig(s.Path); ok {
+		loc.Agents = c.Agents
+	}
 	loc.Worktrees = parseWorktrees(out, s.Path)
 	return loc
 }

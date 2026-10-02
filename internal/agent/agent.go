@@ -27,6 +27,7 @@ import (
 	"github.com/sean-brydon/berth/internal/network"
 	"github.com/sean-brydon/berth/internal/pfredirect"
 	"github.com/sean-brydon/berth/internal/proxy"
+	"github.com/sean-brydon/berth/internal/statefile"
 	"github.com/sean-brydon/berth/internal/trust"
 	"github.com/sean-brydon/berth/internal/wire"
 )
@@ -55,7 +56,13 @@ type Config struct {
 	// 1377 on both loopback addresses.
 	ProxyAddrs     []string
 	HealthInterval time.Duration
-	Log            *log.Logger
+	// UIAddr is where the desktop app's API listens; "off" turns it off.
+	// Defaults to 127.0.0.1:1378.
+	UIAddr string
+	// UserDir holds hooks, themes, templates and plugins. Defaults to
+	// ~/.berth.
+	UserDir string
+	Log     *log.Logger
 	// Now reads the wall clock; tests replace it to simulate sleep.
 	Now func() time.Time
 	// Networks reaches boxes on other tailnets. Defaults to embedded
@@ -79,6 +86,16 @@ func (c *Config) defaults() {
 	if c.ProxyAddrs == nil {
 		port := strconv.Itoa(DefaultProxyPort)
 		c.ProxyAddrs = []string{net.JoinHostPort("127.0.0.1", port), net.JoinHostPort("::1", port)}
+	}
+	if c.UIAddr == "" {
+		c.UIAddr = net.JoinHostPort("127.0.0.1", strconv.Itoa(DefaultUIPort))
+	}
+	if c.UserDir == "" {
+		if dir, err := statefile.UserDir(); err == nil {
+			c.UserDir = dir
+		} else {
+			c.UserDir = filepath.Join(c.Dir, "user")
+		}
 	}
 	if c.HealthInterval == 0 {
 		c.HealthInterval = defaultHealthInterval
@@ -211,9 +228,11 @@ func Run(ctx context.Context, cfg Config) error {
 	a.sync()
 	a.startSavedForwards(ctx)
 	go a.healthLoop(ctx)
-	go (&hooks.Runner{Path: filepath.Join(cfg.Dir, "hooks.json"), Log: cfg.Log}).Run(ctx, &a.bus)
+	go (&hooks.Runner{Path: filepath.Join(cfg.UserDir, "hooks.json"), PluginsDir: filepath.Join(cfg.UserDir, "plugins"), Log: cfg.Log}).Run(ctx, &a.bus)
 
-	api := &http.Server{Handler: a.api(cancel), ReadHeaderTimeout: 10 * time.Second}
+	handler := a.api(cancel)
+	a.startUI(ctx, handler)
+	api := &http.Server{Handler: handler, ReadHeaderTimeout: 10 * time.Second}
 	stop := context.AfterFunc(ctx, func() { api.Close() })
 	defer stop()
 	a.publish(Event{Type: EventAgentStarted})

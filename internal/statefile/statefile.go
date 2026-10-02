@@ -26,6 +26,22 @@ func Home() (string, error) {
 	return filepath.Join(base, "berth"), nil
 }
 
+// UserDir is where people keep what they write for berth by hand: hooks,
+// themes, task templates, and plugins. BERTH_USER_DIR overrides ~/.berth.
+func UserDir() (string, error) {
+	if dir := os.Getenv("BERTH_USER_DIR"); dir != "" {
+		if !filepath.IsAbs(dir) {
+			return "", fmt.Errorf("BERTH_USER_DIR must be an absolute path")
+		}
+		return dir, nil
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(home, ".berth"), nil
+}
+
 // Write replaces path atomically, so a crash or a concurrent reader never
 // observes a partial file. Files are private to the owner.
 func Write(path string, data []byte) error {

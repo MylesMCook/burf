@@ -24,7 +24,7 @@ import (
 
 // servedBox runs berthd's server with the box routes mounted and returns a
 // client for a laptop paired with it.
-func servedBox(t *testing.T) (*wire.Client, *events.Bus) {
+func servedBox(t *testing.T, opts ...func(*Box)) (*wire.Client, *events.Bus) {
 	t.Helper()
 	dir := t.TempDir()
 	id, err := identity.LoadOrCreate(filepath.Join(dir, "identity.pem"))
@@ -41,7 +41,11 @@ func servedBox(t *testing.T) (*wire.Client, *events.Bus) {
 	bus := &events.Bus{}
 	units := &Units{Dir: filepath.Join(dir, "units")}
 	units.svc, _ = fakeService() // never install a real unit from a test
-	(&Box{Name: "devbox", Locations: NewLocations(filepath.Join(dir, "locations.json")), Sessions: sessions, Shares: &Shares{}, Units: units, Events: bus}).Mount(srv)
+	bx := &Box{Name: "devbox", Locations: NewLocations(filepath.Join(dir, "locations.json")), Sessions: sessions, Shares: &Shares{}, Units: units, Events: bus}
+	for _, opt := range opts {
+		opt(bx)
+	}
+	bx.Mount(srv)
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
