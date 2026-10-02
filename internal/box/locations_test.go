@@ -131,3 +131,20 @@ func TestAddRejectsMissingPathsAndBadNames(t *testing.T) {
 		t.Fatalf("removing unknown: %v", err)
 	}
 }
+
+func TestAWorktreeChecksOutABranchThatAlreadyExists(t *testing.T) {
+	repo := gitRepo(t)
+	ctx := context.Background()
+	if out, err := exec.Command("git", "-C", repo, "branch", "feature/review-me").CombinedOutput(); err != nil {
+		t.Fatalf("%v: %s", err, out)
+	}
+	l := NewLocations(filepath.Join(t.TempDir(), "locations.json"))
+	l.Add(ctx, "cal", repo)
+	wt, err := l.CreateWorktree(ctx, "cal", "review", "feature/review-me", "main")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if wt.Branch != "feature/review-me" {
+		t.Fatalf("branch = %q", wt.Branch)
+	}
+}

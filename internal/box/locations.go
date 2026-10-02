@@ -178,9 +178,18 @@ func (l *Locations) CreateWorktree(ctx context.Context, location, name, branch, 
 		branch = name
 	}
 	path := filepath.Join(filepath.Dir(loc.Path), filepath.Base(loc.Path)+"-"+name)
-	args := []string{"-C", loc.Path, "worktree", "add", "-b", branch, path}
-	if base != "" {
-		args = append(args, base)
+	args := []string{"-C", loc.Path, "worktree", "add"}
+	switch {
+	case branchExists(ctx, loc.Path, "refs/heads/"+branch):
+		// An existing branch is checked out as it is, to review or continue.
+		args = append(args, path, branch)
+	case branchExists(ctx, loc.Path, "refs/remotes/origin/"+branch):
+		args = append(args, "--track", "-b", branch, path, "origin/"+branch)
+	default:
+		args = append(args, "-b", branch, path)
+		if base != "" {
+			args = append(args, base)
+		}
 	}
 	if out, err := git(ctx, args...); err != nil {
 		return Worktree{}, fmt.Errorf("git worktree add: %s", strings.TrimSpace(string(out)))
@@ -191,6 +200,11 @@ func (l *Locations) CreateWorktree(ctx context.Context, location, name, branch, 
 		}
 	}
 	return Worktree{Name: name, Path: path, Branch: branch}, nil
+}
+
+func branchExists(ctx context.Context, repo, ref string) bool {
+	_, err := git(ctx, "-C", repo, "rev-parse", "--verify", "--quiet", ref)
+	return err == nil
 }
 
 // RemoveWorktree removes a worktree. Git refuses when it has uncommitted

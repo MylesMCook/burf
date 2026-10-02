@@ -1,0 +1,9 @@
+{
+  "name": "Fix a bug",
+  "description": "A fresh branch from main and Claude Code, asked to reproduce the bug with a test first.",
+  "agent": "claude",
+  "branch": "fix/{{name}}",
+  "base": "main",
+  "prompt": "Fix this bug: {{issue}}\n\nReproduce it with a failing test first, then fix it, then run the related tests.",
+  "variables": [{ "id": "issue", "label": "What's broken (or an issue link)", "multiline": true }]
+}

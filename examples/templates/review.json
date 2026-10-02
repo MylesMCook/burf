@@ -1,0 +1,8 @@
+{
+  "name": "Review a branch",
+  "description": "Check out an existing branch in its own worktree and have Codex review it.",
+  "agent": "codex",
+  "branch": "{{branch}}",
+  "prompt": "Review the changes on this branch against main. List correctness bugs first, then anything risky. Do not edit files.",
+  "variables": [{ "id": "branch", "label": "Branch to review" }]
+}
