@@ -1,4 +1,4 @@
-import { ChevronRightIcon, ClockIcon, GitPullRequestIcon } from "lucide-react";
+import { ChevronRightIcon, ClockIcon, FlaskConicalIcon, GitPullRequestIcon } from "lucide-react";
 import { useState } from "react";
 
 import { Scene } from "@/components/art/scenes";
@@ -6,13 +6,17 @@ import { BoxFilter, shownBoxes } from "@/components/box-filter";
 import { FilterChip } from "@/components/filter-chip";
 import { SimpleSelect } from "@/components/simple-select";
 import { Tip } from "@/components/tip";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { ago } from "@/lib/format";
 import { load, save } from "@/lib/storage";
 import { cn } from "@/lib/utils";
+import { useProjects, type Project } from "@/lib/project-groups";
+import { CATALOG } from "@/views/automations/catalog";
+import { EVERY_BOX, projectScope, sharedProjectOf } from "@/views/automations/flows/everywhere";
 import { STEP_KINDS } from "@/views/automations/flows/model";
-import { ProjectLabel } from "@/views/automations/flows/project-label";
+import { BoxChip, ProjectLabel } from "@/views/automations/flows/project-label";
 import { RunStatus, runTook } from "@/views/automations/flows/run-status";
 import type { BoxRun } from "@/views/automations/flows/use-runs";
 
@@ -23,6 +27,7 @@ export function RunsTab({ runs, boxes, names }: { runs: BoxRun[]; boxes: string[
   const [hidden, setHidden] = useState<string[]>(() => load("berth.runs.hiddenBoxes", []));
   const [flow, setFlow] = useState("");
   const [failed, setFailed] = useState(false);
+  const { projects } = useProjects();
   const hide = (next: string[]) => {
     setHidden(next);
     save("berth.runs.hiddenBoxes", next);
@@ -42,7 +47,14 @@ export function RunsTab({ runs, boxes, names }: { runs: BoxRun[]; boxes: string[
     );
 
   const on = shownBoxes(boxes, hidden);
-  const named = runs.map((r) => ({ run: r, name: names(r.box, r.scope, r.flow) }));
+  // names gives the id back for a flow it doesn't know.
+  const known = (box: string, scope: string, id: string) => {
+    const n = names(box, scope, id);
+    return n === id ? undefined : n;
+  };
+  // A run of a flow kept on every box with a project says so, so its runs
+  // read as that one flow's, whichever box ran them.
+  const named = runs.map((r) => ({ run: r, name: names(r.box, r.scope, r.flow), shared: sharedProjectOf(projects, r.box, r.scope, r.flow, known) }));
   const flows = [...new Set(named.map((n) => n.name))].sort((a, b) => a.localeCompare(b));
   const shown = named.filter(({ run, name }) => on.includes(run.box) && (!flow || name === flow) && (!failed || run.status === "failed"));
   const filtered = on.length < boxes.length || !!flow || failed;
@@ -91,8 +103,8 @@ export function RunsTab({ runs, boxes, names }: { runs: BoxRun[]; boxes: string[
             <span className="text-right">Took</span>
           </div>
           <ol className="divide-y divide-border/70">
-            {shown.map(({ run, name }) => (
-              <RunRow key={`${run.box}:${run.id}`} run={run} name={name} />
+            {shown.map(({ run, name, shared }) => (
+              <RunRow key={`${run.box}:${run.id}`} run={run} name={name} shared={shared} />
             ))}
           </ol>
         </div>
@@ -101,7 +113,11 @@ export function RunsTab({ runs, boxes, names }: { runs: BoxRun[]; boxes: string[
   );
 }
 
-function RunRow({ run, name }: { run: BoxRun; name: string }) {
+// eventLabel names what started a run in words ("Agent finished"); the
+// event's id stays in the tooltip.
+const eventLabel = (type: string) => CATALOG.find((e) => e.on === type)?.label;
+
+function RunRow({ run, name, shared }: { run: BoxRun; name: string; shared?: Project }) {
   const [open, setOpen] = useState(false);
   const d = run.event.data ?? {};
   const where = (d.name as string) || (d.location as string) || (d.path as string)?.split("/").pop();
@@ -112,10 +128,30 @@ function RunRow({ run, name }: { run: BoxRun; name: string }) {
         <span className="flex min-w-0 items-center gap-1.5">
           <ChevronRightIcon className={cn("size-3 shrink-0 text-muted-foreground transition-transform", open && "rotate-90")} />
           <span className="truncate font-medium">{name}</span>
+          {run.test && (
+            <Badge variant="outline" size="sm" className="shrink-0 text-muted-foreground">
+              Test
+            </Badge>
+          )}
         </span>
-        <ProjectLabel box={run.box} scope={run.scope} className="text-muted-foreground text-xs" />
+        {shared ? (
+          <Tip label={`One flow kept the same on every box with ${shared.name}. This run was on ${run.box}.`} align="start">
+            <span className="flex min-w-0 items-center gap-1.5 text-muted-foreground text-xs">
+              <ProjectLabel box={EVERY_BOX} scope={projectScope(shared.id)} chip={false} className="min-w-0" />
+              <BoxChip box={run.box} />
+            </span>
+          </Tip>
+        ) : (
+          <ProjectLabel box={run.box} scope={run.scope} className="text-muted-foreground text-xs" />
+        )}
         <span className="truncate text-xs">
-          {run.event.type === "schedule.fired" ? (
+          {run.test ? (
+            // Started from the editor, not by an agent or the schedule.
+            <span className="inline-flex items-center gap-1 text-muted-foreground">
+              <FlaskConicalIcon className="size-3" />
+              Test run
+            </span>
+          ) : run.event.type === "schedule.fired" ? (
             <span className="inline-flex items-center gap-1 text-muted-foreground">
               <ClockIcon className="size-3" />
               Scheduled
@@ -127,13 +163,15 @@ function RunRow({ run, name }: { run: BoxRun; name: string }) {
               {d.author ? ` · ${String(d.author)}` : d.check ? ` · ${String(d.check)}` : ""}
             </span>
           ) : (
-            <code className="font-mono text-[11px] text-muted-foreground">{run.event.type}</code>
+            <Tip label={run.event.type}>
+              <span className="text-muted-foreground">{eventLabel(run.event.type) ?? run.event.type}</span>
+            </Tip>
           )}
           {where && <span className="text-muted-foreground"> · {where}</span>}
         </span>
-        <span className="text-muted-foreground text-xs" title={new Date(run.started).toLocaleString()}>
-          {ago(run.started)}
-        </span>
+        <Tip label={new Date(run.started).toLocaleString()}>
+          <span className="text-muted-foreground text-xs">{ago(run.started)}</span>
+        </Tip>
         <span className="text-right font-mono text-[11px] text-muted-foreground tabular-nums">{runTook(run)}</span>
       </button>
       {open && (

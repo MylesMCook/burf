@@ -55,12 +55,10 @@ const theme = (c: TerminalColors) => ({ ...c, cursorAccent: c.background });
 
 let ghosttyReady: Promise<typeof import("ghostty-web")> | undefined;
 
-// ghostty-web needs its WASM initialised once before the first terminal.
+// ghostty-web is loaded once; each terminal then loads its own WASM
+// instance (see createGhostty), so its shared one (init()) is never made.
 function loadGhostty() {
-  ghosttyReady ??= import("ghostty-web").then(async (m) => {
-    await m.init();
-    return m;
-  });
+  ghosttyReady ??= import("ghostty-web");
   return ghosttyReady;
 }
 
@@ -112,9 +110,22 @@ function keepLastColumn(t: object) {
   };
 }
 
+// Each terminal gets a WASM instance of its own, and reset() clears it in
+// place. ghostty-web 0.4 shares one instance (one WASM heap) between every
+// terminal, and its reset() frees the terminal and makes a new one. Ghostty
+// assumes new page memory is zeroed, which holds for the OS's pages but not
+// for WASM memory freed by another terminal (or by reset) and handed out
+// again. A terminal made in reused memory looked fine until it grew wider:
+// widening a page only bumps its width, so the cells past the old width
+// showed whatever the previous owner left there (replacement characters,
+// CJK and Arabic glyphs) when a split partner closed or the window grew.
+// A fresh instance starts with zeroed memory, and RIS (ESC c) plus erasing
+// the scrollback resets without freeing anything. Loading one takes ~5ms.
 async function createGhostty(host: HTMLElement, colors: TerminalColors, prefs: TerminalPrefs): Promise<TermHandle> {
   const g = await loadGhostty();
+  const ghostty = await g.Ghostty.load();
   const t = new g.Terminal({
+    ghostty,
     fontFamily: prefs.fontFamily,
     fontSize: prefs.fontSize,
     cursorStyle: prefs.cursorStyle,
@@ -124,13 +135,18 @@ async function createGhostty(host: HTMLElement, colors: TerminalColors, prefs: T
   });
   const fit = new g.FitAddon();
   t.loadAddon(fit);
-  // ghostty-web focuses itself on open. Whoever had the keyboard (a dialog
-  // opened while this terminal was being made) keeps it; the pane focuses
-  // its terminal itself when it should.
-  const had = document.activeElement as HTMLElement | null;
-  t.open(host);
-  if (had && had !== document.body && had.isConnected) had.focus();
-  else (document.activeElement as HTMLElement | null)?.blur();
+  // ghostty-web focuses itself on open, once at once and again a tick later
+  // (a setTimeout), so putting focus back afterwards lost to the second one:
+  // a split an agent opened beside you took the keyboard while the pane you
+  // were in still looked focused. Its focus is switched off while it opens.
+  // Whoever has the keyboard keeps it; the pane focuses its terminal itself
+  // when it should (TerminalView).
+  t.focus = () => {};
+  try {
+    t.open(host);
+  } finally {
+    delete (t as { focus?: unknown }).focus;
+  }
   keepLastColumn(t);
   return {
     get cols() {
@@ -140,7 +156,8 @@ async function createGhostty(host: HTMLElement, colors: TerminalColors, prefs: T
       return t.rows;
     },
     write: (d) => t.write(d),
-    reset: () => t.reset(),
+    // Full reset, then erase the scrollback: see createGhostty.
+    reset: () => t.write("\x1bc\x1b[3J"),
     fit: () => {
       try {
         fit.fit();

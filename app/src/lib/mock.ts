@@ -323,7 +323,8 @@ function mockOrchestration(box: string, method: string, path: string, body?: unk
   if (method === "POST" && path === "secrets/test") {
     const { ref } = body as { ref: string };
     if (!/^(op|env):\/\/[^/\s]+/.test(ref)) return delay({ ok: false, error: "not a secret reference: use op://vault/item/field or env://NAME" });
-    if (/missing|nope/.test(ref)) return delay({ ok: false, error: `"${ref.split("/").pop()}" isn't an item in this vault` });
+    // op://vault/item/field: the item is the third part.
+    if (/missing|nope/.test(ref)) return delay({ ok: false, error: `op: [ERROR] 2026/10/03 09:14:02 "${ref.replace(/^op:\/\//, "").split("/")[1] ?? ref}" isn't an item in the "${ref.replace(/^op:\/\//, "").split("/")[0]}" vault` });
     return delay({ ok: true, length: 32 });
   }
   if (method === "POST" && path === "exec") {
@@ -807,6 +808,9 @@ export function mockNotifications() {
     [1050, { type: "guard.acted", box: "gpu", origin: "guard", data: { action: "stop_services", location: "evals", name: "judge-v2", path: "/home/me/evals-judge-v2", services: ["web", "worker"], memory_percent: 93.4, reason: "Memory at 93% for 2 minutes" } }],
     [1200, { type: "kit.installed", box: devl, data: { location: "cal", kit: "cal-com", version: "3", source: "https://example.com/kits/cal-com.json", warnings: ["The .env.example has keys this kit does not set: STRIPE_WEBHOOK_SECRET", "yarn is not installed; used pnpm"] } }],
     [1350, { type: "notify", box: devl, origin: "flow:nightly-e2e", data: { title: "Nightly e2e passed", body: "412 tests in 9m 12s", flow: "nightly-e2e", location: "cal" } }],
+    // One of three Claude Codes in one worktree: named by its session, it
+    // reads as "Claude Code 3", not just "Claude Code".
+    [1420, { type: "agent.finished", box: devl, origin: "claude", data: { path: "/home/me/work/cal-transfer-billing", session: "transfer-billing-claude-3", agent: "claude" } }],
     [1500, { type: "preview.open", box: devl, data: { location: "cal", name: "qa-deck", path: "/home/me/work/cal-qa-deck", port: 4789, url_path: "/deck" } }],
   ];
   for (const [ms, e] of plays) setTimeout(() => emit(e), ms);

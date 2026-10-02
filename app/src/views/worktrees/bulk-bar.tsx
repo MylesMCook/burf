@@ -13,6 +13,7 @@ import type { SyncMode } from "@/lib/worktrees";
 import { SyncButton } from "@/views/worktrees/sync-button";
 import { type BulkAction, actionLabel, type BulkSummary, type RowProgress, skipReason } from "@/views/worktrees/use-bulk";
 import { openWorktree, type Row } from "@/views/worktrees/use-worktrees";
+import { liftToasts } from "@/hooks/lift-toasts";
 
 // BulkBar floats over the table: what you can do with the selection, then
 // how it is going, then what happened.
@@ -59,7 +60,7 @@ export function BulkBar({
     const problems = summary.rows.filter((r) => progress[r.key]?.state === "failed" || progress[r.key]?.state === "conflict");
     return (
       <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
-        <div className={shell} role="status" aria-live="polite">
+        <div ref={liftToasts} className={shell} role="status" aria-live="polite">
           <div className="flex items-center gap-3 text-sm">
             {running ? <Spinner className="size-4" /> : problems.length ? <AlertTriangleIcon className="size-4 text-warning" /> : <CheckIcon className="size-4 text-success" />}
             <span className="tabular-nums">
@@ -158,7 +159,7 @@ export function BulkBar({
 
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
-      <div className={cn(shell, "flex-row flex-wrap items-center")}>
+      <div ref={liftToasts} className={cn(shell, "flex-row flex-wrap items-center")}>
         <span className="pr-1 text-sm tabular-nums">{selected.length} selected</span>
         <span className="h-5 w-px bg-border" />
         <SyncButton

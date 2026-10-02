@@ -176,7 +176,7 @@ function validate(flows: Flow[]): string | undefined {
 
 // simulate runs a flow the way the box would, with made-up results: a
 // command with "test" or "check" in it fails the first time.
-function simulate(box: string, sf: ScopedFlow, data: Record<string, unknown>, emit: Emit): FlowRun {
+function simulate(box: string, sf: ScopedFlow, data: Record<string, unknown>, emit: Emit, test = false): FlowRun {
   const started = new Date().toISOString();
   let prevFailed = false;
   // As the box decides: a failure that a later failure or always step
@@ -200,7 +200,7 @@ function simulate(box: string, sf: ScopedFlow, data: Record<string, unknown>, em
       output: s.kind === "run" ? (fail ? `$ ${s.command}\n✗ 2 failing\n  billing › webhook retries without an idempotency key\n  billing › creates one invoice per event` : `$ ${s.command}\n✓ done`) : undefined,
     };
   });
-  const run: FlowRun = { id: `r${Date.now()}`, flow: sf.flow.id, scope: sf.scope, started, finished: new Date().toISOString(), status: failed ? "failed" : "succeeded", event: { type: triggerType(sf.flow.trigger), time: started, box, data }, steps };
+  const run: FlowRun = { id: `r${Date.now()}`, flow: sf.flow.id, scope: sf.scope, started, finished: new Date().toISOString(), status: failed ? "failed" : "succeeded", event: { type: triggerType(sf.flow.trigger), time: started, box, data }, steps, ...(test && { test }) };
   runs[box] = [run, ...(runs[box] ?? [])];
   emit({ type: "flow.started", box, origin: "app", data: { flow: sf.flow.id } });
   setTimeout(() => emit({ type: "flow.finished", box, data: { flow: sf.flow.id, status: run.status } }), 50);
@@ -261,7 +261,7 @@ export function flowsCall(box: string, method: string, path: string, body: unkno
     const { scope, data } = body as { scope?: string; data: Record<string, unknown> };
     const sf = listFlows(box).find((f) => f.flow.id === decodeURIComponent(m![1]) && (!scope || f.scope === scope));
     if (!sf) return Promise.reject(new Error("no flow with that id"));
-    return new Promise((r) => setTimeout(() => r(simulate(box, sf, data, emit)), 900));
+    return new Promise((r) => setTimeout(() => r(simulate(box, sf, data, emit, true)), 900));
   }
   m = route.match(/^locations\/([^/]+)\/config$/);
   if (m) {

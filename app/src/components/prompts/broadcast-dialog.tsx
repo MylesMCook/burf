@@ -7,7 +7,8 @@ import { VariableFields, useTargetLabel, withDefaults } from "@/components/promp
 import { SimpleSelect } from "@/components/simple-select";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogPanel, DialogPopup, DialogTitle } from "@/components/ui/dialog";
+import { StepHeader } from "@/components/step-header";
+import { Dialog, DialogFooter, DialogPanel, DialogPopup } from "@/components/ui/dialog";
 import { Kbd } from "@/components/ui/kbd";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
@@ -33,7 +34,8 @@ export function BroadcastDialog() {
   const d = usePromptUi((s) => s.broadcast);
   return (
     <Dialog open={!!d} onOpenChange={(open) => !open && closeBroadcast()}>
-      <DialogPopup className="sm:max-w-[44rem]" showCloseButton={false}>
+      {/* Anchored at the top: the form and the results differ in height, and a centred dialog would move its title. */}
+      <DialogPopup anchored className="sm:max-w-[44rem]" showCloseButton={false}>
         {d && <Body d={d} />}
       </DialogPopup>
     </Dialog>
@@ -136,10 +138,7 @@ function Compose({ d, onStarted }: { d: BroadcastDraft; onStarted(): void }) {
         }
       }}
     >
-      <DialogHeader className="gap-1.5 px-5 pt-5 pb-3">
-        <DialogTitle className="text-base">Send to several agents</DialogTitle>
-        <DialogDescription className="text-[13px]">One prompt, filled in for each agent, sent one after another.</DialogDescription>
-      </DialogHeader>
+      <StepHeader title="Send to several agents" description="One prompt, filled in for each agent, sent one after another." />
 
       <DialogPanel className="flex flex-col gap-4 px-5 pb-5">
         <div className="flex min-w-0 flex-col gap-1.5">
@@ -241,32 +240,32 @@ function TargetRow({
   missing: string[];
   onEdit(text?: string): void;
 }) {
-  const { title, detail } = useTargetLabel(entry.box, entry.session.name);
+  const { title, short, detail } = useTargetLabel(entry.box, entry.session.name);
   return (
     <div className="border-b last:border-b-0">
       <div className="flex min-w-0 items-center gap-2.5 px-3 py-1.5">
-        <Checkbox checked={checked} onCheckedChange={(v: boolean) => onCheck(v)} aria-label={`Send to ${title}`} />
+        <Checkbox checked={checked} onCheckedChange={(v: boolean) => onCheck(v)} aria-label={`Send to ${short}`} />
         <button type="button" className="flex min-w-0 flex-1 items-center gap-2 text-left" onClick={() => onCheck(!checked)}>
           <AgentIcon agent={agentOf(entry.session)} />
           <span className="min-w-0 truncate text-[13px]">{title}</span>
           <span className="min-w-0 shrink truncate text-muted-foreground text-xs">{detail.replace(new RegExp(` · ${entry.box}$`), "")}</span>
         </button>
         {missing.length > 0 && (
-          <span className="shrink-0 font-mono text-[11px] text-warning-foreground" title="Not known for this agent; left out of its prompt">
-            no {missing.map((m) => `{{${m}}}`).join(" ")}
-          </span>
+          <Tip label="Not known for this agent; left out of its prompt">
+            <span className="shrink-0 font-mono text-[11px] text-warning-foreground">no {missing.map((m) => `{{${m}}}`).join(" ")}</span>
+          </Tip>
         )}
         {edited && <span className="shrink-0 text-[11px] text-info-foreground">edited</span>}
         <StateGlyph state={entry.state} className="size-3" />
         <Tip label="See and edit this agent's prompt">
-          <Button type="button" size="icon-xs" variant="ghost" aria-expanded={expanded} aria-label={`Prompt for ${title}`} onClick={onExpand}>
+          <Button type="button" size="icon-xs" variant="ghost" aria-expanded={expanded} aria-label={`Prompt for ${short}`} onClick={onExpand}>
             <ChevronRightIcon className={cn("transition-transform", expanded && "rotate-90")} />
           </Button>
         </Tip>
       </div>
       {expanded && (
         <div className="flex flex-col gap-1 px-3 pb-2.5 pl-10">
-          <Textarea rows={4} className="text-[13px]" value={text} onChange={(e) => onEdit(e.target.value)} aria-label={`Prompt for ${title}`} />
+          <Textarea rows={4} className="text-[13px]" value={text} onChange={(e) => onEdit(e.target.value)} aria-label={`Prompt for ${short}`} />
           {edited && (
             <Button type="button" size="xs" variant="ghost" className="self-start text-muted-foreground" onClick={() => onEdit(undefined)}>
               Use the prompt again
@@ -301,15 +300,21 @@ function RunView({ onAgain }: { onAgain(): void }) {
   const problems = run.rows.some((r) => r.state === "failed");
   return (
     <>
-      <DialogHeader className="gap-1.5 px-5 pt-5 pb-3">
-        <div className="flex min-w-0 items-center gap-2.5">
-          {run.done ? problems ? <AlertTriangleIcon className="size-4 shrink-0 text-warning" /> : <CheckIcon className="size-4 shrink-0 text-success" /> : <Spinner className="size-4 shrink-0" />}
-          <DialogTitle className="min-w-0 truncate text-base">{run.title}</DialogTitle>
-        </div>
-        <DialogDescription className="text-[13px] tabular-nums" aria-live="polite">
-          {run.done ? summarize(run.rows) : `Sent to ${sent} of ${run.rows.length}${run.wait ? ` · ${ended} done` : ""}`}
-        </DialogDescription>
-      </DialogHeader>
+      {/* The same header as the form's, so the title stays where it was;
+          how the run is going leads it. */}
+      <StepHeader
+        title={
+          <span className="flex min-w-0 items-center gap-2.5">
+            {run.done ? problems ? <AlertTriangleIcon aria-hidden className="size-4 shrink-0 text-warning" /> : <CheckIcon aria-hidden className="size-4 shrink-0 text-success" /> : <Spinner className="size-4 shrink-0" />}
+            <span className="min-w-0 truncate">{run.title}</span>
+          </span>
+        }
+        description={
+          <span className="tabular-nums" aria-live="polite">
+            {run.done ? summarize(run.rows) : `Sent to ${sent} of ${run.rows.length}${run.wait ? ` · ${ended} done` : ""}`}
+          </span>
+        }
+      />
       <DialogPanel className="flex flex-col gap-2 px-5 pb-5">
         {run.rows.map((r, i) => (
           <ResultRow key={`${r.box}/${r.session}`} row={r} onQueue={() => void queueRow(run.id, i)} />

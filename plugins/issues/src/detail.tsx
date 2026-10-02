@@ -14,6 +14,7 @@ import {
   Skeleton,
   Spinner,
   Textarea,
+  Tip,
   Tooltip,
   TooltipPopup,
   TooltipTrigger,
@@ -320,12 +321,15 @@ export function Avatar({ login, className }: { login?: string; className?: strin
   let h = 0;
   for (const c of name) h = (h * 31 + c.charCodeAt(0)) % 360;
   return (
-    <span
-      title={login}
-      className={cn("grid size-5 shrink-0 place-items-center rounded-full font-semibold text-[9px] text-white uppercase", className)}
-      style={{ backgroundColor: `hsl(${h} 45% 45%)` }}
-    >
-      {name.replace(/^app\//, "").slice(0, 1)}
-    </span>
+    <Tip label={login}>
+      <span
+        role="img"
+        aria-label={login ?? "Unknown"}
+        className={cn("grid size-5 shrink-0 place-items-center rounded-full font-semibold text-[9px] text-white uppercase", className)}
+        style={{ backgroundColor: `hsl(${h} 45% 45%)` }}
+      >
+        {name.replace(/^app\//, "").slice(0, 1)}
+      </span>
+    </Tip>
   );
 }

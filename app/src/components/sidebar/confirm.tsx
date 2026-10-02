@@ -62,13 +62,21 @@ function Body({ req }: { req: ConfirmRequest }) {
   const [error, setError] = useState<string>();
   const [value, setValue] = useState(req.input?.initial ?? "");
   const button = useRef<HTMLButtonElement>(null);
+  const cancel = useRef<HTMLButtonElement>(null);
+  const second = useRef<HTMLButtonElement>(null);
+  // Where the keyboard starts: the field when it asks for one; the safe way
+  // out when it destroys something (the secondary, "Keep running", else
+  // Cancel), so Enter right after it opens never destroys; else confirm.
+  // A shortcut that confirms when pressed again (⌘W) is a deliberate second
+  // press, and still works through submit below.
+  const start = req.input ? undefined : req.destructive ? (req.secondary ? second : cancel) : button;
   const submit = useConfirm((s) => s.submit);
   const first = useRef(submit);
   useEffect(() => {
     if (submit !== first.current) button.current?.click();
   }, [submit]);
   return (
-    <AlertDialogPopup>
+    <AlertDialogPopup initialFocus={start ?? true}>
       <AlertDialogHeader>
         <AlertDialogTitle>{req.title}</AlertDialogTitle>
         <AlertDialogDescription>{req.description}</AlertDialogDescription>
@@ -101,9 +109,10 @@ function Body({ req }: { req: ConfirmRequest }) {
         </div>
       )}
       <AlertDialogFooter>
-        <AlertDialogClose render={<Button variant="ghost" />}>Cancel</AlertDialogClose>
+        <AlertDialogClose ref={cancel} render={<Button variant="ghost" />}>Cancel</AlertDialogClose>
         {req.secondary && (
           <Button
+            ref={second}
             variant="outline"
             disabled={busy}
             onClick={async () => {
@@ -121,7 +130,6 @@ function Body({ req }: { req: ConfirmRequest }) {
         )}
         <Button
           ref={button}
-          autoFocus={!req.input}
           disabled={!!req.input && !value.trim()}
           variant={req.destructive ? "destructive" : "default"}
           loading={busy}

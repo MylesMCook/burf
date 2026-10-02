@@ -248,7 +248,9 @@ function IssuesScreen({ berth }: ScreenProps) {
               ]}
             />
             <SortMenu sort={sort} onChange={setSort} />
-            <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none]">
+            {/* The labels wrap rather than scroll out of sight: a hidden
+                scrollbar cut the last ones off with no sign of more. */}
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1">
               {labelCounts.slice(0, 10).map((l) => (
                 <FilterChip key={l.name} className="text-[11px]" pressed={labels.includes(l.name)} onPressedChange={(on: boolean) => setLabels((ls) => (on ? [...ls, l.name] : ls.filter((x) => x !== l.name)))}>
                   <span className="size-2 shrink-0 rounded-full" style={{ backgroundColor: `#${l.color}` }} />
@@ -463,9 +465,11 @@ function IssueRow({
           </span>
           <span className="flex items-center gap-2">
             {openPR && (
-              <span className="inline-flex items-center gap-0.5" title={`#${openPR.number} ${openPR.state.toLowerCase()}`}>
-                <PrIcon pr={openPR} />
-              </span>
+              <Tip label={`#${openPR.number} ${openPR.state.toLowerCase()}`}>
+                <span role="img" aria-label={`Pull request #${openPR.number} ${openPR.state.toLowerCase()}`} className="inline-flex items-center gap-0.5">
+                  <PrIcon pr={openPR} />
+                </span>
+              </Tip>
             )}
             {row.comments > 0 && (
               <span className="inline-flex items-center gap-0.5 tabular-nums">

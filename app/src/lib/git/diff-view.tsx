@@ -74,7 +74,7 @@ export function DiffView({ file, run, base }: { file: FileChange; run: Run; base
     <section className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="flex h-9 shrink-0 items-center gap-2 border-b px-3 text-xs">
         <span className="min-w-0 truncate font-mono">{file.from ? `${file.from} → ${file.path}` : file.path}</span>
-        <Badge variant="outline" size="sm">
+        <Badge variant="outline" size="sm" className="shrink-0">
           {describeCode(file.code).label}
         </Badge>
         <PickOne<"unified" | "split">

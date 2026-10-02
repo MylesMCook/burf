@@ -7,15 +7,36 @@ import { cn } from "@/lib/utils";
 
 // StepHeader heads one step of a flow that goes a step at a time: a back
 // arrow when there is a step to go back to, the step's own title, and a line
-// about it. Add a box (in its dialog and in onboarding) and onboarding's
-// project step use it; Add a project draws the same arrow beside its title.
+// about it. Every dialog with steps uses it (Add a box, Add a project, the
+// prompt picker, broadcast and its results), and onboarding's steps, so a
+// back arrow looks and sits the same everywhere.
 //
-// In a dialog it is the dialog's header, its title the dialog's title. On a
-// page (onboarding) the arrow hangs in the margin left of the column, so a
-// step's title starts where every other step's does.
-export function StepHeader({ title, description, onBack, variant = "dialog", className }: { title: ReactNode; description?: ReactNode; onBack?: () => void; variant?: "dialog" | "page"; className?: string }) {
+// In a dialog it is the dialog's header, its title the dialog's title, and
+// `aside` sits on the title's line after it (the agent a prompt goes to,
+// say). On a page (onboarding) the arrow hangs in the margin left of the
+// column, so a step's title starts where every other step's does.
+export function StepHeader({
+  title,
+  description,
+  onBack,
+  backLabel = "Back",
+  aside,
+  hideDescription,
+  variant = "dialog",
+  className,
+}: {
+  title: ReactNode;
+  description?: ReactNode;
+  onBack?: () => void;
+  backLabel?: string;
+  aside?: ReactNode;
+  // For screen readers only, where the step speaks for itself.
+  hideDescription?: boolean;
+  variant?: "dialog" | "page";
+  className?: string;
+}) {
   const back = onBack && (
-    <Button size="icon-sm" variant="ghost" aria-label="Back" className={variant === "page" ? "absolute top-0 -left-10 text-muted-foreground" : "-ms-1.5 -mt-0.5 shrink-0"} onClick={onBack}>
+    <Button type="button" size="icon-sm" variant="ghost" aria-label={backLabel} data-focus-skip="" className={variant === "page" ? "absolute top-0 -left-10 text-muted-foreground" : "-ms-1.5 -my-1 shrink-0"} onClick={onBack}>
       <ArrowLeftIcon />
     </Button>
   );
@@ -29,12 +50,15 @@ export function StepHeader({ title, description, onBack, variant = "dialog", cla
     );
   }
   return (
-    <DialogHeader className={cn("flex-row items-start gap-3 px-5 pt-5 pb-3", className)}>
-      {back}
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <DialogTitle className="text-base">{title}</DialogTitle>
-        {description && <DialogDescription className="text-[13px]">{description}</DialogDescription>}
+    <DialogHeader className={cn("gap-1.5 px-5 pt-5 pb-3", className)}>
+      {/* One line, as tall as the arrow, whatever sits on it: the title
+          stays put from step to step. */}
+      <div className="flex h-6 min-w-0 items-center gap-2">
+        {back}
+        <DialogTitle className="min-w-0 truncate text-base leading-6">{title}</DialogTitle>
+        {aside}
       </div>
+      {description && <DialogDescription className={hideDescription ? "sr-only" : "text-[13px]"}>{description}</DialogDescription>}
     </DialogHeader>
   );
 }

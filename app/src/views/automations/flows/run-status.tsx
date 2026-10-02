@@ -2,27 +2,29 @@ import { CheckIcon, XIcon } from "lucide-react";
 
 import type { FlowRun } from "@/lib/flows";
 import { cn } from "@/lib/utils";
+import { Tip } from "@/components/tip";
 
-// RunStatus is a run's outcome at a glance.
+const words: Record<FlowRun["status"], string> = { running: "Running", succeeded: "Succeeded", failed: "Failed" };
+
+// RunStatus is a run's outcome at a glance, named for screen readers and
+// in a tooltip.
 export function RunStatus({ status, className }: { status: FlowRun["status"]; className?: string }) {
   const box = cn("inline-flex size-4 shrink-0 items-center justify-center rounded-full", className);
-  if (status === "running")
-    return (
-      <span className={box} title="Running">
+  const mark =
+    status === "running" ? (
+      <span role="img" aria-label={words[status]} className={box}>
         <span className="size-2.5 animate-spin rounded-full border-[1.5px] border-primary border-t-transparent" />
       </span>
-    );
-  if (status === "succeeded")
-    return (
-      <span className={cn(box, "bg-success/15 text-success")} title="Succeeded">
+    ) : status === "succeeded" ? (
+      <span role="img" aria-label={words[status]} className={cn(box, "bg-success/15 text-success")}>
         <CheckIcon className="size-2.5" strokeWidth={3} />
       </span>
+    ) : (
+      <span role="img" aria-label={words[status] ?? status} className={cn(box, "bg-destructive/15 text-destructive-foreground")}>
+        <XIcon className="size-2.5" strokeWidth={3} />
+      </span>
     );
-  return (
-    <span className={cn(box, "bg-destructive/15 text-destructive-foreground")} title="Failed">
-      <XIcon className="size-2.5" strokeWidth={3} />
-    </span>
-  );
+  return <Tip label={words[status] ?? status}>{mark}</Tip>;
 }
 
 // runTook is how long a run took, or has been going.

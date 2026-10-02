@@ -1,4 +1,4 @@
-import { CheckIcon, ChevronRightIcon, CircleAlertIcon, HandIcon, RepeatIcon, SquareIcon, XIcon } from "lucide-react";
+import { CheckIcon, ChevronRightIcon, CircleAlertIcon, HandIcon, RepeatIcon, CircleStopIcon, XIcon } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 
 import { Tip } from "@/components/tip";
@@ -78,6 +78,10 @@ function LoopCard({ loop: l }: { loop: Loop }) {
   const [open, setOpen] = useState(false);
   const live = isLive(l);
   const name = useSessionName(l.box, l.session, true);
+  // The runner's messages name the session by its id, as the CLI does; the
+  // panel says what the app calls it.
+  const agent = useSessionName(l.box, l.session);
+  const said = detail(l).split(l.session).join(agent);
   return (
     <div
       className={cn(
@@ -101,12 +105,12 @@ function LoopCard({ loop: l }: { loop: Loop }) {
           </Tip>
         )}
       </div>
-      <Tip label={`${l.session} on ${l.box}`} align="start">
+      <Tip label={`Session ${l.session} on ${l.box}`} align="start">
         <p className="mt-1 truncate text-muted-foreground text-xs">
           {name} · <span className="font-mono">{l.check}</span>
         </p>
       </Tip>
-      <p className="mt-1 text-[13px] text-foreground/80">{detail(l)}</p>
+      <p className="mt-1 text-[13px] text-foreground/80">{said}</p>
       {l.output !== undefined && (
         <>
           <button type="button" className="mt-1.5 inline-flex items-center gap-1 text-muted-foreground text-xs hover:text-foreground" aria-expanded={open} onClick={() => setOpen(!open)}>
@@ -122,7 +126,7 @@ function LoopCard({ loop: l }: { loop: Loop }) {
         </Button>
         {live && (
           <Button size="xs" variant="ghost" className="text-muted-foreground" onClick={() => l.cancel()}>
-            <SquareIcon />
+            <CircleStopIcon />
             Stop loop
           </Button>
         )}

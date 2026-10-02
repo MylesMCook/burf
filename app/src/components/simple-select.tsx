@@ -6,11 +6,31 @@ export interface Option {
 }
 
 // SimpleSelect is a Select over plain string values.
-export function SimpleSelect({ options, value, onChange, placeholder, disabled, size, className }: { options: Option[]; value: string; onChange(v: string): void; placeholder?: string; disabled?: boolean; size?: "sm" | "default" | "lg"; className?: string }) {
+export function SimpleSelect({
+  options,
+  value,
+  onChange,
+  placeholder,
+  disabled,
+  size,
+  className,
+  "aria-labelledby": labelledBy,
+  "aria-describedby": describedBy,
+}: {
+  options: Option[];
+  value: string;
+  onChange(v: string): void;
+  placeholder?: string;
+  disabled?: boolean;
+  size?: "sm" | "default" | "lg";
+  className?: string;
+  "aria-labelledby"?: string;
+  "aria-describedby"?: string;
+}) {
   const selected = options.find((o) => o.value === value) ?? null;
   return (
     <Select items={options} value={selected} onValueChange={(o: Option | null) => onChange(o?.value ?? "")} disabled={disabled}>
-      <SelectTrigger size={size} className={className}>
+      <SelectTrigger size={size} className={className} aria-labelledby={labelledBy} aria-describedby={describedBy}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectPopup>

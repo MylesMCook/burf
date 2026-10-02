@@ -11,6 +11,7 @@ import { useStore } from "@/lib/store";
 import { KitSummary } from "@/views/kits/kit-summary";
 import { closeReview, reloadKits, useKits } from "@/views/kits/kits-store";
 import { matchingTargets, ProjectPicker, type TargetResult, targetKey } from "@/views/kits/project-picker";
+import { Tip } from "@/components/tip";
 
 // ReviewSheet shows everything a kit does before it runs anywhere: a kit
 // from a link, which is only kept once added, or one already kept here. Then
@@ -138,10 +139,12 @@ function ReviewBody() {
                     <PuzzleIcon className="size-3" /> From the {plugin} plugin
                   </span>
                 ) : (
-                  <span className="flex min-w-0 items-center gap-1" title={src}>
-                    <LinkIcon className="size-3 shrink-0" />
-                    <span className="truncate">{describeSource(src)}</span>
-                  </span>
+                  <Tip label={src}>
+                    <span className="flex min-w-0 items-center gap-1">
+                      <LinkIcon className="size-3 shrink-0" />
+                      <span className="truncate">{describeSource(src)}</span>
+                    </span>
+                  </Tip>
                 )}
                 {kit.source?.commit && (
                   <span className="flex items-center gap-1 font-mono">

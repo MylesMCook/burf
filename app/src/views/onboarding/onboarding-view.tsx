@@ -1,8 +1,9 @@
 import "@/views/onboarding/onboarding.css";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { useKeepFocusIn } from "@/lib/focus-home";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { AddBoxFlow } from "@/views/onboarding/add-box-flow";
@@ -22,6 +23,10 @@ export function OnboardingView() {
   const [step, setStep] = useState<Step>({ kind: "welcome" });
 
   useEffect(markOnboardingStarted, []);
+  // Each step, and each part of one, replaces what had the keyboard: it
+  // goes to the new step's first field or control, never to <body>.
+  const area = useRef<HTMLDivElement>(null);
+  useKeepFocusIn(area);
 
   const finish = () => {
     finishOnboarding();
@@ -33,7 +38,9 @@ export function OnboardingView() {
       {/* Anchored at the top, as the launcher is: steps differ in height, and
           centring them would move each title as the step changes. */}
       <div className="mx-auto flex w-full max-w-lg flex-1 flex-col px-6 pt-[18vh] pb-16">
-        <div className="mb-10 flex items-center">
+        {/* One height whether or not Skip setup is there, so it never moves
+            the step below it. */}
+        <div className="mb-10 flex h-6 items-center">
           <Progress at={step.kind} />
           {/* Skipping makes sense once there is a box to work on. */}
           {hasBoxes && (
@@ -42,18 +49,20 @@ export function OnboardingView() {
             </Button>
           )}
         </div>
-        <div key={step.kind} className="onboarding-step">
-          {step.kind === "welcome" && <WelcomeStep onNext={() => setStep({ kind: "box" })} />}
-          {step.kind === "box" && (
-            <AddBoxFlow
-              variant="page"
-              intro={{ title: "Where are your boxes?", description: "Berth installs a small daemon on the box. It's the only thing that runs there; your code and agents stay as they are." }}
-              onDone={(box) => setStep({ kind: "repo", box })}
-              onExit={() => setStep({ kind: "welcome" })}
-            />
-          )}
-          {step.kind === "repo" && <RepoStep box={step.box} onDone={(location) => setStep({ kind: "agent", box: step.box, location })} />}
-          {step.kind === "agent" && <AgentStep box={step.box} location={step.location} onFinish={finish} />}
+        <div ref={area} className="contents">
+          <div key={step.kind} className="onboarding-step">
+            {step.kind === "welcome" && <WelcomeStep onNext={() => setStep({ kind: "box" })} />}
+            {step.kind === "box" && (
+              <AddBoxFlow
+                variant="page"
+                intro={{ title: "Where are your boxes?", description: "Berth installs a small daemon on the box. It's the only thing that runs there; your code and agents stay as they are." }}
+                onDone={(box) => setStep({ kind: "repo", box })}
+                onExit={() => setStep({ kind: "welcome" })}
+              />
+            )}
+            {step.kind === "repo" && <RepoStep box={step.box} onDone={(location) => setStep({ kind: "agent", box: step.box, location })} />}
+            {step.kind === "agent" && <AgentStep box={step.box} location={step.location} onFinish={finish} />}
+          </div>
         </div>
       </div>
     </div>

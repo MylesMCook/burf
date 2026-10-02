@@ -6,8 +6,9 @@ import { AgentIcon } from "@/components/agent-glyph";
 import { Command, CommandCollection, CommandEmpty, CommandGroup, CommandGroupLabel, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
 import { Kbd } from "@/components/ui/kbd";
 import { Popover, PopoverPopup, PopoverTrigger } from "@/components/ui/popover";
-import { agentLabel } from "@/components/workspace/pane";
 import { agentPresets, openBrowserAt, resolveUrl, startSession } from "@/lib/actions";
+import { guessSessionName, sessionName } from "@/lib/derive";
+import { focusNewPane } from "@/lib/focus-home";
 import { leaves } from "@/lib/layout";
 import { useStore } from "@/lib/store";
 import { portUrl } from "@/lib/browser-url";
@@ -69,7 +70,11 @@ export function NewTabMenu() {
           value: `panel:${plugin}:${item.id}`,
           label: item.title,
           icon: item.icon ? <Icon name={item.icon} /> : <PuzzleIcon />,
-          run: done(() => openPanel(plugin, item.id, item.title)),
+          // The panel takes the keyboard, not the "+" that opened it.
+          run: done(() => {
+            openPanel(plugin, item.id, item.title);
+            focusNewPane();
+          }),
         }))
       : [];
     const settings: Item[] = [{ value: "agent-settings", label: "Agent settings…", icon: <Settings2Icon />, run: done(() => useStore.getState().setView({ kind: "settings", section: "agents" })) }];
@@ -88,8 +93,8 @@ export function NewTabMenu() {
       space.tabs.map((t) => {
         const focus = leaves(t.root).find((l) => l.id === t.focus) ?? leaves(t.root)[0];
         const c = focus.content;
-        const agent = c.kind === "terminal" ? sessionAgent(c.box, c.session) : undefined;
-        const what = c.kind === "terminal" ? (agent ? agentLabel(agent) : "Shell") : c.kind === "browser" ? c.url.replace(/^https?:\/\//, "") || "Browser" : "Starting";
+        // Terminals by what the app calls them everywhere: "Claude Code 2".
+        const what = c.kind === "terminal" ? terminalName(c.box, c.session) : c.kind === "browser" ? c.url.replace(/^https?:\/\//, "") || "Browser" : "Starting";
         return {
           value: `tab:${key}:${t.id}`,
           label: `${what} — ${space.ref.main ? space.ref.location : space.ref.worktree}`,
@@ -167,6 +172,12 @@ export function NewTabMenu() {
       </PopoverPopup>
     </Popover>
   );
+}
+
+function terminalName(box: string, session: string): string {
+  const d = useStore.getState().boxes[box];
+  const s = d?.sessions?.find((x) => x.name === session);
+  return s ? sessionName(s, { sessions: d?.sessions }) : guessSessionName(session);
 }
 
 function sessionAgent(box: string, session: string): string | undefined {

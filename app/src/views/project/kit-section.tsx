@@ -68,11 +68,13 @@ export function KitSection({ box, location, kit, onChanged }: { box: string; loc
               {kit.version && <span className="font-mono text-[11px] text-muted-foreground">v{kit.version}</span>}
               {outdated && <span className="rounded-md border border-warning/30 px-1.5 text-[11px] text-warning-foreground">Newer version on this laptop</span>}
             </div>
-            <p className="flex min-w-0 items-center gap-1 text-muted-foreground text-xs" title={kit.source}>
-              <LinkIcon className="size-3 shrink-0" />
-              <span className="truncate">{describeSource(kit.source)}</span>
-              <span className="shrink-0">· applied {new Date(kit.installed_at).toLocaleDateString()}</span>
-            </p>
+            <Tip label={kit.source}>
+              <p className="flex min-w-0 items-center gap-1 text-muted-foreground text-xs">
+                <LinkIcon className="size-3 shrink-0" />
+                <span className="truncate">{describeSource(kit.source)}</span>
+                <span className="shrink-0">· applied {new Date(kit.installed_at).toLocaleDateString()}</span>
+              </p>
+            </Tip>
           </div>
           <Tip label={kept ? undefined : "This kit is not on this laptop. Add it to update."}>
             <Button size="xs" variant={outdated ? "default" : "outline"} disabled={!kept} onClick={() => openKit(kit.id, true, here)}>

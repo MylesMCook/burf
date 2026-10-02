@@ -17,6 +17,7 @@ import { ViewHeader } from "@/views/view-header";
 import { type ApproveMode, ApproveDialog, DiscardDialog, SendBackDialog } from "@/views/review/review-actions";
 import { ReviewDetail } from "@/views/review/review-detail";
 import { markReviewed, type ReviewEntry, refreshReview, useReview, visibleEntries, watchReview } from "@/views/review/review-store";
+import { Tip } from "@/components/tip";
 
 type Dialog = { kind: "approve"; mode: ApproveMode } | { kind: "send" } | { kind: "discard" };
 
@@ -228,15 +229,19 @@ function Row({ entry, active, onSelect, onOpen }: { entry: ReviewEntry; active: 
           </span>
           {!entry.files.length && entry.base_ahead > 0 && <span>committed</span>}
           {run && run.status !== "running" && (
-            <span className={cn("inline-flex items-center gap-0.5", run.status === "succeeded" ? "text-success" : "text-destructive")} title={`Flow ${run.flow} ${run.status}`}>
-              {run.status === "succeeded" ? <CheckIcon className="size-3" /> : <XIcon className="size-3" />}
-              check
-            </span>
+            <Tip label={`Flow ${run.flow} ${run.status}`}>
+              <span className={cn("inline-flex items-center gap-0.5", run.status === "succeeded" ? "text-success" : "text-destructive")}>
+                {run.status === "succeeded" ? <CheckIcon aria-label="passed" className="size-3" /> : <XIcon aria-label="failed" className="size-3" />}
+                check
+              </span>
+            </Tip>
           )}
           {pr && (
-            <span className="inline-flex items-center gap-0.5" title={pr.title}>
-              <GitPullRequestIcon className="size-3" />#{pr.number}
-            </span>
+            <Tip label={pr.title}>
+              <span className="inline-flex items-center gap-0.5">
+                <GitPullRequestIcon aria-label="Pull request" className="size-3" />#{pr.number}
+              </span>
+            </Tip>
           )}
         </span>
       </button>

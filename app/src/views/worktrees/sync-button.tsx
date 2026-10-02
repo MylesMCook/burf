@@ -22,8 +22,9 @@ const short: Record<SyncMode, string> = { rebase: "Rebase", merge: "Merge", pull
 const verb: Record<SyncMode, string> = { rebase: "by rebasing onto it", merge: "by merging it in", pull: "by fast-forwarding, if it has no commits of its own" };
 
 // SyncButton syncs with the base in the mode its label names; the menu
-// picks another mode, runs it and keeps it. With paused, the menu also
-// says whether paused worktrees take part.
+// only picks the mode (and keeps it), so choosing one never runs a bulk git
+// operation by itself: the button does. With paused, the menu also says
+// whether paused worktrees take part.
 export function SyncButton({
   disabled,
   onSync,
@@ -61,17 +62,9 @@ export function SyncButton({
         <MenuPopup align="end" className="min-w-64">
           <MenuGroup>
             <MenuGroupLabel>Sync with the base by</MenuGroupLabel>
-            <MenuRadioGroup value={mode}>
+            <MenuRadioGroup value={mode} onValueChange={(v) => set(v as SyncMode)}>
               {SYNC_MODES.map((m) => (
-                <MenuRadioItem
-                  key={m.value}
-                  value={m.value}
-                  closeOnClick
-                  onClick={() => {
-                    set(m.value);
-                    onSync(m.value);
-                  }}
-                >
+                <MenuRadioItem key={m.value} value={m.value} closeOnClick>
                   <span className="flex flex-col">
                     <span>{m.label}</span>
                     <span className="text-muted-foreground text-xs">{m.hint}</span>

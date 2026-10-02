@@ -2,7 +2,7 @@ import { create } from "zustand";
 
 import { toastManager } from "@/components/ui/toast";
 import { ApiError, type BerthEvent } from "@/lib/api";
-import { sessionName } from "@/lib/derive";
+import { guessSessionName, sessionName } from "@/lib/derive";
 import { errorMessage } from "@/lib/format";
 import { resolve, route } from "@/lib/notifications";
 import { useStore } from "@/lib/store";
@@ -173,11 +173,11 @@ function replace(it: QueueItem) {
 
 // targetName is what the app calls the session a prompt is for, with where
 // it runs: "cal / billing-fix · Claude Code". A session the box no longer
-// lists (or one on a box that never loaded) falls back to its id.
+// lists (or one on a box that never loaded) is named from its id.
 export function targetName(box: string, session: string): string {
   const d = useStore.getState().boxes[box];
   const s = d?.sessions?.find((x) => x.name === session);
-  return s ? sessionName(s, { sessions: d?.sessions, locations: d?.locations, place: true }) : session;
+  return s ? sessionName(s, { sessions: d?.sessions, locations: d?.locations, place: true }) : guessSessionName(session);
 }
 
 export const preview = (text: string, n = 80) => {
@@ -215,7 +215,7 @@ export function handleQueueEvent(e: BerthEvent) {
     route({
       category: "queueFailed",
       title: `Couldn't deliver a queued prompt to ${who}`,
-      detail: String(d.reason ?? e.error ?? "") || undefined,
+      detail: (session ? String(d.reason ?? e.error ?? "").split(session).join(who) : String(d.reason ?? e.error ?? "")) || undefined,
       tone: "error",
       box,
       session,

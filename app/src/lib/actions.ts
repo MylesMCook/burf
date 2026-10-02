@@ -7,7 +7,7 @@ import { errorMessage } from "@/lib/format";
 import { findLeaf, type Leaf, leaves, type PaneContent } from "@/lib/layout";
 import { scheduleRefresh, useStore } from "@/lib/store";
 import { resolveBrowserInput } from "@/lib/browser-url";
-import { currentSpace, openTab, removePane, selectWorktree, setPaneContent, splitPane, useWorkspaces, type WorktreeRef, wsKey } from "@/lib/workspaces";
+import { currentSpace, focusSession, openTab, removePane, setPaneContent, splitPane, useWorkspaces, type WorktreeRef, wsKey } from "@/lib/workspaces";
 
 // Agents offered when a box does not list its own.
 export const DEFAULT_AGENTS: AgentPreset[] = [
@@ -114,7 +114,7 @@ function stopping(leavesToClose: Leaf[], agents: boolean): Stop[] {
 
 async function close({ key, tab, leaves: ls }: Closing, stopAgents: boolean) {
   const boxes = useStore.getState().boxes;
-  const kept: string[] = [];
+  const kept: { agent: string; box: string; session: string }[] = [];
   for (const l of ls) {
     if (l.content.kind !== "terminal") {
       removePane(key, tab, l.id);
@@ -123,26 +123,33 @@ async function close({ key, tab, leaves: ls }: Closing, stopAgents: boolean) {
     const { box, session } = l.content;
     const s = boxes[box]?.sessions?.find((x) => x.name === session);
     if (s && agentOf(s) && !s.exited && !stopAgents) {
-      kept.push(agentOf(s)!);
+      kept.push({ agent: agentOf(s)!, box, session });
       removePane(key, tab, l.id, session);
       continue;
     }
     removePane(key, tab, l.id);
     await stopSession(box, session, true);
   }
-  if (kept.length) agentKeepsRunning(kept[0], key);
+  if (kept.length) agentKeepsRunning(kept[0]);
 }
 
-function agentKeepsRunning(agent: string, key: string) {
+// Reopen brings that agent's session back as a tab in its worktree (as the
+// launcher's Resume does), not just the worktree.
+function agentKeepsRunning({ agent, box, session }: { agent: string; box: string; session: string }) {
   const { agentCloseTips } = usePrefs.getState();
   if (agentCloseTips >= 3) return;
   usePrefs.setState({ agentCloseTips: agentCloseTips + 1 });
-  const ws = useWorkspaces.getState().spaces[key];
-  toastManager.add({
+  const id = toastManager.add({
     title: `${agentLabel(agent)} keeps running`,
     description: "Closing a tab only hides an agent. Reopen it from the worktree or the dashboard, or have closing stop agents in Settings → General.",
     type: "info",
-    actionProps: ws ? { children: "Reopen", onClick: () => selectWorktree(ws.ref) } : undefined,
+    actionProps: {
+      children: "Reopen",
+      onClick: () => {
+        toastManager.close(id);
+        void focusSession(box, session);
+      },
+    },
   });
 }
 

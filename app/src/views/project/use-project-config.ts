@@ -2,7 +2,9 @@ import { useCallback, useEffect, useState } from "react";
 
 import { useEventLog } from "@/lib/events";
 import { flowsApi, type LocationConfig, type RepoConfig } from "@/lib/flows";
+import { isSecretRef } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
+import { explainConfigError, refProblem } from "@/lib/secret-ref";
 import { useStore } from "@/lib/store";
 
 // clean drops what is empty, so the box stores only what this box sets and
@@ -56,6 +58,12 @@ export function useProjectConfig(box: string, location: string) {
 
   const save = useCallback(async () => {
     if (!client) return;
+    // A reference the box would refuse: say which, before it says it raw.
+    const bad = Object.entries(draft.env ?? {}).find(([, v]) => isSecretRef(v) && refProblem(v));
+    if (bad) {
+      setError(`${bad[0]} isn't a valid secret reference. ${refProblem(bad[1])}`);
+      return;
+    }
     setSaving(true);
     try {
       // Flows and hooks are edited elsewhere (the flow editor saves into this
@@ -66,7 +74,7 @@ export function useProjectConfig(box: string, location: string) {
       setDraft(c.local ?? {});
       setError(undefined);
     } catch (err) {
-      setError(errorMessage(err));
+      setError(explainConfigError(errorMessage(err)));
     } finally {
       setSaving(false);
     }

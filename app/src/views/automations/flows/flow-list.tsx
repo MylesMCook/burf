@@ -15,6 +15,7 @@ import { STARTERS, STEP_KINDS, type Starter, summary } from "@/views/automations
 import { ProjectLabel } from "@/views/automations/flows/project-label";
 import { RunStatus } from "@/views/automations/flows/run-status";
 import type { BoxFlows } from "@/views/automations/flows/use-flows";
+import { Tip } from "@/components/tip";
 
 interface Group {
   box: string;
@@ -213,7 +214,11 @@ function SharedSection({
           <FlowRow
             key={flow.id}
             f={{ ...copies[0], scope }}
-            run={lastRun(EVERY_BOX, scope, flow.id)}
+            // Each box runs its own copy: the latest run of any of them.
+            run={copies
+              .map((c) => lastRun(c.box, c.scope, flow.id))
+              .filter((r): r is FlowRun => !!r)
+              .sort((a, b) => b.started.localeCompare(a.started))[0]}
             onEdit={() => onEdit(EVERY_BOX, { ...copies[0], scope })}
             onToggle={(on) => copies.forEach((c) => onToggle(c.box, c, on))}
             overridden={false}
@@ -248,10 +253,12 @@ function FlowRow({ f, run, onEdit, onToggle, overridden }: { f: ScopedFlow; run?
         <div className="flex items-center gap-2">
           <span className="truncate font-medium text-sm">{flow.name}</span>
           {f.source === "repo" && (
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-px text-[11px] text-muted-foreground" title="Committed in the repository's .berth/config.json">
-              <LockIcon className="size-2.5" />
-              In repo
-            </span>
+            <Tip label="Committed in the repository's .berth/config.json">
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-px text-[11px] text-muted-foreground">
+                <LockIcon className="size-2.5" />
+                In repo
+              </span>
+            </Tip>
           )}
           {overridden && <span className="shrink-0 rounded-md border border-ring/30 px-1.5 py-px text-[11px] text-muted-foreground">Overridden here</span>}
         </div>
@@ -261,7 +268,9 @@ function FlowRow({ f, run, onEdit, onToggle, overridden }: { f: ScopedFlow; run?
         {run ? (
           <>
             <RunStatus status={run.status} />
-            <span title={new Date(run.started).toLocaleString()}>{ago(run.started)}</span>
+            <Tip label={new Date(run.started).toLocaleString()}>
+              <span>{ago(run.started)}</span>
+            </Tip>
           </>
         ) : (
           <span className="opacity-60">Never run</span>

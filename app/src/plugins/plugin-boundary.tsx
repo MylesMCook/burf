@@ -3,6 +3,7 @@ import { Component, type ErrorInfo, type ReactNode } from "react";
 
 import { PluginReactContext } from "@/plugins/context";
 import { useRegistry } from "@/plugins/registry";
+import { Tip } from "@/components/tip";
 
 type Props = { plugin: string; children: ReactNode; inline?: boolean };
 type State = { error?: Error };
@@ -40,9 +41,9 @@ class Catch extends Component<Omit<Props, "children"> & { children: ReactNode },
     const name = useRegistry.getState().plugins.find((p) => p.id === this.props.plugin)?.name ?? this.props.plugin;
     if (this.props.inline) {
       return (
-        <span className="text-destructive text-xs" title={error.message}>
-          {name} failed
-        </span>
+        <Tip label={error.message}>
+          <span className="text-destructive text-xs">{name} failed</span>
+        </Tip>
       );
     }
     return (

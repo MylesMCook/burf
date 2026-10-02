@@ -94,14 +94,14 @@ export function AgentCard({ entry, selecting, selected, onSelect }: { entry: Ses
             <span className="min-w-0 truncate font-medium text-[13px]">{title}</span>
             {/* Several agents in one worktree: which one this is. */}
             {crowded && (
-              <span className="shrink-0 text-[11px] text-muted-foreground" title={session.name}>
-                {name}
-              </span>
+              <Tip label={`Session ${session.name}`}>
+                <span className="shrink-0 text-[11px] text-muted-foreground">{name}</span>
+              </Tip>
             )}
           </span>
-          <span className={cn("shrink-0 font-mono text-[11px] tabular-nums", state === "waiting" ? "text-warning" : "text-muted-foreground")} title={`Since ${new Date(since).toLocaleString()}`}>
-            {duration(now - new Date(since).getTime())}
-          </span>
+          <Tip label={`Since ${new Date(since).toLocaleString()}`}>
+            <span className={cn("shrink-0 font-mono text-[11px] tabular-nums", state === "waiting" ? "text-warning" : "text-muted-foreground")}>{duration(now - new Date(since).getTime())}</span>
+          </Tip>
         </div>
         <div className="mt-0.5 truncate pl-5.5 text-[11px] text-muted-foreground">
           {box}

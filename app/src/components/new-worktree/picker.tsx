@@ -1,5 +1,5 @@
 import { CheckIcon, ChevronsUpDownIcon } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { Popover, PopoverPopup, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
@@ -46,6 +46,10 @@ export function Picker({
   const [query, setQuery] = useState("");
   const [active, setActive] = useState(0);
   const listRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  // In a dialog the list stays inside it: a list that starts mid-line (Run
+  // on) moves left as far as it must, and is never wider than the dialog.
+  const [fit, setFit] = useState<{ offset: number; room?: number }>({ offset: 0 });
   const current = items.find((i) => i.value === value);
 
   const shown = useMemo(() => {
@@ -61,6 +65,20 @@ export function Picker({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  useLayoutEffect(() => {
+    const t = triggerRef.current;
+    const d = t?.closest('[data-slot="dialog-popup"]');
+    if (!open || !t || !d) return setFit({ offset: 0 });
+    const tr = t.getBoundingClientRect();
+    const dr = d.getBoundingClientRect();
+    const pad = 8;
+    const room = dr.width - pad * 2;
+    if (variant === "chip") return setFit({ offset: 0, room });
+    const width = Math.min(Math.max(tr.width, variant === "inline" ? 448 : 320), room);
+    const over = tr.left + width - (dr.right - pad);
+    setFit({ offset: over > 0 ? -Math.min(over, Math.max(0, tr.left - dr.left - pad)) : 0, room });
+  }, [open, variant]);
+
   useEffect(() => {
     listRef.current?.querySelector(`[data-index="${active}"]`)?.scrollIntoView({ block: "nearest" });
   }, [active]);
@@ -74,6 +92,7 @@ export function Picker({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
+        ref={triggerRef}
         aria-label={ariaLabel}
         className={cn(
           variant === "inline" ? "inline-flex" : "flex",
@@ -87,7 +106,8 @@ export function Picker({
         {current ? (
           <>
             {variant !== "inline" && current.icon}
-            <span className="min-w-0 truncate">{current.label}</span>
+            {/* The name gives way last: the detail and trailing shrink first. */}
+            <span className="max-w-[70%] shrink-0 truncate">{current.label}</span>
             {current.detail && variant !== "inline" && <span className="min-w-0 truncate text-muted-foreground">{current.detail}</span>}
             {variant === "field" && <span className="ml-auto flex shrink-0 items-center gap-2 text-muted-foreground text-xs">{current.trailing}</span>}
           </>
@@ -96,7 +116,11 @@ export function Picker({
         )}
         <ChevronsUpDownIcon className={cn("size-3.5 shrink-0 text-muted-foreground", variant === "inline" ? "size-3" : (variant === "chip" || !current?.trailing) && "ml-auto")} />
       </PopoverTrigger>
-      <PopoverPopup align={variant === "chip" ? "end" : "start"} style={variant === "inline" ? { minWidth: "28rem" } : undefined} className="w-(--anchor-width) min-w-72 p-0 [--viewport-inline-padding:0px] *:data-[slot=popover-viewport]:py-0">
+      <PopoverPopup
+        align={variant === "chip" ? "end" : "start"}
+        alignOffset={fit.offset}
+        style={{ minWidth: fit.room ? `min(${variant === "inline" ? "28rem" : "20rem"}, ${fit.room}px)` : variant === "inline" ? "28rem" : undefined, maxWidth: fit.room }}
+        className="w-(--anchor-width) min-w-80 p-0 [--viewport-inline-padding:0px] *:data-[slot=popover-viewport]:py-0">
         <div className="flex flex-col">
           <input
             autoFocus
@@ -138,11 +162,13 @@ export function Picker({
                 )}
               >
                 {i.icon}
-                <span className="min-w-0 truncate">{i.label}</span>
+                {/* The name and what is at the end keep their room: the detail
+                    between them (a path, "2 boxes") truncates first. */}
+                <span className="max-w-[60%] shrink-0 truncate">{i.label}</span>
                 {i.detail && <span className="min-w-0 truncate text-muted-foreground">{i.detail}</span>}
-                <span className="ml-auto flex shrink-0 items-center gap-2 text-muted-foreground text-xs">
-                  {i.trailing}
-                  <CheckIcon className={cn("size-3.5", i.value !== value && "invisible")} />
+                <span className="ml-auto flex min-w-0 max-w-[60%] shrink-0 items-center gap-2 text-muted-foreground text-xs">
+                  {i.trailing && <span className="flex min-w-0 items-center overflow-hidden whitespace-nowrap">{i.trailing}</span>}
+                  <CheckIcon className={cn("size-3.5 shrink-0", i.value !== value && "invisible")} />
                 </span>
               </button>
             ))}

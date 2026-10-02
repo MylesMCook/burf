@@ -6,6 +6,7 @@ import type { Hook } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { describe } from "@/views/automations/catalog";
 import { LAPTOP, type MachineHooks } from "@/views/automations/use-hooks";
+import { Tip } from "@/components/tip";
 
 // HooksTable is one machine's hooks: when each runs, what it runs, and
 // anything else about it. Rows stack into cards when the table is narrow.
@@ -108,8 +109,8 @@ function HookRow({ hook, onEdit, onDelete }: { hook: Hook; onEdit(): void; onDel
 
 function Chip({ children, mono, title }: { children: React.ReactNode; mono?: boolean; title?: string }) {
   return (
-    <span title={title} className={cn("inline-flex h-5 shrink-0 items-center gap-1 rounded border px-1.5 text-[11px] text-muted-foreground", mono && "font-mono")}>
-      {children}
-    </span>
+    <Tip label={title}>
+      <span className={cn("inline-flex h-5 shrink-0 items-center gap-1 rounded border px-1.5 text-[11px] text-muted-foreground", mono && "font-mono")}>{children}</span>
+    </Tip>
   );
 }

@@ -1,4 +1,4 @@
-import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, ChevronRightIcon, CloudDownloadIcon, FolderGit2Icon, FolderIcon, FolderOpenIcon, FolderPlusIcon, GitBranchIcon, PackageIcon, ServerIcon, TriangleAlertIcon } from "lucide-react";
+import { ArrowRightIcon, CheckIcon, ChevronRightIcon, CloudDownloadIcon, FolderGit2Icon, FolderIcon, FolderOpenIcon, FolderPlusIcon, GitBranchIcon, PackageIcon, ServerIcon, TriangleAlertIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { FolderBrowser } from "@/components/add-project/folder-browser";
@@ -9,7 +9,8 @@ import { type Destination, type Plan, type Row, usePlan } from "@/components/add
 import { BoxStrip } from "@/components/add-project/box-strip";
 import { Scene } from "@/components/art/scenes";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogPanel, DialogPopup, DialogTitle } from "@/components/ui/dialog";
+import { StepHeader } from "@/components/step-header";
+import { Dialog, DialogFooter, DialogPanel, DialogPopup } from "@/components/ui/dialog";
 import { Kbd } from "@/components/ui/kbd";
 import { Spinner } from "@/components/ui/spinner";
 import { toastManager } from "@/components/ui/toast";
@@ -20,6 +21,7 @@ import { Tip } from "@/components/tip";
 import { cn } from "@/lib/utils";
 import { selectWorktree } from "@/lib/workspaces";
 import { reloadKits, useKits } from "@/views/kits/kits-store";
+import { openAddBox } from "@/views/onboarding/add-box-dialog";
 
 // AddProjectDialog adds a repository on a box as a project. The boxes come
 // first, because that is where a project lives; then one field takes
@@ -31,7 +33,9 @@ export function AddProjectDialog() {
   const draft = useStore((s) => s.locationDraft);
   return (
     <Dialog open={!!draft} onOpenChange={(open) => !open && useStore.getState().closeAddLocation()}>
-      <DialogPopup className="sm:max-w-[38rem]" showCloseButton={false}>
+      {/* Anchored at the top, as New worktree is: Browse and the box's
+          states differ in height, and a centred dialog would move its title. */}
+      <DialogPopup anchored className="sm:max-w-[38rem]" showCloseButton={false}>
         {draft && <Body key={draft.box ?? ""} startBox={draft.box} />}
       </DialogPopup>
     </Dialog>
@@ -102,7 +106,7 @@ function Body({ startBox }: { startBox?: string }) {
   const kitOn = !!kit && withKit && plan?.do !== "create" && (plan?.do !== "open" || spreadTo.length > 0);
 
   const busy = phase === "running";
-  const actionable = !!plan && plan.do !== "blocked" && !busy;
+  const actionable = !!plan && plan.do !== "blocked" && plan.do !== "look" && !busy;
 
   const finish = async ({ loc, extras }: RunResult, p: Plan) => {
     const st = useStore.getState();
@@ -125,7 +129,7 @@ function Body({ startBox }: { startBox?: string }) {
   };
 
   const run = async (p: Plan) => {
-    if (p.do === "blocked" || busy) return;
+    if (p.do === "blocked" || p.do === "look" || busy) return;
     setPhase("running");
     setError(undefined);
     setLogs([]);
@@ -160,6 +164,7 @@ function Body({ startBox }: { startBox?: string }) {
     queued.current = false;
     const first = intent.kind === "path" && plan?.do === "create" ? rows.findIndex((r) => r.kind !== "new") : -1;
     if (first >= 0) pick(rows[first]);
+    else if (plan?.do === "look") setActive(rows.length ? 0 : -1);
     else if (plan) void run(plan);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pending, plan]);
@@ -193,15 +198,23 @@ function Body({ startBox }: { startBox?: string }) {
       queued.current = true;
       return;
     }
+    // Enter on a folder ("~/work/") goes into its list, as ↓ would; it
+    // never adds the folder itself.
+    if (plan?.do === "look") return setActive(rows.length ? 0 : -1);
     if (plan) void run(plan);
   };
 
   const close = () => useStore.getState().closeAddLocation();
 
+  // No box at all: a project has nowhere to live yet, so the one thing to
+  // do is add a box. Only once the status has come, so a slow start does
+  // not flash it.
+  if (status && boxes.length === 0) return <NoBoxes onCancel={close} />;
+
   if (browsing && online) {
     return (
       <>
-        <Header back={() => setBrowsing(false)} title="Browse folders" description={`Pick a repository or folder on ${box}.`} />
+        <StepHeader onBack={() => setBrowsing(false)} title="Browse folders" description={`Pick a repository or folder on ${box}.`} />
         <FolderBrowser box={box} start={intent.kind === "path" ? (input.trim().endsWith("/") ? input.trim().replace(/(.)\/+$/, "$1") : dirname(input.trim())) : undefined} onAdded={(loc: Location) => finish({ loc, extras: [] }, { do: "add", path: loc.path, name: loc.name, git: loc.repo })} />
       </>
     );
@@ -215,12 +228,12 @@ function Body({ startBox }: { startBox?: string }) {
         submit();
       }}
     >
-      <Header title="Add a project" description="Projects live on your boxes. Pick one, then type what to add: the box works out the rest." />
+      <StepHeader title="Add a project" description={boxes.length > 1 ? "Projects live on your boxes. Pick one, then type what to add: the box works out the rest." : `Projects live on your boxes. Type what to add on ${box || "it"}: the box works out the rest.`} />
       <DialogPanel className="flex flex-col gap-3 px-5 pt-1 pb-4">
         {boxes.length > 0 && <BoxStrip boxes={boxes} value={box} onChange={(b) => !busy && setBox(b)} />}
 
         {!online ? (
-          <Moored box={box} />
+          <Moored box={box} others={boxes.some((b) => b.name !== box && b.state === "online")} />
         ) : (
           <>
             <div className="flex h-10 items-center gap-2 rounded-lg border border-input bg-background ps-3 pe-1 shadow-xs/5 focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/24 dark:bg-input/32">
@@ -328,23 +341,7 @@ function Body({ startBox }: { startBox?: string }) {
   );
 }
 
-function Header({ title, description, back }: { title: string; description: string; back?(): void }) {
-  return (
-    <DialogHeader className="flex-row items-start gap-3 px-5 pt-5 pb-3">
-      {back && (
-        <Button size="icon-sm" variant="ghost" aria-label="Back" className="-ms-1.5 -mt-0.5" onClick={back}>
-          <ArrowLeftIcon />
-        </Button>
-      )}
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <DialogTitle className="text-base">{title}</DialogTitle>
-        <DialogDescription className="text-[13px]">{description}</DialogDescription>
-      </div>
-    </DialogHeader>
-  );
-}
-
-const verb = (p?: Plan) => (p && p.do !== "blocked" ? { open: "open", add: "add", clone: "clone", create: "create" }[p.do] : "add");
+const verb = (p?: Plan) => (p && p.do !== "blocked" ? { open: "open", add: "add", clone: "clone", create: "create", look: "choose" }[p.do] : "add");
 
 function primaryLabel(p: Plan | undefined, extra: number): string {
   const more = extra ? ` on ${extra + 1} boxes` : "";
@@ -435,6 +432,16 @@ function PlanLine({ plan, pending, box, home, target, dest, setDest, busy, onEnt
       );
       detail = <>A new repository with an empty first commit, ready for worktrees.</>;
       break;
+    case "look":
+      icon = <FolderOpenIcon />;
+      tone = "text-muted-foreground";
+      line = (
+        <>
+          <span>Inside</span> <Mono className="text-foreground">{short(plan.path)}</Mono> {on}
+        </>
+      );
+      detail = <>A folder to look in: ↓ or Enter picks from what is in it, or keep typing.</>;
+      break;
     case "blocked":
       icon = <TriangleAlertIcon />;
       tone = "text-warning-foreground";
@@ -442,7 +449,7 @@ function PlanLine({ plan, pending, box, home, target, dest, setDest, busy, onEnt
       detail = <>Change what you typed, or browse the box.</>;
       break;
   }
-  const ready = !!plan && plan.do !== "blocked";
+  const ready = !!plan && plan.do !== "blocked" && plan.do !== "look";
   return (
     <div aria-live="polite" className={cn("flex h-15 items-center gap-3 rounded-lg px-1 transition-opacity", pending && plan && "opacity-56")}>
       <span className={cn("inline-flex size-8 shrink-0 items-center justify-center rounded-md border bg-muted/48 text-muted-foreground [&_svg]:size-4", ready && "text-foreground", tone)}>{icon}</span>
@@ -528,6 +535,7 @@ function Quiet({ intent, plan, box, pending }: { intent: string; plan?: Plan; bo
   if (!pending && plan?.do === "clone") text = `${box} clones it with its own git credentials, so private repositories work as they do in a terminal there.`;
   if (!pending && plan?.do === "open") text = `Nothing to clone: ${box} has it already.`;
   if (!pending && plan?.do === "blocked") text = `Browse ${box} to find the folder you mean.`;
+  if (!pending && plan?.do === "look") text = `Nothing in ${plan.path} yet. Type a name after the slash to start a project there.`;
   if (!pending && intent === "empty") text = `No folders in ${box}'s home or ~/work yet. Type a name to start a project.`;
   return <p className="flex h-full items-center justify-center px-8 text-balance text-center text-[13px] text-muted-foreground">{text}</p>;
 }
@@ -553,17 +561,62 @@ function Progress({ logs, busy }: { logs: Log[]; busy: boolean }) {
 
 // Moored is the dialog's body when the chosen box is out of reach, the same
 // height as the field, plan and list it stands in for.
-function Moored({ box }: { box: string }) {
+function Moored({ box, others }: { box: string; others: boolean }) {
   return (
     <div className="flex h-[22.5rem] flex-col items-center justify-center gap-1 rounded-lg border border-dashed text-center">
       <Scene name="offline" width={136} className="mb-3" />
       <p className="font-medium text-sm">{box ? `${box} is offline` : "No box is online"}</p>
-      <p className="max-w-xs text-muted-foreground text-xs">Projects are added on a box that is online. Pick another above, or check on it in Boxes.</p>
-      <Button size="sm" variant="outline" className="mt-3" onClick={() => useStore.getState().setView({ kind: "settings", section: "boxes" })}>
+      <p className="max-w-xs text-balance text-muted-foreground text-xs">
+        {others ? "Projects are added on a box that is online. Pick another above, or check on this one in Boxes." : "Projects are added on a box that is online. Check on your boxes in Settings."}
+      </p>
+      <Button
+        size="sm"
+        variant="outline"
+        className="mt-3"
+        onClick={() => {
+          // Boxes is a page: the dialog goes, or it would sit over it.
+          useStore.getState().closeAddLocation();
+          useStore.getState().setView({ kind: "settings", section: "boxes" });
+        }}
+      >
         <ServerIcon />
-        Boxes
+        Open Boxes
       </Button>
     </div>
+  );
+}
+
+// NoBoxes is the whole dialog when there is no box yet: a project lives on
+// one, so it says so and offers the one way forward.
+function NoBoxes({ onCancel }: { onCancel(): void }) {
+  return (
+    <>
+      <StepHeader title="Add a project" description="Projects live on your boxes, and there isn't one yet." />
+      <DialogPanel className="px-5 pt-1 pb-4">
+        <div className="flex h-[22.5rem] flex-col items-center justify-center gap-1 rounded-lg border border-dashed px-8 text-center">
+          {/* A quay with an empty hook: nothing loaded yet. */}
+          <Scene name="dock" width={136} className="mb-3" />
+          <p className="font-medium text-sm">Add a box first</p>
+          <p className="max-w-xs text-balance text-muted-foreground text-xs">A box is any VPS or dev machine: projects and their agents run there. Add one, then add a project on it.</p>
+        </div>
+      </DialogPanel>
+      <DialogFooter className="h-14 items-center gap-2 px-5 py-0">
+        <Button type="button" variant="ghost" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button
+          type="button"
+          autoFocus
+          onClick={() => {
+            onCancel();
+            openAddBox();
+          }}
+        >
+          <ServerIcon />
+          Add a box
+        </Button>
+      </DialogFooter>
+    </>
   );
 }
 

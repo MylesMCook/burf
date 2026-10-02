@@ -143,7 +143,9 @@ function NavRow({ item, list, index, ids }: { item: NavItem; list: NavList; inde
         <SidebarMenuButton
           size="sm"
           isActive={item.active}
-          onClick={() => setView(item.view)}
+          // A fresh object, so clicking the page you're on still says so
+          // (Automations leaves its flow editor).
+          onClick={() => setView({ ...item.view })}
           {...dragProps(item.id)}
           className={cn("h-side-row text-[13px] data-[active=true]:font-normal [&>svg]:size-3.5 [&>svg]:text-muted-foreground", dragging && "opacity-40")}
         >

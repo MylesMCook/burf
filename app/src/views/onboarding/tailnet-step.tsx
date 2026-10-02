@@ -47,7 +47,7 @@ export function TailnetStep({ network, picked, onPick, onDone }: { network?: str
       <div className="overflow-hidden rounded-xl border">
         <div className="flex h-9 items-center gap-2 border-b bg-muted/30 pr-1.5 pl-3.5 text-muted-foreground text-xs">
           <span className="flex-1">Machines{found ? ` (${machines.length})` : ""}</span>
-          <Button size="icon-xs" variant="ghost" aria-label="Refresh the list" onClick={() => void load()} disabled={loading}>
+          <Button size="icon-xs" variant="ghost" aria-label="Refresh the list" data-focus-skip="" onClick={() => void load()} disabled={loading}>
             <RefreshCwIcon className={cn(loading && "animate-spin")} />
           </Button>
         </div>

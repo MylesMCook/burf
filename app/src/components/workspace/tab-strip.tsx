@@ -1,5 +1,5 @@
 import { CloudOffIcon, XIcon } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { StateGlyph } from "@/components/agent-glyph";
 import { Tip } from "@/components/tip";
@@ -22,10 +22,65 @@ export function TabStrip() {
   const [dragging, setDragging] = useState<number>();
   const active = ws?.tabs.find((t) => t.id === ws.active);
   const lone = active && active.root.kind === "leaf" ? active.root : undefined;
+  const scroller = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ left: false, right: false });
+
+  // Which ends have tabs scrolled past them, for the fades that say so.
+  const measure = useCallback(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const left = el.scrollLeft > 1;
+    const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+    setEdges((e) => (e.left === left && e.right === right ? e : { left, right }));
+  }, []);
+
+  useEffect(() => {
+    const el = scroller.current;
+    if (!el) return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    for (const child of el.children) ro.observe(child);
+    measure();
+    return () => ro.disconnect();
+  }, [measure, ws?.tabs.length]);
+
+  // The active tab is always in view: brought in when it changes (⌘T, ⌘⇧B,
+  // a tab opened by an agent) and when the strip narrows.
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    const tab = ws?.active ? el?.querySelector<HTMLElement>(`[data-tab="${CSS.escape(ws.active)}"]`) : null;
+    if (!el || !tab) return;
+    const reveal = () => {
+      const start = tab.offsetLeft;
+      const end = start + tab.offsetWidth;
+      if (start < el.scrollLeft) el.scrollLeft = start;
+      else if (end > el.scrollLeft + el.clientWidth) el.scrollLeft = end - el.clientWidth;
+      measure();
+    };
+    reveal();
+    const ro = new ResizeObserver(reveal);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ws?.active, ws?.tabs.length, measure]);
+
+  const fade = edges.left && edges.right ? "[mask-image:linear-gradient(to_right,transparent,black_24px,black_calc(100%-24px),transparent)]" : edges.left ? "[mask-image:linear-gradient(to_right,transparent,black_24px)]" : edges.right ? "[mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)]" : "";
 
   return (
     <div data-tauri-drag-region className="flex h-10 shrink-0 items-stretch border-b bg-sidebar">
-      <div data-tauri-drag-region className="flex min-w-0 flex-1 items-stretch overflow-x-auto [scrollbar-width:none]">
+      {/* Tabs scroll when they do not fit (a wheel scrolls them sideways),
+          with a fade at each end that has more; + stays just after them,
+          outside the scroller, so it never scrolls away. */}
+      <div
+        ref={scroller}
+        data-tauri-drag-region
+        onScroll={measure}
+        onWheel={(e) => {
+          const el = scroller.current;
+          if (!el || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+          el.scrollLeft += e.deltaY;
+        }}
+        className={cn("relative flex min-w-0 items-stretch overflow-x-auto [scrollbar-width:none]", fade)}
+      >
         {key &&
           ws?.tabs.map((t, i) => (
             <TabButton
@@ -41,13 +96,13 @@ export function TabStrip() {
               }}
             />
           ))}
-        {ws && (
-          <div className="flex items-center px-1">
-            <NewTabMenu />
-          </div>
-        )}
-        <div data-tauri-drag-region className="flex-1" />
       </div>
+      {ws && (
+        <div className="flex shrink-0 items-center px-1">
+          <NewTabMenu />
+        </div>
+      )}
+      <div data-tauri-drag-region className="min-w-4 flex-1" />
       {ws && (
         <div data-tauri-drag-region className="flex shrink-0 items-center gap-2 pr-2 pl-3 text-muted-foreground text-xs">
           <Tip label={`${ws.ref.box}:${ws.ref.path}`} side="bottom">
@@ -107,6 +162,7 @@ function TabButton({ tab, active, onActivate, onClose, onDragStart, onDrop }: Ta
         onDragStart={onDragStart}
         onDragOver={(e) => e.preventDefault()}
         onDrop={onDrop}
+        data-tab={tab.id}
         className={cn(
           "group relative flex min-w-24 max-w-56 shrink-0 cursor-default items-center gap-1.5 border-r pr-1 pl-3 text-xs",
           active ? "bg-background text-foreground" : "text-muted-foreground hover:bg-background/40 hover:text-foreground",

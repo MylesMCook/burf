@@ -244,11 +244,11 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
         )}
       </ContextRow>
 
-      {!collapsed && online && (all || shown.length > 0 || hidden > 0) && (
+      {!collapsed && (all || shown.length > 0 || hidden > 0) && (
         <SidebarMenuSub className="mx-0 ml-[17px] gap-px py-0.5 pr-0 pl-1.5">
-          {all && main && <WorktreeRow box={box.name} loc={loc} wt={main} sessions={mainSessions} data={data} selected={mainSel} onOpen={() => open(main)} />}
+          {all && main && <WorktreeRow box={box.name} loc={loc} wt={main} sessions={mainSessions} data={data} selected={mainSel} onOpen={() => open(main)} away={online ? undefined : box} />}
           {shown.map(({ wt, sessions, selected }) => (
-            <WorktreeRow key={wt.path} box={box.name} loc={loc} wt={wt} sessions={sessions} data={data} selected={selected} onOpen={() => open(wt)} />
+            <WorktreeRow key={wt.path} box={box.name} loc={loc} wt={wt} sessions={sessions} data={data} selected={selected} onOpen={() => open(wt)} away={online ? undefined : box} />
           ))}
           {hidden > 0 && (
             <SidebarMenuSubItem>
@@ -291,6 +291,7 @@ function WorktreeRow({
   selected,
   onOpen,
   chip,
+  away,
 }: {
   box: string;
   loc: Location;
@@ -301,28 +302,56 @@ function WorktreeRow({
   onOpen(): void;
   // Shown when the project spans boxes, to tell its copies apart.
   chip?: BoxStatus;
+  // The row's box when it is not online. The row stays, dimmed and marked,
+  // so the worktree you have open never vanishes from under you; what it
+  // last ran is not shown, since the box cannot say whether it still runs.
+  away?: BoxStatus;
 }) {
+  const where = <PlaceTip name={`${wt.main ? "Main checkout" : wt.name}${wt.branch && wt.branch !== wt.name ? ` · ${wt.branch}` : ""}`} lines={[wt.path, ...(away ? [`${away.name} is ${awayText(away)}`] : [])]} />;
   return (
     <SidebarMenuSubItem>
-      <ContextRow items={() => worktreeActions(box, loc, wt)} className="group/row relative">
-        <Tip side="right" delay={700} label={<PlaceTip name={`${wt.main ? "Main checkout" : wt.name}${wt.branch && wt.branch !== wt.name ? ` · ${wt.branch}` : ""}`} lines={[wt.path]} />}>
+      <ContextRow items={() => (away ? awayActions(away) : worktreeActions(box, loc, wt))} className="group/row relative">
+        <Tip side="right" delay={700} label={where}>
           <SidebarMenuSubButton
             render={<button type="button" />}
             isActive={selected}
             onClick={onOpen}
-            className="h-side-row w-full text-[13px] sm:h-side-row [&>svg]:text-muted-foreground"
+            className={cn("h-side-row w-full text-[13px] sm:h-side-row [&>svg]:text-muted-foreground", away && "text-muted-foreground")}
           >
-            <LeadIcon sessions={sessions} data={data} icon={wt.main ? <HomeIcon /> : <GitBranchIcon />} />
-            <span className="min-w-0 truncate">{wt.main ? (wt.branch ?? "main") : wt.name}</span>
+            <LeadIcon sessions={away ? [] : sessions} data={data} icon={wt.main ? <HomeIcon /> : <GitBranchIcon />} />
+            <span className={cn("min-w-0 truncate", away && "opacity-70")}>{wt.main ? (wt.branch ?? "main") : wt.name}</span>
             {chip && <BoxChip box={chip} />}
-            {wt.setting_up && <span className="shrink-0 text-[10px] text-warning-foreground">setting up</span>}
+            {wt.setting_up && !away && <span className="shrink-0 text-[10px] text-muted-foreground">setting up</span>}
             <span className="ml-auto" />
-            <Glyphs sessions={sessions} data={data} />
+            {away ? <AwayMark box={away} short={!!chip} /> : <Glyphs sessions={sessions} data={data} />}
           </SidebarMenuSubButton>
         </Tip>
-        <RowActions box={box} loc={loc} wt={wt} />
+        {!away && <RowActions box={box} loc={loc} wt={wt} />}
       </ContextRow>
     </SidebarMenuSubItem>
+  );
+}
+
+// awayActions are what a row on an away box offers: its box's own ways
+// back (Reconnect, Doctor, Copy address), not forgetting it.
+function awayActions(box: BoxStatus): Action[] {
+  const items = boxActions(box).filter((a) => !(a.type === "item" && a.destructive));
+  while (items.length && items[items.length - 1].type === "sep") items.pop();
+  return items;
+}
+
+function awayText(box: BoxStatus) {
+  return box.state === "untrusted" ? "not trusted" : box.state;
+}
+
+// AwayMark ends a row whose box is not online: the box's state, small, or
+// just its icon when the row's box chip already says which box.
+function AwayMark({ box, short }: { box: BoxStatus; short?: boolean }) {
+  return (
+    <span className="flex shrink-0 items-center gap-1 text-[10px] text-muted-foreground/80">
+      <ServerOffIcon aria-label={short ? `${box.name} is ${awayText(box)}` : undefined} aria-hidden={!short} className="size-3" />
+      {!short && awayText(box)}
+    </span>
   );
 }
 
@@ -541,8 +570,8 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
   const def = p.members.find((m) => m.box.name === p.defaultBox) ?? p.members[0];
   const defMain = def.loc.worktrees?.find((w) => w.main);
 
+  // A member whose box is away keeps its rows, dimmed (WorktreeRow).
   const rows = p.members.flatMap((m) => {
-    if (m.box.state !== "online") return [];
     const data = boxes[m.box.name];
     return (m.loc.worktrees ?? [])
       .filter((w) => (multi ? true : !w.main))
@@ -613,7 +642,7 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
         )}
       </ContextRow>
 
-      {!collapsed && online && (all || shown.length > 0 || hidden > 0) && (
+      {!collapsed && (all || shown.length > 0 || hidden > 0) && (
         <SidebarMenuSub className="mx-0 ml-[17px] gap-px py-0.5 pr-0 pl-1.5">
           {!multi && all && defMain && (
             <WorktreeRow
@@ -624,6 +653,7 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
               data={boxes[def.box.name]}
               selected={mainSel}
               onOpen={() => selectWorktree(refOf(def.box.name, def.loc, defMain))}
+              away={def.box.state === "online" ? undefined : def.box}
             />
           )}
           {shown.map(({ m, wt, data, sessions, selected }) => (
@@ -637,6 +667,7 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
               selected={selected}
               chip={multi ? m.box : undefined}
               onOpen={() => selectWorktree(refOf(m.box.name, m.loc, wt))}
+              away={m.box.state === "online" ? undefined : m.box}
             />
           ))}
           {hidden > 0 && (

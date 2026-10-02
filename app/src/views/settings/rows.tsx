@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { Children, cloneElement, createContext, Fragment, isValidElement, type ReactElement, type ReactNode, useContext, useId } from "react";
 
 import { cn } from "@/lib/utils";
 import { ViewHeader } from "@/views/view-header";
@@ -44,14 +44,52 @@ export function SettingsGroup({ title, description, actions, children }: { title
   );
 }
 
+// A row's label and description name its control: a switch reads "Play a
+// sound, on", not just "switch". SettingsRow passes the ids to each control
+// it holds; a control that can't take them as props (a stepper's input, say)
+// reads them with useSettingsRow.
+const RowContext = createContext<{ labelledBy: string; describedBy?: string } | null>(null);
+export const useSettingsRow = () => useContext(RowContext);
+
+type AriaProps = { "aria-label"?: string; "aria-labelledby"?: string; "aria-describedby"?: string; children?: ReactNode };
+
+// hasText is whether a control names itself, as a button with words does.
+function hasText(children: ReactNode): boolean {
+  return Children.toArray(children).some((c) => typeof c === "string" || typeof c === "number");
+}
+
+function nameControl(child: ReactNode, labelledBy: string, describedBy?: string): ReactNode {
+  // Plain elements and fragments are layout, not controls: the controls
+  // inside them read the ids from context.
+  if (!isValidElement<AriaProps>(child) || typeof child.type === "string" || child.type === Fragment) return child;
+  const props = child.props;
+  const next: AriaProps = {};
+  if (!props["aria-label"] && !props["aria-labelledby"] && !hasText(props.children)) next["aria-labelledby"] = labelledBy;
+  if (describedBy && !props["aria-describedby"]) next["aria-describedby"] = describedBy;
+  return Object.keys(next).length ? cloneElement(child as ReactElement<AriaProps>, next) : child;
+}
+
 export function SettingsRow({ label, description, children, className }: { label: ReactNode; description?: ReactNode; children?: ReactNode; className?: string }) {
+  const id = useId();
+  const labelledBy = `${id}-label`;
+  const describedBy = description ? `${id}-description` : undefined;
   return (
     <div className={cn("flex min-h-12 items-center gap-6 px-4 py-2.5", className)}>
       <div className="min-w-0 flex-1">
-        <div className="text-sm">{label}</div>
-        {description && <div className="mt-0.5 text-muted-foreground text-xs leading-relaxed">{description}</div>}
+        <div id={labelledBy} className="text-sm">
+          {label}
+        </div>
+        {description && (
+          <div id={describedBy} className="mt-0.5 text-muted-foreground text-xs leading-relaxed">
+            {description}
+          </div>
+        )}
       </div>
-      {children && <div className="flex shrink-0 items-center gap-2">{children}</div>}
+      {children && (
+        <div className="flex shrink-0 items-center gap-2">
+          <RowContext.Provider value={{ labelledBy, describedBy }}>{Children.map(children, (c) => nameControl(c, labelledBy, describedBy))}</RowContext.Provider>
+        </div>
+      )}
     </div>
   );
 }

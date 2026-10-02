@@ -14,6 +14,7 @@ import { openAddBox } from "@/views/onboarding/add-box-dialog";
 import { CommandLog } from "@/views/settings/command-log";
 import { ConfirmDialog } from "@/views/settings/confirm";
 import { Code, SettingsGroup, SettingsPage } from "@/views/settings/rows";
+import { Tip } from "@/components/tip";
 
 export function BoxesSection() {
   const boxes = useStore((s) => s.status?.boxes ?? NONE);
@@ -91,7 +92,9 @@ function BoxRow({ box }: { box: BoxStatus }) {
   return (
     <div className="px-4 py-3">
       <div className="flex items-center gap-3">
-        <span className={cn("size-2 shrink-0 rounded-full", dot[box.state] ?? "bg-muted-foreground/40")} title={box.state} />
+        <Tip label={box.state}>
+          <span role="img" aria-label={box.state} className={cn("size-2 shrink-0 rounded-full", dot[box.state] ?? "bg-muted-foreground/40")} />
+        </Tip>
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2 text-sm">
             <span>{box.name}</span>

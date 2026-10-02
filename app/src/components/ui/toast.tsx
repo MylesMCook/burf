@@ -12,7 +12,7 @@ import {
 import type React from "react";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
-import { useModalOpen } from "@/hooks/use-modal-open";
+import { type Box, useModalBox } from "@/hooks/use-modal-open";
 
 const TOAST_ICONS = {
   error: CircleAlertIcon,
@@ -61,6 +61,37 @@ function upsertReplayClassName(toast: {
   return isEven ? "animate-toast-success-even" : "animate-toast-success-odd";
 }
 
+// Berth: where the stack goes while a dialog, alert or sheet is open: the
+// first corner it does not cover (bottom-left, then bottom-right, then the
+// top corners), or the one it covers least. The stack is taken as 352px
+// wide and as tall as a two-line toast with two peeking behind it; the
+// offsets match App.tsx's viewportClassName.
+const STACK_W = 352;
+const STACK_H = 100;
+const area = (a: Box, b: Box) => Math.max(0, Math.min(a.right, b.right) - Math.max(a.left, b.left)) * Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+
+function clearOf(m: Box): ToastPosition {
+  const W = window.innerWidth;
+  const H = window.innerHeight;
+  const spots: [ToastPosition, Box][] = [
+    ["bottom-left", { left: 12, right: 12 + STACK_W, top: H - 38 - STACK_H, bottom: H - 38 }],
+    ["bottom-right", { left: W - 12 - STACK_W, right: W - 12, top: H - 38 - STACK_H, bottom: H - 38 }],
+    ["top-right", { left: W - 12 - STACK_W, right: W - 12, top: 12, bottom: 12 + STACK_H }],
+    ["top-left", { left: 12, right: 12 + STACK_W, top: 12, bottom: 12 + STACK_H }],
+  ];
+  let best = spots[0][0];
+  let least = Number.POSITIVE_INFINITY;
+  for (const [at, spot] of spots) {
+    const covered = area(spot, m);
+    if (covered === 0) return at;
+    if (covered < least) {
+      least = covered;
+      best = at;
+    }
+  }
+  return best;
+}
+
 function Toasts({
   position,
   portalProps,
@@ -72,10 +103,10 @@ function Toasts({
 }): React.ReactElement {
   const { toasts } = Toast.useToastManager();
   // Toasts stay above everything, so feedback on a dialog's action shows,
-  // but while a dialog or sheet is open they move to the bottom-left corner,
-  // clear of its header and its buttons.
-  const modal = useModalOpen();
-  if (modal) position = "bottom-left";
+  // but while a dialog or sheet is open they move to a corner clear of it
+  // (a wide dialog in a small window reaches the bottom-left one).
+  const modal = useModalBox();
+  if (modal) position = clearOf(modal);
   const swipeDirection = getSwipeDirection(position);
 
   return (
@@ -94,6 +125,8 @@ function Toasts({
         )}
         data-position={position}
         data-slot="toast-viewport"
+        // Not "Notifications": that is the bell's and the panel's name.
+        aria-label="Alerts"
       >
         {toasts.map((toast) => {
           const Icon = toast.type
@@ -152,8 +185,12 @@ function Toasts({
               swipeDirection={swipeDirection}
               toast={toast}
             >
-              <Toast.Content className="pointer-events-auto flex items-center justify-between gap-1.5 overflow-hidden px-3.5 py-3 text-sm transition-opacity duration-250 data-behind:not-data-expanded:pointer-events-none data-behind:opacity-0 data-expanded:opacity-100">
-                <div className="flex gap-2">
+              <Toast.Content className="pointer-events-auto flex items-start justify-between gap-1.5 overflow-hidden px-3.5 py-3 text-sm transition-opacity duration-250 data-behind:not-data-expanded:pointer-events-none data-behind:opacity-0 data-expanded:opacity-100">
+                {/* Berth: the text gives way (min-w-0), and an action sits
+                    under it rather than beside it, so a long label never
+                    squeezes the text or pushes the close button out. Every
+                    toast but a loading one can be closed. */}
+                <div className="flex min-w-0 flex-1 gap-2">
                   {Icon && (
                     <div
                       className="[&>svg]:h-lh [&>svg]:w-4 [&_svg]:pointer-events-none [&_svg]:shrink-0"
@@ -163,36 +200,34 @@ function Toasts({
                     </div>
                   )}
 
-                  <div className="flex flex-col gap-0.5">
+                  <div className="flex min-w-0 flex-col gap-0.5">
                     <Toast.Title
-                      className="font-medium"
+                      className="font-medium [overflow-wrap:anywhere]"
                       data-slot="toast-title"
                     />
                     <Toast.Description
-                      className="text-muted-foreground"
+                      className="text-muted-foreground [overflow-wrap:anywhere]"
                       data-slot="toast-description"
                     />
+                    {toast.actionProps && (
+                      <Toast.Action
+                        className={cn(buttonVariants({ size: "xs", variant: "outline" }), "mt-1.5 w-fit max-w-full")}
+                        data-slot="toast-action"
+                      >
+                        {toast.actionProps.children}
+                      </Toast.Action>
+                    )}
                   </div>
                 </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  {toast.actionProps && (
-                    <Toast.Action
-                      className={buttonVariants({ size: "xs" })}
-                      data-slot="toast-action"
-                    >
-                      {toast.actionProps.children}
-                    </Toast.Action>
-                  )}
-                  {toast.type !== "loading" && (
-                    <Toast.Close
-                      aria-label="Dismiss"
-                      className="-me-1.5 inline-flex size-6 items-center justify-center rounded-md text-muted-foreground/70 hover:bg-accent hover:text-foreground"
-                      data-slot="toast-close"
-                    >
-                      <XIcon className="size-3.5" />
-                    </Toast.Close>
-                  )}
-                </div>
+                {toast.type !== "loading" && (
+                  <Toast.Close
+                    aria-label="Dismiss"
+                    className="-me-1.5 -mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground/70 hover:bg-accent hover:text-foreground"
+                    data-slot="toast-close"
+                  >
+                    <XIcon className="size-3.5" />
+                  </Toast.Close>
+                )}
               </Toast.Content>
             </Toast.Root>
           );

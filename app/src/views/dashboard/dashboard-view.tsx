@@ -1,4 +1,4 @@
-import { BrushCleaningIcon, ChevronRightIcon, ListChecksIcon, PlusIcon, SendIcon, SquareIcon, TerminalIcon } from "lucide-react";
+import { BrushCleaningIcon, ChevronRightIcon, ListChecksIcon, PlusIcon, SendIcon, ServerIcon, SquareIcon, TerminalIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { Scene } from "@/components/art/scenes";
@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Kbd } from "@/components/ui/kbd";
 import { type SessionEntry, useAllSessions } from "@/hooks/use-agent-counts";
+import { liftToasts } from "@/hooks/lift-toasts";
 import { agentOf, type SessionState, worktreeOf } from "@/lib/derive";
 import { ago } from "@/lib/format";
 import { openBroadcast } from "@/lib/prompts";
@@ -18,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { focusSession } from "@/lib/workspaces";
 import { AgentCard } from "@/views/dashboard/agent-card";
 import { ColumnMenu, openStop, StopDialog } from "@/views/dashboard/stop";
+import { openAddBox } from "@/views/onboarding/add-box-dialog";
 import { ViewHeader } from "@/views/view-header";
 
 interface Column {
@@ -41,6 +43,8 @@ const sinceOf = (e: SessionEntry) => new Date(e.session.state_since ?? e.session
 // you, time, a look at what it did, or a first prompt.
 export function DashboardView() {
   const all = useAllSessions();
+  // With no box at all, a new worktree has nowhere to go: the way on is a box.
+  const noBoxes = useStore((s) => !!s.status && s.status.boxes.length === 0);
   const boxNames = useMemo(() => [...new Set(all.map((e) => e.box))].sort(), [all]);
   const [hidden, setHidden] = useState<string[]>(() => load("berth.dashboard.hiddenBoxes", []));
   const [showRest, setShowRest] = useState(false);
@@ -129,12 +133,19 @@ export function DashboardView() {
               <Scene name="setting-out" />
             </EmptyMedia>
             <EmptyTitle>No agents yet</EmptyTitle>
-            <EmptyDescription>Start one in a new worktree, or from any worktree's + menu.</EmptyDescription>
+            <EmptyDescription>{noBoxes ? "Agents run on your boxes, and there isn't one yet. Add a box, then start an agent in a new worktree on it." : "Start one in a new worktree, or from any worktree's + menu."}</EmptyDescription>
           </EmptyHeader>
-          <Button onClick={() => useStore.getState().openNewWorktree()}>
-            <PlusIcon />
-            New worktree
-          </Button>
+          {noBoxes ? (
+            <Button onClick={openAddBox}>
+              <ServerIcon />
+              Add a box
+            </Button>
+          ) : (
+            <Button onClick={() => useStore.getState().openNewWorktree()}>
+              <PlusIcon />
+              New worktree
+            </Button>
+          )}
         </Empty>
       ) : (
         <div className="min-h-0 flex-1 overflow-y-auto">
@@ -204,7 +215,7 @@ export function DashboardView() {
 
       {picked && (
         <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center">
-          <div className="pointer-events-auto flex items-center gap-2 rounded-xl border bg-popover px-3 py-2 shadow-lg/10">
+          <div ref={liftToasts} className="pointer-events-auto flex items-center gap-2 rounded-xl border bg-popover px-3 py-2 shadow-lg/10">
             <span className="pr-1 text-sm tabular-nums">{pickedEntries.length ? `${pickedEntries.length} selected` : "Click cards to select them"}</span>
             <Button size="xs" disabled={!pickedEntries.length} onClick={() => openBroadcast({ targets: pickedEntries.map((e) => ({ box: e.box, session: e.session.name })) })}>
               <SendIcon />

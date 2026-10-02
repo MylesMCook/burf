@@ -38,7 +38,8 @@ import { Kbd } from "@/components/ui/kbd";
 import { Menu, MenuItem, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Sheet, SheetPopup, SheetTitle } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { sessionPlace } from "@/lib/derive";
+import type { Session } from "@/lib/api";
+import { sessionName, sessionPlace, sessionState } from "@/lib/derive";
 import {
   type Category,
   categoryInfo,
@@ -51,8 +52,10 @@ import {
   noteLabel,
   openNote,
   quietNow,
+  runAction,
+  quietState,
+  setDoNotDisturb,
   setNotificationsOpen,
-  setQuietHours,
   snooze,
   snoozed,
   toggleNotifications,
@@ -242,6 +245,37 @@ function fold(notes: Note[], now: number): { title: string; items: Item[] }[] {
 
 const byTime = (a: Note, b: Note) => b.time.localeCompare(a.time);
 
+// The status bar's height (status-bar.tsx, h-6.5): the sheet ends above it,
+// so its counts stay readable while the centre is open.
+const STATUS_BAR = 26;
+
+// ---- Agents waiting now ------------------------------------------------
+
+// A live agent waiting for the person that no note covers: the centre only
+// hears events while Berth is open, so an agent that asked before then (or
+// whose note was cleared) would otherwise leave "all caught up" showing
+// while the status bar says one is waiting.
+interface Live {
+  key: string;
+  box: string;
+  session: Session;
+  name: string;
+  place: string;
+}
+
+function liveWaiting(boxes: Record<string, BoxData>, notes: Note[]): Live[] {
+  const out: Live[] = [];
+  for (const [box, data] of Object.entries(boxes)) {
+    for (const s of data.sessions ?? []) {
+      if (s.exited || sessionState(s, data.stats) !== "waiting") continue;
+      const covered = notes.some((n) => n.category === "waiting" && !n.resolved && n.box === box && (n.session ? n.session === s.name : n.path === s.dir));
+      if (covered) continue;
+      out.push({ key: `${box}|${s.name}`, box, session: s, name: sessionName(s, { sessions: data.sessions }), place: `${sessionPlace(s, data.locations)} · ${box}` });
+    }
+  }
+  return out;
+}
+
 // ---- The centre --------------------------------------------------------
 
 // NotificationCenter is the sheet, mounted once beside the other dialogs.
@@ -254,7 +288,8 @@ export function NotificationCenter() {
   const boxes = useStore((s) => s.boxes);
   const prefs = useNotifyPrefs();
   const now = useMinute();
-  const quiet = quietNow(prefs, new Date(now));
+  const hush = quietState(prefs, new Date(now));
+  const quiet = hush.on;
   const [filter, setFilter] = useState<Filter>("all");
   // The row that takes Tab, so the list is one stop and arrows move in it.
   const [active, setActive] = useState<string>();
@@ -264,6 +299,8 @@ export function NotificationCenter() {
 
   useEffect(() => watchReviewNotes(), []);
 
+  // With no notes the filter is hidden, so it can't hide the agents.
+  const live = notes.length === 0 || filter === "all" || filter === "agents" || filter === "unread" ? liveWaiting(boxes, notes) : [];
   const shown = notes.filter((n) => matches(filter, n)).sort(byTime);
   const needs = shown.filter((n) => needsYou(n, now)).map((n): Item => ({ note: n, ids: [n.id], count: n.count }));
   const groups = fold(
@@ -275,10 +312,11 @@ export function NotificationCenter() {
   const anyEarlier = notes.some((n) => !needsYou(n, now));
   // The panel is as tall as its rows, up to the window. A box without a set
   // height can't pass one down, so the list's viewport is capped itself:
-  // the window less the inset (2rem), the header and the banners.
-  const chrome = 32 + 49 + (quiet ? 29 : 0) + (error ? 33 : 0);
+  // the window less the inset (2rem), the status bar the sheet stays
+  // above (26px), the header and the banners.
+  const chrome = 32 + STATUS_BAR + 49 + (quiet ? 29 : 0) + (error ? 33 : 0);
   const current = FILTERS.find((f) => f.id === filter) ?? FILTERS[0];
-  const tabStop = items.some((i) => i.note.id === active) ? active : items[0]?.note.id;
+  const tabStop = items.some((i) => i.note.id === active) || live.some((l) => l.key === active) ? active : (items[0]?.note.id ?? live[0]?.key);
 
   const settings = () => {
     setNotificationsOpen(false);
@@ -324,6 +362,14 @@ export function NotificationCenter() {
     }
     // The rest act on the focused row itself, not a button inside it.
     if (!row || target !== row) return;
+    const one = live.find((l) => l.key === row.dataset.note);
+    if (one) {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        openLive(one);
+      }
+      return;
+    }
     const item = items.find((i) => i.note.id === row.dataset.note);
     if (!item) return;
     if (e.key === "Enter" || e.key === " ") {
@@ -345,7 +391,7 @@ export function NotificationCenter() {
     <Sheet open={open} onOpenChange={setNotificationsOpen}>
       <SheetPopup
         variant="inset"
-        className="outline-none sm:h-auto sm:max-w-[420px] sm:self-start"
+        className="outline-none sm:h-auto sm:max-h-[calc(100%-26px)] sm:max-w-[420px] sm:self-start"
         showCloseButton={false}
         initialFocus={panel}
         data-notification-center=""
@@ -353,54 +399,58 @@ export function NotificationCenter() {
       >
         <div ref={panel} tabIndex={-1} className="flex h-12 shrink-0 items-center gap-1 border-b pr-2 pl-4 outline-none">
           <SheetTitle className="mr-1 font-semibold text-sm">Notifications</SheetTitle>
-          <Menu>
-            <MenuTrigger
-              render={<Button size="xs" variant="ghost" data-filter="" aria-label={`Show: ${current.label}`} className="gap-1 px-1.5 text-muted-foreground" />}
-            >
-              {current.label}
-              <ChevronDownIcon className="size-3 opacity-70" />
-            </MenuTrigger>
-            <MenuPopup align="start" className="min-w-44">
-              <MenuRadioGroup value={filter} onValueChange={(v) => setFilter(v as Filter)}>
-                {FILTERS.map((f, i) => {
-                  const count = notes.filter((n) => matches(f.id, n)).length;
-                  return (
-                    <Fragment key={f.id}>
-                      {i === 2 && <MenuSeparator />}
-                      <MenuRadioItem value={f.id} closeOnClick>
-                        <span className="flex items-center gap-4">
-                          <span className="flex-1">{f.label}</span>
-                          <span className="text-muted-foreground text-xs tabular-nums">{count || ""}</span>
-                        </span>
-                      </MenuRadioItem>
-                    </Fragment>
-                  );
-                })}
-              </MenuRadioGroup>
-            </MenuPopup>
-          </Menu>
+          {notes.length > 0 && (
+            <Menu>
+              <MenuTrigger
+                render={<Button size="xs" variant="ghost" data-filter="" aria-label={`Show: ${current.label}`} className="gap-1 px-1.5 text-muted-foreground" />}
+              >
+                {current.label}
+                <ChevronDownIcon className="size-3 opacity-70" />
+              </MenuTrigger>
+              <MenuPopup align="start" className="min-w-44">
+                <MenuRadioGroup value={filter} onValueChange={(v) => setFilter(v as Filter)}>
+                  {FILTERS.map((f, i) => {
+                    const count = notes.filter((n) => matches(f.id, n)).length;
+                    return (
+                      <Fragment key={f.id}>
+                        {i === 2 && <MenuSeparator />}
+                        <MenuRadioItem value={f.id} closeOnClick>
+                          <span className="flex items-center gap-4">
+                            <span className="flex-1">{f.label}</span>
+                            <span className="text-muted-foreground text-xs tabular-nums">{count || ""}</span>
+                          </span>
+                        </MenuRadioItem>
+                      </Fragment>
+                    );
+                  })}
+                </MenuRadioGroup>
+              </MenuPopup>
+            </Menu>
+          )}
           <div className="ml-auto flex items-center gap-0.5">
-            <Button size="xs" variant="ghost" disabled={!unread} onClick={markAllRead} className="text-muted-foreground">
-              <CheckCheckIcon />
-              Mark all read
-            </Button>
+            {notes.length > 0 && (
+              <Button size="xs" variant="ghost" disabled={!unread} onClick={markAllRead} className="text-muted-foreground">
+                <CheckCheckIcon />
+                Mark all read
+              </Button>
+            )}
             <Menu>
               <MenuTrigger render={<Button size="icon-xs" variant="ghost" aria-label="More" className="text-muted-foreground" />}>
                 <EllipsisIcon />
               </MenuTrigger>
               <MenuPopup align="end" className="min-w-56">
                 {quiet ? (
-                  <MenuItem onClick={() => setQuietHours({ on: false, until: undefined, ...(prefs.dnd.scheduled && !prefs.dnd.on ? { scheduled: false } : {}) })}>
+                  <MenuItem onClick={() => setDoNotDisturb(false)}>
                     <BellIcon />
                     Turn off Do not disturb
                   </MenuItem>
                 ) : (
                   <>
-                    <MenuItem onClick={() => setQuietHours({ on: true, until: new Date(Date.now() + 3600_000).toISOString() })}>
+                    <MenuItem onClick={() => setDoNotDisturb(true, new Date(Date.now() + 3600_000))}>
                       <BellOffIcon />
                       Do not disturb for 1 hour
                     </MenuItem>
-                    <MenuItem onClick={() => setQuietHours({ on: true, until: undefined })}>
+                    <MenuItem onClick={() => setDoNotDisturb(true)}>
                       <BellOffIcon />
                       Do not disturb until I turn it off
                     </MenuItem>
@@ -427,13 +477,13 @@ export function NotificationCenter() {
           <div className="flex shrink-0 items-center gap-2 border-b bg-muted/40 px-4 py-1.5 text-muted-foreground text-xs">
             <BellOffIcon className="size-3.5 shrink-0" />
             <span className="min-w-0 flex-1">
-              Do not disturb{prefs.dnd.on && prefs.dnd.until ? ` until ${clock(prefs.dnd.until)}` : prefs.dnd.on ? "" : ` until ${prefs.dnd.to}`}
+              Do not disturb{hush.until ? ` until ${clock(hush.until.toISOString())}` : ""}
               {prefs.dnd.allowWaiting ? "; waiting agents still come through." : "; they still collect here."}
             </span>
           </div>
         )}
 
-        {notes.length === 0 ? (
+        {notes.length === 0 && live.length === 0 ? (
           <div className="flex min-h-0 flex-1 items-center justify-center px-6 py-10">
             <Empty className="p-0">
               <EmptyHeader>
@@ -441,9 +491,7 @@ export function NotificationCenter() {
                   <Scene name="bottle" width={128} className="text-muted-foreground" />
                 </EmptyMedia>
                 <EmptyTitle className="text-base">You're all caught up</EmptyTitle>
-                <EmptyDescription className="text-sm">
-                  Agents waiting for you, failures and finished work land here. Berth hears events only while it is open, so anything that happened while it was closed can't be recovered here.
-                </EmptyDescription>
+                <EmptyDescription className="text-sm">Agents waiting for you, failures and finished work land here.</EmptyDescription>
               </EmptyHeader>
             </Empty>
           </div>
@@ -454,10 +502,13 @@ export function NotificationCenter() {
             scrollFade
           >
             <div ref={list} className="px-1.5 pt-1.5 pb-2">
-              {needs.length > 0 ? (
-                <Section title="Needs you" count={needs.length} amber>
+              {needs.length + live.length > 0 ? (
+                <Section title="Needs you" count={needs.length + live.length} amber>
                   {needs.map((i) => (
                     <Row key={i.note.id} item={i} now={now} boxes={boxes} tabStop={tabStop === i.note.id} onFocus={setActive} />
+                  ))}
+                  {live.map((l) => (
+                    <LiveRow key={l.key} live={l} now={now} tabStop={tabStop === l.key} onFocus={setActive} />
                   ))}
                 </Section>
               ) : (
@@ -475,7 +526,7 @@ export function NotificationCenter() {
                   ))}
                 </Section>
               ))}
-              {items.length === 0 && (
+              {items.length === 0 && live.length === 0 && (
                 <div className="flex flex-col items-center gap-2 px-4 py-8 text-center text-muted-foreground text-xs">
                   {current.empty}
                   <Button size="xs" variant="ghost" onClick={() => setFilter("all")}>
@@ -625,6 +676,48 @@ function Row({
           )}
         </div>
       )}
+    </li>
+  );
+}
+
+function openLive(l: Live) {
+  setNotificationsOpen(false);
+  runAction({ kind: "session", box: l.box, session: l.session.name });
+}
+
+// LiveRow is an agent waiting now with no note of its own. It reads like a
+// note's row, but there is nothing to mark read or dismiss: it goes when
+// the agent stops waiting.
+function LiveRow({ live, now, tabStop, onFocus }: { live: Live; now: number; tabStop: boolean; onFocus(id: string): void }) {
+  const since = live.session.state_since;
+  return (
+    <li
+      data-note={live.key}
+      aria-label={`${live.name} is waiting for you, ${live.place}`}
+      tabIndex={tabStop ? 0 : -1}
+      onFocus={(e) => e.target === e.currentTarget && onFocus(live.key)}
+      onClick={() => openLive(live)}
+      className="group/row relative flex cursor-default gap-2 rounded-md px-1.5 py-1.5 outline-none hover:bg-accent/60 focus-visible:bg-accent/60 focus-visible:ring-1 focus-visible:ring-ring/60"
+    >
+      <span className="flex h-5 w-1.5 shrink-0 items-center" aria-hidden>
+        <span className="size-1.5 rounded-full bg-warning" />
+      </span>
+      <Tip label={categoryInfo("waiting").label} side="left" delay={600}>
+        <span className="flex h-5 shrink-0 items-center text-warning-foreground dark:text-warning [&_svg]:size-4">
+          <MessageCircleQuestionIcon />
+        </span>
+      </Tip>
+      <div className="min-w-0 flex-1">
+        <div className="flex h-5 items-center gap-1.5">
+          <span className="min-w-0 truncate font-medium text-[13px] text-foreground">{live.name} is waiting for you</span>
+          <span className="flex-1" />
+          {since && <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">{short(since, now)}</span>}
+        </div>
+        <div className="flex h-4.5 items-center gap-2">
+          <span className="min-w-0 flex-1 truncate text-muted-foreground text-xs">{live.place}</span>
+          <span className="hidden shrink-0 text-foreground/80 text-xs group-focus-within/row:inline group-hover/row:inline">Open session</span>
+        </div>
+      </div>
     </li>
   );
 }

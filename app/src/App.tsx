@@ -60,9 +60,12 @@ export default function App() {
       {/* Toasts sit bottom-right, as in other desktop tools: above the status
           bar (26px) and above the loop panel when there is one, which says
           how tall it is in --berth-loops-h. Top-right covered the headers of
-          pages (Review's, say). With a dialog or sheet open they move to
-          the bottom-left; see components/ui/toast.tsx. */}
-      <ToastProvider position="bottom-right" viewportClassName="data-[position=bottom-right]:bottom-[calc(38px+var(--berth-loops-h,0px))] data-[position=bottom-right]:right-3 data-[position=bottom-left]:bottom-[38px] data-[position=bottom-left]:left-3">
+          pages (Review's, say). A bar floating at a page's bottom (the
+          Dashboard's selection, the Worktrees bulk bar) lifts them above
+          it through --berth-bar-lift (hooks/lift-toasts.ts). With a dialog
+          or sheet open they move to a corner clear of it; see
+          components/ui/toast.tsx. The stack is as wide as the loops panel. */}
+      <ToastProvider position="bottom-right" viewportClassName="max-w-88 data-[position=bottom-right]:bottom-[max(calc(38px+var(--berth-loops-h,0px)),var(--berth-bar-lift,0px))] data-[position=bottom-right]:right-3 data-[position=bottom-left]:bottom-[38px] data-[position=bottom-left]:left-3 data-[position=top-left]:top-3 data-[position=top-left]:left-3 data-[position=top-right]:top-3 data-[position=top-right]:right-3">
         <div className="flex h-svh flex-col overflow-hidden bg-background text-foreground">
           <div className="flex min-h-0 flex-1">
             <Disconnectable>

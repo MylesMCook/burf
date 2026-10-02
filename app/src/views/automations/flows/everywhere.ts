@@ -1,8 +1,8 @@
-import type { Flow, Scope, ScopedFlow } from "@/lib/flows";
+import { type Flow, type Scope, type ScopedFlow, scopeLocation } from "@/lib/flows";
 import type { Project } from "@/lib/project-groups";
 import type { BoxFlows } from "@/views/automations/flows/use-flows";
 
-// A flow can run for a project on every box that has it ("Any calcom/cal").
+// A flow can run for a project on every box that has it ("Any cal").
 // Boxes keep their own flows, so Berth writes one copy into each box's own
 // config for the project, and shows the copies as one flow while they match.
 
@@ -62,4 +62,20 @@ export function sharedFlows(projects: Project[], byBox: Record<string, BoxFlows>
 // isShared says whether a box's flow is shown as part of a shared one.
 export function isShared(groups: SharedGroup[], box: string, f: ScopedFlow): boolean {
   return groups.some((g) => g.flows.some((s) => s.copies.some((c) => c.box === box && c.scope === f.scope && c.flow.id === f.flow.id)));
+}
+
+// sharedProjectOf finds the project a run's flow runs for on every box: the
+// flow at (box, scope) is one copy of a flow kept the same, by name, at
+// every place the project has. name looks a flow up where it lives, or
+// gives undefined when it isn't there. Runs only know their own box, so
+// this is how Runs tells a shared flow's runs from a box's own.
+export function sharedProjectOf(projects: Project[], box: string, scope: Scope, id: string, name: (box: string, scope: Scope, id: string) => string | undefined): Project | undefined {
+  const loc = scopeLocation(scope);
+  if (!loc) return undefined;
+  const p = projects.find((x) => x.members.some((m) => m.box.name === box && m.loc.name === loc));
+  if (!p) return undefined;
+  const places = placesOf(EVERY_BOX, projectScope(p.id), projects);
+  if (places.length < 2 || !places.some((pl) => samePlace(pl, { box, scope }))) return undefined;
+  const here = name(box, scope, id);
+  return here !== undefined && places.every((pl) => name(pl.box, pl.scope, id) === here) ? p : undefined;
 }

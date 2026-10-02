@@ -10,6 +10,7 @@ import { toastManager } from "@/components/ui/toast";
 import { errorMessage } from "@/lib/format";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { Tip } from "@/components/tip";
 
 // The resource guard is a box's own: when its memory stays high, it stops
 // dev servers in worktrees where no agent is working, then pauses worktrees
@@ -107,10 +108,12 @@ export function GuardDialog({ box, open, onOpenChange }: { box: string; open: bo
                 <span className="text-muted-foreground">Memory now</span>
                 <span className="font-mono tabular-nums">{used.toFixed(0)}%</span>
               </div>
-              <div className="relative mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
-                <div className={cn("h-full rounded-full", used >= threshold ? "bg-warning" : "bg-foreground/50")} style={{ width: `${Math.min(used, 100)}%` }} />
-                <div className="absolute inset-y-0 w-px bg-foreground/60" style={{ left: `${threshold}%` }} title={`Threshold ${threshold}%`} />
-              </div>
+              <Tip label={`The line is the threshold, ${threshold}%`}>
+                <div role="img" aria-label={`${used.toFixed(0)}% in use; threshold ${threshold}%`} className="relative mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div className={cn("h-full rounded-full", used >= threshold ? "bg-warning" : "bg-foreground/50")} style={{ width: `${Math.min(used, 100)}%` }} />
+                  <div className="absolute inset-y-0 w-px bg-foreground/60" style={{ left: `${threshold}%` }} />
+                </div>
+              </Tip>
             </div>
           )}
           {status && status.memory.total === 0 && <p className="text-muted-foreground text-xs">This box doesn't report its memory, so the guard can't watch it.</p>}

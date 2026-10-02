@@ -1,5 +1,5 @@
 import { AlertTriangleIcon, BrushCleaningIcon, CheckIcon, EllipsisIcon, ListChecksIcon, SquareIcon, Trash2Icon, XIcon } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { create } from "zustand";
 
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
@@ -194,6 +194,7 @@ function Body({ req, onRunning, onClose }: { req: StopRequest; onRunning(r: bool
   const [ticked, setTicked] = useState<Set<string>>(() => (cleanup ? overFor(after) : new Set(rows.map((r) => r.key))));
   const [progress, setProgress] = useState<Record<string, Progress>>({});
   const [phase, setPhase] = useState<"confirm" | "running" | "done">("confirm");
+  const cancel = useRef<HTMLButtonElement>(null);
 
   const chosen = rows.filter((r) => ticked.has(r.key));
   const busyCount = chosen.filter((r) => busy(r.entry.state)).length;
@@ -239,7 +240,9 @@ function Body({ req, onRunning, onClose }: { req: StopRequest; onRunning(r: bool
         : `Each one's session ends on its box; its worktree and files are kept.${busyCount ? ` ${busyCount === 1 ? "One is" : `${busyCount} are`} still working or waiting on you, and ${busyCount === 1 ? "its turn ends" : "their turns end"} too.` : ""}`;
 
   return (
-    <AlertDialogPopup className="sm:max-w-lg">
+    // The keyboard starts on Cancel: Enter right after ⌫ or a menu item must
+    // never stop agents mid-turn.
+    <AlertDialogPopup className="sm:max-w-lg" initialFocus={cancel}>
       <AlertDialogHeader>
         <AlertDialogTitle>{title}</AlertDialogTitle>
         <AlertDialogDescription>{description}</AlertDialogDescription>
@@ -294,10 +297,10 @@ function Body({ req, onRunning, onClose }: { req: StopRequest; onRunning(r: bool
           <Button onClick={onClose}>Done</Button>
         ) : (
           <>
-            <Button variant="ghost" disabled={phase === "running"} onClick={onClose}>
+            <Button ref={cancel} variant="ghost" disabled={phase === "running"} onClick={onClose}>
               Cancel
             </Button>
-            <Button autoFocus variant="destructive" loading={phase === "running"} disabled={!chosen.length} onClick={() => void run()}>
+            <Button variant="destructive" loading={phase === "running"} disabled={!chosen.length} onClick={() => void run()}>
               <SquareIcon />
               {chosen.length ? `Stop ${plural(chosen.length, "agent")}` : "Stop agents"}
             </Button>
@@ -345,10 +348,12 @@ function StopRow({ row, ticked, progress, locked, cleanup, onToggle }: { row: Ro
             {state === "waiting" ? "needs you" : "working"}
           </span>
         ) : (
-          <span className="flex shrink-0 items-center gap-1.5 font-mono text-[11px] text-muted-foreground tabular-nums" title={state === "finished" ? "Done for" : "Ready for"}>
-            <StateGlyph state={state} />
-            {duration(row.idle)}
-          </span>
+          <Tip label={`${state === "finished" ? "Done" : "Ready"} for ${duration(row.idle)}`}>
+            <span className="flex shrink-0 items-center gap-1.5 font-mono text-[11px] text-muted-foreground tabular-nums">
+              <StateGlyph state={state} />
+              {duration(row.idle)}
+            </span>
+          </Tip>
         )}
       </label>
     </li>

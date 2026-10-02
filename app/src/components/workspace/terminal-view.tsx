@@ -46,8 +46,15 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
 
   const client = useStore((s) => s.client);
   const boxState = useStore((s) => s.status?.boxes.find((b) => b.name === box)?.state);
-  // True only once the box's sessions are known and this one is not among them.
-  const gone = useStore((s) => s.boxes[box]?.sessions?.some((x) => x.name === session) === false);
+  // True only once the box's sessions are known and this one is not among
+  // them, or is listed as exited: there is nothing live to attach to, so the
+  // pane shows the ended state rather than a terminal that seems to run.
+  const gone = useStore((s) => {
+    const list = s.boxes[box]?.sessions;
+    if (!list) return false;
+    const x = list.find((y) => y.name === session);
+    return !x || x.exited;
+  });
   // The worktree the session runs in, which file paths are relative to.
   const dir = useStore((s) => s.boxes[box]?.sessions?.find((x) => x.name === session)?.dir);
   const dirRef = useRef(dir);
@@ -171,16 +178,47 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
   // Take the keyboard when this pane is shown and focused, but never from a
   // dialog, menu or field that has it: attaching finishes a moment after a
   // worktree is picked, often after ⌘N has opened a dialog.
+  // The keyboard also comes back here when it falls to the page itself: a
+  // dialog that closed with nowhere to return to, or a neighbouring pane
+  // that was closed while it had it.
   useEffect(() => {
     if (!visible || !focused || state !== "open" || !term) return;
-    if (somethingElseHasFocus(host.current)) return;
-    term.focus();
+    if (!somethingElseHasFocus(host.current)) term.focus();
+    let frame = 0;
+    const reclaim = () => {
+      cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        const a = document.activeElement;
+        if ((!a || a === document.body) && !somethingElseHasFocus(host.current)) term.focus();
+      });
+    };
+    document.addEventListener("focusout", reclaim);
+    return () => {
+      document.removeEventListener("focusout", reclaim);
+      cancelAnimationFrame(frame);
+    };
   }, [visible, focused, term, state]);
+
+  // What looks focused is what has the keyboard: a terminal that gets it
+  // without a click (a script, the browser) becomes the focused pane.
+  const focusedRef = useRef(focused);
+  focusedRef.current = focused;
+  const onFocusRef = useRef(onFocus);
+  onFocusRef.current = onFocus;
+  useEffect(() => {
+    const el = host.current;
+    if (!el || !visible) return;
+    const claim = () => {
+      if (!focusedRef.current) onFocusRef.current();
+    };
+    el.addEventListener("focusin", claim);
+    return () => el.removeEventListener("focusin", claim);
+  }, [visible]);
 
   const blocked = state === "offline" || state === "ended";
   return (
     <div className="relative min-h-0 flex-1" style={{ background: theme.terminal.background }} onMouseDown={onFocus}>
-      <div ref={host} className={cn("absolute inset-0 overflow-hidden px-3 pt-2 pb-1 transition-opacity [&_canvas]:block", blocked && "pointer-events-none", state === "offline" && "opacity-40", state === "ended" && "invisible")} />
+      <div ref={host} data-terminal className={cn("absolute inset-0 overflow-hidden px-3 pt-2 pb-1 transition-opacity [&_canvas]:block", blocked && "pointer-events-none", state === "offline" && "opacity-40", state === "ended" && "invisible")} />
       {state === "offline" && <BoxOffline box={box} onRetry={() => setRetry((n) => n + 1)} />}
       {state === "ended" && <SessionEnded box={box} session={session} agent={agent} command={command} wsKey={wsKey} tab={tab} pane={pane} onClose={onClose} />}
       {(state === "connecting" || state === "reconnecting") && (
@@ -198,5 +236,7 @@ function somethingElseHasFocus(mine: HTMLElement | null): boolean {
   const a = document.activeElement;
   if (a?.closest(OVERLAYS)) return true;
   if (!a || a === document.body || (mine && mine.contains(a))) return false;
+  // Another terminal is editable too, but the focused pane is this one.
+  if (a.closest("[data-terminal]")) return false;
   return a instanceof HTMLInputElement || a instanceof HTMLTextAreaElement || a instanceof HTMLSelectElement || (a as HTMLElement).isContentEditable;
 }

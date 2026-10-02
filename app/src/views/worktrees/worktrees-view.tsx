@@ -181,7 +181,10 @@ export function WorktreesView() {
         </div>
         <div className="flex shrink-0 items-center gap-1" role="group" aria-label="Show only">
           <FilterChip pressed={flags.includes("behind")} onPressedChange={() => flip("behind")}>
-            Behind<span className="@max-[56rem]/toolbar:hidden"> base</span>
+            {/* One flex item, or the chip's gap doubles the space before "base". */}
+            <span>
+              Behind<span className="@max-[56rem]/toolbar:hidden"> base</span>
+            </span>
           </FilterChip>
           <FilterChip pressed={flags.includes("changes")} onPressedChange={() => flip("changes")}>
             <span className="@max-[56rem]/toolbar:hidden">Has changes</span>

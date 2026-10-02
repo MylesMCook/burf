@@ -91,6 +91,8 @@ export interface FlowRun {
   event: BerthEvent;
   steps: StepRun[];
   error?: string;
+  // Started from the editor's Test run, not by the trigger.
+  test?: boolean;
 }
 
 export interface WorktreeService {

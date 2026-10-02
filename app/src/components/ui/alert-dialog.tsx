@@ -2,6 +2,7 @@
 
 import { AlertDialog as AlertDialogPrimitive } from "@base-ui/react/alert-dialog";
 import type React from "react";
+import { FocusRescue } from "@/lib/focus-home";
 import { cn } from "@/lib/utils";
 
 export const AlertDialogCreateHandle: typeof AlertDialogPrimitive.createHandle =
@@ -55,6 +56,7 @@ export function AlertDialogViewport({
 
 export function AlertDialogPopup({
   className,
+  children,
   bottomStickOnMobile = true,
   portalProps,
   ...props
@@ -80,7 +82,10 @@ export function AlertDialogPopup({
           )}
           data-slot="alert-dialog-popup"
           {...props}
-        />
+        >
+          <FocusRescue />
+          {children}
+        </AlertDialogPrimitive.Popup>
       </AlertDialogViewport>
     </AlertDialogPortal>
   );

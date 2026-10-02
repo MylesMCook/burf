@@ -1,4 +1,5 @@
 import type { BerthEvent, Location, Worktree } from "@/lib/api";
+import { agentOf, sessionName } from "@/lib/derive";
 import { leaves } from "@/lib/layout";
 import { route } from "@/lib/notifications";
 import { useStore } from "@/lib/store";
@@ -76,9 +77,14 @@ export function handleSessionOpen(e: BerthEvent) {
         place(box, hit.loc, hit.wt, d.name!, how, false);
         return;
       }
+      // Named as the app names it once listed ("Claude Code 2"), so a second
+      // agent in the same worktree reads as a different one.
+      const data = useStore.getState().boxes[box];
+      const listed = data?.sessions?.find((s) => s.name === d.name);
+      const who = listed && agentOf(listed) ? sessionName(listed, { sessions: data?.sessions }) : agentLabel(box, d.agent);
       route({
         category: "opened",
-        title: `${agentLabel(box, d.agent)} started in ${hit.wt.main ? hit.loc.name : hit.wt.name}`,
+        title: `${who} started in ${hit.wt.main ? hit.loc.name : hit.wt.name}`,
         detail: how === "split" ? "It asked to open beside your terminal." : "It asked to open in a new tab.",
         box,
         path: hit.wt.path,

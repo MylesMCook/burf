@@ -2,16 +2,19 @@ import { BookMarkedIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { AgentIcon } from "@/components/agent-glyph";
+import { Tip } from "@/components/tip";
 import { AgentPicker } from "@/components/new-worktree/agent-picker";
 import { QueueOffer, offlineOffer, queueLabel } from "@/components/queue/queue-offer";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogPanel, DialogPopup, DialogTitle } from "@/components/ui/dialog";
+import { StepHeader } from "@/components/step-header";
+import { Dialog, DialogFooter, DialogPanel, DialogPopup } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
 import { NumberField, NumberFieldDecrement, NumberFieldGroup, NumberFieldIncrement, NumberFieldInput } from "@/components/ui/number-field";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { toastManager } from "@/components/ui/toast";
+import { useSessionName } from "@/hooks/use-session-name";
 import { agentPresets } from "@/lib/actions";
 import type { Session } from "@/lib/api";
 import { agentLabel, agentOf } from "@/lib/derive";
@@ -48,7 +51,8 @@ export function OrchestrateDialog() {
   const close = () => useStore.getState().setOrchestrate(undefined);
   return (
     <Dialog open={!!d} onOpenChange={(open) => !open && close()}>
-      <DialogPopup className="sm:max-w-[32rem]" showCloseButton={false}>
+      {/* Anchored at the top: each kind has its own fields, and Send grows an offer to queue; a centred dialog would move its title. */}
+      <DialogPopup anchored className="sm:max-w-[32rem]" showCloseButton={false}>
         {d && <Body key={`${d.kind}:${d.box}:${d.session}`} d={d} onDone={close} />}
       </DialogPopup>
     </Dialog>
@@ -67,9 +71,10 @@ function Body({ d, onDone }: { d: OrchestrateDraft; onDone(): void }) {
     // An unknown session: the dialog still opens, and submitting explains.
   }
   const worktree = location.split("/")[1] ?? location;
+  const who = useSessionName(d.box, d.session);
   const from = { worktree: worktree || d.session, path: session?.dir ?? "" };
 
-  const [text, setText] = useState(() => d.prompt ?? (d.kind === "handoff" ? handoffPrompt(from, true) : d.kind === "review" ? reviewPrompt(d.session) : ""));
+  const [text, setText] = useState(() => d.prompt ?? (d.kind === "handoff" ? handoffPrompt(from, true) : d.kind === "review" ? reviewPrompt(who) : ""));
   const [edited, setEdited] = useState(!!d.prompt);
   const [agent, setAgent] = useState(d.kind === "review" ? other : (current ?? presets[0]?.id ?? "claude"));
   const [newWorktree, setNewWorktree] = useState(false);
@@ -145,17 +150,19 @@ function Body({ d, onDone }: { d: OrchestrateDraft; onDone(): void }) {
         }
       }}
     >
-      <DialogHeader className="gap-1.5 px-5 pt-5 pb-3">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <DialogTitle className="shrink-0 text-base">{titles[d.kind]}</DialogTitle>
-          <span title={`${d.session} on ${d.box}`} className="inline-flex h-6 min-w-0 items-center gap-1.5 rounded-md border bg-muted/72 px-2 text-[13px]">
-            <AgentIcon agent={current} className="size-3" />
-            <span className="truncate">{worktree || d.session}</span>
-            <span className="shrink-0 text-muted-foreground">{d.box}</span>
-          </span>
-        </div>
-        <DialogDescription className="text-[13px]">{descriptions[d.kind]}</DialogDescription>
-      </DialogHeader>
+      <StepHeader
+        title={titles[d.kind]}
+        description={descriptions[d.kind]}
+        aside={
+          <Tip label={`Session ${d.session} on ${d.box}`}>
+            <span className="ml-0.5 inline-flex h-6 min-w-0 items-center gap-1.5 rounded-md border bg-muted/72 px-2 text-[13px]">
+              <AgentIcon agent={current} className="size-3" />
+              <span className="truncate">{worktree ? `${worktree} · ${who}` : who}</span>
+              <span className="shrink-0 text-muted-foreground">{d.box}</span>
+            </span>
+          </Tip>
+        }
+      />
 
       <DialogPanel className="flex flex-col gap-4 px-5 pb-5">
         {(d.kind === "handoff" || d.kind === "review") && (

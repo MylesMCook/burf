@@ -1,14 +1,15 @@
 import { PlusIcon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTab } from "@/components/ui/tabs";
 import type { Scope, ScopedFlow } from "@/lib/flows";
 import { useProjects } from "@/lib/project-groups";
+import { rescueFocus } from "@/lib/focus-home";
 import { load, save } from "@/lib/storage";
-import { NONE, useStore } from "@/lib/store";
+import { NONE, useStore, type View } from "@/lib/store";
 import { ViewHeader } from "@/views/view-header";
-import { EVERY_BOX, placesOf, projectScope, projectsEverywhere, samePlace } from "@/views/automations/flows/everywhere";
+import { EVERY_BOX, placesOf, projectScope, projectsEverywhere, samePlace, sharedFlows } from "@/views/automations/flows/everywhere";
 import { type EditTarget, FlowEditor } from "@/views/automations/flows/flow-editor";
 import { FlowList } from "@/views/automations/flows/flow-list";
 import { blankFlow, type Starter } from "@/views/automations/flows/model";
@@ -49,7 +50,17 @@ export function AutomationsView() {
       .filter((r) => !!r)
       .sort((a, b) => b.started.localeCompare(a.started))[0];
 
-  const open = (box: string, f: ScopedFlow) => setEditing({ box, scope: f.scope, flow: f.flow, savedId: f.flow.id, readOnly: !f.editable });
+  const open = (box: string, f: ScopedFlow) => setEditing({ box, scope: f.scope, flow: f.flow, savedId: f.flow.id, readOnly: !f.editable, shared: sharedSet(box, f) });
+  // A box's copy of a flow saved on every box with its project: editing it
+  // alone splits it from the others, so the editor says so and offers all.
+  const sharedSet = (box: string, f: ScopedFlow): EditTarget["shared"] => {
+    if (box === EVERY_BOX) return undefined;
+    for (const g of sharedFlows(projects, byBox)) {
+      const hit = g.flows.find((s) => s.copies.some((c) => c.box === box && c.scope === f.scope && c.flow.id === f.flow.id));
+      if (hit) return { scope: projectScope(g.project.id), boxes: hit.copies.map((c) => c.box) };
+    }
+    return undefined;
+  };
   const create = (box: string, scope: Scope, starter?: Starter) => setEditing({ box, scope, flow: structuredClone(starter?.flow ?? blankFlow()) });
   // A new flow starts on the project open in the sidebar; "Runs for" in the
   // editor changes it.
@@ -60,19 +71,38 @@ export function AutomationsView() {
 
   // Another page (Project settings) can ask for a flow, or a new one.
   const request = view.kind === "automations" ? view.open : undefined;
+  const settled = useRef<View>(view);
+  const settle = () => {
+    const v: View = { kind: "automations" };
+    settled.current = v;
+    useStore.getState().setView(v);
+  };
   useEffect(() => {
     if (!request) return;
     if (!request.id) {
       create(request.box, request.scope);
-      useStore.getState().setView({ kind: "automations" });
+      settle();
       return;
     }
     const f = byBox[request.box]?.flows?.find((x) => x.scope === request.scope && x.flow.id === request.id);
     if (f) {
       open(request.box, f);
-      useStore.getState().setView({ kind: "automations" });
+      settle();
     }
   }, [request, byBox]);
+
+  // Automations in the sidebar, clicked again, leaves the editor for the list.
+  useEffect(() => {
+    if (view === settled.current || (view.kind === "automations" && view.open)) return;
+    settled.current = view;
+    if (view.kind === "automations") setEditing(undefined);
+  }, [view]);
+
+  const closeEditor = () => {
+    setEditing(undefined);
+    // Its back button is gone: the keyboard goes to the list's tabs.
+    rescueFocus();
+  };
 
   const pickTab = (t: Tab) => {
     setTab(t);
@@ -85,7 +115,8 @@ export function AutomationsView() {
         key={`${editing.box}|${editing.scope}|${editing.savedId ?? "new"}|${editing.readOnly ? "ro" : "rw"}`}
         target={editing}
         scopes={scopes}
-        onClose={() => setEditing(undefined)}
+        onClose={closeEditor}
+        onEditAll={editing.shared ? () => setEditing({ ...editing, box: EVERY_BOX, scope: editing.shared!.scope, shared: undefined }) : undefined}
         onSave={async (box, scope, flow, previousId) => {
           // Saved where it goes (on every box with the project, one copy
           // each), then taken out of anywhere it no longer goes.
@@ -126,7 +157,9 @@ export function AutomationsView() {
       <Tabs value={tab} onValueChange={(v) => pickTab(v as Tab)} className="flex min-h-0 flex-1 flex-col">
         <div className="shrink-0 border-b px-6">
           <TabsList variant="underline" className="-mb-px">
-            <TabsTab value="flows">Flows</TabsTab>
+            <TabsTab value="flows" data-focus-home="">
+              Flows
+            </TabsTab>
             <TabsTab value="runs">
               Runs
               {runs.some((r) => r.status === "running") && <span className="ml-1.5 size-1.5 animate-pulse rounded-full bg-primary" />}

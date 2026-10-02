@@ -211,12 +211,20 @@ function ActivityScreen({ berth }: ScreenProps) {
                 <div className={cn("group flex min-h-row items-center gap-3 border-b px-4 py-1 text-sm last:border-b-0", i === 0 && "border-t-0")}>
                   <Icon name={line.icon} className={cn("size-4 shrink-0", line.tone)} />
                   <span className="min-w-0 flex-1 truncate text-muted-foreground">{line.text}</span>
-                  {e.box && <Badge variant="outline" size="sm">{e.box}</Badge>}
-                  {session && e.box && e.type !== "session.stopped" && (
-                    <Button size="xs" variant="ghost" className="opacity-0 group-hover:opacity-100" onClick={() => berth.openTerminal(e.box!, session)}>
-                      Open
-                    </Button>
+                  {e.box && (
+                    <Badge variant="outline" size="sm" className="shrink-0">
+                      {e.box}
+                    </Badge>
                   )}
+                  {/* A slot every row has, so the box badges line up whether
+                      or not the row can be opened. */}
+                  <span className="flex w-14 shrink-0 justify-end">
+                    {session && e.box && e.type !== "session.stopped" && (
+                      <Button size="xs" variant="ghost" className="opacity-0 focus-visible:opacity-100 group-hover:opacity-100" onClick={() => berth.openTerminal(e.box!, session)}>
+                        Open
+                      </Button>
+                    )}
+                  </span>
                   <time className="w-24 shrink-0 text-right text-muted-foreground text-xs tabular-nums" dateTime={e.time}>
                     {clock(e.time)}
                   </time>

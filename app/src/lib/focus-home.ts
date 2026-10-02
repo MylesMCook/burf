@@ -1,0 +1,139 @@
+import { type RefObject, useEffect } from "react";
+
+import { OVERLAYS } from "@/lib/overlays";
+
+// Focus is designed: when what had the keyboard goes away (a dialog, sheet
+// or popover closes and its opener is gone, a pane closes, a step of a page
+// changes), the keyboard lands somewhere sensible, never on <body>. Only the
+// DOM is read here, so the ui primitives can use it without importing the
+// stores.
+//
+// Home is, in order: the focused pane of the shown tab (its terminal, or its
+// panel's first field or control), the launcher's first row, something a
+// view marked with data-focus-home, and else the main area itself.
+
+const FIELD = "[contenteditable=true], textarea:not([disabled]), input:not([disabled]):not([type=hidden]), select:not([disabled])";
+const CONTROL = "button:not([disabled]), [href], [tabindex]:not([tabindex='-1'])";
+
+const shown = (el: Element): el is HTMLElement => el instanceof HTMLElement && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== "hidden";
+
+// firstFocusable is where the keyboard starts inside a region: what a view
+// marked data-autofocus, else its first field, else its first control.
+export function firstFocusable(root: ParentNode | null | undefined, keep: (el: HTMLElement) => boolean = () => true): HTMLElement | undefined {
+  if (!root) return undefined;
+  for (const sel of ["[data-autofocus]", FIELD, CONTROL]) {
+    // data-focus-skip: a way back, or a toolbar's refresh, which is never
+    // where a step starts.
+    const hit = [...root.querySelectorAll(sel)].find((el): el is HTMLElement => shown(el) && keep(el) && !el.closest("[data-focus-skip]"));
+    if (hit) return hit;
+  }
+  return undefined;
+}
+
+export function homeTarget(): HTMLElement | undefined {
+  const main = document.querySelector("main");
+  if (!main) return undefined;
+  const pane = [...main.querySelectorAll("[data-pane-focused]")].find(shown);
+  if (pane) {
+    // The pane's own content, past a split pane's header buttons.
+    const t = firstFocusable(pane, (el) => !el.closest(".group\\/header"));
+    if (t) return t;
+  }
+  const marked = [...main.querySelectorAll("[data-focus-home], [data-row]")].find(shown);
+  if (marked) return marked;
+  if (main instanceof HTMLElement) {
+    if (!main.hasAttribute("tabindex")) main.tabIndex = -1;
+    main.style.outline = "none";
+    return main;
+  }
+  return undefined;
+}
+
+const lost = () => {
+  const a = document.activeElement;
+  return !a || a === document.body || !a.isConnected;
+};
+
+// focusHome moves the keyboard home now, unless an overlay has it.
+export function focusHome(): boolean {
+  if (document.querySelector(OVERLAYS)) return false;
+  const t = homeTarget();
+  t?.focus({ preventScroll: true });
+  return !!t && document.activeElement === t;
+}
+
+// rescueFocus waits for whatever is about to take the keyboard (a primitive
+// returning focus to its trigger, a view's own autofocus), then sends it
+// home if nothing did. Safe to call from anywhere and more than once.
+let pending = 0;
+export function rescueFocus(delay = 60) {
+  window.clearTimeout(pending);
+  pending = window.setTimeout(() => {
+    if (lost()) focusHome();
+  }, delay);
+}
+
+// focusWithin puts the keyboard on a region's first field or control once
+// it has rendered: a page's new step, a pane that just opened.
+export function focusWithin(get: () => ParentNode | null | undefined, delay = 0) {
+  window.setTimeout(() => {
+    if (document.querySelector(OVERLAYS)) return;
+    firstFocusable(get())?.focus({ preventScroll: true });
+  }, delay);
+}
+
+// FocusRescue goes inside a dialog, sheet or popover popup: when the popup
+// unmounts and its opener is gone (a menu item, a closed pane, a confirm
+// opened by a shortcut), the keyboard goes home instead of to <body>.
+export function FocusRescue(): null {
+  useEffect(() => () => rescueFocus(), []);
+  return null;
+}
+
+// useKeepFocusIn keeps the keyboard inside a region that swaps its content
+// in place (a page that goes a step at a time): whenever what had focus is
+// replaced and the keyboard falls to <body>, it goes to the region's first
+// field or control. Fields that autofocus themselves win.
+export function useKeepFocusIn(ref: RefObject<HTMLElement | null>) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    let timer = 0;
+    const check = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        if (lost() && !document.querySelector(OVERLAYS)) firstFocusable(el)?.focus({ preventScroll: true });
+      }, 30);
+    };
+    const mo = new MutationObserver(check);
+    mo.observe(el, { childList: true, subtree: true });
+    check();
+    return () => {
+      mo.disconnect();
+      window.clearTimeout(timer);
+    };
+  }, [ref]);
+}
+
+// focusNewPane gives the keyboard to the pane that just opened (a panel
+// from the New tab menu): once the menu is gone and the pane has something
+// to focus, its first field or control. Gives up after a second.
+export function focusNewPane() {
+  const until = Date.now() + 1000;
+  const tick = () => {
+    const pane = document.querySelector("main [data-pane-focused]");
+    const t = !document.querySelector(OVERLAYS) && pane ? firstFocusable(pane, (el) => !el.closest(".group\\/header")) : undefined;
+    if (t) {
+      t.focus({ preventScroll: true });
+      // Writing carries on from the end, not above what is there.
+      if (t instanceof HTMLTextAreaElement || t instanceof HTMLInputElement) {
+        try {
+          t.setSelectionRange(t.value.length, t.value.length);
+        } catch {
+          // Some inputs (number, email) have no selection.
+        }
+      }
+    } else if (Date.now() < until) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}

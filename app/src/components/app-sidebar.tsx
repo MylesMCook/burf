@@ -154,7 +154,7 @@ function Rail() {
   const view = useStore((s) => s.view);
   const setView = useStore((s) => s.setView);
   const { pinned, more } = useArrangedNav();
-  const item = (label: string, icon: React.ReactNode, active: boolean, onClick: () => void, badge?: number) => (
+  const item = (label: string, icon: React.ReactNode, active: boolean, onClick: () => void, badge?: { count: number; loud?: boolean }) => (
     <Tip label={label} side="right">
       <button
         type="button"
@@ -163,7 +163,8 @@ function Rail() {
         className={cn("relative inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-sidebar-accent hover:text-foreground [&_svg]:size-4", active && "bg-sidebar-accent text-foreground")}
       >
         {icon}
-        {badge ? <span className="absolute top-0.5 right-0.5 size-2 rounded-full bg-warning" /> : null}
+        {/* Amber only when something needs you, as in the sidebar. */}
+        {badge?.count ? <span className={cn("absolute top-0.5 right-0.5 size-2 rounded-full", badge.loud ? "bg-warning" : "bg-muted-foreground/70")} /> : null}
       </button>
     </Tip>
   );
@@ -174,7 +175,7 @@ function Rail() {
         {item("Search (⌘K)", <SearchIcon />, false, () => useStore.getState().setPaletteOpen(true))}
         <NotificationBell size="rail" />
         {pinned.map((n) => (
-          <span key={n.id}>{item(n.label, n.icon, n.active, () => setView(n.view), n.badge?.count)}</span>
+          <span key={n.id}>{item(n.label, n.icon, n.active, () => setView(n.view), n.badge)}</span>
         ))}
         {more.length > 0 && (
           <Menu>
@@ -196,7 +197,8 @@ function Rail() {
           </Menu>
         )}
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto [scrollbar-width:none]">
+      {/* RailWorktrees fits its tiles to this height, never scrolls. */}
+      <div className="min-h-0 w-full flex-1 overflow-hidden">
         <RailWorktrees />
       </div>
       <div className="flex flex-col items-center gap-1 pt-1 pb-2">

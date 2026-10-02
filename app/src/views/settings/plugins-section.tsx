@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { builtinPlugins, loadPlugins } from "@/plugins/host";
 import { useRegistry } from "@/plugins/registry";
 import { Code, SettingsGroup, SettingsPage } from "@/views/settings/rows";
+import { Tip } from "@/components/tip";
 
 export function PluginsSection() {
   const client = useStore((s) => s.client);
@@ -154,7 +155,11 @@ function BuiltinRow({ plugin: p, status, replaced, onChanged }: { plugin: Plugin
 // StatusDot marks only what needs attention: the switch already says on.
 function StatusDot({ state }: { state: string }) {
   if (state === "active" || state === "off") return <span className="size-2 shrink-0" />;
-  return <span className={cn("size-2 shrink-0 rounded-full", state === "failed" ? "bg-destructive" : "bg-warning")} title={state} />;
+  return (
+    <Tip label={state}>
+      <span role="img" aria-label={state} className={cn("size-2 shrink-0 rounded-full", state === "failed" ? "bg-destructive" : "bg-warning")} />
+    </Tip>
+  );
 }
 
 // Contributions lists what a loaded plugin adds to the app.

@@ -23,7 +23,7 @@ import {
   MenuTrigger,
   ViewHeader,
 } from "@berth/plugin/ui";
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { EditSheet } from "./edit-sheet";
 
@@ -68,8 +68,20 @@ function Library({ berth }: ScreenProps) {
   const [query, setQuery] = useState("");
   // Tags to narrow to; a prompt shows when it has every one.
   const [picked, setPicked] = useState<string[]>([]);
-  const [editing, setEditing] = useState<SavedPrompt | "new">();
+  const [editing, setEditingState] = useState<SavedPrompt | "new">();
   const [deleting, setDeleting] = useState<SavedPrompt>();
+  // The sheet is mounted only while open, so it can't hand the keyboard back
+  // itself: what opened it gets it again when it closes (New prompt, a card).
+  const opener = useRef<HTMLElement | null>(null);
+  const setEditing = (p: SavedPrompt | "new" | undefined) => {
+    if (p && !editing) opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    setEditingState(p);
+    if (!p)
+      window.setTimeout(() => {
+        const el = opener.current;
+        if (el?.isConnected && (document.activeElement === document.body || !document.activeElement)) el.focus();
+      }, 0);
+  };
   const starters = prompts === berth.prompts.starters;
 
   useEffect(() => {

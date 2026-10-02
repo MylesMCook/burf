@@ -1,5 +1,5 @@
 import { CloudOffIcon, ListStartIcon, RotateCcwIcon, SendIcon, TrashIcon } from "lucide-react";
-import { useMemo, useState } from "react";
+import { type RefObject, useMemo, useRef, useState } from "react";
 
 import { AgentIcon } from "@/components/agent-glyph";
 import { SimpleSelect } from "@/components/simple-select";
@@ -9,7 +9,7 @@ import { Popover, PopoverPopup, PopoverTrigger } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
 import { toastManager } from "@/components/ui/toast";
 import { isMock } from "@/hooks/use-berth-connection";
-import { agentOf, sessionName } from "@/lib/derive";
+import { agentOf, guessAgent, sessionName } from "@/lib/derive";
 import { ago, errorMessage } from "@/lib/format";
 import { mockBoxes, mockSetBoxOnline } from "@/lib/mock-queue";
 import { type QueueItem, discard, openQueue, preview, retarget, retry, sendNow, targetName, useQueue } from "@/lib/queue";
@@ -24,6 +24,9 @@ export function QueueIndicator() {
   const items = useQueue((s) => s.items);
   const open = useQueue((s) => s.open);
   const failed = items.filter((i) => i.state === "failed").length;
+  // The keyboard starts on the list, not on the first row's Discard: Enter
+  // right after opening must never throw a prompt away.
+  const list = useRef<HTMLDivElement>(null);
   if (!items.length && !isMock()) return null;
   return (
     <Popover open={open} onOpenChange={(o) => openQueue(o)}>
@@ -40,14 +43,14 @@ export function QueueIndicator() {
           Queued ({items.length})
         </PopoverTrigger>
       </Tip>
-      <PopoverPopup side="top" align="start" sideOffset={6} className="w-[26rem] p-0 [&_[data-slot=popover-viewport]]:p-0">
-        <QueuePanel items={items} />
+      <PopoverPopup initialFocus={list} side="top" align="start" sideOffset={6} className="w-[26rem] p-0 [&_[data-slot=popover-viewport]]:p-0">
+        <QueuePanel items={items} list={list} />
       </PopoverPopup>
     </Popover>
   );
 }
 
-function QueuePanel({ items }: { items: QueueItem[] }) {
+function QueuePanel({ items, list }: { items: QueueItem[]; list: RefObject<HTMLDivElement | null> }) {
   const status = useStore((s) => s.status);
   const state = (box: string) => status?.boxes.find((b) => b.name === box)?.state ?? "unknown";
   const byBox = useMemo(() => [...new Set(items.map((i) => i.box))].map((box) => [box, items.filter((i) => i.box === box)] as const), [items]);
@@ -57,7 +60,7 @@ function QueuePanel({ items }: { items: QueueItem[] }) {
         <div className="font-medium text-sm">Queued prompts</div>
         <p className="text-muted-foreground text-xs">Kept by Berth on this Mac and typed in when their box is back, in order for each agent, after its current turn.</p>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div ref={list} tabIndex={-1} role="region" aria-label="Queued prompts" className="min-h-0 flex-1 overflow-y-auto outline-none">
         {items.length === 0 && <p className="px-4 py-8 text-center text-muted-foreground text-sm">Nothing queued. A prompt for a box that is offline can wait here.</p>}
         {byBox.map(([box, list]) => (
           <div key={box}>
@@ -103,16 +106,17 @@ function Row({ it, online }: { it: QueueItem; online: boolean }) {
   return (
     <div className="border-b px-4 py-2.5 last:border-b-0">
       <div className="flex min-w-0 items-center gap-2">
-        <AgentIcon agent={session ? agentOf(session) : undefined} />
-        <span className="min-w-0 truncate font-medium text-[13px]" title={`${it.session} on ${it.box}`}>
-          {targetName(it.box, it.session)}
-        </span>
+        <AgentIcon agent={session ? agentOf(session) : guessAgent(it.session)} />
+        <Tip label={`Session ${it.session} on ${it.box}`} align="start">
+          <span className="min-w-0 truncate font-medium text-[13px]">{targetName(it.box, it.session)}</span>
+        </Tip>
         <span className="ml-auto shrink-0 text-[11px] text-muted-foreground tabular-nums">{ago(it.created)}</span>
       </div>
       <p className="mt-1 line-clamp-2 break-words text-[12.5px] text-foreground/80 leading-snug" title={it.text}>
         {preview(it.text, 240)}
       </p>
-      {it.error && <p className="mt-1 text-destructive-foreground text-xs">{it.error}</p>}
+      {/* The agent's errors name the session by id; say it as the row does. */}
+      {it.error && <p className="mt-1 text-destructive-foreground text-xs">{it.error.split(it.session).join(targetName(it.box, it.session))}</p>}
       <div className="mt-1.5 flex min-w-0 items-center gap-1">
         <span className={cn("flex min-w-0 items-center gap-1 truncate text-[11px]", st.className)}>
           {(it.state === "sending" || it.state === "waiting") && <Spinner className="size-3" />}

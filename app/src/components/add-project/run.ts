@@ -46,7 +46,7 @@ export async function runPlan(plan: Plan, o: RunOptions): Promise<RunResult> {
       loc = await projectsApi.create(client, box, plan.folder, plan.parent);
       break;
     default:
-      throw new Error(plan.message);
+      throw new Error(plan.do === "blocked" ? plan.message : "Pick a folder first.");
   }
 
   const extras: RunResult["extras"] = [];

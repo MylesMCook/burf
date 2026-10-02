@@ -25,15 +25,37 @@ const NONE = "__none__";
 const toItem = (v: string) => (v === "" ? NONE : v);
 const fromItem = (v: string) => (v === NONE ? "" : v);
 
-export function PickOne<T extends string>({ value, options, onChange, label, className }: { value: T; options: PickOneOption<T>[]; onChange(v: T): void; label?: string; className?: string }) {
+export function PickOne<T extends string>({
+  value,
+  options,
+  onChange,
+  label,
+  className,
+  "aria-labelledby": labelledBy,
+  "aria-describedby": describedBy,
+}: {
+  value: T;
+  options: PickOneOption<T>[];
+  onChange(v: T): void;
+  label?: string;
+  className?: string;
+  // A visible label elsewhere (a settings row's) names the group instead.
+  "aria-labelledby"?: string;
+  "aria-describedby"?: string;
+}) {
   return (
     <ToggleGroup
       aria-label={label}
+      aria-labelledby={label ? undefined : labelledBy}
+      aria-describedby={describedBy}
       size="sm"
       value={[toItem(value)]}
       // Clicking the chosen item again keeps it chosen.
       onValueChange={(v) => v.length && onChange(fromItem(v[v.length - 1] as string) as T)}
-      className={cn("w-fit max-w-full flex-wrap rounded-lg bg-muted p-0.5", className)}
+      // shrink-0: in a row it keeps its one line and its neighbours give way
+      // (a file path beside Review's Unified/Split); it wraps only when it
+      // is wider than the whole row (max-w-full).
+      className={cn("w-fit max-w-full shrink-0 flex-wrap rounded-lg bg-muted p-0.5", className)}
     >
       {options.map((o) => (
         <ToggleGroupItem

@@ -9,8 +9,9 @@ import "./scenes.css";
 // the caller says otherwise), and exactly one amber point, the logo's dot, as
 // a buoy, a lamp or the sun. Motion is CSS only (transforms and opacity),
 // slow, a pixel or two, and loops without a seam. It stops under reduced
-// motion, pauses offscreen or while the window is hidden, and a scene
-// behind an open dialog holds still so only one thing moves at a time.
+// motion, pauses offscreen or while the window is hidden, rests after a few
+// loops, and a scene behind an open dialog holds still so only one thing
+// moves at a time.
 //
 //   ended        an empty berth: a slack line trails into the water. What ran here has left.
 //   offline      fog, and the buoy's light turning slowly: the box is out of sight.
@@ -52,9 +53,36 @@ if (typeof document !== "undefined") {
 const pivot = (x: number, y: number, extra?: Record<string, string>) => ({ transformOrigin: `${x}px ${y}px`, ...extra }) as React.CSSProperties;
 const delay = (s: number) => ({ "--ba-delay": `${s}s` }) as React.CSSProperties;
 
+// A scene moves for a few loops of its slowest parts, then rests where it
+// is: an empty state left open all afternoon should not keep drawing. The
+// pointer coming to it wakes it for another while.
+const REST_AFTER = 30_000;
+function rest(el: SVGSVGElement) {
+  let timer = 0;
+  const wake = () => {
+    el.removeAttribute("data-rest");
+    window.clearTimeout(timer);
+    timer = window.setTimeout(() => el.setAttribute("data-rest", ""), REST_AFTER);
+  };
+  wake();
+  el.addEventListener("pointerenter", wake);
+  return () => {
+    window.clearTimeout(timer);
+    el.removeEventListener("pointerenter", wake);
+  };
+}
+
 export function Scene({ name, width = 136, still, className }: { name: SceneName; width?: number; still?: boolean; className?: string }) {
   const id = `ba${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
-  const ref = useCallback((el: SVGSVGElement | null) => (el ? watch(el) : undefined), []);
+  const ref = useCallback((el: SVGSVGElement | null) => {
+    if (!el) return;
+    const unwatch = watch(el);
+    const unrest = rest(el);
+    return () => {
+      unwatch();
+      unrest();
+    };
+  }, []);
   const Draw = DRAW[name];
   return (
     <svg

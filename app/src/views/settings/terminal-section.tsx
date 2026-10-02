@@ -34,9 +34,7 @@ export function TerminalSection() {
       <TerminalPreview prefs={t} />
       <SettingsGroup title="Text">
         <SettingsRow label="Font">
-          <div className="w-56">
-            <SimpleSelect options={fonts} value={t.fontFamily} onChange={(fontFamily) => set({ fontFamily })} />
-          </div>
+          <SimpleSelect className="w-56" options={fonts} value={t.fontFamily} onChange={(fontFamily) => set({ fontFamily })} />
         </SettingsRow>
         <SettingsRow label="Size">
           <Stepper value={t.fontSize} min={9} max={24} onChange={(fontSize) => set({ fontSize })} />

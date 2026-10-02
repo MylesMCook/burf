@@ -1,11 +1,12 @@
 import { AlertTriangleIcon, ArrowDownIcon, ArrowUpIcon, CheckIcon, HouseIcon, PauseIcon, XIcon } from "lucide-react";
+import { useRef, useState } from "react";
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
 import { Tip } from "@/components/tip";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Kbd } from "@/components/ui/kbd";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@/components/ui/tooltip";
-import { agentLabel, agentOf, sessionState } from "@/lib/derive";
+import { agentOf, sessionName, sessionState } from "@/lib/derive";
 import { ago } from "@/lib/format";
 import { previewUrl } from "@/lib/preview";
 import { NONE, useStore } from "@/lib/store";
@@ -31,6 +32,11 @@ const stateWords: Record<string, string> = { ready: "ready", running: "working",
 
 // WorktreeTable lists worktrees by project, one line each. Checkboxes
 // select, shift-click selects a range, and a row click opens its history.
+//
+// From the keyboard the rows are one stop: Tab lands on the last row
+// focused (the first, to begin with), ↑ and ↓ move between rows across
+// projects, Home and End jump, Space selects (⇧Space a range) and Enter
+// opens.
 export function WorktreeTable({
   groups,
   selected,
@@ -51,8 +57,21 @@ export function WorktreeTable({
   openKey?: string;
 }) {
   const total = groups.reduce((n, g) => n + g.rows.length, 0);
+  const flat = groups.flatMap((g) => g.rows.map((r) => r.key));
+  const [cursor, setCursor] = useState<string>();
+  // The row that takes Tab: the last one focused, while it is still shown.
+  const stop = cursor && flat.includes(cursor) ? cursor : (openKey && flat.includes(openKey) ? openKey : flat[0]);
+  const listRef = useRef<HTMLDivElement>(null);
+  const move = (from: string, key: string) => {
+    const i = flat.indexOf(from);
+    const to = key === "ArrowDown" ? i + 1 : key === "ArrowUp" ? i - 1 : key === "Home" ? 0 : flat.length - 1;
+    const next = flat[Math.max(0, Math.min(flat.length - 1, to))];
+    if (!next || next === from) return;
+    setCursor(next);
+    listRef.current?.querySelector<HTMLElement>(`[data-row="${CSS.escape(next)}"]`)?.focus();
+  };
   return (
-    <div className="@container">
+    <div ref={listRef} className="@container">
       <div className={cn("sticky top-0 z-20 grid h-8 items-center gap-3 border-b bg-background px-4 text-[11px] text-muted-foreground", COLS)}>
         <Tip
           label={
@@ -97,9 +116,20 @@ export function WorktreeTable({
                 <span className="font-normal text-muted-foreground tabular-nums">{g.rows.length}</span>
               </span>
             </header>
-            <div role="list">
+            <div role="listbox" aria-multiselectable aria-label={`Worktrees in ${g.location} on ${g.box}`}>
               {g.rows.map((r) => (
-                <WorktreeRow key={r.key} row={r} selected={selected.has(r.key)} progress={progress[r.key]} open={openKey === r.key} onToggle={(shift) => onToggle(r, shift)} onOpen={() => onOpen(r)} />
+                <WorktreeRow
+                  key={r.key}
+                  row={r}
+                  selected={selected.has(r.key)}
+                  progress={progress[r.key]}
+                  open={openKey === r.key}
+                  tabStop={stop === r.key}
+                  onFocus={() => setCursor(r.key)}
+                  onMove={(key) => move(r.key, key)}
+                  onToggle={(shift) => onToggle(r, shift)}
+                  onOpen={() => onOpen(r)}
+                />
               ))}
             </div>
           </section>
@@ -109,7 +139,27 @@ export function WorktreeTable({
   );
 }
 
-function WorktreeRow({ row: r, selected, progress, open, onToggle, onOpen }: { row: Row; selected: boolean; progress?: RowProgress; open: boolean; onToggle(shift: boolean): void; onOpen(): void }) {
+function WorktreeRow({
+  row: r,
+  selected,
+  progress,
+  open,
+  tabStop,
+  onFocus,
+  onMove,
+  onToggle,
+  onOpen,
+}: {
+  row: Row;
+  selected: boolean;
+  progress?: RowProgress;
+  open: boolean;
+  tabStop: boolean;
+  onFocus(): void;
+  onMove(key: string): void;
+  onToggle(shift: boolean): void;
+  onOpen(): void;
+}) {
   const sessions = useStore((s) => s.boxes[r.box]?.sessions) ?? NONE;
   const stats = useStore((s) => s.boxes[r.box]?.stats);
   const services = useStore((s) => s.boxes[r.box]?.services) ?? NONE;
@@ -122,20 +172,27 @@ function WorktreeRow({ row: r, selected, progress, open, onToggle, onOpen }: { r
 
   return (
     <div
-      role="listitem"
-      tabIndex={0}
+      role="option"
+      data-row={r.key}
+      tabIndex={tabStop ? 0 : -1}
       aria-selected={selected}
+      aria-label={name}
       onClick={onOpen}
+      onFocus={onFocus}
       onKeyDown={(e) => {
-        if (e.target !== e.currentTarget) return;
+        if (e.target !== e.currentTarget || e.metaKey || e.ctrlKey || e.altKey) return;
         if (e.key === "Enter") onOpen();
-        if (e.key === " ") {
+        else if (e.key === " ") {
           e.preventDefault();
           onToggle(e.shiftKey);
+        } else if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Home" || e.key === "End") {
+          e.preventDefault();
+          onMove(e.key);
         }
       }}
       className={cn(
-        "group grid h-row cursor-pointer items-center gap-3 border-b border-border/60 px-4 text-sm outline-none hover:bg-accent/40 focus-visible:bg-accent/40",
+        // scroll-mt: clear of the two sticky headers when ↑ scrolls a row in.
+        "group grid h-row scroll-mt-16 cursor-pointer items-center gap-3 border-b border-border/60 px-4 text-sm outline-none hover:bg-accent/40 focus-visible:bg-accent/40 focus-visible:ring-2 focus-visible:ring-ring/48 focus-visible:ring-inset",
         COLS,
         selected && "bg-primary/[0.06] hover:bg-primary/[0.09]",
         open && "bg-accent/60",
@@ -225,7 +282,7 @@ function WorktreeRow({ row: r, selected, progress, open, onToggle, onOpen }: { r
             <span className="flex flex-col gap-0.5">
               {mine.map((x) => {
                 const a = agentOf(x);
-                return <span key={x.name}>{a ? `${agentLabel(a)} ${r.paused ? "paused" : stateWords[sessionState(x, stats)]}` : `Shell ${x.name}`}</span>;
+                return <span key={x.name}>{a ? `${sessionName(x, { sessions: mine })} ${r.paused ? "paused" : stateWords[sessionState(x, stats)]}` : sessionName(x, { sessions: mine })}</span>;
               })}
               {serving.map((x) => (
                 <span key={x.port}>

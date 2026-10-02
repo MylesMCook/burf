@@ -54,6 +54,33 @@ export function sessionName(s: Session, opts: { sessions?: Session[]; locations?
   return `${sessionPlace(s, opts.locations)} · ${name}`;
 }
 
+// guessSessionName names a session the box doesn't list (it has gone, or
+// its box is away) from its id, which berthd makes from where and what it
+// runs: "evals-judge-claude-3k9" → "evals-judge · Claude Code". An id that
+// doesn't follow that shape comes back as it is.
+export function guessSessionName(id: string): string {
+  const at = programIn(id);
+  if (!at) return id;
+  const name = at.prog === "shell" ? "Shell" : agentLabel(at.prog);
+  return at.place ? `${at.place} · ${name}` : name;
+}
+
+// guessAgent is the agent a session id names, for an icon.
+export const guessAgent = (id: string): string | undefined => {
+  const prog = programIn(id)?.prog;
+  return prog === "shell" ? undefined : prog;
+};
+
+function programIn(id: string): { prog: string; place: string } | undefined {
+  const parts = id.split("-");
+  for (let i = parts.length - 1; i >= 0; i--) {
+    const two = parts.slice(i, i + 2).join("-");
+    const prog = AGENTS.includes(two) ? two : AGENTS.includes(parts[i]) || parts[i] === "shell" ? parts[i] : undefined;
+    if (prog) return { prog, place: parts.slice(0, i).join("-") };
+  }
+  return undefined;
+}
+
 // sessionPlace is where a session runs: "cal" for a main checkout, "cal /
 // billing-fix" for a worktree.
 export function sessionPlace(s: Session, locations?: Location[]): string {

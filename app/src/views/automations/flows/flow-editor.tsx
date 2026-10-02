@@ -1,4 +1,6 @@
 import { ArrowLeftIcon, ChevronsUpDownIcon, ClockIcon, GitPullRequestIcon, FlaskConicalIcon, LayersIcon, LockIcon, PlusIcon, ServerIcon, Trash2Icon, ZapIcon } from "lucide-react";
+
+import { confirm } from "@/components/sidebar/confirm";
 import { Fragment, useMemo, useState } from "react";
 
 import { PickOne } from "@/components/pick-one";
@@ -26,6 +28,9 @@ export interface EditTarget {
   // The id it was saved under; absent for a new flow.
   savedId?: string;
   readOnly?: boolean;
+  // Set when this is one box's copy of a flow saved the same on every box
+  // with its project: where the whole set is kept, and the boxes.
+  shared?: { scope: Scope; boxes: string[] };
 }
 
 // FlowEditor is a flow as a vertical canvas: the trigger, then each step
@@ -36,6 +41,7 @@ export function FlowEditor({
   onSave,
   onDelete,
   onOverride,
+  onEditAll,
   onClose,
 }: {
   target: EditTarget;
@@ -44,6 +50,8 @@ export function FlowEditor({
   onSave(box: string, scope: Scope, flow: Flow, previousId?: string): Promise<void>;
   onDelete?(): Promise<void>;
   onOverride?(): void;
+  // Opens every copy of a shared flow instead of this box's.
+  onEditAll?(): void;
   onClose(): void;
 }) {
   const [flow, setFlow] = useState<Flow>(target.flow);
@@ -67,6 +75,40 @@ export function FlowEditor({
       [steps[i], steps[i + d]] = [steps[i + d], steps[i]];
       return { ...f, steps };
     });
+
+  // Deleting asks first, and says exactly what goes: for a flow on every
+  // box, each box's copy, by name.
+  const askDelete = () => {
+    if (!onDelete) return;
+    const name = flow.name.trim() || target.savedId || "this flow";
+    const every = target.box === EVERY_BOX;
+    const boxes = [...new Set(placesOf(target.box, target.scope, projects).map((p) => p.box))];
+    const others = target.shared?.boxes.filter((b) => b !== target.box) ?? [];
+    const project = every ? (projects.find((p) => p.id === scopeProject(target.scope))?.name ?? "this project") : undefined;
+    const where = new Map(placesOf(target.box, target.scope, projects).map((p) => [p.box, scopeLocation(p.scope)]));
+    confirm({
+      title: `Delete ${name}?`,
+      description: every
+        ? `It runs for ${project} on every box with it, so ${boxes.length === 1 ? "the copy on this box is" : `the copies on these ${boxes.length} boxes are`} deleted, and it stops running on each straight away:`
+        : `It stops running on ${target.box} straight away.${others.length ? ` Only ${target.box}'s copy goes: ${others.join(", ")} ${others.length === 1 ? "keeps its own" : "keep their own"}.` : ""}`,
+      detail: every ? (
+        <ul>
+          {boxes.map((b) => (
+            <li key={b}>
+              {b}
+              {where.get(b) && <span className="text-muted-foreground"> · {where.get(b)}</span>}
+            </li>
+          ))}
+        </ul>
+      ) : undefined,
+      confirm: every && boxes.length > 1 ? `Delete ${boxes.length} copies` : "Delete flow",
+      destructive: true,
+      run: async () => {
+        await onDelete();
+        onClose();
+      },
+    });
+  };
 
   const save = async () => {
     setSaving(true);
@@ -94,6 +136,8 @@ export function FlowEditor({
         <span className="h-4 w-px bg-border" />
         <Input
           value={flow.name}
+          // A new flow starts by being named.
+          autoFocus={isNew && !readOnly}
           readOnly={readOnly}
           onChange={(e) => setFlow({ ...flow, name: e.target.value })}
           placeholder="Name this flow"
@@ -107,9 +151,11 @@ export function FlowEditor({
         </label>
         {!isNew && <TestRun box={first.box} scope={first.scope} flow={flow} dirty={dirty} onRun={setRun} />}
         {!readOnly && onDelete && (
-          <Button size="icon-sm" variant="ghost" aria-label="Delete flow" onClick={() => void onDelete().then(onClose, (e) => setError(errorMessage(e)))}>
-            <Trash2Icon />
-          </Button>
+          <Tip label="Delete flow…">
+            <Button size="icon-sm" variant="ghost" aria-label="Delete flow…" onClick={askDelete}>
+              <Trash2Icon />
+            </Button>
+          </Tip>
         )}
         {!readOnly && (
           <Tip label={!flow.name.trim() ? "Name it first" : !dirty ? "Nothing changed" : undefined}>
@@ -129,6 +175,19 @@ export function FlowEditor({
               {onOverride && (
                 <Button size="sm" variant="outline" onClick={onOverride}>
                   Override on {target.box}
+                </Button>
+              )}
+            </div>
+          )}
+          {target.shared && !readOnly && (
+            <div className="mb-5 flex items-center gap-3 rounded-xl border bg-muted/40 px-4 py-3 text-sm">
+              <LayersIcon className="size-4 shrink-0 text-muted-foreground" />
+              <span className="min-w-0 flex-1">
+                One of {target.shared.boxes.length} copies, the same on {target.shared.boxes.join(", ")}. Saving here changes only {target.box}'s copy, and it stops matching the others.
+              </span>
+              {onEditAll && (
+                <Button size="sm" variant="outline" onClick={onEditAll}>
+                  Edit all copies
                 </Button>
               )}
             </div>

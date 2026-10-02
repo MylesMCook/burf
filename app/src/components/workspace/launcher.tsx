@@ -116,9 +116,9 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
             </h1>
             <div className="mt-1 flex min-w-0 items-center gap-1.5 text-muted-foreground text-xs">
               {branch && (
-                <span className="shrink-0 rounded bg-accent px-1.5 py-px font-mono text-[11px]" title={branch}>
-                  {middle(branch)}
-                </span>
+                <Tip label={middle(branch) !== branch ? branch : undefined}>
+                  <span className="shrink-0 rounded bg-accent px-1.5 py-px font-mono text-[11px]">{middle(branch)}</span>
+                </Tip>
               )}
               <span className="shrink-0 rounded bg-accent px-1.5 py-px font-mono text-[11px]">{ref.box}</span>
               <Tip

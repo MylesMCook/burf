@@ -204,7 +204,13 @@ type FlowRun struct {
 	Event    events.Event `json:"event"`
 	Steps    []StepRun    `json:"steps"`
 	Error    string       `json:"error,omitempty"`
+	// Test is set for a run started from the app's Test run, not by its
+	// trigger, so Runs can say so.
+	Test bool `json:"test,omitempty"`
 }
+
+// testRun marks the context of a run started by Test run.
+type testRun struct{}
 
 type StepRun struct {
 	ID       string    `json:"id"`
@@ -480,7 +486,7 @@ func (b *Box) runFlow(ctx context.Context, sf ScopedFlow, e events.Event) FlowRu
 	}
 	defer b.Flows.done(key, slot)
 
-	run := FlowRun{ID: newRunID(), Flow: sf.Flow.ID, Scope: sf.Scope, Started: time.Now().UTC(), Status: "running", Event: e}
+	run := FlowRun{ID: newRunID(), Flow: sf.Flow.ID, Scope: sf.Scope, Started: time.Now().UTC(), Status: "running", Event: e, Test: ctx.Value(testRun{}) == true}
 	vars := map[string]string{"event.type": e.Type, "event.box": e.Box, "event.origin": e.Origin, "now": time.Now().Format(time.RFC3339)}
 	for k, v := range e.Data {
 		vars["event."+k] = fmt.Sprint(v)
@@ -784,7 +790,7 @@ func (b *Box) testFlow(w http.ResponseWriter, r *http.Request) error {
 	for _, sf := range all {
 		if sf.Flow.ID == r.PathValue("id") && (req.Scope == "" || sf.Scope == req.Scope) {
 			e := events.Event{Type: triggerType(sf.Flow.Trigger), Box: b.Name, Origin: origin(r), Time: time.Now(), Data: req.Data}
-			run := b.runFlow(context.WithoutCancel(r.Context()), sf, e)
+			run := b.runFlow(context.WithValue(context.WithoutCancel(r.Context()), testRun{}, true), sf, e)
 			writeJSON(w, run)
 			return nil
 		}

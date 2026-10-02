@@ -14,7 +14,7 @@ export function CommandLog({ lines, error, done, className }: { lines: string[];
   return (
     <div className={cn("max-h-64 overflow-y-auto rounded-lg border px-3 py-2.5 font-mono text-[11.5px] leading-[1.55]", className)} style={{ background: t.background, color: t.foreground }}>
       {lines.map((l, i) => (
-        <div key={i} className="whitespace-pre-wrap break-all opacity-85">
+        <div key={i} className="whitespace-pre-wrap opacity-85 [overflow-wrap:anywhere]">
           {l || " "}
         </div>
       ))}

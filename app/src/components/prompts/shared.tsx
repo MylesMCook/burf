@@ -1,13 +1,15 @@
 import { useEffect, useRef } from "react";
 
+import { Tip } from "@/components/tip";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { worktreeOf } from "@/lib/derive";
+import { guessSessionName, sessionName, sessionPlace, worktreeOf } from "@/lib/derive";
 import { type PromptVariable, type SavedPrompt, segments, variableLabel } from "@/lib/prompts";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { useRegistry } from "@/plugins/registry";
+import { describeAgent, startedAt } from "@/views/dashboard/names";
 
 // The prompts plugin's library screen, when that plugin is on.
 export const LIBRARY_SCREEN = "prompt-library";
@@ -18,16 +20,29 @@ export function openLibrary(): boolean {
   return true;
 }
 
-// Where a session works, as people name it: the worktree, then its branch
-// and box.
+// What a target session is called, the way the rest of the app names it:
+// name is sessionName's "Claude Code 2", short adds the worktree for a chip
+// ("transfer-billing · Claude Code 2"), and detail says where and, when
+// several agents share the worktree, when this one started.
 export function useTargetLabel(box: string, session: string) {
   const d = useStore((s) => s.boxes[box]);
   const s = d?.sessions?.find((x) => x.name === session);
-  const where = s && worktreeOf(d?.locations, s);
+  if (!s) {
+    const guess = guessSessionName(session);
+    return { session: s, name: guess, title: guess, short: guess, place: "", detail: box };
+  }
+  const where = worktreeOf(d?.locations, s);
+  const name = sessionName(s, { sessions: d?.sessions });
+  const place = sessionPlace(s, d?.locations);
+  const here = where ? (where.worktree.main ? where.location.name : where.worktree.name) : place;
+  const crowded = describeAgent(s, d?.sessions, d?.locations).crowded;
   return {
     session: s,
-    title: where ? (where.worktree.main ? where.location.name : where.worktree.name) : (s?.location ?? session),
-    detail: [where && !where.worktree.main ? where.location.name : undefined, where?.worktree.branch, box].filter(Boolean).join(" · "),
+    name,
+    title: name,
+    short: `${here} · ${name}`,
+    place,
+    detail: [place, where?.worktree.branch, crowded ? `started ${startedAt(s.created)}` : undefined, box].filter(Boolean).join(" · "),
   };
 }
 
@@ -38,13 +53,9 @@ export function PromptPreview({ body, values, className }: { body: string; value
     <div className={cn("whitespace-pre-wrap break-words rounded-lg border bg-muted/40 px-3 py-2.5 text-[13px] leading-relaxed", className)}>
       {segments(body, values).map((s, i) =>
         s.variable ? (
-          <span
-            key={i}
-            title={s.missing ? `{{${s.variable}}} has no value yet` : `{{${s.variable}}}`}
-            className={cn("rounded-[3px] px-0.5", s.missing ? "bg-warning/12 font-mono text-[12px] text-warning-foreground" : "bg-primary/10 text-foreground")}
-          >
-            {s.text}
-          </span>
+          <Tip key={i} label={s.missing ? `{{${s.variable}}} has no value yet` : `{{${s.variable}}}`}>
+            <span className={cn("rounded-[3px] px-0.5", s.missing ? "bg-warning/12 font-mono text-[12px] text-warning-foreground" : "bg-primary/10 text-foreground")}>{s.text}</span>
+          </Tip>
         ) : (
           <span key={i}>{s.text}</span>
         ),

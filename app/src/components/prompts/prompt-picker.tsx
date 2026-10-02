@@ -1,21 +1,23 @@
-import { ChevronLeftIcon, LibraryIcon, PencilIcon, UsersIcon } from "lucide-react";
+import { LibraryIcon, PencilIcon, UsersIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { AgentIcon } from "@/components/agent-glyph";
 import { QueueOffer, offlineOffer, queueLabel } from "@/components/queue/queue-offer";
 import { LIBRARY_SCREEN, PromptPreview, PromptRow, VariableFields, openLibrary, useTargetLabel, withDefaults } from "@/components/prompts/shared";
 import { SimpleSelect } from "@/components/simple-select";
+import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogPanel, DialogPopup, DialogTitle } from "@/components/ui/dialog";
+import { StepHeader } from "@/components/step-header";
+import { Dialog, DialogFooter, DialogPanel, DialogPopup } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
 import { Textarea } from "@/components/ui/textarea";
 import { toastManager } from "@/components/ui/toast";
 import { useAllSessions } from "@/hooks/use-agent-counts";
-import { agentLabel, agentOf, worktreeOf } from "@/lib/derive";
+import { agentOf, sessionName } from "@/lib/derive";
 import { errorMessage } from "@/lib/format";
 import { send } from "@/lib/orchestrate";
-import { type SendFailure, enqueue, sendFailure } from "@/lib/queue";
+import { type SendFailure, enqueue, sendFailure, targetName } from "@/lib/queue";
 import {
   askedVariables,
   closePromptPicker,
@@ -34,6 +36,7 @@ import {
 } from "@/lib/prompts";
 import { useStore } from "@/lib/store";
 import { useRegistry } from "@/plugins/registry";
+import { describeAgent, startedAt } from "@/views/dashboard/names";
 
 const sep = "\u0000";
 
@@ -44,7 +47,8 @@ export function PromptPicker() {
   const d = usePromptUi((s) => s.picker);
   return (
     <Dialog open={!!d} onOpenChange={(open) => !open && closePromptPicker()}>
-      <DialogPopup className="sm:max-w-[36rem]" showCloseButton={false}>
+      {/* Anchored at the top: the list filters and the fill step is taller, and a centred dialog would move its title. */}
+      <DialogPopup anchored className="sm:max-w-[36rem]" showCloseButton={false}>
         {d && <Body key={`${d.box}:${d.session}:${d.promptId}:${!!d.onInsert}`} d={d} />}
       </DialogPopup>
     </Dialog>
@@ -71,13 +75,7 @@ function Body({ d }: { d: PickerDraft }) {
 
   return (
     <>
-      <DialogHeader className="gap-1.5 px-5 pt-5 pb-3">
-        <div className="flex min-w-0 items-center gap-2.5">
-          <DialogTitle className="shrink-0 text-base">{insert ? "Insert a saved prompt" : "Send a saved prompt"}</DialogTitle>
-          {target && !insert && <TargetChip target={target} />}
-        </div>
-        <DialogDescription className="sr-only">Pick a prompt from your library.</DialogDescription>
-      </DialogHeader>
+      <StepHeader title={insert ? "Insert a saved prompt" : "Send a saved prompt"} aside={target && !insert && <TargetChip target={target} className="ml-0.5" />} description="Pick a prompt from your library." hideDescription />
       <div className="px-5 pb-2">
         <Input
           autoFocus
@@ -184,7 +182,7 @@ function Fill({ d, prompt, target, setTarget, onBack }: { d: PickerDraft; prompt
         await enqueue({ box: target.box, session: target.session, text });
       } else {
         await send(target.box, target.session, text);
-        toastManager.add({ title: `Sent “${prompt.title}”`, description: builtins["worktree.name"] ?? target.session, type: "success" });
+        toastManager.add({ title: `Sent “${prompt.title}”`, description: targetName(target.box, target.session), type: "success" });
       }
       usePrompts.getState().used([prompt.id]);
       closePromptPicker();
@@ -211,16 +209,14 @@ function Fill({ d, prompt, target, setTarget, onBack }: { d: PickerDraft; prompt
         }
       }}
     >
-      <DialogHeader className="gap-1.5 px-5 pt-5 pb-3">
-        <div className="flex min-w-0 items-center gap-1.5">
-          <Button type="button" size="icon-xs" variant="ghost" aria-label="Back to prompts" className="-ms-1.5" onClick={onBack}>
-            <ChevronLeftIcon />
-          </Button>
-          <DialogTitle className="min-w-0 truncate text-base">{prompt.title}</DialogTitle>
-          {target && !insert && d.session && <TargetChip target={target} className="ml-1" />}
-        </div>
-        <DialogDescription className="sr-only">Fill in the prompt's variables, then send it.</DialogDescription>
-      </DialogHeader>
+      <StepHeader
+        title={prompt.title}
+        onBack={onBack}
+        backLabel="Back to prompts"
+        aside={target && !insert && d.session && <TargetChip target={target} className="ml-0.5" />}
+        description="Fill in the prompt's variables, then send it."
+        hideDescription
+      />
 
       <DialogPanel className="flex flex-col gap-4 px-5 pb-5">
         {!insert && !d.session && (
@@ -274,13 +270,15 @@ function Fill({ d, prompt, target, setTarget, onBack }: { d: PickerDraft; prompt
 }
 
 export function TargetChip({ target, className }: { target: Target; className?: string }) {
-  const { session, title } = useTargetLabel(target.box, target.session);
+  const { session, short, detail } = useTargetLabel(target.box, target.session);
   return (
-    <span title={`${target.session} on ${target.box}`} className={`inline-flex h-6 min-w-0 items-center gap-1.5 rounded-md border bg-muted/72 px-2 text-[13px] ${className ?? ""}`}>
-      <AgentIcon agent={session && agentOf(session)} className="size-3" />
-      <span className="truncate">{title}</span>
-      <span className="shrink-0 text-muted-foreground">{target.box}</span>
-    </span>
+    <Tip label={`${detail} · session ${target.session}`}>
+      <span className={`inline-flex h-6 min-w-0 items-center gap-1.5 rounded-md border bg-muted/72 px-2 text-[13px] ${className ?? ""}`}>
+        <AgentIcon agent={session && agentOf(session)} className="size-3" />
+        <span className="truncate">{short}</span>
+        <span className="shrink-0 text-muted-foreground">{target.box}</span>
+      </span>
+    </Tip>
   );
 }
 
@@ -291,9 +289,11 @@ function SessionSelect({ value, onChange }: { value?: Target; onChange(t?: Targe
   const options = all
     .filter((e) => e.state !== "exited" && agentOf(e.session))
     .map(({ box, session }) => {
-      const where = worktreeOf(boxes[box]?.locations, session);
-      const place = where ? (where.worktree.main ? where.location.name : `${where.location.name} / ${where.worktree.name}`) : (session.location ?? session.name);
-      return { value: `${box}${sep}${session.name}`, label: `${place} · ${agentLabel(agentOf(session)!)} — ${box}` };
+      const data = boxes[box];
+      const name = sessionName(session, { sessions: data?.sessions, locations: data?.locations, place: true });
+      // Several of one agent in a worktree: when each started tells them apart.
+      const crowded = describeAgent(session, data?.sessions, data?.locations).crowded;
+      return { value: `${box}${sep}${session.name}`, label: `${name}${crowded ? `, started ${startedAt(session.created)}` : ""} — ${box}` };
     });
   return (
     <SimpleSelect

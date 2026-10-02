@@ -1,5 +1,5 @@
 import { useProjects, type BerthPluginContext, type SavedPrompt, type SavedPromptVariable } from "@berth/plugin";
-import { Button, Input, Kbd, Menu, MenuItem, MenuPopup, MenuTrigger, Icon, Sheet, SheetDescription, SheetFooter, SheetHeader, SheetPanel, SheetPopup, SheetTitle, Switch, Textarea, Tip, cn } from "@berth/plugin/ui";
+import { AlertDialog, AlertDialogClose, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogPopup, AlertDialogTitle, Button, Input, Kbd, Menu, MenuItem, MenuPopup, MenuTrigger, Icon, Sheet, SheetDescription, SheetFooter, SheetHeader, SheetPanel, SheetPopup, SheetTitle, Switch, Textarea, Tip, cn } from "@berth/plugin/ui";
 import { useMemo, useRef, useState } from "react";
 
 // EditSheet writes one prompt: its text with {{variables}}, labels and
@@ -29,6 +29,12 @@ export function EditSheet({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const area = useRef<HTMLTextAreaElement>(null);
+  const keep = useRef<HTMLButtonElement>(null);
+  // Esc or a click outside never throws away what was typed without asking;
+  // Cancel, a deliberate press, still does.
+  const [asking, setAsking] = useState(false);
+  const dirty =
+    title !== (prompt?.title ?? "") || body !== (prompt?.body ?? "") || tags !== (prompt?.tags ?? []).join(", ") || project !== (prompt?.project ?? "") || JSON.stringify(Object.values(meta)) !== JSON.stringify(prompt?.variables ?? []);
 
   const vars = useMemo(() => berth.prompts.variables({ body, variables: Object.values(meta) }), [berth, body, meta]);
   const defaults = Object.fromEntries(vars.map((v) => [v.name, v.default]));
@@ -78,7 +84,7 @@ export function EditSheet({
   const scopeLabel = project ? (projects.find((p) => p.id === project)?.name ?? project) : "Everywhere";
 
   return (
-    <Sheet open onOpenChange={(o: boolean) => !o && onClose()}>
+    <Sheet open onOpenChange={(o: boolean) => !o && (dirty ? setAsking(true) : onClose())}>
       <SheetPopup className="sm:max-w-xl" showCloseButton={false}>
         <form
           className="flex min-h-0 flex-1 flex-col"
@@ -223,6 +229,22 @@ export function EditSheet({
           </SheetFooter>
         </form>
       </SheetPopup>
+      <AlertDialog open={asking} onOpenChange={(o: boolean) => !o && setAsking(false)}>
+        <AlertDialogPopup initialFocus={keep}>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{prompt ? "Discard your changes?" : "Discard this prompt?"}</AlertDialogTitle>
+            <AlertDialogDescription>{prompt ? `What you changed in “${prompt.title}” is lost.` : "What you wrote is lost. It isn't saved anywhere yet."}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogClose ref={keep} render={<Button variant="ghost" />}>
+              Keep editing
+            </AlertDialogClose>
+            <Button variant="destructive" onClick={onClose}>
+              Discard
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogPopup>
+      </AlertDialog>
     </Sheet>
   );
 }

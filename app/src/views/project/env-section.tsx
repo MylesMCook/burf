@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { boxApi, isSecretRef, type SecretTest } from "@/lib/api";
 import type { RepoConfig } from "@/lib/flows";
 import { errorMessage } from "@/lib/format";
+import { explainSecretError, refProblem } from "@/lib/secret-ref";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Section, SourceBadge } from "@/views/project/parts";
@@ -39,12 +40,12 @@ function RefMark() {
   );
 }
 
-// SecretTestButton asks the box to resolve a reference and says only
-// whether it could, and how long the value is.
-function SecretTestButton({ box, value }: { box: string; value: string }) {
+// useSecretTest asks the box to resolve a reference and keeps only whether
+// it could, and how long the value is. A changed reference has not been
+// tested.
+function useSecretTest(box: string, value: string) {
   const client = useStore((s) => s.client);
   const [result, setResult] = useState<SecretTest | "testing">();
-  // A changed reference has not been tested.
   useEffect(() => setResult(undefined), [value]);
   const test = async () => {
     if (!client) return;
@@ -55,49 +56,122 @@ function SecretTestButton({ box, value }: { box: string; value: string }) {
       setResult({ ok: false, error: errorMessage(err) });
     }
   };
-  // The result lives in the button, so the reference beside it keeps its
-  // width; the tooltip has the whole of it.
   const done = result && result !== "testing" ? result : undefined;
   const chars = (n: number) => `${n} ${n === 1 ? "character" : "characters"}`;
-  const said = !done ? undefined : done.ok ? (done.length ? `Resolved · ${chars(done.length ?? 0)}` : "Resolved, but empty") : (done.error ?? "Could not read it");
+  const said = !done ? undefined : done.ok ? (done.length ? `Resolved · ${chars(done.length)}` : "Resolved, but empty") : explainSecretError(done.error ?? "Could not read it");
+  return { ready: !!client, testing: result === "testing", done, said, test };
+}
+
+type Tested = ReturnType<typeof useSecretTest>;
+
+// SecretTestButton is "Test" until it has run; then just its mark, since
+// the result reads in full under the field.
+function SecretTestButton({ box, t }: { box: string; t: Tested }) {
   return (
-    <span className="flex shrink-0 items-center">
-      <Tip label={said ? `${said}. Test again` : `Ask ${box} to read it now`}>
-        <Button
-          size="xs"
-          variant="ghost"
-          onClick={() => void test()}
-          disabled={!client || result === "testing"}
-          className={cn(done?.ok && "text-success-foreground dark:text-success", done && !done.ok && "text-destructive-foreground")}
-        >
-          {result === "testing" ? <LoaderIcon className="animate-spin" /> : done?.ok ? <CheckIcon /> : done ? <CircleAlertIcon /> : null}
-          {!done ? "Test" : done.ok ? (done.length ? `${done.length} chars` : "Empty") : "Failed"}
-        </Button>
-      </Tip>
-      <span className="sr-only" aria-live="polite">
-        {said}
-      </span>
-    </span>
+    <Tip label={t.said ? `${t.said}. Test again` : `Ask ${box} to read it now`}>
+      <Button
+        size={t.done ? "icon-xs" : "xs"}
+        variant="ghost"
+        aria-label={t.done ? `Test again: ${t.said}` : undefined}
+        onClick={() => void t.test()}
+        disabled={!t.ready || t.testing}
+        className={cn("shrink-0", t.done?.ok && "text-success-foreground dark:text-success", t.done && !t.done.ok && "text-destructive-foreground")}
+      >
+        {t.testing ? <LoaderIcon className="animate-spin" /> : t.done?.ok ? <CheckIcon /> : t.done ? <CircleAlertIcon /> : null}
+        {!t.done && "Test"}
+      </Button>
+    </Tip>
   );
+}
+
+// Note is the line under a value: a test's result, or why a reference
+// won't work.
+function Note({ tone, children }: { tone: "ok" | "error" | "warning"; children: string }) {
+  return (
+    <Tip label={children} align="start">
+      <p
+        aria-live="polite"
+        className={cn(
+          "mt-1 line-clamp-2 text-[11px] leading-4",
+          tone === "ok" && "text-success-foreground dark:text-success",
+          tone === "error" && "text-destructive-foreground",
+          tone === "warning" && "text-warning-foreground",
+        )}
+      >
+        {children}
+      </p>
+    </Tip>
+  );
+}
+
+// RefNotes says what is wrong with a reference, or what its test found.
+function RefNotes({ problem, broken, t }: { problem?: string; broken: boolean; t: Tested }) {
+  if (problem) return <Note tone={broken ? "error" : "warning"}>{problem}</Note>;
+  if (t.said) return <Note tone={t.done?.ok ? "ok" : "error"}>{t.said}</Note>;
+  return null;
+}
+
+// ProblemMark stands where the key mark would for a reference that won't
+// resolve as written.
+function ProblemMark({ broken }: { broken: boolean }) {
+  return <CircleAlertIcon aria-hidden className={cn("size-3.5 shrink-0", broken ? "text-destructive-foreground" : "text-warning-foreground")} />;
 }
 
 // SecretInput hides values whose names look like secrets until asked, so a
 // screen share doesn't show them. A reference is not a secret, so it shows,
-// marked, with a Test action.
+// marked, with a Test action and its result underneath; a malformed one
+// says what's wrong instead.
 function SecretInput({ name, value, onChange, box }: { name: string; value: string; onChange(v: string): void; box: string }) {
   const ref = isSecretRef(value);
-  const secret = SECRET.test(name) && !ref;
+  const problem = refProblem(value);
+  // An op:// or env:// value the box would refuse, not just one that looks
+  // like a reference.
+  const broken = ref && !!problem;
+  const secret = SECRET.test(name) && !ref && !problem;
   const [shown, setShown] = useState(!SECRET.test(name));
+  const t = useSecretTest(box, value);
   return (
-    <div className="flex min-w-0 items-center gap-1">
-      {ref && <RefMark />}
-      <Input value={value} type={shown || ref ? "text" : "password"} onChange={(e) => onChange(e.target.value)} size="sm" className="font-mono text-xs" spellCheck={false} autoComplete="off" />
-      {secret && (
-        <Button size="icon-xs" variant="ghost" aria-label={shown ? `Hide ${name}` : `Show ${name}`} onClick={() => setShown(!shown)}>
-          {shown ? <EyeOffIcon /> : <EyeIcon />}
-        </Button>
-      )}
-      {ref && <SecretTestButton box={box} value={value} />}
+    <div className="min-w-0">
+      <div className="flex min-w-0 items-center gap-1">
+        {problem ? <ProblemMark broken={broken} /> : ref && <RefMark />}
+        <Input
+          value={value}
+          type={shown || ref || problem ? "text" : "password"}
+          onChange={(e) => onChange(e.target.value)}
+          size="sm"
+          className="min-w-0 flex-1 font-mono text-xs"
+          spellCheck={false}
+          autoComplete="off"
+          aria-label={`${name} value`}
+          aria-invalid={broken || undefined}
+        />
+        {secret && (
+          <Button size="icon-xs" variant="ghost" aria-label={shown ? `Hide ${name}` : `Show ${name}`} onClick={() => setShown(!shown)}>
+            {shown ? <EyeOffIcon /> : <EyeIcon />}
+          </Button>
+        )}
+        {ref && !problem && <SecretTestButton box={box} t={t} />}
+      </div>
+      <RefNotes problem={problem} broken={broken} t={t} />
+    </div>
+  );
+}
+
+// CommittedRef is a reference the repository commits: read-only here, but
+// testable on this box.
+function CommittedRef({ value, box }: { value: string; box: string }) {
+  const problem = refProblem(value);
+  const t = useSecretTest(box, value);
+  return (
+    <div className="min-w-0 pl-2.5">
+      <div className="flex min-w-0 items-center gap-1">
+        {problem ? <ProblemMark broken /> : <RefMark />}
+        <code className="min-w-0 flex-1 truncate font-mono text-muted-foreground text-xs" title={value}>
+          {value}
+        </code>
+        {!problem && <SecretTestButton box={box} t={t} />}
+      </div>
+      <RefNotes problem={problem} broken t={t} />
     </div>
   );
 }
@@ -118,6 +192,10 @@ export function EnvSection({ repo, draft, setDraft, box }: { repo: RepoConfig | 
     setOwn(rest);
   };
 
+  const valueProblem = adding ? refProblem(adding.value) : undefined;
+  // A reference the box would refuse can't be added; one that only looks
+  // like a reference is a warning, since it may be meant as text.
+  const valueBroken = !!adding && isSecretRef(adding.value) && !!valueProblem;
   const keyError = adding?.key && (!NAME.test(adding.key) ? "Letters, digits and _, not starting with a digit" : keys.includes(adding.key) ? "Already set; edit it above" : undefined);
 
   return (
@@ -144,20 +222,14 @@ export function EnvSection({ repo, draft, setDraft, box }: { repo: RepoConfig | 
             const mine = k in own;
             const source = mine ? (inRepo ? "override" : "box") : "repo";
             return (
-              <div key={k} className="group grid grid-cols-[minmax(0,13rem)_minmax(0,1fr)_auto_3.5rem] items-center gap-3 px-4 py-2">
+              <div key={k} className="group grid grid-cols-[minmax(0,13rem)_minmax(0,1fr)_auto_3.5rem] items-center gap-3 px-4 py-2 max-[1200px]:grid-cols-[minmax(0,10rem)_minmax(0,1fr)_auto_3rem] max-[1200px]:gap-2">
                 <code className="truncate font-mono text-xs" title={k}>
                   {k}
                 </code>
                 {mine ? (
                   <SecretInput name={k} value={own[k]} onChange={(v) => put(k, v)} box={box} />
                 ) : isSecretRef(committed[k]) ? (
-                  <div className="flex min-w-0 items-center gap-1 pl-2.5">
-                    <RefMark />
-                    <code className="min-w-0 flex-1 truncate font-mono text-muted-foreground text-xs" title={committed[k]}>
-                      {committed[k]}
-                    </code>
-                    <SecretTestButton box={box} value={committed[k]} />
-                  </div>
+                  <CommittedRef value={committed[k]} box={box} />
                 ) : (
                   <code className="truncate px-2.5 font-mono text-muted-foreground text-xs" title={committed[k]}>
                     {committed[k]}
@@ -195,18 +267,31 @@ export function EnvSection({ repo, draft, setDraft, box }: { repo: RepoConfig | 
           className="grid grid-cols-[minmax(0,13rem)_minmax(0,1fr)_auto] items-start gap-3 border-t bg-muted/20 px-4 py-2.5"
           onSubmit={(e) => {
             e.preventDefault();
-            if (!adding.key || keyError) return;
+            if (!adding.key || keyError || valueBroken) return;
             put(adding.key, adding.value);
             setAdding(undefined);
           }}
         >
           <div>
-            <Input autoFocus value={adding.key} onChange={(e) => setAdding({ ...adding, key: e.target.value.toUpperCase().replace(/\s/g, "_") })} placeholder="NAME" size="sm" className="font-mono text-xs" aria-invalid={!!keyError} />
+            <Input autoFocus value={adding.key} onChange={(e) => setAdding({ ...adding, key: e.target.value.toUpperCase().replace(/\s/g, "_") })} placeholder="NAME" size="sm" className="font-mono text-xs" aria-label="Name" aria-invalid={!!keyError} />
             {keyError && <p className="mt-1 text-destructive-foreground text-[11px]">{keyError}</p>}
           </div>
-          <Input value={adding.value} onChange={(e) => setAdding({ ...adding, value: e.target.value })} placeholder="postgres://localhost/$BERTH_WORKTREE_SLUG, or a secret: op://vault/item/field" size="sm" className="font-mono text-xs" />
+          <div className="min-w-0">
+            <Input
+              value={adding.value}
+              onChange={(e) => setAdding({ ...adding, value: e.target.value })}
+              placeholder="postgres://localhost/$BERTH_WORKTREE_SLUG, or a secret: op://vault/item/field"
+              size="sm"
+              className="font-mono text-xs"
+              aria-label="Value"
+              aria-invalid={valueBroken || undefined}
+              spellCheck={false}
+              autoComplete="off"
+            />
+            {valueProblem && <p className={cn("mt-1 text-[11px]", valueBroken ? "text-destructive-foreground" : "text-warning-foreground")}>{valueProblem}</p>}
+          </div>
           <span className="flex gap-1">
-            <Button size="sm" type="submit" disabled={!adding.key || !!keyError}>
+            <Button size="sm" type="submit" disabled={!adding.key || !!keyError || valueBroken}>
               Add
             </Button>
             <Button size="sm" variant="ghost" type="button" onClick={() => setAdding(undefined)}>

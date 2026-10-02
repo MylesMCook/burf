@@ -35,41 +35,45 @@ export function stateText(state: SessionState) {
   return stateLabel[state];
 }
 
-// StateGlyph is a session's state at a glance: a spinner while working, an
-// amber dot when it needs you, a check when done, grey once it has exited.
+// StateGlyph is a session's state at a glance: a blue spinner while working,
+// an amber dot when it needs you (amber means that and nothing else), a check
+// when done, grey once it has exited. Under reduced motion the spinner stands
+// still as a broken ring and the dot does not ping. The sidebar, the rail,
+// panes and the palette all draw states with it, so they agree. It is
+// named for screen readers; the row or card around it says it in words.
 export function StateGlyph({ state, className }: { state: SessionState; className?: string }) {
   const box = cn("inline-flex size-3.5 shrink-0 items-center justify-center", className);
   switch (state) {
     case "running":
       return (
-        <span className={box} title={stateLabel[state]}>
-          <span className="size-2.5 animate-spin rounded-full border-[1.5px] border-warning border-t-transparent" />
+        <span className={box} role="img" aria-label={stateLabel[state]}>
+          <span className="size-2.5 animate-spin rounded-full border-[1.5px] border-info border-t-transparent motion-reduce:animate-none" />
         </span>
       );
     case "waiting":
       return (
-        <span className={box} title={stateLabel[state]}>
+        <span className={box} role="img" aria-label={stateLabel[state]}>
           <span className="relative flex size-2">
-            <span className="absolute inline-flex size-full animate-ping rounded-full bg-warning opacity-60" />
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-warning opacity-60 motion-reduce:hidden" />
             <span className="relative inline-flex size-2 rounded-full bg-warning" />
           </span>
         </span>
       );
     case "finished":
       return (
-        <span className={box} title={stateLabel[state]}>
+        <span className={box} role="img" aria-label={stateLabel[state]}>
           <CheckIcon className="size-3 text-success" strokeWidth={3} />
         </span>
       );
     case "ready":
       return (
-        <span className={box} title={stateLabel[state]}>
+        <span className={box} role="img" aria-label={stateLabel[state]}>
           <span className="size-2 rounded-full border-[1.5px] border-muted-foreground/70" />
         </span>
       );
     case "exited":
       return (
-        <span className={box} title={stateLabel[state]}>
+        <span className={box} role="img" aria-label={stateLabel[state]}>
           <span className="size-2 rounded-full bg-muted-foreground/40" />
         </span>
       );

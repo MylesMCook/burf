@@ -5,7 +5,8 @@
    Motion rules: transforms and opacity only; slow (4s and up, except rain);
    a pixel or two, a few degrees at most; every loop seamless. Animations
    start a beat apart through --ba-delay, pause offscreen, while the window
-   is hidden, and behind an open dialog, and stop under reduced motion. */
+   is hidden, behind an open dialog, and after a few loops, and stop under
+   reduced motion. */
 
 .berth-art {
   color: var(--muted-foreground);
@@ -392,11 +393,14 @@
   animation-delay: var(--ba-delay, 0s);
 }
 
-/* Paused: offscreen, the window hidden, or behind an open dialog. A
-   scene inside the dialog keeps moving; only one moves at a time. */
+/* Paused: offscreen, the window hidden, behind an open dialog or alert
+   (a confirm is role="alertdialog"), or at rest. A scene inside the dialog
+   keeps moving; only one moves at a time. A scene rests where it is after
+   a few loops (scenes.tsx), and wakes when the pointer comes to it. */
 .berth-art[data-off] *,
+.berth-art[data-rest] *,
 :root[data-berth-hidden] .berth-art *,
-body:has([role="dialog"]) .berth-art:not([role="dialog"] .berth-art) * {
+body:has(:is([role="dialog"], [role="alertdialog"])) .berth-art:not(:is([role="dialog"], [role="alertdialog"]) .berth-art) * {
   animation-play-state: paused;
 }
 

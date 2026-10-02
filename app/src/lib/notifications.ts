@@ -137,6 +137,9 @@ export interface QuietHours {
   days: number[];
   // Waiting agents still come through.
   allowWaiting: boolean;
+  // skipUntil is the end of a scheduled stretch turned off by hand: the
+  // schedule stays on, and picks up again next time.
+  skipUntil?: string;
 }
 
 export interface NotifyPrefs {
@@ -185,20 +188,57 @@ const minutes = (hhmm: string) => {
   return (h || 0) * 60 + (m || 0);
 };
 
-// quietNow says whether Do not disturb holds right now, by hand or by the
-// schedule (which may run past midnight).
-export function quietNow(p: NotifyPrefs = useNotifyPrefs.getState(), now = new Date()): boolean {
+const at = (base: Date, hhmm: string, days = 0) => {
+  const d = new Date(base);
+  d.setDate(d.getDate() + days);
+  d.setHours(Math.floor(minutes(hhmm) / 60), minutes(hhmm) % 60, 0, 0);
+  return d;
+};
+
+// scheduledUntil is when the schedule's quiet stretch that holds now ends,
+// or undefined when the schedule isn't quiet now. A stretch may run past
+// midnight: its evening counts for the day it starts, its morning for the
+// day before.
+export function scheduledUntil(p: NotifyPrefs = useNotifyPrefs.getState(), now = new Date()): Date | undefined {
   const d = p.dnd;
-  if (d.on && (!d.until || new Date(d.until) > now)) return true;
-  if (!d.scheduled) return false;
+  if (!d.scheduled) return undefined;
   const from = minutes(d.from);
   const to = minutes(d.to);
-  const at = now.getHours() * 60 + now.getMinutes();
-  if (from === to) return false;
-  if (from < to) return d.days.includes(now.getDay()) && at >= from && at < to;
-  // Overnight: the evening part counts for today, the morning for yesterday.
-  if (at >= from) return d.days.includes(now.getDay());
-  return at < to && d.days.includes((now.getDay() + 6) % 7);
+  const m = now.getHours() * 60 + now.getMinutes();
+  if (from === to) return undefined;
+  if (from < to) return d.days.includes(now.getDay()) && m >= from && m < to ? at(now, d.to) : undefined;
+  if (m >= from) return d.days.includes(now.getDay()) ? at(now, d.to, 1) : undefined;
+  return m < to && d.days.includes((now.getDay() + 6) % 7) ? at(now, d.to) : undefined;
+}
+
+export interface Quiet {
+  on: boolean;
+  // by says what turned it on: the person, or the schedule.
+  by?: "hand" | "schedule";
+  until?: Date;
+}
+
+// quietState says whether Do not disturb holds right now, why, and until
+// when.
+export function quietState(p: NotifyPrefs = useNotifyPrefs.getState(), now = new Date()): Quiet {
+  const d = p.dnd;
+  if (d.on && (!d.until || new Date(d.until) > now)) return { on: true, by: "hand", until: d.until ? new Date(d.until) : undefined };
+  const end = scheduledUntil(p, now);
+  if (end && !(d.skipUntil && new Date(d.skipUntil).getTime() >= end.getTime())) return { on: true, by: "schedule", until: end };
+  return { on: false };
+}
+
+// quietNow says whether Do not disturb holds right now, by hand or by the
+// schedule.
+export const quietNow = (p: NotifyPrefs = useNotifyPrefs.getState(), now = new Date()): boolean => quietState(p, now).on;
+
+// setDoNotDisturb is the one switch for it. On holds until it's turned off
+// (or until a time); off ends it now, and when the schedule is what holds
+// it, lets this stretch pass without changing the schedule.
+export function setDoNotDisturb(on: boolean, until?: Date) {
+  if (on) return setQuietHours({ on: true, until: until?.toISOString(), skipUntil: undefined });
+  const end = scheduledUntil();
+  setQuietHours({ on: false, until: undefined, skipUntil: end?.toISOString() });
 }
 
 // ---- The store ---------------------------------------------------------

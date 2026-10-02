@@ -18,6 +18,9 @@ export type Plan =
   | { do: "add"; path: string; name: string; git: boolean; slug?: string; note?: string }
   | { do: "clone"; url: string; display: string; parent: string; folder: string; slug?: string; link?: Link }
   | { do: "create"; parent: string; folder: string }
+  // A folder typed with a trailing slash: a place to look in, as in a
+  // shell, not something to add. Its folders are the rows; Enter takes one.
+  | { do: "look"; path: string }
   | { do: "blocked"; message: string };
 
 export interface Row {
@@ -159,6 +162,9 @@ async function resolvePath(text: string, ctx: Ctx): Promise<{ plan?: Plan; rows:
   const where = shortPath(pl.path, pl.home);
   if (entry) {
     const rows = drill ? await folderRows(ctx, entry.path, () => true).catch(() => []) : rowsFrom(ctx, pl, (e) => e.name !== name && e.name.toLowerCase().startsWith(name.toLowerCase()));
+    // "~/work/" is the inside of ~/work, not ~/work: only a repository or a
+    // project there is taken as it is.
+    if (drill && !entry.git && !ctx.locs.some((l) => l.path === entry.path)) return { plan: { do: "look", path: join(where, name) }, rows };
     return { plan: planFor(entry, ctx), rows };
   }
   const rows = rowsFrom(ctx, pl, (e) => e.name.toLowerCase().startsWith(name.toLowerCase()));

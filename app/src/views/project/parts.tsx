@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type { RepoConfig } from "@/lib/flows";
 import { kitHas } from "@/lib/kits";
 import { cn } from "@/lib/utils";
+import { Tip } from "@/components/tip";
 
 // Section is one titled part of Project settings, framed like the rest of
 // the app's settings.
@@ -46,10 +47,12 @@ export function SourceBadge({ source, box, field, entry }: { source: Source; box
     override: { Icon: ServerIcon, label: `${box} override`, cls: "text-warning border-warning/30", title: `${box} replaces the committed value` },
   }[source];
   return (
-    <span title={map.title} className={cn("inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-px text-[11px]", map.cls)}>
-      <map.Icon className="size-3" />
-      {map.label}
-    </span>
+    <Tip label={map.title}>
+      <span className={cn("inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-px text-[11px]", map.cls)}>
+        <map.Icon className="size-3" />
+        {map.label}
+      </span>
+    </Tip>
   );
 }
 

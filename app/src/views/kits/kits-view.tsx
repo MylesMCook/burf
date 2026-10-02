@@ -139,10 +139,12 @@ function KitCard({ kit, installed }: { kit: KitInfo; installed: InstalledKitOn[]
         </div>
         <div className="mt-2.5 flex flex-wrap items-center gap-1.5 text-[11px] text-muted-foreground">
           {kit.match?.slug && <span className="rounded-md border px-1.5 py-px font-mono">for {kit.match.slug}</span>}
-          <span className="flex min-w-0 items-center gap-1 rounded-md border px-1.5 py-px" title={kit.source?.src}>
-            {plugin ? <PuzzleIcon className="size-3" /> : <LinkIcon className="size-3" />}
-            <span className="truncate">{plugin ? `${plugin} plugin` : describeSource(kit.source?.src)}</span>
-          </span>
+          <Tip label={kit.source?.src}>
+            <span className="flex min-w-0 items-center gap-1 rounded-md border px-1.5 py-px">
+              {plugin ? <PuzzleIcon className="size-3" /> : <LinkIcon className="size-3" />}
+              <span className="truncate">{plugin ? `${plugin} plugin` : describeSource(kit.source?.src)}</span>
+            </span>
+          </Tip>
         </div>
         {kit.description && <p className="mt-2 text-[11px] text-muted-foreground/80">{kitCounts(kit)}</p>}
       </button>

@@ -45,12 +45,9 @@ export function RunOn({
       trailing: online ? (
         <span className="flex items-center gap-1.5">
           {kit && <span className={cn("rounded border px-1 text-[11px]", kit.outdated ? "border-warning/40 text-warning" : "text-muted-foreground")}>{kit.outdated ? "kit outdated" : `${kit.kit.name} kit`}</span>}
-          {memory !== undefined && (
-            <span className={cn("tabular-nums", memory >= 85 && "text-warning")} title="Memory in use">
-              {memory}%
-            </span>
-          )}
-          {working > 0 && <span title="Agents working">· {working} working</span>}
+          {/* Said in words: a tooltip on a row people sweep through is noise. */}
+          {memory !== undefined && <span className={cn("whitespace-nowrap tabular-nums", memory >= 85 && "text-warning")}>{memory}% memory</span>}
+          {working > 0 && <span className="whitespace-nowrap">· {working} working</span>}
           {box === defaultBox && <span className="text-foreground/80">default</span>}
         </span>
       ) : (

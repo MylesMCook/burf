@@ -1,5 +1,5 @@
 import type { BerthPluginContext, Location, Session } from "@berth/plugin";
-import { Badge, Button, Empty, EmptyDescription, EmptyHeader, EmptyTitle, Frame, FrameHeader, FramePanel, FrameTitle, Icon, PickOne, Skeleton, Spinner, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, cn } from "@berth/plugin/ui";
+import { Badge, Button, Empty, EmptyDescription, EmptyHeader, EmptyTitle, Frame, FrameHeader, FramePanel, FrameTitle, Icon, PickOne, Skeleton, Spinner, Table, TableBody, TableCell, TableHead, TableHeader, TableRow, Tip, cn } from "@berth/plugin/ui";
 import { useMemo, useState } from "react";
 
 import type { Account, Agent, Limits, Window } from "./box";
@@ -356,7 +356,9 @@ function AgentTile({
           <div className="space-y-1.5">
             <div className="flex h-1.5 gap-0.5 overflow-hidden rounded-full" role="img" aria-label={`By box: ${boxes.map(([b, n]) => `${b} ${compact(n)}`).join(", ")}`}>
               {boxes.map(([b, n]) => (
-                <span key={b} className={cn("h-full first:rounded-l-full last:rounded-r-full", boxColor(b, allBoxes).dot)} style={{ width: `${(n / sumBoxes) * 100}%` }} title={`${b}: ${compact(n)} tokens`} />
+                <Tip key={b} label={`${b}: ${compact(n)} tokens`}>
+                  <span className={cn("h-full first:rounded-l-full last:rounded-r-full", boxColor(b, allBoxes).dot)} style={{ width: `${(n / sumBoxes) * 100}%` }} />
+                </Tip>
               ))}
             </div>
             <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-[11px] text-muted-foreground">
@@ -458,9 +460,13 @@ function SessionList({ berth, sessions, sources, running, allBoxes, showBox }: {
               </div>
             </div>
             <span className="w-16 text-right tabular-nums">{compact(total(s.tokens))}</span>
-            <span className="w-16 text-right text-muted-foreground tabular-nums" title="Claude Code's estimate at API list prices">
-              {s.cost != null ? usd(s.cost) : ""}
-            </span>
+            {s.cost != null ? (
+              <Tip label="Claude Code's estimate at API list prices">
+                <span className="w-16 text-right text-muted-foreground tabular-nums">{usd(s.cost)}</span>
+              </Tip>
+            ) : (
+              <span className="w-16" />
+            )}
             <span className="w-20 text-right">
               {live ? (
                 <Button size="xs" variant="outline" onClick={() => berth.openTerminal(s.box, live.name)}>
@@ -485,22 +491,24 @@ export function BoxStatus({ states, files, allBoxes }: { states: BoxState[]; fil
   return (
     <div className="flex flex-wrap items-center gap-1.5 text-xs">
       {states.map((s) => (
-        <span key={s.box} className={cn("inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5", s.error && "border-destructive/40", !s.online && "border-dashed text-muted-foreground")} title={s.error}>
-          <span className={cn("size-1.5 rounded-full", s.online ? boxColor(s.box, allBoxes).dot : "bg-muted-foreground/40")} />
-          <span className="font-medium">{s.box}</span>
-          {!s.online ? (
-            <span>not counted (offline)</span>
-          ) : s.loading ? (
-            <>
-              <Spinner className="size-3" />
-              <span className="text-muted-foreground">reading…</span>
-            </>
-          ) : s.error ? (
-            <span className="max-w-64 truncate text-destructive-foreground">couldn't read: {s.error}</span>
-          ) : (
-            <span className="text-muted-foreground tabular-nums">{files[s.box] ?? 0} transcripts</span>
-          )}
-        </span>
+        <Tip key={s.box} label={s.error}>
+          <span className={cn("inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5", s.error && "border-destructive/40", !s.online && "border-dashed text-muted-foreground")}>
+            <span className={cn("size-1.5 rounded-full", s.online ? boxColor(s.box, allBoxes).dot : "bg-muted-foreground/40")} />
+            <span className="font-medium">{s.box}</span>
+            {!s.online ? (
+              <span>not counted (offline)</span>
+            ) : s.loading ? (
+              <>
+                <Spinner className="size-3" />
+                <span className="text-muted-foreground">reading…</span>
+              </>
+            ) : s.error ? (
+              <span className="max-w-64 truncate text-destructive-foreground">couldn't read: {s.error}</span>
+            ) : (
+              <span className="text-muted-foreground tabular-nums">{files[s.box] ?? 0} transcripts</span>
+            )}
+          </span>
+        </Tip>
       ))}
     </div>
   );

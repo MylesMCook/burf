@@ -30,6 +30,8 @@ export function PaneLayer({ showing }: { showing: boolean }) {
             ...leaves.map(({ leaf, rect }) => (
               <div
                 key={leaf.id}
+                // Where the keyboard goes home to when what had it closes (lib/focus-home.ts).
+                data-pane-focused={visible && tab.focus === leaf.id ? "" : undefined}
                 className={cn("absolute overflow-hidden", rect.x > 0 && "border-l", rect.y > 0 && "border-t")}
                 style={{ left: pct(rect.x), top: pct(rect.y), width: pct(rect.w), height: pct(rect.h), display: visible ? "block" : "none" }}
               >

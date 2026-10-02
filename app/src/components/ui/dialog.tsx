@@ -5,6 +5,7 @@ import { mergeProps } from "@base-ui/react/merge-props";
 import { useRender } from "@base-ui/react/use-render";
 import { XIcon } from "lucide-react";
 import type React from "react";
+import { FocusRescue } from "@/lib/focus-home";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -100,6 +101,7 @@ export function DialogPopup({
           data-slot="dialog-popup"
           {...props}
         >
+          <FocusRescue />
           {children}
           {showCloseButton && (
             <DialogPrimitive.Close

@@ -1,7 +1,8 @@
-import { FolderGitIcon, FolderPlusIcon } from "lucide-react";
+import { FolderGitIcon, FolderPlusIcon, ServerIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AgentIcon } from "@/components/agent-glyph";
+import { Scene } from "@/components/art/scenes";
 import { Advanced, type AdvancedValues } from "@/components/new-worktree/advanced";
 import { Picker, PickerAction, type PickerItem } from "@/components/new-worktree/picker";
 import { RunOn, type RunOnOption } from "@/components/new-worktree/run-on";
@@ -23,6 +24,7 @@ import { load, save } from "@/lib/storage";
 import { useStore } from "@/lib/store";
 import { fill, templateVariables } from "@/lib/templates";
 import { focusSession, selectWorktree } from "@/lib/workspaces";
+import { openAddBox } from "@/views/onboarding/add-box-dialog";
 
 const NO_AGENT = "";
 const lastAgentKey = (box: string, loc: string) => `berth.newWorktree.agent.${box}/${loc}`;
@@ -63,6 +65,8 @@ function Body() {
   // them, and keeps the person's merges, splits and default box.
   const { projects: everything } = useProjects();
   const loaded = useProjectsDoc((st) => st.loaded);
+  // Every online box has said which projects it has.
+  const settled = useStore((s) => !!s.status && s.status.boxes.every((b) => b.state !== "online" || s.boxes[b.name]?.locations !== undefined));
   const projects = useMemo(
     () =>
       everything
@@ -269,6 +273,10 @@ function Body() {
     }
   };
 
+  // Nothing to make a worktree in: say why, and offer the one way on,
+  // instead of a form that can't create anything.
+  if (settled && projects.length === 0) return <NoProjects />;
+
   const summary = [adv.branch || resolution?.branch || name || "generated name", `from ${adv.base || resolution?.base || location?.default_branch || "default"}`, adv.template && template ? template.name : ""].filter(Boolean).join(" · ");
 
   return (
@@ -370,3 +378,49 @@ function Section({ label, hidden, children }: { label: string; hidden?: boolean;
     </section>
   );
 }
+
+// NoProjects is the dialog when no online box has a project: with no box
+// yet, add one; with none online, see to them; otherwise add a project.
+function NoProjects() {
+  const boxes = useStore((s) => s.status?.boxes ?? NONE_BOXES);
+  const online = boxes.some((b) => b.state === "online");
+  const close = () => useStore.getState().closeNewWorktree();
+  const state = boxes.length === 0 ? "no-boxes" : !online ? "offline" : "no-projects";
+  const copy = {
+    "no-boxes": { scene: "dock", title: "No boxes yet", text: "Worktrees live in a project on a box: any VPS or dev machine. Add a box, then a project on it." },
+    offline: { scene: "offline", title: "No box is online", text: "Worktrees are made on a box that is online. Check on your boxes in Settings." },
+    "no-projects": { scene: "dock", title: "No projects yet", text: "A worktree is made in a project: a git repository on one of your boxes. Add one first." },
+  }[state] as { scene: "dock" | "offline"; title: string; text: string };
+  const go = () => {
+    close();
+    if (state === "no-boxes") openAddBox();
+    else if (state === "offline") useStore.getState().setView({ kind: "settings", section: "boxes" });
+    else useStore.getState().openAddProject();
+  };
+  return (
+    <>
+      <DialogHeader className="px-5 pt-5 pb-3">
+        <DialogTitle className="text-base">New worktree</DialogTitle>
+        <DialogDescription className="text-[13px]">A worktree is made in a project, on one of your boxes.</DialogDescription>
+      </DialogHeader>
+      <DialogPanel className="px-5 pb-5">
+        <div className="flex h-64 flex-col items-center justify-center gap-1 rounded-lg border border-dashed px-8 text-center">
+          <Scene name={copy.scene} width={136} className="mb-3" />
+          <p className="font-medium text-sm">{copy.title}</p>
+          <p className="max-w-xs text-balance text-muted-foreground text-xs">{copy.text}</p>
+        </div>
+      </DialogPanel>
+      <DialogFooter className="items-center px-5 py-3">
+        <Button type="button" variant="ghost" onClick={close}>
+          Cancel
+        </Button>
+        <Button type="button" autoFocus onClick={go}>
+          {state === "no-projects" ? <FolderPlusIcon /> : <ServerIcon />}
+          {state === "no-boxes" ? "Add a box" : state === "offline" ? "Open Boxes" : "Add a project"}
+        </Button>
+      </DialogFooter>
+    </>
+  );
+}
+
+const NONE_BOXES: { name: string; state: string }[] = [];
