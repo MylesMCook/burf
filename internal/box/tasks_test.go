@@ -61,3 +61,9 @@ func TestAgentCommandsQuoteThePrompt(t *testing.T) {
 		t.Fatal("agentOf misread a command")
 	}
 }
+
+func TestSessionNamesUseTheProgramNotItsPath(t *testing.T) {
+	if n := defaultSessionName("cal/billing", "/home/me/.local/bin/claude --resume"); !strings.HasPrefix(n, "cal-billing-claude-") {
+		t.Fatalf("name = %s", n)
+	}
+}

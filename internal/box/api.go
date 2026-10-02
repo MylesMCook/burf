@@ -615,7 +615,7 @@ var unsafeSessionChars = regexp.MustCompile(`[^A-Za-z0-9_-]+`)
 func defaultSessionName(location, command string) string {
 	prog := "shell"
 	if f := splitFirst(command); f != "" {
-		prog = f
+		prog = filepath.Base(f)
 	}
 	name := unsafeSessionChars.ReplaceAllString(location+"-"+prog, "-")
 	if len(name) > 48 {

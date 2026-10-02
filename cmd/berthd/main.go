@@ -298,8 +298,16 @@ func pair(b boxHome, args []string) error {
 	target := *address
 	if target == "" {
 		hostname, _ := os.Hostname()
+		ips := interfaceIPs()
 		listening, _ := os.ReadFile(filepath.Join(b.dir, "listen"))
-		target = advertise(string(listening), interfaceIPs(), hostname)
+		if len(listening) == 0 {
+			// serve may not have recorded its address yet, right after an
+			// install; it will listen where defaultListen says.
+			if addr, err := defaultListen(ips); err == nil {
+				listening = []byte(addr)
+			}
+		}
+		target = advertise(string(listening), ips, hostname)
 	}
 	if _, _, err := net.SplitHostPort(target); err != nil {
 		target = net.JoinHostPort(target, defaultPort)

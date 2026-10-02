@@ -4,3 +4,4 @@
 /app/src-tauri/target/
 /app/node_modules/
 /app/dist/
+.e2e/
