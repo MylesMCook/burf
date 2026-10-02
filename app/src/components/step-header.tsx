@@ -55,8 +55,9 @@ export function StepHeader({
           stays put from step to step. */}
       <div className="flex h-6 min-w-0 items-center gap-2">
         {back}
-        <DialogTitle className="min-w-0 truncate text-base leading-6">{title}</DialogTitle>
-        {aside}
+        {/* The title is short and says what this is; the aside gives way. */}
+        <DialogTitle className={cn("text-base leading-6", aside ? "shrink-0" : "min-w-0 truncate")}>{title}</DialogTitle>
+        {aside && <span className="flex min-w-0">{aside}</span>}
       </div>
       {description && <DialogDescription className={hideDescription ? "sr-only" : "text-[13px]"}>{description}</DialogDescription>}
     </DialogHeader>
