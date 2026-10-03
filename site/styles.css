@@ -1706,3 +1706,40 @@ pre .k {
   line-height: 1.6;
   color: var(--muted);
 }
+
+/* The docs link above the hero headline: a quiet pill, neutral like the
+   rest of the hero (amber is for what needs you). */
+.docs-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
+  margin-bottom: 22px;
+  padding: 4px 12px 4px 4px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fg) 3%, transparent);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 20px;
+  text-decoration: none;
+  transition: border-color 0.15s, color 0.15s;
+}
+.docs-pill .tag {
+  padding: 1px 9px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--fg) 9%, transparent);
+  color: var(--fg);
+  font-weight: 500;
+}
+.docs-pill > span:not(.tag) {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.docs-pill svg { width: 14px; height: 14px; flex: none; transition: transform 0.15s; }
+.docs-pill:hover { border-color: color-mix(in srgb, var(--fg) 24%, transparent); color: var(--fg); }
+.docs-pill:hover svg { transform: translateX(2px); }
+.docs-pill:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .docs-pill svg { transition: none; } }
