@@ -1,0 +1,13 @@
+# Only the docs site deploys from the repository root (Vercel project
+# berth-docs, root directory docs-site). It reads ../docs and the
+# landing page's fonts; nothing else needs to upload.
+/*
+!/docs
+!/docs-site
+!/site
+/site/*
+!/site/assets
+/site/assets/*
+!/site/assets/fonts
+/docs-site/node_modules
+/docs-site/.next

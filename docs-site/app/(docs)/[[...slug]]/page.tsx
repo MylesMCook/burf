@@ -31,6 +31,9 @@ export async function generateStaticParams() {
   return source.generateParams();
 }
 
+// A page's link preview, drawn by app/og/[...slug]/route.tsx.
+const ogImage = (slugs: string[]) => ({ url: `/og/${[...slugs, 'image.png'].join('/')}`, width: 1200, height: 630 });
+
 export async function generateMetadata(props: PageProps<'/[[...slug]]'>): Promise<Metadata> {
   const params = await props.params;
   const page = source.getPage(params.slug);
@@ -39,6 +42,7 @@ export async function generateMetadata(props: PageProps<'/[[...slug]]'>): Promis
     title: page.data.title,
     description: page.data.description,
     alternates: { canonical: page.url },
-    openGraph: { title: page.data.title, description: page.data.description, url: page.url },
+    openGraph: { title: page.data.title, description: page.data.description, url: page.url, images: [ogImage(page.slugs)] },
+    twitter: { card: 'summary_large_image', images: [ogImage(page.slugs)] },
   };
 }
