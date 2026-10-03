@@ -140,7 +140,7 @@ export interface LoopResult {
 }
 
 // Agents driving agents, the same as `berth session send|wait`, `berth exec`
-// and `berth loop` (docs/orchestration.md). Sessions are named by box and
+// and `berth loop` (docs/guides/orchestration.mdx). Sessions are named by box and
 // session name; locations as the box API names them, "loc" or "loc/wt".
 export interface BerthOrchestrate {
   // Types text into a session as one paste, then Enter. Resolves with the

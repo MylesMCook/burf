@@ -1,0 +1,98 @@
+---
+title: Files and environment
+description: Where Berth keeps its state on the laptop and on boxes, and the variables it sets and reads.
+---
+
+Berth keeps two kinds of files:
+
+- **State**, which Berth writes: identities, trust stores, sockets, logs.
+  It lives in the state directory: `~/Library/Application Support/berth` on
+  a Mac, `~/.config/berth` (or `$XDG_CONFIG_HOME/berth`) on Linux.
+  `BERTH_HOME` moves it; it must be an absolute path.
+- **Things you write**, by hand or through the app: hooks, flows, templates,
+  themes, plugins, kits. They live in `~/.berth/`; `BERTH_USER_DIR` moves it.
+
+## On the laptop
+
+State, in `<state>/client/`:
+
+| File | What it holds |
+| --- | --- |
+| `identity.pem` | This laptop's key |
+| `boxes.json` | Paired boxes, their addresses, fingerprints and networks |
+| `forwards.json`, `routes.json` | Saved forwards and routes |
+| `queue.json` | The [offline prompt queue](/guides/offline-queue) |
+| `agent.sock`, `agent.lock`, `agent.log` | The laptop agent's socket, lock and log |
+| `ui-token` | The token for [the app's API](/reference/app-api) (mode 0600) |
+| `networks/` | Embedded Tailscale nodes for other tailnets |
+
+Yours, in `~/.berth/`:
+
+| File | What it holds |
+| --- | --- |
+| `hooks.json` | Laptop [hooks](/guides/hooks) |
+| `templates/*.json` | [Task templates](/guides/task-templates) |
+| `themes/*.json` | [Themes](/guides/themes) |
+| `plugins/<id>/` | [Plugins](/guides/plugins), each with a `berth-plugin.json` |
+| `kits/<id>/` | Your [kits](/guides/kits) library: `kit.json`, its files, and where it came from |
+| `app/<key>.json` | The app's settings documents: saved prompts, projects, the sidebar, notifications |
+
+## On a box
+
+State, in `<state>/box/`:
+
+| File | What it holds |
+| --- | --- |
+| `identity.pem` | The box's key |
+| `clients.json` | Paired laptops (with a backup) |
+| `pairing.json` | Pairing codes not yet used |
+| `listen` | The address berthd serves on |
+| `berthd.sock`, `berthd.log` | The local socket (mode 0600) and the log |
+| `locations.json` | Locations, each with the box's own config and its kit |
+| `ports.json` | Each worktree's block of ports |
+| `logs/` | Setup and archive logs |
+| `units/` | Unit and service logs |
+| `kits/<location>/<kit>/` | Installed kits' files (`$BERTH_KIT_DIR`) |
+| `paused.json` | Paused worktrees |
+| `phone.json` | The phone companion: on or off, its token, notifications |
+| `flow-runs.json` | The last 200 flow runs |
+| `flow-github.json` | What GitHub-triggered flows have already seen |
+
+Yours, in `~/.berth/`: `hooks.json`, `flows.json`, `env.json`, `guard.json`
+and `plugins/`; see [the config reference](/reference/config#box-files).
+
+Sessions run in tmux on its own socket (`tmux -L berth`).
+
+## Environment
+
+### What a worktree gets
+
+Everything run in a worktree (setup and archive scripts, terminals and
+agents, `exec`, repository hooks, flow steps, services):
+
+| Variable | Meaning |
+| --- | --- |
+| `BERTH_BOX`, `BERTH_LOCATION` | Where |
+| `BERTH_ROOT_PATH` | The repository's main checkout |
+| `BERTH_WORKTREE_PATH`, `BERTH_WORKTREE_NAME`, `BERTH_BRANCH` | This worktree |
+| `BERTH_WORKTREE_SLUG` | `location_worktree`, lowercase, safe for database names |
+| `BERTH_PORT`, `BERTH_PORT_1`, … | Its ports |
+| `BERTH_KIT_DIR` | Its kit's files, when it has a kit |
+| then | the box's `env.json`, the project's `env`, and resolved secrets |
+| `PORT` | Services only, unless `env` sets it |
+| `ORCA_ROOT_PATH`, `ORCA_WORKTREE_PATH`, `ORCA_WORKSPACE_NAME` | Setup and archive scripts, for scripts written for Orca |
+
+### What a hook gets
+
+See [events and gates](/reference/events#what-a-hook-gets).
+
+### What Berth reads
+
+| Variable | Meaning |
+| --- | --- |
+| `BERTH_HOME` | The state directory |
+| `BERTH_USER_DIR` | Instead of `~/.berth` |
+| `BERTH_ORIGIN` | The origin `berth` and `berthd` commands announce events with |
+| `BERTH_OP` | Where the 1Password CLI is |
+| `OP_SERVICE_ACCOUNT_TOKEN`, other `OP_*` | Passed to `op`, from berthd's environment or `env.json` |
+| `SHELL` | The shell scripts, sessions and `exec` run in |

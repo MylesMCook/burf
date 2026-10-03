@@ -1,0 +1,14 @@
+{
+  "title": "Berth",
+  "pages": [
+    "index",
+    "---Getting started---",
+    "...getting-started",
+    "---Concepts---",
+    "...concepts",
+    "---Guides---",
+    "...guides",
+    "---Reference---",
+    "...reference"
+  ]
+}

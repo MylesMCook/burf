@@ -1,4 +1,7 @@
-# Integrations
+---
+title: Agent integrations
+description: Claude Code, Codex and Cursor hooks, the skills Berth teaches agents, and announcing events from any tool.
+---
 
 berth works with the tools around it in both directions: tools drive
 berth through its CLI, and berth drives tools through hooks. Every event
@@ -96,7 +99,7 @@ those tools.
 berth drives other tools through hooks and plugins rather than adapters
 built into it: a hook on `worktree.created` can register the worktree with
 any tool that has a CLI, and a plugin can ship those hooks along with its UI.
-See [hooks.md](hooks.md) and [plugins.md](plugins.md).
+See [hooks](/guides/hooks) and [plugins](/guides/plugins).
 
 `berth events` streams every event from the laptop and all its boxes; the
-full list is in [hooks.md](hooks.md#events).
+full list is in [events and gates](/reference/events).

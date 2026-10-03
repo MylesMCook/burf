@@ -16,7 +16,7 @@ import (
 )
 
 // Prompts for boxes that are away wait in the laptop agent's queue
-// (docs/orchestration.md). session send --queue puts one there when the box
+// (docs/guides/offline-queue.mdx). session send --queue puts one there when the box
 // cannot be reached; berth queue shows and manages them.
 
 // queueFor returns the hook session send --queue calls for a prompt to box.

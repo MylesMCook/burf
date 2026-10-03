@@ -1,0 +1,99 @@
+---
+title: Sessions and agents
+description: Programs that run on the box in tmux, the agents in them, and how Berth knows what they need.
+---
+
+## Sessions
+
+A **session** runs a program, usually a coding agent, at a location or
+worktree, in Berth's own tmux server with `remain-on-exit`. Sessions keep
+running when nobody is attached, when the laptop sleeps, and when berthd
+restarts or upgrades.
+
+```sh
+berth session new devl/cal/billing --agent claude --prompt "…"   # an agent
+berth session new devl/cal/billing -- pnpm test --watch           # any command
+berth session new devl/cal/billing                                # a shell
+berth sessions devl
+berth session kill devl/SESSION
+```
+
+A session is named after where it runs and what it runs
+(`cal-billing-claude-…`) unless you pass `--name`. Its environment is the
+worktree's: ports, `BERTH_*` variables and the project's `env`.
+
+The app shows each session as a terminal (ghostty-web) in the worktree's
+workspace, beside other terminals, splits and browser tabs. Laptops attach
+through a framed terminal stream (keystrokes and resizes in, screen out), or
+read the screen without attaching:
+
+```sh
+berth attach devl/SESSION              # this terminal; Ctrl-b d detaches
+berth terminal devl/SESSION            # a new terminal window
+berth session screen devl/SESSION --history 200
+```
+
+## Tasks
+
+A **task** is a worktree with an agent already running in it, made in one
+request, so a hook, the app or another agent can hand off work in a single
+step:
+
+```sh
+berth task new devl/cal/billing --agent claude --prompt "Fix the billing page"
+```
+
+In the app this is **New worktree** (⌘N) with an agent chosen. It runs
+`before:task.create`, then the worktree's and the session's own gates, and
+announces `task.created`.
+
+## Agents
+
+An agent is a preset: an id, a name and a command. The box offers the
+built-ins whose command it finds (`claude`, `codex`, `opencode`, `gemini`,
+`cursor`) plus any a repository's config adds; `berth agents BOX` lists them.
+A first prompt is passed as the command's last argument, or after its
+`prompt_flag`. See [the config reference](/reference/config#agents).
+
+### Agent state
+
+Berth knows what an agent is doing from the agent's own hooks, installed with
+`berthd integrations install claude` (or `codex`, `cursor`, `all`) on the
+box:
+
+| State | Meaning | From |
+| --- | --- | --- |
+| `idle` | Open, at its prompt, not given anything yet | `agent.ready` |
+| `running` | Working on a prompt | `agent.started` |
+| `waiting` | Needs you: a permission, a question | `agent.waiting` |
+| `finished` | Done with its turn | `agent.finished` |
+
+Claude Code reports all four. Codex and Cursor report `finished` only. A
+session whose program has ended is `exited`. Berth also notices Claude Code's
+"trust this folder" question at startup and reports it as `waiting`.
+
+The hooks forward only identifiers and the working directory: prompts,
+messages and transcripts never leave the tool. A hook never fails or blocks
+the agent that called it.
+
+### In the app
+
+- **Agent Dashboard** (⌘J): every agent on every box, by what it needs:
+  **Needs you**, **Working**, **Done**, **Ready**.
+- **Review**: agents' finished work on every box, to approve, send back or
+  discard.
+- **Notifications**: when an agent waits for you, on this laptop, and on your
+  phone with the [phone companion](/guides/phone).
+
+## Driving agents
+
+Anything that can run a command can prompt an agent, wait for its turn to
+end, and check its work, including another agent:
+
+```sh
+berth session send devl/SESSION "Rebase on main" --wait
+berth session wait devl/SESSION --for finished,waiting
+berth exec devl/cal/billing -- pnpm test
+```
+
+See [orchestration](/guides/orchestration).

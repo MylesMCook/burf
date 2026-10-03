@@ -1,6 +1,9 @@
-# Automations
+---
+title: Automations and flows
+description: When something happens, do these steps. Flows run on the box, on events, schedules or GitHub activity.
+---
 
-Automations in berth are flows: when something happens, do these steps.
+Automations in Berth are **flows**: when something happens, do these steps.
 They run on the box, so they keep going while your laptop sleeps.
 
 ```json
@@ -18,16 +21,67 @@ They run on the box, so they keep going while your laptop sleeps.
 }
 ```
 
-A box's own flows live in `~/.berth/flows.json` on it; a repository's in
-its `.berth/config.json` under `flows`, or in the box's own config for it.
-The app edits both.
+<Callout title="Off until enabled">
+  A flow runs only with `"enabled": true`. The app's switch sets it.
+</Callout>
+
+## In the app
+
+**Automations** in the sidebar has three tabs: **Flows**, **Runs** and
+**Advanced: shell hooks**. **New flow**, or one of the templates, opens the
+editor:
+
+- **Runs for**: where the flow lives (below).
+- **Starts**: **On an event**, **On a schedule** or **On GitHub**, narrowed by
+  agent and branch.
+- **Steps**: added from **Add a step**, each running **On success**, **On
+  failure** or **Always**. Text fields offer the variables that fit.
+- **At most N runs an hour**: empty means the box's default, 20.
+- **Test run**: runs the saved flow now, for real, in a worktree you pick, and
+  shows each step's result and output.
+
+The templates are a good start: **Test after every agent turn**, **Notify
+when an agent needs me**, **Codex reviews Claude's work**, **Nightly rebase
+and tests**, **PR comments to the agent**, and **Post to Slack when setup
+fails**.
+
+## Where a flow lives
+
+| Runs for | Stored in | Sees |
+| --- | --- | --- |
+| Any project on a box | `~/.berth/flows.json` on the box | Every event on that box. Narrow it with `where.location`. |
+| A project on a box | The box's own config for that location | Only that repository's events. Not committed. |
+| A repository, everywhere | `flows` in its committed `.berth/config.json` | Every box with the repository. Read-only in the app: change it in the repository. |
+| Any project on every box | A copy in each box's own config for the project | See below. |
+
+A repository's flows only ever see that repository's events.
+
+### Any project on every box
+
+For a project checked out on two or more online boxes, **Runs for** offers
+**Any _project_**: the same flow on every box that has it. Boxes keep their
+own flows, so Berth writes one copy into each online box's own config for the
+project and shows the copies as one flow while they match:
+
+- Its switch turns every copy on or off, and its last run is the latest on
+  any box. A run shows which box it ran on.
+- Each copy runs on its own box, with its own runs-per-hour budget.
+- **Boxes that get the project later, or are offline when you save, don't get
+  a copy.** Save again once they are online.
+- A copy edited on one box (the editor warns you, and offers **Edit all
+  copies**) no longer matches; it then shows under that box as a flow of its
+  own.
+- **Delete** removes every copy on the boxes that are online.
+- A test run runs on the first box.
 
 ## Triggers
 
-`event` is any event type from [hooks.md](hooks.md#events), or a prefix
-like `worktree.*`. `where` narrows it: `location`, `agent` (`claude`,
-`codex`), and `branch` (a trailing `*` matches a prefix). A repository's
-flows only ever see that repository's events.
+### On an event
+
+`event` is any event type from [the catalog](/reference/events), or a prefix
+like `worktree.*`. `before:` gates can't start flows, and `flow.*` events
+never do. `where` narrows it: `location`, `agent` (`claude`, `codex`), and
+`branch` (a trailing `*` matches a prefix).
 
 ### On a schedule
 
@@ -47,13 +101,17 @@ flows only ever see that repository's events.
 ```
 
 `schedule` is a cron expression (minute hour day month weekday, with `*`,
-`*/15`, `1-5` and lists) or a shortcut (`@hourly`, `@daily`, `@weekly`,
-`@monthly`), in the box's local time. When both day fields are restricted,
-either one matching runs it, as in cron. A scheduled flow runs once, in the
-repository's main checkout, unless `each_worktree` is set: then it runs once
-for every worktree (not the main checkout) matching `where.branch`. A box
-flow without `where.location` runs once in the box user's home. Runs carry
-`schedule.fired` with `schedule` and `time`.
+`*/15`, `1-5` and lists) or a shortcut (`@hourly`, `@daily`, `@midnight`,
+`@weekly`, `@monthly`, `@yearly`), in the box's local time. When both day
+fields are restricted, either one matching runs it, as in cron.
+
+- A scheduled flow runs once, in the repository's main checkout.
+- With `each_worktree`, it runs once for every worktree instead. With
+  `where.branch` set, only worktrees on a matching branch, and the main
+  checkout too if its branch matches.
+- A box flow without `where.location` runs once in the box user's home.
+
+Runs carry a `schedule.fired` event with `schedule` and `time`.
 
 ### On GitHub
 
@@ -61,81 +119,87 @@ flow without `where.location` runs once in the box user's home. Runs carry
 { "trigger": { "github": { "on": "review_comment", "poll": "2m" } } }
 ```
 
-The box checks each covered worktree's pull request with `gh` (installed
-and signed in on the box) every `poll` (at least 1m, default 2m), and starts
-the flow for what is new: `review_comment` (a comment on the PR or on a
-line), `pr_review` (a submitted review), `check_failed` (a check that fails),
-`pr_merged`. The first look only records what is already there, so turning
-a flow on does not replay a PR's history. Each new item is its own run, one
-after another, with `pr`, `url`, `title`, `author`, `body`, `file`, `line`,
-`check` and `state` as event data. A box without `gh` simply never starts
-these flows. One poll makes at most 20 `gh` calls, shared between flows.
+The box checks each covered worktree's pull request with `gh` (installed and
+signed in on the box) every `poll` (at least 1m, default 2m), and starts the
+flow for what is new:
+
+| `on` | Starts for |
+| --- | --- |
+| `review_comment` | A comment on the PR, or on a line |
+| `pr_review` | A submitted review |
+| `check_failed` | A check that fails, times out or needs action |
+| `pr_merged` | The PR being merged |
+
+The first look only records what is already there, so turning a flow on does
+not replay a PR's history. Each new item is its own run, one after another,
+with `pr`, `url`, `title`, `author`, `body`, `file`, `line`, `check` and
+`state` as event data. Main checkouts and worktrees on the default branch
+have no PR to watch. A box without `gh` simply never starts these flows. One
+poll makes at most 20 `gh` calls, shared between flows.
 
 ## Steps
 
 | Kind | Does | Fields |
 | --- | --- | --- |
-| `run` | Runs a command in the event's worktree, with its environment | `command`, `timeout` (10m) |
+| `run` | Runs a command through a login shell in the event's worktree, with its environment | `command`, `timeout` (10m) |
 | `prompt` | Types a prompt into the agent that triggered the flow, or `session` | `text`, `session` |
-| `wait` | Waits for that agent's turn to end | `for` (finished, waiting), `timeout` (30m) |
+| `wait` | Waits for that agent's turn to end | `for` (`finished`, `waiting`), `timeout` (30m) |
 | `start_agent` | Starts an agent in the worktree, or in a new one | `agent`, `text` (its prompt), `new_worktree`, `name` |
 | `notify` | Shows a notification in the app | `title`, `text` |
-| `webhook` | POSTs JSON somewhere, e.g. Slack | `url`, `text` (the body; default every variable) |
+| `webhook` | POSTs JSON somewhere, e.g. Slack | `url`, `text` (the body; default every variable), `timeout` (15s) |
 
-Each step runs when the previous one succeeded (`when: "success"`, the
-default), failed (`"failure"`), or `"always"`. A `run` step fails when its
-command exits non-zero. A flow fails when a step fails and no later step
-handles failure.
+- Each step runs when the previous one succeeded (`when: "success"`, the
+  default), failed (`"failure"`), or `"always"`.
+- A `run` step fails when its command exits non-zero; a `webhook` step when
+  the answer's status is 300 or more (its exit code is the status).
+- A `wait` step fails if the agent's program exits.
+- After `start_agent`, later `prompt` and `wait` steps talk to the new agent.
+  With `new_worktree`, the worktree branches from the current one's branch.
+- A flow fails when a step fails and no later step handles failure.
+- No step runs longer than two hours.
 
-Text fields take `{{now}}`, `{{event.FIELD}}` (any field of the event, like
-`{{event.agent}}`), `{{worktree.name}}`, `{{worktree.path}}`,
-`{{worktree.branch}}`, `{{location}}`, `{{prev.output}}`,
-`{{prev.exit_code}}`, `{{steps.ID.output}}` and, after a wait,
-`{{agent.state}}`. Output is the last 4000 characters.
+### Variables
+
+Text fields take:
+
+| Variable | Meaning |
+| --- | --- |
+| `{{event.FIELD}}` | Any field of the event's data, like `{{event.agent}}`; also `{{event.type}}`, `{{event.box}}`, `{{event.origin}}` |
+| `{{worktree.name}}`, `{{worktree.path}}`, `{{worktree.branch}}`, `{{location}}` | Where it runs |
+| `{{prev.output}}`, `{{prev.exit_code}}` | The previous step's |
+| `{{steps.ID.output}}`, `{{steps.ID.exit_code}}` | A named step's (unnamed steps are `1`, `2`, …) |
+| `{{agent.state}}` | After a `wait` |
+| `{{now}}` | The time |
+
+Output is the last 4000 characters. An unknown variable is empty.
 
 ## Safety
 
-- A flow that is already running for a worktree is not started again for
-  it.
-- Each flow runs at most `max_runs_per_hour` times (default 20). A flow that
-  prompts the agent whose finishing started it would otherwise run forever.
+- A flow that is already running for a worktree is not started again for it.
+- Each flow runs at most `max_runs_per_hour` times (default 20); test runs
+  count too. A flow that prompts the agent whose finishing started it would
+  otherwise run forever.
 - Events a flow causes carry `origin: "flow:<id>"`, and `flow.started` and
   `flow.finished` never start flows.
 - `before:` hooks still gate what a flow does, like anything else.
 
-## Resource guard
-
-Each box can keep itself usable when memory runs short (`~/.berth/guard.json`
-on the box, or Settings → Boxes → ⋯ → Resource guard). It is off until you
-turn it on.
-
-```json
-{ "enabled": true, "memory_percent": 90, "sustain": "1m", "stop_services": true, "pause_agents": true }
-```
-
-Once memory has stayed above `memory_percent` for `sustain`, the guard takes
-one step, waits 30 seconds, and looks again:
-
-1. It stops the services of a worktree where no agent is working, the one
-   idle longest first. This frees memory at once.
-2. When none are left, it pauses a worktree whose live sessions are all
-   idle or finished agents. Paused agents use no CPU and the kernel can swap
-   them out; their memory is only freed if it does. Resume them from the
-   Worktrees view.
-
-It never touches an agent that is working or waiting for you, or a plain
-shell. Each step sends `guard.acted` (with what it stopped or paused and
-why) and a `notify`. The guard reads memory from `/proc`, so it works on
-Linux boxes; on a box without it, it stays idle.
-
 ## Runs
 
 The box keeps the last 200 runs with each step's status, duration and
-output: `GET /v1/flows/runs`. `POST /v1/flows/{id}/test` with
-`{"data": {"path": "<a worktree>"}}` runs a flow now, as if its trigger had
-happened there.
+output. The **Runs** tab shows them across boxes, with what started each.
+Over the API:
+
+```text
+GET  /v1/flows/runs?flow=ID&limit=N      newest first (default 50, at most 200)
+POST /v1/flows/{id}/test                 {"scope": "repo:cal", "data": {"path": "<a worktree>"}}
+```
+
+A test runs the flow now, as if its trigger had happened there, and returns
+the finished run. The rest of the flows API is in
+[the app's API](/reference/app-api#boxes).
 
 ## Shell hooks
 
 For a single command on an event, a hook is still the simplest thing; see
-[hooks.md](hooks.md). Flows are for anything with more than one step.
+[hooks and gates](/guides/hooks). Flows are for anything with more than one
+step.

@@ -1,0 +1,179 @@
+---
+title: Writing a plugin
+description: Add screens, worktree panels, commands, status bar items and themes to the app, with the plugin SDK.
+---
+
+A plugin is an ES module whose default export receives a
+`BerthPluginContext`, registers what it adds, and may return a cleanup
+function. Plugin components are ordinary React components in the app's own
+tree, using the app's own UI kit, so they look like the rest of Berth.
+
+Berth's built-ins are written the same way, against the same SDK: Git
+changes, Pull request, Dev servers, Box monitor, Activity, Notes, Issues and
+Prompt library (see
+[`plugins/`](https://github.com/sean-brydon/berthd/tree/main/plugins)). A
+plugin of yours with the same id replaces a built-in.
+
+<Callout type="warn" title="Plugins run with the app's access">
+  A plugin can do anything the app can, on every box, and its hooks run on
+  your computer. Install only plugins you trust.
+</Callout>
+
+## The smallest plugin
+
+```tsx title="src/index.tsx"
+import type { BerthPluginContext } from "@berth/plugin";
+import { Button } from "@berth/plugin/ui";
+
+export default function activate(berth: BerthPluginContext) {
+  berth.addCommand({ id: "hello", title: "Say hello", run: () => berth.notify("Hello", "from a plugin") });
+  berth.addScreen({ id: "hello", title: "Hello", Component: () => <Button>Hi</Button> });
+  berth.addSidebarItem({ id: "hello", title: "Hello", icon: "Sparkles", screen: "hello" });
+}
+```
+
+Every `add…` returns a function that removes what it added. Anything a
+plugin registers is also removed when the plugin is unloaded, so returning
+those from `activate` is optional.
+
+## Set up a project
+
+Copy [`plugins/hello-ports`](https://github.com/sean-brydon/berthd/tree/main/plugins/hello-ports),
+the smallest complete example: a screen listing every dev server on every
+box, a sidebar item, a command and an event handler. Its pieces:
+
+```json title="package.json"
+{
+  "name": "berth-plugin-hello",
+  "private": true,
+  "type": "module",
+  "scripts": { "build": "node build.mjs", "typecheck": "tsc --noEmit" },
+  "devDependencies": {
+    "@berth/plugin": "file:../../packages/plugin-sdk",
+    "@types/react": "^19.1.8",
+    "esbuild": "^0.25.0",
+    "typescript": "~6.0.3"
+  }
+}
+```
+
+`@berth/plugin` is the SDK in
+[`packages/plugin-sdk`](https://github.com/sean-brydon/berthd/tree/main/packages/plugin-sdk):
+types only, since the app provides the real thing at runtime.
+
+```js title="build.mjs"
+import { build } from "esbuild";
+
+await build({
+  entryPoints: ["src/index.tsx"],
+  bundle: true,
+  format: "esm",
+  jsx: "automatic",
+  target: "es2022",
+  external: ["react", "react/jsx-runtime", "react-dom", "@berth/plugin", "@berth/plugin/ui"],
+  outfile: "dist/index.js",
+});
+```
+
+Bundle it as ESM with `react`, `react/jsx-runtime`, `react-dom`,
+`@berth/plugin` and `@berth/plugin/ui` left external: the app provides one
+shared copy of each.
+
+## Install it
+
+A plugin is a folder in `~/.berth/plugins/` with a `berth-plugin.json`:
+
+```json title="~/.berth/plugins/hello/berth-plugin.json"
+{ "id": "hello", "name": "Hello", "version": "0.1.0", "main": "dist/index.js" }
+```
+
+```sh
+pnpm install && pnpm build
+mkdir -p ~/.berth/plugins && ln -s "$PWD" ~/.berth/plugins/hello
+```
+
+Then **Settings → Plugins → Reload** in the app (or **Reload plugins** in
+⌘K). There is no file watcher: reload after each build. Settings → Plugins
+also turns each plugin on or off and shows what it adds, or the error that
+stopped it loading.
+
+The folder's name is the plugin's id. The manifest's fields:
+
+| Field | Meaning |
+| --- | --- |
+| `name`, `version`, `description` | Shown in Settings |
+| `main` | The bundle, relative to the folder |
+| `defaultEnabled` | `false` to stay off until turned on (default: on) |
+| `hooks` | [Hooks](/guides/hooks) to run while the plugin is on, in its folder, with `BERTH_PLUGIN_DIR` set |
+| `themes` | Theme JSON files to offer, relative to the folder |
+| `kits` | Kit folders to offer, relative to the folder |
+
+A plugin folder in `~/.berth/plugins` on a box gives that box its hooks
+too.
+
+## What a plugin can add
+
+| Call | Adds |
+| --- | --- |
+| `addScreen` | A screen in the main area, under the app's header strip |
+| `addSidebarItem` | A sidebar row that opens one of its screens |
+| `addWorktreePanel` | A view about one worktree, opened as a tab or split in its workspace |
+| `addCommand` | An entry in the command palette (⌘K) |
+| `addStatusBarItem` | Something in the status bar, left or right |
+| `addTheme` | A theme |
+| `on(type, handler)` | A handler for events of a type, a prefix like `worktree.*`, or `*` |
+
+And it can act: `notify`, `openScreen`, `openTerminal`, `openUrl`,
+`openWorktree`, `openBrowser`, `openPanel`. `berth.api` is a typed client for
+every box; `berth.orchestrate` drives agents; `berth.prompts` is the saved
+prompt library; `berth.storage` keeps small values on this computer. Every
+call is in [the plugin SDK reference](/reference/plugin-sdk).
+
+## Fitting in
+
+- A screen opens under the app's header strip, which shows its `title` (and
+  `description`). Render `<ViewHeader title description actions />` from
+  `@berth/plugin/ui` anywhere in the screen to put a live description or
+  buttons there.
+- The app lays a screen out as a page, one width and left aligned like every
+  other screen; pass `layout: "fill"` for a table or split view that fills
+  the area and scrolls itself.
+- Use `<Frame variant="card">` for a section of a screen (one outline, rows
+  directly inside), and `sessionName(session, …)` to name a session the way
+  the app does.
+- Choices and filters use the app's controls so they mean the same thing
+  everywhere: `PickOne` for one of a few values (including a filter with an
+  "All" choice), `BoxFilter` for which boxes a screen covers, and
+  `FilterChip` to narrow a list by labels or tags.
+- Tooltips are `<Tip label>`, never the HTML `title` attribute. Size list
+  rows with `h-row` or `py-row-pad` so they follow the Density setting.
+- Stick to Tailwind classes the app already uses, or inline styles: a user
+  plugin's classes are not compiled into the app's stylesheet.
+
+## Example: a worktree panel
+
+```tsx
+import type { BerthPluginContext, WorktreePanelProps } from "@berth/plugin";
+import { Button } from "@berth/plugin/ui";
+import { useState } from "react";
+
+function Tests({ berth, box, location, worktree, main }: WorktreePanelProps) {
+  const [out, setOut] = useState("");
+  const where = main ? location : `${location}/${worktree}`;
+  return (
+    <div className="p-4">
+      <Button onClick={async () => setOut((await berth.orchestrate.exec(box, where, "pnpm test")).output)}>
+        Run the tests
+      </Button>
+      <pre className="mt-3 text-xs">{out}</pre>
+    </div>
+  );
+}
+
+export default function activate(berth: BerthPluginContext) {
+  berth.addWorktreePanel({ id: "tests", title: "Tests", icon: "FlaskConical", Component: Tests });
+}
+```
+
+`worktreeLocation({ location, worktree, main })` from `@berth/plugin` builds
+the same `where`.

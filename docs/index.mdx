@@ -1,0 +1,76 @@
+---
+title: Introduction
+description: Run coding agents on your own dev boxes, and work with them as if they were on your laptop.
+---
+
+<Scene name="moored" width={240} className="docs-hero-scene" />
+
+Berth connects a laptop to any number of development machines (a VPS, a
+cloud VM, a desktop under your desk) and gives each repository on them
+worktrees, terminals, agents, dev servers and automations. The agents run on
+the boxes, so closing the app, sleeping the laptop or losing Wi-Fi never
+stops them; the app is a view you can close and reopen at any time.
+
+## Install
+
+On each box, one line installs `berthd`, starts it, and prints a pairing link:
+
+```sh
+curl -fsSL https://berthd.app/install | sh
+```
+
+On your laptop, the app and the `berth` CLI are built from source for now;
+then paste the link into the app, or run `berth pair '<link>'`. Every step is
+in [install](/getting-started/install).
+
+## Start here
+
+<Cards>
+  <Card title="Install" href="/getting-started/install" description="One line on a box; the app and CLI from source on your laptop." />
+  <Card title="Add a box" href="/getting-started/add-a-box" description="Pair with the link a box prints, or install over SSH." />
+  <Card title="First project and worktree" href="/getting-started/first-project" description="Register a repository and branch off it." />
+  <Card title="First agent" href="/getting-started/first-agent" description="Start Claude Code or Codex in a worktree and watch it work." />
+</Cards>
+
+## What it does
+
+- **Workspaces per worktree.** Terminals, splits, and browser tabs onto each
+  worktree's dev server, at private URLs like
+  `http://billing.cal.devl.localhost:1377/`.
+- **Agents you can see and steer.** Claude Code, Codex and others, with a
+  dashboard of who needs you, a review inbox for finished work, and
+  [orchestration](/guides/orchestration) (prompt, wait, check, loop, hand off)
+  from the app, the CLI, or other agents.
+- **Projects set up the same everywhere.** Each worktree gets its own ports,
+  environment, services, hooks and flows, from the repository's
+  [`.berth/config.json`](/guides/project-config), a shareable
+  [kit](/guides/kits), or the box's own config.
+- **Automations.** [Flows](/guides/automations) on events, schedules or GitHub
+  activity, running on the box; plus plain shell [hooks and gates](/guides/hooks).
+- **Plugins.** [React plugins](/guides/plugins) for the app, with built-ins
+  for git changes, pull requests, dev servers, box monitoring, activity and
+  notes.
+- **Boxes without the fuss.** Pinned mutual TLS, pairing by link, boxes on
+  other tailnets, self-upgrade over Berth's own connection, and a
+  [phone companion](/guides/phone) served by each box.
+
+## The pieces
+
+| Piece | What it is |
+| --- | --- |
+| `berthd` | The daemon on each box: worktrees, sessions (tmux), services, hooks, flows, kits. |
+| `berth` | The laptop CLI and background agent: connections, private URLs, the app's API. |
+| `app/` | The desktop app (Tauri, React, coss ui). |
+| `plugins/` | Built-in plugins, written against `packages/plugin-sdk`. |
+| `kits/` | Kits, such as `cal-com`. |
+
+Read [how Berth works](/concepts/architecture) for the whole picture, or
+[the security model](/concepts/security) before you pair a box you care
+about.
+
+<Cards>
+  <Card title="Concepts" href="/concepts/architecture" description="Boxes, projects, worktrees, sessions and the laptop agent." />
+  <Card title="Guides" href="/guides/orchestration" description="Orchestration, automations, hooks, kits, secrets, the phone, plugins." />
+  <Card title="CLI reference" href="/reference/cli" description="Every berth and berthd command." />
+  <Card title="Config reference" href="/reference/config" description="Every field of .berth/config.json and kit.json." />
+</Cards>

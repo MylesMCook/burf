@@ -1,0 +1,168 @@
+---
+title: Plugin SDK
+description: Every call, hook, component and type in @berth/plugin and @berth/plugin/ui.
+---
+
+`@berth/plugin` is in
+[`packages/plugin-sdk`](https://github.com/sean-brydon/berthd/tree/main/packages/plugin-sdk).
+It is types only: at runtime the app provides one shared copy of
+`@berth/plugin`, `@berth/plugin/ui` and React to every plugin. A guide is in
+[writing a plugin](/guides/plugins).
+
+## activate
+
+```ts
+type Activate = (berth: BerthPluginContext) => void | Dispose | Promise<void | Dispose>;
+type Dispose = () => void;
+```
+
+A plugin's default export. `definePlugin(activate)` is an identity function
+that gives `activate` its types.
+
+## BerthPluginContext
+
+| Member | What it is |
+| --- | --- |
+| `id` | The plugin's id (its folder's name) |
+| `api` | [`BerthApi`](#api): a typed client for the laptop agent and every box |
+| `orchestrate` | [`BerthOrchestrate`](#orchestrate): agents driving agents |
+| `prompts` | [`BerthPrompts`](#prompts): the saved prompt library |
+| `storage` | `get<T>(key, fallback)`, `set(key, value)`: small JSON values kept on this computer, apart from other plugins' |
+
+### Adding things
+
+Each returns a `Dispose`. Everything is also removed when the plugin unloads.
+
+| Call | What it does |
+| --- | --- |
+| `addScreen({ id, title, description?, layout?, Component })` | A screen under the app's header strip. `layout: "fill"` hands it the whole area. `Component` gets `{ berth }`. |
+| `addSidebarItem({ id, title, icon?, screen })` | A sidebar row that opens one of its screens. `icon` is a [lucide](https://lucide.dev/icons) name. |
+| `addWorktreePanel({ id, title, icon?, Component })` | A view about one worktree, opened as a tab or split. `Component` gets `{ berth, box, location, worktree, path, main? }`. |
+| `addCommand({ id, title, group?, shortcut?, run })` | An entry in the command palette (⌘K) |
+| `addStatusBarItem({ id, Component, align? })` | Something in the status bar, `left` or `right` |
+| `addTheme(theme)` | A [`Theme`](#types) |
+| `on(type, handler)` | Calls `handler(event)` for events of a type (`agent.waiting`), a prefix (`worktree.*`), or every event (`*`) |
+
+### Doing things
+
+| Call | What it does |
+| --- | --- |
+| `notify(title, body?)` | A toast in the app, and a system notification when it is not focused |
+| `openScreen(id)` | One of the plugin's screens |
+| `openTerminal(box, session)` | A session's terminal |
+| `openUrl(url)` | A URL in the system browser |
+| `openWorktree({ box, location, worktree, path, main? })` | Brings a worktree's workspace to the front |
+| `openBrowser(url, { split?: "row" \| "col" })` | A page in a browser tab of the current worktree, or beside the focused pane |
+| `openPanel(panel, { split? })` | One of the plugin's worktree panels in the current worktree |
+
+## api
+
+| Call | Returns |
+| --- | --- |
+| `status()` | `Status`: boxes, forwards, routes, the proxy |
+| `boxes()` | `BoxStatus[]`: paired boxes and whether they are online |
+| `locations(box)` | `Location[]`, each with its worktrees |
+| `sessions(box)` | `Session[]` |
+| `stats(box)` | `Stats`: memory, swap, disks, load, agents |
+| `services(box)` | `Service[]`: listening ports by worktree |
+| `info(box)` | `BoxInfo`: os, arch, build, tools, agent presets |
+| `request<T>(box, method, path, body?)` | Any [box API](/reference/app-api#boxes) call: `request("devl", "GET", "ports")` |
+| `createTask(box, task)` | `TaskResult`: a worktree with an agent in it |
+| `serviceUrl(box, port)` | The private URL of a port on a box |
+
+## orchestrate
+
+The same as `berth session send|wait`, `berth exec` and `berth loop`
+([orchestration](/guides/orchestration)). Sessions are named by box and
+session name; locations as the box API names them, `"cal"` or
+`"cal/billing"`.
+
+| Call | What it does |
+| --- | --- |
+| `send(box, session, text, enter?)` | Types text as one paste, then Enter. Resolves with the box's time at that moment: pass it as `after` to a following wait. |
+| `wait(box, session, states, { after?, timeout?, signal? })` | Resolves once the agent reports one of `states` after `after`, its program exits (`"exited"`), or `timeout` seconds pass (`timed_out`). |
+| `exec(box, location, command, timeout?)` | Runs a command to completion: `{ exit_code, output, truncated? }` |
+| `handoff({ box, from, agent, prompt, worktree? })` | Starts another agent on a session's work: in a new worktree when given one, otherwise beside it. Resolves with the new session. |
+| `review({ box, from, agent, prompt? })` | A second agent in the same worktree that reviews the first one's changes |
+| `loop({ box, session, prompt, check, max?, signal?, onProgress? })` | Prompt, wait, check, and send failures back until it passes. Returns `{ id, done }`; `done` settles with a `LoopResult` whose `outcome` is `passed`, `failed`, `needs-you`, `exited`, `timed-out`, `cancelled` or `error`. It shows in the app's loops panel. |
+
+## prompts
+
+The library the app's prompt picker and broadcast use, one document on this
+laptop (`/v1/app/prompts`). Bodies take `{{variables}}`: the built-ins fill
+in from the session a prompt goes to (`{{worktree.name}}`,
+`{{worktree.path}}`, `{{branch}}`, `{{base}}`, `{{project}}`,
+`{{location}}`, `{{box}}`, `{{agent}}`); the rest people fill in when
+sending.
+
+| Member | What it is |
+| --- | --- |
+| `list()` | The library now (until the laptop holds one, the starter prompts) |
+| `load()`, `save(prompts)` | Read it again; replace it |
+| `subscribe(listener)` | Called whenever it changes; returns how to stop |
+| `starters`, `builtins` | The starter prompts; the built-in variables |
+| `variables(prompt)` | The variables people fill in for a prompt |
+| `fill(body, values, target?)`, `segments(body, values, target?)` | A body with its variables filled, as text or as pieces |
+| `newId()` | An id for a new prompt |
+| `openPicker({ box?, session?, promptId? })` | The app's picker: choose a prompt, fill it in, send it |
+| `openBroadcast({ promptId?, text?, targets? })` | The app's broadcast: one prompt to several agents |
+
+## React hooks
+
+From `@berth/plugin`, backed by the app's live state:
+
+| Hook | What it gives |
+| --- | --- |
+| `useBerth()` | The plugin's context |
+| `useBoxes()` | `BoxStatus[]` |
+| `useLocations(box)`, `useSessions(box)`, `useStats(box)` | Live, or `undefined` while loading |
+| `useProjects()` | Every [project](/concepts/projects-and-worktrees#projects) across every box: `{ id, name, slug?, remote?, defaultBox, members }` |
+| `useCurrentWorktree()` | The worktree whose workspace is in front, if any |
+| `useEvent(type, handler)` | `on` for a component's lifetime |
+| `useStorage(key, initial)` | Like `useState`, kept in the plugin's storage |
+
+And two helpers:
+
+- `worktreeLocation({ location, worktree, main })`: how the box API names a
+  worktree, `"cal"` for the main checkout, `"cal/billing"` otherwise.
+- `sessionName(session, { sessions?, locations?, place? })`: what the app
+  calls a session ("Claude Code 2", or "cal / billing-fix · Codex" with
+  `place`).
+
+## UI components
+
+From `@berth/plugin/ui`, the app's own kit (coss ui, built on Base UI), with
+the same props as in the app:
+
+| Kind | Components |
+| --- | --- |
+| Layout | `ViewHeader`, `PluginPage`, `Frame`, `FrameHeader`, `FrameTitle`, `FrameDescription`, `FramePanel`, `FrameFooter`, `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardPanel`, `CardFooter`, `Separator`, `ScrollArea` |
+| Controls | `Button`, `Input`, `Textarea`, `Switch`, `Checkbox`, `ToggleGroup`, `ToggleGroupItem`, `PickOne`, `BoxFilter`, `FilterChip`, `AgentPicker`, `Tabs`, `TabsList`, `TabsTab`, `TabsPanel`, `Menu`, `MenuTrigger`, `MenuPopup`, `MenuItem`, `MenuGroup`, `MenuGroupLabel`, `MenuSeparator` |
+| Display | `Badge`, `Kbd`, `Spinner`, `Skeleton`, `Icon` (any lucide icon by name), `AgentIcon`, `Alert`, `AlertTitle`, `AlertDescription`, `Meter`, `MeterLabel`, `MeterTrack`, `MeterIndicator`, `MeterValue`, `Table`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell`, `Empty`, `EmptyHeader`, `EmptyTitle`, `EmptyDescription` |
+| Overlays | `Tip`, `Tooltip`, `TooltipTrigger`, `TooltipPopup`, `AlertDialog` and its parts, `Sheet`, `SheetPopup`, `SheetHeader`, `SheetTitle`, `SheetDescription`, `SheetPanel`, `SheetFooter`, `SheetClose` |
+| Utility | `cn(...classes)` |
+
+`packages/plugin-sdk/src/ui.ts` lists every export with a note on each.
+
+## Types
+
+The JSON the laptop agent and boxes speak, with field names exactly as the
+Go structs have them, in `packages/plugin-sdk/src/types.ts`:
+
+| Type | Fields |
+| --- | --- |
+| `BoxStatus` | `name`, `address`, `network?`, `fingerprint`, `state` (`connecting`, `online`, `offline`, `untrusted`), `error?`, `latency_ms?`, `since` |
+| `Location` | `name`, `path`, `repo`, `worktrees?`, `scripts`, `agents?`, `remote?`, `slug?`, `default_branch?` |
+| `Worktree` | `name`, `path`, `branch?`, `head?`, `main?`, `setting_up?`, `port?` |
+| `Session` | `name`, `location?`, `dir`, `command?`, `created`, `attached`, `exited`, `agent?`, `agent_state?`, `state_since?` |
+| `AgentState` | `idle`, `running`, `waiting`, `finished` |
+| `AgentPreset` | `id`, `name`, `command`, `prompt_flag?` |
+| `Service` | `location`, `worktree`, `path`, `port`, `process?`, `main?` |
+| `WorktreeService` | `name`, `run`, `autostart?`, `state`, `unit`, `port?` |
+| `Stats` | `hostname`, `uptime_s?`, `cpus`, `load?`, `memory`, `swap`, `disks`, `agents`, `hooks` |
+| `TaskRequest` | `location`, `name`, `branch?`, `base?`, `agent?`, `command?`, `prompt?`, `from_session?`, `pr?`, `ref?`, `open?` |
+| `TaskResult` | `worktree`, `session` |
+| `BerthEvent` | `type`, `time`, `box?`, `origin?`, `error?`, `data?` |
+| `Theme` | `id`, `name`, `appearance` (`dark`, `light`), `colors` (17 UI colours), `terminal` (20 terminal colours) |
+| `Hook` | `on`, `run`, `tool?`, `timeout?`, `source?` |
+| `TaskTemplate` | as in [task templates](/guides/task-templates) |

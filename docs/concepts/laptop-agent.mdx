@@ -1,0 +1,60 @@
+---
+title: The laptop agent
+description: The background process that holds every box connection, serves private URLs, and outlives the app.
+---
+
+The **berth agent** (`berth agent`) runs on your laptop in the background. It
+holds a connection to every paired box, runs saved forwards and the
+`*.localhost` proxy, and serves a local API that the CLI and the desktop app
+are clients of. Closing the app, or the app crashing, never stops a session,
+a forward or a queued prompt.
+
+## What it does
+
+- keeps one pinned TLS connection per box, reconnecting forever, with health
+  pings to notice a connection that died silently and sleep detection;
+- serves **private URLs** on port 1377, `http://3000.devl.localhost:1377/`,
+  and runs **forwards** (a fixed local port to a box port) and **routes**;
+- relays every online box's **events**, so laptop hooks, plugins and the app
+  hear about every agent on every box;
+- runs **laptop hooks** from `~/.berth/hooks.json`;
+- holds the [offline prompt queue](/guides/offline-queue) and delivers it
+  when boxes come back;
+- runs an embedded Tailscale node for each [other tailnet](/getting-started/add-a-box#boxes-on-another-tailnet);
+- keeps your **kits** library and serves your themes, task templates and
+  plugins to the app.
+
+## Running it
+
+Any command that needs the agent starts it. To have it start at login and
+restart after a crash:
+
+```sh
+berth agent install      # launchd on macOS, a systemd user unit on Linux
+berth agent status
+berth agent uninstall
+berth agent              # run it in the foreground instead
+berth stop               # stop it, and every forward
+```
+
+```sh
+berth status             # boxes, forwards and the proxy at a glance
+berth events             # every event from this laptop and every box, live
+berth doctor             # what's wrong on this computer, and how to fix it
+```
+
+## How things reach it
+
+| Client | How |
+| --- | --- |
+| The CLI | A Unix socket, `agent.sock`, in the state directory |
+| The desktop app and plugins | `http://127.0.0.1:1378` with a bearer token; see [the app's API](/reference/app-api) |
+| Your browser | `http://*.localhost:1377/`, the proxy |
+
+## Where it keeps things
+
+State is in `~/Library/Application Support/berth/client/` on a Mac and
+`~/.config/berth/client/` on Linux (`$BERTH_HOME` moves it): its identity,
+paired boxes, forwards, routes, the queue, logs and the app's token. Things
+you write by hand are in `~/.berth/`: hooks, task templates, themes, plugins,
+kits. The full list is in [files and environment](/reference/files).

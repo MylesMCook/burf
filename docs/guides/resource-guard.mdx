@@ -1,0 +1,39 @@
+---
+title: The resource guard
+description: Keep a box usable when memory runs short, by stopping idle dev servers and pausing idle agents.
+---
+
+Each box can keep itself usable when memory runs short. The guard is off
+until you turn it on, in the app (Settings → Boxes → ⋯ → Resource guard) or
+in `~/.berth/guard.json` on the box:
+
+```json title="~/.berth/guard.json"
+{ "enabled": true, "memory_percent": 90, "sustain": "1m", "stop_services": true, "pause_agents": true }
+```
+
+| Field | Meaning | Default |
+| --- | --- | --- |
+| `enabled` | Turns it on | `false` |
+| `memory_percent` | How full memory must be, 50 to 99 | `90` |
+| `sustain` | For how long, at most `1h` | `1m` |
+| `stop_services` | May stop dev servers | `true` |
+| `pause_agents` | May pause idle agents | `true` |
+
+## What it does
+
+Once memory has stayed above `memory_percent` for `sustain`, the guard takes
+one step, waits 30 seconds, and looks again:
+
+1. It stops the services of a worktree where no agent is working, the one
+   idle longest first. This frees memory at once.
+2. When none are left, it pauses a worktree whose live sessions are all idle
+   or finished agents. Paused agents use no CPU and the kernel can swap them
+   out; their memory is only freed if it does. Resume them from the
+   Worktrees view.
+
+It never touches an agent that is working or waiting for you, or a plain
+shell. Each step sends `guard.acted` (with what it stopped or paused and
+why) and a `notify`, so you see it in the app.
+
+The guard reads memory from `/proc`, so it works on Linux boxes; on a box
+without it, it stays idle. Changing it runs `before:config.change` gates.

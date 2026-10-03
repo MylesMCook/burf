@@ -7,7 +7,7 @@ import { errorMessage } from "@/lib/format";
 import { resolve, route } from "@/lib/notifications";
 import { useStore } from "@/lib/store";
 
-// The offline prompt queue (docs/orchestration.md): prompts for a box that
+// The offline prompt queue (docs/guides/offline-queue.mdx): prompts for a box that
 // is away wait in the laptop agent, which types them in once it is back.
 // The app only shows and manages them; delivery happens with the app closed.
 
@@ -99,7 +99,7 @@ export interface SendFailure {
 
 // sendFailure says whether a failed send is the box being away. The agent
 // answers 503 when the request never reached the box and 502 when the
-// connection dropped after it went (docs/app-api.md); anything else (no
+// connection dropped after it went (docs/reference/app-api.mdx); anything else (no
 // such session, a before: hook) is the box's own answer, not for the queue.
 export function sendFailure(err: unknown, box: string): SendFailure | undefined {
   if (err instanceof ApiError && err.status === 503) return { kind: "offline", message: `${box} can't be reached right now.` };

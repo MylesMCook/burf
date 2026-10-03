@@ -23,7 +23,7 @@ import type {
 export type * from "@berth/plugin";
 
 // The app is only a view: the laptop agent holds every box connection and
-// serves this API on loopback (docs/app-api.md). Closing or crashing the app
+// serves this API on loopback (docs/reference/app-api.mdx). Closing or crashing the app
 // never stops a session or a forward.
 
 export interface Endpoint {

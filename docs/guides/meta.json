@@ -1,0 +1,18 @@
+{
+  "title": "Guides",
+  "pages": [
+    "orchestration",
+    "offline-queue",
+    "automations",
+    "hooks",
+    "resource-guard",
+    "project-config",
+    "kits",
+    "secrets",
+    "task-templates",
+    "agent-integrations",
+    "phone",
+    "plugins",
+    "themes"
+  ]
+}

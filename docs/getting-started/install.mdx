@@ -1,0 +1,140 @@
+---
+title: Install
+description: One line on each box, and Berth built from source on your laptop.
+---
+
+Berth has two halves: `berthd` on each box your agents run on, and the
+`berth` CLI with the desktop app on your laptop. A box takes one line; the
+laptop side is built from source for now.
+
+## On a box
+
+On a Linux box (amd64 or arm64), as the user your agents will run as:
+
+```sh
+curl -fsSL https://berthd.app/install | sh
+```
+
+It installs `berthd` for that user, starts it as a service, and prints a
+pairing link:
+
+```text
+Pairing link (single use, valid for 10m0s):
+  berth://100.101.102.103:7444?code=…&fp=…
+```
+
+Keep it for the next step. The box needs `git` and `tmux`, and a
+[Tailscale](https://tailscale.com) address unless you tell berthd to listen
+elsewhere (`BERTHD_LISTEN=0.0.0.0:7444`; see
+[where berthd listens](/getting-started/add-a-box#where-berthd-listens)).
+
+<Callout title="No SSH from your laptop needed">
+  The installer runs on the box itself. If you'd rather install from your
+  laptop over SSH, [`berth add ssh`](/getting-started/add-a-box#over-ssh)
+  does the install and the pairing in one step.
+</Callout>
+
+## On your laptop
+
+There are no app or CLI releases yet, so build them from the repository.
+You need:
+
+- **Go 1.27** for `berth` and `berthd`
+- **Node 22 and pnpm** for the desktop app and plugins
+- **Rust** for the app's Tauri shell
+- a Mac or a Linux laptop
+
+### Build the binaries
+
+```sh
+git clone https://github.com/sean-brydon/berthd
+cd berthd
+make all
+```
+
+`make all` puts four files in `bin/`:
+
+| File | What it is |
+| --- | --- |
+| `bin/berth` | The laptop CLI and background agent, for this computer |
+| `bin/berthd` | The box daemon, for this computer |
+| `bin/berthd-linux-amd64`, `bin/berthd-linux-arm64` | The box daemon for Linux boxes |
+
+Keep the Linux daemons next to `berth`: `berth add ssh` and `berth upgrade`
+look for `berthd-linux-<arch>` beside their own executable. Put `bin/` on
+your `PATH`, or call `bin/berth` as these pages do.
+
+### Start the laptop agent
+
+The CLI and the app are clients of the **laptop agent**, a background process
+that holds the connection to every box (see [the laptop agent](/concepts/laptop-agent)).
+Any command that needs it starts it, so this is enough:
+
+```sh
+bin/berth status
+```
+
+To have it start at login and come back after a crash, install it as a
+service (launchd on macOS, a systemd user unit on Linux):
+
+```sh
+bin/berth agent install     # berth agent status | uninstall
+```
+
+<Callout type="warn" title="The app does not start the agent">
+  The desktop app talks to the agent but never starts it. If the app says
+  "The Berth agent is not running", run `berth status` or
+  `berth agent install` in a terminal; the app connects as soon as it is up.
+</Callout>
+
+### Run the desktop app
+
+```sh
+cd app
+pnpm install
+pnpm tauri dev
+```
+
+The first time, it walks you through connecting a box, adding a repo on it
+and starting your first agent.
+
+## Pair them
+
+Paste the box's link in the app (**Add a box → Paste a pairing link**), or:
+
+```sh
+bin/berth pair 'berth://100.101.102.103:7444?code=…&fp=…'
+```
+
+```text
+Paired with my-box at 100.101.102.103:7444 (…)
+```
+
+The link works once and expires after ten minutes; run `berthd pair` on the
+box for a new one. More ways to connect a box are in
+[add a box](/getting-started/add-a-box).
+
+## Optional: shorter URLs
+
+Every port on a box has a private URL like `http://3000.devl.localhost:1377/`.
+On a Mac, you can drop the `:1377`:
+
+```sh
+bin/berth setup port80      # asks for your admin password once; --remove undoes it
+```
+
+It redirects port 80 to 1377 on this computer. On Linux, grant the agent
+`CAP_NET_BIND_SERVICE` instead.
+
+## Check everything
+
+```sh
+bin/berth doctor            # this computer: the agent, URLs, networks, boxes, agent tools
+bin/berth doctor my-box     # a box: git, tmux, cloudflared, agents, where it listens
+```
+
+Each check that fails says how to fix it.
+
+## Next
+
+[Your first project and worktree](/getting-started/first-project).

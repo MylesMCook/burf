@@ -1,0 +1,90 @@
+---
+title: How Berth works
+description: The box serves, the laptop connects, and the app is only a view.
+---
+
+Berth connects a laptop to remote development boxes (any VPS, on a tailnet or
+not) and makes the services, worktrees and agent sessions on them usable as
+if they were local. Nothing is public unless someone explicitly shares it.
+
+## Principles
+
+- **Private by default.** Services stay on the box. They are reachable only
+  through an authenticated connection from a paired laptop. berthd itself
+  listens on the box's tailnet address, never the internet, unless told to.
+- **The box serves, the laptop connects.** The box owns its services,
+  worktrees, sessions and public shares; the laptop holds connections and
+  local URLs. Nothing a teammate depends on runs only on someone's laptop.
+- **No runtime dependencies.** berthd is one static binary; the app bundles
+  everything. No SSH agent, DNS zone or `/etc/hosts` edit is needed, and SSH
+  is used once at most, to install.
+- **Survive the real world.** Laptops sleep, networks change, daemons
+  upgrade. Connections reconnect indefinitely, sessions outlive the daemon,
+  and state files are never silently emptied.
+
+## Components
+
+```text
+laptop                                                     box (any VPS)
+┌──────────────┐  local API    ┌────────────────┐  TLS 1.3 + HTTP/2  ┌──────────────┐
+│ desktop app  │──────────────▶│  berth agent   │═══════════════════▶│    berthd    │
+│ berth CLI    │ (Unix socket, │  box health    │  pinned keys, one  │ locations    │
+│ hooks, skill │  loopback)    │  forwards      │  connection per box│ sessions     │
+└──────────────┘               │  *.localhost   │                    │ shares       │
+                               │  tailnets      │                    │ events, hooks│
+                               └────────────────┘                    └──────────────┘
+```
+
+- **berthd** runs on each box as a systemd user service (launchd on macOS).
+  It holds the box's identity, the trust store of paired laptops, and the
+  box's locations, sessions, services, shares, hooks and flows. Tools on the
+  box reach it through a private Unix socket with the same API. See
+  [boxes](/concepts/boxes).
+- **The berth agent** runs on the laptop. It keeps a connection to every box,
+  runs forwards and the `*.localhost` proxy, relays every box's events, runs
+  laptop hooks, holds the offline prompt queue, and owns the embedded tailnet
+  nodes. The CLI and the app talk to it, so closing the app drops nothing.
+  See [the laptop agent](/concepts/laptop-agent).
+- **The desktop app** is a Tauri shell around a React UI. It talks to the
+  laptop agent over a loopback HTTP and WebSocket API guarded by a token
+  ([the app's API](/reference/app-api)): box APIs pass through the agent's
+  one connection per box, and terminals are bridged over WebSocket. The app
+  holds no connection and no state worth losing; it can crash or close at any
+  time.
+
+## Where things live
+
+| On the box | On the laptop |
+| --- | --- |
+| Repositories and worktrees | Connections to every box |
+| Sessions (tmux) and the agents in them | Private URLs, forwards and routes |
+| Services, units and public shares | The offline prompt queue |
+| Box hooks, flows and the resource guard | Laptop hooks, kits library, themes, plugins |
+| The phone companion | The app and its settings |
+
+The full list of files is in [files and environment](/reference/files).
+
+## Events
+
+One event model on both sides; each event records the tool it came from:
+
+```json
+{ "type": "agent.waiting", "time": "…", "box": "devl", "origin": "claude",
+  "data": { "path": "/home/me/work/cal-billing", "session_id": "…" } }
+```
+
+The laptop agent relays every online box's events with `box` set, so
+anything on the laptop (a hook, the app, a plugin, `berth events`) hears about
+every agent on every box. [Hooks](/guides/hooks) run commands for matching
+events; `before:` hooks gate actions on the box and can refuse them.
+[Flows](/guides/automations) run several steps on the box. Agent tool hooks
+forward only identifiers and paths, never prompts. The catalog is in
+[events and gates](/reference/events).
+
+## Extending it
+
+- [Plugins](/guides/plugins) extend the app: screens, worktree panels,
+  commands, status bar items, themes. They can carry hooks and kits.
+- [Kits](/guides/kits) package how a project is set up, and travel as a link.
+- [Skills](/guides/agent-integrations#skills) teach the agents on a box to use
+  Berth themselves.

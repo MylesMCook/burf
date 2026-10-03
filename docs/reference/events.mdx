@@ -1,0 +1,148 @@
+---
+title: Events and gates
+description: Every event Berth announces, the gates that can refuse actions, and the variables hooks get.
+---
+
+## The envelope
+
+```json
+{ "type": "worktree.created", "time": "2026-10-03T09:12:44Z", "box": "devl", "origin": "app",
+  "data": { "location": "cal", "name": "billing", "path": "/home/me/work/cal-billing", "branch": "billing" } }
+```
+
+| Field | Meaning |
+| --- | --- |
+| `type` | What happened, `area.thing` |
+| `time` | When |
+| `box` | The box it happened on (set when relayed to the laptop) |
+| `origin` | The tool it came from: `app`, `berth`, `claude`, `detected`, `flow:<id>`, `phone`, a hook's `tool`… |
+| `error` | For failures |
+| `data` | Depends on the type; below |
+
+Box events reach the laptop too: the laptop agent relays every online box's
+events with `box` set. `berth events` and `GET /v1/events` stream them.
+
+Anything can announce its own: `berth emit TYPE key=value…` on the laptop,
+`berthd emit TYPE key=value… --origin TOOL` on a box. A type is two
+lowercase words joined by a dot; an origin is lowercase letters, digits and
+dashes.
+
+## Box events
+
+### Agents and sessions
+
+| Event | Data |
+| --- | --- |
+| `agent.ready` | `path`, `agent`, `session_id`: a new agent at its prompt |
+| `agent.started` | the same: working on a prompt |
+| `agent.waiting` | the same: needs you (a permission, a question, or `reason: "startup question"`) |
+| `agent.finished` | the same: done with its turn |
+| `task.created` | `location`, `name`, `path`, `branch`, `session`, `agent`, `from_session` |
+| `session.started` | `name`, `location`, `path`, `command` |
+| `session.stopped` | `name` |
+| `session.sent` | `name`: a prompt was typed in (never the prompt) |
+| `session.open` | `name`, `location`, `path`, `open`, `agent`: asks the app to show a new session |
+| `exec.finished` | `location`, `path`, `command`, `exit_code` |
+| `preview.open` | `location`, `name`, `path`, `port`, `url_path`: an agent asks the app to show a page (`berthd preview`) |
+
+Agent events come from the agents' own hooks (`berthd integrations install`),
+with the tool as their origin. Claude Code sends all four; Codex and Cursor
+send `agent.finished`.
+
+### Locations and worktrees
+
+| Event | Data |
+| --- | --- |
+| `location.added` | `location`, `path`, `url` (when cloned) |
+| `location.removed` | `location` |
+| `worktree.created` | `location`, `name`, `path`, `branch` (origin `detected` when another tool made it) |
+| `worktree.removed` | `location`, `name`, `path` |
+| `worktree.setup.started`, `.finished`, `.failed` | `location`, `name`, `path`, `script`, `log` |
+| `worktree.archive.started`, `.finished`, `.failed` | the same |
+| `worktree.synced` | `location`, `name`, `mode`, `ok`, `base`, `conflicts` |
+| `worktree.paused`, `worktree.resumed` | `location`, `name`, `path` |
+| `service.started` | `location`, `name`, `path`, `service`, `port` |
+| `service.stopped` | `location`, `name`, `path`, `service` |
+| `service.failed` | `location`, `name`, `service`, `error` |
+
+### Automation, config and the box
+
+| Event | Data |
+| --- | --- |
+| `flow.started` | `flow`, `scope`, `run`, `path` |
+| `flow.finished` | `flow`, `scope`, `run`, `status`, `path` |
+| `notify` | `title`, `body`, `flow`, `path`, `location`: a flow's or the guard's notification |
+| `guard.acted` | `action`, `location`, `name`, `path`, `services`, `sessions`, `memory_percent`, `reason` |
+| `config.changed` | what changed: `location`, `flows`, `env` or `guard` |
+| `hooks.changed` | |
+| `kit.installed` | `location`, `kit`, `version`, `source`, `warnings` |
+| `kit.removed` | `location`, `kit` |
+| `skills.installed`, `skills.removed` | `skills`, `agents`, `target`, `location`, `paths` |
+| `secret.failed` | `location`, `name`, `path`, `variable`, `ref`, `reason`: a [secret reference](/guides/secrets) could not be read, so the variable was left unset; never the value |
+| `secret.resolved` | `location`, `name`, `path`, `variable`, `ref`: one that failed reads again |
+| `share.started`, `share.stopped` | `id`, `port`, `url` |
+| `unit.started`, `unit.stopped`, `unit.restarted` | `name` |
+| `phone.changed` | `enabled` |
+| `box.upgraded` | `build` |
+
+Flows triggered by a schedule or GitHub receive `schedule.fired` or
+`github.review_comment`, `github.pr_review`, `github.check_failed`,
+`github.pr_merged` as their event; these start the flow directly and are not
+announced to hooks.
+
+## Laptop events
+
+| Event | Data |
+| --- | --- |
+| `laptop.started` | |
+| `box.connected` | |
+| `box.disconnected`, `box.untrusted` | `error` |
+| `forward.started`, `forward.failed`, `forward.removed` | `id`, `local`, `remote` |
+| `queue.changed` | `queued`, `failed` |
+| `queue.delivered` | `id`, `box`, `session`, `attempts` |
+| `queue.failed` | `id`, `box`, `session`, `reason` (never the prompt) |
+| `kit.added` | `kit`, `source` |
+| `app.changed` | `key`: an app settings document changed |
+| `hooks.changed` | |
+
+## Gates
+
+Gates are `before:` hooks on a box. They run before the action, in order
+(the box's `hooks.json` and plugins, then the repository's), and one that
+exits non-zero refuses it with what it printed. Gates in a laptop's
+`hooks.json` never run.
+
+| Gate | Data |
+| --- | --- |
+| `before:location.add` | `location`, `path`, `url` |
+| `before:worktree.create` | `location`, `name`, `branch`, `base` |
+| `before:worktree.remove` | `location`, `name`, `path` |
+| `before:worktree.sync` | `location`, `name`, `mode` |
+| `before:worktree.pause`, `before:worktree.resume` | `location`, `name` |
+| `before:task.create` | `location`, `name`, `branch`, `base`, `agent`, `command` |
+| `before:session.start` | `name`, `location`, `path`, `command` |
+| `before:session.stop` | `name` |
+| `before:session.send` | `name`, and `from: "phone"` for the phone |
+| `before:exec` | `location`, `path`, `command` |
+| `before:kit.install` | `location`, `kit`, `source` |
+| `before:kit.remove` | `location` |
+| `before:skills.install`, `before:skills.uninstall` | `skills`, `agents`, `target`, `location` |
+| `before:config.change` | `location`, `flows`, `env` or `guard`: what is about to change |
+| `before:phone.change` | |
+
+A task runs `before:task.create`, then the worktree's and the session's own
+gates.
+
+## What a hook gets
+
+| Variable | Meaning |
+| --- | --- |
+| `BERTH_EVENT` | The event's type |
+| `BERTH_EVENT_BOX` | Its box |
+| `BERTH_EVENT_ORIGIN` | Its origin |
+| `BERTH_<FIELD>` | Each data field, upper-cased, with other characters as `_`: `BERTH_PATH`, `BERTH_NAME`, `BERTH_LOCATION`, `BERTH_SESSION`, `BERTH_AGENT`… |
+| `BERTH_ORIGIN` | The hook's `tool`, or `hook`: Berth commands the hook runs announce their events with it |
+| `BERTH_PLUGIN_DIR` | A plugin's hooks: its folder |
+
+The event is also on stdin as JSON. Hooks from a repository's config get the
+worktree's environment as well; see [files and environment](/reference/files#environment).

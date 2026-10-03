@@ -1,4 +1,7 @@
-# The app's API
+---
+title: The app's API
+description: The loopback API the desktop app and plugins use, and the box API behind it.
+---
 
 The desktop app is only a view. It talks to the laptop agent (`berth agent`,
 started on demand by the CLI or the app), which holds the connections to
@@ -33,6 +36,10 @@ The agent serves the app on `http://127.0.0.1:1378`.
 | `GET /v1/templates` | `TaskTemplate[]` from `~/.berth/templates/*.json` |
 | `GET /v1/plugins` | `PluginInfo[]` from `~/.berth/plugins/*/berth-plugin.json` |
 | `GET /v1/plugins/{id}/{file}` | a file from that plugin's folder (its `main` module, assets) |
+| `POST /v1/plugins/{id}/enable`, `/disable` | turns a plugin on or off |
+| `GET /v1/app/{key}`, `PUT /v1/app/{key}` | an app settings document, `~/.berth/app/<key>.json` (JSON, at most 1 MB; `null` when missing). The app keeps `prompts`, `projects`, `sidebar` and `notifications` here; a change announces `app.changed`. |
+| `GET /v1/kits`, `GET /v1/kits/{id}`, `POST /v1/kits/add`, `/v1/kits/{id}/apply`, `/v1/kits/{id}/update`, `DELETE /v1/kits/{id}` | the [kits](/guides/kits) library, as `berth kit` uses it |
+| `GET /v1/hooks`, `PUT /v1/hooks` | the laptop's `hooks.json` |
 | `GET /v1/queue` | `QueueItem[]`: prompts waiting for their box, oldest first |
 | `POST /v1/queue` | `{ id?, box, session, text, wait?, enter? }` → `QueueItem`; the same `id` again returns the item already queued |
 | `PATCH /v1/queue/{id}` | `{ box?, session?, text? }` → `QueueItem`: move or edit one; it goes back in line as `queued` |
@@ -40,7 +47,7 @@ The agent serves the app on `http://127.0.0.1:1378`.
 | `POST /v1/queue/{id}/send` | `QueueItem` with `state` `delivered`, `failed` or `queued`: send it now, without waiting for the agent's turn; 409 while its box is offline |
 | `DELETE /v1/queue/{id}` | the discarded `QueueItem`; 409 while it is being sent |
 
-`QueueItem` is the offline prompt queue's entry ([orchestration.md](orchestration.md#when-a-box-is-away)):
+`QueueItem` is the offline prompt queue's entry ([the offline queue](/guides/offline-queue)):
 `{ id, box, session, text, enter, wait, state, error?, created, attempts?,
 last_attempt?, blocked?, seq }`. `state` is `queued` (waiting for the box),
 `waiting` (the box is back; waiting for the agent's turn to end), `sending`,
@@ -73,8 +80,27 @@ failed after it went out (the box may have acted on it). The box API:
 | `GET ports` | `Port[]` |
 | `GET info` | `{ name, os, arch, build, tools: string[], agents: AgentPreset[] }` |
 | `GET doctor` | `Check[]` |
-| `POST secrets/test` | `{ ref }` → `{ ok, length?, error? }`: resolves a [secret reference](templates.md#secrets) on the box now (`op://…` or `env://…`), skipping its cache, and reports whether it could and the value's length, never the value. A malformed reference is `ok: false` with why |
+| `POST secrets/test` | `{ ref }` → `{ ok, length?, error? }`: resolves a [secret reference](/guides/secrets) on the box now (`op://…` or `env://…`), skipping its cache, and reports whether it could and the value's length, never the value. A malformed reference is `ok: false` with why |
 | `POST secrets/report` | Only on the box's own socket: what `berthd secret exec` resolved for a session or service, which variables resolved and which failed and why, never values |
+| `POST sessions/{name}/send` | `{ text, enter? }`: types a prompt ([orchestration](/guides/orchestration)) |
+| `GET sessions/{name}/wait?for=finished,waiting&after=TIME&timeout=10m` | `{ state, timed_out }`: `after` is an RFC 3339 time; `timeout` a duration, 1s to 1h (default 10m) |
+| `POST exec` | `{ location, command, timeout? }` → `{ exit_code, output, truncated? }` |
+| `GET locations/{name}/config`, `PUT locations/{name}/config` | `{ repo, kit?, local, effective }`; PUT takes `{ local }` ([config](/reference/config)) |
+| `GET locations/{name}/worktrees/{wt}/services` | `WorktreeService[]` |
+| `POST locations/{name}/worktrees/{wt}/services/{service}/{start,stop,restart}` | |
+| `POST locations/{name}/worktrees/{wt}/{pause,resume}` | pauses or resumes a worktree |
+| `GET flows`, `PUT flows` | every flow on the box with its `scope` and `source`; PUT replaces the box's own `{ flows }` |
+| `GET flows/runs?flow=ID&limit=N` | recent runs, newest first |
+| `POST flows/{id}/test` | `{ scope, data }` → the finished run |
+| `GET guard`, `PUT guard` | the [resource guard](/guides/resource-guard) |
+| `GET env`, `PUT env` | the box's `env.json` |
+| `GET hooks`, `PUT hooks` | the box's `hooks.json` |
+| `GET skills`, `POST skills/install`, `POST skills/uninstall` | [skills](/guides/agent-integrations#skills) |
+| `GET kits`, `PUT locations/{name}/kit`, `DELETE locations/{name}/kit` | installed kits |
+| `GET shares`, `POST shares`, `DELETE shares/{id}` | public shares |
+| `GET units`, `POST units`, `DELETE units/{name}`, `POST units/{name}/restart`, `GET units/{name}/log` | units |
+| `GET phone`, `PUT phone` | the [phone companion](/guides/phone) |
+| `GET events`, `POST events` | the box's event stream, and announcing one |
 
 `Session` carries the agent's state when an agent tool reports it:
 `agent` (`claude`, `codex`, …) and `agent_state` (`idle`, `running`,

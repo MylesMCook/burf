@@ -1,0 +1,90 @@
+---
+title: First agent
+description: Start Claude Code, Codex or another agent in a worktree, see what it needs, and steer it.
+---
+
+## Let the box report agent state
+
+Berth knows whether an agent is working, waiting for you or done from the
+agents' own hooks. Install them on the box, where agents run:
+
+```sh
+ssh me@my-box berthd integrations install claude   # or codex, cursor, all
+```
+
+This also installs Berth's [skills](/guides/agent-integrations#skills), so
+agents on the box know how to use Berth themselves. Without the hooks an
+agent still runs; Berth just can't tell what state it is in.
+
+## Start a task
+
+A **task** is a worktree with an agent already running in it, made in one
+step:
+
+```sh
+bin/berth task new my-box/app/fix-login --agent claude --prompt "Fix the login redirect"
+```
+
+| Flag | What it does |
+| --- | --- |
+| `--agent ID` | Which agent: see `berth agents my-box` for what the box can start |
+| `--prompt TEXT` | Its first prompt |
+| `--branch B`, `--base REF` | As for `worktree new` |
+| `--open split\|tab` | Ask the app to show the new agent: in its worktree when you are looking at it, otherwise as a notice that opens it |
+
+The built-in agents, offered when their command is installed on the box:
+
+| ID | Agent | Command |
+| --- | --- | --- |
+| `claude` | Claude Code | `claude` |
+| `codex` | Codex | `codex` |
+| `opencode` | OpenCode | `opencode --prompt …` |
+| `gemini` | Gemini CLI | `gemini -i …` |
+| `cursor` | Cursor Agent | `cursor-agent` |
+
+A repository can add its own or replace these in
+[`.berth/config.json`](/reference/config#agents).
+
+To start an agent in a worktree that already exists, or a plain shell:
+
+```sh
+bin/berth session new my-box/app/fix-login --agent codex --prompt "Review the diff"
+bin/berth session new my-box/app/fix-login              # a shell
+```
+
+## Watch it
+
+```sh
+bin/berth sessions my-box                  # every session, with its agent's state
+bin/berth session screen my-box/SESSION    # what it shows right now
+bin/berth attach my-box/SESSION            # take over this terminal; Ctrl-b d detaches
+```
+
+Sessions run in tmux on the box. Detaching, closing the app or sleeping the
+laptop leaves them running.
+
+In the app:
+
+- **Agent Dashboard** (⌘J) shows every agent on every box by what it needs:
+  **Needs you**, **Working**, **Done**, **Ready**.
+- **Review** lists agents' finished work, to approve, send back or discard.
+- A notification tells you when an agent is waiting for you.
+
+## Steer it
+
+```sh
+bin/berth session send my-box/SESSION "Now add a test for it" --wait
+bin/berth loop my-box/SESSION --check "pnpm test" --prompt "Make the tests pass"
+```
+
+`send --wait` returns when the turn it starts ends. `loop` prompts, waits,
+runs the check in the worktree and sends failures back until it passes. More
+in [orchestration](/guides/orchestration).
+
+## What next
+
+- [Automations](/guides/automations): run the tests after every agent turn,
+  or send PR review comments straight to the agent.
+- [Hooks and gates](/guides/hooks): a notification when an agent waits, or a
+  rule that refuses an action.
+- [The phone companion](/guides/phone): answer agents from your phone.

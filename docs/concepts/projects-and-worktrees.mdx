@@ -1,0 +1,121 @@
+---
+title: Projects and worktrees
+description: Locations on a box, projects across boxes, and the worktrees agents work in.
+---
+
+## Locations
+
+A **location** is a named directory on one box, usually a git repository:
+
+```sh
+berth location add devl/cal ~/work/cal
+berth locations devl
+berth location rm devl/cal      # forgets it; files are untouched
+```
+
+The box API, the CLI and hooks address things on a box by location:
+`cal` is the repository's own checkout, `cal/billing` one of its worktrees,
+and `devl/cal/billing` the same from the laptop.
+
+## Projects
+
+In the app, a **project** is one repository wherever it is checked out. A
+location on `devl` and one on `gpu` whose `origin` remotes name the same
+`owner/repo` (or that share a name) are one project with two members. Each
+project has a **default box**, where new work goes unless you pick another,
+and the sidebar groups worktrees by project (or by box, if you prefer).
+
+Projects are an idea of the app and the laptop; boxes only know their own
+locations. A flow can still run for
+[a project on every box that has it](/guides/automations#any-project-on-every-box).
+
+## Worktrees
+
+Agents work in **worktrees**: separate checkouts of the same repository, each
+on its own branch, so several agents can work at once without stepping on
+each other. Berth makes them with git, next to the repository:
+
+```text
+~/work/cal              the repository (location "cal")
+~/work/cal-billing      worktree "billing", on branch billing
+~/work/cal-fix-login    worktree "fix-login"
+```
+
+```sh
+berth worktree new devl/cal/billing [--branch B] [--base REF]
+berth worktree rm devl/cal/billing [--force]
+```
+
+- A worktree's name is a hostname label (letters, digits, dashes), because
+  it is part of its URL.
+- The branch defaults to the name. An existing branch, local or on
+  `origin`, is checked out as it is (tracking `origin`); a new one starts from
+  `--base`, or from what the repository has checked out.
+- Worktrees made by any other tool appear too, with a `worktree.created`
+  event whose origin is `detected`.
+
+### Setup and teardown
+
+When a worktree is created, the repository's **setup** script runs in it (in
+the background, up to 30 minutes, logged on the box), then its `autostart`
+services start. Before one is removed, its services stop and the **archive**
+script runs; if that fails, the worktree stays. Both come from
+[`.berth/config.json`](/guides/project-config), a [kit](/guides/kits), or the
+box's own config for the location (`berth location scripts`).
+
+### Ports and environment
+
+Every worktree has its own block of ports, stable for its life and freed when
+it is removed: `$BERTH_PORT`, then `$BERTH_PORT_1`… up to the `ports` the
+config asks for (at most 10). Everything run in a worktree (scripts,
+terminals, agents, services, hooks, `exec`) gets them along with
+`BERTH_WORKTREE_SLUG`, `BERTH_BRANCH` and the rest; see
+[project config](/guides/project-config#ports-and-environment).
+
+### Pause and resume
+
+From the Worktrees view you can pause a worktree: its running services stop
+and its sessions are frozen, using no CPU, until you resume it, which starts
+the same services again. The
+[resource guard](/guides/resource-guard) does the same to idle worktrees
+when a box runs short of memory.
+
+## Private URLs
+
+The laptop agent serves every box's ports at `*.localhost` names, through the
+box connection, with nothing exposed on the box:
+
+| URL | Reaches |
+| --- | --- |
+| `http://3000.devl.localhost:1377/` | Port 3000 on `devl` |
+| `http://billing.cal.devl.localhost:1377/` | The `billing` worktree's dev server (its lowest listening port) |
+| `http://cal.devl.localhost:1377/` | The main checkout's dev server |
+| `http://billing.cal.localhost:1377/` | The same, when only one box has `cal` |
+| `http://localhost:1377/` | An index of what is reachable |
+
+`berth setup port80` on a Mac drops the `:1377`. Dev servers need no
+configuration: the proxy presents requests to them as `localhost:<port>` and
+rewrites their redirects back.
+
+For a program that needs a fixed local port (a database client, say), forward
+one:
+
+```sh
+berth forward devl 5432          # localhost:5432 → devl:5432
+berth forward devl 8080:3000     # localhost:8080 → devl:3000
+berth forwards
+berth unforward ID
+```
+
+And for a router on the box that dispatches by host name:
+
+```sh
+berth route add '*.app.localhost' devl 8080    # Host header passed unchanged
+```
+
+## Editors
+
+```sh
+berth ssh-config --write                   # an SSH host per box, berth-<box>, for editors
+berth edit devl/cal/billing src/app.ts:42  # open a file at a line (--in cursor|vscode|windsurf|zed)
+```

@@ -1,16 +1,14 @@
-# Templates
+---
+title: Project config
+description: A repository's .berth/config.json says how every worktree is set up, run and torn down, on every box.
+---
 
-Two kinds of template shape new work.
+A repository's `.berth/config.json`, committed with the code, says how every
+worktree of that repository is set up and torn down, which ports,
+environment and services it gets, and which agents to offer. It travels with
+the repo, so every box does the same.
 
-- **A repository's `.berth/config.json`**, committed with the code, says how
-  every worktree of that repository is set up and torn down, and which agents
-  to offer. It travels with the repo, so every box does the same.
-- **Task templates** in `~/.berth/templates/` are yours: kinds of task you
-  start often, with the agent, branch and prompt filled in.
-
-## `.berth/config.json`
-
-```json
+```json title=".berth/config.json"
 {
   "setup": "pnpm install && createdb $BERTH_WORKTREE_SLUG",
   "archive": "dropdb --if-exists $BERTH_WORKTREE_SLUG",
@@ -33,130 +31,100 @@ Two kinds of template shape new work.
 }
 ```
 
-Everything here applies to each worktree of the repository:
+Every field is optional; [the config reference](/reference/config) lists
+them all with their rules.
+
+## Setup and teardown
+
+- `setup` runs right after a worktree is created, in it, through a login
+  shell (up to 30 minutes, with its output in a log on the box).
+- `archive` runs before a worktree is removed, after its services stop; if it
+  fails, the worktree stays.
+- Both also get Orca's names (`ORCA_ROOT_PATH`, `ORCA_WORKTREE_PATH`,
+  `ORCA_WORKSPACE_NAME`), so setup scripts written for Orca work unchanged.
+
+## Ports and environment
 
 - **Ports.** Every worktree has its own block of ports, stable for its life
   and freed when it is removed: `$BERTH_PORT`, then `$BERTH_PORT_1`… up to
-  `ports` of them (at most 10). Any port in a worktree's block reaches it at
-  `http://<worktree>.<location>.<box>.localhost:1377/`, whatever process
-  listens on it, containers included.
+  `ports` of them (at most 10; at least one). Any port in a worktree's block
+  reaches it at `http://<worktree>.<location>.<box>.localhost:1377/`,
+  whatever process listens on it, containers included.
 - **Environment.** Everything run in a worktree (setup and archive scripts,
-  terminals and agents, `exec`, hooks, services) gets `BERTH_BOX`,
-  `BERTH_LOCATION`, `BERTH_ROOT_PATH`, `BERTH_WORKTREE_PATH`,
-  `BERTH_WORKTREE_NAME`, `BERTH_WORKTREE_SLUG` (like `cal_fix_billing`, safe
-  for database names), `BERTH_BRANCH` and the ports, then `env` with those
-  expanded. A value can be a [secret reference](#secrets) instead.
-- **Services** run in each worktree as managed processes that survive the
-  daemon restarting and come back if they crash, with their output in a log.
-  `autostart` ones start when the worktree is created, after setup; all of
-  them stop before the archive script runs. A service also gets `PORT`
-  unless `env` sets it. Start and stop them from the app's Run menu.
-- **Hooks** fire only for this repository's events, inside the worktree the
-  event is about, with its environment. `before:` gates here can refuse
-  actions in this repository.
-- **Flows** are this repository's automations; see
-  [automations.md](automations.md).
-- `setup` runs right after a worktree is created; `archive` before it is
-  removed, and the worktree stays if it fails. Both also get Orca's names
-  (`ORCA_ROOT_PATH`, `ORCA_WORKTREE_PATH`, `ORCA_WORKSPACE_NAME`), so setup
-  scripts written for Orca work unchanged.
-- `agents` adds ways to start agents in this repository, or replaces a
-  built-in one with the same `id` (`claude`, `codex`, `opencode`, `gemini`,
-  `cursor`).
+  terminals and agents, `exec`, hooks, flows, services) gets these, then
+  `env` with them expanded:
 
-### Secrets
+| Variable | Meaning |
+| --- | --- |
+| `BERTH_BOX` | The box's name for itself |
+| `BERTH_LOCATION` | The location, like `cal` |
+| `BERTH_ROOT_PATH` | The repository's main checkout |
+| `BERTH_WORKTREE_PATH`, `BERTH_WORKTREE_NAME` | This worktree |
+| `BERTH_WORKTREE_SLUG` | Like `cal_fix_billing`, safe for database names |
+| `BERTH_BRANCH` | Its branch |
+| `BERTH_PORT`, `BERTH_PORT_1`, … | Its ports |
+| `BERTH_KIT_DIR` | Where the project's [kit](/guides/kits) keeps its files, if it has one |
 
-An `env` value can name a secret instead of holding it, so the file, or a
-kit, can be shared, even publicly, without one in it:
+A value in `env` can use `$NAME` for those variables or berthd's own
+environment, and can be a [secret reference](/guides/secrets) instead of a
+value.
 
-```json
-"env": {
-  "DATABASE_PASSWORD": "op://dev/cal-db/password",
-  "STRIPE_SECRET_KEY": "op://dev/Stripe test/secret key",
-  "OPENAI_API_KEY": "env://OPENAI_API_KEY"
-}
-```
+## Services
 
-- `op://vault/item/field` (or `op://vault/item/section/field`, with
-  `?attribute=otp` and the like) is 1Password's own reference syntax,
-  read with the 1Password CLI on the box: `op read`. Install `op` on the
-  box; berthd finds it on its `PATH`, in `~/.local/bin`, `/opt/homebrew/bin`
-  or `/usr/local/bin`, or wherever `$BERTH_OP` says. It signs in with a
-  [service account](https://developer.1password.com/docs/service-accounts/)
-  when `OP_SERVICE_ACCOUNT_TOKEN` is set, in berthd's own environment or in
-  the box's `~/.berth/env.json` (which every worktree also gets, so berthd's
-  environment is the tighter place), and otherwise with the box user's own
-  signed-in `op`.
-- `env://NAME` passes on a variable from berthd's own environment, under
-  whatever name the project wants.
+Services run in each worktree as managed processes that survive the daemon
+restarting and come back if they crash, with their output in a log.
 
-The box reads a reference when it builds a worktree's environment for a
-hook, a flow, a setup script or `exec`, and keeps the value in memory for
-five minutes. It never writes a value to disk or
-puts one in a log, an event, the API or an error: config, `GET
-/v1/locations/{name}/config` and `GET /v1/env` show the reference. A value
-is not expanded, so a `$` in a password stays a `$`.
-
-If a reference cannot be read (no `op`, not signed in, no such item, a
-read that takes over 15 seconds), what needs it still starts, without that
-variable, and the box sends one `secret.failed` event with the variable,
-the reference and the reason, which the app shows as a notification. A
-failure is remembered for 30 seconds, so a broken reference does not run
-`op` for every hook.
-
-Terminals, agents and services don't get values from berthd at all: tmux
-takes a session's environment as command-line arguments, which other
-processes can read, and a service's unit file is on disk and restarted by
-the service manager without berthd. So they get the references, and their
-program runs behind `berthd secret exec`, which resolves them in its own
-memory and then replaces itself with the shell or agent (the pane's process
-and the session's command are the ones asked for). It prints which
-variables it could not set, and reports to the box, through its local
-socket, which resolved and which failed (never a value), so the box can
-announce failures. For a service, `env://` reads the service manager's
-environment. Each start reads `op` afresh, so a service that keeps
-crashing reads it on every restart.
-
-Check one from the app (Project settings → Environment → **Test**), or:
+- `autostart` ones start when the worktree is created, after setup succeeds.
+- All of them stop before the archive script runs.
+- A service also gets `PORT` (its worktree's `$BERTH_PORT`) unless `env`
+  sets it.
+- Start, stop and open them from the app's **Run** menu, or:
 
 ```sh
-berth secret test devl op://dev/cal-db/password   # Resolved op://dev/cal-db/password: 24 characters
+berth service list devl/cal/billing
+berth service start devl/cal/billing web
+berth service log devl/cal/billing web
 ```
 
-Either way the box reports only whether it could read it and how long the
-value is.
+## Agents
 
-### This box only
+`agents` adds ways to start agents in this repository, or replaces a
+built-in one with the same `id` (`claude`, `codex`, `opencode`, `gemini`,
+`cursor`). A first prompt goes at the end of `command`, or after
+`prompt_flag` if the agent needs one.
+
+## Hooks and flows
+
+- **Hooks** fire only for this repository's events, inside the worktree the
+  event is about, with its environment. `before:` gates here can refuse
+  actions in this repository. See [hooks](/guides/hooks).
+- **Flows** are this repository's automations, on every box that has it.
+  See [automations](/guides/automations).
+
+## This box only
 
 Some of it should not be committed: a database password, one box's paths.
-Each box keeps its own config for a location, laid over the file: scripts,
-ports and env entries replace the file's; services, agents and flows replace by
-name; and hooks add up. Edit it in the app's Project settings, or
-`PUT /v1/locations/{name}/config` on the box.
+Each box keeps its own config for a location, laid over the file (and over
+the project's kit, if it has one):
+
+- `setup`, `archive`, `ports` and each `env` entry replace the file's;
+- `services`, `agents` and `flows` replace the file's by name or id, and add
+  new ones;
+- `hooks` add up.
+
+Edit it in the app's Project settings, or `PUT /v1/locations/{name}/config`
+on the box. `berth location config devl/cal` shows the repository's, the
+box's and the effective config side by side.
+
+```sh
+berth location scripts devl/cal --setup "make bootstrap"   # just the scripts
+berth location scripts devl/cal --clear
+```
+
+A box can also give every worktree on it some environment, in
+`~/.berth/env.json` (`{"env": {"KEY": "value"}}`), under the project's own.
 
 ## Task templates
 
-One JSON file per template in `~/.berth/templates/`; the file name is its id.
-
-```json
-{
-  "name": "Fix a bug",
-  "description": "A fresh branch and Claude Code, asked for a failing test first.",
-  "box": "devl",
-  "location": "cal",
-  "agent": "claude",
-  "branch": "fix/{{name}}",
-  "base": "main",
-  "prompt": "Fix this bug: {{issue}}\n\nReproduce it with a failing test first.",
-  "variables": [{ "id": "issue", "label": "What's broken", "multiline": true }]
-}
-```
-
-- `box` and `location` are defaults the New Task dialog starts from.
-- `{{name}}` is the task's name, which is also the worktree's.
-- Every other `{{var}}` in `branch` or `prompt` becomes an input; `variables`
-  gives them labels and makes long ones multi-line.
-- A branch that already exists, locally or on `origin`, is checked out as it
-  is, so a template can review or continue existing work.
-
-[examples/templates](../examples/templates) has two to start from.
+For kinds of task you start often, with the agent, branch and prompt filled
+in, see [task templates](/guides/task-templates).

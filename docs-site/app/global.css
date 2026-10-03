@@ -1,0 +1,479 @@
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+@import '../components/art/scenes.css';
+
+/* Berth docs: "harbour by day", the landing page's palette and rules
+   (site/styles.css, design/brand/index.html).
+   - Quiet cool neutrals. Amber is the logo's dot: the one lamp in a drawing,
+     or the thing that needs you (a warning). Never decoration.
+   - Small labels are sentence case, never uppercase or tracked.
+   - State is never a coloured stripe down one side of a card or row.
+   - Light and dark are both designed; the theme follows the system. */
+
+
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, 'SF Mono', Menlo, monospace;
+  --radius-xl: 0.75rem;
+  --radius-2xl: 0.875rem;
+
+  /* Light: the landing page in daylight. */
+  --color-fd-background: #ffffff;
+  --color-fd-foreground: #26272b;
+  --color-fd-muted: #f2f2f4;
+  --color-fd-muted-foreground: #686a73;
+  --color-fd-popover: #ffffff;
+  --color-fd-popover-foreground: #26272b;
+  --color-fd-card: #f8f8fa;
+  --color-fd-card-foreground: #26272b;
+  --color-fd-border: #e6e6ea;
+  --color-fd-primary: #26272b;
+  --color-fd-primary-foreground: #fafafa;
+  --color-fd-secondary: #f2f2f4;
+  --color-fd-secondary-foreground: #26272b;
+  --color-fd-accent: #ececef;
+  --color-fd-accent-foreground: #1d1e22;
+  --color-fd-ring: #a3a5ad;
+  --color-fd-overlay: rgb(20 22 30 / 0.24);
+}
+
+@theme static {
+  /* Callout and badge colours stay quiet: only a warning is amber. */
+  --color-fd-info: #686a73;
+  --color-fd-warning: #c27a12;
+  --color-fd-error: #d93a2e;
+  --color-fd-success: #1f9d55;
+  --color-fd-idea: #686a73;
+}
+
+:root {
+  --berth-amber: #c27a12;
+  --berth-amber-text: #9a5f0b;
+  --berth-fg-2: #45474e;
+  --berth-code-bg: #f6f6f8;
+  --berth-border-soft: #eeeef1;
+  --berth-sidebar: #f8f8fa;
+  /* The scenes take these names from the app's theme. */
+  --warning: var(--berth-amber);
+  --muted-foreground: #8a8c95;
+}
+
+/* Dark: the landing page's own, as in the app. */
+.dark {
+  --color-fd-background: #18191c;
+  --color-fd-foreground: #e3e4e8;
+  --color-fd-muted: #25262b;
+  --color-fd-muted-foreground: #8d8f98;
+  --color-fd-popover: #1f2024;
+  --color-fd-popover-foreground: #e3e4e8;
+  --color-fd-card: #1c1d21;
+  --color-fd-card-foreground: #e3e4e8;
+  --color-fd-border: #2c2d33;
+  --color-fd-primary: #e3e4e8;
+  --color-fd-primary-foreground: #18191c;
+  --color-fd-secondary: #25262b;
+  --color-fd-secondary-foreground: #e3e4e8;
+  --color-fd-accent: #2a2b31;
+  --color-fd-accent-foreground: #f1f2f4;
+  --color-fd-ring: #5b5d66;
+  --color-fd-overlay: rgb(0 0 0 / 0.5);
+  --color-fd-info: #8d8f98;
+  --color-fd-warning: #e8a33d;
+  --color-fd-error: #f0564a;
+  --color-fd-success: #3fb950;
+  --color-fd-idea: #8d8f98;
+
+  --berth-amber: #e8a33d;
+  --berth-amber-text: #e8a33d;
+  --berth-fg-2: #b6b8bf;
+  --berth-code-bg: #141518;
+  --berth-border-soft: #242529;
+  --berth-sidebar: #18191c;
+  --muted-foreground: #8a8c95;
+}
+
+.dark #nd-sidebar {
+  --color-fd-muted: #25262b;
+  --color-fd-secondary: #25262b;
+  --color-fd-muted-foreground: #8d8f98;
+}
+
+html {
+  scrollbar-gutter: stable;
+  -webkit-text-size-adjust: 100%;
+}
+
+html > body[data-scroll-locked] {
+  margin-right: 0px !important;
+  --removed-body-scroll-bar-size: 0px !important;
+}
+
+body {
+  font-feature-settings: 'cv11', 'ss01';
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Mono: JetBrains Mono, ligatures off (=> and != stay as typed). */
+code,
+pre,
+kbd,
+samp {
+  font-family: var(--font-mono);
+  font-variant-ligatures: none;
+  font-feature-settings: 'liga' 0, 'calt' 0;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--color-fd-foreground) 16%, transparent);
+}
+
+:focus-visible {
+  outline-color: var(--color-fd-foreground);
+}
+
+/* Brand lockup in the header and sidebar. */
+.berth-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--color-fd-foreground);
+  font-weight: 600;
+  font-size: 17px;
+  letter-spacing: -0.025em;
+  line-height: 1;
+}
+
+.berth-brand-mark {
+  width: 16px;
+  height: 20px;
+  flex: none;
+}
+
+.berth-brand-docs {
+  font-weight: 450;
+  color: var(--color-fd-muted-foreground);
+  letter-spacing: -0.01em;
+}
+
+/* Sidebar: quiet; the current page is a neutral fill, never amber or a
+   stripe. Section labels are sentence case and untracked. */
+#nd-sidebar {
+  background: var(--berth-sidebar);
+}
+
+#nd-sidebar a[data-active='true'],
+#nd-sidebar-mobile a[data-active='true'] {
+  color: var(--color-fd-foreground);
+  background: var(--color-fd-accent);
+  font-weight: 500;
+}
+
+#nd-sidebar a[data-active='true']::before,
+#nd-sidebar-mobile a[data-active='true']::before {
+  display: none;
+}
+
+#nd-sidebar p,
+#nd-sidebar [class*='uppercase'],
+#nd-sidebar-mobile p,
+#nd-sidebar-mobile [class*='uppercase'] {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+/* Page type. */
+#nd-page h1 {
+  letter-spacing: -0.025em;
+  font-weight: 600;
+  text-wrap: balance;
+}
+
+.prose {
+  --tw-prose-body: var(--berth-fg-2);
+  --tw-prose-headings: var(--color-fd-foreground);
+  --tw-prose-links: var(--color-fd-foreground);
+  --tw-prose-bold: var(--color-fd-foreground);
+  --tw-prose-counters: var(--color-fd-muted-foreground);
+  --tw-prose-bullets: var(--color-fd-muted-foreground);
+  --tw-prose-hr: var(--color-fd-border);
+  --tw-prose-quotes: var(--color-fd-foreground);
+  --tw-prose-code: var(--color-fd-foreground);
+  --tw-prose-th-borders: var(--color-fd-border);
+  --tw-prose-td-borders: var(--berth-border-soft);
+  line-height: 1.7;
+}
+
+.prose :where(h2, h3, h4):not(:where(.not-prose *)) {
+  letter-spacing: -0.015em;
+  font-weight: 600;
+  text-wrap: balance;
+}
+
+.prose :where(p, li):not(:where(.not-prose *)) {
+  text-wrap: pretty;
+}
+
+.prose :where(a):not(:where(.not-prose *)) {
+  text-decoration-color: color-mix(in srgb, var(--color-fd-foreground) 35%, transparent);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+  font-weight: 500;
+}
+
+.prose :where(a):not(:where(.not-prose *)):hover {
+  text-decoration-color: currentColor;
+}
+
+/* Inline code: a quiet chip, like the landing page's. */
+.prose :where(:not(pre) > code):not(:where(.not-prose *)) {
+  font-size: 0.86em;
+  padding: 0.12em 0.36em;
+  border-radius: 5px;
+  background: var(--berth-code-bg);
+  border: 1px solid var(--berth-border-soft);
+  color: var(--color-fd-foreground);
+  overflow-wrap: anywhere;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* Tables: one outline, quiet header, no zebra. */
+.prose :where(table):not(:where(.not-prose *)) {
+  font-size: 0.875rem;
+}
+
+.prose :where(thead th):not(:where(.not-prose *)) {
+  font-weight: 500;
+  color: var(--color-fd-foreground);
+}
+
+/* Code blocks: a quiet theme on the code ground, one hairline outline. */
+figure.shiki {
+  background: var(--berth-code-bg) !important;
+  border-color: var(--color-fd-border);
+  box-shadow: none;
+}
+
+figure.shiki pre,
+figure.shiki code {
+  background: transparent !important;
+}
+
+figure.shiki > div:first-child:has(figcaption) {
+  border-color: var(--berth-border-soft);
+  color: var(--color-fd-muted-foreground);
+}
+
+/* Cards: an outline that firms up on hover; no tinted fills, no stripes. */
+#nd-page a[data-card] {
+  background: var(--color-fd-background);
+  box-shadow: none;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+#nd-page a[data-card]:hover {
+  background: var(--color-fd-card);
+  border-color: color-mix(in srgb, var(--color-fd-foreground) 25%, var(--color-fd-border));
+}
+
+/* Callouts (components/callout.tsx). */
+.berth-callout {
+  display: flex;
+  gap: 12px;
+  margin: 1.25rem 0;
+  padding: 12px 16px;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 12px;
+  background: var(--color-fd-card);
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: var(--berth-fg-2);
+}
+
+.berth-callout[data-type='warning'] {
+  border-color: color-mix(in srgb, var(--berth-amber) 55%, var(--color-fd-border));
+}
+
+.berth-callout[data-type='error'] {
+  border-color: color-mix(in srgb, var(--color-fd-error) 50%, var(--color-fd-border));
+}
+
+.berth-callout-icon {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  color: var(--color-fd-muted-foreground);
+}
+
+.berth-callout[data-type='warning'] .berth-callout-icon {
+  color: var(--berth-amber);
+}
+
+.berth-callout[data-type='error'] .berth-callout-icon {
+  color: var(--color-fd-error);
+}
+
+.berth-callout-body {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.berth-callout-title {
+  margin: 0;
+  font-weight: 600;
+  color: var(--color-fd-foreground);
+}
+
+.berth-callout-text > * {
+  margin: 0;
+}
+
+.berth-callout-text > * + * {
+  margin-top: 0.5em;
+}
+
+.berth-callout-text a {
+  color: var(--color-fd-foreground);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--color-fd-foreground) 35%, transparent);
+  text-underline-offset: 3px;
+}
+
+.berth-callout-text code {
+  font-size: 0.86em;
+  padding: 0.1em 0.32em;
+  border-radius: 5px;
+  background: var(--berth-code-bg);
+  border: 1px solid var(--berth-border-soft);
+  color: var(--color-fd-foreground);
+  overflow-wrap: anywhere;
+}
+
+/* Scenes: small, muted, and restrained. */
+.berth-art {
+  color: color-mix(in srgb, var(--color-fd-muted-foreground) 85%, transparent);
+}
+
+.docs-hero-scene {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 0 0 8px;
+}
+
+/* Search: the empty state. */
+.berth-search-empty {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  padding: 28px 16px 24px;
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--color-fd-muted-foreground);
+}
+
+/* 404. */
+.berth-not-found {
+  display: grid;
+  justify-items: start;
+  align-content: start;
+  gap: 12px;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: clamp(48px, 10vh, 120px) 16px 64px;
+}
+
+.berth-not-found h1 {
+  font-size: clamp(26px, 4vw, 34px);
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  color: var(--color-fd-foreground);
+  margin: 0;
+}
+
+.berth-not-found p {
+  color: var(--berth-fg-2);
+  max-width: 52ch;
+  margin: 0;
+}
+
+.berth-not-found .berth-not-found-code {
+  font: 500 13px var(--font-mono);
+  color: var(--color-fd-muted-foreground);
+}
+
+.berth-not-found-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.berth-not-found-links a {
+  display: inline-flex;
+  align-items: center;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 9px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--color-fd-foreground);
+  text-decoration: none;
+  transition: border-color 0.15s;
+}
+
+.berth-not-found-links a:first-child {
+  background: var(--color-fd-foreground);
+  border-color: var(--color-fd-foreground);
+  color: var(--color-fd-background);
+}
+
+.berth-not-found-links a:hover {
+  border-color: color-mix(in srgb, var(--color-fd-foreground) 30%, var(--color-fd-border));
+}
+
+/* Edit on GitHub: a quiet link at the end of the page, not a slab. */
+.berth-edit-row {
+  display: flex;
+}
+
+a.berth-edit {
+  width: auto;
+  background: transparent;
+  border: 1px solid var(--color-fd-border);
+  color: var(--color-fd-muted-foreground);
+  font-weight: 500;
+}
+
+a.berth-edit:hover {
+  color: var(--color-fd-foreground);
+  background: var(--color-fd-accent);
+}
+
+/* In tables, code wraps only at spaces, or when a word is wider than its
+   column could ever be; field names never break mid-word. */
+.prose :where(td, th) :where(code):not(:where(.not-prose *)) {
+  overflow-wrap: break-word;
+}
+
+/* The table of contents names headings; no chips there. */
+#nd-toc code {
+  font-size: 0.92em;
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+/* Code in headings reads as the heading, not as a chip. */
+.prose :where(h1, h2, h3, h4) :where(code):not(:where(.not-prose *)) {
+  font-size: 0.9em;
+  padding: 0;
+  border: 0;
+  background: none;
+}

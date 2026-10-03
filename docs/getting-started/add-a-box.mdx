@@ -1,0 +1,136 @@
+---
+title: Add a box
+description: Install berthd on a development machine with one line and pair with its link, or do both over SSH.
+---
+
+A **box** is any Linux machine your agents run on: a VPS, a cloud VM, the
+desktop under your desk. It runs `berthd`, Berth's daemon, as a user service.
+The laptop pairs with it once and from then on talks to it over pinned mutual
+TLS; SSH is used at most once, to install.
+
+## What a box needs
+
+- Linux on amd64 or arm64
+- `git` (repositories and worktrees) and `tmux` (sessions)
+- a [Tailscale](https://tailscale.com) address, unless you choose to listen
+  elsewhere (see [Where berthd listens](#where-berthd-listens))
+- optional: the agent CLIs you want to run (`claude`, `codex`, …), and
+  `cloudflared` for public shares
+
+## With a pairing link
+
+Install berthd on the box with one line, as the user your agents will run as:
+
+```sh
+curl -fsSL https://berthd.app/install | sh
+```
+
+It installs berthd for that user, starts its service, and prints a link:
+
+```text
+Pairing link (single use, valid for 10m0s):
+  berth://100.101.102.103:7444?code=…&fp=…
+```
+
+On the laptop, paste it in the app (**Add a box → Paste a pairing link**),
+or:
+
+```sh
+bin/berth pair 'berth://100.101.102.103:7444?code=…&fp=…' [--name my-box]
+```
+
+The link carries the box's fingerprint, so the laptop knows exactly which box
+to trust, and a single-use code that expires after ten minutes. For another
+laptop, or once it expires, run `berthd pair` on the box for a fresh one
+(`--ttl` changes the expiry, up to an hour). How the code is proven without
+being sent is in [the security model](/concepts/security#pairing).
+
+## Over SSH
+
+If you'd rather not log in to the box, and you can `ssh me@my-box`, one
+command on the laptop installs and pairs:
+
+```sh
+bin/berth add ssh me@my-box
+```
+
+It:
+
+1. opens one SSH connection (asking any password or host-key question once;
+   if your keys are refused it tries 1Password's SSH agent);
+2. checks the box's platform with `uname`;
+3. uploads the matching `berthd-linux-<arch>` from beside `berth` to
+   `~/.local/bin/berthd`;
+4. runs `berthd install`, which sets berthd up as a systemd user service;
+5. runs `berthd pair` and pairs this laptop with the link it prints.
+
+```text
+Paired with my-box at 100.101.102.103:7444. SSH is no longer needed for this box.
+```
+
+Options:
+
+| Flag | What it does |
+| --- | --- |
+| `--name N` | What to call the box in Berth (default: its hostname). It becomes part of URLs like `3000.N.localhost`. |
+| `--network NET` | Reach the box through one of [your other tailnets](#boxes-on-another-tailnet). |
+| `--listen ADDR` | Passed to `berthd install`, for a box without a tailnet address. |
+| `--address ADDR` | The address the laptop should dial, when the one berthd guesses is wrong. |
+| `-- OPTIONS` | Anything after `--` goes to `ssh`. |
+
+<Callout title="Keep it running after you log out">
+  `berthd install` warns when user lingering is off, because systemd then
+  stops user services at logout. Turn it on once with
+  `sudo loginctl enable-linger $USER`.
+</Callout>
+
+## In the app
+
+**Add a box** (in Settings → Boxes, the sidebar's Projects menu, or ⌘K)
+offers three ways:
+
+- **On my tailnet**: pick a machine your laptop reaches over Tailscale, give
+  an SSH user and a name, and **Install and pair**. This is `berth add ssh`.
+- **On another tailnet**: sign in to a second tailnet in the browser first.
+- **Paste a pairing link**: from `berthd pair`, on a box that already runs Berth.
+
+## Where berthd listens
+
+By default berthd listens on the box's tailnet address, port 7444, and
+**refuses to start** if the box has none. To accept connections from the
+internet, say so:
+
+```sh
+berthd install --listen 0.0.0.0:7444                       # by hand
+curl -fsSL https://berthd.app/install | BERTHD_LISTEN=0.0.0.0:7444 sh   # with the installer
+```
+
+Pairing is still required, and every connection still pins both keys; the
+flag only changes who can attempt a handshake. `berthd doctor` warns about it.
+
+## Boxes on another tailnet
+
+A laptop's own Tailscale can only be on one tailnet. For boxes on another
+(a personal tailnet while the laptop is on work's), the laptop agent runs an
+embedded Tailscale node per network:
+
+```sh
+bin/berth network login personal          # a one-time browser sign-in
+bin/berth discover --network personal     # machines there that could be boxes
+bin/berth add ssh me@homelab --network personal
+```
+
+Each box remembers the network it is reached through. Berth's own TLS still
+runs on top; the tailnet only provides the route.
+
+## Check it
+
+```sh
+bin/berth boxes        # paired boxes and whether they are online
+bin/berth ping my-box  # it answers, and still trusts this laptop
+bin/berth doctor my-box
+```
+
+## Next
+
+[Your first project and worktree](/getting-started/first-project).

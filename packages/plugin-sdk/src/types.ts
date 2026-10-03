@@ -1,4 +1,4 @@
-// The JSON the laptop agent and boxes speak, as docs/app-api.md describes it.
+// The JSON the laptop agent and boxes speak, as docs/reference/app-api.mdx describes it.
 // Field names follow the Go structs exactly; the app and plugins share these.
 
 export type BoxState = "connecting" | "online" | "offline" | "untrusted";

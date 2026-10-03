@@ -1,6 +1,6 @@
 import type { Hook } from "@/lib/api";
 
-// The events and gates a hook can follow, from docs/hooks.md. The editor's
+// The events and gates a hook can follow, from docs/reference/events.mdx. The editor's
 // picker, the readable labels in the table, and the $BERTH_* variables shown
 // while writing a command all come from here.
 

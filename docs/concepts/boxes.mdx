@@ -1,0 +1,97 @@
+---
+title: Boxes
+description: The machines your agents run on, and what berthd keeps on each.
+---
+
+A **box** is a Linux machine that runs `berthd`: a VPS, a cloud VM, a
+desktop under your desk. It is where repositories live, where agents and dev
+servers run, and where automations fire. Boxes are always on, so work
+continues while your laptop is asleep or shut.
+
+A laptop can pair with any number of boxes, and a box can be paired with
+several laptops. Each box has a name on your laptop (`devl`, `gpu`,
+`homelab`), which is also part of its URLs: `http://3000.devl.localhost:1377/`.
+
+## What berthd keeps
+
+- **Locations**: named directories, usually git repositories, and their
+  worktrees. See [projects and worktrees](/concepts/projects-and-worktrees).
+- **Sessions**: programs (usually agents) running in Berth's own tmux
+  server. See [sessions and agents](/concepts/sessions-and-agents).
+- **Services**: each worktree's dev servers and workers, from the
+  repository's config, kept running by the service manager.
+- **Units**: any other long-lived program you want on the box.
+- **Shares**: public links to a port.
+- **Hooks, flows and the resource guard**: automation that runs on the box.
+- **The phone companion**, when you turn it on.
+
+berthd runs as a systemd user service (`berthd install`, which `berth add ssh`
+does for you) and survives restarts and upgrades without touching running
+sessions. Its state is in `~/.config/berth/box/`; files you write by hand
+(`hooks.json`, `flows.json`, `env.json`, `guard.json`) are in `~/.berth/`.
+See [files and environment](/reference/files).
+
+## Online, offline, untrusted
+
+The laptop agent keeps one connection per box and reports each as
+`connecting`, `online`, `offline` or `untrusted` (the box no longer trusts
+this laptop's key):
+
+```sh
+berth boxes
+berth ping devl
+```
+
+When a box is offline, its sessions keep running out there. The app shows
+what it last knew, and prompts for its agents can wait in the
+[offline queue](/guides/offline-queue).
+
+## Units
+
+A unit is a long-lived program berthd runs on the box under the platform's
+service manager, so it survives reboots and restarts on failure. Its output
+goes to a log file berthd owns.
+
+```sh
+berth unit add devl/tunnel -- cloudflared tunnel run home
+berth units devl
+berth unit log devl/tunnel
+berth unit restart devl/tunnel
+```
+
+A worktree's services are units too, named after the worktree; manage them
+with `berth service` instead.
+
+## Public shares
+
+```sh
+berth share devl 3000      # Port 3000 is public at https://….trycloudflare.com
+berth shares devl
+berth unshare devl ID
+```
+
+The box runs a Cloudflare quick tunnel (it needs `cloudflared` installed), so
+the link keeps working while your laptop sleeps. A share ends when you stop
+it or when berthd stops.
+
+## Upgrades
+
+```sh
+berth upgrade devl           # or --check to only report whether it is older
+```
+
+The laptop uploads the matching daemon over Berth's own connection, with no
+SSH. The box checks the new binary reports its own fingerprint, swaps it in
+and re-executes in place, so sessions and services keep running.
+
+## Health
+
+```sh
+berth stats devl     # memory, disk, load, and agents running or waiting
+berth ports devl     # what is listening, and which process
+berth doctor devl    # git, tmux, cloudflared, agent CLIs, listen address, lingering, paired laptops
+```
+
+The built-in **Box monitor** plugin keeps an hour of history and warns before
+a box runs out. The [resource guard](/guides/resource-guard) can stop idle
+dev servers and pause idle agents when memory runs short.

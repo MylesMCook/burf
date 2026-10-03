@@ -8,7 +8,7 @@ export { handoffPrompt, reviewPrompt } from "@/lib/orchestrate-core";
 
 // Orchestration for the app and its plugins: the logic in orchestrate-core,
 // bound to the app's connection, with sessions and agents looked up in the
-// app's state. See docs/orchestration.md.
+// app's state. See docs/guides/orchestration.mdx.
 
 const call: core.BoxCaller = (box, method, path, body) => {
   const c = useStore.getState().client;

@@ -1,5 +1,5 @@
 // Package pairing turns a one-time code printed on a box into mutual trust
-// between that box and a laptop. See docs/design.md for the protocol.
+// between that box and a laptop. See docs/concepts/security.mdx for the protocol.
 package pairing
 
 import (

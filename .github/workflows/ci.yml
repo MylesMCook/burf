@@ -41,3 +41,22 @@ jobs:
       # Tooltips are the app's own, never the HTML title attribute.
       - run: pnpm check:titles
       - run: pnpm build
+
+  docs-site:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docs-site
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: docs-site/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      # The pages are the repository's docs/ folder; a broken page fails here.
+      - run: pnpm build

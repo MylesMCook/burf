@@ -1,0 +1,159 @@
+---
+title: Config reference
+description: Every field of .berth/config.json, kit.json, and the box's own config files.
+---
+
+## `.berth/config.json`
+
+A repository's config, committed at `.berth/config.json`. The same shape is
+a kit's `config` and a box's own config for a location. A missing file means
+no config; a file that doesn't parse is an error the app and CLI show. A
+guide is in [project config](/guides/project-config).
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `setup` | string | Run in a new worktree, through a login shell, after it is created. Up to 30 minutes, logged on the box. |
+| `archive` | string | Run before a worktree is removed, after its services stop. If it fails, the worktree stays. |
+| `ports` | number | How many ports each worktree gets, 0 to 10. Every worktree gets at least one. |
+| `env` | object | Variables for everything run in a worktree. Keys are `[A-Za-z_][A-Za-z0-9_]*`. Values can use `$NAME` for `BERTH_*` variables and berthd's environment, or be a secret reference. |
+| `services` | array | [Services](#services) run in every worktree. |
+| `agents` | array | [Agent presets](#agents) to add, or to replace built-ins by `id`. |
+| `hooks` | array | [Hooks](#hooks) for this repository's events only, run in the worktree. |
+| `flows` | array | [Flows](#flows) for this repository's worktrees. |
+
+### `services`
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `name` | string | Required. `[a-z0-9][a-z0-9-]*`, at most 32 characters, unique. |
+| `run` | string | Required. Run in the worktree through a login shell, with its environment and `PORT`. |
+| `autostart` | boolean | Start when the worktree is created, after setup succeeds. |
+
+### `agents`
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `id` | string | The preset's id. The same id as a built-in (`claude`, `codex`, `opencode`, `gemini`, `cursor`) replaces it. |
+| `name` | string | Shown in the app. |
+| `command` | string | What to run. |
+| `prompt_flag` | string | How the agent takes a first prompt, when it needs a flag (`--prompt`). Empty: the prompt is the last argument. |
+
+The built-ins are offered when their command is installed on the box:
+`claude`, `codex`, `opencode` (`--prompt`), `gemini` (`-i`) and `cursor`
+(`cursor-agent`).
+
+### `hooks`
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `on` | string | Required. An event type, a prefix like `worktree.*`, `*`, or `before:` and an action for a gate. |
+| `run` | string | Required. Run through `/bin/sh -c` with the event on stdin and in `BERTH_*` variables. |
+| `timeout` | string | A Go duration. Default `1m`, or `30s` for gates. |
+| `tool` | string | Never run for events whose origin is this tool. |
+
+The same shape is used in `~/.berth/hooks.json` (`{"hooks": [...]}`) and in a
+plugin's manifest. See [hooks](/guides/hooks).
+
+### `flows`
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `id` | string | Required. `[a-z0-9][a-z0-9-]*`, at most 48 characters, unique. |
+| `name` | string | Required. |
+| `enabled` | boolean | Default `false`: a flow runs only when it is `true`. |
+| `trigger` | object | Exactly one of `event`, `schedule` or `github`; see below. |
+| `steps` | array | At least one; see below. |
+| `max_runs_per_hour` | number | Default 20. |
+
+`trigger`:
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `event` | string | An event type or prefix. Not a `before:` gate. |
+| `schedule` | string | Cron (`m h dom mon dow`) or `@hourly`, `@daily`, `@midnight`, `@weekly`, `@monthly`, `@yearly`, `@annually`; the box's local time. |
+| `each_worktree` | boolean | With `schedule` only: once for every worktree. |
+| `github` | object | `on`: `review_comment`, `pr_review`, `check_failed` or `pr_merged`; `poll`: a duration, at least `1m`, default `2m`. |
+| `where` | object | `location`, `agent`, `branch` (a trailing `*` matches a prefix). Empty matches anything. |
+
+Each of `steps`:
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `id` | string | Optional, unique in the flow. Unnamed steps are `1`, `2`, … |
+| `kind` | string | `run`, `prompt`, `wait`, `start_agent`, `notify` or `webhook`. |
+| `when` | string | `success` (default), `failure` or `always`. |
+| `command` | string | `run`: required. |
+| `text` | string | `prompt`: required, the prompt. `start_agent`: its first prompt. `notify`: the body. `webhook`: the JSON body (default: every variable). |
+| `title` | string | `notify`: required. |
+| `session` | string | `prompt`: which session (default: the agent that triggered the flow). |
+| `for` | array | `wait`: states that end it (default `finished`, `waiting`). |
+| `agent` | string | `start_agent`: required, a preset id. |
+| `new_worktree`, `name` | boolean, string | `start_agent`: in a new worktree, and its name. |
+| `url` | string | `webhook`: required, `http` or `https`. |
+| `timeout` | string | A duration: `run` 10m, `wait` 30m, `webhook` 15s by default; at most 2h. |
+
+Variables and behaviour are in [automations](/guides/automations#steps).
+
+## How layers merge
+
+A location's effective config is the repository's file, then its kit's
+`config`, then the box's own config for it:
+
+| Field | Merge |
+| --- | --- |
+| `setup`, `archive` | The later one wins if set |
+| `ports` | The later one wins if set |
+| `env` | Key by key; the later one wins |
+| `services`, `agents`, `flows` | By `name` or `id`: a later one replaces, new ones are added |
+| `hooks` | Added up: the file's, the kit's, then the box's |
+
+`berth location config BOX/LOC` prints all three and the result.
+
+## `kit.json`
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `id` | string | Required. `[a-z0-9][a-z0-9-]*`, at most 48 characters. |
+| `name` | string | Default: the id. |
+| `description` | string | |
+| `version` | string | Shown, and compared to flag projects running an older one. |
+| `match` | object | `slug`: the `owner/repo` it is for. Selects matching projects in the app; nothing enforces it. |
+| `requires` | array | `{ "tool": "psql", "hint": "how to install it" }`. A missing tool is a warning when the kit is applied. |
+| `config` | object | A `.berth/config.json`, validated by the same rules. |
+| `files` | object | Small files inline, `{ "scripts/setup.sh": "…" }`. Paths stay inside the kit. |
+
+A kit's files are copied to each box it is applied to, and
+`$BERTH_KIT_DIR` points at them. Files starting with `#!` are made
+executable. See [kits](/guides/kits).
+
+## Task templates
+
+`~/.berth/templates/<id>.json` on the laptop:
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `name` | string | Shown in the New worktree dialog. |
+| `description` | string | |
+| `box`, `location` | string | Where the dialog starts. |
+| `agent` | string | A preset id. |
+| `command` | string | Run instead of a preset. |
+| `branch`, `base` | string | The branch (with `{{name}}` and variables) and what it starts from. |
+| `prompt` | string | The first prompt, with variables. |
+| `variables` | array | `{ "id", "label", "default", "multiline" }` for each `{{var}}`. |
+
+See [task templates](/guides/task-templates).
+
+## Box files
+
+In `~/.berth/` on a box:
+
+| File | Shape | What it is for |
+| --- | --- | --- |
+| `hooks.json` | `{ "hooks": [Hook] }` | [Hooks](/guides/hooks) for the box |
+| `flows.json` | `{ "flows": [Flow] }` | Flows for any project on the box |
+| `env.json` | `{ "env": { "KEY": "value" } }` | Environment for every worktree on the box, under each project's own; values may be secret references. `OP_*` keys reach `op`. |
+| `guard.json` | `{ "enabled", "memory_percent", "sustain", "stop_services", "pause_agents" }` | The [resource guard](/guides/resource-guard) |
+| `plugins/<id>/berth-plugin.json` | A plugin manifest | Its hooks run on the box too |
+
+Changing env, flows, the guard or a location's config through the API runs
+`before:config.change` gates and announces `config.changed`.

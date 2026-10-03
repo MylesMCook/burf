@@ -54,19 +54,21 @@ cd app && pnpm install && pnpm tauri dev   # the desktop app
 
 ## Docs
 
-- [design.md](docs/design.md): architecture and security model
-- [app-api.md](docs/app-api.md): the API the app and plugins use
-- [templates.md](docs/templates.md): `.berth/config.json` (ports, env, services) and task templates
-- [kits.md](docs/kits.md): set projects up on every box, shared as a link
-- [automations.md](docs/automations.md): flows, schedules, GitHub triggers, the resource guard
-- [hooks.md](docs/hooks.md): events, hooks and gates
-- [orchestration.md](docs/orchestration.md): agents driving agents
-- [phone.md](docs/phone.md): the phone companion
-- [integrations.md](docs/integrations.md): agent tools, skills
+The documentation is at [docs.berthd.app](https://docs.berthd.app). Its pages
+are the [`docs/`](docs) folder here, built by [`docs-site/`](docs-site):
+
+- [Install](docs/getting-started/install.mdx), [add a box](docs/getting-started/add-a-box.mdx), [first project](docs/getting-started/first-project.mdx), [first agent](docs/getting-started/first-agent.mdx)
+- [How Berth works](docs/concepts/architecture.mdx) and [the security model](docs/concepts/security.mdx)
+- [Orchestration](docs/guides/orchestration.mdx): agents driving agents, and [the offline queue](docs/guides/offline-queue.mdx)
+- [Automations](docs/guides/automations.mdx): flows, schedules, GitHub triggers; [hooks and gates](docs/guides/hooks.mdx)
+- [Project config](docs/guides/project-config.mdx) (`.berth/config.json`), [kits](docs/guides/kits.mdx), [secrets](docs/guides/secrets.mdx)
+- [The phone companion](docs/guides/phone.mdx), [agent integrations](docs/guides/agent-integrations.mdx), [plugins](docs/guides/plugins.mdx)
+- Reference: [CLI](docs/reference/cli.mdx), [berthd](docs/reference/berthd.mdx), [config](docs/reference/config.mdx), [events](docs/reference/events.mdx), [the app's API](docs/reference/app-api.mdx), [plugin SDK](docs/reference/plugin-sdk.mdx)
 
 ## Development
 
 ```sh
-make test          # go vet + go test -race
-pnpm -C app build  # typecheck and build the app
+make test               # go vet + go test -race
+pnpm -C app build       # typecheck and build the app
+pnpm -C docs-site dev   # the docs site, on http://localhost:3333
 ```

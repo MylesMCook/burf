@@ -1,4 +1,7 @@
-# Phone
+---
+title: The phone companion
+description: Which agents need you across your boxes, and answering them, from your phone.
+---
 
 Berth has a small phone app: which agents need you, across your boxes, and
 answering them, from your phone.
@@ -85,8 +88,3 @@ and a tailnet address over HTTP is not one. Serving the app over HTTPS would
 take a certificate for each box's `*.ts.net` name (`tailscale cert`), which
 is the next step if notifications without ntfy are wanted.
 
-## Later
-
-The laptop could serve the same app for boxes that cannot run it, over its
-own tailnet address. The phone app already reads several origins, so a laptop
-listener would be one more entry in the list it pairs with.

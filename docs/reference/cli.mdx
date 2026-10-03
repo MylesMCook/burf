@@ -1,0 +1,143 @@
+---
+title: berth CLI
+description: Every command of berth, the laptop CLI.
+---
+
+`berth` runs on your laptop. It talks to the [laptop agent](/concepts/laptop-agent),
+starting it if needed, and through it to every box. `berth help` prints this
+list; `berth kit help` the kit commands.
+
+- **Addressing.** A box is `devl`; a location on it `devl/cal`; a worktree
+  `devl/cal/billing`; a session `devl/SESSION`.
+- **JSON.** Every listing takes `--json`.
+- **State.** `BERTH_HOME` overrides the state directory; see
+  [files and environment](/reference/files).
+
+On a box, [`berthd`](/reference/berthd) takes the same box commands without
+the `BOX/` prefix.
+
+## Boxes
+
+| Command | What it does |
+| --- | --- |
+| `berth add ssh [user@]HOST [--name N] [--network NET] [--listen ADDR] [--address ADDR] [-- SSH OPTIONS]` | Install berthd on a box over SSH (once) and pair. See [add a box](/getting-started/add-a-box#over-ssh). |
+| `berth pair '<link>' [--name N] [--network NET]` | Pair with a box, from the link `berthd pair` prints |
+| `berth network login NAME` | Join another tailnet (a personal one, say) to reach its boxes |
+| `berth networks` | Joined networks |
+| `berth discover [--network NET]` | Machines on the tailnet that could be boxes |
+| `berth boxes` | Paired boxes and whether they are online |
+| `berth ping BOX` | Check a box answers and still trusts you |
+| `berth upgrade BOX [--check]` | Upgrade the box's daemon over Berth's own connection (no SSH) |
+| `berth edit BOX/PROJECT[/WT] [FILE[:LINE]] [--in cursor\|vscode\|windsurf\|zed]` | Open a worktree, or a file at a line, in your editor |
+| `berth ssh-config [--write]` | Show (then write) the SSH hosts editors use: `berth-<box>` |
+| `berth forget BOX` | Remove a box from this laptop |
+
+## Kits
+
+| Command | What it does |
+| --- | --- |
+| `berth kit list` | Kits on this laptop, and where each is installed |
+| `berth kit add LINK [--yes]` | Fetch a kit (git repo, `…/tree/REF/DIR`, gist, `kit.json` URL or folder), show what it does, and keep it |
+| `berth kit show ID` | Everything a kit does and every file it carries |
+| `berth kit apply ID BOX/PROJECT...` | Install it on projects |
+| `berth kit update ID` | Fetch it again from its link |
+| `berth kit rm ID` | Forget a kit on this laptop |
+| `berth kit remove BOX/PROJECT` | Uninstall a project's kit |
+| `berth kit save BOX/PROJECT ID [--name N]` | Make a kit of how a project is set up on a box |
+
+See [kits](/guides/kits).
+
+## Reaching services
+
+| Command | What it does |
+| --- | --- |
+| `berth url BOX PORT` | Print the private URL for a port |
+| `berth open BOX PORT` | Open that URL in your browser |
+| `berth forward BOX PORTS` | Forward local ports: `3000`, `8080:3000`, `3000-3005` |
+| `berth forwards` | List forwards |
+| `berth unforward ID` | Stop and forget a forward |
+| `berth route add '*.x.localhost' BOX PORT` | Send every matching host to a box port, `Host` unchanged |
+| `berth routes` | List routes (`berth route rm PATTERN` removes one) |
+| `berth units BOX` | Managed units on a box |
+| `berth unit add BOX/NAME -- COMMAND...` | Install and start a unit |
+| `berth unit log BOX/NAME` | What a unit has written, for one that will not stay up |
+| `berth unit restart BOX/NAME` | Start a unit again |
+
+## The agent
+
+| Command | What it does |
+| --- | --- |
+| `berth status` | Boxes, forwards and the proxy at a glance |
+| `berth doctor [BOX]` | Check this computer (or a box) and how to fix it |
+| `berth events` | Stream events from this laptop and every box as they happen |
+| `berth agent` | Run the agent in the foreground |
+| `berth agent install\|uninstall\|status` | Run the agent at login, restart it on crashes |
+| `berth setup port80 [--remove]` | Drop `:1377` from URLs (macOS; asks for your admin password once) |
+| `berth stop` | Stop the agent (and every forward) |
+| `berth id` | Print this laptop's fingerprint |
+| `berth ui-token` | The desktop app's API address and token, as JSON |
+
+## Locations and worktrees
+
+| Command | What it does |
+| --- | --- |
+| `berth locations BOX` | Locations and their worktrees |
+| `berth location add BOX/NAME PATH` | Register a repo or directory |
+| `berth location rm BOX/NAME` | Forget a location (files are untouched) |
+| `berth location scripts BOX/NAME [--setup CMD] [--archive CMD] [--clear]` | Worktree setup and archive scripts (default: the repo's `.berth/config.json`) |
+| `berth location config BOX/NAME` | The repo's, the box's and the effective config |
+| `berth services BOX` | Which worktree each running server belongs to |
+| `berth service list\|start\|stop\|restart\|log BOX/LOC/WORKTREE [SERVICE]` | A worktree's services from the repo's config |
+| `berth preview BOX/[LOC/WORKTREE] [PORT] [--path /x]` | Open a worktree's page in the Berth app |
+| `berth worktree new BOX/LOC/NAME [--branch B] [--base REF]` | Create a git worktree and run its setup |
+| `berth worktree rm BOX/LOC/NAME [--force]` | Remove a worktree |
+
+## Agent sessions
+
+| Command | What it does |
+| --- | --- |
+| `berth sessions BOX` | List sessions |
+| `berth agents BOX` | Agent CLIs this box can start |
+| `berth task new BOX/LOC/NAME [--agent ID] [--prompt TEXT] [--open split\|tab] [--branch B] [--base REF]` | A worktree with an agent running in it |
+| `berth session new BOX/LOC[/WORKTREE] [--name N] [--agent ID [--prompt TEXT]] [--open split\|tab] [-- COMMAND...]` | Start an agent or a command (default: a shell) there |
+| `berth session screen BOX/NAME [--history N]` | Print what the session shows |
+| `berth session send BOX/NAME TEXT [--no-enter] [--wait] [--timeout 30m] [--queue]` | Type a prompt into a session, and wait for its turn |
+| `berth session wait BOX/NAME [--for finished,waiting] [--timeout 30m]` | Wait for its agent's turn to end |
+| `berth exec BOX/LOC[/WORKTREE] [--timeout 10m] -- COMMAND...` | Run a command there and print its output |
+| `berth loop BOX/SESSION --check CMD [--prompt TEXT] [--max 5] [--turn-timeout 30m]` | Prompt, wait, check, and feed failures back |
+| `berth session kill BOX/NAME` | Stop a session |
+| `berth attach BOX/SESSION` | Attach this terminal to a session (detach: Ctrl-b d) |
+| `berth terminal BOX/SESSION` | Open a new terminal window attached to a session |
+| `berth queue` | Prompts waiting for their box (`berth queue rm\|retry\|send ID`) |
+
+See [orchestration](/guides/orchestration) and
+[the offline queue](/guides/offline-queue).
+
+## Ports and sharing
+
+| Command | What it does |
+| --- | --- |
+| `berth ports BOX` | What is listening on the box |
+| `berth stats BOX` | Memory, disk, load, and agents running or waiting |
+| `berth share BOX PORT` | Make a port public (a Cloudflare quick tunnel run by the box) |
+| `berth shares BOX` | List public shares |
+| `berth unshare BOX ID` | Stop a share |
+
+## Skills, secrets and events
+
+| Command | What it does |
+| --- | --- |
+| `berth skills BOX [list\|install\|uninstall] [SKILL...] [--agent claude\|codex\|all] [--target user\|project] [--location LOC] [--commit]` | Teach Claude Code and Codex on a box to use Berth |
+| `berth secret test BOX REF` | Check a box can resolve `op://vault/item/field` or `env://NAME` (prints the value's length, never the value) |
+| `berth emit TYPE [key=value...]` | Announce an event on this laptop |
+| `berth emit BOX TYPE [key=value...] [--origin TOOL]` | Announce an event on a box |
+| `berth events BOX` | Stream one box's events |
+
+## Integrations
+
+| Command | What it does |
+| --- | --- |
+| `berth integrations install claude\|cursor\|codex\|all` | Install Berth's skills and agent hooks for a tool, on this laptop |
+| `berth hook TOOL EVENT` | What those hooks run: turns a tool's hook into a Berth event |
+
+See [agent integrations](/guides/agent-integrations).
