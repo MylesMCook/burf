@@ -2,11 +2,12 @@ import "@/views/onboarding/onboarding.css";
 
 import { useEffect, useRef, useState } from "react";
 
+import { Scene, type SceneName } from "@/components/art/scenes";
 import { Button } from "@/components/ui/button";
 import { useKeepFocusIn } from "@/lib/focus-home";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { AddBoxFlow } from "@/views/onboarding/add-box-flow";
+import { AddBoxFlow, type AddBoxStage } from "@/views/onboarding/add-box-flow";
 import { AgentStep } from "@/views/onboarding/agent-step";
 import { finishOnboarding, markOnboardingStarted } from "@/views/onboarding/onboarding-state";
 import { RepoStep } from "@/views/onboarding/repo-step";
@@ -16,11 +17,23 @@ type Step = { kind: "welcome" } | { kind: "box" } | { kind: "repo"; box: string 
 
 const ORDER: Step["kind"][] = ["welcome", "box", "repo", "agent"];
 
+// Each step has its own harbour scene, in one place above the progress, so
+// the title below never moves. Connecting a box changes it as it goes.
+const BOX_SCENES: Record<AddBoxStage, SceneName> = { start: "arriving", working: "lighthouse", tailnet: "signal", paired: "moored" };
+function sceneFor(step: Step["kind"], stage: AddBoxStage): SceneName {
+  if (step === "welcome") return "dawn"; // an empty harbour at first light
+  if (step === "box") return BOX_SCENES[stage];
+  if (step === "repo") return "first-crate"; // the first thing on the quay
+  return "setting-out"; // the first piece of work under sail
+}
+
 // OnboardingView takes a new account from nothing to a running agent, one
 // calm step at a time. It fills the main area until finished.
 export function OnboardingView() {
   const hasBoxes = useStore((s) => (s.status?.boxes.length ?? 0) > 0);
   const [step, setStep] = useState<Step>({ kind: "welcome" });
+  const [boxStage, setBoxStage] = useState<AddBoxStage>("start");
+  const scene = sceneFor(step.kind, boxStage);
 
   useEffect(markOnboardingStarted, []);
   // Each step, and each part of one, replaces what had the keyboard: it
@@ -40,7 +53,11 @@ export function OnboardingView() {
       <div className="mx-auto flex w-full max-w-lg flex-1 flex-col px-6 pt-[18vh] pb-16">
         {/* One height whether or not Skip setup is there, so it never moves
             the step below it. */}
-        <div className="mb-10 flex h-6 items-center">
+        <div className="relative mb-10 flex h-6 items-center">
+          {/* Out of the flow, so the scene never moves the step. */}
+          <div aria-hidden className="pointer-events-none absolute bottom-full left-0 mb-6 -ml-1">
+            <Scene key={scene} name={scene} width={152} className="onboarding-scene" />
+          </div>
           <Progress at={step.kind} />
           {/* Skipping makes sense once there is a box to work on. */}
           {hasBoxes && (
@@ -55,7 +72,8 @@ export function OnboardingView() {
             {step.kind === "box" && (
               <AddBoxFlow
                 variant="page"
-                intro={{ title: "Where are your boxes?", description: "Berth installs a small daemon on the box. It's the only thing that runs there; your code and agents stay as they are." }}
+                intro={{ title: "Connect a box", description: "Any VPS or dev machine. Berth runs one small daemon there, berthd; your code and agents stay as they are." }}
+                onStage={setBoxStage}
                 onDone={(box) => setStep({ kind: "repo", box })}
                 onExit={() => setStep({ kind: "welcome" })}
               />

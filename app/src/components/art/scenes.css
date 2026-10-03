@@ -21,7 +21,9 @@
 .berth-art .ba-weed,
 .berth-art .ba-needle,
 .berth-art .ba-ping,
-.berth-art .ba-swing {
+.berth-art .ba-swing,
+.berth-art .ba-throw,
+.berth-art .ba-settle {
   transform-box: view-box;
 }
 
@@ -385,6 +387,118 @@
   }
   50% {
     transform: rotate(4deg);
+  }
+}
+
+/* Arriving: the boat edges in toward the berth and eases back, riding the
+   swell; the thrown line sways in the air. */
+.berth-art .ba-arrive {
+  transform-box: fill-box;
+  transform-origin: 50% 90%;
+  animation: ba-arrive 6s ease-in-out infinite;
+}
+
+@keyframes ba-arrive {
+  0%,
+  100% {
+    transform: translate(1px, -0.4px) rotate(-1.2deg);
+  }
+  50% {
+    transform: translate(-1px, 0.6px) rotate(1deg);
+  }
+}
+
+.berth-art .ba-throw {
+  animation: ba-throw 4.4s ease-in-out infinite;
+}
+
+@keyframes ba-throw {
+  0%,
+  100% {
+    transform: rotate(-2deg);
+  }
+  50% {
+    transform: rotate(2.4deg);
+  }
+}
+
+/* Signal: the lamp flashes, the flashes cross the water, the far lamp
+   answers; the fog between lifts and settles. */
+.berth-art .ba-signal {
+  animation: ba-signal 4s ease-in-out infinite;
+}
+
+@keyframes ba-signal {
+  0%,
+  30%,
+  100% {
+    opacity: 1;
+  }
+  15% {
+    opacity: 0.4;
+  }
+  45%,
+  60% {
+    opacity: 0.55;
+  }
+}
+
+.berth-art .ba-flash {
+  animation: ba-flash 4s ease-in-out infinite;
+}
+
+@keyframes ba-flash {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+  35% {
+    opacity: 0.6;
+  }
+}
+
+.berth-art .ba-answer {
+  animation: ba-answer 4s ease-in-out infinite;
+}
+
+@keyframes ba-answer {
+  0%,
+  30%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+
+.berth-art .ba-lift {
+  animation: ba-lift 10s ease-in-out infinite alternate;
+}
+
+@keyframes ba-lift {
+  from {
+    transform: translateY(0.6px);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-1.6px);
+    opacity: 0.55;
+  }
+}
+
+/* First crate: the load settles onto the quay, swaying on its sling. */
+.berth-art .ba-settle {
+  animation: ba-settle 5s ease-in-out infinite;
+}
+
+@keyframes ba-settle {
+  0%,
+  100% {
+    transform: translateY(-0.8px) rotate(-1.6deg);
+  }
+  50% {
+    transform: translateY(0.2px) rotate(1.4deg);
   }
 }
 

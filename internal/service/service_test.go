@@ -3,6 +3,7 @@ package service
 import (
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -234,5 +235,65 @@ func TestRunningAsksThePlatformWhetherTheServiceIsUp(t *testing.T) {
 	Running(Spec{Name: "orca-runtime"})
 	if len(*macCalls) != 1 || !strings.HasPrefix((*macCalls)[0], "launchctl print gui/") {
 		t.Fatalf("calls = %v; want launchctl print", *macCalls)
+	}
+}
+
+func TestPreflightExplainsAMissingUserSession(t *testing.T) {
+	stub(t, "linux")
+	oldLook, oldRun := lookPath, runUserDir
+	t.Cleanup(func() { lookPath, runUserDir = oldLook, oldRun })
+
+	lookPath = func(string) (string, error) { return "", os.ErrNotExist }
+	if err := Preflight(); err == nil || !strings.Contains(err.Error(), "no systemd") {
+		t.Errorf("without systemctl: %v", err)
+	}
+
+	lookPath = func(string) (string, error) { return "/usr/bin/systemctl", nil }
+	command = func(name string, args ...string) ([]byte, error) {
+		return []byte("Failed to connect to bus: No medium found\n"), os.ErrNotExist
+	}
+	err := Preflight()
+	if err == nil || !strings.Contains(err.Error(), "no user session") || !strings.Contains(err.Error(), "No medium found") {
+		t.Errorf("without a user session: %v", err)
+	}
+
+	command = func(name string, args ...string) ([]byte, error) { return nil, nil }
+	if err := Preflight(); err != nil {
+		t.Errorf("with a user session: %v", err)
+	}
+}
+
+func TestPreflightFindsTheUserManagerAfterSu(t *testing.T) {
+	stub(t, "linux")
+	oldLook, oldRun := lookPath, runUserDir
+	t.Cleanup(func() { lookPath, runUserDir = oldLook, oldRun })
+	lookPath = func(string) (string, error) { return "/usr/bin/systemctl", nil }
+	runUserDir = t.TempDir()
+	dir := filepath.Join(runUserDir, strconv.Itoa(os.Getuid()))
+	if err := os.MkdirAll(filepath.Join(dir, "systemd"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("XDG_RUNTIME_DIR", "")
+	if err := Preflight(); err != nil {
+		t.Fatal(err)
+	}
+	if got := os.Getenv("XDG_RUNTIME_DIR"); got != dir {
+		t.Errorf("XDG_RUNTIME_DIR = %q, want %q", got, dir)
+	}
+}
+
+func TestPreflightOnAMacNeedsALoginSession(t *testing.T) {
+	_, calls := stub(t, "darwin")
+	if err := Preflight(); err != nil {
+		t.Fatal(err)
+	}
+	if len(*calls) != 1 || !strings.HasPrefix((*calls)[0], "launchctl print gui/") {
+		t.Errorf("calls = %v", *calls)
+	}
+	command = func(name string, args ...string) ([]byte, error) {
+		return []byte("Could not find domain for port identifier: 0x0\n"), os.ErrNotExist
+	}
+	if err := Preflight(); err == nil || !strings.Contains(err.Error(), "no login session") {
+		t.Errorf("without a GUI session: %v", err)
 	}
 }

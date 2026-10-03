@@ -37,14 +37,32 @@ stops them; the app is a view you can close and reopen at any time.
 | `plugins/` | Built-in plugins, written against `packages/plugin-sdk`. |
 | `kits/` | Kits, such as `cal-com`. |
 
-## Getting started (from source)
+## Getting started
 
-There are no releases yet. Build everything with Go 1.27, Node 22 and pnpm,
-and Rust for the app:
+**On each box**, as the user your agents will run as:
+
+```sh
+curl -fsSL https://berthd.app/install | sh
+```
+
+It installs `berthd` for that user (no root), checks it against the
+release's checksums, starts it as a systemd user service (launchd on macOS),
+and prints a pairing link. The link works once, for ten minutes. Run it again
+to upgrade in place; `sh -s -- --help` lists the options.
+
+**On your laptop**, paste the link into the app (**Add a box**), or:
+
+```sh
+berth pair 'berth://100.101.102.103:7444?code=…&fp=…'
+```
+
+The app and `berth` are built from source for now (Go 1.27, Node 22 and
+pnpm, and Rust for the app). Instead of the install line, `berth add ssh`
+can install and pair a box over SSH in one step:
 
 ```sh
 make all                                   # bin/berth, bin/berthd, Linux daemons
-bin/berth add ssh me@my-box                # install berthd on a box over SSH, and pair
+bin/berth add ssh me@my-box                # or: install on the box over SSH, and pair
 bin/berth location add my-box/app ~/work/app
 bin/berth task new my-box/app/fix-login --agent claude --prompt "Fix the login redirect"
 cd app && pnpm install && pnpm tauri dev   # the desktop app

@@ -6,6 +6,7 @@ package service
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"html"
 	"os"
@@ -43,7 +44,69 @@ var (
 	command = func(name string, args ...string) ([]byte, error) {
 		return exec.Command(name, args...).CombinedOutput()
 	}
+	lookPath   = exec.LookPath
+	runUserDir = "/run/user"
 )
+
+// UnitPath is where Install writes the service's unit or plist.
+func UnitPath(s Spec) (string, error) { return unitPath(s) }
+
+// Preflight checks that this user can run a service here at all, before
+// anything is written, and says what to do when not. The usual failure is a
+// Linux login without a systemd user session: `su` or `sudo -u` into the
+// account, or a container without systemd.
+func Preflight() error {
+	switch goos {
+	case "linux":
+		if _, err := lookPath("systemctl"); err != nil {
+			return errors.New("this machine has no systemd (systemctl is missing), so berthd cannot install itself as a user service; " +
+				"run `berthd serve` under the supervisor you use instead")
+		}
+		findRuntimeDir()
+		if out, err := command("systemctl", "--user", "show-environment"); err != nil {
+			return fmt.Errorf("systemd has no user session for you here (systemctl --user: %s). "+
+				"Log in as this user directly, over SSH or at the console, rather than through su or sudo. "+
+				"If you can only get here through su, run `sudo loginctl enable-linger %s` once and try again", lastLine(out, err), userName())
+		}
+		return nil
+	case "darwin":
+		if out, err := command("launchctl", "print", fmt.Sprintf("gui/%d", os.Getuid())); err != nil {
+			return fmt.Errorf("launchd has no login session for you on this Mac (%s), so berthd cannot run as your launch agent. "+
+				"Log in at the Mac once (screen sharing counts) and try again", lastLine(out, err))
+		}
+		return nil
+	}
+	return fmt.Errorf("services are supported on macOS and Linux, not %s", goos)
+}
+
+// findRuntimeDir points systemctl at the user's manager when the login did
+// not: `su - me` leaves XDG_RUNTIME_DIR unset even though systemd runs a
+// manager for the user (lingering, or another login), and systemctl --user
+// then cannot find it.
+func findRuntimeDir() {
+	if os.Getenv("XDG_RUNTIME_DIR") != "" {
+		return
+	}
+	dir := filepath.Join(runUserDir, fmt.Sprint(os.Getuid()))
+	if st, err := os.Stat(filepath.Join(dir, "systemd")); err == nil && st.IsDir() {
+		os.Setenv("XDG_RUNTIME_DIR", dir)
+	}
+}
+
+func lastLine(out []byte, err error) string {
+	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
+	if l := strings.TrimSpace(lines[len(lines)-1]); l != "" {
+		return l
+	}
+	return err.Error()
+}
+
+func userName() string {
+	if u := os.Getenv("USER"); u != "" {
+		return u
+	}
+	return "$USER"
+}
 
 func unitPath(s Spec) (string, error) {
 	home, err := homeDir()

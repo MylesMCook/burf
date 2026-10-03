@@ -59,8 +59,32 @@ func flowBox(t *testing.T, flows []Flow) (*Box, Session, Worktree) {
 	}
 	go b.AgentStates.Run(ctx, b.Events)
 	go b.Flows.Run(ctx, b)
+	// Runs finish in the background, saving their records into the temp
+	// dirs; let them settle before those dirs are removed (cleanups run
+	// last-registered first, so this one runs before TempDir's).
+	t.Cleanup(func() { settleRuns(b.Flows) })
 	time.Sleep(100 * time.Millisecond)
 	return b, sess, wt
+}
+
+// settleRuns waits, briefly, until no flow run is still running.
+func settleRuns(f *Flows) {
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		busy := false
+		for _, r := range f.Runs("", 1000) {
+			if r.Status == "running" {
+				busy = true
+				break
+			}
+		}
+		if !busy {
+			// The last record may still be on its way to disk.
+			time.Sleep(50 * time.Millisecond)
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
 }
 
 func waitRun(t *testing.T, b *Box, flow string) FlowRun {

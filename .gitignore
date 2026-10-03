@@ -58,3 +58,6 @@ design/docs-review/
 # Stray builds at the repository root (make puts them in bin/).
 /berth
 /berthd
+
+# Install flow and Add a box screenshots
+design/install/

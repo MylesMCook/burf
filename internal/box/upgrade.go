@@ -2,8 +2,6 @@ package box
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
@@ -15,6 +13,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/sean-brydon/berthd/internal/version"
 )
 
 // maxDaemonSize bounds an uploaded daemon; real builds are under 10 MB.
@@ -37,10 +37,7 @@ type Info struct {
 }
 
 // BuildID identifies a daemon build by its bytes.
-func BuildID(binary []byte) string {
-	sum := sha256.Sum256(binary)
-	return hex.EncodeToString(sum[:6])
-}
+func BuildID(binary []byte) string { return version.BuildID(binary) }
 
 // SelfUpdate replaces the running daemon with an uploaded build, over the same
 // authenticated connection as everything else, so upgrading never needs SSH.

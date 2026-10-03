@@ -1,5 +1,4 @@
 import { AgentIcon } from "@/components/agent-glyph";
-import { Scene } from "@/components/art/scenes";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { useStore } from "@/lib/store";
@@ -18,7 +17,6 @@ export function AgentStep({ box, location, onFinish }: { box: string; location: 
 
   return (
     <div>
-      {/* The title starts where every step's does; the scene sits below. */}
       <h1 className="font-semibold text-xl tracking-tight">Start your first agent</h1>
       <p className="mt-2 text-muted-foreground text-sm leading-relaxed">
         A new worktree of <span className="text-foreground">{location}</span> on <span className="text-foreground">{box}</span>, with {first?.name ?? "an agent"} in it. It keeps going if you close Berth, and tells you when it needs you.
@@ -38,8 +36,6 @@ export function AgentStep({ box, location, onFinish }: { box: string; location: 
         </Button>
       </div>
       {!first && agents && <p className="mt-3 text-muted-foreground text-xs">No agent CLI on {box} yet. Settings → Agents shows how to install one.</p>}
-      {/* A boat under sail: the first piece of work setting out. */}
-      <Scene name="setting-out" width={152} className="mt-10 -ml-1" />
       <p className="mt-10 text-muted-foreground text-xs">
         Later: <Kbd>⌘N</Kbd> new worktree · <Kbd>⌘K</Kbd> everything else
       </p>

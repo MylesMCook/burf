@@ -171,12 +171,58 @@ export interface StreamLine {
   line?: string;
   done?: boolean;
   error?: string;
+  // A failed SSH login, explained (berth add ssh).
+  ssh?: SshFailure;
+}
+
+// SshFailure is an SSH login that failed, in plain words, with what the next
+// step needs: the install command when nothing answers, a key file when
+// every key was refused, a fingerprint to trust for a new host.
+export type SshFailure = {
+  kind: "refused" | "timeout" | "unreachable" | "resolve" | "auth" | "password" | "host-key-unknown" | "host-key-changed" | "other";
+  host: string;
+  port?: string;
+  // The one plain sentence to show.
+  message: string;
+  // The host key's, for host-key-unknown and host-key-changed.
+  fingerprint?: string;
+  // The agent and keys offered, for auth.
+  tried?: string[];
+  // ssh's own last line.
+  detail?: string;
+};
+
+// SshPlan is how Berth will log in to a host, worked out before connecting
+// from ~/.ssh/config (ssh -G) and the key agents that answer.
+export type SshPlan = {
+  host: string;
+  user: string;
+  hostname: string;
+  port: string;
+  agent?: { name: string; socket: string; source: "ssh-config" | "environment" | "launchd" | "discovered" };
+  // Key files ssh will offer that exist.
+  identity_files: string[];
+  proxy_jump?: string;
+  // One plain line: "Using 1Password's SSH agent".
+  summary: string;
+};
+
+// CommandError is a streamed command's failure; ssh explains a failed SSH
+// login when that is what went wrong.
+export class CommandError extends Error {
+  ssh?: SshFailure;
+  constructor(message: string, ssh?: SshFailure) {
+    super(message);
+    this.name = "CommandError";
+    this.ssh = ssh;
+  }
 }
 
 // runCommand follows a streamed CLI command, passing each line of output on,
 // and rejects with the command's own error when it fails.
 async function runCommand(c: Client, method: string, path: string, body: unknown, onLine: (line: string) => void, signal?: AbortSignal) {
   let failure: string | undefined;
+  let ssh: SshFailure | undefined;
   let finished = false;
   await c.stream(
     method,
@@ -188,11 +234,12 @@ async function runCommand(c: Client, method: string, path: string, body: unknown
       if (l.done) {
         finished = true;
         failure = l.error;
+        ssh = l.ssh;
       }
     },
     signal,
   );
-  if (failure) throw new Error(failure);
+  if (failure) throw new CommandError(failure, ssh);
   if (!finished && !signal?.aborted) throw new Error("The agent stopped answering before the command finished.");
 }
 
@@ -205,9 +252,21 @@ export const laptopApi = {
   forget: (c: Client, box: string) => c.laptop("DELETE", `/v1/boxes/${encodeURIComponent(box)}`),
   upgrade: (c: Client, box: string, onLine: (line: string) => void, signal?: AbortSignal) =>
     runCommand(c, "POST", `/v1/boxes/${encodeURIComponent(box)}/upgrade`, undefined, onLine, signal),
-  // addSsh installs berthd on a host over SSH and pairs with it.
-  addSsh: (c: Client, req: { host: string; name?: string; network?: string; address?: string }, onLine: (line: string) => void, signal?: AbortSignal) =>
-    runCommand(c, "POST", "/v1/boxes/add-ssh", req, onLine, signal),
+  // addSsh installs berthd on a host over SSH and pairs with it. It rejects
+  // with a CommandError whose ssh explains a failed login. identity is a key
+  // file to log in with; trust_host_key, a SHA256 fingerprint the person
+  // approved for a host this computer hasn't connected to before.
+  addSsh: (
+    c: Client,
+    req: { host: string; name?: string; network?: string; address?: string; identity?: string; trust_host_key?: string },
+    onLine: (line: string) => void,
+    signal?: AbortSignal,
+  ) => runCommand(c, "POST", "/v1/boxes/add-ssh", req, onLine, signal),
+  // sshPlan says how Berth will log in to a host, without connecting.
+  sshPlan: (c: Client, host: string, network?: string) =>
+    c.laptop<SshPlan>("GET", `/v1/ssh/plan?host=${encodeURIComponent(host)}${network ? `&network=${encodeURIComponent(network)}` : ""}`),
+  // sshHosts are the hosts ~/.ssh/config names, for completing a host field.
+  sshHosts: async (c: Client) => (await c.laptop<string[] | null>("GET", "/v1/ssh/hosts")) ?? [],
   discover: (c: Client, network?: string) => c.laptop<Discovery>("GET", `/v1/discover${network ? `?network=${encodeURIComponent(network)}` : ""}`),
   networks: async (c: Client) => (await c.laptop<NetworkInfo[] | null>("GET", "/v1/networks")) ?? [],
   // networkLogin joins a tailnet: onUrl gets the sign-in page to open, and

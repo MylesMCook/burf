@@ -48,7 +48,7 @@ export function NetworksStep({ onPick }: { onPick(network: string): void }) {
                     </div>
                   </div>
                   <Button size="xs" variant="outline" onClick={() => onPick(n.name)}>
-                    Browse machines
+                    Use this one
                   </Button>
                 </li>
               ))}

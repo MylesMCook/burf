@@ -28,6 +28,7 @@ import (
 	"github.com/sean-brydon/berthd/internal/service"
 	"github.com/sean-brydon/berthd/internal/statefile"
 	"github.com/sean-brydon/berthd/internal/trust"
+	"github.com/sean-brydon/berthd/internal/version"
 	"github.com/sean-brydon/berthd/internal/wire"
 )
 
@@ -39,7 +40,8 @@ const (
 const usage = `berthd — the berth daemon for a development box
 
   berthd serve [--listen ADDR]            Serve paired laptops (default: tailnet address only)
-  berthd install [--listen ADDR]          Run serve as a user service (systemd/launchd)
+  berthd install [--listen ADDR] [--dry-run]
+                                            Run serve as a user service (systemd/launchd)
   berthd uninstall                        Remove that service
   berthd pair [--address HOST[:PORT]] [--ttl 10m]
                                             Print a single-use pairing link
@@ -47,9 +49,10 @@ const usage = `berthd — the berth daemon for a development box
   berthd revoke <name|fingerprint>        Stop trusting a laptop
   berthd id                               Print this box's fingerprint
   berthd doctor [--json]                  Check this box's setup and how to fix it
+  berthd version                          Print this build's version
   berthd session attach NAME              Attach to a session in this terminal
 
-Hooks run from ~/.berth/hooks.json and ~/.berth/plugins; see docs/hooks.md.
+Hooks run from ~/.berth/hooks.json and ~/.berth/plugins; see https://docs.berthd.app/guides/hooks
 BERTH_HOME overrides the state directory.
 `
 
@@ -81,6 +84,10 @@ func run(args []string) error {
 		fmt.Print(boxcmd.Usage("berthd", ""))
 		fmt.Println()
 		fmt.Printf(integrations.Usage, "berthd")
+		return nil
+	}
+	if args[0] == "version" || args[0] == "--version" {
+		fmt.Println(version.Line("berthd"))
 		return nil
 	}
 	home, err := statefile.Home()

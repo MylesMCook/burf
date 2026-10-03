@@ -554,9 +554,58 @@ function addMockBox(name: string, address: string, network?: string) {
   emit({ type: "box.connected", box: name });
 }
 
+// mockSshPlan is how Berth would log in: 1Password's agent for most hosts,
+// keys on disk for one with "nokey" in its name. Invented paths only.
+function mockSshPlan(host: string) {
+  const at = host.lastIndexOf("@");
+  const hostname = host.slice(at + 1);
+  const user = at > 0 ? host.slice(0, at) : "me";
+  if (/nokey/.test(host)) return { host, user, hostname, port: "22", identity_files: ["~/.ssh/id_ed25519"], summary: "Using keys from ~/.ssh (id_ed25519)" };
+  return {
+    host,
+    user,
+    hostname,
+    port: "22",
+    agent: { name: "1Password", socket: "~/Library/Group Containers/2BUA8C4S2C.com.1password/t/agent.sock", source: "discovered" },
+    identity_files: [],
+    summary: "Using 1Password's SSH agent",
+  };
+}
+
+// mockSshFailure fails an add-ssh by a word in the host, the way berth add
+// ssh explains each kind. A new host key succeeds once trusted.
+function mockSshFailure(host: string, trusted?: string) {
+  const where = host.split("@").pop() ?? host;
+  const fp = "SHA256:Zm9yLWRlbW8tb25seS1ub3QtYS1yZWFsLWtleQ";
+  if (/refused|fail|nope/.test(host))
+    return { kind: "refused", host: where, port: "22", message: `Nothing is accepting SSH on ${where} (port 22): the machine answered, but refused the connection. Run the install command on the box instead, or check the address.` };
+  if (/denied/.test(host))
+    return {
+      kind: "auth",
+      host: where,
+      port: "22",
+      tried: ["the keys in 1Password's SSH agent", "~/.ssh/id_ed25519"],
+      message: `${where} refused the login. Berth offered the keys in 1Password's SSH agent, ~/.ssh/id_ed25519. Make the right key available: unlock your key manager's SSH agent, name it with IdentityAgent for this host in ~/.ssh/config, or choose the key file. Or add this computer's public key to ~/.ssh/authorized_keys on the box.`,
+    };
+  if (/newkey/.test(host) && trusted !== fp)
+    return { kind: "host-key-unknown", host: where, port: "22", fingerprint: fp, message: `This computer hasn't connected to ${where} before. Check its host key fingerprint, then trust it to continue.` };
+  if (/changed/.test(host))
+    return {
+      kind: "host-key-changed",
+      host: where,
+      port: "22",
+      fingerprint: fp,
+      message: `${where}'s host key has changed since this computer last connected, so Berth did not log in. If the box was rebuilt, remove the old key with \`ssh-keygen -R ${where}\` and try again; if not, someone may be in the way, so don't connect.`,
+    };
+  if (/nohost/.test(host)) return { kind: "resolve", host: where, port: "22", message: `Could not resolve ${where}: no machine by that name is reachable from this computer. Check the spelling, or use its IP or tailnet address.` };
+  return undefined;
+}
+
 function laptopBoxes(method: string, path: string, body: unknown): Promise<unknown> | undefined {
   if (method === "GET" && path.startsWith("/v1/discover")) return delay(discovery);
   if (method === "GET" && path === "/v1/networks") return delay(mockNetworks);
+  if (method === "GET" && path === "/v1/ssh/hosts") return delay(["dev-box", "hetzner", "pi"]);
+  if (method === "GET" && path.startsWith("/v1/ssh/plan")) return delay(mockSshPlan(new URLSearchParams(path.split("?")[1]).get("host") ?? ""));
   if (method === "POST" && path === "/v1/boxes/pair") {
     const r = body as { link: string; name?: string; network?: string };
     const address = /^berth:\/\/([^?]+)/.exec(r.link)?.[1] ?? "100.64.0.9:7444";
@@ -595,14 +644,17 @@ async function mockStream(method: string, path: string, body: unknown, onValue: 
     onValue({ line });
   };
   if (method === "POST" && path === "/v1/boxes/add-ssh") {
-    const r = body as { host: string; name?: string; network?: string };
+    const r = body as { host: string; name?: string; network?: string; trust_host_key?: string };
     const where = r.host.split("@").pop() ?? r.host;
-    await say(`Checking ${r.host}…`, 300);
-    if (/fail|nope/.test(r.host)) {
+    await say(mockSshPlan(r.host).summary, 200);
+    const failure = mockSshFailure(r.host, r.trust_host_key);
+    if (failure) {
       await wait(900);
-      onValue({ done: true, error: `ssh: connect to host ${where} port 22: Connection refused` });
+      onValue({ done: true, error: failure.message, ssh: failure });
       return;
     }
+    if (r.trust_host_key) await say(`Trusted ${where}'s host key (${r.trust_host_key}).`, 200);
+    await say(`Checking ${r.host}…`, 300);
     await say("Installing berthd-linux-amd64 (8 MB)…", 900);
     await say(`  Installed /home/me/.config/systemd/user/berthd.service; berthd is serving on 100.64.0.11:7444.`, 1400);
     const name = r.name || where.split(".")[0];

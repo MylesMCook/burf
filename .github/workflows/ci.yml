@@ -21,6 +21,14 @@ jobs:
       - run: go vet ./...
       - run: go test -race ./...
 
+  shell:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # ubuntu-latest ships shellcheck. install.sh is served at berthd.app/install.
+      - run: shellcheck site/install.sh scripts/build-release.sh scripts/publish.sh
+      - run: sh -n site/install.sh && dash -n site/install.sh
+
   app:
     runs-on: ubuntu-latest
     defaults:

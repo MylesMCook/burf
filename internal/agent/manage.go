@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/sean-brydon/berthd/internal/hooks"
+	"github.com/sean-brydon/berthd/internal/sshsetup"
 )
 
 // Adding, pairing, upgrading and forgetting boxes are the CLI's job, and the
@@ -34,9 +35,12 @@ func (a *Agent) cli(ctx context.Context, args ...string) *exec.Cmd {
 	}
 	cmd := exec.CommandContext(ctx, bin, args...)
 	// The CLI finds this laptop's state the same way the agent did.
-	cmd.Env = append(os.Environ(), "BERTH_HOME="+filepath.Dir(a.cfg.Dir))
+	cmd.Env = append(os.Environ(), "BERTH_HOME="+filepath.Dir(a.cfg.Dir), sshsetup.FailureEnv+"=1")
 	return cmd
 }
+
+// sshFinder finds key agents on this computer; tests replace it.
+var sshFinder = sshsetup.DefaultFinder
 
 // argOK refuses values that the CLI would read as flags.
 func argOK(values ...string) error {
@@ -75,6 +79,8 @@ type StreamLine struct {
 	Line  string `json:"line,omitempty"`
 	Done  bool   `json:"done,omitempty"`
 	Error string `json:"error,omitempty"`
+	// SSH explains a failed SSH login (sshsetup.Failure), with Error.
+	SSH json.RawMessage `json:"ssh,omitempty"`
 }
 
 // runStream runs a CLI command and streams its output as NDJSON lines.
@@ -98,12 +104,32 @@ func (a *Agent) runStream(w http.ResponseWriter, r *http.Request, timeout time.D
 	}
 	done := make(chan error, 1)
 	go func() { done <- cmd.Wait(); pw.Close() }()
-	var last string
+	// The CLI's own "berth: …" error is the stream's error, not also a line
+	// of output: held back until another line follows it, and dropped when
+	// the command then fails with it.
+	var last, held string
+	var failure json.RawMessage
 	sc := bufio.NewScanner(pr)
+	sc.Buffer(make([]byte, 64*1024), 1<<20)
 	for sc.Scan() {
 		line := strings.TrimRight(sc.Text(), "\r")
+		if rest, ok := strings.CutPrefix(line, sshsetup.FailurePrefix); ok && json.Valid([]byte(rest)) {
+			failure = json.RawMessage(rest)
+			continue
+		}
+		if held != "" && line == "" {
+			continue
+		}
+		if held != "" {
+			send(StreamLine{Line: held})
+			held = ""
+		}
 		if line != "" {
 			last = line
+		}
+		if strings.HasPrefix(line, "berth: ") {
+			held = line
+			continue
 		}
 		send(StreamLine{Line: line})
 	}
@@ -112,8 +138,11 @@ func (a *Agent) runStream(w http.ResponseWriter, r *http.Request, timeout time.D
 		if msg == "" {
 			msg = err.Error()
 		}
-		send(StreamLine{Done: true, Error: msg})
+		send(StreamLine{Done: true, Error: msg, SSH: failure})
 		return
+	}
+	if held != "" {
+		send(StreamLine{Line: held})
 	}
 	send(StreamLine{Done: true})
 }
@@ -150,22 +179,49 @@ func (a *Agent) manageRoutes(mux *http.ServeMux) {
 		a.checkSoon()
 	})
 	mux.HandleFunc("POST /v1/boxes/add-ssh", func(w http.ResponseWriter, r *http.Request) {
-		var req struct{ Host, Name, Network, Address string }
+		var req struct {
+			Host, Name, Network, Address string
+			Identity                     string `json:"identity"`
+			TrustHostKey                 string `json:"trust_host_key"`
+		}
 		if !decodeBody(w, r, &req) {
 			return
 		}
-		if err := argOK(req.Host, req.Name, req.Network, req.Address); err != nil || req.Host == "" {
+		if err := argOK(req.Host, req.Name, req.Network, req.Address, req.Identity, req.TrustHostKey); err != nil || req.Host == "" {
 			writeError(w, http.StatusBadRequest, "an SSH host is needed, like sean@devbox")
 			return
 		}
+		if req.TrustHostKey != "" && !strings.HasPrefix(req.TrustHostKey, "SHA256:") {
+			writeError(w, http.StatusBadRequest, "trust_host_key must be a SHA256:… fingerprint")
+			return
+		}
 		args := []string{"add", "ssh", req.Host}
-		for _, f := range [][2]string{{"--name", req.Name}, {"--network", req.Network}, {"--address", req.Address}} {
+		for _, f := range [][2]string{{"--name", req.Name}, {"--network", req.Network}, {"--address", req.Address}, {"--identity", req.Identity}, {"--trust-host-key", req.TrustHostKey}} {
 			if f[1] != "" {
 				args = append(args, f[0], f[1])
 			}
 		}
 		a.runStream(w, r, 10*time.Minute, args...)
 		a.checkSoon()
+	})
+	// What berth will log in with, before connecting: ssh -G for the host
+	// (~/.ssh/config applied) and which key agent answers.
+	mux.HandleFunc("GET /v1/ssh/plan", func(w http.ResponseWriter, r *http.Request) {
+		host := strings.TrimSpace(r.URL.Query().Get("host"))
+		if err := argOK(host); err != nil || host == "" {
+			writeError(w, http.StatusBadRequest, "an SSH host is needed, like sean@devbox")
+			return
+		}
+		cfg, err := sshsetup.ReadConfig(r.Context(), nil, host)
+		if err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		writeJSON(w, http.StatusOK, sshFinder().MakePlan(host, cfg, ""))
+	})
+	// The hosts ~/.ssh/config names, for completing a host field.
+	mux.HandleFunc("GET /v1/ssh/hosts", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, sshsetup.Hosts(sshFinder().Home))
 	})
 	mux.HandleFunc("POST /v1/boxes/{box}/upgrade", func(w http.ResponseWriter, r *http.Request) {
 		if err := argOK(r.PathValue("box")); err != nil {

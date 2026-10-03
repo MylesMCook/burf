@@ -27,6 +27,7 @@ import (
 	"github.com/sean-brydon/berthd/internal/pairing"
 	"github.com/sean-brydon/berthd/internal/statefile"
 	"github.com/sean-brydon/berthd/internal/trust"
+	"github.com/sean-brydon/berthd/internal/version"
 	"github.com/sean-brydon/berthd/internal/wire"
 )
 
@@ -79,6 +80,7 @@ Agent
   berth setup port80 [--remove]          Drop :1377 from URLs (asks for your admin password once)
   berth stop                             Stop the agent (and every forward)
   berth id                               Print this laptop's fingerprint
+  berth version                          Print this build's version
   berth ui-token                         The desktop app's API address and token, as JSON
 
 BERTH_HOME overrides the state directory.
@@ -123,6 +125,10 @@ func signalContext() (context.Context, context.CancelFunc) {
 func run(args []string) error {
 	if len(args) == 0 || args[0] == "help" || args[0] == "-h" || args[0] == "--help" {
 		fmt.Print(usage)
+		return nil
+	}
+	if args[0] == "version" || args[0] == "--version" {
+		fmt.Println(version.Line("berth"))
 		return nil
 	}
 	home, err := statefile.Home()

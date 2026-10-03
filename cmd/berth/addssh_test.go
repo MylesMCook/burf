@@ -37,3 +37,14 @@ func TestServiceURLFor(t *testing.T) {
 		t.Fatalf("without redirect: %s", got)
 	}
 }
+
+func TestSSHOptionsKeepThePersonsOwn(t *testing.T) {
+	args := []string{"-o", "ConnectTimeout=5", "-o", "IdentityAgent ~/agent.sock"}
+	if !hasOption(args, "ConnectTimeout") || !hasOption(args, "identityagent") || hasOption(args, "ProxyJump") {
+		t.Errorf("hasOption misread %v", args)
+	}
+	env := withEnv([]string{"HOME=/h", "SSH_AUTH_SOCK=/dead.sock"}, "SSH_AUTH_SOCK", "/live.sock")
+	if len(env) != 2 || env[1] != "SSH_AUTH_SOCK=/live.sock" {
+		t.Errorf("withEnv = %v", env)
+	}
+}

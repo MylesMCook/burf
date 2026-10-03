@@ -599,35 +599,36 @@
   <div class="wrap">
     <div class="section-head">
       <p class="eyebrow">Get started</p>
-      <h2 id="start-title">Build it from source.</h2>
-      <p>There are no releases yet. You need Go 1.27, Node 22 and pnpm, and Rust for the app. From the repository's root:</p>
+      <h2 id="start-title">One line on the box.</h2>
+      <p>berthd installs for your user, with no root, starts itself and prints a link to pair. The app and the <code>berth</code> CLI build from source for now: Go 1.27, Node 22 and pnpm, and Rust for the app.</p>
     </div>
     <div class="start-grid">
       <ol class="steps">
         <li>
-          <div class="step-head"><span class="num">1</span><h3>Build berth, berthd and the Linux daemons</h3><button class="copy-btn" type="button" data-copy="step-1" hidden>Copy</button></div>
-          <pre id="step-1" tabindex="0" aria-label="Build"><code>make all</code></pre>
+          <div class="step-head"><span class="num">1</span><h3>On the box, install berthd</h3><button class="copy-btn" type="button" data-copy="step-1" hidden>Copy</button></div>
+          <pre id="step-1" tabindex="0" aria-label="Install berthd on the box"><code>curl -fsSL https://berthd.app/install | sh</code></pre>
         </li>
         <li>
-          <div class="step-head"><span class="num">2</span><h3>Install berthd on a box over SSH, and pair</h3><button class="copy-btn" type="button" data-copy="step-2" hidden>Copy</button></div>
-          <pre id="step-2" tabindex="0" aria-label="Add a box"><code>bin/berth add ssh me@my-box</code></pre>
+          <div class="step-head"><span class="num">2</span><h3>On your laptop, build berth and open the app</h3><button class="copy-btn" type="button" data-copy="step-2" hidden>Copy</button></div>
+          <pre id="step-2" tabindex="0" aria-label="Build berth and open the app"><code>make all
+cd app &amp;&amp; pnpm install &amp;&amp; pnpm tauri dev</code></pre>
         </li>
         <li>
-          <div class="step-head"><span class="num">3</span><h3>Add a repository and start an agent</h3><button class="copy-btn" type="button" data-copy="step-3" hidden>Copy</button></div>
-          <pre id="step-3" tabindex="0" aria-label="Start an agent"><code>bin/berth location add my-box/app ~/work/app
+          <div class="step-head"><span class="num">3</span><h3>Paste the link it printed into Add a box, or</h3><button class="copy-btn" type="button" data-copy="step-3" hidden>Copy</button></div>
+          <pre id="step-3" tabindex="0" aria-label="Pair with the box"><code>bin/berth pair 'berth://…'</code></pre>
+        </li>
+        <li>
+          <div class="step-head"><span class="num">4</span><h3>Add a repository and start an agent</h3><button class="copy-btn" type="button" data-copy="step-4" hidden>Copy</button></div>
+          <pre id="step-4" tabindex="0" aria-label="Start an agent"><code>bin/berth location add my-box/app ~/work/app
 bin/berth task new my-box/app/fix-login \
   --agent claude \
   --prompt "Fix the login redirect"</code></pre>
-        </li>
-        <li>
-          <div class="step-head"><span class="num">4</span><h3>Open the desktop app</h3><button class="copy-btn" type="button" data-copy="step-4" hidden>Copy</button></div>
-          <pre id="step-4" tabindex="0" aria-label="Run the desktop app"><code>cd app &amp;&amp; pnpm install &amp;&amp; pnpm tauri dev</code></pre>
         </li>
       </ol>
       <nav class="read-next" aria-labelledby="read-next-title">
         <h3 id="read-next-title">Read next</h3>
         <ul>
-          <li><a href="https://docs.berthd.app/getting-started/install"><span>Install from source</span><small>Every step, and what each one does</small></a></li>
+          <li><a href="https://docs.berthd.app/getting-started/install"><span>Install</span><small>The install line, its options, and building the app</small></a></li>
           <li><a href="https://docs.berthd.app/concepts/security"><span>Security model</span><small>Pinned keys, mutual TLS, pairing</small></a></li>
           <li><a href="https://docs.berthd.app/guides/project-config"><span>.berth/config.json</span><small>Ports, environment and services</small></a></li>
           <li><a href="https://docs.berthd.app/guides/automations"><span>Automations</span><small>Flows on events, schedules and GitHub</small></a></li>

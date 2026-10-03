@@ -1,5 +1,9 @@
 GO ?= go
-LDFLAGS := -s -w
+# Release builds stamp their version (berthd version); a build from a
+# checkout is "dev". VERSION=1.2.3 and VERSION=v1.2.3 both stamp v1.2.3.
+VERSION ?= dev
+STAMP := $(if $(filter dev,$(VERSION)),dev,v$(patsubst v%,%,$(VERSION)))
+LDFLAGS := -s -w -X github.com/sean-brydon/berthd/internal/version.Version=$(STAMP)
 BIN := bin
 
 .PHONY: all build daemons test clean
@@ -39,21 +43,15 @@ app-dev: app-binaries
 app-build: app-binaries
 	cd app && pnpm tauri build
 
-# release builds every asset install.sh can fetch, plus their checksums, into
-# dist/. Upload the whole directory to a GitHub release.
+# release builds the archives a GitHub release carries, and checksums.txt,
+# into dist/: berthd and berth for linux and darwin, amd64 and arm64. The
+# release workflow (.github/workflows/release.yml) runs it on a v* tag;
+# site/install.sh downloads from it.
 DIST := dist
-PLATFORMS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64
 
 .PHONY: release
 release:
-	rm -rf $(DIST) && mkdir -p $(DIST)
-	for p in $(PLATFORMS); do \
-		os=$${p%/*}; arch=$${p#*/}; \
-		CGO_ENABLED=0 GOOS=$$os GOARCH=$$arch $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(DIST)/berth-$$os-$$arch ./cmd/berth || exit 1; \
-	done
-	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(DIST)/berthd-linux-amd64 ./cmd/berthd
-	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(DIST)/berthd-linux-arm64 ./cmd/berthd
-	cd $(DIST) && shasum -a 256 berth-* berthd-* > SHA256SUMS
+	GO=$(GO) scripts/build-release.sh $(STAMP)
 
 # publish releases VERSION from this Mac: signed app update, CLI, daemons and
 # the latest.json feed installed apps update from. See scripts/publish.sh.

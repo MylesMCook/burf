@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/sean-brydon/berthd/internal/sshsetup"
 )
 
 // fakeCLI stands in for the berth binary the agent runs: it prints its
@@ -16,6 +18,12 @@ func fakeCLI(t *testing.T, a *runningAgent) {
 	t.Helper()
 	script := `#!/bin/sh
 if [ "$3" = "fail.example" ]; then echo "Checking $3…"; echo "berth: ssh: could not resolve fail.example" >&2; exit 1; fi
+if [ "$3" = "refused.example" ]; then
+  echo "Using your SSH agent"
+  [ "$BERTH_FAILURE_JSON" = 1 ] && echo 'berth-failure: {"kind":"refused","host":"refused.example","port":"22","message":"Nothing is accepting SSH on refused.example (port 22)."}' >&2
+  echo "berth: Nothing is accepting SSH on refused.example (port 22)." >&2
+  exit 1
+fi
 case "$1" in
   pair) printf '{"name":"devl","args":"%s","home":"%s"}\n' "$*" "$BERTH_HOME" ;;
   *) echo "step one"; echo "ran $*" ;;
@@ -71,6 +79,69 @@ func TestTheAppAddsAndPairsBoxesThroughTheCLI(t *testing.T) {
 	_, body = uiSend(t, a, "POST", "/v1/boxes/add-ssh", tok, `{"host":"fail.example"}`)
 	if !strings.Contains(body, `"done":true,"error":"ssh: could not resolve fail.example"`) {
 		t.Fatalf("a failed add ssh streamed %s", body)
+	}
+}
+
+func TestAnSSHFailureIsSaidOnceWithItsDetails(t *testing.T) {
+	b := newBox(t)
+	a := startAgent(t, b.pairLaptop())
+	tok := uiToken(t, a)
+	fakeCLI(t, a)
+
+	_, body := uiSend(t, a, "POST", "/v1/boxes/add-ssh", tok, `{"host":"refused.example"}`)
+	lines := strings.Split(strings.TrimSpace(body), "\n")
+	var last StreamLine
+	if err := json.Unmarshal([]byte(lines[len(lines)-1]), &last); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Count(body, "Nothing is accepting SSH") != 2 || len(lines) != 2 {
+		// Once as the error, once inside the structured failure: never as a
+		// line of output too.
+		t.Fatalf("the failure was not said once:\n%s", body)
+	}
+	var f struct{ Kind, Host, Port, Message string }
+	if !last.Done || last.Error != "Nothing is accepting SSH on refused.example (port 22)." || json.Unmarshal(last.SSH, &f) != nil || f.Kind != "refused" || f.Port != "22" {
+		t.Fatalf("done = %+v (%s)", last, last.SSH)
+	}
+	if strings.Contains(body, "berth-failure") {
+		t.Fatalf("the JSON line leaked into the output: %s", body)
+	}
+
+	_, body = uiSend(t, a, "POST", "/v1/boxes/add-ssh", tok, `{"host":"me@new.example","identity":"/keys/id_ed25519","trust_host_key":"SHA256:abc"}`)
+	if !strings.Contains(body, "ran add ssh me@new.example --identity /keys/id_ed25519 --trust-host-key SHA256:abc") {
+		t.Fatalf("identity and host key were not passed on: %s", body)
+	}
+	if resp, _ := uiSend(t, a, "POST", "/v1/boxes/add-ssh", tok, `{"host":"me@new.example","trust_host_key":"yes"}`); resp.StatusCode != 400 {
+		t.Fatalf("a host key that is not a fingerprint gave %d", resp.StatusCode)
+	}
+}
+
+func TestTheAppSeesHowSSHWillLogIn(t *testing.T) {
+	b := newBox(t)
+	a := startAgent(t, b.pairLaptop())
+	tok := uiToken(t, a)
+
+	home := t.TempDir()
+	os.MkdirAll(filepath.Join(home, ".ssh", "conf.d"), 0o700)
+	os.WriteFile(filepath.Join(home, ".ssh", "config"), []byte("Include conf.d/*\nHost dev-box hetzner\n  User me\nHost *.internal !bastion\n"), 0o600)
+	os.WriteFile(filepath.Join(home, ".ssh", "conf.d", "pi"), []byte("Host pi\n"), 0o600)
+	old := sshFinder
+	t.Cleanup(func() { sshFinder = old })
+	sshFinder = func() sshsetup.Finder {
+		return sshsetup.Finder{Home: home, GOOS: "linux", Getenv: func(string) string { return "" }, Alive: func(string) bool { return false }}
+	}
+
+	_, body := uiSend(t, a, "GET", "/v1/ssh/hosts", tok, "")
+	if strings.TrimSpace(body) != `["dev-box","hetzner","pi"]` {
+		t.Fatalf("hosts = %s", body)
+	}
+	resp, body := uiSend(t, a, "GET", "/v1/ssh/plan?host=nobody@test.invalid", tok, "")
+	var plan sshsetup.Plan
+	if resp.StatusCode != 200 || json.Unmarshal([]byte(body), &plan) != nil || plan.User != "nobody" || plan.HostName != "test.invalid" || plan.Summary == "" {
+		t.Fatalf("plan = %d %s", resp.StatusCode, body)
+	}
+	if resp, _ := uiSend(t, a, "GET", "/v1/ssh/plan?host=-oProxyCommand=x", tok, ""); resp.StatusCode != 400 {
+		t.Fatalf("a host that is a flag gave %d", resp.StatusCode)
 	}
 }
 

@@ -26,7 +26,10 @@ import "./scenes.css";
 //   storm        rain and chop over the jetty, the buoy blinking: something broke.
 //   chart        a chart with a dotted course to a lit mark: a route not yet sailed.
 //   dock         a quay with a crane and an empty hook: nothing loaded yet.
-export const SCENES = ["ended", "offline", "moored", "lighthouse", "dawn", "setting-out", "rafted", "bottle", "calm", "anchor", "storm", "chart", "dock"] as const;
+//   arriving     a boat coming in to an empty berth, its line thrown for the cleat: a box on its way in.
+//   signal       a lamp signalling across the water to another harbour, fog lifting between: reaching a far network.
+//   first-crate  the crane setting the first crate down on an empty quay: the first thing on the box.
+export const SCENES = ["ended", "offline", "moored", "lighthouse", "dawn", "setting-out", "rafted", "bottle", "calm", "anchor", "storm", "chart", "dock", "arriving", "signal", "first-crate"] as const;
 export type SceneName = (typeof SCENES)[number];
 
 const W = 160;
@@ -503,6 +506,75 @@ const Dock: Draw = ({ id }) => (
   </>
 );
 
+// Arriving: a boat comes in to an empty berth, its line in the air toward
+// the cleat; the lamp on the jetty is lit for it.
+const Arriving: Draw = ({ id }) => (
+  <>
+    <Jetty />
+    <g stroke="currentColor">
+      <path d="M33 34.6 V25.6" strokeWidth="1.6" />
+    </g>
+    <circle className="ba-lamp" cx="33" cy="23.6" r="2.4" fill="var(--warning)" />
+    <g className="ba-arrive" stroke="currentColor">
+      <path d="M98 42.2 H143 L137.5 49.6 H104 Z" fill="currentColor" fillOpacity="0.1" strokeWidth="2.2" />
+      <path d="M111 42 V37.2 H122.5 L126 42" strokeWidth="1.8" />
+      <path d="M118 37 V26.4" strokeWidth="1.6" />
+      <circle cx="118" cy="24.8" r="1.5" fill="currentColor" stroke="none" opacity="0.55" />
+      {/* The line, thrown from the bow, arcing over toward the cleat. */}
+      <g className="ba-throw" style={pivot(99.4, 41.4)}>
+        <path d="M99.4 41.4 C 94 27.6, 76 22.4, 66.8 28.2" strokeWidth="1.4" />
+        <path d="M66.8 28.2 q-2.6 1.6 -1.2 3.6" strokeWidth="1.4" opacity="0.7" />
+      </g>
+    </g>
+    <path className="ba-glint" d="M29 53.4 H37" stroke="var(--warning)" strokeWidth="1.3" />
+    <Water id={id} />
+  </>
+);
+
+// Signal: a lamp on one jetty flashes across the water to another, whose
+// lamp answers; fog lifts between them.
+const Signal: Draw = ({ id }) => (
+  <>
+    <Jetty to={42} piles={[14, 32]} cleat={false} />
+    <g transform={`translate(${W} 0) scale(-1 1)`}>
+      <Jetty to={42} piles={[14, 32]} cleat={false} />
+    </g>
+    <g stroke="currentColor" strokeWidth="1.6">
+      <path d="M37 34.6 V26.6 M123 34.6 V26.6" />
+    </g>
+    <g className="ba-lift" mask={`url(#${id}-fade)`} stroke="currentColor" strokeWidth="1.4">
+      <path className="ba-fog" d="M52 29 H108" strokeDasharray="12 7" opacity="0.32" />
+      <path className="ba-fog ba-rev" d="M58 34 H102" strokeDasharray="7 8" opacity="0.2" />
+    </g>
+    {/* The flashes crossing, and the far lamp answering a beat later. */}
+    <path className="ba-flash" d="M44 24.6 H116" stroke="currentColor" strokeWidth="1.4" strokeDasharray="0.1 4.5" />
+    <circle className="ba-answer" cx="123" cy="24.6" r="2" fill="currentColor" />
+    <circle className="ba-signal" cx="37" cy="24.6" r="2.5" fill="var(--warning)" />
+    <Water id={id} />
+  </>
+);
+
+// First crate: the crane sets the first crate down on the empty quay.
+const FirstCrate: Draw = ({ id }) => (
+  <>
+    <Jetty to={118} piles={[15, 40, 65, 90, 112]} cleat={false} />
+    <g stroke="currentColor">
+      {/* The crane: mast at the quay's end, jib back over the deck, a brace. */}
+      <path d="M112 36 V21.4" strokeWidth="2.4" />
+      <path d="M115 22.2 L80 24.6" strokeWidth="2.1" />
+      <path d="M112 30 L100 23.4" strokeWidth="1.4" opacity="0.7" />
+      <g className="ba-settle" style={pivot(84, 24.4)}>
+        <path d="M84 24.4 V25.6" strokeWidth="1.3" />
+        <path d="M84 25.6 L79.2 27.6 M84 25.6 L88.8 27.6" strokeWidth="1.1" opacity="0.7" />
+        <rect x="78.2" y="27.6" width="11.6" height="6.6" rx="0.8" strokeWidth="1.6" fill="currentColor" fillOpacity="0.08" />
+        <path d="M78.8 28.2 L89.2 33.6" strokeWidth="1.1" opacity="0.5" />
+      </g>
+    </g>
+    <circle className="ba-lamp" cx="112" cy="18.6" r="2.4" fill="var(--warning)" />
+    <Water id={id} />
+  </>
+);
+
 const DRAW: Record<SceneName, Draw> = {
   ended: Ended,
   offline: Offline,
@@ -517,4 +589,7 @@ const DRAW: Record<SceneName, Draw> = {
   storm: Storm,
   chart: Chart,
   dock: Dock,
+  arriving: Arriving,
+  signal: Signal,
+  "first-crate": FirstCrate,
 };

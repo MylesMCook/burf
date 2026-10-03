@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -15,7 +16,7 @@ import (
 	"time"
 
 	"github.com/sean-brydon/berthd/internal/pairing"
-	"github.com/sean-brydon/berthd/internal/sshconfig"
+	"github.com/sean-brydon/berthd/internal/sshsetup"
 	"github.com/sean-brydon/berthd/internal/trust"
 	"github.com/sean-brydon/berthd/internal/wire"
 )
@@ -48,6 +49,17 @@ func findLink(out []byte) (string, error) {
 // with it. SSH is used for this one setup only; afterwards berth talks to
 // the box directly and never needs your SSH agent again.
 func addSSH(l laptop, args []string) error {
+	err := addSSHSteps(l, args)
+	var f *sshsetup.Failure
+	if errors.As(err, &f) && os.Getenv(sshsetup.FailureEnv) == "1" {
+		if data, jerr := json.Marshal(f); jerr == nil {
+			fmt.Fprintln(os.Stderr, sshsetup.FailurePrefix+string(data))
+		}
+	}
+	return err
+}
+
+func addSSHSteps(l laptop, args []string) error {
 	var sshArgs []string
 	for i, a := range args {
 		if a == "--" {
@@ -61,26 +73,71 @@ func addSSH(l laptop, args []string) error {
 	listen := fs.String("listen", "", "where berthd listens (default: the box's tailnet address only)")
 	address := fs.String("address", "", "address this laptop dials, when it differs from --listen")
 	via := fs.String("network", "", "reach the box through this network, for SSH and afterwards")
+	identity := fs.String("identity", "", "an SSH private key file to log in with (as ssh -i)")
+	trustKey := fs.String("trust-host-key", "", "trust the box's host key if its fingerprint is this SHA256:… (a new box only; a changed key is never trusted)")
 	pos, err := parseAnywhere(fs, args)
 	if err != nil || len(pos) != 1 {
-		return errors.New("usage: berth add ssh [user@]HOST [--name N] [--network NET] [--listen ADDR] [--address ADDR] [-- SSH OPTIONS]")
+		return errors.New("usage: berth add ssh [user@]HOST [--name N] [--network NET] [--listen ADDR] [--address ADDR] [--identity FILE] [--trust-host-key SHA256:…] [-- SSH OPTIONS]")
 	}
 	target := pos[0]
 	if err := checkName(*name); err != nil {
 		return err
 	}
-	if *via != "" {
-		// SSH to the box through the same network berth will use.
-		exe, err := os.Executable()
-		if err != nil {
-			return err
-		}
-		sshArgs = append([]string{"-o", fmt.Sprintf("ProxyCommand=%s network proxy %s %%h %%p", shellQuote(exe), *via)}, sshArgs...)
-	}
 	exe, err := os.Executable()
 	if err != nil {
 		return err
 	}
+	if *via != "" {
+		// SSH to the box through the same network berth will use.
+		sshArgs = append([]string{"-o", fmt.Sprintf("ProxyCommand=%s network proxy %s %%h %%p", shellQuote(exe), *via)}, sshArgs...)
+	}
+	if *identity != "" {
+		path, err := expandHome(*identity)
+		if err != nil {
+			return err
+		}
+		if st, err := os.Stat(path); err != nil || !st.Mode().IsRegular() {
+			return fmt.Errorf("no key file at %s", *identity)
+		}
+		sshArgs = append([]string{"-i", path}, sshArgs...)
+	}
+	// ConnectTimeout bounds reaching the box, not logging in: a key
+	// manager's approval prompt can take as long as the person needs.
+	if !hasOption(sshArgs, "ConnectTimeout") {
+		sshArgs = append([]string{"-o", "ConnectTimeout=20"}, sshArgs...)
+	}
+
+	// What ssh will do, from ~/.ssh/config, and the agent berth hands it
+	// when this process has none of its own (started by launchd or the app).
+	finder := sshsetup.DefaultFinder()
+	cfg, err := sshsetup.ReadConfig(context.Background(), sshArgs, target)
+	if err != nil {
+		return err
+	}
+	plan := finder.MakePlan(target, cfg, "")
+	env := askpassEnv(exe)
+	if plan.Inject != "" {
+		env = withEnv(env, "SSH_AUTH_SOCK", plan.Inject)
+	}
+	fmt.Println(plan.Summary)
+	// Failures name the host as it was typed, the way the person knows it.
+	host := target[strings.LastIndex(target, "@")+1:]
+	interactive := isTerminal(os.Stdin)
+	if *trustKey != "" {
+		hk, err := sshsetup.FetchHostKey(context.Background(), sshsetup.Exec, env, sshArgs, target)
+		if err != nil {
+			return err
+		}
+		if err := sshsetup.TrustHostKey(hk, *trustKey, finder.KnownHostsFile(cfg)); err != nil {
+			return err
+		}
+		fmt.Printf("Trusted %s's host key (%s).\n", host, *trustKey)
+	} else if !interactive && cfg.StrictHostKeyChecking == "ask" {
+		// Without a terminal, an unknown host key comes back as a failure
+		// with its fingerprint, for the app to ask about, not a dialog.
+		sshArgs = append([]string{"-o", "StrictHostKeyChecking=yes"}, sshArgs...)
+	}
+
 	// The steps share one connection, so a password or host key question is
 	// asked once. /tmp keeps the socket path under macOS's 104-byte limit.
 	control, err := os.MkdirTemp("/tmp", "cpssh")
@@ -89,18 +146,45 @@ func addSSH(l laptop, args []string) error {
 	}
 	defer os.RemoveAll(control)
 	sshArgs = append([]string{"-o", "ControlPath=" + filepath.Join(control, "%C")}, sshArgs...)
-	env := askpassEnv(exe)
-	if err := openMaster(sshArgs, target, env, control); err != nil {
-		// Keys kept in 1Password are only offered where ~/.ssh/config names
-		// its agent; for a box with no entry of its own, try that agent too.
-		agent := onePasswordAgent()
-		if agent == "" || !strings.Contains(err.Error(), "refused the login") || slices.ContainsFunc(sshArgs, func(a string) bool { return strings.HasPrefix(a, "IdentityAgent") }) {
-			return err
+	fail := func(stderr string, agent *sshsetup.Agent) *sshsetup.Failure {
+		f := sshsetup.Classify(stderr, host, cfg.Port, agent, plan.IdentityFiles)
+		if f.Kind == "host-key-unknown" && f.Fingerprint == "" {
+			if hk, err := sshsetup.FetchHostKey(context.Background(), sshsetup.Exec, env, sshArgs, target); err == nil {
+				f.Fingerprint = hk.PickFingerprint(sshsetup.UnknownKeyType(stderr))
+			}
+			if f.Fingerprint != "" {
+				f.Message += " Its fingerprint is " + f.Fingerprint + "; to trust it, run again with --trust-host-key " + f.Fingerprint + "."
+			}
 		}
-		fmt.Println("Trying the keys in 1Password…")
-		sshArgs = append([]string{"-o", "IdentityAgent=" + agent}, sshArgs...)
-		if err2 := openMaster(sshArgs, target, env, control); err2 != nil {
-			return fmt.Errorf("%w (1Password's SSH agent was tried too)", err)
+		return f
+	}
+	if stderr, err := openMaster(sshArgs, target, env, control); err != nil {
+		first := fail(stderr, plan.Agent)
+		if first.Kind != "auth" || hasOption(sshArgs, "IdentityAgent") {
+			return first
+		}
+		// Every key was refused. Keys kept in a key manager are only offered
+		// where something names its agent; try the others that are running.
+		tried := ""
+		if plan.Agent != nil {
+			tried = plan.Agent.Socket
+		}
+		ok := false
+		offered := first.Tried
+		for _, other := range finder.Others(tried) {
+			fmt.Printf("Trying the keys in %s…\n", other.Name)
+			retry := append([]string{"-o", "IdentityAgent=" + other.Socket}, sshArgs...)
+			stderr, err := openMaster(retry, target, env, control)
+			if err == nil {
+				sshArgs, ok = retry, true
+				break
+			}
+			if f := sshsetup.Classify(stderr, host, cfg.Port, &other, nil); f.Kind == "auth" {
+				offered = append(offered, f.Tried...)
+			}
+		}
+		if !ok {
+			return sshsetup.AuthFailure(host, cfg.Port, offered, first.Detail)
 		}
 	}
 	defer exec.Command("ssh", append(append([]string{}, sshArgs...), "-O", "exit", target)...).Run()
@@ -114,7 +198,12 @@ func addSSH(l laptop, args []string) error {
 		cmd.Stderr = &stderr
 		out, err := cmd.Output()
 		if err != nil {
-			return out, sshError(target, err, stderr.String())
+			var ee *exec.ExitError
+			if errors.As(err, &ee) && ee.ExitCode() != 255 {
+				// The remote command failed, not ssh: its own words say why.
+				return out, fmt.Errorf("on %s, %s failed: %s", host, strings.Fields(remote)[0], strings.TrimSpace(stderr.String()))
+			}
+			return out, fail(stderr.String(), plan.Agent)
 		}
 		return out, nil
 	}
@@ -198,9 +287,6 @@ func addSSH(l laptop, args []string) error {
 	return nil
 }
 
-// onePasswordAgent is 1Password's SSH agent socket, when it is running.
-func onePasswordAgent() string { return sshconfig.OnePasswordAgent() }
-
 // checkName refuses a --name that cannot be a hostname before any work is
 // done, suggesting one that can.
 func checkName(name string) error {
@@ -211,41 +297,55 @@ func checkName(name string) error {
 }
 
 // openMaster authenticates once and leaves a shared connection in the
-// background. Its stderr goes to a file, not a pipe: the backgrounded ssh
-// keeps it open, and waiting on a pipe would wait for that process to exit.
-func openMaster(sshArgs []string, target string, env []string, dir string) error {
+// background, returning ssh's stderr when it fails. That goes to a file, not
+// a pipe: the backgrounded ssh keeps it open, and waiting on a pipe would
+// wait for that process to exit. -v adds the keys ssh offered, which an
+// "every key was refused" failure names.
+func openMaster(sshArgs []string, target string, env []string, dir string) (string, error) {
 	errFile, err := os.Create(filepath.Join(dir, "stderr"))
 	if err != nil {
-		return err
+		return "", err
 	}
 	defer errFile.Close()
-	cmd := exec.Command("ssh", append(append([]string{"-o", "ControlMaster=yes", "-o", "ControlPersist=120", "-f", "-N"}, sshArgs...), target)...)
+	cmd := exec.Command("ssh", append(append([]string{"-v", "-o", "ControlMaster=yes", "-o", "ControlPersist=120", "-f", "-N"}, sshArgs...), target)...)
 	cmd.Env = env
 	cmd.Stderr = errFile
 	if err := cmd.Run(); err != nil {
 		stderr, _ := os.ReadFile(errFile.Name())
-		return sshError(target, err, string(stderr))
+		return string(stderr), err
 	}
-	return nil
+	return "", nil
 }
 
-// sshError explains the failures people hit on a first connection.
-func sshError(target string, err error, stderr string) error {
-	stderr = strings.TrimSpace(stderr)
-	switch {
-	case strings.Contains(stderr, "REMOTE HOST IDENTIFICATION HAS CHANGED"):
-		return fmt.Errorf("%s's host key has changed since you last connected. If the box was rebuilt, remove the old key with `ssh-keygen -R <host>` and try again; otherwise do not connect", target)
-	case strings.Contains(stderr, "Host key verification failed"):
-		return fmt.Errorf("%s's host key was not trusted, so berth did not connect", target)
-	case strings.Contains(stderr, "Permission denied"):
-		return fmt.Errorf("%s refused the login (%s). Check the user, and that your SSH agent (such as 1Password) offers the right key", target, lastLine(stderr))
-	}
-	return fmt.Errorf("ssh %s: %v: %s", target, err, stderr)
+// hasOption reports whether ssh arguments set an -o option already; ssh
+// keeps the first value it sees, so berth's defaults must not mask the
+// person's own.
+func hasOption(sshArgs []string, name string) bool {
+	return slices.ContainsFunc(sshArgs, func(a string) bool {
+		return strings.HasPrefix(strings.ToLower(a), strings.ToLower(name)+"=") || strings.HasPrefix(strings.ToLower(a), strings.ToLower(name)+" ")
+	})
 }
 
-func lastLine(s string) string {
-	lines := strings.Split(strings.TrimSpace(s), "\n")
-	return lines[len(lines)-1]
+// withEnv sets one variable in an environment list, replacing any value.
+func withEnv(env []string, key, value string) []string {
+	out := make([]string, 0, len(env)+1)
+	for _, kv := range env {
+		if !strings.HasPrefix(kv, key+"=") {
+			out = append(out, kv)
+		}
+	}
+	return append(out, key+"="+value)
+}
+
+func expandHome(path string) (string, error) {
+	if path == "~" || strings.HasPrefix(path, "~/") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		return filepath.Join(home, strings.TrimPrefix(path, "~")), nil
+	}
+	return filepath.Abs(path)
 }
 
 func shellQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'" }

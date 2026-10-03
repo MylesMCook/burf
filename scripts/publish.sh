@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Publish a Berth release from this Mac: bump the version, build and sign
-# the app update, build the CLI and daemons, and create the GitHub release
-# the installed apps update from.
+# the app update, and create the GitHub release the installed apps update
+# from. Pushing the tag also starts .github/workflows/release.yml, which
+# builds the CLI and daemon archives (and checksums.txt) for install.sh and
+# adds them to the same release.
 #
 #   make publish VERSION=0.3.0 [NOTES="What changed"]
 #
@@ -67,9 +69,6 @@ open(path, "w").write(text)
 PY
 (cd app/src-tauri && cargo update -p app --offline >/dev/null 2>&1 || true)
 
-echo "Building the CLI and daemons…"
-make release >/dev/null
-
 echo "Building and signing the app…"
 make app-build >/dev/null
 bundle="app/src-tauri/target/release/bundle"
@@ -83,6 +82,7 @@ codesign -dv "$signed" 2>&1 | grep -q "^TeamIdentifier=not set" &&
 codesign --verify --strict "$signed" 2>/dev/null ||
   die "the app's signature does not verify"
 
+rm -rf dist && mkdir -p dist
 tarball="$(ls "$bundle"/macos/*.app.tar.gz)"
 [ -f "$tarball.sig" ] || die "the updater bundle was not signed"
 cp "$tarball" dist/Berth-macos-arm64.app.tar.gz
@@ -111,5 +111,10 @@ git add app/package.json app/src-tauri/tauri.conf.json app/src-tauri/Cargo.toml 
 git commit -q -m "chore: release $tag"
 git tag "$tag"
 git push -q origin main "$tag"
-gh release create "$tag" dist/* --title "Berth $tag" --notes "${NOTES:-Berth $version}"
+# The release workflow may have made the release already, for its archives.
+if gh release view "$tag" >/dev/null 2>&1; then
+  gh release upload "$tag" dist/* --clobber
+else
+  gh release create "$tag" dist/* --title "Berth $tag" --notes "${NOTES:-Berth $version}"
+fi
 echo "Published $tag. Installed apps pick it up within a few hours, or from Settings → Updates → Check now."
