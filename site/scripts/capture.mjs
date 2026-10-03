@@ -61,7 +61,8 @@ small{color:#888}</style></head><body><header><b>Billing</b><span>localhost · d
 </main></body></html>`;
 
 // A scene opens the demo, stages one screen and returns the area to keep,
-// in CSS pixels. Widths are the WebP widths written; the default is the
+// in CSS pixels. A `bare` scene is a dialog kept on a transparent ground.
+// Widths are the WebP widths written; the default is the
 // clip's width and twice it. A scene whose widths are set also says its
 // clip's width (clipWidth), for --phone-only.
 const scenes = [
@@ -99,12 +100,14 @@ const scenes = [
   },
   {
     name: "project",
+    bare: true,
     phone: { x: 0, y: 0, width: 400, height: 380 },
     async stage(s) {
       await s.page.evaluate(() => window.__berthStore.getState().openAddProject());
       await s.wait(600);
       await s.page.keyboard.type("acme/handbook");
       await s.wait(900);
+      await s.alone();
       return s.around(s.page.getByRole("dialog"), 20);
     },
   },
@@ -126,6 +129,7 @@ const scenes = [
   },
   {
     name: "broadcast",
+    bare: true,
     phone: { x: 0, y: 0, width: 400, height: 420 },
     async stage(s) {
       await s.view({ kind: "dashboard" });
@@ -135,6 +139,7 @@ const scenes = [
       for (const n of ["billing-fix", "qa-deck", "judge-v2"]) await s.page.locator("main").getByText(n, { exact: true }).first().click();
       await s.page.getByRole("button", { name: /Send to/ }).click();
       await s.wait(600);
+      await s.alone();
       return s.around(s.page.getByRole("dialog"), 24);
     },
   },
@@ -178,6 +183,7 @@ const scenes = [
       await s.page.keyboard.type("https://github.com/acme/kits/tree/main/cal-worktrees");
       await s.page.getByRole("button", { name: "Review" }).click();
       await s.wait(1500);
+      await s.alone();
       const box = await s.page.getByRole("dialog").boundingBox();
       return { x: box.x, y: 0, width: 1280 - box.x, height: 800 };
     },
@@ -400,6 +406,17 @@ async function main() {
             await page.evaluate(() => document.activeElement?.blur());
             await wait(300);
           },
+          // A dialog on its own: no dimmed, blurred window behind it and no
+          // close button in its corner. A `bare` scene keeps nothing but the
+          // dialog and its shadow, on a transparent ground, so the page can
+          // set it on its own panel.
+          async alone() {
+            const ground = scene.bare
+              ? '#root { visibility: hidden !important; } html, body { background: transparent !important; } [data-slot="dialog-backdrop"] { background: transparent !important; }'
+              : '[data-slot="dialog-backdrop"] { background: var(--background) !important; }';
+            await page.addStyleTag({ content: ground + ' [data-slot="dialog-backdrop"] { backdrop-filter: none !important; -webkit-backdrop-filter: none !important; } [role="dialog"] [aria-label="Close"], [role="dialog"] [data-slot="dialog-close"] { visibility: hidden !important; }' });
+            await wait(250);
+          },
           async around(locator, pad) {
             const b = await locator.first().boundingBox();
             const x = Math.max(0, b.x - pad);
@@ -413,7 +430,7 @@ async function main() {
           await wait(2500);
           const clip = await scene.stage(s);
           await wait(1200);
-          const png = await page.screenshot({ clip });
+          const png = await page.screenshot({ clip, omitBackground: !!scene.bare });
           if (pngDir) writeFileSync(join(pngDir, `${scene.name}-${theme}.png`), png);
           const widths = scene.widths ?? [Math.round(clip.width), Math.round(clip.width * 2)];
           for (const r of await encode(encoder, png, clip, widths)) write(`${scene.name}-${theme}`, r);

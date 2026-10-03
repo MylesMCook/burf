@@ -46,7 +46,13 @@ Adding one there and a `<picture>` for it in `index.html` (a light
 `<source>`, a dark `<img>`, both with the two widths) is all a new
 screenshot takes. A scene's `phone` area adds the phone crop; give it two
 more `<source>`s with `media="(max-width: 640px)"` (light first) and the
-`crop` class on the figure if the crop cuts through the screen.
+`crop` class on the shot if the crop cuts through the screen.
+
+On the page every shot sits on a tinted `.plate` (the hero's on the
+`.stage`, under the harbour). A scene marked `bare` in `capture.mjs` keeps
+only its dialog and shadow, on a transparent ground; give its shot the
+`bare` class so the page adds no frame of its own. `alone()` in a scene
+hides the dialog's backdrop and close button.
 `&shots=1` in the demo's URL hides its "mock" badge.
 
 ## Rules
