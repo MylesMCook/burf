@@ -87,7 +87,8 @@ const scenes = [
     name: "workspace",
     widths: [1280, 2240],
     clipWidth: 1280,
-    phone: { x: 220, y: 0, width: 420, height: 340 },
+    // The agent's terminal, at about its own size on a phone.
+    phone: { x: 240, y: 0, width: 340, height: 280 },
     async stage(s) {
       await s.quietQueue();
       await s.page.getByText("billing-fix", { exact: true }).first().click();
@@ -101,7 +102,8 @@ const scenes = [
   {
     name: "project",
     bare: true,
-    phone: { x: 0, y: 0, width: 400, height: 380 },
+    // The box tiles, the field and what Enter will do.
+    phone: { x: 30, y: 36, width: 340, height: 250 },
     async stage(s) {
       await s.page.evaluate(() => window.__berthStore.getState().openAddProject());
       await s.wait(600);
@@ -115,7 +117,8 @@ const scenes = [
     name: "graph",
     widths: [760, 1400],
     clipWidth: 760,
-    phone: { x: 0, y: 0, width: 420, height: 420 },
+    // The branch, ahead and behind, its actions and the first commits.
+    phone: { x: 0, y: 10, width: 340, height: 340 },
     async stage(s) {
       await s.view({ kind: "worktrees" });
       await s.wait(800);
@@ -130,7 +133,8 @@ const scenes = [
   {
     name: "broadcast",
     bare: true,
-    phone: { x: 0, y: 0, width: 400, height: 420 },
+    // The prompt and the first chosen agents.
+    phone: { x: 20, y: 30, width: 340, height: 340 },
     async stage(s) {
       await s.view({ kind: "dashboard" });
       await s.wait(800);

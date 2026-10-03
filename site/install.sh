@@ -11,7 +11,9 @@
 # `berth add ssh` runs over SSH. Running it again upgrades in place.
 #
 # Every download is checked against the release's checksums.txt before it
-# runs. Source: https://github.com/sean-brydon/berthd/blob/main/site/install.sh
+# runs. Before Berth's first release there is nothing to download: it says
+# so, and prints how to install berthd over SSH from a source build instead.
+# Source: https://github.com/sean-brydon/berthd/blob/main/site/install.sh
 #
 # Options (or the environment variable after each):
 #   --version vX.Y.Z   a release instead of the latest      BERTH_VERSION
@@ -155,8 +157,70 @@ trap cleanup EXIT
 trap 'cleanup; exit 130' INT
 trap 'cleanup; exit 143' TERM HUP
 
+# http_status URL: the HTTP status GitHub answers with, or 000 when there was
+# no answer (offline, or no curl to ask with).
+http_status() {
+	command -v curl >/dev/null 2>&1 || {
+		printf 000
+		return
+	}
+	curl -s -o /dev/null -w '%{http_code}' --proto '=https' -H 'Accept: application/vnd.github+json' "$1" 2>/dev/null || true
+}
+
+# no_release: there's nothing to download (no release at all, or not this
+# version), so say that plainly and how to get berthd on this box today.
+no_release() {
+	host=$(uname -n 2>/dev/null || echo my-box)
+	{
+		say ""
+		if [ "$version" = latest ]; then
+			say "${bold}There's no Berth release yet${reset}, so there's no berthd to download."
+		else
+			say "${bold}Berth $version isn't released${reset}, so there's no berthd to download."
+			say "Releases: https://github.com/$repo/releases"
+		fi
+		say ""
+		say "Instead, build Berth on your laptop (Go 1.27) and let it install berthd on"
+		say "this box over SSH. It uploads berthd, starts it and pairs, in one step:"
+		say ""
+		say "  git clone https://github.com/$repo"
+		say "  cd berthd && make all"
+		if [ "$os" = darwin ]; then
+			# make all builds the Linux daemons only.
+			say "  CGO_ENABLED=0 GOOS=darwin GOARCH=$arch go build -o bin/berthd-darwin-$arch ./cmd/berthd"
+		fi
+		say "  bin/berth add ssh $user@$host"
+		say ""
+		say "Use however you SSH to this box in place of $user@$host. Step by step:"
+		say "https://docs.berthd.app/getting-started/add-a-box"
+	} >&2
+	exit 1
+}
+
 step "Downloading berthd ($version, $os/$arch)"
-fetch "$base/$asset" "$tmp/$asset" || die "could not download $base/$asset. Check the version exists: https://github.com/$repo/releases"
+if ! fetch "$base/$asset" "$tmp/$asset" 2>"$tmp/fetch.err"; then
+	# A custom download base is the user's own; report what failed there.
+	if [ -n "${BERTH_DOWNLOAD_BASE:-}" ]; then
+		cat "$tmp/fetch.err" >&2
+		die "could not download $base/$asset"
+	fi
+	if [ "$version" = latest ]; then
+		release_api="https://api.github.com/repos/$repo/releases/latest"
+	else
+		release_api="https://api.github.com/repos/$repo/releases/tags/$version"
+	fi
+	case $(http_status "$release_api") in
+	404) no_release ;;
+	200) die "release $version has no berthd for $os/$arch ($asset). Releases: https://github.com/$repo/releases" ;;
+	esac
+	# GitHub's API didn't say (offline, or rate limited); a 404 for the
+	# archive itself still means there's no such release.
+	if grep -q 404 "$tmp/fetch.err" 2>/dev/null; then
+		no_release
+	fi
+	cat "$tmp/fetch.err" >&2
+	die "could not download $base/$asset. Check this machine can reach github.com, then run this again"
+fi
 fetch "$base/checksums.txt" "$tmp/checksums.txt" || die "could not download $base/checksums.txt"
 want=$(sed -n "s/^\([0-9a-f]\{64\}\)  \*\{0,1\}$asset\$/\1/p" "$tmp/checksums.txt")
 [ -n "$want" ] || die "checksums.txt has no entry for $asset"

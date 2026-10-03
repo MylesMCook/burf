@@ -49,7 +49,11 @@ more `<source>`s with `media="(max-width: 640px)"` (light first) and the
 `crop` class on the shot if the crop cuts through the screen.
 
 On the page every shot sits on a tinted `.plate` (the hero's on the
-`.stage`, under the harbour). A scene marked `bare` in `capture.mjs` keeps
+`.stage`, above the harbour). Only the four every-day features (workspace,
+project, graph, broadcast) and the dashboard are shown; the second tier of
+features is text cards, so the queue, flow, kits, env, notifications and
+plugins scenes are captured but not on the page. Phone crops are about 340
+CSS pixels wide, so they show at roughly their own size on a phone. A scene marked `bare` in `capture.mjs` keeps
 only its dialog and shadow, on a transparent ground; give its shot the
 `bare` class so the page adds no frame of its own. `alone()` in a scene
 hides the dialog's backdrop and close button.
@@ -64,6 +68,13 @@ harbour by day, and the app's own words ("Send a prompt to several agents",
 not "Broadcast"). The drawings move by `transform` and `opacity` only, with
 fixed keyframes and no SVG masks over moving parts (both forced style and
 layout every frame), pause offscreen, and stop for reduced motion.
+
+Until the first release, Get started leads with what works today: build
+from source, `berth add ssh`, the agent integrations on the box, then the
+app. The install one-liner is shown as "Once the first release is out", and
+`install.sh` says there's no release yet and prints the SSH route. HTML
+comments marked `Release:` in `index.html` (the hero's status line and Get
+started) say what to change when the release ships.
 
 Keep the page light: about 250 KB on first load and under 1 MB after
 scrolling to the end at 2x.

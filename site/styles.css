@@ -207,7 +207,8 @@ code.url {
 .start-grid,
 .oss,
 .notes3,
-.grid {
+.why,
+.more-grid {
   grid-template-columns: minmax(0, 1fr);
 }
 
@@ -440,7 +441,65 @@ code.url {
 /* Hero */
 
 .hero {
-  padding-top: clamp(48px, 9vw, 104px);
+  padding-top: clamp(36px, 6vw, 72px);
+}
+
+/* One quiet line above the headline: what Berth is, and the docs. */
+.hero-line {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin-bottom: 22px;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.hero-line a {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding-left: 12px;
+  border-left: 1px solid var(--border);
+  color: var(--fg);
+  text-decoration: none;
+}
+
+.hero-line a:hover {
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--fg) 35%, transparent);
+}
+
+@media (max-width: 479px) {
+  .hero-line .long {
+    display: none;
+  }
+}
+
+.hero-line svg {
+  width: 14px;
+  height: 14px;
+  transition: transform 0.15s;
+}
+
+.hero-line a:hover svg {
+  transform: translateX(2px);
+}
+
+/* Past phone width the hero reads down the middle, so the product shot
+   under it fills the first screen instead of an empty right half. */
+@media (min-width: 720px) {
+  .hero-copy {
+    text-align: center;
+  }
+  .hero-copy h1,
+  .hero-copy .lede {
+    margin-inline: auto;
+  }
+  .hero-copy .actions {
+    justify-content: center;
+  }
 }
 
 /* Small labels: sentence case, untracked, muted (the brand rule). */
@@ -487,7 +546,7 @@ p.eyebrow,
 }
 
 .hero .note {
-  margin-top: 14px;
+  margin-top: 16px;
   font-size: 13.5px;
   color: var(--muted);
 }
@@ -500,17 +559,18 @@ p.eyebrow,
    way a screenshot is framed on the references, drawn in Berth's own line. */
 .stage {
   --ground: var(--bg-2);
-  margin-top: clamp(36px, 5vw, 64px);
+  margin-top: clamp(32px, 4vw, 48px);
   background: var(--bg-2);
   border: 1px solid var(--border-soft);
   border-radius: 20px;
-  padding: clamp(8px, 1.6vw, 20px) clamp(12px, 3.2vw, 40px) clamp(12px, 3.2vw, 40px);
+  padding: clamp(12px, 2.4vw, 32px) clamp(12px, 3.2vw, 40px) clamp(4px, 1vw, 12px);
 }
 
+/* The harbour runs along the bottom of the stage, under the dashboard. */
 .harbour {
   color: var(--line);
   overflow: hidden;
-  padding-top: 4px;
+  margin-top: clamp(4px, 1vw, 12px);
 }
 
 .harbour svg {
@@ -712,10 +772,6 @@ p.eyebrow,
   height: auto;
 }
 
-.shot.small {
-  box-shadow: var(--shadow-sm);
-}
-
 .caption {
   margin-top: 12px;
   font-size: 13px;
@@ -724,7 +780,6 @@ p.eyebrow,
 }
 
 .hero-shot {
-  margin-top: clamp(4px, 1vw, 12px);
   box-shadow: var(--shadow-sm);
 }
 
@@ -732,8 +787,7 @@ p.eyebrow,
    instead of all of it at a third of its size. Where the crop cuts through
    the screen, its right edge fades, so it reads as continuing. */
 @media (max-width: 640px) {
-  .shot.crop img,
-  .shot.crop.fade img {
+  .shot.crop img {
     -webkit-mask-image: linear-gradient(90deg, #000 84%, transparent);
     mask-image: linear-gradient(90deg, #000 84%, transparent);
   }
@@ -787,51 +841,213 @@ section {
   line-height: 1.2;
 }
 
-/* Why */
+/* Why: four things only Berth says. The first leads, with a drawing of one
+   night; the other three carry a concrete detail instead of an icon. */
 
-.grid {
+.why {
   display: grid;
   gap: 1px;
   background: var(--border-soft);
   border: 1px solid var(--border-soft);
-  border-radius: 14px;
+  border-radius: 16px;
   overflow: hidden;
 }
 
-@media (min-width: 680px) {
-  .grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+@media (min-width: 860px) {
+  .why {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .why-lead {
+    grid-column: 1 / -1;
   }
 }
 
-@media (min-width: 1160px) {
-  .grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-.cell {
+.why-lead,
+.why-item {
   background: var(--bg);
-  padding: 26px 24px 28px;
 }
 
-.cell h3 {
-  font-size: 16.5px;
+.why-lead {
+  display: grid;
+  gap: 28px 56px;
+  align-items: center;
+  padding: clamp(24px, 4vw, 44px) clamp(20px, 3.6vw, 40px);
+}
+
+@media (min-width: 940px) {
+  .why-lead {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+  }
+}
+
+.why-lead h3 {
+  font-size: clamp(1.5rem, 1.2rem + 1.1vw, 2rem);
+  line-height: 1.15;
+  letter-spacing: -0.022em;
+}
+
+.why-lead .copy p {
+  margin-top: 12px;
+  font-size: 1.04rem;
+  max-width: 34em;
+}
+
+.why-item {
+  display: flex;
+  flex-direction: column;
+  padding: 26px clamp(20px, 2.6vw, 28px) 24px;
+}
+
+.why-item h3 {
+  font-size: 17px;
   letter-spacing: -0.01em;
   margin-bottom: 8px;
 }
 
-.cell p {
+.why-item p {
   font-size: 14.5px;
-  line-height: 1.6;
+}
+
+/* A detail in Berth's own words: a command, an address, a cipher suite. */
+.proof {
+  font-family: var(--mono);
+  font-variant-ligatures: none;
+  font-size: 12.5px;
+  color: var(--fg);
+  overflow-wrap: anywhere;
+}
+
+.why-item .proof {
+  margin-top: auto;
+  padding-top: 18px;
+}
+
+/* One night: two lanes on a shared time axis. Positions are percentages
+   along the track (--a to --b, or --at for a point). */
+.night {
+  --ground: var(--bg-2);
+  margin: 0;
+  background: var(--bg-2);
+  border: 1px solid var(--border-soft);
+  border-radius: 14px;
+  padding: 22px clamp(16px, 2.4vw, 24px) 16px;
+  display: grid;
+  gap: 18px;
+  font-size: 13px;
+}
+
+.night .lane {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+@media (min-width: 520px) {
+  .night .lane {
+    grid-template-columns: 112px minmax(0, 1fr);
+    align-items: center;
+  }
+}
+
+.night .who {
+  color: var(--fg-2);
+  white-space: nowrap;
+}
+
+.night .who code {
+  font-size: 12px;
+}
+
+.night .track {
+  position: relative;
+  height: 30px;
+}
+
+.night .seg {
+  position: absolute;
+  top: 14px;
+  left: calc(var(--a) * 1%);
+  width: calc((var(--b) - var(--a)) * 1%);
+  height: 3px;
+  border-radius: 2px;
+}
+
+.night .seg.on {
+  background: var(--line);
+}
+
+.night .seg.off {
+  height: 0;
+  top: 15px;
+  border-top: 2px dashed color-mix(in srgb, var(--line) 55%, transparent);
+  border-radius: 0;
+}
+
+.night .seg.work {
+  background: var(--fg);
+}
+
+.night .seg.rest {
+  background: color-mix(in srgb, var(--line) 40%, transparent);
+  height: 2px;
+  top: 15px;
+}
+
+.night .tag {
+  position: absolute;
+  top: -6px;
+  left: calc(var(--at) * 1%);
+  transform: translateX(-50%);
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.night .tag.after {
+  transform: translateX(10px);
   color: var(--fg-2);
 }
 
-.cell .glyph {
-  width: 28px;
-  height: 28px;
-  color: var(--line);
-  margin-bottom: 18px;
+.night .mark {
+  position: absolute;
+  top: 9px;
+  left: calc(var(--at) * 1%);
+  width: 13px;
+  height: 13px;
+  margin-left: -6.5px;
+  border-radius: 50%;
+  background: var(--bg-2);
+  border: 2px solid var(--fg);
+}
+
+@media (max-width: 519px) {
+  .night .times .who {
+    display: none;
+  }
+}
+
+.night .times {
+  border-top: 1px solid var(--border-soft);
+  padding-top: 10px;
+}
+
+.night .axis {
+  position: relative;
+  height: 16px;
+}
+
+.night .axis span {
+  position: absolute;
+  left: calc(var(--at) * 1%);
+  transform: translateX(-50%);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 16px;
+  color: var(--muted);
+}
+
+.night .axis span:first-child {
+  transform: none;
 }
 
 /* How it works */
@@ -1079,10 +1295,39 @@ section {
   margin-bottom: 6px;
 }
 
-/* Features */
+/* Features: four every-day features with screenshots, then the rest as
+   compact cards. */
 
 .features .section-head {
-  margin-bottom: clamp(40px, 6vw, 72px);
+  margin-bottom: clamp(32px, 5vw, 56px);
+}
+
+.tier-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 16px;
+  padding-bottom: 14px;
+  margin-bottom: clamp(32px, 5vw, 56px);
+  border-bottom: 1px solid var(--border);
+}
+
+.tier-head.more {
+  margin-top: clamp(24px, 4vw, 48px);
+  margin-bottom: 0;
+  border-bottom: 0;
+  padding-bottom: 20px;
+}
+
+.tier {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+.tier-head p {
+  font-size: 14.5px;
+  color: var(--muted);
 }
 
 .feature {
@@ -1093,7 +1338,7 @@ section {
   border-top: 1px solid var(--border-soft);
 }
 
-.feature:first-of-type {
+.tier-head + .feature {
   border-top: 0;
   padding-top: 0;
 }
@@ -1126,7 +1371,11 @@ section {
   margin-top: 0;
 }
 
-.feature .copy h3 {
+.feature .copy h4 {
+  margin: 0;
+  color: var(--fg);
+  font-weight: 600;
+  text-wrap: balance;
   font-size: clamp(1.55rem, 1.2rem + 1.3vw, 2.15rem);
   line-height: 1.12;
   letter-spacing: -0.025em;
@@ -1156,8 +1405,8 @@ section {
   background: var(--line);
 }
 
-/* Plates: every product shot sits on a quiet tinted panel, so a dialog, a
-   popover and a whole window read as the same kind of figure. */
+/* Plates: every product shot sits on a quiet tinted panel, so a dialog and
+   a whole window read as the same kind of figure. */
 .plate {
   --ground: var(--bg-2);
   margin: 0;
@@ -1185,133 +1434,59 @@ section {
   padding: clamp(2px, 0.8vw, 10px);
 }
 
-/* A small capture shows at its own size, never scaled up. */
-.shot.native {
-  max-width: var(--w);
-  margin-inline: auto;
-}
-
-.plate.center {
+/* The second tier: text cards, three to a row. */
+.more-grid {
   display: grid;
-  align-content: center;
-  min-height: clamp(280px, 30vw, 400px);
+  gap: 1px;
+  background: var(--border-soft);
+  border: 1px solid var(--border-soft);
+  border-radius: 16px;
+  overflow: hidden;
 }
 
-/* A capture that stops mid-form fades out instead of cutting off. */
-.shot.fade img {
-  -webkit-mask-image: linear-gradient(180deg, #000 78%, transparent);
-  mask-image: linear-gradient(180deg, #000 78%, transparent);
-}
-
-/* Smaller features, two to a row: the plate is a fixed window onto the
-   capture, which runs off its bottom edge and fades. */
-.pairs {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 56px 32px;
-  padding-top: clamp(48px, 6vw, 72px);
-  border-top: 1px solid var(--border-soft);
-}
-
-@media (min-width: 860px) {
-  .pairs {
+@media (min-width: 640px) {
+  .more-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
-  .card-feature {
-    display: grid;
-    grid-row: span 2;
-    grid-template-rows: subgrid;
-    row-gap: 0;
+}
+
+@media (min-width: 1000px) {
+  .more-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
-.card-feature .copy {
-  padding-bottom: 22px;
+.mini {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  padding: 24px clamp(20px, 2.4vw, 26px) 24px;
 }
 
-.card-feature h3 {
-  font-size: clamp(1.3rem, 1.1rem + 0.6vw, 1.6rem);
-  line-height: 1.2;
-  letter-spacing: -0.02em;
+.mini p.eyebrow {
+  margin-bottom: 10px;
+  font-size: 13px;
 }
 
-.card-feature .copy p {
-  margin-top: 10px;
-  font-size: 15.5px;
-  max-width: 34em;
+.mini h4 {
+  margin: 0 0 8px;
+  color: var(--fg);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.3;
 }
 
-.card-feature .copy p.eyebrow {
-  margin: 0 0 12px;
+.mini p {
+  font-size: 14.5px;
 }
 
-.plate.clip {
-  position: relative;
-  overflow: hidden;
-  height: clamp(320px, 32vw, 400px);
-  padding-bottom: 0;
-}
-
-.plate.clip::after {
-  content: "";
-  position: absolute;
-  inset: auto 0 0;
-  height: 72px;
-  background: linear-gradient(transparent, var(--bg-2));
-  pointer-events: none;
-}
-
-/* A wide, short capture runs off the plate's right edge, so it can be
-   shown larger than the plate is wide. */
-.plate .shot.bleed {
-  width: 128%;
-  max-width: none;
-  -webkit-mask-image: linear-gradient(90deg, #000 70%, transparent 96%);
-  mask-image: linear-gradient(90deg, #000 70%, transparent 96%);
-}
-
-.plate.clip.mid {
-  display: grid;
-  align-content: center;
-  padding-bottom: clamp(12px, 2.4vw, 28px);
-}
-
-.plate.clip.mid::after,
-.code-plate::after {
-  display: none;
-}
-
-.code-plate {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  align-content: center;
-  padding: 0;
-}
-
-.code-plate pre {
-  margin: 0;
-  border: 0;
-  border-radius: 0;
-  background: transparent;
-  padding: 24px clamp(16px, 3vw, 32px);
-  font-size: 13.5px;
-  line-height: 1.75;
+.mini .proof {
+  margin-top: auto;
+  padding-top: 16px;
 }
 
 @media (max-width: 640px) {
-  .plate.clip {
-    height: auto;
-    max-height: 440px;
-  }
-  .plate .shot.bleed {
-    width: 100%;
-    -webkit-mask-image: none;
-    mask-image: none;
-  }
-  .code-plate pre {
-    font-size: 11.5px;
-    padding: 18px 14px;
-  }
   main pre {
     font-size: 11.5px;
     padding: 12px 14px;
@@ -1512,6 +1687,96 @@ pre .k {
   background: var(--bg);
 }
 
+.step-note {
+  margin: 10px 0 0 36px;
+  font-size: 14.5px;
+  line-height: 1.55;
+  color: var(--fg-2);
+  max-width: 40em;
+}
+
+.step-note code {
+  white-space: nowrap;
+  overflow-wrap: normal;
+}
+
+.step-note strong {
+  color: var(--fg);
+  font-weight: 550;
+}
+
+/* The terminal route for step 4, folded away. */
+.alt {
+  margin: 12px 0 0 36px;
+  font-size: 14px;
+}
+
+.alt summary {
+  cursor: pointer;
+  color: var(--muted);
+  width: fit-content;
+}
+
+.alt summary:hover {
+  color: var(--fg);
+}
+
+.alt pre {
+  margin: 10px 0 0;
+}
+
+/* The install line that comes with the first release: shown, but plainly
+   not a step yet. Neutral, not amber: nothing here needs you. */
+.soon {
+  margin-top: 36px;
+  padding: 18px clamp(16px, 2.4vw, 22px) 18px;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+}
+
+.soon-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14.5px;
+  font-weight: 550;
+  color: var(--fg);
+}
+
+.soon .tag {
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+}
+
+.soon pre {
+  margin-top: 12px;
+  background: transparent;
+  color: var(--muted);
+}
+
+.soon > p:last-child {
+  margin-top: 10px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+@media (max-width: 640px) {
+  .step-note,
+  .alt {
+    margin-left: 0;
+  }
+  /* A command wraps on a phone rather than hiding its end off the edge;
+     Copy still copies it as one line. */
+  .start pre {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+}
+
 .read-next h3 {
   font-size: 15px;
   font-weight: 550;
@@ -1631,7 +1896,13 @@ pre .k {
 .foot-cols {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 24px;
+  gap: 28px 24px;
+}
+
+@media (max-width: 480px) {
+  .foot-cols {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .foot-cols h3 {
@@ -1657,6 +1928,36 @@ pre .k {
   color: var(--fg);
 }
 
+/* Under the columns, across the footer: the status and the way back up. */
+.foot-bar {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border-soft);
+  font-size: 13px;
+}
+
+.foot-bar a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.foot-bar a:hover {
+  color: var(--fg);
+}
+
+.foot-bar svg {
+  width: 14px;
+  height: 14px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
@@ -1664,7 +1965,8 @@ pre .k {
   .art,
   .art *,
   .art::before,
-  .menu-btn path {
+  .menu-btn path,
+  .hero-line svg {
     animation: none !important;
     transition: none !important;
   }
@@ -1706,40 +2008,3 @@ pre .k {
   line-height: 1.6;
   color: var(--muted);
 }
-
-/* The docs link above the hero headline: a quiet pill, neutral like the
-   rest of the hero (amber is for what needs you). */
-.docs-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  max-width: 100%;
-  margin-bottom: 22px;
-  padding: 4px 12px 4px 4px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--fg) 3%, transparent);
-  color: var(--muted);
-  font-size: 13px;
-  line-height: 20px;
-  text-decoration: none;
-  transition: border-color 0.15s, color 0.15s;
-}
-.docs-pill .tag {
-  padding: 1px 9px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--fg) 9%, transparent);
-  color: var(--fg);
-  font-weight: 500;
-}
-.docs-pill > span:not(.tag) {
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.docs-pill svg { width: 14px; height: 14px; flex: none; transition: transform 0.15s; }
-.docs-pill:hover { border-color: color-mix(in srgb, var(--fg) 24%, transparent); color: var(--fg); }
-.docs-pill:hover svg { transform: translateX(2px); }
-.docs-pill:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { .docs-pill svg { transition: none; } }

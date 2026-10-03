@@ -49,20 +49,29 @@
 
 <!-- Hero -->
 <div class="hero" id="top">
-  <div class="wrap">
-    <a class="docs-pill" href="https://docs.berthd.app"><span class="tag">Docs</span><span>Guides, concepts and the full reference</span><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5 L10.5 8 L6 12.5"/></svg></a>
-    <p class="eyebrow">Open source · desktop app and daemon</p>
+  <div class="wrap hero-copy">
+    <p class="hero-line"><span>Open source<span class="long"> · desktop app and daemon</span></span><a href="https://docs.berthd.app">Read the docs<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5 L10.5 8 L6 12.5"/></svg></a></p>
     <h1>Agents that keep working when your laptop sleeps.</h1>
     <p class="lede">Berth runs Claude Code, Codex and other coding agents on your own dev boxes, and lets you work with them as if they were on your laptop. Close the app or sleep the laptop: the agents keep going.</p>
     <div class="actions">
       <a class="btn primary" href="#start">Get started</a>
       <a class="btn" href="https://github.com/sean-brydon/berthd"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>Source on GitHub</a>
     </div>
-    <p class="note">No releases yet: build it from source.</p>
+    <!-- Release: when v0.1.0 is out, this line becomes something like
+         "Install berthd on a box with one line." (see Get started below). -->
+    <p class="note">Pre-release: build it from source, then add a box over SSH.</p>
   </div>
   <div class="wrap wide">
 
     <div class="stage">
+    <figure class="shot hero-shot">
+      <picture>
+          <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="assets/shots/dashboard-light-phone-300.webp 300w, assets/shots/dashboard-light-phone-600.webp 600w" sizes="calc(100vw - 58px)" width="300" height="206">
+          <source media="(max-width: 640px)" srcset="assets/shots/dashboard-dark-phone-300.webp 300w, assets/shots/dashboard-dark-phone-600.webp 600w" sizes="calc(100vw - 58px)" width="300" height="206">
+          <source media="(prefers-color-scheme: light)" srcset="assets/shots/dashboard-light-1280.webp 1280w, assets/shots/dashboard-light-2240.webp 2240w" sizes="(min-width: 1360px) 1200px, calc(100vw - 80px)">
+          <img src="assets/shots/dashboard-dark-1280.webp" srcset="assets/shots/dashboard-dark-1280.webp 1280w, assets/shots/dashboard-dark-2240.webp 2240w" sizes="(min-width: 1360px) 1200px, calc(100vw - 80px)" width="1280" height="800" alt="Berth's agent dashboard: agents on two boxes, devl and gpu, in four columns. The one that needs you is outlined in amber, with its question and two answers; two are working, four are done and two are ready." fetchpriority="high" decoding="async">
+        </picture>
+    </figure>
     <div class="harbour art">
       <svg viewBox="0 76 960 152" preserveAspectRatio="xMinYMid slice" role="img" aria-labelledby="harbour-title" fill="none" stroke-linecap="round" stroke-linejoin="round">
         <title id="harbour-title">A harbour by day: a quay with a small shed, then berths between mooring posts. Two boats are moored, and one has its masthead lamp lit because it needs you. The third berth is empty, and a boat is out on the water, working.</title>
@@ -172,14 +181,6 @@
       </svg>
     </div>
 
-    <figure class="shot hero-shot">
-      <picture>
-          <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="assets/shots/dashboard-light-phone-300.webp 300w, assets/shots/dashboard-light-phone-600.webp 600w" sizes="calc(100vw - 58px)" width="300" height="206">
-          <source media="(max-width: 640px)" srcset="assets/shots/dashboard-dark-phone-300.webp 300w, assets/shots/dashboard-dark-phone-600.webp 600w" sizes="calc(100vw - 58px)" width="300" height="206">
-          <source media="(prefers-color-scheme: light)" srcset="assets/shots/dashboard-light-1280.webp 1280w, assets/shots/dashboard-light-2240.webp 2240w" sizes="(min-width: 1360px) 1200px, calc(100vw - 80px)">
-          <img src="assets/shots/dashboard-dark-1280.webp" srcset="assets/shots/dashboard-dark-1280.webp 1280w, assets/shots/dashboard-dark-2240.webp 2240w" sizes="(min-width: 1360px) 1200px, calc(100vw - 80px)" width="1280" height="800" alt="Berth's agent dashboard: agents on two boxes, devl and gpu, in four columns. The one that needs you is outlined in amber, with its question and two answers; two are working, four are done and two are ready." fetchpriority="high" decoding="async">
-        </picture>
-    </figure>
     </div>
     <p class="caption">Screenshots are from Berth's demo mode, with invented boxes and repositories.</p>
 
@@ -197,49 +198,42 @@
   <div class="wrap">
     <div class="section-head">
       <p class="eyebrow">Why Berth</p>
-      <h2 id="why-title">Remote boxes, handled properly.</h2>
-      <p>Berth is built for machines you don't sit at. The box serves; the laptop only connects. Nothing is public unless you share it, and nothing stops when you walk away.</p>
+      <h2 id="why-title">Built for machines you don't sit at.</h2>
+      <p>The box serves; the laptop only connects. Nothing is public unless you share it, and nothing stops when you walk away.</p>
     </div>
-    <div class="grid">
-      <div class="cell">
-        <svg class="glyph" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="6" y="12.5" width="16" height="11" rx="2.5"/><path d="M9.5 12.5 V9 a4.5 4.5 0 0 1 9 0 V12.5"/><path d="M14 17 V19.5"/></svg>
+    <div class="why">
+      <article class="why-lead" aria-labelledby="why-hold">
+        <div class="copy">
+          <h3 id="why-hold">Sessions that hold.</h3>
+          <p>Agents run in Berth's own tmux server on the box. They keep going with nobody attached, through daemon upgrades, and while your laptop sleeps. Open the app in the morning and the work is done, or waiting for you.</p>
+        </div>
+        <!-- One night, drawn: the laptop sleeps, the agent on the box doesn't. -->
+        <figure class="night" role="img" aria-label="One night: the laptop is asleep from 23:10 to 07:40, while Claude Code on the box devl works until 02:14 and is done.">
+          <div class="lane">
+            <span class="who">Your laptop</span>
+            <span class="track"><span class="seg on" style="--a:0;--b:24"></span><span class="seg off" style="--a:24;--b:88"></span><span class="seg on" style="--a:88;--b:100"></span><span class="tag" style="--at:56">asleep</span></span>
+          </div>
+          <div class="lane">
+            <span class="who"><code>claude</code> on devl</span>
+            <span class="track"><span class="seg work" style="--a:0;--b:58"></span><span class="seg rest" style="--a:58;--b:100"></span><span class="tag" style="--at:29">working</span><span class="mark" style="--at:58"></span><span class="tag after" style="--at:58">done</span></span>
+          </div>
+          <div class="lane times" aria-hidden="true"><span class="who"></span><span class="axis"><span style="--at:0">22:00</span><span style="--at:24">23:10</span><span style="--at:58">02:14</span><span style="--at:88">07:40</span></span></div>
+        </figure>
+      </article>
+      <div class="why-item">
         <h3>Pinned mutual TLS</h3>
-        <p>Every install has an Ed25519 key. Both sides present certificates over TLS 1.3 and accept only each other's pinned key, never a certificate authority.</p>
+        <p>Every install has an Ed25519 key. Both sides present certificates and accept only each other's pinned key, never a certificate authority, over your tailnet.</p>
+        <p class="proof">TLS 1.3 · Ed25519 · no CA</p>
       </div>
-      <div class="cell">
-        <svg class="glyph" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="7" cy="8" r="2.5"/><circle cx="21" cy="8" r="2.5"/><circle cx="14" cy="20" r="2.5"/><path d="M9.3 9.3 L12.4 18 M18.7 9.3 L15.6 18 M9.5 8 H18.5"/></svg>
-        <h3>On your tailnet</h3>
-        <p>berthd listens on the box's tailnet address only. Boxes on another tailnet are reached through an embedded Tailscale node, with Berth's TLS on top.</p>
-      </div>
-      <div class="cell">
-        <svg class="glyph" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="5.5" width="20" height="17" rx="3"/><path d="M8.5 11 L11.5 14 L8.5 17 M14 17 H19"/></svg>
-        <h3>SSH once, at most</h3>
-        <p><code>berth add ssh</code> uploads berthd, installs the service and pairs, in one session. After that, everything runs over Berth's own connection.</p>
-      </div>
-      <div class="cell">
-        <svg class="glyph" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="14" cy="14" r="9.5"/><path d="M14 18.5 V9.5 M10 13 L14 9 L18 13"/></svg>
-        <h3>It upgrades itself</h3>
-        <p><code>berth upgrade</code> sends the new daemon over that connection. The box swaps it in and re-executes in place, so sessions are untouched.</p>
-      </div>
-      <div class="cell">
-        <svg class="glyph" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="14" cy="6.5" r="2.5"/><path d="M14 9 V24 M9 13 H19 M5.5 17.5 C 6.5 21.5, 10 24, 14 24 C 18 24, 21.5 21.5, 22.5 17.5"/></svg>
-        <h3>Sessions that hold</h3>
-        <p>Agents run in Berth's own tmux server. They keep going with nobody attached, through daemon upgrades, and while your laptop sleeps.</p>
-      </div>
-      <div class="cell">
-        <svg class="glyph" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16 a4.5 4.5 0 0 0 6.4 0 l3.6 -3.6 a4.5 4.5 0 0 0 -6.4 -6.4 l-1.4 1.4"/><path d="M16 12 a4.5 4.5 0 0 0 -6.4 0 l-3.6 3.6 a4.5 4.5 0 0 0 6.4 6.4 l1.4 -1.4"/></svg>
+      <div class="why-item">
         <h3>Private URLs, no DNS</h3>
-        <p>Every port on a box has a URL on your laptop, like <code class="url">3000.devl.localhost:1377</code>. No DNS zone, no hosts file, no dev server config.</p>
+        <p>Every port on a box has a URL on your laptop. No DNS zone, no hosts file, no dev server config, and nothing public.</p>
+        <p class="proof">3000.devl.localhost:1377</p>
       </div>
-      <div class="cell">
-        <svg class="glyph" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="7" width="18" height="14" rx="2.5"/><path d="M5.5 8 L14 14.5 L22.5 8"/></svg>
-        <h3>Prompts wait for the box</h3>
-        <p>A prompt for a box that's out of reach waits on your laptop and is delivered in order when the box is back, at most once.</p>
-      </div>
-      <div class="cell">
-        <svg class="glyph" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="10" cy="14" r="4.5"/><path d="M14.5 14 H24 M20 14 V18 M23 14 V17"/></svg>
-        <h3>Secrets stay in 1Password</h3>
-        <p>A value can be <code>op://vault/item/field</code>. The box reads it when something starts and keeps it in memory only, never on disk or in logs.</p>
+      <div class="why-item">
+        <h3>It upgrades itself</h3>
+        <p>The new daemon goes over Berth's own connection. The box swaps it in and re-executes in place, so sessions are untouched. No SSH after the first time.</p>
+        <p class="proof">berth upgrade devl</p>
       </div>
     </div>
   </div>
@@ -324,13 +318,17 @@
     <div class="section-head">
       <p class="eyebrow">Features</p>
       <h2 id="features-title">Everything around the agent, on the box it runs on.</h2>
-      <p>Worktrees, terminals, dev servers and automations live on the box, next to the agents that use them. These are the parts you will touch every day.</p>
+      <p>Worktrees, terminals, dev servers and automations live on the box, next to the agents that use them. Four parts you will touch every day, then the ones that are there when you need them.</p>
+    </div>
+
+    <div class="tier-head">
+      <h3 class="tier" id="tier-daily">Every day</h3>
     </div>
 
     <article class="feature wide" aria-labelledby="f-ws">
       <div class="copy">
         <p class="eyebrow"><span class="n">01</span> Workspaces</p>
-        <h3 id="f-ws">A workspace for every worktree.</h3>
+        <h4 id="f-ws">A workspace for every worktree.</h4>
       </div>
       <div class="copy">
         <p>A worktree's terminals, splits and browser tabs open together. Closing a tab only detaches: the session keeps running on the box, and each dev server is a tab away at a private URL.</p>
@@ -338,8 +336,8 @@
       <figure class="plate">
         <div class="shot crop">
           <picture>
-            <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="assets/shots/workspace-light-phone-420.webp 420w, assets/shots/workspace-light-phone-840.webp 840w" sizes="calc(100vw - 58px)" width="420" height="340">
-            <source media="(max-width: 640px)" srcset="assets/shots/workspace-dark-phone-420.webp 420w, assets/shots/workspace-dark-phone-840.webp 840w" sizes="calc(100vw - 58px)" width="420" height="340">
+            <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="assets/shots/workspace-light-phone-340.webp 340w, assets/shots/workspace-light-phone-680.webp 680w" sizes="calc(100vw - 58px)" width="340" height="280">
+            <source media="(max-width: 640px)" srcset="assets/shots/workspace-dark-phone-340.webp 340w, assets/shots/workspace-dark-phone-680.webp 680w" sizes="calc(100vw - 58px)" width="340" height="280">
             <source media="(prefers-color-scheme: light)" srcset="assets/shots/workspace-light-1280.webp 1280w, assets/shots/workspace-light-2240.webp 2240w" sizes="(min-width: 1168px) 1064px, calc(100vw - 104px)">
             <img src="assets/shots/workspace-dark-1280.webp" srcset="assets/shots/workspace-dark-1280.webp 1280w, assets/shots/workspace-dark-2240.webp 2240w" sizes="(min-width: 1168px) 1064px, calc(100vw - 104px)" width="1280" height="800" alt="A worktree's workspace: Claude Code in a terminal on the left, and the worktree's dev server in a browser tab on the right, at http://3110.devl.localhost:1377/." loading="lazy" decoding="async">
           </picture>
@@ -350,7 +348,7 @@
     <article class="feature" aria-labelledby="f-pr">
       <div class="copy">
         <p class="eyebrow"><span class="n">02</span> Projects</p>
-        <h3 id="f-pr">Add a project on any box.</h3>
+        <h4 id="f-pr">Add a project on any box.</h4>
         <p>Pick a box, then type one thing: a path, a git URL, <code>owner/repo</code>, a pull request or a new name. Berth says exactly what Enter will do before it does it.</p>
         <ul class="points">
           <li>“Also on” sets the same repository up on your other boxes, with its kit.</li>
@@ -360,8 +358,8 @@
       <figure class="plate">
         <div class="shot crop bare">
           <picture>
-            <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="assets/shots/project-light-phone-400.webp 400w, assets/shots/project-light-phone-800.webp 800w" sizes="calc(100vw - 58px)" width="400" height="380">
-            <source media="(max-width: 640px)" srcset="assets/shots/project-dark-phone-400.webp 400w, assets/shots/project-dark-phone-800.webp 800w" sizes="calc(100vw - 58px)" width="400" height="380">
+            <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="assets/shots/project-light-phone-340.webp 340w, assets/shots/project-light-phone-680.webp 680w" sizes="calc(100vw - 58px)" width="340" height="250">
+            <source media="(max-width: 640px)" srcset="assets/shots/project-dark-phone-340.webp 340w, assets/shots/project-dark-phone-680.webp 680w" sizes="calc(100vw - 58px)" width="340" height="250">
             <source media="(prefers-color-scheme: light)" srcset="assets/shots/project-light-648.webp 648w, assets/shots/project-light-1296.webp 1296w" sizes="(min-width: 940px) 520px, calc(100vw - 104px)">
             <img src="assets/shots/project-dark-648.webp" srcset="assets/shots/project-dark-648.webp 648w, assets/shots/project-dark-1296.webp 1296w" sizes="(min-width: 940px) 520px, calc(100vw - 104px)" width="648" height="615" alt="Add a project: boxes as tiles (devl selected, gpu, and old-vps offline), one field holding acme/handbook, and the line under it saying Enter will clone github.com/acme/handbook into ~/work on devl." loading="lazy" decoding="async">
           </picture>
@@ -372,7 +370,7 @@
     <article class="feature flip" aria-labelledby="f-wt">
       <div class="copy">
         <p class="eyebrow"><span class="n">03</span> Worktrees</p>
-        <h3 id="f-wt">Every worktree on every box, with its history.</h3>
+        <h4 id="f-wt">Every worktree on every box, with its history.</h4>
         <p>One table shows how far each worktree is ahead and behind, its uncommitted changes, its agents and its port. Open one for its commit graph against main, and rebase or pause it from there.</p>
         <ul class="points">
           <li>Start one from a branch, a pull request, an issue or a link.</li>
@@ -382,8 +380,8 @@
       <figure class="plate">
         <div class="shot crop">
           <picture>
-            <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="assets/shots/graph-light-phone-420.webp 420w, assets/shots/graph-light-phone-840.webp 840w" sizes="calc(100vw - 58px)" width="420" height="420">
-            <source media="(max-width: 640px)" srcset="assets/shots/graph-dark-phone-420.webp 420w, assets/shots/graph-dark-phone-840.webp 840w" sizes="calc(100vw - 58px)" width="420" height="420">
+            <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="assets/shots/graph-light-phone-340.webp 340w, assets/shots/graph-light-phone-680.webp 680w" sizes="calc(100vw - 58px)" width="340" height="340">
+            <source media="(max-width: 640px)" srcset="assets/shots/graph-dark-phone-340.webp 340w, assets/shots/graph-dark-phone-680.webp 680w" sizes="calc(100vw - 58px)" width="340" height="340">
             <source media="(prefers-color-scheme: light)" srcset="assets/shots/graph-light-760.webp 760w, assets/shots/graph-light-1400.webp 1400w" sizes="(min-width: 940px) 520px, calc(100vw - 104px)">
             <img src="assets/shots/graph-dark-760.webp" srcset="assets/shots/graph-dark-760.webp 760w, assets/shots/graph-dark-1400.webp 1400w" sizes="(min-width: 940px) 520px, calc(100vw - 104px)" width="760" height="760" alt="A worktree's commit graph: me/billing-fix is three commits ahead of origin/main and twelve behind, with Rebase, Pause and Open actions." loading="lazy" decoding="async">
           </picture>
@@ -394,7 +392,7 @@
     <article class="feature" aria-labelledby="f-or">
       <div class="copy">
         <p class="eyebrow"><span class="n">04</span> Orchestration</p>
-        <h3 id="f-or">Agents that drive agents.</h3>
+        <h4 id="f-or">Agents that drive agents.</h4>
         <p>Prompt a running agent, wait for its turn to end, run a check where it works, and loop until the check passes: from the app, the CLI, a hook or another agent.</p>
         <pre><code>berth loop devl/fix-login \
   --check "pnpm test" \
@@ -407,8 +405,8 @@
       <figure class="plate">
         <div class="shot crop bare">
           <picture>
-            <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="assets/shots/broadcast-light-phone-400.webp 400w, assets/shots/broadcast-light-phone-800.webp 800w" sizes="calc(100vw - 58px)" width="400" height="420">
-            <source media="(max-width: 640px)" srcset="assets/shots/broadcast-dark-phone-400.webp 400w, assets/shots/broadcast-dark-phone-800.webp 800w" sizes="calc(100vw - 58px)" width="400" height="420">
+            <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="assets/shots/broadcast-light-phone-340.webp 340w, assets/shots/broadcast-light-phone-680.webp 680w" sizes="calc(100vw - 58px)" width="340" height="340">
+            <source media="(max-width: 640px)" srcset="assets/shots/broadcast-dark-phone-340.webp 340w, assets/shots/broadcast-dark-phone-680.webp 680w" sizes="calc(100vw - 58px)" width="340" height="340">
             <source media="(prefers-color-scheme: light)" srcset="assets/shots/broadcast-light-752.webp 752w, assets/shots/broadcast-light-1504.webp 1504w" sizes="(min-width: 940px) 520px, calc(100vw - 104px)">
             <img src="assets/shots/broadcast-dark-752.webp" srcset="assets/shots/broadcast-dark-752.webp 752w, assets/shots/broadcast-dark-1504.webp 1504w" sizes="(min-width: 940px) 520px, calc(100vw - 104px)" width="752" height="712" alt="Send to several agents: one prompt, &quot;Make the check pass&quot;, going to three agents on two boxes, then waiting for each turn to end." loading="lazy" decoding="async">
           </picture>
@@ -416,120 +414,43 @@
       </figure>
     </article>
 
-    <article class="feature flip" aria-labelledby="f-aw">
-      <div class="copy">
-        <p class="eyebrow"><span class="n">05</span> Away</p>
-        <h3 id="f-aw">Prompts wait for the box.</h3>
-        <p>Laptops sleep, Wi-Fi drops, boxes restart. A prompt for a box that can't be reached waits on your laptop instead of failing, and is typed in when the box is back, after the agent's current turn.</p>
-        <pre><code>berth session send devl/billing-claude \
-  "Rebase on main" --queue</code></pre>
-        <ul class="points">
-          <li>The queue survives restarts, and delivers with the app closed.</li>
-          <li>At most once: a prompt that may have arrived waits for you to retry.</li>
-        </ul>
-      </div>
-      <figure class="plate center">
-        <div class="shot native" style="--w: 414px">
-          <picture>
-            <source media="(prefers-color-scheme: light)" srcset="assets/shots/queue-light-414.webp 414w, assets/shots/queue-light-828.webp 828w" sizes="(min-width: 480px) 414px, calc(100vw - 58px)">
-            <img src="assets/shots/queue-dark-414.webp" srcset="assets/shots/queue-dark-414.webp 414w, assets/shots/queue-dark-828.webp 828w" sizes="(min-width: 480px) 414px, calc(100vw - 58px)" width="414" height="307" alt="Queued prompts: two prompts for an agent on old-vps, which is offline, each waiting for the box, with Send now and discard." loading="lazy" decoding="async">
-          </picture>
-        </div>
-      </figure>
-    </article>
-
-    <article class="feature" aria-labelledby="f-au">
-      <div class="copy">
-        <p class="eyebrow"><span class="n">06</span> Automations</p>
-        <h3 id="f-au">Flows that run on the box.</h3>
-        <p>When an agent finishes or needs you, a worktree is created, a schedule fires or a pull request gets a review, run steps: commands, prompts, new agents, notifications, webhooks. They keep going while your laptop sleeps.</p>
-        <ul class="points">
-          <li>Run one flow for a project on every box that has it.</li>
-          <li><code>before:</code> hooks can refuse any action.</li>
-        </ul>
-      </div>
-      <figure class="plate">
-        <div class="shot crop fade">
-          <picture>
-            <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="assets/shots/flow-light-phone-400.webp 400w, assets/shots/flow-light-phone-800.webp 800w" sizes="calc(100vw - 58px)" width="400" height="400">
-            <source media="(max-width: 640px)" srcset="assets/shots/flow-dark-phone-400.webp 400w, assets/shots/flow-dark-phone-800.webp 800w" sizes="calc(100vw - 58px)" width="400" height="400">
-            <source media="(prefers-color-scheme: light)" srcset="assets/shots/flow-light-664.webp 664w, assets/shots/flow-light-1328.webp 1328w" sizes="(min-width: 940px) 520px, calc(100vw - 104px)">
-            <img src="assets/shots/flow-dark-664.webp" srcset="assets/shots/flow-dark-664.webp 664w, assets/shots/flow-dark-1328.webp 1328w" sizes="(min-width: 940px) 520px, calc(100vw - 104px)" width="664" height="600" alt="The flow editor: a flow that runs for any calcom/cal.com on the boxes devl and gpu, starts when an agent finishes, and notifies you." loading="lazy" decoding="async">
-          </picture>
-        </div>
-      </figure>
-    </article>
-
-    <div class="pairs">
-      <article class="card-feature" aria-labelledby="f-kit">
-        <div class="copy">
-          <p class="eyebrow"><span class="n">07</span> Kits</p>
-          <h3 id="f-kit">Set a project up the same way on every box.</h3>
-          <p>A kit carries setup scripts, environment, ports, services, hooks and flows, and travels as a link. You see everything it does before anything runs.</p>
-        </div>
-        <figure class="plate clip">
-          <div class="shot crop">
-            <picture>
-              <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="assets/shots/kits-light-phone-400.webp 400w, assets/shots/kits-light-phone-800.webp 800w" sizes="calc(100vw - 58px)" width="400" height="460">
-              <source media="(max-width: 640px)" srcset="assets/shots/kits-dark-phone-400.webp 400w, assets/shots/kits-dark-phone-800.webp 800w" sizes="calc(100vw - 58px)" width="400" height="460">
-              <source media="(prefers-color-scheme: light)" srcset="assets/shots/kits-light-640.webp 640w, assets/shots/kits-light-1280.webp 1280w" sizes="(min-width: 940px) 480px, calc(100vw - 104px)">
-              <img src="assets/shots/kits-dark-640.webp" srcset="assets/shots/kits-dark-640.webp 640w, assets/shots/kits-dark-1280.webp 1280w" sizes="(min-width: 940px) 480px, calc(100vw - 104px)" width="640" height="800" alt="Reviewing a kit added from a link before keeping it: its setup and teardown scripts, environment, ports and services, with a warning that its scripts run on your boxes." loading="lazy" decoding="async">
-            </picture>
-          </div>
-        </figure>
+    <div class="tier-head more">
+      <h3 class="tier" id="tier-more">When you need it</h3>
+      <p>All of it runs on the box, so it keeps going with your laptop shut.</p>
+    </div>
+    <div class="more-grid">
+      <article class="mini" aria-labelledby="f-aw">
+        <p class="eyebrow">Away</p>
+        <h4 id="f-aw">Prompts wait for the box.</h4>
+        <p>A prompt for a box that can't be reached waits on your laptop, and is typed in when the box is back, after the agent's current turn. At most once.</p>
+        <p class="proof">berth session send … --queue</p>
       </article>
-
-      <article class="card-feature" aria-labelledby="f-env">
-        <div class="copy">
-          <p class="eyebrow"><span class="n">08</span> Environment</p>
-          <h3 id="f-env">Secrets by reference, never in the file.</h3>
-          <p>A value can name a secret, <code>op://vault/item/field</code>, which the box reads from 1Password when something starts. It never reaches a disk, a log or an event.</p>
-        </div>
-        <figure class="plate clip mid">
-          <div class="shot crop bleed">
-            <picture>
-              <source media="(max-width: 640px) and (prefers-color-scheme: light)" srcset="assets/shots/env-light-phone-420.webp 420w, assets/shots/env-light-phone-840.webp 840w" sizes="calc(100vw - 58px)" width="420" height="380">
-              <source media="(max-width: 640px)" srcset="assets/shots/env-dark-phone-420.webp 420w, assets/shots/env-dark-phone-840.webp 840w" sizes="calc(100vw - 58px)" width="420" height="380">
-              <source media="(prefers-color-scheme: light)" srcset="assets/shots/env-light-744.webp 744w, assets/shots/env-light-1488.webp 1488w" sizes="(min-width: 940px) 620px, calc(100vw - 104px)">
-              <img src="assets/shots/env-dark-744.webp" srcset="assets/shots/env-dark-744.webp 744w, assets/shots/env-dark-1488.webp 1488w" sizes="(min-width: 940px) 620px, calc(100vw - 104px)" width="744" height="380" alt="Project settings, Environment: DATABASE_URL and NEXT_PUBLIC_WEBAPP_URL from the kit, PORT from the repository, and STRIPE_PRIVATE_KEY on devl set to the reference op://dev/stripe/secret-key, with a Test button." loading="lazy" decoding="async">
-            </picture>
-          </div>
-        </figure>
+      <article class="mini" aria-labelledby="f-au">
+        <p class="eyebrow">Automations</p>
+        <h4 id="f-au">Flows that run on the box.</h4>
+        <p>When an agent finishes or needs you, a worktree is made, a schedule fires or a pull request gets a review: run commands, prompts, new agents or webhooks. <code>before:</code> hooks can refuse any action.</p>
       </article>
-
-      <article class="card-feature" aria-labelledby="f-no">
-        <div class="copy">
-          <p class="eyebrow"><span class="n">09</span> Notifications</p>
-          <h3 id="f-no">Told when it matters.</h3>
-          <p>Agents waiting for you, failures and finished work go to one place. Each box also serves a small phone app over your tailnet, to answer agents while the laptop is shut.</p>
-        </div>
-        <figure class="plate clip">
-          <div class="shot native" style="--w: 420px">
-            <picture>
-              <source media="(prefers-color-scheme: light)" srcset="assets/shots/notifications-light-420.webp 420w, assets/shots/notifications-light-840.webp 840w" sizes="(min-width: 480px) 420px, calc(100vw - 58px)">
-              <img src="assets/shots/notifications-dark-420.webp" srcset="assets/shots/notifications-dark-420.webp 420w, assets/shots/notifications-dark-840.webp 840w" sizes="(min-width: 480px) 420px, calc(100vw - 58px)" width="420" height="742" alt="The notification panel: four that need you first (a service that failed to start, a failed setup, a failed flow and a waiting agent), then today's." loading="lazy" decoding="async">
-            </picture>
-          </div>
-        </figure>
+      <article class="mini" aria-labelledby="f-kit">
+        <p class="eyebrow">Kits</p>
+        <h4 id="f-kit">The same setup on every box.</h4>
+        <p>A kit carries setup scripts, environment, ports, services, hooks and flows, and travels as a link. You see everything it does before anything runs.</p>
       </article>
-
-      <article class="card-feature" aria-labelledby="f-pl">
-        <div class="copy">
-          <p class="eyebrow"><span class="n">10</span> Plugins</p>
-          <h3 id="f-pl">Extend it with plugins.</h3>
-          <p>A plugin is an ES module that adds screens, panels, commands and themes. The built-ins, from git changes to the box monitor, use the same API as yours.</p>
-        </div>
-        <figure class="plate clip code-plate">
-          <pre><code><span class="k">import</span> { definePlugin } <span class="k">from</span> "@berth/plugin";
-
-<span class="k">export default</span> definePlugin((berth) => {
-  berth.addCommand({
-    id: "hello",
-    title: "Say hello",
-    run: () => berth.notify("Hello"),
-  });
-});</code></pre>
-        </figure>
+      <article class="mini" aria-labelledby="f-env">
+        <p class="eyebrow">Environment</p>
+        <h4 id="f-env">Secrets by reference.</h4>
+        <p>A value can name a 1Password secret. The box reads it when something starts and keeps it in memory, never on disk, in a log or in an event.</p>
+        <p class="proof">op://vault/item/field</p>
+      </article>
+      <article class="mini" aria-labelledby="f-no">
+        <p class="eyebrow">Notifications</p>
+        <h4 id="f-no">Told when it matters.</h4>
+        <p>Waiting agents, failures and finished work go to one place. Each box also serves a small phone app over your tailnet, to answer agents with the laptop shut.</p>
+      </article>
+      <article class="mini" aria-labelledby="f-pl">
+        <p class="eyebrow">Plugins</p>
+        <h4 id="f-pl">Extend it with plugins.</h4>
+        <p>A plugin is an ES module that adds screens, panels, commands and themes. The built-ins, from git changes to the box monitor, use the same API as yours.</p>
+        <p class="proof">definePlugin((berth) =&gt; …)</p>
       </article>
     </div>
 
@@ -599,43 +520,69 @@
   <div class="wrap">
     <div class="section-head">
       <p class="eyebrow">Get started</p>
-      <h2 id="start-title">One line on the box.</h2>
-      <p>berthd installs for your user, with no root, starts itself and prints a link to pair. The app and the <code>berth</code> CLI build from source for now: Go 1.27, Node 22 and pnpm, and Rust for the app.</p>
+      <h2 id="start-title">From source to your first agent.</h2>
+      <p>There's no release yet, so you build Berth on your laptop and it installs itself on your box over SSH. You need Go 1.27, and Node 22, pnpm and Rust for the app. The box needs Tailscale, or <code>--listen</code> in step 2.</p>
     </div>
     <div class="start-grid">
-      <ol class="steps">
-        <li>
-          <div class="step-head"><span class="num">1</span><h3>On the box, install berthd</h3><button class="copy-btn" type="button" data-copy="step-1" hidden>Copy</button></div>
-          <pre id="step-1" tabindex="0" aria-label="Install berthd on the box"><code>curl -fsSL https://berthd.app/install | sh</code></pre>
-        </li>
-        <li>
-          <div class="step-head"><span class="num">2</span><h3>On your laptop, build berth and open the app</h3><button class="copy-btn" type="button" data-copy="step-2" hidden>Copy</button></div>
-          <pre id="step-2" tabindex="0" aria-label="Build berth and open the app"><code>make all
+      <div class="start-main">
+        <!-- Release: when the first release is out, make the one-liner the
+             way to add a box. Three edits:
+             1. Replace step 2's <li> with:
+                  <li>
+                    <div class="step-head"><span class="num">2</span><h3>On the box, install berthd</h3><button class="copy-btn" type="button" data-copy="step-2" hidden>Copy</button></div>
+                    <pre id="step-2" tabindex="0" aria-label="Install berthd on the box"><code>curl -fsSL https://berthd.app/install | sh</code></pre>
+                    <p class="step-note">It installs berthd for your user, with no root, starts it and prints a link: paste it into <strong>Add a box</strong> in the app, or run <code>bin/berth pair 'berth://…'</code>. Or skip this and run <code>bin/berth add ssh me@my-box</code> from your laptop.</p>
+                  </li>
+             2. Delete the <div class="soon" id="one-line"> block below.
+             3. Change the section intro above ("There's no release yet, …") and
+                the hero's .note line ("Pre-release: …") to match. -->
+        <ol class="steps">
+          <li>
+            <div class="step-head"><span class="num">1</span><h3>On your laptop, build berth</h3><button class="copy-btn" type="button" data-copy="step-1" hidden>Copy</button></div>
+            <pre id="step-1" tabindex="0" aria-label="Clone and build berth"><code>git clone https://github.com/sean-brydon/berthd
+cd berthd &amp;&amp; make all</code></pre>
+            <p class="step-note"><code>bin/</code> gets <code>berth</code> for this laptop and <code>berthd</code> for Linux boxes, amd64 and arm64.</p>
+          </li>
+          <li>
+            <div class="step-head"><span class="num">2</span><h3>Add a box over SSH</h3><button class="copy-btn" type="button" data-copy="step-2" hidden>Copy</button></div>
+            <pre id="step-2" tabindex="0" aria-label="Install berthd on the box over SSH and pair"><code>bin/berth add ssh me@my-box --name my-box</code></pre>
+            <p class="step-note">One SSH session: it uploads berthd to <code>~/.local/bin</code> on the box, starts it as your user's service, and pairs. No root. Without Tailscale on the box, add <code>--listen 0.0.0.0:7444</code>.</p>
+          </li>
+          <li>
+            <div class="step-head"><span class="num">3</span><h3>On the box, let agents report their state</h3><button class="copy-btn" type="button" data-copy="step-3" hidden>Copy</button></div>
+            <pre id="step-3" tabindex="0" aria-label="Install the agent hooks on the box"><code>ssh me@my-box '~/.local/bin/berthd integrations install claude'</code></pre>
+            <p class="step-note">Claude Code's hooks and Berth's skills (or <code>codex</code>, <code>cursor</code>, <code>all</code>), so the dashboard shows needs you, working and done. The full path, because a command over SSH may not have <code>~/.local/bin</code> on its <code>PATH</code>.</p>
+          </li>
+          <li>
+            <div class="step-head"><span class="num">4</span><h3>Open the app, add a project and start an agent</h3><button class="copy-btn" type="button" data-copy="step-4" hidden>Copy</button></div>
+            <pre id="step-4" tabindex="0" aria-label="Start the laptop agent and open the app"><code>bin/berth agent install
 cd app &amp;&amp; pnpm install &amp;&amp; pnpm tauri dev</code></pre>
-        </li>
-        <li>
-          <div class="step-head"><span class="num">3</span><h3>Paste the link it printed into Add a box, or</h3><button class="copy-btn" type="button" data-copy="step-3" hidden>Copy</button></div>
-          <pre id="step-3" tabindex="0" aria-label="Pair with the box"><code>bin/berth pair 'berth://…'</code></pre>
-        </li>
-        <li>
-          <div class="step-head"><span class="num">4</span><h3>Add a repository and start an agent</h3><button class="copy-btn" type="button" data-copy="step-4" hidden>Copy</button></div>
-          <pre id="step-4" tabindex="0" aria-label="Start an agent"><code>bin/berth location add my-box/app ~/work/app
+            <p class="step-note">The app talks to the laptop agent, which <code>agent install</code> keeps running. In the app, <strong>Add a project</strong> clones a repository onto the box, or picks one already there; then start Claude Code in a new worktree.</p>
+            <details class="alt">
+              <summary>Or from the terminal, for a repository already on the box</summary>
+              <pre id="step-4b" tabindex="0" aria-label="Add a project and start an agent from the terminal"><code>bin/berth location add my-box/app ~/work/app
 bin/berth task new my-box/app/fix-login \
-  --agent claude \
-  --prompt "Fix the login redirect"</code></pre>
-        </li>
-      </ol>
+  --agent claude --prompt "Fix the login redirect"</code></pre>
+            </details>
+          </li>
+        </ol>
+        <div class="soon" id="one-line">
+          <p class="soon-head"><span class="tag">Not yet</span>Once the first release is out</p>
+          <pre tabindex="0" aria-label="The install line, once there is a release"><code>curl -fsSL https://berthd.app/install | sh</code></pre>
+          <p>One line on the box will install berthd for your user and print a link to paste into Add a box. Until then it says there's no release yet, and prints the steps above. <a href="https://github.com/sean-brydon/berthd/releases">Releases</a></p>
+        </div>
+      </div>
       <nav class="read-next" aria-labelledby="read-next-title">
         <h3 id="read-next-title">Read next</h3>
         <ul>
-          <li><a href="https://docs.berthd.app/getting-started/install"><span>Install</span><small>The install line, its options, and building the app</small></a></li>
+          <li><a href="https://docs.berthd.app/getting-started/add-a-box"><span>Add a box</span><small>Over SSH, options, and pairing by link</small></a></li>
+          <li><a href="https://docs.berthd.app/guides/agent-integrations"><span>Agent integrations</span><small>Hooks and skills for Claude Code, Codex, Cursor</small></a></li>
           <li><a href="https://docs.berthd.app/concepts/security"><span>Security model</span><small>Pinned keys, mutual TLS, pairing</small></a></li>
           <li><a href="https://docs.berthd.app/guides/project-config"><span>.berth/config.json</span><small>Ports, environment and services</small></a></li>
           <li><a href="https://docs.berthd.app/guides/automations"><span>Automations</span><small>Flows on events, schedules and GitHub</small></a></li>
           <li><a href="https://docs.berthd.app/guides/orchestration"><span>Orchestration</span><small>Agents driving agents</small></a></li>
-          <li><a href="https://docs.berthd.app/guides/kits"><span>Kits</span><small>One setup for every box, as a link</small></a></li>
         </ul>
-        <p class="hint"><code>berth help</code> lists every command, and every listing takes <code>--json</code>.</p>
+        <p class="hint"><code>bin/berth help</code> lists every command, and every listing takes <code>--json</code>.</p>
       </nav>
     </div>
     <div class="closing">
@@ -673,10 +620,11 @@ bin/berth task new my-box/app/fix-login \
         </ul>
       </div>
       <div>
-        <h3>Docs</h3>
+        <h3>Documentation</h3>
         <ul>
-          <li><a href="https://docs.berthd.app">Docs</a></li>
+          <li><a href="https://docs.berthd.app">Introduction</a></li>
           <li><a href="https://docs.berthd.app/getting-started/install">Install</a></li>
+          <li><a href="https://docs.berthd.app/getting-started/add-a-box">Add a box</a></li>
           <li><a href="https://docs.berthd.app/concepts/security">Security model</a></li>
           <li><a href="https://docs.berthd.app/guides/phone">Phone app</a></li>
         </ul>
@@ -686,10 +634,15 @@ bin/berth task new my-box/app/fix-login \
         <ul>
           <li><a href="https://github.com/sean-brydon/berthd">GitHub</a></li>
           <li><a href="https://github.com/sean-brydon/berthd/issues">Issues</a></li>
-          <li><a href="#top">Back to top</a></li>
+          <li><a href="https://github.com/sean-brydon/berthd/releases">Releases</a></li>
+          <li><a href="https://docs.berthd.app/concepts/architecture">How it fits together</a></li>
         </ul>
       </div>
     </nav>
+    <div class="foot-bar">
+      <p>Pre-release. Built in the open.</p>
+      <a href="#top">Back to top<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 12.5 V3.5 M4 7.5 L8 3.5 L12 7.5"/></svg></a>
+    </div>
   </div>
 </footer>
 
