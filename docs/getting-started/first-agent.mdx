@@ -43,7 +43,7 @@ A **task** is a worktree with an agent already running in it, made in one
 step:
 
 ```sh
-bin/berth task new my-box/app/fix-login --agent claude --prompt "Fix the login redirect"
+berth task new my-box/app/fix-login --agent claude --prompt "Fix the login redirect"
 ```
 
 | Flag | What it does |
@@ -69,16 +69,16 @@ A repository can add its own or replace these in
 To start an agent in a worktree that already exists, or a plain shell:
 
 ```sh
-bin/berth session new my-box/app/fix-login --agent codex --prompt "Review the diff"
-bin/berth session new my-box/app/fix-login              # a shell
+berth session new my-box/app/fix-login --agent codex --prompt "Review the diff"
+berth session new my-box/app/fix-login              # a shell
 ```
 
 ## Watch it
 
 ```sh
-bin/berth sessions my-box                  # every session, with its agent's state
-bin/berth session screen my-box/SESSION    # what it shows right now
-bin/berth attach my-box/SESSION            # take over this terminal; Ctrl-b d detaches
+berth sessions my-box                  # every session, with its agent's state
+berth session screen my-box/SESSION    # what it shows right now
+berth attach my-box/SESSION            # take over this terminal; Ctrl-b d detaches
 ```
 
 Sessions run in tmux on the box. Detaching, closing the app or sleeping the
@@ -94,8 +94,8 @@ In the app:
 ## Steer it
 
 ```sh
-bin/berth session send my-box/SESSION "Now add a test for it" --wait
-bin/berth loop my-box/SESSION --check "pnpm test" --prompt "Make the tests pass"
+berth session send my-box/SESSION "Now add a test for it" --wait
+berth loop my-box/SESSION --check "pnpm test" --prompt "Make the tests pass"
 ```
 
 `send --wait` returns when the turn it starts ends. `loop` prompts, waits,

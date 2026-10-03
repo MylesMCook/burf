@@ -9,8 +9,8 @@ Berth works with repositories that are already on the box. Register one as a
 **location**, a name for a directory on that box:
 
 ```sh
-bin/berth location add my-box/app ~/work/app
-bin/berth locations my-box
+berth location add my-box/app ~/work/app
+berth locations my-box
 ```
 
 A path under your laptop's home is sent as `~/…`, so the box reads it against
@@ -32,7 +32,7 @@ boxes is one **project** in the sidebar; see
 ## Make a worktree
 
 ```sh
-bin/berth worktree new my-box/app/fix-login
+berth worktree new my-box/app/fix-login
 ```
 
 Berth runs `git worktree add` next to the repository, as `~/work/app-fix-login`,
@@ -78,9 +78,9 @@ http://3000.my-box.localhost:1377/            any port on the box
 ```
 
 ```sh
-bin/berth open my-box 3000                   # open a port in your browser
-bin/berth service list my-box/app/fix-login  # the worktree's services
-bin/berth edit my-box/app/fix-login          # open it in your editor, over SSH
+berth open my-box 3000                   # open a port in your browser
+berth service list my-box/app/fix-login  # the worktree's services
+berth edit my-box/app/fix-login          # open it in your editor, over SSH
 ```
 
 In the app, the worktree's workspace has terminals, splits and browser tabs

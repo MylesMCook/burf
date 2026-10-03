@@ -13,7 +13,7 @@
 # when an agent needs you. Running it again upgrades in place.
 #
 # Every download is checked against the release's checksums.txt before it
-# runs. Before Berth's first release there is nothing to download: it says
+# runs. If the release (or the version asked for) doesn't exist, it says
 # so, and prints how to install berthd over SSH from a source build instead.
 # Source: https://github.com/sean-brydon/berthd/blob/main/site/install.sh
 #

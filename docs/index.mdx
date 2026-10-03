@@ -9,23 +9,18 @@ worktrees, terminals, agents, dev servers and automations. The agents run on
 the boxes, so closing the app, sleeping the laptop or losing Wi-Fi never
 stops them; the app is a view you can close and reopen at any time.
 
-{/* PRE-RELEASE: once the first release is out, make the curl line the
-    stage's command and drop "Berth has no release yet". See install.mdx. */}
-
 <Stage title="Get started">
 
 ```sh
-git clone https://github.com/sean-brydon/berthd
-cd berthd && make all
-bin/berth add ssh me@my-box --name my-box
+curl -fsSL https://berthd.app/install | sh
 ```
 
-Berth has no release yet, so you build it from source. The last line
-installs `berthd` on your box over SSH, starts it and pairs your laptop with
-it; one more line on the box
-[lets agents report their state](/getting-started/first-agent#let-the-box-report-agent-state).
-Once the first release is out, a box will take one line
-(`curl -fsSL https://berthd.app/install | sh`). Every step is in
+Run that on your box, as the user your agents will run as. It installs
+`berthd` with no root, starts it, installs the hooks that let agents report
+their state, and prints a link: paste it into **Add a box** in the desktop
+app, or into `berth pair` on your laptop. The desktop app is built from
+source for now; the `berth` CLI comes with the
+[release](https://github.com/sean-brydon/berthd/releases). Every step is in
 [install](/getting-started/install).
 
 </Stage>
@@ -33,8 +28,8 @@ Once the first release is out, a box will take one line
 ## Start here
 
 <Cards className="berth-path">
-  <Card title="Install" href="/getting-started/install" description="Build Berth from source, then put berthd on a box over SSH." />
-  <Card title="Add a box" href="/getting-started/add-a-box" description="Install and pair over SSH in one command, or pair with a link." />
+  <Card title="Install" href="/getting-started/install" description="One line on the box, then the CLI and the app on your laptop." />
+  <Card title="Add a box" href="/getting-started/add-a-box" description="The install command and its link, or install and pair over SSH." />
   <Card title="First project and worktree" href="/getting-started/first-project" description="Register a repository and branch off it." />
   <Card title="First agent" href="/getting-started/first-agent" description="Start Claude Code or Codex in a worktree, and watch it work." />
 </Cards>

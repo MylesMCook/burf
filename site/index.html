@@ -57,9 +57,7 @@
       <a class="btn primary" href="#start">Get started</a>
       <a class="btn" href="https://github.com/sean-brydon/berthd"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>Source on GitHub</a>
     </div>
-    <!-- Release: when v0.1.0 is out, this line becomes something like
-         "Install berthd on a box with one line." (see Get started below). -->
-    <p class="note">Pre-release: build it from source, then add a box over SSH.</p>
+    <p class="note">One line installs berthd on a box. The desktop app builds from source for now.</p>
   </div>
   <div class="wrap wide">
 
@@ -520,38 +518,35 @@
   <div class="wrap">
     <div class="section-head">
       <p class="eyebrow">Get started</p>
-      <h2 id="start-title">From source to your first agent.</h2>
-      <p>There's no release yet, so you build Berth on your laptop and it installs itself on your box over SSH. You need Go 1.27, and Node 22, pnpm and Rust for the app. The box needs Tailscale, or <code>--listen</code> in step 2.</p>
+      <h2 id="start-title">From one line to your first agent.</h2>
+      <p>One line on the box installs berthd. The desktop app isn't in the release yet, so on your laptop you build it from source, with Go 1.27, Node 22, pnpm and Rust. The box needs Tailscale, or the installer asks before listening on every interface.</p>
     </div>
     <div class="start-grid">
       <div class="start-main">
-        <!-- Release: when the first release is out, make the one-liner the
-             way to add a box. Three edits:
-             1. Replace step 2's <li> with:
-                  <li>
-                    <div class="step-head"><span class="num">2</span><h3>On the box, install berthd</h3><button class="copy-btn" type="button" data-copy="step-2" hidden>Copy</button></div>
-                    <pre id="step-2" tabindex="0" aria-label="Install berthd on the box"><code>curl -fsSL https://berthd.app/install | sh</code></pre>
-                    <p class="step-note">It installs berthd for your user, with no root, starts it and prints a link: paste it into <strong>Add a box</strong> in the app, or run <code>bin/berth pair 'berth://…'</code>. Or skip this and run <code>bin/berth add ssh me@my-box</code> from your laptop.</p>
-                  </li>
-             2. Delete the <div class="soon" id="one-line"> block below.
-             3. Change the section intro above ("There's no release yet, …") and
-                the hero's .note line ("Pre-release: …") to match. -->
         <ol class="steps">
           <li>
-            <div class="step-head"><span class="num">1</span><h3>On your laptop, build berth</h3><button class="copy-btn" type="button" data-copy="step-1" hidden>Copy</button></div>
-            <pre id="step-1" tabindex="0" aria-label="Clone and build berth"><code>git clone https://github.com/sean-brydon/berthd
-cd berthd &amp;&amp; make all</code></pre>
-            <p class="step-note"><code>bin/</code> gets <code>berth</code> for this laptop and <code>berthd</code> for Linux boxes, amd64 and arm64.</p>
+            <div class="step-head"><span class="num">1</span><h3>On the box, install berthd</h3><button class="copy-btn" type="button" data-copy="step-1" hidden>Copy</button></div>
+            <pre id="step-1" tabindex="0" aria-label="Install berthd on the box"><code>curl -fsSL https://berthd.app/install | sh</code></pre>
+            <p class="step-note">Run it as the user your agents will run as; it needs no root. It checks berthd against the release's checksums, starts it as your user's service, installs the hooks that report needs you, working and done for the agent CLIs it finds, and prints a link that pairs your laptop.</p>
           </li>
           <li>
-            <div class="step-head"><span class="num">2</span><h3>Add a box over SSH</h3><button class="copy-btn" type="button" data-copy="step-2" hidden>Copy</button></div>
-            <pre id="step-2" tabindex="0" aria-label="Install berthd on the box over SSH and pair"><code>bin/berth add ssh me@my-box --name my-box</code></pre>
-            <p class="step-note">One SSH session: it uploads berthd to <code>~/.local/bin</code> on the box, starts it as your user's service, installs the hooks that report needs you, working and done for the agent CLIs it finds there, and pairs. No root. Without Tailscale on the box, add <code>--listen 0.0.0.0:7444</code>.</p>
+            <div class="step-head"><span class="num">2</span><h3>On your laptop, open the app and paste the link</h3><button class="copy-btn" type="button" data-copy="step-2" hidden>Copy</button></div>
+            <pre id="step-2" tabindex="0" aria-label="Build berth and open the app"><code>git clone https://github.com/sean-brydon/berthd
+cd berthd &amp;&amp; make all
+cd app &amp;&amp; pnpm install &amp;&amp; pnpm tauri dev</code></pre>
+            <p class="step-note">The app offers to start the laptop agent, at login too if you like. Paste the link into <strong>Add a box</strong>, or run <code>bin/berth pair '&lt;link&gt;'</code>. Or skip step 1: <code>bin/berth add ssh me@my-box</code> installs berthd over SSH and pairs in one go.</p>
+            <details class="alt">
+              <summary>Or just the CLI, from the release</summary>
+              <pre id="step-2b" tabindex="0" aria-label="Download the berth CLI and pair"><code>mkdir -p ~/.local/bin
+url=https://github.com/sean-brydon/berthd/releases/latest/download
+curl -fsSL $url/berth-darwin-arm64.tar.gz | tar -xz -C ~/.local/bin
+~/.local/bin/berth pair '&lt;link&gt;'</code></pre>
+              <p class="step-note">Use <code>darwin-amd64</code> on an Intel Mac, <code>linux-amd64</code> or <code>linux-arm64</code> on Linux. It carries berthd for Linux boxes too, so <code>berth add ssh</code> works from it. The app finds it there too, so you can skip <code>make all</code> and build the app without Go.</p>
+            </details>
           </li>
           <li>
-            <div class="step-head"><span class="num">3</span><h3>Open the app, add a project and start an agent</h3><button class="copy-btn" type="button" data-copy="step-3" hidden>Copy</button></div>
-            <pre id="step-3" tabindex="0" aria-label="Open the app"><code>cd app &amp;&amp; pnpm install &amp;&amp; pnpm tauri dev</code></pre>
-            <p class="step-note">The app talks to the laptop agent and offers to start it, at login too if you like. In the app, <strong>Add a project</strong> clones a repository onto the box, or picks one already there; then start Claude Code in a new worktree.</p>
+            <div class="step-head"><span class="num">3</span><h3>Add a project and start an agent</h3></div>
+            <p class="step-note">In the app, <strong>Add a project</strong> clones a repository onto the box, or picks one already there; then start Claude Code in a new worktree.</p>
             <details class="alt">
               <summary>Or from the terminal, for a repository already on the box</summary>
               <pre id="step-3b" tabindex="0" aria-label="Add a project and start an agent from the terminal"><code>bin/berth location add my-box/app ~/work/app
@@ -560,16 +555,11 @@ bin/berth task new my-box/app/fix-login \
             </details>
           </li>
         </ol>
-        <div class="soon" id="one-line">
-          <p class="soon-head"><span class="tag">Not yet</span>Once the first release is out</p>
-          <pre tabindex="0" aria-label="The install line, once there is a release"><code>curl -fsSL https://berthd.app/install | sh</code></pre>
-          <p>One line on the box will install berthd for your user and print a link to paste into Add a box. Until then it says there's no release yet, and prints the steps above. <a href="https://github.com/sean-brydon/berthd/releases">Releases</a></p>
-        </div>
       </div>
       <nav class="read-next" aria-labelledby="read-next-title">
         <h3 id="read-next-title">Read next</h3>
         <ul>
-          <li><a href="https://docs.berthd.app/getting-started/add-a-box"><span>Add a box</span><small>Over SSH, options, and pairing by link</small></a></li>
+          <li><a href="https://docs.berthd.app/getting-started/add-a-box"><span>Add a box</span><small>The install line, SSH, and pairing by link</small></a></li>
           <li><a href="https://docs.berthd.app/guides/agent-integrations"><span>Agent integrations</span><small>Hooks and skills for Claude Code, Codex, Cursor</small></a></li>
           <li><a href="https://docs.berthd.app/concepts/security"><span>Security model</span><small>Pinned keys, mutual TLS, pairing</small></a></li>
           <li><a href="https://docs.berthd.app/guides/project-config"><span>.berth/config.json</span><small>Ports, environment and services</small></a></li>
@@ -582,7 +572,7 @@ bin/berth task new my-box/app/fix-login \
     <div class="closing">
       <div>
         <h3>Follow along.</h3>
-        <p>Watch the repository for the first release, or open an issue with what you'd run on your boxes.</p>
+        <p>Watch the repository for releases (a signed desktop app is next), or open an issue with what you'd run on your boxes.</p>
       </div>
       <div class="actions row">
         <a class="btn primary" href="https://github.com/sean-brydon/berthd">Watch on GitHub</a>
@@ -634,7 +624,7 @@ bin/berth task new my-box/app/fix-login \
       </div>
     </nav>
     <div class="foot-bar">
-      <p>Pre-release. Built in the open.</p>
+      <p>v0.1.0. Built in the open.</p>
       <a href="#top">Back to top<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 12.5 V3.5 M4 7.5 L8 3.5 L12 7.5"/></svg></a>
     </div>
   </div>

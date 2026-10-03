@@ -1705,7 +1705,7 @@ pre .k {
   font-weight: 550;
 }
 
-/* The terminal route for step 4, folded away. */
+/* The other routes for a step, folded away. */
 .alt {
   margin: 12px 0 0 36px;
   font-size: 14px;
@@ -1725,43 +1725,13 @@ pre .k {
   margin: 10px 0 0;
 }
 
-/* The install line that comes with the first release: shown, but plainly
-   not a step yet. Neutral, not amber: nothing here needs you. */
-.soon {
-  margin-top: 36px;
-  padding: 18px clamp(16px, 2.4vw, 22px) 18px;
-  border: 1px dashed var(--border);
-  border-radius: 14px;
+/* A step with no command: its note sits under the heading. */
+.step-head + .step-note {
+  margin-top: 0;
 }
 
-.soon-head {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 14.5px;
-  font-weight: 550;
-  color: var(--fg);
-}
-
-.soon .tag {
-  padding: 1px 8px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--muted);
-}
-
-.soon pre {
-  margin-top: 12px;
-  background: transparent;
-  color: var(--muted);
-}
-
-.soon > p:last-child {
-  margin-top: 10px;
-  font-size: 14px;
-  color: var(--muted);
+.alt .step-note {
+  margin-left: 0;
 }
 
 @media (max-width: 640px) {

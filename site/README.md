@@ -69,12 +69,10 @@ not "Broadcast"). The drawings move by `transform` and `opacity` only, with
 fixed keyframes and no SVG masks over moving parts (both forced style and
 layout every frame), pause offscreen, and stop for reduced motion.
 
-Until the first release, Get started leads with what works today: build
-from source, `berth add ssh`, the agent integrations on the box, then the
-app. The install one-liner is shown as "Once the first release is out", and
-`install.sh` says there's no release yet and prints the SSH route. HTML
-comments marked `Release:` in `index.html` (the hero's status line and Get
-started) say what to change when the release ships.
+Get started leads with the release: the install one-liner on a box, then
+the app (built from source until it ships signed) and pairing, with `berth
+add ssh` as the alternative. If a release is missing, `install.sh` says so
+plainly and prints the source-and-SSH route.
 
 Keep the page light: about 250 KB on first load and under 1 MB after
 scrolling to the end at 2x.

@@ -32,11 +32,12 @@ whatever the reason. A trust store that cannot be read authorizes nobody.
    fingerprint, so the proof is bound to this session and this key.
 4. The box consumes the code under a file lock and pins the laptop's key.
 
-`berth add ssh HOST` does all of this over one SSH session: it detects the
-box's platform, uploads the matching berthd, installs the service, and pairs.
 The [install script](/getting-started/add-a-box#with-the-install-command)
-(from the first release) runs on the box itself and ends with step 1, so the
-laptop needs no SSH at all.
+runs on the box itself and ends with step 1, so the laptop needs no SSH at
+all. It checks the berthd it downloads against the release's `checksums.txt`
+before running it. `berth add ssh HOST` does all of this over one SSH
+session instead: it detects the box's platform, uploads the matching berthd,
+installs the service, and pairs.
 
 On the box, `berthd clients` lists paired laptops and
 `berthd revoke <name|fingerprint>` stops trusting one. On the laptop,

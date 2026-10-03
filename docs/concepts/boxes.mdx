@@ -26,9 +26,9 @@ several laptops. Each box has a name on your laptop (`devl`, `gpu`,
 - **The phone companion**, when you turn it on.
 
 berthd runs as a systemd user service, or a launchd agent on macOS.
-[`berth add ssh`](/getting-started/add-a-box#over-ssh) (and, once the first
-release is out, the [install script](/getting-started/add-a-box#with-the-install-command))
-set that up for you with `berthd install`. It survives restarts and upgrades
+The [install script](/getting-started/add-a-box#with-the-install-command)
+and [`berth add ssh`](/getting-started/add-a-box#over-ssh) both set that up
+for you with `berthd install`. It survives restarts and upgrades
 without touching running sessions. Its state is in `~/.config/berth/box/`
 (`~/Library/Application Support/berth/box/` on macOS); files you write by
 hand (`hooks.json`, `flows.json`, `env.json`, `guard.json`) are in
