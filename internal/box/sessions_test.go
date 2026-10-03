@@ -3,6 +3,7 @@ package box
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"errors"
 	"io"
 	"os"
@@ -25,6 +26,18 @@ func TestParseSessions(t *testing.T) {
 	}
 	if !got[1].Exited || got[1].Attached != 0 {
 		t.Errorf("second session = %+v", got[1])
+	}
+}
+
+// Some tmux versions escape "$" when a format reads an option back; the
+// base64 copy of the command is what counts when it's there.
+func TestParseSessionsPrefersTheEncodedCommand(t *testing.T) {
+	command := `echo "${HOME}" && claude`
+	escaped := `echo "\${HOME}" && claude`
+	out := []byte("a\t1700000000\t0\tcal\t" + escaped + "\t0\t/w\t" + base64.StdEncoding.EncodeToString([]byte(command)) + "\n")
+	got := parseSessions(out)
+	if len(got) != 1 || got[0].Command != command {
+		t.Fatalf("parseSessions = %+v, want command %q", got, command)
 	}
 }
 

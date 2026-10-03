@@ -67,7 +67,7 @@ text = open(path).read()
 text = re.sub(r'(?m)^version = "[^"]+"', f'version = "{v}"', text, count=1)
 open(path, "w").write(text)
 PY
-(cd app/src-tauri && cargo update -p app --offline >/dev/null 2>&1 || true)
+(cd app/src-tauri && { cargo update -p app --offline >/dev/null 2>&1 || true; })
 
 echo "Building and signing the app…"
 make app-build >/dev/null

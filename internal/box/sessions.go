@@ -2,6 +2,7 @@ package box
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"os"
@@ -86,7 +87,11 @@ func (s *Sessions) tmux(ctx context.Context, args ...string) ([]byte, error) {
 	return cmd.CombinedOutput()
 }
 
-const listFormat = "#{session_name}\t#{session_created}\t#{session_attached}\t#{@berth_location}\t#{@berth_command}\t#{pane_dead}\t#{pane_start_path}"
+// The command is also kept base64-encoded (@berth_command64): some tmux
+// versions (3.4, say) escape "$" when a format reads an option back, so the
+// plain @berth_command would come back changed. Sessions started before it
+// existed only have the plain one.
+const listFormat = "#{session_name}\t#{session_created}\t#{session_attached}\t#{@berth_location}\t#{@berth_command}\t#{pane_dead}\t#{pane_start_path}\t#{@berth_command64}"
 
 func (s *Sessions) List(ctx context.Context) ([]Session, error) {
 	if _, err := exec.LookPath("tmux"); err != nil {
@@ -107,8 +112,17 @@ func parseSessions(out []byte) []Session {
 	sessions := []Session{}
 	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 		f := strings.Split(line, "\t")
-		if len(f) != 7 {
+		if len(f) == 7 {
+			f = append(f, "")
+		}
+		if len(f) != 8 {
 			continue
+		}
+		command := f[4]
+		if f[7] != "" {
+			if raw, err := base64.StdEncoding.DecodeString(f[7]); err == nil {
+				command = string(raw)
+			}
 		}
 		created, _ := strconv.ParseInt(f[1], 10, 64)
 		attached, _ := strconv.Atoi(f[2])
@@ -117,7 +131,7 @@ func parseSessions(out []byte) []Session {
 			Created:  time.Unix(created, 0).UTC(),
 			Attached: attached,
 			Location: f[3],
-			Command:  f[4],
+			Command:  command,
 			Exited:   f[5] == "1",
 			Dir:      f[6],
 		})
@@ -161,6 +175,7 @@ func (s *Sessions) create(ctx context.Context, name, location, dir, command stri
 	// set-option takes a pane target, whose exact-match form needs the colon.
 	s.tmux(ctx, "set-option", "-t", "="+name+":", "@berth_location", location)
 	s.tmux(ctx, "set-option", "-t", "="+name+":", "@berth_command", command)
+	s.tmux(ctx, "set-option", "-t", "="+name+":", "@berth_command64", base64.StdEncoding.EncodeToString([]byte(command)))
 	return s.Get(ctx, name)
 }
 
