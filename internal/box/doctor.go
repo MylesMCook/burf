@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/sean-brydon/berthd/internal/doctor"
+	"github.com/sean-brydon/berthd/internal/integrations"
 )
 
 // Doctor reports what this box can do and what is missing. Daemon-level
@@ -23,6 +24,18 @@ func (b *Box) Doctor(ctx context.Context) []doctor.Check {
 		doctor.ToolCheck("Agents", "claude", "Claude Code sessions", "npm install -g @anthropic-ai/claude-code", false),
 		doctor.ToolCheck("Agents", "codex", "Codex sessions", "npm install -g @openai/codex", false),
 	)
+	if home, err := os.UserHomeDir(); err == nil {
+		for _, t := range integrations.Tools {
+			if !t.Present(home) {
+				continue
+			}
+			c := doctor.Check{Area: "Agents", Name: t.Name + " hooks", Status: doctor.OK, Detail: "installed"}
+			if !t.Hooked(home) {
+				c.Status, c.Detail, c.Fix = doctor.Warn, "not installed, so Berth cannot show when this agent is done or needs you", "berthd integrations install "+t.ID
+			}
+			checks = append(checks, c)
+		}
+	}
 	locs, err := b.Locations.List(ctx)
 	if err != nil {
 		checks = append(checks, doctor.Check{Area: "Locations", Name: "locations", Status: doctor.Fail, Detail: err.Error()})

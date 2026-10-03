@@ -393,6 +393,8 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
   }
   const skills = mockSkills(box, method, path, body);
   if (skills) return skills;
+  const integrations = mockIntegrations(box, method, path, body);
+  if (integrations) return integrations;
   if (key === "GET hooks") return hooksFiles[box] ? delay(hooksFiles[box]) : Promise.reject(new Error("this box has no hooks file"));
   if (key === "PUT hooks") return saveHooks(box, (body as { hooks: Hook[] }).hooks);
   const orchestration = mockOrchestration(box, method, path, body);
@@ -829,6 +831,26 @@ function mockSkills(box: string, method: string, path: string, body?: unknown): 
   }
   setTimeout(() => emit({ type: m[1] === "install" ? "skills.installed" : "skills.removed", box, data: { skills: names, agents, target: req.target, location: req.location } }), 50);
   return new Promise((resolve) => setTimeout(() => resolve(skillsReport(box, req.location)), 450));
+}
+
+// Agent hooks: the first box has Claude Code without them, so starting it
+// there shows the offer to install them.
+const mockHooked: Record<string, boolean> = {};
+function mockIntegrations(box: string, method: string, path: string, body?: unknown): Promise<unknown> | undefined {
+  const first = status.boxes[0]?.name;
+  const report = () => ({
+    tools: [
+      { id: "claude", name: "Claude Code", command: "claude", present: true, hooked: mockHooked[`${box}:claude`] ?? box !== first },
+      { id: "codex", name: "Codex", command: "codex", present: true, hooked: mockHooked[`${box}:codex`] ?? true },
+      { id: "cursor", name: "Cursor Agent", command: "cursor-agent", present: false, hooked: false },
+    ],
+  });
+  if (method === "GET" && path === "integrations") return delay(report());
+  if (method !== "POST" || path !== "integrations/install") return undefined;
+  const tool = (body as { tool: string }).tool;
+  mockHooked[`${box}:${tool}`] = true;
+  setTimeout(() => emit({ type: "integrations.installed", box, data: { tool } }), 50);
+  return new Promise((resolve) => setTimeout(() => resolve({ ...report(), output: `Claude Code: skills in /home/dev/.claude/skills; hooks added in /home/dev/.claude/settings.json` }), 450));
 }
 
 // mockAgentOpens plays an agent on a box running

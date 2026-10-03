@@ -1,6 +1,7 @@
 import { confirm } from "@/components/sidebar/confirm";
 import { toastManager } from "@/components/ui/toast";
 import { usePrefs } from "@/lib/prefs";
+import { offerAgentHooks } from "@/lib/agent-hooks";
 import { type AgentPreset, boxApi, type Location, type Worktree } from "@/lib/api";
 import { agentLabel, agentOf } from "@/lib/derive";
 import { errorMessage } from "@/lib/format";
@@ -60,6 +61,7 @@ export async function startSession(command: string, target: Target = { kind: "ta
     const s = await boxApi.startSession(client, ws.ref.box, { location: refLocation(ws.ref), command: command || undefined });
     setPaneContent(at.key, at.tab, at.pane, { kind: "terminal", box: ws.ref.box, session: s.name });
     scheduleRefresh(ws.ref.box, ["sessions"]);
+    if (command) void offerAgentHooks(ws.ref.box, command);
   } catch (err) {
     setPaneContent(at.key, at.tab, at.pane, { kind: "error", message: errorMessage(err) });
   }

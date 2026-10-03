@@ -35,7 +35,9 @@ It:
 3. uploads the matching `berthd-<os>-<arch>` from beside `berth` to
    `~/.local/bin/berthd` on the box;
 4. runs `berthd install`, which sets berthd up as a user service (systemd
-   on Linux, launchd on macOS);
+   on Linux, launchd on macOS) and installs the
+   [hooks that report agent state](/getting-started/first-agent#let-the-box-report-agent-state)
+   for the agent CLIs it finds;
 5. runs `berthd pair` and pairs this laptop with the link it prints.
 
 ```text title="Example output"
@@ -43,6 +45,9 @@ Using your SSH agent
 Checking me@my-box…
 Installing berthd-linux-amd64 (9 MB)…
   Installed /home/me/.config/systemd/user/berthd.service; berthd is serving on 100.101.102.103:7444.
+  Agent integrations (hooks for needs-you, working and done; berth's skills):
+    Claude Code: skills in /home/me/.claude/skills; hooks added in /home/me/.claude/settings.json
+    Not found: Codex, Cursor Agent. After installing one, run: /home/me/.local/bin/berthd integrations install codex|cursor
 Paired with my-box at 100.101.102.103:7444. SSH is no longer needed for this box.
 ```
 
@@ -63,6 +68,7 @@ Options:
 | `--address ADDR` | The address the laptop should dial, when the one berthd guesses is wrong. |
 | `--identity FILE` | An SSH private key to log in with, as `ssh -i`. |
 | `--trust-host-key SHA256:…` | Trust a new box's host key if its fingerprint is this one. |
+| `--no-integrations` | Don't install agent hooks and skills on the box. |
 | `-- OPTIONS` | Anything after `--` goes to `ssh`. |
 
 <Callout title="Keep it running after you log out">
@@ -139,6 +145,7 @@ Pass options after `sh -s --`, for example
 | `--version vX.Y.Z` | `BERTH_VERSION` | Install that release instead of the latest |
 | `--listen ADDR` | `BERTHD_LISTEN` | Where berthd listens (default: the box's tailnet address; see [below](#where-berthd-listens)) |
 | `--no-pair` | `BERTH_NO_PAIR=1` | Don't print a pairing link at the end |
+| `--no-integrations` | `BERTH_NO_INTEGRATIONS=1` | Don't install agent hooks and skills for the agent CLIs on the box |
 | `--yes`, `-y` | `BERTH_YES=1` | Ask nothing (see below) |
 | `--system` | | Put berthd in `/usr/local/bin` (the default when run as root); only the copy uses `sudo`, and `berth upgrade` then can't replace it, so upgrade by running the installer again |
 | | `BERTH_BIN_DIR` | Put berthd somewhere else |

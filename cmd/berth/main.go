@@ -36,8 +36,9 @@ const usage = `berth — connect this laptop to development boxes
 
 Boxes
   berth add ssh [user@]HOST [--name N] [--network NET] [--listen ADDR] [--address ADDR]
-        [--identity FILE] [--trust-host-key SHA256:…] [-- SSH OPTIONS]
-                                         Install berthd on a box over SSH (once) and pair
+        [--identity FILE] [--trust-host-key SHA256:…] [--no-integrations] [-- SSH OPTIONS]
+                                         Install berthd on a box over SSH (once), with hooks
+                                         for the agent CLIs it has, and pair
   berth pair '<link>' [--name N] [--network NET]
                                          Pair with a box (link from berthd pair)
   berth network login NAME               Join another tailnet (e.g. a personal one) to reach its boxes
@@ -76,6 +77,7 @@ Agent
   berth doctor [BOX] [--json]            Check this computer (or a box) and how to fix it
   berth events [BOX] [--json]            Stream events from this laptop and every box (or only BOX's)
   berth agent                            Run the agent in the foreground
+  berth agent start                      Start the agent in the background, if it is not running
   berth agent install|uninstall|status   Run the agent at login, restart it on crashes
   berth setup port80 [--remove]          Drop :1377 from URLs (asks for your admin password once)
   berth stop                             Stop the agent (and every forward)

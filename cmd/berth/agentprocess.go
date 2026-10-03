@@ -110,6 +110,15 @@ func agentCommand(l laptop, args []string) error {
 		return err
 	}
 	switch args[0] {
+	case "start":
+		// What the desktop app runs when the agent is not running: through
+		// the service when one is installed, otherwise detached from the
+		// caller, so it outlives the app.
+		if _, err := ensureAgent(l); err != nil {
+			return err
+		}
+		fmt.Println("The berth agent is running.")
+		return nil
 	case "install":
 		// The supervisor starts its own agent; a running one would hold the lock.
 		if c := agent.NewClient(l.socket()); c.Running(context.Background()) {
@@ -141,5 +150,5 @@ func agentCommand(l laptop, args []string) error {
 		fmt.Printf("service installed: %v\nagent running: %v\n", service.Installed(spec), running)
 		return nil
 	}
-	return errors.New("usage: berth agent [install|uninstall|status]")
+	return errors.New("usage: berth agent [start|install|uninstall|status]")
 }

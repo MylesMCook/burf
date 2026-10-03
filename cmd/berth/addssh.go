@@ -59,7 +59,7 @@ func addSSH(l laptop, args []string) error {
 	return err
 }
 
-const addSSHUsage = "usage: berth add ssh [user@]HOST [--name N] [--network NET] [--listen ADDR] [--address ADDR] [--identity FILE] [--trust-host-key SHA256:…] [-- SSH OPTIONS]"
+const addSSHUsage = "usage: berth add ssh [user@]HOST [--name N] [--network NET] [--listen ADDR] [--address ADDR] [--identity FILE] [--trust-host-key SHA256:…] [--no-integrations] [-- SSH OPTIONS]"
 
 func addSSHSteps(l laptop, args []string) error {
 	var sshArgs []string
@@ -77,6 +77,7 @@ func addSSHSteps(l laptop, args []string) error {
 	via := fs.String("network", "", "reach the box through this network, for SSH and afterwards")
 	identity := fs.String("identity", "", "an SSH private key file to log in with (as ssh -i)")
 	trustKey := fs.String("trust-host-key", "", "trust the box's host key if its fingerprint is this SHA256:… (a new box only; a changed key is never trusted)")
+	noIntegrations := fs.Bool("no-integrations", false, "don't install hooks and skills for the agent CLIs on the box")
 	pos, err := parseAnywhere(fs, args)
 	if err != nil || len(pos) != 1 {
 		return errors.New(addSSHUsage)
@@ -232,6 +233,9 @@ func addSSHSteps(l laptop, args []string) error {
 	install := "~/.local/bin/berthd install"
 	if *listen != "" {
 		install += " --listen " + shellQuote(*listen)
+	}
+	if *noIntegrations {
+		install += " --no-integrations"
 	}
 	out, err := ssh(nil, install)
 	if err != nil {

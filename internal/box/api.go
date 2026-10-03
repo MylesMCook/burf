@@ -137,6 +137,8 @@ func (b *Box) Mount(s *wire.Server) {
 	route("GET /v1/skills", b.listSkills)
 	route("POST /v1/skills/install", b.installSkills)
 	route("POST /v1/skills/uninstall", b.uninstallSkills)
+	route("GET /v1/integrations", b.listIntegrations)
+	route("POST /v1/integrations/install", b.installIntegrations)
 	route("GET /v1/shares", b.listShares)
 	route("POST /v1/shares", b.addShare)
 	route("DELETE /v1/shares/{id}", b.removeShare)

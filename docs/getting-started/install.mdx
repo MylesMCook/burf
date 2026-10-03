@@ -71,6 +71,9 @@ Using your SSH agent
 Checking me@my-box…
 Installing berthd-linux-amd64 (9 MB)…
   Installed /home/me/.config/systemd/user/berthd.service; berthd is serving on 100.101.102.103:7444.
+  Agent integrations (hooks for needs-you, working and done; berth's skills):
+    Claude Code: skills in /home/me/.claude/skills; hooks added in /home/me/.claude/settings.json
+    Not found: Codex, Cursor Agent. After installing one, run: /home/me/.local/bin/berthd integrations install codex|cursor
 Paired with my-box at 100.101.102.103:7444. SSH is no longer needed for this box.
 ```
 
@@ -79,8 +82,10 @@ call it `my-box`. Berth puts the daemon in `~/.local/bin/berthd` on the box,
 and from here on the laptop talks to it over pinned mutual TLS: Berth itself
 never needs SSH for this box again. The other flags, a Mac box, and a box
 with no tailnet address are in [add a box](/getting-started/add-a-box#over-ssh).
-To see agents' state (needs you, working, done), the box also needs the
-agent hooks, a one-line step in [first agent](/getting-started/first-agent#let-the-box-report-agent-state).
+It also installs the hooks that report agents' state (needs you, working,
+done) for the agent CLIs it finds on the box; see
+[first agent](/getting-started/first-agent#let-the-box-report-agent-state)
+for one you install later.
 
 If berthd is already running on the box, run `berthd pair` there instead
 and paste the link it prints into the app (**Add a box**), or:
@@ -108,9 +113,13 @@ start at login and come back after a crash, install it as a service
 bin/berth agent install     # berth agent status | uninstall
 ```
 
-The desktop app talks to the agent but never starts it. If the app says "The
-Berth agent is not running", run `bin/berth status` or
-`bin/berth agent install` in a terminal; the app connects as soon as it is up.
+If the agent isn't running when the desktop app opens, the app offers to
+start it: **Start the Berth agent** runs `berth agent start`, and ticking
+**Start at login** first runs `berth agent install` instead. Nothing is
+installed unless you tick it. A dev build (`pnpm tauri dev`) runs the
+repository's `bin/berth`, so build it first; the packaged app carries its
+own copy. Without either, the app shows the command to run in a terminal
+(`bin/berth status`) and connects as soon as the agent is up.
 
 ## Run the desktop app
 

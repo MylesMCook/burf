@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 
+import { mockAgentDown, waitForRetry } from "@/lib/agent-start";
 import { endpoint, httpClient, type Client } from "@/lib/api";
 import { handleEvent } from "@/lib/events";
 import { errorMessage } from "@/lib/format";
@@ -24,18 +25,21 @@ export function useBerthConnection() {
     let poll = 0;
 
     const connect = async (): Promise<Client | undefined> => {
-      if (isMock()) return mockClient();
       let delay = 1000;
       while (!abort.signal.aborted) {
         try {
+          // ?mock=offline is the "not running" screen until its agent starts.
+          if (mockAgentDown()) throw new Error("the Berth agent has not started yet (mock)");
+          if (isMock()) return mockClient();
           const client = httpClient(await endpoint());
           await client.status();
           return client;
         } catch (err) {
           setConnection({ state: "offline", error: errorMessage(err) });
         }
-        await new Promise((r) => setTimeout(r, delay));
-        delay = Math.min(delay * 2, 10_000);
+        // Starting the agent from the "not running" screen asks for a try now.
+        if ((await waitForRetry(delay)) === "retry") delay = 1000;
+        else delay = Math.min(delay * 2, 10_000);
       }
     };
 

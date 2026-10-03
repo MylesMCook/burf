@@ -2,9 +2,11 @@ package integrations
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/sean-brydon/berthd/internal/statefile"
@@ -50,6 +52,53 @@ func InstallCursorHooks(hooksPath, bin string) (bool, error) {
 		hooks["stop"] = append(list, map[string]any{"command": command, "timeout": 10})
 		return true
 	})
+}
+
+// ErrNotifyTaken means Codex's config already sets notify to something
+// other than berth's hook. Codex runs a single notify program, so berth does
+// not replace it.
+var ErrNotifyTaken = errors.New("codex already has a notify program")
+
+// notifyKey finds a notify setting anywhere in a config.toml. Any table's
+// counts: adding a second top-level one is only safe when there is none.
+var notifyKey = regexp.MustCompile(`(?m)^[ \t]*notify[ \t]*=`)
+
+// InstallCodexNotify makes Codex run berth's hook when a turn finishes, by
+// adding a notify setting to its config.toml. A config that already has a
+// notify setting is left alone: ErrNotifyTaken unless it is berth's.
+func InstallCodexNotify(configPath, bin string) (bool, error) {
+	before, err := os.ReadFile(configPath)
+	if err != nil && !os.IsNotExist(err) {
+		return false, err
+	}
+	if notifyKey.Match(before) {
+		if strings.Contains(string(before), `"hook", "codex"`) {
+			return false, nil
+		}
+		return false, ErrNotifyTaken
+	}
+	// Top-level keys come before the first table, so the line goes first.
+	after := codexNotify(bin) + "\n" + string(before)
+	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
+		return false, err
+	}
+	mode := os.FileMode(0o644)
+	if len(before) > 0 {
+		if err := os.WriteFile(configPath+".berth-backup", before, 0o600); err != nil {
+			return false, err
+		}
+		if info, err := os.Stat(configPath); err == nil {
+			mode = info.Mode().Perm()
+		}
+	}
+	if err := statefile.Write(configPath, []byte(after)); err != nil {
+		return false, err
+	}
+	return true, os.Chmod(configPath, mode)
+}
+
+func codexNotify(bin string) string {
+	return fmt.Sprintf(`notify = [%q, "hook", "codex", "notify"]`, bin)
 }
 
 func hookCommand(bin, tool, event string) string {

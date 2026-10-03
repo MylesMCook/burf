@@ -121,3 +121,44 @@ func TestLogTail(t *testing.T) {
 		t.Error("a missing log has no tail")
 	}
 }
+
+// berthd install sets up hooks for the agent CLIs it finds. (Which ones it
+// finds, and the advice for the others, are integrations' tests.)
+func TestInstallSetsUpIntegrationsForAgentsOnThisBox(t *testing.T) {
+	home, path := t.TempDir(), t.TempDir()
+	for _, tool := range []string{"claude", "codex", "cursor-agent"} {
+		os.WriteFile(filepath.Join(path, tool), []byte("#!/bin/sh\n"), 0o755)
+	}
+	t.Setenv("HOME", home)
+	t.Setenv("PATH", path)
+	var out bytes.Buffer
+	installIntegrations(&out, "/home/alex/.local/bin/berthd")
+	settings, err := os.ReadFile(filepath.Join(home, ".claude", "settings.json"))
+	if err != nil || !strings.Contains(string(settings), "/home/alex/.local/bin/berthd hook claude Stop") {
+		t.Fatalf("settings.json = %s, %v", settings, err)
+	}
+	for _, want := range []string{"Claude Code: skills in", "hooks added in", "Codex: skills in", "notify added in", "Cursor: stop hook added"} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("output missing %q:\n%s", want, out.String())
+		}
+	}
+	out.Reset()
+	installIntegrations(&out, "/home/alex/.local/bin/berthd")
+	if !strings.Contains(out.String(), "hooks already present") || strings.Contains(out.String(), "added") {
+		t.Errorf("second install:\n%s", out.String())
+	}
+}
+
+func TestCommandNameIsBerthdWhenPathFindsIt(t *testing.T) {
+	dir := t.TempDir()
+	bin := filepath.Join(dir, "berthd")
+	os.WriteFile(bin, []byte("#!/bin/sh\n"), 0o755)
+	t.Setenv("PATH", dir)
+	if got := commandName(bin); got != "berthd" {
+		t.Errorf("commandName = %q", got)
+	}
+	t.Setenv("PATH", t.TempDir())
+	if got := commandName(bin); got != bin {
+		t.Errorf("commandName off PATH = %q", got)
+	}
+}

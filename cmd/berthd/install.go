@@ -16,6 +16,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sean-brydon/berthd/internal/integrations"
 	"github.com/sean-brydon/berthd/internal/service"
 	"github.com/sean-brydon/berthd/internal/version"
 )
@@ -53,11 +54,12 @@ func install(b boxHome, args []string) error {
 	listen := fs.String("listen", "", "address to listen on (default: this box's tailnet address only)")
 	keep := fs.Bool("keep-listen", false, "keep the address an installed berthd listens on, unless it was a tailnet address (for upgrades in place)")
 	dryRun := fs.Bool("dry-run", false, "check this box can run berthd as a service and print what install would do")
+	noIntegrations := fs.Bool("no-integrations", false, "don't install hooks and skills for the agent CLIs on this box")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
 	if fs.NArg() > 0 {
-		return errors.New("usage: berthd install [--listen ADDR] [--keep-listen] [--dry-run]")
+		return errors.New("usage: berthd install [--listen ADDR] [--keep-listen] [--no-integrations] [--dry-run]")
 	}
 	if err := service.Preflight(); err != nil {
 		return err
@@ -85,12 +87,47 @@ func install(b boxHome, args []string) error {
 		return fmt.Errorf("installed %s, but berthd did not start: %w%s", path, err, logTail(spec.LogPath, 8))
 	}
 	fmt.Printf("Installed %s; berthd is serving on %s.\n", path, addr)
+	if !*noIntegrations {
+		// The same path `berthd integrations install` writes, so running
+		// either again finds the hooks already there.
+		exe, err := os.Executable()
+		if err != nil {
+			exe = spec.Program
+		}
+		installIntegrations(os.Stdout, exe)
+	}
 	if runtime.GOOS == "linux" && !lingering() {
 		fmt.Println("Warning: user lingering is off, so berthd stops when you log out.")
 		fmt.Println("Enable it once with: sudo loginctl enable-linger " + currentUser())
 	}
 	fmt.Println("Next: berthd pair")
 	return nil
+}
+
+// installIntegrations sets up the hooks that report agents' needs-you,
+// working and done states, and berth's skills, for each agent CLI on this
+// box, running the berthd at bin. A failure is reported, not fatal: berthd
+// itself is installed and serving.
+func installIntegrations(out io.Writer, bin string) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Fprintf(out, "Agent integrations not installed: %v\n", err)
+		return
+	}
+	integrations.InstallDetected(home, bin, commandName(bin), out)
+}
+
+// commandName is how to run bin by hand: berthd when that is what PATH
+// finds, its full path otherwise.
+func commandName(bin string) string {
+	if found, err := exec.LookPath("berthd"); err == nil {
+		a, errA := filepath.EvalSymlinks(found)
+		b, errB := filepath.EvalSymlinks(bin)
+		if errA == nil && errB == nil && a == b {
+			return "berthd"
+		}
+	}
+	return bin
 }
 
 // chooseListen is where the service will listen: --listen when given; with

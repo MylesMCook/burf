@@ -14,6 +14,7 @@ import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogPanel, Dia
 import { Kbd } from "@/components/ui/kbd";
 import { Switch } from "@/components/ui/switch";
 import { toastManager } from "@/components/ui/toast";
+import { offerAgentHooks } from "@/lib/agent-hooks";
 import { agentPresets } from "@/lib/actions";
 import type { Session, TaskResult, Worktree } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
@@ -258,6 +259,7 @@ function Body() {
       await useStore.getState().refreshBox(box, ["locations", "sessions"]);
       selectWorktree({ box, location: locName, worktree: wt.name, path: wt.path, main: wt.main });
       if (session) void focusSession(box, session.name);
+      if (session) void offerAgentHooks(box, template?.command ?? presets.find((p) => p.id === agent)?.command ?? agent);
       toastManager.add({ title: `Created ${wt.name}`, description: `${wt.branch ?? ""} on ${box}${session ? ` · ${agentItems.find((a) => a.value === agent)?.label} started` : ""}`, type: "success" });
       if (createMore) {
         setInput("");

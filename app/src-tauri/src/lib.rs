@@ -1,6 +1,7 @@
 use serde::Serialize;
 use std::path::PathBuf;
 
+mod agent;
 mod browser;
 
 // The app is a view over the laptop agent (`berth agent`), which serves it on
@@ -65,6 +66,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             ui_endpoint,
             open_devtools,
+            agent::agent_binary,
+            agent::start_agent,
             browser::browser_open,
             browser::browser_set_bounds,
             browser::browser_show,

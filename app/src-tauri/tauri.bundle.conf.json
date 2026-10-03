@@ -1,0 +1,10 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "externalBin": ["binaries/berth-cli"],
+    "resources": {
+      "binaries/berthd-linux-amd64": "berthd-linux-amd64",
+      "binaries/berthd-linux-arm64": "berthd-linux-arm64"
+    }
+  }
+}

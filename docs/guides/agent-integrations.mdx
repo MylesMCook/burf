@@ -18,6 +18,11 @@ berthd integrations install claude    # on a box, where agents usually run
 berth integrations install all
 ```
 
+`berthd install` (which `berth add ssh` and the install script run) already
+does this on a box for every agent CLI it finds there, unless given
+`--no-integrations`; for one installed later, the app offers to when it
+first starts that agent on the box.
+
 - **Claude Code**: installs berth's skills in `~/.claude/skills/` and
   `Stop` / `Notification` / `SessionStart` / `UserPromptSubmit` hooks in
   `~/.claude/settings.json`.
@@ -25,9 +30,9 @@ berth integrations install all
   already there (Orca's are kept).
 - **Codex**: installs berth's skills in `~/.agents/skills/`, where Codex
   reads user skills (a copy an older berth left in `~/.codex/skills/` is
-  removed), and prints the `notify` line to add to `~/.codex/config.toml`,
-  which berth does not edit because it holds a single value you may already
-  use.
+  removed), and adds a `notify` line to `~/.codex/config.toml`. Codex runs
+  a single notify program, so when the config already sets one to something
+  else, berth leaves it and prints the line to change yourself.
 
 Installs are idempotent, keep every existing setting, back up the previous
 file to `*.berth-backup`, and refuse to touch a file that is not valid JSON.

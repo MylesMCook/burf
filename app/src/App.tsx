@@ -1,7 +1,8 @@
-import { CheckIcon, CopyIcon, GitBranchIcon, RotateCwIcon } from "lucide-react";
-import { useState, useEffect } from "react";
+import { GitBranchIcon } from "lucide-react";
+import { useEffect } from "react";
 
 import { AddLocationDialog } from "@/components/add-location-dialog";
+import { Connecting } from "@/components/agent-offline";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Scene } from "@/components/art/scenes";
 import { CommandPalette } from "@/components/command-palette";
@@ -223,68 +224,6 @@ function Disconnectable({ children, className }: { children: React.ReactNode; cl
   return (
     <div className={cn("flex", className, offline && "pointer-events-none opacity-50")} aria-disabled={offline || undefined} inert={offline || undefined}>
       {children}
-    </div>
-  );
-}
-
-const START = "berth status";
-
-// Connecting is shown until the laptop agent answers. Any berth command
-// starts the agent; this window reconnects by itself once it is up.
-function Connecting({ state, error }: { state: string; error?: string }) {
-  const [copied, setCopied] = useState(false);
-  if (state === "connecting") {
-    return (
-      <div className="absolute inset-0 flex items-center justify-center bg-background">
-        <Empty>
-          <EmptyHeader>
-            <EmptyMedia>
-              <Scene name="lighthouse" />
-            </EmptyMedia>
-            <EmptyTitle>Finding the Berth agent…</EmptyTitle>
-          </EmptyHeader>
-        </Empty>
-      </div>
-    );
-  }
-  return (
-    <div className="absolute inset-0 flex items-center justify-center bg-background">
-      <Empty className="max-w-md">
-        <EmptyHeader>
-          <EmptyMedia>
-            <Scene name="offline" />
-          </EmptyMedia>
-          <EmptyTitle>The Berth agent is not running</EmptyTitle>
-          <EmptyDescription>It keeps your boxes connected while this window is closed. Run this in a terminal to start it; Berth connects as soon as it is up.</EmptyDescription>
-        </EmptyHeader>
-        <EmptyContent>
-          <div className="flex w-full items-center gap-2 rounded-lg border bg-muted/50 py-1 pr-1 pl-3 text-left">
-            <code className="flex-1 font-mono text-sm">{START}</code>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={async () => {
-                await navigator.clipboard?.writeText(START);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1500);
-              }}
-            >
-              {copied ? <CheckIcon /> : <CopyIcon />}
-              {copied ? "Copied" : "Copy"}
-            </Button>
-          </div>
-          <Button variant="ghost" size="sm" onClick={() => location.reload()}>
-            <RotateCwIcon />
-            Retry now
-          </Button>
-          {error && (
-            <details className="w-full text-left text-muted-foreground text-xs">
-              <summary className="cursor-default select-none hover:text-foreground">Details</summary>
-              <pre className="mt-2 rounded-md bg-muted p-2 font-mono whitespace-pre-wrap">{error}</pre>
-            </details>
-          )}
-        </EmptyContent>
-      </Empty>
     </div>
   );
 }

@@ -26,22 +26,25 @@ test:
 clean:
 	rm -rf $(BIN) $(DIST)
 
-# The desktop app bundles berth as a Tauri sidecar (named for the host's
-# target triple) and the Linux daemons as resources for `add ssh`.
+# The desktop app bundles berth as a Tauri sidecar, berth-cli (named for the
+# host's target triple; "berth" is the app's own executable), and the Linux
+# daemons as resources for `add ssh`. tauri.bundle.conf.json adds them to
+# release builds only, so `pnpm tauri dev` and `cargo check` work without
+# them; in dev the app starts the agent from bin/berth.
 TRIPLE := $(shell rustc -vV 2>/dev/null | sed -n 's/^host: //p')
 SIDECAR := app/src-tauri/binaries
 
 .PHONY: app-binaries app-dev app-build
 app-binaries: daemons
 	mkdir -p $(SIDECAR)
-	$(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(SIDECAR)/berth-$(TRIPLE) ./cmd/berth
+	$(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(SIDECAR)/berth-cli-$(TRIPLE) ./cmd/berth
 	cp $(BIN)/berthd-linux-amd64 $(BIN)/berthd-linux-arm64 $(SIDECAR)/
 
-app-dev: app-binaries
+app-dev: all
 	cd app && pnpm tauri dev
 
 app-build: app-binaries
-	cd app && pnpm tauri build
+	cd app && pnpm tauri build --config src-tauri/tauri.bundle.conf.json
 
 # release builds the archives a GitHub release carries, and checksums.txt,
 # into dist/: berthd and berth for linux and darwin, amd64 and arm64. The

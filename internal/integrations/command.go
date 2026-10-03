@@ -61,37 +61,56 @@ func Install(args []string, bin string, out io.Writer) error {
 		tools = []string{"claude", "cursor", "codex"}
 	}
 	for _, tool := range tools {
-		switch tool {
-		case "claude":
-			skills, err := installAllSkills(home, "claude")
-			if err != nil {
-				return err
-			}
-			settings := filepath.Join(home, ".claude", "settings.json")
-			changed, err := InstallClaudeHooks(settings, bin)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(out, "Claude Code: skills in %s; hooks %s in %s\n", skills, verb(changed), settings)
-		case "cursor":
-			hooks := filepath.Join(home, ".cursor", "hooks.json")
-			changed, err := InstallCursorHooks(hooks, bin)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(out, "Cursor: stop hook %s in %s (existing hooks kept)\n", verb(changed), hooks)
-		case "codex":
-			skills, err := installAllSkills(home, "codex")
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(out, "Codex: skills in %s\n", skills)
-			// config.toml has a single notify setting the user may already
-			// use, so berth suggests it rather than overwriting it.
-			fmt.Fprintf(out, "  To announce finished turns, add to ~/.codex/config.toml:\n    notify = [%q, \"hook\", \"codex\", \"notify\"]\n", bin)
-		default:
-			return fmt.Errorf("unknown tool %q; use claude, cursor, codex, or all", tool)
+		if err := InstallTool(home, tool, bin, out); err != nil {
+			return err
 		}
+	}
+	return nil
+}
+
+// InstallTool installs berth's skills and hooks for one tool in home, for
+// the binary at bin, and says what it did on out. Running it again changes
+// nothing that is already in place.
+func InstallTool(home, tool, bin string, out io.Writer) error {
+	switch tool {
+	case "claude":
+		skills, err := installAllSkills(home, "claude")
+		if err != nil {
+			return err
+		}
+		settings := filepath.Join(home, ".claude", "settings.json")
+		changed, err := InstallClaudeHooks(settings, bin)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(out, "Claude Code: skills in %s; hooks %s in %s\n", skills, verb(changed), settings)
+	case "cursor":
+		hooks := filepath.Join(home, ".cursor", "hooks.json")
+		changed, err := InstallCursorHooks(hooks, bin)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(out, "Cursor: stop hook %s in %s (existing hooks kept)\n", verb(changed), hooks)
+	case "codex":
+		skills, err := installAllSkills(home, "codex")
+		if err != nil {
+			return err
+		}
+		config := filepath.Join(home, ".codex", "config.toml")
+		changed, err := InstallCodexNotify(config, bin)
+		switch {
+		case errors.Is(err, ErrNotifyTaken):
+			// config.toml has a single notify setting, and the user already
+			// uses it for something else: suggest rather than overwrite.
+			fmt.Fprintf(out, "Codex: skills in %s\n", skills)
+			fmt.Fprintf(out, "  %s already sets notify, so berth left it alone. To announce finished turns, make it:\n    %s\n", config, codexNotify(bin))
+		case err != nil:
+			return err
+		default:
+			fmt.Fprintf(out, "Codex: skills in %s; notify %s in %s\n", skills, verb(changed), config)
+		}
+	default:
+		return fmt.Errorf("unknown tool %q; use claude, cursor, codex, or all", tool)
 	}
 	return nil
 }

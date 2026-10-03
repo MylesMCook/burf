@@ -8,7 +8,9 @@
 # Run it on the box, as the user your agents will run as. It needs no root:
 # berthd goes in ~/.local/bin and runs as a systemd user service (Linux) or a
 # launchd agent (macOS), set up by `berthd install`, the same step
-# `berth add ssh` runs over SSH. Running it again upgrades in place.
+# `berth add ssh` runs over SSH. That also installs hooks and skills for the
+# agent CLIs it finds (Claude Code, Codex, Cursor Agent), so the app can show
+# when an agent needs you. Running it again upgrades in place.
 #
 # Every download is checked against the release's checksums.txt before it
 # runs. Before Berth's first release there is nothing to download: it says
@@ -20,6 +22,7 @@
 #   --listen ADDR      where berthd listens (default: this box's tailnet address)
 #                                                           BERTHD_LISTEN
 #   --no-pair          don't print a pairing link at the end BERTH_NO_PAIR=1
+#   --no-integrations  don't install agent hooks and skills BERTH_NO_INTEGRATIONS=1
 #   --yes, -y          ask nothing; see "Questions" below    BERTH_YES=1
 #   --system           put berthd in /usr/local/bin (the default as root)
 #   BERTH_BIN_DIR      put berthd somewhere else
@@ -37,6 +40,8 @@ version=${BERTH_VERSION:-latest}
 listen=${BERTHD_LISTEN:-}
 pair=1
 [ -z "${BERTH_NO_PAIR:-}" ] || pair=0
+integrations=1
+[ -z "${BERTH_NO_INTEGRATIONS:-}" ] || integrations=0
 yes=0
 [ -z "${BERTH_YES:-}" ] || yes=1
 system=0
@@ -71,11 +76,12 @@ while [ $# -gt 0 ]; do
 		;;
 	--listen=*) listen=${1#*=} && shift ;;
 	--no-pair) pair=0 && shift ;;
+	--no-integrations) integrations=0 && shift ;;
 	--yes | -y) yes=1 && shift ;;
 	--system) system=1 && shift ;;
 	-h | --help)
 		usage
-		say "Usage: curl -fsSL https://berthd.app/install | sh -s -- [--version vX.Y.Z] [--listen ADDR] [--no-pair] [--yes] [--system]"
+		say "Usage: curl -fsSL https://berthd.app/install | sh -s -- [--version vX.Y.Z] [--listen ADDR] [--no-pair] [--no-integrations] [--yes] [--system]"
 		exit 0
 		;;
 	*) die "unknown option $1 (try --help)" ;;
@@ -257,6 +263,7 @@ step "Checking this machine"
 run_install() { # run_install BERTHD [ARGS…]
 	b=$1
 	shift
+	[ "$integrations" = 1 ] || set -- --no-integrations "$@"
 	if [ -n "$listen" ]; then
 		"$b" install --listen "$listen" "$@"
 	else

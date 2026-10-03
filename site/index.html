@@ -546,21 +546,15 @@ cd berthd &amp;&amp; make all</code></pre>
           <li>
             <div class="step-head"><span class="num">2</span><h3>Add a box over SSH</h3><button class="copy-btn" type="button" data-copy="step-2" hidden>Copy</button></div>
             <pre id="step-2" tabindex="0" aria-label="Install berthd on the box over SSH and pair"><code>bin/berth add ssh me@my-box --name my-box</code></pre>
-            <p class="step-note">One SSH session: it uploads berthd to <code>~/.local/bin</code> on the box, starts it as your user's service, and pairs. No root. Without Tailscale on the box, add <code>--listen 0.0.0.0:7444</code>.</p>
+            <p class="step-note">One SSH session: it uploads berthd to <code>~/.local/bin</code> on the box, starts it as your user's service, installs the hooks that report needs you, working and done for the agent CLIs it finds there, and pairs. No root. Without Tailscale on the box, add <code>--listen 0.0.0.0:7444</code>.</p>
           </li>
           <li>
-            <div class="step-head"><span class="num">3</span><h3>On the box, let agents report their state</h3><button class="copy-btn" type="button" data-copy="step-3" hidden>Copy</button></div>
-            <pre id="step-3" tabindex="0" aria-label="Install the agent hooks on the box"><code>ssh me@my-box '~/.local/bin/berthd integrations install claude'</code></pre>
-            <p class="step-note">Claude Code's hooks and Berth's skills (or <code>codex</code>, <code>cursor</code>, <code>all</code>), so the dashboard shows needs you, working and done. The full path, because a command over SSH may not have <code>~/.local/bin</code> on its <code>PATH</code>.</p>
-          </li>
-          <li>
-            <div class="step-head"><span class="num">4</span><h3>Open the app, add a project and start an agent</h3><button class="copy-btn" type="button" data-copy="step-4" hidden>Copy</button></div>
-            <pre id="step-4" tabindex="0" aria-label="Start the laptop agent and open the app"><code>bin/berth agent install
-cd app &amp;&amp; pnpm install &amp;&amp; pnpm tauri dev</code></pre>
-            <p class="step-note">The app talks to the laptop agent, which <code>agent install</code> keeps running. In the app, <strong>Add a project</strong> clones a repository onto the box, or picks one already there; then start Claude Code in a new worktree.</p>
+            <div class="step-head"><span class="num">3</span><h3>Open the app, add a project and start an agent</h3><button class="copy-btn" type="button" data-copy="step-3" hidden>Copy</button></div>
+            <pre id="step-3" tabindex="0" aria-label="Open the app"><code>cd app &amp;&amp; pnpm install &amp;&amp; pnpm tauri dev</code></pre>
+            <p class="step-note">The app talks to the laptop agent and offers to start it, at login too if you like. In the app, <strong>Add a project</strong> clones a repository onto the box, or picks one already there; then start Claude Code in a new worktree.</p>
             <details class="alt">
               <summary>Or from the terminal, for a repository already on the box</summary>
-              <pre id="step-4b" tabindex="0" aria-label="Add a project and start an agent from the terminal"><code>bin/berth location add my-box/app ~/work/app
+              <pre id="step-3b" tabindex="0" aria-label="Add a project and start an agent from the terminal"><code>bin/berth location add my-box/app ~/work/app
 bin/berth task new my-box/app/fix-login \
   --agent claude --prompt "Fix the login redirect"</code></pre>
             </details>

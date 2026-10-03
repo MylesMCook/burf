@@ -119,6 +119,7 @@ failed after it went out (the box may have acted on it). The box API:
 | `GET env`, `PUT env` | the box's `env.json` |
 | `GET hooks`, `PUT hooks` | the box's `hooks.json` |
 | `GET skills`, `POST skills/install`, `POST skills/uninstall` | [skills](/guides/agent-integrations#skills) |
+| `GET integrations`, `POST integrations/install` `{"tool": "claude"}` | Agent CLIs on the box and whether Berth's hooks are installed for each; install one tool's hooks and skills, as `berthd integrations install` does. Announces `integrations.installed`; a `before:integrations.install` gate can refuse it |
 | `GET kits`, `PUT locations/{name}/kit`, `DELETE locations/{name}/kit` | installed kits |
 | `GET shares`, `POST shares`, `DELETE shares/{id}` | public shares |
 | `GET units`, `POST units`, `GET units/{name}`, `DELETE units/{name}`, `POST units/{name}/restart`, `GET units/{name}/log` | units |

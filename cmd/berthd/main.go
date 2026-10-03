@@ -40,8 +40,9 @@ const (
 const usage = `berthd — the berth daemon for a development box
 
   berthd serve [--listen ADDR]            Serve paired laptops (default: tailnet address only)
-  berthd install [--listen ADDR] [--keep-listen] [--dry-run]
-                                          Run serve as a user service (systemd/launchd); --keep-listen
+  berthd install [--listen ADDR] [--keep-listen] [--no-integrations] [--dry-run]
+                                          Run serve as a user service (systemd/launchd), and install
+                                          hooks and skills for the agent CLIs found here; --keep-listen
                                           keeps an installed non-tailnet address, --dry-run only checks
   berthd uninstall                        Remove that service
   berthd pair [--address HOST[:PORT]] [--ttl 10m]

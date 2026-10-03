@@ -461,16 +461,9 @@ const SecretVarsEnv = "BERTH_SECRET_VARS"
 // resolved: `berthd secret exec [--socket S] --`, to put before the program.
 // It adds the references to env as they are, and their names.
 func (b *Box) secretWrap(env, refs map[string]string) ([]string, error) {
-	self := ""
-	if b.Update != nil {
-		self = b.Update.Executable
-	}
-	if self == "" {
-		exe, err := os.Executable()
-		if err != nil {
-			return nil, err
-		}
-		self = exe
+	self, err := b.self()
+	if err != nil {
+		return nil, err
 	}
 	names := make([]string, 0, len(refs))
 	for k, ref := range refs {
