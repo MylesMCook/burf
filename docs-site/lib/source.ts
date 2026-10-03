@@ -2,6 +2,7 @@ import { loader } from 'fumadocs-core/source';
 import { lucideIconsPlugin } from 'fumadocs-core/source/lucide-icons';
 import { applyMdxPreset } from 'fumadocs-mdx/config';
 import { berthDark, berthLight } from './code-themes';
+import { rehypeNowrapTokens } from './rehype-nowrap-tokens';
 import { defineDocs } from 'fumadocs-mdx/macro';
 import { metaSchema, pageSchema } from 'fumadocs-core/source/schema';
 
@@ -16,6 +17,7 @@ const docs = defineDocs({
       rehypeCodeOptions: {
         themes: { light: berthLight, dark: berthDark },
       },
+      rehypePlugins: (plugins) => [...plugins, rehypeNowrapTokens],
     }),
   },
   meta: { schema: metaSchema },

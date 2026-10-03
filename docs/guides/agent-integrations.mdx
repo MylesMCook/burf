@@ -33,7 +33,7 @@ Installs are idempotent, keep every existing setting, back up the previous
 file to `*.berth-backup`, and refuse to touch a file that is not valid JSON.
 
 The hooks run `berth hook TOOL EVENT`, which turns the tool's payload into an
-event (`agent.finished`, `agent.waiting`, `agent.started`). Only identifiers and
+event (`agent.finished`, `agent.waiting`, `agent.started`, `agent.ready`). Only identifiers and
 the working directory are kept: prompts, messages, and transcripts never
 leave the tool. A hook never fails or blocks the tool that called it.
 
@@ -70,10 +70,12 @@ not committed, unless installed with `--commit`. `berthd skills` reports each
 copy as installed, outdated (berth has a newer version: install again) or
 missing; the app shows the same in Settings → Agents and in a project's
 settings. Removing only deletes a folder whose `SKILL.md` is berth's skill of
-that name. The API is `GET /v1/skills[?location=L]`, `POST
-/v1/skills/install` and `POST /v1/skills/uninstall` with `{skills, agent,
-target, location, commit}`; changes announce `skills.installed` and
-`skills.removed`.
+that name.
+
+The API is `GET /v1/skills[?location=L]`, and `POST /v1/skills/install` and
+`POST /v1/skills/uninstall` with `{skills, agent, target, location, commit}`.
+Changes announce `skills.installed` and `skills.removed`, and
+`before:skills.install` and `before:skills.uninstall` gates can refuse them.
 
 The skills tell agents never to share a port publicly unless a person asked,
 and never to answer an agent's question on the user's behalf.

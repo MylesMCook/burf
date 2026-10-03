@@ -54,6 +54,8 @@ State, in `<state>/box/`:
 | `units/` | Unit and service logs |
 | `kits/<location>/<kit>/` | Installed kits' files (`$BERTH_KIT_DIR`) |
 | `paused.json` | Paused worktrees |
+| `agent-states.json` | What each agent last reported, by working directory |
+| `tmux.conf` | The configuration of Berth's tmux server |
 | `phone.json` | The phone companion: on or off, its token, notifications |
 | `flow-runs.json` | The last 200 flow runs |
 | `flow-github.json` | What GitHub-triggered flows have already seen |
@@ -96,3 +98,6 @@ See [events and gates](/reference/events#what-a-hook-gets).
 | `BERTH_OP` | Where the 1Password CLI is |
 | `OP_SERVICE_ACCOUNT_TOKEN`, other `OP_*` | Passed to `op`, from berthd's environment or `env.json` |
 | `SHELL` | The shell scripts, sessions and `exec` run in |
+
+The [laptop agent](/concepts/laptop-agent) explains what runs where; the
+[config reference](/reference/config) has the shape of every file you write.

@@ -20,13 +20,14 @@ flows, skills) can drive it directly. `berthd help` prints this list.
 | Command | What it does |
 | --- | --- |
 | `berthd serve [--listen ADDR]` | Serve paired laptops (default: the tailnet address only, port 7444) |
-| `berthd install [--listen ADDR]` | Run `serve` as a user service (systemd, or launchd on macOS) |
+| `berthd install [--listen ADDR] [--keep-listen] [--dry-run]` | Run `serve` as a user service (systemd, or launchd on macOS). `--keep-listen` keeps an installed service's non-tailnet address; `--dry-run` checks the box and prints what it would do |
 | `berthd uninstall` | Remove that service |
 | `berthd pair [--address HOST[:PORT]] [--ttl 10m]` | Print a single-use pairing link |
 | `berthd clients` | List paired laptops |
 | `berthd revoke <name\|fingerprint>` | Stop trusting a laptop |
 | `berthd id` | Print this box's fingerprint |
-| `berthd doctor` | Check this box's setup and how to fix it |
+| `berthd doctor [--json]` | Check this box's setup and how to fix it |
+| `berthd version` | Print this build's version |
 | `berthd session attach NAME` | Attach to a session in this terminal |
 
 ## Locations and worktrees
@@ -70,9 +71,25 @@ asks the app to open the page as a browser tab beside the agent; the
 | --- | --- |
 | `berthd ports` | What is listening on the box |
 | `berthd stats` | Memory, disk, load, and agents running or waiting |
+| `berthd info` | The box's name, OS, build, tools and agent presets, as JSON |
 | `berthd share PORT` | Make a port public (Cloudflare quick tunnel; needs `cloudflared`) |
 | `berthd shares` | List public shares |
 | `berthd unshare ID` | Stop a share |
+
+## Units
+
+Long-running programs berthd runs under the box's service manager, so they
+survive reboots and restart on failure. Their output goes to a log berthd
+owns, not the journal.
+
+| Command | What it does |
+| --- | --- |
+| `berthd units` | Managed units |
+| `berthd unit add NAME -- COMMAND...` | Install and start a unit |
+| `berthd unit get NAME` | Its state and where its log is |
+| `berthd unit log NAME` | What it has written, for one that will not stay up |
+| `berthd unit restart NAME` | Start it again |
+| `berthd unit rm NAME` | Stop and remove it (its log stays) |
 
 ## Skills, secrets and events
 
@@ -80,7 +97,7 @@ asks the app to open the page as a browser tab beside the agent; the
 | --- | --- |
 | `berthd skills [list\|install\|uninstall] [SKILL...] [--agent claude\|codex\|all] [--target user\|project] [--location LOC] [--commit]` | Teach Claude Code and Codex to use Berth |
 | `berthd secret test REF` | Check this box can resolve `op://vault/item/field` or `env://NAME` (prints the value's length, never the value) |
-| `berthd secret exec …` | Used by sessions and services: resolves secret references, then runs the program. See [secrets](/guides/secrets#how-values-are-handled). |
+| `berthd secret exec [--socket PATH] -- PROGRAM [ARGS...]` | Used by sessions and services: resolves secret references, then runs the program. See [secrets](/guides/secrets#how-values-are-handled). |
 | `berthd emit TYPE [key=value...] [--origin TOOL]` | Announce an event, e.g. `deploy.finished` |
 | `berthd events` | Stream the box's events |
 
@@ -89,4 +106,7 @@ asks the app to open the page as a browser tab beside the agent; the
 | Command | What it does |
 | --- | --- |
 | `berthd integrations install claude\|cursor\|codex\|all` | Install Berth's skills and agent hooks for a tool |
-| `berthd hook TOOL EVENT` | What those hooks run: turns a tool's hook into a Berth event (`agent.finished`, `agent.waiting`) |
+| `berthd hook TOOL EVENT [PAYLOAD]` | What those hooks run: turns a tool's hook into a Berth event (`agent.finished`, `agent.waiting`) |
+
+See [agent integrations](/guides/agent-integrations) for what the hooks and
+skills do, and [the berth CLI](/reference/cli) for the laptop's side.

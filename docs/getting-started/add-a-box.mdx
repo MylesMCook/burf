@@ -3,37 +3,45 @@ title: Add a box
 description: Install berthd on a development machine with one line and pair with its link, or do both over SSH.
 ---
 
-A **box** is any Linux machine your agents run on: a VPS, a cloud VM, the
-desktop under your desk. It runs `berthd`, Berth's daemon, as a user service.
+A **box** is any machine your agents run on, usually Linux: a VPS, a cloud
+VM, the desktop under your desk. It runs `berthd`, Berth's daemon, as a user
+service.
 The laptop pairs with it once and from then on talks to it over pinned mutual
 TLS; SSH is used at most once, to install.
 
 ## What a box needs
 
-- Linux on amd64 or arm64
+- Linux (or macOS) on amd64 or arm64
 - `git` (repositories and worktrees) and `tmux` (sessions)
 - a [Tailscale](https://tailscale.com) address, unless you choose to listen
   elsewhere (see [Where berthd listens](#where-berthd-listens))
 - optional: the agent CLIs you want to run (`claude`, `codex`, …), and
   `cloudflared` for public shares
 
-## With a pairing link
+## With the install command
 
-Install berthd on the box with one line, as the user your agents will run as:
+On the box, as the user your agents will run as (no root needed):
 
 ```sh
 curl -fsSL https://berthd.app/install | sh
 ```
 
-It installs berthd for that user, starts its service, and prints a link:
+It downloads the latest `berthd` for the box's platform from GitHub, checks
+it against the release's `checksums.txt`, puts it in `~/.local/bin`, and runs
+`berthd install`, which sets it up as a systemd user service (a launchd agent
+on macOS), the same step `berth add ssh` runs. Then it prints a link:
 
 ```text
-Pairing link (single use, valid for 10m0s):
+berthd v0.1.0 is running. Paste this link into Berth on your laptop
+(Add a box). It works once, for ten minutes:
+
   berth://100.101.102.103:7444?code=…&fp=…
+
+Or on your laptop:  berth pair 'berth://100.101.102.103:7444?code=…&fp=…'
 ```
 
-On the laptop, paste it in the app (**Add a box → Paste a pairing link**),
-or:
+On the laptop, paste it in the app (**Add a box**, under "Paste what it
+printed"; pasting all of the output is fine), or:
 
 ```sh
 bin/berth pair 'berth://100.101.102.103:7444?code=…&fp=…' [--name my-box]
@@ -44,6 +52,37 @@ to trust, and a single-use code that expires after ten minutes. For another
 laptop, or once it expires, run `berthd pair` on the box for a fresh one
 (`--ttl` changes the expiry, up to an hour). How the code is proven without
 being sent is in [the security model](/concepts/security#pairing).
+
+### Installer options
+
+Pass options after `sh -s --`, for example
+`curl -fsSL https://berthd.app/install | sh -s -- --listen 0.0.0.0:7444`:
+
+| Option | Environment | |
+| --- | --- | --- |
+| `--version vX.Y.Z` | `BERTH_VERSION` | Install that release instead of the latest |
+| `--listen ADDR` | `BERTHD_LISTEN` | Where berthd listens (default: the box's tailnet address; see [below](#where-berthd-listens)) |
+| `--no-pair` | `BERTH_NO_PAIR=1` | Don't print a pairing link at the end |
+| `--yes`, `-y` | `BERTH_YES=1` | Ask nothing (see below) |
+| `--system` | | Put berthd in `/usr/local/bin` (the default when run as root); only the copy uses `sudo`, and `berth upgrade` then can't replace it, so upgrade by running the installer again |
+| | `BERTH_BIN_DIR` | Put berthd somewhere else |
+
+It asks at most two things, and only on a terminal: whether to listen on
+every interface when the box has no tailnet address (no, unless you say so),
+and on Linux whether to turn on lingering so berthd keeps running after you
+log out (`sudo loginctl enable-linger $USER`). With `--yes`, or with no
+terminal to ask on, it never listens on every interface unless `--listen`
+says so, and turns lingering on only if `sudo` needs no password.
+
+Run it again any time: it upgrades berthd in place and restarts the service
+(agent sessions keep running), keeping the address it listens on unless
+that was a tailnet address. It stops with a plain reason, and changes
+nothing, when the download doesn't match its checksum, the platform isn't
+amd64 or arm64 Linux or macOS, `curl`/`wget` or `tar` is missing, or systemd
+has no user session for you (log in as that user directly, over SSH, rather
+than through `su` or `sudo`). The script is
+[`site/install.sh`](https://github.com/sean-brydon/berthd/blob/main/site/install.sh);
+read it before piping it to `sh` if you like.
 
 ## Over SSH
 
@@ -59,9 +98,10 @@ It:
 1. opens one SSH connection (asking any password or host-key question once;
    if your keys are refused it tries 1Password's SSH agent);
 2. checks the box's platform with `uname`;
-3. uploads the matching `berthd-linux-<arch>` from beside `berth` to
-   `~/.local/bin/berthd`;
-4. runs `berthd install`, which sets berthd up as a systemd user service;
+3. uploads the matching `berthd-<os>-<arch>` from beside `berth` to
+   `~/.local/bin/berthd` (`make all` builds the Linux ones);
+4. runs `berthd install`, which sets berthd up as a user service (systemd
+   on Linux, launchd on macOS);
 5. runs `berthd pair` and pairs this laptop with the link it prints.
 
 ```text
@@ -86,13 +126,19 @@ Options:
 
 ## In the app
 
-**Add a box** (in Settings → Boxes, the sidebar's Projects menu, or ⌘K)
-offers three ways:
+**Add a box** (in Settings → Boxes, the sidebar's Projects menu, or ⌘K), and
+the first-run setup, show one screen:
 
-- **On my tailnet**: pick a machine your laptop reaches over Tailscale, give
-  an SSH user and a name, and **Install and pair**. This is `berth add ssh`.
-- **On another tailnet**: sign in to a second tailnet in the browser first.
-- **Paste a pairing link**: from `berthd pair`, on a box that already runs Berth.
+1. **On the box, run** the install command, with a copy button.
+2. **Paste what it printed**: the link, or the whole output; Berth keeps the
+   link. Enter pairs.
+
+Below them, **Or let Berth set it up over SSH** takes `user@host` (Tab
+completes hosts from `~/.ssh/config` and machines on your tailnet), says
+which SSH agent or keys it will use before connecting, and runs
+`berth add ssh` with its output as it goes. When a box can't be reached and
+might be on a tailnet this computer isn't signed in to, it offers to sign in
+to that tailnet and tries again.
 
 ## Where berthd listens
 
@@ -102,7 +148,7 @@ internet, say so:
 
 ```sh
 berthd install --listen 0.0.0.0:7444                       # by hand
-curl -fsSL https://berthd.app/install | BERTHD_LISTEN=0.0.0.0:7444 sh   # with the installer
+curl -fsSL https://berthd.app/install | sh -s -- --listen 0.0.0.0:7444   # with the installer
 ```
 
 Pairing is still required, and every connection still pins both keys; the

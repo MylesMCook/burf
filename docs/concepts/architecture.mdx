@@ -15,9 +15,10 @@ if they were local. Nothing is public unless someone explicitly shares it.
 - **The box serves, the laptop connects.** The box owns its services,
   worktrees, sessions and public shares; the laptop holds connections and
   local URLs. Nothing a teammate depends on runs only on someone's laptop.
-- **No runtime dependencies.** berthd is one static binary; the app bundles
-  everything. No SSH agent, DNS zone or `/etc/hosts` edit is needed, and SSH
-  is used once at most, to install.
+- **Few dependencies.** berthd is one static binary that needs only `git`
+  and `tmux` on the box; the app bundles everything else. No SSH agent, DNS
+  zone or `/etc/hosts` edit is needed, and SSH is used once at most, to
+  install.
 - **Survive the real world.** Laptops sleep, networks change, daemons
   upgrade. Connections reconnect indefinitely, sessions outlive the daemon,
   and state files are never silently emptied.
@@ -88,3 +89,6 @@ forward only identifiers and paths, never prompts. The catalog is in
 - [Kits](/guides/kits) package how a project is set up, and travel as a link.
 - [Skills](/guides/agent-integrations#skills) teach the agents on a box to use
   Berth themselves.
+
+Next, read about [boxes](/concepts/boxes), or
+[add one](/getting-started/add-a-box) if you haven't yet.

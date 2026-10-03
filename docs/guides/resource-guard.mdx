@@ -37,3 +37,7 @@ why) and a `notify`, so you see it in the app.
 
 The guard reads memory from `/proc`, so it works on Linux boxes; on a box
 without it, it stays idle. Changing it runs `before:config.change` gates.
+
+To react to it yourself, hook `guard.acted` (see [hooks](/guides/hooks)).
+For what pausing does to a worktree, see
+[pause and resume](/concepts/projects-and-worktrees#pause-and-resume).

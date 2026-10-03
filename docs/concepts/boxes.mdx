@@ -3,8 +3,8 @@ title: Boxes
 description: The machines your agents run on, and what berthd keeps on each.
 ---
 
-A **box** is a Linux machine that runs `berthd`: a VPS, a cloud VM, a
-desktop under your desk. It is where repositories live, where agents and dev
+A **box** is a machine that runs `berthd`, usually Linux (macOS works too):
+a VPS, a cloud VM, a desktop under your desk. It is where repositories live, where agents and dev
 servers run, and where automations fire. Boxes are always on, so work
 continues while your laptop is asleep or shut.
 
@@ -25,11 +25,13 @@ several laptops. Each box has a name on your laptop (`devl`, `gpu`,
 - **Hooks, flows and the resource guard**: automation that runs on the box.
 - **The phone companion**, when you turn it on.
 
-berthd runs as a systemd user service (`berthd install`, which `berth add ssh`
-does for you) and survives restarts and upgrades without touching running
-sessions. Its state is in `~/.config/berth/box/`; files you write by hand
-(`hooks.json`, `flows.json`, `env.json`, `guard.json`) are in `~/.berth/`.
-See [files and environment](/reference/files).
+berthd runs as a systemd user service, or a launchd agent on macOS. The
+[install script](/getting-started/install#on-a-box) and `berth add ssh` set
+that up for you with `berthd install`. It survives restarts and upgrades
+without touching running sessions. Its state is in `~/.config/berth/box/`
+(`~/Library/Application Support/berth/box/` on macOS); files you write by
+hand (`hooks.json`, `flows.json`, `env.json`, `guard.json`) are in
+`~/.berth/`. See [files and environment](/reference/files).
 
 ## Online, offline, untrusted
 
@@ -72,17 +74,18 @@ berth unshare devl ID
 
 The box runs a Cloudflare quick tunnel (it needs `cloudflared` installed), so
 the link keeps working while your laptop sleeps. A share ends when you stop
-it or when berthd stops.
+it, or when berthd stops or upgrades.
 
 ## Upgrades
 
 ```sh
-berth upgrade devl           # or --check to only report whether it is older
+berth upgrade devl           # or --check to only report whether it runs a different build
 ```
 
-The laptop uploads the matching daemon over Berth's own connection, with no
-SSH. The box checks the new binary reports its own fingerprint, swaps it in
-and re-executes in place, so sessions and services keep running.
+The laptop uploads the berthd build that ships beside its `berth`, over
+Berth's own connection, with no SSH. The box checks that the new binary runs
+and reports the box's own fingerprint, swaps it in and re-executes in place,
+so sessions and services keep running. Public shares stop.
 
 ## Health
 
@@ -95,3 +98,6 @@ berth doctor devl    # git, tmux, cloudflared, agent CLIs, listen address, linge
 The built-in **Box monitor** plugin keeps an hour of history and warns before
 a box runs out. The [resource guard](/guides/resource-guard) can stop idle
 dev servers and pause idle agents when memory runs short.
+
+Next: [projects and worktrees](/concepts/projects-and-worktrees), what you
+keep on a box.

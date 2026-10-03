@@ -52,15 +52,27 @@ prompt, the prompt picker and broadcasts, and lists the queue under
 
 ## Events
 
-The agent publishes `queue.changed`, `queue.delivered` and `queue.failed`
-(with `id`, `box`, `session`, and `reason` for failures; never the prompt),
-so laptop hooks can react too:
+The laptop agent publishes these, so laptop hooks can react too. None of
+them carries the prompt.
+
+| Event | Data |
+| --- | --- |
+| `queue.changed` | `queued` and `failed`: how many prompts are in each state |
+| `queue.delivered` | `id`, `box`, `session`, `attempts` |
+| `queue.failed` | `id`, `box`, `session`, `reason` |
 
 ```json title="~/.berth/hooks.json"
-{ "on": "queue.failed", "run": "osascript -e 'display notification \"$BERTH_REASON\" with title \"A queued prompt failed\"'" }
+{
+  "hooks": [
+    { "on": "queue.failed", "run": "osascript -e 'display notification \"$BERTH_REASON\" with title \"A queued prompt failed\"'" }
+  ]
+}
 ```
 
 ## API
 
 The queue is on the laptop agent's API: `GET`, `POST`, `PATCH` and `DELETE`
-under `/v1/queue`. See [the app's API](/reference/app-api#laptop).
+under `/v1/queue`, plus `POST /v1/queue/{id}/retry` and
+`POST /v1/queue/{id}/send`. See [the app's API](/reference/app-api#laptop),
+and [orchestration](/guides/orchestration#send) for sending prompts in the
+first place.

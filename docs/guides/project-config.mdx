@@ -47,9 +47,11 @@ them all with their rules.
 
 - **Ports.** Every worktree has its own block of ports, stable for its life
   and freed when it is removed: `$BERTH_PORT`, then `$BERTH_PORT_1`… up to
-  `ports` of them (at most 10; at least one). Any port in a worktree's block
-  reaches it at `http://<worktree>.<location>.<box>.localhost:1377/`,
-  whatever process listens on it, containers included.
+  `ports` of them (at most 10; at least one). Whatever listens on a port in
+  the block counts as the worktree's, containers included, and the
+  worktree's [private URL](/concepts/projects-and-worktrees#private-urls),
+  `http://<worktree>.<location>.<box>.localhost:1377/`, reaches the lowest
+  one.
 - **Environment.** Everything run in a worktree (setup and archive scripts,
   terminals and agents, `exec`, hooks, flows, services) gets these, then
   `env` with them expanded:
@@ -124,7 +126,10 @@ berth location scripts devl/cal --clear
 A box can also give every worktree on it some environment, in
 `~/.berth/env.json` (`{"env": {"KEY": "value"}}`), under the project's own.
 
-## Task templates
+## Next
 
-For kinds of task you start often, with the agent, branch and prompt filled
-in, see [task templates](/guides/task-templates).
+- [Kits](/guides/kits) carry this same config to a repository you can't
+  commit to, or to several at once.
+- [Secrets](/guides/secrets) keep passwords out of `env`.
+- [Task templates](/guides/task-templates) fill in the agent, branch and
+  prompt for kinds of task you start often.

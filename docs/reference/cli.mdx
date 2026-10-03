@@ -20,15 +20,16 @@ the `BOX/` prefix.
 
 | Command | What it does |
 | --- | --- |
-| `berth add ssh [user@]HOST [--name N] [--network NET] [--listen ADDR] [--address ADDR] [-- SSH OPTIONS]` | Install berthd on a box over SSH (once) and pair. See [add a box](/getting-started/add-a-box#over-ssh). |
+| `berth add ssh [user@]HOST [--name N] [--network NET] [--listen ADDR] [--address ADDR] [--identity FILE] [--trust-host-key SHA256:…] [-- SSH OPTIONS]` | Install berthd on a box over SSH (once) and pair. See [add a box](/getting-started/add-a-box#over-ssh). |
 | `berth pair '<link>' [--name N] [--network NET]` | Pair with a box, from the link `berthd pair` prints |
 | `berth network login NAME` | Join another tailnet (a personal one, say) to reach its boxes |
+| `berth network proxy NAME HOST PORT` | Connect stdin and stdout to HOST:PORT through that network, for SSH's `ProxyCommand` |
 | `berth networks` | Joined networks |
 | `berth discover [--network NET]` | Machines on the tailnet that could be boxes |
 | `berth boxes` | Paired boxes and whether they are online |
 | `berth ping BOX` | Check a box answers and still trusts you |
-| `berth upgrade BOX [--check]` | Upgrade the box's daemon over Berth's own connection (no SSH) |
-| `berth edit BOX/PROJECT[/WT] [FILE[:LINE]] [--in cursor\|vscode\|windsurf\|zed]` | Open a worktree, or a file at a line, in your editor |
+| `berth upgrade BOX [--check]` | Upgrade the box's daemon over Berth's own connection (no SSH); `--check` only reports whether it is older |
+| `berth edit BOX/PROJECT[/WT] [FILE[:LINE[:COL]]] [--in cursor\|vscode\|windsurf\|zed]` | Open a worktree, or a file at a line, in your editor (default: the first installed) |
 | `berth ssh-config [--write]` | Show (then write) the SSH hosts editors use: `berth-<box>` |
 | `berth forget BOX` | Remove a box from this laptop |
 
@@ -51,8 +52,8 @@ See [kits](/guides/kits).
 
 | Command | What it does |
 | --- | --- |
-| `berth url BOX PORT` | Print the private URL for a port |
-| `berth open BOX PORT` | Open that URL in your browser |
+| `berth url BOX PORT\|SERVICE` | Print the private URL for a port, or a service by name |
+| `berth open BOX PORT\|SERVICE` | Open that URL in your browser |
 | `berth forward BOX PORTS` | Forward local ports: `3000`, `8080:3000`, `3000-3005` |
 | `berth forwards` | List forwards |
 | `berth unforward ID` | Stop and forget a forward |
@@ -60,8 +61,10 @@ See [kits](/guides/kits).
 | `berth routes` | List routes (`berth route rm PATTERN` removes one) |
 | `berth units BOX` | Managed units on a box |
 | `berth unit add BOX/NAME -- COMMAND...` | Install and start a unit |
+| `berth unit get BOX/NAME` | A unit's state and where its log is |
 | `berth unit log BOX/NAME` | What a unit has written, for one that will not stay up |
 | `berth unit restart BOX/NAME` | Start a unit again |
+| `berth unit rm BOX/NAME` | Stop and remove a unit (its log stays) |
 
 ## The agent
 
@@ -69,12 +72,13 @@ See [kits](/guides/kits).
 | --- | --- |
 | `berth status` | Boxes, forwards and the proxy at a glance |
 | `berth doctor [BOX]` | Check this computer (or a box) and how to fix it |
-| `berth events` | Stream events from this laptop and every box as they happen |
+| `berth events` | Stream events from this laptop and every box as they happen; box events carry `box` |
 | `berth agent` | Run the agent in the foreground |
 | `berth agent install\|uninstall\|status` | Run the agent at login, restart it on crashes |
 | `berth setup port80 [--remove]` | Drop `:1377` from URLs (macOS; asks for your admin password once) |
 | `berth stop` | Stop the agent (and every forward) |
 | `berth id` | Print this laptop's fingerprint |
+| `berth version` | Print this build's version |
 | `berth ui-token` | The desktop app's API address and token, as JSON |
 
 ## Locations and worktrees
@@ -98,7 +102,7 @@ See [kits](/guides/kits).
 | --- | --- |
 | `berth sessions BOX` | List sessions |
 | `berth agents BOX` | Agent CLIs this box can start |
-| `berth task new BOX/LOC/NAME [--agent ID] [--prompt TEXT] [--open split\|tab] [--branch B] [--base REF]` | A worktree with an agent running in it |
+| `berth task new BOX/LOC/NAME [--agent ID] [--prompt TEXT] [--open split\|tab] [--branch B] [--base REF] [-- COMMAND...]` | A worktree with an agent (or a command) running in it |
 | `berth session new BOX/LOC[/WORKTREE] [--name N] [--agent ID [--prompt TEXT]] [--open split\|tab] [-- COMMAND...]` | Start an agent or a command (default: a shell) there |
 | `berth session screen BOX/NAME [--history N]` | Print what the session shows |
 | `berth session send BOX/NAME TEXT [--no-enter] [--wait] [--timeout 30m] [--queue]` | Type a prompt into a session, and wait for its turn |
@@ -119,6 +123,7 @@ See [orchestration](/guides/orchestration) and
 | --- | --- |
 | `berth ports BOX` | What is listening on the box |
 | `berth stats BOX` | Memory, disk, load, and agents running or waiting |
+| `berth info BOX` | The box's name, OS, build, tools and agent presets, as JSON |
 | `berth share BOX PORT` | Make a port public (a Cloudflare quick tunnel run by the box) |
 | `berth shares BOX` | List public shares |
 | `berth unshare BOX ID` | Stop a share |
@@ -131,13 +136,12 @@ See [orchestration](/guides/orchestration) and
 | `berth secret test BOX REF` | Check a box can resolve `op://vault/item/field` or `env://NAME` (prints the value's length, never the value) |
 | `berth emit TYPE [key=value...]` | Announce an event on this laptop |
 | `berth emit BOX TYPE [key=value...] [--origin TOOL]` | Announce an event on a box |
-| `berth events BOX` | Stream one box's events |
 
 ## Integrations
 
 | Command | What it does |
 | --- | --- |
 | `berth integrations install claude\|cursor\|codex\|all` | Install Berth's skills and agent hooks for a tool, on this laptop |
-| `berth hook TOOL EVENT` | What those hooks run: turns a tool's hook into a Berth event |
+| `berth hook TOOL EVENT [PAYLOAD]` | What those hooks run: turns a tool's hook into a Berth event |
 
 See [agent integrations](/guides/agent-integrations).

@@ -18,7 +18,8 @@ answering them, from your phone.
 For notifications, install [ntfy](https://ntfy.sh) on the phone, make a
 topic in Settings → Phone (**New topic**), and subscribe to the same topic in
 the ntfy app. Boxes then push "Claude Code needs you · cal/billing on devl"
-when an agent waits for you, and tapping it opens that agent in the phone app.
+when an agent waits for you (and, if you switch it on, when one finishes its
+turn), and tapping it opens that agent in the phone app.
 
 ## How it works
 
@@ -32,8 +33,8 @@ The phone can:
 - list sessions and their agents' states (needs you, working, done, ready);
 - read a session's screen;
 - type a prompt into a session;
-- press Enter, Esc, Ctrl-C, arrows, Tab, the digits 1–9, and y/n, which is
-  what answering an agent's question takes.
+- press Enter, Esc, Ctrl-C, the up and down arrows, Tab, the digits 1–9,
+  and y/n, which is what answering an agent's question takes.
 
 It cannot reach anything else on the box: not worktrees, locations,
 sessions' commands, hooks, flows, kits, shares, upgrades, or the box's own
@@ -87,4 +88,7 @@ Web Push needs a secure context (HTTPS) for the service worker it relies on,
 and a tailnet address over HTTP is not one. Serving the app over HTTPS would
 take a certificate for each box's `*.ts.net` name (`tailscale cert`), which
 is the next step if notifications without ntfy are wanted.
+
+For how the phone fits Berth's security as a whole, see
+[security](/concepts/security#the-phone).
 

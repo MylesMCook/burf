@@ -34,6 +34,8 @@ whatever the reason. A trust store that cannot be read authorizes nobody.
 
 `berth add ssh HOST` does all of this over one SSH session: it detects the
 box's platform, uploads the matching berthd, installs the service, and pairs.
+The [install script](/getting-started/install#on-a-box) runs on the box
+itself and ends with step 1, so the laptop needs no SSH at all.
 
 On the box, `berthd clients` lists paired laptops and
 `berthd revoke <name|fingerprint>` stops trusting one. On the laptop,
@@ -71,9 +73,10 @@ origins; see [the app's API](/reference/app-api#transport).
 
 ## Public shares
 
-Sharing is opt-in per port and confirmed in the app. The **box** runs a
-Cloudflare quick tunnel, so a link survives the laptop sleeping. Shares end
-when revoked or when berthd stops; none outlive the daemon that manages them.
+Sharing is opt-in, one port at a time (`berth share BOX PORT`). The **box**
+runs a Cloudflare quick tunnel, so a link survives the laptop sleeping.
+Shares end when revoked or when berthd stops or upgrades; none outlive the
+daemon that manages them.
 Agents' [skills](/guides/agent-integrations#skills) tell them never to share
 a port unless a person asked.
 
@@ -82,11 +85,13 @@ a port unless a person asked.
 `berth upgrade BOX` uploads the matching daemon over Berth's own connection.
 The box runs the upload once and requires it to report the box's own
 fingerprint, swaps it in, and re-executes in place, keeping its PID so the
-supervisor sees no restart and sessions are untouched.
+supervisor sees no restart and sessions are untouched. Public shares stop
+first.
 
 ## Secrets and prompts
 
-- A project's environment can name secrets (`op://…`) instead of holding
+- A project's environment can name secrets (`op://…` for 1Password,
+  `env://…` for a variable in berthd's own environment) instead of holding
   them. The box reads them when needed and never writes a value to disk, a
   log, an event or the API; see [secrets](/guides/secrets).
 - Prompts never appear in events or logs: `session.sent` carries only the
@@ -114,3 +119,5 @@ whoever asks: the app, the CLI, a flow, an agent or the phone. See
 - Team sharing: one box used by several people, and how access is granted and
   revoked beyond per-laptop pairing.
 - Windows, and dropping the proxy port with a privileged helper.
+
+Ready to pair? [Add a box](/getting-started/add-a-box).

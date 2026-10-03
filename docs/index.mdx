@@ -3,29 +3,28 @@ title: Introduction
 description: Run coding agents on your own dev boxes, and work with them as if they were on your laptop.
 ---
 
-<Scene name="moored" width={240} className="docs-hero-scene" />
-
 Berth connects a laptop to any number of development machines (a VPS, a
 cloud VM, a desktop under your desk) and gives each repository on them
 worktrees, terminals, agents, dev servers and automations. The agents run on
 the boxes, so closing the app, sleeping the laptop or losing Wi-Fi never
 stops them; the app is a view you can close and reopen at any time.
 
-## Install
-
-On each box, one line installs `berthd`, starts it, and prints a pairing link:
+<Stage title="Install on a box">
 
 ```sh
 curl -fsSL https://berthd.app/install | sh
 ```
 
-On your laptop, the app and the `berth` CLI are built from source for now;
-then paste the link into the app, or run `berth pair '<link>'`. Every step is
-in [install](/getting-started/install).
+It installs `berthd`, starts it and prints a pairing link. On your laptop,
+build the app and the `berth` CLI from source (there are no packaged builds
+yet), then paste the link into the app or run `berth pair '<link>'`. Every
+step is in [install](/getting-started/install).
+
+</Stage>
 
 ## Start here
 
-<Cards>
+<Cards className="berth-path">
   <Card title="Install" href="/getting-started/install" description="One line on a box; the app and CLI from source on your laptop." />
   <Card title="Add a box" href="/getting-started/add-a-box" description="Pair with the link a box prints, or install over SSH." />
   <Card title="First project and worktree" href="/getting-started/first-project" description="Register a repository and branch off it." />
@@ -69,8 +68,8 @@ Read [how Berth works](/concepts/architecture) for the whole picture, or
 about.
 
 <Cards>
-  <Card title="Concepts" href="/concepts/architecture" description="Boxes, projects, worktrees, sessions and the laptop agent." />
-  <Card title="Guides" href="/guides/orchestration" description="Orchestration, automations, hooks, kits, secrets, the phone, plugins." />
-  <Card title="CLI reference" href="/reference/cli" description="Every berth and berthd command." />
-  <Card title="Config reference" href="/reference/config" description="Every field of .berth/config.json and kit.json." />
+  <Card icon={<Compass />} title="Concepts" href="/concepts/architecture" description="Boxes, projects, worktrees, sessions and the laptop agent." />
+  <Card icon={<BookOpen />} title="Guides" href="/guides/orchestration" description="Orchestration, automations, hooks, kits, secrets, the phone, plugins." />
+  <Card icon={<Terminal />} title="CLI reference" href="/reference/cli" description="Every berth and berthd command." />
+  <Card icon={<FileCode />} title="Config reference" href="/reference/config" description="Every field of .berth/config.json and kit.json." />
 </Cards>

@@ -25,7 +25,12 @@ docs/
 - Link between pages by URL (`/guides/hooks#gates`).
 - Components available in pages without importing: `Callout`
   (`type="warn"` for the amber one), `Cards`/`Card`, `Steps`/`Step`,
-  `Tabs`/`Tab`, and `Scene` (a harbour drawing; use sparingly).
+  `Tabs`/`Tab`, `Scene` (a harbour drawing; use sparingly) and `Stage`
+  (the home page's panel: a title, its content, and a scene beside it).
+  `Card` takes an `icon`; `BookOpen`, `Compass`, `FileCode` and `Terminal`
+  are available for it. `<Cards className="berth-path">` numbers its cards,
+  for a sequence of steps.
+- A page's section (its folder's `meta.json` title) shows above its title.
 - Braces and angle brackets in prose are MDX: put `{{variables}}` and
   `<placeholders>` in backticks.
 
@@ -54,8 +59,11 @@ catches those.
 | `app/global.css` | The brand: colours, type, callouts, code, tables |
 | `lib/code-themes.ts` | The quiet code themes, light and dark |
 | `components/art/` | The harbour scenes, copied from `app/src/components/art/` |
-| `components/search.tsx` | The search dialog, with suggestions and an empty state |
+| `components/search.tsx` | The search dialog: labelled suggestions, results with their section, at most two passages a page, an empty state |
 | `components/callout.tsx` | Callouts without coloured side stripes |
+| `components/stage.tsx` | The home page's stage panel |
+| `lib/sections.ts` | A page's section name, for the label above its title |
+| `lib/rehype-nowrap-tokens.ts` | Keeps inline code from breaking after a flag's hyphens |
 
 The look follows the landing page (`site/`) and the brand board
 (`design/brand/`): Inter and JetBrains Mono (ligatures off), cool neutrals,

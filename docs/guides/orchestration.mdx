@@ -103,10 +103,16 @@ boxes can be queued for when they're back.
 
 ### Chain with hooks and flows
 
-A hook can start the next step when an agent finishes:
+A hook on the box can start the next step when an agent finishes. Here a
+Codex session named `reviewer` looks at whatever Claude Code just did; the
+`case` keeps the reviewer's own finished turns from prompting it again:
 
 ```json title="~/.berth/hooks.json"
-{ "on": "agent.finished", "run": "berthd session send reviewer \"Review what changed in $BERTH_PATH\"" }
+{
+  "hooks": [
+    { "on": "agent.finished", "run": "case \"$BERTH_AGENT\" in claude) berthd session send reviewer \"Review what changed in $BERTH_PATH\";; esac" }
+  ]
+}
 ```
 
 For anything with more than one step (run the tests, send failures back,

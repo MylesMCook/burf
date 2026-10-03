@@ -358,12 +358,6 @@ figure.shiki > div:first-child:has(figcaption) {
   color: color-mix(in srgb, var(--color-fd-muted-foreground) 85%, transparent);
 }
 
-.docs-hero-scene {
-  display: block;
-  max-width: 100%;
-  height: auto;
-  margin: 0 0 8px;
-}
 
 /* Search: the empty state. */
 .berth-search-empty {
@@ -476,4 +470,533 @@ a.berth-edit:hover {
   padding: 0;
   border: 0;
   background: none;
+}
+
+/* ---------------------------------------------------------------------------
+   Review loop, round 1.
+   ------------------------------------------------------------------------ */
+
+/* Measure: about 80 characters of body text a line, as the best references
+   keep it (Stripe, Mintlify). Code and tables share the column. */
+#nd-page {
+  max-width: 760px;
+}
+
+/* Page head: the section in small sentence case, then the title, then the
+   description; the landing page's eyebrow, h1 and lede, smaller. */
+.berth-page-head {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.berth-eyebrow {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--color-fd-muted-foreground);
+}
+
+#nd-page .berth-page-head h1 {
+  font-size: clamp(1.75rem, 1.4rem + 1vw, 2.125rem);
+  line-height: 1.15;
+  font-weight: 650;
+  letter-spacing: -0.03em;
+  margin: 0;
+}
+
+.berth-page-head > p:last-child {
+  margin: 4px 0 12px;
+  font-size: 1.0625rem;
+  line-height: 1.55;
+  color: var(--color-fd-muted-foreground);
+  text-wrap: pretty;
+  max-width: 62ch;
+}
+
+.berth-page-head[data-home] h1 {
+  font-size: clamp(2rem, 1.5rem + 1.6vw, 2.625rem);
+  letter-spacing: -0.035em;
+  font-weight: 680;
+}
+
+.berth-page-head[data-home] > p:last-child {
+  font-size: 1.1875rem;
+  color: var(--berth-fg-2);
+}
+
+/* Section headings: a touch smaller and tighter than the prose default, with
+   room above to mark a new part. */
+.prose :where(h2):not(:where(.not-prose *)) {
+  font-size: 1.375rem;
+  line-height: 1.3;
+  margin-top: 2.75rem;
+  margin-bottom: 1rem;
+}
+
+.prose :where(h3):not(:where(.not-prose *)) {
+  font-size: 1.0625rem;
+  line-height: 1.4;
+  margin-top: 2rem;
+  margin-bottom: 0.625rem;
+}
+
+.prose :where(p, ul, ol):not(:where(.not-prose *)) {
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.prose :where(li):not(:where(.not-prose *)) {
+  margin-top: 0.3rem;
+  margin-bottom: 0.3rem;
+}
+
+/* The home page's stage: a quiet panel like the landing page's, with the
+   first command and the drawing. */
+.berth-stage {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px 24px;
+  margin: 8px 0 36px;
+  padding: 20px 20px 18px 22px;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 14px;
+  background: var(--color-fd-card);
+}
+
+.berth-stage-title {
+  margin: 0 0 10px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-fd-foreground);
+}
+
+.berth-stage-text {
+  font-size: 0.9375rem;
+  line-height: 1.6;
+}
+
+.berth-stage-text > :first-child {
+  margin-top: 0;
+}
+
+.berth-stage-text > :last-child {
+  margin-bottom: 0;
+}
+
+.berth-stage-text figure.shiki {
+  margin: 0 0 12px;
+  background: var(--color-fd-background) !important;
+}
+
+.berth-stage-art {
+  align-self: end;
+  margin: 0 -6px -6px 0;
+}
+
+@media (max-width: 720px) {
+  .berth-stage {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 16px;
+  }
+  .berth-stage-art {
+    order: -1;
+    justify-self: start;
+    margin: -4px 0 0 -10px;
+  }
+  .berth-stage-art svg {
+    width: 184px;
+    height: auto;
+  }
+}
+
+/* The getting-started path: four cards, numbered like the landing page's
+   steps. The number is a neutral chip; no amber, no stripe. */
+.berth-path {
+  counter-reset: berth-step;
+}
+
+.berth-path a[data-card] {
+  counter-increment: berth-step;
+  position: relative;
+  padding-left: 52px;
+}
+
+.berth-path a[data-card]::before {
+  content: counter(berth-step);
+  position: absolute;
+  left: 16px;
+  top: 15px;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid var(--color-fd-border);
+  background: var(--color-fd-card);
+  font: 500 12px/1 var(--font-mono);
+  color: var(--color-fd-muted-foreground);
+}
+
+/* Card icons: a small outlined square, no shadow. */
+#nd-page a[data-card] > div:first-child:has(svg) {
+  box-shadow: none;
+  background: var(--color-fd-card);
+  border-color: var(--color-fd-border);
+  color: var(--color-fd-foreground);
+  margin-bottom: 10px;
+}
+
+#nd-page a[data-card] h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-fd-foreground);
+}
+
+/* Tables: names in a column read as plain mono, not as a column of chips;
+   the header is quiet, the rows hairlined. */
+.prose :where(table):not(:where(.not-prose *)) {
+  border-collapse: separate;
+  border-spacing: 0;
+  line-height: 1.55;
+}
+
+.prose :where(thead th):not(:where(.not-prose *)) {
+  font-size: 13px;
+  color: var(--color-fd-muted-foreground);
+  background: var(--color-fd-card);
+}
+
+.prose :where(td, th):not(:where(.not-prose *)) {
+  vertical-align: top;
+  padding: 9px 12px;
+}
+
+.prose :where(td code):not(:where(.not-prose *)) {
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 0.92em;
+  color: var(--color-fd-foreground);
+}
+
+.prose :where(td:first-child):not(:where(.not-prose *)) {
+  color: var(--color-fd-foreground);
+}
+
+/* The first column holds the name: it wraps only between words. */
+.prose :where(td:first-child code):not(:where(.not-prose *)) {
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+/* On a phone, a two-column table (name, what it does) becomes a list: the
+   name above its description, full width, instead of two cramped columns.
+   Wider tables keep their columns and scroll inside their own frame. */
+@media (max-width: 640px) {
+  .prose table:not(:has(th:nth-child(3))) thead {
+    display: none;
+  }
+  .prose table:not(:has(th:nth-child(3))),
+  .prose table:not(:has(th:nth-child(3))) tbody,
+  .prose table:not(:has(th:nth-child(3))) tr,
+  .prose table:not(:has(th:nth-child(3))) td {
+    display: block;
+    width: 100%;
+  }
+  .prose table:not(:has(th:nth-child(3))) tr + tr {
+    border-top: 1px solid var(--berth-border-soft);
+  }
+  .prose table:not(:has(th:nth-child(3))) td {
+    border: 0 !important;
+    padding: 0 12px;
+  }
+  .prose table:not(:has(th:nth-child(3))) td:first-child {
+    padding-top: 10px;
+    padding-bottom: 2px;
+    font-weight: 500;
+  }
+  .prose table:not(:has(th:nth-child(3))) td:last-child {
+    padding-bottom: 10px;
+    color: var(--berth-fg-2);
+  }
+  .prose table:has(th:nth-child(3)) {
+    min-width: 560px;
+  }
+}
+
+/* Code blocks. */
+figure.shiki code {
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+/* Prev and next. */
+#nd-page > div:has(> a[href]:only-child),
+#nd-page > div.grid:has(> a) {
+  margin-top: 8px;
+}
+
+/* The end of a page. */
+.berth-edit-row {
+  margin-top: 24px;
+}
+
+.berth-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 20px;
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid var(--berth-border-soft);
+  font-size: 13px;
+  color: var(--color-fd-muted-foreground);
+}
+
+.berth-foot nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+}
+
+.berth-foot a {
+  color: var(--color-fd-muted-foreground);
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.berth-foot a:hover {
+  color: var(--color-fd-foreground);
+}
+
+/* The table of contents on narrow screens: no progress ring (it reads as a
+   spinner); just the current heading and a chevron. */
+[data-toc-popover-trigger] > svg:first-child {
+  display: none;
+}
+
+/* Search: a labelled list of suggestions, quiet results, and the keys at
+   the foot. */
+.berth-search-label {
+  margin: 0;
+  padding: 10px 14px 2px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--color-fd-muted-foreground);
+  border: 0 !important;
+}
+
+.berth-search-item[data-kind='page'] {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.berth-search-icon {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--color-fd-muted-foreground);
+}
+
+.berth-search-title {
+  font-weight: 500;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.berth-search-section {
+  margin-left: auto;
+  flex: none;
+  font-size: 12px;
+  color: var(--color-fd-muted-foreground);
+}
+
+.berth-search-item[data-kind='text'] {
+  font-size: 13px;
+  color: var(--color-fd-muted-foreground);
+}
+
+.berth-search-item[data-kind='text'] p {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.berth-search-item code {
+  font-size: 0.92em;
+  padding: 0 0.25em;
+  border-radius: 4px;
+  background: var(--berth-code-bg);
+}
+
+/* Matches: the text itself, in ink and medium weight, not an underline. */
+#fd-search-dialog-content .text-fd-primary.underline {
+  text-decoration: none;
+  color: var(--color-fd-foreground);
+  font-weight: 600;
+}
+
+.berth-search-foot {
+  display: flex;
+  gap: 16px;
+  padding: 9px 14px;
+  font-size: 12px;
+  color: var(--color-fd-muted-foreground);
+  background: var(--color-fd-card);
+}
+
+.berth-search-foot kbd {
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  margin-right: 3px;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 4px;
+  background: var(--color-fd-background);
+  font-size: 11px;
+  color: var(--color-fd-foreground);
+}
+
+@media (max-width: 640px) {
+  .berth-search-foot {
+    display: none;
+  }
+}
+
+/* Motion: everything decorative stops for reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Round 2. */
+.berth-nw {
+  white-space: nowrap;
+}
+
+/* Table rows sit on the page; only the header takes the card ground. */
+.prose :where(tbody td):not(:where(.not-prose *)) {
+  background: var(--color-fd-background);
+}
+
+/* Cards: the title sits right under the icon or number, no prose margin. */
+#nd-page a[data-card] h3 {
+  margin: 0 0 4px;
+  line-height: 1.4;
+}
+
+.berth-path a[data-card]::before {
+  top: 15px;
+}
+
+/* The stage keeps the prose's own links and code. */
+.berth-stage-text a {
+  color: var(--color-fd-foreground);
+  font-weight: 500;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--color-fd-foreground) 35%, transparent);
+  text-underline-offset: 3px;
+}
+
+.berth-stage-text :not(pre) > code {
+  font-size: 0.86em;
+  padding: 0.1em 0.34em;
+  border-radius: 5px;
+  background: var(--color-fd-background);
+  border: 1px solid var(--berth-border-soft);
+  color: var(--color-fd-foreground);
+}
+
+.berth-stage-text p {
+  color: var(--berth-fg-2);
+}
+
+/* A code block without a title: long lines run clear of the copy button. */
+figure.shiki:not(:has(figcaption)) pre {
+  padding-right: 44px;
+}
+
+/* On a phone, a three-column table (field, type, meaning) stacks too: the
+   field and its type on one line, the meaning under them. */
+@media (max-width: 640px) {
+  .prose table:has(th:nth-child(3)):not(:has(th:nth-child(4))) {
+    min-width: 0;
+  }
+  .prose table:has(th:nth-child(3)):not(:has(th:nth-child(4))) thead {
+    display: none;
+  }
+  .prose table:has(th:nth-child(3)):not(:has(th:nth-child(4))),
+  .prose table:has(th:nth-child(3)):not(:has(th:nth-child(4))) tbody {
+    display: block;
+    width: 100%;
+  }
+  .prose table:has(th:nth-child(3)):not(:has(th:nth-child(4))) tr {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 10px;
+    padding: 10px 12px;
+  }
+  .prose table:has(th:nth-child(3)):not(:has(th:nth-child(4))) tr + tr {
+    border-top: 1px solid var(--berth-border-soft);
+  }
+  .prose table:has(th:nth-child(3)):not(:has(th:nth-child(4))) td {
+    border: 0 !important;
+    padding: 0;
+    background: none;
+  }
+  .prose table:has(th:nth-child(3)):not(:has(th:nth-child(4))) td:first-child {
+    font-weight: 500;
+  }
+  .prose table:has(th:nth-child(3)):not(:has(th:nth-child(4))) td:nth-child(2) {
+    color: var(--color-fd-muted-foreground);
+  }
+  .prose table:has(th:nth-child(3)):not(:has(th:nth-child(4))) td:nth-child(3) {
+    grid-column: 1 / -1;
+    margin-top: 2px;
+    color: var(--berth-fg-2);
+  }
+  .prose table:not(:has(th:nth-child(3))) {
+    background: var(--color-fd-background);
+  }
+  .prose table:has(th:nth-child(3)):not(:has(th:nth-child(4))) {
+    background: var(--color-fd-background);
+  }
+}
+
+/* The copy button keeps the code ground behind it, so code scrolled under
+   it on a phone doesn't show through. */
+figure.shiki > div.absolute {
+  background: var(--berth-code-bg);
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+
+@media (max-width: 640px) {
+  .prose td:first-child:empty {
+    display: none;
+  }
+}
+
+/* Search passages that are only code read as quiet mono, not a row of
+   chips. */
+.berth-search-item[data-kind='text'] code {
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--color-fd-foreground);
 }

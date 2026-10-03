@@ -4,7 +4,8 @@ import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { createRelativeLink } from 'fumadocs-ui/mdx';
 import { getMDXComponents } from '@/components/mdx';
-import { editUrl } from '@/lib/shared';
+import { editUrl, githubUrl, landingUrl } from '@/lib/shared';
+import { sectionTitle } from '@/lib/sections';
 
 export default async function Page(props: PageProps<'/[[...slug]]'>) {
   const params = await props.params;
@@ -12,18 +13,41 @@ export default async function Page(props: PageProps<'/[[...slug]]'>) {
   if (!page) notFound();
 
   const MDX = page.data.body;
+  const home = page.slugs.length === 0;
+  // The small label above the title: the page's section, or on the home
+  // page what the whole site is. Sentence case, like the landing page's.
+  const eyebrow = home ? 'Documentation' : sectionTitle(page.slugs);
 
   return (
-    <DocsPage toc={page.data.toc} full={page.data.full}>
-      <DocsTitle>{page.data.title}</DocsTitle>
-      <DocsDescription>{page.data.description}</DocsDescription>
+    <DocsPage toc={page.data.toc} full={page.data.full} footer={{ children: <PageFoot /> }}>
+      <header className="berth-page-head" data-home={home || undefined}>
+        {eyebrow && <p className="berth-eyebrow">{eyebrow}</p>}
+        <DocsTitle>{home ? 'Berth documentation' : page.data.title}</DocsTitle>
+        <DocsDescription>{page.data.description}</DocsDescription>
+      </header>
       <DocsBody>
         <MDX components={getMDXComponents({ a: createRelativeLink(source, page) })} />
       </DocsBody>
       <div className="berth-edit-row">
-        <EditOnGitHub href={editUrl(page.path)} className="berth-edit" />
+        <EditOnGitHub href={editUrl(page.path)} className="berth-edit">
+          Edit this page on GitHub
+        </EditOnGitHub>
       </div>
     </DocsPage>
+  );
+}
+
+// The end of every page, after prev and next: where Berth lives.
+function PageFoot() {
+  return (
+    <footer className="berth-foot">
+      <span>Berth is open source.</span>
+      <nav aria-label="Elsewhere">
+        <a href={landingUrl}>berthd.app</a>
+        <a href={githubUrl}>GitHub</a>
+        <a href={`${githubUrl}/issues`}>Report an issue</a>
+      </nav>
+    </footer>
   );
 }
 

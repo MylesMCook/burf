@@ -3,6 +3,9 @@ title: Projects and worktrees
 description: Locations on a box, projects across boxes, and the worktrees agents work in.
 ---
 
+On a box, a repository is a **location**. In the app, the same repository
+across your boxes is a **project**. Agents work in its **worktrees**.
+
 ## Locations
 
 A **location** is a named directory on one box, usually a git repository:
@@ -20,8 +23,9 @@ and `devl/cal/billing` the same from the laptop.
 ## Projects
 
 In the app, a **project** is one repository wherever it is checked out. A
-location on `devl` and one on `gpu` whose `origin` remotes name the same
-`owner/repo` (or that share a name) are one project with two members. Each
+location on `devl` and one on `gpu` whose remotes name the same
+`owner/repo` (or, without a remote, that share a name) are one project with
+two members; you can rename, merge and split projects from the sidebar. Each
 project has a **default box**, where new work goes unless you pick another,
 and the sidebar groups worktrees by project (or by box, if you prefer).
 
@@ -46,8 +50,8 @@ berth worktree new devl/cal/billing [--branch B] [--base REF]
 berth worktree rm devl/cal/billing [--force]
 ```
 
-- A worktree's name is a hostname label (letters, digits, dashes), because
-  it is part of its URL.
+- Keep a worktree's name to letters, digits and dashes: it becomes part of
+  its [private URL](#private-urls).
 - The branch defaults to the name. An existing branch, local or on
   `origin`, is checked out as it is (tracking `origin`); a new one starts from
   `--base`, or from what the repository has checked out.
@@ -57,8 +61,8 @@ berth worktree rm devl/cal/billing [--force]
 ### Setup and teardown
 
 When a worktree is created, the repository's **setup** script runs in it (in
-the background, up to 30 minutes, logged on the box), then its `autostart`
-services start. Before one is removed, its services stop and the **archive**
+the background, up to 30 minutes, logged on the box); once it succeeds, its
+`autostart` services start. Before one is removed, its services stop and the **archive**
 script runs; if that fails, the worktree stays. Both come from
 [`.berth/config.json`](/guides/project-config), a [kit](/guides/kits), or the
 box's own config for the location (`berth location scripts`).
@@ -75,8 +79,9 @@ terminals, agents, services, hooks, `exec`) gets them along with
 ### Pause and resume
 
 From the Worktrees view you can pause a worktree: its running services stop
-and its sessions are frozen, using no CPU, until you resume it, which starts
-the same services again. The
+and its agents are frozen where they are, using no CPU, until you resume it,
+which lets the agents carry on and starts the same services again. Plain
+shells are left alone. The
 [resource guard](/guides/resource-guard) does the same to idle worktrees
 when a box runs short of memory.
 
@@ -90,7 +95,7 @@ box connection, with nothing exposed on the box:
 | `http://3000.devl.localhost:1377/` | Port 3000 on `devl` |
 | `http://billing.cal.devl.localhost:1377/` | The `billing` worktree's dev server (its lowest listening port) |
 | `http://cal.devl.localhost:1377/` | The main checkout's dev server |
-| `http://billing.cal.localhost:1377/` | The same, when only one box has `cal` |
+| `http://billing.cal.localhost:1377/` | The `billing` worktree's dev server, when only one box has it |
 | `http://localhost:1377/` | An index of what is reachable |
 
 `berth setup port80` on a Mac drops the `:1377`. Dev servers need no
@@ -119,3 +124,6 @@ berth route add '*.app.localhost' devl 8080    # Host header passed unchanged
 berth ssh-config --write                   # an SSH host per box, berth-<box>, for editors
 berth edit devl/cal/billing src/app.ts:42  # open a file at a line (--in cursor|vscode|windsurf|zed)
 ```
+
+Next: [sessions and agents](/concepts/sessions-and-agents), what runs in a
+worktree.

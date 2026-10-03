@@ -9,24 +9,29 @@ laptop side is built from source for now.
 
 ## On a box
 
-On a Linux box (amd64 or arm64), as the user your agents will run as:
+On the box (Linux or macOS, amd64 or arm64), as the user your agents will
+run as:
 
 ```sh
 curl -fsSL https://berthd.app/install | sh
 ```
 
-It installs `berthd` for that user, starts it as a service, and prints a
-pairing link:
+It installs `berthd` for that user (no root), checks the download against the
+release's checksums, starts it as a service, and prints a pairing link:
 
 ```text
-Pairing link (single use, valid for 10m0s):
+berthd v0.1.0 is running. Paste this link into Berth on your laptop
+(Add a box). It works once, for ten minutes:
+
   berth://100.101.102.103:7444?code=…&fp=…
 ```
 
 Keep it for the next step. The box needs `git` and `tmux`, and a
 [Tailscale](https://tailscale.com) address unless you tell berthd to listen
-elsewhere (`BERTHD_LISTEN=0.0.0.0:7444`; see
+elsewhere (`sh -s -- --listen 0.0.0.0:7444`; see
+[installer options](/getting-started/add-a-box#installer-options) and
 [where berthd listens](/getting-started/add-a-box#where-berthd-listens)).
+Running it again upgrades berthd in place.
 
 <Callout title="No SSH from your laptop needed">
   The installer runs on the box itself. If you'd rather install from your
@@ -100,7 +105,8 @@ and starting your first agent.
 
 ## Pair them
 
-Paste the box's link in the app (**Add a box → Paste a pairing link**), or:
+Paste the box's link in the app (**Add a box**, under "Paste what it
+printed"), or:
 
 ```sh
 bin/berth pair 'berth://100.101.102.103:7444?code=…&fp=…'
