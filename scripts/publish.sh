@@ -89,7 +89,7 @@ text = open(path).read()
 text = re.sub(r'(?m)^version = "[^"]+"', f'version = "{v}"', text, count=1)
 open(path, "w").write(text)
 PY
-(cd app/src-tauri && cargo update -p berth --offline >/dev/null 2>&1 || true)
+(cd app/src-tauri && { cargo update -p berth --offline >/dev/null 2>&1 || true; })
 
 NOTES="${NOTES:-}" scripts/mac-release.sh "$tag"
 

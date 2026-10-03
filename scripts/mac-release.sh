@@ -76,7 +76,7 @@ out="dist/mac"
 work="$(mktemp -d)"
 mnt="$work/mnt"
 cleanup() {
-  [ -d "$mnt" ] && hdiutil detach -quiet "$mnt" 2>/dev/null || true
+  if [ -d "$mnt" ]; then hdiutil detach -quiet "$mnt" 2>/dev/null || true; fi
   rm -rf "$work"
 }
 trap cleanup EXIT
@@ -88,7 +88,7 @@ make app-build APP_TARGET="$target" VERSION="$version"
 app="$bundle/macos/Berth.app"
 dmgs=("$bundle"/dmg/*.dmg)
 [ -d "$app" ] || die "no $app"
-[ "${#dmgs[@]}" = 1 ] && [ -f "${dmgs[0]}" ] || die "expected one dmg in $bundle/dmg"
+if [ "${#dmgs[@]}" != 1 ] || [ ! -f "${dmgs[0]}" ]; then die "expected one dmg in $bundle/dmg"; fi
 tarball="$bundle/macos/Berth.app.tar.gz"
 [ -f "$tarball" ] || die "no updater archive at $tarball (is createUpdaterArtifacts on?)"
 [ -f "$tarball.sig" ] || die "the updater archive was not signed"
