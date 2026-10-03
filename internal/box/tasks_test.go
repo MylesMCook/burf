@@ -76,7 +76,11 @@ func TestAgentStatesSurviveARestart(t *testing.T) {
 	bus := &events.Bus{}
 	ctx, cancel := context.WithCancel(context.Background())
 	first := &AgentStates{Path: path}
-	go first.Run(ctx, bus)
+	stopped := make(chan struct{})
+	go func() {
+		first.Run(ctx, bus)
+		close(stopped)
+	}()
 	deadline := time.Now().Add(5 * time.Second)
 	for {
 		bus.Publish(events.Event{Type: "agent.finished", Data: map[string]any{"path": "/w/fix"}})
@@ -86,6 +90,8 @@ func TestAgentStatesSurviveARestart(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 	}
 	cancel()
+	// Let it finish writing before the temp dir is removed.
+	<-stopped
 
 	second := &AgentStates{Path: path}
 	second.load()
