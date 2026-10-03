@@ -59,6 +59,8 @@ func addSSH(l laptop, args []string) error {
 	return err
 }
 
+const addSSHUsage = "usage: berth add ssh [user@]HOST [--name N] [--network NET] [--listen ADDR] [--address ADDR] [--identity FILE] [--trust-host-key SHA256:…] [-- SSH OPTIONS]"
+
 func addSSHSteps(l laptop, args []string) error {
 	var sshArgs []string
 	for i, a := range args {
@@ -77,7 +79,7 @@ func addSSHSteps(l laptop, args []string) error {
 	trustKey := fs.String("trust-host-key", "", "trust the box's host key if its fingerprint is this SHA256:… (a new box only; a changed key is never trusted)")
 	pos, err := parseAnywhere(fs, args)
 	if err != nil || len(pos) != 1 {
-		return errors.New("usage: berth add ssh [user@]HOST [--name N] [--network NET] [--listen ADDR] [--address ADDR] [--identity FILE] [--trust-host-key SHA256:…] [-- SSH OPTIONS]")
+		return errors.New(addSSHUsage)
 	}
 	target := pos[0]
 	if err := checkName(*name); err != nil {

@@ -13,7 +13,8 @@ import (
 const Usage = `Integrations
   %[1]s integrations install claude|cursor|codex|all
                          Install berth's skills and agent hooks for a tool
-  %[1]s hook TOOL EVENT  What those hooks run: turns a tool's hook into a
+  %[1]s hook TOOL EVENT [PAYLOAD]
+                         What those hooks run: turns a tool's hook into a
                          berth event (agent.finished, agent.waiting)
 `
 

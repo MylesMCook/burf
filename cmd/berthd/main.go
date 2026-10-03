@@ -40,21 +40,31 @@ const (
 const usage = `berthd — the berth daemon for a development box
 
   berthd serve [--listen ADDR]            Serve paired laptops (default: tailnet address only)
-  berthd install [--listen ADDR] [--dry-run]
-                                            Run serve as a user service (systemd/launchd)
+  berthd install [--listen ADDR] [--keep-listen] [--dry-run]
+                                          Run serve as a user service (systemd/launchd); --keep-listen
+                                          keeps an installed non-tailnet address, --dry-run only checks
   berthd uninstall                        Remove that service
   berthd pair [--address HOST[:PORT]] [--ttl 10m]
-                                            Print a single-use pairing link
+                                          Print a single-use pairing link
   berthd clients                          List paired laptops
   berthd revoke <name|fingerprint>        Stop trusting a laptop
   berthd id                               Print this box's fingerprint
   berthd doctor [--json]                  Check this box's setup and how to fix it
   berthd version                          Print this build's version
   berthd session attach NAME              Attach to a session in this terminal
+  berthd secret exec [--socket PATH] -- PROGRAM [ARGS...]
+                                          Resolve secret references, then run PROGRAM (sessions and
+                                          services use it)
 
 Hooks run from ~/.berth/hooks.json and ~/.berth/plugins; see https://docs.berthd.app/guides/hooks
 BERTH_HOME overrides the state directory.
 `
+
+// helpText is what berthd help prints: the daemon's commands, then the box
+// commands, then the integrations.
+func helpText() string {
+	return usage + "\n" + boxcmd.Usage("berthd", "") + "\n" + fmt.Sprintf(integrations.Usage, "berthd")
+}
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
@@ -79,11 +89,7 @@ func (b boxHome) pending() *pairing.Pending {
 
 func run(args []string) error {
 	if len(args) == 0 || args[0] == "help" || args[0] == "-h" || args[0] == "--help" {
-		fmt.Print(usage)
-		fmt.Println()
-		fmt.Print(boxcmd.Usage("berthd", ""))
-		fmt.Println()
-		fmt.Printf(integrations.Usage, "berthd")
+		fmt.Print(helpText())
 		return nil
 	}
 	if args[0] == "version" || args[0] == "--version" {

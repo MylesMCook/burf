@@ -20,64 +20,99 @@ import (
 	"github.com/sean-brydon/berthd/internal/events"
 )
 
+// usageColumn is where descriptions start in Usage; a command line too long
+// to fit puts its description on the next line, at the same column.
+const usageColumn = 50
+
+// usageSections lists the box commands. In each command, %[1]s is the
+// program, %[2]s the box prefix of a reference (BOX/ or nothing), %[3]s a
+// standalone box argument (" BOX" or nothing) and %[4]s the flags only the
+// laptop takes. A description may run to several lines.
+var usageSections = []struct {
+	title string
+	lines [][2]string
+}{
+	{"Locations and worktrees", [][2]string{
+		{"%[1]s locations%[3]s [--json]", "List locations and their worktrees"},
+		{"%[1]s location add %[2]sNAME PATH", "Register a repo or directory"},
+		{"%[1]s location rm %[2]sNAME", "Forget a location (files are untouched)"},
+		{"%[1]s location scripts %[2]sNAME [--setup CMD] [--archive CMD] [--clear]", "Worktree setup/archive scripts (default: the repo's .berth/config.json)"},
+		{"%[1]s location config %[2]sNAME [--json]", "The repo's, the box's and the effective config"},
+		{"%[1]s services%[3]s [--json]", "Which worktree each running server belongs to"},
+		{"%[1]s service list|start|stop|restart|log %[2]sLOC/WORKTREE [SERVICE]", "A worktree's services from the repo's config"},
+		{"%[1]s preview %[2]s[LOC/WORKTREE] [PORT] [--path /x]", "Open a worktree's page in the Berth app"},
+		{"%[1]s worktree new %[2]sLOC/NAME [--branch B] [--base REF]", "Create a git worktree and run its setup"},
+		{"%[1]s worktree rm %[2]sLOC/NAME [--force]", "Remove a worktree"},
+	}},
+	{"Agent sessions", [][2]string{
+		{"%[1]s sessions%[3]s [--json]", "List sessions"},
+		{"%[1]s agents%[3]s [--json]", "Agent CLIs this box can start"},
+		{"%[1]s task new %[2]sLOC/NAME [--agent ID] [--prompt TEXT] [--open split|tab] [--branch B] [--base REF] [-- COMMAND...]", "A worktree with an agent (or COMMAND) running in it"},
+		{"%[1]s session new %[2]sLOC[/WORKTREE] [--name N] [--agent ID [--prompt TEXT]] [--open split|tab] [-- COMMAND...]", "Start an agent or COMMAND (default: a shell) there"},
+		{"%[1]s session screen %[2]sNAME [--history N]", "Print what the session shows"},
+		{"%[1]s session send %[2]sNAME TEXT [--no-enter] [--wait [--timeout 30m]]%[4]s", "Type a prompt into a session, and wait for its turn"},
+		{"%[1]s session wait %[2]sNAME [--for finished,waiting] [--timeout 30m]", "Wait for its agent's turn to end"},
+		{"%[1]s exec %[2]sLOC[/WORKTREE] [--timeout 10m] -- COMMAND...", "Run a command there and print its output"},
+		{"%[1]s loop %[2]sSESSION --check CMD [--prompt TEXT] [--max 5] [--turn-timeout 30m]", "Prompt, wait, check, and feed failures back"},
+		{"%[1]s session kill %[2]sNAME", "Stop a session"},
+	}},
+	{"Ports and sharing", [][2]string{
+		{"%[1]s ports%[3]s [--json]", "What is listening on the box"},
+		{"%[1]s stats%[3]s [--json]", "Memory, disk, load, and agents running or waiting"},
+		{"%[1]s info%[3]s", "The box's name, OS, build, tools and agent presets, as JSON"},
+		{"%[1]s share%[3]s PORT", "Make a port public (Cloudflare quick tunnel)"},
+		{"%[1]s shares%[3]s [--json]", "List public shares"},
+		{"%[1]s unshare%[3]s ID", "Stop a share"},
+	}},
+	{"Units", [][2]string{
+		{"%[1]s units%[3]s [--json]", "Managed units"},
+		{"%[1]s unit add %[2]sNAME -- COMMAND...", "Install and start a unit"},
+		{"%[1]s unit get %[2]sNAME [--json]", "A unit's state and where its log is"},
+		{"%[1]s unit log %[2]sNAME", "What a unit has written, for one that will not stay up"},
+		{"%[1]s unit restart %[2]sNAME", "Start a unit again"},
+		{"%[1]s unit rm %[2]sNAME", "Stop and remove a unit (its log stays)"},
+	}},
+	{"Skills for agents", [][2]string{
+		{"%[1]s skills%[3]s [list|install|uninstall] [SKILL...] [--agent claude|codex|all]\n         [--target user|project] [--location LOC] [--commit]", "Teach Claude Code and Codex to use berth"},
+	}},
+	{"Secrets", [][2]string{
+		{"%[1]s secret test%[3]s REF", "Check this box can resolve op://vault/item/field or env://NAME\n(prints the value's length, never the value)"},
+	}},
+	{"Events", [][2]string{
+		{"%[1]s emit%[3]s TYPE [key=value...] [--origin TOOL]", "Announce an event, e.g. agent.finished"},
+		{"%[1]s events%[3]s [--json]", "Stream the box's events"},
+	}},
+}
+
 // Usage lists the commands with box-relative references. prefix is "" on the
 // box and "<box>/" on the laptop.
 func Usage(cmd, prefix string) string {
 	b := strings.TrimSuffix(prefix, "/")
-	boxArg := ""
+	boxArg, laptopFlags := "", ""
 	if b != "" {
-		boxArg = " " + b
+		boxArg, laptopFlags = " "+b, " [--queue]"
 	}
-	return fmt.Sprintf(`Locations and worktrees
-  %[1]s locations%[3]s [--json]                        List locations and their worktrees
-  %[1]s location add %[2]sNAME PATH                     Register a repo or directory
-  %[1]s location rm %[2]sNAME                           Forget a location (files are untouched)
-  %[1]s location scripts %[2]sNAME [--setup CMD] [--archive CMD] [--clear]
-                                                  Worktree setup/archive scripts (default: the repo's .berth/config.json)
-  %[1]s location config %[2]sNAME [--json]             The repo's, the box's and the effective config
-  %[1]s services%[3]s [--json]                          Which worktree each running server belongs to
-  %[1]s service list|start|stop|restart|log %[2]sLOC/WORKTREE [SERVICE]
-                                                  A worktree's services from the repo's config
-  %[1]s preview %[2]s[LOC/WORKTREE] [PORT] [--path /x]  Open a worktree's page in the Berth app
-  %[1]s worktree new %[2]sLOC/NAME [--branch B] [--base REF]
-                                                  Create a git worktree and run its setup
-  %[1]s worktree rm %[2]sLOC/NAME [--force]             Remove a worktree
-
-Agent sessions
-  %[1]s sessions%[3]s [--json]                          List sessions
-  %[1]s task new %[2]sLOC/NAME [--agent ID] [--prompt TEXT] [--open split|tab] [--branch B] [--base REF]
-                                                  A worktree with an agent running in it
-  %[1]s agents%[3]s [--json]                            Agent CLIs this box can start
-  %[1]s session new %[2]sLOC[/WORKTREE] [--name N] [--agent ID [--prompt TEXT]] [--open split|tab] [-- COMMAND...]
-                                                  Start an agent or COMMAND (default: a shell) there
-  %[1]s session screen %[2]sNAME [--history N]          Print what the session shows
-  %[1]s session send %[2]sNAME TEXT [--no-enter] [--wait] Type a prompt into a session, and wait for its turn
-  %[1]s session wait %[2]sNAME [--for finished,waiting] Wait for its agent's turn to end
-  %[1]s exec %[2]sLOC[/WORKTREE] -- COMMAND...            Run a command there and print its output
-  %[1]s loop %[2]sSESSION --check CMD [--prompt TEXT] [--max 5]
-                                                  Prompt, wait, check, and feed failures back
-  %[1]s session kill %[2]sNAME                          Stop a session
-
-Ports and sharing
-  %[1]s ports%[3]s [--json]                             What is listening on the box
-  %[1]s stats%[3]s [--json]                             Memory, disk, load, and agents running or waiting
-  %[1]s share%[3]s PORT                                 Make a port public (Cloudflare quick tunnel)
-  %[1]s shares%[3]s [--json]                            List public shares
-  %[1]s unshare%[3]s ID                                 Stop a share
-
-Skills for agents
-  %[1]s skills%[3]s [list|install|uninstall] [SKILL...] [--agent claude|codex|all]
-         [--target user|project] [--location LOC] [--commit]
-                                                  Teach Claude Code and Codex to use berth
-
-Secrets
-  %[1]s secret test%[3]s REF                            Check this box can resolve op://vault/item/field or env://NAME
-                                                  (prints the value's length, never the value)
-
-Events
-  %[1]s emit%[3]s TYPE [key=value...] [--origin TOOL]   Announce an event, e.g. agent.finished
-  %[1]s events%[3]s [--json]                            Stream the box's events
-`, cmd, prefix, boxArg)
+	indent := strings.Repeat(" ", usageColumn)
+	var s strings.Builder
+	for i, sec := range usageSections {
+		if i > 0 {
+			s.WriteString("\n")
+		}
+		s.WriteString(sec.title + "\n")
+		for _, l := range sec.lines {
+			if b != "" && strings.HasPrefix(l[0], "%[1]s events") {
+				continue // berth's own events command lists it, with or without a box
+			}
+			use := "  " + fmt.Sprintf(l[0], cmd, prefix, boxArg, laptopFlags)
+			desc := strings.ReplaceAll(l[1], "\n", "\n"+indent)
+			if strings.Contains(use, "\n") || len(use) > usageColumn-2 {
+				s.WriteString(use + "\n" + indent + desc + "\n")
+			} else {
+				s.WriteString(use + strings.Repeat(" ", usageColumn-len(use)) + desc + "\n")
+			}
+		}
+	}
+	return s.String()
 }
 
 // Queue, when set, keeps a prompt that could not be sent for later: the
@@ -781,7 +816,7 @@ func loop(ctx context.Context, c *box.Client, args []string, out io.Writer) erro
 	rounds := fs.Int("max", 5, "most rounds to try")
 	timeout := fs.Duration("turn-timeout", 30*time.Minute, "longest an agent's turn may take")
 	pos, err := parse(fs, args)
-	usage := "loop SESSION --check COMMAND [--prompt TEXT] [--max 5]"
+	usage := "loop SESSION --check COMMAND [--prompt TEXT] [--max 5] [--turn-timeout 30m]"
 	if err != nil || len(pos) != 1 || *check == "" {
 		return usageErr(usage)
 	}

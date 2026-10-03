@@ -8,6 +8,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -34,47 +35,46 @@ import (
 const usage = `berth — connect this laptop to development boxes
 
 Boxes
-  berth add ssh [user@]HOST [--name N] [--network NET]
-                                           Install berthd on a box over SSH (once) and pair
-  berth network login NAME               Join another tailnet (e.g. a personal one) to reach its boxes
-  berth networks [--json]                List joined networks
+  berth add ssh [user@]HOST [--name N] [--network NET] [--listen ADDR] [--address ADDR]
+        [--identity FILE] [--trust-host-key SHA256:…] [-- SSH OPTIONS]
+                                         Install berthd on a box over SSH (once) and pair
   berth pair '<link>' [--name N] [--network NET]
-                                           Pair with a box (link from berthd pair)
+                                         Pair with a box (link from berthd pair)
+  berth network login NAME               Join another tailnet (e.g. a personal one) to reach its boxes
+  berth network proxy NAME HOST PORT     Connect stdin/stdout to HOST:PORT through it (SSH ProxyCommand)
+  berth networks [--json]                List joined networks
+  berth discover [--network NET] [--json]
+                                         Machines on the tailnet that could be boxes
   berth boxes [--json]                   List paired boxes and whether they are online
-  berth ping <box>                       Check a box answers and still trusts you
-  berth upgrade <box>                    Upgrade the box's daemon over berth (no SSH)
+  berth ping BOX                         Check a box answers and still trusts you
+  berth upgrade BOX [--check] [--json]   Upgrade the box's daemon over berth (no SSH); --check only reports
   berth kit add|apply|list|save …        Set projects up the same way on every box; see berth kit help
-  berth edit BOX/PROJECT[/WT] [FILE[:LINE]] [--in cursor]
+  berth edit BOX/PROJECT[/WT] [FILE[:LINE[:COL]]] [--in EDITOR]
                                          Open a worktree, or a file at a line, in your editor
-  berth ssh-config [--write]             Show (then write) the SSH hosts editors use: berth-<box>
-  berth forget <box>                     Remove a box from this laptop
+                                         (EDITOR: cursor, vscode, windsurf or zed; default: the first installed)
+  berth ssh-config [--write] [--json]    Show (then write) the SSH hosts editors use: berth-<box>
+  berth forget BOX                       Remove a box from this laptop
 
 Reaching services
-  berth url <box> <port|service>         Print the private URL for a service
-  berth open <box> <port|service>        Open that URL in your browser
-  berth forward <box> <ports> [--json]   Forward local ports: 3000, 8080:3000, 3000-3005
+  berth url BOX PORT|SERVICE             Print the private URL for a service
+  berth open BOX PORT|SERVICE            Open that URL in your browser
+  berth forward BOX PORTS [--json]       Forward local ports: 3000, 8080:3000, 3000-3005
   berth forwards [--json]                List forwards
-  berth unforward <id>                   Stop and forget a forward
-  berth discover [--network NET]            Machines on the tailnet that could be boxes
-  berth route add '*.x.localhost' BOX PORT  Send every matching host to a box port, Host unchanged
+  berth unforward ID                     Stop and forget a forward
+  berth route add '*.x.localhost' BOX PORT
+                                         Send every matching host to a box port, Host unchanged
   berth routes [--json]                  List routes (berth route rm PATTERN removes one)
-  berth units BOX [--json]               Managed units on a box
-  berth unit add BOX/NAME -- COMMAND...  Install and start a unit
-  berth unit log BOX/NAME                What a unit has written, for one that will not stay up
-  berth unit restart BOX/NAME            Start a unit again
 
 Sessions
   berth attach BOX/SESSION               Attach this terminal to an agent session (detach: Ctrl-b d)
   berth terminal BOX/SESSION             Open a new terminal window attached to a session
   berth emit TYPE [key=value...]         Announce an event on this laptop, e.g. agent.finished
-  berth session send BOX/NAME TEXT --queue
-                                         If BOX cannot be reached, queue the prompt; the agent types it in once BOX is back
   berth queue [--json]                   Prompts waiting for their box (berth queue rm|retry|send ID)
 
 Agent
   berth status [--json]                  Boxes, forwards and the proxy at a glance
   berth doctor [BOX] [--json]            Check this computer (or a box) and how to fix it
-  berth events [--json]                  Stream events as they happen
+  berth events [BOX] [--json]            Stream events from this laptop and every box (or only BOX's)
   berth agent                            Run the agent in the foreground
   berth agent install|uninstall|status   Run the agent at login, restart it on crashes
   berth setup port80 [--remove]          Drop :1377 from URLs (asks for your admin password once)
@@ -94,18 +94,16 @@ func main() {
 		}
 		return
 	}
-	if len(os.Args) > 1 && (os.Args[1] == "help" || os.Args[1] == "-h" || os.Args[1] == "--help") {
-		fmt.Print(usage)
-		fmt.Println()
-		fmt.Print(boxcmd.Usage("berth", "BOX/"))
-		fmt.Println()
-		fmt.Printf(integrations.Usage, "berth")
-		return
-	}
 	if err := run(os.Args[1:]); err != nil {
 		fmt.Fprintln(os.Stderr, "berth:", err)
 		os.Exit(1)
 	}
+}
+
+// helpText is what berth help prints: the laptop's commands, then the box
+// commands (with the box in front), then the integrations.
+func helpText() string {
+	return usage + "\n" + boxcmd.Usage("berth", "BOX/") + "\n" + fmt.Sprintf(integrations.Usage, "berth")
 }
 
 type laptop struct {
@@ -124,7 +122,7 @@ func signalContext() (context.Context, context.CancelFunc) {
 
 func run(args []string) error {
 	if len(args) == 0 || args[0] == "help" || args[0] == "-h" || args[0] == "--help" {
-		fmt.Print(usage)
+		fmt.Print(helpText())
 		return nil
 	}
 	if args[0] == "version" || args[0] == "--version" {
@@ -164,7 +162,7 @@ func run(args []string) error {
 		return listNetworks(l, rest)
 	case "add":
 		if len(rest) == 0 || rest[0] != "ssh" {
-			return errors.New("usage: berth add ssh [user@]HOST [--name N] [--listen ADDR] [--address ADDR] [-- SSH OPTIONS]")
+			return errors.New(addSSHUsage)
 		}
 		return addSSH(l, rest[1:])
 	case "boxes":
@@ -312,7 +310,7 @@ func pair(l laptop, args []string) error {
 		return err
 	}
 	if fs.NArg() != 1 {
-		return errors.New("usage: berth pair '<link>' [--name NAME]")
+		return errors.New("usage: berth pair '<link>' [--name N] [--network NET]")
 	}
 	tok, err := pairing.ParseToken(fs.Arg(0))
 	if err != nil {
@@ -570,10 +568,23 @@ func status(l laptop, args []string) error {
 	return nil
 }
 
+// streamEvents prints the agent's events: this laptop's and every box's, or
+// with a box name, only that box's.
 func streamEvents(l laptop, args []string) error {
-	_, asJSON, err := flags("events", args, nil)
+	fs, asJSON, err := flags("events", args, nil)
 	if err != nil {
 		return err
+	}
+	if fs.NArg() > 1 {
+		return errors.New("usage: berth events [BOX] [--json]")
+	}
+	boxName := fs.Arg(0)
+	if boxName != "" {
+		if _, ok, err := l.boxes().ByName(boxName); err != nil {
+			return err
+		} else if !ok {
+			return fmt.Errorf("no paired box named %q; see berth boxes", boxName)
+		}
 	}
 	c, err := ensureAgent(l)
 	if err != nil {
@@ -581,8 +592,17 @@ func streamEvents(l laptop, args []string) error {
 	}
 	ctx, stop := signalContext()
 	defer stop()
-	enc := json.NewEncoder(os.Stdout)
-	return c.Events(ctx, func(e agent.Event) {
+	return c.Events(ctx, eventPrinter(os.Stdout, boxName, asJSON))
+}
+
+// eventPrinter writes each event as a line, or as JSON; given a box name, it
+// skips every event that is not that box's.
+func eventPrinter(out io.Writer, boxName string, asJSON bool) func(agent.Event) {
+	enc := json.NewEncoder(out)
+	return func(e agent.Event) {
+		if boxName != "" && e.Box != boxName {
+			return
+		}
 		if asJSON {
 			enc.Encode(e)
 			return
@@ -591,8 +611,8 @@ func streamEvents(l laptop, args []string) error {
 		if local, ok := e.Data["local"]; ok {
 			line += fmt.Sprintf("  localhost:%v → %v", local, e.Data["remote"])
 		}
-		fmt.Println(line)
-	})
+		fmt.Fprintln(out, line)
+	}
 }
 
 // emitLocal publishes an event on this laptop's agent, for tools running on
