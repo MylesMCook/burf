@@ -150,12 +150,20 @@ export interface Machine {
   online: boolean;
   // The paired box at this address, if it already is one.
   box?: string;
+  // The machine runs Tailscale SSH: no keys needed to log in.
+  ssh?: boolean;
+  // SHA256 fingerprints of the SSH host keys the tailnet reports for it.
+  host_keys?: string[];
 }
 
 export interface Discovery {
   // The SSH user to suggest: this computer's.
   user: string;
   machines: Machine[];
+  // This computer's own Tailscale, when not listing a Berth network.
+  tailscale?: "running" | "stopped" | "logged-out" | "missing";
+  // Its tailnet's name, while running.
+  tailnet?: string;
 }
 
 // A tailnet this laptop joined with its own embedded node.

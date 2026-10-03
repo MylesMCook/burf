@@ -1,4 +1,4 @@
-import { CheckIcon, KeyRoundIcon, MonitorIcon, ServerIcon, ShieldAlertIcon, TerminalIcon } from "lucide-react";
+import { CheckIcon, ExternalLinkIcon, KeyRoundIcon, MonitorIcon, ServerIcon, ShieldAlertIcon, TerminalIcon } from "lucide-react";
 import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -7,13 +7,14 @@ import { Kbd } from "@/components/ui/kbd";
 import { Spinner } from "@/components/ui/spinner";
 import { CommandError, laptopApi, type SshFailure, type SshPlan } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
+import { openUrl } from "@/lib/open-url";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { InstallCommand } from "@/views/onboarding/install-command";
 import { CommandLog } from "@/views/settings/command-log";
 
 type Suggestion = { value: string; label: string; detail: string; os?: string; network?: string };
-type Failure = SshFailure | { kind: "plain"; message: string };
+export type Failure = SshFailure | { kind: "plain"; message: string };
 
 // SshSetup is the other way to add a box: Berth connects over SSH once from
 // this computer, with the person's own keys and agent, uploads berthd, runs
@@ -33,17 +34,14 @@ export function SshSetup({
   onPaired(box: string): void;
   onSignIn(): void;
 }) {
-  const client = useStore((s) => s.client);
   const [host, setHost] = useState("");
   const [name, setName] = useState("");
   const [identity, setIdentity] = useState("");
-  const [state, setState] = useState<"ready" | "running" | "done" | "failed">("ready");
-  const [lines, setLines] = useState<string[]>([]);
-  const [failure, setFailure] = useState<Failure>();
   const [active, setActive] = useState(-1);
   const [focused, setFocused] = useState(false);
-  const abort = useRef<AbortController>(null);
   const field = useRef<HTMLInputElement>(null);
+  const setup = useAddSsh({ onRunning, onPaired });
+  const { state, lines, failure } = setup;
 
   const suggestions = useSuggestions(network);
   const plan = useSshPlan(host.trim(), network);
@@ -53,52 +51,25 @@ export function SshSetup({
     [suggestions, typed],
   );
 
-  useEffect(() => () => abort.current?.abort(), []);
-
-  const run = async (opts: { trust?: string; target?: string } = {}) => {
+  const run = (opts: { trust?: string; target?: string } = {}) => {
     const target = (opts.target ?? host).trim();
-    if (!client || !target || state === "running") return;
+    if (!target) return;
     if (opts.target) setHost(opts.target);
-    abort.current = new AbortController();
-    setLines([]);
-    setFailure(undefined);
-    setState("running");
-    onRunning(true);
-    const before = new Set(useStore.getState().status?.boxes.map((b) => b.name));
-    try {
-      await laptopApi.addSsh(
-        client,
-        { host: target, name: name.trim() || undefined, network, identity: identity.trim() || undefined, trust_host_key: opts.trust },
-        (l) => setLines((prev) => [...prev, l]),
-        abort.current.signal,
-      );
-      setState("done");
-      await useStore.getState().refreshAll();
-      const added = useStore.getState().status?.boxes.find((b) => !before.has(b.name))?.name;
-      onPaired(added ?? (name.trim() || target.split("@").pop()!.split(".")[0]));
-    } catch (err) {
-      if (abort.current?.signal.aborted) return;
-      const f: Failure = err instanceof CommandError && err.ssh ? err.ssh : { kind: "plain", message: errorMessage(err) };
-      // The error is shown once, in the panel, not again as the last line.
-      setLines((prev) => prev.filter((l) => !l.includes(f.message) && !(f.kind === "plain" && f.message.includes(l.trim()) && l.trim().length > 12)));
-      setFailure(f);
-      setState("failed");
-      onRunning(false);
-    }
+    void setup.run({ host: target, name: name.trim() || undefined, network, identity: identity.trim() || undefined, trust_host_key: opts.trust });
   };
 
   const tried = useRef(retry);
   useEffect(() => {
     if (retry === tried.current) return;
     tried.current = retry;
-    if (host.trim()) void run();
+    if (host.trim()) run();
     // Only a new retry runs again; run reads the latest field and network.
   }, [retry]);
 
   const pick = (s: Suggestion, go: boolean) => {
     setHost(s.value);
     setActive(-1);
-    if (go) void run({ target: s.value });
+    if (go) run({ target: s.value });
     else field.current?.focus();
   };
 
@@ -112,7 +83,7 @@ export function SshSetup({
         onSubmit={(e) => {
           e.preventDefault();
           if (active >= 0 && matches[active]) pick(matches[active], true);
-          else void run();
+          else run();
         }}
       >
         <TerminalIcon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
@@ -131,7 +102,7 @@ export function SshSetup({
           onChange={(e) => {
             setHost(e.target.value);
             setActive(-1);
-            if (state === "failed" || state === "done") setState("ready");
+            if (state === "failed" || state === "done") setup.reset();
           }}
           onKeyDown={(e) => {
             if (e.key === "ArrowDown" && matches.length) {
@@ -145,9 +116,7 @@ export function SshSetup({
               e.preventDefault();
               pick(matches[Math.max(active, 0)], false);
             } else if (e.key === "Escape" && running) {
-              abort.current?.abort();
-              setState("ready");
-              onRunning(false);
+              setup.stop();
             }
           }}
           className="h-full min-w-0 flex-1 bg-transparent font-mono text-[13px] outline-none placeholder:font-sans placeholder:text-muted-foreground/72 placeholder:text-sm disabled:opacity-64"
@@ -158,11 +127,7 @@ export function SshSetup({
             size="xs"
             variant="ghost"
             className="shrink-0 text-muted-foreground"
-            onClick={() => {
-              abort.current?.abort();
-              setState("ready");
-              onRunning(false);
-            }}
+            onClick={setup.stop}
           >
             Stop
           </Button>
@@ -241,6 +206,7 @@ export function SshSetup({
       )}
 
       {(running || state === "done") && <CommandLog className="mt-2" lines={lines} done={state === "done"} />}
+      {running && setup.approve && <ApproveLogin url={setup.approve} />}
       {state === "done" && (
         <p className="mt-2 flex items-center gap-1.5 text-sm text-success-foreground">
           <CheckIcon className="size-4" /> Paired
@@ -251,7 +217,7 @@ export function SshSetup({
           failure={failure}
           identity={identity}
           setIdentity={setIdentity}
-          onRetry={(trust) => void run({ trust })}
+          onRetry={(trust) => run({ trust })}
           onSignIn={onSignIn}
         />
       )}
@@ -259,9 +225,108 @@ export function SshSetup({
   );
 }
 
+export type AddSshRequest = { host: string; name?: string; network?: string; identity?: string; trust_host_key?: string };
+
+// useAddSsh runs `berth add ssh` through the agent: its output as it goes,
+// and a failed login explained. SshSetup and the tailnet's machines both
+// set boxes up with it.
+export function useAddSsh({ onRunning, onPaired }: { onRunning(running: boolean): void; onPaired(box: string): void }) {
+  const client = useStore((s) => s.client);
+  const [state, setState] = useState<"ready" | "running" | "done" | "failed">("ready");
+  const [lines, setLines] = useState<string[]>([]);
+  const [failure, setFailure] = useState<Failure>();
+  // The page that approves a Tailscale SSH login in check mode, while the
+  // login waits for it.
+  const [approve, setApprove] = useState<string>();
+  const abort = useRef<AbortController>(null);
+  const busy = useRef(false);
+  useEffect(() => () => abort.current?.abort(), []);
+
+  // knownHostKeys are host key fingerprints the tailnet vouches for: a new
+  // box presenting one of them is trusted without asking.
+  const run = async (req: AddSshRequest, opts: { knownHostKeys?: string[] } = {}) => {
+    if (!client || !req.host || busy.current) return;
+    busy.current = true;
+    const ctl = new AbortController();
+    abort.current = ctl;
+    setLines([]);
+    setFailure(undefined);
+    setApprove(undefined);
+    setState("running");
+    onRunning(true);
+    const before = new Set(useStore.getState().status?.boxes.map((b) => b.name));
+    const onLine = (l: string) => {
+      setLines((prev) => [...prev, l]);
+      const url = APPROVE.exec(l)?.[1];
+      if (url) {
+        setApprove(url);
+        void openUrl(url);
+      }
+    };
+    let trust = req.trust_host_key;
+    try {
+      for (;;) {
+        try {
+          await laptopApi.addSsh(client, { ...req, trust_host_key: trust }, onLine, ctl.signal);
+          break;
+        } catch (err) {
+          const fp = err instanceof CommandError && err.ssh?.kind === "host-key-unknown" ? err.ssh.fingerprint : undefined;
+          if (ctl.signal.aborted || trust || !fp || !opts.knownHostKeys?.includes(fp)) throw err;
+          trust = fp;
+          setLines((prev) => [...prev, "Its host key is the one your tailnet reports for it, so Berth trusts it."]);
+        }
+      }
+      setState("done");
+      setApprove(undefined);
+      await useStore.getState().refreshAll();
+      const added = useStore.getState().status?.boxes.find((b) => !before.has(b.name))?.name;
+      onPaired(added ?? (req.name || req.host.split("@").pop()!.split(".")[0]));
+    } catch (err) {
+      if (ctl.signal.aborted) return;
+      const f: Failure = err instanceof CommandError && err.ssh ? err.ssh : { kind: "plain", message: errorMessage(err) };
+      // The error is shown once, in the panel, not again as the last line.
+      setLines((prev) => prev.filter((l) => !l.includes(f.message) && !(f.kind === "plain" && f.message.includes(l.trim()) && l.trim().length > 12)));
+      setFailure(f);
+      setApprove(undefined);
+      setState("failed");
+      onRunning(false);
+    } finally {
+      if (abort.current === ctl) busy.current = false;
+    }
+  };
+  const stop = () => {
+    abort.current?.abort();
+    busy.current = false;
+    setApprove(undefined);
+    setState("ready");
+    onRunning(false);
+  };
+  const reset = () => {
+    setState("ready");
+    setFailure(undefined);
+  };
+  return { state, lines, failure, approve, run, stop, reset };
+}
+
+// berth add ssh's line when Tailscale SSH holds a login for approval.
+const APPROVE = /approve this login in your browser: (https:\/\/\S+)/;
+
+// ApproveLogin asks for the browser approval a Tailscale SSH login waits on.
+export function ApproveLogin({ url }: { url: string }) {
+  return (
+    <div aria-live="polite" className="mt-2 flex items-center gap-2 text-xs">
+      <Spinner className="size-3 text-muted-foreground" />
+      <span className="min-w-0 flex-1 text-muted-foreground">Tailscale SSH wants you to approve this login in your browser.</span>
+      <Button size="xs" variant="outline" onClick={() => void openUrl(url)}>
+        <ExternalLinkIcon /> Open again
+      </Button>
+    </div>
+  );
+}
+
 // FailurePanel says what went wrong once, in plain words, and offers the
 // one thing to do about it.
-function FailurePanel({
+export function FailurePanel({
   failure,
   identity,
   setIdentity,
@@ -272,7 +337,7 @@ function FailurePanel({
   identity: string;
   setIdentity(v: string): void;
   onRetry(trust?: string): void;
-  onSignIn(): void;
+  onSignIn?(): void;
 }) {
   let action: ReactNode = null;
   switch (failure.kind) {
@@ -283,13 +348,15 @@ function FailurePanel({
       action = (
         <>
           <InstallCommand />
-          <p className="text-muted-foreground text-xs">
-            Or, if the box is on a tailnet this computer isn't signed in to,{" "}
-            <button type="button" className="text-foreground underline underline-offset-2 hover:no-underline" onClick={onSignIn}>
-              sign in to that tailnet
-            </button>{" "}
-            and Berth tries again.
-          </p>
+          {onSignIn && (
+            <p className="text-muted-foreground text-xs">
+              Or, if the box is on a tailnet this computer isn't signed in to,{" "}
+              <button type="button" className="text-foreground underline underline-offset-2 hover:no-underline" onClick={onSignIn}>
+                sign in to that tailnet
+              </button>{" "}
+              and Berth tries again.
+            </p>
+          )}
         </>
       );
       break;
@@ -389,7 +456,7 @@ function useSuggestions(network?: string): Suggestion[] {
 
 // useSshPlan asks the agent what ssh would use for a host: user, address,
 // agent and keys. It reads config only; it never connects.
-function useSshPlan(host: string, network?: string): SshPlan | "loading" | undefined {
+export function useSshPlan(host: string, network?: string): SshPlan | "loading" | undefined {
   const client = useStore((s) => s.client);
   const [plan, setPlan] = useState<SshPlan | "loading">();
   useEffect(() => {

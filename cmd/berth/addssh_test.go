@@ -25,6 +25,16 @@ func TestDaemonFor(t *testing.T) {
 	}
 }
 
+func TestCheckURL(t *testing.T) {
+	stderr := "debug1: Authentication succeeded (none).\n# Tailscale SSH requires an additional check.\n# To authenticate, visit: https://login.tailscale.com/a/1a2b3c4d\n"
+	if got := checkURL(stderr); got != "https://login.tailscale.com/a/1a2b3c4d" {
+		t.Fatalf("checkURL = %q", got)
+	}
+	if got := checkURL("debug1: Connecting to box [100.64.0.2] port 22.\n"); got != "" {
+		t.Fatalf("checkURL found %q in plain ssh output", got)
+	}
+}
+
 func TestFindLink(t *testing.T) {
 	out := []byte("Pairing link (single use, valid for 10m0s):\n\n  berth://100.101.102.103:7444?code=abc&fp=def\n\nOn your laptop:  berth pair 'berth://100.101.102.103:7444?code=abc&fp=def'\n")
 	if got, err := findLink(out); err != nil || got != "berth://100.101.102.103:7444?code=abc&fp=def" {

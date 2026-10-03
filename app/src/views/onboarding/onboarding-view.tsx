@@ -11,6 +11,7 @@ import { AddBoxFlow, type AddBoxStage } from "@/views/onboarding/add-box-flow";
 import { AgentStep } from "@/views/onboarding/agent-step";
 import { finishOnboarding, markOnboardingStarted } from "@/views/onboarding/onboarding-state";
 import { RepoStep } from "@/views/onboarding/repo-step";
+import { prefetchTailnets } from "@/views/onboarding/tailnet";
 import { WelcomeStep } from "@/views/onboarding/welcome-step";
 
 type Step = { kind: "welcome" } | { kind: "box" } | { kind: "repo"; box: string } | { kind: "agent"; box: string; location: string };
@@ -36,6 +37,9 @@ export function OnboardingView() {
   const scene = sceneFor(step.kind, boxStage);
 
   useEffect(markOnboardingStarted, []);
+  // Ask about tailnets now, so Connect a box is laid out with the answer.
+  const client = useStore((s) => s.client);
+  useEffect(() => void prefetchTailnets(client), [client]);
   // Each step, and each part of one, replaces what had the keyboard: it
   // goes to the new step's first field or control, never to <body>.
   const area = useRef<HTMLDivElement>(null);

@@ -25,6 +25,12 @@ type discovery struct {
 	// User is the SSH user to suggest: this computer's.
 	User     string      `json:"user"`
 	Machines []candidate `json:"machines"`
+	// Tailscale is the state of this computer's own Tailscale (without
+	// --network): running, stopped, logged-out or missing. With --json,
+	// anything but running lists no machines rather than failing.
+	Tailscale string `json:"tailscale,omitempty"`
+	// Tailnet is the name of this computer's tailnet, while running.
+	Tailnet string `json:"tailnet,omitempty"`
 }
 
 // discover handles `berth discover [--network NET] [--json]`: the machines
@@ -40,8 +46,14 @@ func discover(l laptop, args []string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 	var peers []network.Peer
+	var system network.SystemTailnet
 	if via == "" {
-		peers, err = network.SystemPeers(ctx)
+		if system, err = network.System(ctx); err == nil {
+			peers = system.Peers
+			if serr := system.Err(); serr != nil && !asJSON {
+				err = serr
+			}
+		}
 	} else {
 		c, aerr := ensureAgent(l)
 		if err = aerr; err == nil {
@@ -59,7 +71,7 @@ func discover(l laptop, args []string) error {
 			}
 		}
 	}
-	out := discovery{Machines: make([]candidate, len(peers))}
+	out := discovery{Machines: make([]candidate, len(peers)), Tailscale: system.State, Tailnet: system.Name}
 	if u, err := user.Current(); err == nil {
 		out.User = u.Username
 	}

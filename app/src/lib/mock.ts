@@ -565,16 +565,37 @@ function mockAttach(box: string, session: string, h: TerminalHandlers) {
 // Boxes: discovering, adding over SSH, pairing, upgrading and forgetting
 // them, and tailnet sign-ins. Added boxes come online empty.
 
+// This Mac's tailnet. ?tailnet=none is a Mac without Tailscale, =off one
+// signed out of it, =stopped one with it turned off.
+type MockMachine = { name: string; dns_name: string; ip: string; os: string; online: boolean; box?: string; ssh?: boolean; host_keys?: string[] };
+const tailnetMode = new URLSearchParams(location.search).get("tailnet");
+// An invented fingerprint: the host key build-01 presents, as the tailnet reports it.
+const BUILD_KEY = "SHA256:bW9jay1idWlsZC0wMS1ob3N0LWtleS1ub3QtcmVhbA";
 const discovery = {
   user: "me",
+  tailscale: tailnetMode === "none" ? "missing" : tailnetMode === "off" ? "logged-out" : tailnetMode === "stopped" ? "stopped" : "running",
+  tailnet: "example.com",
   machines: [
     { name: "dev-box", dns_name: "dev-box.example-tailnet.ts.net", ip: "100.64.0.12", os: "linux", online: true },
+    { name: "build-01", dns_name: "build-01.example-tailnet.ts.net", ip: "100.64.0.14", os: "linux", online: true, ssh: true, host_keys: [BUILD_KEY] },
     { name: "hetzner-ax41", dns_name: "hetzner-ax41.example-tailnet.ts.net", ip: "100.64.0.11", os: "linux", online: true },
     { name: "gpu-runner", dns_name: "gpu-runner.example-tailnet.ts.net", ip: "100.64.0.19", os: "linux", online: false },
-    { name: "my-laptop", dns_name: "my-laptop.example-tailnet.ts.net", ip: "100.64.0.67", os: "macOS", online: true },
-  ] as { name: string; dns_name: string; ip: string; os: string; online: boolean; box?: string }[],
+    { name: "studio-mac", dns_name: "studio-mac.example-tailnet.ts.net", ip: "100.64.0.67", os: "macOS", online: true },
+  ] as MockMachine[],
 };
-if (!fresh) discovery.machines[1].box = "devl";
+if (!fresh) discovery.machines[2].box = "devl";
+if (discovery.tailscale !== "running") {
+  discovery.machines = [];
+  delete (discovery as { tailnet?: string }).tailnet;
+}
+
+// The machines on tailnets Berth signed in to itself, by network.
+const networkMachines: MockMachine[] = [
+  { name: "homelab", dns_name: "homelab.example-home.ts.net", ip: "100.80.0.2", os: "linux", online: true },
+  { name: "nas", dns_name: "nas.example-home.ts.net", ip: "100.80.0.3", os: "linux", online: true, ssh: true },
+  { name: "pi", dns_name: "pi.example-home.ts.net", ip: "100.80.0.4", os: "linux", online: false },
+];
+const discoverNetwork = (_network: string) => ({ user: "me", machines: networkMachines });
 
 const mockNetworks = fresh ? [] : [{ name: "personal", state: "Running", tailnet: "example.ts.net", ips: ["100.64.0.73"] }];
 
@@ -591,7 +612,7 @@ function addMockBox(name: string, address: string, network?: string) {
   sessions[name] ??= [];
   services[name] ??= [];
   stats[name] ??= { hostname: name, cpus: 8, load: [0.2, 0.1, 0.1], memory: { total: 32 * GB, used: 3 * GB }, swap: { total: 0, used: 0 }, disks: [{ mount: "/", total: 240 * GB, used: 40 * GB }], agents: [], hooks: true };
-  const m = discovery.machines.find((x) => address.startsWith(x.ip) || address.startsWith(x.dns_name));
+  const m = [...discovery.machines, ...networkMachines].find((x) => address.startsWith(x.ip) || address.startsWith(x.dns_name));
   if (m) m.box = name;
   emit({ type: "box.connected", box: name });
 }
@@ -629,6 +650,8 @@ function mockSshFailure(host: string, trusted?: string) {
       tried: ["the keys in 1Password's SSH agent", "~/.ssh/id_ed25519"],
       message: `${where} refused the login. Berth offered the keys in 1Password's SSH agent, ~/.ssh/id_ed25519. Make the right key available: unlock your key manager's SSH agent, name it with IdentityAgent for this host in ~/.ssh/config, or choose the key file. Or add this computer's public key to ~/.ssh/authorized_keys on the box.`,
     };
+  if (/build-01/.test(host) && trusted !== BUILD_KEY)
+    return { kind: "host-key-unknown", host: where, port: "22", fingerprint: BUILD_KEY, message: `This computer hasn't connected to ${where} before. Check its host key fingerprint, then trust it to continue.` };
   if (/newkey/.test(host) && trusted !== fp)
     return { kind: "host-key-unknown", host: where, port: "22", fingerprint: fp, message: `This computer hasn't connected to ${where} before. Check its host key fingerprint, then trust it to continue.` };
   if (/changed/.test(host))
@@ -644,7 +667,10 @@ function mockSshFailure(host: string, trusted?: string) {
 }
 
 function laptopBoxes(method: string, path: string, body: unknown): Promise<unknown> | undefined {
-  if (method === "GET" && path.startsWith("/v1/discover")) return delay(discovery);
+  if (method === "GET" && path.startsWith("/v1/discover")) {
+    const network = new URLSearchParams(path.split("?")[1] ?? "").get("network");
+    return delay(network ? discoverNetwork(network) : discovery);
+  }
   if (method === "GET" && path === "/v1/networks") return delay(mockNetworks);
   if (method === "GET" && path === "/v1/ssh/hosts") return delay(["dev-box", "hetzner", "pi"]);
   if (method === "GET" && path.startsWith("/v1/ssh/plan")) return delay(mockSshPlan(new URLSearchParams(path.split("?")[1]).get("host") ?? ""));
@@ -659,7 +685,7 @@ function laptopBoxes(method: string, path: string, body: unknown): Promise<unkno
   if (method === "DELETE" && forget) {
     const name = decodeURIComponent(forget[1]);
     status.boxes = status.boxes.filter((b) => b.name !== name);
-    for (const m of discovery.machines) if (m.box === name) delete m.box;
+    for (const m of [...discovery.machines, ...networkMachines]) if (m.box === name) delete m.box;
     return delay({ removed: name });
   }
   const toggle = /^\/v1\/plugins\/([^/]+)\/(enable|disable)$/.exec(path);
@@ -701,11 +727,12 @@ async function mockStream(method: string, path: string, body: unknown, onValue: 
     if (r.trust_host_key) await say(`Trusted ${where}'s host key (${r.trust_host_key}).`, 200);
     await say(`Checking ${r.host}…`, 300);
     await say("Installing berthd-linux-amd64 (8 MB)…", 900);
-    await say(`  Installed /home/me/.config/systemd/user/berthd.service; berthd is serving on 100.64.0.11:7444.`, 1400);
+    const ip = [...discovery.machines, ...networkMachines].find((m) => m.dns_name === where || m.ip === where)?.ip ?? "100.64.0.11";
+    await say(`  Installed /home/me/.config/systemd/user/berthd.service; berthd is serving on ${ip}:7444.`, 1400);
     const name = r.name || where.split(".")[0];
     await wait(700);
-    addMockBox(name, `${where}:7444`, r.network);
-    onValue({ line: `Paired with ${name} at 100.64.0.11:7444. SSH is no longer needed for this box.` });
+    addMockBox(name, `${ip}:7444`, r.network);
+    onValue({ line: `Paired with ${name} at ${ip}:7444. SSH is no longer needed for this box.` });
     onValue({ done: true });
     return;
   }

@@ -1,6 +1,6 @@
 ---
 title: Add a box
-description: Install berthd on a development machine with one line and pair with the link it prints, or install and pair over SSH in one step.
+description: Set up a machine on your tailnet in a click, install berthd on any box with one line and pair with the link it prints, or install and pair over SSH in one step.
 ---
 
 A **box** is any machine your agents run on, usually Linux: a VPS, a cloud
@@ -17,6 +17,50 @@ TLS; it never needs SSH to reach the box, and at most uses it once, to install.
   elsewhere (see [Where berthd listens](#where-berthd-listens))
 - optional: the agent CLIs you want to run (`claude`, `codex`, …), and
   `cloudflared` for public shares
+
+## On your tailnet
+
+When this Mac runs [Tailscale](https://tailscale.com), **Add a box** (and the
+first-run setup) opens with the machines on its tailnet: the tailnet's name,
+then each Linux or macOS machine with a dot for online or offline, and
+**Paired as …** on the ones that already are boxes. Phones and other devices
+that can't run berthd are left out; a long list gets a filter.
+
+**Set up** on a Linux machine asks who to log in as (your user on this Mac,
+or the `User` your `~/.ssh/config` gives that host; change it if the box's
+user differs) and what to call the box, then runs
+[`berth add ssh`](#over-ssh) to the machine's MagicDNS name with its output
+as it goes. berthd listens on the machine's tailnet address only, so there is
+nothing to open to the internet and nothing to choose.
+
+- **Tailscale SSH.** Machines running Tailscale SSH (`tailscale set --ssh`)
+  are marked; the tailnet's SSH rules decide who logs in, and no keys are
+  needed. Their host keys come from the tailnet itself, so a first login
+  trusts the key without asking when it is the one the tailnet reports. When
+  your rules ask for a check, Berth opens the approval page in your browser
+  and carries on once you approve.
+- **A Mac on the tailnet.** `berth` carries only the Linux daemons, so for a
+  Mac the screen points to [the install command](#with-the-install-command)
+  instead.
+- **Offline machines** are listed, greyed out, until they come back.
+
+The same list from a terminal:
+
+```sh
+berth discover            # the machines on this Mac's tailnet, and which are boxes
+berth add ssh me@dev-box  # what Set up runs
+```
+
+When Tailscale isn't installed, is signed out or is turned off on this Mac,
+the screen shows the install command first and **Or use Tailscale** below it,
+with a link to get Tailscale or a note to sign in from its menu bar icon.
+Coming back to the app checks again.
+
+**Sign in to another tailnet**, beside the list, adds a tailnet this Mac's
+Tailscale isn't on (a personal one while the Mac is on work's, say): Berth
+signs in to it with its own embedded node (see
+[Boxes on another tailnet](#boxes-on-another-tailnet)), and its machines
+appear in the list under a tab of their own, set up the same way.
 
 ## With the install command
 
@@ -175,19 +219,23 @@ in [the security model](/concepts/security#pairing).
 ## In the app
 
 **Add a box** (in Settings → Boxes, the sidebar's Projects menu, or ⌘K), and
-the first-run setup, show one screen:
+the first-run setup, show one screen with every way in:
 
-1. **On the box, run** the [install command](#with-the-install-command),
-   with a copy button.
-2. **Paste what it printed**: the link, or the whole output; Berth keeps the
+1. When this Mac reaches a tailnet, **On your tailnet** lists its machines,
+   each with **Set up** ([above](#on-your-tailnet)).
+2. **Or, on any box**: **On the box, run** the
+   [install command](#with-the-install-command), with a copy button; then
+   **Paste what it printed**: the link, or the whole output; Berth keeps the
    link. Enter pairs.
+3. **Or let Berth set it up over SSH** takes `user@host` (Tab completes hosts
+   from `~/.ssh/config` and machines on your tailnet), says which SSH agent
+   or keys it will use before connecting, and runs `berth add ssh` with its
+   output as it goes.
 
-Below them, **Or let Berth set it up over SSH** takes `user@host` (Tab
-completes hosts from `~/.ssh/config` and machines on your tailnet), says
-which SSH agent or keys it will use before connecting, and runs
-`berth add ssh` with its output as it goes. When a box can't be reached and
-might be on a tailnet this computer isn't signed in to, it offers to sign in
-to that tailnet and tries again.
+Without a tailnet, the install command comes first and **Or use Tailscale**
+sits beside the SSH option. When a box can't be reached and might be on a
+tailnet this computer isn't signed in to, Berth offers to sign in to that
+tailnet and tries again.
 
 ## Where berthd listens
 

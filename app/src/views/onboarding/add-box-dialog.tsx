@@ -2,13 +2,16 @@ import { create } from "zustand";
 
 import { Dialog, DialogPopup } from "@/components/ui/dialog";
 import { toastManager } from "@/components/ui/toast";
+import { useStore } from "@/lib/store";
 import { AddBoxFlow } from "@/views/onboarding/add-box-flow";
+import { prefetchTailnets } from "@/views/onboarding/tailnet";
 
 const useAddBox = create<{ open: boolean }>()(() => ({ open: false }));
 
 // openAddBox shows the add-a-box flow from anywhere: Settings, the sidebar,
 // the command palette.
 export function openAddBox() {
+  prefetchTailnets(useStore.getState().client);
   useAddBox.setState({ open: true });
 }
 

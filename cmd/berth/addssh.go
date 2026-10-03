@@ -335,11 +335,48 @@ func openMaster(sshArgs []string, target string, env []string, dir string) (stri
 	cmd := exec.Command("ssh", append(append([]string{"-v", "-o", "ControlMaster=yes", "-o", "ControlPersist=120", "-f", "-N"}, sshArgs...), target)...)
 	cmd.Env = env
 	cmd.Stderr = errFile
-	if err := cmd.Run(); err != nil {
+	if err := cmd.Start(); err != nil {
+		return "", err
+	}
+	// Tailscale SSH in check mode holds the login until the person approves
+	// it in a browser, and says where in ssh's stderr. Pass that on, or the
+	// login would wait for an approval nobody knows to give.
+	stop := make(chan struct{})
+	watched := make(chan struct{})
+	go func() {
+		defer close(watched)
+		for {
+			select {
+			case <-stop:
+				return
+			case <-time.After(300 * time.Millisecond):
+			}
+			if data, err := os.ReadFile(errFile.Name()); err == nil {
+				if u := checkURL(string(data)); u != "" {
+					fmt.Printf("Tailscale SSH asks you to approve this login in your browser: %s\n", u)
+					return
+				}
+			}
+		}
+	}()
+	err = cmd.Wait()
+	close(stop)
+	<-watched
+	if err != nil {
 		stderr, _ := os.ReadFile(errFile.Name())
 		return string(stderr), err
 	}
 	return "", nil
+}
+
+var checkPattern = regexp.MustCompile(`(?i)to authenticate, visit:?\s*(https://\S+)`)
+
+// checkURL finds the approval page Tailscale SSH's check mode names.
+func checkURL(stderr string) string {
+	if m := checkPattern.FindStringSubmatch(stderr); m != nil {
+		return m[1]
+	}
+	return ""
 }
 
 // hasOption reports whether ssh arguments set an -o option already; ssh
