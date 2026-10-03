@@ -29,7 +29,7 @@ func agentService(l laptop) (service.Spec, error) {
 	}
 	name := "berth-agent"
 	if runtime.GOOS == "darwin" {
-		name = "com.calcom.berth.agent"
+		name = "dev.berth.agent"
 	}
 	return service.Spec{
 		Name:        name,

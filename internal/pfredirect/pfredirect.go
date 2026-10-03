@@ -20,7 +20,7 @@ const (
 	// Anchor sits under Apple's rdr-anchor "com.apple/*", which the default
 	// /etc/pf.conf already evaluates, so pf.conf is never edited.
 	Anchor = "com.apple/berth"
-	Label  = "com.calcom.berth.pf"
+	Label  = "dev.berth.pf"
 )
 
 // Paths are variables so tests can redirect them.

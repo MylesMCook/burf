@@ -27,7 +27,7 @@ func daemonService(b boxHome, listen string) service.Spec {
 	}
 	name := "berthd"
 	if runtime.GOOS == "darwin" {
-		name = "com.calcom.berthd"
+		name = "dev.berth.berthd"
 	}
 	args := []string{"serve"}
 	if listen != "" {
