@@ -96,10 +96,11 @@ is applied, not refused, since a setup script may install it.
 a kit in `~/.berth/kits/my-kit/`; push that folder to a git repository to
 share it.
 
-The repository's [`kits/cal-com`](https://github.com/sean-brydon/berthd/tree/main/kits/cal-com)
-is a complete example: a Postgres database per worktree (a copy of the main
-one when migrations match), its own `.env`, two ports, a dev server and
-Prisma Studio.
+[berth-kit-calcom](https://github.com/sean-brydon/berth-kit-calcom) is a
+complete example, published as its own repository: a Postgres database per
+worktree (a copy of the main one when migrations match), its own `.env`, two
+ports, a dev server and Prisma Studio, with a daily sweep of old databases.
+Add it with `berth kit add github.com/sean-brydon/berth-kit-calcom`.
 
 ## How it applies
 

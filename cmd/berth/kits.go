@@ -266,7 +266,14 @@ func describeKit(k agent.KitInfo) {
 		row("hook", h.On+": "+h.Run)
 	}
 	for _, f := range cfg.Flows {
-		row("flow", f.Name+" (on "+f.Trigger.Event+")")
+		when := "on " + f.Trigger.Event
+		switch {
+		case f.Trigger.Schedule != "":
+			when = "every " + f.Trigger.Schedule
+		case f.Trigger.GitHub != nil:
+			when = "on GitHub " + f.Trigger.GitHub.On
+		}
+		row("flow", f.Name+" ("+when+")")
 	}
 	for _, a := range cfg.Agents {
 		row("agent", a.ID+": "+a.Command)

@@ -166,8 +166,23 @@ var githubTree = regexp.MustCompile(`^https://github\.com/([^/]+)/([^/]+)/tree/(
 
 // fetchKit gets a kit from src into a fresh folder under tmpRoot and returns
 // the kit's folder in it and the commit it came from.
+// knownHosts are where a kit link written without https:// is still meant
+// as a web link ("github.com/me/kit"), not a local path.
+var knownHosts = []string{"github.com/", "gist.github.com/", "gitlab.com/", "bitbucket.org/", "codeberg.org/"}
+
+// withScheme puts https:// in front of a link to a known git host that was
+// written without one.
+func withScheme(src string) string {
+	for _, h := range knownHosts {
+		if strings.HasPrefix(src, h) {
+			return "https://" + src
+		}
+	}
+	return src
+}
+
 func fetchKit(ctx context.Context, src, tmpRoot string) (dir, commit string, err error) {
-	src = strings.TrimSpace(src)
+	src = withScheme(strings.TrimSpace(src))
 	if src == "" || strings.HasPrefix(src, "-") {
 		return "", "", errors.New("give a kit link: a git repository, a gist, a kit.json URL, or a folder")
 	}
