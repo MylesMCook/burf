@@ -27,7 +27,9 @@ import (
 // notify someone, or call a webhook, each step on the previous one's success
 // or failure. They run on the box, so they keep going while the laptop
 // sleeps. A box has its own flows, and a repository's config can carry flows
-// for its own worktrees.
+// for its own worktrees, layered like the rest of its config: committed in
+// the repository, then its kit's, then this box's own, the most local flow
+// with an id replacing the others.
 
 type Flow struct {
 	ID      string  `json:"id"`
@@ -36,9 +38,15 @@ type Flow struct {
 	Trigger Trigger `json:"trigger"`
 	Steps   []Step  `json:"steps"`
 	// MaxRunsPerHour stops a flow that keeps triggering itself, such as one
-	// prompting the agent whose finishing started it. Default 20.
+	// prompting the agent whose finishing started it. Zero means
+	// DefaultMaxRunsPerHour.
 	MaxRunsPerHour int `json:"max_runs_per_hour,omitempty"`
 }
+
+// DefaultMaxRunsPerHour is how many times a flow may start in an hour when
+// it doesn't say. The app's DEFAULT_MAX_RUNS_PER_HOUR (app/src/lib/flows.ts)
+// shows the same number.
+const DefaultMaxRunsPerHour = 20
 
 // Trigger is what starts a flow, narrowed by Where: an event, a schedule,
 // or something happening on GitHub. Exactly one of the three is set.
@@ -249,10 +257,15 @@ const maxFlowRuns = 200
 
 // ScopedFlow is a flow with where it comes from.
 type ScopedFlow struct {
-	Scope    string `json:"scope"`  // "box" or "repo:<location>"
-	Source   string `json:"source"` // "box", "repo" (committed) or "local"
+	Scope string `json:"scope"` // "box" or "repo:<location>"
+	// Source is "box", or for a repository's flow its layer: "repo"
+	// (committed), "kit" (the location's kit) or "local" (this box's).
+	Source   string `json:"source"`
 	Editable bool   `json:"editable"`
-	Flow     Flow   `json:"flow"`
+	// Overridden is set on a flow a more local layer replaces with a flow of
+	// the same id. It is listed so the app can show it, but never runs.
+	Overridden bool `json:"overridden,omitempty"`
+	Flow       Flow `json:"flow"`
 }
 
 func (f *Flows) loadBox() ([]Flow, error) {
@@ -287,7 +300,10 @@ func (f *Flows) SaveBox(flows []Flow) error {
 	return statefile.Write(f.Path, append(b, '\n'))
 }
 
-// AllFlows lists every flow on the box: its own, then each repository's.
+// AllFlows lists every flow on the box: its own, then each repository's
+// layers in the order its config merges them (committed, its kit's, this
+// box's). A flow replaced by id in a more local layer is marked Overridden;
+// ActiveFlows leaves those out.
 func (b *Box) AllFlows(ctx context.Context) ([]ScopedFlow, error) {
 	out := []ScopedFlow{}
 	own, err := b.Flows.loadBox()
@@ -303,13 +319,43 @@ func (b *Box) AllFlows(ctx context.Context) ([]ScopedFlow, error) {
 		if err != nil {
 			continue
 		}
-		if cfg.Repo != nil {
-			for _, f := range cfg.Repo.Flows {
-				out = append(out, ScopedFlow{Scope: "repo:" + l.Name, Source: "repo", Flow: f})
+		scope, start := "repo:"+l.Name, len(out)
+		add := func(source string, editable bool, flows []Flow) {
+			for _, f := range flows {
+				out = append(out, ScopedFlow{Scope: scope, Source: source, Editable: editable, Flow: f})
 			}
 		}
-		for _, f := range cfg.Local.Flows {
-			out = append(out, ScopedFlow{Scope: "repo:" + l.Name, Source: "local", Editable: true, Flow: f})
+		if cfg.Repo != nil {
+			add("repo", false, cfg.Repo.Flows)
+		}
+		if cfg.Kit != nil {
+			add("kit", false, cfg.Kit.Config.Flows)
+		}
+		add("local", true, cfg.Local.Flows)
+		// Like merge: a later layer's flow replaces an earlier one's by id.
+		for i := start; i < len(out); i++ {
+			for j := i + 1; j < len(out); j++ {
+				if out[j].Flow.ID == out[i].Flow.ID {
+					out[i].Overridden = true
+				}
+			}
+		}
+	}
+	return out, nil
+}
+
+// ActiveFlows is the flows that run: AllFlows without the overridden ones,
+// so each scope has at most one flow per id, and its run limit and schedule
+// are its own.
+func (b *Box) ActiveFlows(ctx context.Context) ([]ScopedFlow, error) {
+	all, err := b.AllFlows(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out := all[:0]
+	for _, sf := range all {
+		if !sf.Overridden {
+			out = append(out, sf)
 		}
 	}
 	return out, nil
@@ -330,7 +376,7 @@ func (f *Flows) Run(ctx context.Context, b *Box) {
 			if strings.HasPrefix(e.Type, "flow.") {
 				continue
 			}
-			all, err := b.AllFlows(ctx)
+			all, err := b.ActiveFlows(ctx)
 			if err != nil {
 				continue
 			}
@@ -387,7 +433,7 @@ func (f *Flows) admit(key, slot string, limit int) bool {
 		return false
 	}
 	if limit <= 0 {
-		limit = 20
+		limit = DefaultMaxRunsPerHour
 	}
 	cut := time.Now().Add(-time.Hour)
 	kept := f.recent[key][:0]
@@ -478,6 +524,7 @@ func newRunID() string {
 
 // runFlow runs a flow's steps in order for one event.
 func (b *Box) runFlow(ctx context.Context, sf ScopedFlow, e events.Event) FlowRun {
+	// One key per effective flow: a scope has one active flow per id.
 	key := sf.Scope + "/" + sf.Flow.ID
 	loc, wt, scoped := b.eventScope(ctx, e.Data)
 	slot := wt.Path
@@ -783,7 +830,7 @@ func (b *Box) testFlow(w http.ResponseWriter, r *http.Request) error {
 	if err := decode(r, &req); err != nil {
 		return err
 	}
-	all, err := b.AllFlows(r.Context())
+	all, err := b.ActiveFlows(r.Context())
 	if err != nil {
 		return err
 	}

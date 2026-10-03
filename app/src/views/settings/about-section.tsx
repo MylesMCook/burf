@@ -1,14 +1,19 @@
+import { openDocs } from "@/lib/open-url";
 import { NONE, useStore } from "@/lib/store";
 import { useAppVersion } from "@/views/settings/app-version";
 import { SettingsGroup, SettingsPage, SettingsRow } from "@/views/settings/rows";
 
-const DOCS: [file: string, what: string][] = [
-  ["docs/design.md", "How Berth works, and its security model"],
-  ["docs/hooks.md", "Every event and gate, and how hooks run"],
-  ["docs/orchestration.md", "Agents driving agents: send, wait, exec, loop"],
-  ["docs/templates.md", ".berth/config.json and task templates"],
-  ["docs/plugins.md", "Writing plugins"],
-  ["docs/app-api.md", "The API this app uses"],
+const DOCS: [path: string, title: string, what: string][] = [
+  ["/concepts/architecture", "How Berth works", "The box serves, the laptop connects, and the app is only a view"],
+  ["/concepts/security", "Security model", "Identity, pinned mutual TLS, pairing, and where berthd listens"],
+  ["/guides/hooks", "Hooks", "Run a command when something happens, or gate an action"],
+  ["/reference/events", "Events", "Every event and gate, and what each carries"],
+  ["/guides/orchestration", "Orchestration", "Agents driving agents: send, wait, exec, loop"],
+  ["/reference/config", "Project config", ".berth/config.json, field by field"],
+  ["/guides/task-templates", "Task templates", "Kinds of task you start often, with the agent, branch and prompt filled in"],
+  ["/guides/plugins", "Plugins", "Writing plugins"],
+  ["/reference/plugin-sdk", "Plugin SDK", "Everything a plugin can call"],
+  ["/reference/app-api", "App API", "The API this app uses"],
 ];
 
 export function AboutSection() {
@@ -35,11 +40,13 @@ export function AboutSection() {
           );
         })}
       </SettingsGroup>
-      <SettingsGroup title="Documentation" description="Markdown files in the docs folder of the Berth repository.">
+      <SettingsGroup title="Documentation" description="docs.berthd.app, opened in your browser.">
         <div className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 px-4 py-3 text-xs">
-          {DOCS.map(([file, what]) => (
-            <div key={file} className="contents">
-              <span className="font-mono text-foreground/90">{file.replace("docs/", "")}</span>
+          {DOCS.map(([path, title, what]) => (
+            <div key={path} className="contents">
+              <button type="button" onClick={() => void openDocs(path)} className="text-left text-foreground/90 underline-offset-2 hover:underline">
+                {title}
+              </button>
               <span className="text-muted-foreground">{what}</span>
             </div>
           ))}

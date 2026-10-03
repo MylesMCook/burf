@@ -157,3 +157,78 @@ func TestWebhooksPostTheRunsContext(t *testing.T) {
 		t.Fatal("the webhook was never called")
 	}
 }
+
+func echoFlow(id, says string, enabled bool) Flow {
+	return Flow{ID: id, Name: id, Enabled: enabled, Trigger: Trigger{Event: "agent.finished"}, Steps: []Step{{Kind: "run", Command: "echo " + says}}}
+}
+
+func TestFlowLayersMergeByIDTheMostLocalWinning(t *testing.T) {
+	ctx := context.Background()
+	b, _, _ := flowBox(t, []Flow{echoFlow("check", "repo", true), echoFlow("repo-only", "repo", true), echoFlow("lint", "repo", true)})
+	if err := b.Locations.setKit("cal", &InstalledKit{ID: "cal-dev", Name: "Cal dev", Config: RepoConfig{Flows: []Flow{echoFlow("check", "kit", true), echoFlow("kit-only", "kit", true), echoFlow("lint", "kit", true)}}}); err != nil {
+		t.Fatal(err)
+	}
+	if err := b.Locations.SetLocalConfig("cal", RepoConfig{Flows: []Flow{echoFlow("check", "local", false)}}); err != nil {
+		t.Fatal(err)
+	}
+	all, err := b.AllFlows(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var listed []string
+	for _, sf := range all {
+		s := sf.Source + "/" + sf.Flow.ID
+		if sf.Overridden {
+			s += " (overridden)"
+		}
+		if sf.Scope != "repo:cal" || sf.Editable != (sf.Source == "local") {
+			t.Errorf("%s: scope %s, editable %v", s, sf.Scope, sf.Editable)
+		}
+		listed = append(listed, s)
+	}
+	want := "repo/check (overridden),repo/repo-only,repo/lint (overridden),kit/check (overridden),kit/kit-only,kit/lint,local/check"
+	if got := strings.Join(listed, ","); got != want {
+		t.Fatalf("listed %s\nwant   %s", got, want)
+	}
+	active, _ := b.ActiveFlows(ctx)
+	var running []string
+	for _, sf := range active {
+		running = append(running, sf.Source+"/"+sf.Flow.ID)
+	}
+	if got := strings.Join(running, ","); got != "repo/repo-only,kit/kit-only,kit/lint,local/check" {
+		t.Fatalf("active = %s", got)
+	}
+}
+
+func TestKitFlowsRunAndAnOverrideRunsInsteadOfTheCommittedFlow(t *testing.T) {
+	b, _, wt := flowBox(t, []Flow{echoFlow("check", "committed", true)})
+	b.Locations.setKit("cal", &InstalledKit{ID: "cal-dev", Name: "Cal dev", Config: RepoConfig{Flows: []Flow{echoFlow("kit-check", "from-the-kit", true)}}})
+	b.Locations.SetLocalConfig("cal", RepoConfig{Flows: []Flow{echoFlow("check", "overridden-here", true)}})
+	b.Events.Publish(events.Event{Type: "agent.finished", Data: map[string]any{"path": wt.Path}})
+
+	if run := waitRun(t, b, "kit-check"); run.Status != "succeeded" || strings.TrimSpace(run.Steps[0].Output) != "from-the-kit" || run.Scope != "repo:cal" {
+		t.Fatalf("kit run = %+v", run)
+	}
+	if run := waitRun(t, b, "check"); strings.TrimSpace(run.Steps[0].Output) != "overridden-here" {
+		t.Fatalf("check ran %q, want the override", run.Steps[0].Output)
+	}
+	time.Sleep(300 * time.Millisecond)
+	if runs := b.Flows.Runs("check", 10); len(runs) != 1 {
+		t.Fatalf("check ran %d times, want only the override", len(runs))
+	}
+}
+
+func TestADisabledOverrideStopsTheFlowItReplaces(t *testing.T) {
+	b, _, wt := flowBox(t, []Flow{echoFlow("check", "committed", true), echoFlow("sentinel", "ok", true)})
+	b.Locations.setKit("cal", &InstalledKit{ID: "cal-dev", Name: "Cal dev", Config: RepoConfig{Flows: []Flow{echoFlow("lint", "kit", true)}}})
+	b.Locations.SetLocalConfig("cal", RepoConfig{Flows: []Flow{echoFlow("check", "committed", false), echoFlow("lint", "kit", false)}})
+	b.Events.Publish(events.Event{Type: "agent.finished", Data: map[string]any{"path": wt.Path}})
+
+	waitRun(t, b, "sentinel")
+	time.Sleep(300 * time.Millisecond)
+	for _, id := range []string{"check", "lint"} {
+		if runs := b.Flows.Runs(id, 10); len(runs) != 0 {
+			t.Errorf("%s ran %d times though this box switched it off", id, len(runs))
+		}
+	}
+}

@@ -47,13 +47,13 @@ const calKit: KitInfo = {
     ],
     flows: [
       {
-        id: "types-after-turn",
-        name: "Type-check after every Claude turn",
+        id: "lint-after-turn",
+        name: "Lint what changed after every Claude turn",
         enabled: true,
         trigger: { event: "agent.finished", where: { agent: "claude" } },
         steps: [
-          { kind: "run", command: "yarn type-check:ci --filter=...[HEAD]", timeout: "15m" },
-          { kind: "prompt", when: "failure", text: "Type-check failed:\n\n{{prev.output}}\n\nFix it." },
+          { kind: "run", command: "yarn lint --filter=...[HEAD]", timeout: "10m" },
+          { kind: "prompt", when: "failure", text: "Lint failed:\n\n{{prev.output}}\n\nFix it." },
         ],
       },
     ],

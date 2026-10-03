@@ -14,8 +14,8 @@ description: Every event Berth announces, the gates that can refuse actions, and
 | --- | --- |
 | `type` | What happened, `area.thing` |
 | `time` | When |
-| `box` | The box it happened on (set when relayed to the laptop) |
-| `origin` | The tool it came from: `app`, `berth`, `claude`, `detected`, `flow:<id>`, `phone`, a hook's `tool`… |
+| `box` | The box it happened on, or a laptop event's box (`box.connected`, `forward.*`) |
+| `origin` | The tool it came from: `app`, `berth` (the default), `claude`, `detected`, `flow:<id>`, `guard`, `phone`, a hook's `tool`… |
 | `error` | For failures |
 | `data` | Depends on the type; below |
 
@@ -23,9 +23,10 @@ Box events reach the laptop too: the laptop agent relays every online box's
 events with `box` set. `berth events` and `GET /v1/events` stream them.
 
 Anything can announce its own: `berth emit TYPE key=value…` on the laptop,
-`berthd emit TYPE key=value… --origin TOOL` on a box. A type is two
-lowercase words joined by a dot; an origin is lowercase letters, digits and
-dashes.
+`berthd emit TYPE key=value… --origin TOOL` on a box. A type is two words
+of lowercase letters, digits and dashes joined by a dot, each starting with
+a letter and at most 32 characters; an origin is lowercase letters, digits
+and dashes.
 
 ## Box events
 
@@ -33,9 +34,9 @@ dashes.
 
 | Event | Data |
 | --- | --- |
-| `agent.ready` | `path`, `agent`, `session_id`: a new agent at its prompt |
+| `agent.ready` | `path`, `agent` and the tool's own id (below): a new agent at its prompt |
 | `agent.started` | the same: working on a prompt |
-| `agent.waiting` | the same: needs you (a permission, a question, or `reason: "startup question"`) |
+| `agent.waiting` | the same: needs you (a permission or a question). At a startup question Berth sends it itself, with `path`, `agent`, `session` and `reason: "startup question"` |
 | `agent.finished` | the same: done with its turn |
 | `task.created` | `location`, `name`, `path`, `branch`, `session`, `agent`, `from_session` |
 | `session.started` | `name`, `location`, `path`, `command` |
@@ -46,8 +47,9 @@ dashes.
 | `preview.open` | `location`, `name`, `path`, `port`, `url_path`: an agent asks the app to show a page (`berthd preview`) |
 
 Agent events come from the agents' own hooks (`berthd integrations install`),
-with the tool as their origin. Claude Code sends all four; Codex and Cursor
-send `agent.finished`.
+with the tool as their origin. Claude Code sends all four, with
+`session_id`; Codex sends `agent.finished` with `turn_id`, and Cursor
+`agent.finished` with `conversation_id` and `status`.
 
 ### Locations and worktrees
 
@@ -90,14 +92,18 @@ Flows triggered by a schedule or GitHub receive `schedule.fired` or
 `github.pr_merged` as their event; these start the flow directly and are not
 announced to hooks.
 
+A flow's `scope` is `box` or `repo:<location>`, whichever layer (committed,
+kit or the box's own) the flow comes from; only the flow that wins its `id`
+runs, so `flow` and `scope` name one flow.
+
 ## Laptop events
 
 | Event | Data |
 | --- | --- |
 | `laptop.started` | |
 | `box.connected` | |
-| `box.disconnected`, `box.untrusted` | `error` |
-| `forward.started`, `forward.failed`, `forward.removed` | `id`, `local`, `remote` |
+| `box.disconnected`, `box.untrusted` | none; the envelope's `error` says why |
+| `forward.started`, `forward.failed`, `forward.removed` | `id`, `local`, `remote` (and the envelope's `error` on a failure) |
 | `queue.changed` | `queued`, `failed` |
 | `queue.delivered` | `id`, `box`, `session`, `attempts` |
 | `queue.failed` | `id`, `box`, `session`, `reason` (never the prompt) |

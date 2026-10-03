@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTab } from "@/components/ui/tabs";
-import type { Scope, ScopedFlow } from "@/lib/flows";
+import { isOverridden, type Scope, type ScopedFlow } from "@/lib/flows";
 import { useProjects } from "@/lib/project-groups";
 import { rescueFocus } from "@/lib/focus-home";
 import { load, save } from "@/lib/storage";
@@ -50,7 +50,7 @@ export function AutomationsView() {
       .filter((r) => !!r)
       .sort((a, b) => b.started.localeCompare(a.started))[0];
 
-  const open = (box: string, f: ScopedFlow) => setEditing({ box, scope: f.scope, flow: f.flow, savedId: f.flow.id, readOnly: !f.editable, shared: sharedSet(box, f) });
+  const open = (box: string, f: ScopedFlow) => setEditing({ box, scope: f.scope, flow: f.flow, savedId: f.flow.id, readOnly: !f.editable, source: f.source, shared: sharedSet(box, f) });
   // A box's copy of a flow saved on every box with its project: editing it
   // alone splits it from the others, so the editor says so and offers all.
   const sharedSet = (box: string, f: ScopedFlow): EditTarget["shared"] => {
@@ -84,7 +84,9 @@ export function AutomationsView() {
       settle();
       return;
     }
-    const f = byBox[request.box]?.flows?.find((x) => x.scope === request.scope && x.flow.id === request.id);
+    // The flow that runs: an override, not the committed or kit flow it replaces.
+    const all = byBox[request.box]?.flows ?? [];
+    const f = all.find((x) => x.scope === request.scope && x.flow.id === request.id && !isOverridden(x, all));
     if (f) {
       open(request.box, f);
       settle();

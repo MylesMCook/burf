@@ -57,13 +57,16 @@ const list = (xs: string[]) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1)
 
 // savedWhere says in a line where a flow lives, so it is never a surprise.
 // places is where a flow for every box is written.
-export function savedWhere(box: string, scope: Scope, committed?: boolean, places?: Place[]): string {
+// A read-only flow says which layer it comes from: committed ("repo") or the
+// project's kit ("kit").
+export function savedWhere(box: string, scope: Scope, readOnlyFrom?: "repo" | "kit", places?: Place[]): string {
   if (box === EVERY_BOX) {
     const boxes = (places ?? []).map((p) => p.box);
     return boxes.length ? `Saved on ${list(boxes)}, the same on each · not committed. Boxes that get the project later don't have it yet.` : "No box with this project is online.";
   }
   const loc = scopeLocation(scope);
-  if (committed) return "Saved in the repo's .berth/config.json";
+  if (readOnlyFrom === "kit") return "From the project's kit, applied on this box";
+  if (readOnlyFrom) return "Saved in the repo's .berth/config.json";
   return loc ? `Saved on ${box} for ${loc} · not committed` : `Saved on ${box} · runs for every project there`;
 }
 

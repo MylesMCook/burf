@@ -75,7 +75,7 @@ func (b *Box) flowTargets(ctx context.Context, sf ScopedFlow, withMain bool) []s
 
 // fireScheduled starts the scheduled flows due in minute t.
 func (b *Box) fireScheduled(ctx context.Context, t time.Time) int {
-	all, err := b.AllFlows(ctx)
+	all, err := b.ActiveFlows(ctx)
 	if err != nil {
 		return 0
 	}
@@ -258,7 +258,7 @@ func ghRun(ctx context.Context, dir string, out any, args ...string) error {
 // new comments, reviews, failed checks and merges. It returns how many runs
 // it started.
 func (b *Box) pollGitHub(ctx context.Context, now time.Time) int {
-	all, err := b.AllFlows(ctx)
+	all, err := b.ActiveFlows(ctx)
 	if err != nil {
 		return 0
 	}

@@ -4,8 +4,9 @@ description: The loopback API the desktop app and plugins use, and the box API b
 ---
 
 The desktop app is only a view. It talks to the laptop agent (`berth agent`,
-started on demand by the CLI or the app), which holds the connections to
-every box. Closing the app, or the app crashing, never stops an agent session
+which any `berth` command that needs it starts, and
+`berth agent install` keeps running as a service), which holds the
+connections to every box. The app never starts the agent itself. Closing the app, or the app crashing, never stops an agent session
 or a forward.
 
 ## Transport
@@ -21,8 +22,9 @@ The agent serves the app on `http://127.0.0.1:1378`.
 - **Host check.** Requests whose `Host` is not `127.0.0.1:1378` or
   `localhost:1378` are refused, so a web page cannot reach the agent through
   DNS rebinding.
-- **CORS.** Allowed origins are `tauri://localhost`, `http://tauri.localhost`
-  and `http://localhost:1420` (Vite in development).
+- **CORS.** Allowed origins are `tauri://localhost`, `http://tauri.localhost`,
+  `https://tauri.localhost`, and `http://localhost:1420` to `:1439` (Vite in
+  development). The token, not the origin, is what keeps other pages out.
 
 ## Laptop
 
@@ -32,14 +34,14 @@ The agent serves the app on `http://127.0.0.1:1378`.
 | `GET /v1/events` | Server-sent events: one `data: <Event JSON>` per event, from this laptop and every online box (box events carry `box`) |
 | `POST /v1/forwards` | `{ box, local, remote }` → the forward |
 | `DELETE /v1/forwards/{id}` | the removed forward |
-| `GET /v1/themes` | `Theme[]`: built-in, `~/.berth/themes/*.json`, and plugins' |
-| `GET /v1/templates` | `TaskTemplate[]` from `~/.berth/templates/*.json` |
+| `GET /v1/themes` | `Theme[]` from `~/.berth/themes/*.json` and enabled plugins (the app adds its built-in themes) |
+| `GET /v1/templates` | `TaskTemplate[]` from `~/.berth/templates/*.json`; `id` defaults to the file's name |
 | `GET /v1/plugins` | `PluginInfo[]` from `~/.berth/plugins/*/berth-plugin.json` |
 | `GET /v1/plugins/{id}/{file}` | a file from that plugin's folder (its `main` module, assets) |
-| `POST /v1/plugins/{id}/enable`, `/disable` | turns a plugin on or off |
+| `POST /v1/plugins/{id}/enable`, `POST /v1/plugins/{id}/disable` | turns a plugin on or off |
 | `GET /v1/app/{key}`, `PUT /v1/app/{key}` | an app settings document, `~/.berth/app/<key>.json` (JSON, at most 1 MB; `null` when missing). The app keeps `prompts`, `projects`, `sidebar` and `notifications` here; a change announces `app.changed`. |
-| `GET /v1/kits`, `GET /v1/kits/{id}`, `POST /v1/kits/add`, `/v1/kits/{id}/apply`, `/v1/kits/{id}/update`, `DELETE /v1/kits/{id}` | the [kits](/guides/kits) library, as `berth kit` uses it |
-| `GET /v1/hooks`, `PUT /v1/hooks` | the laptop's `hooks.json` |
+| `GET /v1/kits`, `GET /v1/kits/installed`, `GET /v1/kits/{id}`, `POST /v1/kits/preview`, `POST /v1/kits/add`, `POST /v1/kits/{id}/apply`, `POST /v1/kits/{id}/update`, `DELETE /v1/kits/{id}`, `POST /v1/kits/remove`, `POST /v1/kits/save` | the [kits](/guides/kits) library, as `berth kit` uses it |
+| `GET /v1/hooks`, `PUT /v1/hooks` | the laptop's `hooks.json`: `{ path, hooks }`; PUT takes `{ hooks }` and announces `hooks.changed` |
 | `GET /v1/queue` | `QueueItem[]`: prompts waiting for their box, oldest first |
 | `POST /v1/queue` | `{ id?, box, session, text, wait?, enter? }` → `QueueItem`; the same `id` again returns the item already queued |
 | `PATCH /v1/queue/{id}` | `{ box?, session?, text? }` → `QueueItem`: move or edit one; it goes back in line as `queued` |
@@ -48,12 +50,33 @@ The agent serves the app on `http://127.0.0.1:1378`.
 | `DELETE /v1/queue/{id}` | the discarded `QueueItem`; 409 while it is being sent |
 
 `QueueItem` is the offline prompt queue's entry ([the offline queue](/guides/offline-queue)):
-`{ id, box, session, text, enter, wait, state, error?, created, attempts?,
-last_attempt?, blocked?, seq }`. `state` is `queued` (waiting for the box),
+
+```ts
+{ id, box, session, text, enter, wait, state, error?, created, attempts?, last_attempt?, blocked?, seq }
+```
+
+`state` is `queued` (waiting for the box),
 `waiting` (the box is back; waiting for the agent's turn to end), `sending`,
 or `failed` with `error`. `blocked` marks one held behind an earlier failed
 prompt to the same session. `wait` (default true) holds a prompt while the
 agent is mid-turn; `enter` (default true) presses Enter after it.
+
+The app also uses these, mostly as the CLI does:
+
+| Method and path | What it does |
+| --- | --- |
+| `POST /v1/refresh` | Check every box now; returns the status |
+| `POST /v1/routes`, `DELETE /v1/routes?pattern=P` | `{ pattern, box, port }`: add or remove a [route](/reference/cli#reaching-services) |
+| `POST /v1/events` | `{ type, origin?, data? }`: announce an event on this laptop, as `berth emit` |
+| `GET /v1/networks`, `GET /v1/networks/{name}/peers`, `POST /v1/networks/{name}/login` | Joined networks, their machines, and joining one |
+| `GET /v1/discover?network=NET` | Machines that could be boxes, as `berth discover` |
+| `POST /v1/boxes/pair` | `{ link, name?, network? }`: pair, as `berth pair` |
+| `POST /v1/boxes/add-ssh`, `POST /v1/boxes/{box}/upgrade`, `POST /v1/setup/port80?remove=1` | Run `berth add ssh`, `berth upgrade` or `berth setup port80`, streaming its output as NDJSON `{ line?, done?, error? }` |
+| `DELETE /v1/boxes/{box}` | Forget a box, as `berth forget` |
+| `GET /v1/editors`, `POST /v1/editors/open` | Editors on this laptop; `{ editor, box, location?, path?, file?, line?, col? }` opens one, as `berth edit` |
+| `GET /v1/ssh-config`, `POST /v1/ssh-config` | The SSH hosts editors use, and writing them, as `berth ssh-config` |
+
+`POST /v1/stop` is refused here: the app cannot stop the agent.
 
 ## Boxes
 
@@ -68,28 +91,28 @@ failed after it went out (the box may have acted on it). The box API:
 | `GET locations` | `Location[]`, each with its `worktrees` |
 | `POST locations` | `{ name, path }` → `Location` |
 | `DELETE locations/{name}` | |
-| `POST locations/{name}/worktrees` | `{ name, branch?, base? }` → `Worktree`; runs the setup script |
+| `POST locations/{name}/worktrees` | `{ name, branch?, base?, pr?, ref? }` → `Worktree`; runs the setup script |
 | `DELETE locations/{name}/worktrees/{wt}?force=1` | |
 | `GET sessions` | `Session[]` |
-| `POST sessions` | `{ name?, location: "loc" or "loc/wt", command? }` → `Session` |
+| `POST sessions` | `{ name?, location: "loc" or "loc/wt", command?, agent?, prompt?, open? }` → `Session` |
 | `DELETE sessions/{name}` | |
 | `GET sessions/{name}/screen?history=N` | `{ screen: string }` |
-| `POST tasks` | `{ location, name, branch?, base?, agent?, command?, prompt? }` → `{ worktree, session }`: a worktree with an agent already running in it |
+| `POST tasks` | `TaskRequest` (`{ location, name, branch?, base?, agent?, command?, prompt?, … }`) → `{ worktree, session }`: a worktree with an agent already running in it |
 | `GET stats` | `Stats`: memory, disks, load, agents |
 | `GET services` | `Service[]`: listening ports by worktree |
 | `GET ports` | `Port[]` |
-| `GET info` | `{ name, os, arch, build, tools: string[], agents: AgentPreset[] }` |
+| `GET info` | `{ name, os, arch, build, user?, home?, tools: string[], agents: AgentPreset[] }` |
 | `GET doctor` | `Check[]` |
 | `POST secrets/test` | `{ ref }` → `{ ok, length?, error? }`: resolves a [secret reference](/guides/secrets) on the box now (`op://…` or `env://…`), skipping its cache, and reports whether it could and the value's length, never the value. A malformed reference is `ok: false` with why |
 | `POST secrets/report` | Only on the box's own socket: what `berthd secret exec` resolved for a session or service, which variables resolved and which failed and why, never values |
 | `POST sessions/{name}/send` | `{ text, enter? }`: types a prompt ([orchestration](/guides/orchestration)) |
 | `GET sessions/{name}/wait?for=finished,waiting&after=TIME&timeout=10m` | `{ state, timed_out }`: `after` is an RFC 3339 time; `timeout` a duration, 1s to 1h (default 10m) |
-| `POST exec` | `{ location, command, timeout? }` → `{ exit_code, output, truncated? }` |
+| `POST exec` | `{ location, command, timeout? }` → `{ exit_code, output, truncated? }`; `timeout` defaults to 10m, at most 1h |
 | `GET locations/{name}/config`, `PUT locations/{name}/config` | `{ repo, kit?, local, effective }`; PUT takes `{ local }` ([config](/reference/config)) |
 | `GET locations/{name}/worktrees/{wt}/services` | `WorktreeService[]` |
 | `POST locations/{name}/worktrees/{wt}/services/{service}/{start,stop,restart}` | |
 | `POST locations/{name}/worktrees/{wt}/{pause,resume}` | pauses or resumes a worktree |
-| `GET flows`, `PUT flows` | every flow on the box with its `scope` and `source`; PUT replaces the box's own `{ flows }` |
+| `GET flows`, `PUT flows` | every flow on the box with its `scope`, `source` (`box`, `repo`, `kit` or `local`) and `overridden`; PUT replaces the box's own `{ flows }` |
 | `GET flows/runs?flow=ID&limit=N` | recent runs, newest first |
 | `POST flows/{id}/test` | `{ scope, data }` → the finished run |
 | `GET guard`, `PUT guard` | the [resource guard](/guides/resource-guard) |
@@ -98,9 +121,19 @@ failed after it went out (the box may have acted on it). The box API:
 | `GET skills`, `POST skills/install`, `POST skills/uninstall` | [skills](/guides/agent-integrations#skills) |
 | `GET kits`, `PUT locations/{name}/kit`, `DELETE locations/{name}/kit` | installed kits |
 | `GET shares`, `POST shares`, `DELETE shares/{id}` | public shares |
-| `GET units`, `POST units`, `DELETE units/{name}`, `POST units/{name}/restart`, `GET units/{name}/log` | units |
+| `GET units`, `POST units`, `GET units/{name}`, `DELETE units/{name}`, `POST units/{name}/restart`, `GET units/{name}/log` | units |
 | `GET phone`, `PUT phone` | the [phone companion](/guides/phone) |
-| `GET events`, `POST events` | the box's event stream, and announcing one |
+| `GET events`, `POST events` | the box's event stream, and announcing one (`{ type, data? }`) |
+| `GET worktrees?location=L` | every worktree's git status |
+| `GET locations/{name}/worktrees/{wt}/log?limit=N` | the worktree's commits |
+| `POST locations/{name}/worktrees/{wt}/sync` | `{ mode? }`: rebase (default) or merge onto its base |
+| `GET locations/{name}/worktrees/{wt}/services/{service}/log` | what a service has written |
+| `POST locations/clone`, `POST locations/new` | clone a repository, or make an empty one, and add it |
+| `GET locations/{name}/branches` | the repository's branches |
+| `PUT locations/{name}/scripts` | `{ setup, archive }`: the box's own lifecycle scripts |
+| `GET fs?path=P` | a folder's entries on the box, for picking a path (default `~/work`) |
+| `GET review` | worktrees with work to review (`?all=1` includes agents still working) |
+| `POST upgrade` | replace berthd with the binary in the body and restart (`berth upgrade`) |
 
 `Session` carries the agent's state when an agent tool reports it:
 `agent` (`claude`, `codex`, …) and `agent_state` (`idle`, `running`,
@@ -126,14 +159,13 @@ change by opening a new socket.
 
 ```json
 { "type": "agent.waiting", "time": "…", "box": "devl", "origin": "claude",
-  "data": { "path": "/home/me/work/cal-billing", "session_id": "…" } }
+  "data": { "path": "/home/me/work/cal-billing", "agent": "claude", "session_id": "…" } }
 ```
 
-Types the app reacts to: `box.connected`, `box.disconnected`,
-`location.*`, `worktree.created`, `worktree.removed`,
-`worktree.setup.{started,finished,failed}`, `session.started`,
-`session.stopped`, `agent.ready`, `agent.started`, `agent.waiting`, `agent.finished`,
-`share.*`, `forward.*`, `queue.changed`, `queue.delivered` and
-`queue.failed` (`id`, `box`, `session`, and `reason` on a failure; never the
-prompt), and `secret.failed` / `secret.resolved` (`location`,
-`name`, `path`, `variable`, `ref`, and `reason` on a failure; never a value).
+The app reacts to most box and laptop events: connections (`box.*`),
+locations and worktrees (`location.*`, `worktree.*`, `service.*`), sessions
+and agents (`session.*`, `agent.*`, `task.created`, `preview.open`),
+automation (`flow.*`, `guard.acted`, `config.changed`, `hooks.changed`),
+kits, shares, forwards, units, the queue (`queue.*`, never the prompt) and
+secrets (`secret.*`, never a value). [Events and gates](/reference/events)
+lists every type and its data.

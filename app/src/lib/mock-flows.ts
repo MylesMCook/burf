@@ -150,10 +150,16 @@ function listFlows(box: string): ScopedFlow[] {
   const out: ScopedFlow[] = (boxFlows[box] ?? []).map((flow) => ({ scope: "box", source: "box", editable: true, flow }));
   const locs = new Set([...Object.keys(committed[box] ?? {}), ...Object.keys(local[box] ?? {})]);
   for (const loc of locs) {
-    for (const flow of committed[box]?.[loc]?.flows ?? []) out.push({ scope: `repo:${loc}`, source: "repo", editable: false, flow });
-    for (const flow of local[box]?.[loc]?.flows ?? []) out.push({ scope: `repo:${loc}`, source: "local", editable: true, flow });
+    const scope = `repo:${loc}`;
+    const layers: [ScopedFlow["source"], Flow[] | undefined][] = [
+      ["repo", committed[box]?.[loc]?.flows],
+      ["kit", kitOn(box, loc)?.config.flows],
+      ["local", local[box]?.[loc]?.flows],
+    ];
+    for (const [source, flows] of layers) for (const flow of flows ?? []) out.push({ scope, source, editable: source === "local", flow });
   }
-  return out;
+  // Like the box: a more local layer's flow replaces one below it by id.
+  return out.map((f) => (out.some((o, j) => j > out.indexOf(f) && o.scope === f.scope && o.flow.id === f.flow.id) ? { ...f, overridden: true } : f));
 }
 
 function validate(flows: Flow[]): string | undefined {

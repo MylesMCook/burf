@@ -1,7 +1,8 @@
 # Hello ports
 
-An example Berth plugin: a status bar count of dev servers, and a screen
-listing every one on every box with a button to open it.
+An example Berth plugin: a screen listing every dev server on every box with
+a button to open it, a sidebar item and a command that open that screen, and
+a notification when a worktree is created.
 
 ```sh
 pnpm install && pnpm build

@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { toastManager } from "@/components/ui/toast";
 import { laptopApi, type PluginInfo } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
+import { openDocs } from "@/lib/open-url";
 import { builtinOn, setBuiltinOn, usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -67,7 +68,13 @@ export function PluginsSection() {
         {installed === undefined ? (
           <div className="px-4 py-6 text-center text-muted-foreground text-sm">Loading…</div>
         ) : installed.length === 0 ? (
-          <div className="px-4 py-6 text-center text-muted-foreground text-sm">No plugins yet. See docs/plugins.md to write one.</div>
+          <div className="px-4 py-6 text-center text-muted-foreground text-sm">
+            No plugins yet.{" "}
+            <button type="button" onClick={() => void openDocs("/guides/plugins")} className="underline underline-offset-2 hover:text-foreground">
+              Write one
+            </button>
+            .
+          </div>
         ) : (
           installed.map((p) => <PluginRow key={p.id} plugin={p} status={loaded.find((l) => l.id === p.id)} onChanged={() => void reload()} />)
         )}

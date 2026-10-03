@@ -1,4 +1,4 @@
-import { LockIcon, PlusIcon, Settings2Icon, WorkflowIcon } from "lucide-react";
+import { LockIcon, PackageIcon, PlusIcon, Settings2Icon, WorkflowIcon } from "lucide-react";
 
 import { Scene } from "@/components/art/scenes";
 import { openProjectSettings } from "@/components/skills/project-settings-dialog";
@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import type { FlowRun, Scope, ScopedFlow } from "@/lib/flows";
-import { scopeLocation } from "@/lib/flows";
+import { isOverridden, overrides, scopeLocation } from "@/lib/flows";
 import { ago } from "@/lib/format";
 import type { Project } from "@/lib/project-groups";
 import { cn } from "@/lib/utils";
@@ -136,8 +136,9 @@ function ScopeGroup({
 }) {
   const { box, scope, flows } = group;
   const loc = scopeLocation(scope);
-  // A committed flow overridden on this box shows once, as the override.
-  const shown = flows.filter((f) => !(f.source === "repo" && flows.some((o) => o.source === "local" && o.flow.id === f.flow.id)));
+  // A committed or kit flow overridden on this box shows once, as the
+  // override: the box runs only that one.
+  const shown = flows.filter((f) => !isOverridden(f, flows));
 
   return (
     <section>
@@ -171,7 +172,7 @@ function ScopeGroup({
       ) : (
         <div className="divide-y divide-border/70 overflow-hidden rounded-xl border bg-card">
           {shown.map((f) => (
-            <FlowRow key={`${f.source}:${f.flow.id}`} f={f} run={lastRun(box, scope, f.flow.id)} onEdit={() => onEdit(box, f)} onToggle={(on) => onToggle(box, f, on)} overridden={f.source === "local" && flows.some((o) => o.source === "repo" && o.flow.id === f.flow.id)} />
+            <FlowRow key={`${f.source}:${f.flow.id}`} f={f} run={lastRun(box, scope, f.flow.id)} onEdit={() => onEdit(box, f)} onToggle={(on) => onToggle(box, f, on)} overridden={overrides(f, flows)} />
           ))}
         </div>
       )}
@@ -257,6 +258,14 @@ function FlowRow({ f, run, onEdit, onToggle, overridden }: { f: ScopedFlow; run?
               <span className="inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-px text-[11px] text-muted-foreground">
                 <LockIcon className="size-2.5" />
                 In repo
+              </span>
+            </Tip>
+          )}
+          {f.source === "kit" && (
+            <Tip label="From the project's kit">
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-px text-[11px] text-muted-foreground">
+                <PackageIcon className="size-2.5" />
+                From kit
               </span>
             </Tip>
           )}

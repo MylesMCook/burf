@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Switch } from "@/components/ui/switch";
 import { sortedWorktrees } from "@/lib/derive";
-import { type Flow, type FlowRun, flowsApi, type GitHubOn, type Scope, type Step, type StepKind, scopeLocation, slug, type TriggerKind, triggerKind, triggerType } from "@/lib/flows";
+import { DEFAULT_MAX_RUNS_PER_HOUR, type Flow, type FlowRun, type FlowSource, flowsApi, type GitHubOn, type Scope, type Step, type StepKind, scopeLocation, slug, type TriggerKind, triggerKind, triggerType } from "@/lib/flows";
 import { errorMessage } from "@/lib/format";
 import { useProjects } from "@/lib/project-groups";
 import { NONE, useStore } from "@/lib/store";
@@ -28,6 +28,9 @@ export interface EditTarget {
   // The id it was saved under; absent for a new flow.
   savedId?: string;
   readOnly?: boolean;
+  // Where it comes from; a read-only flow is committed ("repo") or the
+  // project's kit's ("kit").
+  source?: FlowSource;
   // Set when this is one box's copy of a flow saved the same on every box
   // with its project: where the whole set is kept, and the boxes.
   shared?: { scope: Scope; boxes: string[] };
@@ -171,7 +174,15 @@ export function FlowEditor({
           {readOnly && (
             <div className="mb-5 flex items-center gap-3 rounded-xl border bg-muted/40 px-4 py-3 text-sm">
               <LockIcon className="size-4 shrink-0 text-muted-foreground" />
-              <span className="min-w-0 flex-1">Committed in the repository's <code className="font-mono text-xs">.berth/config.json</code>. Change it there, or override it on this box.</span>
+              <span className="min-w-0 flex-1">
+                {target.source === "kit" ? (
+                  <>From the project's kit. Change it in the kit, or override it on this box.</>
+                ) : (
+                  <>
+                    Committed in the repository's <code className="font-mono text-xs">.berth/config.json</code>. Change it there, or override it on this box.
+                  </>
+                )}
+              </span>
               {onOverride && (
                 <Button size="sm" variant="outline" onClick={onOverride}>
                   Override on {target.box}
@@ -197,7 +208,7 @@ export function FlowEditor({
 
           <p className="mb-4 text-muted-foreground text-sm">{summary(flow)}</p>
 
-          <TriggerCard flow={flow} setFlow={setFlow} readOnly={readOnly} where={where} setWhere={setWhere} scopes={scopes} />
+          <TriggerCard flow={flow} setFlow={setFlow} readOnly={readOnly} source={target.source} where={where} setWhere={setWhere} scopes={scopes} />
 
           {flow.steps.map((s, i) => (
             <Fragment key={i}>
@@ -234,7 +245,7 @@ export function FlowEditor({
           <section className="mt-10 flex items-center gap-4 rounded-xl border bg-card/40 px-4 py-3">
             <div className="min-w-0 flex-1">
               <div className="text-sm">At most</div>
-              <div className="text-muted-foreground text-xs">Stops a flow that triggers itself, or a busy repo, from running away.</div>
+              <div className="text-muted-foreground text-xs">Stops a flow that triggers itself, or a busy repo, from running away. Empty means {DEFAULT_MAX_RUNS_PER_HOUR}, the default.</div>
             </div>
             <Input
               type="number"
@@ -242,9 +253,9 @@ export function FlowEditor({
               value={flow.max_runs_per_hour ?? ""}
               readOnly={readOnly}
               onChange={(e) => setFlow({ ...flow, max_runs_per_hour: Number(e.target.value) || undefined })}
-              placeholder="∞"
+              placeholder={`${DEFAULT_MAX_RUNS_PER_HOUR} (default)`}
               size="sm"
-              className="w-20 text-right tabular-nums"
+              className="w-28 text-right tabular-nums"
             />
             <span className="text-muted-foreground text-xs">runs an hour</span>
           </section>
@@ -258,6 +269,7 @@ function TriggerCard({
   flow,
   setFlow,
   readOnly,
+  source,
   where,
   setWhere,
   scopes,
@@ -265,6 +277,7 @@ function TriggerCard({
   flow: Flow;
   setFlow(f: Flow): void;
   readOnly?: boolean;
+  source?: FlowSource;
   where: { box: string; scope: Scope };
   setWhere(w: { box: string; scope: Scope }): void;
   scopes: { box: string; scope: Scope }[];
@@ -300,7 +313,7 @@ function TriggerCard({
         <div className="col-span-2">
           <span className="mb-1 block font-medium text-muted-foreground text-xs">Runs for</span>
           <RunsFor value={where} options={scopes} disabled={readOnly} onChange={setWhere} />
-          <p className="mt-1.5 text-muted-foreground text-xs">{savedWhere(where.box, where.scope, readOnly, places)}</p>
+          <p className="mt-1.5 text-muted-foreground text-xs">{savedWhere(where.box, where.scope, readOnly ? (source === "kit" ? "kit" : "repo") : undefined, places)}</p>
           {where.scope === "box" && w.location && (
             <p className="mt-1 flex items-center gap-1.5 text-muted-foreground text-xs">
               Only events from {w.location}.

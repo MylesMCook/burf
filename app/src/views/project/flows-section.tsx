@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useEventLog } from "@/lib/events";
-import { flowsApi, type ScopedFlow } from "@/lib/flows";
+import { flowsApi, isOverridden, overrides, type ScopedFlow } from "@/lib/flows";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { STEP_KINDS, summary } from "@/views/automations/flows/model";
@@ -26,8 +26,8 @@ export function FlowsSection({ box, location }: { box: string; location: string 
   }, [client, box, scope, changed]);
 
   const open = (id?: string) => useStore.getState().setView({ kind: "automations", open: { box, scope, id } });
-  // An override hides the committed flow it replaces.
-  const shown = (flows ?? []).filter((f) => !(f.source === "repo" && flows!.some((o) => o.source === "local" && o.flow.id === f.flow.id)));
+  // An override hides the committed or kit flow it replaces.
+  const shown = (flows ?? []).filter((f) => !isOverridden(f, flows!));
 
   return (
     <Section
@@ -65,7 +65,7 @@ export function FlowsSection({ box, location }: { box: string; location: string 
                 <span className="block truncate text-muted-foreground text-xs">{summary(f.flow)}</span>
               </span>
               {!f.flow.enabled && <span className="text-muted-foreground text-xs">Off</span>}
-              <SourceBadge source={f.source === "repo" ? "repo" : "box"} box={box} />
+              <SourceBadge source={f.source === "local" ? (overrides(f, flows!) ? "override" : "box") : f.source === "box" ? "box" : f.source} box={box} />
               <ChevronRightIcon className="size-3.5 text-muted-foreground" />
             </button>
           ))}

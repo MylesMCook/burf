@@ -18,6 +18,7 @@ to that.
 
 ```sh
 berth kit add https://github.com/acme/kits/tree/main/cal-com   # shows what it does, then asks
+berth kit show cal-com                                          # everything it does, every file it carries
 berth kit apply cal-com devl/cal gpu/cal                        # install on projects on any box
 berth kit list                                                  # where each is installed, and if it is out of date
 berth kit update cal-com && berth kit apply cal-com devl/cal    # take a newer version
@@ -108,6 +109,11 @@ project. The box's own settings always win, so a teammate can adjust one
 value without forking the kit, and updating or removing the kit never
 touches either of the other layers. A project has at most one kit.
 
+That includes [flows](/guides/automations): a kit's `flows` run on every box
+it is applied to, for that project's worktrees, and show in **Automations**
+marked **From kit**. A flow with the same `id` replaces the repository's, and
+a box's own flow with that `id` replaces the kit's.
+
 A plugin can ship kits by listing their folders under `"kits"` in its
 `berth-plugin.json`.
 
@@ -117,4 +123,8 @@ A kit runs its scripts on the boxes you apply it to, with your account's
 access. Berth never applies one silently: adding shows everything it does
 and every file, and applying is a separate step you choose projects for. On
 a box, kit files can only be written inside the kit's own folder, and
-`before:kit.install` / `before:kit.remove` hooks can refuse them.
+`before:kit.install` / `before:kit.remove` [gates](/guides/hooks#gates) can
+refuse them.
+
+`berth kit help` lists every kit command; [the CLI reference](/reference/cli#kits)
+has them too.

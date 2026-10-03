@@ -52,9 +52,17 @@ fails**.
 | Any project on a box | `~/.berth/flows.json` on the box | Every event on that box. Narrow it with `where.location`. |
 | A project on a box | The box's own config for that location | Only that repository's events. Not committed. |
 | A repository, everywhere | `flows` in its committed `.berth/config.json` | Every box with the repository. Read-only in the app: change it in the repository. |
+| A project's kit | `flows` in the [kit's](/guides/kits) `config` | Every box the kit is applied to. Read-only in the app: change it in the kit. |
 | Any project on every box | A copy in each box's own config for the project | See below. |
 
 A repository's flows only ever see that repository's events.
+
+A repository's flows layer like the rest of its
+[config](/reference/config#how-layers-merge): committed, then the kit's, then
+the box's own. A flow with the same `id` in a later layer replaces the earlier
+one, and only the replacement runs. **Override on _box_** in the editor of a
+committed or kit flow does this: it copies the flow into the box's own config,
+where you can change it or switch it off.
 
 ### Any project on every box
 
@@ -132,8 +140,8 @@ flow for what is new:
 
 The first look only records what is already there, so turning a flow on does
 not replay a PR's history. Each new item is its own run, one after another,
-with `pr`, `url`, `title`, `author`, `body`, `file`, `line`, `check` and
-`state` as event data. Main checkouts and worktrees on the default branch
+carrying a `github.<on>` event (`github.review_comment`, …) with `pr`, `url`,
+`title`, `author`, `body`, `file`, `line`, `check` and `state` as its data. Main checkouts and worktrees on the default branch
 have no PR to watch. A box without `gh` simply never starts these flows. One
 poll makes at most 20 `gh` calls, shared between flows.
 
@@ -143,7 +151,7 @@ poll makes at most 20 `gh` calls, shared between flows.
 | --- | --- | --- |
 | `run` | Runs a command through a login shell in the event's worktree, with its environment | `command`, `timeout` (10m) |
 | `prompt` | Types a prompt into the agent that triggered the flow, or `session` | `text`, `session` |
-| `wait` | Waits for that agent's turn to end | `for` (`finished`, `waiting`), `timeout` (30m) |
+| `wait` | Waits for that agent's turn to end | `for` (a list: `["finished"]`, `["waiting"]`; default both), `session`, `timeout` (30m) |
 | `start_agent` | Starts an agent in the worktree, or in a new one | `agent`, `text` (its prompt), `new_worktree`, `name` |
 | `notify` | Shows a notification in the app | `title`, `text` |
 | `webhook` | POSTs JSON somewhere, e.g. Slack | `url`, `text` (the body; default every variable), `timeout` (15s) |
@@ -181,7 +189,9 @@ Output is the last 4000 characters. An unknown variable is empty.
   otherwise run forever.
 - Events a flow causes carry `origin: "flow:<id>"`, and `flow.started` and
   `flow.finished` never start flows.
-- `before:` hooks still gate what a flow does, like anything else.
+- `before:` gates check requests to the box's API, so they apply to Berth
+  commands a `run` step runs (`berthd session send`, `berthd exec`, …). A
+  flow's own `prompt` and `start_agent` steps don't go through them.
 
 ## Runs
 

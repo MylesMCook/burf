@@ -63,7 +63,7 @@ plugin's manifest. See [hooks](/guides/hooks).
 | `enabled` | boolean | Default `false`: a flow runs only when it is `true`. |
 | `trigger` | object | Exactly one of `event`, `schedule` or `github`; see below. |
 | `steps` | array | At least one; see below. |
-| `max_runs_per_hour` | number | Default 20. |
+| `max_runs_per_hour` | number | Default 20 when empty or `0`. |
 
 `trigger`:
 
@@ -107,6 +107,11 @@ A location's effective config is the repository's file, then its kit's
 | `services`, `agents`, `flows` | By `name` or `id`: a later one replaces, new ones are added |
 | `hooks` | Added up: the file's, the kit's, then the box's |
 
+Only the effective flows run: a flow replaced by `id` never does, and a
+replacement with `enabled: false` switches the flow off on that box.
+`GET /v1/flows` lists every layer's flows, with `overridden: true` on the
+replaced ones.
+
 `berth location config BOX/LOC` prints all three and the result.
 
 ## `kit.json`
@@ -132,6 +137,7 @@ executable. See [kits](/guides/kits).
 
 | Field | Type | Meaning |
 | --- | --- | --- |
+| `id` | string | Default: the file's name without `.json`. |
 | `name` | string | Shown in the New worktree dialog. |
 | `description` | string | |
 | `box`, `location` | string | Where the dialog starts. |
@@ -156,4 +162,5 @@ In `~/.berth/` on a box:
 | `plugins/<id>/berth-plugin.json` | A plugin manifest | Its hooks run on the box too |
 
 Changing env, flows, the guard or a location's config through the API runs
-`before:config.change` gates and announces `config.changed`.
+`before:config.change` gates and announces `config.changed`. Where every
+file lives is in [files and environment](/reference/files).

@@ -57,7 +57,7 @@ func laptopChecks(l laptop) []doctor.Check {
 	if spec, err := agentService(l); err == nil && service.Installed(spec) {
 		checks = append(checks, doctor.Check{Area: mac, Name: "starts at login", Status: doctor.OK, Detail: "background agent installed"})
 	} else {
-		checks = append(checks, doctor.Check{Area: mac, Name: "starts at login", Status: doctor.Warn, Detail: "the agent only runs while something starts it", Fix: "berth agent install  (or open the Berth app)"})
+		checks = append(checks, doctor.Check{Area: mac, Name: "starts at login", Status: doctor.Warn, Detail: "the agent only runs while something starts it", Fix: "berth agent install  (or berth agent to start it now)"})
 	}
 	status, err := c.Status(context.Background())
 	if err != nil {

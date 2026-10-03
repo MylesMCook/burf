@@ -3,8 +3,9 @@ import type { InstalledKit } from "@/lib/kits";
 
 // Flows are a box's automations: a trigger event, then steps run in order,
 // each on the previous step's success, failure, or always. They live on a
-// box (its own, or a repository's, committed or this box's) and the box runs
-// them; the app only edits and watches them. See internal/box/flows.go.
+// box (its own, or a repository's: committed, its kit's, or this box's) and
+// the box runs them; the app only edits and watches them. See
+// internal/box/flows.go.
 
 export type StepKind = "run" | "prompt" | "wait" | "start_agent" | "notify" | "webhook";
 export type StepWhen = "success" | "failure" | "always";
@@ -55,20 +56,41 @@ export interface Flow {
   enabled: boolean;
   trigger: Trigger;
   steps: Step[];
+  // Empty means DEFAULT_MAX_RUNS_PER_HOUR.
   max_runs_per_hour?: number;
 }
+
+// DEFAULT_MAX_RUNS_PER_HOUR is how often a flow may start in an hour when it
+// doesn't say: the box's DefaultMaxRunsPerHour (internal/box/flows.go).
+export const DEFAULT_MAX_RUNS_PER_HOUR = 20;
 
 // Where a flow lives: "box", or "repo:<location>".
 export type Scope = string;
 
+// "box": the box's own. A repository's flows come in layers, merged in this
+// order: "repo" (committed in .berth/config.json), "kit" (the project's kit),
+// "local" (this box's config for the repository). Repo and kit flows are
+// read-only here; a local flow with the same id overrides them.
+export type FlowSource = "box" | "repo" | "kit" | "local";
+
 export interface ScopedFlow {
   scope: Scope;
-  // "box": the box's own; "repo": committed in .berth/config.json; "local":
-  // this box's config for the repository.
-  source: "box" | "repo" | "local";
+  source: FlowSource;
   editable: boolean;
+  // A more local layer has a flow with this id, and only that one runs.
+  overridden?: boolean;
   flow: Flow;
 }
+
+const layer: Record<FlowSource, number> = { box: 0, repo: 0, kit: 1, local: 2 };
+const sameFlow = (a: ScopedFlow, b: ScopedFlow) => a.scope === b.scope && a.flow.id === b.flow.id;
+
+// isOverridden says whether a more local layer replaces f, so the box never
+// runs it and lists show the replacement instead.
+export const isOverridden = (f: ScopedFlow, all: ScopedFlow[]) => all.some((o) => sameFlow(o, f) && layer[o.source] > layer[f.source]);
+
+// overrides says whether f replaces a flow from a layer under it.
+export const overrides = (f: ScopedFlow, all: ScopedFlow[]) => all.some((o) => sameFlow(o, f) && layer[o.source] < layer[f.source]);
 
 export interface StepRun {
   id: string;
