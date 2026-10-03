@@ -74,8 +74,9 @@ export interface Client {
   themes(): Promise<Theme[]>;
   templates(): Promise<TaskTemplate[]>;
   plugins(): Promise<PluginInfo[]>;
-  // Fetches a plugin's module source, for the plugin host to import.
-  pluginSource(plugin: PluginInfo): Promise<string>;
+  // Fetches a file from inside a plugin's folder, as bytes: its manifest or
+  // main module, which the plugin host hashes before importing.
+  pluginFile(plugin: PluginInfo, file: string): Promise<Uint8Array>;
   box<T = unknown>(box: string, method: string, path: string, body?: unknown): Promise<T>;
   // Any laptop API call, such as "GET", "/v1/hooks".
   laptop<T = unknown>(method: string, path: string, body?: unknown): Promise<T>;
@@ -290,7 +291,10 @@ export const laptopApi = {
     if (!joined) throw new Error("The sign-in did not finish.");
     return joined;
   },
-  setPluginEnabled: (c: Client, id: string, on: boolean) => c.laptop<PluginInfo>("POST", `/v1/plugins/${encodeURIComponent(id)}/${on ? "enable" : "disable"}`),
+  // Turning a plugin on takes the hash of the files the user reviewed (see
+  // plugins/consent.ts); the agent refuses it if they have changed since.
+  allowPlugin: (c: Client, id: string, hash: string) => c.laptop<PluginInfo>("POST", `/v1/plugins/${encodeURIComponent(id)}/enable`, { hash }),
+  disablePlugin: (c: Client, id: string) => c.laptop<PluginInfo>("POST", `/v1/plugins/${encodeURIComponent(id)}/disable`),
 };
 
 export function httpClient(ep: Endpoint): Client {
@@ -322,10 +326,10 @@ export function httpClient(ep: Endpoint): Client {
     themes: () => request("GET", "/v1/themes"),
     templates: () => request("GET", "/v1/templates"),
     plugins: () => request("GET", "/v1/plugins"),
-    async pluginSource(p) {
-      const res = await fetch(ep.url + (p.entry ?? `/v1/plugins/${encodeURIComponent(p.id)}/${p.main}`), { headers });
-      if (!res.ok) throw new ApiError(`${p.id}: ${res.status} ${res.statusText}`, res.status);
-      return res.text();
+    async pluginFile(p, file) {
+      const res = await fetch(`${ep.url}/v1/plugins/${encodeURIComponent(p.id)}/${file.split("/").map(encodeURIComponent).join("/")}`, { headers });
+      if (!res.ok) throw new ApiError(`${p.id}: ${file}: ${res.status} ${res.statusText}`, res.status);
+      return new Uint8Array(await res.arrayBuffer());
     },
     box: (box, method, path, body) => request(method, `/v1/boxes/${encodeURIComponent(box)}/api/${path}`, body),
     laptop: (method, path, body) => request(method, path, body),

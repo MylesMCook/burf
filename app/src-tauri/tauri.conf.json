@@ -50,6 +50,12 @@
           "berth"
         ]
       }
+    },
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQyRjgwQTIwQzRFOTQyMjMKUldRalF1bkVJQXI0MGxrUFdXL1ZZM0JwSW9rQm85ZTZnR1NlbWlPN1piUjVsUmxGMS9RM2RBeHAK",
+      "endpoints": [
+        "https://github.com/sean-brydon/berthd/releases/latest/download/latest.json"
+      ]
     }
   }
 }

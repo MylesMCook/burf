@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Spinner } from "@/components/ui/spinner";
 import { toastManager } from "@/components/ui/toast";
-import { laptopApi, type PluginInfo } from "@/lib/api";
+import type { PluginInfo } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
 import { builtinOn, setBuiltinOn, usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
+import { askToAllow } from "@/plugins/consent";
 import { builtinPlugins, loadPlugins } from "@/plugins/host";
 import { PluginBoundary, pluginContexts } from "@/plugins/plugin-boundary";
 import { screenOwner, usePluginsLoading, useRegistry } from "@/plugins/registry";
@@ -93,7 +94,8 @@ function MissingScreen({ screen }: { screen: string }) {
     setBusy(true);
     try {
       if (p.builtin) setBuiltinOn(p, true);
-      else await laptopApi.setPluginEnabled(client, p.id, true);
+      // A plugin of yours runs only once you've allowed it.
+      else if (!(await askToAllow(p))) return;
       await loadPlugins(client);
     } catch (err) {
       toastManager.add({ title: `Couldn't turn on ${p.name}`, description: errorMessage(err), type: "error" });
@@ -114,7 +116,7 @@ function MissingScreen({ screen }: { screen: string }) {
   }
 
   const name = info?.name ?? status?.name;
-  const off = info ? (info.builtin ? !builtinOn(info, { enabledPlugins, disabledPlugins }) : info.enabled === false) : false;
+  const off = info ? (info.builtin ? !builtinOn(info, { enabledPlugins, disabledPlugins }) : info.enabled !== true) : false;
   const failed = !off && status?.state === "failed";
 
   let title: string;

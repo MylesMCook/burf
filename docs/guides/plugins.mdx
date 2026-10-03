@@ -15,8 +15,10 @@ Prompt library (see
 plugin of yours with the same id replaces a built-in.
 
 <Callout type="warn" title="Plugins run with the app's access">
-  A plugin can do anything the app can, on every box, and its hooks run on
-  your computer. Install only plugins you trust.
+  Plugins are not sandboxed. A plugin can do anything the app can, on every
+  box, and its hooks run on your computer. Berth asks before a plugin you
+  installed first runs, and again whenever its code changes. Allow only
+  plugins you trust. See [Trust and consent](#trust-and-consent).
 </Callout>
 
 ## The smallest plugin
@@ -93,9 +95,11 @@ mkdir -p ~/.berth/plugins && ln -s "$PWD" ~/.berth/plugins/hello
 ```
 
 Then **Settings → Plugins → Reload** in the app (or **Reload plugins** in
-⌘K). There is no file watcher: reload after each build. Settings → Plugins
-also turns each plugin on or off and shows what it adds, or the error that
-stopped it loading.
+⌘K), and turn it on there. A plugin you install is off until you allow it
+(see [Trust and consent](#trust-and-consent)), and every build changes its
+code, so the app asks again after each rebuild. There is no file watcher:
+reload after each build. Settings → Plugins also shows what each plugin adds,
+or the error that stopped it loading.
 
 The folder's name is the plugin's id. The manifest's fields:
 
@@ -103,13 +107,52 @@ The folder's name is the plugin's id. The manifest's fields:
 | --- | --- |
 | `name`, `version`, `description` | Shown in Settings |
 | `main` | The bundle, relative to the folder |
-| `defaultEnabled` | `false` to stay off until turned on (default: on) |
+| `defaultEnabled` | For built-in plugins only: `false` to stay off until turned on. A plugin in `~/.berth/plugins` is always off until you allow it |
 | `hooks` | [Hooks](/guides/hooks) to run while the plugin is on, in its folder, with `BERTH_PLUGIN_DIR` set |
 | `themes` | Theme JSON files to offer, relative to the folder |
 | `kits` | Kit folders to offer, relative to the folder |
 
 A plugin folder in `~/.berth/plugins` on a box gives that box its hooks
-too.
+too, once it is allowed there (see below).
+
+## Trust and consent
+
+A plugin's code runs inside the app's own page, with the app's own access.
+Once on, a plugin can:
+
+- use the Berth agent's API, and its API token, exactly as the app does;
+- run commands and open shells on every box you've paired;
+- read whatever boxes return: files, logs, environment and session output;
+- send anything it can read to any website;
+- run its hooks as you, on this computer and on a box that has it installed.
+
+So Berth never turns on a plugin you installed by itself. The first time you
+turn one on, the app shows what it can do, its hooks, and a hash of its code,
+and runs it only if you choose **Allow and turn on**. What you allow is that
+exact code: the agent records a SHA-256 hash of the plugin's
+`berth-plugin.json` and its `main` module in `~/.berth/plugins.json` (beside
+the plugins folder, never inside a plugin's own folder), and the app imports
+a plugin only when the bytes it fetched hash to that value. When either file
+changes, the plugin is off, its hooks stop running, and the app asks again.
+Turning a plugin off forgets the permission.
+
+`defaultEnabled` and an `enabled` file in a plugin's folder no longer turn a
+plugin on: only the built-in plugins that ship inside the app can be on by
+default.
+
+On a box, where there is no app to ask, a plugin's hooks run only once it is
+listed in the box's `~/.berth/plugins.json`. An entry without a hash trusts
+whatever the folder holds:
+
+```json title="~/.berth/plugins.json (on a box)"
+{ "plugins": { "hello": {} } }
+```
+
+<Callout title="Not a sandbox">
+  Consent decides whether a plugin runs; it does not limit what a plugin
+  does once it runs. Running each plugin in its own isolated view behind a
+  bridge that grants only the capabilities it asked for is planned.
+</Callout>
 
 ## What a plugin can add
 

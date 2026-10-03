@@ -84,14 +84,14 @@ Each step:
 | `id` | string | Optional, unique in the flow. Unnamed steps are `1`, `2`, … |
 | `kind` | string | `run`, `prompt`, `wait`, `start_agent`, `notify` or `webhook`. |
 | `when` | string | `success` (default), `failure` or `always`. |
-| `command` | string | `run`: required. |
+| `command` | string | `run`: required. Variables reach it as environment variables, [never as code](/guides/automations#how-values-are-filled-in). |
 | `text` | string | `prompt`: required, the prompt. `start_agent`: its first prompt. `notify`: the body. `webhook`: the JSON body (default: every variable). |
 | `title` | string | `notify`: required. |
 | `session` | string | `prompt`: which session (default: the agent that triggered the flow). |
 | `for` | array | `wait`: states that end it (default `finished`, `waiting`). |
 | `agent` | string | `start_agent`: required, a preset id. |
 | `new_worktree`, `name` | boolean, string | `start_agent`: in a new worktree, and its name. |
-| `url` | string | `webhook`: required, `http` or `https`. |
+| `url` | string | `webhook`: required, `http` or `https`; public addresses only unless [allowed](/guides/automations#outbound-requests). |
 | `timeout` | string | A duration: `run` 10m, `wait` 30m, `webhook` 15s by default; at most 2h. |
 
 Variables and behaviour are in [automations](/guides/automations#steps).
@@ -114,7 +114,15 @@ replacement with `enabled: false` switches the flow off on that box.
 `GET /v1/flows` lists every layer's flows, with `overridden: true` on the
 replaced ones.
 
-`berth location config BOX/LOC` prints all three and the result.
+The repository's file counts only once it is trusted on the box, for its
+exact content (its SHA-256 hash); until then, and again after any change to
+it, only its `ports` apply and `GET /v1/locations/{name}/config` reports
+`repo_trust: {state: "untrusted" | "changed", hash, wants}`, with `wants`
+holding the rest of the file. See
+[trusting a repository's config](/guides/project-config#trusting-a-repositorys-config).
+
+`berth location config BOX/LOC` prints all three and the result;
+`--trust HASH` trusts the file as shown, `--untrust` stops running it.
 
 ## `kit.json`
 

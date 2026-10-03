@@ -13,6 +13,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 )
@@ -52,19 +53,50 @@ func HostName(box string) string { return "berth-" + box }
 // header marks files berth wrote, so it only ever removes its own.
 const header = "# Written by berth ssh-config for the box %s; berth rewrites it.\n"
 
-// Render is the box's file in ~/.ssh/berth/.
+// ValidUser reports whether name is a plain account name. The box reports
+// its user, and a box is not trusted to write ssh_config: a newline in it
+// would add directives (a ProxyCommand) that run on this computer.
+func ValidUser(name string) bool { return validUser.MatchString(name) }
+
+var (
+	validUser = regexp.MustCompile(`^[A-Za-z0-9_][A-Za-z0-9_.-]{0,63}$`)
+	validHost = regexp.MustCompile(`^[A-Za-z0-9_.:%-]{1,253}$`)
+	validBox  = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]{0,62}$`)
+)
+
+// check refuses a host whose values could break out of their line.
+func (h Host) check() error {
+	if !validBox.MatchString(h.Box) {
+		return fmt.Errorf("%q is not a box name", h.Box)
+	}
+	if !validHost.MatchString(hostOnly(h.Address)) {
+		return fmt.Errorf("box %s has an address that cannot go in ssh_config: %q", h.Box, h.Address)
+	}
+	if h.Network != "" && !validBox.MatchString(h.Network) {
+		return fmt.Errorf("%q is not a network name", h.Network)
+	}
+	for _, v := range []string{h.Berth, h.IdentityAgent} {
+		if strings.ContainsAny(v, "\x00\r\n\"") {
+			return fmt.Errorf("box %s: a path cannot go in ssh_config: %q", h.Box, v)
+		}
+	}
+	return nil
+}
+
+// Render is the box's file in ~/.ssh/berth/. A user that is not a plain
+// account name is left out, so ssh falls back to the local one.
 func (h Host) Render() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, header, h.Box)
 	fmt.Fprintf(&b, "Host %s\n  HostName %s\n", HostName(h.Box), hostOnly(h.Address))
-	if h.User != "" {
+	if h.User != "" && ValidUser(h.User) {
 		fmt.Fprintf(&b, "  User %s\n", h.User)
 	}
 	if h.Network != "" {
 		fmt.Fprintf(&b, "  ProxyCommand %s network proxy %s %%h %%p\n", shellQuote(h.Berth), shellQuote(h.Network))
 	}
 	if h.IdentityAgent != "" {
-		fmt.Fprintf(&b, "  IdentityAgent %q\n", h.IdentityAgent)
+		fmt.Fprintf(&b, "  IdentityAgent \"%s\"\n", h.IdentityAgent)
 	}
 	return b.String()
 }
@@ -118,6 +150,9 @@ func (c Config) Plan(hosts []Host) ([]Change, error) {
 	want := map[string]bool{}
 	sort.Slice(hosts, func(i, j int) bool { return hosts[i].Box < hosts[j].Box })
 	for _, h := range hosts {
+		if err := h.check(); err != nil {
+			return nil, err
+		}
 		path := filepath.Join(c.Dir, "berth", h.Box+".conf")
 		want[path] = true
 		next := h.Render()

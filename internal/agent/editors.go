@@ -131,7 +131,9 @@ func (a *Agent) boxUser(ctx context.Context, name string) string {
 		cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 		err := box.NewClient(c).Call(cctx, http.MethodGet, "/v1/info", nil, &info)
 		cancel()
-		if err == nil && info.User != "" {
+		// The box names its own user; only a plain account name is kept,
+		// since it is written into ~/.ssh.
+		if err == nil && info.User != "" && sshconfig.ValidUser(info.User) {
 			boxUsers.Store(name, info.User)
 			return info.User
 		}

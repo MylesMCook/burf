@@ -38,6 +38,11 @@ type Folder struct {
 
 const maxFolderEntries = 500
 
+// GitProtocols are the transports a clone may use. Pinning them keeps a
+// link from reaching git's ext:: (a command) or file:: helpers, whatever git
+// version or environment the box has. Tests add file.
+var GitProtocols = "https:http:ssh:git"
+
 func (b *Box) listFolder(w http.ResponseWriter, r *http.Request) error {
 	home, _ := os.UserHomeDir()
 	p := r.URL.Query().Get("path")
@@ -198,7 +203,7 @@ func (b *Box) cloneLocation(w http.ResponseWriter, r *http.Request) error {
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Minute)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "git", "clone", "--progress", "--", req.URL, dest)
-	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0")
+	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "GIT_ALLOW_PROTOCOL="+GitProtocols)
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		send(map[string]any{"done": true, "error": err.Error()})

@@ -118,9 +118,13 @@ func mergeBy[T any](base, over []T, key func(T) string) []T {
 
 // Config is a location's config as the app shows and edits it.
 type Config struct {
-	// Repo is the repository's .berth/config.json, read-only here.
+	// Repo is the repository's .berth/config.json as this box applies it,
+	// read-only here. Until the file is trusted that is its ports alone;
+	// RepoTrust.Wants holds the rest.
 	Repo     *RepoConfig `json:"repo"`
 	RepoPath string      `json:"repo_path"`
+	// RepoTrust says whether this box runs the repository's config.
+	RepoTrust RepoTrust `json:"repo_trust"`
 	// Kit is the kit installed for the location, if any.
 	Kit *InstalledKit `json:"kit,omitempty"`
 	// Local is this box's own config for the location.
@@ -136,11 +140,12 @@ func (l *Locations) Config(ctx context.Context, name string) (Config, error) {
 		return Config{}, err
 	}
 	out := Config{RepoPath: filepath.Join(saved.Path, RepoConfigFile)}
-	repo, ok, err := ReadRepoConfig(saved.Path)
+	repo, trust, err := repoLayer(saved)
 	if err != nil {
 		return Config{}, err
 	}
-	if ok {
+	out.RepoTrust = trust
+	if trust.State != RepoTrustNone {
 		out.Repo = &repo
 	}
 	if saved.Config != nil {
@@ -159,7 +164,8 @@ func (l *Locations) Config(ctx context.Context, name string) (Config, error) {
 }
 
 // layered is what a location runs with: the repository's config, then its
-// kit's, then this box's own.
+// kit's, then this box's own. repo must be what repoLayer gives, so an
+// untrusted repository adds nothing that runs.
 func layered(repo RepoConfig, kit *InstalledKit, local RepoConfig) RepoConfig {
 	if kit != nil {
 		repo = merge(repo, kit.Config)

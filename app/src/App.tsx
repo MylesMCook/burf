@@ -10,6 +10,7 @@ import { NewWorktreeDialog } from "@/components/new-worktree-dialog";
 import { NotificationCenter } from "@/components/notifications/notification-center";
 import { LoopsPanel } from "@/components/orchestrate/loops-panel";
 import { OrchestrateDialog } from "@/components/orchestrate/orchestrate-dialog";
+import { PluginConsentDialog } from "@/components/plugin-consent-dialog";
 import { PromptDialogs } from "@/components/prompts";
 import { StatusBar } from "@/components/status-bar";
 import { ErrorBoundary } from "@/components/error-boundary";
@@ -28,6 +29,7 @@ import { useBerthConnection } from "@/hooks/use-berth-connection";
 import { useShortcuts } from "@/hooks/use-shortcuts";
 import { useApplyTheme } from "@/hooks/use-theme";
 import { useStore } from "@/lib/store";
+import { startUpdater } from "@/lib/updater";
 import { cn } from "@/lib/utils";
 import { recentWorktrees, selectWorktree, useWorkspaces } from "@/lib/workspaces";
 import { AutomationsView } from "@/views/automations";
@@ -53,6 +55,8 @@ export default function App() {
   useApplyTheme();
   useBerthConnection();
   useShortcuts();
+  // Checks for a newer Berth on launch and every few hours (lib/updater.ts).
+  useEffect(startUpdater, []);
   useKitDeepLinks();
   const view = useStore((s) => s.view);
   const workspace = view.kind === "workspace";
@@ -134,6 +138,7 @@ export default function App() {
           <AddBoxDialog />
           <ConfirmHost />
           <AddToBoxDialog />
+          <PluginConsentDialog />
           <CustomizeSidebarSheet />
           <ReviewSheet />
           <NotificationCenter />

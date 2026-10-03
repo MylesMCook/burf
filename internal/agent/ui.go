@@ -122,7 +122,10 @@ func (a *Agent) ui(token, hostport string, inner http.Handler) http.Handler {
 			return
 		}
 		got, _ := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
-		if got == "" {
+		// A browser cannot set headers on a WebSocket, so the terminal's
+		// upgrade alone may carry the token in its query. Everywhere else a
+		// query token would end up in logs and history, so it is ignored.
+		if got == "" && isWebSocketUpgrade(r) {
 			got = r.URL.Query().Get("token")
 		}
 		if subtle.ConstantTimeCompare([]byte(got), []byte(token)) != 1 {
@@ -333,6 +336,12 @@ type PluginInfo struct {
 	Themes      []string `json:"themes,omitempty"`
 	Hooks       int      `json:"hooks"`
 	Enabled     bool     `json:"enabled"`
+	// Allowed is the hash of the files the user allowed (hooks.PluginHash),
+	// which the app checks against what it is about to import.
+	Allowed string `json:"allowed,omitempty"`
+	// Changed: the plugin was allowed, but has changed since, so it is off
+	// until it is reviewed again.
+	Changed bool `json:"changed,omitempty"`
 	// Entry is the URL the app imports, when the plugin has a main module.
 	Entry string `json:"entry,omitempty"`
 	Error string `json:"error,omitempty"`
@@ -360,8 +369,8 @@ func (a *Agent) plugins() []PluginInfo {
 		if p.Name == "" {
 			p.Name = p.ID
 		}
-		manifest, _ := os.ReadFile(m)
-		p.Enabled = hooks.PluginEnabled(dir, manifest)
+		st := hooks.PluginStatus(dir)
+		p.Enabled, p.Allowed, p.Changed = st.Enabled, st.Allowed, st.Changed
 		if p.Main != "" {
 			p.Entry = "/v1/plugins/" + p.ID + "/" + path.Clean(p.Main)
 		}
@@ -408,4 +417,19 @@ func (a *Agent) uiPluginFile(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Cache-Control", "no-store")
 	http.ServeContent(w, r, "", info.ModTime(), f)
+}
+
+func isWebSocketUpgrade(r *http.Request) bool {
+	return r.Method == http.MethodGet &&
+		strings.EqualFold(r.Header.Get("Upgrade"), "websocket") &&
+		headerHasToken(r.Header.Get("Connection"), "upgrade")
+}
+
+func headerHasToken(v, token string) bool {
+	for _, t := range strings.Split(v, ",") {
+		if strings.EqualFold(strings.TrimSpace(t), token) {
+			return true
+		}
+	}
+	return false
 }

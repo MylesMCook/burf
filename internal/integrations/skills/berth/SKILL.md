@@ -104,6 +104,12 @@ berthd service log cal/fix-login web     # its output, when it will not stay up
 services start after setup and stop before archive. Edit the repository's
 file only when the user asks you to change how every worktree is set up.
 
+A box runs none of the repository's file (only its `ports`) until a person
+trusts it on that box, and again after every change to it: `location config`
+then shows `repo_trust.state` as `untrusted` or `changed`. Never trust it
+yourself (`--trust`); tell the user what it wants to run and let them decide
+in the app or with `berth location config BOX/LOC --trust HASH`.
+
 ## Share publicly — only when a human asks
 
 `berthd share 3000` makes a port reachable **by anyone on the internet**

@@ -87,8 +87,10 @@ layout every frame), pause offscreen (`.art.off`), and stop for reduced
 motion, where each still reads (the fan-out shows three ticks).
 
 Get started leads with the release: the install one-liner on a box, then
-the app (built from source until it ships signed) and pairing, with `berth
-add ssh` as the alternative. If a release is missing, `install.sh` says so
+the signed app's download (`Berth-macos-universal.dmg` from the latest
+release) and pairing, with the berth command, the CLI alone and building
+from source folded away as alternatives, and `berth add ssh` instead of the
+one-liner. If a release is missing, `install.sh` says so
 plainly and prints the source-and-SSH route.
 
 Keep the page light: about 250 KB on first load and under 1 MB after

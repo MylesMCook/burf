@@ -133,8 +133,21 @@ func SkillStatus(root, agent, name string) (SkillState, error) {
 }
 
 // InstallSkills writes the named skills for agent under root, replacing
-// older copies, and returns the paths written.
+// older copies, and returns the paths written. root is a home folder the
+// user owns, so a skills folder they linked elsewhere is followed.
 func InstallSkills(root, agent string, names []string) ([]string, error) {
+	return installSkills(root, agent, names, false)
+}
+
+// InstallProjectSkills writes the named skills into a repository. A
+// repository's files are not the user's own: one could commit
+// .claude/skills/<skill>/SKILL.md as a symbolic link to ~/.ssh/authorized_keys,
+// so no link below the repository is followed or replaced.
+func InstallProjectSkills(repo, agent string, names []string) ([]string, error) {
+	return installSkills(repo, agent, names, true)
+}
+
+func installSkills(root, agent string, names []string, strict bool) ([]string, error) {
 	dir, err := SkillDir(root, agent)
 	if err != nil {
 		return nil, err
@@ -146,25 +159,31 @@ func InstallSkills(root, agent string, names []string) ([]string, error) {
 			return written, fmt.Errorf("berth has no skill called %s", name)
 		}
 		path := filepath.Join(dir, name, "SKILL.md")
-		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-			return written, err
+		if strict {
+			rel, _ := filepath.Rel(root, path)
+			err = writeNoFollow(root, rel, b, 0o644)
+		} else if err = os.MkdirAll(filepath.Dir(path), 0o755); err == nil {
+			err = os.WriteFile(path, b, 0o644)
 		}
-		if err := os.WriteFile(path, b, 0o644); err != nil {
+		if err != nil {
 			return written, err
 		}
 		written = append(written, path)
 	}
 	if agent == "codex" {
-		removeLegacyCodex(root, names)
+		removeLegacyCodex(root, names, strict)
 	}
 	return written, nil
 }
 
 // removeLegacyCodex deletes copies berth once wrote to ~/.codex/skills, so
 // a Codex that still reads there does not load the skill twice.
-func removeLegacyCodex(root string, names []string) {
+func removeLegacyCodex(root string, names []string, strict bool) {
 	for _, name := range names {
 		dir := filepath.Join(root, legacyCodexDir, name)
+		if strict && noLinks(root, filepath.Join(legacyCodexDir, name, "SKILL.md")) != nil {
+			continue
+		}
 		if b, err := os.ReadFile(filepath.Join(dir, "SKILL.md")); err == nil && frontmatter(b, "name") == name {
 			os.RemoveAll(dir)
 		}
@@ -175,6 +194,16 @@ func removeLegacyCodex(root string, names []string) {
 // folder whose SKILL.md names that skill is removed, so a user's own skill
 // of the same folder name is left alone.
 func UninstallSkills(root, agent string, names []string) ([]string, error) {
+	return uninstallSkills(root, agent, names, false)
+}
+
+// UninstallProjectSkills removes the named skills from a repository, refusing
+// to remove anything reached through a symbolic link below it.
+func UninstallProjectSkills(repo, agent string, names []string) ([]string, error) {
+	return uninstallSkills(repo, agent, names, true)
+}
+
+func uninstallSkills(root, agent string, names []string, strict bool) ([]string, error) {
 	dir, err := SkillDir(root, agent)
 	if err != nil {
 		return nil, err
@@ -185,6 +214,12 @@ func UninstallSkills(root, agent string, names []string) ([]string, error) {
 			return removed, fmt.Errorf("berth has no skill called %s", name)
 		}
 		skill := filepath.Join(dir, name)
+		if strict {
+			rel, _ := filepath.Rel(root, filepath.Join(skill, "SKILL.md"))
+			if err := noLinks(root, rel); err != nil {
+				return removed, err
+			}
+		}
 		b, err := os.ReadFile(filepath.Join(skill, "SKILL.md"))
 		if os.IsNotExist(err) {
 			continue

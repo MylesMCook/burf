@@ -136,10 +136,28 @@ export interface RepoConfig {
   flows?: Flow[];
 }
 
+// RepoTrust says whether a box runs a repository's committed config. Until
+// someone trusts it (and again whenever the file changes) only its port
+// count applies; wants is everything else it asks to run.
+export interface RepoTrust {
+  state: "none" | "trusted" | "untrusted" | "changed";
+  // The sha256 of the file as it is now: trusting sends it back, so a file
+  // changed since it was shown is refused.
+  hash?: string;
+  wants?: RepoConfig;
+}
+
+export const trustPending = (t?: { state: string } | string) => {
+  const s = typeof t === "string" ? t : t?.state;
+  return s === "untrusted" || s === "changed";
+};
+
 export interface LocationConfig {
-  // Committed in the repository; null without a .berth/config.json.
+  // Committed in the repository, as this box applies it (its ports alone
+  // until trusted); null without a .berth/config.json.
   repo: RepoConfig | null;
   repo_path: string;
+  repo_trust?: RepoTrust;
   // This box's own layer, which the app edits.
   local: RepoConfig;
   // What applies: local laid over repo.
@@ -164,6 +182,8 @@ export const flowsApi = {
   test: (c: Client, box: string, id: string, scope: Scope, data: Record<string, unknown>) => c.box<FlowRun>(box, "POST", `flows/${enc(id)}/test`, { scope, data }),
   config: (c: Client, box: string, location: string) => c.box<LocationConfig>(box, "GET", `locations/${enc(location)}/config`),
   saveConfig: (c: Client, box: string, location: string, local: RepoConfig) => c.box<LocationConfig>(box, "PUT", `locations/${enc(location)}/config`, { local }),
+  trustRepo: (c: Client, box: string, location: string, hash: string) => c.box<LocationConfig>(box, "POST", `locations/${enc(location)}/config/trust`, { hash }),
+  untrustRepo: (c: Client, box: string, location: string) => c.box<LocationConfig>(box, "DELETE", `locations/${enc(location)}/config/trust`),
   services: async (c: Client, box: string, location: string, worktree: string) =>
     (await c.box<ServiceStatus[] | null>(box, "GET", `locations/${enc(location)}/worktrees/${enc(worktree)}/services`)) ?? [],
   serviceAction: (c: Client, box: string, location: string, worktree: string, service: string, action: "start" | "stop" | "restart") =>

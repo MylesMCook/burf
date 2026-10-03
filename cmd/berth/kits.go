@@ -98,7 +98,8 @@ func kitCommand(l laptop, args []string) error {
 			}
 		}
 		var k agent.KitInfo
-		if err := c.Call(ctx, "POST", "/v1/kits/add", map[string]string{"src": fs.Arg(0)}, &k); err != nil {
+		// The hash shown is the kit kept: one changed since is refused.
+		if err := c.Call(ctx, "POST", "/v1/kits/add", map[string]string{"src": fs.Arg(0), "hash": preview.Kit.Hash}, &k); err != nil {
 			return err
 		}
 		fmt.Printf("Added %s. Apply it with: berth kit apply %s BOX/PROJECT\n", k.ID, k.ID)

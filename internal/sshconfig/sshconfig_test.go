@@ -110,3 +110,42 @@ func mustPlan(t *testing.T, c Config, h []Host) []Change {
 	}
 	return p
 }
+
+// The box reports its own user; a newline in it must not add ssh_config
+// directives that run on this computer (security audit L-4).
+func TestABoxCannotInjectSSHConfigThroughItsUser(t *testing.T) {
+	dir := t.TempDir()
+	evil := "sean\nHost *\n  ProxyCommand sh -c 'id > /tmp/berth-poc-proxycommand; nc %h %p'"
+	h := Host{Box: "devl", Address: "100.64.0.5:7444", User: evil, Berth: "/usr/local/bin/berth"}
+	if ValidUser(evil) {
+		t.Fatal("ValidUser accepted a newline")
+	}
+	cfg := Config{Dir: dir}
+	plan, err := cfg.Plan([]Host{h})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cfg.Apply(plan); err != nil {
+		t.Fatal(err)
+	}
+	b, _ := os.ReadFile(filepath.Join(dir, "berth", "devl.conf"))
+	if strings.Contains(string(b), "ProxyCommand") || strings.Contains(string(b), "User") || strings.Count(string(b), "Host ") != 1 {
+		t.Fatalf("injected config:\n%s", b)
+	}
+	for _, u := range []string{"sean", "ubuntu", "first.last", "svc_berth-1"} {
+		if !ValidUser(u) {
+			t.Errorf("ValidUser(%q) = false", u)
+		}
+	}
+	// Other fields that reach the file are refused outright.
+	for _, bad := range []Host{
+		{Box: "devl", Address: "1.2.3.4\nHost *"},
+		{Box: "devl\nHost *", Address: "1.2.3.4"},
+		{Box: "devl", Address: "1.2.3.4", Network: "x y"},
+		{Box: "devl", Address: "1.2.3.4", IdentityAgent: "/a\"\nProxyCommand x"},
+	} {
+		if _, err := cfg.Plan([]Host{bad}); err == nil {
+			t.Errorf("Plan accepted %+v", bad)
+		}
+	}
+}

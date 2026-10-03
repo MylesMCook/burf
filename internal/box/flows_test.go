@@ -47,6 +47,7 @@ func flowBox(t *testing.T, flows []Flow) (*Box, Session, Worktree) {
 	b := &Box{Name: "devbox", Locations: NewLocations(filepath.Join(dir, "locations.json")), Events: &events.Bus{},
 		Sessions: testSessions(t), AgentStates: &AgentStates{}, Flows: &Flows{Path: filepath.Join(dir, "flows.json")}}
 	b.Locations.Add(ctx, "cal", repo)
+	trustRepo(t, b.Locations, "cal")
 	wt, err := b.Locations.CreateWorktree(ctx, "cal", "billing", "", "")
 	if err != nil {
 		t.Fatal(err)
@@ -171,6 +172,7 @@ func TestWebhooksPostTheRunsContext(t *testing.T) {
 	defer srv.Close()
 	b, _, wt := flowBox(t, []Flow{{ID: "hook", Name: "Tell Slack", Enabled: true, Trigger: Trigger{Event: "agent.waiting"},
 		Steps: []Step{{Kind: "webhook", URL: srv.URL, Text: `{"text":"{{worktree.name}} needs you"}`}}}})
+	b.Flows.AllowOutbound = []string{"127.0.0.1"}
 	b.Events.Publish(events.Event{Type: "agent.waiting", Data: map[string]any{"path": wt.Path}})
 	select {
 	case m := <-got:

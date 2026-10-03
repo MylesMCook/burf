@@ -86,13 +86,17 @@ func addSSHSteps(l laptop, args []string) error {
 	if err := checkName(*name); err != nil {
 		return err
 	}
+	if err := checkNetwork(*via); err != nil {
+		return err
+	}
 	exe, err := os.Executable()
 	if err != nil {
 		return err
 	}
 	if *via != "" {
-		// SSH to the box through the same network berth will use.
-		sshArgs = append([]string{"-o", fmt.Sprintf("ProxyCommand=%s network proxy %s %%h %%p", shellQuote(exe), *via)}, sshArgs...)
+		// SSH to the box through the same network berth will use. ssh runs
+		// ProxyCommand with a shell, so every word is quoted.
+		sshArgs = append([]string{"-o", proxyCommand(exe, *via)}, sshArgs...)
 	}
 	if *identity != "" {
 		path, err := expandHome(*identity)
@@ -302,6 +306,21 @@ func checkName(name string) error {
 	return fmt.Errorf("%q cannot be a box name: it is part of URLs like 3000.NAME.localhost. Try --name %s", name, trust.NameFromHostname(name, "box"))
 }
 
+// checkNetwork refuses a --network that is not a network's name: it ends up
+// in ssh's ProxyCommand and in the laptop's records.
+func checkNetwork(network string) error {
+	if network == "" || trust.ValidName(network) {
+		return nil
+	}
+	return fmt.Errorf("%q is not a network name (see berth networks)", network)
+}
+
+// proxyCommand is the ssh option that reaches a box through a berth network.
+// %h and %p are ssh's own tokens and stay outside the quotes.
+func proxyCommand(exe, network string) string {
+	return fmt.Sprintf("ProxyCommand=%s network proxy %s %%h %%p", shellQuote(exe), shellQuote(network))
+}
+
 // openMaster authenticates once and leaves a shared connection in the
 // background, returning ssh's stderr when it fails. That goes to a file, not
 // a pipe: the backgrounded ssh keeps it open, and waiting on a pipe would
@@ -382,7 +401,12 @@ func parseAnywhere(fs *flag.FlagSet, args []string) ([]string, error) {
 
 // readDaemon finds the berthd build to upload: beside berth in a build
 // directory, or in Contents/Resources when berth runs inside the macOS app.
+// berth on the PATH is often a link to the app's copy (Settings → General
+// → Command line), so look beside the file the link points at.
 func readDaemon(exe, daemon string) ([]byte, error) {
+	if resolved, err := filepath.EvalSymlinks(exe); err == nil {
+		exe = resolved
+	}
 	dir := filepath.Dir(exe)
 	for _, path := range []string{filepath.Join(dir, daemon), filepath.Join(dir, "..", "Resources", daemon)} {
 		if b, err := os.ReadFile(path); err == nil {

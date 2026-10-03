@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -95,7 +96,38 @@ func TestAWorktreeCanCheckOutAPullRequestsHead(t *testing.T) {
 	}
 }
 
+// allowFileClones lets a test clone from a folder, which a box refuses.
+func allowFileClones(t *testing.T) {
+	old := GitProtocols
+	GitProtocols += ":file"
+	t.Cleanup(func() { GitProtocols = old })
+}
+
+// A clone link only gets network transports: not ext:: (a command) nor a
+// path or file:// on the box (security audit L-8).
+func TestCloneRefusesLocalAndCommandTransports(t *testing.T) {
+	c, _ := servedBox(t)
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	src := gitRepo(t)
+	marker := filepath.Join(home, "ext-ran")
+	for i, link := range []string{src, "file://" + src, "ext::sh -c touch% " + marker} {
+		resp, err := c.Do(context.Background(), "POST", "/v1/locations/clone", strings.NewReader(`{"url":"`+link+`","parent":"~/work`+strconv.Itoa(i)+`"}`))
+		if err != nil {
+			t.Fatal(err)
+		}
+		body := readAll(t, resp)
+		if !strings.Contains(body, `"error"`) {
+			t.Errorf("clone of %s: %s", link, body)
+		}
+	}
+	if _, err := os.Stat(marker); err == nil {
+		t.Fatal("ext:: ran a command")
+	}
+}
+
 func TestProjectsAreBrowsedClonedAndCreatedOverTheAPI(t *testing.T) {
+	allowFileClones(t)
 	c, _ := servedBox(t)
 	home := t.TempDir()
 	t.Setenv("HOME", home)

@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/sean-brydon/berthd/internal/events"
+	"github.com/sean-brydon/berthd/internal/wire"
 )
 
 // AgentPreset is a way to start a coding agent: what the app offers when it
@@ -198,13 +199,28 @@ func (b *Box) watchStartup(from string, sess Session) {
 // before asks the hooks gating typ, the box's and then the repository's,
 // whether the request may go ahead.
 func (b *Box) before(r *http.Request, typ string, data map[string]any) error {
-	e := events.Event{Type: typ, Box: b.Name, Origin: origin(r), Data: data}
+	e := events.Event{Type: typ, Box: b.Name, Origin: gateOrigin(r), Data: data}
 	if b.Hooks != nil {
 		if err := b.Hooks.Before(r.Context(), e); err != nil {
 			return httpError{http.StatusForbidden, err.Error()}
 		}
 	}
 	return b.beforeRepo(r, e)
+}
+
+// gateOrigin is the origin a gate sees. A gate scoped to a tool lets that
+// tool's own actions through, so the claim must be one the box can vouch for:
+// only callers on its own socket (the box user's tools, which could edit the
+// hooks anyway) may name a tool. A paired laptop or the phone is named by who
+// it authenticated as, which no tool name can equal.
+func gateOrigin(r *http.Request) string {
+	if wire.IsLocal(r.Context()) {
+		return origin(r)
+	}
+	if p := wire.PeerFrom(r.Context()); p.Name != "" {
+		return "laptop:" + p.Name
+	}
+	return "remote"
 }
 
 // enrich adds what each session's agent last reported.

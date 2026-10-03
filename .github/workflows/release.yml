@@ -2,8 +2,12 @@ name: release
 
 # A v* tag builds berthd and berth for every platform install.sh and the CLI
 # support, and attaches the archives and checksums.txt to the tag's GitHub
-# release (creating it when scripts/publish.sh has not already). The archive
-# names carry no version, so releases/latest/download/<name> always works.
+# release (creating it when scripts/publish.sh has not already). Then the
+# macos job builds the desktop app, universal, signed with the Developer ID,
+# notarized and stapled (scripts/mac-release.sh), and adds the dmg, the
+# updater archive and latest.json, the feed installed apps update from. No
+# asset name carries a version, so releases/latest/download/<name> always
+# finds the newest.
 on:
   push:
     tags: ["v*"]
@@ -29,7 +33,7 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y tmux shellcheck
       - run: go vet ./...
       - run: go test -race ./...
-      - run: shellcheck site/install.sh scripts/build-release.sh scripts/publish.sh
+      - run: shellcheck site/install.sh scripts/build-release.sh scripts/publish.sh scripts/mac-release.sh
       - name: Build archives
         run: make release VERSION="$GITHUB_REF_NAME"
       - name: Check the stamped version
@@ -46,3 +50,145 @@ jobs:
           else
             gh release create "$TAG" dist/*.tar.gz dist/checksums.txt --verify-tag --title "Berth $TAG" --generate-notes
           fi
+
+  macos:
+    # After the release job, which has made the release by then. Safe to
+    # re-run: it skips when the release's latest.json already announces this
+    # version (scripts/publish.sh uploaded it, or an earlier run did), and
+    # otherwise replaces only its own four assets, the feed last, so the feed
+    # never points at an archive that is not there yet.
+    needs: release
+    runs-on: macos-latest
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ github.ref_name }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      # The token stays out of .git/config and the build's environment: only
+      # the two steps that talk to the release get it.
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Is the app already published?
+        id: published
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Published means the release's latest.json announces this version.
+          if gh release download "$TAG" --pattern latest.json --output - 2>/dev/null |
+            python3 -c 'import json, os, sys; sys.exit(json.load(sys.stdin).get("version") != os.environ["TAG"][1:])' 2>/dev/null; then
+            echo "::notice::$TAG's latest.json already announces this version; not building the app again"
+            echo "published=true" >>"$GITHUB_OUTPUT"
+          else
+            echo "published=false" >>"$GITHUB_OUTPUT"
+          fi
+      - if: steps.published.outputs.published != 'true'
+        uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - if: steps.published.outputs.published != 'true'
+        uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+        with:
+          version: 11
+      - if: steps.published.outputs.published != 'true'
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+      - name: Install tools
+        if: steps.published.outputs.published != 'true'
+        run: |
+          rustup target add aarch64-apple-darwin x86_64-apple-darwin
+          brew install minisign
+          # spctl's verdict is a check below; with assessments off it
+          # would accept anything.
+          sudo spctl --master-enable || true
+          spctl --status
+      - name: Install the app's dependencies
+        if: steps.published.outputs.published != 'true'
+        working-directory: app
+        run: pnpm install --frozen-lockfile
+      - name: Import the Developer ID certificate into a temporary keychain
+        if: steps.published.outputs.published != 'true'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          keychain="$RUNNER_TEMP/berth-signing.keychain-db"
+          cert="$RUNNER_TEMP/berth-signing.p12"
+          echo "KEYCHAIN_PATH=$keychain" >>"$GITHUB_ENV"
+          printf '%s' "$APPLE_CERTIFICATE" | base64 --decode >"$cert"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$keychain"
+          security set-keychain-settings -lut 21600 "$keychain"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$keychain"
+          security import "$cert" -k "$keychain" -f pkcs12 -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          rm -f "$cert"
+          # The Developer ID intermediate, in case the .p12 left it out.
+          if curl -fsSL https://www.apple.com/certificateauthority/DeveloperIDG2CA.cer -o "$RUNNER_TEMP/DeveloperIDG2CA.cer"; then
+            security import "$RUNNER_TEMP/DeveloperIDG2CA.cer" -k "$keychain" || true
+          fi
+          # Let codesign use the key without a prompt no one can answer.
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" "$keychain" >/dev/null
+          # codesign searches the user's keychain list: put this one first.
+          existing="$(security list-keychains -d user | tr -d '"' | xargs)"
+          # shellcheck disable=SC2086 # one path per word
+          security list-keychains -d user -s "$keychain" $existing
+          identity="$(security find-identity -v -p codesigning "$keychain" | sed -n 's/.*"\(Developer ID Application: [^"]*\)".*/\1/p' | head -1)"
+          if [ -z "$identity" ]; then
+            echo "::error::APPLE_CERTIFICATE holds no valid Developer ID Application identity (export the certificate with its private key)"
+            exit 1
+          fi
+          echo "Signing as $identity"
+          echo "APPLE_SIGNING_IDENTITY=$identity" >>"$GITHUB_ENV"
+      - name: Write the App Store Connect API key
+        if: steps.published.outputs.published != 'true'
+        env:
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          key="$RUNNER_TEMP/berth-notary.p8"
+          if grep -q "BEGIN PRIVATE KEY" <<<"$APPLE_API_KEY_P8"; then
+            printf '%s\n' "$APPLE_API_KEY_P8" >"$key"
+          else
+            printf '%s' "$APPLE_API_KEY_P8" | base64 --decode >"$key"
+          fi
+          echo "APPLE_API_KEY_PATH=$key" >>"$GITHUB_ENV"
+      - name: Build, sign, notarize and check the app
+        if: steps.published.outputs.published != 'true'
+        env:
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+        run: scripts/mac-release.sh "$TAG"
+      - name: Add the app to the release
+        if: steps.published.outputs.published != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release view "$TAG" >/dev/null
+          # scripts/publish.sh may have published it from a Mac meanwhile.
+          if gh release download "$TAG" --pattern latest.json --output - 2>/dev/null |
+            python3 -c 'import json, os, sys; sys.exit(json.load(sys.stdin).get("version") != os.environ["TAG"][1:])' 2>/dev/null; then
+            echo "::notice::$TAG's latest.json appeared while this built; leaving the published app alone"
+            exit 0
+          fi
+          gh release upload "$TAG" --clobber \
+            dist/mac/Berth-macos-universal.dmg \
+            dist/mac/Berth-macos-universal.app.tar.gz \
+            dist/mac/Berth-macos-universal.app.tar.gz.sig
+          gh release upload "$TAG" --clobber dist/mac/latest.json
+      - name: Remove the keychain and the API key
+        if: always()
+        run: |
+          if [ -n "${KEYCHAIN_PATH:-}" ]; then security delete-keychain "$KEYCHAIN_PATH" || true; fi
+          rm -f "$RUNNER_TEMP/berth-notary.p8" "$RUNNER_TEMP/berth-signing.p12"

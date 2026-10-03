@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -44,11 +45,17 @@ type Server struct {
 	Log      *log.Logger
 	Now      func() time.Time
 
+	// RevokeCheck is how often open connections are checked against the
+	// trust store, so a revoked laptop loses what it already holds.
+	RevokeCheck time.Duration
+
 	once      sync.Once
 	mux       *http.ServeMux
 	local     *http.ServeMux
-	pairLimit *limiter
+	pairLimit *pairLimiter
 	streams   atomic.Int64
+	open      openConns
+	recheck   chan struct{}
 }
 
 // ActiveStreams reports how many port streams are open right now.
@@ -56,12 +63,19 @@ func (s *Server) ActiveStreams() int64 { return s.streams.Load() }
 
 func (s *Server) init() {
 	s.once.Do(func() {
-		s.pairLimit = newLimiter(10, 10)
+		s.pairLimit = newPairLimiter()
+		s.recheck = make(chan struct{}, 1)
 		s.mux = http.NewServeMux()
 		s.local = http.NewServeMux()
 		s.mux.HandleFunc("POST /v1/pair", s.handlePair)
 		s.mux.Handle("GET /v1/ping", s.authenticated(http.HandlerFunc(s.handlePing)))
 		s.mux.Handle("POST /v1/tcp", s.authenticated(http.HandlerFunc(s.handleTCP)))
+		// berthd revoke, on the box itself, says when it removed a laptop so
+		// that laptop's open connections close at once.
+		s.local.HandleFunc("POST /v1/clients/changed", func(w http.ResponseWriter, r *http.Request) {
+			s.ClientsChanged()
+			w.WriteHeader(http.StatusOK)
+		})
 	})
 }
 
@@ -71,12 +85,24 @@ func (s *Server) Handle(pattern string, h http.Handler) {
 	s.init()
 	s.mux.Handle(pattern, s.authenticated(h))
 	s.local.Handle(pattern, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		h.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), peerKey{}, LocalPeer)))
+		ctx := context.WithValue(context.WithValue(r.Context(), peerKey{}, LocalPeer), localKey{}, true)
+		h.ServeHTTP(w, r.WithContext(ctx))
 	}))
 }
 
-// LocalPeer is the caller on the box's own Unix socket.
+// LocalPeer is the caller on the box's own Unix socket. Its name is reserved:
+// a laptop asking to pair as "local" is named something else.
 var LocalPeer = trust.Peer{Name: "local"}
+
+type localKey struct{}
+
+// IsLocal reports whether a request came over the box's own Unix socket
+// rather than from a paired laptop. Use it, not the peer's name, to decide
+// what only the box itself may do.
+func IsLocal(ctx context.Context) bool {
+	v, _ := ctx.Value(localKey{}).(bool)
+	return v
+}
 
 // ServeLocal serves the Handle'd routes on ln, a Unix socket that only the
 // box's user can open. Tools running on the box (Orca and Herdr hooks, the
@@ -122,9 +148,15 @@ func (s *Server) Serve(ctx context.Context, ln net.Listener) error {
 		HTTP2:             &http.HTTP2Config{SendPingTimeout: 30 * time.Second, PingTimeout: 15 * time.Second},
 		// An exposed port attracts scanners; their failed handshakes are noise.
 		ErrorLog: log.New(io.Discard, "", 0),
+		ConnContext: func(ctx context.Context, c net.Conn) context.Context {
+			return context.WithValue(ctx, connKey{}, c)
+		},
 	}
 	stop := context.AfterFunc(ctx, func() { srv.Close() })
 	defer stop()
+	watchCtx, endWatch := context.WithCancel(ctx)
+	defer endWatch()
+	go s.watchRevocations(watchCtx)
 	err := srv.ServeTLS(ln, "", "")
 	if errors.Is(err, http.ErrServerClosed) && ctx.Err() != nil {
 		return nil
@@ -152,7 +184,15 @@ func (s *Server) authenticated(h http.Handler) http.Handler {
 			writeError(w, http.StatusUnauthorized, errUnauthorized)
 			return
 		}
-		h.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), peerKey{}, peer)))
+		// Long-lived requests (shells, port streams, event streams) are
+		// remembered under the key that opened them, so revoking that key
+		// ends them too.
+		ctx, cancel := context.WithCancel(context.WithValue(r.Context(), peerKey{}, peer))
+		defer cancel()
+		conn, _ := r.Context().Value(connKey{}).(net.Conn)
+		done := s.open.add(fp, conn, cancel)
+		defer done()
+		h.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
@@ -183,10 +223,19 @@ type nameResponse struct {
 }
 
 func (s *Server) handlePair(w http.ResponseWriter, r *http.Request) {
-	if !s.pairLimit.allow(s.now()) {
+	// Each source gets its own budget, and only failures spend it, so a
+	// stranger hammering the port cannot lock the owner out of pairing.
+	src := remoteIP(r)
+	if !s.pairLimit.allow(src, s.now()) {
 		writeError(w, http.StatusTooManyRequests, errTooManyPairings)
 		return
 	}
+	succeeded := false
+	defer func() {
+		if succeeded {
+			s.pairLimit.refund(src)
+		}
+	}()
 	peer, ok := clientFingerprint(r)
 	if !ok {
 		writeError(w, http.StatusForbidden, errPairingRejected)
@@ -214,7 +263,7 @@ func (s *Server) handlePair(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	name := req.Name
-	if !trust.ValidName(name) {
+	if !trust.ValidName(name) || strings.EqualFold(name, LocalPeer.Name) {
 		name = "client"
 	}
 	name, err = s.Clients.AddWithFreeName(trust.Peer{Name: name, Fingerprint: peer, PairedAt: s.now().UTC()})
@@ -224,6 +273,7 @@ func (s *Server) handlePair(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.logf("paired client %q (%s)", name, peer.Short())
+	succeeded = true
 	writeJSON(w, http.StatusOK, nameResponse{Name: s.Name})
 }
 

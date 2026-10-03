@@ -1,8 +1,14 @@
+import { useEffect, useState } from "react";
+
 import { PickOne } from "@/components/pick-one";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { toastManager } from "@/components/ui/toast";
+import { type CliLink, cliLinkStatus, installCliLink } from "@/lib/cli-link";
+import { errorMessage } from "@/lib/format";
 import { setPrefs, usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
+import { ConfirmButton } from "@/views/settings/confirm";
 import { Code, SettingsGroup, SettingsPage, SettingsRow, Value } from "@/views/settings/rows";
 
 export function GeneralSection() {
@@ -48,6 +54,8 @@ export function GeneralSection() {
         </SettingsRow>
       </SettingsGroup>
 
+      <CommandLineGroup />
+
       <SettingsGroup title="Startup">
         <SettingsRow label="Open Berth at login" description="Not available yet. Your boxes keep running either way: closing Berth never stops an agent.">
           <Switch checked={false} disabled />
@@ -79,5 +87,81 @@ export function GeneralSection() {
         </SettingsRow>
       </SettingsGroup>
     </SettingsPage>
+  );
+}
+
+const LINK = "~/.local/bin/berth";
+
+// CommandLineGroup puts the berth CLI that Berth.app carries on the PATH, as
+// a link at ~/.local/bin/berth, so a terminal runs the same berth as the app
+// and it updates with the app. It asks first, and says what it replaces.
+function CommandLineGroup() {
+  const [cli, setCli] = useState<CliLink | null | undefined>(undefined);
+  useEffect(() => {
+    cliLinkStatus().then(setCli, () => setCli(null));
+  }, []);
+  if (cli === undefined) return null;
+
+  let description: React.ReactNode;
+  let control: React.ReactNode = null;
+  if (!cli?.bundled) {
+    description = (
+      <>
+        The Berth app carries its own <Code>berth</Code>; this build has none. From a clone, run <Code>bin/berth</Code> after <Code>make all</Code>.
+      </>
+    );
+  } else if (cli.state === "linked") {
+    description = (
+      <>
+        <Code>{LINK}</Code> runs the copy inside Berth.app, so it updates with the app. If a terminal can't find <Code>berth</Code>, add <Code>~/.local/bin</Code> to your <Code>PATH</Code>.
+      </>
+    );
+    control = <Value>Installed</Value>;
+  } else {
+    const replaces =
+      cli.state === "symlink" ? (
+        <>
+          {" "}
+          It replaces the link there now, to <Code>{cli.target}</Code>.
+        </>
+      ) : cli.state === "file" ? (
+        <>
+          {" "}
+          The <Code>berth</Code> there now is kept as <Code>berth.previous</Code>.
+        </>
+      ) : null;
+    description = cli.blocked ?? (
+      <>
+        Links <Code>{LINK}</Code> to the copy inside Berth.app, so <Code>berth</Code> in a terminal is the one the app runs, and updates with it.{replaces}
+      </>
+    );
+    control = (
+      <ConfirmButton
+        label="Install"
+        disabled={!!cli.blocked}
+        title="Install the berth command?"
+        description={
+          <>
+            This links <Code>{LINK}</Code> to <Code>{cli.bundled}</Code>.{replaces} If <Code>~/.local/bin</Code> isn't on your <Code>PATH</Code>, add <Code>{'export PATH="$HOME/.local/bin:$PATH"'}</Code> to your shell's profile.
+          </>
+        }
+        confirm="Install"
+        onConfirm={async () => {
+          try {
+            setCli(await installCliLink());
+            toastManager.add({ title: "Installed the berth command", description: `${LINK} now runs Berth's copy.`, type: "success" });
+          } catch (e) {
+            toastManager.add({ title: "Could not install the berth command", description: errorMessage(e), type: "error" });
+          }
+        }}
+      />
+    );
+  }
+  return (
+    <SettingsGroup title="Command line">
+      <SettingsRow label="The berth command" description={description}>
+        {control}
+      </SettingsRow>
+    </SettingsGroup>
   );
 }

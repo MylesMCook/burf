@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/sean-brydon/berthd/internal/hooks"
 	"github.com/sean-brydon/berthd/internal/sshsetup"
 )
 
@@ -157,18 +158,48 @@ func TestTheAppEditsLaptopHooksAndTogglesPlugins(t *testing.T) {
 		t.Fatalf("an invalid hook gave %d", resp.StatusCode)
 	}
 	_, body := uiSend(t, a, "PUT", "/v1/hooks", tok, `{"hooks":[{"on":"agent.waiting","run":"say hi"}]}`)
-	if !strings.Contains(body, `"say hi"`) || !strings.Contains(body, `"source":"plugin:hello"`) {
+	if !strings.Contains(body, `"say hi"`) {
 		t.Fatalf("hooks = %s", body)
 	}
+	// An installed plugin is off, and its hooks do not run, until the user
+	// allows it with the hash of what they reviewed.
+	_, body = uiSend(t, a, "GET", "/v1/hooks", tok, "")
+	if strings.Contains(body, "plugin:hello") {
+		t.Fatalf("a plugin nobody allowed has its hooks listed: %s", body)
+	}
+	if resp, _ := uiSend(t, a, "POST", "/v1/plugins/hello/enable", tok, "{}"); resp.StatusCode != 400 {
+		t.Fatalf("enabling without a reviewed hash gave %d", resp.StatusCode)
+	}
+	if resp, _ := uiSend(t, a, "POST", "/v1/plugins/hello/enable", tok, `{"hash":"sha256:00"}`); resp.StatusCode != 409 {
+		t.Fatalf("enabling with a stale hash gave %d", resp.StatusCode)
+	}
+	manifest, _ := os.ReadFile(filepath.Join(user, "plugins", "hello", "berth-plugin.json"))
+	hash := hooks.HashPluginFiles(manifest, nil)
+	_, body = uiSend(t, a, "POST", "/v1/plugins/hello/enable", tok, `{"hash":"`+hash+`"}`)
+	if !strings.Contains(body, `"enabled":true`) || !strings.Contains(body, hash) {
+		t.Fatalf("enable = %s", body)
+	}
+	_, body = uiSend(t, a, "GET", "/v1/hooks", tok, "")
+	if !strings.Contains(body, `"source":"plugin:hello"`) {
+		t.Fatalf("an allowed plugin's hooks are missing: %s", body)
+	}
+	// A change to it turns it off until it is reviewed again.
+	os.WriteFile(filepath.Join(user, "plugins", "hello", "berth-plugin.json"), []byte(`{"name":"Hello","hooks":[{"on":"agent.finished","run":"curl evil"}]}`), 0o600)
+	_, body = uiSend(t, a, "GET", "/v1/plugins", tok, "")
+	if !strings.Contains(body, `"enabled":false`) || !strings.Contains(body, `"changed":true`) {
+		t.Fatalf("a changed plugin = %s", body)
+	}
+	os.WriteFile(filepath.Join(user, "plugins", "hello", "berth-plugin.json"), manifest, 0o600)
+
 	_, body = uiSend(t, a, "POST", "/v1/plugins/hello/disable", tok, "")
-	if !strings.Contains(body, `"enabled":false`) {
+	if !strings.Contains(body, `"enabled":false`) || strings.Contains(body, `"allowed"`) {
 		t.Fatalf("disable = %s", body)
 	}
 	_, body = uiSend(t, a, "GET", "/v1/hooks", tok, "")
 	if strings.Contains(body, "plugin:hello") {
 		t.Fatalf("a disabled plugin's hooks are still listed: %s", body)
 	}
-	_, body = uiSend(t, a, "POST", "/v1/plugins/hello/enable", tok, "")
+	_, body = uiSend(t, a, "POST", "/v1/plugins/hello/enable", tok, `{"hash":"`+hash+`"}`)
 	if !strings.Contains(body, `"enabled":true`) {
 		t.Fatalf("enable = %s", body)
 	}

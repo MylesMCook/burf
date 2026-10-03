@@ -11,7 +11,8 @@
     "build:demo": "node scripts/build-plugins.mjs && tsc && vite build --mode demo",
     "build:plugins": "node scripts/build-plugins.mjs",
     "typecheck:plugins": "tsc --noEmit -p ../plugins",
-    "check:titles": "node scripts/check-titles.mjs"
+    "check:titles": "node scripts/check-titles.mjs",
+    "check:plugin-consent": "node scripts/check-plugin-consent.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -21,6 +22,7 @@
     "@tauri-apps/plugin-deep-link": "^2.6.1",
     "@tauri-apps/plugin-notification": "^2",
     "@tauri-apps/plugin-shell": "^2",
+    "@tauri-apps/plugin-updater": "^2.13.1",
     "@xterm/addon-fit": "^0.10.0",
     "@xterm/addon-web-links": "^0.11.0",
     "@xterm/xterm": "^5.5.0",

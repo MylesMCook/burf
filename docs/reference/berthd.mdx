@@ -38,7 +38,7 @@ flows, skills) can drive it directly. `berthd help` prints this list.
 | `berthd location add NAME PATH` | Register a repo or directory |
 | `berthd location rm NAME` | Forget a location (files are untouched) |
 | `berthd location scripts NAME [--setup CMD] [--archive CMD] [--clear]` | Worktree setup and archive scripts (default: the repo's `.berth/config.json`) |
-| `berthd location config NAME` | The repo's, the box's and the effective config |
+| `berthd location config NAME [--trust HASH\|--untrust]` | The repo's, the box's and the effective config; trust the repo's to run it |
 | `berthd services` | Which worktree each running server belongs to |
 | `berthd service list\|start\|stop\|restart\|log LOC/WORKTREE [SERVICE]` | A worktree's services from the repo's config |
 | `berthd preview [LOC/WORKTREE] [PORT] [--path /x]` | Open a worktree's page in the Berth app |

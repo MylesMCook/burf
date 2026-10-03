@@ -16,7 +16,9 @@ export interface PluginStatus {
   id: string;
   name: string;
   version?: string;
-  state: "loading" | "active" | "failed";
+  // review: a plugin from ~/.berth/plugins that changed since the user
+  // allowed it, so it is not loaded until they allow it again.
+  state: "loading" | "active" | "failed" | "review";
   error?: string;
   builtin?: boolean;
 }

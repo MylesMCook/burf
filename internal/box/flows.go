@@ -8,10 +8,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -90,7 +92,8 @@ type Where struct {
 //
 // When runs it on the previous step's "success" (default), "failure", or
 // "always". Text fields take {{event.FIELD}}, {{worktree.path}},
-// {{prev.output}}, {{prev.exit_code}} and {{steps.ID.output}}.
+// {{prev.output}}, {{prev.exit_code}} and {{steps.ID.output}}, filled in
+// for each kind of field as flowtemplate.go describes: never as code.
 type Step struct {
 	ID          string   `json:"id"`
 	Kind        string   `json:"kind"`
@@ -242,6 +245,9 @@ type Flows struct {
 	GitHubPath string
 	// Now reads the clock; tests replace it.
 	Now func() time.Time
+	// AllowOutbound adds to the outbound allowlist in network.json beside
+	// Path (see netguard.go); tests use it for their local servers.
+	AllowOutbound []string
 
 	mu        sync.Mutex
 	runs      []FlowRun
@@ -538,10 +544,10 @@ func (b *Box) runFlow(ctx context.Context, sf ScopedFlow, e events.Event) FlowRu
 	for k, v := range e.Data {
 		vars["event."+k] = fmt.Sprint(v)
 	}
-	var env []string
+	var env, secrets []string
 	if scoped {
 		vars["location"], vars["worktree.name"], vars["worktree.path"], vars["worktree.branch"] = loc.Name, wt.Name, wt.Path, wt.Branch
-		env, _ = b.WorktreeEnv(ctx, loc.Name, wt)
+		env, secrets = b.flowEnv(ctx, loc.Name, wt)
 	}
 	session, _ := e.Data["session"].(string)
 	if session == "" && scoped {
@@ -569,11 +575,13 @@ func (b *Box) runFlow(ctx context.Context, sf ScopedFlow, e events.Event) FlowRu
 			continue
 		}
 		sr.Started = time.Now().UTC()
-		out, code, err := b.runStep(ctx, sf.Flow.ID, s, vars, env, loc, wt, scoped, &session)
+		out, code, err := b.runStep(ctx, sf.Flow.ID, s, vars, env, secrets, loc, wt, scoped, &session)
 		sr.Duration = time.Since(sr.Started).Round(time.Millisecond).String()
-		sr.Output, sr.ExitCode = tail(out, 4000), code
+		// Runs are kept on disk and shown in the app: a secret a command
+		// printed is not kept with them.
+		sr.Output, sr.ExitCode = tail(redact(out, secrets), 4000), code
 		if err != nil {
-			sr.Status, sr.Error = "failed", err.Error()
+			sr.Status, sr.Error = "failed", redact(err.Error(), secrets)
 		} else {
 			sr.Status = "succeeded"
 		}
@@ -611,14 +619,6 @@ func tail(s string, n int) string {
 	return "…" + s[len(s)-n:]
 }
 
-var placeholder = regexp.MustCompile(`\{\{\s*([a-z0-9_.-]+)\s*\}\}`)
-
-func expand(s string, vars map[string]string) string {
-	return placeholder.ReplaceAllStringFunc(s, func(m string) string {
-		return vars[placeholder.FindStringSubmatch(m)[1]]
-	})
-}
-
 // sessionIn finds the agent session working in dir, if there is one.
 func (b *Box) sessionIn(ctx context.Context, dir string) string {
 	all, err := b.Sessions.List(ctx)
@@ -640,7 +640,30 @@ func stepTimeout(s Step, def time.Duration) time.Duration {
 	return def
 }
 
-func (b *Box) runStep(ctx context.Context, flow string, s Step, vars map[string]string, env []string, loc Location, wt Worktree, scoped bool, session *string) (string, int, error) {
+// flowEnv is a worktree's environment for a flow's commands, and the
+// secret values in it, which nothing the flow sends or keeps may carry.
+func (b *Box) flowEnv(ctx context.Context, location string, wt Worktree) (env, secrets []string) {
+	p, err := b.worktreeEnv(ctx, location, wt)
+	if err != nil {
+		return nil, nil
+	}
+	values := b.resolveWorktreeSecrets(ctx, p.location, wt, p.refs, p.opEnv)
+	keys := make([]string, 0, len(values))
+	for k := range values {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	env = p.env
+	for _, k := range keys {
+		env = append(env, k+"="+values[k])
+		secrets = append(secrets, values[k])
+	}
+	// Longest first, so one secret containing another is hidden whole.
+	sort.Slice(secrets, func(i, j int) bool { return len(secrets[i]) > len(secrets[j]) })
+	return env, secrets
+}
+
+func (b *Box) runStep(ctx context.Context, flow string, s Step, vars map[string]string, env, secrets []string, loc Location, wt Worktree, scoped bool, session *string) (string, int, error) {
 	origin := "flow:" + flow
 	switch s.Kind {
 	case "run":
@@ -650,9 +673,11 @@ func (b *Box) runStep(ctx context.Context, flow string, s Step, vars map[string]
 		}
 		ctx, cancel := context.WithTimeout(ctx, stepTimeout(s, 10*time.Minute))
 		defer cancel()
-		cmd := exec.CommandContext(ctx, loginShell(), "-lc", expand(s.Command, vars))
+		// Values reach the command only through its environment.
+		script, flowVars := shellTemplate(s.Command, vars)
+		cmd := exec.CommandContext(ctx, loginShell(), "-lc", script)
 		cmd.Dir = dir
-		cmd.Env = append(os.Environ(), env...)
+		cmd.Env = append(append(os.Environ(), env...), flowVars...)
 		var out tailBuffer
 		cmd.Stdout, cmd.Stderr = &out, &out
 		err := cmd.Run()
@@ -723,26 +748,39 @@ func (b *Box) runStep(ctx context.Context, flow string, s Step, vars map[string]
 		*session = sess.Name
 		return "started " + sess.Name, 0, nil
 	case "notify":
-		data := map[string]any{"title": expand(s.Title, vars), "body": expand(s.Text, vars), "flow": flow}
+		data := map[string]any{"title": redact(expand(s.Title, vars), secrets), "body": redact(expand(s.Text, vars), secrets), "flow": flow}
 		if scoped {
 			data["path"], data["location"] = wt.Path, loc.Name
 		}
 		b.Events.Publish(events.Event{Type: "notify", Box: b.Name, Origin: origin, Data: data})
 		return "notified", 0, nil
 	case "webhook":
-		body := expand(s.Text, vars)
+		// Neither the body nor the URL carries a secret's value, whatever a
+		// step printed.
+		safe := make(map[string]string, len(vars))
+		for k, v := range vars {
+			safe[k] = redact(v, secrets)
+		}
+		body := expandJSON(s.Text, safe)
 		if strings.TrimSpace(body) == "" {
-			j, _ := json.Marshal(vars)
+			j, _ := json.Marshal(safe)
 			body = string(j)
 		}
-		ctx, cancel := context.WithTimeout(ctx, stepTimeout(s, 15*time.Second))
+		body = redact(body, secrets)
+		target := redact(expandURL(s.URL, safe), secrets)
+		if u, err := url.Parse(target); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			return "", 0, errors.New("webhook URL is not an http or https URL")
+		}
+		timeout := stepTimeout(s, 15*time.Second)
+		ctx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, expand(s.URL, vars), bytes.NewBufferString(body))
+		req, err := http.NewRequestWithContext(ctx, http.MethodPost, target, bytes.NewBufferString(body))
 		if err != nil {
 			return "", 0, err
 		}
 		req.Header.Set("Content-Type", "application/json")
-		resp, err := http.DefaultClient.Do(req)
+		// Only to public addresses, unless the box's owner allows more.
+		resp, err := b.outboundPolicy().client(timeout).Do(req)
 		if err != nil {
 			return "", 0, err
 		}
@@ -836,6 +874,10 @@ func (b *Box) testFlow(w http.ResponseWriter, r *http.Request) error {
 	}
 	for _, sf := range all {
 		if sf.Flow.ID == r.PathValue("id") && (req.Scope == "" || sf.Scope == req.Scope) {
+			// A test run runs the flow's steps for real.
+			if err := b.before(r, "flow.test", map[string]any{"flow": sf.Flow.ID, "scope": sf.Scope}); err != nil {
+				return err
+			}
 			e := events.Event{Type: triggerType(sf.Flow.Trigger), Box: b.Name, Origin: origin(r), Time: time.Now(), Data: req.Data}
 			run := b.runFlow(context.WithValue(context.WithoutCancel(r.Context()), testRun{}, true), sf, e)
 			writeJSON(w, run)

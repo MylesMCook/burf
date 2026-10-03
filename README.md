@@ -53,23 +53,23 @@ hooks that let Claude Code, Codex and Cursor report their state
 once, for ten minutes. Run it again to upgrade in place; `sh -s -- --help`
 lists the options.
 
-**On your laptop**, get the `berth` CLI from the release. Its archive also
-carries the Linux daemons `berth add ssh` uploads; use `darwin-amd64`,
-`linux-amd64` or `linux-arm64` to match your laptop, or build it with
-`make all` (Go 1.27) into `bin/`:
+**On your Mac**, [download Berth](https://github.com/sean-brydon/berthd/releases/latest/download/Berth-macos-universal.dmg)
+(`Berth-macos-universal.dmg`, for Apple silicon and Intel, signed and
+notarized), drag it to Applications and open it. The app carries the
+`berth` CLI and the Linux daemons `berth add ssh` uploads, and offers to
+start the laptop agent when it isn't running. It updates itself: new
+releases download in the background, and **Restart to update** in the
+status bar or Settings → About applies one; it never restarts on its own,
+and restarting never stops an agent.
+
+For `berth` in a terminal, **Settings → General → Command line → Install**
+links `~/.local/bin/berth` to the app's copy (it asks first). On a Linux
+laptop, or for the CLI alone, download it from the release (use
+`linux-arm64`, `darwin-arm64` or `darwin-amd64` to match):
 
 ```sh
 mkdir -p ~/.local/bin
-curl -fsSL https://github.com/sean-brydon/berthd/releases/latest/download/berth-darwin-arm64.tar.gz | tar -xz -C ~/.local/bin
-```
-
-The desktop app isn't in the release yet, so build it from source (Node 22,
-pnpm and Rust). It finds `berth` in `~/.local/bin` (or the clone's `bin/`),
-and offers to start the laptop agent when it isn't running:
-
-```sh
-git clone https://github.com/sean-brydon/berthd
-cd berthd/app && pnpm install && pnpm tauri dev
+curl -fsSL https://github.com/sean-brydon/berthd/releases/latest/download/berth-linux-amd64.tar.gz | tar -xz -C ~/.local/bin
 ```
 
 Paste the box's link into the app (**Add a box**), or:
@@ -88,6 +88,21 @@ berth task new my-box/app/fix-login --agent claude --prompt "Fix the login redir
 ```
 
 `berth help` lists every command; every listing takes `--json`.
+
+### Build from source
+
+With Go 1.27, Node 22, pnpm and Rust. `make all` builds `berth` and
+`berthd` into `bin/`; the app runs the clone's `bin/berth` for the laptop
+agent:
+
+```sh
+git clone https://github.com/sean-brydon/berthd
+cd berthd && make all
+cd app && pnpm install && pnpm tauri dev
+```
+
+`make app-build` builds `Berth.app` and its disk image, with the CLI and the
+Linux daemons inside.
 
 ## Docs
 

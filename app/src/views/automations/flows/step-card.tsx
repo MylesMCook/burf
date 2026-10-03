@@ -142,6 +142,7 @@ function Fields({ step, set, variables, agents, readOnly }: { step: Step; set(p:
       return (
         <>
           <TemplateField label="Command" mono value={step.command ?? ""} onChange={(command) => set({ command })} variables={variables} placeholder="pnpm test" readOnly={readOnly} />
+          <p className="text-muted-foreground text-xs">Variables reach the command as quoted environment variables ($BERTH_FLOW_…), so a PR comment or branch name is always text, never run.</p>
           {timeout("10m")}
         </>
       );
@@ -229,6 +230,7 @@ function Fields({ step, set, variables, agents, readOnly }: { step: Step; set(p:
         <>
           <TemplateField label="URL" mono value={step.url ?? ""} onChange={(url) => set({ url })} variables={variables} placeholder="https://hooks.slack.com/services/…" readOnly={readOnly} />
           <TemplateField label="JSON body" mono multiline value={step.text ?? ""} onChange={(text) => set({ text: text || undefined })} variables={variables} placeholder="Empty sends the run's context" readOnly={readOnly} />
+          <p className="text-muted-foreground text-xs">Public addresses only; private ones must be allowed in ~/.berth/network.json on the box.</p>
         </>
       );
   }

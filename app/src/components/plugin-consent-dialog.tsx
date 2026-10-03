@@ -1,0 +1,116 @@
+import { PuzzleIcon, TriangleAlertIcon } from "lucide-react";
+import { useEffect, useState } from "react";
+
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogPanel, DialogPopup, DialogTitle } from "@/components/ui/dialog";
+import { laptopApi } from "@/lib/api";
+import { errorMessage } from "@/lib/format";
+import { useStore } from "@/lib/store";
+import { answerConsent, PLUGIN_POWERS, type PluginFiles, readPluginFiles, usePluginConsent } from "@/plugins/consent";
+
+// PluginConsentDialog asks before a plugin from ~/.berth/plugins first runs,
+// and again whenever its code changes. Plugins are not sandboxed, so it says
+// plainly what one can do, and allows exactly the files it showed.
+export function PluginConsentDialog() {
+  const request = usePluginConsent((s) => s.request);
+  const plugin = request?.plugin;
+  const [files, setFiles] = useState<PluginFiles>();
+  const [error, setError] = useState<string>();
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setFiles(undefined);
+    setError(undefined);
+    const client = useStore.getState().client;
+    if (!plugin || !client) return;
+    let live = true;
+    readPluginFiles(client, plugin)
+      .then((f) => live && setFiles(f))
+      .catch((err) => live && setError(errorMessage(err)));
+    return () => {
+      live = false;
+    };
+  }, [plugin]);
+
+  const allow = async () => {
+    const client = useStore.getState().client;
+    if (!client || !plugin || !files) return;
+    setSaving(true);
+    try {
+      await laptopApi.allowPlugin(client, plugin.id, files.hash);
+      answerConsent(true);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const again = !!plugin?.allowed || !!plugin?.changed;
+  const name = plugin?.name ?? plugin?.id ?? "";
+
+  return (
+    <Dialog open={!!plugin} onOpenChange={(open) => !open && answerConsent(false)}>
+      <DialogPopup className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <PuzzleIcon className="size-4" />
+            {again ? `${name} has changed` : `Allow ${name}?`}
+          </DialogTitle>
+          <DialogDescription>
+            {again ? `Its code is different from the version you allowed, so it's off until you review it again.` : `This plugin isn't part of Berth.`} Plugins aren't sandboxed: once on, it runs inside Berth with the
+            app's own access.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogPanel className="flex flex-col gap-4 px-5 pb-5">
+          <div className="rounded-lg border border-warning/40 bg-warning/8 px-3 py-2.5">
+            <div className="flex items-center gap-2 font-medium text-sm">
+              <TriangleAlertIcon className="size-4 shrink-0 text-warning" />
+              It will be able to
+            </div>
+            <ul className="mt-1.5 flex list-disc flex-col gap-1 pl-9 text-sm">
+              {PLUGIN_POWERS.map((p) => (
+                <li key={p}>{p}</li>
+              ))}
+            </ul>
+          </div>
+          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-xs">
+            <dt className="text-muted-foreground">Plugin</dt>
+            <dd className="font-mono">
+              {plugin?.id}
+              {plugin?.version ? ` ${plugin.version}` : ""}
+            </dd>
+            <dt className="text-muted-foreground">Folder</dt>
+            <dd className="truncate font-mono">~/.berth/plugins/{plugin?.id}</dd>
+            <dt className="text-muted-foreground">Code</dt>
+            <dd className="truncate font-mono">{files ? (files.mainPath ? `${files.mainPath} · ${(files.main.length / 1024).toFixed(1)} KB` : "none (hooks, themes or kits only)") : "Reading…"}</dd>
+            <dt className="text-muted-foreground">Hash</dt>
+            <dd className="truncate font-mono">{files ? files.hash.slice(0, 7 + 16) : "…"}</dd>
+          </dl>
+          {files && files.hooks.length > 0 && (
+            <div>
+              <h4 className="mb-1.5 font-medium text-muted-foreground text-xs">Hooks it runs on this computer</h4>
+              <ul className="flex flex-col gap-1 rounded-lg border bg-muted/30 px-3 py-2 font-mono text-xs">
+                {files.hooks.map((h, i) => (
+                  <li key={`${i}-${h.on}`} className="break-all">
+                    <span className="text-muted-foreground">{h.on}</span> {h.run}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <p className="text-muted-foreground text-xs">Allow only plugins you trust. Berth asks again whenever the plugin's code changes, and you can turn it off in Settings → Plugins.</p>
+          {error && <p className="text-destructive-foreground text-xs">{error}</p>}
+        </DialogPanel>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => answerConsent(false)}>
+            Not now
+          </Button>
+          <Button onClick={() => void allow()} loading={saving} disabled={!files}>
+            Allow and turn on
+          </Button>
+        </DialogFooter>
+      </DialogPopup>
+    </Dialog>
+  );
+}

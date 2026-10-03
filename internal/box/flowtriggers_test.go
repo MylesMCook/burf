@@ -143,6 +143,7 @@ func TestTheGuardStopsIdleServicesThenPausesIdleAgentsOnly(t *testing.T) {
 	b.Units = units
 	loc, _ := b.Locations.Get(ctx, "cal")
 	writeRepoConfig(t, loc.Path, RepoConfig{Services: []WorktreeService{{Name: "web", Run: "sleep 100"}}})
+	trustRepo(t, b.Locations, "cal")
 	b.Paused = &PauseStore{Path: filepath.Join(t.TempDir(), "paused.json")}
 	if _, err := b.StartService(ctx, "cal", "billing", "web"); err != nil {
 		t.Fatal(err)

@@ -118,6 +118,8 @@ func (b *Box) Mount(s *wire.Server) {
 	route("POST /v1/secrets/report", b.reportSecrets)
 	route("GET /v1/locations/{name}/config", b.getConfig)
 	route("PUT /v1/locations/{name}/config", b.putConfig)
+	route("POST /v1/locations/{name}/config/trust", b.trustRepoConfig)
+	route("DELETE /v1/locations/{name}/config/trust", b.untrustRepoConfig)
 	route("GET /v1/locations/{name}/worktrees/{worktree}/services", b.listWorktreeServices)
 	route("POST /v1/locations/{name}/worktrees/{worktree}/services/{service}/{action}", b.serviceAction)
 	route("GET /v1/locations/{name}/worktrees/{worktree}/services/{service}/log", b.serviceLog)
@@ -249,6 +251,9 @@ func (b *Box) setScripts(w http.ResponseWriter, r *http.Request) error {
 	if err := decode(r, &req); err != nil {
 		return err
 	}
+	if err := b.before(r, "config.change", map[string]any{"location": r.PathValue("name")}); err != nil {
+		return err
+	}
 	if err := b.Locations.SetScripts(r.PathValue("name"), req.Setup, req.Archive); err != nil {
 		return err
 	}
@@ -262,6 +267,9 @@ func (b *Box) setScripts(w http.ResponseWriter, r *http.Request) error {
 
 func (b *Box) removeLocation(w http.ResponseWriter, r *http.Request) error {
 	name := r.PathValue("name")
+	if err := b.before(r, "location.remove", map[string]any{"location": name}); err != nil {
+		return err
+	}
 	if err := b.Locations.Remove(name); err != nil {
 		return err
 	}
@@ -300,9 +308,15 @@ func (b *Box) createWorktree(r *http.Request, loc Location, req WorktreeRequest)
 		return Worktree{}, err
 	}
 	b.own(wt.Path)
-	b.publish(r, "worktree.created", map[string]any{
+	created := map[string]any{
 		"location": loc.Name, "name": wt.Name, "path": wt.Path, "branch": wt.Branch,
-	})
+	}
+	// The repository's own config did not run: say so, so the app can
+	// offer to trust it.
+	if loc.RepoTrust == RepoTrustUntrusted || loc.RepoTrust == RepoTrustChanged {
+		created["repo_config"] = loc.RepoTrust
+	}
+	b.publish(r, "worktree.created", created)
 	// Services start once setup has made the worktree ready for them.
 	if loc.Scripts.Setup != "" {
 		go b.lifecycle(origin(r), "setup", loc, wt.Path, wt.Name, loc.Scripts.Setup, func() error {
@@ -493,6 +507,9 @@ func (b *Box) removeSession(w http.ResponseWriter, r *http.Request) error {
 func (b *Box) attach(w http.ResponseWriter, r *http.Request) error {
 	cols, _ := strconv.Atoi(r.URL.Query().Get("cols"))
 	rows, _ := strconv.Atoi(r.URL.Query().Get("rows"))
+	if err := b.before(r, "session.attach", map[string]any{"name": r.PathValue("name")}); err != nil {
+		return err
+	}
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 	master, cmd, err := b.Sessions.Attach(ctx, r.PathValue("name"), max(cols, 20), max(rows, 5))
@@ -550,6 +567,9 @@ func (b *Box) addShare(w http.ResponseWriter, r *http.Request) error {
 	if err := decode(r, &req); err != nil {
 		return err
 	}
+	if err := b.before(r, "share.start", map[string]any{"port": req.Port}); err != nil {
+		return err
+	}
 	sh, err := b.Shares.Create(r.Context(), req.Port)
 	if err != nil {
 		return err
@@ -560,6 +580,9 @@ func (b *Box) addShare(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (b *Box) removeShare(w http.ResponseWriter, r *http.Request) error {
+	if err := b.before(r, "share.stop", map[string]any{"id": r.PathValue("id")}); err != nil {
+		return err
+	}
 	sh, err := b.Shares.Remove(r.PathValue("id"))
 	if err != nil {
 		return err
@@ -598,6 +621,10 @@ func (b *Box) addUnit(w http.ResponseWriter, r *http.Request) error {
 	if err := decode(r, &req); err != nil {
 		return err
 	}
+	// The unit's name only; its arguments can carry credentials.
+	if err := b.before(r, "unit.start", map[string]any{"name": req.Name}); err != nil {
+		return err
+	}
 	unit, err := u.Install(r.Context(), req)
 	if err != nil {
 		return err
@@ -626,6 +653,9 @@ func (b *Box) removeUnit(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	if err := b.before(r, "unit.stop", map[string]any{"name": r.PathValue("name")}); err != nil {
+		return err
+	}
 	unit, err := u.Remove(r.PathValue("name"))
 	if err != nil {
 		return err
@@ -638,6 +668,9 @@ func (b *Box) removeUnit(w http.ResponseWriter, r *http.Request) error {
 func (b *Box) restartUnit(w http.ResponseWriter, r *http.Request) error {
 	u, err := b.units()
 	if err != nil {
+		return err
+	}
+	if err := b.before(r, "unit.restart", map[string]any{"name": r.PathValue("name")}); err != nil {
 		return err
 	}
 	unit, err := u.Restart(r.PathValue("name"))
@@ -710,6 +743,9 @@ func (b *Box) emit(w http.ResponseWriter, r *http.Request) error {
 	}
 	if !validEventType.MatchString(req.Type) {
 		return badRequest("event type must look like area.action, e.g. agent.finished")
+	}
+	if err := b.before(r, "event.emit", map[string]any{"type": req.Type}); err != nil {
+		return err
 	}
 	b.publish(r, req.Type, req.Data)
 	writeJSON(w, map[string]bool{"ok": true})

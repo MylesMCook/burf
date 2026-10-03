@@ -15,6 +15,7 @@ import (
 
 	"github.com/sean-brydon/berthd/internal/hooks"
 	"github.com/sean-brydon/berthd/internal/sshsetup"
+	"github.com/sean-brydon/berthd/internal/trust"
 )
 
 // Adding, pairing, upgrading and forgetting boxes are the CLI's job, and the
@@ -168,6 +169,10 @@ func (a *Agent) manageRoutes(mux *http.ServeMux) {
 			writeError(w, http.StatusBadRequest, "a pairing link is needed")
 			return
 		}
+		if req.Network != "" && !trust.ValidName(req.Network) {
+			writeError(w, http.StatusBadRequest, "not a network name: "+req.Network)
+			return
+		}
 		args := []string{"pair", req.Link, "--json"}
 		if req.Name != "" {
 			args = append(args, "--name", req.Name)
@@ -189,6 +194,10 @@ func (a *Agent) manageRoutes(mux *http.ServeMux) {
 		}
 		if err := argOK(req.Host, req.Name, req.Network, req.Address, req.Identity, req.TrustHostKey); err != nil || req.Host == "" {
 			writeError(w, http.StatusBadRequest, "an SSH host is needed, like sean@devbox")
+			return
+		}
+		if req.Network != "" && !trust.ValidName(req.Network) {
+			writeError(w, http.StatusBadRequest, "not a network name: "+req.Network)
 			return
 		}
 		if req.TrustHostKey != "" && !strings.HasPrefix(req.TrustHostKey, "SHA256:") {
@@ -279,20 +288,34 @@ func (a *Agent) manageRoutes(mux *http.ServeMux) {
 			writeError(w, http.StatusNotFound, "no such plugin")
 			return
 		}
-		marker := filepath.Join(dir, "disabled")
 		var err error
 		switch action {
 		case "enable":
-			// "enabled" also turns on a plugin that is off by default.
-			if err = os.Remove(marker); os.IsNotExist(err) {
-				err = nil
+			// A plugin runs with the app's access and its hooks run here, so
+			// it is turned on only with the hash of the files the user
+			// reviewed, and only while those are still the files.
+			var req struct {
+				Hash string `json:"hash"`
+			}
+			if !decodeBody(w, r, &req) {
+				return
+			}
+			if req.Hash == "" {
+				writeError(w, http.StatusBadRequest, "review the plugin in the app to turn it on")
+				return
+			}
+			if err = hooks.AllowPlugin(dir, req.Hash); errors.Is(err, hooks.ErrPluginChanged) {
+				writeError(w, http.StatusConflict, err.Error())
+				return
 			}
 			if err == nil {
-				err = os.WriteFile(filepath.Join(dir, "enabled"), nil, 0o600)
+				// An older way of turning a plugin off.
+				if err = os.Remove(filepath.Join(dir, "disabled")); os.IsNotExist(err) {
+					err = nil
+				}
 			}
 		case "disable":
-			os.Remove(filepath.Join(dir, "enabled"))
-			err = os.WriteFile(marker, nil, 0o600)
+			err = hooks.ForbidPlugin(dir)
 		default:
 			writeError(w, http.StatusNotFound, "use enable or disable")
 			return

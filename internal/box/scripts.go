@@ -2,7 +2,6 @@ package box
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -51,24 +50,17 @@ type RepoConfig struct {
 }
 
 // ReadRepoConfig reads repo's .berth/config.json; ok is false without one.
+// It is the file as committed, trusted or not: what runs comes from
+// repoLayer.
 func ReadRepoConfig(repo string) (c RepoConfig, ok bool, err error) {
-	b, err := os.ReadFile(filepath.Join(repo, RepoConfigFile))
-	if os.IsNotExist(err) {
-		return c, false, nil
-	}
-	if err != nil {
-		return c, false, err
-	}
-	if err := json.Unmarshal(b, &c); err != nil {
-		return c, false, fmt.Errorf("%s: %w", RepoConfigFile, err)
-	}
-	return c, true, nil
+	c, _, ok, err = readRepoFile(repo)
+	return c, ok, err
 }
 
 // scriptsFor is the location's own scripts if set, otherwise the
 // repository's.
 func scriptsFor(saved savedLocation) Scripts {
-	repo, _, _ := ReadRepoConfig(saved.Path)
+	repo, _, _ := repoLayer(saved)
 	local := RepoConfig{Setup: saved.Setup, Archive: saved.Archive}
 	if saved.Config != nil {
 		local = merge(local, *saved.Config)

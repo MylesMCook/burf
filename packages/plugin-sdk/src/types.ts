@@ -70,6 +70,10 @@ export interface Location {
   remote?: string;
   slug?: string;
   default_branch?: string;
+  // Whether the box runs the repository's .berth/config.json: "none"
+  // without one, "trusted", or "untrusted" / "changed" while it waits for
+  // someone to trust it (only its port count applies until then).
+  repo_trust?: "none" | "trusted" | "untrusted" | "changed";
 }
 
 // What an agent's hooks said last: "idle" is an agent that is open but has
@@ -247,7 +251,13 @@ export interface PluginInfo {
   defaultEnabled?: boolean;
   // Where the app imports main from, relative to the agent's URL.
   entry?: string;
+  // For a plugin in ~/.berth/plugins: on only once the user has allowed it.
   enabled?: boolean;
+  // The hash of the manifest and main module the user allowed. The app
+  // imports a plugin only when what it fetched hashes to this.
+  allowed?: string;
+  // Allowed once, but changed since: off until it is reviewed again.
+  changed?: boolean;
   hooks?: PluginHook[];
   error?: string;
 }

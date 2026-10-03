@@ -81,7 +81,8 @@ export const kitsApi = {
   list: async (c: Client) => (await c.laptop<KitInfo[] | null>("GET", "/v1/kits")) ?? [],
   get: (c: Client, id: string) => c.laptop<KitInfo>("GET", `/v1/kits/${enc(id)}`),
   preview: (c: Client, src: string) => c.laptop<{ kit: KitInfo; replaces: boolean }>("POST", "/v1/kits/preview", { src }),
-  add: (c: Client, src: string) => c.laptop<KitInfo>("POST", "/v1/kits/add", { src }),
+  // hash is the reviewed kit's: the agent refuses a source that changed since.
+  add: (c: Client, src: string, hash: string) => c.laptop<KitInfo>("POST", "/v1/kits/add", { src, hash }),
   update: (c: Client, id: string) => c.laptop<{ kit: KitInfo; changed: boolean }>("POST", `/v1/kits/${enc(id)}/update`),
   remove: (c: Client, id: string) => c.laptop("DELETE", `/v1/kits/${enc(id)}`),
   installed: async (c: Client) => (await c.laptop<InstalledKitOn[] | null>("GET", "/v1/kits/installed")) ?? [],
@@ -89,12 +90,14 @@ export const kitsApi = {
   save: (c: Client, req: KitTarget & { id: string; name: string; description?: string }) => c.laptop<KitInfo>("POST", "/v1/kits/save", req),
   // apply installs a kit on projects, calling onLine for each project's
   // result as it lands, and resolves with the final line.
-  async apply(c: Client, id: string, targets: KitTarget[], onLine: (l: ApplyLine) => void, signal?: AbortSignal): Promise<ApplyLine> {
+  // hash, when given, is the kit the user reviewed: a kept kit that changed
+  // since is refused rather than applied.
+  async apply(c: Client, id: string, targets: KitTarget[], onLine: (l: ApplyLine) => void, signal?: AbortSignal, hash?: string): Promise<ApplyLine> {
     let last: ApplyLine = {};
     await c.stream(
       "POST",
       `/v1/kits/${enc(id)}/apply`,
-      { targets },
+      { targets, ...(hash ? { hash } : {}) },
       (v) => {
         const l = v as ApplyLine;
         if (l.done) last = l;

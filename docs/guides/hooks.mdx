@@ -65,7 +65,7 @@ Each hook runs through `/bin/sh -c` and gets:
 | `on` | An event type, a prefix like `worktree.*`, `*`, or `before:` and an action |
 | `run` | The command |
 | `timeout` | A Go duration: default `1m`, or `30s` for gates |
-| `tool` | An integration's name. The hook never runs for events whose origin is that tool, which stops two integrations from bouncing events back and forth. |
+| `tool` | An integration's name. The hook never runs for events whose origin is that tool, which stops two integrations from bouncing events back and forth. For a gate, only a tool on the box itself (talking to `berthd` over its own socket) counts as that tool: a paired laptop that claims to be it is still gated. |
 
 ## Events
 
@@ -111,9 +111,16 @@ berthd emit deploy.finished url=https://…       # on a box
 | `before:kit.remove` | `location` |
 | `before:config.change` | what changes: a location's config, flows, env or the guard |
 
-There are a few more; see [events and gates](/reference/events#gates). A
-task runs `before:task.create`, then the worktree's and the session's own
-gates.
+Every other change has a gate too (`before:hooks.change`,
+`before:unit.start`, `before:share.start`, `before:session.attach`,
+`before:box.upgrade`, `before:event.emit`…); see
+[events and gates](/reference/events#gates). A task runs
+`before:task.create`, then the worktree's and the session's own gates.
+
+Gates are a convenience, not a security boundary. They stop mistakes and
+keep agents and automations inside the lines you draw, but a paired laptop
+can already run any command on the box, so a gate cannot hold back someone
+who controls one.
 
 ## Testing a hook
 

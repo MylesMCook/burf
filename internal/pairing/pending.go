@@ -1,6 +1,7 @@
 package pairing
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/json"
 	"errors"
@@ -82,9 +83,15 @@ func (p *Pending) update(now time.Time, change func([]pendingCode) []pendingCode
 			live = append(live, c)
 		}
 	}
-	out, err := json.Marshal(change(live))
+	next := change(live)
+	out, err := json.Marshal(next)
 	if err != nil {
 		return err
+	}
+	// A failed attempt with nothing pending changes nothing: leave the file
+	// alone rather than rewrite it for every stranger who knocks.
+	if (b == nil && len(next) == 0) || bytes.Equal(out, b) {
+		return nil
 	}
 	return statefile.Write(p.path, out)
 }

@@ -175,9 +175,14 @@ func (b *Box) changeSkills(w http.ResponseWriter, r *http.Request, install bool)
 	var paths []string
 	for _, agent := range agents {
 		var done []string
-		if install {
+		switch {
+		case install && repo != "":
+			done, err = integrations.InstallProjectSkills(root, agent, names)
+		case install:
 			done, err = integrations.InstallSkills(root, agent, names)
-		} else {
+		case repo != "":
+			done, err = integrations.UninstallProjectSkills(root, agent, names)
+		default:
 			done, err = integrations.UninstallSkills(root, agent, names)
 		}
 		paths = append(paths, done...)

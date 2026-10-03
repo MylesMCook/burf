@@ -277,6 +277,17 @@ func (c *Client) LocationConfig(ctx context.Context, location string) (out Confi
 	return out, c.call(ctx, http.MethodGet, "/v1/locations/"+url.PathEscape(location)+"/config", nil, &out)
 }
 
+// TrustRepoConfig lets the box run a location's .berth/config.json, as long
+// as the file still has the hash that was reviewed.
+func (c *Client) TrustRepoConfig(ctx context.Context, location, hash string) (out Config, err error) {
+	return out, c.call(ctx, http.MethodPost, "/v1/locations/"+url.PathEscape(location)+"/config/trust", map[string]string{"hash": hash}, &out)
+}
+
+// UntrustRepoConfig stops the box running a location's .berth/config.json.
+func (c *Client) UntrustRepoConfig(ctx context.Context, location string) (out Config, err error) {
+	return out, c.call(ctx, http.MethodDelete, "/v1/locations/"+url.PathEscape(location)+"/config/trust", nil, &out)
+}
+
 func (c *Client) WorktreeServices(ctx context.Context, location, worktree string) (out []ServiceStatus, err error) {
 	return out, c.call(ctx, http.MethodGet, "/v1/locations/"+url.PathEscape(location)+"/worktrees/"+url.PathEscape(worktree)+"/services", nil, &out)
 }

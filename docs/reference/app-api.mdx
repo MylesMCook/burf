@@ -14,8 +14,9 @@ or a forward.
 The agent serves the app on `http://127.0.0.1:1378`.
 
 - **Token.** Every request carries `Authorization: Bearer <token>`. WebSocket
-  requests, which cannot set headers from a browser, pass `?token=<token>`
-  instead. The token is in `<state>/client/ui-token` (mode 0600); the Tauri
+  upgrades, which cannot set headers from a browser, pass `?token=<token>`
+  instead; on any other request a query token is ignored, so it never lands
+  in logs or history. The token is in `<state>/client/ui-token` (mode 0600); the Tauri
   shell reads it with the `ui_endpoint` command, which returns
   `{ "url": "http://127.0.0.1:1378", "token": "…" }`. For browser-only UI
   work, `berth ui-token` prints the same JSON.
@@ -108,7 +109,8 @@ failed after it went out (the box may have acted on it). The box API:
 | `POST sessions/{name}/send` | `{ text, enter? }`: types a prompt ([orchestration](/guides/orchestration)) |
 | `GET sessions/{name}/wait?for=finished,waiting&after=TIME&timeout=10m` | `{ state, timed_out }`: `after` is an RFC 3339 time; `timeout` a duration, 1s to 1h (default 10m) |
 | `POST exec` | `{ location, command, timeout? }` → `{ exit_code, output, truncated? }`; `timeout` defaults to 10m, at most 1h |
-| `GET locations/{name}/config`, `PUT locations/{name}/config` | `{ repo, kit?, local, effective }`; PUT takes `{ local }` ([config](/reference/config)) |
+| `GET locations/{name}/config`, `PUT locations/{name}/config` | `{ repo, repo_trust, kit?, local, effective }`; PUT takes `{ local }` ([config](/reference/config)) |
+| `POST locations/{name}/config/trust`, `DELETE locations/{name}/config/trust` | Run, or stop running, the repository's `.berth/config.json`; POST takes `{ hash }` from `repo_trust` and is refused (409) if the file changed since ([trust](/guides/project-config#trusting-a-repositorys-config)) |
 | `GET locations/{name}/worktrees/{wt}/services` | `WorktreeService[]` |
 | `POST locations/{name}/worktrees/{wt}/services/{service}/{start,stop,restart}` | |
 | `POST locations/{name}/worktrees/{wt}/{pause,resume}` | pauses or resumes a worktree |

@@ -174,11 +174,21 @@ func preview(ctx context.Context, c *box.Client, args []string, out io.Writer) e
 
 func locationConfig(ctx context.Context, c *box.Client, args []string, out io.Writer) error {
 	fs, asJSON := flags(args)
+	trustHash := fs.String("trust", "", "run the repository's config, if it still has this hash")
+	untrust := fs.Bool("untrust", false, "stop running the repository's config")
 	pos, err := parse(fs, args)
-	if err != nil || len(pos) != 1 {
-		return usageErr("location config NAME [--json]")
+	if err != nil || len(pos) != 1 || (*trustHash != "" && *untrust) {
+		return usageErr("location config NAME [--json] [--trust HASH|--untrust]")
 	}
-	cfg, err := c.LocationConfig(ctx, pos[0])
+	var cfg box.Config
+	switch {
+	case *trustHash != "":
+		cfg, err = c.TrustRepoConfig(ctx, pos[0], *trustHash)
+	case *untrust:
+		cfg, err = c.UntrustRepoConfig(ctx, pos[0])
+	default:
+		cfg, err = c.LocationConfig(ctx, pos[0])
+	}
 	if err != nil {
 		return err
 	}
@@ -188,30 +198,55 @@ func locationConfig(ctx context.Context, c *box.Client, args []string, out io.Wr
 		if cfg.Repo != nil {
 			from = cfg.RepoPath
 		}
+		if t := cfg.RepoTrust; t.Pending() {
+			from = "not " + cfg.RepoPath
+			why := "nobody has trusted it on this box"
+			if t.State == box.RepoTrustChanged {
+				why = "it changed since it was trusted"
+			}
+			fmt.Fprintf(out, "%s does not run: %s. It wants to run:\n", cfg.RepoPath, why)
+			printRepoConfig(out, *t.Wants)
+			fmt.Fprintf(out, "Review it, then run it with: location config %s --trust %s\n\n", pos[0], t.Hash)
+		}
 		fmt.Fprintf(out, "%s (from %s, plus this box's own config)\n", pos[0], from)
 		fmt.Fprintf(out, "  setup     %s\n  archive   %s\n  ports     %d per worktree\n", orNone(e.Setup), orNone(e.Archive), max(e.Ports, 1))
-		keys := make([]string, 0, len(e.Env))
-		for k := range e.Env {
-			keys = append(keys, k)
-		}
-		sort.Strings(keys)
-		for _, k := range keys {
-			fmt.Fprintf(out, "  env       %s=%s\n", k, e.Env[k])
-		}
-		for _, s := range e.Services {
-			auto := ""
-			if s.Autostart {
-				auto = " (autostart)"
-			}
-			fmt.Fprintf(out, "  service   %s: %s%s\n", s.Name, s.Run, auto)
-		}
-		for _, h := range e.Hooks {
-			fmt.Fprintf(out, "  hook      %s: %s\n", h.On, h.Run)
-		}
-		for _, a := range e.Agents {
-			fmt.Fprintf(out, "  agent     %s: %s\n", a.ID, a.Command)
-		}
+		printRepoConfig(out, box.RepoConfig{Env: e.Env, Services: e.Services, Hooks: e.Hooks, Agents: e.Agents})
 	})
+}
+
+// printRepoConfig lists a config's env, services, hooks, flows and agents,
+// and its scripts when set.
+func printRepoConfig(out io.Writer, e box.RepoConfig) {
+	if e.Setup != "" {
+		fmt.Fprintf(out, "  setup     %s\n", e.Setup)
+	}
+	if e.Archive != "" {
+		fmt.Fprintf(out, "  archive   %s\n", e.Archive)
+	}
+	keys := make([]string, 0, len(e.Env))
+	for k := range e.Env {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		fmt.Fprintf(out, "  env       %s=%s\n", k, e.Env[k])
+	}
+	for _, s := range e.Services {
+		auto := ""
+		if s.Autostart {
+			auto = " (autostart)"
+		}
+		fmt.Fprintf(out, "  service   %s: %s%s\n", s.Name, s.Run, auto)
+	}
+	for _, h := range e.Hooks {
+		fmt.Fprintf(out, "  hook      %s: %s\n", h.On, h.Run)
+	}
+	for _, f := range e.Flows {
+		fmt.Fprintf(out, "  flow      %s (%d steps)\n", f.Name, len(f.Steps))
+	}
+	for _, a := range e.Agents {
+		fmt.Fprintf(out, "  agent     %s: %s\n", a.ID, a.Command)
+	}
 }
 
 func orNone(s string) string {

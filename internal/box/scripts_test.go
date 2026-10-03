@@ -31,6 +31,11 @@ func TestScriptsComeFromTheRepoUnlessTheLocationSetsItsOwn(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if loc.Scripts != (Scripts{}) || loc.RepoTrust != RepoTrustUntrusted {
+		t.Fatalf("untrusted scripts = %+v (%s), want none", loc.Scripts, loc.RepoTrust)
+	}
+	trustRepo(t, l, "cal")
+	loc, _ = l.Get(ctx, "cal")
 	if loc.Scripts != (Scripts{Setup: "echo repo-setup", Archive: "echo repo-archive", From: "repo"}) {
 		t.Fatalf("scripts = %+v, want the repository's", loc.Scripts)
 	}
@@ -74,7 +79,9 @@ func TestSetupRunsInTheNewWorktreeWithOrcaCompatibleEnvironment(t *testing.T) {
 	ch, stop := bus.Subscribe()
 	defer stop()
 	b := &Box{Name: "devbox", Locations: NewLocations(filepath.Join(t.TempDir(), "locations.json")), Events: bus, LogDir: t.TempDir()}
-	loc, _ := b.Locations.Add(ctx, "cal", repo)
+	b.Locations.Add(ctx, "cal", repo)
+	trustRepo(t, b.Locations, "cal")
+	loc, _ := b.Locations.Get(ctx, "cal")
 	wt, err := b.Locations.CreateWorktree(ctx, "cal", "billing", "", "")
 	if err != nil {
 		t.Fatal(err)

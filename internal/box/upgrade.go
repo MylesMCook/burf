@@ -122,6 +122,9 @@ func (b *Box) handleUpgrade(w http.ResponseWriter, r *http.Request) error {
 	if len(binary) > maxDaemonSize {
 		return badRequest("uploaded daemon is too large")
 	}
+	if err := b.before(r, "box.upgrade", map[string]any{"build": BuildID(binary)}); err != nil {
+		return err
+	}
 	if err := b.Update.Install(r.Context(), binary); err != nil {
 		return err
 	}

@@ -16,6 +16,7 @@ import (
 
 	"github.com/sean-brydon/berthd/internal/box"
 	"github.com/sean-brydon/berthd/internal/events"
+	"github.com/sean-brydon/berthd/internal/hooks"
 	"github.com/sean-brydon/berthd/internal/terminal"
 )
 
@@ -63,6 +64,11 @@ func TestTheAppAPINeedsTheTokenAndALoopbackHost(t *testing.T) {
 	}
 	if resp, _ := uiCall(t, a, "GET", "/v1/status", "wrong"); resp.StatusCode != 401 {
 		t.Fatalf("wrong token: %d, want 401", resp.StatusCode)
+	}
+	// The token in a query string is for the terminal's WebSocket only
+	// (security audit L-6).
+	if resp, _ := uiCall(t, a, "GET", "/v1/status?token="+tok, ""); resp.StatusCode != 401 {
+		t.Fatalf("query token on a plain route: %d, want 401", resp.StatusCode)
 	}
 	req, _ := http.NewRequest("GET", "http://"+a.ui+"/v1/status", nil)
 	req.Host = "evil.example:1378"
@@ -160,6 +166,11 @@ func TestTheAppReadsThemesTemplatesAndPluginsButNothingOutsideThem(t *testing.T)
 	write("plugins/hello/dist/index.js", `export default function activate() {}`)
 	write("plugins/hello/themes/sun.json", `{"id":"sun","name":"Sun","appearance":"light"}`)
 	write("secret.txt", "do not serve")
+	if h, err := hooks.PluginHash(filepath.Join(user, "plugins", "hello")); err != nil {
+		t.Fatal(err)
+	} else if err := hooks.AllowPlugin(filepath.Join(user, "plugins", "hello"), h); err != nil {
+		t.Fatal(err)
+	}
 	eventually(t, "ui up", func() bool {
 		resp, err := http.Get("http://" + a.ui + "/v1/status")
 		if err == nil {
@@ -184,7 +195,7 @@ func TestTheAppReadsThemesTemplatesAndPluginsButNothingOutsideThem(t *testing.T)
 	_, body = uiCall(t, a, "GET", "/v1/plugins", tok)
 	var plugins []PluginInfo
 	json.Unmarshal([]byte(body), &plugins)
-	if len(plugins) != 1 || plugins[0].Entry != "/v1/plugins/hello/dist/index.js" || plugins[0].Hooks != 1 || !plugins[0].Enabled {
+	if len(plugins) != 1 || plugins[0].Entry != "/v1/plugins/hello/dist/index.js" || plugins[0].Hooks != 1 || !plugins[0].Enabled || plugins[0].Allowed == "" {
 		t.Fatalf("plugins = %s", body)
 	}
 	resp, body := uiCall(t, a, "GET", plugins[0].Entry, tok)

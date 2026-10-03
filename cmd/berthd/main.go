@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -130,7 +131,14 @@ func run(args []string) error {
 		if err != nil {
 			return err
 		}
-		fmt.Printf("Revoked %s (%s)\n", p.Name, p.Fingerprint.Short())
+		// A running daemon closes the shells and streams this laptop still
+		// has open: at once when told, otherwise within a second or two.
+		if _, err := os.Stat(b.socket()); err == nil {
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			box.NewClient(box.NewLocal(b.socket())).Call(ctx, http.MethodPost, "/v1/clients/changed", nil, nil)
+			cancel()
+		}
+		fmt.Printf("Revoked %s (%s); its open connections close within a few seconds.\n", p.Name, p.Fingerprint.Short())
 		return nil
 	case "id":
 		id, err := b.identity()

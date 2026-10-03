@@ -31,6 +31,8 @@ import (
 
 const kitManifest = "kit.json"
 
+const errKitChanged = "the kit changed since it was reviewed; review it again"
+
 // KitSource records where a kept kit came from, so it can be updated.
 type KitSource struct {
 	Src     string    `json:"src"`
@@ -229,7 +231,9 @@ func fetchKit(ctx context.Context, src, tmpRoot string) (dir, commit string, err
 	}
 	args = append(args, "--", repo, filepath.Join(work, "repo"))
 	cmd := exec.CommandContext(ctx, "git", args...)
-	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0")
+	// ext:: runs a command and file:: reads this computer: a kit link gets
+	// network transports only.
+	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "GIT_ALLOW_PROTOCOL="+box.GitProtocols)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		return "", "", fmt.Errorf("could not fetch %s: %s", repo, strings.TrimSpace(string(out)))
 	}
@@ -436,8 +440,11 @@ func (a *Agent) kitRoutes(mux *http.ServeMux) {
 		_, exists := a.kit(info.ID)
 		writeJSON(w, http.StatusOK, map[string]any{"kit": info, "replaces": exists})
 	})
+	// add keeps a kit. The link is fetched again, so a reviewer passes the
+	// hash the preview showed and only that exact kit is kept: a source
+	// that changed in between is refused rather than kept unseen.
 	mux.HandleFunc("POST /v1/kits/add", func(w http.ResponseWriter, r *http.Request) {
-		var req struct{ Src string }
+		var req struct{ Src, Hash string }
 		if !decodeBody(w, r, &req) {
 			return
 		}
@@ -448,9 +455,25 @@ func (a *Agent) kitRoutes(mux *http.ServeMux) {
 			return
 		}
 		defer os.RemoveAll(tmp)
+		if req.Hash != "" {
+			fetched, err := readKit(dir, false)
+			if err != nil {
+				writeError(w, http.StatusBadRequest, err.Error())
+				return
+			}
+			if fetched.Hash != req.Hash {
+				writeError(w, http.StatusConflict, errKitChanged)
+				return
+			}
+		}
 		k, err := a.keepKit(dir, req.Src, commit)
 		if err != nil {
 			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		if req.Hash != "" && k.Hash != req.Hash {
+			os.RemoveAll(k.Path)
+			writeError(w, http.StatusConflict, errKitChanged)
 			return
 		}
 		a.publish(Event{Type: "kit.added", Data: map[string]any{"kit": k.ID, "source": req.Src}})
@@ -492,6 +515,9 @@ func (a *Agent) kitRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/kits/{id}/apply", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
 			Targets []KitTarget `json:"targets"`
+			// Hash, when given, is the kit the caller reviewed; a kept kit
+			// that has changed since is not applied.
+			Hash string `json:"hash"`
 		}
 		if !decodeBody(w, r, &req) {
 			return
@@ -499,6 +525,10 @@ func (a *Agent) kitRoutes(mux *http.ServeMux) {
 		k, ok := a.kit(r.PathValue("id"))
 		if !ok {
 			writeError(w, http.StatusNotFound, "no kit called "+r.PathValue("id"))
+			return
+		}
+		if req.Hash != "" && req.Hash != k.Hash {
+			writeError(w, http.StatusConflict, errKitChanged)
 			return
 		}
 		a.sync()

@@ -1,12 +1,14 @@
 import { CopyIcon, FolderGitIcon, GitCommitHorizontalIcon } from "lucide-react";
 import { useMemo } from "react";
 
+import { RepoTrustBanner } from "@/components/repo-trust";
 import { SkillsPanel } from "@/components/skills/skills-panel";
 import { Button } from "@/components/ui/button";
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "@/components/ui/menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import { toastManager } from "@/components/ui/toast";
-import type { RepoConfig } from "@/lib/flows";
+import { flowsApi, type RepoConfig, trustPending } from "@/lib/flows";
+import { errorMessage } from "@/lib/format";
 import { useProjects } from "@/lib/project-groups";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -43,6 +45,20 @@ export function ProjectView({ box, location }: { box: string; location: string }
   const kit = config?.kit;
   const base = kit ? mergeConfig(repo, kit.config) : repo;
 
+  const trust = config?.repo_trust;
+  const untrust = async () => {
+    const client = useStore.getState().client;
+    if (!client) return;
+    try {
+      await flowsApi.untrustRepo(client, box, location);
+      await useStore.getState().refreshBox(box, ["locations"]);
+      toastManager.add({ title: `${box} no longer runs ${location}'s committed config`, type: "success" });
+    } catch (err) {
+      toastManager.add({ title: "Could not stop trusting the config", description: errorMessage(err), type: "error" });
+    }
+    void reload();
+  };
+
   const copy = (what: "effective" | "local") => {
     const c = what === "effective" ? config?.effective : config?.local;
     void navigator.clipboard.writeText(`${JSON.stringify(clean(c ?? {}), null, 2)}\n`);
@@ -70,6 +86,16 @@ export function ProjectView({ box, location }: { box: string; location: string }
               <GitCommitHorizontalIcon className="size-3 shrink-0" />
               <code className="truncate font-mono">{config?.repo_path}</code>
               <span className="shrink-0 rounded-md border px-1.5 text-[11px]">committed in the repo</span>
+              {trustPending(trust) ? (
+                <span className="shrink-0 rounded-md border border-warning/30 px-1.5 text-[11px] text-warning">not trusted on {box}</span>
+              ) : (
+                trust?.state === "trusted" &&
+                (runsAnything(repo) ? (
+                  <Button size="xs" variant="ghost" className="shrink-0" onClick={() => void untrust()}>
+                    Stop trusting
+                  </Button>
+                ) : null)
+              )}
             </span>
           ) : config ? (
             `No .berth/config.json in the repo yet. Everything here is ${box}'s own.`
@@ -127,6 +153,7 @@ export function ProjectView({ box, location }: { box: string; location: string }
               </div>
             ) : (
               <KitLayer.Provider value={{ config: kit?.config, name: kit?.name }}>
+                <RepoTrustBanner box={box} location={location} config={config} onChanged={() => void reload()} />
                 <KitSection box={box} location={location} kit={kit} onChanged={() => void reload()} />
                 <Section id="scripts" title="Setup & teardown" description="Run in a new worktree after it is made, and before one is removed. A failing teardown keeps the worktree.">
                   <div className="divide-y divide-border/70">
@@ -222,3 +249,7 @@ function MemberSwitcher({ box, location }: { box: string; location: string }) {
     </span>
   );
 }
+
+// runsAnything: a committed config with only ports needs no trust.
+const runsAnything = (c: RepoConfig | null) =>
+  !!c && !!(c.setup || c.archive || Object.keys(c.env ?? {}).length || c.services?.length || c.hooks?.length || c.flows?.length || c.agents?.length);

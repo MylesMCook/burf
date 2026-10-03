@@ -1,4 +1,4 @@
-import { FolderGitIcon, FolderPlusIcon, ServerIcon } from "lucide-react";
+import { FolderGitIcon, FolderPlusIcon, ServerIcon, ShieldAlertIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AgentIcon } from "@/components/agent-glyph";
@@ -6,6 +6,8 @@ import { Scene } from "@/components/art/scenes";
 import { Advanced, type AdvancedValues } from "@/components/new-worktree/advanced";
 import { Picker, PickerAction, type PickerItem } from "@/components/new-worktree/picker";
 import { RunOn, type RunOnOption } from "@/components/new-worktree/run-on";
+import { RepoWants, trustRepo, useRepoTrustFor } from "@/components/repo-trust";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AgentSection } from "@/components/new-worktree/agent-section";
 import { StartFrom } from "@/components/new-worktree/smart-input";
 import { useBranches, useResolve } from "@/components/new-worktree/use-resolve";
@@ -129,6 +131,9 @@ function Body() {
   const { resolution, pending, error: resolveError } = useResolve(box, locName, input, kind);
   const branches = useBranches(box, locName, kind === "branch");
   const presets = box ? agentPresets(box, location) : [];
+  // The repository's committed config waits to be trusted on this box: say
+  // what it would run, and create with or without it.
+  const pendingTrust = useRepoTrustFor(box, location?.name, location?.repo_trust);
   const template = templates.find((t) => t.id === adv.template);
   const variables = templateVariables(template);
 
@@ -227,12 +232,21 @@ function Body() {
     base: `${resolution?.base || location?.default_branch || "main"} (default)`,
   };
 
-  const submit = async () => {
+  const submit = async (trustFirst = false) => {
     const client = useStore.getState().client;
     if (!client || !box || !location || busy) return;
     if (input.trim() && pending) return; // wait for the box's answer
     setBusy(true);
     setError(undefined);
+    if (trustFirst && pendingTrust) {
+      try {
+        await trustRepo(box, locName, pendingTrust);
+      } catch (err) {
+        setError(errorMessage(err));
+        setBusy(false);
+        return;
+      }
+    }
     const wtName = name || randomName();
     const values = { ...adv.vars, name: wtName };
     const req = {
@@ -348,6 +362,19 @@ function Body() {
           <AgentSection presets={presets} agent={agent} onAgent={chooseAgent} prompt={adv.prompt} onPrompt={(v) => set({ prompt: v }, ["prompt"])} promptRef={promptRef} />
         </Section>
         <Advanced open={showAdvanced} onOpen={setShowAdvanced} summary={summary} v={adv} set={set} placeholders={placeholders} location={location} templates={templates} variables={variables} />
+        {pendingTrust?.wants && (
+          <Alert variant="warning">
+            <ShieldAlertIcon />
+            <AlertTitle>This repository wants to run commands on {box}</AlertTitle>
+            <AlertDescription>
+              <p>
+                {pendingTrust.state === "changed" ? "Its .berth/config.json changed since it was trusted here." : "Its .berth/config.json has not been trusted on this box."} Without trust, the
+                worktree is made but none of this runs.
+              </p>
+              <RepoWants wants={pendingTrust.wants} />
+            </AlertDescription>
+          </Alert>
+        )}
         {error && <p className="text-destructive text-sm">{error}</p>}
       </DialogPanel>
 
@@ -360,8 +387,13 @@ function Body() {
           <Button type="button" variant="ghost" onClick={() => useStore.getState().closeNewWorktree()}>
             Cancel
           </Button>
+          {pendingTrust?.wants && (
+            <Button type="button" variant="outline" disabled={busy || !location || (!!input.trim() && pending)} onClick={() => void submit(true)}>
+              Trust and create
+            </Button>
+          )}
           <Button type="submit" loading={busy} disabled={!location || (!!input.trim() && pending)}>
-            {agent ? "Create and start" : "Create worktree"}
+            {pendingTrust?.wants ? "Create without it" : agent ? "Create and start" : "Create worktree"}
             <Kbd className="-me-1 bg-primary-foreground/16 text-primary-foreground/80">⌘↵</Kbd>
           </Button>
         </div>

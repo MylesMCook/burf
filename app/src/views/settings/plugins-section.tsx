@@ -11,6 +11,7 @@ import { openDocs } from "@/lib/open-url";
 import { builtinOn, setBuiltinOn, usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { askToAllow } from "@/plugins/consent";
 import { builtinPlugins, loadPlugins } from "@/plugins/host";
 import { useRegistry } from "@/plugins/registry";
 import { Code, SettingsGroup, SettingsPage } from "@/views/settings/rows";
@@ -42,7 +43,7 @@ export function PluginsSection() {
       title="Plugins"
       description={
         <>
-          Plugins live in <Code>~/.berth/plugins/&lt;id&gt;/</Code> beside a <Code>berth-plugin.json</Code>. They run with the app's access, and their hooks run on this computer, so install only ones you trust.
+          Plugins live in <Code>~/.berth/plugins/&lt;id&gt;/</Code> beside a <Code>berth-plugin.json</Code>. They aren't sandboxed: a plugin runs with the app's access to every box, and its hooks run on this computer. Each stays off until you allow it, and Berth asks again whenever its code changes.
         </>
       }
     >
@@ -84,11 +85,13 @@ export function PluginsSection() {
 }
 
 function PluginRow({ plugin: p, status, onChanged }: { plugin: PluginInfo; status?: { state: string; error?: string }; onChanged(): void }) {
-  const enabled = p.enabled !== false;
+  // Never on until you allow it, and off again when it changes.
+  const enabled = p.enabled === true;
+  const review = !enabled && (p.changed || status?.state === "review");
   // The agent counts a plugin's hooks; older builds listed them.
   const hooks = Array.isArray(p.hooks) ? p.hooks.length : typeof p.hooks === "number" ? (p.hooks as number) : 0;
   const error = p.error ?? status?.error;
-  const state = !enabled ? "off" : error ? "failed" : (status?.state ?? "loading");
+  const state = review ? "review" : !enabled ? "off" : error ? "failed" : (status?.state ?? "loading");
 
   return (
     <div className="flex items-center gap-4 px-4 py-3">
@@ -104,7 +107,15 @@ function PluginRow({ plugin: p, status, onChanged }: { plugin: PluginInfo; statu
           {p.id}
           {hooks > 0 && ` · ${hooks} hook${hooks === 1 ? "" : "s"}`}
         </div>
-        {error && enabled && (
+        {review && (
+          <div className="mt-1 text-xs">
+            <span className="text-warning-foreground">Changed since you allowed it, so it's off.</span>{" "}
+            <button type="button" onClick={() => void askToAllow(p).then((ok) => ok && onChanged())} className="underline underline-offset-2 hover:text-foreground">
+              Review it
+            </button>
+          </div>
+        )}
+        {error && enabled && status?.state !== "review" && (
           <div className="mt-1 text-xs">
             <span className="text-destructive-foreground">{error}</span> <span className="text-muted-foreground">Fix it in ~/.berth/plugins/{p.id}, then Reload.</span>
           </div>
@@ -117,7 +128,10 @@ function PluginRow({ plugin: p, status, onChanged }: { plugin: PluginInfo; statu
           const client = useStore.getState().client;
           if (!client) return;
           try {
-            await laptopApi.setPluginEnabled(client, p.id, on);
+            // Turning a plugin on asks first: see plugin-consent-dialog.
+            if (on) {
+              if (!(await askToAllow(p))) return;
+            } else await laptopApi.disablePlugin(client, p.id);
             onChanged();
           } catch (err) {
             toastManager.add({ title: `Couldn't turn ${on ? "on" : "off"} ${p.name}`, description: errorMessage(err), type: "error" });

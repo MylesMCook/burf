@@ -580,7 +580,7 @@ const mockNetworks = fresh ? [] : [{ name: "personal", state: "Running", tailnet
 
 // The live demo lists none: a plugin from ~/.berth/plugins would load from
 // the dev server, which the demo doesn't have.
-const mockPlugins = [{ id: "hello-ports", name: "Hello ports", version: "0.1.0", main: "dist/index.js", description: "Every dev server on every box, one click from your browser.", entry: "/__dev-plugins/hello-ports/dist/index.js", enabled: false, defaultEnabled: false }].filter(() => !__BERTH_DEMO__);
+const mockPlugins = [{ id: "hello-ports", name: "Hello ports", version: "0.1.0", main: "dist/index.js", description: "Every dev server on every box, one click from your browser.", entry: "/__dev-plugins/hello-ports/dist/index.js", enabled: false, defaultEnabled: false, allowed: undefined as string | undefined }].filter(() => !__BERTH_DEMO__);
 
 
 function addMockBox(name: string, address: string, network?: string) {
@@ -666,7 +666,10 @@ function laptopBoxes(method: string, path: string, body: unknown): Promise<unkno
   if (method === "POST" && toggle) {
     const p = mockPlugins.find((x) => x.id === decodeURIComponent(toggle[1]));
     if (!p) return Promise.reject(new Error("no such plugin"));
+    const hash = (body as { hash?: string } | undefined)?.hash;
+    if (toggle[2] === "enable" && !hash) return Promise.reject(new Error("review the plugin in the app to turn it on"));
     p.enabled = toggle[2] === "enable";
+    p.allowed = p.enabled ? hash : undefined;
     return delay(p);
   }
   return undefined;
@@ -772,10 +775,10 @@ export function mockClient(): Client {
         { id: "review", name: "Review a branch", description: "Codex reviews the changes against main.", agent: "codex", prompt: "Review {{branch_name}} against main and list risks." },
       ]),
     plugins: () => delay(mockPlugins),
-    async pluginSource(p) {
-      const res = await fetch(p.entry!);
+    async pluginFile(p, file) {
+      const res = await fetch(`/__dev-plugins/${encodeURIComponent(p.id)}/${file}`);
       if (!res.ok) throw new Error(`${p.id}: ${res.status} (run pnpm build in plugins/${p.id})`);
-      return res.text();
+      return new Uint8Array(await res.arrayBuffer());
     },
     box: <T,>(box: string, method: string, path: string, body?: unknown) => boxCall(box, method, path, body) as Promise<T>,
     laptop: <T,>(method: string, path: string, body?: unknown) => {

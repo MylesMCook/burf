@@ -22,6 +22,19 @@ func writeRepoConfig(t *testing.T, repo string, c RepoConfig) {
 	os.WriteFile(filepath.Join(repo, RepoConfigFile), b, 0o600)
 }
 
+// trustRepo trusts a location's repository config as it is now, as someone
+// who reviewed it would.
+func trustRepo(t *testing.T, l *Locations, name string) {
+	t.Helper()
+	c, err := l.Config(context.Background(), name)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := l.TrustRepo(name, c.RepoTrust.Hash); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestLocalConfigLaysOverTheRepositorys(t *testing.T) {
 	ctx := context.Background()
 	repo := gitRepo(t)
@@ -33,6 +46,7 @@ func TestLocalConfigLaysOverTheRepositorys(t *testing.T) {
 	})
 	l := NewLocations(filepath.Join(t.TempDir(), "locations.json"))
 	l.Add(ctx, "cal", repo)
+	trustRepo(t, l, "cal")
 	if err := l.SetLocalConfig("cal", RepoConfig{Env: map[string]string{"B": "box"}, Services: []WorktreeService{{Name: "web", Run: "yarn dev"}, {Name: "worker", Run: "yarn worker"}}, Hooks: []hooks.Hook{{On: "worktree.removed", Run: "echo box"}}}); err != nil {
 		t.Fatal(err)
 	}
@@ -55,6 +69,7 @@ func TestEveryWorktreeGetsItsOwnPortsAndEnvironment(t *testing.T) {
 	writeRepoConfig(t, repo, RepoConfig{Ports: 3, Env: map[string]string{"DATABASE_URL": "postgres://localhost/$BERTH_WORKTREE_SLUG?port=$BERTH_PORT_1"}})
 	b := &Box{Name: "devbox", Locations: NewLocations(filepath.Join(t.TempDir(), "locations.json")), Events: &events.Bus{}}
 	b.Locations.Add(ctx, "cal", repo)
+	trustRepo(t, b.Locations, "cal")
 	one, _ := b.Locations.CreateWorktree(ctx, "cal", "billing", "", "")
 	two, _ := b.Locations.CreateWorktree(ctx, "cal", "fix-login", "", "")
 	envOf := func(wt Worktree) map[string]string {
@@ -96,6 +111,7 @@ func TestRepoHooksRunOnlyForTheirRepoInTheWorktree(t *testing.T) {
 	writeRepoConfig(t, cal, RepoConfig{Hooks: []hooks.Hook{{On: "worktree.created", Run: `echo "$PWD $BERTH_PORT $BERTH_EVENT" >> ` + out}}})
 	b := &Box{Name: "devbox", Locations: NewLocations(filepath.Join(t.TempDir(), "locations.json")), Events: &events.Bus{}}
 	b.Locations.Add(ctx, "cal", cal)
+	trustRepo(t, b.Locations, "cal")
 	b.Locations.Add(ctx, "other", other)
 	go b.RunRepoHooks(ctx, log.New(io.Discard, "", 0))
 	time.Sleep(50 * time.Millisecond)
@@ -131,6 +147,7 @@ func TestWorktreeServicesStartWithTheWorktreesEnvironmentAndStopWithIt(t *testin
 	units.svc = ops
 	b := &Box{Name: "devbox", Locations: NewLocations(filepath.Join(t.TempDir(), "locations.json")), Events: &events.Bus{}, Units: units}
 	b.Locations.Add(ctx, "cal", repo)
+	trustRepo(t, b.Locations, "cal")
 	b.Locations.CreateWorktree(ctx, "cal", "billing", "", "")
 
 	st, err := b.StartService(ctx, "cal", "billing", "web")
@@ -163,6 +180,7 @@ func TestAgentPresetsComeFromEveryLayer(t *testing.T) {
 	writeRepoConfig(t, repo, RepoConfig{Agents: []AgentPreset{{ID: "claude", Name: "Repo Claude", Command: "claude --model opus"}}})
 	l := NewLocations(filepath.Join(t.TempDir(), "locations.json"))
 	l.Add(ctx, "cal", repo)
+	trustRepo(t, l, "cal")
 	l.SetLocalConfig("cal", RepoConfig{Agents: []AgentPreset{{ID: "claude", Name: "Box Claude", Command: "claude --model sonnet"}, {ID: "fake", Name: "Fake", Command: "cat"}}})
 	loc, _ := l.Get(ctx, "cal")
 	p, ok := presetFor(&loc, "claude")

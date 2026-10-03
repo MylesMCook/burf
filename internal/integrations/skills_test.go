@@ -133,3 +133,79 @@ func TestProjectSkillsStayOutOfGitUntilCommitted(t *testing.T) {
 		t.Fatalf("exclude after removing = %q", b)
 	}
 }
+
+// A repository can commit .claude/skills/<skill>/SKILL.md, or a folder on
+// the way to it, as a symbolic link. Installing berth's project skills must
+// not write through it (security audit M-5).
+func TestProjectSkillInstallRefusesSymlinks(t *testing.T) {
+	names, err := SkillNames(nil)
+	if err != nil || len(names) == 0 {
+		t.Fatal("no skills", err)
+	}
+	const keys = "ssh-ed25519 AAAA... me@laptop\n"
+	for _, tc := range []struct{ name, link string }{
+		{"file", filepath.Join(".claude", "skills", names[0], "SKILL.md")},
+		{"skill folder", filepath.Join(".claude", "skills", names[0])},
+		{"skills folder", filepath.Join(".claude", "skills")},
+		{"in-repo target", filepath.Join(".claude", "skills", names[0], "SKILL.md")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tmp := t.TempDir()
+			victim := filepath.Join(tmp, "home", ".ssh", "authorized_keys")
+			os.MkdirAll(filepath.Dir(victim), 0o700)
+			os.WriteFile(victim, []byte(keys), 0o600)
+			repo := filepath.Join(tmp, "repo")
+			link := filepath.Join(repo, tc.link)
+			os.MkdirAll(filepath.Dir(link), 0o755)
+			target := victim
+			switch {
+			case tc.name == "in-repo target":
+				target = filepath.Join(repo, ".git", "hooks", "pre-commit")
+				os.MkdirAll(filepath.Dir(target), 0o755)
+				os.WriteFile(target, []byte(keys), 0o755)
+				victim = target
+			case filepath.Base(tc.link) != "SKILL.md":
+				// A folder link: point it at a folder holding the victim's
+				// stand-in where SKILL.md would land.
+				dir := filepath.Join(tmp, "elsewhere")
+				sub := dir
+				if tc.name == "skills folder" {
+					sub = filepath.Join(dir, names[0])
+				}
+				os.MkdirAll(sub, 0o700)
+				victim = filepath.Join(sub, "SKILL.md")
+				os.WriteFile(victim, []byte(keys), 0o600)
+				target = dir
+			}
+			if err := os.Symlink(target, link); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := InstallProjectSkills(repo, "claude", names[:1]); err == nil {
+				t.Fatal("install wrote through a symbolic link")
+			}
+			if got, _ := os.ReadFile(victim); string(got) != keys {
+				t.Fatalf("%s was overwritten: %q", victim, got)
+			}
+			if _, err := UninstallProjectSkills(repo, "claude", names[:1]); err == nil {
+				t.Fatal("uninstall followed a symbolic link")
+			}
+			if _, err := os.Stat(victim); err != nil {
+				t.Fatalf("uninstall removed %s through a link", victim)
+			}
+		})
+	}
+	// A plain repository still installs.
+	repo := t.TempDir()
+	if _, err := InstallProjectSkills(repo, "claude", names[:1]); err != nil {
+		t.Fatal(err)
+	}
+	if st, _ := SkillStatus(repo, "claude", names[0]); st != SkillInstalled {
+		t.Fatalf("status = %s", st)
+	}
+	if _, err := InstallProjectSkills(repo, "codex", names[:1]); err != nil {
+		t.Fatal(err)
+	}
+	if removed, err := UninstallProjectSkills(repo, "claude", names[:1]); err != nil || len(removed) != 1 {
+		t.Fatal(removed, err)
+	}
+}

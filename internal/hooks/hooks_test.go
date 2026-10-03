@@ -143,6 +143,10 @@ func TestPluginHooksRunInThePluginsFolderUnlessDisabled(t *testing.T) {
 	os.MkdirAll(dir, 0o700)
 	os.WriteFile(filepath.Join(dir, PluginManifest), []byte(`{"id":"notify","hooks":[{"on":"before:session.start","run":"pwd; exit 3"}]}`), 0o600)
 	r := &Runner{Path: filepath.Join(t.TempDir(), "missing.json"), PluginsDir: plugins}
+	if err := r.Before(context.Background(), events.Event{Type: "session.start"}); err != nil {
+		t.Fatalf("a plugin nobody allowed ran its hook: %v", err)
+	}
+	allow(t, dir)
 	err := r.Before(context.Background(), events.Event{Type: "session.start"})
 	resolved, _ := filepath.EvalSymlinks(dir)
 	if err == nil || !strings.Contains(err.Error(), resolved) {
@@ -158,6 +162,7 @@ func TestSaveWritesOnlyYourOwnValidHooks(t *testing.T) {
 	plugins := t.TempDir()
 	os.MkdirAll(filepath.Join(plugins, "p"), 0o700)
 	os.WriteFile(filepath.Join(plugins, "p", PluginManifest), []byte(`{"hooks":[{"on":"agent.finished","run":"true"}]}`), 0o600)
+	allow(t, filepath.Join(plugins, "p"))
 	r := &Runner{Path: filepath.Join(t.TempDir(), "hooks.json"), PluginsDir: plugins}
 	for _, bad := range []Hook{{On: "Worktree Created", Run: "x"}, {On: "agent.finished", Run: " "}, {On: "agent.*", Run: "x", Timeout: "soon"}} {
 		if err := r.Save([]Hook{bad}); err == nil {
@@ -176,21 +181,5 @@ func TestSaveWritesOnlyYourOwnValidHooks(t *testing.T) {
 	cfg, _ = r.Load()
 	if len(cfg.Hooks) != 2 || cfg.Hooks[1].Source != "plugin:p" {
 		t.Fatalf("loaded %+v", cfg.Hooks)
-	}
-}
-
-func TestAPluginOffByDefaultStaysOffUntilTurnedOn(t *testing.T) {
-	dir := t.TempDir()
-	off := []byte(`{"defaultEnabled": false}`)
-	if PluginEnabled(dir, off) || !PluginEnabled(dir, []byte(`{}`)) {
-		t.Fatal("defaultEnabled was not honoured")
-	}
-	os.WriteFile(filepath.Join(dir, "enabled"), nil, 0o600)
-	if !PluginEnabled(dir, off) {
-		t.Fatal("turning it on did not count")
-	}
-	os.WriteFile(filepath.Join(dir, "disabled"), nil, 0o600)
-	if PluginEnabled(dir, off) {
-		t.Fatal("disabled must win")
 	}
 }

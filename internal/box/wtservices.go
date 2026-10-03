@@ -228,6 +228,12 @@ func (b *Box) serviceAction(w http.ResponseWriter, r *http.Request) error {
 		st  ServiceStatus
 		err error
 	)
+	switch a := r.PathValue("action"); a {
+	case "start", "stop", "restart":
+		if err := b.before(r, "service."+a, map[string]any{"location": loc, "worktree": wt, "service": svc}); err != nil {
+			return err
+		}
+	}
 	switch r.PathValue("action") {
 	case "start":
 		st, err = b.StartService(r.Context(), loc, wt, svc)

@@ -8,6 +8,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -46,7 +47,9 @@ func (l countingListener) Accept() (net.Conn, error) {
 	return c, err
 }
 
-func startBox(t *testing.T) *box {
+func startBox(t *testing.T) *box { return startBoxWith(t, nil) }
+
+func startBoxWith(t *testing.T, configure func(*Server)) *box {
 	t.Helper()
 	dir := t.TempDir()
 	id, err := identity.LoadOrCreate(filepath.Join(dir, "identity.pem"))
@@ -58,6 +61,9 @@ func startBox(t *testing.T) *box {
 		Clients:  trust.NewStore(filepath.Join(dir, "clients.json")),
 		Pending:  pairing.NewPending(filepath.Join(dir, "pairing.json")),
 		Name:     "dev-test",
+	}
+	if configure != nil {
+		configure(s)
 	}
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -299,11 +305,116 @@ func TestPairingAttemptsAreRateLimited(t *testing.T) {
 	if !limited {
 		t.Fatal("15 rapid pairing attempts were never rate limited")
 	}
-	b.server.pairLimit = newLimiter(10, 10)
+	b.server.pairLimit = newPairLimiter()
 	c := paired(t, b)
-	b.server.pairLimit = newLimiter(0, 0)
+	b.server.pairLimit = &pairLimiter{perIP: map[string]*limiter{}, global: newLimiter(0, 0), maxPeers: 1}
 	if _, err := c.Ping(context.Background()); err != nil {
 		t.Fatalf("an exhausted pairing limit blocked a paired laptop: %v", err)
+	}
+}
+
+// One source's failures must not lock out another, and successful pairings
+// are not charged (security audit L-7).
+func TestPairingLimitIsPerSourceAndChargesOnlyFailures(t *testing.T) {
+	now := time.Now()
+	p := newPairLimiter()
+	for range 10 {
+		if !p.allow("100.64.0.9", now) {
+			t.Fatal("limited before the burst was spent")
+		}
+	}
+	if p.allow("100.64.0.9", now) {
+		t.Fatal("a noisy source was never limited")
+	}
+	if !p.allow("100.64.0.2", now) {
+		t.Fatal("one source's failures locked out another")
+	}
+	// Successes are refunded: any number of them never runs a source dry.
+	for range 50 {
+		if !p.allow("100.64.0.3", now) {
+			t.Fatal("successful pairings were charged")
+		}
+		p.refund("100.64.0.3")
+	}
+	// The global backstop still bounds many sources together.
+	limited := false
+	for i := range 200 {
+		if !p.allow(fmt.Sprintf("10.0.%d.%d", i/250, i%250), now) {
+			limited = true
+			break
+		}
+	}
+	if !limited {
+		t.Fatal("no global backstop")
+	}
+}
+
+// Ten bogus attempts from one peer must not stop the owner pairing with a
+// real code (the audit's PoC TestPairingLockout).
+func TestBogusAttemptsDoNotLockOutTheOwner(t *testing.T) {
+	b := startBox(t)
+	for range 10 {
+		rawPair(t, laptop(t), b, func([]byte) []byte { return nil })
+	}
+	// Both come from 127.0.0.1 here, so give the owner its own source the
+	// way a second machine would have.
+	b.server.pairLimit.mu.Lock()
+	delete(b.server.pairLimit.perIP, "127.0.0.1")
+	b.server.pairLimit.mu.Unlock()
+	if _, err := Pair(context.Background(), laptop(t), b.issue(t), "owner"); err != nil {
+		t.Fatalf("owner pairing after bogus attempts: %v", err)
+	}
+}
+
+// A failed attempt with no code pending must not rewrite pairing.json.
+func TestFailedPairingWithNothingPendingWritesNothing(t *testing.T) {
+	b := startBox(t)
+	rawPair(t, laptop(t), b, func([]byte) []byte { return nil })
+	if _, err := os.Stat(filepath.Join(b.dir, "pairing.json")); !os.IsNotExist(err) {
+		t.Fatalf("pairing.json written for a stranger: %v", err)
+	}
+}
+
+// Revoking a laptop ends the streams it already has open (security audit
+// L-2; the audit's PoC TestRevokeKeepsOpenStreams).
+func TestRevokeClosesOpenStreams(t *testing.T) {
+	// The daemon looks on its own, and berthd revoke tells it at once.
+	t.Run("noticed", func(t *testing.T) {
+		testRevokeClosesOpenStreams(t, 50*time.Millisecond, false)
+	})
+	t.Run("told", func(t *testing.T) {
+		testRevokeClosesOpenStreams(t, time.Hour, true)
+	})
+}
+
+func testRevokeClosesOpenStreams(t *testing.T, every time.Duration, tell bool) {
+	b := startBoxWith(t, func(s *Server) { s.RevokeCheck = every })
+	c := paired(t, b)
+	port, _ := startEcho(t)
+	conn, err := c.DialPort(context.Background(), port)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	conn.Write([]byte("hi\n"))
+	buf := make([]byte, 3)
+	if _, err := io.ReadFull(conn, buf); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := b.server.Clients.Remove("alex-mbp"); err != nil {
+		t.Fatal(err)
+	}
+	if tell {
+		b.server.ClientsChanged()
+	}
+	conn.SetDeadline(time.Now().Add(5 * time.Second))
+	conn.Write([]byte("still here\n"))
+	got, err := io.ReadAll(conn)
+	if err == nil && strings.Contains(string(got), "still here") {
+		t.Fatalf("revoked laptop's stream still echoes: %q", got)
+	}
+	if ne, ok := err.(net.Error); ok && ne.Timeout() {
+		t.Fatal("revoked laptop's stream was left open")
 	}
 }
 
@@ -641,6 +752,19 @@ func TestServeLocalOffersMountedRoutesButNotStreamsOrPairing(t *testing.T) {
 	if out.Name != "local" {
 		t.Fatalf("local caller seen as %q", out.Name)
 	}
+	b.server.Handle("GET /v1/islocal", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, IsLocal(r.Context()))
+	}))
+	if resp, err := client.Get("http://box/v1/islocal"); err != nil {
+		t.Fatal(err)
+	} else {
+		var local bool
+		json.NewDecoder(resp.Body).Decode(&local)
+		resp.Body.Close()
+		if !local {
+			t.Fatal("the box's own socket is not IsLocal")
+		}
+	}
 	for _, path := range []string{"/v1/tcp?port=1", "/v1/pair"} {
 		resp, err := client.Post("http://box"+path, "application/json", strings.NewReader("{}"))
 		if err != nil {
@@ -714,5 +838,33 @@ func TestUnsentTellsAClosedBoxFromADroppedRequest(t *testing.T) {
 
 	if Unsent(nil) || Unsent(ErrUntrusted) {
 		t.Fatal("nil and ErrUntrusted are not unsent")
+	}
+}
+
+// A laptop that asks to pair as "local" is renamed, and is never IsLocal
+// (security audit I-5).
+func TestALaptopCannotPairAsLocal(t *testing.T) {
+	b := startBox(t)
+	b.server.Handle("GET /v1/whoami", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]any{"name": PeerFrom(r.Context()).Name, "local": IsLocal(r.Context())})
+	}))
+	me := laptop(t)
+	if _, err := Pair(context.Background(), me, b.issue(t), "local"); err != nil {
+		t.Fatal(err)
+	}
+	c := NewClient(me, b.peer())
+	defer c.Reset()
+	resp, err := c.Do(context.Background(), http.MethodGet, "/v1/whoami", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var out struct {
+		Name  string
+		Local bool
+	}
+	json.NewDecoder(resp.Body).Decode(&out)
+	if out.Name == "local" || out.Local {
+		t.Fatalf("remote laptop seen as %+v", out)
 	}
 }

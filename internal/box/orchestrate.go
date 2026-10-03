@@ -272,6 +272,11 @@ func (b *Box) putHooks(w http.ResponseWriter, r *http.Request) error {
 	if err := decode(r, &doc); err != nil {
 		return err
 	}
+	// The gates run before they can be replaced: otherwise replacing them
+	// would be the way around any of them.
+	if err := b.before(r, "hooks.change", nil); err != nil {
+		return err
+	}
 	if err := b.Hooks.Save(doc.Hooks); err != nil {
 		return badRequest("%v", err)
 	}

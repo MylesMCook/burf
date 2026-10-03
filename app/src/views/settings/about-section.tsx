@@ -1,5 +1,8 @@
-import { openDocs } from "@/lib/open-url";
+import { Button } from "@/components/ui/button";
+import { ago, bytes } from "@/lib/format";
+import { openDocs, openUrl } from "@/lib/open-url";
 import { NONE, useStore } from "@/lib/store";
+import { checkForUpdate, restartToUpdate, updatesSupported, useUpdater } from "@/lib/updater";
 import { useAppVersion } from "@/views/settings/app-version";
 import { SettingsGroup, SettingsPage, SettingsRow } from "@/views/settings/rows";
 
@@ -40,6 +43,7 @@ export function AboutSection() {
           );
         })}
       </SettingsGroup>
+      <UpdatesGroup />
       <SettingsGroup title="Documentation" description="docs.berthd.app, opened in your browser.">
         <div className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 px-4 py-3 text-xs">
           {DOCS.map(([path, title, what]) => (
@@ -53,5 +57,75 @@ export function AboutSection() {
         </div>
       </SettingsGroup>
     </SettingsPage>
+  );
+}
+
+const RELEASES = "https://github.com/sean-brydon/berthd/releases";
+
+// UpdatesGroup says where the app's own updates stand. Berth checks when it
+// opens and every few hours, and downloads quietly; the only step left to
+// the person is the restart (lib/updater.ts).
+function UpdatesGroup() {
+  const u = useUpdater();
+  if (!updatesSupported()) {
+    return (
+      <SettingsGroup title="Updates">
+        <SettingsRow label="Updates come with the Berth app" description="This page is running in a browser, which has nothing to update." />
+      </SettingsGroup>
+    );
+  }
+  const busy = u.status === "checking" || u.status === "downloading" || u.status === "installing";
+  const checkNow = (
+    <Button size="xs" variant="outline" className="min-w-24" loading={u.status === "checking"} disabled={busy} onClick={() => void checkForUpdate({ manual: true })}>
+      Check now
+    </Button>
+  );
+  let row;
+  switch (u.status) {
+    case "ready":
+    case "installing":
+      row = (
+        <SettingsRow label={`Berth ${u.version} is ready`} description="Restarting closes and reopens this window. Agents keep running on their boxes.">
+          <Button size="xs" variant="ghost" onClick={() => void openUrl(`${RELEASES}/tag/v${u.version}`)}>
+            What's new
+          </Button>
+          <Button size="xs" className="min-w-24" loading={u.status === "installing"} onClick={() => void restartToUpdate()}>
+            Restart to update
+          </Button>
+        </SettingsRow>
+      );
+      break;
+    case "downloading":
+      row = (
+        <SettingsRow label={`Downloading Berth ${u.version}`} description={u.total ? `${bytes(u.received)} of ${bytes(u.total)}` : bytes(u.received)}>
+          {checkNow}
+        </SettingsRow>
+      );
+      break;
+    case "current":
+      row = (
+        <SettingsRow label="Berth is up to date" description={`Checked ${ago(new Date(u.checkedAt).toISOString())}.`}>
+          {checkNow}
+        </SettingsRow>
+      );
+      break;
+    case "error":
+      row = (
+        <SettingsRow label="Couldn't check for updates" description={u.error}>
+          {checkNow}
+        </SettingsRow>
+      );
+      break;
+    default:
+      row = (
+        <SettingsRow label={u.status === "checking" ? "Checking for updates…" : "Not checked yet"} description="Berth checks when it opens and every few hours.">
+          {checkNow}
+        </SettingsRow>
+      );
+  }
+  return (
+    <SettingsGroup title="Updates" description="New versions download in the background. Berth never restarts by itself: it waits for you to choose Restart to update.">
+      {row}
+    </SettingsGroup>
   );
 }

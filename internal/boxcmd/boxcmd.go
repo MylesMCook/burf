@@ -37,7 +37,7 @@ var usageSections = []struct {
 		{"%[1]s location add %[2]sNAME PATH", "Register a repo or directory"},
 		{"%[1]s location rm %[2]sNAME", "Forget a location (files are untouched)"},
 		{"%[1]s location scripts %[2]sNAME [--setup CMD] [--archive CMD] [--clear]", "Worktree setup/archive scripts (default: the repo's .berth/config.json)"},
-		{"%[1]s location config %[2]sNAME [--json]", "The repo's, the box's and the effective config"},
+		{"%[1]s location config %[2]sNAME [--json] [--trust HASH|--untrust]", "The repo's, the box's and the effective config; trust the repo's to run it"},
 		{"%[1]s services%[3]s [--json]", "Which worktree each running server belongs to"},
 		{"%[1]s service list|start|stop|restart|log %[2]sLOC/WORKTREE [SERVICE]", "A worktree's services from the repo's config"},
 		{"%[1]s preview %[2]s[LOC/WORKTREE] [PORT] [--path /x]", "Open a worktree's page in the Berth app"},

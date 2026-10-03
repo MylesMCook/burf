@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 mod agent;
 mod browser;
+mod cli_link;
 
 // The app is a view over the laptop agent (`berth agent`), which serves it on
 // loopback. The agent writes a token to its state directory; this shell reads
@@ -56,6 +57,15 @@ fn open_devtools(webview: tauri::Webview) -> Result<(), String> {
     }
 }
 
+// restart_app relaunches Berth, after the webview has installed a
+// downloaded update (Settings → About, or the status bar's "Restart to
+// update"). Only ever on that click: agents run on their boxes, so a
+// restart stops none of them, but it still closes the window.
+#[tauri::command]
+fn restart_app(app: tauri::AppHandle) {
+    app.request_restart();
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -63,9 +73,16 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         // berth://kit?src=… links someone shares open a kit's review.
         .plugin(tauri_plugin_deep_link::init())
+        // Updates come from the latest GitHub release's latest.json and must
+        // carry a signature from the key in tauri.conf.json. The webview
+        // checks, downloads and installs (lib/updater.ts); see restart_app.
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             ui_endpoint,
             open_devtools,
+            restart_app,
+            cli_link::cli_link_status,
+            cli_link::install_cli_link,
             agent::agent_binary,
             agent::start_agent,
             browser::browser_open,

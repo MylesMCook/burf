@@ -183,6 +183,8 @@ func TestAnAgentThatNeedsYouIsPushedToNtfy(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	b, p, _ := phoneBox(t)
+	// The test's ntfy is on loopback, which the box's owner must allow.
+	b.Flows = &Flows{AllowOutbound: []string{"127.0.0.1"}}
 	p.save(PhoneConfig{Enabled: false, Token: "t", Notify: &PhoneNotify{URL: ntfy.URL + "/berth-topic"}})
 	repo := gitRepo(t)
 	b.Locations.Add(ctx, "cal", repo)

@@ -10,7 +10,7 @@ use std::process::{Command, Stdio};
 // The bundled CLI's name. It cannot be "berth": that is the app's own
 // executable in Contents/MacOS (and target/debug), and macOS file names
 // ignore case, so "Berth" would collide too.
-const SIDECAR: &str = "berth-cli";
+pub const SIDECAR: &str = "berth-cli";
 
 #[derive(Serialize)]
 pub struct AgentBinary {

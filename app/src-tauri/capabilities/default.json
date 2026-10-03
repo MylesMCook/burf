@@ -7,7 +7,10 @@
     "core:window:allow-start-dragging",
     "notification:default",
     "shell:allow-open",
-    "deep-link:default"
+    "deep-link:default",
+    "updater:allow-check",
+    "updater:allow-download",
+    "updater:allow-install"
   ],
   "webviews": [
     "main"

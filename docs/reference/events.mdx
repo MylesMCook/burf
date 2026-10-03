@@ -57,7 +57,7 @@ with the tool as their origin. Claude Code sends all four, with
 | --- | --- |
 | `location.added` | `location`, `path`, `url` (when cloned) |
 | `location.removed` | `location` |
-| `worktree.created` | `location`, `name`, `path`, `branch` (origin `detected` when another tool made it) |
+| `worktree.created` | `location`, `name`, `path`, `branch` (origin `detected` when another tool made it); `repo_config`: `untrusted` or `changed` when the repository's config was not run because it is not trusted |
 | `worktree.removed` | `location`, `name`, `path` |
 | `worktree.setup.started`, `.finished`, `.failed` | `location`, `name`, `path`, `script`, `log` |
 | `worktree.archive.started`, `.finished`, `.failed` | the same |
@@ -75,7 +75,7 @@ with the tool as their origin. Claude Code sends all four, with
 | `flow.finished` | `flow`, `scope`, `run`, `status`, `path` |
 | `notify` | `title`, `body`, `flow`, `path`, `location`: a flow's or the guard's notification |
 | `guard.acted` | `action`, `location`, `name`, `path`, `services`, `sessions`, `memory_percent`, `reason` |
-| `config.changed` | what changed: `location`, `flows`, `env` or `guard` |
+| `config.changed` | what changed: `location`, `flows`, `env` or `guard`; with `location`, `trust` (`trusted` or `untrusted`) when the repository's config was trusted or no longer is |
 | `hooks.changed` | |
 | `kit.installed` | `location`, `kit`, `version`, `source`, `warnings` |
 | `kit.removed` | `location`, `kit` |
@@ -135,6 +135,25 @@ exits non-zero refuses it with what it printed. Gates in a laptop's
 | `before:skills.install`, `before:skills.uninstall` | `skills`, `agents`, `target`, `location` |
 | `before:config.change` | `location`, `flows`, `env` or `guard`: what is about to change |
 | `before:phone.change` | |
+| `before:location.remove` | `location` |
+| `before:hooks.change` | |
+| `before:session.attach` | `name` |
+| `before:service.start`, `before:service.stop`, `before:service.restart` | `location`, `worktree`, `service` |
+| `before:unit.start` | `name` |
+| `before:unit.stop`, `before:unit.restart` | `name` |
+| `before:share.start` | `port` |
+| `before:share.stop` | `id` |
+| `before:flow.test` | `flow`, `scope` |
+| `before:box.upgrade` | `build` |
+| `before:event.emit` | `type` |
+
+A gate's `BERTH_EVENT_ORIGIN` is what the box can vouch for: the tool named by
+a caller on the box's own socket, or `laptop:<name>` for a paired laptop and
+`remote` for the phone, whatever origin they claim. So a gate scoped to a
+`tool` cannot be skipped from another machine by claiming to be that tool.
+Gates stop mistakes and keep automations inside the lines you draw; they are
+not a boundary against a paired laptop, which can already run commands on the
+box.
 
 A task runs `before:task.create`, then the worktree's and the session's own
 gates.

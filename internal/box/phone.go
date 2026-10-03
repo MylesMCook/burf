@@ -14,6 +14,7 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -305,6 +306,12 @@ func (p *Phone) Handler(b *Box, listenAddr string) http.Handler {
 			writeError(w, statusFor(err), err.Error())
 			return
 		}
+		// A key answers an agent as surely as typed text does, so the same
+		// gate decides.
+		if err := b.before(r, "session.send", map[string]any{"name": name, "from": "phone", "key": req.Key}); err != nil {
+			writeError(w, statusFor(err), err.Error())
+			return
+		}
 		if out, err := b.Sessions.tmux(r.Context(), "send-keys", "-t", "="+name+":", key); err != nil {
 			writeError(w, http.StatusInternalServerError, strings.TrimSpace(string(out)))
 			return
@@ -425,7 +432,12 @@ func (p *Phone) notify(ctx context.Context, b *Box, e events.Event) {
 	}
 	cctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	resp, err := http.DefaultClient.Do(req.WithContext(cctx))
+	// Public addresses and the tailnet (a self-hosted ntfy usually lives
+	// there); anything else on the box's own networks only if its owner
+	// allows it in network.json.
+	policy := b.outboundPolicy()
+	policy.tailnet = true
+	resp, err := policy.client(10 * time.Second).Do(req.WithContext(cctx))
 	if err != nil {
 		if p.Log != nil {
 			p.Log.Printf("phone notify: %v", err)
@@ -482,7 +494,7 @@ func (b *Box) putPhone(w http.ResponseWriter, r *http.Request) error {
 		c.Token = newPhoneToken()
 	}
 	if req.Notify != nil {
-		if !strings.HasPrefix(req.Notify.URL, "https://") && !strings.HasPrefix(req.Notify.URL, "http://") {
+		if u, err := url.Parse(req.Notify.URL); err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" || u.User != nil {
 			return badRequest("the notification URL must be http or https")
 		}
 		for _, s := range req.Notify.On {

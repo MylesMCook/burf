@@ -34,6 +34,31 @@ the repo, so every box does the same.
 Every field is optional; [the config reference](/reference/config) lists
 them all with their rules.
 
+## Trusting a repository's config
+
+The file is code: its setup script, services, hooks, flows, `env` and agent
+commands all run on the box. So a box runs none of it until someone trusts
+it there. Until then the box applies only `ports`, and the app shows
+**This repository wants to run …** with every command the file holds, and
+**Trust and run it** / **Not now** — in Project settings, and when you create
+a worktree (**Trust and create** / **Create without it**). A worktree made
+without trust is a plain checkout.
+
+- Trust is per box and per project, and is for the file exactly as you saw
+  it: the box keeps the file's SHA-256 hash. When a commit changes the file,
+  none of it runs again until it is trusted again.
+- A file with nothing but `ports` needs no trust.
+- A [kit](/guides/kits) you apply, and the box's own config below, are
+  yours, and apply without asking.
+- Only trust a repository if you trust everyone who can commit to it.
+
+From a terminal, `berth location config devl/cal` prints what the file
+wants and its hash; `--trust HASH` trusts that version, `--untrust` stops it.
+The box's API is `POST /v1/locations/{name}/config/trust` with
+`{"hash": "…"}` (refused with 409 if the file no longer has that hash) and
+`DELETE` on the same path. Both run `before:config.change` gates and announce
+`config.changed`.
+
 ## Setup and teardown
 
 - `setup` runs right after a worktree is created, in it, through a login

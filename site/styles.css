@@ -1999,6 +1999,15 @@ pre .k {
   font-weight: 550;
 }
 
+/* A step whose action is a download rather than a command. */
+.step-action {
+  margin: 14px 0 4px 36px;
+}
+
+.step-action + .step-note {
+  margin-top: 12px;
+}
+
 /* The other routes for a step, folded away. */
 .alt {
   margin: 12px 0 0 36px;
@@ -2030,6 +2039,7 @@ pre .k {
 
 @media (max-width: 640px) {
   .step-note,
+  .step-action,
   .alt {
     margin-left: 0;
   }

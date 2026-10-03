@@ -5,9 +5,10 @@ import * as ReactJSXRuntime from "react/jsx-runtime";
 import type { Client, PluginInfo } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
 import { builtinOn } from "@/lib/prefs";
+import { askToAllow, mayLoad, readPluginFiles, usePluginConsent } from "@/plugins/consent";
 import { makeContext } from "@/plugins/context";
 import { pluginContexts } from "@/plugins/plugin-boundary";
-import { removePlugin, setPluginOrder, setPluginStatus, usePluginsLoading } from "@/plugins/registry";
+import { removePlugin, setPluginOrder, setPluginStatus, usePluginsLoading, useRegistry } from "@/plugins/registry";
 import * as sdk from "@/plugins/sdk-runtime";
 import { pluginUi } from "@/plugins/ui";
 
@@ -16,6 +17,11 @@ import { pluginUi } from "@/plugins/ui";
 // hooks, and components from @berth/plugin/ui must be the app's. The app
 // publishes them on globalThis.__berth, and the shims in public/shims/
 // re-export from there.
+//
+// A plugin from ~/.berth/plugins is imported only once the user has allowed
+// it, and only when the bytes fetched hash to what they allowed (see
+// consent.ts): the hashed bytes are the ones imported, so the plugin cannot
+// change between the check and the import.
 //
 // A plugin's source is fetched with the agent's token and imported from a
 // blob: URL. Bare imports are rewritten to the shims' absolute URLs before
@@ -61,11 +67,20 @@ export async function builtinPlugins(): Promise<PluginInfo[]> {
   }
 }
 
+// PluginNeedsReview is thrown for a plugin whose files are not the ones the
+// user allowed.
+class PluginNeedsReview extends Error {}
+
 async function pluginSource(client: Client, p: PluginInfo): Promise<string> {
-  if (!p.builtin) return client.pluginSource(p);
-  const res = await fetch(new URL(p.entry!, location.href));
-  if (!res.ok) throw new Error(`${p.id}: ${res.status}`);
-  return res.text();
+  if (p.builtin) {
+    const res = await fetch(new URL(p.entry!, location.href));
+    if (!res.ok) throw new Error(`${p.id}: ${res.status}`);
+    return res.text();
+  }
+  const files = await readPluginFiles(client, p);
+  if (!mayLoad(p, files.hash)) throw new PluginNeedsReview("It changed since you allowed it. Review it to turn it back on.");
+  if (!files.mainPath) throw new Error("its manifest names no main module");
+  return new TextDecoder().decode(files.main);
 }
 
 async function loadPlugin(client: Client, p: PluginInfo) {
@@ -83,8 +98,9 @@ async function loadPlugin(client: Client, p: PluginInfo) {
     setPluginStatus({ id: p.id, name: p.name, version: p.version, state: "active", builtin: p.builtin });
   } catch (err) {
     removePlugin(p.id);
-    setPluginStatus({ id: p.id, name: p.name, version: p.version, state: "failed", error: errorMessage(err), builtin: p.builtin });
-    console.error(`plugin ${p.id} failed to load`, err);
+    const review = err instanceof PluginNeedsReview;
+    setPluginStatus({ id: p.id, name: p.name, version: p.version, state: review ? "review" : "failed", error: errorMessage(err), builtin: p.builtin });
+    if (!review) console.error(`plugin ${p.id} failed to load`, err);
   }
 }
 
@@ -114,8 +130,30 @@ export async function loadPlugins(client: Client) {
   ]);
   for (const id of [...loaded.keys()]) unloadPlugin(id);
   const userIds = new Set(user.map((p) => p.id));
-  const list = [...builtins.filter((b) => !userIds.has(b.id) && builtinOn(b)), ...user.filter((p) => p.enabled !== false)];
-  setPluginOrder(list.map((p) => p.id));
+  // A plugin of yours is never on by default: only once allowed (enabled),
+  // or, when it changed since, listed so it can be reviewed again.
+  const changed = user.filter((p) => !p.builtin && p.enabled !== true && p.changed);
+  const list = [...builtins.filter((b) => !userIds.has(b.id) && builtinOn(b)), ...user.filter((p) => !p.builtin && p.enabled === true)];
+  setPluginOrder([...list, ...changed].map((p) => p.id));
+  for (const p of changed) {
+    setPluginStatus({ id: p.id, name: p.name, version: p.version, state: "review", error: "It changed since you allowed it. Review it to turn it back on." });
+  }
   await Promise.all(list.map((p) => loadPlugin(client, p)));
   usePluginsLoading.setState(false, true);
+  void reviewChanged(client, [...changed, ...user.filter((p) => p.enabled === true && useRegistry.getState().plugins.some((s) => s.id === p.id && s.state === "review"))]);
+}
+
+// reviewChanged asks again about a plugin that changed since the user
+// allowed it, once per launch: allowing it loads it, anything else leaves it
+// off until they turn it on in Settings → Plugins.
+async function reviewChanged(client: Client, plugins: PluginInfo[]) {
+  const seen = new Set<string>();
+  for (const p of plugins) {
+    if (seen.has(p.id) || usePluginConsent.getState().dismissed.includes(p.id)) continue;
+    seen.add(p.id);
+    if (await askToAllow(p)) {
+      await loadPlugins(client);
+      return;
+    }
+  }
 }

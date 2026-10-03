@@ -394,7 +394,7 @@ type SecretResult struct {
 
 // reportSecrets takes a wrapper's report, from the box's own socket only.
 func (b *Box) reportSecrets(w http.ResponseWriter, r *http.Request) error {
-	if wire.PeerFrom(r.Context()).Name != wire.LocalPeer.Name {
+	if !wire.IsLocal(r.Context()) {
 		return httpError{http.StatusForbidden, "secret reports come from this box's own socket"}
 	}
 	var rep SecretReport

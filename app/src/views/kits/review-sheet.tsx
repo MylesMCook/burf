@@ -77,7 +77,9 @@ function ReviewBody() {
     if (!client || review.kind !== "link") return kit;
     setBusy("adding");
     try {
-      const k = await kitsApi.add(client, review.src);
+      // Keep exactly what was reviewed: the agent refuses a link whose
+      // content changed since the preview.
+      const k = await kitsApi.add(client, review.src, kit?.hash ?? "");
       setKit((prev) => ({ ...k, file_list: prev?.file_list ?? k.file_list }));
       setKept(true);
       void reloadKits();
@@ -97,11 +99,18 @@ function ReviewBody() {
     setBusy("applying");
     setResults(Object.fromEntries(targets.map((t) => [targetKey(t), { state: "applying" } as TargetResult])));
     try {
-      const end = await kitsApi.apply(client, k.id, targets, (l) => {
-        if (!l.box || !l.location) return;
-        const key = targetKey({ box: l.box, location: l.location });
-        setResults((r) => ({ ...r, [key]: l.error ? { state: "failed", error: l.error } : { state: "applied", warnings: l.warnings ?? [] } }));
-      });
+      const end = await kitsApi.apply(
+        client,
+        k.id,
+        targets,
+        (l) => {
+          if (!l.box || !l.location) return;
+          const key = targetKey({ box: l.box, location: l.location });
+          setResults((r) => ({ ...r, [key]: l.error ? { state: "failed", error: l.error } : { state: "applied", warnings: l.warnings ?? [] } }));
+        },
+        undefined,
+        kit.hash,
+      );
       const n = end.applied ?? 0;
       toastManager.add({
         title: end.error ? `Applied ${k.name} to ${n} of ${targets.length}` : `Applied ${k.name} to ${n === 1 ? "1 project" : `${n} projects`}`,

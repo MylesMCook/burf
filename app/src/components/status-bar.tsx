@@ -1,4 +1,4 @@
-import { RefreshCwIcon } from "lucide-react";
+import { CircleArrowUpIcon, RefreshCwIcon } from "lucide-react";
 import { useState } from "react";
 
 import { QueueIndicator } from "@/components/queue/queue-indicator";
@@ -7,6 +7,7 @@ import { useAgentCounts } from "@/hooks/use-agent-counts";
 import { isMock } from "@/hooks/use-berth-connection";
 import { bytes } from "@/lib/format";
 import { useStore } from "@/lib/store";
+import { restartToUpdate, useUpdater } from "@/lib/updater";
 import { cn } from "@/lib/utils";
 import { PluginBoundary, pluginContexts } from "@/plugins/plugin-boundary";
 import { useRegistry } from "@/plugins/registry";
@@ -76,6 +77,7 @@ export function StatusBar() {
             <item.Component berth={pluginContexts.get(plugin)!} />
           </PluginBoundary>
         ))}
+      <UpdateItem />
       {online.map((b) => {
         const mem = boxes[b.name]?.stats?.memory;
         if (!mem?.total) return null;
@@ -118,6 +120,25 @@ export function StatusBar() {
         </button>
       </Tip>
     </footer>
+  );
+}
+
+// UpdateItem shows once a newer Berth is downloaded, and restarts into it
+// when clicked. Checking and downloading stay out of sight.
+function UpdateItem() {
+  const update = useUpdater();
+  if (update.status !== "ready" && update.status !== "installing") return null;
+  const installing = update.status === "installing";
+  return (
+    <Item
+      className="text-foreground"
+      disabled={installing}
+      tip={`Berth ${update.version} is downloaded. Restarting reopens this window; agents keep running on their boxes.`}
+      onClick={() => void restartToUpdate()}
+    >
+      <CircleArrowUpIcon className="size-3 text-success" />
+      {installing ? "Updating…" : "Restart to update"}
+    </Item>
   );
 }
 

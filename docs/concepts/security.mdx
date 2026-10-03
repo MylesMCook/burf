@@ -19,7 +19,9 @@ multiplexes pings, API calls, TCP streams and terminals over one connection
 per box, with health pings to notice a connection that died silently.
 
 An unpaired client can complete a handshake but only attempt pairing, which
-is rate limited. Every other request is refused with the same answer,
+is rate limited per source address (with a larger limit across all of them),
+counting only failed attempts, so a stranger cannot lock you out of pairing
+from your own machine. Every other request is refused with the same answer,
 whatever the reason. A trust store that cannot be read authorizes nobody.
 
 ## Pairing
@@ -101,6 +103,18 @@ first.
 - The offline queue keeps prompts on the laptop, in its state directory, and
   never puts them in an event.
 
+## Repository config
+
+A repository's committed `.berth/config.json` holds commands: a setup
+script, services, hooks, flows, environment and agent commands. Anyone who
+can commit to a repository could otherwise run them on every box that has
+it. So a box runs none of that until someone trusts the file on that box,
+for that project, and only the exact bytes they saw (its SHA-256 hash): any
+change to the file waits to be trusted again. Until then only its port count
+applies, and the app shows what it wants to run. A kit you apply and the
+box's own config are yours and need no trust. See
+[trusting a repository's config](/guides/project-config#trusting-a-repositorys-config).
+
 ## The phone
 
 Each box can serve a small phone app on its tailnet address, off by default,
@@ -109,9 +123,29 @@ with a token per box. Its threat model is on [the phone page](/guides/phone#thre
 ## Gates
 
 `before:` hooks on a box can refuse actions (creating worktrees, starting
-sessions, sending prompts, running `exec`, installing kits, changing config),
-whoever asks: the app, the CLI, a flow, an agent or the phone. See
-[hooks](/guides/hooks#gates).
+sessions, sending prompts, running `exec`, installing kits, changing config,
+replacing the hooks themselves), whoever asks: the app, the CLI, a flow, an
+agent or the phone. Every route that changes something runs one. A gate
+scoped to a `tool` lets that tool's own actions through only when it calls
+from the box itself; a paired laptop or the phone claiming to be the tool is
+still gated. See [hooks](/guides/hooks#gates).
+
+Gates are a convenience, not a security boundary: they keep agents and
+automations inside the lines you draw, but a paired laptop can already run
+commands on the box, and anything running as the box's user can edit
+`~/.berth/hooks.json`.
+
+## Plugins
+
+Desktop plugins run inside the app with its full access. See
+[plugins](/guides/plugins#trust-and-consent) for the consent prompt and what
+a plugin you allow can do.
+
+## Revoking a laptop
+
+`berthd revoke` removes a laptop's key, and the running daemon closes the
+shells, port streams and event streams it still had open: at once when
+`berthd revoke` runs on the box, otherwise within a second or two.
 
 ## Open questions
 

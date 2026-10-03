@@ -37,6 +37,10 @@ type Location struct {
 	Remote        string `json:"remote,omitempty"`
 	Slug          string `json:"slug,omitempty"`
 	DefaultBranch string `json:"default_branch,omitempty"`
+	// RepoTrust is whether this box runs the repository's
+	// .berth/config.json: "none" without one, "trusted", or "untrusted" /
+	// "changed" while it waits to be trusted and only its ports apply.
+	RepoTrust string `json:"repo_trust,omitempty"`
 }
 
 type Worktree struct {
@@ -78,6 +82,9 @@ type savedLocation struct {
 	Config *RepoConfig `json:"config,omitempty"`
 	// Kit is a kit installed for the location, between the two.
 	Kit *InstalledKit `json:"kit,omitempty"`
+	// RepoTrust is the sha256 of the repository's .berth/config.json as
+	// someone trusted it here; any other version of the file does not run.
+	RepoTrust string `json:"repo_trust,omitempty"`
 }
 
 func (l *Locations) Add(ctx context.Context, name, path string) (Location, error) {
@@ -281,6 +288,8 @@ func (l *Locations) RemoveWorktree(ctx context.Context, location, name string, f
 
 func describe(ctx context.Context, s savedLocation) Location {
 	loc := Location{Name: s.Name, Path: s.Path, Scripts: scriptsFor(s)}
+	repo, trust, _ := repoLayer(s)
+	loc.RepoTrust = trust.State
 	out, err := git(ctx, "-C", s.Path, "worktree", "list", "--porcelain")
 	if err != nil {
 		return loc
@@ -291,7 +300,6 @@ func describe(ctx context.Context, s savedLocation) Location {
 	loc.DefaultBranch = defaultBranch(ctx, s.Path)
 	// Agent presets come from every layer: the repository's, its kit's,
 	// and this box's own.
-	repo, _, _ := ReadRepoConfig(s.Path)
 	local := RepoConfig{}
 	if s.Config != nil {
 		local = *s.Config

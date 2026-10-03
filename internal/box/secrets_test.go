@@ -207,6 +207,7 @@ func secretBox(t *testing.T) (*Box, Worktree, string) {
 		t.Fatal(err)
 	}
 	b.Locations.Add(ctx, "cal", repo)
+	trustRepo(t, b.Locations, "cal")
 	wt, err := b.Locations.CreateWorktree(ctx, "cal", "billing", "", "")
 	if err != nil {
 		t.Fatal(err)
@@ -450,6 +451,7 @@ func TestSessionsWithSecretsNeverPutAValueInTmuxsArguments(t *testing.T) {
 
 	b.Locations.Add(ctx, "cal", repo)
 	writeRepoConfig(t, repo, RepoConfig{Env: map[string]string{"SESSION_KEY": "op://dev/session/key", "MISSING": "op://dev/nope/field", "PLAIN": "plain-$BERTH_WORKTREE_NAME"}})
+	trustRepo(t, b.Locations, "cal")
 	wt, err := b.Locations.CreateWorktree(ctx, "cal", "billing", "", "")
 	if err != nil {
 		t.Fatal(err)
@@ -539,6 +541,7 @@ func TestSessionsWithoutSecretsStartAsTheyAlwaysDid(t *testing.T) {
 	}
 	writeRepoConfig(t, repo, RepoConfig{Env: map[string]string{"PLAIN": "plain"}})
 	b.Locations.Add(ctx, "cal", repo)
+	trustRepo(t, b.Locations, "cal")
 	wt, _ := b.Locations.CreateWorktree(ctx, "cal", "billing", "", "")
 	if _, err := b.createSession(ctx, "plain", "cal/billing", wt.Path, "sleep 30"); err != nil {
 		t.Fatal(err)

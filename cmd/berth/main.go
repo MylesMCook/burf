@@ -318,6 +318,9 @@ func pair(l laptop, args []string) error {
 	if err != nil {
 		return err
 	}
+	if err := checkNetwork(*via); err != nil {
+		return err
+	}
 	boxes := l.boxes()
 	// Check the requested name before spending the single-use code on the box.
 	if *name != "" {
