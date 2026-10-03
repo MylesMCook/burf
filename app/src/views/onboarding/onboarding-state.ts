@@ -25,6 +25,13 @@ export function useOnboardingActive(): boolean {
   return forced || inProgress || noBoxes;
 }
 
+// isOnboardingActive is the same answer outside React (shortcuts, say).
+export function isOnboardingActive(): boolean {
+  const { forced, inProgress } = useOnboarding.getState();
+  const status = useStore.getState().status;
+  return forced || inProgress || (!!status && status.boxes.length === 0);
+}
+
 export function markOnboardingStarted() {
   if (!useOnboarding.getState().inProgress) useOnboarding.setState({ inProgress: true });
 }

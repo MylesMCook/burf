@@ -4,6 +4,7 @@ import { openEditor } from "@/components/editors/open";
 import { closePane, openBrowserAt, startSession } from "@/lib/actions";
 import { submitConfirm } from "@/components/sidebar/confirm";
 import { toggleNotifications } from "@/lib/notifications";
+import { isOnboardingActive } from "@/views/onboarding/onboarding-state";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { activateTab, currentSpace, moveFocus, useWorkspaces } from "@/lib/workspaces";
@@ -36,6 +37,8 @@ export function useShortcuts() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (!e.metaKey || e.ctrlKey) return;
+      // Until onboarding is done there is nowhere else to go.
+      if (isOnboardingActive()) return;
       const s = useStore.getState();
       const key = e.key.toLowerCase();
       const ws = currentSpace();

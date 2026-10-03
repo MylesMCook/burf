@@ -1,5 +1,5 @@
 import { CheckIcon, CopyIcon, GitBranchIcon, RotateCwIcon } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 import { AddLocationDialog } from "@/components/add-location-dialog";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -54,6 +54,35 @@ export default function App() {
   const workspace = view.kind === "workspace";
   // Onboarding has no tabs yet, so it gets the plain strip, not the tab strip.
   const onboarding = useOnboardingActive();
+  const connected = useStore((s) => !!s.client);
+  // Until onboarding is done it is the whole window: no sidebar, status
+  // bar, palette or shortcuts to wander off through.
+  const gated = onboarding && connected;
+  useEffect(() => {
+    if (gated && useStore.getState().view.kind !== "workspace") useStore.getState().setView({ kind: "workspace" });
+  }, [gated]);
+
+  if (gated) {
+    return (
+      <TooltipProvider delay={300}>
+        <ToastProvider position="bottom-right" viewportClassName="max-w-88 data-[position=bottom-right]:bottom-3 data-[position=bottom-right]:right-3">
+          <div className="flex h-svh flex-col overflow-hidden bg-background text-foreground">
+            {/* Room for the traffic lights; the strip drags the window. */}
+            <div data-tauri-drag-region className="h-10 shrink-0" />
+            <main className="relative min-h-0 flex-1">
+              <ErrorBoundary scope="onboarding">
+                <OnboardingView />
+              </ErrorBoundary>
+            </main>
+          </div>
+          <ErrorBoundary scope="a dialog">
+            <AddBoxDialog />
+            <ConfirmHost />
+          </ErrorBoundary>
+        </ToastProvider>
+      </TooltipProvider>
+    );
+  }
 
   return (
     <TooltipProvider delay={300}>
