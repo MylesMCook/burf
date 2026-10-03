@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Berth demo</title>
+    <meta name="robots" content="noindex" />
+    <!-- Plugins import React and the SDK by name; these resolve to the app's
+         own copies (see src/plugins/host.ts). Must precede every module. -->
+    <script>
+      // Its paths are relative: /demo needs its slash to find them.
+      if (!location.pathname.endsWith("/") && !location.pathname.endsWith(".html")) location.replace(location.pathname + "/" + location.search + location.hash);
+      // Every visit starts the demo afresh.
+      try {
+        for (const k of Object.keys(localStorage)) if (k.startsWith("berth.")) localStorage.removeItem(k);
+      } catch {}
+    </script>
+
+    <script type="importmap">
+      {
+        "imports": {
+          "react": "./shims/react.js",
+          "react/jsx-runtime": "./shims/react-jsx-runtime.js",
+          "react/jsx-dev-runtime": "./shims/react-jsx-runtime.js",
+          "react-dom": "./shims/react-dom.js",
+          "@berth/plugin": "./shims/berth-plugin.js",
+          "@berth/plugin/ui": "./shims/berth-plugin-ui.js"
+        }
+      }
+    </script>
+    <script type="module" crossorigin src="./assets/index-T8NMqncw.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/rolldown-runtime-hePW80VL.js">
+    <link rel="modulepreload" crossorigin href="./assets/core-IUlRufS4.js">
+    <link rel="modulepreload" crossorigin href="./assets/api-BOfgUQfs.js">
+    <link rel="modulepreload" crossorigin href="./assets/preload-helper-BaNbYf_w.js">
+    <link rel="modulepreload" crossorigin href="./assets/notifications-CML152ra.js">
+    <link rel="stylesheet" crossorigin href="./assets/index-BxQcr91P.css">
+  </head>
+
+  <body>
+    <div id="root"></div>
+  </body>
+</html>

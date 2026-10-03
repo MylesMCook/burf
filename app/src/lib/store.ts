@@ -116,7 +116,8 @@ export const useStore = create<State & Actions>()((set, get) => ({
   connection: { state: "connecting" },
   boxes: {},
   serverThemes: [],
-  themeId: persisted.themeId ?? "berth-dark",
+  // The live demo follows the visitor's light or dark, as the website does.
+  themeId: persisted.themeId ?? (__BERTH_DEMO__ ? "system" : "berth-dark"),
   templates: [],
   view: { kind: "workspace" },
   paletteOpen: false,

@@ -1,0 +1,4 @@
+// The app's own React, shared with plugins. See src/plugins/host.ts.
+const React = globalThis.__berth.React;
+export default React;
+export const { Activity, Children, Component, Fragment, Profiler, PureComponent, StrictMode, Suspense, act, cache, cloneElement, createContext, createElement, createRef, forwardRef, isValidElement, lazy, memo, startTransition, use, useActionState, useCallback, useContext, useDebugValue, useDeferredValue, useEffect, useEffectEvent, useId, useImperativeHandle, useInsertionEffect, useLayoutEffect, useMemo, useOptimistic, useReducer, useRef, useState, useSyncExternalStore, useTransition, version } = React;

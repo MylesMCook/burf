@@ -12,6 +12,7 @@ import { openUrl } from "@/lib/open-url";
 import { overlayOpen } from "@/lib/overlays";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { demoDevServer } from "@/demo/dev-server";
 import { currentSpace, rememberUrl, useWorkspaces } from "@/lib/workspaces";
 
 interface Props {
@@ -380,17 +381,20 @@ function FramedPage({ url, onReload }: { url: string; onReload(): void }) {
               <ExternalLinkIcon />
               Open in your browser
             </Button>
-            <Button size="sm" variant="ghost" onClick={state === "blocked" ? () => setState("loading") : onReload}>
+            {!__BERTH_DEMO__ && <Button size="sm" variant="ghost" onClick={state === "blocked" ? () => setState("loading") : onReload}>
               {state === "blocked" ? "Try here anyway" : "Reload"}
-            </Button>
+            </Button>}
           </div>
         </div>
       </div>
     );
   }
+  // The live demo has no dev servers and loads nothing from elsewhere: a
+  // box's page is a stand-in drawn here, and other sites stay blocked.
   return (
     <iframe
-      src={url}
+      src={__BERTH_DEMO__ ? undefined : url}
+      srcDoc={__BERTH_DEMO__ ? demoDevServer(url) : undefined}
       title={url}
       onLoad={() => setState("loaded")}
       className="min-h-0 flex-1 bg-white"

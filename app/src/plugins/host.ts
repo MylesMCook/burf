@@ -41,7 +41,7 @@ export function installGlobals() {
 export function rewriteImports(source: string, base = location.href): string {
   return source.replace(/(\bfrom\s*|\bimport\s*\(?\s*)(["'])([^"']+)\2/g, (whole, lead: string, quote: string, spec: string) => {
     const shim = SHIMS[spec];
-    return shim ? `${lead}${quote}${new URL(`/shims/${shim}`, base).href}${quote}` : whole;
+    return shim ? `${lead}${quote}${new URL(`${import.meta.env.BASE_URL}shims/${shim}`, base).href}${quote}` : whole;
   });
 }
 
@@ -51,10 +51,11 @@ const loaded = new Map<string, { dispose?: () => void; url: string }>();
 // its index.json by `pnpm build:plugins`. A missing index means none.
 export async function builtinPlugins(): Promise<PluginInfo[]> {
   try {
-    const res = await fetch(new URL("/builtin-plugins/index.json", location.href));
+    // From the app's base: "/" in the app, the demo's own folder on the web.
+    const res = await fetch(new URL(`${import.meta.env.BASE_URL}builtin-plugins/index.json`, location.href));
     if (!res.ok) return [];
     const list = (await res.json()) as PluginInfo[];
-    return list.map((p) => ({ ...p, builtin: true, entry: `/builtin-plugins/${p.id}/${p.main}` }));
+    return list.map((p) => ({ ...p, builtin: true, entry: `${import.meta.env.BASE_URL}builtin-plugins/${p.id}/${p.main}` }));
   } catch {
     return [];
   }

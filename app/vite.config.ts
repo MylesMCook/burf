@@ -25,14 +25,56 @@ function devPlugins(): Plugin {
   };
 }
 
+// demoPage makes the demo build's page work from any folder (berthd.app/demo/):
+// the plugin shims and the icon by relative paths, a title and no indexing,
+// and a fresh demo on every load (the app's remembered layout cleared).
+function demoPage(): Plugin {
+  return {
+    name: "berth-demo-page",
+    transformIndexHtml(html) {
+      return html
+        .replace(/"\/shims\//g, '"./shims/')
+        .replace('href="/favicon.svg"', 'href="./favicon.svg"')
+        .replace("<title>Berth</title>", '<title>Berth demo</title>\n    <meta name="robots" content="noindex" />')
+        .replace(
+          "<script type=\"importmap\">",
+          `<script>
+      // Its paths are relative: /demo needs its slash to find them.
+      if (!location.pathname.endsWith("/") && !location.pathname.endsWith(".html")) location.replace(location.pathname + "/" + location.search + location.hash);
+      // Every visit starts the demo afresh.
+      try {
+        for (const k of Object.keys(localStorage)) if (k.startsWith("berth.")) localStorage.removeItem(k);
+      } catch {}
+    </script>
+    <script type="importmap">`,
+        );
+    },
+  };
+}
+
 // https://vite.dev/config/
-export default defineConfig(() => ({
-  plugins: [react(), tailwindcss(), devPlugins()],
+//
+// `vite build --mode demo` (pnpm build:demo) is the live demo on berthd.app:
+// the app on its fixtures (mock mode, always), with a guide and scripted
+// activity (src/demo/), nothing that needs a laptop agent or Tauri, built
+// with relative paths into site/demo/.
+export default defineConfig(({ mode }) => ({
+  plugins: [react(), tailwindcss(), devPlugins(), ...(mode === "demo" ? [demoPage()] : [])],
+  define: { __BERTH_DEMO__: JSON.stringify(mode === "demo") },
   resolve: {
-    alias: { "@": path.resolve(import.meta.dirname, "./src") },
+    alias: {
+      "@": path.resolve(import.meta.dirname, "./src"),
+      // lucide's dynamic icons are one chunk per icon (some 1,700 files);
+      // the demo draws the few that plugins name from one small map.
+      ...(mode === "demo" ? { "lucide-react/dynamic": path.resolve(import.meta.dirname, "./src/demo/lucide-dynamic.tsx") } : {}),
+    },
   },
+  base: mode === "demo" ? "./" : "/",
   // A desktop app loads from disk; one large chunk (xterm, React) is fine.
-  build: { chunkSizeWarningLimit: 2000 },
+  build:
+    mode === "demo"
+      ? { chunkSizeWarningLimit: 2000, outDir: path.resolve(import.meta.dirname, "../site/demo"), emptyOutDir: true }
+      : { chunkSizeWarningLimit: 2000 },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //

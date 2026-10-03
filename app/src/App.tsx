@@ -1,5 +1,5 @@
 import { GitBranchIcon } from "lucide-react";
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 
 import { AddLocationDialog } from "@/components/add-location-dialog";
 import { Connecting } from "@/components/agent-offline";
@@ -43,6 +43,9 @@ import { AddBoxDialog } from "@/views/onboarding/add-box-dialog";
 import { useOnboardingActive } from "@/views/onboarding/onboarding-state";
 import { OnboardingView } from "@/views/onboarding/onboarding-view";
 import { SettingsView } from "@/views/settings/settings-view";
+
+// The live demo's guide and script (pnpm build:demo); not in the app.
+const DemoGuide = __BERTH_DEMO__ ? lazy(() => import("@/demo/guide")) : null;
 
 const viewTitles = { dashboard: "Agent Dashboard", review: "Review", worktrees: "Worktrees", automations: "Automations", kits: "Kits", project: "Project settings", settings: "Settings", plugin: "" } as const;
 
@@ -135,6 +138,11 @@ export default function App() {
           <ReviewSheet />
           <NotificationCenter />
         </ErrorBoundary>
+        {DemoGuide && (
+          <Suspense>
+            <DemoGuide />
+          </Suspense>
+        )}
       </ToastProvider>
     </TooltipProvider>
   );

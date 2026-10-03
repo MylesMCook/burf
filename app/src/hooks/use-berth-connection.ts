@@ -12,7 +12,8 @@ import { loadProjects } from "@/lib/project-groups";
 import { reloadKits } from "@/views/kits/kits-store";
 import { loadPlugins } from "@/plugins/host";
 
-export const isMock = () => new URLSearchParams(location.search).has("mock");
+// The live demo (pnpm build:demo) is always mock mode.
+export const isMock = () => __BERTH_DEMO__ || new URLSearchParams(location.search).has("mock");
 
 // useBerthConnection finds the agent, keeps trying until it answers, then
 // follows its events and polls slowly as a backstop. Every reconnect of the

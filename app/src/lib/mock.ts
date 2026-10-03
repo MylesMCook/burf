@@ -10,6 +10,7 @@ import { mockIssueTitle } from "@/lib/mock-issues";
 import { usageCall, usageExec } from "@/lib/mock-usage";
 import { initMockQueue, queueCall } from "@/lib/mock-queue";
 import { ApiError } from "@/lib/api";
+import { demoAttach, demoScreen } from "@/demo/terminal";
 
 // Mock mode (?mock=1) runs the whole UI on fixtures, so it can be worked on
 // without an agent or a box. State is mutable: new tasks and sessions appear,
@@ -186,9 +187,25 @@ const appDocs: Record<string, unknown> = fresh ? {} : { projects: { projects: [{
 const listeners = new Set<(e: BerthEvent) => void>();
 const emit = (e: Omit<BerthEvent, "time">) => listeners.forEach((l) => l({ ...e, time: new Date().toISOString() }));
 
+// mockDemo is what the live demo's script (src/demo/script.ts) moves agents
+// with. Keys are "box/session".
+export const mockDemo = {
+  // The last thing sent to each session (an answer, a prompt).
+  lastSent: {} as Record<string, string>,
+  // setAgent puts an agent in a state and says so, as its hooks would.
+  setAgent(box: string, name: string, state: "running" | "waiting" | "finished") {
+    const s = sessions[box]?.find((x) => x.name === name);
+    if (!s) return;
+    s.agent_state = state;
+    s.state_since = new Date().toISOString();
+    emit({ type: state === "running" ? "agent.started" : `agent.${state}`, box, origin: s.agent, data: { path: s.dir, session: s.name, agent: s.agent } });
+  },
+};
+
 // An agent finishes its turn, then starts again, so the board moves. A new
-// account has no agents, so nothing moves there.
-if (!fresh) setInterval(() => {
+// account has no agents, so nothing moves there. The live demo moves its
+// agents on its own script instead (src/demo/script.ts).
+if (!fresh && !__BERTH_DEMO__) setInterval(() => {
   const s = sessions.devl.find((x) => x.name === "qa-deck-codex");
   if (!s) return;
   s.agent_state = s.agent_state === "running" ? "waiting" : "running";
@@ -293,6 +310,7 @@ function mockOrchestration(box: string, method: string, path: string, body?: unk
   if (m && !s) return Promise.reject(new Error("no session with that name"));
   if (s && m?.[2] === "send") {
     const at = new Date().toISOString();
+    mockDemo.lastSent[`${box}/${s.name}`] = (body as { text?: string } | undefined)?.text ?? "";
     s.agent_state = "running";
     s.state_since = at;
     emit({ type: "agent.started", box, origin: s.agent, data: { path: s.dir } });
@@ -300,7 +318,8 @@ function mockOrchestration(box: string, method: string, path: string, body?: unk
       s.agent_state = "finished";
       s.state_since = new Date().toISOString();
       emit({ type: "agent.finished", box, origin: s.agent, data: { path: s.dir } });
-    }, 1500);
+      // The demo's agents work a little longer, so you see them at it.
+    }, __BERTH_DEMO__ ? 4500 : 1500);
     return delay({ sent: true, at });
   }
   if (s && m?.[2] === "wait") {
@@ -367,6 +386,12 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
   if (usage) return usage;
   const wts = worktreesCall(box, method, path, body, { locations, sessions }, emit, delay);
   if (wts) return wts;
+  // The live demo's agents say their own lines (src/demo/terminal.ts).
+  if (__BERTH_DEMO__ && method === "GET" && /^sessions\/[^/]+\/screen/.test(path)) {
+    const s = sessions[box]?.find((x) => x.name === decodeURIComponent(path.split("/")[1]));
+    const screen = s && demoScreen(s);
+    if (screen) return delay({ screen });
+  }
   const review = reviewCall(box, method, path, sessions[box]);
   if (review) return review;
   const key = `${method} ${path}`;
@@ -488,7 +513,19 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
 }
 
 // A fake terminal: a short Claude-like transcript, then an echoing prompt.
+// The live demo's terminals follow their agent instead, and answer.
 function mockAttach(box: string, session: string, h: TerminalHandlers) {
+  if (__BERTH_DEMO__) {
+    return demoAttach(box, session, h, {
+      session: () => sessions[box]?.find((x) => x.name === session),
+      answered: () => mockDemo.lastSent[`${box}/${session}`],
+      send: (text) => boxCall(box, "POST", `sessions/${encodeURIComponent(session)}/send`, { text, enter: false }),
+      listen: (fn) => {
+        listeners.add(fn);
+        return () => listeners.delete(fn);
+      },
+    });
+  }
   const timers: number[] = [];
   let open = true;
   const s = sessions[box]?.find((x) => x.name === session);
@@ -541,7 +578,10 @@ if (!fresh) discovery.machines[1].box = "devl";
 
 const mockNetworks = fresh ? [] : [{ name: "personal", state: "Running", tailnet: "example.ts.net", ips: ["100.64.0.73"] }];
 
-const mockPlugins = [{ id: "hello-ports", name: "Hello ports", version: "0.1.0", main: "dist/index.js", description: "Every dev server on every box, one click from your browser.", entry: "/__dev-plugins/hello-ports/dist/index.js", enabled: false, defaultEnabled: false }];
+// The live demo lists none: a plugin from ~/.berth/plugins would load from
+// the dev server, which the demo doesn't have.
+const mockPlugins = [{ id: "hello-ports", name: "Hello ports", version: "0.1.0", main: "dist/index.js", description: "Every dev server on every box, one click from your browser.", entry: "/__dev-plugins/hello-ports/dist/index.js", enabled: false, defaultEnabled: false }].filter(() => !__BERTH_DEMO__);
+
 
 function addMockBox(name: string, address: string, network?: string) {
   if (!status.boxes.some((b) => b.name === name)) {

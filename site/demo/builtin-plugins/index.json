@@ -1,0 +1,68 @@
+[
+  {
+    "id": "activity",
+    "name": "Activity",
+    "version": "0.1.0",
+    "description": "A live timeline of agents, worktrees, flows and boxes: what happened while you were away.",
+    "main": "index.js"
+  },
+  {
+    "id": "box-monitor",
+    "name": "Box monitor",
+    "version": "0.1.0",
+    "description": "Memory, disk and load on every box, with an hour of history and a warning before one runs out.",
+    "main": "index.js"
+  },
+  {
+    "id": "dev-servers",
+    "name": "Dev servers",
+    "version": "0.1.0",
+    "description": "Every dev server on every box, by worktree: open it in a tab, copy its URL, start or stop the repo's services.",
+    "main": "index.js"
+  },
+  {
+    "id": "git-changes",
+    "name": "Git changes",
+    "version": "0.1.0",
+    "description": "What changed in a worktree: files, diffs, and commit or push when you're happy with it.",
+    "main": "index.js"
+  },
+  {
+    "id": "issues",
+    "name": "Issues",
+    "version": "0.1.0",
+    "description": "Open GitHub issues for your projects, and an agent on any of them in one step.",
+    "main": "index.js",
+    "defaultEnabled": true
+  },
+  {
+    "id": "notes",
+    "name": "Notes",
+    "version": "0.1.0",
+    "description": "A scratchpad per worktree, kept in the worktree as .berth/notes.md so its agents can read it too.",
+    "main": "index.js"
+  },
+  {
+    "id": "prompts",
+    "name": "Prompt library",
+    "version": "0.1.0",
+    "description": "Saved prompts with {{variables}}: send one to an agent from ⌘K or a pane's menu, or to several agents at once.",
+    "main": "index.js",
+    "defaultEnabled": true
+  },
+  {
+    "id": "pull-request",
+    "name": "Pull request",
+    "version": "0.1.0",
+    "description": "The worktree branch's pull request: checks, reviews and comments, or open one.",
+    "main": "index.js"
+  },
+  {
+    "id": "usage",
+    "name": "Usage & accounts",
+    "version": "0.1.0",
+    "description": "Tokens by agent, model, project and session on each box, from the agents' own records, and switching which Claude Code or Codex login new sessions use.",
+    "main": "index.js",
+    "defaultEnabled": false
+  }
+]

@@ -1,0 +1,7 @@
+{
+  "id": "box-monitor",
+  "name": "Box monitor",
+  "version": "0.1.0",
+  "description": "Memory, disk and load on every box, with an hour of history and a warning before one runs out.",
+  "main": "index.js"
+}

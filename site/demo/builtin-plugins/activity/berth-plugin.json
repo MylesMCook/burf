@@ -1,0 +1,7 @@
+{
+  "id": "activity",
+  "name": "Activity",
+  "version": "0.1.0",
+  "description": "A live timeline of agents, worktrees, flows and boxes: what happened while you were away.",
+  "main": "index.js"
+}

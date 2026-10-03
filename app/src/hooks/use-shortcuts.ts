@@ -36,7 +36,9 @@ const arrows: Record<string, "left" | "right" | "up" | "down"> = { ArrowLeft: "l
 export function useShortcuts() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!e.metaKey || e.ctrlKey) return;
+      // In the live demo on Windows and Linux, Ctrl stands in for ⌘.
+      const meta = e.metaKey || (__BERTH_DEMO__ && e.ctrlKey && !/Mac|iPhone|iPad/.test(navigator.platform));
+      if (!meta || (e.metaKey && e.ctrlKey)) return;
       // Until onboarding is done there is nowhere else to go.
       if (isOnboardingActive()) return;
       const s = useStore.getState();

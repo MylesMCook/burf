@@ -1,0 +1,8 @@
+{
+  "id": "issues",
+  "name": "Issues",
+  "version": "0.1.0",
+  "description": "Open GitHub issues for your projects, and an agent on any of them in one step.",
+  "main": "index.js",
+  "defaultEnabled": true
+}

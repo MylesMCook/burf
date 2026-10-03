@@ -31,7 +31,8 @@ export function initMockQueue(c: Ctx, fresh: boolean) {
   const add = (it: Omit<QueueItem, "seq" | "enter" | "wait">) => items.push({ enter: true, wait: true, seq: ++seq, ...it });
   add({ id: "q-smoke", box: "old-vps", session: "api-claude", text: "Once the deploy finishes, run the smoke tests against staging and paste the failures here.", state: "queued", created: ago(26) });
   add({ id: "q-bump", box: "old-vps", session: "api-claude", text: "Then bump the API version in openapi.yaml and regenerate the client.", state: "queued", created: ago(24) });
-  add({
+  // The live demo starts without a failure in its status bar.
+  if (!__BERTH_DEMO__) add({
     id: "q-gone",
     box: "gpu",
     session: "evals-judge-claude",

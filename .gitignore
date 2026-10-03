@@ -73,3 +73,9 @@ design/docs-fix/
 
 # Docs diagrams: screenshots and scores
 design/docs-diagrams/
+
+# Security audit report and proof-of-concept files
+design/security-audit/
+
+# Landing page live demo and drawings: screenshots
+design/site-demo/

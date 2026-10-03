@@ -756,7 +756,7 @@ p.eyebrow,
   }
 }
 
-/* Screenshots */
+/* The hero's poster */
 
 .shot {
   margin: 0;
@@ -781,16 +781,6 @@ p.eyebrow,
 
 .hero-shot {
   box-shadow: var(--shadow-sm);
-}
-
-/* On phones a shot shows a readable part of the screen (the "-phone" crops)
-   instead of all of it at a third of its size. Where the crop cuts through
-   the screen, its right edge fades, so it reads as continuing. */
-@media (max-width: 640px) {
-  .shot.crop img {
-    -webkit-mask-image: linear-gradient(90deg, #000 84%, transparent);
-    mask-image: linear-gradient(90deg, #000 84%, transparent);
-  }
 }
 
 /* Sections */
@@ -1295,8 +1285,8 @@ section {
   margin-bottom: 6px;
 }
 
-/* Features: four every-day features with screenshots, then the rest as
-   compact cards. */
+/* Features: four every-day features with drawings of their screens, then
+   the rest as compact cards, each with a small harbour scene. */
 
 .features .section-head {
   margin-bottom: clamp(32px, 5vw, 56px);
@@ -1405,8 +1395,7 @@ section {
   background: var(--line);
 }
 
-/* Plates: every product shot sits on a quiet tinted panel, so a dialog and
-   a whole window read as the same kind of figure. */
+/* Plates: every feature drawing sits on a quiet tinted panel. */
 .plate {
   --ground: var(--bg-2);
   margin: 0;
@@ -1417,24 +1406,321 @@ section {
   min-width: 0;
 }
 
-.plate .shot {
-  box-shadow: var(--shadow-sm);
-  border-radius: 10px;
+/* Drawings of the features, in the brand's line: strokes in --line, text
+   in the page's own type, panels in --card, and at most one amber point
+   (the lamp on the notifications card). Inline SVG, so they follow the
+   theme and stay sharp at any width. Motion is transform and opacity only,
+   pauses offscreen (.art.off) and stops for reduced motion. */
+.draw {
+  color: var(--line);
 }
 
-/* A dialog captured on its own, with its shadow, needs no frame. */
-.plate .shot.bare {
-  border: 0;
-  border-radius: 0;
-  background: none;
-  box-shadow: none;
+.draw svg {
+  width: 100%;
+  height: auto;
 }
 
-.plate:has(> .bare) {
-  padding: clamp(2px, 0.8vw, 10px);
+.draw text {
+  font: 400 13px var(--sans);
+  fill: var(--fg-2);
+  stroke: none;
 }
 
-/* The second tier: text cards, three to a row. */
+.draw text.mono,
+.draw tspan.mono {
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.draw text.small,
+.draw text .small {
+  font-size: 11.5px;
+}
+
+.draw text.tiny {
+  font-size: 10.5px;
+}
+
+.draw text.title {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.draw text.mono.title {
+  font-size: 14px;
+}
+
+.draw text.big {
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.draw text.field {
+  font-size: 14px;
+}
+
+.draw .t-fg {
+  fill: var(--fg);
+}
+
+.draw .t-mu {
+  fill: var(--muted);
+}
+
+.draw .panel,
+.draw .hull {
+  fill: var(--card);
+}
+
+.mini-art .panel,
+.mini-art .hull {
+  fill: var(--ground);
+}
+
+.draw .sel,
+.draw .lane {
+  stroke: var(--fg);
+}
+
+.draw .btn-fill {
+  fill: var(--fg);
+}
+
+.draw .on-fill {
+  fill: var(--bg);
+}
+
+.draw .on-fill-stroke {
+  stroke: var(--bg);
+}
+
+.draw .dot {
+  fill: var(--card);
+  stroke: currentColor;
+  stroke-width: 2;
+}
+
+.draw .dot.br {
+  stroke: var(--fg);
+  stroke-width: 2.2;
+}
+
+.draw .head,
+.draw .blink {
+  fill: var(--fg);
+}
+
+.draw .lamp {
+  fill: var(--amber);
+}
+
+/* A workspace drawing is wide: on a phone it keeps its size and shows its
+   left part (the sidebar and the agent), fading out to the right. */
+@media (max-width: 640px) {
+  .plate.crop {
+    position: relative;
+    overflow: hidden;
+  }
+  .plate.crop svg {
+    width: 580px;
+    max-width: none;
+  }
+  .plate.crop::after {
+    content: "";
+    position: absolute;
+    inset: 0 0 0 auto;
+    width: 64px;
+    background: linear-gradient(90deg, transparent, var(--bg-2));
+  }
+}
+
+/* Motion. A text cursor. */
+.art .blink {
+  animation: blink 1.2s steps(1, end) infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+/* A ring that spreads from a point and fades: HEAD, a chart's mark. */
+.art .ping {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: ping 3.6s ease-out infinite;
+}
+
+@keyframes ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  70%,
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+/* One prompt fanning out: a dot runs each line in turn, then its agent
+   works (the spinner) and is done (the tick). 7.2s, staggered. */
+.art .fan-dot {
+  opacity: 0;
+  animation: 7.2s ease-in-out infinite;
+}
+
+.art .fan-dot.f0 { animation-name: fan-0; }
+.art .fan-dot.f1 { animation-name: fan-1; animation-delay: 0.3s; }
+.art .fan-dot.f2 { animation-name: fan-2; animation-delay: 0.6s; }
+
+@keyframes fan-0 {
+  0% { transform: translate(0, 0); opacity: 0; }
+  3% { opacity: 1; }
+  14% { transform: translate(62px, -90px); opacity: 1; }
+  17%, 100% { transform: translate(62px, -90px); opacity: 0; }
+}
+
+@keyframes fan-1 {
+  0% { transform: translate(0, 0); opacity: 0; }
+  3% { opacity: 1; }
+  14% { transform: translate(62px, 0); opacity: 1; }
+  17%, 100% { transform: translate(62px, 0); opacity: 0; }
+}
+
+@keyframes fan-2 {
+  0% { transform: translate(0, 0); opacity: 0; }
+  3% { opacity: 1; }
+  14% { transform: translate(62px, 90px); opacity: 1; }
+  17%, 100% { transform: translate(62px, 90px); opacity: 0; }
+}
+
+.draw .st-work {
+  opacity: 0;
+}
+
+.art .st-work {
+  animation: st-work 7.2s linear infinite;
+}
+
+.art .st-done {
+  animation: st-done 7.2s linear infinite;
+}
+
+.art .f1 .st-work, .art .f1 .st-done { animation-delay: 0.3s; }
+.art .f2 .st-work, .art .f2 .st-done { animation-delay: 0.6s; }
+/* The three finish at different times. */
+.art .f0 .st-work { animation-name: st-work-a; }
+.art .f0 .st-done { animation-name: st-done-a; }
+
+@keyframes st-work {
+  0%, 15% { opacity: 0; }
+  17%, 66% { opacity: 1; }
+  68%, 100% { opacity: 0; }
+}
+
+@keyframes st-done {
+  0%, 2% { opacity: 1; }
+  4%, 66% { opacity: 0; }
+  68%, 100% { opacity: 1; }
+}
+
+@keyframes st-work-a {
+  0%, 15% { opacity: 0; }
+  17%, 48% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+@keyframes st-done-a {
+  0%, 2% { opacity: 1; }
+  4%, 48% { opacity: 0; }
+  50%, 100% { opacity: 1; }
+}
+
+.art .spin {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: spin 1.1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Slow, small, seamless: the queued prompts lift, a compass needle
+   settles, a crate swings on its hook, a tag sways, a pontoon nudges in,
+   the lamp glows. */
+.art .bob-y {
+  animation: bob-y 4.8s ease-in-out infinite;
+}
+
+@keyframes bob-y {
+  50% {
+    transform: translateY(-1.6px);
+  }
+}
+
+.art .needle {
+  transform-box: view-box;
+  transform-origin: 180px 70px;
+  animation: needle 6s ease-in-out infinite;
+}
+
+@keyframes needle {
+  0%, 100% { transform: rotate(-9deg); }
+  50% { transform: rotate(7deg); }
+}
+
+.art .swing {
+  transform-box: view-box;
+  transform-origin: 120px 23.6px;
+  animation: swing 5s ease-in-out infinite;
+}
+
+@keyframes swing {
+  0%, 100% { transform: rotate(-3.5deg); }
+  50% { transform: rotate(3.5deg); }
+}
+
+.art .sway {
+  transform-box: view-box;
+  transform-origin: 131px 30px;
+  animation: sway 5.6s ease-in-out infinite;
+}
+
+@keyframes sway {
+  0%, 100% { transform: rotate(-4deg); }
+  50% { transform: rotate(3deg); }
+}
+
+.art .dock-in {
+  animation: dock-in 6.4s ease-in-out infinite;
+}
+
+@keyframes dock-in {
+  0%, 100% { transform: translate(5px, 0.6px); }
+  45%, 60% { transform: translate(0, -0.4px); }
+}
+
+.draw .glow {
+  opacity: 0.35;
+}
+
+.art .glow {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: glow 3.6s ease-in-out infinite;
+}
+
+@keyframes glow {
+  0%, 100% { transform: scale(0.8); opacity: 0.15; }
+  50% { transform: scale(1.25); opacity: 0.55; }
+}
+
+/* The second tier: cards, three to a row. */
 .more-grid {
   display: grid;
   gap: 1px;
@@ -1461,6 +1747,14 @@ section {
   flex-direction: column;
   background: var(--bg);
   padding: 24px clamp(20px, 2.4vw, 26px) 24px;
+}
+
+.mini-art {
+  margin: -6px -4px 14px;
+}
+
+.mini-art svg {
+  max-width: 320px;
 }
 
 .mini p.eyebrow {
@@ -1936,7 +2230,9 @@ pre .k {
   .art *,
   .art::before,
   .menu-btn path,
-  .hero-line svg {
+  .hero-line svg,
+  .demo-cta,
+  .demo-frame {
     animation: none !important;
     transition: none !important;
   }
@@ -1977,4 +2273,145 @@ pre .k {
   font-size: 13px;
   line-height: 1.6;
   color: var(--muted);
+}
+
+/* The live demo, in the hero. The poster is the demo as it opens; pressing
+   "Try the live demo" lays the app over it in a frame (nothing loads
+   before). On phones the button opens the demo full screen instead. */
+.demo .hero-shot {
+  position: relative;
+}
+
+.demo-cta {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  /* High on the poster, so it shows in the first screen; a soft clearing
+     behind it, so it reads over the app. */
+  padding-top: min(11%, 124px);
+  background: radial-gradient(ellipse 30% 22% at 50% min(16%, 176px), color-mix(in srgb, var(--bg) 72%, transparent), transparent);
+  transition: opacity 0.2s;
+}
+
+.demo-cta .btn {
+  box-shadow: var(--shadow-sm), 0 0 0 6px color-mix(in srgb, var(--bg) 55%, transparent);
+}
+
+.demo-cta .btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.js .demo .hero-shot {
+  cursor: pointer;
+}
+
+.js .demo.live .hero-shot {
+  cursor: auto;
+}
+
+.demo-try[hidden],
+.js .demo-phone {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .demo-cta {
+    padding-top: 0;
+    align-content: end;
+    padding-bottom: 14px;
+    background: linear-gradient(transparent 40%, color-mix(in srgb, var(--bg) 82%, transparent) 88%);
+  }
+  .js .demo-try {
+    display: none;
+  }
+  .js .demo-phone {
+    display: inline-flex;
+  }
+  .demo-cta .btn {
+    height: 38px;
+    padding: 0 14px;
+    font-size: 14px;
+  }
+}
+
+.demo.live .demo-cta {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* The app fills the poster's place; it shows once it has loaded, so the
+   poster stands in while it does. */
+.demo-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: var(--bg);
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+
+.demo.ready .demo-frame {
+  opacity: 1;
+}
+
+.demo-frame:focus-visible {
+  outline: 2px solid var(--fg);
+  outline-offset: 2px;
+}
+
+/* Under the stage: what the demo is, and its controls. */
+.demo-bar {
+  margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px 18px;
+}
+
+.demo-bar .caption {
+  margin: 0;
+}
+
+.demo-links {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 16px;
+  font-size: 13px;
+}
+
+.demo-links a,
+.demo-links button {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  font: 500 13px var(--sans);
+  color: var(--fg);
+  background: none;
+  border: 0;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.demo-links a:hover,
+.demo-links button:hover {
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--fg) 35%, transparent);
+  text-underline-offset: 3px;
+}
+
+.demo-links svg {
+  width: 13px;
+  height: 13px;
+}
+
+.demo-links [hidden] {
+  display: none;
 }

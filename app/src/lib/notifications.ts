@@ -590,6 +590,8 @@ export async function loadNotifications() {
 let permitted: boolean | undefined;
 
 export async function systemNotification(title: string, body?: string) {
+  // The live demo never asks a visitor's browser for notifications.
+  if (__BERTH_DEMO__) return;
   try {
     if (isTauri()) {
       const n = await import("@tauri-apps/plugin-notification");

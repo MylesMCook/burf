@@ -8,6 +8,7 @@
     "build": "node scripts/build-plugins.mjs && tsc && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
+    "build:demo": "node scripts/build-plugins.mjs && tsc && vite build --mode demo",
     "build:plugins": "node scripts/build-plugins.mjs",
     "typecheck:plugins": "tsc --noEmit -p ../plugins",
     "check:titles": "node scripts/check-titles.mjs"
