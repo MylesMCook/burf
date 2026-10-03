@@ -1,27 +1,20 @@
 import type { BaseLayoutProps } from 'fumadocs-ui/layouts/shared';
-import { Globe } from 'lucide-react';
 import { Logo } from '@/components/logo';
-import { githubUrl, landingUrl } from './shared';
+import { DrawerLinks, SiteLink } from '@/components/site-header';
 
+// On a laptop-sized screen the product header (components/site-header.tsx)
+// carries the lockup, berthd.app and GitHub, and the sidebar starts at
+// search. On a phone, the docs' header has the lockup and a labelled
+// "berthd.app ↗", and the menu drawer starts with labelled links to the
+// website and GitHub.
 export function baseOptions(): BaseLayoutProps {
   return {
     nav: {
       title: <Logo />,
       url: '/',
+      children: <SiteLink className="berth-head-site" />,
     },
-    githubUrl,
     themeSwitch: { mode: 'light-dark-system' },
-    // The website sits beside GitHub in the sidebar's footer, out of the way
-    // of the pages.
-    links: [
-      {
-        type: 'icon',
-        text: 'Website',
-        label: 'berthd.app, the website',
-        icon: <Globe />,
-        url: landingUrl,
-        external: true,
-      },
-    ],
+    links: [{ type: 'custom', children: <DrawerLinks /> }],
   };
 }

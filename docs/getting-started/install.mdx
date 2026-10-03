@@ -1,55 +1,42 @@
 ---
 title: Install
-description: One line on each box, and Berth built from source on your laptop.
+description: Build Berth from source on your laptop, then put berthd on a box over SSH.
 ---
 
-Berth has two halves: `berthd` on each box your agents run on, and the
-`berth` CLI with the desktop app on your laptop. A box takes one line; the
-laptop side is built from source for now.
+Berth has two halves: `berthd`, the daemon on each box your agents run on,
+and on your laptop the `berth` CLI and the desktop app. Today you build both
+from the repository, and `berth add ssh` puts the daemon on a box for you.
 
-## On a box
+{/*
+  PRE-RELEASE. When the first release is on
+  https://github.com/sean-brydon/berthd/releases (so that
+  `curl -fsSL https://berthd.app/install | sh` works), delete this callout
+  and the "Once the first release is out" lines on this page, docs/index.mdx
+  and add-a-box.mdx. The one-liner can then lead "Put berthd on a box".
+*/}
 
-On the box (Linux or macOS, amd64 or arm64), as the user your agents will
-run as:
-
-```sh
-curl -fsSL https://berthd.app/install | sh
-```
-
-It installs `berthd` for that user (no root), checks the download against the
-release's checksums, starts it as a service, and prints a pairing link:
-
-```text
-berthd v0.1.0 is running. Paste this link into Berth on your laptop
-(Add a box). It works once, for ten minutes:
-
-  berth://100.101.102.103:7444?code=…&fp=…
-```
-
-Keep it for the next step. The box needs `git` and `tmux`, and a
-[Tailscale](https://tailscale.com) address unless you tell berthd to listen
-elsewhere (`sh -s -- --listen 0.0.0.0:7444`; see
-[installer options](/getting-started/add-a-box#installer-options) and
-[where berthd listens](/getting-started/add-a-box#where-berthd-listens)).
-Running it again upgrades berthd in place.
-
-<Callout title="No SSH from your laptop needed">
-  The installer runs on the box itself. If you'd rather install from your
-  laptop over SSH, [`berth add ssh`](/getting-started/add-a-box#over-ssh)
-  does the install and the pairing in one step.
+<Callout type="warn" title="No release yet: build from source">
+  Berth has no published release, so there is nothing to download yet and
+  the one-line installer fails. The steps below build everything from the
+  repository and work today.
 </Callout>
 
-## On your laptop
+## What you need
 
-There are no app or CLI releases yet, so build them from the repository.
-You need:
+On your laptop (a Mac, or Linux):
 
 - **Go 1.27** for `berth` and `berthd`
 - **Node 22 and pnpm** for the desktop app and plugins
 - **Rust** for the app's Tauri shell
-- a Mac or a Linux laptop
+- `ssh` access to the box, as the user your agents will run as
 
-### Build the binaries
+On the box (Linux, or macOS; amd64 or arm64):
+
+- `git` and `tmux`
+- a [Tailscale](https://tailscale.com) address, unless you tell berthd to
+  listen elsewhere (see [where berthd listens](/getting-started/add-a-box#where-berthd-listens))
+
+## Build Berth
 
 ```sh
 git clone https://github.com/sean-brydon/berthd
@@ -66,33 +53,66 @@ make all
 | `bin/berthd-linux-amd64`, `bin/berthd-linux-arm64` | The box daemon for Linux boxes |
 
 Keep the Linux daemons next to `berth`: `berth add ssh` and `berth upgrade`
-look for `berthd-linux-<arch>` beside their own executable. Put `bin/` on
-your `PATH`, or call `bin/berth` as these pages do.
+look for `berthd-<os>-<arch>` beside their own executable. These pages run
+commands from the clone as `bin/berth`; put `bin/` on your `PATH` if you'd
+rather type `berth`. `bin/berth help` lists every command.
 
-### Start the laptop agent
+## Put berthd on a box
+
+One command on the laptop installs berthd on the box over SSH, starts it as
+a service and pairs this laptop with it:
+
+```sh
+bin/berth add ssh me@my-box --name my-box
+```
+
+```text title="Example output"
+Using your SSH agent
+Checking me@my-box…
+Installing berthd-linux-amd64 (9 MB)…
+  Installed /home/me/.config/systemd/user/berthd.service; berthd is serving on 100.101.102.103:7444.
+Paired with my-box at 100.101.102.103:7444. SSH is no longer needed for this box.
+```
+
+`--name` is what Berth calls the box (by default, its hostname); these pages
+call it `my-box`. Berth puts the daemon in `~/.local/bin/berthd` on the box,
+and from here on the laptop talks to it over pinned mutual TLS: Berth itself
+never needs SSH for this box again. The other flags, a Mac box, and a box
+with no tailnet address are in [add a box](/getting-started/add-a-box#over-ssh).
+To see agents' state (needs you, working, done), the box also needs the
+agent hooks, a one-line step in [first agent](/getting-started/first-agent#let-the-box-report-agent-state).
+
+If berthd is already running on the box, run `berthd pair` there instead
+and paste the link it prints into the app (**Add a box**), or:
+
+```sh
+bin/berth pair 'berth://100.101.102.103:7444?code=…&fp=…'
+```
+
+The link works once and expires after ten minutes.
+
+**Once the first release is out**, the box side also takes one line, run on
+the box itself: `curl -fsSL https://berthd.app/install | sh` installs berthd
+and prints a pairing link to paste into the app (see
+[the install command](/getting-started/add-a-box#with-the-install-command)).
+
+## Start the laptop agent
 
 The CLI and the app are clients of the **laptop agent**, a background process
 that holds the connection to every box (see [the laptop agent](/concepts/laptop-agent)).
-Any command that needs it starts it, so this is enough:
-
-```sh
-bin/berth status
-```
-
-To have it start at login and come back after a crash, install it as a
-service (launchd on macOS, a systemd user unit on Linux):
+Any command that needs it starts it, as `berth add ssh` just did. To have it
+start at login and come back after a crash, install it as a service
+(launchd on macOS, a systemd user unit on Linux):
 
 ```sh
 bin/berth agent install     # berth agent status | uninstall
 ```
 
-<Callout type="warn" title="The app does not start the agent">
-  The desktop app talks to the agent but never starts it. If the app says
-  "The Berth agent is not running", run `berth status` or
-  `berth agent install` in a terminal; the app connects as soon as it is up.
-</Callout>
+The desktop app talks to the agent but never starts it. If the app says "The
+Berth agent is not running", run `bin/berth status` or
+`bin/berth agent install` in a terminal; the app connects as soon as it is up.
 
-### Run the desktop app
+## Run the desktop app
 
 ```sh
 cd app
@@ -100,29 +120,13 @@ pnpm install
 pnpm tauri dev
 ```
 
-The first time, it walks you through connecting a box, adding a repo on it
-and starting your first agent.
-
-## Pair them
-
-Paste the box's link in the app (**Add a box**, under "Paste what it
-printed"), or:
-
-```sh
-bin/berth pair 'berth://100.101.102.103:7444?code=…&fp=…'
-```
-
-```text
-Paired with my-box at 100.101.102.103:7444 (…)
-```
-
-The link works once and expires after ten minutes; run `berthd pair` on the
-box for a new one. More ways to connect a box are in
-[add a box](/getting-started/add-a-box).
+While no box is paired, it opens on a short setup: add a box (over SSH, or
+with a pairing link), add a repository on it, and start your first agent.
+With a box already paired, it opens straight to the main window.
 
 ## Optional: shorter URLs
 
-Every port on a box has a private URL like `http://3000.devl.localhost:1377/`.
+Every port on a box has a private URL like `http://3000.my-box.localhost:1377/`.
 On a Mac, you can drop the `:1377`:
 
 ```sh
@@ -143,4 +147,5 @@ Each check that fails says how to fix it.
 
 ## Next
 
-[Your first project and worktree](/getting-started/first-project).
+[Your first project and worktree](/getting-started/first-project), then
+[your first agent](/getting-started/first-agent).

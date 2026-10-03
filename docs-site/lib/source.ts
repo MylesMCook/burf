@@ -3,6 +3,7 @@ import { lucideIconsPlugin } from 'fumadocs-core/source/lucide-icons';
 import { applyMdxPreset } from 'fumadocs-mdx/config';
 import { berthDark, berthLight } from './code-themes';
 import { rehypeNowrapTokens } from './rehype-nowrap-tokens';
+import { rehypeReference } from './rehype-reference';
 import { defineDocs } from 'fumadocs-mdx/macro';
 import { metaSchema, pageSchema } from 'fumadocs-core/source/schema';
 
@@ -17,7 +18,9 @@ const docs = defineDocs({
       rehypeCodeOptions: {
         themes: { light: berthLight, dark: berthDark },
       },
-      rehypePlugins: (plugins) => [...plugins, rehypeNowrapTokens],
+      // Reference tables become linkable (lib/rehype-reference.ts), after
+      // their code is held together.
+      rehypePlugins: (plugins) => [...plugins, rehypeNowrapTokens, rehypeReference],
     }),
   },
   meta: { schema: metaSchema },

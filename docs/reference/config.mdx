@@ -65,7 +65,7 @@ plugin's manifest. See [hooks](/guides/hooks).
 | `steps` | array | At least one; see below. |
 | `max_runs_per_hour` | number | Default 20 when empty or `0`. |
 
-`trigger`:
+#### `trigger`
 
 | Field | Type | Meaning |
 | --- | --- | --- |
@@ -75,7 +75,9 @@ plugin's manifest. See [hooks](/guides/hooks).
 | `github` | object | `on`: `review_comment`, `pr_review`, `check_failed` or `pr_merged`; `poll`: a duration, at least `1m`, default `2m`. |
 | `where` | object | `location`, `agent`, `branch` (a trailing `*` matches a prefix). Empty matches anything. |
 
-Each of `steps`:
+#### `steps`
+
+Each step:
 
 | Field | Type | Meaning |
 | --- | --- | --- |

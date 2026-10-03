@@ -20,7 +20,7 @@ export default async function Page(props: PageProps<'/[[...slug]]'>) {
 
   return (
     <DocsPage toc={page.data.toc} full={page.data.full} footer={{ children: <PageFoot /> }}>
-      <header className="berth-page-head" data-home={home || undefined}>
+      <header className="berth-page-head" data-home={home || undefined} data-section={page.slugs[0]}>
         {eyebrow && <p className="berth-eyebrow">{eyebrow}</p>}
         <DocsTitle>{home ? 'Berth documentation' : page.data.title}</DocsTitle>
         <DocsDescription>{page.data.description}</DocsDescription>

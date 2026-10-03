@@ -15,7 +15,13 @@ bin/berth locations my-box
 
 A path under your laptop's home is sent as `~/…`, so the box reads it against
 its own home. A location can be any directory, but worktrees need a git
-repository.
+repository. If the repository isn't on the box yet, clone it there first
+(an SSH command starts in your home on the box, so `work/app` is
+`~/work/app`):
+
+```sh
+ssh me@my-box git clone https://github.com/you/app work/app
+```
 
 In the app, **Add a project** takes a path on the box, a git URL or
 `owner/repo` to clone, or a new name to create an empty repository, and says

@@ -1,5 +1,8 @@
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import { Scene } from '@/components/art/scenes';
+
+export const metadata: Metadata = { title: 'Page not found' };
 
 // Every path is under the docs' catch-all route, so this renders inside the
 // docs layout, sidebar and all.

@@ -64,6 +64,8 @@ catches those.
 | `components/stage.tsx` | The home page's stage panel |
 | `lib/sections.ts` | A page's section name, for the label above its title |
 | `lib/rehype-nowrap-tokens.ts` | Keeps inline code from breaking after a flag's hyphens |
+| `lib/rehype-reference.ts` | Makes reference tables linkable: "Command" tables become a list with an id per command (`#berth-task-new`); "Field", "Event" and "Gate" rows get ids (`#setup`) |
+| `components/site-header.tsx` | The product header (lockup, berthd.app, GitHub) above the docs on wider screens, and the labelled links in the phone's header and menu |
 
 The look follows the landing page (`site/`) and the brand board
 (`design/brand/`): Inter and JetBrains Mono (ligatures off), cool neutrals,

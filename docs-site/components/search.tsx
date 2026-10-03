@@ -46,17 +46,37 @@ function Empty() {
 
 type Item = SortedResult & { section?: string; suggested?: boolean };
 
-function trim(results: SortedResult[]): Item[] {
+// How well a passage answers the query: a heading first, then a passage
+// where a query word starts a word of its own, then one where it only turns
+// up inside a longer name ("pair" in "--no-pair").
+function rank(r: SortedResult, words: string[]): number {
+  if (r.type === 'heading') return 0;
+  const text = r.content.toLowerCase();
+  const own = words.some((w) => new RegExp(`(^|[^\\w-])${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`).test(text));
+  return own ? 1 : 2;
+}
+
+function trim(results: SortedResult[], query: string): Item[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
+  // Each page's passages, best first; the index already orders the pages.
+  const groups: SortedResult[][] = [];
+  for (const r of results) {
+    if (r.type === 'page' || groups.length === 0) groups.push([r]);
+    else groups[groups.length - 1].push(r);
+  }
   const out: Item[] = [];
   const passages = new Map<string, number>();
-  for (const r of results) {
-    if (r.type === 'text') {
-      const page = r.url.split('#')[0];
-      const n = passages.get(page) ?? 0;
-      if (n >= PASSAGES_PER_PAGE) continue;
-      passages.set(page, n + 1);
+  for (const [head, ...rest] of groups) {
+    const ordered = head.type === 'page' ? [head, ...rest.map((r, i) => ({ r, i })).sort((a, b) => rank(a.r, words) - rank(b.r, words) || a.i - b.i).map((x) => x.r)] : [head, ...rest];
+    for (const r of ordered) {
+      if (r.type === 'text') {
+        const page = r.url.split('#')[0];
+        const n = passages.get(page) ?? 0;
+        if (n >= PASSAGES_PER_PAGE) continue;
+        passages.set(page, n + 1);
+      }
+      out.push(r);
     }
-    out.push(r);
   }
   return out;
 }
@@ -92,7 +112,7 @@ export default function BerthSearchDialog(props: SharedProps) {
       })),
     [],
   );
-  const results = query.data !== 'empty' && query.data ? trim(query.data) : null;
+  const results = query.data !== 'empty' && query.data ? trim(query.data, search) : null;
   const items = results ?? defaults;
 
   return (

@@ -34,8 +34,9 @@ whatever the reason. A trust store that cannot be read authorizes nobody.
 
 `berth add ssh HOST` does all of this over one SSH session: it detects the
 box's platform, uploads the matching berthd, installs the service, and pairs.
-The [install script](/getting-started/install#on-a-box) runs on the box
-itself and ends with step 1, so the laptop needs no SSH at all.
+The [install script](/getting-started/add-a-box#with-the-install-command)
+(from the first release) runs on the box itself and ends with step 1, so the
+laptop needs no SSH at all.
 
 On the box, `berthd clients` lists paired laptops and
 `berthd revoke <name|fingerprint>` stops trusting one. On the laptop,

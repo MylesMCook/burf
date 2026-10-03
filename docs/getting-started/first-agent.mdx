@@ -6,15 +6,31 @@ description: Start Claude Code, Codex or another agent in a worktree, see what i
 ## Let the box report agent state
 
 Berth knows whether an agent is working, waiting for you or done from the
-agents' own hooks. Install them on the box, where agents run:
+agents' own hooks, installed on the box where the agents run. Nothing
+installs them for you (not `berth add ssh`, `berthd install` or the app), so
+do it once per box:
 
 ```sh
-ssh me@my-box berthd integrations install claude   # or codex, cursor, all
+ssh me@my-box '~/.local/bin/berthd integrations install claude'
 ```
 
+```text title="Example output"
+Claude Code: skills in /home/me/.claude/skills; hooks added in /home/me/.claude/settings.json
+```
+
+Use `codex`, `cursor` or `all` for other agents (for Codex it prints one line
+to add to `~/.codex/config.toml` yourself). The full path matters: a command
+over SSH may not have `~/.local/bin`, where berthd lives, on its `PATH`. The
+quotes keep your laptop's shell from expanding the `~`. Without SSH, the same
+command runs through Berth in a repository you've registered:
+`bin/berth exec my-box/app -- '~/.local/bin/berthd integrations install claude'`.
+
 This also installs Berth's [skills](/guides/agent-integrations#skills), so
-agents on the box know how to use Berth themselves. Without the hooks an
-agent still runs; Berth just can't tell what state it is in.
+agents on the box know how to use Berth themselves. The hooks record
+berthd's full path, so they work whatever `PATH` the agent has. Without them
+an agent still runs; Berth just can't tell what state it is in (apart from
+Claude Code's "trust this folder" question at startup, which it spots on the
+screen).
 
 ## Start a task
 

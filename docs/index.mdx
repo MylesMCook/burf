@@ -9,26 +9,34 @@ worktrees, terminals, agents, dev servers and automations. The agents run on
 the boxes, so closing the app, sleeping the laptop or losing Wi-Fi never
 stops them; the app is a view you can close and reopen at any time.
 
-<Stage title="Install on a box">
+{/* PRE-RELEASE: once the first release is out, make the curl line the
+    stage's command and drop "Berth has no release yet". See install.mdx. */}
+
+<Stage title="Get started">
 
 ```sh
-curl -fsSL https://berthd.app/install | sh
+git clone https://github.com/sean-brydon/berthd
+cd berthd && make all
+bin/berth add ssh me@my-box --name my-box
 ```
 
-It installs `berthd`, starts it and prints a pairing link. On your laptop,
-build the app and the `berth` CLI from source (there are no packaged builds
-yet), then paste the link into the app or run `berth pair '<link>'`. Every
-step is in [install](/getting-started/install).
+Berth has no release yet, so you build it from source. The last line
+installs `berthd` on your box over SSH, starts it and pairs your laptop with
+it; one more line on the box
+[lets agents report their state](/getting-started/first-agent#let-the-box-report-agent-state).
+Once the first release is out, a box will take one line
+(`curl -fsSL https://berthd.app/install | sh`). Every step is in
+[install](/getting-started/install).
 
 </Stage>
 
 ## Start here
 
 <Cards className="berth-path">
-  <Card title="Install" href="/getting-started/install" description="One line on a box; the app and CLI from source on your laptop." />
-  <Card title="Add a box" href="/getting-started/add-a-box" description="Pair with the link a box prints, or install over SSH." />
+  <Card title="Install" href="/getting-started/install" description="Build Berth from source, then put berthd on a box over SSH." />
+  <Card title="Add a box" href="/getting-started/add-a-box" description="Install and pair over SSH in one command, or pair with a link." />
   <Card title="First project and worktree" href="/getting-started/first-project" description="Register a repository and branch off it." />
-  <Card title="First agent" href="/getting-started/first-agent" description="Start Claude Code or Codex in a worktree and watch it work." />
+  <Card title="First agent" href="/getting-started/first-agent" description="Install the agent hooks, start Claude Code or Codex, and watch it work." />
 </Cards>
 
 ## What it does

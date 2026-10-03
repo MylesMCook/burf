@@ -1,6 +1,6 @@
 ---
 title: Add a box
-description: Install berthd on a development machine with one line and pair with its link, or do both over SSH.
+description: Install berthd on a development machine over SSH and pair with it in one step, or pair with a box that already runs berthd.
 ---
 
 A **box** is any machine your agents run on, usually Linux: a VPS, a cloud
@@ -18,9 +18,106 @@ TLS; SSH is used at most once, to install.
 - optional: the agent CLIs you want to run (`claude`, `codex`, …), and
   `cloudflared` for public shares
 
+## Over SSH
+
+If you can `ssh me@my-box`, one command on the laptop installs berthd and
+pairs. It uses the daemons `make all` built (see [install](/getting-started/install#build-berth)):
+
+```sh
+bin/berth add ssh me@my-box --name my-box
+```
+
+It:
+
+1. opens one SSH connection (asking any password or host-key question once;
+   if your keys are refused it tries 1Password's SSH agent);
+2. checks the box's platform with `uname`;
+3. uploads the matching `berthd-<os>-<arch>` from beside `berth` to
+   `~/.local/bin/berthd` on the box;
+4. runs `berthd install`, which sets berthd up as a user service (systemd
+   on Linux, launchd on macOS);
+5. runs `berthd pair` and pairs this laptop with the link it prints.
+
+```text title="Example output"
+Using your SSH agent
+Checking me@my-box…
+Installing berthd-linux-amd64 (9 MB)…
+  Installed /home/me/.config/systemd/user/berthd.service; berthd is serving on 100.101.102.103:7444.
+Paired with my-box at 100.101.102.103:7444. SSH is no longer needed for this box.
+```
+
+`make all` builds the Linux daemons. For a Mac box, build its daemon beside
+them first (use `amd64` for an Intel Mac):
+
+```sh
+CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build -o bin/berthd-darwin-arm64 ./cmd/berthd
+```
+
+Options:
+
+| Flag | What it does |
+| --- | --- |
+| `--name N` | What to call the box in Berth (default: its hostname). It becomes part of URLs like `3000.N.localhost`. |
+| `--network NET` | Reach the box through one of [your other tailnets](#boxes-on-another-tailnet). |
+| `--listen ADDR` | Passed to `berthd install`, for a box without a tailnet address. |
+| `--address ADDR` | The address the laptop should dial, when the one berthd guesses is wrong. |
+| `--identity FILE` | An SSH private key to log in with, as `ssh -i`. |
+| `--trust-host-key SHA256:…` | Trust a new box's host key if its fingerprint is this one. |
+| `-- OPTIONS` | Anything after `--` goes to `ssh`. |
+
+<Callout title="Keep it running after you log out">
+  `berthd install` warns when user lingering is off, because systemd then
+  stops user services at logout. Turn it on once with
+  `sudo loginctl enable-linger $USER`.
+</Callout>
+
+## With a pairing link
+
+When berthd is already running on the box (you installed it another way, or
+another laptop already uses the box), run this on the box, as the user
+berthd runs as:
+
+```sh
+berthd pair          # or ~/.local/bin/berthd pair, if ~/.local/bin isn't on PATH
+```
+
+It prints a link. On the laptop, paste it in the app (**Add a box**, under
+"Paste what it printed"; pasting all of the output is fine), or:
+
+```sh
+bin/berth pair 'berth://100.101.102.103:7444?code=…&fp=…' [--name my-box]
+```
+
+The link carries the box's fingerprint, so the laptop knows exactly which box
+to trust, and a single-use code that expires after ten minutes (`--ttl`
+changes that, up to an hour). How the code is proven without being sent is
+in [the security model](/concepts/security#pairing).
+
+## In the app
+
+**Add a box** (in Settings → Boxes, the sidebar's Projects menu, or ⌘K), and
+the first-run setup, show one screen:
+
+1. **On the box, run** the install command, with a copy button. Until the
+   first release is out, that command fails: use the SSH option below
+   instead.
+2. **Paste what it printed**: the link, or the whole output; Berth keeps the
+   link. Enter pairs.
+
+Below them, **Or let Berth set it up over SSH** takes `user@host` (Tab
+completes hosts from `~/.ssh/config` and machines on your tailnet), says
+which SSH agent or keys it will use before connecting, and runs
+`berth add ssh` with its output as it goes. When a box can't be reached and
+might be on a tailnet this computer isn't signed in to, it offers to sign in
+to that tailnet and tries again.
+
 ## With the install command
 
-On the box, as the user your agents will run as (no root needed):
+{/* PRE-RELEASE: once a release exists, drop the next sentence and move this
+    section above "Over SSH". */}
+This works once the first release is out; until then, use
+[SSH](#over-ssh). On the box, as the user your agents will run as (no root
+needed):
 
 ```sh
 curl -fsSL https://berthd.app/install | sh
@@ -28,30 +125,9 @@ curl -fsSL https://berthd.app/install | sh
 
 It downloads the latest `berthd` for the box's platform from GitHub, checks
 it against the release's `checksums.txt`, puts it in `~/.local/bin`, and runs
-`berthd install`, which sets it up as a systemd user service (a launchd agent
-on macOS), the same step `berth add ssh` runs. Then it prints a link:
-
-```text
-berthd v0.1.0 is running. Paste this link into Berth on your laptop
-(Add a box). It works once, for ten minutes:
-
-  berth://100.101.102.103:7444?code=…&fp=…
-
-Or on your laptop:  berth pair 'berth://100.101.102.103:7444?code=…&fp=…'
-```
-
-On the laptop, paste it in the app (**Add a box**, under "Paste what it
-printed"; pasting all of the output is fine), or:
-
-```sh
-bin/berth pair 'berth://100.101.102.103:7444?code=…&fp=…' [--name my-box]
-```
-
-The link carries the box's fingerprint, so the laptop knows exactly which box
-to trust, and a single-use code that expires after ten minutes. For another
-laptop, or once it expires, run `berthd pair` on the box for a fresh one
-(`--ttl` changes the expiry, up to an hour). How the code is proven without
-being sent is in [the security model](/concepts/security#pairing).
+`berthd install`, the same step `berth add ssh` runs. Then it prints a
+pairing link to paste into the app or into `berth pair`, as
+[above](#with-a-pairing-link).
 
 ### Installer options
 
@@ -84,62 +160,6 @@ than through `su` or `sudo`). The script is
 [`site/install.sh`](https://github.com/sean-brydon/berthd/blob/main/site/install.sh);
 read it before piping it to `sh` if you like.
 
-## Over SSH
-
-If you'd rather not log in to the box, and you can `ssh me@my-box`, one
-command on the laptop installs and pairs:
-
-```sh
-bin/berth add ssh me@my-box
-```
-
-It:
-
-1. opens one SSH connection (asking any password or host-key question once;
-   if your keys are refused it tries 1Password's SSH agent);
-2. checks the box's platform with `uname`;
-3. uploads the matching `berthd-<os>-<arch>` from beside `berth` to
-   `~/.local/bin/berthd` (`make all` builds the Linux ones);
-4. runs `berthd install`, which sets berthd up as a user service (systemd
-   on Linux, launchd on macOS);
-5. runs `berthd pair` and pairs this laptop with the link it prints.
-
-```text
-Paired with my-box at 100.101.102.103:7444. SSH is no longer needed for this box.
-```
-
-Options:
-
-| Flag | What it does |
-| --- | --- |
-| `--name N` | What to call the box in Berth (default: its hostname). It becomes part of URLs like `3000.N.localhost`. |
-| `--network NET` | Reach the box through one of [your other tailnets](#boxes-on-another-tailnet). |
-| `--listen ADDR` | Passed to `berthd install`, for a box without a tailnet address. |
-| `--address ADDR` | The address the laptop should dial, when the one berthd guesses is wrong. |
-| `-- OPTIONS` | Anything after `--` goes to `ssh`. |
-
-<Callout title="Keep it running after you log out">
-  `berthd install` warns when user lingering is off, because systemd then
-  stops user services at logout. Turn it on once with
-  `sudo loginctl enable-linger $USER`.
-</Callout>
-
-## In the app
-
-**Add a box** (in Settings → Boxes, the sidebar's Projects menu, or ⌘K), and
-the first-run setup, show one screen:
-
-1. **On the box, run** the install command, with a copy button.
-2. **Paste what it printed**: the link, or the whole output; Berth keeps the
-   link. Enter pairs.
-
-Below them, **Or let Berth set it up over SSH** takes `user@host` (Tab
-completes hosts from `~/.ssh/config` and machines on your tailnet), says
-which SSH agent or keys it will use before connecting, and runs
-`berth add ssh` with its output as it goes. When a box can't be reached and
-might be on a tailnet this computer isn't signed in to, it offers to sign in
-to that tailnet and tries again.
-
 ## Where berthd listens
 
 By default berthd listens on the box's tailnet address, port 7444, and
@@ -147,8 +167,8 @@ By default berthd listens on the box's tailnet address, port 7444, and
 internet, say so:
 
 ```sh
-berthd install --listen 0.0.0.0:7444                       # by hand
-curl -fsSL https://berthd.app/install | sh -s -- --listen 0.0.0.0:7444   # with the installer
+bin/berth add ssh me@my-box --listen 0.0.0.0:7444   # from the laptop
+berthd install --listen 0.0.0.0:7444                # on the box
 ```
 
 Pairing is still required, and every connection still pins both keys; the
