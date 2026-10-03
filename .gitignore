@@ -50,3 +50,4 @@ design/site-review/
 
 # Docs site verification screenshots
 design/docs-shots/
+.env*
