@@ -5,12 +5,17 @@ import { BookOpen, Compass, FileCode, Terminal } from 'lucide-react';
 import type { MDXComponents } from 'mdx/types';
 import { Callout } from './callout';
 import { Scene } from './art/scenes';
+import { Diagram, DiagramEdge, DiagramGroup, DiagramNode } from './diagram';
 import { Stage } from './stage';
 
 export function getMDXComponents(components?: MDXComponents) {
   return {
     ...defaultMdxComponents,
     Callout,
+    Diagram,
+    DiagramEdge,
+    DiagramGroup,
+    DiagramNode,
     Scene,
     Stage,
     Step,

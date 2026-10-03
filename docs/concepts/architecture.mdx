@@ -25,16 +25,31 @@ if they were local. Nothing is public unless someone explicitly shares it.
 
 ## Components
 
-```text
-laptop                                                     box (any VPS)
-┌──────────────┐  local API    ┌────────────────┐  TLS 1.3 + HTTP/2  ┌──────────────┐
-│ desktop app  │──────────────▶│  berth agent   │═══════════════════▶│    berthd    │
-│ berth CLI    │ (Unix socket, │  box health    │  pinned keys, one  │ locations    │
-│ hooks, skill │  loopback)    │  forwards      │  connection per box│ sessions     │
-└──────────────┘               │  *.localhost   │                    │ shares       │
-                               │  tailnets      │                    │ events, hooks│
-                               └────────────────┘                    └──────────────┘
-```
+<Diagram caption="The desktop app and the CLI talk to the berth agent on the same laptop. The agent keeps one pinned TLS connection to berthd on each box, which owns that box's locations, sessions and shares.">
+  <DiagramGroup label="Your laptop" icon="laptop">
+    <DiagramNode title="Clients">
+      - Desktop app
+      - `berth` CLI
+      - Agent hooks and skill
+    </DiagramNode>
+    <DiagramEdge label="Local API" details={['Unix socket', 'loopback']} line="solid" />
+    <DiagramNode title="berth agent">
+      - Box health
+      - Forwards
+      - `*.localhost`
+      - Tailnets
+    </DiagramNode>
+  </DiagramGroup>
+  <DiagramEdge label="TLS 1.3, HTTP/2" details={['pinned keys', 'one per box']} />
+  <DiagramGroup label="A box (any VPS)" icon="box">
+    <DiagramNode title="berthd">
+      - Locations
+      - Sessions
+      - Shares
+      - Events, hooks
+    </DiagramNode>
+  </DiagramGroup>
+</Diagram>
 
 - **berthd** runs on each box as a systemd user service (launchd on macOS).
   It holds the box's identity, the trust store of paired laptops, and the

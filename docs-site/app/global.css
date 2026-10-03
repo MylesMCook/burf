@@ -2,6 +2,7 @@
 @import 'fumadocs-ui/css/neutral.css';
 @import 'fumadocs-ui/css/preset.css';
 @import '../components/art/scenes.css';
+@import '../components/diagram.css';
 
 /* Berth docs: "harbour by day", the landing page's palette and rules
    (site/styles.css, design/brand/index.html).
