@@ -90,3 +90,7 @@ make test               # go vet + go test -race
 pnpm -C app build       # typecheck and build the app
 pnpm -C docs-site dev   # the docs site, on http://localhost:3333
 ```
+
+## Licence
+
+[MIT](LICENSE).
