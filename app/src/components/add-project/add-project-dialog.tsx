@@ -510,7 +510,7 @@ function Rows({ rows, active, onHover, onPick }: { rows: Row[]; active: number; 
               <RowIcon kind={r.kind} />
               <span className={cn("min-w-0 truncate", r.kind === "folder" && "text-muted-foreground")}>{r.title}</span>
               {r.detail && <span className="min-w-0 truncate font-mono text-muted-foreground text-xs">{r.detail}</span>}
-              {r.badge && <span className={cn("ms-auto shrink-0 rounded border px-1.5 text-[11px] text-muted-foreground", r.kind === "new" && "border-warning/40 text-warning-foreground")}>{r.badge}</span>}
+              {r.badge && <span className={cn("ms-auto shrink-0 rounded border px-1.5 text-[11px] text-muted-foreground", r.kind === "new" && "border-foreground/24 text-foreground")}>{r.badge}</span>}
             </button>
           </div>
         );
@@ -521,7 +521,7 @@ function Rows({ rows, active, onHover, onPick }: { rows: Row[]; active: number; 
 
 function RowIcon({ kind }: { kind: Row["kind"] }) {
   const c = "size-4 shrink-0";
-  if (kind === "new") return <FolderPlusIcon className={cn(c, "text-warning")} />;
+  if (kind === "new") return <FolderPlusIcon className={cn(c, "text-foreground")} />;
   if (kind === "repo") return <GitBranchIcon className={cn(c, "text-success")} />;
   if (kind === "project") return <CheckIcon className={cn(c, "text-muted-foreground")} />;
   if (kind === "elsewhere") return <ServerIcon className={cn(c, "text-muted-foreground")} />;
@@ -633,7 +633,7 @@ function Chip({ on, disabled, title, onClick, children }: { on: boolean; disable
         disabled && !on && "opacity-56",
       )}
     >
-      <span className={cn("size-1.5 rounded-full", on ? "bg-warning" : "border border-muted-foreground/56")} />
+      <span className={cn("size-1.5 rounded-full", on ? "bg-foreground" : "border border-muted-foreground/56")} />
       {children}
     </button>
   );

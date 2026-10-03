@@ -71,7 +71,7 @@ function Tile({ box, selected, wide, onSelect }: { box: BoxStatus; selected: boo
           aria-hidden
           className={cn(
             "size-2 shrink-0 rounded-full transition-colors",
-            selected && online ? "bg-warning" : online ? "border border-muted-foreground/48" : "border border-dashed border-muted-foreground/48",
+            selected && online ? "bg-foreground" : online ? "border border-muted-foreground/48" : "border border-dashed border-muted-foreground/48",
           )}
         />
         <span className="min-w-0 truncate font-medium text-sm">{box.name}</span>
