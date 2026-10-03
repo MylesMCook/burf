@@ -51,3 +51,10 @@ design/site-review/
 # Docs site verification screenshots
 design/docs-shots/
 .env*
+
+# Docs site review loop screenshots and scores
+design/docs-review/
+
+# Stray builds at the repository root (make puts them in bin/).
+/berth
+/berthd
