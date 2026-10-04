@@ -101,3 +101,42 @@ func TestQuotedBinaryPaths(t *testing.T) {
 		t.Fatalf("hookCommand = %q", got)
 	}
 }
+
+func TestNewAgentHooksInstallOnceAndKeepOtherSettings(t *testing.T) {
+	dir := t.TempDir()
+	gem := filepath.Join(dir, "settings.json")
+	os.WriteFile(gem, []byte(`{"theme":"dark"}`), 0o600)
+	if changed, err := InstallGeminiHooks(gem, "/opt/berthd"); !changed || err != nil {
+		t.Fatalf("gemini: %v %v", changed, err)
+	}
+	if changed, _ := InstallGeminiHooks(gem, "/opt/berthd"); changed {
+		t.Fatal("gemini hooks were added twice")
+	}
+	b, _ := os.ReadFile(gem)
+	if !strings.Contains(string(b), `"theme": "dark"`) || !strings.Contains(string(b), "hook gemini AfterAgent") {
+		t.Fatalf("gemini settings = %s", b)
+	}
+	codex := filepath.Join(dir, "hooks.json")
+	if changed, err := InstallCodexHooks(codex, "/opt/berthd"); !changed || err != nil {
+		t.Fatalf("codex: %v %v", changed, err)
+	}
+	plugin := filepath.Join(dir, "plugin", "berth.js")
+	if changed, err := InstallOpenCodePlugin(plugin, "/opt/berthd"); !changed || err != nil {
+		t.Fatalf("opencode: %v %v", changed, err)
+	}
+	if changed, _ := InstallOpenCodePlugin(plugin, "/opt/berthd"); changed {
+		t.Fatal("plugin rewritten unchanged")
+	}
+	b, _ = os.ReadFile(plugin)
+	if !strings.Contains(string(b), `"/opt/berthd"} hook opencode`) {
+		t.Fatalf("plugin = %s", b)
+	}
+	claude := filepath.Join(dir, "claude.json")
+	InstallClaudeHooks(claude, "/opt/berthd")
+	b, _ = os.ReadFile(claude)
+	for _, ev := range []string{"PostToolUse", "PermissionRequest", "SessionEnd"} {
+		if !strings.Contains(string(b), "hook claude "+ev) {
+			t.Errorf("claude settings lack %s", ev)
+		}
+	}
+}

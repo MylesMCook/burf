@@ -2,6 +2,7 @@ package box
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"os"
 
@@ -32,10 +33,13 @@ func (b *Box) Doctor(ctx context.Context) []doctor.Check {
 			c := doctor.Check{Area: "Agents", Name: t.Name + " hooks", Status: doctor.OK, Detail: "installed"}
 			if !t.Hooked(home) {
 				c.Status, c.Detail, c.Fix = doctor.Warn, "not installed, so Berth cannot show when this agent is done or needs you", "berthd integrations install "+t.ID
+			} else if !t.Current(home) {
+				c.Status, c.Detail, c.Fix = doctor.Warn, "from an older berth: turns start and approvals clear late", "berthd integrations install "+t.ID
 			}
 			checks = append(checks, c)
 		}
 	}
+	checks = append(checks, b.eventChecks()...)
 	locs, err := b.Locations.List(ctx)
 	if err != nil {
 		checks = append(checks, doctor.Check{Area: "Locations", Name: "locations", Status: doctor.Fail, Detail: err.Error()})
@@ -54,6 +58,37 @@ func (b *Box) Doctor(ctx context.Context) []doctor.Check {
 	}
 	if len(locs) == 0 {
 		checks = append(checks, doctor.Check{Area: "Locations", Name: "locations", Status: doctor.Info, Detail: "none yet", Fix: "berthd location add NAME ~/path/to/repo"})
+	}
+	return checks
+}
+
+// eventChecks report the journal and every subscriber that fell behind or
+// lost events.
+func (b *Box) eventChecks() []doctor.Check {
+	var checks []doctor.Check
+	if j := b.Events.Journal; j != nil {
+		st := j.Stats()
+		c := doctor.Check{Area: "Events", Name: "journal", Status: doctor.OK,
+			Detail: fmt.Sprintf("%d events, %d segments, %.1f MB", st.Head, st.Segments, float64(st.Bytes)/(1<<20))}
+		if st.Errors > 0 {
+			c.Status, c.Detail = doctor.Warn, fmt.Sprintf("%d writes failed; check the disk under %s", st.Errors, j.Dir)
+		}
+		checks = append(checks, c)
+	}
+	for _, s := range b.Events.Stats() {
+		c := doctor.Check{Area: "Events", Name: s.Name, Status: doctor.OK, Detail: "no events lost"}
+		if s.Lags > 0 {
+			c.Detail = fmt.Sprintf("fell behind %d times and caught up from the journal", s.Lags)
+		}
+		if s.Dropped > 0 {
+			c.Status, c.Detail = doctor.Warn, fmt.Sprintf("lost %d events", s.Dropped)
+		}
+		checks = append(checks, c)
+	}
+	if b.Turns != nil && b.Turns.Ambiguous.Load() > 0 {
+		checks = append(checks, doctor.Check{Area: "Events", Name: "agent hooks", Status: doctor.Info,
+			Detail: fmt.Sprintf("%d hook events named only a folder shared by several agents, so they were not used", b.Turns.Ambiguous.Load()),
+			Fix:    "Restart those agent sessions: sessions berth starts now tell hooks their name"})
 	}
 	return checks
 }

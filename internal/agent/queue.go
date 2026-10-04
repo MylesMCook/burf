@@ -622,10 +622,11 @@ func (q *promptQueue) worker(boxName, session string) {
 	}
 }
 
-// busy says whether the agent is mid-turn as far as anyone can tell. An
-// agent whose tool never reported a state is not known to be busy.
+// busy says whether the agent is mid-turn as far as anyone can tell, or
+// waiting for someone: typing into an agent at a question would answer it.
+// An agent whose tool never reported a state is not known to be busy.
 func busy(s box.Session) bool {
-	return s.Agent != "" && s.AgentState == "running" && !s.StateSince.IsZero()
+	return s.Agent != "" && (s.AgentState == "running" || s.AgentState == "waiting") && !s.StateSince.IsZero()
 }
 
 // deliver takes one item from queued to sent or failed. It returns false
@@ -664,7 +665,7 @@ func (q *promptQueue) deliver(it QueueItem) bool {
 			}
 			step := min(left, q.waitStep)
 			ctx, cancel := context.WithTimeout(q.ctx, step+30*time.Second)
-			res, err := q.boxes.wait(ctx, it.Box, it.Session, []string{"idle", "waiting", "finished"}, step)
+			res, err := q.boxes.wait(ctx, it.Box, it.Session, []string{"idle", "finished"}, step)
 			cancel()
 			if refusedWith(err, http.StatusNotFound) {
 				q.fail(it.ID, fmt.Sprintf("%s is no longer running on %s.", it.Session, it.Box))
@@ -774,7 +775,9 @@ func (b agentBoxes) wait(ctx context.Context, name, session string, states []str
 }
 
 func (b agentBoxes) send(ctx context.Context, name, session, text string, enter bool) error {
-	return b.call(ctx, name, http.MethodPost, "/v1/sessions/"+url.PathEscape(session)+"/send", map[string]any{"text": text, "enter": enter}, nil)
+	// when:"now" makes a box refuse to type into an agent waiting for
+	// someone, rather than answer its question for them.
+	return b.call(ctx, name, http.MethodPost, "/v1/sessions/"+url.PathEscape(session)+"/send", map[string]any{"text": text, "enter": enter, "when": "now"}, nil)
 }
 
 // queueRoutes serves the queue on the agent's socket and, through it, to

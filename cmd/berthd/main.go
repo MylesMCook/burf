@@ -15,6 +15,7 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"text/tabwriter"
 	"time"
@@ -81,6 +82,9 @@ type boxHome struct {
 }
 
 func (b boxHome) socket() string { return filepath.Join(b.dir, "berthd.sock") }
+
+// spool holds agent hooks that ran while berthd was down.
+func (b boxHome) spool() string { return filepath.Join(b.dir, "spool") }
 
 func (b boxHome) identity() (*identity.Identity, error) {
 	return identity.LoadOrCreate(filepath.Join(b.dir, "identity.pem"))
@@ -154,12 +158,20 @@ func run(args []string) error {
 		return runDoctor(b, args[1:])
 	case "hook":
 		integrations.Hook(args[1:], os.Stdin, os.Stdout, os.Stderr, func(e events.Event) error {
+			// While berthd is down (an upgrade, a restart), the hook is kept
+			// in the spool and published when it is back.
 			if _, err := os.Stat(b.socket()); err != nil {
-				return nil
+				return integrations.Spool(b.spool(), e)
 			}
 			c := box.NewClient(box.NewLocal(b.socket()))
 			c.Origin = e.Origin
-			return c.Emit(context.Background(), e.Type, e.Data)
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			err := c.Emit(ctx, e.Type, e.Data)
+			if err != nil && integrations.Unreachable(err) {
+				return integrations.Spool(b.spool(), e)
+			}
+			return err
 		})
 		return nil
 	case "integrations":
@@ -224,7 +236,13 @@ func serve(b boxHome, args []string) error {
 		ln.Close()
 		return err
 	}
-	bus := &events.Bus{}
+	journal, err := events.OpenJournal(filepath.Join(b.dir, "journal"))
+	if err != nil {
+		ln.Close()
+		return fmt.Errorf("event journal: %w", err)
+	}
+	defer journal.Close()
+	bus := &events.Bus{Journal: journal}
 	// A new laptop, by the name it gave and its key; laptops' lists of who
 	// the box trusts follow it.
 	s.OnPaired = func(p trust.Peer) {
@@ -238,8 +256,13 @@ func serve(b boxHome, args []string) error {
 	locations := box.NewLocations(filepath.Join(b.dir, "locations.json"))
 	watcher := &box.Watcher{Locations: locations, Events: bus, Box: hostname}
 	go watcher.Run(ctx)
-	agentStates := &box.AgentStates{Path: filepath.Join(b.dir, "agent-states.json")}
-	go agentStates.Run(ctx, bus)
+	turns := &box.Turns{
+		Path:        filepath.Join(b.dir, "turns.json"),
+		LegacyPath:  filepath.Join(b.dir, "agent-states.json"),
+		InboxPath:   filepath.Join(b.dir, "inbox.json"),
+		ArchivePath: filepath.Join(b.dir, "turns-archive.jsonl"),
+	}
+	turns.Attach(bus)
 	exe, err := os.Executable()
 	if err != nil {
 		ln.Close()
@@ -264,7 +287,7 @@ func serve(b boxHome, args []string) error {
 		DaemonChecks: func() []doctor.Check { return daemonChecks(b, ln.Addr().String(), *listen) },
 		LogDir:       filepath.Join(b.dir, "logs"),
 		Units:        &box.Units{Dir: filepath.Join(b.dir, "units")},
-		AgentStates:  agentStates,
+		Turns:        turns,
 		Hooks:        hookRunner,
 		Flows:        box.FlowsAt(userDir, b.dir),
 		KitsDir:      filepath.Join(b.dir, "kits"),
@@ -282,6 +305,16 @@ func serve(b boxHome, args []string) error {
 		},
 	}
 	bx.Mount(s)
+	// Hooks that ran while berthd was down, in order, before anything new.
+	if n := integrations.DrainSpool(b.spool(), func(e events.Event) { bus.Publish(e) }); n > 0 {
+		logger.Printf("published %d agent hooks spooled while berthd was down", n)
+	}
+	if home, err := os.UserHomeDir(); err == nil {
+		if done := integrations.RefreshHooked(home, exe); len(done) > 0 {
+			logger.Printf("updated berth's hooks for %s", strings.Join(done, ", "))
+		}
+	}
+	go turns.Run(ctx, bx)
 	go bx.RunRepoHooks(ctx, logger)
 	go bx.Flows.Run(ctx, bx)
 	go bx.Phone.Run(ctx, bx)
@@ -299,6 +332,20 @@ func serve(b boxHome, args []string) error {
 		local.Close()
 		return err
 	}
+	// Hooks that spooled while the socket was being made.
+	integrations.DrainSpool(b.spool(), func(e events.Event) { bus.Publish(e) })
+	go func() {
+		t := time.NewTicker(30 * time.Second)
+		defer t.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-t.C:
+				integrations.DrainSpool(b.spool(), func(e events.Event) { bus.Publish(e) })
+			}
+		}
+	}()
 	go s.ServeLocal(ctx, local)
 	go hookRunner.Run(ctx, bus)
 

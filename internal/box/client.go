@@ -91,8 +91,26 @@ func (c *Client) RemoveLocation(ctx context.Context, name string) error {
 	return c.call(ctx, http.MethodDelete, "/v1/locations/"+url.PathEscape(name), nil, nil)
 }
 
-func (c *Client) Send(ctx context.Context, session, text string, enter bool) error {
-	return c.call(ctx, http.MethodPost, "/v1/sessions/"+url.PathEscape(session)+"/send", map[string]any{"text": text, "enter": enter}, nil)
+// Send types a prompt into a session and returns the turn it started (or
+// queued) and the box's time. An older box returns only its time, which
+// callers wait from rather than their own clock.
+func (c *Client) Send(ctx context.Context, session string, req SendRequest) (out SendResult, err error) {
+	return out, c.call(ctx, http.MethodPost, "/v1/sessions/"+url.PathEscape(session)+"/send", req, &out)
+}
+
+// WaitTurn blocks until the turn ends, or also until it waits for someone
+// when untilWaiting, for at most timeout.
+func (c *Client) WaitTurn(ctx context.Context, id string, untilWaiting bool, timeout time.Duration) (out TurnWait, err error) {
+	q := url.Values{"timeout": {timeout.String()}, "until": {"end"}}
+	if untilWaiting {
+		q.Set("until", "waiting")
+	}
+	return out, c.call(ctx, http.MethodGet, "/v1/turns/"+url.PathEscape(id)+"/wait?"+q.Encode(), nil, &out)
+}
+
+// Turns lists a session's last turns, oldest first.
+func (c *Client) Turns(ctx context.Context, session string, limit int) (out []Turn, err error) {
+	return out, c.call(ctx, http.MethodGet, "/v1/sessions/"+url.PathEscape(session)+"/turns?limit="+strconv.Itoa(limit), nil, &out)
 }
 
 // Wait blocks until the session's agent reports one of states after after.
@@ -333,7 +351,18 @@ func (c *Client) Emit(ctx context.Context, typ string, data map[string]any) erro
 
 // Events calls fn for each box event until ctx ends or the stream breaks.
 func (c *Client) Events(ctx context.Context, fn func(events.Event)) error {
-	resp, err := c.Doer.DoWithHeader(ctx, http.MethodGet, "/v1/events", nil, nil)
+	return c.EventsSince(ctx, -1, fn)
+}
+
+// EventsSince is Events starting after the event numbered since, so a
+// reconnecting caller misses nothing the box's journal still holds (a
+// negative since starts from now; an older box ignores it).
+func (c *Client) EventsSince(ctx context.Context, since int64, fn func(events.Event)) error {
+	path := "/v1/events"
+	if since >= 0 {
+		path += "?since=" + strconv.FormatInt(since, 10)
+	}
+	resp, err := c.Doer.DoWithHeader(ctx, http.MethodGet, path, nil, nil)
 	if err != nil {
 		return err
 	}

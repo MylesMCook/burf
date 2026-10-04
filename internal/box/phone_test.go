@@ -19,7 +19,7 @@ const phoneAddr = "100.101.102.103:1379"
 
 func phoneBox(t *testing.T) (*Box, *Phone, http.Handler) {
 	t.Helper()
-	b := &Box{Name: "devbox", Locations: NewLocations(filepath.Join(t.TempDir(), "locations.json")), Events: &events.Bus{}, Sessions: testSessions(t), AgentStates: &AgentStates{}}
+	b := &Box{Name: "devbox", Locations: NewLocations(filepath.Join(t.TempDir(), "locations.json")), Events: &events.Bus{}, Sessions: testSessions(t), Turns: &Turns{}}
 	p := &Phone{Path: filepath.Join(t.TempDir(), "phone.json")}
 	if err := p.save(PhoneConfig{Enabled: true, Token: "right-token"}); err != nil {
 		t.Fatal(err)

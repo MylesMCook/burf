@@ -56,23 +56,23 @@ func TestStatsReadMemoryLoadAndAgents(t *testing.T) {
 	}
 }
 
-func TestAgentStatesFollowHookEvents(t *testing.T) {
-	var a AgentStates
-	a.observe(events.Event{Type: "agent.waiting", Time: time.Now(), Data: map[string]any{"path": "/w/a/"}})
-	a.observe(events.Event{Type: "agent.finished", Data: map[string]any{"path": "/w/b"}})
-	a.observe(events.Event{Type: "worktree.created", Data: map[string]any{"path": "/w/c"}})
-	if st, ok := a.get("/w/a"); !ok || st.state != "waiting" {
-		t.Fatalf("/w/a = %+v %v", st, ok)
+func TestAgentsBerthDidNotStartAreKnownByDirectory(t *testing.T) {
+	var a Turns
+	a.Observe(events.Event{Type: "agent.waiting", Time: time.Now(), Data: map[string]any{"path": "/w/a/"}})
+	a.Observe(events.Event{Type: "agent.finished", Data: map[string]any{"path": "/w/b"}})
+	a.Observe(events.Event{Type: "worktree.created", Data: map[string]any{"path": "/w/c"}})
+	if st, _, ok := a.DirState("/w/a"); !ok || st != "waiting" {
+		t.Fatalf("/w/a = %s %v", st, ok)
 	}
-	if st, _ := a.get("/w/b"); st.state != "finished" {
-		t.Fatalf("/w/b = %+v", st)
+	if st, _, _ := a.DirState("/w/b"); st != "finished" {
+		t.Fatalf("/w/b = %s", st)
 	}
-	if _, ok := a.get("/w/c"); ok {
+	if _, _, ok := a.DirState("/w/c"); ok {
 		t.Fatal("a non-agent event set an agent state")
 	}
-	a.observe(events.Event{Type: "agent.started", Data: map[string]any{"path": "/w/a"}})
-	if st, _ := a.get("/w/a"); st.state != "running" {
-		t.Fatalf("a new session did not clear waiting: %+v", st)
+	a.Observe(events.Event{Type: "agent.started", Data: map[string]any{"path": "/w/a"}})
+	if st, _, _ := a.DirState("/w/a"); st != "running" {
+		t.Fatalf("a new prompt did not clear waiting: %s", st)
 	}
 }
 

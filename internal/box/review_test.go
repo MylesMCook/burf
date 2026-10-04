@@ -13,10 +13,10 @@ import (
 func TestReviewListsAFinishedAgentsChangesAndCommits(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	states := &AgentStates{}
+	states := &Turns{}
 	bus := &events.Bus{}
-	go states.Run(ctx, bus)
-	b := &Box{Name: "devbox", Locations: NewLocations(filepath.Join(t.TempDir(), "locations.json")), Events: bus, Sessions: testSessions(t), AgentStates: states}
+	states.Attach(bus)
+	b := &Box{Name: "devbox", Locations: NewLocations(filepath.Join(t.TempDir(), "locations.json")), Events: bus, Sessions: testSessions(t), Turns: states}
 	repo := gitRepo(t)
 	if _, err := b.Locations.Add(ctx, "cal", repo); err != nil {
 		t.Fatal(err)

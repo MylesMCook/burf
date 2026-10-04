@@ -486,8 +486,14 @@ func (b *Box) secretWrap(env, refs map[string]string) ([]string, error) {
 // which resolves them in its own memory and replaces itself with the
 // program. Without secrets a session starts exactly as it always has.
 func (b *Box) createSession(ctx context.Context, name, location, dir, command string) (Session, error) {
+	return b.createAgentSession(ctx, name, location, dir, command, "")
+}
+
+// createAgentSession starts a session for the agent preset agent ("" for
+// a plain command).
+func (b *Box) createAgentSession(ctx context.Context, name, location, dir, command, agent string) (Session, error) {
 	env, wrap := b.sessionEnv(ctx, dir)
-	return b.Sessions.create(ctx, name, location, dir, command, env, wrap)
+	return b.Sessions.create(ctx, name, location, dir, command, agent, env, wrap)
 }
 
 func (b *Box) sessionEnv(ctx context.Context, dir string) (env, wrap []string) {

@@ -89,18 +89,71 @@ func shellQuote(s string) string {
 }
 
 // agentOf names the agent a session's command runs, or "" for anything else.
+// It looks past what commonly wraps an agent: env and its assignments,
+// exec, nohup, npx and the like, `op run --`, and a package name such as
+// @anthropic-ai/claude-code.
 func agentOf(command string) string {
 	fields := strings.Fields(command)
-	if len(fields) == 0 {
-		return ""
-	}
-	bin := filepath.Base(fields[0])
-	for _, p := range builtinAgents {
-		if bin == p.Command {
-			return p.ID
+	for i, f := range fields {
+		if i >= 8 {
+			break
+		}
+		bin := filepath.Base(f)
+		for _, p := range builtinAgents {
+			if bin == p.Command {
+				return p.ID
+			}
+		}
+		pkg := f
+		if i := strings.LastIndex(pkg, "@"); i > 0 {
+			pkg = pkg[:i] // a version: @anthropic-ai/claude-code@latest
+		}
+		if id, ok := agentPackages[pkg]; ok {
+			return id
+		}
+		if !wrapperWord(f) {
+			return ""
 		}
 	}
 	return ""
+}
+
+// agentPackages are agents' npm packages, as npx and friends run them.
+var agentPackages = map[string]string{
+	"@anthropic-ai/claude-code": "claude",
+	"@openai/codex":             "codex",
+	"@google/gemini-cli":        "gemini",
+	"opencode-ai":               "opencode",
+}
+
+// wrapperWord is a word that runs the command after it.
+func wrapperWord(f string) bool {
+	switch filepath.Base(f) {
+	case "env", "exec", "nohup", "command", "time", "npx", "bunx", "pnpx", "dlx", "pnpm", "yarn", "op", "run", "--", "caffeinate", "nice":
+		return true
+	}
+	if strings.HasPrefix(f, "-") {
+		return true
+	}
+	k, _, ok := strings.Cut(f, "=")
+	return ok && k != "" && !strings.ContainsAny(k, "/ ")
+}
+
+// agentFor is the agent a session runs: its preset when berth started it
+// with one, else what its command looks like.
+func agentFor(s Session) string {
+	if s.Preset != "" {
+		for _, p := range builtinAgents {
+			if p.ID == s.Preset {
+				return p.ID
+			}
+		}
+		if a := agentOf(s.Command); a != "" {
+			return a
+		}
+		return s.Preset
+	}
+	return agentOf(s.Command)
 }
 
 // TaskRequest makes a worktree and starts an agent in it, in one step.
@@ -156,9 +209,19 @@ func (b *Box) addTask(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	where := req.Location + "/" + wt.Name
-	sess, err := b.startSession(r, defaultSessionName(where, command), where, wt.Path, command)
+	preset := ""
+	if req.Command == "" {
+		preset = req.Agent
+	}
+	sess, err := b.startSession(r, defaultSessionName(where, command), where, wt.Path, command, preset)
 	if err != nil {
-		return fmt.Errorf("created %s, but could not start its session: %w", wt.Path, err)
+		// A task is a worktree with an agent in it: without the agent, the
+		// worktree it made goes too, so a retry starts clean.
+		if rmErr := b.Locations.RemoveWorktree(context.WithoutCancel(r.Context()), req.Location, wt.Name, true); rmErr != nil {
+			return fmt.Errorf("created %s, but could not start its session (%w); removing the worktree failed too: %v", wt.Path, err, rmErr)
+		}
+		b.publish(r, "worktree.removed", map[string]any{"location": req.Location, "name": wt.Name, "path": wt.Path, "reason": "task failed"})
+		return fmt.Errorf("could not start the task's session, so its worktree was removed: %w", err)
 	}
 	b.publish(r, "task.created", map[string]any{
 		"location": req.Location, "name": wt.Name, "path": wt.Path, "branch": wt.Branch,
@@ -223,19 +286,27 @@ func gateOrigin(r *http.Request) string {
 	return "remote"
 }
 
-// enrich adds what each session's agent last reported.
+// enrich adds what each session's agent is doing, from the turn ledger.
 func (b *Box) enrich(ctx context.Context, all []Session) []Session {
 	for i := range all {
 		s := &all[i]
-		s.Agent = agentOf(s.Command)
-		if s.Agent == "" || s.Exited {
+		s.Agent = agentFor(*s)
+		if s.Agent == "" {
+			continue
+		}
+		if s.Exited {
+			if b.Turns != nil {
+				b.Turns.Exited(s.Name)
+			}
 			continue
 		}
 		s.AgentState = "running"
-		if b.AgentStates != nil {
-			if st, ok := b.AgentStates.get(s.Dir); ok {
-				s.AgentState, s.StateSince = st.state, st.at
+		if b.Turns != nil {
+			st := b.Turns.Track(*s)
+			if st.State != "" && st.State != "exited" {
+				s.AgentState, s.StateSince = st.State, st.Since
 			}
+			s.Turn, s.StateSeq, s.Fidelity = st.Turn, st.Seq, st.Fidelity
 		}
 	}
 	return all

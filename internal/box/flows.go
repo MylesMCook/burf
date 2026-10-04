@@ -80,6 +80,12 @@ type Where struct {
 	Location string `json:"location,omitempty"`
 	Agent    string `json:"agent,omitempty"`
 	Branch   string `json:"branch,omitempty"`
+	// Author limits GitHub triggers to comments and reviews by these
+	// logins, or by the repository's "collaborators" (owners, members and
+	// collaborators); "*" is anyone. review_comment and pr_review default
+	// to collaborators: anyone can comment on a public repository, and the
+	// comment reaches an agent's prompt.
+	Author []string `json:"author,omitempty"`
 }
 
 // Step is one action. Kind picks which fields matter:
@@ -147,8 +153,18 @@ func validateTrigger(t Trigger) error {
 	if t.EachWorktree && t.Schedule == "" {
 		return errors.New("each_worktree only applies to scheduled flows")
 	}
+	if len(t.Where.Author) > 0 && t.GitHub == nil {
+		return errors.New("where.author only applies to GitHub triggers")
+	}
+	for _, a := range t.Where.Author {
+		if a != "*" && a != "collaborators" && !ghLogin.MatchString(strings.TrimPrefix(a, "@")) {
+			return fmt.Errorf("author %q is not a GitHub login, \"collaborators\" or \"*\"", a)
+		}
+	}
 	return nil
 }
+
+var ghLogin = regexp.MustCompile(`^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})(\[bot\])?$`)
 
 // ValidateFlows reports the first thing wrong with flows someone wrote.
 func ValidateFlows(flows []Flow) error {
@@ -211,7 +227,7 @@ type FlowRun struct {
 	Scope    string       `json:"scope"`
 	Started  time.Time    `json:"started"`
 	Finished time.Time    `json:"finished,omitzero"`
-	Status   string       `json:"status"` // running, succeeded, failed
+	Status   string       `json:"status"` // running, succeeded, failed, interrupted
 	Event    events.Event `json:"event"`
 	Steps    []StepRun    `json:"steps"`
 	Error    string       `json:"error,omitempty"`
@@ -368,30 +384,64 @@ func (b *Box) ActiveFlows(ctx context.Context) ([]ScopedFlow, error) {
 }
 
 // Run follows the box's events and starts the flows they trigger.
+//
+// It reads the bus with a cursor, so a burst it is slow to match is caught
+// up from the journal rather than lost.
 func (f *Flows) Run(ctx context.Context, b *Box) {
+	f.recoverRuns(b)
 	go f.schedule(ctx, b)
 	go f.watchGitHub(ctx, b)
-	ch, stop := b.Events.Subscribe()
-	defer stop()
+	cur := b.Events.SubscribeFrom(-1).Named("flows")
+	defer cur.Close()
+	var cached []ScopedFlow
+	var cachedAt time.Time
 	for {
-		select {
-		case <-ctx.Done():
+		e, err := cur.Next(ctx)
+		if err != nil {
 			return
-		case e := <-ch:
-			// A flow's own bookkeeping never starts flows.
-			if strings.HasPrefix(e.Type, "flow.") {
-				continue
-			}
+		}
+		// A flow's own bookkeeping never starts flows.
+		if strings.HasPrefix(e.Type, "flow.") {
+			continue
+		}
+		// Reading every repository's config per event is what made this
+		// subscriber slow; a second-old copy is as good.
+		if time.Since(cachedAt) > time.Second {
 			all, err := b.ActiveFlows(ctx)
 			if err != nil {
 				continue
 			}
-			for _, sf := range all {
-				if sf.Flow.Enabled && b.flowMatches(ctx, sf, e) {
-					go b.runFlow(context.WithoutCancel(ctx), sf, e)
-				}
+			cached, cachedAt = all, time.Now()
+		}
+		for _, sf := range cached {
+			if sf.Flow.Enabled && b.flowMatches(ctx, sf, e) {
+				go b.runFlow(context.WithoutCancel(ctx), sf, e)
 			}
 		}
+	}
+}
+
+// recoverRuns marks runs a restart cut short as interrupted, and says so,
+// so a notification can fire. Runs do not resume yet.
+func (f *Flows) recoverRuns(b *Box) {
+	f.mu.Lock()
+	f.loadRuns()
+	var cut []FlowRun
+	for i := range f.runs {
+		if f.runs[i].Status == "running" {
+			f.runs[i].Status = "interrupted"
+			f.runs[i].Finished = time.Now().UTC()
+			f.runs[i].Error = "berthd restarted during this run; it did not resume"
+			cut = append(cut, f.runs[i])
+		}
+	}
+	if len(cut) > 0 {
+		f.saveRuns()
+	}
+	f.mu.Unlock()
+	for _, run := range cut {
+		path, _ := run.Event.Data["path"].(string)
+		b.Events.Publish(events.Event{Type: "flow.interrupted", Box: b.Name, Origin: "flow:" + run.Flow, Data: map[string]any{"flow": run.Flow, "scope": run.Scope, "run": run.ID, "status": "interrupted", "path": path}})
 	}
 }
 
@@ -694,11 +744,12 @@ func (b *Box) runStep(ctx context.Context, flow string, s Step, vars map[string]
 		if target == "" {
 			return "", 0, errors.New("no agent session to prompt in this worktree")
 		}
-		if err := b.Sessions.Send(ctx, target, expand(s.Text, vars), true); err != nil {
+		res, err := b.sendPrompt(ctx, target, SendRequest{Text: expand(s.Text, untrustedLabeled(vars)), When: "now"}, origin, origin)
+		if err != nil {
 			return "", 0, err
 		}
-		b.Events.Publish(events.Event{Type: "session.sent", Box: b.Name, Origin: origin, Data: map[string]any{"name": target}})
 		*session = target
+		vars["turn.id"], vars["turn.session"] = res.Turn, target
 		return "sent to " + target, 0, nil
 	case "wait":
 		target := s.Session
@@ -711,6 +762,16 @@ func (b *Box) runStep(ctx context.Context, flow string, s Step, vars map[string]
 		states := s.For
 		if len(states) == 0 {
 			states = []string{"finished", "waiting"}
+		}
+		// After a prompt step, wait for the turn it started: not whatever
+		// the agent says next, which may end the turn before it.
+		if id := vars["turn.id"]; id != "" && vars["turn.session"] == target && b.Turns != nil {
+			state, err := b.awaitTurn(ctx, id, states, stepTimeout(s, 30*time.Minute))
+			if err != nil {
+				return state, 0, err
+			}
+			vars["agent.state"] = state
+			return state, 0, nil
 		}
 		state, err := b.awaitState(ctx, target, states, stepTimeout(s, 30*time.Minute))
 		if err != nil {
@@ -740,11 +801,11 @@ func (b *Box) runStep(ctx context.Context, flow string, s Step, vars map[string]
 			b.Events.Publish(events.Event{Type: "worktree.created", Box: b.Name, Origin: origin, Data: map[string]any{"location": loc.Name, "name": nw.Name, "path": nw.Path, "branch": nw.Branch}})
 			dir, where = nw.Path, loc.Name+"/"+nw.Name
 		}
-		sess, err := b.createSession(ctx, defaultSessionName(where, command), where, dir, command)
+		sess, err := b.createAgentSession(ctx, defaultSessionName(where, command), where, dir, command, s.Agent)
 		if err != nil {
 			return "", 0, err
 		}
-		b.Events.Publish(events.Event{Type: "session.started", Box: b.Name, Origin: origin, Data: map[string]any{"name": sess.Name, "location": where, "path": dir, "command": command}})
+		b.Events.Publish(events.Event{Type: "session.started", Box: b.Name, Origin: origin, Data: map[string]any{"name": sess.Name, "location": where, "path": dir, "command": command, "agent": agentFor(sess)}})
 		*session = sess.Name
 		return "started " + sess.Name, 0, nil
 	case "notify":
@@ -795,41 +856,65 @@ func (b *Box) runStep(ctx context.Context, flow string, s Step, vars map[string]
 	return "", 0, fmt.Errorf("unknown step %q", s.Kind)
 }
 
-// awaitState waits for a session's agent to report one of states from now.
+// awaitState waits for a session's agent to report one of states from now:
+// from the next event on, in the journal's order.
 func (b *Box) awaitState(ctx context.Context, session string, states []string, timeout time.Duration) (string, error) {
 	want := map[string]bool{}
 	for _, s := range states {
 		want[s] = true
 	}
 	after := time.Now()
+	afterSeq := b.Events.Head() + 1
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	ch, stop := b.Events.Subscribe()
-	defer stop()
 	tick := time.NewTicker(2 * time.Second)
 	defer tick.Stop()
 	for {
-		all, err := b.Sessions.List(ctx)
-		if err == nil {
-			for _, s := range b.enrich(ctx, all) {
-				if s.Name != session {
-					continue
-				}
-				if s.Exited {
-					return "exited", errors.New(session + " has exited")
-				}
-				if want[s.AgentState] && s.StateSince.After(after) {
-					return s.AgentState, nil
-				}
+		var changed <-chan struct{}
+		if b.Turns != nil {
+			changed = b.Turns.Changed()
+		}
+		if sess, err := b.Sessions.Get(ctx, session); err == nil {
+			s := b.enrich(ctx, []Session{sess})[0]
+			if s.Exited {
+				return "exited", errors.New(session + " has exited")
+			}
+			fresh := s.StateSince.After(after)
+			if b.Events.Journal != nil || b.Events.Sequence {
+				fresh = s.StateSeq >= afterSeq
+			}
+			if want[s.AgentState] && fresh {
+				return s.AgentState, nil
 			}
 		}
 		select {
 		case <-ctx.Done():
 			return "", fmt.Errorf("%s did not finish within %v", session, timeout)
-		case <-ch:
+		case <-changed:
 		case <-tick.C:
 		}
 	}
+}
+
+// awaitTurn waits for a turn to end, or to wait for someone when states
+// allow it.
+func (b *Box) awaitTurn(ctx context.Context, id string, states []string, timeout time.Duration) (string, error) {
+	untilWaiting := false
+	for _, s := range states {
+		untilWaiting = untilWaiting || s == "waiting"
+	}
+	ctx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	tr, timedOut, err := b.Turns.WaitTurn(ctx, id, untilWaiting)
+	switch {
+	case err != nil:
+		return "", err
+	case timedOut:
+		return tr.State, fmt.Errorf("%s did not finish within %v", tr.Session, timeout)
+	case tr.State == "exited":
+		return "exited", errors.New(tr.Session + " has exited")
+	}
+	return tr.State, nil
 }
 
 func (b *Box) listFlows(w http.ResponseWriter, r *http.Request) error {

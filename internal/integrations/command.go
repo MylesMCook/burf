@@ -1,17 +1,22 @@
 package integrations
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strings"
+	"time"
 
 	"github.com/sean-brydon/berthd/internal/events"
 )
 
 const Usage = `Integrations
-  %[1]s integrations install claude|cursor|codex|all
+  %[1]s integrations install claude|cursor|codex|gemini|opencode|all
                          Install berth's skills and agent hooks for a tool
   %[1]s hook TOOL EVENT [PAYLOAD]
                          What those hooks run: turns a tool's hook into a
@@ -42,6 +47,13 @@ func Hook(args []string, stdin *os.File, stdout, stderr io.Writer, emit Emit) {
 	if !ok {
 		return
 	}
+	// The berth session the agent runs in, so the box knows which of the
+	// agents in a worktree this is.
+	if name := berthSession(); name != "" {
+		e.Data["session"] = name
+	}
+	// Stamped now: a hook spooled while berthd is down keeps its time.
+	e.Time = time.Now().UTC()
 	if err := emit(e); err != nil {
 		fmt.Fprintf(stderr, "berth hook: %v\n", err)
 	}
@@ -50,7 +62,7 @@ func Hook(args []string, stdin *os.File, stdout, stderr io.Writer, emit Emit) {
 // Install handles `integrations install TOOL...` for the binary at bin.
 func Install(args []string, bin string, out io.Writer) error {
 	if len(args) < 2 || args[0] != "install" {
-		return errors.New("usage: integrations install claude|cursor|codex|all")
+		return errors.New("usage: integrations install claude|cursor|codex|gemini|opencode|all")
 	}
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -58,7 +70,7 @@ func Install(args []string, bin string, out io.Writer) error {
 	}
 	tools := args[1:]
 	if len(tools) == 1 && tools[0] == "all" {
-		tools = []string{"claude", "cursor", "codex"}
+		tools = AllTools
 	}
 	for _, tool := range tools {
 		if err := InstallTool(home, tool, bin, out); err != nil {
@@ -90,13 +102,19 @@ func InstallTool(home, tool, bin string, out io.Writer) error {
 		if err != nil {
 			return err
 		}
-		fmt.Fprintf(out, "Cursor: stop hook %s in %s (existing hooks kept)\n", verb(changed), hooks)
+		fmt.Fprintf(out, "Cursor: hooks %s in %s (existing hooks kept)\n", verb(changed), hooks)
 	case "codex":
 		skills, err := installAllSkills(home, "codex")
 		if err != nil {
 			return err
 		}
 		config := filepath.Join(home, ".codex", "config.toml")
+		hooksFile := filepath.Join(home, ".codex", "hooks.json")
+		hooksChanged, herr := InstallCodexHooks(hooksFile, bin)
+		if herr != nil {
+			return herr
+		}
+		fmt.Fprintf(out, "Codex: hooks %s in %s (trust them once in Codex with /hooks)\n", verb(hooksChanged), hooksFile)
 		changed, err := InstallCodexNotify(config, bin)
 		switch {
 		case errors.Is(err, ErrNotifyTaken):
@@ -109,8 +127,22 @@ func InstallTool(home, tool, bin string, out io.Writer) error {
 		default:
 			fmt.Fprintf(out, "Codex: skills in %s; notify %s in %s\n", skills, verb(changed), config)
 		}
+	case "gemini":
+		settings := filepath.Join(home, ".gemini", "settings.json")
+		changed, err := InstallGeminiHooks(settings, bin)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(out, "Gemini CLI: hooks %s in %s\n", verb(changed), settings)
+	case "opencode":
+		plugin := filepath.Join(home, ".config", "opencode", "plugin", "berth.js")
+		changed, err := InstallOpenCodePlugin(plugin, bin)
+		if err != nil {
+			return err
+		}
+		fmt.Fprintf(out, "OpenCode: plugin %s at %s\n", verb(changed), plugin)
 	default:
-		return fmt.Errorf("unknown tool %q; use claude, cursor, codex, or all", tool)
+		return fmt.Errorf("unknown tool %q; use claude, cursor, codex, gemini, opencode, or all", tool)
 	}
 	return nil
 }
@@ -130,4 +162,30 @@ func verb(changed bool) string {
 		return "added"
 	}
 	return "already present"
+}
+
+// AllTools are the agents `integrations install all` covers.
+var AllTools = []string{"claude", "cursor", "codex", "gemini", "opencode"}
+
+var validSession = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$`)
+
+// berthSession is the berth session this hook runs in: $BERTH_SESSION,
+// which berth sets in every session it starts, or, for sessions started
+// before it did, the tmux session when the pane is on berth's own server.
+func berthSession() string {
+	if s := os.Getenv("BERTH_SESSION"); validSession.MatchString(s) {
+		return s
+	}
+	tmux, pane := os.Getenv("TMUX"), os.Getenv("TMUX_PANE")
+	sock, _, _ := strings.Cut(tmux, ",")
+	if sock == "" || pane == "" || filepath.Base(sock) != "berth" {
+		return ""
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, "tmux", "-S", sock, "display-message", "-p", "-t", pane, "#S").Output()
+	if s := strings.TrimSpace(string(out)); err == nil && validSession.MatchString(s) {
+		return s
+	}
+	return ""
 }

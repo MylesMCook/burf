@@ -17,12 +17,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"hash/fnv"
 	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/sean-brydon/berthd/internal/events"
@@ -133,15 +135,51 @@ type Runner struct {
 	Log        *log.Logger
 }
 
+// It reads the bus with a cursor and hands events to a few workers, so a
+// slow hook neither loses events nor holds up the ones for other worktrees.
 func (r *Runner) Run(ctx context.Context, bus *events.Bus) {
-	ch, stop := bus.Subscribe()
-	defer stop()
+	cur := bus.SubscribeFrom(-1).Named("hooks")
+	defer cur.Close()
+	RunWorkers(ctx, cur, 4, func(e events.Event) { r.handle(ctx, e) })
+}
+
+// RunWorkers feeds a cursor's events to n workers. Events about the same
+// worktree or session go to the same worker, in order. A full queue makes
+// the cursor fall behind, which the journal catches up.
+func RunWorkers(ctx context.Context, cur *events.Cursor, n int, handle func(events.Event)) {
+	queues := make([]chan events.Event, n)
+	var wg sync.WaitGroup
+	for i := range queues {
+		queues[i] = make(chan events.Event, 32)
+		wg.Add(1)
+		go func(q chan events.Event) {
+			defer wg.Done()
+			for e := range q {
+				handle(e)
+			}
+		}(queues[i])
+	}
+	defer func() {
+		for _, q := range queues {
+			close(q)
+		}
+		wg.Wait()
+	}()
 	for {
+		e, err := cur.Next(ctx)
+		if err != nil {
+			return
+		}
+		key, _ := e.Data["path"].(string)
+		if key == "" {
+			key, _ = e.Data["session"].(string)
+		}
+		h := fnv.New32a()
+		h.Write([]byte(key))
 		select {
+		case queues[int(h.Sum32()%uint32(n))] <- e:
 		case <-ctx.Done():
 			return
-		case e := <-ch:
-			r.handle(ctx, e)
 		}
 	}
 }

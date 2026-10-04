@@ -39,7 +39,7 @@ func servedBox(t *testing.T, opts ...func(*Box)) (*wire.Client, *events.Bus) {
 		Name:     "devbox",
 	}
 	sessions := testSessions(t)
-	bus := &events.Bus{}
+	bus := &events.Bus{Sequence: true}
 	units := &Units{Dir: filepath.Join(dir, "units")}
 	units.svc, _ = fakeService() // never install a real unit from a test
 	bx := &Box{Name: "devbox", Locations: NewLocations(filepath.Join(dir, "locations.json")), Sessions: sessions, Shares: &Shares{}, Units: units, Events: bus}

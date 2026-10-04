@@ -1,7 +1,6 @@
 package box
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -71,31 +70,28 @@ func TestSessionNamesUseTheProgramNotItsPath(t *testing.T) {
 	}
 }
 
-func TestAgentStatesSurviveARestart(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "agent-states.json")
-	bus := &events.Bus{}
-	ctx, cancel := context.WithCancel(context.Background())
-	first := &AgentStates{Path: path}
-	stopped := make(chan struct{})
-	go func() {
-		first.Run(ctx, bus)
-		close(stopped)
-	}()
-	deadline := time.Now().Add(5 * time.Second)
-	for {
-		bus.Publish(events.Event{Type: "agent.finished", Data: map[string]any{"path": "/w/fix"}})
-		if _, err := os.Stat(path); err == nil || time.Now().After(deadline) {
-			break
-		}
-		time.Sleep(20 * time.Millisecond)
+func TestTurnsSurviveARestartAndImportOldStates(t *testing.T) {
+	dir := t.TempDir()
+	legacy := filepath.Join(dir, "agent-states.json")
+	// What an older berthd left: one state per directory.
+	os.WriteFile(legacy, []byte(`{"/w/fix":{"state":"finished","at":"`+time.Now().UTC().Format(time.RFC3339Nano)+`"}}`), 0o600)
+	first := &Turns{Path: filepath.Join(dir, "turns.json"), LegacyPath: legacy}
+	bus := &events.Bus{Sequence: true}
+	first.Attach(bus)
+	if st := first.Track(Session{Name: "shop-fix-claude", Dir: "/w/fix", Agent: "claude"}); st.State != "finished" {
+		t.Fatalf("imported state = %+v", st)
 	}
-	cancel()
-	// Let it finish writing before the temp dir is removed.
-	<-stopped
+	bus.Publish(events.Event{Type: "session.sent", Data: map[string]any{"name": "shop-fix-claude"}})
+	first.save()
 
-	second := &AgentStates{Path: path}
-	second.load()
-	if st, ok := second.get("/w/fix"); !ok || st.state != "finished" {
+	second := &Turns{Path: filepath.Join(dir, "turns.json"), LegacyPath: legacy}
+	second.Attach(&events.Bus{Sequence: true})
+	st, ok := second.State("shop-fix-claude")
+	if !ok || st.Turn != "shop-fix-claude#1" {
 		t.Fatalf("after a restart: %+v, %v", st, ok)
+	}
+	// The old file is still written, for a downgrade.
+	if b, _ := os.ReadFile(legacy); !strings.Contains(string(b), "/w/fix") {
+		t.Fatalf("agent-states.json = %s", b)
 	}
 }

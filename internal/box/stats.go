@@ -3,8 +3,6 @@ package box
 import (
 	"bufio"
 	"bytes"
-	"context"
-	"encoding/json"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -12,12 +10,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
-
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/statefile"
 )
 
 // Stats is a box at a glance: how loaded it is, and what its agents are doing.
@@ -62,109 +56,6 @@ type Agent struct {
 // agentTools are the process names counted as agents.
 var agentTools = map[string]string{"claude": "claude", "codex": "codex", "cursor-agent": "cursor"}
 
-// AgentStates remembers what each agent's hooks said last, by working
-// directory, from the box's event stream.
-type AgentStates struct {
-	// Path, when set, keeps the states across restarts and upgrades.
-	Path string
-	mu   sync.Mutex
-	last map[string]agentState
-}
-
-type agentState struct {
-	state string
-	at    time.Time
-}
-
-type savedAgentState struct {
-	State string    `json:"state"`
-	At    time.Time `json:"at"`
-}
-
-// agentStateTTL is how long a state is kept for an agent that never reports
-// again; its worktree is most likely gone.
-const agentStateTTL = 14 * 24 * time.Hour
-
-func (a *AgentStates) load() {
-	if a.Path == "" {
-		return
-	}
-	b, err := os.ReadFile(a.Path)
-	if err != nil {
-		return
-	}
-	var saved map[string]savedAgentState
-	if json.Unmarshal(b, &saved) != nil {
-		return
-	}
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	a.last = map[string]agentState{}
-	for path, st := range saved {
-		if time.Since(st.At) < agentStateTTL {
-			a.last[path] = agentState{st.State, st.At}
-		}
-	}
-}
-
-// save writes the states; the caller holds a.mu.
-func (a *AgentStates) save() {
-	if a.Path == "" {
-		return
-	}
-	saved := map[string]savedAgentState{}
-	for path, st := range a.last {
-		saved[path] = savedAgentState{st.state, st.at}
-	}
-	if b, err := json.Marshal(saved); err == nil {
-		statefile.Write(a.Path, b)
-	}
-}
-
-// Run follows bus until ctx ends.
-func (a *AgentStates) Run(ctx context.Context, bus *events.Bus) {
-	a.load()
-	ch, stop := bus.Subscribe()
-	defer stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case e := <-ch:
-			a.observe(e)
-		}
-	}
-}
-
-func (a *AgentStates) observe(e events.Event) {
-	path, _ := e.Data["path"].(string)
-	if path == "" {
-		return
-	}
-	state := map[string]string{"agent.ready": "idle", "agent.waiting": "waiting", "agent.finished": "finished", "agent.started": "running"}[e.Type]
-	if state == "" {
-		return
-	}
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	if a.last == nil {
-		a.last = map[string]agentState{}
-	}
-	at := e.Time
-	if at.IsZero() {
-		at = time.Now()
-	}
-	a.last[filepath.Clean(path)] = agentState{state, at}
-	a.save()
-}
-
-func (a *AgentStates) get(path string) (agentState, bool) {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-	s, ok := a.last[filepath.Clean(path)]
-	return s, ok
-}
-
 func (b *Box) handleStats(w http.ResponseWriter, r *http.Request) error {
 	s := collectStats("/proc")
 	locs, _ := b.Locations.List(r.Context())
@@ -172,9 +63,9 @@ func (b *Box) handleStats(w http.ResponseWriter, r *http.Request) error {
 		ag := &s.Agents[i]
 		ag.Location, ag.Worktree = worktreeFor(locs, ag.Path)
 		ag.State = "running"
-		if b.AgentStates != nil {
-			if st, ok := b.AgentStates.get(ag.Path); ok && st.state != "running" {
-				ag.State, ag.Since = st.state, st.at
+		if b.Turns != nil {
+			if st, at, ok := b.Turns.DirState(ag.Path); ok && st != "running" && st != "exited" && st != "" {
+				ag.State, ag.Since = st, at
 			}
 		}
 	}

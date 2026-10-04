@@ -76,32 +76,27 @@ func (b *Box) repoHooks(ctx context.Context, data map[string]any) ([]hooks.Hook,
 // RunRepoHooks follows the box's events and runs repositories' hooks for
 // them, one at a time, off the event path.
 func (b *Box) RunRepoHooks(ctx context.Context, logger *log.Logger) {
-	ch, stop := b.Events.Subscribe()
-	defer stop()
-	for {
-		select {
-		case <-ctx.Done():
+	cur := b.Events.SubscribeFrom(-1).Named("repo hooks")
+	defer cur.Close()
+	hooks.RunWorkers(ctx, cur, 4, func(e events.Event) {
+		if e.Data == nil {
 			return
-		case e := <-ch:
-			if e.Data == nil {
+		}
+		hs, env := b.repoHooks(ctx, e.Data)
+		for _, h := range hs {
+			if !hooks.Matches(h, e) {
 				continue
 			}
-			hs, env := b.repoHooks(ctx, e.Data)
-			for _, h := range hs {
-				if !hooks.Matches(h, e) {
-					continue
-				}
-				out, err := hooks.Exec(ctx, h, e, time.Minute, env)
-				if logger != nil {
-					if err != nil {
-						logger.Printf("%s hook %q for %s failed: %v: %s", h.Source, h.On, e.Type, err, strings.TrimSpace(string(out)))
-					} else {
-						logger.Printf("%s hook %q ran for %s", h.Source, h.On, e.Type)
-					}
+			out, err := hooks.Exec(ctx, h, e, time.Minute, env)
+			if logger != nil {
+				if err != nil {
+					logger.Printf("%s hook %q for %s failed: %v: %s", h.Source, h.On, e.Type, err, strings.TrimSpace(string(out)))
+				} else {
+					logger.Printf("%s hook %q ran for %s", h.Source, h.On, e.Type)
 				}
 			}
 		}
-	}
+	})
 }
 
 // beforeRepo runs the gates of the repository an action is about.

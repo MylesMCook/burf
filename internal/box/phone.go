@@ -156,15 +156,18 @@ func (p *Phone) Run(ctx context.Context, b *Box) {
 		}
 		p.mu.Unlock()
 	}()
-	ch, stop := b.Events.Subscribe()
-	defer stop()
+	cur := b.Events.SubscribeFrom(-1).Named("phone")
+	defer cur.Close()
 	for {
-		select {
-		case <-ctx.Done():
+		e, err := cur.Next(ctx)
+		if err != nil {
 			return
-		case e := <-ch:
-			p.notify(ctx, b, e)
 		}
+		// A spooled or replayed state from long ago is not news.
+		if time.Since(e.Time) > 10*time.Minute {
+			continue
+		}
+		p.notify(ctx, b, e)
 	}
 }
 
@@ -285,7 +288,14 @@ func (p *Phone) Handler(b *Box, listenAddr string) http.Handler {
 			writeError(w, statusFor(err), err.Error())
 			return
 		}
-		b.Events.Publish(events.Event{Type: "session.sent", Box: b.Name, Origin: "phone", Data: map[string]any{"name": name}})
+		data := map[string]any{"name": name, "from": "phone"}
+		if b.Turns != nil {
+			// The phone may answer an agent's question: that is not a turn.
+			if st, ok := b.Turns.State(name); ok && st.State == "waiting" {
+				data["answer"], data["turn"] = true, st.Turn
+			}
+		}
+		b.Events.Publish(events.Event{Type: "session.sent", Box: b.Name, Origin: "phone", Data: data})
 		writeJSON(w, map[string]bool{"sent": true})
 	})
 	api.HandleFunc("POST /phone/v1/sessions/{name}/keys", func(w http.ResponseWriter, r *http.Request) {
@@ -405,6 +415,9 @@ func (p *Phone) notify(ctx context.Context, b *Box, e events.Event) {
 			where = loc.Name + "/" + wt.Name
 		}
 		session = b.sessionIn(ctx, path)
+	}
+	if named, _ := e.Data["session"].(string); named != "" {
+		session = named
 	}
 	if where == "" {
 		where = "an agent"

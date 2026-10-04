@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/sean-brydon/berthd/internal/integrations/adapters"
 	"github.com/sean-brydon/berthd/internal/statefile"
 )
 
@@ -19,21 +20,75 @@ func InstallClaudeHooks(settingsPath, bin string) (bool, error) {
 	return editJSON(settingsPath, func(root map[string]any) bool {
 		hooks := object(root, "hooks")
 		changed := false
-		// SessionStart and UserPromptSubmit mark the agent busy again, so a
+		// UserPromptSubmit and PostToolUse mark the agent busy again, so a
 		// "needs you" state clears once someone answers it.
-		for _, event := range []string{"Stop", "Notification", "SessionStart", "UserPromptSubmit"} {
-			command := hookCommand(bin, "claude", event)
-			list, _ := hooks[event].([]any)
-			if containsCommand(list, command) {
-				continue
+		for _, event := range ClaudeHookEvents {
+			if addNested(hooks, event, hookCommand(bin, "claude", event)) {
+				changed = true
 			}
-			hooks[event] = append(list, map[string]any{
-				"hooks": []any{map[string]any{"type": "command", "command": command}},
-			})
-			changed = true
 		}
 		return changed
 	})
+}
+
+// ClaudeHookEvents are the Claude Code hooks berth installs.
+var ClaudeHookEvents = []string{"SessionStart", "UserPromptSubmit", "PostToolUse", "PermissionRequest", "Notification", "Stop", "StopFailure", "SessionEnd"}
+
+// addNested adds command under event in Claude's nested hook shape, which
+// Codex's and Gemini's hooks share, unless it is there already.
+func addNested(hooks map[string]any, event, command string) bool {
+	list, _ := hooks[event].([]any)
+	if containsCommand(list, command) {
+		return false
+	}
+	hooks[event] = append(list, map[string]any{
+		"hooks": []any{map[string]any{"type": "command", "command": command}},
+	})
+	return true
+}
+
+// InstallCodexHooks adds berth's hooks to Codex's hooks.json. Codex runs
+// them only once they are trusted in Codex (/hooks); until then notify
+// still reports finished turns.
+func InstallCodexHooks(path, bin string) (bool, error) {
+	return editJSON(path, func(root map[string]any) bool {
+		hooks := object(root, "hooks")
+		changed := false
+		for _, event := range []string{"SessionStart", "UserPromptSubmit", "PermissionRequest", "Stop"} {
+			if addNested(hooks, event, hookCommand(bin, "codex", event)) {
+				changed = true
+			}
+		}
+		return changed
+	})
+}
+
+// InstallGeminiHooks adds berth's hooks to Gemini CLI's settings.json,
+// keeping every other setting.
+func InstallGeminiHooks(path, bin string) (bool, error) {
+	return editJSON(path, func(root map[string]any) bool {
+		hooks := object(root, "hooks")
+		changed := false
+		for _, event := range []string{"SessionStart", "BeforeAgent", "Notification", "AfterAgent", "SessionEnd"} {
+			if addNested(hooks, event, hookCommand(bin, "gemini", event)) {
+				changed = true
+			}
+		}
+		return changed
+	})
+}
+
+// InstallOpenCodePlugin writes berth's OpenCode plugin. It is berth's own
+// file, so it is replaced when it differs.
+func InstallOpenCodePlugin(path, bin string) (bool, error) {
+	want := []byte(adapters.OpenCodePlugin(bin))
+	if have, err := os.ReadFile(path); err == nil && string(have) == string(want) {
+		return false, nil
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return false, err
+	}
+	return true, statefile.Write(path, want)
 }
 
 // InstallCursorHooks appends berth's hook to Cursor's hooks file, after any
@@ -44,13 +99,17 @@ func InstallCursorHooks(hooksPath, bin string) (bool, error) {
 			root["version"] = 1
 		}
 		hooks := object(root, "hooks")
-		command := hookCommand(bin, "cursor", "stop")
-		list, _ := hooks["stop"].([]any)
-		if containsCommand(list, command) {
-			return false
+		changed := false
+		for _, event := range []string{"sessionStart", "beforeSubmitPrompt", "stop"} {
+			command := hookCommand(bin, "cursor", event)
+			list, _ := hooks[event].([]any)
+			if containsCommand(list, command) {
+				continue
+			}
+			hooks[event] = append(list, map[string]any{"command": command, "timeout": 10})
+			changed = true
 		}
-		hooks["stop"] = append(list, map[string]any{"command": command, "timeout": 10})
-		return true
+		return changed
 	})
 }
 

@@ -1,7 +1,6 @@
 package box
 
 import (
-	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -13,11 +12,9 @@ import (
 )
 
 func TestSendWaitAndExecOrchestrateASession(t *testing.T) {
-	states := &AgentStates{}
-	c, bus := servedBox(t, func(b *Box) { b.AgentStates = states })
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go states.Run(ctx, bus)
+	states := &Turns{}
+	c, bus := servedBox(t, func(b *Box) { b.Turns = states })
+	states.Attach(bus)
 	repo := gitRepo(t)
 	call(t, c, "POST", "/v1/locations", "", map[string]string{"name": "cal", "path": repo}, nil)
 

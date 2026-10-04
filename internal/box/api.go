@@ -45,8 +45,9 @@ type Box struct {
 	LogDir string
 	// Units runs berthd's managed units; nil where they cannot run.
 	Units *Units
-	// AgentStates, when running, says which agents wait for someone.
-	AgentStates *AgentStates
+	// Turns is the turn ledger: what every agent session is doing, turn by
+	// turn. Without it agents read as running.
+	Turns *Turns
 	// Hooks, when set, may refuse actions through "before:" hooks.
 	Hooks *hooks.Runner
 	// Flows runs the box's and its repositories' automations.
@@ -136,6 +137,9 @@ func (b *Box) Mount(s *wire.Server) {
 	route("GET /v1/sessions/{name}/screen", b.screen)
 	route("POST /v1/sessions/{name}/send", b.sendToSession)
 	route("GET /v1/sessions/{name}/wait", b.waitForSession)
+	route("GET /v1/sessions/{name}/turns", b.listTurns)
+	route("GET /v1/turns/{id}", b.getTurn)
+	route("GET /v1/turns/{id}/wait", b.waitTurn)
 	route("POST /v1/exec", b.handleExec)
 	route("GET /v1/hooks", b.getHooks)
 	route("PUT /v1/hooks", b.putHooks)
@@ -194,8 +198,8 @@ func origin(r *http.Request) string {
 	return "berth"
 }
 
-func (b *Box) publish(r *http.Request, typ string, data map[string]any) {
-	b.Events.Publish(events.Event{Type: typ, Box: b.Name, Origin: origin(r), Data: data})
+func (b *Box) publish(r *http.Request, typ string, data map[string]any) events.Event {
+	return b.Events.Publish(events.Event{Type: typ, Box: b.Name, Origin: origin(r), Data: data})
 }
 
 func decode(r *http.Request, v any) error { return decodeLimit(r, v, 64<<10) }
@@ -457,7 +461,8 @@ func (b *Box) addSession(w http.ResponseWriter, r *http.Request) error {
 	if req.Name == "" {
 		req.Name = defaultSessionName(req.Location, req.Command)
 	}
-	sess, err := b.startSession(r, req.Name, req.Location, dir, req.Command)
+	preset := req.Agent
+	sess, err := b.startSession(r, req.Name, req.Location, dir, req.Command, preset)
 	if err != nil {
 		return err
 	}
@@ -475,15 +480,19 @@ func (b *Box) announceOpen(r *http.Request, sess Session, open string) {
 	b.publish(r, "session.open", map[string]any{"name": sess.Name, "location": sess.Location, "path": sess.Dir, "open": open, "agent": sess.Agent})
 }
 
-// startSession runs command in dir once the hooks allow it.
-func (b *Box) startSession(r *http.Request, name, location, dir, command string) (Session, error) {
+// startSession runs command in dir once the hooks allow it; preset is the
+// agent preset it runs, if any.
+func (b *Box) startSession(r *http.Request, name, location, dir, command, preset string) (Session, error) {
 	data := map[string]any{"name": name, "location": location, "path": dir, "command": command}
 	if err := b.before(r, "session.start", data); err != nil {
 		return Session{}, err
 	}
-	sess, err := b.createSession(r.Context(), name, location, dir, command)
+	sess, err := b.createAgentSession(r.Context(), name, location, dir, command, preset)
 	if err != nil {
 		return Session{}, err
+	}
+	if a := agentFor(sess); a != "" {
+		data["agent"] = a
 	}
 	b.publish(r, "session.started", data)
 	sess = b.enrich(r.Context(), []Session{sess})[0]
@@ -709,9 +718,45 @@ func (b *Box) unitLog(w http.ResponseWriter, r *http.Request) error {
 	return nil
 }
 
+// streamEvents streams the box's events as NDJSON. With ?since=SEQ it first
+// replays what the journal holds after SEQ (at most ?max= events, default
+// 5000), so a laptop that slept catches up; a client that falls behind is
+// caught up from the journal rather than losing events.
 func (b *Box) streamEvents(w http.ResponseWriter, r *http.Request) error {
-	ch, stop := b.Events.Subscribe()
-	defer stop()
+	since := int64(-1)
+	if v := r.URL.Query().Get("since"); v != "" {
+		n, err := strconv.ParseInt(v, 10, 64)
+		if err != nil || n < 0 {
+			return badRequest("since must be an event seq")
+		}
+		since = n
+		limit := int64(5000)
+		if m, err := strconv.ParseInt(r.URL.Query().Get("max"), 10, 64); err == nil && m >= 0 {
+			limit = m
+		}
+		if head := b.Events.Head(); head-since > limit {
+			since = head - limit
+		}
+	}
+	cur := b.Events.SubscribeFrom(since).Named("http " + origin(r))
+	defer cur.Close()
+	ch := make(chan events.Event)
+	ctx, cancel := context.WithCancel(r.Context())
+	defer cancel()
+	go func() {
+		defer close(ch)
+		for {
+			e, err := cur.Next(ctx)
+			if err != nil {
+				return
+			}
+			select {
+			case ch <- e:
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
 	rc := http.NewResponseController(w)
 	w.Header().Set("Content-Type", "application/x-ndjson")
 	w.WriteHeader(http.StatusOK)
@@ -723,8 +768,8 @@ func (b *Box) streamEvents(w http.ResponseWriter, r *http.Request) error {
 		select {
 		case <-r.Context().Done():
 			return nil
-		case e := <-ch:
-			if enc.Encode(e) != nil || rc.Flush() != nil {
+		case e, ok := <-ch:
+			if !ok || enc.Encode(e) != nil || rc.Flush() != nil {
 				return nil
 			}
 		case <-keepalive.C:
@@ -750,6 +795,12 @@ func (b *Box) emit(w http.ResponseWriter, r *http.Request) error {
 	}
 	if err := b.before(r, "event.emit", map[string]any{"type": req.Type}); err != nil {
 		return err
+	}
+	// A tool use while the agent is already working changes nothing, and
+	// agents use tools constantly: keep them out of the journal.
+	if b.Turns != nil && b.Turns.Redundant(req.Type, req.Data) {
+		writeJSON(w, map[string]bool{"ok": true})
+		return nil
 	}
 	b.publish(r, req.Type, req.Data)
 	writeJSON(w, map[string]bool{"ok": true})

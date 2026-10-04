@@ -551,7 +551,8 @@ func TestSessionsWithoutSecretsStartAsTheyAlwaysDid(t *testing.T) {
 	for _, kv := range env {
 		want = append(want, "-e", kv)
 	}
-	want = append(want, "--", "/bin/sh", "-lc", "sleep 30")
+	// Every session tells its agent's hooks which session they are in.
+	want = append(want, "-e", "BERTH_SESSION=plain", "--", "/bin/sh", "-lc", "sleep 30")
 	if !reflect.DeepEqual(created, want) {
 		t.Fatalf("new-session = %q\nwant %q", created, want)
 	}

@@ -50,8 +50,9 @@ var usageSections = []struct {
 		{"%[1]s task new %[2]sLOC/NAME [--agent ID] [--prompt TEXT] [--open split|tab] [--branch B] [--base REF] [-- COMMAND...]", "A worktree with an agent (or COMMAND) running in it"},
 		{"%[1]s session new %[2]sLOC[/WORKTREE] [--name N] [--agent ID [--prompt TEXT]] [--open split|tab] [-- COMMAND...]", "Start an agent or COMMAND (default: a shell) there"},
 		{"%[1]s session screen %[2]sNAME [--history N]", "Print what the session shows"},
-		{"%[1]s session send %[2]sNAME TEXT [--no-enter] [--wait [--timeout 30m]]%[4]s", "Type a prompt into a session, and wait for its turn"},
-		{"%[1]s session wait %[2]sNAME [--for finished,waiting] [--timeout 30m]", "Wait for its agent's turn to end"},
+		{"%[1]s session send %[2]sNAME TEXT [--when now|idle] [--force] [--idem KEY] [--no-enter] [--wait [--timeout 30m]]%[4]s", "Type a prompt into a session (or hold it until the agent is idle), and wait for its turn"},
+		{"%[1]s session wait %[2]sNAME [--turn ID] [--for finished,waiting] [--timeout 30m]", "Wait for a turn, or its agent's current one, to end"},
+		{"%[1]s session turns %[2]sNAME [--limit 10] [--json]", "List a session's turns"},
 		{"%[1]s exec %[2]sLOC[/WORKTREE] [--timeout 10m] -- COMMAND...", "Run a command there and print its output"},
 		{"%[1]s loop %[2]sSESSION --check CMD [--prompt TEXT] [--max 5] [--turn-timeout 30m]", "Prompt, wait, check, and feed failures back"},
 		{"%[1]s session kill %[2]sNAME", "Stop a session"},
@@ -317,20 +318,24 @@ func Run(ctx context.Context, c *box.Client, args []string, out io.Writer) error
 		noEnter := fs.Bool("no-enter", false, "type the text without pressing Enter")
 		wait := fs.Bool("wait", false, "then wait for the turn it starts to end (finished or waiting)")
 		timeout := fs.Duration("timeout", 30*time.Minute, "with --wait, give up after this long")
+		when := fs.String("when", "now", "now, or idle: hold it on the box until the agent is idle")
+		force := fs.Bool("force", false, "type even into an agent that is waiting for someone")
+		idem := fs.String("idem", "", "a key that makes a retried send return the turn it already made")
 		queue := fs.Bool("queue", false, "if the box cannot be reached, queue the prompt to send when it is back")
 		pos, err := parse(fs, rest)
 		if err != nil || len(pos) != 2 {
-			return usageErr("session send NAME TEXT [--no-enter] [--wait [--timeout 30m]] [--queue]")
+			return usageErr("session send NAME TEXT [--when now|idle] [--force] [--idem KEY] [--no-enter] [--wait [--timeout 30m]] [--queue]")
 		}
 		if *queue && Queue == nil {
 			return errors.New("--queue is for the laptop: berth session send BOX/NAME TEXT --queue")
 		}
-		sent := time.Now()
-		if err := c.Send(ctx, pos[0], pos[1], !*noEnter); err != nil {
+		enter := !*noEnter
+		res, err := c.Send(ctx, pos[0], box.SendRequest{Text: pos[1], Enter: &enter, When: *when, Force: *force, IdemKey: *idem})
+		if err != nil {
 			if !*queue {
 				return err
 			}
-			id, qerr := Queue(ctx, pos[0], pos[1], !*noEnter, err)
+			id, qerr := Queue(ctx, pos[0], pos[1], enter, err)
 			if qerr != nil {
 				return qerr
 			}
@@ -339,33 +344,41 @@ func Run(ctx context.Context, c *box.Client, args []string, out io.Writer) error
 			})
 		}
 		if !*wait {
-			fmt.Fprintf(out, "Sent to %s\n", pos[0])
-			return nil
+			return show(out, *asJSON, res, func() {
+				switch {
+				case res.Queued:
+					fmt.Fprintf(out, "Held for %s until its agent is idle (turn %s)\n", pos[0], res.Turn)
+				case res.Turn != "":
+					fmt.Fprintf(out, "Sent to %s (turn %s)\n", pos[0], res.Turn)
+				default:
+					fmt.Fprintf(out, "Sent to %s\n", pos[0])
+				}
+			})
 		}
-		// Only what the agent reports after the prompt counts, so the
-		// previous turn's "finished" does not end the wait.
-		res, err := waitFor(ctx, c, pos[0], []string{"finished", "waiting"}, sent, *timeout)
+		w, err := waitSent(ctx, c, pos[0], res, []string{"finished", "waiting"}, *timeout)
 		if err != nil {
 			return err
 		}
-		return show(out, *asJSON, res, func() {
-			if res.TimedOut {
-				fmt.Fprintf(out, "Still %s after %v\n", res.State, *timeout)
-				return
-			}
-			fmt.Fprintln(out, res.State)
-		})
+		return show(out, *asJSON, w, func() { printWait(out, w, *timeout) })
 	case "session wait":
 		fs, asJSON := flags(rest)
 		states := fs.String("for", "finished,waiting", "states that end the wait")
+		turn := fs.String("turn", "", "wait for this turn (from session send) rather than the agent's state")
 		timeout := fs.Duration("timeout", 30*time.Minute, "give up after this long")
 		pos, err := parse(fs, rest)
 		if err != nil || len(pos) != 1 {
-			return usageErr("session wait NAME [--for finished,waiting] [--timeout 30m]")
+			return usageErr("session wait NAME [--turn ID] [--for finished,waiting] [--timeout 30m]")
+		}
+		if *turn != "" {
+			w, err := waitTurn(ctx, c, *turn, strings.Contains(*states, "waiting"), *timeout)
+			if err != nil {
+				return err
+			}
+			return show(out, *asJSON, w, func() { printWait(out, w, *timeout) })
 		}
 		// The agent's state now counts: waiting for an agent that is
 		// already idle returns at once. To wait for the turn a prompt
-		// starts, use session send --wait.
+		// starts, use session send --wait or --turn.
 		res, err := waitFor(ctx, c, pos[0], strings.Split(*states, ","), time.Time{}, *timeout)
 		if err != nil {
 			return err
@@ -376,6 +389,40 @@ func Run(ctx context.Context, c *box.Client, args []string, out io.Writer) error
 				return
 			}
 			fmt.Fprintln(out, res.State)
+		})
+	case "session turns":
+		fs, asJSON := flags(rest)
+		limit := fs.Int("limit", 10, "how many of the latest turns")
+		pos, err := parse(fs, rest)
+		if err != nil || len(pos) != 1 {
+			return usageErr("session turns NAME [--limit 10] [--json]")
+		}
+		turns, err := c.Turns(ctx, pos[0], *limit)
+		if err != nil {
+			return err
+		}
+		return show(out, *asJSON, turns, func() {
+			if len(turns) == 0 {
+				fmt.Fprintln(out, "No turns yet.")
+				return
+			}
+			w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
+			fmt.Fprintln(w, "TURN\tSTATE\tFROM\tSTARTED\tTOOK\tWAITED")
+			for _, t := range turns {
+				started, took := "-", "-"
+				if !t.Started.IsZero() {
+					started = t.Started.Local().Format("15:04:05")
+					if !t.Ended.IsZero() {
+						took = t.Ended.Sub(t.Started).Round(time.Second).String()
+					}
+				}
+				waited := "-"
+				if len(t.Waits) > 0 {
+					waited = fmt.Sprintf("%d×", len(t.Waits))
+				}
+				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", t.ID, t.State, t.Origin, started, took, waited)
+			}
+			w.Flush()
 		})
 	case "exec":
 		return execCmd(ctx, c, rest, out)
@@ -768,6 +815,47 @@ func shellWord(w string) string {
 
 // waitFor waits in steps, since one long request could outlive a proxy or a
 // network change between the laptop and the box.
+// waitSent waits for the turn a send started: by its ID when the box keeps
+// turns, else from the box's own time of the send (never this machine's
+// clock, which may differ).
+func waitSent(ctx context.Context, c *box.Client, session string, res box.SendResult, states []string, timeout time.Duration) (box.WaitResult, error) {
+	if res.Turn != "" {
+		untilWaiting := false
+		for _, s := range states {
+			untilWaiting = untilWaiting || s == "waiting"
+		}
+		return waitTurn(ctx, c, res.Turn, untilWaiting, timeout)
+	}
+	after := res.At
+	if after.IsZero() {
+		after = time.Now()
+	}
+	return waitFor(ctx, c, session, states, after, timeout)
+}
+
+// waitTurn long-polls a turn in steps of at most five minutes.
+func waitTurn(ctx context.Context, c *box.Client, id string, untilWaiting bool, timeout time.Duration) (box.WaitResult, error) {
+	deadline := time.Now().Add(timeout)
+	for {
+		step := min(time.Until(deadline), 5*time.Minute)
+		w, err := c.WaitTurn(ctx, id, untilWaiting, max(step, time.Second))
+		if err != nil {
+			return box.WaitResult{}, err
+		}
+		if !w.TimedOut || time.Now().After(deadline) {
+			return box.WaitResult{State: w.State, TimedOut: w.TimedOut, Turn: w.Turn.ID}, nil
+		}
+	}
+}
+
+func printWait(out io.Writer, w box.WaitResult, timeout time.Duration) {
+	if w.TimedOut {
+		fmt.Fprintf(out, "Still %s after %v\n", w.State, timeout)
+		return
+	}
+	fmt.Fprintln(out, w.State)
+}
+
 func waitFor(ctx context.Context, c *box.Client, session string, states []string, after time.Time, timeout time.Duration) (box.WaitResult, error) {
 	deadline := time.Now().Add(timeout)
 	for {
@@ -835,24 +923,28 @@ func loop(ctx context.Context, c *box.Client, args []string, out io.Writer) erro
 		return fmt.Errorf("no session named %s", session)
 	}
 	text := *prompt
+	run := strconv.FormatInt(time.Now().UnixNano(), 36)
 	for round := 1; round <= *rounds; round++ {
 		if text != "" {
-			sent := time.Now()
-			if err := c.Send(ctx, session, text, true); err != nil {
+			// The turn ID ties the wait to this prompt, so a turn the agent
+			// was already in cannot end it; refused if the agent waits for
+			// someone.
+			res, err := c.Send(ctx, session, box.SendRequest{Text: text, When: "now", IdemKey: "loop-" + run + "-" + strconv.Itoa(round)})
+			if err != nil {
 				return err
 			}
 			fmt.Fprintf(out, "Round %d: prompted %s, waiting for its turn to end…\n", round, session)
-			res, err := waitFor(ctx, c, session, []string{"finished", "waiting"}, sent, *timeout)
+			w, err := waitSent(ctx, c, session, res, []string{"finished", "waiting"}, *timeout)
 			if err != nil {
 				return err
 			}
 			switch {
-			case res.TimedOut:
-				return fmt.Errorf("%s was still %s after %v", session, res.State, *timeout)
-			case res.State == "waiting":
+			case w.TimedOut:
+				return fmt.Errorf("%s was still %s after %v", session, w.State, *timeout)
+			case w.State == "waiting":
 				return fmt.Errorf("%s is waiting for you; answer it, then run the loop again", session)
-			case res.State == "exited":
-				return fmt.Errorf("%s has exited", session)
+			case w.State == "exited" || w.State == "lost":
+				return fmt.Errorf("%s has %s", session, w.State)
 			}
 		}
 		fmt.Fprintf(out, "Round %d: checking with %q…\n", round, *check)
@@ -864,11 +956,8 @@ func loop(ctx context.Context, c *box.Client, args []string, out io.Writer) erro
 			fmt.Fprintf(out, "Passed after %d round(s).\n", round)
 			return nil
 		}
-		tail := res.Output
-		if len(tail) > 4000 {
-			tail = "…" + tail[len(tail)-4000:]
-		}
-		text = fmt.Sprintf("The check `%s` failed (exit %d):\n\n%s\n\nFix it.", *check, res.ExitCode, strings.TrimSpace(tail))
+		// Only what failed goes back: every byte is the agent's to read.
+		text = fmt.Sprintf("`%s` failed (exit %d):\n```\n%s\n```\nFix it.", *check, res.ExitCode, box.CheckFeedback(res.Output, 3000))
 	}
 	return fmt.Errorf("the check still fails after %d rounds", *rounds)
 }

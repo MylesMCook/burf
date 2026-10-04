@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/sean-brydon/berthd/internal/integrations/adapters"
 	"io"
 	"net/http"
 	"os"
@@ -34,6 +35,12 @@ type Info struct {
 	Tools []string `json:"tools"`
 	// Agents are the agent presets this box can start.
 	Agents []AgentPreset `json:"agents"`
+	// Capabilities name the API features this box has, so clients can use
+	// them when present: "turns" (turn IDs from send, turn waits),
+	// "journal" (GET /v1/events?since=SEQ).
+	Capabilities []string `json:"capabilities"`
+	// Adapters say what each agent can report, for the app.
+	Adapters map[string]adapters.Caps `json:"adapters,omitempty"`
 }
 
 // BuildID identifies a daemon build by its bytes.
@@ -107,8 +114,25 @@ func (b *Box) handleInfo(w http.ResponseWriter, r *http.Request) error {
 	if i.Agents == nil {
 		i.Agents = []AgentPreset{}
 	}
+	i.Capabilities = b.Capabilities()
+	i.Adapters = map[string]adapters.Caps{}
+	for _, a := range adapters.All() {
+		i.Adapters[a.Name] = a.Caps
+	}
 	writeJSON(w, i)
 	return nil
+}
+
+// Capabilities are the optional API features this box serves.
+func (b *Box) Capabilities() []string {
+	caps := []string{}
+	if b.Turns != nil {
+		caps = append(caps, "turns")
+	}
+	if b.Events.Journal != nil {
+		caps = append(caps, "journal")
+	}
+	return caps
 }
 
 func (b *Box) handleUpgrade(w http.ResponseWriter, r *http.Request) error {

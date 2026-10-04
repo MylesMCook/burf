@@ -45,7 +45,7 @@ func flowBox(t *testing.T, flows []Flow) (*Box, Session, Worktree) {
 	writeRepoConfig(t, repo, RepoConfig{Flows: flows})
 	dir := t.TempDir()
 	b := &Box{Name: "devbox", Locations: NewLocations(filepath.Join(dir, "locations.json")), Events: &events.Bus{},
-		Sessions: testSessions(t), AgentStates: &AgentStates{}, Flows: &Flows{Path: filepath.Join(dir, "flows.json")}}
+		Sessions: testSessions(t), Turns: &Turns{}, Flows: &Flows{Path: filepath.Join(dir, "flows.json")}}
 	b.Locations.Add(ctx, "cal", repo)
 	trustRepo(t, b.Locations, "cal")
 	wt, err := b.Locations.CreateWorktree(ctx, "cal", "billing", "", "")
@@ -58,7 +58,7 @@ func flowBox(t *testing.T, flows []Flow) (*Box, Session, Worktree) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	go b.AgentStates.Run(ctx, b.Events)
+	b.Turns.Attach(b.Events)
 	go b.Flows.Run(ctx, b)
 	// Runs finish in the background, saving their records into the temp
 	// dirs; let them settle before those dirs are removed (cleanups run

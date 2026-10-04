@@ -19,20 +19,29 @@ type Tool struct {
 	// there says the tool has run on this machine, even when its command is
 	// not on this process's PATH.
 	configDir string
-	// hookFile and hookMarker find berth's hook in the tool's settings.
-	hookFile, hookMarker string
+	// hookFile and hookMarker find berth's hook in the tool's settings;
+	// currentFile and currentMarker, this release's hooks.
+	hookFile, hookMarker       string
+	currentFile, currentMarker string
 }
 
 // Tools are the agent CLIs `integrations install` knows, in the order they
 // are reported.
 var Tools = []Tool{
 	{ID: "claude", Name: "Claude Code", Command: "claude", configDir: ".claude",
-		hookFile: filepath.Join(".claude", "settings.json"), hookMarker: "hook claude Stop"},
+		hookFile: filepath.Join(".claude", "settings.json"), hookMarker: "hook claude Stop",
+		currentMarker: "hook claude PostToolUse"},
 	{ID: "codex", Name: "Codex", Command: "codex", configDir: ".codex",
-		hookFile: filepath.Join(".codex", "config.toml"), hookMarker: `"hook", "codex"`},
+		hookFile: filepath.Join(".codex", "config.toml"), hookMarker: `"hook", "codex"`,
+		currentFile: filepath.Join(".codex", "hooks.json"), currentMarker: "hook codex Stop"},
 	// ~/.cursor also belongs to the Cursor editor, so only the CLI counts.
 	{ID: "cursor", Name: "Cursor Agent", Command: "cursor-agent",
-		hookFile: filepath.Join(".cursor", "hooks.json"), hookMarker: "hook cursor stop"},
+		hookFile: filepath.Join(".cursor", "hooks.json"), hookMarker: "hook cursor stop",
+		currentMarker: "hook cursor beforeSubmitPrompt"},
+	{ID: "gemini", Name: "Gemini CLI", Command: "gemini", configDir: ".gemini",
+		hookFile: filepath.Join(".gemini", "settings.json"), hookMarker: "hook gemini AfterAgent"},
+	{ID: "opencode", Name: "OpenCode", Command: "opencode", configDir: filepath.Join(".config", "opencode"),
+		hookFile: filepath.Join(".config", "opencode", "plugin", "berth.js"), hookMarker: "hook opencode"},
 }
 
 // ToolByID finds a tool by its ID.
@@ -73,6 +82,38 @@ func (t Tool) Present(home string) bool {
 func (t Tool) Hooked(home string) bool {
 	b, err := os.ReadFile(filepath.Join(home, t.hookFile))
 	return err == nil && bytes.Contains(b, []byte(t.hookMarker))
+}
+
+// Current reports whether t's hooks are this release's: an older berth's
+// lack the signals turns need (Claude's PostToolUse, say).
+func (t Tool) Current(home string) bool {
+	if !t.Hooked(home) {
+		return false
+	}
+	if t.currentMarker == "" {
+		return true
+	}
+	file := t.currentFile
+	if file == "" {
+		file = t.hookFile
+	}
+	b, err := os.ReadFile(filepath.Join(home, file))
+	return err == nil && bytes.Contains(b, []byte(t.currentMarker))
+}
+
+// RefreshHooked brings hooks berth installed before up to this release's,
+// as an upgrade does; tools without berth's hooks are left alone. It
+// returns the tools it updated.
+func RefreshHooked(home, bin string) []string {
+	var done []string
+	for _, t := range Tools {
+		if t.Hooked(home) && !t.Current(home) {
+			if InstallTool(home, t.ID, bin, io.Discard) == nil {
+				done = append(done, t.ID)
+			}
+		}
+	}
+	return done
 }
 
 // systemBinDirs are searched after home's; tests empty it.

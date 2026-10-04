@@ -32,6 +32,15 @@ type Session struct {
 	Agent      string    `json:"agent,omitempty"`
 	AgentState string    `json:"agent_state,omitempty"`
 	StateSince time.Time `json:"state_since,omitzero"`
+	// Preset is the agent preset the session was started with, which berth
+	// keeps (@berth_agent) so a wrapped command is still known as an agent.
+	Preset string `json:"preset,omitempty"`
+	// Turn is the agent's current (or last) turn, StateSeq the journal Seq
+	// of its state, and Fidelity how well berth knows it: hooks, partial or
+	// screen.
+	Turn     string `json:"turn,omitempty"`
+	StateSeq int64  `json:"state_seq,omitempty"`
+	Fidelity string `json:"fidelity,omitempty"`
 }
 
 var (
@@ -91,7 +100,7 @@ func (s *Sessions) tmux(ctx context.Context, args ...string) ([]byte, error) {
 // versions (3.4, say) escape "$" when a format reads an option back, so the
 // plain @berth_command would come back changed. Sessions started before it
 // existed only have the plain one.
-const listFormat = "#{session_name}\t#{session_created}\t#{session_attached}\t#{@berth_location}\t#{@berth_command}\t#{pane_dead}\t#{pane_start_path}\t#{@berth_command64}"
+const listFormat = "#{session_name}\t#{session_created}\t#{session_attached}\t#{@berth_location}\t#{@berth_command}\t#{pane_dead}\t#{pane_start_path}\t#{@berth_command64}\t#{@berth_agent}"
 
 func (s *Sessions) List(ctx context.Context) ([]Session, error) {
 	if _, err := exec.LookPath("tmux"); err != nil {
@@ -112,10 +121,10 @@ func parseSessions(out []byte) []Session {
 	sessions := []Session{}
 	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 		f := strings.Split(line, "\t")
-		if len(f) == 7 {
+		for len(f) >= 7 && len(f) < 9 {
 			f = append(f, "")
 		}
-		if len(f) != 8 {
+		if len(f) != 9 {
 			continue
 		}
 		command := f[4]
@@ -134,6 +143,7 @@ func parseSessions(out []byte) []Session {
 			Command:  command,
 			Exited:   f[5] == "1",
 			Dir:      f[6],
+			Preset:   f[8],
 		})
 	}
 	return sessions
@@ -143,13 +153,16 @@ func parseSessions(out []byte) []Session {
 // Commands run through a login shell, so tools the user installed (claude,
 // codex) are on PATH even when berthd runs under systemd.
 func (s *Sessions) Create(ctx context.Context, name, location, dir, command string, env []string) (Session, error) {
-	return s.create(ctx, name, location, dir, command, env, nil)
+	return s.create(ctx, name, location, dir, command, "", env, nil)
 }
 
 // create is Create with the pane's program run behind wrap, a command that
 // replaces itself with it (`berthd secret exec … --`). The session's command,
 // which says which agent runs in it, stays the one asked for.
-func (s *Sessions) create(ctx context.Context, name, location, dir, command string, env, wrap []string) (Session, error) {
+//
+// Every session gets BERTH_SESSION (its name) and, for an agent preset,
+// BERTH_AGENT, so the agent's hooks can say which session they come from.
+func (s *Sessions) create(ctx context.Context, name, location, dir, command, agent string, env, wrap []string) (Session, error) {
 	if !sessionName.MatchString(name) {
 		return Session{}, fmt.Errorf("invalid session name %q: use letters, digits, - and _", name)
 	}
@@ -165,6 +178,10 @@ func (s *Sessions) create(ctx context.Context, name, location, dir, command stri
 		argv = []string{shell, "-lc", command}
 	}
 	args := []string{"new-session", "-d", "-s", name, "-c", dir, "-x", "200", "-y", "50"}
+	env = append(append([]string(nil), env...), "BERTH_SESSION="+name)
+	if agent != "" {
+		env = append(env, "BERTH_AGENT="+agent)
+	}
 	for _, kv := range env {
 		args = append(args, "-e", kv)
 	}
@@ -176,6 +193,9 @@ func (s *Sessions) create(ctx context.Context, name, location, dir, command stri
 	s.tmux(ctx, "set-option", "-t", "="+name+":", "@berth_location", location)
 	s.tmux(ctx, "set-option", "-t", "="+name+":", "@berth_command", command)
 	s.tmux(ctx, "set-option", "-t", "="+name+":", "@berth_command64", base64.StdEncoding.EncodeToString([]byte(command)))
+	if agent != "" {
+		s.tmux(ctx, "set-option", "-t", "="+name+":", "@berth_agent", agent)
+	}
 	return s.Get(ctx, name)
 }
 

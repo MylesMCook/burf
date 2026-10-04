@@ -399,8 +399,17 @@ func (st *boxState) close() {
 // reconnects until the box is removed.
 func (a *Agent) relay(ctx context.Context, name string, c *wire.Client) {
 	bc := box.NewClient(c)
+	// The last event seen: a reconnect (after sleep, say) asks the box's
+	// journal for what it missed, up to the box's replay limit.
+	last := int64(-1)
 	for ctx.Err() == nil {
-		bc.Events(ctx, func(e events.Event) {
+		bc.EventsSince(ctx, last, func(e events.Event) {
+			if e.Seq > 0 {
+				if e.Seq <= last {
+					return
+				}
+				last = e.Seq
+			}
 			e.Box = name
 			a.bus.Publish(e)
 		})
