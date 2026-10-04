@@ -460,7 +460,16 @@ func TestCancel(t *testing.T) {
 	defer stop()
 	s, _, _ := e.Start(Request{Flow: []Step{{Kind: "run", Command: "sleep 100"}}})
 	waitStatus(t, e, s.ID, Running)
-	time.Sleep(20 * time.Millisecond)
+	// Cancel once the step is under way, not merely the run: under load the
+	// run can be running before its first step starts.
+	for deadline := time.Now().Add(10 * time.Second); ; time.Sleep(5 * time.Millisecond) {
+		if r, err := e.Get(s.ID); err == nil && len(r.Steps) > 0 && r.Steps[0].Status == Running {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the step never started")
+		}
+	}
 	if err := e.Cancel(s.ID); err != nil {
 		t.Fatal(err)
 	}

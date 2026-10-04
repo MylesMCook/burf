@@ -1,14 +1,15 @@
-import { ArrowUpIcon, MessagesSquareIcon, SquareTerminalIcon } from "lucide-react";
+import { ArrowUpIcon, MessagesSquareIcon, RefreshCwIcon, SquareTerminalIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { ConversationView } from "@/components/conversation/conversation-view";
+import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { InputGroup, InputGroupAddon, InputGroupTextarea } from "@/components/ui/input-group";
 import { Spinner } from "@/components/ui/spinner";
 import { toastManager } from "@/components/ui/toast";
 import { isMock } from "@/hooks/use-berth-connection";
-import { boxApi } from "@/lib/api";
+import { boxApi, laptopApi } from "@/lib/api";
 import { keyOf, useConversations } from "@/lib/conversation-store";
 import { sessionState, worktreeOf } from "@/lib/derive";
 import { errorMessage } from "@/lib/format";
@@ -66,14 +67,17 @@ export function ConversationPane({ box, session, visible, onShowTerminal }: { bo
             </EmptyMedia>
             <EmptyTitle>{feed === "none" ? "No conversation to show" : "Conversation view needs a newer berthd"}</EmptyTitle>
             <EmptyDescription>
-              {feed === "none" ? "Berth can read Claude Code's and Codex's conversations. This agent's is in its terminal." : "This box doesn't stream agents' conversations yet. The agent is working as usual in its terminal."}
+              {feed === "none" ? "Berth can read Claude Code's and Codex's conversations. This agent's is in its terminal." : "This box runs an older berthd that doesn't stream agents' conversations. Update it; your agents keep running while it restarts."}
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button variant="outline" onClick={onShowTerminal}>
-              <SquareTerminalIcon />
-              Show terminal
-            </Button>
+            <div className="flex gap-2">
+              {feed === "unsupported" && <UpgradeBox box={box} />}
+              <Button variant="outline" onClick={onShowTerminal}>
+                <SquareTerminalIcon />
+                Show terminal
+              </Button>
+            </div>
           </EmptyContent>
         </Empty>
       </div>
@@ -162,4 +166,35 @@ function Reply({ onSend }: { onSend(text: string): Promise<void> }) {
       </InputGroupAddon>
     </InputGroup>
   );
+}
+
+// UpgradeBox updates the box's berthd to the build this Berth ships, the
+// same as Settings → Boxes → Upgrade berthd. Agents keep running; once the
+// box answers with the new build the conversation loads by itself.
+function UpgradeBox({ box }: { box: string }) {
+  const [busy, setBusy] = useState(false);
+  const [line, setLine] = useState("");
+  const upgrade = async () => {
+    const client = useStore.getState().client;
+    if (!client) return;
+    setBusy(true);
+    try {
+      await laptopApi.upgrade(client, box, (l) => setLine(l));
+      await useStore.getState().refreshBox(box, ["info"]);
+      toastManager.add({ type: "success", title: `${box} is up to date` });
+    } catch (err) {
+      toastManager.add({ type: "error", title: `Couldn't update ${box}`, description: errorMessage(err) });
+    } finally {
+      setBusy(false);
+      setLine("");
+    }
+  };
+  const button = (
+    <Button onClick={() => void upgrade()} disabled={busy}>
+      {busy ? <Spinner /> : <RefreshCwIcon />}
+      {busy ? `Updating ${box}…` : `Update berthd on ${box}`}
+    </Button>
+  );
+  // While it runs, the upgrade's latest line is a hover away.
+  return busy && line ? <Tip label={line}>{button}</Tip> : button;
 }

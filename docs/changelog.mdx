@@ -9,25 +9,62 @@ upgrades with `berth upgrade BOX`, or by running the
 [install command](/getting-started/add-a-box#with-the-install-command)
 again.
 
-## Since v0.1.1
+## v0.2.0
 
-On `main`, not yet in a release:
+October 4, 2026.
 
+Orchestration rebuilt on the box: it keeps going while your laptop sleeps,
+survives berthd restarts and upgrades, and costs your agents as few tokens
+as it can.
+
+- **Turns, not guesses.** Every prompt Berth sends gets a turn ID, and
+  waits, loops and flows wait on that turn, not on the clock or the folder.
+  Each session is tracked on its own, so a reviewer beside an agent no
+  longer ends the agent's wait. Hook events go through a numbered journal
+  (`GET /v1/events?since=`), are kept while berthd is down, and are never
+  dropped in a burst. Codex, Cursor, Gemini and OpenCode report their
+  state through their own hooks. See [sessions and agents](/concepts/sessions-and-agents).
+- **Quieter "needs you".** Claude's idle reminder no longer counts as a
+  question, an approved permission clears "waiting", and nothing Berth sends
+  (broadcast, the queue, loops) types into an agent that is waiting on you.
 - **Durable runs.** Loops, reviews, hand-offs, broadcasts and flows run on
   the box from a journal: they keep going while the laptop sleeps and
   resume after berthd restarts, never sending an agent a prompt twice.
   `berth run …`, `berth runs`, and `berth loop` as a run; gates you decide
   from the app, the CLI or the phone; box-wide caps and per-run budgets.
   See [runs](/guides/runs).
-- **Try N ways.** Several agents try one task in their own worktrees; a
-  check verifies them, a headless judge ranks them, and Review's Compare
-  lets you pick one for a draft PR.
+- **Try N ways.** Several agents, or models, try one task in their own
+  worktrees, on one box or several; a check verifies them, a headless judge
+  ranks them, and Review's Compare lets you pick one for a draft PR.
 - **Triggers v2.** Issue labels and assignees, signed webhooks, and an
   Auto-fix this PR toggle; a GitHub item arriving while a flow runs waits
-  for it instead of being dropped. See [automations](/guides/automations).
+  for it instead of being dropped, and comment text reaches an agent
+  labelled as untrusted, from the authors you allow. See
+  [automations](/guides/automations).
 - **Handoff packets** and native fork or resume; **headless agents** in
   tmux; **`berthd mcp`** for agents. The app's flows for every box are gone:
   commit such a flow to the repository's `.berth/config.json` or its kit.
+- **A browser for your agents.** Each worktree's agent can open its own dev
+  server at the URL you see (`BERTH_URL`) in a headless Chromium on the box,
+  confined to that worktree's ports, and act on it in a few hundred tokens a
+  step. Watch it live, pick an element to send it, and see its screenshots
+  in Review. On Ubuntu 24.04, allow Chromium's sandbox or opt out with
+  `BERTH_BROWSER_NO_SANDBOX=1`. See [agent browser](/guides/agent-browser).
+- **The agent's conversation**, read from Claude Code's or Codex's own
+  transcript (`GET /v1/sessions/{name}/transcript`), for a calmer view of
+  what an agent is doing. Tool output and thinking are never sent. On a box
+  with an older berthd, the view offers to update it in place.
+- **Pick a model and effort** for a new agent (`model` and `effort` on
+  tasks and attempts, passed to each agent's own flags), so attempts can
+  pit models against each other.
+- **Labs: a calmer Berth.** Behind a Labs switch in Settings: a harbour home
+  with one composer and your agents, a Conversation view beside each
+  agent's terminal, and zen (⌘.), which puts the sidebar away. See
+  [Labs](/guides/labs).
+
+## v0.1.2
+
+October 3, 2026.
 
 - **Set up a box from your tailnet.** **Add a box** lists the machines on
   this Mac's tailnet, with their OS, whether they are online and which are
@@ -41,6 +78,8 @@ On `main`, not yet in a release:
   [berth-kit-calcom](https://github.com/sean-brydon/berth-kit-calcom).
   Kit links to GitHub, GitLab, Bitbucket and Codeberg work without
   `https://` (`berth kit add github.com/me/kit`). See [kits](/guides/kits).
+- **Add another computer** with a join link, and **use this Mac as a box**
+  without the CLI.
 
 ## v0.1.1
 
