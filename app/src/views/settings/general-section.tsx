@@ -32,19 +32,19 @@ export function GeneralSection() {
           label="Closing an agent's tab"
           description={
             closeAgents === "keep"
-              ? "The agent keeps running on its box; reopen it from the worktree or the dashboard."
+              ? "The agent keeps running on its box; pick it up again from the worktree or the dashboard."
               : closeAgents === "stop"
-                ? "Stops the agent on its box, like closing a shell."
+                ? "Stops the agent on its box, with a few seconds to undo."
                 : "Asks whether to stop the agent or leave it running."
           }
         >
           <PickOne
             label="Closing an agent's tab"
             value={closeAgents}
-            onChange={(v) => setPrefs({ closeAgents: v })}
+            onChange={(v) => setPrefs({ closeAgents: v, closeAgentsChosen: true })}
             options={[
-              { value: "keep", label: "Keep running" },
               { value: "stop", label: "Stop it" },
+              { value: "keep", label: "Keep running" },
               { value: "ask", label: "Ask" },
             ]}
           />

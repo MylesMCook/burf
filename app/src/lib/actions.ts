@@ -1,3 +1,5 @@
+import { create } from "zustand";
+
 import { confirm } from "@/components/sidebar/confirm";
 import { toastManager } from "@/components/ui/toast";
 import { usePrefs } from "@/lib/prefs";
@@ -90,9 +92,10 @@ export function resolveUrl(input: string): string | undefined {
 
 // Closing never loses work without asking. A plain shell stops with its
 // pane, so closing one asks first (unless the person turned that off). An
-// agent, by default, keeps running on the box and is only hidden, which says
-// so the first few times; Settings → General can make closing stop it, or
-// ask each time.
+// agent, by default, stops too, with a few seconds to undo it from a toast;
+// Settings → General can leave agents running when their tab closes, or ask
+// each time. Either way the pane's session is marked closed, so the session
+// list refreshing never brings it back as a tab.
 
 interface Closing {
   key: string;
@@ -123,9 +126,21 @@ function stopping(leavesToClose: Leaf[], agents: boolean): Stop[] {
   });
 }
 
+// How long an agent closed with its tab has before it is stopped: the
+// toast's life, which pauses while the pointer is on it.
+const UNDO_MS = 6000;
+
+// Agents closed with their tabs that are about to stop, for the launcher,
+// which doesn't offer them to pick up again meanwhile.
+export const usePendingStops = create<{ sessions: string[] }>()(() => ({ sessions: [] }));
+const pendingStop = (names: string[], on: boolean) =>
+  usePendingStops.setState((s) => ({ sessions: on ? [...new Set([...s.sessions, ...names])] : s.sessions.filter((n) => !names.includes(n)) }));
+
 async function close({ key, tab, leaves: ls }: Closing, stopAgents: boolean) {
   const boxes = useStore.getState().boxes;
   const kept: { agent: string; box: string; session: string }[] = [];
+  const stopped: { agent: string; box: string; session: string }[] = [];
+  const shells: { box: string; session: string }[] = [];
   for (const l of ls) {
     if (l.content.kind !== "terminal") {
       removePane(key, tab, l.id);
@@ -133,26 +148,62 @@ async function close({ key, tab, leaves: ls }: Closing, stopAgents: boolean) {
     }
     const { box, session } = l.content;
     const s = boxes[box]?.sessions?.find((x) => x.name === session);
-    if (s && agentOf(s) && !s.exited && !stopAgents) {
-      kept.push({ agent: agentOf(s)!, box, session });
-      removePane(key, tab, l.id, session);
-      continue;
-    }
-    removePane(key, tab, l.id);
-    await stopSession(box, session, true);
+    // Marked closed either way: until the stop lands, or for good when it
+    // keeps running, a refresh must not give it its tab back.
+    removePane(key, tab, l.id, session);
+    // A session too new to be listed yet goes by what its pane knows.
+    const agent = s ? (s.exited ? undefined : agentOf(s)) : l.content.agent;
+    if (agent) (stopAgents ? stopped : kept).push({ agent, box, session });
+    else shells.push({ box, session });
   }
+  for (const x of shells) await stopSession(x.box, x.session, true);
+  if (stopped.length) stopWithUndo(stopped);
   if (kept.length) agentKeepsRunning(kept[0]);
 }
 
-// Reopen brings that agent's session back as a tab in its worktree (as the
-// launcher's Resume does), not just the worktree.
+// stopWithUndo stops agents closed with their tabs once the toast that says
+// so goes, unless Undo brings them back first.
+function stopWithUndo(agents: { agent: string; box: string; session: string }[]) {
+  const names = agents.map((a) => a.session);
+  pendingStop(names, true);
+  let undone = false;
+  const { agentCloseTips } = usePrefs.getState();
+  const explain = agentCloseTips < 3;
+  if (explain) usePrefs.setState({ agentCloseTips: agentCloseTips + 1 });
+  const one = agents.length === 1;
+  const id = toastManager.add({
+    title: one ? `Stopped ${agentLabel(agents[0].agent)}` : `Stopped ${agents.length} agents`,
+    description: explain ? "Closing a tab stops its agent. Settings → General can keep agents running instead." : undefined,
+    type: "info",
+    timeout: UNDO_MS,
+    actionProps: {
+      children: "Undo",
+      onClick: () => {
+        undone = true;
+        toastManager.close(id);
+        pendingStop(names, false);
+        // Each comes back as a tab (no longer marked closed), the first in
+        // front.
+        for (const a of [...agents].reverse()) void focusSession(a.box, a.session);
+      },
+    },
+    onClose: () => {
+      if (undone) return;
+      pendingStop(names, false);
+      for (const a of agents) void stopSession(a.box, a.session, true);
+    },
+  });
+}
+
+// When an agent keeps running, Reopen brings its session back as a tab in
+// its worktree (as the launcher's Resume does), not just the worktree.
 function agentKeepsRunning({ agent, box, session }: { agent: string; box: string; session: string }) {
   const { agentCloseTips } = usePrefs.getState();
   if (agentCloseTips >= 3) return;
   usePrefs.setState({ agentCloseTips: agentCloseTips + 1 });
   const id = toastManager.add({
     title: `${agentLabel(agent)} keeps running`,
-    description: "Closing a tab only hides an agent. Reopen it from the worktree or the dashboard, or have closing stop agents in Settings → General.",
+    description: "Closing a tab only hides an agent. Pick it up again from the worktree or the dashboard, or have closing stop agents in Settings → General.",
     type: "info",
     actionProps: {
       children: "Reopen",
@@ -164,24 +215,23 @@ function agentKeepsRunning({ agent, box, session }: { agent: string; box: string
   });
 }
 
-// ask confirms closing when it would stop something, then closes.
+// ask confirms closing when it would stop a shell, then closes. Agents that
+// stop with their tabs don't ask: the toast can undo it.
 function ask(c: Closing) {
   const mode = usePrefs.getState().closeAgents;
   const agents = stopping(c.leaves, true).filter((x) => x.agent);
   if (agents.length && mode === "ask") return askAboutAgents(c, agents);
   const stopAgents = mode === "stop";
-  const stops = stopping(c.leaves, stopAgents);
+  const stops = stopping(c.leaves, false);
   if (!stops.length || !usePrefs.getState().confirmCloseShells) return void close(c, stopAgents);
   const box = stops[0].box;
   const one = stops.length === 1;
-  const agent = one ? stops[0].agent : undefined;
   const what = stops.map((x) => x.command).filter(Boolean) as string[];
-  const noun = stops.some((x) => x.agent) ? "sessions" : "shells";
   confirm({
-    title: agent ? `Stop ${agentLabel(agent)}?` : one ? "Close shell?" : `Close ${stops.length} ${noun}?`,
-    description: `This stops ${agent ? "the agent" : one ? "the shell" : "them"} on ${box}${what.length ? `, and what runs in ${one ? "it" : "them"}:` : `, and anything running in ${one ? "it" : "them"}.`}`,
+    title: one ? "Close shell?" : `Close ${stops.length} shells?`,
+    description: `This stops ${one ? "the shell" : "them"} on ${box}${what.length ? `, and what runs in ${one ? "it" : "them"}:` : `, and anything running in ${one ? "it" : "them"}.`}`,
     detail: what.length ? what.join("\n") : undefined,
-    confirm: agent ? "Stop agent" : one ? "Close shell" : `Close ${noun}`,
+    confirm: one ? "Close shell" : "Close shells",
     destructive: true,
     options: [{ id: "never", label: "Don't ask again", hint: "Settings → General turns it back on." }],
     repeatConfirms: true,
@@ -201,7 +251,7 @@ function askAboutAgents(c: Closing, agents: Stop[]) {
   const remember = { id: "remember", label: "Remember my choice", hint: "Settings → General changes it." };
   confirm({
     title: `Stop ${name} too?`,
-    description: `${one ? `${name} is` : "They are"} still running on ${agents[0].box}. Stop ${one ? "it" : "them"}, or leave ${one ? "it" : "them"} running to reopen later from the worktree or the dashboard.${shells ? ` ${shells === 1 ? "The shell" : "Shells"} in here stop either way.` : ""}`,
+    description: `${one ? `${name} is` : "They are"} still running on ${agents[0].box}. Stop ${one ? "it" : "them"}, or leave ${one ? "it" : "them"} running to pick up later from the worktree or the dashboard.${shells ? ` ${shells === 1 ? "The shell" : "Shells"} in here stop either way.` : ""}`,
     confirm: one ? "Stop agent" : "Stop agents",
     destructive: true,
     options: [remember],
@@ -209,12 +259,12 @@ function askAboutAgents(c: Closing, agents: Stop[]) {
     secondary: {
       label: "Keep running",
       run: async (checked) => {
-        if (checked.remember) usePrefs.setState({ closeAgents: "keep", agentCloseTips: 3 });
+        if (checked.remember) usePrefs.setState({ closeAgents: "keep", closeAgentsChosen: true, agentCloseTips: 3 });
         await close(c, false);
       },
     },
     run: async (checked) => {
-      if (checked.remember) usePrefs.setState({ closeAgents: "stop" });
+      if (checked.remember) usePrefs.setState({ closeAgents: "stop", closeAgentsChosen: true });
       await close(c, true);
     },
   });

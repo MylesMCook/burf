@@ -27,9 +27,15 @@ export interface Workspace {
   ref: WorktreeRef;
   tabs: WsTab[];
   active?: string;
-  // Agent sessions the person closed. They keep running on the box (the
-  // dashboard still shows them) but do not come back as tabs on their own.
+  // Sessions the person closed. An agent may keep running on the box (the
+  // dashboard and the launcher still show it), but none comes back as a tab
+  // on its own.
   hidden: string[];
+  // Sessions in this worktree the workspace has already seen, tab or not.
+  // Only sessions it hasn't seen yet open as tabs by themselves; one seen
+  // before without a tab is picked up again from the launcher. Unset until
+  // the first look, which takes every session in.
+  known?: string[];
   // When it was last opened, for "recent" lists.
   visitedAt?: number;
 }
@@ -126,23 +132,34 @@ export function goHome() {
   useStore.getState().setView({ kind: "workspace" });
 }
 
-// reconcile gives every session running in the worktree a tab, unless it is
-// already in a pane or was closed by the person. Sessions made anywhere (the
-// CLI, an agent, another laptop) show up this way.
+// How many closed and seen session names a workspace keeps. Names are not
+// dropped when a session leaves the box's list: a list fetched before it
+// stopped can still arrive after, and must not bring it back.
+const REMEMBER = 200;
+const cap = (names: string[]) => (names.length > REMEMBER ? names.slice(-REMEMBER) : names);
+
+// reconcile gives a tab to every session new in the worktree (made by the
+// CLI, an agent, a task, another laptop), unless it is already in a pane or
+// was closed by the person. A session it has seen before is never adopted
+// again: a new tab is always a new session, and one left without a tab is
+// picked up from the launcher. While a pane is starting a session, it waits:
+// that pane will show the new session itself.
 export function reconcile(key: string) {
   const ws = useWorkspaces.getState().spaces[key];
   if (!ws) return;
   const sessions = useStore.getState().boxes[ws.ref.box]?.sessions;
   if (!sessions) return;
+  const panes = ws.tabs.flatMap((t) => leaves(t.root));
+  if (panes.some((l) => l.content.kind === "starting")) return;
   const here = sessions.filter((s) => s.dir === ws.ref.path);
-  const shown = new Set(ws.tabs.flatMap((t) => leaves(t.root)).flatMap((l) => (l.content.kind === "terminal" ? [l.content.session] : [])));
-  const missing = here.filter((s) => !shown.has(s.name) && !ws.hidden.includes(s.name));
-  const names = new Set(sessions.map((s) => s.name));
-  const hidden = ws.hidden.filter((h) => names.has(h));
-  if (!missing.length && hidden.length === ws.hidden.length) return;
+  const known = new Set(ws.known ?? []);
+  const fresh = here.filter((s) => !known.has(s.name));
+  if (!fresh.length && ws.known) return;
+  const shown = new Set(panes.flatMap((l) => (l.content.kind === "terminal" ? [l.content.session] : [])));
+  const missing = fresh.filter((s) => !shown.has(s.name) && !ws.hidden.includes(s.name));
   update(key, (w) => {
     const added = missing.map(newSessionTab(w.ref.box));
-    return { ...w, hidden, tabs: [...w.tabs, ...added], active: w.active ?? added[0]?.id };
+    return { ...w, known: cap([...(w.known ?? []), ...fresh.map((s) => s.name)]), tabs: [...w.tabs, ...added], active: w.active ?? added[0]?.id };
   });
 }
 
@@ -179,7 +196,7 @@ export function removePane(key: string, tabId: string, paneId: string, hide?: st
     if (!root) return undefined;
     return { ...t, root, focus: t.focus === paneId ? leaves(root)[0].id : t.focus };
   });
-  if (hide) update(key, (ws) => ({ ...ws, hidden: [...new Set([...ws.hidden, hide])] }));
+  if (hide) update(key, (ws) => ({ ...ws, hidden: cap([...ws.hidden.filter((h) => h !== hide), hide]) }));
 }
 
 export function resizeSplit(key: string, tabId: string, splitId: string, ratio: number) {

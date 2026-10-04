@@ -21,11 +21,14 @@ export interface Prefs {
   sidebarCollapsed: boolean;
   // Ask before closing a pane or tab stops a shell on its box.
   confirmCloseShells: boolean;
-  // What closing an agent's pane or tab does to the agent: leave it running
-  // on its box, stop it, or ask each time.
+  // What closing an agent's pane or tab does to the agent: stop it (with a
+  // moment to undo), leave it running on its box, or ask each time.
   closeAgents: "keep" | "stop" | "ask";
-  // How many times "keeps running" was said on closing an agent; it stops
-  // after a few.
+  // Set once the person picks closeAgents themselves (Settings, or "Remember
+  // my choice"), so a change of default never overrides them.
+  closeAgentsChosen: boolean;
+  // How many times closing explained itself ("keeps running", "stopped"); it
+  // stops after a few.
   agentCloseTips: number;
   // Labs: the harbour home (no worktree open) and the Terminal |
   // Conversation switch on agent panes.
@@ -50,7 +53,8 @@ const DEFAULTS: Prefs = {
   enabledPlugins: [],
   sidebarCollapsed: false,
   confirmCloseShells: true,
-  closeAgents: "keep",
+  closeAgents: "stop",
+  closeAgentsChosen: false,
   agentCloseTips: 0,
   labs: false,
   agentView: "terminal",
@@ -58,16 +62,40 @@ const DEFAULTS: Prefs = {
   autoUpdateBoxes: false,
 };
 
-const saved = load<Partial<Prefs>>("berth.prefs", {});
+// PREFS_VERSION counts changes of default that saved prefs are moved to
+// once. 2: closing an agent's tab stops it ("keep" was the default before).
+const PREFS_VERSION = 2;
+
+type Saved = Partial<Prefs> & { version?: number };
+
+// migrate brings prefs saved by an older Berth up to date. Prefs are saved
+// whole, so a "keep" saved before version 2 is only the old default unless
+// the person chose it, which closeAgentsChosen records from now on.
+export function migratePrefs(saved: Saved): Saved {
+  const out = { ...saved };
+  if ((saved.version ?? 1) < 2 && Object.keys(saved).length) {
+    if ((saved.closeAgents ?? "keep") === "keep" && !saved.closeAgentsChosen) {
+      out.closeAgents = "stop";
+      out.agentCloseTips = 0;
+    }
+  }
+  out.version = PREFS_VERSION;
+  return out;
+}
+
+const saved = migratePrefs(load<Saved>("berth.prefs", {}));
+const { version: _version, ...savedPrefs } = saved;
 
 export const usePrefs = create<Prefs>()(() => ({
   ...DEFAULTS,
-  ...saved,
+  ...savedPrefs,
   terminal: { ...DEFAULTS.terminal, ...saved.terminal },
   notify: { ...DEFAULTS.notify, ...saved.notify },
 }));
 
-usePrefs.subscribe((p) => save("berth.prefs", p));
+usePrefs.subscribe((p) => save("berth.prefs", { ...p, version: PREFS_VERSION }));
+// The migration is kept at once, not only on the next change.
+save("berth.prefs", { ...usePrefs.getState(), version: PREFS_VERSION });
 
 // ?labs=1 turns Labs on, ?zen=1 zen, and ?view=conversation opens agents
 // as conversations, for the demo.

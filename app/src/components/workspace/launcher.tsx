@@ -13,13 +13,13 @@ import { toastManager } from "@/components/ui/toast";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
-import { agentPresets, openBrowserAt, startSession } from "@/lib/actions";
+import { agentPresets, openBrowserAt, startSession, usePendingStops } from "@/lib/actions";
 import { portUrl } from "@/lib/browser-url";
 import { agentLabel, agentOf, type SessionState, sessionName, sessionState } from "@/lib/derive";
 import { ago } from "@/lib/format";
 import { NONE, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { openSession, useWorkspaces, type WorktreeRef, wsKey } from "@/lib/workspaces";
+import { openSession, type WorktreeRef } from "@/lib/workspaces";
 import { sessionWord } from "@/lib/state-model";
 
 // The model's words (lib/state-model.ts); a shell is just "open".
@@ -54,7 +54,7 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
   const sessions = useStore((s) => s.boxes[ref.box]?.sessions ?? NONE);
   const stats = useStore((s) => s.boxes[ref.box]?.stats);
   const urlPort = useStore((s) => s.status?.proxy.url_port);
-  const hidden = useWorkspaces((s) => s.spaces[wsKey(ref.box, ref.path)]?.hidden ?? NONE);
+  const stopping = usePendingStops((s) => s.sessions);
   const [all, setAll] = useState(false);
   const list = useRef<HTMLDivElement>(null);
   const name = ref.main ? ref.location : ref.worktree;
@@ -92,8 +92,11 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
       : []),
   ];
 
+  // The launcher shows while the worktree has no tabs, so every agent still
+  // running here is one to pick up (but not one closed a moment ago, which
+  // is about to stop).
   const closed = sessions
-    .filter((s) => s.dir === ref.path && !s.exited && hidden.includes(s.name) && agentOf(s))
+    .filter((s) => s.dir === ref.path && !s.exited && !stopping.includes(s.name) && agentOf(s))
     .sort((a, b) => (b.state_since ?? b.created).localeCompare(a.state_since ?? a.created));
   const shown = all ? closed : closed.slice(0, 5);
 
