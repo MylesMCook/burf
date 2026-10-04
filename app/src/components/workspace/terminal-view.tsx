@@ -265,6 +265,37 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
 
   // What looks focused is what has the keyboard: a terminal that gets it
   // without a click (a script, the browser) becomes the focused pane.
+  // The wheel goes to tmux as a mouse wheel, the way a native terminal sends
+  // it once tmux turns mouse reporting on. ghostty-web doesn't report the
+  // mouse, so over a full-screen program (Claude Code draws in the alternate
+  // screen) it turned the wheel into arrow keys, which Claude reads as its
+  // prompt history. tmux then does the right thing: a program that asked
+  // for the mouse scrolls itself; anything else scrolls tmux's history.
+  useEffect(() => {
+    const el = host.current;
+    if (!el || !term || !visible) return;
+    let pending = 0;
+    const onWheel = (e: WheelEvent) => {
+      // Shift-scroll stays the terminal's own (selection, sideways).
+      if (e.shiftKey || !conn.current) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const px = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * el.clientHeight : e.deltaY;
+      pending += px;
+      const rect = el.getBoundingClientRect();
+      const col = Math.min(term.cols, Math.max(1, Math.floor(((e.clientX - rect.left) / rect.width) * term.cols) + 1));
+      const row = Math.min(term.rows, Math.max(1, Math.floor(((e.clientY - rect.top) / rect.height) * term.rows) + 1));
+      // One wheel step per ~40px, so a trackpad doesn't fling the view.
+      while (Math.abs(pending) >= 40) {
+        const up = pending < 0;
+        conn.current.send(`\x1b[<${up ? 64 : 65};${col};${row}M`);
+        pending += up ? 40 : -40;
+      }
+    };
+    el.addEventListener("wheel", onWheel, { capture: true, passive: false });
+    return () => el.removeEventListener("wheel", onWheel, { capture: true });
+  }, [term, visible]);
+
   const focusedRef = useRef(focused);
   focusedRef.current = focused;
   const onFocusRef = useRef(onFocus);
