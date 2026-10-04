@@ -6,10 +6,11 @@ import { Input } from "@/components/ui/input";
 import { Sheet, SheetDescription, SheetFooter, SheetHeader, SheetPanel, SheetPopup, SheetTitle } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import type { Hook } from "@/lib/api";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { cn } from "@/lib/utils";
 import { ALWAYS_ENV, catalogFor, describe, envName } from "@/views/automations/catalog";
 import { LAPTOP } from "@/views/automations/use-hooks";
+import { ErrorText } from "@/components/error-note";
 
 // A valid "on": an event, a prefix like worktree.*, *, or before: one of those.
 const VALID_ON = /^(before:)?(\*|[a-z][a-z0-9-]*\.(\*|[a-z][a-z0-9.-]*))$/;
@@ -65,7 +66,7 @@ export function HookSheet({ editing, onSave, onClose }: { editing?: Editing; onS
       await onSave({ ...editing, hook: clean });
       onClose();
     } catch (err) {
-      setError(errorMessage(err));
+      setError(plainError(err));
     } finally {
       setSaving(false);
     }
@@ -123,7 +124,7 @@ export function HookSheet({ editing, onSave, onClose }: { editing?: Editing; onS
             </div>
           </section>
 
-          {error && <p className="rounded-lg border border-destructive/30 bg-destructive/8 px-3 py-2 text-destructive-foreground text-xs">{error}</p>}
+          {error && <ErrorText className="rounded-lg border border-destructive/30 bg-destructive/8 px-3 py-2 text-destructive-foreground text-xs" text={error} />}
         </SheetPanel>
         <SheetFooter>
           <Button variant="ghost" onClick={onClose}>

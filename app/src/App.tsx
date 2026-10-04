@@ -32,6 +32,7 @@ import { fakeTrafficLights } from "@/lib/api";
 import { useBerthConnection } from "@/hooks/use-berth-connection";
 import { useShortcuts } from "@/hooks/use-shortcuts";
 import { useApplyTheme } from "@/hooks/use-theme";
+import { startOutdatedWatch } from "@/lib/outdated";
 import { startRunsWatch } from "@/lib/runs";
 import { useStore } from "@/lib/store";
 import { startUpdater } from "@/lib/updater";
@@ -68,6 +69,8 @@ export default function App() {
   // panel, Automations and Review (lib/runs.ts).
   const connectedToAgent = useStore((s) => !!s.client);
   useEffect(() => (connectedToAgent ? startRunsWatch() : undefined), [connectedToAgent]);
+  // Which boxes run an older berthd (lib/outdated.ts).
+  useEffect(() => (connectedToAgent ? startOutdatedWatch() : undefined), [connectedToAgent]);
   useKitDeepLinks();
   const view = useStore((s) => s.view);
   const workspace = view.kind === "workspace";

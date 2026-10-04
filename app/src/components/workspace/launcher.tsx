@@ -24,8 +24,10 @@ import { ago } from "@/lib/format";
 import { NONE, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { focusSession, openSession, useWorkspaces, type WorktreeRef, wsKey } from "@/lib/workspaces";
+import { sessionWord } from "@/lib/state-model";
 
-const stateWords: Record<SessionState, string> = { waiting: "waiting for you", running: "working", finished: "finished", ready: "ready", idle: "open", exited: "exited" };
+// The model's words (lib/state-model.ts); a shell is just "open".
+const stateWords = (s: SessionState) => (s === "idle" ? "open" : sessionWord(s, true));
 
 // middle shortens a long name in the middle, keeping both ends readable:
 // "me/eng-1234-…-checkout".
@@ -223,7 +225,7 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
                     <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-muted-foreground text-xs">
                       <StateGlyph state={state} className="size-3" />
                       <span className="truncate">
-                        {stateWords[state]} {ago(s.state_since ?? s.created)}
+                        {stateWords(state)} {ago(s.state_since ?? s.created)}
                       </span>
                     </span>
                     <Button size="xs" variant="outline" onClick={() => openSession(ref.box, s)}>

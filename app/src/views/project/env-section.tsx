@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { boxApi, isSecretRef, type SecretTest } from "@/lib/api";
 import type { RepoConfig } from "@/lib/flows";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { explainSecretError, refProblem } from "@/lib/secret-ref";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -53,7 +53,7 @@ function useSecretTest(box: string, value: string) {
     try {
       setResult(await boxApi.testSecret(client, box, value));
     } catch (err) {
-      setResult({ ok: false, error: errorMessage(err) });
+      setResult({ ok: false, error: plainError(err) });
     }
   };
   const done = result && result !== "testing" ? result : undefined;

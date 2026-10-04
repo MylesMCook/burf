@@ -20,6 +20,7 @@ import { CompareStrip, CompareView } from "@/views/review/compare-view";
 import { allRuns, useRuns } from "@/lib/runs";
 import { markReviewed, type ReviewEntry, refreshReview, useReview, visibleEntries, watchReview } from "@/views/review/review-store";
 import { Tip } from "@/components/tip";
+import { BoxError, NeedsUpdate } from "@/components/upgrade-box";
 
 type Dialog = { kind: "approve"; mode: ApproveMode } | { kind: "send" } | { kind: "discard" };
 
@@ -199,23 +200,17 @@ export function ReviewView() {
 }
 
 function Notices({ outdated, errors }: { outdated: string[]; errors: Record<string, string> }) {
-  const setView = useStore((s) => s.setView);
   const failing = Object.entries(errors);
   if (!outdated.length && !failing.length) return null;
   return (
     <div className="flex shrink-0 flex-col gap-1 border-b bg-muted/30 px-6 py-2 text-xs">
-      {outdated.length > 0 && (
-        <p className="text-muted-foreground">
-          {outdated.join(", ")} {outdated.length === 1 ? "runs" : "run"} an older berthd without review. Upgrade {outdated.length === 1 ? "it" : "them"} to include {outdated.length === 1 ? "its" : "their"} agents' work.{" "}
-          <button type="button" className="font-medium text-foreground underline-offset-2 hover:underline" onClick={() => setView({ kind: "settings", section: "boxes" })}>
-            Boxes
-          </button>
-        </p>
-      )}
+      {outdated.map((box) => (
+        <NeedsUpdate key={box} box={box} className="py-1.5 text-xs">
+          <span className="font-medium">{box}</span> runs an older berthd without Review. Update it to include its agents' work here.
+        </NeedsUpdate>
+      ))}
       {failing.map(([box, msg]) => (
-        <p key={box} className="text-destructive">
-          Couldn't read {box}: {msg}
-        </p>
+        <BoxError key={box} box={box} error={msg} what="its work for review" />
       ))}
     </div>
   );

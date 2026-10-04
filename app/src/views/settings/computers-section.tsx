@@ -12,11 +12,14 @@ import { type BoxStatus, ApiError } from "@/lib/api";
 import { boxList, computersApi, countdown, type Invite, type TrustedComputer } from "@/lib/computers";
 import { useEventLog } from "@/lib/events";
 import { ago, errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { NONE, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { JoinFlow, useSecondsLeft } from "@/views/onboarding/join-step";
 import { ConfirmDialog } from "@/views/settings/confirm";
 import { Code, SettingsGroup, SettingsPage, SettingsRow } from "@/views/settings/rows";
+import { ErrorText } from "@/components/error-note";
+import { BoxError } from "@/components/upgrade-box";
 
 // ComputersSection is Berth on more than one computer: add another (a join
 // link), join from another, and the computers each box trusts, with a way to
@@ -86,7 +89,8 @@ function BoxComputers({ box }: { box: BoxStatus }) {
       setList(await computersApi.clients(client, box.name));
       setError(undefined);
     } catch (err) {
-      setError(err instanceof ApiError && err.status === 404 ? `berthd on ${box.name} is too old to list computers; upgrade it in Settings → Boxes.` : errorMessage(err));
+      // A 404 here is the route, not a computer: the box predates the list.
+      setError(err instanceof ApiError && err.status === 404 ? "404 page not found" : errorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -107,7 +111,7 @@ function BoxComputers({ box }: { box: BoxStatus }) {
       {!online ? (
         <p className="px-4 py-3 text-muted-foreground text-sm">{box.name} is {box.state}, so its list can't be read.</p>
       ) : error ? (
-        <p className="px-4 py-3 text-destructive-foreground text-sm">{error}</p>
+        <BoxError className="mx-4 my-3" box={box.name} error={error} what="its paired computers" />
       ) : !list ? (
         <div className="flex items-center gap-2 px-4 py-3 text-muted-foreground text-sm">
           <Spinner className="size-4" /> Loading…
@@ -189,7 +193,7 @@ function InviteFlow({ boxes, onClose }: { boxes: BoxStatus[]; onClose(): void })
     try {
       setInvite(await computersApi.invite(client, names));
     } catch (err) {
-      setError(errorMessage(err));
+      setError(plainError(err));
     } finally {
       setBusy(false);
     }
@@ -238,7 +242,7 @@ function InviteFlow({ boxes, onClose }: { boxes: BoxStatus[]; onClose(): void })
             <p className="mt-1 text-muted-foreground text-xs leading-relaxed">It can run commands, read code and open terminals there, as this computer can. Open the link only on a computer of yours, and don't post it in a chat or a ticket: anyone who has it can pair until it expires.</p>
           </div>
         </div>
-        {error && <p className="mt-3 text-destructive-foreground text-sm">{error}</p>}
+        {error && <ErrorText className="mt-3 text-destructive-foreground text-sm" text={error} />}
       </DialogPanel>
       <DialogFooter variant="bare" className="px-5">
         <Button variant="ghost" onClick={onClose}>

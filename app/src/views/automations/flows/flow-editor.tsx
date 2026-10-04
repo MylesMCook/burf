@@ -12,12 +12,13 @@ import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, Me
 import { Switch } from "@/components/ui/switch";
 import { sortedWorktrees } from "@/lib/derive";
 import { DEFAULT_MAX_RUNS_PER_HOUR, type Flow, type FlowRun, type FlowSource, flowsApi, type GitHubOn, type Scope, type Step, type StepKind, scopeLocation, slug, type TriggerKind, triggerKind, triggerType } from "@/lib/flows";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { NONE, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { isEditableKind, blankStep, describeCron, GITHUB_ONS, KIND_ORDER, SCHEDULE_PRESETS, STEP_KINDS, summary, TRIGGERS, variablesAt } from "@/views/automations/flows/model";
 import { ProjectLabel, savedWhere } from "@/views/automations/flows/project-label";
 import { StepCard } from "@/views/automations/flows/step-card";
+import { ErrorText } from "@/components/error-note";
 
 export interface EditTarget {
   box: string;
@@ -97,7 +98,7 @@ export function FlowEditor({
       await onSave(where.box, where.scope, { ...flow, trigger, id, name: flow.name.trim() || id }, target.savedId);
       onClose();
     } catch (err) {
-      setError(errorMessage(err));
+      setError(plainError(err));
     } finally {
       setSaving(false);
     }
@@ -165,7 +166,7 @@ export function FlowEditor({
             </div>
           )}
           {runSteps && !target.readOnly && <p className="mb-5 rounded-xl border bg-muted/40 px-4 py-3 text-muted-foreground text-sm">This flow uses run steps (loop, gate, map…) that the editor shows but does not change. Edit it in its JSON: the box's config or the repository's .berth/config.json.</p>}
-          {error && <p className="mb-5 rounded-xl border border-destructive/30 bg-destructive/8 px-4 py-3 text-destructive-foreground text-sm">{error}</p>}
+          {error && <ErrorText className="mb-5 rounded-xl border border-destructive/30 bg-destructive/8 px-4 py-3 text-destructive-foreground text-sm" text={error} />}
           {run && <RunBanner run={run} onClear={() => setRun(undefined)} />}
 
           <p className="mb-4 text-muted-foreground text-sm">{summary(flow)}</p>
@@ -507,7 +508,7 @@ function TestRun({ box, scope, flow, dirty, onRun }: { box: string; scope: Scope
       if (session) Object.assign(data, { session: session.name, agent: session.agent });
       onRun(await flowsApi.test(client, box, flow.id, scope, data));
     } catch (err) {
-      onRun({ id: "", flow: flow.id, scope, started: new Date().toISOString(), status: "failed", event: { type: triggerType(flow.trigger), time: "" }, steps: [], error: errorMessage(err) });
+      onRun({ id: "", flow: flow.id, scope, started: new Date().toISOString(), status: "failed", event: { type: triggerType(flow.trigger), time: "" }, steps: [], error: plainError(err) });
     } finally {
       setBusy(false);
     }

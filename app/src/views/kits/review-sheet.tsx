@@ -6,12 +6,14 @@ import { Sheet, SheetDescription, SheetFooter, SheetHeader, SheetPanel, SheetPop
 import { Skeleton } from "@/components/ui/skeleton";
 import { toastManager } from "@/components/ui/toast";
 import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { describeSource, type KitInfo, type KitTarget, kitsApi } from "@/lib/kits";
 import { useStore } from "@/lib/store";
 import { KitSummary } from "@/views/kits/kit-summary";
 import { closeReview, reloadKits, useKits } from "@/views/kits/kits-store";
 import { matchingTargets, ProjectPicker, type TargetResult, targetKey } from "@/views/kits/project-picker";
 import { Tip } from "@/components/tip";
+import { ErrorText } from "@/components/error-note";
 
 // ReviewSheet shows everything a kit does before it runs anywhere: a kit
 // from a link, which is only kept once added, or one already kept here. Then
@@ -48,7 +50,7 @@ function ReviewBody() {
   useEffect(() => {
     if (!client) return;
     const load = review.kind === "link" ? kitsApi.preview(client, review.src).then((r) => (setReplaces(r.replaces), r.kit)) : kitsApi.get(client, review.id);
-    load.then(setKit, (err) => setError(errorMessage(err)));
+    load.then(setKit, (err) => setError(plainError(err)));
     if (!useKits.getState().installed) void reloadKits();
   }, [client, review]);
 
@@ -169,7 +171,7 @@ function ReviewBody() {
       </SheetHeader>
 
       <SheetPanel className="space-y-6">
-        {error && <p className="rounded-lg border border-destructive/30 bg-destructive/8 px-3 py-2.5 text-destructive-foreground text-sm">{error}</p>}
+        {error && <ErrorText className="rounded-lg border border-destructive/30 bg-destructive/8 px-3 py-2.5 text-destructive-foreground text-sm" text={error} />}
         {!kit && !error && (
           <div className="space-y-3">
             <Skeleton className="h-20 rounded-lg" />

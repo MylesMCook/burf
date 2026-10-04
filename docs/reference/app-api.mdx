@@ -28,6 +28,15 @@ The agent serves the app on `http://127.0.0.1:1378`.
 - **CORS.** Allowed origins are `tauri://localhost`, `http://tauri.localhost`,
   `https://tauri.localhost`, and `http://localhost:1420` to `:1439` (Vite in
   development). The token, not the origin, is what keeps other pages out.
+- **Errors.** A failed request answers `{ "error": "…", "code": "…" }`. The
+  message is for people and logs; branch on the code. The box's codes are
+  `not_found`, `session_exited` (the session's program has ended, so it takes
+  no input), `session_exists`, `agent_waiting` (sending now would answer its
+  question), `refused` (a `before:` hook said no), `unsupported`, `tmux_missing`,
+  `git_failed`, `command_failed`, `too_many`, `bad_request` and `internal`. The
+  agent adds `box_unreachable` (the request never reached the box, 503, or may
+  have, 502), `box_unknown` (no paired box by that name) and `box_outdated`
+  (the box's berthd doesn't have that route yet).
 
 ## Laptop
 
@@ -77,6 +86,7 @@ The app also uses these, mostly as the CLI does:
 | `POST /v1/invite` | `{ boxes? }`: make a join link, as `berth invite --yes`; `{ link, from, expires, boxes: [{ name, addresses, network?, tailnet? }], skipped: [{ name, error }] }`. The app asks the person first |
 | `POST /v1/join/check`, `POST /v1/join` | `{ link }` (any text holding one): what a join link holds, or pair with every box in it, as `berth join`; `{ from, expires, boxes: [{ name, status, error?, address?, network?, tailnet?, sign_in? }] }`. The link reaches the CLI on stdin, never in its arguments |
 | `POST /v1/boxes/add-ssh`, `POST /v1/boxes/{box}/upgrade`, `POST /v1/setup/port80?remove=1` | Run `berth add ssh`, `berth upgrade` or `berth setup port80`, streaming its output as NDJSON `{ line?, done?, error? }` |
+| `GET /v1/boxes/outdated?fresh=1` | `{ boxes: [{ box, current?, available?, outdated, error? }] }`: for each online box, whether it runs an older berthd than this Berth ships, from `berth upgrade BOX --check --json`. Answers are kept for two minutes (`fresh=1` checks again) and forgotten after an upgrade |
 | `DELETE /v1/boxes/{box}` | Forget a box, as `berth forget` |
 | `GET /v1/boxes/local`, `POST /v1/boxes/local`, `POST /v1/boxes/local/uninstall` | [Use this Mac](/getting-started/add-a-box#this-mac): whether this computer can be a box (`{ supported, available, reason?, installed, owned, running, listen?, program?, box?, name }`); set it up and pair, or reconnect, streaming NDJSON `{ line?, done?, error?, box? }`; and `{ remove_data? }`: forget it, stop berthd and remove its service, streaming the same. Boxes it set up have `local: true` in `GET /v1/status` |
 | `GET /v1/editors`, `POST /v1/editors/open` | Editors on this laptop; `{ editor, box, location?, path?, file?, line?, col? }` opens one, as `berth edit` |

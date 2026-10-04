@@ -5,6 +5,7 @@ import { offerAgentHooks } from "@/lib/agent-hooks";
 import { type AgentPreset, boxApi, type Location, type Worktree } from "@/lib/api";
 import { agentLabel, agentOf } from "@/lib/derive";
 import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { findLeaf, type Leaf, leaves, type PaneContent } from "@/lib/layout";
 import { scheduleRefresh, useStore } from "@/lib/store";
 import { resolveBrowserInput } from "@/lib/browser-url";
@@ -71,7 +72,7 @@ export async function startSession(command: string, target: Target = { kind: "ta
     if (command) void offerAgentHooks(ws.ref.box, command);
     return s.name;
   } catch (err) {
-    setPaneContent(at.key, at.tab, at.pane, { kind: "error", message: errorMessage(err) });
+    setPaneContent(at.key, at.tab, at.pane, { kind: "error", message: plainError(err) });
   }
 }
 

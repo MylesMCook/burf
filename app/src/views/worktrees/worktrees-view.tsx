@@ -17,6 +17,7 @@ import { HistorySheet } from "@/views/worktrees/history-sheet";
 import { type BulkAction, useBulk } from "@/views/worktrees/use-bulk";
 import { type Row, useWorktrees } from "@/views/worktrees/use-worktrees";
 import { type Group, WorktreeTable } from "@/views/worktrees/worktree-table";
+import { BoxError } from "@/components/upgrade-box";
 
 type Flag = "behind" | "changes" | "paused";
 type Sort = "recent" | "behind" | "changes" | "name";
@@ -215,10 +216,9 @@ export function WorktreesView() {
 
       <div className="min-h-0 flex-1 overflow-auto pb-24">
         {Object.entries(errors).map(([box, err]) => (
-          <p key={box} className="border-b px-6 py-2 text-muted-foreground text-xs">
-            <span className="font-medium text-foreground">{box}</span>: couldn't list its worktrees ({err}).
-            {/404|not found/i.test(err) && " Its berthd predates this view; upgrade it from Settings → Boxes."}
-          </p>
+          <div key={box} className="border-b px-6 py-2">
+            <BoxError box={box} error={err} what="its worktrees" />
+          </div>
         ))}
         {!loaded ? (
           <div className="space-y-2 px-6 pt-4">

@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 
 import { boxApi } from "@/lib/api";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { useStore } from "@/lib/store";
+import { ErrorText } from "@/components/error-note";
 
 interface Props {
   box: string;
@@ -31,7 +32,7 @@ export function LogView({ box, location, worktree, service, visible }: Props) {
         setText(t);
         setError(undefined);
       } catch (err) {
-        if (!stopped) setError(errorMessage(err));
+        if (!stopped) setError(plainError(err));
       }
     };
     void load();
@@ -49,7 +50,7 @@ export function LogView({ box, location, worktree, service, visible }: Props) {
 
   return (
     <div className="relative flex min-h-0 flex-1 flex-col bg-background">
-      {error && <p className="border-b px-3 py-1.5 text-destructive text-xs">{error}</p>}
+      {error && <ErrorText className="border-b px-3 py-1.5 text-destructive text-xs" text={error} />}
       <pre
         ref={scroller}
         onScroll={(e) => {

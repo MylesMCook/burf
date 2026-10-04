@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { DialogFooter, DialogPanel } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import type { Location } from "@/lib/api";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { locationName, projectsApi } from "@/lib/projects";
 import { useStore } from "@/lib/store";
+import { ErrorText } from "@/components/error-note";
 
 // CreateForm starts a project from nothing: a folder with a fresh git
 // repository and an empty first commit, so worktrees work right away.
@@ -28,7 +29,7 @@ export function CreateForm({ box, onAdded, onCancel }: { box: string; onAdded(lo
     try {
       await onAdded(await projectsApi.create(client, box, clean, parent.trim() || undefined));
     } catch (err) {
-      setError(errorMessage(err));
+      setError(plainError(err));
       setBusy(false);
     }
   };
@@ -59,7 +60,7 @@ export function CreateForm({ box, onAdded, onCancel }: { box: string; onAdded(lo
           with git and an empty first commit.
         </p>
         {taken && <p className="text-sm text-warning">{box} already has a project called {clean}.</p>}
-        {error && <p className="text-destructive text-sm">{error}</p>}
+        {error && <ErrorText className="text-destructive text-sm" text={error} />}
       </DialogPanel>
       <DialogFooter className="items-center px-5 py-3">
         <Button type="button" variant="ghost" onClick={onCancel}>

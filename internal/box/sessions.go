@@ -109,7 +109,7 @@ const listFormat = "#{session_name}\t#{session_created}\t#{session_attached}\t#{
 
 func (s *Sessions) List(ctx context.Context) ([]Session, error) {
 	if _, err := exec.LookPath("tmux"); err != nil {
-		return nil, errors.New("tmux is not installed on this box")
+		return nil, errTmuxMissing
 	}
 	out, err := s.tmux(ctx, "list-sessions", "-F", listFormat)
 	if err != nil {

@@ -26,7 +26,8 @@ export type FeedState = "loading" | "ready" | "none" | "unsupported" | "error";
 
 export const hasTranscripts = (box: string) => !!useStore.getState().boxes[box]?.info?.capabilities?.includes("transcript");
 
-export function useTranscriptFeed(box: string, session: string, dir: string | undefined, enabled: boolean): FeedState {
+// attempt, when it changes, reads again from where it was (a Retry).
+export function useTranscriptFeed(box: string, session: string, dir: string | undefined, enabled: boolean, attempt = 0): FeedState {
   const client = useStore((s) => s.client);
   const supported = useStore((s) => !!s.boxes[box]?.info?.capabilities?.includes("transcript"));
   const [state, setState] = useState<FeedState>(supported ? "loading" : "unsupported");
@@ -47,6 +48,8 @@ export function useTranscriptFeed(box: string, session: string, dir: string | un
       return;
     }
     if (!client || !enabled) return;
+    // A retry reads afresh rather than standing on the last failure.
+    setState((s) => (s === "error" ? "loading" : s));
     let alive = true;
     let busy = false;
     const read = async () => {
@@ -88,7 +91,7 @@ export function useTranscriptFeed(box: string, session: string, dir: string | un
       window.clearInterval(t);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [client, box, session, key, supported, enabled, latest]);
+  }, [client, box, session, key, supported, enabled, latest, attempt]);
 
   return state;
 }

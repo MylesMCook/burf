@@ -9,9 +9,11 @@ import { Switch } from "@/components/ui/switch";
 import { toastManager } from "@/components/ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "@/components/ui/tooltip";
 import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { type SkillAgent, type SkillRow, type SkillsChange, type SkillsReport, type SkillState, skillSummary, skillsApi } from "@/lib/skills";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { ErrorText } from "@/components/error-note";
 
 const agentNames: Record<SkillAgent, string> = {
   claude: "Claude Code",
@@ -36,7 +38,7 @@ export function SkillsPanel({ box, location, className, hideTitle }: { box: stri
       setReport(await skillsApi.list(client, box, location));
       setError(undefined);
     } catch (err) {
-      setError(errorMessage(err));
+      setError(plainError(err));
     }
   }, [client, box, location]);
 
@@ -100,7 +102,7 @@ export function SkillsPanel({ box, location, className, hideTitle }: { box: stri
             </span>
           ))}
         </div>
-        {error && <p className="px-4 py-6 text-center text-destructive-foreground text-xs">{error}</p>}
+        {error && <ErrorText className="px-4 py-6 text-center text-destructive-foreground text-xs" text={error} />}
         {!report && !error && (
           <div className="flex items-center justify-center gap-2 px-4 py-6 text-muted-foreground text-xs">
             <Spinner className="size-3" /> Checking {box}…

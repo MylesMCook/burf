@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { Tabs, TabsList, TabsTab } from "@/components/ui/tabs";
 import type { Discovery, Machine } from "@/lib/api";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { openUrl } from "@/lib/open-url";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -102,7 +102,7 @@ function useDiscovery(source: TailnetSource | undefined, system?: SystemTailnet)
     setFound({ state: "loading" });
     discoverNetwork(client, network, nonce > 0).then(
       (d) => live && setFound({ state: "ok", discovery: d }),
-      (err) => live && setFound({ state: "error", message: errorMessage(err), retry: () => setNonce((n) => n + 1) }),
+      (err) => live && setFound({ state: "error", message: plainError(err), retry: () => setNonce((n) => n + 1) }),
     );
     return () => {
       live = false;

@@ -35,6 +35,9 @@ export interface Prefs {
   // Labs: zen (⌘.): no sidebar or status bar, a switcher for a tab strip,
   // agents as conversations.
   zen: boolean;
+  // Update a box's berthd as soon as Berth ships a newer one
+  // (lib/outdated.ts). Off: the status bar offers it instead.
+  autoUpdateBoxes: boolean;
 }
 
 const DEFAULTS: Prefs = {
@@ -52,6 +55,7 @@ const DEFAULTS: Prefs = {
   labs: false,
   agentView: "terminal",
   zen: false,
+  autoUpdateBoxes: false,
 };
 
 const saved = load<Partial<Prefs>>("berth.prefs", {});

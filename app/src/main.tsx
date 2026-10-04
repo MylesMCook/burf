@@ -3,6 +3,8 @@ import ReactDOM from "react-dom/client";
 
 import App from "@/App";
 import { ErrorBoundary } from "@/components/error-boundary";
+// Error toasts in plain English, with the box's own words behind Details.
+import "@/components/error-note";
 import { isTauri } from "@/lib/api";
 import { openUrl } from "@/lib/open-url";
 import { installGlobals } from "@/plugins/host";

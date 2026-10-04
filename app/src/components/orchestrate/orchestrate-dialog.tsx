@@ -19,12 +19,14 @@ import { agentPresets } from "@/lib/actions";
 import type { Session } from "@/lib/api";
 import { agentLabel, agentOf } from "@/lib/derive";
 import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { handoff, handoffPrompt, loop, review, reviewPrompt, send, sessionLocation } from "@/lib/orchestrate";
 import { openPromptPicker } from "@/lib/prompts";
 import { type SendFailure, enqueue, sendFailure } from "@/lib/queue";
 import { load, save } from "@/lib/storage";
 import { type OrchestrateDraft, useStore } from "@/lib/store";
 import { findSession, setPaneContent, splitPane } from "@/lib/workspaces";
+import { ErrorText } from "@/components/error-note";
 
 const titles = {
   send: "Send a prompt",
@@ -93,7 +95,11 @@ function Body({ d, onDone }: { d: OrchestrateDraft; onDone(): void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [newWorktree]);
 
-  const ready = d.kind === "loop" ? !!check.trim() : !!text.trim() && (!newWorktree || !!name.trim());
+  // An agent that has ended takes no prompt: sending or looping is not
+  // offered, only handing its work to a new one.
+  const listed = useStore((s) => s.boxes[d.box]?.sessions);
+  const ended = (d.kind === "send" || d.kind === "loop") && !!listed && (!session || session.exited);
+  const ready = !ended && (d.kind === "loop" ? !!check.trim() : !!text.trim() && (!newWorktree || !!name.trim()));
 
   const submit = async (force?: "send") => {
     if (!ready || busy) return;
@@ -123,14 +129,14 @@ function Body({ d, onDone }: { d: OrchestrateDraft; onDone(): void }) {
         const started = (s: Session) => at && pane && setPaneContent(at.key, at.tab, pane, { kind: "terminal", box: d.box, session: s.name });
         const start = d.kind === "review" ? review({ box: d.box, from: d.session, agent, prompt: text, onStarted: started }) : handoff({ box: d.box, from: d.session, location: location || undefined, agent, prompt: text, worktree: wt, onStarted: started });
         void start.catch((err) => {
-          if (at && pane) setPaneContent(at.key, at.tab, pane, { kind: "error", message: errorMessage(err) });
+          if (at && pane) setPaneContent(at.key, at.tab, pane, { kind: "error", message: plainError(err) });
           else toastManager.add({ title: d.kind === "review" ? "Review failed" : "Hand off failed", description: errorMessage(err), type: "error" });
         });
         if (wt) toastManager.add({ title: `Starting ${agentLabel(agent)} in ${wt.name}`, type: "info" });
       }
       onDone();
     } catch (err) {
-      setError(errorMessage(err));
+      setError(plainError(err));
     } finally {
       setBusy(false);
     }
@@ -230,8 +236,16 @@ function Body({ d, onDone }: { d: OrchestrateDraft; onDone(): void }) {
             </Field>
           </div>
         )}
+        {ended && (
+          <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border bg-muted/40 px-3 py-2 text-sm">
+            <span className="min-w-0 flex-1">{who} has ended, so it can't take a prompt. Hand its work to a new agent instead.</span>
+            <Button type="button" size="xs" variant="outline" onClick={() => useStore.getState().setOrchestrate({ ...d, kind: "handoff", prompt: text.trim() || undefined })}>
+              Hand off instead
+            </Button>
+          </div>
+        )}
         {offer && <QueueOffer failure={offer} box={d.box} />}
-        {error && <p className="text-destructive text-sm">{error}</p>}
+        {error && <ErrorText className="text-destructive text-sm" text={error} />}
       </DialogPanel>
 
       <DialogFooter className="items-center px-5 py-3">

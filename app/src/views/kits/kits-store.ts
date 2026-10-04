@@ -2,7 +2,7 @@ import { useCallback, useEffect } from "react";
 import { create } from "zustand";
 
 import { useEventLog } from "@/lib/events";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { type InstalledKitOn, type KitInfo, type KitTarget, kitsApi } from "@/lib/kits";
 import { useStore } from "@/lib/store";
 
@@ -54,7 +54,7 @@ export async function reloadKits() {
     const [kits, installed] = await Promise.all([kitsApi.list(client), kitsApi.installed(client)]);
     useKits.setState({ kits, installed, error: undefined, loading: false });
   } catch (err) {
-    useKits.setState({ error: errorMessage(err), loading: false });
+    useKits.setState({ error: plainError(err), loading: false });
   }
 }
 

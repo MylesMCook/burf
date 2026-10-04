@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { useStore } from "@/lib/store";
 
 // The app's places, arranged by the person: a few pinned at the top, the
@@ -49,7 +49,7 @@ export async function loadNav() {
     const doc = await client.laptop<Partial<NavLayout> | null>("GET", "/v1/app/sidebar");
     useNav.setState({ layout: migrate(doc), loaded: true });
   } catch (err) {
-    useNav.setState({ loaded: true, error: errorMessage(err) });
+    useNav.setState({ loaded: true, error: plainError(err) });
   }
 }
 
@@ -62,7 +62,7 @@ async function save(fn: (l: NavLayout) => NavLayout) {
   try {
     await client.laptop("PUT", "/v1/app/sidebar", next);
   } catch (err) {
-    useNav.setState({ layout: before, error: errorMessage(err) });
+    useNav.setState({ layout: before, error: plainError(err) });
   }
 }
 

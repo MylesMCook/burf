@@ -145,7 +145,9 @@ function TabButton({ tab, active, onActivate, onClose, onDragStart, onDrop }: Ta
     .map((l) => {
       const c = l.content;
       const s = c.kind === "terminal" ? boxes[c.box]?.sessions?.find((x) => x.name === c.session) : undefined;
-      const state = s && c.kind === "terminal" ? sessionState(s, boxes[c.box]?.stats) : undefined;
+      // A session the box no longer lists has ended, as its pane says.
+      const gone = c.kind === "terminal" && !s && !!boxes[c.box]?.sessions;
+      const state: SessionState | undefined = s && c.kind === "terminal" ? sessionState(s, boxes[c.box]?.stats) : gone ? "exited" : undefined;
       return { l, s, state, agent: s ? agentOf(s) : c.kind === "terminal" ? c.agent : undefined };
     })
     .sort((a, b) => rank(a, tab.focus) - rank(b, tab.focus));
@@ -178,7 +180,7 @@ function TabButton({ tab, active, onActivate, onClose, onDragStart, onDrop }: Ta
       >
         {active && <span className="absolute inset-x-0 top-0 h-px bg-foreground/50" />}
         {offline ? (
-          <CloudOffIcon className="size-3 shrink-0 text-muted-foreground" aria-label="box offline" />
+          <CloudOffIcon className="size-3 shrink-0 text-muted-foreground" aria-label={`${c.kind === "terminal" ? c.box : "The box"} is offline`} />
         ) : lead.state && lead.state !== "idle" ? (
           <StateGlyph state={lead.state} className="size-3" />
         ) : null}

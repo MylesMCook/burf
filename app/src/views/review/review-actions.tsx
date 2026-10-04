@@ -10,12 +10,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { toastManager } from "@/components/ui/toast";
 import { boxApi } from "@/lib/api";
 import { agentLabel } from "@/lib/derive";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { describeCode, quote } from "@/lib/git/parse";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { forgetPullRequest, markReviewed, type ReviewEntry, refreshReview, useReview, where } from "@/views/review/review-store";
 import { commitMessage, lastMessage } from "@/views/review/summary";
+import { ErrorText } from "@/components/error-note";
 
 // The three things to do with an agent's finished work: approve it
 // (commit, push, open a PR), send it back with a note, or discard it.
@@ -145,7 +146,7 @@ export function ApproveDialog({ entry, initial, onClose }: { entry?: ReviewEntry
       await settle(entry);
       onClose();
     } catch (err) {
-      setError(errorMessage(err));
+      setError(plainError(err));
     } finally {
       setBusy(false);
     }
@@ -225,7 +226,7 @@ export function SendBackDialog({ entry, onClose }: { entry?: ReviewEntry; onClos
       void refreshReview();
       onClose();
     } catch (err) {
-      setError(errorMessage(err));
+      setError(plainError(err));
     } finally {
       setBusy(false);
     }
@@ -248,7 +249,7 @@ export function SendBackDialog({ entry, onClose }: { entry?: ReviewEntry; onClos
             autoFocus
             onFocus={(e) => e.currentTarget.setSelectionRange(e.currentTarget.value.length, e.currentTarget.value.length)}
           />
-          {error && <p className="rounded-md bg-destructive/8 p-2 font-mono text-[11px] text-destructive">{error}</p>}
+          {error && <ErrorText className="rounded-md bg-destructive/8 p-2 text-xs text-destructive" text={error} />}
         </DialogPanel>
         <DialogFooter className="items-center px-5 py-3">
           <Button variant="ghost" onClick={onClose} disabled={busy}>
@@ -279,7 +280,7 @@ export function DiscardDialog({ entry, onClose }: { entry?: ReviewEntry; onClose
       await refreshReview();
       onClose();
     } catch (err) {
-      setError(errorMessage(err));
+      setError(plainError(err));
     } finally {
       setBusy(false);
     }
@@ -319,7 +320,7 @@ export function DiscardDialog({ entry, onClose }: { entry?: ReviewEntry; onClose
             ))}
           </ul>
           <p className="font-mono text-[11px] text-muted-foreground">{DISCARD_COMMAND}</p>
-          {error && <p className="whitespace-pre-wrap rounded-md bg-destructive/8 p-2 font-mono text-[11px] text-destructive">{error}</p>}
+          {error && <ErrorText className="rounded-md bg-destructive/8 p-2 text-xs text-destructive" text={error} />}
         </DialogPanel>
         <DialogFooter className="items-center px-5 py-3">
           <Button variant="ghost" onClick={onClose} disabled={busy}>

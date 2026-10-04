@@ -35,6 +35,17 @@ export interface Endpoint {
   token: string;
 }
 
+// OutdatedBox is GET /v1/boxes/outdated's answer for one online box:
+// whether it runs an older berthd than this Berth ships. error is set when
+// the check couldn't tell.
+export interface OutdatedBox {
+  box: string;
+  current?: string;
+  available?: string;
+  outdated: boolean;
+  error?: string;
+}
+
 export const isTauri = (): boolean => "__TAURI_INTERNALS__" in window;
 
 // hasTrafficLights says whether the window's own buttons sit over its top
@@ -54,12 +65,34 @@ export async function endpoint(): Promise<Endpoint> {
   return { url, token };
 }
 
+// code, when the box or agent sent one, is what to branch on ("session_exited",
+// "box_outdated", "not_found"…); lib/errors.ts turns it into words.
 export class ApiError extends Error {
+  // box is the box the request went to, when it went to one.
+  box?: string;
+  // The last few by message, so an error that reaches a toast only as text
+  // still has its code (lib/errors.ts).
+  static recent = new Map<string, ApiError>();
   constructor(
     message: string,
     readonly status: number,
+    readonly code?: string,
   ) {
     super(message);
+    ApiError.recent.delete(message);
+    ApiError.recent.set(message, this);
+    if (ApiError.recent.size > 40) ApiError.recent.delete(ApiError.recent.keys().next().value!);
+  }
+}
+
+// errorBody reads {error, code} from a failed response's text.
+function errorBody(text: string, fallback: string): { message: string; code?: string } {
+  try {
+    const j = JSON.parse(text) as { error?: string; code?: string };
+    return { message: j.error ?? (text.trim() || fallback), code: j.code };
+  } catch {
+    // Not JSON: a plain-text error is already the message.
+    return { message: text.trim() || fallback };
   }
 }
 
@@ -301,6 +334,9 @@ export const laptopApi = {
   forget: (c: Client, box: string) => c.laptop("DELETE", `/v1/boxes/${encodeURIComponent(box)}`),
   upgrade: (c: Client, box: string, onLine: (line: string) => void, signal?: AbortSignal) =>
     runCommand(c, "POST", `/v1/boxes/${encodeURIComponent(box)}/upgrade`, undefined, onLine, signal),
+  // outdated says which online boxes run an older berthd than this Berth
+  // ships (lib/outdated.ts).
+  outdated: (c: Client, fresh?: boolean) => c.laptop<{ boxes: OutdatedBox[] }>("GET", `/v1/boxes/outdated${fresh ? "?fresh=1" : ""}`),
   // addSsh installs berthd on a host over SSH and pairs with it. It rejects
   // with a CommandError whose ssh explains a failed login. identity is a key
   // file to log in with; trust_host_key, a SHA256 fingerprint the person
@@ -356,13 +392,8 @@ export function httpClient(ep: Endpoint): Client {
     });
     const text = await res.text();
     if (!res.ok) {
-      let message = text.trim() || res.statusText;
-      try {
-        message = (JSON.parse(text) as { error?: string }).error ?? message;
-      } catch {
-        // Not JSON: a plain-text error is already the message.
-      }
-      throw new ApiError(message, res.status);
+      const e = errorBody(text, res.statusText);
+      throw new ApiError(e.message, res.status, e.code);
     }
     // Logs come back as plain text; everything else is JSON.
     if (res.headers.get("Content-Type")?.startsWith("text/plain")) return text as T;
@@ -379,7 +410,11 @@ export function httpClient(ep: Endpoint): Client {
       if (!res.ok) throw new ApiError(`${p.id}: ${file}: ${res.status} ${res.statusText}`, res.status);
       return new Uint8Array(await res.arrayBuffer());
     },
-    box: (box, method, path, body) => request(method, `/v1/boxes/${encodeURIComponent(box)}/api/${path}`, body),
+    box: <T,>(box: string, method: string, path: string, body?: unknown) =>
+      request<T>(method, `/v1/boxes/${encodeURIComponent(box)}/api/${path}`, body).catch((err: unknown) => {
+        if (err instanceof ApiError) err.box = box;
+        throw err;
+      }),
     async boxBlob(box, path) {
       const res = await fetch(`${ep.url}/v1/boxes/${encodeURIComponent(box)}/api/${path}`, { headers });
       if (!res.ok) throw new ApiError(`${res.status} ${res.statusText}`, res.status);
@@ -394,14 +429,8 @@ export function httpClient(ep: Endpoint): Client {
         signal,
       });
       if (!res.ok || !res.body) {
-        const text = await res.text();
-        let message = text.trim() || res.statusText;
-        try {
-          message = (JSON.parse(text) as { error?: string }).error ?? message;
-        } catch {
-          // A plain-text error is already the message.
-        }
-        throw new ApiError(message, res.status);
+        const e = errorBody(await res.text(), res.statusText);
+        throw new ApiError(e.message, res.status, e.code);
       }
       const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
       let buf = "";

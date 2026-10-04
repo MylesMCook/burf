@@ -8,6 +8,7 @@ import { Menu, MenuItem, MenuPopup, MenuTrigger } from "@/components/ui/menu";
 import { Switch } from "@/components/ui/switch";
 import { toastManager } from "@/components/ui/toast";
 import { errorMessage } from "@/lib/format";
+import { BoxError } from "@/components/upgrade-box";
 import { newNtfyTopic, type PairedBox, pairingLink, phoneApi, type PhoneStatus } from "@/lib/phone";
 import { NONE, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -79,9 +80,7 @@ export function PhoneSection() {
                 !st ? (
                   "Checking…"
                 ) : unsupported ? (
-                  <>
-                    This box's berthd is too old for phone access. Upgrade it from Boxes. <span className="opacity-70">({st.error})</span>
-                  </>
+                  <BoxError className="mt-1" box={b.name} error={st.error} what="phone access" />
                 ) : "error" in st && st.error ? (
                   <span className="text-destructive">{st.error}</span>
                 ) : on ? (

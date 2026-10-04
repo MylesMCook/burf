@@ -15,13 +15,14 @@ import { Kbd } from "@/components/ui/kbd";
 import { Spinner } from "@/components/ui/spinner";
 import { toastManager } from "@/components/ui/toast";
 import type { Location } from "@/lib/api";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { useStore } from "@/lib/store";
 import { Tip } from "@/components/tip";
 import { cn } from "@/lib/utils";
 import { selectWorktree } from "@/lib/workspaces";
 import { reloadKits, useKits } from "@/views/kits/kits-store";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
+import { ErrorText } from "@/components/error-note";
 
 // AddProjectDialog adds a repository on a box as a project. The boxes come
 // first, because that is where a project lives; then one field takes
@@ -152,7 +153,7 @@ function Body({ startBox }: { startBox?: string }) {
       });
       await finish(res, p);
     } catch (err) {
-      setError(signal.aborted ? "Stopped." : errorMessage(err));
+      setError(signal.aborted ? "Stopped." : plainError(err));
       setPhase("failed");
     }
   };
@@ -285,7 +286,7 @@ function Body({ startBox }: { startBox?: string }) {
                 <Rows rows={rows} active={active} onHover={setActive} onPick={pick} />
               )}
             </div>
-            {error && <p className="-mt-1 truncate text-destructive-foreground text-sm">{error}</p>}
+            {error && <ErrorText className="-mt-1 text-destructive-foreground text-sm" text={error} />}
           </>
         )}
       </DialogPanel>

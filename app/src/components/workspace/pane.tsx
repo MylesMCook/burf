@@ -5,6 +5,7 @@ import { Tip } from "@/components/tip";
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
 import { BrowserPane } from "@/components/browser-pane";
 import { ConversationPane } from "@/components/conversation/conversation-pane";
+import { ErrorText } from "@/components/error-note";
 import { SessionActionItems } from "@/components/orchestrate/session-actions";
 import { Button } from "@/components/ui/button";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuShortcut, MenuTrigger } from "@/components/ui/menu";
@@ -68,7 +69,7 @@ export function Pane({ wsKey, tab, pane, visible, focused, split }: Props) {
         {/* The terminal stays connected underneath, so switching back is instant. */}
         {c.kind === "terminal" && view === "conversation" && (
           <div className="absolute inset-0 z-10 flex flex-col">
-            <ConversationPane box={c.box} session={c.session} visible={visible} onShowTerminal={() => setPaneContent(wsKey, tab, pane.id, { ...c, view: "terminal" })} />
+            <ConversationPane box={c.box} session={c.session} agent={c.agent} visible={visible} onShowTerminal={() => setPaneContent(wsKey, tab, pane.id, { ...c, view: "terminal" })} />
           </div>
         )}
         {c.kind === "browser" && <BrowserPane id={pane.id} url={c.url} visible={visible} onNavigate={(url) => setPaneContent(wsKey, tab, pane.id, { kind: "browser", url })} />}
@@ -82,8 +83,8 @@ export function Pane({ wsKey, tab, pane, visible, focused, split }: Props) {
         )}
         {c.kind === "error" && (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center text-sm">
-            <p className="font-medium">Could not start it</p>
-            <p className="max-w-md text-muted-foreground text-xs">{c.message}</p>
+            <p className="font-medium">Couldn't start it</p>
+            <ErrorText className="max-w-md items-center text-muted-foreground text-xs" text={c.message} />
             <Button size="sm" variant="outline" onClick={close}>
               Close pane
             </Button>
@@ -168,12 +169,17 @@ function PaneTitle({ pane }: { pane: Leaf }) {
   const named = useStore((s) => (c.kind === "terminal" && session ? sessionName(session, { sessions: s.boxes[c.box]?.sessions }) : undefined));
   const agent = session ? agentOf(session) : undefined;
   const label = named ?? paneLabel(c, agent);
+  // Honest about what it can't know: nothing while the box is away, ended
+  // once the box no longer lists the session.
+  const away = useStore((s) => c.kind === "terminal" && !!s.status && s.status.boxes.find((b) => b.name === c.box)?.state !== "online");
+  const gone = useStore((s) => c.kind === "terminal" && !session && !!s.boxes[c.box]?.sessions);
+  const state = away ? undefined : session ? sessionState(session, stats) : gone ? "exited" : undefined;
   return (
-    <Tip label={c.kind === "terminal" ? `${c.session} on ${c.box}` : undefined} align="start">
+    <Tip label={c.kind === "terminal" ? `${c.session} on ${c.box}${away ? ` · ${c.box} is offline` : ""}` : undefined} align="start">
       <span className="flex min-w-0 items-center gap-1.5">
         <PaneIcon content={c} agent={agent} />
         <span className="truncate">{label}</span>
-        {session && <StateGlyph state={sessionState(session, stats)} className="size-3" />}
+        {state && <StateGlyph state={state} className="size-3" />}
       </span>
     </Tip>
   );
