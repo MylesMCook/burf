@@ -16,7 +16,7 @@ import { toastManager } from "@/components/ui/toast";
 import type { SessionEntry } from "@/hooks/use-agent-counts";
 import { boxApi } from "@/lib/api";
 import { agentOf, type SessionState } from "@/lib/derive";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { load, save } from "@/lib/storage";
 import { scheduleRefresh, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -70,7 +70,7 @@ async function stopAgents(entries: SessionEntry[], onEach: (key: string, p: Prog
         onEach(key, { state: "ok" });
       } catch (err) {
         failed++;
-        onEach(key, { state: "failed", message: errorMessage(err) });
+        onEach(key, { state: "failed", message: plainError(err) });
       }
     }
   };

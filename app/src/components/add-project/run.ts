@@ -3,6 +3,7 @@ import { shortPath } from "@/components/add-project/unique-name";
 import type { Plan } from "@/components/add-project/use-plan";
 import type { Location } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { type KitInfo, kitsApi } from "@/lib/kits";
 import { projectsApi } from "@/lib/projects";
 import { useStore } from "@/lib/store";
@@ -68,7 +69,7 @@ export async function runPlan(plan: Plan, o: RunOptions): Promise<RunResult> {
           extras.push({ box: b, loc: l });
           o.onLine(b, `Added ${l.name} at ${l.path}`);
         } catch (err) {
-          const msg = o.signal.aborted ? "stopped" : errorMessage(err);
+          const msg = o.signal.aborted ? "stopped" : plainError(err);
           extras.push({ box: b, error: msg });
           o.onLine(b, `failed: ${msg}`);
         }

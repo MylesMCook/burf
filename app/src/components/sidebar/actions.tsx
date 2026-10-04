@@ -51,6 +51,7 @@ import { boxApi, type BoxStatus, laptopApi, type Location, type Worktree, type W
 import { portUrl } from "@/lib/browser-url";
 import { agentOf, worktreeSessions } from "@/lib/derive";
 import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { scheduleRefresh, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { forgetWorktree, refOf, selectWorktree } from "@/lib/workspaces";
@@ -276,7 +277,7 @@ export function removeWorktree(box: string, loc: Location, wt: Worktree) {
       } catch (err) {
         const m = errorMessage(err);
         // git's own words for work it would lose.
-        if (/modified|untracked|uncommitted|contains/i.test(m) && !checked.force) throw new Error(`${wt.name} has uncommitted changes. Tick "Remove even with uncommitted changes" to remove it anyway. (${m})`);
+        if (/modified|untracked|uncommitted|contains/i.test(m) && !checked.force) throw new Error(`${wt.name} has uncommitted changes. Tick "Remove even with uncommitted changes" to remove it anyway.`);
         throw err;
       }
       forgetWorktree(box, wt.path);
@@ -295,7 +296,7 @@ function RunItems({ box, loc, wt }: { box: string; loc: Location; wt: Worktree }
     if (!client) return;
     boxApi.worktreeServices(client, box, loc.name, wt.name).then(setList, (e) => {
       setList([]);
-      setError(errorMessage(e));
+      setError(plainError(e));
     });
   }, [box, loc.name, wt.name]);
   if (!list) {

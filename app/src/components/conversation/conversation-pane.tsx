@@ -4,21 +4,24 @@ import { useEffect, useMemo, useState } from "react";
 import { AgentIcon } from "@/components/agent-glyph";
 import { DitherBand } from "@/components/art/dither-band";
 import { HARBOUR, HARBOUR_MUTE, useHarbourLight } from "@/components/art/harbour-art";
+import { Scene, type SceneName } from "@/components/art/scenes";
 import { ConversationView } from "@/components/conversation/conversation-view";
+import { toastError } from "@/components/error-note";
+import { UpgradeBox } from "@/components/upgrade-box";
 import { Frame, FrameFooter, FramePanel } from "@/components/ui/frame";
-import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { InputGroup, InputGroupAddon, InputGroupTextarea } from "@/components/ui/input-group";
 import { Spinner } from "@/components/ui/spinner";
-import { toastManager } from "@/components/ui/toast";
 import { isMock } from "@/hooks/use-berth-connection";
 import { startSession } from "@/lib/actions";
-import { boxApi, laptopApi } from "@/lib/api";
+import { boxApi } from "@/lib/api";
 import { keyOf, useConversations } from "@/lib/conversation-store";
-import { agentLabel, agentOf, sessionState, worktreeOf } from "@/lib/derive";
-import { errorMessage } from "@/lib/format";
+import { agentLabel, agentOf, guessAgent, sessionState, worktreeOf } from "@/lib/derive";
+import type { NextStep } from "@/lib/errors";
 import { finishTurn, seedTranscript } from "@/lib/mock-conversation";
+import { updateBoxes } from "@/lib/outdated";
+import { AGENT_WORDS } from "@/lib/state-model";
 import { NONE, useStore } from "@/lib/store";
 import type { TranscriptItem } from "@/lib/transcript";
 import { useAsk, useTranscriptFeed } from "@/lib/transcript-feed";
@@ -29,16 +32,28 @@ import { useAsk, useTranscriptFeed } from "@/lib/transcript-feed";
 // session's live state and its screen. The demo plays a scripted turn
 // instead. Without either it says so and offers the terminal back.
 
-export function ConversationPane({ box, session, visible, onShowTerminal }: { box: string; session: string; visible: boolean; onShowTerminal(): void }) {
+//
+// It never claims more than it knows. Until the box lists its sessions it
+// reads; a session the box no longer lists, or whose program closed, has
+// ended (and never offers a reply); a box that is away says so and the pane
+// comes back by itself when it returns; a conversation that can't be read
+// says why, with a way to try again.
+export function ConversationPane({ box, session, agent: remembered, visible, onShowTerminal }: { box: string; session: string; agent?: string; visible: boolean; onShowTerminal(): void }) {
   const key = keyOf(box, session);
   const items = useConversations((s) => s.items[key]) ?? (NONE as TranscriptItem[]);
-  const s = useStore((st) => st.boxes[box]?.sessions?.find((x) => x.name === session));
+  const listed = useStore((st) => st.boxes[box]?.sessions);
+  const s = listed?.find((x) => x.name === session);
   const stats = useStore((st) => st.boxes[box]?.stats);
   const locations = useStore((st) => st.boxes[box]?.locations);
   const client = useStore((st) => st.client);
+  const boxStatus = useStore((st) => st.status?.boxes.find((b) => b.name === box));
   const mock = isMock();
-  const state = s ? sessionState(s, stats) : undefined;
-  const feed = useTranscriptFeed(box, session, s?.dir, visible && !mock);
+  const away = !!boxStatus && boxStatus.state !== "online";
+  // Gone: the box lists its sessions and this one isn't among them.
+  const gone = !away && !!listed && !s;
+  const state = gone ? "exited" : s ? sessionState(s, stats) : undefined;
+  const [attempt, setAttempt] = useState(0);
+  const feed = useTranscriptFeed(box, session, s?.dir, visible && !mock && !away, attempt);
   const ask = useAsk(box, session, !mock && state === "waiting", s?.state_since);
   const [answered, setAnswered] = useState<{ at?: string; key: string }>();
 
@@ -63,35 +78,65 @@ export function ConversationPane({ box, session, visible, onShowTerminal }: { bo
   }, [mock, items, state, s?.state_since, ask, answered]);
 
   // Claude Code and Codex write their conversation once they start: until
-  // then a new agent has nothing to read yet, which is not a dead end.
-  const agent = s ? agentOf(s) : undefined;
+  // then a new agent has nothing to read yet, which is not a dead end. A
+  // session the box no longer lists is named from what the pane remembers.
+  const agent = (s ? agentOf(s) : undefined) ?? remembered ?? guessAgent(session);
   const readable = agent === "claude" || agent === "codex";
-  if (!mock && (feed === "unsupported" || (feed === "none" && !readable))) {
+  const ended = state === "exited";
+  const again = () => void startSession(agent ?? "claude", { kind: "tab" }, agent ? agentLabel(agent) : "Agent");
+
+  // The box is away: what it last said may be stale, so say only that.
+  if (away && !mock) {
     return (
-      <div className="flex flex-1 items-center justify-center bg-background p-6">
-        <Empty>
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <MessagesSquareIcon />
-            </EmptyMedia>
-            <EmptyTitle>{feed === "none" ? "No conversation to show" : "Conversation view needs a newer berthd"}</EmptyTitle>
-            <EmptyDescription>
-              {feed === "none" ? "Berth can read Claude Code's and Codex's conversations. This agent's is in its terminal." : "This box runs an older berthd that doesn't stream agents' conversations. Update it; your agents keep running while it restarts."}
-            </EmptyDescription>
-          </EmptyHeader>
-          <EmptyContent>
-            <div className="flex gap-2">
-              {feed === "unsupported" && <UpgradeBox box={box} />}
-              <Button variant="outline" onClick={onShowTerminal}>
-                <SquareTerminalIcon />
-                Show terminal
-              </Button>
-            </div>
-          </EmptyContent>
-        </Empty>
-      </div>
+      <PaneEmpty
+        scene="offline"
+        title={boxStatus?.state === "connecting" ? `Connecting to ${box}…` : `${box} is ${boxWord(boxStatus?.state)}`}
+        description={`${agent ? agentLabel(agent) : "The agent"} keeps running there. This comes back by itself when ${box} is reachable again.`}
+      >
+        <Button variant="outline" onClick={() => void useStore.getState().refreshAll()}>
+          <RefreshCwIcon />
+          Retry now
+        </Button>
+      </PaneEmpty>
     );
   }
+  // Not known yet: the box hasn't listed its sessions.
+  if (!mock && !listed) return <Reading />;
+
+  if (!mock && feed === "error" && !items.length && !ended) {
+    return (
+      <PaneEmpty scene="storm" title="Couldn't read the conversation" description={`${box} didn't answer with it. The agent is unaffected; its terminal shows the same work.`}>
+        <Button onClick={() => setAttempt((n) => n + 1)}>
+          <RefreshCwIcon />
+          Retry
+        </Button>
+        <Button variant="outline" onClick={onShowTerminal}>
+          <SquareTerminalIcon />
+          Show terminal
+        </Button>
+      </PaneEmpty>
+    );
+  }
+  if (!mock && !ended && (feed === "unsupported" || (feed === "none" && !readable))) {
+    return (
+      <PaneEmpty
+        title={feed === "none" ? `${agent ? agentLabel(agent) : "This agent"} works in its terminal` : `${box} needs an update for this`}
+        description={
+          feed === "none"
+            ? "Berth can show Claude Code's and Codex's conversations here. This agent's work is in its terminal."
+            : `${box} runs an older berthd that doesn't stream agents' conversations. Updating keeps your agents running.`
+        }
+      >
+        {feed === "unsupported" && <UpgradeBox box={box} />}
+        <Button variant="outline" onClick={onShowTerminal}>
+          <SquareTerminalIcon />
+          Show terminal
+        </Button>
+      </PaneEmpty>
+    );
+  }
+  const onStep = (step: NextStep) => (step === "start-again" ? again() : step === "show-terminal" ? onShowTerminal() : step === "update-box" ? void updateBoxes([box]) : undefined);
+  const fail = (err: unknown) => toastError(err, { title: "Couldn't send it", box, onStep });
 
   const answer = (id: string, choice: string) => {
     if (mock) {
@@ -106,7 +151,7 @@ export function ConversationPane({ box, session, visible, onShowTerminal }: { bo
     const numbered = ask?.choices.some((c) => c.key === choice);
     boxApi.send(client, box, session, choice, !numbered, { when: "now", force: true }).catch((err) => {
       setAnswered(undefined);
-      toastManager.add({ type: "error", title: "Couldn't answer", description: errorMessage(err) });
+      toastError(err, { title: "Couldn't answer", box, onStep });
     });
   };
 
@@ -122,43 +167,37 @@ export function ConversationPane({ box, session, visible, onShowTerminal }: { bo
     await boxApi.send(client, box, session, text, true, state === "waiting" ? { when: "now", force: true } : { when: "idle" });
   };
 
-  // The agent's program has ended: nothing will read a reply. Its
-  // conversation stays readable; a fresh one starts beside it.
-  const ended = state === "exited";
-  const again = () => void startSession(agent ?? "claude", { kind: "tab" }, agent ? agentLabel(agent) : "Agent");
+  // The agent's program has ended: nothing will read a reply, and nothing
+  // here offers one. Its conversation stays readable; a fresh one starts
+  // beside it.
   if (ended && !shown.length) {
     return (
-      <div className="flex flex-1 items-center justify-center bg-background p-6">
-        <Empty>
-          <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <MessagesSquareIcon />
-            </EmptyMedia>
-            <EmptyTitle>This agent has ended</EmptyTitle>
-            <EmptyDescription>Its program closed, so it can't take a reply. Start a new one in this worktree, or look at what it left in its terminal.</EmptyDescription>
-          </EmptyHeader>
-          <EmptyContent>
-            <div className="flex gap-2">
-              <Button onClick={again}>
-                <AgentIcon agent={agent} className="size-3.5" />
-                Start {agent ? agentLabel(agent) : "an agent"} again
-              </Button>
-              <Button variant="outline" onClick={onShowTerminal}>
-                <SquareTerminalIcon />
-                Show terminal
-              </Button>
-            </div>
-          </EmptyContent>
-        </Empty>
-      </div>
+      <PaneEmpty
+        scene="ended"
+        title={`${agent ? agentLabel(agent) : "This agent"} has ended`}
+        description={gone ? `Its session is no longer on ${box}, so it can't take a reply. Start a new one in this worktree.` : "Its program closed, so it can't take a reply. Start a new one in this worktree, or look at what it left in its terminal."}
+      >
+        <Button onClick={again}>
+          <AgentIcon agent={agent} className="size-3.5" />
+          Start {agent ? agentLabel(agent) : "an agent"} again
+        </Button>
+        {!gone && (
+          <Button variant="outline" onClick={onShowTerminal}>
+            <SquareTerminalIcon />
+            Show terminal
+          </Button>
+        )}
+      </PaneEmpty>
     );
   }
 
-  // Nothing said yet: the same harbour, header and framed composer as an
-  // empty worktree, so starting an agent looks the same either way.
-  if (!shown.length && (mock || feed !== "loading")) {
+  // Nothing said yet, by an agent that is open and at rest: the same
+  // harbour, header and framed composer as an empty worktree, so starting an
+  // agent looks the same either way. Never for one still reading, or one
+  // that is working or waiting (those show what they are doing).
+  if (!shown.length && (mock || feed === "ready" || feed === "none") && state !== "running" && state !== "waiting") {
     const wt = s ? worktreeOf(locations, s) : undefined;
-    return <FirstPrompt box={box} agent={agent} name={wt ? (wt.worktree.main ? wt.location.name : wt.worktree.name) : session} branch={wt?.worktree.branch} onSend={reply} />;
+    return <FirstPrompt box={box} agent={agent} name={wt ? (wt.worktree.main ? wt.location.name : wt.worktree.name) : session} branch={wt?.worktree.branch} onSend={reply} onFail={fail} />;
   }
 
   return (
@@ -184,7 +223,7 @@ export function ConversationPane({ box, session, visible, onShowTerminal }: { bo
               </Button>
             </div>
           ) : (
-            <Reply onSend={reply} blocked={state === "waiting" && !!ask?.choices.length} />
+            <Reply onSend={reply} onFail={fail} blocked={state === "waiting" && !!ask?.choices.length} />
           )}
         </div>
       </div>
@@ -194,13 +233,17 @@ export function ConversationPane({ box, session, visible, onShowTerminal }: { bo
 
 // Reply is the box at the foot. While the agent waits at a menu, Enter there
 // would pick its highlighted option, so it waits for the answer above.
-function Reply({ onSend, blocked }: { onSend(text: string): Promise<void>; blocked?: boolean }) {
+function Reply({ onSend, onFail, blocked }: { onSend(text: string): Promise<void>; onFail(err: unknown): void; blocked?: boolean }) {
   const [text, setText] = useState("");
   const go = () => {
     const t = text.trim();
     if (!t || blocked) return;
     setText("");
-    onSend(t).catch((err) => toastManager.add({ type: "error", title: "Couldn't send it", description: errorMessage(err) }));
+    onSend(t).catch((err) => {
+      // What was typed comes back, so nothing is lost.
+      setText((now) => now || t);
+      onFail(err);
+    });
   };
   return (
     <InputGroup className="**:[textarea]:min-h-0! **:[textarea]:py-2.5!">
@@ -227,40 +270,49 @@ function Reply({ onSend, blocked }: { onSend(text: string): Promise<void>; block
   );
 }
 
-// UpgradeBox updates the box's berthd to the build this Berth ships, the
-// same as Settings → Boxes → Upgrade berthd. Agents keep running; once the
-// box answers with the new build the conversation loads by itself.
-function UpgradeBox({ box }: { box: string }) {
-  const [busy, setBusy] = useState(false);
-  const [line, setLine] = useState("");
-  const upgrade = async () => {
-    const client = useStore.getState().client;
-    if (!client) return;
-    setBusy(true);
-    try {
-      await laptopApi.upgrade(client, box, (l) => setLine(l));
-      await useStore.getState().refreshBox(box, ["info"]);
-      toastManager.add({ type: "success", title: `${box} is up to date` });
-    } catch (err) {
-      toastManager.add({ type: "error", title: `Couldn't update ${box}`, description: errorMessage(err) });
-    } finally {
-      setBusy(false);
-      setLine("");
-    }
-  };
-  const button = (
-    <Button onClick={() => void upgrade()} disabled={busy}>
-      {busy ? <Spinner /> : <RefreshCwIcon />}
-      {busy ? `Updating ${box}…` : `Update berthd on ${box}`}
-    </Button>
+// PaneEmpty is one of the pane's quiet states: a scene, what happened, and
+// what to do next.
+function PaneEmpty({ scene, title, description, children }: { scene?: SceneName; title: string; description: string; children?: React.ReactNode }) {
+  return (
+    <div className="flex flex-1 items-center justify-center bg-background p-6">
+      <Empty>
+        <EmptyHeader>
+          {scene ? (
+            <div className="mb-2 text-muted-foreground/80">
+              <Scene name={scene} width={136} />
+            </div>
+          ) : (
+            <EmptyMedia variant="icon">
+              <MessagesSquareIcon />
+            </EmptyMedia>
+          )}
+          <EmptyTitle>{title}</EmptyTitle>
+          <EmptyDescription>{description}</EmptyDescription>
+        </EmptyHeader>
+        {children && (
+          <EmptyContent>
+            <div className="flex flex-wrap justify-center gap-2">{children}</div>
+          </EmptyContent>
+        )}
+      </Empty>
+    </div>
   );
-  // While it runs, the upgrade's latest line is a hover away.
-  return busy && line ? <Tip label={line}>{button}</Tip> : button;
 }
+
+function Reading() {
+  return (
+    <div className="flex flex-1 items-center justify-center bg-background text-muted-foreground text-sm">
+      <Spinner className="mr-2 size-4" />
+      Reading the conversation…
+    </div>
+  );
+}
+
+const boxWord = (state?: string) => (state === "untrusted" ? "unreachable" : (state ?? "offline"));
 
 // FirstPrompt is an agent that hasn't been asked anything yet: the harbour
 // band, the worktree, and one framed composer for its first task.
-function FirstPrompt({ box, agent, name, branch, onSend }: { box: string; agent?: string; name: string; branch?: string; onSend(text: string): Promise<void> }) {
+function FirstPrompt({ box, agent, name, branch, onSend, onFail }: { box: string; agent?: string; name: string; branch?: string; onSend(text: string): Promise<void>; onFail(err: unknown): void }) {
   const light = useHarbourLight();
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -273,7 +325,7 @@ function FirstPrompt({ box, agent, name, branch, onSend }: { box: string; agent?
       await onSend(t);
       setText("");
     } catch (err) {
-      toastManager.add({ type: "error", title: "Couldn't send it", description: errorMessage(err) });
+      onFail(err);
     } finally {
       setBusy(false);
     }
@@ -310,7 +362,7 @@ function FirstPrompt({ box, agent, name, branch, onSend }: { box: string; agent?
             <FrameFooter className="flex items-center gap-1.5 px-1 pt-1 pb-0">
               <span className="flex min-w-0 items-center gap-1.5 px-2.5 text-muted-foreground text-xs">
                 <AgentIcon agent={agent} className="size-3.5" />
-                {who} is ready in this worktree
+                {who} · {AGENT_WORDS.idle.lower}, waiting for a first task
               </span>
               <Button size="icon-sm" className="ml-auto" aria-label="Send" disabled={!text.trim()} loading={busy} onClick={() => void go()}>
                 <ArrowUpIcon />

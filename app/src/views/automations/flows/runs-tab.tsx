@@ -12,6 +12,9 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/
 import { toastManager } from "@/components/ui/toast";
 import type { Run, RunStep, RunUsage } from "@/lib/api";
 import { ago, errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
+import { ErrorText } from "@/components/error-note";
+import { NeedsUpdate } from "@/components/upgrade-box";
 import { allRuns, type BoxRun, boxHasRuns, getRun, isActive, runs as runsApi, scheduleRuns, useRuns } from "@/lib/runs";
 import { load, save } from "@/lib/storage";
 import { useStore } from "@/lib/store";
@@ -241,7 +244,7 @@ export function RunTimeline({ box, id, summary }: { box: string; id: string; sum
         if (!stop) setRun(r);
         if (!stop && isActive(r)) setTimeout(tick, 2000);
       } catch (err) {
-        if (!stop) setError(errorMessage(err));
+        if (!stop) setError(plainError(err));
       }
     };
     void tick();
@@ -249,8 +252,14 @@ export function RunTimeline({ box, id, summary }: { box: string; id: string; sum
       stop = true;
     };
   }, [box, id, summary.updated]);
-  if (legacy) return <div className="bg-muted/20 px-4 py-3 pl-12 text-muted-foreground text-xs">{summary.error ?? "This box keeps its flows' runs without a timeline; upgrade it for runs."}</div>;
-  if (error) return <p className="bg-muted/20 px-4 py-3 pl-12 text-destructive-foreground text-xs">{error}</p>;
+  if (legacy)
+    return (
+      <div className="flex flex-col gap-2 bg-muted/20 px-4 py-3 pl-12 text-muted-foreground text-xs">
+        {summary.error && <ErrorText text={summary.error} />}
+        <NeedsUpdate box={box}>{box} keeps its flows' runs without a timeline.</NeedsUpdate>
+      </div>
+    );
+  if (error) return <ErrorText className="bg-muted/20 px-4 py-3 pl-12 text-destructive-foreground text-xs" text={error} />;
   if (!run) return <div className="bg-muted/20 px-4 py-3 pl-12 text-muted-foreground text-xs">Loading…</div>;
   const t0 = new Date(run.created).getTime();
   const t1 = run.finished ? new Date(run.finished).getTime() : Date.now();

@@ -1,24 +1,33 @@
 import { ArrowUpCircleIcon, CopyIcon, EllipsisIcon, PlusIcon, RefreshCwIcon, ShieldIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
 
+import { StatusDot, useBoxState } from "@/components/agent-glyph";
 import { EditorsSettings } from "@/components/editors/editors-settings";
+import { ErrorDetails } from "@/components/error-note";
 import { GuardDialog } from "@/components/guard-dialog";
+import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
+import { Switch } from "@/components/ui/switch";
 import { toastManager } from "@/components/ui/toast";
+import { OutdatedNotice, UpgradeBox } from "@/components/upgrade-box";
 import { type BoxStatus, laptopApi } from "@/lib/api";
+import { explain } from "@/lib/errors";
 import { errorMessage } from "@/lib/format";
+import { updateBoxes, useOutdated } from "@/lib/outdated";
+import { usePrefs } from "@/lib/prefs";
+import { BOX_WORDS, boxWhy } from "@/lib/state-model";
 import { NONE, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
 import { CommandLog } from "@/views/settings/command-log";
 import { ConfirmDialog } from "@/views/settings/confirm";
 import { RemoveLocalBoxDialog } from "@/views/settings/local-box-remove";
-import { Code, SettingsGroup, SettingsPage } from "@/views/settings/rows";
-import { Tip } from "@/components/tip";
+import { Code, SettingsGroup, SettingsPage, SettingsRow } from "@/views/settings/rows";
 
 export function BoxesSection() {
   const boxes = useStore((s) => s.status?.boxes ?? NONE);
+  const auto = usePrefs((p) => p.autoUpdateBoxes);
   return (
     <SettingsPage
       title="Boxes"
@@ -28,6 +37,7 @@ export function BoxesSection() {
         </>
       }
     >
+      <OutdatedNotice className="-mt-2" />
       <SettingsGroup
         title={boxes.length === 1 ? "1 paired" : `${boxes.length} paired`}
         actions={
@@ -47,12 +57,17 @@ export function BoxesSection() {
           boxes.map((b) => <BoxRow key={b.name} box={b} />)
         )}
       </SettingsGroup>
+      {boxes.length > 0 && (
+        <SettingsGroup>
+          <SettingsRow label="Update boxes automatically when Berth updates" description="Each box gets the berthd this Berth ships as soon as it's online. Agents keep running through an update.">
+            <Switch checked={auto} onCheckedChange={(autoUpdateBoxes) => usePrefs.setState({ autoUpdateBoxes })} aria-label="Update boxes automatically when Berth updates" />
+          </SettingsRow>
+        </SettingsGroup>
+      )}
       {boxes.length > 0 && <EditorsSettings />}
     </SettingsPage>
   );
 }
-
-const dot: Record<string, string> = { online: "bg-success", connecting: "bg-warning", offline: "bg-muted-foreground/40", untrusted: "bg-destructive" };
 
 // retry asks the agent to check every box now rather than at its next poll.
 async function retry() {
@@ -68,44 +83,44 @@ async function retry() {
 
 function BoxRow({ box }: { box: BoxStatus }) {
   const info = useStore((s) => s.boxes[box.name]?.info);
-  const [log, setLog] = useState<{ lines: string[]; done?: boolean; error?: string }>();
+  const update = useOutdated((s) => s.updating[box.name]);
+  const check = useOutdated((s) => s.boxes[box.name]);
   const [forgetting, setForgetting] = useState(false);
   const [removingLocal, setRemovingLocal] = useState(false);
   const [guarding, setGuarding] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const online = box.state === "online";
-  const upgrading = !!log && !log.done && !log.error;
+  const state = useBoxState(box.name);
+  const upgrading = update?.state === "queued" || update?.state === "running";
+  // What went wrong reaching it, in plain words, with the raw text behind Details.
+  const problem = box.error && !online ? explain(box.error, { box: box.name }) : undefined;
 
-  const upgrade = async () => {
-    const client = useStore.getState().client;
-    if (!client) return;
-    setLog({ lines: [] });
-    try {
-      await laptopApi.upgrade(client, box.name, (l) => setLog((p) => ({ lines: [...(p?.lines ?? []), l] })));
-      setLog((p) => ({ lines: p?.lines ?? [], done: true }));
-      void useStore.getState().refreshBox(box.name, ["info"]);
-    } catch (err) {
-      setLog((p) => ({ lines: p?.lines ?? [], error: errorMessage(err) }));
-    }
-  };
-
-  const details = [box.address, box.network && `via ${box.network}`, info?.build && `berthd ${info.build}`, info?.os && info.arch && `${info.os}/${info.arch}`].filter(Boolean);
+  const build = info?.build && (state === "outdated" && check?.available ? `berthd ${info.build} → ${check.available}` : `berthd ${info.build}`);
+  const details = [box.address, box.network && `via ${box.network}`, build, info?.os && info.arch && `${info.os}/${info.arch}`].filter(Boolean);
 
   return (
     <div className="px-4 py-3">
       <div className="flex items-center gap-3">
-        <Tip label={box.state}>
-          <span role="img" aria-label={box.state} className={cn("size-2 shrink-0 rounded-full", dot[box.state] ?? "bg-muted-foreground/40")} />
+        <Tip label={boxWhy(box.name, box, state)}>
+          <StatusDot state={state} className="size-2" />
         </Tip>
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2 text-sm">
             <span>{box.name}</span>
             {box.local && <span className="rounded border px-1 text-[10px] text-muted-foreground uppercase tracking-wide">This Mac</span>}
-            <span className={cn("text-xs", online ? "text-muted-foreground" : "text-warning-foreground")}>{online ? (box.latency_ms != null ? `${box.latency_ms} ms` : "online") : box.state}</span>
+            <span className={cn("text-xs", state === "online" ? "text-muted-foreground" : state === "outdated" ? "text-info-foreground" : state === "unreachable" ? "text-destructive-foreground" : "text-muted-foreground")}>
+              {state === "online" && box.latency_ms != null ? `${box.latency_ms} ms` : BOX_WORDS[state].word}
+            </span>
           </div>
           <div className="truncate font-mono text-[11px] text-muted-foreground">{details.join(" · ")}</div>
-          {box.error && !online && <div className="mt-0.5 truncate text-[11px] text-muted-foreground">{box.error}</div>}
+          {problem && (
+            <div className="mt-0.5 text-[11px] text-muted-foreground">
+              {problem.message}
+              <ErrorDetails text={problem.details} className="text-[11px]" />
+            </div>
+          )}
         </div>
+        {state === "outdated" && <UpgradeBox box={box.name} size="xs" variant="outline" label="Update" />}
         {!online && (
           <Button
             size="xs"
@@ -125,9 +140,9 @@ function BoxRow({ box }: { box: BoxStatus }) {
             <EllipsisIcon />
           </MenuTrigger>
           <MenuPopup align="end" className="min-w-48">
-            <MenuItem disabled={!online || upgrading} onClick={() => void upgrade()}>
+            <MenuItem disabled={!online || upgrading} onClick={() => void updateBoxes([box.name])}>
               <ArrowUpCircleIcon />
-              {online ? "Upgrade berthd" : "Upgrade berthd (offline)"}
+              {online ? "Update berthd" : "Update berthd (offline)"}
             </MenuItem>
             <MenuItem
               onClick={() =>
@@ -158,7 +173,8 @@ function BoxRow({ box }: { box: BoxStatus }) {
           </MenuPopup>
         </Menu>
       </div>
-      {log && <CommandLog className="mt-3" lines={log.lines} done={log.done} error={log.error} />}
+      {update && update.state !== "queued" && <CommandLog className="mt-3" lines={update.lines ?? []} done={update.state === "done"} error={update.error} />}
+      {update?.state === "queued" && <p className="mt-2 text-muted-foreground text-xs">Waiting for the box before it to finish updating…</p>}
       <GuardDialog box={box.name} open={guarding} onOpenChange={setGuarding} />
       {box.local && <RemoveLocalBoxDialog box={box.name} open={removingLocal} onOpenChange={setRemovingLocal} />}
       <ConfirmDialog

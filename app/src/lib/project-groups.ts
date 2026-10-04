@@ -3,7 +3,7 @@ import { create } from "zustand";
 
 import type { BoxStatus, Location } from "@/lib/api";
 import { projectKey } from "@/lib/projects";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { NONE, useStore } from "@/lib/store";
 
 // A project is one repository across boxes: "shop" on devl, build and homelab is
@@ -70,7 +70,7 @@ export async function loadProjects() {
     const doc = await client.laptop<ProjectsDoc | null>("GET", "/v1/app/projects");
     useProjectsDoc.setState({ doc: normalize(doc), loaded: true, error: undefined });
   } catch (err) {
-    useProjectsDoc.setState({ loaded: true, error: errorMessage(err) });
+    useProjectsDoc.setState({ loaded: true, error: plainError(err) });
   }
 }
 
@@ -104,7 +104,7 @@ async function saveProjects(fn: (doc: ProjectsDoc) => ProjectsDoc) {
   try {
     await client.laptop("PUT", "/v1/app/projects", next);
   } catch (err) {
-    useProjectsDoc.setState({ doc: before, error: errorMessage(err) });
+    useProjectsDoc.setState({ doc: before, error: plainError(err) });
     throw err;
   }
 }

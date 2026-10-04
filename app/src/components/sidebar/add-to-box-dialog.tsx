@@ -17,6 +17,7 @@ import { scheduleRefresh, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { reloadKits, useKits } from "@/views/kits/kits-store";
 import { boxLoad } from "@/components/sidebar/box-load";
+import { ErrorText } from "@/components/error-note";
 
 // Add to box clones a project's repository onto a box that does not have it
 // yet, with git's progress as it goes, then applies the project's kit there
@@ -163,7 +164,7 @@ function Body({ project }: { project: Project }) {
                 <CheckIcon className="size-4 text-success" /> {project.name} is on {box}.
               </p>
             )}
-            {error && <p className="text-destructive-foreground text-sm">{error}</p>}
+            {error && <ErrorText className="text-destructive-foreground text-sm" text={error} />}
           </>
         )}
       </DialogPanel>

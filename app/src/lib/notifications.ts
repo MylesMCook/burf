@@ -2,7 +2,7 @@ import { create } from "zustand";
 
 import { toastManager } from "@/components/ui/toast";
 import { type BerthEvent, isTauri } from "@/lib/api";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { usePrefs } from "@/lib/prefs";
 import { load, save } from "@/lib/storage";
 import { useStore } from "@/lib/store";
@@ -563,7 +563,7 @@ function persist() {
     const doc: Doc = { version: 1, notes: useNotifications.getState().notes.slice(0, MAX) };
     client.laptop("PUT", DOC, doc).then(
       () => useNotifications.setState({ error: undefined }),
-      (err) => useNotifications.setState({ error: errorMessage(err) }),
+      (err) => useNotifications.setState({ error: plainError(err) }),
     );
   }, 800);
 }
@@ -581,7 +581,7 @@ export async function loadNotifications() {
       return { notes: [...fresh, ...stored].sort((a, b) => b.time.localeCompare(a.time)).slice(0, MAX), loaded: true, error: undefined };
     });
   } catch (err) {
-    useNotifications.setState({ loaded: true, error: errorMessage(err) });
+    useNotifications.setState({ loaded: true, error: plainError(err) });
   }
 }
 

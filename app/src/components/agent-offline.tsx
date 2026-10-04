@@ -7,7 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { Spinner } from "@/components/ui/spinner";
 import { type AgentBinary, findAgentBinary, retryConnection, startAgent } from "@/lib/agent-start";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 
 // Any berth command starts the agent when it is not running.
 const START = "berth status";
@@ -67,7 +67,7 @@ function AgentOffline({ error }: { error?: string }) {
       setPhase({ kind: "waiting" });
       retryConnection();
     } catch (err) {
-      setPhase({ kind: "failed", message: errorMessage(err) });
+      setPhase({ kind: "failed", message: plainError(err) });
     }
   };
 

@@ -5,6 +5,7 @@ import { Tip } from "@/components/tip";
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
 import { BrowserPane } from "@/components/browser-pane";
 import { ConversationPane } from "@/components/conversation/conversation-pane";
+import { ErrorText } from "@/components/error-note";
 import { SessionActionItems } from "@/components/orchestrate/session-actions";
 import { Button } from "@/components/ui/button";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuShortcut, MenuTrigger } from "@/components/ui/menu";
@@ -68,7 +69,7 @@ export function Pane({ wsKey, tab, pane, visible, focused, split }: Props) {
         {/* The terminal stays connected underneath, so switching back is instant. */}
         {c.kind === "terminal" && view === "conversation" && (
           <div className="absolute inset-0 z-10 flex flex-col">
-            <ConversationPane box={c.box} session={c.session} visible={visible} onShowTerminal={() => setPaneContent(wsKey, tab, pane.id, { ...c, view: "terminal" })} />
+            <ConversationPane box={c.box} session={c.session} agent={c.agent} visible={visible} onShowTerminal={() => setPaneContent(wsKey, tab, pane.id, { ...c, view: "terminal" })} />
           </div>
         )}
         {c.kind === "browser" && <BrowserPane id={pane.id} url={c.url} visible={visible} onNavigate={(url) => setPaneContent(wsKey, tab, pane.id, { kind: "browser", url })} />}
@@ -82,8 +83,8 @@ export function Pane({ wsKey, tab, pane, visible, focused, split }: Props) {
         )}
         {c.kind === "error" && (
           <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center text-sm">
-            <p className="font-medium">Could not start it</p>
-            <p className="max-w-md text-muted-foreground text-xs">{c.message}</p>
+            <p className="font-medium">Couldn't start it</p>
+            <ErrorText className="max-w-md items-center text-muted-foreground text-xs" text={c.message} />
             <Button size="sm" variant="outline" onClick={close}>
               Close pane
             </Button>

@@ -15,6 +15,7 @@ import { ProjectLabel } from "@/views/automations/flows/project-label";
 import { RunStatus } from "@/views/automations/flows/run-status";
 import type { BoxFlows } from "@/views/automations/flows/use-flows";
 import { Tip } from "@/components/tip";
+import { BoxError } from "@/components/upgrade-box";
 
 interface Group {
   box: string;
@@ -113,9 +114,8 @@ export function FlowList({
         if (!bf) return <Skeleton key={box} className="h-24 rounded-xl" />;
         if (bf.error)
           return (
-            <section key={box} className="rounded-xl border px-4 py-3 text-muted-foreground text-sm">
-              <span className="font-medium text-foreground">{box}</span>: couldn't read its flows ({bf.error}).
-              {/404|not found/i.test(bf.error) && " Its berthd predates flows; upgrade it from Settings → Boxes."}
+            <section key={box} className="rounded-xl border px-4 py-3">
+              <BoxError box={box} error={bf.error} what="its flows" />
             </section>
           );
         return groupsOf(bf).map((g) => <ScopeGroup key={`${box}|${g.scope}`} group={g} lastRun={lastRun} onEdit={onEdit} onToggle={onToggle} onNew={onNew} />);

@@ -19,12 +19,14 @@ import { agentPresets } from "@/lib/actions";
 import type { Session } from "@/lib/api";
 import { agentLabel, agentOf } from "@/lib/derive";
 import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { handoff, handoffPrompt, loop, review, reviewPrompt, send, sessionLocation } from "@/lib/orchestrate";
 import { openPromptPicker } from "@/lib/prompts";
 import { type SendFailure, enqueue, sendFailure } from "@/lib/queue";
 import { load, save } from "@/lib/storage";
 import { type OrchestrateDraft, useStore } from "@/lib/store";
 import { findSession, setPaneContent, splitPane } from "@/lib/workspaces";
+import { ErrorText } from "@/components/error-note";
 
 const titles = {
   send: "Send a prompt",
@@ -123,14 +125,14 @@ function Body({ d, onDone }: { d: OrchestrateDraft; onDone(): void }) {
         const started = (s: Session) => at && pane && setPaneContent(at.key, at.tab, pane, { kind: "terminal", box: d.box, session: s.name });
         const start = d.kind === "review" ? review({ box: d.box, from: d.session, agent, prompt: text, onStarted: started }) : handoff({ box: d.box, from: d.session, location: location || undefined, agent, prompt: text, worktree: wt, onStarted: started });
         void start.catch((err) => {
-          if (at && pane) setPaneContent(at.key, at.tab, pane, { kind: "error", message: errorMessage(err) });
+          if (at && pane) setPaneContent(at.key, at.tab, pane, { kind: "error", message: plainError(err) });
           else toastManager.add({ title: d.kind === "review" ? "Review failed" : "Hand off failed", description: errorMessage(err), type: "error" });
         });
         if (wt) toastManager.add({ title: `Starting ${agentLabel(agent)} in ${wt.name}`, type: "info" });
       }
       onDone();
     } catch (err) {
-      setError(errorMessage(err));
+      setError(plainError(err));
     } finally {
       setBusy(false);
     }
@@ -231,7 +233,7 @@ function Body({ d, onDone }: { d: OrchestrateDraft; onDone(): void }) {
           </div>
         )}
         {offer && <QueueOffer failure={offer} box={d.box} />}
-        {error && <p className="text-destructive text-sm">{error}</p>}
+        {error && <ErrorText className="text-destructive text-sm" text={error} />}
       </DialogPanel>
 
       <DialogFooter className="items-center px-5 py-3">

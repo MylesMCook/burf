@@ -20,6 +20,7 @@ import { offerAgentHooks } from "@/lib/agent-hooks";
 import { agentPresets } from "@/lib/actions";
 import type { Session, TaskResult, Worktree } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { promptFor, type ResolveKind, worktreeSlug } from "@/lib/projects";
 import { loadProjects, projectActions, useProjects, useProjectsDoc } from "@/lib/project-groups";
 import { type InstalledKitOn, kitsApi } from "@/lib/kits";
@@ -28,6 +29,7 @@ import { useStore } from "@/lib/store";
 import { fill, templateVariables } from "@/lib/templates";
 import { focusSession, selectWorktree } from "@/lib/workspaces";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
+import { ErrorText } from "@/components/error-note";
 
 const NO_AGENT = "";
 const lastAgentKey = (box: string, loc: string) => `berth.newWorktree.agent.${box}/${loc}`;
@@ -242,7 +244,7 @@ function Body() {
       try {
         await trustRepo(box, locName, pendingTrust);
       } catch (err) {
-        setError(errorMessage(err));
+        setError(plainError(err));
         setBusy(false);
         return;
       }
@@ -283,7 +285,7 @@ function Body() {
         useStore.getState().closeNewWorktree();
       }
     } catch (err) {
-      setError(errorMessage(err));
+      setError(plainError(err));
     } finally {
       setBusy(false);
     }
@@ -375,7 +377,7 @@ function Body() {
             </AlertDescription>
           </Alert>
         )}
-        {error && <p className="text-destructive text-sm">{error}</p>}
+        {error && <ErrorText className="text-destructive text-sm" text={error} />}
       </DialogPanel>
 
       <DialogFooter className="items-center px-5 py-3 sm:justify-between">

@@ -13,10 +13,12 @@ import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { toastManager } from "@/components/ui/toast";
 import { agentPresets } from "@/lib/actions";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { boxHasRuns, runs, scheduleRuns } from "@/lib/runs";
 import { load, save } from "@/lib/storage";
 import { NONE, useStore } from "@/lib/store";
+import { ErrorText } from "@/components/error-note";
+import { NeedsUpdate } from "@/components/upgrade-box";
 
 // "Try N ways…": one task, several agents, each in its own worktree. The box
 // runs the attempts template: start each attempt, verify it with a check
@@ -128,7 +130,7 @@ function Body({ d, onDone }: { d: AttemptsDraft; onDone(): void }) {
       });
       onDone();
     } catch (err) {
-      setError(errorMessage(err));
+      setError(plainError(err));
     } finally {
       setBusy(false);
     }
@@ -150,7 +152,7 @@ function Body({ d, onDone }: { d: AttemptsDraft; onDone(): void }) {
     >
       <StepHeader title="Try N ways" description="Each agent tries the task in its own worktree; a check verifies them, a judge ranks them, and you pick one." />
       <DialogPanel className="flex flex-col gap-4 px-5 pb-5">
-        {!runsHere && <p className="rounded-lg border border-warning/40 bg-warning/8 px-3 py-2 text-sm">{d.box} runs an older berthd without runs. Upgrade it from Settings → Boxes to try several ways.</p>}
+        {!runsHere && <NeedsUpdate box={d.box}>{d.box} runs an older berthd without runs, which trying several ways needs.</NeedsUpdate>}
         <div className="grid grid-cols-[1fr_1fr] gap-3">
           <div className="flex flex-col gap-1.5">
             <span className="font-medium text-[13px]">Project</span>
@@ -225,7 +227,7 @@ function Body({ d, onDone }: { d: AttemptsDraft; onDone(): void }) {
             Open a draft PR
           </label>
         </div>
-        {error && <p className="text-destructive text-sm">{error}</p>}
+        {error && <ErrorText className="text-destructive text-sm" text={error} />}
       </DialogPanel>
       <DialogFooter className="items-center px-5 py-3">
         <Button type="button" variant="ghost" onClick={onDone}>

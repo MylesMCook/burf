@@ -22,6 +22,7 @@ import { KitLayer, LayeredScript, Section, SourceBadge } from "@/views/project/p
 import { ServicesSection } from "@/views/project/services-section";
 import { clean, useProjectConfig } from "@/views/project/use-project-config";
 import { ViewHeader } from "@/views/view-header";
+import { ErrorText } from "@/components/error-note";
 
 const SECTIONS = [
   { id: "kit", label: "Kit" },
@@ -145,7 +146,7 @@ export function ProjectView({ box, location }: { box: string; location: string }
         </nav>
         <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="mx-auto max-w-3xl space-y-8 px-8 pt-7 pb-24">
-            {error && <p className="rounded-xl border border-destructive/30 bg-destructive/8 px-4 py-3 text-destructive-foreground text-sm">{error}</p>}
+            {error && <ErrorText className="rounded-xl border border-destructive/30 bg-destructive/8 px-4 py-3 text-destructive-foreground text-sm" text={error} />}
             {!config ? (
               <div className="space-y-4">
                 <Skeleton className="h-40 rounded-xl" />

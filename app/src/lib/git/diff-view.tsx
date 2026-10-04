@@ -5,7 +5,7 @@ import { Tip } from "@/components/tip";
 import { Badge } from "@/components/ui/badge";
 import { Spinner } from "@/components/ui/spinner";
 import type { ExecResult } from "@/lib/api";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { committedDiffCommand, describeCode, type DiffLine, diffCommand, type FileChange, parseDiff, splitRows } from "@/lib/git/parse";
 import { load, save } from "@/lib/storage";
 import { cn } from "@/lib/utils";
@@ -64,7 +64,7 @@ export function DiffView({ file, run, base }: { file: FileChange; run: Run; base
     setDiff({ state: "loading" });
     run(base ? committedDiffCommand(file, base) : diffCommand(file))
       .then((r) => live && setDiff({ state: "ready", value: { lines: parseDiff(r.output), truncated: r.truncated } }))
-      .catch((err) => live && setDiff({ state: "error", message: errorMessage(err) }));
+      .catch((err) => live && setDiff({ state: "error", message: plainError(err) }));
     return () => {
       live = false;
     };
