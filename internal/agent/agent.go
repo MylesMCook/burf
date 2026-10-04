@@ -169,6 +169,7 @@ type Status struct {
 }
 
 type Agent struct {
+	seqs     *seqStore
 	cfg      Config
 	hooks    *hooks.Runner
 	id       *identity.Identity
@@ -232,6 +233,7 @@ func Run(ctx context.Context, cfg Config) error {
 		forwards: forwardStore{path: filepath.Join(cfg.Dir, "forwards.json")},
 		routes:   routeStore{path: filepath.Join(cfg.Dir, "routes.json")},
 		clients:  map[string]*boxState{},
+		seqs:     newSeqStore(cfg.Dir),
 		running:  map[string]*runningForward{},
 		wake:     make(chan struct{}, 1),
 	}
@@ -400,16 +402,36 @@ func (st *boxState) close() {
 func (a *Agent) relay(ctx context.Context, name string, c *wire.Client) {
 	bc := box.NewClient(c)
 	// The last event seen: a reconnect (after sleep, say) asks the box's
-	// journal for what it missed, up to the box's replay limit.
-	last := int64(-1)
+	// journal for what it missed, up to the box's replay limit. It is kept
+	// on disk, so a restart of the agent catches up too.
+	fp := c.Box().Fingerprint.String()
+	last := a.seqs.get(name, fp)
+	save := time.NewTicker(5 * time.Second)
+	defer save.Stop()
+	defer a.seqs.save()
+	go func() {
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-save.C:
+				a.seqs.save()
+			}
+		}
+	}()
 	for ctx.Err() == nil {
+		first := true
 		bc.EventsSince(ctx, last, func(e events.Event) {
 			if e.Seq > 0 {
-				if e.Seq <= last {
+				if e.Seq <= last && !(first && last > 0) {
 					return
 				}
+				// A first event at or below the saved Seq means the box's
+				// journal started over (a reinstall): take it from there.
 				last = e.Seq
+				a.seqs.set(name, fp, last)
 			}
+			first = false
 			e.Box = name
 			a.bus.Publish(e)
 		})
