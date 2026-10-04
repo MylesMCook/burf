@@ -1,46 +1,59 @@
-import { ChevronsUpDownIcon, CommandIcon, GitBranchIcon, HouseIcon, Minimize2Icon } from "lucide-react";
+import { ChevronsUpDownIcon, CommandIcon, EllipsisIcon, FolderIcon, GitBranchIcon, GitBranchPlusIcon, HouseIcon, Minimize2Icon, SettingsIcon } from "lucide-react";
 import { useMemo } from "react";
 
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
+import { NotificationBell } from "@/components/notifications/notification-center";
+import { ActionItems, worktreeActions } from "@/components/sidebar/actions";
+import { useNavItems } from "@/components/sidebar/nav";
 import { Tip } from "@/components/tip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
+import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuShortcut, MenuSub, MenuSubPopup, MenuSubTrigger, MenuTrigger } from "@/components/ui/menu";
 import { ViewSwitch } from "@/components/workspace/pane";
-import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuShortcut, MenuTrigger } from "@/components/ui/menu";
 import { useAllSessions } from "@/hooks/use-agent-counts";
-import { isTauri } from "@/lib/api";
+import { hasTrafficLights } from "@/lib/api";
 import { agentLabel, agentOf, sessionState, worktreeOf } from "@/lib/derive";
 import { ago } from "@/lib/format";
 import { leaves } from "@/lib/layout";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { focusSession, goHome, recentWorktrees, selectWorktree, useWorkspaces } from "@/lib/workspaces";
+import { focusSession, goHome, recentWorktrees, refOf, selectWorktree, useWorkspaces } from "@/lib/workspaces";
 
 // Zen (Labs, ⌘.) puts away everything but the agents: no sidebar, no status
-// bar, one slim bar with a switcher where the tab strip was, and agents as
-// conversations. ⌘. brings it all back.
+// bar, and one slim bar over every view, with a switcher where the tab strip
+// was. Agents open as conversations. ⌘. brings it all back.
 
-// useHere is what the window shows: the worktree, and the agent in its
-// focused pane.
+// useHere is what the window shows: a view, or a worktree and the agent in
+// its focused pane, or home.
 function useHere() {
+  const view = useStore((s) => s.view);
+  const nav = useNavItems();
   const ws = useWorkspaces((s) => (s.current ? s.spaces[s.current] : undefined));
   const tab = ws?.tabs.find((t) => t.id === ws.active);
   const c = tab ? leaves(tab.root).find((l) => l.id === tab.focus)?.content : undefined;
   const session = useStore((s) => (c?.kind === "terminal" ? s.boxes[c.box]?.sessions?.find((x) => x.name === c.session) : undefined));
   const stats = useStore((s) => (c?.kind === "terminal" ? s.boxes[c.box]?.stats : undefined));
-  const name = ws ? (ws.ref.main ? ws.ref.location : ws.ref.worktree) : undefined;
+  if (view.kind === "settings") return { kind: "view" as const, label: "Settings", icon: <SettingsIcon /> };
+  if (view.kind === "project") return { kind: "view" as const, label: `${view.location} settings`, icon: <SettingsIcon /> };
+  if (view.kind !== "workspace") {
+    const item = nav.find((n) => n.active);
+    return { kind: "view" as const, label: item?.label ?? "Berth", icon: item?.icon };
+  }
+  if (!ws) return { kind: "home" as const };
   const agent = session ? agentOf(session) : undefined;
-  return { name, agent, state: session ? sessionState(session, stats) : undefined };
+  return { kind: "worktree" as const, name: ws.ref.main ? ws.ref.location : ws.ref.worktree, agent, state: session ? sessionState(session, stats) : undefined };
 }
 
 const ORDER = { waiting: 0, running: 1, finished: 2 } as const;
+const HEADINGS = { waiting: "Needs you", running: "Working", finished: "Done" } as const;
 
-// ZenSwitcher is zen's way around: what is showing, and a list of the
-// agents (who needs you first) and recent worktrees, and home.
+// ZenSwitcher is zen's way around: where you are, and a list of the agents
+// (who needs you first), the views, recent worktrees and home.
 export function ZenSwitcher({ className }: { className?: string }) {
   const here = useHere();
+  const nav = useNavItems();
   const all = useAllSessions();
   const boxes = useStore((s) => s.boxes);
   const spaces = useWorkspaces((s) => s.spaces);
@@ -50,19 +63,30 @@ export function ZenSwitcher({ className }: { className?: string }) {
         .filter((e) => agentOf(e.session) && (e.state === "waiting" || e.state === "running" || e.state === "finished"))
         .map((e) => {
           const wt = worktreeOf(boxes[e.box]?.locations, e.session);
-          return { e, title: wt ? (wt.worktree.main ? wt.location.name : wt.worktree.name) : e.session.name };
+          return { e, state: e.state as keyof typeof ORDER, title: wt ? (wt.worktree.main ? wt.location.name : wt.worktree.name) : e.session.name };
         })
-        .sort((a, b) => ORDER[a.e.state as keyof typeof ORDER] - ORDER[b.e.state as keyof typeof ORDER] || (b.e.session.state_since ?? "").localeCompare(a.e.session.state_since ?? ""))
-        .slice(0, 9),
+        .sort((a, b) => ORDER[a.state] - ORDER[b.state] || (b.e.session.state_since ?? "").localeCompare(a.e.session.state_since ?? ""))
+        .slice(0, 8),
     [all, boxes],
   );
-  const waiting = agents.filter((a) => a.e.state === "waiting").length;
-  const recent = recentWorktrees(spaces, 4);
+  const waiting = agents.filter((a) => a.state === "waiting").length;
+  const recent = recentWorktrees(spaces, 3);
+  const setView = useStore((s) => s.setView);
 
   return (
     <Menu>
-      <MenuTrigger render={<Button size="sm" variant="ghost" aria-label="Switch agent or worktree" className={cn("max-w-80 gap-2", className)} />}>
-        {here.name ? (
+      <MenuTrigger render={<Button size="sm" variant="ghost" aria-label="Go to" className={cn("min-w-0 max-w-96 gap-2", className)} />}>
+        {here.kind === "home" ? (
+          <>
+            <HouseIcon />
+            <span className="font-medium">Home</span>
+          </>
+        ) : here.kind === "view" ? (
+          <>
+            <span className="flex size-4 items-center justify-center text-muted-foreground [&_svg]:size-4">{here.icon}</span>
+            <span className="truncate font-medium">{here.label}</span>
+          </>
+        ) : (
           <>
             {here.state ? <StateGlyph state={here.state} /> : <GitBranchIcon />}
             <span className="truncate font-medium">{here.name}</span>
@@ -73,11 +97,6 @@ export function ZenSwitcher({ className }: { className?: string }) {
               </span>
             )}
           </>
-        ) : (
-          <>
-            <HouseIcon />
-            <span className="font-medium">Home</span>
-          </>
         )}
         {waiting > 0 && <Badge variant="warning">{waiting}</Badge>}
         <ChevronsUpDownIcon className="opacity-60" />
@@ -87,11 +106,10 @@ export function ZenSwitcher({ className }: { className?: string }) {
           <HouseIcon />
           Home
         </MenuItem>
-        <MenuSeparator />
-        <MenuGroup>
-          {agents.map(({ e, title }, i) => (
-            <div key={`${e.box}/${e.session.name}`} className="contents">
-            {(i === 0 || agents[i - 1].e.state !== e.state) && <MenuGroupLabel>{e.state === "waiting" ? "Needs you" : e.state === "running" ? "Working" : "Done"}</MenuGroupLabel>}
+        {agents.length > 0 && <MenuSeparator />}
+        {agents.map(({ e, state, title }, i) => (
+          <MenuGroup key={`${e.box}/${e.session.name}`}>
+            {(i === 0 || agents[i - 1].state !== state) && <MenuGroupLabel>{HEADINGS[state]}</MenuGroupLabel>}
             <MenuItem onClick={() => void focusSession(e.box, e.session.name)}>
               <StateGlyph state={e.state} />
               <span className="min-w-0 flex-1 truncate">{title}</span>
@@ -100,9 +118,8 @@ export function ZenSwitcher({ className }: { className?: string }) {
                 {ago(e.session.state_since ?? e.session.created)}
               </span>
             </MenuItem>
-            </div>
-          ))}
-        </MenuGroup>
+          </MenuGroup>
+        ))}
         {recent.length > 0 && (
           <>
             <MenuSeparator />
@@ -118,6 +135,27 @@ export function ZenSwitcher({ className }: { className?: string }) {
             </MenuGroup>
           </>
         )}
+        <MenuItem onClick={() => useStore.getState().openNewWorktree()}>
+          <GitBranchPlusIcon />
+          New worktree…
+          <MenuShortcut>⌘N</MenuShortcut>
+        </MenuItem>
+        <AllWorktrees />
+        <MenuSeparator />
+        <MenuGroup>
+          <MenuGroupLabel>Views</MenuGroupLabel>
+          {nav.map((n) => (
+            <MenuItem key={n.id} onClick={() => setView(n.view)}>
+              <span className="flex size-4 items-center justify-center [&_svg]:size-4">{n.icon}</span>
+              <span className="min-w-0 flex-1 truncate">{n.label}</span>
+              {n.badge && <span className="text-muted-foreground text-xs tabular-nums">{n.badge.count}</span>}
+            </MenuItem>
+          ))}
+          <MenuItem onClick={() => setView({ kind: "settings" })}>
+            <SettingsIcon />
+            Settings
+          </MenuItem>
+        </MenuGroup>
         <MenuSeparator />
         <MenuItem onClick={() => useStore.getState().setPaletteOpen(true)}>
           <CommandIcon />
@@ -134,58 +172,134 @@ export function ZenSwitcher({ className }: { className?: string }) {
   );
 }
 
+// AllWorktrees is every project on every online box, each a submenu of its
+// worktrees: the sidebar's tree, folded into the switcher.
+function AllWorktrees() {
+  const boxes = useStore((s) => s.boxes);
+  const status = useStore((s) => s.status);
+  const online = useMemo(() => status?.boxes.filter((b) => b.state === "online").map((b) => b.name) ?? [], [status]);
+  const projects = online.flatMap((box) => (boxes[box]?.locations ?? []).filter((l) => l.worktrees?.length).map((loc) => ({ box, loc })));
+  if (!projects.length) return null;
+  return (
+    <MenuSub>
+      <MenuSubTrigger>
+        <FolderIcon />
+        All worktrees
+      </MenuSubTrigger>
+      <MenuSubPopup className="min-w-56">
+        {online.map((box) => {
+          const here = projects.filter((p) => p.box === box);
+          if (!here.length) return null;
+          return (
+            <MenuGroup key={box}>
+              <MenuGroupLabel>{box}</MenuGroupLabel>
+              {here.map(({ loc }) => (
+                <MenuSub key={loc.name}>
+                  <MenuSubTrigger>
+                    <FolderIcon />
+                    {loc.name}
+                  </MenuSubTrigger>
+                  <MenuSubPopup className="min-w-52">
+                    {loc.worktrees!.map((wt) => (
+                      <MenuItem key={wt.path} onClick={() => selectWorktree(refOf(box, loc, wt))}>
+                        {wt.main ? <HouseIcon /> : <GitBranchIcon />}
+                        <span className="min-w-0 flex-1 truncate">{wt.main ? "main" : wt.name}</span>
+                      </MenuItem>
+                    ))}
+                  </MenuSubPopup>
+                </MenuSub>
+              ))}
+            </MenuGroup>
+          );
+        })}
+      </MenuSubPopup>
+    </MenuSub>
+  );
+}
+
+// WorktreeMenu is the open worktree's actions, as the sidebar's ⋯ on its
+// row: open in an editor, new agent or terminal, stop its sessions, remove.
+function WorktreeMenu() {
+  const ref = useWorkspaces((s) => (s.current ? s.spaces[s.current]?.ref : undefined));
+  const workspace = useStore((s) => s.view.kind === "workspace");
+  const loc = useStore((s) => (ref ? s.boxes[ref.box]?.locations?.find((l) => l.name === ref.location) : undefined));
+  const wt = loc?.worktrees?.find((w) => w.path === ref?.path);
+  if (!workspace || !ref || !loc || !wt) return null;
+  return (
+    <Menu>
+      <Tip label="Worktree actions">
+        <MenuTrigger render={<Button size="icon-sm" variant="ghost" aria-label={`${wt.main ? loc.name : wt.name} actions`} />}>
+          <EllipsisIcon />
+        </MenuTrigger>
+      </Tip>
+      <MenuPopup align="start" className="min-w-56">
+        <ActionItems items={worktreeActions(ref.box, loc, wt).filter((a) => !(a.type === "item" && a.label === "Open"))} />
+      </MenuPopup>
+    </Menu>
+  );
+}
+
 // FocusedViewSwitch is the Terminal | Conversation switch of the focused
 // pane, for zen, where panes have no header.
 function FocusedViewSwitch() {
   const key = useWorkspaces((s) => s.current);
   const ws = useWorkspaces((s) => (s.current ? s.spaces[s.current] : undefined));
+  const workspace = useStore((s) => s.view.kind === "workspace");
   const tab = ws?.tabs.find((t) => t.id === ws.active);
   const pane = tab ? leaves(tab.root).find((l) => l.id === tab.focus) : undefined;
-  if (!key || !tab || !pane) return null;
+  if (!workspace || !key || !tab || !pane) return null;
   return <ViewSwitch wsKey={key} tab={tab.id} pane={pane} />;
 }
 
-// ZenBar stands in for the tab strip: the switcher at its left (clear of
-// the window's buttons), ⌘K and the way out at its right. It drags the
-// window.
-export function ZenBar({ variant }: { variant: "bar" | "float" }) {
-  const home = useWorkspaces((s) => !s.current);
-  const out = (
-    <Tip label={<span className="flex items-center gap-1.5">Leave zen <Kbd>⌘.</Kbd></span>}>
-      <Button size="icon-sm" variant="ghost" aria-label="Leave zen" onClick={() => usePrefs.setState({ zen: false })}>
-        <Minimize2Icon />
-      </Button>
-    </Tip>
-  );
-  const search = (
-    <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => useStore.getState().setPaletteOpen(true)}>
-      Search
-      <Kbd>⌘K</Kbd>
-    </Button>
-  );
-  if (variant === "float") {
-    return (
-      <div data-tauri-drag-region className={cn("pointer-events-none absolute inset-x-0 top-0 z-30 flex h-12 items-center gap-2 pr-3", isTauri() ? "pl-[84px]" : "pl-3")}>
-        <div className="pointer-events-auto rounded-xl border bg-popover/90 p-0.5 shadow-lg/5 backdrop-blur-md">
-          <ZenSwitcher />
-        </div>
-        <div className="pointer-events-auto ml-auto flex items-center gap-0.5 rounded-xl border bg-popover/90 p-0.5 shadow-lg/5 backdrop-blur-md">
-          <FocusedViewSwitch />
-          {search}
-          {out}
-        </div>
-      </div>
-    );
-  }
-  // At home the bar lies over the harbour, clear, so the picture runs to
-  // the top of the window.
+// ZenBar stands in for the sidebar and the tab strip on every view: the
+// switcher at its left, clear of the window's buttons, then search,
+// notifications and the way out. It drags the window. At home it lies
+// clear over the harbour, so the picture runs to the top of the window.
+export function ZenBar() {
+  const noWorktree = useWorkspaces((s) => !s.current);
+  const workspace = useStore((s) => s.view.kind === "workspace");
+  const home = noWorktree && workspace;
   return (
-    <div data-tauri-drag-region className={cn("flex h-10 shrink-0 items-center gap-2 pr-2", isTauri() ? "pl-[84px]" : "pl-2", home ? "absolute inset-x-0 top-0 z-30 [&_button]:bg-background/70 [&_button]:backdrop-blur-sm" : "border-b bg-background")}>
+    <div
+      data-tauri-drag-region
+      className={cn(
+        "flex h-10 shrink-0 items-center gap-1 pr-2",
+        hasTrafficLights() ? "pl-[84px]" : "pl-2",
+        home ? "absolute inset-x-0 top-0 z-30 [&_button]:bg-background/70 [&_button]:backdrop-blur-sm" : "border-b bg-background",
+      )}
+    >
       <ZenSwitcher />
+      <WorktreeMenu />
       <div data-tauri-drag-region className="flex-1 self-stretch" />
       <FocusedViewSwitch />
-      {search}
-      {out}
+      <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => useStore.getState().setPaletteOpen(true)}>
+        Search
+        <Kbd>⌘K</Kbd>
+      </Button>
+      <NotificationBell />
+      <Tip
+        label={
+          <span className="flex items-center gap-1.5">
+            Leave zen <Kbd>⌘.</Kbd>
+          </span>
+        }
+      >
+        <Button size="icon-sm" variant="ghost" aria-label="Leave zen" onClick={() => usePrefs.setState({ zen: false })}>
+          <Minimize2Icon />
+        </Button>
+      </Tip>
+    </div>
+  );
+}
+
+// FakeTrafficLights draws the window's three buttons in the mock with
+// ?traffic=1, so screenshots show what has to leave them room.
+export function FakeTrafficLights() {
+  return (
+    <div aria-hidden className="pointer-events-none fixed top-[13px] left-[13px] z-[100] flex gap-2">
+      {["#ff5f57", "#febc2e", "#28c840"].map((c) => (
+        <span key={c} className="size-3 rounded-full ring-1 ring-black/10" style={{ background: c }} />
+      ))}
     </div>
   );
 }

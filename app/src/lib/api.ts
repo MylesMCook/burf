@@ -36,6 +36,12 @@ export interface Endpoint {
 
 export const isTauri = (): boolean => "__TAURI_INTERNALS__" in window;
 
+// hasTrafficLights says whether the window's own buttons sit over its top
+// left (the Tauri window's overlay title bar), so a strip there leaves them
+// room. ?traffic=1 in the mock draws and counts them, for screenshots.
+export const fakeTrafficLights = (): boolean => !isTauri() && new URLSearchParams(location.search).has("mock") && new URLSearchParams(location.search).has("traffic");
+export const hasTrafficLights = (): boolean => isTauri() || fakeTrafficLights();
+
 // endpoint finds the agent and its token: from the Tauri shell, which reads
 // the token file, or in a plain browser from ?token= or the Vite env.
 export async function endpoint(): Promise<Endpoint> {

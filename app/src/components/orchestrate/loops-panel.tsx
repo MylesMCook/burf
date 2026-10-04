@@ -89,7 +89,7 @@ export function LoopsPanel() {
 
   if (!loops.length && !crew) return null;
   return (
-    <div ref={ref} style={{ bottom: STATUS_BAR + GAP, right: GAP }} className="fixed z-40 flex max-h-[50vh] w-88 flex-col gap-2 overflow-y-auto" role="region" aria-label="Loops">
+    <div ref={ref} style={{ bottom: `calc(var(--berth-status-h, ${STATUS_BAR}px) + ${GAP}px)`, right: GAP }} className="fixed z-40 flex max-h-[50vh] w-88 flex-col gap-2 overflow-y-auto" role="region" aria-label="Loops">
       {crew && <CrewCard key={crew.key} crew={crew.members} />}
       {loops.map((l) => (
         <LoopCard key={l.id} loop={l} />

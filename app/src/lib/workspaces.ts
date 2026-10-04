@@ -299,3 +299,5 @@ export function recentWorktrees(spaces: Record<string, Workspace>, n = 3): Works
     .sort((a, b) => (b.visitedAt ?? 0) - (a.visitedAt ?? 0))
     .slice(0, n);
 }
+
+if (import.meta.env.DEV) Object.assign(window as unknown as Record<string, unknown>, { __berthWorkspaces: { useWorkspaces, selectWorktree, goHome } });

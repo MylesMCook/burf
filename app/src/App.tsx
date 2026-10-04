@@ -26,7 +26,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Launcher } from "@/components/workspace/launcher";
 import { PaneLayer } from "@/components/workspace/pane-layer";
 import { TabStrip } from "@/components/workspace/tab-strip";
-import { ZenBar } from "@/components/workspace/zen";
+import { FakeTrafficLights, ZenBar } from "@/components/workspace/zen";
+import { fakeTrafficLights } from "@/lib/api";
 import { useBerthConnection } from "@/hooks/use-berth-connection";
 import { useShortcuts } from "@/hooks/use-shortcuts";
 import { useApplyTheme } from "@/hooks/use-theme";
@@ -71,7 +72,9 @@ export default function App() {
   const workspace = view.kind === "workspace";
   // Labs: zen (⌘.) puts away the sidebar, the tab strip and the status bar.
   const zen = usePrefs((p) => p.labs && p.zen);
-  const zenChrome: "bar" | "float" = new URLSearchParams(location.search).get("zenbar") === "float" ? "float" : "bar";
+  // Without the status bar, what floats over its corner (toasts, the loops
+  // panel) comes down to the window's edge.
+  useEffect(() => document.documentElement.style.setProperty("--berth-status-h", zen ? "0px" : "26px"), [zen]);
   // Onboarding has no tabs yet, so it gets the plain strip, not the tab strip.
   const onboarding = useOnboardingActive();
   const connected = useStore((s) => !!s.client);
@@ -114,8 +117,9 @@ export default function App() {
           it through --berth-bar-lift (hooks/lift-toasts.ts). With a dialog
           or sheet open they move to a corner clear of it; see
           components/ui/toast.tsx. The stack is as wide as the loops panel. */}
-      <ToastProvider position="bottom-right" viewportClassName="max-w-88 data-[position=bottom-right]:bottom-[max(calc(38px+var(--berth-loops-h,0px)),var(--berth-bar-lift,0px))] data-[position=bottom-right]:right-3 data-[position=bottom-left]:bottom-[38px] data-[position=bottom-left]:left-3 data-[position=top-left]:top-3 data-[position=top-left]:left-3 data-[position=top-right]:top-3 data-[position=top-right]:right-3">
+      <ToastProvider position="bottom-right" viewportClassName="max-w-88 data-[position=bottom-right]:bottom-[max(calc(var(--berth-status-h,26px)+12px+var(--berth-loops-h,0px)),var(--berth-bar-lift,0px))] data-[position=bottom-right]:right-3 data-[position=bottom-left]:bottom-[calc(var(--berth-status-h,26px)+12px)] data-[position=bottom-left]:left-3 data-[position=top-left]:top-3 data-[position=top-left]:left-3 data-[position=top-right]:top-3 data-[position=top-right]:right-3">
         <div className="flex h-svh flex-col overflow-hidden bg-background text-foreground">
+          {fakeTrafficLights() && <FakeTrafficLights />}
           <div className="flex min-h-0 flex-1">
             {!zen && (
               <Disconnectable>
@@ -123,8 +127,8 @@ export default function App() {
               </Disconnectable>
             )}
             <div className="relative flex min-w-0 flex-1 flex-col">
-              {zen && workspace && !onboarding ? (
-                zenChrome === "bar" && <ZenBar variant="bar" />
+              {zen && !onboarding ? (
+                <ZenBar />
               ) : workspace && !onboarding ? (
                 <Disconnectable className="shrink-0 flex-col">
                   <TabStrip />
@@ -134,7 +138,6 @@ export default function App() {
                 <div data-tauri-drag-region className="h-10 shrink-0 bg-background" />
               )}
               <main className="relative min-h-0 flex-1">
-                {zen && workspace && !onboarding && zenChrome === "float" && <ZenBar variant="float" />}
                 {/* Always mounted: terminals keep running behind other views. */}
                 <PaneLayer showing={workspace} />
                 <ErrorBoundary key={view.kind} scope={viewTitles[view.kind as keyof typeof viewTitles] || (view.kind === "workspace" ? "the workspace" : undefined)} onLeave={view.kind === "workspace" ? undefined : () => useStore.getState().setView({ kind: "workspace" })}>
@@ -177,6 +180,7 @@ function MainView() {
   const client = useStore((s) => s.client);
   const ws = useWorkspaces((s) => (s.current ? s.spaces[s.current] : undefined));
   const onboarding = useOnboardingActive();
+  const zen = usePrefs((p) => p.labs && p.zen);
 
   if (!client) return <Connecting state={connection.state} error={connection.error} />;
   // A new account starts here; Settings and the other views stay reachable.
@@ -192,7 +196,9 @@ function MainView() {
     return ws.tabs.length ? null : <Launcher worktree={ws.ref} />;
   }
   return (
-    <div className="absolute inset-0 bg-background">
+    // In zen there is no sidebar: a view keeps the width it has beside one,
+    // centred, rather than stretching across the window.
+    <div className={cn("absolute inset-0 bg-background", zen && "mx-auto max-w-[1280px] min-[1300px]:border-x")}>
       {view.kind === "dashboard" && <DashboardView />}
       {view.kind === "automations" && <AutomationsView />}
       {view.kind === "review" && <ReviewView />}
