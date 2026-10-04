@@ -7,7 +7,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { toastManager } from "@/components/ui/toast";
 import { ago, errorMessage } from "@/lib/format";
 import type { RunCompare } from "@/lib/orchestrate-core";
-import { type BoxRun, runs as runsApi, scheduleRuns } from "@/lib/runs";
+import { allRuns, type BoxRun, runs as runsApi, scheduleRuns, useRuns } from "@/lib/runs";
 import { cn } from "@/lib/utils";
 import { focusSession } from "@/lib/workspaces";
 import { tokens } from "@/views/automations/flows/runs-tab";
@@ -35,13 +35,19 @@ export function CompareStrip({ runs, onOpen }: { runs: BoxRun[]; onOpen(r: BoxRu
 // reasons, and the files it changed. Picking one decides the run's gate;
 // the run then opens its pull request and archives the rest.
 export function CompareView({ box, id, onClose }: { box: string; id: string; onClose(): void }) {
-  const [data, setData] = useState<RunCompare>();
+  // Attempts across boxes are a group of per-box runs, compared here as one.
+  const byBox = useRuns((s) => s.byBox);
+  const group = allRuns(byBox).find((r) => r.box === box && r.id === id)?.group;
+  const members = group ? allRuns(byBox).filter((r) => r.group === group && r.template === "attempts") : [];
+  const runsKey = (members.length ? members.map((r) => `${r.box}/${r.id}`) : [`${box}/${id}`]).sort().join(",");
+  const [all, setAll] = useState<{ box: string; id: string; data: RunCompare }[]>([]);
   const [error, setError] = useState<string>();
   const [busy, setBusy] = useState(false);
 
   const load = async () => {
     try {
-      setData(await runsApi.compare(box, id));
+      const list = runsKey.split(",").map((k) => ({ box: k.slice(0, k.indexOf("/")), id: k.slice(k.indexOf("/") + 1) }));
+      setAll(await Promise.all(list.map(async (r) => ({ ...r, data: await runsApi.compare(r.box, r.id) }))));
     } catch (err) {
       setError(errorMessage(err));
     }
@@ -50,14 +56,20 @@ export function CompareView({ box, id, onClose }: { box: string; id: string; onC
     void load();
     const t = setInterval(() => void load(), 4000);
     return () => clearInterval(t);
-  }, [box, id]);
+  }, [runsKey]);
 
-  const pick = async (approve: boolean, index?: number) => {
+  // A pick decides every run of the group: the picked one's run takes it,
+  // the others pick none and archive their attempts.
+  const pick = async (approve: boolean, at?: { box: string; id: string; index: number }) => {
     setBusy(true);
     try {
-      await runsApi.decide(box, id, { approve, pick: index });
-      scheduleRuns(box, 0);
-      toastManager.add({ type: "success", title: approve ? `Picked attempt ${(index ?? 0) + 1}` : "Rejected every attempt", description: approve ? "The run goes on: its pull request, then the others are archived." : undefined });
+      for (const r of all) {
+        if (!r.data.gate) continue;
+        const mine = at && r.box === at.box && r.id === at.id;
+        await runsApi.decide(r.box, r.id, approve ? { approve: true, pick: mine ? at.index : -1 } : { approve: false });
+        scheduleRuns(r.box, 0);
+      }
+      toastManager.add({ type: "success", title: approve && at ? `Picked attempt ${at.index + 1}${all.length > 1 ? ` on ${at.box}` : ""}` : "Rejected every attempt", description: approve ? "The run goes on: its pull request, then the others are archived." : undefined });
       await load();
     } catch (err) {
       toastManager.add({ type: "error", title: "Couldn't decide", description: errorMessage(err) });
@@ -66,10 +78,10 @@ export function CompareView({ box, id, onClose }: { box: string; id: string; onC
     }
   };
 
-  const gate = data?.gate;
-  const canPick = !!gate?.pick;
-  const cands = data?.candidates ?? [];
-  const winner = gate?.default;
+  const data = all.find((r) => r.box === box && r.id === id)?.data ?? all[0]?.data;
+  const canPick = all.some((r) => r.data.gate?.pick);
+  const multi = all.length > 1;
+  const cands = all.flatMap((r) => r.data.candidates.map((c) => ({ ...c, box: r.box, runId: r.id, winner: r.data.gate?.default === c.index })));
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex shrink-0 items-center gap-3 border-b px-6 py-2.5">
@@ -99,22 +111,24 @@ export function CompareView({ box, id, onClose }: { box: string; id: string; onC
       )}
       {data && (
         <div className="min-h-0 flex-1 overflow-auto p-6">
-          {data.judge && (
-            <p className="mb-4 rounded-xl border bg-muted/30 px-4 py-2.5 text-sm">
-              <span className="font-medium">Judge: </span>
-              {data.judge}
-            </p>
-          )}
+          {all
+            .filter((r) => r.data.judge)
+            .map((r) => (
+              <p key={`${r.box}/${r.id}`} className="mb-4 rounded-xl border bg-muted/30 px-4 py-2.5 text-sm">
+                <span className="font-medium">Judge{multi ? ` on ${r.box}` : ""}: </span>
+                {r.data.judge}
+              </p>
+            ))}
           {!cands.length && <p className="text-muted-foreground text-sm">No attempt has finished yet.</p>}
           <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.max(1, cands.length)}, minmax(260px, 1fr))` }}>
             {cands.map((c) => {
               const files = c.review?.files ?? [];
               return (
-                <section key={c.index} className={cn("flex min-w-0 flex-col rounded-xl border bg-card", c.picked && "border-success/60", winner === c.index && canPick && "border-primary/50")}>
+                <section key={`${c.box}/${c.runId}/${c.index}`} className={cn("flex min-w-0 flex-col rounded-xl border bg-card", c.picked && "border-success/60", c.winner && canPick && "border-primary/50")}>
                   <header className="flex items-center gap-2 border-b px-3 py-2">
                     <AgentIcon agent={c.agent} />
                     <span className="font-medium text-sm">Attempt {c.index + 1}</span>
-                    <span className="truncate text-muted-foreground text-xs">{c.worktree}</span>
+                    <span className="truncate text-muted-foreground text-xs">{multi ? `${c.box} · ${c.worktree}` : c.worktree}</span>
                     {c.judge.rank === 1 && (
                       <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-primary">
                         <CrownIcon className="size-3" />
@@ -174,12 +188,12 @@ export function CompareView({ box, id, onClose }: { box: string; id: string; onC
                   </ul>
                   <footer className="flex items-center gap-1.5 border-t px-3 py-2">
                     {canPick && (
-                      <Button size="xs" disabled={busy} onClick={() => void pick(true, c.index)}>
+                      <Button size="xs" disabled={busy} onClick={() => void pick(true, { box: c.box, id: c.runId, index: c.index })}>
                         Pick this one
                       </Button>
                     )}
                     {c.session && (
-                      <Button size="xs" variant="ghost" onClick={() => void focusSession(box, c.session!)}>
+                      <Button size="xs" variant="ghost" onClick={() => void focusSession(c.box, c.session!)}>
                         <SquareTerminalIcon />
                         Open session
                       </Button>

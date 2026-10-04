@@ -62,7 +62,11 @@ function Body({ d, onDone }: { d: AttemptsDraft; onDone(): void }) {
   const [prompt, setPrompt] = useState(d.prompt ?? "");
   const [name, setName] = useState("");
   const firstTwo = [presets[0]?.id ?? "claude", presets.find((p) => p.id !== presets[0]?.id)?.id ?? presets[0]?.id ?? "claude"];
-  const [agents, setAgents] = useState<{ agent: string; suffix: string }[]>(() => load(`berth.attempts.agents.${d.box}`, firstTwo.map((agent) => ({ agent, suffix: "" }))));
+  const [agents, setAgents] = useState<{ agent: string; suffix: string; box?: string }[]>(() => load(`berth.attempts.agents.${d.box}`, firstTwo.map((agent) => ({ agent, suffix: "" }))));
+  // Attempts may run on other boxes that have the project too: one run per
+  // box, grouped, compared together in Review.
+  const boxesData = useStore((s) => s.boxes);
+  const otherBoxes = Object.keys(boxesData).filter((b) => b !== d.box && boxHasRuns(b) && boxesData[b]?.locations?.some((l) => l.name === location));
   const [check, setCheck] = useState(() => load(`berth.loop.check.${d.box}/${d.location}`, "pnpm test"));
   const [judge, setJudge] = useState(presets.find((p) => p.id === "claude")?.id ?? presets[0]?.id ?? "claude");
   const [auto, setAuto] = useState(false);
@@ -80,26 +84,37 @@ function Body({ d, onDone }: { d: AttemptsDraft; onDone(): void }) {
       const n = slugify(name || prompt.split("\n")[0]) || "attempt";
       save(`berth.attempts.agents.${d.box}`, agents);
       if (check.trim()) save(`berth.loop.check.${d.box}/${location}`, check.trim());
-      const run = await runs.start(d.box, {
-        template: "attempts",
-        params: {
-          location,
-          name: n,
-          prompt: prompt.trim(),
-          base: d.base ?? "",
-          attempts: agents.map((a) => (a.suffix.trim() ? { agent: a.agent, prompt_suffix: a.suffix.trim() } : { agent: a.agent })),
-          verify: { check: check.trim() || "true", max_rounds: 2 },
-          judge: { by: "agent", agent: judge, criteria: "correctness, tests, the smallest diff that does it" },
-          pick: auto ? "auto" : "human",
-          then: pr ? { pr: { draft: true } } : {},
-        },
-      });
-      scheduleRuns(d.box, 0);
+      const byBox = new Map<string, typeof agents>();
+      for (const a of agents) byBox.set(a.box || d.box, [...(byBox.get(a.box || d.box) ?? []), a]);
+      // Across boxes the app compares and picks: each box's run waits at
+      // its gate for the pick, made in Review.
+      const group = byBox.size > 1 ? `g_${Date.now().toString(36)}` : undefined;
+      let first: { box: string; id: string } | undefined;
+      for (const [box, list] of byBox) {
+        const run = await runs.start(box, {
+          template: "attempts",
+          group,
+          params: {
+            location,
+            name: n,
+            prompt: prompt.trim(),
+            base: d.base ?? "",
+            attempts: list.map((a) => (a.suffix.trim() ? { agent: a.agent, prompt_suffix: a.suffix.trim() } : { agent: a.agent })),
+            verify: { check: check.trim() || "true", max_rounds: 2 },
+            judge: { by: "agent", agent: judge, criteria: "correctness, tests, the smallest diff that does it" },
+            pick: auto && !group ? "auto" : "human",
+            then: pr ? { pr: { draft: true } } : {},
+          },
+        });
+        scheduleRuns(box, 0);
+        first ??= { box, id: run.id };
+      }
+      const run = first!;
       toastManager.add({
         type: "success",
-        title: `Trying ${agents.length} ways on ${d.box}`,
+        title: `Trying ${agents.length} ways on ${[...byBox.keys()].join(" and ")}`,
         description: auto ? "The judge's pick, if its check passes, gets a draft PR." : "You pick in Review once the judge has ranked them.",
-        actionProps: { children: "Compare", onClick: () => useStore.getState().setView({ kind: "review", run: { box: d.box, id: run.id } }) },
+        actionProps: { children: "Compare", onClick: () => useStore.getState().setView({ kind: "review", run: { box: run.box, id: run.id } }) },
       });
       onDone();
     } catch (err) {
@@ -149,6 +164,17 @@ function Body({ d, onDone }: { d: AttemptsDraft; onDone(): void }) {
                 <AgentPicker presets={presets} value={a.agent} onChange={(agent) => setAgents(agents.map((x, j) => (j === i ? { ...x, agent } : x)))} />
               </div>
               <Input size="sm" value={a.suffix} placeholder="and, for this one… (optional)" onChange={(e) => setAgents(agents.map((x, j) => (j === i ? { ...x, suffix: e.target.value } : x)))} />
+              {otherBoxes.length > 0 && (
+                <div className="w-28 shrink-0">
+                  <SimpleSelect
+                    size="sm"
+                    className="min-w-0"
+                    value={a.box || d.box}
+                    onChange={(box) => setAgents(agents.map((x, j) => (j === i ? { ...x, box } : x)))}
+                    options={[d.box, ...otherBoxes].map((b) => ({ value: b, label: b }))}
+                  />
+                </div>
+              )}
               <Button type="button" size="icon-sm" variant="ghost" aria-label="Remove this attempt" disabled={agents.length <= 2} onClick={() => setAgents(agents.filter((_, j) => j !== i))}>
                 <MinusIcon />
               </Button>

@@ -40,7 +40,7 @@
     {"id": "pr", "kind": "if", "cond": "pick.path != '' && params.then.pr != ''", "steps": [
       {"id": "open", "kind": "pr", "draft": ${then.pr.draft}, "title": "{{params.name}}", "text": "Picked from {{params.count}} attempts by berth run {{run.id}}."}
     ]},
-    {"id": "tidy", "kind": "if", "cond": "pick.path != '' && params.cleanup == 'archive-losers'", "steps": [
+    {"id": "tidy", "kind": "if", "cond": "pick.path != '' && params.cleanup == 'archive-losers' || pick.none == '1' && params.cleanup == 'archive-losers'", "steps": [
       {"id": "archive", "kind": "cleanup", "mode": "archive-losers"}
     ]}
   ]

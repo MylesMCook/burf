@@ -110,7 +110,16 @@ POST /v1/runs
    the project's archive script (`cleanup`).
 
 In the app, **Try N ways…** in ⌘K or a session's Orchestrate menu starts
-one. Version 1 runs every attempt on one box.
+one.
+
+**Across boxes.** In **Try N ways…**, an attempt can go to another box that
+has the project. The app starts one attempts run per box, as a group; each
+is durable on its box, and each box's judge ranks its own attempts. Review's
+Compare shows the whole group as one: picking an attempt approves its run's
+gate with it, and the other runs pick none (`--pick 0` from the CLI is
+attempt 1; the API's `pick: -1` is none), so they open no PR and archive
+their worktrees. The cross-box comparison happens in the app, so it waits
+for you there; each box's work and checks do not.
 
 ## How a run resumes
 

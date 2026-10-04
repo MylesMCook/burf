@@ -109,7 +109,9 @@ berth session turns devl/SESSION                            # the last ten
   yours.
 - A turn is `queued` (held until the agent is idle), `pending` (sent, not
   started), `running`, `waiting`, `finished`, `exited` or `lost` (open when
-  berthd restarted, and nothing could settle it).
+  berthd restarted and nothing could settle it, or sent but never started
+  after two minutes with its agent idle: the agent read two prompts as one,
+  or dropped it; its status says `never started`).
 - Each turn says who prompted it (`laptop:<name>`, `flow:<id>`, `phone`,
   `terminal` for a person at the terminal) and how often it waited for you.
 - Agents sharing a worktree keep their own turns. An older hook that names

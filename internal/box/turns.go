@@ -32,8 +32,10 @@ type Turn struct {
 	N       int    `json:"n"`
 	// Origin says who prompted: laptop:<peer>, flow:<id>, phone, terminal.
 	Origin string `json:"origin,omitempty"`
-	// SentSeq is the journal Seq of the send (0 if typed by a person).
-	SentSeq int64 `json:"sent_seq,omitempty"`
+	// SentSeq is the journal Seq of the send (0 if typed by a person),
+	// Sent its time.
+	SentSeq int64     `json:"sent_seq,omitempty"`
+	Sent    time.Time `json:"sent,omitzero"`
 	EndSeq  int64 `json:"end_seq,omitempty"`
 	// State is queued (held in the inbox), pending (sent, not started),
 	// running, waiting, finished, exited or lost.
@@ -488,7 +490,7 @@ func (t *Turns) sent(e events.Event) {
 		tr = t.newTurn(s, "pending", origin)
 		tr.IdemKey = str(e.Data, "idem_key")
 	}
-	tr.SentSeq = e.Seq
+	tr.SentSeq, tr.Sent = e.Seq, e.Time
 	if startsAtSend(s) {
 		// The send is the only start this agent gives: anything still
 		// running ended unseen.
@@ -1207,6 +1209,41 @@ func (b *Box) refreshTurns(ctx context.Context) {
 	}
 	b.enrich(ctx, all)
 	b.Turns.Prune(all)
+	b.Turns.Expire(time.Now())
+}
+
+// PendingExpiry is how long a sent prompt may stay pending, its agent idle,
+// before the ledger gives up on it.
+const PendingExpiry = 2 * time.Minute
+
+// Expire ends pending turns that never started: sent more than
+// PendingExpiry ago to an agent that is idle or finished with nothing
+// running (it read two pastes as one, or dropped the prompt). They end
+// "lost", so a wait on one returns and the inbox moves on.
+func (t *Turns) Expire(now time.Time) int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.init()
+	n := 0
+	for _, s := range t.sess {
+		if s.State != "idle" && s.State != "finished" {
+			continue
+		}
+		if s.current() != nil {
+			continue
+		}
+		for _, tr := range s.Turns {
+			if tr.State != "pending" || tr.Sent.IsZero() || now.Sub(tr.Sent) < PendingExpiry {
+				continue
+			}
+			tr.State, tr.Ended, tr.Status = "lost", now.UTC(), "never started"
+			n++
+		}
+	}
+	if n > 0 {
+		t.bump()
+	}
+	return n
 }
 
 // deliverInbox types each idle session's next held prompt.

@@ -359,3 +359,29 @@ func TestAnAnswerIsPartOfTheTurnThatAsked(t *testing.T) {
 		t.Fatalf("an answer made a turn: %+v", all)
 	}
 }
+
+// A prompt the agent never started (two pastes read as one) ends "lost"
+// after a while, so waits return and the inbox moves on.
+func TestPendingTurnsThatNeverStartExpire(t *testing.T) {
+	tr, bus := ledger(t, Session{Name: "agent", Dir: "/w", Agent: "claude"})
+	hook(bus, "agent.ready", "agent", "/w", "claude")
+	sent := func() events.Event {
+		return bus.Publish(events.Event{Type: "session.sent", Data: map[string]any{"name": "agent"}})
+	}
+	sent()
+	sent()
+	hook(bus, "agent.started", "agent", "/w", "claude", "signal", "prompt")
+	hook(bus, "agent.finished", "agent", "/w", "claude")
+	if got := turnState(t, tr, "agent#2"); got != "pending" {
+		t.Fatalf("second turn %s", got)
+	}
+	if n := tr.Expire(time.Now()); n != 0 {
+		t.Fatal("expired too soon")
+	}
+	if n := tr.Expire(time.Now().Add(PendingExpiry + time.Second)); n != 1 || turnState(t, tr, "agent#2") != "lost" {
+		t.Fatalf("expired %d, state %s", n, turnState(t, tr, "agent#2"))
+	}
+	if !tr.Ready("agent") {
+		t.Fatal("the agent is still not ready for a prompt")
+	}
+}

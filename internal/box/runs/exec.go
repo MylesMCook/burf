@@ -692,6 +692,13 @@ func (x *execution) gate(ctx context.Context, sc *scope, s Step, id, path string
 		if d.Pick != nil {
 			pick = *d.Pick
 		}
+		if pick < 0 {
+			// None of these: the pick was made elsewhere (another box's
+			// attempts, compared in the app). No PR here; all are archived.
+			res.Set["pick.none"] = "1"
+			res.Out = "none of these was picked"
+			return res, nil
+		}
 		x.pick(sc, pick, res.Set)
 	}
 	return res, nil

@@ -733,3 +733,26 @@ func TestFollowStreamsUntilDone(t *testing.T) {
 		t.Fatalf("records %v", types)
 	}
 }
+
+// Picking none (the winner is on another box) opens no PR and archives
+// every attempt here.
+func TestAttemptsPickNoneArchivesAll(t *testing.T) {
+	h := attemptsHost(`{"winner": 1, "ranking": [1, 2]}`)
+	e, stop := newEngine(t, t.TempDir(), h)
+	defer stop()
+	s, _, _ := e.Start(Request{Template: "attempts", Group: "g1", Params: map[string]any{"location": "shop", "name": "x", "prompt": "p", "attempts": []any{"claude", "codex"}, "then": map[string]any{"pr": map[string]any{"draft": true}}}})
+	waitStatus(t, e, s.ID, WaitingGate)
+	none := -1
+	if err := e.Decide(s.ID, "", Decision{Approve: true, Pick: &none}); err != nil {
+		t.Fatal(err)
+	}
+	r := waitStatus(t, e, s.ID, Succeeded, Failed)
+	if r.Status != Succeeded || h.count("pr:") != 0 || h.count("cleanup:") != 1 {
+		t.Fatalf("%s %v", r.Status, h.calls)
+	}
+	for _, c := range r.Candidates {
+		if c.Picked {
+			t.Fatal("a candidate was picked")
+		}
+	}
+}

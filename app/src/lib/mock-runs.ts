@@ -42,6 +42,7 @@ function candidate(index: number, agent: string, passed: boolean, added: number,
 const attemptsRun = (): Run => ({
   id: "r_mshp7x7k2",
   template: "attempts",
+  group: "g_refunds",
   title: "refunds: 3 attempts",
   status: "waiting_gate",
   origin: "laptop:mac",
@@ -140,6 +141,21 @@ const reviewRun = (): Run => ({
   steps: [step("0", "if", "succeeded", 70, 66, { children: [step("0.t", "then", "", 70, 66, { children: [step("0.t.0", "headless", "succeeded", 70, 66, { id: "review", output: "Verdict: fix first.\nsrc/deck.ts:42 - the empty deck throws", usage: { input: 9000, output: 400, cache_read: 30000, usd: 0.06 } })] })] })],
 });
 
+// The same task tried on gpu too: a group, compared as one in Review.
+const gpuAttempts = (): Run => ({
+  id: "r_mgpu4a9z1",
+  template: "attempts",
+  group: "g_refunds",
+  title: "refunds: 1 attempt",
+  status: "waiting_gate",
+  created: at(41),
+  updated: at(8),
+  gate: { path: "2.t.0", title: "Pick the best attempt at refunds", pick: true, default: 0 },
+  candidates: [{ ...candidate(0, "codex", true, 88, 12, 1, "passes; adds a migration it doesn't need", "feat: partial refunds (with a migration)"), location: "shop", path: "/home/me/shop-refunds-a1" }],
+  steps: [step("1", "judge", "succeeded", 10, 8, { id: "judge", output: "Winner: attempt 1. passes; adds a migration it doesn't need" })],
+});
+
+let gpuRuns: Run[] | undefined;
 let runs: Run[] | undefined;
 let round = 2;
 
@@ -151,12 +167,13 @@ function world(): Run[] {
 const summary = (r: Run): RunSummary => ({ ...r, steps: r.steps.length, candidates: r.candidates?.length });
 
 export function runsCall(box: string, method: string, path: string, body: unknown, emit: Emit, delay: <T>(v: T) => Promise<T>): Promise<unknown> | undefined {
-  if (box !== "devl") {
+  if (box !== "devl" && box !== "gpu") {
     if (method === "GET" && path.startsWith("runs")) return delay(path.startsWith("runs?") ? [] : undefined);
     if (method === "GET" && path === "autofix") return delay([]);
     return undefined;
   }
-  const all = world();
+  if (box === "gpu" && !gpuRuns) gpuRuns = [gpuAttempts()];
+  const all = box === "gpu" ? gpuRuns! : world();
   if (method === "GET" && path.startsWith("runs?")) {
     const q = new URLSearchParams(path.split("?")[1]);
     const t = q.get("template");
