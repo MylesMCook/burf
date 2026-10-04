@@ -144,9 +144,11 @@ func AssignClaude(dir string, claims []Claim) map[string]string {
 		}
 	}
 	sort.Slice(rest, func(i, j int) bool { return rest[i].Started.Before(rest[j].Started) })
+	// A file that began before the session did is another's: a sibling
+	// that just ended, or an older conversation in the same folder.
 	for _, c := range rest {
 		for i, f := range fs {
-			if f.path != "" && !f.start.Before(c.Started.Add(-time.Minute)) {
+			if f.path != "" && !f.start.Before(c.Started.Add(-2*time.Second)) {
 				out[c.Name] = f.path
 				fs[i].path = ""
 				break
@@ -158,11 +160,13 @@ func AssignClaude(dir string, claims []Claim) map[string]string {
 	// gets the newest left over that was written since it started. A new
 	// session that hasn't written yet gets none, never an old conversation.
 	for _, c := range rest {
-		if out[c.Name] != "" {
+		// One whose hooks named its conversation will write that file; it
+		// never takes an older one meanwhile.
+		if out[c.Name] != "" || (c.ID != "" && validID(c.ID)) {
 			continue
 		}
 		for i := len(fs) - 1; i >= 0; i-- {
-			if fs[i].path != "" && writtenSince(fs[i].path, c.Started.Add(-time.Minute)) {
+			if fs[i].path != "" && writtenSince(fs[i].path, c.Started) {
 				out[c.Name] = fs[i].path
 				fs[i].path = ""
 				break

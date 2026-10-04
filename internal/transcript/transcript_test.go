@@ -407,3 +407,23 @@ func TestClaudeCommands(t *testing.T) {
 		t.Errorf("again = %+v", res2.Items)
 	}
 }
+
+// Start again: a new agent in the folder of one that just ended (its file
+// written seconds ago) doesn't take that conversation, with or without the
+// ID its hooks gave.
+func TestAssignClaudeNewAgentDoesNotTakeAJustEndedSiblings(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("CLAUDE_CONFIG_DIR", home)
+	dir := "/w/shop"
+	proj := ClaudeDir(dir)
+	os.MkdirAll(proj, 0o700)
+	ended := time.Now().Add(-10 * time.Second)
+	old := filepath.Join(proj, "eeeeeeee-5.jsonl")
+	write(t, old, m{"type": "user", "timestamp": ended.Format(time.RFC3339Nano), "message": m{"role": "user", "content": "end"}})
+	os.Chtimes(old, ended.Add(3*time.Second), ended.Add(3*time.Second))
+	now := time.Now()
+	got := AssignClaude(dir, []Claim{{Name: "again", ID: "ffffffff-6", Started: now}, {Name: "nohooks", Started: now}})
+	if got["again"] != "" || got["nohooks"] != "" {
+		t.Fatalf("a new agent took the ended one's conversation: %v", got)
+	}
+}
