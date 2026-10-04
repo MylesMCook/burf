@@ -38,7 +38,7 @@ func TestPlanShowsEverythingAndWritesNothing(t *testing.T) {
 
 func TestApplyIsIdempotentBacksUpOnceAndNeverDuplicatesTheInclude(t *testing.T) {
 	c := Config{Dir: t.TempDir()}
-	orig := "Include calport/*.conf\n\nHost dev\n  HostName 1.2.3.4\n"
+	orig := "Include other/*.conf\n\nHost dev\n  HostName 1.2.3.4\n"
 	os.WriteFile(filepath.Join(c.Dir, "config"), []byte(orig), 0o600)
 	plan, _ := c.Plan(hosts())
 	if err := c.Apply(plan); err != nil {
