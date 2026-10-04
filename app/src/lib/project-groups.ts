@@ -6,7 +6,7 @@ import { projectKey } from "@/lib/projects";
 import { errorMessage } from "@/lib/format";
 import { NONE, useStore } from "@/lib/store";
 
-// A project is one repository across boxes: "cal" on devl, cal and omarchy is
+// A project is one repository across boxes: "cal" on devl, cal and homelab is
 // one project with three members. Members are found by the repository's
 // owner/name (its remote), or by the location's name when it has no remote.
 // The person can rename a project, merge and split them, pick its default

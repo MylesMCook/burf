@@ -4,7 +4,7 @@ import type { PhoneChange, PhoneStatus } from "@/lib/phone";
 // tailnet address and token.
 
 const state: Record<string, PhoneStatus> = {};
-const addr: Record<string, string> = { devl: "100.64.0.11", gpu: "100.64.0.12", cal: "100.64.0.12", omarchy: "100.64.0.13" };
+const addr: Record<string, string> = { devl: "100.64.0.11", gpu: "100.64.0.12", cal: "100.64.0.12", homelab: "100.64.0.13" };
 
 function token() {
   return Array.from({ length: 48 }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join("");
