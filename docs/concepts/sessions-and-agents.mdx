@@ -76,15 +76,23 @@ Berth knows what an agent is doing from the agent's own hooks, which
 `opencode`, `all`; an upgrade brings hooks Berth installed before up to
 date):
 
-| State | Meaning | From |
-| --- | --- | --- |
-| `idle` | Open, at its prompt, not given anything yet | `agent.ready` |
-| `running` | Working on a prompt | `agent.started` |
-| `waiting` | Needs you: a permission, a question | `agent.waiting` |
-| `finished` | Done with its turn | `agent.finished` |
-| `exited` | The agent itself quit | `agent.exited` |
+| State | In the app | Meaning | From |
+| --- | --- | --- | --- |
+| `idle` | Idle | Open, at its prompt, not given anything yet | `agent.ready` |
+| `running` | Working | Working on a prompt | `agent.started` |
+| `waiting` | Needs you | A permission, a question | `agent.waiting` |
+| `finished` | Done | Done with its turn | `agent.finished` |
+| `exited` | Ended | The agent itself quit | `agent.exited` |
 
-A session whose program has ended is `exited`. Berth also notices Claude
+A session whose program has ended is `exited`, and the app calls it
+**ended** everywhere: the sidebar, tabs, panes, the dashboard, zen, ⌘K and
+notifications use the same words and the same glyph (a blue spinner while
+working, an amber dot when it needs you, a check when done, a grey ring when
+idle, a grey dot once ended). An ended agent takes no input: sending to one
+fails with the code `session_exited` instead of typing into a dead pane, and
+the app offers to start it again or hand its work on rather than to send.
+While its box is offline the app doesn't guess: the pane says the box is
+away and comes back by itself. Berth also notices Claude
 Code's "trust this folder" question at startup and reports it as `waiting`.
 Claude Code's reminder a minute after a finished turn (`idle_prompt`) and its
 login notice are not questions, so they never read as `waiting`; after you

@@ -491,7 +491,7 @@ export function NotificationCenter() {
                   <Scene name="bottle" width={128} className="text-muted-foreground" />
                 </EmptyMedia>
                 <EmptyTitle className="text-base">You're all caught up</EmptyTitle>
-                <EmptyDescription className="text-sm">Agents waiting for you, failures and finished work land here.</EmptyDescription>
+                <EmptyDescription className="text-sm">Agents that need you, failures and finished work land here.</EmptyDescription>
               </EmptyHeader>
             </Empty>
           </div>
@@ -693,7 +693,7 @@ function LiveRow({ live, now, tabStop, onFocus }: { live: Live; now: number; tab
   return (
     <li
       data-note={live.key}
-      aria-label={`${live.name} is waiting for you, ${live.place}`}
+      aria-label={`${live.name} needs you, ${live.place}`}
       tabIndex={tabStop ? 0 : -1}
       onFocus={(e) => e.target === e.currentTarget && onFocus(live.key)}
       onClick={() => openLive(live)}
@@ -709,7 +709,7 @@ function LiveRow({ live, now, tabStop, onFocus }: { live: Live; now: number; tab
       </Tip>
       <div className="min-w-0 flex-1">
         <div className="flex h-5 items-center gap-1.5">
-          <span className="min-w-0 truncate font-medium text-[13px] text-foreground">{live.name} is waiting for you</span>
+          <span className="min-w-0 truncate font-medium text-[13px] text-foreground">{live.name} needs you</span>
           <span className="flex-1" />
           {since && <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">{short(since, now)}</span>}
         </div>
