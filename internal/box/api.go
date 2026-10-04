@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/doctor"
 	"github.com/sean-brydon/berthd/internal/box/runs"
+	"github.com/sean-brydon/berthd/internal/doctor"
 	"github.com/sean-brydon/berthd/internal/events"
 	"github.com/sean-brydon/berthd/internal/hooks"
 	"github.com/sean-brydon/berthd/internal/terminal"
@@ -80,6 +80,10 @@ type Box struct {
 	AutoFix *AutoFixStore
 	// Triggers keeps the secrets of flows started by a signed POST.
 	Triggers *TriggerSecrets
+	// BrowserProxies confine each worktree's browser to its own pages.
+	BrowserProxies *BrowserProxies
+	// Browsers runs agents' headless browsers, one per active worktree.
+	Browsers *Browsers
 }
 
 func (b *Box) own(path string) {
@@ -173,6 +177,7 @@ func (b *Box) Mount(s *wire.Server) {
 	route("GET /v1/events", b.streamEvents)
 	route("POST /v1/events", b.emit)
 	b.mountRuns(route)
+	b.mountBrowser(route)
 	b.mountPairing(s, route)
 }
 

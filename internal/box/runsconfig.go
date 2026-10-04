@@ -15,6 +15,9 @@ type RunsConfig struct {
 	// TriggersListen serves signed webhook triggers on this address alone
 	// ("tailnet" for the box's tailnet address, port 7482). Off when empty.
 	TriggersListen string `json:"triggers_listen,omitempty"`
+	// MaxBrowsers caps agents' browsers at once (default: 1 under 2 GB of
+	// memory, 2 to 4 GB, 3 to 8 GB, 4 above).
+	MaxBrowsers int `json:"max_browsers,omitempty"`
 }
 
 // LoadRunsConfig reads path; a missing or broken file is the defaults.

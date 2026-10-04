@@ -67,6 +67,21 @@ var usageSections = []struct {
 		{"%[1]s run cancel %[2]sRUN", "Stop a run"},
 		{"%[1]s flow secret%[3]s FLOW [--scope S] [--json]", "Make a webhook flow's signing secret (shown once)"},
 	}},
+	{"Agent browser (a headless browser on the box, per worktree)", [][2]string{
+		{"%[1]s browser open %[2]s[LOC/WT] [PATH|URL]", "Open the worktree's page ($BERTH_URL); prints a compact snapshot with @refs"},
+		{"%[1]s browser snapshot %[2]s[LOC/WT] [--full] [--delta] [--selector SEL] [--depth N]", "The page's elements (interactive by default; capped)"},
+		{"%[1]s browser click|hover|check %[2]s[LOC/WT] @REF", "Act on an element; prints what changed"},
+		{"%[1]s browser fill|select %[2]s[LOC/WT] @REF VALUE", "Fill a field or pick an option"},
+		{"%[1]s browser press %[2]s[LOC/WT] [@REF] KEY", "Press Enter, Tab, Escape…"},
+		{"%[1]s browser wait %[2]s[LOC/WT] --text T | --url U | --idle [--timeout 10s]", "Wait for the page"},
+		{"%[1]s browser shot %[2]s[LOC/WT] [--el @REF] [--full] [--width 800]", "Save a screenshot; prints its path"},
+		{"%[1]s browser console %[2]s[LOC/WT] [--all]", "New console errors and warnings since the last look"},
+		{"%[1]s browser network %[2]s[LOC/WT]", "Failed requests since the last look"},
+		{"%[1]s browser eval %[2]s[LOC/WT] JS", "Run JavaScript in the page (output capped at 2 KB)"},
+		{"%[1]s browser status|close %[2]s[LOC/WT]", "Whether it runs, or close it"},
+		{"%[1]s browser list%[3]s [--json]", "Browsers running on the box"},
+		{"%[1]s browser allow%[3]s ORIGIN", "Let agents' browsers load a public origin (the box owner's)"},
+	}},
 	{"Ports and sharing", [][2]string{
 		{"%[1]s ports%[3]s [--json]", "What is listening on the box"},
 		{"%[1]s stats%[3]s [--json]", "Memory, disk, load, and agents running or waiting"},
@@ -144,7 +159,7 @@ var Commands = map[string]int{
 	"skills": 1, "preview": 1, "service": 2,
 	"units": 1, "unit": 2,
 	"secret": 2,
-	"runs": 1, "run": 2, "flow": 2,
+	"runs":   1, "run": 2, "flow": 2, "browser": 2,
 }
 
 // Run executes args, which start with the command words, against c.
@@ -211,6 +226,9 @@ func Run(ctx context.Context, c *box.Client, args []string, out io.Writer) error
 		return runsCmd(ctx, c, rest, out)
 	case "flow secret":
 		return flowSecret(ctx, c, rest, out)
+	case "browser open", "browser snapshot", "browser click", "browser fill", "browser press", "browser select", "browser hover", "browser check",
+		"browser wait", "browser shot", "browser console", "browser network", "browser status", "browser close", "browser eval", "browser allow", "browser list":
+		return browserCmd(ctx, c, strings.TrimPrefix(cmd, "browser "), rest, out)
 	case "run start", "run get", "run logs", "run cancel", "run approve", "run reject", "run templates":
 		return runCmd(ctx, c, strings.TrimPrefix(cmd, "run "), rest, out)
 	case "location scripts":

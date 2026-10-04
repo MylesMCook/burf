@@ -65,6 +65,9 @@ type ReviewItem struct {
 	Agent      string    `json:"agent"`
 	AgentState string    `json:"agent_state"`
 	StateSince time.Time `json:"state_since,omitzero"`
+	// Browser is what the worktree's agent browser left: its last shots,
+	// the URL it ended on, and its console errors.
+	Browser *BrowserArtifacts `json:"browser,omitempty"`
 }
 
 const maxReviewCommits = 20
@@ -128,6 +131,9 @@ func (b *Box) Review(ctx context.Context, all bool) ([]ReviewItem, error) {
 				return
 			}
 			item.Session, item.Agent, item.AgentState, item.StateSince = p.sess.Name, p.sess.Agent, p.sess.AgentState, p.sess.StateSince
+			if b.Browsers != nil {
+				item.Browser = b.Browsers.Artifacts(p.loc.Name, p.wt.Name, p.wt.Path)
+			}
 			mu.Lock()
 			out = append(out, item)
 			mu.Unlock()

@@ -132,6 +132,9 @@ func (b *Box) Capabilities() []string {
 	if b.Runs != nil {
 		caps = append(caps, "runs", "exec.detach")
 	}
+	if b.Browsers != nil {
+		caps = append(caps, "browser")
+	}
 	if b.Events.Journal != nil {
 		caps = append(caps, "journal")
 	}

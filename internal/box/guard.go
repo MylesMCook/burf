@@ -177,6 +177,9 @@ func (b *Box) guardTick(ctx context.Context) *GuardAction {
 		"services": a.Services, "sessions": a.Sessions, "memory_percent": a.Memory, "reason": a.Reason}
 	b.Events.Publish(events.Event{Type: "guard.acted", Box: b.Name, Origin: "guard", Data: data})
 	what := "Stopped " + strings.Join(a.Services, ", ") + " in " + a.Location + "/" + a.Worktree
+	if a.Action == "close_browser" {
+		what = "Closed the agent browser of " + a.Location + "/" + a.Worktree
+	}
 	if a.Action == "pause_worktree" {
 		what = "Paused " + a.Location + "/" + a.Worktree + " (its agents were " + a.Reason + ")"
 	}
@@ -193,8 +196,14 @@ type guardCandidate struct {
 	idle     time.Time // when its agents last did anything; zero = never
 }
 
-// guardStep picks the next thing to stop or pause.
+// guardStep picks the next thing to stop or pause. An agent's browser goes
+// first: it is cheap to start again, and agents' work is not.
 func (b *Box) guardStep(ctx context.Context, cfg GuardConfig, mem float64) *GuardAction {
+	if b.Browsers != nil {
+		if st, ok := b.Browsers.CloseLRU("the box is low on memory"); ok {
+			return &GuardAction{Action: "close_browser", Location: st.Location, Worktree: st.Worktree, Path: st.Path, Memory: mem, Reason: "an agent's browser closes before agents pause"}
+		}
+	}
 	locs, err := b.Locations.List(ctx)
 	if err != nil {
 		return nil

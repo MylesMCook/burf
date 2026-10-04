@@ -47,6 +47,10 @@ type RepoConfig struct {
 	Hooks []hooks.Hook `json:"hooks,omitempty"`
 	// Flows are automations for this repository's worktrees.
 	Flows []Flow `json:"flows,omitempty"`
+	// BrowserAllow asks for public origins an agent's browser may load in
+	// this repository's worktrees (a sign-in provider, say). It applies once
+	// the box trusts the repository's config.
+	BrowserAllow []string `json:"browser_allow,omitempty"`
 }
 
 // ReadRepoConfig reads repo's .berth/config.json; ok is false without one.

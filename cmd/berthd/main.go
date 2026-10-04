@@ -21,13 +21,13 @@ import (
 	"time"
 
 	"github.com/sean-brydon/berthd/internal/box"
-	"github.com/sean-brydon/berthd/internal/mcpserver"
 	"github.com/sean-brydon/berthd/internal/boxcmd"
 	"github.com/sean-brydon/berthd/internal/doctor"
 	"github.com/sean-brydon/berthd/internal/events"
 	"github.com/sean-brydon/berthd/internal/hooks"
 	"github.com/sean-brydon/berthd/internal/identity"
 	"github.com/sean-brydon/berthd/internal/integrations"
+	"github.com/sean-brydon/berthd/internal/mcpserver"
 	"github.com/sean-brydon/berthd/internal/pairing"
 	"github.com/sean-brydon/berthd/internal/service"
 	"github.com/sean-brydon/berthd/internal/statefile"
@@ -62,6 +62,7 @@ const usage = `berthd — the berth daemon for a development box
                                           services use it)
   berthd mcp                              A stdio MCP server of berth's tools for agents on this box
                                           (integrations install adds it to Claude, Codex and Gemini)
+  berthd browser install                  Download a Chromium (Playwright's headless shell) for agents' browsers
   berthd headless --agent A --out FILE.jsonl --prompt-file FILE [--read-only] [--add-dir D]
                                           One non-interactive agent turn, as runs start in tmux
 
@@ -192,6 +193,9 @@ func run(args []string) error {
 		}
 		return integrations.Install(args[1:], exe, os.Stdout)
 	}
+	if len(args) >= 2 && args[0] == "browser" && args[1] == "install" {
+		return box.InstallChromium(os.Stdout)
+	}
 	if len(args) >= 2 && args[0] == "session" && args[1] == "attach" {
 		return attachLocal(args[2:])
 	}
@@ -319,6 +323,9 @@ func serve(b boxHome, args []string) error {
 	bx.Triggers = &box.TriggerSecrets{Path: filepath.Join(b.dir, "trigger-secrets.json")}
 	rc := box.LoadRunsConfig(filepath.Join(userDir, "runs.json"))
 	bx.NewRuns(filepath.Join(b.dir, "runs"), rc.MaxConcurrentRuns, rc.MaxConcurrentAgents, logger.Printf)
+	bx.BrowserProxies = &box.BrowserProxies{Path: filepath.Join(b.dir, "browser-proxies.json")}
+	defer bx.BrowserProxies.CloseAll()
+	bx.NewBrowsers(filepath.Join(b.dir, "browser"), rc.MaxBrowsers)
 	bx.Mount(s)
 	// Hooks that ran while berthd was down, in order, before anything new.
 	if n := integrations.DrainSpool(b.spool(), func(e events.Event) { bus.Publish(e) }); n > 0 {
@@ -342,6 +349,15 @@ func serve(b boxHome, args []string) error {
 		}
 	}()
 	go bx.Flows.Run(ctx, bx)
+	browsersDone := make(chan struct{})
+	go func() { bx.Browsers.Run(ctx); close(browsersDone) }()
+	// Chromium goes with berthd.
+	defer func() {
+		select {
+		case <-browsersDone:
+		case <-time.After(10 * time.Second):
+		}
+	}()
 	if addr := rc.TriggersListen; addr != "" {
 		if addr == "tailnet" {
 			if host, err := tailnetAddr(); err == nil {

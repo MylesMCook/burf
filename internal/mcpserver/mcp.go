@@ -380,4 +380,3 @@ func attempts(ctx context.Context, s *Server, a map[string]any) (any, error) {
 	}
 	return map[string]string{"run": r.ID, "status": r.Status}, nil
 }
-

@@ -999,7 +999,6 @@ func (x *execution) release(sc *scope) {
 	}
 }
 
-
 func firstLine(s string, n int) string {
 	s = strings.TrimSpace(s)
 	if i := strings.IndexByte(s, '\n'); i >= 0 {

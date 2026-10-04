@@ -125,8 +125,8 @@ type sessTrack struct {
 	Fidelity string    `json:"fidelity,omitempty"`
 	N        int       `json:"n"`
 	// AgentSessionID is the agent's own conversation ID.
-	AgentSessionID string `json:"agent_session_id,omitempty"`
-	Turns    []*Turn   `json:"turns,omitempty"`
+	AgentSessionID string  `json:"agent_session_id,omitempty"`
+	Turns          []*Turn `json:"turns,omitempty"`
 	// Hooked is set once the agent's own hooks reported here; SawStart once
 	// they said a prompt started, so its sends can wait for that.
 	Hooked   bool `json:"hooked,omitempty"`

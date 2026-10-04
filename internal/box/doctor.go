@@ -59,6 +59,13 @@ func (b *Box) Doctor(ctx context.Context) []doctor.Check {
 	if len(locs) == 0 {
 		checks = append(checks, doctor.Check{Area: "Locations", Name: "locations", Status: doctor.Info, Detail: "none yet", Fix: "berthd location add NAME ~/path/to/repo"})
 	}
+	if b.Browsers != nil {
+		if p, err := FindChromium(); err != nil {
+			checks = append(checks, doctor.Check{Area: "Agents", Name: "agent browser", Status: doctor.Info, Detail: "no Chromium for agents' browsers", Fix: "berthd browser install"})
+		} else {
+			checks = append(checks, doctor.Check{Area: "Agents", Name: "agent browser", Status: doctor.OK, Detail: fmt.Sprintf("Chromium at %s; at most %d at once", p, b.Browsers.limit())})
+		}
+	}
 	return checks
 }
 

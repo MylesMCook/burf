@@ -97,6 +97,7 @@ func merge(repo, local RepoConfig) RepoConfig {
 	out.Agents = mergeBy(repo.Agents, local.Agents, func(a AgentPreset) string { return a.ID })
 	out.Hooks = append(append([]hooks.Hook{}, repo.Hooks...), local.Hooks...)
 	out.Flows = mergeBy(repo.Flows, local.Flows, func(f Flow) string { return f.ID })
+	out.BrowserAllow = append(append([]string{}, repo.BrowserAllow...), local.BrowserAllow...)
 	return out
 }
 
@@ -332,6 +333,20 @@ func (b *Box) worktreeEnv(ctx context.Context, location string, wt Worktree) (wo
 	if cfg.Kit != nil {
 		vars["BERTH_KIT_DIR"] = cfg.Kit.Dir
 	}
+	// BERTH_URL is the worktree's private URL as the human opens it on the
+	// laptop (its proxy on :1377), which the agent's browser opens too.
+	if u := worktreeURL(b.Name, loc.Name, wt); u != "" {
+		vars["BERTH_URL"] = u
+	}
+	// A browser an agent runs itself (Playwright MCP, say) goes through
+	// the worktree's browser proxy: confined like berth's own.
+	if b.BrowserProxies != nil {
+		if p, err := b.BrowserProxies.For(b, wt.Path); err == nil {
+			vars["BERTH_BROWSER_PROXY"] = p.Addr()
+			vars["PLAYWRIGHT_MCP_PROXY_SERVER"] = p.Addr()
+			vars["PLAYWRIGHT_MCP_PROXY_BYPASS"] = "<-loopback>"
+		}
+	}
 	if port, err := b.Locations.Ports.For(wt.Path); err != nil {
 		return worktreeEnvParts{}, err
 	} else if port > 0 {
@@ -440,4 +455,23 @@ func (b *Box) putConfig(w http.ResponseWriter, r *http.Request) error {
 	}
 	b.publish(r, "config.changed", map[string]any{"location": name})
 	return b.getConfig(w, r)
+}
+
+var urlLabel = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`)
+
+// worktreeURL is http://<worktree>.<location>.<box>.localhost:1377 (the main
+// checkout: <location>.<box>.localhost:1377), or "" when a name cannot be a
+// hostname label. A laptop whose proxy is on port 80 drops the port; the
+// agent's browser accepts either.
+func worktreeURL(box, location string, wt Worktree) string {
+	labels := []string{strings.ToLower(wt.Name), strings.ToLower(location), strings.ToLower(box)}
+	if wt.Main {
+		labels = labels[1:]
+	}
+	for _, l := range labels {
+		if !urlLabel.MatchString(l) {
+			return ""
+		}
+	}
+	return "http://" + strings.Join(labels, ".") + ".localhost:1377"
 }

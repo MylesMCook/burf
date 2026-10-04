@@ -75,7 +75,7 @@ type parser struct {
 }
 
 func (p *parser) peek() token { return p.toks[p.i] }
-func (p *parser) next() token  { t := p.toks[p.i]; p.i++; return t }
+func (p *parser) next() token { t := p.toks[p.i]; p.i++; return t }
 
 // Eval evaluates cond against vars.
 func Eval(cond string, vars map[string]string) (bool, error) {
