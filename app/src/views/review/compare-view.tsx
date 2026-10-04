@@ -9,6 +9,7 @@ import { ago, errorMessage } from "@/lib/format";
 import { plainError } from "@/lib/errors";
 import type { RunCompare } from "@/lib/orchestrate-core";
 import { allRuns, type BoxRun, runs as runsApi, scheduleRuns, useRuns } from "@/lib/runs";
+import { confirm } from "@/components/sidebar/confirm";
 import { cn } from "@/lib/utils";
 import { focusSession } from "@/lib/workspaces";
 import { tokens } from "@/views/automations/flows/runs-tab";
@@ -83,7 +84,22 @@ export function CompareView({ box, id, onClose }: { box: string; id: string; onC
   const data = all.find((r) => r.box === box && r.id === id)?.data ?? all[0]?.data;
   const canPick = all.some((r) => r.data.gate?.pick);
   const multi = all.length > 1;
+  // A group's runs each say how many they tried; the page shows them all.
+  const titleOf = (t?: string) => (t ?? id).replace(/: \d+ attempts?$/, "");
   const cands = all.flatMap((r) => r.data.candidates.map((c) => ({ ...c, box: r.box, runId: r.id, winner: r.data.gate?.default === c.index })));
+  const title = data ? `${titleOf(data.run.title)}: ${cands.length} attempt${cands.length === 1 ? "" : "s"}` : id;
+  // Picking one whose check failed takes work that does not pass: ask first.
+  const choose = (c: (typeof cands)[number]) => {
+    const go = () => pick(true, { box: c.box, id: c.runId, index: c.index });
+    if (c.verify.passed) return void go();
+    confirm({
+      title: `Pick attempt ${c.index + 1}? Its check failed`,
+      description: "Its pull request opens with work that doesn't pass the check, and the other attempts are archived.",
+      confirm: "Pick it anyway",
+      destructive: true,
+      run: go,
+    });
+  };
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex shrink-0 items-center gap-3 border-b px-6 py-2.5">
@@ -92,9 +108,9 @@ export function CompareView({ box, id, onClose }: { box: string; id: string; onC
           Review
         </Button>
         <div className="min-w-0 flex-1">
-          <p className="truncate font-medium text-sm">{data?.run.title ?? id}</p>
+          <p className="truncate font-medium text-sm">{title}</p>
           <p className="truncate text-muted-foreground text-xs">
-            {box} · {data ? `${data.run.status.replace("_", " ")} · started ${ago(data.run.created)}` : "…"}
+            {multi ? all.map((r) => r.box).join(" and ") : box} · {data ? `${data.run.status.replace("_", " ")} · started ${ago(data.run.created)}` : "…"}
             {data?.run.usage && ` · ${tokens(data.run.usage)}`}
           </p>
         </div>
@@ -129,16 +145,16 @@ export function CompareView({ box, id, onClose }: { box: string; id: string; onC
                 <section key={`${c.box}/${c.runId}/${c.index}`} className={cn("flex min-w-0 flex-col rounded-xl border bg-card", c.picked && "border-success/60", c.winner && canPick && "border-primary/50")}>
                   <header className="flex items-center gap-2 border-b px-3 py-2">
                     <AgentIcon agent={c.agent} />
-                    <span className="font-medium text-sm">Attempt {c.index + 1}</span>
-                    <span className="truncate text-muted-foreground text-xs">{multi ? `${c.box} · ${c.worktree}` : c.worktree}</span>
+                    <span className="shrink-0 whitespace-nowrap font-medium text-sm">Attempt {c.index + 1}</span>
+                    <span className="min-w-0 truncate text-muted-foreground text-xs">{multi ? `${c.box} · ${c.worktree}` : c.worktree}</span>
                     {c.judge.rank === 1 && (
-                      <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-primary">
+                      <span className="ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] text-primary">
                         <CrownIcon className="size-3" />
                         judge's pick
                       </span>
                     )}
                     {c.picked && (
-                      <span className="ml-auto inline-flex items-center gap-1 text-[11px] text-success">
+                      <span className="ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] text-success">
                         <CheckIcon className="size-3" />
                         picked
                       </span>
@@ -190,7 +206,7 @@ export function CompareView({ box, id, onClose }: { box: string; id: string; onC
                   </ul>
                   <footer className="flex items-center gap-1.5 border-t px-3 py-2">
                     {canPick && (
-                      <Button size="xs" disabled={busy} onClick={() => void pick(true, { box: c.box, id: c.runId, index: c.index })}>
+                      <Button size="xs" variant={c.judge.rank === 1 && c.verify.passed ? "default" : "outline"} disabled={busy} onClick={() => choose(c)}>
                         Pick this one
                       </Button>
                     )}
