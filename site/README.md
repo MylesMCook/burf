@@ -8,7 +8,13 @@ Berth's landing page: static HTML and CSS, no build step. Open
   painting the app's Labs home shows (day, and night in dark mode), drawn
   as the app's DitherBand draws it: an ordered dither of its lightness on a
   canvas at one dot per 2 CSS px, dissolving dot by dot into the page. It
-  renders once per size; without the script the plain painting shows.
+  renders once per size; without the script the plain painting shows. The
+  lighthouse's beam is a CSS wedge of halftone dots from the lamp, sweeping
+  by transform only (still for reduced motion, paused when hidden).
+- "Close the laptop" in the header puts the page to night by hand
+  (`data-theme` on `<html>`): the harbour redraws at night, the screenshots
+  switch to their dark versions, and a line counts what the agents keep
+  doing while the laptop sleeps.
 - `assets/shots/`: the four screenshots (home, conversation, dashboard,
   zen) from the live demo with Labs on, as WebPs per theme at 720, 1280
   and 2080 wide, and a readable crop of each for phones

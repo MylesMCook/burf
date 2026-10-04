@@ -32,6 +32,7 @@
 <header class="site-header">
   <a class="brand" href="#top" aria-label="berth, back to top"><svg viewBox="80 20 384 472" aria-hidden="true"><path d="M116 84 H300 a96 96 0 0 1 0 192 H116 Z M116 276 H324 a104 104 0 0 1 0 208 H116 Z" transform="translate(0,-28)" fill="none" stroke="currentColor" stroke-width="68" stroke-linejoin="round"/><circle cx="296" cy="152" r="30" fill="var(--amber)"/></svg>berth</a>
   <nav aria-label="Main">
+    <button class="pill lid" type="button" aria-pressed="false" hidden><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 11.5 H13.5 M4 11.5 V4.5 H12 V11.5 M1.5 13.5 H14.5"/></svg><span>Close the laptop</span></button>
     <a class="pill" href="https://docs.berthd.app">Docs</a>
     <a class="pill" href="https://github.com/sean-brydon/berthd" aria-label="Berth on GitHub"><svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg><span>GitHub</span></a>
   </nav>
@@ -47,8 +48,10 @@
       <img src="assets/harbour/day.webp" alt="" width="1672" height="941" fetchpriority="high">
     </picture>
     <canvas></canvas>
+    <div class="beam"></div>
   </div>
   <div class="hero-copy">
+    <p class="status" role="status" hidden><i></i><span></span></p>
     <h1>Agents that keep working when your laptop sleeps.</h1>
     <p class="lede">Berth runs Claude Code, Codex and other coding agents on your own dev boxes. Work with them from your laptop; close it, and they keep going.</p>
     <div class="actions">
@@ -164,6 +167,51 @@
 </footer>
 
 <script>
+  // "Close the laptop" puts the page to night (or back to day): the harbour
+  // redraws, the screenshots follow, and a line says what keeps working.
+  (() => {
+    const root = document.documentElement;
+    const lid = document.querySelector(".lid");
+    const label = lid.querySelector("span");
+    const status = document.querySelector(".status");
+    const text = status.querySelector("span");
+    const sys = matchMedia("(prefers-color-scheme: dark)");
+    const night = () => (root.dataset.theme ? root.dataset.theme === "night" : sys.matches);
+    for (const s of document.querySelectorAll("source[media*=prefers-color-scheme]")) s.dataset.media = s.media;
+    let commits = 0;
+    let timer = 0;
+    const tell = () => (text.textContent = `Laptop asleep · 3 agents still working · ${commits} commit${commits === 1 ? "" : "s"}`);
+    const sync = () => {
+      const n = night();
+      label.textContent = n ? "Open the laptop" : "Close the laptop";
+      lid.setAttribute("aria-label", label.textContent);
+      lid.setAttribute("aria-pressed", String(n));
+      for (const s of document.querySelectorAll("source[data-media]")) {
+        s.media = root.dataset.theme ? s.dataset.media.replace(/\(prefers-color-scheme: dark\)/, n ? "(min-width: 0px)" : "(max-width: 0px)") : s.dataset.media;
+      }
+      document.querySelector('meta[name=theme-color]').content = n ? "#18191c" : "#ffffff";
+    };
+    lid.hidden = false;
+    lid.addEventListener("click", () => {
+      root.dataset.theme = night() ? "day" : "night";
+      sync();
+      dispatchEvent(new Event("berth:theme"));
+      clearInterval(timer);
+      if (night()) {
+        commits = 0;
+        tell();
+        status.hidden = false;
+        if (!matchMedia("(prefers-reduced-motion: reduce)").matches)
+          timer = setInterval(() => {
+            if (!document.hidden && commits < 99) commits++, tell();
+          }, 2400);
+      } else status.hidden = true;
+    });
+    sys.addEventListener("change", sync);
+    sync();
+    document.addEventListener("visibilitychange", () => root.classList.toggle("hidden", document.hidden));
+  })();
+
   // Copy for the install line, when there is a clipboard.
   for (const b of document.querySelectorAll("[data-copy]")) {
     if (!navigator.clipboard) break;

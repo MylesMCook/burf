@@ -17,6 +17,12 @@
     31, 55, 23, 61, 29, 53, 21,
   ].map((v) => (v + 0.5) / 64);
   const dark = matchMedia("(prefers-color-scheme: dark)");
+  // The page can be put to night or day by hand ("Close the laptop"): it
+  // sets data-theme on <html> and says so with a berth:theme event.
+  const isNight = () => (document.documentElement.dataset.theme ? document.documentElement.dataset.theme === "night" : dark.matches);
+  const beam = band.querySelector(".beam");
+  // Where the lighthouse's lamp is in the painting, as a fraction of it.
+  const LAMP = [0.094, 0.457];
   let size = "";
   let timer = 0;
   let pending = false;
@@ -26,7 +32,7 @@
     pending = false;
     const w = Math.ceil(band.clientWidth / CELL);
     const h = Math.ceil(band.clientHeight / CELL);
-    const night = dark.matches;
+    const night = isNight();
     const key = `${w}x${h}${night}`;
     if (!w || !h || (key === size && !force)) return;
     const img = new Image();
@@ -55,6 +61,10 @@
     // On a narrow screen the lighthouse, at the left, stays in view.
     const across = band.clientWidth < 700 ? 0.08 : 0.5;
     sctx.drawImage(img, (w - dw) * across * 0.6, (h - dh) * POSITION * 0.6, dw * 0.6, dh * 0.6);
+    if (beam) {
+      beam.style.left = `${((w - dw) * across + dw * LAMP[0]) * CELL}px`;
+      beam.style.top = `${((h - dh) * POSITION + dh * LAMP[1]) * CELL}px`;
+    }
     ctx.imageSmoothingQuality = "high";
     ctx.clearRect(0, 0, w, h);
     ctx.drawImage(soft, 0, 0, w, h);
@@ -111,6 +121,7 @@
     timer = setTimeout(draw, 120);
   }).observe(band);
   dark.addEventListener("change", () => draw(true));
+  addEventListener("berth:theme", () => draw(true));
   document.addEventListener("visibilitychange", () => pending && !document.hidden && draw());
   draw();
 })();

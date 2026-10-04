@@ -36,8 +36,10 @@
   --band: clamp(340px, 58vh, 600px);
   color-scheme: light;
 }
+/* Night: the system's dark mode, unless the page was put to day; or the
+   page put to night by "Close the laptop". */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="day"]) {
     --bg: #18191c;
     --card: #1f2024;
     --muted-bg: #222327;
@@ -53,6 +55,22 @@
     --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 30px 80px -30px rgb(0 0 0 / 0.75);
     color-scheme: dark;
   }
+}
+:root[data-theme="night"] {
+  --bg: #18191c;
+  --card: #1f2024;
+  --muted-bg: #222327;
+  --border: #2c2d33;
+  --input: #34353c;
+  --fg: #e3e4e8;
+  --fg-2: #c0c2c9;
+  --muted: #9a9ca5;
+  --primary: #e3e4e8;
+  --primary-fg: #18191c;
+  --amber: #e8a33d;
+  --ring: #6b6d76;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 30px 80px -30px rgb(0 0 0 / 0.75);
+  color-scheme: dark;
 }
 
 *,
@@ -433,5 +451,100 @@ code {
   .harbour canvas,
   .harbour img {
     transition: none;
+  }
+}
+
+/* The lighthouse's beam: a wedge of halftone dots from the lamp, sweeping
+   slowly. Only transform moves; it rests when the page is hidden and for
+   reduced motion. Brighter at night. */
+.beam {
+  position: absolute;
+  z-index: 1;
+  width: min(70vw, 900px);
+  height: 220px;
+  margin-top: -110px;
+  transform-origin: 0 50%;
+  background: linear-gradient(to right, rgb(255 236 190 / 0.9), rgb(255 236 190 / 0.35) 40%, transparent 85%);
+  clip-path: polygon(0 48%, 100% 0, 100% 100%, 0 52%);
+  -webkit-mask: radial-gradient(circle at 1px 1px, #000 0.8px, transparent 1px) 0 0 / 3px 3px;
+  mask: radial-gradient(circle at 1px 1px, #000 0.8px, transparent 1px) 0 0 / 3px 3px;
+  opacity: 0;
+  pointer-events: none;
+  animation: sweep 11s ease-in-out infinite alternate;
+  transition: opacity 0.8s;
+}
+.harbour.drawn .beam {
+  opacity: 0.32;
+}
+:root[data-theme="night"] .harbour.drawn .beam {
+  opacity: 0.85;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="day"]) .harbour.drawn .beam {
+    opacity: 0.85;
+  }
+}
+@keyframes sweep {
+  from {
+    transform: rotate(-14deg);
+  }
+  to {
+    transform: rotate(10deg);
+  }
+}
+:root.hidden .beam,
+:root.hidden .status i {
+  animation-play-state: paused;
+}
+
+/* "Close the laptop": puts the page to night, and says what keeps going. */
+.lid {
+  cursor: pointer;
+  font: 500 14px var(--sans);
+  color: var(--fg);
+}
+.lid svg {
+  width: 15px;
+  height: 15px;
+}
+.status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: fit-content;
+  margin: 0 auto 18px;
+  padding: 5px 12px 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--bg) 85%, transparent);
+  color: var(--fg-2);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.status[hidden] {
+  display: none;
+}
+.status i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #3b82f6;
+  animation: pulse 1.6s ease-in-out infinite;
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.35;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .beam {
+    animation: none;
+    transform: rotate(-4deg);
+  }
+  .status i {
+    animation: none;
   }
 }
