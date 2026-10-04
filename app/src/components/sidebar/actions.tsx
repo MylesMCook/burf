@@ -1,5 +1,6 @@
 import {
   ActivityIcon,
+  ArchiveIcon,
   ArrowUpCircleIcon,
   ArrowUpRightIcon,
   BotIcon,
@@ -240,9 +241,43 @@ export function worktreeActions(box: string, loc: Location, wt: Worktree): Actio
       ),
     );
   }
-  if (!wt.main) danger.push(item("Remove worktree…", <Trash2Icon />, () => removeWorktree(box, loc, wt), { destructive: true }));
+  if (!wt.main) {
+    danger.push(item("Archive…", <ArchiveIcon />, () => archiveWorktree(box, loc, wt)));
+    danger.push(item("Remove worktree…", <Trash2Icon />, () => removeWorktree(box, loc, wt), { destructive: true }));
+  }
   if (danger.length) items.push(sep, ...danger);
   return items;
+}
+
+// archiveWorktree asks, then archives a worktree: its sessions and services
+// stop, the repo's archive script runs (on the box, in the background),
+// then its folder goes. Its branch stays, and git refuses to lose
+// uncommitted work, so nothing is lost; Remove is the way to discard.
+export function archiveWorktree(box: string, loc: Location, wt: Worktree) {
+  const script = loc.scripts?.archive;
+  confirm({
+    title: `Archive ${wt.name}?`,
+    description: `${script ? "The repo's archive script runs, then its" : "Its"} folder on ${box} goes and its sessions and services stop. ${wt.branch ? `Branch ${wt.branch} stays, so you can pick it up again.` : ""}`,
+    detail: script ? <span className="font-mono">{script}</span> : undefined,
+    confirm: "Archive",
+    run: async () => {
+      const client = useStore.getState().client;
+      if (!client) throw new Error("not connected");
+      let res: { archive?: string } | undefined;
+      try {
+        res = await client.box<{ archive?: string }>(box, "DELETE", `locations/${encodeURIComponent(loc.name)}/worktrees/${encodeURIComponent(wt.name)}`);
+      } catch (err) {
+        if (/modified|untracked|uncommitted|contains/i.test(errorMessage(err))) throw new Error(`${wt.name} has uncommitted changes, so it was left as it is. Commit them first, or use Remove worktree… to discard them.`);
+        throw err;
+      }
+      scheduleRefresh(box, ["locations", "sessions", "services"]);
+      if (res?.archive) toastManager.add({ title: `Archiving ${wt.name}`, description: "Its archive script is running on the box; the worktree goes when it finishes.", type: "info" });
+      else {
+        forgetWorktree(box, wt.path);
+        toastManager.add({ title: `Archived ${wt.name}`, description: wt.branch ? `Branch ${wt.branch} is kept.` : box, type: "success" });
+      }
+    },
+  });
 }
 
 // removeWorktree asks, then removes a worktree: the sidebar's "Remove

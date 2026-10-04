@@ -48,6 +48,7 @@ export function WorktreesView() {
   const [anchor, setAnchor] = useState<string>();
   const [openKey, setOpenKey] = useState<string>();
   const [deleting, setDeleting] = useState<Row[]>();
+  const [archiving, setArchiving] = useState(false);
   // The row order when a bulk action started: rows stay put under the
   // pointer while their commits change, until its summary is dismissed.
   const [frozen, setFrozen] = useState<string[]>();
@@ -265,7 +266,14 @@ export function WorktreesView() {
         onPause={() => act({ kind: "pause" }, selectedRows)}
         onResume={() => act({ kind: "resume" }, selectedRows)}
         onStop={() => act({ kind: "stop" }, selectedRows)}
-        onDelete={() => setDeleting(selectedRows)}
+        onDelete={() => {
+          setArchiving(false);
+          setDeleting(selectedRows);
+        }}
+        onArchive={() => {
+          setArchiving(true);
+          setDeleting(selectedRows);
+        }}
         onClear={() => setSelected(new Set())}
         onCancel={cancel}
         onDismiss={dismiss}
@@ -281,16 +289,24 @@ export function WorktreesView() {
         busy={busy}
         onClose={() => setOpenKey(undefined)}
         onAction={(a) => open && act(a, [open])}
-        onDelete={() => open && setDeleting([open])}
+        onDelete={() => {
+          setArchiving(false);
+          if (open) setDeleting([open]);
+        }}
+        onArchive={() => {
+          setArchiving(true);
+          if (open) setDeleting([open]);
+        }}
       />
 
       <DeleteDialog
         rows={deleting}
+        archive={archiving}
         progress={progress}
-        running={busy && summary?.action.kind === "delete"}
+        running={busy && (summary?.action.kind === "delete" || summary?.action.kind === "archive")}
         onRun={(a) => deleting && act(a, deleting)}
         onClose={() => {
-          if (summary?.action.kind === "delete") {
+          if (summary?.action.kind === "delete" || summary?.action.kind === "archive") {
             clear();
             setSelected(new Set());
             setOpenKey(undefined);

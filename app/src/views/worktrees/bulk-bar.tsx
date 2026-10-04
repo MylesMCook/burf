@@ -1,4 +1,4 @@
-import { AlertTriangleIcon, CheckIcon, CornerDownLeftIcon, GitMergeIcon, PauseIcon, PlayIcon, SendIcon, SquareIcon, Trash2Icon, XIcon } from "lucide-react";
+import { AlertTriangleIcon, CheckIcon, CornerDownLeftIcon, GitMergeIcon, PauseIcon, PlayIcon, SendIcon, SquareIcon, Trash2Icon, XIcon, ArchiveIcon } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
 import { Tip } from "@/components/tip";
@@ -26,6 +26,7 @@ export function BulkBar({
   onResume,
   onStop,
   onDelete,
+  onArchive,
   onClear,
   onCancel,
   onDismiss,
@@ -39,6 +40,7 @@ export function BulkBar({
   onResume(): void;
   onStop(): void;
   onDelete(): void;
+  onArchive(): void;
   onClear(): void;
   onCancel(): void;
   onDismiss(): void;
@@ -100,7 +102,7 @@ export function BulkBar({
                   <li key={r.key} className="flex items-start gap-3 py-2">
                     <div className="min-w-0 flex-1">
                       <span className="font-medium">{r.name}</span>
-                      <span className={cn("ml-2", p.state === "conflict" ? "text-warning" : "text-destructive-foreground")}>{p.state === "conflict" ? "conflicts, left as it was" : p.message}</span>
+                      <span className={cn("ml-2", p.state === "conflict" ? "text-warning-foreground" : "text-destructive-foreground")}>{p.state === "conflict" ? "conflicts, left as it was" : p.message}</span>
                       {p.conflicts && <div className="mt-0.5 truncate font-mono text-[11px] text-muted-foreground">{p.conflicts.join(", ")}</div>}
                     </div>
                     {/* What to do about it, without leaving the table. */}
@@ -192,6 +194,12 @@ export function BulkBar({
           <Button size="xs" variant="outline" disabled={!sessions} onClick={onStop}>
             <SquareIcon />
             Stop sessions
+          </Button>
+        </Hint>
+        <Hint text={deletable ? "Run their archive scripts and remove them; their branches stay" : "Main checkouts can't be archived"}>
+          <Button size="xs" variant="outline" disabled={!deletable} onClick={onArchive}>
+            <ArchiveIcon />
+            {counted(deletable) !== undefined ? `Archive ${deletable}…` : "Archive…"}
           </Button>
         </Hint>
         <Hint text={deletable ? (deletable < selected.length ? `Main checkouts are skipped (${selected.length - deletable})` : undefined) : "Main checkouts can't be deleted"}>

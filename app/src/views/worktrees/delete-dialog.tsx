@@ -11,7 +11,9 @@ import type { Row } from "@/views/worktrees/use-worktrees";
 
 // DeleteDialog removes several worktrees after one confirmation that names
 // every one, then stays open with each one's outcome.
-export function DeleteDialog({ rows, progress, running, onRun, onClose }: { rows?: Row[]; progress: Record<string, RowProgress>; running: boolean; onRun(a: BulkAction): void; onClose(): void }) {
+// With archive, it archives them instead: each one's archive script runs,
+// then it goes, and its branch stays.
+export function DeleteDialog({ rows, progress, running, onRun, onClose, archive }: { rows?: Row[]; progress: Record<string, RowProgress>; running: boolean; onRun(a: BulkAction): void; onClose(): void; archive?: boolean }) {
   const [branch, setBranch] = useState(false);
   const [force, setForce] = useState(false);
   const [started, setStarted] = useState(false);
@@ -33,13 +35,23 @@ export function DeleteDialog({ rows, progress, running, onRun, onClose }: { rows
     <AlertDialog open={!!rows} onOpenChange={(o) => !o && !running && onClose()}>
       <AlertDialogPopup className="sm:max-w-lg">
         <AlertDialogHeader>
-          <AlertDialogTitle>{done ? (failed ? `Removed ${targets.length - failed} of ${targets.length}` : `Removed ${targets.length} worktree${targets.length === 1 ? "" : "s"}`) : `Delete ${targets.length} worktree${targets.length === 1 ? "" : "s"}?`}</AlertDialogTitle>
+          <AlertDialogTitle>
+            {done
+              ? failed
+                ? `${archive ? "Archived" : "Removed"} ${targets.length - failed} of ${targets.length}`
+                : `${archive ? "Archived" : "Removed"} ${targets.length} worktree${targets.length === 1 ? "" : "s"}`
+              : `${archive ? "Archive" : "Delete"} ${targets.length} worktree${targets.length === 1 ? "" : "s"}?`}
+          </AlertDialogTitle>
           <AlertDialogDescription>
             {done
               ? failed
                 ? "The rest were left as they were."
-                : "Their folders, services and sessions are gone."
-              : "Each folder is deleted after the repo's teardown runs, and its services and sessions stop."}
+                : archive
+                  ? "Their branches are kept; their folders, services and sessions are gone."
+                  : "Their folders, services and sessions are gone."
+              : archive
+                ? "Each one's sessions and services stop, the repo's archive script runs, then its folder goes. Branches stay, so nothing committed is lost; one with uncommitted work is left as it is."
+                : "Each folder is deleted after the repo's teardown runs, and its services and sessions stop."}
             {skipped > 0 && !done && ` Main checkouts are skipped (${skipped}).`}
           </AlertDialogDescription>
         </AlertDialogHeader>
@@ -71,7 +83,7 @@ export function DeleteDialog({ rows, progress, running, onRun, onClose }: { rows
                   )}
                 </span>
                 {(r.changed > 0 || r.untracked > 0) && !p && (
-                  <span className="shrink-0 text-[11px] text-warning tabular-nums">{[r.changed && `${r.changed} changed`, r.untracked && `${r.untracked} untracked`].filter(Boolean).join(", ")}</span>
+                  <span className="shrink-0 text-[11px] text-warning-foreground tabular-nums">{[r.changed && `${r.changed} changed`, r.untracked && `${r.untracked} untracked`].filter(Boolean).join(", ")}</span>
                 )}
                 <span className="shrink-0 font-mono text-[10px] text-muted-foreground">{r.box}</span>
               </li>
@@ -79,7 +91,7 @@ export function DeleteDialog({ rows, progress, running, onRun, onClose }: { rows
           })}
         </ul>
 
-        {!started && (
+        {!started && !archive && (
           <div className="mx-6 mt-3 mb-2 space-y-2.5">
             <label className="flex items-start gap-2.5 text-sm">
               <Checkbox checked={branch} onCheckedChange={(v) => setBranch(!!v)} className="mt-0.5" />
@@ -89,7 +101,7 @@ export function DeleteDialog({ rows, progress, running, onRun, onClose }: { rows
               <Checkbox checked={force} onCheckedChange={(v) => setForce(!!v)} className="mt-0.5" />
               <span>
                 Even with uncommitted changes
-                <span className={cn("block text-muted-foreground text-xs", dirty && !force && "text-warning")}>
+                <span className={cn("block text-muted-foreground text-xs", dirty && !force && "text-warning-foreground")}>
                   {dirty ? `${dirty} ${dirty === 1 ? "has" : "have"} work git would lose; without this, ${dirty === 1 ? "it is" : "they are"} kept.` : "Without this, git refuses when there is work it would lose."}
                 </span>
               </span>
@@ -106,15 +118,15 @@ export function DeleteDialog({ rows, progress, running, onRun, onClose }: { rows
                 Cancel
               </Button>
               <Button
-                variant="destructive"
+                variant={archive ? "default" : "destructive"}
                 loading={running}
                 disabled={!targets.length}
                 onClick={() => {
                   setStarted(true);
-                  onRun({ kind: "delete", force, branch });
+                  onRun(archive ? { kind: "archive" } : { kind: "delete", force, branch });
                 }}
               >
-                Delete {targets.length}
+                {archive ? "Archive" : "Delete"} {targets.length}
               </Button>
             </>
           )}

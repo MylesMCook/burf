@@ -84,11 +84,11 @@ function notifyFor(e: BerthEvent) {
   if (e.type === "session.open") handleSessionOpen(e);
   // A removed worktree's workspace goes too, wherever it was removed from.
   if (e.type === "worktree.removed" && box && str(d.path)) forgetWorktree(box, str(d.path)!);
-  if (e.type === "worktree.setup.failed") {
+  if (e.type === "worktree.setup.failed" || e.type === "worktree.archive.failed") {
     const name = str(d.name);
     route({
       category: "setupFailed",
-      title: `Setup failed for ${name ?? "a worktree"}`,
+      title: `${e.type === "worktree.archive.failed" ? "Archiving" : "Setup"} failed for ${name ?? "a worktree"}`,
       detail: e.error,
       tone: "error",
       box,

@@ -1,4 +1,4 @@
-import { ArrowUpRightIcon, CodeXmlIcon, GlobeIcon, SquareTerminalIcon } from "lucide-react";
+import { ArchiveIcon, ArrowUpRightIcon, CodeXmlIcon, GlobeIcon, SquareTerminalIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
@@ -8,6 +8,7 @@ import { HARBOUR, HARBOUR_MUTE, useHarbourLight } from "@/components/art/harbour
 import { Scene } from "@/components/art/scenes";
 import { usePrefs } from "@/lib/prefs";
 import { openEditor } from "@/components/editors/open";
+import { archiveWorktree } from "@/components/sidebar/actions";
 import { toastManager } from "@/components/ui/toast";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
@@ -82,6 +83,13 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
           if (u) openBrowserAt(u);
         },
       })),
+    // Done with it: archive keeps the branch; the sidebar's ⋯ has Remove.
+    ...(loc && !ref.main
+      ? [{ key: "archive", icon: <ArchiveIcon />, label: "Archive this worktree…", run: () => {
+          const wt = loc.worktrees?.find((w) => w.path === ref.path);
+          if (wt) archiveWorktree(ref.box, loc, wt);
+        } }]
+      : []),
   ];
 
   const closed = sessions

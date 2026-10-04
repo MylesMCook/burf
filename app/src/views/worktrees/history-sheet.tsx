@@ -1,4 +1,4 @@
-import { ArrowDownIcon, ArrowUpIcon, CheckIcon, CopyIcon, CornerDownLeftIcon, EllipsisIcon, PauseIcon, PlayIcon, SquareIcon, Trash2Icon } from "lucide-react";
+import { ArrowDownIcon, ArrowUpIcon, CheckIcon, CopyIcon, CornerDownLeftIcon, EllipsisIcon, PauseIcon, PlayIcon, SquareIcon, Trash2Icon, ArchiveIcon } from "lucide-react";
 import { type CSSProperties, useEffect, useMemo, useState } from "react";
 
 import { PickOne } from "@/components/pick-one";
@@ -37,7 +37,7 @@ const details = new Map<string, CommitDetail>();
 // HistorySheet is one worktree: where it stands, what you can do with it,
 // and its commits, newest first, marking those not on its base yet and
 // those on the base it lacks.
-export function HistorySheet({ row, progress, busy, onClose, onAction, onDelete }: { row?: Row; progress?: RowProgress; busy: boolean; onClose(): void; onAction(a: BulkAction): void; onDelete(): void }) {
+export function HistorySheet({ row, progress, busy, onClose, onAction, onDelete, onArchive }: { row?: Row; progress?: RowProgress; busy: boolean; onClose(): void; onAction(a: BulkAction): void; onDelete(): void; onArchive(): void }) {
   const client = useStore((s) => s.client);
   const dark = useActiveTheme().appearance === "dark";
   const [log, setLog] = useState<{ base: string; commits: Commit[] }>();
@@ -98,7 +98,7 @@ export function HistorySheet({ row, progress, busy, onClose, onAction, onDelete 
               <SheetTitle className="flex items-center gap-2 text-base">
                 {row.main ? row.location : row.name}
                 {row.paused && (
-                  <span className="inline-flex items-center gap-0.5 rounded-full bg-warning/12 px-1.5 py-px font-normal text-[11px] text-warning">
+                  <span className="inline-flex items-center gap-0.5 rounded-full bg-warning/12 px-1.5 py-px font-normal text-[11px] text-warning-foreground">
                     <PauseIcon className="size-2.5" />
                     Paused
                   </span>
@@ -113,7 +113,7 @@ export function HistorySheet({ row, progress, busy, onClose, onAction, onDelete 
                       <ArrowUpIcon className="size-3" />
                       {row.ahead}
                     </span>
-                    <span className={cn("inline-flex items-center", row.behind >= 10 && "text-warning")}>
+                    <span className={cn("inline-flex items-center", row.behind >= 10 && "text-warning-foreground")}>
                       <ArrowDownIcon className="size-3" />
                       {row.behind}
                     </span>
@@ -155,6 +155,10 @@ export function HistorySheet({ row, progress, busy, onClose, onAction, onDelete 
                   {!row.main && (
                     <>
                       <MenuSeparator />
+                      <MenuItem disabled={busy} onClick={onArchive}>
+                        <ArchiveIcon />
+                        Archive…
+                      </MenuItem>
                       <MenuItem variant="destructive" disabled={busy} onClick={onDelete}>
                         <Trash2Icon />
                         Delete…
@@ -456,7 +460,7 @@ function parseRefs(refs?: string): Ref[] {
 }
 
 function ProgressLine({ p }: { p: RowProgress }) {
-  const tone = p.state === "ok" ? "text-success" : p.state === "conflict" ? "text-warning" : p.state === "failed" ? "text-destructive-foreground" : "text-muted-foreground";
+  const tone = p.state === "ok" ? "text-success" : p.state === "conflict" ? "text-warning-foreground" : p.state === "failed" ? "text-destructive-foreground" : "text-muted-foreground";
   return (
     <div className={cn("border-b bg-muted/30 px-6 py-2 text-xs", tone)}>
       {p.state === "running" ? "Working…" : p.message}

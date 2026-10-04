@@ -57,7 +57,7 @@ export const CATEGORIES: CategoryInfo[] = [
   { id: "finished", label: "An agent is done", description: "Its turn ended, with or without changes.", needs: false, defaults: all },
   { id: "review", label: "Work is ready for review", description: "An agent left changes in the review inbox.", needs: false, defaults: { centre: true, toast: false, system: false } },
   { id: "flowFailed", label: "An automation failed", description: "A flow run ended with a failed step.", needs: true, defaults: all },
-  { id: "setupFailed", label: "A worktree's setup failed", description: "Its setup script exited with an error.", needs: true, defaults: all },
+  { id: "setupFailed", label: "A worktree's setup or archive failed", description: "Its setup or archive script exited with an error; an archive leaves the worktree as it was.", needs: true, defaults: all },
   { id: "serviceFailed", label: "A service failed", description: "A worktree's dev server or service would not start.", needs: true, defaults: quietly },
   { id: "guard", label: "The resource guard acted", description: "It stopped services or paused a worktree to free memory.", needs: false, defaults: quietly },
   { id: "kit", label: "A kit installed with warnings", description: "Some of a kit's steps need a look.", needs: false, defaults: quietly },
