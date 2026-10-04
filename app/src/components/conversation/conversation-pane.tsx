@@ -63,6 +63,16 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
   const feed = useTranscriptFeed(box, session, s?.dir, visible && !mock && !away, attempt);
   const ask = useAsk(box, session, !mock && state === "waiting", s?.state_since);
   const [answered, setAnswered] = useState<{ at?: string; key: string }>();
+  // Prompts sent from here that the transcript doesn't show yet.
+  const [sent, setSent] = useState<{ text: string; at: number; after: number }[]>([]);
+  useEffect(() => {
+    if (!sent.length) return;
+    const t = window.setTimeout(() => setSent((l) => l.filter((p) => Date.now() - p.at < 60_000)), 60_000);
+    return () => window.clearTimeout(t);
+  }, [sent]);
+  // Given a prompt: the box names a session from its first prompt, and
+  // starts a turn for it.
+  const prompted = !!s && (!!s.turn || !!s.title || !!s.queued);
   const queue = useQueued(box, session, s?.queued, visible);
   const [confirm, setConfirm] = useState<QueuedPrompt>();
   const canDiff = useStore((st) => !!st.boxes[box]?.info?.capabilities?.includes("diff"));
@@ -86,18 +96,27 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
   const shown = useMemo(() => {
     if (mock) return items;
     const out = [...items];
-    if (state === "running" && s?.state_since) out.push({ kind: "thinking", id: "live:thinking", since: new Date(s.state_since).getTime() });
+    // What was just sent shows at once, until the agent's own record of it
+    // arrives (a moment later) and takes its place.
+    for (const p of sent) if (!items.some((it, i) => i >= p.after && it.kind === "user" && same(it.text, p.text))) out.push({ kind: "user", id: `sent:${p.at}`, text: p.text });
+    // A new agent's state comes a moment after it starts: count from then.
+    if (state === "running") out.push({ kind: "thinking", id: "live:thinking", since: Date.parse(s?.state_since ?? s?.created ?? "") || Date.now() });
+    // Started with a prompt, it is about to work, not waiting for a first
+    // task: say so until its own record arrives.
+    else if (prompted && !items.length && (state === "ready" || state === "idle")) out.push({ kind: "thinking", id: "live:starting", since: Date.parse(s?.created ?? "") || Date.now() });
     const decided = answered && answered.at === s?.state_since ? answered.key : undefined;
     if (state === "waiting" && s?.ask?.tool) {
       // The agent's hooks said what it asks: show that, with its screen's
       // options matched to Allow, Always allow and Deny.
       const choices = ask ? (permissionChoices(ask.choices) ?? ask.choices) : [];
       out.push({ kind: "ask", id: "live:ask", tool: s.ask.tool, detail: s.ask.input ?? "", why: s.ask.why, structured: true, choices, reading: !ask, decided });
-    } else if (state === "waiting" && ask) {
+    } else if (state === "waiting" && ask && (ask.choices.length || s?.ask?.message || ask.detail)) {
+      // A question needs words or options to answer: a screen without
+      // either is not one (never a bare Yes / No).
       out.push({ kind: "ask", id: "live:ask", tool: "Question", detail: s?.ask?.message || ask.detail, choices: ask.choices, decided });
     }
     return out;
-  }, [mock, items, state, s?.state_since, s?.ask, ask, answered]);
+  }, [mock, items, state, s?.state_since, s?.ask, s?.created, ask, answered, sent, prompted]);
 
   const edits = useMemo<EditActions | undefined>(() => {
     if (!client || (!canDiff && !mock)) return undefined;
@@ -211,6 +230,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
     // held until it is idle; the transcript shows it once the agent reads it.
     const r = await boxApi.send(client, box, session, text, true, state === "waiting" ? { when: "now", force: true } : { when: "idle" });
     if (r.queued) queue.refresh();
+    else setSent((l) => [...l, { text, at: Date.now(), after: items.length }]);
   };
 
   // A held prompt typed now. At a question it would be read as the answer,
@@ -277,6 +297,22 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
   // harbour, header and framed composer as an empty worktree, so starting an
   // agent looks the same either way. Never for one still reading, or one
   // that is working or waiting (those show what they are doing).
+  // Given a prompt, but with nothing to show once it is done: its record
+  // can't be read, which is not an agent waiting for a first task.
+  if (!mock && prompted && !shown.length && (feed === "ready" || feed === "none") && state === "finished") {
+    return (
+      <PaneEmpty title={`${agent ? agentLabel(agent) : "The agent"} finished`} description="Its conversation can't be read here yet. Its terminal shows the work.">
+        <Button onClick={() => setAttempt((n) => n + 1)}>
+          <RefreshCwIcon />
+          Retry
+        </Button>
+        <Button variant="outline" onClick={onShowTerminal}>
+          <SquareTerminalIcon />
+          Show terminal
+        </Button>
+      </PaneEmpty>
+    );
+  }
   if (!shown.length && (mock || feed === "ready" || feed === "none") && state !== "running" && state !== "waiting") {
     const wt = s ? worktreeOf(locations, s) : undefined;
     return <FirstPrompt box={box} session={session} agent={agent} name={wt ? (wt.worktree.main ? wt.location.name : wt.worktree.name) : session} branch={wt?.worktree.branch} onSend={reply} onFail={fail} />;
@@ -330,6 +366,13 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
 }
 
 const NO_COMMENTS: LineComment[] = [];
+
+// The transcript keeps what was typed, trimmed and at most 4000 characters.
+const same = (a: string, b: string) => {
+  const x = a.trim();
+  const y = b.trim();
+  return x === y || (x.length >= 3000 && y.startsWith(x.replace(/…$/, "")));
+};
 
 // CommentsStrip offers the comments left on this worktree's diff to its
 // agent, as one short prompt held until it is idle.

@@ -30,7 +30,10 @@ export const hasTranscripts = (box: string) => !!useStore.getState().boxes[box]?
 export function useTranscriptFeed(box: string, session: string, dir: string | undefined, enabled: boolean, attempt = 0): FeedState {
   const client = useStore((s) => s.client);
   const supported = useStore((s) => !!s.boxes[box]?.info?.capabilities?.includes("transcript"));
-  const [state, setState] = useState<FeedState>(supported ? "loading" : "unsupported");
+  // Until the box has said what it can do (just after the app starts or
+  // reconnects), it is not "too old": it is still loading.
+  const known = useStore((s) => !!s.boxes[box]?.info);
+  const [state, setState] = useState<FeedState>(supported || !known ? "loading" : "unsupported");
   const next = useRef(0);
   const key = keyOf(box, session);
   // The last event about this session: agent.* and session.* carry its
@@ -44,7 +47,7 @@ export function useTranscriptFeed(box: string, session: string, dir: string | un
 
   useEffect(() => {
     if (!supported) {
-      setState("unsupported");
+      setState(known ? "unsupported" : "loading");
       return;
     }
     if (!client || !enabled) return;
@@ -89,6 +92,9 @@ export function useTranscriptFeed(box: string, session: string, dir: string | un
       }
     };
     void read();
+    // An agent's record lands a moment after the event about it (its last
+    // words after "finished"): look again soon rather than in 2s.
+    const soon = [600, 1500].map((ms) => window.setTimeout(() => void read(), ms));
     const t = window.setInterval(() => void read(), 2000);
     const onVisible = () => {
       if (!document.hidden) void read();
@@ -97,9 +103,10 @@ export function useTranscriptFeed(box: string, session: string, dir: string | un
     return () => {
       alive = false;
       window.clearInterval(t);
+      for (const x of soon) window.clearTimeout(x);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [client, box, session, key, supported, enabled, latest, attempt]);
+  }, [client, box, session, key, supported, known, enabled, latest, attempt]);
 
   return state;
 }

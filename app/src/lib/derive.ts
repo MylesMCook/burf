@@ -16,7 +16,11 @@ export function agentOf(s: Session): string | undefined {
 export function sessionState(s: Session, stats?: Stats): SessionState {
   if (s.exited) return "exited";
   if (s.agent_state) return s.agent_state === "idle" ? "ready" : s.agent_state;
-  const reported = stats?.agents?.find((a) => a.path === s.dir && a.state !== "running");
+  // The box's report is per folder: a state from before this session began
+  // is another agent's in the same worktree, not this one's (a new agent
+  // would show the last one's question or "finished").
+  const born = Date.parse(s.created);
+  const reported = stats?.agents?.find((a) => a.path === s.dir && a.state !== "running" && !(born && a.since && Date.parse(a.since) < born));
   if (reported) return reported.state === "idle" ? "ready" : reported.state;
   return agentOf(s) ? "running" : "idle";
 }
