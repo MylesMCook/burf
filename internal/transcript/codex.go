@@ -56,7 +56,7 @@ func (codexParser) line(c *conv, b []byte) {
 			userText(c, text)
 		case "assistant":
 			if text != "" {
-				c.add(Item{Kind: "text", ID: c.id(), Text: clip(text, 4000)})
+				c.add(Item{Kind: "text", ID: c.id(), Text: clip(text, maxText)})
 			}
 		}
 	case "function_call", "custom_tool_call", "local_shell_call":

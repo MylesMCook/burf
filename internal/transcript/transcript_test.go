@@ -211,3 +211,62 @@ func TestAssignClaudeGivesEachAgentItsOwn(t *testing.T) {
 		t.Fatalf("%v", got)
 	}
 }
+
+// A new agent that hasn't written its conversation yet shows none, not an
+// older conversation from the same folder; a resumed one (its file began
+// before the agent did) still gets the file it writes to.
+func TestAssignClaudeNewAgentGetsNoOldConversation(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("CLAUDE_CONFIG_DIR", home)
+	dir := "/w/shop"
+	proj := ClaudeDir(dir)
+	os.MkdirAll(proj, 0o700)
+	old := filepath.Join(proj, "dddddddd-4.jsonl")
+	write(t, old, m{"type": "user", "timestamp": "2026-10-04T08:00:00Z", "message": m{"role": "user", "content": "hi"}})
+	hour := time.Now().Add(-time.Hour)
+	os.Chtimes(old, hour, hour)
+	if got := AssignClaude(dir, []Claim{{Name: "new", Started: time.Now()}}); got["new"] != "" {
+		t.Fatalf("a new agent got %q", got["new"])
+	}
+	os.Chtimes(old, time.Now(), time.Now())
+	if got := AssignClaude(dir, []Claim{{Name: "resumed", Started: time.Now().Add(-time.Minute)}}); got["resumed"] != old {
+		t.Fatalf("a resumed agent got %q", got["resumed"])
+	}
+}
+
+// Plan mode: loading tools and writing the plan file are bookkeeping, the
+// plan presented for approval reads as the answer, a long reply is kept
+// whole, and a helper started in the background is out until its
+// notification says it is back.
+func TestClaudePlanModeAndBackgroundHelper(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "s.jsonl")
+	long := strings.Repeat("All cancellations go through one handler. ", 200)
+	write(t, p,
+		user("Explain slots"),
+		assistant(tool("a1", "Agent", m{"description": "Trace slots", "subagent_type": "Explore", "run_in_background": true})),
+		user([]m{{"type": "tool_result", "tool_use_id": "a1", "content": []m{{"type": "text", "text": "Async agent launched successfully.\nagentId: x"}}}}),
+	)
+	r := NewReader()
+	res, _ := r.Read("claude", p, "/w/shop", 0)
+	if len(res.Crew) != 1 || res.Crew[0].State != "running" {
+		t.Fatalf("a background helper is still out: %+v", res.Crew)
+	}
+	write(t, p,
+		m{"type": "queue-operation", "operation": "enqueue", "timestamp": "2026-10-04T12:05:00Z", "content": "<task-notification>\n<task-id>x</task-id>\n<tool-use-id>a1</tool-use-id>\n<status>completed</status>\n</task-notification>"},
+		assistant(m{"type": "text", "text": long}),
+		assistant(tool("t1", "ToolSearch", m{"query": "select:ExitPlanMode"})),
+		assistant(tool("w1", "Write", m{"file_path": "/home/u/.claude/plans/slots.md", "content": "# Plan\n"})),
+		assistant(tool("x1", "ExitPlanMode", m{"plan": "# Slots\nHow they are computed."})),
+	)
+	res2, _ := r.Read("claude", p, "/w/shop", res.Next)
+	if got := kinds(res2.Items); got != "text,text" {
+		t.Fatalf("kinds = %s", got)
+	}
+	if res2.Items[0].Text != strings.TrimSpace(long) || res2.Items[1].Text != "# Slots\nHow they are computed." {
+		t.Fatalf("texts = %q…, %q", res2.Items[0].Text[:40], res2.Items[1].Text)
+	}
+	if res2.Crew[0].State != "finished" || res2.Crew[0].Until == res2.Crew[0].Since {
+		t.Fatalf("helper back = %+v", res2.Crew[0])
+	}
+}

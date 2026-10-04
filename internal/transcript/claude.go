@@ -3,6 +3,7 @@ package transcript
 import (
 	"encoding/json"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -19,6 +20,10 @@ type claudeLine struct {
 	Sidechain bool            `json:"isSidechain"`
 	Timestamp string          `json:"timestamp"`
 	Message   json.RawMessage `json:"message"`
+	// Operation and Content are a queue-operation line's: what Claude Code
+	// queued for itself, such as a helper's "finished" notification.
+	Operation string `json:"operation"`
+	Content   string `json:"content"`
 }
 
 type claudeMessage struct {
@@ -32,14 +37,22 @@ type claudeBlock struct {
 	Name      string          `json:"name"`
 	Input     json.RawMessage `json:"input"`
 	ToolUseID string          `json:"tool_use_id"`
+	Content   json.RawMessage `json:"content"`
 }
 
 func (claudeParser) line(c *conv, b []byte) {
 	var l claudeLine
-	if json.Unmarshal(b, &l) != nil || l.IsMeta || l.Sidechain || (l.Type != "user" && l.Type != "assistant") {
+	if json.Unmarshal(b, &l) != nil || l.IsMeta || l.Sidechain {
 		return
 	}
 	at := parseTime(l.Timestamp)
+	if l.Type == "queue-operation" && l.Operation == "enqueue" {
+		helperDone(c, l.Content, at)
+		return
+	}
+	if l.Type != "user" && l.Type != "assistant" {
+		return
+	}
 	var m claudeMessage
 	if json.Unmarshal(l.Message, &m) != nil || len(m.Content) == 0 {
 		return
@@ -48,6 +61,7 @@ func (claudeParser) line(c *conv, b []byte) {
 	var s string
 	if json.Unmarshal(m.Content, &s) == nil {
 		if l.Type == "user" {
+			helperDone(c, s, at)
 			userText(c, s)
 		}
 		return
@@ -60,14 +74,20 @@ func (claudeParser) line(c *conv, b []byte) {
 	for _, bl := range blocks {
 		switch {
 		case l.Type == "user" && bl.Type == "text":
+			helperDone(c, bl.Text, at)
 			typed = append(typed, bl.Text)
 		case l.Type == "user" && bl.Type == "image":
 			typed = append(typed, "[image]")
 		case l.Type == "user" && bl.Type == "tool_result":
+			// A helper started in the background answers at once; it is
+			// back when its notification says so, not now.
+			if strings.HasPrefix(resultText(bl.Content), "Async agent launched") {
+				c.launched(bl.ToolUseID)
+			}
 			c.result(bl.ToolUseID, at)
 		case l.Type == "assistant" && bl.Type == "text":
 			if t := strings.TrimSpace(bl.Text); t != "" {
-				c.add(Item{Kind: "text", ID: c.id(), Text: clip(t, 4000)})
+				c.add(Item{Kind: "text", ID: c.id(), Text: clip(t, maxText)})
 			}
 		case l.Type == "assistant" && bl.Type == "tool_use":
 			claudeTool(c, bl, at)
@@ -95,12 +115,18 @@ func claudeTool(c *conv, bl claudeBlock, at int64) {
 	switch bl.Name {
 	case "Read", "NotebookRead":
 		c.call(bl.ID, ToolCall{Verb: "Read", Target: filepath.Base(str("file_path")), File: true})
-	case "Glob", "Grep", "LS", "WebSearch", "WebFetch", "ToolSearch":
+	case "Glob", "Grep", "LS", "WebSearch", "WebFetch":
 		target := firstNonEmpty(str("pattern"), str("query"), str("url"), str("path"))
 		c.call(bl.ID, ToolCall{Verb: "Search", Target: clip(target, 80)})
 	case "Bash", "BashOutput":
 		c.call(bl.ID, ToolCall{Verb: "Run", Target: clip(firstLine(str("command")), 80)})
 	case "Edit", "MultiEdit", "Write", "NotebookEdit":
+		// Plan mode's plan file is outside the work: its plan shows when
+		// the agent presents it (ExitPlanMode).
+		if strings.Contains(firstNonEmpty(str("file_path"), str("notebook_path")), "/.claude/plans/") {
+			c.byTool[bl.ID] = -1
+			return
+		}
 		added, removed := 0, 0
 		switch bl.Name {
 		case "Write":
@@ -125,7 +151,12 @@ func claudeTool(c *conv, bl claudeBlock, at int64) {
 		name := firstNonEmpty(str("description"), str("subagent_type"), "Helper")
 		c.add(Item{Kind: "crew", ID: c.id(), Names: []string{name}})
 		c.helper(CrewMember{ID: bl.ID, Name: clip(name, 60), Kind: "subagent", Agent: "claude", State: "running", Doing: clip(firstNonEmpty(str("subagent_type"), "Working"), 60), Since: at})
-	case "TodoWrite", "ExitPlanMode":
+	case "ExitPlanMode":
+		// The plan the agent presents for approval is its answer.
+		if plan := strings.TrimSpace(str("plan")); plan != "" {
+			c.add(Item{Kind: "text", ID: c.id(), Text: clip(plan, maxText)})
+		}
+	case "TodoWrite", "ToolSearch":
 		// Bookkeeping, not work worth a line.
 	default:
 		name := bl.Name
@@ -133,6 +164,39 @@ func claudeTool(c *conv, bl claudeBlock, at int64) {
 			name = name[i+2:]
 		}
 		c.call(bl.ID, ToolCall{Verb: "Run", Target: clip(name, 80)})
+	}
+}
+
+// resultText is a tool result's text: a string, or its first text block.
+func resultText(raw json.RawMessage) string {
+	var s string
+	if json.Unmarshal(raw, &s) == nil {
+		return s
+	}
+	var blocks []claudeBlock
+	if json.Unmarshal(raw, &blocks) == nil {
+		for _, b := range blocks {
+			if b.Type == "text" {
+				return b.Text
+			}
+		}
+	}
+	return ""
+}
+
+var taskNote = regexp.MustCompile(`(?s)<task-notification>.*?<tool-use-id>([^<]+)</tool-use-id>.*?<status>([^<]+)</status>`)
+
+// helperDone reads a background helper's notification, "<task-notification>
+// … <tool-use-id>X</tool-use-id> <status>completed</status>", and marks
+// that helper back.
+func helperDone(c *conv, s string, at int64) {
+	if !strings.Contains(s, "<task-notification>") {
+		return
+	}
+	for _, m := range taskNote.FindAllStringSubmatch(s, -1) {
+		if strings.TrimSpace(m[2]) != "running" {
+			c.back(strings.TrimSpace(m[1]), at)
+		}
 	}
 }
 

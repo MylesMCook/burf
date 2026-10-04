@@ -154,13 +154,15 @@ func AssignClaude(dir string, claims []Claim) map[string]string {
 		}
 	}
 	// A session that started before any transcript it could own (one that
-	// is older than its file's records) still gets the newest left over.
+	// is older than its file's records, as a resumed conversation is) still
+	// gets the newest left over that was written since it started. A new
+	// session that hasn't written yet gets none, never an old conversation.
 	for _, c := range rest {
 		if out[c.Name] != "" {
 			continue
 		}
 		for i := len(fs) - 1; i >= 0; i-- {
-			if fs[i].path != "" {
+			if fs[i].path != "" && writtenSince(fs[i].path, c.Started.Add(-time.Minute)) {
 				out[c.Name] = fs[i].path
 				fs[i].path = ""
 				break
@@ -168,6 +170,11 @@ func AssignClaude(dir string, claims []Claim) map[string]string {
 		}
 	}
 	return out
+}
+
+func writtenSince(p string, t time.Time) bool {
+	st, err := os.Stat(p)
+	return err == nil && !st.ModTime().Before(t)
 }
 
 // starts caches when each transcript began, which never changes; the

@@ -113,6 +113,14 @@ func TestTheAppReachesBoxAPIsAndTerminalsThroughTheAgent(t *testing.T) {
 	if resp.StatusCode != 200 || !strings.Contains(body, `"port":3000`) {
 		t.Fatalf("passthrough: %d %s", resp.StatusCode, body)
 	}
+	// A turn ID's "#" reaches the box as part of the path, not a fragment.
+	b.server.Handle("GET /v1/turns/{id}", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"id":"` + r.PathValue("id") + `"}`))
+	}))
+	if resp, body := uiCall(t, a, "GET", "/v1/boxes/devbox/api/turns/fix%232", tok); resp.StatusCode != 200 || !strings.Contains(body, `"id":"fix#2"`) {
+		t.Fatalf("turn with #: %d %s", resp.StatusCode, body)
+	}
 	if resp, _ := uiCall(t, a, "GET", "/v1/boxes/nobox/api/services", tok); resp.StatusCode != 404 {
 		t.Fatalf("unknown box: %d, want 404", resp.StatusCode)
 	}

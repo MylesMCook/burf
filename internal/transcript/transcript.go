@@ -72,6 +72,9 @@ const (
 	// maxStart is how much of a long file is read when it is first opened:
 	// its end, where the recent conversation is.
 	maxStart = 4 << 20
+	// maxText is the most of one reply kept: a long answer, its tables and
+	// code included, reads whole.
+	maxText = 32 << 10
 	// maxLine skips absurd lines (a pasted image's data) without reading
 	// them into memory.
 	maxLine = 1 << 20
@@ -87,19 +90,21 @@ type parser interface {
 
 // conv is one file being followed.
 type conv struct {
-	source    string
-	dir       string
-	items     []Item
-	base      int            // index of items[0]
-	byTool    map[string]int // tool call ID → absolute index of its group
-	crew      []CrewMember
-	crewByID  map[string]int
-	offset    int64
-	partial   []byte
-	truncated bool
-	used      time.Time
-	p         parser
-	seq       int
+	source   string
+	dir      string
+	items    []Item
+	base     int            // index of items[0]
+	byTool   map[string]int // tool call ID → absolute index of its group
+	crew     []CrewMember
+	crewByID map[string]int
+	// background are helpers started in the background, still out.
+	background map[string]bool
+	offset     int64
+	partial    []byte
+	truncated  bool
+	used       time.Time
+	p          parser
+	seq        int
 }
 
 func (c *conv) id() string {
@@ -155,11 +160,28 @@ func (c *conv) call(toolID string, tc ToolCall) {
 	}
 }
 
-// result marks a tool call finished; a group is done when all its calls are.
-func (c *conv) result(toolID string, at int64) {
-	if i, ok := c.crewByID[toolID]; ok {
+// launched marks a helper as running in the background: its tool call
+// answers at once, and it is back only when its notification says so.
+func (c *conv) launched(toolID string) {
+	if c.background == nil {
+		c.background = map[string]bool{}
+	}
+	c.background[toolID] = true
+}
+
+// back marks a helper finished.
+func (c *conv) back(toolID string, at int64) {
+	if i, ok := c.crewByID[toolID]; ok && c.crew[i].State != "finished" {
 		c.crew[i].State = "finished"
 		c.crew[i].Until = at
+	}
+	delete(c.background, toolID)
+}
+
+// result marks a tool call finished; a group is done when all its calls are.
+func (c *conv) result(toolID string, at int64) {
+	if !c.background[toolID] {
+		c.back(toolID, at)
 	}
 	i, ok := c.byTool[toolID]
 	if !ok {

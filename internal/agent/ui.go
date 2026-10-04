@@ -173,6 +173,20 @@ func (a *Agent) uiEvents(w http.ResponseWriter, r *http.Request) {
 
 // uiBoxAPI passes a request to a box's API and streams the answer back, so
 // the app reaches every box through the one connection the agent keeps.
+// boxAPIPath is the box route after /v1/boxes/{box}/api/, still escaped as
+// the app sent it: a turn ID's "#" (%23) or a name's "/" (%2F) stays part
+// of its segment instead of ending the path.
+func boxAPIPath(r *http.Request) string {
+	raw := r.URL.EscapedPath()
+	const pre = "/v1/boxes/"
+	if strings.HasPrefix(raw, pre) {
+		if i := strings.Index(raw[len(pre):], "/api/"); i >= 0 {
+			return raw[len(pre)+i+len("/api/"):]
+		}
+	}
+	return r.PathValue("path")
+}
+
 func (a *Agent) uiBoxAPI(w http.ResponseWriter, r *http.Request) {
 	a.sync()
 	c, ok := a.client(r.PathValue("box"))
@@ -180,7 +194,7 @@ func (a *Agent) uiBoxAPI(w http.ResponseWriter, r *http.Request) {
 		writeCoded(w, http.StatusNotFound, "no paired box named "+r.PathValue("box"), "box_unknown")
 		return
 	}
-	target := "/v1/" + r.PathValue("path")
+	target := "/v1/" + boxAPIPath(r)
 	if r.URL.RawQuery != "" {
 		target += "?" + r.URL.RawQuery
 	}
