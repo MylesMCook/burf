@@ -3,6 +3,8 @@ package integrations
 import (
 	"strings"
 	"testing"
+
+	"github.com/sean-brydon/berthd/internal/integrations/adapters"
 )
 
 func TestTranslate(t *testing.T) {
@@ -27,6 +29,8 @@ func TestTranslate(t *testing.T) {
 			t.Errorf("%s %s: %+v ok=%v", tc.tool, tc.hook, e, ok)
 			continue
 		}
+		// The ask is not part of the event: the box takes it out (TestPermissionRequestAsk).
+		delete(e.Data, adapters.AskKey)
 		if len(e.Data) != len(tc.data) {
 			t.Errorf("%s %s: data %v, want %v", tc.tool, tc.hook, e.Data, tc.data)
 		}
@@ -55,6 +59,7 @@ func TestTranslateNeverCopiesContent(t *testing.T) {
 		{"cursor", "stop", `{"prompt":"SECRET-TEXT","workspace_roots":["/w"]}`},
 	} {
 		e, _ := Translate(tc[0], tc[1], []byte(tc[2]))
+		delete(e.Data, adapters.AskKey) // never published: see TestPermissionRequestAsk
 		for k, v := range e.Data {
 			if s, _ := v.(string); strings.Contains(s, "SECRET-TEXT") {
 				t.Errorf("%s: content leaked into data[%s]", tc[0], k)

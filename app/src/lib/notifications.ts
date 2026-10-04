@@ -2,7 +2,7 @@ import { create } from "zustand";
 
 import { toastManager } from "@/components/ui/toast";
 import { type BerthEvent, isTauri } from "@/lib/api";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { usePrefs } from "@/lib/prefs";
 import { load, save } from "@/lib/storage";
 import { useStore } from "@/lib/store";
@@ -53,8 +53,8 @@ const all: Channels = { centre: true, toast: true, system: true };
 const quietly: Channels = { centre: true, toast: true, system: false };
 
 export const CATEGORIES: CategoryInfo[] = [
-  { id: "waiting", label: "An agent is waiting for you", description: "It asked a question or wants permission.", needs: true, defaults: all },
-  { id: "finished", label: "An agent finished", description: "Its turn ended, with or without changes.", needs: false, defaults: all },
+  { id: "waiting", label: "An agent needs you", description: "It asked a question or wants permission.", needs: true, defaults: all },
+  { id: "finished", label: "An agent is done", description: "Its turn ended, with or without changes.", needs: false, defaults: all },
   { id: "review", label: "Work is ready for review", description: "An agent left changes in the review inbox.", needs: false, defaults: { centre: true, toast: false, system: false } },
   { id: "flowFailed", label: "An automation failed", description: "A flow run ended with a failed step.", needs: true, defaults: all },
   { id: "setupFailed", label: "A worktree's setup failed", description: "Its setup script exited with an error.", needs: true, defaults: all },
@@ -563,7 +563,7 @@ function persist() {
     const doc: Doc = { version: 1, notes: useNotifications.getState().notes.slice(0, MAX) };
     client.laptop("PUT", DOC, doc).then(
       () => useNotifications.setState({ error: undefined }),
-      (err) => useNotifications.setState({ error: errorMessage(err) }),
+      (err) => useNotifications.setState({ error: plainError(err) }),
     );
   }, 800);
 }
@@ -581,7 +581,7 @@ export async function loadNotifications() {
       return { notes: [...fresh, ...stored].sort((a, b) => b.time.localeCompare(a.time)).slice(0, MAX), loaded: true, error: undefined };
     });
   } catch (err) {
-    useNotifications.setState({ loaded: true, error: errorMessage(err) });
+    useNotifications.setState({ loaded: true, error: plainError(err) });
   }
 }
 

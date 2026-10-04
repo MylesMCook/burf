@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
+import { AgentIcon, BoxStateDot, StateGlyph } from "@/components/agent-glyph";
 import { type Action, boxActions, ContextRow, DotsMenu, newSection, projectActions, projectGroupActions, worktreeActions } from "@/components/sidebar/actions";
 import { confirm } from "@/components/sidebar/confirm";
 import { type Project, projectActions as groupActions, useProjects } from "@/lib/project-groups";
@@ -27,6 +27,8 @@ import { load, save } from "@/lib/storage";
 import { type BoxData, NONE, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { refOf, selectWorktree, useWorkspaces, wsKey } from "@/lib/workspaces";
+import { BOX_WORDS, boxState, WORKTREE_WORDS } from "@/lib/state-model";
+import { useNotifications } from "@/lib/notifications";
 
 // Projects lists repositories, as Orca does: one group per repository on a
 // box (the same repository on two boxes is two groups, told apart by the
@@ -146,12 +148,12 @@ function BoxHeader({ box, empty }: { box: BoxStatus; empty: boolean }) {
           <span className="ml-auto flex items-center gap-1.5 font-normal normal-case tracking-normal tabular-nums">
             {empty && <span>no projects</span>}
             {box.latency_ms !== undefined && <span>{box.latency_ms} ms</span>}
-            <span className="size-1.5 rounded-full bg-success" />
+            <BoxStateDot box={box.name} />
           </span>
         ) : (
           <span className="ml-auto flex items-center gap-1.5 font-normal normal-case tracking-normal">
-            {box.state === "untrusted" ? "not trusted" : box.state}
-            <span className="size-1.5 rounded-full bg-muted-foreground/50" />
+            {awayText(box)}
+            <BoxStateDot box={box.name} />
           </span>
         )}
         <RowOverlay className="rounded-r-md">
@@ -187,7 +189,7 @@ function BoxChip({ box }: { box: BoxStatus }) {
     </span>
   );
   // The name says it all while the box is up; otherwise say why it is dim.
-  return online ? chip : <Tip label={`${box.name} is ${box.state}`}>{chip}</Tip>;
+  return online ? chip : <Tip label={`${box.name} is ${awayText(box)}`}>{chip}</Tip>;
 }
 
 function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; prefs: SidebarPrefs; update(p: Partial<SidebarPrefs>): void }) {
@@ -323,7 +325,7 @@ function WorktreeRow({
             <LeadIcon sessions={away ? [] : sessions} data={data} icon={wt.main ? <HomeIcon /> : <GitBranchIcon />} />
             <span className={cn("min-w-0 truncate", away && "opacity-70")}>{wt.main ? (wt.branch ?? "main") : wt.name}</span>
             {chip && <BoxChip box={chip} />}
-            {wt.setting_up && !away && <span className="shrink-0 text-[10px] text-muted-foreground">setting up</span>}
+            {!away && <SetupMark box={box} wt={wt} />}
             <span className="ml-auto" />
             {away ? <AwayMark box={away} short={!!chip} /> : <Glyphs sessions={sessions} data={data} />}
           </SidebarMenuSubButton>
@@ -342,8 +344,10 @@ function awayActions(box: BoxStatus): Action[] {
   return items;
 }
 
+// awayText is a box's state in the model's words: offline, unreachable,
+// connecting.
 function awayText(box: BoxStatus) {
-  return box.state === "untrusted" ? "not trusted" : box.state;
+  return BOX_WORDS[boxState(box)].lower;
 }
 
 // AwayMark ends a row whose box is not online: the box's state, small, or
@@ -720,5 +724,21 @@ function PlaceTip({ name, lines, work = [] }: { name: string; lines: string[]; w
         </span>
       ))}
     </span>
+  );
+}
+
+// SetupMark says a worktree is still setting up, or that its setup failed
+// (until the notification about it is dealt with), in the model's words.
+function SetupMark({ box, wt }: { box: string; wt: Worktree }) {
+  const failed = useNotifications((s) => s.notes.some((n) => n.category === "setupFailed" && !n.resolved && n.box === box && n.path === wt.path));
+  if (wt.setting_up) return <span className="shrink-0 text-[10px] text-muted-foreground">{WORKTREE_WORDS["setting-up"].lower}</span>;
+  if (!failed) return null;
+  return (
+    <Tip label="Its setup script failed. The notification has its output.">
+      <span className="flex shrink-0 items-center gap-1 text-[10px] text-destructive-foreground">
+        <span className="size-1.5 rounded-full bg-destructive" />
+        {WORKTREE_WORDS["setup-failed"].lower}
+      </span>
+    </Tip>
   );
 }

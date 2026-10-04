@@ -8,6 +8,7 @@ import { AddProjectItem, AgentsPicker, type Chosen, DefaultBoxItem, entryKey, ex
 import { useBranches, useResolve } from "@/components/new-worktree/use-resolve";
 import { withDefaults } from "@/components/prompts/shared";
 import { RepoWants, trustRepo, useRepoTrustFor } from "@/components/repo-trust";
+import { ErrorText, toastError } from "@/components/error-note";
 import { Tip } from "@/components/tip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -16,15 +17,16 @@ import { Kbd } from "@/components/ui/kbd";
 import { toastManager } from "@/components/ui/toast";
 import { type SessionEntry, useAllSessions } from "@/hooks/use-agent-counts";
 import { agentPresets } from "@/lib/actions";
-import type { ComposerDraft } from "@/lib/composer";
+import { type ComposerDraft, openComposer } from "@/lib/composer";
 import { agentLabel, agentOf, sessionName, sessionState } from "@/lib/derive";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { sessionLocation } from "@/lib/orchestrate";
 import { handoffPrompt, reviewPrompt } from "@/lib/orchestrate";
 import { loadProjects, projectActions, useProjects } from "@/lib/project-groups";
 import { promptFor, type ResolveKind, worktreeSlug } from "@/lib/projects";
 import { askedVariables, builtinValues, fill as fillPrompt, isBuiltin, usePrompts, variablesIn } from "@/lib/prompts";
 import { boxHasRuns } from "@/lib/runs";
+import { AGENT_WORDS } from "@/lib/state-model";
 import { type StartDraft, sendWork, startWork } from "@/lib/start-work";
 import { load, save } from "@/lib/storage";
 import { NONE, useStore } from "@/lib/store";
@@ -51,6 +53,8 @@ export interface TaskComposerProps {
   // The first prompt for this one agent, ready in its worktree.
   to?: { box: string; session: string; agent?: string };
   onSend?(text: string): Promise<void>;
+  // How a failed first prompt is told (the pane's toast with next steps).
+  onFail?(err: unknown): void;
   // In the dialog: its options start open, and it says when it is done.
   dialog?: boolean;
   onMode?(mode: "start" | "send"): void;
@@ -290,7 +294,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
       try {
         await trustRepo(box, locName, pendingTrust);
       } catch (err) {
-        setError(errorMessage(err));
+        setError(plainError(err, { box }));
         setBusy(false);
         return;
       }
@@ -365,7 +369,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
       await projectActions.setDefaultBox(project, b);
       toastManager.add({ title: `New ${project.name} work goes to ${b}`, type: "success" });
     } catch (err) {
-      toastManager.add({ title: "Could not save the default box", description: errorMessage(err), type: "error" });
+      toastError(err, { title: "Could not save the default box" });
     }
   };
 
@@ -484,7 +488,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
               </AlertDescription>
             </Alert>
           )}
-          {error && <p className="px-3 pt-2 text-destructive-foreground text-sm">{error}</p>}
+          {error && <ErrorText className="px-3 pt-2 text-destructive-foreground text-sm" text={error} />}
         </>
       }
       footer={
@@ -621,7 +625,19 @@ function SendBody({ draft, text, setText, tabs, dialog, autoFocus, onDone, onKin
     return builtinsUsed.filter((n) => !have[n]);
   };
   const awayChosen = chosen.filter((e) => awayBoxes.has(e.box)).length;
-  const blocker = !chosen.length ? "Pick the agents to send to" : !text.trim() && !v.loop ? "Write the prompt first" : v.loop && !v.check.trim() ? "Give the check to run" : undefined;
+  // An agent asked for by name that has ended takes no prompt: say so, and
+  // offer to hand its work to a new one instead.
+  const ended = (draft.targets ?? []).filter((t) => {
+    const listed = boxes[t.box]?.sessions;
+    if (!listed) return false;
+    const found = listed.find((x) => x.name === t.session);
+    return !found || found.exited;
+  });
+  const endedNames = ended.map((t) => {
+    const found = boxes[t.box]?.sessions?.find((x) => x.name === t.session);
+    return found ? sessionName(found, { agent: true }) : t.session;
+  });
+  const blocker = ended.length && !chosen.length ? `${endedNames.join(", ")} has ended` : !chosen.length ? "Pick the agents to send to" : !text.trim() && !v.loop ? "Write the prompt first" : v.loop && !v.check.trim() ? "Give the check to run" : undefined;
   const action = v.loop ? (chosen.length > 1 ? `Loop ${chosen.length} agents` : "Start loop") : chosen.length > 1 ? `Send to ${chosen.length} agents` : "Send";
 
   const submit = () => {
@@ -668,6 +684,20 @@ function SendBody({ draft, text, setText, tabs, dialog, autoFocus, onDone, onKin
           label="What to tell them"
           placeholder={v.loop ? "The first prompt (empty runs the check first)" : "What should they do next? Variables like {{branch}} fill in for each agent."}
         />
+      }
+      notice={
+        ended.length > 0 && (
+          <div role="status" className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border bg-background/60 px-3 py-2 text-sm">
+            <span className="min-w-0 flex-1">
+              {endedNames.join(", ")} {ended.length === 1 ? "has" : "have"} ended, so {ended.length === 1 ? "it can't" : "they can't"} take a prompt. Hand the work to a new agent instead.
+            </span>
+            {ended.length === 1 && (
+              <Button type="button" size="xs" variant="outline" onClick={() => openComposer({ from: { kind: "handoff", box: ended[0].box, session: ended[0].session }, text: text.trim() || undefined })}>
+                Hand off instead
+              </Button>
+            )}
+          </div>
+        )
       }
       options={
         optionsOpen && (
@@ -728,7 +758,7 @@ function sessionLocationSafe(box: string, session: string): string {
 
 // ---- The first prompt for one agent --------------------------------------
 
-function ToBody({ to, onSend, autoFocus, className }: TaskComposerProps & { to: NonNullable<TaskComposerProps["to"]> }) {
+function ToBody({ to, onSend, onFail, autoFocus, className }: TaskComposerProps & { to: NonNullable<TaskComposerProps["to"]> }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const who = to.agent ? agentLabel(to.agent) : "the agent";
@@ -740,7 +770,8 @@ function ToBody({ to, onSend, autoFocus, className }: TaskComposerProps & { to: 
       await onSend(t);
       setText("");
     } catch (err) {
-      toastManager.add({ type: "error", title: "Couldn't send it", description: errorMessage(err) });
+      if (onFail) onFail(err);
+      else toastError(err, { title: "Couldn't send it", box: to.box });
     } finally {
       setBusy(false);
     }
@@ -753,7 +784,7 @@ function ToBody({ to, onSend, autoFocus, className }: TaskComposerProps & { to: 
         <>
           <span className="flex min-w-0 items-center gap-1.5 px-2.5 text-muted-foreground text-xs">
             <AgentIcon agent={to.agent} className="size-3.5" />
-            {who} is ready in this worktree
+            {who} · {AGENT_WORDS.idle.lower}, waiting for a first task
           </span>
           <div className="ml-auto">
             <SendButton label="Send" blocker={text.trim() ? undefined : "Write the first prompt"} busy={busy} onClick={() => void go()} />

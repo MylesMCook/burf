@@ -5,9 +5,10 @@ import { DialogFooter, DialogPanel } from "@/components/ui/dialog";
 import { Frame, FramePanel } from "@/components/ui/frame";
 import { Input } from "@/components/ui/input";
 import type { Location } from "@/lib/api";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { projectsApi, repoName } from "@/lib/projects";
 import { useStore } from "@/lib/store";
+import { ErrorText } from "@/components/error-note";
 
 // CloneForm clones a repository onto the box, showing git's progress as it
 // goes, and adds it as a project.
@@ -40,7 +41,7 @@ export function CloneForm({ box, onAdded, onCancel }: { box: string; onAdded(loc
       const loc = await projectsApi.clone(client, box, { url: url.trim(), parent: parent.trim() || undefined, name: shownName.trim() || undefined }, (line) => setLines((l) => mergeProgress(l, line)), abort.current.signal);
       await onAdded(loc);
     } catch (err) {
-      setError(abort.current?.signal.aborted ? "Stopped." : errorMessage(err));
+      setError(abort.current?.signal.aborted ? "Stopped." : plainError(err));
       setBusy(false);
     }
   };
@@ -87,7 +88,7 @@ export function CloneForm({ box, onAdded, onCancel }: { box: string; onAdded(loc
             </FramePanel>
           </Frame>
         )}
-        {error && <p className="text-destructive text-sm">{error}</p>}
+        {error && <ErrorText className="text-destructive text-sm" text={error} />}
       </DialogPanel>
       <DialogFooter className="items-center px-5 py-3">
         {busy ? (

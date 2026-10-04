@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { boxApi } from "@/lib/api";
+import { boxApi, type QueuedPrompt } from "@/lib/api";
 import { keyOf, useConversations } from "@/lib/conversation-store";
 import { useEventLog } from "@/lib/events";
 import { choicesIn, type Choice } from "@/lib/screen";
@@ -26,7 +26,8 @@ export type FeedState = "loading" | "ready" | "none" | "unsupported" | "error";
 
 export const hasTranscripts = (box: string) => !!useStore.getState().boxes[box]?.info?.capabilities?.includes("transcript");
 
-export function useTranscriptFeed(box: string, session: string, dir: string | undefined, enabled: boolean): FeedState {
+// attempt, when it changes, reads again from where it was (a Retry).
+export function useTranscriptFeed(box: string, session: string, dir: string | undefined, enabled: boolean, attempt = 0): FeedState {
   const client = useStore((s) => s.client);
   const supported = useStore((s) => !!s.boxes[box]?.info?.capabilities?.includes("transcript"));
   const [state, setState] = useState<FeedState>(supported ? "loading" : "unsupported");
@@ -47,6 +48,8 @@ export function useTranscriptFeed(box: string, session: string, dir: string | un
       return;
     }
     if (!client || !enabled) return;
+    // A retry reads afresh rather than standing on the last failure.
+    setState((s) => (s === "error" ? "loading" : s));
     let alive = true;
     let busy = false;
     const read = async () => {
@@ -88,13 +91,15 @@ export function useTranscriptFeed(box: string, session: string, dir: string | un
       window.clearInterval(t);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [client, box, session, key, supported, enabled, latest]);
+  }, [client, box, session, key, supported, enabled, latest, attempt]);
 
   return state;
 }
 
 // useAsk is what an agent waiting for the person asks, from its screen: the
-// numbered options, and the line above them as the question.
+// numbered options, and the line above them as the question. A menu is
+// drawn a moment after the agent says it waits, so a screen without one is
+// read again a few times.
 export function useAsk(box: string, session: string, waiting: boolean, since?: string): { detail: string; choices: Choice[] } | undefined {
   const client = useStore((s) => s.client);
   const [ask, setAsk] = useState<{ detail: string; choices: Choice[] }>();
@@ -104,12 +109,16 @@ export function useAsk(box: string, session: string, waiting: boolean, since?: s
       return;
     }
     let alive = true;
-    boxApi
+    let tries = 0;
+    let timer = 0;
+    const read = () =>
+      boxApi
       .screen(client, box, session)
       .then((r) => {
         if (!alive) return;
         const screen = r.screen ?? "";
         const choices = choicesIn(screen);
+        if (!choices.length && ++tries < 4) timer = window.setTimeout(() => void read(), 600);
         const lines = screen.split("\n").map((l) => l.trim());
         const first = lines.findIndex((l) => /^(?:[❯›>]\s*)?1[.)]\s/.test(l));
         let detail = "";
@@ -123,9 +132,40 @@ export function useAsk(box: string, session: string, waiting: boolean, since?: s
         setAsk({ detail, choices });
       })
       .catch(() => alive && setAsk({ detail: "", choices: [] }));
+    void read();
     return () => {
       alive = false;
+      window.clearTimeout(timer);
     };
   }, [client, box, session, waiting, since]);
   return ask;
+}
+
+export const hasQueue = (box: string) => !!useStore.getState().boxes[box]?.info?.capabilities?.includes("queue");
+
+// useQueued is what the box holds for a session until its agent is idle
+// (boxes with the "queue" capability): read when the session's count
+// changes or something is queued, sent or cancelled, never while hidden.
+// refresh reads it again at once.
+export function useQueued(box: string, session: string, count: number | undefined, enabled: boolean): { items: QueuedPrompt[]; refresh(): void } {
+  const client = useStore((s) => s.client);
+  const supported = useStore((s) => !!s.boxes[box]?.info?.capabilities?.includes("queue"));
+  const [items, setItems] = useState<QueuedPrompt[]>([]);
+  const [tick, setTick] = useState(0);
+  const latest = useEventLog((s) => s.events.find((e) => e.box === box && /^session\.(queued|unqueued|sent)$/.test(e.type) && e.data?.name === session)?.time);
+  useEffect(() => {
+    if (!client || !enabled || !supported || (!count && !tick)) {
+      setItems([]);
+      return;
+    }
+    let alive = true;
+    boxApi
+      .queue(client, box, session)
+      .then((r) => alive && setItems(r))
+      .catch(() => alive && setItems([]));
+    return () => {
+      alive = false;
+    };
+  }, [client, box, session, count, latest, enabled, supported, tick]);
+  return { items, refresh: () => setTick((t) => t + 1) };
 }

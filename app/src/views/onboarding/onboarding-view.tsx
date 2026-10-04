@@ -46,7 +46,10 @@ export function OnboardingView() {
   const local = useLocalBox();
   const thisMac = local.ready ? offerLocalBox(local.status) || !!local.status?.box : undefined;
 
-  useEffect(markOnboardingStarted, []);
+  // Past the welcome, onboarding stays until finished (onboarding-state.ts).
+  useEffect(() => {
+    if (step.kind !== "welcome") markOnboardingStarted();
+  }, [step.kind]);
   // Ask about tailnets now, so Connect a box is laid out with the answer.
   const client = useStore((s) => s.client);
   useEffect(() => void prefetchTailnets(client), [client]);

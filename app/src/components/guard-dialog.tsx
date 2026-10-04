@@ -7,10 +7,11 @@ import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogPanel, Dia
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { toastManager } from "@/components/ui/toast";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Tip } from "@/components/tip";
+import { ErrorText } from "@/components/error-note";
 
 // The resource guard is a box's own: when its memory stays high, it stops
 // dev servers in worktrees where no agent is working, then pauses worktrees
@@ -67,7 +68,7 @@ export function GuardDialog({ box, open, onOpenChange }: { box: string; open: bo
         setStatus(s);
         setDraft(s.config);
       })
-      .catch((err) => setError(errorMessage(err)));
+      .catch((err) => setError(plainError(err)));
   }, [box, open]);
 
   const save = async () => {
@@ -80,7 +81,7 @@ export function GuardDialog({ box, open, onOpenChange }: { box: string; open: bo
       toastManager.add({ title: draft.enabled ? `The guard watches ${box}` : `The guard is off on ${box}`, type: "success" });
       onOpenChange(false);
     } catch (err) {
-      setError(errorMessage(err));
+      setError(plainError(err));
     } finally {
       setSaving(false);
     }
@@ -177,7 +178,7 @@ export function GuardDialog({ box, open, onOpenChange }: { box: string; open: bo
               </ul>
             </div>
           )}
-          {error && <p className="text-destructive-foreground text-xs">{error}</p>}
+          {error && <ErrorText className="text-destructive-foreground text-xs" text={error} />}
         </DialogPanel>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>

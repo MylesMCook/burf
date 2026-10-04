@@ -340,6 +340,14 @@ func TestAutoFixStartsFixCI(t *testing.T) {
 	ctx := context.Background()
 	gh := fakeGH(t)
 	b, _, wt := flowBox(t, nil)
+	// The fix-ci run works in the worktree: stop it before the temp dirs go
+	// (cleanups run last-registered first).
+	t.Cleanup(func() {
+		for _, r := range b.Runs.List(runs.Filter{}) {
+			_ = b.Runs.Cancel(r.ID)
+		}
+		b.Runs.Wait()
+	})
 	b.AutoFix = &AutoFixStore{Path: filepath.Join(t.TempDir(), "autofix.json")}
 	if err := b.AutoFix.Put(AutoFix{Path: wt.Path, CI: true, Max: 1}); err != nil {
 		t.Fatal(err)

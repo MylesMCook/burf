@@ -103,10 +103,37 @@ export interface Session {
   turn?: string;
   state_seq?: number;
   fidelity?: "hooks" | "partial" | "screen" | string;
+  // How many prompts the box holds for the agent until it is idle (boxes
+  // with the "queue" capability list them: GET sessions/{name}/queue).
+  queued?: number;
+  // What the agent waits on, from its own hooks ("ask" capability), while
+  // agent_state is "waiting".
+  ask?: Ask;
   // What the work is called: the first line of the prompt it started with
   // (or the first it was sent), about 48 characters, or what someone renamed
   // it to. Absent until there is one; api.renameSession names it.
   title?: string;
+}
+
+// A waiting agent's request, from its hooks rather than its screen: the
+// tool, a short summary of its input (the command, or the file's path;
+// never what it would write), its reason, and the message it showed. Each
+// is at most 300 characters.
+export interface Ask {
+  tool?: string;
+  input?: string;
+  why?: string;
+  message?: string;
+}
+
+// A prompt the box holds for an agent until it is idle: the start of its
+// text (preview) and its full length.
+export interface QueuedPrompt {
+  turn: string;
+  preview: string;
+  length: number;
+  origin?: string;
+  at: string;
 }
 
 // A turn is one prompt to the end of the agent's reply. Boxes whose info
@@ -122,13 +149,14 @@ export interface Turn {
   sent_seq?: number;
   end_seq?: number;
   // queued (held until the agent is idle), pending (sent, not started yet),
-  // running, waiting, finished, exited or lost.
+  // running, waiting, finished, exited or lost (status says why: "cancelled"
+  // for a held prompt someone cancelled).
   state: "queued" | "pending" | "running" | "waiting" | "finished" | "exited" | "lost" | string;
   queued?: string;
   started?: string;
   ended?: string;
   // Times it waited for someone (a permission or a question).
-  waits?: { start: string; end?: string; reason?: string }[];
+  waits?: { start: string; end?: string; reason?: string; ask?: Ask }[];
   fidelity?: "hooks" | "partial" | "screen" | string;
   idem_key?: string;
   // "error" when the agent ended the turn on a failure.

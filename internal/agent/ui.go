@@ -96,6 +96,7 @@ func (a *Agent) ui(token, hostport string, inner http.Handler) http.Handler {
 	mux.HandleFunc("/v1/boxes/{box}/api/{path...}", a.uiBoxAPI)
 	mux.HandleFunc("GET /v1/boxes/{box}/sessions/{name}/attach", a.uiAttach)
 	a.manageRoutes(mux)
+	a.outdatedRoutes(mux)
 	a.localBoxRoutes(mux)
 	a.joinRoutes(mux)
 	mux.HandleFunc("POST /v1/stop", func(w http.ResponseWriter, r *http.Request) {
@@ -176,7 +177,7 @@ func (a *Agent) uiBoxAPI(w http.ResponseWriter, r *http.Request) {
 	a.sync()
 	c, ok := a.client(r.PathValue("box"))
 	if !ok {
-		writeError(w, http.StatusNotFound, "no paired box named "+r.PathValue("box"))
+		writeCoded(w, http.StatusNotFound, "no paired box named "+r.PathValue("box"), "box_unknown")
 		return
 	}
 	target := "/v1/" + r.PathValue("path")
@@ -200,10 +201,16 @@ func (a *Agent) uiBoxAPI(w http.ResponseWriter, r *http.Request) {
 		if wire.Unsent(err) {
 			status = http.StatusServiceUnavailable
 		}
-		writeError(w, status, err.Error())
+		writeCoded(w, status, err.Error(), "box_unreachable")
 		return
 	}
 	defer resp.Body.Close()
+	// A route the box doesn't know is answered by Go's own mux in plain
+	// text: the box runs an older berthd than the app expects.
+	if (resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusMethodNotAllowed) && strings.HasPrefix(resp.Header.Get("Content-Type"), "text/plain") {
+		writeCoded(w, resp.StatusCode, r.PathValue("box")+" runs an older berthd that doesn't have this yet", "box_outdated")
+		return
+	}
 	if ct := resp.Header.Get("Content-Type"); ct != "" {
 		w.Header().Set("Content-Type", ct)
 	}

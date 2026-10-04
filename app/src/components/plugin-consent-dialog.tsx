@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogPanel, DialogPopup, DialogTitle } from "@/components/ui/dialog";
 import { laptopApi } from "@/lib/api";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { useStore } from "@/lib/store";
 import { answerConsent, PLUGIN_POWERS, type PluginFiles, readPluginFiles, usePluginConsent } from "@/plugins/consent";
+import { ErrorText } from "@/components/error-note";
 
 // PluginConsentDialog asks before a plugin from ~/.berth/plugins first runs,
 // and again whenever its code changes. Plugins are not sandboxed, so it says
@@ -26,7 +27,7 @@ export function PluginConsentDialog() {
     let live = true;
     readPluginFiles(client, plugin)
       .then((f) => live && setFiles(f))
-      .catch((err) => live && setError(errorMessage(err)));
+      .catch((err) => live && setError(plainError(err)));
     return () => {
       live = false;
     };
@@ -40,7 +41,7 @@ export function PluginConsentDialog() {
       await laptopApi.allowPlugin(client, plugin.id, files.hash);
       answerConsent(true);
     } catch (err) {
-      setError(errorMessage(err));
+      setError(plainError(err));
     } finally {
       setSaving(false);
     }
@@ -100,7 +101,7 @@ export function PluginConsentDialog() {
             </div>
           )}
           <p className="text-muted-foreground text-xs">Allow only plugins you trust. Berth asks again whenever the plugin's code changes, and you can turn it off in Settings → Plugins.</p>
-          {error && <p className="text-destructive-foreground text-xs">{error}</p>}
+          {error && <ErrorText className="text-destructive-foreground text-xs" text={error} />}
         </DialogPanel>
         <DialogFooter>
           <Button variant="ghost" onClick={() => answerConsent(false)}>

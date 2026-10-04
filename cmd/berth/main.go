@@ -238,6 +238,7 @@ func run(args []string) error {
 			}
 			// A prompt's title names a box's session; the laptop has none.
 			delete(e.Data, "title")
+			e = integrations.StripAsk(e)
 			return c.Call(context.Background(), "POST", "/v1/events", map[string]any{"type": e.Type, "origin": e.Origin, "data": e.Data}, nil)
 		})
 		return nil

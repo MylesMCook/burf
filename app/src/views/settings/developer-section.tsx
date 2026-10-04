@@ -110,7 +110,7 @@ export function DeveloperSection() {
             onConfirm={() => clear(undefined, true)}
           />
         </SettingsRow>
-        <SettingsRow label="Show onboarding again" description="Until you finish it, even though you have boxes.">
+        <SettingsRow label="Show onboarding again" description="In this window, until you finish or skip it, even though you have boxes. The next launch starts without it.">
           <Button
             size="xs"
             variant="outline"

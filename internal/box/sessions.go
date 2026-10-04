@@ -46,6 +46,11 @@ type Session struct {
 	// (or the first one it was sent), or what someone renamed it to. Kept
 	// as @berth_title; empty until there is one.
 	Title string `json:"title,omitempty"`
+	// Queued is how many prompts the box holds for the agent until it is
+	// idle (GET .../queue lists them); Ask is what it waits on, from its
+	// hooks, when they said.
+	Queued int  `json:"queued,omitempty"`
+	Ask    *Ask `json:"ask,omitempty"`
 }
 
 var (
@@ -109,7 +114,7 @@ const listFormat = "#{session_name}\t#{session_created}\t#{session_attached}\t#{
 
 func (s *Sessions) List(ctx context.Context) ([]Session, error) {
 	if _, err := exec.LookPath("tmux"); err != nil {
-		return nil, errors.New("tmux is not installed on this box")
+		return nil, errTmuxMissing
 	}
 	out, err := s.tmux(ctx, "list-sessions", "-F", listFormat)
 	if err != nil {

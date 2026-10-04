@@ -88,6 +88,20 @@ Berth's own connection, with no SSH. The box checks that the new binary runs
 and reports the box's own fingerprint, swaps it in and re-executes in place,
 so sessions and services keep running. Public shares stop.
 
+The app notices on its own. When a box runs an older berthd than this Berth
+ships, the status bar and **Settings → Boxes** say so ("2 boxes run an older
+berthd") with **Update all**, which updates each box in turn and shows its
+progress. A feature that needs a newer berthd (the conversation view, runs,
+Review) offers **Update** right where it is missing. To skip the step
+altogether, turn on **Update boxes automatically when Berth updates** in
+Settings → Boxes: each box is updated once for every build Berth ships, as
+soon as it is online.
+
+A box is in one of four states, the same everywhere in the app: **online**,
+**outdated** (online, with an older berthd), **offline** (not answering;
+Berth reconnects on its own) or **unreachable** (it answers, but Berth can't
+use it, such as a box whose identity changed).
+
 ## Health
 
 ```sh

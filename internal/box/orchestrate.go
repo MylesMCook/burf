@@ -24,14 +24,16 @@ import (
 // Send types text into a session as one paste, then presses Enter if asked.
 // A paste keeps a multi-line prompt from being submitted line by line.
 func (s *Sessions) Send(ctx context.Context, name, text string, enter bool) error {
-	if _, err := s.Get(ctx, name); err != nil {
+	if sess, err := s.Get(ctx, name); err != nil {
 		return err
+	} else if sess.Exited {
+		return ErrSessionExited
 	}
 	if text != "" && !enter && isKey(text) {
 		// An answer to a menu (a number, y, n) is a keystroke: agents' menus
 		// ignore a pasted one.
 		if out, err := s.tmux(ctx, "send-keys", "-t", "="+name+":", "-l", text); err != nil {
-			return fmt.Errorf("tmux send-keys: %s", strings.TrimSpace(string(out)))
+			return tmuxSendError("send-keys", out)
 		}
 		return nil
 	}
@@ -40,10 +42,10 @@ func (s *Sessions) Send(ctx context.Context, name, text string, enter bool) erro
 		load := exec.CommandContext(ctx, "tmux", "-L", tmuxSocket, "-f", s.Config, "load-buffer", "-b", buf, "-")
 		load.Stdin = strings.NewReader(text)
 		if out, err := load.CombinedOutput(); err != nil {
-			return fmt.Errorf("tmux load-buffer: %s", strings.TrimSpace(string(out)))
+			return tmuxSendError("load-buffer", out)
 		}
 		if out, err := s.tmux(ctx, "paste-buffer", "-p", "-d", "-b", buf, "-t", "="+name+":"); err != nil {
-			return fmt.Errorf("tmux paste-buffer: %s", strings.TrimSpace(string(out)))
+			return tmuxSendError("paste-buffer", out)
 		}
 	}
 	if enter {
@@ -51,10 +53,20 @@ func (s *Sessions) Send(ctx context.Context, name, text string, enter bool) erro
 		// submits it rather than adding a newline.
 		time.Sleep(150 * time.Millisecond)
 		if out, err := s.tmux(ctx, "send-keys", "-t", "="+name+":", "Enter"); err != nil {
-			return fmt.Errorf("tmux send-keys: %s", strings.TrimSpace(string(out)))
+			return tmuxSendError("send-keys", out)
 		}
 	}
 	return nil
+}
+
+// tmuxSendError is a failed send. A pane whose program ended between the
+// check and the send is ErrSessionExited, with tmux's words kept after it.
+func tmuxSendError(cmd string, out []byte) error {
+	msg := strings.TrimSpace(string(out))
+	if exitedPane(msg) {
+		return fmt.Errorf("%w (tmux %s: %s)", ErrSessionExited, cmd, msg)
+	}
+	return fmt.Errorf("tmux %s: %s", cmd, msg)
 }
 
 // isKey says whether text is one key to press rather than text to paste:
@@ -137,6 +149,10 @@ func (b *Box) sendPrompt(ctx context.Context, name string, req SendRequest, orig
 	sess, err := b.Sessions.Get(ctx, name)
 	if err != nil {
 		return SendResult{}, err
+	}
+	if sess.Exited {
+		// Typed now or queued for later, nothing would ever read it.
+		return SendResult{}, ErrSessionExited
 	}
 	waiting := ""
 	if b.Turns != nil {

@@ -1,24 +1,44 @@
 import { create } from "zustand";
 
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { useStore } from "@/lib/store";
 
-// The sidebar's places, arranged by the person: a few pinned at the top, the
-// rest in a collapsible More, and some hidden (still in ⌘K). Stored on the
+// The app's places, arranged by the person: a few pinned at the top, the
+// rest under More, and some hidden (still in ⌘K). The sidebar, its folded
+// rail and zen's switcher all show this one arrangement. Stored on the
 // laptop agent (/v1/app/sidebar). Anything new, such as a plugin's screen,
 // lands in More, never in Pinned.
 
 export type NavList = "pinned" | "more" | "hidden";
 
 export interface NavLayout {
+  // 2 since Home took the Agent Dashboard's place (see migrate).
+  version?: number;
   pinned: string[];
   more: string[];
   hidden: string[];
-  moreOpen: boolean;
+  // Version 1 opened More in place in the sidebar. More is a menu now; the
+  // field is kept as it was for older apps and otherwise ignored.
+  moreOpen?: boolean;
 }
 
-export const DEFAULT_PINNED = ["dashboard", "review", "worktrees", "automations"];
-const DEFAULT: NavLayout = { pinned: DEFAULT_PINNED, more: [], hidden: [], moreOpen: false };
+export const DEFAULT_PINNED = ["home", "review", "worktrees", "automations"];
+const DEFAULT: NavLayout = { version: 2, pinned: DEFAULT_PINNED, more: [], hidden: [] };
+
+// migrate brings a stored arrangement up to date. Version 1 had no Home: its
+// first place was the Agent Dashboard, which Home now stands for (and opens,
+// without Labs), so "dashboard" becomes "home" wherever the person put it.
+// With Labs the dashboard is a place of its own again and, new to the
+// arrangement, lands in More. Everything else the person arranged stays.
+export function migrate(doc: Partial<NavLayout> | null | undefined): NavLayout {
+  if (!doc) return DEFAULT;
+  let lists = { pinned: doc.pinned ?? DEFAULT.pinned, more: doc.more ?? [], hidden: doc.hidden ?? [] };
+  if ((doc.version ?? 1) < 2) {
+    const rename = (l: string[]) => l.map((id) => (id === "dashboard" ? "home" : id));
+    lists = { pinned: rename(lists.pinned), more: rename(lists.more), hidden: rename(lists.hidden) };
+  }
+  return { ...doc, ...lists, version: 2 };
+}
 
 export const useNav = create<{ layout: NavLayout; loaded: boolean; error?: string }>()(() => ({ layout: DEFAULT, loaded: false }));
 
@@ -27,9 +47,9 @@ export async function loadNav() {
   if (!client) return;
   try {
     const doc = await client.laptop<Partial<NavLayout> | null>("GET", "/v1/app/sidebar");
-    useNav.setState({ layout: { ...DEFAULT, ...doc, pinned: doc?.pinned ?? DEFAULT.pinned, more: doc?.more ?? [], hidden: doc?.hidden ?? [] }, loaded: true });
+    useNav.setState({ layout: migrate(doc), loaded: true });
   } catch (err) {
-    useNav.setState({ loaded: true, error: errorMessage(err) });
+    useNav.setState({ loaded: true, error: plainError(err) });
   }
 }
 
@@ -42,7 +62,7 @@ async function save(fn: (l: NavLayout) => NavLayout) {
   try {
     await client.laptop("PUT", "/v1/app/sidebar", next);
   } catch (err) {
-    useNav.setState({ layout: before, error: errorMessage(err) });
+    useNav.setState({ layout: before, error: plainError(err) });
   }
 }
 
@@ -90,6 +110,5 @@ export const navActions = {
       [a[k][i], a[k][j]] = [a[k][j], a[k][i]];
       return { ...l, ...a };
     }),
-  setMoreOpen: (open: boolean) => save((l) => ({ ...l, moreOpen: open })),
-  reset: () => save((l) => ({ ...DEFAULT, moreOpen: l.moreOpen })),
+  reset: () => save(() => DEFAULT),
 };

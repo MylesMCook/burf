@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
 import { laptopApi, type NetworkInfo } from "@/lib/api";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { openUrl } from "@/lib/open-url";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { ErrorText } from "@/components/error-note";
 
 // NetworksStep reaches boxes on a tailnet this computer is not part of, such
 // as a personal one while the Mac is on work's: Berth joins it with its own
@@ -21,12 +22,12 @@ export function NetworksStep({ onPick }: { onPick(network: string): void }) {
 
   useEffect(() => {
     if (!client) return;
-    laptopApi.networks(client).then(setNetworks, (err) => setError(errorMessage(err)));
+    laptopApi.networks(client).then(setNetworks, (err) => setError(plainError(err)));
   }, [client]);
 
   return (
     <div className="space-y-5">
-      {error && <p className="text-destructive-foreground text-sm">{error}</p>}
+      {error && <ErrorText className="text-destructive-foreground text-sm" text={error} />}
       {networks === undefined && !error ? (
         <div className="flex items-center gap-2 text-muted-foreground text-sm">
           <Spinner className="size-4" /> Loading…
@@ -90,7 +91,7 @@ function SignIn({ existing, onJoined }: { existing: string[]; onJoined(network: 
       onJoined(joined.name);
     } catch (err) {
       if (abort.current?.signal.aborted) return;
-      setError(errorMessage(err));
+      setError(plainError(err));
       setState("failed");
     }
   };

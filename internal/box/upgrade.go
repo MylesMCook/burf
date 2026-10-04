@@ -125,11 +125,12 @@ func (b *Box) handleInfo(w http.ResponseWriter, r *http.Request) error {
 
 // Capabilities are the optional API features this box serves.
 func (b *Box) Capabilities() []string {
-	// titles: sessions carry a title (PATCH /v1/sessions/{name} renames);
-	// sample: POST /v1/locations/new makes a sample project.
-	caps := []string{"transcript", "titles", "sample"}
+	// diff: GET .../diff; titles: sessions carry a title (PATCH
+	// /v1/sessions/{name} renames); sample: POST /v1/locations/new makes a
+	// sample project.
+	caps := []string{"transcript", "diff", "titles", "sample"}
 	if b.Turns != nil {
-		caps = append(caps, "turns")
+		caps = append(caps, "turns", "queue", "ask")
 	}
 	if b.Runs != nil {
 		caps = append(caps, "runs", "exec.detach")

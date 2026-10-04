@@ -10,7 +10,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useActiveTheme } from "@/hooks/use-theme";
 import { useGraphRowHeight } from "@/lib/density";
 import { boxApi } from "@/lib/api";
-import { ago, errorMessage } from "@/lib/format";
+import { ago } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { type CommitDetail, commitDetailCommand, parseCommitDetail } from "@/lib/git/parse";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -67,7 +68,7 @@ export function HistorySheet({ row, progress, busy, onClose, onAction, onDelete 
       },
       (e) => {
         if (cancelled) return;
-        setError(errorMessage(e));
+        setError(plainError(e));
         setLoadingMore(false);
       },
     );

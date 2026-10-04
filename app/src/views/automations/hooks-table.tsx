@@ -7,6 +7,8 @@ import { cn } from "@/lib/utils";
 import { describe } from "@/views/automations/catalog";
 import { LAPTOP, type MachineHooks } from "@/views/automations/use-hooks";
 import { Tip } from "@/components/tip";
+import { ErrorText } from "@/components/error-note";
+import { BoxError } from "@/components/upgrade-box";
 
 // HooksTable is one machine's hooks: when each runs, what it runs, and
 // anything else about it. Rows stack into cards when the table is narrow.
@@ -28,10 +30,11 @@ export function HooksTable({ data, label, onAdd, onEdit, onDelete }: { data: Mac
       </header>
 
       {data.error ? (
-        <p className="px-4 py-3 text-muted-foreground text-xs">
-          Couldn't read this machine's hooks: {data.error}
-          {/hooks|404|not implemented/i.test(data.error) && " Its berthd may predate the hooks API; upgrade it from Settings → Boxes."}
-        </p>
+        data.machine === LAPTOP ? (
+          <ErrorText className="px-4 py-3 text-muted-foreground text-xs" text={`Couldn't read this computer's hooks. ${data.error}`} />
+        ) : (
+          <BoxError className="mx-4 my-3" box={data.machine} error={data.error} what="its hooks" />
+        )
       ) : !data.file ? (
         <div className="space-y-2 px-4 py-3">
           <Skeleton className="h-4 w-2/3" />

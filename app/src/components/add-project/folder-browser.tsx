@@ -6,10 +6,11 @@ import { Button } from "@/components/ui/button";
 import { DialogFooter, DialogPanel } from "@/components/ui/dialog";
 import { Frame, FramePanel } from "@/components/ui/frame";
 import type { Location } from "@/lib/api";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { type FsEntry, type FsListing, projectsApi } from "@/lib/projects";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { ErrorText } from "@/components/error-note";
 
 // FolderBrowser walks the box's folders. Git repositories are marked; Enter
 // on one adds it. Any folder can be added, though only git ones get
@@ -36,7 +37,7 @@ export function FolderBrowser({ box, start, onAdded }: { box: string; start?: st
         setActive(l.entries.length ? 0 : -1);
       } catch (err) {
         if (fallback) return go(fallback);
-        setError(errorMessage(err));
+        setError(plainError(err));
       } finally {
         setLoading(false);
       }
@@ -76,7 +77,7 @@ export function FolderBrowser({ box, start, onAdded }: { box: string; start?: st
       const loc = await projectsApi.add(client, box, uniqueName(box, e.name), e.path);
       await onAdded(loc);
     } catch (err) {
-      setError(errorMessage(err));
+      setError(plainError(err));
       setAdding(false);
     }
   };
@@ -165,7 +166,7 @@ export function FolderBrowser({ box, start, onAdded }: { box: string; start?: st
             {target.name || "This folder"} is not a git repository: it can be a project, but worktrees need git.
           </p>
         )}
-        {error && <p className="text-destructive text-sm">{error}</p>}
+        {error && <ErrorText className="text-destructive text-sm" text={error} />}
       </DialogPanel>
       <DialogFooter className="items-center px-5 py-3 sm:justify-between">
         <span className="min-w-0 truncate text-[13px] text-muted-foreground">↵ opens a folder or adds a repository</span>

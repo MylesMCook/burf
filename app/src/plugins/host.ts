@@ -3,7 +3,7 @@ import * as ReactDOM from "react-dom";
 import * as ReactJSXRuntime from "react/jsx-runtime";
 
 import type { Client, PluginInfo } from "@/lib/api";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { builtinOn } from "@/lib/prefs";
 import { askToAllow, mayLoad, readPluginFiles, usePluginConsent } from "@/plugins/consent";
 import { makeContext } from "@/plugins/context";
@@ -99,7 +99,7 @@ async function loadPlugin(client: Client, p: PluginInfo) {
   } catch (err) {
     removePlugin(p.id);
     const review = err instanceof PluginNeedsReview;
-    setPluginStatus({ id: p.id, name: p.name, version: p.version, state: review ? "review" : "failed", error: errorMessage(err), builtin: p.builtin });
+    setPluginStatus({ id: p.id, name: p.name, version: p.version, state: review ? "review" : "failed", error: plainError(err), builtin: p.builtin });
     if (!review) console.error(`plugin ${p.id} failed to load`, err);
   }
 }

@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from "react";
 
 import { boxApi } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { scheduleRefresh, useStore } from "@/lib/store";
 import { type SyncMode, worktreesApi } from "@/lib/worktrees";
 import type { Row } from "@/views/worktrees/use-worktrees";
@@ -105,7 +106,7 @@ export function useBulk(onRowDone: (r: Row, patch: Partial<Row>) => void) {
             }
           }
         } catch (err) {
-          set(r.key, { state: "failed", message: errorMessage(err) });
+          set(r.key, { state: "failed", message: plainError(err) });
         }
       }
       setSummary({ action, rows, done: true });

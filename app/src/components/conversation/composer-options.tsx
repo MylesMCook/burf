@@ -6,6 +6,7 @@ import { StartFrom } from "@/components/new-worktree/smart-input";
 import { VariableFields, useTargetLabel } from "@/components/prompts/shared";
 import { SimpleSelect } from "@/components/simple-select";
 import { Tip } from "@/components/tip";
+import { NeedsUpdate } from "@/components/upgrade-box";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { NumberField, NumberFieldDecrement, NumberFieldGroup, NumberFieldIncrement, NumberFieldInput } from "@/components/ui/number-field";
@@ -189,7 +190,7 @@ export function AttemptsOptions({
   };
   return (
     <Section title={`${picks.length} attempts, each in its own worktree`}>
-      {!runsHere && <p className="rounded-lg border border-warning/40 bg-warning/8 px-3 py-2 text-sm">{box} runs an older berthd without runs. Upgrade it from Settings → Boxes to try several ways.</p>}
+      {!runsHere && <NeedsUpdate box={box}>{box} runs an older berthd without runs, which trying several ways needs.</NeedsUpdate>}
       <div className="grid grid-cols-[1fr_10rem] gap-2">
         <Labelled label="Worktree names">
           <Input size="sm" className="font-mono" value={names.name} placeholder={names.namePlaceholder} spellCheck={false} onChange={(e) => names.set({ name: e.target.value })} />

@@ -240,6 +240,8 @@ func (a *Agent) manageRoutes(mux *http.ServeMux) {
 			return
 		}
 		a.runStream(w, r, 5*time.Minute, "upgrade", r.PathValue("box"))
+		// The box's build has changed (or not): check it again next time.
+		a.outdated.forget()
 	})
 	mux.HandleFunc("DELETE /v1/boxes/{box}", func(w http.ResponseWriter, r *http.Request) {
 		box := r.PathValue("box")

@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
 import { Spinner } from "@/components/ui/spinner";
 import { CommandError, laptopApi, type SshFailure, type SshPlan } from "@/lib/api";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { openUrl } from "@/lib/open-url";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -283,7 +283,7 @@ export function useAddSsh({ onRunning, onPaired }: { onRunning(running: boolean)
       onPaired(added ?? (req.name || req.host.split("@").pop()!.split(".")[0]));
     } catch (err) {
       if (ctl.signal.aborted) return;
-      const f: Failure = err instanceof CommandError && err.ssh ? err.ssh : { kind: "plain", message: errorMessage(err) };
+      const f: Failure = err instanceof CommandError && err.ssh ? err.ssh : { kind: "plain", message: plainError(err) };
       // The error is shown once, in the panel, not again as the last line.
       setLines((prev) => prev.filter((l) => !l.includes(f.message) && !(f.kind === "plain" && f.message.includes(l.trim()) && l.trim().length > 12)));
       setFailure(f);

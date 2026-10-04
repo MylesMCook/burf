@@ -77,8 +77,15 @@ export async function playTurn(box: string, session: string, prompt: string) {
   ]);
   useConversations.getState().push(key, { kind: "edit", id: id(), file: "apps/web/lib/payments/webhook.ts", added: 14, removed: 3 });
   await wait(500);
-  useConversations.getState().push(key, { kind: "ask", id: id(), tool: "Run", detail: "pnpm test payments" });
+  useConversations.getState().push(key, { kind: "ask", id: id(), tool: "Bash", detail: "pnpm test payments", why: "Run the payment tests", structured: true, choices: PERMISSION });
 }
+
+// Claude Code's permission menu, matched to the three answers.
+const PERMISSION = [
+  { key: "1", label: "Allow", title: "Yes" },
+  { key: "2", label: "Always allow", title: "Yes, and don't ask again for pnpm test commands in /home/me/work/shop" },
+  { key: "3", label: "Deny", title: "No, and tell Claude what to do differently (esc)" },
+];
 
 // After the person answers the question: run the tests and finish.
 export async function finishTurn(box: string, session: string) {
@@ -98,7 +105,10 @@ export function seedTranscript(box: string, session: string, state: string, work
     { kind: "text", id: id(), text: `I’ll start from the failing test in ${worktree} and work outwards.` },
     { kind: "tools", id: id(), verb: "Read", done: true, items: [{ verb: "Read", target: "README.md", file: true }, { verb: "Read", target: "package.json", file: true }] },
   ];
-  if (state === "waiting") items.push({ kind: "ask", id: id(), tool: "Question", detail: "Cap the total retry time too?" });
+  if (state === "waiting") {
+    items.push({ kind: "edit", id: id(), file: "src/checkout.test.ts", added: 2, removed: 1 });
+    items.push({ kind: "ask", id: id(), tool: "Bash", detail: "pnpm db:migrate --name add-idempotency-key", why: "Create the migration for the new idempotency_key column", structured: true, choices: PERMISSION });
+  }
   if (state === "running") {
     items.push({ kind: "crew", id: id(), names: ["Explore: failing tests", "Explore: fixtures"] });
     items.push({ kind: "thinking", id: id(), since: Date.now() - 12_000 });

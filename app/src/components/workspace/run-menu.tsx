@@ -9,6 +9,7 @@ import { toastManager } from "@/components/ui/toast";
 import { boxApi, type WorktreeService } from "@/lib/api";
 import { portUrl } from "@/lib/browser-url";
 import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { currentSpace, openTab, splitPane, useWorkspaces, type WorktreeRef } from "@/lib/workspaces";
@@ -30,7 +31,7 @@ function useWorktreeServices(ref?: WorktreeRef) {
       setError(undefined);
     } catch (err) {
       setServices([]);
-      setError(errorMessage(err));
+      setError(plainError(err));
     }
   }, [client, ref?.box, ref?.location, ref?.worktree]); // eslint-disable-line react-hooks/exhaustive-deps
 

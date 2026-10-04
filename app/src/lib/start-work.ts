@@ -1,3 +1,4 @@
+import { toastError } from "@/components/error-note";
 import { toastManager } from "@/components/ui/toast";
 import { isMock } from "@/hooks/use-berth-connection";
 import { agentPresets } from "@/lib/actions";
@@ -7,7 +8,7 @@ import { boxApi } from "@/lib/api";
 import { startBroadcast } from "@/lib/broadcast";
 import type { AgentPick, ComposerTarget } from "@/lib/composer";
 import { agentLabel } from "@/lib/derive";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { playTurn } from "@/lib/mock-conversation";
 import { handoff, loop, review } from "@/lib/orchestrate";
 import { worktreeSlug } from "@/lib/projects";
@@ -86,8 +87,8 @@ export function freeName(box: string, location: string, name: string): string {
   return n;
 }
 
-const fail = (title: string, err: unknown) => {
-  toastManager.add({ type: "error", title, description: errorMessage(err) });
+const fail = (title: string, err: unknown, box?: string) => {
+  toastError(err, { title, box });
   return false;
 };
 
@@ -140,7 +141,7 @@ export async function startWork(d: StartDraft): Promise<boolean> {
     void offerAgentHooks(d.box, d.worktree?.command ?? presets.find((p) => p.id === pick.agent)?.command ?? pick.agent);
     return true;
   } catch (err) {
-    return fail("Couldn't start it", err);
+    return fail("Couldn't start it", err, d.box);
   }
 }
 
@@ -151,7 +152,7 @@ export async function startWork(d: StartDraft): Promise<boolean> {
 // compared together in Review.
 async function startAttempts(d: StartDraft): Promise<boolean> {
   const o = d.attempts ?? { check: "", judge: "claude", auto: false, pr: true, extras: [] };
-  if (!boxHasRuns(d.box)) return fail("Couldn't try several ways", new Error(`${d.box} runs an older berthd without runs. Upgrade it from Settings → Boxes.`));
+  if (!boxHasRuns(d.box)) return fail("Couldn't try several ways", new Error(`${d.box} runs an older berthd without runs. Upgrade it from Settings → Boxes.`), d.box);
   const list = d.picks.map((p, i) => ({ ...p, suffix: o.extras[i]?.suffix?.trim() ?? "", box: o.extras[i]?.box || d.box }));
   const byBox = new Map<string, typeof list>();
   for (const a of list) byBox.set(a.box, [...(byBox.get(a.box) ?? []), a]);
@@ -194,7 +195,7 @@ async function startAttempts(d: StartDraft): Promise<boolean> {
     });
     return true;
   } catch (err) {
-    return fail("Couldn't try several ways", err);
+    return fail("Couldn't try several ways", err, d.box);
   }
 }
 
@@ -214,8 +215,8 @@ async function follow(d: StartDraft): Promise<boolean> {
       ? review({ box: f.box, from: f.session, agent: pick.agent, prompt: d.text, onStarted: started })
       : handoff({ box: f.box, from: f.session, location: d.at, agent: pick.agent, prompt: d.text, worktree: wt, onStarted: started });
   void start.catch((err) => {
-    if (at && pane) setPaneContent(at.key, at.tab, pane, { kind: "error", message: errorMessage(err) });
-    else fail(f.kind === "review" ? "Review failed" : "Hand off failed", err);
+    if (at && pane) setPaneContent(at.key, at.tab, pane, { kind: "error", message: plainError(err, { box: f.box }) });
+    else fail(f.kind === "review" ? "Review failed" : "Hand off failed", err, f.box);
   });
   if (wt) toastManager.add({ title: `Starting ${agentLabel(pick.agent)} in ${wt.name}`, type: "info" });
   return true;

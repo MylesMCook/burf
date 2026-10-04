@@ -1,8 +1,7 @@
 import { create } from "zustand";
 
-import { toastManager } from "@/components/ui/toast";
+import { toastError } from "@/components/error-note";
 import { boxApi } from "@/lib/api";
-import { errorMessage } from "@/lib/format";
 import { useStore } from "@/lib/store";
 
 export { TITLE_MAX, titleOf } from "@/lib/derive";
@@ -27,7 +26,7 @@ export async function renameSession(box: string, session: string, title: string)
     await useStore.getState().refreshBox(box, ["sessions"]);
     return true;
   } catch (err) {
-    toastManager.add({ type: "error", title: "Couldn't rename it", description: errorMessage(err) });
+    toastError(err, { title: "Couldn't rename it", box });
     return false;
   }
 }

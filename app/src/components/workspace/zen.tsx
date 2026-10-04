@@ -1,10 +1,13 @@
-import { ChevronsUpDownIcon, CommandIcon, EllipsisIcon, FolderIcon, GitBranchIcon, GitBranchPlusIcon, HouseIcon, Minimize2Icon, SettingsIcon } from "lucide-react";
+import { ChevronsUpDownIcon, CommandIcon, EllipsisIcon, FolderIcon, GitBranchIcon, GitBranchPlusIcon, HouseIcon, KeyboardIcon, Minimize2Icon, SettingsIcon } from "lucide-react";
 import { useMemo } from "react";
 
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
 import { NotificationBell } from "@/components/notifications/notification-center";
+import { openShortcuts } from "@/components/shortcuts-sheet";
 import { ActionItems, worktreeActions } from "@/components/sidebar/actions";
-import { useNavItems } from "@/components/sidebar/nav";
+import { MoreItems, useArrangedNav, useNavItems } from "@/components/sidebar/nav";
+import { runShortcut } from "@/hooks/use-shortcuts";
+import { keysFor } from "@/lib/shortcuts";
 import { Tip } from "@/components/tip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,13 +16,14 @@ import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, Me
 import { ViewSwitch } from "@/components/workspace/pane";
 import { useAllSessions } from "@/hooks/use-agent-counts";
 import { hasTrafficLights } from "@/lib/api";
-import { agentLabel, agentOf, sessionState, worktreeOf } from "@/lib/derive";
+import { agentLabel, agentOf, sessionName, type SessionState, sessionState, worktreeOf } from "@/lib/derive";
+import { sessionWord } from "@/lib/state-model";
 import { ago } from "@/lib/format";
 import { leaves } from "@/lib/layout";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { focusSession, goHome, recentWorktrees, refOf, selectWorktree, useWorkspaces } from "@/lib/workspaces";
+import { focusSession, recentWorktrees, refOf, selectWorktree, useWorkspaces } from "@/lib/workspaces";
 
 // Zen (Labs, ⌘.) puts away everything but the agents: no sidebar, no status
 // bar, and one slim bar over every view, with a switcher where the tab strip
@@ -35,6 +39,11 @@ function useHere() {
   const c = tab ? leaves(tab.root).find((l) => l.id === tab.focus)?.content : undefined;
   const session = useStore((s) => (c?.kind === "terminal" ? s.boxes[c.box]?.sessions?.find((x) => x.name === c.session) : undefined));
   const stats = useStore((s) => (c?.kind === "terminal" ? s.boxes[c.box]?.stats : undefined));
+  // The same honesty as the pane: no state while its box is away, ended
+  // once the box no longer lists the session.
+  const away = useStore((s) => c?.kind === "terminal" && !!s.status && s.status.boxes.find((b) => b.name === c.box)?.state !== "online");
+  const gone = useStore((s) => c?.kind === "terminal" && !session && !!s.boxes[c.box]?.sessions);
+  const state: SessionState | undefined = away ? undefined : session ? sessionState(session, stats) : gone ? "exited" : undefined;
   if (view.kind === "settings") return { kind: "view" as const, label: "Settings", icon: <SettingsIcon /> };
   if (view.kind === "project") return { kind: "view" as const, label: `${view.location} settings`, icon: <SettingsIcon /> };
   if (view.kind !== "workspace") {
@@ -44,17 +53,19 @@ function useHere() {
   if (!ws) return { kind: "home" as const };
   const agent = session ? agentOf(session) : undefined;
   // A titled agent is named after its work; its worktree is in the tooltip.
-  return { kind: "worktree" as const, name: session?.title?.trim() || (ws.ref.main ? ws.ref.location : ws.ref.worktree), place: ws.ref.main ? ws.ref.location : ws.ref.worktree, agent, state: session ? sessionState(session, stats) : undefined };
+  const place = ws.ref.main ? ws.ref.location : ws.ref.worktree;
+  return { kind: "worktree" as const, name: session?.title?.trim() || place, place, agent: agent ?? (c?.kind === "terminal" ? c.agent : undefined), state };
 }
 
 const ORDER = { waiting: 0, running: 1, finished: 2 } as const;
-const HEADINGS = { waiting: "Needs you", running: "Working", finished: "Done" } as const;
+const HEADINGS = { waiting: sessionWord("waiting"), running: sessionWord("running"), finished: sessionWord("finished") } as const;
 
-// ZenSwitcher is zen's way around: where you are, and a list of the agents
-// (who needs you first), the views, recent worktrees and home.
+// ZenSwitcher is zen's way around: where you are, then the sidebar's places
+// in the sidebar's order (one model: useArrangedNav, More and all), then the
+// agents (who needs you first), worktrees, and the actions.
 export function ZenSwitcher({ className }: { className?: string }) {
   const here = useHere();
-  const nav = useNavItems();
+  const { pinned, more } = useArrangedNav();
   const all = useAllSessions();
   const boxes = useStore((s) => s.boxes);
   const spaces = useWorkspaces((s) => s.spaces);
@@ -70,7 +81,11 @@ export function ZenSwitcher({ className }: { className?: string }) {
           return { e, state: e.state as keyof typeof ORDER, title: title || place, place: title ? place : undefined };
         })
         .sort((a, b) => ORDER[a.state] - ORDER[b.state] || (b.e.session.state_since ?? "").localeCompare(a.e.session.state_since ?? ""))
-        .slice(0, 8),
+        .slice(0, 8)
+        // Two agents in one worktree are told apart as the panes do: "Claude Code 2".
+        .map((a, _, list) =>
+          list.filter((b) => b.title === a.title).length > 1 ? { ...a, title: `${a.title} · ${sessionName(a.e.session, { sessions: boxes[a.e.box]?.sessions })}` } : a,
+        ),
     [all, boxes],
   );
   const waiting = agents.filter((a) => a.state === "waiting").length;
@@ -108,10 +123,23 @@ export function ZenSwitcher({ className }: { className?: string }) {
         <ChevronsUpDownIcon className="opacity-60" />
       </MenuTrigger>
       <MenuPopup align="start" className="w-80">
-        <MenuItem onClick={goHome}>
-          <HouseIcon />
-          Home
-        </MenuItem>
+        {pinned.map((n) => (
+          <MenuItem key={n.id} onClick={n.go} aria-current={n.active ? "page" : undefined} className={cn(n.active && "bg-accent/50 font-medium")}>
+            <span className="flex size-4 items-center justify-center [&_svg]:size-4">{n.icon}</span>
+            <span className="min-w-0 flex-1 truncate">{n.label}</span>
+            {n.badge && <span className={cn("text-xs tabular-nums", n.badge.loud ? "text-warning-foreground" : "text-muted-foreground")}>{n.badge.count}</span>}
+          </MenuItem>
+        ))}
+        <MenuSub>
+          <MenuSubTrigger>
+            <EllipsisIcon />
+            <span className="min-w-0 flex-1 truncate">More</span>
+            {more.find((n) => n.active) && <span className="text-muted-foreground text-xs">{more.find((n) => n.active)!.label}</span>}
+          </MenuSubTrigger>
+          <MenuSubPopup className="min-w-52">
+            <MoreItems more={more} />
+          </MenuSubPopup>
+        </MenuSub>
         {agents.length > 0 && <MenuSeparator />}
         {agents.map(({ e, state, title, place }, i) => (
           <MenuGroup key={`${e.box}/${e.session.name}`}>
@@ -129,52 +157,42 @@ export function ZenSwitcher({ className }: { className?: string }) {
             </MenuItem>
           </MenuGroup>
         ))}
-        {recent.length > 0 && (
-          <>
-            <MenuSeparator />
-            <MenuGroup>
-              <MenuGroupLabel>Worktrees</MenuGroupLabel>
-              {recent.map((w) => (
-                <MenuItem key={`${w.ref.box}:${w.ref.path}`} onClick={() => selectWorktree(w.ref)}>
-                  <GitBranchIcon />
-                  <span className="min-w-0 flex-1 truncate">{w.ref.main ? w.ref.location : `${w.ref.location} / ${w.ref.worktree}`}</span>
-                  <span className="text-muted-foreground text-xs">{w.ref.box}</span>
-                </MenuItem>
-              ))}
-            </MenuGroup>
-          </>
-        )}
-        <MenuItem onClick={() => useStore.getState().openNewWorktree()}>
-          <GitBranchPlusIcon />
-          New task…
-          <MenuShortcut>⌘N</MenuShortcut>
-        </MenuItem>
-        <AllWorktrees />
         <MenuSeparator />
         <MenuGroup>
-          <MenuGroupLabel>Views</MenuGroupLabel>
-          {nav.map((n) => (
-            <MenuItem key={n.id} onClick={() => setView(n.view)}>
-              <span className="flex size-4 items-center justify-center [&_svg]:size-4">{n.icon}</span>
-              <span className="min-w-0 flex-1 truncate">{n.label}</span>
-              {n.badge && <span className="text-muted-foreground text-xs tabular-nums">{n.badge.count}</span>}
+          <MenuGroupLabel>Worktrees</MenuGroupLabel>
+          {recent.map((w) => (
+            <MenuItem key={`${w.ref.box}:${w.ref.path}`} onClick={() => selectWorktree(w.ref)}>
+              <GitBranchIcon />
+              <span className="min-w-0 flex-1 truncate">{w.ref.main ? w.ref.location : `${w.ref.location} / ${w.ref.worktree}`}</span>
+              <span className="text-muted-foreground text-xs">{w.ref.box}</span>
             </MenuItem>
           ))}
-          <MenuItem onClick={() => setView({ kind: "settings" })}>
-            <SettingsIcon />
-            Settings
+          <AllWorktrees />
+          <MenuItem onClick={() => runShortcut("new-worktree", "menu")}>
+            <GitBranchPlusIcon />
+            New task…
+            <MenuShortcut>{keysFor("new-worktree")}</MenuShortcut>
           </MenuItem>
         </MenuGroup>
         <MenuSeparator />
         <MenuItem onClick={() => useStore.getState().setPaletteOpen(true)}>
           <CommandIcon />
           Search everything
-          <MenuShortcut>⌘K</MenuShortcut>
+          <MenuShortcut>{keysFor("palette")}</MenuShortcut>
+        </MenuItem>
+        <MenuItem onClick={openShortcuts}>
+          <KeyboardIcon />
+          Keyboard shortcuts
+          <MenuShortcut>{keysFor("shortcuts")}</MenuShortcut>
+        </MenuItem>
+        <MenuItem onClick={() => setView({ kind: "settings" })}>
+          <SettingsIcon />
+          Settings
         </MenuItem>
         <MenuItem onClick={() => usePrefs.setState({ zen: false })}>
           <Minimize2Icon />
           Leave zen
-          <MenuShortcut>⌘.</MenuShortcut>
+          <MenuShortcut>{keysFor("zen")}</MenuShortcut>
         </MenuItem>
       </MenuPopup>
     </Menu>

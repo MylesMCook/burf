@@ -9,6 +9,20 @@ upgrades with `berth upgrade BOX`, or by running the
 [install command](/getting-started/add-a-box#with-the-install-command)
 again.
 
+## Unreleased
+
+- **What happens to your message.** A reply sent while the agent works
+  shows as queued in the conversation, with **Send now** and **Cancel**, and
+  the reply box says whether Enter sends or queues. The box lists, cancels
+  and sends held prompts (`GET`/`DELETE /v1/sessions/{name}/queue`).
+- **Approvals from Claude Code's hooks.** A permission reads "Claude wants
+  to run `pnpm test`" with Claude's reason, from its `PermissionRequest`
+  hook rather than the screen, with Allow, Always allow and Deny matched to
+  its menu. The request stays in the box's private ledger, never in events.
+- **See the work, comment on it.** An edit in the conversation opens to its
+  diff (`GET /v1/sessions/{name}/diff`), and lines take comments there and
+  in Review, sent to the agent as one short prompt.
+
 ## v0.2.0
 
 October 4, 2026.

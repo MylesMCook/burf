@@ -6,7 +6,8 @@ import { AlertDialog, AlertDialogClose, AlertDialogDescription, AlertDialogFoote
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { toastManager } from "@/components/ui/toast";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
+import { ErrorText } from "@/components/error-note";
 
 // confirm asks before something that cannot be undone, from anywhere (a
 // menu item has no room for its own dialog). Options become checkboxes, and
@@ -105,7 +106,7 @@ function Body({ req }: { req: ConfirmRequest }) {
               </span>
             </label>
           ))}
-          {error && <p className="text-destructive-foreground text-xs">{error}</p>}
+          {error && <ErrorText className="text-destructive-foreground text-xs" text={error} />}
         </div>
       )}
       <AlertDialogFooter>
@@ -121,7 +122,7 @@ function Body({ req }: { req: ConfirmRequest }) {
                 await req.secondary!.run(checked);
                 useConfirm.setState({ req: undefined });
               } catch (err) {
-                setError(errorMessage(err));
+                setError(plainError(err));
               }
             }}
           >
@@ -140,7 +141,7 @@ function Body({ req }: { req: ConfirmRequest }) {
               await req.run(checked, value);
               useConfirm.setState({ req: undefined });
             } catch (err) {
-              setError(errorMessage(err));
+              setError(plainError(err));
             } finally {
               setBusy(false);
             }

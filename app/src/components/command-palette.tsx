@@ -1,5 +1,7 @@
 import {
   BellIcon,
+  HouseIcon,
+  KeyboardIcon,
   Minimize2Icon,
   BookMarkedIcon,
   CodeXmlIcon,
@@ -46,6 +48,7 @@ import {
 import { openEditor } from "@/components/editors/open";
 import { Kbd } from "@/components/ui/kbd";
 import { useAllSessions } from "@/hooks/use-agent-counts";
+import { sessionWord } from "@/lib/state-model";
 import { useThemes } from "@/hooks/use-theme";
 import { openBrowserAt, resolveUrl, startSession } from "@/lib/actions";
 import { agentOf, sessionAgent, sessionName, sortedWorktrees, worktreeOf } from "@/lib/derive";
@@ -53,7 +56,8 @@ import { openBroadcast, openPromptPicker } from "@/lib/prompts";
 import { setNotificationsOpen } from "@/lib/notifications";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
-import { currentSpace, focusSession, recentWorktrees, refOf, selectWorktree, useWorkspaces } from "@/lib/workspaces";
+import { currentSpace, focusSession, goHome, recentWorktrees, refOf, selectWorktree, useWorkspaces } from "@/lib/workspaces";
+import { openShortcuts } from "@/components/shortcuts-sheet";
 import { openCustomize, useArrangedNav } from "@/components/sidebar/nav";
 import { loadPlugins } from "@/plugins/host";
 import { useRegistry } from "@/plugins/registry";
@@ -147,7 +151,9 @@ export function CommandPalette() {
       ...(usePrefs.getState().labs
         ? [{ value: "zen focus calm hide sidebar labs", label: usePrefs.getState().zen ? "Leave zen" : "Zen: only the agents", icon: slot(<Minimize2Icon />), shortcut: "⌘.", run: go(() => usePrefs.setState((p) => ({ zen: !p.zen }))) }]
         : []),
+      ...(usePrefs.getState().labs ? [{ value: "home harbour start", label: "Home", icon: slot(<HouseIcon />), run: go(goHome) }] : []),
       { value: "dashboard", label: "Agent Dashboard", icon: slot(<LayoutDashboardIcon />), shortcut: "⌘J", run: go(() => st.setView({ kind: "dashboard" })) },
+      { value: "keyboard shortcuts keys help", label: "Keyboard shortcuts", icon: slot(<KeyboardIcon />), shortcut: "⌘/", run: go(openShortcuts) },
       { value: "notifications inbox bell", label: "Notifications", icon: slot(<BellIcon />), shortcut: "⌘⇧N", run: go(() => setNotificationsOpen(true)) },
       { value: "notification settings do not disturb", label: "Notification settings", icon: slot(<BellIcon />), run: go(() => st.setView({ kind: "settings", section: "notifications" })) },
       { value: "worktrees", label: "Worktrees", icon: slot(<GitBranchIcon />), run: go(() => st.setView({ kind: "worktrees" })) },
@@ -186,7 +192,8 @@ export function CommandPalette() {
       return {
         value: `session:${box}/${session.name}`,
         label: sessionName(session, { sessions: boxes[box]?.sessions, locations: boxes[box]?.locations, place: true }),
-        detail: [sessionAgent(session), where?.worktree.branch, box].filter(Boolean).join(" · "),
+        // Its state in the same words as everywhere else, then where.
+        detail: [sessionAgent(session), state !== "idle" && sessionWord(state), where?.worktree.branch, box].filter(Boolean).join(" · "),
         search: session.name,
         icon: (
           <span className="flex w-8 shrink-0 items-center gap-1">
@@ -248,7 +255,7 @@ export function CommandPalette() {
       label: n.label,
       detail: "Hidden from sidebar",
       icon: slot(n.icon),
-      run: go(() => st.setView(n.view)),
+      run: go(n.go),
     }));
 
     if (!q) {

@@ -117,7 +117,8 @@ func TestAGateCanRefuseInvites(t *testing.T) {
 		Error string
 		Code  string
 	}
-	if status := call(t, c, "POST", "/v1/pairing/invite", "", nil, &resp); status != 403 || !strings.Contains(resp.Error, "no new computers") || resp.Code != "" {
+	// Code is the error's ("refused"), never a pairing code.
+	if status := call(t, c, "POST", "/v1/pairing/invite", "", nil, &resp); status != 403 || !strings.Contains(resp.Error, "no new computers") || resp.Code != CodeRefused {
 		t.Fatalf("refused invite: %d %+v", status, resp)
 	}
 	if len(invites.recent) != 0 {

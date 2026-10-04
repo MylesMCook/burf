@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { toastManager } from "@/components/ui/toast";
 import { ago, errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import type { RunCompare } from "@/lib/orchestrate-core";
 import { allRuns, type BoxRun, runs as runsApi, scheduleRuns, useRuns } from "@/lib/runs";
 import { cn } from "@/lib/utils";
 import { focusSession } from "@/lib/workspaces";
 import { tokens } from "@/views/automations/flows/runs-tab";
+import { ErrorText } from "@/components/error-note";
 
 // CompareStrip lists attempts runs with candidates to compare, at the top of
 // Review: the ones waiting for a pick first.
@@ -49,7 +51,7 @@ export function CompareView({ box, id, onClose }: { box: string; id: string; onC
       const list = runsKey.split(",").map((k) => ({ box: k.slice(0, k.indexOf("/")), id: k.slice(k.indexOf("/") + 1) }));
       setAll(await Promise.all(list.map(async (r) => ({ ...r, data: await runsApi.compare(r.box, r.id) }))));
     } catch (err) {
-      setError(errorMessage(err));
+      setError(plainError(err));
     }
   };
   useEffect(() => {
@@ -103,7 +105,7 @@ export function CompareView({ box, id, onClose }: { box: string; id: string; onC
           </Button>
         )}
       </div>
-      {error && <p className="px-6 py-3 text-destructive text-sm">{error}</p>}
+      {error && <ErrorText className="px-6 py-3 text-destructive text-sm" text={error} />}
       {!data && !error && (
         <div className="flex flex-1 items-center justify-center gap-2 text-muted-foreground text-sm">
           <Spinner className="size-4" /> Reading the attempts…

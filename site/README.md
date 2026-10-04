@@ -8,11 +8,35 @@ Berth's landing page: static HTML and CSS, no build step. Open
   painting the app's Labs home shows (day, and night in dark mode), drawn
   as the app's DitherBand draws it: an ordered dither of its lightness on a
   canvas at one dot per 2 CSS px, dissolving dot by dot into the page. It
-  renders once per size; without the script the plain painting shows.
-- `assets/shots/`: the four screenshots (home, conversation, dashboard,
-  zen) from the live demo with Labs on, as WebPs per theme at 720, 1280
-  and 2080 wide, and a readable crop of each for phones
-  (`<scene>-<theme>-phone-<width>.webp`). They load lazily.
+  renders once per size; without the script the plain painting shows. The
+  lighthouse's beam is a CSS wedge of halftone dots from the lamp, sweeping
+  by transform only (still for reduced motion, paused when hidden).
+- "Close the laptop" in the header puts the page to night by hand
+  (`data-theme` on `<html>`): the harbour redraws at night, the screenshots
+  and the bands of sea below switch to their dark versions, and a line
+  counts what the agents keep doing while the laptop sleeps.
+- Below the hero, a day in the harbour in five beats (sets out, out at sea,
+  needs you, back at its berth, three at once), each a line and a real
+  screenshot, then a box being added and the night. Bands of pale sea
+  (`--sea`) come in and go out through dithered seams (`assets/seam.svg`,
+  2 px dots of the harbour's Bayer matrix). `assets/dither.js` brings each
+  screenshot in through the same grain as it enters the viewport, once
+  (nothing is hidden without it or for reduced motion). "Needs you" has a
+  Terminal | Conversation switch over the same agent; the install types
+  itself the first time it's in view. The page ends at night whatever the
+  theme: the harbour again (`data-night-only`, dissolving at both ends,
+  drawn only when near), with a lamp lit for each agent still out. Motion
+  pauses offscreen and when the tab is hidden, and is off for reduced
+  motion.
+- `assets/shots/`: screenshots from the live demo with Labs on, as WebPs
+  per theme at 1x and 2x (720, 1280 and 2080 for the full-window ones), and
+  a readable crop of each for phones (`<scene>-<theme>-phone-<width>.webp`;
+  the conversation pane's is `pane-conversation-narrow`, taken at a
+  phone's width). They load lazily. Home, conversation, dashboard and zen
+  need the Vite demo; pane-terminal, pane-conversation(-narrow), attempts
+  and review click their way in, so they also work against the built demo:
+  `node site/scripts/capture.mjs --url http://127.0.0.1:1460/demo/ --only
+  pane-terminal,attempts` with `site/` served on 1460.
 - `demo/`: the live demo, built from `app/` (see below). Committed, so the
   site still has no build step.
 - `assets/og.png`: the 1200×630 link preview (the dithered harbour and the
@@ -57,7 +81,8 @@ Labs on) in headless Google Chrome at 2x in light and dark, stages each
 scene, writes the WebPs into `assets/shots/`, and stops Vite. A console
 error in the demo makes it exit non-zero. Also `--only home,zen`, `--theme
 light`, `--png /tmp/shots` (keep the 2x PNGs), `--phone-only` (re-cut the
-phone crops, no app needed), `--port N`, `--quality 0.8`, `--skip-plugins`,
+phone crops, no app needed), `--url URL` (a demo already served; no
+Vite), `--port N`, `--quality 0.8`, `--skip-plugins`,
 and the environment variables `PLAYWRIGHT_CORE` and `CHROME_CHANNEL`.
 
 ## Rules

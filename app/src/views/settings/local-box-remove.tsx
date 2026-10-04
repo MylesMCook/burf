@@ -4,7 +4,7 @@ import { AlertDialog, AlertDialogClose, AlertDialogDescription, AlertDialogFoote
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toastManager } from "@/components/ui/toast";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { localBoxApi, useLocalBoxName } from "@/lib/local-box";
 import { useStore } from "@/lib/store";
 import { CommandLog } from "@/views/settings/command-log";
@@ -32,7 +32,7 @@ export function RemoveLocalBoxDialog({ box, open, onOpenChange }: { box: string;
       setLines(undefined);
       toastManager.add({ title: "This Mac is no longer a box", description: removeData ? "berthd and its data are gone." : "berthd is stopped; its data is kept.", type: "success" });
     } catch (err) {
-      setError(errorMessage(err));
+      setError(plainError(err));
     }
   };
 

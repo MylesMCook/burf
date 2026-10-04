@@ -99,7 +99,7 @@ func (b *Box) Mount(s *wire.Server) {
 	route := func(pattern string, h func(http.ResponseWriter, *http.Request) error) {
 		s.Handle(pattern, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if err := h(w, r); err != nil {
-				writeError(w, statusFor(err), err.Error())
+				writeErr(w, err)
 			}
 		}))
 	}
@@ -153,6 +153,10 @@ func (b *Box) Mount(s *wire.Server) {
 	route("POST /v1/sessions/{name}/send", b.sendToSession)
 	route("GET /v1/sessions/{name}/wait", b.waitForSession)
 	route("GET /v1/sessions/{name}/turns", b.listTurns)
+	route("GET /v1/sessions/{name}/queue", b.listQueue)
+	route("DELETE /v1/sessions/{name}/queue/{turn}", b.cancelQueued)
+	route("POST /v1/sessions/{name}/queue/{turn}/send", b.sendQueued)
+	route("GET /v1/sessions/{name}/diff", b.sessionDiff)
 	route("GET /v1/turns/{id}", b.getTurn)
 	route("GET /v1/turns/{id}/wait", b.waitTurn)
 	route("POST /v1/exec", b.handleExec)
@@ -202,8 +206,10 @@ func statusFor(err error) int {
 		return he.status
 	case errors.Is(err, ErrUnknownLocation), errors.Is(err, ErrUnknownWorktree), errors.Is(err, ErrUnknownSession), errors.Is(err, ErrUnknownShare), errors.Is(err, ErrUnknownUnit):
 		return http.StatusNotFound
-	case errors.Is(err, ErrSessionExists):
+	case errors.Is(err, ErrSessionExists), errors.Is(err, ErrSessionExited):
 		return http.StatusConflict
+	case errors.Is(err, errTmuxMissing):
+		return http.StatusServiceUnavailable
 	}
 	return http.StatusBadRequest
 }
@@ -836,6 +842,11 @@ func (b *Box) emit(w http.ResponseWriter, r *http.Request) error {
 	// published, so the journal and hooks never see it.
 	title, _ := req.Data["title"].(string)
 	delete(req.Data, "title")
+	// What a waiting agent asks for (its hook's tool and a summary of its
+	// input) is never published: it goes on the turn's wait, in the
+	// ledger's private file, once the event has made that wait.
+	ask, hasAsk := req.Data[adapters.AskKey]
+	delete(req.Data, adapters.AskKey)
 	if b.Turns != nil && b.Turns.Redundant(req.Type, req.Data) {
 		writeJSON(w, map[string]bool{"ok": true})
 		return nil
@@ -845,6 +856,9 @@ func (b *Box) emit(w http.ResponseWriter, r *http.Request) error {
 		if name := b.Turns.SessionOf(req.Data); name != "" {
 			b.nameAfter(r.Context(), name, adapters.Clip(title, adapters.TitleMax))
 		}
+	}
+	if hasAsk && b.Turns != nil && req.Type == adapters.Waiting {
+		b.Turns.NoteAsk(req.Data, ask)
 	}
 	writeJSON(w, map[string]bool{"ok": true})
 	return nil
@@ -887,8 +901,14 @@ func writeJSON(w http.ResponseWriter, v any) {
 	json.NewEncoder(w).Encode(v)
 }
 
+// writeError answers with msg and the code its status implies; writeErr
+// (errcodes.go) names the code from the error itself.
 func writeError(w http.ResponseWriter, status int, msg string) {
+	writeCoded(w, status, msg, codeForStatus(status))
+}
+
+func writeCoded(w http.ResponseWriter, status int, msg, code string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(map[string]string{"error": msg})
+	json.NewEncoder(w).Encode(map[string]string{"error": msg, "code": code})
 }

@@ -8,9 +8,11 @@ import { Spinner } from "@/components/ui/spinner";
 import { toastManager } from "@/components/ui/toast";
 import { type Editor, editorsApi, installedEditors, pickEditor, setPreferredEditor, type SSHPlan, usePreferredEditor } from "@/lib/editors";
 import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Code, SettingsGroup, SettingsRow } from "@/views/settings/rows";
+import { ErrorText } from "@/components/error-note";
 
 // EditorsSettings is Settings → Boxes' editor part: which editor opens
 // worktrees, and the SSH hosts editors use to reach boxes. Berth shows the
@@ -31,7 +33,7 @@ export function EditorsSettings() {
       setEditors(eds);
       setPlan(p);
     } catch (err) {
-      setError(errorMessage(err));
+      setError(plainError(err));
     }
   }, [client]);
   useEffect(() => void load(), [load]);
@@ -68,7 +70,7 @@ export function EditorsSettings() {
         </Button>
       }
     >
-      {error && <p className="px-4 py-3 text-destructive text-sm">{error}</p>}
+      {error && <ErrorText className="px-4 py-3 text-destructive text-sm" text={error} />}
       {!editors && !error && (
         <div className="flex items-center gap-2 px-4 py-3 text-muted-foreground text-sm">
           <Spinner className="size-3.5" /> Looking for editors…

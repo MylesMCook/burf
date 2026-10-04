@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { type Branch, projectsApi, type ResolveKind, type Resolution } from "@/lib/projects";
 import { useStore } from "@/lib/store";
 
@@ -31,7 +31,7 @@ export function useResolve(box: string, location: string, input: string, kind: R
       } catch (err) {
         if (n === seq.current) {
           setResolution(undefined);
-          setError(errorMessage(err));
+          setError(plainError(err));
         }
       } finally {
         if (n === seq.current) setPending(false);

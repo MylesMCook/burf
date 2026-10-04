@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 import { kitCounts } from "@/views/kits/kit-summary";
 import { openKit, openKitLink, reloadKits, useKits, useKitsData } from "@/views/kits/kits-store";
 import { ViewHeader } from "@/views/view-header";
+import { ErrorText } from "@/components/error-note";
 
 // KitsView lists the kits on this laptop: how a project is set up, ready to
 // apply to the same project on any box, or to share with a link.
@@ -42,7 +43,7 @@ export function KitsView() {
       />
       <div className="min-h-0 flex-1 overflow-y-auto">
         <div className="mx-auto max-w-4xl px-8 pt-7 pb-24">
-          {error && <p className="mb-4 rounded-xl border border-destructive/30 bg-destructive/8 px-4 py-3 text-destructive-foreground text-sm">{error}</p>}
+          {error && <ErrorText className="mb-4 rounded-xl border border-destructive/30 bg-destructive/8 px-4 py-3 text-destructive-foreground text-sm" text={error} />}
           {!kits && !error && (
             <div className="grid gap-3 md:grid-cols-2">
               <Skeleton className="h-40 rounded-2xl" />

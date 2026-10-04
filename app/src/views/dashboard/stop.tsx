@@ -3,6 +3,7 @@ import { useRef, useState } from "react";
 import { create } from "zustand";
 
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
+import { sessionWord } from "@/lib/state-model";
 import { PickOne } from "@/components/pick-one";
 import { removeWorktree } from "@/components/sidebar/actions";
 import { confirm } from "@/components/sidebar/confirm";
@@ -16,7 +17,7 @@ import { toastManager } from "@/components/ui/toast";
 import type { SessionEntry } from "@/hooks/use-agent-counts";
 import { boxApi } from "@/lib/api";
 import { agentOf, type SessionState } from "@/lib/derive";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { load, save } from "@/lib/storage";
 import { scheduleRefresh, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -70,7 +71,7 @@ async function stopAgents(entries: SessionEntry[], onEach: (key: string, p: Prog
         onEach(key, { state: "ok" });
       } catch (err) {
         failed++;
-        onEach(key, { state: "failed", message: errorMessage(err) });
+        onEach(key, { state: "failed", message: plainError(err) });
       }
     }
   };
@@ -348,7 +349,7 @@ function StopRow({ row, ticked, progress, locked, cleanup, onToggle }: { row: Ro
             {state === "waiting" ? "needs you" : "working"}
           </span>
         ) : (
-          <Tip label={`${state === "finished" ? "Done" : "Ready"} for ${duration(row.idle)}`}>
+          <Tip label={`${sessionWord(state)} for ${duration(row.idle)}`}>
             <span className="flex shrink-0 items-center gap-1.5 font-mono text-[11px] text-muted-foreground tabular-nums">
               <StateGlyph state={state} />
               {duration(row.idle)}

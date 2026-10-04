@@ -28,6 +28,15 @@ The agent serves the app on `http://127.0.0.1:1378`.
 - **CORS.** Allowed origins are `tauri://localhost`, `http://tauri.localhost`,
   `https://tauri.localhost`, and `http://localhost:1420` to `:1439` (Vite in
   development). The token, not the origin, is what keeps other pages out.
+- **Errors.** A failed request answers `{ "error": "…", "code": "…" }`. The
+  message is for people and logs; branch on the code. The box's codes are
+  `not_found`, `session_exited` (the session's program has ended, so it takes
+  no input), `session_exists`, `agent_waiting` (sending now would answer its
+  question), `refused` (a `before:` hook said no), `unsupported`, `tmux_missing`,
+  `git_failed`, `command_failed`, `too_many`, `bad_request` and `internal`. The
+  agent adds `box_unreachable` (the request never reached the box, 503, or may
+  have, 502), `box_unknown` (no paired box by that name) and `box_outdated`
+  (the box's berthd doesn't have that route yet).
 
 ## Laptop
 
@@ -77,6 +86,7 @@ The app also uses these, mostly as the CLI does:
 | `POST /v1/invite` | `{ boxes? }`: make a join link, as `berth invite --yes`; `{ link, from, expires, boxes: [{ name, addresses, network?, tailnet? }], skipped: [{ name, error }] }`. The app asks the person first |
 | `POST /v1/join/check`, `POST /v1/join` | `{ link }` (any text holding one): what a join link holds, or pair with every box in it, as `berth join`; `{ from, expires, boxes: [{ name, status, error?, address?, network?, tailnet?, sign_in? }] }`. The link reaches the CLI on stdin, never in its arguments |
 | `POST /v1/boxes/add-ssh`, `POST /v1/boxes/{box}/upgrade`, `POST /v1/setup/port80?remove=1` | Run `berth add ssh`, `berth upgrade` or `berth setup port80`, streaming its output as NDJSON `{ line?, done?, error? }` |
+| `GET /v1/boxes/outdated?fresh=1` | `{ boxes: [{ box, current?, available?, outdated, error? }] }`: for each online box, whether it runs an older berthd than this Berth ships, from `berth upgrade BOX --check --json`. Answers are kept for two minutes (`fresh=1` checks again) and forgotten after an upgrade |
 | `DELETE /v1/boxes/{box}` | Forget a box, as `berth forget` |
 | `GET /v1/boxes/local`, `POST /v1/boxes/local`, `POST /v1/boxes/local/uninstall` | [Use this Mac](/getting-started/add-a-box#this-mac): whether this computer can be a box (`{ supported, available, reason?, installed, owned, running, listen?, program?, box?, name }`); set it up and pair, or reconnect, streaming NDJSON `{ line?, done?, error?, box? }`; and `{ remove_data? }`: forget it, stop berthd and remove its service, streaming the same. Boxes it set up have `local: true` in `GET /v1/status` |
 | `GET /v1/editors`, `POST /v1/editors/open` | Editors on this laptop; `{ editor, box, location?, path?, file?, line?, col? }` opens one, as `berth edit` |
@@ -108,13 +118,17 @@ failed after it went out (the box may have acted on it). The box API:
 | `GET stats` | `Stats`: memory, disks, load, agents |
 | `GET services` | `Service[]`: listening ports by worktree |
 | `GET ports` | `Port[]` |
-| `GET info` | `{ name, os, arch, build, user?, home?, tools: string[], agents: AgentPreset[], capabilities: string[], adapters }`: `capabilities` lists `turns` and `journal` on boxes that have them, `titles` where sessions carry a title, and `sample` where `locations/new` makes the sample project; `adapters` says what each agent can report (`{ ready, started, waiting, finished, final_message, via }`) |
+| `GET info` | `{ name, os, arch, build, user?, home?, tools: string[], agents: AgentPreset[], capabilities: string[], adapters }`: `capabilities` lists `turns`, `queue`, `ask`, `diff` and `journal` on boxes that have them, `titles` where sessions carry a title, and `sample` where `locations/new` makes the sample project; `adapters` says what each agent can report (`{ ready, started, waiting, finished, final_message, via }`) |
 | `GET doctor` | `Check[]` |
 | `POST secrets/test` | `{ ref }` → `{ ok, length?, error? }`: resolves a [secret reference](/guides/secrets) on the box now (`op://…` or `env://…`), skipping its cache, and reports whether it could and the value's length, never the value. A malformed reference is `ok: false` with why |
 | `POST secrets/report` | Only on the box's own socket: what `berthd secret exec` resolved for a session or service, which variables resolved and which failed and why, never values |
 | `POST sessions/{name}/send` | `{ text, enter?, when?, force?, idem_key? }` → `{ sent, queued?, duplicate?, turn?, seq?, at }`: types a prompt, or with `when: "idle"` holds it until the agent is idle. With `when`, refused (409) while the agent waits for someone unless `force` ([orchestration](/guides/orchestration#send)) |
 | `GET sessions/{name}/wait?for=finished,waiting&after=TIME&timeout=10m` | `{ state, timed_out, turn? }`: `after` is an RFC 3339 time, placed in the box's journal order; `timeout` a duration, 1s to 1h (default 10m) |
-| `GET sessions/{name}/turns?limit=N` | `Turn[]`, oldest first: the session's last `N` turns (default 20) |
+| `GET sessions/{name}/turns?limit=N` | `Turn[]`, oldest first: the session's last `N` turns (default 20). A wait's `ask` is what the agent asked for, from its hooks: `{ tool?, input?, why?, message? }`, each at most 300 characters (the command or the file's path, never what it would write) |
+| `GET sessions/{name}/queue` | `{ turn, preview, length, origin?, at }[]`: the prompts held until the agent is idle (`when: "idle"`), oldest first; `preview` is the first 280 characters. The session's `queued` is their count. Boxes that serve it list `queue` in `capabilities` |
+| `DELETE sessions/{name}/queue/{turn}` | cancels a held prompt: its turn ends `lost` with status `cancelled` (404 once it was sent) |
+| `POST sessions/{name}/queue/{turn}/send` | `{ force? }` → `SendResult`: types a held prompt now, before the agent finishes. Refused (409) while the agent waits for someone unless `force` |
+| `GET sessions/{name}/diff?file=PATH` | `{ file, diff, untracked?, truncated? }`: one file's diff in the session's worktree against `HEAD` (a new file as all added), the first 64 KB. `PATH` is relative to the session's directory, or absolute inside it. Listed as `diff` in `capabilities` |
 | `GET turns/{id}` | `Turn`; encode the `#` in the ID as `%23` |
 | `GET turns/{id}/wait?until=end\|waiting&timeout=90s` | `{ turn, state, timed_out }`: returns when the turn ends (`finished`, `exited`, `lost`) or, with `until=waiting`, also when it waits for someone |
 | `POST exec` | `{ location, command, timeout? }` → `{ exit_code, output, truncated? }`; `timeout` defaults to 10m, at most 1h |
@@ -157,11 +171,12 @@ failed after it went out (the box may have acted on it). The box API:
 `agent` (`claude`, `codex`, …) and `agent_state` (`idle`, `running`,
 `waiting`, `finished`), plus `preset` (the agent preset it was started
 with), `turn` (its current or last turn), `state_seq` and `fidelity`
-(`hooks`, `partial` or `screen`). `exited` is true once the program has
-ended. `title` names the work: the first line of the prompt it started
-with, or of the first prompt it was sent or typed, cut to about 48
-characters; `PATCH sessions/{name}` with `{ title }` renames it (an empty
-title clears it). Only the title is kept, never the prompt.
+(`hooks`, `partial` or `screen`), `queued` (prompts held until it is idle)
+and, while it waits, `ask` (what its hooks said it asks for). `exited` is
+true once the program has ended. `title` names the work: the first line of
+the prompt it started with, or of the first prompt it was sent or typed, cut
+to about 48 characters; `PATCH sessions/{name}` with `{ title }` renames it
+(an empty title clears it). Only the title is kept, never the prompt.
 
 A `Run` is `{ id, template, title?, status, steps, gate?, candidates?, usage?,
 cursor?, params?, created, updated, finished?, error?, … }`, with `status`

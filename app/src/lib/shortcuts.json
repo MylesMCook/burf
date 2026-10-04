@@ -1,0 +1,20 @@
+{
+  "_": "Berth's keyboard shortcuts, read by the webview (lib/shortcuts.ts: the handlers, the Keyboard shortcuts sheet, Settings → Shortcuts) and by the Mac app's menu bar (src-tauri/src/lib.rs). group is the menu an item is in; accel, when set, puts it there with that accelerator, so macOS cannot take the key first. count makes items 1..count, with {n} in label and accel. Never give ⌘C, ⌘V, ⌘A or ⌘F an accelerator: focused terminals and text need them.",
+  "shortcuts": [
+    { "id": "new-worktree", "group": "File", "label": "New task…", "keys": "⌘N", "accel": "CmdOrCtrl+N" },
+    { "id": "new-terminal", "group": "File", "label": "New terminal", "keys": "⌘T", "accel": "CmdOrCtrl+T" },
+    { "id": "new-browser", "group": "File", "label": "New browser tab", "keys": "⌘⇧B", "accel": "CmdOrCtrl+Shift+B" },
+    { "id": "split-right", "group": "File", "label": "Split right", "keys": "⌘D", "accel": "CmdOrCtrl+D", "sep": true },
+    { "id": "split-down", "group": "File", "label": "Split down", "keys": "⌘⇧D", "accel": "CmdOrCtrl+Shift+D" },
+    { "id": "open-editor", "group": "File", "label": "Open in editor", "keys": "⌘⇧O", "accel": "CmdOrCtrl+Shift+O" },
+    { "id": "close-pane", "group": "File", "label": "Close pane", "keys": "⌘W", "accel": "CmdOrCtrl+W", "sep": true },
+    { "id": "zen", "group": "View", "label": "Zen", "keys": "⌘.", "accel": "CmdOrCtrl+.", "labs": true },
+    { "id": "sidebar", "group": "View", "label": "Show or hide the sidebar", "keys": "⌘\\", "accel": "CmdOrCtrl+\\" },
+    { "id": "dashboard", "group": "View", "label": "Agent Dashboard", "keys": "⌘J", "accel": "CmdOrCtrl+J" },
+    { "id": "notifications", "group": "View", "label": "Notifications", "keys": "⌘⇧N", "accel": "CmdOrCtrl+Shift+N" },
+    { "id": "palette", "group": "Go", "label": "Search and commands…", "keys": "⌘K", "accel": "CmdOrCtrl+K" },
+    { "id": "tab", "group": "Go", "label": "Tab {n}", "keys": "⌘1–9", "accel": "CmdOrCtrl+{n}", "count": 9, "sep": true, "what": "Go to tab 1–9" },
+    { "id": "focus", "group": "Go", "label": "Move between panes", "keys": "⌘⌥ ←↑→↓" },
+    { "id": "shortcuts", "group": "Help", "label": "Keyboard shortcuts", "keys": "⌘/", "accel": "CmdOrCtrl+/" }
+  ]
+}

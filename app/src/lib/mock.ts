@@ -36,6 +36,11 @@ const status: Status = {
   proxy: { port: 1377, url_port: 1377 },
 };
 
+// The berthd build each box runs, and the one this Berth ships: gpu is
+// behind until it is updated (GET /v1/boxes/outdated).
+const SHIPPED_BUILD = "b9758a308077";
+const mockBuilds: Record<string, string> = { devl: SHIPPED_BUILD, gpu: "304337b99a15" };
+
 // ?mock=1&fresh=1 is a new account: no boxes yet, so onboarding shows.
 const fresh = new URLSearchParams(location.search).has("fresh");
 if (fresh) {
@@ -337,12 +342,79 @@ function mockStartTurn(box: string, s: Session, tr: Turn, text: string) {
     s.state_since = end;
     emit({ seq: mockSeq, type: "agent.finished", box, origin: s.agent, data: { path: s.dir, session: s.name } });
     const next = mockInbox[`${box}/${s.name}`]?.shift();
+    s.queued = mockInbox[`${box}/${s.name}`]?.length || undefined;
     if (next) setTimeout(() => mockStartTurn(box, s, next.turn, next.text), 300);
     // The demo's agents work a little longer, so you see them at it.
   }, __BERTH_DEMO__ ? 4500 : 1500);
 }
 
+// A file's diff, as GET sessions/{name}/diff answers: the demo's webhook
+// fix, or a small change for any other file.
+function mockDiff(file: string) {
+  if (file.endsWith("webhook.ts"))
+    return `diff --git a/${file} b/${file}
+--- a/${file}
++++ b/${file}
+@@ -12,9 +12,20 @@ export async function handleWebhook(event: PaymentEvent) {
+   const payment = await payments.find(event.paymentId);
+-  if (!payment) throw new NotFound(event.paymentId);
+-  const order = await createOrder(payment);
+-  return order;
++  if (!payment) throw new NotFound(event.paymentId);
++  // A provider retries a webhook it thinks failed: find the order the
++  // first delivery made instead of charging again.
++  const existing = await orders.byIdempotencyKey(event.idempotencyKey);
++  if (existing) return existing;
++  const order = await createOrder(payment, {
++    idempotencyKey: event.idempotencyKey,
++  });
++  await retries.schedule(event, { max: 5, within: "10m" });
++  return order;
+ }
+
+ export function verifySignature(body: string, signature: string) {
+`;
+  return `diff --git a/${file} b/${file}
+--- a/${file}
++++ b/${file}
+@@ -1,4 +1,5 @@
+ import { describe, it } from "vitest";
++import { retry } from "./retry";
+
+ describe("checkout", () => {
+-  it.todo("charges once");
++  it("charges once", () => retry(2));
+`;
+}
+
 function mockOrchestration(box: string, method: string, path: string, body?: unknown): Promise<unknown> | undefined {
+  const qm = /^sessions\/([^/?]+)\/(queue|diff)(?:\/([^/?]+)(\/send)?)?/.exec(path);
+  const qs = qm ? sessions[box]?.find((x) => x.name === decodeURIComponent(qm[1])) : undefined;
+  if (qm && !qs) return Promise.reject(new ApiError("no session with that name", 404));
+  if (qs && qm?.[2] === "diff") {
+    const file = new URLSearchParams(path.split("?")[1]).get("file") ?? "";
+    return delay({ file, diff: mockDiff(file) });
+  }
+  if (qs && qm?.[2] === "queue") {
+    const key = `${box}/${qs.name}`;
+    const inbox = (mockInbox[key] ??= []);
+    if (!qm[3]) return delay(inbox.map((i) => ({ turn: i.turn.id, preview: i.text.length > 280 ? `${i.text.slice(0, 280)}…` : i.text, length: i.text.length, origin: i.turn.origin, at: i.turn.queued })));
+    const id = decodeURIComponent(qm[3]);
+    const at = inbox.findIndex((i) => i.turn.id === id);
+    if (at < 0) return Promise.reject(new ApiError("that prompt is no longer queued: it was sent or cancelled", 404));
+    if (method === "POST" && qm[4] && qs.agent_state === "waiting" && !(body as { force?: boolean } | undefined)?.force)
+      return Promise.reject(new ApiError(`${qs.name} is waiting for someone to answer it (a permission or a question); answer it at the terminal, or send with force to type anyway`, 409));
+    const [item] = inbox.splice(at, 1);
+    qs.queued = inbox.length || undefined;
+    if (method === "DELETE") {
+      Object.assign(item.turn, { state: "lost", status: "cancelled", ended: new Date().toISOString() });
+      emit({ seq: ++mockSeq, type: "session.unqueued", box, data: { name: qs.name, turn: id } });
+      return delay({ cancelled: id });
+    }
+    Object.assign(item.turn, { state: "pending", sent_seq: ++mockSeq });
+    emit({ seq: mockSeq, type: "session.sent", box, data: { name: qs.name, turn: id, when: "now" } });
+    return delay({ sent: true, turn: id, seq: mockSeq, at: new Date().toISOString() });
+  }
   const tw = /^turns\/([^/?]+)(\/wait)?/.exec(path);
   if (tw) {
     const id = decodeURIComponent(tw[1]);
@@ -364,7 +436,7 @@ function mockOrchestration(box: string, method: string, path: string, body?: unk
   }
   const m = /^sessions\/([^/?]+)\/(send|wait|turns)/.exec(path);
   const s = m ? sessions[box]?.find((x) => x.name === decodeURIComponent(m[1])) : undefined;
-  if (m && !s) return Promise.reject(new ApiError("no session with that name", 404));
+  if (m && !s) return Promise.reject(new ApiError("no session with that name", 404, "not_found"));
   if (s && m?.[2] === "turns") {
     const limit = parseInt(new URLSearchParams(path.split("?")[1]).get("limit") ?? "20") || 20;
     return delay((mockTurns[`${box}/${s.name}`] ?? []).slice(-limit));
@@ -375,8 +447,9 @@ function mockOrchestration(box: string, method: string, path: string, body?: unk
     const list = (mockTurns[key] ??= []);
     const dup = req.idem_key ? list.find((t) => t.idem_key === req.idem_key) : undefined;
     if (dup) return delay({ sent: dup.state !== "queued", queued: dup.state === "queued", duplicate: true, turn: dup.id, seq: dup.sent_seq, at: new Date().toISOString() });
+    if (s.exited) return Promise.reject(new ApiError("the session's program has ended, so it can't take input; start it again", 409, "session_exited"));
     if (req.when === "now" && !req.force && s.agent_state === "waiting")
-      return Promise.reject(new ApiError(`${s.name} is waiting for someone to answer it (a permission or a question); answer it at the terminal, or send with force to type anyway`, 409));
+      return Promise.reject(new ApiError(`${s.name} is waiting for someone to answer it (a permission or a question); answer it at the terminal, or send with force to type anyway`, 409, "agent_waiting"));
     const tr: Turn = { id: `${s.name}#${list.length + 1}`, session: s.name, agent: s.agent, n: list.length + 1, origin: "laptop:demo", state: "pending", idem_key: req.idem_key };
     list.push(tr);
     if (list.length > 50) list.shift();
@@ -384,6 +457,7 @@ function mockOrchestration(box: string, method: string, path: string, body?: unk
     if (req.when === "idle" && (s.agent_state === "running" || s.agent_state === "waiting")) {
       Object.assign(tr, { state: "queued", queued: at });
       (mockInbox[key] ??= []).push({ turn: tr, text: req.text ?? "" });
+      s.queued = mockInbox[key].length;
       emit({ seq: ++mockSeq, type: "session.queued", box, data: { name: s.name, turn: tr.id } });
       return delay({ sent: false, queued: true, turn: tr.id, seq: mockSeq, at });
     }
@@ -512,8 +586,9 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
     return delay({
       name: box,
       version: "0.1.0",
+      build: mockBuilds[box] ?? SHIPPED_BUILD,
       tools: ["claude", "codex"],
-      capabilities: ["turns", "journal", "runs", "exec.detach", "browser", "titles", "sample"],
+      capabilities: ["diff", "turns", "queue", "ask", "journal", "runs", "exec.detach", "browser", "titles", "sample"],
       adapters: {
         claude: { ready: true, started: true, waiting: true, finished: true, final_message: true, via: "hooks" },
         codex: { ready: true, started: true, waiting: true, finished: true, final_message: true, via: "hooks" },
@@ -772,6 +847,15 @@ function laptopBoxes(method: string, path: string, body: unknown): Promise<unkno
     return delay(network ? discoverNetwork(network) : discovery);
   }
   if (method === "GET" && path === "/v1/networks") return delay(mockNetworks);
+  if (method === "GET" && path.startsWith("/v1/boxes/outdated"))
+    return delay({
+      boxes: status.boxes
+        .filter((b) => b.state === "online")
+        .map((b) => {
+          const current = mockBuilds[b.name] ?? SHIPPED_BUILD;
+          return { box: b.name, current, available: SHIPPED_BUILD, outdated: current !== SHIPPED_BUILD };
+        }),
+    });
   if (method === "GET" && path === "/v1/ssh/hosts") return delay(["dev-box", "hetzner", "pi"]);
   if (method === "GET" && path.startsWith("/v1/ssh/plan")) return delay(mockSshPlan(new URLSearchParams(path.split("?")[1]).get("host") ?? ""));
   if (method === "POST" && path === "/v1/boxes/pair") {
@@ -841,8 +925,15 @@ async function mockStream(method: string, path: string, body: unknown, onValue: 
   const upgrade = /^\/v1\/boxes\/([^/]+)\/upgrade$/.exec(path);
   if (method === "POST" && upgrade) {
     const name = decodeURIComponent(upgrade[1]);
+    const from = mockBuilds[name] ?? SHIPPED_BUILD;
+    if (from === SHIPPED_BUILD) {
+      await say(`${name} already runs this build (${SHIPPED_BUILD}).`, 300);
+      onValue({ done: true });
+      return;
+    }
     await say(`Uploading berthd-linux-amd64 to ${name}…`, 300);
-    await say(`${name} upgraded: 304337b99a15 → b9758a308077. Sessions kept running.`, 1600);
+    await say(`${name} upgraded: ${from} → ${SHIPPED_BUILD}. Sessions kept running.`, 1600);
+    mockBuilds[name] = SHIPPED_BUILD;
     onValue({ done: true });
     return;
   }
@@ -914,7 +1005,11 @@ export function mockClient(): Client {
       if (!res.ok) throw new Error(`${p.id}: ${res.status} (run pnpm build in plugins/${p.id})`);
       return new Uint8Array(await res.arrayBuffer());
     },
-    box: <T,>(box: string, method: string, path: string, body?: unknown) => boxCall(box, method, path, body) as Promise<T>,
+    box: <T,>(box: string, method: string, path: string, body?: unknown) =>
+      (boxCall(box, method, path, body) as Promise<T>).catch((err: unknown) => {
+        if (err instanceof ApiError) err.box = box;
+        throw err;
+      }),
     boxBlob: async () => new Blob([mockShotSvg()], { type: "image/svg+xml" }),
     laptop: <T,>(method: string, path: string, body?: unknown) => {
       if (method === "GET" && path === "/v1/hooks") return delay(hooksFiles.laptop) as Promise<T>;

@@ -21,6 +21,7 @@ import { AgentCard } from "@/views/dashboard/agent-card";
 import { ColumnMenu, openStop, StopDialog } from "@/views/dashboard/stop";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
 import { ViewHeader } from "@/views/view-header";
+import { sessionWord } from "@/lib/state-model";
 
 interface Column {
   state: SessionState;
@@ -29,10 +30,10 @@ interface Column {
 }
 
 const COLUMNS: Column[] = [
-  { state: "waiting", title: "Needs you", empty: "Nothing is waiting on you." },
-  { state: "running", title: "Working", empty: "No agent is working." },
-  { state: "finished", title: "Done", empty: "Finished turns land here." },
-  { state: "ready", title: "Ready", empty: "Agents open with nothing to do." },
+  { state: "waiting", title: sessionWord("waiting"), empty: "Nothing needs you." },
+  { state: "running", title: sessionWord("running"), empty: "No agent is working." },
+  { state: "finished", title: sessionWord("finished"), empty: "Finished turns land here." },
+  { state: "ready", title: sessionWord("ready"), empty: "Agents open with nothing to do." },
 ];
 
 // Cards in a column: the longest in that state first, so what has waited
@@ -199,7 +200,7 @@ export function DashboardView() {
               <button type="button" aria-expanded={showRest} onClick={() => setShowRest(!showRest)} className="flex items-center gap-1.5 rounded-md py-1 text-muted-foreground text-xs hover:text-foreground">
                 <ChevronRightIcon className={cn("size-3 transition-transform", showRest && "rotate-90")} />
                 <TerminalIcon className="size-3.5" />
-                Shells & exited · {summary(rest)}
+                Shells & ended · {summary(rest)}
               </button>
               {showRest && (
                 <div className="mt-2 mb-2 grid grid-cols-[repeat(auto-fill,minmax(220px,1fr))] gap-2">
@@ -250,7 +251,7 @@ function QuietCard({ entry }: { entry: SessionEntry }) {
     <button type="button" onClick={() => void focusSession(box, session.name)} className="flex items-center gap-2 rounded-lg border bg-card/60 px-2.5 py-1.5 text-left text-xs hover:border-ring/40">
       <AgentIcon agent={agentOf(session)} />
       <span className="min-w-0 flex-1 truncate">{where?.worktree.main ? where.location.name : (where?.worktree.name ?? session.name)}</span>
-      <span className="shrink-0 text-muted-foreground">{state === "exited" ? "exited" : `${box} · ${ago(session.created)}`}</span>
+      <span className="shrink-0 text-muted-foreground">{state === "exited" ? sessionWord("exited", true) : `${box} · ${ago(session.created)}`}</span>
     </button>
   );
 }
@@ -258,5 +259,5 @@ function QuietCard({ entry }: { entry: SessionEntry }) {
 function summary(entries: SessionEntry[]): string {
   const shells = entries.filter((e) => e.state === "idle").length;
   const exited = entries.filter((e) => e.state === "exited").length;
-  return [shells && `${shells} shell${shells === 1 ? "" : "s"}`, exited && `${exited} exited`].filter(Boolean).join(", ");
+  return [shells && `${shells} shell${shells === 1 ? "" : "s"}`, exited && `${exited} ended`].filter(Boolean).join(", ");
 }

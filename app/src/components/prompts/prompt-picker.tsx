@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toastManager } from "@/components/ui/toast";
 import { useAllSessions } from "@/hooks/use-agent-counts";
 import { agentOf, sessionName } from "@/lib/derive";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { send } from "@/lib/orchestrate";
 import { type SendFailure, enqueue, sendFailure, targetName } from "@/lib/queue";
 import {
@@ -37,6 +37,7 @@ import {
 import { useStore } from "@/lib/store";
 import { useRegistry } from "@/plugins/registry";
 import { describeAgent, startedAt } from "@/views/dashboard/names";
+import { ErrorText } from "@/components/error-note";
 
 const sep = "\u0000";
 
@@ -189,7 +190,7 @@ function Fill({ d, prompt, target, setTarget, onBack }: { d: PickerDraft; prompt
     } catch (err) {
       const f = sendFailure(err, target.box);
       setFailure(f && { box: target.box, f });
-      if (!f) setError(errorMessage(err));
+      if (!f) setError(plainError(err));
     } finally {
       setBusy(false);
     }
@@ -248,7 +249,7 @@ function Fill({ d, prompt, target, setTarget, onBack }: { d: PickerDraft; prompt
           {!target && !insert && <span className="text-muted-foreground text-xs">Built-in variables like {"{{branch}}"} fill in once you choose a session.</span>}
         </div>
         {offer && target && <QueueOffer failure={offer} box={target.box} />}
-        {error && <p className="text-destructive text-sm">{error}</p>}
+        {error && <ErrorText className="text-destructive text-sm" text={error} />}
       </DialogPanel>
 
       <DialogFooter className="items-center px-5 py-3">

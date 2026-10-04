@@ -1,12 +1,16 @@
+import { MessageSquarePlusIcon, MessageSquareTextIcon, Trash2Icon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { PickOne } from "@/components/pick-one";
 import { Tip } from "@/components/tip";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
 import type { ExecResult } from "@/lib/api";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { committedDiffCommand, describeCode, type DiffLine, diffCommand, type FileChange, parseDiff, splitRows } from "@/lib/git/parse";
+import { COMMENT_LIMIT, type LineComment } from "@/lib/review-comments";
 import { load, save } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 
@@ -18,7 +22,7 @@ export type Run = (command: string) => Promise<ExecResult>;
 
 const toneClass = { add: "text-success", new: "text-success", del: "text-destructive", mod: "text-warning", ren: "text-info" } as const;
 
-export function FileRow({ file, active, onSelect }: { file: FileChange; active: boolean; onSelect(): void }) {
+export function FileRow({ file, active, onSelect, comments }: { file: FileChange; active: boolean; onSelect(): void; comments?: number }) {
   const { label, tone } = describeCode(file.code);
   const slash = file.path.lastIndexOf("/");
   const name = file.path.slice(slash + 1);
@@ -36,6 +40,12 @@ export function FileRow({ file, active, onSelect }: { file: FileChange; active: 
             {name}
             {dir && <span className="ml-1.5 text-muted-foreground">{dir}</span>}
           </span>
+          {!!comments && (
+            <span className="inline-flex shrink-0 items-center gap-0.5 text-[11px] text-primary tabular-nums" aria-label={`${comments} comment${comments === 1 ? "" : "s"}`}>
+              <MessageSquareTextIcon className="size-3" />
+              {comments}
+            </span>
+          )}
           {file.binary ? (
             <span className="text-muted-foreground">bin</span>
           ) : (
@@ -55,7 +65,7 @@ const MODE_KEY = "berth.diff.mode";
 
 // DiffView shows one file's diff: against HEAD, or, with base, what the
 // branch's commits changed since it left base.
-export function DiffView({ file, run, base }: { file: FileChange; run: Run; base?: string }) {
+export function DiffView({ file, run, base, comments }: { file: FileChange; run: Run; base?: string; comments?: LineComments }) {
   const [diff, setDiff] = useState<Load<{ lines: DiffLine[]; truncated?: boolean }>>({ state: "loading" });
   const [mode, setMode] = useState<"unified" | "split">(() => load(MODE_KEY, "unified"));
 
@@ -64,7 +74,7 @@ export function DiffView({ file, run, base }: { file: FileChange; run: Run; base
     setDiff({ state: "loading" });
     run(base ? committedDiffCommand(file, base) : diffCommand(file))
       .then((r) => live && setDiff({ state: "ready", value: { lines: parseDiff(r.output), truncated: r.truncated } }))
-      .catch((err) => live && setDiff({ state: "error", message: errorMessage(err) }));
+      .catch((err) => live && setDiff({ state: "error", message: plainError(err) }));
     return () => {
       live = false;
     };
@@ -100,7 +110,10 @@ export function DiffView({ file, run, base }: { file: FileChange; run: Run; base
         {diff.state === "error" && <Centered>{diff.message}</Centered>}
         {diff.state === "ready" && diff.value.lines.length === 0 && <Centered>Nothing to show for this file.</Centered>}
         {diff.state === "ready" && diff.value.truncated && <p className="border-b bg-warning/8 px-3 py-1 font-sans text-warning text-xs">Only the end of this diff is shown: it is longer than 64 KB.</p>}
-        {diff.state === "ready" && (mode === "unified" ? <Unified lines={diff.value.lines} /> : <Split lines={diff.value.lines} />)}
+        {diff.state === "ready" && comments && mode === "split" && diff.value.lines.length > 0 && (
+          <p className="border-b bg-muted/40 px-3 py-1 font-sans text-muted-foreground text-xs">Switch to Unified to comment on a line.</p>
+        )}
+        {diff.state === "ready" && (mode === "unified" ? <DiffLines lines={diff.value.lines} comments={comments} /> : <Split lines={diff.value.lines} />)}
       </div>
     </section>
   );
@@ -116,23 +129,122 @@ function Num({ n }: { n?: number }) {
   return <span className="w-11 shrink-0 select-none pr-2 text-right text-muted-foreground/60">{n ?? ""}</span>;
 }
 
-function Unified({ lines }: { lines: DiffLine[] }) {
+// LineComments lets a person leave notes on a diff's lines for its agent
+// (lib/review-comments): the ones for this file, and how to add or drop one.
+export interface LineComments {
+  list: LineComment[];
+  onAdd(line: number, side: "new" | "old", text: string): void;
+  onRemove(id: string): void;
+}
+
+// DiffLines is a unified diff. With comments, each line has a button in
+// its gutter to comment on it, and its comments show beneath it.
+export function DiffLines({ lines, comments }: { lines: DiffLine[]; comments?: LineComments }) {
+  const [open, setOpen] = useState<string>();
+  const at = (l: DiffLine) => (l.kind === "del" ? { side: "old" as const, line: l.oldNo ?? 0 } : { side: "new" as const, line: l.newNo ?? 0 });
   return (
     <div className="min-w-fit">
-      {lines.map((l, i) => (
-        <div key={i} className={cn("flex whitespace-pre", lineBg[l.kind])}>
-          {l.kind === "hunk" ? (
-            <span className="px-3">{l.text}</span>
-          ) : (
-            <>
+      {lines.map((l, i) => {
+        if (l.kind === "hunk" || l.kind === "meta") {
+          return (
+            <div key={i} className={cn("flex whitespace-pre", lineBg[l.kind])}>
+              <span className="px-3">{l.text}</span>
+            </div>
+          );
+        }
+        const where = at(l);
+        const id = `${where.side}:${where.line}`;
+        const here = comments?.list.filter((c) => c.side === where.side && c.line === where.line) ?? [];
+        return (
+          <div key={i}>
+            <div className={cn("group/line relative flex whitespace-pre", lineBg[l.kind])}>
+              {comments && (
+                <button
+                  type="button"
+                  aria-label={`Comment on line ${where.line}`}
+                  onClick={() => setOpen(open === id ? undefined : id)}
+                  className="absolute top-0.5 left-0.5 z-10 flex size-4 items-center justify-center rounded bg-primary text-primary-foreground opacity-0 outline-none transition-opacity focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring group-hover/line:opacity-100"
+                >
+                  <MessageSquarePlusIcon className="size-3" />
+                </button>
+              )}
               <Num n={l.oldNo} />
               <Num n={l.newNo} />
               <span className="w-4 shrink-0 select-none text-muted-foreground">{l.kind === "add" ? "+" : l.kind === "del" ? "−" : ""}</span>
               <span className="pr-4">{l.text || " "}</span>
-            </>
-          )}
-        </div>
-      ))}
+            </div>
+            {comments && here.map((c) => <CommentNote key={c.id} c={c} onRemove={() => comments.onRemove(c.id)} />)}
+            {comments && open === id && (
+              <CommentComposer
+                line={where.line}
+                onCancel={() => setOpen(undefined)}
+                onSave={(text) => {
+                  comments.onAdd(where.line, where.side, text);
+                  setOpen(undefined);
+                }}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function CommentNote({ c, onRemove }: { c: LineComment; onRemove(): void }) {
+  return (
+    <div className="sticky left-0 flex w-full max-w-[min(100%,560px)] items-start gap-2 border-primary/60 border-l-2 bg-muted/50 py-1.5 pr-2 pl-3 font-sans text-[12.5px] leading-snug">
+      <p className={cn("min-w-0 flex-1 whitespace-pre-wrap break-words", c.sent && "text-muted-foreground")}>{c.text}</p>
+      {c.sent ? (
+        <Badge variant="outline" size="sm" className="shrink-0">
+          Sent
+        </Badge>
+      ) : (
+        <Tip label="Delete this comment">
+          <Button size="icon-xs" variant="ghost" aria-label="Delete this comment" className="-my-0.5 shrink-0 text-muted-foreground" onClick={onRemove}>
+            <Trash2Icon />
+          </Button>
+        </Tip>
+      )}
+    </div>
+  );
+}
+
+function CommentComposer({ line, onSave, onCancel }: { line: number; onSave(text: string): void; onCancel(): void }) {
+  const [text, setText] = useState("");
+  const save = () => text.trim() && onSave(text);
+  return (
+    <div className="sticky left-0 flex w-full max-w-[min(100%,560px)] flex-col gap-2 border-primary border-l-2 bg-muted/50 py-2 pr-2 pl-3 font-sans">
+      <Textarea
+        autoFocus
+        rows={2}
+        size="sm"
+        maxLength={COMMENT_LIMIT}
+        value={text}
+        aria-label={`Comment on line ${line}`}
+        placeholder="What should the agent change here?"
+        onChange={(e) => setText(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            save();
+          }
+          if (e.key === "Escape") {
+            e.preventDefault();
+            e.stopPropagation();
+            onCancel();
+          }
+        }}
+      />
+      <div className="flex items-center gap-1.5">
+        <span className="text-muted-foreground text-xs">Line {line} · ⌘↵ to add</span>
+        <Button size="xs" variant="ghost" className="ml-auto" onClick={onCancel}>
+          Cancel
+        </Button>
+        <Button size="xs" disabled={!text.trim()} onClick={save}>
+          Add comment
+        </Button>
+      </div>
     </div>
   );
 }

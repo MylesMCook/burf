@@ -1,11 +1,16 @@
 import { CircleArrowUpIcon, RefreshCwIcon } from "lucide-react";
 import { useState } from "react";
 
+import { StatusDot } from "@/components/agent-glyph";
 import { QueueIndicator } from "@/components/queue/queue-indicator";
 import { Tip } from "@/components/tip";
+import { Spinner } from "@/components/ui/spinner";
+import { useUpdateAll } from "@/components/upgrade-box";
 import { useAgentCounts } from "@/hooks/use-agent-counts";
 import { isMock } from "@/hooks/use-berth-connection";
 import { bytes } from "@/lib/format";
+import { useOutdatedBoxes } from "@/lib/outdated";
+import { AGENT_WORDS, BOX_WORDS, boxState } from "@/lib/state-model";
 import { useStore } from "@/lib/store";
 import { restartToUpdate, useUpdater } from "@/lib/updater";
 import { cn } from "@/lib/utils";
@@ -23,6 +28,7 @@ export function StatusBar() {
   const [syncing, setSyncing] = useState(false);
   const go = useStore((s) => s.setView);
 
+  const outdated = useOutdatedBoxes();
   const online = status?.boxes.filter((b) => b.state === "online") ?? [];
   const total = status?.boxes.length ?? 0;
   const forwards = status?.forwards.length ?? 0;
@@ -49,13 +55,13 @@ export function StatusBar() {
       ) : (
         <>
           {counts.waiting > 0 && (
-            <Item className="text-warning-foreground dark:text-warning" onClick={() => go({ kind: "dashboard" })} tip="Agents waiting for you">
+            <Item className="text-warning-foreground dark:text-warning" onClick={() => go({ kind: "dashboard" })} tip="Agents waiting for your answer or permission">
               <span className="size-1.5 rounded-full bg-warning" />
-              {counts.waiting} waiting
+              {counts.waiting} {AGENT_WORDS["needs-you"].lower}
             </Item>
           )}
           <Item onClick={() => go({ kind: "dashboard" })} tip="Open the agent dashboard">
-            {counts.running} working
+            {counts.running} {AGENT_WORDS.working.lower}
           </Item>
         </>
       )}
@@ -78,6 +84,7 @@ export function StatusBar() {
           </PluginBoundary>
         ))}
       <UpdateItem />
+      <OutdatedItem />
       {online.map((b) => {
         const mem = boxes[b.name]?.stats?.memory;
         if (!mem?.total) return null;
@@ -97,13 +104,21 @@ export function StatusBar() {
           {forwards} {forwards === 1 ? "forward" : "forwards"}
         </Item>
       )}
-      <Item tip={status?.boxes.map((b) => (
-          <span key={b.name} className="block">
-            {b.name}: {b.state}
-          </span>
-        ))} onClick={() => go({ kind: "settings", section: "boxes" })}>
-        <span className={cn("size-1.5 rounded-full", online.length === total && total > 0 ? "bg-success" : online.length ? "bg-warning" : "bg-muted-foreground/40")} />
-        {online.length}/{total} {total === 1 ? "box" : "boxes"}
+      <Item
+        tip={status?.boxes.map((b) => {
+          const st = boxState(b, boxes[b.name], outdated.includes(b.name));
+          return (
+            <span key={b.name} className="flex items-center gap-1.5">
+              <StatusDot state={st} />
+              {b.name}: {BOX_WORDS[st].lower}
+            </span>
+          );
+        })}
+        onClick={() => go({ kind: "settings", section: "boxes" })}
+      >
+        {/* Green when every box is up, grey when some aren't: amber is only ever "needs you". */}
+        <StatusDot state={online.length === total && total > 0 ? "online" : "offline"} />
+        {online.length}/{total} {total === 1 ? "box" : "boxes"} online
       </Item>
       <Tip label="Refresh" align="end">
         <button
@@ -139,6 +154,35 @@ function UpdateItem() {
       <CircleArrowUpIcon className="size-3 text-success" />
       {installing ? "Updating…" : "Restart to update"}
     </Item>
+  );
+}
+
+// OutdatedItem is the calm notice that boxes run an older berthd, with
+// Update all in one click and its progress while it runs. Settings → Boxes
+// says the same, with each box's output.
+function OutdatedItem() {
+  const { outdated, busy, running, progress, updateAll } = useUpdateAll();
+  if (!outdated.length && !busy) return null;
+  if (busy) {
+    return (
+      <Item className="text-foreground" tip="Agents keep running while a box updates. Settings → Boxes shows each box's output." onClick={() => useStore.getState().setView({ kind: "settings", section: "boxes" })}>
+        <Spinner className="size-3" />
+        Updating {running ?? "boxes"}… {progress && <span className="text-muted-foreground tabular-nums">{progress}</span>}
+      </Item>
+    );
+  }
+  const n = outdated.length;
+  return (
+    <span className="flex items-center gap-1.5">
+      <Item tip={`${outdated.join(", ")} ${n === 1 ? "runs" : "run"} an older berthd than this Berth ships.`} onClick={() => useStore.getState().setView({ kind: "settings", section: "boxes" })}>
+        <CircleArrowUpIcon className="size-3 text-info" />
+        {n === 1 ? `${outdated[0]} runs` : `${n} boxes run`} an older berthd
+      </Item>
+      <span aria-hidden className="text-muted-foreground/60">—</span>
+      <Item className="font-medium text-foreground" tip="Updates each box in turn; agents keep running" onClick={updateAll}>
+        {n === 1 ? "Update" : "Update all"}
+      </Item>
+    </span>
   );
 }
 

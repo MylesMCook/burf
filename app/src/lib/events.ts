@@ -67,7 +67,7 @@ function notifyFor(e: BerthEvent) {
     if (!looped) {
       route({
         category: waiting ? "waiting" : "finished",
-        title: waiting ? `${where.agent} is waiting for you` : `${where.agent} finished`,
+        title: waiting ? `${where.agent} needs you` : `${where.agent} is done`,
         tone: waiting ? "warning" : "success",
         box,
         path: where.path,

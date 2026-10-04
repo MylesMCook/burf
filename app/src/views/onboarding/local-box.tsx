@@ -2,7 +2,7 @@ import { CheckIcon, LaptopIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { localBoxApi, type LocalBoxStatus, useLocalBoxName } from "@/lib/local-box";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -56,7 +56,7 @@ export function UseThisMac({
       onRunning(false);
       onPaired(name);
     } catch (err) {
-      setError(errorMessage(err));
+      setError(plainError(err));
       setState("failed");
       onRunning(false);
     }

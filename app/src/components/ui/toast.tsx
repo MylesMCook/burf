@@ -205,9 +205,11 @@ function Toasts({
                       className="font-medium [overflow-wrap:anywhere]"
                       data-slot="toast-title"
                     />
+                    {/* Berth: a div, so an error's Details (a <details>) may sit inside. */}
                     <Toast.Description
                       className="text-muted-foreground [overflow-wrap:anywhere]"
                       data-slot="toast-description"
+                      render={<div />}
                     />
                     {toast.actionProps && (
                       <Toast.Action

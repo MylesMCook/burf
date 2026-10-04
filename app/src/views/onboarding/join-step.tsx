@@ -8,7 +8,7 @@ import { DialogPanel } from "@/components/ui/dialog";
 import { Spinner } from "@/components/ui/spinner";
 import { laptopApi } from "@/lib/api";
 import { boxList, computersApi, countdown, findJoinLink, type JoinOutput, type JoinResult, secondsLeft } from "@/lib/computers";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { openUrl } from "@/lib/open-url";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -72,7 +72,7 @@ export function JoinFlow({
       setRows(out.boxes);
       setPhase("review");
     } catch (err) {
-      setError(errorMessage(err));
+      setError(plainError(err));
       setPhase("paste");
     }
   };
@@ -88,7 +88,7 @@ export function JoinFlow({
       setRows((prev) => out.boxes.map((r) => (r.status === "already" && prev.find((p) => p.name === r.name)?.status === "paired" ? prev.find((p) => p.name === r.name)! : r)));
       await useStore.getState().refreshAll();
     } catch (err) {
-      setError(errorMessage(err));
+      setError(plainError(err));
     }
     setPhase("joined");
   };
@@ -113,7 +113,7 @@ export function JoinFlow({
       setSigning(undefined);
       await join();
     } catch (err) {
-      if (!abort.current?.signal.aborted) setError(errorMessage(err));
+      if (!abort.current?.signal.aborted) setError(plainError(err));
       setSigning(undefined);
     }
   };

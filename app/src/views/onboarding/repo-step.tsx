@@ -7,7 +7,7 @@ import { FolderBrowser } from "@/components/add-project/folder-browser";
 import { StepHeader } from "@/components/step-header";
 import { Button } from "@/components/ui/button";
 import type { Location } from "@/lib/api";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { useIsLocalBox } from "@/lib/local-box";
 import { NONE, useStore } from "@/lib/store";
 
@@ -53,7 +53,7 @@ export function RepoStep({ box, onDone }: { box: string; onDone(location: string
       await useStore.getState().refreshBox(box, ["locations"]);
       onDone(loc.name, true);
     } catch (err) {
-      setError(errorMessage(err));
+      setError(plainError(err, { box }));
       setMaking(false);
     }
   };

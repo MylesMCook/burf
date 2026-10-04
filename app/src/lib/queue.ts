@@ -3,7 +3,7 @@ import { create } from "zustand";
 import { toastManager } from "@/components/ui/toast";
 import { ApiError, type BerthEvent } from "@/lib/api";
 import { guessSessionName, sessionName } from "@/lib/derive";
-import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { resolve, route } from "@/lib/notifications";
 import { useStore } from "@/lib/store";
 
@@ -59,7 +59,7 @@ export async function loadQueue() {
   try {
     setItems((await c.laptop<QueueItem[] | null>("GET", "/v1/queue")) ?? []);
   } catch (err) {
-    useQueue.setState({ loaded: true, error: errorMessage(err) });
+    useQueue.setState({ loaded: true, error: plainError(err) });
   }
 }
 

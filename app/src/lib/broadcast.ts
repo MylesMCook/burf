@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 import { toastManager } from "@/components/ui/toast";
 import { errorMessage } from "@/lib/format";
+import { plainError } from "@/lib/errors";
 import { Cancelled, isWaitingRefusal } from "@/lib/orchestrate-core";
 import { send, waitSent } from "@/lib/orchestrate";
 import { openComposer, useComposer } from "@/lib/composer";
@@ -90,7 +91,7 @@ export async function queueRow(runId: string, i: number) {
     await enqueue({ box: row.box, session: row.session, text: row.text, toast: false });
     patch(runId, i, { state: "deferred", error: undefined });
   } catch (err) {
-    patch(runId, i, { state: "failed", error: errorMessage(err) });
+    patch(runId, i, { state: "failed", error: plainError(err) });
   }
 }
 
@@ -155,7 +156,7 @@ export function startBroadcast(o: { title: string; wait: boolean; timeout?: numb
           .catch((err) => {
             // Stopping leaves a sent prompt sent; it only stops watching.
             if (err instanceof Cancelled || signal.aborted) patch(id, i, { state: "sent" });
-            else patch(id, i, { state: "failed", error: errorMessage(err) });
+            else patch(id, i, { state: "failed", error: plainError(err) });
           }),
       );
     }
@@ -189,7 +190,7 @@ async function broadcastRun(id: string, box: string, rows: number[], o: { title:
     runId = run.id;
     scheduleRuns(box, 0);
   } catch (err) {
-    for (const i of rows) patch(id, i, { state: "failed", error: errorMessage(err) });
+    for (const i of rows) patch(id, i, { state: "failed", error: plainError(err) });
     return;
   }
   for (const i of rows) patch(id, i, { run: runId });

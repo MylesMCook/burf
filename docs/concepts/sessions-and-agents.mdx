@@ -86,15 +86,23 @@ Berth knows what an agent is doing from the agent's own hooks, which
 `opencode`, `all`; an upgrade brings hooks Berth installed before up to
 date):
 
-| State | Meaning | From |
-| --- | --- | --- |
-| `idle` | Open, at its prompt, not given anything yet | `agent.ready` |
-| `running` | Working on a prompt | `agent.started` |
-| `waiting` | Needs you: a permission, a question | `agent.waiting` |
-| `finished` | Done with its turn | `agent.finished` |
-| `exited` | The agent itself quit | `agent.exited` |
+| State | In the app | Meaning | From |
+| --- | --- | --- | --- |
+| `idle` | Idle | Open, at its prompt, not given anything yet | `agent.ready` |
+| `running` | Working | Working on a prompt | `agent.started` |
+| `waiting` | Needs you | A permission, a question | `agent.waiting` |
+| `finished` | Done | Done with its turn | `agent.finished` |
+| `exited` | Ended | The agent itself quit | `agent.exited` |
 
-A session whose program has ended is `exited`. Berth also notices Claude
+A session whose program has ended is `exited`, and the app calls it
+**ended** everywhere: the sidebar, tabs, panes, the dashboard, zen, ⌘K and
+notifications use the same words and the same glyph (a blue spinner while
+working, an amber dot when it needs you, a check when done, a grey ring when
+idle, a grey dot once ended). An ended agent takes no input: sending to one
+fails with the code `session_exited` instead of typing into a dead pane, and
+the app offers to start it again or hand its work on rather than to send.
+While its box is offline the app doesn't guess: the pane says the box is
+away and comes back by itself. Berth also notices Claude
 Code's "trust this folder" question at startup and reports it as `waiting`.
 Claude Code's reminder a minute after a finished turn (`idle_prompt`) and its
 login notice are not questions, so they never read as `waiting`; after you
@@ -124,6 +132,15 @@ berth session turns devl/SESSION                            # the last ten
   or dropped it; its status says `never started`).
 - Each turn says who prompted it (`laptop:<name>`, `flow:<id>`, `phone`,
   `terminal` for a person at the terminal) and how often it waited for you.
+  When Claude Code asks for a permission, its `PermissionRequest` hook says
+  which tool and with what: the wait keeps the tool, a short summary of the
+  input (the command, or the file's path, never what it would write, at
+  most 300 characters) and Claude's reason, and the session shows it as
+  `ask` while it waits. This stays in the box's private ledger: it is never
+  put in events, the journal or hooks.
+- Prompts held with `--when idle` are listed by `GET
+  /v1/sessions/{name}/queue` (and counted as the session's `queued`); one can
+  be cancelled, or sent at once.
 - Agents sharing a worktree keep their own turns. An older hook that names
   only a folder counts for the one agent of its kind there; when there are
   several, it is recorded but ends no one's wait.
@@ -152,7 +169,9 @@ published, in order, when berthd starts, so an agent that finished meanwhile
 does not read as working forever.
 
 The hooks forward only identifiers and the working directory: prompts,
-messages and transcripts never leave the tool. A hook never fails or blocks
+messages and transcripts never leave the tool. The one exception is the
+summary of a permission request above, which only berthd's own ledger
+keeps. A hook never fails or blocks
 the agent that called it.
 
 ### In the app
