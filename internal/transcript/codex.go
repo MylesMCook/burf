@@ -45,6 +45,9 @@ func (codexParser) line(c *conv, b []byte) {
 		return
 	}
 	at := parseTime(l.Timestamp)
+	if l.Timestamp != "" {
+		c.lineAt = at
+	}
 	switch it.Type {
 	case "message":
 		var parts []string

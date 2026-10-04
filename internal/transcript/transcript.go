@@ -55,6 +55,9 @@ type ToolCall struct {
 	File   bool   `json:"file,omitempty"`
 	// ID names the call for its details (GET …/transcript/tool/{id}).
 	ID string `json:"id,omitempty"`
+	// At is when the agent made the call (Unix ms): a call still running
+	// is timed from it.
+	At int64 `json:"at,omitempty"`
 }
 
 // CrewMember is a helper the agent started: a subagent.
@@ -78,6 +81,9 @@ type Result struct {
 	Next      int          `json:"next"`
 	Crew      []CrewMember `json:"crew"`
 	Truncated bool         `json:"truncated,omitempty"`
+	// Last is when the agent last wrote to its record (Unix ms): what it
+	// has been thinking since.
+	Last int64 `json:"last,omitempty"`
 	// Reason says why there is nothing to show, when Source is "none".
 	Reason string `json:"reason,omitempty"`
 	// Signals are the agent's mode, model, context, task list and
@@ -129,6 +135,8 @@ type conv struct {
 	queued map[string]bool
 	// sig is what the conversation says about the agent (signals.go).
 	sig signals
+	// lineAt is when the last line the agent wrote was written (Unix ms).
+	lineAt int64
 }
 
 func (c *conv) id() string {
@@ -161,6 +169,9 @@ func (c *conv) at(i int) *Item {
 // call adds a tool call to the open group of the same verb, or starts one.
 func (c *conv) call(toolID string, tc ToolCall) {
 	tc.ID = toolID
+	if tc.At == 0 {
+		tc.At = c.lineAt
+	}
 	if n := len(c.items); n > 0 {
 		last := &c.items[n-1]
 		// The last group takes more calls of its kind, even once its earlier
@@ -338,7 +349,7 @@ func (r *Reader) Read(source, path, dir string, since int) (Result, error) {
 		from = min(from, c.base+n-1)
 	}
 	from = min(from, c.base+len(c.items))
-	out := Result{Source: source, Next: c.base + len(c.items), Truncated: c.truncated || c.base > 0}
+	out := Result{Source: source, Next: c.base + len(c.items), Truncated: c.truncated || c.base > 0, Last: c.lineAt}
 	out.Items = append([]Item{}, c.items[from-c.base:]...)
 	out.Crew = append([]CrewMember{}, c.crew...)
 	out.Signals = c.sig.snapshot()

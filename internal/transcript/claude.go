@@ -61,6 +61,10 @@ func (claudeParser) line(c *conv, b []byte) {
 		return
 	}
 	at := parseTime(l.Timestamp)
+	// When the agent last wrote, for how long it has been thinking since.
+	if (l.Type == "user" || l.Type == "assistant") && l.Timestamp != "" {
+		c.lineAt = at
+	}
 	// Its mode, model, context, errors and background work (signals.go):
 	// an API error's synthetic reply is a notice, not the agent's words.
 	if claudeSignals(c, l.Type, b, at) {

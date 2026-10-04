@@ -427,3 +427,25 @@ func TestAssignClaudeNewAgentDoesNotTakeAJustEndedSiblings(t *testing.T) {
 		t.Fatalf("a new agent took the ended one's conversation: %v", got)
 	}
 }
+
+// A call still running is timed from when it was made, and the result says
+// when the agent last wrote, for "Thinking" between calls.
+func TestCallsAndTheLastWriteCarryTheirTimes(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "s.jsonl")
+	call := assistant(tool("b1", "Bash", m{"command": "sleep 60"}))
+	call["timestamp"] = "2026-10-04T12:00:05Z"
+	write(t, p, user("Run it"), call, m{"type": "last-prompt", "lastPrompt": "Run it"})
+	res, err := NewReader().Read("claude", p, "/w/shop", 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	g := res.Items[len(res.Items)-1]
+	want := time.Date(2026, 10, 4, 12, 0, 5, 0, time.UTC).UnixMilli()
+	if g.Kind != "tools" || g.Done || g.Items[0].At != want {
+		t.Fatalf("running call = %+v, want at %d", g, want)
+	}
+	if res.Last != want {
+		t.Fatalf("last = %d, want %d (a line without a time doesn't count)", res.Last, want)
+	}
+}
