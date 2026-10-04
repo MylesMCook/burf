@@ -28,7 +28,12 @@ export function sessionLocation(box: string, session: string): string {
   throw new Error(`cannot tell which worktree ${session} is in`);
 }
 
-export const send = (box: string, session: string, text: string, enter = true) => core.send(call, box, session, text, enter);
+export const send = (box: string, session: string, text: string, opts: boolean | core.SendOptions = {}) => core.send(call, box, session, text, opts);
+
+export const waitTurn = (box: string, turn: string, o?: Parameters<typeof core.waitTurn>[3]) => core.waitTurn(call, box, turn, o);
+
+export const waitSent = (box: string, session: string, sent: Awaited<ReturnType<typeof core.send>>, o?: Omit<core.WaitOptions, "after">) =>
+  core.waitSent(call, box, session, sent, o);
 
 export const wait = (box: string, session: string, states: string[], o?: core.WaitOptions) => core.wait(call, box, session, states, o);
 

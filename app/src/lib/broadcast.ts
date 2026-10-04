@@ -2,8 +2,8 @@ import { create } from "zustand";
 
 import { toastManager } from "@/components/ui/toast";
 import { errorMessage } from "@/lib/format";
-import { Cancelled } from "@/lib/orchestrate-core";
-import { send, wait } from "@/lib/orchestrate";
+import { Cancelled, isWaitingRefusal } from "@/lib/orchestrate-core";
+import { send, waitSent } from "@/lib/orchestrate";
 import { usePromptUi } from "@/lib/prompts";
 import { boxOffline, enqueue, sendFailure } from "@/lib/queue";
 import { meaningfulTail } from "@/lib/screen";
@@ -112,10 +112,16 @@ export function startBroadcast(o: { title: string; wait: boolean; timeout?: numb
         continue;
       }
       patch(id, i, { state: "sending" });
-      let at: string;
+      let sent: Awaited<ReturnType<typeof send>>;
       try {
-        at = await send(it.box, it.session, it.text);
+        // when "now": the box refuses to type into an agent at a question,
+        // whose answer is the person's to give.
+        sent = await send(it.box, it.session, it.text, { when: "now" });
       } catch (err) {
+        if (isWaitingRefusal(err)) {
+          patch(id, i, { state: "waiting", error: "Not sent: it is waiting for you" });
+          continue;
+        }
         const f = sendFailure(err, it.box);
         if (f?.kind === "offline") await away();
         else patch(id, i, { state: "failed", error: f?.message ?? errorMessage(err) });
@@ -127,9 +133,9 @@ export function startBroadcast(o: { title: string; wait: boolean; timeout?: numb
       }
       patch(id, i, { state: "working" });
       waits.push(
-        wait(it.box, it.session, ["finished", "waiting"], { after: at, timeout: o.timeout ?? 1800, signal })
+        waitSent(it.box, it.session, sent, { timeout: o.timeout ?? 1800, signal })
           .then(async (res) => {
-            const state: RowState = res.timed_out ? "timed-out" : res.state === "exited" ? "exited" : res.state === "waiting" ? "waiting" : "finished";
+            const state: RowState = res.timed_out ? "timed-out" : res.state === "exited" || res.state === "lost" ? "exited" : res.state === "waiting" ? "waiting" : "finished";
             patch(id, i, { state, tail: await tailOf(it.box, it.session) });
           })
           .catch((err) => {

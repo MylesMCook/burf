@@ -1,10 +1,10 @@
-import { CheckIcon, XIcon } from "lucide-react";
+import { CheckIcon, MinusIcon, XIcon } from "lucide-react";
 
 import type { FlowRun } from "@/lib/flows";
 import { cn } from "@/lib/utils";
 import { Tip } from "@/components/tip";
 
-const words: Record<FlowRun["status"], string> = { running: "Running", succeeded: "Succeeded", failed: "Failed" };
+const words: Record<FlowRun["status"], string> = { running: "Running", succeeded: "Succeeded", failed: "Failed", interrupted: "Interrupted: berthd restarted during the run" };
 
 // RunStatus is a run's outcome at a glance, named for screen readers and
 // in a tooltip.
@@ -14,6 +14,10 @@ export function RunStatus({ status, className }: { status: FlowRun["status"]; cl
     status === "running" ? (
       <span role="img" aria-label={words[status]} className={box}>
         <span className="size-2.5 animate-spin rounded-full border-[1.5px] border-primary border-t-transparent" />
+      </span>
+    ) : status === "interrupted" ? (
+      <span role="img" aria-label={words[status]} className={cn(box, "bg-warning/15 text-warning-foreground")}>
+        <MinusIcon className="size-2.5" strokeWidth={3} />
       </span>
     ) : status === "succeeded" ? (
       <span role="img" aria-label={words[status]} className={cn(box, "bg-success/15 text-success")}>

@@ -107,12 +107,15 @@ failed after it went out (the box may have acted on it). The box API:
 | `GET stats` | `Stats`: memory, disks, load, agents |
 | `GET services` | `Service[]`: listening ports by worktree |
 | `GET ports` | `Port[]` |
-| `GET info` | `{ name, os, arch, build, user?, home?, tools: string[], agents: AgentPreset[] }` |
+| `GET info` | `{ name, os, arch, build, user?, home?, tools: string[], agents: AgentPreset[], capabilities: string[], adapters }`: `capabilities` lists `turns` and `journal` on boxes that have them; `adapters` says what each agent can report (`{ ready, started, waiting, finished, final_message, via }`) |
 | `GET doctor` | `Check[]` |
 | `POST secrets/test` | `{ ref }` → `{ ok, length?, error? }`: resolves a [secret reference](/guides/secrets) on the box now (`op://…` or `env://…`), skipping its cache, and reports whether it could and the value's length, never the value. A malformed reference is `ok: false` with why |
 | `POST secrets/report` | Only on the box's own socket: what `berthd secret exec` resolved for a session or service, which variables resolved and which failed and why, never values |
-| `POST sessions/{name}/send` | `{ text, enter? }`: types a prompt ([orchestration](/guides/orchestration)) |
-| `GET sessions/{name}/wait?for=finished,waiting&after=TIME&timeout=10m` | `{ state, timed_out }`: `after` is an RFC 3339 time; `timeout` a duration, 1s to 1h (default 10m) |
+| `POST sessions/{name}/send` | `{ text, enter?, when?, force?, idem_key? }` → `{ sent, queued?, duplicate?, turn?, seq?, at }`: types a prompt, or with `when: "idle"` holds it until the agent is idle. With `when`, refused (409) while the agent waits for someone unless `force` ([orchestration](/guides/orchestration#send)) |
+| `GET sessions/{name}/wait?for=finished,waiting&after=TIME&timeout=10m` | `{ state, timed_out, turn? }`: `after` is an RFC 3339 time, placed in the box's journal order; `timeout` a duration, 1s to 1h (default 10m) |
+| `GET sessions/{name}/turns?limit=N` | `Turn[]`, oldest first: the session's last `N` turns (default 20) |
+| `GET turns/{id}` | `Turn`; encode the `#` in the ID as `%23` |
+| `GET turns/{id}/wait?until=end\|waiting&timeout=90s` | `{ turn, state, timed_out }`: returns when the turn ends (`finished`, `exited`, `lost`) or, with `until=waiting`, also when it waits for someone |
 | `POST exec` | `{ location, command, timeout? }` → `{ exit_code, output, truncated? }`; `timeout` defaults to 10m, at most 1h |
 | `GET locations/{name}/config`, `PUT locations/{name}/config` | `{ repo, repo_trust, kit?, local, effective }`; PUT takes `{ local }` ([config](/reference/config)) |
 | `POST locations/{name}/config/trust`, `DELETE locations/{name}/config/trust` | Run, or stop running, the repository's `.berth/config.json`; POST takes `{ hash }` from `repo_trust` and is refused (409) if the file changed since ([trust](/guides/project-config#trusting-a-repositorys-config)) |
@@ -131,7 +134,7 @@ failed after it went out (the box may have acted on it). The box API:
 | `GET shares`, `POST shares`, `DELETE shares/{id}` | public shares |
 | `GET units`, `POST units`, `GET units/{name}`, `DELETE units/{name}`, `POST units/{name}/restart`, `GET units/{name}/log` | units |
 | `GET phone`, `PUT phone` | the [phone companion](/guides/phone) |
-| `GET events`, `POST events` | the box's event stream, and announcing one (`{ type, data? }`) |
+| `GET events?since=SEQ&max=N`, `POST events` | the box's event stream as NDJSON, and announcing one (`{ type, data? }`). Events carry `seq`, their number in the box's journal; with `since`, the stream first replays what the journal holds after it (at most `max`, default 5000) |
 | `GET worktrees?location=L` | every worktree's git status |
 | `GET locations/{name}/worktrees/{wt}/log?limit=N` | the worktree's commits |
 | `POST locations/{name}/worktrees/{wt}/sync` | `{ mode? }`: rebase (default) or merge onto its base |
@@ -145,7 +148,15 @@ failed after it went out (the box may have acted on it). The box API:
 
 `Session` carries the agent's state when an agent tool reports it:
 `agent` (`claude`, `codex`, …) and `agent_state` (`idle`, `running`,
-`waiting`, `finished`). `exited` is true once the program has ended.
+`waiting`, `finished`), plus `preset` (the agent preset it was started
+with), `turn` (its current or last turn), `state_seq` and `fidelity`
+(`hooks`, `partial` or `screen`). `exited` is true once the program has
+ended.
+
+A `Turn` is `{ id, session, agent?, n, origin?, sent_seq?, end_seq?, state,
+queued?, started?, ended?, waits?, fidelity?, idem_key?, status? }`, with
+`state` one of `queued`, `pending`, `running`, `waiting`, `finished`,
+`exited`, `lost`; see [turns](/concepts/sessions-and-agents#turns).
 
 `GET locations/{name}/config` and `GET env` return secret references as
 written, never their values.

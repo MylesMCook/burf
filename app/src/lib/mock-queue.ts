@@ -89,11 +89,14 @@ async function deliver(box: string) {
         failedEvent(it);
         continue;
       }
-      if (it.wait && s.agent_state === "running") {
+      // Busy, or at a question (typing would answer it): hold it, as the
+      // agent does.
+      const busy = () => s.agent_state === "running" || s.agent_state === "waiting";
+      if (it.wait && busy()) {
         it.state = "waiting";
         changed();
         const until = Date.now() + 6000;
-        while (s.agent_state === "running" && Date.now() < until && items.includes(it)) await sleep(250);
+        while (busy() && Date.now() < until && items.includes(it)) await sleep(250);
         if (!items.includes(it)) continue;
       }
       await sendOne(it);

@@ -288,14 +288,15 @@ function TriggerCard({
   const w = flow.trigger.where ?? {};
   const setW = (patch: Partial<typeof w>) => {
     const next = { ...w, ...patch };
-    for (const k of Object.keys(next) as (keyof typeof next)[]) if (!next[k]) delete next[k];
+    for (const k of Object.keys(next) as (keyof typeof next)[]) if (!next[k] || (Array.isArray(next[k]) && !next[k].length)) delete next[k];
     setFlow({ ...flow, trigger: { ...flow.trigger, where: Object.keys(next).length ? next : undefined } });
   };
   const kind = triggerKind(flow.trigger);
   // Switching what starts it keeps where it applies, and drops the rest.
   const setKind = (k: TriggerKind) => {
     const base = { where: flow.trigger.where };
-    const where = k === "event" ? base.where : base.where && { ...base.where, agent: undefined };
+    // An agent filter is for events, an author filter for GitHub.
+    const where = base.where && { ...base.where, agent: k === "event" ? base.where.agent : undefined, author: k === "github" ? base.where.author : undefined };
     if (k === "event") setFlow({ ...flow, trigger: { where, event: "agent.finished" } });
     if (k === "schedule") setFlow({ ...flow, trigger: { where, schedule: "0 2 * * *" } });
     if (k === "github") setFlow({ ...flow, trigger: { where, github: { on: "review_comment", poll: "2m" } } });
@@ -365,6 +366,19 @@ function TriggerCard({
               <p className="col-span-2 text-muted-foreground text-xs">
                 The box checks each worktree's pull request with <code className="font-mono">gh</code>. Only what's new after the flow is turned on starts it.
               </p>
+              {(flow.trigger.github?.on ?? "review_comment") !== "check_failed" && (flow.trigger.github?.on ?? "review_comment") !== "pr_merged" && (
+                <label className="col-span-2 block">
+                  <span className="mb-1 block font-medium text-muted-foreground text-xs">From</span>
+                  <Input
+                    value={(w.author ?? []).join(", ")}
+                    readOnly={readOnly}
+                    onChange={(e) => setW({ author: e.target.value.split(/[\s,]+/).filter(Boolean) })}
+                    placeholder="collaborators · or logins, or * for anyone"
+                    className="font-mono text-xs"
+                  />
+                  <span className="mt-1 block text-muted-foreground text-xs">Comments reach the agent's prompt, marked as someone else's words. Anyone can comment on a public repository, so only collaborators count unless you list people.</span>
+                </label>
+              )}
             </div>
           )}
         </div>

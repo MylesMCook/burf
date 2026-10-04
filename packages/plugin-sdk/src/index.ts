@@ -5,6 +5,7 @@ import type {
   BoxInfo,
   BoxStatus,
   ExecResult,
+  SendResult,
   Location,
   Service,
   Session,
@@ -13,6 +14,7 @@ import type {
   TaskRequest,
   TaskResult,
   Theme,
+  TurnWait,
   WaitResult,
 } from "./types";
 
@@ -139,13 +141,29 @@ export interface LoopResult {
   output?: string;
 }
 
+export interface SendOptions {
+  // Press Enter after the text (default true).
+  enter?: boolean;
+  when?: "now" | "idle";
+  force?: boolean;
+  idemKey?: string;
+}
+
 // Agents driving agents, the same as `berth session send|wait`, `berth exec`
 // and `berth loop` (docs/guides/orchestration.mdx). Sessions are named by box and
 // session name; locations as the box API names them, "loc" or "loc/wt".
 export interface BerthOrchestrate {
-  // Types text into a session as one paste, then Enter. Resolves with the
-  // box's time at that moment: pass it as `after` to a following wait.
-  send(box: string, session: string, text: string, enter?: boolean): Promise<string>;
+  // Types text into a session as one paste, then Enter, and resolves with
+  // the turn it started (from boxes with the "turns" capability) and the
+  // box's time (`at`, to pass as `after` to wait on an older box). It is
+  // refused while the agent waits for someone, unless `force`: never answer
+  // a question for the person. `when: "idle"` holds it on the box until the
+  // agent is idle; `idemKey` makes a retry return the turn it already made.
+  send(box: string, session: string, text: string, opts?: boolean | SendOptions): Promise<SendResult>;
+  // Resolves once the turn ends (finished, exited, lost) or, with
+  // until: "waiting", also when it waits for someone; or after `timeout`
+  // seconds (timed_out). Needs the box's "turns" capability.
+  waitTurn(box: string, turn: string, opts?: { until?: "end" | "waiting"; timeout?: number; signal?: AbortSignal }): Promise<TurnWait>;
   // Resolves once the session's agent reports one of states ("finished",
   // "waiting", "idle", "running") after `after` (default: now), its program
   // exits (state "exited"), or `timeout` seconds pass (timed_out).

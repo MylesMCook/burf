@@ -3,6 +3,9 @@ import type {
   BerthEvent,
   BoxInfo,
   ExecResult,
+  SendResult,
+  Turn,
+  TurnWait,
   Hook,
   HooksFile,
   WaitResult,
@@ -116,7 +119,19 @@ export const boxApi = {
   serviceLog: (c: Client, box: string, location: string, worktree: string, service: string) =>
     c.box<string>(box, "GET", `locations/${encodeURIComponent(location)}/worktrees/${encodeURIComponent(worktree)}/services/${encodeURIComponent(service)}/log`),
   screen: (c: Client, box: string, name: string) => c.box<{ screen: string }>(box, "GET", `sessions/${encodeURIComponent(name)}/screen`),
-  send: (c: Client, box: string, name: string, text: string, enter = true) => c.box(box, "POST", `sessions/${encodeURIComponent(name)}/send`, { text, enter }),
+  // send types text into a session. A person answering an agent passes
+  // force: the box otherwise refuses to type into an agent at a question.
+  // when "idle" holds it on the box until the agent is idle.
+  send: (c: Client, box: string, name: string, text: string, enter = true, o: { when?: "now" | "idle"; force?: boolean; idem_key?: string } = {}) =>
+    c.box<SendResult>(box, "POST", `sessions/${encodeURIComponent(name)}/send`, { text, enter, ...o }),
+  // A session's latest turns, oldest first (boxes with the "turns" capability).
+  turns: async (c: Client, box: string, name: string, limit = 20) =>
+    (await c.box<Turn[] | null>(box, "GET", `sessions/${encodeURIComponent(name)}/turns?limit=${limit}`)) ?? [],
+  turn: (c: Client, box: string, id: string) => c.box<Turn>(box, "GET", `turns/${encodeURIComponent(id)}`),
+  // waitTurn long-polls until the turn ends (or waits for someone, with
+  // until "waiting"), or timeout seconds pass.
+  waitTurn: (c: Client, box: string, id: string, timeout: number, until: "end" | "waiting" = "end") =>
+    c.box<TurnWait>(box, "GET", `turns/${encodeURIComponent(id)}/wait?${new URLSearchParams({ until, timeout: String(timeout) })}`),
   // wait long-polls until the session's agent reports one of states after
   // the time given, or timeout seconds pass.
   wait: (c: Client, box: string, name: string, states: string[], timeout: number, after?: string) =>

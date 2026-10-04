@@ -94,6 +94,71 @@ export interface Session {
   agent_state?: AgentState;
   // When agent_state last changed.
   state_since?: string;
+  // The agent preset the session was started with, when berth started it
+  // with one (kept even when the command wraps the agent).
+  preset?: string;
+  // The agent's current (or last) turn ("shop-feat-a-claude#3"), the
+  // journal seq of its state, and how well berth knows it: "hooks" (the
+  // agent said), "partial" (its turn starts when berth sends) or "screen".
+  turn?: string;
+  state_seq?: number;
+  fidelity?: "hooks" | "partial" | "screen" | string;
+}
+
+// A turn is one prompt to the end of the agent's reply. Boxes whose info
+// lists the "turns" capability keep them.
+export interface Turn {
+  // "<session>#<n>"; URL-encode it in paths (# is %23).
+  id: string;
+  session: string;
+  agent?: string;
+  n: number;
+  // Who prompted: laptop:<name>, flow:<id>, phone, terminal.
+  origin?: string;
+  sent_seq?: number;
+  end_seq?: number;
+  // queued (held until the agent is idle), pending (sent, not started yet),
+  // running, waiting, finished, exited or lost.
+  state: "queued" | "pending" | "running" | "waiting" | "finished" | "exited" | "lost" | string;
+  queued?: string;
+  started?: string;
+  ended?: string;
+  // Times it waited for someone (a permission or a question).
+  waits?: { start: string; end?: string; reason?: string }[];
+  fidelity?: "hooks" | "partial" | "screen" | string;
+  idem_key?: string;
+  // "error" when the agent ended the turn on a failure.
+  status?: string;
+}
+
+// What sending a prompt did. turn and seq come from boxes that keep turns;
+// at is always the box's own clock, which a following wait counts from.
+export interface SendResult {
+  sent: boolean;
+  // Held in the box's inbox until the agent is idle (when: "idle").
+  queued?: boolean;
+  // A retry with an idem_key already used: nothing was typed again.
+  duplicate?: boolean;
+  turn?: string;
+  seq?: number;
+  at: string;
+}
+
+// What a turn wait returns.
+export interface TurnWait {
+  turn: Turn;
+  state: Turn["state"];
+  timed_out: boolean;
+}
+
+// What an agent adapter can report: a box's info lists them.
+export interface AdapterCaps {
+  ready: boolean;
+  started: boolean;
+  waiting: boolean;
+  finished: boolean;
+  final_message: boolean;
+  via: "hooks" | "notify" | "plugin" | "screen" | string;
 }
 
 export interface Usage {
@@ -167,6 +232,10 @@ export interface BoxInfo {
   build?: string;
   tools?: string[];
   agents?: AgentPreset[];
+  // Optional API features: "turns" (send returns a turn; turn waits),
+  // "journal" (events carry a seq; GET events?since=SEQ replays).
+  capabilities?: string[];
+  adapters?: Record<string, AdapterCaps>;
 }
 
 export interface Check {
@@ -178,6 +247,8 @@ export interface Check {
 }
 
 export interface BerthEvent {
+  // The box journal's number for the event, in order (boxes with "journal").
+  seq?: number;
   type: string;
   time: string;
   box?: string;
@@ -333,6 +404,8 @@ export interface HooksFile {
 export interface WaitResult {
   state: AgentState | string;
   timed_out: boolean;
+  // The turn the state belongs to, from boxes that keep turns.
+  turn?: string;
 }
 
 export interface ExecResult {

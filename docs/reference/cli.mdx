@@ -118,8 +118,9 @@ See [kits](/guides/kits).
 | `berth task new BOX/LOC/NAME [--agent ID] [--prompt TEXT] [--open split\|tab] [--branch B] [--base REF] [-- COMMAND...]` | A worktree with an agent (or a command) running in it |
 | `berth session new BOX/LOC[/WORKTREE] [--name N] [--agent ID [--prompt TEXT]] [--open split\|tab] [-- COMMAND...]` | Start an agent or a command (default: a shell) there |
 | `berth session screen BOX/NAME [--history N]` | Print what the session shows |
-| `berth session send BOX/NAME TEXT [--no-enter] [--wait [--timeout 30m]] [--queue]` | Type a prompt into a session, and wait for its turn |
-| `berth session wait BOX/NAME [--for finished,waiting] [--timeout 30m]` | Wait for its agent's turn to end |
+| `berth session send BOX/NAME TEXT [--when now\|idle] [--force] [--idem KEY] [--no-enter] [--wait [--timeout 30m]] [--queue]` | Type a prompt into a session (or hold it until the agent is idle), and wait for its turn |
+| `berth session wait BOX/NAME [--turn ID] [--for finished,waiting] [--timeout 30m]` | Wait for a turn (from `session send`), or its agent's current one, to end |
+| `berth session turns BOX/NAME [--limit 10] [--json]` | List a session's turns: who prompted, how it ended, how long it took |
 | `berth exec BOX/LOC[/WORKTREE] [--timeout 10m] -- COMMAND...` | Run a command there and print its output |
 | `berth loop BOX/SESSION --check CMD [--prompt TEXT] [--max 5] [--turn-timeout 30m]` | Prompt, wait, check, and feed failures back |
 | `berth session kill BOX/NAME` | Stop a session |
@@ -154,7 +155,7 @@ See [orchestration](/guides/orchestration) and
 
 | Command | What it does |
 | --- | --- |
-| `berth integrations install claude\|cursor\|codex\|all` | Install Berth's skills and agent hooks for a tool, on this laptop |
+| `berth integrations install claude\|cursor\|codex\|gemini\|opencode\|all` | Install Berth's skills and agent hooks for a tool, on this laptop |
 | `berth hook TOOL EVENT [PAYLOAD]` | What those hooks run: turns a tool's hook into a Berth event |
 
 See [agent integrations](/guides/agent-integrations).

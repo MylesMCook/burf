@@ -79,8 +79,9 @@ session name; locations as the box API names them, `"shop"` or
 
 | Call | What it does |
 | --- | --- |
-| `send(box, session, text, enter?)` | Types text as one paste, then Enter. Resolves with the box's time at that moment: pass it as `after` to a following wait. |
-| `wait(box, session, states, { after?, timeout?, signal? })` | Resolves once the agent reports one of `states` after `after`, its program exits (`"exited"`), or `timeout` seconds pass (`timed_out`). |
+| `send(box, session, text, opts?)` | Types text as one paste, then Enter (`opts.enter: false` only types it; a boolean is `enter`). Resolves with a `SendResult`: `{ sent, queued?, duplicate?, turn?, seq?, at }`, the turn it started and the box's time. `opts.when: "idle"` holds it on the box until the agent is idle; it is refused while the agent waits for someone unless `opts.force`, which is for a person answering it; `opts.idemKey` makes a retry return the turn it already made. |
+| `waitTurn(box, turn, { until?, timeout?, signal? })` | Resolves with `{ turn, state, timed_out }` once the turn ends (`finished`, `exited`, `lost`) or, with `until: "waiting"`, also when it waits for someone; or after `timeout` seconds. Needs a box whose `info().capabilities` has `"turns"`. |
+| `wait(box, session, states, { after?, timeout?, signal? })` | Resolves once the agent reports one of `states` after `after`, its program exits (`"exited"`), or `timeout` seconds pass (`timed_out`). For a box without turns, pass the `at` from `send` as `after`. |
 | `exec(box, location, command, timeout?)` | Runs a command to completion: `{ exit_code, output, truncated? }` |
 | `handoff({ box, from, agent, prompt, worktree? })` | Starts another agent on a session's work: in a new worktree when given one, otherwise beside it. Resolves with the new session. |
 | `review({ box, from, agent, prompt? })` | A second agent in the same worktree that reviews the first one's changes |
@@ -154,7 +155,9 @@ Go structs have them, in `packages/plugin-sdk/src/types.ts`:
 | `BoxStatus` | `name`, `address`, `network?`, `fingerprint`, `state` (`connecting`, `online`, `offline`, `untrusted`), `error?`, `latency_ms?`, `since` |
 | `Location` | `name`, `path`, `repo`, `worktrees?`, `scripts`, `agents?`, `remote?`, `slug?`, `default_branch?`, `repo_trust?` (`none`, `trusted`, `untrusted` or `changed`) |
 | `Worktree` | `name`, `path`, `branch?`, `head?`, `main?`, `setting_up?`, `port?` |
-| `Session` | `name`, `location?`, `dir`, `command?`, `created`, `attached`, `exited`, `agent?`, `agent_state?`, `state_since?` |
+| `Session` | `name`, `location?`, `dir`, `command?`, `created`, `attached`, `exited`, `agent?`, `agent_state?`, `state_since?`, `preset?`, `turn?`, `state_seq?`, `fidelity?` |
+| `Turn` | `id` (`"<session>#<n>"`), `session`, `agent?`, `n`, `origin?`, `sent_seq?`, `end_seq?`, `state` (`queued`, `pending`, `running`, `waiting`, `finished`, `exited`, `lost`), `queued?`, `started?`, `ended?`, `waits?`, `fidelity?`, `idem_key?`, `status?` |
+| `SendResult`, `TurnWait` | as `send` and `waitTurn` above |
 | `AgentState` | `idle`, `running`, `waiting`, `finished` |
 | `AgentPreset` | `id`, `name`, `command`, `prompt_flag?` |
 | `Service` | `location`, `worktree`, `path`, `port`, `process?`, `main?` |
@@ -162,7 +165,7 @@ Go structs have them, in `packages/plugin-sdk/src/types.ts`:
 | `Stats` | `hostname`, `uptime_s?`, `cpus`, `load?`, `memory`, `swap`, `disks`, `agents`, `hooks` |
 | `TaskRequest` | `location`, `name`, `branch?`, `base?`, `agent?`, `command?`, `prompt?`, `from_session?`, `pr?`, `ref?`, `open?` |
 | `TaskResult` | `worktree`, `session` |
-| `BerthEvent` | `type`, `time`, `box?`, `origin?`, `error?`, `data?` |
+| `BerthEvent` | `seq?`, `type`, `time`, `box?`, `origin?`, `error?`, `data?` |
 | `Theme` | `id`, `name`, `appearance` (`dark`, `light`), `colors` (17 UI colours), `terminal` (20 terminal colours) |
 | `Hook` | `on`, `run`, `tool?`, `timeout?`, `source?` |
 | `TaskTemplate` | as in [task templates](/guides/task-templates) |

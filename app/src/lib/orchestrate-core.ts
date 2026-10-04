@@ -1,4 +1,4 @@
-import type { AgentPreset, ExecResult, Session, TaskResult, WaitResult } from "@berth/plugin";
+import type { AgentPreset, ExecResult, SendResult, Session, TaskResult, TurnWait, WaitResult } from "@berth/plugin";
 
 // The orchestration logic, free of the app's store so plugins, tests and the
 // app share it. It mirrors `berth loop` and friends (internal/boxcmd): the
@@ -36,14 +36,34 @@ export function agentCommand(p: Pick<AgentPreset, "command" | "prompt_flag">, pr
   return p.prompt_flag ? `${p.command} ${p.prompt_flag} ${shellQuote(prompt)}` : `${p.command} ${shellQuote(prompt)}`;
 }
 
-// send types text into a session as one paste, then Enter. It returns the
-// box's clock at that moment, which is what a following wait should count
-// from: the laptop's clock may not match the box's.
-export async function send(call: BoxCaller, box: string, session: string, text: string, enter = true): Promise<string> {
-  const before = new Date().toISOString();
-  const res = await call<{ at?: string } | undefined>(box, "POST", `sessions/${enc(session)}/send`, { text, enter });
-  return res?.at ?? before;
+export interface SendOptions {
+  enter?: boolean;
+  // "now" types at once; "idle" holds it on the box until the agent is
+  // idle. Either way the box refuses to type into an agent waiting for
+  // someone unless force: an Enter there would answer for the person.
+  when?: "now" | "idle";
+  force?: boolean;
+  // A retry with the same key returns the turn it already made.
+  idemKey?: string;
 }
+
+// send types text into a session as one paste, then Enter. It returns the
+// turn it started (boxes with the "turns" capability) and the box's clock at
+// that moment (`at`), which an older box's wait counts from: the laptop's
+// clock may not match the box's.
+export async function send(call: BoxCaller, box: string, session: string, text: string, opts: boolean | SendOptions = {}): Promise<SendResult> {
+  const o: SendOptions = typeof opts === "boolean" ? { enter: opts } : opts;
+  const before = new Date().toISOString();
+  const body: Record<string, unknown> = { text, enter: o.enter ?? true, when: o.when ?? "now" };
+  if (o.force) body.force = true;
+  if (o.idemKey) body.idem_key = o.idemKey;
+  const res = await call<Partial<SendResult> | undefined>(box, "POST", `sessions/${enc(session)}/send`, body);
+  return { sent: res?.sent ?? true, ...res, at: res?.at ?? before };
+}
+
+// isWaitingRefusal says whether a send was refused because the agent waits
+// for someone (HTTP 409).
+export const isWaitingRefusal = (err: unknown): boolean => (err as { status?: number } | null)?.status === 409;
 
 export interface WaitOptions {
   // Only states reported after this time count (RFC 3339). Default: now.
@@ -68,6 +88,33 @@ export async function wait(call: BoxCaller, box: string, session: string, states
     const res = await abortable(call<WaitResult>(box, "GET", `sessions/${enc(session)}/wait?${q}`), o.signal);
     if (!res.timed_out || Date.now() >= deadline) return res;
   }
+}
+
+// waitTurn returns once the turn ends (finished, exited or lost) or, with
+// until "waiting", also when it waits for someone; or the timeout passes.
+export async function waitTurn(
+  call: BoxCaller,
+  box: string,
+  turn: string,
+  o: { until?: "end" | "waiting"; timeout?: number; signal?: AbortSignal } = {},
+): Promise<TurnWait> {
+  const deadline = Date.now() + (o.timeout ?? 1800) * 1000;
+  for (;;) {
+    const step = Math.max(1, Math.min(WAIT_STEP_SECONDS, Math.ceil((deadline - Date.now()) / 1000)));
+    const q = new URLSearchParams({ until: o.until ?? "end", timeout: `${step}s` });
+    const res = await abortable(call<TurnWait>(box, "GET", `turns/${enc(turn)}/wait?${q}`), o.signal);
+    if (!res.timed_out || Date.now() >= deadline) return res;
+  }
+}
+
+// waitSent waits for the turn a send started: by its ID on a box that keeps
+// turns, else (an older box) from the box's own time of the send.
+export async function waitSent(call: BoxCaller, box: string, session: string, sent: SendResult, o: Omit<WaitOptions, "after"> = {}): Promise<WaitResult> {
+  if (sent.turn) {
+    const w = await waitTurn(call, box, sent.turn, { until: "waiting", timeout: o.timeout, signal: o.signal });
+    return { state: w.state, timed_out: w.timed_out, turn: w.turn?.id ?? sent.turn };
+  }
+  return wait(call, box, session, ["finished", "waiting"], { ...o, after: sent.at });
 }
 
 export function exec(call: BoxCaller, box: string, location: string, command: string, timeout = "10m", signal?: AbortSignal): Promise<ExecResult & { truncated?: boolean }> {
@@ -120,11 +167,54 @@ export function review(call: BoxCaller, r: Omit<HandoffRequest, "worktree" | "pr
   return handoff(call, { ...r, prompt: r.prompt ?? reviewPrompt(r.fromSession) });
 }
 
-// The feedback a failed check sends back: the end of its output, as the CLI
-// does (`berth loop`).
+// checkFeedback trims a check's output to what an agent needs, at most limit
+// characters: the lines that say what failed, then the end. Colours and runs
+// of blank lines go. Every character goes into the agent's context on each
+// round, so it is never the whole log. It mirrors box.CheckFeedback.
+// eslint-disable-next-line no-control-regex
+const ANSI = /\x1b\[[0-9;?]*[A-Za-z]|\x1b\][^\x07]*\x07/g;
+const FAILING = /(\bfail(ed|ure|ing)?\b|\berror\b|panic|\bexpected\b|assert|✗|✘|×|\bnot ok\b|undefined|cannot find|exception|traceback|\bTS\d{4}\b)/i;
+
+export function checkFeedback(output: string, limit = 3000): string {
+  const lines: string[] = [];
+  let blank = false;
+  for (const raw of output.replace(ANSI, "").replaceAll("\r\n", "\n").split("\n")) {
+    const l = raw.trimEnd();
+    if (!l) {
+      if (blank) continue;
+      blank = true;
+    } else blank = false;
+    lines.push(l);
+  }
+  const joined = lines.join("\n").trim();
+  if (joined.length <= limit) return joined;
+  const clip = (l: string) => (l.length > 240 ? `${l.slice(0, 240)}…` : l);
+  const tail: string[] = [];
+  let used = 0;
+  let tailFrom = lines.length;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    const l = clip(lines[i]);
+    if (used + l.length + 1 > limit / 2) break;
+    tail.unshift(l);
+    used += l.length + 1;
+    tailFrom = i;
+  }
+  const head: string[] = [];
+  const seen = new Set<string>();
+  for (let i = 0; i < tailFrom; i++) {
+    const l = clip(lines[i].trim());
+    if (!l || seen.has(l) || !FAILING.test(l)) continue;
+    if (used + l.length + 1 > limit - 8) break;
+    seen.add(l);
+    head.push(l);
+    used += l.length + 1;
+  }
+  return [...head, "…", ...tail].join("\n");
+}
+
+// The feedback a failed check sends back: what failed, as `berth loop` does.
 export function checkFailedPrompt(check: string, exitCode: number, output: string): string {
-  const tail = output.length > 4000 ? `…${output.slice(-4000)}` : output;
-  return `The check \`${check}\` failed (exit ${exitCode}):\n\n${tail.trim()}\n\nFix it.`;
+  return `\`${check}\` failed (exit ${exitCode}):\n\`\`\`\n${checkFeedback(output)}\n\`\`\`\nFix it.`;
 }
 
 export type LoopPhase = "prompting" | "waiting" | "checking";
@@ -171,17 +261,27 @@ export async function loop(call: BoxCaller, r: LoopRequest): Promise<LoopResult>
   let text = r.prompt;
   let last: { exitCode: number; output: string } | undefined;
   let round = 1;
+  // One key per round: a retried send never types the prompt twice.
+  const run = `loop-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+  const needsYou = `${r.session} is waiting for you; answer it, then run the loop again`;
   const done = (outcome: LoopOutcome, message: string): LoopResult => ({ outcome, rounds: round, message, exitCode: last?.exitCode, output: last?.output });
   try {
     for (; round <= max; round++) {
       if (text) {
         r.onProgress?.({ round, phase: "prompting", message: `Round ${round}: prompting ${r.session}…` });
-        const after = await abortable(send(call, r.box, r.session, text), r.signal);
+        let sent: SendResult;
+        try {
+          sent = await abortable(send(call, r.box, r.session, text, { when: "now", idemKey: `${run}-${round}` }), r.signal);
+        } catch (err) {
+          // The box will not type into an agent at a question.
+          if (isWaitingRefusal(err)) return done("needs-you", needsYou);
+          throw err;
+        }
         r.onProgress?.({ round, phase: "waiting", message: `Round ${round}: prompted ${r.session}, waiting for its turn to end…` });
-        const res = await wait(call, r.box, r.session, ["finished", "waiting"], { after, timeout: turn, signal: r.signal });
+        const res = await waitSent(call, r.box, r.session, sent, { timeout: turn, signal: r.signal });
         if (res.timed_out) return done("timed-out", `${r.session} was still ${res.state || "working"} after ${formatSeconds(turn)}`);
-        if (res.state === "waiting") return done("needs-you", `${r.session} is waiting for you; answer it, then run the loop again`);
-        if (res.state === "exited") return done("exited", `${r.session} has exited`);
+        if (res.state === "waiting") return done("needs-you", needsYou);
+        if (res.state === "exited" || res.state === "lost") return done("exited", `${r.session} has ${res.state}`);
       }
       r.onProgress?.({ round, phase: "checking", message: `Round ${round}: checking with ${JSON.stringify(r.check)}…` });
       const res = await exec(call, r.box, r.location, r.check, "30m", r.signal);

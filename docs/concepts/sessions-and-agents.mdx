@@ -24,7 +24,13 @@ berth session kill devl/SESSION
 
 A session is named after where it runs and what it runs
 (`shop-checkout-claude-…`) unless you pass `--name`. Its environment is the
-worktree's: ports, `BERTH_*` variables and the project's `env`.
+worktree's: ports, `BERTH_*` variables and the project's `env`, plus
+`BERTH_SESSION` (the session's name) and, for an agent preset, `BERTH_AGENT`
+(the preset's id). The agent's hooks pass `BERTH_SESSION` back, so Berth
+knows which session they come from even when several agents share a
+worktree. Berth also keeps the preset with the session, so an agent started
+from a preset whose command wraps it (`env FOO=1 claude`, `npx …`) is still
+known as that agent.
 
 The app shows each session as a terminal (ghostty-web) in the worktree's
 workspace, beside other terminals, splits and browser tabs. Laptops attach
@@ -66,7 +72,9 @@ A first prompt is passed as the command's last argument, or after its
 
 Berth knows what an agent is doing from the agent's own hooks, which
 `berthd install` sets up for the agent CLIs it finds on the box (later,
-`berthd integrations install claude`, or `codex`, `cursor`, `all`):
+`berthd integrations install claude`, or `codex`, `cursor`, `gemini`,
+`opencode`, `all`; an upgrade brings hooks Berth installed before up to
+date):
 
 | State | Meaning | From |
 | --- | --- | --- |
@@ -74,10 +82,62 @@ Berth knows what an agent is doing from the agent's own hooks, which
 | `running` | Working on a prompt | `agent.started` |
 | `waiting` | Needs you: a permission, a question | `agent.waiting` |
 | `finished` | Done with its turn | `agent.finished` |
+| `exited` | The agent itself quit | `agent.exited` |
 
-Claude Code reports all four. Codex and Cursor report `finished` only. A
-session whose program has ended is `exited`. Berth also notices Claude Code's
-"trust this folder" question at startup and reports it as `waiting`.
+A session whose program has ended is `exited`. Berth also notices Claude
+Code's "trust this folder" question at startup and reports it as `waiting`.
+Claude Code's reminder a minute after a finished turn (`idle_prompt`) and its
+login notice are not questions, so they never read as `waiting`; after you
+approve a permission, the tool it allowed running says the agent is working
+again.
+
+### Turns
+
+A **turn** is one prompt to the end of the agent's reply. The box keeps a
+ledger of every agent session's turns, numbered in the order things happened
+(not by anyone's clock), and everything that waits for an agent waits for a
+turn: `session send --wait`, loops, flows, the app's broadcast.
+
+```sh
+berth session send devl/SESSION "Rebase on main" --json   # {"turn":"SESSION#4","seq":812,…}
+berth session wait devl/SESSION --turn 'SESSION#4'          # until that turn ends
+berth session turns devl/SESSION                            # the last ten
+```
+
+- A prompt sent while the agent is mid-turn gets its own turn, which starts
+  when the agent takes it up: the turn it was already in ending does not end
+  yours.
+- A turn is `queued` (held until the agent is idle), `pending` (sent, not
+  started), `running`, `waiting`, `finished`, `exited` or `lost` (open when
+  berthd restarted, and nothing could settle it).
+- Each turn says who prompted it (`laptop:<name>`, `flow:<id>`, `phone`,
+  `terminal` for a person at the terminal) and how often it waited for you.
+- Agents sharing a worktree keep their own turns. An older hook that names
+  only a folder counts for the one agent of its kind there; when there are
+  several, it is recorded but ends no one's wait.
+
+**Fidelity** says how well Berth knows a turn's edges: `hooks` (the agent
+said when it started and ended), `partial` (the agent cannot say when it
+starts, so its turn starts when Berth sends the prompt) or `screen` (no hooks
+reported: Berth reads the terminal every two seconds, and a screen that stops
+changing ends the turn).
+
+| Agent | Ready | Started | Waiting | Finished | Through |
+| --- | --- | --- | --- | --- | --- |
+| Claude Code | ✓ | ✓ | ✓ | ✓ | hooks in `~/.claude/settings.json` |
+| Codex | ✓ | ✓ | ✓ | ✓ | hooks in `~/.codex/hooks.json` (trust them once with `/hooks`); older versions report only `finished`, through `notify` |
+| Cursor Agent | ✓ | ✓ | screen | ✓ | hooks in `~/.cursor/hooks.json` |
+| Gemini CLI | ✓ | ✓ | ✓ | ✓ | hooks in `~/.gemini/settings.json` |
+| OpenCode | | ✓ | ✓ | ✓ | a plugin in `~/.config/opencode/plugin/berth.js` |
+| anything else | screen | screen | screen | screen | the terminal |
+
+The box lists these as `adapters` in `GET /v1/info`, with `capabilities`
+`["turns","journal"]` when it keeps turns.
+
+Hooks reach berthd through its socket in milliseconds. While berthd is down
+(an upgrade, a restart), a hook is kept in `~/.berth/box/spool/` and
+published, in order, when berthd starts, so an agent that finished meanwhile
+does not read as working forever.
 
 The hooks forward only identifiers and the working directory: prompts,
 messages and transcripts never leave the tool. A hook never fails or blocks
@@ -98,9 +158,13 @@ Anything that can run a command can prompt an agent, wait for its turn to
 end, and check its work, including another agent:
 
 ```sh
-berth session send devl/SESSION "Rebase on main" --wait
+berth session send devl/SESSION "Rebase on main" --wait     # waits for this prompt's turn
+berth session send devl/SESSION "Then the docs" --when idle # held until the agent is idle
 berth session wait devl/SESSION --for finished,waiting
 berth exec devl/shop/checkout -- pnpm test
 ```
+
+Berth never types into an agent that is waiting for you unless told to
+(`--force`): an Enter at a permission prompt would pick an answer for you.
 
 See [orchestration](/guides/orchestration).

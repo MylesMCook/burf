@@ -1,6 +1,6 @@
 ---
 title: Agent integrations
-description: Claude Code, Codex and Cursor hooks, the skills Berth teaches agents, and announcing events from any tool.
+description: Claude Code, Codex, Cursor, Gemini CLI and OpenCode hooks, the skills Berth teaches agents, and announcing events from any tool.
 ---
 
 berth works with the tools around it in both directions: tools drive
@@ -10,7 +10,7 @@ between two tools.
 
 ## Agent tools → berth
 
-### Claude Code, Cursor, Codex
+### Claude Code, Codex, Cursor, Gemini CLI, OpenCode
 
 ```sh
 berth integrations install claude     # on a laptop
@@ -26,21 +26,39 @@ first starts that agent on the box, and `berth doctor BOX` (or
 with the command that installs them.
 
 - **Claude Code**: installs berth's skills in `~/.claude/skills/` and
-  `Stop` / `Notification` / `SessionStart` / `UserPromptSubmit` hooks in
-  `~/.claude/settings.json`.
-- **Cursor**: appends a `stop` hook to `~/.cursor/hooks.json`, after any hooks
-  already there (Orca's are kept).
+  `SessionStart` / `UserPromptSubmit` / `PostToolUse` / `PermissionRequest` /
+  `Notification` / `Stop` / `StopFailure` / `SessionEnd` hooks in
+  `~/.claude/settings.json`. Only permission and question notifications mean
+  "needs you"; the idle reminder and login notices are ignored.
+- **Cursor**: appends `sessionStart`, `beforeSubmitPrompt` and `stop` hooks to
+  `~/.cursor/hooks.json`, after any hooks already there (Orca's are kept).
 - **Codex**: installs berth's skills in `~/.agents/skills/`, where Codex
   reads user skills (a copy an older berth left in `~/.codex/skills/` is
-  removed), and adds a `notify` line to `~/.codex/config.toml`. Codex runs
-  a single notify program, so when the config already sets one to something
-  else, berth leaves it and prints the line to change yourself.
+  removed), adds `SessionStart` / `UserPromptSubmit` / `PermissionRequest` /
+  `Stop` hooks to `~/.codex/hooks.json` (trust them once in Codex with
+  `/hooks`), and a `notify` line to `~/.codex/config.toml` for versions
+  without hooks. Codex runs a single notify program, so when the config
+  already sets one to something else, berth leaves it and prints the line to
+  change yourself.
+- **Gemini CLI**: `SessionStart` / `BeforeAgent` / `Notification` /
+  `AfterAgent` / `SessionEnd` hooks in `~/.gemini/settings.json`.
+- **OpenCode**: a small plugin, `~/.config/opencode/plugin/berth.js`, that
+  runs the hook when a session gets busy, asks for a permission, or goes idle.
+
+After an upgrade, berthd brings hooks it installed before up to date when it
+starts. Every session berth starts has `BERTH_SESSION` (and, for an agent
+preset, `BERTH_AGENT`) in its environment; the hook sends it along, so berth
+knows which session a hook came from when agents share a worktree. When
+berthd is down, `berthd hook` keeps the event in `~/.berth/box/spool/` and
+berthd publishes it, in order, when it starts. What each agent can report,
+and how berth fills the gaps, is in
+[turns](/concepts/sessions-and-agents#turns).
 
 Installs are idempotent, keep every existing setting, back up the previous
 file to `*.berth-backup`, and refuse to touch a file that is not valid JSON.
 
 The hooks run `berth hook TOOL EVENT`, which turns the tool's payload into an
-event (`agent.finished`, `agent.waiting`, `agent.started`, `agent.ready`). Only identifiers and
+event (`agent.finished`, `agent.waiting`, `agent.started`, `agent.ready`, `agent.exited`). Only identifiers and
 the working directory are kept: prompts, messages, and transcripts never
 leave the tool. A hook never fails or blocks the tool that called it.
 

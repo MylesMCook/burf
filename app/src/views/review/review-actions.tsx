@@ -219,7 +219,8 @@ export function SendBackDialog({ entry, onClose }: { entry?: ReviewEntry; onClos
     if (!client || busy || !note.replace(/^Changes requested:\s*/, "").trim()) return;
     setBusy(true);
     try {
-      await boxApi.send(client, entry.box, entry.session, note.trim());
+      // The person writes this note, so it goes in even at a question.
+      await boxApi.send(client, entry.box, entry.session, note.trim(), true, { when: "now", force: true });
       toastManager.add({ title: `Sent back to ${agentLabel(entry.agent)}`, description: entry.main ? entry.location : entry.worktree, type: "success" });
       void refreshReview();
       onClose();

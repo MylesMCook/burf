@@ -1,4 +1,4 @@
-import type { BerthEvent, Client, Hook, HooksFile, Location, Service, Session, Stats, Status, TerminalHandlers } from "@/lib/api";
+import type { BerthEvent, Client, Hook, HooksFile, Location, Service, Session, Stats, Status, TerminalHandlers, Turn } from "@/lib/api";
 import { flowsCall } from "@/lib/mock-flows";
 import { phoneCall } from "@/lib/mock-phone";
 import { worktreesCall } from "@/lib/mock-worktrees";
@@ -306,23 +306,80 @@ function mockProjects(box: string, method: string, path: string, body?: unknown)
   return undefined;
 }
 
+// mockTurns is each session's turns, as a box with the "turns" capability
+// keeps them: the last 50 per session.
+const mockTurns: Record<string, Turn[]> = {};
+// Prompts held until their agent is idle (send with when "idle").
+const mockInbox: Record<string, { turn: Turn; text: string }[]> = {};
+let mockSeq = 1000;
+
+function mockStartTurn(box: string, s: Session, tr: Turn, text: string) {
+  const at = new Date().toISOString();
+  mockDemo.lastSent[`${box}/${s.name}`] = text;
+  Object.assign(tr, { state: "running", started: at, sent_seq: ++mockSeq, fidelity: s.agent === "claude" ? "hooks" : "partial" });
+  s.agent_state = "running";
+  s.state_since = at;
+  s.turn = tr.id;
+  emit({ seq: ++mockSeq, type: "agent.started", box, origin: s.agent, data: { path: s.dir, session: s.name, turn: tr.id } });
+  setTimeout(() => {
+    const end = new Date().toISOString();
+    Object.assign(tr, { state: "finished", ended: end, end_seq: ++mockSeq });
+    s.agent_state = "finished";
+    s.state_since = end;
+    emit({ seq: mockSeq, type: "agent.finished", box, origin: s.agent, data: { path: s.dir, session: s.name } });
+    const next = mockInbox[`${box}/${s.name}`]?.shift();
+    if (next) setTimeout(() => mockStartTurn(box, s, next.turn, next.text), 300);
+    // The demo's agents work a little longer, so you see them at it.
+  }, __BERTH_DEMO__ ? 4500 : 1500);
+}
+
 function mockOrchestration(box: string, method: string, path: string, body?: unknown): Promise<unknown> | undefined {
-  const m = /^sessions\/([^/?]+)\/(send|wait)/.exec(path);
+  const tw = /^turns\/([^/?]+)(\/wait)?/.exec(path);
+  if (tw) {
+    const id = decodeURIComponent(tw[1]);
+    const name = id.split("#")[0];
+    const tr = mockTurns[`${box}/${name}`]?.find((t) => t.id === id);
+    if (!tr) return Promise.reject(new ApiError("no turn with that ID", 404));
+    if (!tw[2]) return delay(tr);
+    const q = new URLSearchParams(path.split("?")[1]);
+    const untilWaiting = q.get("until") === "waiting";
+    const until = Date.now() + Math.min(parseInt(q.get("timeout") ?? "60") || 60, 60) * 1000;
+    return new Promise((resolve) => {
+      const tick = () => {
+        const ended = ["finished", "exited", "lost"].includes(tr.state) || (untilWaiting && tr.state === "waiting");
+        if (ended || Date.now() >= until) return resolve(structuredClone({ turn: tr, state: tr.state, timed_out: !ended }));
+        setTimeout(tick, 100);
+      };
+      tick();
+    });
+  }
+  const m = /^sessions\/([^/?]+)\/(send|wait|turns)/.exec(path);
   const s = m ? sessions[box]?.find((x) => x.name === decodeURIComponent(m[1])) : undefined;
-  if (m && !s) return Promise.reject(new Error("no session with that name"));
+  if (m && !s) return Promise.reject(new ApiError("no session with that name", 404));
+  if (s && m?.[2] === "turns") {
+    const limit = parseInt(new URLSearchParams(path.split("?")[1]).get("limit") ?? "20") || 20;
+    return delay((mockTurns[`${box}/${s.name}`] ?? []).slice(-limit));
+  }
   if (s && m?.[2] === "send") {
+    const req = (body ?? {}) as { text?: string; when?: string; force?: boolean; idem_key?: string };
+    const key = `${box}/${s.name}`;
+    const list = (mockTurns[key] ??= []);
+    const dup = req.idem_key ? list.find((t) => t.idem_key === req.idem_key) : undefined;
+    if (dup) return delay({ sent: dup.state !== "queued", queued: dup.state === "queued", duplicate: true, turn: dup.id, seq: dup.sent_seq, at: new Date().toISOString() });
+    if (req.when === "now" && !req.force && s.agent_state === "waiting")
+      return Promise.reject(new ApiError(`${s.name} is waiting for someone to answer it (a permission or a question); answer it at the terminal, or send with force to type anyway`, 409));
+    const tr: Turn = { id: `${s.name}#${list.length + 1}`, session: s.name, agent: s.agent, n: list.length + 1, origin: "laptop:demo", state: "pending", idem_key: req.idem_key };
+    list.push(tr);
+    if (list.length > 50) list.shift();
     const at = new Date().toISOString();
-    mockDemo.lastSent[`${box}/${s.name}`] = (body as { text?: string } | undefined)?.text ?? "";
-    s.agent_state = "running";
-    s.state_since = at;
-    emit({ type: "agent.started", box, origin: s.agent, data: { path: s.dir } });
-    setTimeout(() => {
-      s.agent_state = "finished";
-      s.state_since = new Date().toISOString();
-      emit({ type: "agent.finished", box, origin: s.agent, data: { path: s.dir } });
-      // The demo's agents work a little longer, so you see them at it.
-    }, __BERTH_DEMO__ ? 4500 : 1500);
-    return delay({ sent: true, at });
+    if (req.when === "idle" && (s.agent_state === "running" || s.agent_state === "waiting")) {
+      Object.assign(tr, { state: "queued", queued: at });
+      (mockInbox[key] ??= []).push({ turn: tr, text: req.text ?? "" });
+      emit({ seq: ++mockSeq, type: "session.queued", box, data: { name: s.name, turn: tr.id } });
+      return delay({ sent: false, queued: true, turn: tr.id, seq: mockSeq, at });
+    }
+    mockStartTurn(box, s, tr, req.text ?? "");
+    return delay({ sent: true, turn: tr.id, seq: tr.sent_seq, at });
   }
   if (s && m?.[2] === "wait") {
     const q = new URLSearchParams(path.split("?")[1]);
@@ -332,8 +389,9 @@ function mockOrchestration(box: string, method: string, path: string, body?: unk
     return new Promise((resolve) => {
       const tick = () => {
         if (s.exited) return resolve({ state: "exited", timed_out: false });
-        if (s.agent_state && want.includes(s.agent_state) && Date.parse(s.state_since ?? "") > after) return resolve({ state: s.agent_state, timed_out: false });
-        if (Date.now() >= until) return resolve({ state: s.agent_state ?? "", timed_out: true });
+        if (s.agent_state && want.includes(s.agent_state) && Date.parse(s.state_since ?? "") > after) return resolve({ state: s.agent_state, timed_out: false, turn: s.turn });
+        // The last state seen, never an empty one.
+        if (Date.now() >= until) return resolve({ state: s.agent_state ?? "running", timed_out: true, turn: s.turn });
         setTimeout(tick, 100);
       };
       tick();
@@ -437,6 +495,12 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
       name: box,
       version: "0.1.0",
       tools: ["claude", "codex"],
+      capabilities: ["turns", "journal"],
+      adapters: {
+        claude: { ready: true, started: true, waiting: true, finished: true, final_message: true, via: "hooks" },
+        codex: { ready: true, started: true, waiting: true, finished: true, final_message: true, via: "hooks" },
+        screen: { ready: true, started: true, waiting: true, finished: true, final_message: false, via: "screen" },
+      },
       agents: [
         { id: "claude", name: "Claude Code", command: "claude" },
         { id: "codex", name: "Codex", command: "codex" },
@@ -792,7 +856,7 @@ initMockComputers({ status, networks: mockNetworks, addBox: addMockBox, emit, de
 initMockLocalBox({ status, addBox: addMockBox, delay });
 
 // The offline prompt queue and its box-offline simulator (lib/mock-queue).
-initMockQueue({ status, sessions, emit, delay, send: (box, session, text, enter) => boxCall(box, "POST", `sessions/${encodeURIComponent(session)}/send`, { text, enter }) }, fresh);
+initMockQueue({ status, sessions, emit, delay, send: (box, session, text, enter) => boxCall(box, "POST", `sessions/${encodeURIComponent(session)}/send`, { text, enter, when: "now" }) }, fresh);
 
 export function mockClient(): Client {
   return {

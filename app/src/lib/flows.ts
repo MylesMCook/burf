@@ -36,7 +36,9 @@ export interface Trigger {
   // A scheduled flow runs once per matching worktree, not once at the repo.
   each_worktree?: boolean;
   github?: { on: GitHubOn; poll?: string };
-  where?: { location?: string; agent?: string; branch?: string };
+  // author limits GitHub comment and review triggers to these logins, or
+  // "collaborators", or "*" (anyone); empty means collaborators.
+  where?: { location?: string; agent?: string; branch?: string; author?: string[] };
 }
 
 export type TriggerKind = "event" | "schedule" | "github";
@@ -109,7 +111,8 @@ export interface FlowRun {
   scope: Scope;
   started: string;
   finished?: string;
-  status: "running" | "succeeded" | "failed";
+  // interrupted: berthd restarted during the run, which did not resume.
+  status: "running" | "succeeded" | "failed" | "interrupted";
   event: BerthEvent;
   steps: StepRun[];
   error?: string;

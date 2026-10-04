@@ -73,7 +73,7 @@ plugin's manifest. See [hooks](/guides/hooks).
 | `schedule` | string | Cron (`m h dom mon dow`) or `@hourly`, `@daily`, `@midnight`, `@weekly`, `@monthly`, `@yearly`, `@annually`; the box's local time. |
 | `each_worktree` | boolean | With `schedule` only: once for every worktree. |
 | `github` | object | `on`: `review_comment`, `pr_review`, `check_failed` or `pr_merged`; `poll`: a duration, at least `1m`, default `2m`. |
-| `where` | object | `location`, `agent`, `branch` (a trailing `*` matches a prefix). Empty matches anything. |
+| `where` | object | `location`, `agent`, `branch` (a trailing `*` matches a prefix), and for GitHub triggers `author` (logins, `"collaborators"` or `"*"`; `review_comment` and `pr_review` default to collaborators). Empty matches anything. |
 
 #### `steps`
 

@@ -92,6 +92,7 @@ export function makeContext(id: string, client: Client): BerthPluginContext {
     orchestrate: {
       send: orchestrate.send,
       wait: orchestrate.wait,
+      waitTurn: orchestrate.waitTurn,
       exec: orchestrate.exec,
       handoff: orchestrate.handoff,
       review: orchestrate.review,

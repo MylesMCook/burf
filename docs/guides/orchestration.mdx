@@ -11,7 +11,7 @@ the API:
 | --- | --- | --- |
 | Start work: a worktree with an agent in it | `berth task new BOX/LOC/NAME --agent claude --prompt …` | `POST /v1/tasks` |
 | Prompt a running agent | `berth session send BOX/SESSION TEXT` | `POST /v1/sessions/{name}/send` |
-| Wait for its turn to end | `berth session wait BOX/SESSION` | `GET /v1/sessions/{name}/wait` |
+| Wait for its turn to end | `berth session wait BOX/SESSION --turn ID` | `GET /v1/turns/{id}/wait` |
 | Run a check where it works | `berth exec BOX/LOC[/WT] -- COMMAND` | `POST /v1/exec` |
 
 On a box, `berthd` takes the same commands without the `BOX/` prefix, which
@@ -21,6 +21,7 @@ is what agents there use.
 
 ```sh
 berth session send devl/shop-checkout-claude "Rebase on main and fix any conflicts"
+# Sent to shop-checkout-claude (turn shop-checkout-claude#4)
 ```
 
 The text is pasted as one block (so a multi-line prompt is one prompt), then
@@ -28,23 +29,47 @@ Enter is pressed (`--no-enter` leaves it typed). Prompts never appear in
 events or logs; only `session.sent` with the session's name.
 `before:session.send` hooks can refuse a prompt.
 
-With `--wait`, it then waits for the turn the prompt starts to end (up to
-`--timeout`, 30 minutes by default). With `--queue`, a prompt for a box that
-cannot be reached waits on the laptop instead of failing; see
-[the offline queue](/guides/offline-queue).
+A send returns the **turn** it started (see
+[turns](/concepts/sessions-and-agents#turns)), the journal number of the
+send (`seq`) and the box's time (`at`); `--json` prints them:
+
+```json
+{ "sent": true, "turn": "shop-checkout-claude#4", "seq": 812, "at": "2026-10-04T09:12:03.411Z" }
+```
+
+| Option | API field | Effect |
+| --- | --- | --- |
+| `--when now` (default) | `when: "now"` | Type it at once. Refused (HTTP 409) while the agent is `waiting` for you |
+| `--when idle` | `when: "idle"` | Hold it in the box's inbox for the session (up to 16 prompts) and type it once the agent is idle or finished; the turn is `queued` until then. Never typed while the agent waits for you |
+| `--force` | `force: true` | Type it even into an agent waiting for you. For people answering it, never for agents and scripts |
+| `--idem KEY` | `idem_key` | A retry with the same key returns the turn it already made (`duplicate: true`) and types nothing |
+
+A request without `when` (an older client) types at once, as before. With
+`--wait`, it then waits for that turn to end (up to `--timeout`, 30 minutes
+by default). With `--queue`, a prompt for a box that cannot be reached waits
+on the laptop instead of failing; see [the offline queue](/guides/offline-queue).
 
 ## Wait
 
 ```sh
-berth session wait devl/shop-checkout-claude                  # finished or waiting
+berth session wait devl/shop-checkout-claude --turn 'shop-checkout-claude#4'   # that turn
+berth session wait devl/shop-checkout-claude                                    # finished or waiting, now or later
 berth session wait devl/shop-checkout-claude --for finished --timeout 1h
+berth session turns devl/shop-checkout-claude                                   # its last turns
 ```
 
-It returns when the agent is `finished` or `waiting` (or the states you ask
-for), or when its program exits. `berth session wait` counts the state the
-agent is in now; `berth session send … --wait` counts only what comes after
-the prompt, so the previous turn's `finished` does not end it. Over the API,
-only states reported after `after` count.
+A turn wait returns when the turn ends (`finished`, `exited`, `lost`) or
+waits for you (`waiting`), so a prompt sent while the agent was mid-turn is
+not ended by the turn it was already in. It needs no clock: the box orders
+everything by its journal. `GET /v1/turns/{id}/wait?until=end|waiting&timeout=90s`
+is the API (encode `#` as `%23`).
+
+`berth session wait` without `--turn` returns when the agent is `finished`
+or `waiting` (or the states you ask for), including right now, or when its
+program exits. Over the API, `GET /v1/sessions/{name}/wait?after=` still
+works for older clients: the box places `after` in its journal's order, so a
+caller whose clock runs ahead or behind the box's still sees the turn end.
+A wait that times out reports the last state it saw.
 
 ## Exec
 
@@ -65,10 +90,14 @@ refuse it.
 berth loop devl/shop-checkout-claude --check "pnpm test" --prompt "Make the tests pass" --max 5
 ```
 
-It prompts, waits, runs the check in the session's worktree, and sends the
-failure back ("The check … failed: …output… Fix it.") until the check
-passes or `--max` rounds (default 5) run out. It stops if the agent is
-waiting for a human; `--turn-timeout` bounds each turn. In the app, **Loop until…** in a session's
+It prompts, waits for that prompt's turn, runs the check in the session's
+worktree, and sends back what failed until the check passes or `--max`
+rounds (default 5) run out. What goes back is short, since the agent reads
+every byte of it: the lines that say what failed and the end of the output,
+without colours, at most about 3 KB, never the whole log. Each round's
+prompt carries an idempotency key, so a retried send never types it twice.
+It stops if the agent is waiting for a human (the box refuses to type into
+it); `--turn-timeout` bounds each turn. In the app, **Loop until…** in a session's
 menu does the same, and running loops show in a panel in the corner.
 
 ### Hand off
@@ -98,8 +127,9 @@ several agents…** in ⌘K, **Send to N agents…** on the Agent Dashboard,
 **Prompt agents…** on a selection in Worktrees, or **Send to several…** in the
 prompt library. The prompt's `{{variables}}` are filled in for each agent
 (its branch, worktree, project, box), sends go one after another, and you
-can wait for every turn to end and read what each said. Agents on offline
-boxes can be queued for when they're back.
+can wait for every turn to end and read what each said. An agent that is
+waiting for you is skipped, never typed into. Agents on offline boxes can be
+queued for when they're back.
 
 ### Chain with hooks and flows
 
@@ -128,13 +158,25 @@ question on the user's behalf. See [agent integrations](/guides/agent-integratio
 
 ## From a plugin
 
-Plugins get the same operations as `berth.orchestrate`: `send`, `wait`,
-`exec`, `handoff`, `review` and `loop`; see
+Plugins get the same operations as `berth.orchestrate`: `send` (which
+resolves with the turn), `waitTurn`, `wait`, `exec`, `handoff`, `review` and
+`loop`; see
 [the plugin SDK](/reference/plugin-sdk#orchestrate).
 
 ## Agent state
 
-All of this relies on agents reporting their state through their own hooks,
-so it works fully for Claude Code, and for Codex and Cursor as far as they
-report (`finished` only). See
-[sessions and agents](/concepts/sessions-and-agents#agent-state).
+All of this relies on agents reporting their turns: fully through hooks for
+Claude Code, Codex (with its hooks trusted), Gemini CLI and OpenCode, Cursor
+except for "needs you", and by reading the terminal for anything else. See
+[sessions and agents](/concepts/sessions-and-agents#turns).
+
+## Agents driving agents, cheaply
+
+An orchestrating agent pays in tokens for everything it reads, and so does
+every agent it prompts. Berth keeps both small: waits are event-driven (wait
+on the turn; never poll `session screen` or rerun `sessions`), `--json`
+output is compact, prompts Berth writes (loop feedback, GitHub comments in
+flows) are short and capped, and idempotency keys mean a resumed caller never
+sends the same prompt twice. An agent's shell tool usually times out within
+minutes, so the skill tells agents to wait in short steps
+(`session wait --turn ID --timeout 90s`, repeated) or in the background.

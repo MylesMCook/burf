@@ -166,7 +166,8 @@ function Answers({ box, session, choices }: { box: string; session: string; choi
     if (!client) return;
     setSent(c.key);
     try {
-      await boxApi.send(client, box, session, c.key, false);
+      // The person is answering the question, so the box may type into it.
+      await boxApi.send(client, box, session, c.key, false, { when: "now", force: true });
       toastManager.add({ title: `Answered ${c.key}`, description: c.label, type: "success" });
     } catch (err) {
       setSent(undefined);
