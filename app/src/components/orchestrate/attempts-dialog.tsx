@@ -31,6 +31,9 @@ export interface AttemptsDraft {
   // A branch to start every attempt from; default the repository's.
   base?: string;
   prompt?: string;
+  // The attempts to start with, each its agent and, if picked, its model and
+  // effort (the composer's agent picker); otherwise the last ones used here.
+  agents?: { agent: string; model?: string; effort?: string }[];
 }
 
 export const useAttemptsDialog = create<{ draft?: AttemptsDraft }>()(() => ({}));
@@ -62,7 +65,9 @@ function Body({ d, onDone }: { d: AttemptsDraft; onDone(): void }) {
   const [prompt, setPrompt] = useState(d.prompt ?? "");
   const [name, setName] = useState("");
   const firstTwo = [presets[0]?.id ?? "claude", presets.find((p) => p.id !== presets[0]?.id)?.id ?? presets[0]?.id ?? "claude"];
-  const [agents, setAgents] = useState<{ agent: string; suffix: string; box?: string }[]>(() => load(`berth.attempts.agents.${d.box}`, firstTwo.map((agent) => ({ agent, suffix: "" }))));
+  const [agents, setAgents] = useState<{ agent: string; suffix: string; box?: string; model?: string; effort?: string }[]>(() =>
+    d.agents?.length ? d.agents.map((a) => ({ ...a, suffix: "" })) : load(`berth.attempts.agents.${d.box}`, firstTwo.map((agent) => ({ agent, suffix: "" }))),
+  );
   // Attempts may run on other boxes that have the project too: one run per
   // box, grouped, compared together in Review.
   const boxesData = useStore((s) => s.boxes);
@@ -99,7 +104,12 @@ function Body({ d, onDone }: { d: AttemptsDraft; onDone(): void }) {
             name: n,
             prompt: prompt.trim(),
             base: d.base ?? "",
-            attempts: list.map((a) => (a.suffix.trim() ? { agent: a.agent, prompt_suffix: a.suffix.trim() } : { agent: a.agent })),
+            attempts: list.map((a) => ({
+              agent: a.agent,
+              ...(a.model ? { model: a.model } : {}),
+              ...(a.effort ? { effort: a.effort } : {}),
+              ...(a.suffix.trim() ? { prompt_suffix: a.suffix.trim() } : {}),
+            })),
             verify: { check: check.trim() || "true", max_rounds: 2 },
             judge: { by: "agent", agent: judge, criteria: "correctness, tests, the smallest diff that does it" },
             pick: auto && !group ? "auto" : "human",
@@ -161,8 +171,9 @@ function Body({ d, onDone }: { d: AttemptsDraft; onDone(): void }) {
             <div key={i} className="flex items-center gap-2">
               <span className="w-5 text-right text-muted-foreground text-xs tabular-nums">{i + 1}</span>
               <div className="w-40 shrink-0">
-                <AgentPicker presets={presets} value={a.agent} onChange={(agent) => setAgents(agents.map((x, j) => (j === i ? { ...x, agent } : x)))} />
+                <AgentPicker presets={presets} value={a.agent} onChange={(agent) => setAgents(agents.map((x, j) => (j === i ? { agent, suffix: x.suffix, box: x.box } : x)))} />
               </div>
+              {(a.model || a.effort) && <span className="shrink-0 text-muted-foreground text-xs">{[a.model, a.effort].filter(Boolean).join(" · ")}</span>}
               <Input size="sm" value={a.suffix} placeholder="and, for this one… (optional)" onChange={(e) => setAgents(agents.map((x, j) => (j === i ? { ...x, suffix: e.target.value } : x)))} />
               {otherBoxes.length > 0 && (
                 <div className="w-28 shrink-0">

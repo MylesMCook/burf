@@ -508,8 +508,9 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
         screen: { ready: true, started: true, waiting: true, finished: true, final_message: false, via: "screen" },
       },
       agents: [
-        { id: "claude", name: "Claude Code", command: "claude" },
-        { id: "codex", name: "Codex", command: "codex" },
+        { id: "claude", name: "Claude Code", command: "claude", model_flag: "--model", effort_flag: "--effort", models: ["opus", "sonnet", "haiku"], efforts: ["low", "medium", "high", "xhigh", "max"] },
+        { id: "codex", name: "Codex", command: "codex", model_flag: "--model", effort_flag: "-c model_reasoning_effort=", models: ["gpt-5-codex", "gpt-5"], efforts: ["minimal", "low", "medium", "high"] },
+        { id: "gemini", name: "Gemini CLI", command: "gemini", prompt_flag: "-i" },
         { id: "shell", name: "Shell", command: "" },
       ],
     });
@@ -541,12 +542,12 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
     return delay({ worktree: wt, session });
   }
   if (key === "POST sessions") {
-    const r = body as { location: string; name?: string; command?: string };
+    const r = body as { location: string; name?: string; command?: string; agent?: string };
     const [locName, wtName] = r.location.split("/");
     const loc = locations[box].find((l) => l.name === locName)!;
     const wt = loc.worktrees?.find((w) => w.name === (wtName ?? locName)) ?? loc.worktrees![0];
-    const command = r.command ?? "";
-    const agent = ["claude", "codex"].includes(command) ? command : undefined;
+    const command = r.command ?? r.agent ?? "";
+    const agent = ["claude", "codex", "gemini"].includes(command) ? command : undefined;
     const session: Session = { name: r.name ?? `${wt.name}-${command || "shell"}-${sessions[box].length}`, location: r.location, dir: wt.path, command, created: new Date().toISOString(), attached: 0, exited: false, agent, agent_state: agent ? "running" : undefined };
     sessions[box].push(session);
     return delay(session);

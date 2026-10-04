@@ -450,7 +450,10 @@ type SessionRequest struct {
 	Command  string `json:"command,omitempty"`
 	Agent    string `json:"agent,omitempty"`
 	Prompt   string `json:"prompt,omitempty"`
-	Open     string `json:"open,omitempty"`
+	// Model and Effort, with an agent: see TaskRequest.
+	Model  string `json:"model,omitempty"`
+	Effort string `json:"effort,omitempty"`
+	Open   string `json:"open,omitempty"`
 }
 
 func (b *Box) addSession(w http.ResponseWriter, r *http.Request) error {
@@ -478,7 +481,11 @@ func (b *Box) addSession(w http.ResponseWriter, r *http.Request) error {
 		if !ok {
 			return badRequest("unknown agent %q", req.Agent)
 		}
-		req.Command = AgentCommand(p, req.Prompt)
+		if req.Command, err = AgentCommandWith(p, req.Prompt, req.Model, req.Effort); err != nil {
+			return err
+		}
+	} else if req.Model != "" || req.Effort != "" {
+		return badRequest("a model or an effort needs an agent, not a command")
 	}
 	if req.Name == "" {
 		req.Name = defaultSessionName(req.Location, req.Command)

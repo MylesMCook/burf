@@ -79,7 +79,7 @@ POST /v1/runs
   "params": {
     "location": "shop", "name": "refunds", "base": "main",
     "prompt": "Implement partial refunds (see issue 412)",
-    "attempts": [ {"agent": "claude"}, {"agent": "codex"}, {"agent": "claude", "prompt_suffix": "Prefer the smallest diff."} ],
+    "attempts": [ {"agent": "claude", "model": "opus"}, {"agent": "claude", "model": "sonnet", "effort": "high"}, {"agent": "codex", "prompt_suffix": "Prefer the smallest diff."} ],
     "verify": { "check": "pnpm test && pnpm lint", "max_rounds": 2 },
     "judge":  { "by": "agent", "agent": "claude", "criteria": "correctness, tests, the smallest diff" },
     "pick": "human",
@@ -89,7 +89,8 @@ POST /v1/runs
 ```
 
 1. Each attempt gets the worktree `<name>-a<n>` and its agent, with the
-   prompt (and its suffix). They work at once, up to `concurrency`.
+   prompt (and its suffix), on its own `model` and `effort` when given (so
+   "Opus against Sonnet" is a run). They work at once, up to `concurrency`.
 2. Each is verified with `verify.check`; a failure sends its failing tail
    back, up to `max_rounds`.
 3. Berth collects each attempt's diffstat, commits, check result and tokens.

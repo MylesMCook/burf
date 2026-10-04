@@ -30,6 +30,12 @@ func TestATaskIsAWorktreeWithItsAgentRunning(t *testing.T) {
 	if status := call(t, c, "POST", "/v1/tasks", "", TaskRequest{Location: "cal", Name: "x", Agent: "no-such-agent"}, nil); status != 400 {
 		t.Fatalf("an unknown agent gave %d, want 400", status)
 	}
+	if status := call(t, c, "POST", "/v1/tasks", "", TaskRequest{Location: "cal", Name: "y", Agent: "claude", Model: "opus; touch /tmp/x"}, nil); status != 400 {
+		t.Fatalf("a model that is not a name gave %d, want 400", status)
+	}
+	if status := call(t, c, "POST", "/v1/tasks", "", TaskRequest{Location: "cal", Name: "z", Command: "cat", Model: "opus"}, nil); status != 400 {
+		t.Fatalf("a model with a command gave %d, want 400", status)
+	}
 }
 
 func TestABeforeHookRefusesAWorktreeWithItsMessage(t *testing.T) {
@@ -93,5 +99,44 @@ func TestTurnsSurviveARestartAndImportOldStates(t *testing.T) {
 	// The old file is still written, for a downgrade.
 	if b, _ := os.ReadFile(legacy); !strings.Contains(string(b), "/w/fix") {
 		t.Fatalf("agent-states.json = %s", b)
+	}
+}
+
+func TestAgentCommandsPassAModelAndAnEffort(t *testing.T) {
+	claude, _ := presetFor(nil, "claude")
+	got, err := AgentCommandWith(claude, "fix it", "opus", "high")
+	if err != nil || got != "claude --model opus --effort high 'fix it'" {
+		t.Fatalf("claude = %q, %v", got, err)
+	}
+	codex, _ := presetFor(nil, "codex")
+	if got, err := AgentCommandWith(codex, "", "gpt-5-codex", "low"); err != nil || got != "codex --model gpt-5-codex -c model_reasoning_effort=low" {
+		t.Fatalf("codex = %q, %v", got, err)
+	}
+	if got, _ := AgentCommandWith(claude, "hi", "", ""); got != "claude 'hi'" {
+		t.Fatalf("the defaults added flags: %q", got)
+	}
+	// Anything a shell would read as more than a name is refused.
+	for _, bad := range []string{"opus; rm -rf ~", "$(id)", "a b", "--dangerously-skip-permissions", "`x`", "o'pus"} {
+		if _, err := AgentCommandWith(claude, "", bad, ""); err == nil {
+			t.Fatalf("model %q was let through", bad)
+		}
+		if _, err := AgentCommandWith(claude, "", "", bad); err == nil {
+			t.Fatalf("effort %q was let through", bad)
+		}
+	}
+	gemini, _ := presetFor(nil, "gemini")
+	if _, err := AgentCommandWith(gemini, "", "pro", ""); err == nil {
+		t.Fatal("a model for an agent with no model flag was let through")
+	}
+}
+
+func TestARepositoryCanListModelsForABuiltInAgent(t *testing.T) {
+	if _, err := toolPath("claude"); err != nil {
+		t.Skip("claude is not on PATH here")
+	}
+	loc := Location{Agents: []AgentPreset{{ID: "claude", Models: []string{"opus", "claude-opus-4-1"}}}}
+	p, ok := presetFor(&loc, "claude")
+	if !ok || p.Command != "claude" || p.ModelFlag != "--model" || len(p.Models) != 2 || p.Models[1] != "claude-opus-4-1" {
+		t.Fatalf("claude = %+v", p)
 	}
 }

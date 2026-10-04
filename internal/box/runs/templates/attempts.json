@@ -7,7 +7,7 @@
     "location": {"required": true},
     "name": {"required": true, "description": "the worktrees are <name>-a1, <name>-a2, ..."},
     "prompt": {"required": true},
-    "attempts": {"required": true, "description": "a list of {agent, prompt_suffix} (or agent names)"},
+    "attempts": {"required": true, "description": "a list of {agent, model, effort, prompt_suffix} (or agent names); model and effort are the CLI's own names, empty for its default"},
     "base": {"default": ""},
     "concurrency": {"default": 0},
     "verify": {"default": {"check": "true", "max_rounds": 2}},
@@ -21,7 +21,7 @@
   },
   "steps": [
     {"id": "attempts", "kind": "map", "items": ${attempts}, "concurrency": ${concurrency}, "mode": "all", "steps": [
-      {"id": "start", "kind": "start_agent", "agent": "{{item.agent}}", "location": ${location}, "base": ${base}, "new_worktree": true,
+      {"id": "start", "kind": "start_agent", "agent": "{{item.agent}}", "model": "{{item.model}}", "effort": "{{item.effort}}", "location": ${location}, "base": ${base}, "new_worktree": true,
        "name": "{{params.name}}-a{{item.n}}", "text": "{{params.prompt}} {{item.prompt_suffix}}"},
       {"id": "work", "kind": "wait", "timeout": ${timeout}},
       {"id": "verify", "kind": "loop", "when": "always", "max": ${verify.max_rounds}, "until": "steps.check.exit_code == 0", "steps": [

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -20,15 +21,33 @@ type AgentPreset struct {
 	Command string `json:"command"`
 	// PromptFlag passes a first prompt; empty means it is the last argument.
 	PromptFlag string `json:"prompt_flag,omitempty"`
+	// ModelFlag passes a model ("--model"); empty means berth offers no
+	// model choice for this agent.
+	ModelFlag string `json:"model_flag,omitempty"`
+	// EffortFlag passes an effort: a flag ("--effort"), or a word ending in
+	// "=" that takes the value with no space ("-c model_reasoning_effort=").
+	EffortFlag string `json:"effort_flag,omitempty"`
+	// Models and Efforts are what the app offers, as the CLI's own names
+	// (aliases where it has them, so the list does not go stale). Leaving one
+	// out means the CLI's default. A repository's .berth/config.json can set
+	// them for a built-in agent by giving its id and no command.
+	Models  []string `json:"models,omitempty"`
+	Efforts []string `json:"efforts,omitempty"`
 }
 
 // builtinAgents are the agent CLIs berth knows how to start, by binary.
+// The model and effort flags are each CLI's own, from its --help: Claude
+// Code's --model takes aliases (opus, sonnet, haiku) and --effort low to max;
+// Codex takes -m/--model and its reasoning effort as the config key
+// model_reasoning_effort; OpenCode and Cursor Agent take --model.
 var builtinAgents = []AgentPreset{
-	{ID: "claude", Name: "Claude Code", Command: "claude"},
-	{ID: "codex", Name: "Codex", Command: "codex"},
-	{ID: "opencode", Name: "OpenCode", Command: "opencode", PromptFlag: "--prompt"},
+	{ID: "claude", Name: "Claude Code", Command: "claude", ModelFlag: "--model", EffortFlag: "--effort",
+		Models: []string{"opus", "sonnet", "haiku"}, Efforts: []string{"low", "medium", "high", "xhigh", "max"}},
+	{ID: "codex", Name: "Codex", Command: "codex", ModelFlag: "--model", EffortFlag: "-c model_reasoning_effort=",
+		Efforts: []string{"minimal", "low", "medium", "high"}},
+	{ID: "opencode", Name: "OpenCode", Command: "opencode", PromptFlag: "--prompt", ModelFlag: "--model"},
 	{ID: "gemini", Name: "Gemini CLI", Command: "gemini", PromptFlag: "-i"},
-	{ID: "cursor", Name: "Cursor Agent", Command: "cursor-agent"},
+	{ID: "cursor", Name: "Cursor Agent", Command: "cursor-agent", ModelFlag: "--model"},
 }
 
 // Presets are the built-in agents this box has, then the location's own from
@@ -46,11 +65,23 @@ func Presets(loc *Location) []AgentPreset {
 	for _, own := range loc.Agents {
 		replaced := false
 		for i := range out {
-			if out[i].ID == own.ID {
-				out[i], replaced = own, true
+			if out[i].ID != own.ID {
+				continue
 			}
+			replaced = true
+			if own.Command == "" {
+				// Only its lists: the built-in's command and flags stay.
+				if own.Models != nil {
+					out[i].Models = own.Models
+				}
+				if own.Efforts != nil {
+					out[i].Efforts = own.Efforts
+				}
+				continue
+			}
+			out[i] = own
 		}
-		if !replaced {
+		if !replaced && own.Command != "" {
 			out = append(out, own)
 		}
 	}
@@ -75,13 +106,48 @@ func presetFor(loc *Location, id string) (AgentPreset, bool) {
 
 // AgentCommand is the command line that starts p with a first prompt.
 func AgentCommand(p AgentPreset, prompt string) string {
+	cmd, _ := AgentCommandWith(p, prompt, "", "")
+	return cmd
+}
+
+// modelWord is what a model or effort may be: a CLI's name for one, never
+// anything a shell would read as more than one word.
+var modelWord = regexp.MustCompile(`^[A-Za-z0-9._:/-]+$`)
+
+// AgentCommandWith is the command line that starts p with a first prompt, a
+// model and an effort; empty means the CLI's default. A value that is not a
+// plain name, or one the agent has no flag for, is refused.
+func AgentCommandWith(p AgentPreset, prompt, model, effort string) (string, error) {
+	cmd := p.Command
+	if model != "" {
+		if !modelWord.MatchString(model) || strings.HasPrefix(model, "-") {
+			return "", badRequest("%q is not a model name", model)
+		}
+		if p.ModelFlag == "" {
+			return "", badRequest("berth does not know how to pick a model for %s", p.Name)
+		}
+		cmd += " " + p.ModelFlag + " " + model
+	}
+	if effort != "" {
+		if !modelWord.MatchString(effort) || strings.HasPrefix(effort, "-") {
+			return "", badRequest("%q is not an effort level", effort)
+		}
+		if p.EffortFlag == "" {
+			return "", badRequest("berth does not know how to set the effort for %s", p.Name)
+		}
+		if strings.HasSuffix(p.EffortFlag, "=") {
+			cmd += " " + p.EffortFlag + effort
+		} else {
+			cmd += " " + p.EffortFlag + " " + effort
+		}
+	}
 	if prompt == "" {
-		return p.Command
+		return cmd, nil
 	}
 	if p.PromptFlag != "" {
-		return p.Command + " " + p.PromptFlag + " " + shellQuote(prompt)
+		return cmd + " " + p.PromptFlag + " " + shellQuote(prompt), nil
 	}
-	return p.Command + " " + shellQuote(prompt)
+	return cmd + " " + shellQuote(prompt), nil
 }
 
 func shellQuote(s string) string {
@@ -168,6 +234,10 @@ type TaskRequest struct {
 	Agent   string `json:"agent,omitempty"`
 	Command string `json:"command,omitempty"`
 	Prompt  string `json:"prompt,omitempty"`
+	// Model and Effort pick the agent's model and effort, by the CLI's own
+	// names (see AgentPreset); empty is the CLI's default.
+	Model  string `json:"model,omitempty"`
+	Effort string `json:"effort,omitempty"`
 	// FromSession names the session handing this work off, if any.
 	FromSession string `json:"from_session,omitempty"`
 	// Open asks the app to show the new session: "split" or "tab".
@@ -198,7 +268,11 @@ func (b *Box) addTask(w http.ResponseWriter, r *http.Request) error {
 		if !ok {
 			return badRequest("unknown agent %q", req.Agent)
 		}
-		command = AgentCommand(p, req.Prompt)
+		if command, err = AgentCommandWith(p, req.Prompt, req.Model, req.Effort); err != nil {
+			return err
+		}
+	} else if req.Model != "" || req.Effort != "" {
+		return badRequest("a model or an effort needs an agent, not a command")
 	}
 	data := map[string]any{"location": req.Location, "name": req.Name, "branch": req.Branch, "base": req.Base, "agent": req.Agent, "command": command}
 	if err := b.before(r, "task.create", data); err != nil {

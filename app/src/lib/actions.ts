@@ -23,8 +23,14 @@ export function agentPresets(box: string, loc?: Location | string): AgentPreset[
   const data = useStore.getState().boxes[box];
   const l = typeof loc === "string" ? data?.locations?.find((x) => x.name === loc) : loc;
   const fromBox = data?.info?.agents;
-  const all = [...(l?.agents ?? []), ...(fromBox?.length ? fromBox : DEFAULT_AGENTS.slice(0, 2))];
-  return all.filter((p, i) => p.command && all.findIndex((q) => q.id === p.id) === i);
+  const own = l?.agents ?? [];
+  // An entry with only an id and lists gives a box's agent other models.
+  const lists = (p: AgentPreset) => {
+    const o = own.find((x) => x.id === p.id && !x.command);
+    return o ? { ...p, models: o.models ?? p.models, efforts: o.efforts ?? p.efforts } : p;
+  };
+  const all = [...own, ...(fromBox?.length ? fromBox : DEFAULT_AGENTS.slice(0, 2))].filter((p) => p.command).map(lists);
+  return all.filter((p, i) => all.findIndex((q) => q.id === p.id) === i);
 }
 
 // worktreeRef is how the box API names a worktree: "loc" for the
@@ -51,7 +57,8 @@ function place(content: PaneContent, target: Target): { key: string; tab: string
 
 // startSession runs a command (an agent, or a shell when empty) in the
 // current worktree and shows it in a new tab, a split, or an existing pane.
-export async function startSession(command: string, target: Target = { kind: "tab" }, label = command || "Terminal") {
+// It resolves to the new session's name, or undefined when it did not start.
+export async function startSession(command: string, target: Target = { kind: "tab" }, label = command || "Terminal"): Promise<string | undefined> {
   const ws = currentSpace();
   const client = useStore.getState().client;
   if (!ws || !client) return;
@@ -62,6 +69,7 @@ export async function startSession(command: string, target: Target = { kind: "ta
     setPaneContent(at.key, at.tab, at.pane, { kind: "terminal", box: ws.ref.box, session: s.name });
     scheduleRefresh(ws.ref.box, ["sessions"]);
     if (command) void offerAgentHooks(ws.ref.box, command);
+    return s.name;
   } catch (err) {
     setPaneContent(at.key, at.tab, at.pane, { kind: "error", message: errorMessage(err) });
   }

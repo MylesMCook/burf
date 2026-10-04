@@ -387,7 +387,10 @@ func (h *runHost) startAgent(ctx context.Context, x *runs.StepCtx) runs.Result {
 			applyWIP(dir, x.Vars["handoff.wip"])
 		}
 	}
-	command := AgentCommand(p, prompt)
+	command, err := AgentCommandWith(p, prompt, runs.ExpandText(s.Model, x.Vars), runs.ExpandText(s.Effort, x.Vars))
+	if err != nil {
+		return fail(err)
+	}
 	native := ""
 	if s.Native && s.Handoff {
 		if cmd, how := nativeResume(p, agent, x.Vars, dir, prompt); cmd != "" {

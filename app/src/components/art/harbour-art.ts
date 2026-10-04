@@ -15,6 +15,10 @@ export type HarbourLight = "dawn" | "day" | "dusk" | "night";
 
 export const HARBOUR: Record<HarbourLight, string> = { dawn, day, dusk, night };
 
+// How far each light is muted toward the page in a DitherBand: the night
+// most, so the stars and the moon's path stay calm.
+export const HARBOUR_MUTE: Record<HarbourLight, number> = { dawn: 0.06, day: 0.04, dusk: 0.08, night: 0.3 };
+
 function byClock(d = new Date()): HarbourLight {
   const h = d.getHours();
   if (h >= 5 && h < 8) return "dawn";

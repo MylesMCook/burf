@@ -3,7 +3,7 @@ import { useMemo } from "react";
 
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
 import { DitherBand } from "@/components/art/dither-band";
-import { HARBOUR, useHarbourLight } from "@/components/art/harbour-art";
+import { HARBOUR, HARBOUR_MUTE, useHarbourLight } from "@/components/art/harbour-art";
 import { TaskComposer, type TaskDraft } from "@/components/conversation/task-composer";
 import { openAttempts } from "@/components/orchestrate/attempts-dialog";
 import { Badge } from "@/components/ui/badge";
@@ -12,12 +12,10 @@ import { Card } from "@/components/ui/card";
 import { toastManager } from "@/components/ui/toast";
 import { type SessionEntry, useAllSessions } from "@/hooks/use-agent-counts";
 import { isMock } from "@/hooks/use-berth-connection";
-import { agentPresets } from "@/lib/actions";
 import { boxApi } from "@/lib/api";
 import { agentLabel, agentOf, worktreeOf } from "@/lib/derive";
 import { ago, errorMessage } from "@/lib/format";
 import { playTurn } from "@/lib/mock-conversation";
-import { send } from "@/lib/orchestrate";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { focusSession } from "@/lib/workspaces";
@@ -38,27 +36,23 @@ const slug = (s: string) =>
     .join("-")
     .slice(0, 32) || "task";
 
-// startTask starts what the composer gathered: a task in a new worktree, an
-// agent in the main checkout with the prompt typed once it is ready, or the
-// attempts template for "Try 3 ways", which asks for its check first.
+// startTask starts what the composer gathered: a task in a new worktree or
+// an agent in the main checkout, on the model and effort picked; several
+// picks open the attempts template, which asks for its check first.
 export async function startTask(d: TaskDraft) {
-  if (d.attempts > 1) {
-    openAttempts({ box: d.box, location: d.location, prompt: d.text });
+  if (d.picks.length > 1) {
+    openAttempts({ box: d.box, location: d.location, prompt: d.text, agents: d.picks.map((p) => ({ agent: p.agent, model: p.model || undefined, effort: p.effort || undefined })) });
     return;
   }
   const client = useStore.getState().client;
-  if (!client) return;
+  const pick = d.picks[0];
+  if (!client || !pick) return;
+  const how = { agent: pick.agent, prompt: d.text, model: pick.model || undefined, effort: pick.effort || undefined };
   try {
-    let session: string;
-    if (d.where === "new") {
-      const res = await boxApi.createTask(client, d.box, { location: d.location, name: slug(d.text), agent: d.agent, prompt: d.text });
-      session = res.session.name;
-    } else {
-      const preset = agentPresets(d.box, d.location).find((p) => p.id === d.agent);
-      const s = await boxApi.startSession(client, d.box, { location: d.location, command: preset?.command });
-      session = s.name;
-      if (!isMock()) await send(d.box, session, d.text, { when: "idle" });
-    }
+    const session =
+      d.where === "new"
+        ? (await boxApi.createTask(client, d.box, { location: d.location, name: slug(d.text), ...how })).session.name
+        : (await boxApi.startSession(client, d.box, { location: d.location, ...how })).name;
     // The demo plays a scripted turn; it starts before the pane opens, so
     // the pane finds the conversation already begun.
     if (isMock()) void playTurn(d.box, session, d.text);
@@ -75,7 +69,7 @@ export function HomeView() {
     <div className="absolute inset-0 overflow-y-auto bg-background">
       <div className="relative min-h-full">
         <div aria-hidden className="absolute inset-x-0 top-0" style={{ height: BAND }}>
-          <DitherBand src={HARBOUR[light]} position={0.42} fade={0.5} levels={6} className="size-full" />
+          <DitherBand src={HARBOUR[light]} position={0.42} fade={0.45} mute={HARBOUR_MUTE[light]} className="size-full" />
         </div>
         <div className="relative mx-auto flex w-full max-w-[640px] flex-col items-center px-6 pb-12" style={{ paddingTop: `calc(${BAND} - 84px)` }}>
           <h1 className="mb-4 text-balance text-center font-heading font-semibold text-2xl tracking-tight [text-shadow:0_0_6px_var(--background),0_0_16px_var(--background)]">What should your agents work on?</h1>

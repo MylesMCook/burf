@@ -122,6 +122,30 @@ built-in one with the same `id` (`claude`, `codex`, `opencode`, `gemini`,
 `cursor`). A first prompt goes at the end of `command`, or after
 `prompt_flag` if the agent needs one.
 
+### Models and effort
+
+A task, a session or an attempt can pick its agent's `model` and `effort`
+(`berth task … --agent claude` through the API, or the app's agent picker).
+Berth passes them with each CLI's own flags, checked against its `--help`:
+
+| Agent | Model | Effort | Models offered |
+|---|---|---|---|
+| `claude` | `--model` | `--effort` (low, medium, high, xhigh, max) | `opus`, `sonnet`, `haiku` (Claude Code's aliases for the latest of each) |
+| `codex` | `--model` | `-c model_reasoning_effort=` (minimal, low, medium, high) | none: Codex's default |
+| `opencode`, `cursor` | `--model` | none | none |
+
+Unset means the CLI's default. A value must be a plain name (letters,
+digits, `.` `_` `:` `/` `-`); anything else is refused, so nothing reaches a
+shell as more than one word. To offer other models, list them for the
+built-in agent with only its `id`; its command and flags stay:
+
+```json
+{ "agents": [ { "id": "codex", "models": ["gpt-5-codex", "gpt-5"] } ] }
+```
+
+The box's own config for the repository (`berth location config`) can do the
+same, for models only that box has.
+
 ## Hooks and flows
 
 - **Hooks** fire only for this repository's events, inside the worktree the

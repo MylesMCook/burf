@@ -222,6 +222,14 @@ export interface AgentPreset {
   command: string;
   // How the agent takes a starting prompt, when it needs a flag for it.
   prompt_flag?: string;
+  // How it takes a model and an effort, when berth knows. A preset without
+  // one offers no choice of it.
+  model_flag?: string;
+  effort_flag?: string;
+  // The models and efforts to offer, by the CLI's own names (aliases where
+  // it has them). Leaving one out means the CLI's default.
+  models?: string[];
+  efforts?: string[];
 }
 
 export interface BoxInfo {
@@ -271,6 +279,10 @@ export interface TaskRequest {
   agent?: string;
   command?: string;
   prompt?: string;
+  // The agent's model and effort, by the CLI's own names (an agent's
+  // `models` and `efforts`); unset is the CLI's default. Only with `agent`.
+  model?: string;
+  effort?: string;
   // Asks the app to show the new agent: as a tab of its worktree when the
   // person is looking at it, otherwise as a toast that opens it.
   open?: "split" | "tab";

@@ -2,7 +2,16 @@ import { ArrowUpRightIcon, CodeXmlIcon, GlobeIcon, SquareTerminalIcon } from "lu
 import { useEffect, useRef, useState } from "react";
 
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
+import { DitherBand } from "@/components/art/dither-band";
+import { HARBOUR, HARBOUR_MUTE, useHarbourLight } from "@/components/art/harbour-art";
 import { Scene } from "@/components/art/scenes";
+import { TaskComposer, type TaskDraft } from "@/components/conversation/task-composer";
+import { openAttempts } from "@/components/orchestrate/attempts-dialog";
+import { isMock } from "@/hooks/use-berth-connection";
+import { playTurn } from "@/lib/mock-conversation";
+import { boxApi } from "@/lib/api";
+import { errorMessage } from "@/lib/format";
+import { usePrefs } from "@/lib/prefs";
 import { openEditor } from "@/components/editors/open";
 import { toastManager } from "@/components/ui/toast";
 import { Tip } from "@/components/tip";
@@ -14,7 +23,7 @@ import { agentLabel, agentOf, type SessionState, sessionState } from "@/lib/deri
 import { ago } from "@/lib/format";
 import { NONE, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { openSession, useWorkspaces, type WorktreeRef, wsKey } from "@/lib/workspaces";
+import { focusSession, openSession, useWorkspaces, type WorktreeRef, wsKey } from "@/lib/workspaces";
 
 const stateWords: Record<SessionState, string> = { waiting: "waiting for you", running: "working", finished: "finished", ready: "ready", idle: "open", exited: "exited" };
 
@@ -50,6 +59,28 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
   const [all, setAll] = useState(false);
   const list = useRef<HTMLDivElement>(null);
   const name = ref.main ? ref.location : ref.worktree;
+  const labs = usePrefs((p) => p.labs);
+  const light = useHarbourLight();
+
+  // Labs: start an agent here on a task typed in the composer.
+  const startHere = async (d: TaskDraft) => {
+    if (d.picks.length > 1) {
+      openAttempts({ box: ref.box, location: ref.location, prompt: d.text, base: branch, agents: d.picks.map((p) => ({ agent: p.agent, model: p.model || undefined, effort: p.effort || undefined })) });
+      return;
+    }
+    const pick = d.picks[0];
+    const client = useStore.getState().client;
+    if (!pick || !client) return;
+    try {
+      const s = await boxApi.startSession(client, ref.box, { location: ref.main ? ref.location : `${ref.location}/${ref.worktree}`, agent: pick.agent, prompt: d.text, model: pick.model || undefined, effort: pick.effort || undefined });
+      if (isMock()) void playTurn(ref.box, s.name, d.text);
+      await useStore.getState().refreshBox(ref.box, ["sessions"]);
+      await focusSession(ref.box, s.name);
+    } catch (err) {
+      toastManager.add({ type: "error", title: "Couldn't start it", description: errorMessage(err) });
+    }
+  };
+
 
   const rows: Row[] = [
     ...agentPresets(ref.box, ref.location).map((p) => ({
@@ -83,6 +114,7 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
   // Take the keyboard on arrival, unless a dialog or a field has it. The
   // sidebar row that opened the worktree gives it up.
   useEffect(() => {
+    if (labs) return;
     const t = window.setTimeout(() => {
       const a = document.activeElement as HTMLElement | null;
       const typing = !!a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
@@ -90,7 +122,7 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
       list.current?.querySelector<HTMLElement>("[data-row]")?.focus();
     }, 50);
     return () => window.clearTimeout(t);
-  }, [ref.path]);
+  }, [ref.path, labs]);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
@@ -103,14 +135,17 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
 
   return (
     <div className="absolute inset-0 overflow-y-auto bg-background">
-      <div className="flex min-h-full items-start justify-center px-6 pt-[18vh] pb-10">
+      {labs && <DitherBand src={HARBOUR[light]} position={0.45} fade={0.5} mute={HARBOUR_MUTE[light]} className="absolute inset-x-0 top-0 h-[clamp(160px,30vh,280px)]" />}
+      <div className={cn("relative flex min-h-full items-start justify-center px-6 pb-10", labs ? "pt-[clamp(120px,24vh,230px)]" : "pt-[18vh]")}>
         <div ref={list} onKeyDown={onKeyDown} className="w-full max-w-[560px]">
           {/* A boat tied up and ready: the same drawing language as a pane
               whose session ended. Fixed size, so nothing below moves. */}
-          <div aria-hidden className="mb-3 px-1">
-            <Scene name="moored" width={144} />
-          </div>
-          <header className="mb-4 px-2">
+          {!labs && (
+            <div aria-hidden className="mb-3 px-1">
+              <Scene name="moored" width={144} />
+            </div>
+          )}
+          <header className={cn("mb-4 px-2", labs && "[text-shadow:0_0_6px_var(--background),0_0_14px_var(--background)]")}>
             <h1 className="truncate font-semibold text-lg tracking-tight" title={name}>
               {name}
             </h1>
@@ -145,6 +180,11 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
             </div>
           </header>
 
+          {labs && (
+            <div className="mb-5">
+              <TaskComposer fixed box={ref.box} location={ref.location} autoFocus placeholder={`What should an agent do in ${name}?`} onSend={startHere} />
+            </div>
+          )}
           <div className="flex flex-col">
             {rows.map((r) => (
               <button
