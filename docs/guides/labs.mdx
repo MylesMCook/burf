@@ -1,0 +1,48 @@
+---
+title: Labs
+description: Early ideas in the app, off until you turn them on in Settings → Labs.
+---
+
+Settings → Labs turns on ideas that are still being tried. They are off by
+default, so the app stays as it is for anyone who does not opt in, and they
+may change or go away.
+
+## Harbour home
+
+With no worktree open, the workspace shows the harbour: a painting of the
+harbour dissolving into the page, in a halftone grain, at night in a dark
+theme. Under it is one composer: what should your agents work on, on which
+box and project, in a new worktree or the main checkout. Below that are your
+agents, who needs you first, then who is working, then what just finished.
+An empty worktree gets a smaller harbour and a composer that starts an agent
+right there.
+
+## Model picker
+
+The composer's agent picker chooses the agent and, where its CLI takes
+them, the model and effort (Claude Code's `opus`, `sonnet` and `haiku`, and
+its effort levels; Codex's reasoning effort). Default is the CLI's own
+default. Pick one and it is a task; pick several agents, one model against
+another, or ×2 of each, and it starts [attempts](/guides/runs#attempts),
+each with its own model. Which models are offered is set per agent: see
+[models and effort](/guides/project-config#models-and-effort).
+
+## Conversation view
+
+Agent panes get a Terminal | Conversation switch. The conversation is the
+agent's own transcript as a calm list: what you asked, its replies, tool
+calls folded into groups ("Read 5 files"), edits with line counts, and the
+helpers it sent out, which also show as **Crew** in the floating panel. A
+question shows as buttons for its options; answering types the option into
+the agent. Berth reads Claude Code's and Codex's transcripts on the box
+(`GET /v1/sessions/{name}/transcript`); for other agents, or on an older
+box, the pane says so and offers the terminal. Settings → Labs chooses
+which view agent panes open in.
+
+## Zen
+
+⌘. puts everything but the agents away: no sidebar, tab strip or status
+bar, and agents open as conversations. One small switcher at the top left
+shows where you are and lists your agents (who needs you first) and recent
+worktrees, and the harbour home; ⌘K searches everything. ⌘. again brings it
+all back, and the app remembers which you left it in.
