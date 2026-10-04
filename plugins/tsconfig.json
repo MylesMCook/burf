@@ -14,7 +14,10 @@
       "@berth/plugin": ["../packages/plugin-sdk/src/index.ts"],
       "@berth/plugin/ui": ["../packages/plugin-sdk/src/ui.ts"],
       "react": ["../app/node_modules/@types/react"],
-      "react/jsx-runtime": ["../app/node_modules/@types/react/jsx-runtime"]
+      "react/jsx-runtime": ["../app/node_modules/@types/react/jsx-runtime"],
+      "@pierre/diffs": ["../app/node_modules/@pierre/diffs/dist/index.d.ts"],
+      "@pierre/diffs/react": ["../app/node_modules/@pierre/diffs/dist/react/index.d.ts"],
+      "@pierre/diffs/worker/worker.js": ["../app/node_modules/@pierre/diffs/dist/worker/worker.d.ts"]
     }
   },
   "include": ["*/src/**/*"],

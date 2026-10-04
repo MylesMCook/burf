@@ -7,6 +7,7 @@ of the SDK and is not built in.
 | Plugin | Adds | Why it's built in |
 | --- | --- | --- |
 | [git-changes](git-changes) | Worktree panel "Changes" | See what an agent changed before you trust it: files, diffs, commit and push. |
+| [diff](diff) | Worktree panel "Diff" | The branch's whole diff in one view (split or unified, vs the default branch or uncommitted), drawn with [@pierre/diffs](https://diffs.com). |
 | [pull-request](pull-request) | Worktree panel "Pull request" | The branch's PR, its checks, reviews and comments, or open one. |
 | [dev-servers](dev-servers) | Screen, sidebar item, status bar item | Every dev server on every box, one click from a browser tab. |
 | [box-monitor](box-monitor) | Screen, sidebar item | Memory, disk and load with an hour of history, and a warning before a box runs out. |
@@ -32,5 +33,10 @@ of the SDK and is not built in.
 - Built-ins are styled with the app's Tailwind classes: `app/src/index.css`
   scans this folder. A plugin in `~/.berth/plugins` should stick to classes
   the app already uses, or inline styles.
+- A built-in can keep heavy code out of its main module: each file in its
+  `src/lazy/` is bundled, code-split, into `<id>/lazy/` (React and the SDK
+  resolve to the app's shims), for the plugin to `import()` by URL when it
+  needs it, and a worker to start from. Packages come from `app/`'s
+  `node_modules`. Diff loads `@pierre/diffs` this way.
 - Type-check them all with `pnpm -C app typecheck:plugins` (uses
   `plugins/tsconfig.json`).

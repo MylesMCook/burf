@@ -9,7 +9,7 @@ function. Plugin components are ordinary React components in the app's own
 tree, using the app's own UI kit, so they look like the rest of Berth.
 
 Berth's built-ins are written the same way, against the same SDK: Git
-changes, Pull request, Dev servers, Box monitor, Activity, Notes, Issues and
+changes, Diff, Pull request, Dev servers, Box monitor, Activity, Notes, Issues and
 Prompt library (see
 [`plugins/`](https://github.com/sean-brydon/berthd/tree/main/plugins)). A
 plugin of yours with the same id replaces a built-in.
@@ -192,6 +192,29 @@ call is in [the plugin SDK reference](/reference/plugin-sdk).
   rows with `h-row` or `py-row-pad` so they follow the Density setting.
 - Stick to Tailwind classes the app already uses, or inline styles: a user
   plugin's classes are not compiled into the app's stylesheet.
+
+## Built-in: the Diff panel
+
+**Diff** (in a workspace's **+** menu, under Panels, or "Show this branch's
+diff" in ⌘K) shows the current branch's whole diff in one scrolling view,
+drawn with [`@pierre/diffs`](https://diffs.com):
+
+- **Branch** (the default) is what the branch's commits changed since it left
+  the default branch: `origin/HEAD`, else `origin/main`, `main` or `master`.
+  **Uncommitted** is the working tree against `HEAD`, new files included.
+  **All** is both: the working tree against where the branch left.
+- A file list with each file's added and removed lines; click one to jump to
+  it. **Split** or **Unified**, line wrapping and the file list are
+  remembered.
+- Lockfiles, generated files and very large diffs start folded; binary files
+  are named but not shown. Click a file's header to fold or unfold it.
+- The diff is read with `git` on the box and stops at 4 MB, which the panel
+  says. Only the files on screen are drawn, and highlighting runs in a
+  worker; the library loads the first time a Diff panel opens.
+
+A built-in can keep heavy code out of its main module the same way: each
+file in its `src/lazy/` is built, code-split, to `<id>/lazy/`, for the plugin
+to `import()` by URL when it needs it (see `app/scripts/build-plugins.mjs`).
 
 ## Example: a worktree panel
 
