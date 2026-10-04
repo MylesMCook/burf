@@ -351,7 +351,9 @@ func (p *Phone) Handler(b *Box, listenAddr string) http.Handler {
 			writeError(w, statusFor(runErr(err)), err.Error())
 			return
 		}
-		// The phone shows a run's outline: steps' outputs stay on the box.
+		// The phone shows a run's outline: steps' outputs, its variables,
+		// parameters (prompts) and trigger stay on the box.
+		run.Vars, run.Params, run.Trigger, run.Flow = nil, nil, nil, nil
 		var strip func([]runs.StepRun)
 		strip = func(steps []runs.StepRun) {
 			for i := range steps {

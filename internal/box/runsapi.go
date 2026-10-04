@@ -87,6 +87,12 @@ func (b *Box) startRun(w http.ResponseWriter, r *http.Request) error {
 		if err := b.before(r, "run.start", map[string]any{"flow": sf.Flow.ID, "scope": sf.Scope}); err != nil {
 			return err
 		}
+		// A repository's flow runs only in that repository's worktrees.
+		if name, ok := strings.CutPrefix(sf.Scope, "repo:"); ok {
+			if loc, _, scoped := b.eventScope(r.Context(), req.Data); scoped && loc.Name != name {
+				return badRequest("flow %s belongs to %s, not %s", sf.Flow.ID, name, loc.Name)
+			}
+		}
 		e := eventAs(b, origin(r), triggerType(sf.Flow.Trigger), req.Data)
 		s, err := b.startFlowRun(r.Context(), sf, e, flowStart{idem: idem})
 		if err != nil {
@@ -272,8 +278,9 @@ func (b *Box) decide(r *http.Request, eng *runs.Engine, id, step string, req Gat
 	if len(req.Note) > 2000 {
 		req.Note = req.Note[:2000]
 	}
-	// before:run.approve decides who may approve (and reject).
-	if err := b.before(r, "run.approve", map[string]any{"run": id, "step": step, "approve": req.Approve}); err != nil {
+	// before:run.approve decides who may approve (and reject); by says
+	// who asks: laptop:<name>, phone, or a tool on the box.
+	if err := b.before(r, "run.approve", map[string]any{"run": id, "step": step, "approve": req.Approve, "by": by}); err != nil {
 		return err
 	}
 	if err := eng.Decide(id, step, runs.Decision{Approve: req.Approve, Note: req.Note, Pick: req.Pick, By: by}); err != nil {

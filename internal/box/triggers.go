@@ -38,6 +38,30 @@ import (
 type TriggerSecrets struct {
 	Path string
 	mu   sync.Mutex
+	// seen holds signatures used in the last 5 minutes: a replayed request
+	// is refused even without a delivery ID.
+	seen map[string]time.Time
+}
+
+// fresh records a signature and reports whether it is new.
+func (t *TriggerSecrets) fresh(sig string, now time.Time) bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if t.seen == nil {
+		t.seen = map[string]time.Time{}
+	}
+	for k, at := range t.seen {
+		if now.Sub(at) > 5*time.Minute {
+			delete(t.seen, k)
+		}
+	}
+	if _, ok := t.seen[sig]; ok {
+		return false
+	}
+	if len(t.seen) < 10000 {
+		t.seen[sig] = now
+	}
+	return true
 }
 
 func (t *TriggerSecrets) load() map[string]string {
@@ -140,6 +164,13 @@ func (b *Box) handleTrigger(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusUnauthorized, "bad or missing signature")
 		return
 	}
+	idem := ""
+	if d := r.Header.Get("X-Berth-Delivery"); d != "" {
+		idem = "webhook:" + sf.Scope + "/" + sf.Flow.ID + ":" + d
+	} else if !b.Triggers.fresh(r.Header.Get("X-Berth-Signature"), time.Now()) {
+		fail(http.StatusConflict, "this signed request was already used")
+		return
+	}
 	var data map[string]any
 	if len(strings.TrimSpace(string(body))) > 0 {
 		if err := json.Unmarshal(body, &data); err != nil {
@@ -166,10 +197,6 @@ func (b *Box) handleTrigger(w http.ResponseWriter, r *http.Request) {
 			data["path"], data["location"], data["name"] = tg.Wt.Path, tg.Loc.Name, tg.Wt.Name
 			break
 		}
-	}
-	idem := ""
-	if d := r.Header.Get("X-Berth-Delivery"); d != "" {
-		idem = "webhook:" + sf.Scope + "/" + sf.Flow.ID + ":" + d
 	}
 	e := events.Event{Type: "webhook.received", Box: b.Name, Origin: "webhook", Time: time.Now(), Data: data}
 	s, err := b.startFlowRun(r.Context(), sf, e, flowStart{idem: idem})

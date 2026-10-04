@@ -592,13 +592,26 @@ const untrustedPromptLimit = 4000
 // untrustedLabeled is vars for a prompt: text from GitHub is labeled as
 // someone else's words, to be treated as data, and capped.
 func untrustedLabeled(vars map[string]string) map[string]string {
-	body, ok := vars["event.body"]
-	if !ok || (vars["event.origin"] != "github" && vars["event.origin"] != "webhook") {
+	origin := vars["event.origin"]
+	if origin != "github" && origin != "webhook" {
 		return vars
 	}
 	out := make(map[string]string, len(vars))
 	for k, v := range vars {
+		// Other fields from outside (a title, a branch, any posted field)
+		// reach prompts as one short line: never a second page of
+		// instructions.
+		if strings.HasPrefix(k, "event.") && k != "event.body" && k != "event.items" {
+			v = strings.Join(strings.Fields(v), " ")
+			if len(v) > 300 {
+				v = v[:300] + "…"
+			}
+		}
 		out[k] = v
+	}
+	body, ok := vars["event.body"]
+	if !ok {
+		return out
 	}
 	if len(body) > untrustedPromptLimit {
 		body = body[:untrustedPromptLimit] + "…"
