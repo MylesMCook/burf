@@ -76,6 +76,10 @@ export interface Location {
   // without one, "trusted", or "untrusted" / "changed" while it waits for
   // someone to trust it (only its port count applies until then).
   repo_trust?: "none" | "trusted" | "untrusted" | "changed";
+  // How to tell the work here is right: the repo config's "check", else one
+  // found in the repository (package.json, go.mod, Cargo.toml, a Makefile).
+  check?: string;
+  check_from?: "config" | "detected";
 }
 
 // What an agent's hooks said last: "idle" is an agent that is open but has

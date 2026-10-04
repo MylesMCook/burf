@@ -63,6 +63,12 @@ The box's API is `POST /v1/locations/{name}/config/trust` with
 
 - `setup` runs right after a worktree is created, in it, through a login
   shell (up to 30 minutes, with its output in a log on the box).
+- `check` is how to tell the work is right (`"pnpm test && pnpm lint"`):
+  Try N ways and loops verify with it unless you give another. Without one,
+  Berth suggests what the repository suggests: `package.json`'s `test`
+  script run by the package manager its lockfile names, `go test ./...`,
+  `cargo test`, or a Makefile's `test` target. It is only a default; nothing
+  runs it until you start a run with it.
 - `archive` runs before a worktree is removed, after its services stop; if it
   fails, the worktree stays.
 - Both also get Orca's names (`ORCA_ROOT_PATH`, `ORCA_WORKTREE_PATH`,

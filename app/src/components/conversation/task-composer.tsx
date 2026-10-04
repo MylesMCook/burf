@@ -74,6 +74,15 @@ const lastBoxKey = (project: string) => `berth.newWorktree.box.${project}`;
 const picksKey = (box: string, loc: string) => `berth.composer.picks.${box}/${loc}`;
 const checkKey = (box: string, loc: string) => `berth.loop.check.${box}/${loc.split("/")[0]}`;
 
+// defaultCheck is the check last used for a project, else the one its box
+// knows: the repo config's "check", or how the repository tests (package.json,
+// go.mod, Cargo.toml, a Makefile). Empty when there is none: it is optional.
+export function defaultCheck(box: string, loc: string): string {
+  const name = loc.split("/")[0];
+  const known = useStore.getState().boxes[box]?.locations?.find((l) => l.name === name)?.check ?? "";
+  return load(checkKey(box, name), known);
+}
+
 export function TaskComposer(props: TaskComposerProps) {
   const draft = props.draft ?? EMPTY;
   const [mode, setMode] = useState<"start" | "send">(draft.mode ?? "start");
@@ -244,12 +253,17 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
 
   // Try N ways: the check, the judge and what the pick gets.
   const [att, setAtt] = useState<AttemptValues>(() => ({
-    check: load(checkKey(box, locName), "pnpm test"),
+    check: defaultCheck(box, locName),
     judge: presets.find((p) => p.id === "claude")?.id ?? presets[0]?.id ?? "claude",
     auto: false,
     pr: true,
     extras: [],
   }));
+  // Another project, another check, until the person types their own.
+  const checkTouched = useRef(false);
+  useEffect(() => {
+    if (!checkTouched.current) setAtt((a) => ({ ...a, check: defaultCheck(box, locName) }));
+  }, [box, locName]);
   const boxesData = useStore((s) => s.boxes);
   const otherBoxes = Object.keys(boxesData).filter((b) => b !== box && boxHasRuns(b) && status?.boxes.some((x) => x.name === b && x.state === "online") && boxesData[b]?.locations?.some((l) => l.name === locName));
 
@@ -417,7 +431,10 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
           box={box}
           otherBoxes={otherBoxes}
           v={att}
-          set={(p) => setAtt((v) => ({ ...v, ...p }))}
+          set={(p) => {
+            if ("check" in p) checkTouched.current = true;
+            setAtt((v) => ({ ...v, ...p }));
+          }}
           runsHere={boxHasRuns(box)}
           names={{ name: wt.name, base: wt.base, namePlaceholder: slugOf(text).slice(0, 24) || "refunds", basePlaceholder: draft.base ?? fixed?.branch ?? location?.default_branch ?? "main", set: (p) => setWorktree(p, Object.keys(p) as (keyof WorktreeValues)[]) }}
         />
@@ -610,7 +627,7 @@ function SendBody({ draft, text, setText, tabs, dialog, autoFocus, onDone, onKin
     wait: load("berth.broadcast.wait", true),
     queueOffline: true,
     loop: !!draft.loop,
-    check: draft.targets?.[0] ? load(checkKey(draft.targets[0].box, sessionLocationSafe(draft.targets[0].box, draft.targets[0].session)), "pnpm test") : "pnpm test",
+    check: draft.targets?.[0] ? defaultCheck(draft.targets[0].box, sessionLocationSafe(draft.targets[0].box, draft.targets[0].session)) : "",
     rounds: 5,
   }));
   const [optionsOpen, setOptionsOpen] = useState(!!dialog);

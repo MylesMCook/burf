@@ -217,8 +217,8 @@ export function AttemptsOptions({
         ))}
       </div>
       <div className="grid grid-cols-[1fr_10rem] gap-2">
-        <Labelled label="Check (exit 0 passes; a failure goes back once)">
-          <Input size="sm" className="font-mono" value={v.check} onChange={(e) => set({ check: e.target.value })} />
+        <Labelled label="Check, optional (exit 0 passes; a failure goes back once)">
+          <Input size="sm" className="font-mono" value={v.check} placeholder="none: the judge reads the changes" onChange={(e) => set({ check: e.target.value })} />
         </Labelled>
         <Labelled label="Judge">
           <SimpleSelect size="sm" className="min-w-0" value={v.judge} onChange={(judge) => set({ judge })} options={presets.map((p) => ({ value: p.id, label: p.name }))} />

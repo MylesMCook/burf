@@ -81,6 +81,9 @@ func merge(repo, local RepoConfig) RepoConfig {
 	if local.Archive != "" {
 		out.Archive = local.Archive
 	}
+	if local.Check != "" {
+		out.Check = local.Check
+	}
 	if local.Ports != 0 {
 		out.Ports = local.Ports
 	}

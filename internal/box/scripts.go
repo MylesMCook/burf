@@ -32,6 +32,9 @@ const RepoConfigFile = ".berth/config.json"
 type RepoConfig struct {
 	Setup   string `json:"setup,omitempty"`
 	Archive string `json:"archive,omitempty"`
+	// Check is the command that says the work is right ("pnpm test && pnpm
+	// lint"): what Try N ways and loops verify with unless told otherwise.
+	Check string `json:"check,omitempty"`
 	// Agents adds ways to start agents here, or replaces built-ins by ID,
 	// e.g. {"id": "claude", "command": "claude --model opus"}.
 	Agents []AgentPreset `json:"agents,omitempty"`

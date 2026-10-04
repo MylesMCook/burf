@@ -54,7 +54,9 @@ const locations: Record<string, Location[]> = {
       name: "shop",
       path: "/home/me/work/shop",
       repo: true,
-      scripts: { setup: "pnpm install && pnpm db:migrate", from: "repo" },
+      scripts: { setup: "pnpm install && pnpm db:migrate", archive: "pnpm db:drop", from: "repo" },
+      check: "pnpm test",
+      check_from: "detected",
       remote: "git@github.com:acme/shop.git",
       slug: "acme/shop",
       default_branch: "main",
@@ -650,9 +652,20 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
     const w = l?.worktrees?.find((x) => x.name === wt);
     if (!l || !w) return Promise.reject(new Error("no worktree with that name"));
     if (wt === "checkout-fix" && !q.includes("force=1")) return Promise.reject(new Error(`git worktree remove: '${w.path}' contains modified or untracked files, use --force to delete it`));
-    l.worktrees = l.worktrees!.filter((x) => x !== w);
-    sessions[box] = (sessions[box] ?? []).filter((x) => x.dir !== w.path);
-    setTimeout(() => emit({ type: "worktree.removed", box, data: { location: loc, name: wt, path: w.path } }), 50);
+    const gone = () => {
+      l.worktrees = l.worktrees!.filter((x) => x !== w);
+      sessions[box] = (sessions[box] ?? []).filter((x) => x.dir !== w.path);
+      emit({ type: "worktree.removed", box, data: { location: loc, name: wt, path: w.path } });
+    };
+    // With an archive script the box runs it first, in the background.
+    if (l.scripts?.archive) {
+      setTimeout(() => {
+        gone();
+        emit({ type: "worktree.archive.finished", box, data: { location: loc, name: wt, path: w.path } });
+      }, 1500);
+      return delay({ removing: wt, archive: l.scripts.archive });
+    }
+    setTimeout(gone, 50);
     return delay({ removed: wt });
   }
   const rmLoc = /^locations\/([^/]+)$/.exec(path);

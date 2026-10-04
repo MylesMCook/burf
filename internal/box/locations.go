@@ -41,6 +41,10 @@ type Location struct {
 	// .berth/config.json: "none" without one, "trusted", or "untrusted" /
 	// "changed" while it waits to be trusted and only its ports apply.
 	RepoTrust string `json:"repo_trust,omitempty"`
+	// Check is how to tell the work here is right: the config's "check",
+	// else one found in the repository (CheckFrom "config" or "detected").
+	Check     string `json:"check,omitempty"`
+	CheckFrom string `json:"check_from,omitempty"`
 }
 
 type Worktree struct {
@@ -304,7 +308,13 @@ func describe(ctx context.Context, s savedLocation) Location {
 	if s.Config != nil {
 		local = *s.Config
 	}
-	loc.Agents = layered(repo, s.Kit, local).Agents
+	all := layered(repo, s.Kit, local)
+	loc.Agents = all.Agents
+	if all.Check != "" {
+		loc.Check, loc.CheckFrom = all.Check, "config"
+	} else if c := detectCheck(s.Path); c != "" {
+		loc.Check, loc.CheckFrom = c, "detected"
+	}
 	loc.Worktrees = parseWorktrees(out, s.Path)
 	return loc
 }
