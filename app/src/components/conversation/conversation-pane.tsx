@@ -91,7 +91,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
       <PaneEmpty
         scene="offline"
         title={boxStatus?.state === "connecting" ? `Connecting to ${box}…` : `${box} is ${boxWord(boxStatus?.state)}`}
-        description={`${agent ? agentLabel(agent) : "The agent"} keeps running there. This comes back by itself when ${box} is reachable again.`}
+        description={`${agent ? agentLabel(agent) : "The agent"} ${s?.exited ? "had ended before then" : "keeps running there"}. This comes back by itself when ${box} is reachable again.`}
       >
         <Button variant="outline" onClick={() => void useStore.getState().refreshAll()}>
           <RefreshCwIcon />
