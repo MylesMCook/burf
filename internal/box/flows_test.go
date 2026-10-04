@@ -64,7 +64,15 @@ func flowBox(t *testing.T, flows []Flow) (*Box, Session, Worktree) {
 	// Runs finish in the background, saving their records into the temp
 	// dirs; let them settle before those dirs are removed (cleanups run
 	// last-registered first, so this one runs before TempDir's).
-	t.Cleanup(func() { settleRuns(b) })
+	// Then stop the flows and runs themselves, so nothing writes into those
+	// dirs while they go (cancel, registered first, would run after them).
+	t.Cleanup(func() {
+		settleRuns(b)
+		cancel()
+		if eng := b.runsNow(); eng != nil {
+			eng.Wait()
+		}
+	})
 	time.Sleep(100 * time.Millisecond)
 	return b, sess, wt
 }

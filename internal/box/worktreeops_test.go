@@ -102,6 +102,9 @@ func TestPausedAgentsStopAndCarryOnWhereTheyWere(t *testing.T) {
 		t.Fatalf("pause: %+v %v", st, err)
 	}
 	screen := func() string { s, _ := b.Sessions.Screen(ctx, "counter", 200); return strings.TrimSpace(s) }
+	// A tick printed just before the stop may reach tmux's screen a moment
+	// later, more so on a loaded machine: read the frozen screen after it.
+	time.Sleep(300 * time.Millisecond)
 	frozen := screen()
 	time.Sleep(800 * time.Millisecond)
 	if screen() != frozen {
