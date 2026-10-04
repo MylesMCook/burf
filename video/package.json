@@ -1,0 +1,18 @@
+{
+  "name": "berth-launch-video",
+  "private": true,
+  "type": "module",
+  "description": "Berth's launch video, as code: an HTML/SVG timeline stepped frame by frame in headless Chrome, cut to the music's beat grid, encoded with ffmpeg.",
+  "license": "MIT",
+  "scripts": {
+    "music": ".venv/bin/python scripts/music.py",
+    "preview": "node scripts/render.mjs --serve",
+    "stills": "node scripts/render.mjs --stills beats --format all",
+    "render": "node scripts/render.mjs --format 16x9",
+    "render:all": "node scripts/render.mjs --format all --poster",
+    "check": "for f in out/berth-launch*.mp4; do .venv/bin/python scripts/check.py $f; done"
+  },
+  "devDependencies": {
+    "playwright-core": "1.57.0"
+  }
+}
