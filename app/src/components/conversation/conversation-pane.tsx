@@ -57,7 +57,7 @@ export function ConversationPane({ box, session, visible, onShowTerminal }: { bo
     if (state === "running" && s?.state_since) out.push({ kind: "thinking", id: "live:thinking", since: new Date(s.state_since).getTime() });
     if (state === "waiting" && ask) {
       const decided = answered && answered.at === s?.state_since ? answered.key : undefined;
-      out.push({ kind: "ask", id: "live:ask", tool: ask.choices.length ? "Choice" : "Question", detail: ask.detail, choices: ask.choices, decided });
+      out.push({ kind: "ask", id: "live:ask", tool: "Question", detail: ask.detail, choices: ask.choices, decided });
     }
     return out;
   }, [mock, items, state, s?.state_since, ask, answered]);
@@ -184,7 +184,7 @@ export function ConversationPane({ box, session, visible, onShowTerminal }: { bo
               </Button>
             </div>
           ) : (
-            <Reply onSend={reply} />
+            <Reply onSend={reply} blocked={state === "waiting" && !!ask?.choices.length} />
           )}
         </div>
       </div>
@@ -192,11 +192,13 @@ export function ConversationPane({ box, session, visible, onShowTerminal }: { bo
   );
 }
 
-function Reply({ onSend }: { onSend(text: string): Promise<void> }) {
+// Reply is the box at the foot. While the agent waits at a menu, Enter there
+// would pick its highlighted option, so it waits for the answer above.
+function Reply({ onSend, blocked }: { onSend(text: string): Promise<void>; blocked?: boolean }) {
   const [text, setText] = useState("");
   const go = () => {
     const t = text.trim();
-    if (!t) return;
+    if (!t || blocked) return;
     setText("");
     onSend(t).catch((err) => toastManager.add({ type: "error", title: "Couldn't send it", description: errorMessage(err) }));
   };
@@ -213,11 +215,11 @@ function Reply({ onSend }: { onSend(text: string): Promise<void> }) {
           }
         }}
         aria-label="Reply"
-        placeholder="Reply, or ask for something else"
+        placeholder={blocked ? "Pick an answer above first" : "Reply, or ask for something else"}
         className="max-h-40"
       />
       <InputGroupAddon align="inline-end" className="self-end pb-1.5">
-        <Button size="icon-sm" aria-label="Send" disabled={!text.trim()} onClick={go}>
+        <Button size="icon-sm" aria-label="Send" disabled={!text.trim() || blocked} onClick={go}>
           <ArrowUpIcon />
         </Button>
       </InputGroupAddon>

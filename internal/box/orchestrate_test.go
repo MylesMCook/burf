@@ -89,3 +89,42 @@ func TestExecKeepsTheEndOfLongOutput(t *testing.T) {
 		t.Fatalf("len %d dropped %v", tb.Len(), tb.dropped)
 	}
 }
+
+// An answer to a menu is one key, pressed rather than pasted: agents'
+// menus ignore a bracketed paste of "2".
+func TestOneKeyAnswersArePressedNotPasted(t *testing.T) {
+	for _, k := range []string{"1", "9", "y", "N"} {
+		if !isKey(k) {
+			t.Fatalf("%q is a key", k)
+		}
+	}
+	for _, k := range []string{"", "12", "yes", " ", "\n", "-", "é"} {
+		if isKey(k) {
+			t.Fatalf("%q is not one key", k)
+		}
+	}
+	c, _ := servedBox(t)
+	repo := gitRepo(t)
+	call(t, c, "POST", "/v1/locations", "", map[string]string{"name": "cal", "path": repo}, nil)
+	// A stand-in menu: it reads one byte without a paste and prints it.
+	bin := t.TempDir()
+	fake := filepath.Join(bin, "menu")
+	os.WriteFile(fake, []byte("#!/bin/sh\nstty raw -echo\nk=$(dd bs=1 count=1 2>/dev/null)\nstty sane\necho \"picked [$k]\"\nsleep 5\n"), 0o755)
+	call(t, c, "POST", "/v1/sessions", "", map[string]string{"location": "cal", "name": "menu", "command": fake}, nil)
+	time.Sleep(300 * time.Millisecond)
+	if status := call(t, c, "POST", "/v1/sessions/menu/send", "", map[string]any{"text": "2", "enter": false}, nil); status != 200 {
+		t.Fatalf("send: %d", status)
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		var screen struct{ Screen string }
+		call(t, c, "GET", "/v1/sessions/menu/screen", "", nil, &screen)
+		if strings.Contains(screen.Screen, "picked [2]") {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("the key never arrived as one keystroke: %q", screen.Screen)
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+}

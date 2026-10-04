@@ -36,6 +36,14 @@ const slug = (s: string) =>
     .join("-")
     .slice(0, 32) || "task";
 
+// freeName is name, or name-2, -3… when the project has a worktree by it.
+function freeName(box: string, location: string, name: string): string {
+  const taken = new Set(useStore.getState().boxes[box]?.locations?.find((l) => l.name === location)?.worktrees?.map((w) => w.name));
+  let n = name;
+  for (let i = 2; taken.has(n); i++) n = `${name}-${i}`;
+  return n;
+}
+
 // startTask starts what the composer gathered: a task in a new worktree or
 // an agent in the main checkout, on the model and effort picked; several
 // picks open the attempts template, which asks for its check first.
@@ -51,7 +59,7 @@ export async function startTask(d: TaskDraft) {
   try {
     const session =
       d.where === "new"
-        ? (await boxApi.createTask(client, d.box, { location: d.location, name: slug(d.text), ...how })).session.name
+        ? (await boxApi.createTask(client, d.box, { location: d.location, name: freeName(d.box, d.location, slug(d.text)), ...how })).session.name
         : (await boxApi.startSession(client, d.box, { location: d.location, ...how })).name;
     // The demo plays a scripted turn; it starts before the pane opens, so
     // the pane finds the conversation already begun.

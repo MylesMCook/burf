@@ -26,6 +26,14 @@ func (s *Sessions) Send(ctx context.Context, name, text string, enter bool) erro
 	if _, err := s.Get(ctx, name); err != nil {
 		return err
 	}
+	if text != "" && !enter && isKey(text) {
+		// An answer to a menu (a number, y, n) is a keystroke: agents' menus
+		// ignore a pasted one.
+		if out, err := s.tmux(ctx, "send-keys", "-t", "="+name+":", "-l", text); err != nil {
+			return fmt.Errorf("tmux send-keys: %s", strings.TrimSpace(string(out)))
+		}
+		return nil
+	}
 	if text != "" {
 		buf := "berth-send-" + name
 		load := exec.CommandContext(ctx, "tmux", "-L", tmuxSocket, "-f", s.Config, "load-buffer", "-b", buf, "-")
@@ -46,6 +54,16 @@ func (s *Sessions) Send(ctx context.Context, name, text string, enter bool) erro
 		}
 	}
 	return nil
+}
+
+// isKey says whether text is one key to press rather than text to paste:
+// a single letter or digit, as a menu's answer is.
+func isKey(text string) bool {
+	if len(text) != 1 {
+		return false
+	}
+	c := text[0]
+	return c >= '0' && c <= '9' || c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z'
 }
 
 // SendRequest types a prompt into a session.

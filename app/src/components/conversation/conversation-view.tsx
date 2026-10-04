@@ -99,7 +99,7 @@ function Ask({ it, onAnswer }: { it: Extract<TranscriptItem, { kind: "ask" }>; o
             <span className="truncate">{c.label}</span>
           </Button>
         ))}
-        <span className="ml-auto text-muted-foreground text-xs">{question || it.choices?.length ? "Or reply below" : "The agent waits for you"}</span>
+        <span className="ml-auto text-muted-foreground text-xs">{it.choices?.length ? "The agent waits for your pick" : question ? "Or reply below" : "The agent waits for you"}</span>
       </div>
     </Card>
   );

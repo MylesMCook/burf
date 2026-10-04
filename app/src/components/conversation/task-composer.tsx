@@ -284,7 +284,7 @@ function Pick({ label, icon, value, options, onPick, empty }: { label: string; i
           <MenuGroupLabel>{label}</MenuGroupLabel>
           <MenuRadioGroup value={value} onValueChange={(v) => onPick(String(v))}>
             {options.map((o) => (
-              <MenuRadioItem key={o.value} value={o.value}>
+              <MenuRadioItem key={o.value} value={o.value} closeOnClick>
                 {o.label}
               </MenuRadioItem>
             ))}
