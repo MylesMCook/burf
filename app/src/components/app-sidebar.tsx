@@ -12,7 +12,7 @@ import { useMemo } from "react";
 
 import { NotificationBell } from "@/components/notifications/notification-center";
 import { newSection } from "@/components/sidebar/actions";
-import { Nav as PlacesNav, useArrangedNav } from "@/components/sidebar/nav";
+import { MoreItems, Nav as PlacesNav, useArrangedNav } from "@/components/sidebar/nav";
 import { Projects, useSidebarPrefs } from "@/components/sidebar/projects";
 import { RailWorktrees } from "@/components/sidebar/rail-worktrees";
 import { Tip } from "@/components/tip";
@@ -175,27 +175,29 @@ function Rail() {
         {item("Search (⌘K)", <SearchIcon />, false, () => useStore.getState().setPaletteOpen(true))}
         <NotificationBell size="rail" />
         {pinned.map((n) => (
-          <span key={n.id}>{item(n.label, n.icon, n.active, () => setView(n.view), n.badge)}</span>
+          <span key={n.id}>{item(n.label, n.icon, n.active, n.go, n.badge)}</span>
         ))}
-        {more.length > 0 && (
-          <Menu>
-            <Tip label="More" side="right">
-              <MenuTrigger
-                render={<button type="button" aria-label="More" className="inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-sidebar-accent hover:text-foreground data-popup-open:bg-sidebar-accent" />}
-              >
-                <EllipsisIcon className="size-4" />
-              </MenuTrigger>
-            </Tip>
-            <MenuPopup side="right" align="start" className="min-w-48">
-              {more.map((n) => (
-                <MenuItem key={n.id} onClick={() => setView(n.view)}>
-                  <span className="flex size-4 items-center justify-center [&_svg]:size-4">{n.icon}</span>
-                  {n.label}
-                </MenuItem>
-              ))}
-            </MenuPopup>
-          </Menu>
-        )}
+        <Menu>
+          <Tip label="More" side="right">
+            <MenuTrigger
+              render={
+                <button
+                  type="button"
+                  aria-label="More"
+                  className={cn(
+                    "inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-sidebar-accent hover:text-foreground data-popup-open:bg-sidebar-accent",
+                    more.some((n) => n.active) && "bg-sidebar-accent text-foreground",
+                  )}
+                />
+              }
+            >
+              <EllipsisIcon className="size-4" />
+            </MenuTrigger>
+          </Tip>
+          <MenuPopup side="right" align="start" className="min-w-52">
+            <MoreItems more={more} />
+          </MenuPopup>
+        </Menu>
       </div>
       {/* RailWorktrees fits its tiles to this height, never scrolls. */}
       <div className="min-h-0 w-full flex-1 overflow-hidden">

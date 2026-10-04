@@ -1,5 +1,7 @@
 import {
   BellIcon,
+  HouseIcon,
+  KeyboardIcon,
   Minimize2Icon,
   BookMarkedIcon,
   CodeXmlIcon,
@@ -53,7 +55,8 @@ import { openBroadcast, openPromptPicker } from "@/lib/prompts";
 import { setNotificationsOpen } from "@/lib/notifications";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
-import { currentSpace, focusSession, recentWorktrees, refOf, selectWorktree, useWorkspaces } from "@/lib/workspaces";
+import { currentSpace, focusSession, goHome, recentWorktrees, refOf, selectWorktree, useWorkspaces } from "@/lib/workspaces";
+import { openShortcuts } from "@/components/shortcuts-sheet";
 import { openCustomize, useArrangedNav } from "@/components/sidebar/nav";
 import { loadPlugins } from "@/plugins/host";
 import { useRegistry } from "@/plugins/registry";
@@ -146,7 +149,9 @@ export function CommandPalette() {
       ...(usePrefs.getState().labs
         ? [{ value: "zen focus calm hide sidebar labs", label: usePrefs.getState().zen ? "Leave zen" : "Zen: only the agents", icon: slot(<Minimize2Icon />), shortcut: "⌘.", run: go(() => usePrefs.setState((p) => ({ zen: !p.zen }))) }]
         : []),
+      ...(usePrefs.getState().labs ? [{ value: "home harbour start", label: "Home", icon: slot(<HouseIcon />), run: go(goHome) }] : []),
       { value: "dashboard", label: "Agent Dashboard", icon: slot(<LayoutDashboardIcon />), shortcut: "⌘J", run: go(() => st.setView({ kind: "dashboard" })) },
+      { value: "keyboard shortcuts keys help", label: "Keyboard shortcuts", icon: slot(<KeyboardIcon />), shortcut: "⌘/", run: go(openShortcuts) },
       { value: "notifications inbox bell", label: "Notifications", icon: slot(<BellIcon />), shortcut: "⌘⇧N", run: go(() => setNotificationsOpen(true)) },
       { value: "notification settings do not disturb", label: "Notification settings", icon: slot(<BellIcon />), run: go(() => st.setView({ kind: "settings", section: "notifications" })) },
       { value: "worktrees", label: "Worktrees", icon: slot(<GitBranchIcon />), run: go(() => st.setView({ kind: "worktrees" })) },
@@ -247,7 +252,7 @@ export function CommandPalette() {
       label: n.label,
       detail: "Hidden from sidebar",
       icon: slot(n.icon),
-      run: go(() => st.setView(n.view)),
+      run: go(n.go),
     }));
 
     if (!q) {

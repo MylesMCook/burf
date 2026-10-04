@@ -36,7 +36,7 @@ Each returns a `Dispose`. Everything is also removed when the plugin unloads.
 | Call | What it does |
 | --- | --- |
 | `addScreen({ id, title, description?, layout?, Component })` | A screen under the app's header strip. `layout: "fill"` hands it the whole area. `Component` gets `{ berth }`. |
-| `addSidebarItem({ id, title, icon?, screen })` | A sidebar row that opens one of its screens. `icon` is a [lucide](https://lucide.dev/icons) name. |
+| `addSidebarItem({ id, title, icon?, screen })` | A place that opens one of its screens, under the sidebar's **More** menu until the person pins it. `icon` is a [lucide](https://lucide.dev/icons) name. |
 | `addWorktreePanel({ id, title, icon?, Component })` | A view about one worktree, opened as a tab or split. `Component` gets `{ berth, box, location, worktree, path, main? }`. |
 | `addCommand({ id, title, group?, shortcut?, run })` | An entry in the command palette (⌘K) |
 | `addStatusBarItem({ id, Component, align? })` | Something in the status bar, `left` or `right` |

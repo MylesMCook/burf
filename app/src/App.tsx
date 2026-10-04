@@ -17,6 +17,7 @@ import { StatusBar } from "@/components/status-bar";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { AddToBoxDialog } from "@/components/sidebar/add-to-box-dialog";
 import { ConfirmHost } from "@/components/sidebar/confirm";
+import { ShortcutsSheet } from "@/components/shortcuts-sheet";
 import { CustomizeSidebarSheet } from "@/components/sidebar/nav";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
@@ -161,6 +162,7 @@ export default function App() {
           <AddToBoxDialog />
           <PluginConsentDialog />
           <CustomizeSidebarSheet />
+          <ShortcutsSheet />
           <ReviewSheet />
           <NotificationCenter />
         </ErrorBoundary>
