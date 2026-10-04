@@ -97,10 +97,10 @@ function TerminalPreview({ prefs }: { prefs: TerminalPrefs }) {
       style={{ background: t.background, color: t.foreground, fontFamily: prefs.fontFamily, fontSize: prefs.fontSize, lineHeight: prefs.lineHeight }}
     >
       <div>
-        <span style={{ color: t.green }}>sean@devl</span> <span style={{ color: t.blue }}>~/work/cal-billing</span> <span style={{ color: t.magenta }}>(sean/billing-fix)</span>
+        <span style={{ color: t.green }}>me@devl</span> <span style={{ color: t.blue }}>~/work/shop-checkout-fix</span> <span style={{ color: t.magenta }}>(sean/checkout-fix)</span>
       </div>
       <div>
-        <span style={{ color: t.brightBlack }}>$</span> pnpm test --filter billing
+        <span style={{ color: t.brightBlack }}>$</span> pnpm test --filter checkout
       </div>
       <div>
         <span style={{ color: t.green }}>✓</span> webhook retries with an idempotency key <span style={{ color: t.brightBlack }}>(41 tests)</span>

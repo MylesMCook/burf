@@ -28,7 +28,7 @@ type Mode = "native" | "iframe";
 
 // BrowserPane shows a web page in a pane, mostly a box's dev server through
 // the laptop's proxy (a worktree's own name, like
-// http://billing.cal.devl.localhost:1377/). In the app it is a native child
+// http://checkout.shop.devl.localhost:1377/). In the app it is a native child
 // webview laid over the pane, so every page works as in a browser; in a plain
 // browser, or when that fails, it is an iframe.
 export function BrowserPane({ id: paneId, url, visible, onNavigate }: Props) {

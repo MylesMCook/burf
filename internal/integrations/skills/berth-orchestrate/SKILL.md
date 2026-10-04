@@ -8,10 +8,10 @@ description: Drive other coding agents through berth — prompt a running agent,
 Four primitives, on a box (`berthd …`) or a laptop (`berth … BOX/…`):
 
 ```sh
-berthd task new cal/billing-tests --agent codex --prompt "…" --open tab   # start work: worktree + agent
-berthd session send cal-billing-claude-1a2b "Also cover refunds." --wait    # prompt it, wait for that turn to end
-berthd session wait cal-billing-claude-1a2b --for idle,waiting              # until it is in one of these states
-berthd exec cal/billing -- pnpm test                                        # run a check in a worktree
+berthd task new shop/checkout-tests --agent codex --prompt "…" --open tab     # start work: worktree + agent
+berthd session send shop-checkout-claude-1a2b "Also cover refunds." --wait    # prompt it, wait for that turn to end
+berthd session wait shop-checkout-claude-1a2b --for idle,waiting              # until it is in one of these states
+berthd exec shop/checkout -- pnpm test                                        # run a check in a worktree
 ```
 
 - Start agents with `--agent ID --prompt TEXT`, never `-- claude "…"`;
@@ -33,7 +33,7 @@ berthd exec cal/billing -- pnpm test                                        # ru
 **Loop until a check passes**
 
 ```sh
-berthd loop cal-billing-claude-1a2b --check "pnpm test" --prompt "Make the tests pass" --max 5
+berthd loop shop-checkout-claude-1a2b --check "pnpm test" --prompt "Make the tests pass" --max 5
 ```
 
 Prompts, waits, runs the check, and sends the failure back ("The check …
@@ -42,7 +42,7 @@ failed … Fix it.") until it passes or the rounds run out.
 **Hand off** — a fresh agent in its own worktree picks up where you are:
 
 ```sh
-berthd task new cal/billing-tests --agent codex --open tab \
+berthd task new shop/checkout-tests --agent codex --open tab \
   --prompt "Continue from $BERTH_WORKTREE_NAME in $BERTH_WORKTREE_PATH: write the missing tests for the refund flow."
 ```
 
@@ -61,7 +61,7 @@ berthd session wait NAME --for idle,waiting --timeout 2m   # ready, or asking th
 **Fan out** — several tasks at once, then wait on each:
 
 ```sh
-for part in api ui docs; do berthd task new cal/refunds-$part --agent claude --prompt "…$part…"; done
+for part in api ui docs; do berthd task new shop/refunds-$part --agent claude --prompt "…$part…"; done
 berthd sessions --json        # names and agent_state of everything running
 ```
 

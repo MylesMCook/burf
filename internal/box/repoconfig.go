@@ -325,7 +325,7 @@ func (b *Box) worktreeEnv(ctx context.Context, location string, wt Worktree) (wo
 		"BERTH_ROOT_PATH":     loc.Path,
 		"BERTH_WORKTREE_PATH": wt.Path,
 		"BERTH_WORKTREE_NAME": wt.Name,
-		// Safe in database and container names: cal_fix_billing.
+		// Safe in database and container names: shop_fix_checkout.
 		"BERTH_WORKTREE_SLUG": strings.Trim(nonIdent.ReplaceAllString(strings.ToLower(loc.Name+"_"+wt.Name), "_"), "_"),
 		"BERTH_BRANCH":        wt.Branch,
 	}

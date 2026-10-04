@@ -22,7 +22,7 @@ export function openLibrary(): boolean {
 
 // What a target session is called, the way the rest of the app names it:
 // name is sessionName's "Claude Code 2", short adds the worktree for a chip
-// ("transfer-billing · Claude Code 2"), and detail says where and, when
+// ("order-export · Claude Code 2"), and detail says where and, when
 // several agents share the worktree, when this one started.
 export function useTargetLabel(box: string, session: string) {
   const d = useStore((s) => s.boxes[box]);

@@ -2,7 +2,7 @@ import type { BerthEvent } from "@/lib/api";
 import type { ApplyLine, InstalledKit, InstalledKitOn, KitInfo, KitTarget } from "@/lib/kits";
 
 // Mock mode's kits, behaving like internal/agent/kits.go closely enough to
-// build the UI on: two kits on the laptop, one installed on devl's cal in an
+// build the UI on: two kits on the laptop, one installed on devl's shop in an
 // older version, and any link previewing as a kit made from its name.
 
 type Emit = (e: Omit<BerthEvent, "time">) => void;
@@ -13,25 +13,25 @@ const setupScript = `#!/bin/sh
 # Each worktree gets its own database, copied from the main one so it starts
 # with real data, and its own .env pointing at it.
 set -eu
-createdb -T cal "$BERTH_WORKTREE_SLUG" 2>/dev/null || createdb "$BERTH_WORKTREE_SLUG"
+createdb -T shop "$BERTH_WORKTREE_SLUG" 2>/dev/null || createdb "$BERTH_WORKTREE_SLUG"
 cp "$BERTH_ROOT_PATH/.env" .env
-yarn install --frozen-lockfile
-yarn db-deploy
+pnpm install --frozen-lockfile
+pnpm db:migrate
 `;
 
 const teardownScript = `#!/bin/sh
 dropdb --if-exists "$BERTH_WORKTREE_SLUG"
 `;
 
-const calKit: KitInfo = {
-  id: "cal-worktrees",
-  name: "Cal.com worktrees",
-  description: "Every worktree of cal.com gets its own database, ports, dev server and URL, and is cleaned up when it goes.",
+const shopKit: KitInfo = {
+  id: "shop-dev",
+  name: "Shop development",
+  description: "Every worktree of the shop gets its own database, ports, dev server and URL, and is cleaned up when it goes.",
   version: "3",
-  match: { slug: "calcom/cal.com" },
+  match: { slug: "acme/shop" },
   requires: [
     { tool: "psql", hint: "PostgreSQL client: sudo apt install postgresql-client" },
-    { tool: "yarn", hint: "corepack enable" },
+    { tool: "pnpm", hint: "corepack enable" },
   ],
   config: {
     setup: "$BERTH_KIT_DIR/scripts/setup.sh",
@@ -39,11 +39,11 @@ const calKit: KitInfo = {
     ports: 3,
     env: {
       DATABASE_URL: "postgresql://postgres@localhost:5432/$BERTH_WORKTREE_SLUG",
-      NEXT_PUBLIC_WEBAPP_URL: "http://$BERTH_WORKTREE_NAME.cal.$BERTH_BOX.localhost:1377",
+      NEXT_PUBLIC_WEBAPP_URL: "http://$BERTH_WORKTREE_NAME.shop.$BERTH_BOX.localhost:1377",
     },
     services: [
-      { name: "web", run: "yarn dev --port $BERTH_PORT", autostart: true },
-      { name: "api", run: "yarn workspace @calcom/api-v2 dev --port $BERTH_PORT_1" },
+      { name: "web", run: "pnpm dev --port $BERTH_PORT", autostart: true },
+      { name: "api", run: "pnpm --filter @shop/api dev --port $BERTH_PORT_1" },
     ],
     flows: [
       {
@@ -52,7 +52,7 @@ const calKit: KitInfo = {
         enabled: true,
         trigger: { event: "agent.finished", where: { agent: "claude" } },
         steps: [
-          { kind: "run", command: "yarn lint --filter=...[HEAD]", timeout: "10m" },
+          { kind: "run", command: "pnpm lint --filter=...[HEAD]", timeout: "10m" },
           { kind: "prompt", when: "failure", text: "Lint failed:\n\n{{prev.output}}\n\nFix it." },
         ],
       },
@@ -60,9 +60,9 @@ const calKit: KitInfo = {
     hooks: [{ on: "before:worktree.create", run: "test \"$BERTH_BRANCH\" != main || { echo 'Make a branch, not main'; exit 1; }" }],
   },
   origin: "user",
-  source: { src: "https://github.com/acme/kits/tree/main/cal-worktrees", commit: "4f2a9c1e8b7d3a6f5e4c2b1a0d9e8f7c6b5a4d3e", fetched: daysAgo(2) },
+  source: { src: "https://github.com/acme/kits/tree/main/shop-dev", commit: "4f2a9c1e8b7d3a6f5e4c2b1a0d9e8f7c6b5a4d3e", fetched: daysAgo(2) },
   hash: "c41e9a2b77f0",
-  path: "/Users/me/.berth/kits/cal-worktrees",
+  path: "/Users/me/.berth/kits/shop-dev",
   file_list: [
     { path: "kit.json", size: 1420 },
     { path: "scripts/setup.sh", size: setupScript.length, text: setupScript },
@@ -86,7 +86,7 @@ const nodeKit: KitInfo = {
   file_list: [{ path: "kit.json", size: 240 }],
 };
 
-const kept: KitInfo[] = [calKit, nodeKit];
+const kept: KitInfo[] = [shopKit, nodeKit];
 
 const installedFor = (k: KitInfo, hash = k.hash, at = daysAgo(9)): InstalledKit => ({
   id: k.id,
@@ -101,10 +101,10 @@ const installedFor = (k: KitInfo, hash = k.hash, at = daysAgo(9)): InstalledKit 
 
 // Where kits are installed, by "box/location".
 const installed: Record<string, InstalledKit> = {
-  "devl/cal": installedFor(calKit, "9b0e11d4c2f3", daysAgo(9)),
+  "devl/shop": installedFor(shopKit, "9b0e11d4c2f3", daysAgo(9)),
 };
 
-const slugs: Record<string, string> = { "devl/cal": "calcom/cal.com", "devl/notes": "me/notes", "gpu/evals": "me/evals" };
+const slugs: Record<string, string> = { "devl/shop": "acme/shop", "devl/notes": "me/notes", "gpu/evals": "me/evals" };
 
 // kitOn is a project's installed kit, for the config mock.
 export function kitOn(box: string, location: string): InstalledKit | undefined {
@@ -123,7 +123,7 @@ function previewOf(src: string): KitInfo {
     name: id.replace(/-/g, " ").replace(/^\w/, (c) => c.toUpperCase()),
     description: "Worktrees get their dependencies installed, a Postgres database of their own, and a dev server.",
     version: "1",
-    match: { slug: "calcom/cal.com" },
+    match: { slug: "acme/shop" },
     requires: [{ tool: "psql", hint: "PostgreSQL client" }],
     config: {
       setup: "$BERTH_KIT_DIR/setup.sh",

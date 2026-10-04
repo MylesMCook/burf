@@ -86,7 +86,7 @@ export function countdown(seconds: number): string {
   return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
-// boxList reads "devl, cal and homelab".
+// boxList reads "devl, build and homelab".
 export function boxList(names: string[]): string {
   if (names.length <= 1) return names[0] ?? "no boxes";
   return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;

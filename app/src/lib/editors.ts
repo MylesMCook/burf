@@ -21,7 +21,7 @@ export interface Editor {
 export interface OpenRequest {
   editor: EditorId;
   box: string;
-  // A folder: a path, or a location ("cal" or "cal/billing") on the box.
+  // A folder: a path, or a location ("shop" or "shop/checkout") on the box.
   path?: string;
   location?: string;
   file?: string;

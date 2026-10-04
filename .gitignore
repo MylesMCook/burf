@@ -91,3 +91,12 @@ design/local-box/
 
 # Competitive research notes
 design/competitive/
+
+# Launch video (video/): dependencies, caches and renders stay local
+video/node_modules/
+video/out/
+video/.cache/
+video/.venv/
+
+# Cal branding removal: demo and landing page screenshots
+design/decal/

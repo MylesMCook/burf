@@ -761,7 +761,7 @@ var validEventType = regexp.MustCompile(`^[a-z][a-z0-9-]{0,31}\.[a-z][a-z0-9-]{0
 var unsafeSessionChars = regexp.MustCompile(`[^A-Za-z0-9_-]+`)
 
 // defaultSessionName names a session after where it runs and what it runs,
-// e.g. "cal-billing-claude".
+// e.g. "shop-checkout-claude".
 func defaultSessionName(location, command string) string {
 	prog := "shell"
 	if f := splitFirst(command); f != "" {

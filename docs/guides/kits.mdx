@@ -17,13 +17,13 @@ to that.
 ## Using one
 
 ```sh
-berth kit add https://github.com/acme/kits/tree/main/cal-com   # shows what it does, then asks
-berth kit show cal-com                                          # everything it does, every file it carries
-berth kit apply cal-com devl/cal gpu/cal                        # install on projects on any box
-berth kit list                                                  # where each is installed, and if it is out of date
-berth kit update cal-com && berth kit apply cal-com devl/cal    # take a newer version
-berth kit remove devl/cal                                       # uninstall from a project
-berth kit rm cal-com                                            # forget it on this laptop
+berth kit add https://github.com/acme/kits/tree/main/shop-dev    # shows what it does, then asks
+berth kit show shop-dev                                          # everything it does, every file it carries
+berth kit apply shop-dev devl/shop gpu/shop                      # install on projects on any box
+berth kit list                                                   # where each is installed, and if it is out of date
+berth kit update shop-dev && berth kit apply shop-dev devl/shop  # take a newer version
+berth kit remove devl/shop                                       # uninstall from a project
+berth kit rm shop-dev                                            # forget it on this laptop
 ```
 
 In the app, open a `berth://kit?src=<link>` link, or use **Kits → Add from
@@ -33,15 +33,15 @@ whose repository matches the kit are selected for you.
 
 A link can be:
 
-- a git repository: `https://github.com/acme/cal-kit`
-- a folder in one: `https://github.com/acme/kits/tree/main/cal-com`, or
-  `URL#cal-com`, with `@ref` for a branch or tag
+- a git repository: `https://github.com/acme/shop-kit`
+- a folder in one: `https://github.com/acme/kits/tree/main/shop-dev`, or
+  `URL#shop-dev`, with `@ref` for a branch or tag
 - a gist, for a kit that fits in one `kit.json`
 - a URL to a `kit.json`
 - a folder on this laptop, as an absolute path or one starting with `~`
 
 A link to GitHub, a gist, GitLab, Bitbucket or Codeberg works without
-`https://` (`berth kit add github.com/acme/cal-kit`). Git links are fetched
+`https://` (`berth kit add github.com/acme/shop-kit`). Git links are fetched
 over `https`, `http`, `ssh` or `git` only.
 
 Berth remembers the link and the commit, so `update` fetches the newest
@@ -51,7 +51,7 @@ in `~/.berth/kits/` on the laptop.
 ## Writing one
 
 ```text
-cal-com/
+shop-dev/
   kit.json
   scripts/
     setup.sh
@@ -60,21 +60,21 @@ cal-com/
 
 ```json title="kit.json"
 {
-  "id": "cal-com",
-  "name": "Cal.com development",
+  "id": "shop-dev",
+  "name": "Shop development",
   "description": "Each worktree gets its own database, ports and dev server.",
   "version": "3",
-  "match": { "slug": "calcom/cal.com" },
+  "match": { "slug": "acme/shop" },
   "requires": [
     { "tool": "psql", "hint": "sudo apt install postgresql-client" },
-    { "tool": "yarn" }
+    { "tool": "pnpm" }
   ],
   "config": {
     "setup": "$BERTH_KIT_DIR/scripts/setup.sh",
     "archive": "$BERTH_KIT_DIR/scripts/archive.sh",
     "ports": 3,
-    "env": { "DATABASE_URL": "postgres://localhost/cal_$BERTH_WORKTREE_SLUG" },
-    "services": [{ "name": "web", "run": "yarn dev --port $BERTH_PORT", "autostart": true }]
+    "env": { "DATABASE_URL": "postgres://localhost/shop_$BERTH_WORKTREE_SLUG" },
+    "services": [{ "name": "web", "run": "pnpm dev --port $BERTH_PORT", "autostart": true }]
   }
 }
 ```
@@ -88,7 +88,7 @@ A small kit can carry its files inside `kit.json` under
 `"files": {"scripts/setup.sh": "…"}`.
 
 Keep secrets out of a kit: give `env` a reference such as
-`op://dev/cal-db/password` and each box reads it from 1Password when a
+`op://dev/shop-db/password` and each box reads it from 1Password when a
 worktree needs it, so the kit can be shared, even publicly. See
 [secrets](/guides/secrets); a kit that uses `op://` should list
 `{ "tool": "op" }` in `requires`.
@@ -98,12 +98,12 @@ is applied, not refused, since a setup script may install it.
 
 `match.slug` names the repository a kit is for, as `owner/repo`. It is
 compared, ignoring case, with each project's slug, which comes from its
-`origin` remote (`git@github.com:calcom/cal.com.git` is `calcom/cal.com`).
+`origin` remote (`git@github.com:acme/shop.git` is `acme/shop`).
 Matching projects are picked for you when you review the kit, and adding
 such a project to a box (or cloning it onto another) offers to apply the
 kit. It only suggests: you can apply a kit to any project.
 
-`berth kit save devl/cal my-kit` turns how a project is set up on a box into
+`berth kit save devl/shop my-kit` turns how a project is set up on a box into
 a kit in `~/.berth/kits/my-kit/`; push that folder to a git repository to
 share it.
 

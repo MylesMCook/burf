@@ -604,7 +604,7 @@ func flags(args []string) (*flag.FlagSet, *bool) {
 func usageErr(s string) error { return errors.New("usage: " + s) }
 
 // parse accepts flags before, between, and after positional arguments, so
-// the box reference can come first as in "worktree new devl/cal/x --base main".
+// the box reference can come first as in "worktree new devl/shop/x --base main".
 func parse(fs *flag.FlagSet, args []string) ([]string, error) {
 	var positional []string
 	for {

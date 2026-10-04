@@ -32,7 +32,7 @@ interface Entry {
   away?: string;
 }
 
-// monogram is a worktree's two letters on the rail: "billing-fix" is BF,
+// monogram is a worktree's two letters on the rail: "checkout-fix" is CF,
 // "qa" is QA, a main checkout is its project's.
 export function monogram(name: string): string {
   const words = name.split(/[^A-Za-z0-9]+/).filter((w) => w && !/^\d+$/.test(w));

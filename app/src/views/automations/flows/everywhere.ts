@@ -2,7 +2,7 @@ import { type Flow, type Scope, type ScopedFlow, scopeLocation } from "@/lib/flo
 import type { Project } from "@/lib/project-groups";
 import type { BoxFlows } from "@/views/automations/flows/use-flows";
 
-// A flow can run for a project on every box that has it ("Any cal").
+// A flow can run for a project on every box that has it ("Any shop").
 // Boxes keep their own flows, so Berth writes one copy into each box's own
 // config for the project, and shows the copies as one flow while they match.
 

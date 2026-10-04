@@ -135,7 +135,7 @@ export function stepPhrase(step: Step): string {
   }
 }
 
-// summary is a flow in one line: "When an agent finishes in cal → run
+// summary is a flow in one line: "When an agent finishes in shop → run
 // `pnpm test` → if it fails, tell the agent → notify me".
 export function summary(flow: Flow): string {
   const parts = [`${flow.trigger.schedule ? "" : "When "}${triggerPhrase(flow)}`.replace(/^./, (c) => c.toUpperCase())];

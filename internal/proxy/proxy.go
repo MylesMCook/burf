@@ -24,7 +24,7 @@ type Proxy struct {
 	// Index serves plain http://localhost:<port>/. Optional.
 	Index http.Handler
 	// Route matches hosts the user pointed at a box port as a whole, such as
-	// every *.personal.cal.localhost at a worktree router. Those requests keep
+	// every *.personal.shop.localhost at a worktree router. Those requests keep
 	// their Host header, because the router on the box routes by it. Optional.
 	Route func(host string) (box string, port int, ok bool)
 	// Worktree resolves "<worktree>.<location>[.<box>].localhost" to the

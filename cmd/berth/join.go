@@ -311,7 +311,7 @@ func names(peers []trust.Peer) []string {
 	return out
 }
 
-// joinNames reads "devl, cal and omarchy".
+// joinNames reads "devl, build and homelab".
 func joinNames(n []string) string {
 	switch len(n) {
 	case 0:

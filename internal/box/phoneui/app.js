@@ -386,7 +386,7 @@ render();
 function mockBoxes() {
   return [
     { name: "devl", url: "http://devl.mock", token: "x" },
-    { name: "cal", url: "http://cal.mock", token: "x" },
+    { name: "build", url: "http://build.mock", token: "x" },
   ];
 }
 function mockApi(box, method, path, body) {
@@ -394,17 +394,17 @@ function mockApi(box, method, path, body) {
   const at = (min) => new Date(now - min * 60000).toISOString();
   const sessions = {
     devl: [
-      { name: "cal-billing-fix-claude-1a", location: "cal/billing-fix", agent: "claude", agent_state: "waiting", state_since: at(3), created: at(40) },
-      { name: "cal-qa-deck-codex-1b", location: "cal/qa-deck", agent: "codex", agent_state: "running", state_since: at(1), created: at(22) },
+      { name: "shop-checkout-fix-claude-1a", location: "shop/checkout-fix", agent: "claude", agent_state: "waiting", state_since: at(3), created: at(40) },
+      { name: "shop-qa-deck-codex-1b", location: "shop/qa-deck", agent: "codex", agent_state: "running", state_since: at(1), created: at(22) },
       { name: "demo-hello-claude-1c", location: "demo/hello", agent: "claude", agent_state: "finished", state_since: at(12), created: at(50) },
       { name: "demo-shell-1d", location: "demo", command: "", created: at(80) },
     ],
-    cal: [{ name: "cal-pr-claude-2a", location: "cal/pr", agent: "claude", agent_state: "idle", state_since: at(30), created: at(30) }],
+    build: [{ name: "shop-pr-claude-2a", location: "shop/pr", agent: "claude", agent_state: "idle", state_since: at(30), created: at(30) }],
   }[box.name] || [];
   const screens = {
-    "cal-billing-fix-claude-1a":
-      "● I need to change the Stripe webhook handler, which touches billing.\n\n Do you want to make this edit to webhook.ts?\n ❯ 1. Yes\n   2. Yes, and don't ask again this session\n   3. No, and tell Claude what to do differently\n",
-    "cal-qa-deck-codex-1b": "• Running yarn test --filter=@calcom/web\n  PASS apps/web/test/booking.test.ts\n  PASS apps/web/test/seats.test.ts\n",
+    "shop-checkout-fix-claude-1a":
+      "● I need to change the payment webhook handler, which touches checkout.\n\n Do you want to make this edit to webhook.ts?\n ❯ 1. Yes\n   2. Yes, and don't ask again this session\n   3. No, and tell Claude what to do differently\n",
+    "shop-qa-deck-codex-1b": "• Running pnpm test --filter=@shop/web\n  PASS apps/web/test/cart.test.ts\n  PASS apps/web/test/orders.test.ts\n",
     "demo-hello-claude-1c": "❯ Reply with just the word: ready\n● ready\n✻ Brewed for 1s · done 7:14 PM\n",
   };
   if (path === "/phone/v1/sessions") return Promise.resolve(sessions);

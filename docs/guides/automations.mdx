@@ -11,7 +11,7 @@ They run on the box, so they keep going while your laptop sleeps.
   "id": "check-after-turn",
   "name": "Run tests after every agent turn",
   "enabled": true,
-  "trigger": { "event": "agent.finished", "where": { "location": "cal" } },
+  "trigger": { "event": "agent.finished", "where": { "location": "shop" } },
   "steps": [
     { "id": "test", "kind": "run", "command": "pnpm test --changed", "timeout": "15m" },
     { "kind": "prompt", "when": "failure",
@@ -258,7 +258,7 @@ Over the API:
 
 ```text
 GET  /v1/flows/runs?flow=ID&limit=N      newest first (default 50, at most 200)
-POST /v1/flows/{id}/test                 {"scope": "repo:cal", "data": {"path": "<a worktree>"}}
+POST /v1/flows/{id}/test                 {"scope": "repo:shop", "data": {"path": "<a worktree>"}}
 ```
 
 A test runs the flow now, as if its trigger had happened there, and returns

@@ -172,7 +172,7 @@ function replace(it: QueueItem) {
 // ---- Naming ---------------------------------------------------------------
 
 // targetName is what the app calls the session a prompt is for, with where
-// it runs: "cal / billing-fix · Claude Code". A session the box no longer
+// it runs: "shop / checkout-fix · Claude Code". A session the box no longer
 // lists (or one on a box that never loaded) is named from its id.
 export function targetName(box: string, session: string): string {
   const d = useStore.getState().boxes[box];

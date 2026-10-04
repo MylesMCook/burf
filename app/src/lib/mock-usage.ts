@@ -46,9 +46,9 @@ export function usageExec(box: string, command: string): ExecResult | undefined 
       accounts: accountsOf(box),
       home: HOME,
       sessions: {
-        "billing-fix-claude": { CLAUDE_CONFIG_DIR: `${HOME}/.berth/accounts/claude/work` },
+        "checkout-fix-claude": { CLAUDE_CONFIG_DIR: `${HOME}/.berth/accounts/claude/work` },
         "qa-deck-codex": {},
-        "booker-perf-claude": {},
+        "search-perf-claude": {},
         "judge-v2-claude": {},
         "evals-codex": { CODEX_HOME: `${HOME}/.berth/accounts/codex/api` },
       },
@@ -78,7 +78,7 @@ function report(box: string) {
   const r = rng(box.length * 7919);
   const now = new Date();
   const gpu = box !== "devl";
-  const WT = gpu ? [`${HOME}/evals-judge-v2`, `${HOME}/evals`, `${HOME}/scratch`] : [`${HOME}/work/cal-billing-fix`, `${HOME}/work/cal-qa-deck`, `${HOME}/work/cal-booker-perf`, `${HOME}/work/cal`, `${HOME}/work/notes`, `${HOME}/scratch`];
+  const WT = gpu ? [`${HOME}/evals-judge-v2`, `${HOME}/evals`, `${HOME}/scratch`] : [`${HOME}/work/shop-checkout-fix`, `${HOME}/work/shop-qa-deck`, `${HOME}/work/shop-search-perf`, `${HOME}/work/shop`, `${HOME}/work/notes`, `${HOME}/scratch`];
   const daily: unknown[][] = [];
   for (let i = 29; i >= 0; i--) {
     const d = new Date(now);
@@ -130,9 +130,9 @@ function report(box: string) {
           s("claude", "default", WT[2], "Plot judge agreement", 49, 0.4, [8_120, 30_444, 2_204_100, 190_330], 3.02, ["claude-sonnet-5-5"]),
         ]
       : [
-      s("claude", "work", WT[0], "Cap billing retries with exponential backoff", 0.1, 1.2, [61_204, 284_113, 21_402_118, 1_204_660], 18.42, ["claude-sonnet-5-5"]),
+      s("claude", "work", WT[0], "Cap payment retries with exponential backoff", 0.1, 1.2, [61_204, 284_113, 21_402_118, 1_204_660], 18.42, ["claude-sonnet-5-5"]),
       s("codex", "default", WT[1], "Build the QA slide deck from the test plan", 0.05, 0.4, [148_220, 92_118, 1_310_720, 0], null, ["gpt-5.5-codex"]),
-      s("claude", "default", WT[2], "Profile the booker's first render", 0.6, 2.4, [88_410, 402_877, 38_119_402, 2_008_114], 41.07, ["claude-opus-5-5", "claude-haiku-4-5-20251001"]),
+      s("claude", "default", WT[2], "Profile the search page's first render", 0.6, 2.4, [88_410, 402_877, 38_119_402, 2_008_114], 41.07, ["claude-opus-5-5", "claude-haiku-4-5-20251001"]),
       s("claude", "default", WT[4], "Tidy the internal deploy script", 26, 0.8, [20_118, 77_040, 6_200_400, 512_331], 9.36, ["claude-opus-5-5"]),
       s("codex", "default", WT[3], "Review the webhook handler", 30, 0.5, [64_002, 31_877, 820_224, 0], null, ["gpt-5.5-codex"]),
       s("claude", "work", WT[5], null, 52, 0.2, [3_400, 9_120, 410_022, 88_120], 0.94, ["claude-sonnet-5-5"]),

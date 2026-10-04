@@ -15,15 +15,15 @@ running when nobody is attached, when the laptop sleeps, and when berthd
 restarts or upgrades.
 
 ```sh
-berth session new devl/cal/billing --agent claude --prompt "…"   # an agent
-berth session new devl/cal/billing -- pnpm test --watch           # any command
-berth session new devl/cal/billing                                # a shell
+berth session new devl/shop/checkout --agent claude --prompt "…"    # an agent
+berth session new devl/shop/checkout -- pnpm test --watch           # any command
+berth session new devl/shop/checkout                                # a shell
 berth sessions devl
 berth session kill devl/SESSION
 ```
 
 A session is named after where it runs and what it runs
-(`cal-billing-claude-…`) unless you pass `--name`. Its environment is the
+(`shop-checkout-claude-…`) unless you pass `--name`. Its environment is the
 worktree's: ports, `BERTH_*` variables and the project's `env`.
 
 The app shows each session as a terminal (ghostty-web) in the worktree's
@@ -44,7 +44,7 @@ request, so a hook, the app or another agent can hand off work in a single
 step:
 
 ```sh
-berth task new devl/cal/billing --agent claude --prompt "Fix the billing page"
+berth task new devl/shop/checkout --agent claude --prompt "Fix the checkout page"
 ```
 
 In the app this is **New worktree** (⌘N) with an agent chosen. It runs
@@ -100,7 +100,7 @@ end, and check its work, including another agent:
 ```sh
 berth session send devl/SESSION "Rebase on main" --wait
 berth session wait devl/SESSION --for finished,waiting
-berth exec devl/cal/billing -- pnpm test
+berth exec devl/shop/checkout -- pnpm test
 ```
 
 See [orchestration](/guides/orchestration).

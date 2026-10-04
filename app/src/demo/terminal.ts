@@ -22,55 +22,55 @@ const plain = (s: string) => s.replace(/\x1b\[[0-9;]*m/g, "");
 
 // What each agent did before its state now.
 const WORK: Record<string, string[]> = {
-  "billing-fix-claude": [
-    `${dim(">")} The billing webhook gives up on Stripe too early. Fix the retries.`,
+  "checkout-fix-claude": [
+    `${dim(">")} The payment webhook gives up too early. Fix the retries.`,
     "",
-    `${orange("●")} Read(${bold("packages/features/ee/billing/webhook.ts")})`,
+    `${orange("●")} Read(${bold("apps/web/lib/payments/webhook.ts")})`,
     dim("  ⎿  Read 212 lines"),
     "",
-    `${green("●")} Update(${bold("packages/features/ee/billing/webhook.ts")})`,
+    `${green("●")} Update(${bold("apps/web/lib/payments/webhook.ts")})`,
     `${dim("  ⎿  Updated with ")}${green("12 additions")}${dim(" and ")}${red("3 removals")}`,
     "",
   ],
   "qa-deck-codex": [`${dim("›")} Build the QA deck and check every story renders`, "", "• Ran pnpm install", dim("  └ Done in 8.2s"), ""],
-  "booker-perf-claude": [
-    `${dim(">")} Make the booker render faster on long months`,
+  "search-perf-claude": [
+    `${dim(">")} Make search results render faster on big categories`,
     "",
-    `${orange("●")} Read(${bold("packages/features/bookings/Booker/Booker.tsx")})`,
-    `${green("●")} Update(${bold("packages/features/bookings/Booker/SlotGrid.tsx")})`,
+    `${orange("●")} Read(${bold("apps/web/components/search/SearchResults.tsx")})`,
+    `${green("●")} Update(${bold("apps/web/components/search/ProductGrid.tsx")})`,
     "",
   ],
   "judge-v2-claude": [`${dim(">")} Run judge v2 on the labelled set and compare it with v1`, "", `${orange("●")} Bash(${bold("python -m evals.run --judge v2 --set labelled")})`, dim("  ⎿  200 samples · 8 workers"), ""],
-  "ci-flake-claude": [`${dim(">")} Find out why the booking e2e test flakes on CI`, "", `${orange("●")} Read(${bold("apps/web/playwright/booking.e2e.ts")})`, ""],
+  "ci-flake-claude": [`${dim(">")} Find out why the checkout e2e test flakes on CI`, "", `${orange("●")} Read(${bold("apps/web/e2e/checkout.e2e.ts")})`, ""],
 };
 
 // What a waiting agent asks. The last line before the choices is what the
 // dashboard's card shows.
 const QUESTIONS: Record<string, string> = {
-  "billing-fix-claude":
-    "● Retries are capped at 3, with backoff, and 429s now count as retryable.\n  A slow Stripe outage would still hold the booking lock for the whole backoff.\n\n  Cap the total retry time too?\n❯ 1. Yes, cap it at 30s\n  2. No, leave it",
-  "qa-deck-codex": "• Storybook wants port 6006, which booker-perf is using.\n\n  Run the deck on 6007 instead?\n› 1. Yes, use 6007\n  2. No, stop booker-perf's storybook",
+  "checkout-fix-claude":
+    "● Retries are capped at 3, with backoff, and 429s now count as retryable.\n  A slow provider outage would still hold the order lock for the whole backoff.\n\n  Cap the total retry time too?\n❯ 1. Yes, cap it at 30s\n  2. No, leave it",
+  "qa-deck-codex": "• Storybook wants port 6006, which search-perf is using.\n\n  Run the deck on 6007 instead?\n› 1. Yes, use 6007\n  2. No, stop search-perf's storybook",
 };
 
 const RUNNING: Record<string, string> = {
-  "billing-fix-claude": "✻ Running the billing tests… (esc to interrupt)",
+  "checkout-fix-claude": "✻ Running the payment tests… (esc to interrupt)",
   "qa-deck-codex": "• Building stories… 27 of 41",
   "judge-v2-claude": "● Scoring… 143 of 200",
 };
 
 const DONE: Record<string, string[]> = {
-  "billing-fix-claude": ["● Retries now stop after 30s in total, and a test covers a slow", "  outage. All 214 tests pass."],
+  "checkout-fix-claude": ["● Retries now stop after 30s in total, and a test covers a slow", "  outage. All 214 tests pass."],
   "qa-deck-codex": ["• All 41 stories render. The deck is on port 6007."],
-  "booker-perf-claude": ["● The month view renders in ~45ms, from ~180ms. The booker", "  tests pass."],
+  "search-perf-claude": ["● A 500-product category renders in ~45ms, from ~180ms. The", "  search tests pass."],
   "judge-v2-claude": ["● Judge v2 agrees with people on 91% of samples (v1: 84%).", "  The report is in reports/judge-v2.md."],
   "ci-flake-claude": ["● Two tests shared port 3100; each now takes its own.", "  20 runs in a row pass."],
-  "transfer-billing-claude": ["● Transferring a team now moves its billing owner, and the", "  old owner's card is detached. All 214 tests pass."],
-  "transfer-billing-claude-3": ["● Six tests cover the transfer webhook, retries included.", "  They pass."],
+  "order-export-claude": ["● Admins can export orders as CSV, filtered by date and", "  status. All 214 tests pass."],
+  "order-export-claude-3": ["● Six tests cover the export job, large exports included.", "  They pass."],
 };
 
 // What an agent shows after an answer, a beat apart.
 const AFTER: Record<string, string[]> = {
-  "billing-fix-claude": [`${green("●")} Update(${bold("packages/features/ee/billing/webhook.ts")})`, dim("  ⎿  Capped the total retry time at 30s"), "", `${orange("●")} Bash(${bold("yarn test billing")})`, dim("  ⎿  PASS  billing/webhook.test.ts (14 tests)")],
+  "checkout-fix-claude": [`${green("●")} Update(${bold("apps/web/lib/payments/webhook.ts")})`, dim("  ⎿  Capped the total retry time at 30s"), "", `${orange("●")} Bash(${bold("pnpm test payments")})`, dim("  ⎿  PASS  payments/webhook.test.ts (14 tests)")],
   "qa-deck-codex": ["• Moved the deck to port 6007", "• Building stories… 41 of 41"],
 };
 

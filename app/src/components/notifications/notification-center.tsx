@@ -194,8 +194,8 @@ function short(iso: string, now: number): string {
 
 const clock = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 
-// contextOf says where a note happened the way the sidebar does: "cal /
-// billing-fix · devl", or "cal · devl" for a main checkout.
+// contextOf says where a note happened the way the sidebar does: "shop /
+// checkout-fix · devl", or "shop · devl" for a main checkout.
 function contextOf(n: Note, boxes: Record<string, BoxData>): string {
   let where = n.project ? (n.worktree && n.worktree !== n.project ? `${n.project} / ${n.worktree}` : n.project) : n.worktree;
   if (!where && n.box && n.session) {

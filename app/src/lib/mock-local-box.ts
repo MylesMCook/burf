@@ -29,7 +29,7 @@ export function initMockLocalBox(d: Deps) {
 const folders: Record<string, { git?: boolean; slug?: string }> = {
   [HOME]: {},
   [`${HOME}/Developer`]: {},
-  [`${HOME}/Developer/cal.com`]: { git: true, slug: "calcom/cal.com" },
+  [`${HOME}/Developer/shop`]: { git: true, slug: "acme/shop" },
   [`${HOME}/Developer/notes`]: { git: true, slug: "me/notes" },
   [`${HOME}/Developer/site`]: { git: true, slug: "me/site" },
   [`${HOME}/Documents`]: {},

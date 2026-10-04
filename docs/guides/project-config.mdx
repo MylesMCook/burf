@@ -25,7 +25,7 @@ the repo, so every box does the same.
     { "id": "claude", "name": "Claude Code (Opus)", "command": "claude --model opus" }
   ],
   "hooks": [
-    { "on": "worktree.created", "run": "cp ../cal/.env .env" }
+    { "on": "worktree.created", "run": "cp ../shop/.env .env" }
   ],
   "flows": []
 }
@@ -52,7 +52,7 @@ without trust is a plain checkout.
   yours, and apply without asking.
 - Only trust a repository if you trust everyone who can commit to it.
 
-From a terminal, `berth location config devl/cal` prints what the file
+From a terminal, `berth location config devl/shop` prints what the file
 wants and its hash; `--trust HASH` trusts that version, `--untrust` stops it.
 The box's API is `POST /v1/locations/{name}/config/trust` with
 `{"hash": "…"}` (refused with 409 if the file no longer has that hash) and
@@ -84,10 +84,10 @@ The box's API is `POST /v1/locations/{name}/config/trust` with
 | Variable | Meaning |
 | --- | --- |
 | `BERTH_BOX` | The box's name for itself |
-| `BERTH_LOCATION` | The location, like `cal` |
+| `BERTH_LOCATION` | The location, like `shop` |
 | `BERTH_ROOT_PATH` | The repository's main checkout |
 | `BERTH_WORKTREE_PATH`, `BERTH_WORKTREE_NAME` | This worktree |
-| `BERTH_WORKTREE_SLUG` | Like `cal_fix_billing`, safe for database names |
+| `BERTH_WORKTREE_SLUG` | Like `shop_fix_checkout`, safe for database names |
 | `BERTH_BRANCH` | Its branch |
 | `BERTH_PORT`, `BERTH_PORT_1`, … | Its ports |
 | `BERTH_KIT_DIR` | Where the project's [kit](/guides/kits) keeps its files, if it has one |
@@ -108,9 +108,9 @@ restarting and come back if they crash, with their output in a log.
 - Start, stop and open them from the app's **Run** menu, or:
 
 ```sh
-berth service list devl/cal/billing
-berth service start devl/cal/billing web
-berth service log devl/cal/billing web
+berth service list devl/shop/checkout
+berth service start devl/shop/checkout web
+berth service log devl/shop/checkout web
 ```
 
 ## Agents
@@ -140,13 +140,13 @@ the project's kit, if it has one):
 - `hooks` add up.
 
 Edit it in the app's Project settings, or `PUT /v1/locations/{name}/config`
-on the box. `berth location config devl/cal` shows the effective config
+on the box. `berth location config devl/shop` shows the effective config
 (and what an untrusted file would run); with `--json`, the repository's, the
 kit's and the box's layers too.
 
 ```sh
-berth location scripts devl/cal --setup "make bootstrap"   # just the scripts
-berth location scripts devl/cal --clear
+berth location scripts devl/shop --setup "make bootstrap"   # just the scripts
+berth location scripts devl/shop --clear
 ```
 
 A box can also give every worktree on it some environment, in

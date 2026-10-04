@@ -14,7 +14,7 @@ import { resetDemo, startDemoScript } from "@/demo/script";
 // and a way to start over. It sits bottom left, clear of the toasts, and
 // folds down to one small button.
 
-const BILLING_FIX = "devl:/home/me/work/cal-billing-fix";
+const CHECKOUT_FIX = "devl:/home/me/work/shop-checkout-fix";
 const mac = /Mac|iPhone|iPad/.test(navigator.platform);
 
 interface Steps {
@@ -41,7 +41,7 @@ function follow() {
     waiting = now;
     if (s.paletteOpen) useSteps.setState({ palette: true });
     const ws = useWorkspaces.getState();
-    if (s.view.kind === "workspace" && ws.current === BILLING_FIX) useSteps.setState({ open: true });
+    if (s.view.kind === "workspace" && ws.current === CHECKOUT_FIX) useSteps.setState({ open: true });
   };
   const a = useStore.subscribe(seen);
   const b = useWorkspaces.subscribe(seen);
@@ -93,7 +93,7 @@ export default function DemoGuide() {
       </header>
       <ol className="mt-2 space-y-1 px-3 text-[12.5px]">
         <Step done={steps.open}>
-          Open <span className="font-mono text-[12px]">billing-fix</span>
+          Open <span className="font-mono text-[12px]">checkout-fix</span>
         </Step>
         <Step done={steps.answer}>Answer the waiting agent</Step>
         <Step done={steps.palette}>

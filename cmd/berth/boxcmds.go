@@ -44,11 +44,11 @@ func splitBox(args []string, words int) (string, []string, error) {
 		out = append(out, args[i+1:]...)
 		return name, out, nil
 	}
-	return "", nil, errors.New("which box? put it first, e.g. devl or devl/cal")
+	return "", nil, errors.New("which box? put it first, e.g. devl or devl/shop")
 }
 
 // boxPath rewrites a path under this laptop's home as ~/..., which the box
-// expands against its own home: /Users/alex/work/cal becomes ~/work/cal.
+// expands against its own home: /Users/alex/work/shop becomes ~/work/shop.
 func boxPath(path, laptopHome string) string {
 	if laptopHome == "" {
 		return path

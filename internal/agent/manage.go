@@ -195,7 +195,7 @@ func (a *Agent) manageRoutes(mux *http.ServeMux) {
 			return
 		}
 		if err := argOK(req.Host, req.Name, req.Network, req.Address, req.Identity, req.TrustHostKey); err != nil || req.Host == "" {
-			writeError(w, http.StatusBadRequest, "an SSH host is needed, like sean@devbox")
+			writeError(w, http.StatusBadRequest, "an SSH host is needed, like me@devbox")
 			return
 		}
 		if req.Network != "" && !trust.ValidName(req.Network) {
@@ -220,7 +220,7 @@ func (a *Agent) manageRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/ssh/plan", func(w http.ResponseWriter, r *http.Request) {
 		host := strings.TrimSpace(r.URL.Query().Get("host"))
 		if err := argOK(host); err != nil || host == "" {
-			writeError(w, http.StatusBadRequest, "an SSH host is needed, like sean@devbox")
+			writeError(w, http.StatusBadRequest, "an SSH host is needed, like me@devbox")
 			return
 		}
 		cfg, err := sshsetup.ReadConfig(r.Context(), nil, host)

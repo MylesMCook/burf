@@ -15,7 +15,7 @@ import (
 // event is about, with that worktree's environment.
 
 // eventScope finds the location and worktree an event is about: from its
-// "location" ("cal" or "cal/billing") or, failing that, its path.
+// "location" ("shop" or "shop/checkout") or, failing that, its path.
 func (b *Box) eventScope(ctx context.Context, data map[string]any) (Location, Worktree, bool) {
 	if p, _ := data["path"].(string); p != "" {
 		if loc, wt, ok := b.worktreeAt(ctx, p); ok {

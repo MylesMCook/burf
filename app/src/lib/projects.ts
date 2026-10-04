@@ -79,7 +79,7 @@ export const projectsApi = {
 };
 
 // repoName guesses a project's name from a clone URL:
-// git@github.com:calcom/cal.com.git → cal.com.
+// git@github.com:acme/shop.git → shop.
 export function repoName(url: string): string {
   const last = url.trim().replace(/\/+$/, "").split(/[/:]/).pop() ?? "";
   return last.replace(/\.git$/, "");

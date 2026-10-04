@@ -74,8 +74,8 @@ Each returns a `Dispose`. Everything is also removed when the plugin unloads.
 
 The same as `berth session send|wait`, `berth exec` and `berth loop`
 ([orchestration](/guides/orchestration)). Sessions are named by box and
-session name; locations as the box API names them, `"cal"` or
-`"cal/billing"`.
+session name; locations as the box API names them, `"shop"` or
+`"shop/checkout"`.
 
 | Call | What it does |
 | --- | --- |
@@ -124,9 +124,9 @@ From `@berth/plugin`, backed by the app's live state:
 And two helpers:
 
 - `worktreeLocation({ location, worktree, main })`: how the box API names a
-  worktree, `"cal"` for the main checkout, `"cal/billing"` otherwise.
+  worktree, `"shop"` for the main checkout, `"shop/checkout"` otherwise.
 - `sessionName(session, { sessions?, locations?, place? })`: what the app
-  calls a session ("Claude Code 2", or "cal / billing-fix · Codex" with
+  calls a session ("Claude Code 2", or "shop / checkout-fix · Codex" with
   `place`).
 
 ## UI components

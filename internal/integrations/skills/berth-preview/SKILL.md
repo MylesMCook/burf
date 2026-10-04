@@ -7,7 +7,7 @@ description: Run a worktree's dev server on its own port and show the page to th
 
 Every worktree has its own ports (`$BERTH_PORT`, `$BERTH_PORT_1`, …). The
 user's Berth app reaches whatever listens in that block at the worktree's own
-address, e.g. `http://fix-login.cal.devl.localhost:1377/`. No forwarding or
+address, e.g. `http://fix-login.shop.devl.localhost:1377/`. No forwarding or
 tunnels are needed.
 
 ## 1. Run it on the worktree's port
@@ -44,7 +44,7 @@ If it is not up, read the server's output (`berthd session screen NAME` or
 
 ```sh
 berthd preview                         # this worktree's port, its home page
-berthd preview $BERTH_PORT --path /settings/billing
+berthd preview $BERTH_PORT --path /account/orders
 ```
 
 This opens the page as a browser tab in the user's Berth app, in this

@@ -3,7 +3,7 @@ import { agentOf, sessionName, worktreeOf } from "@/lib/derive";
 
 export interface AgentNames {
   where?: { location: Location; worktree: Worktree };
-  // The worktree it works in ("billing-fix"), or the repository for a main
+  // The worktree it works in ("checkout-fix"), or the repository for a main
   // checkout.
   place: string;
   // What the app calls the session: "Claude Code", "Claude Code 2".

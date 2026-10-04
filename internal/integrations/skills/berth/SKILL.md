@@ -8,8 +8,8 @@ description: Use berth to work across development boxes — list repos (location
 berth connects a laptop to development boxes. Each box runs `berthd`; each
 laptop runs `berth`. The commands are the same, with one difference:
 
-- **On a laptop**, name the box first: `berth worktree new devl/cal/fix-login`.
-- **On a box**, the box is implied: `berthd worktree new cal/fix-login`.
+- **On a laptop**, name the box first: `berth worktree new devl/shop/fix-login`.
+- **On a box**, the box is implied: `berthd worktree new shop/fix-login`.
 
 `command -v berth berthd` tells you which you have. Add `--json` to any
 listing and prefer it when you will parse the result. The examples below use
@@ -22,10 +22,10 @@ When berth started your terminal, the environment says where you are:
 | Variable | Meaning |
 | --- | --- |
 | `BERTH_BOX` | the box's name |
-| `BERTH_LOCATION` | the repository (location) name, e.g. `cal` |
+| `BERTH_LOCATION` | the repository (location) name, e.g. `shop` |
 | `BERTH_ROOT_PATH` | the repository's main checkout |
 | `BERTH_WORKTREE_PATH`, `BERTH_WORKTREE_NAME` | this worktree |
-| `BERTH_WORKTREE_SLUG` | `cal_fix_login`: safe for database and container names |
+| `BERTH_WORKTREE_SLUG` | `shop_fix_login`: safe for database and container names |
 | `BERTH_BRANCH` | the worktree's branch |
 | `BERTH_PORT`, `BERTH_PORT_1`, … | ports reserved for this worktree alone |
 
@@ -52,12 +52,12 @@ or `finished` (done with its turn).
 # An agent beside you, in a split pane of the user's window:
 berthd session new "$BERTH_LOCATION/$BERTH_WORKTREE_NAME" --agent claude --prompt "Review my diff" --open split
 # A new worktree with an agent in it, in a new tab:
-berthd task new cal/fix-login --agent claude --prompt "Fix the login redirect loop" --open tab
+berthd task new shop/fix-login --agent claude --prompt "Fix the login redirect loop" --open tab
 # A worktree alone, or any command in a terminal:
-berthd worktree new cal/fix-login --base main
-berthd session new cal/fix-login -- pnpm dev
+berthd worktree new shop/fix-login --base main
+berthd session new shop/fix-login -- pnpm dev
 # Read a terminal:
-berthd session screen cal-fix-login-claude-1a2b --history 200
+berthd session screen shop-fix-login-claude-1a2b --history 200
 ```
 
 - Start agents with `--agent ID --prompt TEXT` (ids from `berthd agents`),
@@ -94,10 +94,10 @@ location, which wins) says what every worktree gets:
 ```
 
 ```sh
-berthd location config cal --json        # the repo's, the box's, and the effective config
-berthd service list cal/fix-login        # this worktree's services and their state
-berthd service start cal/fix-login web   # also stop, restart
-berthd service log cal/fix-login web     # its output, when it will not stay up
+berthd location config shop --json        # the repo's, the box's, and the effective config
+berthd service list shop/fix-login        # this worktree's services and their state
+berthd service start shop/fix-login web   # also stop, restart
+berthd service log shop/fix-login web     # its output, when it will not stay up
 ```
 
 `setup` runs after a worktree is created and `archive` before it is removed;

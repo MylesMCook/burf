@@ -24,12 +24,12 @@ export function startDemoScript(still = false) {
     route({
       category: "review",
       title: "Claude Code left changes to review",
-      detail: "4 files · +128 −31 · me/booker-perf",
+      detail: "4 files · +128 −31 · me/search-perf",
       tone: "success",
       box: "devl",
-      path: "/home/me/work/cal-booker-perf",
-      action: { kind: "review", box: "devl", path: "/home/me/work/cal-booker-perf" },
-      key: "review|devl|/home/me/work/cal-booker-perf",
+      path: "/home/me/work/shop-search-perf",
+      action: { kind: "review", box: "devl", path: "/home/me/work/shop-search-perf" },
+      key: "review|devl|/home/me/work/shop-search-perf",
     }),
   );
 

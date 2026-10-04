@@ -37,7 +37,7 @@ Demo mode is always mock mode, follows the system's light or dark, starts
 afresh on every load, and leaves out what needs a laptop agent or Tauri:
 no system notifications, no plugins from `~/.berth/plugins`, and a box's
 dev server is a page drawn in place. Its own code is in `app/src/demo/`:
-the guide (open billing-fix, answer the waiting agent, press ⌘K, and Reset
+the guide (open checkout-fix, answer the waiting agent, press ⌘K, and Reset
 demo), the script (an agent on gpu finishes, Codex on qa-deck stops to ask
 something, a review lands in the inbox) and the agents' terminals, which
 answer. None of it is in the app's own build (`__BERTH_DEMO__` is false

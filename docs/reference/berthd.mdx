@@ -7,10 +7,10 @@ description: Every command of berthd, the daemon on each box, and what agents on
 talk to it through its local socket, so tools and agents on the box (hooks,
 flows, skills) can drive it directly. `berthd help` prints this list.
 
-- **Addressing.** A location is `cal`, a worktree `cal/billing`, a session by
+- **Addressing.** A location is `shop`, a worktree `shop/checkout`, a session by
   its name. From the laptop, [`berth`](/reference/cli) takes the same
   commands with the box in front: `berth sessions devl`,
-  `berth exec devl/cal/billing -- …`.
+  `berth exec devl/shop/checkout -- …`.
 - **JSON.** Every listing takes `--json`.
 - **State.** `BERTH_HOME` overrides the state directory. Hooks run from
   `~/.berth/hooks.json` and `~/.berth/plugins`.

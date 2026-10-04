@@ -311,7 +311,7 @@ func describe(ctx context.Context, s savedLocation) Location {
 
 // parseWorktrees reads `git worktree list --porcelain`. Each worktree is named
 // by its directory, with the repository's own "<repo>-" prefix removed, so
-// ~/work/cal-billing is "billing" in location "cal".
+// ~/work/shop-checkout is "checkout" in location "shop".
 func parseWorktrees(out []byte, repo string) []Worktree {
 	var all []Worktree
 	var cur *Worktree

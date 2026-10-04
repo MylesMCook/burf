@@ -2,7 +2,7 @@ import { locationName } from "@/lib/projects";
 import { useStore } from "@/lib/store";
 
 // uniqueName is a project name for a folder that no project on the box has
-// yet: cal, then cal-2, cal-3…
+// yet: shop, then shop-2, shop-3…
 export function uniqueName(box: string, base: string): string {
   const taken = new Set((useStore.getState().boxes[box]?.locations ?? []).map((l) => l.name));
   const name = locationName(base) || "project";

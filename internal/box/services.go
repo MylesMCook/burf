@@ -8,7 +8,7 @@ import (
 )
 
 // Service is a listening port that belongs to a worktree, found by where its
-// process runs: Next.js in ~/work/cal-billing/apps/web serves cal/billing.
+// process runs: Next.js in ~/work/shop-checkout/apps/web serves shop/checkout.
 type Service struct {
 	Location string `json:"location"`
 	Worktree string `json:"worktree"`

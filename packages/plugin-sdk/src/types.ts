@@ -67,7 +67,7 @@ export interface Location {
   scripts: Scripts;
   // Agents the repository's .berth/config.json defines.
   agents?: AgentPreset[];
-  // The origin remote's URL, its owner/name on a forge ("calcom/cal"), and
+  // The origin remote's URL, its owner/name on a forge ("acme/shop"), and
   // the branch new worktrees start from by default.
   remote?: string;
   slug?: string;

@@ -83,7 +83,7 @@ function namesOf(e: SessionEntry): AgentNames {
   return describeAgent(e.session, d?.sessions, d?.locations);
 }
 
-// "cal / billing-fix", or "cal" for the main checkout.
+// "shop / checkout-fix", or "shop" for the main checkout.
 const atOf = (n: AgentNames) => (n.where ? (n.where.worktree.main ? n.where.location.name : `${n.where.location.name} / ${n.where.worktree.name}`) : n.place);
 
 // confirmStop asks before stopping one agent, naming it and where it runs.

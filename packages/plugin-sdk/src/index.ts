@@ -273,7 +273,7 @@ export declare function useCurrentWorktree(): CurrentWorktree | undefined;
 export declare function useStorage<T>(key: string, initial: T): [T, (value: T) => void];
 
 // A project is one repository wherever it is checked out, as the app's
-// sidebar shows it: "calcom/cal.com" on devl and on gpu is one project with
+// sidebar shows it: "acme/shop" on devl and on gpu is one project with
 // two members. defaultBox is where new work goes unless the person picks
 // another (the project's "Default box" in the app).
 export interface ProjectMember {
@@ -295,11 +295,11 @@ export interface Project {
 
 // Every project across every box, live, sorted by name.
 export declare function useProjects(): Project[];
-// How the box API names a worktree's location: "cal" for the main checkout,
-// "cal/billing" otherwise. For orchestrate.exec and box requests.
+// How the box API names a worktree's location: "shop" for the main checkout,
+// "shop/checkout" otherwise. For orchestrate.exec and box requests.
 export declare function worktreeLocation(w: { location: string; worktree: string; main?: boolean }): string;
 // What the app calls a session, so a plugin names it the same way: the
 // agent's name or "Shell", numbered when its worktree has several ("Claude
-// Code 2"); with place, where it runs too ("cal / billing-fix · Codex").
+// Code 2"); with place, where it runs too ("shop / checkout-fix · Codex").
 // Pass the box's sessions for the number and its locations for the place.
 export declare function sessionName(session: Session, opts?: { sessions?: Session[]; locations?: Location[]; place?: boolean }): string;

@@ -24,7 +24,7 @@ import (
 // a kit or a repository's .berth/config.json can be shared, even publicly,
 // without containing one.
 //
-//	"DATABASE_PASSWORD": "op://dev/cal-db/password"   1Password, through the box's op CLI
+//	"DATABASE_PASSWORD": "op://dev/shop-db/password"   1Password, through the box's op CLI
 //	"STRIPE_KEY": "env://STRIPE_TEST_KEY"             a variable from berthd's own environment
 //
 // References are resolved on the box, when a worktree's environment is

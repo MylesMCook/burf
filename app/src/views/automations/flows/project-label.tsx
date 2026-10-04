@@ -12,7 +12,7 @@ export function BoxChip({ box, className }: { box: string; className?: string })
   return <span className={cn("inline-flex h-4 shrink-0 items-center rounded bg-muted px-1 font-mono text-[10px] text-muted-foreground leading-none", className)}>{box}</span>;
 }
 
-// ProjectLabel names where a flow runs: a project as "cal · calcom/cal" on
+// ProjectLabel names where a flow runs: a project as "shop · acme/shop" on
 // its box, every project on a box, or a project on every box that has it.
 export function ProjectLabel({ box, scope, className, chip = true }: { box: string; scope: Scope; className?: string; chip?: boolean }) {
   if (box === EVERY_BOX) return <EveryBoxLabel scope={scope} className={className} chip={chip} />;
@@ -35,7 +35,7 @@ function OneBoxLabel({ box, scope, className, chip }: { box: string; scope: Scop
 }
 
 // EveryBoxLabel names a project on every box that has it by the name the
-// sidebar gives it, its repository muted after ("Any cal · calcom/cal.com"),
+// sidebar gives it, its repository muted after ("Any shop · acme/shop"),
 // and its boxes.
 function EveryBoxLabel({ scope, className, chip }: { scope: Scope; className?: string; chip: boolean }) {
   const { projects } = useProjects();

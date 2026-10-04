@@ -8,7 +8,7 @@ an agent on a box that cannot be reached can wait in the laptop agent's
 queue instead of failing:
 
 ```sh
-berth session send devl/billing-claude "Rebase on main" --queue
+berth session send devl/checkout-claude "Rebase on main" --queue
 berth queue                # what is waiting, and why anything failed
 berth queue rm ID          # discard one
 berth queue retry ID       # put a failed one back in line

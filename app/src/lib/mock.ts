@@ -43,19 +43,19 @@ if (fresh) {
 const locations: Record<string, Location[]> = {
   devl: [
     {
-      name: "cal",
-      path: "/home/me/work/cal",
+      name: "shop",
+      path: "/home/me/work/shop",
       repo: true,
-      scripts: { setup: "yarn && yarn db-migrate", from: "repo" },
-      remote: "git@github.com:calcom/cal.com.git",
-      slug: "calcom/cal.com",
+      scripts: { setup: "pnpm install && pnpm db:migrate", from: "repo" },
+      remote: "git@github.com:acme/shop.git",
+      slug: "acme/shop",
       default_branch: "main",
       worktrees: [
-        { name: "cal", path: "/home/me/work/cal", branch: "main", main: true },
-        { name: "billing-fix", path: "/home/me/work/cal-billing-fix", branch: "me/billing-fix" },
-        { name: "qa-deck", path: "/home/me/work/cal-qa-deck", branch: "me/qa-deck" },
-        { name: "booker-perf", path: "/home/me/work/cal-booker-perf", branch: "me/booker-perf" },
-        { name: "transfer-billing", path: "/home/me/work/cal-transfer-billing", branch: "me/admin-billing-transfer" },
+        { name: "shop", path: "/home/me/work/shop", branch: "main", main: true },
+        { name: "checkout-fix", path: "/home/me/work/shop-checkout-fix", branch: "me/checkout-fix" },
+        { name: "qa-deck", path: "/home/me/work/shop-qa-deck", branch: "me/qa-deck" },
+        { name: "search-perf", path: "/home/me/work/shop-search-perf", branch: "me/search-perf" },
+        { name: "order-export", path: "/home/me/work/shop-order-export", branch: "me/order-export" },
       ],
     },
     {
@@ -71,16 +71,16 @@ const locations: Record<string, Location[]> = {
   ],
   gpu: [
     {
-      name: "cal",
-      path: "/home/me/cal",
+      name: "shop",
+      path: "/home/me/shop",
       repo: true,
-      remote: "git@github.com:calcom/cal.com.git",
-      slug: "calcom/cal.com",
+      remote: "git@github.com:acme/shop.git",
+      slug: "acme/shop",
       default_branch: "main",
       scripts: {},
       worktrees: [
-        { name: "cal", path: "/home/me/cal", branch: "main", main: true },
-        { name: "ci-flake", path: "/home/me/cal-ci-flake", branch: "me/ci-flake" },
+        { name: "shop", path: "/home/me/shop", branch: "main", main: true },
+        { name: "ci-flake", path: "/home/me/shop-ci-flake", branch: "me/ci-flake" },
       ],
     },
     {
@@ -98,18 +98,18 @@ const locations: Record<string, Location[]> = {
 
 const sessions: Record<string, Session[]> = {
   devl: [
-    { name: "billing-fix-claude", location: "cal/billing-fix", dir: "/home/me/work/cal-billing-fix", command: "claude", created: ago(52), attached: 0, exited: false, agent: "claude", agent_state: "waiting", state_since: ago(4) },
-    { name: "qa-deck-codex", location: "cal/qa-deck", dir: "/home/me/work/cal-qa-deck", command: "codex", created: ago(18), attached: 1, exited: false, agent: "codex", agent_state: "running", state_since: ago(2) },
-    { name: "cal-shell", location: "cal", dir: "/home/me/work/cal", command: "", created: ago(300), attached: 0, exited: false },
-    { name: "booker-perf-claude", location: "cal/booker-perf", dir: "/home/me/work/cal-booker-perf", command: "claude", created: ago(95), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(23) },
+    { name: "checkout-fix-claude", location: "shop/checkout-fix", dir: "/home/me/work/shop-checkout-fix", command: "claude", created: ago(52), attached: 0, exited: false, agent: "claude", agent_state: "waiting", state_since: ago(4) },
+    { name: "qa-deck-codex", location: "shop/qa-deck", dir: "/home/me/work/shop-qa-deck", command: "codex", created: ago(18), attached: 1, exited: false, agent: "codex", agent_state: "running", state_since: ago(2) },
+    { name: "shop-shell", location: "shop", dir: "/home/me/work/shop", command: "", created: ago(300), attached: 0, exited: false },
+    { name: "search-perf-claude", location: "shop/search-perf", dir: "/home/me/work/shop-search-perf", command: "claude", created: ago(95), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(23) },
     // Three agents in one worktree, so the board has to tell them apart.
-    { name: "transfer-billing-claude", location: "cal/transfer-billing", dir: "/home/me/work/cal-transfer-billing", command: "claude 'Move the billing owner when a team is transferred'", created: ago(1700), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(1560) },
-    { name: "transfer-billing-claude-2", location: "cal/transfer-billing", dir: "/home/me/work/cal-transfer-billing", command: "claude", created: ago(320), attached: 0, exited: false, agent: "claude", agent_state: "idle", state_since: ago(290) },
-    { name: "transfer-billing-claude-3", location: "cal/transfer-billing", dir: "/home/me/work/cal-transfer-billing", command: "claude 'Add tests for the transfer webhook'", created: ago(140), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(75) },
+    { name: "order-export-claude", location: "shop/order-export", dir: "/home/me/work/shop-order-export", command: "claude 'Export orders as CSV from the admin'", created: ago(1700), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(1560) },
+    { name: "order-export-claude-2", location: "shop/order-export", dir: "/home/me/work/shop-order-export", command: "claude", created: ago(320), attached: 0, exited: false, agent: "claude", agent_state: "idle", state_since: ago(290) },
+    { name: "order-export-claude-3", location: "shop/order-export", dir: "/home/me/work/shop-order-export", command: "claude 'Add tests for the export job'", created: ago(140), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(75) },
     { name: "notes-claude", location: "notes", dir: "/home/me/work/notes", command: "claude", created: ago(700), attached: 0, exited: true, agent: "claude" },
   ],
   gpu: [
-    { name: "ci-flake-claude", location: "cal/ci-flake", dir: "/home/me/cal-ci-flake", command: "claude", created: ago(30), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(6) },
+    { name: "ci-flake-claude", location: "shop/ci-flake", dir: "/home/me/shop-ci-flake", command: "claude", created: ago(30), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(6) },
     { name: "judge-v2-claude", location: "evals/judge-v2", dir: "/home/me/evals-judge-v2", command: "claude", created: ago(9), attached: 0, exited: false, agent: "claude", agent_state: "running", state_since: ago(1) },
     { name: "evals-codex", location: "evals", dir: "/home/me/evals", command: "codex", created: ago(3), attached: 0, exited: false, agent: "codex", agent_state: "idle", state_since: ago(3) },
   ],
@@ -140,9 +140,9 @@ const stats: Record<string, Stats> = {
 
 const services: Record<string, Service[]> = {
   devl: [
-    { location: "cal", worktree: "cal", path: "/home/me/work/cal", port: 3000, process: "node", main: true },
-    { location: "cal", worktree: "billing-fix", path: "/home/me/work/cal-billing-fix", port: 3001, process: "node" },
-    { location: "cal", worktree: "qa-deck", path: "/home/me/work/cal-qa-deck", port: 4789, process: "vite" },
+    { location: "shop", worktree: "shop", path: "/home/me/work/shop", port: 3000, process: "node", main: true },
+    { location: "shop", worktree: "checkout-fix", path: "/home/me/work/shop-checkout-fix", port: 3001, process: "node" },
+    { location: "shop", worktree: "qa-deck", path: "/home/me/work/shop-qa-deck", port: 4789, process: "vite" },
   ],
   gpu: [{ location: "evals", worktree: "judge-v2", path: "/home/me/evals-judge-v2", port: 8888, process: "jupyter" }],
 };
@@ -184,7 +184,7 @@ function saveHooks(machine: string, hooks: Hook[]): Promise<HooksFile> {
 
 // /v1/app documents, as the laptop agent keeps them. Projects start with a
 // Work section so sections show.
-const appDocs: Record<string, unknown> = fresh ? {} : { projects: { projects: [{ id: "calcom/cal.com", section: "Work", default_box: "devl" }, { id: "me/notes", section: "Work" }], sections: ["Work", "Personal"] } };
+const appDocs: Record<string, unknown> = fresh ? {} : { projects: { projects: [{ id: "acme/shop", section: "Work", default_box: "devl" }, { id: "me/notes", section: "Work" }], sections: ["Work", "Personal"] } };
 
 const listeners = new Set<(e: BerthEvent) => void>();
 const emit = (e: Omit<BerthEvent, "time">) => listeners.forEach((l) => l({ ...e, time: new Date().toISOString() }));
@@ -227,7 +227,7 @@ const checksRun: Record<string, number> = {};
 const mockFolders: Record<string, { git?: boolean; slug?: string }> = {
   "/home/me": {},
   "/home/me/work": {},
-  "/home/me/work/cal": { git: true, slug: "calcom/cal.com" },
+  "/home/me/work/shop": { git: true, slug: "acme/shop" },
   "/home/me/work/notes": { git: true, slug: "me/notes" },
   "/home/me/work/ondine": { git: true, slug: "me/ondine" },
   "/home/me/work/drafts": {},
@@ -238,7 +238,7 @@ const mockFolders: Record<string, { git?: boolean; slug?: string }> = {
   "/home/me/orca/projects": {},
   "/home/me/orca/projects/bean-app": { git: true, slug: "me/bean-app" },
 };
-const mockBranches = ["main", "me/billing-fix", "me/qa-deck", "me/booker-perf", "feat/qa-app", "feat/pr-previews", "fix/impersonation-banner"];
+const mockBranches = ["main", "me/checkout-fix", "me/qa-deck", "me/search-perf", "feat/qa-app", "feat/pr-previews", "fix/cart-badge"];
 const HOME = "/home/me";
 const expand = (p: string) => (p === "~" ? HOME : p.startsWith("~/") ? `${HOME}${p.slice(1)}` : p.replace(/\/+$/, "") || "/");
 
@@ -268,7 +268,7 @@ function mockProjects(box: string, method: string, path: string, body?: unknown)
   const loc = locations[box]?.find((l) => l.name === decodeURIComponent(m[1]));
   if (!loc) return Promise.reject(new Error("no location with that name"));
   if (m[2] === "branches" && method === "GET") {
-    return delay({ default: "main", branches: [...mockBranches.map((name) => ({ name, current: name === "main" })), { name: "release/v5.2", remote: true }] });
+    return delay({ default: "main", branches: [...mockBranches.map((name) => ({ name, current: name === "main" })), { name: "release/v2.8", remote: true }] });
   }
   if (m[2] === "resolve" && method === "POST") {
     const { input, kind } = body as { input: string; kind?: string };
@@ -285,11 +285,11 @@ function mockProjects(box: string, method: string, path: string, body?: unknown)
       const n = Number(pr[1]);
       r = n === 404
         ? { kind: "pr", name: `pr-${n}`, branch: `pr-${n}`, pr: n, ref: `pull/${n}/head`, note: "gh is not installed on this box; using pull/404/head" }
-        : { kind: "pr", name: "fix-billing-retries", branch: "me/fix-billing-retries", pr: n, ref: `pull/${n}/head`, title: "Fix billing retries without an idempotency key", url: `https://github.com/calcom/cal.com/pull/${n}` };
+        : { kind: "pr", name: "fix-payment-retries", branch: "me/fix-payment-retries", pr: n, ref: `pull/${n}/head`, title: "Fix payment retries without an idempotency key", url: `https://github.com/acme/shop/pull/${n}` };
     } else if (kind !== "name" && mockBranches.includes(text)) {
       r = { kind: "branch", name: slugOf(text.split("/").pop()!), branch: text, exists: true };
-    } else if (kind !== "name" && text === "release/v5.2") {
-      r = { kind: "remote-branch", name: "v5-2", branch: text, exists: true };
+    } else if (kind !== "name" && text === "release/v2.8") {
+      r = { kind: "remote-branch", name: "v2-8", branch: text, exists: true };
     } else {
       r = { kind: kind === "branch" ? "branch" : "name", name: slugOf(text), branch: slugOf(text), base: "main", exists: false };
     }
@@ -357,7 +357,7 @@ function mockOrchestration(box: string, method: string, path: string, body?: unk
     const shell = mockShell(box, r.location, r.command);
     if (shell) return new Promise((resolve) => setTimeout(() => resolve(shell), 250));
     const n = (checksRun[`${box}:${r.location}`] = (checksRun[`${box}:${r.location}`] ?? 0) + 1);
-    const output = n === 1 ? `$ ${r.command}\n FAIL  src/booking.test.ts > rejects a double booking\n   Expected: 409\n   Received: 200\n\nTests: 1 failed, 213 passed\n` : `$ ${r.command}\nTests: 214 passed\n`;
+    const output = n === 1 ? `$ ${r.command}\n FAIL  src/checkout.test.ts > rejects a double charge\n   Expected: 409\n   Received: 200\n\nTests: 1 failed, 213 passed\n` : `$ ${r.command}\nTests: 214 passed\n`;
     return new Promise((resolve) => setTimeout(() => resolve({ exit_code: n === 1 ? 1 : 0, output }), 700));
   }
   return undefined;
@@ -450,10 +450,10 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
       s?.agent_state === "waiting"
         ? "● The fix needs a migration for the new idempotency_key column.\n\n  Do you want me to create it?\n  ❯ 1. Yes\n    2. No, and tell Claude what to do differently"
         : s?.agent_state === "finished"
-          ? "● Booker renders 38% faster on the slow-network profile.\n  All 214 tests pass.\n\n✻ Baked for 6m 41s · done"
+          ? "● Search results render 38% faster on the slow-network profile.\n  All 214 tests pass.\n\n✻ Baked for 6m 41s · done"
           : s?.agent_state === "idle"
           ? " ▐▛███▜▌   Codex\n  ~/evals\n\n────────────────────────────────\n❯ Try \"refactor the judge\"\n────────────────────────────────\n  ? for shortcuts"
-          : "● Running yarn test --filter booking…\n  ⎿  PASS  handleNewBooking.test.ts (41 tests)\n  ⎿  RUNS  billing/webhook.test.ts\n\n✻ Testing… (2m 13s · esc to interrupt)\n\n────────────────────────────────\n❯ \n────────────────────────────────\n  ⏵⏵ auto mode on (shift+tab to cycle)";
+          : "● Running pnpm test --filter checkout…\n  ⎿  PASS  createOrder.test.ts (41 tests)\n  ⎿  RUNS  payments/webhook.test.ts\n\n✻ Testing… (2m 13s · esc to interrupt)\n\n────────────────────────────────\n❯ \n────────────────────────────────\n  ⏵⏵ auto mode on (shift+tab to cycle)";
     return delay({ screen });
   }
   if (key === "POST tasks") {
@@ -482,14 +482,14 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
     return delay(session);
   }
   // Removing a worktree or a project. A worktree with uncommitted work
-  // (billing-fix, in the fixtures) refuses without force, as git does.
+  // (checkout-fix, in the fixtures) refuses without force, as git does.
   const rmWt = /^locations\/([^/]+)\/worktrees\/([^/?]+)(\?.*)?$/.exec(path);
   if (method === "DELETE" && rmWt) {
     const [, loc, wt, q = ""] = rmWt.map((x) => x && decodeURIComponent(x));
     const l = locations[box]?.find((x) => x.name === loc);
     const w = l?.worktrees?.find((x) => x.name === wt);
     if (!l || !w) return Promise.reject(new Error("no worktree with that name"));
-    if (wt === "billing-fix" && !q.includes("force=1")) return Promise.reject(new Error(`git worktree remove: '${w.path}' contains modified or untracked files, use --force to delete it`));
+    if (wt === "checkout-fix" && !q.includes("force=1")) return Promise.reject(new Error(`git worktree remove: '${w.path}' contains modified or untracked files, use --force to delete it`));
     l.worktrees = l.worktrees!.filter((x) => x !== w);
     sessions[box] = (sessions[box] ?? []).filter((x) => x.dir !== w.path);
     setTimeout(() => emit({ type: "worktree.removed", box, data: { location: loc, name: wt, path: w.path } }), 50);
@@ -538,10 +538,10 @@ function mockAttach(box: string, session: string, h: TerminalHandlers) {
   const lines = [
     "\x1b[2J\x1b[H",
     `\x1b[38;5;208m✻\x1b[0m Welcome to \x1b[1m${s?.agent ?? "shell"}\x1b[0m on \x1b[36m${box}\x1b[0m  \x1b[2m${s?.dir ?? ""}\x1b[0m\r\n\r\n`,
-    "\x1b[33m●\x1b[0m Read \x1b[1mpackages/features/bookings/lib/handleNewBooking.ts\x1b[0m\r\n",
+    "\x1b[33m●\x1b[0m Read \x1b[1mapps/web/lib/checkout/createOrder.ts\x1b[0m\r\n",
     "\x1b[2m  ⎿  Read 412 lines\x1b[0m\r\n\r\n",
-    "\x1b[37m●\x1b[0m The billing webhook retries without an idempotency key,\r\n  so a slow response can create two invoices.\r\n  I will add the key and a test.\r\n\r\n",
-    "\x1b[32m●\x1b[0m Update(\x1b[1mpackages/features/ee/billing/webhook.ts\x1b[0m)\r\n",
+    "\x1b[37m●\x1b[0m The payment webhook retries without an idempotency key,\r\n  so a slow response can create two orders.\r\n  I will add the key and a test.\r\n\r\n",
+    "\x1b[32m●\x1b[0m Update(\x1b[1mapps/web/lib/payments/webhook.ts\x1b[0m)\r\n",
     "\x1b[2m  ⎿  Updated with \x1b[0m\x1b[32m12 additions\x1b[0m\x1b[2m and \x1b[0m\x1b[31m3 removals\x1b[0m\r\n\r\n",
     "\x1b[2m✻ Baked for 1m 12s · done\x1b[0m\r\n\r\n",
     "\x1b[1m❯\x1b[0m ",
@@ -804,7 +804,7 @@ export function mockClient(): Client {
           id: "bugfix",
           name: "Fix a bug",
           description: "Claude on a fresh branch from main, test first.",
-          location: "cal",
+          location: "shop",
           agent: "claude",
           branch: "fix/{{name}}",
           base: "main",
@@ -958,23 +958,23 @@ export function mockAgentOpens(box: string, location: string, dir: string, open:
 export function mockNotifications() {
   const devl = "devl";
   const plays: [number, Omit<BerthEvent, "time">][] = [
-    [0, { type: "agent.waiting", box: devl, origin: "claude", data: { path: "/home/me/work/cal-billing-fix" } }],
-    [150, { type: "agent.finished", box: devl, origin: "claude", data: { path: "/home/me/work/cal-booker-perf" } }],
-    [300, { type: "agent.finished", box: devl, origin: "claude", data: { path: "/home/me/work/cal-booker-perf" } }],
-    [450, { type: "agent.finished", box: devl, origin: "claude", data: { path: "/home/me/work/cal-booker-perf" } }],
-    [600, { type: "flow.finished", box: devl, origin: "flow:tests-after-turn", data: { flow: "tests-after-turn", scope: "repo:cal", run: "r3", status: "failed", path: "/home/me/work/cal-billing-fix" } }],
-    [750, { type: "worktree.setup.failed", box: devl, data: { location: "cal", name: "qa-deck", path: "/home/me/work/cal-qa-deck" }, error: "pnpm install exited with status 1: ERR_PNPM_FETCH_404" }],
-    [900, { type: "service.failed", box: devl, data: { location: "cal", name: "qa-deck", service: "storybook", error: "port 6006 is already in use" } }],
+    [0, { type: "agent.waiting", box: devl, origin: "claude", data: { path: "/home/me/work/shop-checkout-fix" } }],
+    [150, { type: "agent.finished", box: devl, origin: "claude", data: { path: "/home/me/work/shop-search-perf" } }],
+    [300, { type: "agent.finished", box: devl, origin: "claude", data: { path: "/home/me/work/shop-search-perf" } }],
+    [450, { type: "agent.finished", box: devl, origin: "claude", data: { path: "/home/me/work/shop-search-perf" } }],
+    [600, { type: "flow.finished", box: devl, origin: "flow:tests-after-turn", data: { flow: "tests-after-turn", scope: "repo:shop", run: "r3", status: "failed", path: "/home/me/work/shop-checkout-fix" } }],
+    [750, { type: "worktree.setup.failed", box: devl, data: { location: "shop", name: "qa-deck", path: "/home/me/work/shop-qa-deck" }, error: "pnpm install exited with status 1: ERR_PNPM_FETCH_404" }],
+    [900, { type: "service.failed", box: devl, data: { location: "shop", name: "qa-deck", service: "storybook", error: "port 6006 is already in use" } }],
     [1050, { type: "guard.acted", box: "gpu", origin: "guard", data: { action: "stop_services", location: "evals", name: "judge-v2", path: "/home/me/evals-judge-v2", services: ["web", "worker"], memory_percent: 93.4, reason: "Memory at 93% for 2 minutes" } }],
-    [1200, { type: "kit.installed", box: devl, data: { location: "cal", kit: "cal-com", version: "3", source: "https://example.com/kits/cal-com.json", warnings: ["The .env.example has keys this kit does not set: STRIPE_WEBHOOK_SECRET", "yarn is not installed; used pnpm"] } }],
-    [1350, { type: "notify", box: devl, origin: "flow:nightly-e2e", data: { title: "Nightly e2e passed", body: "412 tests in 9m 12s", flow: "nightly-e2e", location: "cal" } }],
+    [1200, { type: "kit.installed", box: devl, data: { location: "shop", kit: "shop-dev", version: "3", source: "https://example.com/kits/shop-dev.json", warnings: ["The .env.example has keys this kit does not set: PAYMENTS_WEBHOOK_SECRET", "pnpm is older than the repository asks for (9.1 < 9.4)"] } }],
+    [1350, { type: "notify", box: devl, origin: "flow:nightly-e2e", data: { title: "Nightly e2e passed", body: "412 tests in 9m 12s", flow: "nightly-e2e", location: "shop" } }],
     // One of three Claude Codes in one worktree: named by its session, it
     // reads as "Claude Code 3", not just "Claude Code".
-    [1420, { type: "agent.finished", box: devl, origin: "claude", data: { path: "/home/me/work/cal-transfer-billing", session: "transfer-billing-claude-3", agent: "claude" } }],
-    [1500, { type: "preview.open", box: devl, data: { location: "cal", name: "qa-deck", path: "/home/me/work/cal-qa-deck", port: 4789, url_path: "/deck" } }],
+    [1420, { type: "agent.finished", box: devl, origin: "claude", data: { path: "/home/me/work/shop-order-export", session: "order-export-claude-3", agent: "claude" } }],
+    [1500, { type: "preview.open", box: devl, data: { location: "shop", name: "qa-deck", path: "/home/me/work/shop-qa-deck", port: 4789, url_path: "/deck" } }],
   ];
   for (const [ms, e] of plays) setTimeout(() => emit(e), ms);
-  setTimeout(() => mockAgentOpens(devl, "cal/qa-deck", "/home/me/work/cal-qa-deck", "split"), 1650);
+  setTimeout(() => mockAgentOpens(devl, "shop/qa-deck", "/home/me/work/shop-qa-deck", "split"), 1650);
   // A plugin's notify, and a review-ready item, come from the app itself.
   setTimeout(() => {
     void import("@/lib/notify").then((m) => m.notify("Usage at 82% of the weekly limit", "Claude Code on your work account", "warning"));
@@ -982,12 +982,12 @@ export function mockNotifications() {
       m.route({
         category: "review",
         title: "Claude Code left changes to review",
-        detail: "4 files · +128 −31 · me/booker-perf",
+        detail: "4 files · +128 −31 · me/search-perf",
         tone: "success",
         box: devl,
-        path: "/home/me/work/cal-booker-perf",
-        action: { kind: "review", box: devl, path: "/home/me/work/cal-booker-perf" },
-        key: `review|${devl}|/home/me/work/cal-booker-perf`,
+        path: "/home/me/work/shop-search-perf",
+        action: { kind: "review", box: devl, path: "/home/me/work/shop-search-perf" },
+        key: `review|${devl}|/home/me/work/shop-search-perf`,
       }),
     );
   }, 1800);

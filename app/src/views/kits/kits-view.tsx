@@ -252,7 +252,7 @@ function AddFromLinkDialog({ open, onOpenChange }: { open: boolean; onOpenChange
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && submit()}
-            placeholder="berth://kit?src=…  or  https://github.com/acme/kits/tree/main/cal"
+            placeholder="berth://kit?src=…  or  https://github.com/acme/kits/tree/main/shop"
             className="font-mono text-xs"
           />
           <p className="text-muted-foreground text-xs leading-relaxed">

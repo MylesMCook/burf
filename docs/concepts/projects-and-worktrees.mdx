@@ -11,14 +11,14 @@ across your boxes is a **project**. Agents work in its **worktrees**.
 A **location** is a named directory on one box, usually a git repository:
 
 ```sh
-berth location add devl/cal ~/work/cal
+berth location add devl/shop ~/work/shop
 berth locations devl
-berth location rm devl/cal      # forgets it; files are untouched
+berth location rm devl/shop      # forgets it; files are untouched
 ```
 
 The box API, the CLI and hooks address things on a box by location:
-`cal` is the repository's own checkout, `cal/billing` one of its worktrees,
-and `devl/cal/billing` the same from the laptop.
+`shop` is the repository's own checkout, `shop/checkout` one of its worktrees,
+and `devl/shop/checkout` the same from the laptop.
 
 ## Projects
 
@@ -40,14 +40,14 @@ on its own branch, so several agents can work at once without stepping on
 each other. Berth makes them with git, next to the repository:
 
 ```text
-~/work/cal              the repository (location "cal")
-~/work/cal-billing      worktree "billing", on branch billing
-~/work/cal-fix-login    worktree "fix-login"
+~/work/shop             the repository (location "shop")
+~/work/shop-checkout    worktree "checkout", on branch checkout
+~/work/shop-fix-login   worktree "fix-login"
 ```
 
 ```sh
-berth worktree new devl/cal/billing [--branch B] [--base REF]
-berth worktree rm devl/cal/billing [--force]
+berth worktree new devl/shop/checkout [--branch B] [--base REF]
+berth worktree rm devl/shop/checkout [--force]
 ```
 
 - Keep a worktree's name to letters, digits and dashes: it becomes part of
@@ -96,9 +96,9 @@ box connection, with nothing exposed on the box:
 | URL | Reaches |
 | --- | --- |
 | `http://3000.devl.localhost:1377/` | Port 3000 on `devl` |
-| `http://billing.cal.devl.localhost:1377/` | The `billing` worktree's dev server (its lowest listening port) |
-| `http://cal.devl.localhost:1377/` | The main checkout's dev server |
-| `http://billing.cal.localhost:1377/` | The `billing` worktree's dev server, when only one box has it |
+| `http://checkout.shop.devl.localhost:1377/` | The `checkout` worktree's dev server (its lowest listening port) |
+| `http://shop.devl.localhost:1377/` | The main checkout's dev server |
+| `http://checkout.shop.localhost:1377/` | The `checkout` worktree's dev server, when only one box has it |
 | `http://localhost:1377/` | An index of what is reachable |
 
 `berth setup port80` on a Mac drops the `:1377`. Dev servers need no
@@ -124,8 +124,8 @@ berth route add '*.app.localhost' devl 8080    # Host header passed unchanged
 ## Editors
 
 ```sh
-berth ssh-config --write                   # an SSH host per box, berth-<box>, for editors
-berth edit devl/cal/billing src/app.ts:42  # open a file at a line (--in cursor|vscode|windsurf|zed)
+berth ssh-config --write                     # an SSH host per box, berth-<box>, for editors
+berth edit devl/shop/checkout src/app.ts:42  # open a file at a line (--in cursor|vscode|windsurf|zed)
 ```
 
 Next: [sessions and agents](/concepts/sessions-and-agents), what runs in a

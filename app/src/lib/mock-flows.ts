@@ -14,18 +14,18 @@ const minutesAgo = (m: number) => new Date(Date.now() - m * 60_000).toISOString(
 
 const committed: Record<string, Record<string, RepoConfig>> = {
   devl: {
-    cal: {
-      setup: "yarn install --frozen-lockfile && yarn db-deploy",
-      archive: "dropdb --if-exists cal_$BERTH_WORKTREE_SLUG",
+    shop: {
+      setup: "pnpm install --frozen-lockfile && pnpm db:migrate",
+      archive: "dropdb --if-exists $BERTH_WORKTREE_SLUG",
       ports: 3,
       env: {
-        DATABASE_URL: "postgresql://postgres@localhost:5432/cal_$BERTH_WORKTREE_SLUG",
-        NEXT_PUBLIC_WEBAPP_URL: "http://$BERTH_WORKTREE_NAME.cal.$BERTH_BOX.localhost:1377",
+        DATABASE_URL: "postgresql://postgres@localhost:5432/$BERTH_WORKTREE_SLUG",
+        NEXT_PUBLIC_WEBAPP_URL: "http://$BERTH_WORKTREE_NAME.shop.$BERTH_BOX.localhost:1377",
         PORT: "$BERTH_PORT",
       },
       services: [
-        { name: "web", run: "yarn dev --port $BERTH_PORT", autostart: true },
-        { name: "api", run: "yarn workspace @calcom/api-v2 dev --port $BERTH_PORT_1" },
+        { name: "web", run: "pnpm dev --port $BERTH_PORT", autostart: true },
+        { name: "api", run: "pnpm --filter @shop/api dev --port $BERTH_PORT_1" },
       ],
       agents: [{ id: "claude", name: "Claude Code (Opus)", command: "claude --model opus" }],
       flows: [
@@ -35,7 +35,7 @@ const committed: Record<string, Record<string, RepoConfig>> = {
           enabled: true,
           trigger: { event: "agent.finished", where: { agent: "claude" } },
           steps: [
-            { id: "types", kind: "run", command: "yarn type-check:ci --filter=...[HEAD]", timeout: "15m" },
+            { id: "types", kind: "run", command: "pnpm typecheck --filter=...[HEAD]", timeout: "15m" },
             { kind: "prompt", when: "failure", text: "Type-check failed:\n\n{{prev.output}}\n\nFix it, then stop." },
           ],
           max_runs_per_hour: 12,
@@ -47,12 +47,12 @@ const committed: Record<string, Record<string, RepoConfig>> = {
 
 const local: Record<string, Record<string, RepoConfig>> = {
   devl: {
-    cal: {
-      env: { STRIPE_PRIVATE_KEY: "op://dev/stripe/secret-key", NEXT_PUBLIC_IS_E2E: "1" },
+    shop: {
+      env: { PAYMENTS_SECRET_KEY: "op://dev/payments/secret-key", NEXT_PUBLIC_IS_E2E: "1" },
       flows: [
         {
           id: "notify-when-waiting",
-          name: "Notify me when an agent in cal needs me",
+          name: "Notify me when an agent in shop needs me",
           enabled: true,
           trigger: { event: "agent.waiting" },
           steps: [{ kind: "notify", title: "{{worktree.name}} needs you", text: "An agent in {{location}} is waiting." }],
@@ -89,36 +89,36 @@ const runs: Record<string, FlowRun[]> = {
     {
       id: "r3",
       flow: "tests-after-turn",
-      scope: "repo:cal",
+      scope: "repo:shop",
       started: minutesAgo(6),
       finished: minutesAgo(5),
       // The check failed and the on-failure prompt handled it, which the box
       // counts as the flow succeeding.
       status: "succeeded",
-      event: { type: "agent.finished", time: minutesAgo(6), box: "devl", origin: "claude", data: { path: "/home/me/work/cal-billing-fix", agent: "claude" } },
+      event: { type: "agent.finished", time: minutesAgo(6), box: "devl", origin: "claude", data: { path: "/home/me/work/shop-checkout-fix", agent: "claude" } },
       steps: [
-        { id: "types", kind: "run", status: "failed", started: minutesAgo(6), duration: "48.2s", exit_code: 2, output: "packages/features/ee/billing/webhook.ts:41:7 - error TS2322: Type 'string | undefined' is not assignable to type 'string'.\n\nFound 1 error." },
+        { id: "types", kind: "run", status: "failed", started: minutesAgo(6), duration: "48.2s", exit_code: 2, output: "apps/web/lib/payments/webhook.ts:41:7 - error TS2322: Type 'string | undefined' is not assignable to type 'string'.\n\nFound 1 error." },
         { id: "", kind: "prompt", status: "succeeded", started: minutesAgo(5), duration: "0.3s", exit_code: 0 },
       ],
     },
     {
       id: "r2",
       flow: "notify-when-waiting",
-      scope: "repo:cal",
+      scope: "repo:shop",
       started: minutesAgo(41),
       finished: minutesAgo(41),
       status: "succeeded",
-      event: { type: "agent.waiting", time: minutesAgo(41), box: "devl", origin: "claude", data: { path: "/home/me/work/cal-billing-fix" } },
+      event: { type: "agent.waiting", time: minutesAgo(41), box: "devl", origin: "claude", data: { path: "/home/me/work/shop-checkout-fix" } },
       steps: [{ id: "", kind: "notify", status: "succeeded", duration: "2ms", exit_code: 0 }],
     },
     {
       id: "r1",
       flow: "tests-after-turn",
-      scope: "repo:cal",
+      scope: "repo:shop",
       started: minutesAgo(95),
       finished: minutesAgo(94),
       status: "succeeded",
-      event: { type: "agent.finished", time: minutesAgo(95), box: "devl", origin: "claude", data: { path: "/home/me/work/cal-booker-perf", agent: "claude" } },
+      event: { type: "agent.finished", time: minutesAgo(95), box: "devl", origin: "claude", data: { path: "/home/me/work/shop-search-perf", agent: "claude" } },
       steps: [
         { id: "types", kind: "run", status: "succeeded", duration: "52.9s", exit_code: 0, output: "Tasks: 41 successful, 41 total" },
         { id: "", kind: "prompt", status: "skipped", exit_code: 0 },
@@ -193,7 +193,7 @@ function simulate(box: string, sf: ScopedFlow, data: Record<string, unknown>, em
     const runs = when === "always" || (when === "failure" ? prevFailed : !prevFailed);
     if (!runs) return { id: s.id ?? "", kind: s.kind, status: "skipped", exit_code: 0 };
     const fail = s.kind === "run" && /test|check|lint/.test(s.command ?? "");
-    if (s.kind === "notify") emit({ type: "notify", box, origin: `flow:${sf.flow.id}`, data: { title: (s.title ?? "").replace(/\{\{[^}]+\}\}/g, String(data.name ?? "billing-fix")), body: s.text ?? "", flow: sf.flow.id, path: data.path } });
+    if (s.kind === "notify") emit({ type: "notify", box, origin: `flow:${sf.flow.id}`, data: { title: (s.title ?? "").replace(/\{\{[^}]+\}\}/g, String(data.name ?? "checkout-fix")), body: s.text ?? "", flow: sf.flow.id, path: data.path } });
     prevFailed = fail;
     failed = fail && !sf.flow.steps.slice(i + 1).some((r) => r.when === "failure" || r.when === "always");
     return {
@@ -203,7 +203,7 @@ function simulate(box: string, sf: ScopedFlow, data: Record<string, unknown>, em
       started,
       duration: s.kind === "run" ? `${(Math.random() * 40 + 3).toFixed(1)}s` : "4ms",
       exit_code: fail ? 1 : 0,
-      output: s.kind === "run" ? (fail ? `$ ${s.command}\n✗ 2 failing\n  billing › webhook retries without an idempotency key\n  billing › creates one invoice per event` : `$ ${s.command}\n✓ done`) : undefined,
+      output: s.kind === "run" ? (fail ? `$ ${s.command}\n✗ 2 failing\n  payments › webhook retries without an idempotency key\n  payments › creates one order per event` : `$ ${s.command}\n✓ done`) : undefined,
     };
   });
   const run: FlowRun = { id: `r${Date.now()}`, flow: sf.flow.id, scope: sf.scope, started, finished: new Date().toISOString(), status: failed ? "failed" : "succeeded", event: { type: triggerType(sf.flow.trigger), time: started, box, data }, steps, ...(test && { test }) };
@@ -234,7 +234,7 @@ function guardStatus(box: string): GuardStatus {
     memory_percent: used * 100,
     actions:
       box === "devl"
-        ? [{ at: new Date(Date.now() - 18 * 60_000).toISOString(), action: "stop_services", location: "cal", worktree: "booker-perf", services: ["web"], memory_percent: 93, reason: "no agent is working there" }]
+        ? [{ at: new Date(Date.now() - 18 * 60_000).toISOString(), action: "stop_services", location: "shop", worktree: "search-perf", services: ["web"], memory_percent: 93, reason: "no agent is working there" }]
         : [],
   };
 }

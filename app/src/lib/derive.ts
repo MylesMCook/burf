@@ -39,7 +39,7 @@ export function worktreeOf(locations: Location[] | undefined, s: Session): { loc
 // agent's name, or "Shell", numbered when its worktree has more than one of
 // the same ("Claude Code 2", by when they started). Pass sessions (the
 // box's) for the number, and locations with place to say where it runs,
-// for lists outside the worktree's own tabs: "cal / billing-fix · Codex".
+// for lists outside the worktree's own tabs: "shop / checkout-fix · Codex".
 // The raw session id belongs in tooltips and developer surfaces only.
 export function sessionName(s: Session, opts: { sessions?: Session[]; locations?: Location[]; place?: boolean } = {}): string {
   const agent = agentOf(s);
@@ -81,8 +81,8 @@ function programIn(id: string): { prog: string; place: string } | undefined {
   return undefined;
 }
 
-// sessionPlace is where a session runs: "cal" for a main checkout, "cal /
-// billing-fix" for a worktree.
+// sessionPlace is where a session runs: "shop" for a main checkout, "shop /
+// checkout-fix" for a worktree.
 export function sessionPlace(s: Session, locations?: Location[]): string {
   const where = worktreeOf(locations, s);
   if (!where) return s.location ?? s.name;

@@ -3,7 +3,7 @@ import { findJoinLink, type Invite, type JoinOutput, type JoinResult, type Trust
 
 // More than one computer, in mock mode (?mock=1): making a join link here,
 // joining with one (any berth://join? link reads as an invite from a
-// MacBook to devl, cal and homelab, the last on a tailnet this computer has
+// MacBook to devl, build and homelab, the last on a tailnet this computer has
 // not signed in to, so the sign-in shows), and each box's list of computers.
 
 type Emit = (e: Omit<BerthEvent, "time">) => void;
@@ -27,13 +27,13 @@ const fp = (seed: string) => (seed.repeat(13) + "abcdefghijklmnopqrstuvwxyz23456
 
 const clients: Record<string, TrustedComputer[]> = {
   devl: [
-    { name: "seans-macbook-pro", fingerprint: fp("mn2b"), paired_at: daysAgo(41), you: true },
-    { name: "seans-mac-mini", fingerprint: fp("x7qa"), paired_at: daysAgo(2) },
+    { name: "my-macbook-pro", fingerprint: fp("mn2b"), paired_at: daysAgo(41), you: true },
+    { name: "my-mac-mini", fingerprint: fp("x7qa"), paired_at: daysAgo(2) },
   ],
 };
 
 function clientsOf(box: string): TrustedComputer[] {
-  return (clients[box] ??= [{ name: "seans-macbook-pro", fingerprint: fp("mn2b"), paired_at: daysAgo(12), you: true }]);
+  return (clients[box] ??= [{ name: "my-macbook-pro", fingerprint: fp("mn2b"), paired_at: daysAgo(12), you: true }]);
 }
 
 type Box = { name: string; address: string; network?: string; tailnet?: string };
@@ -42,11 +42,11 @@ type Box = { name: string; address: string; network?: string; tailnet?: string }
 const made = new Map<string, { from: string; expires: string; boxes: Box[] }>();
 
 const demoInvite = () => ({
-  from: "seans-macbook-pro",
+  from: "my-macbook-pro",
   expires: new Date(Date.now() + 9 * 60_000 + 12_000).toISOString(),
   boxes: [
     { name: "devl", address: "100.64.0.4:7444" },
-    { name: "cal", address: "100.64.0.12:7444" },
+    { name: "build", address: "100.64.0.12:7444" },
     { name: "homelab", address: "100.64.0.7:7444", network: "personal", tailnet: "home.example" },
   ] as Box[],
 });
@@ -78,7 +78,7 @@ export function computersCall(method: string, path: string, body: unknown): Prom
   const c = ctx;
   if (method === "POST" && path === "/v1/invite") {
     const names = (body as { boxes?: string[] }).boxes ?? c.status.boxes.map((b) => b.name);
-    const inv: Invite = { link: "", from: "seans-macbook-pro", expires: new Date(Date.now() + 10 * 60_000).toISOString(), boxes: [], skipped: [] };
+    const inv: Invite = { link: "", from: "my-macbook-pro", expires: new Date(Date.now() + 10 * 60_000).toISOString(), boxes: [], skipped: [] };
     for (const name of names) {
       const b = c.status.boxes.find((x) => x.name === name);
       if (!b) continue;
@@ -88,7 +88,7 @@ export function computersCall(method: string, path: string, body: unknown): Prom
     if (inv.boxes.length === 0) return Promise.reject(new Error(`no box could make an invite (${inv.skipped.map((s) => `${s.name}: ${s.error}`).join("; ")})`));
     inv.link = fakeLink(inv.boxes.length);
     made.set(inv.link, { from: inv.from, expires: inv.expires, boxes: inv.boxes.map((b) => ({ name: b.name, address: b.addresses[0], network: b.network, tailnet: b.tailnet })) });
-    for (const b of inv.boxes) c.emit({ type: "pairing.invited", box: b.name, data: { for: "", by: "laptop:seans-macbook-pro", expires: inv.expires } });
+    for (const b of inv.boxes) c.emit({ type: "pairing.invited", box: b.name, data: { for: "", by: "laptop:my-macbook-pro", expires: inv.expires } });
     return new Promise((r) => setTimeout(() => r(inv), 500));
   }
   const join = /^\/v1\/join(\/check)?$/.exec(path);

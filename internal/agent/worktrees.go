@@ -45,9 +45,9 @@ func (a *Agent) services(ctx context.Context, name string) []box.Service {
 
 // worktree resolves host labels to a worktree's dev server, its lowest port:
 //
-//	[worktree, location, box]  feat-billing.cal.devl.localhost
-//	[location, box]            cal.devl.localhost (the main checkout)
-//	[worktree, location]       feat-billing.cal.localhost, when one box has it
+//	[worktree, location, box]  feat-checkout.shop.devl.localhost
+//	[location, box]            shop.devl.localhost (the main checkout)
+//	[worktree, location]       feat-checkout.shop.localhost, when one box has it
 func (a *Agent) worktree(labels []string) (string, int, bool) {
 	ctx := context.Background()
 	lowest := func(boxName string, match func(box.Service) bool) (int, bool) {

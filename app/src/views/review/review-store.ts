@@ -90,7 +90,7 @@ export const useReview = create<ReviewState>()(() => ({
 
 export const entryKey = (box: string, path: string) => `${box}|${path}`;
 
-// where is the exec location for an item: "cal" or "cal/billing".
+// where is the exec location for an item: "shop" or "shop/checkout".
 export const where = (e: ReviewItem) => (e.main ? e.location : `${e.location}/${e.worktree}`);
 
 // signature is the state an item was reviewed in.

@@ -20,7 +20,7 @@ is what agents there use.
 ## Send
 
 ```sh
-berth session send devl/cal-billing-claude "Rebase on main and fix any conflicts"
+berth session send devl/shop-checkout-claude "Rebase on main and fix any conflicts"
 ```
 
 The text is pasted as one block (so a multi-line prompt is one prompt), then
@@ -36,8 +36,8 @@ cannot be reached waits on the laptop instead of failing; see
 ## Wait
 
 ```sh
-berth session wait devl/cal-billing-claude                  # finished or waiting
-berth session wait devl/cal-billing-claude --for finished --timeout 1h
+berth session wait devl/shop-checkout-claude                  # finished or waiting
+berth session wait devl/shop-checkout-claude --for finished --timeout 1h
 ```
 
 It returns when the agent is `finished` or `waiting` (or the states you ask
@@ -49,7 +49,7 @@ only states reported after `after` count.
 ## Exec
 
 ```sh
-berth exec devl/cal/billing -- pnpm test --changed
+berth exec devl/shop/checkout -- pnpm test --changed
 ```
 
 Runs a command to completion through a login shell in the location or
@@ -62,7 +62,7 @@ refuse it.
 ### Loop until a check passes
 
 ```sh
-berth loop devl/cal-billing-claude --check "pnpm test" --prompt "Make the tests pass" --max 5
+berth loop devl/shop-checkout-claude --check "pnpm test" --prompt "Make the tests pass" --max 5
 ```
 
 It prompts, waits, runs the check in the session's worktree, and sends the
@@ -76,8 +76,8 @@ menu does the same, and running loops show in a panel in the corner.
 A new worktree and agent picking up where another left off:
 
 ```sh
-berth task new devl/cal/billing-tests --agent codex \
-  --prompt "Continue from cal-billing-claude in ~/work/cal-billing: write the missing tests."
+berth task new devl/shop/checkout-tests --agent codex \
+  --prompt "Continue from shop-checkout-claude in ~/work/shop-checkout: write the missing tests."
 ```
 
 The app's **Hand off to…** does the same; with **In a new worktree** ticked
@@ -88,7 +88,7 @@ it records `from_session` on the task.
 A second agent in the same worktree:
 
 ```sh
-berth session new devl/cal/billing --agent codex --prompt "Review the uncommitted changes. Do not edit."
+berth session new devl/shop/checkout --agent codex --prompt "Review the uncommitted changes. Do not edit."
 ```
 
 ### Broadcast

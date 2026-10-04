@@ -131,7 +131,7 @@ function Preview({ theme }: { theme: Theme }) {
           <span style={{ color: t.green }}>●</span> tests pass
         </div>
         <div>
-          <span style={{ color: t.yellow }}>●</span> <span style={{ color: t.blue }}>~/work/cal</span>
+          <span style={{ color: t.yellow }}>●</span> <span style={{ color: t.blue }}>~/work/shop</span>
         </div>
         <div>
           <span style={{ color: t.magenta }}>❯</span> <span style={{ color: t.cyan }}>berth</span>

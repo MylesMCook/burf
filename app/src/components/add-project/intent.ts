@@ -6,7 +6,7 @@ import { locationName, repoName } from "@/lib/projects";
 //   git@…, https://…/o/r      a repository: clone it
 //   github.com/o/r/pull/12    the same, from a pull request or issue link,
 //                             which then opens as a worktree
-//   calcom/cal.com            owner/repo on GitHub: clone it
+//   acme/shop                 owner/repo on GitHub: clone it
 //   new-thing                 a name: an existing project or folder by that
 //                             name, or a new repository
 //

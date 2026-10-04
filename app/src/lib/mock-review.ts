@@ -10,67 +10,67 @@ type Emit = (e: Omit<BerthEvent, "time">) => void;
 const ago = (min: number) => new Date(Date.now() - min * 60_000).toISOString();
 
 const work: Record<string, Omit<ReviewItem, "session" | "agent" | "agent_state" | "state_since">> = {
-  "devl|/home/me/work/cal-billing-fix": {
-    location: "cal",
-    worktree: "billing-fix",
-    path: "/home/me/work/cal-billing-fix",
-    branch: "me/billing-fix",
+  "devl|/home/me/work/shop-checkout-fix": {
+    location: "shop",
+    worktree: "checkout-fix",
+    path: "/home/me/work/shop-checkout-fix",
+    branch: "me/checkout-fix",
     head: "4f1c9e2",
     base: "origin/main",
-    upstream: "origin/me/billing-fix",
+    upstream: "origin/me/checkout-fix",
     ahead: 2,
     behind: 0,
     files: [
-      { path: "apps/web/lib/billing/retry.ts", code: " M", added: 14, removed: 3 },
-      { path: "packages/features/ee/payments/webhook.ts", code: "M ", added: 22, removed: 9 },
-      { path: "apps/web/lib/billing/retry.test.ts", code: "??", added: 48, removed: 0 },
+      { path: "apps/web/lib/payments/retry.ts", code: " M", added: 14, removed: 3 },
+      { path: "apps/web/lib/payments/webhook.ts", code: "M ", added: 22, removed: 9 },
+      { path: "apps/web/lib/payments/retry.test.ts", code: "??", added: 48, removed: 0 },
     ],
     added: 84,
     removed: 12,
     commits: [
-      { sha: "4f1c9e2b7a1d0c3e5f6a7b8c9d0e1f2a3b4c5d6e", subject: "fix(billing): cap retries at 3 with backoff", author: "Claude", when: ago(31) },
-      { sha: "9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b", subject: "refactor(billing): move charge errors into ChargeError", author: "Claude", when: ago(44) },
+      { sha: "4f1c9e2b7a1d0c3e5f6a7b8c9d0e1f2a3b4c5d6e", subject: "fix(payments): cap retries at 3 with backoff", author: "Claude", when: ago(31) },
+      { sha: "9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b", subject: "refactor(payments): move charge errors into ChargeError", author: "Claude", when: ago(44) },
     ],
     base_ahead: 2,
     committed: [
-      { path: "apps/web/lib/billing/charge.ts", from: "apps/web/lib/billing/charge-old.ts", code: "R ", added: 2, removed: 2 },
+      { path: "apps/web/lib/payments/charge.ts", from: "apps/web/lib/payments/charge-old.ts", code: "R ", added: 2, removed: 2 },
       { path: "packages/lib/backoff.ts", code: "A ", added: 41, removed: 0 },
     ],
   },
-  "devl|/home/me/work/cal-booker-perf": {
-    location: "cal",
-    worktree: "booker-perf",
-    path: "/home/me/work/cal-booker-perf",
-    branch: "me/booker-perf",
+  "devl|/home/me/work/shop-search-perf": {
+    location: "shop",
+    worktree: "search-perf",
+    path: "/home/me/work/shop-search-perf",
+    branch: "me/search-perf",
     head: "c0ffee1",
     base: "origin/main",
     ahead: 0,
     behind: 0,
     files: [
-      { path: "packages/features/bookings/Booker/Booker.tsx", code: " M", added: 31, removed: 18 },
-      { path: "packages/features/bookings/Booker/utils/memo.ts", code: "??", added: 26, removed: 0 },
+      { path: "apps/web/components/search/SearchResults.tsx", code: " M", added: 31, removed: 18 },
+      { path: "apps/web/components/search/utils/memo.ts", code: "??", added: 26, removed: 0 },
     ],
     added: 57,
     removed: 18,
-    commits: [{ sha: "c0ffee1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b", subject: "perf(booker): memoise the slot grid", author: "Claude", when: ago(25) }],
+    commits: [{ sha: "c0ffee1d2e3f4a5b6c7d8e9f0a1b2c3d4e5f6a7b", subject: "perf(search): memoise the product grid", author: "Claude", when: ago(25) }],
     base_ahead: 1,
-    committed: [{ path: "packages/features/bookings/Booker/components/SlotGrid.tsx", code: "M ", added: 12, removed: 30 }],
+    committed: [{ path: "apps/web/components/search/ProductGrid.tsx", code: "M ", added: 12, removed: 30 }],
   },
 };
 
 export const reviewScreens: Record<string, string> = {
-  "booker-perf-claude": `❯ Make the booker render faster on long months
+  "search-perf-claude": `❯ Make search results render faster on big categories
 
-● I profiled the Booker on a 31-day month and the slot grid re-rendered
-  on every hover. I memoised the slot grid and moved the date maths out of
-  render.
+● I profiled search on a 500-product category and the product grid
+  re-rendered on every hover. I memoised the grid and moved the price
+  formatting out of render.
 
-  - SlotGrid.tsx: wrapped in memo, keys by date instead of index
-  - utils/memo.ts: a small cache for the timezone conversions
-  - Booker.tsx: passes stable callbacks
+  - ProductGrid.tsx: wrapped in memo, keys by product id instead of index
+  - utils/memo.ts: a small cache for the currency formatting
+  - SearchResults.tsx: passes stable callbacks
 
-  Render time for the month view went from ~180ms to ~45ms. Type check and
-  the booker tests pass.
+  Render time for a big category went from ~180ms to ~45ms. Type check and
+  the search tests pass.
 
 ✻ Brewed for 4m 12s · done 11:42 AM
 
@@ -78,11 +78,11 @@ export const reviewScreens: Record<string, string> = {
 ❯
 ────────────────────────────────────────────────
   ⏵⏵ auto mode on (shift+tab to cycle)`,
-  "billing-fix-claude": `● Retries are capped at 3 with exponential backoff, and 429s now count as
+  "checkout-fix-claude": `● Retries are capped at 3 with exponential backoff, and 429s now count as
   retryable. I added tests for the cap and the backoff timing.
 
-  Should I also cap the total retry time? A slow Stripe outage would hold
-  the booking lock for the whole backoff.
+  Should I also cap the total retry time? A slow provider outage would hold
+  the order lock for the whole backoff.
 
 ❯ 1. Yes, cap it at 30s
   2. No, leave it
@@ -141,7 +141,7 @@ export function reviewExec(box: string, location: string, command: string, emit:
   }
   if (command.startsWith("git add -A") || command.includes("git push")) {
     changed();
-    const out = [command.includes("git push") ? `To github.com:calcom/cal.com.git\n   4f1c9e2..${w.head}  HEAD -> ${w.branch}` : "", command.includes("gh pr create") ? "https://github.com/calcom/cal.com/pull/9077" : ""].filter(Boolean).join("\n");
+    const out = [command.includes("git push") ? `To github.com:acme/shop.git\n   4f1c9e2..${w.head}  HEAD -> ${w.branch}` : "", command.includes("gh pr create") ? "https://github.com/acme/shop/pull/9077" : ""].filter(Boolean).join("\n");
     return { exit_code: 0, output: out };
   }
   return undefined;

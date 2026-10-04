@@ -24,39 +24,39 @@ interface Git {
 const minutesAgo = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
 
 const git: Record<string, Git> = {
-  "devl/cal/billing-fix": {
+  "devl/shop/checkout-fix": {
     ahead: 3,
     behind: 12,
     changed: 4,
     untracked: 1,
-    conflicts: ["packages/features/ee/billing/webhook.ts", "packages/prisma/schema.prisma"],
-    subjects: ["fix(billing): add an idempotency key to the Stripe webhook", "test(billing): two retries create one invoice", "chore: migration for idempotency_key"],
+    conflicts: ["apps/web/lib/payments/webhook.ts", "db/schema.sql"],
+    subjects: ["fix(payments): add an idempotency key to the payment webhook", "test(payments): two retries create one order", "chore: migration for idempotency_key"],
   },
-  "devl/cal/qa-deck": { ahead: 1, behind: 0, changed: 0, untracked: 0, subjects: ["docs: QA deck outline"] },
-  "devl/cal/booker-perf": {
+  "devl/shop/qa-deck": { ahead: 1, behind: 0, changed: 0, untracked: 0, subjects: ["docs: QA deck outline"] },
+  "devl/shop/search-perf": {
     ahead: 5,
     behind: 2,
     changed: 0,
     untracked: 0,
     paused: true,
-    subjects: ["perf(booker): memoise slot grouping", "perf(booker): virtualise the month view", "perf: drop moment from the booker bundle", "test: booker render budget", "chore: bundle report"],
+    subjects: ["perf(search): memoise facet counts", "perf(search): virtualise the results grid", "perf: drop moment from the search bundle", "test: search render budget", "chore: bundle report"],
   },
   "gpu/evals/judge-v2": { ahead: 2, behind: 30, changed: 1, untracked: 3, subjects: ["feat(judge): rubric v2", "feat(judge): pairwise mode"] },
 };
 
 const baseSubjects = [
-  "fix(api): return 404 for unknown event types",
-  "feat(insights): routing form funnel",
+  "fix(api): return 404 for unknown products",
+  "feat(admin): low-stock report",
   "chore(deps): bump next to 15.3.1",
-  "fix(booker): timezone select keeps focus",
-  "refactor(trpc): split the viewer router",
-  "docs: self-hosting with Docker",
-  "fix(teams): seat count after downgrade",
-  "feat(workflows): WhatsApp reminders",
-  "chore: release v5.4.2",
-  "fix(embed): iframe height on Safari",
-  "test(e2e): flaky availability spec",
-  "feat(apps): Zoom webinar support",
+  "fix(search): filter select keeps focus",
+  "refactor(api): split the orders router",
+  "docs: running it locally",
+  "fix(cart): quantity after a coupon is removed",
+  "feat(emails): shipping update emails",
+  "chore: release v2.8.0",
+  "fix(checkout): address form height on small screens",
+  "test(e2e): flaky cart spec",
+  "feat(payments): saved cards",
 ];
 const authors = ["me", "ada-m", "jun-p", "priya-n", "tomas-r", "lena-f"];
 
@@ -101,7 +101,7 @@ function history(box: string, loc: string, wt: string, branch: string | undefine
     const node: Node = {
       sha,
       short: sha.slice(0, 7),
-      subject: pr ? `Merge pull request #${14200 + i} from calcom/${baseSubjects[(i + 3) % baseSubjects.length].split(":")[0].replace(/[()]/g, "-")}` : baseSubjects[(i + wt.length) % baseSubjects.length],
+      subject: pr ? `Merge pull request #${14200 + i} from acme/${baseSubjects[(i + 3) % baseSubjects.length].split(":")[0].replace(/[()]/g, "-")}` : baseSubjects[(i + wt.length) % baseSubjects.length],
       author: authors[i % authors.length],
       time: at(i),
       on_base: true,
@@ -112,7 +112,7 @@ function history(box: string, loc: string, wt: string, branch: string | undefine
     out.push(node);
   }
   base[N - 1].refs = "origin/main, main";
-  base[Math.max(0, N - 9)].refs = "tag: v5.4.2";
+  base[Math.max(0, N - 9)].refs = "tag: v2.8.0";
   // HEAD's history: everything up to the merge base…
   const mark = (n: Node) => {
     n.mine = true;

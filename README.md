@@ -11,7 +11,7 @@ stops them; the app is a view you can close and reopen at any time.
 
 - **Workspaces per worktree**: terminals (ghostty-web), splits, and browser
   tabs onto each worktree's dev server, at private URLs like
-  `http://billing.cal.devl.localhost:1377/`.
+  `http://checkout.shop.devl.localhost:1377/`.
 - **Agents you can see and steer**: Claude Code, Codex and others, with a
   kanban of who needs you, a review inbox for finished work, and
   orchestration (prompt, wait, check, loop, hand off) from the app, the CLI,

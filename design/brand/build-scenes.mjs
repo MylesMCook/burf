@@ -44,14 +44,17 @@ const SCENE_COPY = {
   storm: ["Squall.", "Something broke. Rain and chop; the buoy blinks.", "rain 1.6s · toss ±10° 3s"],
   chart: ["Chart.", "A course plotted, not sailed yet.", "needle ±9° 6s · ping 3.6s"],
   dock: ["Quay and crane.", "Nothing loaded yet. The hook waits.", "hook swing ±4° 5s · lamp"],
+  arriving: ["Coming alongside.", "A boat comes in to an empty berth, line thrown for the cleat: a box on its way.", "ride ±1° 6s · line swing 4.4s"],
+  signal: ["Signal lamp.", "Flashes across the water and a far lamp answers: reaching another network.", "flash 4s · answer 4s · fog lift 10s"],
+  "first-crate": ["First crate.", "The crane sets the first load on an empty quay: the first thing on the box.", "sling sway ±1.5° 5s"],
 };
 
 // Where a scene is placed, keyed "<file under app/src>#<scene>": the screen,
 // why this scene, and (when it can't be seen with ?mock=1) why not.
 const PLACES = {
   "App.tsx#dawn": ["No worktree selected · Pick a worktree", "The first thing you see when nothing is open: an empty harbour, morning."],
-  "App.tsx#lighthouse": ["Finding the Berth agent…", "Looking for the laptop agent; replaces a spinner.", "Only without ?mock=1, for a moment while the app connects."],
-  "App.tsx#offline": ["The Berth agent is not running", "The same fog as an offline box: out of sight, not gone.", "Only without ?mock=1, when the laptop agent is stopped."],
+  "components/agent-offline.tsx#lighthouse": ["Finding the Berth agent…", "Looking for the laptop agent; replaces a spinner.", "Only without ?mock=1, for a moment while the app connects."],
+  "components/agent-offline.tsx#offline": ["The Berth agent is not running", "The same fog as an offline box: out of sight, not gone.", "Only without ?mock=1, when the laptop agent is stopped."],
   "components/error-boundary.tsx#storm": ["Something broke (error boundary)", "The only alarming scene, kept for real errors.", "Needs a real render error."],
   "components/workspace/launcher.tsx#moored": ["Worktree launcher", "A worktree with nothing open is a boat tied up, ready to set off."],
   "components/workspace/pane-state.tsx#ended": ["Terminal pane · session ended", "What ran here has left: an empty berth.", "The demo's exited session opens as a live terminal."],
@@ -71,8 +74,13 @@ const PLACES = {
   "views/review/review-view.tsx#calm": ["Review · Nothing to review", "Nothing needs you, and the scene says so without a checkmark."],
   "views/automations/flows/runs-tab.tsx#chart": ["Automations · Runs · No runs yet", "The course exists; nobody has sailed it."],
   "views/automations/flows/flow-list.tsx#chart": ["Automations · Flows · No flows yet", "A flow is a course plotted ahead. Sits above the starter templates, smaller.", "Needs a box with no flows; &fresh=1 has no boxes at all."],
-  "views/onboarding/welcome-step.tsx#dawn": ["Onboarding · Welcome", "A first run is a harbour before anyone arrives."],
-  "views/onboarding/agent-step.tsx#setting-out": ["Onboarding · Start your first agent", "The last step sends the first boat out."],
+  "views/onboarding/onboarding-view.tsx#dawn": ["Onboarding · Welcome", "A first run is a harbour before anyone arrives."],
+  "views/onboarding/onboarding-view.tsx#arriving": ["Onboarding · Add a box", "A boat coming in to an empty berth while the box is on its way.", "Shows until berthd answers; the demo's &fresh=1 starts here."],
+  "views/onboarding/onboarding-view.tsx#lighthouse": ["Onboarding · Add a box · pairing", "Looking for the box while it pairs.", "Only while a real box pairs."],
+  "views/onboarding/onboarding-view.tsx#signal": ["Onboarding · Add a box · over Tailscale", "A lamp across the water: the box is on another network.", "Only when the Tailscale option is chosen."],
+  "views/onboarding/onboarding-view.tsx#moored": ["Onboarding · Box paired", "The box is in, tied up and ready."],
+  "views/onboarding/onboarding-view.tsx#first-crate": ["Onboarding · Add a project", "The first crate set down on an empty quay: the first thing on the box."],
+  "views/onboarding/onboarding-view.tsx#setting-out": ["Onboarding · Start your first agent", "The last step sends the first boat out."],
 };
 
 const NUMBERS = ["No", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine", "Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen", "Twenty"];
@@ -134,6 +142,8 @@ function placements(names) {
       // name={copy.scene}: the names are set elsewhere in the file, as scene: "dock".
       const prop = expr && !list.length ? expr[1].trim().match(/([A-Za-z_$][\w$]*)$/)?.[1] : undefined;
       if (prop) list = [...new Set([...text.matchAll(new RegExp(`\\b${prop}\\s*:\\s*"([a-z-]+)"`, "g"))].map((x) => x[1]).filter((n) => names.includes(n)))];
+      // name={scene} from a helper that returns them: every scene the file names in quotes.
+      if (prop && !list.length) list = [...new Set([...text.matchAll(/"([a-z-]+)"/g)].map((x) => x[1]).filter((n) => names.includes(n)))];
       if (!list.length) throw new Error(`${rel}:${line}: can't tell which scene <Scene${attrs}> draws`);
       for (const name of list) {
         if (!names.includes(name)) throw new Error(`${rel}:${line}: unknown scene "${name}"`);

@@ -17,7 +17,7 @@ export interface Kit {
   name: string;
   description?: string;
   version?: string;
-  // match.slug ("calcom/cal") is the repository a kit is for.
+  // match.slug ("acme/shop") is the repository a kit is for.
   match?: { slug?: string };
   requires?: KitRequirement[];
   config: RepoConfig;

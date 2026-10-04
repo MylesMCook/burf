@@ -67,7 +67,7 @@ export function GeneralSection() {
           label="Worktree URLs"
           description={
             <>
-              <Code>{`http://billing.cal.devl.localhost${port === 80 ? "" : `:${port}`}/`}</Code> for a worktree, <Code>{`http://cal.devl.localhost${port === 80 ? "" : `:${port}`}/`}</Code> for a repo's main checkout.
+              <Code>{`http://checkout.shop.devl.localhost${port === 80 ? "" : `:${port}`}/`}</Code> for a worktree, <Code>{`http://shop.devl.localhost${port === 80 ? "" : `:${port}`}/`}</Code> for a repo's main checkout.
             </>
           }
         />
