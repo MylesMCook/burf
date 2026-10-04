@@ -17,13 +17,14 @@ import { useStore } from "@/lib/store";
 // so the person answers it in place. It folds back into the conversation
 // once the agent is at its prompt again.
 //
-// useLiveScreen reads the screen while the pane is shown and the agent is
-// not mid-turn: every 2.5s, every second for a while after a command was
+// useLiveScreen reads the screen while the pane is shown and the agent has
+// no question its hooks describe: every 2.5s, every second for a while after a command was
 // sent (nudge) and while the terminal is open. A screen counts as its own
 // once its foot has key hints or numbered options and no prompt
-// (lib/screen screenAt); the prompt seen twice in a row folds it away.
+// (lib/screen screenAt), or shows no prompt twice in a row; the prompt seen
+// twice in a row folds it away.
 
-export function useLiveScreen({ box, session, agent, enabled, nudge }: { box: string; session: string; agent?: string; enabled: boolean; nudge: number }): { show: boolean; hide(): void } {
+export function useLiveScreen({ box, session, agent, enabled, running, nudge }: { box: string; session: string; agent?: string; enabled: boolean; running: boolean; nudge: number }): { show: boolean; hide(): void } {
   const client = useStore((s) => s.client);
   const [show, setShow] = useState(false);
   // Hidden by the person: stays hidden until the agent is at its prompt.
@@ -31,6 +32,8 @@ export function useLiveScreen({ box, session, agent, enabled, nudge }: { box: st
   const showing = useRef(false);
   showing.current = show && !hidden;
   const nudgedAt = useRef(0);
+  const busy = useRef(running);
+  busy.current = running;
   useEffect(() => {
     if (nudge) nudgedAt.current = Date.now();
   }, [nudge]);
@@ -43,18 +46,27 @@ export function useLiveScreen({ box, session, agent, enabled, nudge }: { box: st
     let alive = true;
     let timer = 0;
     let atPrompt = 0;
+    let unsure = 0;
     const tick = async () => {
       if (!document.hidden) {
         try {
           const r = await boxApi.screen(client, box, session);
           if (!alive) return;
           const at = screenAt(agent, r.screen ?? "");
-          if (at === "interactive") {
+          // An agent at rest always shows its prompt: a screen without it,
+          // read twice, is one of its own too (a tall dialog whose key hints
+          // are scrolled off, such as /usage).
+          // Mid-turn the screen moves on its own: only key hints or options
+          // count then (a startup prompt the box takes for work).
+          if (at === "interactive" || (at === "unknown" && !busy.current && ++unsure >= 2)) {
             atPrompt = 0;
             setShow(true);
-          } else if (at === "prompt" && ++atPrompt >= 2) {
-            setShow(false);
-            setHidden(false);
+          } else if (at === "prompt") {
+            unsure = 0;
+            if (++atPrompt >= 2) {
+              setShow(false);
+              setHidden(false);
+            }
           }
         } catch {
           // The pane says when the box is away; nothing to add here.
@@ -105,7 +117,7 @@ export function LiveScreen({ box, session, agent, onHide, onShowTerminal }: { bo
       <div className="flex h-[min(440px,54vh)] min-h-[240px] flex-col">
         <TerminalView box={box} session={session} agent={agent} wsKey="" tab="" pane={`live:${session}`} visible focused onFocus={() => {}} onClose={onHide} />
       </div>
-      <footer className="border-t px-3 py-1.5 text-muted-foreground text-xs">Keys go straight to {who}: arrows to move, Enter to choose, Esc to back out. This folds away when it is at its prompt again.</footer>
+      <footer className="truncate border-t px-3 py-1.5 text-muted-foreground text-xs">Keys go straight to {who} (Esc backs out). This folds away once it is at its prompt.</footer>
     </section>
   );
 }

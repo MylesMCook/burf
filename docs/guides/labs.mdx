@@ -102,6 +102,49 @@ These need a box with the `controls` capability (berthd from October 2026):
 `POST /v1/sessions/{name}/interrupt`, `…/mode`, `…/keys` and
 `GET …/controls`; the transcript's `signals` carry the rest.
 
+### Commands in the chat
+
+The reply box (and the first-prompt composer) takes everything the agent's
+own prompt does, typed exactly as you type it:
+
+- **`/`** at the start lists the agent's commands, fuzzy-matched as you
+  type, each with what it is: **Built-in** (`/model`, `/compact`, `/context`,
+  `/usage`…, with aliases such as `/cost`), **Custom** (`.claude/commands` in
+  the repo and in `~/.claude`), **Skill** (`.claude/skills`) and **Plugin**
+  (enabled plugins' commands and skills, `/vercel:deploy`). For Codex, its
+  own commands and `~/.codex/prompts` (`/prompts:name`). **↑↓** move,
+  **Enter** or **Tab** puts the pick in the box, **Esc** closes; a command
+  typed in full sends on Enter.
+- **`@`** lists the worktree's files (what git tracks, plus new files it
+  doesn't ignore); the pick goes in as `@path`.
+- **`!`** runs the rest in the agent's shell, and a badge on the box says
+  so. Claude Code 2.1 has no `#` memory shortcut, so a `#` line goes as a
+  prompt and the badge says that; `/memory` edits memory.
+
+What a command prints shows in the chat: a one-line answer as a line under
+it ("/model ↳ Set model to Sonnet 5.5 for this session only"), longer output
+as a card (`/context` as Claude Code's own table, `!ls` as its output), and
+`/clear` as a divider where the fresh conversation starts. A skill or custom
+command reads as what you asked, followed by the agent's answer.
+
+When the agent shows a screen of its own that the chat can't draw (the
+`/model` picker, `/config`, `/resume`, `/permissions`, `/login`, the usage
+dialog, a trust or update prompt at start), its **live terminal opens
+inline** under the conversation: "Claude Code is showing its own screen —
+answer it here". It takes the keyboard, so arrows, Enter and Esc go straight
+to the agent, and it folds away once the agent is back at its prompt (or
+fold it yourself; the reply box waits until then). Berth spots such a screen
+from the agent's screen while it isn't asking a question its hooks describe:
+key hints at its foot ("Esc to cancel", "Enter to confirm"), numbered
+options, or no prompt where there always is one at rest. Only one terminal
+is attached per pane, and only while it shows.
+
+The agent's own commands (`/cost`, `/model`, `!ls`…) start no turn, so they
+never hold up a queued prompt or a `berth session send --wait`. These need a
+box with the `commands` capability: `GET /v1/sessions/{name}/commands`
+(cached a minute, capped at 600) and `GET …/files?q=`. MCP servers' prompts
+aren't listed: the agent reads them from each server once it starts.
+
 ## Zen
 
 ⌘. puts everything but the agents away: no sidebar, tab strip or status

@@ -181,7 +181,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
   // terminal under the conversation; a question its hooks describe doesn't.
   const [nudge, setNudge] = useState(0);
   const recognised = state === "waiting" && (!!s?.ask?.tool || !!ask?.choices.length);
-  const live = useLiveScreen({ box, session, agent, enabled: visible && !mock && !away && !!s && state !== "running" && state !== "exited" && !recognised, nudge });
+  const live = useLiveScreen({ box, session, agent, enabled: visible && !mock && !away && !!s && state !== "exited" && !recognised, running: state === "running", nudge });
 
   // Claude Code and Codex write their conversation once they start: until
   // then a new agent has nothing to read yet, which is not a dead end.

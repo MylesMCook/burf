@@ -362,6 +362,10 @@ func commandText(c *conv, s string) bool {
 			name = "/" + name
 		}
 		args, _ := tagged(s, "command-args")
+		// /compact writes itself again after its boundary: that line says it.
+		if n := len(c.items); name == "/compact" && n > 0 && c.items[n-1].Kind == "command" && c.items[n-1].Command == "/compact" && c.items[n-1].Text != "" {
+			return true
+		}
 		c.add(Item{Kind: "command", ID: c.id(), Command: name, Args: clip(strings.TrimSpace(args), 2000)})
 		return true
 	}
@@ -378,13 +382,18 @@ func commandText(c *conv, s string) bool {
 	if !isOut && !isErr {
 		return false
 	}
-	text := strings.TrimSpace(plain(strings.TrimSpace(out + "\n" + errOut)))
+	text := strings.TrimSpace(hookReports.ReplaceAllString(plain(strings.TrimSpace(out+"\n"+errOut)), ""))
 	if n := len(c.items); n > 0 && c.items[n-1].Kind == "command" && c.items[n-1].Text == "" {
 		last := &c.items[n-1]
 		last.Text, last.Error = clip(text, maxOutput), strings.TrimSpace(errOut) != "" && strings.TrimSpace(out) == ""
 	}
 	return true
 }
+
+// hookReports are the lines Claude Code adds to a command's output for the
+// hooks it ran ("PostCompact [cmd] completed successfully: {}"): the
+// person's hooks' business, not the command's answer.
+var hookReports = regexp.MustCompile(`(?m)^(?:Pre|Post|Session|Stop|User|Notification|Subagent)\w* \[.*$\n?`)
 
 // commandMeta keeps the Markdown Claude Code writes for its model after a
 // command's output (/context's table) as that output, which reads better

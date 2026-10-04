@@ -113,7 +113,9 @@ func TestTheCatalogIsCapped(t *testing.T) {
 	}
 }
 
-func itoa3(i int) string { return string(rune('a'+i/100%26)) + string(rune('a'+i/10%10)) + string(rune('a'+i%10)) + string(rune('a'+i/2600)) }
+func itoa3(i int) string {
+	return string(rune('a'+i/100%26)) + string(rune('a'+i/10%10)) + string(rune('a'+i%10)) + string(rune('a'+i/2600))
+}
 
 func TestLocalCommands(t *testing.T) {
 	cases := []struct {
@@ -131,6 +133,10 @@ func TestLocalCommands(t *testing.T) {
 		{"codex", "/status", "/status", true},
 		{"codex", "/review", "/review", false},
 		{"gemini", "/model", "", false},
+		{"claude", "!ls", "!", true},
+		{"codex", "!git status", "!", true},
+		{"gemini", "!ls", "", false},
+		{"claude", "!", "", false},
 	}
 	for _, c := range cases {
 		name, local := localCommand(c.agent, c.text)

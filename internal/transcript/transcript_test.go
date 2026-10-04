@@ -398,6 +398,19 @@ func TestClaudeCommands(t *testing.T) {
 		t.Errorf("shell = %+v", c)
 	}
 
+	// /compact: its boundary says it; the entry after it and its hooks'
+	// reports add nothing.
+	write(t, p,
+		m{"type": "system", "subtype": "compact_boundary", "content": "Conversation compacted"},
+		m{"type": "user", "isCompactSummary": true, "message": m{"role": "user", "content": "This session is being continued…"}},
+		sys("<command-name>/compact</command-name><command-args></command-args>"),
+		sys("<local-command-stdout>Compacted\nPostCompact [sh hook.sh] completed successfully: {}</local-command-stdout>"),
+	)
+	res, _ = r.Read("claude", p, dir, res.Next)
+	if len(res.Items) != 2 || res.Items[1].Command != "/compact" || strings.Contains(res.Items[1].Text, "PostCompact") {
+		t.Errorf("compact = %+v", res.Items)
+	}
+
 	// Output written after its command is read: the command comes again.
 	write(t, p, user("<command-name>/usage</command-name><command-args></command-args>"))
 	res, _ = r.Read("claude", p, dir, res.Next)

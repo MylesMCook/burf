@@ -270,6 +270,11 @@ func commandName(text string) string {
 // handled by the agent's program rather than sent to its model: such a send
 // starts no turn.
 func localCommand(agent, text string) (string, bool) {
+	// A shell command ("!ls") runs in the agent's program too: no hook says
+	// a turn started, even when the agent then answers it.
+	if t := strings.TrimSpace(text); strings.HasPrefix(t, "!") && len(t) > 1 && agentPrefixes[agent]["!"] != "" {
+		return "!", true
+	}
 	name := commandName(text)
 	if name == "" {
 		return "", false
