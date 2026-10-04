@@ -138,7 +138,7 @@ export async function startWork(d: StartDraft): Promise<boolean> {
     await useStore.getState().refreshBox(d.box, ["locations", "sessions"]);
     await focusSession(d.box, session);
     save(`berth.composer.picks.${d.box}/${d.location}`, d.picks);
-    void offerAgentHooks(d.box, d.worktree?.command ?? presets.find((p) => p.id === pick.agent)?.command ?? pick.agent);
+    void offerAgentHooks(d.box, d.worktree?.command ?? presets.find((p) => p.id === pick.agent)?.command ?? pick.agent, session);
     return true;
   } catch (err) {
     return fail("Couldn't start it", err, d.box);

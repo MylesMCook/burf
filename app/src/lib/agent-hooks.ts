@@ -1,5 +1,6 @@
 import { toastManager } from "@/components/ui/toast";
 import { errorMessage } from "@/lib/format";
+import { load, save } from "@/lib/storage";
 import { useStore } from "@/lib/store";
 
 // Agents report needs-you, working and done through hooks in their own
@@ -30,33 +31,82 @@ export function hookToolFor(agentOrCommand: string): string | undefined {
   return TOOLS[word];
 }
 
-// Asked about once per box and tool while the app runs.
-const asked = new Set<string>();
+// Asked about once per box and tool, ever: kept on this computer.
+const ASKED = "berth.hooks.asked";
+const asked = new Set<string>(load<string[]>(ASKED, []));
+const remember = (k: string) => {
+  asked.add(k);
+  save(ASKED, [...asked].slice(-200));
+};
 
-// offerAgentHooks checks the box once and, when the agent's hooks are not
-// installed there, offers to install them. Boxes whose berthd predates the
+// How long to wait for the agent's first turn before deciding.
+const FIRST_TURN_MS = 3 * 60_000;
+
+// offerAgentHooks warns, once per box and tool, that the box can't tell
+// when this kind of agent needs you, with a button that installs its hooks
+// (POST integrations/install, as `berthd integrations install` does). It
+// only says so once it is true: the box reports no hooks for it, and the
+// agent's first turn ended (or a few minutes went by) without one hook
+// event arriving for its session. Boxes whose berthd predates the
 // integrations API are left alone.
-export async function offerAgentHooks(box: string, agentOrCommand: string) {
+export async function offerAgentHooks(box: string, agentOrCommand: string, session?: string) {
   const tool = hookToolFor(agentOrCommand);
   const client = useStore.getState().client;
-  if (!tool || !client || asked.has(`${box}:${tool}`)) return;
-  asked.add(`${box}:${tool}`);
-  let report: IntegrationsReport;
-  try {
-    report = await client.box<IntegrationsReport>(box, "GET", "integrations");
-  } catch {
+  const key = `${box}:${tool}`;
+  if (!tool || !client || asked.has(key)) return;
+  const report = async () => {
+    try {
+      return (await client.box<IntegrationsReport>(box, "GET", "integrations"))?.tools?.find((x) => x.id === tool);
+    } catch {
+      return undefined;
+    }
+  };
+  const first = await report();
+  if (!first) return;
+  if (first.hooked) {
+    remember(key);
     return;
   }
-  const t = report?.tools?.find((x) => x.id === tool);
-  if (!t || t.hooked) return;
+  if (session) {
+    // Wait for the agent's first turn to end, or for a hook to speak for it.
+    const heard = await new Promise<boolean>((resolve) => {
+      const s0 = () => useStore.getState().boxes[box]?.sessions?.find((x) => x.name === session);
+      const check = () => {
+        const s = s0();
+        if (s?.fidelity === "hooks") return done(true);
+        if (s && (s.agent_state === "finished" || s.agent_state === "waiting" || s.exited)) return done(false);
+      };
+      const timer = window.setTimeout(() => done(false), FIRST_TURN_MS);
+      const unsub = useStore.subscribe(check);
+      function done(v: boolean) {
+        window.clearTimeout(timer);
+        unsub();
+        resolve(v);
+      }
+      check();
+    });
+    if (heard) {
+      remember(key);
+      return;
+    }
+    await useStore.getState().refreshBox(box, ["sessions"]);
+    if (useStore.getState().boxes[box]?.sessions?.find((x) => x.name === session)?.fidelity === "hooks") {
+      remember(key);
+      return;
+    }
+  }
+  // Someone may have installed them meanwhile.
+  const t = await report();
+  if (!t || t.hooked || asked.has(key)) return;
+  remember(key);
   const id = toastManager.add({
-    title: `Berth can't see when ${t.name} needs you`,
-    description: `Its hooks aren't installed on ${box}, so its agents show no working, done or needs-you state.`,
+    title: `Berth can't see when ${t.name} needs you on ${box}`,
+    description: `${t.name}'s hooks aren't installed there, so its agents show no working, done or needs-you state. Installing takes a second and keeps your agents running.`,
     type: "warning",
     // Stays until answered: 0 turns off the timer.
     timeout: 0,
     actionProps: {
-      children: `Install ${t.name}'s hooks on ${box}`,
+      children: "Install hooks",
       onClick: () => {
         toastManager.close(id);
         void installHooks(box, t);
