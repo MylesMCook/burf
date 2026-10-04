@@ -28,6 +28,9 @@ func TestPermissionRequestAsk(t *testing.T) {
 	if a := ask(`{"cwd":"/w","tool_name":"Bash","tool_input":{"command":"ls -la","description":"List files"}}`); a["tool"] != "Bash" || a["input"] != "ls -la" || a["why"] != "List files" {
 		t.Errorf("Bash ask = %v", a)
 	}
+	if a := ask(`{"cwd":"/w","tool_name":"AskUserQuestion","tool_input":{"questions":[{"question":"Hi or bye?","options":[{"label":"hi"},{"label":"bye"}]}]}}`); a["input"] != "Hi or bye?" {
+		t.Errorf("AskUserQuestion ask = %v", a)
+	}
 	a := ask(`{"cwd":"/w","tool_name":"Write","tool_input":{"file_path":"/w/src/a.ts","content":"SECRET-CONTENT"}}`)
 	if a["tool"] != "Write" || a["input"] != "src/a.ts" {
 		t.Errorf("Write ask = %v", a)

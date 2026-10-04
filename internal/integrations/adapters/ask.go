@@ -57,6 +57,15 @@ func inputSummary(tool string, input map[string]any, cwd string) string {
 		return clip(get("pattern"))
 	case "Task", "Agent":
 		return clip(get("description"))
+	case "AskUserQuestion":
+		// The question itself: the person answers it from its options.
+		if qs, _ := input["questions"].([]any); len(qs) > 0 {
+			if q, _ := qs[0].(map[string]any); q != nil {
+				s, _ := q["question"].(string)
+				return clip(s)
+			}
+		}
+		return ""
 	}
 	// Anything else (an MCP tool): the first field that names a target.
 	for _, k := range []string{"command", "file_path", "path", "url", "query", "pattern"} {
