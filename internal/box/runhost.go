@@ -407,19 +407,20 @@ func (h *runHost) startAgent(ctx context.Context, x *runs.StepCtx) runs.Result {
 	if err := h.b.beforeAs(ctx, origOf(x), "session.start", map[string]any{"location": where, "path": dir, "command": command, "agent": agent}); err != nil {
 		return fail(err)
 	}
+	// The prompt goes on the command line: say it was sent first, so the
+	// ledger has its turn waiting when the agent's first hook arrives, and
+	// the next wait has a turn to wait on.
+	if prompt != "" && b.Turns != nil {
+		e := b.Events.Publish(events.Event{Type: "session.sent", Box: b.Name, Origin: origOf(x), Data: map[string]any{"name": name, "from": origOf(x), "idem_key": x.IdemKey, "agent": agent, "startup": true}})
+		if tr, ok := b.Turns.ForSent(name, e.Seq); ok {
+			set["turn.id"], set["turn.session"] = tr.ID, name
+		}
+	}
 	sess, err := b.createAgentSession(ctx, name, where, dir, command, agent)
 	if err != nil {
 		return fail(err)
 	}
 	b.Events.Publish(events.Event{Type: "session.started", Box: b.Name, Origin: origOf(x), Data: map[string]any{"name": sess.Name, "location": where, "path": dir, "command": command, "agent": agentFor(sess), "run": x.Run.ID}})
-	if prompt != "" && b.Turns != nil {
-		// The prompt went on the command line: say it was sent, so the
-		// ledger makes its turn and the next wait has a turn to wait on.
-		e := b.Events.Publish(events.Event{Type: "session.sent", Box: b.Name, Origin: origOf(x), Data: map[string]any{"name": sess.Name, "from": origOf(x), "idem_key": x.IdemKey, "agent": agentFor(sess), "startup": true}})
-		if tr, ok := b.Turns.ForSent(sess.Name, e.Seq); ok {
-			set["turn.id"], set["turn.session"] = tr.ID, sess.Name
-		}
-	}
 	out := "started " + sess.Name + " in " + where
 	if native != "" {
 		out += " (" + native + ")"
@@ -574,9 +575,8 @@ func diffSummary(ctx context.Context, dir, base string) diffStat {
 		for _, f := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 			if f != "" {
 				d.files++
-				if n, ok := countLines(filepath.Join(dir, f)); ok {
-					d.added += n
-				}
+				n, _ := countLines(filepath.Join(dir, f))
+				d.added += n
 			}
 		}
 	}

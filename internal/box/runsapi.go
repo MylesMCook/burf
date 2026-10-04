@@ -40,6 +40,9 @@ type RunRequest struct {
 	Group   string       `json:"group,omitempty"`
 	Parent  string       `json:"parent,omitempty"`
 	Budget  *runs.Budget `json:"budget,omitempty"`
+	// IdemKey is the Idempotency-Key, for callers that cannot send headers
+	// (the app, through the laptop's agent).
+	IdemKey string `json:"idem_key,omitempty"`
 }
 
 func (b *Box) runsOrNotFound() (*runs.Engine, error) {
@@ -69,6 +72,9 @@ func (b *Box) startRun(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	idem := r.Header.Get("Idempotency-Key")
+	if idem == "" {
+		idem = req.IdemKey
+	}
 	if len(idem) > 200 {
 		return badRequest("Idempotency-Key is too long")
 	}

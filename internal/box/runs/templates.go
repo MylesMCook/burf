@@ -139,6 +139,9 @@ func Expand(name string, params map[string]any) (Expanded, error) {
 		vars["params."+k] = v
 	}
 	ex.Title = ExpandText(t.Title, vars)
+	if len(ex.Title) > 80 {
+		ex.Title = ex.Title[:79] + "…"
+	}
 	if b, ok := p["budget"]; ok && b != nil {
 		raw, _ := json.Marshal(b)
 		var bg Budget
@@ -165,6 +168,14 @@ func derive(name string, p map[string]any) {
 	switch name {
 	case "broadcast":
 		countOf("sessions")
+		// A name is short for {session, text}: the shared prompt.
+		if list, ok := p["sessions"].([]any); ok {
+			for i, v := range list {
+				if s, ok := v.(string); ok {
+					list[i] = map[string]any{"session": s, "text": p["text"]}
+				}
+			}
+		}
 	case "attempts":
 		countOf("attempts")
 		p["auto_pick"] = p["pick"] == "auto"
