@@ -13,6 +13,7 @@ import { parseDiff } from "@/lib/git/parse";
 import { type ToolCall, type ToolDetail, toolSummary, type TranscriptItem } from "@/lib/transcript";
 import { cn } from "@/lib/utils";
 import { Markdown } from "@/components/conversation/markdown";
+import { NoticeCard } from "@/components/conversation/notice-card";
 import { CommandItem } from "@/components/conversation/command-item";
 import "@/components/conversation/conversation.css";
 
@@ -125,7 +126,7 @@ function foldTurns(items: TranscriptItem[]): Block[] {
     const steps: TranscriptItem[] = [];
     const shown: TranscriptItem[] = [];
     turn.forEach((it, i) => {
-      if ((answer >= 0 && i >= answer && it.kind === "text") || it.kind === "edit" || it.kind === "ask" || it.kind === "thinking") shown.push(it);
+      if ((answer >= 0 && i >= answer && it.kind === "text") || it.kind === "edit" || it.kind === "ask" || it.kind === "thinking" || it.kind === "notice") shown.push(it);
       else steps.push(it);
     });
     if (steps.length) out.push({ kind: "fold", id: `fold-${steps[0].id}`, steps, live: working });
@@ -198,6 +199,8 @@ function Item({ it, onAnswer, edits, who }: { it: TranscriptItem; onAnswer(id: s
       return <Tools it={it} edits={edits} />;
     case "edit":
       return <Edit it={it} edits={edits} />;
+    case "notice":
+      return <NoticeCard it={it} />;
     case "crew":
       return (
         <div className="cv-in flex flex-wrap items-center gap-1.5 text-muted-foreground">

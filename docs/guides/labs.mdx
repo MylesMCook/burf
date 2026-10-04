@@ -59,6 +59,49 @@ first if the agent is waiting on you) and **Cancel**. Berth reads Claude Code's 
 box, the pane says so and offers the terminal. Settings → Labs chooses
 which view agent panes open in.
 
+### Chat controls
+
+Under the reply box sits what you would otherwise read off the agent's
+terminal, so the chat can stand in for it:
+
+- **Stop** (or **Esc** in the reply box) while the agent works presses Esc
+  for it, as at its terminal. The box waits for the agent to stop, ends the
+  turn (Claude Code's hooks say nothing on an interrupt) and the chat shows
+  **Interrupted**, with **Continue**.
+- **Permission mode**: Ask before edits, Accept edits, Plan, Auto, or
+  Bypass permissions (in red) for Claude Code; Codex's approval policy.
+  Switching presses Shift+Tab until the agent's screen shows the mode, and
+  is refused while it waits on a question (Shift+Tab there would pick an
+  option). Bypass is only offered by a session started allowing it.
+- **Model and effort**, from the agent's last answer. Picking one types
+  `/model` or `/effort`; if Claude Code asks to confirm, its own screen shows
+  inline, and the chip says "Switching…" until Claude Code says it switched.
+  Claude Code also makes the choice its default for new sessions.
+- **Context**: how full the agent's context is ("62%"), from its last
+  answer's token use against its model's window (Codex reports its own).
+  Above 80% it turns amber and offers **Compact** (`/compact`, queued if the
+  agent is working).
+- **Background work**: "1 shell running" for shells started with
+  `run_in_background` and monitors. Open it to see each one's command and its
+  output so far, read from the agent's output file as it grows; finished
+  ones stay a few minutes.
+
+The agent's **task list** (Claude Code's TodoWrite or TaskCreate/TaskUpdate,
+Codex's plan) docks above the reply box as a checklist that ticks off in
+place, with counts; it folds once all is done and can be put away.
+
+Errors are never silent. API errors, usage and rate limits (with when they
+reset), a sign-in that expired, failed hooks, a turn that ended on an error
+(Claude Code's StopFailure), and an agent whose program ended mid-work each
+show as a card with one next step: **Try again**, **Log in at the terminal**,
+**Show terminal** or **Start again**. A request being retried shows as one
+line that updates. A limit shown only on the agent's screen is read from
+there.
+
+These need a box with the `controls` capability (berthd from October 2026):
+`POST /v1/sessions/{name}/interrupt`, `…/mode`, `…/keys` and
+`GET …/controls`; the transcript's `signals` carry the rest.
+
 ## Zen
 
 ⌘. puts everything but the agents away: no sidebar, tab strip or status

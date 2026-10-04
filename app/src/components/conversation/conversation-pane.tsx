@@ -7,7 +7,9 @@ import { TaskComposer } from "@/components/conversation/task-composer";
 import { AttachmentChips, useAttachments } from "@/components/conversation/attachments";
 import { HARBOUR, HARBOUR_MUTE, useHarbourLight } from "@/components/art/harbour-art";
 import { Scene, type SceneName } from "@/components/art/scenes";
+import { ChatControls } from "@/components/conversation/chat-controls";
 import { ConversationView, type EditActions, QueuedBubble } from "@/components/conversation/conversation-view";
+import { ChatScope } from "@/components/conversation/notice-card";
 import { useComposerMenu } from "@/components/conversation/command-menu";
 import { LiveScreen, useLiveScreen } from "@/components/conversation/live-screen";
 import { toastError } from "@/components/error-note";
@@ -371,11 +373,14 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
             Reading the conversation…
           </div>
         ) : (
-          <ConversationView items={shown} onAnswer={answer} edits={edits} who={who} tail={tail} tailSize={queue.items.length + (untaken ? 1 : 0)} />
+          <ChatScope value={{ who, send: reply, showTerminal: onShowTerminal, startAgain: again }}>
+            <ConversationView items={shown} onAnswer={answer} edits={edits} who={who} tail={tail} tailSize={queue.items.length + (untaken ? 1 : 0)} />
+          </ChatScope>
         )}
       </div>
       <div className="pr-6 pb-4 pl-6 @[1000px]:pr-[max(24px,var(--berth-loops-w,0px))]">
         <div className="mx-auto w-full max-w-[680px]">
+          <ChatControls box={box} session={session} agent={agent} state={state} stateSince={s?.state_since} dir={s?.dir} who={who} visible={visible} ended={ended} onShowTerminal={onShowTerminal} onStartAgain={again} onSend={reply}>
           {ended ? (
             <div className="flex items-center gap-3 rounded-lg border bg-muted/40 px-3 py-2 text-muted-foreground text-sm">
               <StateGlyph state="exited" />
@@ -391,6 +396,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
               <Reply attach={{ box, session }} agent={agent} onSend={reply} onFail={fail} who={who} mode={state === "running" ? "queue" : state === "waiting" ? "answer" : "send"} blocked={(state === "waiting" && atMenu) || live.show} hint={live.show ? `${who} is showing its own screen: answer it above` : wantsWords ? `Tell ${who} what to change, then press Enter` : undefined} />
             </>
           )}
+          </ChatControls>
         </div>
       </div>
       <ConfirmDialog

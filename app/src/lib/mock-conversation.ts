@@ -1,5 +1,6 @@
 import type { ToolDetail, CrewMember, TranscriptItem } from "@/lib/transcript";
 import { keyOf, useConversations } from "@/lib/conversation-store";
+import { mockNotice } from "@/lib/chat-controls";
 
 // The demo's stand-in for berthd's transcript stream: a short scripted turn
 // played into the conversation store, so the view can be tried with ?mock=1.
@@ -119,6 +120,9 @@ export function seedTranscript(box: string, session: string, state: string, work
     ]);
   }
   if (state === "finished") items.push({ kind: "text", id: id(), text: "All green. The branch is ready for review." });
+  // One finished session shows a notice card (chat-controls).
+  const notice = mockNotice(session);
+  if (notice) items.push(notice);
   const key = keyOf(box, session);
   useConversations.setState((s) => (s.items[key] ? s : { items: { ...s.items, [key]: items } }));
   return items;

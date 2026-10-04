@@ -20,7 +20,13 @@ export type TranscriptItem =
   // ("/model", with what followed it) or a shell command ("!"), and the
   // output its program printed (Markdown when it wrote it so).
   | { kind: "command"; id: string; command: string; args?: string; text?: string; markdown?: boolean; error?: boolean }
-  | { kind: "crew"; id: string; names: string[] };
+  | { kind: "crew"; id: string; names: string[] }
+  // Something the person should know, with one next step: an API error, a
+  // usage or rate limit (resets: when, in ms), a hook that failed, a turn
+  // they interrupted, an agent that ended (components/conversation/notice-card).
+  | { kind: "notice"; id: string; notice: NoticeKind; level?: "error" | "warning" | "info"; text: string; resets?: number };
+
+export type NoticeKind = "api_error" | "limit" | "rate_limit" | "auth" | "billing" | "hook" | "interrupted" | "stop_failure" | "exited";
 
 export interface ToolCall {
   verb: string;
@@ -70,4 +76,6 @@ export interface ToolDetail {
   truncated?: boolean;
   error?: boolean;
   pending?: boolean;
+  // A background shell whose output is still growing.
+  live?: boolean;
 }

@@ -64,7 +64,8 @@ function notifyFor(e: BerthEvent) {
     // agent finishing is not news.
     const sessions = box ? useStore.getState().boxes[box]?.sessions : undefined;
     const looped = !waiting && useLoops.getState().loops.some((l) => isLive(l) && l.box === box && (l.session === where.session || (!!where.path && sessions?.find((s) => s.name === l.session)?.dir === where.path)));
-    if (!looped) {
+    // Stopped from the chat (Esc, Stop): the person knows; it isn't done.
+    if (!looped && d.source !== "interrupt") {
       route({
         category: waiting ? "waiting" : "finished",
         title: waiting ? `${where.agent} needs you` : `${where.agent} is done`,
