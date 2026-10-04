@@ -93,6 +93,8 @@ export function ReviewView() {
       if (compare || dialog || e.metaKey || e.ctrlKey || e.altKey) return;
       const t = e.target as HTMLElement | null;
       if (t && (t.closest("input, textarea, select, [contenteditable=true], .xterm, [data-terminal]") || document.querySelector("[data-slot=dialog-popup], [data-slot=menu-popup], [role=menu]"))) return;
+      // Enter on a focused button presses it.
+      if (e.key === "Enter" && t?.closest("button, a")) return;
       const move = (d: number) => {
         const next = entries[Math.min(entries.length - 1, Math.max(0, index + d))];
         if (next) {

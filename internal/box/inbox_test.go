@@ -99,7 +99,7 @@ func TestTheInboxCanBeListedCancelledAndSentNow(t *testing.T) {
 	}
 	var q []QueuedPrompt
 	call(t, c, "GET", "/v1/sessions/agent/queue", "", nil, &q)
-	if len(q) != 2 || q[0].Turn != a.Turn || q[0].Preview != "then write the docs" || q[1].Length != len(long) || len(q[1].Preview) > queuePreview+4 || !strings.HasSuffix(q[1].Preview, "…") {
+	if len(q) != 2 || q[0].Turn != a.Turn || q[0].Preview != "then write the docs" || q[1].Length != 400 || len(q[1].Preview) > queuePreview+4 || !strings.HasSuffix(q[1].Preview, "…") {
 		t.Fatalf("queue = %+v", q)
 	}
 	var list []Session

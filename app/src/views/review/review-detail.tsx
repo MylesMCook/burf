@@ -1,4 +1,4 @@
-import { CheckCheckIcon, CheckIcon, ChevronDownIcon, GitBranchIcon, GitCommitHorizontalIcon, GitPullRequestIcon, GlobeIcon, MessageSquareReplyIcon, SquareArrowOutUpRightIcon, Trash2Icon, XIcon } from "lucide-react";
+import { CheckCheckIcon, CheckIcon, ChevronDownIcon, GitBranchIcon, GitCommitHorizontalIcon, GitPullRequestIcon, GlobeIcon, MessageSquareReplyIcon, MessageSquareTextIcon, SendIcon, SquareArrowOutUpRightIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Tip } from "@/components/tip";
@@ -12,9 +12,12 @@ import { boxApi } from "@/lib/api";
 import { useShotUrl } from "@/lib/agent-browser";
 import { agentLabel } from "@/lib/derive";
 import { ago } from "@/lib/format";
-import { DiffView, FileRow, type Run } from "@/lib/git/diff-view";
+import { DiffView, FileRow, type LineComments, type Run } from "@/lib/git/diff-view";
 import type { FileChange } from "@/lib/git/parse";
 import { useLoops } from "@/lib/loops";
+import { addComment, commentsPrompt, dismissComments, type LineComment, pending, removeComment, sendComments, useComments } from "@/lib/review-comments";
+import { toastManager } from "@/components/ui/toast";
+import { errorMessage } from "@/lib/format";
 import { openUrl } from "@/lib/open-url";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -147,6 +150,7 @@ export function ReviewDetail({ entry, actions }: { entry: ReviewEntry; actions: 
           <LastWords entry={entry} />
           {(run || loop) && <LastCheck run={run} loop={loop} />}
           {entry.browser && <AgentBrowserArtifacts entry={entry} />}
+          <CommentsBar entry={entry} />
           <Changes entry={entry} />
           {entry.commits.length > 0 && <Commits entry={entry} />}
         </div>
@@ -280,8 +284,32 @@ function Changes({ entry }: { entry: ReviewEntry }) {
   const current = groups.find((g) => g.id === group) ?? groups[0];
   const file = current?.files.find((f) => f.path === selected) ?? current?.files[0];
   const run: Run = useCallback((command: string) => (client ? boxApi.exec(client, entry.box, where(entry), command, "60s") : Promise.reject(new Error("Not connected"))), [client, entry]);
+  const all = useComments((s) => s.byKey[entry.key]) ?? NO_COMMENTS;
+  const comments = useMemo<LineComments | undefined>(
+    () =>
+      file && {
+        list: all.filter((c) => c.file === file.path),
+        onAdd: (line, side, text) => addComment(entry.key, { file: file.path, line, side, text }),
+        onRemove: (id) => removeComment(entry.key, id),
+      },
+    [all, file, entry.key],
+  );
+  const counts = useMemo(() => {
+    const n: Record<string, number> = {};
+    for (const c of pending(all)) n[c.file] = (n[c.file] ?? 0) + 1;
+    return n;
+  }, [all]);
 
   useEffect(() => {
+    // "Open in Review" from a conversation names the file to show.
+    const focus = useComments.getState().focus;
+    if (focus?.key === entry.key) {
+      const g = groups.find((x) => x.files.some((f) => f.path === focus.file));
+      setGroup(g?.id ?? groups[0]?.id ?? "uncommitted");
+      setSelected(focus.file);
+      useComments.setState({ focus: undefined });
+      return;
+    }
     setGroup(groups[0]?.id ?? "uncommitted");
     setSelected(undefined);
   }, [entry.key, groups]);
@@ -313,10 +341,91 @@ function Changes({ entry }: { entry: ReviewEntry }) {
       <FramePanel className="flex h-[30rem] min-h-0 overflow-hidden p-0">
         <ul className="w-60 shrink-0 overflow-y-auto border-r p-1.5">
           {current.files.map((f) => (
-            <FileRow key={`${current.id}:${f.path}`} file={f} active={f.path === file?.path} onSelect={() => setSelected(f.path)} />
+            <FileRow key={`${current.id}:${f.path}`} file={f} active={f.path === file?.path} onSelect={() => setSelected(f.path)} comments={counts[f.path]} />
           ))}
         </ul>
-        {file && <DiffView key={`${entry.key}:${current.id}:${file.path}:${entry.head}`} file={file} run={run} base={current.id === "committed" ? entry.base : undefined} />}
+        {file && <DiffView key={`${entry.key}:${current.id}:${file.path}:${entry.head}`} file={file} run={run} base={current.id === "committed" ? entry.base : undefined} comments={comments} />}
+      </FramePanel>
+    </Frame>
+  );
+}
+
+const NO_COMMENTS: LineComment[] = [];
+
+// CommentsBar collects the notes left on this worktree's diff and sends
+// them to its agent as one short prompt, held until the agent is idle.
+function CommentsBar({ entry }: { entry: ReviewEntry }) {
+  const all = useComments((s) => s.byKey[entry.key]) ?? NO_COMMENTS;
+  const [busy, setBusy] = useState(false);
+  const todo = pending(all);
+  const sent = all.filter((c) => c.sent);
+  const who = agentLabel(entry.agent);
+  if (!all.length) {
+    return null;
+  }
+  const fit = commentsPrompt(todo).included.length;
+  const send = async () => {
+    setBusy(true);
+    try {
+      const r = await sendComments(entry.box, entry.session, entry.key);
+      toastManager.add({
+        type: "success",
+        title: `Sent ${r.sent} comment${r.sent === 1 ? "" : "s"} to ${who}`,
+        description: r.queued ? `Queued: ${who} gets them when its turn ends.` : r.left ? `${r.left} more didn't fit in one message; send again for them.` : undefined,
+      });
+    } catch (err) {
+      toastManager.add({ type: "error", title: `Couldn't send the comments to ${who}`, description: errorMessage(err) });
+    } finally {
+      setBusy(false);
+    }
+  };
+  if (!todo.length) {
+    const last = Math.max(...sent.map((c) => c.sent ?? 0));
+    return (
+      <div className="flex items-center gap-2 rounded-xl border bg-muted/40 px-4 py-2.5 text-[13px]">
+        <CheckIcon className="size-3.5 text-success" />
+        <span className="min-w-0 flex-1 truncate">
+          Sent {sent.length} comment{sent.length === 1 ? "" : "s"} to {who} {ago(new Date(last).toISOString())}
+        </span>
+        <Button size="xs" variant="ghost" onClick={() => dismissComments(entry.key, true)}>
+          Clear
+        </Button>
+      </div>
+    );
+  }
+  return (
+    <Frame variant="card">
+      <FrameHeader className="flex-row items-center gap-2 px-4 py-2.5">
+        <MessageSquareTextIcon className="size-3.5 text-muted-foreground" />
+        <FrameTitle className="min-w-0 flex-1 truncate font-medium text-[13px]">
+          {todo.length} comment{todo.length === 1 ? "" : "s"} for {who}
+        </FrameTitle>
+        <Button size="xs" variant="ghost" onClick={() => dismissComments(entry.key, false)}>
+          Discard
+        </Button>
+        <Button size="xs" loading={busy} onClick={() => void send()}>
+          <SendIcon />
+          Send to {who}
+        </Button>
+      </FrameHeader>
+      <FramePanel className="px-4 py-2.5">
+        <ul className="flex flex-col gap-1 text-[13px]">
+          {todo.slice(0, 5).map((c) => (
+            <li key={c.id} className="flex min-w-0 gap-2">
+              <span className="shrink-0 font-mono text-[12px] text-muted-foreground">
+                {c.file.split("/").pop()}:{c.line}
+                {c.side === "old" && " (removed)"}
+              </span>
+              <span className="min-w-0 truncate">{c.text}</span>
+            </li>
+          ))}
+          {todo.length > 5 && <li className="text-muted-foreground text-xs">and {todo.length - 5} more</li>}
+        </ul>
+        <p className="mt-2 text-muted-foreground text-xs">
+          {fit < todo.length
+            ? `The first ${fit} fit in one message (2 KB); send again for the rest.`
+            : `${who} gets each file and line with your note, not the code: it reads the file itself. It waits until ${who} is idle.`}
+        </p>
       </FramePanel>
     </Frame>
   );

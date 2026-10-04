@@ -3,6 +3,7 @@ import type {
   BerthEvent,
   BoxInfo,
   ExecResult,
+  QueuedPrompt,
   SendResult,
   Turn,
   TurnWait,
@@ -136,6 +137,14 @@ export const boxApi = {
   turns: async (c: Client, box: string, name: string, limit = 20) =>
     (await c.box<Turn[] | null>(box, "GET", `sessions/${encodeURIComponent(name)}/turns?limit=${limit}`)) ?? [],
   turn: (c: Client, box: string, id: string) => c.box<Turn>(box, "GET", `turns/${encodeURIComponent(id)}`),
+  // The prompts the box holds for a session until its agent is idle ("queue"
+  // capability): cancel one, or type it now (force only at a question).
+  queue: async (c: Client, box: string, name: string) => (await c.box<QueuedPrompt[] | null>(box, "GET", `sessions/${encodeURIComponent(name)}/queue`)) ?? [],
+  unqueue: (c: Client, box: string, name: string, turn: string) => c.box(box, "DELETE", `sessions/${encodeURIComponent(name)}/queue/${encodeURIComponent(turn)}`),
+  sendQueued: (c: Client, box: string, name: string, turn: string, force = false) =>
+    c.box<SendResult>(box, "POST", `sessions/${encodeURIComponent(name)}/queue/${encodeURIComponent(turn)}/send`, { force }),
+  // One file's diff in the session's worktree ("diff" capability).
+  diff: (c: Client, box: string, name: string, file: string) => c.box<SessionDiff>(box, "GET", `sessions/${encodeURIComponent(name)}/diff?${new URLSearchParams({ file })}`),
   // waitTurn long-polls until the turn ends (or waits for someone, with
   // until "waiting"), or timeout seconds pass.
   waitTurn: (c: Client, box: string, id: string, timeout: number, until: "end" | "waiting" = "end") =>
@@ -151,6 +160,14 @@ export const boxApi = {
   // whether it could and the value's length, never the value.
   testSecret: (c: Client, box: string, ref: string) => c.box<SecretTest>(box, "POST", "secrets/test", { ref }),
 };
+
+export interface SessionDiff {
+  file: string;
+  diff: string;
+  untracked?: boolean;
+  // Only the first 64 KB is in diff.
+  truncated?: boolean;
+}
 
 export interface SecretTest {
   ok: boolean;

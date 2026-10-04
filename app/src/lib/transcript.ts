@@ -12,7 +12,9 @@ export type TranscriptItem =
   // A question for the person. choices are the agent's own numbered options
   // when it shows some; without them it is yes or no (Allow or Deny for a
   // command). decided is what was answered.
-  | { kind: "ask"; id: string; tool: string; detail: string; choices?: { key: string; label: string }[]; decided?: string }
+  // A permission the agent's hooks described (structured) names the tool,
+  // what it would run or touch (detail) and why, rather than a screen line.
+  | { kind: "ask"; id: string; tool: string; detail: string; choices?: { key: string; label: string; title?: string }[]; decided?: string; why?: string; structured?: boolean; reading?: boolean }
   | { kind: "thinking"; id: string; since: number }
   | { kind: "crew"; id: string; names: string[] };
 

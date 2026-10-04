@@ -1024,11 +1024,12 @@ func askStr(m map[string]any, k string) string {
 // QueuedPrompt is one prompt the inbox holds, as the app shows it: the
 // start of its text, never the whole of a long one.
 type QueuedPrompt struct {
-	Turn    string    `json:"turn"`
-	Preview string    `json:"preview"`
-	Length  int       `json:"length"`
-	Origin  string    `json:"origin,omitempty"`
-	At      time.Time `json:"at"`
+	Turn    string `json:"turn"`
+	Preview string `json:"preview"`
+	// Length is the whole prompt's, in characters.
+	Length int       `json:"length"`
+	Origin string    `json:"origin,omitempty"`
+	At     time.Time `json:"at"`
 }
 
 // queuePreview is how much of a held prompt the queue shows.
@@ -1053,7 +1054,7 @@ func (t *Turns) Queued(name string) []QueuedPrompt {
 			}
 			p = p[:cut] + "…"
 		}
-		out = append(out, QueuedPrompt{Turn: it.Turn, Preview: p, Length: len(it.Text), Origin: it.Origin, At: it.At})
+		out = append(out, QueuedPrompt{Turn: it.Turn, Preview: p, Length: utf8.RuneCountInString(it.Text), Origin: it.Origin, At: it.At})
 	}
 	return out
 }

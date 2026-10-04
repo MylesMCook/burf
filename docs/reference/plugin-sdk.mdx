@@ -159,8 +159,10 @@ Go structs have them, in `packages/plugin-sdk/src/types.ts`:
 | `BoxStatus` | `name`, `address`, `network?`, `fingerprint`, `state` (`connecting`, `online`, `offline`, `untrusted`), `error?`, `latency_ms?`, `since` |
 | `Location` | `name`, `path`, `repo`, `worktrees?`, `scripts`, `agents?`, `remote?`, `slug?`, `default_branch?`, `repo_trust?` (`none`, `trusted`, `untrusted` or `changed`) |
 | `Worktree` | `name`, `path`, `branch?`, `head?`, `main?`, `setting_up?`, `port?` |
-| `Session` | `name`, `location?`, `dir`, `command?`, `created`, `attached`, `exited`, `agent?`, `agent_state?`, `state_since?`, `preset?`, `turn?`, `state_seq?`, `fidelity?` |
-| `Turn` | `id` (`"<session>#<n>"`), `session`, `agent?`, `n`, `origin?`, `sent_seq?`, `end_seq?`, `state` (`queued`, `pending`, `running`, `waiting`, `finished`, `exited`, `lost`), `queued?`, `started?`, `ended?`, `waits?`, `fidelity?`, `idem_key?`, `status?` |
+| `Session` | `name`, `location?`, `dir`, `command?`, `created`, `attached`, `exited`, `agent?`, `agent_state?`, `state_since?`, `preset?`, `turn?`, `state_seq?`, `fidelity?`, `queued?`, `ask?` |
+| `Turn` | `id` (`"<session>#<n>"`), `session`, `agent?`, `n`, `origin?`, `sent_seq?`, `end_seq?`, `state` (`queued`, `pending`, `running`, `waiting`, `finished`, `exited`, `lost`), `queued?`, `started?`, `ended?`, `waits?` (each `{ start, end?, reason?, ask? }`), `fidelity?`, `idem_key?`, `status?` |
+| `Ask` | `tool?`, `input?` (the command or file path, at most 300 characters), `why?`, `message?` |
+| `QueuedPrompt` | `turn`, `preview` (the first 280 characters), `length`, `origin?`, `at` |
 | `SendResult`, `TurnWait` | as `send` and `waitTurn` above |
 | `AgentState` | `idle`, `running`, `waiting`, `finished` |
 | `AgentPreset` | `id`, `name`, `command`, `prompt_flag?` |

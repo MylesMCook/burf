@@ -26,12 +26,31 @@ export function meaningfulTail(screen: string, count: number): string[] {
 export interface Choice {
   key: string;
   label: string;
+  // The option as the agent words it, when label is shorter.
+  title?: string;
+}
+
+// permissionChoices matches a permission menu's numbered options to the
+// three answers a person gives: Allow, Always allow (when the agent offers
+// it, e.g. "Yes, and don't ask again for ls commands"), and Deny. The key
+// stays the option's own number, so answering types what the agent shows.
+export function permissionChoices(choices: Choice[]): Choice[] | undefined {
+  const always = choices.find((c) => /don.t ask again|always|allow all|this session/i.test(c.label));
+  const allow = choices.find((c) => c !== always && /^(yes|allow|approve|proceed)\b/i.test(c.label));
+  const deny = choices.find((c) => /^(no|deny|reject)\b/i.test(c.label));
+  if (!allow || !deny) return undefined;
+  return [
+    { key: allow.key, label: "Allow", title: allow.label },
+    ...(always ? [{ key: always.key, label: "Always allow", title: always.label }] : []),
+    { key: deny.key, label: "Deny", title: deny.label },
+  ];
 }
 
 // choicesIn reads the numbered options an agent is asking about, such as
 // Claude Code's "❯ 1. Yes / 2. No, and tell Claude what to do differently".
 export function choicesIn(screen: string): Choice[] {
-  const lines = screen.split("\n").slice(-14);
+  // A pane taller than what the agent drew ends in blank lines.
+  const lines = screen.trimEnd().split("\n").slice(-14);
   const out: Choice[] = [];
   for (const l of lines) {
     const m = l.match(/^\s*(?:[❯›>]\s*)?(\d)[.)]\s+(\S.*)$/);

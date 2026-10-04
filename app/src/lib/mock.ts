@@ -330,12 +330,79 @@ function mockStartTurn(box: string, s: Session, tr: Turn, text: string) {
     s.state_since = end;
     emit({ seq: mockSeq, type: "agent.finished", box, origin: s.agent, data: { path: s.dir, session: s.name } });
     const next = mockInbox[`${box}/${s.name}`]?.shift();
+    s.queued = mockInbox[`${box}/${s.name}`]?.length || undefined;
     if (next) setTimeout(() => mockStartTurn(box, s, next.turn, next.text), 300);
     // The demo's agents work a little longer, so you see them at it.
   }, __BERTH_DEMO__ ? 4500 : 1500);
 }
 
+// A file's diff, as GET sessions/{name}/diff answers: the demo's webhook
+// fix, or a small change for any other file.
+function mockDiff(file: string) {
+  if (file.endsWith("webhook.ts"))
+    return `diff --git a/${file} b/${file}
+--- a/${file}
++++ b/${file}
+@@ -12,9 +12,20 @@ export async function handleWebhook(event: PaymentEvent) {
+   const payment = await payments.find(event.paymentId);
+-  if (!payment) throw new NotFound(event.paymentId);
+-  const order = await createOrder(payment);
+-  return order;
++  if (!payment) throw new NotFound(event.paymentId);
++  // A provider retries a webhook it thinks failed: find the order the
++  // first delivery made instead of charging again.
++  const existing = await orders.byIdempotencyKey(event.idempotencyKey);
++  if (existing) return existing;
++  const order = await createOrder(payment, {
++    idempotencyKey: event.idempotencyKey,
++  });
++  await retries.schedule(event, { max: 5, within: "10m" });
++  return order;
+ }
+
+ export function verifySignature(body: string, signature: string) {
+`;
+  return `diff --git a/${file} b/${file}
+--- a/${file}
++++ b/${file}
+@@ -1,4 +1,5 @@
+ import { describe, it } from "vitest";
++import { retry } from "./retry";
+
+ describe("checkout", () => {
+-  it.todo("charges once");
++  it("charges once", () => retry(2));
+`;
+}
+
 function mockOrchestration(box: string, method: string, path: string, body?: unknown): Promise<unknown> | undefined {
+  const qm = /^sessions\/([^/?]+)\/(queue|diff)(?:\/([^/?]+)(\/send)?)?/.exec(path);
+  const qs = qm ? sessions[box]?.find((x) => x.name === decodeURIComponent(qm[1])) : undefined;
+  if (qm && !qs) return Promise.reject(new ApiError("no session with that name", 404));
+  if (qs && qm?.[2] === "diff") {
+    const file = new URLSearchParams(path.split("?")[1]).get("file") ?? "";
+    return delay({ file, diff: mockDiff(file) });
+  }
+  if (qs && qm?.[2] === "queue") {
+    const key = `${box}/${qs.name}`;
+    const inbox = (mockInbox[key] ??= []);
+    if (!qm[3]) return delay(inbox.map((i) => ({ turn: i.turn.id, preview: i.text.length > 280 ? `${i.text.slice(0, 280)}…` : i.text, length: i.text.length, origin: i.turn.origin, at: i.turn.queued })));
+    const id = decodeURIComponent(qm[3]);
+    const at = inbox.findIndex((i) => i.turn.id === id);
+    if (at < 0) return Promise.reject(new ApiError("that prompt is no longer queued: it was sent or cancelled", 404));
+    if (method === "POST" && qm[4] && qs.agent_state === "waiting" && !(body as { force?: boolean } | undefined)?.force)
+      return Promise.reject(new ApiError(`${qs.name} is waiting for someone to answer it (a permission or a question); answer it at the terminal, or send with force to type anyway`, 409));
+    const [item] = inbox.splice(at, 1);
+    qs.queued = inbox.length || undefined;
+    if (method === "DELETE") {
+      Object.assign(item.turn, { state: "lost", status: "cancelled", ended: new Date().toISOString() });
+      emit({ seq: ++mockSeq, type: "session.unqueued", box, data: { name: qs.name, turn: id } });
+      return delay({ cancelled: id });
+    }
+    Object.assign(item.turn, { state: "pending", sent_seq: ++mockSeq });
+    emit({ seq: mockSeq, type: "session.sent", box, data: { name: qs.name, turn: id, when: "now" } });
+    return delay({ sent: true, turn: id, seq: mockSeq, at: new Date().toISOString() });
+  }
   const tw = /^turns\/([^/?]+)(\/wait)?/.exec(path);
   if (tw) {
     const id = decodeURIComponent(tw[1]);
@@ -377,6 +444,7 @@ function mockOrchestration(box: string, method: string, path: string, body?: unk
     if (req.when === "idle" && (s.agent_state === "running" || s.agent_state === "waiting")) {
       Object.assign(tr, { state: "queued", queued: at });
       (mockInbox[key] ??= []).push({ turn: tr, text: req.text ?? "" });
+      s.queued = mockInbox[key].length;
       emit({ seq: ++mockSeq, type: "session.queued", box, data: { name: s.name, turn: tr.id } });
       return delay({ sent: false, queued: true, turn: tr.id, seq: mockSeq, at });
     }
@@ -501,7 +569,7 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
       name: box,
       version: "0.1.0",
       tools: ["claude", "codex"],
-      capabilities: ["turns", "journal", "runs", "exec.detach", "browser"],
+      capabilities: ["diff", "turns", "queue", "ask", "journal", "runs", "exec.detach", "browser"],
       adapters: {
         claude: { ready: true, started: true, waiting: true, finished: true, final_message: true, via: "hooks" },
         codex: { ready: true, started: true, waiting: true, finished: true, final_message: true, via: "hooks" },
