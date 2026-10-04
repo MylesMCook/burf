@@ -62,6 +62,14 @@ export function useTranscriptFeed(box: string, session: string, dir: string | un
           setState("none");
           return;
         }
+        // Fewer items than were read: the box reads another file for this
+        // session now (its own, once the agent writes one). Start it afresh,
+        // so no other conversation's lines stay in this chat.
+        if (typeof r.next === "number" && r.next < next.current) {
+          useConversations.setState((s) => ({ items: { ...s.items, [key]: [] } }));
+          next.current = 0;
+          return;
+        }
         if (r.items?.length) useConversations.getState().merge(key, r.items);
         useConversations.getState().setCrew(key, r.crew ?? []);
         next.current = r.next ?? next.current;

@@ -54,7 +54,9 @@
 .cv-md blockquote { margin: 0 0 0.75em; padding-left: 0.9em; border-left: 2px solid var(--border); color: var(--muted-foreground); }
 .cv-md hr { margin: 1em 0; border: 0; border-top: 1px solid var(--border); }
 .cv-md .cv-table { margin: 0 0 0.75em; overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
-.cv-md table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+/* A cell's words and paths wrap only where they can, so a column of
+   file:line references keeps them whole and the table scrolls instead. */
+.cv-md table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; overflow-wrap: normal; }
 .cv-md th, .cv-md td { padding: 6px 10px; text-align: left; vertical-align: top; border-top: 1px solid var(--border); }
 .cv-md thead th { border-top: 0; font-weight: 500; color: var(--muted-foreground); background: var(--muted); }
 .cv-md td:first-child, .cv-md th:first-child { white-space: nowrap; }

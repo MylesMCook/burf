@@ -80,18 +80,20 @@ function foldTurns(items: TranscriptItem[]): Block[] {
   const flush = (isLast: boolean) => {
     if (!turn.length) return;
     const working = isLast && live;
-    // The answer: the turn's last words, once it has finished; while it
-    // works, its latest words.
+    // The answer: what the turn says after its last step (a long reply and
+    // a note after it both), once it has finished; while it works, its
+    // latest words. A turn that ends on a step answers with its last words.
     let answer = -1;
     for (let i = turn.length - 1; i >= 0; i--)
       if (turn[i].kind === "text") {
         answer = i;
+        while (answer > 0 && (turn[answer - 1].kind === "text" || turn[answer - 1].kind === "edit")) answer--;
         break;
       }
     const steps: TranscriptItem[] = [];
     const shown: TranscriptItem[] = [];
     turn.forEach((it, i) => {
-      if (i === answer || it.kind === "edit" || it.kind === "ask" || it.kind === "thinking") shown.push(it);
+      if ((answer >= 0 && i >= answer && it.kind === "text") || it.kind === "edit" || it.kind === "ask" || it.kind === "thinking") shown.push(it);
       else steps.push(it);
     });
     if (steps.length) out.push({ kind: "fold", id: `fold-${steps[0].id}`, steps, live: working });
