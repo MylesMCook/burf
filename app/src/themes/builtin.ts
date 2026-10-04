@@ -60,7 +60,8 @@ export const berthLight: Theme = {
     sidebar: "#f1f1f3",
     sidebarForeground: "#5d5f67",
     muted: "#f2f2f4",
-    mutedForeground: "#71737c",
+    // 4.8:1 on the sidebar, 5.4:1 on the page: AA for small text on both.
+    mutedForeground: "#686a73",
     border: "#e6e6ea",
     accent: "#ececef",
     accentForeground: "#1d1e22",
