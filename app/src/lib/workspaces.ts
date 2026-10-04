@@ -110,6 +110,16 @@ export function selectWorktree(ref: WorktreeRef) {
   reconcile(key);
 }
 
+// forgetWorktree drops a removed worktree's workspace, and leaves it for
+// home if it was the one showing.
+export function forgetWorktree(box: string, path: string) {
+  const key = wsKey(box, path);
+  useWorkspaces.setState((s) => {
+    const { [key]: _gone, ...spaces } = s.spaces;
+    return { spaces, mounted: s.mounted.filter((k) => k !== key), current: s.current === key ? undefined : s.current };
+  });
+}
+
 // goHome leaves every worktree for the workspace's home (no worktree open).
 export function goHome() {
   useWorkspaces.setState({ current: undefined });

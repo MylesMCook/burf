@@ -53,7 +53,7 @@ import { agentOf, worktreeSessions } from "@/lib/derive";
 import { errorMessage } from "@/lib/format";
 import { scheduleRefresh, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { refOf, selectWorktree } from "@/lib/workspaces";
+import { forgetWorktree, refOf, selectWorktree } from "@/lib/workspaces";
 import { useRegistry } from "@/plugins/registry";
 import { openAddToBox } from "@/components/sidebar/add-to-box-dialog";
 import { boxLoad } from "@/components/sidebar/box-load";
@@ -279,6 +279,7 @@ export function removeWorktree(box: string, loc: Location, wt: Worktree) {
         if (/modified|untracked|uncommitted|contains/i.test(m) && !checked.force) throw new Error(`${wt.name} has uncommitted changes. Tick "Remove even with uncommitted changes" to remove it anyway. (${m})`);
         throw err;
       }
+      forgetWorktree(box, wt.path);
       scheduleRefresh(box, ["locations", "sessions", "services"]);
       toastManager.add({ title: `Removed ${wt.name}`, description: box, type: "success" });
     },

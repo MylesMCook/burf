@@ -63,8 +63,16 @@ export function useTranscriptFeed(box: string, session: string, dir: string | un
         useConversations.getState().setCrew(key, r.crew ?? []);
         next.current = r.next ?? next.current;
         setState("ready");
-      } catch {
-        if (alive) setState((s) => (s === "ready" ? s : "error"));
+      } catch (err) {
+        if (!alive) return;
+        // The session is gone: nothing more will come.
+        if ((err as { status?: number } | null)?.status === 404) {
+          alive = false;
+          window.clearInterval(t);
+          setState((s) => (s === "ready" ? s : "none"));
+          return;
+        }
+        setState((s) => (s === "ready" ? s : "error"));
       } finally {
         busy = false;
       }

@@ -8,6 +8,7 @@ import { handlePreview } from "@/lib/preview";
 import { handleQueueEvent } from "@/lib/queue";
 import { scheduleRuns } from "@/lib/runs";
 import { handleSessionOpen } from "@/lib/session-open";
+import { forgetWorktree } from "@/lib/workspaces";
 import { type BoxPart, scheduleRefresh, useStore } from "@/lib/store";
 import { dispatch } from "@/plugins/registry";
 
@@ -81,6 +82,8 @@ function notifyFor(e: BerthEvent) {
   }
   if (e.type === "preview.open") handlePreview(e);
   if (e.type === "session.open") handleSessionOpen(e);
+  // A removed worktree's workspace goes too, wherever it was removed from.
+  if (e.type === "worktree.removed" && box && str(d.path)) forgetWorktree(box, str(d.path)!);
   if (e.type === "worktree.setup.failed") {
     const name = str(d.name);
     route({
