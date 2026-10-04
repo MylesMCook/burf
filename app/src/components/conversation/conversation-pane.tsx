@@ -36,8 +36,8 @@ import { addComment, type LineComment, pending, removeComment, sendComments, use
 import { permissionChoices } from "@/lib/screen";
 import { NONE, useStore } from "@/lib/store";
 import type { TranscriptItem } from "@/lib/transcript";
-import { plainWords, useScreenStatus } from "@/lib/screen-status";
 import { noteSent, usePromptRecall } from "@/lib/history";
+import { plainWords, useScreenStatus } from "@/lib/screen-status";
 import { useAsk, useQueued, useTranscriptFeed } from "@/lib/transcript-feed";
 import { ConfirmDialog } from "@/views/settings/confirm";
 import { cn } from "@/lib/utils";
@@ -74,11 +74,13 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
   const ask = useAsk(box, session, !mock && state === "waiting", s?.state_since);
   const [answered, setAnswered] = useState<{ at?: string; key: string }>();
   // Prompts sent from here that the transcript doesn't show yet.
-  const [sent, setSent] = useState<{ text: string; at: number; after: number }[]>([]);
+  // Each remembers the prompts like it the transcript already held, by ID:
+  // the transcript is a sliding window, so a position in it doesn't last.
+  const [sent, setSent] = useState<{ text: string; at: number; seen: Set<string> }[]>([]);
   // Once the transcript has a prompt, it is no longer "just sent".
   useEffect(() => {
     setSent((l) => {
-      const left = l.filter((p) => !items.some((it, i) => i >= p.after && it.kind === "user" && same(it.text, p.text)));
+      const left = l.filter((p) => !taken(items, p));
       return left.length === l.length ? l : left;
     });
   }, [items]);
@@ -120,7 +122,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
     const out = [...items];
     // What was just sent shows at once, until the agent's own record of it
     // arrives (a moment later) and takes its place.
-    for (const p of sent) if (!items.some((it, i) => i >= p.after && it.kind === "user" && same(it.text, p.text))) out.push({ kind: "user", id: `sent:${p.at}`, text: p.text });
+    for (const p of sent) if (!taken(items, p)) out.push({ kind: "user", id: `sent:${p.at}`, text: p.text });
     if (state === "running") {
       // Its words on screen that its record doesn't have yet (Claude Code
       // writes them after the step it is running), until the record does.
@@ -275,7 +277,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
     // A command ("/model", "!ls") shows as itself once the agent runs it;
     // one that opens a screen of its own is looked for at once.
     else if (/^[/!]/.test(text.trim())) setNudge((n) => n + 1);
-    else setSent((l) => [...l, { text, at: Date.now(), after: items.length }]);
+    else setSent((l) => [...l, { text, at: Date.now(), seen: new Set(items.filter((it) => it.kind === "user" && same(it.text, text)).map((it) => it.id)) }]);
   };
 
   // A held prompt typed now. At a question it would be read as the answer,
@@ -309,7 +311,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
   // A prompt typed into an agent that hasn't taken it: its screen is
   // likely showing something else (a dialog of its own), which only its
   // terminal can answer.
-  const untaken = !mock && state !== "running" && sent.some((p) => now - p.at > 8000 && !items.some((it, i) => i >= p.after && it.kind === "user" && same(it.text, p.text)));
+  const untaken = !mock && state !== "running" && sent.some((p) => now - p.at > 8000 && !taken(items, p));
   const tail = (
     <>
       {queue.items.map((q) => (
@@ -436,12 +438,18 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
 
 const NO_COMMENTS: LineComment[] = [];
 
-// The transcript keeps what was typed, trimmed and at most 4000 characters.
+// The transcript keeps what was typed, at most 4000 characters, and a
+// pasted block's line breaks and spacing don't always come back the same.
+const flat = (s: string) => s.replace(/\s+/g, " ").trim();
 const same = (a: string, b: string) => {
-  const x = a.trim();
-  const y = b.trim();
+  const x = flat(a);
+  const y = flat(b);
   return x === y || (x.length >= 3000 && y.startsWith(x.replace(/…$/, "")));
 };
+
+// A sent prompt is taken once the transcript holds one like it that it
+// didn't hold when it was sent.
+const taken = (items: TranscriptItem[], p: { text: string; seen: Set<string> }) => items.some((it) => it.kind === "user" && !p.seen.has(it.id) && same(it.text, p.text));
 
 // CommentsStrip offers the comments left on this worktree's diff to its
 // agent, as one short prompt held until it is idle.
