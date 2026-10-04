@@ -1,3 +1,4 @@
+import { listen } from "@tauri-apps/api/event";
 import { useEffect } from "react";
 
 import { openEditor } from "@/components/editors/open";
@@ -5,6 +6,8 @@ import { closePane, openBrowserAt, startSession } from "@/lib/actions";
 import { submitConfirm } from "@/components/sidebar/confirm";
 import { toggleNotifications } from "@/lib/notifications";
 import { isOnboardingActive } from "@/views/onboarding/onboarding-state";
+import { toastManager } from "@/components/ui/toast";
+import { isTauri } from "@/lib/api";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { activateTab, currentSpace, moveFocus, useWorkspaces } from "@/lib/workspaces";
@@ -29,7 +32,7 @@ export const SHORTCUTS: [keys: string, what: string][] = [
   ["⌘⇧N", "Notifications"],
   ["⌘⇧O", "Open this worktree in your editor"],
   ["⌘\\", "Show or hide the sidebar"],
-  ["⌘⇧\\", "Zen: only the agents (Labs)"],
+  ["⌘.", "Zen: only the agents (Labs)"],
 ];
 
 const arrows: Record<string, "left" | "right" | "up" | "down"> = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down" };
@@ -52,9 +55,9 @@ export function useShortcuts() {
       if (e.altKey) {
         if (!(e.key in arrows) || !inWorkspace) return;
         moveFocus(arrows[e.key]);
-      } else if (usePrefs.getState().labs && ((e.code === "Backslash" && e.shiftKey) || key === ".")) {
-        // ⌘⇧\: macOS keeps ⌘. for "cancel", so it seldom reaches the page;
-        // it still works where it does (the browser demo).
+      } else if (key === "." && usePrefs.getState().labs) {
+        // In the app, View → Zen (a native menu item) takes ⌘. first; this is
+        // the browser demo's way in.
         usePrefs.setState((p) => ({ zen: !p.zen }));
       } else if (key === "\\") {
         usePrefs.setState((p) => ({ sidebarCollapsed: !p.sidebarCollapsed }));
@@ -91,6 +94,18 @@ export function useShortcuts() {
       e.stopPropagation();
     };
     window.addEventListener("keydown", onKey, { capture: true });
-    return () => window.removeEventListener("keydown", onKey, { capture: true });
+    // View → Zen in the app's menu bar (⌘.).
+    let unlisten: (() => void) | undefined;
+    let gone = false;
+    if (isTauri())
+      void listen("berth://zen", () => {
+        if (usePrefs.getState().labs) usePrefs.setState((p) => ({ zen: !p.zen }));
+        else toastManager.add({ title: "Zen is in Labs", description: "Turn on Labs in Settings → General to use it." });
+      }).then((u) => (gone ? u() : (unlisten = u)));
+    return () => {
+      gone = true;
+      unlisten?.();
+      window.removeEventListener("keydown", onKey, { capture: true });
+    };
   }, []);
 }

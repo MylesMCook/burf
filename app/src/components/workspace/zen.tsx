@@ -18,9 +18,9 @@ import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { focusSession, goHome, recentWorktrees, selectWorktree, useWorkspaces } from "@/lib/workspaces";
 
-// Zen (Labs, ⌘⇧\) puts away everything but the agents: no sidebar, no status
+// Zen (Labs, ⌘.) puts away everything but the agents: no sidebar, no status
 // bar, one slim bar with a switcher where the tab strip was, and agents as
-// conversations. ⌘⇧\ brings it all back.
+// conversations. ⌘. brings it all back.
 
 // useHere is what the window shows: the worktree, and the agent in its
 // focused pane.
@@ -127,7 +127,7 @@ export function ZenSwitcher({ className }: { className?: string }) {
         <MenuItem onClick={() => usePrefs.setState({ zen: false })}>
           <Minimize2Icon />
           Leave zen
-          <MenuShortcut>⌘⇧\</MenuShortcut>
+          <MenuShortcut>⌘.</MenuShortcut>
         </MenuItem>
       </MenuPopup>
     </Menu>
@@ -151,7 +151,7 @@ function FocusedViewSwitch() {
 export function ZenBar({ variant }: { variant: "bar" | "float" }) {
   const home = useWorkspaces((s) => !s.current);
   const out = (
-    <Tip label={<span className="flex items-center gap-1.5">Leave zen <Kbd>⌘⇧\</Kbd></span>}>
+    <Tip label={<span className="flex items-center gap-1.5">Leave zen <Kbd>⌘.</Kbd></span>}>
       <Button size="icon-sm" variant="ghost" aria-label="Leave zen" onClick={() => usePrefs.setState({ zen: false })}>
         <Minimize2Icon />
       </Button>

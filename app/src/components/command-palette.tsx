@@ -144,7 +144,7 @@ export function CommandPalette() {
       },
       { value: "add-location", label: "Add a project…", icon: slot(<FolderPlusIcon />), run: go(() => st.openAddProject()) },
       ...(usePrefs.getState().labs
-        ? [{ value: "zen focus calm hide sidebar labs", label: usePrefs.getState().zen ? "Leave zen" : "Zen: only the agents", icon: slot(<Minimize2Icon />), shortcut: "⌘⇧\\", run: go(() => usePrefs.setState((p) => ({ zen: !p.zen }))) }]
+        ? [{ value: "zen focus calm hide sidebar labs", label: usePrefs.getState().zen ? "Leave zen" : "Zen: only the agents", icon: slot(<Minimize2Icon />), shortcut: "⌘.", run: go(() => usePrefs.setState((p) => ({ zen: !p.zen }))) }]
         : []),
       { value: "dashboard", label: "Agent Dashboard", icon: slot(<LayoutDashboardIcon />), shortcut: "⌘J", run: go(() => st.setView({ kind: "dashboard" })) },
       { value: "notifications inbox bell", label: "Notifications", icon: slot(<BellIcon />), shortcut: "⌘⇧N", run: go(() => setNotificationsOpen(true)) },
