@@ -45,7 +45,26 @@ func (b *Box) transcript(w http.ResponseWriter, r *http.Request) error {
 	var path, where string
 	switch agent {
 	case "claude":
-		path = transcript.ClaudePath(sess.Dir, id, sess.Created)
+		// Every Claude session in this folder gets its own transcript.
+		claims := []transcript.Claim{{Name: sess.Name, ID: id, Started: sess.Created}}
+		if all, err := b.Sessions.List(r.Context()); err == nil {
+			for _, o := range all {
+				if o.Name == sess.Name || o.Dir != sess.Dir || o.Exited {
+					continue
+				}
+				if a := firstNonEmpty(o.Preset, firstNonEmpty(o.Agent, agentOf(o.Command))); a != "claude" {
+					continue
+				}
+				var oid string
+				if b.Turns != nil {
+					if st, ok := b.Turns.State(o.Name); ok {
+						oid = st.AgentSessionID
+					}
+				}
+				claims = append(claims, transcript.Claim{Name: o.Name, ID: oid, Started: o.Created})
+			}
+		}
+		path = transcript.AssignClaude(sess.Dir, claims)[sess.Name]
 		where = transcript.ClaudeDir(sess.Dir)
 	case "codex":
 		path = transcript.CodexPath(sess.Dir, id, sess.Created)
@@ -68,4 +87,3 @@ func (b *Box) transcript(w http.ResponseWriter, r *http.Request) error {
 	writeJSON(w, res)
 	return nil
 }
-

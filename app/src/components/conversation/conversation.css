@@ -32,3 +32,29 @@
   .cv-fold { transition: none; }
   .cv-shimmer { color: var(--muted-foreground); background: none; }
 }
+
+/* An agent's reply, as Markdown: the type scale of the conversation, with
+   tables, lists and code laid out the way the terminal shows them. */
+.cv-md { min-width: 0; overflow-wrap: anywhere; }
+.cv-md > :first-child { margin-top: 0; }
+.cv-md > :last-child { margin-bottom: 0; }
+.cv-md p { margin: 0 0 0.75em; text-wrap: pretty; }
+.cv-md h1, .cv-md h2, .cv-md h3, .cv-md h4 { margin: 1.1em 0 0.4em; font-weight: 600; line-height: 1.3; }
+.cv-md h1 { font-size: 1.25em; } .cv-md h2 { font-size: 1.12em; } .cv-md h3, .cv-md h4 { font-size: 1em; }
+.cv-md ul, .cv-md ol { margin: 0 0 0.75em; padding-left: 1.3em; }
+.cv-md ul { list-style: disc; } .cv-md ol { list-style: decimal; }
+.cv-md li { margin: 0.15em 0; }
+.cv-md li > ul, .cv-md li > ol { margin: 0.15em 0 0.2em; }
+.cv-md strong { font-weight: 600; }
+.cv-md a { color: var(--foreground); text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 35%, transparent); text-underline-offset: 2px; }
+.cv-md a:hover { text-decoration-color: currentColor; }
+.cv-md code { font-family: var(--font-mono); font-size: 0.88em; padding: 0.1em 0.35em; border-radius: 5px; background: var(--muted); }
+.cv-md pre { margin: 0 0 0.75em; padding: 10px 12px; border-radius: 10px; background: var(--muted); overflow-x: auto; font-size: 12.5px; line-height: 1.5; }
+.cv-md pre code { padding: 0; background: none; font-size: inherit; }
+.cv-md blockquote { margin: 0 0 0.75em; padding-left: 0.9em; border-left: 2px solid var(--border); color: var(--muted-foreground); }
+.cv-md hr { margin: 1em 0; border: 0; border-top: 1px solid var(--border); }
+.cv-md .cv-table { margin: 0 0 0.75em; overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
+.cv-md table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.cv-md th, .cv-md td { padding: 6px 10px; text-align: left; vertical-align: top; border-top: 1px solid var(--border); }
+.cv-md thead th { border-top: 0; font-weight: 500; color: var(--muted-foreground); background: var(--muted); }
+.cv-md td:first-child, .cv-md th:first-child { white-space: nowrap; }

@@ -30,6 +30,8 @@
     "clsx": "^2.1.1",
     "ghostty-web": "^0.4.0",
     "lucide-react": "^1.48.0",
+    "micromark": "^4.0.3",
+    "micromark-extension-gfm": "^3.0.0",
     "qrcode": "1.5.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",

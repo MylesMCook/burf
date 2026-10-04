@@ -93,7 +93,7 @@ export async function finishTurn(box: string, session: string) {
   await tools(key, "Run", [{ verb: "Run", target: "pnpm test payments" }]);
   await stream(
     key,
-    "Done. A repeated webhook now finds the order by its idempotency key and returns it instead of charging twice. I capped retries at 5 over 10 minutes, and added a test that sends the same event twice.",
+    "Done. A repeated webhook now finds the order by its **idempotency key** and returns it instead of charging twice.\n\n| | Before | After |\n|---|---|---|\n| Duplicate charge on retry | yes | **no** |\n| Retries | unlimited | 5 over 10 minutes |\n\n**What changed:**\n- `createOrder` looks the key up before charging.\n- Retries back off and stop after five.\n- A test sends the same event twice (`pnpm test payments` passes).",
   );
 }
 

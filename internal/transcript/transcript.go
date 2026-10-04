@@ -76,7 +76,7 @@ const (
 	// them into memory.
 	maxLine = 1 << 20
 	// idle is how long an unread conversation stays cached.
-	idle = 10 * time.Minute
+	idle    = 10 * time.Minute
 	maxOpen = 32
 )
 
@@ -90,7 +90,7 @@ type conv struct {
 	source    string
 	dir       string
 	items     []Item
-	base      int // index of items[0]
+	base      int            // index of items[0]
 	byTool    map[string]int // tool call ID → absolute index of its group
 	crew      []CrewMember
 	crewByID  map[string]int

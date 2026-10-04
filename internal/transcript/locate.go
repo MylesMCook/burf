@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
+	"sync"
 	"time"
 )
 
@@ -93,4 +95,122 @@ func codexCwd(p string) string {
 	}
 	_ = json.Unmarshal(line, &l)
 	return l.Payload.Cwd
+}
+
+// Claim is one agent session in a folder: its name, its conversation ID
+// when its hooks gave one, and when it started.
+type Claim struct {
+	Name    string
+	ID      string
+	Started time.Time
+}
+
+// AssignClaude gives each Claude Code session in dir its own transcript.
+// Sessions whose hooks named their conversation get that file; the rest
+// take, oldest session first, the earliest unclaimed transcript that began
+// after the session did. Several agents in one worktree so read their own
+// conversations, never one shared file.
+func AssignClaude(dir string, claims []Claim) map[string]string {
+	proj := ClaudeDir(dir)
+	out := map[string]string{}
+	taken := map[string]bool{}
+	for _, c := range claims {
+		if c.ID != "" && validID(c.ID) {
+			if p := filepath.Join(proj, c.ID+".jsonl"); exists(p) {
+				out[c.Name] = p
+				taken[p] = true
+			}
+		}
+	}
+	files, _ := filepath.Glob(filepath.Join(proj, "*.jsonl"))
+	type file struct {
+		path  string
+		start time.Time
+	}
+	var fs []file
+	for _, p := range files {
+		if taken[p] {
+			continue
+		}
+		if t, ok := startedAt(p); ok {
+			fs = append(fs, file{p, t})
+		}
+	}
+	sort.Slice(fs, func(i, j int) bool { return fs[i].start.Before(fs[j].start) })
+	rest := make([]Claim, 0, len(claims))
+	for _, c := range claims {
+		if out[c.Name] == "" {
+			rest = append(rest, c)
+		}
+	}
+	sort.Slice(rest, func(i, j int) bool { return rest[i].Started.Before(rest[j].Started) })
+	for _, c := range rest {
+		for i, f := range fs {
+			if f.path != "" && !f.start.Before(c.Started.Add(-time.Minute)) {
+				out[c.Name] = f.path
+				fs[i].path = ""
+				break
+			}
+		}
+	}
+	// A session that started before any transcript it could own (one that
+	// is older than its file's records) still gets the newest left over.
+	for _, c := range rest {
+		if out[c.Name] != "" {
+			continue
+		}
+		for i := len(fs) - 1; i >= 0; i-- {
+			if fs[i].path != "" {
+				out[c.Name] = fs[i].path
+				fs[i].path = ""
+				break
+			}
+		}
+	}
+	return out
+}
+
+// starts caches when each transcript began, which never changes; the
+// folders of busy boxes hold hundreds.
+var starts sync.Map // path → time.Time
+
+// startedAt is when a transcript began: the first timestamp in its first
+// lines, else its modification time.
+func startedAt(p string) (time.Time, bool) {
+	if t, ok := starts.Load(p); ok {
+		return t.(time.Time), true
+	}
+	t, ok := readStart(p)
+	if ok {
+		starts.Store(p, t)
+	}
+	return t, ok
+}
+
+func readStart(p string) (time.Time, bool) {
+	f, err := os.Open(p)
+	if err != nil {
+		return time.Time{}, false
+	}
+	defer f.Close()
+	r := bufio.NewReaderSize(f, 32<<10)
+	for i := 0; i < 20; i++ {
+		line, err := r.ReadSlice('\n')
+		var l struct {
+			Timestamp string `json:"timestamp"`
+		}
+		if json.Unmarshal(line, &l) == nil && l.Timestamp != "" {
+			if t, perr := time.Parse(time.RFC3339Nano, l.Timestamp); perr == nil {
+				return t, true
+			}
+		}
+		if err != nil && err != bufio.ErrBufferFull {
+			break
+		}
+	}
+	st, err := f.Stat()
+	if err != nil {
+		return time.Time{}, false
+	}
+	return st.ModTime(), true
 }

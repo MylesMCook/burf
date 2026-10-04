@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func write(t *testing.T, path string, lines ...any) {
@@ -29,7 +30,9 @@ func user(content any) m {
 func assistant(blocks ...m) m {
 	return m{"type": "assistant", "timestamp": "2026-10-04T12:00:01Z", "message": m{"role": "assistant", "content": blocks}}
 }
-func tool(id, name string, input m) m { return m{"type": "tool_use", "id": id, "name": name, "input": input} }
+func tool(id, name string, input m) m {
+	return m{"type": "tool_use", "id": id, "name": name, "input": input}
+}
 func result(id string) m {
 	return user([]m{{"type": "tool_result", "tool_use_id": id, "content": "secret output"}})
 }
@@ -143,7 +146,9 @@ func TestKeepsOnlyTheEnd(t *testing.T) {
 
 func TestCodex(t *testing.T) {
 	p := filepath.Join(t.TempDir(), "rollout.jsonl")
-	ri := func(payload m) m { return m{"type": "response_item", "timestamp": "2026-10-04T12:00:00Z", "payload": payload} }
+	ri := func(payload m) m {
+		return m{"type": "response_item", "timestamp": "2026-10-04T12:00:00Z", "payload": payload}
+	}
 	args := func(v any) string { b, _ := json.Marshal(v); return string(b) }
 	write(t, p,
 		m{"type": "session_meta", "payload": m{"cwd": "/w/shop"}},
@@ -179,5 +184,30 @@ func TestLongLineIsSkipped(t *testing.T) {
 	res, _ := NewReader().Read("claude", p, "", 0)
 	if kinds(res.Items) != "user" || res.Items[0].Text != "after" {
 		t.Fatalf("items = %+v", kinds(res.Items))
+	}
+}
+
+// Two agents in one worktree read their own conversations, not one shared
+// file: by ID when the hooks gave it, else by when each began.
+func TestAssignClaudeGivesEachAgentItsOwn(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("CLAUDE_CONFIG_DIR", home)
+	dir := "/w/shop"
+	proj := ClaudeDir(dir)
+	os.MkdirAll(proj, 0o700)
+	at := func(ts string) m {
+		return m{"type": "user", "timestamp": ts, "message": m{"role": "user", "content": "hi"}}
+	}
+	write(t, filepath.Join(proj, "aaaaaaaa-1.jsonl"), at("2026-10-04T10:00:05Z"))
+	write(t, filepath.Join(proj, "bbbbbbbb-2.jsonl"), at("2026-10-04T10:05:05Z"))
+	write(t, filepath.Join(proj, "cccccccc-3.jsonl"), at("2026-10-04T10:09:00Z"))
+	t0, _ := time.Parse(time.RFC3339, "2026-10-04T10:00:00Z")
+	got := AssignClaude(dir, []Claim{
+		{Name: "first", Started: t0},
+		{Name: "second", Started: t0.Add(5 * time.Minute)},
+		{Name: "named", ID: "cccccccc-3", Started: t0},
+	})
+	if filepath.Base(got["first"]) != "aaaaaaaa-1.jsonl" || filepath.Base(got["second"]) != "bbbbbbbb-2.jsonl" || filepath.Base(got["named"]) != "cccccccc-3.jsonl" {
+		t.Fatalf("%v", got)
 	}
 }

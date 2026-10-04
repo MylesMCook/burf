@@ -12,6 +12,7 @@ import { DiffLines, type LineComments } from "@/lib/git/diff-view";
 import { parseDiff } from "@/lib/git/parse";
 import { toolSummary, type TranscriptItem } from "@/lib/transcript";
 import { cn } from "@/lib/utils";
+import { Markdown } from "@/components/conversation/markdown";
 import "@/components/conversation/conversation.css";
 
 // ConversationView draws an agent's turn as a calm transcript rather than a
@@ -52,11 +53,96 @@ export function ConversationView({ items, onAnswer, edits, who = "The agent", ta
 
   return (
     <div className={cn("mx-auto flex w-full max-w-[680px] flex-col gap-4 text-[14px] text-foreground leading-relaxed", className)}>
-      {items.map((it) => (
-        <Item key={it.id} it={it} onAnswer={onAnswer} edits={edits} who={who} />
-      ))}
+      {foldTurns(items).map((b) =>
+        b.kind === "fold" ? (
+          <WorkFold key={b.id} steps={b.steps} live={b.live} onAnswer={onAnswer} edits={edits} who={who} />
+        ) : (
+          <Item key={b.it.id} it={b.it} onAnswer={onAnswer} edits={edits} who={who} />
+        ),
+      )}
       {tail}
       <div ref={end} />
+    </div>
+  );
+}
+
+// A turn reads like a chat: what was asked, what the agent changed, and its
+// answer. The steps in between (its narration and tool calls) fold into one
+// line, "Worked · ran 3 commands, read 5 files", opened on demand. While it
+// works, the line says so and its latest words stay in view.
+type Block = { kind: "item"; it: TranscriptItem } | { kind: "fold"; id: string; steps: TranscriptItem[]; live: boolean };
+
+function foldTurns(items: TranscriptItem[]): Block[] {
+  const last = items[items.length - 1];
+  const live = !!last && (last.kind === "thinking" || (last.kind === "ask" && !last.decided));
+  const out: Block[] = [];
+  let turn: TranscriptItem[] = [];
+  const flush = (isLast: boolean) => {
+    if (!turn.length) return;
+    const working = isLast && live;
+    // The answer: the turn's last words, once it has finished; while it
+    // works, its latest words.
+    let answer = -1;
+    for (let i = turn.length - 1; i >= 0; i--)
+      if (turn[i].kind === "text") {
+        answer = i;
+        break;
+      }
+    const steps: TranscriptItem[] = [];
+    const shown: TranscriptItem[] = [];
+    turn.forEach((it, i) => {
+      if (i === answer || it.kind === "edit" || it.kind === "ask" || it.kind === "thinking") shown.push(it);
+      else steps.push(it);
+    });
+    if (steps.length) out.push({ kind: "fold", id: `fold-${steps[0].id}`, steps, live: working });
+    for (const it of shown) out.push({ kind: "item", it });
+    turn = [];
+  };
+  for (const it of items) {
+    if (it.kind === "user") {
+      flush(false);
+      out.push({ kind: "item", it });
+    } else turn.push(it);
+  }
+  flush(true);
+  return out;
+}
+
+function workSummary(steps: TranscriptItem[]): string {
+  let run = 0, read = 0, search = 0, other = 0, helpers = 0;
+  for (const s of steps) {
+    if (s.kind === "tools") {
+      const n = s.items?.length ?? 0;
+      if (s.verb === "Run") run += n;
+      else if (s.verb === "Read") read += n;
+      else if (s.verb === "Search") search += n;
+      else other += n;
+    } else if (s.kind === "crew") helpers += s.names?.length ?? 1;
+  }
+  const n = (k: number, one: string, many: string) => (k ? [`${k === 1 ? one.replace("#", "1") : many.replace("#", String(k))}`] : []);
+  const parts = [...n(run, "ran # command", "ran # commands"), ...n(read, "read # file", "read # files"), ...n(search, "searched # time", "searched # times"), ...n(helpers, "started # helper", "started # helpers"), ...n(other, "used # tool", "used # tools")];
+  return parts.join(", ");
+}
+
+function WorkFold({ steps, live, onAnswer, edits, who }: { steps: TranscriptItem[]; live: boolean; onAnswer(id: string, key: string): void; edits?: EditActions; who: string }) {
+  const [open, setOpen] = useState(false);
+  const summary = workSummary(steps);
+  return (
+    <div className="cv-in -my-1">
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="-ml-1 inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 text-muted-foreground text-[13px] outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+        <ChevronRightIcon className={cn("size-3.5 transition-transform duration-200", open && "rotate-90")} />
+        {live ? <span className="cv-shimmer">Working</span> : "Worked"}
+        {summary && <span className="text-muted-foreground/80">· {summary}</span>}
+      </button>
+      <div className="cv-fold" data-closed={open ? undefined : ""}>
+        <div>
+          <div className="mt-2 flex flex-col gap-3 border-l pl-4 text-[13.5px]">
+            {steps.map((it) => (
+              <Item key={it.id} it={it} onAnswer={onAnswer} edits={edits} who={who} />
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -66,7 +152,7 @@ function Item({ it, onAnswer, edits, who }: { it: TranscriptItem; onAnswer(id: s
     case "user":
       return <div className="cv-in max-w-[80%] self-end whitespace-pre-wrap rounded-2xl bg-muted px-3.5 py-2">{it.text}</div>;
     case "text":
-      return <p className="cv-in text-pretty">{it.text}</p>;
+      return <Markdown text={it.text} />;
     case "thinking":
       return <Thinking since={it.since} />;
     case "tools":
@@ -110,6 +196,8 @@ export function permissionVerb(tool: string): { verb: string; what?: string; mon
       return { verb: "wants to fetch", mono: true };
     case "WebSearch":
       return { verb: "wants to search the web for", mono: false };
+    case "AskUserQuestion":
+      return { verb: "asks you", mono: false };
   }
   return { verb: "wants to use", what: tool, mono: false };
 }

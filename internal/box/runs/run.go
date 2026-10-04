@@ -56,11 +56,11 @@ type Step struct {
 	NewWorktree bool     `json:"new_worktree,omitempty"`
 	// Model and Effort, for start_agent: the agent's model and effort by
 	// the CLI's own names; empty is its default.
-	Model  string `json:"model,omitempty"`
-	Effort string `json:"effort,omitempty"`
-	Name        string   `json:"name,omitempty"`
-	URL         string   `json:"url,omitempty"`
-	Timeout     string   `json:"timeout,omitempty"`
+	Model   string `json:"model,omitempty"`
+	Effort  string `json:"effort,omitempty"`
+	Name    string `json:"name,omitempty"`
+	URL     string `json:"url,omitempty"`
+	Timeout string `json:"timeout,omitempty"`
 
 	// Deliver "idle" holds a prompt in the agent's inbox until it is idle.
 	Deliver string `json:"deliver,omitempty"`
