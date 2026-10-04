@@ -66,6 +66,7 @@ export function choicesIn(screen: string): Choice[] {
 // sure ("unknown"). Claude Code draws its prompt between two rules; Codex a
 // "›" line over its footer. Its own screens end in key hints ("Esc to
 // cancel", "Enter to confirm", "↑/↓ to navigate") or numbered options.
+// Claude Code 2.1 follows its "❯" with a no-break space, which \s takes.
 const PROMPT_RULE = /^\s*[─━]{8,}\s*$/;
 const KEY_HINT = /(esc to (cancel|close|go back|exit|clear|dismiss)|enter to (confirm|select|continue|change|set|submit|save|toggle)|press enter|space to (select|toggle)|↑\/↓|←\/→|to navigate|to switch|type to (filter|search))/i;
 
@@ -80,7 +81,7 @@ export function screenAt(agent: string | undefined, screen: string): "prompt" | 
     prompt = last.some((l) => /^›(\s|$)/.test(l)) && !hinted;
   } else {
     for (let i = 1; i < tail.length - 1 && !prompt; i++) {
-      if (!/^\s*[❯>!#]( |$)/.test(tail[i]) || !PROMPT_RULE.test(tail[i - 1])) continue;
+      if (!/^\s*[❯>!#](\s|$)/.test(tail[i]) || !PROMPT_RULE.test(tail[i - 1])) continue;
       prompt = tail.slice(i + 1, i + 10).some((l) => PROMPT_RULE.test(l));
     }
   }

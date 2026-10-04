@@ -386,7 +386,7 @@ func (b *Box) driveRewind(ctx context.Context, name, want string, nth int, resto
 
 var (
 	ansiSeq  = regexp.MustCompile(`\x1b\[[0-9;?]*[A-Za-z]`)
-	optionRe = regexp.MustCompile(`^\s*(?:❯\s*)?([1-9])\.\s+(.+?)\s*$`)
+	optionRe = regexp.MustCompile(`^\s*(?:❯[\s\x{a0}]*)?([1-9])\.[\s\x{a0}]+(.+?)\s*$`)
 )
 
 // pickerText is how a prompt reads in Claude Code's lists: its words on

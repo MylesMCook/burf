@@ -54,3 +54,11 @@ func TestRewindListReading(t *testing.T) {
 		t.Fatalf("options = %v", opts)
 	}
 }
+
+func TestMenuOptionsTakeNoBreakSpaces(t *testing.T) {
+	sc := rewindConfirm + "\n❯ 1. Restore code and conversation\n  2. Restore conversation\n"
+	got := menuOptions(sc)
+	if got["Restore code and conversation"] != "1" || got["Restore conversation"] != "2" {
+		t.Fatalf("menuOptions = %v", got)
+	}
+}
