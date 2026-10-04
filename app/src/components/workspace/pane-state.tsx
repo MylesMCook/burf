@@ -4,7 +4,7 @@ import { Scene } from "@/components/art/scenes";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { startSession } from "@/lib/actions";
-import { agentLabel } from "@/lib/derive";
+import { agentLabel, restartCommand } from "@/lib/derive";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { useWorkspaces } from "@/lib/workspaces";
@@ -53,7 +53,7 @@ export function SessionEnded({ box, session, agent, command, wsKey, tab, pane, o
         </p>
       }
     >
-      <Button size="sm" onClick={() => void startSession(command ?? "", { kind: "replace", tab, pane }, label)}>
+      <Button size="sm" onClick={() => void startSession(restartCommand(command) ?? "", { kind: "replace", tab, pane }, label)}>
         <RotateCwIcon />
         Start {agent ? label : "a shell"} again
       </Button>

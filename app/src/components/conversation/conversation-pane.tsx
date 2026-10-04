@@ -300,7 +300,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
   // An option that asks for words ("Tell Claude what to change" on a plan)
   // leaves the agent at a text field once picked: the reply box types them.
   const picked = answered && answered.at === s?.state_since ? ask?.choices.find((c) => c.key === answered.key)?.label : undefined;
-  const wantsWords = state === "waiting" && !!picked && /^tell \S+ what/i.test(picked);
+  const wantsWords = state === "waiting" && !!picked && /^(tell \S+ what|type something)/i.test(picked);
   const atMenu = !wantsWords && (!!ask?.choices.length || !!s?.ask?.tool || (open?.kind === "ask" && !open.decided && (!!open.choices?.length || !!open.structured)));
 
   if (ended && !shown.length) {

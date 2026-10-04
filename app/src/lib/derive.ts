@@ -145,3 +145,12 @@ const labels: Record<string, string> = { claude: "Claude Code", codex: "Codex", 
 
 // agentLabel is an agent's product name: "claude" → "Claude Code".
 export const agentLabel = (a: string) => labels[a] ?? a.charAt(0).toUpperCase() + a.slice(1);
+
+// restartCommand is how to start an agent again: its command without the
+// first prompt it was given (berth adds it last, shell-quoted, after
+// --prompt or -i for the agents that take one), so starting again doesn't
+// run the old task a second time.
+export function restartCommand(command?: string): string | undefined {
+  if (!command) return command;
+  return command.replace(/(?:\s+(?:--prompt|-i))?\s+'(?:[^']|'\\'')*'\s*$/, "");
+}

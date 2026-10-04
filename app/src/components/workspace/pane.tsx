@@ -15,7 +15,7 @@ import { LogView } from "@/components/workspace/log-view";
 import { PanelIcon, PanelPane } from "@/components/workspace/panel-pane";
 import { TerminalView } from "@/components/workspace/terminal-view";
 import { agentPresets, closePane, openBrowserAt, startSession } from "@/lib/actions";
-import { agentLabel, agentOf, sessionAgent, sessionName, sessionState } from "@/lib/derive";
+import { agentLabel, agentOf, restartCommand, sessionAgent, sessionName, sessionState } from "@/lib/derive";
 import type { Leaf } from "@/lib/layout";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
@@ -71,7 +71,7 @@ export function Pane({ wsKey, tab, pane, visible, focused, split }: Props) {
         {/* The terminal stays connected underneath, so switching back is instant. */}
         {c.kind === "terminal" && view === "conversation" && (
           <div className="absolute inset-0 z-10 flex flex-col">
-            <ConversationPane box={c.box} session={c.session} agent={c.agent} visible={visible} onStartAgain={() => void startSession(c.command ?? c.agent ?? "", { kind: "replace", tab, pane: pane.id }, c.agent ? agentLabel(c.agent) : "Agent")} onShowTerminal={() => setPaneContent(wsKey, tab, pane.id, { ...c, view: "terminal" })} />
+            <ConversationPane box={c.box} session={c.session} agent={c.agent} visible={visible} onStartAgain={() => void startSession(restartCommand(c.command) ?? c.agent ?? "", { kind: "replace", tab, pane: pane.id }, c.agent ? agentLabel(c.agent) : "Agent")} onShowTerminal={() => setPaneContent(wsKey, tab, pane.id, { ...c, view: "terminal" })} />
           </div>
         )}
         {c.kind === "browser" && <BrowserPane id={pane.id} url={c.url} visible={visible} onNavigate={(url) => setPaneContent(wsKey, tab, pane.id, { kind: "browser", url })} />}
