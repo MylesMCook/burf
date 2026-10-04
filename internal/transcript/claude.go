@@ -152,7 +152,7 @@ func claudeTool(c *conv, bl claudeBlock, at int64) {
 		default:
 			added, removed = lines(str("new_string")), lines(str("old_string"))
 		}
-		c.add(Item{Kind: "edit", ID: c.id(), File: rel(c.dir, firstNonEmpty(str("file_path"), str("notebook_path"))), Added: added, Removed: removed})
+		c.add(Item{Kind: "edit", ID: c.id(), File: rel(c.dir, firstNonEmpty(str("file_path"), str("notebook_path"))), Added: added, Removed: removed, Tool: bl.ID})
 		c.byTool[bl.ID] = -1
 	case "Agent", "Task":
 		name := firstNonEmpty(str("description"), str("subagent_type"), "Helper")

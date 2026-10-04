@@ -68,7 +68,7 @@ func (codexParser) line(c *conv, b []byte) {
 
 func codexCall(c *conv, it codexItem) {
 	if it.Name == "apply_patch" {
-		codexPatch(c, firstNonEmpty(it.Input, patchFromArgs(it.Arguments)))
+		codexPatch(c, firstNonEmpty(it.Input, patchFromArgs(it.Arguments)), it.CallID)
 		c.byTool[it.CallID] = -1
 		return
 	}
@@ -98,7 +98,7 @@ func codexCall(c *conv, it codexItem) {
 	}
 	switch {
 	case strings.Contains(cmd, "apply_patch"):
-		codexPatch(c, cmd)
+		codexPatch(c, cmd, it.CallID)
 		c.byTool[it.CallID] = -1
 	case it.Name == "read_file" || it.Name == "view_image":
 		c.call(it.CallID, ToolCall{Verb: "Read", Target: filepath.Base(args.Path), File: true})
@@ -139,12 +139,12 @@ func patchFromArgs(args string) string {
 }
 
 // codexPatch turns an apply_patch body into one edit per file.
-func codexPatch(c *conv, patch string) {
+func codexPatch(c *conv, patch, callID string) {
 	var file string
 	added, removed := 0, 0
 	flush := func() {
 		if file != "" {
-			c.add(Item{Kind: "edit", ID: c.id(), File: rel(c.dir, file), Added: added, Removed: removed})
+			c.add(Item{Kind: "edit", ID: c.id(), File: rel(c.dir, file), Added: added, Removed: removed, Tool: callID})
 		}
 		file, added, removed = "", 0, 0
 	}

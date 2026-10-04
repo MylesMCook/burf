@@ -277,3 +277,53 @@ func TestClaudePlanModeAndBackgroundHelper(t *testing.T) {
 		t.Fatalf("feedback = %+v", res3.Items)
 	}
 }
+
+// Opening a call shows what the terminal does: the full command and its
+// output, an edit's exact change, a written file.
+func TestDetailOpensACall(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "s.jsonl")
+	write(t, p,
+		assistant(tool("b1", "Bash", m{"command": "pnpm test payments\necho done"})),
+		user([]m{{"type": "tool_result", "tool_use_id": "b1", "content": "Tests 2 passed (2)\ndone"}}),
+		assistant(tool("e1", "Edit", m{"file_path": "/w/shop/apps/web/webhook.ts", "old_string": "retry()", "new_string": "retry({ max: 5 })"})),
+		assistant(tool("w1", "Write", m{"file_path": "/w/shop/a.test.ts", "content": "line 1\nline 2"})),
+		user([]m{{"type": "tool_result", "tool_use_id": "e1", "content": []m{{"type": "text", "text": "edited"}}, "is_error": false}}),
+	)
+	d, err := Detail("claude", p, "/w/shop", "b1")
+	if err != nil || d.Name != "Bash" || d.Command != "pnpm test payments\necho done" || d.Output != "Tests 2 passed (2)\ndone" || d.Pending {
+		t.Fatalf("bash %+v %v", d, err)
+	}
+	d, _ = Detail("claude", p, "/w/shop", "e1")
+	if d.File != "apps/web/webhook.ts" || d.Old != "retry()" || d.New != "retry({ max: 5 })" || d.Output != "edited" {
+		t.Fatalf("edit %+v", d)
+	}
+	d, _ = Detail("claude", p, "/w/shop", "w1")
+	if d.New != "line 1\nline 2" || !d.Pending {
+		t.Fatalf("write %+v", d)
+	}
+	if _, err := Detail("claude", p, "/w/shop", "nope"); err != ErrNoTool {
+		t.Fatalf("missing: %v", err)
+	}
+	// The calls and edits in the stream carry their IDs.
+	res, _ := NewReader().Read("claude", p, "/w/shop", 0)
+	var ids []string
+	for _, it := range res.Items {
+		for _, c := range it.Items {
+			ids = append(ids, c.ID)
+		}
+		if it.Kind == "edit" {
+			ids = append(ids, it.Tool)
+		}
+	}
+	if strings.Join(ids, ",") != "b1,e1,w1" {
+		t.Fatalf("ids %v", ids)
+	}
+}
+
+func TestCapOutputKeepsHeadAndTail(t *testing.T) {
+	long := strings.Repeat("x\n", outputCap)
+	out, cut := capOutput(long)
+	if !cut || len(out) > outputCap+64 || !strings.Contains(out, "more lines") {
+		t.Fatalf("len %d cut %v", len(out), cut)
+	}
+}

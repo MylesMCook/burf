@@ -1,3 +1,4 @@
+import type { ToolDetail } from "@/lib/transcript";
 import { invoke } from "@tauri-apps/api/core";
 import type {
   BerthEvent,
@@ -180,6 +181,7 @@ export const boxApi = {
     c.box<SendResult>(box, "POST", `sessions/${encodeURIComponent(name)}/queue/${encodeURIComponent(turn)}/send`, { force }),
   // One file's diff in the session's worktree ("diff" capability).
   diff: (c: Client, box: string, name: string, file: string) => c.box<SessionDiff>(box, "GET", `sessions/${encodeURIComponent(name)}/diff?${new URLSearchParams({ file })}`),
+  toolDetail: (c: Client, box: string, name: string, id: string) => c.box<ToolDetail>(box, "GET", `sessions/${encodeURIComponent(name)}/transcript/tool/${encodeURIComponent(id)}`),
   // waitTurn long-polls until the turn ends (or waits for someone, with
   // until "waiting"), or timeout seconds pass.
   waitTurn: (c: Client, box: string, id: string, timeout: number, until: "end" | "waiting" = "end") =>

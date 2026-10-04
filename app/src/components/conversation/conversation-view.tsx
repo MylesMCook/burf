@@ -1,5 +1,5 @@
 import { CheckIcon, ChevronRightIcon, ClockIcon, CornerDownRightIcon, FileTextIcon, GitCompareArrowsIcon, PencilLineIcon, RotateCwIcon, SearchIcon, SendHorizontalIcon, TerminalIcon, XIcon } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
 import { Tip } from "@/components/tip";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,7 @@ import type { QueuedPrompt, SessionDiff } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
 import { DiffLines, type LineComments } from "@/lib/git/diff-view";
 import { parseDiff } from "@/lib/git/parse";
-import { toolSummary, type TranscriptItem } from "@/lib/transcript";
+import { type ToolCall, type ToolDetail, toolSummary, type TranscriptItem } from "@/lib/transcript";
 import { cn } from "@/lib/utils";
 import { Markdown } from "@/components/conversation/markdown";
 import "@/components/conversation/conversation.css";
@@ -39,6 +39,8 @@ export interface ConversationViewProps {
 // lines, and open it in Review.
 export interface EditActions {
   load(file: string): Promise<SessionDiff>;
+  // One tool call opened up: its full command and output, or exact change.
+  tool?(id: string): Promise<ToolDetail>;
   comments(file: string): LineComments | undefined;
   review(file: string): void;
 }
@@ -191,7 +193,7 @@ function Item({ it, onAnswer, edits, who }: { it: TranscriptItem; onAnswer(id: s
     case "thinking":
       return <Thinking since={it.since} />;
     case "tools":
-      return <Tools it={it} />;
+      return <Tools it={it} edits={edits} />;
     case "edit":
       return <Edit it={it} edits={edits} />;
     case "crew":
@@ -356,8 +358,22 @@ function Edit({ it, edits }: { it: Extract<TranscriptItem, { kind: "edit" }>; ed
       (err) => setDiff({ state: "error", message: errorMessage(err) }),
     );
   };
+  // The agent's exact change (from its own record), shown first when known;
+  // the whole file's uncommitted diff, where lines take comments, beside it.
+  const exact = !!(it.tool && edits?.tool);
+  const [view, setView] = useState<"change" | "file">(exact ? "change" : "file");
+  const [change, setChange] = useState<{ state: "loading" } | { state: "ready"; d: ToolDetail } | { state: "error"; message: string }>();
+  const loadChange = () => {
+    if (!exact) return;
+    setChange({ state: "loading" });
+    edits!.tool!(it.tool!).then(
+      (d) => setChange({ state: "ready", d }),
+      (err) => setChange({ state: "error", message: errorMessage(err) }),
+    );
+  };
   const toggle = () => {
     if (!open && (!diff || diff.state === "error")) load();
+    if (!open && exact && (!change || change.state === "error")) loadChange();
     setOpen(!open);
   };
   const label = (
@@ -396,13 +412,39 @@ function Edit({ it, edits }: { it: Extract<TranscriptItem, { kind: "edit" }>; ed
       </div>
       {open && (
         <div ref={panel} className="mt-2 scroll-mb-4 overflow-hidden rounded-lg border bg-card">
-          {(!diff || diff.state === "loading") && (
+          {exact && (
+            <div role="tablist" aria-label="Show" className="flex gap-1 border-b bg-muted/30 px-1.5 py-1 text-xs">
+              {(
+                [
+                  ["change", "This change"],
+                  ["file", "Uncommitted in file"],
+                ] as const
+              ).map(([v, label]) => (
+                <button key={v} type="button" role="tab" aria-selected={view === v} onClick={() => setView(v)} className={cn("rounded-md px-2 py-0.5 outline-none focus-visible:ring-2 focus-visible:ring-ring", view === v ? "bg-background font-medium text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground")}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
+          {exact && view === "change" && (
+            <>
+              {(!change || change.state === "loading") && (
+                <div className="flex h-16 items-center justify-center text-muted-foreground text-sm">
+                  <Spinner className="mr-2 size-4" />
+                  Reading the change…
+                </div>
+              )}
+              {change?.state === "error" && <p className="px-3 py-3 text-destructive-foreground text-sm">Couldn't read this change: {change.message}</p>}
+              {change?.state === "ready" && <ToolDetailView d={change.d} />}
+            </>
+          )}
+          {(!exact || view === "file") && (!diff || diff.state === "loading") && (
             <div className="flex h-16 items-center justify-center text-muted-foreground text-sm">
               <Spinner className="mr-2 size-4" />
               Reading the diff…
             </div>
           )}
-          {diff?.state === "error" && (
+          {(!exact || view === "file") && diff?.state === "error" && (
             <div className="flex items-center gap-2 px-3 py-3 text-sm">
               <span className="min-w-0 flex-1 text-destructive-foreground">Couldn't read the diff: {diff.message}</span>
               <Button size="xs" variant="outline" onClick={load}>
@@ -411,8 +453,8 @@ function Edit({ it, edits }: { it: Extract<TranscriptItem, { kind: "edit" }>; ed
               </Button>
             </div>
           )}
-          {diff?.state === "ready" && !lines.length && <p className="px-3 py-3 text-muted-foreground text-sm">No changes left in this file: they were committed or undone since.</p>}
-          {diff?.state === "ready" && lines.length > 0 && (
+          {(!exact || view === "file") && diff?.state === "ready" && !lines.length && <p className="px-3 py-3 text-muted-foreground text-sm">No changes left in this file: they were committed or undone since.</p>}
+          {(!exact || view === "file") && diff?.state === "ready" && lines.length > 0 && (
             <>
               <div className="flex items-center gap-2 border-b bg-muted/30 px-3 py-1 text-muted-foreground text-xs">
                 <span className="min-w-0 flex-1 truncate">{diff.diff.untracked ? "A new file" : "Uncommitted changes in this file"} · hover a line to comment</span>
@@ -461,7 +503,7 @@ export function QueuedBubble({ q, who, onSendNow, onCancel }: { q: QueuedPrompt;
 // A file's mark: its extension, in the colour editors give it.
 const EXT: Record<string, string> = { ts: "#3178c6", tsx: "#3178c6", js: "#b8860b", rs: "#d0573a", go: "#00a7d0", md: "#6b7280", json: "#8b5cf6", css: "#2965f1", py: "#3a75b0" };
 
-function Tools({ it }: { it: Extract<TranscriptItem, { kind: "tools" }> }) {
+function Tools({ it, edits }: { it: Extract<TranscriptItem, { kind: "tools" }>; edits?: EditActions }) {
   const [open, setOpen] = useState(!it.done);
   // A finished group folds to its summary after a moment.
   useEffect(() => {
@@ -480,32 +522,144 @@ function Tools({ it }: { it: Extract<TranscriptItem, { kind: "tools" }> }) {
       <div className="cv-fold" data-closed={open ? undefined : ""}>
         <div>
           <ul className="pt-1 pl-[7px]">
-            {(it.items ?? []).map((c, i, all) => {
-              const lastRow = i === all.length - 1;
-              const ext = c.file ? (c.target.split(".").pop() ?? "") : "";
-              return (
-                <li key={i} className="cv-in relative flex h-8 items-center gap-2 pl-5 text-muted-foreground">
-                  {/* The tree: a stem down from the summary, an elbow into each row. */}
-                  <span aria-hidden className={cn("absolute top-0 left-0 w-3 border-l", lastRow ? "h-1/2 rounded-bl-md border-b" : "h-full")} />
-                  {!lastRow && <span aria-hidden className="absolute top-1/2 left-0 w-3 border-t" />}
-                  <Icon className="size-3.5" />
-                  <span>{c.verb}</span>
-                  <Badge variant="outline" className={cn("gap-1.5 font-normal", !c.file && "font-mono")}>
-                    {c.file && (
-                      <span className="flex size-3 items-center justify-center rounded-[3px] font-bold font-mono text-[6.5px] text-white uppercase" style={{ background: EXT[ext] ?? "#64748b" }}>
-                        {ext.slice(0, 2)}
-                      </span>
-                    )}
-                    {c.target}
-                  </Badge>
-                </li>
-              );
-            })}
+            {(it.items ?? []).map((c, i, all) => (
+              <ToolRow key={c.id ?? i} c={c} last={i === all.length - 1} Icon={Icon} edits={edits} />
+            ))}
           </ul>
         </div>
       </div>
     </div>
   );
+}
+
+// ToolRow is one call in a group: its verb and target, and opened, what the
+// agent's terminal shows for it.
+function ToolRow({ c, last, Icon, edits }: { c: ToolCall; last: boolean; Icon: typeof FileTextIcon; edits?: EditActions }) {
+  const [open, setOpen] = useState(false);
+  const [detail, setDetail] = useState<{ state: "loading" } | { state: "ready"; d: ToolDetail } | { state: "error"; message: string }>();
+  const can = !!(c.id && edits?.tool);
+  const ext = c.file ? (c.target.split(".").pop() ?? "") : "";
+  const toggle = () => {
+    if (!can) return;
+    if (!open && detail?.state !== "ready") {
+      setDetail({ state: "loading" });
+      edits!.tool!(c.id!).then(
+        (d) => setDetail({ state: "ready", d }),
+        (err) => setDetail({ state: "error", message: errorMessage(err) }),
+      );
+    }
+    setOpen((o) => !o);
+  };
+  return (
+    <li className="cv-in relative pl-5 text-muted-foreground">
+      {/* The tree: a stem down from the summary, an elbow into each row. */}
+      <span aria-hidden className={cn("absolute top-0 left-0 w-3 border-l", last ? "h-4 rounded-bl-md border-b" : "h-full")} />
+      {!last && <span aria-hidden className="absolute top-4 left-0 w-3 border-t" />}
+      <button
+        type="button"
+        onClick={toggle}
+        disabled={!can}
+        aria-expanded={can ? open : undefined}
+        className={cn("flex h-8 max-w-full items-center gap-2 rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring", can && "hover:text-foreground")}
+      >
+        <Icon className="size-3.5 shrink-0" />
+        <span>{c.verb}</span>
+        <Badge variant="outline" className={cn("min-w-0 gap-1.5 font-normal", !c.file && "font-mono")}>
+          {c.file && (
+            <span className="flex size-3 items-center justify-center rounded-[3px] font-bold font-mono text-[6.5px] text-white uppercase" style={{ background: EXT[ext] ?? "#64748b" }}>
+              {ext.slice(0, 2)}
+            </span>
+          )}
+          <span className="truncate">{c.target}</span>
+        </Badge>
+        {can && <ChevronRightIcon className={cn("size-3.5 shrink-0 transition-transform duration-200", open && "rotate-90")} />}
+      </button>
+      {open && (
+        <div className="mt-1 mb-2 overflow-hidden rounded-lg border bg-card text-foreground">
+          {detail?.state === "loading" && (
+            <div className="flex h-12 items-center justify-center text-muted-foreground text-sm">
+              <Spinner className="mr-2 size-4" />
+              Reading…
+            </div>
+          )}
+          {detail?.state === "error" && <p className="px-3 py-2.5 text-destructive-foreground text-sm">Couldn't open this step: {detail.message}</p>}
+          {detail?.state === "ready" && <ToolDetailView d={detail.d} />}
+        </div>
+      )}
+    </li>
+  );
+}
+
+// ToolDetailView draws a call the way the terminal does: a command and its
+// output, a search and its matches, an edit's change, a new file.
+export function ToolDetailView({ d }: { d: ToolDetail }) {
+  const edit = d.old != null || (d.new != null && !d.command);
+  return (
+    <div data-selectable className="font-mono text-[12px] leading-5 [font-variant-ligatures:none]">
+      {(d.command || d.pattern || d.file) && !edit && (
+        <div className="flex gap-2 border-b bg-muted/30 px-3 py-1.5">
+          <span className="shrink-0 text-muted-foreground">{d.command ? "$" : d.pattern ? "?" : "·"}</span>
+          <span className="min-w-0 whitespace-pre-wrap break-all">{d.command || [d.pattern, d.file].filter(Boolean).join("  in  ")}</span>
+        </div>
+      )}
+      {edit && (
+        <>
+          {d.file && <div className="border-b bg-muted/30 px-3 py-1.5 text-muted-foreground">{d.old != null ? "Updated" : "Created"} {d.file}</div>}
+          <div className="max-h-96 overflow-auto">
+            <ChangeLines old={d.old ?? ""} next={d.new ?? ""} />
+          </div>
+        </>
+      )}
+      {!edit && (d.output ? (
+        <pre className={cn("max-h-80 overflow-auto whitespace-pre-wrap break-all px-3 py-2", d.error && "text-destructive-foreground")}>{d.output}</pre>
+      ) : (
+        <p className="px-3 py-2 font-sans text-muted-foreground text-xs">{d.pending ? "Still running…" : "No output."}</p>
+      ))}
+      {d.truncated && <p className="border-t px-3 py-1 font-sans text-muted-foreground text-xs">The middle of a long output is left out, as in the terminal.</p>}
+    </div>
+  );
+}
+
+// ChangeLines is an edit as the terminal shows it: the lines it took out
+// and put in, numbered, the rest as context. A line diff of the two texts.
+function ChangeLines({ old, next }: { old: string; next: string }) {
+  const rows = useMemo(() => lineDiff(old ? old.split("\n") : [], next.split("\n")), [old, next]);
+  let n = 0;
+  return (
+    <table className="w-full border-collapse">
+      <tbody>
+        {rows.map((r, i) => {
+          if (r.op !== "-") n++;
+          return (
+            <tr key={i} className={r.op === "+" ? "bg-success/12" : r.op === "-" ? "bg-destructive/12" : undefined}>
+              <td className="w-10 select-none pr-2 text-right align-top text-muted-foreground/70 tabular-nums">{r.op === "-" ? "" : n}</td>
+              <td className={cn("w-4 select-none align-top", r.op === "+" ? "text-success-foreground" : r.op === "-" ? "text-destructive-foreground" : "text-muted-foreground/50")}>{r.op === " " ? "" : r.op}</td>
+              <td className="whitespace-pre-wrap break-all pr-3">{r.text || " "}</td>
+            </tr>
+          );
+        })}
+      </tbody>
+    </table>
+  );
+}
+
+// lineDiff: the longest common run of lines kept as context, the rest as
+// removed or added. Large texts (past ~4M cells) show as removed then added.
+function lineDiff(a: string[], b: string[]): { op: " " | "+" | "-"; text: string }[] {
+  if (a.length * b.length > 4_000_000) return [...a.map((text) => ({ op: "-" as const, text })), ...b.map((text) => ({ op: "+" as const, text }))];
+  const m = a.length, k = b.length;
+  const dp: Uint32Array[] = Array.from({ length: m + 1 }, () => new Uint32Array(k + 1));
+  for (let i = m - 1; i >= 0; i--) for (let j = k - 1; j >= 0; j--) dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+  const out: { op: " " | "+" | "-"; text: string }[] = [];
+  let i = 0, j = 0;
+  while (i < m && j < k) {
+    if (a[i] === b[j]) (out.push({ op: " ", text: a[i] }), i++, j++);
+    else if (dp[i + 1][j] >= dp[i][j + 1]) out.push({ op: "-", text: a[i++] });
+    else out.push({ op: "+", text: b[j++] });
+  }
+  while (i < m) out.push({ op: "-", text: a[i++] });
+  while (j < k) out.push({ op: "+", text: b[j++] });
+  return out;
 }
 
 function Thinking({ since }: { since: number }) {

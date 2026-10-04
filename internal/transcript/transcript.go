@@ -29,6 +29,8 @@ type Item struct {
 	Added   int        `json:"added,omitempty"`
 	Removed int        `json:"removed,omitempty"`
 	Names   []string   `json:"names,omitempty"`
+	// Tool is the call behind an edit, for its exact change.
+	Tool string `json:"tool,omitempty"`
 
 	// pending are the tool calls in a group still waiting for a result.
 	pending map[string]bool
@@ -39,6 +41,8 @@ type ToolCall struct {
 	Verb   string `json:"verb"`
 	Target string `json:"target"`
 	File   bool   `json:"file,omitempty"`
+	// ID names the call for its details (GET …/transcript/tool/{id}).
+	ID string `json:"id,omitempty"`
 }
 
 // CrewMember is a helper the agent started: a subagent.
@@ -136,6 +140,7 @@ func (c *conv) at(i int) *Item {
 
 // call adds a tool call to the open group of the same verb, or starts one.
 func (c *conv) call(toolID string, tc ToolCall) {
+	tc.ID = toolID
 	if n := len(c.items); n > 0 {
 		last := &c.items[n-1]
 		// The last group takes more calls of its kind, even once its earlier

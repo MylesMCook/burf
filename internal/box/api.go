@@ -150,6 +150,7 @@ func (b *Box) Mount(s *wire.Server) {
 	route("POST /v1/sessions/{name}/attach", b.attach)
 	route("GET /v1/sessions/{name}/screen", b.screen)
 	route("GET /v1/sessions/{name}/transcript", b.transcript)
+	route("GET /v1/sessions/{name}/transcript/tool/{id}", b.toolDetail)
 	route("POST /v1/sessions/{name}/send", b.sendToSession)
 	route("GET /v1/sessions/{name}/wait", b.waitForSession)
 	route("GET /v1/sessions/{name}/turns", b.listTurns)

@@ -1,4 +1,4 @@
-import type { CrewMember, TranscriptItem } from "@/lib/transcript";
+import type { ToolDetail, CrewMember, TranscriptItem } from "@/lib/transcript";
 import { keyOf, useConversations } from "@/lib/conversation-store";
 
 // The demo's stand-in for berthd's transcript stream: a short scripted turn
@@ -27,7 +27,7 @@ async function think(key: string, ms: number) {
   useConversations.getState().remove(key, t.id);
 }
 
-async function tools(key: string, verb: string, calls: { verb: string; target: string; file?: boolean }[]) {
+async function tools(key: string, verb: string, calls: { verb: string; target: string; file?: boolean; id?: string }[]) {
   const t = { kind: "tools" as const, id: id(), verb, items: [] as typeof calls, done: false };
   useConversations.getState().push(key, t);
   for (const c of calls) {
@@ -51,9 +51,9 @@ export async function playTurn(box: string, session: string, prompt: string) {
   await think(key, 900);
   await stream(key, "I’ll trace how a payment webhook reaches the order, then make retries safe to repeat.");
   await tools(key, "Read", [
-    { verb: "Read", target: "webhook.ts", file: true },
-    { verb: "Read", target: "createOrder.ts", file: true },
-    { verb: "Read", target: "payments.test.ts", file: true },
+    { verb: "Read", target: "webhook.ts", file: true, id: "mock-read-1" },
+    { verb: "Read", target: "createOrder.ts", file: true, id: "mock-read-2" },
+    { verb: "Read", target: "payments.test.ts", file: true, id: "mock-read-3" },
   ]);
   const start = Date.now();
   useConversations.getState().push(key, { kind: "crew", id: id(), names: ["Explore: retry paths", "Explore: idempotency in tests"] });
@@ -68,14 +68,14 @@ export async function playTurn(box: string, session: string, prompt: string) {
     { id: "c2", name: "Explore: idempotency in tests", kind: "subagent", agent: "claude", state: "running", doing: "Reading payments.test.ts", since: start },
   ]);
   await tools(key, "Search", [
-    { verb: "Search", target: "idempotencyKey" },
-    { verb: "Search", target: "retryWebhook" },
+    { verb: "Search", target: "idempotencyKey", id: "mock-search-1" },
+    { verb: "Search", target: "retryWebhook", id: "mock-search-2" },
   ]);
   crew(key, [
     { id: "c1", name: "Explore: retry paths", kind: "subagent", agent: "claude", state: "finished", doing: "Found 3 retry paths", since: start, until: back1 },
     { id: "c2", name: "Explore: idempotency in tests", kind: "subagent", agent: "claude", state: "finished", doing: "No test covers a repeat", since: start, until: Date.now() },
   ]);
-  useConversations.getState().push(key, { kind: "edit", id: id(), file: "apps/web/lib/payments/webhook.ts", added: 14, removed: 3 });
+  useConversations.getState().push(key, { kind: "edit", id: id(), file: "apps/web/lib/payments/webhook.ts", added: 14, removed: 3, tool: "mock-edit-1" });
   await wait(500);
   useConversations.getState().push(key, { kind: "ask", id: id(), tool: "Bash", detail: "pnpm test payments", why: "Run the payment tests", structured: true, choices: PERMISSION });
 }
@@ -90,7 +90,7 @@ const PERMISSION = [
 // After the person answers the question: run the tests and finish.
 export async function finishTurn(box: string, session: string) {
   const key = keyOf(box, session);
-  await tools(key, "Run", [{ verb: "Run", target: "pnpm test payments" }]);
+  await tools(key, "Run", [{ verb: "Run", target: "pnpm test payments", id: "mock-run-1" }]);
   await stream(
     key,
     "Done. A repeated webhook now finds the order by its **idempotency key** and returns it instead of charging twice.\n\n| | Before | After |\n|---|---|---|\n| Duplicate charge on retry | yes | **no** |\n| Retries | unlimited | 5 over 10 minutes |\n\n**What changed:**\n- `createOrder` looks the key up before charging.\n- Retries back off and stop after five.\n- A test sends the same event twice (`pnpm test payments` passes).",
@@ -123,3 +123,28 @@ export function seedTranscript(box: string, session: string, state: string, work
   useConversations.setState((s) => (s.items[key] ? s : { items: { ...s.items, [key]: items } }));
   return items;
 }
+
+// What the demo's tool calls show when opened, as a box would send them.
+const DETAILS: Record<string, ToolDetail> = {
+  "mock-read-1": { id: "mock-read-1", name: "Read", file: "apps/web/lib/payments/webhook.ts", output: "     1\timport { createOrder } from \"../checkout/createOrder\";\n     2\timport { verify } from \"./signature\";\n     3\t\n     4\texport async function handleWebhook(req: Request) {\n     5\t  const event = await verify(req);\n     6\t  return createOrder(event.data);\n     7\t}" },
+  "mock-read-2": { id: "mock-read-2", name: "Read", file: "apps/web/lib/checkout/createOrder.ts", output: "     1\texport async function createOrder(data: OrderInput) {\n     2\t  const charge = await payments.charge(data.amount);\n     3\t  return db.order.create({ data: { ...data, chargeId: charge.id } });\n     4\t}" },
+  "mock-read-3": { id: "mock-read-3", name: "Read", file: "apps/web/lib/payments/payments.test.ts", output: "     1\tdescribe(\"webhook\", () => {\n     2\t  test(\"creates an order\", async () => { … });\n     3\t});" },
+  "mock-search-1": { id: "mock-search-1", name: "Grep", pattern: "idempotencyKey", output: "apps/web/lib/payments/stripe.ts:41:  idempotencyKey: event.id,\napps/web/lib/payments/types.ts:12:  idempotencyKey?: string;" },
+  "mock-search-2": { id: "mock-search-2", name: "Grep", pattern: "retryWebhook", output: "No matches found" },
+  "mock-run-1": { id: "mock-run-1", name: "Bash", command: "pnpm test payments", output: " ✓ webhook › creates an order (12 ms)\n ✓ webhook › returns the same order for a repeated event (9 ms)\n ✓ webhook › stops after five retries (4 ms)\n\n Test Files  1 passed (1)\n      Tests  3 passed (3)\n   Duration  1.21s" },
+  "mock-edit-1": {
+    id: "mock-edit-1",
+    name: "Edit",
+    file: "apps/web/lib/payments/webhook.ts",
+    old: "export async function handleWebhook(req: Request) {\n  const event = await verify(req);\n  return createOrder(event.data);\n}",
+    new: "export async function handleWebhook(req: Request) {\n  const event = await verify(req);\n  // A repeated event finds the order it already made.\n  const existing = await db.order.findUnique({ where: { idempotencyKey: event.id } });\n  if (existing) return existing;\n  return createOrder({ ...event.data, idempotencyKey: event.id });\n}",
+    output: "The file apps/web/lib/payments/webhook.ts has been updated.",
+  },
+};
+
+export const mockToolDetail = async (id: string): Promise<ToolDetail> => {
+  await wait(250);
+  const d = DETAILS[id];
+  if (!d) throw new Error("That step isn't in the demo.");
+  return d;
+};

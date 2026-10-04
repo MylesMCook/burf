@@ -1,6 +1,7 @@
 package box
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"sync"
@@ -9,27 +10,13 @@ import (
 	"github.com/sean-brydon/berthd/internal/transcript"
 )
 
-// The Conversation view's data: GET /v1/sessions/{name}/transcript?since=N
-// reads the session's agent's own transcript (internal/transcript). Like
-// the screen, it is the session's content, so only paired peers reach it;
-// tool output and thinking are never included, and nothing is stored.
-
-var (
-	transcriptsOnce sync.Once
-	transcripts     *transcript.Reader
-)
-
-func (b *Box) transcript(w http.ResponseWriter, r *http.Request) error {
-	transcriptsOnce.Do(func() { transcripts = transcript.NewReader() })
-	sess, err := b.Sessions.Get(r.Context(), r.PathValue("name"))
-	if err != nil {
-		return err
-	}
-	since, _ := strconv.Atoi(r.URL.Query().Get("since"))
+// transcriptFile is which agent a session runs and the file holding its
+// conversation, for the conversation and for a tool call's details alike.
+func (b *Box) transcriptFile(r *http.Request, sess Session) (agent, path, where string) {
 	// Sessions.Get doesn't name the agent (the list does, in enrich): the
 	// preset a session was started with, else its command's first word,
 	// which is all a session from before presets has.
-	agent := sess.Preset
+	agent = sess.Preset
 	if agent == "" {
 		agent = sess.Agent
 	}
@@ -42,7 +29,6 @@ func (b *Box) transcript(w http.ResponseWriter, r *http.Request) error {
 			id = st.AgentSessionID
 		}
 	}
-	var path, where string
 	switch agent {
 	case "claude":
 		// Every Claude session in this folder gets its own transcript.
@@ -70,6 +56,27 @@ func (b *Box) transcript(w http.ResponseWriter, r *http.Request) error {
 		path = transcript.CodexPath(sess.Dir, id, sess.Created)
 		where = "~/.codex/sessions"
 	}
+	return agent, path, where
+}
+
+// The Conversation view's data: GET /v1/sessions/{name}/transcript?since=N
+// reads the session's agent's own transcript (internal/transcript). Like
+// the screen, it is the session's content, so only paired peers reach it;
+// tool output and thinking are never included, and nothing is stored.
+
+var (
+	transcriptsOnce sync.Once
+	transcripts     *transcript.Reader
+)
+
+func (b *Box) transcript(w http.ResponseWriter, r *http.Request) error {
+	transcriptsOnce.Do(func() { transcripts = transcript.NewReader() })
+	sess, err := b.Sessions.Get(r.Context(), r.PathValue("name"))
+	if err != nil {
+		return err
+	}
+	since, _ := strconv.Atoi(r.URL.Query().Get("since"))
+	agent, path, where := b.transcriptFile(r, sess)
 	none := func(reason string) error {
 		writeJSON(w, transcript.Result{Source: "none", Items: []transcript.Item{}, Crew: []transcript.CrewMember{}, Reason: reason})
 		return nil
@@ -85,5 +92,28 @@ func (b *Box) transcript(w http.ResponseWriter, r *http.Request) error {
 		return none("Couldn't read " + path + ": " + err.Error())
 	}
 	writeJSON(w, res)
+	return nil
+}
+
+// toolDetail answers GET /v1/sessions/{name}/transcript/tool/{id}: one tool
+// call opened up (the full command and its output, an edit's exact change),
+// read when someone expands it and never kept.
+func (b *Box) toolDetail(w http.ResponseWriter, r *http.Request) error {
+	sess, err := b.Sessions.Get(r.Context(), r.PathValue("name"))
+	if err != nil {
+		return err
+	}
+	agent, path, _ := b.transcriptFile(r, sess)
+	if path == "" {
+		return httpError{http.StatusNotFound, "this session's conversation can't be read"}
+	}
+	d, err := transcript.Detail(agent, path, sess.Dir, r.PathValue("id"))
+	if errors.Is(err, transcript.ErrNoTool) {
+		return httpError{http.StatusNotFound, "that step is no longer in the conversation"}
+	}
+	if err != nil {
+		return err
+	}
+	writeJSON(w, d)
 	return nil
 }

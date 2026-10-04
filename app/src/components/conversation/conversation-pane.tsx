@@ -22,7 +22,7 @@ import { ApiError, boxApi, type QueuedPrompt } from "@/lib/api";
 import { keyOf, useConversations } from "@/lib/conversation-store";
 import { agentLabel, agentOf, guessAgent, sessionState, worktreeOf } from "@/lib/derive";
 import type { NextStep } from "@/lib/errors";
-import { finishTurn, seedTranscript } from "@/lib/mock-conversation";
+import { finishTurn, mockToolDetail, seedTranscript } from "@/lib/mock-conversation";
 import { useNotifications } from "@/lib/notifications";
 import { updateBoxes } from "@/lib/outdated";
 import { addComment, type LineComment, pending, removeComment, sendComments, useComments } from "@/lib/review-comments";
@@ -103,6 +103,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
     if (!client || (!canDiff && !mock)) return undefined;
     return {
       load: (file) => boxApi.diff(client, box, session, file),
+      tool: (id) => (mock ? mockToolDetail(id) : boxApi.toolDetail(client, box, session, id)),
       comments: (file) =>
         reviewKey
           ? {

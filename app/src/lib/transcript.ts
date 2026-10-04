@@ -8,7 +8,7 @@ export type TranscriptItem =
   | { kind: "user"; id: string; text: string }
   | { kind: "text"; id: string; text: string }
   | { kind: "tools"; id: string; verb: string; items?: ToolCall[]; done?: boolean }
-  | { kind: "edit"; id: string; file: string; added: number; removed: number }
+  | { kind: "edit"; id: string; file: string; added: number; removed: number; tool?: string }
   // A question for the person. choices are the agent's own numbered options
   // when it shows some; without them it is yes or no (Allow or Deny for a
   // command). decided is what was answered.
@@ -21,6 +21,8 @@ export type TranscriptItem =
 export interface ToolCall {
   verb: string;
   target: string;
+  // Names the call for its details (the full command and output).
+  id?: string;
   // A file the call read or wrote, for its chip.
   file?: boolean;
 }
@@ -47,4 +49,21 @@ export function toolSummary(t: Extract<TranscriptItem, { kind: "tools" }>): stri
   if (t.verb === "Search") return `Searched ${n} time${n === 1 ? "" : "s"}`;
   if (t.verb === "Run") return `Ran ${n} command${n === 1 ? "" : "s"}`;
   return `${t.verb} ${n}`;
+}
+
+// ToolDetail is one tool call opened up, as the agent's terminal shows it:
+// the full command and its output, an edit's exact change, a new file.
+// Fetched only when someone expands the call.
+export interface ToolDetail {
+  id: string;
+  name: string;
+  command?: string;
+  file?: string;
+  pattern?: string;
+  old?: string;
+  new?: string;
+  output?: string;
+  truncated?: boolean;
+  error?: boolean;
+  pending?: boolean;
 }
