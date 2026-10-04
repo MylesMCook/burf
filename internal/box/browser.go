@@ -395,6 +395,12 @@ func (m *Browsers) launch(ctx context.Context, loc Location, wt Worktree) (*brow
 	if runtime.GOOS == "linux" {
 		args = append(args, "--disable-dev-shm-usage")
 	}
+	// Ubuntu 24.04 and others stop Chromium making the user namespaces its
+	// sandbox needs. The owner can choose to run without it: the browser is
+	// still confined to its worktree by the proxy.
+	if os.Getenv("BERTH_BROWSER_NO_SANDBOX") == "1" {
+		args = append(args, "--no-sandbox")
+	}
 	args = append(args, "about:blank")
 	toChrome, ours, err := os.Pipe() // chrome reads fd 3
 	if err != nil {
@@ -408,6 +414,8 @@ func (m *Browsers) launch(ctx context.Context, loc Location, wt Worktree) (*brow
 	cmd.ExtraFiles = []*os.File{toChrome, fromChrome}
 	cmd.Dir = profile
 	cmd.Env = append(os.Environ(), "HOME="+profile)
+	stderr := &stderrTail{max: 4 << 10}
+	cmd.Stderr = stderr
 	if err := cmd.Start(); err != nil {
 		os.RemoveAll(profile)
 		return nil, err
@@ -427,9 +435,39 @@ func (m *Browsers) launch(ctx context.Context, loc Location, wt Worktree) (*brow
 	defer cancel()
 	if err := br.attach(cctx); err != nil {
 		br.shutdown()
+		if out := strings.ToLower(stderr.String()); strings.Contains(out, "sandbox") || strings.Contains(out, "namespace") {
+			return nil, fmt.Errorf("%w: Chromium could not start its sandbox on this box. Allow it with `sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0` (and the same line in /etc/sysctl.d/), or run berthd with BERTH_BROWSER_NO_SANDBOX=1 to run the browser without Chromium's sandbox; Berth's proxy still confines it to the worktree", ErrBrowserSandbox)
+		}
 		return nil, fmt.Errorf("starting Chromium: %w", err)
 	}
 	return br, nil
+}
+
+// ErrBrowserSandbox is a Chromium that could not start its sandbox.
+var ErrBrowserSandbox = errors.New("no sandbox for Chromium")
+
+// stderrTail keeps the last max bytes written to it: the end of Chromium's
+// error output, for saying why it would not start.
+type stderrTail struct {
+	mu  sync.Mutex
+	max int
+	b   []byte
+}
+
+func (t *stderrTail) Write(p []byte) (int, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.b = append(t.b, p...)
+	if over := len(t.b) - t.max; over > 0 {
+		t.b = append(t.b[:0], t.b[over:]...)
+	}
+	return len(p), nil
+}
+
+func (t *stderrTail) String() string {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return string(t.b)
 }
 
 func (br *browser) attach(ctx context.Context) error {

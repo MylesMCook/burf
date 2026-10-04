@@ -3,6 +3,7 @@ package box
 import (
 	"bufio"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -239,6 +240,9 @@ func TestAgentBrowserDrivesARealChromium(t *testing.T) {
 	defer cancel()
 	loc, _ := b.Locations.Get(ctx, "cal")
 	br, err := m.get(ctx, loc, wt)
+	if errors.Is(err, ErrBrowserSandbox) {
+		t.Skip(err) // CI sets BERTH_BROWSER_NO_SANDBOX=1 instead
+	}
 	if err != nil {
 		t.Fatal(err)
 	}

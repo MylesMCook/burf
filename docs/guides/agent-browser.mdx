@@ -20,6 +20,19 @@ It needs a Chromium on the box: `berthd browser install` downloads
 Playwright's headless shell (about 100 MB on disk), or set `BERTH_CHROMIUM`
 to one. `berthd doctor` says which it uses.
 
+Ubuntu 24.04 and some other distributions stop Chromium from starting its
+own sandbox, and the browser then says so when an agent opens it. Either
+allow it:
+
+```sh
+sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+echo kernel.apparmor_restrict_unprivileged_userns=0 | sudo tee /etc/sysctl.d/60-chromium.conf
+```
+
+or run berthd with `BERTH_BROWSER_NO_SANDBOX=1`, which starts Chromium
+without its sandbox. Berth's proxy still confines it to the worktree's own
+pages either way.
+
 ## Commands
 
 Inside a berth session, commands act on the session's worktree; elsewhere,

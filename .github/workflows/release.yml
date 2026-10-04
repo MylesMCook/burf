@@ -33,6 +33,9 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y tmux shellcheck
       - run: go vet ./...
       - run: go test -race ./...
+        # GitHub's Ubuntu runners stop Chromium's sandbox (user namespaces).
+        env:
+          BERTH_BROWSER_NO_SANDBOX: "1"
       - run: shellcheck site/install.sh scripts/build-release.sh scripts/publish.sh scripts/mac-release.sh
       - name: Build archives
         run: make release VERSION="$GITHUB_REF_NAME"

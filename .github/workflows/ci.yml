@@ -20,6 +20,9 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y tmux
       - run: go vet ./...
       - run: go test -race ./...
+        # GitHub's Ubuntu runners stop Chromium's sandbox (user namespaces).
+        env:
+          BERTH_BROWSER_NO_SANDBOX: "1"
 
   shell:
     runs-on: ubuntu-latest
