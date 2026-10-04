@@ -51,7 +51,6 @@
     <div class="beam"></div>
   </div>
   <div class="hero-copy">
-    <p class="status" role="status" hidden><i></i><span></span></p>
     <h1>Agents that keep working when your laptop sleeps.</h1>
     <p class="lede">Berth runs Claude Code, Codex and other coding agents on your own dev boxes. Work with them from your laptop; close it, and they keep going.</p>
     <div class="actions">
@@ -71,25 +70,15 @@
 
 
 <script>
-  // "Close the laptop" puts the page to night (or back to day): the harbour
-  // redraws, the screenshots follow, and a line says what keeps working.
+  // "Close the laptop" puts the page to night (or back to day) and the
+  // harbour redraws; nothing else on the page moves.
   (() => {
     const root = document.documentElement;
     const lid = document.querySelector(".lid");
     const label = lid.querySelector("span");
-    const status = document.querySelector(".status");
-    const text = status.querySelector("span");
     const sys = matchMedia("(prefers-color-scheme: dark)");
     const night = () => (root.dataset.theme ? root.dataset.theme === "night" : sys.matches);
     for (const s of document.querySelectorAll("source[media*=prefers-color-scheme]")) s.dataset.media = s.media;
-    let commits = 0;
-    let timer = 0;
-    // The count sits in a box of its own width, so the line never moves.
-    const count = document.createElement("b");
-    const tell = () => {
-      count.textContent = `${commits} commit${commits === 1 ? "" : "s"}`;
-      text.replaceChildren("Laptop asleep · 3 agents still working · ", count);
-    };
     const sync = () => {
       const n = night();
       label.textContent = n ? "Open the laptop" : "Close the laptop";
@@ -101,20 +90,14 @@
       document.querySelector('meta[name=theme-color]').content = n ? "#18191c" : "#ffffff";
     };
     lid.hidden = false;
+    // The label keeps the width of its longer wording, so the header never
+    // moves when it changes.
+    label.style.display = "inline-block";
+    label.style.minWidth = `${Math.max(...["Close the laptop", "Open the laptop"].map((t) => ((label.textContent = t), label.getBoundingClientRect().width)))}px`;
     lid.addEventListener("click", () => {
       root.dataset.theme = night() ? "day" : "night";
       sync();
       dispatchEvent(new Event("berth:theme"));
-      clearInterval(timer);
-      if (night()) {
-        commits = 0;
-        tell();
-        status.hidden = false;
-        if (!matchMedia("(prefers-reduced-motion: reduce)").matches)
-          timer = setInterval(() => {
-            if (!document.hidden && commits < 99) commits++, tell();
-          }, 2400);
-      } else status.hidden = true;
     });
     sys.addEventListener("change", sync);
     sync();
