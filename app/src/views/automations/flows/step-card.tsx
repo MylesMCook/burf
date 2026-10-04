@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import type { AgentPreset } from "@/lib/api";
 import type { Step, StepRun, StepWhen } from "@/lib/flows";
 import { cn } from "@/lib/utils";
-import { STEP_KINDS, type Variable } from "@/views/automations/flows/model";
+import { type Variable, kindMeta } from "@/views/automations/flows/model";
 import { TemplateField } from "@/views/automations/flows/template-field";
 
 const WHENS: { value: StepWhen; label: string }[] = [
@@ -50,7 +50,7 @@ export function StepCard({
   onMove(delta: -1 | 1): void;
   onRemove(): void;
 }) {
-  const meta = STEP_KINDS[step.kind];
+  const meta = kindMeta(step.kind);
   const set = (patch: Partial<Step>) => onChange({ ...step, ...patch });
   const when = step.when ?? "success";
 

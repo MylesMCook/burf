@@ -15,7 +15,7 @@ import { DEFAULT_MAX_RUNS_PER_HOUR, type Flow, type FlowRun, type FlowSource, fl
 import { errorMessage } from "@/lib/format";
 import { NONE, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { blankStep, describeCron, GITHUB_ONS, KIND_ORDER, SCHEDULE_PRESETS, STEP_KINDS, summary, TRIGGERS, variablesAt } from "@/views/automations/flows/model";
+import { isEditableKind, blankStep, describeCron, GITHUB_ONS, KIND_ORDER, SCHEDULE_PRESETS, STEP_KINDS, summary, TRIGGERS, variablesAt } from "@/views/automations/flows/model";
 import { ProjectLabel, savedWhere } from "@/views/automations/flows/project-label";
 import { StepCard } from "@/views/automations/flows/step-card";
 
@@ -54,7 +54,10 @@ export function FlowEditor({
   const [error, setError] = useState<string>();
   const [saving, setSaving] = useState(false);
   const [run, setRun] = useState<FlowRun>();
-  const readOnly = target.readOnly;
+  // A flow with run steps the editor can't change (loop, gate, map, …) is
+  // edited in its JSON; here it is shown.
+  const runSteps = target.flow.steps.some((s) => !isEditableKind(s.kind));
+  const readOnly = target.readOnly || runSteps;
   const isNew = !target.savedId;
   const agents = useStore((s) => s.boxes[where.box]?.info?.agents) ?? NONE;
   const dirty = JSON.stringify(flow) !== JSON.stringify(target.flow) || where.scope !== target.scope || where.box !== target.box;
@@ -161,6 +164,7 @@ export function FlowEditor({
               )}
             </div>
           )}
+          {runSteps && !target.readOnly && <p className="mb-5 rounded-xl border bg-muted/40 px-4 py-3 text-muted-foreground text-sm">This flow uses run steps (loop, gate, map…) that the editor shows but does not change. Edit it in its JSON: the box's config or the repository's .berth/config.json.</p>}
           {error && <p className="mb-5 rounded-xl border border-destructive/30 bg-destructive/8 px-4 py-3 text-destructive-foreground text-sm">{error}</p>}
           {run && <RunBanner run={run} onClear={() => setRun(undefined)} />}
 

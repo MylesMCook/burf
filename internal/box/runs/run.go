@@ -24,7 +24,7 @@ import (
 // every field a flow step had keeps its meaning, so existing flows run
 // unchanged. Kind picks which fields matter:
 //
-//   - run, check: Command (in the scope's worktree), Timeout, Detach
+//   - run, check: Command (in the scope's worktree), Timeout
 //   - prompt: Text, sent to Session or the scope's session; When "idle"
 //     holds it until the agent is idle (Deliver)
 //   - wait: For, Timeout, Session (waits on the last prompt's turn)
@@ -60,9 +60,6 @@ type Step struct {
 
 	// Deliver "idle" holds a prompt in the agent's inbox until it is idle.
 	Deliver string `json:"deliver,omitempty"`
-	// Detach runs a run step's command in the background of the run:
-	// the run goes on, and a later step reads its result.
-	Detach bool `json:"detach,omitempty"`
 	// Base and Location place a new worktree.
 	Base     string `json:"base,omitempty"`
 	Location string `json:"location,omitempty"`

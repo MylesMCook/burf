@@ -1,4 +1,4 @@
-import { BellIcon, BotIcon, HourglassIcon, MessageSquareTextIcon, SquareTerminalIcon, WebhookIcon } from "lucide-react";
+import { BellIcon, BotIcon, HourglassIcon, MessageSquareTextIcon, SquareTerminalIcon, WebhookIcon , WorkflowIcon } from "lucide-react";
 
 import type { GitHubOn, Flow, Step, StepKind, StepWhen } from "@/lib/flows";
 import { CATALOG } from "@/views/automations/catalog";
@@ -12,6 +12,14 @@ export const STEP_KINDS: Record<StepKind, { label: string; hint: string; Icon: t
   notify: { label: "Notify me", hint: "A notification on this laptop.", Icon: BellIcon, tone: "text-amber-400" },
   webhook: { label: "Call a webhook", hint: "POST JSON to Slack, Linear, anything.", Icon: WebhookIcon, tone: "text-pink-400" },
 };
+
+// kindMeta is a step kind's look, with a plain one for the run step kinds
+// (loop, gate, map, …) the editor shows but does not edit.
+export function kindMeta(kind: string): (typeof STEP_KINDS)[StepKind] {
+  return STEP_KINDS[kind as StepKind] ?? { label: kind, hint: "A run step; edit it in the flow's JSON.", Icon: WorkflowIcon, tone: "text-muted-foreground" };
+}
+
+export const isEditableKind = (kind: string) => kind in STEP_KINDS;
 
 export const KIND_ORDER: StepKind[] = ["run", "prompt", "wait", "start_agent", "notify", "webhook"];
 
@@ -133,6 +141,7 @@ export function stepPhrase(step: Step): string {
         return "call a webhook";
       }
   }
+  return String(step.kind).replace("_", " ");
 }
 
 // summary is a flow in one line: "When an agent finishes in shop → run

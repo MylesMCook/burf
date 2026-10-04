@@ -10,7 +10,7 @@ import { isOverridden, overrides, scopeLocation } from "@/lib/flows";
 import { ago } from "@/lib/format";
 import type { Project } from "@/lib/project-groups";
 import { cn } from "@/lib/utils";
-import { STARTERS, STEP_KINDS, type Starter, summary } from "@/views/automations/flows/model";
+import { STARTERS, type Starter, summary, kindMeta } from "@/views/automations/flows/model";
 import { ProjectLabel } from "@/views/automations/flows/project-label";
 import { RunStatus } from "@/views/automations/flows/run-status";
 import type { BoxFlows } from "@/views/automations/flows/use-flows";
@@ -83,7 +83,7 @@ export function FlowList({
               >
                 <span className="flex items-center gap-1">
                   {kinds.map((k) => {
-                    const m = STEP_KINDS[k];
+                    const m = kindMeta(k);
                     return (
                       <span key={k} className={cn("inline-flex size-6 items-center justify-center rounded-md bg-muted", m.tone)}>
                         <m.Icon className="size-3.5" />
@@ -197,7 +197,7 @@ function FlowRow({ f, run, onEdit, onToggle, overridden }: { f: ScopedFlow; run?
     >
       <span className="flex shrink-0 items-center -space-x-1">
         {[...new Set(flow.steps.map((s) => s.kind))].slice(0, 3).map((k) => {
-          const m = STEP_KINDS[k];
+          const m = kindMeta(k);
           return (
             <span key={k} className={cn("inline-flex size-6 items-center justify-center rounded-md border-2 border-card bg-muted", m.tone)}>
               <m.Icon className="size-3.5" />
