@@ -151,7 +151,9 @@ function ServiceRow({ row: r }: { row: LiveService }) {
         </Button>
       ) : (
         // Keeps the rows' buttons in one column.
-        <span aria-hidden className="w-[78px] shrink-0" />
+        <Button aria-hidden tabIndex={-1} size="xs" variant="outline" className="invisible shrink-0">
+          Open in tab
+        </Button>
       )}
     </li>
   );
