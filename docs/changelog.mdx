@@ -9,7 +9,46 @@ upgrades with `berth upgrade BOX`, or by running the
 [install command](/getting-started/add-a-box#with-the-install-command)
 again.
 
-## Unreleased
+## v0.3.0
+
+October 4, 2026.
+
+The chat grows up: it stays in step with the agent's terminal, takes
+everything the terminal takes, and stays fast on long conversations.
+
+- **One chat per agent, in step with its terminal.** Several agents in one
+  folder keep separate chats; a new agent never shows another's. A message
+  sent mid-turn shows before its reply, the running step and the agent's
+  own status ("Running pnpm test · 18s", "Seasoning… · 9m") show live, and
+  its words show from the screen before the transcript has them.
+- **Replies as Markdown.** Headings, tables and code render as the
+  terminal shows them, with less noise: the steps between replies fold.
+  Text selects and copies; Copy takes the Markdown.
+- **Open a tool call** to see what the terminal shows: the full command and
+  its output, an edit's exact change
+  (`GET /v1/sessions/{name}/transcript/tool/{id}`).
+- **Everything the terminal takes.** `/` lists the agent's built-in and
+  custom commands, skills and plugins; `@` files, `!` shell. Screens of
+  the agent's own, such as `/model`'s picker, open inline and fold away.
+- **Chat controls.** Stop, the permission mode and model chips, the agent's
+  task list, context meter, background shells, and cards for API errors,
+  limits and an agent that exited mid-work.
+- **History and scale.** Older turns load as you scroll up, helpers'
+  (subagents') own chats open from Crew, ↑/↓ recalls prompts, ⌘F searches
+  the chat, and Fork and Rewind start over from any prompt. 5,000 items
+  paint in about 0.3 s and scroll at 60 fps.
+- **Paste or drop images and files** for an agent on a remote box, in the
+  chat or its terminal; they upload to the worktree's `.berth/attachments`.
+- **What's running in a worktree** sits under the composer, with names and
+  Open in tab, and plugins can add a section with `addWorktreeSection`.
+- **Diff panel.** A worktree's whole branch diff, its uncommitted changes,
+  or both, drawn with [`@pierre/diffs`](https://diffs.com).
+- **Pull request picks.** Pick failing checks, reviews and comments on a
+  PR and send them to the worktree's agent, or copy them.
+- **Closing a tab stops its agent**, with a moment to undo, and a new tab is
+  always a new session.
+- **Zen on ⌘.** from the menu bar, rename and archive from zen, and the wheel
+  scrolls a full-screen agent's terminal instead of cycling its prompts.
 
 - **What happens to your message.** A reply sent while the agent works
   shows as queued in the conversation, with **Send now** and **Cancel**, and
