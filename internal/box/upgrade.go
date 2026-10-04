@@ -125,7 +125,7 @@ func (b *Box) handleInfo(w http.ResponseWriter, r *http.Request) error {
 
 // Capabilities are the optional API features this box serves.
 func (b *Box) Capabilities() []string {
-	caps := []string{}
+	caps := []string{"transcript"}
 	if b.Turns != nil {
 		caps = append(caps, "turns")
 	}

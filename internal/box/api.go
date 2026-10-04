@@ -147,6 +147,7 @@ func (b *Box) Mount(s *wire.Server) {
 	route("DELETE /v1/sessions/{name}", b.removeSession)
 	route("POST /v1/sessions/{name}/attach", b.attach)
 	route("GET /v1/sessions/{name}/screen", b.screen)
+	route("GET /v1/sessions/{name}/transcript", b.transcript)
 	route("POST /v1/sessions/{name}/send", b.sendToSession)
 	route("GET /v1/sessions/{name}/wait", b.waitForSession)
 	route("GET /v1/sessions/{name}/turns", b.listTurns)

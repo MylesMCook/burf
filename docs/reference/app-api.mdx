@@ -103,6 +103,7 @@ failed after it went out (the box may have acted on it). The box API:
 | `POST sessions` | `{ name?, location: "loc" or "loc/wt", command?, agent?, prompt?, open? }` → `Session` |
 | `DELETE sessions/{name}` | |
 | `GET sessions/{name}/screen?history=N` | `{ screen: string }` |
+| `GET sessions/{name}/transcript?since=N` | `{ source, items, next, crew, truncated? }`: the agent's conversation for the Conversation view, read from Claude Code's or Codex's own transcript (`source` is `claude`, `codex` or `none`). Items from index `N`; pass `next` back as `since`. The tool group just before `N` is sent again, so replace items by `id`. Tool output and thinking are never included. Boxes that serve it list `transcript` in `capabilities`. |
 | `POST tasks` | `TaskRequest` (`{ location, name, branch?, base?, agent?, command?, prompt?, … }`) → `{ worktree, session }`: a worktree with an agent already running in it |
 | `GET stats` | `Stats`: memory, disks, load, agents |
 | `GET services` | `Service[]`: listening ports by worktree |
