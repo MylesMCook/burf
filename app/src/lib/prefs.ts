@@ -27,6 +27,8 @@ export interface Prefs {
   // How many times "keeps running" was said on closing an agent; it stops
   // after a few.
   agentCloseTips: number;
+  // Labs: Shore mode, Berth with only the agents (views/shore).
+  shore: boolean;
 }
 
 const DEFAULTS: Prefs = {
@@ -41,6 +43,7 @@ const DEFAULTS: Prefs = {
   confirmCloseShells: true,
   closeAgents: "keep",
   agentCloseTips: 0,
+  shore: false,
 };
 
 const saved = load<Partial<Prefs>>("berth.prefs", {});

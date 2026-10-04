@@ -1,0 +1,29 @@
+/* Shore mode's small motions. All of them stop while the window is hidden
+   and for people who ask for less motion. */
+
+.shore-boat {
+  animation: shore-drift var(--drift, 20s) ease-in-out infinite alternate;
+}
+@keyframes shore-drift {
+  from { transform: translate(-50%, -50%) translate(-10px, 6px) rotate(calc(var(--turn) * -0.4)); }
+  to { transform: translate(-50%, -50%) translate(12px, -14px) rotate(var(--turn)); }
+}
+.shore-wake { animation: shore-wake 0.9s linear infinite; }
+@keyframes shore-wake { to { stroke-dashoffset: -6; } }
+.shore-bob { animation: shore-bob 3.2s ease-in-out infinite; transform-origin: 15px 40px; }
+@keyframes shore-bob { 50% { transform: translateY(-1.5px) rotate(1.2deg); } }
+.shore-lamp { animation: shore-lamp 1.8s ease-in-out infinite; }
+@keyframes shore-lamp { 50% { opacity: 0.45; } }
+.shore-pulse { animation: shore-lamp 1.2s ease-in-out infinite; }
+.shore-in { animation: shore-in 0.35s ease-out both; }
+@keyframes shore-in { from { opacity: 0; transform: translateY(4px); } }
+.shore-dots { display: inline-flex; gap: 2px; }
+.shore-dots i { width: 4px; height: 4px; border-radius: 50%; background: #e0785a; animation: shore-dot 1s ease-in-out infinite; }
+.shore-dots i:nth-child(2) { animation-delay: 0.15s; background: #e8a33d; }
+.shore-dots i:nth-child(3) { animation-delay: 0.3s; background: #c26fd6; }
+@keyframes shore-dot { 50% { transform: translateY(-3px); opacity: 0.5; } }
+
+:root[data-berth-hidden] .shore * { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .shore * { animation: none !important; }
+}

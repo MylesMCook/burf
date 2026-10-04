@@ -47,6 +47,8 @@ import { AddBoxDialog } from "@/views/onboarding/add-box-dialog";
 import { useOnboardingActive } from "@/views/onboarding/onboarding-state";
 import { OnboardingView } from "@/views/onboarding/onboarding-view";
 import { SettingsView } from "@/views/settings/settings-view";
+import { ShoreMode } from "@/views/shore/shore-mode";
+import { usePrefs } from "@/lib/prefs";
 
 // The live demo's guide and script (pnpm build:demo); not in the app.
 const DemoGuide = __BERTH_DEMO__ ? lazy(() => import("@/demo/guide")) : null;
@@ -76,6 +78,13 @@ export default function App() {
     if (gated && useStore.getState().view.kind !== "workspace") useStore.getState().setView({ kind: "workspace" });
   }, [gated]);
 
+  // Labs: Shore mode replaces the whole window (views/shore). ?shore=1 turns
+  // it on, for the demo.
+  const shore = usePrefs((p) => p.shore);
+  useEffect(() => {
+    if (new URLSearchParams(location.search).has("shore")) usePrefs.setState({ shore: true });
+  }, []);
+
   if (gated) {
     return (
       <TooltipProvider delay={300}>
@@ -91,6 +100,20 @@ export default function App() {
           </div>
           <ErrorBoundary scope="a dialog">
             <AddBoxDialog />
+            <ConfirmHost />
+          </ErrorBoundary>
+        </ToastProvider>
+      </TooltipProvider>
+    );
+  }
+
+  if (shore && connected) {
+    return (
+      <TooltipProvider delay={300}>
+        <ToastProvider position="bottom-left">
+          <ShoreMode />
+          <ErrorBoundary scope="a dialog">
+            <CommandPalette />
             <ConfirmHost />
           </ErrorBoundary>
         </ToastProvider>
