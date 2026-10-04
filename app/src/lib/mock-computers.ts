@@ -3,7 +3,7 @@ import { findJoinLink, type Invite, type JoinOutput, type JoinResult, type Trust
 
 // More than one computer, in mock mode (?mock=1): making a join link here,
 // joining with one (any berth://join? link reads as an invite from a
-// MacBook to devl, cal and omarchy, the last on a tailnet this computer has
+// MacBook to devl, cal and homelab, the last on a tailnet this computer has
 // not signed in to, so the sign-in shows), and each box's list of computers.
 
 type Emit = (e: Omit<BerthEvent, "time">) => void;
@@ -47,7 +47,7 @@ const demoInvite = () => ({
   boxes: [
     { name: "devl", address: "100.64.0.4:7444" },
     { name: "cal", address: "100.64.0.12:7444" },
-    { name: "omarchy", address: "100.88.1.7:7444", network: "personal", tailnet: "sean.github" },
+    { name: "homelab", address: "100.64.0.7:7444", network: "personal", tailnet: "home.example" },
   ] as Box[],
 });
 
