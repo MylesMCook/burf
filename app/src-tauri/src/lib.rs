@@ -4,6 +4,7 @@ use std::path::PathBuf;
 mod agent;
 mod browser;
 mod cli_link;
+mod menu;
 
 // The app is a view over the laptop agent (`berth agent`), which serves it on
 // loopback. The agent writes a token to its state directory; this shell reads
@@ -77,35 +78,14 @@ pub fn run() {
         // carry a signature from the key in tauri.conf.json. The webview
         // checks, downloads and installs (lib/updater.ts); see restart_app.
         .plugin(tauri_plugin_updater::Builder::new().build())
-        // The menu bar is macOS's default plus View → Zen on ⌘. A menu
-        // shortcut is matched before the window sees the key, so ⌘. reaches
-        // Berth instead of being taken for "cancel" (and ⌘⇧/ stays Help's).
+        // The menu bar carries every shortcut (menu.rs), so macOS cannot
+        // take one first; each item tells the webview as berth://menu.
         .setup(|app| {
-            use tauri::menu::{Menu, MenuItem, MenuItemKind, Submenu};
-            let handle = app.handle();
-            let menu = Menu::default(handle)?;
-            let zen = MenuItem::with_id(handle, "zen", "Zen", true, Some("CmdOrCtrl+."))?;
-            let mut placed = false;
-            for item in menu.items()? {
-                if let MenuItemKind::Submenu(sub) = item {
-                    if sub.text()? == "View" {
-                        sub.append(&zen)?;
-                        placed = true;
-                    }
-                }
-            }
-            if !placed {
-                menu.append(&Submenu::with_items(handle, "View", true, &[&zen])?)?;
-            }
+            let menu = menu::build(app.handle())?;
             app.set_menu(menu)?;
             Ok(())
         })
-        .on_menu_event(|app, event| {
-            use tauri::Emitter;
-            if event.id() == "zen" {
-                let _ = app.emit("berth://zen", ());
-            }
-        })
+        .on_menu_event(|app, event| menu::on_event(app, event.id().as_ref()))
         .invoke_handler(tauri::generate_handler![
             ui_endpoint,
             open_devtools,

@@ -1,11 +1,12 @@
 import {
   ArrowDownIcon,
   ArrowUpIcon,
-  ChevronRightIcon,
+  EllipsisIcon,
   EyeIcon,
   EyeOffIcon,
   GitBranchIcon,
   GripVerticalIcon,
+  HouseIcon,
   InboxIcon,
   LayoutDashboardIcon,
   ListIcon,
@@ -22,51 +23,72 @@ import { create } from "zustand";
 import { type Action, ContextRow } from "@/components/sidebar/actions";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
+import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Sheet, SheetDescription, SheetFooter, SheetHeader, SheetPanel, SheetPopup, SheetTitle } from "@/components/ui/sheet";
 import { SidebarMenu, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 import { useAgentCounts } from "@/hooks/use-agent-counts";
 import { arrange, type NavList, navActions, useNav } from "@/lib/nav";
-import { type View, useStore } from "@/lib/store";
+import { usePrefs } from "@/lib/prefs";
+import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { goHome, useWorkspaces } from "@/lib/workspaces";
 import { useRegistry } from "@/plugins/registry";
 import { Icon } from "@/plugins/ui";
 import { useReviewCount } from "@/views/review/review-store";
 
-// The sidebar's places: the app's own views and any plugin's screens. The
-// person arranges them into Pinned, More and Hidden (lib/nav).
+// The app's places: Home, its own views and any plugin's screens. The person
+// arranges them into Pinned, More and Hidden (lib/nav). This is the one model
+// of the way around: the sidebar, its folded rail and zen's switcher all draw
+// useArrangedNav, so they list the same places in the same order.
 
 export interface NavItem {
   id: string;
   label: string;
   icon: ReactNode;
-  view: View;
   active: boolean;
+  // go opens the place. Every way in (a row, the rail, zen, ⌘K) calls it.
+  go(): void;
   badge?: { count: number; loud?: boolean; title: string };
 }
 
 // useNavItems is every place there is, in its default order.
+//
+// Home is where you start work and see your agents. With Labs that is the
+// harbour home (a composer and your agents), and the Agent Dashboard is a
+// place of its own under More. Without Labs there is no harbour, so the
+// first place is the Agent Dashboard itself, under its own name.
 export function useNavItems(): NavItem[] {
   const view = useStore((s) => s.view);
+  const noWorktree = useWorkspaces((s) => !s.current);
+  const labs = usePrefs((p) => p.labs);
   const plugins = useRegistry((s) => s.sidebarItems);
   const counts = useAgentCounts();
   const toReview = useReviewCount();
   return useMemo(() => {
+    // A fresh object, so clicking the page you're on still says so
+    // (Automations leaves its flow editor).
+    const open = (v: typeof view) => () => useStore.getState().setView({ ...v });
+    const waiting = counts.waiting ? { count: counts.waiting, loud: true, title: `${counts.waiting} waiting for you` } : undefined;
+    const dashboard = { label: "Agent Dashboard", icon: <LayoutDashboardIcon />, go: open({ kind: "dashboard" }), active: view.kind === "dashboard" };
     const items: NavItem[] = [
-      { id: "dashboard", label: "Agent Dashboard", icon: <LayoutDashboardIcon />, view: { kind: "dashboard" }, active: view.kind === "dashboard", badge: counts.waiting ? { count: counts.waiting, loud: true, title: `${counts.waiting} waiting for you` } : undefined },
-      { id: "review", label: "Review", icon: <InboxIcon />, view: { kind: "review" }, active: view.kind === "review", badge: toReview ? { count: toReview, title: `${toReview} to review` } : undefined },
-      { id: "worktrees", label: "Worktrees", icon: <GitBranchIcon />, view: { kind: "worktrees" }, active: view.kind === "worktrees" },
-      { id: "automations", label: "Automations", icon: <WorkflowIcon />, view: { kind: "automations" }, active: view.kind === "automations" },
-      { id: "kits", label: "Kits", icon: <PackageIcon />, view: { kind: "kits" }, active: view.kind === "kits" },
+      labs
+        ? { id: "home", label: "Home", icon: <HouseIcon />, go: goHome, active: view.kind === "workspace" && noWorktree, badge: waiting }
+        : { id: "home", ...dashboard, badge: waiting },
+      { id: "review", label: "Review", icon: <InboxIcon />, go: open({ kind: "review" }), active: view.kind === "review", badge: toReview ? { count: toReview, title: `${toReview} to review` } : undefined },
+      { id: "worktrees", label: "Worktrees", icon: <GitBranchIcon />, go: open({ kind: "worktrees" }), active: view.kind === "worktrees" },
+      { id: "automations", label: "Automations", icon: <WorkflowIcon />, go: open({ kind: "automations" }), active: view.kind === "automations" },
+      ...(labs ? [{ id: "dashboard", ...dashboard }] : []),
+      { id: "kits", label: "Kits", icon: <PackageIcon />, go: open({ kind: "kits" }), active: view.kind === "kits" },
       ...plugins.map(({ plugin, item }) => ({
         id: `plugin:${plugin}:${item.id}`,
         label: item.title,
         icon: <Icon name={item.icon ?? "Puzzle"} />,
-        view: { kind: "plugin" as const, screen: item.screen },
+        go: open({ kind: "plugin", screen: item.screen }),
         active: view.kind === "plugin" && view.screen === item.screen,
       })),
     ];
     return items;
-  }, [view, plugins, counts.waiting, toReview]);
+  }, [view, noWorktree, labs, plugins, counts.waiting, toReview]);
 }
 
 // useArrangedNav is the items in their lists.
@@ -77,7 +99,7 @@ export function useArrangedNav() {
   const lists = arrange(layout, ids);
   const byId = new Map(items.map((i) => [i.id, i]));
   const pick = (l: NavList) => lists[l].map((id) => byId.get(id)!);
-  return { pinned: pick("pinned"), more: pick("more"), hidden: pick("hidden"), ids, moreOpen: layout.moreOpen };
+  return { pinned: pick("pinned"), more: pick("more"), hidden: pick("hidden"), ids };
 }
 
 // The item being dragged, shared by every list it may land in.
@@ -131,8 +153,19 @@ function dragProps(id: string) {
   };
 }
 
+function RowBadge({ badge }: { badge: NonNullable<NavItem["badge"]> }) {
+  return (
+    <Tip label={badge.title} side="right">
+      <SidebarMenuBadge className={cn("top-1/2 h-4.5 min-w-4.5 -translate-y-1/2 peer-data-[size=sm]/menu-button:top-1/2 rounded-full px-1 text-[10px] leading-none", badge.loud ? "bg-warning/15 text-warning-foreground" : "bg-sidebar-accent text-sidebar-foreground")}>
+        {badge.count}
+      </SidebarMenuBadge>
+    </Tip>
+  );
+}
+
+const rowClass = "h-side-row text-[13px] data-[active=true]:font-normal [&>svg]:size-3.5 [&>svg]:text-muted-foreground";
+
 function NavRow({ item, list, index, ids }: { item: NavItem; list: NavList; index: number; ids: string[] }) {
-  const setView = useStore((s) => s.setView);
   const over = useDrag((s) => s.over);
   const dragging = useDrag((s) => s.id === item.id);
   const before = over?.list === list && over.index === index;
@@ -140,36 +173,46 @@ function NavRow({ item, list, index, ids }: { item: NavItem; list: NavList; inde
     <SidebarMenuItem {...dropProps(list, index, ids)} className="relative">
       {before && <span className="pointer-events-none absolute inset-x-2 -top-px h-0.5 rounded-full bg-ring" />}
       <ContextRow items={() => navItemActions(item.id, list, ids)}>
-        <SidebarMenuButton
-          size="sm"
-          isActive={item.active}
-          // A fresh object, so clicking the page you're on still says so
-          // (Automations leaves its flow editor).
-          onClick={() => setView({ ...item.view })}
-          {...dragProps(item.id)}
-          className={cn("h-side-row text-[13px] data-[active=true]:font-normal [&>svg]:size-3.5 [&>svg]:text-muted-foreground", dragging && "opacity-40")}
-        >
+        <SidebarMenuButton size="sm" isActive={item.active} onClick={item.go} {...dragProps(item.id)} className={cn(rowClass, dragging && "opacity-40")}>
           {item.icon}
           <span>{item.label}</span>
         </SidebarMenuButton>
-        {item.badge && (
-          <Tip label={item.badge.title} side="right">
-            <SidebarMenuBadge className={cn("top-1/2 h-4.5 min-w-4.5 -translate-y-1/2 peer-data-[size=sm]/menu-button:top-1/2 rounded-full px-1 text-[10px] leading-none", item.badge.loud ? "bg-warning/15 text-warning-foreground" : "bg-sidebar-accent text-sidebar-foreground")}>
-              {item.badge.count}
-            </SidebarMenuBadge>
-          </Tip>
-        )}
+        {item.badge && <RowBadge badge={item.badge} />}
       </ContextRow>
     </SidebarMenuItem>
   );
 }
 
-// Nav is the top of the sidebar: pinned places, then More.
+// MoreItems is More's places as menu items, then a way to rearrange them.
+// The sidebar, the rail and zen's switcher share it.
+export function MoreItems({ more }: { more: NavItem[] }) {
+  return (
+    <>
+      {more.map((n) => (
+        <MenuItem key={n.id} onClick={n.go} aria-current={n.active ? "page" : undefined} className={cn(n.active && "bg-accent/50 font-medium")}>
+          <span className="flex size-4 items-center justify-center [&_svg]:size-4">{n.icon}</span>
+          <span className="min-w-0 flex-1 truncate">{n.label}</span>
+          {n.badge && <span className={cn("text-xs tabular-nums", n.badge.loud ? "text-warning-foreground" : "text-muted-foreground")}>{n.badge.count}</span>}
+        </MenuItem>
+      ))}
+      {more.length > 0 && <MenuSeparator />}
+      <MenuItem onClick={() => openCustomize()}>
+        <SlidersHorizontalIcon />
+        Customize sidebar…
+      </MenuItem>
+    </>
+  );
+}
+
+// Nav is the top of the sidebar: the pinned places, then More, a menu of
+// the rest. More stays one row however many plugins there are; while you
+// are on one of its places it is highlighted and names it.
 export function Nav() {
-  const { pinned, more, ids, moreOpen } = useArrangedNav();
+  const { pinned, more, ids } = useArrangedNav();
   const dragging = useDrag((s) => !!s.id);
   const over = useDrag((s) => s.over);
-  const open = moreOpen || dragging;
+  const here = more.find((n) => n.active);
+  const loud = more.find((n) => n.badge?.loud);
   return (
     <div>
       <SidebarMenu className="gap-px" {...dropProps("pinned", pinned.length, ids)}>
@@ -177,27 +220,31 @@ export function Nav() {
           <NavRow key={item.id} item={item} list="pinned" index={i} ids={ids} />
         ))}
         {pinned.length === 0 && <li className="px-2 py-1 text-muted-foreground/70 text-xs">Drag places here to pin them.</li>}
+        <SidebarMenuItem {...dropProps("more", more.length, ids)} className="relative">
+          <Menu>
+            <MenuTrigger
+              render={
+                <SidebarMenuButton
+                  size="sm"
+                  isActive={!!here}
+                  className={cn(rowClass, "data-popup-open:bg-sidebar-accent", dragging && over?.list === "more" && "bg-sidebar-accent ring-1 ring-ring")}
+                />
+              }
+            >
+              <EllipsisIcon />
+              <span>{dragging ? "Drop in More" : "More"}</span>
+            </MenuTrigger>
+            <MenuPopup side="right" align="start" className="min-w-52">
+              <MoreItems more={more} />
+            </MenuPopup>
+          </Menu>
+          {here ? (
+            <span className="pointer-events-none absolute top-1/2 right-2 max-w-24 -translate-y-1/2 truncate text-muted-foreground text-xs">{here.label}</span>
+          ) : loud?.badge ? (
+            <RowBadge badge={loud.badge} />
+          ) : null}
+        </SidebarMenuItem>
       </SidebarMenu>
-      {(more.length > 0 || dragging) && (
-        <div className="mt-1" {...dropProps("more", more.length, ids)}>
-          <button
-            type="button"
-            onClick={() => void navActions.setMoreOpen(!moreOpen)}
-            className="flex h-6.5 w-full items-center gap-1.5 rounded-md px-2 text-muted-foreground text-xs hover:bg-sidebar-accent/60 hover:text-foreground"
-          >
-            <ChevronRightIcon className={cn("size-3 transition-transform", open && "rotate-90")} />
-            More
-            {!open && more.length > 0 && <span className="text-[11px] tabular-nums">{more.length}</span>}
-          </button>
-          {open && (
-            <SidebarMenu className="gap-px">
-              {more.map((item, i) => (
-                <NavRow key={item.id} item={item} list="more" index={i} ids={ids} />
-              ))}
-            </SidebarMenu>
-          )}
-        </div>
-      )}
       {dragging && (
         <div
           {...dropProps("hidden", 0, ids)}
@@ -223,8 +270,8 @@ export function CustomizeSidebarSheet() {
   const open = useCustomize((s) => s.open);
   const { pinned, more, hidden, ids } = useArrangedNav();
   const lists: [NavList, string, NavItem[], string][] = [
-    ["pinned", "Pinned", pinned, "Always at the top of the sidebar."],
-    ["more", "More", more, "In the collapsible More section. New places land here."],
+    ["pinned", "Pinned", pinned, "At the top of the sidebar and zen's switcher."],
+    ["more", "More", more, "In the More menu. New places, such as a plugin's, land here."],
     ["hidden", "Hidden", hidden, "Not in the sidebar; still in ⌘K."],
   ];
   return (
