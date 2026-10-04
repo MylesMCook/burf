@@ -1,0 +1,133 @@
+---
+title: Releasing
+description: How a Berth release is cut, built, signed and published, from a tag or from a Mac.
+---
+
+For maintainers. A release is a GitHub release on
+[sean-brydon/berthd](https://github.com/sean-brydon/berthd/releases), cut by
+pushing a `v*` tag. CI builds everything from the tag; a Mac with the signing
+credentials can publish the app itself instead with `make publish`.
+
+## What a release carries
+
+No asset name carries a version, so
+`https://github.com/sean-brydon/berthd/releases/latest/download/<name>`
+always finds the newest. The version is stamped into each binary instead
+(`berthd version`, `berth version`).
+
+| Asset | Made by | Used by |
+| --- | --- | --- |
+| `berthd-<os>-<arch>.tar.gz` | `make release` | The [install command](/getting-started/add-a-box#with-the-install-command) on a box |
+| `berth-<os>-<arch>.tar.gz` | `make release` | [The CLI without the app](/getting-started/install#the-cli-without-the-app): `berth` and the Linux daemons |
+| `checksums.txt` | `make release` | The install command checks its download against it |
+| `Berth-macos-universal.dmg` | `scripts/mac-release.sh` | [The download](/getting-started/install#install-the-app) |
+| `Berth-macos-universal.app.tar.gz`, `.sig` | `scripts/mac-release.sh` | The app's updater: the new app and its signature |
+| `latest.json` | `scripts/mac-release.sh` | The feed installed apps check for [updates](/getting-started/install#updates) |
+
+`<os>-<arch>` is `linux-amd64`, `linux-arm64`, `darwin-arm64` or
+`darwin-amd64`. The landing page's `https://berthd.app/install` is
+[`site/install.sh`](https://github.com/sean-brydon/berthd/blob/main/site/install.sh),
+which downloads from the latest release.
+
+## Cut a release with a tag
+
+1. On `main`, with CI green, set the version in `app/package.json`,
+   `app/src-tauri/tauri.conf.json` and `app/src-tauri/Cargo.toml` (and
+   `Cargo.lock`), and commit it (`chore: v0.1.2`). The app is built with the
+   tag's version either way; this keeps the repository saying the same.
+2. Tag and push:
+
+   ```sh
+   git tag v0.1.2
+   git push origin main v0.1.2
+   ```
+
+The tag starts [`.github/workflows/release.yml`](https://github.com/sean-brydon/berthd/blob/main/.github/workflows/release.yml):
+
+- **release** (Linux): `go vet`, `go test -race`, shellcheck on the
+  release scripts and `site/install.sh`, then `make release
+  VERSION=<tag>`, which builds the CLI and daemon archives and
+  `checksums.txt` into `dist/`. It checks the stamped version, then creates
+  the GitHub release with generated notes (or adds to it, if it exists).
+- **macos**, after it: builds the app as one universal binary, signs it
+  with the Developer ID, notarizes and staples it, checks it
+  ([below](#what-scriptsmac-releasesh-checks)), and uploads the dmg, the
+  updater archive and its signature, and `latest.json` last, so the feed
+  never points at an archive that isn't there yet. It skips the build when
+  the release's `latest.json` already announces this version, so re-running
+  it is safe.
+
+Once `latest.json` is up, installed apps offer the update within a few hours
+(they check every four), or at once from **Settings → About → Check now**.
+
+### Secrets CI needs
+
+| Secret | What it is |
+| --- | --- |
+| `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD` | The Developer ID Application certificate with its private key, as a base64 `.p12`, and its password |
+| `KEYCHAIN_PASSWORD` | Any password, for the temporary keychain the job makes |
+| `APPLE_API_ISSUER`, `APPLE_API_KEY`, `APPLE_API_KEY_P8` | An App Store Connect API key (issuer, key ID, and the `.p8`), for notarization |
+| `TAURI_SIGNING_PRIVATE_KEY` | The updater's signing key. Its public half is `plugins.updater.pubkey` in `tauri.conf.json`; installed apps refuse an update signed with any other key |
+
+## Publish from a Mac
+
+```sh
+make publish VERSION=0.1.2 [NOTES="What changed"]
+```
+
+[`scripts/publish.sh`](https://github.com/sean-brydon/berthd/blob/main/scripts/publish.sh)
+does the whole release from a clean `main`:
+
+1. sets the version in the app's `package.json`, `tauri.conf.json` and
+   `Cargo.toml`;
+2. builds, signs, notarizes and checks the app with `scripts/mac-release.sh`;
+3. commits `chore: release v0.1.2`, tags it, and pushes `main` and the tag;
+4. creates the GitHub release with the dmg and the updater archive, and
+   uploads `latest.json` last.
+
+The tag push still runs the workflow: its release job adds the CLI and
+daemon archives, and its macos job finds `latest.json` already announcing
+the version and builds nothing.
+
+Credentials come from the environment (`APPLE_SIGNING_IDENTITY`,
+`APPLE_API_ISSUER`, `APPLE_API_KEY`, `APPLE_API_KEY_PATH`,
+`TAURI_SIGNING_PRIVATE_KEY`), else from 1Password with the `op` CLI. With
+one Developer ID Application identity in the keychain, it is found without
+`APPLE_SIGNING_IDENTITY`. It refuses to run with uncommitted changes, off
+`main`, or for a version already tagged or released.
+
+## What scripts/mac-release.sh checks
+
+```sh
+scripts/mac-release.sh v0.1.2 [--no-notarize]
+```
+
+CI and `make publish` both run it, so a release built on a Mac and one built
+in CI are the same. It needs Rust's `aarch64-apple-darwin` and
+`x86_64-apple-darwin` targets, and `minisign` to check the updater
+signature (CI always does). It fails unless every copy of the app (the
+built one, the one in the dmg, and the one in the updater archive):
+
+- verifies with `codesign --verify --deep --strict`, signed with a Developer
+  ID, a team identifier and the hardened runtime;
+- is accepted by Gatekeeper (`spctl`) as **Notarized Developer ID**, with a
+  stapled ticket;
+- has both architectures in its executables, and carries the Linux daemons;
+- says it is the version being released.
+
+It also signs, notarizes and staples the dmg, checks the dmg has an
+**Applications** link to drag to, checks the updater archive's signature
+against the public key in `tauri.conf.json`, and writes `latest.json`.
+
+`--no-notarize` skips Apple, for trying a signed build locally. Its output
+must not be published.
+
+## After a release
+
+- The docs at [docs.berthd.app](https://docs.berthd.app) deploy from `main`
+  on their own; add the release to the [changelog](/changelog).
+- Boxes pick up the new berthd with `berth upgrade BOX`, or by running the
+  install command again.
+- Without the signing credentials, `make app-build` still builds an
+  unsigned `Berth.app` and dmg for trying locally; see
+  [build from source](/getting-started/install#build-from-source).

@@ -35,7 +35,7 @@ stops them; the app is a view you can close and reopen at any time.
 | `berth` | The laptop CLI and background agent: connections, private URLs, the app's API. |
 | `app/` | The desktop app (Tauri, React, coss ui). |
 | `plugins/` | Built-in plugins, written against `packages/plugin-sdk`. |
-| `kits/` | Kits, such as `cal-com`. |
+| `kits/` | Pointers to kits kept in their own repositories, such as [the Cal.com kit](https://github.com/sean-brydon/berth-kit-calcom). |
 
 ## Getting started
 
@@ -116,6 +116,7 @@ are the [`docs/`](docs) folder here, built by [`docs-site/`](docs-site):
 - [Project config](docs/guides/project-config.mdx) (`.berth/config.json`), [kits](docs/guides/kits.mdx), [secrets](docs/guides/secrets.mdx)
 - [The phone companion](docs/guides/phone.mdx), [agent integrations](docs/guides/agent-integrations.mdx), [plugins](docs/guides/plugins.mdx)
 - Reference: [CLI](docs/reference/cli.mdx), [berthd](docs/reference/berthd.mdx), [config](docs/reference/config.mdx), [events](docs/reference/events.mdx), [the app's API](docs/reference/app-api.mdx), [plugin SDK](docs/reference/plugin-sdk.mdx)
+- [Changelog](docs/changelog.mdx), and [releasing](docs/contributing/releasing.mdx) for maintainers
 
 ## Development
 

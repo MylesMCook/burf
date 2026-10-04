@@ -1,6 +1,6 @@
 ---
 title: Add a box
-description: Set up a machine on your tailnet in a click, install berthd on any box with one line and pair with the link it prints, or install and pair over SSH in one step.
+description: Use this Mac as a box in a click, set up a machine on your tailnet, install berthd on any box with one line and pair with the link it prints, or install and pair over SSH in one step.
 ---
 
 A **box** is any machine your agents run on, usually Linux: a VPS, a cloud
@@ -17,6 +17,55 @@ TLS; it never needs SSH to reach the box, and at most uses it once, to install.
   elsewhere (see [Where berthd listens](#where-berthd-listens))
 - optional: the agent CLIs you want to run (`claude`, `codex`, …), and
   `cloudflared` for public shares
+
+## This Mac
+
+No server yet? The Mac the app runs on can be your first box. In the app,
+**Use this Mac** (in the first-run setup's **Connect a box**, and in
+**Add a box**) has one button, **Set up this Mac**, and no terminal:
+
+1. It copies the `berthd` the app carries (a universal build, signed and
+   notarized with the app) to
+   `~/Library/Application Support/berth/bin/berthd`. launchd runs the program
+   its service names, and a path inside `Berth.app` changes when the app
+   updates or moves, so the service never points into the app. The copy is
+   checked against its signature (`codesign --verify`) before it runs.
+2. It runs `berthd install` from there, listening on `127.0.0.1` only, on
+   the first free port from 7445 (7444, the usual port, is left alone). berthd
+   becomes your launch agent, `dev.berth.berthd`, with its state in
+   `~/Library/Application Support/berth/box`, and the
+   [hooks that report agent state](/getting-started/first-agent#let-the-box-report-agent-state)
+   go in for the agent CLIs on this Mac.
+3. It pairs this laptop with it: `berthd pair --json` hands the link straight
+   to `berth pair`. Nothing to copy.
+
+The box is named after this Mac's hostname and marked **This Mac** in
+Settings → Boxes. The next step, adding a project, opens on this Mac's own
+folders.
+
+<Callout title="Agents run while the Mac is awake">
+  A box on your Mac runs agents only while the Mac is awake: they pause when
+  it sleeps, and carry on when it wakes. For agents that keep working with
+  the lid closed, add a server later; your projects on this Mac stay.
+</Callout>
+
+Setting up again is safe: each step is skipped when it is done, so it only
+reconnects. Some cases it handles on its own:
+
+- **berthd already installed** with [the install command](#with-the-install-command)
+  (`~/.local/bin/berthd`, the same launch agent): it is used, not installed a
+  second time, and upgraded in place when the app carries a newer release.
+- **The port was taken** since: berthd moves to the next free one.
+- **App updates.** The laptop agent compares the copy with the `berthd` in
+  the app when it starts and every few minutes, and after an update replaces
+  the copy and reinstalls with `--keep-listen`. Agent sessions keep running.
+- **No login session.** launchd needs you logged in at the Mac (screen
+  sharing counts); over SSH alone, setting up says so and changes nothing.
+
+To stop, open Settings → Boxes, the box's **…** menu, **Stop using this
+Mac…**: Berth forgets the box, stops berthd and removes its launch agent, and
+deletes the copy. Its data (keys, projects list, session records) stays
+unless you tick **Also delete its data**. Your repositories are never touched.
 
 ## On your tailnet
 
@@ -222,7 +271,9 @@ in [the security model](/concepts/security#pairing).
 the first-run setup, show one screen with every way in:
 
 1. When this Mac reaches a tailnet, **On your tailnet** lists its machines,
-   each with **Set up** ([above](#on-your-tailnet)).
+   each with **Set up** ([above](#on-your-tailnet)), and **Use this Mac**
+   ([this Mac](#this-mac)) follows them. Without a tailnet, **Use this Mac**
+   comes first.
 2. **Or, on any box**: **On the box, run** the
    [install command](#with-the-install-command), with a copy button; then
    **Paste what it printed**: the link, or the whole output; Berth keeps the
@@ -273,6 +324,12 @@ berth boxes        # paired boxes and whether they are online
 berth ping my-box  # it answers, and still trusts this laptop
 berth doctor my-box
 ```
+
+## On another computer
+
+Using Berth on a second computer too? Don't pair each box again: make a join
+link on the first one and paste it there. See
+[more than one computer](/guides/more-computers).
 
 ## Next
 

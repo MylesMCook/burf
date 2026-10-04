@@ -39,10 +39,11 @@ Berth runs `git worktree add` next to the repository, as `~/work/app-fix-login`,
 on a branch named `fix-login` (or `--branch B`, from `--base REF`). An
 existing branch, locally or on `origin`, is checked out as it is. Then:
 
-1. the repository's **setup script** runs in the new worktree, in the
+1. a `worktree.created` event goes to anything listening;
+2. the repository's **setup script** runs in the new worktree, in the
    background, with its output in a log;
-2. the worktree's **services** marked `autostart` start;
-3. a `worktree.created` event goes to anything listening.
+3. once setup succeeds, the worktree's **services** marked `autostart`
+   start.
 
 Worktrees made by any other tool, including plain `git worktree add`, show up
 too: berthd watches its locations.
@@ -62,7 +63,13 @@ to use them in `.berth/config.json`:
 }
 ```
 
-Commit it and every box does the same thing. For setup you'd rather not
+Commit it, then trust it once on each box: the file runs commands, so a
+box runs none of it (only `ports`) until someone trusts it there, and again
+after it changes. The app asks (**This repository wants to run …**), or run
+`berth location config my-box/app` and then `--trust HASH` with the hash it
+prints; see
+[trusting a repository's config](/guides/project-config#trusting-a-repositorys-config).
+Every box that trusts it then does the same thing. For setup you'd rather not
 commit, use a [kit](/guides/kits) or the box's own config
 ([project config](/guides/project-config#this-box-only)).
 

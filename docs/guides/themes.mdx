@@ -10,7 +10,7 @@ macOS is dark. Pick one in **Settings → Appearance → Theme**.
 ## Your own
 
 Add a JSON file to `~/.berth/themes/` on your laptop. It appears in Settings
-within a few seconds. A theme with a built-in's id (`berth-dark`,
+within 15 seconds, or as soon as you switch back to the app. A theme with a built-in's id (`berth-dark`,
 `berth-light`, `midnight`, `paper`) replaces it.
 
 ```json title="~/.berth/themes/harbour.json"
@@ -42,8 +42,10 @@ A theme needs `id` (defaulting to the file name), `colors` and `terminal`;
 `appearance` is `dark` or `light`. The full type is
 [`Theme`](/reference/plugin-sdk#types).
 
-`warning` is the one colour that means "needs you": the dot of an agent
-waiting for you, and the lamp in the app's drawings. Keep it for that.
+`warning` is mainly the colour of "needs you": the dot of an agent waiting
+for you, and the lamp in the app's drawings. It also marks boxes still
+connecting, memory running low and other warnings, so keep it easy to tell
+apart from `primary`.
 
 ## In a plugin
 

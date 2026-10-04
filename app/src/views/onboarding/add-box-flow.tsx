@@ -5,8 +5,10 @@ import { StepHeader } from "@/components/step-header";
 import { Tip } from "@/components/tip";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { DialogPanel } from "@/components/ui/dialog";
+import { offerLocalBox, useLocalBox } from "@/lib/local-box";
 import { cn } from "@/lib/utils";
 import { InstallCommand } from "@/views/onboarding/install-command";
+import { UseThisMac } from "@/views/onboarding/local-box";
 import { NetworksStep } from "@/views/onboarding/networks-step";
 import { PasteLink } from "@/views/onboarding/paste-link";
 import { SshSetup } from "@/views/onboarding/ssh-setup";
@@ -25,7 +27,9 @@ type From = "link" | "ssh" | "tailnet";
 // tailnet's machines come first, each set up in a click; then the install
 // command to run on any box and the field for the link it prints; then
 // setting a box up over SSH by hand. Without a tailnet, the tailnet path
-// sits below the command as "Or use Tailscale". The screen is laid out once,
+// sits below the command as "Or use Tailscale". Use this Mac (local-box.tsx),
+// when this computer can be a box and isn't one yet, comes first without a
+// tailnet and right below its machines with one. The screen is laid out once,
 // when it knows which, and keeps that layout. Onboarding and the Add a box
 // dialog both show it under one StepHeader; onExit, when given, is where the
 // back arrow leads from the first screen.
@@ -59,10 +63,14 @@ export function AddBoxFlow({
   // Where the tailnet's machines go, decided once: first when there are
   // machines to show, else below the command.
   const [placement, setPlacement] = useState<"top" | "bottom">();
+  // Whether to offer this Mac itself, decided with the placement.
+  const local = useLocalBox();
+  const [thisMac, setThisMac] = useState(false);
   useEffect(() => {
-    if (placement || !tailnets.ready) return;
+    if (placement || !tailnets.ready || !local.ready) return;
     setPlacement(boxable(tailnets.system) || tailnets.networks.length > 0 ? "top" : "bottom");
-  }, [placement, tailnets.ready, tailnets.system, tailnets.networks]);
+    setThisMac(offerLocalBox(local.status));
+  }, [placement, tailnets.ready, tailnets.system, tailnets.networks, local.ready, local.status]);
 
   useEffect(() => {
     onStage?.(paired ? "paired" : signingIn ? "tailnet" : busy ? "working" : "start");
@@ -96,6 +104,17 @@ export function AddBoxFlow({
     />
   );
 
+  const useThisMac = thisMac && local.status && (
+    <UseThisMac status={local.status} compact={placement === "top"} autoFocus={placement === "bottom"} className={placement === "top" ? "mt-3" : undefined} onRunning={setBusy} onPaired={setPaired} />
+  );
+  const anyBox = (
+    <div aria-hidden className="my-6 flex items-center gap-3 text-muted-foreground text-xs">
+      <span className="h-px flex-1 bg-border" />
+      or, on any box
+      <span className="h-px flex-1 bg-border" />
+    </div>
+  );
+
   // The main screen stays mounted while signing in, hidden, so the pasted
   // link and the SSH host are still there to try again with.
   const body = (
@@ -121,11 +140,14 @@ export function AddBoxFlow({
           {placement === "top" && (
             <>
               {machines}
-              <div aria-hidden className="my-6 flex items-center gap-3 text-muted-foreground text-xs">
-                <span className="h-px flex-1 bg-border" />
-                or, on any box
-                <span className="h-px flex-1 bg-border" />
-              </div>
+              {useThisMac}
+              {anyBox}
+            </>
+          )}
+          {placement === "bottom" && useThisMac && (
+            <>
+              {useThisMac}
+              {anyBox}
             </>
           )}
           <Step n={1} title="On the box, run">
@@ -133,7 +155,7 @@ export function AddBoxFlow({
             <p className="mt-2 text-muted-foreground text-xs leading-relaxed">It installs berthd for your user (no root), starts it, and prints a pairing link.</p>
           </Step>
           <Step n={2} title="Paste what it printed" className="mt-5">
-            <PasteLink network={network} retry={retry.link} autoFocus={placement === "bottom"} onBusy={setBusy} onPaired={setPaired} onSignIn={() => setSigningIn("link")} />
+            <PasteLink network={network} retry={retry.link} autoFocus={placement === "bottom" && !useThisMac} onBusy={setBusy} onPaired={setPaired} onSignIn={() => setSigningIn("link")} />
           </Step>
 
           {network && (

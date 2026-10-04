@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
 import { CommandLog } from "@/views/settings/command-log";
 import { ConfirmDialog } from "@/views/settings/confirm";
+import { RemoveLocalBoxDialog } from "@/views/settings/local-box-remove";
 import { Code, SettingsGroup, SettingsPage } from "@/views/settings/rows";
 import { Tip } from "@/components/tip";
 
@@ -69,6 +70,7 @@ function BoxRow({ box }: { box: BoxStatus }) {
   const info = useStore((s) => s.boxes[box.name]?.info);
   const [log, setLog] = useState<{ lines: string[]; done?: boolean; error?: string }>();
   const [forgetting, setForgetting] = useState(false);
+  const [removingLocal, setRemovingLocal] = useState(false);
   const [guarding, setGuarding] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const online = box.state === "online";
@@ -98,6 +100,7 @@ function BoxRow({ box }: { box: BoxStatus }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2 text-sm">
             <span>{box.name}</span>
+            {box.local && <span className="rounded border px-1 text-[10px] text-muted-foreground uppercase tracking-wide">This Mac</span>}
             <span className={cn("text-xs", online ? "text-muted-foreground" : "text-warning-foreground")}>{online ? (box.latency_ms != null ? `${box.latency_ms} ms` : "online") : box.state}</span>
           </div>
           <div className="truncate font-mono text-[11px] text-muted-foreground">{details.join(" · ")}</div>
@@ -142,6 +145,12 @@ function BoxRow({ box }: { box: BoxStatus }) {
               Resource guard…
             </MenuItem>
             <MenuSeparator />
+            {box.local && (
+              <MenuItem variant="destructive" onClick={() => setRemovingLocal(true)}>
+                <Trash2Icon />
+                Stop using this Mac…
+              </MenuItem>
+            )}
             <MenuItem variant="destructive" onClick={() => setForgetting(true)}>
               <Trash2Icon />
               Forget…
@@ -151,6 +160,7 @@ function BoxRow({ box }: { box: BoxStatus }) {
       </div>
       {log && <CommandLog className="mt-3" lines={log.lines} done={log.done} error={log.error} />}
       <GuardDialog box={box.name} open={guarding} onOpenChange={setGuarding} />
+      {box.local && <RemoveLocalBoxDialog box={box.name} open={removingLocal} onOpenChange={setRemovingLocal} />}
       <ConfirmDialog
         open={forgetting}
         onOpenChange={setForgetting}

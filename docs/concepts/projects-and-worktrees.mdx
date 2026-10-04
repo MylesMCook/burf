@@ -65,7 +65,10 @@ the background, up to 30 minutes, logged on the box); once it succeeds, its
 `autostart` services start. Before one is removed, its services stop and the **archive**
 script runs; if that fails, the worktree stays. Both come from
 [`.berth/config.json`](/guides/project-config), a [kit](/guides/kits), or the
-box's own config for the location (`berth location scripts`).
+box's own config for the location (`berth location scripts`). A
+repository's own file runs only once it is
+[trusted on that box](/guides/project-config#trusting-a-repositorys-config),
+and again after it changes.
 
 ### Ports and environment
 

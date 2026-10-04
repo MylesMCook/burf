@@ -56,7 +56,9 @@ announces `task.created`.
 An agent is a preset: an id, a name and a command. The box offers each
 built-in whose command it finds on its `PATH` (ids `claude`, `codex`,
 `opencode`, `gemini`, and `cursor`, which runs `cursor-agent`), plus any a
-repository's config adds or replaces; `berth agents BOX` lists them.
+repository's config adds or replaces. `berth agents BOX` lists the
+built-ins the box has; a repository's own presets come with its location
+(`agents` in `berth locations BOX --json`).
 A first prompt is passed as the command's last argument, or after its
 `prompt_flag`. See [the config reference](/reference/config#agents).
 

@@ -38,7 +38,11 @@ A link can be:
   `URL#cal-com`, with `@ref` for a branch or tag
 - a gist, for a kit that fits in one `kit.json`
 - a URL to a `kit.json`
-- a folder on this laptop
+- a folder on this laptop, as an absolute path or one starting with `~`
+
+A link to GitHub, a gist, GitLab, Bitbucket or Codeberg works without
+`https://` (`berth kit add github.com/acme/cal-kit`). Git links are fetched
+over `https`, `http`, `ssh` or `git` only.
 
 Berth remembers the link and the commit, so `update` fetches the newest
 version and the app flags projects running an older one. Kits you add live
@@ -92,6 +96,13 @@ worktree needs it, so the kit can be shared, even publicly. See
 `requires` lists tools a box needs. A missing one is reported when the kit
 is applied, not refused, since a setup script may install it.
 
+`match.slug` names the repository a kit is for, as `owner/repo`. It is
+compared, ignoring case, with each project's slug, which comes from its
+`origin` remote (`git@github.com:calcom/cal.com.git` is `calcom/cal.com`).
+Matching projects are picked for you when you review the kit, and adding
+such a project to a box (or cloning it onto another) offers to apply the
+kit. It only suggests: you can apply a kit to any project.
+
 `berth kit save devl/cal my-kit` turns how a project is set up on a box into
 a kit in `~/.berth/kits/my-kit/`; push that folder to a git repository to
 share it.
@@ -122,8 +133,21 @@ A plugin can ship kits by listing their folders under `"kits"` in its
 
 A kit runs its scripts on the boxes you apply it to, with your account's
 access. Berth never applies one silently: adding shows everything it does
-and every file, and applying is a separate step you choose projects for. On
-a box, kit files can only be written inside the kit's own folder, and
+and every file, and applying is a separate step you choose projects for.
+
+- **You keep what you reviewed.** The review shows a hash of everything the
+  kit carries. Adding fetches the link again and keeps the kit only if it
+  still has that hash; a source that changed in between is refused, so
+  review it again. Applying from the review likewise goes ahead only while
+  the kept kit has the hash you saw.
+- **A kit needs no repository trust.** A kit is yours once you add it, so
+  its config applies without the
+  [trust prompt](/guides/project-config#trusting-a-repositorys-config) a
+  repository's own `.berth/config.json` needs.
+- **`update` fetches a newer version** but doesn't apply it: run
+  `berth kit apply` again once you've looked (`berth kit show`).
+
+On a box, kit files can only be written inside the kit's own folder, and
 `before:kit.install` / `before:kit.remove` [gates](/guides/hooks#gates) can
 refuse them.
 

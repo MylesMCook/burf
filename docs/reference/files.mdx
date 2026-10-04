@@ -34,6 +34,7 @@ Yours, in `~/.berth/`:
 | `templates/*.json` | [Task templates](/guides/task-templates) |
 | `themes/*.json` | [Themes](/guides/themes) |
 | `plugins/<id>/` | [Plugins](/guides/plugins), each with a `berth-plugin.json` |
+| `plugins.json` | The plugins you allowed, each with the hash of the code you reviewed ([trust and consent](/guides/plugins#trust-and-consent)) |
 | `kits/<id>/` | Your [kits](/guides/kits) library: `kit.json`, its files, and where it came from |
 | `app/<key>.json` | The app's settings documents: saved prompts, projects, the sidebar, notifications |
 
@@ -48,7 +49,7 @@ State, in `<state>/box/`:
 | `pairing.json` | Pairing codes not yet used |
 | `listen` | The address berthd serves on |
 | `berthd.sock`, `berthd.log` | The local socket (mode 0600) and the log |
-| `locations.json` | Locations, each with the box's own config and its kit |
+| `locations.json` | Locations, each with the box's own config, its kit, and the hash of the repository config trusted there |
 | `ports.json` | Each worktree's block of ports |
 | `logs/` | Setup and archive logs |
 | `units/` | Unit and service logs |
@@ -60,8 +61,9 @@ State, in `<state>/box/`:
 | `flow-runs.json` | The last 200 flow runs |
 | `flow-github.json` | What GitHub-triggered flows have already seen |
 
-Yours, in `~/.berth/`: `hooks.json`, `flows.json`, `env.json`, `guard.json`
-and `plugins/`; see [the config reference](/reference/config#box-files).
+Yours, in `~/.berth/`: `hooks.json`, `flows.json`, `env.json`, `guard.json`,
+`network.json`, `plugins/` and `plugins.json`; see
+[the config reference](/reference/config#box-files).
 
 Sessions run in tmux on its own socket (`tmux -L berth`).
 
@@ -98,6 +100,7 @@ See [events and gates](/reference/events#what-a-hook-gets).
 | `BERTH_OP` | Where the 1Password CLI is |
 | `OP_SERVICE_ACCOUNT_TOKEN`, other `OP_*` | Passed to `op`, from berthd's environment or `env.json` |
 | `SHELL` | The shell scripts, sessions and `exec` run in |
+| `BERTH_CLI` | A dev build of the desktop app (`pnpm tauri dev`): the `berth` to run for the laptop agent. The packaged app ignores it and runs only the copy it carries |
 
 The [laptop agent](/concepts/laptop-agent) explains what runs where; the
 [config reference](/reference/config) has the shape of every file you write.

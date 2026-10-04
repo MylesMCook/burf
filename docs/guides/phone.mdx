@@ -11,12 +11,13 @@ answering them, from your phone.
 1. Your phone runs the Tailscale app, signed in to the tailnet your boxes are
    on.
 2. In Berth, **Settings → Phone**: turn on phone access for each box.
-3. Scan the code with the phone's camera. One code pairs every box that has
-   phone access on. Add the page to your home screen (Share → Add to Home
+3. Scan the code with the phone's camera. One code pairs every online box
+   that has phone access on (or use **Copy link** to open it on the phone). Add the page to your home screen (Share → Add to Home
    Screen) so it opens like an app.
 
 For notifications, install [ntfy](https://ntfy.sh) on the phone, make a
-topic in Settings → Phone (**New topic**), and subscribe to the same topic in
+topic in Settings → Phone (**New topic**, then **Turn on notifications**),
+and subscribe to the same topic in
 the ntfy app. Boxes then push "Claude Code needs you · cal/billing on devl"
 when an agent waits for you (and, if you switch it on, when one finishes its
 turn), and tapping it opens that agent in the phone app.
@@ -50,7 +51,7 @@ does not serve them.
   traffic is encrypted end to end by WireGuard, so the app is plain HTTP
   inside it.
 - **A token per box.** 48 hex characters from the OS random source, kept in
-  the box's state directory and shown only to paired laptops, as the QR code.
+  the box's state directory and shown only to paired laptops, as the QR code (or a link to copy).
   The phone stores it in its browser storage for that page. Pairing puts it
   in the URL's fragment, which browsers never send to a server, and the page
   removes it from the address bar at once. **New code** in Settings replaces

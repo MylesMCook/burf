@@ -1,0 +1,71 @@
+---
+title: Changelog
+description: What changed in each Berth release, newest first.
+---
+
+Releases are on [GitHub](https://github.com/sean-brydon/berthd/releases).
+The Mac app [updates itself](/getting-started/install#updates); a box
+upgrades with `berth upgrade BOX`, or by running the
+[install command](/getting-started/add-a-box#with-the-install-command)
+again.
+
+## Since v0.1.1
+
+On `main`, not yet in a release:
+
+- **Set up a box from your tailnet.** **Add a box** lists the machines on
+  this Mac's tailnet, with their OS, whether they are online and which are
+  boxes already, and **Set up** installs and pairs one over SSH. Tailscale
+  SSH needs no keys, a host key the tailnet vouches for is trusted, and
+  check-mode approval opens in your browser. **Sign in to another tailnet**
+  lists that tailnet's machines too. `berth discover --json` reports
+  Tailscale's state and each machine's Tailscale SSH and host keys. See
+  [add a box](/getting-started/add-a-box#on-your-tailnet).
+- **The Cal.com kit has its own repository**,
+  [berth-kit-calcom](https://github.com/sean-brydon/berth-kit-calcom).
+  Kit links to GitHub, GitLab, Bitbucket and Codeberg work without
+  `https://` (`berth kit add github.com/me/kit`). See [kits](/guides/kits).
+
+## v0.1.1
+
+October 3, 2026.
+
+- **A signed Mac app.** `Berth-macos-universal.dmg`, one app for Apple
+  silicon and Intel, signed with a Developer ID and notarized. It carries the
+  `berth` CLI and the Linux daemons. See [install](/getting-started/install#install-the-app).
+- **Automatic updates.** The app checks for a new release in the
+  background and shows **Restart to update** when one is ready; it never
+  restarts by itself.
+- **The `berth` command from the app.** **Settings → General → Command
+  line** links `~/.local/bin/berth` to the app's copy.
+- **Security fixes** from an audit; [the security model](/concepts/security)
+  has the whole picture:
+  - A repository's committed `.berth/config.json` runs on a box only once
+    [trusted there](/guides/project-config#trusting-a-repositorys-config),
+    for its exact content.
+  - Plugins you install never turn on by themselves, and ask for
+    [consent](/guides/plugins#trust-and-consent) pinned to a hash of their
+    code.
+  - [Flow](/guides/automations#how-values-are-filled-in) values reach
+    shell steps as `$BERTH_FLOW_*` environment variables, never as script
+    text; webhook values are encoded; secrets show as `[secret]`.
+  - Webhooks and phone notifications can't reach loopback, private or
+    metadata addresses unless `~/.berth/network.json` on the box allows them.
+  - Gates cover every route that changes something and see an origin the box
+    can vouch for; revoking a laptop closes its open streams; pairing is
+    limited per source address; clones and kit fetches refuse local and
+    command transports; kits apply only what you reviewed; project skill
+    installs refuse symbolic links.
+
+## v0.1.0
+
+October 3, 2026. The first release.
+
+- `berthd` for Linux and macOS boxes, and the `berth` CLI, for amd64 and
+  arm64, with `checksums.txt`.
+- One line installs berthd on a box and prints a pairing link:
+  `curl -fsSL https://berthd.app/install | sh`. It installs the hooks that
+  let Claude Code, Codex and Cursor report their state.
+- `berth add ssh` installs and pairs a box over SSH in one step.
+- The desktop app, built from source, with the laptop agent startable from
+  the app.

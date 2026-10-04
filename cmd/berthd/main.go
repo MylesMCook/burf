@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -46,7 +47,7 @@ const usage = `berthd — the berth daemon for a development box
                                           hooks and skills for the agent CLIs found here; --keep-listen
                                           keeps an installed non-tailnet address, --dry-run only checks
   berthd uninstall                        Remove that service
-  berthd pair [--address HOST[:PORT]] [--ttl 10m]
+  berthd pair [--address HOST[:PORT]] [--ttl 10m] [--json]
                                           Print a single-use pairing link
   berthd clients                          List paired laptops
   berthd revoke <name|fingerprint>        Stop trusting a laptop
@@ -224,6 +225,11 @@ func serve(b boxHome, args []string) error {
 		return err
 	}
 	bus := &events.Bus{}
+	// A new laptop, by the name it gave and its key; laptops' lists of who
+	// the box trusts follow it.
+	s.OnPaired = func(p trust.Peer) {
+		bus.Publish(events.Event{Type: "client.paired", Box: hostname, Data: map[string]any{"name": p.Name, "fingerprint": p.Fingerprint.String()}})
+	}
 	shares := &box.Shares{OnStop: func(sh box.Share) {
 		bus.Publish(events.Event{Type: "share.stopped", Box: hostname, Error: sh.Error, Data: map[string]any{"id": sh.ID, "port": sh.Port, "url": sh.URL}})
 	}}
@@ -268,6 +274,7 @@ func serve(b boxHome, args []string) error {
 		Socket:       b.socket(),
 		Phone:        &box.Phone{Path: filepath.Join(b.dir, "phone.json"), Addr: tailnetAddr, Log: logger},
 		Guard:        &box.Guard{Path: filepath.Join(userDir, "guard.json")},
+		Invites:      &box.Invites{Address: func() string { return pairAddress(b) }, TTL: defaultTTL},
 		Update: &box.SelfUpdate{
 			Executable:    exe,
 			Fingerprint:   id.Fingerprint().String(),
@@ -326,6 +333,7 @@ func pair(b boxHome, args []string) error {
 	fs := flag.NewFlagSet("pair", flag.ContinueOnError)
 	address := fs.String("address", "", "address laptops should dial (default: best guess, port "+defaultPort+")")
 	ttl := fs.Duration("ttl", defaultTTL, "how long the link stays valid")
+	asJSON := fs.Bool("json", false, "print the link and where laptops will dial as JSON, for the laptop agent")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -334,17 +342,7 @@ func pair(b boxHome, args []string) error {
 	}
 	target := *address
 	if target == "" {
-		hostname, _ := os.Hostname()
-		ips := interfaceIPs()
-		listening, _ := os.ReadFile(filepath.Join(b.dir, "listen"))
-		if len(listening) == 0 {
-			// serve may not have recorded its address yet, right after an
-			// install; it will listen where defaultListen says.
-			if addr, err := defaultListen(ips); err == nil {
-				listening = []byte(addr)
-			}
-		}
-		target = advertise(string(listening), ips, hostname)
+		target = pairAddress(b)
 	}
 	if _, _, err := net.SplitHostPort(target); err != nil {
 		target = net.JoinHostPort(target, defaultPort)
@@ -358,11 +356,37 @@ func pair(b boxHome, args []string) error {
 		return err
 	}
 	link := pairing.Token{Address: target, Fingerprint: id.Fingerprint(), Code: code}.String()
+	if *asJSON {
+		// The laptop agent pairs this computer with its own berthd this way
+		// (Use this Mac), with nothing to copy.
+		return json.NewEncoder(os.Stdout).Encode(map[string]string{
+			"link":        link,
+			"address":     target,
+			"fingerprint": id.Fingerprint().String(),
+			"expires":     time.Now().Add(*ttl).UTC().Format(time.RFC3339),
+		})
+	}
 	fmt.Printf("Pairing link (single use, valid for %s):\n\n  %s\n\n", ttl, link)
 	fmt.Printf("On your laptop:  berth pair '%s'\n\n", link)
 	fmt.Println("Laptops will dial " + target + "; pass --address if that is not reachable.")
 	fmt.Println("berthd serve must be running on this box to accept the pairing.")
 	return nil
+}
+
+// pairAddress is the address a pairing link tells laptops to dial: where
+// serve listens, or its best guess.
+func pairAddress(b boxHome) string {
+	hostname, _ := os.Hostname()
+	ips := interfaceIPs()
+	listening, _ := os.ReadFile(filepath.Join(b.dir, "listen"))
+	if len(listening) == 0 {
+		// serve may not have recorded its address yet, right after an
+		// install; it will listen where defaultListen says.
+		if addr, err := defaultListen(ips); err == nil {
+			listening = []byte(addr)
+		}
+	}
+	return advertise(string(listening), ips, hostname)
 }
 
 func listClients(b boxHome) error {

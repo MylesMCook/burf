@@ -12,6 +12,8 @@ export interface BoxStatus {
   error?: string;
   latency_ms?: number;
   since: string;
+  // A box on this computer itself (Use this Mac).
+  local?: boolean;
 }
 
 export interface Forward {

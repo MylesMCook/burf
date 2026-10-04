@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"slices"
 	"strings"
 	"time"
@@ -450,5 +451,21 @@ func readDaemon(exe, daemon string) ([]byte, error) {
 			return b, nil
 		}
 	}
+	// Berth.app carries one universal berthd for Macs (the one Use this Mac
+	// runs), not one per architecture, and make build puts this Mac's own in
+	// bin/: either serves a Mac box it can run on.
+	if arch, ok := strings.CutPrefix(daemon, "berthd-darwin-"); ok && runtime.GOOS == "darwin" {
+		for _, path := range []string{filepath.Join(dir, "berthd"), filepath.Join(dir, "..", "Resources", "berthd")} {
+			if b, err := os.ReadFile(path); err == nil && (universal(b) || arch == runtime.GOARCH) {
+				return b, nil
+			}
+		}
+	}
 	return nil, fmt.Errorf("no %s next to berth (%s); build it with `make daemons`", daemon, dir)
+}
+
+// universal is whether b is a universal (fat) Mach-O binary, which runs on
+// Apple silicon and Intel alike.
+func universal(b []byte) bool {
+	return len(b) >= 4 && b[0] == 0xca && b[1] == 0xfe && b[2] == 0xba && b[3] == 0xbe
 }

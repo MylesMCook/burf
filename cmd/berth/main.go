@@ -41,6 +41,11 @@ Boxes
                                          for the agent CLIs it has, and pair
   berth pair '<link>' [--name N] [--network NET]
                                          Pair with a box (link from berthd pair)
+  berth invite [--boxes a,b] [--for NAME] [--yes] [--json]
+                                         A join link for another computer of yours: one
+                                         single-use code per box, valid ten minutes
+  berth join '<link>'|- [--check] [--yes] [--json]
+                                         Pair this computer with every box in a join link
   berth network login NAME               Join another tailnet (e.g. a personal one) to reach its boxes
   berth network proxy NAME HOST PORT     Connect stdin/stdout to HOST:PORT through it (SSH ProxyCommand)
   berth networks [--json]                List joined networks
@@ -140,6 +145,10 @@ func run(args []string) error {
 	switch cmd {
 	case "pair":
 		return pair(l, rest)
+	case "invite":
+		return invite(l, rest)
+	case "join":
+		return join(l, rest)
 	case "setup":
 		return setup(rest)
 	case "doctor":
@@ -313,6 +322,9 @@ func pair(l laptop, args []string) error {
 	}
 	if fs.NArg() != 1 {
 		return errors.New("usage: berth pair '<link>' [--name N] [--network NET]")
+	}
+	if pairing.FindJoinLink(fs.Arg(0)) != "" {
+		return errors.New("that is a join link for several boxes; use berth join")
 	}
 	tok, err := pairing.ParseToken(fs.Arg(0))
 	if err != nil {

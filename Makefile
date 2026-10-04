@@ -27,14 +27,19 @@ clean:
 	rm -rf $(BIN) $(DIST)
 
 # The desktop app bundles berth as a Tauri sidecar, berth-cli (named for the
-# target triple; "berth" is the app's own executable), and the Linux daemons
-# as resources for `add ssh`. tauri.bundle.conf.json adds them to release
-# builds only, so `pnpm tauri dev` and `cargo check` work without them; in
-# dev the app starts the agent from bin/berth.
+# target triple; "berth" is the app's own executable), the Linux daemons as
+# resources for `add ssh`, and a berthd for the Mac itself as the resource
+# berthd, which Use this Mac installs (internal/agent/localbox.go).
+# tauri.bundle.conf.json adds them to release builds only, so `pnpm tauri dev`
+# and `cargo check` work without them; in dev the app starts the agent from
+# bin/berth, and Use this Mac finds bin/berthd beside it.
 #
 # make app-build builds Berth.app and a dmg for this Mac. Releases build
 # APP_TARGET=universal-apple-darwin, one app for Apple silicon and Intel, with
-# berth-cli made universal by lipo (scripts/mac-release.sh). With VERSION set
+# berth-cli and berthd made universal by lipo (scripts/mac-release.sh). The
+# Mac berthd runs as its own process outside the app, so with
+# APPLE_SIGNING_IDENTITY set it is signed here, with the hardened runtime and
+# a timestamp, before Tauri seals it into the app. With VERSION set
 # the app carries that version (the in-app updater compares it); with
 # TAURI_SIGNING_PRIVATE_KEY set it also writes the signed updater archive
 # (tauri.updater.conf.json); with APPLE_SIGNING_IDENTITY set it signs.
@@ -51,9 +56,17 @@ ifeq ($(APP_TARGET),universal-apple-darwin)
 	GOOS=darwin GOARCH=arm64 $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(SIDECAR)/berth-cli-aarch64-apple-darwin ./cmd/berth
 	GOOS=darwin GOARCH=amd64 $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(SIDECAR)/berth-cli-x86_64-apple-darwin ./cmd/berth
 	lipo -create -output $(SIDECAR)/berth-cli-universal-apple-darwin $(SIDECAR)/berth-cli-aarch64-apple-darwin $(SIDECAR)/berth-cli-x86_64-apple-darwin
+	GOOS=darwin GOARCH=arm64 $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(SIDECAR)/berthd-darwin-arm64 ./cmd/berthd
+	GOOS=darwin GOARCH=amd64 $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(SIDECAR)/berthd-darwin-amd64 ./cmd/berthd
+	lipo -create -output $(SIDECAR)/berthd-local $(SIDECAR)/berthd-darwin-arm64 $(SIDECAR)/berthd-darwin-amd64
 else
 	$(if $(APP_GOARCH),GOARCH=$(APP_GOARCH)) $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(SIDECAR)/berth-cli-$(APP_TARGET) ./cmd/berth
+	$(if $(APP_GOARCH),GOARCH=$(APP_GOARCH)) $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(SIDECAR)/berthd-local ./cmd/berthd
 endif
+	if [ -n "$$APPLE_SIGNING_IDENTITY" ]; then \
+		codesign --force --options runtime --timestamp --identifier dev.berth.berthd \
+			--sign "$$APPLE_SIGNING_IDENTITY" $(SIDECAR)/berthd-local; \
+	fi
 	cp $(BIN)/berthd-linux-amd64 $(BIN)/berthd-linux-arm64 $(SIDECAR)/
 
 app-dev: all

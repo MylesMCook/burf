@@ -75,6 +75,10 @@ func Unsent(err error) bool {
 	return strings.Contains(err.Error(), "TLS handshake timeout")
 }
 
+// ErrPairingRefused means the box answered and refused the code: used,
+// expired, or never issued by it.
+var ErrPairingRefused = errors.New("box refused pairing: the link may be expired, already used, or for another box; run `berthd pair` for a new one")
+
 // ErrUntrusted means the box answered but no longer trusts this laptop.
 var ErrUntrusted = errors.New("box no longer trusts this laptop; pair again")
 
@@ -118,7 +122,7 @@ func PairVia(ctx context.Context, id *identity.Identity, tok pairing.Token, clie
 	case http.StatusTooManyRequests:
 		return "", errors.New(errTooManyPairings)
 	default:
-		return "", errors.New("box refused pairing: the link may be expired, already used, or for another box; run `berthd pair` for a new one")
+		return "", ErrPairingRefused
 	}
 }
 

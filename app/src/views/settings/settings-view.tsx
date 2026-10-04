@@ -1,4 +1,4 @@
-import { BellIcon, BotIcon, InfoIcon, KeyboardIcon, PaletteIcon, PuzzleIcon, ServerIcon, SlidersHorizontalIcon, SmartphoneIcon, SquareTerminalIcon, WrenchIcon } from "lucide-react";
+import { BellIcon, BotIcon, InfoIcon, KeyboardIcon, LaptopIcon, PaletteIcon, PuzzleIcon, ServerIcon, SlidersHorizontalIcon, SmartphoneIcon, SquareTerminalIcon, WrenchIcon } from "lucide-react";
 import type { ComponentType } from "react";
 
 import { Tip } from "@/components/tip";
@@ -8,6 +8,7 @@ import { AboutSection } from "@/views/settings/about-section";
 import { AgentsSection } from "@/views/settings/agents-section";
 import { AppearanceSection } from "@/views/settings/appearance-section";
 import { BoxesSection } from "@/views/settings/boxes-section";
+import { ComputersSection } from "@/views/settings/computers-section";
 import { DeveloperSection } from "@/views/settings/developer-section";
 import { GeneralSection } from "@/views/settings/general-section";
 import { NotificationsSection } from "@/views/settings/notifications-section";
@@ -17,7 +18,7 @@ import { ShortcutsSection } from "@/views/settings/shortcuts-section";
 import { TerminalSection } from "@/views/settings/terminal-section";
 import { ViewHeaderHost } from "@/views/view-header";
 
-export type SettingsSectionId = "general" | "notifications" | "appearance" | "terminal" | "boxes" | "phone" | "agents" | "plugins" | "shortcuts" | "about" | "developer";
+export type SettingsSectionId = "general" | "notifications" | "appearance" | "terminal" | "boxes" | "computers" | "phone" | "agents" | "plugins" | "shortcuts" | "about" | "developer";
 
 const SECTIONS: { id: SettingsSectionId; title: string; icon: ComponentType<{ className?: string }>; Component: ComponentType }[] = [
   { id: "general", title: "General", icon: SlidersHorizontalIcon, Component: GeneralSection },
@@ -25,6 +26,7 @@ const SECTIONS: { id: SettingsSectionId; title: string; icon: ComponentType<{ cl
   { id: "appearance", title: "Appearance", icon: PaletteIcon, Component: AppearanceSection },
   { id: "terminal", title: "Terminal", icon: SquareTerminalIcon, Component: TerminalSection },
   { id: "boxes", title: "Boxes", icon: ServerIcon, Component: BoxesSection },
+  { id: "computers", title: "Computers", icon: LaptopIcon, Component: ComputersSection },
   { id: "phone", title: "Phone", icon: SmartphoneIcon, Component: PhoneSection },
   { id: "agents", title: "Agents", icon: BotIcon, Component: AgentsSection },
   { id: "plugins", title: "Plugins", icon: PuzzleIcon, Component: PluginsSection },

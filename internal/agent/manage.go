@@ -82,6 +82,8 @@ type StreamLine struct {
 	Error string `json:"error,omitempty"`
 	// SSH explains a failed SSH login (sshsetup.Failure), with Error.
 	SSH json.RawMessage `json:"ssh,omitempty"`
+	// Box names the box a successful set up paired (Use this Mac).
+	Box string `json:"box,omitempty"`
 }
 
 // runStream runs a CLI command and streams its output as NDJSON lines.

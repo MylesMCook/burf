@@ -7,24 +7,29 @@ import { FolderBrowser } from "@/components/add-project/folder-browser";
 import { StepHeader } from "@/components/step-header";
 import { Button } from "@/components/ui/button";
 import type { Location } from "@/lib/api";
+import { useIsLocalBox } from "@/lib/local-box";
 import { NONE, useStore } from "@/lib/store";
 
 type Way = "browse" | "clone" | "create";
 
 const wayTitles: Record<Way, string> = { browse: "Browse folders", clone: "Clone from URL", create: "Create a new project" };
-const wayDetails = (box: string): Record<Way, string> => ({
-  browse: `A repository already cloned on ${box}`,
-  clone: "GitHub, GitLab or any git remote, cloned by the box",
+// On this Mac's own box (Use this Mac) the folders are this Mac's.
+const wayDetails = (box: string, local: boolean): Record<Way, string> => ({
+  browse: local ? "A repository already on this Mac, from your own folders" : `A repository already cloned on ${box}`,
+  clone: local ? "GitHub, GitLab or any git remote, cloned onto this Mac" : "GitHub, GitLab or any git remote, cloned by the box",
   create: "An empty repository, ready for worktrees",
 });
 
 // RepoStep adds the first project on the new box, the same three ways the
 // Add a project dialog offers: a repository already there, a clone, or a
 // new empty one. A box that already has projects can go straight on.
-// Skipping is the page's "Skip setup", beside the progress.
+// Skipping is the page's "Skip setup", beside the progress. When the box is
+// this Mac, it opens on this Mac's folders.
 export function RepoStep({ box, onDone }: { box: string; onDone(location: string): void }) {
   const existing = useStore((s) => s.boxes[box]?.locations ?? NONE);
-  const [way, setWay] = useState<Way>();
+  const local = useIsLocalBox(box);
+  const where = local ? "this Mac" : box;
+  const [way, setWay] = useState<Way | undefined>(() => (local && existing.length === 0 ? "browse" : undefined));
 
   const added = async (loc: Location) => {
     await useStore.getState().refreshBox(box, ["locations"]);
@@ -35,8 +40,10 @@ export function RepoStep({ box, onDone }: { box: string; onDone(location: string
     <div>
       <StepHeader
         variant="page"
-        title={way ? wayTitles[way] : `Add a project on ${box}`}
-        description={way ? wayDetails(box)[way] : "A git repository on the box. Each piece of work gets its own worktree beside it, so agents never trip over each other."}
+        title={way ? wayTitles[way] : `Add a project on ${where}`}
+        description={
+          way ? wayDetails(box, local)[way] : `A git repository on ${local ? "this Mac" : "the box"}. Each piece of work gets its own worktree beside it, so agents never trip over each other.`
+        }
         onBack={way ? () => setWay(undefined) : undefined}
       />
 
@@ -53,7 +60,7 @@ export function RepoStep({ box, onDone }: { box: string; onDone(location: string
         <>
           {existing.length > 0 && (
             <div className="mt-6">
-              <div className="mb-2 text-muted-foreground text-xs">Already on {box}</div>
+              <div className="mb-2 text-muted-foreground text-xs">Already on {where}</div>
               <ul className="divide-y divide-border/70 rounded-xl border">
                 {existing.map((l) => (
                   <li key={l.name} className="flex items-center gap-3 px-3.5 py-2.5">
@@ -72,9 +79,9 @@ export function RepoStep({ box, onDone }: { box: string; onDone(location: string
           )}
           <div className="mt-6 space-y-2">
             {existing.length > 0 && <div className="text-muted-foreground text-xs">Or add another</div>}
-            <WayButton icon={<FolderOpenIcon />} title={wayTitles.browse} detail={wayDetails(box).browse} onClick={() => setWay("browse")} />
-            <WayButton icon={<GitForkIcon />} title={wayTitles.clone} detail={wayDetails(box).clone} onClick={() => setWay("clone")} />
-            <WayButton icon={<FolderPlusIcon />} title={wayTitles.create} detail={wayDetails(box).create} onClick={() => setWay("create")} />
+            <WayButton icon={<FolderOpenIcon />} title={wayTitles.browse} detail={wayDetails(box, local).browse} onClick={() => setWay("browse")} />
+            <WayButton icon={<GitForkIcon />} title={wayTitles.clone} detail={wayDetails(box, local).clone} onClick={() => setWay("clone")} />
+            <WayButton icon={<FolderPlusIcon />} title={wayTitles.create} detail={wayDetails(box, local).create} onClick={() => setWay("create")} />
           </div>
         </>
       )}

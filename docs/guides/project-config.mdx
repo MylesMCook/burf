@@ -140,8 +140,9 @@ the project's kit, if it has one):
 - `hooks` add up.
 
 Edit it in the app's Project settings, or `PUT /v1/locations/{name}/config`
-on the box. `berth location config devl/cal` shows the repository's, the
-box's and the effective config side by side.
+on the box. `berth location config devl/cal` shows the effective config
+(and what an untrusted file would run); with `--json`, the repository's, the
+kit's and the box's layers too.
 
 ```sh
 berth location scripts devl/cal --setup "make bootstrap"   # just the scripts

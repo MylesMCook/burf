@@ -75,14 +75,19 @@ open the disk image, drag **Berth** to **Applications**, and open it. It's
 one app for Apple silicon and Intel Macs, signed with a Developer ID and
 notarized by Apple, so it opens like any other.
 
-The app carries the `berth` CLI and the Linux builds of `berthd` that
-`berth add ssh` and `berth upgrade` upload, so there is nothing else to
-install on the laptop. When the [laptop agent](#start-the-laptop-agent)
+The app carries the `berth` CLI, the Linux builds of `berthd` that
+`berth add ssh` and `berth upgrade` upload, and a `berthd` for the Mac itself
+(`Contents/Resources/berthd`, signed and notarized with the app) for
+[Use this Mac](/getting-started/add-a-box#this-mac), so there is nothing else
+to install on the laptop. When the [laptop agent](#start-the-laptop-agent)
 isn't running, the app offers to start it.
 
 While no box is paired, it opens on a short setup: add a box (with the link
 the installer printed, or over SSH), add a repository on it, and start your
-first agent. With a box already paired, it opens straight to the main
+first agent. No server yet? **Use this Mac** makes this Mac the box, with
+no terminal: Berth installs the `berthd` it carries and pairs with it (see
+[this Mac](/getting-started/add-a-box#this-mac)); agents then run while the
+Mac is awake, and you can add a server later. With a box already paired, it opens straight to the main
 window.
 
 ### Updates
@@ -153,11 +158,14 @@ berth agent install     # berth agent status | uninstall
 If the agent isn't running when the desktop app opens, the app offers to
 start it: **Start the Berth agent** runs `berth agent start`, and ticking
 **Start at login** first runs `berth agent install` instead. Nothing is
-installed unless you tick it. The app runs the copy of `berth` it carries;
-a dev build (`pnpm tauri dev`) runs the repository's `bin/berth` when there
-is one, and otherwise `berth` from `~/.local/bin`, `/opt/homebrew/bin` or
-`/usr/local/bin`. Without any of them, the app shows the command to run in
-a terminal (`berth status`) and connects as soon as the agent is up.
+installed unless you tick it. The app runs only the copy of `berth` it
+carries, and only while it is signed by the same team as the app (see
+[the security model](/concepts/security#on-the-laptop)). A dev build
+(`pnpm tauri dev`) runs `BERTH_CLI` when set, then the repository's
+`bin/berth` when there is one, and otherwise `berth` from `~/.local/bin`,
+`/opt/homebrew/bin` or `/usr/local/bin`. Without any of them, the app shows
+the command to run in a terminal (`berth status`) and connects as soon as
+the agent is up.
 
 ## Optional: shorter URLs
 

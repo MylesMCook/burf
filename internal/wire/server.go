@@ -49,6 +49,10 @@ type Server struct {
 	// trust store, so a revoked laptop loses what it already holds.
 	RevokeCheck time.Duration
 
+	// OnPaired, when set, is told about each laptop that pairs, so the box
+	// can announce it.
+	OnPaired func(trust.Peer)
+
 	once      sync.Once
 	mux       *http.ServeMux
 	local     *http.ServeMux
@@ -274,6 +278,9 @@ func (s *Server) handlePair(w http.ResponseWriter, r *http.Request) {
 	}
 	s.logf("paired client %q (%s)", name, peer.Short())
 	succeeded = true
+	if s.OnPaired != nil {
+		s.OnPaired(trust.Peer{Name: name, Fingerprint: peer, PairedAt: s.now().UTC()})
+	}
 	writeJSON(w, http.StatusOK, nameResponse{Name: s.Name})
 }
 

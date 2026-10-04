@@ -80,12 +80,16 @@ with the tool as their origin. Claude Code sends all four, with
 | `kit.installed` | `location`, `kit`, `version`, `source`, `warnings` |
 | `kit.removed` | `location`, `kit` |
 | `skills.installed`, `skills.removed` | `skills`, `agents`, `target`, `location`, `paths` |
+| `integrations.installed` | `tool`: an agent CLI's hooks and skills were installed from the app or the API |
 | `secret.failed` | `location`, `name`, `path`, `variable`, `ref`, `reason`: a [secret reference](/guides/secrets) could not be read, so the variable was left unset; never the value |
 | `secret.resolved` | `location`, `name`, `path`, `variable`, `ref`: one that failed reads again |
 | `share.started`, `share.stopped` | `id`, `port`, `url` |
 | `unit.started`, `unit.stopped`, `unit.restarted` | `name` |
 | `phone.changed` | `enabled` |
 | `box.upgraded` | `build` |
+| `pairing.invited` | `for`, `by`, `expires`: a paired laptop (`by`, as `laptop:<name>`) asked for a pairing code for another computer (`berth invite`); never the code |
+| `client.paired` | `name`, `fingerprint`: a laptop paired with the box |
+| `client.revoked` | `name`, `fingerprint`: a laptop removed from the box from another one (Settings → Computers) |
 
 Flows triggered by a schedule or GitHub receive `schedule.fired` or
 `github.review_comment`, `github.pr_review`, `github.check_failed`,
@@ -128,11 +132,12 @@ exits non-zero refuses it with what it printed. Gates in a laptop's
 | `before:task.create` | `location`, `name`, `branch`, `base`, `agent`, `command` |
 | `before:session.start` | `name`, `location`, `path`, `command` |
 | `before:session.stop` | `name` |
-| `before:session.send` | `name`, and `from: "phone"` for the phone |
+| `before:session.send` | `name`; from the phone also `from: "phone"`, and `key` for a key press |
 | `before:exec` | `location`, `path`, `command` |
 | `before:kit.install` | `location`, `kit`, `source` |
 | `before:kit.remove` | `location` |
 | `before:skills.install`, `before:skills.uninstall` | `skills`, `agents`, `target`, `location` |
+| `before:integrations.install` | `tool` |
 | `before:config.change` | `location`, `flows`, `env` or `guard`: what is about to change |
 | `before:phone.change` | |
 | `before:location.remove` | `location` |
@@ -145,6 +150,8 @@ exits non-zero refuses it with what it printed. Gates in a laptop's
 | `before:share.stop` | `id` |
 | `before:flow.test` | `flow`, `scope` |
 | `before:box.upgrade` | `build` |
+| `before:pairing.invite` | `for`, `by`: a paired laptop asking for a pairing code for another computer |
+| `before:client.revoke` | `name`, `fingerprint`: removing a laptop from the box |
 | `before:event.emit` | `type` |
 
 A gate's `BERTH_EVENT_ORIGIN` is what the box can vouch for: the tool named by

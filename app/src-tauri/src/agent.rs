@@ -3,9 +3,16 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 // The app is only a view over the laptop agent. When the agent is not
-// running, the "not running" screen offers to start it with the berth CLI:
-// the copy bundled inside Berth.app, or in a debug build (pnpm tauri dev)
-// the repository's bin/berth, or one installed in the usual places.
+// running, the "not running" screen offers to start it with the berth CLI.
+//
+// A packaged app runs only the copy it carries, Contents/MacOS/berth-cli,
+// and only while it is signed by the same team as the app itself: nothing
+// on PATH, in ~/.local/bin or named by BERTH_CLI, which anything running as
+// this user could plant (security audit M-4). An unsigned local build
+// (make app-build without a signing identity) has no team to compare, so it
+// runs its bundled copy as it is. A debug build (pnpm tauri dev) also
+// honours BERTH_CLI, then the repository's bin/berth, then one installed in
+// the usual places.
 
 // The bundled CLI's name. It cannot be "berth": that is the app's own
 // executable in Contents/MacOS (and target/debug), and macOS file names
@@ -33,17 +40,17 @@ fn is_executable(path: &Path) -> bool {
     }
 }
 
-// find_berth looks for the berth CLI. BERTH_CLI, when set, wins.
+// find_berth looks for the berth CLI: in a release build, only the bundled
+// sidecar (bundled_sidecar); in a debug build, BERTH_CLI first, and the
+// repository's and installed copies after the bundled one.
 pub fn find_berth() -> Option<(PathBuf, &'static str)> {
+    #[cfg(debug_assertions)]
     if let Some(p) = std::env::var_os("BERTH_CLI").filter(|p| !p.is_empty()) {
         let p = PathBuf::from(p);
         return is_executable(&p).then_some((p, "installed"));
     }
-    if let Some(dir) = std::env::current_exe().ok().and_then(|e| e.parent().map(Path::to_path_buf)) {
-        let p = dir.join(SIDECAR);
-        if is_executable(&p) {
-            return Some((p, "bundled"));
-        }
+    if let Some(p) = bundled_sidecar() {
+        return Some((p, "bundled"));
     }
     #[cfg(debug_assertions)]
     {
@@ -52,19 +59,79 @@ pub fn find_berth() -> Option<(PathBuf, &'static str)> {
         if is_executable(&p) {
             return Some((p.canonicalize().unwrap_or(p), "repository"));
         }
+        // An app started from Finder has a bare PATH, so look where berth is
+        // usually installed rather than on it.
+        let mut candidates: Vec<PathBuf> = Vec::new();
+        if let Some(home) = dirs::home_dir() {
+            candidates.push(home.join(".local/bin/berth"));
+        }
+        candidates.push(PathBuf::from("/opt/homebrew/bin/berth"));
+        candidates.push(PathBuf::from("/usr/local/bin/berth"));
+        return candidates.into_iter().find(|p| is_executable(p)).map(|p| (p, "installed"));
     }
-    // An app started from Finder has a bare PATH, so look where berth is
-    // usually installed rather than on it.
-    let mut candidates: Vec<PathBuf> = Vec::new();
-    if let Some(home) = dirs::home_dir() {
-        candidates.push(home.join(".local/bin/berth"));
+    #[cfg(not(debug_assertions))]
+    None
+}
+
+// bundled_sidecar is berth-cli beside the app's own executable. In a release
+// build on macOS that must be Berth.app/Contents/MacOS, and berth-cli must be
+// signed by the app's team.
+fn bundled_sidecar() -> Option<PathBuf> {
+    let exe = std::env::current_exe().ok()?;
+    let exe = exe.canonicalize().unwrap_or(exe);
+    let dir = exe.parent()?;
+    #[cfg(all(target_os = "macos", not(debug_assertions)))]
+    if !dir.ends_with("Contents/MacOS") {
+        return None;
     }
-    candidates.push(PathBuf::from("/opt/homebrew/bin/berth"));
-    candidates.push(PathBuf::from("/usr/local/bin/berth"));
-    candidates
-        .into_iter()
-        .find(|p| is_executable(p))
-        .map(|p| (p, "installed"))
+    let p = dir.join(SIDECAR);
+    if !is_executable(&p) {
+        return None;
+    }
+    #[cfg(all(target_os = "macos", not(debug_assertions)))]
+    if !signed_like(&exe, &p) {
+        eprintln!("berth: {} is not signed by Berth's team; not running it", p.display());
+        return None;
+    }
+    Some(p)
+}
+
+// signed_like is whether other is signed by the team that signed app. An app
+// with no team (an unsigned or ad-hoc build) has nothing to hold it to.
+#[cfg(target_os = "macos")]
+#[cfg_attr(debug_assertions, allow(dead_code))]
+pub fn signed_like(app: &Path, other: &Path) -> bool {
+    let Some(team) = team_of(app) else {
+        return true;
+    };
+    let requirement = format!("=anchor apple generic and certificate leaf[subject.OU] = \"{team}\"");
+    Command::new("/usr/bin/codesign")
+        .args(["--verify", "--strict", "-R"])
+        .arg(requirement)
+        .arg(other)
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .map(|s| s.success())
+        .unwrap_or(false)
+}
+
+#[cfg(target_os = "macos")]
+fn team_of(path: &Path) -> Option<String> {
+    let out = Command::new("/usr/bin/codesign").args(["-dv", "--verbose=2"]).arg(path).output().ok()?;
+    // codesign describes on stderr.
+    parse_team(&String::from_utf8_lossy(&out.stderr))
+}
+
+// parse_team reads TeamIdentifier from codesign -dv; "not set" is none.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+fn parse_team(described: &str) -> Option<String> {
+    described
+        .lines()
+        .find_map(|l| l.strip_prefix("TeamIdentifier="))
+        .map(str::trim)
+        .filter(|t| !t.is_empty() && *t != "not set")
+        .map(str::to_string)
 }
 
 // run runs berth with args and returns what it printed, or why it failed.
@@ -146,6 +213,14 @@ mod tests {
         let status: String = status.unwrap().split_whitespace().collect();
         assert!(status.contains("\"running\":true"), "{status}");
         assert_eq!(stopped.unwrap(), "Stopped the berth agent.");
+    }
+
+    #[test]
+    fn reads_the_team_from_codesign() {
+        let signed = "Executable=/Applications/Berth.app/Contents/MacOS/berth\nAuthority=Developer ID Application: Someone (ABCDE12345)\nTeamIdentifier=ABCDE12345\n";
+        assert_eq!(parse_team(signed).as_deref(), Some("ABCDE12345"));
+        assert_eq!(parse_team("Signature=adhoc\nTeamIdentifier=not set\n"), None);
+        assert_eq!(parse_team("code object is not signed at all"), None);
     }
 
     #[test]

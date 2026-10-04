@@ -224,7 +224,8 @@ export interface BerthPrompts {
 }
 
 export interface BerthPluginContext {
-  // The plugin's id from berth-plugin.json.
+  // The plugin's id: the name of its folder under ~/.berth/plugins (or the
+  // built-in's folder), not a field in berth-plugin.json.
   readonly id: string;
   readonly api: BerthApi;
   readonly orchestrate: BerthOrchestrate;

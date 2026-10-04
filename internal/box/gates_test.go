@@ -87,6 +87,8 @@ func TestEveryChangeRunsAGate(t *testing.T) {
 		{"PUT", "/v1/locations/cal/scripts", "config.change", map[string]string{"setup": "echo hi"}},
 		{"POST", "/v1/locations/cal/worktrees/main/services/web/start", "service.start", nil},
 		{"DELETE", "/v1/locations/cal", "location.remove", nil},
+		{"POST", "/v1/pairing/invite", "pairing.invite", nil},
+		{"DELETE", "/v1/clients/laptop", "client.revoke", nil},
 	} {
 		var resp struct{ Error string }
 		if status := call(t, c, tc.method, tc.path, "", tc.body, &resp); status != 403 || !strings.Contains(resp.Error, "no "+tc.gate) {

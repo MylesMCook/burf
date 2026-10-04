@@ -68,6 +68,9 @@ type Box struct {
 	// Socket is the box's local API socket, which programs berthd starts can
 	// report back through.
 	Socket string
+	// Invites, when set, lets paired laptops mint pairing codes for another
+	// computer (berth invite).
+	Invites *Invites
 }
 
 func (b *Box) own(path string) {
@@ -157,6 +160,7 @@ func (b *Box) Mount(s *wire.Server) {
 	route("POST /v1/upgrade", b.handleUpgrade)
 	route("GET /v1/events", b.streamEvents)
 	route("POST /v1/events", b.emit)
+	b.mountPairing(s, route)
 }
 
 type httpError struct {

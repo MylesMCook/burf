@@ -20,13 +20,19 @@
 #
 # Tauri signs the app and its berth-cli sidecar with the hardened runtime,
 # notarizes the app and staples it, then makes the dmg and the updater
-# archive from the stapled app. This signs the dmg if Tauri did not,
+# archive from the stapled app. The berthd for the Mac itself
+# (Contents/Resources/berthd, which Use this Mac copies out of the app and
+# runs under launchd) is signed by make app-binaries with the same identity
+# and the hardened runtime before Tauri seals it in, so notarization covers
+# it too. This signs the dmg if Tauri did not,
 # notarizes and staples it too, and fails unless every check below passes:
 # codesign --verify --deep --strict, spctl (Gatekeeper's own verdict, which
 # must say "Notarized Developer ID") and stapler validate, on the app, the
 # dmg, the app inside the dmg and the app inside the updater archive; both
-# architectures in both executables; the version; and the updater signature
-# against the public key the app carries.
+# architectures in every executable; the Mac berthd's own Developer ID
+# signature, hardened runtime and timestamp, which must survive being copied
+# out of the app; the version; and the updater signature against the public
+# key the app carries.
 #
 # --no-notarize skips Apple (nothing is uploaded) and the checks that need a
 # ticket, for trying a signed build locally. Its output is not releasable.
@@ -106,7 +112,7 @@ check_app() {
   fi
   grep -Eq "^CodeDirectory .*flags=.*runtime" <<<"$info" ||
     die "$app lacks the hardened runtime, which notarization requires"
-  for exe in "$app/Contents/MacOS/berth" "$app/Contents/MacOS/berth-cli"; do
+  for exe in "$app/Contents/MacOS/berth" "$app/Contents/MacOS/berth-cli" "$app/Contents/Resources/berthd"; do
     [ -x "$exe" ] || die "no $exe"
     codesign --verify --strict "$exe" || die "$exe: the signature does not verify"
     local archs
@@ -117,6 +123,7 @@ check_app() {
   for d in berthd-linux-amd64 berthd-linux-arm64; do
     [ -f "$app/Contents/Resources/$d" ] || die "$app carries no $d"
   done
+  check_berthd "$app/Contents/Resources/berthd"
   local v
   v="$(plutil -extract CFBundleShortVersionString raw "$app/Contents/Info.plist")"
   [ "$v" = "$version" ] || die "$app says it is $v, not $version"
@@ -125,6 +132,26 @@ check_app() {
     gatekeeper exec "$app"
   fi
   ok "$app"
+}
+
+# check_berthd PATH: the Mac berthd runs outside the app, as its own launch
+# agent, from the copy Use this Mac makes; so it needs its own Developer ID
+# signature with the hardened runtime, and a copy must still verify.
+check_berthd() {
+  local berthd="$1" info copy
+  info="$(codesign -dv --verbose=2 "$berthd" 2>&1)"
+  grep -q "^Authority=Developer ID Application:" <<<"$info" ||
+    die "$berthd is not signed with a Developer ID; was APPLE_SIGNING_IDENTITY set for make app-binaries?"
+  if ! grep -q "^TeamIdentifier=" <<<"$info" || grep -q "^TeamIdentifier=not set" <<<"$info"; then
+    die "$berthd has no team identifier"
+  fi
+  grep -Eq "^CodeDirectory .*flags=.*runtime" <<<"$info" ||
+    die "$berthd lacks the hardened runtime, which notarization requires"
+  grep -q "^Timestamp=" <<<"$info" || die "$berthd's signature has no secure timestamp"
+  copy="$work/berthd-copy"
+  cp "$berthd" "$copy"
+  codesign --verify --strict "$copy" || die "a copy of $berthd does not verify, so Use this Mac could not run it"
+  rm -f "$copy"
 }
 
 # gatekeeper TYPE PATH: spctl must accept it, as notarized.

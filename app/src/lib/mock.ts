@@ -9,6 +9,8 @@ import { mockShell } from "@/lib/mock-shell";
 import { mockIssueTitle } from "@/lib/mock-issues";
 import { usageCall, usageExec } from "@/lib/mock-usage";
 import { initMockQueue, queueCall } from "@/lib/mock-queue";
+import { computersBoxCall, computersCall, initMockComputers } from "@/lib/mock-computers";
+import { initMockLocalBox, localBoxCall, localBoxFolders, localBoxStream } from "@/lib/mock-local-box";
 import { ApiError } from "@/lib/api";
 import { demoAttach, demoScreen } from "@/demo/terminal";
 
@@ -380,6 +382,10 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
   if (!online) return Promise.reject(new ApiError(`${box} is offline`, 503));
   const flows = flowsCall(box, method, path, body, emit, delay);
   if (flows) return flows;
+  const computers = computersBoxCall(box, method, path);
+  if (computers) return computers;
+  const thisMac = localBoxFolders(box, method, path);
+  if (thisMac) return thisMac;
   const phone = phoneCall(box, method, path, body, delay);
   if (phone) return phone;
   const usage = usageCall(box, method, path, body, delay);
@@ -705,6 +711,7 @@ function laptopBoxes(method: string, path: string, body: unknown): Promise<unkno
 // streams the CLI's.
 async function mockStream(method: string, path: string, body: unknown, onValue: (v: unknown) => void, signal?: AbortSignal) {
   if (method === "POST" && (await kitsStream(path, body, onValue, emit, signal))) return;
+  if (await localBoxStream(method, path, body, onValue, signal)) return;
   const wait = (ms: number) =>
     new Promise<void>((resolve, reject) => {
       const t = setTimeout(resolve, ms);
@@ -779,6 +786,11 @@ async function mockStream(method: string, path: string, body: unknown, onValue: 
   throw new Error(`mock: no stream for ${method} ${path}`);
 }
 
+// Join links and each box's computers (lib/mock-computers).
+initMockComputers({ status, networks: mockNetworks, addBox: addMockBox, emit, delay });
+// Use this Mac (lib/mock-local-box).
+initMockLocalBox({ status, addBox: addMockBox, delay });
+
 // The offline prompt queue and its box-offline simulator (lib/mock-queue).
 initMockQueue({ status, sessions, emit, delay, send: (box, session, text, enter) => boxCall(box, "POST", `sessions/${encodeURIComponent(session)}/send`, { text, enter }) }, fresh);
 
@@ -818,8 +830,12 @@ export function mockClient(): Client {
         appDocs[app[1]] = structuredClone(body);
         return delay(body) as Promise<T>;
       }
+      const thisMac = localBoxCall(method, path);
+      if (thisMac) return thisMac as Promise<T>;
       const boxes = laptopBoxes(method, path, body);
       if (boxes) return boxes as Promise<T>;
+      const computers = computersCall(method, path, body);
+      if (computers) return computers as Promise<T>;
       const queued = queueCall(method, path, body);
       if (queued) return queued as Promise<T>;
       const kits = kitsCall(method, path, body, emit, delay);

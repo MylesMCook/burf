@@ -22,22 +22,34 @@ the `BOX/` prefix.
 | --- | --- |
 | `berth add ssh [user@]HOST [--name N] [--network NET] [--listen ADDR] [--address ADDR] [--identity FILE] [--trust-host-key SHA256:…] [--no-integrations] [-- SSH OPTIONS]` | Install berthd on a box over SSH (once), with hooks for the agent CLIs it has, and pair. See [add a box](/getting-started/add-a-box#over-ssh). |
 | `berth pair '<link>' [--name N] [--network NET]` | Pair with a box, from the link `berthd pair` prints |
+| `berth invite [--boxes a,b] [--for NAME] [--yes] [--json]` | A join link for another computer of yours: a fresh single-use code from each box (every paired box, or `--boxes`), valid ten minutes. Offline boxes are left out and listed. Asks first unless `--yes`; `--for` names the computer in the boxes' events. See [more than one computer](/guides/more-computers). |
+| `berth join '<link>'\|- [--check] [--yes] [--json]` | Pair this computer with every box in a join link (`-` reads it from stdin; pasting the whole message is fine). Each box reports `paired`, `already`, `needs-network` (sign in to its tailnet, then join again) or `failed`; `--check` only says what the link holds |
 | `berth network login NAME` | Join another tailnet (a personal one, say) to reach its boxes |
 | `berth network proxy NAME HOST PORT` | Connect stdin and stdout to HOST:PORT through that network, for SSH's `ProxyCommand` |
-| `berth networks` | Joined networks |
-| `berth discover [--network NET]` | Machines on the tailnet that could be boxes |
-| `berth boxes` | Paired boxes and whether they are online |
+| `berth networks [--json]` | Joined networks |
+| `berth discover [--network NET] [--json]` | Machines on the tailnet that could be boxes |
+| `berth boxes [--json]` | Paired boxes and whether they are online |
 | `berth ping BOX` | Check a box answers and still trusts you |
-| `berth upgrade BOX [--check]` | Upgrade the box's daemon over Berth's own connection (no SSH); `--check` only reports whether it is older |
+| `berth upgrade BOX [--check] [--json]` | Upgrade the box's daemon over Berth's own connection (no SSH); `--check` only reports whether it is older |
 | `berth edit BOX/PROJECT[/WT] [FILE[:LINE[:COL]]] [--in cursor\|vscode\|windsurf\|zed]` | Open a worktree, or a file at a line, in your editor (default: the first installed) |
-| `berth ssh-config [--write]` | Show (then write) the SSH hosts editors use: `berth-<box>` |
+| `berth ssh-config [--write] [--json]` | Show (then write) the SSH hosts editors use: `berth-<box>` |
 | `berth forget BOX` | Remove a box from this laptop |
+
+`berth discover --json` prints `{ user, machines, tailscale, tailnet }`:
+`user` is the SSH user to suggest (yours on this computer), `tailscale` is
+this computer's Tailscale (`running`, `stopped`, `logged-out` or `missing`;
+anything but `running` lists no machines rather than failing), and
+`tailnet` its tailnet's name. Each machine has `name`, `dns_name`, `ip`,
+`os`, `online`, `ssh` (it runs Tailscale SSH), `host_keys` (the SHA256
+fingerprints of the SSH host keys the tailnet reports for it) and `box`
+(the box it is paired as, if any). With `--network`, the machines are that
+network's, and `tailscale` and `tailnet` are left out.
 
 ## Kits
 
 | Command | What it does |
 | --- | --- |
-| `berth kit list` | Kits on this laptop, and where each is installed |
+| `berth kit list [--json]` | Kits on this laptop, and where each is installed |
 | `berth kit add LINK [--yes]` | Fetch a kit (git repo, `…/tree/REF/DIR`, gist, `kit.json` URL or folder), show what it does, and keep it |
 | `berth kit show ID` | Everything a kit does and every file it carries |
 | `berth kit apply ID BOX/PROJECT...` | Install it on projects |
@@ -54,14 +66,14 @@ See [kits](/guides/kits).
 | --- | --- |
 | `berth url BOX PORT\|SERVICE` | Print the private URL for a port, or a service by name |
 | `berth open BOX PORT\|SERVICE` | Open that URL in your browser |
-| `berth forward BOX PORTS` | Forward local ports: `3000`, `8080:3000`, `3000-3005` |
-| `berth forwards` | List forwards |
+| `berth forward BOX PORTS [--json]` | Forward local ports: `3000`, `8080:3000`, `3000-3005` |
+| `berth forwards [--json]` | List forwards |
 | `berth unforward ID` | Stop and forget a forward |
 | `berth route add '*.x.localhost' BOX PORT` | Send every matching host to a box port, `Host` unchanged |
-| `berth routes` | List routes (`berth route rm PATTERN` removes one) |
-| `berth units BOX` | Managed units on a box |
+| `berth routes [--json]` | List routes (`berth route rm PATTERN` removes one) |
+| `berth units BOX [--json]` | Managed units on a box |
 | `berth unit add BOX/NAME -- COMMAND...` | Install and start a unit |
-| `berth unit get BOX/NAME` | A unit's state and where its log is |
+| `berth unit get BOX/NAME [--json]` | A unit's state and where its log is |
 | `berth unit log BOX/NAME` | What a unit has written, for one that will not stay up |
 | `berth unit restart BOX/NAME` | Start a unit again |
 | `berth unit rm BOX/NAME` | Stop and remove a unit (its log stays) |
@@ -70,9 +82,9 @@ See [kits](/guides/kits).
 
 | Command | What it does |
 | --- | --- |
-| `berth status` | Boxes, forwards and the proxy at a glance |
-| `berth doctor [BOX]` | Check this computer (or a box) and how to fix it |
-| `berth events [BOX]` | Stream events from this laptop and every box as they happen (box events carry `box`); with `BOX`, only that box's |
+| `berth status [--json]` | Boxes, forwards and the proxy at a glance |
+| `berth doctor [BOX] [--json]` | Check this computer (or a box) and how to fix it |
+| `berth events [BOX] [--json]` | Stream events from this laptop and every box as they happen (box events carry `box`); with `BOX`, only that box's |
 | `berth agent` | Run the agent in the foreground |
 | `berth agent start` | Start the agent in the background if it isn't running (what the app's **Start the Berth agent** runs) |
 | `berth agent install\|uninstall\|status` | Run the agent at login, restart it on crashes |
@@ -86,12 +98,12 @@ See [kits](/guides/kits).
 
 | Command | What it does |
 | --- | --- |
-| `berth locations BOX` | Locations and their worktrees |
+| `berth locations BOX [--json]` | Locations and their worktrees |
 | `berth location add BOX/NAME PATH` | Register a repo or directory |
 | `berth location rm BOX/NAME` | Forget a location (files are untouched) |
 | `berth location scripts BOX/NAME [--setup CMD] [--archive CMD] [--clear]` | Worktree setup and archive scripts (default: the repo's `.berth/config.json`) |
-| `berth location config BOX/NAME [--trust HASH\|--untrust]` | The repo's, the box's and the effective config; trust the repo's to run it |
-| `berth services BOX` | Which worktree each running server belongs to |
+| `berth location config BOX/NAME [--json] [--trust HASH\|--untrust]` | The repo's, the box's and the effective config; trust the repo's to run it |
+| `berth services BOX [--json]` | Which worktree each running server belongs to |
 | `berth service list\|start\|stop\|restart\|log BOX/LOC/WORKTREE [SERVICE]` | A worktree's services from the repo's config |
 | `berth preview BOX/[LOC/WORKTREE] [PORT] [--path /x]` | Open a worktree's page in the Berth app |
 | `berth worktree new BOX/LOC/NAME [--branch B] [--base REF]` | Create a git worktree and run its setup |
@@ -101,19 +113,19 @@ See [kits](/guides/kits).
 
 | Command | What it does |
 | --- | --- |
-| `berth sessions BOX` | List sessions |
-| `berth agents BOX` | Agent CLIs this box can start |
+| `berth sessions BOX [--json]` | List sessions |
+| `berth agents BOX [--json]` | Agent CLIs this box can start |
 | `berth task new BOX/LOC/NAME [--agent ID] [--prompt TEXT] [--open split\|tab] [--branch B] [--base REF] [-- COMMAND...]` | A worktree with an agent (or a command) running in it |
 | `berth session new BOX/LOC[/WORKTREE] [--name N] [--agent ID [--prompt TEXT]] [--open split\|tab] [-- COMMAND...]` | Start an agent or a command (default: a shell) there |
 | `berth session screen BOX/NAME [--history N]` | Print what the session shows |
-| `berth session send BOX/NAME TEXT [--no-enter] [--wait] [--timeout 30m] [--queue]` | Type a prompt into a session, and wait for its turn |
+| `berth session send BOX/NAME TEXT [--no-enter] [--wait [--timeout 30m]] [--queue]` | Type a prompt into a session, and wait for its turn |
 | `berth session wait BOX/NAME [--for finished,waiting] [--timeout 30m]` | Wait for its agent's turn to end |
 | `berth exec BOX/LOC[/WORKTREE] [--timeout 10m] -- COMMAND...` | Run a command there and print its output |
 | `berth loop BOX/SESSION --check CMD [--prompt TEXT] [--max 5] [--turn-timeout 30m]` | Prompt, wait, check, and feed failures back |
 | `berth session kill BOX/NAME` | Stop a session |
 | `berth attach BOX/SESSION` | Attach this terminal to a session (detach: Ctrl-b d) |
 | `berth terminal BOX/SESSION` | Open a new terminal window attached to a session |
-| `berth queue` | Prompts waiting for their box (`berth queue rm\|retry\|send ID`) |
+| `berth queue [--json]` | Prompts waiting for their box (`berth queue rm\|retry\|send ID`) |
 
 See [orchestration](/guides/orchestration) and
 [the offline queue](/guides/offline-queue).
@@ -122,11 +134,11 @@ See [orchestration](/guides/orchestration) and
 
 | Command | What it does |
 | --- | --- |
-| `berth ports BOX` | What is listening on the box |
-| `berth stats BOX` | Memory, disk, load, and agents running or waiting |
+| `berth ports BOX [--json]` | What is listening on the box |
+| `berth stats BOX [--json]` | Memory, disk, load, and agents running or waiting |
 | `berth info BOX` | The box's name, OS, build, tools and agent presets, as JSON |
 | `berth share BOX PORT` | Make a port public (a Cloudflare quick tunnel run by the box) |
-| `berth shares BOX` | List public shares |
+| `berth shares BOX [--json]` | List public shares |
 | `berth unshare BOX ID` | Stop a share |
 
 ## Skills, secrets and events

@@ -26,16 +26,12 @@ func daemonService(b boxHome, listen string) service.Spec {
 	if resolved, err := filepath.EvalSymlinks(exe); err == nil {
 		exe = resolved
 	}
-	name := "berthd"
-	if runtime.GOOS == "darwin" {
-		name = "dev.berth.berthd"
-	}
 	args := []string{"serve"}
 	if listen != "" {
 		args = append(args, "--listen", listen)
 	}
 	return service.Spec{
-		Name:         name,
+		Name:         service.BerthdName(),
 		Description:  "berth box daemon",
 		Program:      exe,
 		Args:         args,

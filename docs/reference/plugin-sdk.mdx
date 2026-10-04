@@ -47,7 +47,7 @@ Each returns a `Dispose`. Everything is also removed when the plugin unloads.
 
 | Call | What it does |
 | --- | --- |
-| `notify(title, body?)` | A toast in the app, and a system notification when it is not focused |
+| `notify(title, body?)` | A toast in the app, and a system notification when it is not focused (by default: Settings → Notifications decides, under messages from plugins) |
 | `openScreen(id)` | One of the plugin's screens |
 | `openTerminal(box, session)` | A session's terminal |
 | `openUrl(url)` | A URL in the system browser |
@@ -152,7 +152,7 @@ Go structs have them, in `packages/plugin-sdk/src/types.ts`:
 | Type | Fields |
 | --- | --- |
 | `BoxStatus` | `name`, `address`, `network?`, `fingerprint`, `state` (`connecting`, `online`, `offline`, `untrusted`), `error?`, `latency_ms?`, `since` |
-| `Location` | `name`, `path`, `repo`, `worktrees?`, `scripts`, `agents?`, `remote?`, `slug?`, `default_branch?` |
+| `Location` | `name`, `path`, `repo`, `worktrees?`, `scripts`, `agents?`, `remote?`, `slug?`, `default_branch?`, `repo_trust?` (`none`, `trusted`, `untrusted` or `changed`) |
 | `Worktree` | `name`, `path`, `branch?`, `head?`, `main?`, `setting_up?`, `port?` |
 | `Session` | `name`, `location?`, `dir`, `command?`, `created`, `attached`, `exited`, `agent?`, `agent_state?`, `state_since?` |
 | `AgentState` | `idle`, `running`, `waiting`, `finished` |

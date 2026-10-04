@@ -9,12 +9,14 @@ import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { AddBoxFlow, type AddBoxStage } from "@/views/onboarding/add-box-flow";
 import { AgentStep } from "@/views/onboarding/agent-step";
+import { JoinStep } from "@/views/onboarding/join-step";
 import { finishOnboarding, markOnboardingStarted } from "@/views/onboarding/onboarding-state";
 import { RepoStep } from "@/views/onboarding/repo-step";
 import { prefetchTailnets } from "@/views/onboarding/tailnet";
 import { WelcomeStep } from "@/views/onboarding/welcome-step";
 
-type Step = { kind: "welcome" } | { kind: "box" } | { kind: "repo"; box: string } | { kind: "agent"; box: string; location: string };
+// join is a second computer joining the boxes of the first, in place of box.
+type Step = { kind: "welcome" } | { kind: "box" } | { kind: "join" } | { kind: "repo"; box: string } | { kind: "agent"; box: string; location: string };
 
 const ORDER: Step["kind"][] = ["welcome", "box", "repo", "agent"];
 
@@ -23,7 +25,7 @@ const ORDER: Step["kind"][] = ["welcome", "box", "repo", "agent"];
 const BOX_SCENES: Record<AddBoxStage, SceneName> = { start: "arriving", working: "lighthouse", tailnet: "signal", paired: "moored" };
 function sceneFor(step: Step["kind"], stage: AddBoxStage): SceneName {
   if (step === "welcome") return "dawn"; // an empty harbour at first light
-  if (step === "box") return BOX_SCENES[stage];
+  if (step === "box" || step === "join") return BOX_SCENES[stage];
   if (step === "repo") return "first-crate"; // the first thing on the quay
   return "setting-out"; // the first piece of work under sail
 }
@@ -62,7 +64,7 @@ export function OnboardingView() {
           <div aria-hidden className="pointer-events-none absolute bottom-full left-0 mb-6 -ml-1">
             <Scene key={scene} name={scene} width={152} className="onboarding-scene" />
           </div>
-          <Progress at={step.kind} />
+          <Progress at={step.kind === "join" ? "box" : step.kind} />
           {/* Skipping makes sense once there is a box to work on. */}
           {hasBoxes && (
             <Button size="xs" variant="ghost" className="-mr-2 ml-auto text-muted-foreground" onClick={finish}>
@@ -72,7 +74,9 @@ export function OnboardingView() {
         </div>
         <div ref={area} className="contents">
           <div key={step.kind} className="onboarding-step">
-            {step.kind === "welcome" && <WelcomeStep onNext={() => setStep({ kind: "box" })} />}
+            {step.kind === "welcome" && <WelcomeStep onNext={() => setStep({ kind: "box" })} onJoin={() => setStep({ kind: "join" })} />}
+            {/* Its boxes have their projects already: joining ends setup. */}
+            {step.kind === "join" && <JoinStep onStage={setBoxStage} onExit={() => setStep({ kind: "welcome" })} onDone={finish} />}
             {step.kind === "box" && (
               <AddBoxFlow
                 variant="page"

@@ -105,7 +105,7 @@ berthd emit deploy.finished url=https://…       # on a box
 | `before:worktree.remove` | `location`, `name`, `path` |
 | `before:task.create` | `location`, `name`, `branch`, `base`, `agent`, `command` |
 | `before:session.start` | `name`, `location`, `path`, `command` |
-| `before:session.send` | `name`, and `from: "phone"` from the phone |
+| `before:session.send` | `name`; from the phone also `from: "phone"`, and `key` for a key press |
 | `before:exec` | `location`, `path`, `command` |
 | `before:kit.install` | `location`, `kit`, `source` |
 | `before:kit.remove` | `location` |
@@ -113,7 +113,8 @@ berthd emit deploy.finished url=https://…       # on a box
 
 Every other change has a gate too (`before:hooks.change`,
 `before:unit.start`, `before:share.start`, `before:session.attach`,
-`before:box.upgrade`, `before:event.emit`…); see
+`before:box.upgrade`, `before:event.emit`, `before:pairing.invite`,
+`before:client.revoke`…); see
 [events and gates](/reference/events#gates). A task runs
 `before:task.create`, then the worktree's and the session's own gates.
 

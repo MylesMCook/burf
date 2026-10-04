@@ -21,7 +21,9 @@ berth integrations install all
 `berthd install` (which `berth add ssh` and the install script run) already
 does this on a box for every agent CLI it finds there, unless given
 `--no-integrations`; for one installed later, the app offers to when it
-first starts that agent on the box.
+first starts that agent on the box, and `berth doctor BOX` (or
+`berthd doctor` on the box) warns about each agent CLI without its hooks,
+with the command that installs them.
 
 - **Claude Code**: installs berth's skills in `~/.claude/skills/` and
   `Stop` / `Notification` / `SessionStart` / `UserPromptSubmit` hooks in

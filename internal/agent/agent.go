@@ -84,6 +84,11 @@ type Config struct {
 	// QueueWaitStep how long one wait on the box lasts (default 5 minutes).
 	QueueIdleTimeout time.Duration
 	QueueWaitStep    time.Duration
+	// Berthd is the berthd Use this Mac installs; defaults to the one beside
+	// the berth executable or in the app's Contents/Resources (localbox.go).
+	// LocalBoxPort is the first port tried for it (default 7445).
+	Berthd       string
+	LocalBoxPort int
 }
 
 // Networks is the set of other tailnets the agent can dial through.
@@ -138,6 +143,8 @@ type BoxStatus struct {
 	Error       string    `json:"error,omitempty"`
 	LatencyMs   int64     `json:"latency_ms,omitempty"`
 	Since       time.Time `json:"since"`
+	// Local marks a box on this computer itself (Use this Mac).
+	Local bool `json:"local,omitempty"`
 }
 
 type ForwardStatus struct {
@@ -172,6 +179,7 @@ type Agent struct {
 	proxy    *proxy.Proxy
 	proxySt  ProxyStatus
 	queue    *promptQueue
+	local    localBox
 
 	// ctx lives as long as the agent; forwards added through the API run under
 	// it rather than under the request that created them.
@@ -247,6 +255,7 @@ func Run(ctx context.Context, cfg Config) error {
 	a.sync()
 	a.startSavedForwards(ctx)
 	go a.healthLoop(ctx)
+	go a.keepLocalBoxCurrent(ctx)
 	a.hooks = &hooks.Runner{Path: filepath.Join(cfg.UserDir, "hooks.json"), PluginsDir: filepath.Join(cfg.UserDir, "plugins"), Log: cfg.Log}
 	go a.hooks.Run(ctx, &a.bus)
 
@@ -648,7 +657,9 @@ func (a *Agent) status() Status {
 		s.Proxy.URLPort = 80
 	}
 	for _, st := range a.clients {
-		s.Boxes = append(s.Boxes, st.status)
+		b := st.status
+		b.Local = a.isLocal(st.peer)
+		s.Boxes = append(s.Boxes, b)
 	}
 	for _, rf := range a.running {
 		s.Forwards = append(s.Forwards, ForwardStatus{Forward: rf.fwd, State: rf.state, Error: rf.err})
