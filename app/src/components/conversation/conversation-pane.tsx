@@ -65,11 +65,20 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
   const [answered, setAnswered] = useState<{ at?: string; key: string }>();
   // Prompts sent from here that the transcript doesn't show yet.
   const [sent, setSent] = useState<{ text: string; at: number; after: number }[]>([]);
+  // Once the transcript has a prompt, it is no longer "just sent".
+  useEffect(() => {
+    setSent((l) => {
+      const left = l.filter((p) => !items.some((it, i) => i >= p.after && it.kind === "user" && same(it.text, p.text)));
+      return left.length === l.length ? l : left;
+    });
+  }, [items]);
+  const [now, setNow] = useState(Date.now());
   useEffect(() => {
     if (!sent.length) return;
-    const t = window.setTimeout(() => setSent((l) => l.filter((p) => Date.now() - p.at < 60_000)), 60_000);
-    return () => window.clearTimeout(t);
-  }, [sent]);
+    // Look again when a prompt has waited long enough to be worth a word.
+    const t = window.setInterval(() => setNow(Date.now()), 2000);
+    return () => window.clearInterval(t);
+  }, [sent.length]);
   // Given a prompt: the box names a session from its first prompt, and
   // starts a turn for it.
   const prompted = !!s && (!!s.turn || !!s.title || !!s.queued);
@@ -261,7 +270,26 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
       queue.refresh();
     }
   };
-  const tail = queue.items.length ? queue.items.map((q) => <QueuedBubble key={q.turn} q={q} who={who} onSendNow={() => sendNow(q)} onCancel={() => cancel(q)} />) : null;
+  // A prompt typed into an agent that hasn't taken it: its screen is
+  // likely showing something else (a dialog of its own), which only its
+  // terminal can answer.
+  const untaken = !mock && state !== "running" && sent.some((p) => now - p.at > 8000 && !items.some((it, i) => i >= p.after && it.kind === "user" && same(it.text, p.text)));
+  const tail = (
+    <>
+      {queue.items.map((q) => (
+        <QueuedBubble key={q.turn} q={q} who={who} onSendNow={() => sendNow(q)} onCancel={() => cancel(q)} />
+      ))}
+      {untaken && (
+        <div className="cv-in flex items-center gap-2 self-end text-muted-foreground text-xs">
+          <span>{who} hasn't taken this yet: its terminal may be asking something.</span>
+          <Button size="xs" variant="outline" onClick={onShowTerminal}>
+            <SquareTerminalIcon />
+            Show terminal
+          </Button>
+        </div>
+      )}
+    </>
+  );
   const toSend = pending(comments);
   // An agent at a menu (a permission, or numbered options) takes its answer
   // from the buttons above: Enter in the reply box would pick for it.
@@ -328,7 +356,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
             Reading the conversation…
           </div>
         ) : (
-          <ConversationView items={shown} onAnswer={answer} edits={edits} who={who} tail={tail} tailSize={queue.items.length} />
+          <ConversationView items={shown} onAnswer={answer} edits={edits} who={who} tail={tail} tailSize={queue.items.length + (untaken ? 1 : 0)} />
         )}
       </div>
       <div className="pr-6 pb-4 pl-6 @[1000px]:pr-[max(24px,var(--berth-loops-w,0px))]">
