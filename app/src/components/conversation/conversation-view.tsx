@@ -181,7 +181,11 @@ function WorkFold({ steps, live, onAnswer, edits, who }: { steps: TranscriptItem
 function Item({ it, onAnswer, edits, who }: { it: TranscriptItem; onAnswer(id: string, key: string): void; edits?: EditActions; who: string }) {
   switch (it.kind) {
     case "user":
-      return <div className="cv-in max-w-[80%] self-end whitespace-pre-wrap rounded-2xl bg-muted px-3.5 py-2">{it.text}</div>;
+      return (
+        <div data-selectable className="cv-in max-w-[80%] self-end whitespace-pre-wrap rounded-2xl bg-muted px-3.5 py-2">
+          {it.text}
+        </div>
+      );
     case "text":
       return <Markdown text={it.text} />;
     case "thinking":
@@ -229,12 +233,12 @@ export function permissionVerb(tool: string): { verb: string; what?: string; mon
       return { verb: "wants to search the web for", mono: false };
     case "AskUserQuestion":
       return { verb: "asks you", mono: false };
+    case "ExitPlanMode":
+      return { verb: "has a plan ready for your approval", mono: false };
   }
   return { verb: "wants to use", what: tool, mono: false };
 }
 
-    case "ExitPlanMode":
-      return { verb: "has a plan ready for your approval", mono: false };
 // Permission is an approval the agent's hooks described: the tool and what
 // it would run or touch, matched to the options on its screen.
 function Permission({ it, onAnswer, who }: { it: Extract<TranscriptItem, { kind: "ask" }>; onAnswer(id: string, key: string): void; who: string }) {
@@ -264,7 +268,7 @@ function Permission({ it, onAnswer, who }: { it: Extract<TranscriptItem, { kind:
             {what && <span className="font-normal"> {what}</span>}
           </span>
         </div>
-        {it.detail && (mono ? <code className="whitespace-pre-wrap break-all rounded-lg bg-muted/40 px-3 py-2 font-mono text-[12.5px]">{it.detail}</code> : <p className="whitespace-pre-wrap">{it.detail}</p>)}
+        {it.detail && (mono ? <code className="whitespace-pre-wrap break-all rounded-lg bg-muted/40 px-3 py-2 font-mono text-[12.5px]">{it.detail}</code> : <p data-selectable className="whitespace-pre-wrap">{it.detail}</p>)}
         {it.why && <p className="text-muted-foreground text-[13px]">{it.why}</p>}
       </div>
       <div className="flex flex-wrap items-center gap-2 border-t px-4 py-3">
@@ -315,7 +319,7 @@ function Ask({ it, onAnswer }: { it: Extract<TranscriptItem, { kind: "ask" }>; o
           <span className="size-2 rounded-full bg-warning" aria-hidden />
           {question ? "Needs your answer" : "Wants to run a command"}
         </div>
-        {it.detail && (question ? <p className="whitespace-pre-wrap">{it.detail}</p> : <code className="rounded-lg bg-muted/40 px-3 py-2 font-mono text-[12.5px]">{it.detail}</code>)}
+        {it.detail && (question ? <p data-selectable className="whitespace-pre-wrap">{it.detail}</p> : <code className="rounded-lg bg-muted/40 px-3 py-2 font-mono text-[12.5px]">{it.detail}</code>)}
       </div>
       <div className="flex flex-wrap items-center gap-2 border-t px-4 py-3">
         {choices.map((c, i) => (
