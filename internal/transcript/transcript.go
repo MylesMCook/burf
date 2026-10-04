@@ -31,6 +31,11 @@ type Item struct {
 	Names   []string   `json:"names,omitempty"`
 	// Tool is the call behind an edit, for its exact change.
 	Tool string `json:"tool,omitempty"`
+	// A notice (an API error, a usage limit, a failed hook, an interrupted
+	// turn): its type, error, warning or info, and when a limit resets.
+	Notice string `json:"notice,omitempty"`
+	Level  string `json:"level,omitempty"`
+	Resets int64  `json:"resets,omitempty"`
 	// Command is a command item's command: "/model", or "!" for a shell
 	// command typed to the agent; Args what followed it, and Text its
 	// output (Markdown when the agent wrote it so, Error when it failed).
@@ -75,6 +80,9 @@ type Result struct {
 	Truncated bool         `json:"truncated,omitempty"`
 	// Reason says why there is nothing to show, when Source is "none".
 	Reason string `json:"reason,omitempty"`
+	// Signals are the agent's mode, model, context, task list and
+	// background work (signals.go).
+	Signals *Signals `json:"signals,omitempty"`
 }
 
 const (
@@ -119,6 +127,8 @@ type conv struct {
 	// queued are messages shown from a mid-turn queued_command, so their
 	// user line (if Claude Code writes one later) isn't shown twice.
 	queued map[string]bool
+	// sig is what the conversation says about the agent (signals.go).
+	sig signals
 }
 
 func (c *conv) id() string {
@@ -331,6 +341,7 @@ func (r *Reader) Read(source, path, dir string, since int) (Result, error) {
 	out := Result{Source: source, Next: c.base + len(c.items), Truncated: c.truncated || c.base > 0}
 	out.Items = append([]Item{}, c.items[from-c.base:]...)
 	out.Crew = append([]CrewMember{}, c.crew...)
+	out.Signals = c.sig.snapshot()
 	return out, nil
 }
 

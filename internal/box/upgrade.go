@@ -130,7 +130,9 @@ func (b *Box) Capabilities() []string {
 	// sample project.
 	caps := []string{"transcript", "diff", "titles", "sample"}
 	if b.Turns != nil {
-		caps = append(caps, "turns", "queue", "ask")
+		// controls: POST .../keys, .../interrupt and .../mode, GET
+		// .../controls (controls.go).
+		caps = append(caps, "turns", "queue", "ask", "controls")
 	}
 	if b.Runs != nil {
 		caps = append(caps, "runs", "exec.detach")

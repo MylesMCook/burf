@@ -32,6 +32,8 @@ type ToolDetail struct {
 	Error     bool   `json:"error,omitempty"`
 	// A call nobody has answered yet.
 	Pending bool `json:"pending,omitempty"`
+	// Live is a background shell whose output is still growing.
+	Live bool `json:"live,omitempty"`
 }
 
 // ErrNoTool is a call the transcript doesn't hold (any more).
@@ -85,6 +87,7 @@ func Detail(source, path, dir, id string) (ToolDetail, error) {
 		return ToolDetail{}, ErrNoTool
 	}
 	d.Pending = !answered
+	liveOutput(&d)
 	return d, nil
 }
 

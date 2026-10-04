@@ -61,6 +61,11 @@ func (claudeParser) line(c *conv, b []byte) {
 		return
 	}
 	at := parseTime(l.Timestamp)
+	// Its mode, model, context, errors and background work (signals.go):
+	// an API error's synthetic reply is a notice, not the agent's words.
+	if claudeSignals(c, l.Type, b, at) {
+		return
+	}
 	switch {
 	case l.Type == "system" && l.Subtype == "local_command":
 		commandText(c, l.Content)
@@ -123,6 +128,7 @@ func (claudeParser) line(c *conv, b []byte) {
 				c.launched(bl.ToolUseID)
 			}
 			c.result(bl.ToolUseID, at)
+			claudeResultSignal(c, bl.ToolUseID, text, at)
 			// A rejected call with words for the agent (a plan sent back
 			// with "Tell Claude what to change") reads as what the person
 			// said.
@@ -164,6 +170,10 @@ func claudeTool(c *conv, bl claudeBlock, at int64) {
 	var in map[string]any
 	_ = json.Unmarshal(bl.Input, &in)
 	str := func(k string) string { v, _ := in[k].(string); return v }
+	// A task list is the agent's state, not a step (signals.go).
+	if claudeToolSignal(c, bl, at) {
+		return
+	}
 	switch bl.Name {
 	case "Read", "NotebookRead":
 		c.call(bl.ID, ToolCall{Verb: "Read", Target: filepath.Base(str("file_path")), File: true})
@@ -208,7 +218,7 @@ func claudeTool(c *conv, bl claudeBlock, at int64) {
 		if plan := strings.TrimSpace(str("plan")); plan != "" {
 			c.add(Item{Kind: "text", ID: c.id(), Text: clip(plan, maxText)})
 		}
-	case "TodoWrite", "ToolSearch":
+	case "ToolSearch":
 		// Bookkeeping, not work worth a line.
 	default:
 		name := bl.Name

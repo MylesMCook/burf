@@ -32,7 +32,12 @@ type codexItem struct {
 
 func (codexParser) line(c *conv, b []byte) {
 	var l codexLine
-	if json.Unmarshal(b, &l) != nil || l.Type != "response_item" {
+	if json.Unmarshal(b, &l) != nil {
+		return
+	}
+	if l.Type != "response_item" {
+		// Its model, mode, context and errors (signals.go).
+		codexSignals(c, l.Type, l.Payload, parseTime(l.Timestamp))
 		return
 	}
 	var it codexItem
@@ -67,6 +72,12 @@ func (codexParser) line(c *conv, b []byte) {
 }
 
 func codexCall(c *conv, it codexItem) {
+	if it.Name == "update_plan" {
+		// Its plan is the task list (signals.go), not a step.
+		codexPlan(c, it.Arguments)
+		c.byTool[it.CallID] = -1
+		return
+	}
 	if it.Name == "apply_patch" {
 		codexPatch(c, firstNonEmpty(it.Input, patchFromArgs(it.Arguments)), it.CallID)
 		c.byTool[it.CallID] = -1
