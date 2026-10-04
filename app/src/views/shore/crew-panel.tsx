@@ -13,7 +13,7 @@ import { BoatSide } from "@/views/shore/harbour";
 const KIND = { subagent: "Subagent", attempt: "Attempt", reviewer: "Reviewer", loop: "Loop" };
 
 const elapsed = (ms: number) => {
-  const s = Math.max(0, Math.round(ms / 1000));
+  const s = Math.max(1, Math.round(ms / 1000));
   return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s`;
 };
 

@@ -109,16 +109,16 @@ function Header({ boats, onOpen }: { boats: Boat[]; onOpen(b: Boat): void }) {
         <button type="button" onClick={() => useShore.getState().setView({ kind: "home" })} className={cn(glassBtn, pill, "pl-2.5")}>
           <ArrowLeftIcon />
           Harbour
-          <kbd className="ml-0.5 rounded bg-(--sh-chip-2) px-1 font-sans text-(--sh-ink-3) text-[10.5px] leading-4">esc</kbd>
+          <kbd className="ml-0.5 rounded bg-(--sh-chip-2) px-1 font-sans text-(--sh-ink-2) text-[10.5px] leading-4">esc</kbd>
         </button>
       ) : (
         <div className={cn("flex h-8 items-center gap-3 rounded-full px-3 text-[12.5px]", pill.replace(/hover:\S+/, ""))}>
           <span className="flex items-center gap-1.5 text-(--sh-ink-2)">
-            <span className="shore-spin size-2.5 rounded-full border-(--sh-busy) border-[1.5px] border-t-transparent" aria-hidden />
+            <span className="size-1.5 rounded-full bg-(--sh-busy)" aria-hidden />
             <b className="font-semibold text-(--sh-ink)">{out}</b> out on the water
           </span>
           {waiting.length > 0 && (
-            <button type="button" onClick={() => onOpen(waiting[0])} className="-mr-1.5 flex h-6 items-center gap-1.5 rounded-full bg-(--sh-lamp-soft) px-2 font-medium text-(--sh-lamp-ink) hover:brightness-95">
+            <button type="button" onClick={() => onOpen(waiting[0])} className="-mr-1.5 flex h-6 items-center gap-1.5 rounded-full bg-(--sh-lamp-pill) px-2 font-medium text-(--sh-lamp-ink) hover:brightness-95">
               <span className="shore-lamp size-2 rounded-full bg-(--sh-lamp)" aria-hidden />
               {waiting.length} need{waiting.length === 1 ? "s" : ""} you
             </button>
@@ -131,7 +131,7 @@ function Header({ boats, onOpen }: { boats: Boat[]; onOpen(b: Boat): void }) {
           <AgentIcon agent={view.agent} className="size-3.5" />
           <span className="truncate font-semibold text-(--sh-ink)">{view.title}</span>
           <span className="shrink-0 text-(--sh-ink-3)">{agentLabel(view.agent)}</span>
-          {boat?.state === "waiting" && <span className="shrink-0 rounded-full bg-(--sh-lamp-soft) px-2 py-px font-medium text-(--sh-lamp-ink) text-[11.5px]">Needs you</span>}
+          {boat?.state === "waiting" && <span className="shrink-0 rounded-full bg-(--sh-lamp-pill) px-2 py-px font-medium text-(--sh-lamp-ink) text-[11.5px]">Needs you</span>}
         </div>
       )}
 

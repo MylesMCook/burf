@@ -45,14 +45,14 @@ function Item({ it, onAnswer }: { it: TranscriptItem; onAnswer(id: string, yes: 
       return <Edit it={it} />;
     case "crew":
       return (
-        <div className="shore-in flex items-center gap-2.5 text-(--sh-ink-2) text-[14px]">
-          <span className="flex gap-0.5">
-            {it.names.map((n) => (
-              <BoatSide key={n} sail size={18} />
-            ))}
-          </span>
+        <div className="shore-in flex flex-wrap items-center gap-x-2 gap-y-1.5 text-(--sh-ink-2) text-[14px]">
           Sent out {it.names.length} helper{it.names.length === 1 ? "" : "s"}
-          <span className="text-(--sh-ink-3)">· {it.names.map((n) => n.replace(/^Explore:\s*/, "")).join(", ")}</span>
+          {it.names.map((n) => (
+            <span key={n} className="inline-flex items-center gap-1.5 rounded-full bg-(--sh-chip) py-0.5 pr-2.5 pl-1.5 text-(--sh-ink) text-[13px]">
+              <BoatSide sail size={16} />
+              {n.replace(/^Explore:\s*/, "")}
+            </span>
+          ))}
         </div>
       );
     case "ask":
@@ -85,7 +85,7 @@ function Ask({ it, onAnswer }: { it: Extract<TranscriptItem, { kind: "ask" }>; o
         <p className="px-4 pt-1.5 text-(--sh-ink) text-[15px]">{it.detail}</p>
       ) : (
         <div className="mx-4 mt-2.5 rounded-lg bg-(--sh-chip) px-3 py-2 font-mono text-(--sh-ink) text-[13px]">
-          <span className="select-none text-(--sh-ink-3)">$ </span>
+          <span className="select-none text-(--sh-ink-2)">$ </span>
           {it.detail}
         </div>
       )}
@@ -104,7 +104,7 @@ function Ask({ it, onAnswer }: { it: Extract<TranscriptItem, { kind: "ask" }>; o
         >
           {question ? "No" : "Deny"}
         </button>
-        <span className="ml-auto text-(--sh-ink-3) text-[12.5px]">{question ? "Or reply below" : "Runs in the worktree"}</span>
+        <span className="ml-auto text-(--sh-ink-3) text-[12.5px]">{question ? "Or reply below" : "Paused until you answer"}</span>
       </div>
     </div>
   );
@@ -122,8 +122,8 @@ function Edit({ it }: { it: Extract<TranscriptItem, { kind: "edit" }> }) {
         <span className="text-(--sh-ink-3)">{dir}</span>
         <span className="text-(--sh-ink)">{base}</span>
       </span>
-      <span className="font-mono text-(--sh-add) text-[12px] tabular-nums">+{it.added}</span>
-      <span className="-ml-1 font-mono text-(--sh-del) text-[12px] tabular-nums">−{it.removed}</span>
+      <span className="font-medium font-mono text-(--sh-add) text-[12px] tabular-nums">+{it.added}</span>
+      <span className="-ml-1 font-medium font-mono text-(--sh-del) text-[12px] tabular-nums">−{it.removed}</span>
     </div>
   );
 }
@@ -192,7 +192,7 @@ function Thinking({ since }: { since: number }) {
         <i />
       </span>
       <span className="shore-shimmer">Thinking…</span>
-      <span className="text-(--sh-ink-3) tabular-nums">{Math.max(0, Math.round((now - since) / 1000))}s</span>
+      {now - since >= 1000 && <span className="text-(--sh-ink-3) tabular-nums">{Math.round((now - since) / 1000)}s</span>}
     </div>
   );
 }

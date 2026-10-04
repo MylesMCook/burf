@@ -9,7 +9,7 @@
   --sh-title-2: #2c3d5f;
   --sh-ink: #13203b;
   --sh-ink-2: #3c4a66;
-  --sh-ink-3: #5c6884;
+  --sh-ink-3: #515c78;
   --sh-glass: rgb(255 255 255 / 0.8);
   --sh-glass-2: rgb(255 255 255 / 0.66);
   --sh-glass-hi: rgb(255 255 255 / 0.96);
@@ -26,18 +26,19 @@
   --sh-on-ink: #1c5fb8;
   --sh-focus: #2f7fe0;
   --sh-lamp: #e8a33d;
-  --sh-lamp-ink: #8f5600;
+  --sh-lamp-ink: #7a4800;
   --sh-lamp-soft: rgb(232 163 61 / 0.14);
+  --sh-lamp-pill: #fcefd9;
   --sh-done: #23a35a;
   --sh-done-ink: #17703f;
   --sh-busy: #3b82f6;
-  --sh-add: #17803f;
+  --sh-add: #146c35;
   --sh-del: #c23a3f;
   --sh-hull: #ffffff;
   --sh-hull-line: #22304f;
   --sh-sail: #ffffff;
   --sh-mist: #f2f5f9;
-  --sh-mist-a: 0.8;
+  --sh-mist-a: 0.74;
   color: var(--sh-ink);
   color-scheme: light;
 }
@@ -67,6 +68,7 @@
   --sh-lamp: #f0b14d;
   --sh-lamp-ink: #f5c46f;
   --sh-lamp-soft: rgb(240 177 77 / 0.14);
+  --sh-lamp-pill: rgb(240 177 77 / 0.2);
   --sh-done: #4ade80;
   --sh-done-ink: #7de3a4;
   --sh-busy: #7daaff;
@@ -76,7 +78,29 @@
   --sh-hull-line: #0b1430;
   --sh-sail: #dfe6f8;
   --sh-mist: #0b1330;
-  --sh-mist-a: 0.82;
+  --sh-mist-a: 0.86;
+  color-scheme: dark;
+}
+
+/* Menus open in a portal outside .shore, so they take Shore's colours by
+   name. */
+.shore-menu {
+  --popover: rgb(255 255 255 / 0.94);
+  --foreground: #13203b;
+  --accent: rgb(19 32 59 / 0.07);
+  --accent-foreground: #13203b;
+  --border: rgb(19 32 59 / 0.1);
+  backdrop-filter: blur(20px);
+  color-scheme: light;
+  border-radius: 14px;
+  box-shadow: 0 1px 1px rgb(19 32 59 / 0.05), 0 18px 40px -16px rgb(22 58 120 / 0.45);
+}
+:root:has(.shore[data-light="night"]) .shore-menu {
+  --popover: rgb(28 38 70 / 0.94);
+  --foreground: #edf1fa;
+  --accent: rgb(255 255 255 / 0.09);
+  --accent-foreground: #edf1fa;
+  --border: rgb(255 255 255 / 0.1);
   color-scheme: dark;
 }
 
@@ -106,16 +130,17 @@
 /* A row that folds away to nothing. */
 .shore-fold { display: grid; grid-template-rows: 1fr; opacity: 1; transition: grid-template-rows 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 260ms ease; }
 .shore-fold > * { min-height: 0; overflow: hidden; }
-.shore-fold[data-closed] { grid-template-rows: 0fr; opacity: 0; }
+.shore-fold[data-closed] { grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows 420ms cubic-bezier(0.22, 1, 0.36, 1), opacity 140ms ease; }
 .shore-fold[data-closed] > * { visibility: hidden; transition: visibility 0s 420ms; }
 
-/* Boats out on the water ride the swell for a while, then rest. */
+/* Boats out on the water ride the swell for a while, then rest; lamps
+   pulse for a while, then stay lit. Nothing on the harbour moves for ever. */
 .shore-ride { animation: shore-ride var(--ride, 7s) ease-in-out 6 alternate; }
 @keyframes shore-ride {
   from { transform: translateY(0) rotate(-1.2deg); }
   to { transform: translateY(-2px) rotate(1.2deg); }
 }
-.shore-lamp { animation: shore-lamp 2.4s ease-in-out infinite; }
+.shore-lamp { animation: shore-lamp 2.4s ease-in-out 10; }
 @keyframes shore-lamp { 50% { opacity: 0.35; } }
 
 .shore-in { animation: shore-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both; }

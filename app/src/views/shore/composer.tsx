@@ -98,7 +98,7 @@ export function Composer({ docked, onSend, title }: { docked?: boolean; onSend(s
               Try 3 ways
             </button>
             <div className="ml-auto flex items-center gap-0.5">
-              <Pick icon={<AgentIcon agent={agent} className="size-3.5" />} label={agentLabel(agent)} value={agent} options={AGENTS} show={agentLabel} onPick={setAgent} />
+              <Pick icon={<AgentIcon agent={agent} className="size-3.5" />} label={agentLabel(agent)} value={agent} options={AGENTS} show={agentLabel} mark={(a) => <AgentIcon agent={a} className="size-3.5" />} onPick={setAgent} hint="Agent" />
               <Pick icon={<GaugeIcon />} label={effort} value={effort} options={EFFORTS} onPick={setEffort} hint="Effort" />
             </div>
           </div>
@@ -143,12 +143,13 @@ export function Composer({ docked, onSend, title }: { docked?: boolean; onSend(s
 function Fold({ open, children }: { open: boolean; children: React.ReactNode }) {
   return (
     <div className="shore-fold" data-closed={open ? undefined : ""} inert={!open || undefined}>
-      <div>{children}</div>
+      {/* Room inside the clip for focus rings. */}
+      <div className="-m-1 p-1">{children}</div>
     </div>
   );
 }
 
-function Pick({ icon, label, value, options, onPick, show, hint }: { icon?: React.ReactNode; label: string; value: string; options: string[]; onPick(v: string): void; show?(v: string): string; hint?: string }) {
+function Pick({ icon, label, value, options, onPick, show, mark, hint }: { icon?: React.ReactNode; label: string; value: string; options: string[]; onPick(v: string): void; show?(v: string): string; mark?(v: string): React.ReactNode; hint?: string }) {
   return (
     <Menu>
       <MenuTrigger
@@ -164,9 +165,10 @@ function Pick({ icon, label, value, options, onPick, show, hint }: { icon?: Reac
         {label}
         <ChevronDownIcon className="-ml-0.5 opacity-60" />
       </MenuTrigger>
-      <MenuPopup align="start">
+      <MenuPopup align="start" className="shore-menu">
         {options.map((o) => (
           <MenuItem key={o} onClick={() => onPick(o)}>
+            {mark?.(o)}
             <span className="flex-1">{show ? show(o) : o}</span>
             {o === value && <CheckIcon className="size-3.5 opacity-70" />}
           </MenuItem>
