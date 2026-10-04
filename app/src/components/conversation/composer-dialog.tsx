@@ -2,7 +2,7 @@ import { AlertTriangleIcon, CheckIcon, CircleDashedIcon, CircleIcon, CircleXIcon
 import { useEffect, useState } from "react";
 
 import { AgentIcon } from "@/components/agent-glyph";
-import { TaskComposer } from "@/components/conversation/task-composer";
+import { type ComposerKind, TaskComposer } from "@/components/conversation/task-composer";
 import { useTargetLabel } from "@/components/prompts/shared";
 import { StepHeader } from "@/components/step-header";
 import { Tip } from "@/components/tip";
@@ -42,6 +42,7 @@ export function ComposerDialog() {
 
 const titles = {
   start: { title: "New task", description: "One agent is a task; pick several to try it several ways. No agent makes the worktree alone." },
+  worktree: { title: "New worktree", description: "Just the worktree, from a name, a branch, a pull request or an issue. Pick an agent to start one in it too." },
   attempts: { title: "Try N ways", description: "Each agent tries the task in its own worktree; a check verifies them, a judge ranks them, and you pick one." },
   send: { title: "Prompt running agents", description: "One prompt, filled in for each agent, typed in one after another." },
   loop: { title: "Loop until a check passes", description: "Prompt, wait for the turn to end, run the check. While it fails, the failure goes back. Stops if the agent asks you something." },
@@ -51,8 +52,9 @@ const titles = {
 
 function Compose({ draft }: { draft: ComposerDraft }) {
   const [mode, setMode] = useState(draft.mode ?? "start");
+  const [kind, setKind] = useState<ComposerKind>(draft.mode === "send" ? (draft.loop ? "loop" : "send") : draft.noAgent ? "worktree" : draft.attempts ? "attempts" : "start");
   const [more, setMore] = useState(false);
-  const which = draft.from?.kind ?? (mode === "send" ? (draft.loop ? "loop" : "send") : draft.attempts ? "attempts" : "start");
+  const which = draft.from?.kind ?? kind;
   const t = titles[which];
   return (
     <>
@@ -64,6 +66,7 @@ function Compose({ draft }: { draft: ComposerDraft }) {
           autoFocus
           keepOpen={more}
           onMode={setMode}
+          onKind={setKind}
           onDone={(how) => {
             if (how.results) openComposer({ results: true });
             else closeComposer();

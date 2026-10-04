@@ -1,4 +1,4 @@
-import { EllipsisIcon, GlobeIcon, MessagesSquareIcon, ScrollTextIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, SquareTerminalIcon, XIcon } from "lucide-react";
+import { EllipsisIcon, GlobeIcon, MessagesSquareIcon, PencilIcon, ScrollTextIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, SquareTerminalIcon, XIcon } from "lucide-react";
 import { useEffect } from "react";
 
 import { Tip } from "@/components/tip";
@@ -18,6 +18,7 @@ import { agentLabel, agentOf, sessionAgent, sessionName, sessionState } from "@/
 import type { Leaf } from "@/lib/layout";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
+import { startRenaming } from "@/lib/session-title";
 import { cn } from "@/lib/utils";
 import { focusPane, setPaneContent, useWorkspaces } from "@/lib/workspaces";
 
@@ -240,6 +241,12 @@ export function PaneActions({ wsKey, tab, pane, onClose, closable, focused = tru
             </MenuItem>
           </MenuGroup>
           <MenuSeparator />
+          {c.kind === "terminal" && session && (
+            <MenuItem onClick={() => startRenaming(c.box, c.session)}>
+              <PencilIcon />
+              Rename…
+            </MenuItem>
+          )}
           <MenuItem onClick={close}>
             <XIcon />
             {closable ? "Close pane" : "Close tab"}

@@ -10,7 +10,7 @@ import { RunMenu } from "@/components/workspace/run-menu";
 import { closeTab } from "@/lib/actions";
 import { agentOf, type SessionState, sessionAgent, sessionName, sessionState } from "@/lib/derive";
 import { type Leaf, leaves } from "@/lib/layout";
-import { renameSession } from "@/lib/session-title";
+import { renameSession, useRenaming } from "@/lib/session-title";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { activateTab, moveTab, useWorkspaces, type WsTab } from "@/lib/workspaces";
@@ -159,7 +159,10 @@ function TabButton({ tab, active, onActivate, onClose, onDragStart, onDrop }: Ta
   const title = lead.s ? sessionName(lead.s, { sessions: c.kind === "terminal" ? boxes[c.box]?.sessions : undefined }) : paneLabel(c, lead.agent);
   const secondary = lead.s ? sessionAgent(lead.s) : "";
   const session = c.kind === "terminal" && lead.s ? { box: c.box, name: lead.s.name } : undefined;
-  const [editing, setEditing] = useState(false);
+  const [editingHere, setEditing] = useState(false);
+  // Or asked for from the pane's menu.
+  const asked = useRenaming((s) => !!session && s.key === `${session.box}/${session.name}`);
+  const editing = editingHere || asked;
 
   const tab$ = (
     <div
@@ -195,6 +198,7 @@ function TabButton({ tab, active, onActivate, onClose, onDragStart, onDrop }: Ta
           placeholder={paneLabel(c, lead.agent)}
           onDone={(next) => {
             setEditing(false);
+            if (asked) useRenaming.setState({ key: undefined });
             if (next !== undefined && next !== (lead.s?.title ?? "")) void renameSession(session.box, session.name, next);
           }}
         />
@@ -256,6 +260,18 @@ function TabButton({ tab, active, onActivate, onClose, onDragStart, onDrop }: Ta
 function TitleInput({ initial, placeholder, onDone }: { initial: string; placeholder: string; onDone(next?: string): void }) {
   const [v, setV] = useState(initial);
   const done = useRef(false);
+  const input = useRef<HTMLInputElement>(null);
+  // The menu that asked for it gives focus back to its button as it
+  // closes: take it after that, and only count a blur once it has been ours.
+  const ready = useRef(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => {
+      input.current?.focus();
+      input.current?.select();
+      ready.current = true;
+    }, 60);
+    return () => window.clearTimeout(t);
+  }, []);
   const finish = (next?: string) => {
     if (done.current) return;
     done.current = true;
@@ -263,13 +279,11 @@ function TitleInput({ initial, placeholder, onDone }: { initial: string; placeho
   };
   return (
     <input
-      // biome-ignore lint/a11y/noAutofocus: the person asked to rename it
-      autoFocus
+      ref={input}
       value={v}
       maxLength={80}
       aria-label="Session title"
       placeholder={placeholder}
-      onFocus={(e) => e.currentTarget.select()}
       onChange={(e) => setV(e.target.value)}
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => {
@@ -277,8 +291,8 @@ function TitleInput({ initial, placeholder, onDone }: { initial: string; placeho
         if (e.key === "Enter") finish(v.trim());
         if (e.key === "Escape") finish();
       }}
-      onBlur={() => finish(v.trim())}
-      className="h-6 w-40 min-w-0 rounded border border-ring bg-background px-1.5 text-foreground text-xs outline-none ring-2 ring-ring/24 placeholder:text-muted-foreground/72"
+      onBlur={() => ready.current && finish(v.trim())}
+      className="h-6 w-48 min-w-0 rounded border border-ring bg-background px-1.5 text-foreground text-xs outline-none ring-2 ring-ring/24 placeholder:text-muted-foreground/72"
     />
   );
 }

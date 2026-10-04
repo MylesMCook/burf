@@ -53,11 +53,15 @@ export interface TaskComposerProps {
   // In the dialog: its options start open, and it says when it is done.
   dialog?: boolean;
   onMode?(mode: "start" | "send"): void;
+  // What it would do now, for the dialog's title.
+  onKind?(kind: ComposerKind): void;
   onDone?(how: { mode: "start" | "send"; results?: boolean }): void;
   // The dialog's "Create more": stay open after starting.
   keepOpen?: boolean;
   className?: string;
 }
+
+export type ComposerKind = "start" | "attempts" | "worktree" | "send" | "loop";
 
 const EMPTY: ComposerDraft = {};
 const LAST_PROJECT = "berth.newWorktree.project.v2";
@@ -92,7 +96,7 @@ interface BodyProps extends TaskComposerProps {
 
 // ---- Starting work ------------------------------------------------------
 
-function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, placeholder, onDone, keepOpen, className }: BodyProps) {
+function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, placeholder, onDone, onKind, keepOpen, className }: BodyProps) {
   const status = useStore((s) => s.status);
   const templates = useStore((s) => s.templates);
   const { projects: all } = useProjects();
@@ -173,6 +177,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
   const sel: Chosen = Object.keys(live).length ? live : presets[0] ? { [presets[0].id]: { models: [""], effort: "" } } : {};
   const picks = noAgent ? [] : expand(sel, from ? 1 : copies).slice(0, from ? 1 : undefined);
   const attempts = picks.length > 1;
+  useEffect(() => onKind?.(noAgent ? "worktree" : attempts ? "attempts" : "start"), [onKind, noAgent, attempts]);
 
   // A hand-off or a review starts from what the agent should read.
   const touched = useRef(!!draft.text);
@@ -180,7 +185,8 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
     if (!from || touched.current) return;
     const path = fromSession?.dir ?? "";
     const worktree = (fromAt ?? "").split("/")[1] ?? fromAt ?? from.session;
-    const who = fromSession ? sessionName(fromSession) : from.session;
+    // "Review the changes Claude Code made": the agent, not its task.
+    const who = fromSession && agentOf(fromSession) ? agentLabel(agentOf(fromSession)!) : from.session;
     setText(from.kind === "review" ? reviewPrompt(who) : handoffPrompt({ worktree, path }, where === "here"));
     // Until edited, the prompt follows where the next agent works.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -537,7 +543,7 @@ function Resolved({ resolution, pending, error }: { resolution?: { name?: string
 
 const free = (e: SessionEntry) => e.state === "ready" || e.state === "finished";
 
-function SendBody({ draft, text, setText, tabs, dialog, autoFocus, onDone, className }: BodyProps) {
+function SendBody({ draft, text, setText, tabs, dialog, autoFocus, onDone, onKind, className }: BodyProps) {
   const prompts = usePrompts((s) => s.prompts);
   const boxes = useStore((s) => s.boxes);
   const status = useStore((s) => s.status);
@@ -580,7 +586,8 @@ function SendBody({ draft, text, setText, tabs, dialog, autoFocus, onDone, class
   const [optionsOpen, setOptionsOpen] = useState(!!dialog);
   useEffect(() => {
     if (v.loop) setOptionsOpen(true);
-  }, [v.loop]);
+    onKind?.(v.loop ? "loop" : "send");
+  }, [v.loop, onKind]);
 
   const textFor = (e: SessionEntry) => overrides[entryKey(e)] ?? fillPrompt(text, { ...builtinValues(e.box, e.session, boxes[e.box]?.locations), ...asked });
   const missingFor = (e: SessionEntry) => {
@@ -812,6 +819,8 @@ function OptionsToggle({ open, onOpen }: { open: boolean; onOpen(open: boolean):
 // ModeTabs switches between new work and a prompt for running agents.
 function ModeTabs({ mode, onMode }: { mode: "start" | "send"; onMode(m: "start" | "send"): void }) {
   const running = useStore((s) => Object.values(s.boxes).reduce((n, b) => n + (b.sessions ?? NONE).filter((x) => !x.exited && agentOf(x)).length, 0));
+  // With no agent running there is nothing to prompt yet: no tabs.
+  if (!running && mode === "start") return null;
   const tab = (m: "start" | "send", label: React.ReactNode) => (
     <button
       type="button"

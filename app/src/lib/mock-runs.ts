@@ -213,6 +213,31 @@ export function runsCall(box: string, method: string, path: string, body: unknow
     const r: Run = { id: `r_mdemo${Math.random().toString(36).slice(2, 7)}`, template: req.template ?? "flow", title: req.title ?? `${req.template} run`, status: "running", created: new Date().toISOString(), updated: new Date().toISOString(), params: req.params, steps: [] };
     all.unshift(r);
     emit({ type: "run.created", box, data: { run: r.id, template: r.template, status: "running" } });
+    // A broadcast plays out: each prompt typed in, then, if asked, each
+    // turn ending, so the composer's results show it going.
+    if (r.template === "broadcast") {
+      const sessions = (req.params?.sessions as { session: string }[] | undefined) ?? [];
+      const wait = !!req.params?.wait;
+      const step = (id: string, kind: string, status: string, output?: string): RunStep => ({ id, kind, path: id, status, output, exit_code: 0 });
+      const steps = (sent: boolean, done: boolean): RunStep[] => [
+        {
+          ...step("0", "map", done ? "succeeded" : "running"),
+          children: sessions.map((_, k) => ({
+            ...step(`0.i${k}`, "item", done ? "succeeded" : "running"),
+            children: [step(`0.i${k}.0`, "prompt", sent ? "succeeded" : "running"), ...(wait ? [step(`0.i${k}.1`, "wait", done ? "succeeded" : "running", done ? "finished" : undefined)] : [])],
+          })),
+        },
+      ];
+      r.steps = steps(false, false);
+      setTimeout(() => Object.assign(r, { steps: steps(true, false), updated: new Date().toISOString() }), 900);
+      setTimeout(
+        () => {
+          Object.assign(r, { steps: steps(true, true), status: "succeeded", updated: new Date().toISOString(), finished: new Date().toISOString() });
+          emit({ type: "run.finished", box, data: { run: r.id, status: r.status } });
+        },
+        wait ? 4200 : 1400,
+      );
+    }
     return delay(summary(r));
   }
   if (method === "GET" && path.startsWith("review?run=")) {

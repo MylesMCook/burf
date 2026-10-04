@@ -94,7 +94,6 @@ export function AgentCard({ entry, selecting, selected, onSelect }: { entry: Ses
           <AgentIcon agent={agentOf(session)} />
           <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
             <span className="min-w-0 truncate font-medium text-[13px]">{title}</span>
-            {work && <span className="shrink-0 text-[11px] text-muted-foreground">{agent}</span>}
             {/* Several agents in one worktree: which one this is. */}
             {!work && crowded && (
               <Tip label={`Session ${session.name}`}>
@@ -107,7 +106,7 @@ export function AgentCard({ entry, selecting, selected, onSelect }: { entry: Ses
           </Tip>
         </div>
         <div className="mt-0.5 truncate pl-5.5 text-[11px] text-muted-foreground">
-          {work && `${place} · `}
+          {work && `${agent} · ${place} · `}
           {box}
           {where && !(work && where.worktree.main) && ` · ${where.location.name}`}
           {crowded && ` · started ${startedAt(session.created)}`}
