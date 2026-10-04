@@ -1,0 +1,28 @@
+{
+  "name": "review",
+  "title": "Review of {{params.session}}'s work",
+  "description": "A second agent reviews a worktree's changes with its own session (headless by default, inside tmux), and its verdict can go back to the author.",
+  "tokens": "The reviewer gets about 260 characters plus your criteria and reads the diff itself. Its reply is capped at 15 lines (about 2 KB), and only that goes back to the author, when send_back is set.",
+  "params": {
+    "session": {"required": true, "description": "the session whose worktree is reviewed"},
+    "agent": {"default": "claude"},
+    "headless": {"default": true},
+    "criteria": {"default": ""},
+    "send_back": {"default": false, "description": "send the review to the author and wait for its turn"},
+    "timeout": {"default": "20m"}
+  },
+  "steps": [
+    {"id": "mode", "kind": "if", "cond": "params.headless == true", "steps": [
+      {"id": "review", "kind": "headless", "agent": ${agent}, "session": ${session}, "timeout": ${timeout},
+       "text": "Review the uncommitted changes and the commits ahead of the base branch in this worktree. Do not edit anything. Reply in at most 15 lines: a verdict (ship / fix first), then issues as file:line - problem. {{params.criteria}}"}
+    ], "else": [
+      {"id": "reviewer", "kind": "start_agent", "agent": ${agent}, "session": ${session},
+       "text": "Review the uncommitted changes and the commits ahead of the base branch here. Do not edit anything. Reply in at most 15 lines: a verdict, then issues as file:line - problem. {{params.criteria}}"},
+      {"id": "reviewed", "kind": "wait", "timeout": ${timeout}}
+    ]},
+    {"id": "send", "kind": "if", "cond": "params.send_back == true && steps.review.output != ''", "steps": [
+      {"id": "tell", "kind": "prompt", "session": ${session}, "deliver": "idle", "text": "A reviewer said:\n{{steps.review.output}}\nAddress what you agree with."},
+      {"id": "addressed", "kind": "wait", "session": ${session}, "timeout": ${timeout}}
+    ]}
+  ]
+}

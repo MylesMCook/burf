@@ -1,0 +1,27 @@
+{
+  "name": "loop",
+  "title": "Loop until {{params.check}} passes",
+  "description": "Prompt an agent, then run a check after each of its turns and send it the failing output until the check passes or the rounds run out.",
+  "tokens": "The prompt you give, once. Each failed round sends about 90 characters plus the check's failing lines and tail, at most 3 KB. A resume sends nothing again.",
+  "params": {
+    "session": {"required": true, "description": "the agent session to drive"},
+    "check": {"required": true, "description": "the command that must pass (exit 0) in the session's worktree"},
+    "prompt": {"default": "", "description": "the first prompt; empty runs the check first"},
+    "max": {"default": 5, "description": "rounds of check and fix"},
+    "timeout": {"default": "30m", "description": "how long one agent turn may take"},
+    "check_timeout": {"default": "20m"}
+  },
+  "steps": [
+    {"id": "ask", "kind": "if", "cond": "params.prompt != ''", "steps": [
+      {"id": "first", "kind": "prompt", "session": ${session}, "deliver": "idle", "text": "{{params.prompt}}"},
+      {"id": "first_turn", "kind": "wait", "session": ${session}, "timeout": ${timeout}}
+    ]},
+    {"id": "rounds", "kind": "loop", "when": "always", "max": ${max}, "until": "steps.check.exit_code == 0", "steps": [
+      {"id": "check", "kind": "check", "command": ${check}, "timeout": ${check_timeout}},
+      {"id": "fix", "kind": "if", "when": "always", "cond": "steps.check.exit_code != 0 && loop.round < loop.max", "steps": [
+        {"id": "feedback", "kind": "prompt", "session": ${session}, "deliver": "idle", "text": "`{{params.check}}` still fails (round {{loop.round}}/{{loop.max}}):\n{{steps.check.feedback}}\nFix it. No summary needed."},
+        {"id": "turn", "kind": "wait", "session": ${session}, "timeout": ${timeout}}
+      ]}
+    ]}
+  ]
+}

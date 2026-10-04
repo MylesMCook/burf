@@ -1,0 +1,47 @@
+{
+  "name": "attempts",
+  "title": "{{params.name}}: {{params.count}} attempts",
+  "description": "Try one task several ways at once: each attempt gets its own worktree and agent, is verified (with fix rounds), then a judge ranks them, you pick at a gate (or the judge's verified winner is taken), a PR opens and the losers are archived.",
+  "tokens": "Each attempt gets your prompt once (plus its suffix). Failed verify rounds send the failing tail, at most 3 KB. The judge gets about 300 characters of instructions, the first 300 characters of the task, and per attempt one line of diffstat and check status plus its last commit subjects (about 450 characters each): about 2 KB for 3 attempts. Diffs only with judge.diff, capped at 4 KB each.",
+  "params": {
+    "location": {"required": true},
+    "name": {"required": true, "description": "the worktrees are <name>-a1, <name>-a2, ..."},
+    "prompt": {"required": true},
+    "attempts": {"required": true, "description": "a list of {agent, prompt_suffix} (or agent names)"},
+    "base": {"default": ""},
+    "concurrency": {"default": 0},
+    "verify": {"default": {"check": "true", "max_rounds": 2}},
+    "judge": {"default": {"by": "agent", "agent": "claude", "criteria": "correctness, tests, the smallest diff that does it"}},
+    "pick": {"default": "human", "description": "human (a gate) or auto (the judge's winner, if its check passed)"},
+    "then": {"default": {}},
+    "cleanup": {"default": "archive-losers"},
+    "budget": {"default": null},
+    "timeout": {"default": "60m"},
+    "count": {"default": ""}
+  },
+  "steps": [
+    {"id": "attempts", "kind": "map", "items": ${attempts}, "concurrency": ${concurrency}, "mode": "all", "steps": [
+      {"id": "start", "kind": "start_agent", "agent": "{{item.agent}}", "location": ${location}, "base": ${base}, "new_worktree": true,
+       "name": "{{params.name}}-a{{item.n}}", "text": "{{params.prompt}} {{item.prompt_suffix}}"},
+      {"id": "work", "kind": "wait", "timeout": ${timeout}},
+      {"id": "verify", "kind": "loop", "when": "always", "max": ${verify.max_rounds}, "until": "steps.check.exit_code == 0", "steps": [
+        {"id": "check", "kind": "check", "command": ${verify.check}},
+        {"id": "fix", "kind": "if", "when": "always", "cond": "steps.check.exit_code != 0 && loop.round < loop.max", "steps": [
+          {"id": "feedback", "kind": "prompt", "deliver": "idle", "text": "`{{params.verify.check}}` fails:\n{{steps.check.feedback}}\nFix it and commit."},
+          {"id": "rework", "kind": "wait", "timeout": ${timeout}}
+        ]}
+      ]},
+      {"id": "collect", "kind": "collect", "mode": "attempt", "when": "always"}
+    ]},
+    {"id": "judge", "kind": "judge", "when": "always", "by": ${judge.by}, "agent": ${judge.agent}, "text": "{{params.judge.criteria}}", "diff": ${judge.diff}, "pick": ${auto_pick}},
+    {"id": "choose", "kind": "if", "when": "always", "cond": "params.pick == 'human'", "steps": [
+      {"id": "pick", "kind": "gate", "pick": true, "title": "Pick the best attempt at {{params.name}}", "text": "{{steps.judge.output}}", "timeout": "72h", "on_timeout": "reject"}
+    ]},
+    {"id": "pr", "kind": "if", "cond": "pick.path != '' && params.then.pr != ''", "steps": [
+      {"id": "open", "kind": "pr", "draft": ${then.pr.draft}, "title": "{{params.name}}", "text": "Picked from {{params.count}} attempts by berth run {{run.id}}."}
+    ]},
+    {"id": "tidy", "kind": "if", "cond": "pick.path != '' && params.cleanup == 'archive-losers'", "steps": [
+      {"id": "archive", "kind": "cleanup", "mode": "archive-losers"}
+    ]}
+  ]
+}

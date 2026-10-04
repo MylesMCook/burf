@@ -1,0 +1,22 @@
+{
+  "name": "handoff",
+  "title": "Hand off {{params.session}} to {{params.name}}",
+  "description": "The source agent writes a short handoff note; berth adds the diffstat, commits, the last check and the turn log (about 2 KB in all) and starts a new agent in a new worktree pointed at it. native forks or resumes the same vendor's own conversation instead.",
+  "tokens": "The source agent gets one 170-character request. The new agent's first prompt is about 90 characters pointing at the packet file, which is capped at 2 KB plus file paths.",
+  "params": {
+    "session": {"required": true, "description": "the session handing off"},
+    "name": {"required": true, "description": "the new worktree"},
+    "location": {"default": ""},
+    "agent": {"default": "claude"},
+    "prompt": {"default": "", "description": "what to do next, added to the first prompt"},
+    "native": {"default": false, "description": "fork or resume the source agent's own conversation (same vendor, same box)"},
+    "timeout": {"default": "15m"}
+  },
+  "steps": [
+    {"id": "note", "kind": "prompt", "session": ${session}, "deliver": "idle", "text": "Write .berth/handoff/{{run.id}}.md for the agent taking over, at most 30 lines: Done, Left, Decisions, Gotchas. Paths, not code. Then stop."},
+    {"id": "noted", "kind": "wait", "session": ${session}, "timeout": ${timeout}},
+    {"id": "packet", "kind": "handoff", "session": ${session}, "when": "always"},
+    {"id": "start", "kind": "start_agent", "agent": ${agent}, "new_worktree": true, "name": ${name}, "location": ${location}, "handoff": true, "native": ${native},
+     "text": "Continue the work handed off to you. Read .berth/handoff/{{run.id}}.md first. {{params.prompt}}"}
+  ]
+}

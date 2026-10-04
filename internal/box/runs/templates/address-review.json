@@ -1,0 +1,32 @@
+{
+  "name": "address-review",
+  "title": "Address review on {{event.branch}}",
+  "description": "When reviewers comment on a pull request: send the worktree's agent the new comments (merged while it works), wait, run a local check, then push.",
+  "tokens": "One prompt of about 90 characters plus the comments, labelled as others' words and capped at 4 KB in all; failed checks send their failing tail, at most 3 KB.",
+  "params": {
+    "session": {"default": ""},
+    "agent": {"default": "claude"},
+    "comments": {"default": "", "description": "comments to address, when not started by a trigger"},
+    "check": {"default": "true"},
+    "max": {"default": 2},
+    "timeout": {"default": "30m"},
+    "push": {"default": true}
+  },
+  "steps": [
+    {"id": "agent", "kind": "if", "cond": "session == ''", "steps": [
+      {"id": "start", "kind": "start_agent", "agent": ${agent}}
+    ]},
+    {"id": "rounds", "kind": "loop", "max": ${max}, "until": "steps.verify.exit_code == 0", "steps": [
+      {"id": "tell", "kind": "if", "cond": "loop.round == 1", "steps": [
+        {"id": "comments", "kind": "prompt", "deliver": "idle", "text": "New review comments on this pull request:\n{{event.items}}{{params.comments}}\nAddress them and commit. Don't push."}
+      ], "else": [
+        {"id": "again", "kind": "prompt", "deliver": "idle", "text": "`{{params.check}}` fails:\n{{steps.verify.feedback}}\nFix it and commit."}
+      ]},
+      {"id": "turn", "kind": "wait", "timeout": ${timeout}},
+      {"id": "verify", "kind": "check", "command": ${check}, "when": "always"}
+    ]},
+    {"id": "push", "kind": "if", "cond": "params.push == true", "steps": [
+      {"id": "pushed", "kind": "run", "command": "git push", "timeout": "2m"}
+    ]}
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "name": "broadcast",
+  "title": "Broadcast to {{params.count}} agents",
+  "description": "Send one prompt to several agent sessions on this box, each when it is idle, wait for every turn, and collect each one's state.",
+  "tokens": "Your prompt, once per session. Nothing else is sent.",
+  "params": {
+    "sessions": {"required": true, "description": "the session names"},
+    "text": {"required": true},
+    "concurrency": {"default": 8},
+    "timeout": {"default": "30m"},
+    "count": {"default": ""}
+  },
+  "steps": [
+    {"id": "all", "kind": "map", "items": ${sessions}, "concurrency": ${concurrency}, "mode": "all", "steps": [
+      {"id": "send", "kind": "prompt", "session": "{{item}}", "deliver": "idle", "text": "{{params.text}}"},
+      {"id": "turn", "kind": "wait", "session": "{{item}}", "timeout": ${timeout}},
+      {"id": "state", "kind": "collect", "session": "{{item}}", "when": "always"}
+    ]}
+  ]
+}

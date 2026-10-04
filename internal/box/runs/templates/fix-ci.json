@@ -1,0 +1,34 @@
+{
+  "name": "fix-ci",
+  "title": "Fix CI: {{params.check_name}}",
+  "description": "When a pull request's check fails: send the worktree's agent the failing tail of the CI log, wait, run a local check, repeat up to max rounds, then push.",
+  "tokens": "One prompt of about 110 characters plus the failing CI lines and tail, at most 3 KB; later rounds send only the local check's failing tail, at most 3 KB.",
+  "params": {
+    "session": {"default": ""},
+    "agent": {"default": "claude", "description": "started in the worktree when no agent runs there"},
+    "check_url": {"default": ""},
+    "check_name": {"default": "CI"},
+    "check": {"default": "true", "description": "a local check to pass before pushing"},
+    "max": {"default": 3},
+    "timeout": {"default": "30m"},
+    "push": {"default": true}
+  },
+  "steps": [
+    {"id": "log", "kind": "run", "timeout": "2m", "command": "u={{params.check_url}}; id=$(printf %s \"$u\" | sed -n 's#.*/actions/runs/\\([0-9][0-9]*\\).*#\\1#p'); if [ -n \"$id\" ]; then gh run view \"$id\" --log-failed 2>&1 | tail -c 40000; else echo \"No GitHub Actions run in $u\"; fi"},
+    {"id": "agent", "kind": "if", "cond": "session == ''", "steps": [
+      {"id": "start", "kind": "start_agent", "agent": ${agent}}
+    ]},
+    {"id": "rounds", "kind": "loop", "max": ${max}, "until": "steps.verify.exit_code == 0", "steps": [
+      {"id": "tell", "kind": "if", "cond": "loop.round == 1", "steps": [
+        {"id": "ci", "kind": "prompt", "deliver": "idle", "text": "CI check {{params.check_name}} failed on this branch. Failing log:\n{{steps.log.feedback}}\nFix it and commit. Don't push."}
+      ], "else": [
+        {"id": "again", "kind": "prompt", "deliver": "idle", "text": "`{{params.check}}` fails:\n{{steps.verify.feedback}}\nFix it and commit."}
+      ]},
+      {"id": "turn", "kind": "wait", "timeout": ${timeout}},
+      {"id": "verify", "kind": "check", "command": ${check}, "when": "always"}
+    ]},
+    {"id": "push", "kind": "if", "cond": "params.push == true", "steps": [
+      {"id": "pushed", "kind": "run", "command": "git push", "timeout": "2m"}
+    ]}
+  ]
+}

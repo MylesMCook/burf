@@ -1,0 +1,13 @@
+{
+  "name": "exec",
+  "title": "Run {{params.command}}",
+  "description": "Run one command to completion in a worktree, in the background: the run's result holds its exit code and output.",
+  "tokens": "Nothing is sent to an agent.",
+  "params": {
+    "command": {"required": true},
+    "timeout": {"default": "30m"}
+  },
+  "steps": [
+    {"id": "exec", "kind": "check", "command": ${command}, "timeout": ${timeout}}
+  ]
+}
