@@ -1,8 +1,9 @@
 # Hello ports
 
 An example Berth plugin: a screen listing every dev server on every box with
-a button to open it, a sidebar item and a command that open that screen, and
-a notification when a worktree is created.
+a button to open it, a sidebar item and a command that open that screen, a
+worktree section (under the composer where work starts in a worktree) with
+the ports open there, and a notification when a worktree is created.
 
 ```sh
 pnpm install && pnpm build

@@ -10,6 +10,7 @@ import { Scene, type SceneName } from "@/components/art/scenes";
 import { ConversationView, type EditActions, QueuedBubble } from "@/components/conversation/conversation-view";
 import { toastError } from "@/components/error-note";
 import { UpgradeBox } from "@/components/upgrade-box";
+import { SessionWorktreeSections } from "@/components/workspace/worktree-sections";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
@@ -553,6 +554,8 @@ function FirstPrompt({ box, session, agent, name, branch, onSend, onFail }: { bo
             </div>
           </header>
           <TaskComposer to={{ box, session, agent }} onSend={onSend} onFail={onFail} autoFocus />
+          {/* What runs in the worktree, and plugins' sections. */}
+          <SessionWorktreeSections box={box} session={session} className="mt-6" />
         </div>
       </div>
     </div>

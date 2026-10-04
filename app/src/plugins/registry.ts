@@ -1,4 +1,4 @@
-import type { Command, EventHandler, Screen, SidebarItem, StatusBarItem, WorktreePanel } from "@berth/plugin";
+import type { Command, EventHandler, Screen, SidebarItem, StatusBarItem, WorktreePanel, WorktreeSection } from "@berth/plugin";
 import { create } from "zustand";
 
 import type { BerthEvent, Theme } from "@/lib/api";
@@ -27,6 +27,7 @@ interface Registry {
   sidebarItems: Contribution<SidebarItem>[];
   screens: Contribution<Screen>[];
   worktreePanels: Contribution<WorktreePanel>[];
+  worktreeSections: Contribution<WorktreeSection>[];
   commands: Contribution<Command>[];
   statusBarItems: Contribution<StatusBarItem>[];
   themes: Contribution<Theme>[];
@@ -40,6 +41,7 @@ export const useRegistry = create<Registry>()(() => ({
   sidebarItems: [],
   screens: [],
   worktreePanels: [],
+  worktreeSections: [],
   commands: [],
   statusBarItems: [],
   themes: [],

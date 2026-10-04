@@ -93,6 +93,19 @@ export interface WorktreePanel {
   Component: ComponentType<WorktreePanelProps>;
 }
 
+// A section about one worktree, shown under the composer where work starts
+// in it: the worktree's launcher (no tabs open) and a new agent's "What
+// should Claude Code do?" screen, below the app's own list of what runs
+// there. The app gives it a small heading (title) and the width of the
+// composer; keep it compact, a few rows at most.
+export interface WorktreeSection {
+  id: string;
+  title?: string;
+  Component: ComponentType<WorktreeSectionProps>;
+}
+
+export type WorktreeSectionProps = WorktreePanelProps;
+
 // An entry in the command palette (⌘K).
 export interface Command {
   id: string;
@@ -274,6 +287,7 @@ export interface BerthPluginContext {
   addSidebarItem(item: SidebarItem): Dispose;
   addScreen(screen: Screen): Dispose;
   addWorktreePanel(panel: WorktreePanel): Dispose;
+  addWorktreeSection(section: WorktreeSection): Dispose;
   addCommand(command: Command): Dispose;
   addStatusBarItem(item: StatusBarItem): Dispose;
   addTheme(theme: Theme): Dispose;

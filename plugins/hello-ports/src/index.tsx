@@ -1,10 +1,11 @@
-import type { BerthPluginContext, ScreenProps, Service } from "@berth/plugin";
+import type { BerthPluginContext, ScreenProps, Service, WorktreeSectionProps } from "@berth/plugin";
 import { useBoxes } from "@berth/plugin";
 import { Badge, Button, Empty, EmptyDescription, EmptyHeader, EmptyTitle, Icon, Spinner } from "@berth/plugin/ui";
 import { useEffect, useState } from "react";
 
 // Hello ports: the smallest useful plugin, kept as an example of the SDK: a
-// screen listing dev servers across boxes, and an event handler.
+// screen listing dev servers across boxes, a worktree section with the
+// ports of the worktree in front, and an event handler.
 // The built-in Dev servers plugin (plugins/dev-servers) does this properly.
 
 interface Row extends Service {
@@ -78,9 +79,29 @@ function PortsScreen({ berth }: ScreenProps) {
   );
 }
 
+// PortsHere is the worktree section: under the composer where work starts
+// in a worktree, the ports listening in that worktree, one click from a
+// browser tab beside the agent.
+function PortsHere({ berth, box, path }: WorktreeSectionProps) {
+  const rows = useServices(berth)?.filter((r) => r.box === box && r.path === path);
+  if (!rows?.length) return <p className="px-2 text-muted-foreground text-xs">No ports open here yet.</p>;
+  return (
+    <div className="flex flex-wrap gap-1.5 px-2">
+      {rows.map((r) => (
+        <Button key={r.port} size="xs" variant="outline" onClick={() => berth.openBrowser(berth.api.serviceUrl(r.box, r.port))}>
+          <Icon name="Radio" />
+          {r.port}
+          {r.process && <span className="text-muted-foreground">{r.process}</span>}
+        </Button>
+      ))}
+    </div>
+  );
+}
+
 export default function activate(berth: BerthPluginContext) {
   berth.addScreen({ id: "ports", title: "Hello ports", description: "Everything listening in a worktree, on every box. From the hello-ports plugin.", Component: PortsScreen });
   berth.addSidebarItem({ id: "ports", title: "Hello ports", icon: "Radio", screen: "ports" });
+  berth.addWorktreeSection({ id: "ports", title: "Hello ports", Component: PortsHere });
   berth.addCommand({ id: "ports", title: "Show dev servers", group: "Hello ports", run: () => berth.openScreen("ports") });
   berth.on("worktree.created", (e) => berth.notify("New worktree", `${String(e.data?.name ?? "")} on ${e.box ?? "a box"}`));
 }

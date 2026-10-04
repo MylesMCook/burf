@@ -154,8 +154,15 @@ const stats: Record<string, Stats> = {
 const services: Record<string, Service[]> = {
   devl: [
     { location: "shop", worktree: "shop", path: "/home/me/work/shop", port: 3000, process: "node", main: true },
-    { location: "shop", worktree: "checkout-fix", path: "/home/me/work/shop-checkout-fix", port: 3001, process: "node" },
+    { location: "shop", worktree: "checkout-fix", path: "/home/me/work/shop-checkout-fix", port: 3001, process: "node /home/me/work/shop-checkout-fix/node_modules/.bin/next dev -p 3001" },
+    { location: "shop", worktree: "checkout-fix", path: "/home/me/work/shop-checkout-fix", port: 5555, process: "node /home/me/work/shop-checkout-fix/node_modules/.bin/prisma studio --port 5555 --browser none" },
+    { location: "shop", worktree: "checkout-fix", path: "/home/me/work/shop-checkout-fix", port: 6379, process: "redis-server *:6379" },
+    // An agent's headless browser: listening in the worktree, but nothing to open.
+    { location: "shop", worktree: "checkout-fix", path: "/home/me/work/shop-checkout-fix", port: 39815, process: "/home/me/.agent-browser/browsers/chrome-150.0.7290.0/chrome --remote-debugging-port=0 --no-first-run --no-default-browser-check --headless=new --user-data-dir=/tmp/ab-profile-91" },
+    { location: "shop", worktree: "checkout-fix", path: "/home/me/work/shop-checkout-fix", port: 41733, process: "/home/me/.npm/_npx/9f3c1a2b4d5e6f70/node_modules/agent-browser/bin/agent-browser-linux-x64 daemon" },
     { location: "shop", worktree: "qa-deck", path: "/home/me/work/shop-qa-deck", port: 4789, process: "vite" },
+    { location: "shop", worktree: "order-export", path: "/home/me/work/shop-order-export", port: 3002, process: "node /home/me/work/shop-order-export/node_modules/.bin/vite --port 3002" },
+    { location: "shop", worktree: "order-export", path: "/home/me/work/shop-order-export", port: 6006, process: "node /home/me/work/shop-order-export/node_modules/.bin/storybook dev -p 6006 --no-open" },
   ],
   gpu: [{ location: "evals", worktree: "judge-v2", path: "/home/me/evals-judge-v2", port: 8888, process: "jupyter" }],
 };

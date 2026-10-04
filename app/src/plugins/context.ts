@@ -74,6 +74,7 @@ export function makeContext(id: string, client: Client): BerthPluginContext {
       return contribute("screens", tag(screen));
     },
     addWorktreePanel: (panel) => contribute("worktreePanels", tag(panel)),
+    addWorktreeSection: (section) => contribute("worktreeSections", tag(section)),
     addCommand: (command) => contribute("commands", tag(command)),
     addStatusBarItem: (item) => contribute("statusBarItems", tag(item)),
     addTheme: (theme) => contribute("themes", tag(theme)),

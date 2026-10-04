@@ -1,4 +1,4 @@
-import { ArchiveIcon, ArrowUpRightIcon, CodeXmlIcon, GlobeIcon, SquareTerminalIcon } from "lucide-react";
+import { ArchiveIcon, CodeXmlIcon, GlobeIcon, SquareTerminalIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
@@ -10,11 +10,11 @@ import { usePrefs } from "@/lib/prefs";
 import { openEditor } from "@/components/editors/open";
 import { archiveWorktree } from "@/components/sidebar/actions";
 import { toastManager } from "@/components/ui/toast";
+import { WorktreeSections } from "@/components/workspace/worktree-sections";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { agentPresets, openBrowserAt, startSession, usePendingStops } from "@/lib/actions";
-import { portUrl } from "@/lib/browser-url";
 import { agentLabel, agentOf, type SessionState, sessionName, sessionState } from "@/lib/derive";
 import { ago } from "@/lib/format";
 import { NONE, useStore } from "@/lib/store";
@@ -50,10 +50,8 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
   useStore((s) => s.boxes[ref.box]?.info);
   const loc = useStore((s) => s.boxes[ref.box]?.locations?.find((l) => l.name === ref.location));
   const branch = loc?.worktrees?.find((w) => w.path === ref.path)?.branch;
-  const services = useStore((s) => s.boxes[ref.box]?.services ?? NONE);
   const sessions = useStore((s) => s.boxes[ref.box]?.sessions ?? NONE);
   const stats = useStore((s) => s.boxes[ref.box]?.stats);
-  const urlPort = useStore((s) => s.status?.proxy.url_port);
   const stopping = usePendingStops((s) => s.sessions);
   const [all, setAll] = useState(false);
   const list = useRef<HTMLDivElement>(null);
@@ -71,18 +69,6 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
     { key: "shell", icon: <SquareTerminalIcon />, label: "New shell", keys: "⌘T", run: () => void startSession("") },
     { key: "browser", icon: <GlobeIcon />, label: "New browser tab", keys: "⌘⇧B", run: () => openBrowserAt("") },
     { key: "editor", icon: <CodeXmlIcon />, label: "Open in editor", keys: "⌘⇧O", run: () => void openEditor({ box: ref.box, path: ref.path }) },
-    ...services
-      .filter((s) => s.path === ref.path)
-      .sort((a, b) => a.port - b.port)
-      .map((s) => ({
-        key: `svc:${s.port}`,
-        icon: <ArrowUpRightIcon />,
-        label: `Open ${s.port}${s.process ? ` · ${s.process}` : ""}`,
-        run: () => {
-          const u = portUrl(s.port, { ref, services, urlPort });
-          if (u) openBrowserAt(u);
-        },
-      })),
     // Done with it: archive keeps the branch; the sidebar's ⋯ has Remove.
     ...(loc && !ref.main
       ? [{ key: "archive", icon: <ArchiveIcon />, label: "Archive this worktree…", run: () => {
@@ -189,6 +175,9 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
               </button>
             ))}
           </div>
+
+          {/* What runs here, each with its URL, then plugins' sections. */}
+          <WorktreeSections worktree={ref} className="mt-6" />
 
           {closed.length > 0 && (
             <section className="mt-6">
