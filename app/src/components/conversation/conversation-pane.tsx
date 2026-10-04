@@ -1,7 +1,11 @@
 import { ArrowUpIcon, MessagesSquareIcon, RefreshCwIcon, SquareTerminalIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import { AgentIcon } from "@/components/agent-glyph";
+import { DitherBand } from "@/components/art/dither-band";
+import { HARBOUR, HARBOUR_MUTE, useHarbourLight } from "@/components/art/harbour-art";
 import { ConversationView } from "@/components/conversation/conversation-view";
+import { Frame, FrameFooter, FramePanel } from "@/components/ui/frame";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
@@ -117,6 +121,13 @@ export function ConversationPane({ box, session, visible, onShowTerminal }: { bo
     await boxApi.send(client, box, session, text, true, state === "waiting" ? { when: "now", force: true } : { when: "idle" });
   };
 
+  // Nothing said yet: the same harbour, header and framed composer as an
+  // empty worktree, so starting an agent looks the same either way.
+  if (!shown.length && (mock || feed !== "loading")) {
+    const wt = s ? worktreeOf(locations, s) : undefined;
+    return <FirstPrompt box={box} agent={agent} name={wt ? (wt.worktree.main ? wt.location.name : wt.worktree.name) : session} branch={wt?.worktree.branch} onSend={reply} />;
+  }
+
   return (
     // The column steps left of the floating loops panel when there is room.
     <div className="@container relative flex min-h-0 flex-1 flex-col bg-background">
@@ -125,11 +136,6 @@ export function ConversationPane({ box, session, visible, onShowTerminal }: { bo
           <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
             <Spinner className="mr-2 size-4" />
             Reading the conversation…
-          </div>
-        ) : !shown.length ? (
-          <div className="flex h-full flex-col items-center justify-center gap-1 text-center">
-            <p className="font-medium text-sm">Nothing here yet</p>
-            <p className="max-w-sm text-muted-foreground text-sm">Tell {agent ? agentLabel(agent) : "the agent"} what to do below; its conversation shows here as it works.</p>
           </div>
         ) : (
           <ConversationView items={shown} onAnswer={answer} />
@@ -206,4 +212,69 @@ function UpgradeBox({ box }: { box: string }) {
   );
   // While it runs, the upgrade's latest line is a hover away.
   return busy && line ? <Tip label={line}>{button}</Tip> : button;
+}
+
+// FirstPrompt is an agent that hasn't been asked anything yet: the harbour
+// band, the worktree, and one framed composer for its first task.
+function FirstPrompt({ box, agent, name, branch, onSend }: { box: string; agent?: string; name: string; branch?: string; onSend(text: string): Promise<void> }) {
+  const light = useHarbourLight();
+  const [text, setText] = useState("");
+  const [busy, setBusy] = useState(false);
+  const who = agent ? agentLabel(agent) : "the agent";
+  const go = async () => {
+    const t = text.trim();
+    if (!t || busy) return;
+    setBusy(true);
+    try {
+      await onSend(t);
+      setText("");
+    } catch (err) {
+      toastManager.add({ type: "error", title: "Couldn't send it", description: errorMessage(err) });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="absolute inset-0 overflow-y-auto bg-background">
+      <DitherBand src={HARBOUR[light]} position={0.45} fade={0.5} mute={HARBOUR_MUTE[light]} className="absolute inset-x-0 top-0 h-[clamp(160px,30vh,280px)]" />
+      <div className="relative flex min-h-full items-start justify-center px-6 pt-[clamp(120px,24vh,230px)] pb-10">
+        <div className="w-full max-w-[560px]">
+          <header className="mb-4 px-2 [text-shadow:0_0_6px_var(--background),0_0_14px_var(--background)]">
+            <h1 className="truncate font-semibold text-lg tracking-tight">{name}</h1>
+            <div className="mt-1 flex min-w-0 items-center gap-1.5 text-muted-foreground text-xs">
+              {branch && <span className="min-w-0 truncate rounded bg-accent px-1.5 py-px font-mono text-[11px]">{branch}</span>}
+              <span className="shrink-0 rounded bg-accent px-1.5 py-px font-mono text-[11px]">{box}</span>
+            </div>
+          </header>
+          <Frame className="w-full shadow-lg/5">
+            <FramePanel className="p-0 ring-ring/24 transition-shadow has-focus-visible:border-ring has-focus-visible:ring-[3px]">
+              <textarea
+                autoFocus
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                    e.preventDefault();
+                    void go();
+                  }
+                }}
+                aria-label={`What should ${who} do?`}
+                placeholder={`What should ${who} do?`}
+                className="field-sizing-content block max-h-60 min-h-[76px] w-full resize-none rounded-[inherit] bg-transparent px-3.5 py-3 text-[14px] outline-none placeholder:text-muted-foreground/72"
+              />
+            </FramePanel>
+            <FrameFooter className="flex items-center gap-1.5 px-1 pt-1 pb-0">
+              <span className="flex min-w-0 items-center gap-1.5 px-2.5 text-muted-foreground text-xs">
+                <AgentIcon agent={agent} className="size-3.5" />
+                {who} is ready in this worktree
+              </span>
+              <Button size="icon-sm" className="ml-auto" aria-label="Send" disabled={!text.trim()} loading={busy} onClick={() => void go()}>
+                <ArrowUpIcon />
+              </Button>
+            </FrameFooter>
+          </Frame>
+        </div>
+      </div>
+    </div>
+  );
 }
