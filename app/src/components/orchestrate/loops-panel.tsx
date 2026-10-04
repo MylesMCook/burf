@@ -1,4 +1,4 @@
-import { CheckIcon, ChevronRightIcon, CircleAlertIcon, HandIcon, RepeatIcon, CircleStopIcon, XIcon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon, ChevronRightIcon, ChevronUpIcon, CircleAlertIcon, HandIcon, RepeatIcon, CircleStopIcon, XIcon } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 
 import { CrewCard } from "@/components/conversation/crew-card";
@@ -12,6 +12,7 @@ import { keyOf, useConversations } from "@/lib/conversation-store";
 import { leaves } from "@/lib/layout";
 import { usePrefs } from "@/lib/prefs";
 import type { CrewMember } from "@/lib/transcript";
+import { load, save } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 import { focusSession, useWorkspaces } from "@/lib/workspaces";
 
@@ -62,6 +63,11 @@ export function LoopsPanel() {
     .map(loopOfRun);
   const loops = [...local, ...fromRuns];
   const crew = useFocusedCrew();
+  const [folded, setFoldedState] = useState(() => load("berth.loops.folded", false));
+  const setFolded = (f: boolean) => {
+    setFoldedState(f);
+    save("berth.loops.folded", f);
+  };
   const ref = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -85,15 +91,34 @@ export function LoopsPanel() {
       root.style.setProperty("--berth-loops-h", "0px");
       root.style.setProperty("--berth-loops-w", "0px");
     };
-  }, [loops.length, !!crew]);
+  }, [loops.length, !!crew, folded]);
 
   if (!loops.length && !crew) return null;
+  const live = loops.filter(isLive).length;
+  const bottom = `calc(var(--berth-status-h, ${STATUS_BAR}px) + ${GAP}px)`;
+  // Folded, the panel is one pill in the corner, so it never sits over a
+  // page's own controls; it opens again on a click, or when a loop needs you.
+  if (folded && !loops.some((l) => l.outcome === "needs-you")) {
+    return (
+      <div ref={ref} style={{ bottom, right: GAP }} className="fixed z-40" role="region" aria-label="Loops">
+        <Button size="sm" variant="outline" className="rounded-full bg-popover shadow-lg/5" onClick={() => setFolded(false)} aria-expanded={false}>
+          {live ? <Spinner className="size-3.5" /> : <RepeatIcon />}
+          {loops.length ? `${loops.length} loop${loops.length === 1 ? "" : "s"}${live ? ` · ${live} running` : ""}` : "Crew"}
+          <ChevronUpIcon />
+        </Button>
+      </div>
+    );
+  }
   return (
-    <div ref={ref} style={{ bottom: `calc(var(--berth-status-h, ${STATUS_BAR}px) + ${GAP}px)`, right: GAP }} className="fixed z-40 flex max-h-[50vh] w-88 flex-col gap-2 overflow-y-auto" role="region" aria-label="Loops">
+    <div ref={ref} style={{ bottom, right: GAP }} className="fixed z-40 flex max-h-[50vh] w-88 flex-col gap-2 overflow-y-auto" role="region" aria-label="Loops">
       {crew && <CrewCard key={crew.key} crew={crew.members} />}
       {loops.map((l) => (
         <LoopCard key={l.id} loop={l} />
       ))}
+      <Button size="xs" variant="ghost" className="self-end bg-popover/80 text-muted-foreground shadow-xs/5 backdrop-blur-sm" onClick={() => setFolded(true)} aria-expanded>
+        <ChevronDownIcon />
+        Fold
+      </Button>
     </div>
   );
 }
