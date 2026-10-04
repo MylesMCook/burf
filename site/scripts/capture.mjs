@@ -41,7 +41,11 @@ const port = Number(flag("port", "1456"));
 const quality = Number(flag("quality", "0.8"));
 const pngDir = flag("png");
 // Labs on (the harbour home, conversations); light by day in the light theme.
-const base = `http://localhost:${port}/?shots=1&labs=1&view=conversation`;
+// --url takes the shots from a demo already served (the built site/demo/,
+// say) instead of starting Vite; only the scenes that click their way in
+// work there (pane-terminal, pane-conversation, attempts, review).
+const served = flag("url");
+const base = `${served ?? `http://localhost:${port}/`}?shots=1&labs=1&view=conversation`;
 
 // A scene opens the demo, stages one screen and returns the area to keep,
 // in CSS pixels. Widths are the WebP widths written; the default is the
@@ -115,7 +119,85 @@ const scenes = [
       return s.full();
     },
   },
+  {
+    // One agent's pane in Terminal view: checkout-fix, asking a question.
+    name: "pane-terminal",
+    viewport: { width: 1440, height: 900 },
+    clipWidth: 800,
+    phone: { x: 4, y: 40, width: 440, height: 300 },
+    async stage(s) {
+      await openAgent(s, 0);
+      await s.page.getByRole("button", { name: "Terminal", exact: true }).first().click();
+      await s.wait(2000);
+      return { x: 240, y: 0, width: 800, height: 400 };
+    },
+  },
+  {
+    // The same agent's pane in Conversation view.
+    name: "pane-conversation",
+    viewport: { width: 1440, height: 900 },
+    // Phones get pane-conversation-narrow instead.
+    async stage(s) {
+      await openAgent(s, 0);
+      await s.page.getByRole("button", { name: "Conversation", exact: true }).first().click();
+      await s.wait(2000);
+      return { x: 240, y: 0, width: 800, height: 400 };
+    },
+  },
+  {
+    // The conversation at a phone's width, for the page's phone layout.
+    name: "pane-conversation-narrow",
+    viewport: { width: 1440, height: 900 },
+    async stage(s) {
+      await openAgent(s, 0);
+      await s.page.getByRole("button", { name: "Hide the sidebar" }).click();
+      await s.page.setViewportSize({ width: 560, height: 700 });
+      await s.wait(1200);
+      await s.page.getByRole("button", { name: "Conversation", exact: true }).first().click();
+      await s.wait(2000);
+      return { x: 80, y: 40, width: 480, height: 330 };
+    },
+  },
+  {
+    // Review's Compare for a run of attempts: three agents, one task, judged.
+    name: "attempts",
+    viewport: { width: 1440, height: 900 },
+    clipWidth: 860,
+    // The judge's pick.
+    phone: { x: 582, y: 0, width: 280, height: 384 },
+    async stage(s) {
+      await s.page.getByText("Review", { exact: true }).first().click();
+      await s.wait(1500);
+      await s.page.getByRole("button", { name: /refunds: 3 attempts/ }).click();
+      await s.wait(2000);
+      await s.page.mouse.move(1430, 880);
+      return { x: 264, y: 245, width: 860, height: 384 };
+    },
+  },
+  {
+    // Review: an agent's finished work, its last message and check.
+    name: "review",
+    viewport: { width: 1440, height: 900 },
+    clipWidth: 1200,
+    phone: { x: 336, y: 52, width: 466, height: 250 },
+    async stage(s) {
+      await s.page.getByText("Review", { exact: true }).first().click();
+      await s.wait(1500);
+      await s.page.getByText("search-perf", { exact: true }).last().click();
+      await s.wait(2000);
+      await s.page.mouse.move(1430, 880);
+      return { x: 240, y: 48, width: 1200, height: 364 };
+    },
+  },
 ];
+
+// openAgent opens the nth agent on the Agent Dashboard (0: checkout-fix).
+async function openAgent(s, n) {
+  if (await s.page.getByText("Agent Dashboard", { exact: true }).count()) await s.page.getByText("Agent Dashboard", { exact: true }).first().click();
+  await s.wait(1200);
+  await s.page.getByRole("button", { name: "Open", exact: true }).nth(n).click();
+  await s.wait(2500);
+}
 
 async function loadPlaywright() {
   const tries = [];
@@ -245,7 +327,7 @@ async function main() {
   const { chromium } = await loadPlaywright();
   mkdirSync(outDir, { recursive: true });
   if (pngDir) mkdirSync(pngDir, { recursive: true });
-  const vite = startVite();
+  const vite = served ? null : startVite();
   const cleanup = () => stopVite(vite);
   process.on("SIGINT", () => {
     cleanup();
@@ -256,7 +338,7 @@ async function main() {
   let failed = 0;
   let browser;
   try {
-    await waitForServer(vite);
+    if (vite) await waitForServer(vite);
     browser = await chromium.launch({ channel: process.env.CHROME_CHANNEL ?? "chrome", headless: true });
     const encoder = await browser.newPage();
     for (const scene of scenes) {
@@ -279,7 +361,7 @@ async function main() {
         };
         try {
           await page.goto(`${base}${theme === "light" ? "&light=day" : ""}${scene.query ?? ""}`);
-          await page.waitForFunction(() => "__berthStore" in window);
+          if (!served) await page.waitForFunction(() => "__berthStore" in window);
           await wait(2500);
           // The demo's fixtures keep a loop running; its card would cover
           // the shots. The crew card in the same corner stays.

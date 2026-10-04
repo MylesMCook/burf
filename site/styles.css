@@ -30,6 +30,9 @@
   --primary-fg: #ffffff;
   --amber: #c27a12;
   --ring: #8b8d96;
+  --sea: #eef1f6;
+  --blue: #3b82f6;
+  --green: #16a34a;
   --shadow: 0 1px 2px rgb(20 22 30 / 0.04), 0 24px 60px -28px rgb(20 22 30 / 0.28);
   --sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
@@ -52,6 +55,8 @@
     --primary-fg: #18191c;
     --amber: #e8a33d;
     --ring: #6b6d76;
+    --sea: #131824;
+    --green: #4ade80;
     --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 30px 80px -30px rgb(0 0 0 / 0.75);
     color-scheme: dark;
   }
@@ -69,6 +74,8 @@
   --primary-fg: #18191c;
   --amber: #e8a33d;
   --ring: #6b6d76;
+  --sea: #131824;
+  --green: #4ade80;
   --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 30px 80px -30px rgb(0 0 0 / 0.75);
   color-scheme: dark;
 }
@@ -341,32 +348,71 @@ code {
   height: 13px;
 }
 
-/* Features: a few words and one screenshot each. */
-.feature {
-  padding-top: clamp(72px, 11vw, 128px);
+/* Below the harbour: five beats, each a few words and one screenshot.
+   Bands of pale sea come in and go out through dithered seams (2 px dots,
+   the harbour's Bayer matrix); the screenshots arrive through the same
+   grain (assets/dither.js). */
+.beat {
+  padding: clamp(56px, 8vw, 104px) 0;
 }
-.feature-head {
-  max-width: 600px;
-  margin: 0 auto 32px;
-  text-align: center;
+.beat.sea {
+  background: var(--sea);
 }
-.eyebrow {
-  margin-bottom: 8px;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 500;
+.beat.sea + .seam.up,
+.seam + .beat.sea {
+  margin-top: 0;
 }
-.feature h2,
-.closing h2 {
-  font-size: clamp(26px, 3.4vw, 36px);
-  line-height: 1.15;
+.seam {
+  height: 64px;
+  background: var(--sea);
+  -webkit-mask: url("assets/seam.svg") 0 0 / 16px 64px repeat-x;
+  mask: url("assets/seam.svg") 0 0 / 16px 64px repeat-x;
 }
-.feature-head p:last-child,
-.closing p {
+.seam.up {
+  transform: scaleY(-1);
+}
+.beat-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+  gap: 16px 64px;
+  align-items: end;
+  margin-bottom: clamp(28px, 4vw, 44px);
+}
+.beat h2 {
   margin-top: 12px;
+  font-size: clamp(30px, 4.2vw, 48px);
+  line-height: 1.05;
+}
+.beat-head > p,
+.split p {
   color: var(--fg-2);
-  font-size: 16px;
+  font-size: 16.5px;
   text-wrap: pretty;
+}
+.kicker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  font: 500 13px/1 var(--mono);
+}
+.boat {
+  width: 18px;
+  height: 14px;
+  color: var(--fg);
+  shape-rendering: crispEdges;
+}
+.boat.needs .glow {
+  animation: lamp 1.2s ease-in-out infinite;
+  animation-play-state: paused;
+}
+.beat.seen .boat.needs .glow {
+  animation-play-state: running;
+}
+@keyframes lamp {
+  50% {
+    opacity: 0.25;
+  }
 }
 .shot {
   margin: 0;
@@ -380,18 +426,329 @@ code {
   width: 100%;
   height: auto;
 }
+.shot.narrow {
+  max-width: 860px;
+  margin-inline: auto;
+}
+.shot.review {
+  max-width: 1040px;
+}
 
-.closing {
-  padding: clamp(96px, 14vw, 160px) 0 clamp(72px, 10vw, 112px);
+/* A screenshot arriving through the grain. */
+[data-dither] {
+  position: relative;
+}
+[data-dither].veiled img {
+  opacity: 0;
+}
+[data-dither].veiled.resolving img {
+  opacity: 1;
+}
+[data-dither] > canvas.dots {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  pointer-events: none;
+}
+
+/* Terminal | Conversation: a segmented switch over the two panes. */
+.views {
+  max-width: 880px;
+  margin: 0 auto;
+}
+.seg {
+  display: flex;
+  width: fit-content;
+  margin: 0 auto 18px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--muted-bg);
+}
+.seg button {
+  height: 30px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  font: 500 13.5px var(--sans);
+  cursor: pointer;
+}
+.seg button:hover {
+  color: var(--fg);
+}
+.seg button[aria-pressed="true"] {
+  background: var(--card);
+  color: var(--fg);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 0 0 1px var(--border);
+}
+.stack {
+  display: grid;
+}
+.stack > div {
+  grid-area: 1 / 1;
+  transition: opacity 0.3s;
+}
+.stack > [aria-hidden="true"] {
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s, visibility 0s 0.3s;
+}
+
+/* Your boxes: the install, typed. */
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: 32px 64px;
+  align-items: center;
+}
+.split p {
+  margin-top: 16px;
+}
+.more a {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--fg);
+  font-weight: 500;
+  font-size: 15px;
+  text-decoration: none;
+}
+.more a:hover {
+  text-decoration: underline;
+}
+.more svg {
+  width: 14px;
+  height: 14px;
+}
+.term {
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid #2c2d33;
+  border-radius: 14px;
+  background: #141518;
+  color: #c0c2c9;
+  box-shadow: var(--shadow);
+  font: 12.5px/1.6 var(--mono);
+  font-variant-ligatures: none;
+}
+.term-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #2c2d33;
+  color: #9a9ca5;
+  font: 12px var(--sans);
+}
+.term-bar i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #34353c;
+}
+.term-bar span {
+  margin-left: 8px;
+}
+.term pre {
+  height: calc(13 * 1.6em + 32px);
+  margin: 0;
+  padding: 16px 18px;
+  overflow: hidden;
+  font: inherit;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.term .p {
+  color: #4ade80;
+}
+.term .b {
+  color: #e3e4e8;
+  font-weight: 700;
+}
+.term .d {
+  color: #7d8090;
+}
+.term .k {
+  color: #67e8f9;
+}
+.caret {
+  animation-play-state: paused;
+  display: inline-block;
+  width: 0.6em;
+  height: 1.15em;
+  margin-bottom: -0.2em;
+  background: #c0c2c9;
+  animation: blink 1.1s steps(1) infinite;
+}
+.beat.seen .caret {
+  animation-play-state: running;
+}
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+.sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* The end of the page: always night, the harbour dissolving upwards into
+   it, and a lamp lit for each agent still out. */
+/* From the last band of sea into the night. */
+.night-seam {
+  height: 64px;
+  background: var(--sea);
+}
+.night-seam::before {
+  content: "";
+  display: block;
+  height: 100%;
+  background: #18191c;
+  -webkit-mask: url("assets/seam.svg") 0 0 / 16px 64px repeat-x;
+  mask: url("assets/seam.svg") 0 0 / 16px 64px repeat-x;
+}
+.night,
+.site-footer {
+  --bg: #18191c;
+  --card: #1f2024;
+  --muted-bg: #222327;
+  --border: #2c2d33;
+  --input: #34353c;
+  --fg: #e3e4e8;
+  --fg-2: #c0c2c9;
+  --muted: #9a9ca5;
+  --primary: #e3e4e8;
+  --primary-fg: #18191c;
+  --amber: #e8a33d;
+  color-scheme: dark;
+  background: var(--bg);
+}
+.night {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  color: var(--fg);
+}
+.night .harbour {
+  height: clamp(420px, 66vh, 640px);
+}
+.night .harbour img {
+  -webkit-mask-image: linear-gradient(transparent, black 45%, black 80%, transparent);
+  mask-image: linear-gradient(transparent, black 45%, black 80%, transparent);
+}
+.night-copy {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  padding: clamp(24px, 8vh, 72px) 16px 0;
   text-align: center;
 }
-.closing p {
+.night-copy h2 {
+  font-size: clamp(32px, 4.8vw, 54px);
+  line-height: 1.06;
+  text-shadow: 0 0 12px var(--bg), 0 0 28px var(--bg), 0 0 4px var(--bg);
+}
+.night-copy p {
   max-width: 520px;
-  margin: 12px auto 24px;
+  margin: 14px auto 24px;
+  color: var(--fg-2);
+  font-size: 16.5px;
+  text-shadow: 0 0 3px var(--bg), 0 0 8px var(--bg), 0 0 16px var(--bg), 0 0 24px var(--bg);
+  text-wrap: balance;
+}
+.lamps {
+  position: absolute;
+  inset: 0;
+}
+.lamp {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  color: #c0c2c9;
+  font: 11.5px/1 var(--mono);
+  white-space: nowrap;
+}
+.lamp svg {
+  width: 27px;
+  height: 21px;
+  shape-rendering: crispEdges;
+  filter: drop-shadow(0 -3px 5px rgb(255 214 140 / 0.45));
+}
+.lamp.needs svg {
+  filter: drop-shadow(0 -3px 6px rgb(232 163 61 / 0.7));
+}
+.lamp span {
+  padding: 4px 7px;
+  border-radius: 6px;
+  background: rgb(24 25 28 / 0.72);
+}
+.lamp.needs span {
+  color: #e8a33d;
+}
+.lamp .glow {
+  animation: lamp 2.6s ease-in-out infinite;
+  animation-play-state: paused;
+}
+.lamp.needs .glow {
+  animation-duration: 1.2s;
+}
+.night.seen .lamp .glow {
+  animation-play-state: running;
+}
+
+@media (max-width: 760px) {
+  .beat-head,
+  .split {
+    grid-template-columns: 1fr;
+  }
+  .beat-head {
+    gap: 14px;
+  }
+}
+@media (max-width: 640px) {
+  .seam,
+  .night-seam::before {
+    -webkit-mask-size: 10px 40px;
+    mask-size: 10px 40px;
+  }
+  .seam,
+  .night-seam {
+    height: 40px;
+  }
+  .term {
+    font-size: 11.5px;
+  }
+  .night .harbour {
+    height: 460px;
+    margin-top: -48px;
+  }
+  .night-copy {
+    position: relative;
+    order: -1;
+    padding-top: 32px;
+  }
+  .lamp span {
+    display: none;
+  }
 }
 
 .site-footer {
-  border-top: 1px solid var(--border);
+  border-top: 1px solid transparent;
   padding: 28px 0 36px;
   color: var(--muted);
   font-size: 13.5px;
@@ -524,6 +881,11 @@ code {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
+.status b {
+  display: inline-block;
+  min-width: 5.3em;
+  font-weight: inherit;
+}
 .status[hidden] {
   display: none;
 }
@@ -546,5 +908,20 @@ code {
   }
   .status i {
     animation: none;
+  }
+}
+
+/* Motion rests when the tab is hidden, and for reduced motion. */
+:root.hidden .glow,
+:root.hidden .caret {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .glow,
+  .caret {
+    animation: none;
+  }
+  .stack > div {
+    transition: none;
   }
 }
