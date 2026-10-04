@@ -1,16 +1,12 @@
-import { GitBranchIcon } from "lucide-react";
 import { lazy, Suspense, useEffect } from "react";
 
 import { AddLocationDialog } from "@/components/add-location-dialog";
 import { Connecting } from "@/components/agent-offline";
 import { AppSidebar } from "@/components/app-sidebar";
-import { Scene } from "@/components/art/scenes";
 import { CommandPalette } from "@/components/command-palette";
-import { NewWorktreeDialog } from "@/components/new-worktree-dialog";
+import { ComposerDialog } from "@/components/conversation/composer-dialog";
 import { NotificationCenter } from "@/components/notifications/notification-center";
 import { LoopsPanel } from "@/components/orchestrate/loops-panel";
-import { AttemptsDialog } from "@/components/orchestrate/attempts-dialog";
-import { OrchestrateDialog } from "@/components/orchestrate/orchestrate-dialog";
 import { PluginConsentDialog } from "@/components/plugin-consent-dialog";
 import { PromptDialogs } from "@/components/prompts";
 import { StatusBar } from "@/components/status-bar";
@@ -18,9 +14,6 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import { AddToBoxDialog } from "@/components/sidebar/add-to-box-dialog";
 import { ConfirmHost } from "@/components/sidebar/confirm";
 import { CustomizeSidebarSheet } from "@/components/sidebar/nav";
-import { Button } from "@/components/ui/button";
-import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { Kbd } from "@/components/ui/kbd";
 import { ToastProvider } from "@/components/ui/toast";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Launcher } from "@/components/workspace/launcher";
@@ -35,7 +28,7 @@ import { startRunsWatch } from "@/lib/runs";
 import { useStore } from "@/lib/store";
 import { startUpdater } from "@/lib/updater";
 import { cn } from "@/lib/utils";
-import { recentWorktrees, selectWorktree, useWorkspaces } from "@/lib/workspaces";
+import { useWorkspaces } from "@/lib/workspaces";
 import { AutomationsView } from "@/views/automations";
 import { WorktreesView } from "@/views/worktrees/worktrees-view";
 import { useKitDeepLinks } from "@/views/kits/deep-link";
@@ -150,12 +143,10 @@ export default function App() {
         </div>
         <ErrorBoundary scope="a dialog">
           <CommandPalette />
-          <NewWorktreeDialog />
+          <ComposerDialog />
           <AddLocationDialog />
-          <OrchestrateDialog />
           <PromptDialogs />
           <LoopsPanel />
-          <AttemptsDialog />
           <AddBoxDialog />
           <ConfirmHost />
           <AddToBoxDialog />
@@ -211,49 +202,11 @@ function MainView() {
   );
 }
 
-// NoWorktree is the workspace before any worktree is picked: a new one, or
-// one opened recently.
+// NoWorktree is the workspace before any worktree is picked: the composer,
+// to start work, and the agents and worktrees to go back to. Labs adds the
+// harbour across the top.
 function NoWorktree() {
-  const labs = usePrefs((p) => p.labs);
-  const spaces = useWorkspaces((st) => st.spaces);
-  const recent = recentWorktrees(spaces);
-  if (labs) return <HomeView />;
-  return (
-    <div className="absolute inset-0 flex items-center justify-center bg-background">
-      <Empty>
-        <EmptyHeader>
-          <EmptyMedia>
-            <Scene name="dawn" />
-          </EmptyMedia>
-          <EmptyTitle>Pick a worktree</EmptyTitle>
-          <EmptyDescription>Open one from the sidebar to see its terminals and agents, or start a new one.</EmptyDescription>
-        </EmptyHeader>
-        <EmptyContent>
-          <Button onClick={() => useStore.getState().openNewWorktree()}>
-            New worktree
-            <Kbd className="ml-1 bg-primary-foreground/15 text-primary-foreground">⌘N</Kbd>
-          </Button>
-          {recent.length > 0 && (
-            <div className="mt-2 flex w-72 flex-col gap-1">
-              <p className="text-left text-muted-foreground text-xs">Recent</p>
-              {recent.map((w) => (
-                <button
-                  key={`${w.ref.box}:${w.ref.path}`}
-                  type="button"
-                  onClick={() => selectWorktree(w.ref)}
-                  className="flex h-8 items-center gap-2 rounded-md px-2 text-left text-sm hover:bg-accent"
-                >
-                  <GitBranchIcon className="size-3.5 text-muted-foreground" />
-                  <span className="min-w-0 flex-1 truncate">{w.ref.main ? w.ref.location : `${w.ref.location} / ${w.ref.worktree}`}</span>
-                  <span className="text-muted-foreground text-xs">{w.ref.box}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </EmptyContent>
-      </Empty>
-    </div>
-  );
+  return <HomeView />;
 }
 
 // Disconnectable dims what cannot work until the agent answers.

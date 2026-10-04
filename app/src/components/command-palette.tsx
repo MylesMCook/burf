@@ -58,7 +58,7 @@ import { openCustomize, useArrangedNav } from "@/components/sidebar/nav";
 import { loadPlugins } from "@/plugins/host";
 import { useRegistry } from "@/plugins/registry";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
-import { openAttempts } from "@/components/orchestrate/attempts-dialog";
+import { openAttempts, openComposer } from "@/lib/composer";
 import { defaultScope } from "@/views/automations/flows/project-label";
 
 // defaultScopeRef is a project to try things in when no worktree is open.
@@ -123,7 +123,8 @@ export function CommandPalette() {
     const q = query.trim();
 
     const actions: Item[] = [
-      { value: "new-worktree", label: "New worktree…", icon: slot(<GitBranchPlusIcon />), shortcut: "⌘N", run: go(() => st.openNewWorktree()) },
+      { value: "new-worktree task start agent", label: "New task…", icon: slot(<GitBranchPlusIcon />), shortcut: "⌘N", run: go(() => st.openNewWorktree(currentSpace() ? { box: currentSpace()!.ref.box, location: currentSpace()!.ref.location } : {})) },
+      { value: "new worktree only no agent", label: "New worktree (no agent)…", icon: slot(<GitBranchPlusIcon />), run: go(() => openComposer({ noAgent: true, ...(currentSpace() ? { box: currentSpace()!.ref.box, location: currentSpace()!.ref.location } : {}) })) },
       { value: "new-terminal", label: "New terminal", icon: slot(<SquareTerminalIcon />), shortcut: "⌘T", run: go(() => void startSession("")) },
       { value: "new-browser", label: "New browser tab", icon: slot(<GlobeIcon />), shortcut: "⌘⇧B", run: go(() => openBrowserAt("")) },
       { value: "open in editor cursor vscode zed", label: "Open in editor", icon: slot(<CodeXmlIcon />), shortcut: "⌘⇧O", run: go(() => {
@@ -132,7 +133,7 @@ export function CommandPalette() {
       }) },
       { value: "new-tab", label: "New tab…", icon: slot(<PanelTopIcon />), run: go(() => st.setNewTabMenuOpen(true)) },
       { value: "send saved prompt library", label: "Send a saved prompt…", icon: slot(<BookMarkedIcon />), run: go(() => openPromptPicker()) },
-      { value: "broadcast prompt several agents", label: "Send a prompt to several agents…", icon: slot(<UsersIcon />), run: go(() => openBroadcast()) },
+      { value: "broadcast prompt several agents running", label: "Send a prompt to several agents…", icon: slot(<UsersIcon />), run: go(() => openBroadcast()) },
       {
         value: "try n ways attempts best of several agents compare",
         label: "Try N ways…",
@@ -270,7 +271,7 @@ export function CommandPalette() {
     const url = resolveUrl(q);
     const make: Item[] = [
       ...(url ? [{ value: `open:${url}`, label: `Open ${q} in a browser tab`, detail: url, icon: slot(<ArrowUpRightIcon />), run: go(() => openBrowserAt(url)) }] : []),
-      { value: `new-worktree:${q}`, label: `New worktree "${q}"`, icon: slot(<GitBranchPlusIcon />), run: go(() => st.openNewWorktree({ name: q })) },
+      { value: `new-worktree:${q}`, label: `New task from "${q}"`, icon: slot(<GitBranchPlusIcon />), run: go(() => st.openNewWorktree({ name: q })) },
     ];
     return [
       { value: "Sessions", items: sessions.map(sessionItem) },

@@ -5,6 +5,7 @@ import { agentOf, worktreeOf } from "@/lib/derive";
 import { projectOf } from "@/lib/projects";
 import type { Leaf, PaneNode } from "@/lib/layout";
 import { useStore } from "@/lib/store";
+import { openComposer } from "@/lib/composer";
 import { currentSpace } from "@/lib/workspaces";
 
 // Saved prompts: text you send agents again and again, with {{variables}}
@@ -300,7 +301,6 @@ export interface BroadcastDraft {
 
 interface PromptUi {
   picker?: PickerDraft;
-  broadcast?: BroadcastDraft;
 }
 
 export const usePromptUi = create<PromptUi>()(() => ({}));
@@ -311,11 +311,14 @@ export function openPromptPicker(d: PickerDraft = {}) {
 }
 export const closePromptPicker = () => usePromptUi.setState({ picker: undefined });
 
+// openBroadcast opens the composer on "Running agents": one prompt, filled
+// in for each agent picked, sent one after another.
 export function openBroadcast(d: BroadcastDraft = {}) {
   useStore.getState().setPaletteOpen(false);
-  usePromptUi.setState({ broadcast: d, picker: undefined });
+  usePromptUi.setState({ picker: undefined });
+  const body = d.promptId ? usePrompts.getState().prompts.find((p) => p.id === d.promptId)?.body : undefined;
+  openComposer({ mode: "send", targets: d.targets, promptId: d.promptId, text: d.text ?? body });
 }
-export const closeBroadcast = () => usePromptUi.setState({ broadcast: undefined });
 
 // The session in the focused pane of the worktree in front, if it is one.
 export function focusedSession(): Target | undefined {

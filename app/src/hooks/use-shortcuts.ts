@@ -14,13 +14,13 @@ import { activateTab, currentSpace, moveFocus, useWorkspaces } from "@/lib/works
 
 // The app's keys, caught on the window before a terminal sees them.
 //
-//   ⌘K palette        ⌘N new worktree     ⌘T new terminal    ⌘⇧B browser tab
+//   ⌘K palette        ⌘N new task         ⌘T new terminal    ⌘⇧B browser tab
 //   ⌘D split right    ⌘⇧D split down      ⌘W close pane       ⌘1–9 tabs
 //   ⌘⌥←↑→↓ move focus between panes       ⌘J agent dashboard
 //   ⌘⇧O open the worktree in your editor   ⌘⇧N notifications
 export const SHORTCUTS: [keys: string, what: string][] = [
   ["⌘K", "Search and commands"],
-  ["⌘N", "New worktree"],
+  ["⌘N", "New task"],
   ["⌘T", "New terminal in this worktree"],
   ["⌘⇧B", "New browser tab"],
   ["⌘D", "Split right"],

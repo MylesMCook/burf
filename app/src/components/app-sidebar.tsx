@@ -81,7 +81,7 @@ export function AppSidebar() {
             <MenuPopup align="end" className="min-w-52">
               <MenuItem onClick={() => useStore.getState().openNewWorktree()}>
                 <GitBranchPlusIcon />
-                New worktree…
+                New task…
                 <span className="ml-auto text-muted-foreground text-xs">⌘N</span>
               </MenuItem>
               <MenuItem onClick={() => useStore.getState().openAddLocation()}>

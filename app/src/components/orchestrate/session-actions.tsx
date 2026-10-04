@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 import { Tip } from "@/components/tip";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuTrigger } from "@/components/ui/menu";
-import { openAttempts } from "@/components/orchestrate/attempts-dialog";
+import { openAttempts } from "@/lib/composer";
 import { openPromptPicker } from "@/lib/prompts";
 import { type OrchestrateDraft, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";

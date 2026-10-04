@@ -4,7 +4,7 @@ import { toastManager } from "@/components/ui/toast";
 import { errorMessage } from "@/lib/format";
 import { Cancelled, isWaitingRefusal } from "@/lib/orchestrate-core";
 import { send, waitSent } from "@/lib/orchestrate";
-import { usePromptUi } from "@/lib/prompts";
+import { openComposer, useComposer } from "@/lib/composer";
 import { boxOffline, enqueue, sendFailure } from "@/lib/queue";
 import { boxHasRuns, runs as runsApi, scheduleRuns } from "@/lib/runs";
 import { terminal, walkSteps } from "@/lib/orchestrate-core";
@@ -164,12 +164,12 @@ export function startBroadcast(o: { title: string; wait: boolean; timeout?: numb
     if (s.run?.id !== id) return;
     useBroadcastRun.setState({ run: { ...s.run, done: true }, controller: undefined });
     // Out of sight, say how it went.
-    if (!usePromptUi.getState().broadcast) {
+    if (!useComposer.getState().draft?.results) {
       toastManager.add({
         title: `“${o.title}” ${o.wait ? "is done" : "was sent"}`,
         description: summarize(useBroadcastRun.getState().run?.rows ?? []),
         type: "success",
-        actionProps: { children: "Results", onClick: () => usePromptUi.setState({ broadcast: {} }) },
+        actionProps: { children: "Results", onClick: () => openComposer({ results: true }) },
       });
     }
   })();

@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 import { boxApi, type BoxInfo, type Client, type Location, type Service, type Session, type Stats, type Status, type TaskTemplate, type Theme } from "@/lib/api";
+import { closeComposer, fromOrchestrateDraft, fromWorktreeDraft, openComposer } from "@/lib/composer";
 import { errorMessage } from "@/lib/format";
 import { load, save } from "@/lib/storage";
 
@@ -37,7 +38,7 @@ export interface Connection {
   error?: string;
 }
 
-// What the new-worktree dialog opens with.
+// What ⌘N's composer opens with (lib/composer).
 export interface WorktreeDraft {
   box?: string;
   location?: string;
@@ -48,9 +49,9 @@ export interface WorktreeDraft {
   name?: string;
 }
 
-// An orchestration dialog about a session: send it a prompt, hand its work
-// to another agent, have another agent review it, or loop it until a check
-// passes.
+// Orchestrating a session, in the composer (lib/composer): send it a
+// prompt, hand its work to another agent, have another agent review it, or
+// loop it until a check passes.
 export interface OrchestrateDraft {
   kind: "send" | "handoff" | "review" | "loop";
   box: string;
@@ -72,9 +73,7 @@ interface State {
   view: View;
   paletteOpen: boolean;
   newTabMenuOpen: boolean;
-  worktreeDraft?: WorktreeDraft;
   locationDraft?: { box?: string };
-  orchestrate?: OrchestrateDraft;
 }
 
 interface Actions {
@@ -170,9 +169,17 @@ export const useStore = create<State & Actions>()((set, get) => ({
   setTheme: (themeId) => set({ themeId }),
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
   setNewTabMenuOpen: (newTabMenuOpen) => set({ newTabMenuOpen }),
-  openNewWorktree: (draft = {}) => set({ worktreeDraft: draft, paletteOpen: false }),
-  closeNewWorktree: () => set({ worktreeDraft: undefined }),
-  setOrchestrate: (orchestrate) => set({ orchestrate, paletteOpen: false }),
+  // Both open the composer, the one way to start work.
+  openNewWorktree: (draft = {}) => {
+    set({ paletteOpen: false });
+    openComposer(fromWorktreeDraft(draft));
+  },
+  closeNewWorktree: () => closeComposer(),
+  setOrchestrate: (d) => {
+    set({ paletteOpen: false });
+    if (d) openComposer(fromOrchestrateDraft(d));
+    else closeComposer();
+  },
   openAddLocation: (box) => set({ locationDraft: { box }, paletteOpen: false }),
   openAddProject: (box) => set({ locationDraft: { box }, paletteOpen: false }),
   closeAddLocation: () => set({ locationDraft: undefined }),

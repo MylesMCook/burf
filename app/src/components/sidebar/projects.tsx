@@ -413,7 +413,7 @@ function RowActions({ box, loc, wt, project, onNewWorktree }: { box: string; loc
   return (
     <RowOverlay>
       {onNewWorktree && (
-        <RowButton label={`New worktree in ${loc.name}`} onClick={onNewWorktree}>
+        <RowButton label={`New task in ${loc.name}`} onClick={onNewWorktree}>
           <PlusIcon />
         </RowButton>
       )}
@@ -634,7 +634,7 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
         {online && (
           <RowOverlay>
             <RowButton
-              label={multi ? `New worktree on ${p.defaultBox}` : `New worktree in ${p.name}`}
+              label={multi ? `New task on ${p.defaultBox}` : `New task in ${p.name}`}
               onClick={() => useStore.getState().openNewWorktree({ box: def.box.name, location: def.loc.name })}
             >
               <PlusIcon />

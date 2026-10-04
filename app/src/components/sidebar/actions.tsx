@@ -346,7 +346,7 @@ export function projectActions(box: string, loc: Location): Action[] {
   if (main) items.push(item("Open main checkout", <HomeIcon />, () => selectWorktree(refOf(box, loc, main))));
   items.push({ type: "sub", label: "Open in", icon: <CodeXmlIcon />, items: () => <EditorMenuItems box={box} path={main?.path ?? loc.path} /> });
   items.push(
-    item("New worktree…", <GitBranchPlusIcon />, () => st.openNewWorktree({ box, location: loc.name }), { shortcut: "⌘N" }),
+    item("New task…", <GitBranchPlusIcon />, () => st.openNewWorktree({ box, location: loc.name }), { shortcut: "⌘N" }),
     item("Project settings", <Settings2Icon />, () => st.setView({ kind: "project", box, location: loc.name })),
     sep,
     item("Copy path", <CopyIcon />, () => copy(loc.path, "path")),
@@ -451,7 +451,7 @@ export function projectGroupActions(p: Project): Action[] {
   // removing, last and in red, never inside a submenu.
   const mm = def && main(def);
   if (mm) items.push(item(multi ? `Open main checkout on ${def.box.name}` : "Open main checkout", <HomeIcon />, () => selectWorktree(refOf(def.box.name, def.loc, mm))));
-  if (def) items.push(item(multi ? `New worktree on ${def.box.name}…` : "New worktree…", <GitBranchPlusIcon />, () => st.openNewWorktree({ box: def.box.name, location: def.loc.name }), { shortcut: "⌘N" }));
+  if (def) items.push(item(multi ? `New task on ${def.box.name}…` : "New task…", <GitBranchPlusIcon />, () => st.openNewWorktree({ box: def.box.name, location: def.loc.name }), { shortcut: "⌘N" }));
   if (def && mm && def.box.state === "online") {
     items.push({
       type: "sub",
@@ -474,7 +474,7 @@ export function projectGroupActions(p: Project): Action[] {
     const boxes: Action[] = [];
     if (online.length > 1) {
       boxes.push(
-        { type: "label", label: "New worktree on" },
+        { type: "label", label: "New task on" },
         ...online.map((m) => item(m.box.name, slot(<GitBranchPlusIcon />), () => st.openNewWorktree({ box: m.box.name, location: m.loc.name }), { hint: boxLoad(m.box.name) })),
         sep,
       );

@@ -27,6 +27,7 @@ export function StartFrom({
   error,
   branches,
   defaultBranch,
+  focus = true,
 }: {
   value: string;
   onChange(v: string): void;
@@ -37,6 +38,8 @@ export function StartFrom({
   error?: string;
   branches?: { default?: string; branches: Branch[] };
   defaultBranch?: string;
+  // Take the keyboard once open (a dialog of its own); the composer keeps it.
+  focus?: boolean;
 }) {
   const mode = modes.find((m) => m.kind === kind) ?? modes[0];
   const [active, setActive] = useState(0);
@@ -45,9 +48,10 @@ export function StartFrom({
   // The dialog moves focus to its first control as it opens; this field is
   // where typing should go, so take it back once it has.
   useEffect(() => {
+    if (!focus) return;
     const t = setTimeout(() => inputRef.current?.focus(), 30);
     return () => clearTimeout(t);
-  }, []);
+  }, [focus]);
   const shownBranches = useMemo(() => {
     if (kind !== "branch" || !branches) return [];
     const q = value.trim().toLowerCase();

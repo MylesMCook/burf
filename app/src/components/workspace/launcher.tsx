@@ -3,14 +3,9 @@ import { useEffect, useRef, useState } from "react";
 
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
 import { DitherBand } from "@/components/art/dither-band";
+import { TaskComposer } from "@/components/conversation/task-composer";
 import { HARBOUR, HARBOUR_MUTE, useHarbourLight } from "@/components/art/harbour-art";
 import { Scene } from "@/components/art/scenes";
-import { TaskComposer, type TaskDraft } from "@/components/conversation/task-composer";
-import { openAttempts } from "@/components/orchestrate/attempts-dialog";
-import { isMock } from "@/hooks/use-berth-connection";
-import { playTurn } from "@/lib/mock-conversation";
-import { boxApi } from "@/lib/api";
-import { errorMessage } from "@/lib/format";
 import { usePrefs } from "@/lib/prefs";
 import { openEditor } from "@/components/editors/open";
 import { toastManager } from "@/components/ui/toast";
@@ -23,7 +18,7 @@ import { agentLabel, agentOf, type SessionState, sessionName, sessionState } fro
 import { ago } from "@/lib/format";
 import { NONE, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { focusSession, openSession, useWorkspaces, type WorktreeRef, wsKey } from "@/lib/workspaces";
+import { openSession, useWorkspaces, type WorktreeRef, wsKey } from "@/lib/workspaces";
 
 const stateWords: Record<SessionState, string> = { waiting: "waiting for you", running: "working", finished: "finished", ready: "ready", idle: "open", exited: "exited" };
 
@@ -43,10 +38,11 @@ interface Row {
   run(): void;
 }
 
-// Launcher fills a worktree's workspace while it has no tabs: a compact
-// command panel, like an empty state in Raycast or Linear. One list of what
-// to start here, each with its shortcut, then the agents closed as tabs that
-// are still running, to pick up again. Arrow keys move, Enter runs.
+// Launcher fills a worktree's workspace while it has no tabs: the composer,
+// to start an agent on a task here, then a compact command panel, like an
+// empty state in Raycast or Linear: one list of what to start here, each
+// with its shortcut, then the agents closed as tabs that are still running,
+// to pick up again. Arrow keys move, Enter runs. Labs adds the harbour.
 export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
   useStore((s) => s.boxes[ref.box]?.info);
   const loc = useStore((s) => s.boxes[ref.box]?.locations?.find((l) => l.name === ref.location));
@@ -61,26 +57,6 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
   const name = ref.main ? ref.location : ref.worktree;
   const labs = usePrefs((p) => p.labs);
   const light = useHarbourLight();
-
-  // Labs: start an agent here on a task typed in the composer.
-  const startHere = async (d: TaskDraft) => {
-    if (d.picks.length > 1) {
-      openAttempts({ box: ref.box, location: ref.location, prompt: d.text, base: branch, agents: d.picks.map((p) => ({ agent: p.agent, model: p.model || undefined, effort: p.effort || undefined })) });
-      return;
-    }
-    const pick = d.picks[0];
-    const client = useStore.getState().client;
-    if (!pick || !client) return;
-    try {
-      const s = await boxApi.startSession(client, ref.box, { location: ref.main ? ref.location : `${ref.location}/${ref.worktree}`, agent: pick.agent, prompt: d.text, model: pick.model || undefined, effort: pick.effort || undefined });
-      if (isMock()) void playTurn(ref.box, s.name, d.text);
-      await useStore.getState().refreshBox(ref.box, ["sessions"]);
-      await focusSession(ref.box, s.name);
-    } catch (err) {
-      toastManager.add({ type: "error", title: "Couldn't start it", description: errorMessage(err) });
-    }
-  };
-
 
   const rows: Row[] = [
     ...agentPresets(ref.box, ref.location).map((p) => ({
@@ -114,7 +90,7 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
   // Take the keyboard on arrival, unless a dialog or a field has it. The
   // sidebar row that opened the worktree gives it up.
   useEffect(() => {
-    if (labs) return;
+    if (document.querySelector("textarea[aria-label]")) return;
     const t = window.setTimeout(() => {
       const a = document.activeElement as HTMLElement | null;
       const typing = !!a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName));
@@ -122,7 +98,7 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
       list.current?.querySelector<HTMLElement>("[data-row]")?.focus();
     }, 50);
     return () => window.clearTimeout(t);
-  }, [ref.path, labs]);
+  }, [ref.path]);
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
@@ -180,11 +156,11 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
             </div>
           </header>
 
-          {labs && (
-            <div className="mb-5">
-              <TaskComposer fixed box={ref.box} location={ref.location} autoFocus placeholder={`What should an agent do in ${name}?`} onSend={startHere} />
-            </div>
-          )}
+          {/* The one way to start work, here: an agent on a task in this
+              worktree, or several attempts from its branch. */}
+          <div className="mb-5">
+            <TaskComposer fixed={{ box: ref.box, location: ref.location, at: ref.main ? ref.location : `${ref.location}/${ref.worktree}`, name, branch }} autoFocus placeholder={`What should an agent do in ${name}?`} />
+          </div>
           <div className="flex flex-col">
             {rows.map((r) => (
               <button

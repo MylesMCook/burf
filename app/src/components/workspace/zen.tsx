@@ -146,7 +146,7 @@ export function ZenSwitcher({ className }: { className?: string }) {
         )}
         <MenuItem onClick={() => useStore.getState().openNewWorktree()}>
           <GitBranchPlusIcon />
-          New worktree…
+          New task…
           <MenuShortcut>⌘N</MenuShortcut>
         </MenuItem>
         <AllWorktrees />

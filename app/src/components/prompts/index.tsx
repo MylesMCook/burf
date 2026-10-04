@@ -1,13 +1,12 @@
-import { BroadcastDialog } from "@/components/prompts/broadcast-dialog";
 import { PromptPicker } from "@/components/prompts/prompt-picker";
 
-// PromptDialogs are the saved-prompt picker and the broadcast dialog, opened
-// from anywhere with openPromptPicker and openBroadcast (lib/prompts).
+// PromptDialogs is the saved-prompt picker, opened from anywhere with
+// openPromptPicker (lib/prompts). A prompt for several agents is the
+// composer's (openBroadcast, lib/composer).
 export function PromptDialogs() {
   return (
     <>
       <PromptPicker />
-      <BroadcastDialog />
     </>
   );
 }

@@ -1,91 +1,76 @@
-import { ArrowRightIcon } from "lucide-react";
+import { ArrowRightIcon, GitBranchIcon } from "lucide-react";
 import { useMemo } from "react";
 
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
 import { DitherBand } from "@/components/art/dither-band";
 import { HARBOUR, HARBOUR_MUTE, useHarbourLight } from "@/components/art/harbour-art";
-import { TaskComposer, type TaskDraft } from "@/components/conversation/task-composer";
-import { openAttempts } from "@/components/orchestrate/attempts-dialog";
+import { Scene } from "@/components/art/scenes";
+import { TaskComposer } from "@/components/conversation/task-composer";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { toastManager } from "@/components/ui/toast";
 import { type SessionEntry, useAllSessions } from "@/hooks/use-agent-counts";
-import { isMock } from "@/hooks/use-berth-connection";
-import { boxApi } from "@/lib/api";
 import { agentLabel, agentOf, worktreeOf } from "@/lib/derive";
-import { ago, errorMessage } from "@/lib/format";
-import { playTurn } from "@/lib/mock-conversation";
+import { ago } from "@/lib/format";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { focusSession } from "@/lib/workspaces";
+import { usePrefs } from "@/lib/prefs";
+import { focusSession, recentWorktrees, selectWorktree, useWorkspaces } from "@/lib/workspaces";
 
-// HomeView is the workspace before any worktree is open (Labs): the harbour
-// across the top, dissolving into the page, one composer at the seam to
-// start work, and the agents that need you, are working, or just finished.
-
+// HomeView is the workspace before any worktree is open: one composer to
+// start work (lib/composer), then the agents that need you, are working, or
+// just finished, and the worktrees opened lately. Labs puts the harbour
+// across the top, dissolving into the page, with the composer at the seam.
 const BAND = "clamp(220px, 50vh, 500px)";
 
-const slug = (s: string) =>
-  s
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .split("-")
-    .slice(0, 4)
-    .join("-")
-    .slice(0, 32) || "task";
-
-// freeName is name, or name-2, -3… when the project has a worktree by it.
-function freeName(box: string, location: string, name: string): string {
-  const taken = new Set(useStore.getState().boxes[box]?.locations?.find((l) => l.name === location)?.worktrees?.map((w) => w.name));
-  let n = name;
-  for (let i = 2; taken.has(n); i++) n = `${name}-${i}`;
-  return n;
-}
-
-// startTask starts what the composer gathered: a task in a new worktree or
-// an agent in the main checkout, on the model and effort picked; several
-// picks open the attempts template, which asks for its check first.
-export async function startTask(d: TaskDraft) {
-  if (d.picks.length > 1) {
-    openAttempts({ box: d.box, location: d.location, prompt: d.text, agents: d.picks.map((p) => ({ agent: p.agent, model: p.model || undefined, effort: p.effort || undefined })) });
-    return;
-  }
-  const client = useStore.getState().client;
-  const pick = d.picks[0];
-  if (!client || !pick) return;
-  const how = { agent: pick.agent, prompt: d.text, model: pick.model || undefined, effort: pick.effort || undefined };
-  try {
-    const session =
-      d.where === "new"
-        ? (await boxApi.createTask(client, d.box, { location: d.location, name: freeName(d.box, d.location, slug(d.text)), ...how })).session.name
-        : (await boxApi.startSession(client, d.box, { location: d.location, ...how })).name;
-    // The demo plays a scripted turn; it starts before the pane opens, so
-    // the pane finds the conversation already begun.
-    if (isMock()) void playTurn(d.box, session, d.text);
-    await useStore.getState().refreshBox(d.box, ["locations", "sessions"]);
-    await focusSession(d.box, session);
-  } catch (err) {
-    toastManager.add({ type: "error", title: "Couldn't start it", description: errorMessage(err) });
-  }
-}
-
 export function HomeView() {
+  const labs = usePrefs((p) => p.labs);
   const light = useHarbourLight();
   return (
     <div className="absolute inset-0 overflow-y-auto bg-background">
       <div className="relative min-h-full">
-        <div aria-hidden className="absolute inset-x-0 top-0" style={{ height: BAND }}>
-          <DitherBand src={HARBOUR[light]} position={0.42} fade={0.45} mute={HARBOUR_MUTE[light]} className="size-full" />
-        </div>
-        <div className="relative mx-auto flex w-full max-w-[640px] flex-col items-center px-6 pb-12" style={{ paddingTop: `calc(${BAND} - 84px)` }}>
-          <h1 className="mb-4 text-balance text-center font-heading font-semibold text-2xl tracking-tight [text-shadow:0_0_6px_var(--background),0_0_16px_var(--background)]">What should your agents work on?</h1>
-          <TaskComposer autoFocus onSend={startTask} />
+        {labs && (
+          <div aria-hidden className="absolute inset-x-0 top-0" style={{ height: BAND }}>
+            <DitherBand src={HARBOUR[light]} position={0.42} fade={0.45} mute={HARBOUR_MUTE[light]} className="size-full" />
+          </div>
+        )}
+        <div className="relative mx-auto flex w-full max-w-[640px] flex-col items-center px-6 pb-12" style={{ paddingTop: labs ? `calc(${BAND} - 84px)` : "clamp(48px, 16vh, 160px)" }}>
+          {!labs && (
+            <div aria-hidden className="mb-2">
+              <Scene name="dawn" width={136} />
+            </div>
+          )}
+          <h1 className={cn("mb-4 text-balance text-center font-heading font-semibold text-2xl tracking-tight", labs && "[text-shadow:0_0_6px_var(--background),0_0_16px_var(--background)]")}>What should your agents work on?</h1>
+          <TaskComposer autoFocus />
           <AgentList className="mt-10" />
+          <Recent className="mt-6" />
         </div>
       </div>
     </div>
+  );
+}
+
+// Recent is the worktrees opened lately, to go back to.
+function Recent({ className }: { className?: string }) {
+  const spaces = useWorkspaces((st) => st.spaces);
+  const recent = recentWorktrees(spaces);
+  if (!recent.length) return null;
+  return (
+    <section className={cn("w-full", className)}>
+      <h2 className="mb-1 px-3 text-muted-foreground text-xs">Recent worktrees</h2>
+      {recent.map((w) => (
+        <button
+          key={`${w.ref.box}:${w.ref.path}`}
+          type="button"
+          onClick={() => selectWorktree(w.ref)}
+          className="flex h-8 w-full items-center gap-2 rounded-md px-3 text-left text-sm outline-none hover:bg-accent focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <GitBranchIcon className="size-3.5 text-muted-foreground" />
+          <span className="min-w-0 flex-1 truncate">{w.ref.main ? w.ref.location : `${w.ref.location} / ${w.ref.worktree}`}</span>
+          <span className="text-muted-foreground text-xs">{w.ref.box}</span>
+        </button>
+      ))}
+    </section>
   );
 }
 
@@ -118,7 +103,7 @@ function useRows(all: SessionEntry[]): Row[] {
         agent,
         // Named after its work when it has a title, its worktree after.
         title: e.session.title?.trim() || (wt ? (wt.worktree.main ? wt.location.name : wt.worktree.name) : e.session.name),
-        where: [e.session.title?.trim() && wt && !wt.worktree.main ? wt.worktree.name : "", e.box, wt?.location.name].filter(Boolean).join(" · "),
+        where: [wt ? (e.session.title?.trim() && !wt.worktree.main ? `${wt.location.name} / ${wt.worktree.name}` : wt.location.name) : "", e.box].filter(Boolean).join(" · "),
         state: e.state,
         since: e.session.state_since ?? e.session.created,
       });
