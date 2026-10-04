@@ -98,7 +98,7 @@ func (b *Box) Mount(s *wire.Server) {
 	route := func(pattern string, h func(http.ResponseWriter, *http.Request) error) {
 		s.Handle(pattern, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if err := h(w, r); err != nil {
-				writeError(w, statusFor(err), err.Error())
+				writeErr(w, err)
 			}
 		}))
 	}
@@ -200,8 +200,10 @@ func statusFor(err error) int {
 		return he.status
 	case errors.Is(err, ErrUnknownLocation), errors.Is(err, ErrUnknownWorktree), errors.Is(err, ErrUnknownSession), errors.Is(err, ErrUnknownShare), errors.Is(err, ErrUnknownUnit):
 		return http.StatusNotFound
-	case errors.Is(err, ErrSessionExists):
+	case errors.Is(err, ErrSessionExists), errors.Is(err, ErrSessionExited):
 		return http.StatusConflict
+	case errors.Is(err, errTmuxMissing):
+		return http.StatusServiceUnavailable
 	}
 	return http.StatusBadRequest
 }
@@ -873,8 +875,14 @@ func writeJSON(w http.ResponseWriter, v any) {
 	json.NewEncoder(w).Encode(v)
 }
 
+// writeError answers with msg and the code its status implies; writeErr
+// (errcodes.go) names the code from the error itself.
 func writeError(w http.ResponseWriter, status int, msg string) {
+	writeCoded(w, status, msg, codeForStatus(status))
+}
+
+func writeCoded(w http.ResponseWriter, status int, msg, code string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	json.NewEncoder(w).Encode(map[string]string{"error": msg})
+	json.NewEncoder(w).Encode(map[string]string{"error": msg, "code": code})
 }

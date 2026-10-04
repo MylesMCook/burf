@@ -181,6 +181,8 @@ type Agent struct {
 	proxySt  ProxyStatus
 	queue    *promptQueue
 	local    localBox
+	// outdated remembers which boxes run an older berthd (outdated.go).
+	outdated outdatedCache
 
 	// ctx lives as long as the agent; forwards added through the API run under
 	// it rather than under the request that created them.

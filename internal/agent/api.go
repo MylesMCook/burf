@@ -201,3 +201,9 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 func writeError(w http.ResponseWriter, status int, msg string) {
 	writeJSON(w, status, map[string]string{"error": msg})
 }
+
+// writeCoded is writeError with a code the app branches on (see
+// internal/box/errcodes.go for the box's own).
+func writeCoded(w http.ResponseWriter, status int, msg, code string) {
+	writeJSON(w, status, map[string]string{"error": msg, "code": code})
+}
