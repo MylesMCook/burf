@@ -1,4 +1,4 @@
-import { ArrowUpIcon, ChevronDownIcon, FolderIcon, GitBranchIcon, MonitorIcon, SparklesIcon } from "lucide-react";
+import { ArrowUpIcon, CheckIcon, ChevronDownIcon, FolderIcon, GaugeIcon, GitBranchIcon, Layers2Icon, MonitorIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AgentIcon } from "@/components/agent-glyph";
@@ -9,7 +9,9 @@ import { cn } from "@/lib/utils";
 
 // Composer is Shore's one place to start work: what to do, on which box and
 // project, in a new worktree or the main checkout, with which agent, and
-// whether to try several ways at once.
+// whether to try several ways at once. Once work starts it docks at the foot
+// of the window as a one-line reply box; the same element travels there, so
+// what you were typing and the focus go with it.
 
 export interface Send {
   text: string;
@@ -24,7 +26,7 @@ export interface Send {
 const AGENTS = ["claude", "codex", "gemini"];
 const EFFORTS = ["Low", "Medium", "High"];
 
-export function Composer({ docked, onSend, placeholder }: { docked?: boolean; onSend(s: Send): void; placeholder?: string }) {
+export function Composer({ docked, onSend, title }: { docked?: boolean; onSend(s: Send): void; title?: string }) {
   const status = useStore((s) => s.status);
   const boxes = useStore((s) => s.boxes);
   const online = useMemo(() => (status?.boxes ?? []).filter((b) => b.state === "online").map((b) => b.name), [status]);
@@ -43,105 +45,130 @@ export function Composer({ docked, onSend, placeholder }: { docked?: boolean; on
     ref.current?.focus();
   }, [docked]);
 
+  const ready = !!text.trim() && (docked || (!!pickBox && !!pickLoc));
   const send = () => {
     const t = text.trim();
-    if (!t || !pickBox || !pickLoc) return;
+    if (!ready) return;
     onSend({ text: t, box: pickBox, location: pickLoc, where, agent, effort, attempts: ways ? 3 : 1 });
     setText("");
   };
 
   return (
-    <div className={cn("w-full max-w-[640px]", docked ? "" : "")}>
-      {!docked && (
-        <div className="mb-2 flex justify-end gap-1">
-          <Pick onWater icon={<MonitorIcon />} label={pickBox || "No box"} options={online} onPick={setBox} />
-          <Pick onWater icon={<FolderIcon />} label={pickLoc || "No project"} options={projects.map((p) => p.name)} onPick={setLocation} />
-        </div>
-      )}
-      <div className="rounded-2xl border border-white/70 bg-white/80 p-3 shadow-[0_8px_40px_-12px_rgba(20,40,90,0.35)] backdrop-blur-md">
+    <div className="mx-auto w-full max-w-[680px]">
+      <Fold open={!docked}>
+        <h1 className="pb-5 text-center font-semibold text-(--sh-title) text-[30px] leading-tight tracking-[-0.022em] [text-shadow:0_1px_18px_rgb(255_255_255/0.45)] max-[1100px]:text-[26px]">
+          {title ?? "What should your agents work on?"}
+        </h1>
+      </Fold>
+      <div
+        className={cn(
+          "relative rounded-[22px] bg-(--sh-glass) shadow-(--sh-shadow) ring-(--sh-edge) ring-1 backdrop-blur-xl transition-[padding] duration-500",
+          "focus-within:ring-(--sh-line-2)",
+          docked ? "py-3.5 pr-14 pl-4.5" : "px-4.5 pt-4 pb-3",
+        )}
+      >
         <textarea
           ref={ref}
           value={text}
           rows={docked ? 1 : 2}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
+            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault();
               send();
             }
           }}
-          placeholder={placeholder ?? "What should your agents work on?"}
-          className="field-sizing-content max-h-48 min-h-6 w-full resize-none bg-transparent px-1 text-[15px] text-slate-800 outline-none placeholder:text-slate-400"
+          aria-label={docked ? "Reply" : "What should your agents work on?"}
+          placeholder={docked ? "Reply, or ask for something else" : "Describe a task, a bug to fix, an idea to try…"}
+          className="field-sizing-content block max-h-48 min-h-6 w-full resize-none bg-transparent text-(--sh-ink) text-[15px] leading-6 outline-none placeholder:text-(--sh-ink-3)"
         />
-        <div className="mt-2 flex items-center gap-1">
-          {!docked && (
+        <Fold open={!docked}>
+          <div className="flex items-center gap-1 pt-3 pr-11">
             <button
               type="button"
               onClick={() => setWays((w) => !w)}
               aria-pressed={ways}
+              title="Start three agents on the same task, each in its own worktree, and keep the best"
               className={cn(
-                "inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs transition-colors",
-                ways ? "bg-sky-100 text-sky-800" : "text-slate-500 hover:bg-slate-100",
+                "inline-flex h-8 items-center gap-1.5 rounded-full px-3 font-medium text-[12.5px] transition-colors",
+                ways ? "bg-(--sh-on) text-(--sh-on-ink)" : "text-(--sh-ink-2) hover:bg-(--sh-chip)",
               )}
             >
-              <SparklesIcon className="size-3.5" />
+              <Layers2Icon className="size-3.5" />
               Try 3 ways
             </button>
+            <div className="ml-auto flex items-center gap-0.5">
+              <Pick icon={<AgentIcon agent={agent} className="size-3.5" />} label={agentLabel(agent)} value={agent} options={AGENTS} show={agentLabel} onPick={setAgent} />
+              <Pick icon={<GaugeIcon />} label={effort} value={effort} options={EFFORTS} onPick={setEffort} hint="Effort" />
+            </div>
+          </div>
+        </Fold>
+        <button
+          type="button"
+          onClick={send}
+          disabled={!ready}
+          aria-label="Send"
+          className={cn(
+            "absolute right-3 inline-flex size-8 items-center justify-center rounded-full bg-(--sh-btn) text-(--sh-btn-ink) shadow-sm transition-[background-color,color,transform,bottom] duration-300 enabled:hover:scale-105 disabled:bg-(--sh-chip-2) disabled:text-(--sh-ink-3) disabled:shadow-none",
+            docked ? "bottom-[11px]" : "bottom-3",
           )}
-          <div className="ml-auto flex items-center gap-1">
-            <Pick icon={<AgentIcon agent={agent} className="size-3.5" />} label={agentLabel(agent)} options={AGENTS} show={agentLabel} onPick={setAgent} />
-            <Pick label={effort} options={EFFORTS} onPick={setEffort} quiet />
-            <button
-              type="button"
-              onClick={send}
-              disabled={!text.trim()}
-              aria-label="Send"
-              className="ml-1 inline-flex size-8 items-center justify-center rounded-full bg-slate-900 text-white transition-opacity disabled:opacity-30"
-            >
-              <ArrowUpIcon className="size-4" />
-            </button>
+        >
+          <ArrowUpIcon className="size-4" strokeWidth={2.4} />
+        </button>
+      </div>
+      <Fold open={!docked}>
+        <div className="flex justify-center pt-3">
+          <div className="flex items-center gap-0.5 rounded-full bg-(--sh-glass-2) p-0.5 shadow-(--sh-shadow-sm) ring-(--sh-edge) ring-1 backdrop-blur-xl">
+            <Pick icon={<MonitorIcon />} label={pickBox || "No box"} value={pickBox} options={online} onPick={setBox} hint="Box" />
+            <span className="text-(--sh-ink-3) text-[12px]" aria-hidden>
+              /
+            </span>
+            <Pick icon={<FolderIcon />} label={pickLoc || "No project"} value={pickLoc} options={projects.map((p) => p.name)} onPick={setLocation} hint="Project" />
+            <span className="mx-1 h-4 w-px bg-(--sh-line-2)" aria-hidden />
+            <Pick
+              icon={<GitBranchIcon />}
+              label={where === "new" ? "New worktree from main" : "Main checkout"}
+              value={where === "new" ? "New worktree from main" : "Main checkout"}
+              options={["New worktree from main", "Main checkout"]}
+              onPick={(v) => setWhere(v === "Main checkout" ? "main" : "new")}
+              hint="Where"
+            />
           </div>
         </div>
-      </div>
-      {!docked && (
-        <div className="mt-2 flex gap-1">
-          <Pick
-            onWater
-            icon={<FolderIcon />}
-            label={where === "new" ? "New worktree" : "Main checkout"}
-            options={["New worktree", "Main checkout"]}
-            onPick={(v) => setWhere(v === "New worktree" ? "new" : "main")}
-          />
-          <Pick onWater icon={<GitBranchIcon />} label="from main" options={["from main"]} onPick={() => {}} />
-        </div>
-      )}
+      </Fold>
     </div>
   );
 }
 
-function Pick({ icon, label, options, onPick, show, quiet, onWater }: { icon?: React.ReactNode; label: string; options: string[]; onPick(v: string): void; show?(v: string): string; quiet?: boolean; onWater?: boolean }) {
+function Fold({ open, children }: { open: boolean; children: React.ReactNode }) {
+  return (
+    <div className="shore-fold" data-closed={open ? undefined : ""} inert={!open || undefined}>
+      <div>{children}</div>
+    </div>
+  );
+}
+
+function Pick({ icon, label, value, options, onPick, show, hint }: { icon?: React.ReactNode; label: string; value: string; options: string[]; onPick(v: string): void; show?(v: string): string; hint?: string }) {
   return (
     <Menu>
       <MenuTrigger
         render={
           <button
             type="button"
-            className={cn(
-              "inline-flex h-7 items-center gap-1.5 rounded-full px-2.5 text-xs outline-none transition-colors hover:bg-white/90 focus-visible:ring-2 focus-visible:ring-sky-300 data-popup-open:bg-white/80 [&_svg]:size-3.5",
-              quiet ? "text-slate-400" : "text-slate-600",
-              onWater && "bg-white/75 shadow-sm backdrop-blur-sm",
-            )}
+            aria-label={hint ? `${hint}: ${label}` : undefined}
+            className="inline-flex h-8 items-center gap-1.5 rounded-full px-2.5 font-medium text-(--sh-ink-2) text-[12.5px] outline-none transition-colors hover:bg-(--sh-chip) hover:text-(--sh-ink) data-popup-open:bg-(--sh-chip-2) [&_svg]:size-3.5"
           />
         }
       >
         {icon}
         {label}
-        <ChevronDownIcon className="text-slate-400" />
+        <ChevronDownIcon className="-ml-0.5 opacity-60" />
       </MenuTrigger>
       <MenuPopup align="start">
         {options.map((o) => (
           <MenuItem key={o} onClick={() => onPick(o)}>
-            {show ? show(o) : o}
+            <span className="flex-1">{show ? show(o) : o}</span>
+            {o === value && <CheckIcon className="size-3.5 opacity-70" />}
           </MenuItem>
         ))}
       </MenuPopup>

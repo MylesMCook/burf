@@ -1,3 +1,4 @@
+import { CheckIcon } from "lucide-react";
 import { useMemo } from "react";
 
 import type { SessionEntry } from "@/hooks/use-agent-counts";
@@ -5,10 +6,10 @@ import { agentLabel, agentOf, worktreeOf } from "@/lib/derive";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
-// Harbour puts each agent on the water as a boat seen from above. Working
-// agents are out at sea under way, leaving a wake; an agent that needs you
-// comes in to a berth on the quay with its lamp lit; a finished one is tied
-// up at its berth. Clicking a boat opens its transcript.
+// Harbour puts each agent on the water as a boat, seen from the shore.
+// Working agents are out on the water under sail; an agent that needs you
+// comes in to a numbered berth on the quay with its lamp lit; a finished one
+// lies moored at its berth. Clicking a boat opens its transcript.
 
 export interface Boat {
   key: string;
@@ -18,20 +19,6 @@ export interface Boat {
   title: string;
   state: "running" | "waiting" | "finished";
 }
-
-// Places out at sea, in percent of the water, kept clear of the composer in
-// the middle. Boats take them in order.
-const OUT = [
-  [16, 20],
-  [80, 16],
-  [34, 9],
-  [66, 30],
-  [88, 52],
-  [9, 46],
-  [24, 64],
-  [76, 70],
-  [52, 12],
-];
 
 export function useBoats(all: SessionEntry[]): Boat[] {
   const boxes = useStore((s) => s.boxes);
@@ -50,121 +37,137 @@ export function useBoats(all: SessionEntry[]): Boat[] {
   );
 }
 
-export function Harbour({ boats, onOpen, dim }: { boats: Boat[]; onOpen(b: Boat): void; dim?: boolean }) {
+// Places on the water for boats under way: across (percent of the width)
+// and depth (0 at the horizon, 1 just off the quay). Boats take them in
+// order; the near ones are bigger.
+const SEA: [number, number][] = [
+  [17, 0.42],
+  [79, 0.3],
+  [36, 0.12],
+  [63, 0.62],
+  [90, 0.7],
+  [8, 0.78],
+  [52, 0.28],
+  [27, 0.86],
+  [71, 0.08],
+];
+
+export function Harbour({ boats, onOpen, away }: { boats: Boat[]; onOpen(b: Boat): void; away?: boolean }) {
   const out = boats.filter((b) => b.state === "running");
+  // The quay: who needs you first, then the finished, then one free berth.
   const berthed = boats.filter((b) => b.state !== "running").sort((a, b) => (a.state === b.state ? 0 : a.state === "waiting" ? -1 : 1));
-  const berths = Math.max(6, berthed.length + 2);
 
   return (
-    <div className={cn("pointer-events-none absolute inset-0 transition-opacity duration-500", dim && "opacity-0")}>
+    <div className={cn("pointer-events-none absolute inset-0 transition-[opacity,transform] duration-500", away && "translate-y-3 opacity-0")} inert={away || undefined}>
       {out.map((b, i) => {
-        const [x, y] = OUT[i % OUT.length];
+        const [x, d] = SEA[i % SEA.length];
         return (
           <button
             key={b.key}
             type="button"
             onClick={() => onOpen(b)}
-            className="shore-boat group pointer-events-auto absolute -translate-x-1/2 -translate-y-1/2 rounded-full outline-none focus-visible:ring-2 focus-visible:ring-white/80"
-            style={{ left: `${x}%`, top: `${y * 0.82}%`, "--drift": `${18 + (i % 4) * 5}s`, "--turn": `${i % 2 ? -14 : 12}deg` } as React.CSSProperties}
+            className="group pointer-events-auto absolute flex -translate-x-1/2 -translate-y-full flex-col items-center rounded-lg outline-none"
+            style={{ left: `${x}%`, top: `calc(var(--sh-horizon) + (100% - var(--sh-horizon) - 128px) * ${d} + 12px)` }}
             aria-label={`${b.title}, ${agentLabel(b.agent)}, working`}
           >
-            <BoatTop under />
-            <Label boat={b} hover />
+            <span className="shore-ride relative block origin-bottom" style={{ "--ride": `${6 + (i % 3)}s` } as React.CSSProperties}>
+              <BoatSide sail size={Math.round(54 + d * 30)} />
+              {/* Its reflection, softened, on the water below. */}
+              <BoatSide sail size={Math.round(54 + d * 30)} className="-scale-y-100 pointer-events-none absolute top-[88%] left-0 opacity-25 blur-[1.5px] [mask-image:linear-gradient(to_bottom,black,transparent_70%)]" />
+            </span>
+            <span className="mt-1 flex items-center gap-1.5 whitespace-nowrap rounded-full bg-(--sh-glass) px-2 py-0.5 font-medium text-(--sh-ink) text-[11.5px] shadow-(--sh-shadow-sm) ring-1 ring-(--sh-edge) backdrop-blur-md transition-transform group-hover:-translate-y-0.5">
+              <span className="shore-spin size-2.5 shrink-0 rounded-full border-(--sh-busy) border-[1.5px] border-t-transparent" aria-hidden />
+              {b.title}
+            </span>
           </button>
         );
       })}
 
-      {/* The quay along the bottom, with its numbered berths. */}
-      <div className="absolute inset-x-0 bottom-0 h-[104px]">
-        <Quay berths={berths} />
-        {berthed.map((b, i) => (
-          <button
-            key={b.key}
-            type="button"
-            onClick={() => onOpen(b)}
-            className="shore-moored group pointer-events-auto absolute bottom-[38px] -translate-x-1/2 outline-none"
-            style={{ left: `${((i + 1) / (berths + 1)) * 100}%` }}
-            aria-label={`${b.title}, ${agentLabel(b.agent)}, ${b.state === "waiting" ? "needs you" : "finished"}`}
-          >
-            <BoatTop lamp={b.state === "waiting"} moored />
-            <Label boat={b} hover={b.state !== "waiting"} above />
-          </button>
-        ))}
-      </div>
+      <Quay berthed={berthed} onOpen={onOpen} />
     </div>
   );
 }
 
-function Label({ boat, hover, above }: { boat: Boat; hover?: boolean; above?: boolean }) {
+// Quay is the row of numbered berths along the foot of the window, with
+// one free berth at the end that takes you to the composer.
+function Quay({ berthed, onOpen }: { berthed: Boat[]; onOpen(b: Boat): void }) {
+  const slots = [...berthed, null];
+  const no = (i: number) => String(i + 1).padStart(2, "0");
   return (
-    <span
-      className={cn(
-        "-translate-x-1/2 absolute left-1/2 whitespace-nowrap rounded-full bg-white/85 px-2 py-0.5 font-medium text-[11px] text-slate-700 shadow-sm backdrop-blur-sm transition-opacity",
-        above ? "bottom-full mb-1.5" : "top-full mt-1",
-        hover ? "opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100" : "opacity-100",
-      )}
-    >
-      {boat.title}
-      <span className="text-slate-400"> · {boat.state === "waiting" ? "needs you" : boat.state === "finished" ? "done" : agentLabel(boat.agent)}</span>
-    </span>
+    <div className="absolute inset-x-0 bottom-4 flex justify-center px-4">
+      <ol aria-label="Quay" className="pointer-events-auto flex max-w-full gap-1 overflow-x-auto rounded-[22px] bg-(--sh-glass-2) p-1.5 shadow-(--sh-shadow) ring-(--sh-edge) ring-1 backdrop-blur-xl [scrollbar-width:none]">
+        {slots.map((b, i) => (
+          <li key={b?.key ?? "free"} className="shrink-0">
+            {b ? (
+              <button
+                type="button"
+                onClick={() => onOpen(b)}
+                className={cn(
+                  "group flex h-[62px] w-[164px] items-center gap-2.5 rounded-2xl pr-3 pl-2 text-left outline-none transition-colors max-[1100px]:w-[148px]",
+                  b.state === "waiting" ? "bg-(--sh-glass-hi) shadow-(--sh-shadow-sm)" : "hover:bg-(--sh-glass)",
+                )}
+                aria-label={`Berth ${i + 1}: ${b.title}, ${agentLabel(b.agent)}, ${b.state === "waiting" ? "needs you" : "finished"}`}
+              >
+                <span className="flex shrink-0 flex-col items-center">
+                  <BoatSide lamp={b.state === "waiting"} size={42} />
+                  <span className="-mt-px font-mono text-(--sh-ink-3) text-[9.5px] leading-3 tabular-nums">{no(i)}</span>
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate font-medium text-(--sh-ink) text-[13px] leading-5">{b.title}</span>
+                  <span className={cn("flex items-center gap-1 text-[12px] leading-4", b.state === "waiting" ? "font-medium text-(--sh-lamp-ink)" : "text-(--sh-ink-3)")}>
+                    {b.state === "waiting" ? (
+                      "Needs you"
+                    ) : (
+                      <>
+                        <CheckIcon className="size-3 text-(--sh-done)" strokeWidth={3} />
+                        Done
+                      </>
+                    )}
+                  </span>
+                </span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => document.querySelector<HTMLTextAreaElement>(".shore-dock textarea")?.focus()}
+                aria-label={`Berth ${i + 1} is free: start something`}
+                className="flex h-[62px] w-[84px] flex-col items-center justify-center gap-0.5 rounded-2xl border border-(--sh-line-2) border-dashed text-(--sh-ink-3) text-[12px] outline-none transition-colors hover:bg-(--sh-glass) hover:text-(--sh-ink-2)"
+              >
+                <span>Free</span>
+                <span className="font-mono text-[9.5px] tabular-nums">{no(i)}</span>
+              </button>
+            )}
+          </li>
+        ))}
+      </ol>
+    </div>
   );
 }
 
-// BoatTop is a small boat from above, bow up: hull, cabin, mast, and a wake
-// behind it when it is under way.
-function BoatTop({ under, lamp, moored }: { under?: boolean; lamp?: boolean; moored?: boolean }) {
+// BoatSide is the brand's boat from the side: hull, mast and the lamp at
+// its head. Under way it carries a mainsail and a jib; tied up, the sails
+// are stowed and the cabin shows. At a berth that needs you, the lamp is lit.
+export function BoatSide({ size = 40, sail, lamp, className }: { size?: number; sail?: boolean; lamp?: boolean; className?: string }) {
+  const line = { stroke: "var(--sh-hull-line)", strokeWidth: 1.4 };
   return (
-    <svg width="45" height={under ? 96 : 66} viewBox={`0 0 30 ${under ? 64 : 44}`} className="block overflow-visible text-[#1d2a55]" aria-hidden>
-      {under && (
-        <g className="shore-wake" stroke="white" strokeLinecap="round" fill="none">
-          <path d="M11 40 L4 62" strokeWidth="1.6" opacity="0.7" strokeDasharray="3 3" />
-          <path d="M19 40 L26 62" strokeWidth="1.6" opacity="0.7" strokeDasharray="3 3" />
-          <path d="M15 42 V58" strokeWidth="2.4" opacity="0.45" />
-        </g>
+    <svg width={size} height={(size * 40) / 48} viewBox="0 0 48 40" className={cn("block shrink-0 overflow-visible", className)} aria-hidden fill="none" strokeLinecap="round" strokeLinejoin="round">
+      {lamp && <circle className="shore-lamp" cx="24" cy="8.6" r="5" fill="var(--sh-lamp)" opacity="0.32" />}
+      <path d={sail ? "M24 4 V29" : "M24 9 V29"} {...line} />
+      {sail ? (
+        <>
+          <path d="M25.6 6 C 31.5 12 35 19.5 36 27.5 H25.6 Z" fill="var(--sh-sail)" {...line} />
+          <path d="M22.4 9.5 C 19 15.5 15.5 21.5 13 27.5 H22.4 Z" fill="var(--sh-sail)" {...line} />
+        </>
+      ) : (
+        <>
+          <rect x="16" y="21.5" width="13" height="7.5" rx="1.5" fill="var(--sh-hull)" {...line} />
+          <path d="M19.5 25 H22.5" {...line} strokeWidth={1.2} />
+        </>
       )}
-      <g className={cn(moored && "shore-bob")}>
-        <path d="M15 2 C 23 9 25 18 24.5 28 L 23.5 40 H 6.5 L 5.5 28 C 5 18 7 9 15 2 Z" fill="white" stroke="currentColor" strokeWidth="1.6" />
-        <rect x="9.5" y="20" width="11" height="12" rx="2" fill="currentColor" fillOpacity="0.12" stroke="currentColor" strokeWidth="1.2" />
-        <circle cx="15" cy="14" r="1.6" fill="currentColor" />
-        {lamp && (
-          <>
-            <circle className="shore-lamp" cx="15" cy="14" r="7" fill="#f2b23a" opacity="0.35" />
-            <circle cx="15" cy="14" r="2.6" fill="#f2b23a" />
-          </>
-        )}
-      </g>
-      {moored && <path d="M15 40 V45" stroke="currentColor" strokeWidth="1.2" />}
-    </svg>
-  );
-}
-
-// Quay is the timber edge of the harbour: a kerb, a plank deck, and a
-// bollard with its number at every berth.
-function Quay({ berths }: { berths: number }) {
-  return (
-    <svg className="absolute inset-0 size-full" aria-hidden>
-      <defs>
-        <pattern id="shore-planks" width="34" height="12" patternUnits="userSpaceOnUse">
-          <rect width="34" height="12" fill="#efe3cc" />
-          <path d="M0 11.5 H34" stroke="#d8c6a4" strokeWidth="1" />
-          <path d="M17 0 V12" stroke="#e1d1b2" strokeWidth="1" />
-        </pattern>
-      </defs>
-      {/* Shadow on the water, the kerb, then the deck. */}
-      <rect x="0" y="62" width="100%" height="6" fill="#1d2a55" opacity="0.18" />
-      <rect x="0" y="66" width="100%" height="38" fill="url(#shore-planks)" />
-      <rect x="0" y="64" width="100%" height="6" fill="#d9c7a3" />
-      {Array.from({ length: berths }, (_, i) => {
-        const x = `${((i + 1) / (berths + 1)) * 100}%`;
-        return (
-          <g key={i}>
-            <circle cx={x} cy="67" r="4.5" fill="#7d6648" />
-            <text x={x} y="92" textAnchor="middle" className="fill-[#9a8462] font-mono text-[10px]">
-              {i + 1}
-            </text>
-          </g>
-        );
-      })}
+      <path d="M4.5 29.5 H43.5 C 41.8 33.6 38.4 36 34 36 H14 C 9.6 36 6.2 33.6 4.5 29.5 Z" fill="var(--sh-hull)" {...line} />
+      <path d="M8.5 32.4 H39.5" stroke="var(--sh-hull-line)" strokeOpacity="0.22" strokeWidth="1.2" />
+      <circle cx="24" cy={sail ? 3.6 : 8.6} r="2" fill={lamp ? "var(--sh-lamp)" : "var(--sh-hull-line)"} />
+      <path d="M2 39 q3 -1.6 6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t6 0 t4 0" stroke="var(--sh-hull-line)" strokeOpacity="0.25" strokeWidth="1.2" />
     </svg>
   );
 }

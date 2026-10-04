@@ -30,6 +30,8 @@ export interface CrewMember {
   state: "running" | "waiting" | "finished";
   doing: string;
   since: number;
+  // When it came back, so its time stops.
+  until?: number;
 }
 
 // The summary line a finished group of tool calls folds to: "Read 5 files",
