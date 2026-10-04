@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"github.com/sean-brydon/berthd/internal/box/runs"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -273,10 +274,11 @@ func TestWebhooksNeverSendASecretAStepPrinted(t *testing.T) {
 		{Kind: "run", Command: "echo " + secret},
 		{Kind: "webhook", URL: srv.URL + "/?q={{prev.output}}", Text: `{"out": "{{prev.output}}"}`},
 	}}}
-	// runStep is what runFlow calls with the worktree's resolved secrets.
-	vars := map[string]string{"prev.output": secret + "\n"}
-	if _, _, err := b.runStep(context.Background(), "leak", sf.Flow.Steps[1], vars, nil, []string{secret}, Location{}, wt, true, new(string)); err != nil {
-		t.Fatal(err)
+	// The run host sends the webhook with the worktree's resolved secrets.
+	vars := map[string]string{"prev.output": secret + "\n", "worktree.path": wt.Path}
+	h := &runHost{b: b, env: map[string]*runEnv{"r_test|" + wt.Path: {wt: wt, scoped: true, secrets: []string{secret}}}}
+	if res := h.webhook(context.Background(), &runs.StepCtx{Run: runs.Summary{ID: "r_test"}, Step: sf.Flow.Steps[1], Vars: vars}); res.Status != runs.Succeeded {
+		t.Fatal(res.Err)
 	}
 	if s := <-got; strings.Contains(s, secret) || !strings.Contains(s, "[secret]") {
 		t.Fatalf("sent %q", s)

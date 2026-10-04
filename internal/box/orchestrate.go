@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sean-brydon/berthd/internal/box/runs"
 	"github.com/sean-brydon/berthd/internal/events"
 	"github.com/sean-brydon/berthd/internal/hooks"
 )
@@ -360,6 +361,9 @@ type ExecRequest struct {
 	Location string `json:"location"`
 	Command  string `json:"command"`
 	Timeout  string `json:"timeout,omitempty"`
+	// Detach answers at once with a run whose result holds the exit code
+	// and output, so no caller blocks (or times out) on a long check.
+	Detach bool `json:"detach,omitempty"`
 }
 
 type ExecResult struct {
@@ -394,6 +398,27 @@ func (b *Box) handleExec(w http.ResponseWriter, r *http.Request) error {
 	data := map[string]any{"location": req.Location, "path": dir, "command": req.Command}
 	if err := b.before(r, "exec", data); err != nil {
 		return err
+	}
+	if req.Detach {
+		if b.Runs == nil {
+			return badRequest("this box cannot run detached commands")
+		}
+		vars := map[string]string{"worktree.path": dir}
+		if loc, wt, ok := b.worktreeAt(r.Context(), dir); ok {
+			vars["location"], vars["worktree.name"], vars["worktree.branch"] = loc.Name, wt.Name, wt.Branch
+		}
+		t := req.Timeout
+		if t == "" {
+			t = "30m"
+		}
+		s, _, err := b.Runs.Start(runs.Request{Template: "exec", Params: map[string]any{"command": req.Command, "timeout": t}, Vars: vars,
+			IdemKey: r.Header.Get("Idempotency-Key"), Origin: gateOrigin(r), Path: dir})
+		if err != nil {
+			return badRequest("%v", err)
+		}
+		w.WriteHeader(http.StatusAccepted)
+		writeJSON(w, map[string]any{"run": s.ID, "status": s.Status, "detached": true})
+		return nil
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), timeout)
 	defer cancel()

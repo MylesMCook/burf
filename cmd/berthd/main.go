@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/sean-brydon/berthd/internal/box"
+	"github.com/sean-brydon/berthd/internal/mcpserver"
 	"github.com/sean-brydon/berthd/internal/boxcmd"
 	"github.com/sean-brydon/berthd/internal/doctor"
 	"github.com/sean-brydon/berthd/internal/events"
@@ -59,7 +60,13 @@ const usage = `berthd — the berth daemon for a development box
   berthd secret exec [--socket PATH] -- PROGRAM [ARGS...]
                                           Resolve secret references, then run PROGRAM (sessions and
                                           services use it)
+  berthd mcp                              A stdio MCP server of berth's tools for agents on this box
+                                          (integrations install adds it to Claude, Codex and Gemini)
+  berthd headless --agent A --out FILE.jsonl --prompt-file FILE [--read-only] [--add-dir D]
+                                          One non-interactive agent turn, as runs start in tmux
 
+Runs use ~/.berth/runs.json: {"max_concurrent_runs": 10, "max_concurrent_agents": 6,
+"triggers_listen": "tailnet"} (the last serves signed webhook triggers on port 7482).
 Hooks run from ~/.berth/hooks.json and ~/.berth/plugins; see https://docs.berthd.app/guides/hooks
 BERTH_HOME overrides the state directory.
 `
@@ -174,6 +181,10 @@ func run(args []string) error {
 			return err
 		})
 		return nil
+	case "headless":
+		return box.RunHeadless(args[1:], os.Stdout)
+	case "mcp":
+		return mcpserver.Serve(context.Background(), b.socket(), os.Stdin, os.Stdout)
 	case "integrations":
 		exe, err := os.Executable()
 		if err != nil {
@@ -304,6 +315,10 @@ func serve(b boxHome, args []string) error {
 			BeforeRestart: func() { shares.StopAll(); ln.Close() },
 		},
 	}
+	bx.AutoFix = &box.AutoFixStore{Path: filepath.Join(b.dir, "autofix.json")}
+	bx.Triggers = &box.TriggerSecrets{Path: filepath.Join(b.dir, "trigger-secrets.json")}
+	rc := box.LoadRunsConfig(filepath.Join(userDir, "runs.json"))
+	bx.NewRuns(filepath.Join(b.dir, "runs"), rc.MaxConcurrentRuns, rc.MaxConcurrentAgents, logger.Printf)
 	bx.Mount(s)
 	// Hooks that ran while berthd was down, in order, before anything new.
 	if n := integrations.DrainSpool(b.spool(), func(e events.Event) { bus.Publish(e) }); n > 0 {
@@ -316,7 +331,29 @@ func serve(b boxHome, args []string) error {
 	}
 	go turns.Run(ctx, bx)
 	go bx.RunRepoHooks(ctx, logger)
+	// Runs that were going when berthd stopped carry on from their journals.
+	bx.Runs.Resume(ctx)
+	defer func() {
+		done := make(chan struct{})
+		go func() { bx.Runs.Wait(); close(done) }()
+		select {
+		case <-done:
+		case <-time.After(5 * time.Second):
+		}
+	}()
 	go bx.Flows.Run(ctx, bx)
+	if addr := rc.TriggersListen; addr != "" {
+		if addr == "tailnet" {
+			if host, err := tailnetAddr(); err == nil {
+				addr = net.JoinHostPort(host, "7482")
+			}
+		}
+		if err := bx.TriggerListener(ctx, addr); err != nil {
+			logger.Printf("webhook triggers: %v", err)
+		} else {
+			logger.Printf("webhook triggers on http://%s/v1/triggers/", addr)
+		}
+	}
 	go bx.Phone.Run(ctx, bx)
 	go bx.Guard.Run(ctx, bx)
 

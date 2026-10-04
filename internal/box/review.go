@@ -70,6 +70,9 @@ type ReviewItem struct {
 const maxReviewCommits = 20
 
 func (b *Box) review(w http.ResponseWriter, r *http.Request) error {
+	if id := r.URL.Query().Get("run"); id != "" {
+		return b.reviewRun(w, r, id)
+	}
 	items, err := b.Review(r.Context(), r.URL.Query().Get("all") == "1")
 	if err != nil {
 		return err

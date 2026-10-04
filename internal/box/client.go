@@ -43,6 +43,10 @@ func (c *Client) Call(ctx context.Context, method, path string, in, out any) err
 }
 
 func (c *Client) call(ctx context.Context, method, path string, in, out any) error {
+	return c.callHeader(ctx, method, path, nil, in, out)
+}
+
+func (c *Client) callHeader(ctx context.Context, method, path string, extra http.Header, in, out any) error {
 	var body io.Reader
 	if in != nil {
 		b, err := json.Marshal(in)
@@ -52,6 +56,9 @@ func (c *Client) call(ctx context.Context, method, path string, in, out any) err
 		body = bytes.NewReader(b)
 	}
 	header := http.Header{"Content-Type": {"application/json"}}
+	for k, v := range extra {
+		header[k] = v
+	}
 	if validOrigin.MatchString(c.Origin) {
 		header.Set(OriginHeader, c.Origin)
 	}

@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sean-brydon/berthd/internal/box/runs"
 	"github.com/sean-brydon/berthd/internal/events"
 )
 
@@ -63,29 +64,35 @@ func flowBox(t *testing.T, flows []Flow) (*Box, Session, Worktree) {
 	// Runs finish in the background, saving their records into the temp
 	// dirs; let them settle before those dirs are removed (cleanups run
 	// last-registered first, so this one runs before TempDir's).
-	t.Cleanup(func() { settleRuns(b.Flows) })
+	t.Cleanup(func() { settleRuns(b) })
 	time.Sleep(100 * time.Millisecond)
 	return b, sess, wt
 }
 
-// settleRuns waits, briefly, until no flow run is still running.
-func settleRuns(f *Flows) {
-	deadline := time.Now().Add(5 * time.Second)
+// settleRuns waits, briefly, until no run is still going, then cancels
+// what is (a run waiting on an agent that never answers).
+func settleRuns(b *Box) {
+	eng := b.runsNow()
+	if eng == nil {
+		return
+	}
+	deadline := time.Now().Add(3 * time.Second)
 	for time.Now().Before(deadline) {
-		busy := false
-		for _, r := range f.Runs("", 1000) {
-			if r.Status == "running" {
-				busy = true
-				break
-			}
-		}
-		if !busy {
+		if len(eng.List(runs.Filter{Status: "active"})) == 0 {
 			// The last record may still be on its way to disk.
 			time.Sleep(50 * time.Millisecond)
 			return
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
+	for _, s := range eng.List(runs.Filter{Status: "active"}) {
+		eng.Cancel(s.ID)
+	}
+	deadline = time.Now().Add(3 * time.Second)
+	for eng.Active() > 0 && time.Now().Before(deadline) {
+		time.Sleep(20 * time.Millisecond)
+	}
+	time.Sleep(50 * time.Millisecond)
 }
 
 func waitRun(t *testing.T, b *Box, flow string) FlowRun {

@@ -129,6 +129,9 @@ func (b *Box) Capabilities() []string {
 	if b.Turns != nil {
 		caps = append(caps, "turns")
 	}
+	if b.Runs != nil {
+		caps = append(caps, "runs", "exec.detach")
+	}
 	if b.Events.Journal != nil {
 		caps = append(caps, "journal")
 	}

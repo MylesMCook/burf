@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/sean-brydon/berthd/internal/doctor"
+	"github.com/sean-brydon/berthd/internal/box/runs"
 	"github.com/sean-brydon/berthd/internal/events"
 	"github.com/sean-brydon/berthd/internal/hooks"
 	"github.com/sean-brydon/berthd/internal/terminal"
@@ -72,6 +73,13 @@ type Box struct {
 	// Invites, when set, lets paired laptops mint pairing codes for another
 	// computer (berth invite).
 	Invites *Invites
+	// Runs executes durable runs (loops, attempts, flows); nil on a box
+	// without them.
+	Runs *runs.Engine
+	// AutoFix keeps each worktree's "Auto-fix this PR" settings.
+	AutoFix *AutoFixStore
+	// Triggers keeps the secrets of flows started by a signed POST.
+	Triggers *TriggerSecrets
 }
 
 func (b *Box) own(path string) {
@@ -164,6 +172,7 @@ func (b *Box) Mount(s *wire.Server) {
 	route("POST /v1/upgrade", b.handleUpgrade)
 	route("GET /v1/events", b.streamEvents)
 	route("POST /v1/events", b.emit)
+	b.mountRuns(route)
 	b.mountPairing(s, route)
 }
 

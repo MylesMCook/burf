@@ -21,6 +21,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sean-brydon/berthd/internal/box/runs"
 	"github.com/sean-brydon/berthd/internal/events"
 	"github.com/sean-brydon/berthd/internal/statefile"
 )
@@ -329,6 +330,62 @@ func (p *Phone) Handler(b *Box, listenAddr string) http.Handler {
 		writeJSON(w, map[string]bool{"sent": true})
 	})
 
+	// Runs, in the phone's "answer things" scope: see what runs and what
+	// waits for you, decide a gate, cancel a run. Starting one is not here.
+	api.HandleFunc("GET /phone/v1/runs", func(w http.ResponseWriter, r *http.Request) {
+		if b.Runs == nil {
+			writeJSON(w, []runs.Summary{})
+			return
+		}
+		active := b.Runs.List(runs.Filter{Status: "active", Limit: 30})
+		done := b.Runs.List(runs.Filter{Status: "done", Limit: 10})
+		writeJSON(w, append(active, done...))
+	})
+	api.HandleFunc("GET /phone/v1/runs/{id}", func(w http.ResponseWriter, r *http.Request) {
+		if b.Runs == nil {
+			writeError(w, http.StatusNotFound, "no runs on this box")
+			return
+		}
+		run, err := b.Runs.Get(r.PathValue("id"))
+		if err != nil {
+			writeError(w, statusFor(runErr(err)), err.Error())
+			return
+		}
+		// The phone shows a run's outline: steps' outputs stay on the box.
+		var strip func([]runs.StepRun)
+		strip = func(steps []runs.StepRun) {
+			for i := range steps {
+				steps[i].Output = firstLineOf(steps[i].Output)
+				strip(steps[i].Children)
+			}
+		}
+		strip(run.Steps)
+		writeJSON(w, run)
+	})
+	api.HandleFunc("POST /phone/v1/runs/{id}/gates/{step}/decide", func(w http.ResponseWriter, r *http.Request) {
+		if b.Runs == nil {
+			writeError(w, http.StatusNotFound, "no runs on this box")
+			return
+		}
+		var req GateDecision
+		if err := decode(r, &req); err != nil {
+			writeError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		if err := b.decide(r, b.Runs, r.PathValue("id"), r.PathValue("step"), req, "phone", w); err != nil {
+			writeError(w, statusFor(err), err.Error())
+		}
+	})
+	api.HandleFunc("POST /phone/v1/runs/{id}/cancel", func(w http.ResponseWriter, r *http.Request) {
+		if b.Runs == nil {
+			writeError(w, http.StatusNotFound, "no runs on this box")
+			return
+		}
+		if err := b.cancelRun(w, r); err != nil {
+			writeError(w, statusFor(err), err.Error())
+		}
+	})
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		h := w.Header()
 		h.Set("X-Content-Type-Options", "nosniff")
@@ -389,7 +446,7 @@ var phoneKeys = map[string]string{
 
 // notify pushes an agent's state to ntfy when the config asks for it.
 func (p *Phone) notify(ctx context.Context, b *Box, e events.Event) {
-	state := map[string]string{"agent.waiting": "waiting", "agent.finished": "finished"}[e.Type]
+	state := map[string]string{"agent.waiting": "waiting", "agent.finished": "finished", "run.gate": "waiting"}[e.Type]
 	if state == "" {
 		return
 	}
@@ -427,6 +484,12 @@ func (p *Phone) notify(ctx context.Context, b *Box, e events.Event) {
 	if state == "finished" {
 		title = strings.TrimSpace(agentLabel(agent) + " finished")
 	}
+	run, _ := e.Data["run"].(string)
+	if e.Type == "run.gate" {
+		gate, _ := e.Data["gate_title"].(string)
+		title = "Run needs you: " + gate
+		session = ""
+	}
 	body := where + " on " + b.Name
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.Notify.URL, bytes.NewBufferString(body))
 	if err != nil {
@@ -442,6 +505,8 @@ func (p *Phone) notify(ctx context.Context, b *Box, e events.Event) {
 	p.mu.Unlock()
 	if url != "" && session != "" {
 		req.Header.Set("Click", url+"#s="+session)
+	} else if url != "" && run != "" {
+		req.Header.Set("Click", url+"#r="+run)
 	}
 	cctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()

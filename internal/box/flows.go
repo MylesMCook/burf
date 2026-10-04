@@ -1,16 +1,12 @@
 package box
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
-	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -19,6 +15,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sean-brydon/berthd/internal/box/runs"
 	"github.com/sean-brydon/berthd/internal/events"
 	"github.com/sean-brydon/berthd/internal/hooks"
 	"github.com/sean-brydon/berthd/internal/statefile"
@@ -43,6 +40,11 @@ type Flow struct {
 	// prompting the agent whose finishing started it. Zero means
 	// DefaultMaxRunsPerHour.
 	MaxRunsPerHour int `json:"max_runs_per_hour,omitempty"`
+	// A trigger for a worktree where this flow's run is still going waits
+	// for it: at most Queue of them (default 5). Coalesce merges new GitHub
+	// items into the run already waiting instead, as {{event.items}}.
+	Queue    int  `json:"queue,omitempty"`
+	Coalesce bool `json:"coalesce,omitempty"`
 }
 
 // DefaultMaxRunsPerHour is how many times a flow may start in an hour when
@@ -51,7 +53,8 @@ type Flow struct {
 const DefaultMaxRunsPerHour = 20
 
 // Trigger is what starts a flow, narrowed by Where: an event, a schedule,
-// or something happening on GitHub. Exactly one of the three is set.
+// something happening on GitHub, or a signed POST to the box (Webhook).
+// Exactly one is set.
 type Trigger struct {
 	Event string `json:"event,omitempty"`
 	// Schedule is a cron expression (minute hour day month weekday) or a
@@ -61,18 +64,38 @@ type Trigger struct {
 	// rather than once at the repository's main checkout.
 	EachWorktree bool           `json:"each_worktree,omitempty"`
 	GitHub       *GitHubTrigger `json:"github,omitempty"`
-	Where        Where          `json:"where,omitempty"`
+	// Webhook starts the flow from POST /v1/triggers/<id>, signed with
+	// the flow's secret (berth flows secret).
+	Webhook *WebhookTrigger `json:"webhook,omitempty"`
+	Where   Where           `json:"where,omitempty"`
 }
 
-// GitHubTrigger watches the pull requests of a project's worktrees.
+// WebhookTrigger starts a flow from a signed POST: a CI job on the tailnet,
+// or a Linear or Slack bridge you host.
+type WebhookTrigger struct {
+	// Worktree picks the worktree from a field of the posted JSON naming a
+	// branch (default "branch"); without it the run is at the repository's
+	// main checkout.
+	BranchField string `json:"branch_field,omitempty"`
+}
+
+// GitHubTrigger watches the pull requests of a project's worktrees, or its
+// issues.
 type GitHubTrigger struct {
-	// On is review_comment, pr_review, check_failed or pr_merged.
+	// On is review_comment, pr_review, check_failed or pr_merged (a
+	// worktree's pull request), or issue_labeled or issue_assigned (the
+	// repository's open issues).
 	On string `json:"on"`
 	// Poll is how often to look, at least 1m; default 2m.
 	Poll string `json:"poll,omitempty"`
+	// Label is the label issue_labeled watches for.
+	Label string `json:"label,omitempty"`
+	// Assignee is who issue_assigned watches for; default @me, the account
+	// gh is signed in as.
+	Assignee string `json:"assignee,omitempty"`
 }
 
-var githubOns = map[string]bool{"review_comment": true, "pr_review": true, "check_failed": true, "pr_merged": true}
+var githubOns = map[string]bool{"review_comment": true, "pr_review": true, "check_failed": true, "pr_merged": true, "issue_labeled": true, "issue_assigned": true}
 
 // Where narrows a trigger; empty fields match anything. Branch takes a
 // trailing * for a prefix.
@@ -88,7 +111,8 @@ type Where struct {
 	Author []string `json:"author,omitempty"`
 }
 
-// Step is one action. Kind picks which fields matter:
+// Step is one action of a flow: a run's step (see internal/box/runs).
+// The kinds flows always had keep their meaning:
 //   - run: Command (in the event's worktree), Timeout
 //   - prompt: Text, sent to the event's session or Session
 //   - wait: For (states, default finished,waiting), Timeout, Session
@@ -96,40 +120,29 @@ type Where struct {
 //   - notify: Title, Text
 //   - webhook: URL, Text (the JSON body; default the run's context)
 //
+// and flows may use every run step kind too: loop, gate, map, join, judge,
+// if, sleep, pr, check, headless.
+//
 // When runs it on the previous step's "success" (default), "failure", or
 // "always". Text fields take {{event.FIELD}}, {{worktree.path}},
 // {{prev.output}}, {{prev.exit_code}} and {{steps.ID.output}}, filled in
 // for each kind of field as flowtemplate.go describes: never as code.
-type Step struct {
-	ID          string   `json:"id"`
-	Kind        string   `json:"kind"`
-	When        string   `json:"when,omitempty"`
-	Command     string   `json:"command,omitempty"`
-	Text        string   `json:"text,omitempty"`
-	Title       string   `json:"title,omitempty"`
-	Session     string   `json:"session,omitempty"`
-	For         []string `json:"for,omitempty"`
-	Agent       string   `json:"agent,omitempty"`
-	NewWorktree bool     `json:"new_worktree,omitempty"`
-	Name        string   `json:"name,omitempty"`
-	URL         string   `json:"url,omitempty"`
-	Timeout     string   `json:"timeout,omitempty"`
-}
+type Step = runs.Step
 
-var (
-	flowID    = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,47}$`)
-	stepKinds = map[string]bool{"run": true, "prompt": true, "wait": true, "start_agent": true, "notify": true, "webhook": true}
-)
+// StepRun is what one step of a run did.
+type StepRun = runs.StepRun
+
+var flowID = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,47}$`)
 
 func validateTrigger(t Trigger) error {
 	set := 0
-	for _, on := range []bool{t.Event != "", t.Schedule != "", t.GitHub != nil} {
+	for _, on := range []bool{t.Event != "", t.Schedule != "", t.GitHub != nil, t.Webhook != nil} {
 		if on {
 			set++
 		}
 	}
 	if set != 1 {
-		return errors.New("a flow starts from exactly one of an event, a schedule, or GitHub")
+		return errors.New("a flow starts from exactly one of an event, a schedule, GitHub, or a webhook")
 	}
 	switch {
 	case t.Event != "":
@@ -140,9 +153,19 @@ func validateTrigger(t Trigger) error {
 		if _, err := ParseCron(t.Schedule); err != nil {
 			return err
 		}
+	case t.Webhook != nil:
+		if f := t.Webhook.BranchField; f != "" && !regexp.MustCompile(`^[a-z_][a-z0-9_]{0,31}$`).MatchString(f) {
+			return fmt.Errorf("webhook branch_field %q must be a plain field name", f)
+		}
 	default:
 		if !githubOns[t.GitHub.On] {
-			return fmt.Errorf("GitHub trigger %q must be review_comment, pr_review, check_failed or pr_merged", t.GitHub.On)
+			return fmt.Errorf("GitHub trigger %q must be review_comment, pr_review, check_failed, pr_merged, issue_labeled or issue_assigned", t.GitHub.On)
+		}
+		if t.GitHub.On == "issue_labeled" && strings.TrimSpace(t.GitHub.Label) == "" {
+			return errors.New("issue_labeled needs a label")
+		}
+		if strings.ContainsAny(t.GitHub.Label+t.GitHub.Assignee, "\n\"") {
+			return errors.New("label and assignee must be plain names")
 		}
 		if t.GitHub.Poll != "" {
 			if d, err := time.ParseDuration(t.GitHub.Poll); err != nil || d < time.Minute {
@@ -186,75 +209,41 @@ func ValidateFlows(flows []Flow) error {
 		if len(f.Steps) == 0 {
 			return fmt.Errorf("flow %s has no steps", f.ID)
 		}
-		steps := map[string]bool{}
-		for i, s := range f.Steps {
-			where := fmt.Sprintf("flow %s, step %d", f.ID, i+1)
-			if !stepKinds[s.Kind] {
-				return fmt.Errorf("%s: unknown kind %q", where, s.Kind)
-			}
-			if s.ID != "" {
-				if steps[s.ID] {
-					return fmt.Errorf("%s: two steps are called %s", where, s.ID)
-				}
-				steps[s.ID] = true
-			}
-			switch s.When {
-			case "", "success", "failure", "always":
-			default:
-				return fmt.Errorf("%s: when must be success, failure or always", where)
-			}
-			need := map[string]string{"run": s.Command, "prompt": s.Text, "start_agent": s.Agent, "notify": s.Title, "webhook": s.URL}[s.Kind]
-			if s.Kind != "wait" && strings.TrimSpace(need) == "" {
-				return fmt.Errorf("%s (%s) is missing what to do", where, s.Kind)
-			}
-			if s.Kind == "webhook" && !strings.HasPrefix(s.URL, "https://") && !strings.HasPrefix(s.URL, "http://") {
-				return fmt.Errorf("%s: webhook URL must be http or https", where)
-			}
-			if s.Timeout != "" {
-				if d, err := time.ParseDuration(s.Timeout); err != nil || d <= 0 {
-					return fmt.Errorf("%s: timeout %q is not a duration", where, s.Timeout)
-				}
-			}
+		if err := runs.ValidateSteps(f.Steps); err != nil {
+			return fmt.Errorf("flow %s, %v", f.ID, err)
+		}
+		if f.Queue < 0 || f.Queue > 50 {
+			return fmt.Errorf("flow %s: queue must be from 0 to 50", f.ID)
 		}
 	}
 	return nil
 }
 
-// FlowRun is one run of a flow, kept for its history.
+// FlowRun is one run of a flow as the flows API shows it: a run of the
+// "flow" template, read from the box's runs.
 type FlowRun struct {
 	ID       string       `json:"id"`
 	Flow     string       `json:"flow"`
 	Scope    string       `json:"scope"`
 	Started  time.Time    `json:"started"`
 	Finished time.Time    `json:"finished,omitzero"`
-	Status   string       `json:"status"` // running, succeeded, failed, interrupted
+	Status   string       `json:"status"` // running, waiting_gate, queued, succeeded, failed, cancelled, interrupted, skipped
 	Event    events.Event `json:"event"`
 	Steps    []StepRun    `json:"steps"`
 	Error    string       `json:"error,omitempty"`
 	// Test is set for a run started from the app's Test run, not by its
 	// trigger, so Runs can say so.
 	Test bool `json:"test,omitempty"`
-}
-
-// testRun marks the context of a run started by Test run.
-type testRun struct{}
-
-type StepRun struct {
-	ID       string    `json:"id"`
-	Kind     string    `json:"kind"`
-	Status   string    `json:"status"` // succeeded, failed, skipped
-	Started  time.Time `json:"started,omitzero"`
-	Duration string    `json:"duration,omitempty"`
-	Output   string    `json:"output,omitempty"`
-	ExitCode int       `json:"exit_code"`
-	Error    string    `json:"error,omitempty"`
+	// Usage is what its agents spent, where they report it.
+	Usage *runs.Usage `json:"usage,omitempty"`
 }
 
 // Flows runs a box's flows and its repositories'.
 type Flows struct {
 	// Path is the box's own flows file, ~/.berth/flows.json.
 	Path string
-	// RunsPath keeps recent runs across restarts.
+	// RunsPath is where runs were kept before runs were durable
+	// (flow-runs.json); they are imported into the box's runs once.
 	RunsPath string
 
 	// GitHubPath keeps what GitHub flows have already seen.
@@ -266,16 +255,12 @@ type Flows struct {
 	AllowOutbound []string
 
 	mu        sync.Mutex
-	runs      []FlowRun
+	box       *Box
 	recent    map[string][]time.Time // flow scope/id → start times this hour
-	running   map[string]bool        // flow scope/id + worktree
-	loaded    bool
-	lastFired map[string]time.Time // scheduled flow → minute it last fired
-	lastPoll  map[string]time.Time // GitHub flow → when it last looked
-	gh        map[string]*ghState  // GitHub flow + PR → what it has seen
+	lastFired map[string]time.Time   // scheduled flow → minute it last fired
+	lastPoll  map[string]time.Time   // GitHub flow → when it last looked
+	gh        map[string]*ghState    // GitHub flow + PR → what it has seen
 }
-
-const maxFlowRuns = 200
 
 // ScopedFlow is a flow with where it comes from.
 type ScopedFlow struct {
@@ -288,6 +273,10 @@ type ScopedFlow struct {
 	// the same id. It is listed so the app can show it, but never runs.
 	Overridden bool `json:"overridden,omitempty"`
 	Flow       Flow `json:"flow"`
+
+	// autofix is a worktree's "Auto-fix this PR" toggle acting as a flow:
+	// the template it starts, for that worktree only.
+	autofix *autoFlow
 }
 
 func (f *Flows) loadBox() ([]Flow, error) {
@@ -388,7 +377,8 @@ func (b *Box) ActiveFlows(ctx context.Context) ([]ScopedFlow, error) {
 // It reads the bus with a cursor, so a burst it is slow to match is caught
 // up from the journal rather than lost.
 func (f *Flows) Run(ctx context.Context, b *Box) {
-	f.recoverRuns(b)
+	b.runsEngine(ctx)
+	f.importRuns(b)
 	go f.schedule(ctx, b)
 	go f.watchGitHub(ctx, b)
 	cur := b.Events.SubscribeFrom(-1).Named("flows")
@@ -400,8 +390,9 @@ func (f *Flows) Run(ctx context.Context, b *Box) {
 		if err != nil {
 			return
 		}
-		// A flow's own bookkeeping never starts flows.
-		if strings.HasPrefix(e.Type, "flow.") {
+		// A flow's or run's own bookkeeping never starts flows, except a
+		// run finishing or stopping at a gate.
+		if strings.HasPrefix(e.Type, "flow.") || (strings.HasPrefix(e.Type, "run.") && e.Type != "run.finished" && e.Type != "run.gate") {
 			continue
 		}
 		// Reading every repository's config per event is what made this
@@ -415,34 +406,106 @@ func (f *Flows) Run(ctx context.Context, b *Box) {
 		}
 		for _, sf := range cached {
 			if sf.Flow.Enabled && b.flowMatches(ctx, sf, e) {
-				go b.runFlow(context.WithoutCancel(ctx), sf, e)
+				if _, err := b.startFlowRun(ctx, sf, e, flowStart{}); err != nil && b.Runs != nil {
+					b.Runs.Host.Publish("flow.skipped", map[string]any{"flow": sf.Flow.ID, "scope": sf.Scope, "error": err.Error(), "run": ""})
+				}
 			}
 		}
 	}
 }
 
-// recoverRuns marks runs a restart cut short as interrupted, and says so,
-// so a notification can fire. Runs do not resume yet.
-func (f *Flows) recoverRuns(b *Box) {
-	f.mu.Lock()
-	f.loadRuns()
-	var cut []FlowRun
-	for i := range f.runs {
-		if f.runs[i].Status == "running" {
-			f.runs[i].Status = "interrupted"
-			f.runs[i].Finished = time.Now().UTC()
-			f.runs[i].Error = "berthd restarted during this run; it did not resume"
-			cut = append(cut, f.runs[i])
+// runsEngine is the box's run engine, made and resumed here when serve did
+// not (tests, older embedders).
+func (b *Box) runsEngine(ctx context.Context) *runs.Engine {
+	runsInit.Lock()
+	defer runsInit.Unlock()
+	if b.Flows != nil {
+		b.Flows.mu.Lock()
+		b.Flows.box = b
+		b.Flows.mu.Unlock()
+	}
+	if b.Runs == nil {
+		dir := filepath.Join(os.TempDir(), "berth-runs")
+		if b.Flows != nil && b.Flows.Path != "" {
+			dir = filepath.Join(filepath.Dir(b.Flows.Path), "runs")
 		}
+		b.NewRuns(dir, 0, 0, nil)
+		b.Runs.Resume(ctx)
 	}
-	if len(cut) > 0 {
-		f.saveRuns()
+	return b.Runs
+}
+
+var runsInit sync.Mutex
+
+// runsNow is b.Runs, read safely while runsEngine may be making it.
+func (b *Box) runsNow() *runs.Engine {
+	runsInit.Lock()
+	defer runsInit.Unlock()
+	return b.Runs
+}
+
+// importRuns moves the runs flow-runs.json kept into the box's durable
+// runs, once. A run that was still going is imported as interrupted, as
+// it could not resume: that is said with flow.interrupted.
+func (f *Flows) importRuns(b *Box) {
+	if f.RunsPath == "" {
+		return
 	}
-	f.mu.Unlock()
-	for _, run := range cut {
-		path, _ := run.Event.Data["path"].(string)
-		b.Events.Publish(events.Event{Type: "flow.interrupted", Box: b.Name, Origin: "flow:" + run.Flow, Data: map[string]any{"flow": run.Flow, "scope": run.Scope, "run": run.ID, "status": "interrupted", "path": path}})
+	raw, err := os.ReadFile(f.RunsPath)
+	if err != nil {
+		return
 	}
+	var old []struct {
+		FlowRun
+		Steps []struct {
+			ID       string    `json:"id"`
+			Kind     string    `json:"kind"`
+			Status   string    `json:"status"`
+			Started  time.Time `json:"started"`
+			Duration string    `json:"duration"`
+			Output   string    `json:"output"`
+			ExitCode int       `json:"exit_code"`
+			Error    string    `json:"error"`
+		} `json:"steps"`
+	}
+	if json.Unmarshal(raw, &old) != nil {
+		return
+	}
+	var imported []runs.Run
+	var cut []runs.Run
+	for _, o := range old {
+		r := runs.Run{ID: "f_" + o.ID, Template: "flow", Title: o.Flow, FlowID: o.Flow, Scope: o.Scope, Status: o.Status, Created: o.Started,
+			Updated: o.Finished, Finished: o.Finished, Error: o.Error, Test: o.Test, Trigger: eventMap(o.Event), Steps: []runs.StepRun{}}
+		r.Path, _ = o.Event.Data["path"].(string)
+		for i, s := range o.Steps {
+			r.Steps = append(r.Steps, runs.StepRun{ID: s.ID, Kind: s.Kind, Path: strconv.Itoa(i), Status: s.Status, Started: s.Started, Duration: s.Duration, Output: s.Output, ExitCode: s.ExitCode, Error: s.Error})
+		}
+		if !runs.Terminal(r.Status) {
+			r.Status, r.Error = runs.Interrupted, "berthd restarted during this run, before runs could resume"
+			if r.Finished.IsZero() {
+				r.Finished = time.Now().UTC()
+			}
+			cut = append(cut, r)
+		}
+		if r.Updated.IsZero() {
+			r.Updated = r.Created
+		}
+		imported = append(imported, r)
+	}
+	if _, err := b.Runs.Import(imported); err != nil {
+		return
+	}
+	os.Rename(f.RunsPath, f.RunsPath+".imported")
+	for _, r := range cut {
+		b.Events.Publish(events.Event{Type: "flow.interrupted", Box: b.Name, Origin: "flow:" + r.FlowID, Data: map[string]any{"flow": r.FlowID, "scope": r.Scope, "run": r.ID, "status": "interrupted", "path": r.Path}})
+	}
+}
+
+func eventMap(e events.Event) map[string]any {
+	var m map[string]any
+	b, _ := json.Marshal(e)
+	json.Unmarshal(b, &m)
+	return m
 }
 
 func (b *Box) flowMatches(ctx context.Context, sf ScopedFlow, e events.Event) bool {
@@ -477,16 +540,15 @@ func (b *Box) flowMatches(ctx context.Context, sf ScopedFlow, e events.Event) bo
 	return true
 }
 
-// admit decides whether a run may start: not while the same flow already
-// runs for the same worktree, and not past its hourly limit.
-func (f *Flows) admit(key, slot string, limit int) bool {
+// errRateLimited refuses a run past its flow's hourly limit.
+var errRateLimited = errors.New("the flow reached its runs-per-hour limit")
+
+// allowRate counts a start against a flow's hourly limit.
+func (f *Flows) allowRate(key string, limit int) bool {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.recent == nil {
-		f.recent, f.running = map[string][]time.Time{}, map[string]bool{}
-	}
-	if f.running[key+"@"+slot] {
-		return false
+		f.recent = map[string][]time.Time{}
 	}
 	if limit <= 0 {
 		limit = DefaultMaxRunsPerHour
@@ -503,163 +565,136 @@ func (f *Flows) admit(key, slot string, limit int) bool {
 		return false
 	}
 	f.recent[key] = append(kept, time.Now())
-	f.running[key+"@"+slot] = true
 	return true
 }
 
-func (f *Flows) done(key, slot string) {
-	f.mu.Lock()
-	delete(f.running, key+"@"+slot)
-	f.mu.Unlock()
+// flowStart says how a flow's run is admitted.
+type flowStart struct {
+	test bool
+	// idem dedupes a trigger delivered twice (github:<flow>:<pr>:<item>).
+	idem string
+	// item is the trigger's item, merged into a waiting run when the flow
+	// coalesces.
+	item map[string]any
 }
 
-func (f *Flows) record(run FlowRun) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.loadRuns()
-	for i := range f.runs {
-		if f.runs[i].ID == run.ID {
-			f.runs[i] = run
-			f.saveRuns()
-			return
-		}
-	}
-	f.runs = append(f.runs, run)
-	if len(f.runs) > maxFlowRuns {
-		f.runs = f.runs[len(f.runs)-maxFlowRuns:]
-	}
-	f.saveRuns()
-}
-
-// loadRuns and saveRuns are called with f.mu held.
-func (f *Flows) loadRuns() {
-	if f.loaded || f.RunsPath == "" {
-		f.loaded = true
-		return
-	}
-	f.loaded = true
-	if b, err := os.ReadFile(f.RunsPath); err == nil {
-		json.Unmarshal(b, &f.runs)
-	}
-}
-
-func (f *Flows) saveRuns() {
-	if f.RunsPath == "" {
-		return
-	}
-	if b, err := json.Marshal(f.runs); err == nil {
-		statefile.Write(f.RunsPath, b)
-	}
-}
-
-// Runs returns recent runs, newest first, optionally of one flow.
-func (f *Flows) Runs(flow string, limit int) []FlowRun {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.loadRuns()
-	out := []FlowRun{}
-	for i := len(f.runs) - 1; i >= 0 && len(out) < limit; i-- {
-		if flow == "" || f.runs[i].Flow == flow {
-			out = append(out, f.runs[i])
-		}
-	}
-	return out
-}
-
-var runSeq struct {
-	sync.Mutex
-	n int
-}
-
-func newRunID() string {
-	runSeq.Lock()
-	defer runSeq.Unlock()
-	runSeq.n++
-	return strconv.FormatInt(time.Now().UnixMilli(), 36) + "-" + strconv.Itoa(runSeq.n)
-}
-
-// runFlow runs a flow's steps in order for one event.
-func (b *Box) runFlow(ctx context.Context, sf ScopedFlow, e events.Event) FlowRun {
-	// One key per effective flow: a scope has one active flow per id.
+// startFlowRun admits a run of a flow for event e: it starts, or waits
+// behind the flow's run in the same worktree (bounded by the flow's queue),
+// or merges into the one waiting when the flow coalesces. Nothing is
+// skipped silently: a refusal is returned.
+func (b *Box) startFlowRun(ctx context.Context, sf ScopedFlow, e events.Event, opt flowStart) (runs.Summary, error) {
+	eng := b.runsEngine(context.Background())
 	key := sf.Scope + "/" + sf.Flow.ID
 	loc, wt, scoped := b.eventScope(ctx, e.Data)
-	slot := wt.Path
-	if !b.Flows.admit(key, slot, sf.Flow.MaxRunsPerHour) {
-		return FlowRun{Status: "skipped"}
+	if opt.idem != "" {
+		// A delivery already admitted: not a new run, and not counted.
+		for _, s := range eng.List(runs.Filter{Flow: sf.Flow.ID, Limit: 200}) {
+			if s.IdemKey == opt.idem {
+				return s, nil
+			}
+		}
 	}
-	defer b.Flows.done(key, slot)
-
-	run := FlowRun{ID: newRunID(), Flow: sf.Flow.ID, Scope: sf.Scope, Started: time.Now().UTC(), Status: "running", Event: e, Test: ctx.Value(testRun{}) == true}
+	if !opt.test && !b.Flows.allowRate(key, sf.Flow.MaxRunsPerHour) {
+		return runs.Summary{}, errRateLimited
+	}
+	if e.Time.IsZero() {
+		e.Time = time.Now()
+	}
 	vars := map[string]string{"event.type": e.Type, "event.box": e.Box, "event.origin": e.Origin, "now": time.Now().Format(time.RFC3339)}
 	for k, v := range e.Data {
 		vars["event."+k] = fmt.Sprint(v)
 	}
-	var env, secrets []string
 	if scoped {
 		vars["location"], vars["worktree.name"], vars["worktree.path"], vars["worktree.branch"] = loc.Name, wt.Name, wt.Path, wt.Branch
-		env, secrets = b.flowEnv(ctx, loc.Name, wt)
 	}
 	session, _ := e.Data["session"].(string)
 	if session == "" && scoped {
 		session = b.sessionIn(ctx, wt.Path)
 	}
-	b.Flows.record(run)
-	b.Events.Publish(events.Event{Type: "flow.started", Box: b.Name, Origin: "flow:" + sf.Flow.ID, Data: map[string]any{"flow": sf.Flow.ID, "scope": sf.Scope, "run": run.ID, "path": wt.Path}})
-
-	prevOK := true
-	failed := false
-	for i, s := range sf.Flow.Steps {
-		id := s.ID
-		if id == "" {
-			id = strconv.Itoa(i + 1)
-		}
-		sr := StepRun{ID: id, Kind: s.Kind}
-		when := s.When
-		if when == "" {
-			when = "success"
-		}
-		if (when == "success" && !prevOK) || (when == "failure" && prevOK) {
-			sr.Status = "skipped"
-			run.Steps = append(run.Steps, sr)
-			b.Flows.record(run)
-			continue
-		}
-		sr.Started = time.Now().UTC()
-		out, code, err := b.runStep(ctx, sf.Flow.ID, s, vars, env, secrets, loc, wt, scoped, &session)
-		sr.Duration = time.Since(sr.Started).Round(time.Millisecond).String()
-		// Runs are kept on disk and shown in the app: a secret a command
-		// printed is not kept with them.
-		sr.Output, sr.ExitCode = tail(redact(out, secrets), 4000), code
-		if err != nil {
-			sr.Status, sr.Error = "failed", redact(err.Error(), secrets)
-		} else {
-			sr.Status = "succeeded"
-		}
-		prevOK = err == nil
-		// A failure that a later step handles is not the flow failing.
-		failed = !prevOK && !handled(sf.Flow.Steps[i+1:])
-		vars["prev.output"], vars["prev.exit_code"] = sr.Output, strconv.Itoa(code)
-		vars["steps."+id+".output"], vars["steps."+id+".exit_code"] = sr.Output, strconv.Itoa(code)
-		run.Steps = append(run.Steps, sr)
-		b.Flows.record(run)
+	vars["session"] = session
+	req := runs.Request{Template: "flow", Title: sf.Flow.Name, Flow: sf.Flow.Steps, Vars: vars, Scope: sf.Scope, FlowID: sf.Flow.ID,
+		Trigger: eventMap(e), Origin: "flow:" + sf.Flow.ID, Path: wt.Path, Test: opt.test, IdemKey: opt.idem,
+		QueueLimit: sf.Flow.Queue, Coalesce: sf.Flow.Coalesce, Item: opt.item}
+	if a := sf.autofix; a != nil {
+		req.Template, req.Flow, req.Params, req.Title = a.template, nil, a.params(e, session), ""
 	}
-	run.Finished = time.Now().UTC()
-	run.Status = "succeeded"
-	if failed {
-		run.Status = "failed"
+	if !opt.test {
+		// One run at a time per flow and worktree; more wait their turn.
+		req.Key = key + "@" + wt.Path
 	}
-	b.Flows.record(run)
-	b.Events.Publish(events.Event{Type: "flow.finished", Box: b.Name, Origin: "flow:" + sf.Flow.ID, Data: map[string]any{"flow": sf.Flow.ID, "scope": sf.Scope, "run": run.ID, "status": run.Status, "path": wt.Path}})
-	return run
+	s, _, err := eng.Start(req)
+	return s, err
 }
 
-func handled(rest []Step) bool {
-	for _, s := range rest {
-		if s.When == "failure" || s.When == "always" {
-			return true
+// runFlow runs a flow for one event and waits for the run to finish (or
+// ctx to end): Test run, and tests.
+func (b *Box) runFlow(ctx context.Context, sf ScopedFlow, e events.Event) FlowRun {
+	s, err := b.startFlowRun(ctx, sf, e, flowStart{test: ctx.Value(testRun{}) == true})
+	if err != nil {
+		return FlowRun{Flow: sf.Flow.ID, Scope: sf.Scope, Status: "skipped", Error: err.Error(), Event: e, Steps: []StepRun{}}
+	}
+	eng := b.runsNow()
+	for {
+		r, err := eng.Get(s.ID)
+		if err == nil && runs.Terminal(r.Status) {
+			return flowRunOf(r)
+		}
+		select {
+		case <-ctx.Done():
+			return flowRunOf(r)
+		case <-time.After(50 * time.Millisecond):
 		}
 	}
-	return false
+}
+
+// testRun marks the context of a run started by Test run.
+type testRun struct{}
+
+// flowRunOf shows a run as the flows API always has.
+func flowRunOf(r runs.Run) FlowRun {
+	fr := FlowRun{ID: r.ID, Flow: r.FlowID, Scope: r.Scope, Started: r.Created, Finished: r.Finished, Status: r.Status, Steps: r.Steps, Error: r.Error, Test: r.Test, Usage: r.Usage}
+	if fr.Steps == nil {
+		fr.Steps = []StepRun{}
+	}
+	if r.Trigger != nil {
+		b, _ := json.Marshal(r.Trigger)
+		json.Unmarshal(b, &fr.Event)
+	}
+	return fr
+}
+
+// Runs returns recent runs of the box's flows, newest first, optionally of
+// one flow.
+func (f *Flows) Runs(flow string, limit int) []FlowRun {
+	b := flowsBox(f)
+	if b == nil {
+		return []FlowRun{}
+	}
+	eng := b.runsNow()
+	if eng == nil {
+		return []FlowRun{}
+	}
+	out := []FlowRun{}
+	for _, s := range eng.List(runs.Filter{Template: "flow", Flow: flow, Limit: limit}) {
+		r, err := eng.Get(s.ID)
+		if err != nil {
+			continue
+		}
+		fr := flowRunOf(r)
+		switch fr.Status {
+		case runs.Queued, runs.WaitingGate, runs.Paused:
+			// Shown as running to older apps; Status says more to new ones.
+		}
+		out = append(out, fr)
+	}
+	return out
+}
+
+// flowsBox is the box whose flows f are.
+func flowsBox(f *Flows) *Box {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return f.box
 }
 
 func tail(s string, n int) string {
@@ -711,149 +746,6 @@ func (b *Box) flowEnv(ctx context.Context, location string, wt Worktree) (env, s
 	// Longest first, so one secret containing another is hidden whole.
 	sort.Slice(secrets, func(i, j int) bool { return len(secrets[i]) > len(secrets[j]) })
 	return env, secrets
-}
-
-func (b *Box) runStep(ctx context.Context, flow string, s Step, vars map[string]string, env, secrets []string, loc Location, wt Worktree, scoped bool, session *string) (string, int, error) {
-	origin := "flow:" + flow
-	switch s.Kind {
-	case "run":
-		dir := wt.Path
-		if !scoped {
-			dir, _ = os.UserHomeDir()
-		}
-		ctx, cancel := context.WithTimeout(ctx, stepTimeout(s, 10*time.Minute))
-		defer cancel()
-		// Values reach the command only through its environment.
-		script, flowVars := shellTemplate(s.Command, vars)
-		cmd := exec.CommandContext(ctx, loginShell(), "-lc", script)
-		cmd.Dir = dir
-		cmd.Env = append(append(os.Environ(), env...), flowVars...)
-		var out tailBuffer
-		cmd.Stdout, cmd.Stderr = &out, &out
-		err := cmd.Run()
-		var ee *exec.ExitError
-		if errors.As(err, &ee) {
-			return out.String(), ee.ExitCode(), fmt.Errorf("exited with %d", ee.ExitCode())
-		}
-		return out.String(), 0, err
-	case "prompt":
-		target := s.Session
-		if target == "" {
-			target = *session
-		}
-		if target == "" {
-			return "", 0, errors.New("no agent session to prompt in this worktree")
-		}
-		res, err := b.sendPrompt(ctx, target, SendRequest{Text: expand(s.Text, untrustedLabeled(vars)), When: "now"}, origin, origin)
-		if err != nil {
-			return "", 0, err
-		}
-		*session = target
-		vars["turn.id"], vars["turn.session"] = res.Turn, target
-		return "sent to " + target, 0, nil
-	case "wait":
-		target := s.Session
-		if target == "" {
-			target = *session
-		}
-		if target == "" {
-			return "", 0, errors.New("no agent session to wait for in this worktree")
-		}
-		states := s.For
-		if len(states) == 0 {
-			states = []string{"finished", "waiting"}
-		}
-		// After a prompt step, wait for the turn it started: not whatever
-		// the agent says next, which may end the turn before it.
-		if id := vars["turn.id"]; id != "" && vars["turn.session"] == target && b.Turns != nil {
-			state, err := b.awaitTurn(ctx, id, states, stepTimeout(s, 30*time.Minute))
-			if err != nil {
-				return state, 0, err
-			}
-			vars["agent.state"] = state
-			return state, 0, nil
-		}
-		state, err := b.awaitState(ctx, target, states, stepTimeout(s, 30*time.Minute))
-		if err != nil {
-			return state, 0, err
-		}
-		vars["agent.state"] = state
-		return state, 0, nil
-	case "start_agent":
-		if !scoped {
-			return "", 0, errors.New("starting an agent needs an event in a worktree")
-		}
-		p, ok := presetFor(&loc, s.Agent)
-		if !ok {
-			return "", 0, fmt.Errorf("unknown agent %q", s.Agent)
-		}
-		command := AgentCommand(p, expand(s.Text, vars))
-		dir, where := wt.Path, loc.Name+"/"+wt.Name
-		if s.NewWorktree {
-			name := slug(expand(s.Name, vars), 40)
-			if name == "" {
-				name = slug(wt.Name+"-"+s.Agent, 40)
-			}
-			nw, err := b.Locations.CreateWorktree(ctx, loc.Name, name, "", wt.Branch)
-			if err != nil {
-				return "", 0, err
-			}
-			b.Events.Publish(events.Event{Type: "worktree.created", Box: b.Name, Origin: origin, Data: map[string]any{"location": loc.Name, "name": nw.Name, "path": nw.Path, "branch": nw.Branch}})
-			dir, where = nw.Path, loc.Name+"/"+nw.Name
-		}
-		sess, err := b.createAgentSession(ctx, defaultSessionName(where, command), where, dir, command, s.Agent)
-		if err != nil {
-			return "", 0, err
-		}
-		b.Events.Publish(events.Event{Type: "session.started", Box: b.Name, Origin: origin, Data: map[string]any{"name": sess.Name, "location": where, "path": dir, "command": command, "agent": agentFor(sess)}})
-		*session = sess.Name
-		return "started " + sess.Name, 0, nil
-	case "notify":
-		data := map[string]any{"title": redact(expand(s.Title, vars), secrets), "body": redact(expand(s.Text, vars), secrets), "flow": flow}
-		if scoped {
-			data["path"], data["location"] = wt.Path, loc.Name
-		}
-		b.Events.Publish(events.Event{Type: "notify", Box: b.Name, Origin: origin, Data: data})
-		return "notified", 0, nil
-	case "webhook":
-		// Neither the body nor the URL carries a secret's value, whatever a
-		// step printed.
-		safe := make(map[string]string, len(vars))
-		for k, v := range vars {
-			safe[k] = redact(v, secrets)
-		}
-		body := expandJSON(s.Text, safe)
-		if strings.TrimSpace(body) == "" {
-			j, _ := json.Marshal(safe)
-			body = string(j)
-		}
-		body = redact(body, secrets)
-		target := redact(expandURL(s.URL, safe), secrets)
-		if u, err := url.Parse(target); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
-			return "", 0, errors.New("webhook URL is not an http or https URL")
-		}
-		timeout := stepTimeout(s, 15*time.Second)
-		ctx, cancel := context.WithTimeout(ctx, timeout)
-		defer cancel()
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, target, bytes.NewBufferString(body))
-		if err != nil {
-			return "", 0, err
-		}
-		req.Header.Set("Content-Type", "application/json")
-		// Only to public addresses, unless the box's owner allows more.
-		resp, err := b.outboundPolicy().client(timeout).Do(req)
-		if err != nil {
-			return "", 0, err
-		}
-		defer resp.Body.Close()
-		var rb bytes.Buffer
-		rb.ReadFrom(io.LimitReader(resp.Body, 16<<10))
-		if resp.StatusCode >= 300 {
-			return rb.String(), resp.StatusCode, fmt.Errorf("webhook answered %s", resp.Status)
-		}
-		return rb.String(), resp.StatusCode, nil
-	}
-	return "", 0, fmt.Errorf("unknown step %q", s.Kind)
 }
 
 // awaitState waits for a session's agent to report one of states from now:
@@ -964,13 +856,17 @@ func (b *Box) testFlow(w http.ResponseWriter, r *http.Request) error {
 				return err
 			}
 			e := events.Event{Type: triggerType(sf.Flow.Trigger), Box: b.Name, Origin: origin(r), Time: time.Now(), Data: req.Data}
-			run := b.runFlow(context.WithValue(context.WithoutCancel(r.Context()), testRun{}, true), sf, e)
+			// It answers when the run ends, or with the run as it stands
+			// when the app stops waiting; the run goes on either way.
+			run := b.runFlow(context.WithValue(r.Context(), testRun{}, true), sf, e)
 			writeJSON(w, run)
 			return nil
 		}
 	}
 	return httpError{http.StatusNotFound, "no flow with that id"}
 }
+
+const maxFlowRuns = 200
 
 func (b *Box) listFlowRuns(w http.ResponseWriter, r *http.Request) error {
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))

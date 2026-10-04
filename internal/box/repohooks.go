@@ -101,18 +101,5 @@ func (b *Box) RunRepoHooks(ctx context.Context, logger *log.Logger) {
 
 // beforeRepo runs the gates of the repository an action is about.
 func (b *Box) beforeRepo(r *http.Request, e events.Event) error {
-	hs, env := b.repoHooks(r.Context(), e.Data)
-	for _, h := range hs {
-		if !hooks.MatchesBefore(h, e) {
-			continue
-		}
-		if out, err := hooks.Exec(r.Context(), h, e, 30*time.Second, env); err != nil {
-			msg := strings.TrimSpace(string(out))
-			if msg == "" {
-				msg = err.Error()
-			}
-			return httpError{http.StatusForbidden, "a " + h.Source + " \"" + h.On + "\" hook stopped " + e.Type + ": " + msg}
-		}
-	}
-	return nil
+	return b.beforeRepoCtx(r.Context(), e)
 }

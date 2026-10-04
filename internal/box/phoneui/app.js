@@ -130,7 +130,12 @@ async function loadAll() {
               } catch {}
             })
         );
-        return { box, agents, shells };
+        // Runs: an older box has none, which is not an error.
+        let runs = [];
+        try {
+          runs = await api(box, "GET", "/phone/v1/runs");
+        } catch {}
+        return { box, agents, shells, runs: Array.isArray(runs) ? runs : [] };
       } catch (e) {
         return { box, error: e.message || String(e) };
       }
@@ -148,10 +153,19 @@ async function showList() {
   const all = [];
   for (const r of results) for (const s of r.agents || []) all.push({ ...s, box: r.box });
   const offline = results.filter((r) => r.error);
-  const waiting = all.filter((s) => s.agent_state === "waiting").length;
+  const allRuns = [];
+  for (const r of results) for (const run of r.runs || []) allRuns.push({ ...run, box: r.box });
+  const gated = allRuns.filter((r) => r.status === "waiting_gate");
+  const going = allRuns.filter((r) => r.status === "running" || r.status === "queued");
+  const waiting = all.filter((s) => s.agent_state === "waiting").length + gated.length;
   setBar("Berth", waiting ? waiting + " need" + (waiting === 1 ? "s" : "") + " you" : all.length ? "Nothing needs you" : "", null);
 
   let html = "";
+  if (gated.length || going.length) {
+    html += `<section class="group"><h2><span class="dot ${gated.length ? "waiting" : "running"}"></span>Runs <span class="n">${gated.length + going.length}</span></h2>`;
+    html += gated.concat(going).map(runCard).join("");
+    html += `</section>`;
+  }
   for (const [state, label] of GROUPS) {
     let items = all.filter((s) => (s.agent_state || "running") === state).sort((a, b) => new Date(a.state_since || a.created) - new Date(b.state_since || b.created));
     if (!items.length) continue;
@@ -182,6 +196,99 @@ function card(s) {
     </div>
     ${s.screen ? `<pre class="lines">${esc(lastLines(s.screen))}</pre>` : ""}
   </a>`;
+}
+
+function runCard(r) {
+  const href = "#r=" + encodeURIComponent(r.box.name) + "/" + encodeURIComponent(r.id);
+  const state = r.status === "waiting_gate" ? "waiting" : "running";
+  const what = r.gate ? "Waiting for you: " + r.gate.title : r.status === "queued" ? "Queued" : "Running " + (r.cursor || "");
+  return `<a class="card ${state}" href="${href}">
+    <div class="card-top">
+      <span class="glyph" aria-hidden="true">▸</span>
+      <div class="who"><b>${esc(r.title || r.template)}</b><span>${esc([r.box.name, r.template].join(" · "))}</span></div>
+      <span class="since">${esc(ago(r.created))}</span>
+    </div>
+    <pre class="lines">${esc(what)}</pre>
+  </a>`;
+}
+
+// --- run ----------------------------------------------------------------------
+
+async function showRun(boxName, id) {
+  clearTimeout(timer);
+  current = null;
+  const box = boxes.find((b) => b.name === boxName) || (boxes.length === 1 ? boxes[0] : null);
+  if (!box) {
+    main.innerHTML = `<div class="empty">This phone isn't paired with ${esc(boxName)}.</div>`;
+    return;
+  }
+  let run;
+  try {
+    run = await api(box, "GET", "/phone/v1/runs/" + encodeURIComponent(id));
+  } catch (e) {
+    main.innerHTML = `<div class="empty">${esc(e.message || String(e))}</div>`;
+    return;
+  }
+  const state = run.status === "waiting_gate" ? "waiting" : run.status === "succeeded" ? "finished" : "running";
+  setBar(run.title || run.template, [run.template, box.name].join(" · "), state);
+  let html = "";
+  if (run.gate) {
+    const g = run.gate;
+    html += `<section class="gate"><h2>${esc(g.title)}</h2>${g.text ? `<pre class="lines">${esc(g.text)}</pre>` : ""}`;
+    if (g.pick && (run.candidates || []).length) {
+      html += (run.candidates || [])
+        .map(
+          (c) => `<button class="chip answer" type="button" data-pick="${c.index}"><b>${c.index + 1}</b><span>${esc(c.agent)} · +${c.diff.added} −${c.diff.removed} · check ${c.verify.passed ? "passed" : "failed"}${c.judge && c.judge.rank === 1 ? " · judge's pick" : ""}</span></button>`
+        )
+        .join("");
+      html += `<div class="row"><button class="btn danger" type="button" data-decide="reject">Reject all</button></div>`;
+    } else {
+      html += `<div class="row"><button class="btn" type="button" data-decide="approve">Approve</button><button class="btn danger" type="button" data-decide="reject">Reject</button></div>`;
+    }
+    html += `</section>`;
+  }
+  const steps = [];
+  const walk = (list, depth) => {
+    for (const s of list || []) {
+      if (s.status === "skipped") continue;
+      steps.push(`<li class="${esc(s.status)}" style="margin-left:${depth * 12}px"><b>${esc(s.kind || s.id)}</b> ${esc(s.status || "")} <span>${esc(s.output || s.error || "")}</span></li>`);
+      walk(s.children, depth + 1);
+    }
+  };
+  walk(run.steps, 0);
+  html += `<ol class="steps">${steps.join("")}</ol>`;
+  if (run.error) html += `<p class="note bad">${esc(run.error)}</p>`;
+  if (!["succeeded", "failed", "cancelled", "interrupted"].includes(run.status)) {
+    html += `<div class="row"><button class="btn ghost" type="button" data-decide="cancel">Cancel run</button></div>`;
+  }
+  main.innerHTML = html;
+  main.dataset.run = JSON.stringify({ box: box.name, id });
+  timer = setTimeout(() => {
+    const r = route();
+    if (r.kind === "run" && r.id === id) showRun(boxName, id);
+  }, 3000);
+}
+
+async function decideRun(what, pick) {
+  const at = JSON.parse(main.dataset.run || "null");
+  if (!at) return;
+  const box = boxes.find((b) => b.name === at.box);
+  try {
+    if (what === "cancel") {
+      if (!confirm("Cancel this run?")) return;
+      await api(box, "POST", "/phone/v1/runs/" + encodeURIComponent(at.id) + "/cancel");
+      toast("Cancelled");
+    } else {
+      const body = { approve: what === "approve" };
+      if (pick !== undefined) body.pick = pick;
+      await api(box, "POST", "/phone/v1/runs/" + encodeURIComponent(at.id) + "/gates/current/decide", body);
+      toast(body.approve ? "Approved" : "Rejected");
+    }
+    if (navigator.vibrate) navigator.vibrate(10);
+    showRun(at.box, at.id);
+  } catch (e) {
+    toast(e.message || String(e));
+  }
 }
 
 // --- session ----------------------------------------------------------------
@@ -312,6 +419,13 @@ function route() {
     const own = boxes.find((b) => b.url === location.origin);
     return { kind: "session", box: own ? own.name : "", name: decodeURIComponent(m[1]) };
   }
+  m = h.match(/^#r=([^/]+)\/(.+)$/);
+  if (m) return { kind: "run", box: decodeURIComponent(m[1]), id: decodeURIComponent(m[2]) };
+  m = h.match(/^#r=(.+)$/);
+  if (m) {
+    const own = boxes.find((b) => b.url === location.origin);
+    return { kind: "run", box: own ? own.name : "", id: decodeURIComponent(m[1]) };
+  }
   if (h === "#boxes") return { kind: "boxes" };
   return { kind: "list" };
 }
@@ -322,6 +436,7 @@ function render() {
   $("back").hidden = r.kind === "list";
   if (r.kind !== "session") current = null;
   if (r.kind === "session") showSession(r.box, r.name);
+  else if (r.kind === "run") showRun(r.box, r.id);
   else if (r.kind === "boxes") showBoxes();
   else showList();
 }
@@ -356,6 +471,10 @@ $("back").addEventListener("click", () => {
   else location.hash = "";
 });
 main.addEventListener("click", (e) => {
+  const p = e.target.closest("[data-pick]");
+  if (p) return decideRun("approve", Number(p.dataset.pick));
+  const d = e.target.closest("[data-decide]");
+  if (d) return decideRun(d.dataset.decide);
   const k = e.target.closest("[data-key]");
   if (k) return pressKey(k.dataset.key);
   const a = e.target.closest("[data-act]");
@@ -408,6 +527,22 @@ function mockApi(box, method, path, body) {
     "demo-hello-claude-1c": "❯ Reply with just the word: ready\n● ready\n✻ Brewed for 1s · done 7:14 PM\n",
   };
   if (path === "/phone/v1/sessions") return Promise.resolve(sessions);
+  const gateRun = {
+    id: "r_mock1",
+    template: "attempts",
+    title: "refunds: 3 attempts",
+    status: "waiting_gate",
+    created: at(35),
+    gate: { path: "2.t.0", title: "Pick the best attempt at refunds", text: "Winner: attempt 3. Smallest diff with tests.", pick: true, default: 2 },
+    candidates: [
+      { index: 0, agent: "claude", diff: { added: 140, removed: 22 }, verify: { passed: false }, judge: { rank: 3 } },
+      { index: 1, agent: "codex", diff: { added: 96, removed: 18 }, verify: { passed: true }, judge: { rank: 2 } },
+      { index: 2, agent: "claude", diff: { added: 61, removed: 9 }, verify: { passed: true }, judge: { rank: 1 } },
+    ],
+    steps: [{ id: "attempts", kind: "map", status: "succeeded", children: [] }, { id: "judge", kind: "judge", status: "succeeded", output: "Winner: attempt 3." }],
+  };
+  if (path === "/phone/v1/runs") return Promise.resolve(box.name === "devl" ? [gateRun, { id: "r_mock2", template: "loop", title: "Loop until pnpm test passes", status: "running", cursor: "1.r2.0", created: at(8) }] : []);
+  if (path.startsWith("/phone/v1/runs/")) return Promise.resolve(gateRun);
   const m = path.match(/^\/phone\/v1\/sessions\/([^/]+)\/(screen|send|keys)/);
   if (m && m[2] === "screen") return Promise.resolve({ screen: screens[decodeURIComponent(m[1])] || "$ " });
   return Promise.resolve({ sent: true });

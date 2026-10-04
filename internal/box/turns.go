@@ -67,6 +67,8 @@ type SessionState struct {
 	Turn     string    `json:"turn,omitempty"`
 	Seq      int64     `json:"seq,omitempty"`
 	Fidelity string    `json:"fidelity,omitempty"`
+	// AgentSessionID is the agent's own conversation ID, from its hooks.
+	AgentSessionID string `json:"agent_session_id,omitempty"`
 }
 
 func (t Turn) open() bool {
@@ -122,6 +124,8 @@ type sessTrack struct {
 	Seq      int64     `json:"seq,omitempty"`
 	Fidelity string    `json:"fidelity,omitempty"`
 	N        int       `json:"n"`
+	// AgentSessionID is the agent's own conversation ID.
+	AgentSessionID string `json:"agent_session_id,omitempty"`
 	Turns    []*Turn   `json:"turns,omitempty"`
 	// Hooked is set once the agent's own hooks reported here; SawStart once
 	// they said a prompt started, so its sends can wait for that.
@@ -569,6 +573,9 @@ func (t *Turns) agentEvent(e events.Event) {
 	if source == "" {
 		s.Hooked = true
 	}
+	if id := str(e.Data, "agent_session_id"); id != "" {
+		s.AgentSessionID = id
+	}
 	if s.Agent == "" {
 		s.Agent = str(e.Data, "agent")
 	}
@@ -703,7 +710,7 @@ func (t *Turns) Track(sess Session) SessionState {
 }
 
 func (s *sessTrack) snapshot() SessionState {
-	out := SessionState{Session: s.Name, Agent: s.Agent, State: s.State, Since: s.Since, Seq: s.Seq, Fidelity: s.Fidelity}
+	out := SessionState{Session: s.Name, Agent: s.Agent, State: s.State, Since: s.Since, Seq: s.Seq, Fidelity: s.Fidelity, AgentSessionID: s.AgentSessionID}
 	if tr := s.current(); tr != nil {
 		out.Turn = tr.ID
 	} else if p := s.oldest("pending"); p != nil {

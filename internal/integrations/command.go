@@ -96,6 +96,14 @@ func InstallTool(home, tool, bin string, out io.Writer) error {
 			return err
 		}
 		fmt.Fprintf(out, "Claude Code: skills in %s; hooks %s in %s\n", skills, verb(changed), settings)
+		if mcpBin(bin) {
+			cfg := filepath.Join(home, ".claude.json")
+			changed, err := InstallMCP(cfg, bin, true)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(out, "Claude Code: MCP server %s in %s\n", verb(changed), cfg)
+		}
 	case "cursor":
 		hooks := filepath.Join(home, ".cursor", "hooks.json")
 		changed, err := InstallCursorHooks(hooks, bin)
@@ -127,6 +135,13 @@ func InstallTool(home, tool, bin string, out io.Writer) error {
 		default:
 			fmt.Fprintf(out, "Codex: skills in %s; notify %s in %s\n", skills, verb(changed), config)
 		}
+		if mcpBin(bin) {
+			changed, err := InstallCodexMCP(config, bin)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(out, "Codex: MCP server %s in %s\n", verb(changed), config)
+		}
 	case "gemini":
 		settings := filepath.Join(home, ".gemini", "settings.json")
 		changed, err := InstallGeminiHooks(settings, bin)
@@ -134,6 +149,13 @@ func InstallTool(home, tool, bin string, out io.Writer) error {
 			return err
 		}
 		fmt.Fprintf(out, "Gemini CLI: hooks %s in %s\n", verb(changed), settings)
+		if mcpBin(bin) {
+			changed, err := InstallMCP(settings, bin, false)
+			if err != nil {
+				return err
+			}
+			fmt.Fprintf(out, "Gemini CLI: MCP server %s in %s\n", verb(changed), settings)
+		}
 	case "opencode":
 		plugin := filepath.Join(home, ".config", "opencode", "plugin", "berth.js")
 		changed, err := InstallOpenCodePlugin(plugin, bin)

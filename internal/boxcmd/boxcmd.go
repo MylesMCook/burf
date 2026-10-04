@@ -53,9 +53,19 @@ var usageSections = []struct {
 		{"%[1]s session send %[2]sNAME TEXT [--when now|idle] [--force] [--idem KEY] [--no-enter] [--wait [--timeout 30m]]%[4]s", "Type a prompt into a session (or hold it until the agent is idle), and wait for its turn"},
 		{"%[1]s session wait %[2]sNAME [--turn ID] [--for finished,waiting] [--timeout 30m]", "Wait for a turn, or its agent's current one, to end"},
 		{"%[1]s session turns %[2]sNAME [--limit 10] [--json]", "List a session's turns"},
-		{"%[1]s exec %[2]sLOC[/WORKTREE] [--timeout 10m] -- COMMAND...", "Run a command there and print its output"},
-		{"%[1]s loop %[2]sSESSION --check CMD [--prompt TEXT] [--max 5] [--turn-timeout 30m]", "Prompt, wait, check, and feed failures back"},
+		{"%[1]s exec %[2]sLOC[/WORKTREE] [--timeout 10m] [--detach] -- COMMAND...", "Run a command there and print its output (--detach: as a run)"},
+		{"%[1]s loop %[2]sSESSION --check CMD [--prompt TEXT] [--max 5] [--turn-timeout 30m]\n         [--cancel-on-exit] [--detach]", "Prompt, wait, check, and feed failures back: a durable\nrun on the box (Ctrl-C detaches)"},
 		{"%[1]s session kill %[2]sNAME", "Stop a session"},
+	}},
+	{"Runs (durable, on the box)", [][2]string{
+		{"%[1]s runs%[3]s [--status active|done|S] [--template T] [--limit 20] [--json]", "List runs"},
+		{"%[1]s run templates%[3]s [--json]", "The templates and their parameters"},
+		{"%[1]s run start%[3]s --template T [--param k=v]... [--follow] [--idem KEY] [--json]", "Start a run (loop, review, handoff, broadcast, attempts, ...)"},
+		{"%[1]s run get %[2]sRUN [--json]", "A run's steps, gate, attempts and tokens"},
+		{"%[1]s run logs %[2]sRUN [--since N] [--follow] [--json]", "Its journal, as it happens"},
+		{"%[1]s run approve|reject %[2]sRUN [STEP] [--pick N] [--note TEXT]", "Decide the gate it waits at"},
+		{"%[1]s run cancel %[2]sRUN", "Stop a run"},
+		{"%[1]s flow secret%[3]s FLOW [--scope S] [--json]", "Make a webhook flow's signing secret (shown once)"},
 	}},
 	{"Ports and sharing", [][2]string{
 		{"%[1]s ports%[3]s [--json]", "What is listening on the box"},
@@ -134,6 +144,7 @@ var Commands = map[string]int{
 	"skills": 1, "preview": 1, "service": 2,
 	"units": 1, "unit": 2,
 	"secret": 2,
+	"runs": 1, "run": 2, "flow": 2,
 }
 
 // Run executes args, which start with the command words, against c.
@@ -196,6 +207,12 @@ func Run(ctx context.Context, c *box.Client, args []string, out io.Writer) error
 		return nil
 	case "preview":
 		return preview(ctx, c, rest, out)
+	case "runs":
+		return runsCmd(ctx, c, rest, out)
+	case "flow secret":
+		return flowSecret(ctx, c, rest, out)
+	case "run start", "run get", "run logs", "run cancel", "run approve", "run reject", "run templates":
+		return runCmd(ctx, c, strings.TrimPrefix(cmd, "run "), rest, out)
 	case "location scripts":
 		fs, asJSON := flags(rest)
 		setup := fs.String("setup", "", "command to run after a worktree is created")
@@ -877,9 +894,19 @@ func execCmd(ctx context.Context, c *box.Client, args []string, out io.Writer) e
 	}
 	fs, asJSON := flags(args)
 	timeout := fs.String("timeout", "10m", "stop the command after this long")
+	detach := fs.Bool("detach", false, "run it as a run on the box and return its ID")
 	pos, err := parse(fs, args)
 	if err != nil || len(pos) != 1 || len(command) == 0 {
-		return usageErr("exec LOC[/WORKTREE] [--timeout 10m] -- COMMAND...")
+		return usageErr("exec LOC[/WORKTREE] [--timeout 10m] [--detach] -- COMMAND...")
+	}
+	if *detach {
+		var started struct {
+			Run string `json:"run"`
+		}
+		if err := c.Call(ctx, "POST", "/v1/exec", box.ExecRequest{Location: pos[0], Command: commandLine(command), Timeout: *timeout, Detach: true}, &started); err != nil {
+			return err
+		}
+		return show(out, *asJSON, started, func() { fmt.Fprintf(out, "Running as %s; see: run get %s\n", started.Run, started.Run) })
 	}
 	res, err := c.Exec(ctx, box.ExecRequest{Location: pos[0], Command: commandLine(command), Timeout: *timeout})
 	if err != nil {
@@ -903,12 +930,19 @@ func loop(ctx context.Context, c *box.Client, args []string, out io.Writer) erro
 	check := fs.String("check", "", "command that passes when the work is done, e.g. pnpm test")
 	rounds := fs.Int("max", 5, "most rounds to try")
 	timeout := fs.Duration("turn-timeout", 30*time.Minute, "longest an agent's turn may take")
+	cancelOnExit := fs.Bool("cancel-on-exit", false, "cancel the run when you stop following it")
+	detach := fs.Bool("detach", false, "start it and return")
 	pos, err := parse(fs, args)
-	usage := "loop SESSION --check COMMAND [--prompt TEXT] [--max 5] [--turn-timeout 30m]"
+	usage := "loop SESSION --check COMMAND [--prompt TEXT] [--max 5] [--turn-timeout 30m] [--cancel-on-exit] [--detach]"
 	if err != nil || len(pos) != 1 || *check == "" {
 		return usageErr(usage)
 	}
 	session := pos[0]
+	if hasRuns(ctx, c) {
+		// One loop, on the box: it survives the laptop sleeping and berthd
+		// restarting. Below is the old client loop, for older boxes.
+		return loopRun(ctx, c, session, *prompt, *check, *rounds, *timeout, *cancelOnExit, *detach, out)
+	}
 	all, err := c.Sessions(ctx)
 	if err != nil {
 		return err

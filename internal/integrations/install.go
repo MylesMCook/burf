@@ -236,3 +236,49 @@ func editJSON(path string, change func(map[string]any) bool) (bool, error) {
 	}
 	return true, os.Chmod(path, mode)
 }
+
+// berth's MCP server is `berthd mcp`: only the box daemon serves it, as it
+// talks to the box's own socket.
+func mcpBin(bin string) bool { return filepath.Base(bin) == "berthd" }
+
+// InstallMCP adds berth's MCP server to a JSON settings file's mcpServers
+// (Claude Code's ~/.claude.json, Gemini CLI's settings.json).
+func InstallMCP(path, bin string, claude bool) (bool, error) {
+	return editJSON(path, func(root map[string]any) bool {
+		servers := object(root, "mcpServers")
+		want := map[string]any{"command": bin, "args": []any{"mcp"}}
+		if claude {
+			want["type"] = "stdio"
+		}
+		if cur, ok := servers["berth"].(map[string]any); ok && cur["command"] == bin {
+			return false
+		}
+		servers["berth"] = want
+		return true
+	})
+}
+
+// InstallCodexMCP adds [mcp_servers.berth] to Codex's config.toml.
+func InstallCodexMCP(configPath, bin string) (bool, error) {
+	before, err := os.ReadFile(configPath)
+	if err != nil && !os.IsNotExist(err) {
+		return false, err
+	}
+	if strings.Contains(string(before), "[mcp_servers.berth]") {
+		return false, nil
+	}
+	after := string(before)
+	if after != "" && !strings.HasSuffix(after, "\n") {
+		after += "\n"
+	}
+	after += fmt.Sprintf("\n[mcp_servers.berth]\ncommand = %q\nargs = [\"mcp\"]\n", bin)
+	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
+		return false, err
+	}
+	if len(before) > 0 {
+		if err := os.WriteFile(configPath+".berth-backup", before, 0o600); err != nil {
+			return false, err
+		}
+	}
+	return true, statefile.Write(configPath, []byte(after))
+}
