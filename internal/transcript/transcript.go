@@ -62,6 +62,8 @@ type Result struct {
 	Next      int          `json:"next"`
 	Crew      []CrewMember `json:"crew"`
 	Truncated bool         `json:"truncated,omitempty"`
+	// Reason says why there is nothing to show, when Source is "none".
+	Reason string `json:"reason,omitempty"`
 }
 
 const (

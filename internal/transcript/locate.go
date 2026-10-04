@@ -22,11 +22,16 @@ func home(env, dflt string) string {
 	return filepath.Join(h, dflt)
 }
 
+// ClaudeDir is the folder Claude Code keeps dir's transcripts in.
+func ClaudeDir(dir string) string {
+	return filepath.Join(home("CLAUDE_CONFIG_DIR", ".claude"), "projects", nonAlnum.ReplaceAllString(dir, "-"))
+}
+
 // ClaudePath finds Claude Code's transcript for a session in dir: by its
 // conversation ID when the hooks gave one, otherwise the newest in that
 // folder's project written since the session started.
 func ClaudePath(dir, id string, started time.Time) string {
-	proj := filepath.Join(home("CLAUDE_CONFIG_DIR", ".claude"), "projects", nonAlnum.ReplaceAllString(dir, "-"))
+	proj := ClaudeDir(dir)
 	if id != "" && validID(id) {
 		if p := filepath.Join(proj, id+".jsonl"); exists(p) {
 			return p

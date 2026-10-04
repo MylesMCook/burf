@@ -13,6 +13,7 @@ import { InputGroup, InputGroupAddon, InputGroupTextarea } from "@/components/ui
 import { Spinner } from "@/components/ui/spinner";
 import { toastManager } from "@/components/ui/toast";
 import { isMock } from "@/hooks/use-berth-connection";
+import { startSession } from "@/lib/actions";
 import { boxApi, laptopApi } from "@/lib/api";
 import { keyOf, useConversations } from "@/lib/conversation-store";
 import { agentLabel, agentOf, sessionState, worktreeOf } from "@/lib/derive";
@@ -121,6 +122,38 @@ export function ConversationPane({ box, session, visible, onShowTerminal }: { bo
     await boxApi.send(client, box, session, text, true, state === "waiting" ? { when: "now", force: true } : { when: "idle" });
   };
 
+  // The agent's program has ended: nothing will read a reply. Its
+  // conversation stays readable; a fresh one starts beside it.
+  const ended = state === "exited";
+  const again = () => void startSession(agent ?? "claude", { kind: "tab" }, agent ? agentLabel(agent) : "Agent");
+  if (ended && !shown.length) {
+    return (
+      <div className="flex flex-1 items-center justify-center bg-background p-6">
+        <Empty>
+          <EmptyHeader>
+            <EmptyMedia variant="icon">
+              <MessagesSquareIcon />
+            </EmptyMedia>
+            <EmptyTitle>This agent has ended</EmptyTitle>
+            <EmptyDescription>Its program closed, so it can't take a reply. Start a new one in this worktree, or look at what it left in its terminal.</EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <div className="flex gap-2">
+              <Button onClick={again}>
+                <AgentIcon agent={agent} className="size-3.5" />
+                Start {agent ? agentLabel(agent) : "an agent"} again
+              </Button>
+              <Button variant="outline" onClick={onShowTerminal}>
+                <SquareTerminalIcon />
+                Show terminal
+              </Button>
+            </div>
+          </EmptyContent>
+        </Empty>
+      </div>
+    );
+  }
+
   // Nothing said yet: the same harbour, header and framed composer as an
   // empty worktree, so starting an agent looks the same either way.
   if (!shown.length && (mock || feed !== "loading")) {
@@ -143,7 +176,16 @@ export function ConversationPane({ box, session, visible, onShowTerminal }: { bo
       </div>
       <div className="pr-6 pb-4 pl-6 @[1000px]:pr-[max(24px,var(--berth-loops-w,0px))]">
         <div className="mx-auto w-full max-w-[680px]">
-          <Reply onSend={reply} />
+          {ended ? (
+            <div className="flex items-center gap-3 rounded-lg border bg-muted/40 px-3 py-2 text-muted-foreground text-sm">
+              <span className="min-w-0 flex-1">This agent has ended, so it can't take a reply.</span>
+              <Button size="sm" variant="outline" onClick={again}>
+                Start {agent ? agentLabel(agent) : "an agent"} again
+              </Button>
+            </div>
+          ) : (
+            <Reply onSend={reply} />
+          )}
         </div>
       </div>
     </div>
