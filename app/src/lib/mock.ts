@@ -260,7 +260,10 @@ function mockProjects(box: string, method: string, path: string, body?: unknown)
     return delay({ path: dir, parent: dir === "/" ? undefined : dir.split("/").slice(0, -1).join("/") || "/", home: HOME, entries });
   }
   if (method === "POST" && route === "locations/new") {
-    const r = body as { name: string; parent?: string };
+    // sample: the box writes its sample project (examples/hello) in.
+    const r = body as { name?: string; parent?: string; sample?: string };
+    if (r.sample && r.sample !== "hello") return Promise.reject(new ApiError(`there is no sample named "${r.sample}"`, 400));
+    r.name ||= r.sample ?? "";
     const dir = `${expand(r.parent ?? "~/work")}/${r.name}`;
     if (locations[box]?.some((l) => l.name === r.name)) return Promise.reject(new Error(`a location named ${r.name} already exists`));
     mockFolders[dir] = { git: true };
@@ -510,7 +513,7 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
       name: box,
       version: "0.1.0",
       tools: ["claude", "codex"],
-      capabilities: ["turns", "journal", "runs", "exec.detach", "browser"],
+      capabilities: ["turns", "journal", "runs", "exec.detach", "browser", "titles", "sample"],
       adapters: {
         claude: { ready: true, started: true, waiting: true, finished: true, final_message: true, via: "hooks" },
         codex: { ready: true, started: true, waiting: true, finished: true, final_message: true, via: "hooks" },

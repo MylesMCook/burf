@@ -140,8 +140,11 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
   const [where, setWhere] = useState<"new" | "main" | "here">(pinned ? "here" : (draft.where ?? "new"));
   const fresh = where === "new";
 
-  // The agents: as the draft says, the last ones used here, or the first.
-  const [chosen, setChosen] = useState<Chosen>(() => {
+  // The agents: as the draft says; for Try N ways the first two; for a
+  // review another agent than the author; otherwise the one used last here
+  // (attempts are chosen each time), or the first. Until someone picks,
+  // they follow the project and box as those arrive and change.
+  const initialAgents = (): Chosen => {
     if (draft.agents?.length) return toChosen(draft.agents);
     if (draft.attempts) return toChosen(presets.slice(0, 2).map((p) => ({ agent: p.id })));
     if (from?.kind === "review") {
@@ -149,8 +152,21 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
       return other ? toChosen([{ agent: other.id }]) : {};
     }
     if (from) return fromSession && agentOf(fromSession) ? toChosen([{ agent: agentOf(fromSession)! }]) : {};
-    return box ? toChosen(load<{ agent: string; model?: string; effort?: string }[]>(picksKey(box, locName), [])) : {};
-  });
+    const saved = box ? load<{ agent: string; model?: string; effort?: string }[]>(picksKey(box, locName), []) : [];
+    return saved.length === 1 ? toChosen(saved) : {};
+  };
+  const [chosen, setChosen] = useState<Chosen>(initialAgents);
+  const agentsTouched = useRef(false);
+  const agentPlace = `${box}/${locName}/${presets.map((p) => p.id).join(",")}/${fromSession ? agentOf(fromSession) : ""}`;
+  useEffect(() => {
+    if (!agentsTouched.current) setChosen(initialAgents());
+    // Only when where they would come from changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agentPlace]);
+  const pickAgents = (c: Chosen) => {
+    agentsTouched.current = true;
+    setChosen(c);
+  };
   const [copies, setCopies] = useState(1);
   const [noAgent, setNoAgent] = useState(!!draft.noAgent);
   const live: Chosen = Object.fromEntries(Object.entries(chosen).filter(([id, c]) => c.models.length && presets.some((p) => p.id === id)));
@@ -461,7 +477,8 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
                 empty={settled ? "No project" : "Loading…"}
                 footer={<AddProjectItem box={box} />}
               />
-              <Pick
+              {/* With one box there is nothing to choose or tell apart. */}
+              {(status?.boxes.length ?? 0) > 1 && <Pick
                 label="Box"
                 icon={<StatusDot state="online" />}
                 value={box}
@@ -469,7 +486,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
                 onPick={setBoxChoice}
                 empty={status ? "No box online" : "Connecting…"}
                 footer={project && project.places.length > 1 && box !== project.defaultBox ? <DefaultBoxItem box={box} onSet={() => void setDefault(box)} /> : undefined}
-              />
+              />}
             </>
           )}
           {(!pinned || from?.kind === "handoff") && !attempts && <Pick label="Where" icon={<GitBranchIcon />} value={where} options={whereOptions} onPick={(v) => setWhere(v as "new" | "main" | "here")} />}
@@ -481,7 +498,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
               none={noAgent}
               single={!!from}
               allowNone={fresh && !from && !fixed}
-              onChange={setChosen}
+              onChange={pickAgents}
               onCopies={setCopies}
               onNone={setNoAgent}
             />

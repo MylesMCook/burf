@@ -1,5 +1,5 @@
-import { ChevronRightIcon, FolderGit2Icon, FolderOpenIcon, FolderPlusIcon, GitForkIcon } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { ArrowRightIcon, ChevronRightIcon, FolderGit2Icon, FolderOpenIcon, FolderPlusIcon, GitForkIcon, SparklesIcon } from "lucide-react";
+import { type ReactNode, useEffect, useState } from "react";
 
 import { CloneForm } from "@/components/add-project/clone-form";
 import { CreateForm } from "@/components/add-project/create-form";
@@ -7,6 +7,7 @@ import { FolderBrowser } from "@/components/add-project/folder-browser";
 import { StepHeader } from "@/components/step-header";
 import { Button } from "@/components/ui/button";
 import type { Location } from "@/lib/api";
+import { errorMessage } from "@/lib/format";
 import { useIsLocalBox } from "@/lib/local-box";
 import { NONE, useStore } from "@/lib/store";
 
@@ -20,16 +21,42 @@ const wayDetails = (box: string, local: boolean): Record<Way, string> => ({
   create: "An empty repository, ready for worktrees",
 });
 
-// RepoStep adds the first project on the new box, the same three ways the
-// Add a project dialog offers: a repository already there, a clone, or a
-// new empty one. A box that already has projects can go straight on.
-// Skipping is the page's "Skip setup", beside the progress. When the box is
-// this Mac, it opens on this Mac's folders.
-export function RepoStep({ box, onDone }: { box: string; onDone(location: string): void }) {
+// The sample project boxes make (examples/hello), and what it is.
+export const SAMPLE = "hello";
+
+// RepoStep adds the first project on the new box: the sample project, the
+// quickest way to a first agent, then the same three ways the Add a
+// project dialog offers: a repository already there, a clone, or a new
+// empty one. A box that already has projects can go straight on. Skipping
+// is the page's "Skip setup", beside the progress.
+export function RepoStep({ box, onDone }: { box: string; onDone(location: string, sample?: boolean): void }) {
   const existing = useStore((s) => s.boxes[box]?.locations ?? NONE);
   const local = useIsLocalBox(box);
   const where = local ? "this Mac" : box;
-  const [way, setWay] = useState<Way | undefined>(() => (local && existing.length === 0 ? "browse" : undefined));
+  const [way, setWay] = useState<Way>();
+  // A box just paired may not have said what it can do yet.
+  const caps = useStore((s) => s.boxes[box]?.info?.capabilities);
+  useEffect(() => {
+    void useStore.getState().refreshBox(box, ["info", "locations"]);
+  }, [box]);
+  const canSample = caps ? caps.includes("sample") : undefined;
+  const [making, setMaking] = useState(false);
+  const [error, setError] = useState<string>();
+  const sample = async () => {
+    if (existing.some((l) => l.name === SAMPLE)) return onDone(SAMPLE, true);
+    const client = useStore.getState().client;
+    if (!client) return;
+    setMaking(true);
+    setError(undefined);
+    try {
+      const loc = await client.box<Location>(box, "POST", "locations/new", { sample: SAMPLE });
+      await useStore.getState().refreshBox(box, ["locations"]);
+      onDone(loc.name, true);
+    } catch (err) {
+      setError(errorMessage(err));
+      setMaking(false);
+    }
+  };
 
   const added = async (loc: Location) => {
     await useStore.getState().refreshBox(box, ["locations"]);
@@ -77,8 +104,29 @@ export function RepoStep({ box, onDone }: { box: string; onDone(location: string
               </ul>
             </div>
           )}
+          {canSample !== false && (
+            <section aria-labelledby="sample-heading" className="mt-6 rounded-xl border border-foreground/20 bg-card px-4 py-3.5">
+              <div className="flex items-center gap-4">
+                <span aria-hidden className="flex size-9 shrink-0 items-center justify-center rounded-lg border bg-background text-muted-foreground">
+                  <SparklesIcon className="size-4" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h2 id="sample-heading" className="font-medium text-sm">
+                    Try the sample project
+                  </h2>
+                  <p className="mt-0.5 text-muted-foreground text-xs leading-relaxed">
+                    <span className="font-mono">hello</span>: a tiny Node web server and its test, made in ~/work/hello on {where}. A good size for a first task.
+                  </p>
+                </div>
+                <Button autoFocus={existing.length === 0} className="shrink-0" disabled={canSample === undefined} loading={making} onClick={() => void sample()}>
+                  Use the sample <ArrowRightIcon />
+                </Button>
+              </div>
+              {error && <p className="mt-2 ps-13 text-destructive-foreground text-xs">{error}</p>}
+            </section>
+          )}
           <div className="mt-6 space-y-2">
-            {existing.length > 0 && <div className="text-muted-foreground text-xs">Or add another</div>}
+            <div className="text-muted-foreground text-xs">{existing.length > 0 ? "Or add another" : canSample !== false ? "Or one of your own" : "Add one"}</div>
             <WayButton icon={<FolderOpenIcon />} title={wayTitles.browse} detail={wayDetails(box, local).browse} onClick={() => setWay("browse")} />
             <WayButton icon={<GitForkIcon />} title={wayTitles.clone} detail={wayDetails(box, local).clone} onClick={() => setWay("clone")} />
             <WayButton icon={<FolderPlusIcon />} title={wayTitles.create} detail={wayDetails(box, local).create} onClick={() => setWay("create")} />

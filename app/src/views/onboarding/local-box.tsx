@@ -1,5 +1,5 @@
 import { CheckIcon, LaptopIcon } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { errorMessage } from "@/lib/format";
@@ -20,6 +20,7 @@ export function UseThisMac({
   status,
   compact,
   autoFocus,
+  autoStart,
   className,
   onRunning,
   onPaired,
@@ -27,6 +28,8 @@ export function UseThisMac({
   status: LocalBoxStatus;
   compact?: boolean;
   autoFocus?: boolean;
+  // Start at once: the person already chose this Mac (onboarding).
+  autoStart?: boolean;
   className?: string;
   onRunning(running: boolean): void;
   onPaired(box: string): void;
@@ -59,6 +62,15 @@ export function UseThisMac({
     }
   };
 
+  // Once, on arrival; StrictMode's second mount must not start it again.
+  const started = useRef(false);
+  useEffect(() => {
+    if (!autoStart || started.current) return;
+    started.current = true;
+    void run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart]);
+
   const reuse = status.installed && !status.owned;
   return (
     <section aria-labelledby="this-mac-heading" className={cn("rounded-lg border px-3.5 py-3", className)}>
@@ -70,8 +82,16 @@ export function UseThisMac({
           <h2 id="this-mac-heading" className="text-sm">
             Use this Mac
           </h2>
-          <p className="mt-0.5 text-muted-foreground text-xs leading-relaxed">
-            No server yet? Agents run here, while this Mac is awake: they pause when it sleeps. You can add a server later.
+          <p className="mt-0.5 text-muted-foreground text-xs leading-relaxed" aria-live="polite">
+            {autoStart
+              ? state === "running"
+                ? "Installing berthd and pairing with it. This takes a few seconds."
+                : state === "failed"
+                  ? "It stopped before pairing; the log below says where."
+                  : state === "done"
+                    ? "Ready. Next, a project for your first agent."
+                    : "Agents run here while this Mac is awake."
+              : "No server yet? Agents run here, while this Mac is awake: they pause when it sleeps. You can add a server later."}
           </p>
         </div>
         {state === "done" ? (

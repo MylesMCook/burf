@@ -108,7 +108,7 @@ failed after it went out (the box may have acted on it). The box API:
 | `GET stats` | `Stats`: memory, disks, load, agents |
 | `GET services` | `Service[]`: listening ports by worktree |
 | `GET ports` | `Port[]` |
-| `GET info` | `{ name, os, arch, build, user?, home?, tools: string[], agents: AgentPreset[], capabilities: string[], adapters }`: `capabilities` lists `turns` and `journal` on boxes that have them; `adapters` says what each agent can report (`{ ready, started, waiting, finished, final_message, via }`) |
+| `GET info` | `{ name, os, arch, build, user?, home?, tools: string[], agents: AgentPreset[], capabilities: string[], adapters }`: `capabilities` lists `turns` and `journal` on boxes that have them, `titles` where sessions carry a title, and `sample` where `locations/new` makes the sample project; `adapters` says what each agent can report (`{ ready, started, waiting, finished, final_message, via }`) |
 | `GET doctor` | `Check[]` |
 | `POST secrets/test` | `{ ref }` → `{ ok, length?, error? }`: resolves a [secret reference](/guides/secrets) on the box now (`op://…` or `env://…`), skipping its cache, and reports whether it could and the value's length, never the value. A malformed reference is `ok: false` with why |
 | `POST secrets/report` | Only on the box's own socket: what `berthd secret exec` resolved for a session or service, which variables resolved and which failed and why, never values |
@@ -140,7 +140,7 @@ failed after it went out (the box may have acted on it). The box API:
 | `GET locations/{name}/worktrees/{wt}/log?limit=N` | the worktree's commits |
 | `POST locations/{name}/worktrees/{wt}/sync` | `{ mode? }`: rebase (default) or merge onto its base |
 | `GET locations/{name}/worktrees/{wt}/services/{service}/log` | what a service has written |
-| `POST locations/clone`, `POST locations/new` | clone a repository, or make an empty one, and add it |
+| `POST locations/clone`, `POST locations/new` | clone a repository, or make one and add it: `new` takes `{ name, parent? }` for an empty repository, or `{ sample: "hello" }` for the sample project (`examples/hello`: a tiny Node app and its test, in `~/work/hello`) on boxes that list `sample` in `capabilities` |
 | `GET locations/{name}/branches` | the repository's branches |
 | `PUT locations/{name}/scripts` | `{ setup, archive }`: the box's own lifecycle scripts |
 | `GET fs?path=P` | a folder's entries on the box, for picking a path (default `~/work`) |

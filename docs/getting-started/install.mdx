@@ -82,12 +82,18 @@ The app carries the `berth` CLI, the Linux builds of `berthd` that
 to install on the laptop. When the [laptop agent](#start-the-laptop-agent)
 isn't running, the app offers to start it.
 
-While no box is paired, it opens on a short setup: add a box (with the link
-the installer printed, or over SSH), add a repository on it, and start your
-first agent. No server yet? **Use this Mac** makes this Mac the box, with
-no terminal: Berth installs the `berthd` it carries and pairs with it (see
+While no box is paired, it opens on a short setup that gets you to a running
+agent in about a minute. Its first choice is **Start on this Mac**: Berth
+installs the `berthd` it carries and pairs with it, with no terminal (see
 [this Mac](/getting-started/add-a-box#this-mac)); agents then run while the
-Mac is awake, and you can add a server later. With a box already paired, it opens straight to the main
+Mac is awake, and you can add a server later. Then **Use the sample** makes
+a tiny sample project (`hello`, a Node web server and its test, from
+[`examples/hello`](https://github.com/sean-brydon/berthd/tree/main/examples/hello))
+in `~/work/hello`, or add one of your own; and the composer opens with a
+small first task written for the sample: press Enter and the first agent
+starts in a worktree of its own. **Connect a remote box**, beside **Start on
+this Mac**, adds a server instead (with the link the installer printed, over
+your tailnet, or over SSH). With a box already paired, it opens straight to the main
 window.
 
 ### Updates

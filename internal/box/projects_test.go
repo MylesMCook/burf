@@ -153,6 +153,22 @@ func TestProjectsAreBrowsedClonedAndCreatedOverTheAPI(t *testing.T) {
 	if status := call(t, c, "POST", "/v1/locations/new", "", map[string]string{"name": "../escape"}, nil); status != 400 {
 		t.Fatalf("a path as a name gave %d", status)
 	}
+	// The sample project: its files, committed, in ~/work/hello.
+	var sample Location
+	if status := call(t, c, "POST", "/v1/locations/new", "", map[string]string{"sample": "hello", "parent": "~/samples"}, &sample); status != 200 || sample.Name != "hello" || !sample.Repo {
+		t.Fatalf("sample: %d %+v", status, sample)
+	}
+	for _, name := range []string{"README.md", "package.json", "greet.js", "greet.test.js", "server.js", ".gitignore"} {
+		if _, err := os.Stat(filepath.Join(sample.Path, name)); err != nil {
+			t.Errorf("the sample has no %s: %v", name, err)
+		}
+	}
+	if out, _ := exec.Command("git", "-C", sample.Path, "status", "--porcelain").CombinedOutput(); len(out) != 0 {
+		t.Errorf("the sample is not committed: %s", out)
+	}
+	if status := call(t, c, "POST", "/v1/locations/new", "", map[string]string{"sample": "nope"}, nil); status != 400 {
+		t.Fatalf("an unknown sample gave %d", status)
+	}
 
 	var f Folder
 	call(t, c, "GET", "/v1/fs", "", nil, &f)

@@ -5,16 +5,20 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
 	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/sean-brydon/berthd/examples"
 )
 
 // Adding projects and starting worktrees from what people actually have in
@@ -255,9 +259,17 @@ func validFolder(name string) bool { return folderName.MatchString(name) }
 // newLocation makes an empty git repository with one commit, so it can
 // have worktrees straight away, and adds it.
 func (b *Box) newLocation(w http.ResponseWriter, r *http.Request) error {
-	var req struct{ Parent, Name string }
+	// Sample, when set, names a sample project (package examples) to write
+	// into the new repository instead of leaving it empty.
+	var req struct{ Parent, Name, Sample string }
 	if err := decode(r, &req); err != nil {
 		return err
+	}
+	if req.Sample != "" && !slices.Contains(examples.Samples, req.Sample) {
+		return badRequest("there is no sample named %q", req.Sample)
+	}
+	if req.Name == "" {
+		req.Name = req.Sample
 	}
 	if !validFolder(req.Name) {
 		return badRequest("%q is not a folder name", req.Name)
@@ -283,7 +295,17 @@ func (b *Box) newLocation(w http.ResponseWriter, r *http.Request) error {
 	if out, _ := git(r.Context(), "-C", dest, "config", "user.email"); strings.TrimSpace(string(out)) == "" {
 		commit = append(commit, "-c", "user.name=berth", "-c", "user.email=berth@localhost")
 	}
-	commit = append(commit, "commit", "-q", "--allow-empty", "-m", "Initial commit")
+	message := "Initial commit"
+	if req.Sample != "" {
+		if err := writeSample(req.Sample, dest); err != nil {
+			return err
+		}
+		if out, err := git(r.Context(), "-C", dest, "add", "-A"); err != nil {
+			return fmt.Errorf("git add: %s", strings.TrimSpace(string(out)))
+		}
+		message = "The " + req.Sample + " sample project"
+	}
+	commit = append(commit, "commit", "-q", "--allow-empty", "-m", message)
 	if out, err := git(r.Context(), commit...); err != nil {
 		return fmt.Errorf("git commit: %s", strings.TrimSpace(string(out)))
 	}
@@ -294,6 +316,24 @@ func (b *Box) newLocation(w http.ResponseWriter, r *http.Request) error {
 	b.publish(r, "location.added", map[string]any{"location": loc.Name, "path": loc.Path})
 	writeJSON(w, loc)
 	return nil
+}
+
+// writeSample copies a sample project's files into dir.
+func writeSample(sample, dir string) error {
+	return fs.WalkDir(examples.FS, sample, func(p string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		to := filepath.Join(dir, filepath.FromSlash(strings.TrimPrefix(strings.TrimPrefix(p, sample), "/")))
+		if d.IsDir() {
+			return os.MkdirAll(to, 0o755)
+		}
+		b, err := examples.FS.ReadFile(p)
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(to, b, 0o644)
+	})
 }
 
 // Branch is one branch a worktree could start from or check out.

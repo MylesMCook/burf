@@ -147,10 +147,14 @@ interactive reviewer beside the author.
 
 ### Broadcast
 
-The app can send one prompt to several agents at once: **Send a prompt to
-several agents…** in ⌘K, **Send to N agents…** on the Agent Dashboard,
-**Prompt agents…** on a selection in Worktrees, or **Send to several…** in the
-prompt library. The prompt's `{{variables}}` are filled in for each agent
+The app can send one prompt to several agents at once, from the composer's
+**Running agents** tab: pick the running agents it goes to, write the prompt
+or start from a saved one, and read or change each agent's copy under
+**Options**. **Send a prompt to several agents…** in ⌘K, **Send to N
+agents…** on the Agent Dashboard, **Prompt agents…** on a selection in
+Worktrees and **Send to several…** in the prompt library open it with those
+agents picked; a session's **Send prompt…** and **Loop until…** open it on
+that one (a loop prompts, waits, runs the check and sends failures back). The prompt's `{{variables}}` are filled in for each agent
 (its branch, worktree, project, box), sends go one after another, and you
 can wait for every turn to end and read what each said. An agent that is
 waiting for you is skipped, never typed into. Agents on offline boxes can be
@@ -160,8 +164,9 @@ and waits for every turn, even if the app quits.
 
 ### Try several ways
 
-**Try N ways…** (⌘K, or a session's Orchestrate menu) gives one task to
-several agents, each in its own worktree, verifies them with a check, has a
+**Try N ways…** (⌘K, or a session's Orchestrate menu), or picking several
+agents in the composer, gives one task to several agents, each in its own
+worktree, verifies them with a check, has a
 headless judge rank them, and lets you pick in Review's **Compare**. See
 [attempts](/guides/runs#attempts).
 

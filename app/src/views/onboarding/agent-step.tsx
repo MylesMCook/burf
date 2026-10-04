@@ -1,44 +1,44 @@
-import { AgentIcon } from "@/components/agent-glyph";
+import { TaskComposer } from "@/components/conversation/task-composer";
+import { StepHeader } from "@/components/step-header";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
+import { useIsLocalBox } from "@/lib/local-box";
 import { useStore } from "@/lib/store";
 
-// AgentStep ends onboarding by starting the first piece of work: a new
-// worktree with an agent in it, through the usual dialog with that agent
-// already chosen.
-export function AgentStep({ box, location, onFinish }: { box: string; location: string; onFinish(): void }) {
+// A first task the sample project can do in a minute or two, with a test.
+export const SAMPLE_TASK = 'Add a /health endpoint to server.js that returns {"ok": true}, with a test';
+
+// AgentStep ends onboarding with the composer, the one way to start work,
+// on the project just added: for the sample, a first task already written,
+// so Enter starts the first agent in a worktree of its own.
+export function AgentStep({ box, location, sample, onFinish }: { box: string; location: string; sample?: boolean; onFinish(): void }) {
   const agents = useStore((s) => s.boxes[box]?.info?.agents);
-  const first = agents?.find((a) => a.id === "claude") ?? agents?.find((a) => a.command);
-
-  const open = (agent?: string) => {
-    onFinish();
-    useStore.getState().openNewWorktree({ box, location, agent });
-  };
-
+  const local = useIsLocalBox(box);
+  const none = agents && !agents.some((a) => a.command);
   return (
     <div>
-      <h1 className="font-semibold text-xl tracking-tight">Start your first agent</h1>
-      <p className="mt-2 text-muted-foreground text-sm leading-relaxed">
-        A new worktree of <span className="text-foreground">{location}</span> on <span className="text-foreground">{box}</span>, with {first?.name ?? "an agent"} in it. It keeps going if you close Berth, and tells you when it needs you.
-      </p>
-      <div className="mt-8 flex flex-wrap items-center gap-2">
-        {first ? (
-          <Button onClick={() => open(first.id)}>
-            <AgentIcon agent={first.id} className="size-4" />
-            Start {first.name}
-          </Button>
-        ) : null}
-        <Button variant={first ? "outline" : "default"} onClick={() => open()}>
-          New worktree…
-        </Button>
-        <Button variant="ghost" className="text-muted-foreground" onClick={onFinish}>
+      <StepHeader
+        variant="page"
+        title="Start your first agent"
+        description={
+          <>
+            It works in a new worktree of <span className="text-foreground">{location}</span> on <span className="text-foreground">{local ? "this Mac" : box}</span>, keeps going if you close Berth, and tells you
+            when it needs you.{sample ? " The task below is a small one to start with; change it, or press Enter." : ""}
+          </>
+        }
+      />
+      <div className="mt-6">
+        <TaskComposer draft={{ box, location, text: sample ? SAMPLE_TASK : undefined }} autoFocus onDone={onFinish} />
+      </div>
+      {none && <p className="mt-3 text-muted-foreground text-xs">No agent CLI on {local ? "this Mac" : box} yet. Settings → Agents shows how to install Claude Code or Codex.</p>}
+      <div className="mt-8 flex items-center justify-between gap-3">
+        <p className="text-muted-foreground text-xs">
+          Later: <Kbd>⌘N</Kbd> new task · <Kbd>⌘K</Kbd> everything else
+        </p>
+        <Button variant="ghost" size="sm" className="text-muted-foreground" onClick={onFinish}>
           I'll explore first
         </Button>
       </div>
-      {!first && agents && <p className="mt-3 text-muted-foreground text-xs">No agent CLI on {box} yet. Settings → Agents shows how to install one.</p>}
-      <p className="mt-10 text-muted-foreground text-xs">
-        Later: <Kbd>⌘N</Kbd> new worktree · <Kbd>⌘K</Kbd> everything else
-      </p>
     </div>
   );
 }

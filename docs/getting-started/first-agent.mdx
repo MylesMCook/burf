@@ -49,7 +49,8 @@ berth task new my-box/app/fix-login --agent claude --prompt "Fix the login redir
 | Flag | What it does |
 | --- | --- |
 | `--agent ID` | Which agent: see `berth agents my-box` for what the box can start |
-| `--prompt TEXT` | Its first prompt |
+| `--prompt TEXT` | Its first prompt; its first line, cut to about 48 characters, becomes the session's title |
+| `--title T` | Name the work yourself instead |
 | `--branch B`, `--base REF` | As for `worktree new` |
 | `--open split\|tab` | Ask the app to show the new agent: in its worktree when you are looking at it, otherwise as a notice that opens it |
 
@@ -65,6 +66,25 @@ The built-in agents, offered when their command is installed on the box:
 
 A repository can add its own or replace these in
 [`.berth/config.json`](/reference/config#agents).
+
+### In the app
+
+The app starts work in one place, the **composer**: on home (the workspace
+with no worktree open), in an empty worktree, before an agent's first prompt,
+and in a dialog from ⌘N anywhere. Write what to do and press Enter. Its
+pickers say where (the project, the box when there are several, a new
+worktree or the main checkout) and which agents: one is a task; several, one
+model against another, or ×2 of each are [attempts](/guides/runs#attempts),
+compared by a judge; **No agent** makes the worktree alone. **Options** (the
+sliders) open what the new worktree starts from (`#1234`, a branch, a pull
+request or issue link), its folder, branch, base and
+[template](/guides/task-templates), and for attempts their check and judge.
+Its **Running agents** tab sends a prompt to agents already at work instead
+(see [broadcast](/guides/orchestration#broadcast)).
+
+Each agent is named after its task: the first line of the prompt
+("Fix checkout webhook"), with the agent beside it. Rename one from its tab's
+menu (right-click), or `berth session rename my-box/SESSION "New title"`.
 
 To start an agent in a worktree that already exists, or a plain shell:
 
