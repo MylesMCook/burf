@@ -23,6 +23,7 @@ jobs:
         # GitHub's Ubuntu runners stop Chromium's sandbox (user namespaces).
         env:
           BERTH_BROWSER_NO_SANDBOX: "1"
+          BERTH_TEST_CHROMIUM: "1"
 
   shell:
     runs-on: ubuntu-latest

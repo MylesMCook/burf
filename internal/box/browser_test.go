@@ -223,6 +223,11 @@ func TestAgentBrowserDrivesARealChromium(t *testing.T) {
 	if testing.Short() {
 		t.Skip("starts Chromium")
 	}
+	// A real browser is slow to start on a busy runner: CI opts in, and a
+	// release build doesn't wait on it.
+	if os.Getenv("BERTH_TEST_CHROMIUM") == "" && os.Getenv("CI") != "" {
+		t.Skip("set BERTH_TEST_CHROMIUM=1 to start a real Chromium in CI")
+	}
 	if _, err := FindChromium(); err != nil {
 		t.Skip(err)
 	}
