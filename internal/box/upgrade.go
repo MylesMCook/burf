@@ -128,8 +128,9 @@ func (b *Box) Capabilities() []string {
 	// diff: GET .../diff; titles: sessions carry a title (PATCH
 	// /v1/sessions/{name} renames); sample: POST /v1/locations/new makes a
 	// sample project; history: older transcript pages, helpers' own
-	// conversations, fork and rewind (history.go).
-	caps := []string{"transcript", "diff", "titles", "sample", "history"}
+	// conversations, fork and rewind (history.go); commands: GET
+	// .../commands and .../files for the chat's "/" and "@".
+	caps := []string{"transcript", "diff", "titles", "sample", "history", "commands"}
 	if b.Turns != nil {
 		// controls: POST .../keys, .../interrupt and .../mode, GET
 		// .../controls (controls.go).

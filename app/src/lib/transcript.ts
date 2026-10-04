@@ -16,6 +16,10 @@ export type TranscriptItem =
   // what it would run or touch (detail) and why, rather than a screen line.
   | { kind: "ask"; id: string; tool: string; detail: string; choices?: { key: string; label: string; title?: string }[]; decided?: string; why?: string; structured?: boolean; reading?: boolean }
   | { kind: "thinking"; id: string; since: number }
+  // A command typed to the agent rather than a prompt: one of its own
+  // ("/model", with what followed it) or a shell command ("!"), and the
+  // output its program printed (Markdown when it wrote it so).
+  | { kind: "command"; id: string; command: string; args?: string; text?: string; markdown?: boolean; error?: boolean }
   | { kind: "crew"; id: string; names: string[] };
 
 export interface ToolCall {

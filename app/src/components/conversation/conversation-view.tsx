@@ -13,6 +13,7 @@ import { parseDiff } from "@/lib/git/parse";
 import { type ToolCall, type ToolDetail, toolSummary, type TranscriptItem } from "@/lib/transcript";
 import { cn } from "@/lib/utils";
 import { Markdown } from "@/components/conversation/markdown";
+import { CommandItem } from "@/components/conversation/command-item";
 import "@/components/conversation/conversation.css";
 
 // ConversationView draws an agent's turn as a calm transcript rather than a
@@ -73,7 +74,7 @@ export function ConversationView({ items, onAnswer, edits, who = "The agent", ta
     };
   }, []);
   useEffect(() => {
-    if (last?.kind === "user") pinned.current = true;
+    if (last?.kind === "user" || last?.kind === "command") pinned.current = true;
     if (pinned.current) end.current?.scrollIntoView({ block: "end", behavior: "smooth" });
   }, [items.length, grew, tailSize, last?.kind]);
 
@@ -132,7 +133,8 @@ function foldTurns(items: TranscriptItem[]): Block[] {
     turn = [];
   };
   for (const it of items) {
-    if (it.kind === "user") {
+    // A command typed to the agent is the person's, like a prompt.
+    if (it.kind === "user" || it.kind === "command") {
       flush(false);
       out.push({ kind: "item", it });
     } else turn.push(it);
@@ -209,6 +211,8 @@ function Item({ it, onAnswer, edits, who }: { it: TranscriptItem; onAnswer(id: s
           ))}
         </div>
       );
+    case "command":
+      return <CommandItem it={it} who={who} />;
     case "ask":
       return it.structured ? <Permission it={it} onAnswer={onAnswer} who={who} /> : <Ask it={it} onAnswer={onAnswer} />;
   }

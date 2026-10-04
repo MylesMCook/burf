@@ -59,3 +59,32 @@ export function choicesIn(screen: string): Choice[] {
   // A real menu counts up from 1.
   return out.length >= 2 && out[0].key === "1" ? out.slice(0, 4) : [];
 }
+
+// What an agent's screen shows at its foot: its own prompt, waiting for
+// words ("prompt"); a screen of its own that only keys can answer, such as
+// /model's picker, /config, a trust dialog ("interactive"); or neither for
+// sure ("unknown"). Claude Code draws its prompt between two rules; Codex a
+// "›" line over its footer. Its own screens end in key hints ("Esc to
+// cancel", "Enter to confirm", "↑/↓ to navigate") or numbered options.
+const PROMPT_RULE = /^\s*[─━]{8,}\s*$/;
+const KEY_HINT = /(esc to (cancel|close|go back|exit|clear|dismiss)|enter to (confirm|select|continue|change|set|submit|save|toggle)|press enter|space to (select|toggle)|↑\/↓|←\/→|to navigate|to switch|type to (filter|search))/i;
+
+export function screenAt(agent: string | undefined, screen: string): "prompt" | "interactive" | "unknown" {
+  const lines = screen.replace(/\s+$/, "").split("\n").map((l) => l.replace(/\s+$/, ""));
+  const tail = lines.slice(-16);
+  const hinted = tail.filter((l) => l.trim()).slice(-4).some((l) => KEY_HINT.test(l));
+  let prompt = false;
+  if (agent === "codex") {
+    // The input line sits within the last few lines, over the footer.
+    const last = tail.filter((l) => l.trim()).slice(-4);
+    prompt = last.some((l) => /^›(\s|$)/.test(l)) && !hinted;
+  } else {
+    for (let i = 1; i < tail.length - 1 && !prompt; i++) {
+      if (!/^\s*[❯>!#]( |$)/.test(tail[i]) || !PROMPT_RULE.test(tail[i - 1])) continue;
+      prompt = tail.slice(i + 1, i + 10).some((l) => PROMPT_RULE.test(l));
+    }
+  }
+  if (prompt) return "prompt";
+  if (hinted || choicesIn(screen).length) return "interactive";
+  return "unknown";
+}

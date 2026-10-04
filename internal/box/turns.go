@@ -502,6 +502,17 @@ func (t *Turns) sent(e events.Event) {
 		t.bump()
 		return
 	}
+	if c, _ := e.Data["command"].(string); c != "" {
+		// The agent's own command (/cost, /model) starts no turn: its hooks
+		// never say it started, so a pending one would take the next
+		// prompt's start. One held in the inbox ends as it is typed.
+		if tr := s.find(str(e.Data, "turn")); tr != nil && tr.State == "queued" {
+			tr.SentSeq, tr.Sent, tr.Started = e.Seq, e.Time, e.Time
+			s.end(tr, "finished", e)
+		}
+		t.bump()
+		return
+	}
 	var tr *Turn
 	if id := str(e.Data, "turn"); id != "" {
 		tr = s.find(id) // a queued prompt, delivered now
@@ -1466,9 +1477,15 @@ func (b *Box) deliverInbox(ctx context.Context) {
 			unlock()
 			continue
 		}
-		b.Events.Publish(events.Event{Type: "session.sent", Box: b.Name, Origin: it.Origin, Data: map[string]any{"name": it.Session, "turn": it.Turn, "when": "idle"}})
+		data := map[string]any{"name": it.Session, "turn": it.Turn, "when": "idle"}
+		if sess, err := b.Sessions.Get(ctx, it.Session); err == nil && it.Enter {
+			if c, local := localCommand(sessionAgent(sess), it.Text); local {
+				data["command"] = c
+			}
+		}
+		b.Events.Publish(events.Event{Type: "session.sent", Box: b.Name, Origin: it.Origin, Data: data})
 		unlock()
-		if it.Enter {
+		if it.Enter && commandName(it.Text) == "" {
 			b.nameAfter(ctx, it.Session, adapters.Title(it.Text))
 		}
 	}

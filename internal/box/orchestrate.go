@@ -176,6 +176,11 @@ func (b *Box) sendPrompt(ctx context.Context, name string, req SendRequest, orig
 	}
 	// Only that something was sent: prompts never go into events.
 	data := map[string]any{"name": name, "from": from}
+	if c, local := localCommand(sessionAgent(sess), req.Text); local && enter && waiting == "" {
+		// The agent's own command (/cost, /model): its program answers, no
+		// turn starts, so none is opened to wait for.
+		data["command"] = c
+	}
 	if req.IdemKey != "" {
 		data["idem_key"] = req.IdemKey
 	}
@@ -189,7 +194,7 @@ func (b *Box) sendPrompt(ctx context.Context, name string, req SendRequest, orig
 		res.Turn = waiting
 		return res, nil
 	}
-	if enter && sess.Title == "" {
+	if enter && sess.Title == "" && commandName(req.Text) == "" {
 		b.nameAfter(ctx, name, adapters.Title(req.Text))
 	}
 	if b.Turns != nil {

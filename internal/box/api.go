@@ -164,6 +164,8 @@ func (b *Box) Mount(s *wire.Server) {
 	route("DELETE /v1/sessions/{name}/queue/{turn}", b.cancelQueued)
 	route("POST /v1/sessions/{name}/queue/{turn}/send", b.sendQueued)
 	route("GET /v1/sessions/{name}/diff", b.sessionDiff)
+	route("GET /v1/sessions/{name}/commands", b.listCommands)
+	route("GET /v1/sessions/{name}/files", b.listFiles)
 	route("GET /v1/turns/{id}", b.getTurn)
 	route("GET /v1/turns/{id}/wait", b.waitTurn)
 	route("POST /v1/exec", b.handleExec)

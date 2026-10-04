@@ -8,6 +8,8 @@ import { AttachmentChips, useAttachments } from "@/components/conversation/attac
 import { HARBOUR, HARBOUR_MUTE, useHarbourLight } from "@/components/art/harbour-art";
 import { Scene, type SceneName } from "@/components/art/scenes";
 import { ConversationView, type EditActions, QueuedBubble } from "@/components/conversation/conversation-view";
+import { useComposerMenu } from "@/components/conversation/command-menu";
+import { LiveScreen, useLiveScreen } from "@/components/conversation/live-screen";
 import { toastError } from "@/components/error-note";
 import { UpgradeBox } from "@/components/upgrade-box";
 import { SessionWorktreeSections } from "@/components/workspace/worktree-sections";
@@ -155,6 +157,12 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
     };
   }, [client, canDiff, mock, box, session, reviewKey, comments, who]);
 
+  // The agent's own screen (/model's picker, a dialog) opens as a live
+  // terminal under the conversation; a question its hooks describe doesn't.
+  const [nudge, setNudge] = useState(0);
+  const recognised = state === "waiting" && (!!s?.ask?.tool || !!ask?.choices.length);
+  const live = useLiveScreen({ box, session, agent, enabled: visible && !mock && !away && !!s && state !== "running" && state !== "exited" && !recognised, nudge });
+
   // Claude Code and Codex write their conversation once they start: until
   // then a new agent has nothing to read yet, which is not a dead end.
   const readable = agent === "claude" || agent === "codex";
@@ -243,6 +251,9 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
     // held until it is idle; the transcript shows it once the agent reads it.
     const r = await boxApi.send(client, box, session, text, true, state === "waiting" ? { when: "now", force: true } : { when: "idle" });
     if (r.queued) queue.refresh();
+    // A command ("/model", "!ls") shows as itself once the agent runs it;
+    // one that opens a screen of its own is looked for at once.
+    else if (/^[/!]/.test(text.trim())) setNudge((n) => n + 1);
     else setSent((l) => [...l, { text, at: Date.now(), after: items.length }]);
   };
 
@@ -345,7 +356,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
       </PaneEmpty>
     );
   }
-  if (!shown.length && (mock || feed === "ready" || feed === "none") && state !== "running" && state !== "waiting") {
+  if (!shown.length && (mock || feed === "ready" || feed === "none") && state !== "running" && state !== "waiting" && !live.show) {
     const wt = s ? worktreeOf(locations, s) : undefined;
     return <FirstPrompt box={box} session={session} agent={agent} name={wt ? (wt.worktree.main ? wt.location.name : wt.worktree.name) : session} branch={wt?.worktree.branch} onSend={reply} onFail={fail} />;
   }
@@ -376,7 +387,8 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
           ) : (
             <>
               {toSend.length > 0 && reviewKey && <CommentsStrip count={toSend.length} who={who} onSend={() => sendComments(box, session, reviewKey)} />}
-              <Reply attach={{ box, session }} onSend={reply} onFail={fail} who={who} mode={state === "running" ? "queue" : state === "waiting" ? "answer" : "send"} blocked={state === "waiting" && atMenu} hint={wantsWords ? `Tell ${who} what to change, then press Enter` : undefined} />
+              {live.show && <LiveScreen box={box} session={session} agent={agent} onHide={live.hide} onShowTerminal={onShowTerminal} />}
+              <Reply attach={{ box, session }} agent={agent} onSend={reply} onFail={fail} who={who} mode={state === "running" ? "queue" : state === "waiting" ? "answer" : "send"} blocked={(state === "waiting" && atMenu) || live.show} hint={live.show ? `${who} is showing its own screen: answer it above` : wantsWords ? `Tell ${who} what to change, then press Enter` : undefined} />
             </>
           )}
         </div>
@@ -441,9 +453,12 @@ function CommentsStrip({ count, who, onSend }: { count: number; who: string; onS
 // it waits for the answer above.
 // Images and files pasted or dropped on it go up to the agent's worktree
 // (components/conversation/attachments), and their paths go with the reply.
-function Reply({ onSend, onFail, who, mode, blocked, hint, attach }: { onSend(text: string): Promise<void>; onFail(err: unknown): void; who: string; mode: "send" | "queue" | "answer"; blocked?: boolean; hint?: string; attach?: AttachTarget }) {
+// "/" and "@" open the agent's commands and the worktree's files
+// (command-menu).
+function Reply({ onSend, onFail, who, mode, blocked, hint, attach, agent }: { onSend(text: string): Promise<void>; onFail(err: unknown): void; who: string; mode: "send" | "queue" | "answer"; blocked?: boolean; hint?: string; attach?: AttachTarget; agent?: string }) {
   const [text, setText] = useState("");
   const att = useAttachments(attach);
+  const menu = useComposerMenu({ box: attach?.box, session: attach && "session" in attach ? attach.session : undefined, agent, text, setText });
   const ready = (!!text.trim() || att.paths.length > 0) && !att.uploading;
   const go = () => {
     const t = withAttachments(text.trim(), att.paths);
@@ -460,7 +475,9 @@ function Reply({ onSend, onFail, who, mode, blocked, hint, attach }: { onSend(te
   const queue = mode === "queue";
   const placeholder = hint ?? (blocked ? "Pick an answer above first" : queue ? `${who} is working: Enter queues this for when it finishes` : mode === "answer" ? `Answer ${who}, or ask for something else` : "Reply, or ask for something else");
   return (
-    <div {...att.dropProps}>
+    <div className="relative" {...att.dropProps}>
+      {menu.chip}
+      {menu.menu}
       <AttachmentChips items={att.items} onRemove={att.remove} className="mx-3 rounded-t-lg border border-b-0 bg-muted/40 p-2" />
       <InputGroup className={cn("**:[textarea]:min-h-0! **:[textarea]:py-2.5!", att.dragging && "border-ring ring-[3px]")}>
         <InputGroupTextarea
@@ -468,7 +485,9 @@ function Reply({ onSend, onFail, who, mode, blocked, hint, attach }: { onSend(te
           onPaste={att.onPaste}
           value={text}
           onChange={(e) => setText(e.target.value)}
+          onSelect={menu.onSelect}
           onKeyDown={(e) => {
+            if (menu.onKeyDown(e)) return;
             if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault();
               go();
@@ -478,7 +497,7 @@ function Reply({ onSend, onFail, who, mode, blocked, hint, attach }: { onSend(te
           placeholder={placeholder}
           className="max-h-40"
         />
-        <InputGroupAddon align="inline-end" className="self-end pr-1.5 pb-1.5">
+        <InputGroupAddon align="inline-end" className="me-0! self-end pr-1.5 pb-1.5">
           <Tip
             label={
               <span className="flex items-center gap-1.5">

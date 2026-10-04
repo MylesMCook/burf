@@ -9,6 +9,7 @@ import { useBranches, useResolve } from "@/components/new-worktree/use-resolve";
 import { withDefaults } from "@/components/prompts/shared";
 import { RepoWants, trustRepo, useRepoTrustFor } from "@/components/repo-trust";
 import { AttachmentChips, useAttachments } from "@/components/conversation/attachments";
+import { type ComposerMenu, useComposerMenu } from "@/components/conversation/command-menu";
 import { ErrorText, toastError } from "@/components/error-note";
 import { Tip } from "@/components/tip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -784,6 +785,8 @@ function ToBody({ to, onSend, onFail, autoFocus, className }: TaskComposerProps 
   // Images and files pasted or dropped here go up to the agent's worktree,
   // and their paths go with the prompt.
   const att = useAttachments({ box: to.box, session: to.session });
+  // "/" and "@": the agent's commands and the worktree's files.
+  const menu = useComposerMenu({ box: to.box, session: to.session, agent: to.agent, text, setText, side: "bottom" });
   const ready = !!text.trim() || att.paths.length > 0;
   const go = async () => {
     if (!ready || busy || att.uploading || !onSend) return;
@@ -810,6 +813,7 @@ function ToBody({ to, onSend, onFail, autoFocus, className }: TaskComposerProps 
             onSubmit={() => void go()}
             onPaste={att.onPaste}
             above={<AttachmentChips items={att.items} onRemove={att.remove} className="px-3.5 pt-3" />}
+            menu={menu}
             autoFocus={autoFocus}
             label={`What should ${who} do?`}
             placeholder={`What should ${who} do?`}
@@ -845,7 +849,7 @@ function Shell({ head, editor, options, notice, footer, className }: { head?: Re
   );
 }
 
-function Editor({ value, onChange, onSubmit, onPaste, above, autoFocus, label, placeholder, hint }: { value: string; onChange(v: string): void; onSubmit(): void; onPaste?(e: React.ClipboardEvent): void; above?: React.ReactNode; autoFocus?: boolean; label: string; placeholder: string; hint?: React.ReactNode }) {
+function Editor({ value, onChange, onSubmit, onPaste, above, autoFocus, label, placeholder, hint, menu }: { value: string; onChange(v: string): void; onSubmit(): void; onPaste?(e: React.ClipboardEvent): void; above?: React.ReactNode; autoFocus?: boolean; label: string; placeholder: string; hint?: React.ReactNode; menu?: ComposerMenu }) {
   return (
     <>
       {above}
@@ -855,7 +859,9 @@ function Editor({ value, onChange, onSubmit, onPaste, above, autoFocus, label, p
         autoFocus={autoFocus}
         value={value}
         onChange={(e) => onChange(e.target.value)}
+        onSelect={menu?.onSelect}
         onKeyDown={(e) => {
+          if (menu?.onKeyDown(e)) return;
           if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
             e.preventDefault();
             onSubmit();
@@ -866,6 +872,8 @@ function Editor({ value, onChange, onSubmit, onPaste, above, autoFocus, label, p
         className="field-sizing-content block max-h-60 min-h-[76px] w-full resize-none rounded-[inherit] bg-transparent px-3.5 py-3 text-[14px] outline-none placeholder:text-muted-foreground/72"
       />
       {hint && <p className="-mt-1 truncate px-3.5 pb-2.5 text-xs">{hint}</p>}
+      {menu?.chip}
+      {menu?.menu}
     </>
   );
 }
