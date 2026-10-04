@@ -19,6 +19,7 @@ import (
 	"github.com/sean-brydon/berthd/internal/doctor"
 	"github.com/sean-brydon/berthd/internal/events"
 	"github.com/sean-brydon/berthd/internal/hooks"
+	"github.com/sean-brydon/berthd/internal/integrations/adapters"
 	"github.com/sean-brydon/berthd/internal/terminal"
 	"github.com/sean-brydon/berthd/internal/wire"
 )
@@ -151,6 +152,10 @@ func (b *Box) Mount(s *wire.Server) {
 	route("POST /v1/sessions/{name}/send", b.sendToSession)
 	route("GET /v1/sessions/{name}/wait", b.waitForSession)
 	route("GET /v1/sessions/{name}/turns", b.listTurns)
+	route("GET /v1/sessions/{name}/queue", b.listQueue)
+	route("DELETE /v1/sessions/{name}/queue/{turn}", b.cancelQueued)
+	route("POST /v1/sessions/{name}/queue/{turn}/send", b.sendQueued)
+	route("GET /v1/sessions/{name}/diff", b.sessionDiff)
 	route("GET /v1/turns/{id}", b.getTurn)
 	route("GET /v1/turns/{id}/wait", b.waitTurn)
 	route("POST /v1/exec", b.handleExec)
@@ -827,11 +832,19 @@ func (b *Box) emit(w http.ResponseWriter, r *http.Request) error {
 	}
 	// A tool use while the agent is already working changes nothing, and
 	// agents use tools constantly: keep them out of the journal.
+	// What a waiting agent asks for (its hook's tool and a summary of its
+	// input) is never published: it goes on the turn's wait, in the
+	// ledger's private file, once the event has made that wait.
+	ask, hasAsk := req.Data[adapters.AskKey]
+	delete(req.Data, adapters.AskKey)
 	if b.Turns != nil && b.Turns.Redundant(req.Type, req.Data) {
 		writeJSON(w, map[string]bool{"ok": true})
 		return nil
 	}
 	b.publish(r, req.Type, req.Data)
+	if hasAsk && b.Turns != nil && req.Type == adapters.Waiting {
+		b.Turns.NoteAsk(req.Data, ask)
+	}
 	writeJSON(w, map[string]bool{"ok": true})
 	return nil
 }

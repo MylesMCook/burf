@@ -41,6 +41,11 @@ type Session struct {
 	Turn     string `json:"turn,omitempty"`
 	StateSeq int64  `json:"state_seq,omitempty"`
 	Fidelity string `json:"fidelity,omitempty"`
+	// Queued is how many prompts the box holds for the agent until it is
+	// idle (GET .../queue lists them); Ask is what it waits on, from its
+	// hooks, when they said.
+	Queued int  `json:"queued,omitempty"`
+	Ask    *Ask `json:"ask,omitempty"`
 }
 
 var (

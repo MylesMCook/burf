@@ -14,8 +14,11 @@ import (
 // Translate turns a tool's hook payload into a berth event, through the
 // tool's adapter. It keeps only identifiers and the working directory:
 // prompts, messages, and transcripts never leave the tool, so they cannot
-// leak into hooks or logs. ok is false for payloads that are not worth
-// announcing.
+// leak into hooks or logs. The one exception is a waiting agent's ask
+// (adapters.AskKey: the tool and a short summary of its input), which only
+// the box daemon reads: it takes it out before publishing, and StripAsk
+// drops it on every other path. ok is false for payloads that are not
+// worth announcing.
 func Translate(tool, hookEvent string, payload []byte) (events.Event, bool) {
 	var in map[string]any
 	json.Unmarshal(payload, &in)
@@ -43,6 +46,13 @@ func Translate(tool, hookEvent string, payload []byte) (events.Event, bool) {
 	}
 	e.Data["agent"] = tool
 	return e, true
+}
+
+// StripAsk removes a waiting agent's ask from an event bound anywhere but
+// the box daemon's own API: the laptop agent and the spool.
+func StripAsk(e events.Event) events.Event {
+	delete(e.Data, adapters.AskKey)
+	return e
 }
 
 // Reply is what a tool expects its hook to print. Cursor reads JSON from

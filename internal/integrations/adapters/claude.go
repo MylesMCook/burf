@@ -22,6 +22,9 @@ var Claude = register(&Adapter{
 			return Started, d, true
 		case "PermissionRequest":
 			d["reason"] = "permission"
+			if ask := claudeAsk(in); ask != nil {
+				d[AskKey] = ask
+			}
 			return Waiting, d, true
 		case "Notification":
 			reason, ok := claudeNotification(in)
@@ -29,6 +32,11 @@ var Claude = register(&Adapter{
 				return "", nil, false
 			}
 			d["reason"] = reason
+			// The message ("Claude needs your permission to use Bash", or
+			// a question) goes with the ask, never into the event.
+			if msg := clip(in.Str("message")); msg != "" {
+				d[AskKey] = map[string]any{"message": msg}
+			}
 			return Waiting, d, true
 		case "Stop":
 			return Finished, d, true
@@ -55,7 +63,8 @@ func claudeNotification(in Payload) (reason string, ok bool) {
 		return "", false
 	case "":
 		// Older versions send no type; their idle reminder reads "Claude is
-		// waiting for your input". The message is read, never kept.
+		// waiting for your input". The message is read here, and kept
+		// only with the ask (AskKey), never in the event.
 		msg := lower(in.Str("message"))
 		if strings.Contains(msg, "waiting for your input") {
 			return "", false
