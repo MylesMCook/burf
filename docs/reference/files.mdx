@@ -58,11 +58,16 @@ State, in `<state>/box/`:
 | `agent-states.json` | What each agent last reported, by working directory |
 | `tmux.conf` | The configuration of Berth's tmux server |
 | `phone.json` | The phone companion: on or off, its token, notifications |
-| `flow-runs.json` | The last 200 flow runs |
+| `runs/index.json`, `runs/<id>.jsonl` | [Runs](/guides/runs): the index, and each run's journal; finished runs past 100 per flow or template, or 30 days, are removed |
+| `runs/<id>.d/` | A run's headless agents' prompts and JSON output |
+| `flow-runs.json.imported` | Flow runs from before durable runs, once imported |
+| `autofix.json` | Each worktree's Auto-fix this PR settings |
+| `trigger-secrets.json` | Webhook flows' signing secrets (0600) |
+| `turns.json`, `turns-archive.jsonl`, `inbox.json`, `journal/`, `spool/` | The turn ledger, the event journal and hooks kept while berthd was down |
 | `flow-github.json` | What GitHub-triggered flows have already seen |
 
 Yours, in `~/.berth/`: `hooks.json`, `flows.json`, `env.json`, `guard.json`,
-`network.json`, `plugins/` and `plugins.json`; see
+`network.json`, `runs.json`, `plugins/` and `plugins.json`; see
 [the config reference](/reference/config#box-files).
 
 Sessions run in tmux on its own socket (`tmux -L berth`).

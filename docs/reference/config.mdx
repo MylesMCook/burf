@@ -61,9 +61,11 @@ plugin's manifest. See [hooks](/guides/hooks).
 | `id` | string | Required. `[a-z0-9][a-z0-9-]*`, at most 48 characters, unique. |
 | `name` | string | Required. |
 | `enabled` | boolean | Default `false`: a flow runs only when it is `true`. |
-| `trigger` | object | Exactly one of `event`, `schedule` or `github`; see below. |
+| `trigger` | object | Exactly one of `event`, `schedule`, `github` or `webhook`; see below. |
 | `steps` | array | At least one; see below. |
 | `max_runs_per_hour` | number | Default 20 when empty or `0`. |
+| `queue` | number | Triggers that may wait behind the flow's run in the same worktree (default 5, at most 50); past it, a trigger is refused and a GitHub item tried again on the next look. |
+| `coalesce` | boolean | New GitHub items merge into the run already waiting, as `{{event.items}}`, instead of queueing their own. |
 
 #### `trigger`
 
@@ -72,7 +74,8 @@ plugin's manifest. See [hooks](/guides/hooks).
 | `event` | string | An event type or prefix. Not a `before:` gate. |
 | `schedule` | string | Cron (`m h dom mon dow`) or `@hourly`, `@daily`, `@midnight`, `@weekly`, `@monthly`, `@yearly`, `@annually`; the box's local time. |
 | `each_worktree` | boolean | With `schedule` only: once for every worktree. |
-| `github` | object | `on`: `review_comment`, `pr_review`, `check_failed` or `pr_merged`; `poll`: a duration, at least `1m`, default `2m`. |
+| `github` | object | `on`: `review_comment`, `pr_review`, `check_failed`, `pr_merged`, `issue_labeled` (with `label`) or `issue_assigned` (with `assignee`, default `@me`); `poll`: a duration, at least `1m`, default `2m`. |
+| `webhook` | object | Started by a signed `POST /v1/triggers/<id>`; `branch_field` names the posted field that picks the worktree (default `branch`). |
 | `where` | object | `location`, `agent`, `branch` (a trailing `*` matches a prefix), and for GitHub triggers `author` (logins, `"collaborators"` or `"*"`; `review_comment` and `pr_review` default to collaborators). Empty matches anything. |
 
 #### `steps`
@@ -82,7 +85,7 @@ Each step:
 | Field | Type | Meaning |
 | --- | --- | --- |
 | `id` | string | Optional, unique in the flow. Unnamed steps are `1`, `2`, … |
-| `kind` | string | `run`, `prompt`, `wait`, `start_agent`, `notify` or `webhook`. |
+| `kind` | string | `run`, `prompt`, `wait`, `start_agent`, `notify` or `webhook`, or a [run](/guides/runs) step: `check`, `loop`, `map`, `join`, `if`, `gate`, `sleep`, `judge`, `headless`, `collect`, `handoff`, `pr`, `cleanup`. |
 | `when` | string | `success` (default), `failure` or `always`. |
 | `command` | string | `run`: required. Variables reach it as environment variables, [never as code](/guides/automations#how-values-are-filled-in). |
 | `text` | string | `prompt`: required, the prompt. `start_agent`: its first prompt. `notify`: the body. `webhook`: the JSON body (default: every variable). |
@@ -92,7 +95,13 @@ Each step:
 | `agent` | string | `start_agent`: required, a preset id. |
 | `new_worktree`, `name` | boolean, string | `start_agent`: in a new worktree, and its name. |
 | `url` | string | `webhook`: required, `http` or `https`; public addresses only unless [allowed](/guides/automations#outbound-requests). |
-| `timeout` | string | A duration: `run` 10m, `wait` 30m, `webhook` 15s by default; at most 2h. |
+| `timeout` | string | A duration: `run` 10m, `check` 20m, `wait` 30m, `webhook` 15s by default; at most 2h. |
+| `deliver` | string | `prompt`: `idle` holds it on the box until the agent is idle. |
+| `max`, `until`, `steps` | number, string, array | `loop`: rounds (default 3, at most 50), a condition that ends it, and its steps. |
+| `items`, `concurrency`, `mode` | list or text, number, string | `map`: what to fan out over (a list, or text whose lines are the items, `{{item}}` and `{{item.FIELD}}` in its steps), how many at once, and `all`, `any` or `first_success`. |
+| `cond`, `else` | string, array | `if`: a [condition](/guides/automations#steps), and the steps when it is false. |
+| `on_timeout` | string | `gate`: `reject` (default), `approve` or `fail`. |
+| `duration` | string | `sleep`: how long, kept across restarts. |
 
 Variables and behaviour are in [automations](/guides/automations#steps).
 

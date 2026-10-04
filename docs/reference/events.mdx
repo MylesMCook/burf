@@ -88,7 +88,12 @@ Berth reads the terminal and sends these itself with `origin: "screen"` and
 | --- | --- |
 | `flow.started` | `flow`, `scope`, `run`, `path` |
 | `flow.finished` | `flow`, `scope`, `run`, `status`, `path` |
-| `flow.interrupted` | `flow`, `scope`, `run`, `status: "interrupted"`, `path`: berthd restarted while the run was going; runs do not resume yet |
+| `flow.interrupted` | `flow`, `scope`, `run`, `status: "interrupted"`, `path`: a run from before durable runs that was going when berthd stopped (imported once) |
+| `flow.skipped` | `flow`, `scope`, `error`: a trigger that did not start a run (its hourly limit, or its queue is full) |
+| `run.created`, `run.queued`, `run.started`, `run.resumed`, `run.finished` | `run`, `template`, `status`, and `flow`, `scope`, `path`, `title`, `group` when set: a [durable run](/guides/runs) |
+| `run.step` | the same, with `step` (its path), `kind` and `step_status`, as each step ends |
+| `run.gate` | the same, with `step`, `gate_title`, `pick`: it waits for someone. A `notify` (`kind: "run.gate"`) goes with it |
+| `run.gate_decided` | the same, with `step`, `approve`, `by` |
 | `notify` | `title`, `body`, `flow`, `path`, `location`: a flow's or the guard's notification |
 | `guard.acted` | `action`, `location`, `name`, `path`, `services`, `sessions`, `memory_percent`, `reason` |
 | `config.changed` | what changed: `location`, `flows`, `env` or `guard`; with `location`, `trust` (`trusted` or `untrusted`) when the repository's config was trusted or no longer is |
@@ -107,9 +112,10 @@ Berth reads the terminal and sends these itself with `origin: "screen"` and
 | `client.paired` | `name`, `fingerprint`: a laptop paired with the box |
 | `client.revoked` | `name`, `fingerprint`: a laptop removed from the box from another one (Settings → Computers) |
 
-Flows triggered by a schedule or GitHub receive `schedule.fired` or
+Flows triggered by a schedule, GitHub or a webhook receive `schedule.fired`,
 `github.review_comment`, `github.pr_review`, `github.check_failed`,
-`github.pr_merged` as their event; these start the flow directly and are not
+`github.pr_merged`, `github.issue_labeled`, `github.issue_assigned` or
+`webhook.received` as their event; these start the flow directly and are not
 announced to hooks.
 
 A flow's `scope` is `box` or `repo:<location>`, whichever layer (committed,
@@ -150,6 +156,10 @@ exits non-zero refuses it with what it printed. Gates in a laptop's
 | `before:session.stop` | `name` |
 | `before:session.send` | `name`; from the phone also `from: "phone"`, and `key` for a key press |
 | `before:exec` | `location`, `path`, `command` |
+| `before:run.start` | `template`, `path`, `steps`, or `flow`, `scope` |
+| `before:run.approve` | `run`, `step`, `approve`: deciding a gate, from the app, CLI or phone |
+| `before:run.cancel` | `run` |
+| `before:run.pr` | `run`, `path`, `branch`: a run about to push and open a pull request |
 | `before:kit.install` | `location`, `kit`, `source` |
 | `before:kit.remove` | `location` |
 | `before:skills.install`, `before:skills.uninstall` | `skills`, `agents`, `target`, `location` |

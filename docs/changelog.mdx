@@ -13,6 +13,22 @@ again.
 
 On `main`, not yet in a release:
 
+- **Durable runs.** Loops, reviews, hand-offs, broadcasts and flows run on
+  the box from a journal: they keep going while the laptop sleeps and
+  resume after berthd restarts, never sending an agent a prompt twice.
+  `berth run …`, `berth runs`, and `berth loop` as a run; gates you decide
+  from the app, the CLI or the phone; box-wide caps and per-run budgets.
+  See [runs](/guides/runs).
+- **Try N ways.** Several agents try one task in their own worktrees; a
+  check verifies them, a headless judge ranks them, and Review's Compare
+  lets you pick one for a draft PR.
+- **Triggers v2.** Issue labels and assignees, signed webhooks, and an
+  Auto-fix this PR toggle; a GitHub item arriving while a flow runs waits
+  for it instead of being dropped. See [automations](/guides/automations).
+- **Handoff packets** and native fork or resume; **headless agents** in
+  tmux; **`berthd mcp`** for agents. The app's flows for every box are gone:
+  commit such a flow to the repository's `.berth/config.json` or its kit.
+
 - **Set up a box from your tailnet.** **Add a box** lists the machines on
   this Mac's tailnet, with their OS, whether they are online and which are
   boxes already, and **Set up** installs and pairs one over SSH. Tailscale

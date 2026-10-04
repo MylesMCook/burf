@@ -2,6 +2,7 @@
   "title": "Guides",
   "pages": [
     "orchestration",
+    "runs",
     "offline-queue",
     "automations",
     "hooks",

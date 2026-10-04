@@ -121,8 +121,8 @@ See [kits](/guides/kits).
 | `berth session send BOX/NAME TEXT [--when now\|idle] [--force] [--idem KEY] [--no-enter] [--wait [--timeout 30m]] [--queue]` | Type a prompt into a session (or hold it until the agent is idle), and wait for its turn |
 | `berth session wait BOX/NAME [--turn ID] [--for finished,waiting] [--timeout 30m]` | Wait for a turn (from `session send`), or its agent's current one, to end |
 | `berth session turns BOX/NAME [--limit 10] [--json]` | List a session's turns: who prompted, how it ended, how long it took |
-| `berth exec BOX/LOC[/WORKTREE] [--timeout 10m] -- COMMAND...` | Run a command there and print its output |
-| `berth loop BOX/SESSION --check CMD [--prompt TEXT] [--max 5] [--turn-timeout 30m]` | Prompt, wait, check, and feed failures back |
+| `berth exec BOX/LOC[/WORKTREE] [--timeout 10m] [--detach] -- COMMAND...` | Run a command there and print its output; `--detach` runs it as a run and prints its ID |
+| `berth loop BOX/SESSION --check CMD [--prompt TEXT] [--max 5] [--turn-timeout 30m] [--cancel-on-exit] [--detach]` | Prompt, wait, check, and feed failures back: a [durable run](/guides/runs) on the box (Ctrl-C stops following, not the loop) |
 | `berth session kill BOX/NAME` | Stop a session |
 | `berth attach BOX/SESSION` | Attach this terminal to a session (detach: Ctrl-b d) |
 | `berth terminal BOX/SESSION` | Open a new terminal window attached to a session |
@@ -130,6 +130,19 @@ See [kits](/guides/kits).
 
 See [orchestration](/guides/orchestration) and
 [the offline queue](/guides/offline-queue).
+
+## Runs
+
+| Command | What it does |
+| --- | --- |
+| `berth runs BOX [--status active\|done\|S] [--template T] [--limit 20] [--json]` | List [runs](/guides/runs), newest first |
+| `berth run templates BOX [--json]` | The templates and their parameters |
+| `berth run start BOX --template T [--param k=v]... [--follow] [--idem KEY] [--json]` | Start a run; a value that is JSON is taken as such |
+| `berth run get BOX/RUN [--json]` | Its steps as a tree, its gate, attempts and tokens |
+| `berth run logs BOX/RUN [--since N] [--follow] [--json]` | Its journal, as it happens |
+| `berth run approve\|reject BOX/RUN [STEP] [--pick N] [--note TEXT]` | Decide the gate it waits at (`--pick`: the attempt, from 1) |
+| `berth run cancel BOX/RUN` | Stop a run |
+| `berth flow secret BOX FLOW [--scope S] [--json]` | Make a webhook flow's signing secret, shown once |
 
 ## Ports and sharing
 

@@ -29,6 +29,14 @@ flows, skills) can drive it directly. `berthd help` prints this list.
 | `berthd doctor [--json]` | Check this box's setup and how to fix it |
 | `berthd version` | Print this build's version |
 | `berthd session attach NAME` | Attach to a session in this terminal |
+| `berthd mcp` | A stdio MCP server of Berth's tools for agents on this box, talking to its socket; `integrations install` adds it to Claude Code, Codex and Gemini CLI ([runs](/guides/runs#from-an-agent-mcp)) |
+| `berthd headless --agent A --out FILE.jsonl --prompt-file FILE [--read-only] [--add-dir D]` | One non-interactive agent turn, as runs start in tmux for judges and reviewers |
+
+`~/.berth/runs.json` on the box sets `max_concurrent_runs` (10),
+`max_concurrent_agents` (6) and `triggers_listen` (`"tailnet"` serves signed
+[webhook triggers](/guides/automations#from-a-webhook) on the tailnet
+address, port 7482). Runs that were going when berthd stopped resume when it
+starts.
 
 ## Locations and worktrees
 
@@ -62,8 +70,10 @@ asks the app to open the page as a browser tab beside the agent; the
 | `berthd session send NAME TEXT [--when now\|idle] [--force] [--idem KEY] [--no-enter] [--wait [--timeout 30m]]` | Type a prompt into a session (or hold it until the agent is idle), and wait for its turn |
 | `berthd session wait NAME [--turn ID] [--for finished,waiting] [--timeout 30m]` | Wait for a turn (from `session send`), or its agent's current one, to end |
 | `berthd session turns NAME [--limit 10] [--json]` | List a session's turns: who prompted, how it ended, how long it took |
-| `berthd exec LOC[/WORKTREE] [--timeout 10m] -- COMMAND...` | Run a command there and print its output |
-| `berthd loop SESSION --check CMD [--prompt TEXT] [--max 5] [--turn-timeout 30m]` | Prompt, wait, check, and feed failures back |
+| `berthd exec LOC[/WORKTREE] [--timeout 10m] [--detach] -- COMMAND...` | Run a command there and print its output; `--detach` runs it as a run |
+| `berthd loop SESSION --check CMD [--prompt TEXT] [--max 5] [--turn-timeout 30m] [--cancel-on-exit] [--detach]` | Prompt, wait, check, and feed failures back, as a durable run |
+| `berthd runs`, `berthd run start\|get\|logs\|approve\|reject\|cancel\|templates …` | [Runs](/guides/runs), as `berth run` without the box |
+| `berthd flow secret FLOW [--scope S]` | Make a webhook flow's signing secret |
 | `berthd session kill NAME` | Stop a session |
 
 ## Ports and sharing
@@ -106,7 +116,7 @@ owns, not the journal.
 
 | Command | What it does |
 | --- | --- |
-| `berthd integrations install claude\|cursor\|codex\|gemini\|opencode\|all` | Install Berth's skills and agent hooks for a tool |
+| `berthd integrations install claude\|cursor\|codex\|gemini\|opencode\|all` | Install Berth's skills and agent hooks for a tool, and `berthd mcp` as an MCP server for Claude Code, Codex and Gemini CLI |
 | `berthd hook TOOL EVENT [PAYLOAD]` | What those hooks run: turns a tool's hook into a Berth event (`agent.finished`, `agent.waiting`), naming the session from `$BERTH_SESSION`. While berthd is down it keeps the event in `~/.berth/box/spool/`, published when berthd starts |
 
 See [agent integrations](/guides/agent-integrations) for what the hooks and

@@ -143,7 +143,12 @@ failed after it went out (the box may have acted on it). The box API:
 | `GET locations/{name}/branches` | the repository's branches |
 | `PUT locations/{name}/scripts` | `{ setup, archive }`: the box's own lifecycle scripts |
 | `GET fs?path=P` | a folder's entries on the box, for picking a path (default `~/work`) |
-| `GET review` | worktrees with work to review (`?all=1` includes agents still working) |
+| `GET review` | worktrees with work to review (`?all=1` includes agents still working); `?run=ID` an attempts run's candidates, each with its worktree's changes (Review's Compare) |
+| `POST exec` | `{ location, command, timeout?, detach? }`: run a command to completion; with `detach`, answers at once with `{ run }` |
+| `GET runs`, `POST runs`, `GET runs/templates`, `GET runs/{id}`, `GET runs/{id}/events?since=N`, `POST runs/{id}/cancel`, `POST runs/{id}/gates/{step}/decide` | [durable runs](/guides/runs#api); `POST runs` takes an `Idempotency-Key` header or `idem_key` |
+| `GET autofix`, `PUT autofix` | `{ path, ci, review, check?, max? }`: a worktree's [Auto-fix this PR](/guides/automations#auto-fix-this-pr) |
+| `POST flows/{id}/secret` | `{ scope? }`: a webhook flow's new signing secret, shown once |
+| `POST triggers/{flow}` | start a [webhook flow](/guides/automations#from-a-webhook); signed, not authenticated as a laptop |
 | `POST upgrade` | replace berthd with the binary in the body and restart (`berth upgrade`) |
 
 `Session` carries the agent's state when an agent tool reports it:
@@ -152,6 +157,13 @@ failed after it went out (the box may have acted on it). The box API:
 with), `turn` (its current or last turn), `state_seq` and `fidelity`
 (`hooks`, `partial` or `screen`). `exited` is true once the program has
 ended.
+
+A `Run` is `{ id, template, title?, status, steps, gate?, candidates?, usage?,
+cursor?, params?, created, updated, finished?, error?, … }`, with `status`
+one of `queued`, `running`, `waiting_gate`, `paused`, `succeeded`, `failed`,
+`cancelled`, `interrupted`; `GET runs` lists summaries (the same without
+`steps`). The info's `capabilities` lists `runs` and `exec.detach` on boxes
+that have them.
 
 A `Turn` is `{ id, session, agent?, n, origin?, sent_seq?, end_seq?, state,
 queued?, started?, ended?, waits?, fidelity?, idem_key?, status? }`, with

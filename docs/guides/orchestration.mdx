@@ -17,6 +17,11 @@ the API:
 On a box, `berthd` takes the same commands without the `BOX/` prefix, which
 is what agents there use.
 
+The patterns below (loop, review, hand-off, broadcast, try several ways) are
+[durable runs](/guides/runs) on boxes that have them: the box executes them
+and keeps a journal, so they keep going while the laptop sleeps and resume
+after `berthd` restarts.
+
 ## Send
 
 ```sh
@@ -80,7 +85,9 @@ berth exec devl/shop/checkout -- pnpm test --changed
 Runs a command to completion through a login shell in the location or
 worktree, with its environment, and returns its exit code and the last 64 KB
 of output (`--timeout`, 10 minutes by default). `before:exec` hooks can
-refuse it.
+refuse it. With `--detach` (API `detach: true`) it answers at once with a
+run whose result holds the exit code and output (`berth run get`), so no
+caller blocks on a long check.
 
 ## Patterns
 
@@ -97,28 +104,46 @@ every byte of it: the lines that say what failed and the end of the output,
 without colours, at most about 3 KB, never the whole log. Each round's
 prompt carries an idempotency key, so a retried send never types it twice.
 It stops if the agent is waiting for a human (the box refuses to type into
-it); `--turn-timeout` bounds each turn. In the app, **Loop until…** in a session's
-menu does the same, and running loops show in a panel in the corner.
+it); `--turn-timeout` bounds each turn. On a box with runs it is a run of
+the `loop` template on the box: Ctrl-C stops following it, not the loop
+(`--cancel-on-exit` cancels it, `--detach` only starts it), and it survives
+the laptop sleeping and `berthd` restarting. In the app, **Loop until…** in
+a session's menu does the same, and running loops show in a panel in the
+corner, from every device.
 
 ### Hand off
 
-A new worktree and agent picking up where another left off:
+A new worktree and agent picking up where another left off, with a
+**handoff packet**:
 
 ```sh
-berth task new devl/shop/checkout-tests --agent codex \
-  --prompt "Continue from shop-checkout-claude in ~/work/shop-checkout: write the missing tests."
+berth run start devl --template handoff --param session=shop-checkout-claude \
+  --param name=checkout-tests --param agent=codex --param prompt='Write the missing tests.'
 ```
 
-The app's **Hand off to…** does the same; with **In a new worktree** ticked
-it records `from_session` on the task.
+The source agent is asked to write `.berth/handoff/<run>.md` (Done, Left,
+Decisions, Gotchas; at most 30 lines). Berth adds the diffstat, the commits,
+the last check's failing tail and the turn log, caps it at about 2 KB, and
+carries uncommitted work over. The new agent's first prompt only points at
+the file. With `--param native=true` and the same vendor on the same box,
+the new agent continues the source's own conversation instead
+(`claude --resume <id> --fork-session`, `codex resume <id>`). The app's
+**Hand off to…** with **In a new worktree** does this; without a runs box it
+starts the task with a prompt that names where the work was.
 
 ### Review
 
-A second agent in the same worktree:
+A second agent reviewing a worktree, with its own session identity so its
+turns never end the author's waits:
 
 ```sh
-berth session new devl/shop/checkout --agent codex --prompt "Review the uncommitted changes. Do not edit."
+berth run start devl --template review --param session=shop-checkout-claude --param send_back=true
 ```
+
+By default the reviewer is a [headless agent](/guides/runs#headless-agents)
+that can only read; its verdict (at most 15 lines) is the run's output, and
+`send_back` sends it to the author. The app's **Review with…** starts an
+interactive reviewer beside the author.
 
 ### Broadcast
 
@@ -129,7 +154,16 @@ prompt library. The prompt's `{{variables}}` are filled in for each agent
 (its branch, worktree, project, box), sends go one after another, and you
 can wait for every turn to end and read what each said. An agent that is
 waiting for you is skipped, never typed into. Agents on offline boxes can be
-queued for when they're back.
+queued for when they're back. On boxes with runs, each box's share is a
+`broadcast` run there: the box holds each prompt until its agent is idle
+and waits for every turn, even if the app quits.
+
+### Try several ways
+
+**Try N ways…** (⌘K, or a session's Orchestrate menu) gives one task to
+several agents, each in its own worktree, verifies them with a check, has a
+headless judge rank them, and lets you pick in Review's **Compare**. See
+[attempts](/guides/runs#attempts).
 
 ### Chain with hooks and flows
 
@@ -155,12 +189,15 @@ agents these commands, so an agent can split work across worktrees, ask
 another agent for a review, or loop on a check by itself. The
 `berth-orchestrate` skill also tells them never to answer another agent's
 question on the user's behalf. See [agent integrations](/guides/agent-integrations).
+The same install adds `berthd mcp`, an MCP server of typed, non-blocking
+tools for the same things; see [runs](/guides/runs#from-an-agent-mcp).
 
 ## From a plugin
 
 Plugins get the same operations as `berth.orchestrate`: `send` (which
 resolves with the turn), `waitTurn`, `wait`, `exec`, `handoff`, `review` and
-`loop`; see
+`loop` (runs on boxes that have them), and `runs` to start, follow, decide
+and cancel any run; see
 [the plugin SDK](/reference/plugin-sdk#orchestrate).
 
 ## Agent state
@@ -176,7 +213,9 @@ An orchestrating agent pays in tokens for everything it reads, and so does
 every agent it prompts. Berth keeps both small: waits are event-driven (wait
 on the turn; never poll `session screen` or rerun `sessions`), `--json`
 output is compact, prompts Berth writes (loop feedback, GitHub comments in
-flows) are short and capped, and idempotency keys mean a resumed caller never
-sends the same prompt twice. An agent's shell tool usually times out within
+flows, handoff packets, the judge's summaries) are short and capped, and
+idempotency keys mean a resumed caller never sends the same prompt twice.
+Each [template's budget](/guides/runs#templates) is in its description
+(`berth run templates`). An agent's shell tool usually times out within
 minutes, so the skill tells agents to wait in short steps
 (`session wait --turn ID --timeout 90s`, repeated) or in the background.

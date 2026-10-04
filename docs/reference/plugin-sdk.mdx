@@ -83,9 +83,13 @@ session name; locations as the box API names them, `"shop"` or
 | `waitTurn(box, turn, { until?, timeout?, signal? })` | Resolves with `{ turn, state, timed_out }` once the turn ends (`finished`, `exited`, `lost`) or, with `until: "waiting"`, also when it waits for someone; or after `timeout` seconds. Needs a box whose `info().capabilities` has `"turns"`. |
 | `wait(box, session, states, { after?, timeout?, signal? })` | Resolves once the agent reports one of `states` after `after`, its program exits (`"exited"`), or `timeout` seconds pass (`timed_out`). For a box without turns, pass the `at` from `send` as `after`. |
 | `exec(box, location, command, timeout?)` | Runs a command to completion: `{ exit_code, output, truncated? }` |
-| `handoff({ box, from, agent, prompt, worktree? })` | Starts another agent on a session's work: in a new worktree when given one, otherwise beside it. Resolves with the new session. |
-| `review({ box, from, agent, prompt? })` | A second agent in the same worktree that reviews the first one's changes |
-| `loop({ box, session, prompt, check, max?, signal?, onProgress? })` | Prompt, wait, check, and send failures back until it passes. Returns `{ id, done }`; `done` settles with a `LoopResult` whose `outcome` is `passed`, `failed`, `needs-you`, `exited`, `timed-out`, `cancelled` or `error`. It shows in the app's loops panel. |
+| `handoff({ box, from, agent, prompt, worktree? })` | Starts another agent on a session's work: in a new worktree when given one (a `handoff` run, with a [handoff packet](/guides/orchestration#hand-off), on a box with runs), otherwise beside it. Resolves with the new session. |
+| `review({ box, from, agent, prompt? })` | A second agent in the same worktree that reviews the first one's changes (a `review` run on a box with runs) |
+| `loop({ box, session, prompt, check, max?, signal?, onProgress? })` | Prompt, wait, check, and send failures back until it passes. Returns `{ id, done }`; `done` settles with a `LoopResult` whose `outcome` is `passed`, `failed`, `needs-you`, `exited`, `timed-out`, `cancelled` or `error`. It shows in the app's loops panel. On a box with runs it is a `loop` run there, which keeps going if the app quits; aborting `signal` cancels it. |
+| `runs.start(box, req, { idemKey? })` | Starts a [run](/guides/runs): `{ template, params }`, `{ flow: steps }` or `{ flow_id, scope, data }`. Resolves with its `RunSummary`. |
+| `runs.get(box, id)`, `runs.list(box, { status?, template?, limit? })` | A `Run` with its steps, gate and candidates; summaries, newest first |
+| `runs.decide(box, id, { approve, note?, pick?, step? })`, `runs.cancel(box, id)` | Decide the gate it waits at (`pick`: the attempt, from 0); stop it |
+| `runs.done(box, id, { signal?, onUpdate? })` | Resolves with the run once it ends; aborting only stops watching |
 
 ## prompts
 
