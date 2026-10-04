@@ -7,6 +7,7 @@ import (
 	"errors"
 	"io"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -275,8 +276,21 @@ func codexDetail(line []byte, id, dir string, d *ToolDetail) (call, result bool)
 	return
 }
 
+// ansi matches terminal escape sequences: colours, cursor moves, titles.
+var ansi = regexp.MustCompile(`\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[@-Z\\-_]|\r`)
+
+// plain is a command's output as text: tools such as lefthook colour theirs
+// for a terminal, which reads as noise anywhere else.
+func plain(s string) string {
+	if !strings.ContainsAny(s, "\x1b\r") {
+		return s
+	}
+	return ansi.ReplaceAllString(s, "")
+}
+
 // capOutput keeps a long output's head and tail, as the terminal does.
 func capOutput(s string) (string, bool) {
+	s = plain(s)
 	if len(s) <= outputCap {
 		return s, false
 	}

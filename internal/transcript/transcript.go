@@ -16,8 +16,8 @@ import (
 	"time"
 )
 
-// Item is one entry in the conversation. Kind is user, text, tools, edit
-// or crew; the fields each kind uses are as in app/src/lib/transcript.ts.
+// Item is one entry in the conversation. Kind is user, text, tools, edit,
+// crew or command; the fields each kind uses are as in app/src/lib/transcript.ts.
 type Item struct {
 	Kind    string     `json:"kind"`
 	ID      string     `json:"id"`
@@ -31,6 +31,13 @@ type Item struct {
 	Names   []string   `json:"names,omitempty"`
 	// Tool is the call behind an edit, for its exact change.
 	Tool string `json:"tool,omitempty"`
+	// Command is a command item's command: "/model", or "!" for a shell
+	// command typed to the agent; Args what followed it, and Text its
+	// output (Markdown when the agent wrote it so, Error when it failed).
+	Command  string `json:"command,omitempty"`
+	Args     string `json:"args,omitempty"`
+	Markdown bool   `json:"markdown,omitempty"`
+	Error    bool   `json:"error,omitempty"`
 
 	// pending are the tool calls in a group still waiting for a result.
 	pending map[string]bool
@@ -109,6 +116,9 @@ type conv struct {
 	used       time.Time
 	p          parser
 	seq        int
+	// queued are messages shown from a mid-turn queued_command, so their
+	// user line (if Claude Code writes one later) isn't shown twice.
+	queued map[string]bool
 }
 
 func (c *conv) id() string {
@@ -310,7 +320,8 @@ func (r *Reader) Read(source, path, dir string, since int) (Result, error) {
 	// A tool group can change after it was sent (more calls, or done), so
 	// the one just before `since` comes again, as does an open one at the
 	// end; the app replaces items by ID.
-	if it := c.at(from - 1); it != nil && it.Kind == "tools" {
+	// A command's output is written after it, so it comes again too.
+	if it := c.at(from - 1); it != nil && (it.Kind == "tools" || it.Kind == "command") {
 		from--
 	}
 	if n := len(c.items); n > 0 && c.items[n-1].Kind == "tools" && !c.items[n-1].Done {

@@ -16,7 +16,11 @@ type claudeParser struct{}
 
 type claudeLine struct {
 	Type      string          `json:"type"`
+	Subtype   string          `json:"subtype"`
 	IsMeta    bool            `json:"isMeta"`
+	// IsCompactSummary marks the summary a compacted conversation goes on
+	// from: written as the person's, but not what they said.
+	IsCompactSummary bool `json:"isCompactSummary"`
 	Sidechain bool            `json:"isSidechain"`
 	Timestamp string          `json:"timestamp"`
 	Message   json.RawMessage `json:"message"`
@@ -24,6 +28,13 @@ type claudeLine struct {
 	// queued for itself, such as a helper's "finished" notification.
 	Operation string `json:"operation"`
 	Content   string `json:"content"`
+	// Attachment is what Claude Code hands the model mid-turn: a message
+	// typed while it worked arrives as a queued_command, at the point the
+	// model reads it, and is not written as a user line.
+	Attachment *struct {
+		Type   string          `json:"type"`
+		Prompt json.RawMessage `json:"prompt"`
+	} `json:"attachment"`
 }
 
 type claudeMessage struct {
@@ -42,12 +53,38 @@ type claudeBlock struct {
 
 func (claudeParser) line(c *conv, b []byte) {
 	var l claudeLine
-	if json.Unmarshal(b, &l) != nil || l.IsMeta || l.Sidechain {
+	if json.Unmarshal(b, &l) != nil || l.Sidechain {
+		return
+	}
+	if l.IsMeta {
+		commandMeta(c, l)
 		return
 	}
 	at := parseTime(l.Timestamp)
+	switch {
+	case l.Type == "system" && l.Subtype == "local_command":
+		commandText(c, l.Content)
+		return
+	case l.Type == "system" && l.Subtype == "compact_boundary":
+		c.add(Item{Kind: "command", ID: c.id(), Command: "/compact", Text: "Conversation compacted: the agent goes on from a summary of it"})
+		return
+	case l.IsCompactSummary:
+		return
+	}
 	if l.Type == "queue-operation" && l.Operation == "enqueue" {
 		helperDone(c, l.Content, at)
+		return
+	}
+	if l.Type == "attachment" && l.Attachment != nil && l.Attachment.Type == "queued_command" {
+		// Shown where the model read it, so a reply never sits above the
+		// message it answers.
+		if t := strings.TrimSpace(resultFull(l.Attachment.Prompt)); t != "" {
+			userText(c, t)
+			if c.queued == nil {
+				c.queued = map[string]bool{}
+			}
+			c.queued[t] = true
+		}
 		return
 	}
 	if l.Type != "user" && l.Type != "assistant" {
@@ -109,6 +146,14 @@ func (claudeParser) line(c *conv, b []byte) {
 // (command output, reminders) start with a tag and are skipped.
 func userText(c *conv, s string) {
 	s = strings.TrimSpace(s)
+	// Shown already, where the model read it mid-turn.
+	if c.queued[s] {
+		delete(c.queued, s)
+		return
+	}
+	if commandText(c, s) {
+		return
+	}
 	if s == "" || strings.HasPrefix(s, "<") || strings.HasPrefix(s, "Caveat:") {
 		return
 	}
@@ -260,4 +305,76 @@ func firstNonEmpty(ss ...string) string {
 		}
 	}
 	return ""
+}
+
+// maxOutput is the most of a command's output kept.
+const maxOutput = 8 << 10
+
+
+// tagged is the text inside <tag>…</tag> in s, if s has it.
+func tagged(s, tag string) (string, bool) {
+	_, after, ok := strings.Cut(s, "<"+tag+">")
+	if !ok {
+		return "", false
+	}
+	in, _, _ := strings.Cut(after, "</"+tag+">")
+	return in, true
+}
+
+// commandText reads what Claude Code writes for a command typed to it: a
+// slash command ("<command-name>/model</command-name>…<command-args>") and
+// the output its program printed ("<local-command-stdout>"), or a shell
+// command ("<bash-input>ls</bash-input>") and its output. They read as one
+// command item. It says whether s was one.
+func commandText(c *conv, s string) bool {
+	s = strings.TrimSpace(s)
+	if !strings.HasPrefix(s, "<") {
+		return false
+	}
+	if name, ok := tagged(s, "command-name"); ok {
+		name = strings.TrimSpace(name)
+		if !strings.HasPrefix(name, "/") {
+			name = "/" + name
+		}
+		args, _ := tagged(s, "command-args")
+		c.add(Item{Kind: "command", ID: c.id(), Command: name, Args: clip(strings.TrimSpace(args), 2000)})
+		return true
+	}
+	if in, ok := tagged(s, "bash-input"); ok {
+		c.add(Item{Kind: "command", ID: c.id(), Command: "!", Args: clip(strings.TrimSpace(in), 2000)})
+		return true
+	}
+	out, isOut := tagged(s, "local-command-stdout")
+	errOut, isErr := tagged(s, "local-command-stderr")
+	if !isOut && !isErr {
+		out, isOut = tagged(s, "bash-stdout")
+		errOut, isErr = tagged(s, "bash-stderr")
+	}
+	if !isOut && !isErr {
+		return false
+	}
+	text := strings.TrimSpace(plain(strings.TrimSpace(out + "\n" + errOut)))
+	if n := len(c.items); n > 0 && c.items[n-1].Kind == "command" && c.items[n-1].Text == "" {
+		last := &c.items[n-1]
+		last.Text, last.Error = clip(text, maxOutput), strings.TrimSpace(errOut) != "" && strings.TrimSpace(out) == ""
+	}
+	return true
+}
+
+// commandMeta keeps the Markdown Claude Code writes for its model after a
+// command's output (/context's table) as that output, which reads better
+// than the terminal's drawing of it.
+func commandMeta(c *conv, l claudeLine) {
+	if l.Type != "user" {
+		return
+	}
+	var m claudeMessage
+	var s string
+	if json.Unmarshal(l.Message, &m) != nil || json.Unmarshal(m.Content, &s) != nil {
+		return
+	}
+	s = strings.TrimSpace(s)
+	if n := len(c.items); n > 0 && strings.HasPrefix(s, "## ") && c.items[n-1].Kind == "command" && !c.items[n-1].Markdown {
+		c.items[n-1].Text, c.items[n-1].Markdown = clip(s, maxOutput), true
+	}
 }

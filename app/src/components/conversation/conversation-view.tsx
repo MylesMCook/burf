@@ -611,7 +611,7 @@ export function ToolDetailView({ d }: { d: ToolDetail }) {
         </>
       )}
       {!edit && (d.output ? (
-        <pre className={cn("max-h-80 overflow-auto whitespace-pre-wrap break-all px-3 py-2", d.error && "text-destructive-foreground")}>{d.output}</pre>
+        <pre className={cn("max-h-80 overflow-auto whitespace-pre-wrap break-all px-3 py-2", d.error && "text-destructive-foreground")}>{plain(d.output)}</pre>
       ) : (
         <p className="px-3 py-2 font-sans text-muted-foreground text-xs">{d.pending ? "Still running…" : "No output."}</p>
       ))}
@@ -619,6 +619,12 @@ export function ToolDetailView({ d }: { d: ToolDetail }) {
     </div>
   );
 }
+
+// plain drops terminal escape codes (colours, cursor moves) that tools
+// write for a terminal; boxes strip them too, this covers older ones.
+// biome-ignore lint/suspicious/noControlCharactersInRegex: matching escape codes is the point.
+const ANSI = /\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[@-Z\\-_]|\r/g;
+const plain = (s: string) => s.replace(ANSI, "");
 
 // ChangeLines is an edit as the terminal shows it: the lines it took out
 // and put in, numbered, the rest as context. A line diff of the two texts.

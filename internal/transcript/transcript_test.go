@@ -62,10 +62,13 @@ func TestClaudeTurn(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := kinds(res.Items); got != "user,text,tools" {
+	if got := kinds(res.Items); got != "user,command,text,tools" {
 		t.Fatalf("kinds = %s", got)
 	}
-	g := res.Items[2]
+	if c := res.Items[1]; c.Command != "/clear" {
+		t.Fatalf("command = %+v", c)
+	}
+	g := res.Items[3]
 	if g.Done || len(g.Items) != 2 || g.Items[0].Target != "webhook.ts" || !g.Items[0].File {
 		t.Fatalf("open group = %+v", g)
 	}
@@ -325,5 +328,82 @@ func TestCapOutputKeepsHeadAndTail(t *testing.T) {
 	out, cut := capOutput(long)
 	if !cut || len(out) > outputCap+64 || !strings.Contains(out, "more lines") {
 		t.Fatalf("len %d cut %v", len(out), cut)
+	}
+}
+
+// A message typed while Claude works reaches the model mid-turn as a
+// queued_command attachment: it shows there, before the reply to it, once.
+func TestQueuedMessageShowsWhereItWasRead(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "s.jsonl")
+	write(t, p,
+		user("first task"),
+		m{"type": "queue-operation", "operation": "enqueue", "content": "also check CI"},
+		assistant(m{"type": "text", "text": "Working on it."}),
+		m{"type": "attachment", "attachment": m{"type": "queued_command", "prompt": []m{{"type": "text", "text": "also check CI"}}}},
+		assistant(m{"type": "text", "text": "CI fails on the i18n test."}),
+		user("also check CI"),
+	)
+	res, _ := NewReader().Read("claude", p, "", 0)
+	var got []string
+	for _, it := range res.Items {
+		got = append(got, it.Kind+":"+it.Text)
+	}
+	want := "user:first task|text:Working on it.|user:also check CI|text:CI fails on the i18n test."
+	if strings.Join(got, "|") != want {
+		t.Fatalf("got %v", got)
+	}
+}
+
+func TestPlainStripsTerminalCodes(t *testing.T) {
+	in := "\x1b[38;2;5;5;5m─\x1b[m 🥊 lefthook v2.1.9 \x1b[1mpre-commit\x1b[m\r\n\x1b]0;title\x07ok"
+	if got := plain(in); got != "─ 🥊 lefthook v2.1.9 pre-commit\nok" {
+		t.Fatalf("%q", got)
+	}
+}
+
+// Commands typed to Claude Code read as one item each: the command, what
+// followed it, and the output its program printed, colours dropped; /context's
+// Markdown wins over its drawing; a shell command reads the same way.
+func TestClaudeCommands(t *testing.T) {
+	dir := t.TempDir()
+	p := filepath.Join(dir, "s.jsonl")
+	sys := func(content string) m {
+		return m{"type": "system", "subtype": "local_command", "content": content, "timestamp": "2026-10-04T12:00:00Z"}
+	}
+	write(t, p,
+		user("<command-name>/model</command-name>\n<command-message>model</command-message>\n<command-args>opus</command-args>"),
+		user("<local-command-stdout>Set model to \x1b[1mOpus 5.5\x1b[22m</local-command-stdout>"),
+		sys("<command-name>/context</command-name>\n<command-message>context</command-message>\n<command-args></command-args>"),
+		sys("<local-command-stdout>\x1b[1mContext Usage\x1b[22m ⛁ ⛁</local-command-stdout>"),
+		m{"type": "user", "isMeta": true, "message": m{"role": "user", "content": "## Context Usage\n\n**Tokens:** 46k"}},
+		user("<bash-input>ls</bash-input>"),
+		user("<bash-stdout>README.md</bash-stdout><bash-stderr></bash-stderr>"),
+		m{"type": "user", "isMeta": true, "message": m{"role": "user", "content": "A goal hook is active"}},
+	)
+	r := NewReader()
+	res, err := r.Read("claude", p, dir, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := kinds(res.Items); got != "command,command,command" {
+		t.Fatalf("kinds = %s", got)
+	}
+	if c := res.Items[0]; c.Command != "/model" || c.Args != "opus" || c.Text != "Set model to Opus 5.5" {
+		t.Errorf("model = %+v", c)
+	}
+	if c := res.Items[1]; c.Command != "/context" || !c.Markdown || !strings.HasPrefix(c.Text, "## Context Usage") {
+		t.Errorf("context = %+v", c)
+	}
+	if c := res.Items[2]; c.Command != "!" || c.Args != "ls" || c.Text != "README.md" || c.Error {
+		t.Errorf("shell = %+v", c)
+	}
+
+	// Output written after its command is read: the command comes again.
+	write(t, p, user("<command-name>/usage</command-name><command-args></command-args>"))
+	res, _ = r.Read("claude", p, dir, res.Next)
+	write(t, p, sys("<local-command-stdout>Status dialog dismissed</local-command-stdout>"))
+	res2, _ := r.Read("claude", p, dir, res.Next)
+	if len(res2.Items) != 1 || res2.Items[0].ID != res.Items[len(res.Items)-1].ID || res2.Items[0].Text != "Status dialog dismissed" {
+		t.Errorf("again = %+v", res2.Items)
 	}
 }
