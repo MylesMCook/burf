@@ -16,14 +16,15 @@ import "@/components/conversation/conversation.css";
 
 export interface ConversationViewProps {
   items: TranscriptItem[];
-  onAnswer(id: string, yes: boolean): void;
+  // An answer to an ask: one of its choices' keys, or "yes" or "no".
+  onAnswer(id: string, key: string): void;
   className?: string;
 }
 
 export function ConversationView({ items, onAnswer, className }: ConversationViewProps) {
   const end = useRef<HTMLDivElement>(null);
   const last = items[items.length - 1];
-  const grew = last?.kind === "text" ? last.text.length : last?.kind === "tools" ? last.items.length : 0;
+  const grew = last?.kind === "text" ? last.text.length : last?.kind === "tools" ? (last.items?.length ?? 0) : 0;
   useEffect(() => {
     end.current?.scrollIntoView({ block: "end", behavior: "smooth" });
   }, [items.length, grew]);
@@ -38,7 +39,7 @@ export function ConversationView({ items, onAnswer, className }: ConversationVie
   );
 }
 
-function Item({ it, onAnswer }: { it: TranscriptItem; onAnswer(id: string, yes: boolean): void }) {
+function Item({ it, onAnswer }: { it: TranscriptItem; onAnswer(id: string, key: string): void }) {
   switch (it.kind) {
     case "user":
       return <div className="cv-in max-w-[80%] self-end whitespace-pre-wrap rounded-2xl bg-muted px-3.5 py-2">{it.text}</div>;
@@ -68,14 +69,16 @@ function Item({ it, onAnswer }: { it: TranscriptItem; onAnswer(id: string, yes: 
   }
 }
 
-function Ask({ it, onAnswer }: { it: Extract<TranscriptItem, { kind: "ask" }>; onAnswer(id: string, yes: boolean): void }) {
+function Ask({ it, onAnswer }: { it: Extract<TranscriptItem, { kind: "ask" }>; onAnswer(id: string, key: string): void }) {
   const question = it.tool === "Question";
+  const choices = it.choices?.length ? it.choices : question ? [{ key: "yes", label: "Yes" }, { key: "no", label: "No" }] : [{ key: "yes", label: "Allow" }, { key: "no", label: "Deny" }];
   if (it.decided) {
-    const yes = it.decided === "approved";
+    const c = choices.find((x) => x.key === it.decided);
+    const no = it.decided === "no";
     return (
-      <div className="cv-in flex items-center gap-2 text-muted-foreground">
-        {yes ? <CheckIcon className="size-3.5 text-success" /> : <XIcon className="size-3.5" />}
-        {question ? (yes ? "You said yes" : "You said no") : yes ? "Allowed" : "Denied"}
+      <div className="cv-in flex min-w-0 items-center gap-2 text-muted-foreground">
+        {no ? <XIcon className="size-3.5 shrink-0" /> : <CheckIcon className="size-3.5 shrink-0 text-success" />}
+        <span className="shrink-0">{c?.label ?? it.decided}</span>
         <span className={cn("truncate text-foreground/80", !question && "font-mono text-[12.5px]")}>{it.detail}</span>
       </div>
     );
@@ -87,16 +90,16 @@ function Ask({ it, onAnswer }: { it: Extract<TranscriptItem, { kind: "ask" }>; o
           <span className="size-2 rounded-full bg-warning" aria-hidden />
           {question ? "Needs your answer" : "Wants to run a command"}
         </div>
-        {question ? <p>{it.detail}</p> : <code className="rounded-lg bg-muted/40 px-3 py-2 font-mono text-[12.5px]">{it.detail}</code>}
+        {it.detail && (question ? <p className="whitespace-pre-wrap">{it.detail}</p> : <code className="rounded-lg bg-muted/40 px-3 py-2 font-mono text-[12.5px]">{it.detail}</code>)}
       </div>
-      <div className="flex items-center gap-2 border-t px-4 py-3">
-        <Button size="sm" onClick={() => onAnswer(it.id, true)}>
-          {question ? "Yes" : "Allow"}
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => onAnswer(it.id, false)}>
-          {question ? "No" : "Deny"}
-        </Button>
-        <span className="ml-auto text-muted-foreground text-xs">{question ? "Or reply below" : "The agent waits for you"}</span>
+      <div className="flex flex-wrap items-center gap-2 border-t px-4 py-3">
+        {choices.map((c, i) => (
+          <Button key={c.key} size="sm" variant={i === 0 ? "default" : "outline"} className="max-w-full" onClick={() => onAnswer(it.id, c.key)}>
+            {it.choices?.length ? <span className="font-mono opacity-60">{c.key}</span> : null}
+            <span className="truncate">{c.label}</span>
+          </Button>
+        ))}
+        <span className="ml-auto text-muted-foreground text-xs">{question || it.choices?.length ? "Or reply below" : "The agent waits for you"}</span>
       </div>
     </Card>
   );
@@ -140,8 +143,8 @@ function Tools({ it }: { it: Extract<TranscriptItem, { kind: "tools" }> }) {
       <div className="cv-fold" data-closed={open ? undefined : ""}>
         <div>
           <ul className="pt-1 pl-[7px]">
-            {it.items.map((c, i) => {
-              const lastRow = i === it.items.length - 1;
+            {(it.items ?? []).map((c, i, all) => {
+              const lastRow = i === all.length - 1;
               const ext = c.file ? (c.target.split(".").pop() ?? "") : "";
               return (
                 <li key={i} className="cv-in relative flex h-8 items-center gap-2 pl-5 text-muted-foreground">

@@ -110,6 +110,12 @@ export function selectWorktree(ref: WorktreeRef) {
   reconcile(key);
 }
 
+// goHome leaves every worktree for the workspace's home (no worktree open).
+export function goHome() {
+  useWorkspaces.setState({ current: undefined });
+  useStore.getState().setView({ kind: "workspace" });
+}
+
 // reconcile gives every session running in the worktree a tab, unless it is
 // already in a pane or was closed by the person. Sessions made anywhere (the
 // CLI, an agent, another laptop) show up this way.

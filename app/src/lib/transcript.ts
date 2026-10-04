@@ -7,9 +7,12 @@
 export type TranscriptItem =
   | { kind: "user"; id: string; text: string }
   | { kind: "text"; id: string; text: string }
-  | { kind: "tools"; id: string; verb: string; items: ToolCall[]; done: boolean }
+  | { kind: "tools"; id: string; verb: string; items?: ToolCall[]; done?: boolean }
   | { kind: "edit"; id: string; file: string; added: number; removed: number }
-  | { kind: "ask"; id: string; tool: string; detail: string; decided?: "approved" | "denied" }
+  // A question for the person. choices are the agent's own numbered options
+  // when it shows some; without them it is yes or no (Allow or Deny for a
+  // command). decided is what was answered.
+  | { kind: "ask"; id: string; tool: string; detail: string; choices?: { key: string; label: string }[]; decided?: string }
   | { kind: "thinking"; id: string; since: number }
   | { kind: "crew"; id: string; names: string[] };
 
@@ -37,7 +40,7 @@ export interface CrewMember {
 // The summary line a finished group of tool calls folds to: "Read 5 files",
 // "Searched 2 times".
 export function toolSummary(t: Extract<TranscriptItem, { kind: "tools" }>): string {
-  const n = t.items.length;
+  const n = t.items?.length ?? 0;
   if (t.verb === "Read") return `Read ${n} file${n === 1 ? "" : "s"}`;
   if (t.verb === "Search") return `Searched ${n} time${n === 1 ? "" : "s"}`;
   if (t.verb === "Run") return `Ran ${n} command${n === 1 ? "" : "s"}`;

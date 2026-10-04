@@ -68,7 +68,7 @@ export function Pane({ wsKey, tab, pane, visible, focused, split }: Props) {
         {/* The terminal stays connected underneath, so switching back is instant. */}
         {c.kind === "terminal" && view === "conversation" && (
           <div className="absolute inset-0 z-10 flex flex-col">
-            <ConversationPane box={c.box} session={c.session} onShowTerminal={() => setPaneContent(wsKey, tab, pane.id, { ...c, view: "terminal" })} />
+            <ConversationPane box={c.box} session={c.session} visible={visible} onShowTerminal={() => setPaneContent(wsKey, tab, pane.id, { ...c, view: "terminal" })} />
           </div>
         )}
         {c.kind === "browser" && <BrowserPane id={pane.id} url={c.url} visible={visible} onNavigate={(url) => setPaneContent(wsKey, tab, pane.id, { kind: "browser", url })} />}
@@ -99,14 +99,14 @@ export function Pane({ wsKey, tab, pane, visible, focused, split }: Props) {
 export function usePaneView(pane: Leaf): "terminal" | "conversation" | undefined {
   const c = pane.content;
   const labs = usePrefs((p) => p.labs);
-  const fallback = usePrefs((p) => p.agentView);
+  const fallback = usePrefs((p) => (p.zen ? "conversation" : p.agentView));
   if (c.kind !== "terminal" || !labs || !c.agent) return undefined;
   return c.view ?? fallback;
 }
 
 // ViewSwitch flips an agent's pane between its terminal and its
 // conversation.
-function ViewSwitch({ wsKey, tab, pane }: { wsKey: string; tab: string; pane: Leaf }) {
+export function ViewSwitch({ wsKey, tab, pane }: { wsKey: string; tab: string; pane: Leaf }) {
   const view = usePaneView(pane);
   const c = pane.content;
   if (!view || c.kind !== "terminal") return null;

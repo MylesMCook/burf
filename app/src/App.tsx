@@ -26,6 +26,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Launcher } from "@/components/workspace/launcher";
 import { PaneLayer } from "@/components/workspace/pane-layer";
 import { TabStrip } from "@/components/workspace/tab-strip";
+import { ZenBar } from "@/components/workspace/zen";
 import { useBerthConnection } from "@/hooks/use-berth-connection";
 import { useShortcuts } from "@/hooks/use-shortcuts";
 import { useApplyTheme } from "@/hooks/use-theme";
@@ -68,6 +69,9 @@ export default function App() {
   useKitDeepLinks();
   const view = useStore((s) => s.view);
   const workspace = view.kind === "workspace";
+  // Labs: zen (⌘.) puts away the sidebar, the tab strip and the status bar.
+  const zen = usePrefs((p) => p.labs && p.zen);
+  const zenChrome: "bar" | "float" = new URLSearchParams(location.search).get("zenbar") === "float" ? "float" : "bar";
   // Onboarding has no tabs yet, so it gets the plain strip, not the tab strip.
   const onboarding = useOnboardingActive();
   const connected = useStore((s) => !!s.client);
@@ -113,11 +117,15 @@ export default function App() {
       <ToastProvider position="bottom-right" viewportClassName="max-w-88 data-[position=bottom-right]:bottom-[max(calc(38px+var(--berth-loops-h,0px)),var(--berth-bar-lift,0px))] data-[position=bottom-right]:right-3 data-[position=bottom-left]:bottom-[38px] data-[position=bottom-left]:left-3 data-[position=top-left]:top-3 data-[position=top-left]:left-3 data-[position=top-right]:top-3 data-[position=top-right]:right-3">
         <div className="flex h-svh flex-col overflow-hidden bg-background text-foreground">
           <div className="flex min-h-0 flex-1">
-            <Disconnectable>
-              <AppSidebar />
-            </Disconnectable>
-            <div className="flex min-w-0 flex-1 flex-col">
-              {workspace && !onboarding ? (
+            {!zen && (
+              <Disconnectable>
+                <AppSidebar />
+              </Disconnectable>
+            )}
+            <div className="relative flex min-w-0 flex-1 flex-col">
+              {zen && workspace && !onboarding ? (
+                zenChrome === "bar" && <ZenBar variant="bar" />
+              ) : workspace && !onboarding ? (
                 <Disconnectable className="shrink-0 flex-col">
                   <TabStrip />
                 </Disconnectable>
@@ -126,6 +134,7 @@ export default function App() {
                 <div data-tauri-drag-region className="h-10 shrink-0 bg-background" />
               )}
               <main className="relative min-h-0 flex-1">
+                {zen && workspace && !onboarding && zenChrome === "float" && <ZenBar variant="float" />}
                 {/* Always mounted: terminals keep running behind other views. */}
                 <PaneLayer showing={workspace} />
                 <ErrorBoundary key={view.kind} scope={viewTitles[view.kind as keyof typeof viewTitles] || (view.kind === "workspace" ? "the workspace" : undefined)} onLeave={view.kind === "workspace" ? undefined : () => useStore.getState().setView({ kind: "workspace" })}>
@@ -134,7 +143,7 @@ export default function App() {
               </main>
             </div>
           </div>
-          <StatusBar />
+          {!zen && <StatusBar />}
         </div>
         <ErrorBoundary scope="a dialog">
           <CommandPalette />

@@ -32,6 +32,9 @@ export interface Prefs {
   labs: boolean;
   // Labs: how an agent's pane opens, until switched.
   agentView: "terminal" | "conversation";
+  // Labs: zen (⌘.): no sidebar or status bar, a switcher for a tab strip,
+  // agents as conversations.
+  zen: boolean;
 }
 
 const DEFAULTS: Prefs = {
@@ -48,6 +51,7 @@ const DEFAULTS: Prefs = {
   agentCloseTips: 0,
   labs: false,
   agentView: "terminal",
+  zen: false,
 };
 
 const saved = load<Partial<Prefs>>("berth.prefs", {});
@@ -61,11 +65,12 @@ export const usePrefs = create<Prefs>()(() => ({
 
 usePrefs.subscribe((p) => save("berth.prefs", p));
 
-// ?labs=1 turns Labs on and ?view=conversation opens agents as
-// conversations, for the demo.
+// ?labs=1 turns Labs on, ?zen=1 zen, and ?view=conversation opens agents
+// as conversations, for the demo.
 {
   const q = new URLSearchParams(location.search);
   if (q.has("labs")) usePrefs.setState({ labs: q.get("labs") !== "0" });
+  if (q.has("zen")) usePrefs.setState({ zen: q.get("zen") !== "0" });
   const v = q.get("view");
   if (v === "terminal" || v === "conversation") usePrefs.setState({ agentView: v });
 }
