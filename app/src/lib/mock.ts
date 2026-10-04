@@ -1,5 +1,6 @@
 import type { BerthEvent, Client, Hook, HooksFile, Location, Service, Session, Stats, Status, TerminalHandlers, Turn } from "@/lib/api";
 import { flowsCall } from "@/lib/mock-flows";
+import { runsCall } from "@/lib/mock-runs";
 import { phoneCall } from "@/lib/mock-phone";
 import { worktreesCall } from "@/lib/mock-worktrees";
 import { kitsCall, kitsStream } from "@/lib/mock-kits";
@@ -440,6 +441,8 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
   if (!online) return Promise.reject(new ApiError(`${box} is offline`, 503));
   const flows = flowsCall(box, method, path, body, emit, delay);
   if (flows) return flows;
+  const runs = runsCall(box, method, path, body, emit, delay);
+  if (runs) return runs;
   const computers = computersBoxCall(box, method, path);
   if (computers) return computers;
   const thisMac = localBoxFolders(box, method, path);
@@ -495,7 +498,7 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
       name: box,
       version: "0.1.0",
       tools: ["claude", "codex"],
-      capabilities: ["turns", "journal"],
+      capabilities: ["turns", "journal", "runs", "exec.detach"],
       adapters: {
         claude: { ready: true, started: true, waiting: true, finished: true, final_message: true, via: "hooks" },
         codex: { ready: true, started: true, waiting: true, finished: true, final_message: true, via: "hooks" },

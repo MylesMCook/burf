@@ -10,7 +10,6 @@ import { isOverridden, overrides, scopeLocation } from "@/lib/flows";
 import { ago } from "@/lib/format";
 import type { Project } from "@/lib/project-groups";
 import { cn } from "@/lib/utils";
-import { EVERY_BOX, isShared, projectScope, type SharedGroup, sharedFlows } from "@/views/automations/flows/everywhere";
 import { STARTERS, STEP_KINDS, type Starter, summary } from "@/views/automations/flows/model";
 import { ProjectLabel } from "@/views/automations/flows/project-label";
 import { RunStatus } from "@/views/automations/flows/run-status";
@@ -25,9 +24,9 @@ interface Group {
 
 // groupsOf orders a box's flows by where they live: the box's own first,
 // then each repository's.
-function groupsOf(bf: BoxFlows, shared: SharedGroup[]): Group[] {
+function groupsOf(bf: BoxFlows): Group[] {
   const byScope = new Map<Scope, ScopedFlow[]>([["box", []]]);
-  for (const f of bf.flows ?? []) if (!isShared(shared, bf.box, f)) byScope.set(f.scope, [...(byScope.get(f.scope) ?? []), f]);
+  for (const f of bf.flows ?? []) byScope.set(f.scope, [...(byScope.get(f.scope) ?? []), f]);
   return [...byScope.entries()].sort(([a], [b]) => (a === "box" ? -1 : b === "box" ? 1 : a.localeCompare(b))).map(([scope, flows]) => ({ box: bf.box, scope, flows }));
 }
 
@@ -53,8 +52,9 @@ export function FlowList({
   const loaded = boxes.filter((b) => byBox[b]?.flows);
   const total = loaded.reduce((n, b) => n + (byBox[b].flows?.length ?? 0), 0);
   const firstBox = boxes[0];
-  // Flows saved the same on every box with their project show once, first.
-  const shared = sharedFlows(projects, byBox).filter((g) => g.flows.length);
+  // A flow for a project on every box lives in the project's committed
+  // config (.berth/config.json) or its kit, which every box layers in.
+  const many = projects.filter((p) => new Set(p.members.map((m) => m.box.name)).size > 1);
 
   return (
     <div className="space-y-8">
@@ -101,9 +101,12 @@ export function FlowList({
         </div>
       </section>
 
-      {shared.map((g) => (
-        <SharedSection key={g.project.id} group={g} lastRun={lastRun} onEdit={onEdit} onToggle={onToggle} onNew={onNew} />
-      ))}
+      {many.length > 0 && (
+        <p className="rounded-xl border bg-muted/40 px-4 py-3 text-muted-foreground text-xs">
+          To run a flow for {many[0].name}
+          {many.length > 1 ? " and other projects" : ""} on every box that has it, commit it to the repository's <code>.berth/config.json</code> (or the project's kit): each box runs it from there. A flow saved here belongs to one box.
+        </p>
+      )}
 
       {boxes.map((box) => {
         const bf = byBox[box];
@@ -115,7 +118,7 @@ export function FlowList({
               {/404|not found/i.test(bf.error) && " Its berthd predates flows; upgrade it from Settings → Boxes."}
             </section>
           );
-        return groupsOf(bf, shared).map((g) => <ScopeGroup key={`${box}|${g.scope}`} group={g} lastRun={lastRun} onEdit={onEdit} onToggle={onToggle} onNew={onNew} />);
+        return groupsOf(bf).map((g) => <ScopeGroup key={`${box}|${g.scope}`} group={g} lastRun={lastRun} onEdit={onEdit} onToggle={onToggle} onNew={onNew} />);
       })}
     </div>
   );
@@ -182,54 +185,6 @@ function ScopeGroup({
 
 // SharedSection is a project's flows on every box that has it, each one
 // flow standing for its copies; switching it switches every copy.
-function SharedSection({
-  group,
-  lastRun,
-  onEdit,
-  onToggle,
-  onNew,
-}: {
-  group: SharedGroup;
-  lastRun(box: string, scope: string, id: string): FlowRun | undefined;
-  onEdit(box: string, f: ScopedFlow): void;
-  onToggle(box: string, f: ScopedFlow, on: boolean): void;
-  onNew(box: string, scope: Scope): void;
-}) {
-  const scope = projectScope(group.project.id);
-  return (
-    <section>
-      <header className="mb-2.5 flex items-center gap-2">
-        <h2 className="min-w-0 font-medium text-[13px]">
-          <ProjectLabel box={EVERY_BOX} scope={scope} />
-        </h2>
-        <span className="text-muted-foreground text-xs tabular-nums">{group.flows.length}</span>
-        <span className="ml-auto">
-          <Button size="xs" variant="ghost" onClick={() => onNew(EVERY_BOX, scope)}>
-            <PlusIcon />
-            New flow
-          </Button>
-        </span>
-      </header>
-      <div className="divide-y divide-border/70 overflow-hidden rounded-xl border bg-card">
-        {group.flows.map(({ flow, copies }) => (
-          <FlowRow
-            key={flow.id}
-            f={{ ...copies[0], scope }}
-            // Each box runs its own copy: the latest run of any of them.
-            run={copies
-              .map((c) => lastRun(c.box, c.scope, flow.id))
-              .filter((r): r is FlowRun => !!r)
-              .sort((a, b) => b.started.localeCompare(a.started))[0]}
-            onEdit={() => onEdit(EVERY_BOX, { ...copies[0], scope })}
-            onToggle={(on) => copies.forEach((c) => onToggle(c.box, c, on))}
-            overridden={false}
-          />
-        ))}
-      </div>
-    </section>
-  );
-}
-
 function FlowRow({ f, run, onEdit, onToggle, overridden }: { f: ScopedFlow; run?: FlowRun; onEdit(): void; onToggle(on: boolean): void; overridden: boolean }) {
   const { flow } = f;
   return (

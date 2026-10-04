@@ -30,11 +30,14 @@ import {
   Trash2Icon,
   UnplugIcon,
   WorkflowIcon,
+  WrenchIcon,
 } from "lucide-react";
 import { type ReactNode, useEffect, useState } from "react";
 
 import { AgentIcon } from "@/components/agent-glyph";
 import { EditorMenuItems } from "@/components/editors/editor-menu";
+import { AutoFixItems } from "@/components/sidebar/autofix-items";
+import { boxHasRuns } from "@/lib/runs";
 import { SessionActionItems } from "@/components/orchestrate/session-actions";
 import { confirm, copy } from "@/components/sidebar/confirm";
 import { Tip } from "@/components/tip";
@@ -212,6 +215,8 @@ export function worktreeActions(box: string, loc: Location, wt: Worktree): Actio
     { type: "sub", label: "Open in", icon: <CodeXmlIcon />, items: () => <EditorMenuItems box={box} path={wt.path} /> },
   ];
   if (agentSession) items.push({ type: "sub", label: "Orchestrate", icon: <WorkflowIcon />, items: () => <SessionActionItems box={box} session={agentSession.name} /> });
+  // A branch's pull request can fix its own CI and review comments.
+  if (!wt.main && wt.branch && boxHasRuns(box)) items.push({ type: "sub", label: "Auto-fix this PR", icon: <WrenchIcon />, items: () => <AutoFixItems box={box} path={wt.path} /> });
   items.push(sep, item("Copy path", <CopyIcon />, () => copy(wt.path, "path")));
   if (wt.branch) items.push(item("Copy branch", <GitBranchIcon />, () => copy(wt.branch!, "branch name")));
   if (url) items.push(item("Copy URL", <LinkIcon />, () => copy(url, "URL")));

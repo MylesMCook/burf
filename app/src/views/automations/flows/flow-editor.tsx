@@ -13,11 +13,9 @@ import { Switch } from "@/components/ui/switch";
 import { sortedWorktrees } from "@/lib/derive";
 import { DEFAULT_MAX_RUNS_PER_HOUR, type Flow, type FlowRun, type FlowSource, flowsApi, type GitHubOn, type Scope, type Step, type StepKind, scopeLocation, slug, type TriggerKind, triggerKind, triggerType } from "@/lib/flows";
 import { errorMessage } from "@/lib/format";
-import { useProjects } from "@/lib/project-groups";
 import { NONE, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { blankStep, describeCron, GITHUB_ONS, KIND_ORDER, SCHEDULE_PRESETS, STEP_KINDS, summary, TRIGGERS, variablesAt } from "@/views/automations/flows/model";
-import { EVERY_BOX, placesOf, scopeProject } from "@/views/automations/flows/everywhere";
 import { ProjectLabel, savedWhere } from "@/views/automations/flows/project-label";
 import { StepCard } from "@/views/automations/flows/step-card";
 
@@ -31,9 +29,6 @@ export interface EditTarget {
   // Where it comes from; a read-only flow is committed ("repo") or the
   // project's kit's ("kit").
   source?: FlowSource;
-  // Set when this is one box's copy of a flow saved the same on every box
-  // with its project: where the whole set is kept, and the boxes.
-  shared?: { scope: Scope; boxes: string[] };
 }
 
 // FlowEditor is a flow as a vertical canvas: the trigger, then each step
@@ -44,7 +39,6 @@ export function FlowEditor({
   onSave,
   onDelete,
   onOverride,
-  onEditAll,
   onClose,
 }: {
   target: EditTarget;
@@ -53,8 +47,6 @@ export function FlowEditor({
   onSave(box: string, scope: Scope, flow: Flow, previousId?: string): Promise<void>;
   onDelete?(): Promise<void>;
   onOverride?(): void;
-  // Opens every copy of a shared flow instead of this box's.
-  onEditAll?(): void;
   onClose(): void;
 }) {
   const [flow, setFlow] = useState<Flow>(target.flow);
@@ -64,10 +56,7 @@ export function FlowEditor({
   const [run, setRun] = useState<FlowRun>();
   const readOnly = target.readOnly;
   const isNew = !target.savedId;
-  const { projects } = useProjects();
-  // A flow for every box is tested on, and offers the agents of, the first.
-  const first = placesOf(where.box, where.scope, projects)[0] ?? where;
-  const agents = useStore((s) => s.boxes[first.box]?.info?.agents) ?? NONE;
+  const agents = useStore((s) => s.boxes[where.box]?.info?.agents) ?? NONE;
   const dirty = JSON.stringify(flow) !== JSON.stringify(target.flow) || where.scope !== target.scope || where.box !== target.box;
 
   const setStep = (i: number, s: Step) => setFlow((f) => ({ ...f, steps: f.steps.map((x, j) => (j === i ? s : x)) }));
@@ -79,32 +68,14 @@ export function FlowEditor({
       return { ...f, steps };
     });
 
-  // Deleting asks first, and says exactly what goes: for a flow on every
-  // box, each box's copy, by name.
+  // Deleting asks first.
   const askDelete = () => {
     if (!onDelete) return;
     const name = flow.name.trim() || target.savedId || "this flow";
-    const every = target.box === EVERY_BOX;
-    const boxes = [...new Set(placesOf(target.box, target.scope, projects).map((p) => p.box))];
-    const others = target.shared?.boxes.filter((b) => b !== target.box) ?? [];
-    const project = every ? (projects.find((p) => p.id === scopeProject(target.scope))?.name ?? "this project") : undefined;
-    const where = new Map(placesOf(target.box, target.scope, projects).map((p) => [p.box, scopeLocation(p.scope)]));
     confirm({
       title: `Delete ${name}?`,
-      description: every
-        ? `It runs for ${project} on every box with it, so ${boxes.length === 1 ? "the copy on this box is" : `the copies on these ${boxes.length} boxes are`} deleted, and it stops running on each straight away:`
-        : `It stops running on ${target.box} straight away.${others.length ? ` Only ${target.box}'s copy goes: ${others.join(", ")} ${others.length === 1 ? "keeps its own" : "keep their own"}.` : ""}`,
-      detail: every ? (
-        <ul>
-          {boxes.map((b) => (
-            <li key={b}>
-              {b}
-              {where.get(b) && <span className="text-muted-foreground"> · {where.get(b)}</span>}
-            </li>
-          ))}
-        </ul>
-      ) : undefined,
-      confirm: every && boxes.length > 1 ? `Delete ${boxes.length} copies` : "Delete flow",
+      description: `It stops running on ${target.box} straight away.`,
+      confirm: "Delete flow",
       destructive: true,
       run: async () => {
         await onDelete();
@@ -119,7 +90,7 @@ export function FlowEditor({
     try {
       const id = flow.id || slug(flow.name);
       // A flow kept in a project already runs only there.
-      const trigger = (scopeLocation(where.scope) || scopeProject(where.scope)) && flow.trigger.where?.location ? { ...flow.trigger, where: { ...flow.trigger.where, location: undefined } } : flow.trigger;
+      const trigger = scopeLocation(where.scope) && flow.trigger.where?.location ? { ...flow.trigger, where: { ...flow.trigger.where, location: undefined } } : flow.trigger;
       await onSave(where.box, where.scope, { ...flow, trigger, id, name: flow.name.trim() || id }, target.savedId);
       onClose();
     } catch (err) {
@@ -152,7 +123,7 @@ export function FlowEditor({
           <Switch checked={flow.enabled} disabled={readOnly} onCheckedChange={(enabled) => setFlow({ ...flow, enabled })} />
           {flow.enabled ? "On" : "Off"}
         </label>
-        {!isNew && <TestRun box={first.box} scope={first.scope} flow={flow} dirty={dirty} onRun={setRun} />}
+        {!isNew && <TestRun box={where.box} scope={where.scope} flow={flow} dirty={dirty} onRun={setRun} />}
         {!readOnly && onDelete && (
           <Tip label="Delete flow…">
             <Button size="icon-sm" variant="ghost" aria-label="Delete flow…" onClick={askDelete}>
@@ -186,19 +157,6 @@ export function FlowEditor({
               {onOverride && (
                 <Button size="sm" variant="outline" onClick={onOverride}>
                   Override on {target.box}
-                </Button>
-              )}
-            </div>
-          )}
-          {target.shared && !readOnly && (
-            <div className="mb-5 flex items-center gap-3 rounded-xl border bg-muted/40 px-4 py-3 text-sm">
-              <LayersIcon className="size-4 shrink-0 text-muted-foreground" />
-              <span className="min-w-0 flex-1">
-                One of {target.shared.boxes.length} copies, the same on {target.shared.boxes.join(", ")}. Saving here changes only {target.box}'s copy, and it stops matching the others.
-              </span>
-              {onEditAll && (
-                <Button size="sm" variant="outline" onClick={onEditAll}>
-                  Edit all copies
                 </Button>
               )}
             </div>
@@ -282,9 +240,7 @@ function TriggerCard({
   setWhere(w: { box: string; scope: Scope }): void;
   scopes: { box: string; scope: Scope }[];
 }) {
-  const { projects } = useProjects();
-  const places = placesOf(where.box, where.scope, projects);
-  const agents = useStore((s) => s.boxes[places[0]?.box ?? where.box]?.info?.agents) ?? NONE;
+  const agents = useStore((s) => s.boxes[where.box]?.info?.agents) ?? NONE;
   const w = flow.trigger.where ?? {};
   const setW = (patch: Partial<typeof w>) => {
     const next = { ...w, ...patch };
@@ -314,7 +270,7 @@ function TriggerCard({
         <div className="col-span-2">
           <span className="mb-1 block font-medium text-muted-foreground text-xs">Runs for</span>
           <RunsFor value={where} options={scopes} disabled={readOnly} onChange={setWhere} />
-          <p className="mt-1.5 text-muted-foreground text-xs">{savedWhere(where.box, where.scope, readOnly ? (source === "kit" ? "kit" : "repo") : undefined, places)}</p>
+          <p className="mt-1.5 text-muted-foreground text-xs">{savedWhere(where.box, where.scope, readOnly ? (source === "kit" ? "kit" : "repo") : undefined)}</p>
           {where.scope === "box" && w.location && (
             <p className="mt-1 flex items-center gap-1.5 text-muted-foreground text-xs">
               Only events from {w.location}.
@@ -451,16 +407,14 @@ function RunsFor({ value, options, disabled, onChange }: { value: { box: string;
           <MenuGroup key={box}>
             {i > 0 && <MenuSeparator />}
             <MenuGroupLabel className="flex items-center gap-1.5">
-              {box === EVERY_BOX ? <LayersIcon className="size-3" /> : <ServerIcon className="size-3" />}
-              {box === EVERY_BOX ? "On every box with it" : box}
+              <ServerIcon className="size-3" />
+              {box}
             </MenuGroupLabel>
             {options
               .filter((o) => o.box === box)
               .map((o) => (
                 <MenuItem key={o.scope} onClick={() => onChange(o)} className={cn(o.box === value.box && o.scope === value.scope && "bg-accent")}>
-                  {o.box === EVERY_BOX ? (
-                    <ProjectLabel box={EVERY_BOX} scope={o.scope} />
-                  ) : o.scope === "box" ? (
+                  {o.scope === "box" ? (
                     <span className="flex items-center gap-1.5">
                       <LayersIcon className="size-3.5 text-muted-foreground" />
                       Any project on {box}

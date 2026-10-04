@@ -111,8 +111,9 @@ export interface FlowRun {
   scope: Scope;
   started: string;
   finished?: string;
-  // interrupted: berthd restarted during the run, which did not resume.
-  status: "running" | "succeeded" | "failed" | "interrupted";
+  // interrupted: berthd restarted during the run, before runs resumed.
+  // Boxes with runs also say queued, waiting_gate and cancelled.
+  status: "running" | "succeeded" | "failed" | "interrupted" | "queued" | "waiting_gate" | "cancelled";
   event: BerthEvent;
   steps: StepRun[];
   error?: string;

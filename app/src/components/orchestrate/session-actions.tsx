@@ -1,8 +1,9 @@
-import { ArrowRightLeftIcon, BookMarkedIcon, EllipsisIcon, RepeatIcon, ScanEyeIcon, SendIcon } from "lucide-react";
+import { ArrowRightLeftIcon, BookMarkedIcon, EllipsisIcon, GitCompareArrowsIcon, RepeatIcon, ScanEyeIcon, SendIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { Tip } from "@/components/tip";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuTrigger } from "@/components/ui/menu";
+import { openAttempts } from "@/components/orchestrate/attempts-dialog";
 import { openPromptPicker } from "@/lib/prompts";
 import { type OrchestrateDraft, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -31,6 +32,16 @@ export function SessionActionItems({ box, session }: { box: string; session: str
       <MenuItem onClick={() => openPromptPicker({ box, session })}>
         <BookMarkedIcon />
         Send a saved prompt…
+      </MenuItem>
+      <MenuItem
+        onClick={() => {
+          const s = useStore.getState().boxes[box]?.sessions?.find((x) => x.name === session);
+          const [location] = (s?.location ?? "").split("/");
+          if (location) openAttempts({ box, location });
+        }}
+      >
+        <GitCompareArrowsIcon />
+        Try N ways…
       </MenuItem>
     </MenuGroup>
   );

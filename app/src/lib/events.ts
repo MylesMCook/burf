@@ -6,6 +6,7 @@ import { isLive, useLoops } from "@/lib/loops";
 import { flowKey, resolveFromEvent, route, secretKey, serviceKey } from "@/lib/notifications";
 import { handlePreview } from "@/lib/preview";
 import { handleQueueEvent } from "@/lib/queue";
+import { scheduleRuns } from "@/lib/runs";
 import { handleSessionOpen } from "@/lib/session-open";
 import { type BoxPart, scheduleRefresh, useStore } from "@/lib/store";
 import { dispatch } from "@/plugins/registry";
@@ -35,6 +36,7 @@ export function handleEvent(e: BerthEvent) {
     const name = (e.data?.box as string | undefined) ?? e.box;
     if (e.type === "box.connected" && name) scheduleRefresh(name, ["locations", "sessions", "stats", "services", "info"]);
   }
+  if (e.box && (e.type.startsWith("run.") || e.type.startsWith("flow."))) scheduleRuns(e.box);
   if (e.box) {
     for (const [prefix, parts] of refreshes) {
       if (e.type.startsWith(prefix)) scheduleRefresh(e.box, parts);

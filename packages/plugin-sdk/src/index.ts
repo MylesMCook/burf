@@ -5,6 +5,9 @@ import type {
   BoxInfo,
   BoxStatus,
   ExecResult,
+  Run,
+  RunRequest,
+  RunSummary,
   SendResult,
   Location,
   Service,
@@ -179,7 +182,25 @@ export interface BerthOrchestrate {
   // Prompt, wait for the turn to end, run check, and send failures back
   // until it passes, max rounds run out, or the agent needs a human. It shows
   // in the app's loops panel; done settles with how it ended.
+  // On a box with runs it is a run of the loop template on the box, and
+  // keeps going if the app quits; id is the run's.
   loop(opts: { box: string; session: string; prompt: string; check: string; max?: number; signal?: AbortSignal; onProgress?(p: LoopProgress): void }): { id: string; done: Promise<LoopResult> };
+  // Durable runs on a box (its info lists "runs"): templates such as loop,
+  // review, handoff, broadcast and attempts, see `berth run templates`.
+  readonly runs: BerthRuns;
+}
+
+export interface BerthRuns {
+  // Starts a run; idemKey makes a retried start return the same run.
+  start(box: string, req: RunRequest, opts?: { idemKey?: string }): Promise<RunSummary>;
+  get(box: string, id: string): Promise<Run>;
+  list(box: string, opts?: { status?: string; template?: string; limit?: number }): Promise<RunSummary[]>;
+  cancel(box: string, id: string): Promise<void>;
+  // Decides the gate a run waits at (step: its path, or the open one).
+  // pick names the winning attempt (0-based) at a pick gate.
+  decide(box: string, id: string, decision: { approve: boolean; note?: string; pick?: number; step?: string }): Promise<void>;
+  // Resolves when the run ends, or rejects on signal.
+  done(box: string, id: string, opts?: { signal?: AbortSignal; onUpdate?(r: Run): void }): Promise<Run>;
 }
 
 // Saved prompts: the library the app's prompt picker and broadcast use, one

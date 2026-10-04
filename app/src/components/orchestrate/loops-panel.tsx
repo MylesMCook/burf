@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useSessionName } from "@/hooks/use-session-name";
 import { dismissLoop, isLive, type Loop, useLoops } from "@/lib/loops";
+import { allRuns, type BoxRun, dismissRun, runs as runsApi, useRuns } from "@/lib/runs";
 import { cn } from "@/lib/utils";
 import { focusSession } from "@/lib/workspaces";
 
@@ -44,7 +45,17 @@ const GAP = 12;
 // LoopsPanel stacks running and finished loops in the corner: what each is
 // doing, its round, and the last check's output on demand.
 export function LoopsPanel() {
-  const loops = useLoops((s) => s.loops);
+  const local = useLoops((s) => s.loops);
+  const byBox = useRuns((s) => s.byBox);
+  const dismissed = useRuns((s) => s.dismissed);
+  // Loops that run on boxes, from the boxes' runs: started here, from the
+  // CLI, a plugin, another device, or before the app last quit.
+  const tracked = new Set(local.map((l) => l.runId).filter(Boolean));
+  const fromRuns = allRuns(byBox)
+    .filter((r) => r.template === "loop" && !tracked.has(r.id) && !dismissed.includes(`${r.box}/${r.id}`))
+    .filter((r) => !r.finished || Date.now() - new Date(r.finished).getTime() < 30 * 60_000)
+    .map(loopOfRun);
+  const loops = [...local, ...fromRuns];
   const ref = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -74,6 +85,46 @@ export function LoopsPanel() {
   );
 }
 
+// loopOfRun shows a loop run as the panel shows a loop. Its round and
+// phase come from where the run is (the loop template's step paths).
+function loopOfRun(r: BoxRun): Loop {
+  const cursor = r.cursor ?? "";
+  const round = Number(/\.r(\d+)\./.exec(`${cursor}.`)?.[1] ?? 1);
+  const phase: Loop["phase"] = /\.r\d+\.0$/.test(cursor) ? "checking" : /\.t\.1$/.test(cursor) ? "waiting" : "prompting";
+  const err = r.error ?? "";
+  const outcome: Loop["outcome"] =
+    r.status === "succeeded"
+      ? "passed"
+      : r.status === "cancelled"
+        ? "cancelled"
+        : r.status === "failed" || r.status === "interrupted"
+          ? /waiting for you/.test(err)
+            ? "needs-you"
+            : /still not done/.test(err)
+              ? "failed"
+              : /did not finish/.test(err)
+                ? "timed-out"
+                : /exited/.test(err)
+                  ? "exited"
+                  : "error"
+          : undefined;
+  return {
+    id: `run:${r.box}:${r.id}`,
+    box: r.box,
+    session: r.session ?? "",
+    check: /^Loop until (.*) passes$/.exec(r.title ?? "")?.[1] ?? r.title ?? "",
+    round,
+    max: 0,
+    phase,
+    outcome,
+    message: outcome === "passed" ? `Passed after ${round} round(s).` : err || (r.gate ? `Waiting at a gate: ${r.gate.title}` : `Round ${round}`),
+    started: new Date(r.created).getTime(),
+    ended: r.finished ? new Date(r.finished).getTime() : undefined,
+    runId: r.id,
+    cancel: () => void runsApi.cancel(r.box, r.id),
+  };
+}
+
 function LoopCard({ loop: l }: { loop: Loop }) {
   const [open, setOpen] = useState(false);
   const live = isLive(l);
@@ -95,11 +146,22 @@ function LoopCard({ loop: l }: { loop: Loop }) {
         <StatusIcon loop={l} />
         <span className="font-medium">{live ? phases[l.phase] : outcomes[l.outcome!]}</span>
         <span className="text-muted-foreground text-xs tabular-nums">
-          Round {l.round} of {l.max}
+          Round {l.round}
+          {l.max > 0 && ` of ${l.max}`}
         </span>
+        {l.runId && (
+          <Tip label={`Runs on ${l.box} (${l.runId}): it keeps going if the app quits`}>
+            <span className="rounded bg-muted px-1 text-[10px] text-muted-foreground">on {l.box}</span>
+          </Tip>
+        )}
         {!live && (
           <Tip label="Dismiss">
-            <button type="button" className="ml-auto inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Dismiss" onClick={() => dismissLoop(l.id)}>
+            <button type="button" className="ml-auto inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground" aria-label="Dismiss"
+              onClick={() => {
+                dismissLoop(l.id);
+                if (l.runId) dismissRun(l.box, l.runId);
+              }}
+            >
               <XIcon className="size-3.5" />
             </button>
           </Tip>

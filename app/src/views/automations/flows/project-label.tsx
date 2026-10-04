@@ -1,11 +1,9 @@
 import { FolderGitIcon, LayersIcon } from "lucide-react";
 
 import { type Scope, scopeLocation } from "@/lib/flows";
-import { useProjects } from "@/lib/project-groups";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { currentSpace } from "@/lib/workspaces";
-import { EVERY_BOX, type Place, scopeProject } from "@/views/automations/flows/everywhere";
 
 // BoxChip names a box the way the sidebar does.
 export function BoxChip({ box, className }: { box: string; className?: string }) {
@@ -13,9 +11,8 @@ export function BoxChip({ box, className }: { box: string; className?: string })
 }
 
 // ProjectLabel names where a flow runs: a project as "shop · acme/shop" on
-// its box, every project on a box, or a project on every box that has it.
+// its box, or every project on a box.
 export function ProjectLabel({ box, scope, className, chip = true }: { box: string; scope: Scope; className?: string; chip?: boolean }) {
-  if (box === EVERY_BOX) return <EveryBoxLabel scope={scope} className={className} chip={chip} />;
   return <OneBoxLabel box={box} scope={scope} className={className} chip={chip} />;
 }
 
@@ -34,36 +31,10 @@ function OneBoxLabel({ box, scope, className, chip }: { box: string; scope: Scop
   );
 }
 
-// EveryBoxLabel names a project on every box that has it by the name the
-// sidebar gives it, its repository muted after ("Any shop · acme/shop"),
-// and its boxes.
-function EveryBoxLabel({ scope, className, chip }: { scope: Scope; className?: string; chip: boolean }) {
-  const { projects } = useProjects();
-  const p = projects.find((x) => x.id === scopeProject(scope));
-  const boxes = p?.members.filter((m) => m.box.state === "online").map((m) => m.box.name) ?? [];
-  return (
-    <span className={cn("flex min-w-0 items-center gap-1.5", className)}>
-      <FolderGitIcon className="size-3.5 shrink-0 text-muted-foreground" />
-      <span className="truncate">
-        Any {p?.name ?? "project"}
-        {p?.slug && p.slug !== p.name && <span className="text-muted-foreground"> · {p.slug}</span>}
-      </span>
-      {chip && boxes.map((b) => <BoxChip key={b} box={b} />)}
-    </span>
-  );
-}
-
-const list = (xs: string[]) => (xs.length < 2 ? xs.join("") : `${xs.slice(0, -1).join(", ")} and ${xs[xs.length - 1]}`);
-
 // savedWhere says in a line where a flow lives, so it is never a surprise.
-// places is where a flow for every box is written.
 // A read-only flow says which layer it comes from: committed ("repo") or the
 // project's kit ("kit").
-export function savedWhere(box: string, scope: Scope, readOnlyFrom?: "repo" | "kit", places?: Place[]): string {
-  if (box === EVERY_BOX) {
-    const boxes = (places ?? []).map((p) => p.box);
-    return boxes.length ? `Saved on ${list(boxes)}, the same on each · not committed. Boxes that get the project later don't have it yet.` : "No box with this project is online.";
-  }
+export function savedWhere(box: string, scope: Scope, readOnlyFrom?: "repo" | "kit"): string {
   const loc = scopeLocation(scope);
   if (readOnlyFrom === "kit") return "From the project's kit, applied on this box";
   if (readOnlyFrom) return "Saved in the repo's .berth/config.json";

@@ -1,9 +1,13 @@
 import { create } from "zustand";
 
-import { type BoxCaller, type LoopOutcome, type LoopPhase, type LoopProgress, type LoopResult, loop as runLoop } from "@/lib/orchestrate-core";
+import { type BoxCaller, type LoopOutcome, type LoopPhase, type LoopProgress, type LoopResult, loopRun, loop as runLoop } from "@/lib/orchestrate-core";
+import { boxHasRuns, scheduleRuns } from "@/lib/runs";
 
-// Loops run in the app, not in a view: they keep going while you move
-// between worktrees, and this store is what the loops panel shows.
+// A loop on a box with runs is a run of the loop template on the box: it
+// keeps going when the app quits or the laptop sleeps, and the loops panel
+// shows it from the box's runs on any device. On an older box the loop runs
+// here in the app, as it always did; this store tracks both while the app
+// started them.
 
 export interface Loop {
   id: string;
@@ -21,6 +25,8 @@ export interface Loop {
   output?: string;
   started: number;
   ended?: number;
+  // The box's run, for a loop that runs there.
+  runId?: string;
   cancel(): void;
 }
 
@@ -62,9 +68,15 @@ export function startLoop(call: BoxCaller, o: StartLoop): { id: string; done: Pr
       { id, box: o.box, session: o.session, check: o.check, round: 1, max: o.max, phase: o.prompt ? "prompting" : "checking", message: "Starting…", started: Date.now(), cancel: () => abort.abort() },
     ],
   }));
-  const done = runLoop(call, {
+  const onBox = boxHasRuns(o.box);
+  const runner = onBox ? loopRun : runLoop;
+  const done = runner(call, {
     ...o,
     signal: abort.signal,
+    onStarted: (run: { id: string }) => {
+      update(id, { runId: run.id });
+      scheduleRuns(o.box, 0);
+    },
     onProgress: (p) => {
       update(id, { round: p.round, phase: p.phase, message: p.message });
       o.onProgress?.(p);
@@ -72,6 +84,7 @@ export function startLoop(call: BoxCaller, o: StartLoop): { id: string; done: Pr
     onCheck: (c) => update(id, { exitCode: c.exitCode, output: c.output.length > OUTPUT_TAIL ? `…${c.output.slice(-OUTPUT_TAIL)}` : c.output }),
   }).then((res) => {
     update(id, { outcome: res.outcome, message: res.message, round: res.rounds, ended: Date.now() });
+    if (onBox) scheduleRuns(o.box, 0);
     return res;
   });
   return { id, done };

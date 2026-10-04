@@ -1,21 +1,38 @@
-import { CheckIcon, MinusIcon, XIcon } from "lucide-react";
+import { CheckIcon, ClockIcon, HandIcon, MinusIcon, XIcon } from "lucide-react";
 
 import type { FlowRun } from "@/lib/flows";
 import { cn } from "@/lib/utils";
 import { Tip } from "@/components/tip";
 
-const words: Record<FlowRun["status"], string> = { running: "Running", succeeded: "Succeeded", failed: "Failed", interrupted: "Interrupted: berthd restarted during the run" };
+const words: Record<string, string> = {
+  running: "Running",
+  queued: "Queued: waiting for a slot, or for its flow's run in this worktree",
+  waiting_gate: "Waiting for you at a gate",
+  paused: "Paused",
+  succeeded: "Succeeded",
+  failed: "Failed",
+  cancelled: "Cancelled",
+  interrupted: "Interrupted: berthd restarted during the run, before runs resumed",
+};
 
 // RunStatus is a run's outcome at a glance, named for screen readers and
 // in a tooltip.
-export function RunStatus({ status, className }: { status: FlowRun["status"]; className?: string }) {
+export function RunStatus({ status, className }: { status: FlowRun["status"] | string; className?: string }) {
   const box = cn("inline-flex size-4 shrink-0 items-center justify-center rounded-full", className);
   const mark =
-    status === "running" ? (
+    status === "waiting_gate" ? (
+      <span role="img" aria-label={words[status]} className={cn(box, "bg-warning/15 text-warning-foreground")}>
+        <HandIcon className="size-2.5" strokeWidth={3} />
+      </span>
+    ) : status === "queued" || status === "paused" ? (
+      <span role="img" aria-label={words[status]} className={cn(box, "bg-muted text-muted-foreground")}>
+        <ClockIcon className="size-2.5" strokeWidth={3} />
+      </span>
+    ) : status === "running" ? (
       <span role="img" aria-label={words[status]} className={box}>
         <span className="size-2.5 animate-spin rounded-full border-[1.5px] border-primary border-t-transparent" />
       </span>
-    ) : status === "interrupted" ? (
+    ) : status === "interrupted" || status === "cancelled" ? (
       <span role="img" aria-label={words[status]} className={cn(box, "bg-warning/15 text-warning-foreground")}>
         <MinusIcon className="size-2.5" strokeWidth={3} />
       </span>

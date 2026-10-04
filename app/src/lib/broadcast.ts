@@ -6,6 +6,9 @@ import { Cancelled, isWaitingRefusal } from "@/lib/orchestrate-core";
 import { send, waitSent } from "@/lib/orchestrate";
 import { usePromptUi } from "@/lib/prompts";
 import { boxOffline, enqueue, sendFailure } from "@/lib/queue";
+import { boxHasRuns, runs as runsApi, scheduleRuns } from "@/lib/runs";
+import { terminal, walkSteps } from "@/lib/orchestrate-core";
+import type { Run } from "@/lib/api";
 import { meaningfulTail } from "@/lib/screen";
 import { useStore } from "@/lib/store";
 
@@ -22,6 +25,8 @@ export interface RunRow {
   session: string;
   text: string;
   state: RowState;
+  // The box's broadcast run this row is part of, on a box with runs.
+  run?: string;
   error?: string;
   // The last lines on the agent's screen once its turn ended.
   tail?: string[];
@@ -101,7 +106,16 @@ export function startBroadcast(o: { title: string; wait: boolean; timeout?: numb
 
   void (async () => {
     const waits: Promise<void>[] = [];
+    // On boxes with runs, each box's share is one broadcast run there: the
+    // box holds each prompt until its agent is idle, waits for every turn,
+    // and keeps going if the app quits. Other boxes are sent to from here.
+    const onBox = new Map<string, number[]>();
     for (const [i, it] of o.items.entries()) {
+      if (boxHasRuns(it.box) && !boxOffline(it.box)) onBox.set(it.box, [...(onBox.get(it.box) ?? []), i]);
+    }
+    for (const [box, rows] of onBox) waits.push(broadcastRun(id, box, rows, o, signal));
+    for (const [i, it] of o.items.entries()) {
+      if (onBox.get(it.box)?.includes(i)) continue;
       if (signal.aborted) {
         patch(id, i, { state: "stopped" });
         continue;
@@ -159,6 +173,62 @@ export function startBroadcast(o: { title: string; wait: boolean; timeout?: numb
       });
     }
   })();
+}
+
+// broadcastRun starts one box's broadcast run and keeps its rows in step.
+async function broadcastRun(id: string, box: string, rows: number[], o: { title: string; wait: boolean; timeout?: number; items: { box: string; session: string; text: string }[] }, signal: AbortSignal) {
+  for (const i of rows) patch(id, i, { state: "sending" });
+  let runId: string;
+  try {
+    const run = await runsApi.start(box, {
+      template: "broadcast",
+      title: o.title,
+      group: id,
+      params: { sessions: rows.map((i) => ({ session: o.items[i].session, text: o.items[i].text })), wait: o.wait, timeout: `${o.timeout ?? 1800}s` },
+    });
+    runId = run.id;
+    scheduleRuns(box, 0);
+  } catch (err) {
+    for (const i of rows) patch(id, i, { state: "failed", error: errorMessage(err) });
+    return;
+  }
+  for (const i of rows) patch(id, i, { run: runId });
+  const apply = (r: Run) => {
+    const map = r.steps.find((s) => s.kind === "map");
+    rows.forEach((i, k) => {
+      const item = map?.children?.find((c) => c.path === `${map.path}.i${k}`);
+      let send: string | undefined, sendErr: string | undefined, turn: string | undefined, turnOut: string | undefined, turnErr: string | undefined;
+      walkSteps(item?.children, (s) => {
+        if (s.kind === "prompt") [send, sendErr] = [s.status, s.error];
+        if (s.kind === "wait") [turn, turnOut, turnErr] = [s.status, s.output, s.error];
+      });
+      let state: RowState = "sending";
+      if (send === "failed") state = /waiting for you/.test(sendErr ?? "") ? "waiting" : "failed";
+      else if (send === "succeeded") state = o.wait ? "working" : "sent";
+      if (turn === "succeeded") state = turnOut === "waiting" ? "waiting" : "finished";
+      else if (turn === "failed") state = /did not finish/.test(turnErr ?? "") ? "timed-out" : /exited/.test(turnErr ?? "") ? "exited" : "failed";
+      else if (turn === "cancelled" || (terminal(r.status) && r.status === "cancelled" && state === "working")) state = "stopped";
+      const error = state === "failed" ? (sendErr ?? turnErr ?? r.error) : state === "waiting" && send === "failed" ? "Not sent: it is waiting for you" : undefined;
+      patch(id, i, { state, error });
+    });
+  };
+  // Stopping the broadcast cancels its runs; the prompts already typed stay.
+  const onAbort = () => void runsApi.cancel(box, runId).catch(() => {});
+  signal.addEventListener("abort", onAbort, { once: true });
+  for (;;) {
+    let r: Run;
+    try {
+      r = await runsApi.get(box, runId);
+    } catch {
+      await new Promise((res) => setTimeout(res, 3000));
+      continue;
+    }
+    apply(r);
+    if (terminal(r.status)) break;
+    await new Promise((res) => setTimeout(res, 1500));
+  }
+  signal.removeEventListener("abort", onAbort);
+  if (o.wait) await Promise.all(rows.map(async (i) => patch(id, i, { tail: await tailOf(box, o.items[i].session) })));
 }
 
 export const stopBroadcast = () => useBroadcastRun.getState().controller?.abort();

@@ -1,6 +1,7 @@
 import type { Session } from "@/lib/api";
 import { agentPresets, worktreeRef } from "@/lib/actions";
 import { startLoop } from "@/lib/loops";
+import { boxHasRuns, refreshRuns, runs as runsApi } from "@/lib/runs";
 import * as core from "@/lib/orchestrate-core";
 import { scheduleRefresh, useStore } from "@/lib/store";
 
@@ -60,8 +61,41 @@ function preset(box: string, location: string, id: string) {
   return p;
 }
 
-// handoff starts another agent on the work and returns its session.
+// runSession follows a run until the step that starts an agent has, and
+// returns that session: a hand-off or review run on the box.
+async function runSession(box: string, id: string, kind = "start_agent"): Promise<Session> {
+  for (let i = 0; ; i++) {
+    const r = await runsApi.get(box, id);
+    let name: string | undefined;
+    core.walkSteps(r.steps, (s) => {
+      if (s.kind === kind && s.status === "succeeded" && s.session) name = s.session;
+    });
+    if (name) {
+      scheduleRefresh(box, ["locations", "sessions"]);
+      const sessions = await call<Session[]>(box, "GET", "sessions");
+      const s = sessions.find((x) => x.name === name);
+      if (s) return s;
+    }
+    if (core.terminal(r.status)) throw new Error(r.error || `the run ${r.status} before it started an agent`);
+    await new Promise((res) => setTimeout(res, Math.min(4000, 800 + i * 200)));
+  }
+}
+
+// handoff starts another agent on the work and returns its session. On a
+// box with runs, a hand-off to a new worktree is a run of the handoff
+// template: the agent writes a short note, berth adds the diffstat, commits
+// and turn log, and the new agent's first prompt points at that packet.
 export async function handoff(o: HandoffOptions): Promise<Session> {
+  if (o.worktree && boxHasRuns(o.box)) {
+    const run = await runsApi.start(o.box, {
+      template: "handoff",
+      params: { session: o.from, name: o.worktree.name, agent: o.agent, prompt: o.prompt },
+    });
+    void refreshRuns(o.box);
+    const s = await runSession(o.box, run.id);
+    o.onStarted?.(s);
+    return s;
+  }
   let location = o.location ?? "";
   try {
     location = sessionLocation(o.box, o.from);
@@ -75,10 +109,33 @@ export async function handoff(o: HandoffOptions): Promise<Session> {
   return s;
 }
 
-// review starts a second agent beside a session to read its changes.
-export function review(o: Omit<HandoffOptions, "worktree" | "prompt"> & { prompt?: string }): Promise<Session> {
+// review starts a second agent beside a session to read its changes. On a
+// box with runs it is a run of the review template, with its own session
+// identity, so its turns never end the author's waits.
+export async function review(o: Omit<HandoffOptions, "worktree" | "prompt"> & { prompt?: string }): Promise<Session> {
+  if (boxHasRuns(o.box)) {
+    const run = await runsApi.start(o.box, { template: "review", params: { session: o.from, agent: o.agent, headless: false, ...(o.prompt ? { criteria: o.prompt } : {}) } });
+    void refreshRuns(o.box);
+    const s = await runSession(o.box, run.id);
+    o.onStarted?.(s);
+    return s;
+  }
   return handoff({ ...o, prompt: o.prompt ?? core.reviewPrompt(o.from) });
 }
+
+// runs is the plugin SDK's orchestrate.runs: durable runs on a box.
+export const runs = {
+  start: (box: string, req: Parameters<typeof runsApi.start>[1], opts?: { idemKey?: string }) =>
+    runsApi.start(box, req, opts?.idemKey).then((r) => {
+      void refreshRuns(box);
+      return r;
+    }),
+  get: (box: string, id: string) => runsApi.get(box, id),
+  list: (box: string, opts?: { status?: string; template?: string; limit?: number }) => runsApi.list(box, opts),
+  cancel: (box: string, id: string) => runsApi.cancel(box, id),
+  decide: (box: string, id: string, d: { approve: boolean; note?: string; pick?: number; step?: string }) => runsApi.decide(box, id, d),
+  done: (box: string, id: string, opts?: { signal?: AbortSignal; onUpdate?(r: Awaited<ReturnType<typeof runsApi.get>>): void }) => core.runDone(call, box, id, opts),
+};
 
 export interface LoopOptions {
   box: string;

@@ -1,4 +1,4 @@
-import type { AgentPreset, ExecResult, SendResult, Session, TaskResult, TurnWait, WaitResult } from "@berth/plugin";
+import type { AgentPreset, ExecResult, Run, RunRequest, RunStep, RunSummary, SendResult, Session, TaskResult, TurnWait, WaitResult } from "@berth/plugin";
 
 // The orchestration logic, free of the app's store so plugins, tests and the
 // app share it. It mirrors `berth loop` and friends (internal/boxcmd): the
@@ -302,4 +302,149 @@ function formatSeconds(s: number): string {
   if (s % 3600 === 0) return `${s / 3600}h0m0s`;
   if (s % 60 === 0) return `${s / 60}m0s`;
   return `${s}s`;
+}
+
+// ---- Runs: orchestrations the box executes (boxes with "runs") ----------
+
+const capsCache = new Map<string, { at: number; caps: string[] }>();
+
+// hasCapability asks the box (cached for a minute) whether it serves cap.
+export async function hasCapability(call: BoxCaller, box: string, cap: string): Promise<boolean> {
+  const hit = capsCache.get(box);
+  if (hit && Date.now() - hit.at < 60_000) return hit.caps.includes(cap);
+  try {
+    const info = await call<{ capabilities?: string[] }>(box, "GET", "info");
+    capsCache.set(box, { at: Date.now(), caps: info?.capabilities ?? [] });
+    return (info?.capabilities ?? []).includes(cap);
+  } catch {
+    return false;
+  }
+}
+
+export const runsApi = (call: BoxCaller) => ({
+  start: (box: string, req: RunRequest, idemKey?: string) =>
+    // idem_key is the Idempotency-Key, for callers that cannot set headers.
+    call<RunSummary>(box, "POST", "runs", idemKey ? { ...req, idem_key: idemKey } : req),
+  get: (box: string, id: string) => call<Run>(box, "GET", `runs/${enc(id)}`),
+  list: async (box: string, o: { status?: string; template?: string; flow?: string; limit?: number } = {}) => {
+    const q = new URLSearchParams();
+    if (o.status) q.set("status", o.status);
+    if (o.template) q.set("template", o.template);
+    if (o.flow) q.set("flow", o.flow);
+    q.set("limit", String(o.limit ?? 50));
+    return (await call<RunSummary[] | null>(box, "GET", `runs?${q}`)) ?? [];
+  },
+  cancel: async (box: string, id: string) => {
+    await call(box, "POST", `runs/${enc(id)}/cancel`);
+  },
+  decide: async (box: string, id: string, d: { approve: boolean; note?: string; pick?: number; step?: string }) => {
+    await call(box, "POST", `runs/${enc(id)}/gates/${enc(d.step || "current")}/decide`, { approve: d.approve, note: d.note, pick: d.pick });
+  },
+  compare: (box: string, id: string) => call<RunCompare>(box, "GET", `review?run=${enc(id)}`),
+});
+
+export interface RunCompare {
+  run: RunSummary;
+  gate?: Run["gate"];
+  judge?: string;
+  candidates: (NonNullable<Run["candidates"]>[number] & { review?: { files?: { path: string; added?: number; removed?: number; status?: string }[]; commits?: { sha: string; subject: string }[] } })[];
+}
+
+export const terminal = (s: string) => s === "succeeded" || s === "failed" || s === "cancelled" || s === "interrupted";
+
+// runDone polls a run until it ends. Runs live on the box, so this only
+// watches: stopping it (signal) leaves the run going.
+export async function runDone(call: BoxCaller, box: string, id: string, o: { signal?: AbortSignal; onUpdate?(r: Run): void; every?: number } = {}): Promise<Run> {
+  const api = runsApi(call);
+  for (;;) {
+    const r = await abortable(api.get(box, id), o.signal);
+    o.onUpdate?.(r);
+    if (terminal(r.status)) return r;
+    await abortable(new Promise((res) => setTimeout(res, o.every ?? 1500)), o.signal);
+  }
+}
+
+// walk visits a run's steps depth first.
+export function walkSteps(steps: RunStep[] | undefined, fn: (s: RunStep) => void) {
+  for (const s of steps ?? []) {
+    fn(s);
+    walkSteps(s.children, fn);
+  }
+}
+
+// stepAt finds the step at a path.
+export function stepAt(steps: RunStep[] | undefined, path: string | undefined): RunStep | undefined {
+  let hit: RunStep | undefined;
+  if (path) walkSteps(steps, (s) => (s.path === path ? (hit = s) : undefined));
+  return hit;
+}
+
+// loopProgressOf reads a loop run's round and phase off its cursor, as the
+// client loop reported them.
+export function loopProgressOf(r: Run): LoopProgress {
+  const m = /\.r(\d+)\./.exec(`${r.cursor ?? ""}.`);
+  const round = m ? Number(m[1]) : 1;
+  const kind = stepAt(r.steps, r.cursor)?.kind;
+  const phase: LoopPhase = kind === "check" ? "checking" : kind === "wait" ? "waiting" : "prompting";
+  const session = (r.params?.session as string) ?? "the agent";
+  const message =
+    phase === "checking"
+      ? `Round ${round}: checking with ${JSON.stringify(r.params?.check ?? "")}…`
+      : phase === "waiting"
+        ? `Round ${round}: prompted ${session}, waiting for its turn to end…`
+        : `Round ${round}: prompting ${session}…`;
+  return { round, phase, message };
+}
+
+// loopResultOf says how a loop run ended, in the client loop's terms.
+export function loopResultOf(r: Run): LoopResult {
+  let rounds = 1;
+  let last: RunStep | undefined;
+  walkSteps(r.steps, (s) => {
+    if (s.kind === "check" && s.status !== "skipped" && s.status !== "running") last = s;
+    const m = /\.r(\d+)\./.exec(`${s.path}.`);
+    if (m) rounds = Math.max(rounds, Number(m[1]));
+  });
+  const base = { rounds, exitCode: last?.exit_code, output: last?.output };
+  const err = r.error ?? "";
+  if (r.status === "succeeded") return { ...base, outcome: "passed", message: `Passed after ${rounds} round(s).` };
+  if (r.status === "cancelled") return { ...base, outcome: "cancelled", message: "Cancelled." };
+  if (/waiting for you/.test(err)) return { ...base, outcome: "needs-you", message: err };
+  if (/still not done after/.test(err)) return { ...base, outcome: "failed", message: `the check still fails after ${rounds} rounds` };
+  if (/did not finish within/.test(err)) return { ...base, outcome: "timed-out", message: err };
+  if (/has exited/.test(err)) return { ...base, outcome: "exited", message: err };
+  return { ...base, outcome: "error", message: err || r.status };
+}
+
+// loopRun is loop on a box with runs: one run of the loop template, which
+// the box keeps going; this only follows it. Stopping (signal) cancels it,
+// as stopping the client loop always did.
+export async function loopRun(call: BoxCaller, r: LoopRequest & { onStarted?(run: RunSummary): void }): Promise<LoopResult> {
+  const api = runsApi(call);
+  const params: Record<string, unknown> = { session: r.session, check: r.check, max: r.max ?? 5, timeout: `${r.turnTimeout ?? 1800}s` };
+  if (r.prompt) params.prompt = r.prompt;
+  let run: RunSummary;
+  try {
+    run = await api.start(r.box, { template: "loop", params }, `loop-${r.session}-${Date.now().toString(36)}`);
+  } catch (err) {
+    return { outcome: "error", rounds: 0, message: err instanceof Error ? err.message : String(err) };
+  }
+  r.onStarted?.(run);
+  try {
+    const done = await runDone(call, r.box, run.id, {
+      signal: r.signal,
+      onUpdate: (x) => {
+        if (!terminal(x.status)) r.onProgress?.(loopProgressOf(x));
+      },
+    });
+    const res = loopResultOf(done);
+    if (res.exitCode !== undefined) r.onCheck?.({ round: res.rounds, exitCode: res.exitCode, output: res.output ?? "" });
+    return res;
+  } catch (err) {
+    if (err instanceof Cancelled) {
+      await api.cancel(r.box, run.id).catch(() => {});
+      return { outcome: "cancelled", rounds: 0, message: "Cancelled." };
+    }
+    return { outcome: "error", rounds: 0, message: err instanceof Error ? err.message : String(err) };
+  }
 }

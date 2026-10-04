@@ -9,7 +9,6 @@ import { rescueFocus } from "@/lib/focus-home";
 import { load, save } from "@/lib/storage";
 import { NONE, useStore, type View } from "@/lib/store";
 import { ViewHeader } from "@/views/view-header";
-import { EVERY_BOX, placesOf, projectScope, projectsEverywhere, samePlace, sharedFlows } from "@/views/automations/flows/everywhere";
 import { type EditTarget, FlowEditor } from "@/views/automations/flows/flow-editor";
 import { FlowList } from "@/views/automations/flows/flow-list";
 import { blankFlow, type Starter } from "@/views/automations/flows/model";
@@ -33,34 +32,17 @@ export function AutomationsView() {
   const [tab, setTab] = useState<Tab>(() => load("berth.automations.tab", "flows"));
   const [editing, setEditing] = useState<EditTarget>();
 
-  // Every place a new flow can live: a project on every box that has it,
-  // then each box, and each repo on it.
+  // Every place a new flow can live: each box, and each repo on it. A flow
+  // for a project on every box is committed to the repository's
+  // .berth/config.json (or its kit), which each box runs from.
   const scopes = useMemo(
-    () => [
-      ...projectsEverywhere(projects).map((p) => ({ box: EVERY_BOX, scope: projectScope(p.id) })),
-      ...boxes.flatMap((box) => [{ box, scope: "box" as Scope }, ...(boxesData[box]?.locations ?? NONE).map((l) => ({ box, scope: `repo:${l.name}` }))]),
-    ],
-    [boxes, boxesData, projects],
+    () => boxes.flatMap((box) => [{ box, scope: "box" as Scope }, ...(boxesData[box]?.locations ?? NONE).map((l) => ({ box, scope: `repo:${l.name}` }))]),
+    [boxes, boxesData],
   );
 
-  // A flow for every box last ran wherever it ran last.
-  const lastRun = (box: string, scope: string, id: string) =>
-    placesOf(box, scope, projects)
-      .map((p) => lastRunOn(p.box, p.scope, id))
-      .filter((r) => !!r)
-      .sort((a, b) => b.started.localeCompare(a.started))[0];
+  const lastRun = (box: string, scope: string, id: string) => lastRunOn(box, scope, id);
 
-  const open = (box: string, f: ScopedFlow) => setEditing({ box, scope: f.scope, flow: f.flow, savedId: f.flow.id, readOnly: !f.editable, source: f.source, shared: sharedSet(box, f) });
-  // A box's copy of a flow saved on every box with its project: editing it
-  // alone splits it from the others, so the editor says so and offers all.
-  const sharedSet = (box: string, f: ScopedFlow): EditTarget["shared"] => {
-    if (box === EVERY_BOX) return undefined;
-    for (const g of sharedFlows(projects, byBox)) {
-      const hit = g.flows.find((s) => s.copies.some((c) => c.box === box && c.scope === f.scope && c.flow.id === f.flow.id));
-      if (hit) return { scope: projectScope(g.project.id), boxes: hit.copies.map((c) => c.box) };
-    }
-    return undefined;
-  };
+  const open = (box: string, f: ScopedFlow) => setEditing({ box, scope: f.scope, flow: f.flow, savedId: f.flow.id, readOnly: !f.editable, source: f.source });
   const create = (box: string, scope: Scope, starter?: Starter) => setEditing({ box, scope, flow: structuredClone(starter?.flow ?? blankFlow()) });
   // A new flow starts on the project open in the sidebar; "Runs for" in the
   // editor changes it.
@@ -118,23 +100,13 @@ export function AutomationsView() {
         target={editing}
         scopes={scopes}
         onClose={closeEditor}
-        onEditAll={editing.shared ? () => setEditing({ ...editing, box: EVERY_BOX, scope: editing.shared!.scope, shared: undefined }) : undefined}
         onSave={async (box, scope, flow, previousId) => {
-          // Saved where it goes (on every box with the project, one copy
-          // each), then taken out of anywhere it no longer goes.
-          const was = editing.savedId ? placesOf(editing.box, editing.scope, projects) : [];
-          const to = placesOf(box, scope, projects);
-          if (!to.length) throw new Error("No box with this project is online.");
-          for (const p of to) await saveFlow(p.box, p.scope, flow, was.some((w) => samePlace(w, p)) ? previousId : undefined);
-          for (const w of was) if (!to.some((p) => samePlace(p, w))) await remove(w.box, w.scope, editing.savedId!);
+          // Saved where it goes, then taken out of where it was.
+          const moved = !!editing.savedId && (box !== editing.box || scope !== editing.scope);
+          await saveFlow(box, scope, flow, moved ? undefined : previousId);
+          if (moved) await remove(editing.box, editing.scope, editing.savedId!);
         }}
-        onDelete={
-          editing.savedId
-            ? async () => {
-                for (const w of placesOf(editing.box, editing.scope, projects)) await remove(w.box, w.scope, editing.savedId!);
-              }
-            : undefined
-        }
+        onDelete={editing.savedId ? () => remove(editing.box, editing.scope, editing.savedId!) : undefined}
         onOverride={editing.readOnly ? () => setEditing({ ...editing, readOnly: false, savedId: undefined }) : undefined}
       />
     );

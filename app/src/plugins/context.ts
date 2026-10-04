@@ -97,6 +97,7 @@ export function makeContext(id: string, client: Client): BerthPluginContext {
       handoff: orchestrate.handoff,
       review: orchestrate.review,
       loop: orchestrate.loop,
+      runs: orchestrate.runs,
     },
   };
 }

@@ -9,6 +9,7 @@ import { CommandPalette } from "@/components/command-palette";
 import { NewWorktreeDialog } from "@/components/new-worktree-dialog";
 import { NotificationCenter } from "@/components/notifications/notification-center";
 import { LoopsPanel } from "@/components/orchestrate/loops-panel";
+import { AttemptsDialog } from "@/components/orchestrate/attempts-dialog";
 import { OrchestrateDialog } from "@/components/orchestrate/orchestrate-dialog";
 import { PluginConsentDialog } from "@/components/plugin-consent-dialog";
 import { PromptDialogs } from "@/components/prompts";
@@ -28,6 +29,7 @@ import { TabStrip } from "@/components/workspace/tab-strip";
 import { useBerthConnection } from "@/hooks/use-berth-connection";
 import { useShortcuts } from "@/hooks/use-shortcuts";
 import { useApplyTheme } from "@/hooks/use-theme";
+import { startRunsWatch } from "@/lib/runs";
 import { useStore } from "@/lib/store";
 import { startUpdater } from "@/lib/updater";
 import { cn } from "@/lib/utils";
@@ -57,6 +59,10 @@ export default function App() {
   useShortcuts();
   // Checks for a newer Berth on launch and every few hours (lib/updater.ts).
   useEffect(startUpdater, []);
+  // Runs on the boxes (loops, attempts, flows): kept fresh for the loops
+  // panel, Automations and Review (lib/runs.ts).
+  const connectedToAgent = useStore((s) => !!s.client);
+  useEffect(() => (connectedToAgent ? startRunsWatch() : undefined), [connectedToAgent]);
   useKitDeepLinks();
   const view = useStore((s) => s.view);
   const workspace = view.kind === "workspace";
@@ -135,6 +141,7 @@ export default function App() {
           <OrchestrateDialog />
           <PromptDialogs />
           <LoopsPanel />
+          <AttemptsDialog />
           <AddBoxDialog />
           <ConfirmHost />
           <AddToBoxDialog />

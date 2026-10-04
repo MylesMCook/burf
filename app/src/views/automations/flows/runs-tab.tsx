@@ -1,5 +1,5 @@
-import { ChevronRightIcon, ClockIcon, FlaskConicalIcon, GitPullRequestIcon } from "lucide-react";
-import { useState } from "react";
+import { ChevronRightIcon, CircleStopIcon, ClockIcon, CoinsIcon, FlaskConicalIcon, GitCompareArrowsIcon, GitPullRequestIcon, HandIcon, RepeatIcon, WebhookIcon } from "lucide-react";
+import { useEffect, useState } from "react";
 
 import { Scene } from "@/components/art/scenes";
 import { BoxFilter, shownBoxes } from "@/components/box-filter";
@@ -9,31 +9,58 @@ import { Tip } from "@/components/tip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { ago } from "@/lib/format";
+import { toastManager } from "@/components/ui/toast";
+import type { Run, RunStep, RunUsage } from "@/lib/api";
+import { ago, errorMessage } from "@/lib/format";
+import { allRuns, type BoxRun, boxHasRuns, getRun, isActive, runs as runsApi, scheduleRuns, useRuns } from "@/lib/runs";
 import { load, save } from "@/lib/storage";
+import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { useProjects, type Project } from "@/lib/project-groups";
 import { CATALOG } from "@/views/automations/catalog";
-import { EVERY_BOX, projectScope, sharedProjectOf } from "@/views/automations/flows/everywhere";
 import { STEP_KINDS } from "@/views/automations/flows/model";
-import { BoxChip, ProjectLabel } from "@/views/automations/flows/project-label";
-import { RunStatus, runTook } from "@/views/automations/flows/run-status";
-import type { BoxRun } from "@/views/automations/flows/use-runs";
+import { ProjectLabel } from "@/views/automations/flows/project-label";
+import { RunStatus } from "@/views/automations/flows/run-status";
+import type { BoxRun as BoxFlowRun } from "@/views/automations/flows/use-runs";
 
-// RunsTab is every flow run on every box, newest first: what started it,
-// and each step's outcome and output. Filters work as everywhere: boxes all
-// on to start, a flow picked from a list, "Failed" narrowing.
-export function RunsTab({ runs, boxes, names }: { runs: BoxRun[]; boxes: string[]; names: (box: string, scope: string, id: string) => string }) {
+// RunsTab is every run on every box, newest first: flows' runs, loops,
+// attempts, reviews, hand-offs and broadcasts, each a timeline of its steps
+// read from the run's journal on the box, with what its agents spent where
+// they report it. A run waiting at a gate can be decided here. Boxes from
+// before runs show their flows' runs as they always did.
+
+type Kind = "" | "flow" | "loop" | "attempts" | "other";
+const KINDS: { value: Kind; label: string }[] = [
+  { value: "", label: "All runs" },
+  { value: "flow", label: "Flows" },
+  { value: "loop", label: "Loops" },
+  { value: "attempts", label: "Attempts" },
+  { value: "other", label: "Reviews, hand-offs, broadcasts" },
+];
+
+const kindOf = (t: string): Kind => (t === "flow" || t === "loop" || t === "attempts" ? t : "other");
+
+export function RunsTab({ runs: legacy, boxes, names }: { runs: BoxFlowRun[]; boxes: string[]; names: (box: string, scope: string, id: string) => string }) {
+  const byBox = useRuns((s) => s.byBox);
   const [hidden, setHidden] = useState<string[]>(() => load("berth.runs.hiddenBoxes", []));
-  const [flow, setFlow] = useState("");
+  const [kind, setKind] = useState<Kind>("");
   const [failed, setFailed] = useState(false);
-  const { projects } = useProjects();
+  const [needsYou, setNeedsYou] = useState(false);
   const hide = (next: string[]) => {
     setHidden(next);
     save("berth.runs.hiddenBoxes", next);
   };
+  useEffect(() => {
+    for (const b of boxes) if (boxHasRuns(b)) scheduleRuns(b, 0);
+  }, [boxes.join(",")]);
 
-  if (runs.length === 0)
+  // Boxes with runs list them all; older boxes their flows' runs.
+  const fromRuns = allRuns(byBox).filter((r) => boxes.includes(r.box));
+  const old: BoxRun[] = legacy
+    .filter((r) => !boxHasRuns(r.box))
+    .map((r) => ({ id: r.id, box: r.box, template: "flow", flow_id: r.flow, scope: r.scope, status: r.status, created: r.started, updated: r.finished ?? r.started, finished: r.finished, error: r.error, test: r.test, title: names(r.box, r.scope, r.flow) }));
+  const all = [...fromRuns, ...old].sort((a, b) => b.created.localeCompare(a.created));
+
+  if (all.length === 0)
     return (
       <Empty className="mt-12">
         <EmptyHeader>
@@ -41,35 +68,33 @@ export function RunsTab({ runs, boxes, names }: { runs: BoxRun[]; boxes: string[
             <Scene name="chart" />
           </EmptyMedia>
           <EmptyTitle>No runs yet</EmptyTitle>
-          <EmptyDescription>When a flow's trigger fires, or you test one, its run shows up here with every step's output.</EmptyDescription>
+          <EmptyDescription>Flows, loops, attempts, reviews and hand-offs run on your boxes and show up here, step by step, with what their agents spent.</EmptyDescription>
         </EmptyHeader>
       </Empty>
     );
 
   const on = shownBoxes(boxes, hidden);
-  // names gives the id back for a flow it doesn't know.
-  const known = (box: string, scope: string, id: string) => {
-    const n = names(box, scope, id);
-    return n === id ? undefined : n;
-  };
-  // A run of a flow kept on every box with a project says so, so its runs
-  // read as that one flow's, whichever box ran them.
-  const named = runs.map((r) => ({ run: r, name: names(r.box, r.scope, r.flow), shared: sharedProjectOf(projects, r.box, r.scope, r.flow, known) }));
-  const flows = [...new Set(named.map((n) => n.name))].sort((a, b) => a.localeCompare(b));
-  const shown = named.filter(({ run, name }) => on.includes(run.box) && (!flow || name === flow) && (!failed || run.status === "failed"));
-  const filtered = on.length < boxes.length || !!flow || failed;
+  const shown = all.filter((r) => on.includes(r.box) && (!kind || kindOf(r.template) === kind) && (!failed || r.status === "failed") && (!needsYou || r.status === "waiting_gate"));
+  const filtered = on.length < boxes.length || !!kind || failed || needsYou;
+  const waiting = all.filter((r) => r.status === "waiting_gate").length;
   const clear = () => {
     hide([]);
-    setFlow("");
+    setKind("");
     setFailed(false);
+    setNeedsYou(false);
   };
 
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center gap-2">
-        <div className="w-48">
-          <SimpleSelect size="sm" className="min-w-0" value={flow} onChange={setFlow} options={[{ value: "", label: "All flows" }, ...flows.map((f) => ({ value: f, label: f }))]} />
+        <div className="w-56">
+          <SimpleSelect size="sm" className="min-w-0" value={kind} onChange={(v) => setKind(v as Kind)} options={KINDS} />
         </div>
+        <Tip label="Runs waiting for you at a gate">
+          <FilterChip pressed={needsYou} onPressedChange={setNeedsYou}>
+            Needs you{waiting ? ` (${waiting})` : ""}
+          </FilterChip>
+        </Tip>
         <Tip label="Only runs that failed">
           <FilterChip pressed={failed} onPressedChange={setFailed}>
             Failed
@@ -86,7 +111,7 @@ export function RunsTab({ runs, boxes, names }: { runs: BoxRun[]; boxes: string[
         <Empty className="rounded-xl border py-12">
           <EmptyHeader>
             <EmptyTitle>No runs match</EmptyTitle>
-            <EmptyDescription>None of the {runs.length} runs kept passes every filter.</EmptyDescription>
+            <EmptyDescription>None of the {all.length} runs kept passes every filter.</EmptyDescription>
           </EmptyHeader>
           <Button size="sm" variant="outline" onClick={clear}>
             Clear filters
@@ -94,17 +119,17 @@ export function RunsTab({ runs, boxes, names }: { runs: BoxRun[]; boxes: string[
         </Empty>
       ) : (
         <div className="overflow-hidden rounded-xl border bg-card">
-          <div className="grid grid-cols-[20px_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.2fr)_90px_60px] gap-3 border-b px-4 py-2 text-[11px] text-muted-foreground">
+          <div className="grid grid-cols-[20px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1.1fr)_80px_70px] gap-3 border-b px-4 py-2 text-[11px] text-muted-foreground">
             <span />
-            <span>Flow</span>
+            <span>Run</span>
             <span>Where</span>
             <span>Started by</span>
             <span>When</span>
             <span className="text-right">Took</span>
           </div>
           <ol className="divide-y divide-border/70">
-            {shown.map(({ run, name, shared }) => (
-              <RunRow key={`${run.box}:${run.id}`} run={run} name={name} shared={shared} />
+            {shown.map((r) => (
+              <RunRow key={`${r.box}:${r.id}`} run={r} name={r.template === "flow" && r.flow_id ? names(r.box, r.scope ?? "box", r.flow_id) : (r.title ?? r.template)} />
             ))}
           </ol>
         </div>
@@ -113,89 +138,253 @@ export function RunsTab({ runs, boxes, names }: { runs: BoxRun[]; boxes: string[
   );
 }
 
-// eventLabel names what started a run in words ("Agent finished"); the
-// event's id stays in the tooltip.
 const eventLabel = (type: string) => CATALOG.find((e) => e.on === type)?.label;
 
-function RunRow({ run, name, shared }: { run: BoxRun; name: string; shared?: Project }) {
-  const [open, setOpen] = useState(false);
-  const d = run.event.data ?? {};
-  const where = (d.name as string) || (d.location as string) || (d.path as string)?.split("/").pop();
+const TEMPLATE_LABEL: Record<string, string> = { loop: "Loop", attempts: "Attempts", review: "Review", handoff: "Hand-off", broadcast: "Broadcast", "fix-ci": "Fix CI", "address-review": "Review comments", exec: "Command" };
+
+export function took(r: { created: string; finished?: string }): string {
+  const ms = (r.finished ? new Date(r.finished).getTime() : Date.now()) - new Date(r.created).getTime();
+  if (ms < 1000) return `${ms}ms`;
+  const s = Math.round(ms / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.floor(s / 60);
+  return m < 60 ? `${m}m ${s % 60}s` : `${Math.floor(m / 60)}h ${m % 60}m`;
+}
+
+export function tokens(u?: RunUsage): string {
+  if (!u) return "";
+  const n = (u.input ?? 0) + (u.output ?? 0) + (u.cache_read ?? 0) + (u.cache_write ?? 0);
+  const k = n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1)}M` : n >= 1000 ? `${Math.round(n / 1000)}k` : String(n);
+  return [n ? `${k} tokens` : "", u.usd ? `$${u.usd.toFixed(2)}` : ""].filter(Boolean).join(" · ");
+}
+
+function startedBy(r: BoxRun) {
+  const origin = r.origin ?? "";
+  if (r.test)
+    return (
+      <span className="inline-flex items-center gap-1 text-muted-foreground">
+        <FlaskConicalIcon className="size-3" />
+        Test run
+      </span>
+    );
+  if (origin === "schedule" || /^schedule/.test(r.idem_key ?? ""))
+    return (
+      <span className="inline-flex items-center gap-1 text-muted-foreground">
+        <ClockIcon className="size-3" />
+        Scheduled
+      </span>
+    );
+  if ((r.idem_key ?? "").startsWith("github:"))
+    return (
+      <span className="inline-flex items-center gap-1 text-muted-foreground">
+        <GitPullRequestIcon className="size-3" />
+        GitHub
+      </span>
+    );
+  if ((r.idem_key ?? "").startsWith("webhook:"))
+    return (
+      <span className="inline-flex items-center gap-1 text-muted-foreground">
+        <WebhookIcon className="size-3" />
+        Webhook
+      </span>
+    );
+  const who = origin.startsWith("laptop:") ? origin.slice(7) : origin.startsWith("flow:") ? eventLabel(r.template) ?? "Its trigger" : origin || "—";
+  return <span className="text-muted-foreground">{who}</span>;
+}
+
+function RunRow({ run: r, name }: { run: BoxRun; name: string }) {
+  const [open, setOpen] = useState(r.status === "waiting_gate");
+  const where = r.path?.split("/").pop();
   return (
     <li>
-      <button type="button" onClick={() => setOpen(!open)} className="grid w-full grid-cols-[20px_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1.2fr)_90px_60px] min-h-row items-center gap-3 px-4 py-1 text-left text-sm hover:bg-accent/40">
-        <RunStatus status={run.status} />
+      <button type="button" onClick={() => setOpen(!open)} className="grid w-full grid-cols-[20px_minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1.1fr)_80px_70px] min-h-row items-center gap-3 px-4 py-1 text-left text-sm hover:bg-accent/40">
+        <RunStatus status={r.status} />
         <span className="flex min-w-0 items-center gap-1.5">
           <ChevronRightIcon className={cn("size-3 shrink-0 text-muted-foreground transition-transform", open && "rotate-90")} />
           <span className="truncate font-medium">{name}</span>
-          {run.test && (
+          {r.template !== "flow" && (
             <Badge variant="outline" size="sm" className="shrink-0 text-muted-foreground">
-              Test
+              {TEMPLATE_LABEL[r.template] ?? r.template}
+            </Badge>
+          )}
+          {r.status === "waiting_gate" && (
+            <Badge variant="warning" size="sm" className="shrink-0">
+              <HandIcon />
+              Needs you
             </Badge>
           )}
         </span>
-        {shared ? (
-          <Tip label={`One flow kept the same on every box with ${shared.name}. This run was on ${run.box}.`} align="start">
-            <span className="flex min-w-0 items-center gap-1.5 text-muted-foreground text-xs">
-              <ProjectLabel box={EVERY_BOX} scope={projectScope(shared.id)} chip={false} className="min-w-0" />
-              <BoxChip box={run.box} />
-            </span>
-          </Tip>
-        ) : (
-          <ProjectLabel box={run.box} scope={run.scope} className="text-muted-foreground text-xs" />
-        )}
-        <span className="truncate text-xs">
-          {run.test ? (
-            // Started from the editor, not by an agent or the schedule.
-            <span className="inline-flex items-center gap-1 text-muted-foreground">
-              <FlaskConicalIcon className="size-3" />
-              Test run
-            </span>
-          ) : run.event.type === "schedule.fired" ? (
-            <span className="inline-flex items-center gap-1 text-muted-foreground">
-              <ClockIcon className="size-3" />
-              Scheduled
-            </span>
-          ) : run.event.type.startsWith("github.") ? (
-            <span className="inline-flex items-center gap-1 text-muted-foreground">
-              <GitPullRequestIcon className="size-3" />
-              PR #{String(d.pr ?? "")}
-              {d.author ? ` · ${String(d.author)}` : d.check ? ` · ${String(d.check)}` : ""}
-            </span>
-          ) : (
-            <Tip label={run.event.type}>
-              <span className="text-muted-foreground">{eventLabel(run.event.type) ?? run.event.type}</span>
-            </Tip>
-          )}
-          {where && <span className="text-muted-foreground"> · {where}</span>}
-        </span>
-        <Tip label={new Date(run.started).toLocaleString()}>
-          <span className="text-muted-foreground text-xs">{ago(run.started)}</span>
+        {r.scope && r.scope !== "box" ? <ProjectLabel box={r.box} scope={r.scope} className="text-muted-foreground text-xs" /> : <span className="truncate text-muted-foreground text-xs">{[r.box, where].filter(Boolean).join(" · ")}</span>}
+        <span className="truncate text-xs">{startedBy(r)}</span>
+        <Tip label={new Date(r.created).toLocaleString()}>
+          <span className="text-muted-foreground text-xs">{ago(r.created)}</span>
         </Tip>
-        <span className="text-right font-mono text-[11px] text-muted-foreground tabular-nums">{runTook(run)}</span>
+        <span className="text-right font-mono text-[11px] text-muted-foreground tabular-nums">{took(r)}</span>
       </button>
-      {open && (
-        <div className="space-y-1.5 bg-muted/20 px-4 pt-1 pb-3 pl-12">
-          {run.error && <p className="text-destructive-foreground text-xs">{run.error}</p>}
-          {run.steps.map((s, i) => {
-            const m = STEP_KINDS[s.kind];
-            return (
-              <div key={i} className={cn("rounded-lg border bg-card", s.status === "skipped" && "opacity-60")}>
-                <div className="flex items-center gap-2 px-3 py-1.5 text-xs">
-                  <m.Icon className={cn("size-3.5", m.tone)} />
-                  <span className="font-medium">{s.id || m.label}</span>
-                  <span className={cn("ml-auto", s.status === "failed" ? "text-destructive-foreground" : s.status === "succeeded" ? "text-success" : "text-muted-foreground")}>{s.status}</span>
-                  {s.kind === "run" && s.status !== "skipped" && <span className="text-muted-foreground">exit {s.exit_code}</span>}
-                  {s.duration && <span className="font-mono text-[11px] text-muted-foreground">{s.duration}</span>}
-                </div>
-                {(s.output || s.error) && (
-                  <pre className="max-h-48 overflow-auto border-t px-3 py-2 font-mono text-[11px] text-muted-foreground leading-snug">{[s.error, s.output].filter(Boolean).join("\n")}</pre>
-                )}
-              </div>
-            );
-          })}
+      {open && <RunTimeline box={r.box} id={r.id} summary={r} />}
+    </li>
+  );
+}
+
+// RunTimeline is a run's steps as a timeline: each step with its status,
+// how long it took on a bar against the run's span, and its output.
+export function RunTimeline({ box, id, summary }: { box: string; id: string; summary: BoxRun }) {
+  const [run, setRun] = useState<Run>();
+  const [error, setError] = useState<string>();
+  const legacy = !boxHasRuns(box);
+  useEffect(() => {
+    if (legacy) return;
+    let stop = false;
+    const tick = async () => {
+      try {
+        const r = await getRun(box, id);
+        if (!stop) setRun(r);
+        if (!stop && isActive(r)) setTimeout(tick, 2000);
+      } catch (err) {
+        if (!stop) setError(errorMessage(err));
+      }
+    };
+    void tick();
+    return () => {
+      stop = true;
+    };
+  }, [box, id, summary.updated]);
+  if (legacy) return <div className="bg-muted/20 px-4 py-3 pl-12 text-muted-foreground text-xs">{summary.error ?? "This box keeps its flows' runs without a timeline; upgrade it for runs."}</div>;
+  if (error) return <p className="bg-muted/20 px-4 py-3 pl-12 text-destructive-foreground text-xs">{error}</p>;
+  if (!run) return <div className="bg-muted/20 px-4 py-3 pl-12 text-muted-foreground text-xs">Loading…</div>;
+  const t0 = new Date(run.created).getTime();
+  const t1 = run.finished ? new Date(run.finished).getTime() : Date.now();
+  const span = Math.max(1, t1 - t0);
+  const decide = async (approve: boolean, pick?: number) => {
+    try {
+      await runsApi.decide(box, id, { approve, pick });
+      scheduleRuns(box, 0);
+      setRun(await getRun(box, id));
+    } catch (err) {
+      toastManager.add({ type: "error", title: "Couldn't decide the gate", description: errorMessage(err) });
+    }
+  };
+  return (
+    <div className="space-y-2 bg-muted/20 px-4 pt-1 pb-3 pl-12">
+      <div className="flex flex-wrap items-center gap-3 text-muted-foreground text-xs">
+        <span className="font-mono">{run.id}</span>
+        {run.usage && (
+          <span className="inline-flex items-center gap-1">
+            <CoinsIcon className="size-3" />
+            {tokens(run.usage)}
+          </span>
+        )}
+        {run.error && <span className="text-destructive-foreground">{run.error}</span>}
+        {isActive(run) && (
+          <Button
+            size="xs"
+            variant="ghost"
+            className="ml-auto"
+            onClick={() =>
+              void runsApi
+                .cancel(box, id)
+                .then(() => scheduleRuns(box, 0))
+                .catch((err) => toastManager.add({ type: "error", title: "Couldn't cancel", description: errorMessage(err) }))
+            }
+          >
+            <CircleStopIcon />
+            Cancel run
+          </Button>
+        )}
+      </div>
+      {run.gate && (
+        <div className="rounded-lg border border-warning/40 bg-warning/8 px-3 py-2 text-sm">
+          <p className="font-medium">{run.gate.title}</p>
+          {run.gate.text && <p className="mt-0.5 whitespace-pre-wrap text-muted-foreground text-xs">{run.gate.text}</p>}
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {run.gate.pick && (run.candidates?.length ?? 0) > 0 ? (
+              <>
+                {run.candidates!.map((c) => (
+                  <Button key={c.index} size="xs" variant={c.index === run.gate!.default ? "default" : "outline"} onClick={() => void decide(true, c.index)}>
+                    Pick {c.index + 1} · {c.agent}
+                  </Button>
+                ))}
+                <Button size="xs" variant="ghost" onClick={() => useStore.getState().setView({ kind: "review", run: { box, id } })}>
+                  <GitCompareArrowsIcon />
+                  Compare
+                </Button>
+              </>
+            ) : (
+              <Button size="xs" onClick={() => void decide(true)}>
+                Approve
+              </Button>
+            )}
+            <Button size="xs" variant="ghost" onClick={() => void decide(false)}>
+              Reject
+            </Button>
+          </div>
         </div>
       )}
-    </li>
+      <Steps steps={run.steps} t0={t0} span={span} depth={0} />
+    </div>
+  );
+}
+
+const STEP_LABEL: Record<string, string> = {
+  loop: "Loop",
+  round: "Round",
+  map: "Fan out",
+  item: "Item",
+  join: "Join",
+  judge: "Judge",
+  gate: "Gate",
+  if: "If",
+  then: "Then",
+  else: "Else",
+  sleep: "Sleep",
+  check: "Check",
+  headless: "Headless agent",
+  collect: "Collect",
+  handoff: "Handoff packet",
+  pr: "Pull request",
+  cleanup: "Archive the rest",
+};
+
+function Steps({ steps, t0, span, depth }: { steps: RunStep[]; t0: number; span: number; depth: number }) {
+  return (
+    <div className={cn("space-y-1", depth > 0 && "border-l pl-3")}>
+      {steps
+        .filter((s) => s.status !== "skipped")
+        .map((s) => (
+          <Step key={s.path} s={s} t0={t0} span={span} depth={depth} />
+        ))}
+    </div>
+  );
+}
+
+function Step({ s, t0, span, depth }: { s: RunStep; t0: number; span: number; depth: number }) {
+  const [open, setOpen] = useState(s.status === "failed" || s.status === "waiting");
+  const m = STEP_KINDS[s.kind as keyof typeof STEP_KINDS];
+  const label = m?.label ?? STEP_LABEL[s.kind] ?? s.id;
+  const Icon = m?.Icon ?? (s.kind === "loop" || s.kind === "round" ? RepeatIcon : s.kind === "gate" ? HandIcon : ChevronRightIcon);
+  const start = s.started ? new Date(s.started).getTime() - t0 : 0;
+  const end = s.ended ? new Date(s.ended).getTime() - t0 : s.status === "running" || s.status === "waiting" ? Date.now() - t0 : start;
+  const group = !!s.children?.length;
+  return (
+    <div className={cn(group ? "" : "rounded-lg border bg-card")}>
+      <button type="button" className="flex w-full items-center gap-2 px-3 py-1 text-left text-xs" onClick={() => setOpen(!open)} disabled={!group && !s.output && !s.error}>
+        <Icon className={cn("size-3.5 shrink-0", m?.tone ?? "text-muted-foreground")} />
+        <span className="font-medium">{s.kind === "round" || s.kind === "item" ? `${label} ${s.id.replace(/^\D+/, "") ? Number(s.id.replace(/^\D+/, "")) + (s.kind === "item" ? 1 : 0) : ""}` : label}</span>
+        {s.id && !/^\d+$/.test(s.id) && s.kind !== "round" && s.kind !== "item" && <span className="text-muted-foreground">{s.id}</span>}
+        {s.output && !group && <span className="min-w-0 flex-1 truncate text-muted-foreground">{s.output.split("\n")[0]}</span>}
+        {(group || !s.output) && <span className="flex-1" />}
+        {s.started && depth < 3 && (
+          <span className="relative hidden h-1.5 w-24 shrink-0 rounded-full bg-muted sm:block" aria-hidden>
+            <span className="absolute inset-y-0 rounded-full bg-primary/50" style={{ left: `${(start / span) * 100}%`, width: `${Math.max(2, ((end - start) / span) * 100)}%` }} />
+          </span>
+        )}
+        {s.usage && <span className="text-muted-foreground">{tokens(s.usage)}</span>}
+        <span className={cn("shrink-0", s.status === "failed" ? "text-destructive-foreground" : s.status === "succeeded" ? "text-success" : "text-muted-foreground")}>{s.status}</span>
+        {s.kind === "check" && s.status !== "running" && <span className="text-muted-foreground">exit {s.exit_code}</span>}
+        {s.duration && <span className="font-mono text-[11px] text-muted-foreground">{s.duration}</span>}
+      </button>
+      {open && !group && (s.output || s.error) && <pre className="max-h-48 overflow-auto border-t px-3 py-2 font-mono text-[11px] text-muted-foreground leading-snug">{[s.error, s.output].filter(Boolean).join("\n")}</pre>}
+      {open && group && <Steps steps={s.children!} t0={t0} span={span} depth={depth + 1} />}
+    </div>
   );
 }

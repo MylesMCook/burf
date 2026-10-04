@@ -26,7 +26,8 @@ export type View =
   | { kind: "automations"; open?: { box: string; scope: string; id?: string } }
   | { kind: "project"; box: string; location: string }
   | { kind: "kits" }
-  | { kind: "review" }
+  // run, when set, opens Review's Compare of an attempts run.
+  | { kind: "review"; run?: { box: string; id: string } }
   | { kind: "worktrees" }
   | { kind: "settings"; section?: string }
   | { kind: "plugin"; screen: string };

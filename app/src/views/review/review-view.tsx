@@ -16,6 +16,8 @@ import { focusSession } from "@/lib/workspaces";
 import { ViewHeader } from "@/views/view-header";
 import { type ApproveMode, ApproveDialog, DiscardDialog, SendBackDialog } from "@/views/review/review-actions";
 import { ReviewDetail } from "@/views/review/review-detail";
+import { CompareStrip, CompareView } from "@/views/review/compare-view";
+import { allRuns, useRuns } from "@/lib/runs";
 import { markReviewed, type ReviewEntry, refreshReview, useReview, visibleEntries, watchReview } from "@/views/review/review-store";
 import { Tip } from "@/components/tip";
 
@@ -35,6 +37,21 @@ export function ReviewView() {
   const errors = useReview((s) => s.errors);
   const [selectedKey, setSelectedKey] = useState<string>();
   const [dialog, setDialog] = useState<Dialog>();
+  // Compare mode: an attempts run's attempts side by side.
+  const view = useStore((s) => s.view);
+  const [compare, setCompare] = useState<{ box: string; id: string } | undefined>(view.kind === "review" ? view.run : undefined);
+  useEffect(() => {
+    if (view.kind === "review" && view.run) setCompare(view.run);
+  }, [view]);
+  const byBox = useRuns((s) => s.byBox);
+  const attempts = useMemo(
+    () =>
+      allRuns(byBox)
+        .filter((r) => r.template === "attempts" && (r.candidates ?? 0) > 0 && (r.status === "waiting_gate" || Date.now() - new Date(r.updated).getTime() < 24 * 3600_000))
+        .sort((a, b) => (a.status === "waiting_gate" ? -1 : 0) - (b.status === "waiting_gate" ? -1 : 0))
+        .slice(0, 6),
+    [byBox],
+  );
 
   useEffect(() => {
     watchReview();
@@ -73,7 +90,7 @@ export function ReviewView() {
   // dialog or menu is open.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (dialog || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (compare || dialog || e.metaKey || e.ctrlKey || e.altKey) return;
       const t = e.target as HTMLElement | null;
       if (t && (t.closest("input, textarea, select, [contenteditable=true], .xterm, [data-terminal]") || document.querySelector("[data-slot=dialog-popup], [data-slot=menu-popup], [role=menu]"))) return;
       const move = (d: number) => {
@@ -102,7 +119,7 @@ export function ReviewView() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [entries, index, selected, actions, dialog]);
+  }, [entries, index, selected, actions, dialog, compare]);
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -117,7 +134,17 @@ export function ReviewView() {
         }
       />
       <Notices outdated={outdated} errors={errors} />
-      {!loaded ? (
+      {!compare && <CompareStrip runs={attempts} onOpen={(r) => setCompare({ box: r.box, id: r.id })} />}
+      {compare ? (
+        <CompareView
+          box={compare.box}
+          id={compare.id}
+          onClose={() => {
+            setCompare(undefined);
+            useStore.getState().setView({ kind: "review" });
+          }}
+        />
+      ) : !loaded ? (
         <div className="flex flex-1 items-center justify-center gap-2 text-muted-foreground text-sm">
           <Spinner className="size-4" /> Reading each box's worktrees…
         </div>

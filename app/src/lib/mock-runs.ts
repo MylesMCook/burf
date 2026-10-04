@@ -1,0 +1,214 @@
+import { ApiError, type BerthEvent, type Run, type RunCandidate, type RunStep, type RunSummary } from "@/lib/api";
+
+// Runs in the demo: the shop world on devl has a loop going, an attempts run
+// of three agents waiting for you to pick one in Review's Compare, a flow's
+// run, a review and a finished broadcast. Deciding, cancelling and starting
+// runs work, so the loops panel, Automations → Runs, Compare and the phone
+// all have something to show.
+
+type Emit = (e: Omit<BerthEvent, "time">) => void;
+
+const at = (min: number) => new Date(Date.now() - min * 60_000).toISOString();
+const step = (path: string, kind: string, status: string, startMin: number, endMin: number | undefined, more: Partial<RunStep> = {}): RunStep => ({
+  id: more.id ?? path.split(".").pop()!,
+  kind,
+  path,
+  status,
+  started: at(startMin),
+  ended: endMin === undefined ? undefined : at(endMin),
+  duration: endMin === undefined ? undefined : `${Math.round((startMin - endMin) * 60)}s`,
+  exit_code: 0,
+  ...more,
+});
+
+function candidate(index: number, agent: string, passed: boolean, added: number, removed: number, rank: number, reason: string, summary: string): RunCandidate {
+  return {
+    index,
+    agent,
+    location: "shop",
+    worktree: `refunds-a${index + 1}`,
+    path: `/home/me/work/shop-refunds-a${index + 1}`,
+    branch: `refunds-a${index + 1}`,
+    session: `refunds-a${index + 1}-${agent}-x7k2-0i${index}0`,
+    verify: { passed, rounds: passed ? 1 : 2, exit_code: passed ? 0 : 1, tail: passed ? undefined : "FAIL test/refunds.test.ts > partial refund\n  expected 50 to equal 0" },
+    diff: { files: 4 + index, added, removed, commits: index === 1 ? 2 : 1 },
+    summary,
+    turns: passed ? 1 : 2,
+    tokens: { input: 21000 + index * 4000, output: 3400 + index * 500, cache_read: 160000 + index * 20000, usd: 0.41 + index * 0.07 },
+    judge: { rank, reason },
+  };
+}
+
+const attemptsRun = (): Run => ({
+  id: "r_mshp7x7k2",
+  template: "attempts",
+  title: "refunds: 3 attempts",
+  status: "waiting_gate",
+  origin: "laptop:mac",
+  cursor: "2.t.0",
+  created: at(42),
+  updated: at(6),
+  usage: { input: 75000, output: 11500, cache_read: 540000, usd: 1.44 },
+  params: { location: "shop", name: "refunds", prompt: "Implement partial refunds (see issue 412)." },
+  gate: { path: "2.t.0", title: "Pick the best attempt at refunds", text: "Winner: attempt 3. Smallest diff that passes, with a test for the partial case.", pick: true, default: 2 },
+  candidates: [
+    candidate(0, "claude", false, 182, 31, 3, "its check fails: the partial refund is never recorded", "feat: partial refunds; test: refunds"),
+    candidate(1, "codex", true, 141, 22, 2, "passes, but reworks the ledger more than it needs to", "refactor: ledger entries; feat: partial refunds"),
+    candidate(2, "claude", true, 74, 9, 1, "passes with the smallest diff and a test for the partial case", "feat: partial refunds with a ledger entry"),
+  ],
+  steps: [
+    step("0", "map", "succeeded", 42, 9, {
+      id: "attempts",
+      output: "1. attempt 1 (claude): check failed\n2. attempt 2 (codex): check passed\n3. attempt 3 (claude): check passed",
+      children: [0, 1, 2].map((i) =>
+        step(`0.i${i}`, "item", "", 42, 9 + i, {
+          id: `i${i}`,
+          children: [
+            step(`0.i${i}.0`, "start_agent", "succeeded", 42, 41.8, { id: "start", output: `started refunds-a${i + 1}` }),
+            step(`0.i${i}.1`, "wait", "succeeded", 41.8, 20 - i * 3, { id: "work", output: "finished", usage: { input: 18000, output: 3000, cache_read: 150000 } }),
+            step(`0.i${i}.2`, "loop", i === 0 ? "failed" : "succeeded", 20 - i * 3, 10 + i, { id: "verify", output: i === 0 ? "" : "done in round 1 of 2", error: i === 0 ? "still not done after 2 rounds" : undefined }),
+            step(`0.i${i}.3`, "collect", "succeeded", 10 + i, 9 + i, { id: "collect" }),
+          ],
+        }),
+      ),
+    }),
+    step("1", "judge", "succeeded", 9, 7, {
+      id: "judge",
+      output: "Winner: attempt 3. passes with the smallest diff and a test for the partial case",
+      children: [step("1.ask", "headless", "succeeded", 9, 7, { id: "judge", output: '{"winner": 3, "ranking": [3, 2, 1]}', usage: { input: 2100, output: 120, usd: 0.02 } })],
+    }),
+    step("2", "if", "running", 7, undefined, { id: "choose", children: [step("2.t", "then", "", 7, undefined, { children: [step("2.t.0", "gate", "waiting", 7, undefined, { id: "pick", output: "Pick the best attempt at refunds" })] })] }),
+  ],
+});
+
+const loopRun = (round: number): Run => ({
+  id: "r_mshp7l00p",
+  template: "loop",
+  title: "Loop until pnpm test passes",
+  status: "running",
+  session: "checkout-fix-claude",
+  origin: "laptop:mac",
+  cursor: `1.r${round}.1.t.1`,
+  created: at(12),
+  updated: at(1),
+  params: { session: "checkout-fix-claude", check: "pnpm test", max: 5 },
+  vars: { session: "checkout-fix-claude" },
+  usage: { input: 32000, output: 5100, cache_read: 210000 },
+  steps: [
+    step("0", "if", "succeeded", 12, 8, { id: "ask", children: [step("0.t", "then", "", 12, 8, { children: [step("0.t.0", "prompt", "succeeded", 12, 12, { id: "first", output: "sent to checkout-fix-claude" }), step("0.t.1", "wait", "succeeded", 12, 8, { id: "first_turn", output: "finished" })] })] }),
+    step("1", "loop", "running", 8, undefined, {
+      id: "rounds",
+      children: [
+        step("1.r1", "round", "", 8, 4, {
+          id: "r1",
+          children: [
+            step("1.r1.0", "check", "failed", 8, 7.5, { id: "check", exit_code: 1, output: "FAIL src/cart.test.ts > applies the discount once\n  expected 90 to be 81", error: "exited with 1" }),
+            step("1.r1.1", "if", "succeeded", 7.5, 4, { id: "fix" }),
+          ],
+        }),
+        step(`1.r${round}`, "round", "", 4, undefined, { id: `r${round}`, children: [step(`1.r${round}.0`, "check", "failed", 4, 3.6, { id: "check", exit_code: 1, output: "FAIL src/cart.test.ts > rounds totals", error: "exited with 1" })] }),
+      ],
+    }),
+  ],
+});
+
+const flowRun = (): Run => ({
+  id: "r_mshp7f10w",
+  template: "flow",
+  flow_id: "check-after-turn",
+  scope: "repo:shop",
+  title: "Check after each turn",
+  status: "succeeded",
+  origin: "flow:check-after-turn",
+  path: "/home/me/work/shop-qa-deck",
+  created: at(25),
+  updated: at(24),
+  finished: at(24),
+  steps: [step("0", "run", "succeeded", 25, 24.5, { id: "test", output: "Tests 48 passed (48)" }), step("1", "prompt", "skipped", 24.5, 24.5, { id: "2" })],
+});
+
+const reviewRun = (): Run => ({
+  id: "r_mshp7rv1e",
+  template: "review",
+  title: "Review of qa-deck-codex's work",
+  status: "succeeded",
+  origin: "laptop:mac",
+  created: at(70),
+  updated: at(66),
+  finished: at(66),
+  usage: { input: 9000, output: 400, cache_read: 30000, usd: 0.06 },
+  steps: [step("0", "if", "succeeded", 70, 66, { children: [step("0.t", "then", "", 70, 66, { children: [step("0.t.0", "headless", "succeeded", 70, 66, { id: "review", output: "Verdict: fix first.\nsrc/deck.ts:42 - the empty deck throws", usage: { input: 9000, output: 400, cache_read: 30000, usd: 0.06 } })] })] })],
+});
+
+let runs: Run[] | undefined;
+let round = 2;
+
+function world(): Run[] {
+  if (!runs) runs = [attemptsRun(), loopRun(round), flowRun(), reviewRun()];
+  return runs;
+}
+
+const summary = (r: Run): RunSummary => ({ ...r, steps: r.steps.length, candidates: r.candidates?.length });
+
+export function runsCall(box: string, method: string, path: string, body: unknown, emit: Emit, delay: <T>(v: T) => Promise<T>): Promise<unknown> | undefined {
+  if (box !== "devl") {
+    if (method === "GET" && path.startsWith("runs")) return delay(path.startsWith("runs?") ? [] : undefined);
+    if (method === "GET" && path === "autofix") return delay([]);
+    return undefined;
+  }
+  const all = world();
+  if (method === "GET" && path.startsWith("runs?")) {
+    const q = new URLSearchParams(path.split("?")[1]);
+    const t = q.get("template");
+    return delay(all.filter((r) => !t || r.template === t).map(summary));
+  }
+  if (method === "GET" && path === "runs/templates") return delay([]);
+  let m = /^runs\/([^/?]+)$/.exec(path);
+  if (method === "GET" && m) {
+    const r = all.find((x) => x.id === decodeURIComponent(m![1]));
+    if (r?.template === "loop" && r.status === "running") {
+      // The loop moves on in the demo, a round a minute.
+      round = Math.min(4, 2 + Math.floor((Date.now() / 60_000) % 3));
+      Object.assign(r, loopRun(round));
+    }
+    return r ? delay(r) : Promise.reject(new ApiError("no run with that id", 404));
+  }
+  m = /^runs\/([^/]+)\/cancel$/.exec(path);
+  if (method === "POST" && m) {
+    const r = all.find((x) => x.id === m![1]);
+    if (r) Object.assign(r, { status: "cancelled", finished: new Date().toISOString(), error: "cancelled", gate: undefined });
+    emit({ type: "run.finished", box, data: { run: m[1], status: "cancelled" } });
+    return delay({ cancelled: m[1] });
+  }
+  m = /^runs\/([^/]+)\/gates\/([^/]+)\/decide$/.exec(path);
+  if (method === "POST" && m) {
+    const r = all.find((x) => x.id === m![1]);
+    const d = body as { approve: boolean; pick?: number };
+    if (!r?.gate) return Promise.reject(new ApiError("that run is not waiting at a gate", 409));
+    const pick = d.pick ?? r.gate.default ?? 0;
+    for (const c of r.candidates ?? []) c.picked = d.approve && c.index === pick;
+    Object.assign(r, { status: d.approve ? "succeeded" : "failed", finished: new Date().toISOString(), gate: undefined, error: d.approve ? undefined : "rejected" });
+    emit({ type: "run.finished", box, data: { run: r.id, status: r.status } });
+    return delay({ decided: r.id, approve: d.approve });
+  }
+  if (method === "POST" && path === "runs") {
+    const req = body as { template?: string; title?: string; params?: Record<string, unknown> };
+    const r: Run = { id: `r_mdemo${Math.random().toString(36).slice(2, 7)}`, template: req.template ?? "flow", title: req.title ?? `${req.template} run`, status: "running", created: new Date().toISOString(), updated: new Date().toISOString(), params: req.params, steps: [] };
+    all.unshift(r);
+    emit({ type: "run.created", box, data: { run: r.id, template: r.template, status: "running" } });
+    return delay(summary(r));
+  }
+  if (method === "GET" && path.startsWith("review?run=")) {
+    const r = all.find((x) => x.id === decodeURIComponent(path.slice("review?run=".length)));
+    if (!r) return Promise.reject(new ApiError("no run with that id", 404));
+    const files = (c: RunCandidate) => [
+      { path: "src/refunds/partial.ts", code: "A", added: Math.round(c.diff.added * 0.55), removed: 0 },
+      { path: "src/ledger/entry.ts", code: "M", added: Math.round(c.diff.added * 0.2), removed: Math.round(c.diff.removed * 0.6) },
+      { path: "test/refunds.test.ts", code: "M", added: Math.round(c.diff.added * 0.25), removed: Math.round(c.diff.removed * 0.4) },
+    ];
+    return delay({ run: summary(r), gate: r.gate, judge: r.steps.find((s) => s.kind === "judge")?.output, candidates: (r.candidates ?? []).map((c) => ({ ...c, review: { files: files(c) } })) });
+  }
+  if (method === "GET" && path === "autofix") return delay([{ path: "/home/me/work/shop-checkout-fix", ci: true, review: false, max: 3 }]);
+  if (method === "PUT" && path === "autofix") return delay([body]);
+  return undefined;
+}

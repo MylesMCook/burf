@@ -427,3 +427,118 @@ export interface WorktreeService {
   unit: string;
   port?: number;
 }
+
+// Runs: orchestrations the box executes and journals (loops, reviews,
+// hand-offs, broadcasts, attempts, flows), from boxes whose info lists the
+// "runs" capability. They keep going while the laptop sleeps and survive a
+// restart of berthd.
+export type RunStatus = "queued" | "running" | "waiting_gate" | "paused" | "succeeded" | "failed" | "cancelled" | "interrupted";
+
+export interface RunUsage {
+  input?: number;
+  output?: number;
+  cache_read?: number;
+  cache_write?: number;
+  usd?: number;
+}
+
+// A gate a run waits at: someone approves or rejects it (a pick gate also
+// names the winning attempt).
+export interface RunGate {
+  path: string;
+  title: string;
+  text?: string;
+  deadline?: string;
+  pick?: boolean;
+  // The candidate a pick approves without naming one (0-based).
+  default?: number;
+}
+
+export interface RunStep {
+  id: string;
+  kind: string;
+  // Where it is in the run: "2" is the third step, "2.r1.0" the first step
+  // of a loop's first round, "0.i3.1" the second step of a map's fourth item.
+  path: string;
+  status: "running" | "succeeded" | "failed" | "skipped" | "waiting" | "unknown" | "cancelled" | string;
+  attempt?: number;
+  started?: string;
+  ended?: string;
+  duration?: string;
+  output?: string;
+  exit_code: number;
+  error?: string;
+  turn?: string;
+  session?: string;
+  usage?: RunUsage;
+  children?: RunStep[];
+}
+
+// One attempt of an attempts run.
+export interface RunCandidate {
+  index: number;
+  agent?: string;
+  location?: string;
+  worktree?: string;
+  path?: string;
+  branch?: string;
+  session?: string;
+  verify: { passed: boolean; rounds?: number; exit_code: number; tail?: string };
+  diff: { files: number; added: number; removed: number; commits: number };
+  summary?: string;
+  turns?: number;
+  tokens?: RunUsage;
+  judge: { rank?: number; reason?: string };
+  picked?: boolean;
+}
+
+export interface RunSummary {
+  id: string;
+  template: string;
+  title?: string;
+  flow_id?: string;
+  scope?: string;
+  status: RunStatus;
+  key?: string;
+  // What deduplicates its trigger: github:<flow>:<pr>:<item>, webhook:...,
+  // or the Idempotency-Key it was started with.
+  idem_key?: string;
+  group?: string;
+  origin?: string;
+  path?: string;
+  session?: string;
+  cursor?: string;
+  test?: boolean;
+  created: string;
+  updated: string;
+  finished?: string;
+  error?: string;
+  usage?: RunUsage;
+  gate?: RunGate;
+  steps?: number;
+  candidates?: number;
+}
+
+export interface Run extends Omit<RunSummary, "steps" | "candidates"> {
+  params?: Record<string, unknown>;
+  vars?: Record<string, string>;
+  steps: RunStep[];
+  candidates?: RunCandidate[];
+  budget?: { max_rounds?: number; max_agents?: number; max_wall?: string; max_usd?: number; max_tokens?: number };
+}
+
+export interface RunRequest {
+  template?: string;
+  params?: Record<string, unknown>;
+  title?: string;
+  // Ad-hoc steps instead of a template.
+  flow?: unknown[];
+  // Runs one of the box's flows now.
+  flow_id?: string;
+  scope?: string;
+  data?: Record<string, unknown>;
+  session?: string;
+  path?: string;
+  group?: string;
+  budget?: Run["budget"];
+}

@@ -8,6 +8,7 @@ import {
   FolderPlusIcon,
   GitBranchIcon,
   GitBranchPlusIcon,
+  GitCompareArrowsIcon,
   GlobeIcon,
   LayoutDashboardIcon,
   PanelTopIcon,
@@ -55,6 +56,14 @@ import { openCustomize, useArrangedNav } from "@/components/sidebar/nav";
 import { loadPlugins } from "@/plugins/host";
 import { useRegistry } from "@/plugins/registry";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
+import { openAttempts } from "@/components/orchestrate/attempts-dialog";
+import { defaultScope } from "@/views/automations/flows/project-label";
+
+// defaultScopeRef is a project to try things in when no worktree is open.
+function defaultScopeRef(): { box: string; location: string } | undefined {
+  const at = defaultScope();
+  return at?.scope.startsWith("repo:") ? { box: at.box, location: at.scope.slice(5) } : undefined;
+}
 
 interface Item {
   value: string;
@@ -122,6 +131,15 @@ export function CommandPalette() {
       { value: "new-tab", label: "New tab…", icon: slot(<PanelTopIcon />), run: go(() => st.setNewTabMenuOpen(true)) },
       { value: "send saved prompt library", label: "Send a saved prompt…", icon: slot(<BookMarkedIcon />), run: go(() => openPromptPicker()) },
       { value: "broadcast prompt several agents", label: "Send a prompt to several agents…", icon: slot(<UsersIcon />), run: go(() => openBroadcast()) },
+      {
+        value: "try n ways attempts best of several agents compare",
+        label: "Try N ways…",
+        icon: slot(<GitCompareArrowsIcon />),
+        run: go(() => {
+          const at = currentSpace()?.ref ?? defaultScopeRef();
+          if (at) openAttempts({ box: at.box, location: at.location });
+        }),
+      },
       { value: "add-location", label: "Add a project…", icon: slot(<FolderPlusIcon />), run: go(() => st.openAddProject()) },
       { value: "dashboard", label: "Agent Dashboard", icon: slot(<LayoutDashboardIcon />), shortcut: "⌘J", run: go(() => st.setView({ kind: "dashboard" })) },
       { value: "notifications inbox bell", label: "Notifications", icon: slot(<BellIcon />), shortcut: "⌘⇧N", run: go(() => setNotificationsOpen(true)) },
