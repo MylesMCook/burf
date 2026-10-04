@@ -385,3 +385,18 @@ func TestPendingTurnsThatNeverStartExpire(t *testing.T) {
 		t.Fatal("the agent is still not ready for a prompt")
 	}
 }
+
+// A new agent in a folder where another agent last waited starts without
+// that state: the folder's "waiting" from before it began is not its own.
+func TestANewSessionDoesNotInheritAnOlderFolderState(t *testing.T) {
+	turns := &Turns{}
+	bus := &events.Bus{Sequence: true}
+	turns.Attach(bus)
+	old := time.Now().Add(-time.Hour)
+	// An agent berth didn't start reported from /w an hour ago.
+	bus.Publish(events.Event{Type: "agent.waiting", Time: old, Data: map[string]any{"path": "/w", "agent": "claude"}})
+	bus.Publish(events.Event{Type: "session.started", Time: time.Now(), Data: map[string]any{"name": "fresh", "path": "/w", "agent": "claude"}})
+	if st, _ := turns.State("fresh"); st.State != "" {
+		t.Fatalf("a new session took the folder's old state: %+v", st)
+	}
+}

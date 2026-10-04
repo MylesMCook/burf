@@ -400,7 +400,7 @@ func (t *Turns) Observe(e events.Event) {
 		if name == "" {
 			return
 		}
-		s := t.track(name, str(e.Data, "agent"), str(e.Data, "path"))
+		s := t.track(name, str(e.Data, "agent"), str(e.Data, "path"), e.Time)
 		if s.Agent == "" {
 			s.Agent = agentOf(str(e.Data, "command"))
 		}
@@ -414,7 +414,9 @@ func (t *Turns) Observe(e events.Event) {
 	}
 }
 
-func (t *Turns) track(name, agent, dir string) *sessTrack {
+// track finds or starts a session's record. born, when known, is when the
+// session began: a folder's state from before then is another agent's.
+func (t *Turns) track(name, agent, dir string, born time.Time) *sessTrack {
 	s := t.sess[name]
 	if s == nil {
 		s = &sessTrack{Name: name}
@@ -433,7 +435,7 @@ func (t *Turns) track(name, agent, dir string) *sessTrack {
 		s.Dir = filepath.Clean(dir)
 		if s.State == "" {
 			for _, d := range []string{s.Dir, strings.TrimPrefix(s.Dir, "/private"), "/private" + s.Dir} {
-				if st, ok := t.dirs[d]; ok {
+				if st, ok := t.dirs[d]; ok && (born.IsZero() || !st.At.Before(born)) {
 					s.State, s.Since = st.State, st.At
 					break
 				}
@@ -493,7 +495,7 @@ func (t *Turns) sent(e events.Event) {
 		if name == "" {
 			return
 		}
-		s = t.track(name, str(e.Data, "agent"), "")
+		s = t.track(name, str(e.Data, "agent"), "", time.Time{})
 	}
 	if e.Data["answer"] == true {
 		// An answer to the question the agent waits on: its turn goes on.
@@ -537,7 +539,7 @@ func (t *Turns) sent(e events.Event) {
 // directory has several). ok is false when it cannot tell.
 func (t *Turns) resolve(e events.Event) (s *sessTrack, ambiguous bool) {
 	if name := str(e.Data, "session"); name != "" {
-		return t.track(name, str(e.Data, "agent"), str(e.Data, "path")), false
+		return t.track(name, str(e.Data, "agent"), str(e.Data, "path"), time.Time{}), false
 	}
 	path := str(e.Data, "path")
 	if path == "" {
@@ -769,7 +771,7 @@ func (t *Turns) Track(sess Session) SessionState {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 	t.init()
-	s := t.track(sess.Name, sess.Agent, sess.Dir)
+	s := t.track(sess.Name, sess.Agent, sess.Dir, sess.Created)
 	if s.Agent == "" {
 		s.Agent = sess.Agent
 	}
