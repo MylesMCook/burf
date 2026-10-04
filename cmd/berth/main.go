@@ -236,6 +236,7 @@ func run(args []string) error {
 			if !c.Running(context.Background()) {
 				return nil
 			}
+			e = integrations.StripAsk(e)
 			return c.Call(context.Background(), "POST", "/v1/events", map[string]any{"type": e.Type, "origin": e.Origin, "data": e.Data}, nil)
 		})
 		return nil

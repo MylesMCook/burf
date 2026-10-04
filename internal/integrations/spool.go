@@ -39,6 +39,9 @@ func Spool(dir string, e events.Event) error {
 	if e.Time.IsZero() {
 		e.Time = time.Now().UTC()
 	}
+	// A request that waited out a restart is stale, and the spool is
+	// published as it is: no ask.
+	e = StripAsk(e)
 	b, err := json.Marshal(e)
 	if err != nil {
 		return err

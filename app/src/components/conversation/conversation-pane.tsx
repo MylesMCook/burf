@@ -1,27 +1,34 @@
-import { ArrowUpIcon, MessagesSquareIcon, RefreshCwIcon, SquareTerminalIcon } from "lucide-react";
+import { ArrowUpIcon, ListPlusIcon, MessageSquareTextIcon, MessagesSquareIcon, RefreshCwIcon, SendIcon, SquareTerminalIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { AgentIcon } from "@/components/agent-glyph";
 import { DitherBand } from "@/components/art/dither-band";
 import { HARBOUR, HARBOUR_MUTE, useHarbourLight } from "@/components/art/harbour-art";
-import { ConversationView } from "@/components/conversation/conversation-view";
+import { ConversationView, type EditActions, QueuedBubble } from "@/components/conversation/conversation-view";
 import { Frame, FrameFooter, FramePanel } from "@/components/ui/frame";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { InputGroup, InputGroupAddon, InputGroupTextarea } from "@/components/ui/input-group";
+import { Kbd } from "@/components/ui/kbd";
 import { Spinner } from "@/components/ui/spinner";
 import { toastManager } from "@/components/ui/toast";
 import { isMock } from "@/hooks/use-berth-connection";
 import { startSession } from "@/lib/actions";
-import { boxApi, laptopApi } from "@/lib/api";
+import { ApiError, boxApi, laptopApi, type QueuedPrompt } from "@/lib/api";
 import { keyOf, useConversations } from "@/lib/conversation-store";
 import { agentLabel, agentOf, sessionState, worktreeOf } from "@/lib/derive";
 import { errorMessage } from "@/lib/format";
+import { cn } from "@/lib/utils";
 import { finishTurn, seedTranscript } from "@/lib/mock-conversation";
+import { useNotifications } from "@/lib/notifications";
+import { addComment, type LineComment, pending, removeComment, sendComments, useComments } from "@/lib/review-comments";
+import { permissionChoices } from "@/lib/screen";
 import { NONE, useStore } from "@/lib/store";
 import type { TranscriptItem } from "@/lib/transcript";
-import { useAsk, useTranscriptFeed } from "@/lib/transcript-feed";
+import { useAsk, useQueued, useTranscriptFeed } from "@/lib/transcript-feed";
+import { ConfirmDialog } from "@/views/settings/confirm";
+import { useReview } from "@/views/review/review-store";
 
 // ConversationPane shows an agent's pane as a conversation: the transcript,
 // and a reply box docked at its foot. On a box that streams transcripts it
@@ -41,6 +48,15 @@ export function ConversationPane({ box, session, visible, onShowTerminal }: { bo
   const feed = useTranscriptFeed(box, session, s?.dir, visible && !mock);
   const ask = useAsk(box, session, !mock && state === "waiting", s?.state_since);
   const [answered, setAnswered] = useState<{ at?: string; key: string }>();
+  const queue = useQueued(box, session, s?.queued, visible);
+  const [confirm, setConfirm] = useState<QueuedPrompt>();
+  const canDiff = useStore((st) => !!st.boxes[box]?.info?.capabilities?.includes("diff"));
+  const agent = s ? agentOf(s) : undefined;
+  const who = agent === "claude" ? "Claude" : agent ? agentLabel(agent) : "The agent";
+  // Comments on the diff are kept per worktree, as Review keys them.
+  const wt = s ? worktreeOf(locations, s) : undefined;
+  const reviewKey = wt ? `${box}|${wt.worktree.path}` : undefined;
+  const comments = useComments((st) => (reviewKey ? st.byKey[reviewKey] : undefined)) ?? NO_COMMENTS;
 
   // The demo makes up a conversation for an agent opened mid-way.
   useEffect(() => {
@@ -55,16 +71,43 @@ export function ConversationPane({ box, session, visible, onShowTerminal }: { bo
     if (mock) return items;
     const out = [...items];
     if (state === "running" && s?.state_since) out.push({ kind: "thinking", id: "live:thinking", since: new Date(s.state_since).getTime() });
-    if (state === "waiting" && ask) {
-      const decided = answered && answered.at === s?.state_since ? answered.key : undefined;
-      out.push({ kind: "ask", id: "live:ask", tool: "Question", detail: ask.detail, choices: ask.choices, decided });
+    const decided = answered && answered.at === s?.state_since ? answered.key : undefined;
+    if (state === "waiting" && s?.ask?.tool) {
+      // The agent's hooks said what it asks: show that, with its screen's
+      // options matched to Allow, Always allow and Deny.
+      const choices = ask ? (permissionChoices(ask.choices) ?? ask.choices) : [];
+      out.push({ kind: "ask", id: "live:ask", tool: s.ask.tool, detail: s.ask.input ?? "", why: s.ask.why, structured: true, choices, reading: !ask, decided });
+    } else if (state === "waiting" && ask) {
+      out.push({ kind: "ask", id: "live:ask", tool: "Question", detail: s?.ask?.message || ask.detail, choices: ask.choices, decided });
     }
     return out;
-  }, [mock, items, state, s?.state_since, ask, answered]);
+  }, [mock, items, state, s?.state_since, s?.ask, ask, answered]);
+
+  const edits = useMemo<EditActions | undefined>(() => {
+    if (!client || (!canDiff && !mock)) return undefined;
+    return {
+      load: (file) => boxApi.diff(client, box, session, file),
+      comments: (file) =>
+        reviewKey
+          ? {
+              list: comments.filter((c) => c.file === file),
+              onAdd: (line, side, text) => addComment(reviewKey, { file, line, side, text }),
+              onRemove: (id) => removeComment(reviewKey, id),
+            }
+          : undefined,
+      review: (file) => {
+        if (!reviewKey) return;
+        useComments.setState({ focus: { key: reviewKey, file } });
+        useNotifications.setState({ reviewFocus: reviewKey });
+        useStore.getState().setView({ kind: "review" });
+        if (!useReview.getState().entries.some((e) => e.key === reviewKey))
+          toastManager.add({ type: "info", title: "Not in Review yet", description: `Review lists this worktree once ${who} finishes its turn.` });
+      },
+    };
+  }, [client, canDiff, mock, box, session, reviewKey, comments, who]);
 
   // Claude Code and Codex write their conversation once they start: until
   // then a new agent has nothing to read yet, which is not a dead end.
-  const agent = s ? agentOf(s) : undefined;
   const readable = agent === "claude" || agent === "codex";
   if (!mock && (feed === "unsupported" || (feed === "none" && !readable))) {
     return (
@@ -111,7 +154,7 @@ export function ConversationPane({ box, session, visible, onShowTerminal }: { bo
   };
 
   const reply = async (text: string) => {
-    if (mock) {
+    if (mock && state !== "running") {
       useConversations.getState().push(key, { kind: "user", id: `u${Date.now()}`, text });
       void finishTurn(box, session);
       return;
@@ -119,8 +162,44 @@ export function ConversationPane({ box, session, visible, onShowTerminal }: { bo
     if (!client) return;
     // Typed for the person, at once when the agent waits for them, else
     // held until it is idle; the transcript shows it once the agent reads it.
-    await boxApi.send(client, box, session, text, true, state === "waiting" ? { when: "now", force: true } : { when: "idle" });
+    const r = await boxApi.send(client, box, session, text, true, state === "waiting" ? { when: "now", force: true } : { when: "idle" });
+    if (r.queued) queue.refresh();
   };
+
+  // A held prompt typed now. At a question it would be read as the answer,
+  // so that asks first (force).
+  const sendNow = async (q: QueuedPrompt, force = false) => {
+    if (!client) return;
+    if (state === "waiting" && !force) {
+      setConfirm(q);
+      return;
+    }
+    try {
+      await boxApi.sendQueued(client, box, session, q.turn, force);
+      if (mock) useConversations.getState().push(key, { kind: "user", id: `u${Date.now()}`, text: q.preview });
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) setConfirm(q);
+      else toastManager.add({ type: "error", title: "Couldn't send it now", description: errorMessage(err) });
+    } finally {
+      queue.refresh();
+    }
+  };
+  const cancel = async (q: QueuedPrompt) => {
+    if (!client) return;
+    try {
+      await boxApi.unqueue(client, box, session, q.turn);
+    } catch (err) {
+      toastManager.add({ type: "error", title: "Couldn't cancel it", description: errorMessage(err) });
+    } finally {
+      queue.refresh();
+    }
+  };
+  const tail = queue.items.length ? queue.items.map((q) => <QueuedBubble key={q.turn} q={q} who={who} onSendNow={() => sendNow(q)} onCancel={() => cancel(q)} />) : null;
+  const toSend = pending(comments);
+  // An agent at a menu (a permission, or numbered options) takes its answer
+  // from the buttons above: Enter in the reply box would pick for it.
+  const open = [...shown].reverse().find((it) => it.kind === "ask");
+  const atMenu = !!ask?.choices.length || !!s?.ask?.tool || (open?.kind === "ask" && !open.decided && (!!open.choices?.length || !!open.structured));
 
   // The agent's program has ended: nothing will read a reply. Its
   // conversation stays readable; a fresh one starts beside it.
@@ -171,7 +250,7 @@ export function ConversationPane({ box, session, visible, onShowTerminal }: { bo
             Reading the conversation…
           </div>
         ) : (
-          <ConversationView items={shown} onAnswer={answer} />
+          <ConversationView items={shown} onAnswer={answer} edits={edits} who={who} tail={tail} tailSize={queue.items.length} />
         )}
       </div>
       <div className="pr-6 pb-4 pl-6 @[1000px]:pr-[max(24px,var(--berth-loops-w,0px))]">
@@ -184,24 +263,77 @@ export function ConversationPane({ box, session, visible, onShowTerminal }: { bo
               </Button>
             </div>
           ) : (
-            <Reply onSend={reply} blocked={state === "waiting" && !!ask?.choices.length} />
+            <>
+              {toSend.length > 0 && reviewKey && <CommentsStrip count={toSend.length} who={who} onSend={() => sendComments(box, session, reviewKey)} />}
+              <Reply onSend={reply} who={who} mode={state === "running" ? "queue" : state === "waiting" ? "answer" : "send"} blocked={state === "waiting" && atMenu} />
+            </>
           )}
         </div>
       </div>
+      <ConfirmDialog
+        open={!!confirm}
+        onOpenChange={(o) => !o && setConfirm(undefined)}
+        title={s?.ask?.tool ? `${who} is waiting for your permission` : `${who} is waiting on a question`}
+        description={
+          s?.ask?.tool
+            ? `Sending now types your message into its permission prompt, where a key can pick one of its options. Answer the prompt first, or leave this queued to send once ${who} finishes.`
+            : `Sending now types your message into its question, where ${who} reads it as the answer. Leave it queued to send it once ${who} finishes.`
+        }
+        confirm={s?.ask?.tool ? "Send anyway" : "Send as the answer"}
+        onConfirm={() => (confirm ? sendNow(confirm, true) : undefined)}
+      />
     </div>
   );
 }
 
-// Reply is the box at the foot. While the agent waits at a menu, Enter there
-// would pick its highlighted option, so it waits for the answer above.
-function Reply({ onSend, blocked }: { onSend(text: string): Promise<void>; blocked?: boolean }) {
+const NO_COMMENTS: LineComment[] = [];
+
+// CommentsStrip offers the comments left on this worktree's diff to its
+// agent, as one short prompt held until it is idle.
+function CommentsStrip({ count, who, onSend }: { count: number; who: string; onSend(): Promise<{ sent: number; left: number; queued: boolean }> }) {
+  const [busy, setBusy] = useState(false);
+  const send = async () => {
+    setBusy(true);
+    try {
+      const r = await onSend();
+      toastManager.add({ type: "success", title: `Sent ${r.sent} comment${r.sent === 1 ? "" : "s"} to ${who}`, description: r.queued ? `Queued: ${who} gets them when it finishes.` : r.left ? `${r.left} more didn't fit; send again.` : undefined });
+    } catch (err) {
+      toastManager.add({ type: "error", title: "Couldn't send the comments", description: errorMessage(err) });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="mb-2 flex items-center gap-2 rounded-lg border bg-muted/40 py-1.5 pr-1.5 pl-3 text-sm">
+      <MessageSquareTextIcon className="size-3.5 shrink-0 text-muted-foreground" />
+      <span className="min-w-0 flex-1 truncate">
+        {count} comment{count === 1 ? "" : "s"} on the diff
+      </span>
+      <Button size="xs" loading={busy} onClick={() => void send()}>
+        <SendIcon />
+        Send to {who}
+      </Button>
+    </div>
+  );
+}
+
+// Reply is the box at the foot, and says what Enter does: send now, queue
+// it until the agent finishes, or answer the agent's question. While the
+// agent waits at a menu, Enter there would pick its highlighted option, so
+// it waits for the answer above.
+function Reply({ onSend, who, mode, blocked }: { onSend(text: string): Promise<void>; who: string; mode: "send" | "queue" | "answer"; blocked?: boolean }) {
   const [text, setText] = useState("");
   const go = () => {
     const t = text.trim();
     if (!t || blocked) return;
     setText("");
-    onSend(t).catch((err) => toastManager.add({ type: "error", title: "Couldn't send it", description: errorMessage(err) }));
+    onSend(t).catch((err) => {
+      setText(t);
+      toastManager.add({ type: "error", title: mode === "queue" ? "Couldn't queue it" : "Couldn't send it", description: errorMessage(err) });
+    });
   };
+  const queue = mode === "queue";
+  const placeholder = blocked ? "Pick an answer above first" : queue ? `${who} is working: Enter queues this for when it finishes` : mode === "answer" ? `Answer ${who}, or ask for something else` : "Reply, or ask for something else";
   return (
     <InputGroup className="**:[textarea]:min-h-0! **:[textarea]:py-2.5!">
       <InputGroupTextarea
@@ -215,12 +347,14 @@ function Reply({ onSend, blocked }: { onSend(text: string): Promise<void>; block
           }
         }}
         aria-label="Reply"
-        placeholder={blocked ? "Pick an answer above first" : "Reply, or ask for something else"}
+        placeholder={placeholder}
         className="max-h-40"
       />
       <InputGroupAddon align="inline-end" className="self-end pb-1.5">
-        <Button size="icon-sm" aria-label="Send" disabled={!text.trim() || blocked} onClick={go}>
-          <ArrowUpIcon />
+        <Button size="xs" variant={queue ? "outline" : "default"} aria-label={queue ? "Queue" : "Send"} disabled={!text.trim() || blocked} onClick={go}>
+          {queue ? <ListPlusIcon /> : <ArrowUpIcon />}
+          {queue ? "Queue" : "Send"}
+          <Kbd className={cn("-mr-1 h-4 px-1 text-[10px]", !queue && "bg-primary-foreground/15 text-primary-foreground")}>↵</Kbd>
         </Button>
       </InputGroupAddon>
     </InputGroup>

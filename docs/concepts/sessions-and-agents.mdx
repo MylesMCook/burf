@@ -114,6 +114,15 @@ berth session turns devl/SESSION                            # the last ten
   or dropped it; its status says `never started`).
 - Each turn says who prompted it (`laptop:<name>`, `flow:<id>`, `phone`,
   `terminal` for a person at the terminal) and how often it waited for you.
+  When Claude Code asks for a permission, its `PermissionRequest` hook says
+  which tool and with what: the wait keeps the tool, a short summary of the
+  input (the command, or the file's path, never what it would write, at
+  most 300 characters) and Claude's reason, and the session shows it as
+  `ask` while it waits. This stays in the box's private ledger: it is never
+  put in events, the journal or hooks.
+- Prompts held with `--when idle` are listed by `GET
+  /v1/sessions/{name}/queue` (and counted as the session's `queued`); one can
+  be cancelled, or sent at once.
 - Agents sharing a worktree keep their own turns. An older hook that names
   only a folder counts for the one agent of its kind there; when there are
   several, it is recorded but ends no one's wait.
@@ -142,7 +151,9 @@ published, in order, when berthd starts, so an agent that finished meanwhile
 does not read as working forever.
 
 The hooks forward only identifiers and the working directory: prompts,
-messages and transcripts never leave the tool. A hook never fails or blocks
+messages and transcripts never leave the tool. The one exception is the
+summary of a permission request above, which only berthd's own ledger
+keeps. A hook never fails or blocks
 the agent that called it.
 
 ### In the app

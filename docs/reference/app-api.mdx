@@ -108,13 +108,17 @@ failed after it went out (the box may have acted on it). The box API:
 | `GET stats` | `Stats`: memory, disks, load, agents |
 | `GET services` | `Service[]`: listening ports by worktree |
 | `GET ports` | `Port[]` |
-| `GET info` | `{ name, os, arch, build, user?, home?, tools: string[], agents: AgentPreset[], capabilities: string[], adapters }`: `capabilities` lists `turns` and `journal` on boxes that have them; `adapters` says what each agent can report (`{ ready, started, waiting, finished, final_message, via }`) |
+| `GET info` | `{ name, os, arch, build, user?, home?, tools: string[], agents: AgentPreset[], capabilities: string[], adapters }`: `capabilities` lists `turns`, `queue`, `ask`, `diff` and `journal` on boxes that have them; `adapters` says what each agent can report (`{ ready, started, waiting, finished, final_message, via }`) |
 | `GET doctor` | `Check[]` |
 | `POST secrets/test` | `{ ref }` → `{ ok, length?, error? }`: resolves a [secret reference](/guides/secrets) on the box now (`op://…` or `env://…`), skipping its cache, and reports whether it could and the value's length, never the value. A malformed reference is `ok: false` with why |
 | `POST secrets/report` | Only on the box's own socket: what `berthd secret exec` resolved for a session or service, which variables resolved and which failed and why, never values |
 | `POST sessions/{name}/send` | `{ text, enter?, when?, force?, idem_key? }` → `{ sent, queued?, duplicate?, turn?, seq?, at }`: types a prompt, or with `when: "idle"` holds it until the agent is idle. With `when`, refused (409) while the agent waits for someone unless `force` ([orchestration](/guides/orchestration#send)) |
 | `GET sessions/{name}/wait?for=finished,waiting&after=TIME&timeout=10m` | `{ state, timed_out, turn? }`: `after` is an RFC 3339 time, placed in the box's journal order; `timeout` a duration, 1s to 1h (default 10m) |
-| `GET sessions/{name}/turns?limit=N` | `Turn[]`, oldest first: the session's last `N` turns (default 20) |
+| `GET sessions/{name}/turns?limit=N` | `Turn[]`, oldest first: the session's last `N` turns (default 20). A wait's `ask` is what the agent asked for, from its hooks: `{ tool?, input?, why?, message? }`, each at most 300 characters (the command or the file's path, never what it would write) |
+| `GET sessions/{name}/queue` | `{ turn, preview, length, origin?, at }[]`: the prompts held until the agent is idle (`when: "idle"`), oldest first; `preview` is the first 280 characters. The session's `queued` is their count. Boxes that serve it list `queue` in `capabilities` |
+| `DELETE sessions/{name}/queue/{turn}` | cancels a held prompt: its turn ends `lost` with status `cancelled` (404 once it was sent) |
+| `POST sessions/{name}/queue/{turn}/send` | `{ force? }` → `SendResult`: types a held prompt now, before the agent finishes. Refused (409) while the agent waits for someone unless `force` |
+| `GET sessions/{name}/diff?file=PATH` | `{ file, diff, untracked?, truncated? }`: one file's diff in the session's worktree against `HEAD` (a new file as all added), the first 64 KB. `PATH` is relative to the session's directory, or absolute inside it. Listed as `diff` in `capabilities` |
 | `GET turns/{id}` | `Turn`; encode the `#` in the ID as `%23` |
 | `GET turns/{id}/wait?until=end\|waiting&timeout=90s` | `{ turn, state, timed_out }`: returns when the turn ends (`finished`, `exited`, `lost`) or, with `until=waiting`, also when it waits for someone |
 | `POST exec` | `{ location, command, timeout? }` → `{ exit_code, output, truncated? }`; `timeout` defaults to 10m, at most 1h |
@@ -157,8 +161,9 @@ failed after it went out (the box may have acted on it). The box API:
 `agent` (`claude`, `codex`, …) and `agent_state` (`idle`, `running`,
 `waiting`, `finished`), plus `preset` (the agent preset it was started
 with), `turn` (its current or last turn), `state_seq` and `fidelity`
-(`hooks`, `partial` or `screen`). `exited` is true once the program has
-ended.
+(`hooks`, `partial` or `screen`), `queued` (prompts held until it is idle)
+and, while it waits, `ask` (what its hooks said it asks for). `exited` is
+true once the program has ended.
 
 A `Run` is `{ id, template, title?, status, steps, gate?, candidates?, usage?,
 cursor?, params?, created, updated, finished?, error?, … }`, with `status`

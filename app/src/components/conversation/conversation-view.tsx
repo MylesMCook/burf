@@ -1,9 +1,15 @@
-import { CheckIcon, ChevronRightIcon, FileTextIcon, PencilLineIcon, SearchIcon, TerminalIcon, XIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { CheckIcon, ChevronRightIcon, ClockIcon, FileTextIcon, GitCompareArrowsIcon, PencilLineIcon, RotateCwIcon, SearchIcon, SendHorizontalIcon, TerminalIcon, XIcon } from "lucide-react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
+import { Tip } from "@/components/tip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { Spinner } from "@/components/ui/spinner";
+import type { QueuedPrompt, SessionDiff } from "@/lib/api";
+import { errorMessage } from "@/lib/format";
+import { DiffLines, type LineComments } from "@/lib/git/diff-view";
+import { parseDiff } from "@/lib/git/parse";
 import { toolSummary, type TranscriptItem } from "@/lib/transcript";
 import { cn } from "@/lib/utils";
 import "@/components/conversation/conversation.css";
@@ -18,28 +24,44 @@ export interface ConversationViewProps {
   items: TranscriptItem[];
   // An answer to an ask: one of its choices' keys, or "yes" or "no".
   onAnswer(id: string, key: string): void;
+  // Edits open to their file's diff when the caller can read one.
+  edits?: EditActions;
+  // The agent's short name, for "Claude wants to run".
+  who?: string;
+  // Drawn after the transcript: prompts held for the agent.
+  tail?: ReactNode;
+  tailSize?: number;
   className?: string;
 }
 
-export function ConversationView({ items, onAnswer, className }: ConversationViewProps) {
+// EditActions read an edited file's current diff, keep comments on its
+// lines, and open it in Review.
+export interface EditActions {
+  load(file: string): Promise<SessionDiff>;
+  comments(file: string): LineComments | undefined;
+  review(file: string): void;
+}
+
+export function ConversationView({ items, onAnswer, edits, who = "The agent", tail, tailSize = 0, className }: ConversationViewProps) {
   const end = useRef<HTMLDivElement>(null);
   const last = items[items.length - 1];
   const grew = last?.kind === "text" ? last.text.length : last?.kind === "tools" ? (last.items?.length ?? 0) : 0;
   useEffect(() => {
     end.current?.scrollIntoView({ block: "end", behavior: "smooth" });
-  }, [items.length, grew]);
+  }, [items.length, grew, tailSize]);
 
   return (
     <div className={cn("mx-auto flex w-full max-w-[680px] flex-col gap-4 text-[14px] text-foreground leading-relaxed", className)}>
       {items.map((it) => (
-        <Item key={it.id} it={it} onAnswer={onAnswer} />
+        <Item key={it.id} it={it} onAnswer={onAnswer} edits={edits} who={who} />
       ))}
+      {tail}
       <div ref={end} />
     </div>
   );
 }
 
-function Item({ it, onAnswer }: { it: TranscriptItem; onAnswer(id: string, key: string): void }) {
+function Item({ it, onAnswer, edits, who }: { it: TranscriptItem; onAnswer(id: string, key: string): void; edits?: EditActions; who: string }) {
   switch (it.kind) {
     case "user":
       return <div className="cv-in max-w-[80%] self-end whitespace-pre-wrap rounded-2xl bg-muted px-3.5 py-2">{it.text}</div>;
@@ -50,7 +72,7 @@ function Item({ it, onAnswer }: { it: TranscriptItem; onAnswer(id: string, key: 
     case "tools":
       return <Tools it={it} />;
     case "edit":
-      return <Edit it={it} />;
+      return <Edit it={it} edits={edits} />;
     case "crew":
       return (
         <div className="cv-in flex flex-wrap items-center gap-1.5 text-muted-foreground">
@@ -65,8 +87,86 @@ function Item({ it, onAnswer }: { it: TranscriptItem; onAnswer(id: string, key: 
         </div>
       );
     case "ask":
-      return <Ask it={it} onAnswer={onAnswer} />;
+      return it.structured ? <Permission it={it} onAnswer={onAnswer} who={who} /> : <Ask it={it} onAnswer={onAnswer} />;
   }
+}
+
+// What the agent would do, in words: "wants to run", "wants to edit".
+export function permissionVerb(tool: string): { verb: string; what?: string; mono: boolean } {
+  const mcp = /^mcp__(.+?)__(.+)$/.exec(tool);
+  if (mcp) return { verb: "wants to use", what: `${mcp[2].replaceAll("_", " ")} (${mcp[1]})`, mono: false };
+  switch (tool) {
+    case "Bash":
+      return { verb: "wants to run", mono: true };
+    case "Edit":
+    case "MultiEdit":
+    case "NotebookEdit":
+      return { verb: "wants to edit", mono: true };
+    case "Write":
+      return { verb: "wants to write", mono: true };
+    case "Read":
+      return { verb: "wants to read", mono: true };
+    case "WebFetch":
+      return { verb: "wants to fetch", mono: true };
+    case "WebSearch":
+      return { verb: "wants to search the web for", mono: false };
+  }
+  return { verb: "wants to use", what: tool, mono: false };
+}
+
+// Permission is an approval the agent's hooks described: the tool and what
+// it would run or touch, matched to the options on its screen.
+function Permission({ it, onAnswer, who }: { it: Extract<TranscriptItem, { kind: "ask" }>; onAnswer(id: string, key: string): void; who: string }) {
+  const { verb, what, mono } = permissionVerb(it.tool);
+  const choices = it.choices ?? [];
+  if (it.decided) {
+    const c = choices.find((x) => x.key === it.decided);
+    const no = c?.label === "Deny";
+    return (
+      <div className="cv-in flex min-w-0 items-center gap-2 text-muted-foreground">
+        {no ? <XIcon className="size-3.5 shrink-0" /> : <CheckIcon className="size-3.5 shrink-0 text-success" />}
+        <span className="shrink-0">{no ? "Denied" : c?.label === "Always allow" ? "Always allowed" : "Allowed"}</span>
+        <span className={cn("truncate text-foreground/80", mono && "font-mono text-[12.5px]")}>{it.detail || what}</span>
+      </div>
+    );
+  }
+  return (
+    <Card className="cv-in border-warning/60">
+      <div className="flex flex-col gap-2 p-4">
+        <div className="flex items-center gap-2 font-medium">
+          <span className="size-2 rounded-full bg-warning" aria-hidden />
+          <span>
+            {who} {verb}
+            {what && <span className="font-normal"> {what}</span>}
+          </span>
+        </div>
+        {it.detail && (mono ? <code className="whitespace-pre-wrap break-all rounded-lg bg-muted/40 px-3 py-2 font-mono text-[12.5px]">{it.detail}</code> : <p className="whitespace-pre-wrap">{it.detail}</p>)}
+        {it.why && <p className="text-muted-foreground text-[13px]">{it.why}</p>}
+      </div>
+      <div className="flex flex-wrap items-center gap-2 border-t px-4 py-3">
+        {choices.map((c, i) => (
+          <Tip key={c.key} label={c.title ? `${c.key}. ${c.title}` : undefined}>
+            <Button size="sm" variant={i === 0 ? "default" : "outline"} className="max-w-full" onClick={() => onAnswer(it.id, c.key)}>
+              {c.label}
+            </Button>
+          </Tip>
+        ))}
+        {!choices.length && (
+          <span className="flex items-center gap-2 text-muted-foreground text-sm">
+            {it.reading ? (
+              <>
+                <Spinner className="size-3.5" />
+                Reading its options…
+              </>
+            ) : (
+              "Its options aren't on its screen: answer it in the terminal."
+            )}
+          </span>
+        )}
+        <span className="ml-auto text-muted-foreground text-xs">{who} waits for you</span>
+      </div>
+    </Card>
+  );
 }
 
 function Ask({ it, onAnswer }: { it: Extract<TranscriptItem, { kind: "ask" }>; onAnswer(id: string, key: string): void }) {
@@ -105,18 +205,126 @@ function Ask({ it, onAnswer }: { it: Extract<TranscriptItem, { kind: "ask" }>; o
   );
 }
 
-function Edit({ it }: { it: Extract<TranscriptItem, { kind: "edit" }> }) {
+type DiffLoad = { state: "loading" } | { state: "error"; message: string } | { state: "ready"; diff: SessionDiff };
+
+// Edit is one file the agent changed. With edits, it opens to the file's
+// current diff (what is uncommitted now, not just this edit), folded by
+// default, where lines take comments and Review is a click away.
+function Edit({ it, edits }: { it: Extract<TranscriptItem, { kind: "edit" }>; edits?: EditActions }) {
+  const [open, setOpen] = useState(false);
+  const [diff, setDiff] = useState<DiffLoad>();
+  // An opened diff scrolls into view once it has its height.
+  const panel = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (open) panel.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  }, [open, diff?.state]);
   const cut = it.file.lastIndexOf("/");
-  return (
-    <div className="cv-in flex items-center gap-2 self-start rounded-lg bg-muted/40 px-2.5 py-1.5 text-[13px]">
+  const load = () => {
+    if (!edits) return;
+    setDiff({ state: "loading" });
+    edits.load(it.file).then(
+      (d) => setDiff({ state: "ready", diff: d }),
+      (err) => setDiff({ state: "error", message: errorMessage(err) }),
+    );
+  };
+  const toggle = () => {
+    if (!open && (!diff || diff.state === "error")) load();
+    setOpen(!open);
+  };
+  const label = (
+    <>
       <PencilLineIcon className="size-3.5 text-muted-foreground" />
       <span className="text-muted-foreground">Edited</span>
-      <span className="font-mono text-[12.5px]">
+      <span className="min-w-0 truncate font-mono text-[12.5px]">
         <span className="text-muted-foreground">{it.file.slice(0, cut + 1)}</span>
         {it.file.slice(cut + 1)}
       </span>
       <span className="font-medium font-mono text-[12px] text-success-foreground tabular-nums">+{it.added}</span>
       <span className="font-medium font-mono text-[12px] text-destructive-foreground tabular-nums">−{it.removed}</span>
+    </>
+  );
+  if (!edits) return <div className="cv-in flex min-w-0 items-center gap-2 self-start rounded-lg bg-muted/40 px-2.5 py-1.5 text-[13px]">{label}</div>;
+  const lines = diff?.state === "ready" ? parseDiff(diff.diff.diff) : [];
+  const comments = edits.comments(it.file);
+  return (
+    <div className={cn("cv-in flex min-w-0 flex-col", open ? "self-stretch" : "self-start")}>
+      <div className="flex min-w-0 items-center gap-1">
+        <button
+          type="button"
+          onClick={toggle}
+          aria-expanded={open}
+          className="flex min-w-0 items-center gap-2 rounded-lg bg-muted/40 px-2.5 py-1.5 text-left text-[13px] outline-none hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <ChevronRightIcon className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform duration-200", open && "rotate-90")} />
+          {label}
+        </button>
+        {open && (
+          <Button size="xs" variant="ghost" className="ml-auto shrink-0 text-muted-foreground" onClick={() => edits.review(it.file)}>
+            <GitCompareArrowsIcon />
+            Open in Review
+          </Button>
+        )}
+      </div>
+      {open && (
+        <div ref={panel} className="mt-2 scroll-mb-4 overflow-hidden rounded-lg border bg-card">
+          {(!diff || diff.state === "loading") && (
+            <div className="flex h-16 items-center justify-center text-muted-foreground text-sm">
+              <Spinner className="mr-2 size-4" />
+              Reading the diff…
+            </div>
+          )}
+          {diff?.state === "error" && (
+            <div className="flex items-center gap-2 px-3 py-3 text-sm">
+              <span className="min-w-0 flex-1 text-destructive-foreground">Couldn't read the diff: {diff.message}</span>
+              <Button size="xs" variant="outline" onClick={load}>
+                <RotateCwIcon />
+                Retry
+              </Button>
+            </div>
+          )}
+          {diff?.state === "ready" && !lines.length && <p className="px-3 py-3 text-muted-foreground text-sm">No changes left in this file: they were committed or undone since.</p>}
+          {diff?.state === "ready" && lines.length > 0 && (
+            <>
+              <div className="flex items-center gap-2 border-b bg-muted/30 px-3 py-1 text-muted-foreground text-xs">
+                <span className="min-w-0 flex-1 truncate">{diff.diff.untracked ? "A new file" : "Uncommitted changes in this file"} · hover a line to comment</span>
+                {diff.diff.truncated && <span className="shrink-0 text-warning">first 64 KB</span>}
+              </div>
+              <div className="max-h-96 overflow-auto font-mono text-[12px] leading-5 [font-variant-ligatures:none]">
+                <DiffLines lines={lines} comments={comments} />
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// QueuedBubble is a prompt the box holds until the agent finishes: what it
+// says, and the two things to do about it.
+export function QueuedBubble({ q, who, onSendNow, onCancel }: { q: QueuedPrompt; who: string; onSendNow(): Promise<void>; onCancel(): Promise<void> }) {
+  const [busy, setBusy] = useState<"send" | "cancel">();
+  const run = (what: "send" | "cancel", fn: () => Promise<void>) => {
+    setBusy(what);
+    fn().finally(() => setBusy(undefined));
+  };
+  return (
+    <div className="cv-in flex max-w-[80%] flex-col items-end gap-1 self-end">
+      <div className="whitespace-pre-wrap rounded-2xl border border-dashed bg-background px-3.5 py-2 text-foreground/80">
+        {q.preview}
+        {q.length > q.preview.length && <span className="text-muted-foreground"> ({q.length.toLocaleString()} characters in all)</span>}
+      </div>
+      <div className="flex items-center gap-1 text-muted-foreground text-xs">
+        <ClockIcon className="size-3" aria-hidden />
+        <span className="mr-1">Queued: sends when {who} finishes</span>
+        <Button size="xs" variant="ghost" loading={busy === "send"} disabled={!!busy} onClick={() => run("send", onSendNow)}>
+          <SendHorizontalIcon />
+          Send now
+        </Button>
+        <Button size="xs" variant="ghost" loading={busy === "cancel"} disabled={!!busy} onClick={() => run("cancel", onCancel)}>
+          Cancel
+        </Button>
+      </div>
     </div>
   );
 }

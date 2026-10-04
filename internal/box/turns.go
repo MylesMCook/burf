@@ -12,6 +12,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+	"unicode/utf8"
 
 	"github.com/sean-brydon/berthd/internal/events"
 	"github.com/sean-brydon/berthd/internal/integrations/adapters"
@@ -58,6 +59,20 @@ type Span struct {
 	Start  time.Time `json:"start"`
 	End    time.Time `json:"end,omitzero"`
 	Reason string    `json:"reason,omitempty"`
+	// Ask is what the agent asked for, from its own hooks, when it said.
+	Ask *Ask `json:"ask,omitempty"`
+}
+
+// Ask is a waiting agent's request, from its hooks rather than its screen:
+// the tool it wants to use, a short summary of the input (the command, or
+// the file's path; never what it would write), its reason, and the
+// message it showed. Each is at most adapters.AskLimit long. It is kept
+// only here, in the ledger's private file: never in events.
+type Ask struct {
+	Tool    string `json:"tool,omitempty"`
+	Input   string `json:"input,omitempty"`
+	Why     string `json:"why,omitempty"`
+	Message string `json:"message,omitempty"`
 }
 
 // SessionState is what an agent session is doing now.
@@ -71,6 +86,10 @@ type SessionState struct {
 	Fidelity string    `json:"fidelity,omitempty"`
 	// AgentSessionID is the agent's own conversation ID, from its hooks.
 	AgentSessionID string `json:"agent_session_id,omitempty"`
+	// Queued is how many prompts the inbox holds for it; Ask what it asks
+	// for while it waits, when its hooks said.
+	Queued int  `json:"queued,omitempty"`
+	Ask    *Ask `json:"ask,omitempty"`
 }
 
 func (t Turn) open() bool {
@@ -712,9 +731,13 @@ func (t *Turns) Track(sess Session) SessionState {
 }
 
 func (s *sessTrack) snapshot() SessionState {
-	out := SessionState{Session: s.Name, Agent: s.Agent, State: s.State, Since: s.Since, Seq: s.Seq, Fidelity: s.Fidelity, AgentSessionID: s.AgentSessionID}
+	out := SessionState{Session: s.Name, Agent: s.Agent, State: s.State, Since: s.Since, Seq: s.Seq, Fidelity: s.Fidelity, AgentSessionID: s.AgentSessionID, Queued: len(s.inbox)}
 	if tr := s.current(); tr != nil {
 		out.Turn = tr.ID
+		if n := len(tr.Waits); tr.State == "waiting" && n > 0 && tr.Waits[n-1].End.IsZero() && tr.Waits[n-1].Ask != nil {
+			ask := *tr.Waits[n-1].Ask
+			out.Ask = &ask
+		}
 	} else if p := s.oldest("pending"); p != nil {
 		out.Turn = p.ID
 	} else if n := len(s.Turns); n > 0 {
@@ -938,6 +961,146 @@ func (t *Turns) Queue(name, text string, enter bool, origin, idem string) (Turn,
 		t.kickInbox()
 	}
 	return *tr, nil
+}
+
+// NoteAsk records what a waiting agent asks for on its turn's open wait.
+// data is the agent event it came with, already applied, which names the
+// session; an ask for an agent that no longer waits is dropped. A
+// permission request replaces the ask; a notification's message only
+// fills in what it lacks.
+func (t *Turns) NoteAsk(data map[string]any, raw any) {
+	m, _ := raw.(map[string]any)
+	if len(m) == 0 {
+		return
+	}
+	ask := Ask{Tool: askStr(m, "tool"), Input: askStr(m, "input"), Why: askStr(m, "why"), Message: askStr(m, "message")}
+	if ask == (Ask{}) {
+		return
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.init()
+	s, _ := t.resolve(events.Event{Data: data})
+	if s == nil {
+		return
+	}
+	cur := s.current()
+	if cur == nil || cur.State != "waiting" {
+		return
+	}
+	n := len(cur.Waits)
+	if n == 0 || !cur.Waits[n-1].End.IsZero() {
+		return
+	}
+	w := &cur.Waits[n-1]
+	switch {
+	case w.Ask == nil:
+		w.Ask = &ask
+	case ask.Tool != "":
+		if ask.Message == "" {
+			ask.Message = w.Ask.Message
+		}
+		w.Ask = &ask
+	case w.Ask.Message == "":
+		w.Ask.Message = ask.Message
+	}
+	t.bump()
+}
+
+// askStr reads one of an ask's strings, capped again: the API takes them
+// from any local caller.
+func askStr(m map[string]any, k string) string {
+	s, _ := m[k].(string)
+	if len(s) > adapters.AskLimit {
+		cut := adapters.AskLimit
+		for cut > 0 && !utf8.RuneStart(s[cut]) {
+			cut--
+		}
+		s = s[:cut]
+	}
+	return s
+}
+
+// QueuedPrompt is one prompt the inbox holds, as the app shows it: the
+// start of its text, never the whole of a long one.
+type QueuedPrompt struct {
+	Turn    string `json:"turn"`
+	Preview string `json:"preview"`
+	// Length is the whole prompt's, in characters.
+	Length int       `json:"length"`
+	Origin string    `json:"origin,omitempty"`
+	At     time.Time `json:"at"`
+}
+
+// queuePreview is how much of a held prompt the queue shows.
+const queuePreview = 280
+
+// Queued lists the prompts held for a session, oldest first.
+func (t *Turns) Queued(name string) []QueuedPrompt {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.init()
+	s := t.sess[name]
+	if s == nil {
+		return nil
+	}
+	out := make([]QueuedPrompt, 0, len(s.inbox))
+	for _, it := range s.inbox {
+		p := it.Text
+		if len(p) > queuePreview {
+			cut := queuePreview
+			for cut > 0 && !utf8.RuneStart(p[cut]) {
+				cut--
+			}
+			p = p[:cut] + "…"
+		}
+		out = append(out, QueuedPrompt{Turn: it.Turn, Preview: p, Length: utf8.RuneCountInString(it.Text), Origin: it.Origin, At: it.At})
+	}
+	return out
+}
+
+var errNotQueued = httpError{404, "that prompt is no longer queued: it was sent or cancelled"}
+
+// takeQueued removes a held prompt from the inbox and returns it; its turn
+// stays queued until it is typed (or cancelled).
+func (t *Turns) takeQueued(name, turn string) (inboxItem, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.init()
+	s := t.sess[name]
+	if s == nil {
+		return inboxItem{}, ErrUnknownSession
+	}
+	for i, it := range s.inbox {
+		if it.Turn == turn {
+			s.inbox = append(s.inbox[:i:i], s.inbox[i+1:]...)
+			t.inboxD = true
+			t.bump()
+			return it, nil
+		}
+	}
+	return inboxItem{}, errNotQueued
+}
+
+// putBack returns a held prompt that could not be typed to the front of
+// the inbox.
+func (t *Turns) putBack(it inboxItem) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if s := t.sess[it.Session]; s != nil {
+		s.inbox = append([]inboxItem{it}, s.inbox...)
+		t.inboxD = true
+		t.bump()
+	}
+}
+
+// Cancel drops a held prompt: its turn ends lost, "cancelled".
+func (t *Turns) Cancel(name, turn string) error {
+	if _, err := t.takeQueued(name, turn); err != nil {
+		return err
+	}
+	t.endQueued(name, turn, "cancelled")
+	return nil
 }
 
 // Ready says whether a prompt can be typed into the session now: its agent

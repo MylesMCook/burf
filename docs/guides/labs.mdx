@@ -38,7 +38,22 @@ agent's own transcript as a calm list: what you asked, its replies, tool
 calls folded into groups ("Read 5 files"), edits with line counts, and the
 helpers it sent out, which also show as **Crew** in the floating panel. A
 question shows as buttons for its options; answering types the option into
-the agent. Berth reads Claude Code's and Codex's transcripts on the box
+the agent. A permission reads from Claude Code's own hook ("Claude wants to
+run `pnpm test`", with its reason), with **Allow**, **Always allow** when the
+agent offers it, and **Deny**, matched to the options on its screen; agents
+without hooks fall back to reading the screen.
+
+An edit opens to the file's current diff in the worktree (folded until you
+open it), with **Open in Review**. Hover a line to comment on it; comments
+also work in Review, and **Send to agent** sends them as one short prompt
+(each file and line with your note, never the code around it) that waits
+until the agent is idle. Comments are kept on this Mac per worktree until
+they are sent or dismissed.
+
+The reply box says what Enter does: **Send**, or **Queue** while the agent
+works. A queued reply shows under the conversation ("Queued: sends when
+Claude finishes") until the box types it in, with **Send now** (it asks
+first if the agent is waiting on you) and **Cancel**. Berth reads Claude Code's and Codex's transcripts on the box
 (`GET /v1/sessions/{name}/transcript`); for other agents, or on an older
 box, the pane says so and offers the terminal. Settings → Labs chooses
 which view agent panes open in.
