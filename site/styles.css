@@ -239,6 +239,9 @@ code {
 /* Hero: the harbour band, then the pitch at its foot, where it dissolves. */
 .hero {
   position: relative;
+  /* The whole page: the harbour and what's under it fill the window. */
+  min-height: 100svh;
+  padding-bottom: 48px;
 }
 .harbour {
   position: relative;
