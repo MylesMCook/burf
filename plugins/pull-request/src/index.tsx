@@ -1,4 +1,4 @@
-import { definePlugin, useEvent, worktreeLocation, type WorktreePanelProps } from "@berth/plugin";
+import { definePlugin, sessionName, useEvent, useSessions, worktreeLocation, type WorktreePanelProps } from "@berth/plugin";
 import {
   AlertDialog,
   AlertDialogClose,
@@ -9,6 +9,7 @@ import {
   AlertDialogTitle,
   Badge,
   Button,
+  Checkbox,
   Empty,
   EmptyDescription,
   EmptyHeader,
@@ -20,12 +21,16 @@ import {
   Icon,
   Input,
   Kbd,
+  Menu,
+  MenuItem,
+  MenuPopup,
+  MenuTrigger,
   Skeleton,
   Switch,
   Textarea,
   cn,
 } from "@berth/plugin/ui";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { type Check, checkState, type CheckState, FIELDS, type Outcome, type PR, plainText, quote, readOutcome, since } from "./gh";
 
@@ -37,7 +42,7 @@ export default definePlugin((berth) => {
   berth.addCommand({ id: "open", title: "Show this worktree's pull request", group: "Git", run: () => berth.openPanel("pr") });
 });
 
-function PullRequestPanel({ berth, box, location, worktree, main }: WorktreePanelProps) {
+function PullRequestPanel({ berth, box, location, worktree, main, path }: WorktreePanelProps) {
   const where = worktreeLocation({ location, worktree, main });
   const [outcome, setOutcome] = useState<Outcome>();
   const [stamp, setStamp] = useState(0);
@@ -65,7 +70,7 @@ function PullRequestPanel({ berth, box, location, worktree, main }: WorktreePane
   if (!outcome) return <Loading />;
   switch (outcome.kind) {
     case "pr":
-      return <PRView pr={outcome.pr} berth={berth} onRefresh={refresh} />;
+      return <PRView pr={outcome.pr} berth={berth} box={box} path={path} onRefresh={refresh} />;
     case "none":
       return <NoPR run={run} worktree={worktree} onCreated={refresh} berth={berth} />;
     case "no-gh":
@@ -118,7 +123,7 @@ const decision: Record<string, { label: string; tone: string }> = {
   REVIEW_REQUIRED: { label: "Review required", tone: "text-warning" },
 };
 
-function PRView({ pr, berth, onRefresh }: { pr: PR; berth: WorktreePanelProps["berth"]; onRefresh(): void }) {
+function PRView({ pr, berth, box, path, onRefresh }: { pr: PR; berth: WorktreePanelProps["berth"]; box: string; path: string; onRefresh(): void }) {
   const st = stateBadge[pr.isDraft && pr.state === "OPEN" ? "DRAFT" : pr.state];
   const checks = pr.statusCheckRollup ?? [];
   const counts = checks.reduce<Record<CheckState, number>>((n, c) => ({ ...n, [checkState(c)]: n[checkState(c)] + 1 }), { pass: 0, fail: 0, pending: 0, skip: 0 });
@@ -130,6 +135,15 @@ function PRView({ pr, berth, onRefresh }: { pr: PR; berth: WorktreePanelProps["b
   const visible = fold ? sorted.filter((c) => checkState(c) === "fail" || checkState(c) === "pending") : sorted;
   const hidden = sorted.length - visible.length;
   const comments = (pr.comments ?? []).slice(-8).reverse();
+  // Pick failing checks, reviews and comments, and hand them to the agent.
+  const [picked, setPicked] = useState<Map<string, PrItem>>(new Map());
+  const toggle = (p: PrItem) =>
+    setPicked((m) => {
+      const n = new Map(m);
+      if (n.has(p.key)) n.delete(p.key);
+      else n.set(p.key, p);
+      return n;
+    });
 
   return (
     <div className="mx-auto max-w-3xl space-y-4 p-5">
@@ -175,7 +189,7 @@ function PRView({ pr, berth, onRefresh }: { pr: PR; berth: WorktreePanelProps["b
           ) : (
             <ul className="divide-y">
               {visible.map((c, i) => (
-                <CheckRow key={i} check={c} berth={berth} />
+                <CheckRow key={i} check={c} berth={berth} pick={checkPick(c)} picked={picked} onToggle={toggle} />
               ))}
               {hidden > 0 && (
                 <li>
@@ -209,7 +223,8 @@ function PRView({ pr, berth, onRefresh }: { pr: PR; berth: WorktreePanelProps["b
           ) : (
             <ul className="divide-y">
               {reviews.map((r, i) => (
-                <li key={i} className="flex items-center gap-2 px-4 py-2 text-sm">
+                <li key={i} className="group/row flex items-center gap-2 px-4 py-2 text-sm">
+                  {r.body?.trim() ? <PickBox pick={reviewPick(r)} picked={picked} onToggle={toggle} /> : <span className="w-4 shrink-0" />}
                   <Icon name={r.state === "APPROVED" ? "CircleCheck" : r.state === "CHANGES_REQUESTED" ? "CircleX" : "MessageSquare"} className={cn("size-4", r.state === "APPROVED" ? "text-success" : r.state === "CHANGES_REQUESTED" ? "text-destructive" : "text-muted-foreground")} />
                   <span className="font-medium">{r.author?.login ?? "someone"}</span>
                   <span className="text-muted-foreground">{reviewLabel(r.state)}</span>
@@ -229,31 +244,148 @@ function PRView({ pr, berth, onRefresh }: { pr: PR; berth: WorktreePanelProps["b
           <FramePanel className="p-0">
             <ul className="divide-y">
               {comments.map((c, i) => (
-                <li key={i} className="px-4 py-3 text-sm">
-                  <div className="mb-1 flex items-center gap-2 text-xs">
-                    <span className="font-medium">{c.author?.login ?? "someone"}</span>
-                    <span className="text-muted-foreground">{since(c.createdAt)}</span>
+                <li key={i} className={cn("group/row flex gap-2.5 px-4 py-3 text-sm", picked.has(commentPick(c).key) && "bg-accent/40")}>
+                  <PickBox pick={commentPick(c)} picked={picked} onToggle={toggle} className="mt-0.5" />
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex items-center gap-2 text-xs">
+                      <span className="font-medium">{c.author?.login ?? "someone"}</span>
+                      <span className="text-muted-foreground">{since(c.createdAt)}</span>
+                    </div>
+                    <p className="line-clamp-4 whitespace-pre-wrap text-muted-foreground">{plainText(c.body)}</p>
                   </div>
-                  <p className="line-clamp-4 whitespace-pre-wrap text-muted-foreground">{plainText(c.body)}</p>
                 </li>
               ))}
             </ul>
           </FramePanel>
         </Frame>
       )}
+      {picked.size > 0 && <SendBar pr={pr} picked={[...picked.values()]} berth={berth} box={box} path={path} onClear={() => setPicked(new Map())} />}
+    </div>
+  );
+}
+
+// A thing on the PR someone picked to hand to the agent: a failing check, a
+// review or a comment, as a line of the prompt.
+interface PrItem {
+  key: string;
+  label: string;
+  text: string;
+}
+
+const clip = (s: string, n: number) => (s.length > n ? `${s.slice(0, n).trimEnd()}…` : s);
+
+function checkPick(c: Check): PrItem {
+  const url = c.detailsUrl || c.targetUrl || "";
+  const run = url.match(/\/actions\/runs\/(\d+)/)?.[1];
+  const name = c.name ?? c.context ?? "a check";
+  return {
+    key: `check:${name}:${url}`,
+    label: name,
+    text: `The check "${name}" ${checkState(c) === "fail" ? "failed" : "is not passing"}${url ? ` (${url})` : ""}.${run ? ` See why with \`gh run view ${run} --log-failed\`.` : ""}`,
+  };
+}
+
+function reviewPick(r: NonNullable<PR["reviews"]>[number]): PrItem {
+  const who = r.author?.login ?? "a reviewer";
+  return { key: `review:${who}:${r.submittedAt}`, label: `${who}'s review`, text: `${who} ${reviewLabel(r.state)}: ${clip(plainText(r.body ?? ""), 800)}` };
+}
+
+function commentPick(c: NonNullable<PR["comments"]>[number]): PrItem {
+  const who = c.author?.login ?? "someone";
+  return { key: `comment:${who}:${c.createdAt}`, label: `${who}'s comment`, text: `${who} commented${c.url ? ` (${c.url})` : ""}: ${clip(plainText(c.body), 800)}` };
+}
+
+function PickBox({ pick, picked, onToggle, className }: { pick: PrItem; picked: Map<string, PrItem>; onToggle(p: PrItem): void; className?: string }) {
+  const on = picked.has(pick.key);
+  return (
+    <Checkbox
+      checked={on}
+      onCheckedChange={() => onToggle(pick)}
+      aria-label={`Pick ${pick.label}`}
+      className={cn("shrink-0 transition-opacity", !on && picked.size === 0 && "opacity-0 group-hover/row:opacity-100 focus-visible:opacity-100", className)}
+    />
+  );
+}
+
+// The prompt the picked items make: short, one line each, links rather than
+// whole logs (the agent can read those itself).
+function promptFor(pr: PR, picks: PrItem[]): string {
+  const lines = picks.map((p, i) => `${i + 1}. ${p.text}`);
+  return clip(`On pull request #${pr.number} (${pr.url}), please look at ${picks.length === 1 ? "this" : `these ${picks.length}`} and fix what needs fixing:\n\n${lines.join("\n")}`, 6000);
+}
+
+function SendBar({ pr, picked, berth, box, path, onClear }: { pr: PR; picked: PrItem[]; berth: WorktreePanelProps["berth"]; box: string; path: string; onClear(): void }) {
+  const sessions = useSessions(box);
+  const agents = useMemo(() => (sessions ?? []).filter((s) => s.agent && !s.exited && s.dir === path), [sessions, path]);
+  const [busy, setBusy] = useState(false);
+  const text = promptFor(pr, picked);
+  const send = async (name: string) => {
+    setBusy(true);
+    try {
+      await berth.orchestrate.send(box, name, text, { when: "idle" });
+      berth.notify("Sent to the agent", `${picked.length} item${picked.length === 1 ? "" : "s"} from #${pr.number}; queued if it's busy.`);
+      onClear();
+    } catch (err) {
+      berth.notify("Couldn't send it", String((err as Error)?.message ?? err));
+    } finally {
+      setBusy(false);
+    }
+  };
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      berth.notify("Copied", "Paste it to any agent.");
+    } catch {
+      berth.notify("Couldn't copy", "The clipboard refused it.");
+    }
+  };
+  return (
+    <div className="sticky bottom-3 z-10 flex w-fit max-w-full items-center gap-2 rounded-xl border bg-popover px-3 py-2 text-sm shadow-lg">
+      <span className="tabular-nums">{picked.length} picked</span>
+      {agents.length === 1 ? (
+        <Button size="sm" loading={busy} onClick={() => void send(agents[0].name)}>
+          <Icon name="Send" className="size-3.5" />
+          Send to {sessionName(agents[0], { sessions })}
+        </Button>
+      ) : agents.length > 1 ? (
+        <Menu>
+          <MenuTrigger render={<Button size="sm" loading={busy} />}>
+            <Icon name="Send" className="size-3.5" />
+            Send to agent
+            <Icon name="ChevronDown" className="size-3.5" />
+          </MenuTrigger>
+          <MenuPopup align="start">
+            {agents.map((a) => (
+              <MenuItem key={a.name} onClick={() => void send(a.name)}>
+                {sessionName(a, { sessions })}
+              </MenuItem>
+            ))}
+          </MenuPopup>
+        </Menu>
+      ) : (
+        <span className="text-muted-foreground text-xs">No agent in this worktree</span>
+      )}
+      <Button size="sm" variant="outline" onClick={() => void copy()}>
+        <Icon name="Copy" className="size-3.5" />
+        Copy
+      </Button>
+      <Button size="sm" variant="ghost" onClick={onClear} aria-label="Clear">
+        <Icon name="X" className="size-3.5" />
+      </Button>
     </div>
   );
 }
 
 const order = (s: CheckState) => ({ fail: 0, pending: 1, pass: 2, skip: 3 })[s];
 
-function CheckRow({ check, berth }: { check: Check; berth: WorktreePanelProps["berth"] }) {
+function CheckRow({ check, berth, pick, picked, onToggle }: { check: Check; berth: WorktreePanelProps["berth"]; pick: PrItem; picked: Map<string, PrItem>; onToggle(p: PrItem): void }) {
   const s = checkState(check);
   const url = check.detailsUrl || check.targetUrl;
   const icon = { pass: "CircleCheck", fail: "CircleX", pending: "LoaderCircle", skip: "CircleMinus" }[s];
   const tone = { pass: "text-success", fail: "text-destructive", pending: "text-warning animate-spin", skip: "text-muted-foreground" }[s];
   return (
-    <li className="flex items-center gap-2.5 px-4 py-2 text-sm">
+    <li className={cn("group/row flex items-center gap-2.5 px-4 py-2 text-sm", picked.has(pick.key) && "bg-accent/40")}>
+      {s === "fail" ? <PickBox pick={pick} picked={picked} onToggle={onToggle} /> : <span className="w-4 shrink-0" />}
       <Icon name={icon} className={cn("size-4 shrink-0", tone)} />
       <span className="min-w-0 truncate">{check.name ?? check.context}</span>
       {check.workflowName && <span className="truncate text-muted-foreground text-xs">{check.workflowName}</span>}
