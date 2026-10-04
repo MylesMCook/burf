@@ -1,4 +1,4 @@
-import { ChevronsUpDownIcon, CommandIcon, EllipsisIcon, FolderIcon, GitBranchIcon, GitBranchPlusIcon, HouseIcon, KeyboardIcon, Minimize2Icon, SettingsIcon } from "lucide-react";
+import { ChevronsUpDownIcon, CommandIcon, EllipsisIcon, PencilIcon, FolderIcon, GitBranchIcon, GitBranchPlusIcon, HouseIcon, KeyboardIcon, Minimize2Icon, SettingsIcon } from "lucide-react";
 import { useMemo } from "react";
 
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
@@ -14,6 +14,8 @@ import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuShortcut, MenuSub, MenuSubPopup, MenuSubTrigger, MenuTrigger } from "@/components/ui/menu";
 import { ViewSwitch } from "@/components/workspace/pane";
+import { TitleInput } from "@/components/workspace/tab-strip";
+import { renameSession, startRenaming, useRenaming } from "@/lib/session-title";
 import { useAllSessions } from "@/hooks/use-agent-counts";
 import { hasTrafficLights } from "@/lib/api";
 import { agentLabel, agentOf, sessionName, type SessionState, sessionState, worktreeOf } from "@/lib/derive";
@@ -54,7 +56,7 @@ function useHere() {
   const agent = session ? agentOf(session) : undefined;
   // A titled agent is named after its work; its worktree is in the tooltip.
   const place = ws.ref.main ? ws.ref.location : ws.ref.worktree;
-  return { kind: "worktree" as const, name: session?.title?.trim() || place, place, agent: agent ?? (c?.kind === "terminal" ? c.agent : undefined), state };
+  return { kind: "worktree" as const, name: session?.title?.trim() || (c?.kind === "terminal" ? c.title : undefined) || place, place, agent: agent ?? (c?.kind === "terminal" ? c.agent : undefined), state };
 }
 
 const ORDER = { waiting: 0, running: 1, finished: 2 } as const;
@@ -246,7 +248,34 @@ function AllWorktrees() {
 
 // WorktreeMenu is the open worktree's actions, as the sidebar's ⋯ on its
 // row: open in an editor, new agent or terminal, stop its sessions, remove.
+// useFocusedSession is the session in the focused pane, if it is one.
+function useFocusedSession() {
+  const ws = useWorkspaces((s) => (s.current ? s.spaces[s.current] : undefined));
+  const tab = ws?.tabs.find((t) => t.id === ws.active);
+  const c = tab ? leaves(tab.root).find((l) => l.id === tab.focus)?.content : undefined;
+  const session = useStore((s) => (c?.kind === "terminal" ? s.boxes[c.box]?.sessions?.find((x) => x.name === c.session) : undefined));
+  return c?.kind === "terminal" && session ? { box: c.box, session } : undefined;
+}
+
+// ZenRename names the focused agent's work in place of the switcher: zen
+// has no tabs to double-click.
+function ZenRename({ box, s }: { box: string; s: { name: string; title?: string } }) {
+  return (
+    <div className="flex h-8 w-72 min-w-0 items-center text-sm">
+      <TitleInput
+        initial={s.title ?? ""}
+        placeholder="Name this session"
+        onDone={(next) => {
+          useRenaming.setState({ key: undefined });
+          if (next !== undefined && next !== (s.title ?? "")) void renameSession(box, s.name, next);
+        }}
+      />
+    </div>
+  );
+}
+
 function WorktreeMenu() {
+  const focused = useFocusedSession();
   const ref = useWorkspaces((s) => (s.current ? s.spaces[s.current]?.ref : undefined));
   const workspace = useStore((s) => s.view.kind === "workspace");
   const loc = useStore((s) => (ref ? s.boxes[ref.box]?.locations?.find((l) => l.name === ref.location) : undefined));
@@ -260,6 +289,15 @@ function WorktreeMenu() {
         </MenuTrigger>
       </Tip>
       <MenuPopup align="start" className="min-w-56">
+        {focused && (
+          <>
+            <MenuItem onClick={() => startRenaming(focused.box, focused.session.name)}>
+              <PencilIcon />
+              Rename session…
+            </MenuItem>
+            <MenuSeparator />
+          </>
+        )}
         <ActionItems items={worktreeActions(ref.box, loc, wt).filter((a) => !(a.type === "item" && a.label === "Open"))} />
       </MenuPopup>
     </Menu>
@@ -286,6 +324,8 @@ export function ZenBar() {
   const noWorktree = useWorkspaces((s) => !s.current);
   const workspace = useStore((s) => s.view.kind === "workspace");
   const home = noWorktree && workspace;
+  const focused = useFocusedSession();
+  const renaming = useRenaming((s) => !!focused && s.key === `${focused.box}/${focused.session.name}`);
   return (
     <div
       data-tauri-drag-region
@@ -295,7 +335,13 @@ export function ZenBar() {
         home ? "absolute inset-x-0 top-0 z-30 [&_button]:bg-background/70 [&_button]:backdrop-blur-sm" : "border-b bg-background",
       )}
     >
-      <ZenSwitcher />
+      {renaming && focused ? (
+        <ZenRename box={focused.box} s={focused.session} />
+      ) : (
+        <div className="contents" onDoubleClick={() => focused && startRenaming(focused.box, focused.session.name)}>
+          <ZenSwitcher />
+        </div>
+      )}
       <WorktreeMenu />
       <div data-tauri-drag-region className="flex-1 self-stretch" />
       <FocusedViewSwitch />
