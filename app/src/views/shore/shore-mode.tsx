@@ -1,5 +1,5 @@
 import { ArrowLeftIcon, PanelLeftIcon, TerminalIcon } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { useEffect } from "react";
 
 import { AgentIcon } from "@/components/agent-glyph";
 import { useAllSessions } from "@/hooks/use-agent-counts";
@@ -10,7 +10,7 @@ import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { focusSession } from "@/lib/workspaces";
-import { Backdrop, lightFor } from "@/views/shore/backdrop";
+import { Backdrop, useLight } from "@/views/shore/backdrop";
 import { type Send, Composer } from "@/views/shore/composer";
 import { CrewPanel } from "@/views/shore/crew-panel";
 import { type Boat, Harbour, useBoats } from "@/views/shore/harbour";
@@ -37,7 +37,7 @@ export function ShoreMode() {
   const all = useAllSessions();
   const boats = useBoats(all);
   const open = view.kind === "session";
-  const light = useMemo(() => lightFor(), []);
+  const light = useLight();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
