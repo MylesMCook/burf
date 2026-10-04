@@ -36,7 +36,7 @@ type Turn struct {
 	// Sent its time.
 	SentSeq int64     `json:"sent_seq,omitempty"`
 	Sent    time.Time `json:"sent,omitzero"`
-	EndSeq  int64 `json:"end_seq,omitempty"`
+	EndSeq  int64     `json:"end_seq,omitempty"`
 	// State is queued (held in the inbox), pending (sent, not started),
 	// running, waiting, finished, exited or lost.
 	State   string    `json:"state"`
