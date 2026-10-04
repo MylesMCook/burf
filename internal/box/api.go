@@ -191,6 +191,7 @@ func (b *Box) Mount(s *wire.Server) {
 	route("GET /v1/events", b.streamEvents)
 	route("POST /v1/events", b.emit)
 	b.mountRuns(route)
+	b.mountHistory(route)
 	b.mountBrowser(route)
 	b.mountPairing(s, route)
 }

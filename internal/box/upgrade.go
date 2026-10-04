@@ -127,8 +127,9 @@ func (b *Box) handleInfo(w http.ResponseWriter, r *http.Request) error {
 func (b *Box) Capabilities() []string {
 	// diff: GET .../diff; titles: sessions carry a title (PATCH
 	// /v1/sessions/{name} renames); sample: POST /v1/locations/new makes a
-	// sample project.
-	caps := []string{"transcript", "diff", "titles", "sample"}
+	// sample project; history: older transcript pages, helpers' own
+	// conversations, fork and rewind (history.go).
+	caps := []string{"transcript", "diff", "titles", "sample", "history"}
 	if b.Turns != nil {
 		// controls: POST .../keys, .../interrupt and .../mode, GET
 		// .../controls (controls.go).

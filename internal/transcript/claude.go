@@ -15,19 +15,22 @@ import (
 type claudeParser struct{}
 
 type claudeLine struct {
-	Type      string          `json:"type"`
-	Subtype   string          `json:"subtype"`
-	IsMeta    bool            `json:"isMeta"`
+	Type    string `json:"type"`
+	Subtype string `json:"subtype"`
+	IsMeta  bool   `json:"isMeta"`
 	// IsCompactSummary marks the summary a compacted conversation goes on
 	// from: written as the person's, but not what they said.
-	IsCompactSummary bool `json:"isCompactSummary"`
-	Sidechain bool            `json:"isSidechain"`
-	Timestamp string          `json:"timestamp"`
-	Message   json.RawMessage `json:"message"`
+	IsCompactSummary bool            `json:"isCompactSummary"`
+	Sidechain        bool            `json:"isSidechain"`
+	Timestamp        string          `json:"timestamp"`
+	Message          json.RawMessage `json:"message"`
 	// Operation and Content are a queue-operation line's: what Claude Code
 	// queued for itself, such as a helper's "finished" notification.
 	Operation string `json:"operation"`
 	Content   string `json:"content"`
+	// UUID and ParentUUID chain the entries: a fork picks up at one.
+	UUID       string `json:"uuid"`
+	ParentUUID string `json:"parentUuid"`
 	// Attachment is what Claude Code hands the model mid-turn: a message
 	// typed while it worked arrives as a queued_command, at the point the
 	// model reads it, and is not written as a user line.
@@ -53,9 +56,11 @@ type claudeBlock struct {
 
 func (claudeParser) line(c *conv, b []byte) {
 	var l claudeLine
-	if json.Unmarshal(b, &l) != nil || l.Sidechain {
+	// A helper's own record (a subagent's file) is all sidechain.
+	if json.Unmarshal(b, &l) != nil || (l.Sidechain && !c.side) {
 		return
 	}
+	c.lineUUID, c.lineParent = l.UUID, l.ParentUUID
 	if l.IsMeta {
 		commandMeta(c, l)
 		return
@@ -167,7 +172,8 @@ func userText(c *conv, s string) {
 	if s == "" || strings.HasPrefix(s, "<") || strings.HasPrefix(s, "Caveat:") {
 		return
 	}
-	c.add(Item{Kind: "user", ID: c.id(), Text: clip(s, 4000)})
+	c.rewound()
+	c.prompted(c.add(Item{Kind: "user", ID: c.id(), Text: clip(s, 4000), UUID: c.lineUUID, Parent: c.lineParent}))
 }
 
 func claudeTool(c *conv, bl claudeBlock, at int64) {
@@ -215,13 +221,19 @@ func claudeTool(c *conv, bl claudeBlock, at int64) {
 		c.byTool[bl.ID] = -1
 	case "Agent", "Task":
 		name := firstNonEmpty(str("description"), str("subagent_type"), "Helper")
-		c.add(Item{Kind: "crew", ID: c.id(), Names: []string{name}})
+		c.add(Item{Kind: "crew", ID: c.id(), Names: []string{name}, Tool: bl.ID})
 		c.helper(CrewMember{ID: bl.ID, Name: clip(name, 60), Kind: "subagent", Agent: "claude", State: "running", Doing: clip(firstNonEmpty(str("subagent_type"), "Working"), 60), Since: at})
 	case "ExitPlanMode":
 		// The plan the agent presents for approval is its answer.
 		if plan := strings.TrimSpace(str("plan")); plan != "" {
 			c.add(Item{Kind: "text", ID: c.id(), Text: clip(plan, maxText)})
 		}
+	case "SubagentHandback":
+		// A helper's answer to the agent that started it, in its own record.
+		if msg := strings.TrimSpace(str("message")); msg != "" {
+			c.add(Item{Kind: "text", ID: c.id(), Text: clip(msg, maxText)})
+		}
+		c.byTool[bl.ID] = -1
 	case "ToolSearch":
 		// Bookkeeping, not work worth a line.
 	default:
@@ -323,7 +335,6 @@ func firstNonEmpty(ss ...string) string {
 
 // maxOutput is the most of a command's output kept.
 const maxOutput = 8 << 10
-
 
 // tagged is the text inside <tag>…</tag> in s, if s has it.
 func tagged(s, tag string) (string, bool) {

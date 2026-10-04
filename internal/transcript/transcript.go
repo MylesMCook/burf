@@ -36,6 +36,13 @@ type Item struct {
 	Notice string `json:"notice,omitempty"`
 	Level  string `json:"level,omitempty"`
 	Resets int64  `json:"resets,omitempty"`
+	// Off is where the line that made this item starts in the file: older
+	// items are paged by it (?before=Off).
+	Off int64 `json:"off,omitempty"`
+	// UUID and Parent are a prompt's own entry in Claude Code's record and
+	// the entry before it, where a fork from this prompt picks up.
+	UUID   string `json:"uuid,omitempty"`
+	Parent string `json:"parent,omitempty"`
 	// Command is a command item's command: "/model", or "!" for a shell
 	// command typed to the agent; Args what followed it, and Text its
 	// output (Markdown when the agent wrote it so, Error when it failed).
@@ -84,6 +91,8 @@ type Result struct {
 	// Last is when the agent last wrote to its record (Unix ms): what it
 	// has been thinking since.
 	Last int64 `json:"last,omitempty"`
+	// More, on a page of older items (?before=), says earlier ones remain.
+	More bool `json:"more,omitempty"`
 	// Reason says why there is nothing to show, when Source is "none".
 	Reason string `json:"reason,omitempty"`
 	// Signals are the agent's mode, model, context, task list and
@@ -137,9 +146,34 @@ type conv struct {
 	sig signals
 	// lineAt is when the last line the agent wrote was written (Unix ms).
 	lineAt int64
+
+	// The line being read: where it starts, and its entry's IDs.
+	lineOff    int64
+	lineUUID   string
+	lineParent string
+	// A paged conv reads older items (see Before): it keeps limit items
+	// and names each by its line's offset, so a page reads the same
+	// wherever its reading began.
+	paged bool
+	limit int
+	// side reads a helper's own record, whose every line is a sidechain.
+	side bool
+	// prompts are where each kept prompt picks up (its parent entry) →
+	// its item: a prompt picking up at the same point was sent after a
+	// rewind, and replaces it and all after it.
+	prompts map[string]int
+	idLine  int64
+	lineSeq int
 }
 
 func (c *conv) id() string {
+	if c.paged {
+		if c.idLine != c.lineOff || c.lineSeq == 0 {
+			c.idLine, c.lineSeq = c.lineOff, 0
+		}
+		c.lineSeq++
+		return c.source[:2] + "@" + itoa(int(c.lineOff)) + "." + itoa(c.lineSeq)
+	}
 	c.seq++
 	return c.source[:2] + itoa(c.seq)
 }
@@ -150,8 +184,13 @@ func (c *conv) add(it Item) int {
 		c.items[n-1].Done = true
 		c.items[n-1].pending = nil
 	}
+	it.Off = c.lineOff
 	c.items = append(c.items, it)
-	if over := len(c.items) - keep; over > 0 {
+	n := keep
+	if c.limit > 0 {
+		n = c.limit
+	}
+	if over := len(c.items) - n; over > 0 {
 		c.items = append(c.items[:0:0], c.items[over:]...)
 		c.base += over
 	}
@@ -260,7 +299,7 @@ func (c *conv) read(path string) error {
 		return err
 	}
 	if st.Size() < c.offset { // replaced or truncated: start again
-		*c = conv{source: c.source, dir: c.dir, p: c.p, byTool: map[string]int{}, crewByID: map[string]int{}}
+		*c = conv{source: c.source, dir: c.dir, p: c.p, side: c.side, byTool: map[string]int{}, crewByID: map[string]int{}}
 	}
 	if c.offset == 0 && st.Size() > maxStart {
 		c.offset = st.Size() - maxStart
@@ -272,6 +311,9 @@ func (c *conv) read(path string) error {
 	r := bufio.NewReaderSize(f, 64<<10)
 	skipFirst := c.truncated && c.offset > 0 && len(c.items) == 0 && c.partial == nil
 	for {
+		if len(c.partial) == 0 {
+			c.lineOff = c.offset
+		}
 		chunk, err := r.ReadSlice('\n')
 		c.offset += int64(len(chunk))
 		if len(c.partial)+len(chunk) <= maxLine {
@@ -324,7 +366,7 @@ func (r *Reader) Read(source, path, dir string, since int) (Result, error) {
 		if len(r.convs) >= maxOpen {
 			r.evictOldest()
 		}
-		c = &conv{source: source, dir: dir, byTool: map[string]int{}, crewByID: map[string]int{}}
+		c = &conv{source: source, dir: dir, side: isHelper(path), byTool: map[string]int{}, crewByID: map[string]int{}}
 		switch source {
 		case "codex":
 			c.p = &codexParser{}

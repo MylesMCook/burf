@@ -87,6 +87,9 @@ func (b *Box) transcript(w http.ResponseWriter, r *http.Request) error {
 	case path == "":
 		return none("No " + agent + " conversation for " + sess.Dir + " since " + sess.Created.Format(time.RFC3339) + " in " + where + ".")
 	}
+	if r.URL.Query().Has("before") {
+		return olderPage(w, r, agent, path, sess.Dir)
+	}
 	res, err := transcripts.Read(agent, path, sess.Dir, max(since, 0))
 	if err != nil {
 		return none("Couldn't read " + path + ": " + err.Error())
