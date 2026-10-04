@@ -53,8 +53,8 @@ const all: Channels = { centre: true, toast: true, system: true };
 const quietly: Channels = { centre: true, toast: true, system: false };
 
 export const CATEGORIES: CategoryInfo[] = [
-  { id: "waiting", label: "An agent is waiting for you", description: "It asked a question or wants permission.", needs: true, defaults: all },
-  { id: "finished", label: "An agent finished", description: "Its turn ended, with or without changes.", needs: false, defaults: all },
+  { id: "waiting", label: "An agent needs you", description: "It asked a question or wants permission.", needs: true, defaults: all },
+  { id: "finished", label: "An agent is done", description: "Its turn ended, with or without changes.", needs: false, defaults: all },
   { id: "review", label: "Work is ready for review", description: "An agent left changes in the review inbox.", needs: false, defaults: { centre: true, toast: false, system: false } },
   { id: "flowFailed", label: "An automation failed", description: "A flow run ended with a failed step.", needs: true, defaults: all },
   { id: "setupFailed", label: "A worktree's setup failed", description: "Its setup script exited with an error.", needs: true, defaults: all },

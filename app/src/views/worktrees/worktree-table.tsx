@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { ProjectLabel } from "@/views/automations/flows/project-label";
 import type { RowProgress } from "@/views/worktrees/use-bulk";
 import type { Row } from "@/views/worktrees/use-worktrees";
+import { sessionWord } from "@/lib/state-model";
 
 export interface Group {
   key: string;
@@ -28,7 +29,6 @@ export interface Group {
 export const COLS =
   "grid-cols-[2rem_minmax(180px,1.2fr)_6rem_6rem_minmax(240px,2fr)_5.5rem_4rem_1.5rem] @max-5xl:grid-cols-[2rem_minmax(160px,1.2fr)_5.5rem_5.5rem_minmax(200px,2fr)_4.5rem_1.5rem]";
 
-const stateWords: Record<string, string> = { ready: "ready", running: "working", waiting: "waiting for you", finished: "finished", exited: "exited", idle: "idle" };
 
 // WorktreeTable lists worktrees by project, one line each. Checkboxes
 // select, shift-click selects a range, and a row click opens its history.
@@ -282,7 +282,7 @@ function WorktreeRow({
             <span className="flex flex-col gap-0.5">
               {mine.map((x) => {
                 const a = agentOf(x);
-                return <span key={x.name}>{a ? `${sessionName(x, { sessions: mine })} ${r.paused ? "paused" : stateWords[sessionState(x, stats)]}` : sessionName(x, { sessions: mine })}</span>;
+                return <span key={x.name}>{a ? `${sessionName(x, { sessions: mine })} ${r.paused ? "paused" : sessionWord(sessionState(x, stats), true)}` : sessionName(x, { sessions: mine })}</span>;
               })}
               {serving.map((x) => (
                 <span key={x.port}>

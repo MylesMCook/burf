@@ -15,24 +15,39 @@ const actions: { kind: OrchestrateDraft["kind"]; label: string; Icon: typeof Sen
   { kind: "loop", label: "Loop until…", Icon: RepeatIcon },
 ];
 
+// The actions that type into the session itself.
+const TYPES_INTO = new Set<OrchestrateDraft["kind"]>(["send", "loop"]);
+
 export const openOrchestrate = (kind: OrchestrateDraft["kind"], box: string, session: string) => useStore.getState().setOrchestrate({ kind, box, session });
 
 // SessionActionItems are the orchestration actions for one session, to put
 // inside a menu that already exists (a pane header's).
+//
+// An agent that has ended takes no input, so nothing here offers to send it
+// anything: what remains is handing its work on or having it reviewed.
 export function SessionActionItems({ box, session }: { box: string; session: string }) {
+  const ended = useStore((s) => {
+    const list = s.boxes[box]?.sessions;
+    if (!list) return false;
+    const x = list.find((y) => y.name === session);
+    return !x || x.exited;
+  });
+  const shown = ended ? actions.filter((a) => !TYPES_INTO.has(a.kind)) : actions;
   return (
     <MenuGroup>
-      <MenuGroupLabel>Orchestrate</MenuGroupLabel>
-      {actions.map(({ kind, label, Icon }) => (
+      <MenuGroupLabel>{ended ? "Orchestrate · ended" : "Orchestrate"}</MenuGroupLabel>
+      {shown.map(({ kind, label, Icon }) => (
         <MenuItem key={kind} onClick={() => openOrchestrate(kind, box, session)}>
           <Icon />
           {label}
         </MenuItem>
       ))}
-      <MenuItem onClick={() => openPromptPicker({ box, session })}>
-        <BookMarkedIcon />
-        Send a saved prompt…
-      </MenuItem>
+      {!ended && (
+        <MenuItem onClick={() => openPromptPicker({ box, session })}>
+          <BookMarkedIcon />
+          Send a saved prompt…
+        </MenuItem>
+      )}
       <MenuItem
         onClick={() => {
           const s = useStore.getState().boxes[box]?.sessions?.find((x) => x.name === session);

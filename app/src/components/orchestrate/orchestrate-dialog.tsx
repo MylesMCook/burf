@@ -95,7 +95,11 @@ function Body({ d, onDone }: { d: OrchestrateDraft; onDone(): void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [newWorktree]);
 
-  const ready = d.kind === "loop" ? !!check.trim() : !!text.trim() && (!newWorktree || !!name.trim());
+  // An agent that has ended takes no prompt: sending or looping is not
+  // offered, only handing its work to a new one.
+  const listed = useStore((s) => s.boxes[d.box]?.sessions);
+  const ended = (d.kind === "send" || d.kind === "loop") && !!listed && (!session || session.exited);
+  const ready = !ended && (d.kind === "loop" ? !!check.trim() : !!text.trim() && (!newWorktree || !!name.trim()));
 
   const submit = async (force?: "send") => {
     if (!ready || busy) return;
@@ -230,6 +234,14 @@ function Body({ d, onDone }: { d: OrchestrateDraft; onDone(): void }) {
                 </NumberFieldGroup>
               </NumberField>
             </Field>
+          </div>
+        )}
+        {ended && (
+          <div role="status" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border bg-muted/40 px-3 py-2 text-sm">
+            <span className="min-w-0 flex-1">{who} has ended, so it can't take a prompt. Hand its work to a new agent instead.</span>
+            <Button type="button" size="xs" variant="outline" onClick={() => useStore.getState().setOrchestrate({ ...d, kind: "handoff", prompt: text.trim() || undefined })}>
+              Hand off instead
+            </Button>
           </div>
         )}
         {offer && <QueueOffer failure={offer} box={d.box} />}

@@ -13,7 +13,8 @@ import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, Me
 import { ViewSwitch } from "@/components/workspace/pane";
 import { useAllSessions } from "@/hooks/use-agent-counts";
 import { hasTrafficLights } from "@/lib/api";
-import { agentLabel, agentOf, sessionState, worktreeOf } from "@/lib/derive";
+import { agentLabel, agentOf, type SessionState, sessionState, worktreeOf } from "@/lib/derive";
+import { sessionWord } from "@/lib/state-model";
 import { ago } from "@/lib/format";
 import { leaves } from "@/lib/layout";
 import { usePrefs } from "@/lib/prefs";
@@ -35,6 +36,11 @@ function useHere() {
   const c = tab ? leaves(tab.root).find((l) => l.id === tab.focus)?.content : undefined;
   const session = useStore((s) => (c?.kind === "terminal" ? s.boxes[c.box]?.sessions?.find((x) => x.name === c.session) : undefined));
   const stats = useStore((s) => (c?.kind === "terminal" ? s.boxes[c.box]?.stats : undefined));
+  // The same honesty as the pane: no state while its box is away, ended
+  // once the box no longer lists the session.
+  const away = useStore((s) => c?.kind === "terminal" && !!s.status && s.status.boxes.find((b) => b.name === c.box)?.state !== "online");
+  const gone = useStore((s) => c?.kind === "terminal" && !session && !!s.boxes[c.box]?.sessions);
+  const state: SessionState | undefined = away ? undefined : session ? sessionState(session, stats) : gone ? "exited" : undefined;
   if (view.kind === "settings") return { kind: "view" as const, label: "Settings", icon: <SettingsIcon /> };
   if (view.kind === "project") return { kind: "view" as const, label: `${view.location} settings`, icon: <SettingsIcon /> };
   if (view.kind !== "workspace") {
@@ -43,11 +49,11 @@ function useHere() {
   }
   if (!ws) return { kind: "home" as const };
   const agent = session ? agentOf(session) : undefined;
-  return { kind: "worktree" as const, name: ws.ref.main ? ws.ref.location : ws.ref.worktree, agent, state: session ? sessionState(session, stats) : undefined };
+  return { kind: "worktree" as const, name: ws.ref.main ? ws.ref.location : ws.ref.worktree, agent: agent ?? (c?.kind === "terminal" ? c.agent : undefined), state };
 }
 
 const ORDER = { waiting: 0, running: 1, finished: 2 } as const;
-const HEADINGS = { waiting: "Needs you", running: "Working", finished: "Done" } as const;
+const HEADINGS = { waiting: sessionWord("waiting"), running: sessionWord("running"), finished: sessionWord("finished") } as const;
 
 // ZenSwitcher is zen's way around: where you are, and a list of the agents
 // (who needs you first), the views, recent worktrees and home.

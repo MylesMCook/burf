@@ -46,6 +46,7 @@ import {
 import { openEditor } from "@/components/editors/open";
 import { Kbd } from "@/components/ui/kbd";
 import { useAllSessions } from "@/hooks/use-agent-counts";
+import { sessionWord } from "@/lib/state-model";
 import { useThemes } from "@/hooks/use-theme";
 import { openBrowserAt, resolveUrl, startSession } from "@/lib/actions";
 import { agentOf, sessionName, sortedWorktrees, worktreeOf } from "@/lib/derive";
@@ -185,7 +186,8 @@ export function CommandPalette() {
       return {
         value: `session:${box}/${session.name}`,
         label: sessionName(session, { sessions: boxes[box]?.sessions, locations: boxes[box]?.locations, place: true }),
-        detail: [where?.worktree.branch, box].filter(Boolean).join(" · "),
+        // Its state in the same words as everywhere else, then where.
+        detail: [state !== "idle" && sessionWord(state), where?.worktree.branch, box].filter(Boolean).join(" · "),
         search: session.name,
         icon: (
           <span className="flex w-8 shrink-0 items-center gap-1">

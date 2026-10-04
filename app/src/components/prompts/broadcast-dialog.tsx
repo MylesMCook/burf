@@ -282,7 +282,7 @@ const stateInfo: Record<RowState, { label: string; Icon?: typeof CheckIcon; clas
   sending: { label: "Sending", className: "text-muted-foreground", spin: true },
   sent: { label: "Sent", Icon: CheckIcon, className: "text-success-foreground" },
   working: { label: "Working", className: "text-info-foreground", spin: true },
-  finished: { label: "Finished", Icon: CheckIcon, className: "text-success-foreground" },
+  finished: { label: "Done", Icon: CheckIcon, className: "text-success-foreground" },
   waiting: { label: "Needs you", Icon: MessageCircleQuestionIcon, className: "text-warning-foreground" },
   "timed-out": { label: "Still going", Icon: ClockIcon, className: "text-muted-foreground" },
   exited: { label: "Exited", Icon: CircleIcon, className: "text-muted-foreground" },

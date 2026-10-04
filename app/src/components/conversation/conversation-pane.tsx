@@ -1,7 +1,7 @@
 import { ArrowUpIcon, MessagesSquareIcon, RefreshCwIcon, SquareTerminalIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { AgentIcon } from "@/components/agent-glyph";
+import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
 import { DitherBand } from "@/components/art/dither-band";
 import { HARBOUR, HARBOUR_MUTE, useHarbourLight } from "@/components/art/harbour-art";
 import { Scene, type SceneName } from "@/components/art/scenes";
@@ -217,7 +217,8 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
         <div className="mx-auto w-full max-w-[680px]">
           {ended ? (
             <div className="flex items-center gap-3 rounded-lg border bg-muted/40 px-3 py-2 text-muted-foreground text-sm">
-              <span className="min-w-0 flex-1">This agent has ended, so it can't take a reply.</span>
+              <StateGlyph state="exited" />
+              <span className="min-w-0 flex-1">{agent ? agentLabel(agent) : "This agent"} has ended, so it can't take a reply.</span>
               <Button size="sm" variant="outline" onClick={again}>
                 Start {agent ? agentLabel(agent) : "an agent"} again
               </Button>

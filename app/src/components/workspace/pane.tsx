@@ -169,12 +169,17 @@ function PaneTitle({ pane }: { pane: Leaf }) {
   const named = useStore((s) => (c.kind === "terminal" && session ? sessionName(session, { sessions: s.boxes[c.box]?.sessions }) : undefined));
   const agent = session ? agentOf(session) : undefined;
   const label = named ?? paneLabel(c, agent);
+  // Honest about what it can't know: nothing while the box is away, ended
+  // once the box no longer lists the session.
+  const away = useStore((s) => c.kind === "terminal" && !!s.status && s.status.boxes.find((b) => b.name === c.box)?.state !== "online");
+  const gone = useStore((s) => c.kind === "terminal" && !session && !!s.boxes[c.box]?.sessions);
+  const state = away ? undefined : session ? sessionState(session, stats) : gone ? "exited" : undefined;
   return (
-    <Tip label={c.kind === "terminal" ? `${c.session} on ${c.box}` : undefined} align="start">
+    <Tip label={c.kind === "terminal" ? `${c.session} on ${c.box}${away ? ` · ${c.box} is offline` : ""}` : undefined} align="start">
       <span className="flex min-w-0 items-center gap-1.5">
         <PaneIcon content={c} agent={agent} />
         <span className="truncate">{label}</span>
-        {session && <StateGlyph state={sessionState(session, stats)} className="size-3" />}
+        {state && <StateGlyph state={state} className="size-3" />}
       </span>
     </Tip>
   );
