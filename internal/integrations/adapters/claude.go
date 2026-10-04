@@ -14,6 +14,9 @@ var Claude = register(&Adapter{
 			return Ready, d, true
 		case "UserPromptSubmit":
 			d["signal"] = "prompt"
+			// Only its short title: the box names an untitled session
+			// after it, and drops it before the event is published.
+			d["title"] = Title(in.Str("prompt"))
 			return Started, d, true
 		case "PostToolUse":
 			// No hook fires when a permission is granted, but the tool it

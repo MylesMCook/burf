@@ -103,6 +103,10 @@ export interface Session {
   turn?: string;
   state_seq?: number;
   fidelity?: "hooks" | "partial" | "screen" | string;
+  // What the work is called: the first line of the prompt it started with
+  // (or the first it was sent), about 48 characters, or what someone renamed
+  // it to. Absent until there is one; api.renameSession names it.
+  title?: string;
 }
 
 // A turn is one prompt to the end of the agent's reply. Boxes whose info
@@ -283,6 +287,8 @@ export interface TaskRequest {
   // `models` and `efforts`); unset is the CLI's default. Only with `agent`.
   model?: string;
   effort?: string;
+  // What to call the work; without it, the prompt's first line.
+  title?: string;
   // Asks the app to show the new agent: as a tab of its worktree when the
   // person is looking at it, otherwise as a toast that opens it.
   open?: "split" | "tab";

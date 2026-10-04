@@ -189,6 +189,11 @@ func (c *Client) Screen(ctx context.Context, name string, history int) (string, 
 	return out.Screen, err
 }
 
+// RenameSession names a session's work; an empty title clears it.
+func (c *Client) RenameSession(ctx context.Context, name, title string) (out Session, err error) {
+	return out, c.call(ctx, http.MethodPatch, "/v1/sessions/"+url.PathEscape(name), map[string]string{"title": title}, &out)
+}
+
 func (c *Client) KillSession(ctx context.Context, name string) error {
 	return c.call(ctx, http.MethodDelete, "/v1/sessions/"+url.PathEscape(name), nil, nil)
 }

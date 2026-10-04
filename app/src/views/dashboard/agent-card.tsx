@@ -55,7 +55,9 @@ export function AgentCard({ entry, selecting, selected, onSelect }: { entry: Ses
   const { box, session, state } = entry;
   const locations = useStore((s) => s.boxes[box]?.locations);
   const sessions = useStore((s) => s.boxes[box]?.sessions);
-  const { where, place: title, name, crowded, prompt } = describeAgent(session, sessions, locations);
+  const { where, place, name, crowded, prompt, title: work, agent } = describeAgent(session, sessions, locations);
+  // A titled agent leads with its work, its place below; otherwise its place.
+  const title = work ?? place;
   const now = useNow();
   // A ready agent has said nothing yet: its screen is only a banner.
   const { tail, choices } = useScreenTail(box, session, 3, state === "running", state !== "ready");
@@ -92,8 +94,9 @@ export function AgentCard({ entry, selecting, selected, onSelect }: { entry: Ses
           <AgentIcon agent={agentOf(session)} />
           <span className="flex min-w-0 flex-1 items-baseline gap-1.5">
             <span className="min-w-0 truncate font-medium text-[13px]">{title}</span>
+            {work && <span className="shrink-0 text-[11px] text-muted-foreground">{agent}</span>}
             {/* Several agents in one worktree: which one this is. */}
-            {crowded && (
+            {!work && crowded && (
               <Tip label={`Session ${session.name}`}>
                 <span className="shrink-0 text-[11px] text-muted-foreground">{name}</span>
               </Tip>
@@ -104,12 +107,13 @@ export function AgentCard({ entry, selecting, selected, onSelect }: { entry: Ses
           </Tip>
         </div>
         <div className="mt-0.5 truncate pl-5.5 text-[11px] text-muted-foreground">
+          {work && `${place} · `}
           {box}
-          {where && ` · ${where.location.name}`}
+          {where && !(work && where.worktree.main) && ` · ${where.location.name}`}
           {crowded && ` · started ${startedAt(session.created)}`}
-          {where?.worktree.branch && where.worktree.branch !== title && <span className="opacity-70"> · {where.worktree.branch}</span>}
+          {where?.worktree.branch && where.worktree.branch !== place && <span className="opacity-70"> · {where.worktree.branch}</span>}
         </div>
-        {prompt && (
+        {prompt && (!work || !prompt.startsWith(work.replace(/…$/, ""))) && (
           <div className="mt-1 truncate pl-5.5 text-[11px] text-foreground/70 italic" title={prompt}>
             “{prompt}”
           </div>
@@ -132,7 +136,7 @@ export function AgentCard({ entry, selecting, selected, onSelect }: { entry: Ses
             <Tip label="Stop agent…">
               <button
                 type="button"
-                aria-label={`Stop ${name} in ${title}`}
+                aria-label={`Stop ${name} in ${place}`}
                 onClick={() => confirmStop(entry)}
                 className="inline-flex size-6 items-center justify-center rounded text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive-foreground focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
               >

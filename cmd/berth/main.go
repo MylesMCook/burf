@@ -236,6 +236,8 @@ func run(args []string) error {
 			if !c.Running(context.Background()) {
 				return nil
 			}
+			// A prompt's title names a box's session; the laptop has none.
+			delete(e.Data, "title")
 			return c.Call(context.Background(), "POST", "/v1/events", map[string]any{"type": e.Type, "origin": e.Origin, "data": e.Data}, nil)
 		})
 		return nil

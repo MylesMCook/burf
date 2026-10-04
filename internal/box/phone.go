@@ -23,6 +23,7 @@ import (
 
 	"github.com/sean-brydon/berthd/internal/box/runs"
 	"github.com/sean-brydon/berthd/internal/events"
+	"github.com/sean-brydon/berthd/internal/integrations/adapters"
 	"github.com/sean-brydon/berthd/internal/statefile"
 )
 
@@ -297,6 +298,9 @@ func (p *Phone) Handler(b *Box, listenAddr string) http.Handler {
 			}
 		}
 		b.Events.Publish(events.Event{Type: "session.sent", Box: b.Name, Origin: "phone", Data: data})
+		if data["answer"] == nil && (req.Enter == nil || *req.Enter) {
+			b.nameAfter(r.Context(), name, adapters.Title(req.Text))
+		}
 		writeJSON(w, map[string]bool{"sent": true})
 	})
 	api.HandleFunc("POST /phone/v1/sessions/{name}/keys", func(w http.ResponseWriter, r *http.Request) {

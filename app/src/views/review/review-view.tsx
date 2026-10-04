@@ -11,6 +11,7 @@ import { toastManager } from "@/components/ui/toast";
 import { ago } from "@/lib/format";
 import { useNotifications } from "@/lib/notifications";
 import { useStore } from "@/lib/store";
+import { useSessionTitle } from "@/hooks/use-session-name";
 import { cn } from "@/lib/utils";
 import { focusSession } from "@/lib/workspaces";
 import { ViewHeader } from "@/views/view-header";
@@ -226,6 +227,8 @@ function Row({ entry, active, onSelect, onOpen }: { entry: ReviewEntry; active: 
   const added = entry.files.length ? entry.added : entry.committed.reduce((n, f) => n + f.added, 0);
   const removed = entry.files.length ? entry.removed : entry.committed.reduce((n, f) => n + f.removed, 0);
   const waiting = entry.agent_state === "waiting";
+  // Led by the work the agent did, when its session has a title.
+  const work = useSessionTitle(entry.box, entry.session);
   return (
     <li id={`review-${entry.key}`}>
       <button
@@ -240,10 +243,11 @@ function Row({ entry, active, onSelect, onOpen }: { entry: ReviewEntry; active: 
       >
         <span className="flex min-w-0 items-center gap-2">
           <AgentIcon agent={entry.agent} />
-          <span className="min-w-0 flex-1 truncate font-medium text-[13px]">{entry.main ? entry.location : entry.worktree}</span>
+          <span className="min-w-0 flex-1 truncate font-medium text-[13px]">{work ?? (entry.main ? entry.location : entry.worktree)}</span>
           <span className={cn("shrink-0 text-[11px] tabular-nums", waiting ? "text-warning" : "text-muted-foreground")}>{waiting ? "needs you" : ago(entry.state_since)}</span>
         </span>
         <span className="truncate pl-5.5 text-[11px] text-muted-foreground">
+          {work && `${entry.main ? entry.location : entry.worktree} · `}
           {entry.box} · {entry.location}
           {entry.branch && <span className="opacity-70"> · {entry.branch}</span>}
         </span>

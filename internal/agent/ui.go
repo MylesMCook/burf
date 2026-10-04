@@ -116,7 +116,7 @@ func (a *Agent) ui(token, hostport string, inner http.Handler) http.Handler {
 			h := w.Header()
 			h.Set("Access-Control-Allow-Origin", o)
 			h.Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
-			h.Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+			h.Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 			h.Set("Vary", "Origin")
 		}
 		if r.Method == http.MethodOptions {

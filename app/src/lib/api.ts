@@ -115,9 +115,11 @@ export const boxApi = {
     c.box<Worktree>(box, "POST", `locations/${encodeURIComponent(location)}/worktrees`, req),
   removeWorktree: (c: Client, box: string, location: string, worktree: string, force = false) =>
     c.box(box, "DELETE", `locations/${encodeURIComponent(location)}/worktrees/${encodeURIComponent(worktree)}${force ? "?force=1" : ""}`),
-  startSession: (c: Client, box: string, req: { location: string; name?: string; command?: string; agent?: string; prompt?: string; model?: string; effort?: string }) =>
+  startSession: (c: Client, box: string, req: { location: string; name?: string; command?: string; agent?: string; prompt?: string; model?: string; effort?: string; title?: string }) =>
     c.box<Session>(box, "POST", "sessions", req),
   stopSession: (c: Client, box: string, name: string) => c.box(box, "DELETE", `sessions/${encodeURIComponent(name)}`),
+  // Names a session's work; "" clears its title.
+  renameSession: (c: Client, box: string, name: string, title: string) => c.box<Session>(box, "PATCH", `sessions/${encodeURIComponent(name)}`, { title }),
   createTask: (c: Client, box: string, task: TaskRequest) => c.box<TaskResult>(box, "POST", "tasks", task),
   // A worktree's own services, from its repository's config.
   worktreeServices: async (c: Client, box: string, location: string, worktree: string) =>

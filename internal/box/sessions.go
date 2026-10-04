@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sean-brydon/berthd/internal/integrations/adapters"
 	"github.com/sean-brydon/berthd/internal/statefile"
 	"github.com/sean-brydon/berthd/internal/terminal"
 )
@@ -41,6 +42,10 @@ type Session struct {
 	Turn     string `json:"turn,omitempty"`
 	StateSeq int64  `json:"state_seq,omitempty"`
 	Fidelity string `json:"fidelity,omitempty"`
+	// Title names the work: the first line of the prompt it started with
+	// (or the first one it was sent), or what someone renamed it to. Kept
+	// as @berth_title; empty until there is one.
+	Title string `json:"title,omitempty"`
 }
 
 var (
@@ -100,7 +105,7 @@ func (s *Sessions) tmux(ctx context.Context, args ...string) ([]byte, error) {
 // versions (3.4, say) escape "$" when a format reads an option back, so the
 // plain @berth_command would come back changed. Sessions started before it
 // existed only have the plain one.
-const listFormat = "#{session_name}\t#{session_created}\t#{session_attached}\t#{@berth_location}\t#{@berth_command}\t#{pane_dead}\t#{pane_start_path}\t#{@berth_command64}\t#{@berth_agent}"
+const listFormat = "#{session_name}\t#{session_created}\t#{session_attached}\t#{@berth_location}\t#{@berth_command}\t#{pane_dead}\t#{pane_start_path}\t#{@berth_command64}\t#{@berth_agent}\t#{@berth_title}"
 
 func (s *Sessions) List(ctx context.Context) ([]Session, error) {
 	if _, err := exec.LookPath("tmux"); err != nil {
@@ -121,10 +126,10 @@ func parseSessions(out []byte) []Session {
 	sessions := []Session{}
 	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 		f := strings.Split(line, "\t")
-		for len(f) >= 7 && len(f) < 9 {
+		for len(f) >= 7 && len(f) < 10 {
 			f = append(f, "")
 		}
-		if len(f) != 9 {
+		if len(f) != 10 {
 			continue
 		}
 		command := f[4]
@@ -144,6 +149,7 @@ func parseSessions(out []byte) []Session {
 			Exited:   f[5] == "1",
 			Dir:      f[6],
 			Preset:   f[8],
+			Title:    f[9],
 		})
 	}
 	return sessions
@@ -197,6 +203,26 @@ func (s *Sessions) create(ctx context.Context, name, location, dir, command, age
 		s.tmux(ctx, "set-option", "-t", "="+name+":", "@berth_agent", agent)
 	}
 	return s.Get(ctx, name)
+}
+
+// TitleMax is the longest title a session takes, in characters; one made
+// from a prompt is shorter (adapters.TitleMax).
+const TitleMax = 80
+
+// SetTitle names a session's work; an empty title clears it.
+func (s *Sessions) SetTitle(ctx context.Context, name, title string) error {
+	if _, err := s.Get(ctx, name); err != nil {
+		return err
+	}
+	title = adapters.Clip(title, TitleMax)
+	args := []string{"set-option", "-t", "=" + name + ":", "@berth_title", title}
+	if title == "" {
+		args = []string{"set-option", "-u", "-t", "=" + name + ":", "@berth_title"}
+	}
+	if out, err := s.tmux(ctx, args...); err != nil {
+		return fmt.Errorf("tmux set-option: %s", strings.TrimSpace(string(out)))
+	}
+	return nil
 }
 
 func (s *Sessions) Get(ctx context.Context, name string) (Session, error) {

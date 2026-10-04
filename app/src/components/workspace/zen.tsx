@@ -43,7 +43,8 @@ function useHere() {
   }
   if (!ws) return { kind: "home" as const };
   const agent = session ? agentOf(session) : undefined;
-  return { kind: "worktree" as const, name: ws.ref.main ? ws.ref.location : ws.ref.worktree, agent, state: session ? sessionState(session, stats) : undefined };
+  // A titled agent is named after its work; its worktree is in the tooltip.
+  return { kind: "worktree" as const, name: session?.title?.trim() || (ws.ref.main ? ws.ref.location : ws.ref.worktree), place: ws.ref.main ? ws.ref.location : ws.ref.worktree, agent, state: session ? sessionState(session, stats) : undefined };
 }
 
 const ORDER = { waiting: 0, running: 1, finished: 2 } as const;
@@ -63,7 +64,10 @@ export function ZenSwitcher({ className }: { className?: string }) {
         .filter((e) => agentOf(e.session) && (e.state === "waiting" || e.state === "running" || e.state === "finished"))
         .map((e) => {
           const wt = worktreeOf(boxes[e.box]?.locations, e.session);
-          return { e, state: e.state as keyof typeof ORDER, title: wt ? (wt.worktree.main ? wt.location.name : wt.worktree.name) : e.session.name };
+          const place = wt ? (wt.worktree.main ? wt.location.name : wt.worktree.name) : e.session.name;
+          // Named after its work when it has a title, with its place after.
+          const title = e.session.title?.trim();
+          return { e, state: e.state as keyof typeof ORDER, title: title || place, place: title ? place : undefined };
         })
         .sort((a, b) => ORDER[a.state] - ORDER[b.state] || (b.e.session.state_since ?? "").localeCompare(a.e.session.state_since ?? ""))
         .slice(0, 8),
@@ -89,7 +93,9 @@ export function ZenSwitcher({ className }: { className?: string }) {
         ) : (
           <>
             {here.state ? <StateGlyph state={here.state} /> : <GitBranchIcon />}
-            <span className="truncate font-medium">{here.name}</span>
+            <span className="truncate font-medium" title={here.place !== here.name ? here.place : undefined}>
+              {here.name}
+            </span>
             {here.agent && (
               <span className="flex shrink-0 items-center gap-1 text-muted-foreground">
                 <AgentIcon agent={here.agent} className="size-3" />
@@ -107,12 +113,15 @@ export function ZenSwitcher({ className }: { className?: string }) {
           Home
         </MenuItem>
         {agents.length > 0 && <MenuSeparator />}
-        {agents.map(({ e, state, title }, i) => (
+        {agents.map(({ e, state, title, place }, i) => (
           <MenuGroup key={`${e.box}/${e.session.name}`}>
             {(i === 0 || agents[i - 1].state !== state) && <MenuGroupLabel>{HEADINGS[state]}</MenuGroupLabel>}
             <MenuItem onClick={() => void focusSession(e.box, e.session.name)}>
               <StateGlyph state={e.state} />
-              <span className="min-w-0 flex-1 truncate">{title}</span>
+              <span className="min-w-0 flex-1 truncate">
+                {title}
+                {place && <span className="ml-1.5 text-muted-foreground text-xs">{place}</span>}
+              </span>
               <span className="flex shrink-0 items-center gap-1 text-muted-foreground text-xs">
                 <AgentIcon agent={agentOf(e.session)} className="size-3" />
                 {ago(e.session.state_since ?? e.session.created)}

@@ -1,14 +1,16 @@
-import { CloudOffIcon, XIcon } from "lucide-react";
+import { CloudOffIcon, PencilIcon, XIcon } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { StateGlyph } from "@/components/agent-glyph";
 import { Tip } from "@/components/tip";
+import { ContextMenu, ContextMenuItem, ContextMenuPopup, ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { NewTabMenu } from "@/components/workspace/new-tab-menu";
 import { PaneActions, PaneIcon, paneLabel } from "@/components/workspace/pane";
 import { RunMenu } from "@/components/workspace/run-menu";
 import { closeTab } from "@/lib/actions";
-import { agentOf, type SessionState, sessionName, sessionState } from "@/lib/derive";
+import { agentOf, type SessionState, sessionAgent, sessionName, sessionState } from "@/lib/derive";
 import { type Leaf, leaves } from "@/lib/layout";
+import { renameSession } from "@/lib/session-title";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { activateTab, moveTab, useWorkspaces, type WsTab } from "@/lib/workspaces";
@@ -152,52 +154,132 @@ function TabButton({ tab, active, onActivate, onClose, onDragStart, onDrop }: Ta
   const lead = ranked[0];
   const c = lead.l.content;
   const offline = c.kind === "terminal" && status?.boxes.find((b) => b.name === c.box)?.state !== "online" && !!status;
-  // Named as everywhere else (sessionName); the session id is in the tooltip.
+  // Named as everywhere else (sessionName): the session's title, or its
+  // agent's name; the agent and the session id are in the tooltip.
   const title = lead.s ? sessionName(lead.s, { sessions: c.kind === "terminal" ? boxes[c.box]?.sessions : undefined }) : paneLabel(c, lead.agent);
+  const secondary = lead.s ? sessionAgent(lead.s) : "";
+  const session = c.kind === "terminal" && lead.s ? { box: c.box, name: lead.s.name } : undefined;
+  const [editing, setEditing] = useState(false);
+
+  const tab$ = (
+    <div
+      draggable={!editing}
+      onDragStart={onDragStart}
+      onDragOver={(e) => e.preventDefault()}
+      onDrop={onDrop}
+      data-tab={tab.id}
+      className={cn(
+        "group relative flex h-full min-w-24 max-w-56 shrink-0 cursor-default items-center gap-1.5 border-r pr-1 pl-3 text-xs data-popup-open:bg-background/60",
+        active ? "bg-background text-foreground" : "text-muted-foreground hover:bg-background/40 hover:text-foreground",
+      )}
+      onMouseDown={(e) => {
+        // Middle click closes, as in a browser.
+        if (e.button === 1) {
+          e.preventDefault();
+          onClose();
+        }
+      }}
+      onClick={onActivate}
+      onDoubleClick={() => session && setEditing(true)}
+    >
+      {active && <span className="absolute inset-x-0 top-0 h-px bg-foreground/50" />}
+      {offline ? (
+        <CloudOffIcon className="size-3 shrink-0 text-muted-foreground" aria-label="box offline" />
+      ) : lead.state && lead.state !== "idle" ? (
+        <StateGlyph state={lead.state} className="size-3" />
+      ) : null}
+      <PaneIcon content={c} agent={lead.agent} className="size-3" />
+      {editing && session ? (
+        <TitleInput
+          initial={lead.s?.title ?? ""}
+          placeholder={paneLabel(c, lead.agent)}
+          onDone={(next) => {
+            setEditing(false);
+            if (next !== undefined && next !== (lead.s?.title ?? "")) void renameSession(session.box, session.name, next);
+          }}
+        />
+      ) : (
+        <span className="min-w-0 truncate">{title}</span>
+      )}
+      {panes.length > 1 && <span className="shrink-0 text-[10px] text-muted-foreground tabular-nums">+{panes.length - 1}</span>}
+      <button
+        type="button"
+        aria-label={`Close ${title}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onClose();
+        }}
+        className={cn("ml-auto inline-flex size-5 shrink-0 items-center justify-center rounded hover:bg-accent", active ? "opacity-70" : "opacity-0 group-hover:opacity-70")}
+      >
+        <XIcon className="size-3" />
+      </button>
+    </div>
+  );
 
   return (
-    <Tip label={c.kind === "terminal" ? `${title} · ${c.session}` : undefined} side="bottom" align="start">
-      <div
-        draggable
-        onDragStart={onDragStart}
-        onDragOver={(e) => e.preventDefault()}
-        onDrop={onDrop}
-        data-tab={tab.id}
-        className={cn(
-          "group relative flex min-w-24 max-w-56 shrink-0 cursor-default items-center gap-1.5 border-r pr-1 pl-3 text-xs",
-          active ? "bg-background text-foreground" : "text-muted-foreground hover:bg-background/40 hover:text-foreground",
+    <ContextMenu>
+      <ContextMenuTrigger render={<div className="flex shrink-0 items-stretch" />}>
+        {editing ? (
+          tab$
+        ) : (
+          <Tip label={c.kind === "terminal" ? [title, secondary, c.session].filter(Boolean).join(" · ") : undefined} side="bottom" align="start">
+            {tab$}
+          </Tip>
         )}
-        onMouseDown={(e) => {
-          // Middle click closes, as in a browser.
-          if (e.button === 1) {
-            e.preventDefault();
-            onClose();
-          }
-        }}
-        onClick={onActivate}
-      >
-        {active && <span className="absolute inset-x-0 top-0 h-px bg-foreground/50" />}
-        {offline ? (
-          <CloudOffIcon className="size-3 shrink-0 text-muted-foreground" aria-label="box offline" />
-        ) : lead.state && lead.state !== "idle" ? (
-          <StateGlyph state={lead.state} className="size-3" />
-        ) : null}
-        <PaneIcon content={c} agent={lead.agent} className="size-3" />
-        <span className="min-w-0 truncate">{title}</span>
-        {panes.length > 1 && <span className="shrink-0 text-[10px] text-muted-foreground tabular-nums">+{panes.length - 1}</span>}
-        <button
-          type="button"
-          aria-label={`Close ${title}`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onClose();
-          }}
-          className={cn("ml-auto inline-flex size-5 shrink-0 items-center justify-center rounded hover:bg-accent", active ? "opacity-70" : "opacity-0 group-hover:opacity-70")}
-        >
-          <XIcon className="size-3" />
-        </button>
-      </div>
-    </Tip>
+      </ContextMenuTrigger>
+      <ContextMenuPopup className="min-w-48">
+        {session && (
+          <ContextMenuItem onClick={() => setEditing(true)}>
+            <PencilIcon />
+            <span className="flex-1">Rename…</span>
+          </ContextMenuItem>
+        )}
+        {session && lead.s?.title && (
+          <ContextMenuItem onClick={() => void renameSession(session.box, session.name, "")}>
+            <span className="size-4" />
+            <span className="flex-1">Use the agent's name</span>
+          </ContextMenuItem>
+        )}
+        {session && <ContextMenuSeparator />}
+        <ContextMenuItem onClick={onClose}>
+          <XIcon />
+          <span className="flex-1">Close tab</span>
+          <ContextMenuShortcut>⌘W</ContextMenuShortcut>
+        </ContextMenuItem>
+      </ContextMenuPopup>
+    </ContextMenu>
+  );
+}
+
+// TitleInput renames a session in place: Enter keeps it, Escape or leaving
+// the field without a change drops it. Empty means the agent's name again.
+function TitleInput({ initial, placeholder, onDone }: { initial: string; placeholder: string; onDone(next?: string): void }) {
+  const [v, setV] = useState(initial);
+  const done = useRef(false);
+  const finish = (next?: string) => {
+    if (done.current) return;
+    done.current = true;
+    onDone(next);
+  };
+  return (
+    <input
+      // biome-ignore lint/a11y/noAutofocus: the person asked to rename it
+      autoFocus
+      value={v}
+      maxLength={80}
+      aria-label="Session title"
+      placeholder={placeholder}
+      onFocus={(e) => e.currentTarget.select()}
+      onChange={(e) => setV(e.target.value)}
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        e.stopPropagation();
+        if (e.key === "Enter") finish(v.trim());
+        if (e.key === "Escape") finish();
+      }}
+      onBlur={() => finish(v.trim())}
+      className="h-6 w-40 min-w-0 rounded border border-ring bg-background px-1.5 text-foreground text-xs outline-none ring-2 ring-ring/24 placeholder:text-muted-foreground/72"
+    />
   );
 }
 

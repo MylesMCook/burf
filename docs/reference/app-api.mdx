@@ -158,7 +158,10 @@ failed after it went out (the box may have acted on it). The box API:
 `waiting`, `finished`), plus `preset` (the agent preset it was started
 with), `turn` (its current or last turn), `state_seq` and `fidelity`
 (`hooks`, `partial` or `screen`). `exited` is true once the program has
-ended.
+ended. `title` names the work: the first line of the prompt it started
+with, or of the first prompt it was sent or typed, cut to about 48
+characters; `PATCH sessions/{name}` with `{ title }` renames it (an empty
+title clears it). Only the title is kept, never the prompt.
 
 A `Run` is `{ id, template, title?, status, steps, gate?, candidates?, usage?,
 cursor?, params?, created, updated, finished?, error?, … }`, with `status`

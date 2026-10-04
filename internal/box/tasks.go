@@ -242,6 +242,8 @@ type TaskRequest struct {
 	FromSession string `json:"from_session,omitempty"`
 	// Open asks the app to show the new session: "split" or "tab".
 	Open string `json:"open,omitempty"`
+	// Title names the work; without one, the prompt's first line does.
+	Title string `json:"title,omitempty"`
 }
 
 type Task struct {
@@ -297,6 +299,7 @@ func (b *Box) addTask(w http.ResponseWriter, r *http.Request) error {
 		b.publish(r, "worktree.removed", map[string]any{"location": req.Location, "name": wt.Name, "path": wt.Path, "reason": "task failed"})
 		return fmt.Errorf("could not start the task's session, so its worktree was removed: %w", err)
 	}
+	sess = b.titleNew(ctx, sess, req.Title, req.Prompt)
 	b.publish(r, "task.created", map[string]any{
 		"location": req.Location, "name": wt.Name, "path": wt.Path, "branch": wt.Branch,
 		"session": sess.Name, "agent": req.Agent, "from_session": req.FromSession,

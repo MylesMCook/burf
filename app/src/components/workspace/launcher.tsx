@@ -19,7 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { agentPresets, openBrowserAt, startSession } from "@/lib/actions";
 import { portUrl } from "@/lib/browser-url";
-import { agentLabel, agentOf, type SessionState, sessionState } from "@/lib/derive";
+import { agentLabel, agentOf, type SessionState, sessionName, sessionState } from "@/lib/derive";
 import { ago } from "@/lib/format";
 import { NONE, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -218,8 +218,9 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
                       <AgentIcon agent={agentOf(s)} className="size-4" />
                     </span>
                     <Tip label={<span className="font-mono">{s.name}</span>}>
-                      <span className="shrink-0">{agentLabel(agentOf(s)!)}</span>
+                      <span className="min-w-0 max-w-[60%] shrink truncate">{sessionName(s, { sessions })}</span>
                     </Tip>
+                    {s.title && <span className="shrink-0 text-muted-foreground text-xs">{agentLabel(agentOf(s)!)}</span>}
                     <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-muted-foreground text-xs">
                       <StateGlyph state={state} className="size-3" />
                       <span className="truncate">

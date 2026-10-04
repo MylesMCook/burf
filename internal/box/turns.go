@@ -133,6 +133,9 @@ type sessTrack struct {
 	// they said a prompt started, so its sends can wait for that.
 	Hooked   bool `json:"hooked,omitempty"`
 	SawStart bool `json:"saw_start,omitempty"`
+	// Prompted is set once the ledger has seen a prompt for the session,
+	// sent or typed: the first one may name it (see Box.nameAfter).
+	Prompted bool `json:"prompted,omitempty"`
 	// Reconcile marks a turn left open across a restart, for the screen to
 	// settle if no hook does.
 	Reconcile bool `json:"reconcile,omitempty"`
@@ -672,6 +675,49 @@ func (t *Turns) agentEvent(e events.Event) {
 		t.kickInbox()
 	}
 	t.bump()
+}
+
+// FirstPrompt says whether this is the first prompt the ledger has seen for
+// the session, and remembers that it has seen one. Only whether: the text
+// never comes here.
+func (t *Turns) FirstPrompt(name string) bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.init()
+	s := t.sess[name]
+	if s == nil || s.Prompted {
+		return false
+	}
+	s.Prompted = true
+	return true
+}
+
+// SessionOf names the session an agent event's data is about, as the
+// ledger resolved it, or "" when it cannot tell.
+func (t *Turns) SessionOf(data map[string]any) string {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.init()
+	if name := str(data, "session"); name != "" {
+		if _, ok := t.sess[name]; ok {
+			return name
+		}
+		return ""
+	}
+	path := str(data, "path")
+	if path == "" {
+		return ""
+	}
+	var found string
+	for _, s := range t.sess {
+		if s.Agent != "" && s.State != "exited" && sameDir(s.Dir, filepath.Clean(path)) {
+			if found != "" {
+				return ""
+			}
+			found = s.Name
+		}
+	}
+	return found
 }
 
 func (t *Turns) kickInbox() {
@@ -1257,6 +1303,9 @@ func (b *Box) deliverInbox(ctx context.Context) {
 		}
 		b.Events.Publish(events.Event{Type: "session.sent", Box: b.Name, Origin: it.Origin, Data: map[string]any{"name": it.Session, "turn": it.Turn, "when": "idle"}})
 		unlock()
+		if it.Enter {
+			b.nameAfter(ctx, it.Session, adapters.Title(it.Text))
+		}
 	}
 }
 

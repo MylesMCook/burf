@@ -19,6 +19,7 @@ import (
 	"github.com/sean-brydon/berthd/internal/doctor"
 	"github.com/sean-brydon/berthd/internal/events"
 	"github.com/sean-brydon/berthd/internal/hooks"
+	"github.com/sean-brydon/berthd/internal/integrations/adapters"
 	"github.com/sean-brydon/berthd/internal/terminal"
 	"github.com/sean-brydon/berthd/internal/wire"
 )
@@ -145,6 +146,7 @@ func (b *Box) Mount(s *wire.Server) {
 	route("GET /v1/sessions", b.listSessions)
 	route("POST /v1/sessions", b.addSession)
 	route("DELETE /v1/sessions/{name}", b.removeSession)
+	route("PATCH /v1/sessions/{name}", b.renameSession)
 	route("POST /v1/sessions/{name}/attach", b.attach)
 	route("GET /v1/sessions/{name}/screen", b.screen)
 	route("GET /v1/sessions/{name}/transcript", b.transcript)
@@ -454,6 +456,8 @@ type SessionRequest struct {
 	Model  string `json:"model,omitempty"`
 	Effort string `json:"effort,omitempty"`
 	Open   string `json:"open,omitempty"`
+	// Title names the work; without one, the prompt's first line does.
+	Title string `json:"title,omitempty"`
 }
 
 func (b *Box) addSession(w http.ResponseWriter, r *http.Request) error {
@@ -495,6 +499,7 @@ func (b *Box) addSession(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	sess = b.titleNew(r.Context(), sess, req.Title, req.Prompt)
 	b.announceOpen(r, sess, req.Open)
 	writeJSON(w, sess)
 	return nil
@@ -827,11 +832,20 @@ func (b *Box) emit(w http.ResponseWriter, r *http.Request) error {
 	}
 	// A tool use while the agent is already working changes nothing, and
 	// agents use tools constantly: keep them out of the journal.
+	// A prompt's title (adapters.Title) names the session; it is never
+	// published, so the journal and hooks never see it.
+	title, _ := req.Data["title"].(string)
+	delete(req.Data, "title")
 	if b.Turns != nil && b.Turns.Redundant(req.Type, req.Data) {
 		writeJSON(w, map[string]bool{"ok": true})
 		return nil
 	}
 	b.publish(r, req.Type, req.Data)
+	if title != "" && req.Type == adapters.Started && b.Turns != nil {
+		if name := b.Turns.SessionOf(req.Data); name != "" {
+			b.nameAfter(r.Context(), name, adapters.Clip(title, adapters.TitleMax))
+		}
+	}
 	writeJSON(w, map[string]bool{"ok": true})
 	return nil
 }

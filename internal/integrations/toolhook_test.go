@@ -39,11 +39,18 @@ func TestTranslate(t *testing.T) {
 }
 
 // Prompts, messages, and transcripts can hold anything a user typed; they
-// must never become part of an event.
+// must never become part of an event. A prompt's short title is the one
+// exception, and only on its way to the box, which names the session with
+// it and drops it before publishing (box.TestSessionsAreNamedAfterTheirTask).
 func TestTranslateNeverCopiesContent(t *testing.T) {
+	e, _ := Translate("claude", "UserPromptSubmit", []byte(`{"prompt":"Fix the cart\nSECRET-TEXT","cwd":"/w","session_id":"s"}`))
+	if e.Data["title"] != "Fix the cart" {
+		t.Errorf("a prompt's title = %v", e.Data["title"])
+	}
 	for _, tc := range [][3]string{
 		{"claude", "Notification", `{"message":"SECRET-TEXT","transcript_path":"/SECRET-TEXT","cwd":"/w"}`},
-		{"claude", "UserPromptSubmit", `{"prompt":"SECRET-TEXT","cwd":"/w","session_id":"s"}`},
+		{"claude", "UserPromptSubmit", `{"prompt":"\nfirst line\nSECRET-TEXT","cwd":"/w","session_id":"s"}`},
+		{"codex", "UserPromptSubmit", `{"prompt":"first line\n\nSECRET-TEXT","cwd":"/w"}`},
 		{"codex", "notify", `{"type":"agent-turn-complete","input-messages":["SECRET-TEXT"],"last-assistant-message":"SECRET-TEXT"}`},
 		{"cursor", "stop", `{"prompt":"SECRET-TEXT","workspace_roots":["/w"]}`},
 	} {

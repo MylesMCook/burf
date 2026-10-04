@@ -19,8 +19,18 @@ berth session new devl/shop/checkout --agent claude --prompt "…"    # an agent
 berth session new devl/shop/checkout -- pnpm test --watch           # any command
 berth session new devl/shop/checkout                                # a shell
 berth sessions devl
+berth session rename devl/SESSION "Fix checkout webhook"
 berth session kill devl/SESSION
 ```
+
+A session also has a **title**, which is what the app calls it: the first
+line of the prompt it started with ("Fix checkout webhook"), cut to about
+48 characters, with the agent beside it ("Fix checkout webhook · Claude
+Code"). A session started without a prompt takes the title of the first
+prompt it gets, sent through Berth or typed into the agent. Berth keeps
+only the title (tmux option `@berth_title`), never the prompt. Rename it
+with `berth session rename`, `--title` on `session new` and `task new`, or
+the tab's menu in the app.
 
 A session is named after where it runs and what it runs
 (`shop-checkout-claude-…`) unless you pass `--name`. Its environment is the

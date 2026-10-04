@@ -47,8 +47,9 @@ var usageSections = []struct {
 	{"Agent sessions", [][2]string{
 		{"%[1]s sessions%[3]s [--json]", "List sessions"},
 		{"%[1]s agents%[3]s [--json]", "Agent CLIs this box can start"},
-		{"%[1]s task new %[2]sLOC/NAME [--agent ID] [--prompt TEXT] [--open split|tab] [--branch B] [--base REF] [-- COMMAND...]", "A worktree with an agent (or COMMAND) running in it"},
-		{"%[1]s session new %[2]sLOC[/WORKTREE] [--name N] [--agent ID [--prompt TEXT]] [--open split|tab] [-- COMMAND...]", "Start an agent or COMMAND (default: a shell) there"},
+		{"%[1]s task new %[2]sLOC/NAME [--agent ID] [--prompt TEXT] [--title T] [--open split|tab] [--branch B] [--base REF] [-- COMMAND...]", "A worktree with an agent (or COMMAND) running in it"},
+		{"%[1]s session new %[2]sLOC[/WORKTREE] [--name N] [--agent ID [--prompt TEXT]] [--title T] [--open split|tab] [-- COMMAND...]", "Start an agent or COMMAND (default: a shell) there"},
+		{"%[1]s session rename %[2]sNAME [TITLE]", "Name a session's work (no TITLE clears it; a prompt names an untitled one)"},
 		{"%[1]s session screen %[2]sNAME [--history N]", "Print what the session shows"},
 		{"%[1]s session send %[2]sNAME TEXT [--when now|idle] [--force] [--idem KEY] [--no-enter] [--wait [--timeout 30m]]%[4]s", "Type a prompt into a session (or hold it until the agent is idle), and wait for its turn"},
 		{"%[1]s session wait %[2]sNAME [--turn ID] [--for finished,waiting] [--timeout 30m]", "Wait for a turn, or its agent's current one, to end"},
@@ -495,6 +496,27 @@ func Run(ctx context.Context, c *box.Client, args []string, out io.Writer) error
 		}
 		fmt.Fprint(out, text)
 		return nil
+	case "session rename":
+		fs, asJSON := flags(rest)
+		pos, err := parse(fs, rest)
+		if err != nil || len(pos) < 1 || len(pos) > 2 {
+			return usageErr("session rename NAME [TITLE]")
+		}
+		title := ""
+		if len(pos) == 2 {
+			title = pos[1]
+		}
+		sess, err := c.RenameSession(ctx, pos[0], title)
+		if err != nil {
+			return err
+		}
+		return show(out, *asJSON, sess, func() {
+			if sess.Title == "" {
+				fmt.Fprintf(out, "Cleared the title of %s\n", sess.Name)
+			} else {
+				fmt.Fprintf(out, "Renamed %s to %q\n", sess.Name, sess.Title)
+			}
+		})
 	case "session kill":
 		if len(rest) != 1 {
 			return usageErr("session kill NAME")
@@ -776,7 +798,7 @@ func sessions(ctx context.Context, c *box.Client, args []string, out io.Writer) 
 			return
 		}
 		w := tabwriter.NewWriter(out, 0, 0, 2, ' ', 0)
-		fmt.Fprintln(w, "NAME\tLOCATION\tCOMMAND\tSTATE\tSTARTED")
+		fmt.Fprintln(w, "NAME\tTITLE\tLOCATION\tCOMMAND\tSTATE\tSTARTED")
 		for _, s := range all {
 			state := "running"
 			if s.Exited {
@@ -791,7 +813,11 @@ func sessions(ctx context.Context, c *box.Client, args []string, out io.Writer) 
 			if cmd == "" {
 				cmd = "(shell)"
 			}
-			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", s.Name, s.Location, cmd, state, s.Created.Local().Format("Jan 2 15:04"))
+			title := s.Title
+			if title == "" {
+				title = "-"
+			}
+			fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", s.Name, title, s.Location, cmd, state, s.Created.Local().Format("Jan 2 15:04"))
 		}
 		w.Flush()
 	})
@@ -812,9 +838,10 @@ func sessionNew(ctx context.Context, c *box.Client, args []string, out io.Writer
 	fs.StringVar(&req.Agent, "agent", "", "start this agent (see: agents) instead of a command")
 	fs.StringVar(&req.Prompt, "prompt", "", "the agent's first prompt")
 	fs.StringVar(&req.Open, "open", "", "show it in the Berth app: split (beside the current terminal) or tab")
+	fs.StringVar(&req.Title, "title", "", "name the work (default: the prompt's first line)")
 	pos, err := parse(fs, args)
 	if err != nil || len(pos) != 1 {
-		return usageErr("session new LOC[/WORKTREE] [--name N] [--agent ID [--prompt TEXT]] [--open split|tab] [-- COMMAND...]")
+		return usageErr("session new LOC[/WORKTREE] [--name N] [--agent ID [--prompt TEXT]] [--title T] [--open split|tab] [-- COMMAND...]")
 	}
 	req.Location, req.Command = pos[0], commandLine(command)
 	sess, err := c.StartSession(ctx, req)
@@ -1029,8 +1056,9 @@ func taskNew(ctx context.Context, c *box.Client, args []string, out io.Writer) e
 	fs.StringVar(&req.Open, "open", "", "show it in the Berth app: split or tab")
 	fs.StringVar(&req.Branch, "branch", "", "branch to create (default: the worktree name)")
 	fs.StringVar(&req.Base, "base", "", "ref to branch from")
+	fs.StringVar(&req.Title, "title", "", "name the work (default: the prompt's first line)")
 	pos, err := parse(fs, args)
-	usage := "task new LOC/NAME [--agent ID] [--prompt TEXT] [--open split|tab] [--branch B] [--base REF] [-- COMMAND...]"
+	usage := "task new LOC/NAME [--agent ID] [--prompt TEXT] [--title T] [--open split|tab] [--branch B] [--base REF] [-- COMMAND...]"
 	if err != nil || len(pos) != 1 {
 		return usageErr(usage)
 	}

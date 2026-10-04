@@ -48,7 +48,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { useAllSessions } from "@/hooks/use-agent-counts";
 import { useThemes } from "@/hooks/use-theme";
 import { openBrowserAt, resolveUrl, startSession } from "@/lib/actions";
-import { agentOf, sessionName, sortedWorktrees, worktreeOf } from "@/lib/derive";
+import { agentOf, sessionAgent, sessionName, sortedWorktrees, worktreeOf } from "@/lib/derive";
 import { openBroadcast, openPromptPicker } from "@/lib/prompts";
 import { setNotificationsOpen } from "@/lib/notifications";
 import { usePrefs } from "@/lib/prefs";
@@ -185,7 +185,7 @@ export function CommandPalette() {
       return {
         value: `session:${box}/${session.name}`,
         label: sessionName(session, { sessions: boxes[box]?.sessions, locations: boxes[box]?.locations, place: true }),
-        detail: [where?.worktree.branch, box].filter(Boolean).join(" · "),
+        detail: [sessionAgent(session), where?.worktree.branch, box].filter(Boolean).join(" · "),
         search: session.name,
         icon: (
           <span className="flex w-8 shrink-0 items-center gap-1">

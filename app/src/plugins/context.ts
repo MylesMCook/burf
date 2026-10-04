@@ -26,6 +26,7 @@ export function makeApi(client: Client): BerthApi {
     info: (box) => boxApi.info(client, box),
     request: (box, method, path, body) => client.box(box, method, path, body),
     createTask: (box, task) => boxApi.createTask(client, box, task),
+    renameSession: (box, session, title) => boxApi.renameSession(client, box, session, title),
     serviceUrl: (box, port) => {
       const st = useStore.getState();
       const services = st.boxes[box]?.services ?? [];

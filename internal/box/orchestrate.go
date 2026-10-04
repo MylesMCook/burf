@@ -15,6 +15,7 @@ import (
 	"github.com/sean-brydon/berthd/internal/box/runs"
 	"github.com/sean-brydon/berthd/internal/events"
 	"github.com/sean-brydon/berthd/internal/hooks"
+	"github.com/sean-brydon/berthd/internal/integrations/adapters"
 )
 
 // The pieces agents, hooks and the app orchestrate with: type into a session,
@@ -171,6 +172,9 @@ func (b *Box) sendPrompt(ctx context.Context, name string, req SendRequest, orig
 	if waiting != "" {
 		res.Turn = waiting
 		return res, nil
+	}
+	if enter && sess.Title == "" {
+		b.nameAfter(ctx, name, adapters.Title(req.Text))
 	}
 	if b.Turns != nil {
 		if tr, ok := b.Turns.ForSent(name, e.Seq); ok {

@@ -22,7 +22,7 @@ import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, Me
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem } from "@/components/ui/sidebar";
 import { agentPresets, startSession } from "@/lib/actions";
 import { type BoxStatus, type Location, type Session, type Worktree } from "@/lib/api";
-import { agentOf, type SessionState, sessionState, worktreeSessions } from "@/lib/derive";
+import { agentOf, type SessionState, sessionName, sessionState, worktreeSessions } from "@/lib/derive";
 import { load, save } from "@/lib/storage";
 import { type BoxData, NONE, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -307,7 +307,9 @@ function WorktreeRow({
   // last ran is not shown, since the box cannot say whether it still runs.
   away?: BoxStatus;
 }) {
-  const where = <PlaceTip name={`${wt.main ? "Main checkout" : wt.name}${wt.branch && wt.branch !== wt.name ? ` · ${wt.branch}` : ""}`} lines={[wt.path, ...(away ? [`${away.name} is ${awayText(away)}`] : [])]} />;
+  // Its agents by what they work on ("Fix checkout webhook · Claude Code").
+  const agents = away ? [] : sessions.filter((s) => agentOf(s) && !s.exited).map((s) => sessionName(s, { sessions, agent: true }));
+  const where = <PlaceTip name={`${wt.main ? "Main checkout" : wt.name}${wt.branch && wt.branch !== wt.name ? ` · ${wt.branch}` : ""}`} work={agents} lines={[wt.path, ...(away ? [`${away.name} is ${awayText(away)}`] : [])]} />;
   return (
     <SidebarMenuSubItem>
       <ContextRow items={() => (away ? awayActions(away) : worktreeActions(box, loc, wt))} className="group/row relative">
@@ -703,10 +705,15 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
 }
 
 // PlaceTip says where a sidebar row is: its name, then its path on each box.
-function PlaceTip({ name, lines }: { name: string; lines: string[] }) {
+function PlaceTip({ name, lines, work = [] }: { name: string; lines: string[]; work?: string[] }) {
   return (
     <span className="flex max-w-96 flex-col gap-0.5">
       <span>{name}</span>
+      {work.map((w, i) => (
+        <span key={i} className="truncate text-[12px]">
+          {w}
+        </span>
+      ))}
       {lines.map((l) => (
         <span key={l} className="break-all font-mono text-[11px] text-muted-foreground">
           {l}

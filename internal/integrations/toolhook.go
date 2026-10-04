@@ -14,7 +14,9 @@ import (
 // Translate turns a tool's hook payload into a berth event, through the
 // tool's adapter. It keeps only identifiers and the working directory:
 // prompts, messages, and transcripts never leave the tool, so they cannot
-// leak into hooks or logs. ok is false for payloads that are not worth
+// leak into hooks or logs. The one exception is a prompt's short title
+// (adapters.Title), which the box takes to name the session and removes
+// before publishing. ok is false for payloads that are not worth
 // announcing.
 func Translate(tool, hookEvent string, payload []byte) (events.Event, bool) {
 	var in map[string]any

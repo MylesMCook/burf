@@ -116,8 +116,9 @@ function useRows(all: SessionEntry[]): Row[] {
         box: e.box,
         session: e.session.name,
         agent,
-        title: wt ? (wt.worktree.main ? wt.location.name : wt.worktree.name) : e.session.name,
-        where: wt ? `${e.box} · ${wt.location.name}` : e.box,
+        // Named after its work when it has a title, its worktree after.
+        title: e.session.title?.trim() || (wt ? (wt.worktree.main ? wt.location.name : wt.worktree.name) : e.session.name),
+        where: [e.session.title?.trim() && wt && !wt.worktree.main ? wt.worktree.name : "", e.box, wt?.location.name].filter(Boolean).join(" · "),
         state: e.state,
         since: e.session.state_since ?? e.session.created,
       });

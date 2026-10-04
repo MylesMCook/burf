@@ -67,7 +67,8 @@ Each returns a `Dispose`. Everything is also removed when the plugin unloads.
 | `services(box)` | `Service[]`: listening ports by worktree |
 | `info(box)` | `BoxInfo`: os, arch, build, tools, agent presets |
 | `request<T>(box, method, path, body?)` | Any [box API](/reference/app-api#boxes) call: `request("devl", "GET", "ports")` |
-| `createTask(box, task)` | `TaskResult`: a worktree with an agent in it |
+| `createTask(box, task)` | `TaskResult`: a worktree with an agent in it (`title?` names the work) |
+| `renameSession(box, session, title)` | `Session`: names a session's work, as the app shows it; `""` clears it |
 | `serviceUrl(box, port)` | The private URL of a port on a box |
 
 ## orchestrate
@@ -130,9 +131,11 @@ And two helpers:
 
 - `worktreeLocation({ location, worktree, main })`: how the box API names a
   worktree, `"shop"` for the main checkout, `"shop/checkout"` otherwise.
-- `sessionName(session, { sessions?, locations?, place? })`: what the app
-  calls a session ("Claude Code 2", or "shop / checkout-fix · Codex" with
-  `place`).
+- `sessionName(session, { sessions?, locations?, place?, agent? })`: what
+  the app calls a session: its title ("Fix checkout webhook"), "Fix checkout
+  webhook · Claude Code" with `agent`, or without a title the agent's name
+  ("Claude Code 2"); `place` puts where it runs first ("shop / checkout-fix
+  · Codex").
 
 ## UI components
 
@@ -159,7 +162,7 @@ Go structs have them, in `packages/plugin-sdk/src/types.ts`:
 | `BoxStatus` | `name`, `address`, `network?`, `fingerprint`, `state` (`connecting`, `online`, `offline`, `untrusted`), `error?`, `latency_ms?`, `since` |
 | `Location` | `name`, `path`, `repo`, `worktrees?`, `scripts`, `agents?`, `remote?`, `slug?`, `default_branch?`, `repo_trust?` (`none`, `trusted`, `untrusted` or `changed`) |
 | `Worktree` | `name`, `path`, `branch?`, `head?`, `main?`, `setting_up?`, `port?` |
-| `Session` | `name`, `location?`, `dir`, `command?`, `created`, `attached`, `exited`, `agent?`, `agent_state?`, `state_since?`, `preset?`, `turn?`, `state_seq?`, `fidelity?` |
+| `Session` | `name`, `location?`, `dir`, `command?`, `created`, `attached`, `exited`, `agent?`, `agent_state?`, `state_since?`, `preset?`, `turn?`, `state_seq?`, `fidelity?`, `title?` (what the work is called: the first line of its first prompt, or a rename) |
 | `Turn` | `id` (`"<session>#<n>"`), `session`, `agent?`, `n`, `origin?`, `sent_seq?`, `end_seq?`, `state` (`queued`, `pending`, `running`, `waiting`, `finished`, `exited`, `lost`), `queued?`, `started?`, `ended?`, `waits?`, `fidelity?`, `idem_key?`, `status?` |
 | `SendResult`, `TurnWait` | as `send` and `waitTurn` above |
 | `AgentState` | `idle`, `running`, `waiting`, `finished` |

@@ -88,6 +88,7 @@ export function worktreeLocation(w: { location: string; worktree: string; main?:
   return w.main ? w.location : `${w.location}/${w.worktree}`;
 }
 
-// sessionName is what the app calls a session: "Claude Code", "Shell 2", or
-// with place "shop / checkout-fix · Codex". See lib/derive.ts.
+// sessionName is what the app calls a session: its title ("Fix checkout
+// webhook"), or "Claude Code", "Shell 2"; with place "shop / checkout-fix ·
+// Codex". See lib/derive.ts.
 export { sessionName } from "@/lib/derive";

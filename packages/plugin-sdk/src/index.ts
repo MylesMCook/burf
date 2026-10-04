@@ -123,6 +123,8 @@ export interface BerthApi {
   // Any box API call: request("devl", "GET", "ports").
   request<T = unknown>(box: string, method: string, path: string, body?: unknown): Promise<T>;
   createTask(box: string, task: TaskRequest): Promise<TaskResult>;
+  // Names a session's work (Session.title); "" clears it.
+  renameSession(box: string, session: string, title: string): Promise<Session>;
   // The private URL of a port on a box, served by the laptop's proxy.
   serviceUrl(box: string, port: number): string;
 }
@@ -337,8 +339,10 @@ export declare function useProjects(): Project[];
 // How the box API names a worktree's location: "shop" for the main checkout,
 // "shop/checkout" otherwise. For orchestrate.exec and box requests.
 export declare function worktreeLocation(w: { location: string; worktree: string; main?: boolean }): string;
-// What the app calls a session, so a plugin names it the same way: the
-// agent's name or "Shell", numbered when its worktree has several ("Claude
-// Code 2"); with place, where it runs too ("shop / checkout-fix · Codex").
+// What the app calls a session, so a plugin names it the same way: its
+// title ("Fix checkout webhook"), or without one the agent's name or
+// "Shell", numbered when its worktree has several ("Claude Code 2"); with
+// agent, a titled session adds its agent ("Fix checkout webhook · Claude
+// Code"); with place, where it runs too ("shop / checkout-fix · Codex").
 // Pass the box's sessions for the number and its locations for the place.
-export declare function sessionName(session: Session, opts?: { sessions?: Session[]; locations?: Location[]; place?: boolean }): string;
+export declare function sessionName(session: Session, opts?: { sessions?: Session[]; locations?: Location[]; place?: boolean; agent?: boolean }): string;

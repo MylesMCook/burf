@@ -123,6 +123,7 @@ See [kits](/guides/kits).
 | `berth session turns BOX/NAME [--limit 10] [--json]` | List a session's turns: who prompted, how it ended, how long it took |
 | `berth exec BOX/LOC[/WORKTREE] [--timeout 10m] [--detach] -- COMMAND...` | Run a command there and print its output; `--detach` runs it as a run and prints its ID |
 | `berth loop BOX/SESSION --check CMD [--prompt TEXT] [--max 5] [--turn-timeout 30m] [--cancel-on-exit] [--detach]` | Prompt, wait, check, and feed failures back: a [durable run](/guides/runs) on the box (Ctrl-C stops following, not the loop) |
+| `berth session rename BOX/NAME [TITLE]` | Name a session's work, as the app shows it; no TITLE clears it |
 | `berth session kill BOX/NAME` | Stop a session |
 | `berth attach BOX/SESSION` | Attach this terminal to a session (detach: Ctrl-b d) |
 | `berth terminal BOX/SESSION` | Open a new terminal window attached to a session |

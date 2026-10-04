@@ -1,5 +1,5 @@
 import type { Location, Session, Worktree } from "@/lib/api";
-import { agentOf, sessionName, worktreeOf } from "@/lib/derive";
+import { agentLabel, agentOf, sessionName, worktreeOf } from "@/lib/derive";
 
 export interface AgentNames {
   where?: { location: Location; worktree: Worktree };
@@ -13,6 +13,10 @@ export interface AgentNames {
   crowded: boolean;
   // The prompt it was started with, when its command carries one.
   prompt?: string;
+  // What its work is called (Session.title), and then its agent, as
+  // secondary text: "Fix checkout webhook" · "Claude Code".
+  title?: string;
+  agent: string;
 }
 
 // describeAgent is how the board tells agents apart: where each works, and
@@ -21,7 +25,8 @@ export function describeAgent(session: Session, sessions: Session[] | undefined,
   const where = worktreeOf(locations, session);
   const place = where?.worktree.main ? where.location.name : (where?.worktree.name ?? session.location ?? session.name);
   const crowded = (sessions ?? []).filter((o) => o.dir === session.dir && !o.exited && agentOf(o)).length > 1;
-  return { where, place, name: sessionName(session, { sessions }), crowded, prompt: promptOf(session.command) };
+  const agent = agentOf(session);
+  return { where, place, name: sessionName(session, { sessions }), crowded, prompt: promptOf(session.command), title: session.title?.trim() || undefined, agent: agent ? agentLabel(agent) : "Shell" };
 }
 
 // promptOf is the prompt in an agent's command line: `claude --model x

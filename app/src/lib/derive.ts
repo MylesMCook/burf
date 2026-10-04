@@ -35,16 +35,22 @@ export function worktreeOf(locations: Location[] | undefined, s: Session): { loc
   return undefined;
 }
 
-// sessionName is what the app calls a session everywhere it lists one: the
-// agent's name, or "Shell", numbered when its worktree has more than one of
-// the same ("Claude Code 2", by when they started). Pass sessions (the
-// box's) for the number, and locations with place to say where it runs,
-// for lists outside the worktree's own tabs: "shop / checkout-fix · Codex".
-// The raw session id belongs in tooltips and developer surfaces only.
-export function sessionName(s: Session, opts: { sessions?: Session[]; locations?: Location[]; place?: boolean } = {}): string {
+// sessionName is what the app calls a session everywhere it lists one: its
+// title, the work it was started for ("Fix checkout webhook"), or without
+// one the agent's name, or "Shell", numbered when its worktree has more
+// than one of the same ("Claude Code 2", by when they started). agent adds
+// the agent after a title, for text with no agent icon beside it ("Fix
+// checkout webhook · Claude Code"); sessionAgent is that part alone, for
+// secondary text. Pass sessions (the box's) for the number, and locations
+// with place to say where it runs, for lists outside the worktree's own
+// tabs: "shop / checkout-fix · Codex". The raw session id belongs in
+// tooltips and developer surfaces only.
+export function sessionName(s: Session, opts: { sessions?: Session[]; locations?: Location[]; place?: boolean; agent?: boolean } = {}): string {
+  const title = s.title?.trim();
   const agent = agentOf(s);
-  let name = agent ? agentLabel(agent) : "Shell";
-  const same = (opts.sessions ?? []).filter((o) => o.dir === s.dir && agentOf(o) === agent && !o.exited);
+  let name = title || (agent ? agentLabel(agent) : "Shell");
+  if (title && opts.agent) name += ` · ${agent ? agentLabel(agent) : "Shell"}`;
+  const same = title ? [] : (opts.sessions ?? []).filter((o) => o.dir === s.dir && agentOf(o) === agent && !o.exited && !o.title?.trim());
   if (same.length > 1) {
     const order = same.sort((a, b) => a.created.localeCompare(b.created) || a.name.localeCompare(b.name));
     const n = order.findIndex((o) => o.name === s.name) + 1;
@@ -52,6 +58,43 @@ export function sessionName(s: Session, opts: { sessions?: Session[]; locations?
   }
   if (!opts.place) return name;
   return `${sessionPlace(s, opts.locations)} · ${name}`;
+}
+
+// TITLE_MAX is how long a title made from a prompt is, as the box makes it.
+export const TITLE_MAX = 48;
+
+// titleOf is the box's title for a prompt: its first line with words in it,
+// spaces collapsed, cut at a word near TITLE_MAX with an ellipsis. The demo
+// names its sessions with it; the box does the same for real ones
+// (internal/integrations/adapters/title.go).
+export function titleOf(prompt: string, max = TITLE_MAX): string {
+  const line = prompt
+    .split("\n")
+    .map((l) => l.trim().replace(/\s+/g, " "))
+    .find(Boolean);
+  if (!line) return "";
+  const chars = [...line];
+  if (chars.length <= max) return line;
+  const cut = chars.slice(0, max - 1);
+  let at = cut.length;
+  if (chars[max - 1] !== " ") {
+    for (let i = cut.length - 1; i >= Math.floor((max * 2) / 3); i--) {
+      if (cut[i] === " ") {
+        at = i;
+        break;
+      }
+    }
+  }
+  return `${cut.slice(0, at).join("").replace(/[\s.,;:-]+$/, "")}…`;
+}
+
+// sessionAgent is the secondary text beside a titled session's name: the
+// agent ("Claude Code") or "Shell". Untitled sessions are named after their
+// agent already, so it is empty for them.
+export function sessionAgent(s: Session): string {
+  if (!s.title?.trim()) return "";
+  const agent = agentOf(s);
+  return agent ? agentLabel(agent) : "Shell";
 }
 
 // guessSessionName names a session the box doesn't list (it has gone, or

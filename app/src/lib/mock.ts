@@ -14,6 +14,7 @@ import { initMockQueue, queueCall } from "@/lib/mock-queue";
 import { computersBoxCall, computersCall, initMockComputers } from "@/lib/mock-computers";
 import { initMockLocalBox, localBoxCall, localBoxFolders, localBoxStream } from "@/lib/mock-local-box";
 import { ApiError } from "@/lib/api";
+import { titleOf } from "@/lib/derive";
 import { demoAttach, demoScreen } from "@/demo/terminal";
 
 // Mock mode (?mock=1) runs the whole UI on fixtures, so it can be worked on
@@ -98,21 +99,24 @@ const locations: Record<string, Location[]> = {
   ],
 };
 
+// Sessions that have had a first prompt, which may have named them.
+const mockPrompted = new Set<string>();
+
 const sessions: Record<string, Session[]> = {
   devl: [
-    { name: "checkout-fix-claude", location: "shop/checkout-fix", dir: "/home/me/work/shop-checkout-fix", command: "claude", created: ago(52), attached: 0, exited: false, agent: "claude", agent_state: "waiting", state_since: ago(4) },
-    { name: "qa-deck-codex", location: "shop/qa-deck", dir: "/home/me/work/shop-qa-deck", command: "codex", created: ago(18), attached: 1, exited: false, agent: "codex", agent_state: "running", state_since: ago(2) },
+    { name: "checkout-fix-claude", title: "Fix checkout webhook retries", location: "shop/checkout-fix", dir: "/home/me/work/shop-checkout-fix", command: "claude", created: ago(52), attached: 0, exited: false, agent: "claude", agent_state: "waiting", state_since: ago(4) },
+    { name: "qa-deck-codex", title: "Build the QA deck for the release", location: "shop/qa-deck", dir: "/home/me/work/shop-qa-deck", command: "codex", created: ago(18), attached: 1, exited: false, agent: "codex", agent_state: "running", state_since: ago(2) },
     { name: "shop-shell", location: "shop", dir: "/home/me/work/shop", command: "", created: ago(300), attached: 0, exited: false },
-    { name: "search-perf-claude", location: "shop/search-perf", dir: "/home/me/work/shop-search-perf", command: "claude", created: ago(95), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(23) },
+    { name: "search-perf-claude", title: "Speed up product search", location: "shop/search-perf", dir: "/home/me/work/shop-search-perf", command: "claude", created: ago(95), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(23) },
     // Three agents in one worktree, so the board has to tell them apart.
-    { name: "order-export-claude", location: "shop/order-export", dir: "/home/me/work/shop-order-export", command: "claude 'Export orders as CSV from the admin'", created: ago(1700), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(1560) },
+    { name: "order-export-claude", title: "Export orders as CSV from the admin", location: "shop/order-export", dir: "/home/me/work/shop-order-export", command: "claude 'Export orders as CSV from the admin'", created: ago(1700), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(1560) },
     { name: "order-export-claude-2", location: "shop/order-export", dir: "/home/me/work/shop-order-export", command: "claude", created: ago(320), attached: 0, exited: false, agent: "claude", agent_state: "idle", state_since: ago(290) },
-    { name: "order-export-claude-3", location: "shop/order-export", dir: "/home/me/work/shop-order-export", command: "claude 'Add tests for the export job'", created: ago(140), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(75) },
+    { name: "order-export-claude-3", title: "Add tests for the export job", location: "shop/order-export", dir: "/home/me/work/shop-order-export", command: "claude 'Add tests for the export job'", created: ago(140), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(75) },
     { name: "notes-claude", location: "notes", dir: "/home/me/work/notes", command: "claude", created: ago(700), attached: 0, exited: true, agent: "claude" },
   ],
   gpu: [
-    { name: "ci-flake-claude", location: "shop/ci-flake", dir: "/home/me/shop-ci-flake", command: "claude", created: ago(30), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(6) },
-    { name: "judge-v2-claude", location: "evals/judge-v2", dir: "/home/me/evals-judge-v2", command: "claude", created: ago(9), attached: 0, exited: false, agent: "claude", agent_state: "running", state_since: ago(1) },
+    { name: "ci-flake-claude", title: "Fix the flaky checkout CI test", location: "shop/ci-flake", dir: "/home/me/shop-ci-flake", command: "claude", created: ago(30), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(6) },
+    { name: "judge-v2-claude", title: "Tune the judge prompt", location: "evals/judge-v2", dir: "/home/me/evals-judge-v2", command: "claude", created: ago(9), attached: 0, exited: false, agent: "claude", agent_state: "running", state_since: ago(1) },
     { name: "evals-codex", location: "evals", dir: "/home/me/evals", command: "codex", created: ago(3), attached: 0, exited: false, agent: "codex", agent_state: "idle", state_since: ago(3) },
   ],
 };
@@ -363,7 +367,7 @@ function mockOrchestration(box: string, method: string, path: string, body?: unk
     return delay((mockTurns[`${box}/${s.name}`] ?? []).slice(-limit));
   }
   if (s && m?.[2] === "send") {
-    const req = (body ?? {}) as { text?: string; when?: string; force?: boolean; idem_key?: string };
+    const req = (body ?? {}) as { text?: string; when?: string; force?: boolean; idem_key?: string; enter?: boolean };
     const key = `${box}/${s.name}`;
     const list = (mockTurns[key] ??= []);
     const dup = req.idem_key ? list.find((t) => t.idem_key === req.idem_key) : undefined;
@@ -381,6 +385,11 @@ function mockOrchestration(box: string, method: string, path: string, body?: unk
       return delay({ sent: false, queued: true, turn: tr.id, seq: mockSeq, at });
     }
     mockStartTurn(box, s, tr, req.text ?? "");
+    // The first prompt an untitled session gets names it, as on a box.
+    if (!mockPrompted.has(key) && req.enter !== false) {
+      mockPrompted.add(key);
+      if (!s.title) s.title = titleOf(req.text ?? "") || undefined;
+    }
     return delay({ sent: true, turn: tr.id, seq: tr.sent_seq, at });
   }
   if (s && m?.[2] === "wait") {
@@ -528,13 +537,14 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
     return delay({ screen });
   }
   if (key === "POST tasks") {
-    const t = body as { location: string; name: string; branch?: string; agent?: string; command?: string; open?: string };
+    const t = body as { location: string; name: string; branch?: string; agent?: string; command?: string; open?: string; prompt?: string; title?: string };
     const loc = locations[box].find((l) => l.name === t.location)!;
     if (loc.worktrees?.some((w) => w.name === t.name)) return Promise.reject(new Error(`a worktree named ${t.name} already exists`));
     const wt = { name: t.name, path: `${loc.path}-${t.name}`, branch: t.branch || `me/${t.name}` };
     loc.worktrees = [...(loc.worktrees ?? []), wt];
     const agent = t.agent || "claude";
-    const session: Session = { name: `${t.name}-${agent}`, location: `${t.location}/${t.name}`, dir: wt.path, command: t.command ?? agent, created: new Date().toISOString(), attached: 0, exited: false, agent, agent_state: "running" };
+    const title = titleOf(t.title || t.prompt || "", t.title ? 80 : undefined) || undefined;
+    const session: Session = { name: `${t.name}-${agent}`, location: `${t.location}/${t.name}`, dir: wt.path, command: t.command ?? agent, created: new Date().toISOString(), attached: 0, exited: false, agent, agent_state: "running", title };
     sessions[box].push(session);
     setTimeout(() => emit({ type: "worktree.created", box, data: { location: t.location, name: t.name, path: wt.path } }), 50);
     setTimeout(() => emit({ type: "task.created", box, data: { location: t.location, name: t.name, path: wt.path, branch: wt.branch, session: session.name, agent } }), 60);
@@ -542,13 +552,14 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
     return delay({ worktree: wt, session });
   }
   if (key === "POST sessions") {
-    const r = body as { location: string; name?: string; command?: string; agent?: string };
+    const r = body as { location: string; name?: string; command?: string; agent?: string; prompt?: string; title?: string };
     const [locName, wtName] = r.location.split("/");
     const loc = locations[box].find((l) => l.name === locName)!;
     const wt = loc.worktrees?.find((w) => w.name === (wtName ?? locName)) ?? loc.worktrees![0];
     const command = r.command ?? r.agent ?? "";
     const agent = ["claude", "codex", "gemini"].includes(command) ? command : undefined;
-    const session: Session = { name: r.name ?? `${wt.name}-${command || "shell"}-${sessions[box].length}`, location: r.location, dir: wt.path, command, created: new Date().toISOString(), attached: 0, exited: false, agent, agent_state: agent ? "running" : undefined };
+    const title = titleOf(r.title || r.prompt || "", r.title ? 80 : undefined) || undefined;
+    const session: Session = { name: r.name ?? `${wt.name}-${command || "shell"}-${sessions[box].length}`, location: r.location, dir: wt.path, command, created: new Date().toISOString(), attached: 0, exited: false, agent, agent_state: agent ? "running" : undefined, title };
     sessions[box].push(session);
     return delay(session);
   }
@@ -572,6 +583,15 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
     locations[box] = (locations[box] ?? []).filter((x) => x.name !== loc);
     setTimeout(() => emit({ type: "location.removed", box, data: { location: loc } }), 50);
     return delay({ removed: loc });
+  }
+  // Renaming a session: its title, or "" to clear it.
+  if (method === "PATCH" && /^sessions\/[^/]+$/.test(path)) {
+    const s = sessions[box]?.find((x) => x.name === decodeURIComponent(path.slice("sessions/".length)));
+    if (!s) return Promise.reject(new ApiError("no session with that name", 404));
+    s.title = titleOf((body as { title?: string }).title ?? "", 80) || undefined;
+    mockPrompted.add(`${box}/${s.name}`);
+    setTimeout(() => emit({ type: "session.renamed", box, data: { name: s.name } }), 30);
+    return delay({ ...s });
   }
   if (method === "DELETE" && path.startsWith("sessions/")) {
     const name = decodeURIComponent(path.slice("sessions/".length));

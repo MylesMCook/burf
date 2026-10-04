@@ -1,7 +1,7 @@
 import { create } from "zustand";
 
 import type { BerthEvent } from "@/lib/api";
-import { agentLabel, agentOf, sessionName } from "@/lib/derive";
+import { agentLabel, agentOf, sessionAgent, sessionName } from "@/lib/derive";
 import { isLive, useLoops } from "@/lib/loops";
 import { flowKey, resolveFromEvent, route, secretKey, serviceKey } from "@/lib/notifications";
 import { handlePreview } from "@/lib/preview";
@@ -209,7 +209,9 @@ function describeAgent(e: BerthEvent): { agent: string; place: string; session?:
   const wt = loc?.worktrees?.find((w) => w.path === path);
   const raw = (session && agentOf(session)) ?? kind ?? "an agent";
   const where = loc && wt ? (wt.main ? loc.name : `${loc.name} / ${wt.name}`) : (path?.split("/").pop() ?? "");
-  const place = [where, e.box].filter(Boolean).join(" · ");
+  // Named after its work when it has a title ("Fix checkout webhook
+  // finished"), its agent then first in the place below it.
+  const place = [session && sessionAgent(session), where, e.box].filter(Boolean).join(" · ");
   const agent = session ? sessionName(session, { sessions: data?.sessions }) : agentLabel(raw);
   return { agent, place, session: session?.name, path, project: loc?.name ?? path?.split("/").pop(), worktree: wt && !wt.main ? wt.name : undefined };
 }

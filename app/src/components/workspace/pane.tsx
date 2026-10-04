@@ -14,7 +14,7 @@ import { LogView } from "@/components/workspace/log-view";
 import { PanelIcon, PanelPane } from "@/components/workspace/panel-pane";
 import { TerminalView } from "@/components/workspace/terminal-view";
 import { agentPresets, closePane, openBrowserAt, startSession } from "@/lib/actions";
-import { agentLabel, agentOf, sessionName, sessionState } from "@/lib/derive";
+import { agentLabel, agentOf, sessionAgent, sessionName, sessionState } from "@/lib/derive";
 import type { Leaf } from "@/lib/layout";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
@@ -164,15 +164,18 @@ function PaneTitle({ pane }: { pane: Leaf }) {
   const c = pane.content;
   const session = useStore((s) => (c.kind === "terminal" ? s.boxes[c.box]?.sessions?.find((x) => x.name === c.session) : undefined));
   const stats = useStore((s) => (c.kind === "terminal" ? s.boxes[c.box]?.stats : undefined));
-  // Named as everywhere else: "Claude Code", "Shell 2" (sessionName).
+  // Named as everywhere else: its title, then its agent ("Fix checkout
+  // webhook · Claude Code"), or "Claude Code", "Shell 2" (sessionName).
   const named = useStore((s) => (c.kind === "terminal" && session ? sessionName(session, { sessions: s.boxes[c.box]?.sessions }) : undefined));
   const agent = session ? agentOf(session) : undefined;
   const label = named ?? paneLabel(c, agent);
+  const secondary = session ? sessionAgent(session) : "";
   return (
     <Tip label={c.kind === "terminal" ? `${c.session} on ${c.box}` : undefined} align="start">
       <span className="flex min-w-0 items-center gap-1.5">
         <PaneIcon content={c} agent={agent} />
         <span className="truncate">{label}</span>
+        {secondary && <span className="shrink-0 text-muted-foreground">{secondary}</span>}
         {session && <StateGlyph state={sessionState(session, stats)} className="size-3" />}
       </span>
     </Tip>

@@ -39,7 +39,7 @@ import { Menu, MenuItem, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator
 import { Sheet, SheetPopup, SheetTitle } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Session } from "@/lib/api";
-import { sessionName, sessionPlace, sessionState } from "@/lib/derive";
+import { sessionAgent, sessionName, sessionPlace, sessionState } from "@/lib/derive";
 import {
   type Category,
   categoryInfo,
@@ -270,7 +270,7 @@ function liveWaiting(boxes: Record<string, BoxData>, notes: Note[]): Live[] {
       if (s.exited || sessionState(s, data.stats) !== "waiting") continue;
       const covered = notes.some((n) => n.category === "waiting" && !n.resolved && n.box === box && (n.session ? n.session === s.name : n.path === s.dir));
       if (covered) continue;
-      out.push({ key: `${box}|${s.name}`, box, session: s, name: sessionName(s, { sessions: data.sessions }), place: `${sessionPlace(s, data.locations)} · ${box}` });
+      out.push({ key: `${box}|${s.name}`, box, session: s, name: sessionName(s, { sessions: data.sessions }), place: [sessionAgent(s), sessionPlace(s, data.locations), box].filter(Boolean).join(" · ") });
     }
   }
   return out;

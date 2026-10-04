@@ -49,6 +49,7 @@ and dashes.
 | `task.created` | `location`, `name`, `path`, `branch`, `session`, `agent`, `from_session` |
 | `session.started` | `name`, `location`, `path`, `command` |
 | `session.stopped` | `name` |
+| `session.renamed` | `name`: its title changed (a rename, or its first prompt named it); never the title or the prompt |
 | `session.sent` | `name`, `from`, `idem_key?`, `turn?`: a prompt was typed in (never the prompt) |
 | `session.queued` | `name`, `turn`: a prompt is held until the agent is idle (`when: "idle"`) |
 | `session.open` | `name`, `location`, `path`, `open`, `agent`: asks the app to show a new session |
