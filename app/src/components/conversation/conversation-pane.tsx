@@ -9,6 +9,7 @@ import { Scene, type SceneName } from "@/components/art/scenes";
 import { ConversationView, type EditActions, QueuedBubble } from "@/components/conversation/conversation-view";
 import { toastError } from "@/components/error-note";
 import { UpgradeBox } from "@/components/upgrade-box";
+import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { InputGroup, InputGroupAddon, InputGroupTextarea } from "@/components/ui/input-group";
@@ -21,7 +22,6 @@ import { ApiError, boxApi, type QueuedPrompt } from "@/lib/api";
 import { keyOf, useConversations } from "@/lib/conversation-store";
 import { agentLabel, agentOf, guessAgent, sessionState, worktreeOf } from "@/lib/derive";
 import type { NextStep } from "@/lib/errors";
-import { cn } from "@/lib/utils";
 import { finishTurn, seedTranscript } from "@/lib/mock-conversation";
 import { useNotifications } from "@/lib/notifications";
 import { updateBoxes } from "@/lib/outdated";
@@ -389,12 +389,18 @@ function Reply({ onSend, onFail, who, mode, blocked }: { onSend(text: string): P
         placeholder={placeholder}
         className="max-h-40"
       />
-      <InputGroupAddon align="inline-end" className="self-end pb-1.5">
-        <Button size="xs" variant={queue ? "outline" : "default"} aria-label={queue ? "Queue" : "Send"} disabled={!text.trim() || blocked} onClick={go}>
-          {queue ? <ListPlusIcon /> : <ArrowUpIcon />}
-          {queue ? "Queue" : "Send"}
-          <Kbd className={cn("-mr-1 h-4 px-1 text-[10px]", !queue && "bg-primary-foreground/15 text-primary-foreground")}>↵</Kbd>
-        </Button>
+      <InputGroupAddon align="inline-end" className="self-end pr-1.5 pb-1.5">
+        <Tip
+          label={
+            <span className="flex items-center gap-1.5">
+              {queue ? `Queue it for when ${who} finishes` : "Send"} <Kbd>↵</Kbd>
+            </span>
+          }
+        >
+          <Button size="icon-sm" className="rounded-lg" variant={queue ? "outline" : "default"} aria-label={queue ? "Queue" : "Send"} disabled={!text.trim() || blocked} onClick={go}>
+            {queue ? <ListPlusIcon /> : <ArrowUpIcon />}
+          </Button>
+        </Tip>
       </InputGroupAddon>
     </InputGroup>
   );
