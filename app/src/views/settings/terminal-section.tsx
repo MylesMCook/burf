@@ -97,7 +97,7 @@ function TerminalPreview({ prefs }: { prefs: TerminalPrefs }) {
       style={{ background: t.background, color: t.foreground, fontFamily: prefs.fontFamily, fontSize: prefs.fontSize, lineHeight: prefs.lineHeight }}
     >
       <div>
-        <span style={{ color: t.green }}>me@devl</span> <span style={{ color: t.blue }}>~/work/shop-checkout-fix</span> <span style={{ color: t.magenta }}>(sean/checkout-fix)</span>
+        <span style={{ color: t.green }}>me@devl</span> <span style={{ color: t.blue }}>~/work/shop-checkout-fix</span> <span style={{ color: t.magenta }}>(me/checkout-fix)</span>
       </div>
       <div>
         <span style={{ color: t.brightBlack }}>$</span> pnpm test --filter checkout

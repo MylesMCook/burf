@@ -88,7 +88,7 @@ never do; of `run.*` events only `run.finished` and `run.gate` do. `where` narro
   "id": "nightly",
   "name": "Nightly: rebase every worktree and run tests",
   "enabled": true,
-  "trigger": { "schedule": "0 2 * * *", "each_worktree": true, "where": { "branch": "sean/*" } },
+  "trigger": { "schedule": "0 2 * * *", "each_worktree": true, "where": { "branch": "me/*" } },
   "steps": [
     { "id": "rebase", "kind": "run", "command": "git fetch origin && git rebase origin/main" },
     { "kind": "run", "when": "failure", "command": "git rebase --abort" },

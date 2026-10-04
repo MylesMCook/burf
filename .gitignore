@@ -100,3 +100,6 @@ video/.venv/
 
 # Cal branding removal: demo and landing page screenshots
 design/decal/
+
+# Logs a test or script writes beside the code
+internal/**/*.log

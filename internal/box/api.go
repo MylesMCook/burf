@@ -357,7 +357,14 @@ func (b *Box) createWorktree(r *http.Request, loc Location, req WorktreeRequest)
 func (b *Box) lifecycle(from, kind string, loc Location, dir, name, script string, next func() error) {
 	data := map[string]any{"location": loc.Name, "name": name, "path": dir, "script": script}
 	b.Events.Publish(events.Event{Type: "worktree." + kind + ".started", Box: b.Name, Origin: from, Data: data})
-	logPath := filepath.Join(b.LogDir, kind+"-"+loc.Name+"-"+name+".log")
+	// Without a log folder (tests, embedded uses) the log goes to a temp
+	// folder, never the working directory.
+	logDir := b.LogDir
+	if logDir == "" {
+		logDir = filepath.Join(os.TempDir(), "berth-logs")
+	}
+	_ = os.MkdirAll(logDir, 0o700)
+	logPath := filepath.Join(logDir, kind+"-"+loc.Name+"-"+name+".log")
 	data["log"] = logPath
 	err := runScript(context.Background(), script, loc.Path, dir, name, logPath, 30*time.Minute, b.envForDir(context.Background(), dir))
 	if err == nil && next != nil {

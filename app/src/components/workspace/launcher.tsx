@@ -19,7 +19,7 @@ import { openSession, useWorkspaces, type WorktreeRef, wsKey } from "@/lib/works
 const stateWords: Record<SessionState, string> = { waiting: "waiting for you", running: "working", finished: "finished", ready: "ready", idle: "open", exited: "exited" };
 
 // middle shortens a long name in the middle, keeping both ends readable:
-// "sean/eng-1234-…-billing".
+// "me/eng-1234-…-checkout".
 function middle(s: string, max = 32): string {
   if (s.length <= max) return s;
   const half = Math.floor((max - 1) / 2);
