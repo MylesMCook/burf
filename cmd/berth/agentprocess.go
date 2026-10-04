@@ -8,6 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
@@ -93,7 +94,15 @@ func spawnAgent(l laptop, exe string) error {
 func runAgent(l laptop) error {
 	ctx, stop := signalContext()
 	defer stop()
-	err := agent.Run(ctx, agent.Config{Dir: l.dir, Socket: l.socket()})
+	cfg := agent.Config{Dir: l.dir, Socket: l.socket()}
+	// A second agent (a test, a throwaway home) needs its own ports.
+	if a := os.Getenv("BERTH_PROXY_ADDR"); a != "" {
+		cfg.ProxyAddrs = strings.Split(a, ",")
+	}
+	if a := os.Getenv("BERTH_UI_ADDR"); a != "" {
+		cfg.UIAddr = a
+	}
+	err := agent.Run(ctx, cfg)
 	if errors.Is(err, agent.ErrAlreadyRunning) {
 		fmt.Fprintln(os.Stderr, "berth: an agent is already running for this home; exiting")
 		return nil
