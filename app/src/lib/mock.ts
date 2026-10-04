@@ -16,6 +16,7 @@ import { initMockLocalBox, localBoxCall, localBoxFolders, localBoxStream } from 
 import { ApiError } from "@/lib/api";
 import { titleOf } from "@/lib/derive";
 import { demoAttach, demoScreen } from "@/demo/terminal";
+import { mockHistoryCall } from "@/lib/mock-history";
 
 // Mock mode (?mock=1) runs the whole UI on fixtures, so it can be worked on
 // without an agent or a box. State is mutable: new tasks and sessions appear,
@@ -560,6 +561,8 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
   if (usage) return usage;
   const wts = worktreesCall(box, method, path, body, { locations, sessions }, emit, delay);
   if (wts) return wts;
+  const hist = mockHistoryCall(box, method, path, body, { sessions, emit });
+  if (hist) return hist;
   // The live demo's agents say their own lines (src/demo/terminal.ts).
   if (__BERTH_DEMO__ && method === "GET" && /^sessions\/[^/]+\/screen/.test(path)) {
     const s = sessions[box]?.find((x) => x.name === decodeURIComponent(path.split("/")[1]));

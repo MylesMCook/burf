@@ -1,5 +1,5 @@
 import { ArrowUpIcon, ListPlusIcon, MessageSquareTextIcon, MessagesSquareIcon, RefreshCwIcon, SendIcon, SquareTerminalIcon } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
 import { DitherBand } from "@/components/art/dither-band";
@@ -37,6 +37,7 @@ import { permissionChoices } from "@/lib/screen";
 import { NONE, useStore } from "@/lib/store";
 import type { TranscriptItem } from "@/lib/transcript";
 import { plainWords, useScreenStatus } from "@/lib/screen-status";
+import { noteSent, usePromptRecall } from "@/lib/history";
 import { useAsk, useQueued, useTranscriptFeed } from "@/lib/transcript-feed";
 import { ConfirmDialog } from "@/views/settings/confirm";
 import { cn } from "@/lib/utils";
@@ -392,7 +393,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
           </div>
         ) : (
           <ChatScope value={{ who, send: reply, showTerminal: onShowTerminal, startAgain: again }}>
-            <ConversationView items={shown} onAnswer={answer} edits={edits} who={who} tail={tail} tailSize={queue.items.length + (untaken ? 1 : 0)} />
+            <ConversationView chat={{ box, session, agent, visible, idle: state !== "running" && state !== "waiting" }} items={shown} onAnswer={answer} edits={edits} who={who} tail={tail} tailSize={queue.items.length + (untaken ? 1 : 0)} />
           </ChatScope>
         )}
       </div>
@@ -484,9 +485,14 @@ function Reply({ onSend, onFail, who, mode, blocked, hint, attach, agent }: { on
   const att = useAttachments(attach);
   const menu = useComposerMenu({ box: attach?.box, session: attach && "session" in attach ? attach.session : undefined, agent, text, setText });
   const ready = (!!text.trim() || att.paths.length > 0) && !att.uploading;
+  // Up and Down recall the prompts sent before (lib/history).
+  const input = useRef<HTMLTextAreaElement>(null);
+  const to = attach && "session" in attach ? attach.session : undefined;
+  const recall = usePromptRecall(attach?.box, to, text, setText, input);
   const go = () => {
     const t = withAttachments(text.trim(), att.paths);
     if (!ready || blocked) return;
+    if (attach?.box && to) noteSent(attach.box, to, text.trim());
     const kept = text;
     setText("");
     onSend(t).then(att.clear, (err: unknown) => {
@@ -505,6 +511,7 @@ function Reply({ onSend, onFail, who, mode, blocked, hint, attach, agent }: { on
       <AttachmentChips items={att.items} onRemove={att.remove} className="mx-3 rounded-t-lg border border-b-0 bg-muted/40 p-2" />
       <InputGroup className={cn("**:[textarea]:min-h-0! **:[textarea]:py-2.5!", att.dragging && "border-ring ring-[3px]")}>
         <InputGroupTextarea
+          ref={input}
           rows={1}
           onPaste={att.onPaste}
           value={text}
@@ -512,6 +519,7 @@ function Reply({ onSend, onFail, who, mode, blocked, hint, attach, agent }: { on
           onSelect={menu.onSelect}
           onKeyDown={(e) => {
             if (menu.onKeyDown(e)) return;
+            if (recall(e)) return;
             if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault();
               go();

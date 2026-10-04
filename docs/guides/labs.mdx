@@ -102,6 +102,45 @@ These need a box with the `controls` capability (berthd from October 2026):
 `POST /v1/sessions/{name}/interrupt`, `…/mode`, `…/keys` and
 `GET …/controls`; the transcript's `signals` carry the rest.
 
+### History
+
+A chat holds its last 300 items; scroll up and the earlier turns load a
+page at a time (**Load earlier messages** above them, **Start of the
+conversation** once there are no more), leaving what you were reading where
+it was. Only the rows near the view are drawn, so a chat thousands of items
+long opens and scrolls as fast as a short one. A chat hidden for a minute
+lets its earlier turns go; scrolling up reads them again.
+
+- **Helpers' own chats.** Click a helper in **Crew**, or its name under
+  "Sent out 2 helpers", and its conversation opens in a sheet beside the
+  chat, read-only and drawn the same way: what the agent asked it, its steps
+  folded, each call opening to what it ran and printed. Its siblings are
+  tabs at the top; a working helper updates as it goes.
+- **Earlier prompts.** In an empty reply box, **↑** and **↓** go back
+  and forth through the prompts you sent, newest first, as at a terminal.
+- **Find.** **⌘F** with the chat focused finds words in prompts, replies
+  and steps' targets, folded steps included (they open to the match). **↵**
+  goes to the older match, **⇧↵** to the newer, **Esc** closes it. A terminal
+  pane keeps its own ⌘F.
+- **Edit and resend, fork, rewind.** Hover a prompt you sent:
+  - **Edit and resend** puts its words back in the reply box.
+  - **Fork from here** starts a new Claude Code in the same worktree with
+    everything said before that prompt, sends the prompt (as you edit it)
+    and opens it as a tab, "Fork of …". The original is untouched.
+  - **Rewind to here**, while Claude Code is idle, takes it back to before
+    that prompt with its own `/rewind`: just the conversation, or the code
+    too. The prompt comes back to the reply box to edit and send again.
+
+Fork and rewind work with Claude Code. Claude Code only cuts a resumed
+conversation short in print mode, so a fork is a copy of its record up to
+that prompt, resumed. Rewind drives `/rewind` on the agent's screen, moving
+up its list and checking the highlighted prompt at each step; anything
+unexpected (text typed in its prompt, a list that doesn't show the prompt)
+backs out with Esc and says why. These need a box with the `history`
+capability: `GET …/transcript?before=`, `GET …/subagents` (and each one's
+`…/transcript` and `…/tool/{id}`), `POST …/fork` and `POST …/rewind`.
+
+
 ### Commands in the chat
 
 The reply box (and the first-prompt composer) takes everything the agent's

@@ -1,5 +1,5 @@
 import { CheckIcon, ChevronRightIcon, ClockIcon, CornerDownRightIcon, FileTextIcon, GitCompareArrowsIcon, PencilLineIcon, RotateCwIcon, SearchIcon, SendHorizontalIcon, TerminalIcon, XIcon } from "lucide-react";
-import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { Tip } from "@/components/tip";
 import { Badge } from "@/components/ui/badge";
@@ -16,7 +16,16 @@ import { Markdown } from "@/components/conversation/markdown";
 import { HARBOUR_WORDS } from "@/lib/screen-status";
 import { NoticeCard } from "@/components/conversation/notice-card";
 import { CommandItem } from "@/components/conversation/command-item";
+import { ChatList } from "@/components/conversation/chat-list";
+import { ChatSearch, plainMarkdown, type SearchEntry } from "@/components/conversation/chat-search";
+import { PromptActions, PromptActionsContext, type PromptContext } from "@/components/conversation/prompt-actions";
+import { HelperSheetHost, openHelper } from "@/components/conversation/subagent-view";
+import { isMock } from "@/hooks/use-berth-connection";
+import { keyOf } from "@/lib/conversation-store";
+import { applyCut, dropOlder, loadOlder, meta, setCut, useHasHistory, useHistory, useOlder } from "@/lib/history";
+import { seedLongChat } from "@/lib/mock-history";
 import "@/components/conversation/conversation.css";
+import "@/components/conversation/history.css";
 
 // ConversationView draws an agent's turn as a calm transcript rather than a
 // terminal: what was asked, what the agent says, its tool calls folded into
@@ -36,6 +45,12 @@ export interface ConversationViewProps {
   tail?: ReactNode;
   tailSize?: number;
   className?: string;
+  // The session this is the chat of: older turns load as it scrolls up,
+  // ⌘F finds in it, and prompts can be edited, forked and rewound (idle:
+  // the agent rests, so a rewind can drive it).
+  // A chat hidden for a minute (another tab, another worktree) lets its
+  // older turns go too.
+  chat?: { box: string; session: string; agent?: string; idle?: boolean; visible?: boolean };
 }
 
 // EditActions read an edited file's current diff, keep comments on its
@@ -48,49 +63,171 @@ export interface EditActions {
   review(file: string): void;
 }
 
-export function ConversationView({ items, onAnswer, edits, who = "The agent", tail, tailSize = 0, className }: ConversationViewProps) {
-  const end = useRef<HTMLDivElement>(null);
+export function ConversationView({ items: live, onAnswer, edits, who = "The agent", tail, tailSize = 0, className, chat }: ConversationViewProps) {
+  const key = chat ? keyOf(chat.box, chat.session) : "";
+  const history = useHasHistory(chat?.box ?? "") && !!chat;
+  const older = useOlder(key);
+  const cut = useHistory((st) => (key ? st.cut[key] : undefined));
+  // A closed chat lets its older turns go, so memory stays bounded.
+  useEffect(() => () => void (key && dropOlder(key)), [key]);
+  useEffect(() => {
+    if (!key || chat?.visible !== false) return;
+    const t = window.setTimeout(() => dropOlder(key), 60_000);
+    return () => window.clearTimeout(t);
+  }, [key, chat?.visible]);
+  // The demo's long chat (?long=5000), for measuring.
+  useEffect(() => {
+    if (chat && isMock()) seedLongChat(chat.box, chat.session);
+  }, [chat?.box, chat?.session]);
+  // A rewound prompt stays hidden until the agent's record no longer has it.
+  useEffect(() => {
+    if (chat && cut && !live.some((it) => meta(it).uuid === cut)) setCut(chat.box, chat.session, undefined);
+  }, [chat, cut, live]);
+  const items = useMemo(() => (history ? [...older.items, ...applyCut(live, cut)] : live), [history, older.items, live, cut]);
+  const blocks = useMemo(() => foldTurns(items), [items]);
   const last = items[items.length - 1];
   const grew = last?.kind === "text" ? last.text.length : last?.kind === "tools" ? (last.items?.length ?? 0) : 0;
-  // The view follows new work while it is at the foot. Scrolled up to read,
-  // it stays put until the person scrolls back down or sends something.
-  const pinned = useRef(true);
-  useEffect(() => {
-    const sc = end.current?.closest<HTMLElement>(".overflow-y-auto");
-    if (!sc) return;
-    let userAt = 0;
-    const user = () => {
-      userAt = Date.now();
-    };
-    const onScroll = () => {
-      const near = sc.scrollHeight - sc.scrollTop - sc.clientHeight < 120;
-      if (near) pinned.current = true;
-      else if (Date.now() - userAt < 1000) pinned.current = false;
-    };
-    const opts = { passive: true };
-    sc.addEventListener("scroll", onScroll, opts);
-    for (const e of ["wheel", "touchmove", "pointerdown", "keydown"]) sc.addEventListener(e, user, opts);
-    return () => {
-      sc.removeEventListener("scroll", onScroll);
-      for (const e of ["wheel", "touchmove", "pointerdown", "keydown"]) sc.removeEventListener(e, user);
-    };
-  }, []);
-  useEffect(() => {
-    if (last?.kind === "user" || last?.kind === "command") pinned.current = true;
-    if (pinned.current) end.current?.scrollIntoView({ block: "end", behavior: "smooth" });
-  }, [items.length, grew, tailSize, last?.kind]);
+  // A prompt or command sent brings the view back to the foot.
+  const sent = useMemo(() => [...items].reverse().find((it) => it.kind === "user" || it.kind === "command")?.id, [items]);
+  const oldest = items.length ? meta(items[0]).off : undefined;
+  const nearTop = history && oldest ? () => void loadOlder(chat!.box, chat!.session, oldest) : undefined;
+  const [reveal, setReveal] = useState<string[]>([]);
+  const revealed = useMemo(() => new Set(reveal), [reveal]);
+  const entries = useMemo(() => (chat ? searchEntries(blocks) : []), [chat, blocks]);
+  const ctx = useMemo<PromptContext | null>(
+    () => (chat ? { box: chat.box, session: chat.session, claude: history && chat.agent === "claude", idle: chat.idle ?? true, who, items } : null),
+    [chat, history, who, items],
+  );
+  // One function for every row, so a row draws again only when it changes.
+  const answerTo = useRef(onAnswer);
+  answerTo.current = onAnswer;
+  const answer = useCallback((id: string, key: string) => answerTo.current(id, key), []);
+  const renderBlock = useCallback(
+    (b: Block) => (b.kind === "fold" ? <WorkFold id={b.id} steps={b.steps} live={b.live} onAnswer={answer} edits={edits} who={who} /> : <Item it={b.it} onAnswer={answer} edits={edits} who={who} />),
+    [answer, edits, who],
+  );
+  const header =
+    history && oldest && (older.loading || older.error || older.items.length || !older.more || live.length >= 250) ? (
+      <OlderHeader older={older} onLoad={() => nearTop?.()} />
+    ) : undefined;
 
   return (
-    <div className={cn("mx-auto flex w-full max-w-[680px] flex-col gap-4 text-[14px] text-foreground leading-relaxed", className)}>
-      {foldTurns(items).map((b) =>
-        b.kind === "fold" ? (
-          <WorkFold key={b.id} steps={b.steps} live={b.live} onAnswer={onAnswer} edits={edits} who={who} />
-        ) : (
-          <Item key={b.it.id} it={b.it} onAnswer={onAnswer} edits={edits} who={who} />
-        ),
+    <RevealContext.Provider value={revealed}>
+      <PromptActionsContext.Provider value={ctx}>
+        <ChatList
+          className={cn("mx-auto w-full max-w-[680px] text-[14px] text-foreground leading-relaxed", className)}
+          rows={blocks}
+          rowKey={blockKey}
+          estimate={estimateBlock}
+          render={renderBlock}
+          header={header}
+          tail={tail}
+          grew={`${grew}:${tailSize}`}
+          repin={sent}
+          onNearTop={nearTop}
+        >
+          {chat ? (api) => <ChatSearch api={api} entries={entries} onReveal={setReveal} /> : undefined}
+        </ChatList>
+        {chat && <HelperSheetHost />}
+      </PromptActionsContext.Provider>
+    </RevealContext.Provider>
+  );
+}
+
+// What search opens to show a match: folds and tool groups, by id.
+const RevealContext = createContext<Set<string>>(new Set());
+
+const blockKey = (b: Block) => (b.kind === "fold" ? b.id : b.it.id);
+
+// A row's height before it is drawn: near enough that the scroll bar
+// doesn't jump much once it is.
+function estimateBlock(b: Block): number {
+  if (b.kind === "fold") return 28;
+  const it = b.it;
+  const lines = (t: string, per: number) => t.split("\n").reduce((n, l) => n + Math.max(1, Math.ceil(l.length / per)), 0);
+  switch (it.kind) {
+    case "user":
+      return 22 * Math.min(lines(it.text, 60), 40) + 20;
+    case "text":
+      return 23 * Math.min(lines(it.text, 84), 400) + 8;
+    case "ask":
+      return 150;
+    case "command":
+      return 64;
+    case "notice":
+      return 84;
+    default:
+      return 32;
+  }
+}
+
+// searchEntries are the words search looks through, row by row, with the
+// folds that hide each item.
+function searchEntries(blocks: Block[]): SearchEntry[] {
+  const out: SearchEntry[] = [];
+  blocks.forEach((b, row) => {
+    const add = (it: TranscriptItem, open: string[]) => {
+      const text = searchable(it);
+      if (text) out.push({ row, item: it.id, text, open: it.kind === "tools" ? [...open, it.id] : open });
+    };
+    if (b.kind === "fold") for (const it of b.steps) add(it, [b.id]);
+    else add(b.it, []);
+  });
+  return out;
+}
+
+function searchable(it: TranscriptItem): string {
+  switch (it.kind) {
+    case "user":
+      return it.text;
+    case "text":
+      return plainMarkdown(it.text);
+    case "tools":
+      return [toolSummary(it), ...(it.items ?? []).map((c) => `${c.verb}\n${c.target}`)].join("\n");
+    case "edit":
+      return `Edited ${it.file}`;
+    case "crew":
+      return it.names.join("\n");
+    case "command":
+      return [it.command, it.args, it.text].filter(Boolean).join("\n");
+    case "notice":
+      return it.text;
+    case "ask":
+      return it.detail;
+  }
+  return "";
+}
+
+// OlderHeader is the top of a long chat: earlier turns loading, a way to
+// load them, or where the conversation began.
+function OlderHeader({ older, onLoad }: { older: { loading: boolean; error?: string; more: boolean }; onLoad(): void }) {
+  return (
+    <div className="flex h-10 items-center justify-center pb-4 text-muted-foreground text-xs">
+      {older.loading ? (
+        <span className="flex items-center gap-2">
+          <Spinner className="size-3.5" />
+          Loading earlier messages…
+        </span>
+      ) : older.error ? (
+        <span className="flex items-center gap-2">
+          <span className="text-destructive-foreground">Couldn't load earlier messages.</span>
+          <Button size="xs" variant="ghost" onClick={onLoad}>
+            <RotateCwIcon />
+            Retry
+          </Button>
+        </span>
+      ) : older.more ? (
+        <Button size="xs" variant="ghost" className="text-muted-foreground" onClick={onLoad}>
+          <ClockIcon />
+          Load earlier messages
+        </Button>
+      ) : (
+        <span className="flex w-full items-center gap-3">
+          <span className="h-px flex-1 bg-border" />
+          Start of the conversation
+          <span className="h-px flex-1 bg-border" />
+        </span>
       )}
-      {tail}
-      <div ref={end} />
     </div>
   );
 }
@@ -161,8 +298,15 @@ function workSummary(steps: TranscriptItem[]): string {
   return parts.join(", ");
 }
 
-function WorkFold({ steps, live, onAnswer, edits, who }: { steps: TranscriptItem[]; live: boolean; onAnswer(id: string, key: string): void; edits?: EditActions; who: string }) {
-  const [open, setOpen] = useState(false);
+function WorkFold({ id, steps, live, onAnswer, edits, who }: { id: string; steps: TranscriptItem[]; live: boolean; onAnswer(id: string, key: string): void; edits?: EditActions; who: string }) {
+  const [opened, setOpen] = useState(false);
+  // Search opens it to a match inside.
+  const forced = useContext(RevealContext).has(id);
+  const open = opened || forced;
+  // Its steps are drawn once it has opened: a long chat has hundreds of
+  // folds, most never opened.
+  const [drawn, setDrawn] = useState(open);
+  if (open && !drawn) setDrawn(true);
   const summary = workSummary(steps);
   return (
     <div className="cv-in -my-1">
@@ -174,9 +318,7 @@ function WorkFold({ steps, live, onAnswer, edits, who }: { steps: TranscriptItem
       <div className="cv-fold" data-closed={open ? undefined : ""}>
         <div>
           <div className="mt-2 flex flex-col gap-3 border-l pl-4 text-[13.5px]">
-            {steps.map((it) => (
-              <Item key={it.id} it={it} onAnswer={onAnswer} edits={edits} who={who} />
-            ))}
+            {drawn && steps.map((it) => <Item key={it.id} it={it} onAnswer={onAnswer} edits={edits} who={who} />)}
           </div>
         </div>
       </div>
@@ -184,17 +326,29 @@ function WorkFold({ steps, live, onAnswer, edits, who }: { steps: TranscriptItem
   );
 }
 
-function Item({ it, onAnswer, edits, who }: { it: TranscriptItem; onAnswer(id: string, key: string): void; edits?: EditActions; who: string }) {
+// Item is one item, marked with its id for search.
+function Item(props: { it: TranscriptItem; onAnswer(id: string, key: string): void; edits?: EditActions; who: string }) {
+  return (
+    <div data-item-id={props.it.id} className="contents">
+      <ItemBody {...props} />
+    </div>
+  );
+}
+
+function ItemBody({ it, onAnswer, edits, who }: { it: TranscriptItem; onAnswer(id: string, key: string): void; edits?: EditActions; who: string }) {
   switch (it.kind) {
     case "user":
       return (
-        <div data-selectable className="cv-in max-w-[80%] self-end whitespace-pre-wrap rounded-2xl bg-muted px-3.5 py-2">
-          {it.text}
+        <div className="hs-prompt flex w-full items-end justify-end gap-1.5">
+          <PromptActions it={it} />
+          <div data-selectable className="cv-in min-w-0 max-w-[80%] whitespace-pre-wrap rounded-2xl bg-muted px-3.5 py-2">
+            {it.text}
+          </div>
         </div>
       );
     case "text":
       return it.live ? (
-        <div className="cv-live" title="As its screen shows it: its record has these words a moment later">
+        <div className="cv-live" aria-description="As its screen shows it: its record has these words a moment later">
           <Markdown text={it.text} />
         </div>
       ) : (
@@ -215,9 +369,7 @@ function Item({ it, onAnswer, edits, who }: { it: TranscriptItem; onAnswer(id: s
             Sent out {it.names.length} helper{it.names.length === 1 ? "" : "s"}
           </span>
           {it.names.map((n) => (
-            <Badge key={n} variant="secondary">
-              {n.replace(/^Explore:\s*/, "")}
-            </Badge>
+            <HelperChip key={n} name={n} tool={meta(it).tool} />
           ))}
         </div>
       );
@@ -226,6 +378,22 @@ function Item({ it, onAnswer, edits, who }: { it: TranscriptItem; onAnswer(id: s
     case "ask":
       return it.structured ? <Permission it={it} onAnswer={onAnswer} who={who} /> : <Ask it={it} onAnswer={onAnswer} />;
   }
+}
+
+// HelperChip is a helper the agent sent out; where its own conversation can
+// be read, a click opens it.
+function HelperChip({ name, tool }: { name: string; tool?: string }) {
+  const ctx = useContext(PromptActionsContext);
+  const label = name.replace(/^Explore:\s*/, "");
+  if (!ctx?.claude) return <Badge variant="secondary">{label}</Badge>;
+  return (
+    <Tip label="Open its conversation">
+      <Badge variant="secondary" render={<button type="button" onClick={() => openHelper(ctx.box, ctx.session, tool ?? label)} />} className="cursor-pointer outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring">
+        {label}
+        <ChevronRightIcon className="-mr-0.5 size-3 opacity-60" />
+      </Badge>
+    </Tip>
+  );
 }
 
 // What the agent would do, in words: "wants to run", "wants to edit".
@@ -398,8 +566,8 @@ function Edit({ it, edits }: { it: Extract<TranscriptItem, { kind: "edit" }>; ed
         <span className="text-muted-foreground">{it.file.slice(0, cut + 1)}</span>
         {it.file.slice(cut + 1)}
       </span>
-      <span className="font-medium font-mono text-[12px] text-success-foreground tabular-nums">+{it.added}</span>
-      <span className="font-medium font-mono text-[12px] text-destructive-foreground tabular-nums">−{it.removed}</span>
+      {!!it.added && <span className="font-medium font-mono text-[12px] text-success-foreground tabular-nums">+{it.added}</span>}
+      {!!it.removed && <span className="font-medium font-mono text-[12px] text-destructive-foreground tabular-nums">−{it.removed}</span>}
     </>
   );
   if (!edits) return <div className="cv-in flex min-w-0 items-center gap-2 self-start rounded-lg bg-muted/40 px-2.5 py-1.5 text-[13px]">{label}</div>;
@@ -518,10 +686,15 @@ export function QueuedBubble({ q, who, onSendNow, onCancel }: { q: QueuedPrompt;
 const EXT: Record<string, string> = { ts: "#3178c6", tsx: "#3178c6", js: "#b8860b", rs: "#d0573a", go: "#00a7d0", md: "#6b7280", json: "#8b5cf6", css: "#2965f1", py: "#3a75b0" };
 
 function Tools({ it, edits }: { it: Extract<TranscriptItem, { kind: "tools" }>; edits?: EditActions }) {
-  const [open, setOpen] = useState(!it.done);
-  // A finished group folds to its summary after a moment.
+  const [opened, setOpen] = useState(!it.done);
+  const forced = useContext(RevealContext).has(it.id);
+  const open = opened || forced;
+  // A group that finishes while in view folds to its summary after a
+  // moment; one drawn finished (scrolled back to) stays as it is opened.
+  const working = useRef(!it.done);
   useEffect(() => {
-    if (!it.done) return;
+    if (!it.done || !working.current) return;
+    working.current = false;
     const t = window.setTimeout(() => setOpen(false), 1600);
     return () => window.clearTimeout(t);
   }, [it.done]);

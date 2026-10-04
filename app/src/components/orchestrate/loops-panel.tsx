@@ -111,7 +111,7 @@ export function LoopsPanel() {
   }
   return (
     <div ref={ref} style={{ bottom, right: GAP }} className="fixed z-40 flex max-h-[50vh] w-88 flex-col gap-2 overflow-y-auto" role="region" aria-label="Loops">
-      {crew && <CrewCard key={crew.key} crew={crew.members} />}
+      {crew && <CrewCard key={crew.key} crew={crew.members} chat={chatOf(crew.key)} />}
       {loops.map((l) => (
         <LoopCard key={l.id} loop={l} />
       ))}
@@ -122,6 +122,12 @@ export function LoopsPanel() {
     </div>
   );
 }
+
+// chatOf is the box and session a crew's key ("box/session") names.
+const chatOf = (key: string) => {
+  const i = key.indexOf("/");
+  return i > 0 ? { box: key.slice(0, i), session: key.slice(i + 1) } : undefined;
+};
 
 // useFocusedCrew is the crew of the agent in the focused pane (Labs): the
 // helpers its conversation says it sent out, while there are any.
