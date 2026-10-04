@@ -1,11 +1,10 @@
 #!/usr/bin/env node
-// capture.mjs takes the landing page's one screenshot, the hero's poster:
-// the live demo as it opens (Vite on app/ in demo mode, ?shots=1, which
-// leaves out the demo's guide, badge and script), in headless Chrome at 2x
-// in Berth Dark and Berth Light. It writes WebP pairs into
-// site/assets/shots/: <scene>-<dark|light>-<width>.webp at the scene's 1x
-// and 2x widths. Vite is stopped when it finishes, fails or is interrupted.
-// The features further down the page are drawings, in index.html.
+// capture.mjs takes the landing page's screenshots from the live demo (Vite
+// on app/ in demo mode, ?shots=1, which leaves out the demo's guide, badge
+// and script; Labs on): the harbour home, a conversation, the dashboard and
+// zen, in headless Chrome at 2x in Berth Dark and Berth Light. It writes
+// WebPs into site/assets/shots/: <scene>-<dark|light>-<width>.webp at the
+// scene's widths. Vite is stopped when it finishes, fails or is interrupted.
 //
 //   node site/scripts/capture.mjs                     both themes
 //   node site/scripts/capture.mjs --theme dark        one theme
@@ -41,7 +40,8 @@ const themes = (flag("theme") ?? "dark,light").split(",");
 const port = Number(flag("port", "1456"));
 const quality = Number(flag("quality", "0.8"));
 const pngDir = flag("png");
-const base = `http://localhost:${port}/?shots=1`;
+// Labs on (the harbour home, conversations); light by day in the light theme.
+const base = `http://localhost:${port}/?shots=1&labs=1&view=conversation`;
 
 // A scene opens the demo, stages one screen and returns the area to keep,
 // in CSS pixels. Widths are the WebP widths written; the default is the
@@ -49,17 +49,69 @@ const base = `http://localhost:${port}/?shots=1`;
 // clip's width (clipWidth), for --phone-only.
 const scenes = [
   {
-    name: "dashboard",
-    // Wide enough for all four columns.
+    // Labs' harbour home: the dithered harbour, the composer and the agents.
+    name: "home",
     viewport: { width: 1440, height: 900 },
-    widths: [1280, 2240],
+    widths: [720, 1280, 2080],
     clipWidth: 1440,
-    // The "Needs you" column: the waiting agent's card, its question and answers.
-    phone: { x: 251, y: 52, width: 300, height: 206 },
+    // The heading, the composer and the top of the agents list.
+    phone: { x: 520, y: 330, width: 640, height: 480 },
+    async stage(s) {
+      await s.view({ kind: "workspace" });
+      await s.wait(1500);
+      return s.full();
+    },
+  },
+  {
+    // An agent's conversation, a few seconds into a turn.
+    name: "conversation",
+    viewport: { width: 1440, height: 900 },
+    widths: [720, 1280, 2080],
+    clipWidth: 1440,
+    // The transcript, down to the question.
+    phone: { x: 296, y: 44, width: 720, height: 480 },
+    async stage(s) {
+      await s.view({ kind: "workspace" });
+      await s.wait(800);
+      await s.page.locator("textarea").first().fill("Make payment webhook retries safe to repeat");
+      await s.page.keyboard.press("Enter");
+      await s.wait(10500);
+      await s.page.mouse.move(1430, 300);
+      return s.full();
+    },
+  },
+  {
+    // The Agent Dashboard: every agent by what it needs.
+    name: "dashboard",
+    viewport: { width: 1440, height: 900 },
+    widths: [720, 1280, 2080],
+    clipWidth: 1440,
+    // Needs you and working.
+    phone: { x: 250, y: 50, width: 600, height: 450 },
     async stage(s) {
       await s.view({ kind: "dashboard" });
       await s.page.mouse.move(1430, 450);
       await s.wait(1200);
+      return s.full();
+    },
+  },
+  {
+    // Zen: the switcher open over an agent's conversation.
+    name: "zen",
+    query: "&zen=1",
+    viewport: { width: 1440, height: 900 },
+    widths: [720, 1280, 2080],
+    clipWidth: 1440,
+    // The switcher.
+    phone: { x: 0, y: 0, width: 560, height: 420 },
+    async stage(s) {
+      await s.view({ kind: "workspace" });
+      await s.wait(800);
+      await s.page.locator("textarea").first().fill("Make payment webhook retries safe to repeat");
+      await s.page.keyboard.press("Enter");
+      await s.wait(4000);
+      await s.page.locator('[aria-label="Switch agent or worktree"]').click();
+      await s.wait(600);
       return s.full();
     },
   },
@@ -226,9 +278,12 @@ async function main() {
           full: () => ({ x: 0, y: 0, ...viewport }),
         };
         try {
-          await page.goto(base);
+          await page.goto(`${base}${theme === "light" ? "&light=day" : ""}${scene.query ?? ""}`);
           await page.waitForFunction(() => "__berthStore" in window);
           await wait(2500);
+          // The demo's fixtures keep a loop running; its card would cover
+          // the shots. The crew card in the same corner stays.
+          await page.addStyleTag({ content: '[role=region][aria-label=Loops] > :not([aria-label=Crew]) { display: none !important; }' });
           const clip = await scene.stage(s);
           await wait(1200);
           const png = await page.screenshot({ clip });

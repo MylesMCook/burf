@@ -1,11 +1,6 @@
-/* Berth — landing page.
-   Dark first, like the app; light follows prefers-color-scheme. The brand
-   rules (design/brand/index.html) hold here too:
-   - Amber is the logo's dot. It marks the one thing that needs you (the lit
-     masthead, the "needs you" row), never decoration.
-   - Small labels are sentence case, never uppercase or tracked.
-   - State is never a stripe down one side of a card or row.
-   - Drawings move by transform and opacity only, and stop for reduced motion. */
+/* Berth's landing page. The app's type (Inter, JetBrains Mono), its tokens
+   (Berth Light and Berth Dark, following the system) and coss-ui's buttons.
+   The harbour at the top is the only picture that isn't a screenshot. */
 
 @font-face {
   font-family: "Inter";
@@ -14,7 +9,6 @@
   font-style: normal;
   font-display: swap;
 }
-
 @font-face {
   font-family: "JetBrains Mono";
   src: url("assets/fonts/jetbrains-mono-latin-wght.woff2") format("woff2");
@@ -24,57 +18,40 @@
 }
 
 :root {
-  color-scheme: dark;
-  --bg: #18191c;
-  --bg-2: #1c1d21;
-  --card: #212226;
-  --border: #2c2d33;
-  --border-soft: #242529;
-  --fg: #e3e4e8;
-  --fg-2: #b6b8bf;
-  --muted: #8d8f98;
-  --line: #8a8c95;
-  --amber: #e8a33d;
-  --amber-text: #e8a33d;
-  --code-bg: #141518;
-  --code-fg: #d7d8dd;
-  --shadow: 0 30px 80px -30px rgb(0 0 0 / 0.75), 0 0 0 1px rgb(255 255 255 / 0.02);
-  --shadow-sm: 0 12px 32px -16px rgb(0 0 0 / 0.6);
-  --header-bg: rgb(24 25 28 / 0.82);
+  --bg: #ffffff;
+  --card: #ffffff;
+  --muted-bg: #f4f4f6;
+  --border: #e6e6ea;
+  --input: #dcdce1;
+  --fg: #26272b;
+  --fg-2: #45474e;
+  --muted: #62646d;
+  --primary: #26272b;
+  --primary-fg: #ffffff;
+  --amber: #c27a12;
+  --ring: #8b8d96;
+  --shadow: 0 1px 2px rgb(20 22 30 / 0.04), 0 24px 60px -28px rgb(20 22 30 / 0.28);
   --sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
-  --wrap: 1120px;
-  --gutter: 16px;
-  /* What a drawing's hulls and faded ends are painted with: the ground it
-     sits on (the page, or a tinted panel that sets its own). */
-  --ground: var(--bg);
+  --band: clamp(340px, 58vh, 600px);
+  color-scheme: light;
 }
-
-@media (prefers-color-scheme: light) {
+@media (prefers-color-scheme: dark) {
   :root {
-    color-scheme: light;
-    --bg: #ffffff;
-    --bg-2: #f6f6f8;
-    --card: #ffffff;
-    --border: #e6e6ea;
-    --border-soft: #eeeef1;
-    --fg: #26272b;
-    --fg-2: #45474e;
-    --muted: #686a73;
-    --line: #71737c;
-    --amber: #c27a12;
-    --amber-text: #9a5f0b;
-    --code-bg: #f4f4f6;
-    --code-fg: #26272b;
-    --shadow: 0 30px 70px -34px rgb(20 22 30 / 0.28), 0 0 0 1px rgb(0 0 0 / 0.02);
-    --shadow-sm: 0 10px 28px -18px rgb(20 22 30 / 0.3);
-    --header-bg: rgb(255 255 255 / 0.85);
-  }
-}
-
-@media (min-width: 640px) {
-  :root {
-    --gutter: 24px;
+    --bg: #18191c;
+    --card: #1f2024;
+    --muted-bg: #222327;
+    --border: #2c2d33;
+    --input: #34353c;
+    --fg: #e3e4e8;
+    --fg-2: #c0c2c9;
+    --muted: #9a9ca5;
+    --primary: #e3e4e8;
+    --primary-fg: #18191c;
+    --amber: #e8a33d;
+    --ring: #6b6d76;
+    --shadow: 0 1px 2px rgb(0 0 0 / 0.3), 0 30px 80px -30px rgb(0 0 0 / 0.75);
+    color-scheme: dark;
   }
 }
 
@@ -83,2345 +60,378 @@
 *::after {
   box-sizing: border-box;
 }
-
 html {
   -webkit-text-size-adjust: 100%;
   scroll-behavior: smooth;
-  scroll-padding-top: 72px;
 }
-
 body {
   margin: 0;
   background: var(--bg);
-  color: var(--fg-2);
-  font: 400 16px/1.6 var(--sans);
-  font-feature-settings: "cv11", "ss01";
+  color: var(--fg);
+  font: 15px/1.6 var(--sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  overflow-x: hidden;
 }
-
 img,
-svg {
+svg,
+canvas {
   display: block;
-  max-width: 100%;
 }
-
 a {
-  color: var(--fg);
-  text-decoration-color: color-mix(in srgb, var(--fg) 35%, transparent);
-  text-underline-offset: 3px;
+  color: inherit;
 }
-
-a:hover {
-  text-decoration-color: currentColor;
-}
-
 :focus-visible {
-  outline: 2px solid var(--fg);
-  outline-offset: 3px;
-  border-radius: 4px;
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 6px;
 }
-
 h1,
-h2,
-h3 {
-  color: var(--fg);
+h2 {
   margin: 0;
   font-weight: 600;
+  letter-spacing: -0.022em;
   text-wrap: balance;
 }
-
 p {
   margin: 0;
-  text-wrap: pretty;
 }
-
-code,
-pre,
-kbd {
+code {
   font-family: var(--mono);
-  font-variant-ligatures: none;
 }
-
-code.url {
-  white-space: nowrap;
-}
-
-:not(pre) > code {
-  font-size: 0.85em;
-  padding: 0.06em 0.34em;
-  border-radius: 4px;
-  background: var(--code-bg);
-  border: 1px solid var(--border-soft);
-  color: var(--fg);
-  overflow-wrap: anywhere;
-}
-
 .wrap {
-  width: 100%;
-  max-width: calc(var(--wrap) + var(--gutter) * 2);
+  width: min(1040px, 100% - 32px);
   margin-inline: auto;
-  padding-inline: var(--gutter);
 }
-
-/* The hero's stage is wider than the text above it. */
-.wrap.wide {
-  max-width: calc(1280px + var(--gutter) * 2);
-}
-
-.mono {
-  font-family: var(--mono);
-  font-size: 0.88em;
-  color: var(--fg);
-}
-
 .skip {
   position: absolute;
   left: 12px;
-  top: -60px;
-  z-index: 20;
-  padding: 8px 12px;
-  background: var(--fg);
-  color: var(--bg);
+  top: -40px;
+  z-index: 10;
+  padding: 6px 10px;
   border-radius: 8px;
+  background: var(--primary);
+  color: var(--primary-fg);
 }
-
 .skip:focus {
   top: 12px;
 }
 
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-}
-
-/* Single-column grids never grow past the page for long code lines. */
-.feature,
-.diagram,
-.split,
-.start-grid,
-.oss,
-.notes3,
-.why,
-.more-grid {
-  grid-template-columns: minmax(0, 1fr);
-}
-
-/* Header */
-
-.site-header {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  background: var(--header-bg);
-  backdrop-filter: saturate(1.4) blur(12px);
-  -webkit-backdrop-filter: saturate(1.4) blur(12px);
-  border-bottom: 1px solid var(--border-soft);
-}
-
-.site-header .wrap {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 56px;
-  gap: 16px;
-}
-
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  color: var(--fg);
-  font-weight: 600;
-  font-size: 17px;
-  letter-spacing: -0.025em;
-  text-decoration: none;
-}
-
-.brand svg {
-  width: 18px;
-  height: 22px;
-}
-
-.site-nav {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.nav-links {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.site-nav a {
-  color: var(--muted);
-  text-decoration: none;
-  font-size: 14px;
-  padding: 6px 10px;
-  border-radius: 8px;
-}
-
-.site-nav a:hover,
-.site-nav a[aria-current="true"] {
-  color: var(--fg);
-  background: var(--card);
-}
-
-.site-nav .gh {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  color: var(--fg);
-  border: 1px solid var(--border);
-  margin-left: 6px;
-}
-
-.site-nav .gh svg {
-  width: 16px;
-  height: 16px;
-}
-
-.menu-btn {
-  display: none;
-  align-items: center;
-  gap: 7px;
-  height: 34px;
-  padding: 0 12px;
-  font: 500 14px var(--sans);
-  color: var(--fg);
-  background: none;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  cursor: pointer;
-}
-
-.menu-btn svg {
-  width: 16px;
-  height: 16px;
-}
-
-.menu-btn path {
-  transition: transform 0.2s ease;
-  transform-origin: 8px 8px;
-}
-
-.menu-btn[aria-expanded="true"] .l1 {
-  transform: translateY(3px) rotate(45deg);
-}
-
-.menu-btn[aria-expanded="true"] .l2 {
-  transform: translateY(-3px) rotate(-45deg);
-}
-
-/* Phones: GitHub as an icon, and the section links behind Menu. Without
-   the script, the links stay as a row under the header instead. */
-@media (max-width: 720px) {
-  .site-nav .gh {
-    order: 2;
-    width: 34px;
-    height: 34px;
-    padding: 0;
-    justify-content: center;
-    margin-left: 0;
-  }
-  .site-nav .gh span {
-    display: none;
-  }
-  .site-nav {
-    gap: 8px;
-  }
-  .site-header .wrap {
-    flex-wrap: wrap;
-    height: auto;
-    min-height: 56px;
-    row-gap: 0;
-  }
-  .nav-links {
-    order: 3;
-    flex-basis: 100%;
-  }
-  html:not(.js) .site-nav {
-    flex-wrap: wrap;
-    flex-basis: 100%;
-    justify-content: flex-end;
-  }
-  html:not(.js) .nav-links {
-    overflow-x: auto;
-    padding-bottom: 8px;
-  }
-  .js .menu-btn {
-    display: inline-flex;
-    order: 1;
-  }
-  .js .nav-links {
-    display: none;
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 100%;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 2px;
-    padding: 8px var(--gutter) 14px;
-    background: var(--bg);
-    border-bottom: 1px solid var(--border);
-    box-shadow: var(--shadow-sm);
-  }
-  .js .menu-open .nav-links {
-    display: flex;
-  }
-  .js .nav-links a {
-    font-size: 16px;
-    color: var(--fg-2);
-    padding: 11px 12px;
-  }
-  .js .nav-links .ext {
-    margin-top: 9px;
-    position: relative;
-  }
-  .js .nav-links .ext::after {
-    content: " ↗";
-    color: var(--muted);
-    font-size: 14px;
-  }
-  .js .nav-links .ext::before {
-    content: "";
-    position: absolute;
-    left: 12px;
-    right: 12px;
-    top: -5px;
-    border-top: 1px solid var(--border-soft);
-  }
-}
-
-/* Buttons */
-
+/* coss-ui buttons: default (primary) and outline, size default. */
 .btn {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  height: 42px;
-  padding: 0 18px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--input);
   border-radius: 10px;
-  font-weight: 550;
-  font-size: 15px;
-  text-decoration: none;
-  border: 1px solid var(--border);
-  color: var(--fg);
   background: var(--card);
+  color: var(--fg);
+  font: 500 14px/1 var(--sans);
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.05);
   transition: background-color 0.15s, border-color 0.15s;
 }
-
 .btn:hover {
-  border-color: color-mix(in srgb, var(--fg) 25%, var(--border));
+  background: var(--muted-bg);
 }
-
 .btn.primary {
-  background: var(--fg);
-  color: var(--bg);
-  border-color: var(--fg);
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-fg);
+  box-shadow: inset 0 1px rgb(255 255 255 / 0.16), 0 1px 2px rgb(0 0 0 / 0.12);
 }
-
 .btn.primary:hover {
-  background: color-mix(in srgb, var(--fg) 88%, var(--bg));
+  opacity: 0.9;
 }
-
 .btn svg {
-  width: 17px;
-  height: 17px;
+  width: 16px;
+  height: 16px;
+  margin-inline: -2px;
 }
-
-/* Hero */
-
-.hero {
-  padding-top: clamp(36px, 6vw, 72px);
-}
-
-/* One quiet line above the headline: what Berth is, and the docs. */
-.hero-line {
-  display: inline-flex;
+.actions {
+  display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 12px;
-  margin-bottom: 22px;
-  font-size: 13.5px;
-  font-weight: 500;
-  color: var(--muted);
+  justify-content: center;
+  gap: 8px;
 }
 
-.hero-line a {
+/* Header: the mark and two links, lying over the harbour. */
+.site-header {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 16px;
+}
+.brand {
   display: inline-flex;
   align-items: center;
-  gap: 3px;
-  padding-left: 12px;
-  border-left: 1px solid var(--border);
-  color: var(--fg);
+  gap: 8px;
+  font-weight: 650;
+  font-size: 17px;
+  letter-spacing: -0.02em;
   text-decoration: none;
 }
-
-.hero-line a:hover {
-  text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, var(--fg) 35%, transparent);
+.site-header .brand,
+.pill {
+  height: 34px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
-
-@media (max-width: 479px) {
-  .hero-line .long {
-    display: none;
-  }
+.brand svg {
+  width: 17px;
+  height: 21px;
 }
-
-.hero-line svg {
-  width: 14px;
-  height: 14px;
-  transition: transform 0.15s;
+.site-header nav {
+  display: flex;
+  gap: 6px;
 }
-
-.hero-line a:hover svg {
-  transform: translateX(2px);
-}
-
-/* Past phone width the hero reads down the middle, so the product shot
-   under it fills the first screen instead of an empty right half. */
-@media (min-width: 720px) {
-  .hero-copy {
-    text-align: center;
-  }
-  .hero-copy h1,
-  .hero-copy .lede {
-    margin-inline: auto;
-  }
-  .hero-copy .actions {
-    justify-content: center;
-  }
-}
-
-/* Small labels: sentence case, untracked, muted (the brand rule). */
-p.eyebrow,
-.section-head p.eyebrow,
-.feature .copy p.eyebrow {
-  margin-top: 0;
-  font-size: 13.5px;
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
   font-weight: 500;
-  color: var(--muted);
-  margin-bottom: 18px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  text-decoration: none;
+}
+.pill:hover {
+  background: var(--bg);
+}
+.pill svg {
+  width: 15px;
+  height: 15px;
 }
 
-.eyebrow .n {
-  color: var(--fg-2);
-  font-variant-numeric: tabular-nums;
+/* Hero: the harbour band, then the pitch at its foot, where it dissolves. */
+.hero {
+  position: relative;
 }
-
-.hero h1 {
-  font-size: clamp(2.35rem, 1.45rem + 3.9vw, 4.1rem);
-  line-height: 1.04;
-  letter-spacing: -0.032em;
-  font-weight: 620;
-  max-width: 22ch;
-}
-
-.hero .lede {
-  margin-top: 22px;
-  font-size: clamp(1.08rem, 0.98rem + 0.45vw, 1.3rem);
-  line-height: 1.5;
-  max-width: 36em;
-  color: var(--fg-2);
-}
-
-.hero .actions {
-  margin-top: 30px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-}
-
-.hero .note {
-  margin-top: 16px;
-  font-size: 13.5px;
-  color: var(--muted);
-}
-
-/* The harbour: Berth's line drawing, scaled up. Strokes take --line, the
-   lit masthead the logo's amber. Motion is CSS only and stops for reduced
-   motion. */
-
-/* The stage: a quiet panel where the harbour sits over the dashboard, the
-   way a screenshot is framed on the references, drawn in Berth's own line. */
-.stage {
-  --ground: var(--bg-2);
-  margin-top: clamp(32px, 4vw, 48px);
-  background: var(--bg-2);
-  border: 1px solid var(--border-soft);
-  border-radius: 20px;
-  padding: clamp(12px, 2.4vw, 32px) clamp(12px, 3.2vw, 40px) clamp(4px, 1vw, 12px);
-}
-
-/* The harbour runs along the bottom of the stage, under the dashboard. */
 .harbour {
-  color: var(--line);
+  position: relative;
+  height: var(--band);
   overflow: hidden;
-  margin-top: clamp(4px, 1vw, 12px);
 }
-
-.harbour svg {
+.harbour picture,
+.harbour img {
   width: 100%;
-  height: auto;
+  height: 100%;
+}
+.harbour img {
+  object-fit: cover;
+  object-position: 50% 42%;
+  -webkit-mask-image: linear-gradient(black 50%, transparent);
+  mask-image: linear-gradient(black 50%, transparent);
+  transition: opacity 0.4s;
+}
+.harbour canvas {
+  position: absolute;
+  inset: 0;
+  image-rendering: pixelated;
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.harbour.drawn canvas {
+  opacity: 1;
+}
+.harbour.drawn img {
+  opacity: 0;
+}
+.hero-copy {
+  position: relative;
+  width: min(720px, 100% - 32px);
+  margin: calc(var(--band) * -0.3) auto 0;
+  text-align: center;
+}
+.hero h1 {
+  font-size: clamp(32px, 5.2vw, 54px);
+  line-height: 1.06;
+  text-shadow: 0 0 10px var(--bg), 0 0 24px var(--bg);
+}
+.lede {
+  max-width: 560px;
+  margin: 16px auto 24px;
+  color: var(--fg-2);
+  font-size: 17px;
+  text-shadow: 0 0 8px var(--bg);
+  text-wrap: balance;
+}
+.install {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 18px auto 0;
+  padding: 4px 4px 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--muted-bg);
+  text-align: left;
+}
+.install-label {
+  flex: none;
+  color: var(--muted);
+  font-size: 12px;
+}
+.install code {
+  overflow-x: auto;
+  font-size: 13px;
+  white-space: nowrap;
+  scrollbar-width: none;
+}
+.copy {
+  flex: none;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--input);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--fg);
+  font: 500 12.5px var(--sans);
+  cursor: pointer;
+}
+.copy:hover {
+  background: var(--bg);
+}
+.note {
+  margin-top: 14px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.note a {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  color: var(--fg-2);
+  font-weight: 500;
+  text-decoration: none;
+}
+.note a:hover {
+  color: var(--fg);
+}
+.note svg {
+  width: 13px;
+  height: 13px;
 }
 
-/* On a phone the scene crops to the quay and its berths, bigger. */
-@media (max-width: 640px) {
-  .harbour svg {
-    height: calc((100vw - 2 * var(--gutter) - 26px) * 152 / 480);
-  }
+/* Features: a few words and one screenshot each. */
+.feature {
+  padding-top: clamp(72px, 11vw, 128px);
 }
-
-.harbour .hull {
-  fill: var(--ground);
+.feature-head {
+  max-width: 600px;
+  margin: 0 auto 32px;
+  text-align: center;
 }
-
-.harbour .lamp {
-  fill: var(--amber);
+.eyebrow {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
 }
-
-.art .wave {
-  animation: drift-24 var(--d, 8s) linear infinite;
+.feature h2,
+.closing h2 {
+  font-size: clamp(26px, 3.4vw, 36px);
+  line-height: 1.15;
 }
-
-.art .wave.rev {
-  animation-direction: reverse;
+.feature-head p:last-child,
+.closing p {
+  margin-top: 12px;
+  color: var(--fg-2);
+  font-size: 16px;
+  text-wrap: pretty;
 }
-
-/* Each wave slides by whole periods of its curve and dashes. The distance
-   is spelled out per class: a var() inside keyframes is resolved on the
-   main thread every frame, which forced style and layout continuously. */
-.art .wave.x12 { animation-name: drift-12; }
-.art .wave.x24 { animation-name: drift-24; }
-.art .wave.x36 { animation-name: drift-36; }
-.art .wave.x48 { animation-name: drift-48; }
-.art .wave.x72 { animation-name: drift-72; }
-
-@keyframes drift-12 { to { transform: translateX(-12px); } }
-@keyframes drift-24 { to { transform: translateX(-24px); } }
-@keyframes drift-36 { to { transform: translateX(-36px); } }
-@keyframes drift-48 { to { transform: translateX(-48px); } }
-@keyframes drift-72 { to { transform: translateX(-72px); } }
-
-.art .ride {
-  transform-box: fill-box;
-  transform-origin: 50% 90%;
-  animation: ride 5.2s ease-in-out infinite;
-}
-
-.art .ride.b {
-  animation-duration: 6.1s;
-  animation-delay: -2.3s;
-}
-
-.art .ride.c {
-  animation-duration: 4.6s;
-  animation-delay: -1.1s;
-}
-
-@keyframes ride {
-  0%,
-  100% {
-    transform: translateY(-0.8px) rotate(-1.3deg);
-  }
-  50% {
-    transform: translateY(1px) rotate(1.1deg);
-  }
-}
-
-.art .bob {
-  transform-box: fill-box;
-  transform-origin: 50% 85%;
-  animation: bob 4.4s ease-in-out infinite;
-}
-
-@keyframes bob {
-  0%,
-  100% {
-    transform: translateY(-0.6px) rotate(-5deg);
-  }
-  50% {
-    transform: translateY(0.9px) rotate(4deg);
-  }
-}
-
-.art .glint {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: glint 5.2s ease-in-out infinite;
-}
-
-@keyframes glint {
-  0%,
-  100% {
-    opacity: 0.25;
-    transform: scaleX(0.75);
-  }
-  50% {
-    opacity: 0.5;
-    transform: scaleX(1.12);
-  }
-}
-
-.art .fog {
-  animation: fog 14s ease-in-out infinite alternate;
-}
-
-.art .fog.rev {
-  animation-duration: 18s;
-  animation-direction: alternate-reverse;
-}
-
-@keyframes fog {
-  from {
-    transform: translateX(-10px);
-  }
-  to {
-    transform: translateX(10px);
-  }
-}
-
-/* The wake slides one dash period (13) inside a fixed clip. Transform
-   only: animating stroke-dashoffset forced style and layout every frame. */
-.art .wake {
-  animation: wake 2.4s linear infinite;
-}
-
-@keyframes wake {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-13px);
-  }
-}
-
-.art .gull {
-  animation: gull 9s ease-in-out infinite alternate;
-}
-
-.art .gull.b {
-  animation-duration: 11s;
-  animation-delay: -4s;
-}
-
-@keyframes gull {
-  from {
-    transform: translate(0, 0);
-  }
-  to {
-    transform: translate(6px, -2px);
-  }
-}
-
-/* Offscreen, the drawings hold still (the page's script sets .off). */
-.art.off,
-.art.off *,
-.art.off::before {
-  animation-play-state: paused !important;
-}
-
-.art .star {
-  animation: twinkle 5s ease-in-out infinite;
-}
-
-.art .star:nth-of-type(2) {
-  animation-delay: -1.7s;
-}
-
-.art .star:nth-of-type(3) {
-  animation-delay: -3.1s;
-}
-
-@keyframes twinkle {
-  0%,
-  100% {
-    opacity: 0.18;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-/* The hero's poster */
-
 .shot {
   margin: 0;
-  border-radius: 12px;
   overflow: hidden;
   border: 1px solid var(--border);
+  border-radius: 14px;
   background: var(--card);
   box-shadow: var(--shadow);
 }
-
 .shot img {
   width: 100%;
   height: auto;
 }
 
-.caption {
-  margin-top: 12px;
-  font-size: 13px;
-  color: var(--muted);
+.closing {
+  padding: clamp(96px, 14vw, 160px) 0 clamp(72px, 10vw, 112px);
   text-align: center;
 }
-
-.hero-shot {
-  box-shadow: var(--shadow-sm);
-}
-
-/* Sections */
-
-section {
-  padding-block: clamp(64px, 10vw, 120px);
-}
-
-.section-head {
-  max-width: 760px;
-  margin-bottom: clamp(32px, 5vw, 56px);
-}
-
-.section-head h2 {
-  font-size: clamp(1.75rem, 1.3rem + 1.7vw, 2.6rem);
-  line-height: 1.1;
-  letter-spacing: -0.025em;
-}
-
-.section-head p {
-  margin-top: 16px;
-  font-size: 1.08rem;
-}
-
-/* Dashboard intro under the hero shot */
-
-.split {
-  display: grid;
-  gap: 14px 48px;
-  margin-top: clamp(48px, 6vw, 72px);
-  align-items: start;
-}
-
-.split p {
-  font-size: 1.06rem;
-  max-width: 38em;
-}
-
-@media (min-width: 860px) {
-  .split {
-    grid-template-columns: 5fr 7fr;
-  }
-}
-
-.split h2 {
-  font-size: clamp(1.45rem, 1.15rem + 1vw, 1.9rem);
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-}
-
-/* Why: four things only Berth says. The first leads, with a drawing of one
-   night; the other three carry a concrete detail instead of an icon. */
-
-.why {
-  display: grid;
-  gap: 1px;
-  background: var(--border-soft);
-  border: 1px solid var(--border-soft);
-  border-radius: 16px;
-  overflow: hidden;
-}
-
-@media (min-width: 860px) {
-  .why {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-  .why-lead {
-    grid-column: 1 / -1;
-  }
-}
-
-.why-lead,
-.why-item {
-  background: var(--bg);
-}
-
-.why-lead {
-  display: grid;
-  gap: 28px 56px;
-  align-items: center;
-  padding: clamp(24px, 4vw, 44px) clamp(20px, 3.6vw, 40px);
-}
-
-@media (min-width: 940px) {
-  .why-lead {
-    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
-  }
-}
-
-.why-lead h3 {
-  font-size: clamp(1.5rem, 1.2rem + 1.1vw, 2rem);
-  line-height: 1.15;
-  letter-spacing: -0.022em;
-}
-
-.why-lead .copy p {
-  margin-top: 12px;
-  font-size: 1.04rem;
-  max-width: 34em;
-}
-
-.why-item {
-  display: flex;
-  flex-direction: column;
-  padding: 26px clamp(20px, 2.6vw, 28px) 24px;
-}
-
-.why-item h3 {
-  font-size: 17px;
-  letter-spacing: -0.01em;
-  margin-bottom: 8px;
-}
-
-.why-item p {
-  font-size: 14.5px;
-}
-
-/* A detail in Berth's own words: a command, an address, a cipher suite. */
-.proof {
-  font-family: var(--mono);
-  font-variant-ligatures: none;
-  font-size: 12.5px;
-  color: var(--fg);
-  overflow-wrap: anywhere;
-}
-
-.why-item .proof {
-  margin-top: auto;
-  padding-top: 18px;
-}
-
-/* One night: two lanes on a shared time axis. Positions are percentages
-   along the track (--a to --b, or --at for a point). */
-.night {
-  --ground: var(--bg-2);
-  margin: 0;
-  background: var(--bg-2);
-  border: 1px solid var(--border-soft);
-  border-radius: 14px;
-  padding: 22px clamp(16px, 2.4vw, 24px) 16px;
-  display: grid;
-  gap: 18px;
-  font-size: 13px;
-}
-
-.night .lane {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 8px;
-}
-
-@media (min-width: 520px) {
-  .night .lane {
-    grid-template-columns: 112px minmax(0, 1fr);
-    align-items: center;
-  }
-}
-
-.night .who {
-  color: var(--fg-2);
-  white-space: nowrap;
-}
-
-.night .who code {
-  font-size: 12px;
-}
-
-.night .track {
-  position: relative;
-  height: 30px;
-}
-
-.night .seg {
-  position: absolute;
-  top: 14px;
-  left: calc(var(--a) * 1%);
-  width: calc((var(--b) - var(--a)) * 1%);
-  height: 3px;
-  border-radius: 2px;
-}
-
-.night .seg.on {
-  background: var(--line);
-}
-
-.night .seg.off {
-  height: 0;
-  top: 15px;
-  border-top: 2px dashed color-mix(in srgb, var(--line) 55%, transparent);
-  border-radius: 0;
-}
-
-.night .seg.work {
-  background: var(--fg);
-}
-
-.night .seg.rest {
-  background: color-mix(in srgb, var(--line) 40%, transparent);
-  height: 2px;
-  top: 15px;
-}
-
-.night .tag {
-  position: absolute;
-  top: -6px;
-  left: calc(var(--at) * 1%);
-  transform: translateX(-50%);
-  font-size: 12px;
-  color: var(--muted);
-  white-space: nowrap;
-}
-
-.night .tag.after {
-  transform: translateX(10px);
-  color: var(--fg-2);
-}
-
-.night .mark {
-  position: absolute;
-  top: 9px;
-  left: calc(var(--at) * 1%);
-  width: 13px;
-  height: 13px;
-  margin-left: -6.5px;
-  border-radius: 50%;
-  background: var(--bg-2);
-  border: 2px solid var(--fg);
-}
-
-@media (max-width: 519px) {
-  .night .times .who {
-    display: none;
-  }
-}
-
-.night .times {
-  border-top: 1px solid var(--border-soft);
-  padding-top: 10px;
-}
-
-.night .axis {
-  position: relative;
-  height: 16px;
-}
-
-.night .axis span {
-  position: absolute;
-  left: calc(var(--at) * 1%);
-  transform: translateX(-50%);
-  font-family: var(--mono);
-  font-size: 11.5px;
-  line-height: 16px;
-  color: var(--muted);
-}
-
-.night .axis span:first-child {
-  transform: none;
-}
-
-/* How it works */
-
-.how {
-  background: var(--bg-2);
-  border-block: 1px solid var(--border-soft);
-}
-
-.diagram {
-  display: grid;
-  gap: 0;
-  align-items: stretch;
-}
-
-.diagram > .node,
-.diagram > .boxes {
-  align-self: stretch;
-}
-
-.boxes {
-  align-content: start;
-}
-
-@media (min-width: 900px) {
-  .diagram {
-    grid-template-columns: minmax(0, 0.95fr) minmax(0, 0.8fr) minmax(0, 1.25fr);
-  }
-}
-
-.node {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 22px 22px 20px;
-}
-
-.node h3 {
-  font-size: 16px;
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.node .sub {
-  font-size: 13px;
-  color: var(--muted);
-  margin-top: 4px;
-}
-
-.node ul {
-  list-style: none;
-  margin: 16px 0 0;
-  padding: 0;
-  display: grid;
-  gap: 8px;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.node li {
-  padding-left: 16px;
-  position: relative;
-}
-
-.node li::before {
-  content: "";
-  position: absolute;
-  left: 2px;
-  top: 0.62em;
-  width: 5px;
-  height: 1.5px;
-  background: var(--line);
-  border-radius: 2px;
-}
-
-.node .art-sm {
-  color: var(--line);
-  width: 100%;
-  max-width: 180px;
-  height: auto;
-  margin: 0 auto 16px;
-}
-
-.link {
-  position: relative;
-  color: var(--line);
-  display: grid;
-  justify-items: center;
-  gap: 10px;
-}
-
-/* A rope between the cards: dashes that run from the laptop to the boxes.
-   The dashes are a gradient on a pseudo-element that slides one period
-   (13px) inside the rope, so only a transform moves. */
-.rope {
-  position: relative;
-  display: block;
-  overflow: hidden;
-  width: 2px;
-  height: 48px;
-}
-
-.rope::before {
-  content: "";
-  position: absolute;
-  inset: -13px 0 0;
-  background: repeating-linear-gradient(180deg, currentColor 0 7px, transparent 7px 13px);
-  animation: rope-v 2.4s linear infinite;
-}
-
-@keyframes rope-v {
-  to {
-    transform: translateY(13px);
-  }
-}
-
-@keyframes rope-h {
-  to {
-    transform: translateX(13px);
-  }
-}
-
-.chips {
-  padding-inline: 8px;
-}
-
-@media (min-width: 900px) {
-  .link {
-    grid-template-columns: minmax(0, 1fr);
-    align-content: center;
-  }
-  .rope {
-    width: 100%;
-    height: 2px;
-  }
-  .rope::before {
-    inset: 0 0 0 -13px;
-    background: repeating-linear-gradient(90deg, currentColor 0 7px, transparent 7px 13px);
-    animation-name: rope-h;
-  }
-}
-
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 6px;
-}
-
-.chip {
-  font-size: 12px;
-  color: var(--fg-2);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 3px 10px;
-  white-space: nowrap;
-}
-
-.boxes {
-  display: grid;
-  gap: 12px;
-}
-
-.box-row {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 10px;
-  align-items: center;
-  font-size: 14px;
-  padding: 7px 0;
-  border-top: 1px solid var(--border-soft);
-}
-
-.box-row:first-of-type {
-  border-top: 0;
-}
-
-.box-row code {
-  background: none;
-  border: 0;
-  padding: 0;
-  color: var(--fg);
-  font-size: 13px;
-}
-
-.box-row .st {
-  font-size: 12.5px;
-  color: var(--muted);
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.box-row .ag {
-  font-family: var(--mono);
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.box-row .st {
-  min-width: 84px;
-  justify-content: flex-end;
-}
-
-.wordmark {
-  font-weight: 600;
-  letter-spacing: -0.02em;
-  color: var(--fg);
-}
-
-.dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--amber);
-  display: inline-block;
-}
-
-.st.needs {
-  color: var(--amber-text);
-}
-
-.notes3 {
-  margin-top: clamp(40px, 6vw, 64px);
-  display: grid;
-  gap: 24px 40px;
-  font-size: 15px;
-}
-
-.notes3 > div {
-  border-top: 1px solid var(--border);
-  padding-top: 16px;
-}
-
-@media (min-width: 860px) {
-  .notes3 {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-.notes3 h3 {
-  font-size: 15px;
-  margin-bottom: 6px;
-}
-
-/* Features: four every-day features with drawings of their screens, then
-   the rest as compact cards, each with a small harbour scene. */
-
-.features .section-head {
-  margin-bottom: clamp(32px, 5vw, 56px);
-}
-
-.tier-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: 4px 16px;
-  padding-bottom: 14px;
-  margin-bottom: clamp(32px, 5vw, 56px);
-  border-bottom: 1px solid var(--border);
-}
-
-.tier-head.more {
-  margin-top: clamp(24px, 4vw, 48px);
-  margin-bottom: 0;
-  border-bottom: 0;
-  padding-bottom: 20px;
-}
-
-.tier {
-  font-size: 15px;
-  font-weight: 600;
-  letter-spacing: -0.005em;
-}
-
-.tier-head p {
-  font-size: 14.5px;
-  color: var(--muted);
-}
-
-.feature {
-  display: grid;
-  gap: 28px 64px;
-  align-items: center;
-  padding-block: clamp(40px, 6vw, 72px);
-  border-top: 1px solid var(--border-soft);
-}
-
-.tier-head + .feature {
-  border-top: 0;
-  padding-top: 0;
-}
-
-@media (min-width: 940px) {
-  .feature {
-    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
-  }
-  .feature.flip .copy {
-    order: 2;
-  }
-  .feature.wide {
-    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
-    align-items: start;
-  }
-  .feature.wide .copy + .copy {
-    padding-top: 36px;
-  }
-  .feature.wide .plate {
-    grid-column: 1 / -1;
-  }
-}
-
-.feature .copy p {
-  margin-top: 16px;
-  font-size: 1.04rem;
-}
-
-.feature.wide .copy p {
-  margin-top: 0;
-}
-
-.feature .copy h4 {
-  margin: 0;
-  color: var(--fg);
-  font-weight: 600;
-  text-wrap: balance;
-  font-size: clamp(1.55rem, 1.2rem + 1.3vw, 2.15rem);
-  line-height: 1.12;
-  letter-spacing: -0.025em;
-}
-
-.points {
-  list-style: none;
-  padding: 0;
-  margin: 20px 0 0;
-  display: grid;
-  gap: 10px;
-  font-size: 15px;
-}
-
-.points li {
-  position: relative;
-  padding-left: 18px;
-}
-
-.points li::before {
-  content: "";
-  position: absolute;
-  left: 1px;
-  top: 0.62em;
-  width: 7px;
-  height: 1.5px;
-  background: var(--line);
-}
-
-/* Plates: every feature drawing sits on a quiet tinted panel. */
-.plate {
-  --ground: var(--bg-2);
-  margin: 0;
-  background: var(--bg-2);
-  border: 1px solid var(--border-soft);
-  border-radius: 16px;
-  padding: clamp(12px, 2.4vw, 28px);
-  min-width: 0;
-}
-
-/* Drawings of the features, in the brand's line: strokes in --line, text
-   in the page's own type, panels in --card, and at most one amber point
-   (the lamp on the notifications card). Inline SVG, so they follow the
-   theme and stay sharp at any width. Motion is transform and opacity only,
-   pauses offscreen (.art.off) and stops for reduced motion. */
-.draw {
-  color: var(--line);
-}
-
-.draw svg {
-  width: 100%;
-  height: auto;
-}
-
-.draw text {
-  font: 400 13px var(--sans);
-  fill: var(--fg-2);
-  stroke: none;
-}
-
-.draw text.mono,
-.draw tspan.mono {
-  font-family: var(--mono);
-  font-size: 12px;
-}
-
-.draw text.small,
-.draw text .small {
-  font-size: 11.5px;
-}
-
-.draw text.tiny {
-  font-size: 10.5px;
-}
-
-.draw text.title {
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.draw text.mono.title {
-  font-size: 14px;
-}
-
-.draw text.big {
-  font-size: 19px;
-  font-weight: 600;
-}
-
-.draw text.field {
-  font-size: 14px;
-}
-
-.draw .t-fg {
-  fill: var(--fg);
-}
-
-.draw .t-mu {
-  fill: var(--muted);
-}
-
-.draw .panel,
-.draw .hull {
-  fill: var(--card);
-}
-
-.mini-art .panel,
-.mini-art .hull {
-  fill: var(--ground);
-}
-
-.draw .sel,
-.draw .lane {
-  stroke: var(--fg);
-}
-
-.draw .btn-fill {
-  fill: var(--fg);
-}
-
-.draw .on-fill {
-  fill: var(--bg);
-}
-
-.draw .on-fill-stroke {
-  stroke: var(--bg);
-}
-
-.draw .dot {
-  fill: var(--card);
-  stroke: currentColor;
-  stroke-width: 2;
-}
-
-.draw .dot.br {
-  stroke: var(--fg);
-  stroke-width: 2.2;
-}
-
-.draw .head,
-.draw .blink {
-  fill: var(--fg);
-}
-
-.draw .lamp {
-  fill: var(--amber);
-}
-
-/* A workspace drawing is wide: on a phone it keeps its size and shows its
-   left part (the sidebar and the agent), fading out to the right. */
-@media (max-width: 640px) {
-  .plate.crop {
-    position: relative;
-    overflow: hidden;
-  }
-  .plate.crop svg {
-    width: 580px;
-    max-width: none;
-  }
-  .plate.crop::after {
-    content: "";
-    position: absolute;
-    inset: 0 0 0 auto;
-    width: 64px;
-    background: linear-gradient(90deg, transparent, var(--bg-2));
-  }
-}
-
-/* Motion. A text cursor. */
-.art .blink {
-  animation: blink 1.2s steps(1, end) infinite;
-}
-
-@keyframes blink {
-  50% {
-    opacity: 0;
-  }
-}
-
-/* A ring that spreads from a point and fades: HEAD, a chart's mark. */
-.art .ping {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: ping 3.6s ease-out infinite;
-}
-
-@keyframes ping {
-  0% {
-    transform: scale(1);
-    opacity: 0.7;
-  }
-  70%,
-  100% {
-    transform: scale(2.4);
-    opacity: 0;
-  }
-}
-
-/* One prompt fanning out: a dot runs each line in turn, then its agent
-   works (the spinner) and is done (the tick). 7.2s, staggered. */
-.art .fan-dot {
-  opacity: 0;
-  animation: 7.2s ease-in-out infinite;
-}
-
-.art .fan-dot.f0 { animation-name: fan-0; }
-.art .fan-dot.f1 { animation-name: fan-1; animation-delay: 0.3s; }
-.art .fan-dot.f2 { animation-name: fan-2; animation-delay: 0.6s; }
-
-@keyframes fan-0 {
-  0% { transform: translate(0, 0); opacity: 0; }
-  3% { opacity: 1; }
-  14% { transform: translate(62px, -90px); opacity: 1; }
-  17%, 100% { transform: translate(62px, -90px); opacity: 0; }
-}
-
-@keyframes fan-1 {
-  0% { transform: translate(0, 0); opacity: 0; }
-  3% { opacity: 1; }
-  14% { transform: translate(62px, 0); opacity: 1; }
-  17%, 100% { transform: translate(62px, 0); opacity: 0; }
-}
-
-@keyframes fan-2 {
-  0% { transform: translate(0, 0); opacity: 0; }
-  3% { opacity: 1; }
-  14% { transform: translate(62px, 90px); opacity: 1; }
-  17%, 100% { transform: translate(62px, 90px); opacity: 0; }
-}
-
-.draw .st-work {
-  opacity: 0;
-}
-
-.art .st-work {
-  animation: st-work 7.2s linear infinite;
-}
-
-.art .st-done {
-  animation: st-done 7.2s linear infinite;
-}
-
-.art .f1 .st-work, .art .f1 .st-done { animation-delay: 0.3s; }
-.art .f2 .st-work, .art .f2 .st-done { animation-delay: 0.6s; }
-/* The three finish at different times. */
-.art .f0 .st-work { animation-name: st-work-a; }
-.art .f0 .st-done { animation-name: st-done-a; }
-
-@keyframes st-work {
-  0%, 15% { opacity: 0; }
-  17%, 66% { opacity: 1; }
-  68%, 100% { opacity: 0; }
-}
-
-@keyframes st-done {
-  0%, 2% { opacity: 1; }
-  4%, 66% { opacity: 0; }
-  68%, 100% { opacity: 1; }
-}
-
-@keyframes st-work-a {
-  0%, 15% { opacity: 0; }
-  17%, 48% { opacity: 1; }
-  50%, 100% { opacity: 0; }
-}
-
-@keyframes st-done-a {
-  0%, 2% { opacity: 1; }
-  4%, 48% { opacity: 0; }
-  50%, 100% { opacity: 1; }
-}
-
-.art .spin {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: spin 1.1s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* Slow, small, seamless: the queued prompts lift, a compass needle
-   settles, a crate swings on its hook, a tag sways, a pontoon nudges in,
-   the lamp glows. */
-.art .bob-y {
-  animation: bob-y 4.8s ease-in-out infinite;
-}
-
-@keyframes bob-y {
-  50% {
-    transform: translateY(-1.6px);
-  }
-}
-
-.art .needle {
-  transform-box: view-box;
-  transform-origin: 180px 70px;
-  animation: needle 6s ease-in-out infinite;
-}
-
-@keyframes needle {
-  0%, 100% { transform: rotate(-9deg); }
-  50% { transform: rotate(7deg); }
-}
-
-.art .swing {
-  transform-box: view-box;
-  transform-origin: 120px 23.6px;
-  animation: swing 5s ease-in-out infinite;
-}
-
-@keyframes swing {
-  0%, 100% { transform: rotate(-3.5deg); }
-  50% { transform: rotate(3.5deg); }
-}
-
-.art .sway {
-  transform-box: view-box;
-  transform-origin: 131px 30px;
-  animation: sway 5.6s ease-in-out infinite;
-}
-
-@keyframes sway {
-  0%, 100% { transform: rotate(-4deg); }
-  50% { transform: rotate(3deg); }
-}
-
-.art .dock-in {
-  animation: dock-in 6.4s ease-in-out infinite;
-}
-
-@keyframes dock-in {
-  0%, 100% { transform: translate(5px, 0.6px); }
-  45%, 60% { transform: translate(0, -0.4px); }
-}
-
-.draw .glow {
-  opacity: 0.35;
-}
-
-.art .glow {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: glow 3.6s ease-in-out infinite;
-}
-
-@keyframes glow {
-  0%, 100% { transform: scale(0.8); opacity: 0.15; }
-  50% { transform: scale(1.25); opacity: 0.55; }
-}
-
-/* The second tier: cards, three to a row. */
-.more-grid {
-  display: grid;
-  gap: 1px;
-  background: var(--border-soft);
-  border: 1px solid var(--border-soft);
-  border-radius: 16px;
-  overflow: hidden;
-}
-
-@media (min-width: 640px) {
-  .more-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 1000px) {
-  .more-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
-.mini {
-  display: flex;
-  flex-direction: column;
-  background: var(--bg);
-  padding: 24px clamp(20px, 2.4vw, 26px) 24px;
-}
-
-.mini-art {
-  margin: -6px -4px 14px;
-}
-
-.mini-art svg {
-  max-width: 320px;
-}
-
-.mini p.eyebrow {
-  margin-bottom: 10px;
-  font-size: 13px;
-}
-
-.mini h4 {
-  margin: 0 0 8px;
-  color: var(--fg);
-  font-size: 17px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
-  line-height: 1.3;
-}
-
-.mini p {
-  font-size: 14.5px;
-}
-
-.mini .proof {
-  margin-top: auto;
-  padding-top: 16px;
-}
-
-@media (max-width: 640px) {
-  main pre {
-    font-size: 11.5px;
-    padding: 12px 14px;
-  }
-}
-
-/* Code */
-
-pre {
-  margin: 20px 0 0;
-  background: var(--code-bg);
-  color: var(--code-fg);
-  border: 1px solid var(--border-soft);
-  border-radius: 10px;
-  padding: 14px 16px;
-  font-size: 13px;
-  line-height: 1.7;
-  overflow-x: auto;
-  tab-size: 2;
-}
-
-pre .c {
-  color: var(--muted);
-}
-
-pre:focus-visible {
-  outline-offset: 2px;
-  border-radius: 10px;
-}
-
-pre .k {
-  color: var(--fg);
-  font-weight: 600;
-}
-
-.copy-btn {
-  font: 500 12px var(--sans);
-  color: var(--muted);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 7px;
-  padding: 4px 9px;
-  cursor: pointer;
-}
-
-.copy-btn:hover {
-  color: var(--fg);
-}
-
-/* Open source + start */
-
-.oss {
-  display: grid;
-  gap: 40px 64px;
-  align-items: center;
-}
-
-@media (min-width: 900px) {
-  .oss {
-    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
-  }
-}
-
-/* The repository as a card: its folders, with the jetty at the bottom. */
-.repo {
-  --ground: var(--bg-2);
-  background: var(--bg-2);
-  border: 1px solid var(--border-soft);
-  border-radius: 16px;
-  padding: 18px clamp(16px, 2.4vw, 28px) 0;
-  overflow: hidden;
-}
-
-.repo-head {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding-bottom: 14px;
-  border-bottom: 1px solid var(--border-soft);
-  font: 500 14px var(--mono);
-}
-
-.repo-head svg {
-  width: 16px;
-  height: 16px;
-  color: var(--muted);
-}
-
-.repo-head a {
-  text-decoration: none;
-}
-
-.repo-head a:hover {
-  text-decoration: underline;
-}
-
-.repo .layout-list {
-  margin-top: 16px;
-}
-
-.repo .art-end {
-  color: var(--line);
-  width: 100%;
-  max-width: 340px;
-  margin: 6px auto 0;
-}
-
-.layout-list {
-  margin: 20px 0 0;
-  display: grid;
-  grid-template-columns: max-content 1fr;
-  gap: 10px 20px;
-  font-size: 14.5px;
-}
-
-.layout-list dt {
-  font-family: var(--mono);
-  font-size: 13px;
-  color: var(--fg);
-}
-
-.layout-list dd {
-  margin: 0;
-}
-
-@media (max-width: 480px) {
-  .layout-list {
-    grid-template-columns: 1fr;
-    gap: 2px;
-  }
-  .layout-list dd {
-    margin-bottom: 10px;
-  }
-}
-
-.start {
-  background: var(--bg-2);
-  border-top: 1px solid var(--border-soft);
-}
-
-.start-grid {
-  display: grid;
-  gap: 48px 64px;
-}
-
-@media (min-width: 940px) {
-  .start-grid {
-    grid-template-columns: minmax(0, 7fr) minmax(0, 4fr);
-    align-items: start;
-  }
-}
-
-.steps {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 22px;
-}
-
-.step-head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 10px;
-}
-
-.step-head .num {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  background: var(--bg);
-  color: var(--fg);
-  font-size: 12.5px;
-  font-weight: 550;
-  font-variant-numeric: tabular-nums;
-}
-
-.step-head h3 {
-  flex: 1;
-  font-size: 15px;
-  font-weight: 550;
-}
-
-@media (max-width: 640px) {
-  .steps pre {
-    margin-left: 0 !important;
-  }
-}
-
-.steps pre {
-  margin: 0 0 0 36px;
-  background: var(--bg);
-}
-
-.step-note {
-  margin: 10px 0 0 36px;
-  font-size: 14.5px;
-  line-height: 1.55;
-  color: var(--fg-2);
-  max-width: 40em;
-}
-
-.step-note code {
-  white-space: nowrap;
-  overflow-wrap: normal;
-}
-
-.step-note strong {
-  color: var(--fg);
-  font-weight: 550;
-}
-
-/* A step whose action is a download rather than a command. */
-.step-action {
-  margin: 14px 0 4px 36px;
-}
-
-.step-action + .step-note {
-  margin-top: 12px;
-}
-
-/* The other routes for a step, folded away. */
-.alt {
-  margin: 12px 0 0 36px;
-  font-size: 14px;
-}
-
-.alt summary {
-  cursor: pointer;
-  color: var(--muted);
-  width: fit-content;
-}
-
-.alt summary:hover {
-  color: var(--fg);
-}
-
-.alt pre {
-  margin: 10px 0 0;
-}
-
-/* A step with no command: its note sits under the heading. */
-.step-head + .step-note {
-  margin-top: 0;
-}
-
-.alt .step-note {
-  margin-left: 0;
-}
-
-@media (max-width: 640px) {
-  .step-note,
-  .step-action,
-  .alt {
-    margin-left: 0;
-  }
-  /* A command wraps on a phone rather than hiding its end off the edge;
-     Copy still copies it as one line. */
-  .start pre {
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-  }
-}
-
-.read-next h3 {
-  font-size: 15px;
-  font-weight: 550;
-}
-
-.read-next ul {
-  list-style: none;
-  margin: 12px 0 0;
-  padding: 0;
-  background: var(--bg);
-  border: 1px solid var(--border-soft);
-  border-radius: 12px;
-  overflow: hidden;
-}
-
-.read-next li + li {
-  border-top: 1px solid var(--border-soft);
-}
-
-.read-next a {
-  position: relative;
-  display: grid;
-  gap: 1px;
-  padding: 11px 40px 11px 16px;
-  text-decoration: none;
-}
-
-.read-next a::after {
-  content: "↗";
-  position: absolute;
-  right: 16px;
-  top: 50%;
-  margin-top: -0.7em;
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.read-next a:hover {
-  background: var(--card);
-}
-
-.read-next a:hover span {
-  text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, var(--fg) 35%, transparent);
-}
-
-.read-next span {
-  color: var(--fg);
-  font-weight: 550;
-  font-size: 14.5px;
-}
-
-.read-next small {
-  color: var(--muted);
-  font-size: 13px;
-}
-
-.read-next .hint {
-  margin-top: 16px;
-  font-size: 14px;
-  color: var(--muted);
-}
-
-.closing {
-  margin-top: clamp(48px, 7vw, 80px);
-  padding-top: clamp(32px, 4vw, 40px);
-  border-top: 1px solid var(--border-soft);
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px 40px;
-}
-
-.closing h3 {
-  font-size: clamp(1.3rem, 1.1rem + 0.6vw, 1.6rem);
-  letter-spacing: -0.02em;
-}
-
 .closing p {
-  margin-top: 6px;
-  max-width: 48ch;
-  font-size: 1.04rem;
+  max-width: 520px;
+  margin: 12px auto 24px;
 }
-
-.closing .actions.row {
-  margin-top: 0;
-}
-
-/* Footer */
 
 .site-footer {
-  border-top: 1px solid var(--border-soft);
-  padding-block: clamp(40px, 6vw, 64px) clamp(48px, 7vw, 72px);
-  font-size: 14px;
+  border-top: 1px solid var(--border);
+  padding: 28px 0 36px;
   color: var(--muted);
+  font-size: 13.5px;
 }
-
 .site-footer .wrap {
-  display: grid;
-  gap: 36px 48px;
-}
-
-@media (min-width: 760px) {
-  .site-footer .wrap {
-    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-  }
-}
-
-.foot-brand p {
-  margin-top: 12px;
-  max-width: 34ch;
-  font-size: 13.5px;
-  line-height: 1.55;
-}
-
-.foot-cols {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 28px 24px;
-}
-
-@media (max-width: 480px) {
-  .foot-cols {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-.foot-cols h3 {
-  font-size: 13.5px;
-  font-weight: 550;
-  margin-bottom: 12px;
-}
-
-.foot-cols ul {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  gap: 9px;
-}
-
-.foot-cols a {
-  color: var(--muted);
-  text-decoration: none;
-}
-
-.foot-cols a:hover {
-  color: var(--fg);
-}
-
-/* Under the columns, across the footer: the status and the way back up. */
-.foot-bar {
-  grid-column: 1 / -1;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px 24px;
-  padding-top: 20px;
-  border-top: 1px solid var(--border-soft);
-  font-size: 13px;
+  gap: 12px 28px;
 }
-
-.foot-bar a {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--muted);
-  text-decoration: none;
-}
-
-.foot-bar a:hover {
+.site-footer .brand {
   color: var(--fg);
 }
+.site-footer nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+}
+.site-footer nav a {
+  text-decoration: none;
+}
+.site-footer nav a:hover {
+  color: var(--fg);
+}
+.site-footer p {
+  margin-left: auto;
+}
 
-.foot-bar svg {
-  width: 14px;
-  height: 14px;
+@media (max-width: 640px) {
+  :root {
+    --band: clamp(300px, 52vh, 420px);
+  }
+  .hero-copy {
+    margin-top: calc(var(--band) * -0.22);
+  }
+  .harbour img {
+    object-position: 8% 42%;
+  }
+  .lede {
+    font-size: 16px;
+  }
+  .install-label {
+    display: none;
+  }
+  .pill span {
+    display: none;
+  }
+  .site-footer p {
+    margin-left: 0;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
   }
-  .art,
-  .art *,
-  .art::before,
-  .menu-btn path,
-  .hero-line svg,
-  .demo-cta,
-  .demo-frame {
-    animation: none !important;
-    transition: none !important;
+  .harbour canvas,
+  .harbour img {
+    transition: none;
   }
-}
-
-/* Shared bits */
-
-.h2 {
-  font-size: clamp(1.75rem, 1.3rem + 1.7vw, 2.6rem);
-  line-height: 1.1;
-  letter-spacing: -0.025em;
-}
-
-.body-lg {
-  margin-top: 16px;
-  font-size: 1.04rem;
-}
-
-.actions.row {
-  margin-top: 28px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-
-.sub.inline {
-  margin: 0;
-  font-weight: 400;
-}
-
-.rows {
-  margin-top: 12px;
-}
-
-.sub.foot {
-  padding-inline: 4px;
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.6;
-  color: var(--muted);
-}
-
-/* The live demo, in the hero. The poster is the demo as it opens; pressing
-   "Try the live demo" lays the app over it in a frame (nothing loads
-   before). On phones the button opens the demo full screen instead. */
-.demo .hero-shot {
-  position: relative;
-}
-
-.demo-cta {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  justify-items: center;
-  align-content: start;
-  /* High on the poster, so it shows in the first screen; a soft clearing
-     behind it, so it reads over the app. */
-  padding-top: min(11%, 124px);
-  background: radial-gradient(ellipse 30% 22% at 50% min(16%, 176px), color-mix(in srgb, var(--bg) 72%, transparent), transparent);
-  transition: opacity 0.2s;
-}
-
-.demo-cta .btn {
-  box-shadow: var(--shadow-sm), 0 0 0 6px color-mix(in srgb, var(--bg) 55%, transparent);
-}
-
-.demo-cta .btn svg {
-  width: 14px;
-  height: 14px;
-}
-
-.js .demo .hero-shot {
-  cursor: pointer;
-}
-
-.js .demo.live .hero-shot {
-  cursor: auto;
-}
-
-.demo-try[hidden],
-.js .demo-phone {
-  display: none;
-}
-
-@media (max-width: 640px) {
-  .demo-cta {
-    padding-top: 0;
-    align-content: end;
-    padding-bottom: 14px;
-    background: linear-gradient(transparent 40%, color-mix(in srgb, var(--bg) 82%, transparent) 88%);
-  }
-  .js .demo-try {
-    display: none;
-  }
-  .js .demo-phone {
-    display: inline-flex;
-  }
-  .demo-cta .btn {
-    height: 38px;
-    padding: 0 14px;
-    font-size: 14px;
-  }
-}
-
-.demo.live .demo-cta {
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* The app fills the poster's place; it shows once it has loaded, so the
-   poster stands in while it does. */
-.demo-frame {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  border: 0;
-  background: var(--bg);
-  opacity: 0;
-  transition: opacity 0.25s;
-}
-
-.demo.ready .demo-frame {
-  opacity: 1;
-}
-
-.demo-frame:focus-visible {
-  outline: 2px solid var(--fg);
-  outline-offset: 2px;
-}
-
-/* Under the stage: what the demo is, and its controls. */
-.demo-bar {
-  margin-top: 12px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: center;
-  gap: 4px 18px;
-}
-
-.demo-bar .caption {
-  margin: 0;
-}
-
-.demo-links {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 4px 16px;
-  font-size: 13px;
-}
-
-.demo-links a,
-.demo-links button {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 0;
-  font: 500 13px var(--sans);
-  color: var(--fg);
-  background: none;
-  border: 0;
-  cursor: pointer;
-  text-decoration: none;
-}
-
-.demo-links a:hover,
-.demo-links button:hover {
-  text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, var(--fg) 35%, transparent);
-  text-underline-offset: 3px;
-}
-
-.demo-links svg {
-  width: 13px;
-  height: 13px;
-}
-
-.demo-links [hidden] {
-  display: none;
 }
