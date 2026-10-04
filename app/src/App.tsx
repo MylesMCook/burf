@@ -47,7 +47,7 @@ import { AddBoxDialog } from "@/views/onboarding/add-box-dialog";
 import { useOnboardingActive } from "@/views/onboarding/onboarding-state";
 import { OnboardingView } from "@/views/onboarding/onboarding-view";
 import { SettingsView } from "@/views/settings/settings-view";
-import { ShoreMode } from "@/views/shore/shore-mode";
+import { HomeView } from "@/views/home/home-view";
 import { usePrefs } from "@/lib/prefs";
 
 // The live demo's guide and script (pnpm build:demo); not in the app.
@@ -78,13 +78,6 @@ export default function App() {
     if (gated && useStore.getState().view.kind !== "workspace") useStore.getState().setView({ kind: "workspace" });
   }, [gated]);
 
-  // Labs: Shore mode replaces the whole window (views/shore). ?shore=1 turns
-  // it on, for the demo.
-  const shore = usePrefs((p) => p.shore);
-  useEffect(() => {
-    if (new URLSearchParams(location.search).has("shore")) usePrefs.setState({ shore: true });
-  }, []);
-
   if (gated) {
     return (
       <TooltipProvider delay={300}>
@@ -100,20 +93,6 @@ export default function App() {
           </div>
           <ErrorBoundary scope="a dialog">
             <AddBoxDialog />
-            <ConfirmHost />
-          </ErrorBoundary>
-        </ToastProvider>
-      </TooltipProvider>
-    );
-  }
-
-  if (shore && connected) {
-    return (
-      <TooltipProvider delay={300}>
-        <ToastProvider position="bottom-left">
-          <ShoreMode />
-          <ErrorBoundary scope="a dialog">
-            <CommandPalette />
             <ConfirmHost />
           </ErrorBoundary>
         </ToastProvider>
@@ -220,8 +199,10 @@ function MainView() {
 // NoWorktree is the workspace before any worktree is picked: a new one, or
 // one opened recently.
 function NoWorktree() {
+  const labs = usePrefs((p) => p.labs);
   const spaces = useWorkspaces((st) => st.spaces);
   const recent = recentWorktrees(spaces);
+  if (labs) return <HomeView />;
   return (
     <div className="absolute inset-0 flex items-center justify-center bg-background">
       <Empty>

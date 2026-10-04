@@ -27,8 +27,11 @@ export interface Prefs {
   // How many times "keeps running" was said on closing an agent; it stops
   // after a few.
   agentCloseTips: number;
-  // Labs: Shore mode, Berth with only the agents (views/shore).
-  shore: boolean;
+  // Labs: the harbour home (no worktree open) and the Terminal |
+  // Conversation switch on agent panes.
+  labs: boolean;
+  // Labs: how an agent's pane opens, until switched.
+  agentView: "terminal" | "conversation";
 }
 
 const DEFAULTS: Prefs = {
@@ -43,7 +46,8 @@ const DEFAULTS: Prefs = {
   confirmCloseShells: true,
   closeAgents: "keep",
   agentCloseTips: 0,
-  shore: false,
+  labs: false,
+  agentView: "terminal",
 };
 
 const saved = load<Partial<Prefs>>("berth.prefs", {});
@@ -56,6 +60,15 @@ export const usePrefs = create<Prefs>()(() => ({
 }));
 
 usePrefs.subscribe((p) => save("berth.prefs", p));
+
+// ?labs=1 turns Labs on and ?view=conversation opens agents as
+// conversations, for the demo.
+{
+  const q = new URLSearchParams(location.search);
+  if (q.has("labs")) usePrefs.setState({ labs: q.get("labs") !== "0" });
+  const v = q.get("view");
+  if (v === "terminal" || v === "conversation") usePrefs.setState({ agentView: v });
+}
 
 // The interface's text size scales everything sized in rem, from 13px as
 // designed; density is left to styles that read data-density.

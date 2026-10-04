@@ -7,7 +7,9 @@
 export type PaneContent =
   // agent and command are remembered from the session, so a pane can say
   // what ended and start it again after the session is gone.
-  | { kind: "terminal"; box: string; session: string; agent?: string; command?: string }
+  // view: an agent's pane shown as its terminal or as a conversation (Labs);
+  // unset follows the person's default.
+  | { kind: "terminal"; box: string; session: string; agent?: string; command?: string; view?: "terminal" | "conversation" }
   | { kind: "browser"; url: string }
   | { kind: "log"; box: string; location: string; worktree: string; service: string }
   // A plugin's worktree panel, shown for the workspace's worktree.

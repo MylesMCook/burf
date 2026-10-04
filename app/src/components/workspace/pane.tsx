@@ -1,19 +1,22 @@
-import { EllipsisIcon, GlobeIcon, ScrollTextIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, XIcon } from "lucide-react";
+import { EllipsisIcon, GlobeIcon, MessagesSquareIcon, ScrollTextIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, SquareTerminalIcon, XIcon } from "lucide-react";
 import { useEffect } from "react";
 
 import { Tip } from "@/components/tip";
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
 import { BrowserPane } from "@/components/browser-pane";
+import { ConversationPane } from "@/components/conversation/conversation-pane";
 import { SessionActionItems } from "@/components/orchestrate/session-actions";
 import { Button } from "@/components/ui/button";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuShortcut, MenuTrigger } from "@/components/ui/menu";
 import { Spinner } from "@/components/ui/spinner";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { LogView } from "@/components/workspace/log-view";
 import { PanelIcon, PanelPane } from "@/components/workspace/panel-pane";
 import { TerminalView } from "@/components/workspace/terminal-view";
 import { agentPresets, closePane, openBrowserAt, startSession } from "@/lib/actions";
 import { agentLabel, agentOf, sessionName, sessionState } from "@/lib/derive";
 import type { Leaf } from "@/lib/layout";
+import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { focusPane, setPaneContent, useWorkspaces } from "@/lib/workspaces";
@@ -44,6 +47,7 @@ export function Pane({ wsKey, tab, pane, visible, focused, split }: Props) {
   // Remember what runs here, so the pane can name it and start it again
   // once the session itself is gone.
   const agent = session ? agentOf(session) : undefined;
+  const view = usePaneView(pane);
   useEffect(() => {
     if (c.kind !== "terminal" || !session) return;
     if (c.agent !== agent || c.command !== session.command) setPaneContent(wsKey, tab, pane.id, { ...c, agent, command: session.command });
@@ -60,7 +64,13 @@ export function Pane({ wsKey, tab, pane, visible, focused, split }: Props) {
         </div>
       )}
       <div className={cn("relative flex min-h-0 flex-1 flex-col transition-opacity", split && !focused && "opacity-85")}>
-        {c.kind === "terminal" && <TerminalView box={c.box} session={c.session} agent={c.agent} command={c.command} wsKey={wsKey} tab={tab} pane={pane.id} visible={visible} focused={focused} onFocus={focus} onClose={close} />}
+        {c.kind === "terminal" && <TerminalView box={c.box} session={c.session} agent={c.agent} command={c.command} wsKey={wsKey} tab={tab} pane={pane.id} visible={visible && view !== "conversation"} focused={focused && view !== "conversation"} onFocus={focus} onClose={close} />}
+        {/* The terminal stays connected underneath, so switching back is instant. */}
+        {c.kind === "terminal" && view === "conversation" && (
+          <div className="absolute inset-0 z-10 flex flex-col">
+            <ConversationPane box={c.box} session={c.session} onShowTerminal={() => setPaneContent(wsKey, tab, pane.id, { ...c, view: "terminal" })} />
+          </div>
+        )}
         {c.kind === "browser" && <BrowserPane id={pane.id} url={c.url} visible={visible} onNavigate={(url) => setPaneContent(wsKey, tab, pane.id, { kind: "browser", url })} />}
         {c.kind === "log" && <LogView box={c.box} location={c.location} worktree={c.worktree} service={c.service} visible={visible} />}
         {c.kind === "panel" && <PanelPane wsKey={wsKey} plugin={c.plugin} panel={c.panel} />}
@@ -81,6 +91,45 @@ export function Pane({ wsKey, tab, pane, visible, focused, split }: Props) {
         )}
       </div>
     </div>
+  );
+}
+
+// usePaneView is how an agent's pane shows: its terminal, or (Labs) its
+// conversation. Shells and other panes are always what they are.
+export function usePaneView(pane: Leaf): "terminal" | "conversation" | undefined {
+  const c = pane.content;
+  const labs = usePrefs((p) => p.labs);
+  const fallback = usePrefs((p) => p.agentView);
+  if (c.kind !== "terminal" || !labs || !c.agent) return undefined;
+  return c.view ?? fallback;
+}
+
+// ViewSwitch flips an agent's pane between its terminal and its
+// conversation.
+function ViewSwitch({ wsKey, tab, pane }: { wsKey: string; tab: string; pane: Leaf }) {
+  const view = usePaneView(pane);
+  const c = pane.content;
+  if (!view || c.kind !== "terminal") return null;
+  return (
+    <ToggleGroup
+      size="sm"
+      variant="outline"
+      value={[view]}
+      onValueChange={(v) => v[0] && setPaneContent(wsKey, tab, pane.id, { ...c, view: v[0] as "terminal" | "conversation" })}
+      aria-label="Show the agent as"
+      className="mr-1"
+    >
+      <Tip label="Terminal">
+        <ToggleGroupItem value="terminal" aria-label="Terminal" className="h-6! min-w-7! px-1!">
+          <SquareTerminalIcon className="size-3.5" />
+        </ToggleGroupItem>
+      </Tip>
+      <Tip label="Conversation">
+        <ToggleGroupItem value="conversation" aria-label="Conversation" className="h-6! min-w-7! px-1!">
+          <MessagesSquareIcon className="size-3.5" />
+        </ToggleGroupItem>
+      </Tip>
+    </ToggleGroup>
   );
 }
 
@@ -143,6 +192,7 @@ export function PaneActions({ wsKey, tab, pane, onClose, closable, focused = tru
 
   return (
     <>
+      <ViewSwitch wsKey={wsKey} tab={tab} pane={pane} />
       <HeaderButton label="Split right" keys={focused ? "⌘D" : undefined} onClick={() => void startSession("", beside("row"))}>
         <SquareSplitHorizontalIcon />
       </HeaderButton>

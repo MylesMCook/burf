@@ -1,14 +1,19 @@
 import { CheckIcon, ChevronRightIcon, CircleAlertIcon, HandIcon, RepeatIcon, CircleStopIcon, XIcon } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 
+import { CrewCard } from "@/components/conversation/crew-card";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useSessionName } from "@/hooks/use-session-name";
 import { dismissLoop, isLive, type Loop, useLoops } from "@/lib/loops";
 import { allRuns, type BoxRun, dismissRun, runs as runsApi, useRuns } from "@/lib/runs";
+import { keyOf, useConversations } from "@/lib/conversation-store";
+import { leaves } from "@/lib/layout";
+import { usePrefs } from "@/lib/prefs";
+import type { CrewMember } from "@/lib/transcript";
 import { cn } from "@/lib/utils";
-import { focusSession } from "@/lib/workspaces";
+import { focusSession, useWorkspaces } from "@/lib/workspaces";
 
 const phases: Record<Loop["phase"], string> = {
   prompting: "Prompting",
@@ -56,6 +61,7 @@ export function LoopsPanel() {
     .filter((r) => !r.finished || Date.now() - new Date(r.finished).getTime() < 30 * 60_000)
     .map(loopOfRun);
   const loops = [...local, ...fromRuns];
+  const crew = useFocusedCrew();
   const ref = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -63,26 +69,48 @@ export function LoopsPanel() {
     const el = ref.current;
     if (!el) {
       root.style.setProperty("--berth-loops-h", "0px");
+      root.style.setProperty("--berth-loops-w", "0px");
       return;
     }
-    const sync = () => root.style.setProperty("--berth-loops-h", `${el.offsetHeight + GAP}px`);
+    // Its width too, so a centred column (a conversation) can step aside.
+    const sync = () => {
+      root.style.setProperty("--berth-loops-h", `${el.offsetHeight + GAP}px`);
+      root.style.setProperty("--berth-loops-w", `${el.offsetWidth + GAP * 2}px`);
+    };
     sync();
     const ro = new ResizeObserver(sync);
     ro.observe(el);
     return () => {
       ro.disconnect();
       root.style.setProperty("--berth-loops-h", "0px");
+      root.style.setProperty("--berth-loops-w", "0px");
     };
-  }, [loops.length]);
+  }, [loops.length, !!crew]);
 
-  if (!loops.length) return null;
+  if (!loops.length && !crew) return null;
   return (
     <div ref={ref} style={{ bottom: STATUS_BAR + GAP, right: GAP }} className="fixed z-40 flex max-h-[50vh] w-88 flex-col gap-2 overflow-y-auto" role="region" aria-label="Loops">
+      {crew && <CrewCard key={crew.key} crew={crew.members} />}
       {loops.map((l) => (
         <LoopCard key={l.id} loop={l} />
       ))}
     </div>
   );
+}
+
+// useFocusedCrew is the crew of the agent in the focused pane (Labs): the
+// helpers its conversation says it sent out, while there are any.
+function useFocusedCrew(): { key: string; members: CrewMember[] } | undefined {
+  const labs = usePrefs((p) => p.labs);
+  const target = useWorkspaces((s) => {
+    const ws = s.current ? s.spaces[s.current] : undefined;
+    const tab = ws?.tabs.find((t) => t.id === ws.active);
+    const c = tab && leaves(tab.root).find((l) => l.id === tab.focus)?.content;
+    return c?.kind === "terminal" ? keyOf(c.box, c.session) : undefined;
+  });
+  const members = useConversations((s) => (target ? s.crew[target] : undefined));
+  if (!labs || !target || !members?.length) return undefined;
+  return { key: target, members };
 }
 
 // loopOfRun shows a loop run as the panel shows a loop. Its round and
