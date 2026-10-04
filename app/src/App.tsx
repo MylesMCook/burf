@@ -69,7 +69,7 @@ export default function App() {
   useKitDeepLinks();
   const view = useStore((s) => s.view);
   const workspace = view.kind === "workspace";
-  // Labs: zen (⌘.) puts away the sidebar, the tab strip and the status bar.
+  // Labs: zen (⌘⇧\) puts away the sidebar, the tab strip and the status bar.
   const zen = usePrefs((p) => p.labs && p.zen);
   const zenChrome: "bar" | "float" = new URLSearchParams(location.search).get("zenbar") === "float" ? "float" : "bar";
   // Onboarding has no tabs yet, so it gets the plain strip, not the tab strip.

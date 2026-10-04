@@ -1,5 +1,6 @@
 import {
   BellIcon,
+  Minimize2Icon,
   BookMarkedIcon,
   CodeXmlIcon,
   ArrowUpRightIcon,
@@ -50,6 +51,7 @@ import { openBrowserAt, resolveUrl, startSession } from "@/lib/actions";
 import { agentOf, sessionName, sortedWorktrees, worktreeOf } from "@/lib/derive";
 import { openBroadcast, openPromptPicker } from "@/lib/prompts";
 import { setNotificationsOpen } from "@/lib/notifications";
+import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { currentSpace, focusSession, recentWorktrees, refOf, selectWorktree, useWorkspaces } from "@/lib/workspaces";
 import { openCustomize, useArrangedNav } from "@/components/sidebar/nav";
@@ -141,6 +143,9 @@ export function CommandPalette() {
         }),
       },
       { value: "add-location", label: "Add a project…", icon: slot(<FolderPlusIcon />), run: go(() => st.openAddProject()) },
+      ...(usePrefs.getState().labs
+        ? [{ value: "zen focus calm hide sidebar labs", label: usePrefs.getState().zen ? "Leave zen" : "Zen: only the agents", icon: slot(<Minimize2Icon />), shortcut: "⌘⇧\\", run: go(() => usePrefs.setState((p) => ({ zen: !p.zen }))) }]
+        : []),
       { value: "dashboard", label: "Agent Dashboard", icon: slot(<LayoutDashboardIcon />), shortcut: "⌘J", run: go(() => st.setView({ kind: "dashboard" })) },
       { value: "notifications inbox bell", label: "Notifications", icon: slot(<BellIcon />), shortcut: "⌘⇧N", run: go(() => setNotificationsOpen(true)) },
       { value: "notification settings do not disturb", label: "Notification settings", icon: slot(<BellIcon />), run: go(() => st.setView({ kind: "settings", section: "notifications" })) },

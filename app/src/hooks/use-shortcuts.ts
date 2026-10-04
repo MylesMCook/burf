@@ -29,7 +29,7 @@ export const SHORTCUTS: [keys: string, what: string][] = [
   ["⌘⇧N", "Notifications"],
   ["⌘⇧O", "Open this worktree in your editor"],
   ["⌘\\", "Show or hide the sidebar"],
-  ["⌘.", "Zen: only the agents (Labs)"],
+  ["⌘⇧\\", "Zen: only the agents (Labs)"],
 ];
 
 const arrows: Record<string, "left" | "right" | "up" | "down"> = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down" };
@@ -52,7 +52,9 @@ export function useShortcuts() {
       if (e.altKey) {
         if (!(e.key in arrows) || !inWorkspace) return;
         moveFocus(arrows[e.key]);
-      } else if (key === "." && usePrefs.getState().labs) {
+      } else if (usePrefs.getState().labs && ((e.code === "Backslash" && e.shiftKey) || key === ".")) {
+        // ⌘⇧\: macOS keeps ⌘. for "cancel", so it seldom reaches the page;
+        // it still works where it does (the browser demo).
         usePrefs.setState((p) => ({ zen: !p.zen }));
       } else if (key === "\\") {
         usePrefs.setState((p) => ({ sidebarCollapsed: !p.sidebarCollapsed }));

@@ -32,7 +32,7 @@ export interface Prefs {
   labs: boolean;
   // Labs: how an agent's pane opens, until switched.
   agentView: "terminal" | "conversation";
-  // Labs: zen (⌘.): no sidebar or status bar, a switcher for a tab strip,
+  // Labs: zen (⌘⇧\): no sidebar or status bar, a switcher for a tab strip,
   // agents as conversations.
   zen: boolean;
 }

@@ -11,7 +11,7 @@ import { toastManager } from "@/components/ui/toast";
 import { isMock } from "@/hooks/use-berth-connection";
 import { boxApi, laptopApi } from "@/lib/api";
 import { keyOf, useConversations } from "@/lib/conversation-store";
-import { sessionState, worktreeOf } from "@/lib/derive";
+import { agentLabel, agentOf, sessionState, worktreeOf } from "@/lib/derive";
 import { errorMessage } from "@/lib/format";
 import { finishTurn, seedTranscript } from "@/lib/mock-conversation";
 import { NONE, useStore } from "@/lib/store";
@@ -57,7 +57,11 @@ export function ConversationPane({ box, session, visible, onShowTerminal }: { bo
     return out;
   }, [mock, items, state, s?.state_since, ask, answered]);
 
-  if (!mock && (feed === "unsupported" || feed === "none")) {
+  // Claude Code and Codex write their conversation once they start: until
+  // then a new agent has nothing to read yet, which is not a dead end.
+  const agent = s ? agentOf(s) : undefined;
+  const readable = agent === "claude" || agent === "codex";
+  if (!mock && (feed === "unsupported" || (feed === "none" && !readable))) {
     return (
       <div className="flex flex-1 items-center justify-center bg-background p-6">
         <Empty>
@@ -121,6 +125,11 @@ export function ConversationPane({ box, session, visible, onShowTerminal }: { bo
           <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
             <Spinner className="mr-2 size-4" />
             Reading the conversation…
+          </div>
+        ) : !shown.length ? (
+          <div className="flex h-full flex-col items-center justify-center gap-1 text-center">
+            <p className="font-medium text-sm">Nothing here yet</p>
+            <p className="max-w-sm text-muted-foreground text-sm">Tell {agent ? agentLabel(agent) : "the agent"} what to do below; its conversation shows here as it works.</p>
           </div>
         ) : (
           <ConversationView items={shown} onAnswer={answer} />
