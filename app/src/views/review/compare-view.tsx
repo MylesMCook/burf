@@ -87,6 +87,11 @@ export function CompareView({ box, id, onClose }: { box: string; id: string; onC
   // A group's runs each say how many they tried; the page shows them all.
   const titleOf = (t?: string) => (t ?? id).replace(/: \d+ attempts?$/, "");
   const cands = all.flatMap((r) => r.data.candidates.map((c) => ({ ...c, box: r.box, runId: r.id, winner: r.data.gate?.default === c.index })));
+  // One winner across the group: each box's judge ranks only its own, so of
+  // their first picks the one whose check passed, then the smallest change.
+  const firsts = cands.filter((c) => c.judge.rank === 1);
+  const best = [...firsts].sort((a, b) => Number(b.verify.passed) - Number(a.verify.passed) || a.diff.added + a.diff.removed - (b.diff.added + b.diff.removed))[0];
+  const isBest = (c: (typeof cands)[number]) => !!best && c.box === best.box && c.runId === best.runId && c.index === best.index;
   const title = data ? `${titleOf(data.run.title)}: ${cands.length} attempt${cands.length === 1 ? "" : "s"}` : id;
   // Picking one whose check failed takes work that does not pass: ask first.
   const choose = (c: (typeof cands)[number]) => {
@@ -142,12 +147,12 @@ export function CompareView({ box, id, onClose }: { box: string; id: string; onC
             {cands.map((c) => {
               const files = c.review?.files ?? [];
               return (
-                <section key={`${c.box}/${c.runId}/${c.index}`} className={cn("flex min-w-0 flex-col rounded-xl border bg-card", c.picked && "border-success/60", c.winner && canPick && "border-primary/50")}>
+                <section key={`${c.box}/${c.runId}/${c.index}`} className={cn("flex min-w-0 flex-col rounded-xl border bg-card", c.picked && "border-success/60", isBest(c) && canPick && "border-primary/50")}>
                   <header className="flex items-center gap-2 border-b px-3 py-2">
                     <AgentIcon agent={c.agent} />
                     <span className="shrink-0 whitespace-nowrap font-medium text-sm">Attempt {c.index + 1}</span>
                     <span className="min-w-0 truncate text-muted-foreground text-xs">{multi ? `${c.box} · ${c.worktree}` : c.worktree}</span>
-                    {c.judge.rank === 1 && (
+                    {isBest(c) && (
                       <span className="ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] text-primary">
                         <CrownIcon className="size-3" />
                         judge's pick
@@ -206,7 +211,7 @@ export function CompareView({ box, id, onClose }: { box: string; id: string; onC
                   </ul>
                   <footer className="flex items-center gap-1.5 border-t px-3 py-2">
                     {canPick && (
-                      <Button size="xs" variant={c.judge.rank === 1 && c.verify.passed ? "default" : "outline"} disabled={busy} onClick={() => choose(c)}>
+                      <Button size="xs" variant={isBest(c) && c.verify.passed ? "default" : "outline"} disabled={busy} onClick={() => choose(c)}>
                         Pick this one
                       </Button>
                     )}
