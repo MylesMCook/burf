@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -232,6 +233,8 @@ func TestAgentBrowserDrivesARealChromium(t *testing.T) {
 		fmt.Fprint(w, testPage)
 	})
 	m := b.NewBrowsers(t.TempDir(), 2)
+	time.Sleep(100 * time.Millisecond)
+	goroutines := runtime.NumGoroutine()
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 	loc, _ := b.Locations.Get(ctx, "cal")
@@ -318,5 +321,16 @@ func TestAgentBrowserDrivesARealChromium(t *testing.T) {
 	<-done
 	if m.Lookup(wt.Path) != nil || treeRSS(pid) != 0 {
 		t.Fatal("an idle browser was not closed")
+	}
+	// Its goroutines (the pipe reader, the waiter, tunnels) went with it,
+	// and the proxy's, once the worktree's proxy closes too.
+	b.BrowserProxies.CloseAll()
+	deadline = time.Now().Add(5 * time.Second)
+	for runtime.NumGoroutine() > goroutines+2 && time.Now().Before(deadline) {
+		time.Sleep(50 * time.Millisecond)
+	}
+	if n := runtime.NumGoroutine(); n > goroutines+2 {
+		buf := make([]byte, 1<<16)
+		t.Fatalf("goroutines %d before, %d after:\n%s", goroutines, n, buf[:runtime.Stack(buf, true)])
 	}
 }

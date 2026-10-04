@@ -55,6 +55,31 @@ type worktreeProxy struct {
 	refused int
 	mu      sync.Mutex
 	last    []string // the last refused hosts, at most 5
+	// pxs keeps one rewriting proxy (and its connection pool) per port.
+	pxs map[int]*proxy.Proxy
+}
+
+// rewriter is the worktree's rewriting proxy to port: one per port, so its
+// connections to the dev server are pooled and reused.
+func (p *worktreeProxy) rewriter(port int) *proxy.Proxy {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if px := p.pxs[port]; px != nil {
+		return px
+	}
+	local := func(ctx context.Context, port int) (net.Conn, error) {
+		var d net.Dialer
+		return d.DialContext(ctx, "tcp", "127.0.0.1:"+strconv.Itoa(port))
+	}
+	px := &proxy.Proxy{
+		Dialer:   func(string) (proxy.DialFunc, bool) { return local, true },
+		Worktree: func([]string) (string, int, bool) { return "box", port, true },
+	}
+	if p.pxs == nil {
+		p.pxs = map[int]*proxy.Proxy{}
+	}
+	p.pxs[port] = px
+	return px
 }
 
 // errBrowserRefused is the page a refused request gets.
@@ -108,6 +133,15 @@ func (bp *BrowserProxies) For(b *Box, path string) (*worktreeProxy, error) {
 	return p, nil
 }
 
+func (p *worktreeProxy) close() {
+	p.srv.Close()
+	p.mu.Lock()
+	for _, px := range p.pxs {
+		px.ResetBox("box")
+	}
+	p.mu.Unlock()
+}
+
 // Addr is the proxy's URL, http://127.0.0.1:PORT.
 func (p *worktreeProxy) Addr() string { return "http://127.0.0.1:" + strconv.Itoa(p.port) }
 
@@ -118,7 +152,7 @@ func (bp *BrowserProxies) Close(path string) {
 	bp.load()
 	path = filepath.Clean(path)
 	if p := bp.proxies[path]; p != nil {
-		p.srv.Close()
+		p.close()
 		delete(bp.proxies, path)
 	}
 	if _, ok := bp.saved[path]; ok {
@@ -134,9 +168,10 @@ func (bp *BrowserProxies) CloseAll() {
 	bp.mu.Lock()
 	defer bp.mu.Unlock()
 	for _, p := range bp.proxies {
-		p.srv.Close()
+		p.close()
 	}
 	bp.proxies = map[string]*worktreeProxy{}
+	localTransport.CloseIdleConnections()
 }
 
 func (p *worktreeProxy) refuse(host string) {
@@ -313,10 +348,6 @@ func (s browserScope) route(hostport string) (route, bool) {
 }
 
 func (p *worktreeProxy) handler(b *Box) http.Handler {
-	local := func(ctx context.Context, port int) (net.Conn, error) {
-		var d net.Dialer
-		return d.DialContext(ctx, "tcp", "127.0.0.1:"+strconv.Itoa(port))
-	}
 	var h http.Handler
 	h = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		s, ok := b.browserScope(r.Context(), p.path)
@@ -342,16 +373,10 @@ func (p *worktreeProxy) handler(b *Box) http.Handler {
 		case rt.public:
 			publicForward(w, r, b)
 		case rt.rewrite:
-			px := &proxy.Proxy{
-				Dialer: func(string) (proxy.DialFunc, bool) { return local, true },
-				Worktree: func([]string) (string, int, bool) {
-					return "box", rt.port, true
-				},
-			}
 			// Any box label is this box: the route was decided above, and
 			// the Host stays, so redirects map back to the name the page
 			// was opened by.
-			px.ServeHTTP(w, r)
+			p.rewriter(rt.port).ServeHTTP(w, r)
 		default:
 			passLocal(w, r, rt.port)
 		}
