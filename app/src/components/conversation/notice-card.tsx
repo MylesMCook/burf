@@ -127,10 +127,12 @@ function nextStep(kind: NoticeKind, scope: ChatActions | undefined, retry: () =>
         </Button>
       ) : null;
     case "exited":
-      return scope?.startAgain ? (
-        <Button size="sm" variant="outline" onClick={scope.startAgain}>
-          <RotateCwIcon />
-          Start again
+      // Starting again is offered just below, where the reply box was: the
+      // card's step is finding out why.
+      return scope?.showTerminal ? (
+        <Button size="sm" variant="outline" onClick={scope.showTerminal}>
+          <SquareTerminalIcon />
+          See why
         </Button>
       ) : null;
     case "auth":
