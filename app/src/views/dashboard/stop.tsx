@@ -344,7 +344,7 @@ function StopRow({ row, ticked, progress, locked, cleanup, onToggle }: { row: Ro
           )}
         </span>
         {busy(state) && !cleanup ? (
-          <span className="flex shrink-0 items-center gap-1 text-[11px] text-warning">
+          <span className="flex shrink-0 items-center gap-1 text-[11px] text-warning-foreground">
             <AlertTriangleIcon className="size-3" />
             {state === "waiting" ? "needs you" : "working"}
           </span>

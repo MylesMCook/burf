@@ -181,7 +181,7 @@ function BoxChip({ box }: { box: BoxStatus }) {
     <span
       className={cn(
         "inline-flex h-4 shrink-0 items-center gap-1 rounded px-1 font-mono font-normal text-[10px] leading-none",
-        online ? "bg-sidebar-accent/70 text-muted-foreground" : "bg-sidebar-accent/40 text-muted-foreground/70",
+        online ? "bg-sidebar-accent/70 text-muted-foreground" : "bg-sidebar-accent/40 text-muted-foreground",
       )}
     >
       {!online && <span className="size-1.5 rounded-full bg-muted-foreground/50" />}
@@ -354,7 +354,7 @@ function awayText(box: BoxStatus) {
 // just its icon when the row's box chip already says which box.
 function AwayMark({ box, short }: { box: BoxStatus; short?: boolean }) {
   return (
-    <span className="flex shrink-0 items-center gap-1 text-[10px] text-muted-foreground/80">
+    <span className="flex shrink-0 items-center gap-1 text-[10px] text-muted-foreground">
       <ServerOffIcon aria-label={short ? `${box.name} is ${awayText(box)}` : undefined} aria-hidden={!short} className="size-3" />
       {!short && awayText(box)}
     </span>
@@ -526,7 +526,7 @@ function ProjectSections({ prefs, update }: { prefs: SidebarPrefs; update(p: Par
               </div>
             </ContextRow>
             {!closed &&
-              (inside.length ? <SidebarMenu className="gap-px">{list(inside)}</SidebarMenu> : <p className="px-6 py-1 text-muted-foreground/70 text-xs">Drag a project here.</p>)}
+              (inside.length ? <SidebarMenu className="gap-px">{list(inside)}</SidebarMenu> : <p className="px-6 py-1 text-muted-foreground text-xs">Drag a project here.</p>)}
           </div>
         );
       })}

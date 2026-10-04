@@ -44,7 +44,7 @@ export function SourceBadge({ source, box, field, entry }: { source: Source; box
     repo: { Icon: GitCommitHorizontalIcon, label: "Repo", cls: "text-muted-foreground", title: "Committed in the repository's .berth/config.json" },
     kit: { Icon: PackageIcon, label: "Kit", cls: "text-violet-600 border-violet-500/25 dark:text-violet-400", title: `From the ${kit.name ?? "project's"} kit` },
     box: { Icon: ServerIcon, label: box, cls: "text-sky-400 border-sky-400/25", title: `Set on ${box} only` },
-    override: { Icon: ServerIcon, label: `${box} override`, cls: "text-warning border-warning/30", title: `${box} replaces the committed value` },
+    override: { Icon: ServerIcon, label: `${box} override`, cls: "text-warning-foreground border-warning/30", title: `${box} replaces the committed value` },
   }[source];
   return (
     <Tip label={map.title}>

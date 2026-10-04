@@ -59,7 +59,7 @@ export function CreateForm({ box, onAdded, onCancel }: { box: string; onAdded(lo
           </span>{" "}
           with git and an empty first commit.
         </p>
-        {taken && <p className="text-sm text-warning">{box} already has a project called {clean}.</p>}
+        {taken && <p className="text-sm text-warning-foreground">{box} already has a project called {clean}.</p>}
         {error && <ErrorText className="text-destructive text-sm" text={error} />}
       </DialogPanel>
       <DialogFooter className="items-center px-5 py-3">

@@ -138,7 +138,7 @@ function Tile({ e }: { e: Entry }) {
         className={cn(
           "relative inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-sidebar-border bg-sidebar-accent/40 font-medium text-[11px] text-muted-foreground tracking-wide outline-none hover:border-ring/40 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring",
           e.selected && "border-foreground/25 bg-sidebar-accent text-foreground",
-          e.away && "border-dashed text-muted-foreground/60",
+          e.away && "border-dashed text-muted-foreground",
         )}
       >
         <span className={cn(e.away && "opacity-60")}>{monogram(e.wt.main ? e.loc.name : e.wt.name)}</span>

@@ -641,8 +641,8 @@ function Row({
       {folded ? (
         <div className="flex h-5 min-w-0 flex-1 items-center gap-1.5">
           <span className="min-w-0 shrink truncate text-muted-foreground text-xs">{n.title}</span>
-          {item.count > 1 && <span className="shrink-0 text-[11px] text-muted-foreground/70 tabular-nums">×{item.count}</span>}
-          <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground/70">{line}</span>
+          {item.count > 1 && <span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">×{item.count}</span>}
+          <span className="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">{line}</span>
           {time}
           {cluster}
         </div>

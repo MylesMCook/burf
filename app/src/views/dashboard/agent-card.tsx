@@ -102,7 +102,7 @@ export function AgentCard({ entry, selecting, selected, onSelect }: { entry: Ses
             )}
           </span>
           <Tip label={`Since ${new Date(since).toLocaleString()}`}>
-            <span className={cn("shrink-0 font-mono text-[11px] tabular-nums", state === "waiting" ? "text-warning" : "text-muted-foreground")}>{duration(now - new Date(since).getTime())}</span>
+            <span className={cn("shrink-0 font-mono text-[11px] tabular-nums", state === "waiting" ? "text-warning-foreground" : "text-muted-foreground")}>{duration(now - new Date(since).getTime())}</span>
           </Tip>
         </div>
         <div className="mt-0.5 truncate pl-5.5 text-[11px] text-muted-foreground">

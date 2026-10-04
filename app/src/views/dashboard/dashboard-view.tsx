@@ -163,7 +163,7 @@ export function DashboardView() {
                         {items.every((e) => picked.has(keyOf(e))) ? "None" : "All"}
                       </button>
                     )}
-                    <span className={cn("font-mono text-[11px] tabular-nums", !(picked && items.length) && "ml-auto", items.length && c.state === "waiting" ? "text-warning" : "text-muted-foreground")}>{items.length}</span>
+                    <span className={cn("font-mono text-[11px] tabular-nums", !(picked && items.length) && "ml-auto", items.length && c.state === "waiting" ? "text-warning-foreground" : "text-muted-foreground")}>{items.length}</span>
                     {items.length > 0 && (
                       <ColumnMenu
                         title={c.title}
@@ -177,7 +177,7 @@ export function DashboardView() {
                   </header>
                   <div className="flex flex-col gap-row-gap">
                     {items.length === 0 ? (
-                      <p className="rounded-lg border border-dashed px-3 py-4 text-center text-muted-foreground/70 text-xs">{c.empty}</p>
+                      <p className="rounded-lg border border-dashed px-3 py-4 text-center text-muted-foreground text-xs">{c.empty}</p>
                     ) : (
                       items.map((e) => (
                         <AgentCard

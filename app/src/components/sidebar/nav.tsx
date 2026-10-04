@@ -219,7 +219,7 @@ export function Nav() {
         {pinned.map((item, i) => (
           <NavRow key={item.id} item={item} list="pinned" index={i} ids={ids} />
         ))}
-        {pinned.length === 0 && <li className="px-2 py-1 text-muted-foreground/70 text-xs">Drag places here to pin them.</li>}
+        {pinned.length === 0 && <li className="px-2 py-1 text-muted-foreground text-xs">Drag places here to pin them.</li>}
         <SidebarMenuItem {...dropProps("more", more.length, ids)} className="relative">
           <Menu>
             <MenuTrigger
@@ -287,7 +287,7 @@ export function CustomizeSidebarSheet() {
               <h3 className="font-medium text-sm">{title}</h3>
               <p className="mb-1.5 text-muted-foreground text-xs">{hint}</p>
               <ul className="flex min-h-9 flex-col gap-px rounded-lg border p-1">
-                {items.length === 0 && <li className="px-2 py-1.5 text-muted-foreground/70 text-xs">Nothing here. Drag a place in.</li>}
+                {items.length === 0 && <li className="px-2 py-1.5 text-muted-foreground text-xs">Nothing here. Drag a place in.</li>}
                 {items.map((item, i) => (
                   <CustomizeRow key={item.id} item={item} list={list} index={i} count={items.length} ids={ids} />
                 ))}

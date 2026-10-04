@@ -88,7 +88,7 @@ export function ProjectView({ box, location }: { box: string; location: string }
               <code className="truncate font-mono">{config?.repo_path}</code>
               <span className="shrink-0 rounded-md border px-1.5 text-[11px]">committed in the repo</span>
               {trustPending(trust) ? (
-                <span className="shrink-0 rounded-md border border-warning/30 px-1.5 text-[11px] text-warning">not trusted on {box}</span>
+                <span className="shrink-0 rounded-md border border-warning/30 px-1.5 text-[11px] text-warning-foreground">not trusted on {box}</span>
               ) : (
                 trust?.state === "trusted" &&
                 (runsAnything(repo) ? (

@@ -241,7 +241,7 @@ function Row({ entry, active, onSelect, onOpen }: { entry: ReviewEntry; active: 
         <span className="flex min-w-0 items-center gap-2">
           <AgentIcon agent={entry.agent} />
           <span className="min-w-0 flex-1 truncate font-medium text-[13px]">{work ?? (entry.main ? entry.location : entry.worktree)}</span>
-          <span className={cn("shrink-0 text-[11px] tabular-nums", waiting ? "text-warning" : "text-muted-foreground")}>{waiting ? "needs you" : ago(entry.state_since)}</span>
+          <span className={cn("shrink-0 text-[11px] tabular-nums", waiting ? "text-warning-foreground" : "text-muted-foreground")}>{waiting ? "needs you" : ago(entry.state_since)}</span>
         </span>
         <span className="truncate pl-5.5 text-[11px] text-muted-foreground">
           {work && `${entry.main ? entry.location : entry.worktree} · `}

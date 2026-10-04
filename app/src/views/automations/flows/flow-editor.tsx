@@ -444,7 +444,7 @@ function Connector({ branch, onAdd }: { branch: string; onAdd?(k: StepKind): voi
     <div className="group relative flex h-10 items-center justify-center">
       <span className={cn("absolute inset-y-0 left-1/2 w-px -translate-x-1/2", amber ? "bg-warning/50" : branch === "always" ? "border-l border-dashed border-muted-foreground/40 bg-transparent" : "bg-border")} />
       {branch !== "success" && (
-        <span className={cn("relative z-10 rounded-full border bg-background px-2 py-px text-[11px]", amber ? "border-warning/40 text-warning" : "text-muted-foreground")}>{amber ? "if it fails" : "always"}</span>
+        <span className={cn("relative z-10 rounded-full border bg-background px-2 py-px text-[11px]", amber ? "border-warning/40 text-warning-foreground" : "text-muted-foreground")}>{amber ? "if it fails" : "always"}</span>
       )}
       {onAdd && (
         <AddStep onPick={onAdd}>

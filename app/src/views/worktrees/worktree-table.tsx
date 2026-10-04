@@ -216,7 +216,7 @@ function WorktreeRow({
           <span className="max-w-full shrink-0 truncate font-medium">{name}</span>
           {r.branch && r.branch !== name && <span className="min-w-0 truncate font-mono text-[11px] text-muted-foreground">{r.branch}</span>}
           {r.paused && (
-            <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-warning/12 px-1.5 py-px text-[10px] text-warning">
+            <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-warning/12 px-1.5 py-px text-[10px] text-warning-foreground">
               <PauseIcon className="size-2.5" />
               Paused
             </span>
@@ -226,11 +226,11 @@ function WorktreeRow({
 
       <Tip className="max-w-sm" label={r.ahead || r.behind ? `${r.ahead} commit${s(r.ahead)} ahead of ${base}, ${r.behind} behind` : `Even with ${base}`}>
         <div className="flex w-fit items-center gap-2 font-mono text-xs tabular-nums">
-          <span className={cn("inline-flex items-center gap-0.5", r.ahead ? "text-foreground" : "text-muted-foreground/50")}>
+          <span className={cn("inline-flex items-center gap-0.5", r.ahead ? "text-foreground" : "text-muted-foreground")}>
             <ArrowUpIcon className="size-3" />
             {r.ahead}
           </span>
-          <span className={cn("inline-flex items-center gap-0.5", r.behind >= 10 ? "text-warning" : r.behind ? "text-foreground" : "text-muted-foreground/50")}>
+          <span className={cn("inline-flex items-center gap-0.5", r.behind >= 10 ? "text-warning-foreground" : r.behind ? "text-foreground" : "text-muted-foreground")}>
             <ArrowDownIcon className="size-3" />
             {r.behind}
           </span>
@@ -240,7 +240,7 @@ function WorktreeRow({
       <Tip className="max-w-sm" label={r.changed || r.untracked ? [r.changed && `${r.changed} modified`, r.untracked && `${r.untracked} untracked`].filter(Boolean).join(", ") : "No uncommitted changes"}>
         <div className="flex w-fit items-center gap-2 text-xs tabular-nums">
           {r.changed === 0 && r.untracked === 0 ? (
-            <span className="text-muted-foreground/50">Clean</span>
+            <span className="text-muted-foreground">Clean</span>
           ) : (
             <>
               {r.changed > 0 && (
