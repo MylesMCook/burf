@@ -2,8 +2,8 @@ import { MinusIcon, PlusIcon } from "lucide-react";
 import { useState } from "react";
 import { create } from "zustand";
 
-import { AgentPicker } from "@/components/new-worktree/agent-picker";
 import { SimpleSelect } from "@/components/simple-select";
+import { Badge } from "@/components/ui/badge";
 import { StepHeader } from "@/components/step-header";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogFooter, DialogPanel, DialogPopup } from "@/components/ui/dialog";
@@ -170,10 +170,14 @@ function Body({ d, onDone }: { d: AttemptsDraft; onDone(): void }) {
           {agents.map((a, i) => (
             <div key={i} className="flex items-center gap-2">
               <span className="w-5 text-right text-muted-foreground text-xs tabular-nums">{i + 1}</span>
-              <div className="w-40 shrink-0">
-                <AgentPicker presets={presets} value={a.agent} onChange={(agent) => setAgents(agents.map((x, j) => (j === i ? { agent, suffix: x.suffix, box: x.box } : x)))} />
+              <div className="w-36 shrink-0">
+                <SimpleSelect size="sm" className="min-w-0" value={a.agent} onChange={(agent) => setAgents(agents.map((x, j) => (j === i ? { agent, suffix: x.suffix, box: x.box } : x)))} options={presets.map((p) => ({ value: p.id, label: p.name }))} />
               </div>
-              {(a.model || a.effort) && <span className="shrink-0 text-muted-foreground text-xs">{[a.model, a.effort].filter(Boolean).join(" · ")}</span>}
+              {(a.model || a.effort) && (
+                <Badge variant="secondary" className="shrink-0">
+                  {[a.model, a.effort].filter(Boolean).join(" · ")}
+                </Badge>
+              )}
               <Input size="sm" value={a.suffix} placeholder="and, for this one… (optional)" onChange={(e) => setAgents(agents.map((x, j) => (j === i ? { ...x, suffix: e.target.value } : x)))} />
               {otherBoxes.length > 0 && (
                 <div className="w-28 shrink-0">
@@ -207,7 +211,7 @@ function Body({ d, onDone }: { d: AttemptsDraft; onDone(): void }) {
           <label className="flex flex-col gap-1.5">
             <span className="font-medium text-[13px]">Judge</span>
             <div className="w-36">
-              <AgentPicker presets={presets} value={judge} onChange={setJudge} />
+              <SimpleSelect size="sm" className="min-w-0" value={judge} onChange={setJudge} options={presets.map((p) => ({ value: p.id, label: p.name }))} />
             </div>
           </label>
         </div>
