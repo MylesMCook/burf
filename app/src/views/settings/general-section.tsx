@@ -78,7 +78,7 @@ export function GeneralSection() {
               "URLs have no port: port 80 on this computer points at Berth."
             ) : (
               <>
-                URLs end in <Code>:{port}</Code> while port 80 stays with calport. Once your Cal.com work has moved to Berth, <Code>berth setup port80</Code> drops it (it asks for your password once).
+                URLs end in <Code>:{port}</Code>. To drop it, <Code>berth setup port80</Code> points port 80 on this computer at Berth (it asks for your password once; skip it if something else already uses port 80).
               </>
             )
           }
