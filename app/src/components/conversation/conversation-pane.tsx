@@ -45,7 +45,7 @@ import { useReview } from "@/views/review/review-store";
 // ended (and never offers a reply); a box that is away says so and the pane
 // comes back by itself when it returns; a conversation that can't be read
 // says why, with a way to try again.
-export function ConversationPane({ box, session, agent: remembered, visible, onShowTerminal }: { box: string; session: string; agent?: string; visible: boolean; onShowTerminal(): void }) {
+export function ConversationPane({ box, session, agent: remembered, visible, onShowTerminal, onStartAgain }: { box: string; session: string; agent?: string; visible: boolean; onShowTerminal(): void; onStartAgain?(): void }) {
   const key = keyOf(box, session);
   const items = useConversations((s) => s.items[key]) ?? (NONE as TranscriptItem[]);
   const listed = useStore((st) => st.boxes[box]?.sessions);
@@ -126,7 +126,8 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
   // then a new agent has nothing to read yet, which is not a dead end.
   const readable = agent === "claude" || agent === "codex";
   const ended = state === "exited";
-  const again = () => void startSession(agent ?? "claude", { kind: "tab" }, agent ? agentLabel(agent) : "Agent");
+  // In its own pane when the pane says how; otherwise a new tab.
+  const again = () => (onStartAgain ? onStartAgain() : void startSession(agent ?? "claude", { kind: "tab" }, agent ? agentLabel(agent) : "Agent"));
 
   // The box is away: what it last said may be stale, so say only that.
   if (away && !mock) {

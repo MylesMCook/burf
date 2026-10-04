@@ -158,7 +158,7 @@ function TabButton({ tab, active, onActivate, onClose, onDragStart, onDrop }: Ta
   const offline = c.kind === "terminal" && status?.boxes.find((b) => b.name === c.box)?.state !== "online" && !!status;
   // Named as everywhere else (sessionName): the session's title, or its
   // agent's name; the agent and the session id are in the tooltip.
-  const title = lead.s ? sessionName(lead.s, { sessions: c.kind === "terminal" ? boxes[c.box]?.sessions : undefined }) : paneLabel(c, lead.agent);
+  const title = lead.s ? sessionName(lead.s, { sessions: c.kind === "terminal" ? boxes[c.box]?.sessions : undefined }) : (c.kind === "terminal" && c.title) || paneLabel(c, lead.agent);
   const secondary = lead.s ? sessionAgent(lead.s) : "";
   const session = c.kind === "terminal" && lead.s ? { box: c.box, name: lead.s.name } : undefined;
   const [editingHere, setEditing] = useState(false);
@@ -259,7 +259,7 @@ function TabButton({ tab, active, onActivate, onClose, onDragStart, onDrop }: Ta
 
 // TitleInput renames a session in place: Enter keeps it, Escape or leaving
 // the field without a change drops it. Empty means the agent's name again.
-function TitleInput({ initial, placeholder, onDone }: { initial: string; placeholder: string; onDone(next?: string): void }) {
+export function TitleInput({ initial, placeholder, onDone }: { initial: string; placeholder: string; onDone(next?: string): void }) {
   const [v, setV] = useState(initial);
   const done = useRef(false);
   const input = useRef<HTMLInputElement>(null);

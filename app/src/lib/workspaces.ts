@@ -310,4 +310,4 @@ export function recentWorktrees(spaces: Record<string, Workspace>, n = 3): Works
     .slice(0, n);
 }
 
-if (import.meta.env.DEV) Object.assign(window as unknown as Record<string, unknown>, { __berthWorkspaces: { useWorkspaces, selectWorktree, goHome } });
+if (import.meta.env.DEV) Object.assign(window as unknown as Record<string, unknown>, { __berthWorkspaces: { useWorkspaces, selectWorktree, goHome, focusSession } });

@@ -52,7 +52,8 @@ export function Pane({ wsKey, tab, pane, visible, focused, split }: Props) {
   const view = usePaneView(pane);
   useEffect(() => {
     if (c.kind !== "terminal" || !session) return;
-    if (c.agent !== agent || c.command !== session.command) setPaneContent(wsKey, tab, pane.id, { ...c, agent, command: session.command });
+    const title = session.title?.trim() || undefined;
+    if (c.agent !== agent || c.command !== session.command || c.title !== title) setPaneContent(wsKey, tab, pane.id, { ...c, agent, command: session.command, title });
   }, [c, session, agent, wsKey, tab, pane.id]);
 
   return (
@@ -70,7 +71,7 @@ export function Pane({ wsKey, tab, pane, visible, focused, split }: Props) {
         {/* The terminal stays connected underneath, so switching back is instant. */}
         {c.kind === "terminal" && view === "conversation" && (
           <div className="absolute inset-0 z-10 flex flex-col">
-            <ConversationPane box={c.box} session={c.session} agent={c.agent} visible={visible} onShowTerminal={() => setPaneContent(wsKey, tab, pane.id, { ...c, view: "terminal" })} />
+            <ConversationPane box={c.box} session={c.session} agent={c.agent} visible={visible} onStartAgain={() => void startSession(c.command ?? c.agent ?? "", { kind: "replace", tab, pane: pane.id }, c.agent ? agentLabel(c.agent) : "Agent")} onShowTerminal={() => setPaneContent(wsKey, tab, pane.id, { ...c, view: "terminal" })} />
           </div>
         )}
         {c.kind === "browser" && <BrowserPane id={pane.id} url={c.url} visible={visible} onNavigate={(url) => setPaneContent(wsKey, tab, pane.id, { kind: "browser", url })} />}
@@ -102,7 +103,15 @@ export function usePaneView(pane: Leaf): "terminal" | "conversation" | undefined
   const c = pane.content;
   const labs = usePrefs((p) => p.labs);
   const fallback = usePrefs((p) => (p.zen ? "conversation" : p.agentView));
-  if (c.kind !== "terminal" || !labs || !c.agent) return undefined;
+  // A pane made for a new session doesn't record its agent; the box's
+  // session list says whether it runs one.
+  const runsAgent = useStore((st) => {
+    if (c.kind !== "terminal") return false;
+    if (c.agent) return true;
+    const s = st.boxes[c.box]?.sessions?.find((x) => x.name === c.session);
+    return !!(s && agentOf(s));
+  });
+  if (c.kind !== "terminal" || !labs || !runsAgent) return undefined;
   return c.view ?? fallback;
 }
 
@@ -117,7 +126,13 @@ export function ViewSwitch({ wsKey, tab, pane }: { wsKey: string; tab: string; p
       size="sm"
       variant="outline"
       value={[view]}
-      onValueChange={(v) => v[0] && setPaneContent(wsKey, tab, pane.id, { ...c, view: v[0] as "terminal" | "conversation" })}
+      onValueChange={(v) => {
+        const next = v[0] as "terminal" | "conversation" | undefined;
+        if (!next) return;
+        setPaneContent(wsKey, tab, pane.id, { ...c, view: next });
+        // The way you last chose to see an agent is how new ones open.
+        usePrefs.setState({ agentView: next });
+      }}
       aria-label="Show the agent as"
       className="mr-1"
     >
