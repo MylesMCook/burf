@@ -20,6 +20,8 @@ export interface TranscriptResult {
   next: number;
   crew: CrewMember[];
   truncated?: boolean;
+  // When the agent last wrote to its record (ms).
+  last?: number;
 }
 
 export type FeedState = "loading" | "ready" | "none" | "unsupported" | "error";
@@ -75,6 +77,7 @@ export function useTranscriptFeed(box: string, session: string, dir: string | un
         }
         if (r.items?.length) useConversations.getState().merge(key, r.items);
         useConversations.getState().setCrew(key, r.crew ?? []);
+        if (r.last) useConversations.getState().setLast(key, r.last);
         next.current = r.next ?? next.current;
         setState("ready");
       } catch (err) {

@@ -13,6 +13,7 @@ import { parseDiff } from "@/lib/git/parse";
 import { type ToolCall, type ToolDetail, toolSummary, type TranscriptItem } from "@/lib/transcript";
 import { cn } from "@/lib/utils";
 import { Markdown } from "@/components/conversation/markdown";
+import { HARBOUR_WORDS } from "@/lib/screen-status";
 import { NoticeCard } from "@/components/conversation/notice-card";
 import { CommandItem } from "@/components/conversation/command-item";
 import "@/components/conversation/conversation.css";
@@ -192,9 +193,15 @@ function Item({ it, onAnswer, edits, who }: { it: TranscriptItem; onAnswer(id: s
         </div>
       );
     case "text":
-      return <Markdown text={it.text} />;
+      return it.live ? (
+        <div className="cv-live" title="As its screen shows it: its record has these words a moment later">
+          <Markdown text={it.text} />
+        </div>
+      ) : (
+        <Markdown text={it.text} />
+      );
     case "thinking":
-      return <Thinking since={it.since} />;
+      return <Thinking since={it.since} label={it.label} elapsed={it.elapsed} meta={it.meta} step={it.step} />;
     case "tools":
       return <Tools it={it} edits={edits} />;
     case "edit":
@@ -675,22 +682,37 @@ function lineDiff(a: string[], b: string[]): { op: " " | "+" | "-"; text: string
   return out;
 }
 
-function Thinking({ since }: { since: number }) {
+// Thinking is the agent at work, as its own status line says it
+// ("Seasoning… · 9m 11s · 7.1k tokens"), or the step it is running
+// ("Running yarn vitest · 6m 47s"), or, with neither to read, a calm word
+// of our own that changes now and then.
+function Thinking({ since, label, elapsed, meta, step }: { since: number; label?: string; elapsed?: string; meta?: string; step?: { verb: string; target: string } }) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const t = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(t);
   }, []);
-  const s = Math.round((now - since) / 1000);
+  const s = Math.max(0, Math.round((now - since) / 1000));
+  const took = elapsed && !step ? elapsed : s >= 60 ? `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s` : `${s}s`;
+  const doing = step ? (step.verb === "Read" ? "Reading" : step.verb === "Search" ? "Searching" : step.verb === "Edit" ? "Editing" : "Running") : undefined;
+  const word = label ?? `${HARBOUR_WORDS[Math.floor(now / 4000) % HARBOUR_WORDS.length]}…`;
   return (
-    <div className="cv-in flex items-center gap-2">
-      <span className="cv-dots" aria-hidden>
+    <div className="cv-in flex min-w-0 items-center gap-2">
+      <span className="cv-dots shrink-0" aria-hidden>
         <i />
         <i />
         <i />
       </span>
-      <span className="cv-shimmer">Thinking…</span>
-      {s >= 1 && <span className="text-muted-foreground tabular-nums">{s}s</span>}
+      {step ? (
+        <span className="flex min-w-0 items-center gap-1.5">
+          <span className="cv-shimmer shrink-0">{doing}</span>
+          <code className="min-w-0 truncate rounded bg-muted px-1.5 py-px font-mono text-[12.5px]">{step.target}</code>
+        </span>
+      ) : (
+        <span className="cv-shimmer shrink-0">{word}</span>
+      )}
+      {(s >= 1 || elapsed) && <span className="shrink-0 text-muted-foreground tabular-nums">· {took}</span>}
+      {meta && <span className="shrink-0 text-muted-foreground tabular-nums">· {meta}</span>}
     </div>
   );
 }

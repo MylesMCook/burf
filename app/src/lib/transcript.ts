@@ -6,7 +6,9 @@
 
 export type TranscriptItem =
   | { kind: "user"; id: string; text: string }
-  | { kind: "text"; id: string; text: string }
+  // live: words read from the agent's screen that its record doesn't
+  // have yet, replaced by the record's own once it catches up.
+  | { kind: "text"; id: string; text: string; live?: boolean }
   | { kind: "tools"; id: string; verb: string; items?: ToolCall[]; done?: boolean }
   | { kind: "edit"; id: string; file: string; added: number; removed: number; tool?: string }
   // A question for the person. choices are the agent's own numbered options
@@ -15,7 +17,10 @@ export type TranscriptItem =
   // A permission the agent's hooks described (structured) names the tool,
   // what it would run or touch (detail) and why, rather than a screen line.
   | { kind: "ask"; id: string; tool: string; detail: string; choices?: { key: string; label: string; title?: string }[]; decided?: string; why?: string; structured?: boolean; reading?: boolean }
-  | { kind: "thinking"; id: string; since: number }
+  // The agent at work: the step it is running (timed from the call), or
+  // its own word for what it does (label, from its status line) with what
+  // else that line says (meta: tokens); since is when it began.
+  | { kind: "thinking"; id: string; since: number; label?: string; elapsed?: string; meta?: string; step?: { verb: string; target: string } }
   // A command typed to the agent rather than a prompt: one of its own
   // ("/model", with what followed it) or a shell command ("!"), and the
   // output its program printed (Markdown when it wrote it so).
@@ -30,6 +35,8 @@ export type NoticeKind = "api_error" | "limit" | "rate_limit" | "auth" | "billin
 
 export interface ToolCall {
   verb: string;
+  // When the agent made the call (ms).
+  at?: number;
   target: string;
   // Names the call for its details (the full command and output).
   id?: string;

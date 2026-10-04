@@ -67,3 +67,6 @@
 .cv-md .cv-pre:hover .cv-copy-code, .cv-md .cv-copy-code:focus-visible { opacity: 1; }
 .cv-md .cv-copy-code:hover { color: var(--foreground); }
 .cv-md ::selection, [data-selectable] ::selection { background: color-mix(in srgb, var(--primary) 28%, transparent); }
+
+/* Words read from the agent's screen before its record has them. */
+.cv-live { opacity: 0.8; border-left: 2px solid color-mix(in srgb, var(--muted-foreground) 35%, transparent); padding-left: 10px; margin-left: -12px; }

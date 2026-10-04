@@ -12,6 +12,8 @@ interface ConversationState {
   // Transcripts and crews by "box/session".
   items: Record<string, TranscriptItem[]>;
   crew: Record<string, CrewMember[]>;
+  // When each agent last wrote to its record (ms), for Thinking's time.
+  last: Record<string, number>;
   push(key: string, item: TranscriptItem): void;
   // merge replaces items with the same id and appends the rest, as the
   // box resends a tool group that was still open.
@@ -19,10 +21,12 @@ interface ConversationState {
   update(key: string, id: string, patch: Partial<TranscriptItem>): void;
   remove(key: string, id: string): void;
   setCrew(key: string, crew: CrewMember[]): void;
+  setLast(key: string, at: number): void;
 }
 
 export const useConversations = create<ConversationState>()((set) => ({
   items: {},
+  last: {},
   crew: {},
   push: (key, item) => set((s) => ({ items: { ...s.items, [key]: [...(s.items[key] ?? []), item].slice(-KEEP) } })),
   merge: (key, incoming) =>
@@ -42,6 +46,7 @@ export const useConversations = create<ConversationState>()((set) => ({
     set((s) => ({ items: { ...s.items, [key]: (s.items[key] ?? []).map((i) => (i.id === id ? ({ ...i, ...patch } as TranscriptItem) : i)) } })),
   remove: (key, id) => set((s) => ({ items: { ...s.items, [key]: (s.items[key] ?? []).filter((i) => i.id !== id) } })),
   setCrew: (key, crew) => set((s) => ({ crew: { ...s.crew, [key]: crew } })),
+  setLast: (key, at) => set((s) => (s.last[key] === at ? s : { last: { ...s.last, [key]: at } })),
 }));
 
 export const keyOf = (box: string, session: string) => `${box}/${session}`;

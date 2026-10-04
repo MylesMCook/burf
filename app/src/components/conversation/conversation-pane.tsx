@@ -36,6 +36,7 @@ import { addComment, type LineComment, pending, removeComment, sendComments, use
 import { permissionChoices } from "@/lib/screen";
 import { NONE, useStore } from "@/lib/store";
 import type { TranscriptItem } from "@/lib/transcript";
+import { plainWords, useScreenStatus } from "@/lib/screen-status";
 import { useAsk, useQueued, useTranscriptFeed } from "@/lib/transcript-feed";
 import { ConfirmDialog } from "@/views/settings/confirm";
 import { cn } from "@/lib/utils";
@@ -95,6 +96,9 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
   const canDiff = useStore((st) => !!st.boxes[box]?.info?.capabilities?.includes("diff"));
   // A session the box no longer lists is named from what the pane remembers.
   const agent = (s ? agentOf(s) : undefined) ?? remembered ?? guessAgent(session);
+  // While it works: its status line and latest words from its screen.
+  const onScreen = useScreenStatus(box, session, agent, visible && !mock && !away && state === "running");
+  const last = useConversations((st) => st.last[key]);
   const who = agent === "claude" ? "Claude" : agent ? agentLabel(agent) : "The agent";
   // Comments on the diff are kept per worktree, as Review keys them.
   const wt = s ? worktreeOf(locations, s) : undefined;
@@ -116,8 +120,22 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
     // What was just sent shows at once, until the agent's own record of it
     // arrives (a moment later) and takes its place.
     for (const p of sent) if (!items.some((it, i) => i >= p.after && it.kind === "user" && same(it.text, p.text))) out.push({ kind: "user", id: `sent:${p.at}`, text: p.text });
-    // A new agent's state comes a moment after it starts: count from then.
-    if (state === "running") out.push({ kind: "thinking", id: "live:thinking", since: Date.parse(s?.state_since ?? s?.created ?? "") || Date.now() });
+    if (state === "running") {
+      // Its words on screen that its record doesn't have yet (Claude Code
+      // writes them after the step it is running), until the record does.
+      if (onScreen?.said) {
+        const said = plainWords(onScreen.said).slice(0, 80);
+        if (said.length > 8 && !items.slice(-12).some((it) => it.kind === "text" && plainWords(it.text).includes(said))) out.push({ kind: "text", id: "live:said", text: onScreen.said, live: true });
+      }
+      // The step it runs, timed from the call; else its own word for what
+      // it does, timed from its last words (a new agent: from its start).
+      const began = Date.parse(s?.state_since ?? s?.created ?? "") || Date.now();
+      const end = items[items.length - 1];
+      const call = end?.kind === "tools" && !end.done ? end.items?.[end.items.length - 1] : undefined;
+      const status = onScreen?.status;
+      if (call) out.push({ kind: "thinking", id: "live:thinking", since: call.at ?? began, step: { verb: call.verb, target: call.target }, meta: status?.tokens });
+      else out.push({ kind: "thinking", id: "live:thinking", since: Math.max(last ?? 0, began), label: status?.word, elapsed: status?.elapsed, meta: status?.tokens });
+    }
     // Started with a prompt, it is about to work, not waiting for a first
     // task: say so until its own record arrives.
     else if (prompted && !items.length && (state === "ready" || state === "idle")) out.push({ kind: "thinking", id: "live:starting", since: Date.parse(s?.created ?? "") || Date.now() });
@@ -133,7 +151,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
       out.push({ kind: "ask", id: "live:ask", tool: "Question", detail: s?.ask?.message || ask.detail, choices: ask.choices, decided });
     }
     return out;
-  }, [mock, items, state, s?.state_since, s?.ask, s?.created, ask, answered, sent, prompted]);
+  }, [mock, items, state, s?.state_since, s?.ask, s?.created, ask, answered, sent, prompted, onScreen, last]);
 
   const edits = useMemo<EditActions | undefined>(() => {
     if (!client || (!canDiff && !mock)) return undefined;
