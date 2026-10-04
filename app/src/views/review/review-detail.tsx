@@ -1,4 +1,4 @@
-import { CheckCheckIcon, CheckIcon, ChevronDownIcon, GitBranchIcon, GitCommitHorizontalIcon, GitPullRequestIcon, MessageSquareReplyIcon, SquareArrowOutUpRightIcon, Trash2Icon, XIcon } from "lucide-react";
+import { CheckCheckIcon, CheckIcon, ChevronDownIcon, GitBranchIcon, GitCommitHorizontalIcon, GitPullRequestIcon, GlobeIcon, MessageSquareReplyIcon, SquareArrowOutUpRightIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { Tip } from "@/components/tip";
@@ -9,6 +9,7 @@ import { Frame, FrameHeader, FramePanel, FrameTitle } from "@/components/ui/fram
 import { Kbd } from "@/components/ui/kbd";
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "@/components/ui/menu";
 import { boxApi } from "@/lib/api";
+import { useShotUrl } from "@/lib/agent-browser";
 import { agentLabel } from "@/lib/derive";
 import { ago } from "@/lib/format";
 import { DiffView, FileRow, type Run } from "@/lib/git/diff-view";
@@ -145,11 +146,52 @@ export function ReviewDetail({ entry, actions }: { entry: ReviewEntry; actions: 
         <div className="flex flex-col gap-4 px-6 py-4">
           <LastWords entry={entry} />
           {(run || loop) && <LastCheck run={run} loop={loop} />}
+          {entry.browser && <AgentBrowserArtifacts entry={entry} />}
           <Changes entry={entry} />
           {entry.commits.length > 0 && <Commits entry={entry} />}
         </div>
       </div>
     </div>
+  );
+}
+
+// AgentBrowserArtifacts shows what the agent saw in its browser: its last
+// shots, the page it ended on, and the console errors it left.
+function AgentBrowserArtifacts({ entry }: { entry: ReviewEntry }) {
+  const b = entry.browser!;
+  return (
+    <Frame>
+      <FrameHeader>
+        <FrameTitle className="flex items-center gap-2">
+          <GlobeIcon className="size-3.5 text-muted-foreground" />
+          The agent's browser
+          {b.url && <span className="truncate font-mono font-normal text-[11px] text-muted-foreground">{b.url}</span>}
+        </FrameTitle>
+      </FrameHeader>
+      <FramePanel className="flex flex-col gap-2">
+        {(b.shots?.length ?? 0) > 0 && (
+          <div className="grid grid-cols-3 gap-2">
+            {b.shots!.map((name) => (
+              <Shot key={name} entry={entry} name={name} />
+            ))}
+          </div>
+        )}
+        {(b.errors?.length ?? 0) > 0 && (
+          <pre className="max-h-32 overflow-auto rounded-lg bg-muted/60 p-2 font-mono text-[11px] text-destructive-foreground">{b.errors!.join("\n")}</pre>
+        )}
+      </FramePanel>
+    </Frame>
+  );
+}
+
+function Shot({ entry, name }: { entry: ReviewEntry; name: string }) {
+  const url = useShotUrl(entry.box, entry.location, entry.worktree, name);
+  return url ? (
+    <a href={url} target="_blank" rel="noreferrer" className="block overflow-hidden rounded-lg border">
+      <img src={url} alt={`The agent's screenshot ${name}`} className="aspect-[16/10] w-full object-cover object-top" />
+    </a>
+  ) : (
+    <div className="aspect-[16/10] rounded-lg border bg-muted/40" />
   );
 }
 

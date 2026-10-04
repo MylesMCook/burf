@@ -144,6 +144,15 @@ See [orchestration](/guides/orchestration) and
 | `berth run cancel BOX/RUN` | Stop a run |
 | `berth flow secret BOX FLOW [--scope S] [--json]` | Make a webhook flow's signing secret, shown once |
 
+## Agent browser
+
+| Command | What it does |
+| --- | --- |
+| `berth browser open BOX/LOC/WT [PATH\|URL]` | Open the worktree's page in its [agent browser](/guides/agent-browser) and print a compact snapshot |
+| `berth browser snapshot\|click\|fill\|press\|select\|hover\|check\|wait\|shot\|console\|network\|eval\|status\|close BOX/LOC/WT …` | Drive it; each prints a short text |
+| `berth browser list BOX [--json]` | Browsers running on the box |
+| `berth browser allow BOX ORIGIN` | Let agents' browsers on the box load a public origin |
+
 ## Ports and sharing
 
 | Command | What it does |

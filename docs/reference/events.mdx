@@ -94,6 +94,9 @@ Berth reads the terminal and sends these itself with `origin: "screen"` and
 | `run.step` | the same, with `step` (its path), `kind` and `step_status`, as each step ends |
 | `run.gate` | the same, with `step`, `gate_title`, `pick`: it waits for someone. A `notify` (`kind: "run.gate"`) goes with it |
 | `run.gate_decided` | the same, with `step`, `approve`, `by` |
+| `browser.opened`, `browser.closed` | `location`, `name`, `path`; `closed` has `reason` (`idle`, `closed`, the guard, another worktree needing one, its worktree removed) |
+| `browser.navigated` | `location`, `name`, `path`, `url`: the [agent browser](/guides/agent-browser) loaded a page |
+| `browser.shot` | `location`, `name`, `path`, `file`, `url` |
 | `notify` | `title`, `body`, `flow`, `path`, `location`: a flow's or the guard's notification |
 | `guard.acted` | `action`, `location`, `name`, `path`, `services`, `sessions`, `memory_percent`, `reason` |
 | `config.changed` | what changed: `location`, `flows`, `env` or `guard`; with `location`, `trust` (`trusted` or `untrusted`) when the repository's config was trusted or no longer is |
@@ -160,6 +163,9 @@ exits non-zero refuses it with what it printed. Gates in a laptop's
 | `before:run.approve` | `run`, `step`, `approve`: deciding a gate, from the app, CLI or phone |
 | `before:run.cancel` | `run` |
 | `before:run.pr` | `run`, `path`, `branch`: a run about to push and open a pull request |
+| `before:browser.open` | `location`, `name`, `path`, `url`: an agent browser opening a page |
+| `before:browser.eval`, `before:browser.watch` | `location`, `name`, `path`: running JavaScript in it, watching it live |
+| `before:browser.allow` | `origin`: letting agents' browsers load a public origin |
 | `before:kit.install` | `location`, `kit`, `source` |
 | `before:kit.remove` | `location` |
 | `before:skills.install`, `before:skills.uninstall` | `skills`, `agents`, `target`, `location` |

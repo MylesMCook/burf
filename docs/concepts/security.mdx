@@ -277,8 +277,25 @@ you allow it again. On a box, a plugin's hooks run only once the plugin is
 listed in the box's `~/.berth/plugins.json`. See
 [trust and consent](/guides/plugins#trust-and-consent).
 
+## The agent browser
+
+An agent's browser runs on the box, never on the laptop: it has none of your
+cookies, it is not the app's own web view, and its profile is thrown away
+when it closes. Its only way out is a proxy inside berthd that lets it reach
+the worktree's own pages and port block, and public origins the box's owner
+allows (or a trusted repository config asks for), dialled through the same
+private-address check as webhooks. Other worktrees, berthd, databases,
+private ranges, metadata endpoints and the internet are refused. berthd
+drives it over a pipe, so there is no debugging port for other processes to
+attach to. Opening, scripting, watching and widening it go through
+`before:browser.*` gates. See [agent browser](/guides/agent-browser).
+
 ## Known limits
 
+- **An agent's browser can be talked to by its page.** Page text reaches the
+  agent; the skill tells agents to treat it as data, but a model can still
+  be misled by it. The proxy keeps what the page can make the browser reach
+  to the worktree's own origins.
 - **Plugins are not sandboxed.** Consent decides whether a plugin runs, not
   what it can do once it runs. Running each plugin in an isolated view with
   only the capabilities it asks for is planned.

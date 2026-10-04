@@ -73,6 +73,8 @@ asks the app to open the page as a browser tab beside the agent; the
 | `berthd exec LOC[/WORKTREE] [--timeout 10m] [--detach] -- COMMAND...` | Run a command there and print its output; `--detach` runs it as a run |
 | `berthd loop SESSION --check CMD [--prompt TEXT] [--max 5] [--turn-timeout 30m] [--cancel-on-exit] [--detach]` | Prompt, wait, check, and feed failures back, as a durable run |
 | `berthd runs`, `berthd run start\|get\|logs\|approve\|reject\|cancel\|templates …` | [Runs](/guides/runs), as `berth run` without the box |
+| `berthd browser open\|snapshot\|click\|fill\|press\|select\|hover\|check\|wait\|shot\|console\|network\|eval\|status\|close [LOC/WT] …` | The worktree's [agent browser](/guides/agent-browser); inside a session, its own worktree |
+| `berthd browser list`, `berthd browser allow ORIGIN`, `berthd browser install` | Browsers running; allow a public origin; download a Chromium |
 | `berthd flow secret FLOW [--scope S]` | Make a webhook flow's signing secret |
 | `berthd session kill NAME` | Stop a session |
 

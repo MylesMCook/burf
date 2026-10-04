@@ -1,0 +1,153 @@
+---
+title: Agent browser
+description: A headless browser on the box for each worktree, which agents drive with short commands and you can watch live, confined to the worktree's own pages.
+---
+
+An agent that changes UI should look at it. Berth gives each worktree a
+headless Chromium **on the box**, which opens exactly the URL you open for
+that worktree (`$BERTH_URL`, such as
+`http://checkout.shop.devl.localhost:1377`), and which an agent drives with
+`berthd browser` commands that print a few hundred bytes each.
+
+- It starts the first time an agent uses it and closes after 10 idle
+  minutes. Its profile is a throwaway folder deleted when it closes, so its
+  cookies are its own, never yours.
+- It reaches only the worktree's own pages, through a proxy inside berthd.
+- You can watch it live in a browser pane (**Agent**), and its screenshots
+  and console errors show in Review.
+
+It needs a Chromium on the box: `berthd browser install` downloads
+Playwright's headless shell (about 100 MB on disk), or set `BERTH_CHROMIUM`
+to one. `berthd doctor` says which it uses.
+
+## Commands
+
+Inside a berth session, commands act on the session's worktree; elsewhere,
+name it as `LOC/WT` (and from a laptop, `berth browser open BOX/LOC/WT`).
+
+| Command | Prints |
+| --- | --- |
+| `berthd browser open [PATH\|URL]` | The URL, the title, and a compact snapshot of what you can act on, each with a ref: `- button "Save" [@e3]`. Then new console errors and failed requests |
+| `berthd browser click\|hover\|check @REF` | Only what changed: `+`/`-` lines, new errors |
+| `berthd browser fill\|select @REF VALUE` | The same |
+| `berthd browser press [@REF] KEY` | `Enter`, `Tab`, `Escape`, arrows… |
+| `berthd browser wait --text T \| --url U \| --idle [--timeout 10s]` | `ok`, or what it saw when it timed out |
+| `berthd browser snapshot [--full] [--delta] [--selector SEL] [--depth N]` | The page again; `--full` adds its text |
+| `berthd browser shot [--el @REF] [--full] [--width 800]` | The path of a PNG, never the image |
+| `berthd browser console [--all]` | Errors and warnings since the last look (`--all`: every level) |
+| `berthd browser network` | Failed requests since the last look |
+| `berthd browser eval JS` | Its value, at most 2 KB |
+| `berthd browser status\|close`, `berthd browser list` | Whether it runs, its memory |
+| `berthd browser allow ORIGIN` | Lets agents' browsers on the box load a public origin |
+
+A ref names the same element across snapshots until the page navigates. The
+`berth-browser` skill (installed with the others) teaches agents these
+commands and to read deltas rather than whole pages.
+
+## What it costs an agent
+
+Everything Berth prints is short on purpose, because an agent reads every
+byte on every step:
+
+| Output | Cap |
+| --- | --- |
+| `open`'s first look | the interactive snapshot, up to 6 KB (about 1.5k tokens); the rest goes to a file whose path is printed |
+| `snapshot` | 8 KB (about 2k tokens), `--full` 16 KB (about 4k); overflow to a file |
+| After an action | a delta of at most 40 lines, at most 5 console lines and 3 failed requests |
+| `console` | 20 lines, each at most 200 characters, repeats counted (`×3`) |
+| `network` | 10 failed requests |
+| `eval` | 2 KB |
+| `shot` | a path; an 800-pixel-wide image is about 530 tokens if the agent reads it |
+
+A real 18-step session against a Next.js dev server (open, add to cart
+twice, fill a field, submit, wait, hot reload, log in, check the account
+page, a full snapshot, a shot, console, network, two refused origins and
+reopening) printed about 2.6 KB in all: about 650 tokens.
+
+## What it can reach
+
+The browser's only way out is a forward proxy inside berthd, one per
+worktree (`BERTH_BROWSER_PROXY`). Chromium runs with
+`--proxy-bypass-list=<-loopback>`, so even `localhost` goes through it.
+
+**Allowed:**
+
+- the worktree's names, as your laptop's proxy serves them
+  (`WT.LOC.<any box name>.localhost` on any port), rewritten as the laptop
+  does (`Host`, `Origin` and `Referer` to `localhost:PORT`, `Location` back);
+- the worktree's own port block on `localhost`;
+- WebSockets to those (Chromium tunnels them with `CONNECT`), so hot reload
+  works;
+- public origins the box's owner allows (`browser_allow` in
+  `~/.berth/network.json`, through `berthd browser allow`, behind the
+  `before:browser.allow` gate) or a **trusted** repository config asks for
+  (`browser_allow` in `.berth/config.json`). They are dialled through the same
+  check as webhooks: never a private, loopback, link-local or metadata
+  address unless `allow_outbound` lists it.
+
+**Refused:** other worktrees, berthd itself, databases and other ports,
+private ranges, `169.254.169.254`, and the rest of the internet. A refused
+request gets a 403, and the next command names what was refused.
+
+Chromium also runs with WebRTC limited to the proxy, DNS-over-HTTPS off and
+its background services off, and downloads go to the worktree's
+`.berth/browser/`. berthd drives it over a pipe (`--remote-debugging-pipe`),
+so there is no debugging port another process (an agent included) could
+attach to.
+
+Signing in: seed a test user and log in with it, or add a dev credentials
+provider. A third-party sign-in page needs its origin allowed. Never give
+an agent your own accounts.
+
+Page content is untrusted: the skill tells agents to treat what a page says
+as data, never as instructions.
+
+## A browser you run yourself
+
+Every worktree's environment has `BERTH_BROWSER_PROXY` and, for Playwright
+MCP, `PLAYWRIGHT_MCP_PROXY_SERVER` and `PLAYWRIGHT_MCP_PROXY_BYPASS=<-loopback>`,
+so a browser an agent starts itself is routed through the same proxy and
+confined the same way, with no setup.
+
+## Watching it
+
+A browser pane on a worktree whose box has the agent browser shows a **You
+| Agent** switch. **Agent** shows the agent's browser live: berthd casts the
+page (JPEG frames, at most 8 a second, only when the page repaints) only
+while a pane shows it, over the same connection as everything else.
+**Open here** opens the agent's page in your own tab, by your laptop's name
+for the worktree. The phone does not show it.
+
+## Pointing at something: the element picker
+
+The crosshair in a browser pane's toolbar starts the picker in your tab:
+hover highlights an element, a click picks it, Esc cancels. Berth sends the
+worktree's agent a short prompt (about 1.5 KB at most) with the page's URL,
+the element's role and name, a selector that is unique on the page
+(`data-testid`, then `id`, then a path), a little of its HTML, its box and a
+few styles, and your note. The agent's browser opens the same URL, so the
+selector finds the same element there.
+
+## Review
+
+Shots are kept on the box, 20 per worktree, under
+`<state>/box/browser/shots/<location>/<worktree>/`. A worktree's Review card
+shows its last three, the URL its browser ended on, and its last console
+errors.
+
+## Memory
+
+Each browser is one Chromium: about 300–350 MB with a Next.js dev page open
+(the process tree's resident memory; Playwright's headless shell). At most
+1 runs on a box under 2 GB of memory, 2 up to 4 GB, 3 up to 8 GB and 4 above
+(`max_browsers` in `~/.berth/runs.json`); one more closes the least recently
+used. When the box runs low on memory, the [resource guard](/guides/resource-guard)
+closes agents' browsers before it stops services or pauses agents.
+
+## Events and gates
+
+`browser.opened`, `browser.navigated`, `browser.shot` and `browser.closed`
+(with a reason: idle, the guard, another worktree needing one, its worktree
+removed) are [events](/reference/events). The gates `before:browser.open`
+(with the URL), `before:browser.eval`, `before:browser.watch` and
+`before:browser.allow` decide who may open, script, watch or widen it.

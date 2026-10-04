@@ -93,6 +93,7 @@ pub fn run() {
             browser::browser_back,
             browser::browser_forward,
             browser::browser_reload,
+            browser::browser_pick,
             browser::browser_close,
         ])
         .run(tauri::generate_context!())

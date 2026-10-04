@@ -41,6 +41,16 @@ struct Navigated {
 
 const EVENT: &str = "berth://browser";
 
+// The element picker reports a pick by navigating to berth-pick://pick?d=…,
+// which is cancelled here and handed to the app; the page never leaves.
+const PICK_EVENT: &str = "berth://browser-pick";
+
+#[derive(Clone, Serialize)]
+struct Picked {
+    id: String,
+    url: String,
+}
+
 #[tauri::command]
 pub async fn browser_open(app: AppHandle, id: String, url: String, x: f64, y: f64, w: f64, h: f64) -> Result<(), String> {
     let label = label(&id)?;
@@ -52,9 +62,15 @@ pub async fn browser_open(app: AppHandle, id: String, url: String, x: f64, y: f6
     let window = app.get_window("main").ok_or("the main window is gone")?;
     let nav_app = app.clone();
     let nav_id = id.clone();
+    let pick_app = app.clone();
+    let pick_id = id.clone();
     let load_id = id.clone();
     let builder = WebviewBuilder::new(&label, WebviewUrl::External(url))
         .on_navigation(move |u| {
+            if u.scheme() == "berth-pick" {
+                let _ = pick_app.emit(PICK_EVENT, Picked { id: pick_id.clone(), url: u.to_string() });
+                return false;
+            }
             let _ = nav_app.emit(EVENT, Navigated { id: nav_id.clone(), url: u.to_string(), state: "started" });
             true
         })
@@ -104,6 +120,16 @@ pub async fn browser_back(app: AppHandle, id: String) -> Result<(), String> {
 #[tauri::command]
 pub async fn browser_forward(app: AppHandle, id: String) -> Result<(), String> {
     find(&app, &id)?.eval("history.forward()").map_err(|e| e.to_string())
+}
+
+// browser_pick runs the element picker in a pane's page. The script is the
+// app's own (src/lib/picker.ts); a pick comes back as PICK_EVENT.
+#[tauri::command]
+pub async fn browser_pick(app: AppHandle, id: String, script: String) -> Result<(), String> {
+    if script.len() > 64 * 1024 {
+        return Err("picker script too large".into());
+    }
+    find(&app, &id)?.eval(&script).map_err(|e| e.to_string())
 }
 
 #[tauri::command]

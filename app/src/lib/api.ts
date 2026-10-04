@@ -81,6 +81,8 @@ export interface Client {
   // main module, which the plugin host hashes before importing.
   pluginFile(plugin: PluginInfo, file: string): Promise<Uint8Array>;
   box<T = unknown>(box: string, method: string, path: string, body?: unknown): Promise<T>;
+  // A box API file as bytes, such as an agent browser's screenshot.
+  boxBlob(box: string, path: string): Promise<Blob>;
   // Any laptop API call, such as "GET", "/v1/hooks".
   laptop<T = unknown>(method: string, path: string, body?: unknown): Promise<T>;
   // A laptop API call that answers NDJSON, one value per line, as long
@@ -355,6 +357,11 @@ export function httpClient(ep: Endpoint): Client {
       return new Uint8Array(await res.arrayBuffer());
     },
     box: (box, method, path, body) => request(method, `/v1/boxes/${encodeURIComponent(box)}/api/${path}`, body),
+    async boxBlob(box, path) {
+      const res = await fetch(`${ep.url}/v1/boxes/${encodeURIComponent(box)}/api/${path}`, { headers });
+      if (!res.ok) throw new ApiError(`${res.status} ${res.statusText}`, res.status);
+      return res.blob();
+    },
     laptop: (method, path, body) => request(method, path, body),
     async stream(method, path, body, onValue, signal) {
       const res = await fetch(ep.url + path, {

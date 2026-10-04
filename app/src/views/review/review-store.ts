@@ -49,6 +49,9 @@ export interface ReviewItem {
   agent: string;
   agent_state: string;
   state_since?: string;
+  // What the worktree's agent browser left: its last shots, its URL, and
+  // its console errors.
+  browser?: import("@/lib/agent-browser").BrowserArtifacts;
 }
 
 export interface ReviewEntry extends ReviewItem {

@@ -62,6 +62,9 @@ State, in `<state>/box/`:
 | `runs/<id>.d/` | A run's headless agents' prompts and JSON output |
 | `flow-runs.json.imported` | Flow runs from before durable runs, once imported |
 | `autofix.json` | Each worktree's Auto-fix this PR settings |
+| `browser/shots/<location>/<worktree>/` | Agents' browser screenshots, 20 per worktree |
+| `browser/profiles/` | Running browsers' throwaway profiles, removed when each closes |
+| `browser-proxies.json` | Each worktree's browser proxy port |
 | `trigger-secrets.json` | Webhook flows' signing secrets (0600) |
 | `turns.json`, `turns-archive.jsonl`, `inbox.json`, `journal/`, `spool/` | The turn ledger, the event journal and hooks kept while berthd was down |
 | `flow-github.json` | What GitHub-triggered flows have already seen |
@@ -86,6 +89,8 @@ agents, `exec`, repository hooks, flow steps, services):
 | `BERTH_WORKTREE_PATH`, `BERTH_WORKTREE_NAME`, `BERTH_BRANCH` | This worktree |
 | `BERTH_WORKTREE_SLUG` | `location_worktree`, lowercase, safe for database names |
 | `BERTH_PORT`, `BERTH_PORT_1`, … | Its ports |
+| `BERTH_URL` | Its private URL as the laptop opens it: `http://WT.LOC.BOX.localhost:1377` |
+| `BERTH_BROWSER_PROXY`, `PLAYWRIGHT_MCP_PROXY_SERVER`, `PLAYWRIGHT_MCP_PROXY_BYPASS` | Its [browser proxy](/guides/agent-browser#a-browser-you-run-yourself) |
 | `BERTH_KIT_DIR` | Its kit's files, when it has a kit |
 | then | the box's `env.json`, the project's `env`, and resolved secrets |
 | `PORT` | Services only, unless `env` sets it |

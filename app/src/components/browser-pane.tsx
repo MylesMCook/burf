@@ -1,13 +1,18 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { ArrowLeftIcon, ArrowUpRightIcon, ArrowRightIcon, ExternalLinkIcon, GlobeIcon, RotateCwIcon } from "lucide-react";
+import { ArrowLeftIcon, ArrowUpRightIcon, ArrowRightIcon, BotIcon, CrosshairIcon, ExternalLinkIcon, GlobeIcon, RotateCwIcon, SendIcon, XIcon } from "lucide-react";
 import { useEffect, useId, useImperativeHandle, useMemo, useRef, useState } from "react";
 
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { isTauri } from "@/lib/api";
-import { berthUrlLabel, type BrowserContext, describeBerthUrl, resolveBrowserInput, suggestions } from "@/lib/browser-url";
+import { agentBrowserStatus, type AgentBrowserStatus, boxHasBrowser, type Frame, watchAgentBrowser } from "@/lib/agent-browser";
+import { agentOf } from "@/lib/derive";
+import { send as sendPrompt } from "@/lib/orchestrate";
+import { PICKER_SCRIPT, type Pick, parsePick, pickMessage } from "@/lib/picker";
+import { toastManager } from "@/components/ui/toast";
+import { berthUrlLabel, type BrowserContext, describeBerthUrl, hostSuffix, resolveBrowserInput, suggestions, worktreeHost } from "@/lib/browser-url";
 import { openUrl } from "@/lib/open-url";
 import { overlayOpen } from "@/lib/overlays";
 import { useStore } from "@/lib/store";
@@ -86,6 +91,46 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate }: Props) {
 
   const reload = () => (mode === "native" ? native.current?.reload() : setNonce((n) => n + 1));
 
+  // You see your own tab; Agent shows the agent's browser on the box, live,
+  // for a worktree whose box has one.
+  const agentCapable = !!ctx.ref && boxHasBrowser(ctx.ref.box);
+  const [view, setView] = useState<"you" | "agent">("you");
+  const agentView = agentCapable && view === "agent";
+  const [picked, setPicked] = useState<Pick>();
+
+  // A pick from the native webview comes back as an event.
+  useEffect(() => {
+    if (mode !== "native") return;
+    let stop: (() => void) | undefined;
+    let gone = false;
+    void listen<{ id: string; url: string }>("berth://browser-pick", (e) => {
+      if (e.payload.id !== id) return;
+      const p = parsePick(e.payload.url);
+      if (p) setPicked(p);
+    }).then((un) => (gone ? un() : (stop = un)));
+    return () => {
+      gone = true;
+      stop?.();
+    };
+  }, [id, mode]);
+
+  const pick = () => {
+    if (mode === "native") {
+      void invoke("browser_pick", { id, script: PICKER_SCRIPT }).catch((err) => toastManager.add({ type: "error", title: "Couldn't start the picker", description: String(err) }));
+      return;
+    }
+    // A frame: only a page the frame may script (same origin).
+    const frame = document.querySelector<HTMLIFrameElement>(`iframe[data-pane="${id}"]`);
+    try {
+      const w = frame?.contentWindow as (Window & { eval(js: string): void }) | null;
+      if (!w) throw new Error("no page");
+      (window as unknown as { __berthPick?: (p: Pick) => void }).__berthPick = (p: Pick) => setPicked(p);
+      w.eval(PICKER_SCRIPT);
+    } catch {
+      toastManager.add({ type: "info", title: "This page can't be picked from here", description: "Picking works in the Berth app's own browser panes." });
+    }
+  };
+
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-background">
       <form
@@ -126,19 +171,50 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate }: Props) {
             className="h-full min-w-0 flex-1 bg-transparent px-2 font-mono text-xs outline-none"
           />
         </div>
+        {!agentView && (
+          <ToolButton label="Pick an element for the agent" disabled={!url} onClick={pick}>
+            <CrosshairIcon />
+          </ToolButton>
+        )}
         <ToolButton label="Open in your browser" disabled={!url} onClick={() => void openUrl(url)}>
           <ExternalLinkIcon />
         </ToolButton>
+        {agentCapable && (
+          <div className="ml-1 flex shrink-0 rounded-md border p-px text-[11px]" role="group" aria-label="Whose browser">
+            {(["you", "agent"] as const).map((v) => (
+              <button
+                key={v}
+                type="button"
+                aria-pressed={view === v}
+                onClick={() => setView(v)}
+                className={cn("inline-flex h-5.5 items-center gap-1 rounded px-1.5 text-muted-foreground", view === v && "bg-accent text-foreground")}
+              >
+                {v === "agent" && <BotIcon className="size-3" />}
+                {v === "you" ? "You" : "Agent"}
+              </button>
+            ))}
+          </div>
+        )}
       </form>
+      {picked && ctx.ref && <PickSender pick={picked} ctx={ctx} onDone={() => setPicked(undefined)} />}
       {failure && mode === "iframe" && <p className="shrink-0 border-b bg-muted/40 px-3 py-1 text-muted-foreground text-xs">The built-in browser could not open ({failure}); showing the page in a frame instead.</p>}
-      {!url ? (
+      {agentView && ctx.ref ? (
+        <AgentView
+          ctx={ctx}
+          visible={visible}
+          onOpenHere={(u) => {
+            setView("you");
+            go(u);
+          }}
+        />
+      ) : !url ? (
         <Suggestions ctx={ctx} onPick={go} />
       ) : mode === "native" ? (
         <NativeSurface
           ref={native}
           id={id}
           url={url}
-          visible={visible}
+          visible={visible && !agentView}
           onUrl={(u) => {
             setInput(u);
             if (u !== url) onNavigate(u);
@@ -150,7 +226,7 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate }: Props) {
           }}
         />
       ) : (
-        <FramedPage key={`${url}#${nonce}`} url={url} onReload={reload} />
+        <FramedPage key={`${url}#${nonce}`} id={id} url={url} onReload={reload} />
       )}
     </div>
   );
@@ -352,7 +428,7 @@ function isLocal(url: string): boolean {
 // available (a plain browser, or when it failed). Sites that refuse to be
 // framed would show the browser's own grey error, so they get a designed
 // fallback instead, as does a page that never finishes loading.
-function FramedPage({ url, onReload }: { url: string; onReload(): void }) {
+function FramedPage({ id, url, onReload }: { id: string; url: string; onReload(): void }) {
   const [state, setState] = useState<"loading" | "loaded" | "stuck" | "blocked">(isLocal(url) ? "loading" : "blocked");
   useEffect(() => {
     if (state !== "loading") return;
@@ -393,6 +469,7 @@ function FramedPage({ url, onReload }: { url: string; onReload(): void }) {
   // box's page is a stand-in drawn here, and other sites stay blocked.
   return (
     <iframe
+      data-pane={id}
       src={__BERTH_DEMO__ ? undefined : url}
       srcDoc={__BERTH_DEMO__ ? demoDevServer(url) : undefined}
       title={url}
@@ -442,5 +519,128 @@ function Suggestions({ ctx, onPick }: { ctx: BrowserContext; onPick(url: string)
         )}
       </div>
     </div>
+  );
+}
+
+// humanUrl is the agent's URL as this laptop names the worktree: the agent's
+// browser may call the box by another name, so its path is kept and the
+// host is the one this laptop's proxy knows.
+function humanUrl(agentUrl: string, ctx: BrowserContext): string {
+  try {
+    const u = new URL(agentUrl);
+    const host = ctx.ref && worktreeHost(ctx.ref);
+    if (!host || !u.hostname.endsWith(".localhost")) return agentUrl;
+    return `http://${host}${hostSuffix(ctx.urlPort)}${u.pathname}${u.search}${u.hash}`;
+  } catch {
+    return agentUrl;
+  }
+}
+
+// AgentView shows the agent's browser on the box, live: frames stream only
+// while this view is on screen.
+function AgentView({ ctx, visible, onOpenHere }: { ctx: BrowserContext; visible: boolean; onOpenHere(url: string): void }) {
+  const ref = ctx.ref!;
+  const [status, setStatus] = useState<AgentBrowserStatus>();
+  const [frame, setFrame] = useState<Frame>();
+  const [error, setError] = useState<string>();
+  useEffect(() => {
+    if (!visible) return;
+    let live = true;
+    const tick = () =>
+      agentBrowserStatus(ref.box, ref.location, ref.worktree).then(
+        (s) => live && setStatus(s),
+        (e) => live && setError(String(e)),
+      );
+    void tick();
+    const t = window.setInterval(tick, 4000);
+    return () => {
+      live = false;
+      window.clearInterval(t);
+    };
+  }, [visible, ref.box, ref.location, ref.worktree]);
+  const running = !!status?.running;
+  useEffect(() => {
+    if (!visible || !running) return;
+    const ac = new AbortController();
+    watchAgentBrowser(ref.box, ref.location, ref.worktree, setFrame, ac.signal).catch(() => {});
+    return () => ac.abort();
+  }, [visible, running, ref.box, ref.location, ref.worktree]);
+  const agentUrl = frame?.url ?? status?.status?.url;
+  return (
+    <div className="flex min-h-0 flex-1 flex-col bg-muted/30">
+      <div className="flex h-7 shrink-0 items-center gap-2 border-b px-3 text-[11px] text-muted-foreground">
+        <BotIcon className="size-3" />
+        <span className="min-w-0 flex-1 truncate font-mono">{running ? (agentUrl ?? "…") : "The agent's browser is closed"}</span>
+        {running && agentUrl && (
+          <button type="button" className="shrink-0 rounded px-1.5 py-0.5 hover:bg-accent hover:text-foreground" onClick={() => onOpenHere(humanUrl(agentUrl, ctx))}>
+            Open here
+          </button>
+        )}
+      </div>
+      <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden p-2">
+        {error ? (
+          <p className="text-muted-foreground text-xs">{error}</p>
+        ) : !running ? (
+          <p className="max-w-xs text-center text-muted-foreground text-xs">
+            An agent in this worktree opens its browser with <code>berthd browser open</code>. Its page shows here, live, while you watch.
+          </p>
+        ) : frame ? (
+          <img alt="The agent's browser" src={`data:${frame.mime ?? "image/jpeg"};base64,${frame.data}`} className="max-h-full max-w-full rounded border bg-white object-contain shadow-sm" />
+        ) : (
+          <Spinner className="size-4" />
+        )}
+      </div>
+    </div>
+  );
+}
+
+// PickSender sends a picked element to the worktree's agent, with a note.
+function PickSender({ pick, ctx, onDone }: { pick: Pick; ctx: BrowserContext; onDone(): void }) {
+  const ref = ctx.ref!;
+  const session = useStore((s) => s.boxes[ref.box]?.sessions?.find((x) => x.dir === ref.path && !x.exited && agentOf(x)));
+  const [note, setNote] = useState("");
+  const [busy, setBusy] = useState(false);
+  const submit = async () => {
+    if (!session) return;
+    setBusy(true);
+    try {
+      await sendPrompt(ref.box, session.name, pickMessage(pick, note), { when: "idle" });
+      toastManager.add({ type: "success", title: "Sent to the agent", description: `${pick.role}${pick.name ? ` "${pick.name}"` : ""}` });
+      onDone();
+    } catch (err) {
+      toastManager.add({ type: "error", title: "Couldn't send it", description: String(err) });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <form
+      className="flex shrink-0 items-center gap-2 border-b bg-accent/40 px-2 py-1.5 text-xs"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void submit();
+      }}
+    >
+      <CrosshairIcon className="size-3.5 shrink-0 text-muted-foreground" />
+      <span className="max-w-56 shrink-0 truncate font-mono">
+        {pick.role}
+        {pick.name && ` "${pick.name}"`}
+      </span>
+      <input
+        autoFocus
+        value={note}
+        onChange={(e) => setNote(e.target.value)}
+        placeholder={session ? "What about it? (optional)" : "No agent runs in this worktree"}
+        disabled={!session}
+        className="h-6 min-w-0 flex-1 rounded border bg-background px-2 outline-none focus:border-ring"
+      />
+      <Button type="submit" size="xs" disabled={!session || busy}>
+        <SendIcon />
+        Send to agent
+      </Button>
+      <button type="button" aria-label="Cancel" className="rounded p-1 text-muted-foreground hover:bg-accent" onClick={onDone}>
+        <XIcon className="size-3.5" />
+      </button>
+    </form>
   );
 }

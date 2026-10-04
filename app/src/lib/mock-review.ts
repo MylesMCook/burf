@@ -36,6 +36,7 @@ const work: Record<string, Omit<ReviewItem, "session" | "agent" | "agent_state" 
       { path: "apps/web/lib/payments/charge.ts", from: "apps/web/lib/payments/charge-old.ts", code: "R ", added: 2, removed: 2 },
       { path: "packages/lib/backoff.ts", code: "A ", added: 41, removed: 0 },
     ],
+    browser: { url: "http://checkout-fix.shop.devl.localhost:1377/cart", shots: ["shot-20261004-101500.000.png", "shot-20261004-101420.000.png"], errors: ["error: Warning: Each child in a list should have a unique \"key\" prop."] },
   },
   "devl|/home/me/work/shop-search-perf": {
     location: "shop",

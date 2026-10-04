@@ -147,6 +147,7 @@ failed after it went out (the box may have acted on it). The box API:
 | `POST exec` | `{ location, command, timeout?, detach? }`: run a command to completion; with `detach`, answers at once with `{ run }` |
 | `GET runs`, `POST runs`, `GET runs/templates`, `GET runs/{id}`, `GET runs/{id}/events?since=N`, `POST runs/{id}/cancel`, `POST runs/{id}/gates/{step}/decide` | [durable runs](/guides/runs#api); `POST runs` takes an `Idempotency-Key` header or `idem_key` |
 | `GET autofix`, `PUT autofix` | `{ path, ci, review, check?, max? }`: a worktree's [Auto-fix this PR](/guides/automations#auto-fix-this-pr) |
+| `POST worktrees/{loc}/{wt}/browser/{open,act,snapshot,wait,shot,eval,close}`, `GET …/browser/{console,network,status,screencast}`, `GET …/browser/shots/{name}`, `GET browsers`, `POST browser/allow` | the [agent browser](/guides/agent-browser); answers are `{ text }` as the CLI prints them; `screencast` streams `{ data, w, h, url }` JPEG frames while you read it |
 | `POST flows/{id}/secret` | `{ scope? }`: a webhook flow's new signing secret, shown once |
 | `POST triggers/{flow}` | start a [webhook flow](/guides/automations#from-a-webhook); signed, not authenticated as a laptop |
 | `POST upgrade` | replace berthd with the binary in the body and restart (`berth upgrade`) |

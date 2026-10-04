@@ -1,6 +1,7 @@
 import type { BerthEvent, Client, Hook, HooksFile, Location, Service, Session, Stats, Status, TerminalHandlers, Turn } from "@/lib/api";
 import { flowsCall } from "@/lib/mock-flows";
 import { runsCall } from "@/lib/mock-runs";
+import { browserCall, mockScreencast, mockShotSvg } from "@/lib/mock-browser";
 import { phoneCall } from "@/lib/mock-phone";
 import { worktreesCall } from "@/lib/mock-worktrees";
 import { kitsCall, kitsStream } from "@/lib/mock-kits";
@@ -443,6 +444,8 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
   if (flows) return flows;
   const runs = runsCall(box, method, path, body, emit, delay);
   if (runs) return runs;
+  const browser = browserCall(box, method, path);
+  if (browser) return delay(browser);
   const computers = computersBoxCall(box, method, path);
   if (computers) return computers;
   const thisMac = localBoxFolders(box, method, path);
@@ -498,7 +501,7 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
       name: box,
       version: "0.1.0",
       tools: ["claude", "codex"],
-      capabilities: ["turns", "journal", "runs", "exec.detach"],
+      capabilities: ["turns", "journal", "runs", "exec.detach", "browser"],
       adapters: {
         claude: { ready: true, started: true, waiting: true, finished: true, final_message: true, via: "hooks" },
         codex: { ready: true, started: true, waiting: true, finished: true, final_message: true, via: "hooks" },
@@ -778,6 +781,7 @@ function laptopBoxes(method: string, path: string, body: unknown): Promise<unkno
 // streams the CLI's.
 async function mockStream(method: string, path: string, body: unknown, onValue: (v: unknown) => void, signal?: AbortSignal) {
   if (method === "POST" && (await kitsStream(path, body, onValue, emit, signal))) return;
+  if (method === "GET" && path.endsWith("/browser/screencast")) return mockScreencast(onValue, signal);
   if (await localBoxStream(method, path, body, onValue, signal)) return;
   const wait = (ms: number) =>
     new Promise<void>((resolve, reject) => {
@@ -887,6 +891,7 @@ export function mockClient(): Client {
       return new Uint8Array(await res.arrayBuffer());
     },
     box: <T,>(box: string, method: string, path: string, body?: unknown) => boxCall(box, method, path, body) as Promise<T>,
+    boxBlob: async () => new Blob([mockShotSvg()], { type: "image/svg+xml" }),
     laptop: <T,>(method: string, path: string, body?: unknown) => {
       if (method === "GET" && path === "/v1/hooks") return delay(hooksFiles.laptop) as Promise<T>;
       if (method === "PUT" && path === "/v1/hooks") return saveHooks("laptop", (body as { hooks: Hook[] }).hooks) as Promise<T>;

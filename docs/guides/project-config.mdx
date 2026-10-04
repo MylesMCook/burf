@@ -15,7 +15,7 @@ the repo, so every box does the same.
   "ports": 2,
   "env": {
     "DATABASE_URL": "postgres://localhost/$BERTH_WORKTREE_SLUG",
-    "NEXT_PUBLIC_WEBAPP_URL": "http://localhost:$BERTH_PORT"
+    "NEXT_PUBLIC_WEBAPP_URL": "$BERTH_URL"
   },
   "services": [
     { "name": "web", "run": "pnpm dev --port $BERTH_PORT", "autostart": true },
@@ -90,6 +90,8 @@ The box's API is `POST /v1/locations/{name}/config/trust` with
 | `BERTH_WORKTREE_SLUG` | Like `shop_fix_checkout`, safe for database names |
 | `BERTH_BRANCH` | Its branch |
 | `BERTH_PORT`, `BERTH_PORT_1`, … | Its ports |
+| `BERTH_URL` | The worktree's private URL as you open it on your laptop, such as `http://fix-checkout.shop.devl.localhost:1377` (the main checkout: `shop.devl.localhost`). Use it for an app's own base URL, not `localhost:$BERTH_PORT`, which the laptop never sees |
+| `BERTH_BROWSER_PROXY` | The worktree's [browser proxy](/guides/agent-browser#what-it-can-reach), for a browser an agent runs itself |
 | `BERTH_KIT_DIR` | Where the project's [kit](/guides/kits) keeps its files, if it has one |
 
 A value in `env` can use `$NAME` for those variables or berthd's own
