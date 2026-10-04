@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 
+import { toastError } from "@/components/error-note";
 import { Spinner } from "@/components/ui/spinner";
+import { toastManager } from "@/components/ui/toast";
 import { BoxOffline, SessionEnded } from "@/components/workspace/pane-state";
 import { useActiveTheme } from "@/hooks/use-theme";
-import type { TerminalConnection } from "@/lib/api";
+import { ApiError, type TerminalConnection } from "@/lib/api";
+import { attachable, fileName, localPaths, onThisComputer, pastedFiles, uploadAttachment, uploadLocalFile } from "@/lib/attachments";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { openEditor } from "@/components/editors/open";
@@ -55,6 +58,10 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
     const x = list.find((y) => y.name === session);
     return !x || x.exited;
   });
+  // Where the box is: one on this computer reads a pasted laptop path as is.
+  const address = useStore((s) => s.status?.boxes.find((b) => b.name === box)?.address);
+  const addressRef = useRef(address);
+  addressRef.current = address;
   // The worktree the session runs in, which file paths are relative to.
   const dir = useStore((s) => s.boxes[box]?.sessions?.find((x) => x.name === session)?.dir);
   const dirRef = useRef(dir);
@@ -110,6 +117,63 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
   }, [prefs.renderer, prefs.fontFamily, prefs.fontSize, prefs.lineHeight, prefs.cursorStyle, prefs.cursorBlink, prefs.scrollback, prefs.renderer === "ghostty" ? theme.id : ""]);
 
   useEffect(() => term?.setTheme(theme.terminal), [term, theme]);
+
+  // A pasted or dropped image (a PDF, a text file, a file copied in Finder)
+  // can't be typed: it goes up to the session's worktree on the box and its
+  // path is pasted instead, which Claude Code takes as the image. Text pastes
+  // as ever, through the terminal.
+  useEffect(() => {
+    const el = host.current;
+    if (!el || !term || !client) return;
+    // files are pasted files, or paths on this computer pasted as text
+    // (text is pasted as it was if they aren't files here after all).
+    const take = async (files: (File | string)[], text?: string) => {
+      let shown: string | undefined;
+      const first = typeof files[0] === "string" ? (files[0].split("/").pop() ?? files[0]) : fileName(files[0]);
+      const slow = window.setTimeout(() => {
+        shown = toastManager.add({ type: "loading", title: files.length === 1 ? `Uploading ${first} to ${box}…` : `Uploading ${files.length} files to ${box}…`, timeout: 0 });
+      }, 400);
+      try {
+        const done = await Promise.all(files.map((f) => (typeof f === "string" ? uploadLocalFile(client, { box, session }, f) : uploadAttachment(client, { box, session }, f))));
+        term.paste(done.map((a) => a.path.replaceAll(" ", "\\ ")).join(" "));
+        term.focus();
+      } catch (err) {
+        const notHere = err instanceof ApiError && ((err.code === "attach_local" && /^no file at/.test(err.message)) || (err.status === 404 && !err.code));
+        if (text !== undefined && notHere) term.paste(text);
+        else toastError(err, { title: "Couldn't paste the file", box });
+      } finally {
+        window.clearTimeout(slow);
+        if (shown) toastManager.close(shown);
+      }
+    };
+    const files = (data: DataTransfer | null) => pastedFiles(data).filter(attachable);
+    const onPaste = (e: ClipboardEvent) => {
+      const fs = files(e.clipboardData);
+      const text = e.clipboardData?.getData("text/plain") ?? "";
+      const paths = fs.length || onThisComputer(addressRef.current) ? [] : localPaths(text);
+      if (!fs.length && !paths.length) return;
+      e.preventDefault();
+      e.stopPropagation();
+      void (fs.length ? take(fs) : take(paths, text));
+    };
+    const onDragOver = (e: DragEvent) => {
+      if (e.dataTransfer?.types.includes("Files")) e.preventDefault();
+    };
+    const onDrop = (e: DragEvent) => {
+      const fs = files(e.dataTransfer);
+      if (!fs.length) return;
+      e.preventDefault();
+      void take(fs);
+    };
+    el.addEventListener("paste", onPaste, true);
+    el.addEventListener("dragover", onDragOver);
+    el.addEventListener("drop", onDrop);
+    return () => {
+      el.removeEventListener("paste", onPaste, true);
+      el.removeEventListener("dragover", onDragOver);
+      el.removeEventListener("drop", onDrop);
+    };
+  }, [term, client, box, session]);
 
   // Keep the attachment up while the box is online and the session exists.
   // Each attach belongs to one terminal; output for an older one is dropped.

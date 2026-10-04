@@ -37,6 +37,9 @@ export interface TermHandle {
   onData(fn: (data: string) => void): void;
   onResize(fn: (size: { cols: number; rows: number }) => void): void;
   hasSelection(): boolean;
+  // Types text as a paste: bracketed when the program asked for that, as
+  // Claude Code does, so it sees a pasted image's path as an image.
+  paste(text: string): void;
   // Adds links found in each line's text, such as file paths. find gets a
   // line and returns ranges in it (end exclusive).
   registerLinkFinder(find: LinkFinder): void;
@@ -172,6 +175,7 @@ async function createGhostty(host: HTMLElement, colors: TerminalColors, prefs: T
     onData: (fn) => void t.onData(fn),
     onResize: (fn) => void t.onResize(fn),
     hasSelection: () => t.hasSelection(),
+    paste: (text) => t.paste(text),
     registerLinkFinder: (find) =>
       t.registerLinkProvider({
         provideLinks(y, callback) {
@@ -237,6 +241,7 @@ async function createXterm(host: HTMLElement, colors: TerminalColors, prefs: Ter
     onData: (fn) => void t.onData(fn),
     onResize: (fn) => void t.onResize(fn),
     hasSelection: () => t.hasSelection(),
+    paste: (text) => t.paste(text),
     registerLinkFinder: (find) =>
       void t.registerLinkProvider({
         provideLinks(y, callback) {

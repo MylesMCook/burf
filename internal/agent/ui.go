@@ -94,6 +94,7 @@ func (a *Agent) ui(token, hostport string, inner http.Handler) http.Handler {
 	mux.HandleFunc("GET /v1/plugins", a.uiPlugins)
 	mux.HandleFunc("GET /v1/plugins/{id}/{file...}", a.uiPluginFile)
 	mux.HandleFunc("/v1/boxes/{box}/api/{path...}", a.uiBoxAPI)
+	mux.HandleFunc("POST /v1/boxes/{box}/attach-local", a.uiAttachLocal)
 	mux.HandleFunc("GET /v1/boxes/{box}/sessions/{name}/attach", a.uiAttach)
 	a.manageRoutes(mux)
 	a.outdatedRoutes(mux)
@@ -173,6 +174,16 @@ func (a *Agent) uiEvents(w http.ResponseWriter, r *http.Request) {
 
 // uiBoxAPI passes a request to a box's API and streams the answer back, so
 // the app reaches every box through the one connection the agent keeps.
+// boxBodyLimit is how large a request the app may send a box: 1 MB, but
+// enough for a pasted file (20 MB, as base64 in JSON) on an attachments
+// route.
+func boxBodyLimit(target string) int64 {
+	if path, _, _ := strings.Cut(target, "?"); strings.HasSuffix(path, "/attachments") {
+		return 28 << 20
+	}
+	return 1 << 20
+}
+
 // boxAPIPath is the box route after /v1/boxes/{box}/api/, still escaped as
 // the app sent it: a turn ID's "#" (%23) or a name's "/" (%2F) stays part
 // of its segment instead of ending the path.
@@ -204,9 +215,14 @@ func (a *Agent) uiBoxAPI(w http.ResponseWriter, r *http.Request) {
 	}
 	var body io.Reader
 	if r.ContentLength != 0 {
-		body = http.MaxBytesReader(w, r.Body, 1<<20)
+		body = http.MaxBytesReader(w, r.Body, boxBodyLimit(target))
 	}
-	resp, err := c.DoWithHeader(r.Context(), r.Method, target, body, header)
+	a.relayBox(w, r, c, r.Method, target, body, header)
+}
+
+// relayBox sends one request to a box and streams its answer back.
+func (a *Agent) relayBox(w http.ResponseWriter, r *http.Request, c *wire.Client, method, target string, body io.Reader, header http.Header) {
+	resp, err := c.DoWithHeader(r.Context(), method, target, body, header)
 	if err != nil {
 		a.checkSoon()
 		// 503: the request never reached the box, so it is safe to queue

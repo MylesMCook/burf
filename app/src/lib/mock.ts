@@ -487,6 +487,15 @@ function mockOrchestration(box: string, method: string, path: string, body?: unk
       tick();
     });
   }
+  // An attachment "lands" in the worktree's .berth/attachments, as on a box.
+  const am = method === "POST" ? /^(?:sessions\/([^/]+)|locations\/[^/]+\/worktrees\/([^/]+))\/attachments$/.exec(path) : null;
+  if (am) {
+    const { name, data } = body as { name: string; data: string };
+    const dir = am[1] ? (sessions[box]?.find((x) => x.name === decodeURIComponent(am[1]))?.dir ?? "/home/demo") : `/home/demo/${decodeURIComponent(am[2])}`;
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[-:]/g, "").replace("T", "-");
+    const type = /\.(png|jpe?g|gif|webp)$/i.test(name) ? `image/${name.split(".").pop()!.toLowerCase().replace("jpg", "jpeg")}` : /\.pdf$/i.test(name) ? "application/pdf" : "text/plain";
+    return delay({ path: `${dir}/.berth/attachments/${stamp}-${name}`, name: `${stamp}-${name}`, type, size: Math.floor((data.length * 3) / 4) });
+  }
   // secrets/test resolves a reference the way the box would, answering only
   // whether it could and the value's length.
   if (method === "POST" && path === "secrets/test") {
@@ -1033,6 +1042,14 @@ export function mockClient(): Client {
       if (app && method === "PUT") {
         appDocs[app[1]] = structuredClone(body);
         return delay(body) as Promise<T>;
+      }
+      // A file on "this Mac" goes up as an attachment, as the agent does.
+      const local = method === "POST" ? /^\/v1\/boxes\/([^/]+)\/attach-local$/.exec(path) : null;
+      if (local) {
+        const r = body as { path: string; session?: string; location?: string; worktree?: string };
+        const name = r.path.split("/").pop() ?? "file";
+        const route = r.session ? `sessions/${encodeURIComponent(r.session)}/attachments` : `locations/${r.location}/worktrees/${r.worktree}/attachments`;
+        return boxCall(decodeURIComponent(local[1]), "POST", route, { name, data: "AAAA".repeat(30000) }) as Promise<T>;
       }
       const thisMac = localBoxCall(method, path);
       if (thisMac) return thisMac as Promise<T>;

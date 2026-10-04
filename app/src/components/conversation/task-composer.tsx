@@ -8,6 +8,7 @@ import { AddProjectItem, AgentsPicker, type Chosen, DefaultBoxItem, entryKey, ex
 import { useBranches, useResolve } from "@/components/new-worktree/use-resolve";
 import { withDefaults } from "@/components/prompts/shared";
 import { RepoWants, trustRepo, useRepoTrustFor } from "@/components/repo-trust";
+import { AttachmentChips, useAttachments } from "@/components/conversation/attachments";
 import { ErrorText, toastError } from "@/components/error-note";
 import { Tip } from "@/components/tip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -17,6 +18,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { toastManager } from "@/components/ui/toast";
 import { type SessionEntry, useAllSessions } from "@/hooks/use-agent-counts";
 import { agentPresets } from "@/lib/actions";
+import { withAttachments } from "@/lib/attachments";
 import { type ComposerDraft, openComposer } from "@/lib/composer";
 import { agentLabel, agentOf, sessionName, sessionState } from "@/lib/derive";
 import { plainError } from "@/lib/errors";
@@ -779,13 +781,17 @@ function ToBody({ to, onSend, onFail, autoFocus, className }: TaskComposerProps 
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const who = to.agent ? agentLabel(to.agent) : "the agent";
+  // Images and files pasted or dropped here go up to the agent's worktree,
+  // and their paths go with the prompt.
+  const att = useAttachments({ box: to.box, session: to.session });
+  const ready = !!text.trim() || att.paths.length > 0;
   const go = async () => {
-    const t = text.trim();
-    if (!t || busy || !onSend) return;
+    if (!ready || busy || att.uploading || !onSend) return;
     setBusy(true);
     try {
-      await onSend(t);
+      await onSend(withAttachments(text.trim(), att.paths));
       setText("");
+      att.clear();
     } catch (err) {
       if (onFail) onFail(err);
       else toastError(err, { title: "Couldn't send it", box: to.box });
@@ -794,21 +800,34 @@ function ToBody({ to, onSend, onFail, autoFocus, className }: TaskComposerProps 
     }
   };
   return (
-    <Shell
-      className={className}
-      editor={<Editor value={text} onChange={setText} onSubmit={() => void go()} autoFocus={autoFocus} label={`What should ${who} do?`} placeholder={`What should ${who} do?`} />}
-      footer={
-        <>
-          <span className="flex min-w-0 items-center gap-1.5 px-2.5 text-muted-foreground text-xs">
-            <AgentIcon agent={to.agent} className="size-3.5" />
-            {who} · {AGENT_WORDS.idle.lower}, waiting for a first task
-          </span>
-          <div className="ml-auto">
-            <SendButton label="Send" blocker={text.trim() ? undefined : "Write the first prompt"} busy={busy} onClick={() => void go()} />
-          </div>
-        </>
-      }
-    />
+    <div {...att.dropProps} className={cn("rounded-2xl", att.dragging && "outline-2 outline-ring/60 outline-dashed outline-offset-4")}>
+      <Shell
+        className={className}
+        editor={
+          <Editor
+            value={text}
+            onChange={setText}
+            onSubmit={() => void go()}
+            onPaste={att.onPaste}
+            above={<AttachmentChips items={att.items} onRemove={att.remove} className="px-3.5 pt-3" />}
+            autoFocus={autoFocus}
+            label={`What should ${who} do?`}
+            placeholder={`What should ${who} do?`}
+          />
+        }
+        footer={
+          <>
+            <span className="flex min-w-0 items-center gap-1.5 px-2.5 text-muted-foreground text-xs">
+              <AgentIcon agent={to.agent} className="size-3.5" />
+              {who} · {AGENT_WORDS.idle.lower}, waiting for a first task
+            </span>
+            <div className="ml-auto">
+              <SendButton label="Send" blocker={att.uploading ? "Uploading attachments…" : ready ? undefined : "Write the first prompt"} busy={busy} onClick={() => void go()} />
+            </div>
+          </>
+        }
+      />
+    </div>
   );
 }
 
@@ -826,10 +845,12 @@ function Shell({ head, editor, options, notice, footer, className }: { head?: Re
   );
 }
 
-function Editor({ value, onChange, onSubmit, autoFocus, label, placeholder, hint }: { value: string; onChange(v: string): void; onSubmit(): void; autoFocus?: boolean; label: string; placeholder: string; hint?: React.ReactNode }) {
+function Editor({ value, onChange, onSubmit, onPaste, above, autoFocus, label, placeholder, hint }: { value: string; onChange(v: string): void; onSubmit(): void; onPaste?(e: React.ClipboardEvent): void; above?: React.ReactNode; autoFocus?: boolean; label: string; placeholder: string; hint?: React.ReactNode }) {
   return (
     <>
+      {above}
       <textarea
+        onPaste={onPaste}
         // biome-ignore lint/a11y/noAutofocus: the composer is where typing goes
         autoFocus={autoFocus}
         value={value}

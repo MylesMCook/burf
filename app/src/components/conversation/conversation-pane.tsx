@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
 import { DitherBand } from "@/components/art/dither-band";
 import { TaskComposer } from "@/components/conversation/task-composer";
+import { AttachmentChips, useAttachments } from "@/components/conversation/attachments";
 import { HARBOUR, HARBOUR_MUTE, useHarbourLight } from "@/components/art/harbour-art";
 import { Scene, type SceneName } from "@/components/art/scenes";
 import { ConversationView, type EditActions, QueuedBubble } from "@/components/conversation/conversation-view";
@@ -19,6 +20,7 @@ import { toastManager } from "@/components/ui/toast";
 import { isMock } from "@/hooks/use-berth-connection";
 import { startSession } from "@/lib/actions";
 import { ApiError, boxApi, type QueuedPrompt } from "@/lib/api";
+import { type AttachTarget, withAttachments } from "@/lib/attachments";
 import { keyOf, useConversations } from "@/lib/conversation-store";
 import { agentLabel, agentOf, guessAgent, sessionState, worktreeOf } from "@/lib/derive";
 import type { NextStep } from "@/lib/errors";
@@ -31,6 +33,7 @@ import { NONE, useStore } from "@/lib/store";
 import type { TranscriptItem } from "@/lib/transcript";
 import { useAsk, useQueued, useTranscriptFeed } from "@/lib/transcript-feed";
 import { ConfirmDialog } from "@/views/settings/confirm";
+import { cn } from "@/lib/utils";
 import { useReview } from "@/views/review/review-store";
 
 // ConversationPane shows an agent's pane as a conversation: the transcript,
@@ -372,7 +375,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
           ) : (
             <>
               {toSend.length > 0 && reviewKey && <CommentsStrip count={toSend.length} who={who} onSend={() => sendComments(box, session, reviewKey)} />}
-              <Reply onSend={reply} onFail={fail} who={who} mode={state === "running" ? "queue" : state === "waiting" ? "answer" : "send"} blocked={state === "waiting" && atMenu} hint={wantsWords ? `Tell ${who} what to change, then press Enter` : undefined} />
+              <Reply attach={{ box, session }} onSend={reply} onFail={fail} who={who} mode={state === "running" ? "queue" : state === "waiting" ? "answer" : "send"} blocked={state === "waiting" && atMenu} hint={wantsWords ? `Tell ${who} what to change, then press Enter` : undefined} />
             </>
           )}
         </div>
@@ -435,50 +438,60 @@ function CommentsStrip({ count, who, onSend }: { count: number; who: string; onS
 // it until the agent finishes, or answer the agent's question. While the
 // agent waits at a menu, Enter there would pick its highlighted option, so
 // it waits for the answer above.
-function Reply({ onSend, onFail, who, mode, blocked, hint }: { onSend(text: string): Promise<void>; onFail(err: unknown): void; who: string; mode: "send" | "queue" | "answer"; blocked?: boolean; hint?: string }) {
+// Images and files pasted or dropped on it go up to the agent's worktree
+// (components/conversation/attachments), and their paths go with the reply.
+function Reply({ onSend, onFail, who, mode, blocked, hint, attach }: { onSend(text: string): Promise<void>; onFail(err: unknown): void; who: string; mode: "send" | "queue" | "answer"; blocked?: boolean; hint?: string; attach?: AttachTarget }) {
   const [text, setText] = useState("");
+  const att = useAttachments(attach);
+  const ready = (!!text.trim() || att.paths.length > 0) && !att.uploading;
   const go = () => {
-    const t = text.trim();
-    if (!t || blocked) return;
+    const t = withAttachments(text.trim(), att.paths);
+    if (!ready || blocked) return;
+    const kept = text;
     setText("");
-    onSend(t).catch((err) => {
-      // What was typed comes back, so nothing is lost.
-      setText((now) => now || t);
+    onSend(t).then(att.clear, (err: unknown) => {
+      // What was typed comes back (and the attachments stay), so nothing is
+      // lost.
+      setText((now) => now || kept);
       onFail(err);
     });
   };
   const queue = mode === "queue";
   const placeholder = hint ?? (blocked ? "Pick an answer above first" : queue ? `${who} is working: Enter queues this for when it finishes` : mode === "answer" ? `Answer ${who}, or ask for something else` : "Reply, or ask for something else");
   return (
-    <InputGroup className="**:[textarea]:min-h-0! **:[textarea]:py-2.5!">
-      <InputGroupTextarea
-        rows={1}
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-            e.preventDefault();
-            go();
-          }
-        }}
-        aria-label="Reply"
-        placeholder={placeholder}
-        className="max-h-40"
-      />
-      <InputGroupAddon align="inline-end" className="self-end pr-1.5 pb-1.5">
-        <Tip
-          label={
-            <span className="flex items-center gap-1.5">
-              {queue ? `Queue it for when ${who} finishes` : "Send"} <Kbd>↵</Kbd>
-            </span>
-          }
-        >
-          <Button size="icon-sm" className="rounded-lg" variant={queue ? "outline" : "default"} aria-label={queue ? "Queue" : "Send"} disabled={!text.trim() || blocked} onClick={go}>
-            {queue ? <ListPlusIcon /> : <ArrowUpIcon />}
-          </Button>
-        </Tip>
-      </InputGroupAddon>
-    </InputGroup>
+    <div {...att.dropProps}>
+      <AttachmentChips items={att.items} onRemove={att.remove} className="mx-3 rounded-t-lg border border-b-0 bg-muted/40 p-2" />
+      <InputGroup className={cn("**:[textarea]:min-h-0! **:[textarea]:py-2.5!", att.dragging && "border-ring ring-[3px]")}>
+        <InputGroupTextarea
+          rows={1}
+          onPaste={att.onPaste}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+              e.preventDefault();
+              go();
+            }
+          }}
+          aria-label="Reply"
+          placeholder={placeholder}
+          className="max-h-40"
+        />
+        <InputGroupAddon align="inline-end" className="self-end pr-1.5 pb-1.5">
+          <Tip
+            label={
+              <span className="flex items-center gap-1.5">
+                {queue ? `Queue it for when ${who} finishes` : "Send"} <Kbd>↵</Kbd>
+              </span>
+            }
+          >
+            <Button size="icon-sm" className="rounded-lg" variant={queue ? "outline" : "default"} aria-label={queue ? "Queue" : "Send"} disabled={!ready || blocked} onClick={go}>
+              {queue ? <ListPlusIcon /> : <ArrowUpIcon />}
+            </Button>
+          </Tip>
+        </InputGroupAddon>
+      </InputGroup>
+    </div>
   );
 }
 
