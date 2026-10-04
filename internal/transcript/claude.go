@@ -81,10 +81,17 @@ func (claudeParser) line(c *conv, b []byte) {
 		case l.Type == "user" && bl.Type == "tool_result":
 			// A helper started in the background answers at once; it is
 			// back when its notification says so, not now.
-			if strings.HasPrefix(resultText(bl.Content), "Async agent launched") {
+			text := resultText(bl.Content)
+			if strings.HasPrefix(text, "Async agent launched") {
 				c.launched(bl.ToolUseID)
 			}
 			c.result(bl.ToolUseID, at)
+			// A rejected call with words for the agent (a plan sent back
+			// with "Tell Claude what to change") reads as what the person
+			// said.
+			if _, said, ok := strings.Cut(text, "To tell you how to proceed, the user said:\n"); ok {
+				userText(c, said)
+			}
 		case l.Type == "assistant" && bl.Type == "text":
 			if t := strings.TrimSpace(bl.Text); t != "" {
 				c.add(Item{Kind: "text", ID: c.id(), Text: clip(t, maxText)})

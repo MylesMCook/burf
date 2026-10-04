@@ -245,7 +245,11 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
   // An agent at a menu (a permission, or numbered options) takes its answer
   // from the buttons above: Enter in the reply box would pick for it.
   const open = [...shown].reverse().find((it) => it.kind === "ask");
-  const atMenu = !!ask?.choices.length || !!s?.ask?.tool || (open?.kind === "ask" && !open.decided && (!!open.choices?.length || !!open.structured));
+  // An option that asks for words ("Tell Claude what to change" on a plan)
+  // leaves the agent at a text field once picked: the reply box types them.
+  const picked = answered && answered.at === s?.state_since ? ask?.choices.find((c) => c.key === answered.key)?.label : undefined;
+  const wantsWords = state === "waiting" && !!picked && /^tell \S+ what/i.test(picked);
+  const atMenu = !wantsWords && (!!ask?.choices.length || !!s?.ask?.tool || (open?.kind === "ask" && !open.decided && (!!open.choices?.length || !!open.structured)));
 
   if (ended && !shown.length) {
     return (
@@ -303,7 +307,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
           ) : (
             <>
               {toSend.length > 0 && reviewKey && <CommentsStrip count={toSend.length} who={who} onSend={() => sendComments(box, session, reviewKey)} />}
-              <Reply onSend={reply} onFail={fail} who={who} mode={state === "running" ? "queue" : state === "waiting" ? "answer" : "send"} blocked={state === "waiting" && atMenu} />
+              <Reply onSend={reply} onFail={fail} who={who} mode={state === "running" ? "queue" : state === "waiting" ? "answer" : "send"} blocked={state === "waiting" && atMenu} hint={wantsWords ? `Tell ${who} what to change, then press Enter` : undefined} />
             </>
           )}
         </div>
@@ -359,7 +363,7 @@ function CommentsStrip({ count, who, onSend }: { count: number; who: string; onS
 // it until the agent finishes, or answer the agent's question. While the
 // agent waits at a menu, Enter there would pick its highlighted option, so
 // it waits for the answer above.
-function Reply({ onSend, onFail, who, mode, blocked }: { onSend(text: string): Promise<void>; onFail(err: unknown): void; who: string; mode: "send" | "queue" | "answer"; blocked?: boolean }) {
+function Reply({ onSend, onFail, who, mode, blocked, hint }: { onSend(text: string): Promise<void>; onFail(err: unknown): void; who: string; mode: "send" | "queue" | "answer"; blocked?: boolean; hint?: string }) {
   const [text, setText] = useState("");
   const go = () => {
     const t = text.trim();
@@ -372,7 +376,7 @@ function Reply({ onSend, onFail, who, mode, blocked }: { onSend(text: string): P
     });
   };
   const queue = mode === "queue";
-  const placeholder = blocked ? "Pick an answer above first" : queue ? `${who} is working: Enter queues this for when it finishes` : mode === "answer" ? `Answer ${who}, or ask for something else` : "Reply, or ask for something else";
+  const placeholder = hint ?? (blocked ? "Pick an answer above first" : queue ? `${who} is working: Enter queues this for when it finishes` : mode === "answer" ? `Answer ${who}, or ask for something else` : "Reply, or ask for something else");
   return (
     <InputGroup className="**:[textarea]:min-h-0! **:[textarea]:py-2.5!">
       <InputGroupTextarea

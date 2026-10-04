@@ -269,4 +269,11 @@ func TestClaudePlanModeAndBackgroundHelper(t *testing.T) {
 	if res2.Crew[0].State != "finished" || res2.Crew[0].Until == res2.Crew[0].Since {
 		t.Fatalf("helper back = %+v", res2.Crew[0])
 	}
+
+	// The plan sent back with words: they read as the person's.
+	write(t, p, user([]m{{"type": "tool_result", "tool_use_id": "x1", "is_error": true, "content": "The user doesn't want to proceed with this tool use. The tool use was rejected. To tell you how to proceed, the user said:\nNo changes, stop here."}}))
+	res3, _ := r.Read("claude", p, "/w/shop", res2.Next)
+	if kinds(res3.Items) != "user" || res3.Items[0].Text != "No changes, stop here." {
+		t.Fatalf("feedback = %+v", res3.Items)
+	}
 }

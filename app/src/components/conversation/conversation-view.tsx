@@ -1,4 +1,4 @@
-import { CheckIcon, ChevronRightIcon, ClockIcon, FileTextIcon, GitCompareArrowsIcon, PencilLineIcon, RotateCwIcon, SearchIcon, SendHorizontalIcon, TerminalIcon, XIcon } from "lucide-react";
+import { CheckIcon, ChevronRightIcon, ClockIcon, CornerDownRightIcon, FileTextIcon, GitCompareArrowsIcon, PencilLineIcon, RotateCwIcon, SearchIcon, SendHorizontalIcon, TerminalIcon, XIcon } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { Tip } from "@/components/tip";
@@ -47,9 +47,33 @@ export function ConversationView({ items, onAnswer, edits, who = "The agent", ta
   const end = useRef<HTMLDivElement>(null);
   const last = items[items.length - 1];
   const grew = last?.kind === "text" ? last.text.length : last?.kind === "tools" ? (last.items?.length ?? 0) : 0;
+  // The view follows new work while it is at the foot. Scrolled up to read,
+  // it stays put until the person scrolls back down or sends something.
+  const pinned = useRef(true);
   useEffect(() => {
-    end.current?.scrollIntoView({ block: "end", behavior: "smooth" });
-  }, [items.length, grew, tailSize]);
+    const sc = end.current?.closest<HTMLElement>(".overflow-y-auto");
+    if (!sc) return;
+    let userAt = 0;
+    const user = () => {
+      userAt = Date.now();
+    };
+    const onScroll = () => {
+      const near = sc.scrollHeight - sc.scrollTop - sc.clientHeight < 120;
+      if (near) pinned.current = true;
+      else if (Date.now() - userAt < 1000) pinned.current = false;
+    };
+    const opts = { passive: true };
+    sc.addEventListener("scroll", onScroll, opts);
+    for (const e of ["wheel", "touchmove", "pointerdown", "keydown"]) sc.addEventListener(e, user, opts);
+    return () => {
+      sc.removeEventListener("scroll", onScroll);
+      for (const e of ["wheel", "touchmove", "pointerdown", "keydown"]) sc.removeEventListener(e, user);
+    };
+  }, []);
+  useEffect(() => {
+    if (last?.kind === "user") pinned.current = true;
+    if (pinned.current) end.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+  }, [items.length, grew, tailSize, last?.kind]);
 
   return (
     <div className={cn("mx-auto flex w-full max-w-[680px] flex-col gap-4 text-[14px] text-foreground leading-relaxed", className)}>
@@ -80,14 +104,19 @@ function foldTurns(items: TranscriptItem[]): Block[] {
   const flush = (isLast: boolean) => {
     if (!turn.length) return;
     const working = isLast && live;
-    // The answer: what the turn says after its last step (a long reply and
-    // a note after it both), once it has finished; while it works, its
-    // latest words. A turn that ends on a step answers with its last words.
+    // The answer: the turn's last words, once it has finished; while it
+    // works, its latest words. When it says several things after its last
+    // step, the answer starts at the longest of them: a reply and a note
+    // after it both show, a "now I'll write it up" before it stays folded.
     let answer = -1;
     for (let i = turn.length - 1; i >= 0; i--)
       if (turn[i].kind === "text") {
         answer = i;
-        while (answer > 0 && (turn[answer - 1].kind === "text" || turn[answer - 1].kind === "edit")) answer--;
+        const len = (j: number) => {
+          const t = turn[j];
+          return t.kind === "text" ? t.text.length : 0;
+        };
+        for (let j = i - 1; j >= 0 && (turn[j].kind === "text" || turn[j].kind === "edit"); j--) if (len(j) > len(answer)) answer = j;
         break;
       }
     const steps: TranscriptItem[] = [];
@@ -204,18 +233,23 @@ export function permissionVerb(tool: string): { verb: string; what?: string; mon
   return { verb: "wants to use", what: tool, mono: false };
 }
 
+    case "ExitPlanMode":
+      return { verb: "has a plan ready for your approval", mono: false };
 // Permission is an approval the agent's hooks described: the tool and what
 // it would run or touch, matched to the options on its screen.
 function Permission({ it, onAnswer, who }: { it: Extract<TranscriptItem, { kind: "ask" }>; onAnswer(id: string, key: string): void; who: string }) {
   const { verb, what, mono } = permissionVerb(it.tool);
   const choices = it.choices ?? [];
   if (it.decided) {
-    const c = choices.find((x) => x.key === it.decided);
-    const no = c?.label === "Deny";
+    // What was picked, in its own words unless it was a plain allow or
+    // deny: "Tell Claude what to change" didn't allow anything.
+    const label = choices.find((x) => x.key === it.decided)?.label ?? "";
+    const no = /^(deny|no)\b/i.test(label);
+    const yes = /^(allow|always allow|yes)\b/i.test(label);
     return (
       <div className="cv-in flex min-w-0 items-center gap-2 text-muted-foreground">
-        {no ? <XIcon className="size-3.5 shrink-0" /> : <CheckIcon className="size-3.5 shrink-0 text-success" />}
-        <span className="shrink-0">{no ? "Denied" : c?.label === "Always allow" ? "Always allowed" : "Allowed"}</span>
+        {no ? <XIcon className="size-3.5 shrink-0" /> : yes ? <CheckIcon className="size-3.5 shrink-0 text-success" /> : <CornerDownRightIcon className="size-3.5 shrink-0" />}
+        <span className="shrink-0">{no ? "Denied" : label === "Always allow" ? "Always allowed" : label === "Allow" ? "Allowed" : label || "Answered"}</span>
         <span className={cn("truncate text-foreground/80", mono && "font-mono text-[12.5px]")}>{it.detail || what}</span>
       </div>
     );
@@ -236,7 +270,8 @@ function Permission({ it, onAnswer, who }: { it: Extract<TranscriptItem, { kind:
       <div className="flex flex-wrap items-center gap-2 border-t px-4 py-3">
         {choices.map((c, i) => (
           <Tip key={c.key} label={c.title ? `${c.key}. ${c.title}` : undefined}>
-            <Button size="sm" variant={i === 0 ? "default" : "outline"} className="max-w-full" onClick={() => onAnswer(it.id, c.key)}>
+            {/* A plan's first option starts it working on its own: no option is the obvious one there. */}
+            <Button size="sm" variant={i === 0 && it.tool !== "ExitPlanMode" ? "default" : "outline"} className="max-w-full" onClick={() => onAnswer(it.id, c.key)}>
               {c.label}
             </Button>
           </Tip>
