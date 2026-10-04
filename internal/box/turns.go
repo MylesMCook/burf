@@ -948,7 +948,16 @@ func (t *Turns) Ready(name string) bool {
 	if s == nil {
 		return true
 	}
-	return len(s.inbox) == 0 && (s.State == "" || s.idle())
+	if len(s.inbox) > 0 {
+		return false
+	}
+	// A held prompt being delivered right now is still queued: wait for it.
+	for _, tr := range s.Turns {
+		if tr.State == "queued" {
+			return false
+		}
+	}
+	return s.State == "" || s.idle()
 }
 
 // idle says whether the agent can take a prompt: idle or finished, with no
@@ -1203,12 +1212,27 @@ func (b *Box) refreshTurns(ctx context.Context) {
 // deliverInbox types each idle session's next held prompt.
 func (b *Box) deliverInbox(ctx context.Context) {
 	for _, it := range b.Turns.nextDeliveries() {
+		unlock := b.lockSend(it.Session)
 		if err := b.Sessions.Send(ctx, it.Session, it.Text, it.Enter); err != nil {
 			b.Turns.failQueued(it, err.Error())
+			unlock()
 			continue
 		}
 		b.Events.Publish(events.Event{Type: "session.sent", Box: b.Name, Origin: it.Origin, Data: map[string]any{"name": it.Session, "turn": it.Turn, "when": "idle"}})
+		unlock()
 	}
+}
+
+// sendLocks serializes typing into one session, from the inbox and from
+// sends: two prompts typed at once into an idle agent would be read as one,
+// leaving a turn that never starts.
+var sendLocks sync.Map // session name → *sync.Mutex
+
+func (b *Box) lockSend(name string) func() {
+	m, _ := sendLocks.LoadOrStore(name, &sync.Mutex{})
+	mu := m.(*sync.Mutex)
+	mu.Lock()
+	return mu.Unlock
 }
 
 // screenQuiet is how many 2-second polls of an unchanged screen end a turn

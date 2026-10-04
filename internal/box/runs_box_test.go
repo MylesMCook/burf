@@ -425,3 +425,37 @@ func TestRenderedItemsAreLabelledAndCapped(t *testing.T) {
 		t.Fatalf("%d bytes:\n%s", len(s), s)
 	}
 }
+
+// Prompts sent at once to an idle agent (two runs' broadcasts, say) are
+// typed one at a time: the rest wait in the inbox, never merged into one.
+func TestConcurrentIdleSendsAreTypedOneAtATime(t *testing.T) {
+	b, do := runsBox(t)
+	repo := gitRepo(t)
+	do("POST", "/v1/locations", map[string]string{"name": "shop", "path": repo}, nil)
+	fake := filepath.Join(t.TempDir(), "claude")
+	os.WriteFile(fake, []byte("#!/bin/sh\nexec cat\n"), 0o755)
+	var sess Session
+	do("POST", "/v1/sessions", map[string]string{"location": "shop", "name": "agent", "command": fake}, &sess)
+	hook(b.Events, "agent.ready", "agent", sess.Dir, "claude")
+	results := make(chan SendResult, 4)
+	for i := 0; i < 4; i++ {
+		go func(i int) {
+			var r SendResult
+			do("POST", "/v1/sessions/agent/send", SendRequest{Text: fmt.Sprint("prompt ", i), When: "idle"}, &r)
+			results <- r
+		}(i)
+	}
+	sent, queued := 0, 0
+	for i := 0; i < 4; i++ {
+		r := <-results
+		if r.Sent {
+			sent++
+		}
+		if r.Queued {
+			queued++
+		}
+	}
+	if sent != 1 || queued != 3 {
+		t.Fatalf("%d typed at once, %d held; want 1 and 3", sent, queued)
+	}
+}

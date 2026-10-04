@@ -109,6 +109,7 @@ func (b *Box) sendPrompt(ctx context.Context, name string, req SendRequest, orig
 	default:
 		return SendResult{}, badRequest("when must be now or idle")
 	}
+	defer b.lockSend(name)()
 	if b.Turns != nil {
 		if tr, ok := b.Turns.ByIdem(name, req.IdemKey); ok {
 			return SendResult{Sent: tr.State != "queued", Queued: tr.State == "queued", Duplicate: true, Turn: tr.ID, Seq: tr.SentSeq, At: time.Now().UTC()}, nil
