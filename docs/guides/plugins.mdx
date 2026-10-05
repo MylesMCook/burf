@@ -11,8 +11,10 @@ tree, using the app's own UI kit, so they look like the rest of Berth.
 Berth's built-ins are written the same way, against the same SDK: Git
 changes, Diff, Pull request, Dev servers, Box monitor, Activity, Notes, Issues and
 Prompt library (see
-[`plugins/`](https://github.com/sean-brydon/berthd/tree/main/plugins)). A
-plugin of yours with the same id replaces a built-in.
+[`plugins/`](https://github.com/sean-brydon/berthd/tree/main/plugins)).
+They ship inside the app and are on from the first launch, with no prompt:
+Settings → Plugins turns one off, and the app remembers that. A plugin of
+yours with the same id replaces a built-in.
 
 <Callout type="warn" title="Plugins run with the app's access">
   Plugins are not sandboxed. A plugin can do anything the app can, on every

@@ -54,7 +54,9 @@ export function rewriteImports(source: string, base = location.href): string {
 const loaded = new Map<string, { dispose?: () => void; url: string }>();
 
 // Built-in plugins ship with the app in public/builtin-plugins/, listed in
-// its index.json by `pnpm build:plugins`. A missing index means none.
+// its index.json by `pnpm build:plugins`. A missing index means none. The
+// app fetches them from its own origin, so the release CSP's connect-src
+// must allow 'self' (scripts/check-csp.mjs).
 export async function builtinPlugins(): Promise<PluginInfo[]> {
   try {
     // From the app's base: "/" in the app, the demo's own folder on the web.
@@ -62,7 +64,8 @@ export async function builtinPlugins(): Promise<PluginInfo[]> {
     if (!res.ok) return [];
     const list = (await res.json()) as PluginInfo[];
     return list.map((p) => ({ ...p, builtin: true, entry: `${import.meta.env.BASE_URL}builtin-plugins/${p.id}/${p.main}` }));
-  } catch {
+  } catch (err) {
+    console.warn("could not list the built-in plugins", err);
     return [];
   }
 }

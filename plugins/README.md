@@ -30,6 +30,10 @@ of the SDK and is not built in.
   agent (`app/src/plugins/host.ts`). A user plugin with the same id replaces
   the built-in. Built-ins are on by default; Settings → Plugins turns each
   off (stored in the app's preferences, `disabledPlugins`).
+- The app fetches `builtin-plugins/` from its own origin, so the release
+  CSP in `app/src-tauri/tauri.conf.json` keeps `'self'` in `connect-src`.
+  Tauri applies it only to the bundled app, never to `pnpm tauri dev`;
+  `pnpm -C app check:csp` guards it.
 - Built-ins are styled with the app's Tailwind classes: `app/src/index.css`
   scans this folder. A plugin in `~/.berth/plugins` should stick to classes
   the app already uses, or inline styles.
