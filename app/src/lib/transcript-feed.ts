@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { boxApi, type QueuedPrompt } from "@/lib/api";
 import { keyOf, useConversations } from "@/lib/conversation-store";
 import { useEventLog } from "@/lib/events";
-import { choicesIn, type Choice } from "@/lib/screen";
+import { choicesIn, type Choice, questionFormIn } from "@/lib/screen";
 import { useStore } from "@/lib/store";
 import type { Artifact, CrewMember, TranscriptItem } from "@/lib/transcript";
 
@@ -118,12 +118,13 @@ export function useTranscriptFeed(box: string, session: string, dir: string | un
 }
 
 // useAsk is what an agent waiting for the person asks, from its screen: the
-// numbered options, and the line above them as the question. A menu is
-// drawn a moment after the agent says it waits, so a screen without one is
-// read again a few times.
-export function useAsk(box: string, session: string, waiting: boolean, since?: string): { detail: string; choices: Choice[] } | undefined {
+// numbered options, and the line above them as the question; form says it
+// shows a form of questions with steps, which no one number answers. A
+// menu is drawn a moment after the agent says it waits, so a screen
+// without one is read again a few times.
+export function useAsk(box: string, session: string, waiting: boolean, since?: string): { detail: string; choices: Choice[]; form?: boolean } | undefined {
   const client = useStore((s) => s.client);
-  const [ask, setAsk] = useState<{ detail: string; choices: Choice[] }>();
+  const [ask, setAsk] = useState<{ detail: string; choices: Choice[]; form?: boolean }>();
   useEffect(() => {
     if (!client || !waiting) {
       setAsk(undefined);
@@ -139,7 +140,8 @@ export function useAsk(box: string, session: string, waiting: boolean, since?: s
         if (!alive) return;
         const screen = r.screen ?? "";
         const choices = choicesIn(screen);
-        if (!choices.length && ++tries < 4) timer = window.setTimeout(() => void read(), 600);
+        const form = questionFormIn(screen);
+        if (!choices.length && !form && ++tries < 4) timer = window.setTimeout(() => void read(), 600);
         const lines = screen.split("\n").map((l) => l.trim());
         const first = lines.findIndex((l) => /^(?:[❯›>]\s*)?1[.)]\s/.test(l));
         let detail = "";
@@ -150,7 +152,7 @@ export function useAsk(box: string, session: string, waiting: boolean, since?: s
             break;
           }
         }
-        setAsk({ detail, choices });
+        setAsk({ detail, choices, form });
       })
       .catch(() => alive && setAsk({ detail: "", choices: [] }));
     void read();

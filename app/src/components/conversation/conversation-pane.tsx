@@ -13,6 +13,7 @@ import { ConversationView, type EditActions, QueuedBubble } from "@/components/c
 import { ChatScope } from "@/components/conversation/notice-card";
 import { useComposerMenu } from "@/components/conversation/command-menu";
 import { LiveScreen, useLiveScreen } from "@/components/conversation/live-screen";
+import { QuestionsContext } from "@/components/conversation/question-form";
 import { toastError } from "@/components/error-note";
 import { UpgradeBox } from "@/components/upgrade-box";
 import { SessionWorktreeSections } from "@/components/workspace/worktree-sections";
@@ -30,10 +31,12 @@ import { type AttachTarget, withAttachments } from "@/lib/attachments";
 import { keyOf, useConversations } from "@/lib/conversation-store";
 import { agentLabel, agentOf, guessAgent, sessionState, worktreeOf } from "@/lib/derive";
 import type { NextStep } from "@/lib/errors";
+import { errorMessage } from "@/lib/format";
 import { finishTurn, mockToolDetail, seedTranscript } from "@/lib/mock-conversation";
 import { useNotifications } from "@/lib/notifications";
 import { updateBoxes } from "@/lib/outdated";
 import { addComment, type LineComment, pending, removeComment, sendComments, useComments } from "@/lib/review-comments";
+import { answerQuestions, type QuestionAnswer } from "@/lib/questions";
 import { permissionChoices } from "@/lib/screen";
 import { NONE, useStore } from "@/lib/store";
 import type { TranscriptItem } from "@/lib/transcript";
@@ -74,6 +77,18 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
   const feed = useTranscriptFeed(box, session, s?.dir, visible && !mock && !away, attempt);
   const ask = useAsk(box, session, !mock && state === "waiting", s?.state_since);
   const [answered, setAnswered] = useState<{ at?: string; key: string }>();
+  // A form of questions the agent asks (Claude Code's AskUserQuestion),
+  // from its record: the chat draws it whole and the box fills it in. stuck
+  // is why the box couldn't, for this wait: its own screen opens instead.
+  const canAnswer = useStore((st) => !!st.boxes[box]?.info?.capabilities?.includes("answer"));
+  const openQ = useMemo(() => {
+    for (let i = items.length - 1; i >= 0; i--) {
+      const it = items[i];
+      if (it.kind === "question") return it.done ? undefined : it;
+      if (it.kind === "user") return undefined;
+    }
+  }, [items]);
+  const formAsk = state === "waiting" && !!openQ;
   // Prompts sent from here that the transcript doesn't show yet.
   // Each remembers the prompts like it the transcript already held, by ID:
   // the transcript is a sliding window, so a position in it doesn't last.
@@ -104,6 +119,9 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
   const onScreen = useScreenStatus(box, session, agent, visible && !mock && !away && state === "running");
   const last = useConversations((st) => st.last[key]);
   const who = agent === "claude" ? "Claude" : agent ? agentLabel(agent) : "The agent";
+  const [stuck, setStuck] = useState<{ at?: string; why: string }>();
+  const stuckNow = stuck && stuck.at === s?.state_since ? stuck.why : undefined;
+  const answerable = formAsk && canAnswer && agent === "claude" && !stuckNow;
   // Comments on the diff are kept per worktree, as Review keys them.
   const wt = s ? worktreeOf(locations, s) : undefined;
   const reviewKey = wt ? `${box}|${wt.worktree.path}` : undefined;
@@ -144,18 +162,21 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
     // task: say so until its own record arrives.
     else if (prompted && !items.length && (state === "ready" || state === "idle")) out.push({ kind: "thinking", id: "live:starting", since: Date.parse(s?.created ?? "") || Date.now() });
     const decided = answered && answered.at === s?.state_since ? answered.key : undefined;
-    if (state === "waiting" && s?.ask?.tool) {
+    // A form of questions draws itself (its question item); one the chat
+    // can't read from the record (an older box) only its screen answers.
+    const form = formAsk || !!ask?.form;
+    if (state === "waiting" && s?.ask?.tool && !form) {
       // The agent's hooks said what it asks: show that, with its screen's
       // options matched to Allow, Always allow and Deny.
       const choices = ask ? (permissionChoices(ask.choices) ?? ask.choices) : [];
       out.push({ kind: "ask", id: "live:ask", tool: s.ask.tool, detail: s.ask.input ?? "", why: s.ask.why, structured: true, choices, reading: !ask, decided });
-    } else if (state === "waiting" && ask && (ask.choices.length || s?.ask?.message || ask.detail)) {
+    } else if (state === "waiting" && ask && !form && (ask.choices.length || s?.ask?.message || ask.detail)) {
       // A question needs words or options to answer: a screen without
       // either is not one (never a bare Yes / No).
       out.push({ kind: "ask", id: "live:ask", tool: "Question", detail: s?.ask?.message || ask.detail, choices: ask.choices, decided });
     }
     return out;
-  }, [mock, items, state, s?.state_since, s?.ask, s?.created, ask, answered, sent, prompted, onScreen, last]);
+  }, [mock, items, state, s?.state_since, s?.ask, s?.created, ask, answered, sent, prompted, onScreen, last, formAsk]);
 
   const edits = useMemo<EditActions | undefined>(() => {
     if (!client || (!canDiff && !mock)) return undefined;
@@ -184,7 +205,21 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
   // The agent's own screen (/model's picker, a dialog) opens as a live
   // terminal under the conversation; a question its hooks describe doesn't.
   const [nudge, setNudge] = useState(0);
-  const recognised = state === "waiting" && (!!s?.ask?.tool || !!ask?.choices.length);
+  // What the chat answers itself: a form of questions it can fill in, a
+  // permission or menu whose options it read. Anything else (options it
+  // can't read, a form it can't fill in, an answer that didn't take)
+  // opens the agent's own screen.
+  const pickedLabel = answered && answered.at === s?.state_since ? ask?.choices.find((c) => c.key === answered.key)?.label : undefined;
+  const forWords = state === "waiting" && !!pickedLabel && /^(tell \S+ what|type something)/i.test(pickedLabel);
+  const [stale, setStale] = useState<string>();
+  useEffect(() => {
+    // Answered, and still waiting a while later: it asks something else.
+    if (!answered || answered.at !== s?.state_since || state !== "waiting" || forWords) return;
+    const t = window.setTimeout(() => setStale(answered.at), 4000);
+    return () => window.clearTimeout(t);
+  }, [answered, s?.state_since, state, forWords]);
+  const staleNow = !!stale && stale === s?.state_since;
+  const recognised = state === "waiting" && !staleNow && (answerable || (!formAsk && !ask?.form && (ask ? !!ask.choices.length : !!s?.ask?.tool)));
   const live = useLiveScreen({ box, session, agent, enabled: visible && !mock && !away && !!s && state !== "exited" && !recognised, running: state === "running", nudge });
 
   // Claude Code and Codex write their conversation once they start: until
@@ -264,6 +299,19 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
     });
   };
 
+  // The whole form's answers, filled in on the box; when they don't take,
+  // the agent's own screen opens to finish there, saying why.
+  const submitQuestions = async (tool: string, answers: QuestionAnswer[]) => {
+    if (!client) throw new Error("Not connected");
+    try {
+      await answerQuestions(client, box, session, { tool, answers });
+    } catch (err) {
+      setStuck({ at: s?.state_since, why: errorMessage(err) });
+      setNudge((n) => n + 1);
+      throw err;
+    }
+  };
+
   const reply = async (text: string) => {
     if (mock && state !== "running") {
       useConversations.getState().push(key, { kind: "user", id: `u${Date.now()}`, text });
@@ -329,15 +377,28 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
       )}
     </>
   );
+  // Why its own screen is open, when the chat knows.
+  const liveWhy = stuckNow
+    ? `${stuckNow} above`
+    : formAsk && agent !== "claude"
+      ? `${who}'s questions are answered in its own screen: answer them above`
+      : formAsk && !canAnswer
+        ? `${box} needs an update to answer ${who}'s questions here: answer them above`
+        : ask?.form
+          ? `${who}'s questions need its own screen here: answer them above`
+          : staleNow
+            ? `${who} is still asking: answer it in its screen above`
+            : state === "waiting" && s?.ask?.tool && ask && !ask.choices.length
+              ? `${who}'s options can't be read here: answer it in its screen above`
+              : undefined;
   const toSend = pending(comments);
   // An agent at a menu (a permission, or numbered options) takes its answer
   // from the buttons above: Enter in the reply box would pick for it.
   const open = [...shown].reverse().find((it) => it.kind === "ask");
   // An option that asks for words ("Tell Claude what to change" on a plan)
   // leaves the agent at a text field once picked: the reply box types them.
-  const picked = answered && answered.at === s?.state_since ? ask?.choices.find((c) => c.key === answered.key)?.label : undefined;
-  const wantsWords = state === "waiting" && !!picked && /^(tell \S+ what|type something)/i.test(picked);
-  const atMenu = !wantsWords && (!!ask?.choices.length || !!s?.ask?.tool || (open?.kind === "ask" && !open.decided && (!!open.choices?.length || !!open.structured)));
+  const wantsWords = forWords;
+  const atMenu = !wantsWords && (formAsk || !!ask?.form || !!ask?.choices.length || !!s?.ask?.tool || (open?.kind === "ask" && !open.decided && (!!open.choices?.length || !!open.structured)));
 
   if (ended && !shown.length) {
     return (
@@ -397,7 +458,9 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
           </div>
         ) : (
           <ChatScope value={{ who, send: reply, showTerminal: onShowTerminal, startAgain: again }}>
-            <ConversationView chat={{ box, session, agent, visible, idle: state !== "running" && state !== "waiting" }} items={shown} onAnswer={answer} edits={edits} who={who} tail={tail} tailSize={queue.items.length + (untaken ? 1 : 0)} />
+            <QuestionsContext value={{ live: formAsk ? openQ?.tool : undefined, canAnswer: canAnswer && agent === "claude", stuck: stuckNow, submit: submitQuestions }}>
+              <ConversationView chat={{ box, session, agent, visible, idle: state !== "running" && state !== "waiting" }} items={shown} onAnswer={answer} edits={edits} who={who} tail={tail} tailSize={queue.items.length + (untaken ? 1 : 0)} />
+            </QuestionsContext>
           </ChatScope>
         )}
       </div>
@@ -416,7 +479,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
             <>
               {toSend.length > 0 && reviewKey && <CommentsStrip count={toSend.length} who={who} onSend={() => sendComments(box, session, reviewKey)} />}
               {live.show && <LiveScreen box={box} session={session} agent={agent} onHide={live.hide} onShowTerminal={onShowTerminal} />}
-              <Reply attach={{ box, session }} agent={agent} onSend={reply} onFail={fail} who={who} mode={state === "running" ? "queue" : state === "waiting" ? "answer" : "send"} blocked={(state === "waiting" && atMenu) || live.show} hint={live.show ? `${who} is showing its own screen: answer it above` : wantsWords ? `Tell ${who} what to change, then press Enter` : undefined} />
+              <Reply attach={{ box, session }} agent={agent} onSend={reply} onFail={fail} who={who} mode={state === "running" ? "queue" : state === "waiting" ? "answer" : "send"} blocked={(state === "waiting" && atMenu) || live.show} hint={live.show ? (liveWhy ?? `${who} is showing its own screen: answer it above`) : wantsWords ? `Tell ${who} what to change, then press Enter` : answerable ? `Answer ${who}'s ${openQ?.questions.length === 1 ? "question" : "questions"} above` : undefined} />
             </>
           )}
           </ChatControls>

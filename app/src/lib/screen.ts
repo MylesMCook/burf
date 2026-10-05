@@ -49,6 +49,9 @@ export function permissionChoices(choices: Choice[]): Choice[] | undefined {
 // choicesIn reads the numbered options an agent is asking about, such as
 // Claude Code's "❯ 1. Yes / 2. No, and tell Claude what to do differently".
 export function choicesIn(screen: string): Choice[] {
+  // A form of questions isn't answered by one number: each picks for the
+  // question on show and moves on, or ticks a box.
+  if (questionFormIn(screen)) return [];
   // A pane taller than what the agent drew ends in blank lines.
   const lines = screen.trimEnd().split("\n").slice(-14);
   const out: Choice[] = [];
@@ -58,6 +61,18 @@ export function choicesIn(screen: string): Choice[] {
   }
   // A real menu counts up from 1.
   return out.length >= 2 && out[0].key === "1" ? out.slice(0, 4) : [];
+}
+
+// questionFormIn says the screen's foot shows Claude Code's form of
+// questions with steps: its tab row ("←  ☐ Colour  ☐ Toppings  ✔ Submit
+// →"), drawn for several questions or one taking several picks. One
+// question with one pick shows a single "☐ Drink" and answers by number.
+export function questionFormIn(screen: string): boolean {
+  return screen
+    .trimEnd()
+    .split("\n")
+    .slice(-40)
+    .some((l) => /^\s*←\s+[☐☒]/.test(l) || (/[☐☒]/.test(l) && /✔\s*Submit/.test(l)));
 }
 
 // What an agent's screen shows at its foot: its own prompt, waiting for

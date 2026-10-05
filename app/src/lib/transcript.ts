@@ -1,3 +1,5 @@
+import type { Question } from "@/lib/questions";
+
 // A session's work as a calm transcript rather than a terminal: what Shore
 // mode draws. The agent still runs in its terminal on the box; berthd reads
 // the agent's own record of the conversation (Claude's transcript, Codex's
@@ -35,7 +37,11 @@ export type TranscriptItem =
   // text is its title, url its link once the result says it, file what was
   // published. Not done yet: still publishing. error: the publish failed.
   // updated: it was published before.
-  | { kind: "artifact"; id: string; tool?: string; text: string; url?: string; description?: string; file?: string; done?: boolean; error?: boolean; updated?: boolean };
+  | { kind: "artifact"; id: string; tool?: string; text: string; url?: string; description?: string; file?: string; done?: boolean; error?: boolean; updated?: boolean }
+  // Questions the agent asked with a form of its own (Claude Code's
+  // AskUserQuestion, Codex's request_user_input; lib/questions). Once done,
+  // answers holds what was answered, one per question; error: it wasn't.
+  | { kind: "question"; id: string; tool?: string; questions: Question[]; answers?: string[]; done?: boolean; error?: boolean };
 
 export type NoticeKind = "api_error" | "limit" | "rate_limit" | "auth" | "billing" | "hook" | "interrupted" | "stop_failure" | "exited";
 

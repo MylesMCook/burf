@@ -21,6 +21,14 @@ again.
   "3 artifacts" chip at the right of the reply box's controls lists them
   all, newest first: open one, copy its link, or show it in the chat. A
   page published again is marked updated. Boxes need an upgrade for it.
+- **Claude's questions, answered in the chat.** When Claude asks several
+  questions at once (AskUserQuestion), the chat used to answer only the
+  first and then hang. Now it shows the whole form: each question with its
+  options, one pick or several, room for your own words, back and next, and
+  a review with Submit. The box fills in Claude's own form key by key,
+  checking its screen as it goes; if anything doesn't match, it stops and
+  Claude's screen opens under the chat to finish there. Answers stay in the
+  conversation as what you picked. Boxes need an upgrade for it.
 - **Services in a terminal tab.** A service with `"terminal": true` (in a
   kit, `.berth/config.json` or a box's own config, with an optional
   `"title"`) runs in a terminal of its own, which opens as a tab named after

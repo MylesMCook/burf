@@ -19,6 +19,7 @@ import { ChatList } from "@/components/conversation/chat-list";
 import { ChatSearch, plainMarkdown, type SearchEntry } from "@/components/conversation/chat-search";
 import { EditChange, EditPanel } from "@/components/conversation/edit-diff";
 import { ArtifactCard, ArtifactJumper } from "@/components/conversation/artifacts";
+import { QuestionCard } from "@/components/conversation/question-form";
 import { PromptActions, PromptActionsContext, type PromptContext } from "@/components/conversation/prompt-actions";
 import { HelperSheetHost, openHelper } from "@/components/conversation/subagent-view";
 import { isMock } from "@/hooks/use-berth-connection";
@@ -166,6 +167,8 @@ function estimateBlock(b: Block): number {
       return 84;
     case "artifact":
       return 54;
+    case "question":
+      return it.done ? 40 : 360;
     default:
       return 32;
   }
@@ -206,6 +209,8 @@ function searchable(it: TranscriptItem): string {
       return it.detail;
     case "artifact":
       return [it.text, it.description].filter(Boolean).join("\n");
+    case "question":
+      return it.questions.map((q, i) => [q.question, it.answers?.[i]].filter(Boolean).join("\n")).join("\n");
   }
   return "";
 }
@@ -252,7 +257,7 @@ type Block = { kind: "item"; it: TranscriptItem } | { kind: "fold"; id: string; 
 
 function foldTurns(items: TranscriptItem[]): Block[] {
   const last = items[items.length - 1];
-  const live = !!last && (last.kind === "thinking" || (last.kind === "ask" && !last.decided));
+  const live = !!last && (last.kind === "thinking" || (last.kind === "ask" && !last.decided) || (last.kind === "question" && !last.done));
   const out: Block[] = [];
   let turn: TranscriptItem[] = [];
   const flush = (isLast: boolean) => {
@@ -276,7 +281,7 @@ function foldTurns(items: TranscriptItem[]): Block[] {
     const steps: TranscriptItem[] = [];
     const shown: TranscriptItem[] = [];
     turn.forEach((it, i) => {
-      if ((answer >= 0 && i >= answer && it.kind === "text") || it.kind === "edit" || it.kind === "artifact" || it.kind === "ask" || it.kind === "thinking" || it.kind === "notice") shown.push(it);
+      if ((answer >= 0 && i >= answer && it.kind === "text") || it.kind === "edit" || it.kind === "artifact" || it.kind === "question" || it.kind === "ask" || it.kind === "thinking" || it.kind === "notice") shown.push(it);
       else steps.push(it);
     });
     if (steps.length) out.push({ kind: "fold", id: `fold-${steps[0].id}`, steps, live: working });
@@ -394,6 +399,8 @@ function ItemBody({ it, onAnswer, edits, who }: { it: TranscriptItem; onAnswer(i
       return <CommandItem it={it} who={who} />;
     case "artifact":
       return <ArtifactCard it={it} />;
+    case "question":
+      return <QuestionCard it={it} who={who} />;
     case "ask":
       return it.structured ? <Permission it={it} onAnswer={onAnswer} who={who} /> : <Ask it={it} onAnswer={onAnswer} />;
   }
