@@ -20,6 +20,9 @@ jobs:
       - run: sudo apt-get update && sudo apt-get install -y tmux
       - run: go vet ./...
       - run: go test -race ./...
+      # A real Chromium alone, without the race detector or every other
+      # package's tests starving it: it times out starting otherwise.
+      - run: go test ./internal/box/ -run 'TestAgentBrowserDrivesARealChromium' -count=1 -v
         # GitHub's Ubuntu runners stop Chromium's sandbox (user namespaces).
         env:
           BERTH_BROWSER_NO_SANDBOX: "1"
