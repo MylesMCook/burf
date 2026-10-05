@@ -2,6 +2,7 @@ package box
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -157,18 +158,23 @@ func TestATerminalServiceRunsInItsOwnSessionStopsWithCtrlCAndStartsAgainInIt(t *
 	if out, err := b.Sessions.tmux(ctx, "send-keys", "-t", "="+st.Session+":", "C-c"); err != nil {
 		t.Fatalf("send-keys: %s", out)
 	}
-	waitUntil(t, "the stop event", 10*time.Second, func() bool {
-		for {
-			select {
-			case e := <-ch:
-				if e.Type == "service.stopped" && e.Data["service"] == "web" && e.Data["exit_status"] == 130 {
-					return true
-				}
-			default:
-				return false
+	// What arrived instead, said when it times out: the exit status and
+	// events differ by shell and tmux, and CI is the place that shows it.
+	var seen []string
+	deadline := time.Now().Add(15 * time.Second)
+	for stopped := false; !stopped; {
+		select {
+		case e := <-ch:
+			seen = append(seen, fmt.Sprintf("%s %v", e.Type, e.Data))
+			stopped = e.Type == "service.stopped" && e.Data["service"] == "web" && e.Data["exit_status"] == 130
+		case <-time.After(50 * time.Millisecond):
+			if time.Now().After(deadline) {
+				pane, _ := b.Sessions.tmux(ctx, "list-panes", "-t", "="+st.Session+":", "-F", "#{pane_dead} #{pane_dead_status} #{pane_current_command}")
+				screen, _ := b.Sessions.Screen(ctx, st.Session, 20)
+				t.Fatalf("timed out waiting for the stop event\nevents: %q\npane: %s\nscreen:\n%s", seen, pane, screen)
 			}
 		}
-	})
+	}
 	all, _ := b.WorktreeServices(ctx, "cal", "billing")
 	if all[0].State != "stopped" {
 		t.Fatalf("after Ctrl-C: %+v", all[0])
