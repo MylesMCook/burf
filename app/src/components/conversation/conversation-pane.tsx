@@ -80,7 +80,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
   // Once the transcript has a prompt, it is no longer "just sent".
   useEffect(() => {
     setSent((l) => {
-      const left = l.filter((p) => !taken(items, p));
+      const left = l.filter((p, i) => !taken(items, p, i + 1));
       return left.length === l.length ? l : left;
     });
   }, [items]);
@@ -122,7 +122,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
     const out = [...items];
     // What was just sent shows at once, until the agent's own record of it
     // arrives (a moment later) and takes its place.
-    for (const p of sent) if (!taken(items, p)) out.push({ kind: "user", id: `sent:${p.at}`, text: p.text });
+    for (const [i, p] of sent.entries()) if (!taken(items, p, i + 1)) out.push({ kind: "user", id: `sent:${p.at}`, text: p.text });
     if (state === "running") {
       // Its words on screen that its record doesn't have yet (Claude Code
       // writes them after the step it is running), until the record does.
@@ -277,7 +277,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
     // A command ("/model", "!ls") shows as itself once the agent runs it;
     // one that opens a screen of its own is looked for at once.
     else if (/^[/!]/.test(text.trim())) setNudge((n) => n + 1);
-    else setSent((l) => [...l, { text, at: Date.now(), seen: new Set(items.filter((it) => it.kind === "user" && same(it.text, text)).map((it) => it.id)) }]);
+    else setSent((l) => [...l, { text, at: Date.now(), seen: new Set(items.filter((it) => it.kind === "user").map((it) => it.id)) }]);
   };
 
   // A held prompt typed now. At a question it would be read as the answer,
@@ -311,7 +311,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
   // A prompt typed into an agent that hasn't taken it: its screen is
   // likely showing something else (a dialog of its own), which only its
   // terminal can answer.
-  const untaken = !mock && state !== "running" && sent.some((p) => now - p.at > 8000 && !taken(items, p));
+  const untaken = !mock && state !== "running" && sent.some((p, i) => now - p.at > 8000 && !taken(items, p, i + 1));
   const tail = (
     <>
       {queue.items.map((q) => (
@@ -438,18 +438,32 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
 
 const NO_COMMENTS: LineComment[] = [];
 
-// The transcript keeps what was typed, at most 4000 characters, and a
-// pasted block's line breaks and spacing don't always come back the same.
-const flat = (s: string) => s.replace(/\s+/g, " ").trim();
+// The transcript keeps what was typed, at most 4000 characters, but not
+// always as typed: a paste's spacing changes, an older box keeps Claude
+// Code's <pasted_content> tags, and an attached image's path can read as
+// "[Image #1]". Those are folded away before comparing.
+const flat = (s: string) =>
+  s
+    .replace(/<\/?pasted_content[^>]*>/g, " ")
+    .replace(/\[Image #\d+\]/g, " ")
+    .replace(/\S*\/\.berth\/attachments\/\S+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 const same = (a: string, b: string) => {
   const x = flat(a);
   const y = flat(b);
-  return x === y || (x.length >= 3000 && y.startsWith(x.replace(/…$/, "")));
+  if (x === y) return true;
+  const head = Math.min(x.length, y.length, 200);
+  return head >= 20 && x.slice(0, head) === y.slice(0, head);
 };
 
-// A sent prompt is taken once the transcript holds one like it that it
-// didn't hold when it was sent.
-const taken = (items: TranscriptItem[], p: { text: string; seen: Set<string> }) => items.some((it) => it.kind === "user" && !p.seen.has(it.id) && same(it.text, p.text));
+// A sent prompt is taken once the transcript holds a prompt it didn't hold
+// when it was sent: one like it, or, when the agent recorded it in words of
+// its own, as many new prompts as were sent up to and including it.
+const taken = (items: TranscriptItem[], p: { text: string; seen: Set<string> }, nth: number) => {
+  const fresh = items.filter((it) => it.kind === "user" && !p.seen.has(it.id));
+  return fresh.some((it) => it.kind === "user" && same(it.text, p.text)) || fresh.length >= nth;
+};
 
 // CommentsStrip offers the comments left on this worktree's diff to its
 // agent, as one short prompt held until it is idle.

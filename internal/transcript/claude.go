@@ -92,7 +92,7 @@ func (claudeParser) line(c *conv, b []byte) {
 	if l.Type == "attachment" && l.Attachment != nil && l.Attachment.Type == "queued_command" {
 		// Shown where the model read it, so a reply never sits above the
 		// message it answers.
-		if t := strings.TrimSpace(resultFull(l.Attachment.Prompt)); t != "" {
+		if t := strings.TrimSpace(unwrapPasted(resultFull(l.Attachment.Prompt))); t != "" {
 			userText(c, t)
 			if c.queued == nil {
 				c.queued = map[string]bool{}
@@ -159,8 +159,20 @@ func (claudeParser) line(c *conv, b []byte) {
 
 // userText adds what a person typed. Lines Claude Code writes for itself
 // (command output, reminders) start with a tag and are skipped.
+// pastedRe is how Claude Code records a paste in a prompt: wrapped in
+// <pasted_content id="…"> tags, which the person never typed.
+var pastedRe = regexp.MustCompile(`(?s)<pasted_content id="[^"]*">\n?(.*?)\n?</pasted_content>`)
+
+// unwrapPasted is a prompt as it was typed, a paste's words in place.
+func unwrapPasted(s string) string {
+	if !strings.Contains(s, "<pasted_content") {
+		return s
+	}
+	return pastedRe.ReplaceAllString(s, "$1")
+}
+
 func userText(c *conv, s string) {
-	s = strings.TrimSpace(s)
+	s = strings.TrimSpace(unwrapPasted(s))
 	// Shown already, where the model read it mid-turn.
 	if c.queued[s] {
 		delete(c.queued, s)

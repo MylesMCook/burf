@@ -462,3 +462,15 @@ func TestCallsAndTheLastWriteCarryTheirTimes(t *testing.T) {
 		t.Fatalf("last = %d, want %d (a line without a time doesn't count)", res.Last, want)
 	}
 }
+
+func TestPastedPromptShowsAsTyped(t *testing.T) {
+	p := filepath.Join(t.TempDir(), "s.jsonl")
+	write(t, p,
+		user("\n\n<pasted_content id=\"60b8\">\nhttps://example.com/run/1\n\nFAIL i18n\n</pasted_content>\n\nWeird, can you fix it?"),
+		assistant(m{"type": "text", "text": "Fixed."}),
+	)
+	res, _ := NewReader().Read("claude", p, "", 0)
+	if len(res.Items) < 1 || res.Items[0].Kind != "user" || res.Items[0].Text != "https://example.com/run/1\n\nFAIL i18n\n\nWeird, can you fix it?" {
+		t.Fatalf("got %+v", res.Items)
+	}
+}
