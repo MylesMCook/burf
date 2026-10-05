@@ -19,7 +19,7 @@ import { armDrag, useTabDrag } from "@/components/workspace/tab-drag";
 import { TerminalView } from "@/components/workspace/terminal-view";
 import { agentPresets, closePane, openBrowserAt, startSession } from "@/lib/actions";
 import { agentLabel, agentOf, restartCommand, sessionAgent, sessionName, sessionState } from "@/lib/derive";
-import { type Leaf, leaves } from "@/lib/layout";
+import { type Leaf, leaves, paneWorktree } from "@/lib/layout";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { startRenaming } from "@/lib/session-title";
@@ -42,6 +42,9 @@ interface Props {
 // Pane is one leaf of a tab's split tree: a terminal, a browser, a log or a
 // plugin's panel, under a slim header when the tab is split.
 export function Pane({ wsKey, tab, pane, visible, focused, split }: Props) {
+  // The worktree the pane belongs to: its own, in a tab that mixes
+  // worktrees, else its tab's.
+  const owner = paneWorktree(wsKey, pane);
   const focus = () => {
     if (!focused) focusPane(wsKey, tab, pane.id);
   };
@@ -85,9 +88,9 @@ export function Pane({ wsKey, tab, pane, visible, focused, split }: Props) {
             <ConversationPane box={c.box} session={c.session} agent={c.agent} visible={visible} onStartAgain={() => void startSession(restartCommand(c.command) ?? c.agent ?? "", { kind: "replace", tab, pane: pane.id }, c.agent ? agentLabel(c.agent) : "Agent")} onShowTerminal={() => setPaneContent(wsKey, tab, pane.id, { ...c, view: "terminal" })} />
           </div>
         )}
-        {c.kind === "browser" && <BrowserPane id={pane.id} url={c.url} visible={visible} onNavigate={(url) => setPaneContent(wsKey, tab, pane.id, { kind: "browser", url })} />}
+        {c.kind === "browser" && <BrowserPane id={pane.id} url={c.url} visible={visible} worktree={owner} onNavigate={(url) => setPaneContent(wsKey, tab, pane.id, { kind: "browser", url })} />}
         {c.kind === "log" && <LogView box={c.box} location={c.location} worktree={c.worktree} service={c.service} visible={visible} />}
-        {c.kind === "panel" && <PanelPane wsKey={wsKey} plugin={c.plugin} panel={c.panel} />}
+        {c.kind === "panel" && <PanelPane wsKey={owner} plugin={c.plugin} panel={c.panel} />}
         {c.kind === "starting" && (
           <div className="flex flex-1 items-center justify-center gap-2 text-muted-foreground text-sm">
             <Spinner className="size-4" />

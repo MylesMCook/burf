@@ -13,7 +13,7 @@ export type PaneContent =
   | { kind: "terminal"; box: string; session: string; agent?: string; command?: string; title?: string; view?: "terminal" | "conversation" }
   | { kind: "browser"; url: string }
   | { kind: "log"; box: string; location: string; worktree: string; service: string }
-  // A plugin's worktree panel, shown for the workspace's worktree.
+  // A plugin's worktree panel, shown for the pane's worktree (paneWorktree).
   | { kind: "panel"; plugin: string; panel: string; title: string }
   | { kind: "starting"; label: string }
   | { kind: "error"; message: string };
@@ -21,7 +21,10 @@ export type PaneContent =
 export type Pane = PaneContent;
 
 export type PaneNode =
-  | { kind: "leaf"; id: string; content: PaneContent }
+  // wt is the worktree (its workspace key, box:path) the pane belongs to,
+  // set only when that is not its tab's: a tab can hold panes of more than
+  // one worktree side by side. Unset, the pane is its tab's (paneWorktree).
+  | { kind: "leaf"; id: string; content: PaneContent; wt?: string }
   | { kind: "split"; id: string; dir: "row" | "col"; ratio: number; a: PaneNode; b: PaneNode };
 
 export type Leaf = Extract<PaneNode, { kind: "leaf" }>;
@@ -35,7 +38,39 @@ export interface Rect {
 
 export const newId = () => Math.random().toString(36).slice(2, 10);
 
-export const leaf = (content: PaneContent): Leaf => ({ kind: "leaf", id: newId(), content });
+export const leaf = (content: PaneContent, wt?: string): Leaf => (wt ? { kind: "leaf", id: newId(), content, wt } : { kind: "leaf", id: newId(), content });
+
+// paneWorktree is the worktree a pane belongs to: its own, else its tab's
+// (key, the workspace that holds the tab). What the pane shows, a plugin's
+// panel or a typed port, is for this worktree.
+export const paneWorktree = (key: string, l: Leaf): string => l.wt ?? key;
+
+// worktreesOf lists the worktrees a tab's panes belong to, its own first.
+export function worktreesOf(node: PaneNode, key: string): string[] {
+  const all = [...new Set(leaves(node).map((l) => paneWorktree(key, l)))];
+  return all.includes(key) ? [key, ...all.filter((k) => k !== key)] : all;
+}
+
+// mixed says a tab in workspace key shows a pane of another worktree.
+export const mixed = (node: PaneNode, key: string): boolean => leaves(node).some((l) => paneWorktree(key, l) !== key);
+
+// adopt moves a tree from workspace from into a tab of workspace to: each
+// leaf keeps the worktree it belonged to, written down only when that is
+// not to's. Ids are kept, so nothing is remounted.
+export function adopt(node: PaneNode, from: string, to: string): PaneNode {
+  if (from === to) return node;
+  if (node.kind === "split") return { ...node, a: adopt(node.a, from, to), b: adopt(node.b, from, to) };
+  const owner = paneWorktree(from, node);
+  const { wt: _wt, ...rest } = node;
+  return owner === to ? rest : { ...rest, wt: owner };
+}
+
+// sessionsShown is the sessions on box that panes of these trees show.
+export function sessionsShown(roots: PaneNode[], box: string): Set<string> {
+  const out = new Set<string>();
+  for (const r of roots) for (const l of leaves(r)) if (l.content.kind === "terminal" && l.content.box === box) out.add(l.content.session);
+  return out;
+}
 
 export function leaves(node: PaneNode): Leaf[] {
   return node.kind === "leaf" ? [node] : [...leaves(node.a), ...leaves(node.b)];

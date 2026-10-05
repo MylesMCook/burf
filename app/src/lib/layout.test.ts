@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { bounds, leaf, leaves, movePane, type PaneNode, place, remove, sideAt, split, swap } from "./layout.ts";
+import { adopt, bounds, leaf, leaves, mixed, movePane, type PaneNode, paneWorktree, place, remove, sessionsShown, sideAt, split, swap, worktreesOf } from "./layout.ts";
 
 const term = (s: string) => leaf({ kind: "terminal", box: "b", session: s });
 const names = (n: PaneNode) => leaves(n).map((l) => (l.content.kind === "terminal" ? l.content.session : "?"));
@@ -81,4 +81,48 @@ test("sideAt picks the nearest edge, or the middle when asked", () => {
   assert.equal(sideAt(0.6, 0.95), "bottom");
   assert.equal(sideAt(0.5, 0.5, true), "center");
   assert.notEqual(sideAt(0.5, 0.5), "center");
+});
+
+// A pane may belong to a worktree other than its tab's.
+
+const A = "devl:/w/a";
+const B = "devl:/w/b";
+const C = "gpu:/w/b";
+
+test("paneWorktree is the pane's own worktree, else its tab's", () => {
+  assert.equal(paneWorktree(A, term("a")), A);
+  assert.equal(paneWorktree(A, leaf({ kind: "browser", url: "" }, B)), B);
+  // A leaf made without one carries no wt at all, so saved state stays as it was.
+  assert.equal("wt" in term("a"), false);
+});
+
+test("a tab is mixed when a pane belongs to another worktree", () => {
+  const a = term("a");
+  const b = leaf({ kind: "panel", plugin: "diff", panel: "diff", title: "Diff" }, B);
+  const t = split(a, a.id, "row", b);
+  assert.equal(mixed(a, A), false);
+  assert.equal(mixed(t, A), true);
+  assert.deepEqual(worktreesOf(t, A), [A, B]);
+  // A tab left with only another worktree's pane lists just that one.
+  assert.deepEqual(worktreesOf(b, A), [B]);
+});
+
+test("adopt keeps each pane's worktree when a tree moves to another workspace", () => {
+  const own = term("a"); // A's
+  const guest = leaf({ kind: "browser", url: "" }, C); // C's, in A's tab
+  const back = leaf({ kind: "browser", url: "" }, B); // B's, in A's tab
+  const t = split(split(own, own.id, "row", guest), guest.id, "col", back);
+  const moved = adopt(t, A, B);
+  const by = Object.fromEntries(leaves(moved).map((l) => [l.id, l.wt]));
+  assert.equal(by[own.id], A, "A's own pane names A once it is in B's tab");
+  assert.equal(by[guest.id], C, "a guest stays its worktree's");
+  assert.equal(by[back.id], undefined, "B's pane, home in B's tab, needs no wt");
+  assert.equal("wt" in leaves(moved).find((l) => l.id === back.id)!, false);
+  assert.deepEqual(leaves(moved).map((l) => l.id), leaves(t).map((l) => l.id));
+  assert.equal(adopt(t, A, A), t);
+});
+
+test("sessionsShown counts panes of every tree, on that box only", () => {
+  const roots = [term("one"), leaf({ kind: "terminal", box: "b", session: "two" }, B), leaf({ kind: "terminal", box: "other", session: "three" })];
+  assert.deepEqual([...sessionsShown(roots, "b")].sort(), ["one", "two"]);
 });

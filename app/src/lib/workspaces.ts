@@ -1,7 +1,8 @@
+import { useMemo } from "react";
 import { create } from "zustand";
 
 import type { Location, Session, Worktree } from "@/lib/api";
-import { findLeaf, type Leaf, leaf, leaves, mapLeaf, movePane, neighbor, newId, type PaneContent, type PaneNode, place, remove, setRatio, type Side, split, swap } from "@/lib/layout";
+import { findLeaf, type Leaf, leaf, leaves, mapLeaf, movePane, neighbor, newId, type PaneContent, type PaneNode, paneWorktree, place, remove, sessionsShown, setRatio, type Side, split, swap } from "@/lib/layout";
 import { load, save } from "@/lib/storage";
 import { useStore } from "@/lib/store";
 
@@ -52,6 +53,39 @@ interface State {
 export const wsKey = (box: string, path: string) => `${box}:${path}`;
 
 export const refOf = (box: string, loc: Location, wt: Worktree): WorktreeRef => ({ box, location: loc.name, worktree: wt.name, path: wt.path, main: wt.main });
+
+// splitKey is a workspace key's box and path.
+export function splitKey(key: string): { box: string; path: string } {
+  const i = key.indexOf(":");
+  return { box: key.slice(0, i), path: key.slice(i + 1) };
+}
+
+// lookupRef finds a worktree by its key in what its box lists.
+function lookupRef(box: string, path: string, locations?: Location[]): WorktreeRef | undefined {
+  for (const loc of locations ?? []) {
+    const wt = loc.worktrees?.find((w) => w.path === path);
+    if (wt) return refOf(box, loc, wt);
+  }
+  return undefined;
+}
+
+// refFor is a worktree's ref by its key: its workspace's, else its box's
+// listing (a pane can belong to a worktree that has no workspace yet).
+export function refFor(key: string | undefined): WorktreeRef | undefined {
+  if (!key) return undefined;
+  const own = useWorkspaces.getState().spaces[key]?.ref;
+  if (own) return own;
+  const { box, path } = splitKey(key);
+  return lookupRef(box, path, useStore.getState().boxes[box]?.locations);
+}
+
+// useWorktreeRef is refFor, kept current.
+export function useWorktreeRef(key: string | undefined): WorktreeRef | undefined {
+  const own = useWorkspaces((s) => (key ? s.spaces[key]?.ref : undefined));
+  const { box, path } = key ? splitKey(key) : { box: "", path: "" };
+  const locations = useStore((s) => (own || !key ? undefined : s.boxes[box]?.locations));
+  return useMemo(() => own ?? (key ? lookupRef(box, path, locations) : undefined), [own, key, box, path, locations]);
+}
 
 // Panes that were starting when the app closed did not finish; drop them.
 function sanitize(spaces: Record<string, Workspace>): Record<string, Workspace> {
@@ -140,17 +174,22 @@ const cap = (names: string[]) => (names.length > REMEMBER ? names.slice(-REMEMBE
 
 // reconcile gives a tab to every session new in the worktree (made by the
 // CLI, an agent, a task, another laptop), unless it is already in a pane or
-// was closed by the person. A session it has seen before is never adopted
-// again: a new tab is always a new session, and one left without a tab is
-// picked up from the launcher. While a pane is starting a session, it waits:
-// that pane will show the new session itself.
+// was closed by the person. A pane anywhere counts: one of this worktree's
+// sessions may show in another worktree's tab, beside its panes. A session
+// it has seen before is never adopted again: a new tab is always a new
+// session, and one left without a tab is picked up from the launcher. While
+// a pane is starting a session, it waits: that pane will show the new
+// session itself.
 export function reconcile(key: string) {
-  const ws = useWorkspaces.getState().spaces[key];
+  const { spaces } = useWorkspaces.getState();
+  const ws = spaces[key];
   if (!ws) return;
   const sessions = useStore.getState().boxes[ws.ref.box]?.sessions;
   if (!sessions) return;
-  const panes = ws.tabs.flatMap((t) => leaves(t.root));
-  if (panes.some((l) => l.content.kind === "starting")) return;
+  const all = Object.entries(spaces).flatMap(([k, w]) => w.tabs.map((t) => ({ k, root: t.root })));
+  // A pane starting one of this worktree's sessions, here or as a guest.
+  if (all.some(({ k, root }) => leaves(root).some((l) => l.content.kind === "starting" && paneWorktree(k, l) === key))) return;
+  const roots = all.map((x) => x.root);
   const here = sessions.filter((s) => s.dir === ws.ref.path);
   const known = new Set(ws.known ?? []);
   const fresh = here.filter((s) => !known.has(s.name));
@@ -158,7 +197,7 @@ export function reconcile(key: string) {
   // the person closed it.
   const services = here.filter((s) => s.service && known.has(s.name));
   if (!fresh.length && !services.length && ws.known) return;
-  const shown = new Set(panes.flatMap((l) => (l.content.kind === "terminal" ? [l.content.session] : [])));
+  const shown = sessionsShown(roots, ws.ref.box);
   const missing = [...fresh, ...services].filter((s) => !shown.has(s.name) && !ws.hidden.includes(s.name));
   if (!fresh.length && !missing.length && ws.known) return;
   update(key, (w) => {

@@ -343,6 +343,66 @@ const RETRY_WIP: MockFile = {
   ],
 };
 
+// The search-perf worktree's own branch: a trigram index and a cache.
+const SEARCH: MockFile[] = [
+  {
+    path: "apps/web/lib/search/query.ts",
+    kind: "mod",
+    hunks: [
+      hunk(1, 1, [
+        ' import { db } from "@shop/db";',
+        '+import { cached } from "@shop/lib/cache";',
+        " ",
+        "-export async function searchProducts(q: string, limit = 48) {",
+        "-  const rows = await db.product.findMany({ where: { name: { contains: q, mode: \"insensitive\" } } });",
+        "-  return rows.slice(0, limit);",
+        "+export const searchProducts = cached(60, async (q: string, limit = 48) => {",
+        "+  // The trigram index answers ILIKE without a full scan (612 ms → 38 ms).",
+        "+  return db.$queryRaw`SELECT id, name, price FROM product WHERE name % ${q} ORDER BY similarity(name, ${q}) DESC LIMIT ${limit}`;",
+        "+});",
+        " ",
+        " export function normalise(q: string) {",
+        "   return q.trim().toLowerCase();",
+      ]),
+    ],
+  },
+  {
+    path: "packages/db/migrations/0042_product_name_trgm.sql",
+    kind: "add",
+    hunks: added(["CREATE EXTENSION IF NOT EXISTS pg_trgm;", "CREATE INDEX CONCURRENTLY product_name_trgm ON product USING gin (name gin_trgm_ops);"]),
+  },
+  {
+    path: "packages/lib/cache.ts",
+    kind: "add",
+    hunks: added([
+      "const store = new Map<string, { at: number; value: unknown }>();",
+      "",
+      "export function cached<A extends unknown[], R>(seconds: number, fn: (...args: A) => Promise<R>) {",
+      "  return async (...args: A): Promise<R> => {",
+      "    const key = JSON.stringify(args);",
+      "    const hit = store.get(key);",
+      "    if (hit && Date.now() - hit.at < seconds * 1000) return hit.value as R;",
+      "    const value = await fn(...args);",
+      "    store.set(key, { at: Date.now(), value });",
+      "    return value;",
+      "  };",
+      "}",
+    ]),
+  },
+  {
+    path: "apps/web/app/search/page.tsx",
+    kind: "mod",
+    hunks: [
+      hunk(12, 12, [
+        "   const results = await searchProducts(normalise(q));",
+        "-  return <Results items={results} />;",
+        '+  return <Results items={results} took={performance.now() - started} />;',
+        " }",
+      ]),
+    ],
+  },
+];
+
 const BRANCH = [RETRY, WEBHOOK, CHARGE, LEGACY, IMAGE, PAGE, FIXTURE, ...LOCALES, BACKOFF, BACKOFF_TEST, LEDGER, DOCS, LOCK];
 
 function filesFor(scope: string, clean: boolean): MockFile[] {
@@ -363,8 +423,9 @@ export function mockDiff(location: string, command: string): ExecResult | undefi
   const m = /berth-diff (branch|uncommitted|all) \d+/.exec(command);
   if (!m) return undefined;
   const clean = !location.includes("/");
-  const branch = clean ? "main" : "me/fix-payment-retries";
-  const files = filesFor(m[1], clean);
+  const search = location.includes("search-perf");
+  const branch = clean ? "main" : search ? "me/search-perf" : "me/fix-payment-retries";
+  const files = search ? SEARCH : filesFor(m[1], clean);
   const payload = `branch\t${branch}\nbase\torigin/main\nmergebase\t4e8c1d2a9b7f6e5d3c2b1a0f9e8d7c6b5a4f3e2d\n--numstat--\n${files.map(numstatOf).join("")}\n--patch--\n${files.map(patchOf).join("")}`;
   const { b64, size } = toBase64(payload);
   return { exit_code: 0, output: `@@berth-diff ok /tmp/berth-diff.mock raw ${size}\n${b64}\n` };

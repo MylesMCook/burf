@@ -1,6 +1,6 @@
 import { PuzzleIcon } from "lucide-react";
 
-import { useWorkspaces } from "@/lib/workspaces";
+import { useWorktreeRef } from "@/lib/workspaces";
 import { PluginBoundary, pluginContexts } from "@/plugins/plugin-boundary";
 import { useRegistry } from "@/plugins/registry";
 import { Icon } from "@/plugins/ui";
@@ -11,17 +11,24 @@ export function PanelIcon({ plugin, panel, className }: { plugin: string; panel:
   return icon ? <Icon name={icon} className={className} /> : <PuzzleIcon className={className} />;
 }
 
-// PanelPane shows a plugin's worktree panel for the worktree whose workspace
-// the pane is in. It waits quietly while plugins load, and says so when the
+// PanelPane shows a plugin's worktree panel for the pane's worktree
+// (paneWorktree: its own, else its tab's), given as wsKey. It waits quietly while plugins load, and says so when the
 // plugin that added the panel is gone or turned off.
 export function PanelPane({ wsKey, plugin, panel }: { wsKey: string; plugin: string; panel: string }) {
-  const ref = useWorkspaces((s) => s.spaces[wsKey]?.ref);
+  const ref = useWorktreeRef(wsKey);
   const entry = useRegistry((s) => s.worktreePanels.find((c) => c.plugin === plugin && c.item.id === panel));
   const status = useRegistry((s) => s.plugins.find((p) => p.id === plugin));
   const ctx = pluginContexts.get(plugin);
 
   if (!entry || !ctx || !ref) {
-    const text = !status || status.state === "loading" ? "Loading…" : status.state === "failed" ? `${status.name} failed to load: ${status.error ?? "unknown error"}` : "This panel's plugin is turned off.";
+    const text =
+      !status || status.state === "loading"
+        ? "Loading…"
+        : status.state === "failed"
+          ? `${status.name} failed to load: ${status.error ?? "unknown error"}`
+          : entry && ctx
+            ? "Its worktree is no longer on its box."
+            : "This panel's plugin is turned off.";
     return (
       <div className="flex flex-1 items-center justify-center gap-2 text-muted-foreground text-sm">
         <PuzzleIcon className="size-4" />

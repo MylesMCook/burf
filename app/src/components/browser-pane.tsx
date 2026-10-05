@@ -18,7 +18,7 @@ import { overlayOpen } from "@/lib/overlays";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { demoDevServer } from "@/demo/dev-server";
-import { currentSpace, rememberUrl, useWorkspaces } from "@/lib/workspaces";
+import { currentSpace, rememberUrl, useWorkspaces, useWorktreeRef } from "@/lib/workspaces";
 
 interface Props {
   // The pane's id. Child webviews are keyed by it, so pass the pane's own id
@@ -27,6 +27,9 @@ interface Props {
   url: string;
   visible: boolean;
   onNavigate(url: string): void;
+  // The worktree (workspace key) the pane belongs to, which a typed port
+  // opens on; unset, the one showing.
+  worktree?: string;
 }
 
 type Mode = "native" | "iframe";
@@ -36,14 +39,14 @@ type Mode = "native" | "iframe";
 // http://checkout.shop.devl.localhost:1377/). In the app it is a native child
 // webview laid over the pane, so every page works as in a browser; in a plain
 // browser, or when that fails, it is an iframe.
-export function BrowserPane({ id: paneId, url, visible, onNavigate }: Props) {
+export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree }: Props) {
   const fallbackId = useId();
   const id = useMemo(() => (paneId ?? fallbackId).replace(/[^A-Za-z0-9_-]/g, ""), [paneId, fallbackId]);
   const [mode, setMode] = useState<Mode>(isTauri() ? "native" : "iframe");
   const [failure, setFailure] = useState<string>();
   const [input, setInput] = useState(url);
   const [loading, setLoading] = useState(false);
-  const ctx = useBrowserContext();
+  const ctx = useBrowserContext(worktree);
   // Select the stable list and derive from it: a selector that builds a new
   // array every time never lets the store settle.
   const boxes = useStore((s) => s.status?.boxes);
@@ -232,10 +235,12 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate }: Props) {
   );
 }
 
-// useBrowserContext gathers what resolving a typed port needs: the shown
-// worktree, its box's services, and the proxy's URL port.
-function useBrowserContext(): BrowserContext {
-  const ref = currentSpace()?.ref;
+// useBrowserContext gathers what resolving a typed port needs: the pane's
+// worktree (else the one showing), its box's services, and the proxy's URL
+// port.
+function useBrowserContext(worktree?: string): BrowserContext {
+  const own = useWorktreeRef(worktree);
+  const ref = own ?? currentSpace()?.ref;
   const services = useStore((s) => (ref ? s.boxes[ref.box]?.services : undefined));
   const urlPort = useStore((s) => s.status?.proxy.url_port);
   return { ref, services, urlPort };
@@ -480,7 +485,7 @@ function FramedPage({ id, url, onReload }: { id: string; url: string; onReload()
   );
 }
 
-// Suggestions offers the current worktree's dev servers, by the names the
+// Suggestions offers the pane's worktree's dev servers, by the names the
 // proxy knows them by, and pages opened recently, right under the address
 // bar where the eye already is.
 function Suggestions({ ctx, onPick }: { ctx: BrowserContext; onPick(url: string): void }) {
