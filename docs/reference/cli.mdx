@@ -87,6 +87,7 @@ See [kits](/guides/kits).
 | `berth events [BOX] [--json]` | Stream events from this laptop and every box as they happen (box events carry `box`); with `BOX`, only that box's |
 | `berth agent` | Run the agent in the foreground |
 | `berth agent start` | Start the agent in the background if it isn't running (what the app's **Start the Berth agent** runs) |
+| `berth agent restart [--if-stale] [--json]` | Restart the agent once its work under way is done; `--if-stale` only when it's older than this `berth` (what the app runs as it starts, after an update) |
 | `berth agent install\|uninstall\|status` | Run the agent at login, restart it on crashes |
 | `berth setup port80 [--remove]` | Drop `:1377` from URLs (macOS; asks for your admin password once) |
 | `berth stop` | Stop the agent (and every forward) |

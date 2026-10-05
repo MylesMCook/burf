@@ -196,6 +196,10 @@ type Agent struct {
 	// selfNames are the boxes' own names, which the proxy accepts too
 	// (aliases.go).
 	selfNames selfNames
+	// startedAs is the program this agent runs, and work the long work
+	// under way that a restart waits for (restart.go).
+	startedAs startedAs
+	work      workSet
 
 	// ctx lives as long as the agent; forwards added through the API run under
 	// it rather than under the request that created them.
@@ -252,6 +256,7 @@ func Run(ctx context.Context, cfg Config) error {
 		running:  map[string]*runningForward{},
 		wake:     make(chan struct{}, 1),
 	}
+	a.startedAs = readStartedAs(cfg.Now())
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	a.ctx = ctx

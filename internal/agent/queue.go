@@ -176,6 +176,10 @@ type promptQueue struct {
 	workers map[string]bool
 	// sends counts goroutines delivering, so tests can wait for quiet.
 	sends sync.WaitGroup
+	// held stops sends for a restart, which waits for those under way
+	// (sending) first (hold).
+	held    bool
+	sending sync.WaitGroup
 }
 
 func newPromptQueue(ctx context.Context, path string, boxes queueBoxes, publish func(Event), now func() time.Time, logf func(string, ...any), idleTimeout, waitStep time.Duration) *promptQueue {
@@ -453,6 +457,9 @@ func (q *promptQueue) sendNow(id string) (QueueItem, error) {
 // claimLocked marks an item as sending and saves that before anything is
 // sent: this is what makes delivery at most once.
 func (q *promptQueue) claimLocked(i int) (QueueItem, error) {
+	if q.held {
+		return QueueItem{}, errDraining
+	}
 	prev := q.items[i]
 	it := &q.items[i]
 	it.State, it.Error = QueueSending, ""
@@ -462,7 +469,17 @@ func (q *promptQueue) claimLocked(i int) (QueueItem, error) {
 		q.items[i] = prev
 		return QueueItem{}, fmt.Errorf("could not save the queue before sending: %w", err)
 	}
+	q.sending.Add(1)
 	return *it, nil
+}
+
+// hold sends nothing more, for a restart, and waits for the sends under
+// way. What waits in line stays queued for the next agent.
+func (q *promptQueue) hold() {
+	q.mu.Lock()
+	q.held = true
+	q.mu.Unlock()
+	q.sending.Wait()
 }
 
 // sendClaimed sends a claimed item and records the outcome. It reports the
@@ -471,6 +488,7 @@ func (q *promptQueue) claimLocked(i int) (QueueItem, error) {
 func (q *promptQueue) sendClaimed(it QueueItem) QueueItem {
 	q.sends.Add(1)
 	defer q.sends.Done()
+	defer q.sending.Done()
 	ctx, cancel := context.WithTimeout(q.ctx, queueSendLimit)
 	err := q.boxes.send(ctx, it.Box, it.Session, it.Text, it.Enter)
 	cancel()

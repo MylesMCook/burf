@@ -182,6 +182,20 @@ pub async fn start_agent(at_login: bool) -> Result<String, String> {
         .map_err(|e| e.to_string())?
 }
 
+// restart_stale_agent restarts the agent when it is older than the berth
+// this app carries (`berth agent restart --if-stale`): after an update the
+// agent started by the old app, or installed at login, goes on running the
+// old code until something restarts it. It finishes its work under way
+// first, and agents' sessions, in tmux on the boxes, keep running. Answers
+// berth's JSON report (RestartResult in cmd/berth/agentprocess.go).
+#[tauri::command]
+pub async fn restart_stale_agent() -> Result<String, String> {
+    let (bin, _) = find_berth().ok_or("Berth could not find its berth command")?;
+    tauri::async_runtime::spawn_blocking(move || run(&bin, &["agent", "restart", "--if-stale", "--json"]))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

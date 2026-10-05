@@ -183,14 +183,7 @@ func (a *Agent) api(stop context.CancelFunc) http.Handler {
 		}
 		forward.Bridge(a.runCtx(), client, conn)
 	})
-	mux.HandleFunc("POST /v1/stop", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, http.StatusOK, map[string]bool{"stopping": true})
-		// Reply before stopping, or the caller would see a dropped connection.
-		go func() {
-			time.Sleep(50 * time.Millisecond)
-			stop()
-		}()
-	})
+	a.restartRoutes(mux, stop)
 	return mux
 }
 

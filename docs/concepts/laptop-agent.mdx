@@ -55,8 +55,17 @@ berth agent install      # launchd on macOS, a systemd user unit on Linux
 berth agent status
 berth agent uninstall
 berth agent              # run it in the foreground instead
+berth agent restart      # restart it once its work under way is done
 berth stop               # stop it, and every forward
 ```
+
+The agent outlives the app, so an update to Berth would leave it running
+the old version. The updated app restarts it as it starts (`berth agent
+restart --if-stale`), whether the app started it or it starts at login:
+the agent first finishes what it's doing (adding or upgrading a box,
+setting up this Mac's box, sending a queued prompt), and agents' sessions
+keep running on their boxes throughout. The new agent then brings this
+Mac's box up to date.
 
 ```sh
 berth status             # boxes, forwards and the proxy at a glance

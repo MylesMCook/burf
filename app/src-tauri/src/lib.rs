@@ -115,6 +115,7 @@ pub fn run() {
             cli_link::install_cli_link,
             agent::agent_binary,
             agent::start_agent,
+            agent::restart_stale_agent,
             browser::browser_open,
             browser::browser_set_bounds,
             browser::browser_show,

@@ -758,6 +758,12 @@ func (a *Agent) refreshLocalBox(ctx context.Context) {
 		return
 	}
 	stamp := fmt.Sprint(st.Size(), st.ModTime().UnixNano())
+	// A restart waits for an update under way (restart.go).
+	done, err := a.work.begin("updating this computer's box")
+	if err != nil {
+		return
+	}
+	defer done()
 	// A set up or removal running now does the same work.
 	if !a.local.mu.TryLock() {
 		return
@@ -888,6 +894,12 @@ func (a *Agent) localBoxRoutes(mux *http.ServeMux) {
 		writeJSON(w, http.StatusOK, a.localBoxStatus())
 	})
 	mux.HandleFunc("POST /v1/boxes/local", func(w http.ResponseWriter, r *http.Request) {
+		done, err := a.work.begin("setting up this computer's box")
+		if err != nil {
+			writeCoded(w, http.StatusServiceUnavailable, err.Error(), "agent_restarting")
+			return
+		}
+		defer done()
 		if !a.local.mu.TryLock() {
 			writeError(w, http.StatusConflict, "this computer's box is being set up or removed already")
 			return
@@ -906,6 +918,12 @@ func (a *Agent) localBoxRoutes(mux *http.ServeMux) {
 		if r.ContentLength != 0 && !decodeBody(w, r, &req) {
 			return
 		}
+		done, err := a.work.begin("removing this computer's box")
+		if err != nil {
+			writeCoded(w, http.StatusServiceUnavailable, err.Error(), "agent_restarting")
+			return
+		}
+		defer done()
 		if !a.local.mu.TryLock() {
 			writeError(w, http.StatusConflict, "this computer's box is being set up or removed already")
 			return

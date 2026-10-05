@@ -24,9 +24,9 @@
 # several tabs in two tab groups (Labs, on by default),
 # and a kit applied; then the app replaced in place, as the updater does,
 # and started again. The layout, preferences and plugins must be restored,
-# the session still running, and once the agent has restarted (as at the
-# next login) this Mac's box must run the new berthd with the session
-# still there and the kit intact.
+# the session still running; the new app must say it was updated and
+# restart the old agent by itself, and the new agent bring this Mac's box
+# to the new berthd, with the session still there and the kit intact.
 #
 # A box on a release before the tmux fix (20472df) can't start sessions
 # under launchd with Homebrew's tmux 3.7; for the --from half on a Mac the
@@ -226,7 +226,7 @@ run_mac() {
 	step "The layout is restored" m_layout
 	step "Preferences and plugins kept" m_prefs
 	step "The session kept running" m_session
-	RT_CRITICAL=1 step "The agent restarts (as at login) and updates this Mac's box" m_agent_restart
+	RT_CRITICAL=1 step "The agent restarted with the app, and updated this Mac's box" m_agent_restart
 	step "The session survived the box's upgrade" m_session_after
 	step "It answers a second prompt" m_second_prompt
 	step "The kit is intact" m_kit_after
@@ -396,18 +396,28 @@ m_kit() {
 	detail "release-test applied to $BOX/$LOC"
 }
 
+agent_gone() { ! kill -0 "$AGENT_PID" 2>/dev/null; }
+# new_agent: the agent answers as one of this build (GET /v1/agent).
+new_agent() { api GET /v1/agent | jq_py "j['pid'] != $AGENT_PID" >/dev/null; }
 m_upgrade() {
 	AGENT_PID=$(pgrep -f "$ROOT/app/Berth Test.app/Contents/MacOS/berth-cli agent" | head -1)
+	[ -n "$AGENT_PID" ] || fail "no agent from $FROM is running" || return 1
+	# The box's berthd before: the new agent replaces it soon after it starts.
+	OLD_BUILD=$(box_build)
 	quit_app
 	unset BERTH_RELEASE_TEST_LANG
 	install_dmg "$DMG" "$ROOT/Applications" || return 1
 	test_copy "$ROOT/Applications/Berth.app" "$APP_UNDER_TEST" || return 1
 	launch_app "$APP_UNDER_TEST" || return 1
+	local version
+	version=$(app_version "$APP_UNDER_TEST")
+	# The app finds the agent from $FROM, restarts it, and says so.
+	ax wait "Updated to v$version" --timeout 60 || fail "the app didn't say it was updated to v$version" || return 1
+	until_ok 60 agent_gone || fail "the agent from $FROM (pid $AGENT_PID) still runs: the app didn't restart it" || return 1
+	until_ok 30 new_agent || fail "no agent of this build answers after the restart: $(api GET /v1/agent | head -c 300)" || return 1
 	front
 	ax wait "$LOC actions" --role AXPopUpButton --timeout 30 || fail "the upgraded app doesn't show the project (onboarding again?)" || return 1
-	local still="restarted"
-	kill -0 "$AGENT_PID" 2>/dev/null && still="still the one from $FROM (pid $AGENT_PID): the app doesn't restart it"
-	detail "Berth $(app_version "$APP_UNDER_TEST") started; its agent is $still"
+	detail "Berth $version started, said \"Updated to v$version\", and restarted the agent from $FROM (pid $AGENT_PID → $(api GET /v1/agent | jq_py 'j["pid"]'))"
 }
 
 m_layout() {
@@ -453,19 +463,13 @@ m_session() {
 box_build() { api GET "/v1/boxes/$BOX/api/info" | jq_py 'j.get("build")'; }
 new_build() { [ "$(box_build)" = "$NEW_BUILD" ]; }
 m_agent_restart() {
-	OLD_BUILD=$(box_build)
 	NEW_BUILD=$(BERTH_HOME="$ROOT/x" "$APP_UNDER_TEST/Contents/Resources/berthd" version | sed -n 's/.*build \([0-9a-f]*\).*/\1/p')
 	[ -n "$NEW_BUILD" ] || fail "the new app carries no berthd to update the box with" || return 1
-	[ -n "$OLD_BUILD" ] || fail "this Mac's box doesn't answer before the agent restarts" || return 1
-	# As a restart of the Mac: the agent stops, and the app, opened again,
-	# offers to start it (no login item in the test).
-	berth_cli stop >/dev/null 2>&1 || true
-	quit_app
-	launch_app "$APP_UNDER_TEST" || return 1
-	front
-	ax press "Start the Berth agent" --role AXButton --timeout 30 || return 1
+	[ -n "$OLD_BUILD" ] || fail "this Mac's box didn't answer before the upgrade" || return 1
+	# No restart of the Mac, no Start button: the agent the app restarted
+	# brings the box up to date by itself.
 	until_ok 90 new_build || fail "this Mac's box still runs build $(box_build), not the app's $NEW_BUILD" || return 1
-	detail "box berthd $OLD_BUILD → $NEW_BUILD, by the agent's refresh"
+	detail "box berthd $OLD_BUILD → $NEW_BUILD, by the restarted agent's refresh"
 }
 
 m_session_after() { m_session; }

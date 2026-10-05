@@ -55,6 +55,12 @@ func argOK(values ...string) error {
 
 // runJSON runs a CLI command that prints JSON and returns its output as is.
 func (a *Agent) runJSON(w http.ResponseWriter, r *http.Request, args ...string) {
+	done, err := a.work.begin("berth " + args[0])
+	if err != nil {
+		writeCoded(w, http.StatusServiceUnavailable, err.Error(), "agent_restarting")
+		return
+	}
+	defer done()
 	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Minute)
 	defer cancel()
 	out, err := a.cli(ctx, args...).Output()
@@ -88,6 +94,12 @@ type StreamLine struct {
 
 // runStream runs a CLI command and streams its output as NDJSON lines.
 func (a *Agent) runStream(w http.ResponseWriter, r *http.Request, timeout time.Duration, args ...string) {
+	finished, err := a.work.begin("berth " + strings.Join(args[:min(2, len(args))], " "))
+	if err != nil {
+		writeCoded(w, http.StatusServiceUnavailable, err.Error(), "agent_restarting")
+		return
+	}
+	defer finished()
 	ctx, cancel := context.WithTimeout(r.Context(), timeout)
 	defer cancel()
 	cmd := a.cli(ctx, args...)

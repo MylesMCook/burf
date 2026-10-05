@@ -1,8 +1,11 @@
+import { getVersion } from "@tauri-apps/api/app";
 import { invoke } from "@tauri-apps/api/core";
 import { check, type Update } from "@tauri-apps/plugin-updater";
 import { create } from "zustand";
 
+import { toastManager } from "@/components/ui/toast";
 import { isTauri } from "@/lib/api";
+import { useStore } from "@/lib/store";
 
 // Updates to the app itself. Berth checks the latest GitHub release's
 // latest.json when it opens and every few hours after, and downloads a newer
@@ -11,6 +14,13 @@ import { isTauri } from "@/lib/api";
 // installed over Berth.app and the app relaunches. It never restarts by
 // itself. Restarting stops no agent (they run on their boxes), but it does
 // close the window, which is the person's call.
+//
+// The laptop agent outlives the app, so after an update it still runs the
+// old berth (and keeps this Mac's box on the old berthd). The updated app,
+// as it starts, has it restart (afterLaunch): the agent finishes its work
+// under way, stops, and the new one starts, through the login service when
+// it is installed at login, and brings this Mac's box up to date. A short
+// note says Berth was updated.
 //
 // The update must carry a signature from the key in tauri.conf.json
 // (plugins.updater.pubkey); the plugin refuses anything else.
@@ -97,13 +107,60 @@ export async function restartToUpdate() {
   }
 }
 
+// The agent's restart as the app starts, for the status bar.
+export const useAgentRestart = create<{ restarting: boolean }>(() => ({ restarting: false }));
+
+// What `berth agent restart --if-stale --json` reports.
+interface AgentRestart {
+  restarted: boolean;
+  reason?: string;
+  from?: string;
+  to?: string;
+}
+
+const LAST_VERSION = "berth.app-version";
+
+// afterLaunch restarts an agent older than this app (an update replaced the
+// app under it, or this app was installed over an older one), and says when
+// Berth was updated: this version is not the one that ran last, or the
+// agent was older.
+async function afterLaunch() {
+  const version = await getVersion().catch(() => "");
+  let before: string | null = null;
+  try {
+    before = localStorage.getItem(LAST_VERSION);
+    if (version) localStorage.setItem(LAST_VERSION, version);
+  } catch {
+    // No storage: the agent still says whether it was older.
+  }
+  useAgentRestart.setState({ restarting: true });
+  let r: AgentRestart | undefined;
+  try {
+    r = JSON.parse(await invoke<string>("restart_stale_agent")) as AgentRestart;
+  } catch (e) {
+    console.warn("berth: restarting an older agent:", e);
+  } finally {
+    useAgentRestart.setState({ restarting: false });
+  }
+  if (r?.restarted) void useStore.getState().refreshAll();
+  const updated = (!!before && !!version && before !== version) || !!r?.restarted;
+  if (!updated || !version) return;
+  toastManager.add({
+    type: "success",
+    title: `Updated to v${version}`,
+    description: r?.restarted ? "The Berth agent restarted with it. Your agents kept running." : undefined,
+  });
+}
+
 let started = false;
 
 // startUpdater checks on launch and every few hours, in the packaged app
 // only: a dev build would otherwise offer to replace itself with a release.
+// A dev build leaves the agent alone too (it is often the one you run).
 export function startUpdater() {
   if (started || !isTauri() || import.meta.env.DEV) return;
   started = true;
+  void afterLaunch();
   // Let the window and the agent connection settle first.
   window.setTimeout(() => void checkForUpdate(), 10_000);
   window.setInterval(() => void checkForUpdate(), EVERY);

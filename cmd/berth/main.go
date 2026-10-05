@@ -84,6 +84,8 @@ Agent
   berth events [BOX] [--json]            Stream events from this laptop and every box (or only BOX's)
   berth agent                            Run the agent in the foreground
   berth agent start                      Start the agent in the background, if it is not running
+  berth agent restart [--if-stale]       Restart it once its work under way is done (--if-stale:
+                                         only if it is older than this berth, as after an update)
   berth agent install|uninstall|status   Run the agent at login, restart it on crashes
   berth setup port80 [--remove]          Drop :1377 from URLs (asks for your admin password once)
   berth stop                             Stop the agent (and every forward)

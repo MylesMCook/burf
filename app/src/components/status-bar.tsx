@@ -12,7 +12,7 @@ import { bytes } from "@/lib/format";
 import { useOutdatedBoxes } from "@/lib/outdated";
 import { AGENT_WORDS, BOX_WORDS, boxState } from "@/lib/state-model";
 import { useStore } from "@/lib/store";
-import { restartToUpdate, useUpdater } from "@/lib/updater";
+import { restartToUpdate, useAgentRestart, useUpdater } from "@/lib/updater";
 import { cn } from "@/lib/utils";
 import { PluginBoundary, pluginContexts } from "@/plugins/plugin-boundary";
 import { useRegistry } from "@/plugins/registry";
@@ -23,6 +23,8 @@ export function StatusBar() {
   const status = useStore((s) => s.status);
   const boxes = useStore((s) => s.boxes);
   const connection = useStore((s) => s.connection);
+  // The agent restarting after an update (lib/updater.ts) is away a moment.
+  const restarting = useAgentRestart((s) => s.restarting);
   const counts = useAgentCounts();
   const items = useRegistry((s) => s.statusBarItems);
   const [syncing, setSyncing] = useState(false);
@@ -45,7 +47,12 @@ export function StatusBar() {
           <span className="rounded border border-warning/40 px-1 text-warning/80">mock</span>
         </Tip>
       )}
-      {connection.state === "offline" ? (
+      {connection.state === "offline" && restarting ? (
+        <span className="flex items-center gap-1.5">
+          <Spinner className="size-3" />
+          Restarting the Berth agent…
+        </span>
+      ) : connection.state === "offline" ? (
         <Tip label={connection.error}>
           <span className="flex items-center gap-1.5 text-destructive">
             <span className="size-1.5 rounded-full bg-destructive" />

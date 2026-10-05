@@ -15,6 +15,7 @@ import (
 	"github.com/sean-brydon/berthd/internal/agent"
 	"github.com/sean-brydon/berthd/internal/doctor"
 	"github.com/sean-brydon/berthd/internal/service"
+	"github.com/sean-brydon/berthd/internal/version"
 )
 
 func agentService(l laptop) (service.Spec, error) {
@@ -143,6 +144,30 @@ func agentCommand(l laptop, args []string) error {
 		}
 		fmt.Printf("Installed %s\nThe agent now starts at login and restarts after a crash; berth stop still stops it.\n", path)
 		return nil
+	case "restart":
+		// What the app runs as it starts (--if-stale): an agent older than
+		// this berth (the app was updated under it) is stopped once its
+		// work under way is done, and started again from this one.
+		ifStale, asJSON := false, false
+		for _, a := range args[1:] {
+			switch a {
+			case "--if-stale":
+				ifStale = true
+			case "--json":
+				asJSON = true
+			default:
+				return errors.New("usage: berth agent restart [--if-stale] [--json]")
+			}
+		}
+		res, err := restartAgent(l, spec, ifStale)
+		if err != nil {
+			return err
+		}
+		if asJSON {
+			return printJSON(res)
+		}
+		fmt.Println(res.Message)
+		return nil
 	case "uninstall":
 		path, err := service.Uninstall(spec)
 		if err != nil {
@@ -162,5 +187,87 @@ func agentCommand(l laptop, args []string) error {
 		fmt.Printf("service installed: %v\nagent running: %v\n", service.Installed(spec), running)
 		return nil
 	}
-	return errors.New("usage: berth agent [start|install|uninstall|status]")
+	return errors.New("usage: berth agent [start|restart|install|uninstall|status]")
 }
+
+// RestartResult is what `berth agent restart --json` reports.
+type RestartResult struct {
+	Restarted bool `json:"restarted"`
+	// Running: an agent runs now (false: none was running, with --if-stale).
+	Running bool   `json:"running"`
+	Reason  string `json:"reason,omitempty"`
+	From    string `json:"from,omitempty"`
+	To      string `json:"to,omitempty"`
+	// Service: it runs as the login service (berth agent install).
+	Service bool   `json:"service,omitempty"`
+	Message string `json:"message"`
+}
+
+// restartAgent stops the running agent, letting it finish its work under
+// way, and starts this berth's: through the login service when that is
+// installed for this berth, otherwise detached, as berth agent start does.
+// With ifStale, only an agent older than this berth is restarted.
+func restartAgent(l laptop, spec service.Spec, ifStale bool) (RestartResult, error) {
+	ctx := context.Background()
+	c := agent.NewClient(l.socket())
+	if !c.Running(ctx) {
+		if ifStale {
+			return RestartResult{Message: "The berth agent is not running."}, nil
+		}
+		if _, err := ensureAgent(l); err != nil {
+			return RestartResult{}, err
+		}
+		return RestartResult{Restarted: true, Running: true, To: version.Version, Message: "Started the berth agent."}, nil
+	}
+	ictx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	info, infoErr := c.Info(ictx)
+	cancel()
+	build := ""
+	if b, err := os.ReadFile(spec.Program); err == nil {
+		build = version.BuildID(b)
+	}
+	stale, why := agent.Stale(info, infoErr, spec.Program, build, version.Version)
+	if ifStale && !stale {
+		return RestartResult{Running: true, From: info.Version, Message: "The berth agent is up to date."}, nil
+	}
+	from := info.Version
+	if errors.Is(infoErr, agent.ErrNoAgentInfo) {
+		from = "an older release"
+	}
+	if err := c.StopDrained(ctx); err != nil {
+		return RestartResult{}, fmt.Errorf("stopping the berth agent: %w", err)
+	}
+	wctx, cancel := context.WithTimeout(ctx, agentDrainWait)
+	err := c.WaitStopped(wctx, l.dir)
+	cancel()
+	if err != nil {
+		return RestartResult{}, err
+	}
+	asService := false
+	if u, ok, _ := service.Read(spec.Name); ok && u.Program == spec.Program && u.Env["BERTH_HOME"] == spec.Env["BERTH_HOME"] {
+		// Installed for this berth: installing it again (as it is, or as
+		// this berth writes it now) starts it.
+		if _, err := service.Install(spec); err != nil {
+			return RestartResult{}, err
+		}
+		asService = true
+	} else if err := spawnAgent(l, spec.Program); err != nil {
+		return RestartResult{}, err
+	}
+	deadline := time.Now().Add(10 * time.Second)
+	for !c.Running(ctx) {
+		if time.Now().After(deadline) {
+			return RestartResult{}, fmt.Errorf("the berth agent did not start again; see %s", filepath.Join(l.dir, "agent.log"))
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	msg := "Restarted the berth agent"
+	if why != "" {
+		msg += ": " + why
+	}
+	return RestartResult{Restarted: true, Running: true, Reason: why, From: from, To: version.Version, Service: asService, Message: msg + "."}, nil
+}
+
+// How long a restart waits for the agent to finish its work under way and
+// stop: its own limit, and a little more.
+const agentDrainWait = 2*time.Minute + 30*time.Second
