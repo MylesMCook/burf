@@ -103,9 +103,15 @@ func TestPausedAgentsStopAndCarryOnWhereTheyWere(t *testing.T) {
 	}
 	screen := func() string { s, _ := b.Sessions.Screen(ctx, "counter", 200); return strings.TrimSpace(s) }
 	// A tick printed just before the stop may reach tmux's screen a moment
-	// later, more so on a loaded machine: read the frozen screen after it.
-	time.Sleep(300 * time.Millisecond)
+	// later, more so on a loaded machine: wait until it has held still for
+	// half a second before taking it as frozen.
 	frozen := screen()
+	for still, deadline := time.Now(), time.Now().Add(5*time.Second); time.Since(still) < 500*time.Millisecond && time.Now().Before(deadline); {
+		time.Sleep(100 * time.Millisecond)
+		if s := screen(); s != frozen {
+			frozen, still = s, time.Now()
+		}
+	}
 	time.Sleep(800 * time.Millisecond)
 	if screen() != frozen {
 		t.Fatal("a paused session kept running")
