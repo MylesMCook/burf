@@ -38,6 +38,7 @@ type Proxy struct {
 
 	mu         sync.Mutex
 	transports map[string]*http.Transport
+	preview    previewState
 }
 
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -65,6 +66,10 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	target := Target{Box: box}
 	publicHost := r.Host
+	jarHost := hostOnly(r.Host)
+	// A Preview tab's frame (preview.go): its page gets the preview script,
+	// and its requests the cookies a frame is not sent.
+	preview := p.preview.kind(r, jarHost)
 	rp := &httputil.ReverseProxy{
 		Transport: p.transport(target.Box),
 		Rewrite: func(pr *httputil.ProxyRequest) {
@@ -77,10 +82,29 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					pr.Out.Header.Set(h, toUpstream(v, publicHost, port))
 				}
 			}
+			pr.Out.Header.Del(PreviewHeader)
+			if preview != "" {
+				p.preview.lend(jarHost, pr.Out)
+			}
+			if preview == "page" {
+				stripPreviewParam(pr.Out.URL)
+				// The page itself, whole and plain, for the script to go in:
+				// not compressed, and not a 304 for a copy cached without it.
+				pr.Out.Header.Set("Accept-Encoding", "identity")
+				pr.Out.Header.Del("If-None-Match")
+				pr.Out.Header.Del("If-Modified-Since")
+			}
 		},
 		ModifyResponse: func(resp *http.Response) error {
 			if loc := resp.Header.Get("Location"); loc != "" {
 				resp.Header.Set("Location", toPublic(loc, publicHost, port, target.Box))
+			}
+			p.preview.remember(jarHost, resp)
+			if preview == "page" {
+				framable(resp.Header)
+				if r.Method == http.MethodGet && isHTML(resp) {
+					injectPreview(resp)
+				}
 			}
 			return nil
 		},
