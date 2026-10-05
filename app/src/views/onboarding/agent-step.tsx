@@ -1,4 +1,5 @@
 import { TaskComposer } from "@/components/conversation/task-composer";
+import { useBoxRequirements } from "@/components/requirements-card";
 import { StepHeader } from "@/components/step-header";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
@@ -10,11 +11,16 @@ export const SAMPLE_TASK = 'Add a /health endpoint to server.js that returns {"o
 
 // AgentStep ends onboarding with the composer, the one way to start work,
 // on the project just added: for the sample, a first task already written,
-// so Enter starts the first agent in a worktree of its own.
+// so Enter starts the first agent in a worktree of its own. A fresh Mac
+// often lacks tmux or an agent CLI: the composer asks the box first and
+// shows how to install what's missing, so nothing is created to fail.
 export function AgentStep({ box, location, sample, onFinish }: { box: string; location: string; sample?: boolean; onFinish(): void }) {
   const agents = useStore((s) => s.boxes[box]?.info?.agents);
   const local = useIsLocalBox(box);
-  const none = agents && !agents.some((a) => a.command);
+  // The box says what it lacks (tmux, an agent CLI) in the composer's card;
+  // a box too old to say gets the old hint.
+  const told = !!useBoxRequirements(box).req;
+  const none = !told && agents && !agents.some((a) => a.command);
   return (
     <div>
       <StepHeader

@@ -1,10 +1,11 @@
 import { toastError } from "@/components/error-note";
+import { noteTmuxMissing, tmuxMissing } from "@/components/requirements-card";
 import { toastManager } from "@/components/ui/toast";
 import { isMock } from "@/hooks/use-berth-connection";
 import { agentPresets } from "@/lib/actions";
 import { offerAgentHooks } from "@/lib/agent-hooks";
 import type { Session, TaskResult, Worktree } from "@/lib/api";
-import { boxApi } from "@/lib/api";
+import { ApiError, boxApi } from "@/lib/api";
 import { startBroadcast } from "@/lib/broadcast";
 import type { AgentPick, ComposerTarget } from "@/lib/composer";
 import { agentLabel } from "@/lib/derive";
@@ -88,6 +89,9 @@ export function freeName(box: string, location: string, name: string): string {
 }
 
 const fail = (title: string, err: unknown, box?: string) => {
+  // The box has no tmux: its card (the composer's, onboarding's) says how
+  // to install it, once it has asked the box again.
+  if (box && err instanceof ApiError && err.code === "tmux_missing") noteTmuxMissing(box);
   toastError(err, { title, box });
   return false;
 };
@@ -99,6 +103,8 @@ export async function startWork(d: StartDraft): Promise<boolean> {
   if (d.picks.length > 1) return startAttempts(d);
   const pick = d.picks[0];
   const presets = agentPresets(d.box, d.location);
+  // An agent can't start without tmux: say so before a worktree is made.
+  if (pick && tmuxMissing(d.box)) return fail("Couldn't start it", new ApiError("tmux is not installed on this box", 503, "tmux_missing"), d.box);
   try {
     let session: string | undefined;
     if (!pick) {

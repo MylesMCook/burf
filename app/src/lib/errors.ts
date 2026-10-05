@@ -75,13 +75,14 @@ export function explain(err: unknown, ctx: { box?: string } = {}): Explained {
   // The box runs a berthd too old for what was asked.
   if (code === "box_outdated" || code === "unsupported" || /^404 page not found$|doesn't have this yet|too old to|needs a newer berthd/i.test(raw))
     return out(`${box ?? "This box"} needs an update`, "It runs an older berthd that doesn't have this yet. Updating keeps its agents running.", "update-box");
+  // A box without tmux answers 503 too: it is there, but can't run agents.
+  if (code === "tmux_missing" || /tmux is not installed/.test(raw)) return out(`tmux isn't installed${on}`, "Berth runs agents inside tmux. Install it on the box, then try again.", "retry");
   // The laptop can't get through.
   if (code === "box_unreachable" || status === 502 || status === 503 || /dial tcp|i\/o timeout|connection refused|no route to host|network is unreachable|connection reset|broken pipe|context deadline exceeded|is offline|unexpected EOF|^EOF$/i.test(raw))
     return out(`Can't reach ${it}`, "It may be asleep or offline. Berth reconnects on its own when it's back.", "reconnect");
   if (/failed to fetch|networkerror|load failed|no agent token/i.test(raw))
     return out("Can't reach Berth's agent", "The app lost its connection to the agent on this computer. It reconnects on its own.", "reconnect");
   if (code === "box_unknown" || /^no paired box named/.test(raw)) return out("That box isn't paired", "Berth doesn't know a box by that name any more. Add it again from Settings → Boxes.");
-  if (code === "tmux_missing" || /tmux is not installed/.test(raw)) return out(`tmux isn't installed${on}`, "Berth runs agents inside tmux. Install it on the box, then try again.", "retry");
   if (code === "too_many" || status === 429) return out("Too many tries", "Wait a minute, then try again.", "retry");
   if (code === "refused" || /hook stopped/.test(raw)) {
     const said = raw.split(": ").slice(1).join(": ").trim();

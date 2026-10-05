@@ -8,6 +8,7 @@ import { AddProjectItem, AgentsPicker, type Chosen, DefaultBoxItem, entryKey, ex
 import { useBranches, useResolve } from "@/components/new-worktree/use-resolve";
 import { withDefaults } from "@/components/prompts/shared";
 import { RepoWants, trustRepo, useRepoTrustFor } from "@/components/repo-trust";
+import { RequirementsCard, useRequirementsCard } from "@/components/requirements-card";
 import { AttachmentChips, useAttachments } from "@/components/conversation/attachments";
 import { type ComposerMenu, useComposerMenu } from "@/components/conversation/command-menu";
 import { ErrorText, toastError } from "@/components/error-note";
@@ -282,6 +283,11 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
 
+  // What the box lacks to run an agent (tmux, the agent's CLI), from the
+  // box itself, before anything is created: its card says how to install it.
+  const reqAgent = picks.length === 1 && !template?.command ? picks[0].agent : undefined;
+  const reqCard = useRequirementsCard(box || undefined, { agent: reqAgent, noAgent });
+
   const name = worktreeSlug(wt.name || resolution?.name || (resolveError ? input : ""));
   const blocker = !box
     ? settled && !projects.length && !pinned
@@ -289,7 +295,9 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
       : "Waiting for a box"
     : !locName
       ? "Choose a project"
-      : !noAgent && !picks.length
+      : reqCard === "tmux"
+        ? `tmux isn't installed on ${box}`
+        : !noAgent && (!picks.length || reqCard === "agent")
         ? `No agent CLI on ${box}`
         : !noAgent && !text.trim() && (attempts || from || !dialog)
           ? attempts
@@ -490,6 +498,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
       options={options}
       notice={
         <>
+          {box && <RequirementsCard box={box} agent={reqAgent} noAgent={noAgent} className="mx-1 mt-1" />}
           {pendingTrust?.wants && fresh && (
             <Alert variant="warning" className="mt-1">
               <ShieldAlertIcon />

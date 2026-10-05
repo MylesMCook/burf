@@ -12,10 +12,18 @@ for macOS, and `berthd` and `berth` for Linux and macOS, amd64 and arm64.
 
 On the box (Linux, or macOS; amd64 or arm64):
 
-- `git` and `tmux`
+- `git` and `tmux` (on a Mac, `brew install tmux`; on Debian or Ubuntu,
+  `sudo apt install tmux`)
 - `curl` or `wget`, and `tar`, for the installer
 - a [Tailscale](https://tailscale.com) address, unless you tell berthd to
   listen elsewhere (see [where berthd listens](/getting-started/add-a-box#where-berthd-listens))
+
+Before an agent starts, the app asks the box what it has. A box without
+tmux, or without the agent's CLI, gets a card with the command that installs
+it, typed out for you to run (on this Mac, **Copy and open Terminal**), and
+**Check again**; nothing is created until it's there. berthd also finds a
+Homebrew tmux (`/opt/homebrew/bin`, `/usr/local/bin`) when launchd starts it
+without those on its `PATH`.
 
 On your laptop: a Mac, Apple silicon or Intel. On a Linux laptop, use the
 [CLI from the release](#the-cli-without-the-app). Building from source

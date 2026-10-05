@@ -1,6 +1,7 @@
 import type { BerthEvent, Client, Hook, HooksFile, Location, Service, Session, Stats, Status, TerminalHandlers, Turn } from "@/lib/api";
 import { flowsCall } from "@/lib/mock-flows";
 import { runsCall } from "@/lib/mock-runs";
+import { mockRequirements } from "@/lib/mock-requirements";
 import { browserCall, mockScreencast, mockShotSvg } from "@/lib/mock-browser";
 import { phoneCall } from "@/lib/mock-phone";
 import { worktreesCall } from "@/lib/mock-worktrees";
@@ -538,6 +539,10 @@ function worktreeServicesFixture(box: string, loc: string, wt: string) {
   ];
 }
 
+// How many times each box was asked for its requirements: the first is the
+// card's own, the rest Check again.
+const reqAsks: Record<string, number> = {};
+
 function boxCall(box: string, method: string, path: string, body?: unknown): Promise<unknown> {
   const online = status.boxes.find((b) => b.name === box)?.state === "online";
   // 503, as the agent answers when a request never reached the box.
@@ -568,6 +573,10 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
   }
   const review = reviewCall(box, method, path, sessions[box]);
   if (review) return review;
+  if (method === "GET" && path === "requirements") {
+    reqAsks[box] = (reqAsks[box] ?? 0) + 1;
+    return delay(mockRequirements(box, !!status.boxes.find((b) => b.name === box)?.local, reqAsks[box] - 1));
+  }
   const key = `${method} ${path}`;
   if (key === "GET locations") return delay(locations[box] ?? []);
   if (key === "GET sessions") return delay(sessions[box] ?? []);

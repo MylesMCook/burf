@@ -67,6 +67,26 @@ fn restart_app(app: tauri::AppHandle) {
     app.request_restart();
 }
 
+// open_terminal brings up Terminal on this Mac, for a card that copied a
+// command to paste there (installing tmux for this Mac's box, whose own
+// terminals need tmux). It never types or runs anything: the person pastes
+// the command, reads it and presses Enter.
+#[tauri::command]
+fn open_terminal() -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("/usr/bin/open")
+            .args(["-a", "Terminal"])
+            .spawn()
+            .map(|_| ())
+            .map_err(|e| format!("couldn't open Terminal: {e}"))
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        Err("opening a terminal is only for macOS".into())
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -90,6 +110,7 @@ pub fn run() {
             ui_endpoint,
             open_devtools,
             restart_app,
+            open_terminal,
             cli_link::cli_link_status,
             cli_link::install_cli_link,
             agent::agent_binary,
