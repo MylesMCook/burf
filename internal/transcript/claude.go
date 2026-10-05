@@ -81,7 +81,14 @@ func (claudeParser) line(c *conv, b []byte) {
 		commandText(c, l.Content)
 		return
 	case l.Type == "system" && l.Subtype == "compact_boundary":
-		c.add(Item{Kind: "command", ID: c.id(), Command: "/compact", Text: "Conversation compacted: the agent goes on from a summary of it"})
+		// The /compact typed just before (Claude Code 2.1 writes it as a
+		// plain prompt) and its boundary read as one divider.
+		const compacted = "Conversation compacted: the agent goes on from a summary of it"
+		if n := len(c.items); n > 0 && c.items[n-1].Kind == "command" && c.items[n-1].Command == "/compact" && c.items[n-1].Text == "" {
+			c.items[n-1].Text = compacted
+			return
+		}
+		c.add(Item{Kind: "command", ID: c.id(), Command: "/compact", Text: compacted})
 		return
 	case l.IsCompactSummary:
 		return
@@ -163,15 +170,19 @@ func (claudeParser) line(c *conv, b []byte) {
 // userText adds what a person typed. Lines Claude Code writes for itself
 // (command output, reminders) start with a tag and are skipped.
 // pastedRe is how Claude Code records a paste in a prompt: wrapped in
-// <pasted_content id="…"> tags, which the person never typed.
-var pastedRe = regexp.MustCompile(`(?s)<pasted_content id="[^"]*">\n?(.*?)\n?</pasted_content>`)
+// <pasted_content id="…"> tags, which the person never typed. Claude Code
+// 2.1 closes it with its id too (</pasted_content id="…">).
+var pastedRe = regexp.MustCompile(`(?s)<pasted_content(?:\s[^>]*)?>\n?(.*?)\n?</pasted_content(?:\s[^>]*)?>`)
+
+// pastedTag is a tag of a paste left unclosed.
+var pastedTag = regexp.MustCompile(`</?pasted_content(?:\s[^>]*)?>\n?`)
 
 // unwrapPasted is a prompt as it was typed, a paste's words in place.
 func unwrapPasted(s string) string {
 	if !strings.Contains(s, "<pasted_content") {
 		return s
 	}
-	return pastedRe.ReplaceAllString(s, "$1")
+	return pastedTag.ReplaceAllString(pastedRe.ReplaceAllString(s, "$1"), "")
 }
 
 func userText(c *conv, s string) {
@@ -185,6 +196,11 @@ func userText(c *conv, s string) {
 		return
 	}
 	if s == "" || strings.HasPrefix(s, "<") || strings.HasPrefix(s, "Caveat:") {
+		return
+	}
+	// Claude Code 2.1 writes /compact as typed, before its boundary.
+	if s == "/compact" || strings.HasPrefix(s, "/compact ") {
+		c.add(Item{Kind: "command", ID: c.id(), Command: "/compact", Args: clip(strings.TrimSpace(strings.TrimPrefix(s, "/compact")), 2000)})
 		return
 	}
 	c.rewound()

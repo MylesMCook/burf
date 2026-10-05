@@ -12,7 +12,10 @@ import (
 	"bytes"
 	"io"
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -109,6 +112,19 @@ type Result struct {
 	More bool `json:"more,omitempty"`
 	// Reason says why there is nothing to show, when Source is "none".
 	Reason string `json:"reason,omitempty"`
+	// Gen names this reading of the file: it changes when the box reads it
+	// afresh (a restart, a conversation idle long enough to be let go, a
+	// rewind), and then `since` no longer counts the same items. An answer
+	// to ?gen= that no longer holds is Reset: the whole window, from Start,
+	// the offset of its first item, so the app keeps what it holds before
+	// Start and takes the rest from here. Items are named by where their
+	// line starts, so a window read afresh names them as before.
+	Gen   string `json:"gen,omitempty"`
+	Reset bool   `json:"reset,omitempty"`
+	Start int64  `json:"start,omitempty"`
+	// File is the record read: Claude Code's conversation ID, or the Codex
+	// session file's name. Another file is another conversation.
+	File string `json:"file,omitempty"`
 	// Signals are the agent's mode, model, context, task list and
 	// background work (signals.go).
 	Signals *Signals `json:"signals,omitempty"`
@@ -155,7 +171,9 @@ type conv struct {
 	truncated  bool
 	used       time.Time
 	p          parser
-	seq        int
+	// gen names this reading (see Result.Gen); rev counts its rewinds.
+	gen int64
+	rev int
 	// queued are messages shown from a mid-turn queued_command, so their
 	// user line (if Claude Code writes one later) isn't shown twice.
 	queued map[string]bool
@@ -190,17 +208,25 @@ type conv struct {
 	askCalls map[string]int
 }
 
+// id names an item by where its line starts, and its place among the
+// items that line made: the same wherever reading began, so a window read
+// afresh (after a restart, or once let go) and a page of older items name
+// an item as the live chat did.
 func (c *conv) id() string {
-	if c.paged {
-		if c.idLine != c.lineOff || c.lineSeq == 0 {
-			c.idLine, c.lineSeq = c.lineOff, 0
-		}
-		c.lineSeq++
-		return c.source[:2] + "@" + itoa(int(c.lineOff)) + "." + itoa(c.lineSeq)
+	if c.idLine != c.lineOff || c.lineSeq == 0 {
+		c.idLine, c.lineSeq = c.lineOff, 0
 	}
-	c.seq++
-	return c.source[:2] + itoa(c.seq)
+	c.lineSeq++
+	return c.source[:2] + "@" + itoa(int(c.lineOff)) + "." + itoa(c.lineSeq)
 }
+
+// gens numbers readings, from when berthd started, so a reading after a
+// restart never takes an earlier one's name.
+var gens atomic.Int64
+
+func init() { gens.Store(time.Now().UnixNano() / 1e6 * 1000) }
+
+func (c *conv) generation() string { return itoa(int(c.gen)) + "." + itoa(c.rev) }
 
 func (c *conv) add(it Item) int {
 	// A new item closes the tool group before it.
@@ -323,7 +349,7 @@ func (c *conv) read(path string) error {
 		return err
 	}
 	if st.Size() < c.offset { // replaced or truncated: start again
-		*c = conv{source: c.source, dir: c.dir, p: c.p, side: c.side, byTool: map[string]int{}, crewByID: map[string]int{}}
+		*c = conv{source: c.source, dir: c.dir, p: c.p, side: c.side, byTool: map[string]int{}, crewByID: map[string]int{}, gen: gens.Add(1)}
 	}
 	if c.offset == 0 && st.Size() > maxStart {
 		c.offset = st.Size() - maxStart
@@ -377,6 +403,13 @@ func NewReader() *Reader { return &Reader{convs: map[string]*conv{}} }
 
 // Read returns the conversation in path from index since.
 func (r *Reader) Read(source, path, dir string, since int) (Result, error) {
+	return r.Follow(source, path, dir, since, "")
+}
+
+// Follow returns the conversation in path from index since, counted in the
+// reading gen names (Result.Gen): when that reading is gone, or since is
+// before the items it still keeps, the answer is the whole window, Reset.
+func (r *Reader) Follow(source, path, dir string, since int, gen string) (Result, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	now := time.Now()
@@ -390,7 +423,7 @@ func (r *Reader) Read(source, path, dir string, since int) (Result, error) {
 		if len(r.convs) >= maxOpen {
 			r.evictOldest()
 		}
-		c = &conv{source: source, dir: dir, side: isHelper(path), byTool: map[string]int{}, crewByID: map[string]int{}}
+		c = &conv{source: source, dir: dir, side: isHelper(path), byTool: map[string]int{}, crewByID: map[string]int{}, gen: gens.Add(1)}
 		switch source {
 		case "codex":
 			c.p = &codexParser{}
@@ -402,6 +435,10 @@ func (r *Reader) Read(source, path, dir string, since int) (Result, error) {
 	c.used = now
 	if err := c.read(path); err != nil {
 		return Result{}, err
+	}
+	reset := (gen != "" && gen != c.generation()) || (since > 0 && since < c.base)
+	if reset {
+		since = 0
 	}
 	from := max(since, c.base)
 	// A tool group can change after it was sent (more calls, or done), so
@@ -415,7 +452,11 @@ func (r *Reader) Read(source, path, dir string, since int) (Result, error) {
 		from = min(from, c.base+n-1)
 	}
 	from = min(from, c.base+len(c.items))
-	out := Result{Source: source, Next: c.base + len(c.items), Truncated: c.truncated || c.base > 0, Last: c.lineAt}
+	out := Result{Source: source, Next: c.base + len(c.items), Truncated: c.truncated || c.base > 0, Last: c.lineAt,
+		Gen: c.generation(), Reset: reset, Start: c.offset, File: strings.TrimSuffix(filepath.Base(path), ".jsonl")}
+	if len(c.items) > 0 {
+		out.Start = c.items[0].Off
+	}
 	// A publish or a question settles after its item was sent: it comes
 	// again, as a tool group does.
 	out.Items = append(c.artifactsSince(from, since), c.items[from-c.base:]...)

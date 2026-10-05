@@ -393,6 +393,8 @@ func (c *conv) rewound() {
 		return
 	}
 	c.items = c.items[:k-c.base]
+	// What was sent is no longer the conversation: the app reads it afresh.
+	c.rev++
 	for id, i := range c.byTool {
 		if i >= k {
 			delete(c.byTool, id)

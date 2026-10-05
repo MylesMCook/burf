@@ -145,8 +145,13 @@ func AssignClaude(dir string, claims []Claim) map[string]string {
 	}
 	sort.Slice(rest, func(i, j int) bool { return rest[i].Started.Before(rest[j].Started) })
 	// A file that began before the session did is another's: a sibling
-	// that just ended, or an older conversation in the same folder.
+	// that just ended, or an older conversation in the same folder. One
+	// whose hooks named its conversation will write that file (Claude Code
+	// writes it at the first prompt), so it never takes a sibling's.
 	for _, c := range rest {
+		if c.ID != "" && validID(c.ID) {
+			continue
+		}
 		for i, f := range fs {
 			if f.path != "" && !f.start.Before(c.Started.Add(-2*time.Second)) {
 				out[c.Name] = f.path

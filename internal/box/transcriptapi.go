@@ -94,7 +94,9 @@ func (b *Box) transcript(w http.ResponseWriter, r *http.Request) error {
 	if r.URL.Query().Has("before") {
 		return olderPage(w, r, agent, path, sess.Dir)
 	}
-	res, err := transcripts.Read(agent, path, sess.Dir, max(since, 0))
+	// gen is the reading since counts in: one the box let go is read
+	// afresh, and answered whole (transcript.Result.Gen).
+	res, err := transcripts.Follow(agent, path, sess.Dir, max(since, 0), r.URL.Query().Get("gen"))
 	if err != nil {
 		return none("Couldn't read " + path + ": " + err.Error())
 	}
