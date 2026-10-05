@@ -54,30 +54,35 @@ A [plugin](/guides/plugins) can ship themes as files, listed under
 `berth.addTheme(theme)`. Plugin themes come after yours, so a plugin theme
 with the same id replaces yours.
 
+## Chat width
+
+**Settings → Appearance → Chat → Width** sets how wide conversations run:
+Narrow, Default, Wide, Extra wide, or Full (the pane's width). Long code,
+tables and edits still scroll inside their own blocks.
+
 ## Chat background
 
-**Settings → Appearance → Chat background** puts a picture behind
-conversations, in panes and in zen. Pick one:
+**Settings → Appearance → Chat background** puts a quiet background behind
+conversations, in panes and in zen. Everything is drawn in your theme's
+colours, between its page and its text, so it follows light and dark:
 
 - **None**, the default.
-- A built-in: **Harbour** (the first-prompt painting, by the time of day,
-  and the night under a dark theme), **Dawn**, **Night**, **Open sea**,
-  **Fog** or **Chart**.
-- **Add…** a picture of your own, or drop one on the section. It is shrunk
-  to at most 2560 px and kept in the app's own storage on this Mac, with
-  the last eight you used.
-- **Generate** one from a prompt. Berth runs Codex's CLI on your Mac with
-  your Codex account (`codex exec`, read-only, in an empty folder), shows
-  the exact command first, and runs it only when you press Generate. It
-  takes 30 to 60 seconds. Without Codex installed and signed in
-  (`codex login`) it says so.
+- **Patterns**: chart contours, a dot grid, a nautical grid, soft waves.
+- **Gradients**: Dawn, Dusk and Deep sea, ordered-dithered like the
+  harbour on a new agent.
+- **Scenes**: the harbour paintings, dithered at a low contrast.
+- **Custom**: **Add…** a picture of your own (or drop one on the section),
+  or **Generate** one from a prompt. Berth runs Codex's CLI on your Mac
+  with your Codex account (`codex exec`, read-only, in an empty folder),
+  shows the exact command first, and runs it only when you press Generate.
+  Without Codex installed and signed in (`codex login`) it says so. Your
+  pictures are shrunk to at most 2560 px and kept on this Mac, the last
+  eight you used. They land in Berth's style: softened and dithered in
+  the theme's ink.
 
-Then shape it under **Effects**: a **Look** to start from (Clear,
-Frosted, Dithered, Ink, Pixel), then **Tone** (Auto moves the picture into
-the theme's light, dark under a dark theme), **Dim**, **Frosted glass**,
-**Pixelate**, **Dither** (the picture's colours, or the theme's ink),
-**Fit** and position. The preview shows a conversation over it.
-
-The conversation always sits on a sheet of frosted glass, as opaque as the
-picture needs for its text to keep WCAG AA contrast, so a busy photo stays
-readable. A pane's **⋯** menu has **Chat background…** to come back here.
+Then shape it under **Effects**: **Strength** (how far it rises from the
+page), **Dither** (fine, coarse or smooth) and **Tone** (a hint of colour,
+or the theme's ink). A picture's **Advanced** can show it as it is, and
+fit or crop it. When a background is strong enough to fight the text,
+the conversation gets a quiet backing, as much as AA contrast needs. A
+pane's **⋯** menu has **Chat background…** to come back here.

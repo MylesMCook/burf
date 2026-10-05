@@ -20,59 +20,67 @@ export interface StoredImageInfo {
 
 export interface ChatBackground {
   source: "none" | "builtin" | "image";
-  // The built-in shown when source is "builtin".
+  // The built-in shown when source is "builtin": a pattern, a gradient or
+  // a scene (components/art/chat-backgrounds.ts).
   builtin: string;
   // The person's own picture, when source is "image".
   image?: StoredImageInfo;
-  // Fill crops the picture to the pane; fit shows all of it.
+  // How far the background rises from the page, 0 to 1.
+  strength: number;
+  // An ordered (Bayer) dither in dots of 2 (fine) or 4 (coarse) CSS px, or
+  // none (smooth).
+  dither: "fine" | "coarse" | "off";
+  // Colour keeps a hint of its hues; ink draws it in the theme's text
+  // colour. Either way it lies between the page and its text.
+  tone: "colour" | "ink";
+  // A scene or picture as it is: no toning or dither, and a frosted backing
+  // behind the conversation as it needs. Advanced, off by default.
+  original: boolean;
+  // Fill crops a picture to the pane; fit shows all of it.
   fit: "cover" | "contain";
   position: "top" | "center" | "bottom";
-  // Auto moves the picture's lightness into the theme's (dark under a dark
-  // theme, light under a light one); light and dark force one; original
-  // leaves it.
-  tone: "auto" | "light" | "dark" | "original";
-  // How far the picture fades into the page's background, 0 to 0.9.
-  dim: number;
-  // Frosted glass: blur and a frosted tint, 0 to 1.
-  glass: number;
-  // Block size in CSS px; 0 is off.
-  pixelate: number;
-  // An ordered (Bayer) dither, in dots of ditherSize CSS px, keeping the
-  // picture's colours or in the theme's.
-  dither: boolean;
-  ditherSize: number;
-  ditherColour: "picture" | "theme";
 }
 
 export const DEFAULT_CHAT_BACKGROUND: ChatBackground = {
   source: "none",
-  builtin: "harbour",
+  builtin: "contours",
+  strength: 0.5,
+  dither: "fine",
+  tone: "colour",
+  original: false,
   fit: "cover",
   position: "center",
-  tone: "auto",
-  dim: 0.2,
-  glass: 0,
-  pixelate: 0,
-  dither: false,
-  ditherSize: 2,
-  ditherColour: "picture",
 };
 
-// The effects alone, for Reset and the looks.
-export const EFFECTS: (keyof ChatBackground)[] = ["fit", "position", "tone", "dim", "glass", "pixelate", "dither", "ditherSize", "ditherColour"];
+// The effects alone, for Reset effects.
+export const EFFECTS = ["strength", "dither", "tone", "original", "fit", "position"] as const;
 
-// Looks are starting points: each sets the effects, and the sliders take
-// it from there.
-export const LOOKS: { id: string; name: string; set: Partial<ChatBackground> }[] = [
-  { id: "clear", name: "Clear", set: { tone: "auto", dim: 0.2, glass: 0, pixelate: 0, dither: false } },
-  { id: "frosted", name: "Frosted", set: { tone: "auto", dim: 0.15, glass: 0.6, pixelate: 0, dither: false } },
-  { id: "dithered", name: "Dithered", set: { tone: "auto", dim: 0.1, glass: 0, pixelate: 0, dither: true, ditherSize: 2, ditherColour: "picture" } },
-  { id: "ink", name: "Ink", set: { tone: "auto", dim: 0, glass: 0, pixelate: 0, dither: true, ditherSize: 2, ditherColour: "theme" } },
-  { id: "pixel", name: "Pixel", set: { tone: "auto", dim: 0.15, glass: 0, pixelate: 12, dither: false } },
-];
+// What a picture of your own starts with: Berth's style, dithered in the
+// theme's ink at a low contrast.
+export const PICTURE_PRESET: Partial<ChatBackground> = { strength: 0.35, dither: "fine", tone: "ink", original: false };
 
-export function lookOf(bg: ChatBackground): string | undefined {
-  return LOOKS.find((l) => Object.entries(l.set).every(([k, v]) => bg[k as keyof ChatBackground] === v))?.id;
+// What a built-in starts with, coming back from a picture of your own.
+export const BUILTIN_PRESET: Partial<ChatBackground> = { strength: DEFAULT_CHAT_BACKGROUND.strength, dither: "fine", tone: "colour", original: false };
+
+const pick = <T extends string>(v: unknown, all: readonly T[], d: T): T => (all.includes(v as T) ? (v as T) : d);
+
+// normalizeChatBackground keeps what is valid of a saved choice (one from an
+// older Berth may hold other fields) and fills the rest with defaults.
+export function normalizeChatBackground(saved: unknown): ChatBackground {
+  const s = (saved && typeof saved === "object" ? saved : {}) as Record<string, unknown>;
+  const d = DEFAULT_CHAT_BACKGROUND;
+  const image = s.image && typeof s.image === "object" && typeof (s.image as StoredImageInfo).id === "string" ? (s.image as StoredImageInfo) : undefined;
+  return {
+    source: pick(s.source, ["none", "builtin", "image"], d.source),
+    builtin: typeof s.builtin === "string" ? s.builtin : d.builtin,
+    image,
+    strength: typeof s.strength === "number" && s.strength >= 0 && s.strength <= 1 ? s.strength : d.strength,
+    dither: pick(s.dither, ["fine", "coarse", "off"], d.dither),
+    tone: pick(s.tone, ["colour", "ink"], d.tone),
+    original: s.original === true,
+    fit: pick(s.fit, ["cover", "contain"], d.fit),
+    position: pick(s.position, ["top", "center", "bottom"], d.position),
+  };
 }
 
 // --- The person's own pictures -------------------------------------------

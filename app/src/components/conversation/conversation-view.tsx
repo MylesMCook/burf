@@ -117,7 +117,7 @@ export function ConversationView({ items: live, onAnswer, edits, who = "The agen
     <RevealContext.Provider value={revealed}>
       <PromptActionsContext.Provider value={ctx}>
         <ChatList
-          className={cn("mx-auto w-full max-w-[680px] text-[14px] text-foreground leading-relaxed", className)}
+          className={cn("mx-auto w-full max-w-(--berth-chat-w) text-[14px] text-foreground leading-relaxed", className)}
           rows={blocks}
           rowKey={blockKey}
           estimate={estimateBlock}

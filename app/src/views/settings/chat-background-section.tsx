@@ -1,18 +1,19 @@
-import { BanIcon, ImagePlusIcon, RefreshCwIcon, RotateCcwIcon, SparklesIcon, TriangleAlertIcon, XIcon } from "lucide-react";
+import { BanIcon, ChevronRightIcon, ImagePlusIcon, RefreshCwIcon, RotateCcwIcon, SparklesIcon, TriangleAlertIcon, XIcon } from "lucide-react";
 import { type CSSProperties, type ReactNode, useEffect, useRef, useState } from "react";
 
-import { BUILTINS } from "@/components/art/chat-backgrounds";
-import { useHarbourLight } from "@/components/art/harbour-art";
+import { type BuiltinKind, BUILTINS, builtin } from "@/components/art/chat-backgrounds";
 import { useRendered } from "@/components/conversation/chat-background";
 import { toastError } from "@/components/error-note";
 import { Tip } from "@/components/tip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Slider } from "@/components/ui/slider";
 import { Spinner } from "@/components/ui/spinner";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import {
+  BUILTIN_PRESET,
   type ChatBackground,
   DEFAULT_CHAT_BACKGROUND,
   EFFECTS,
@@ -22,21 +23,51 @@ import {
   instructionFor,
   keepImage,
   listImages,
-  LOOKS,
-  lookOf,
   onImagesChanged,
+  PICTURE_PRESET,
   removeImage,
   type StoredImageInfo,
 } from "@/lib/chat-background";
-import { setChatBackground, usePrefs } from "@/lib/prefs";
+import { type ChatWidth, setChatBackground, setPrefs, usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Segmented } from "@/views/settings/controls";
 import { SettingsGroup, SettingsRow, useSettingsRow } from "@/views/settings/rows";
 
-// Settings › Appearance › Chat background: what is behind conversations
-// (none, a built-in, a picture of your own or one generated from a
-// prompt), its effects, and a live preview of a conversation over it.
+// Settings › Appearance › Chat background: what is behind conversations.
+// Patterns and gradients are drawn in code in the theme's colours; scenes
+// and pictures of your own (added or generated) are dithered into them. A
+// preview shows a conversation over it, and every tile is drawn as it
+// would be, with the current effects.
+
+// ChatWidthSettings is how wide a conversation's column runs, in panes and
+// in zen: code, tables and edits keep scrolling inside their own blocks.
+export function ChatWidthSettings() {
+  const width = usePrefs((p) => p.chatWidth);
+  return (
+    <SettingsGroup title="Chat">
+      <SettingsRow label="Width" description="How wide conversations run. Full takes the pane's width.">
+        <Segmented
+          value={width}
+          options={[
+            { value: "narrow", label: "Narrow" },
+            { value: "default", label: "Default" },
+            { value: "wide", label: "Wide" },
+            { value: "xwide", label: "Extra wide" },
+            { value: "full", label: "Full" },
+          ]}
+          onChange={(chatWidth: ChatWidth) => setPrefs({ chatWidth })}
+        />
+      </SettingsRow>
+    </SettingsGroup>
+  );
+}
+
+const GROUPS: { kind: BuiltinKind; title: string }[] = [
+  { kind: "pattern", title: "Patterns" },
+  { kind: "gradient", title: "Gradients" },
+  { kind: "scene", title: "Scenes" },
+];
 
 export function ChatBackgroundSettings() {
   const bg = usePrefs((p) => p.chatBackground);
@@ -47,7 +78,7 @@ export function ChatBackgroundSettings() {
   const add = async (f: File) => {
     try {
       const image = await keepImage(f, { name: f.name });
-      setChatBackground({ source: "image", image });
+      setChatBackground({ source: "image", image, ...PICTURE_PRESET });
     } catch (err) {
       toastError(err, { title: "Couldn't use that picture" });
     }
@@ -73,7 +104,7 @@ export function ChatBackgroundSettings() {
       <div className="mb-2 flex items-end gap-3">
         <div className="min-w-0 flex-1">
           <h2 className="font-medium text-[13px] text-muted-foreground">Chat background</h2>
-          <p className="mt-0.5 text-muted-foreground/80 text-xs">Behind conversations, in zen too. The conversation sits on frosted glass that keeps its text readable over any picture.</p>
+          <p className="mt-0.5 text-muted-foreground/80 text-xs">Behind conversations, in zen too, in your theme's colours and quiet enough to read over.</p>
         </div>
         {bg.source !== "none" && (
           <Button size="xs" variant="ghost" onClick={() => setChatBackground({ ...DEFAULT_CHAT_BACKGROUND })}>
@@ -84,16 +115,22 @@ export function ChatBackgroundSettings() {
       </div>
       <div className={cn("overflow-hidden rounded-xl border bg-card/40 transition-shadow", dragging && "ring-2 ring-ring")}>
         <Preview bg={bg} />
-        <div className="border-t p-3">
-          <div role="group" aria-label="Picture" className="flex flex-wrap gap-2">
-            <Tile label="None" selected={bg.source === "none"} onClick={() => setChatBackground({ source: "none" })}>
-              <TileWords icon={<BanIcon />}>None</TileWords>
-            </Tile>
-            {BUILTINS.map((b) => (
-              <Tile key={b.id} label={b.name} selected={bg.source === "builtin" && bg.builtin === b.id} onClick={() => setChatBackground({ source: "builtin", builtin: b.id })}>
-                <BuiltinThumb src={b.src} />
-              </Tile>
-            ))}
+        <div className="space-y-3 border-t p-3">
+          {GROUPS.map((g) => (
+            <TileRow key={g.kind} title={g.title}>
+              {g.kind === "pattern" && (
+                <Tile label="None" selected={bg.source === "none"} onClick={() => setChatBackground({ source: "none" })}>
+                  <TileWords icon={<BanIcon />}>None</TileWords>
+                </Tile>
+              )}
+              {BUILTINS.filter((b) => b.kind === g.kind).map((b) => (
+                <Tile key={b.id} label={b.name} selected={bg.source === "builtin" && bg.builtin === b.id} onClick={() => setChatBackground({ source: "builtin", builtin: b.id, ...(bg.source === "image" ? BUILTIN_PRESET : {}) })}>
+                  <Thumb bg={{ ...bg, ...(bg.source === "image" ? BUILTIN_PRESET : {}), source: "builtin", builtin: b.id }} />
+                </Tile>
+              ))}
+            </TileRow>
+          ))}
+          <TileRow title="Custom">
             <OwnImages selected={bg.source === "image" ? bg.image?.id : undefined} />
             <Tile label="Add a picture of your own, or drop one here" onClick={() => file.current?.click()}>
               <TileWords icon={<ImagePlusIcon />}>Add…</TileWords>
@@ -112,7 +149,7 @@ export function ChatBackgroundSettings() {
                 if (f) void add(f);
               }}
             />
-          </div>
+          </TileRow>
           {generating && <Generate onClose={() => setGenerating(false)} />}
         </div>
       </div>
@@ -121,7 +158,16 @@ export function ChatBackgroundSettings() {
   );
 }
 
-// Tile is one picture to pick, as a small thumbnail with its name in a tip.
+function TileRow({ title, children }: { title: string; children: ReactNode }) {
+  return (
+    <div role="group" aria-label={title} className="flex items-start gap-3">
+      <div className="w-[68px] shrink-0 pt-4 text-muted-foreground text-xs">{title}</div>
+      <div className="flex min-w-0 flex-1 flex-wrap gap-2">{children}</div>
+    </div>
+  );
+}
+
+// Tile is one background to pick, as a small thumbnail with its name in a tip.
 function Tile({ label, selected, onClick, children, extra }: { label: string; selected?: boolean; onClick(): void; children: ReactNode; extra?: ReactNode }) {
   return (
     <div className="group relative">
@@ -132,7 +178,7 @@ function Tile({ label, selected, onClick, children, extra }: { label: string; se
           aria-pressed={selected}
           onClick={onClick}
           className={cn(
-            "flex h-12 w-[76px] items-center justify-center overflow-hidden rounded-lg border bg-muted/40 outline-none transition-[box-shadow,border-color] focus-visible:ring-2 focus-visible:ring-ring",
+            "flex h-12 w-[76px] items-center justify-center overflow-hidden rounded-lg border bg-background outline-none transition-[box-shadow,border-color] focus-visible:ring-2 focus-visible:ring-ring",
             selected ? "border-ring ring-2 ring-ring/60" : "hover:border-foreground/25",
           )}
         >
@@ -153,67 +199,67 @@ function TileWords({ icon, children }: { icon: ReactNode; children: ReactNode })
   );
 }
 
-function BuiltinThumb({ src }: { src: (l: ReturnType<typeof useHarbourLight>) => string }) {
-  const light = useHarbourLight();
-  return <img src={src(light)} alt="" draggable={false} className="size-full object-cover" />;
+// Thumb draws a background as it would look, at a tile's size: the same
+// drawing as the chat, at half scale and a stronger strength, so a quiet
+// pattern still shows in 76 px.
+function Thumb({ bg }: { bg: ChatBackground }) {
+  const wrap = useRef<HTMLSpanElement>(null);
+  const canvas = useRef<HTMLCanvasElement>(null);
+  const { drawn, pixelated } = useRendered(wrap, canvas, { ...bg, strength: Math.min(1, bg.strength + 0.3) }, 0.5);
+  return (
+    <span ref={wrap} className="relative block size-full">
+      <canvas ref={canvas} className={cn("absolute inset-0 size-full transition-opacity", pixelated && "[image-rendering:pixelated]", drawn ? "opacity-100" : "opacity-0")} />
+    </span>
+  );
 }
 
-// OwnImages are the pictures added or generated, newest first, each with a
-// way to forget it.
+// OwnImages are the pictures added or generated, newest first, each drawn
+// as it would be and with a way to forget it.
 function OwnImages({ selected }: { selected?: string }) {
-  const [images, setImages] = useState<(StoredImageInfo & { url: string })[]>([]);
+  const bg = usePrefs((p) => p.chatBackground);
+  const [images, setImages] = useState<StoredImageInfo[]>([]);
   useEffect(() => {
-    let urls: string[] = [];
     let alive = true;
     const load = () =>
       void listImages()
-        .then((all) => {
-          if (!alive) return;
-          urls.forEach(URL.revokeObjectURL);
-          const next = all.map(({ blob, ...info }) => ({ ...info, url: URL.createObjectURL(blob) }));
-          urls = next.map((i) => i.url);
-          setImages(next);
-        })
+        .then((all) => alive && setImages(all.map(({ blob: _blob, ...info }) => info)))
         .catch(() => undefined);
     load();
     const off = onImagesChanged(load);
     return () => {
       alive = false;
       off();
-      urls.forEach(URL.revokeObjectURL);
     };
   }, []);
   const forget = async (img: StoredImageInfo) => {
     await removeImage(img.id);
-    const bg = usePrefs.getState().chatBackground;
-    if (bg.source === "image" && bg.image?.id === img.id) setChatBackground({ source: "none", image: undefined });
+    const now = usePrefs.getState().chatBackground;
+    if (now.source === "image" && now.image?.id === img.id) setChatBackground({ source: "none", image: undefined });
   };
-  return images.map((img) => {
-    const { url, ...info } = img;
-    return (
-      <Tile
-        key={img.id}
-        label={img.prompt ? `Generated: ${img.prompt}` : img.name}
-        selected={selected === img.id}
-        onClick={() => setChatBackground({ source: "image", image: info })}
-        extra={
-          <Tip label="Remove this picture">
-            <Button
-              size="icon-xs"
-              variant="secondary"
-              aria-label={`Remove ${img.prompt ? "the generated picture" : img.name}`}
-              onClick={() => void forget(info)}
-              className="absolute -top-1.5 -right-1.5 size-5 rounded-full opacity-0 shadow-sm transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
-            >
-              <XIcon className="size-3" />
-            </Button>
-          </Tip>
-        }
-      >
-        <img src={url} alt="" draggable={false} className="size-full object-cover" />
-      </Tile>
-    );
-  });
+  // A picture not chosen yet is shown as it would land: Berth's preset.
+  return images.map((img) => (
+    <Tile
+      key={img.id}
+      label={img.prompt ? `Generated: ${img.prompt}` : img.name}
+      selected={selected === img.id}
+      onClick={() => setChatBackground(selected === img.id ? {} : { source: "image", image: img, ...(bg.source === "image" ? {} : PICTURE_PRESET) })}
+      extra={
+        <Tip label="Remove this picture">
+          <Button
+            size="icon-xs"
+            variant="secondary"
+            aria-label={`Remove ${img.prompt ? "the generated picture" : img.name}`}
+            onClick={() => void forget(img)}
+            className="absolute -top-1.5 -right-1.5 size-5 rounded-full opacity-0 shadow-sm transition-opacity focus-visible:opacity-100 group-hover:opacity-100"
+          >
+            <XIcon className="size-3" />
+          </Button>
+        </Tip>
+      }
+    >
+      <Thumb bg={{ ...bg, ...(bg.source === "image" ? {} : PICTURE_PRESET), source: "image", image: img }} />
+    </Tile>
+  ));
 }
 
 // Preview is a conversation in miniature over the background, as it
@@ -227,37 +273,38 @@ function Preview({ bg }: { bg: ChatBackground }) {
       {on && <PreviewLayer wrap={wrap} canvas={canvas} bg={bg} />}
       <div className="absolute inset-y-0 left-1/2 flex w-[62%] -translate-x-1/2 flex-col gap-2.5 px-4 pt-4 pb-3 text-[11px] leading-relaxed">
         <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-hidden">
-          <div className="self-end rounded-xl bg-muted px-2.5 py-1 text-foreground">Make the search page fast again</div>
-          <div className="flex items-center gap-1.5 self-start rounded-md bg-muted/40 px-2 py-1 text-muted-foreground">
+          <div className="self-end rounded-2xl bg-muted px-2.5 py-1 text-foreground">Make the search page fast again</div>
+          <div className="flex items-center gap-1.5 self-start rounded-lg bg-muted/40 px-2 py-1 text-muted-foreground">
             <span className="text-foreground/80">Edited</span> <span className="font-mono">lib/search.ts</span> <span className="font-mono text-success">+12</span>
             <span className="font-mono text-destructive">-4</span>
           </div>
           <p className="text-foreground">The slow part was an unindexed join, so I added a trigram index:</p>
-          <pre className="rounded-md bg-muted px-2 py-1.5 font-mono text-[10px] text-foreground">create index on products using gin (name gin_trgm_ops);</pre>
+          <pre className="rounded-lg bg-muted px-2 py-1.5 font-mono text-[10px] text-foreground">create index on products using gin (name gin_trgm_ops);</pre>
           <p className="text-muted-foreground">p95 went from 840 ms to 95 ms.</p>
         </div>
-        <div className="shrink-0 rounded-md border border-input bg-background px-2.5 py-1.5 text-muted-foreground dark:bg-input/32">Reply, or ask for something else</div>
+        <div className="shrink-0 rounded-lg border border-input bg-background px-2.5 py-1.5 text-muted-foreground dark:bg-input/32">Reply, or ask for something else</div>
       </div>
     </div>
   );
 }
 
 function PreviewLayer({ wrap, canvas, bg }: { wrap: React.RefObject<HTMLDivElement | null>; canvas: React.RefObject<HTMLCanvasElement | null>; bg: ChatBackground }) {
-  // The preview is about 60% of a pane, so the effects' sizes are too.
+  // The preview is about 60% of a pane, so the design is too.
   const { drawn, sheet, pixelated } = useRendered(wrap, canvas, bg, 0.6);
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 -z-10" style={{ "--chat-sheet": `${Math.round(sheet * 100)}%` } as CSSProperties}>
       <canvas ref={canvas} className={cn("absolute inset-0 size-full transition-opacity duration-300", pixelated && "[image-rendering:pixelated]", drawn ? "opacity-100" : "opacity-0")} />
-      {bg.glass > 0 && <div className="cb-grain absolute inset-0" style={{ opacity: Math.min(0.35, bg.glass * 0.35) }} />}
-      <div className={cn("cb-sheet absolute inset-y-0 left-1/2 w-[70%] -translate-x-1/2 transition-opacity", drawn ? "opacity-100" : "opacity-0")} />
+      {sheet > 0 && <div data-glass={bg.original || undefined} className={cn("cb-sheet absolute inset-y-0 left-1/2 w-[70%] -translate-x-1/2 transition-opacity", drawn ? "opacity-100" : "opacity-0")} />}
     </div>
   );
 }
 
-// Effects are the background's look: a starting point, then each effect.
+// Effects: strength, dither and tone; a picture's Advanced has showing it
+// as it is, and how it fits.
 function Effects({ bg }: { bg: ChatBackground }) {
-  const look = lookOf(bg);
   const custom = EFFECTS.some((k) => bg[k] !== DEFAULT_CHAT_BACKGROUND[k]);
+  const picture = bg.source === "image" || (bg.source === "builtin" && builtin(bg.builtin).kind === "scene");
+  const asIs = picture && bg.original;
   return (
     <div className="mt-4">
       <SettingsGroup
@@ -270,70 +317,74 @@ function Effects({ bg }: { bg: ChatBackground }) {
           ) : undefined
         }
       >
-        <SettingsRow label="Look" description="A starting point; the controls below take it from there.">
-          <Segmented value={look ?? ""} options={LOOKS.map((l) => ({ value: l.id, label: l.name }))} onChange={(id) => setChatBackground(LOOKS.find((l) => l.id === id)?.set ?? {})} />
+        <SettingsRow label="Strength" description="How far it rises from the page. When it is strong enough to fight the text, the conversation gets a quiet backing.">
+          <Amount value={bg.strength} max={1} onChange={(strength) => setChatBackground({ strength })} />
         </SettingsRow>
-        <SettingsRow label="Tone" description="Auto moves the picture into the theme's light, dark under a dark theme and light under a light one.">
+        <SettingsRow label="Dither" description={asIs ? "Off while the picture is shown as it is." : "Dots, like the harbour on a new agent: fine or coarse, or smooth."} className={cn(asIs && "opacity-60")}>
+          <Segmented
+            value={bg.dither}
+            options={[
+              { value: "fine", label: "Fine" },
+              { value: "coarse", label: "Coarse" },
+              { value: "off", label: "Smooth" },
+            ]}
+            onChange={(dither) => setChatBackground({ dither })}
+          />
+        </SettingsRow>
+        <SettingsRow label="Tone" description={asIs ? "Off while the picture is shown as it is." : "Colour keeps a hint of its hues; Ink draws it in your theme's text colour."} className={cn(asIs && "opacity-60")}>
           <Segmented
             value={bg.tone}
             options={[
-              { value: "auto", label: "Auto" },
-              { value: "light", label: "Light" },
-              { value: "dark", label: "Dark" },
-              { value: "original", label: "Original" },
+              { value: "colour", label: "Colour" },
+              { value: "ink", label: "Ink" },
             ]}
             onChange={(tone) => setChatBackground({ tone })}
           />
         </SettingsRow>
-        <SettingsRow label="Dim" description="Fades the picture into the page.">
-          <Amount value={bg.dim} max={0.9} onChange={(dim) => setChatBackground({ dim })} />
-        </SettingsRow>
-        <SettingsRow label="Frosted glass" description="Blurs the picture and gives it a frosted grain.">
-          <Amount value={bg.glass} max={1} onChange={(glass) => setChatBackground({ glass })} />
-        </SettingsRow>
-        <SettingsRow label="Pixelate" description="Draws the picture in blocks.">
-          <Amount value={bg.pixelate} min={0} max={32} step={2} format={(v) => (v < 2 ? "Off" : `${v} px`)} onChange={(v) => setChatBackground({ pixelate: v < 2 ? 0 : v })} />
-        </SettingsRow>
-        <SettingsRow label="Dither" description="An ordered dither, like the harbour on a new agent: the picture's colours, or the theme's ink.">
-          {bg.dither && (
-            <Segmented
-              value={bg.ditherColour}
-              options={[
-                { value: "picture", label: "Picture" },
-                { value: "theme", label: "Theme" },
-              ]}
-              onChange={(ditherColour) => setChatBackground({ ditherColour })}
-            />
-          )}
-          <Switch checked={bg.dither} onCheckedChange={(dither) => setChatBackground({ dither })} />
-        </SettingsRow>
-        {bg.dither && (
-          <SettingsRow label="Dot size">
-            <Amount value={bg.ditherSize} min={1} max={4} step={1} format={(v) => `${v} px`} onChange={(ditherSize) => setChatBackground({ ditherSize })} />
-          </SettingsRow>
-        )}
-        <SettingsRow label="Fit" description="Fill crops the picture to the pane; Fit shows all of it.">
-          <Segmented
-            value={bg.fit}
-            options={[
-              { value: "cover", label: "Fill" },
-              { value: "contain", label: "Fit" },
-            ]}
-            onChange={(fit) => setChatBackground({ fit })}
-          />
-          <Segmented
-            value={bg.position}
-            label="Position"
-            options={[
-              { value: "top", label: "Top" },
-              { value: "center", label: "Center" },
-              { value: "bottom", label: "Bottom" },
-            ]}
-            onChange={(position) => setChatBackground({ position })}
-          />
-        </SettingsRow>
       </SettingsGroup>
+      {picture && <Advanced bg={bg} />}
     </div>
+  );
+}
+
+function Advanced({ bg }: { bg: ChatBackground }) {
+  const [open, setOpen] = useState(bg.original || bg.fit !== "cover" || bg.position !== "center");
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className="mt-3">
+      <CollapsibleTrigger className="flex items-center gap-1 rounded-md px-1 py-0.5 font-medium text-[13px] text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+        <ChevronRightIcon className={cn("size-3.5 transition-transform", open && "rotate-90")} />
+        Advanced
+      </CollapsibleTrigger>
+      <CollapsiblePanel>
+        <div className="mt-2 divide-y divide-border/70 overflow-hidden rounded-xl border bg-card/40">
+          <SettingsRow label="Show the picture as it is" description="No dither or toning. The conversation gets frosted glass behind it, as much as the picture needs.">
+            <Switch checked={bg.original} onCheckedChange={(original) => setChatBackground({ original })} />
+          </SettingsRow>
+          {bg.source === "image" && (
+            <SettingsRow label="Fit" description="Fill crops the picture to the pane; Fit shows all of it.">
+              <Segmented
+                value={bg.fit}
+                options={[
+                  { value: "cover", label: "Fill" },
+                  { value: "contain", label: "Fit" },
+                ]}
+                onChange={(fit) => setChatBackground({ fit })}
+              />
+              <Segmented
+                value={bg.position}
+                label="Position"
+                options={[
+                  { value: "top", label: "Top" },
+                  { value: "center", label: "Center" },
+                  { value: "bottom", label: "Bottom" },
+                ]}
+                onChange={(position) => setChatBackground({ position })}
+              />
+            </SettingsRow>
+          )}
+        </div>
+      </CollapsiblePanel>
+    </Collapsible>
   );
 }
 
@@ -384,7 +435,7 @@ function Generate({ onClose }: { onClose(): void }) {
     try {
       const img = await imageGenApi.generate(client, prompt.trim(), gen.id);
       const image = await keepImage(generatedBlob(img), { name: `${gen.name}: ${img.prompt}`, prompt: img.prompt });
-      setChatBackground({ source: "image", image });
+      setChatBackground({ source: "image", image, ...PICTURE_PRESET });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -447,7 +498,7 @@ function Generate({ onClose }: { onClose(): void }) {
           <div className="mt-3 text-muted-foreground text-xs">
             Generate runs this on this computer, with your Codex account. Codex works read-only in an empty folder; only your prompt is sent.
           </div>
-          <pre className="mt-1.5 max-h-28 overflow-auto whitespace-pre-wrap rounded-md [overflow-wrap:anywhere] bg-muted px-2.5 py-2 font-mono text-[11px] text-foreground/85 leading-relaxed">{shown}</pre>
+          <pre className="mt-1.5 max-h-28 overflow-auto whitespace-pre-wrap rounded-lg [overflow-wrap:anywhere] bg-muted px-2.5 py-2 font-mono text-[11px] text-foreground/85 leading-relaxed">{shown}</pre>
           {error && (
             <Alert variant="error" className="mt-2">
               <TriangleAlertIcon />

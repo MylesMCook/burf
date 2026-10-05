@@ -1,30 +1,39 @@
-import chart from "@/components/art/backgrounds/chart.webp";
 import dawn from "@/components/art/backgrounds/dawn.webp";
 import fog from "@/components/art/backgrounds/fog.webp";
 import night from "@/components/art/backgrounds/night.webp";
 import openSea from "@/components/art/backgrounds/open-sea.webp";
 import { HARBOUR, type HarbourLight } from "@/components/art/harbour-art";
 
-// The chat backgrounds Berth ships (lib/chat-background.ts).
+// The chat backgrounds Berth ships (lib/chat-background.ts). Patterns and
+// gradients are drawn in code, in the theme's colours
+// (lib/chat-background-fields.ts); scenes are paintings, dithered into the
+// theme's colours at a low contrast unless shown as they are.
+
+export type BuiltinKind = "pattern" | "gradient" | "scene";
 
 export interface Builtin {
   id: string;
   name: string;
-  // The picture, by the harbour's light (dark themes get the night).
-  src(light: HarbourLight): string;
+  kind: BuiltinKind;
+  // A scene's picture, by the harbour's light (dark themes get the night).
+  src?(light: HarbourLight): string;
 }
 
-// The built-ins, all of the harbour and the sea. The harbour is the same
-// painting as the first-prompt band, by the time of day; the rest were
-// generated with Codex for Berth.
 export const BUILTINS: Builtin[] = [
-  { id: "harbour", name: "Harbour", src: (l) => HARBOUR[l] },
-  { id: "dawn", name: "Dawn", src: () => dawn },
-  { id: "night", name: "Night", src: () => night },
-  { id: "open-sea", name: "Open sea", src: () => openSea },
-  { id: "fog", name: "Fog", src: () => fog },
-  { id: "chart", name: "Chart", src: () => chart },
+  { id: "contours", name: "Chart contours", kind: "pattern" },
+  { id: "dots", name: "Dot grid", kind: "pattern" },
+  { id: "grid", name: "Nautical grid", kind: "pattern" },
+  { id: "waves", name: "Soft waves", kind: "pattern" },
+  { id: "g-dawn", name: "Dawn", kind: "gradient" },
+  { id: "g-dusk", name: "Dusk", kind: "gradient" },
+  { id: "g-deep", name: "Deep sea", kind: "gradient" },
+  // The first-prompt painting, by the time of day; the rest were generated
+  // with Codex for Berth.
+  { id: "harbour", name: "Harbour", kind: "scene", src: (l) => HARBOUR[l] },
+  { id: "dawn", name: "Lighthouse at dawn", kind: "scene", src: () => dawn },
+  { id: "night", name: "Moorings at night", kind: "scene", src: () => night },
+  { id: "open-sea", name: "Open sea", kind: "scene", src: () => openSea },
+  { id: "fog", name: "Fog", kind: "scene", src: () => fog },
 ];
 
 export const builtin = (id: string) => BUILTINS.find((b) => b.id === id) ?? BUILTINS[0];
-

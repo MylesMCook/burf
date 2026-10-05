@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-import { type ChatBackground, DEFAULT_CHAT_BACKGROUND } from "@/lib/chat-background";
+import { type ChatBackground, DEFAULT_CHAT_BACKGROUND, normalizeChatBackground } from "@/lib/chat-background";
 import { load, save } from "@/lib/storage";
 import { DEFAULT_TERMINAL_PREFS, type TerminalPrefs } from "@/lib/terminal";
 
@@ -48,7 +48,13 @@ export interface Prefs {
   // The picture behind conversations and its effects (Settings ›
   // Appearance › Chat background); none by default.
   chatBackground: ChatBackground;
+  // How wide the conversation's column is (Settings › Appearance › Chat).
+  chatWidth: ChatWidth;
 }
+
+export type ChatWidth = "narrow" | "default" | "wide" | "xwide" | "full";
+// The column's widest, as CSS; full is the pane's width less its gutters.
+export const CHAT_WIDTHS: Record<ChatWidth, string> = { narrow: "640px", default: "680px", wide: "860px", xwide: "1080px", full: "100%" };
 
 const DEFAULTS: Prefs = {
   terminal: DEFAULT_TERMINAL_PREFS,
@@ -69,6 +75,7 @@ const DEFAULTS: Prefs = {
   zen: false,
   autoUpdateBoxes: false,
   chatBackground: DEFAULT_CHAT_BACKGROUND,
+  chatWidth: "default",
 };
 
 // PREFS_VERSION counts changes of default that saved prefs are moved to
@@ -102,7 +109,7 @@ export const usePrefs = create<Prefs>()(() => ({
   ...savedPrefs,
   terminal: { ...DEFAULTS.terminal, ...saved.terminal },
   notify: { ...DEFAULTS.notify, ...saved.notify },
-  chatBackground: { ...DEFAULTS.chatBackground, ...saved.chatBackground },
+  chatBackground: normalizeChatBackground(saved.chatBackground),
 }));
 
 usePrefs.subscribe((p) => save("berth.prefs", { ...p, version: PREFS_VERSION }));
@@ -125,10 +132,12 @@ function applyUiPrefs(p: Prefs) {
   const root = document.documentElement;
   root.style.fontSize = p.uiFontSize === 13 ? "" : `${(16 * p.uiFontSize) / 13}px`;
   root.dataset.density = p.density;
+  // Every chat column reads its width from here (components/conversation).
+  root.style.setProperty("--berth-chat-w", CHAT_WIDTHS[p.chatWidth] ?? CHAT_WIDTHS.default);
 }
 applyUiPrefs(usePrefs.getState());
 usePrefs.subscribe((p, prev) => {
-  if (p.uiFontSize !== prev.uiFontSize || p.density !== prev.density) applyUiPrefs(p);
+  if (p.uiFontSize !== prev.uiFontSize || p.density !== prev.density || p.chatWidth !== prev.chatWidth) applyUiPrefs(p);
 });
 
 // useTerminalPrefs is what a terminal needs to draw itself; it changes only

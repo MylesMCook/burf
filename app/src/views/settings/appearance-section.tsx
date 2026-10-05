@@ -5,7 +5,7 @@ import type { Theme } from "@/lib/api";
 import { setPrefs, usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { ChatBackgroundSettings } from "@/views/settings/chat-background-section";
+import { ChatBackgroundSettings, ChatWidthSettings } from "@/views/settings/chat-background-section";
 import { Segmented } from "@/views/settings/controls";
 import { Code, SettingsGroup, SettingsPage, SettingsRow } from "@/views/settings/rows";
 
@@ -55,6 +55,8 @@ export function AppearanceSection() {
           />
         </SettingsRow>
       </SettingsGroup>
+
+      <ChatWidthSettings />
 
       <ChatBackgroundSettings />
     </SettingsPage>

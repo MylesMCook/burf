@@ -465,7 +465,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
         )}
       </div>
       <div className="pr-6 pb-4 pl-6 @[1000px]:pr-[max(24px,var(--berth-loops-w,0px))]">
-        <div className="mx-auto w-full max-w-[680px]">
+        <div className="mx-auto w-full max-w-(--berth-chat-w)">
           <ChatControls box={box} session={session} agent={agent} state={state} stateSince={s?.state_since} dir={s?.dir} who={who} visible={visible} ended={ended} onShowTerminal={onShowTerminal} onStartAgain={again} onSend={reply}>
           {ended ? (
             <div className="flex items-center gap-3 rounded-lg border bg-muted/40 px-3 py-2 text-muted-foreground text-sm">
@@ -708,7 +708,7 @@ function FirstPrompt({ box, session, agent, name, branch, onSend, onFail }: { bo
     <div className="absolute inset-0 overflow-y-auto bg-background">
       <DitherBand src={HARBOUR[light]} position={0.45} fade={0.5} mute={HARBOUR_MUTE[light]} className="absolute inset-x-0 top-0 h-[clamp(160px,30vh,280px)]" />
       <div className="relative flex min-h-full items-start justify-center px-6 pt-[clamp(120px,24vh,230px)] pb-10">
-        <div className="w-full max-w-[560px]">
+        <div className="w-full max-w-[calc(var(--berth-chat-w)-120px)]">
           <header className="mb-4 px-2 [text-shadow:0_0_6px_var(--background),0_0_14px_var(--background)]">
             <h1 className="truncate font-semibold text-lg tracking-tight">{name}</h1>
             <div className="mt-1 flex min-w-0 items-center gap-1.5 text-muted-foreground text-xs">

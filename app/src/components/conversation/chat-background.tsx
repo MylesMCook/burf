@@ -1,23 +1,23 @@
 import { type CSSProperties, useEffect, useRef, useState } from "react";
 
+import { builtin } from "@/components/art/chat-backgrounds";
 import { type HarbourLight, useHarbourLight } from "@/components/art/harbour-art";
 import { useActiveTheme } from "@/hooks/use-theme";
-import { builtin } from "@/components/art/chat-backgrounds";
 import { type ChatBackground as Bg, imageBlob } from "@/lib/chat-background";
-import { render, type RGB, type ThemeColours } from "@/lib/chat-background-render";
+import { type Img, render, type RGB, type Source, type ThemeColours } from "@/lib/chat-background-render";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 import "@/components/conversation/chat-background.css";
 
-// ChatBackground is the picture behind a conversation (Settings ›
-// Appearance › Chat background), and the reading sheet that keeps the
-// conversation legible over it: a pane of frosted glass behind the
-// column, as opaque as the picture needs for AA contrast
-// (lib/chat-background-render.ts measures it). It sits behind the pane's
-// content (the pane is `isolate`), takes no pointer, and draws once per
-// change of picture, effect, theme or size, debounced.
+// ChatBackground is what is behind a conversation (Settings › Appearance ›
+// Chat background), and, when it needs one, a reading sheet that keeps the
+// conversation legible over it: lib/chat-background-render.ts measures how
+// opaque. The built-ins at their default strength need little or none. It
+// sits behind the pane's content (the pane is `isolate`), takes no
+// pointer, and draws once per change of background, effect, theme or size,
+// debounced.
 
 export function ChatBackground() {
   const bg = usePrefs((p) => p.chatBackground);
@@ -32,14 +32,15 @@ function Layer({ bg }: { bg: Bg }) {
   return (
     <div ref={wrap} aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" style={{ "--chat-sheet": `${Math.round(sheet * 100)}%` } as CSSProperties}>
       <canvas ref={canvas} className={cn("absolute inset-0 size-full transition-opacity duration-300", pixelated && "[image-rendering:pixelated]", drawn ? "opacity-100" : "opacity-0")} />
-      {bg.glass > 0 && <div className="cb-grain absolute inset-0" style={{ opacity: Math.min(0.35, bg.glass * 0.35) }} />}
       {/* The sheet follows the conversation's column: the pane's padding,
-          the loops panel's room when there is room for it, 680px wide. */}
-      <div className="absolute inset-y-0 right-6 left-6 @[1000px]:right-[max(24px,var(--berth-loops-w,0px))]">
-        <div className="relative mx-auto h-full max-w-[680px]">
-          <div className={cn("cb-sheet absolute inset-y-0 -inset-x-12 transition-opacity duration-300", drawn ? "opacity-100" : "opacity-0")} />
+          the loops panel's room when there is room for it, the chat's width. */}
+      {sheet > 0 && (
+        <div className="absolute inset-y-0 right-6 left-6 @[1000px]:right-[max(24px,var(--berth-loops-w,0px))]">
+          <div className="relative mx-auto h-full max-w-(--berth-chat-w)">
+            <div data-glass={bg.original || undefined} className={cn("cb-sheet absolute inset-y-0 -inset-x-32 transition-opacity duration-300", drawn ? "opacity-100" : "opacity-0")} />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
@@ -56,9 +57,9 @@ export function openChatBackgroundSettings() {
 export function useRendered(wrap: React.RefObject<HTMLElement | null>, canvas: React.RefObject<HTMLCanvasElement | null>, bg: Bg, unit = 1) {
   const theme = useActiveTheme();
   const light = useHarbourLight();
-  const [state, setState] = useState({ drawn: false, sheet: 0.85, pixelated: false });
+  const [state, setState] = useState({ drawn: false, sheet: 0, pixelated: false });
   const key = sourceKey(bg, light);
-  const effects = JSON.stringify([bg.fit, bg.position, bg.tone, bg.dim, bg.glass, bg.pixelate, bg.dither, bg.ditherSize, bg.ditherColour]);
+  const effects = JSON.stringify([bg.strength, bg.dither, bg.tone, bg.original, bg.fit, bg.position]);
 
   useEffect(() => {
     const el = wrap.current;
@@ -113,33 +114,44 @@ export function useRendered(wrap: React.RefObject<HTMLElement | null>, canvas: R
   return state;
 }
 
-const sourceKey = (bg: Bg, light: HarbourLight) => (bg.source === "builtin" ? `b:${builtin(bg.builtin).src(light)}` : bg.source === "image" && bg.image ? `i:${bg.image.id}` : "");
+function sourceKey(bg: Bg, light: HarbourLight): string {
+  if (bg.source === "image") return bg.image ? `i:${bg.image.id}` : "";
+  if (bg.source !== "builtin") return "";
+  const b = builtin(bg.builtin);
+  return b.src ? `s:${b.src(light)}` : `${b.kind}:${b.id}`;
+}
 
-// The decoded picture is kept, one at a time, so moving a slider redraws
-// without decoding it again.
-let cached: { key: string; src: Promise<ImageBitmap | HTMLImageElement> } | undefined;
+// Decoded pictures are kept, a few at a time, so moving a slider (or
+// drawing every tile in Settings) never decodes one again.
+const pictures = new Map<string, Promise<Img>>();
+const KEEP = 12;
 
-export function loadSource(bg: Bg, light: HarbourLight): Promise<ImageBitmap | HTMLImageElement> {
+export function loadSource(bg: Bg, light: HarbourLight): Promise<Source> {
+  const b = bg.source === "builtin" ? builtin(bg.builtin) : undefined;
+  if (b && !b.src) return Promise.resolve({ kind: b.kind as "pattern" | "gradient", id: b.id });
   const key = sourceKey(bg, light);
-  if (cached?.key === key) return cached.src;
-  const old = cached;
-  void old?.src.then((s) => "close" in s && s.close(), () => undefined);
-  const src = (async () => {
-    if (bg.source === "image" && bg.image) {
-      const blob = await imageBlob(bg.image.id);
-      if (!blob) throw new Error("gone");
-      return createImageBitmap(blob);
+  let img = pictures.get(key);
+  if (!img) {
+    img = (async (): Promise<Img> => {
+      if (bg.source === "image" && bg.image) {
+        const blob = await imageBlob(bg.image.id);
+        if (!blob) throw new Error("gone");
+        return createImageBitmap(blob);
+      }
+      const el = new Image();
+      el.src = b?.src?.(light) ?? "";
+      await el.decode();
+      return el;
+    })();
+    pictures.set(key, img);
+    img.catch(() => pictures.delete(key));
+    while (pictures.size > KEEP) {
+      const [oldest, p] = pictures.entries().next().value as [string, Promise<Img>];
+      pictures.delete(oldest);
+      void p.then((s) => "close" in s && s.close(), () => undefined);
     }
-    const img = new Image();
-    img.src = builtin(bg.builtin).src(light);
-    await img.decode();
-    return img;
-  })();
-  cached = { key, src };
-  src.catch(() => {
-    if (cached?.key === key) cached = undefined;
-  });
-  return src;
+  }
+  return img.then((i) => ({ kind: "image", img: i }));
 }
 
 // themeColours reads the page's background, text and muted text, through
