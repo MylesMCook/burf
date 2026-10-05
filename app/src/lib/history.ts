@@ -3,7 +3,7 @@ import { create } from "zustand";
 
 import { isMock } from "@/hooks/use-berth-connection";
 import type { Client, Session } from "@/lib/api";
-import { keyOf, useConversations } from "@/lib/conversation-store";
+import { keyOf, offOf, onSpill, useConversations } from "@/lib/conversation-store";
 import { useStore } from "@/lib/store";
 import type { ToolDetail, TranscriptItem } from "@/lib/transcript";
 
@@ -70,6 +70,9 @@ export interface Older {
   more: boolean;
   loading: boolean;
   error?: string;
+  // Where the chat had read back to before it was hidden and let its older
+  // turns go: read back to again once it shows (restoreOlder).
+  depth?: number;
 }
 
 interface HistoryState {
@@ -116,15 +119,48 @@ export async function loadOlder(box: string, session: string, before: number): P
   }
 }
 
-// dropOlder lets a closed chat's older turns go.
-export function dropOlder(key: string) {
+// dropOlder lets a closed chat's older turns go. A hidden one (keepDepth)
+// remembers how far back it had read, to read back to when it shows.
+export function dropOlder(key: string, keepDepth = false) {
   useHistory.setState((st) => {
-    if (!st.older[key]) return st;
+    const cur = st.older[key];
+    if (!cur) return st;
     const older = { ...st.older };
-    delete older[key];
+    const depth = cur.items.length ? offOf(cur.items[0]) : cur.depth;
+    if (keepDepth && depth !== undefined) older[key] = { ...NO_OLDER, depth };
+    else delete older[key];
     return { older };
   });
 }
+
+// restoreOlder reads a shown chat's older turns back to where it had read
+// before it was hidden, a page at a time; it says whether it still reads.
+export function restoreOlder(box: string, session: string, oldest: number | undefined): boolean {
+  const key = keyOf(box, session);
+  const cur = useHistory.getState().older[key];
+  if (cur?.depth === undefined) return false;
+  if (cur.error || !cur.more || oldest === undefined || oldest <= cur.depth) {
+    patchOlder(key, { depth: undefined });
+    return false;
+  }
+  if (!cur.loading) void loadOlder(box, session, oldest);
+  return true;
+}
+
+// The live chat's oldest items, let go past what it keeps, join its older
+// turns when it has read some, so nothing between them is missing.
+onSpill((key, items) => {
+  const cur = useHistory.getState().older[key];
+  if (!cur) return;
+  const have = new Set(cur.items.map((it) => it.id));
+  let list = [...cur.items, ...items.filter((it) => !have.has(it.id))];
+  let more = cur.more;
+  if (list.length > MAX_OLDER) {
+    list = list.slice(list.length - MAX_OLDER);
+    more = true;
+  }
+  patchOlder(key, { items: list, more });
+});
 
 // ---- Prompts: recall, edit and resend --------------------------------------
 

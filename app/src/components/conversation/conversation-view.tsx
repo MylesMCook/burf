@@ -24,7 +24,7 @@ import { PromptActions, PromptActionsContext, type PromptContext } from "@/compo
 import { HelperSheetHost, openHelper } from "@/components/conversation/subagent-view";
 import { isMock } from "@/hooks/use-berth-connection";
 import { keyOf } from "@/lib/conversation-store";
-import { applyCut, dropOlder, loadOlder, meta, setCut, useHasHistory, useHistory, useOlder } from "@/lib/history";
+import { applyCut, dropOlder, loadOlder, meta, restoreOlder, setCut, useHasHistory, useHistory, useOlder } from "@/lib/history";
 import { seedLongChat } from "@/lib/mock-history";
 import "@/components/conversation/conversation.css";
 import "@/components/conversation/history.css";
@@ -74,7 +74,7 @@ export function ConversationView({ items: live, onAnswer, edits, who = "The agen
   useEffect(() => () => void (key && dropOlder(key)), [key]);
   useEffect(() => {
     if (!key || chat?.visible !== false) return;
-    const t = window.setTimeout(() => dropOlder(key), 60_000);
+    const t = window.setTimeout(() => dropOlder(key, true), 60_000);
     return () => window.clearTimeout(t);
   }, [key, chat?.visible]);
   // The demo's long chat (?long=5000), for measuring.
@@ -85,7 +85,16 @@ export function ConversationView({ items: live, onAnswer, edits, who = "The agen
   useEffect(() => {
     if (chat && cut && !live.some((it) => meta(it).uuid === cut)) setCut(chat.box, chat.session, undefined);
   }, [chat, cut, live]);
-  const items = useMemo(() => (history ? [...older.items, ...applyCut(live, cut)] : live), [history, older.items, live, cut]);
+  // Older turns end where the live ones begin: one read afresh may reach
+  // back over some of them.
+  const before = useMemo(() => {
+    if (!history || !older.items.length) return older.items;
+    const ids = new Set(live.map((it) => it.id));
+    const from = live.find((it) => meta(it).off !== undefined);
+    const at = from ? meta(from).off! : Infinity;
+    return older.items.filter((it) => !ids.has(it.id) && (meta(it).off ?? 0) < at);
+  }, [history, older.items, live]);
+  const items = useMemo(() => (history ? [...before, ...applyCut(live, cut)] : live), [history, before, live, cut]);
   const blocks = useMemo(() => foldTurns(items), [items]);
   const last = items[items.length - 1];
   const grew = last?.kind === "text" ? last.text.length : last?.kind === "tools" ? (last.items?.length ?? 0) : 0;
@@ -93,6 +102,10 @@ export function ConversationView({ items: live, onAnswer, edits, who = "The agen
   const sent = useMemo(() => [...items].reverse().find((it) => it.kind === "user" || it.kind === "command")?.id, [items]);
   const oldest = items.length ? meta(items[0]).off : undefined;
   const nearTop = history && oldest ? () => void loadOlder(chat!.box, chat!.session, oldest) : undefined;
+  // Shown again after its older turns went: they come back as they were.
+  useEffect(() => {
+    if (history && chat && chat.visible !== false && older.depth !== undefined) restoreOlder(chat.box, chat.session, oldest);
+  }, [history, chat?.box, chat?.session, chat?.visible, older.depth, older.loading, oldest]);
   const [reveal, setReveal] = useState<string[]>([]);
   const revealed = useMemo(() => new Set(reveal), [reveal]);
   const entries = useMemo(() => (chat ? searchEntries(blocks) : []), [chat, blocks]);

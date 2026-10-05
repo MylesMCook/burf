@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 
-import { boxApi, type QueuedPrompt } from "@/lib/api";
-import { keyOf, useConversations } from "@/lib/conversation-store";
+import { boxApi, type Client, type QueuedPrompt } from "@/lib/api";
+import { keyOf, offOf, useConversations } from "@/lib/conversation-store";
+import { dropOlder, historyApi } from "@/lib/history";
 import { useEventLog } from "@/lib/events";
 import { choicesIn, type Choice, questionFormIn } from "@/lib/screen";
 import { useStore } from "@/lib/store";
@@ -24,6 +25,37 @@ export interface TranscriptResult {
   last?: number;
   // The pages it published on claude.ai, newest last (newer boxes only).
   artifacts?: Artifact[];
+  // The reading `next` counts in (newer boxes): asked with ?gen=, a box
+  // that read the record afresh since answers reset, with the whole window
+  // from start (the offset of its first item); file names the record.
+  gen?: string;
+  reset?: boolean;
+  start?: number;
+  file?: string;
+}
+
+// The record each chat shows (newer boxes), kept while the app runs: a
+// chat opened again on another record (after /clear) starts afresh.
+const fileOf = new Map<string, string>();
+
+// The most pages read to fill what a chat missed while it wasn't looking.
+const MAX_GAP_PAGES = 10;
+
+// fillGap reads what the record has between the last item a chat held
+// before a window read afresh and that window's start, so the chat goes
+// on without a hole.
+async function fillGap(client: Client, box: string, session: string, key: string, start: number) {
+  const held = (useConversations.getState().items[key] ?? []).filter((it) => offOf(it) < start);
+  if (!held.length) return;
+  const last = offOf(held[held.length - 1]);
+  let before = start;
+  for (let i = 0; i < MAX_GAP_PAGES; i++) {
+    const page = await historyApi.older(client, box, session, before);
+    const items = (page.items ?? []).filter((it) => offOf(it) > last && offOf(it) < start);
+    if (items.length) useConversations.getState().fill(key, items);
+    if (!page.more || !page.items?.length || items.length < page.items.length) return;
+    before = offOf(page.items[0]);
+  }
 }
 
 export type FeedState = "loading" | "ready" | "none" | "unsupported" | "error";
@@ -39,6 +71,8 @@ export function useTranscriptFeed(box: string, session: string, dir: string | un
   const known = useStore((s) => !!s.boxes[box]?.info);
   const [state, setState] = useState<FeedState>(supported || !known ? "loading" : "unsupported");
   const next = useRef(0);
+  // The reading next counts in (newer boxes).
+  const gen = useRef<string | undefined>(undefined);
   const key = keyOf(box, session);
   // The last event about this session: agent.* and session.* carry its
   // name or its directory.
@@ -47,6 +81,7 @@ export function useTranscriptFeed(box: string, session: string, dir: string | un
   // A different session starts from the beginning.
   useEffect(() => {
     next.current = 0;
+    gen.current = undefined;
   }, [key]);
 
   useEffect(() => {
@@ -63,21 +98,38 @@ export function useTranscriptFeed(box: string, session: string, dir: string | un
       if (busy || document.hidden) return;
       busy = true;
       try {
-        const r = await client.box<TranscriptResult>(box, "GET", `sessions/${encodeURIComponent(session)}/transcript?since=${next.current}`);
+        const since = next.current;
+        const g = since && gen.current ? `&gen=${encodeURIComponent(gen.current)}` : "";
+        const r = await client.box<TranscriptResult>(box, "GET", `sessions/${encodeURIComponent(session)}/transcript?since=${since}${g}`);
         if (!alive) return;
         if (r.source === "none") {
           setState("none");
           return;
         }
-        // Fewer items than were read: the box reads another file for this
-        // session now (its own, once the agent writes one). Start it afresh,
-        // so no other conversation's lines stay in this chat.
-        if (typeof r.next === "number" && r.next < next.current) {
+        if (r.gen !== undefined) {
+          // A whole window: the first read, or one the box read afresh (it
+          // restarted, let the conversation go while no one looked, or the
+          // agent rewound). It is named as before, so the chat keeps what
+          // it holds from before the window and takes the rest from it,
+          // then reads what it missed in between. Another record is another
+          // conversation (/clear): it starts afresh.
+          if (since === 0 || r.reset) {
+            const was = fileOf.get(key);
+            const fresh = !!was && !!r.file && r.file !== was;
+            if (fresh) dropOlder(key);
+            useConversations.getState().resync(key, r.items ?? [], r.start ?? 0, fresh);
+            if (!fresh) void fillGap(client, box, session, key, r.start ?? 0).catch(() => {});
+          } else if (r.items?.length) useConversations.getState().merge(key, r.items);
+          gen.current = r.gen;
+          if (r.file) fileOf.set(key, r.file);
+        } else if (typeof r.next === "number" && r.next < next.current) {
+          // An older box. Fewer items than were read: it reads another file
+          // for this session now (its own, once the agent writes one).
+          // Start it afresh, so no other conversation's lines stay here.
           useConversations.setState((s) => ({ items: { ...s.items, [key]: [] } }));
           next.current = 0;
           return;
-        }
-        if (r.items?.length) useConversations.getState().merge(key, r.items);
+        } else if (r.items?.length) useConversations.getState().merge(key, r.items);
         useConversations.getState().setCrew(key, r.crew ?? []);
         if (r.last) useConversations.getState().setLast(key, r.last);
         useConversations.getState().setArtifacts(key, r.artifacts ?? []);
