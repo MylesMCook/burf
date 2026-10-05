@@ -599,7 +599,10 @@ func TestMapFirstSuccessCancelsOthers(t *testing.T) {
 	}}
 	e, stop := newEngine(t, t.TempDir(), h)
 	defer stop()
-	s, _, _ := e.Start(Request{Flow: []Step{{Kind: "map", Items: []byte(`["slow","fast","slow"]`), Mode: "first_success", Steps: []Step{{Kind: "run", Command: "x"}}}}})
+	s, _, _ := e.Start(Request{Flow: []Step{{Kind: "map", Items: []byte(`["slow","slow","fast"]`), Mode: "first_success", Steps: []Step{{Kind: "run", Command: "x"}}}}})
+	// The fast item comes last: an item not yet started when one succeeds
+	// is never run (first_success), so all three are started by the time it
+	// can win.
 	r := waitStatus(t, e, s.ID, Succeeded, Failed)
 	if r.Status != Succeeded {
 		t.Fatal(r.Error)
