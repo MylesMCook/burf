@@ -9,7 +9,13 @@ upgrades with `berth upgrade BOX`, or by running the
 [install command](/getting-started/add-a-box#with-the-install-command)
 again.
 
-## Unreleased
+## v0.3.3
+
+October 5, 2026.
+
+The chat takes on the rest of what a terminal does: Claude's questions,
+its artifacts, its edits as diffs, and dev servers in tabs of their own.
+
 
 - **Archiving follows through.** Archive or remove a worktree from the
   sidebar, zen, the launcher or the Worktrees table and it shows as
@@ -27,11 +33,6 @@ again.
 - **Details opens.** "Details" on an error toast did nothing when clicked.
   It now opens the full output (git's, a script's) in a dialog with Copy,
   everywhere it appears.
-- **Built-in plugins work in the released app.** Git changes, Diff, Pull
-  request, Notes and the rest ship inside the Mac app, but its security
-  policy kept it from reading their list, so a fresh install showed "This
-  build has no built-in plugins". They are on by default again; any you
-  turned off in Settings → Plugins stay off.
 - **Artifacts in the chat.** A page Claude publishes on claude.ai with its
   Artifact tool shows as a card where it happened, with Open, and a
   "3 artifacts" chip at the right of the reply box's controls lists them
@@ -76,6 +77,8 @@ again.
   shape it; Advanced can show a picture as it is. Chat → Width sets how wide
   conversations run, from Narrow to Full. A pane's ⋯ menu has Chat
   background….
+- **One corner radius.** Cards in the chat, the task list, notices and the
+  agent's own screen take the reply box's radius; bubbles keep their own.
 - **Zoom with ⌘+ and ⌘−.** View → Zoom in (⌘+ or ⌘=), Zoom out (⌘−) and
   Actual size (⌘0) make the app's text bigger or smaller, from 11 to 20px,
   with a moment's readout of the size; it's kept, and Settings →
