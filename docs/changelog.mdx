@@ -42,6 +42,13 @@ again.
   Run, ⌘T, ⌘⇧B, the + menu, the palette and plugins act in the focused
   pane's worktree. With one worktree open nothing looks different.
   [More](/guides/labs#worktrees-side-by-side).
+- **Scrolling keeps up.** The wheel over a terminal now reaches the agent
+  in batches, one per redraw, rather than one report per wheel event. A
+  trackpad flick through a long Claude Code thread queued dozens of
+  full-screen redraws behind each other, and over a slow connection to the
+  box the view kept scrolling for seconds after you stopped; now it stops
+  within a redraw, the same distance down. Drawing a whole new screen in
+  the terminal also takes half the time it did.
 - **Nineteen more themes.** Ports of popular VS Code themes: Dracula, One
   Dark Pro and One Light, Catppuccin Mocha and Latte, Tokyo Night, Nord,
   GitHub Dark, Dark Dimmed and Light, Gruvbox, Solarized, Rosé Pine and

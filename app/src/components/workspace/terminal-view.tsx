@@ -15,6 +15,7 @@ import { findPaths, resolveIn } from "@/lib/editor-paths";
 import { OVERLAYS } from "@/lib/overlays";
 import { createTerminal, type TermHandle } from "@/lib/terminal";
 import { cn } from "@/lib/utils";
+import { WheelBatcher, wheelPixels } from "@/lib/wheel";
 
 type ConnState = "connecting" | "open" | "reconnecting" | "offline" | "ended";
 
@@ -41,6 +42,7 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
   const host = useRef<HTMLDivElement>(null);
   const [term, setTerm] = useState<TermHandle>();
   const conn = useRef<TerminalConnection>(null);
+  const wheel = useRef<WheelBatcher>(null);
   const [state, setState] = useState<ConnState>("connecting");
   const [retry, setRetry] = useState(0);
   const theme = useActiveTheme();
@@ -211,7 +213,9 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
           mine.resize(term.cols, term.rows);
         },
         onData: (d) => {
-          if (!stopped && conn.current === mine) term.write(d);
+          if (stopped || conn.current !== mine) return;
+          term.write(d);
+          wheel.current?.output(d);
         },
         onClose(byUs) {
           if (byUs || stopped) return;
@@ -281,29 +285,29 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
   // screen) it turned the wheel into arrow keys, which Claude reads as its
   // prompt history. tmux then does the right thing: a program that asked
   // for the mouse scrolls itself; anything else scrolls tmux's history.
+  // Reports are coalesced to one batch per redraw (lib/wheel), so a flick
+  // never queues dozens of redraws behind each other.
   useEffect(() => {
     const el = host.current;
     if (!el || !term || !visible) return;
-    let pending = 0;
+    const batcher = new WheelBatcher((d) => conn.current?.send(d));
+    wheel.current = batcher;
     const onWheel = (e: WheelEvent) => {
       // Shift-scroll stays the terminal's own (selection, sideways).
       if (e.shiftKey || !conn.current) return;
       e.preventDefault();
       e.stopPropagation();
-      const px = e.deltaMode === 1 ? e.deltaY * 16 : e.deltaMode === 2 ? e.deltaY * el.clientHeight : e.deltaY;
-      pending += px;
       const rect = el.getBoundingClientRect();
       const col = Math.min(term.cols, Math.max(1, Math.floor(((e.clientX - rect.left) / rect.width) * term.cols) + 1));
       const row = Math.min(term.rows, Math.max(1, Math.floor(((e.clientY - rect.top) / rect.height) * term.rows) + 1));
-      // One wheel step per ~40px, so a trackpad doesn't fling the view.
-      while (Math.abs(pending) >= 40) {
-        const up = pending < 0;
-        conn.current.send(`\x1b[<${up ? 64 : 65};${col};${row}M`);
-        pending += up ? 40 : -40;
-      }
+      batcher.wheel(wheelPixels(e, el.clientHeight), col, row);
     };
     el.addEventListener("wheel", onWheel, { capture: true, passive: false });
-    return () => el.removeEventListener("wheel", onWheel, { capture: true });
+    return () => {
+      el.removeEventListener("wheel", onWheel, { capture: true });
+      batcher.dispose();
+      if (wheel.current === batcher) wheel.current = null;
+    };
   }, [term, visible]);
 
   const focusedRef = useRef(focused);

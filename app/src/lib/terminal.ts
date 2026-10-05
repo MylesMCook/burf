@@ -113,6 +113,30 @@ function keepLastColumn(t: object) {
   };
 }
 
+// ghostty-web 0.4 reads a row to draw it with getLine(row), which copies the
+// whole screen out of WASM and parses every cell of it to return that one
+// row: a full redraw (every row, as when scrolling a full-screen program)
+// parsed the screen once per row, rows x rows x cols cells, over half of a
+// frame's time. Nothing writes to the screen while a frame draws, so here
+// the screen is read once per frame.
+function oneReadPerFrame(t: object) {
+  const r = (t as { renderer?: { render?: (buffer: unknown, ...rest: unknown[]) => void } }).renderer;
+  if (typeof r?.render !== "function") return;
+  const render = r.render.bind(r);
+  r.render = (buffer, ...rest) => {
+    const b = buffer as { getViewport?: () => unknown } | undefined;
+    const read = b?.getViewport;
+    if (!b || typeof read !== "function" || Object.hasOwn(b, "getViewport")) return render(buffer, ...rest);
+    let screen: unknown;
+    b.getViewport = () => (screen ??= read.call(b));
+    try {
+      render(buffer, ...rest);
+    } finally {
+      delete b.getViewport;
+    }
+  };
+}
+
 // Each terminal gets a WASM instance of its own, and reset() clears it in
 // place. ghostty-web 0.4 shares one instance (one WASM heap) between every
 // terminal, and its reset() frees the terminal and makes a new one. Ghostty
@@ -151,6 +175,7 @@ async function createGhostty(host: HTMLElement, colors: TerminalColors, prefs: T
     delete (t as { focus?: unknown }).focus;
   }
   keepLastColumn(t);
+  oneReadPerFrame(t);
   // Output still on its way when the terminal is replaced (a new font size,
   // ⌘+) is dropped: ghostty-web throws on a write after dispose.
   let disposed = false;
