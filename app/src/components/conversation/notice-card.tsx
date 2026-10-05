@@ -95,7 +95,7 @@ export function NoticeCard({ it, scope: given }: { it: Notice; scope?: ChatActio
       role="status"
       data-notice={it.notice}
       className={cn(
-        "cv-in flex items-start gap-3 rounded-xl border px-3.5 py-3",
+        "cv-in flex items-start gap-3 rounded-lg border px-3.5 py-3",
         error ? "border-destructive/35 bg-destructive/[0.04] dark:bg-destructive/[0.08]" : "border-warning/45 bg-warning/[0.06] dark:bg-warning/[0.08]",
       )}
     >
