@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from "react";
 import { boxApi } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
 import { plainError } from "@/lib/errors";
+import { removeWorktreeOnBox } from "@/lib/remove-worktree";
 import { scheduleRefresh, useStore } from "@/lib/store";
 import { type SyncMode, worktreesApi } from "@/lib/worktrees";
 import type { Row } from "@/views/worktrees/use-worktrees";
@@ -94,28 +95,26 @@ export function useBulk(onRowDone: (r: Row, patch: Partial<Row>) => void) {
             }
             case "delete": {
               try {
-                await worktreesApi.remove(client, r.box, r.location, r.name, { force: action.force, branch: action.branch });
+                const res = await removeWorktreeOnBox(client, r.box, r.location, { name: r.name, path: r.path }, "remove", { force: action.force, branch: action.branch });
+                set(r.key, { state: "ok", message: res.archive ? "Removing: its archive script runs, then it goes" : "Removed" });
               } catch (err) {
                 const m = errorMessage(err);
                 if (/modified|untracked|uncommitted|contains/i.test(m) && !action.force) throw new Error("Has uncommitted changes; tick “even with uncommitted changes”");
                 throw err;
               }
-              set(r.key, { state: "ok", message: "Removed" });
-              scheduleRefresh(r.box, ["locations", "sessions", "services"]);
               break;
             }
             case "archive": {
               // Archive keeps the branch and never discards work: git refuses
               // a worktree with uncommitted changes, and that is the answer.
-              let res: { archive?: string } | undefined;
+              let res: { archive?: string };
               try {
-                res = (await worktreesApi.remove(client, r.box, r.location, r.name, {})) as { archive?: string } | undefined;
+                res = await removeWorktreeOnBox(client, r.box, r.location, { name: r.name, path: r.path }, "archive");
               } catch (err) {
                 if (/modified|untracked|uncommitted|contains/i.test(errorMessage(err))) throw new Error("Has uncommitted changes: commit them first, or delete it instead");
                 throw err;
               }
-              set(r.key, { state: "ok", message: res?.archive ? "Archiving: its archive script runs, then it goes" : "Archived; its branch is kept" });
-              scheduleRefresh(r.box, ["locations", "sessions", "services"]);
+              set(r.key, { state: "ok", message: res.archive ? "Archiving: its archive script runs, then it goes" : "Archived; its branch is kept" });
               break;
             }
           }

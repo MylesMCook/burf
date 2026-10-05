@@ -3,6 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 
 import { StateGlyph } from "@/components/agent-glyph";
 import { Tip } from "@/components/tip";
+import { Spinner } from "@/components/ui/spinner";
 import { ContextMenu, ContextMenuItem, ContextMenuPopup, ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { NewTabMenu } from "@/components/workspace/new-tab-menu";
 import { PaneActions, PaneIcon, paneLabel } from "@/components/workspace/pane";
@@ -11,6 +12,7 @@ import { armDrag, StripMarker, useTabDrag } from "@/components/workspace/tab-dra
 import { closeTab } from "@/lib/actions";
 import { agentOf, type SessionState, sessionAgent, sessionName, sessionState } from "@/lib/derive";
 import { type Leaf, leaves } from "@/lib/layout";
+import { removalLabel, useRemoval } from "@/lib/removing";
 import { renameSession, useRenaming } from "@/lib/session-title";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -23,6 +25,7 @@ import { activateTab, tabBeside, unsplitTab, useWorkspaces, type WsTab } from "@
 export function TabStrip() {
   const key = useWorkspaces((s) => s.current);
   const ws = useWorkspaces((s) => (s.current ? s.spaces[s.current] : undefined));
+  const leaving = useRemoval(ws?.ref.box ?? "", ws?.ref.path);
   const active = ws?.tabs.find((t) => t.id === ws.active);
   const lone = active && active.root.kind === "leaf" ? active.root : undefined;
   const scroller = useRef<HTMLDivElement>(null);
@@ -108,6 +111,14 @@ export function TabStrip() {
       <div data-tauri-drag-region className="min-w-4 flex-1" />
       {ws && (
         <div data-tauri-drag-region className="flex shrink-0 items-center gap-2 pr-2 pl-3 text-muted-foreground text-xs">
+          {leaving && (
+            <Tip label={leaving.script ? "The repo's archive script is running on the box. This worktree closes when it finishes, or stays if it fails." : "Waiting for the box."} side="bottom">
+              <span role="status" className="flex items-center gap-1.5 rounded-lg bg-accent/70 px-2 py-0.5 text-foreground">
+                <Spinner className="size-3" />
+                {removalLabel(leaving)}
+              </span>
+            </Tip>
+          )}
           <Tip label={`${ws.ref.box}:${ws.ref.path}`} side="bottom">
             <span data-tauri-drag-region className="max-w-56 truncate">
               {ws.ref.location}

@@ -13,6 +13,7 @@ import { StatusBar } from "@/components/status-bar";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { AddToBoxDialog } from "@/components/sidebar/add-to-box-dialog";
 import { ConfirmHost } from "@/components/sidebar/confirm";
+import { ErrorDetailsHost } from "@/components/error-note";
 import { ShortcutsSheet } from "@/components/shortcuts-sheet";
 import { CustomizeSidebarSheet } from "@/components/sidebar/nav";
 import { ToastProvider } from "@/components/ui/toast";
@@ -98,6 +99,7 @@ export default function App() {
           <ErrorBoundary scope="a dialog">
             <AddBoxDialog />
             <ConfirmHost />
+            <ErrorDetailsHost />
           </ErrorBoundary>
         </ToastProvider>
       </TooltipProvider>
@@ -153,6 +155,7 @@ export default function App() {
           <LoopsPanel />
           <AddBoxDialog />
           <ConfirmHost />
+          <ErrorDetailsHost />
           <AddToBoxDialog />
           <PluginConsentDialog />
           <CustomizeSidebarSheet />

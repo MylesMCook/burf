@@ -14,9 +14,11 @@ import { WorktreeSections } from "@/components/workspace/worktree-sections";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
+import { Spinner } from "@/components/ui/spinner";
 import { agentPresets, openBrowserAt, startSession, usePendingStops } from "@/lib/actions";
 import { agentLabel, agentOf, type SessionState, sessionName, sessionState } from "@/lib/derive";
 import { ago } from "@/lib/format";
+import { useRemoval } from "@/lib/removing";
 import { NONE, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { openSession, type WorktreeRef } from "@/lib/workspaces";
@@ -52,6 +54,7 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
   const branch = loc?.worktrees?.find((w) => w.path === ref.path)?.branch;
   const sessions = useStore((s) => s.boxes[ref.box]?.sessions ?? NONE);
   const stats = useStore((s) => s.boxes[ref.box]?.stats);
+  const leaving = useRemoval(ref.box, ref.path);
   const stopping = usePendingStops((s) => s.sessions);
   const [all, setAll] = useState(false);
   const list = useRef<HTMLDivElement>(null);
@@ -155,26 +158,43 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
             </div>
           </header>
 
-          {/* The one way to start work, here: an agent on a task in this
-              worktree, or several attempts from its branch. */}
-          <div className="mb-5">
-            <TaskComposer fixed={{ box: ref.box, location: ref.location, at: ref.main ? ref.location : `${ref.location}/${ref.worktree}`, name, branch }} autoFocus placeholder={`What should an agent do in ${name}?`} />
-          </div>
-          <div className="flex flex-col">
-            {rows.map((r) => (
-              <button
-                key={r.key}
-                type="button"
-                data-row
-                onClick={r.run}
-                className="flex h-9 items-center gap-3 rounded-md px-2 text-left text-sm outline-none hover:bg-accent focus-visible:bg-accent [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-muted-foreground"
-              >
-                <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground [&_svg]:size-4">{r.icon}</span>
-                <span className="min-w-0 flex-1 truncate">{r.label}</span>
-                {r.keys && <Kbd>{r.keys}</Kbd>}
-              </button>
-            ))}
-          </div>
+          {/* On its way out (archive or remove): nothing new starts here. */}
+          {leaving ? (
+            <div role="status" aria-busy="true" className="flex items-start gap-3 rounded-lg border bg-muted/40 px-3.5 py-3 text-sm">
+              <Spinner className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+              <div className="flex min-w-0 flex-col gap-0.5">
+                <span className="font-medium">{leaving.kind === "archive" ? "Archiving" : "Removing"} {name}…</span>
+                <span className="text-muted-foreground">
+                  {leaving.script
+                    ? `The repo's archive script is running on ${ref.box}. This worktree closes when it finishes, or comes back if it fails.`
+                    : `Waiting for ${ref.box}.`}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <>
+            {/* The one way to start work, here: an agent on a task in this
+                worktree, or several attempts from its branch. */}
+            <div className="mb-5">
+              <TaskComposer fixed={{ box: ref.box, location: ref.location, at: ref.main ? ref.location : `${ref.location}/${ref.worktree}`, name, branch }} autoFocus placeholder={`What should an agent do in ${name}?`} />
+            </div>
+            <div className="flex flex-col">
+              {rows.map((r) => (
+                <button
+                  key={r.key}
+                  type="button"
+                  data-row
+                  onClick={r.run}
+                  className="flex h-9 items-center gap-3 rounded-md px-2 text-left text-sm outline-none hover:bg-accent focus-visible:bg-accent [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-muted-foreground"
+                >
+                  <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground [&_svg]:size-4">{r.icon}</span>
+                  <span className="min-w-0 flex-1 truncate">{r.label}</span>
+                  {r.keys && <Kbd>{r.keys}</Kbd>}
+                </button>
+              ))}
+            </div>
+            </>
+          )}
 
           {/* What runs here, each with its URL, then plugins' sections. */}
           <WorktreeSections worktree={ref} className="mt-6" />

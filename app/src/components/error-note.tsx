@@ -1,8 +1,11 @@
-import { CircleAlertIcon } from "lucide-react";
+import { CheckIcon, ChevronRightIcon, CircleAlertIcon, CopyIcon } from "lucide-react";
 import type React from "react";
+import { useState } from "react";
+import { create } from "zustand";
 
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogPopup, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toastManager } from "@/components/ui/toast";
 import { detailsFor, type Explained, explain, looksRaw, type NextStep, STEP_LABEL } from "@/lib/errors";
 import { cn } from "@/lib/utils";
@@ -10,14 +13,96 @@ import { cn } from "@/lib/utils";
 // How errors look: a title, one sentence, the one next step, and what the
 // box actually said folded away under "Details" (lib/errors.ts).
 
-// ErrorDetails folds the original words away.
-export function ErrorDetails({ text, className }: { text?: string; className?: string }) {
+// ErrorDetails is "Details": a button that opens what was actually said
+// (git's or a script's whole output) in a dialog, with Copy. A button, not
+// a <details>: inside a toast the toast takes the pointer for swiping, and
+// a toast is too small and too short-lived to hold a long output anyway.
+// In a toast (detached) the dialog is the app's one ErrorDetailsHost, so it
+// outlives the toast; elsewhere it is its own, nested in any open dialog.
+export function ErrorDetails({ text, className, title, message, detached }: { text?: string; className?: string; title?: string; message?: string; detached?: boolean }) {
   if (!text) return null;
+  const cls = cn(
+    "inline-flex w-fit cursor-pointer items-center gap-0.5 rounded-sm text-muted-foreground text-xs underline-offset-2 outline-none hover:text-foreground hover:underline focus-visible:ring-2 focus-visible:ring-ring",
+    className,
+  );
+  const label = (
+    <>
+      Details
+      <ChevronRightIcon aria-hidden className="size-3" />
+    </>
+  );
+  if (detached)
+    return (
+      <button type="button" className={cls} aria-haspopup="dialog" onClick={() => showErrorDetails({ text, title, message })}>
+        {label}
+      </button>
+    );
   return (
-    <details className={cn("group/details text-muted-foreground text-xs", className)}>
-      <summary className="w-fit cursor-pointer select-none rounded-sm outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">Details</summary>
-      <code className="mt-1 block max-h-32 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted/60 px-2 py-1.5 font-mono text-[11px] text-foreground/80 select-text">{text}</code>
-    </details>
+    <Dialog>
+      <DialogTrigger render={<button type="button" className={cls} />}>{label}</DialogTrigger>
+      <DetailsPopup text={text} title={title} message={message} />
+    </Dialog>
+  );
+}
+
+interface DetailsReq {
+  text: string;
+  title?: string;
+  message?: string;
+}
+
+const useDetails = create<{ req?: DetailsReq }>()(() => ({}));
+
+// showErrorDetails opens the details dialog from anywhere (a toast).
+export function showErrorDetails(req: DetailsReq) {
+  useDetails.setState({ req });
+}
+
+// ErrorDetailsHost is where a toast's Details opens; App mounts it once.
+export function ErrorDetailsHost() {
+  const req = useDetails((s) => s.req);
+  return (
+    <Dialog open={!!req} onOpenChange={(o) => !o && useDetails.setState({ req: undefined })}>
+      {req && <DetailsPopup {...req} />}
+    </Dialog>
+  );
+}
+
+function DetailsPopup({ text, title, message }: DetailsReq) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <DialogPopup className="max-w-2xl">
+      <DialogHeader>
+        <DialogTitle>{title ?? "Details"}</DialogTitle>
+        <DialogDescription>{message ?? "What was said, word for word."}</DialogDescription>
+      </DialogHeader>
+      <div className="px-6 pb-2">
+        <pre
+          aria-label="Full output"
+          className="max-h-[50vh] select-text overflow-auto whitespace-pre-wrap break-words rounded-lg border bg-muted/60 px-3 py-2.5 font-mono text-[12px] text-foreground/90 leading-relaxed"
+        >
+          {text}
+        </pre>
+      </div>
+      <DialogFooter variant="bare">
+        <DialogClose render={<Button variant="ghost" />}>Close</DialogClose>
+        <Button
+          variant="outline"
+          onClick={async () => {
+            try {
+              await navigator.clipboard.writeText(text);
+            } catch {
+              return;
+            }
+            setCopied(true);
+            window.setTimeout(() => setCopied(false), 1500);
+          }}
+        >
+          {copied ? <CheckIcon /> : <CopyIcon />}
+          {copied ? "Copied" : "Copy"}
+        </Button>
+      </DialogFooter>
+    </DialogPopup>
   );
 }
 
@@ -44,7 +129,7 @@ export function ErrorNote({ error, box, onStep, className }: { error: unknown; b
       <AlertTitle>{e.title}</AlertTitle>
       <AlertDescription>
         <span>{e.message}</span>
-        <ErrorDetails text={e.details} />
+        <ErrorDetails text={e.details} title={e.title} message={detailsLine(e)} />
       </AlertDescription>
       {step && (
         <AlertAction>
@@ -67,11 +152,15 @@ function globalStep(e: Explained): (() => void) | undefined {
   return undefined;
 }
 
-function description(e: Explained): React.ReactNode {
+// The dialog's sentence: the toast's own one points at Details, which is
+// where the reader already is.
+const detailsLine = (e: Explained) => (/^Details has git's/.test(e.message) ? "Git's own words." : /Details has/.test(e.message) ? "What it said, word for word." : e.message);
+
+function description(e: Explained, title?: React.ReactNode): React.ReactNode {
   return (
     <span className="flex flex-col gap-1">
       <span>{e.message}</span>
-      <ErrorDetails text={e.details} />
+      <ErrorDetails text={e.details} title={typeof title === "string" ? title : e.title} message={detailsLine(e)} detached />
     </span>
   );
 }
@@ -103,7 +192,7 @@ function humanize<T extends Partial<AddOptions>>(o: T): T {
   const run = globalStep(e);
   return {
     ...o,
-    description: description(e),
+    description: description(e, o.title),
     actionProps: o.actionProps ?? (run && e.step ? { children: STEP_LABEL[e.step], onClick: run } : undefined),
   };
 }

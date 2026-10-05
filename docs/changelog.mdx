@@ -11,6 +11,22 @@ again.
 
 ## Unreleased
 
+- **Archiving follows through.** Archive or remove a worktree from the
+  sidebar, zen, the launcher or the Worktrees table and it shows as
+  "Archiving…" (dimmed, nothing to open) while the repo's archive script
+  runs, then leaves the sidebar, the table and its open tabs as soon as the
+  box reports it gone; its sessions stop with it. If the script fails, the
+  worktree comes back with the script's output under Details. The app used
+  to say "Archived" at once and keep showing it. Boxes need an upgrade for
+  the session stop and the script's output.
+- **A worktree left locked archives.** A `git worktree add` that was cut off
+  leaves git's own "initializing" lock, and git then refuses to remove the
+  worktree. The box now unlocks and removes those, cleans up after an add
+  that fails, and still leaves alone a worktree a person locked, saying how
+  to unlock it. Boxes need an upgrade for it.
+- **Details opens.** "Details" on an error toast did nothing when clicked.
+  It now opens the full output (git's, a script's) in a dialog with Copy,
+  everywhere it appears.
 - **Built-in plugins work in the released app.** Git changes, Diff, Pull
   request, Notes and the rest ship inside the Mac app, but its security
   policy kept it from reading their list, so a fresh install showed "This

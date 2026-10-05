@@ -10,6 +10,7 @@ import { agentOf, sessionName, sessionState } from "@/lib/derive";
 import { ago } from "@/lib/format";
 import { previewUrl } from "@/lib/preview";
 import { NONE, useStore } from "@/lib/store";
+import { removalLabel, useRemoval } from "@/lib/removing";
 import { cn } from "@/lib/utils";
 import { ProjectLabel } from "@/views/automations/flows/project-label";
 import type { RowProgress } from "@/views/worktrees/use-bulk";
@@ -169,6 +170,8 @@ function WorktreeRow({
   const name = r.main ? r.location : r.name;
   const base = r.base ?? "its base";
   const s = (n: number) => (n === 1 ? "" : "s");
+  // Being archived or removed: dimmed, and nothing opens it (lib/removing.ts).
+  const leaving = useRemoval(r.box, r.path);
 
   return (
     <div
@@ -177,12 +180,15 @@ function WorktreeRow({
       tabIndex={tabStop ? 0 : -1}
       aria-selected={selected}
       aria-label={name}
-      onClick={onOpen}
+      aria-disabled={leaving ? true : undefined}
+      aria-busy={leaving ? true : undefined}
+      onClick={leaving ? undefined : onOpen}
       onFocus={onFocus}
       onKeyDown={(e) => {
         if (e.target !== e.currentTarget || e.metaKey || e.ctrlKey || e.altKey) return;
-        if (e.key === "Enter") onOpen();
-        else if (e.key === " ") {
+        if (e.key === "Enter") {
+          if (!leaving) onOpen();
+        } else if (e.key === " ") {
           e.preventDefault();
           onToggle(e.shiftKey);
         } else if (e.key === "ArrowDown" || e.key === "ArrowUp" || e.key === "Home" || e.key === "End") {
@@ -197,6 +203,7 @@ function WorktreeRow({
         selected && "bg-primary/[0.06] hover:bg-primary/[0.09]",
         open && "bg-accent/60",
         r.paused && "text-muted-foreground",
+        leaving && "cursor-default text-muted-foreground hover:bg-transparent [&>*:not(:nth-child(-n+2))]:opacity-50",
       )}
     >
       {/* The checkbox selects; it never opens the row. */}
@@ -219,6 +226,12 @@ function WorktreeRow({
             <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-warning/12 px-1.5 py-px text-[10px] text-warning-foreground">
               <PauseIcon className="size-2.5" />
               Paused
+            </span>
+          )}
+          {leaving && (
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-muted px-1.5 py-px text-[10px] text-muted-foreground">
+              <Spinner className="size-2.5" />
+              {removalLabel(leaving)}
             </span>
           )}
         </div>

@@ -92,6 +92,12 @@ export function explain(err: unknown, ctx: { box?: string } = {}): Explained {
     return out(what ? `That ${what} is gone` : "It's gone", "It may have been removed or stopped from somewhere else.", "retry");
   }
 
+  // A worktree someone locked (git worktree lock): the box leaves it, and
+  // says how to unlock it, which Details keeps whole.
+  if (/ is locked \(git worktree lock/.test(raw)) {
+    const why = /with the reason "([^"]*)"/.exec(raw)?.[1];
+    return out("It's locked", `Someone locked it with git worktree lock${why ? ` ("${why}")` : ""}, so Berth left it as it is. Details has how to unlock it.`);
+  }
   // git, in its own words.
   if (code === "git_failed" || /^git |fatal: /.test(raw)) {
     if (/uncommitted|contains modified|untracked|modified files|would be overwritten/i.test(raw)) return out("It has uncommitted changes", "Commit or stash them first, or choose to remove it anyway.");

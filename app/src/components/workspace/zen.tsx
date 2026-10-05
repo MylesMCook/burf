@@ -12,6 +12,7 @@ import { Tip } from "@/components/tip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
+import { Spinner } from "@/components/ui/spinner";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuShortcut, MenuSub, MenuSubPopup, MenuSubTrigger, MenuTrigger } from "@/components/ui/menu";
 import { ViewSwitch } from "@/components/workspace/pane";
 import { TitleInput } from "@/components/workspace/tab-strip";
@@ -23,6 +24,7 @@ import { sessionWord } from "@/lib/state-model";
 import { ago } from "@/lib/format";
 import { leaves } from "@/lib/layout";
 import { usePrefs } from "@/lib/prefs";
+import { removalLabel, removalOf, useRemoval, useRemovals } from "@/lib/removing";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { focusSession, recentWorktrees, refOf, selectWorktree, useWorkspaces } from "@/lib/workspaces";
@@ -92,6 +94,7 @@ export function ZenSwitcher({ className }: { className?: string }) {
   );
   const waiting = agents.filter((a) => a.state === "waiting").length;
   const recent = recentWorktrees(spaces, 3);
+  const removals = useRemovals((s) => s.byKey);
   const setView = useStore((s) => s.setView);
 
   return (
@@ -162,13 +165,16 @@ export function ZenSwitcher({ className }: { className?: string }) {
         <MenuSeparator />
         <MenuGroup>
           <MenuGroupLabel>Worktrees</MenuGroupLabel>
-          {recent.map((w) => (
-            <MenuItem key={`${w.ref.box}:${w.ref.path}`} onClick={() => selectWorktree(w.ref)}>
-              <GitBranchIcon />
-              <span className="min-w-0 flex-1 truncate">{w.ref.main ? w.ref.location : `${w.ref.location} / ${w.ref.worktree}`}</span>
-              <span className="text-muted-foreground text-xs">{w.ref.box}</span>
-            </MenuItem>
-          ))}
+          {recent.map((w) => {
+            const leaving = removalOf(removals, w.ref.box, w.ref.path);
+            return (
+              <MenuItem key={`${w.ref.box}:${w.ref.path}`} disabled={!!leaving} onClick={() => selectWorktree(w.ref)}>
+                <GitBranchIcon />
+                <span className="min-w-0 flex-1 truncate">{w.ref.main ? w.ref.location : `${w.ref.location} / ${w.ref.worktree}`}</span>
+                <span className="text-muted-foreground text-xs">{leaving ? removalLabel(leaving) : w.ref.box}</span>
+              </MenuItem>
+            );
+          })}
           <AllWorktrees />
           <MenuItem onClick={() => runShortcut("new-worktree", "menu")}>
             <GitBranchPlusIcon />
@@ -205,6 +211,7 @@ export function ZenSwitcher({ className }: { className?: string }) {
 // worktrees: the sidebar's tree, folded into the switcher.
 function AllWorktrees() {
   const boxes = useStore((s) => s.boxes);
+  const removals = useRemovals((s) => s.byKey);
   const status = useStore((s) => s.status);
   const online = useMemo(() => status?.boxes.filter((b) => b.state === "online").map((b) => b.name) ?? [], [status]);
   const projects = online.flatMap((box) => (boxes[box]?.locations ?? []).filter((l) => l.worktrees?.length).map((loc) => ({ box, loc })));
@@ -229,12 +236,16 @@ function AllWorktrees() {
                     {loc.name}
                   </MenuSubTrigger>
                   <MenuSubPopup className="min-w-52">
-                    {loc.worktrees!.map((wt) => (
-                      <MenuItem key={wt.path} onClick={() => selectWorktree(refOf(box, loc, wt))}>
-                        {wt.main ? <HouseIcon /> : <GitBranchIcon />}
-                        <span className="min-w-0 flex-1 truncate">{wt.main ? "main" : wt.name}</span>
-                      </MenuItem>
-                    ))}
+                    {loc.worktrees!.map((wt) => {
+                      const leaving = removalOf(removals, box, wt.path);
+                      return (
+                        <MenuItem key={wt.path} disabled={!!leaving} onClick={() => selectWorktree(refOf(box, loc, wt))}>
+                          {wt.main ? <HouseIcon /> : <GitBranchIcon />}
+                          <span className="min-w-0 flex-1 truncate">{wt.main ? "main" : wt.name}</span>
+                          {leaving && <span className="text-muted-foreground text-xs">{removalLabel(leaving)}</span>}
+                        </MenuItem>
+                      );
+                    })}
                   </MenuSubPopup>
                 </MenuSub>
               ))}
@@ -280,7 +291,16 @@ function WorktreeMenu() {
   const workspace = useStore((s) => s.view.kind === "workspace");
   const loc = useStore((s) => (ref ? s.boxes[ref.box]?.locations?.find((l) => l.name === ref.location) : undefined));
   const wt = loc?.worktrees?.find((w) => w.path === ref?.path);
+  const leaving = useRemoval(ref?.box ?? "", ref?.path);
   if (!workspace || !ref || !loc || !wt) return null;
+  // On its way out: nothing to do with it but wait.
+  if (leaving)
+    return (
+      <span aria-busy="true" className="flex h-8 items-center gap-1.5 rounded-lg px-2 text-muted-foreground text-xs">
+        <Spinner className="size-3" />
+        {removalLabel(leaving)}
+      </span>
+    );
   return (
     <Menu>
       <Tip label="Worktree actions">

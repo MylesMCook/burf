@@ -55,7 +55,8 @@ import { errorMessage } from "@/lib/format";
 import { plainError } from "@/lib/errors";
 import { scheduleRefresh, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { forgetWorktree, refOf, selectWorktree } from "@/lib/workspaces";
+import { removeWorktreeOnBox } from "@/lib/remove-worktree";
+import { refOf, selectWorktree } from "@/lib/workspaces";
 import { useRegistry } from "@/plugins/registry";
 import { openAddToBox } from "@/components/sidebar/add-to-box-dialog";
 import { boxLoad } from "@/components/sidebar/box-load";
@@ -263,19 +264,15 @@ export function archiveWorktree(box: string, loc: Location, wt: Worktree) {
     run: async () => {
       const client = useStore.getState().client;
       if (!client) throw new Error("not connected");
-      let res: { archive?: string } | undefined;
+      let res: { archive?: string };
       try {
-        res = await client.box<{ archive?: string }>(box, "DELETE", `locations/${encodeURIComponent(loc.name)}/worktrees/${encodeURIComponent(wt.name)}`);
+        res = await removeWorktreeOnBox(client, box, loc.name, wt, "archive");
       } catch (err) {
         if (/modified|untracked|uncommitted|contains/i.test(errorMessage(err))) throw new Error(`${wt.name} has uncommitted changes, so it was left as it is. Commit them first, or use Remove worktree… to discard them.`);
         throw err;
       }
-      scheduleRefresh(box, ["locations", "sessions", "services"]);
-      if (res?.archive) toastManager.add({ title: `Archiving ${wt.name}`, description: "Its archive script is running on the box; the worktree goes when it finishes.", type: "info" });
-      else {
-        forgetWorktree(box, wt.path);
-        toastManager.add({ title: `Archived ${wt.name}`, description: wt.branch ? `Branch ${wt.branch} is kept.` : box, type: "success" });
-      }
+      if (res.archive) toastManager.add({ title: `Archiving ${wt.name}`, description: "Its archive script is running on the box; the worktree goes when it finishes.", type: "info" });
+      else toastManager.add({ title: `Archived ${wt.name}`, description: wt.branch ? `Branch ${wt.branch} is kept.` : box, type: "success" });
     },
   });
 }
@@ -306,18 +303,17 @@ export function removeWorktree(box: string, loc: Location, wt: Worktree) {
     run: async (checked) => {
       const client = useStore.getState().client;
       if (!client) throw new Error("not connected");
-      const q = new URLSearchParams({ ...(checked.force ? { force: "1" } : {}), ...(checked.branch ? { delete_branch: "1" } : {}) }).toString();
+      let res: { archive?: string };
       try {
-        await client.box(box, "DELETE", `locations/${encodeURIComponent(loc.name)}/worktrees/${encodeURIComponent(wt.name)}${q ? `?${q}` : ""}`);
+        res = await removeWorktreeOnBox(client, box, loc.name, wt, "remove", { force: checked.force, branch: checked.branch });
       } catch (err) {
         const m = errorMessage(err);
         // git's own words for work it would lose.
         if (/modified|untracked|uncommitted|contains/i.test(m) && !checked.force) throw new Error(`${wt.name} has uncommitted changes. Tick "Remove even with uncommitted changes" to remove it anyway.`);
         throw err;
       }
-      forgetWorktree(box, wt.path);
-      scheduleRefresh(box, ["locations", "sessions", "services"]);
-      toastManager.add({ title: `Removed ${wt.name}`, description: box, type: "success" });
+      if (res.archive) toastManager.add({ title: `Removing ${wt.name}`, description: "The repo's archive script runs on the box first; the worktree goes when it finishes.", type: "info" });
+      else toastManager.add({ title: `Removed ${wt.name}`, description: box, type: "success" });
     },
   });
 }

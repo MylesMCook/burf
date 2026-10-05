@@ -675,6 +675,7 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
     };
     // With an archive script the box runs it first, in the background.
     if (l.scripts?.archive) {
+      setTimeout(() => emit({ type: "worktree.archive.started", box, data: { location: loc, name: wt, path: w.path, script: l.scripts!.archive } }), 20);
       setTimeout(() => {
         gone();
         emit({ type: "worktree.archive.finished", box, data: { location: loc, name: wt, path: w.path } });

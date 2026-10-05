@@ -8,7 +8,8 @@ import { handlePreview } from "@/lib/preview";
 import { handleQueueEvent } from "@/lib/queue";
 import { scheduleRuns } from "@/lib/runs";
 import { handleSessionOpen } from "@/lib/session-open";
-import { forgetWorktree } from "@/lib/workspaces";
+import { archiveFailed, worktreeGone } from "@/lib/remove-worktree";
+import { markRemoving, markScript, removalOf, useRemovals } from "@/lib/removing";
 import { type BoxPart, scheduleRefresh, useStore } from "@/lib/store";
 import { dispatch } from "@/plugins/registry";
 
@@ -85,8 +86,15 @@ function notifyFor(e: BerthEvent) {
   }
   if (e.type === "preview.open") handlePreview(e);
   if (e.type === "session.open") handleSessionOpen(e);
-  // A removed worktree's workspace goes too, wherever it was removed from.
-  if (e.type === "worktree.removed" && box && str(d.path)) forgetWorktree(box, str(d.path)!);
+  // A removed worktree's workspace goes too, wherever it was removed from;
+  // one being archived (from here, the CLI or another laptop) shows as
+  // Archiving… until then, and comes back if archiving fails.
+  if (e.type === "worktree.removed" && box && str(d.path)) worktreeGone(box, str(d.path)!);
+  if (e.type === "worktree.archive.started" && box && str(d.path)) {
+    if (!removalOf(useRemovals.getState().byKey, box, str(d.path)!)) markRemoving(box, str(d.path)!, "archive", str(d.name));
+    markScript(box, str(d.path)!);
+  }
+  if (e.type === "worktree.archive.failed" && box && str(d.path)) archiveFailed(box, str(d.path)!);
   if (e.type === "worktree.setup.failed" || e.type === "worktree.archive.failed") {
     const name = str(d.name);
     route({

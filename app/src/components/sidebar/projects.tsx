@@ -18,6 +18,7 @@ import { type Action, boxActions, ContextRow, DotsMenu, newSection, projectActio
 import { confirm } from "@/components/sidebar/confirm";
 import { type Project, projectActions as groupActions, useProjects } from "@/lib/project-groups";
 import { Tip } from "@/components/tip";
+import { Spinner } from "@/components/ui/spinner";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem } from "@/components/ui/sidebar";
 import { agentPresets, startSession } from "@/lib/actions";
@@ -29,6 +30,7 @@ import { cn } from "@/lib/utils";
 import { refOf, selectWorktree, useWorkspaces, wsKey } from "@/lib/workspaces";
 import { BOX_WORDS, boxState, WORKTREE_WORDS } from "@/lib/state-model";
 import { useNotifications } from "@/lib/notifications";
+import { removalLabel, removalOf, useRemoval, useRemovals } from "@/lib/removing";
 
 // Projects lists repositories, as Orca does: one group per repository on a
 // box (the same repository on two boxes is two groups, told apart by the
@@ -195,6 +197,7 @@ function BoxChip({ box }: { box: BoxStatus }) {
 function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; prefs: SidebarPrefs; update(p: Partial<SidebarPrefs>): void }) {
   const { box, loc, main, worktrees } = repo;
   const data = useStore((s) => s.boxes[box.name]);
+  const removals = useRemovals((s) => s.byKey);
   const current = useWorkspaces((s) => s.current);
   const inWorkspace = useStore((s) => s.view.kind === "workspace");
   const online = box.state === "online";
@@ -205,7 +208,7 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
   const mainSessions = main ? worktreeSessions(data?.sessions, main) : [];
   const mainSel = !!main && inWorkspace && current === wsKey(box.name, main.path);
   const rows = worktrees.map((wt) => ({ wt, sessions: worktreeSessions(data?.sessions, wt), selected: inWorkspace && current === wsKey(box.name, wt.path) }));
-  const active = rows.filter((r) => r.sessions.some((s) => !s.exited) || r.selected);
+  const active = rows.filter((r) => r.sessions.some((s) => !s.exited) || r.selected || removalOf(removals, box.name, r.wt.path));
   const shown = expanded ? rows : active;
   const hidden = rows.length - shown.length;
   const open = (wt: Worktree) => selectWorktree(refOf(box.name, loc, wt));
@@ -312,6 +315,10 @@ function WorktreeRow({
   // Its agents by what they work on ("Fix checkout webhook · Claude Code").
   const agents = away ? [] : sessions.filter((s) => agentOf(s) && !s.exited).map((s) => sessionName(s, { sessions, agent: true }));
   const where = <PlaceTip name={`${wt.main ? "Main checkout" : wt.name}${wt.branch && wt.branch !== wt.name ? ` · ${wt.branch}` : ""}`} work={agents} lines={[wt.path, ...(away ? [`${away.name} is ${awayText(away)}`] : [])]} />;
+  // On its way out (lib/removing.ts): dimmed, with nothing to open or do,
+  // until the box says it went or puts it back.
+  const removal = useRemoval(box, wt.path);
+  if (removal) return <LeavingRow wt={wt} label={removalLabel(removal)} script={removal.script} />;
   return (
     <SidebarMenuSubItem>
       <ContextRow items={() => (away ? awayActions(away) : worktreeActions(box, loc, wt))} className="group/row relative">
@@ -332,6 +339,22 @@ function WorktreeRow({
         </Tip>
         {!away && <RowActions box={box} loc={loc} wt={wt} />}
       </ContextRow>
+    </SidebarMenuSubItem>
+  );
+}
+
+// LeavingRow is a worktree being archived or removed, in the row's place
+// and size so nothing shifts when it goes.
+function LeavingRow({ wt, label, script }: { wt: Worktree; label: string; script?: boolean }) {
+  return (
+    <SidebarMenuSubItem>
+      <Tip side="right" delay={400} label={script ? "The repo's archive script is running on the box. The worktree goes when it finishes, or comes back if it fails." : "Waiting for the box."}>
+        <div aria-disabled="true" aria-busy="true" data-leaving="" className="flex h-side-row w-full cursor-default items-center gap-2 rounded-lg px-2 text-[13px] text-muted-foreground">
+          <Spinner className="size-3.5 shrink-0 opacity-70" />
+          <span className="min-w-0 truncate line-through decoration-muted-foreground/40 opacity-70">{wt.name}</span>
+          <span className="ml-auto shrink-0 text-[10px]">{label}</span>
+        </div>
+      </Tip>
     </SidebarMenuSubItem>
   );
 }
@@ -566,6 +589,7 @@ function sectionActions(name: string): Action[] {
 // doing), and under it the worktrees from all its boxes.
 function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; chips: boolean; prefs: SidebarPrefs; update(p: Partial<SidebarPrefs>): void }) {
   const boxes = useStore((s) => s.boxes);
+  const removals = useRemovals((s) => s.byKey);
   const current = useWorkspaces((s) => s.current);
   const inWorkspace = useStore((s) => s.view.kind === "workspace");
   const key = `project:${p.id}`;
@@ -584,7 +608,7 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
       .sort((a, b) => Number(!!b.main) - Number(!!a.main) || a.name.localeCompare(b.name))
       .map((wt) => ({ m, wt, data, sessions: worktreeSessions(data?.sessions, wt), selected: inWorkspace && current === wsKey(m.box.name, wt.path) }));
   });
-  const active = rows.filter((r) => r.sessions.some((s) => !s.exited) || r.selected);
+  const active = rows.filter((r) => r.sessions.some((s) => !s.exited) || r.selected || removalOf(removals, r.m.box.name, r.wt.path));
   const shown = expanded ? rows : active;
   const hidden = rows.length - shown.length;
   // With one box, the row itself is the main checkout.
@@ -730,14 +754,16 @@ function PlaceTip({ name, lines, work = [] }: { name: string; lines: string[]; w
 // SetupMark says a worktree is still setting up, or that its setup failed
 // (until the notification about it is dealt with), in the model's words.
 function SetupMark({ box, wt }: { box: string; wt: Worktree }) {
-  const failed = useNotifications((s) => s.notes.some((n) => n.category === "setupFailed" && !n.resolved && n.box === box && n.path === wt.path));
+  // Setup and archive failures share a category; the title tells them apart.
+  const failed = useNotifications((s) => s.notes.find((n) => n.category === "setupFailed" && !n.resolved && n.box === box && n.path === wt.path));
   if (wt.setting_up) return <span className="shrink-0 text-[10px] text-muted-foreground">{WORKTREE_WORDS["setting-up"].lower}</span>;
   if (!failed) return null;
+  const archive = failed.title.startsWith("Archiving");
   return (
-    <Tip label="Its setup script failed. The notification has its output.">
+    <Tip label={`Its ${archive ? "archive" : "setup"} script failed. The notification has its output.`}>
       <span className="flex shrink-0 items-center gap-1 text-[10px] text-destructive-foreground">
         <span className="size-1.5 rounded-full bg-destructive" />
-        {WORKTREE_WORDS["setup-failed"].lower}
+        {archive ? "archive failed" : WORKTREE_WORDS["setup-failed"].lower}
       </span>
     </Tip>
   );

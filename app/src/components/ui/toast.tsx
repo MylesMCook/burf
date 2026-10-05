@@ -205,7 +205,7 @@ function Toasts({
                       className="font-medium [overflow-wrap:anywhere]"
                       data-slot="toast-title"
                     />
-                    {/* Berth: a div, so an error's Details (a <details>) may sit inside. */}
+                    {/* Berth: a div, so an error's message and its Details button sit inside. */}
                     <Toast.Description
                       className="text-muted-foreground [overflow-wrap:anywhere]"
                       data-slot="toast-description"
