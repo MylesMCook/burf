@@ -28,6 +28,13 @@ again.
   them, or onto the strip to become a tab of its own. Nothing restarts:
   terminals and agents keep their sessions. A tab's menu has Split right
   and Split down, and a pane's ⋯ menu has Move to a new tab.
+- **Edits in the chat look like the Diff panel.** An agent's edit opens
+  highlighted, in the same renderer as the Diff panel, numbered by the
+  file's own lines; Write and MultiEdit too, and the file's uncommitted
+  diff beside it still takes comments. Unified in the chat's column, split
+  where the pane has room (it remembers), and a long edit folds to Show
+  all. The renderer loads the first time you open an edit, never before.
+  Boxes need an upgrade for the line numbers; older ones count from 1.
 
 ## v0.3.2
 

@@ -8,8 +8,7 @@ import { Card } from "@/components/ui/card";
 import { Spinner } from "@/components/ui/spinner";
 import type { QueuedPrompt, SessionDiff } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
-import { DiffLines, type LineComments } from "@/lib/git/diff-view";
-import { parseDiff } from "@/lib/git/parse";
+import type { LineComments } from "@/lib/git/diff-view";
 import { type ToolCall, type ToolDetail, toolSummary, type TranscriptItem } from "@/lib/transcript";
 import { cn } from "@/lib/utils";
 import { Markdown } from "@/components/conversation/markdown";
@@ -18,6 +17,7 @@ import { NoticeCard } from "@/components/conversation/notice-card";
 import { CommandItem } from "@/components/conversation/command-item";
 import { ChatList } from "@/components/conversation/chat-list";
 import { ChatSearch, plainMarkdown, type SearchEntry } from "@/components/conversation/chat-search";
+import { EditChange, EditPanel } from "@/components/conversation/edit-diff";
 import { ArtifactCard, ArtifactJumper } from "@/components/conversation/artifacts";
 import { PromptActions, PromptActionsContext, type PromptContext } from "@/components/conversation/prompt-actions";
 import { HelperSheetHost, openHelper } from "@/components/conversation/subagent-view";
@@ -537,46 +537,13 @@ function Ask({ it, onAnswer }: { it: Extract<TranscriptItem, { kind: "ask" }>; o
   );
 }
 
-type DiffLoad = { state: "loading" } | { state: "error"; message: string } | { state: "ready"; diff: SessionDiff };
-
-// Edit is one file the agent changed. With edits, it opens to the file's
-// current diff (what is uncommitted now, not just this edit), folded by
-// default, where lines take comments and Review is a click away.
+// Edit is one file the agent changed. With edits, it opens (folded by
+// default) to the agent's exact change and the file's current uncommitted
+// diff, where lines take comments and Review is a click away
+// (conversation/edit-diff).
 function Edit({ it, edits }: { it: Extract<TranscriptItem, { kind: "edit" }>; edits?: EditActions }) {
   const [open, setOpen] = useState(false);
-  const [diff, setDiff] = useState<DiffLoad>();
-  // An opened diff scrolls into view once it has its height.
-  const panel = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (open) panel.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
-  }, [open, diff?.state]);
   const cut = it.file.lastIndexOf("/");
-  const load = () => {
-    if (!edits) return;
-    setDiff({ state: "loading" });
-    edits.load(it.file).then(
-      (d) => setDiff({ state: "ready", diff: d }),
-      (err) => setDiff({ state: "error", message: errorMessage(err) }),
-    );
-  };
-  // The agent's exact change (from its own record), shown first when known;
-  // the whole file's uncommitted diff, where lines take comments, beside it.
-  const exact = !!(it.tool && edits?.tool);
-  const [view, setView] = useState<"change" | "file">(exact ? "change" : "file");
-  const [change, setChange] = useState<{ state: "loading" } | { state: "ready"; d: ToolDetail } | { state: "error"; message: string }>();
-  const loadChange = () => {
-    if (!exact) return;
-    setChange({ state: "loading" });
-    edits!.tool!(it.tool!).then(
-      (d) => setChange({ state: "ready", d }),
-      (err) => setChange({ state: "error", message: errorMessage(err) }),
-    );
-  };
-  const toggle = () => {
-    if (!open && (!diff || diff.state === "error")) load();
-    if (!open && exact && (!change || change.state === "error")) loadChange();
-    setOpen(!open);
-  };
   const label = (
     <>
       <PencilLineIcon className="size-3.5 text-muted-foreground" />
@@ -590,14 +557,12 @@ function Edit({ it, edits }: { it: Extract<TranscriptItem, { kind: "edit" }>; ed
     </>
   );
   if (!edits) return <div className="cv-in flex min-w-0 items-center gap-2 self-start rounded-lg bg-muted/40 px-2.5 py-1.5 text-[13px]">{label}</div>;
-  const lines = diff?.state === "ready" ? parseDiff(diff.diff.diff) : [];
-  const comments = edits.comments(it.file);
   return (
     <div className={cn("cv-in flex min-w-0 flex-col", open ? "self-stretch" : "self-start")}>
       <div className="flex min-w-0 items-center gap-1">
         <button
           type="button"
-          onClick={toggle}
+          onClick={() => setOpen(!open)}
           aria-expanded={open}
           className="flex min-w-0 items-center gap-2 rounded-lg bg-muted/40 px-2.5 py-1.5 text-left text-[13px] outline-none hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring"
         >
@@ -611,63 +576,7 @@ function Edit({ it, edits }: { it: Extract<TranscriptItem, { kind: "edit" }>; ed
           </Button>
         )}
       </div>
-      {open && (
-        <div ref={panel} className="mt-2 scroll-mb-4 overflow-hidden rounded-lg border bg-card">
-          {exact && (
-            <div role="tablist" aria-label="Show" className="flex gap-1 border-b bg-muted/30 px-1.5 py-1 text-xs">
-              {(
-                [
-                  ["change", "This change"],
-                  ["file", "Uncommitted in file"],
-                ] as const
-              ).map(([v, label]) => (
-                <button key={v} type="button" role="tab" aria-selected={view === v} onClick={() => setView(v)} className={cn("rounded-md px-2 py-0.5 outline-none focus-visible:ring-2 focus-visible:ring-ring", view === v ? "bg-background font-medium text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground")}>
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
-          {exact && view === "change" && (
-            <>
-              {(!change || change.state === "loading") && (
-                <div className="flex h-16 items-center justify-center text-muted-foreground text-sm">
-                  <Spinner className="mr-2 size-4" />
-                  Reading the change…
-                </div>
-              )}
-              {change?.state === "error" && <p className="px-3 py-3 text-destructive-foreground text-sm">Couldn't read this change: {change.message}</p>}
-              {change?.state === "ready" && <ToolDetailView d={change.d} />}
-            </>
-          )}
-          {(!exact || view === "file") && (!diff || diff.state === "loading") && (
-            <div className="flex h-16 items-center justify-center text-muted-foreground text-sm">
-              <Spinner className="mr-2 size-4" />
-              Reading the diff…
-            </div>
-          )}
-          {(!exact || view === "file") && diff?.state === "error" && (
-            <div className="flex items-center gap-2 px-3 py-3 text-sm">
-              <span className="min-w-0 flex-1 text-destructive-foreground">Couldn't read the diff: {diff.message}</span>
-              <Button size="xs" variant="outline" onClick={load}>
-                <RotateCwIcon />
-                Retry
-              </Button>
-            </div>
-          )}
-          {(!exact || view === "file") && diff?.state === "ready" && !lines.length && <p className="px-3 py-3 text-muted-foreground text-sm">No changes left in this file: they were committed or undone since.</p>}
-          {(!exact || view === "file") && diff?.state === "ready" && lines.length > 0 && (
-            <>
-              <div className="flex items-center gap-2 border-b bg-muted/30 px-3 py-1 text-muted-foreground text-xs">
-                <span className="min-w-0 flex-1 truncate">{diff.diff.untracked ? "A new file" : "Uncommitted changes in this file"} · hover a line to comment</span>
-                {diff.diff.truncated && <span className="shrink-0 text-warning">first 64 KB</span>}
-              </div>
-              <div className="max-h-96 overflow-auto font-mono text-[12px] leading-5 [font-variant-ligatures:none]">
-                <DiffLines lines={lines} comments={comments} />
-              </div>
-            </>
-          )}
-        </div>
-      )}
+      {open && <EditPanel file={it.file} tool={it.tool} estimate={it.added + it.removed + 6} loadDiff={edits.load} loadTool={edits.tool} comments={edits.comments(it.file)} />}
     </div>
   );
 }
@@ -808,14 +717,7 @@ export function ToolDetailView({ d }: { d: ToolDetail }) {
           <span className="min-w-0 whitespace-pre-wrap break-all">{d.command || [d.pattern, d.file].filter(Boolean).join("  in  ")}</span>
         </div>
       )}
-      {edit && (
-        <>
-          {d.file && <div className="border-b bg-muted/30 px-3 py-1.5 text-muted-foreground">{d.old != null ? "Updated" : "Created"} {d.file}</div>}
-          <div className="max-h-96 overflow-auto">
-            <ChangeLines old={d.old ?? ""} next={d.new ?? ""} />
-          </div>
-        </>
-      )}
+      {edit && <EditChange d={d} />}
       {!edit && (d.output ? (
         <pre className={cn("max-h-80 overflow-auto whitespace-pre-wrap break-all px-3 py-2", d.error && "text-destructive-foreground")}>{plain(d.output)}</pre>
       ) : (
@@ -831,48 +733,6 @@ export function ToolDetailView({ d }: { d: ToolDetail }) {
 // biome-ignore lint/suspicious/noControlCharactersInRegex: matching escape codes is the point.
 const ANSI = /\x1b\[[0-?]*[ -/]*[@-~]|\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)|\x1b[@-Z\\-_]|\r/g;
 const plain = (s: string) => s.replace(ANSI, "");
-
-// ChangeLines is an edit as the terminal shows it: the lines it took out
-// and put in, numbered, the rest as context. A line diff of the two texts.
-function ChangeLines({ old, next }: { old: string; next: string }) {
-  const rows = useMemo(() => lineDiff(old ? old.split("\n") : [], next.split("\n")), [old, next]);
-  let n = 0;
-  return (
-    <table className="w-full border-collapse">
-      <tbody>
-        {rows.map((r, i) => {
-          if (r.op !== "-") n++;
-          return (
-            <tr key={i} className={r.op === "+" ? "bg-success/12" : r.op === "-" ? "bg-destructive/12" : undefined}>
-              <td className="w-10 select-none pr-2 text-right align-top text-muted-foreground/70 tabular-nums">{r.op === "-" ? "" : n}</td>
-              <td className={cn("w-4 select-none align-top", r.op === "+" ? "text-success-foreground" : r.op === "-" ? "text-destructive-foreground" : "text-muted-foreground/50")}>{r.op === " " ? "" : r.op}</td>
-              <td className="whitespace-pre-wrap break-all pr-3">{r.text || " "}</td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
-  );
-}
-
-// lineDiff: the longest common run of lines kept as context, the rest as
-// removed or added. Large texts (past ~4M cells) show as removed then added.
-function lineDiff(a: string[], b: string[]): { op: " " | "+" | "-"; text: string }[] {
-  if (a.length * b.length > 4_000_000) return [...a.map((text) => ({ op: "-" as const, text })), ...b.map((text) => ({ op: "+" as const, text }))];
-  const m = a.length, k = b.length;
-  const dp: Uint32Array[] = Array.from({ length: m + 1 }, () => new Uint32Array(k + 1));
-  for (let i = m - 1; i >= 0; i--) for (let j = k - 1; j >= 0; j--) dp[i][j] = a[i] === b[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
-  const out: { op: " " | "+" | "-"; text: string }[] = [];
-  let i = 0, j = 0;
-  while (i < m && j < k) {
-    if (a[i] === b[j]) (out.push({ op: " ", text: a[i] }), i++, j++);
-    else if (dp[i + 1][j] >= dp[i][j + 1]) out.push({ op: "-", text: a[i++] });
-    else out.push({ op: "+", text: b[j++] });
-  }
-  while (i < m) out.push({ op: "-", text: a[i++] });
-  while (j < k) out.push({ op: "+", text: b[j++] });
-  return out;
-}
 
 // Thinking is the agent at work, as its own status line says it
 // ("Seasoning… · 9m 11s · 7.1k tokens"), or the step it is running

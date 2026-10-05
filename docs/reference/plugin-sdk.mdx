@@ -179,6 +179,7 @@ the same props as in the app:
 | Display | `Badge`, `Kbd`, `Spinner`, `Skeleton`, `Icon` (any lucide icon by name), `AgentIcon`, `Alert`, `AlertTitle`, `AlertDescription`, `Meter`, `MeterLabel`, `MeterTrack`, `MeterIndicator`, `MeterValue`, `Table`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell`, `Empty`, `EmptyHeader`, `EmptyTitle`, `EmptyDescription` |
 | Overlays | `Tip`, `Tooltip`, `TooltipTrigger`, `TooltipPopup`, `AlertDialog` and its parts, `Sheet`, `SheetPopup`, `SheetHeader`, `SheetTitle`, `SheetDescription`, `SheetPanel`, `SheetFooter`, `SheetClose` |
 | Utility | `cn(...classes)` |
+| Diffs | `loadDiffs()`: the app's diff renderer ([@pierre/diffs](https://diffs.com), highlighted in workers, themed like the app), loaded on first call and shared with the app. `parse(patch)` reads a git patch; `<default>` draws its files as a scrolling list, split or unified. The built-in Diff panel uses it. |
 
 `packages/plugin-sdk/src/ui.ts` lists every export with a note on each.
 

@@ -191,7 +191,7 @@ export function DiffLines({ lines, comments }: { lines: DiffLine[]; comments?: L
   );
 }
 
-function CommentNote({ c, onRemove }: { c: LineComment; onRemove(): void }) {
+export function CommentNote({ c, onRemove }: { c: LineComment; onRemove(): void }) {
   return (
     <div className="sticky left-0 flex w-full max-w-[min(100%,560px)] items-start gap-2 border-primary/60 border-l-2 bg-muted/50 py-1.5 pr-2 pl-3 font-sans text-[12.5px] leading-snug">
       <p className={cn("min-w-0 flex-1 whitespace-pre-wrap break-words", c.sent && "text-muted-foreground")}>{c.text}</p>
@@ -210,7 +210,7 @@ function CommentNote({ c, onRemove }: { c: LineComment; onRemove(): void }) {
   );
 }
 
-function CommentComposer({ line, onSave, onCancel }: { line: number; onSave(text: string): void; onCancel(): void }) {
+export function CommentComposer({ line, onSave, onCancel }: { line: number; onSave(text: string): void; onCancel(): void }) {
   const [text, setText] = useState("");
   const save = () => text.trim() && onSave(text);
   return (

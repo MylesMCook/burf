@@ -29,6 +29,7 @@ import { FilterChip } from "@/components/filter-chip";
 import { Tip } from "@/components/tip";
 import { AgentPicker } from "@/components/new-worktree/agent-picker";
 import { AgentIcon } from "@/components/agent-glyph";
+import { loadDiffs } from "@/components/diff/load";
 import { cn } from "@/lib/utils";
 import { PluginPage, ViewHeader } from "@/views/view-header";
 
@@ -134,4 +135,5 @@ export const pluginUi = {
   ViewHeader,
   PluginPage,
   cn,
+  loadDiffs,
 };

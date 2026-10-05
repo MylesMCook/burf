@@ -76,7 +76,7 @@ export async function playTurn(box: string, session: string, prompt: string) {
     { id: "c1", name: "Explore: retry paths", kind: "subagent", agent: "claude", state: "finished", doing: "Found 3 retry paths", since: start, until: back1 },
     { id: "c2", name: "Explore: idempotency in tests", kind: "subagent", agent: "claude", state: "finished", doing: "No test covers a repeat", since: start, until: Date.now() },
   ]);
-  useConversations.getState().push(key, { kind: "edit", id: id(), file: "apps/web/lib/payments/webhook.ts", added: 14, removed: 3, tool: "mock-edit-1" });
+  useConversations.getState().push(key, { kind: "edit", id: id(), file: "apps/web/lib/payments/webhook.ts", added: 9, removed: 2, tool: "mock-edit-1" });
   await wait(500);
   useConversations.getState().push(key, { kind: "ask", id: id(), tool: "Bash", detail: "pnpm test payments", why: "Run the payment tests", structured: true, choices: PERMISSION });
 }
@@ -107,7 +107,10 @@ export function seedTranscript(box: string, session: string, state: string, work
     { kind: "tools", id: id(), verb: "Read", done: true, items: [{ verb: "Read", target: "README.md", file: true }, { verb: "Read", target: "package.json", file: true }] },
   ];
   if (state === "waiting") {
-    items.push({ kind: "edit", id: id(), file: "src/checkout.test.ts", added: 2, removed: 1 });
+    items.push({ kind: "edit", id: id(), file: "apps/web/lib/payments/webhook.ts", added: 9, removed: 2, tool: "mock-edit-1" });
+    items.push({ kind: "edit", id: id(), file: "services/payments/retry.go", added: 14, removed: 3, tool: "mock-edit-go" });
+    items.push({ kind: "edit", id: id(), file: "apps/web/lib/checkout/createOrder.ts", added: 3, removed: 2, tool: "mock-multi-1" });
+    items.push({ kind: "edit", id: id(), file: "apps/web/lib/payments/webhook.test.ts", added: 45, removed: 0, tool: "mock-write-1" });
     items.push({ kind: "ask", id: id(), tool: "Bash", detail: "pnpm db:migrate --name add-idempotency-key", why: "Create the migration for the new idempotency_key column", structured: true, choices: PERMISSION });
   }
   if (state === "running") {
@@ -165,6 +168,59 @@ const MOCK_ARTIFACTS: Record<string, { slug: string; title: string; description?
   ],
 };
 
+// The demo's webhook fix, before and after.
+const WEBHOOK_OLD = "  const payment = await payments.find(event.paymentId);\n  if (!payment) throw new NotFound(event.paymentId);\n  const order = await createOrder(payment);\n  return order;";
+const WEBHOOK_NEW =
+  "  const payment = await payments.find(event.paymentId);\n  if (!payment) throw new NotFound(event.paymentId);\n  // A provider retries a webhook it thinks failed: find the order the\n  // first delivery made instead of charging again.\n  const existing = await orders.byIdempotencyKey(event.idempotencyKey);\n  if (existing) return existing;\n  const order = await createOrder(payment, {\n    idempotencyKey: event.idempotencyKey,\n  });\n  await retries.schedule(event, { max: 5, within: \"10m\" });\n  return order;";
+
+// A new test file, long enough to fold.
+export const WEBHOOK_TEST = `import { beforeEach, describe, expect, test, vi } from "vitest";
+
+import { handleWebhook } from "./webhook";
+import { orders } from "../orders";
+import { payments } from "./client";
+import { retries } from "./retries";
+
+const event = {
+  id: "evt_test_1",
+  paymentId: "pay_1",
+  idempotencyKey: "idem_1",
+  amount: 4200,
+};
+
+describe("handleWebhook", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(payments, "find").mockResolvedValue({ id: "pay_1", amount: 4200 });
+    vi.spyOn(retries, "schedule").mockResolvedValue(undefined);
+  });
+
+  test("creates an order for a new event", async () => {
+    vi.spyOn(orders, "byIdempotencyKey").mockResolvedValue(null);
+    const order = await handleWebhook(event);
+    expect(order.idempotencyKey).toBe("idem_1");
+  });
+
+  test("returns the same order for a repeated event", async () => {
+    const first = await handleWebhook(event);
+    vi.spyOn(orders, "byIdempotencyKey").mockResolvedValue(first);
+    const again = await handleWebhook(event);
+    expect(again.id).toBe(first.id);
+    expect(payments.find).toHaveBeenCalledTimes(2);
+  });
+
+  test("stops after five retries", async () => {
+    await handleWebhook(event);
+    expect(retries.schedule).toHaveBeenCalledWith(event, { max: 5, within: "10m" });
+  });
+
+  test("rejects an unknown payment", async () => {
+    vi.spyOn(payments, "find").mockResolvedValue(null);
+    await expect(handleWebhook(event)).rejects.toThrow("pay_1");
+  });
+});
+`;
+
 // What the demo's tool calls show when opened, as a box would send them.
 const DETAILS: Record<string, ToolDetail> = {
   "mock-read-1": { id: "mock-read-1", name: "Read", file: "apps/web/lib/payments/webhook.ts", output: "     1\timport { createOrder } from \"../checkout/createOrder\";\n     2\timport { verify } from \"./signature\";\n     3\t\n     4\texport async function handleWebhook(req: Request) {\n     5\t  const event = await verify(req);\n     6\t  return createOrder(event.data);\n     7\t}" },
@@ -173,15 +229,137 @@ const DETAILS: Record<string, ToolDetail> = {
   "mock-search-1": { id: "mock-search-1", name: "Grep", pattern: "idempotencyKey", output: "apps/web/lib/payments/stripe.ts:41:  idempotencyKey: event.id,\napps/web/lib/payments/types.ts:12:  idempotencyKey?: string;" },
   "mock-search-2": { id: "mock-search-2", name: "Grep", pattern: "retryWebhook", output: "No matches found" },
   "mock-run-1": { id: "mock-run-1", name: "Bash", command: "pnpm test payments", output: " ✓ webhook › creates an order (12 ms)\n ✓ webhook › returns the same order for a repeated event (9 ms)\n ✓ webhook › stops after five retries (4 ms)\n\n Test Files  1 passed (1)\n      Tests  3 passed (3)\n   Duration  1.21s" },
+  // The demo's edits, as a current box sends them: with their hunks, so
+  // they are numbered by the file's own lines.
   "mock-edit-1": {
     id: "mock-edit-1",
     name: "Edit",
     file: "apps/web/lib/payments/webhook.ts",
-    old: "export async function handleWebhook(req: Request) {\n  const event = await verify(req);\n  return createOrder(event.data);\n}",
-    new: "export async function handleWebhook(req: Request) {\n  const event = await verify(req);\n  // A repeated event finds the order it already made.\n  const existing = await db.order.findUnique({ where: { idempotencyKey: event.id } });\n  if (existing) return existing;\n  return createOrder({ ...event.data, idempotencyKey: event.id });\n}",
+    old: WEBHOOK_OLD,
+    new: WEBHOOK_NEW,
+    hunks: [
+      {
+        oldStart: 12,
+        oldLines: 7,
+        newStart: 12,
+        newLines: 14,
+        lines: [
+          "   const payment = await payments.find(event.paymentId);",
+          "   if (!payment) throw new NotFound(event.paymentId);",
+          "-  const order = await createOrder(payment);",
+          "-  return order;",
+          "+  // A provider retries a webhook it thinks failed: find the order the",
+          "+  // first delivery made instead of charging again.",
+          "+  const existing = await orders.byIdempotencyKey(event.idempotencyKey);",
+          "+  if (existing) return existing;",
+          "+  const order = await createOrder(payment, {",
+          "+    idempotencyKey: event.idempotencyKey,",
+          "+  });",
+          "+  await retries.schedule(event, { max: 5, within: \"10m\" });",
+          "+  return order;",
+          " }",
+          " ",
+          " export function verifySignature(body: string, signature: string) {",
+        ],
+      },
+    ],
     output: "The file apps/web/lib/payments/webhook.ts has been updated.",
   },
+  "mock-edit-go": {
+    id: "mock-edit-go",
+    name: "Edit",
+    file: "services/payments/retry.go",
+    old: "\tfor attempt := 0; ; attempt++ {\n\t\tif err := send(ctx, ev); err == nil {\n\t\t\treturn nil\n\t\t}\n\t\ttime.Sleep(time.Second)\n\t}",
+    new: "\tdelay := 500 * time.Millisecond\n\tfor attempt := 1; attempt <= maxAttempts; attempt++ {\n\t\terr := send(ctx, ev)\n\t\tif err == nil {\n\t\t\treturn nil\n\t\t}\n\t\tif !retryable(err) {\n\t\t\treturn fmt.Errorf(\"send %s: %w\", ev.ID, err)\n\t\t}\n\t\tselect {\n\t\tcase <-ctx.Done():\n\t\t\treturn ctx.Err()\n\t\tcase <-time.After(delay):\n\t\t}\n\t\tdelay = min(delay*2, 30*time.Second)\n\t}\n\treturn ErrGaveUp",
+    hunks: [
+      {
+        oldStart: 38,
+        oldLines: 12,
+        newStart: 38,
+        newLines: 23,
+        lines: [
+          " // Deliver sends an event to its endpoint, retrying while it fails.",
+          " func Deliver(ctx context.Context, ev Event) error {",
+          "-\tfor attempt := 0; ; attempt++ {",
+          "-\t\tif err := send(ctx, ev); err == nil {",
+          "+\tdelay := 500 * time.Millisecond",
+          "+\tfor attempt := 1; attempt <= maxAttempts; attempt++ {",
+          "+\t\terr := send(ctx, ev)",
+          "+\t\tif err == nil {",
+          " \t\t\treturn nil",
+          " \t\t}",
+          "-\t\ttime.Sleep(time.Second)",
+          "+\t\tif !retryable(err) {",
+          "+\t\t\treturn fmt.Errorf(\"send %s: %w\", ev.ID, err)",
+          "+\t\t}",
+          "+\t\tselect {",
+          "+\t\tcase <-ctx.Done():",
+          "+\t\t\treturn ctx.Err()",
+          "+\t\tcase <-time.After(delay):",
+          "+\t\t}",
+          "+\t\tdelay = min(delay*2, 30*time.Second)",
+          " \t}",
+          "+\treturn ErrGaveUp",
+          " }",
+          " ",
+          " // retryable says whether a failed send is worth another try.",
+          " func retryable(err error) bool {",
+        ],
+      },
+    ],
+    output: "The file services/payments/retry.go has been updated.",
+  },
+  "mock-multi-1": {
+    id: "mock-multi-1",
+    name: "MultiEdit",
+    file: "apps/web/lib/checkout/createOrder.ts",
+    old: "export async function createOrder(data: OrderInput) {\n⋯\n  return db.order.create({ data: { ...data, chargeId: charge.id } });",
+    new: "export async function createOrder(data: OrderInput, opts: { idempotencyKey?: string } = {}) {\n⋯\n  return db.order.create({ data: { ...data, chargeId: charge.id, idempotencyKey: opts.idempotencyKey } });",
+    hunks: [
+      {
+        oldStart: 3,
+        oldLines: 6,
+        newStart: 3,
+        newLines: 6,
+        lines: [
+          ' import { payments } from "../payments/client";',
+          " ",
+          "-export async function createOrder(data: OrderInput) {",
+          "+export async function createOrder(data: OrderInput, opts: { idempotencyKey?: string } = {}) {",
+          "   const charge = await payments.charge(data.amount);",
+          '   log.info("charged", { amount: data.amount });',
+          " ",
+        ],
+      },
+      {
+        oldStart: 24,
+        oldLines: 5,
+        newStart: 24,
+        newLines: 6,
+        lines: [
+          "   }",
+          " ",
+          "-  return db.order.create({ data: { ...data, chargeId: charge.id } });",
+          "+  const idempotencyKey = opts.idempotencyKey ?? null;",
+          "+  return db.order.create({ data: { ...data, chargeId: charge.id, idempotencyKey } });",
+          " }",
+          " ",
+        ],
+      },
+    ],
+    output: "Applied 2 edits to apps/web/lib/checkout/createOrder.ts",
+  },
+  "mock-write-1": {
+    id: "mock-write-1",
+    name: "Write",
+    file: "apps/web/lib/payments/webhook.test.ts",
+    new: WEBHOOK_TEST,
+    output: "File created successfully at: apps/web/lib/payments/webhook.test.ts",
+  },
 };
+
+// The demo's change to a file, for its uncommitted diff to agree with it.
+export const mockToolDetailSync = (file: string): ToolDetail | undefined => Object.values(DETAILS).find((d) => d.file === file && d.hunks);
 
 export const mockToolDetail = async (id: string): Promise<ToolDetail> => {
   await wait(250);

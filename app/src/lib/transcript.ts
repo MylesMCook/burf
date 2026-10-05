@@ -87,6 +87,16 @@ export function toolSummary(t: Extract<TranscriptItem, { kind: "tools" }>): stri
   return `${t.verb} ${n}`;
 }
 
+// EditHunk is one piece of a change, as a unified diff has it: its lines
+// are led by " ", "-" or "+".
+export interface EditHunk {
+  oldStart: number;
+  oldLines: number;
+  newStart: number;
+  newLines: number;
+  lines: string[];
+}
+
 // ToolDetail is one tool call opened up, as the agent's terminal shows it:
 // the full command and its output, an edit's exact change, a new file.
 // Fetched only when someone expands the call.
@@ -98,6 +108,9 @@ export interface ToolDetail {
   pattern?: string;
   old?: string;
   new?: string;
+  // The change numbered by the file's own lines (Claude Code's record of
+  // it), when the box has it; otherwise old and new number from 1.
+  hunks?: EditHunk[];
   output?: string;
   truncated?: boolean;
   error?: boolean;

@@ -17,6 +17,7 @@ import { ApiError } from "@/lib/api";
 import { titleOf } from "@/lib/derive";
 import { demoAttach, demoScreen } from "@/demo/terminal";
 import { mockHistoryCall } from "@/lib/mock-history";
+import { mockToolDetailSync, WEBHOOK_TEST } from "@/lib/mock-conversation";
 
 // Mock mode (?mock=1) runs the whole UI on fixtures, so it can be worked on
 // without an agent or a box. State is mutable: new tasks and sessions appear,
@@ -358,43 +359,27 @@ function mockStartTurn(box: string, s: Session, tr: Turn, text: string) {
   }, __BERTH_DEMO__ ? 4500 : 1500);
 }
 
-// A file's diff, as GET sessions/{name}/diff answers: the demo's webhook
-// fix, or a small change for any other file.
-function mockDiff(file: string) {
-  if (file.endsWith("webhook.ts"))
-    return `diff --git a/${file} b/${file}
---- a/${file}
-+++ b/${file}
-@@ -12,9 +12,20 @@ export async function handleWebhook(event: PaymentEvent) {
-   const payment = await payments.find(event.paymentId);
--  if (!payment) throw new NotFound(event.paymentId);
--  const order = await createOrder(payment);
--  return order;
-+  if (!payment) throw new NotFound(event.paymentId);
-+  // A provider retries a webhook it thinks failed: find the order the
-+  // first delivery made instead of charging again.
-+  const existing = await orders.byIdempotencyKey(event.idempotencyKey);
-+  if (existing) return existing;
-+  const order = await createOrder(payment, {
-+    idempotencyKey: event.idempotencyKey,
-+  });
-+  await retries.schedule(event, { max: 5, within: "10m" });
-+  return order;
- }
-
- export function verifySignature(body: string, signature: string) {
-`;
-  return `diff --git a/${file} b/${file}
---- a/${file}
-+++ b/${file}
-@@ -1,4 +1,5 @@
+// A file's diff, as GET sessions/{name}/diff answers: the demo's edits
+// (mock-conversation's), or a small change for any other file.
+function mockDiff(file: string): { diff: string; untracked?: boolean } {
+  const head = `diff --git a/${file} b/${file}\n--- a/${file}\n+++ b/${file}\n`;
+  const hunks = mockToolDetailSync(file);
+  if (hunks?.hunks?.length)
+    return { diff: head + hunks.hunks.map((h) => `@@ -${h.oldStart},${h.oldLines} +${h.newStart},${h.newLines} @@\n${h.lines.join("\n")}\n`).join("") };
+  if (file.endsWith("webhook.test.ts")) {
+    const lines = WEBHOOK_TEST.replace(/\n$/, "").split("\n");
+    return { untracked: true, diff: `diff --git a/${file} b/${file}\nnew file mode 100644\n--- /dev/null\n+++ b/${file}\n@@ -0,0 +1,${lines.length} @@\n${lines.map((l) => `+${l}`).join("\n")}\n` };
+  }
+  return {
+    diff: `${head}@@ -1,4 +1,5 @@
  import { describe, it } from "vitest";
 +import { retry } from "./retry";
-
+ 
  describe("checkout", () => {
 -  it.todo("charges once");
 +  it("charges once", () => retry(2));
-`;
+`,
+  };
 }
 
 function mockOrchestration(box: string, method: string, path: string, body?: unknown): Promise<unknown> | undefined {
@@ -403,7 +388,7 @@ function mockOrchestration(box: string, method: string, path: string, body?: unk
   if (qm && !qs) return Promise.reject(new ApiError("no session with that name", 404));
   if (qs && qm?.[2] === "diff") {
     const file = new URLSearchParams(path.split("?")[1]).get("file") ?? "";
-    return delay({ file, diff: mockDiff(file) });
+    return delay({ file, ...mockDiff(file) });
   }
   if (qs && qm?.[2] === "queue") {
     const key = `${box}/${qs.name}`;

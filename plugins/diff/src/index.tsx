@@ -1,29 +1,19 @@
 import { definePlugin, useEvent, useStorage, worktreeLocation, type WorktreePanelProps } from "@berth/plugin";
-import { Button, Empty, EmptyDescription, EmptyHeader, EmptyTitle, Icon, Input, PickOne, Spinner, Tip, cn } from "@berth/plugin/ui";
+import { Button, type DiffFile, type DiffsModule, type DiffViewerItem, Empty, EmptyDescription, EmptyHeader, EmptyTitle, Icon, Input, loadDiffs, PickOne, Spinner, Tip, cn } from "@berth/plugin/ui";
 import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { type DiffResult, fetchDiff, type FileStat, LIMIT, type Scope, splitPath, startsCollapsed } from "./git";
-import type * as ViewerModule from "./lazy/viewer";
 
 // Diff: the whole of a branch's change in one scrolling view, the way a pull
-// request shows it, drawn with @pierre/diffs (diffs.com). The diff is read
-// with git on the box; the library, its highlighter and their languages load
-// only once a Diff panel opens, from lazy/ beside this module.
+// request shows it, drawn with the app's diff renderer (@pierre/diffs,
+// diffs.com), shared with its chats. The diff is read with git on the box;
+// the renderer, its highlighter and their languages load only once a Diff
+// panel has something to show.
 
 export default definePlugin((berth) => {
   berth.addWorktreePanel({ id: "diff", title: "Diff", icon: "FileDiff", Component: DiffPanel });
   berth.addCommand({ id: "open", title: "Show this branch's diff", group: "Git", run: () => berth.openPanel("diff") });
 });
-
-type Viewer = typeof ViewerModule;
-let viewer: Promise<Viewer> | undefined;
-function loadViewer(plugin: string): Promise<Viewer> {
-  viewer ??= (import(/* @vite-ignore */ new URL(`builtin-plugins/${plugin}/lazy/viewer.js`, document.baseURI).href) as Promise<Viewer>).catch((err) => {
-    viewer = undefined;
-    throw err;
-  });
-  return viewer;
-}
 
 type Load = { state: "loading" } | { state: "error"; message: string } | { state: "ready"; value: DiffResult };
 type Layout = "split" | "unified";
@@ -175,12 +165,12 @@ function DiffPanel({ berth, box, location, worktree, path, main }: WorktreePanel
           </Button>
         </Tip>
       </header>
-      <Body load={load} scope={scope} setScope={setScope} refresh={refresh} layout={layout} wrap={wrap} list={list} plugin={berth.id} />
+      <Body load={load} scope={scope} setScope={setScope} refresh={refresh} layout={layout} wrap={wrap} list={list} />
     </div>
   );
 }
 
-function Body({ load, scope, setScope, refresh, layout, wrap, list, plugin }: { load: Load; scope: Scope; setScope(s: Scope): void; refresh(): void; layout: Layout; wrap: boolean; list: boolean; plugin: string }) {
+function Body({ load, scope, setScope, refresh, layout, wrap, list }: { load: Load; scope: Scope; setScope(s: Scope): void; refresh(): void; layout: Layout; wrap: boolean; list: boolean }) {
   if (load.state === "loading") {
     return (
       <Centered>
@@ -227,7 +217,7 @@ function Body({ load, scope, setScope, refresh, layout, wrap, list, plugin }: { 
       </Message>
     );
   }
-  return <Files result={r} scope={scope} layout={layout} wrap={wrap} list={list} plugin={plugin} />;
+  return <Files result={r} scope={scope} layout={layout} wrap={wrap} list={list} />;
 }
 
 function Centered({ children }: { children: ReactNode }) {
@@ -261,14 +251,14 @@ interface Entry {
   // The shortest end of its path no other file shares ("de/payments.json"),
   // and the folders before it.
   label: { short: string; rest: string };
-  fileDiff?: ViewerModule.FileDiffMetadata;
+  fileDiff?: DiffFile;
   // Why it starts folded: a lockfile, generated, large.
   why?: string;
 }
 
-function Files({ result, scope, layout, wrap, list, plugin }: { result: DiffResult & { kind: "ok" }; scope: Scope; layout: Layout; wrap: boolean; list: boolean; plugin: string }) {
+function Files({ result, scope, layout, wrap, list }: { result: DiffResult & { kind: "ok" }; scope: Scope; layout: Layout; wrap: boolean; list: boolean }) {
   const dark = useDark();
-  const [mod, setMod] = useState<{ value: Viewer } | { error: string }>();
+  const [mod, setMod] = useState<{ value: DiffsModule } | { error: string }>();
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const [active, setActive] = useState<string>();
   const [jump, setJump] = useState<{ id: string; n: number }>();
@@ -279,14 +269,14 @@ function Files({ result, scope, layout, wrap, list, plugin }: { result: DiffResu
 
   useEffect(() => {
     let live = true;
-    loadViewer(plugin).then(
+    loadDiffs().then(
       (value) => live && setMod({ value }),
       (err) => live && setMod({ error: String(err?.message ?? err) }),
     );
     return () => {
       live = false;
     };
-  }, [plugin]);
+  }, []);
 
   const parsed = useMemo(() => (mod && "value" in mod ? mod.value.parse(result.patch) : undefined), [mod, result.patch]);
 
@@ -301,7 +291,7 @@ function Files({ result, scope, layout, wrap, list, plugin }: { result: DiffResu
 
   const isOpen = useCallback((e: Entry) => (e.fileDiff?.hunks.length ? (open[e.stat.path] ?? !e.why) : false), [open]);
 
-  const items = useMemo<ViewerModule.ViewItem[]>(
+  const items = useMemo<DiffViewerItem[]>(
     () =>
       entries.flatMap((e) => {
         if (!e.fileDiff) return [];

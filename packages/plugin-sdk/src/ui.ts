@@ -118,3 +118,41 @@ export declare const PluginPage: ComponentType<{ className?: string; children?: 
 // Any lucide icon by name: <Icon name="Server" />.
 export declare const Icon: ComponentType<{ name: string; className?: string }>;
 export declare function cn(...classes: unknown[]): string;
+
+// The app's diff renderer (@pierre/diffs, diffs.com: highlighted in two
+// workers, themed like the app), loaded on first use and shared with the
+// app's own diffs: its default export draws files as a scrolling list.
+// Call loadDiffs() only when a diff is to be shown.
+export interface DiffFile {
+  name: string;
+  prevName?: string;
+  type: "change" | "rename-pure" | "rename-changed" | "new" | "deleted";
+  hunks: readonly unknown[];
+}
+export interface DiffViewerItem {
+  id: string;
+  fileDiff: DiffFile;
+  collapsed: boolean;
+  // A new number whenever the item changes (folded, a new read), so the
+  // view redraws exactly the files that did.
+  version: number;
+}
+export interface DiffViewerProps {
+  items: DiffViewerItem[];
+  layout: "split" | "unified";
+  wrap: boolean;
+  dark: boolean;
+  // Scrolls to a file; n changes for each jump.
+  jump?: { id: string; n: number };
+  // The file at the top of the view, as it scrolls.
+  onActive?(id: string): void;
+  renderHeader(id: string): ReactNode;
+  // A different diff: start again from its top.
+  resetKey?: string;
+}
+export interface DiffsModule {
+  // A git patch, one entry per file.
+  parse(patch: string): DiffFile[];
+  default: ComponentType<DiffViewerProps>;
+}
+export declare function loadDiffs(): Promise<DiffsModule>;

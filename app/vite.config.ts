@@ -52,6 +52,32 @@ function demoPage(): Plugin {
   };
 }
 
+// noShikiWasm: the diff renderer highlights with Shiki's JavaScript regex
+// engine, so its Oniguruma engine (a 600 KB wasm chunk) is never shipped.
+function noShikiWasm(): Plugin {
+  return {
+    name: "berth-no-shiki-wasm",
+    enforce: "pre",
+    resolveId: (id) => (id === "shiki/wasm" ? "\0no-shiki-wasm" : undefined),
+    load: (id) => (id === "\0no-shiki-wasm" ? "export default undefined;" : undefined),
+  };
+}
+
+// workerScript: the highlighting worker's script is imported for what it
+// does when it runs, which its package's sideEffects list leaves out (so a
+// build would drop it, leaving an empty worker).
+function workerScript(): Plugin {
+  return {
+    name: "berth-diffs-worker-script",
+    enforce: "pre",
+    async resolveId(id, importer, options) {
+      if (id !== "@pierre/diffs/worker/worker.js") return undefined;
+      const r = await this.resolve(id, importer, { ...options, skipSelf: true });
+      return r ? { ...r, moduleSideEffects: true } : undefined;
+    },
+  };
+}
+
 // https://vite.dev/config/
 //
 // `vite build --mode demo` (pnpm build:demo) is the live demo on berthd.app:
@@ -65,7 +91,10 @@ const argPort = process.argv.includes("--port") ? process.argv[process.argv.inde
 
 export default defineConfig(({ mode }) => ({
   cacheDir: argPort && argPort !== "1420" ? `node_modules/.vite-${argPort}` : "node_modules/.vite",
-  plugins: [react(), tailwindcss(), devPlugins(), ...(mode === "demo" ? [demoPage()] : [])],
+  plugins: [react(), tailwindcss(), devPlugins(), noShikiWasm(), ...(mode === "demo" ? [demoPage()] : [])],
+  // The diff renderer's highlighting worker loads its languages as chunks,
+  // which takes a module worker.
+  worker: { format: "es" as const, plugins: () => [noShikiWasm(), workerScript()] },
   define: { __BERTH_DEMO__: JSON.stringify(mode === "demo") },
   resolve: {
     alias: {
