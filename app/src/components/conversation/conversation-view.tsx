@@ -339,11 +339,16 @@ function ItemBody({ it, onAnswer, edits, who }: { it: TranscriptItem; onAnswer(i
   switch (it.kind) {
     case "user":
       return (
-        <div className="hs-prompt flex w-full items-end justify-end gap-1.5">
-          <PromptActions it={it} />
-          <div data-selectable className="cv-in min-w-0 max-w-[80%] whitespace-pre-wrap rounded-2xl bg-muted px-3.5 py-2">
-            {it.text}
+        <div className="hs-prompt flex w-full flex-col items-end gap-1">
+          <div className="flex w-full items-end justify-end gap-1.5">
+            {!it.pending && <PromptActions it={it} />}
+            <div data-selectable className={cn("cv-in min-w-0 max-w-[80%] whitespace-pre-wrap rounded-2xl bg-muted px-3.5 py-2", it.pending && "opacity-70")}>
+              {it.text}
+            </div>
           </div>
+          {/* Sent mid-turn: the agent takes it at its next step, as its own
+              terminal shows a queued message. */}
+          {it.pending && <span className="pe-1 text-muted-foreground text-xs">Sent · {who} reads it at its next step</span>}
         </div>
       );
     case "text":

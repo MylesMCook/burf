@@ -5,7 +5,8 @@
 // kept by Berth.
 
 export type TranscriptItem =
-  | { kind: "user"; id: string; text: string }
+  // pending: sent from here, and the agent hasn't read it yet.
+  | { kind: "user"; id: string; text: string; pending?: boolean }
   // live: words read from the agent's screen that its record doesn't
   // have yet, replaced by the record's own once it catches up.
   | { kind: "text"; id: string; text: string; live?: boolean }
