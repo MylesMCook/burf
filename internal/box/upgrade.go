@@ -143,7 +143,9 @@ func (b *Box) Capabilities() []string {
 		caps = append(caps, "runs", "exec.detach")
 	}
 	if b.Browsers != nil {
-		caps = append(caps, "browser")
+		// browser.health: GET /v1/browser/health, PUT /v1/browser/settings
+		// and POST /v1/browser/check (browsersandbox.go).
+		caps = append(caps, "browser", "browser.health")
 	}
 	if b.Events.Journal != nil {
 		caps = append(caps, "journal")

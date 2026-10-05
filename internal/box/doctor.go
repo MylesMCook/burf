@@ -64,9 +64,36 @@ func (b *Box) Doctor(ctx context.Context) []doctor.Check {
 			checks = append(checks, doctor.Check{Area: "Agents", Name: "agent browser", Status: doctor.Info, Detail: "no Chromium for agents' browsers", Fix: "berthd browser install"})
 		} else {
 			checks = append(checks, doctor.Check{Area: "Agents", Name: "agent browser", Status: doctor.OK, Detail: fmt.Sprintf("Chromium at %s; at most %d at once", p, b.Browsers.limit())})
+			checks = append(checks, browserSandboxChecks(b.Browsers.Health())...)
 		}
 	}
 	return checks
+}
+
+// browserSandboxChecks say when Chromium's sandbox stops agents' browsers,
+// with the same two ways out the app offers, or that they run without it.
+func browserSandboxChecks(h BrowserHealth) []doctor.Check {
+	const off = "Run without Chromium's sandbox in Berth (Settings → Boxes); Berth's proxy still confines it to the worktree's own pages"
+	switch {
+	case h.State == "sandbox" && h.Fix != "":
+		detail := "Ubuntu's sandbox setting (kernel.apparmor_restrict_unprivileged_userns=1) stops Chromium's sandbox, so agents' browsers can't start"
+		if h.Likely {
+			detail = "Ubuntu's sandbox setting (kernel.apparmor_restrict_unprivileged_userns=1) will stop Chromium's sandbox, so agents' browsers won't start"
+		}
+		return []doctor.Check{{Area: "Agents", Name: "browser sandbox", Status: doctor.Warn, Detail: detail,
+			Fix: "Fix it from Berth (Settings → Boxes), or run `" + h.Fix + "`. Or: " + off}}
+	case h.State == "sandbox":
+		return []doctor.Check{{Area: "Agents", Name: "browser sandbox", Status: doctor.Warn, Detail: "Chromium could not start its sandbox on this box, so agents' browsers can't start", Fix: off}}
+	case h.State == "error":
+		return []doctor.Check{{Area: "Agents", Name: "browser start", Status: doctor.Warn, Detail: h.Error}}
+	case h.NoSandbox:
+		from := "the box's setting (Berth: Settings → Boxes)"
+		if h.NoSandboxFrom == "env" {
+			from = "BERTH_BROWSER_NO_SANDBOX=1"
+		}
+		return []doctor.Check{{Area: "Agents", Name: "browser sandbox", Status: doctor.Info, Detail: "agents' browsers run without Chromium's sandbox, by " + from + "; Berth's proxy still confines them to the worktree's own pages"}}
+	}
+	return nil
 }
 
 // eventChecks report the journal and every subscriber that fell behind or

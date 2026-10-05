@@ -28,6 +28,7 @@ import (
 //	GET  /v1/worktrees/{loc}/{wt}/browser/screencast  NDJSON frames while you watch
 //	GET  /v1/worktrees/{loc}/{wt}/browser/shots/{name}
 //	GET  /v1/browsers, POST /v1/browser/allow {origin}
+//	GET  /v1/browser/health, PUT /v1/browser/settings, POST /v1/browser/check (browsersandbox.go)
 //
 // Every answer an agent reads is {text}: short, capped, as the CLI prints it.
 
@@ -233,7 +234,12 @@ func (b *Box) browserStatus(w http.ResponseWriter, r *http.Request) error {
 	}
 	br := b.Browsers.Lookup(wt.Path)
 	if br == nil {
-		writeJSON(w, map[string]any{"running": false, "text": "no browser open"})
+		// Why one can't start, if it can't: cheap, without starting it.
+		res := map[string]any{"running": false, "text": "no browser open"}
+		if h := b.Browsers.Health(); h.State != "ok" {
+			res["health"], res["text"] = h, "no browser open; "+h.Text
+		}
+		writeJSON(w, res)
 		return nil
 	}
 	st := br.status()
@@ -398,4 +404,7 @@ func (b *Box) mountBrowser(route func(string, func(http.ResponseWriter, *http.Re
 	route("GET "+p+"shots/{name}", b.browserShotFile)
 	route("GET /v1/browsers", b.listBrowsers)
 	route("POST /v1/browser/allow", b.browserAllow)
+	route("GET /v1/browser/health", b.browserHealth)
+	route("PUT /v1/browser/settings", b.putBrowserSettings)
+	route("POST /v1/browser/check", b.checkBrowser)
 }

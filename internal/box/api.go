@@ -219,7 +219,7 @@ func statusFor(err error) int {
 		return http.StatusNotFound
 	case errors.Is(err, ErrSessionExists), errors.Is(err, ErrSessionExited):
 		return http.StatusConflict
-	case errors.Is(err, errTmuxMissing):
+	case errors.Is(err, errTmuxMissing), errors.Is(err, ErrBrowserSandbox):
 		return http.StatusServiceUnavailable
 	}
 	return http.StatusBadRequest

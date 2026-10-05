@@ -20,6 +20,7 @@ import (
 //	refused          a before: hook (or the box's own rules) said no
 //	unsupported      this box doesn't have that feature
 //	tmux_missing     tmux is not installed on the box
+//	browser_blocked  the box's browser can't start its sandbox (browsersandbox.go)
 //	git_failed       git refused; the message carries git's words
 //	command_failed   a program the box ran failed
 //	too_many         slow down and try again
@@ -33,6 +34,7 @@ const (
 	CodeRefused       = "refused"
 	CodeUnsupported   = "unsupported"
 	CodeTmuxMissing   = "tmux_missing"
+	CodeBrowserBlock  = "browser_blocked"
 	CodeGitFailed     = "git_failed"
 	CodeCommandFailed = "command_failed"
 	CodeTooMany       = "too_many"
@@ -58,6 +60,8 @@ func codeFor(err error) string {
 		return CodeSessionExists
 	case errors.Is(err, errTmuxMissing):
 		return CodeTmuxMissing
+	case errors.Is(err, ErrBrowserSandbox):
+		return CodeBrowserBlock
 	case errors.Is(err, ErrUnknownLocation), errors.Is(err, ErrUnknownWorktree), errors.Is(err, ErrUnknownSession), errors.Is(err, ErrUnknownShare), errors.Is(err, ErrUnknownUnit):
 		return CodeNotFound
 	case errors.As(err, &he):

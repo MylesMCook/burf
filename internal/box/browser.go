@@ -61,6 +61,11 @@ type Browsers struct {
 	b    *Box
 	open map[string]*browser // worktree path →
 	stop chan struct{}
+
+	failure   *startFailure // the last start that failed, until one starts
+	startedOK bool          // a browser has started since berthd did
+	likely    bool          // likelyBlocked, as of likelyAt
+	likelyAt  time.Time
 }
 
 type consoleEntry struct {
@@ -235,8 +240,10 @@ func FindChromium() (string, error) {
 			return p, nil
 		}
 	}
-	return "", errors.New("no Chromium on this box; install one with `berthd browser install` (Playwright's headless shell) or set BERTH_CHROMIUM")
+	return "", errNoChromium
 }
+
+var errNoChromium = errors.New("no Chromium on this box; install one with `berthd browser install` (Playwright's headless shell) or set BERTH_CHROMIUM")
 
 // get returns the worktree's browser, starting one if need be.
 func (m *Browsers) get(ctx context.Context, loc Location, wt Worktree) (*browser, error) {
@@ -267,7 +274,13 @@ func (m *Browsers) get(ctx context.Context, loc Location, wt Worktree) (*browser
 		m.close(lru, "another worktree needed a browser")
 	}
 	br, err := m.launch(ctx, loc, wt)
+	m.noteStart(err)
 	if err != nil {
+		reason := "error"
+		if errors.Is(err, ErrBrowserSandbox) {
+			reason = "sandbox"
+		}
+		m.b.Events.Publish(events.Event{Type: "browser.failed", Box: m.b.Name, Origin: "browser", Data: map[string]any{"location": loc.Name, "name": wt.Name, "path": wt.Path, "reason": reason}})
 		return nil, err
 	}
 	m.mu.Lock()
@@ -365,6 +378,9 @@ func (m *Browsers) shotDir(location, worktree string) string {
 }
 
 func (m *Browsers) launch(ctx context.Context, loc Location, wt Worktree) (*browser, error) {
+	if err := m.simulatedSandbox(); err != nil {
+		return nil, err
+	}
 	bin := m.Chromium
 	if bin == "" {
 		var err error
@@ -376,6 +392,48 @@ func (m *Browsers) launch(ctx context.Context, loc Location, wt Worktree) (*brow
 	if err != nil {
 		return nil, err
 	}
+	br, err := m.start(ctx, bin, px.Addr())
+	if err != nil {
+		return nil, err
+	}
+	br.path, br.location, br.worktree = wt.Path, loc.Name, wt.Name
+	return br, nil
+}
+
+// Check starts Chromium once, on a blank page with nowhere to go, and
+// closes it: whether a browser starts now, after a fix.
+func (m *Browsers) Check(ctx context.Context) error {
+	err := m.simulatedSandbox()
+	if err == nil {
+		bin := m.Chromium
+		if bin == "" {
+			bin, err = FindChromium()
+		}
+		if err == nil {
+			var br *browser
+			// A proxy that refuses everything: the page is about:blank.
+			if br, err = m.start(ctx, bin, "127.0.0.1:9"); err == nil {
+				br.shutdown()
+			}
+		}
+	}
+	m.noteStart(err)
+	return err
+}
+
+// simulatedSandbox is Ubuntu's refusal, under BERTH_TEST_USERNS_SYSCTL.
+func (m *Browsers) simulatedSandbox() error {
+	if testUsernsPath() == "" || readUserns() != "1" {
+		return nil
+	}
+	if off, _ := m.noSandbox(); off {
+		return nil
+	}
+	return sandboxError("1")
+}
+
+// start runs Chromium with its only way out through proxy.
+func (m *Browsers) start(ctx context.Context, bin, proxy string) (*browser, error) {
 	profile, err := os.MkdirTemp(filepath.Join(m.Dir, "profiles"), "p-")
 	if err != nil {
 		os.MkdirAll(filepath.Join(m.Dir, "profiles"), 0o700)
@@ -385,7 +443,7 @@ func (m *Browsers) launch(ctx context.Context, loc Location, wt Worktree) (*brow
 	}
 	args := []string{
 		"--headless=new", "--remote-debugging-pipe", "--user-data-dir=" + profile,
-		"--proxy-server=" + px.Addr(), "--proxy-bypass-list=<-loopback>",
+		"--proxy-server=" + proxy, "--proxy-bypass-list=<-loopback>",
 		"--no-first-run", "--no-default-browser-check", "--disable-background-networking", "--disable-sync",
 		"--disable-extensions", "--disable-component-update", "--disable-default-apps", "--mute-audio",
 		"--disable-features=DnsOverHttps,Translate,MediaRouter,OptimizationHints,AutofillServerCommunication,CertificateTransparencyComponentUpdater,InterestFeedContentSuggestions,PrivacySandboxSettings4",
@@ -396,9 +454,10 @@ func (m *Browsers) launch(ctx context.Context, loc Location, wt Worktree) (*brow
 		args = append(args, "--disable-dev-shm-usage")
 	}
 	// Ubuntu 24.04 and others stop Chromium making the user namespaces its
-	// sandbox needs. The owner can choose to run without it: the browser is
-	// still confined to its worktree by the proxy.
-	if os.Getenv("BERTH_BROWSER_NO_SANDBOX") == "1" {
+	// sandbox needs. The owner can choose to run without it (the box's
+	// setting, or BERTH_BROWSER_NO_SANDBOX): the browser is still confined
+	// to its worktree by the proxy.
+	if off, _ := m.noSandbox(); off {
 		args = append(args, "--no-sandbox")
 	}
 	args = append(args, "about:blank")
@@ -422,7 +481,7 @@ func (m *Browsers) launch(ctx context.Context, loc Location, wt Worktree) (*brow
 	}
 	toChrome.Close()
 	fromChrome.Close()
-	br := &browser{m: m, path: wt.Path, location: loc.Name, worktree: wt.Name, cmd: cmd, profile: profile, started: time.Now(), lastUsed: time.Now(),
+	br := &browser{m: m, cmd: cmd, profile: profile, started: time.Now(), lastUsed: time.Now(),
 		done: make(chan struct{}), refs: map[int64]string{}, reqs: map[string]string{}, inflight: map[string]bool{}, watchers: map[chan frame]struct{}{}}
 	br.cdp = newCDP(ours, theirs, br.onEvent)
 	go func() {
@@ -436,7 +495,7 @@ func (m *Browsers) launch(ctx context.Context, loc Location, wt Worktree) (*brow
 	if err := br.attach(cctx); err != nil {
 		br.shutdown()
 		if out := strings.ToLower(stderr.String()); strings.Contains(out, "sandbox") || strings.Contains(out, "namespace") {
-			return nil, fmt.Errorf("%w: Chromium could not start its sandbox on this box. Allow it with `sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0` (and the same line in /etc/sysctl.d/), or run berthd with BERTH_BROWSER_NO_SANDBOX=1 to run the browser without Chromium's sandbox; Berth's proxy still confines it to the worktree", ErrBrowserSandbox)
+			return nil, sandboxError(readUserns())
 		}
 		if out := strings.TrimSpace(stderr.String()); out != "" {
 			return nil, fmt.Errorf("starting Chromium: %w; it said: %s", err, strings.ReplaceAll(lastLines(out, 6), "\n", " | "))
@@ -455,9 +514,6 @@ func browserStartTimeout() time.Duration {
 	}
 	return 20 * time.Second
 }
-
-// ErrBrowserSandbox is a Chromium that could not start its sandbox.
-var ErrBrowserSandbox = errors.New("no sandbox for Chromium")
 
 // stderrTail keeps the last max bytes written to it: the end of Chromium's
 // error output, for saying why it would not start.
