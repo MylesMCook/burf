@@ -632,7 +632,8 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
       version: "0.1.0",
       build: mockBuilds[box] ?? SHIPPED_BUILD,
       tools: ["claude", "codex"],
-      capabilities: ["diff", "turns", "queue", "ask", "answer", "journal", "runs", "exec.detach", "browser", "titles", "sample", "service.terminal"],
+      home: HOME,
+      capabilities: ["diff", "turns", "queue", "ask", "answer", "journal", "runs", "exec.detach", "browser", "titles", "sample", "service.terminal", "session.home"],
       adapters: {
         claude: { ready: true, started: true, waiting: true, finished: true, final_message: true, via: "hooks" },
         codex: { ready: true, started: true, waiting: true, finished: true, final_message: true, via: "hooks" },
@@ -672,6 +673,14 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
     setTimeout(() => emit({ type: "task.created", box, data: { location: t.location, name: t.name, path: wt.path, branch: wt.branch, session: session.name, agent } }), 60);
     if (t.open) setTimeout(() => emit({ type: "session.open", box, data: { name: session.name, location: session.location, path: wt.path, open: t.open, agent } }), 120);
     return delay({ worktree: wt, session });
+  }
+  if (key === "POST sessions" && (body as { home?: boolean }).home) {
+    // A terminal in the box's home, tied to no worktree.
+    const r = body as { name?: string; command?: string };
+    const command = r.command ?? "";
+    const session: Session = { name: r.name ?? `home-${command.split(" ")[0] || "shell"}-${sessions[box].length}`, dir: HOME, command, created: new Date().toISOString(), attached: 0, exited: false };
+    sessions[box].push(session);
+    return delay(session);
   }
   if (key === "POST sessions") {
     const r = body as { location: string; name?: string; command?: string; agent?: string; prompt?: string; title?: string };
@@ -762,7 +771,9 @@ function mockAttach(box: string, session: string, h: TerminalHandlers) {
   const timers: number[] = [];
   let open = true;
   const s = sessions[box]?.find((x) => x.name === session);
-  const lines = [
+  // A box's home terminal is a plain shell at ~.
+  const home = s && !s.location && !s.command;
+  const lines = home ? ["\x1b[2J\x1b[H", `Last login: Mon Oct  5 09:12:44 on ${box}\r\n`, `\x1b[32mme@${box}\x1b[0m:\x1b[34m~\x1b[0m$ `] : [
     "\x1b[2J\x1b[H",
     `\x1b[38;5;208m✻\x1b[0m Welcome to \x1b[1m${s?.agent ?? "shell"}\x1b[0m on \x1b[36m${box}\x1b[0m  \x1b[2m${s?.dir ?? ""}\x1b[0m\r\n\r\n`,
     "\x1b[33m●\x1b[0m Read \x1b[1mapps/web/lib/checkout/createOrder.ts\x1b[0m\r\n",

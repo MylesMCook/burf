@@ -65,6 +65,7 @@ import { openWorktreePicker } from "@/components/workspace/worktree-picker";
 import { usePrefs } from "@/lib/prefs";
 import { useRegistry } from "@/plugins/registry";
 import { openAddToBox } from "@/components/sidebar/add-to-box-dialog";
+import { openHomeTerminal } from "@/components/box-picker";
 import { boxLoad } from "@/components/sidebar/box-load";
 import { kitsApi } from "@/lib/kits";
 import { deriveProjects, type Member, type Project, projectActions as groupActions, useProjectsDoc } from "@/lib/project-groups";
@@ -433,6 +434,8 @@ export function boxActions(box: BoxStatus): Action[] {
   const monitor = useRegistry.getState().screens.some((c) => c.plugin === "box-monitor" && c.item.id === "boxes");
   const items: Action[] = [];
   if (online) items.push(item("Add a project…", <FolderOpenIcon />, () => st.openAddProject(box.name)));
+  // A terminal on the box itself, in its home, over Home (lib/box-home.ts).
+  if (online) items.push(item("New terminal", <SquareTerminalIcon />, () => void openHomeTerminal(box.name)));
   if (monitor) items.push(item("Box monitor", <ActivityIcon />, () => st.setView({ kind: "plugin", screen: "boxes" })));
   if (!online) items.push(item("Reconnect", <RotateCwIcon />, () => void st.refreshAll()));
   if (online)

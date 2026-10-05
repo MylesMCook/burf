@@ -13,8 +13,9 @@ import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { focusedSide, LANES } from "@/lib/compare";
 import { compareShowing, setCompareLane, swapCompare } from "@/lib/compare-actions";
-import { activateTab, closeGroup, currentSpace, focusGroup, here, hereRef, moveFocus, nextGroup, stripTab, useWorkspaces } from "@/lib/workspaces";
+import { activateTab, closeGroup, currentSpace, focusGroup, hereRef, moveFocus, nextGroup, stripTab, useWorkspaces } from "@/lib/workspaces";
 import { openWorktreePicker } from "@/components/workspace/worktree-picker";
+import { newTerminal } from "@/components/box-picker";
 import { zoom } from "@/lib/zoom";
 import { isOnboardingActive } from "@/views/onboarding/onboarding-state";
 
@@ -51,8 +52,8 @@ function run(id: string, from: "key" | "menu", arg?: number | Dir): boolean {
       s.openNewWorktree(at ? { box: at.box, location: at.location } : {});
       return true;
     case "new-terminal":
-      if (!ws) return false;
-      void startSession("");
+      // With no worktree in focus, on a box's home (components/box-picker).
+      newTerminal();
       return true;
     case "new-browser":
       if (!ws) return false;
@@ -77,7 +78,7 @@ function run(id: string, from: "key" | "menu", arg?: number | Dir): boolean {
         if (from === "menu") toastManager.add({ title: "Compare is in Labs", description: "Turn on Labs in Settings → General to use it." });
         return from === "menu";
       }
-      if (!here()) return false;
+      if (!at) return false;
       // In a Compare tab, ⌘⌥C swaps the side without the focus for another.
       const showing = compareShowing();
       if (showing?.tab.compare) {

@@ -51,7 +51,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { useAllSessions } from "@/hooks/use-agent-counts";
 import { sessionWord } from "@/lib/state-model";
 import { useThemes } from "@/hooks/use-theme";
-import { openBrowserAt, resolveUrl, startSession } from "@/lib/actions";
+import { openBrowserAt, resolveUrl } from "@/lib/actions";
 import { agentOf, sessionAgent, sessionName, sortedWorktrees, worktreeOf } from "@/lib/derive";
 import { openBroadcast, openPromptPicker } from "@/lib/prompts";
 import { setNotificationsOpen } from "@/lib/notifications";
@@ -60,6 +60,7 @@ import { useStore } from "@/lib/store";
 import { focusedPane, focusSession, goHome, hereRef, recentWorktrees, refOf, selectWorktree, useWorkspaces } from "@/lib/workspaces";
 import { openShortcuts } from "@/components/shortcuts-sheet";
 import { openWorktreePicker } from "@/components/workspace/worktree-picker";
+import { newTerminal } from "@/components/box-picker";
 import { openCustomize, useArrangedNav } from "@/components/sidebar/nav";
 import { loadPlugins } from "@/plugins/host";
 import { useRegistry } from "@/plugins/registry";
@@ -137,7 +138,7 @@ export function CommandPalette() {
         const at = hereRef();
         openComposer({ noAgent: true, ...(at ? { box: at.box, location: at.location } : {}) });
       }) },
-      { value: "new-terminal", label: "New terminal", icon: slot(<SquareTerminalIcon />), shortcut: "⌘T", run: go(() => void startSession("")) },
+      { value: "new-terminal", label: "New terminal", icon: slot(<SquareTerminalIcon />), shortcut: "⌘T", run: go(newTerminal) },
       { value: "new-browser", label: "New browser tab", icon: slot(<GlobeIcon />), shortcut: "⌘⇧B", run: go(() => openBrowserAt("")) },
       { value: "open in editor cursor vscode zed", label: "Open in editor", icon: slot(<CodeXmlIcon />), shortcut: "⌘⇧O", run: go(() => {
         const at = hereRef();

@@ -31,7 +31,7 @@ import { arrange, type NavList, navActions, useNav } from "@/lib/nav";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { goHome, useWorkspaces } from "@/lib/workspaces";
+import { goHome, homeBox, useWorkspaces } from "@/lib/workspaces";
 import { useRegistry } from "@/plugins/registry";
 import { Icon } from "@/plugins/ui";
 import { useReviewCount } from "@/views/review/review-store";
@@ -59,7 +59,8 @@ export interface NavItem {
 // first place is the Agent Dashboard itself, under its own name.
 export function useNavItems(): NavItem[] {
   const view = useStore((s) => s.view);
-  const noWorktree = useWorkspaces((s) => !s.current);
+  // A box's home terminals show over Home.
+  const noWorktree = useWorkspaces((s) => !s.current || !!homeBox(s.current));
   const labs = usePrefs((p) => p.labs);
   const plugins = useRegistry((s) => s.sidebarItems);
   const counts = useAgentCounts();

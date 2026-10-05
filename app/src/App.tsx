@@ -22,6 +22,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Launcher } from "@/components/workspace/launcher";
 import { PaneLayer } from "@/components/workspace/pane-layer";
 import { TabStrip } from "@/components/workspace/tab-strip";
+import { HomeTabs } from "@/components/workspace/home-tabs";
+import { BoxPicker } from "@/components/box-picker";
 import { FakeTrafficLights, ZenBar } from "@/components/workspace/zen";
 import { fakeTrafficLights } from "@/lib/api";
 import { useBerthConnection } from "@/hooks/use-berth-connection";
@@ -32,7 +34,7 @@ import { startRunsWatch } from "@/lib/runs";
 import { useStore } from "@/lib/store";
 import { startUpdater } from "@/lib/updater";
 import { cn } from "@/lib/utils";
-import { useWorkspaces } from "@/lib/workspaces";
+import { homeBox, useWorkspaces } from "@/lib/workspaces";
 import { AutomationsView } from "@/views/automations";
 import { WorktreesView } from "@/views/worktrees/worktrees-view";
 import { useKitDeepLinks } from "@/views/kits/deep-link";
@@ -76,6 +78,8 @@ export default function App() {
   useEffect(() => document.documentElement.style.setProperty("--berth-status-h", zen ? "0px" : "26px"), [zen]);
   // Onboarding has no tabs yet, so it gets the plain strip, not the tab strip.
   const onboarding = useOnboardingActive();
+  // Home (no worktree, or a box's home terminals over it) has its own strip.
+  const onHome = useWorkspaces((s) => !s.current || !!homeBox(s.current));
   const connected = useStore((s) => !!s.client);
   // Until onboarding is done it is the whole window: no sidebar, status
   // bar, palette or shortcuts to wander off through.
@@ -131,7 +135,7 @@ export default function App() {
                 <ZenBar />
               ) : workspace && !onboarding ? (
                 <Disconnectable className="shrink-0 flex-col">
-                  <TabStrip />
+                  {onHome ? <HomeTabs /> : <TabStrip />}
                 </Disconnectable>
               ) : !workspace ? null /* every other view's ViewHeader is the strip */ : (
                 // Onboarding names itself; the strip only drags the window.
@@ -151,6 +155,7 @@ export default function App() {
         <ErrorBoundary scope="a dialog">
           <CommandPalette />
           <WorktreePicker />
+          <BoxPicker />
           <ComposerDialog />
           <AddLocationDialog />
           <PromptDialogs />
@@ -180,6 +185,7 @@ function MainView() {
   const connection = useStore((s) => s.connection);
   const client = useStore((s) => s.client);
   const ws = useWorkspaces((s) => (s.current ? s.spaces[s.current] : undefined));
+  const home = useWorkspaces((s) => !!homeBox(s.current));
   const onboarding = useOnboardingActive();
   const zen = usePrefs((p) => p.labs && p.zen);
 
@@ -193,7 +199,8 @@ function MainView() {
     );
   }
   if (view.kind === "workspace") {
-    if (!ws) return <NoWorktree />;
+    // A box's home terminals show over Home, which shows again without them.
+    if (!ws || home) return ws?.tabs.length ? null : <NoWorktree />;
     return ws.tabs.length ? null : <Launcher worktree={ws.ref} />;
   }
   return (

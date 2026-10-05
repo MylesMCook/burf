@@ -27,7 +27,7 @@ import { usePrefs } from "@/lib/prefs";
 import { removalLabel, removalOf, useRemoval, useRemovals } from "@/lib/removing";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { focusSession, recentWorktrees, refOf, selectWorktree, useHereKey, useHereRef, useWorkspaces } from "@/lib/workspaces";
+import { focusSession, homeBox, recentWorktrees, refOf, selectWorktree, useHereKey, useHereRef, useWorkspaces } from "@/lib/workspaces";
 import { useLabel, useTone, WtDot } from "@/components/workspace/worktree-tone";
 
 // Zen (Labs, ⌘.) puts away everything but the agents: no sidebar, no status
@@ -59,7 +59,8 @@ function useHere() {
     const item = nav.find((n) => n.active);
     return { kind: "view" as const, label: item?.label ?? "Berth", icon: item?.icon };
   }
-  if (!ws) return { kind: "home" as const };
+  // A box's home terminal is on Home.
+  if (!ws || !key || homeBox(key)) return { kind: "home" as const };
   const agent = session ? agentOf(session) : undefined;
   // A titled agent is named after its work; its worktree is in the tooltip.
   const at = ref ?? ws.ref;

@@ -76,6 +76,20 @@ export function splitKey(key: string): { box: string; path: string } {
   return { box: key.slice(0, i), path: key.slice(i + 1) };
 }
 
+// A box's home: terminals on a box that belong to no worktree, shown over
+// Home (lib/box-home.ts). Their workspace is keyed by the box and "~" and
+// has no worktree: refFor is undefined for it, so nothing that acts on a
+// worktree (Run, its services, its agents, a page on its port) acts there.
+export const HOME_PATH = "~";
+export const homeKey = (box: string) => wsKey(box, HOME_PATH);
+
+// homeBox is the box whose home a workspace key is, else undefined.
+export function homeBox(key: string | undefined): string | undefined {
+  if (!key) return undefined;
+  const { box, path } = splitKey(key);
+  return path === HOME_PATH ? box : undefined;
+}
+
 // lookupRef finds a worktree by its key in what its box lists.
 function lookupRef(box: string, path: string, locations?: Location[]): WorktreeRef | undefined {
   for (const loc of locations ?? []) {
@@ -88,7 +102,7 @@ function lookupRef(box: string, path: string, locations?: Location[]): WorktreeR
 // refFor is a worktree's ref by its key: its workspace's, else its box's
 // listing (a pane can belong to a worktree that has no workspace yet).
 export function refFor(key: string | undefined): WorktreeRef | undefined {
-  if (!key) return undefined;
+  if (!key || homeBox(key)) return undefined;
   const own = useWorkspaces.getState().spaces[key]?.ref;
   if (own) return own;
   const { box, path } = splitKey(key);
@@ -97,7 +111,7 @@ export function refFor(key: string | undefined): WorktreeRef | undefined {
 
 // useWorktreeRef is refFor, kept current.
 export function useWorktreeRef(key: string | undefined): WorktreeRef | undefined {
-  const own = useWorkspaces((s) => (key ? s.spaces[key]?.ref : undefined));
+  const own = useWorkspaces((s) => (key && !homeBox(key) ? s.spaces[key]?.ref : undefined));
   const { box, path } = key ? splitKey(key) : { box: "", path: "" };
   const locations = useStore((s) => (own || !key ? undefined : s.boxes[box]?.locations));
   return useMemo(() => own ?? (key ? lookupRef(box, path, locations) : undefined), [own, key, box, path, locations]);
@@ -260,7 +274,9 @@ function front(key: string, shown: string[]) {
 export function addGroup(key: string, at?: number): boolean {
   if (!ensure(key)) return false;
   const s = useWorkspaces.getState();
-  front(key, groupsOn() ? withGroup({ shown: groupKeys(s), current: s.current }, key, at).shown : [key]);
+  // A box's home terminals are never a group: from them, the worktree shows alone.
+  const from = homeBox(s.current) ? { shown: [], current: undefined } : { shown: groupKeys(s), current: s.current };
+  front(key, groupsOn() ? withGroup(from, key, at).shown : [key]);
   reconcile(key);
   return true;
 }
@@ -339,6 +355,7 @@ export function setTone(key: string, tone?: string) {
 // strip as a group, beside what was showing. False when nothing knows the
 // worktree.
 export function showWorktree(key: string): boolean {
+  if (homeBox(key)) return showHome(key);
   const s = useWorkspaces.getState();
   if (s.current === key) return true;
   if (isShown(key)) {
@@ -350,6 +367,39 @@ export function showWorktree(key: string): boolean {
   useWorkspaces.setState({ current: key, shown: [key] });
   reconcile(key);
   return true;
+}
+
+// showHome brings a box's home terminals to the front, over Home. It never
+// joins the strip's groups (those are worktrees), and is no recent worktree.
+export function showHome(key: string): boolean {
+  const box = homeBox(key);
+  if (!box) return false;
+  useWorkspaces.setState((s) => ({
+    current: key,
+    spaces: s.spaces[key] ? s.spaces : { ...s.spaces, [key]: { ref: { box, location: "", worktree: HOME_PATH, path: HOME_PATH }, tabs: [], hidden: [] } },
+    mounted: s.mounted.includes(key) ? s.mounted : [...s.mounted, key],
+  }));
+  useStore.getState().setView({ kind: "workspace" });
+  return true;
+}
+
+// Home shows a box's terminals while it has some: closing the last one goes
+// back to plain Home.
+useWorkspaces.subscribe((s, prev) => {
+  const key = s.current;
+  if (key && key === prev.current && homeBox(key) && prev.spaces[key]?.tabs.length && !s.spaces[key]?.tabs.length) useWorkspaces.setState({ current: undefined });
+});
+
+// openHomeSession shows a session that belongs to no worktree (a box's
+// home terminal): its pane where it is, else a tab over Home.
+function openHomeSession(box: string, session: string) {
+  const found = findSession(box, session);
+  const key = found?.key ?? homeKey(box);
+  if (!showWorktree(key)) return;
+  if (found) {
+    activateTab(found.key, found.tab);
+    focusPane(found.key, found.tab, found.pane.id);
+  } else openTab({ kind: "terminal", box, session }, key);
 }
 
 // forgetWorktree drops a removed worktree's workspace and its group. If it
@@ -600,7 +650,7 @@ export function openSession(box: string, session: Session) {
   const locations = useStore.getState().boxes[box]?.locations ?? [];
   const loc = locations.find((l) => l.worktrees?.some((w) => w.path === session.dir));
   const wt = loc?.worktrees?.find((w) => w.path === session.dir);
-  if (!loc || !wt) return;
+  if (!loc || !wt) return session.location ? undefined : openHomeSession(box, session.name);
   const ref = refOf(box, loc, wt);
   const key = wsKey(box, wt.path);
   update(key, (ws) => ({ ...ws, hidden: ws.hidden.filter((h) => h !== session.name) }));

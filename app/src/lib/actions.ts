@@ -13,7 +13,8 @@ import { findLeaf, type Leaf, leaves, type PaneContent, paneWorktree } from "@/l
 import { scheduleRefresh, useStore } from "@/lib/store";
 import { resolveBrowserInput } from "@/lib/browser-url";
 import { closeCompare } from "@/lib/compare-actions";
-import { currentSpace, focusSession, here, hereRef, openTab, refFor, removePane, setPaneContent, showWorktree, splitPane, useWorkspaces, type WorktreeRef, wsKey } from "@/lib/workspaces";
+import { currentSpace, focusSession, here, hereRef, homeBox, openTab, refFor, removePane, setPaneContent, showWorktree, splitPane, useWorkspaces, type WorktreeRef, wsKey } from "@/lib/workspaces";
+import { refuseHome } from "@/lib/box-home";
 
 // Agents offered when a box does not list its own.
 export const DEFAULT_AGENTS: AgentPreset[] = [
@@ -60,6 +61,8 @@ function targetWorktree(target: Target): string | undefined {
 // place puts content where target says, for worktree wt, and returns where
 // it landed: in the tab showing, or a tab of wt's own, brought to the front.
 function place(content: PaneContent, target: Target, wt: string): { key: string; tab: string; pane: string } | undefined {
+  // A box's home holds terminals: a page or a panel needs a worktree.
+  if (homeBox(wt) && !["terminal", "starting", "error"].includes(content.kind)) return undefined;
   const key = useWorkspaces.getState().current;
   if (target.kind === "tab") {
     if (!showWorktree(wt)) return undefined;
@@ -79,15 +82,18 @@ function place(content: PaneContent, target: Target, wt: string): { key: string;
 export async function startSession(command: string, target: Target = { kind: "tab" }, label = command || "Terminal", worktree?: string): Promise<string | undefined> {
   const wt = worktree ?? targetWorktree(target);
   const ref = refFor(wt);
+  // A box's home has no worktree: it starts in the box user's home folder.
+  const home = homeBox(wt);
+  const box = ref?.box ?? home;
   const client = useStore.getState().client;
-  if (!wt || !ref || !client) return;
+  if (!wt || !box || !client || (home && refuseHome(home))) return;
   const at = place({ kind: "starting", label }, target, wt);
   if (!at) return;
   try {
-    const s = await boxApi.startSession(client, ref.box, { location: refLocation(ref), command: command || undefined });
-    setPaneContent(at.key, at.tab, at.pane, { kind: "terminal", box: ref.box, session: s.name });
-    scheduleRefresh(ref.box, ["sessions"]);
-    if (command) void offerAgentHooks(ref.box, command, s.name);
+    const s = await boxApi.startSession(client, box, ref ? { location: refLocation(ref), command: command || undefined } : { home: true, command: command || undefined });
+    setPaneContent(at.key, at.tab, at.pane, { kind: "terminal", box, session: s.name });
+    scheduleRefresh(box, ["sessions"]);
+    if (command) void offerAgentHooks(box, command, s.name);
     return s.name;
   } catch (err) {
     setPaneContent(at.key, at.tab, at.pane, { kind: "error", message: plainError(err) });

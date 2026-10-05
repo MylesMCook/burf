@@ -12,6 +12,14 @@ again.
 ## Unreleased
 
 
+- **A terminal on a box, from Home.** ⌘T or **New terminal** with no
+  worktree in focus asks which box (each with its state and load, the last
+  one picked first; a box that's offline or needs a newer berthd says so),
+  or goes straight to the only one online. The shell starts in the box
+  user's home folder and opens as a tab over Home, after a **devl · ~**
+  chip; closing the last one gives you plain Home back. A box's menu in
+  the sidebar has **New terminal** too. Boxes need this berthd
+  (`session.home`).
 - **Agents start on a Mac's own box again.** Under launchd, tmux 3.7 had no
   locale and mangled the session list, so every agent on "this Mac" ended
   with "It's gone". tmux now always speaks UTF-8 there.
