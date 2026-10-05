@@ -337,10 +337,10 @@ m_ui_state() {
 	local groups="two tab groups"
 	if ax press "Another worktree's tabs" --timeout 3; then
 		ax press "$other" || return 1
-		ax wait "$group, 0 tabs" --role AXButton --timeout 10 || fail "the second worktree's group didn't join the strip" || return 1
+		until_ok 10 group_has "$group" 0 || fail "the second worktree's group didn't join the strip" || return 1
 		ax press "New tab" --role AXPopUpButton || return 1
 		ax press "New browser tab" || return 1
-		ax wait "$group, 1 tab" --role AXButton --timeout 10 || fail "the browser tab didn't open in the second group" || return 1
+		until_ok 10 group_has "$group" 1 || fail "the browser tab didn't open in the second group" || return 1
 	else
 		# Tab groups came after v0.3.0.
 		ax key escape
@@ -352,10 +352,31 @@ m_ui_state() {
 	echo "layout: $TABS_BEFORE"
 	detail "Keep running on, ${PLUGIN_OFF:-no plugin} off${PLUGIN_ON:+, $PLUGIN_ON on}; layout ($groups): $TABS_BEFORE"
 }
-# layout: the strip's groups ("hello, 1 tab") and tabs (by their close
-# buttons' names).
+# layout: the strip's groups and tabs, as "group:N tabs" and tab titles,
+# read from either way the app has named them: before 0.3.7 a group was a
+# button "hello, 1 tab" and a tab had a "Close <title>" button; since, the
+# strip is a tab group of "hello tab group, 1 tab" buttons and "<title>,
+# <worktree>" tabs.
+group_has() { layout | tr '|' '\n' | grep -q -x -F "$1:$2"; }
 layout() {
-	"$AX" text "$APP_PID" | grep -E '^[^ ].*, [0-9]+ tabs?$|^Close ' | sed 's/^Close //' | sort -u | paste -sd'|' -
+	"$AX" dump "$APP_PID" | python3 -c '
+import re, sys
+out = set()
+for line in sys.stdin:
+    m = re.search(r"^\s*(AXButton|AXRadioButton)\S* title=\"(.*?)\"", line)
+    if not m:
+        continue
+    role, t = m.groups()
+    t = t.replace("\\'"'"'", "'"'"'")
+    g = re.fullmatch(r"(.+?)(?: tab group)?, (\d+) tabs?(?:, in front)?", t)
+    if role == "AXButton" and g:
+        out.add("%s:%s" % g.groups())
+    elif role == "AXButton" and t.startswith("Close "):
+        out.add(t[len("Close "):])
+    elif role == "AXRadioButton" and ", " in t:
+        out.add(t.rsplit(", ", 1)[0])
+print("|".join(sorted(out)))
+'
 }
 
 m_kit() {
