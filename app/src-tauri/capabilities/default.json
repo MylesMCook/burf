@@ -5,6 +5,7 @@
   "permissions": [
     "core:default",
     "core:window:allow-start-dragging",
+    "core:window:allow-close",
     "notification:default",
     "shell:allow-open",
     "deep-link:default",

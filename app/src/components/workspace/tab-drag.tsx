@@ -2,9 +2,11 @@ import { ArrowLeftRightIcon, PanelBottomIcon, PanelLeftIcon, PanelRightIcon, Pan
 import { createPortal } from "react-dom";
 import { create } from "zustand";
 
-import { bounds, layout, leaves, movePane, place, type Rect, type Side, sideAt, swap } from "@/lib/layout";
+import { startSession } from "@/lib/actions";
+import { bounds, layout, leaf, leaves, movePane, place, type Rect, type Side, sideAt, swap } from "@/lib/layout";
+import { usePrefs } from "@/lib/prefs";
 import { cn } from "@/lib/utils";
-import { moveTab, paneBeside, paneToTab, tabIntoPane, useWorkspaces } from "@/lib/workspaces";
+import { addGroup, bringSession, leadAgent, moveInto, moveTab, paneBeside, paneToTab, splitKey, tabIntoPane, useWorkspaces } from "@/lib/workspaces";
 
 // Dragging a tab from the strip, or a pane by its header, as in VS Code. Over
 // a pane of the tab showing, the nearest edge splits that pane and the drop
@@ -12,17 +14,26 @@ import { moveTab, paneBeside, paneToTab, tabIntoPane, useWorkspaces } from "@/li
 // goes between two tabs. The overlay is drawn from the tree the drop would
 // make, so it shows exactly where things will land.
 //
+// With tab groups (Labs), a tab moves between its own group's tabs only:
+// over another group's, the drop is refused and no marker shows. Dropped
+// into a pane of another group's tab, it joins that tab as a guest (its
+// panes keep their worktree). A worktree dragged from the sidebar adds its
+// tabs as a group where it lands on the strip, or onto a pane's edge, splits
+// its agent in beside that pane.
+//
 // Pointer events, not HTML5 drag and drop: WebKit's drag images are poor and
 // the strip is also the window's drag handle. Tabs don't carry
 // data-tauri-drag-region, so pressing one never moves the window, and a press
 // only becomes a drag after a few pixels, so clicks still click. Escape, or
 // the window losing focus, cancels.
 
-export type DragSource = { kind: "tab"; key: string; tab: string } | { kind: "pane"; key: string; tab: string; pane: string };
+export type DragSource = { kind: "tab"; key: string; tab: string } | { kind: "pane"; key: string; tab: string; pane: string } | { kind: "worktree"; key: string };
 
 type Target =
   | { kind: "pane"; tab: string; pane: string; side: Side | "center"; rect: Rect; label: string }
-  | { kind: "strip"; index: number; x: number };
+  | { kind: "strip"; index: number; x: number }
+  // A worktree from the sidebar, as a group at index among the strip's.
+  | { kind: "group"; index: number; x: number };
 
 interface DragState {
   source?: DragSource;
@@ -40,10 +51,12 @@ const THRESHOLD = 5;
 // own cursor or takes the pointer.
 const BODY = ["select-none", "[&_*]:cursor-grabbing!", "[&_iframe]:pointer-events-none"];
 
-// armDrag starts watching a press on a tab or a pane header. Buttons and
-// fields inside it (the tab's ×, a header's actions) never start a drag.
+// armDrag starts watching a press on a tab, a pane header or a sidebar
+// row. Buttons and fields inside it (the tab's ×, a header's actions) never
+// start a drag; the row itself may be a button.
 export function armDrag(e: React.PointerEvent<HTMLElement>, source: DragSource, label: string, icon?: React.ReactNode) {
-  if (e.button !== 0 || e.ctrlKey || (e.target as HTMLElement).closest("button, input, a, [role=group], [data-no-drag]")) return;
+  const inner = (e.target as HTMLElement).closest("button, input, a, [role=group], [data-no-drag]");
+  if (e.button !== 0 || e.ctrlKey || (inner && inner !== e.currentTarget)) return;
   const el = e.currentTarget;
   const id = e.pointerId;
   const x0 = e.clientX;
@@ -106,11 +119,15 @@ export function armDrag(e: React.PointerEvent<HTMLElement>, source: DragSource, 
 
 const LABELS: Record<Side | "center", string> = { left: "Split left", right: "Split right", top: "Split up", bottom: "Split down", center: "Swap panes" };
 
+const inside = (r: DOMRect, x: number) => x >= r.left && x <= r.right;
+
 // hit is what the pointer is over: a gap in the strip, a side of a pane of
 // the tab showing, or nothing a drop would change.
 function hit(source: DragSource, x: number, y: number): Target | undefined {
-  const ws = useWorkspaces.getState().spaces[source.key];
-  if (!ws) return undefined;
+  const { current, spaces } = useWorkspaces.getState();
+  const own = source.kind === "worktree" ? undefined : spaces[source.key];
+  if (source.kind !== "worktree" && !own) return undefined;
+  if (source.kind === "worktree" && !usePrefs.getState().labs) return undefined;
 
   const strip = document.querySelector<HTMLElement>("[data-tab-strip]");
   const bar = strip?.closest<HTMLElement>("[data-tab-bar]")?.getBoundingClientRect();
@@ -119,7 +136,27 @@ function hit(source: DragSource, x: number, y: number): Target | undefined {
     // Near either end, the strip scrolls to show more of itself.
     if (x < r.left + 24) strip.scrollLeft -= 12;
     else if (x > r.right - 24 && x < r.right + 8) strip.scrollLeft += 12;
-    const tabs = [...strip.querySelectorAll<HTMLElement>("[data-tab]")];
+    const groups = [...strip.querySelectorAll<HTMLElement>("[data-group]")];
+    if (source.kind === "worktree") {
+      // Between groups; with one worktree in the strip, after it.
+      if (groups.some((g) => g.dataset.group === source.key)) return undefined;
+      const all = [...strip.querySelectorAll<HTMLElement>("[data-tab]")];
+      if (!groups.length) {
+        const last = all[all.length - 1];
+        return { kind: "group", index: 1, x: last ? last.offsetLeft + last.offsetWidth : 0 };
+      }
+      let index = groups.findIndex((g) => {
+        const b = g.getBoundingClientRect();
+        return x < b.left + b.width / 2;
+      });
+      if (index < 0) index = groups.length;
+      const at = index < groups.length ? groups[index].offsetLeft : groups[groups.length - 1].offsetLeft + groups[groups.length - 1].offsetWidth;
+      return { kind: "group", index, x: at };
+    }
+    // Only among its own group's tabs: another group's run refuses it.
+    const over = groups.find((g) => inside(g.getBoundingClientRect(), x));
+    if (over && over.dataset.group !== source.key) return undefined;
+    const tabs = [...strip.querySelectorAll<HTMLElement>("[data-tab]")].filter((t) => t.dataset.ws === source.key);
     if (!tabs.length) return undefined;
     let index = tabs.findIndex((t) => {
       const b = t.getBoundingClientRect();
@@ -128,20 +165,22 @@ function hit(source: DragSource, x: number, y: number): Target | undefined {
     if (index < 0) index = tabs.length;
     const at = index < tabs.length ? tabs[index].offsetLeft : tabs[tabs.length - 1].offsetLeft + tabs[tabs.length - 1].offsetWidth;
     if (source.kind === "tab") {
-      const from = ws.tabs.findIndex((t) => t.id === source.tab);
+      const from = own!.tabs.findIndex((t) => t.id === source.tab);
       if (index === from || index === from + 1) return undefined;
       return { kind: "strip", index, x: at };
     }
     // A pane alone in its tab is a tab already.
-    const t = ws.tabs.find((x) => x.id === source.tab);
+    const t = own!.tabs.find((x) => x.id === source.tab);
     return t && t.root.kind !== "leaf" ? { kind: "strip", index, x: at } : undefined;
   }
 
+  // The tab showing: the one in front, whichever group the drag came from.
   const area = document.querySelector<HTMLElement>("[data-pane-area]")?.getBoundingClientRect();
-  const tab = ws.tabs.find((t) => t.id === ws.active);
+  const shown = current ? spaces[current] : undefined;
+  const tab = shown?.tabs.find((t) => t.id === shown.active);
   if (!area || !tab || x < area.left || x > area.right || y < area.top || y > area.bottom) return undefined;
-  if (source.kind === "tab" && source.tab === tab.id) return undefined;
-  if (source.kind === "pane" && source.tab !== tab.id) return undefined;
+  if (source.kind === "tab" && source.key === current && source.tab === tab.id) return undefined;
+  if (source.kind === "pane" && (source.key !== current || source.tab !== tab.id)) return undefined;
   const fx = (x - area.left) / area.width;
   const fy = (y - area.top) / area.height;
   const over = layout(tab.root).leaves.find(({ rect: r }) => fx >= r.x && fx <= r.x + r.w && fy >= r.y && fy <= r.y + r.h);
@@ -149,19 +188,31 @@ function hit(source: DragSource, x: number, y: number): Target | undefined {
   const r = over.rect;
   const side = sideAt((fx - r.x) / r.w, (fy - r.y) / r.h, source.kind === "pane");
   let rect: Rect | undefined;
+  let label = LABELS[side];
   if (source.kind === "tab") {
-    const src = ws.tabs.find((t) => t.id === source.tab);
+    const src = own!.tabs.find((t) => t.id === source.tab);
     if (!src || side === "center") return undefined;
     rect = bounds(place(tab.root, over.leaf.id, side, src.root), leaves(src.root).map((l) => l.id));
+  } else if (source.kind === "worktree") {
+    if (side === "center") return undefined;
+    const ghost = leaf({ kind: "starting", label: "" });
+    rect = bounds(place(tab.root, over.leaf.id, side, ghost), [ghost.id]);
+    label = `${label} · ${leadAgent(source.key) ? "its agent" : "a new terminal"}`;
   } else {
     rect = side === "center" ? bounds(swap(tab.root, source.pane, over.leaf.id), [source.pane]) : bounds(movePane(tab.root, source.pane, over.leaf.id, side), [source.pane]);
   }
-  return rect && { kind: "pane", tab: tab.id, pane: over.leaf.id, side, rect, label: LABELS[side] };
+  return rect && { kind: "pane", tab: tab.id, pane: over.leaf.id, side, rect, label };
 }
 
 function drop(source: DragSource, target: Target) {
+  const { current } = useWorkspaces.getState();
+  if (source.kind === "worktree") {
+    if (target.kind === "group") addGroup(source.key, target.index);
+    else if (target.kind === "pane" && target.side !== "center") splitWorktreeIn(source.key, target.tab, target.pane, target.side);
+    return;
+  }
   const ws = useWorkspaces.getState().spaces[source.key];
-  if (!ws) return;
+  if (!ws || target.kind === "group") return;
   if (target.kind === "strip") {
     if (source.kind === "pane") return paneToTab(source.key, source.tab, source.pane, target.index);
     const from = ws.tabs.findIndex((t) => t.id === source.tab);
@@ -169,7 +220,19 @@ function drop(source: DragSource, target: Target) {
     return;
   }
   if (source.kind === "pane") paneBeside(source.key, source.tab, source.pane, target.pane, target.side);
-  else if (target.side !== "center") tabIntoPane(source.key, source.tab, target.tab, target.pane, target.side);
+  else if (target.side === "center" || !current) return;
+  else if (source.key === current) tabIntoPane(source.key, source.tab, target.tab, target.pane, target.side);
+  // Another group's tab: its panes join this one as guests.
+  else moveInto({ key: source.key, tab: source.tab }, { key: current, tab: target.tab, pane: target.pane, side: target.side });
+}
+
+// splitWorktreeIn puts a worktree beside a pane of the tab showing: its
+// agent (the one that needs you first), or with none, a new terminal there.
+function splitWorktreeIn(key: string, tab: string, pane: string, side: Side) {
+  const agent = leadAgent(key);
+  const { box } = splitKey(key);
+  if (agent) return bringSession(key, box, agent, { tab, pane, side });
+  void startSession("", { kind: "split", tab, pane, dir: side === "left" || side === "right" ? "row" : "col" }, "Terminal", key);
 }
 
 const pct = (n: number) => `${n * 100}%`;
@@ -209,9 +272,10 @@ export function DropOverlay() {
   );
 }
 
-// StripMarker is the line between two tabs where a drop on the strip goes.
+// StripMarker is the line between two tabs (or groups) where a drop on the
+// strip goes.
 export function StripMarker() {
-  const x = useTabDrag((s) => (s.target?.kind === "strip" ? s.target.x : undefined));
+  const x = useTabDrag((s) => (s.target?.kind === "strip" || s.target?.kind === "group" ? s.target.x : undefined));
   if (x === undefined) return null;
   return <span aria-hidden className="pointer-events-none absolute inset-y-1.5 z-10 w-0.5 -translate-x-1/2 rounded-full bg-info" style={{ left: Math.max(1, x) }} />;
 }

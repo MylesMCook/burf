@@ -13,7 +13,7 @@ import { agentOf, sessionAgent, sessionName, sessionState, sortedWorktrees, work
 import type { PaneContent } from "@/lib/layout";
 import { sessionWord } from "@/lib/state-model";
 import { useStore } from "@/lib/store";
-import { findSession, focusedPane, focusPane, here, moveInto, refOf, splitPane, useWorkspaces, type WorktreeRef, wsKey } from "@/lib/workspaces";
+import { addGroup, bringSession, focusedPane, groupKeys, here, refOf, splitPane, useWorkspaces, type WorktreeRef, wsKey } from "@/lib/workspaces";
 import { Icon } from "@/plugins/ui";
 import { useRegistry } from "@/plugins/registry";
 
@@ -22,7 +22,9 @@ import { useRegistry } from "@/plugins/registry";
 // its agents, its dev server's page, a panel (its diff), or a new terminal.
 // The pane it opens belongs to that worktree, as a guest in this tab.
 
-type Mode = { kind: "split" };
+// split: beside the focused pane. group: the worktree's tabs join the
+// strip as a group.
+type Mode = { kind: "split" } | { kind: "group" };
 
 export const useWorktreePicker = create<{ mode?: Mode; picked?: WorktreeRef }>(() => ({}));
 
@@ -54,15 +56,10 @@ function besideFocus(key: string, content: PaneContent) {
 }
 
 // showSession brings one of the worktree's sessions beside the focused
-// pane: moved from wherever it shows (it keeps running, nothing remounts),
-// or added when no pane shows it.
+// pane (bringSession: moved from wherever it shows, or added).
 function showSession(key: string, box: string, session: string) {
   const f = focusedPane();
-  if (!f) return;
-  const found = findSession(box, session);
-  if (found && found.key === f.key && found.tab === f.tab.id) return focusPane(f.key, f.tab.id, found.pane.id);
-  if (found) return moveInto({ key: found.key, tab: found.tab, pane: found.pane.id }, { key: f.key, tab: f.tab.id, pane: f.leaf.id, side: "right" });
-  besideFocus(key, { kind: "terminal", box, session });
+  if (f) bringSession(key, box, session, { tab: f.tab.id, pane: f.leaf.id, side: "right" });
 }
 
 // processName is what a dev server's command line runs, in a word: "vite"
@@ -91,7 +88,10 @@ export function WorktreePicker() {
   const groups = useMemo<Group[]>(() => {
     if (!mode) return [];
     if (!picked) {
+      // Splitting, the worktree you are in is no other; adding a group, the
+      // ones already in the strip are no new group.
       const skip = here();
+      const inStrip = mode.kind === "group" ? groupKeys() : [];
       const online = status?.boxes.filter((b) => b.state === "online").map((b) => b.name) ?? [];
       const rows = online.flatMap((box) =>
         (boxes[box]?.locations ?? []).flatMap((loc: Location) =>
@@ -111,14 +111,17 @@ export function WorktreePicker() {
                 icon: slot(state && state !== "idle" ? <StateGlyph state={state} className="size-3.5" /> : wt.main ? <HomeIcon /> : <GitBranchIcon />),
                 run: () => {
                   setQuery("");
-                  useWorktreePicker.setState({ picked: refOf(box, loc, wt) });
+                  if (mode.kind === "group") {
+                    closePicker();
+                    addGroup(key);
+                  } else useWorktreePicker.setState({ picked: refOf(box, loc, wt) });
                 },
               } satisfies Item,
             };
           }),
         ),
       );
-      const list = rows.filter((r) => r.key !== skip);
+      const list = rows.filter((r) => (mode.kind === "group" ? !inStrip.includes(r.key) : r.key !== skip));
       const recent = list.filter((r) => r.visited).sort((a, b) => b.visited - a.visited);
       const rest = list.filter((r) => !r.visited);
       return [
@@ -185,11 +188,11 @@ export function WorktreePicker() {
         }
       }}
     >
-      <CommandDialogPopup aria-label="Split right with another worktree">
+      <CommandDialogPopup aria-label={mode?.kind === "group" ? "Add a worktree's tabs" : "Split right with another worktree"}>
         <Command items={groups} value={query} onValueChange={setQuery} itemToStringValue={(i: unknown) => `${(i as Item).label} ${(i as Item).detail ?? ""}`}>
           <CommandInput
             key={picked ? "what" : "where"}
-            placeholder={picked ? `Show from ${name} beside this pane…` : "Split right with another worktree…"}
+            placeholder={picked ? `Show from ${name} beside this pane…` : mode?.kind === "group" ? "Add a worktree's tabs to the strip…" : "Split right with another worktree…"}
             onKeyDown={(e) => {
               // Backspace on an empty field goes back to the worktrees.
               if (picked && e.key === "Backspace" && !query) {
@@ -224,13 +227,17 @@ export function WorktreePicker() {
                 <ArrowLeftIcon className="size-3" />
                 <Kbd>⌫</Kbd> other worktrees
               </button>
+            ) : mode?.kind === "group" ? (
+              <span className="flex items-center gap-1">
+                <Kbd>↵</Kbd> add its tabs as a group
+              </span>
             ) : (
               <span className="flex items-center gap-1">
                 <Kbd>↵</Kbd> pick, then what to show
               </span>
             )}
             <span className="flex items-center gap-1">
-              It opens beside the focused pane <Kbd>esc</Kbd>
+              {mode?.kind === "group" ? "or ⌥-click it in the sidebar" : "It opens beside the focused pane"} <Kbd>esc</Kbd>
             </span>
           </CommandFooter>
         </Command>

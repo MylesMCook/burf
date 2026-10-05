@@ -8,7 +8,8 @@ import type { Location, Session, Worktree } from "@/lib/api";
 import { agentOf, type SessionState, sessionState, worktreeSessions } from "@/lib/derive";
 import { NONE, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { refOf, selectWorktree, useWorkspaces, wsKey } from "@/lib/workspaces";
+import { usePrefs } from "@/lib/prefs";
+import { addGroup, refOf, selectWorktree, useWorkspaces, wsKey } from "@/lib/workspaces";
 
 // The most tiles a rail shows, however tall the window; the rest are in the
 // "more" tile's menu.
@@ -134,7 +135,8 @@ function Tile({ e }: { e: Entry }) {
         type="button"
         aria-label={text}
         aria-current={e.selected || undefined}
-        onClick={() => selectWorktree(refOf(e.box, e.loc, e.wt))}
+        // ⌥-click (Labs) adds its tabs to the strip as a group.
+        onClick={(ev) => (ev.altKey && usePrefs.getState().labs ? void addGroup(wsKey(e.box, e.wt.path)) : selectWorktree(refOf(e.box, e.loc, e.wt)))}
         className={cn(
           "relative inline-flex size-8 shrink-0 items-center justify-center rounded-lg border border-sidebar-border bg-sidebar-accent/40 font-medium text-[11px] text-muted-foreground tracking-wide outline-none hover:border-ring/40 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring",
           e.selected && "border-foreground/25 bg-sidebar-accent text-foreground",

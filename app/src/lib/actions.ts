@@ -93,8 +93,8 @@ export async function startSession(command: string, target: Target = { kind: "ta
   }
 }
 
-export function openBrowserAt(url = "", target: Target = { kind: "tab" }) {
-  const wt = targetWorktree(target);
+export function openBrowserAt(url = "", target: Target = { kind: "tab" }, worktree?: string) {
+  const wt = worktree ?? targetWorktree(target);
   if (wt) place({ kind: "browser", url }, target, wt);
 }
 

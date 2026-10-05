@@ -11,23 +11,18 @@ again.
 
 ## Unreleased
 
-- **The chat keeps every turn.** A prompt with something pasted in it
-  (Claude Code 2.1 writes those with a new closing tag) was left out of the
-  chat entirely; it now shows as typed. A chat also lost or jumbled turns
-  when the box read the conversation afresh (after a box upgrade, or once
-  no one had looked at it for ten minutes) or a long chat let its oldest
-  live turns go while older ones were loaded: items are now named by where
-  they are in the agent's record, so the chat keeps what it showed, reads
-  what it missed in between, and turns read back after being hidden come
-  back on their own. `/compact` reads as one divider. Boxes need an upgrade.
-- **Worktrees side by side (Labs).** A tab can now show panes of two
-  worktrees at once: **⌘⌥D** (or "Another worktree…" in a pane's menu)
-  picks a worktree, then one of its agents, its dev server's page, its diff
-  or a new terminal, and puts it beside the focused pane. Each pane in such
-  a tab names its worktree in that worktree's colour. Run, ⌘T, ⌘⇧B, the +
-  menu, the palette and plugins act in the focused pane's worktree, and the
-  strip's breadcrumb says which one that is. With one worktree open nothing
-  looks different.
+- **Worktrees side by side (Labs).** Two or more worktrees share one tab
+  strip as tab groups: ⌥-click one in the sidebar, drag it onto the strip,
+  or choose "Add to tabs beside…". Each group has its name and colour;
+  click it to fold it, right-click to colour or close it (its agents keep
+  running). ⌃⇧⇥ and ⌃⌥⇥ step between groups, ⌘1–9 count across the strip
+  and ⌘⇧W closes the group in front (with one, the window). A tab can show
+  panes of two worktrees too: **⌘⌥D** picks a worktree, then one of its
+  agents, its page, its diff or a new terminal, and puts it beside the
+  focused pane; dragging a worktree onto a pane's edge splits its agent in.
+  Run, ⌘T, ⌘⇧B, the + menu, the palette and plugins act in the focused
+  pane's worktree. With one worktree open nothing looks different.
+  [More](/guides/labs#worktrees-side-by-side).
 
 ## v0.3.3
 

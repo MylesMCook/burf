@@ -27,9 +27,12 @@ import { agentOf, type SessionState, sessionName, sessionState, worktreeSessions
 import { load, save } from "@/lib/storage";
 import { type BoxData, NONE, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { refOf, selectWorktree, useWorkspaces, wsKey } from "@/lib/workspaces";
+import { addGroup, refOf, selectWorktree, useWorkspaces, wsKey } from "@/lib/workspaces";
+import { armDrag } from "@/components/workspace/tab-drag";
+import { WtDot } from "@/components/workspace/worktree-tone";
 import { BOX_WORDS, boxState, WORKTREE_WORDS } from "@/lib/state-model";
 import { useNotifications } from "@/lib/notifications";
+import { usePrefs } from "@/lib/prefs";
 import { removalLabel, removalOf, useRemoval, useRemovals } from "@/lib/removing";
 
 // Projects lists repositories, as Orca does: one group per repository on a
@@ -318,7 +321,10 @@ function WorktreeRow({
   // On its way out (lib/removing.ts): dimmed, with nothing to open or do,
   // until the box says it went or puts it back.
   const removal = useRemoval(box, wt.path);
+  const labs = usePrefs((p) => p.labs);
   if (removal) return <LeavingRow wt={wt} label={removalLabel(removal)} script={removal.script} />;
+  const key = wsKey(box, wt.path);
+  const name = wt.main ? (wt.branch ?? "main") : wt.name;
   return (
     <SidebarMenuSubItem>
       <ContextRow items={() => (away ? awayActions(away) : worktreeActions(box, loc, wt))} className="group/row relative">
@@ -326,11 +332,17 @@ function WorktreeRow({
           <SidebarMenuSubButton
             render={<button type="button" />}
             isActive={selected}
-            onClick={onOpen}
+            // Labs: ⌥-click adds its tabs to the strip as a group; dragged
+            // onto the strip it does the same, onto a pane it splits its
+            // agent in (tab-drag.tsx).
+            onClick={(e: React.MouseEvent) => (e.altKey && labs ? void addGroup(key) : onOpen())}
+            onPointerDown={(e: React.PointerEvent<HTMLElement>) => labs && !away && armDrag(e, { kind: "worktree", key }, wt.main ? loc.name : wt.name, wt.main ? <HomeIcon className="size-3" /> : <GitBranchIcon className="size-3" />)}
             className={cn("h-side-row w-full text-[13px] sm:h-side-row [&>svg]:text-muted-foreground", away && "text-muted-foreground")}
           >
             <LeadIcon sessions={away ? [] : sessions} data={data} icon={wt.main ? <HomeIcon /> : <GitBranchIcon />} />
-            <span className={cn("min-w-0 truncate", away && "opacity-70")}>{wt.main ? (wt.branch ?? "main") : wt.name}</span>
+            <span className={cn("min-w-0 truncate", away && "opacity-70")}>{name}</span>
+            {/* On screen beside another worktree: its colour. */}
+            <WtDot wsKey={key} className="size-1.5" />
             {chip && <BoxChip box={chip} />}
             {!away && <SetupMark box={box} wt={wt} />}
             <span className="ml-auto" />
@@ -457,7 +469,7 @@ function RowActions({ box, loc, wt, project, onNewWorktree }: { box: string; loc
                   key={p.id}
                   onClick={() => {
                     select();
-                    void startSession(p.command, { kind: "tab" }, p.name);
+                    void startSession(p.command, { kind: "tab" }, p.name, wsKey(box, wt.path));
                   }}
                 >
                   <span className="flex size-4 items-center justify-center">
@@ -470,7 +482,7 @@ function RowActions({ box, loc, wt, project, onNewWorktree }: { box: string; loc
               <MenuItem
                 onClick={() => {
                   select();
-                  void startSession("");
+                  void startSession("", { kind: "tab" }, "Terminal", wsKey(box, wt.path));
                 }}
               >
                 <SquareTerminalIcon />

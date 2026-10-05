@@ -1,5 +1,7 @@
 import {
   ActivityIcon,
+  ListPlusIcon,
+  PaletteIcon,
   ArchiveIcon,
   ArrowUpCircleIcon,
   ArrowUpRightIcon,
@@ -56,7 +58,9 @@ import { plainError } from "@/lib/errors";
 import { scheduleRefresh, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { removeWorktreeOnBox } from "@/lib/remove-worktree";
-import { refOf, selectWorktree } from "@/lib/workspaces";
+import { addGroup, isShown, refOf, selectWorktree, useWorkspaces, wsKey } from "@/lib/workspaces";
+import { ToneItems } from "@/components/workspace/tab-group";
+import { usePrefs } from "@/lib/prefs";
 import { useRegistry } from "@/plugins/registry";
 import { openAddToBox } from "@/components/sidebar/add-to-box-dialog";
 import { boxLoad } from "@/components/sidebar/box-load";
@@ -191,13 +195,20 @@ export function worktreeActions(box: string, loc: Location, wt: Worktree): Actio
   const url = urlFor(box, loc, wt);
   const name = wt.main ? loc.name : wt.name;
   const select = () => selectWorktree(refOf(box, loc, wt));
+  // What these start is this worktree's, whatever pane has the focus there.
+  const key = wsKey(box, wt.path);
   const presets = agentPresets(box, loc);
 
+  // Labs: its tabs beside the worktree in front, as a group of the strip.
+  const ws = useWorkspaces.getState();
+  const front = ws.current && ws.current !== key ? ws.spaces[ws.current]?.ref : undefined;
+  const grouping = usePrefs.getState().labs;
   const items: Action[] = [
     item("Open", wt.main ? <HomeIcon /> : <GitBranchIcon />, select),
+    ...(grouping && front && !isShown(key) ? [item(`Add to tabs beside ${front.main ? front.location : front.worktree}`, <ListPlusIcon />, () => void addGroup(key), { shortcut: "⌥ Click" })] : []),
     item("New terminal", <SquareTerminalIcon />, () => {
       select();
-      void startSession("");
+      void startSession("", { kind: "tab" }, "Terminal", key);
     }),
     {
       type: "sub",
@@ -206,16 +217,17 @@ export function worktreeActions(box: string, loc: Location, wt: Worktree): Actio
       items: presets.map((p) =>
         item(p.name, slot(<AgentIcon agent={p.id} />), () => {
           select();
-          void startSession(p.command, { kind: "tab" }, p.name);
+          void startSession(p.command, { kind: "tab" }, p.name, key);
         }),
       ),
     },
     { type: "sub", label: "Run", icon: <PlayIcon />, items: () => <RunItems box={box} loc={loc} wt={wt} /> },
     item(url ? "Open dev server in browser tab" : "New browser tab", <GlobeIcon />, () => {
       select();
-      openBrowserAt(url ?? "");
+      openBrowserAt(url ?? "", { kind: "tab" }, key);
     }),
     { type: "sub", label: "Open in", icon: <CodeXmlIcon />, items: () => <EditorMenuItems box={box} path={wt.path} /> },
+    ...(grouping ? [{ type: "sub" as const, label: "Colour", icon: <PaletteIcon />, items: () => <ToneItems wsKey={key} /> }] : []),
   ];
   if (agentSession) items.push({ type: "sub", label: "Orchestrate", icon: <WorkflowIcon />, items: () => <SessionActionItems box={box} session={agentSession.name} /> });
   // A branch's pull request can fix its own CI and review comments.
@@ -358,7 +370,7 @@ function RunItems({ box, loc, wt }: { box: string; loc: Location; wt: Worktree }
         ? [
             item(`Open ${svc.name}`, <ArrowUpRightIcon />, () => {
               selectWorktree(refOf(box, loc, wt));
-              openBrowserAt(url);
+              openBrowserAt(url, { kind: "tab" }, wsKey(box, wt.path));
             }),
           ]
         : []),
@@ -492,7 +504,7 @@ export function projectGroupActions(p: Project): Action[] {
       items: agentPresets(def.box.name, def.loc).map((pr) =>
         item(pr.name, slot(<AgentIcon agent={pr.id} />), () => {
           selectWorktree(refOf(def.box.name, def.loc, mm));
-          void startSession(pr.command, { kind: "tab" }, pr.name);
+          void startSession(pr.command, { kind: "tab" }, pr.name, wsKey(def.box.name, mm.path));
         }),
       ),
     });

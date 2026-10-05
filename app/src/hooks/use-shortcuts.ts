@@ -1,4 +1,5 @@
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import { useEffect } from "react";
 
 import { openEditor } from "@/components/editors/open";
@@ -10,7 +11,7 @@ import { isTauri } from "@/lib/api";
 import { toggleNotifications } from "@/lib/notifications";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
-import { activateTab, currentSpace, hereRef, moveFocus, useWorkspaces } from "@/lib/workspaces";
+import { activateTab, closeGroup, currentSpace, focusGroup, hereRef, moveFocus, nextGroup, stripTab, useWorkspaces } from "@/lib/workspaces";
 import { openWorktreePicker } from "@/components/workspace/worktree-picker";
 import { zoom } from "@/lib/zoom";
 import { isOnboardingActive } from "@/views/onboarding/onboarding-state";
@@ -98,11 +99,22 @@ function run(id: string, from: "key" | "menu", arg?: number | Dir): boolean {
       s.setPaletteOpen(!s.paletteOpen);
       return true;
     case "tab": {
-      const t = ws?.tabs[Number(arg) - 1];
-      if (!t || !wsKey) return false;
-      activateTab(wsKey, t.id);
+      // Counted across the whole strip, every unfolded group's tabs.
+      const t = stripTab(Number(arg));
+      if (!t) return false;
+      if (t.key !== wsKey) focusGroup(t.key);
+      activateTab(t.key, t.tab.id);
       return true;
     }
+    case "prev-group":
+    case "next-group":
+      return nextGroup(id === "next-group" ? 1 : -1);
+    case "close-group":
+      // With one group, ⌘⇧W closes the window, as it always has.
+      if (wsKey && closeGroup(wsKey)) return true;
+      if (!isTauri()) return false;
+      void getCurrentWindow().close();
+      return true;
     case "focus":
       if (!inWorkspace) return false;
       moveFocus(arg as Dir);
@@ -142,7 +154,7 @@ function fromKey(e: KeyboardEvent): [string, (number | Dir)?] | undefined {
   if (key === "b" && shift) return ["new-browser"];
   if (key === "o" && shift) return ["open-editor"];
   if (key === "d") return [shift ? "split-down" : "split-right"];
-  if (key === "w") return ["close-pane"];
+  if (key === "w") return [shift ? "close-group" : "close-pane"];
   // ⌘= and ⌘+ (⌘⇧= on most layouts, or the keypad's +) zoom in.
   if (key === "=" || key === "+" || e.code === "NumpadAdd") return ["zoom-in"];
   if (key === "-" || key === "_" || key === "−" || e.code === "NumpadSubtract") return ["zoom-out"];
@@ -160,6 +172,14 @@ function fromMenu(id: string): [string, number?] {
 export function useShortcuts() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // ⌃⇧Tab and ⌃⌥Tab step between tab groups; a terminal keeps them
+      // while there is only one.
+      if (e.ctrlKey && !e.metaKey && e.key === "Tab" && (e.shiftKey || e.altKey)) {
+        if (!runShortcut(e.altKey ? "next-group" : "prev-group", "key")) return;
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
       // In the live demo on Windows and Linux, Ctrl stands in for ⌘.
       const meta = e.metaKey || (__BERTH_DEMO__ && e.ctrlKey && !/Mac|iPhone|iPad/.test(navigator.platform));
       if (!meta || (e.metaKey && e.ctrlKey)) return;

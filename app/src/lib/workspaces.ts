@@ -2,7 +2,10 @@ import { useMemo } from "react";
 import { create } from "zustand";
 
 import type { Location, Session, Worktree } from "@/lib/api";
+import { agentOf, sessionState } from "@/lib/derive";
 import { findLeaf, type Leaf, leaf, leaves, mapLeaf, moveBetween, movePane, neighbor, newId, type PaneContent, type PaneNode, paneWorktree, place, remove, sessionsShown, setRatio, type Side, split, swap, worktreesOf } from "@/lib/layout";
+import { foldedOf, groupsOf, NARROW, stepGroup, stripTabs, withGroup, withoutGroup } from "@/lib/groups";
+import { usePrefs } from "@/lib/prefs";
 import { load, save } from "@/lib/storage";
 import { useStore } from "@/lib/store";
 
@@ -42,7 +45,15 @@ export interface Workspace {
 }
 
 interface State {
+  // The worktree in front: its tabs' group has the keyboard, and its active
+  // tab is the one showing.
   current?: string;
+  // Tab groups (Labs): the worktrees whose tabs share the strip, in order.
+  // Unset or without current, the strip is current's alone, as it always
+  // was (lib/groups.ts groupsOf).
+  shown?: string[];
+  // Groups folded to their label.
+  folded?: string[];
   // A worktree's colour, when the person picked one (lib/groups.ts tones).
   tones?: Record<string, string>;
   spaces: Record<string, Workspace>;
@@ -106,14 +117,22 @@ function sanitize(spaces: Record<string, Workspace>): Record<string, Workspace> 
 
 const saved = load<Partial<State>>("berth.workspaces", {});
 
+const savedSpaces = sanitize(saved.spaces ?? {});
+const savedShown = groupsOf(saved.shown, saved.current, (k) => !!savedSpaces[k]);
+
 export const useWorkspaces = create<State>()(() => ({
   current: saved.current,
-  spaces: sanitize(saved.spaces ?? {}),
-  mounted: saved.current ? [saved.current] : [],
+  shown: savedShown,
+  folded: saved.folded ?? [],
+  tones: saved.tones ?? {},
+  spaces: savedSpaces,
+  // Every group's panes are mounted from the start, so any of them can
+  // show at once.
+  mounted: savedShown,
   recentUrls: saved.recentUrls ?? [],
 }));
 
-useWorkspaces.subscribe((s) => save("berth.workspaces", { current: s.current, spaces: s.spaces, recentUrls: s.recentUrls }));
+useWorkspaces.subscribe((s) => save("berth.workspaces", { current: s.current, shown: s.shown, folded: s.folded, tones: s.tones, spaces: s.spaces, recentUrls: s.recentUrls }));
 
 function update(key: string, fn: (ws: Workspace) => Workspace) {
   useWorkspaces.setState((s) => (s.spaces[key] ? { spaces: { ...s.spaces, [key]: fn(s.spaces[key]) } } : s));
@@ -159,13 +178,12 @@ export function hereOf(s: Pick<State, "current" | "spaces">): string | undefined
   return f ? paneWorktree(f.key, f.leaf) : s.current;
 }
 
-// onScreenOf lists the worktrees on screen, in the strip's order: the one
-// showing, then any other whose pane is in the tab showing.
-export function onScreenOf(s: Pick<State, "current" | "spaces">): string[] {
+// onScreenOf lists the worktrees on screen, in the strip's order: its
+// groups, then any other whose pane is in the tab showing.
+export function onScreenOf(s: Pick<State, "current" | "shown" | "spaces">): string[] {
   const ws = s.current ? s.spaces[s.current] : undefined;
   const tab = ws?.tabs.find((t) => t.id === ws.active);
-  const own = s.current ? [s.current] : [];
-  return [...new Set([...own, ...(tab && s.current ? worktreesOf(tab.root, s.current) : [])])];
+  return [...new Set([...groupKeys(s), ...(tab && s.current ? worktreesOf(tab.root, s.current) : [])])];
 }
 
 export const here = () => hereOf(useWorkspaces.getState());
@@ -173,11 +191,16 @@ export const hereRef = () => refFor(here());
 export const useHereKey = () => useWorkspaces(hereOf);
 export const useHereRef = () => useWorktreeRef(useHereKey());
 
-// selectWorktree makes a worktree's workspace the one shown.
+// selectWorktree makes a worktree's workspace the one shown. When its tabs
+// are a group in the strip, that group comes to the front; otherwise it
+// shows alone, as a plain click in the sidebar always has.
 export function selectWorktree(ref: WorktreeRef) {
   const key = wsKey(ref.box, ref.path);
+  const keep = isShown(key) ? groupKeys() : [key];
   useWorkspaces.setState((s) => ({
     current: key,
+    shown: keep,
+    folded: (s.folded ?? []).filter((k) => k !== key && keep.includes(k)),
     spaces: { ...s.spaces, [key]: s.spaces[key] ? { ...s.spaces[key], ref, visitedAt: Date.now() } : { ref, tabs: [], hidden: [], visitedAt: Date.now() } },
     mounted: s.mounted.includes(key) ? s.mounted : [...s.mounted, key],
   }));
@@ -185,31 +208,152 @@ export function selectWorktree(ref: WorktreeRef) {
   reconcile(key);
 }
 
-// showWorktree brings a worktree's tabs to the front: what acting in a
-// worktree that is not the one showing does (⌘T in a guest pane opens the
-// terminal in a tab of the guest's worktree). False when nothing knows the
-// worktree.
-export function showWorktree(key: string): boolean {
-  const s = useWorkspaces.getState();
-  if (s.current === key) return true;
+// Tab groups (Labs): the strip holds the tabs of every worktree in shown,
+// each run of them a group in that worktree's colour. A plain click on a
+// worktree in the sidebar fronts its group when it has one, and otherwise
+// shows it alone, as always; ⌥-click, a drag or "Add to tabs" adds a group.
+// Closing a group only takes its tabs off the strip: the worktree and its
+// agents carry on, and its tabs come back with it.
+
+const groupsOn = () => usePrefs.getState().labs;
+
+// groupKeys is the groups in the strip: shown, or with Labs off just the
+// worktree in front.
+export function groupKeys(s: Pick<State, "current" | "shown" | "spaces"> = useWorkspaces.getState()): string[] {
+  return groupsOn() ? groupsOf(s.shown, s.current, (k) => !!s.spaces[k]) : s.current ? [s.current] : [];
+}
+
+export const isShown = (key: string) => groupKeys().includes(key);
+
+// ensure makes a workspace for a worktree that has none yet, mounted.
+function ensure(key: string): boolean {
   const ref = refFor(key);
   if (!ref) return false;
   useWorkspaces.setState((st) => ({
-    current: key,
     spaces: { ...st.spaces, [key]: st.spaces[key] ?? { ref, tabs: [], hidden: [], visitedAt: Date.now() } },
     mounted: st.mounted.includes(key) ? st.mounted : [...st.mounted, key],
   }));
+  return true;
+}
+
+// front puts a group in front, unfolded.
+function front(key: string, shown: string[]) {
+  useWorkspaces.setState((st) => ({
+    current: key,
+    shown,
+    folded: (st.folded ?? []).filter((k) => k !== key),
+    spaces: st.spaces[key] ? { ...st.spaces, [key]: { ...st.spaces[key], visitedAt: Date.now() } } : st.spaces,
+    mounted: st.mounted.includes(key) ? st.mounted : [...st.mounted, key],
+  }));
+  useStore.getState().setView({ kind: "workspace" });
+}
+
+// addGroup adds a worktree's tabs to the strip as a group, in front: after
+// the others, or at index at.
+export function addGroup(key: string, at?: number): boolean {
+  if (!ensure(key)) return false;
+  const s = useWorkspaces.getState();
+  front(key, groupsOn() ? withGroup({ shown: groupKeys(s), current: s.current }, key, at).shown : [key]);
   reconcile(key);
   return true;
 }
 
-// forgetWorktree drops a removed worktree's workspace, and leaves it for
-// home if it was the one showing.
+// focusGroup fronts a group already in the strip.
+export function focusGroup(key: string) {
+  if (isShown(key)) front(key, groupKeys());
+}
+
+// closeGroup takes a group's tabs off the strip; its worktree and agents
+// carry on. The last group stays.
+export function closeGroup(key: string): boolean {
+  const s = useWorkspaces.getState();
+  const shown = groupKeys(s);
+  if (shown.length < 2 || !shown.includes(key)) return false;
+  const next = withoutGroup({ shown, current: s.current }, key);
+  useWorkspaces.setState((st) => ({ shown: next.shown, current: next.current, folded: (st.folded ?? []).filter((k) => k !== key && k !== next.current) }));
+  return true;
+}
+
+// nextGroup fronts the group after (1) or before (-1) the one in front.
+export function nextGroup(dir: 1 | -1): boolean {
+  const s = useWorkspaces.getState();
+  const shown = groupKeys(s);
+  const to = stepGroup({ shown, current: s.current }, dir);
+  if (!to || to === s.current) return false;
+  front(to, shown);
+  return true;
+}
+
+// foldGroup folds a group to its label, or unfolds it. The group in front
+// hands the front to the next unfolded one first; with none, it stays.
+export function foldGroup(key: string, fold: boolean) {
+  const s = useWorkspaces.getState();
+  const shown = groupKeys(s);
+  if (!shown.includes(key)) return;
+  const folded = new Set(s.folded ?? []);
+  if (!fold) {
+    folded.delete(key);
+    useWorkspaces.setState({ folded: [...folded] });
+    return;
+  }
+  if (key === s.current) {
+    const open = shown.filter((k) => k !== key && !folded.has(k));
+    const i = shown.indexOf(key);
+    const to = open.find((k) => shown.indexOf(k) > i) ?? open[open.length - 1];
+    if (!to) return;
+    useWorkspaces.setState({ current: to });
+  }
+  folded.add(key);
+  useWorkspaces.setState({ folded: [...folded] });
+}
+
+// stripTab is the nth tab (from 1) across the strip, as ⌘1–9 count them:
+// every unfolded group's tabs, in order.
+export function stripTab(n: number): { key: string; tab: WsTab } | undefined {
+  const s = useWorkspaces.getState();
+  const shown = groupKeys(s);
+  const narrow = typeof window !== "undefined" && window.matchMedia(NARROW).matches;
+  const folded = foldedOf({ shown, current: s.current }, s.folded, narrow);
+  return stripTabs(shown.map((key) => ({ key, tabs: s.spaces[key]?.tabs ?? [], folded: folded.includes(key) })))[n - 1];
+}
+
+// setTone gives a worktree a colour of the person's choosing; unset goes
+// back to its own.
+export function setTone(key: string, tone?: string) {
+  useWorkspaces.setState((s) => {
+    const { [key]: _old, ...rest } = s.tones ?? {};
+    return { tones: tone ? { ...rest, [key]: tone } : rest };
+  });
+}
+
+// showWorktree brings a worktree's tabs to the front: what acting in a
+// worktree that is not the one showing does (⌘T in a guest pane opens the
+// terminal in a tab of the guest's worktree). With Labs on it joins the
+// strip as a group, beside what was showing. False when nothing knows the
+// worktree.
+export function showWorktree(key: string): boolean {
+  const s = useWorkspaces.getState();
+  if (s.current === key) return true;
+  if (isShown(key)) {
+    focusGroup(key);
+    return true;
+  }
+  if (groupsOn()) return addGroup(key);
+  if (!ensure(key)) return false;
+  useWorkspaces.setState({ current: key, shown: [key] });
+  reconcile(key);
+  return true;
+}
+
+// forgetWorktree drops a removed worktree's workspace and its group. If it
+// was in front, the next group comes forward, else home.
 export function forgetWorktree(box: string, path: string) {
   const key = wsKey(box, path);
   useWorkspaces.setState((s) => {
     const { [key]: _gone, ...spaces } = s.spaces;
-    return { spaces, mounted: s.mounted.filter((k) => k !== key), current: s.current === key ? undefined : s.current };
+    const groups = withoutGroup({ shown: groupKeys(s), current: s.current }, key);
+    const { [key]: _tone, ...tones } = s.tones ?? {};
+    return { spaces, tones, mounted: s.mounted.filter((k) => k !== key), current: s.current === key ? groups.current : s.current, shown: groups.shown, folded: (s.folded ?? []).filter((k) => k !== key) };
   });
 }
 
@@ -357,6 +501,30 @@ export function moveInto(src: { key: string; tab: string; pane?: string }, dst: 
   useStore.getState().setView({ kind: "workspace" });
 }
 
+// bringSession shows a worktree's session beside a pane of the tab showing:
+// moved from wherever a pane shows it (it keeps running and nothing
+// remounts), or in a new pane when none does. The pane belongs to its
+// worktree, key.
+export function bringSession(key: string, box: string, session: string, dst: { tab: string; pane: string; side: Side }) {
+  const s = useWorkspaces.getState();
+  if (!s.current) return;
+  const found = findSession(box, session);
+  if (found && found.key === s.current && found.tab === dst.tab) return focusPane(s.current, dst.tab, found.pane.id);
+  if (found) return moveInto({ key: found.key, tab: found.tab, pane: found.pane.id }, { key: s.current, ...dst });
+  const l = leaf({ kind: "terminal", box, session }, key !== s.current ? key : undefined);
+  updateTab(s.current, dst.tab, (t) => ({ ...t, root: place(t.root, dst.pane, dst.side, l), focus: l.id }));
+}
+
+// leadAgent is the agent a worktree is known by: the one that needs you,
+// else one working, else any.
+export function leadAgent(key: string): string | undefined {
+  const { box, path } = splitKey(key);
+  const data = useStore.getState().boxes[box];
+  const live = (data?.sessions ?? []).filter((x) => x.dir === path && !x.exited && agentOf(x));
+  const rank = (x: Session) => ({ waiting: 0, running: 1 })[sessionState(x, data?.stats) as string] ?? 2;
+  return [...live].sort((a, b) => rank(a) - rank(b))[0]?.name;
+}
+
 // tabBeside is the tab menu's Split right and Split down: the tab joins the
 // one showing (or, for the one showing, its neighbour), beside its focused
 // pane.
@@ -426,12 +594,20 @@ export function openSession(box: string, session: Session) {
   const ref = refOf(box, loc, wt);
   const key = wsKey(box, wt.path);
   update(key, (ws) => ({ ...ws, hidden: ws.hidden.filter((h) => h !== session.name) }));
-  // A pane may show it as a guest in another worktree's tab: that pane is
-  // where it is, so focus it in place rather than open a second one.
+  // Its pane is where it is: in a group in the strip (perhaps a guest in
+  // another worktree's tab) it is focused in place; otherwise that pane's
+  // worktree is shown, as a plain click would, rather than a second pane
+  // opened on the same session.
   const found = findSession(box, session.name);
-  if (found && found.key !== key) {
-    if (!showWorktree(found.key)) return;
+  if (found && isShown(found.key)) {
+    focusGroup(found.key);
     activateTab(found.key, found.tab);
+    focusPane(found.key, found.tab, found.pane.id);
+    return;
+  }
+  if (found && found.key !== key) {
+    const at = useWorkspaces.getState().spaces[found.key]?.ref;
+    if (at) selectWorktree(at);
     focusPane(found.key, found.tab, found.pane.id);
     return;
   }

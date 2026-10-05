@@ -1,5 +1,5 @@
 import { CloudOffIcon, PencilIcon, RowsIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, XIcon } from "lucide-react";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { StateGlyph } from "@/components/agent-glyph";
 import { Tip } from "@/components/tip";
@@ -9,7 +9,9 @@ import { NewTabMenu } from "@/components/workspace/new-tab-menu";
 import { PaneActions, PaneIcon, paneLabel } from "@/components/workspace/pane";
 import { RunMenu } from "@/components/workspace/run-menu";
 import { armDrag, StripMarker, useTabDrag } from "@/components/workspace/tab-drag";
-import { WtDot } from "@/components/workspace/worktree-tone";
+import { TabGroup } from "@/components/workspace/tab-group";
+import { useGroups, useNarrow, WtDot } from "@/components/workspace/worktree-tone";
+import { foldedOf } from "@/lib/groups";
 import { closeTab } from "@/lib/actions";
 import { agentOf, type SessionState, sessionAgent, sessionName, sessionState } from "@/lib/derive";
 import { type Leaf, leaves, mixed, worktreesOf } from "@/lib/layout";
@@ -26,6 +28,15 @@ import { activateTab, tabBeside, unsplitTab, useHereKey, useHereRef, useWorkspac
 export function TabStrip() {
   const key = useWorkspaces((s) => s.current);
   const ws = useWorkspaces((s) => (s.current ? s.spaces[s.current] : undefined));
+  // Tab groups (Labs): with more than one worktree in the strip, each one's
+  // tabs are a group; in a narrow window the others fold to their label.
+  const groups = useGroups();
+  const narrow = useNarrow();
+  const folded = useWorkspaces((s) => s.folded);
+  const foldedNow = useMemo(() => new Set(foldedOf({ shown: groups, current: key }, folded, narrow)), [groups, key, folded, narrow]);
+  const grouped = groups.length > 1;
+  // What the strip holds, so measuring and revealing rerun when it changes.
+  const layoutKey = useWorkspaces((s) => groups.map((g) => `${g}:${s.spaces[g]?.tabs.length ?? 0}:${foldedNow.has(g) ? 1 : 0}`).join("|"));
   const leaving = useRemoval(ws?.ref.box ?? "", ws?.ref.path);
   const active = ws?.tabs.find((t) => t.id === ws.active);
   const lone = active && active.root.kind === "leaf" ? active.root : undefined;
@@ -54,7 +65,7 @@ export function TabStrip() {
     for (const child of el.children) ro.observe(child);
     measure();
     return () => ro.disconnect();
-  }, [measure, ws?.tabs.length]);
+  }, [measure, ws?.tabs.length, layoutKey]);
 
   // The active tab is always in view: brought in when it changes (⌘T, ⌘⇧B,
   // a tab opened by an agent) and when the strip narrows.
@@ -73,7 +84,7 @@ export function TabStrip() {
     const ro = new ResizeObserver(reveal);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [ws?.active, ws?.tabs.length, measure]);
+  }, [ws?.active, ws?.tabs.length, key, layoutKey, measure]);
 
   const fade = edges.left && edges.right ? "[mask-image:linear-gradient(to_right,transparent,black_24px,black_calc(100%-24px),transparent)]" : edges.left ? "[mask-image:linear-gradient(to_right,transparent,black_24px)]" : edges.right ? "[mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)]" : "";
 
@@ -94,7 +105,12 @@ export function TabStrip() {
         }}
         className={cn("relative flex min-w-0 items-stretch overflow-x-auto [scrollbar-width:none]", fade)}
       >
-        {key &&
+        {/* Narrow, only the group in front scrolls here; the others wait as
+            labels beside it, always in view. */}
+        {grouped &&
+          groups.filter((g) => !narrow || g === key).map((g) => <TabGroup key={g} wsKey={g} front={g === key} folded={foldedNow.has(g)} many={grouped} />)}
+        {!grouped &&
+          key &&
           ws?.tabs.map((t) => (
             <TabButton
               key={t.id}
@@ -110,6 +126,15 @@ export function TabStrip() {
           ))}
         <StripMarker />
       </div>
+      {grouped && narrow && (
+        <div className="flex shrink-0 items-stretch border-l">
+          {groups
+            .filter((g) => g !== key)
+            .map((g) => (
+              <TabGroup key={g} wsKey={g} front={false} folded many={grouped} />
+            ))}
+        </div>
+      )}
       {ws && (
         <div className="flex shrink-0 items-center px-1">
           <NewTabMenu />
@@ -132,7 +157,9 @@ export function TabStrip() {
               {removalLabel(hereLeaving)}
             </span>
           )}
-          {hereRef && (
+          {/* With groups, the solid label already names the worktree in
+              front; the breadcrumb only speaks up for a guest pane. */}
+          {hereRef && !(grouped && hereKey === key) && (
             <Tip label={`${hereRef.box}:${hereRef.path}`} side="bottom">
               <span data-tauri-drag-region className="flex max-w-56 items-center gap-1.5 truncate">
                 <WtDot wsKey={hereKey} />
@@ -161,6 +188,8 @@ interface TabProps {
   tab: WsTab;
   // The workspace that holds the tab.
   wsKey: string;
+  // Its group's colour, when the strip holds several.
+  tone?: string;
   active: boolean;
   onActivate(): void;
   onClose(): void;
@@ -170,7 +199,7 @@ interface TabProps {
   onUnsplit(): void;
 }
 
-export function TabButton({ tab, wsKey, active, onActivate, onClose, onDrag, onSplit, onUnsplit }: TabProps) {
+export function TabButton({ tab, wsKey, tone, active, onActivate, onClose, onDrag, onSplit, onUnsplit }: TabProps) {
   const boxes = useStore((s) => s.boxes);
   const status = useStore((s) => s.status);
   const panes = leaves(tab.root);
@@ -207,6 +236,7 @@ export function TabButton({ tab, wsKey, active, onActivate, onClose, onDrag, onS
     <div
       onPointerDown={(e) => !editing && onDrag(e, title, <PaneIcon content={c} agent={lead.agent} className="size-3" />)}
       data-tab={tab.id}
+      data-ws={wsKey}
       className={cn(
         "group relative flex h-full min-w-24 max-w-56 shrink-0 cursor-default items-center gap-1.5 border-r pr-1 pl-3 text-xs data-popup-open:bg-background/60",
         active ? "bg-background text-foreground" : "text-muted-foreground hover:bg-background/40 hover:text-foreground",
@@ -222,7 +252,7 @@ export function TabButton({ tab, wsKey, active, onActivate, onClose, onDrag, onS
       onClick={onActivate}
       onDoubleClick={() => session && setEditing(true)}
     >
-      {active && <span className="absolute inset-x-0 top-0 h-px bg-foreground/50" />}
+      {active && <span className={cn("absolute inset-x-0 top-0", tone ? "h-0.5" : "h-px bg-foreground/50")} style={tone ? { background: tone } : undefined} />}
       {owners.length > 0 && (
         <span className="flex shrink-0 -space-x-0.5" aria-hidden>
           {owners.map((o) => (

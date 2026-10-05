@@ -9,6 +9,7 @@
     { "id": "split-worktree", "group": "File", "label": "Split right with another worktree…", "keys": "⌘⌥D", "accel": "CmdOrCtrl+Alt+D", "labs": true },
     { "id": "open-editor", "group": "File", "label": "Open in editor", "keys": "⌘⇧O", "accel": "CmdOrCtrl+Shift+O" },
     { "id": "close-pane", "group": "File", "label": "Close pane", "keys": "⌘W", "accel": "CmdOrCtrl+W", "sep": true },
+    { "id": "close-group", "group": "File", "label": "Close group", "keys": "⌘⇧W", "accel": "CmdOrCtrl+Shift+W", "what": "Close the tab group (its worktree and agents carry on); with one group, the window" },
     { "id": "zen", "group": "View", "label": "Zen", "keys": "⌘.", "accel": "CmdOrCtrl+.", "labs": true },
     { "id": "sidebar", "group": "View", "label": "Show or hide the sidebar", "keys": "⌘\\", "accel": "CmdOrCtrl+\\" },
     { "id": "dashboard", "group": "View", "label": "Agent Dashboard", "keys": "⌘J", "accel": "CmdOrCtrl+J" },
@@ -19,6 +20,9 @@
     { "id": "palette", "group": "Go", "label": "Search and commands…", "keys": "⌘K", "accel": "CmdOrCtrl+K" },
     { "id": "tab", "group": "Go", "label": "Tab {n}", "keys": "⌘1–9", "accel": "CmdOrCtrl+{n}", "count": 9, "sep": true, "what": "Go to tab 1–9" },
     { "id": "focus", "group": "Go", "label": "Move between panes", "keys": "⌘⌥ ←↑→↓" },
+    { "id": "add-group", "group": "Go", "label": "Add a worktree's tabs as a group", "keys": "⌥-click in the sidebar", "labs": true },
+    { "id": "prev-group", "group": "Go", "label": "Previous tab group", "keys": "⌃⇧⇥", "accel": "Ctrl+Shift+Tab", "sep": true, "labs": true },
+    { "id": "next-group", "group": "Go", "label": "Next tab group", "keys": "⌃⌥⇥", "accel": "Ctrl+Alt+Tab", "labs": true },
     { "id": "shortcuts", "group": "Help", "label": "Keyboard shortcuts", "keys": "⌘/", "accel": "CmdOrCtrl+/" }
   ]
 }

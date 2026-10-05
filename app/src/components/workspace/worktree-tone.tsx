@@ -2,24 +2,33 @@ import { useMemo } from "react";
 
 import { Tip } from "@/components/tip";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { assignTones, labelsFor, nameFromKey, type Tone, toneVar } from "@/lib/groups";
+import { assignTones, labelsFor, NARROW, nameFromKey, type Tone, toneVar } from "@/lib/groups";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { onScreenOf, splitKey, useWorkspaces, type WorktreeRef } from "@/lib/workspaces";
+import { usePrefs } from "@/lib/prefs";
+import { groupKeys, onScreenOf, splitKey, useWorkspaces, type WorktreeRef } from "@/lib/workspaces";
 
 // Worktrees side by side: each worktree on screen wears one colour (its
 // tone) and a name that tells it apart. With one worktree on screen there
 // are no tones at all, so the app looks as it always has.
 
-// Below this the strip folds the groups you are not in, and pane chips
-// shrink to their dot, the name in a tooltip.
-export const NARROW = "(max-width: 1099px)";
+// Narrow (lib/groups.ts NARROW): the strip folds the groups you are not in,
+// and pane chips shrink to their dot, the name in a tooltip.
 export const useNarrow = () => useMediaQuery(NARROW);
 
 // useOnScreen is the worktrees on screen, in the strip's order. Joined in
 // the selector, so it only changes when they do.
 export function useOnScreen(): string[] {
+  // Labs decides whether groups count: read it so a change shows at once.
+  usePrefs((p) => p.labs);
   const joined = useWorkspaces((s) => onScreenOf(s).join("\n"));
+  return useMemo(() => (joined ? joined.split("\n") : []), [joined]);
+}
+
+// useGroups is the worktrees whose tabs share the strip (Labs), in order.
+export function useGroups(): string[] {
+  const labs = usePrefs((p) => p.labs);
+  const joined = useWorkspaces((s) => (labs ? groupKeys(s) : s.current ? [s.current] : []).join("\n"));
   return useMemo(() => (joined ? joined.split("\n") : []), [joined]);
 }
 

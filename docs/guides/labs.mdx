@@ -4,7 +4,7 @@ description: Newer ideas in the app, on by default; Settings → Labs turns them
 ---
 
 Labs holds ideas that are still being tried: the harbour home, agents as
-conversations, and zen. They are on by default since v0.3.1, and may change
+conversations, zen, and worktrees side by side. They are on by default since v0.3.1, and may change
 or go away. Settings → Labs turns them off, and that choice is kept.
 
 ## Harbour home
@@ -193,3 +193,55 @@ then your agents (who needs you first), then worktrees, then Search, Keyboard
 shortcuts, Settings and Leave zen. ⌘K searches everything. ⌘. again brings
 it all back, and the app remembers which you left it in. In the Mac app, Zen
 is also under View in the menu bar.
+
+## Worktrees side by side
+
+Two worktrees can share the window: their tabs in one strip, and their
+panes in one tab. Nothing changes until a second worktree joins, so with
+one open the app looks as it always has.
+
+**Tab groups.** ⌥-click a worktree in the sidebar, choose **Add to tabs
+beside…** in its menu, drag it onto the tab strip, or pick **Another
+worktree's tabs…** from the strip's +. Its tabs join the strip as a group:
+its name first, in its colour, then its tabs, underlined in that colour.
+The group in front has the solid label. A plain click on a worktree whose
+group is in the strip brings that group forward; a plain click on any other
+shows it alone, as before.
+
+**One tab, two worktrees.** ⌘⌥D (**Split right with another worktree…**,
+also in a pane's ⋯ menu) picks a worktree, then what of it to show beside
+the focused pane: one of its agents, its dev server's page, a panel such as
+its Diff, or a new terminal or agent. Drag a worktree from the sidebar onto
+a pane's edge to split its agent in, or drop a tab from another group into
+a pane. Each pane in such a tab wears a chip with its worktree's name and
+colour, and the focus line takes that colour.
+
+**Where things happen.** The worktree you are acting in is the focused
+pane's. The breadcrumb, Run, the + menu, ⌘T, ⌘⇧B, the palette and plugins
+follow it, so ⌘T in another worktree's pane opens its terminal among that
+worktree's tabs. Notifications focus an agent where its pane already is.
+
+| Keys | What it does |
+| --- | --- |
+| ⌥-click (sidebar) | Add the worktree's tabs as a group |
+| ⌘⌥D | Split right with another worktree… |
+| ⌃⇧⇥ / ⌃⌥⇥ | Previous or next group (⌘1–9 count tabs across the whole strip) |
+| ⌘⇧W | Close the group in front: its tabs leave the strip, and the worktree and its agents carry on. With one group, it closes the window |
+
+**The group menu.** Click a group's label to fold it to its name and tab
+count; right-click it to fold, pick its colour, or close it. Colours are
+the worktree's own (the same each time, and never two alike on screen) and
+stay clear of the colours that mean waiting, working, done and failed; the
+worktree's menu in the sidebar has **Colour** too. Names add the box when
+the same repository is open from two boxes (`search-perf · gpu`).
+
+**Narrow windows.** Below about 1100px, the groups you are not in fold to
+their labels, beside the strip, and pane chips shrink to their colour's dot
+with the name in a tooltip. In zen, the switcher names the focused pane's
+worktree in its colour.
+
+**When a worktree goes.** Archiving or removing a worktree takes its group
+off the strip. A pane of it left in another worktree's tab says so, with a
+Close button. While its box is offline the group's label dims, and Run says
+why it can't start anything. The strip's groups, folds and colours are
+remembered with the rest of the layout.

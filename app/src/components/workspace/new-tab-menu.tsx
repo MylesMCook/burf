@@ -1,4 +1,4 @@
-import { GlobeIcon, HistoryIcon, PlusIcon, PuzzleIcon, RadioIcon, Settings2Icon, SquareTerminalIcon } from "lucide-react";
+import { Columns2Icon, GlobeIcon, HistoryIcon, ListPlusIcon, PlusIcon, PuzzleIcon, RadioIcon, Settings2Icon, SquareTerminalIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { Tip } from "@/components/tip";
@@ -13,6 +13,8 @@ import { leaves } from "@/lib/layout";
 import { useStore } from "@/lib/store";
 import { portUrl } from "@/lib/browser-url";
 import { activateTab, focusPane, openPanel, showWorktree, useHereRef, useWorkspaces } from "@/lib/workspaces";
+import { usePrefs } from "@/lib/prefs";
+import { openWorktreePicker } from "@/components/workspace/worktree-picker";
 import { useRegistry } from "@/plugins/registry";
 import { Icon } from "@/plugins/ui";
 
@@ -50,6 +52,7 @@ export function NewTabMenu() {
   const urlPort = useStore((s) => s.status?.proxy.url_port);
   const boxData = useStore((s) => (ws ? s.boxes[ws.ref.box] : undefined));
   const panels = useRegistry((s) => s.worktreePanels);
+  const labs = usePrefs((p) => p.labs);
 
   const groups = useMemo<Group[]>(() => {
     const done = (fn: () => void) => () => {
@@ -63,6 +66,12 @@ export function NewTabMenu() {
     const actions: Item[] = [
       { value: "terminal", label: "New terminal", icon: <SquareTerminalIcon />, shortcut: "⌘T", run: done(() => void startSession("")) },
       { value: "browser", label: "New browser tab", icon: <GlobeIcon />, shortcut: "⌘⇧B", run: done(() => openBrowserAt("")) },
+      ...(labs
+        ? [
+            { value: "add worktree tabs group", label: "Another worktree's tabs…", icon: <ListPlusIcon />, run: done(() => openWorktreePicker({ kind: "group" })) },
+            { value: "split another worktree beside", label: "Another worktree beside…", icon: <Columns2Icon />, shortcut: "⌘⌥D", run: done(() => openWorktreePicker({ kind: "split" })) },
+          ]
+        : []),
     ];
     const agents: Item[] = ws
       ? agentPresets(ws.ref.box, ws.ref.location).map((p) => ({ value: `agent:${p.id}`, label: p.name, icon: <AgentIcon agent={p.id} />, run: done(() => void startSession(p.command, { kind: "tab" }, p.name)) }))
@@ -131,7 +140,7 @@ export function NewTabMenu() {
     ].filter((g) => g.items.length);
     // boxData keeps agent labels current as sessions change.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [query, ws, spaces, services, recent, urlPort, boxData, panels, setOpen]);
+  }, [query, ws, spaces, services, recent, urlPort, boxData, panels, setOpen, labs]);
 
   return (
     <Popover

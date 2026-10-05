@@ -33,8 +33,10 @@ struct Shortcut {
     sep: bool,
 }
 
-// The one item that is the window's, not the webview's: Close window, on
-// ⌘⇧W, since ⌘W closes the focused pane.
+// The one item that is the window's, not the webview's: Close window. Its
+// key, ⌘⇧W, is File → Close group's (the table's close-group), which the
+// webview runs: it closes the tab group in front, or with only one, the
+// window. ⌘W closes the focused pane.
 const CLOSE_WINDOW: &str = "close-window";
 
 fn table() -> Table {
@@ -164,13 +166,7 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
             &PredefinedMenuItem::minimize(app, None)?,
             &PredefinedMenuItem::maximize(app, None)?,
             &PredefinedMenuItem::separator(app)?,
-            &MenuItem::with_id(
-                app,
-                CLOSE_WINDOW,
-                "Close window",
-                true,
-                Some("CmdOrCtrl+Shift+W"),
-            )?,
+            &MenuItem::with_id(app, CLOSE_WINDOW, "Close window", true, None::<&str>)?,
         ],
     )?)?;
 
