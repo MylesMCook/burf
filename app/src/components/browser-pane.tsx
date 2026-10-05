@@ -1,8 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { ArrowLeftIcon, ArrowUpRightIcon, ArrowRightIcon, BotIcon, CrosshairIcon, ExternalLinkIcon, GlobeIcon, RotateCwIcon, SendIcon, XIcon } from "lucide-react";
+import { ArrowLeftIcon, ArrowUpRightIcon, ArrowRightIcon, BotIcon, CrosshairIcon, ExternalLinkIcon, GlobeIcon, RotateCwIcon, SendIcon, ShieldAlertIcon, XIcon } from "lucide-react";
 import { useEffect, useId, useImperativeHandle, useMemo, useRef, useState } from "react";
 
+import { BrowserSandboxCard, seedSandbox, useSandboxCardState } from "@/components/browser-sandbox";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
@@ -112,6 +113,15 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree }: 
   useEffect(() => {
     if (agentLive && !agentLive.running) setWatching(false);
   }, [agentLive]);
+  // The agent's browser can't start on the box (Chromium's sandbox): a
+  // marked chip, and a card in the agent's view with the ways out.
+  const sandbox = useSandboxCardState(ctx.ref?.box ?? "");
+  const sandboxBlocked = !agentLive?.running && (sandbox === "blocked" || sandbox === "fixing" || sandbox === "still-blocked");
+  const [sandboxOpen, setSandboxOpen] = useState(false);
+  const sandboxView = sandboxOpen && sandbox !== "hidden" && !agentView && !!ctx.ref;
+  useEffect(() => {
+    if (sandbox === "hidden") setSandboxOpen(false);
+  }, [sandbox]);
   const [picked, setPicked] = useState<Pick>();
 
   // A pick from the native webview comes back as an event.
@@ -149,7 +159,9 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree }: 
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-background">
-      {agentView && ctx.ref ? (
+      {sandboxView ? (
+        <SandboxBar box={ctx.ref!.box} fixed={sandbox === "fixed" || sandbox === "no-sandbox"} onBack={() => setSandboxOpen(false)} />
+      ) : agentView && ctx.ref ? (
         <AgentBar
           ctx={ctx}
           url={agentAt ?? agentLive?.url}
@@ -213,6 +225,18 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree }: 
           <ToolButton label="Open in your browser" disabled={!url} onClick={() => void openUrl(url)}>
             <ExternalLinkIcon />
           </ToolButton>
+          {sandboxBlocked && ctx.ref && (
+            <Tip label={`The agent's browser can't start on ${ctx.ref.box}. See why, and fix it.`}>
+              <button
+                type="button"
+                onClick={() => setSandboxOpen(true)}
+                className="ml-1 inline-flex h-6.5 shrink-0 items-center gap-1.5 rounded-md border border-warning/40 bg-warning/8 px-2 text-[11px] text-warning-foreground hover:bg-warning/16"
+              >
+                <ShieldAlertIcon className="size-3" />
+                Agent's browser blocked
+              </button>
+            </Tip>
+          )}
           {agentLive?.running && (
             <Tip label="An agent is using its own browser on the box for this worktree. Watch it here.">
               <button
@@ -231,14 +255,19 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree }: 
       {failure && mode === "iframe" && <p className="shrink-0 border-b bg-muted/40 px-3 py-1 text-muted-foreground text-xs">The built-in browser could not open ({failure}); showing the page in a frame instead.</p>}
       {/* Watching the agent keeps your page as it was, hidden underneath. */}
       {agentView && ctx.ref && <AgentView ctx={ctx} visible={visible} onUrl={setAgentAt} />}
+      {sandboxView && (
+        <div className="flex min-h-0 flex-1 items-start justify-center overflow-y-auto bg-muted/30 p-6 pt-12">
+          <BrowserSandboxCard box={ctx.ref!.box} worktree={ctx.ref} className="w-full max-w-2xl bg-background shadow-xs" />
+        </div>
+      )}
       {!url ? (
-        !agentView && <Suggestions ctx={ctx} onPick={go} />
+        !agentView && !sandboxView && <Suggestions ctx={ctx} onPick={go} />
       ) : mode === "native" ? (
         <NativeSurface
           ref={native}
           id={id}
           url={url}
-          visible={visible && !agentView}
+          visible={visible && !agentView && !sandboxView}
           onUrl={(u) => {
             setInput(u);
             if (u !== url) onNavigate(u);
@@ -250,7 +279,7 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree }: 
           }}
         />
       ) : (
-        <div className={cn("flex min-h-0 flex-1 flex-col", agentView && "hidden")}>
+        <div className={cn("flex min-h-0 flex-1 flex-col", (agentView || sandboxView) && "hidden")}>
           <FramedPage key={`${url}#${nonce}`} id={id} url={url} onReload={reload} />
         </div>
       )}
@@ -584,7 +613,11 @@ function useAgentBrowserLive(ref: BrowserContext["ref"], visible: boolean): Agen
     let on = true;
     const tick = () =>
       agentBrowserStatus(box, location, worktree).then(
-        (s) => on && setLive((was) => (was?.running === s.running && was?.url === s.status?.url ? was : { running: s.running, url: s.status?.url })),
+        (s) => {
+          if (!on) return;
+          seedSandbox(box, s.health);
+          setLive((was) => (was?.running === s.running && was?.url === s.status?.url ? was : { running: s.running, url: s.status?.url }));
+        },
         () => on && setLive({ running: false }),
       );
     void tick();
@@ -625,6 +658,24 @@ function AgentBar({ ctx, url, onBack, onOpenHere }: { ctx: BrowserContext; url?:
           Open in your view
         </Button>
       )}
+      <Button size="xs" variant="outline" className="shrink-0" onClick={onBack}>
+        <XIcon />
+        Your view
+      </Button>
+    </div>
+  );
+}
+
+// SandboxBar stands in for the address bar while the pane shows why the
+// agent's browser can't start.
+function SandboxBar({ box, fixed, onBack }: { box: string; fixed: boolean; onBack(): void }) {
+  return (
+    <div className={cn("flex h-9 shrink-0 items-center gap-2 border-b px-2 text-xs", fixed ? "bg-success/[0.06]" : "bg-warning/[0.06]")}>
+      <span className={cn("inline-flex shrink-0 items-center gap-1.5 rounded-md px-2 py-1 font-medium text-[11px]", fixed ? "bg-success/15 text-success-foreground" : "bg-warning/15 text-warning-foreground")}>
+        <BotIcon className="size-3" />
+        {fixed ? "Agent's browser" : "Agent's browser · blocked"}
+      </span>
+      <span className="min-w-0 flex-1 truncate text-muted-foreground">on {box}</span>
       <Button size="xs" variant="outline" className="shrink-0" onClick={onBack}>
         <XIcon />
         Your view

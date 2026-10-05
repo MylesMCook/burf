@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 
+import type { BrowserHealth } from "@/lib/browser-sandbox";
 import { useStore } from "@/lib/store";
 
 // The agent's browser on a box: a headless Chromium per worktree that the
@@ -10,6 +11,8 @@ export interface AgentBrowserStatus {
   running: boolean;
   text: string;
   status?: { url?: string; rss_bytes?: number; watchers?: number };
+  // Why one can't start, while none runs and it couldn't.
+  health?: BrowserHealth;
 }
 
 export interface BrowserArtifacts {
@@ -19,6 +22,27 @@ export interface BrowserArtifacts {
 }
 
 export const boxHasBrowser = (box: string) => !!useStore.getState().boxes[box]?.info?.capabilities?.includes("browser");
+
+// A box that says why its browser can't start, and takes the no-sandbox
+// setting.
+export const boxHasBrowserHealth = (box: string) => !!useStore.getState().boxes[box]?.info?.capabilities?.includes("browser.health");
+
+function client() {
+  const c = useStore.getState().client;
+  if (!c) throw new Error("not connected");
+  return c;
+}
+
+// browserHealth is whether the box's browser can start, without starting it.
+export const browserHealth = async (box: string) => client().box<BrowserHealth>(box, "GET", "browser/health");
+
+// setBrowserNoSandbox turns the box's no-sandbox setting on or off; the next
+// browser to start follows it.
+export const setBrowserNoSandbox = async (box: string, on: boolean) => client().box<BrowserHealth>(box, "PUT", "browser/settings", { no_sandbox: on });
+
+// checkBrowser starts Chromium once on the box, on a blank page, and closes
+// it: whether a browser starts now.
+export const checkBrowser = async (box: string) => client().box<BrowserHealth>(box, "POST", "browser/check");
 
 const base = (location: string, worktree: string) => `worktrees/${encodeURIComponent(location)}/${encodeURIComponent(worktree)}/browser`;
 

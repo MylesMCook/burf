@@ -2,6 +2,7 @@ import { ArrowUpCircleIcon, CopyIcon, EllipsisIcon, PlusIcon, RefreshCwIcon, Shi
 import { useState } from "react";
 
 import { StatusDot, useBoxState } from "@/components/agent-glyph";
+import { BrowserSandboxCard } from "@/components/browser-sandbox";
 import { EditorsSettings } from "@/components/editors/editors-settings";
 import { ErrorDetails } from "@/components/error-note";
 import { GuardDialog } from "@/components/guard-dialog";
@@ -173,6 +174,8 @@ function BoxRow({ box }: { box: BoxStatus }) {
           </MenuPopup>
         </Menu>
       </div>
+      {/* The agent's browser can't start here (Chromium's sandbox), or runs without it. */}
+      {online && <BrowserSandboxCard box={box.name} full className="mt-3" />}
       {update && update.state !== "queued" && <CommandLog className="mt-3" lines={update.lines ?? []} done={update.state === "done"} error={update.error} />}
       {update?.state === "queued" && <p className="mt-2 text-muted-foreground text-xs">Waiting for the box before it to finish updating…</p>}
       <GuardDialog box={box.name} open={guarding} onOpenChange={setGuarding} />

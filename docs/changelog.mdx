@@ -11,6 +11,15 @@ again.
 
 ## Unreleased
 
+- **Fix a blocked agent's browser from Berth.** On Ubuntu 24.04, whose
+  sandbox setting stops Chromium starting, the browser pane marks the
+  agent's browser **blocked** and Settings → Boxes shows why, with two ways
+  out: **Fix it** opens a terminal on the box with the `sudo sysctl` command
+  typed for you to run (Berth never sees your password) and clears once the
+  box allows it, or **Run without Chromium's sandbox**, a per-box setting
+  that needs no restart. An agent that hits it is told to ask you, and
+  `berthd doctor` says the same. Boxes need an upgrade.
+  [Agent browser](/guides/agent-browser#when-ubuntu-blocks-it).
 - **The browser tab is your browser.** A browser pane always shows the
   worktree's page in a real browser on your laptop, through its proxy; the
   agent's browser on the box shows only while an agent drives it, behind a
