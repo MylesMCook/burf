@@ -231,7 +231,8 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
   // "Reading the conversation…" never stays: the box not having listed its
   // sessions or said what it can do (or a read not settling) a few seconds
   // on is an error with Retry, which asks the box again.
-  const reading = !mock && !away && (!listed || (feed === "loading" && !items.length && !ended));
+  // Counted only while the pane shows: a hidden chat doesn't read.
+  const reading = visible && !mock && !away && (!listed || (feed === "loading" && !items.length && !ended));
   const stalled = useStalled(reading, FIRST_READ_TIMEOUT + 2_000, `${key}:${attempt}`);
   const retry = () => {
     setAttempt((n) => n + 1);
