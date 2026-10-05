@@ -31,8 +31,11 @@ export interface Prefs {
   // stops after a few.
   agentCloseTips: number;
   // Labs: the harbour home (no worktree open) and the Terminal |
-  // Conversation switch on agent panes.
+  // Conversation switch on agent panes. On by default since version 3.
   labs: boolean;
+  // Set once the person turns Labs on or off in Settings, so a change of
+  // default never overrides them.
+  labsChosen: boolean;
   // Labs: how an agent's pane opens, until switched.
   agentView: "terminal" | "conversation";
   // Labs: zen (⌘.): no sidebar or status bar, a switcher for a tab strip,
@@ -56,7 +59,8 @@ const DEFAULTS: Prefs = {
   closeAgents: "stop",
   closeAgentsChosen: false,
   agentCloseTips: 0,
-  labs: false,
+  labs: true,
+  labsChosen: false,
   agentView: "terminal",
   zen: false,
   autoUpdateBoxes: false,
@@ -64,7 +68,7 @@ const DEFAULTS: Prefs = {
 
 // PREFS_VERSION counts changes of default that saved prefs are moved to
 // once. 2: closing an agent's tab stops it ("keep" was the default before).
-const PREFS_VERSION = 2;
+const PREFS_VERSION = 3;
 
 type Saved = Partial<Prefs> & { version?: number };
 
@@ -79,6 +83,8 @@ export function migratePrefs(saved: Saved): Saved {
       out.agentCloseTips = 0;
     }
   }
+  // Version 3 turns Labs on: off was only the old default.
+  if ((saved.version ?? 1) < 3 && !saved.labsChosen) out.labs = true;
   out.version = PREFS_VERSION;
   return out;
 }
