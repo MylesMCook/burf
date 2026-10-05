@@ -16,7 +16,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
       ca-certificates curl git jq build-essential unzip zip xz-utils zstd \
-      gnupg sudo tini python3 tmux shellcheck dash tzdata procps iproute2 \
+      gnupg sudo python3 tmux shellcheck dash tzdata procps iproute2 \
       lsof openssh-client rsync file less util-linux \
       # Playwright's system dependencies for Chromium on Ubuntu 24.04 (what
       # `playwright install-deps chromium` installs), so its --with-deps
@@ -68,4 +68,7 @@ VOLUME /runner
 
 USER runner
 WORKDIR /home/runner
-ENTRYPOINT ["/usr/bin/tini", "--", "/opt/berth-runner/entrypoint.sh"]
+# Run with `docker run --init` (common.sh): Docker's init reaps orphans.
+# Ubuntu's tini package as PID 1 instead left tmux panes' exit statuses
+# unread (internal/box's Ctrl-C service test failed every time).
+ENTRYPOINT ["/opt/berth-runner/entrypoint.sh"]

@@ -1,5 +1,5 @@
 #!/bin/bash
-# The container's entrypoint (under tini).
+# The container's entrypoint (under Docker's --init).
 #
 #   entrypoint.sh               run every runner registered in /runner, each
 #                               in a restart loop (the container's command)

@@ -32,7 +32,7 @@ build_image() {
 # socket, no --privileged, no host network; capped memory, CPUs and PIDs.
 start_container() {
 	docker run -d --name "$CONTAINER" --hostname "$CONTAINER" \
-		--restart unless-stopped \
+		--init --restart unless-stopped \
 		--memory "$MEMORY" --memory-swap "$MEMORY" --cpus "$CPUS" \
 		--pids-limit 16384 --shm-size 2g --cap-drop NET_RAW \
 		--log-opt max-size=10m --log-opt max-file=3 \
