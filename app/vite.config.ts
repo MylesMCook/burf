@@ -58,7 +58,13 @@ function demoPage(): Plugin {
 // the app on its fixtures (mock mode, always), with a guide and scripted
 // activity (src/demo/), nothing that needs a laptop agent or Tauri, built
 // with relative paths into site/demo/.
+// A second dev server (another --port) keeps its own prebundled deps: one
+// cache re-bundled under a running server gives its page two copies of a
+// library's internals, and Base UI's contexts stop matching.
+const argPort = process.argv.includes("--port") ? process.argv[process.argv.indexOf("--port") + 1] : undefined;
+
 export default defineConfig(({ mode }) => ({
+  cacheDir: argPort && argPort !== "1420" ? `node_modules/.vite-${argPort}` : "node_modules/.vite",
   plugins: [react(), tailwindcss(), devPlugins(), ...(mode === "demo" ? [demoPage()] : [])],
   define: { __BERTH_DEMO__: JSON.stringify(mode === "demo") },
   resolve: {
