@@ -35,4 +35,19 @@ assert.ok(worker.includes("'self'"), "worker-src (or script-src) needs 'self': t
 // the frosted grain is a data: SVG.
 has("img-src", "blob:", "Settings shows your chat backgrounds from blob: URLs");
 has("img-src", "data:", "the chat background's frosted grain is a data: image");
+// Terminals: ghostty-web fetches its WebAssembly from a data: URL and
+// compiles it (src/lib/terminal.ts).
+has("connect-src", "data:", "ghostty-web fetches its WebAssembly from a data: URL");
+has("script-src", "'wasm-unsafe-eval'", "ghostty-web compiles WebAssembly");
+
+// Browser panes are WKWebViews, and App Transport Security refuses plain
+// http in a bundled app, which `pnpm tauri dev` never is: v0.3.5's panes
+// stayed blank on every http://WT.LOC.BOX.localhost:1377/ page (-1022).
+// src-tauri/Info.plist, which Tauri merges into the bundle's, allows
+// localhost and its subdomains.
+const plist = await readFile(new URL("../src-tauri/Info.plist", import.meta.url), "utf8");
+const localhost = /<key>NSExceptionDomains<\/key>\s*<dict>\s*<key>localhost<\/key>\s*<dict>([\s\S]*?)<\/dict>/.exec(plist)?.[1] ?? "";
+for (const key of ["NSIncludesSubdomains", "NSExceptionAllowsInsecureHTTPLoads"]) {
+  assert.match(localhost, new RegExp(`<key>${key}</key>\\s*<true/>`), `Info.plist: ATS needs ${key} for localhost, or browser panes can't open http://*.localhost pages`);
+}
 console.log("check-csp: ok");

@@ -9,6 +9,23 @@ upgrades with `berth upgrade BOX`, or by running the
 [install command](/getting-started/add-a-box#with-the-install-command)
 again.
 
+## Unreleased
+
+- **Worktree URLs work on a Mac's own box, and in the Browser tab.** On
+  this Mac's box, `http://WORKTREE.LOCATION.BOX.localhost:1377/` said "not
+  found" for a dev server started in the worktree (`npm start` on 3000), since
+  the box only placed a server by its port, and terminals never got `PORT`.
+  The box now reads each server's folder on macOS too, as Linux boxes always
+  did, and a worktree's terminals and agents get `PORT=$BERTH_PORT` unless
+  the project sets it. A URL with nothing running yet says so and how to
+  start it, and a server started a moment ago opens at once. Separately, the
+  release app's browser panes stayed blank on every `http://…localhost` page:
+  macOS App Transport Security refused plain http in the bundled app (never
+  in `pnpm tauri dev`); Berth.app now allows it for localhost names only.
+  When terminals fall back to xterm.js, the app says why once, with Copy
+  details, in Settings → Terminal, and in `berth doctor`. Boxes and the app
+  need the update. [Project config](/guides/project-config#services).
+
 ## v0.3.5
 
 October 5, 2026.

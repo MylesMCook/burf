@@ -69,6 +69,12 @@ func laptopChecks(l laptop) []doctor.Check {
 	} else {
 		checks = append(checks, doctor.Check{Area: mac, Name: "local URLs", Status: doctor.OK, Detail: serviceURLFor("PORT", "BOX", status.Proxy.URLPort)})
 	}
+	var term terminalRenderer
+	if c.Call(context.Background(), "GET", "/v1/app/terminal-renderer", nil, &term) == nil {
+		if check, ok := term.check(mac); ok {
+			checks = append(checks, check)
+		}
+	}
 	if runtime.GOOS == "darwin" {
 		switch {
 		case !pfredirect.Installed(status.Proxy.Port):
@@ -167,4 +173,30 @@ func whoAnswers(addr string) string {
 		return s
 	}
 	return "an unknown web server"
+}
+
+// terminalRenderer is what the app last recorded about its terminals
+// (app/src/lib/terminal-health.ts): ghostty-web, or xterm.js and why.
+type terminalRenderer struct {
+	Renderer string `json:"renderer"`
+	Chosen   string `json:"chosen"`
+	Reason   string `json:"reason"`
+	At       string `json:"at"`
+}
+
+func (t terminalRenderer) check(area string) (doctor.Check, bool) {
+	switch {
+	case t.Renderer == "":
+		return doctor.Check{}, false
+	case t.Renderer == "xterm" && t.Chosen == "ghostty":
+		reason := t.Reason
+		if reason == "" {
+			reason = "no reason given"
+		}
+		return doctor.Check{Area: area, Name: "app terminal", Status: doctor.Warn, Detail: "xterm.js: ghostty-web couldn't start (" + reason + ")", Fix: "Settings → Terminal → Copy details, and send them to us"}, true
+	case t.Renderer == "xterm":
+		return doctor.Check{Area: area, Name: "app terminal", Status: doctor.Info, Detail: "xterm.js, as chosen in Settings → Terminal"}, true
+	default:
+		return doctor.Check{Area: area, Name: "app terminal", Status: doctor.OK, Detail: "ghostty-web"}, true
+	}
 }

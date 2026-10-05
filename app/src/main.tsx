@@ -7,6 +7,8 @@ import { ErrorBoundary } from "@/components/error-boundary";
 import "@/components/error-note";
 import { isTauri } from "@/lib/api";
 import { openUrl } from "@/lib/open-url";
+// Says once when terminals fall back to xterm.js, and why.
+import "@/lib/terminal-health";
 import { installGlobals } from "@/plugins/host";
 import "@/index.css";
 

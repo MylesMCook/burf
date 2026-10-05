@@ -1,8 +1,11 @@
+import { useSyncExternalStore } from "react";
+
 import { Button } from "@/components/ui/button";
 import { SimpleSelect } from "@/components/simple-select";
 import { Switch } from "@/components/ui/switch";
 import { setPrefs, setTerminalPrefs, usePrefs } from "@/lib/prefs";
-import { DEFAULT_TERMINAL_PREFS, type TerminalPrefs } from "@/lib/terminal";
+import { copyText } from "@/lib/clipboard";
+import { DEFAULT_TERMINAL_PREFS, onRendererOutcome, rendererOutcome, type TerminalPrefs } from "@/lib/terminal";
 import { useActiveTheme } from "@/hooks/use-theme";
 import { Segmented, Stepper } from "@/views/settings/controls";
 import { SettingsGroup, SettingsPage, SettingsRow } from "@/views/settings/rows";
@@ -19,6 +22,8 @@ export function TerminalSection() {
   const t = usePrefs((p) => p.terminal);
   const copyOnSelect = usePrefs((p) => p.copyOnSelect);
   const set = (patch: Partial<TerminalPrefs>) => setTerminalPrefs(patch);
+  const outcome = useSyncExternalStore(onRendererOutcome, rendererOutcome);
+  const fellBack = outcome?.chosen === "ghostty" && outcome.renderer === "xterm";
   const fonts = FONTS.some((f) => f.value === t.fontFamily) ? FONTS : [{ value: t.fontFamily, label: t.fontFamily }, ...FONTS];
 
   return (
@@ -68,7 +73,21 @@ export function TerminalSection() {
         <SettingsRow label="Copy on select" description="Selecting text copies it, as in most Linux terminals.">
           <Switch checked={copyOnSelect} onCheckedChange={(copyOnSelect) => setPrefs({ copyOnSelect })} />
         </SettingsRow>
-        <SettingsRow label="Renderer" description="Ghostty's terminal core, compiled to WebAssembly, or xterm.js. Switch if something draws wrong.">
+        <SettingsRow
+          label="Renderer"
+          description={
+            fellBack ? (
+              <>
+                In use: xterm.js, because ghostty-web couldn't start{outcome.reason ? `: ${outcome.reason}` : ""}.{" "}
+                <button type="button" className="underline underline-offset-2 hover:text-foreground" onClick={() => void copyText(outcome.details ?? outcome.reason ?? "", "Details copied")}>
+                  Copy details
+                </button>
+              </>
+            ) : (
+              "Ghostty's terminal core, compiled to WebAssembly, or xterm.js. Switch if something draws wrong."
+            )
+          }
+        >
           <Segmented
             value={t.renderer}
             options={[

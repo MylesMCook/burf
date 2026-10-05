@@ -65,13 +65,65 @@ function loadGhostty() {
   return ghosttyReady;
 }
 
+// RendererOutcome is what the first terminal of a run started with: ghostty,
+// or xterm.js because ghostty-web failed (reason and details say why) or
+// because Settings asked for it. lib/terminal-health.ts tells the person
+// about a fallback once and records it for berth doctor.
+export interface RendererOutcome {
+  renderer: Renderer;
+  chosen: Renderer;
+  reason?: string;
+  details?: string;
+}
+
+const outcomeListeners = new Set<(o: RendererOutcome) => void>();
+let lastOutcome: RendererOutcome | undefined;
+
+export function onRendererOutcome(fn: (o: RendererOutcome) => void): () => void {
+  outcomeListeners.add(fn);
+  if (lastOutcome) fn(lastOutcome);
+  return () => outcomeListeners.delete(fn);
+}
+
+export const rendererOutcome = () => lastOutcome;
+
+function report(o: RendererOutcome) {
+  // A fallback is news every time it changes; a working ghostty once a run.
+  if (lastOutcome && lastOutcome.renderer === o.renderer && lastOutcome.reason === o.reason) return;
+  lastOutcome = o;
+  for (const fn of outcomeListeners) fn(o);
+}
+
+// fallbackDetails is what "Copy details" copies: the error and where it
+// happened, enough to tell a CSP refusal from a missing WebAssembly feature.
+export function fallbackDetails(err: unknown): string {
+  const e = err instanceof Error ? err : new Error(String(err));
+  const lines = [
+    `ghostty-web failed to start: ${e.name}: ${e.message}`,
+    `origin: ${location.origin}`,
+    `user agent: ${navigator.userAgent}`,
+    `WebAssembly: ${typeof WebAssembly === "object" ? "yes" : "no"}`,
+    `time: ${new Date().toISOString()}`,
+  ];
+  if (e.stack) lines.push("", e.stack);
+  const cause = (e as { cause?: unknown }).cause;
+  if (cause) lines.push("", `cause: ${String(cause)}`);
+  return lines.join("\n");
+}
+
 export async function createTerminal(host: HTMLElement, colors: TerminalColors, prefs: TerminalPrefs): Promise<TermHandle> {
   await document.fonts.load(`${prefs.fontSize}px ${prefs.fontFamily}`).catch(() => {});
-  if (prefs.renderer === "xterm") return createXterm(host, colors, prefs);
+  if (prefs.renderer === "xterm") {
+    report({ renderer: "xterm", chosen: "xterm" });
+    return createXterm(host, colors, prefs);
+  }
   try {
-    return await createGhostty(host, colors, prefs);
+    const t = await createGhostty(host, colors, prefs);
+    report({ renderer: "ghostty", chosen: "ghostty" });
+    return t;
   } catch (err) {
     console.error("ghostty-web failed to start; using xterm.js", err);
+    report({ renderer: "xterm", chosen: "ghostty", reason: err instanceof Error ? err.message : String(err), details: fallbackDetails(err) });
     return createXterm(host, colors, prefs);
   }
 }

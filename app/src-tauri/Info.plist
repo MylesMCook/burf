@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Tauri merges this into Berth.app's Info.plist.
+
+  Browser panes are WKWebViews, and in a bundled app App Transport Security
+  refuses plain http to any name but an IP address, so every
+  http://WORKTREE.LOCATION.BOX.localhost:1377/ page failed with
+  NSURLErrorAppTransportSecurityRequiresSecureConnection (-1022) and the pane
+  stayed blank. `pnpm tauri dev` runs an unbundled binary, which ATS leaves
+  alone, so only release builds broke. NSAllowsLocalNetworking does not cover
+  dotted names under .localhost; an exception for localhost and its
+  subdomains does, and only those: they resolve to this Mac's loopback,
+  where the laptop agent's proxy serves them.
+-->
+<plist version="1.0">
+<dict>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>localhost</key>
+			<dict>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+			</dict>
+		</dict>
+	</dict>
+</dict>
+</plist>
