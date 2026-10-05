@@ -611,7 +611,7 @@ function Reply({ onSend, onFail, who, mode, blocked, hint, attach, agent }: { on
       {menu.menu}
       {/* Attachments sit inside the frame, above what is typed; the field and
           Send share the row below them. */}
-      <InputGroup className={cn("flex-wrap has-data-[align=block-start]:flex-row **:[textarea]:min-h-0! **:[textarea]:min-w-0 **:[textarea]:flex-1 **:[textarea]:basis-0 **:[textarea]:py-2.5!", att.dragging && "border-ring ring-[3px]")}>
+      <InputGroup className={cn("flex-wrap has-data-[align=block-start]:flex-row **:[textarea]:min-h-0! **:[textarea]:min-w-0 **:[textarea]:flex-1 **:[textarea]:basis-0 **:[textarea]:py-2.5! **:[textarea]:max-h-[min(40vh,16rem)] **:[textarea]:overflow-y-auto", att.dragging && "border-ring ring-[3px]")}>
         {att.items.length > 0 && (
           <InputGroupAddon align="block-start" className="pt-2.5 pb-0 [&_svg]:mx-0">
             <AttachmentChips items={att.items} onRemove={att.remove} onRetry={att.retry} className="w-full" />
@@ -634,7 +634,6 @@ function Reply({ onSend, onFail, who, mode, blocked, hint, attach, agent }: { on
           }}
           aria-label="Reply"
           placeholder={placeholder}
-          className="max-h-40"
         />
         <InputGroupAddon align="inline-end" className="me-0! self-end pr-1.5 pb-1.5">
           <Tip
