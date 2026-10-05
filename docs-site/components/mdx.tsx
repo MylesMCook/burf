@@ -6,6 +6,7 @@ import type { MDXComponents } from 'mdx/types';
 import { Callout } from './callout';
 import { Scene } from './art/scenes';
 import { Diagram, DiagramEdge, DiagramGroup, DiagramNode } from './diagram';
+import { Shot } from './shot';
 import { Stage } from './stage';
 
 export function getMDXComponents(components?: MDXComponents) {
@@ -17,6 +18,7 @@ export function getMDXComponents(components?: MDXComponents) {
     DiagramGroup,
     DiagramNode,
     Scene,
+    Shot,
     Stage,
     Step,
     Steps,

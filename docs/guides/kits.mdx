@@ -26,10 +26,14 @@ berth kit remove devl/shop                                       # uninstall fro
 berth kit rm shop-dev                                            # forget it on this laptop
 ```
 
-In the app, open a `berth://kit?src=<link>` link, or use **Kits → Add from
-link**. Either way you see everything the kit will do, every file it
+In the app, **Kits** (under **More** in the sidebar) lists the kits you
+added and the projects each is applied to, marking one that runs an older
+version. Open a `berth://kit?src=<link>` link, or use **Add from link**
+there. Either way you see everything the kit will do, every file it
 carries, and where it came from, before anything is kept or run. Projects
 whose repository matches the kit are selected for you.
+
+<Shot name="kits" alt="Kits: Shop development v3, for acme/shop, from acme/kits, with setup and teardown, 2 env vars, 2 services, an automation, a hook and 3 files, applied to shop on devl at an older version with Update 1 project; and Node app v1 from the hello-ports plugin, not applied yet" />
 
 A link can be:
 
@@ -86,6 +90,15 @@ each box it is applied to, and `$BERTH_KIT_DIR` is where they are, so its
 scripts can run from there. Scripts starting with `#!` are made executable.
 A small kit can carry its files inside `kit.json` under
 `"files": {"scripts/setup.sh": "…"}`.
+
+The `web` service above has `"terminal": true`, so it runs in a terminal of
+its own: a tab named after its `title` opens when its worktree does, with
+the dev server's output in it. Ctrl-C in the tab stops it, and Start runs it
+again there; closing the tab only hides it (**Show terminal** in the **Run**
+menu brings it back). See
+[services in a terminal](/guides/project-config#services-in-a-terminal).
+
+<Shot name="service-terminal" alt="A worktree's tab with two panes: the Next.js service's terminal, showing next dev starting and serving requests, and a browser pane with the page it serves, an order summary" />
 
 Keep secrets out of a kit: give `env` a reference such as
 `op://dev/shop-db/password` and each box reads it from 1Password when a

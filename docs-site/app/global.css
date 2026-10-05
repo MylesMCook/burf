@@ -1399,3 +1399,40 @@ figure.shiki .fd-scroll-container {
 #nd-page .berth-stage-text figure.shiki .line > span:only-child {
   display: inline;
 }
+
+/* Screenshots of the app (components/shot.tsx): the light or the dark one,
+   by the docs' theme, in a hairline frame on the code ground. */
+.berth-shot {
+  margin: 1.5rem 0 1.75rem;
+}
+
+.berth-shot img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border: 1px solid var(--color-fd-border);
+  border-radius: 12px;
+  background: var(--berth-code-bg);
+}
+
+.berth-shot-light,
+.berth-shot-dark {
+  display: block;
+}
+
+.berth-shot-dark,
+.dark .berth-shot-light {
+  display: none;
+}
+
+.dark .berth-shot-dark {
+  display: block;
+}
+
+.berth-shot-caption {
+  margin: 10px 2px 0;
+  max-width: 68ch;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--color-fd-muted-foreground);
+}
