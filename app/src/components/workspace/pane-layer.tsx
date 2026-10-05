@@ -2,7 +2,7 @@ import { useRef } from "react";
 
 import { Pane } from "@/components/workspace/pane";
 import { DragGhost, DropOverlay } from "@/components/workspace/tab-drag";
-import { type Divider, layout } from "@/lib/layout";
+import { type Divider, layout, mixed } from "@/lib/layout";
 import { cn } from "@/lib/utils";
 import { resizeSplit, useWorkspaces } from "@/lib/workspaces";
 
@@ -27,6 +27,7 @@ export function PaneLayer({ showing }: { showing: boolean }) {
       const visible = showing && key === current && tab.id === ws.active;
       const { leaves, dividers } = layout(tab.root);
       const split = leaves.length > 1;
+      const several = mixed(tab.root, key);
       return [
         ...leaves.map(({ leaf, rect }) => (
           <div
@@ -36,7 +37,7 @@ export function PaneLayer({ showing }: { showing: boolean }) {
             className={cn("absolute overflow-hidden", rect.x > 0 && "border-l", rect.y > 0 && "border-t")}
             style={{ left: pct(rect.x), top: pct(rect.y), width: pct(rect.w), height: pct(rect.h), display: visible ? "block" : "none" }}
           >
-            <Pane wsKey={key} tab={tab.id} pane={leaf} visible={visible} focused={tab.focus === leaf.id} split={split} />
+            <Pane wsKey={key} tab={tab.id} pane={leaf} visible={visible} focused={tab.focus === leaf.id} split={split} mixed={several} />
           </div>
         )),
         ...(visible ? dividers.map((d) => <DividerHandle key={d.id} d={d} area={area} onRatio={(r) => resizeSplit(key, tab.id, d.id, r)} />) : []),

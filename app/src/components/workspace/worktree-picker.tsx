@@ -1,0 +1,250 @@
+import { ArrowLeftIcon, GitBranchIcon, GlobeIcon, HomeIcon, PuzzleIcon, RadioIcon, SquareTerminalIcon } from "lucide-react";
+import { useMemo, useState } from "react";
+import { create } from "zustand";
+
+import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
+import { Command, CommandCollection, CommandDialog, CommandDialogPopup, CommandEmpty, CommandFooter, CommandGroup, CommandGroupLabel, CommandInput, CommandItem, CommandList, CommandPanel } from "@/components/ui/command";
+import { Kbd } from "@/components/ui/kbd";
+import { useOnScreen, WtDot } from "@/components/workspace/worktree-tone";
+import { agentPresets, startSession } from "@/lib/actions";
+import { type Location, type Worktree } from "@/lib/api";
+import { portUrl } from "@/lib/browser-url";
+import { agentOf, sessionAgent, sessionName, sessionState, sortedWorktrees, worktreeSessions } from "@/lib/derive";
+import type { PaneContent } from "@/lib/layout";
+import { sessionWord } from "@/lib/state-model";
+import { useStore } from "@/lib/store";
+import { findSession, focusedPane, focusPane, here, moveInto, refOf, splitPane, useWorkspaces, type WorktreeRef, wsKey } from "@/lib/workspaces";
+import { Icon } from "@/plugins/ui";
+import { useRegistry } from "@/plugins/registry";
+
+// The worktree picker (Labs): ⌘⌥D, "Split right with another worktree…".
+// First a worktree, then what of it to show beside the focused pane: one of
+// its agents, its dev server's page, a panel (its diff), or a new terminal.
+// The pane it opens belongs to that worktree, as a guest in this tab.
+
+type Mode = { kind: "split" };
+
+export const useWorktreePicker = create<{ mode?: Mode; picked?: WorktreeRef }>(() => ({}));
+
+export const openWorktreePicker = (mode: Mode) => useWorktreePicker.setState({ mode, picked: undefined });
+const closePicker = () => useWorktreePicker.setState({ mode: undefined, picked: undefined });
+
+interface Item {
+  value: string;
+  label: string;
+  detail?: string;
+  icon: React.ReactNode;
+  trailing?: React.ReactNode;
+  run(): void;
+}
+
+interface Group {
+  value: string;
+  label?: string;
+  items: Item[];
+}
+
+const slot = (n: React.ReactNode) => <span className="flex size-4 shrink-0 items-center justify-center text-muted-foreground [&_svg]:size-4">{n}</span>;
+
+// besideFocus puts content beside the focused pane, for worktree key.
+function besideFocus(key: string, content: PaneContent) {
+  const f = focusedPane();
+  if (!f) return;
+  splitPane(f.key, f.tab.id, f.leaf.id, "row", content, key);
+}
+
+// showSession brings one of the worktree's sessions beside the focused
+// pane: moved from wherever it shows (it keeps running, nothing remounts),
+// or added when no pane shows it.
+function showSession(key: string, box: string, session: string) {
+  const f = focusedPane();
+  if (!f) return;
+  const found = findSession(box, session);
+  if (found && found.key === f.key && found.tab === f.tab.id) return focusPane(f.key, f.tab.id, found.pane.id);
+  if (found) return moveInto({ key: found.key, tab: found.tab, pane: found.pane.id }, { key: f.key, tab: f.tab.id, pane: f.leaf.id, side: "right" });
+  besideFocus(key, { kind: "terminal", box, session });
+}
+
+// processName is what a dev server's command line runs, in a word: "vite"
+// for node …/node_modules/.bin/vite --port 3000.
+function processName(p?: string): string | undefined {
+  if (!p) return undefined;
+  return /\.bin\/([\w.-]+)/.exec(p)?.[1] ?? p.split(/\s+/)[0].split("/").pop();
+}
+
+export function WorktreePicker() {
+  const mode = useWorktreePicker((s) => s.mode);
+  const picked = useWorktreePicker((s) => s.picked);
+  const boxes = useStore((s) => s.boxes);
+  const status = useStore((s) => s.status);
+  const spaces = useWorkspaces((s) => s.spaces);
+  const panels = useRegistry((s) => s.worktreePanels);
+  const onScreen = useOnScreen();
+  const [query, setQuery] = useState("");
+
+  const done = (fn: () => void) => () => {
+    closePicker();
+    setQuery("");
+    fn();
+  };
+
+  const groups = useMemo<Group[]>(() => {
+    if (!mode) return [];
+    if (!picked) {
+      const skip = here();
+      const online = status?.boxes.filter((b) => b.state === "online").map((b) => b.name) ?? [];
+      const rows = online.flatMap((box) =>
+        (boxes[box]?.locations ?? []).flatMap((loc: Location) =>
+          sortedWorktrees(loc).map((wt: Worktree) => {
+            const key = wsKey(box, wt.path);
+            const sessions = worktreeSessions(boxes[box]?.sessions, wt);
+            const agent = sessions.find((s) => agentOf(s) && !s.exited);
+            const state = agent ? sessionState(agent, boxes[box]?.stats) : undefined;
+            return {
+              key,
+              visited: spaces[key]?.visitedAt ?? 0,
+              item: {
+                trailing: onScreen.includes(key) ? <OnScreen wsKey={key} /> : undefined,
+                value: `wt:${key}`,
+                label: wt.main ? loc.name : `${loc.name} / ${wt.name}`,
+                detail: [agent ? sessionName(agent, { sessions: boxes[box]?.sessions }) : wt.branch, box].filter(Boolean).join(" · "),
+                icon: slot(state && state !== "idle" ? <StateGlyph state={state} className="size-3.5" /> : wt.main ? <HomeIcon /> : <GitBranchIcon />),
+                run: () => {
+                  setQuery("");
+                  useWorktreePicker.setState({ picked: refOf(box, loc, wt) });
+                },
+              } satisfies Item,
+            };
+          }),
+        ),
+      );
+      const list = rows.filter((r) => r.key !== skip);
+      const recent = list.filter((r) => r.visited).sort((a, b) => b.visited - a.visited);
+      const rest = list.filter((r) => !r.visited);
+      return [
+        { value: "recent", label: "Recent", items: recent.map((r) => r.item) },
+        { value: "all", label: recent.length ? "Everywhere" : undefined, items: rest.map((r) => r.item) },
+      ].filter((g) => g.items.length);
+    }
+
+    const ref = picked;
+    const key = wsKey(ref.box, ref.path);
+    const data = boxes[ref.box];
+    const sessions = data?.sessions?.filter((s) => s.dir === ref.path && !s.exited) ?? [];
+    const agents: Item[] = sessions
+      .filter((s) => agentOf(s))
+      .map((s) => {
+        const state = sessionState(s, data?.stats);
+        return {
+          value: `session:${s.name}`,
+          label: sessionName(s, { sessions: data?.sessions }),
+          detail: [sessionAgent(s), state !== "idle" && sessionWord(state)].filter(Boolean).join(" · "),
+          icon: slot(<AgentIcon agent={agentOf(s)} />),
+          run: done(() => showSession(key, ref.box, s.name)),
+        };
+      });
+    const urlPort = status?.proxy.url_port;
+    const servers = (data?.services ?? []).filter((s) => s.path === ref.path);
+    const pages: Item[] = servers.flatMap((s) => {
+      const url = portUrl(s.port, { ref, services: data?.services, urlPort });
+      return url ? [{ value: `page:${s.port}`, label: `Page on :${s.port}`, detail: processName(s.process), icon: slot(<RadioIcon />), run: done(() => besideFocus(key, { kind: "browser", url })) }] : [];
+    });
+    if (!pages.length) pages.push({ value: "browser", label: "Browser", detail: "its dev servers, or any URL", icon: slot(<GlobeIcon />), run: done(() => besideFocus(key, { kind: "browser", url: "" })) });
+    const panelItems: Item[] = panels.map(({ plugin, item }) => ({
+      value: `panel:${plugin}:${item.id}`,
+      label: item.title,
+      icon: slot(item.icon ? <Icon name={item.icon} /> : <PuzzleIcon />),
+      run: done(() => besideFocus(key, { kind: "panel", plugin, panel: item.id, title: item.title })),
+    }));
+    const f = focusedPane();
+    const target = f ? ({ kind: "split", tab: f.tab.id, pane: f.leaf.id, dir: "row" } as const) : undefined;
+    const fresh: Item[] = target
+      ? [
+          { value: "terminal", label: "New terminal", icon: slot(<SquareTerminalIcon />), run: done(() => void startSession("", target, "Terminal", key)) },
+          ...agentPresets(ref.box, ref.location).map((p) => ({ value: `agent:${p.id}`, label: `New ${p.name}`, icon: slot(<AgentIcon agent={p.id} />), run: done(() => void startSession(p.command, target, p.name, key)) })),
+        ]
+      : [];
+    return [
+      { value: "agents", label: "Its agents", items: agents },
+      { value: "pages", label: "Its page", items: pages },
+      { value: "panels", label: "Panels", items: panelItems },
+      { value: "new", label: "Start", items: fresh },
+    ].filter((g) => g.items.length);
+    // done only closes the picker and runs what it is given.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, picked, boxes, status, spaces, panels, onScreen]);
+
+  const name = picked ? (picked.main ? picked.location : picked.worktree) : "";
+  return (
+    <CommandDialog
+      open={!!mode}
+      onOpenChange={(o) => {
+        if (!o) {
+          closePicker();
+          setQuery("");
+        }
+      }}
+    >
+      <CommandDialogPopup aria-label="Split right with another worktree">
+        <Command items={groups} value={query} onValueChange={setQuery} itemToStringValue={(i: unknown) => `${(i as Item).label} ${(i as Item).detail ?? ""}`}>
+          <CommandInput
+            key={picked ? "what" : "where"}
+            placeholder={picked ? `Show from ${name} beside this pane…` : "Split right with another worktree…"}
+            onKeyDown={(e) => {
+              // Backspace on an empty field goes back to the worktrees.
+              if (picked && e.key === "Backspace" && !query) {
+                e.preventDefault();
+                useWorktreePicker.setState({ picked: undefined });
+              }
+            }}
+          />
+          <CommandPanel>
+            <CommandEmpty>{picked ? "Nothing matches." : "No other worktree matches."}</CommandEmpty>
+            <CommandList>
+              {(group: Group) => (
+                <CommandGroup key={group.value} items={group.items}>
+                  {group.label && <CommandGroupLabel>{group.label}</CommandGroupLabel>}
+                  <CommandCollection>
+                    {(item: Item) => (
+                      <CommandItem key={item.value} value={item} className="gap-2" onClick={() => item.run()}>
+                        {item.icon}
+                        <span className="truncate">{item.label}</span>
+                        {item.detail && <span className="ml-auto min-w-0 shrink truncate text-muted-foreground text-xs">{item.detail}</span>}
+                        {item.trailing}
+                      </CommandItem>
+                    )}
+                  </CommandCollection>
+                </CommandGroup>
+              )}
+            </CommandList>
+          </CommandPanel>
+          <CommandFooter className="text-[11px] text-muted-foreground">
+            {picked ? (
+              <button type="button" className="flex items-center gap-1 hover:text-foreground" onClick={() => useWorktreePicker.setState({ picked: undefined })}>
+                <ArrowLeftIcon className="size-3" />
+                <Kbd>⌫</Kbd> other worktrees
+              </button>
+            ) : (
+              <span className="flex items-center gap-1">
+                <Kbd>↵</Kbd> pick, then what to show
+              </span>
+            )}
+            <span className="flex items-center gap-1">
+              It opens beside the focused pane <Kbd>esc</Kbd>
+            </span>
+          </CommandFooter>
+        </Command>
+      </CommandDialogPopup>
+    </CommandDialog>
+  );
+}
+
+// OnScreen marks a worktree that already shows, in its colour.
+function OnScreen({ wsKey }: { wsKey: string }) {
+  return (
+    <span className="flex shrink-0 items-center gap-1 text-muted-foreground text-xs">
+      <WtDot wsKey={wsKey} className="size-1.5" />
+      on screen
+    </span>
+  );
+}

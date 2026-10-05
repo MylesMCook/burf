@@ -1,5 +1,6 @@
 import {
   BellIcon,
+  Columns2Icon,
   HouseIcon,
   KeyboardIcon,
   Minimize2Icon,
@@ -56,8 +57,9 @@ import { openBroadcast, openPromptPicker } from "@/lib/prompts";
 import { setNotificationsOpen } from "@/lib/notifications";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
-import { currentSpace, focusSession, goHome, recentWorktrees, refOf, selectWorktree, useWorkspaces } from "@/lib/workspaces";
+import { focusedPane, focusSession, goHome, hereRef, recentWorktrees, refOf, selectWorktree, useWorkspaces } from "@/lib/workspaces";
 import { openShortcuts } from "@/components/shortcuts-sheet";
+import { openWorktreePicker } from "@/components/workspace/worktree-picker";
 import { openCustomize, useArrangedNav } from "@/components/sidebar/nav";
 import { loadPlugins } from "@/plugins/host";
 import { useRegistry } from "@/plugins/registry";
@@ -127,15 +129,24 @@ export function CommandPalette() {
     const q = query.trim();
 
     const actions: Item[] = [
-      { value: "new-worktree task start agent", label: "New task…", icon: slot(<GitBranchPlusIcon />), shortcut: "⌘N", run: go(() => st.openNewWorktree(currentSpace() ? { box: currentSpace()!.ref.box, location: currentSpace()!.ref.location } : {})) },
-      { value: "new worktree only no agent", label: "New worktree (no agent)…", icon: slot(<GitBranchPlusIcon />), run: go(() => openComposer({ noAgent: true, ...(currentSpace() ? { box: currentSpace()!.ref.box, location: currentSpace()!.ref.location } : {}) })) },
+      { value: "new-worktree task start agent", label: "New task…", icon: slot(<GitBranchPlusIcon />), shortcut: "⌘N", run: go(() => {
+        const at = hereRef();
+        st.openNewWorktree(at ? { box: at.box, location: at.location } : {});
+      }) },
+      { value: "new worktree only no agent", label: "New worktree (no agent)…", icon: slot(<GitBranchPlusIcon />), run: go(() => {
+        const at = hereRef();
+        openComposer({ noAgent: true, ...(at ? { box: at.box, location: at.location } : {}) });
+      }) },
       { value: "new-terminal", label: "New terminal", icon: slot(<SquareTerminalIcon />), shortcut: "⌘T", run: go(() => void startSession("")) },
       { value: "new-browser", label: "New browser tab", icon: slot(<GlobeIcon />), shortcut: "⌘⇧B", run: go(() => openBrowserAt("")) },
       { value: "open in editor cursor vscode zed", label: "Open in editor", icon: slot(<CodeXmlIcon />), shortcut: "⌘⇧O", run: go(() => {
-        const ws = currentSpace();
-        if (ws) void openEditor({ box: ws.ref.box, path: ws.ref.path });
+        const at = hereRef();
+        if (at) void openEditor({ box: at.box, path: at.path });
       }) },
       { value: "new-tab", label: "New tab…", icon: slot(<PanelTopIcon />), run: go(() => st.setNewTabMenuOpen(true)) },
+      ...(usePrefs.getState().labs && st.view.kind === "workspace" && focusedPane()
+        ? [{ value: "split right with another worktree side by side guest pane", label: "Split right with another worktree…", icon: slot(<Columns2Icon />), shortcut: "⌘⌥D", run: go(() => openWorktreePicker({ kind: "split" })) }]
+        : []),
       { value: "send saved prompt library", label: "Send a saved prompt…", icon: slot(<BookMarkedIcon />), run: go(() => openPromptPicker()) },
       { value: "broadcast prompt several agents running", label: "Send a prompt to several agents…", icon: slot(<UsersIcon />), run: go(() => openBroadcast()) },
       {
@@ -143,7 +154,7 @@ export function CommandPalette() {
         label: "Try N ways…",
         icon: slot(<GitCompareArrowsIcon />),
         run: go(() => {
-          const at = currentSpace()?.ref ?? defaultScopeRef();
+          const at = hereRef() ?? defaultScopeRef();
           if (at) openAttempts({ box: at.box, location: at.location });
         }),
       },
@@ -168,7 +179,8 @@ export function CommandPalette() {
       { value: "reload-plugins", label: "Reload plugins", icon: slot(<PuzzleIcon />), run: go(() => st.client && void loadPlugins(st.client)) },
     ];
     // Demo mode plays what agents on boxes do, to see the app react.
-    const ws = currentSpace();
+    const hereAt = hereRef();
+    const ws = hereAt ? { ref: hereAt } : undefined;
     if (isMock()) {
       actions.push({ value: "mock demo notifications every kind", label: "Demo: one of every notification", icon: slot(<BellIcon />), run: go(() => void import("@/lib/mock").then((m) => m.mockNotifications())) });
     }

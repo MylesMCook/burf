@@ -9,14 +9,15 @@ import { NewTabMenu } from "@/components/workspace/new-tab-menu";
 import { PaneActions, PaneIcon, paneLabel } from "@/components/workspace/pane";
 import { RunMenu } from "@/components/workspace/run-menu";
 import { armDrag, StripMarker, useTabDrag } from "@/components/workspace/tab-drag";
+import { WtDot } from "@/components/workspace/worktree-tone";
 import { closeTab } from "@/lib/actions";
 import { agentOf, type SessionState, sessionAgent, sessionName, sessionState } from "@/lib/derive";
-import { type Leaf, leaves } from "@/lib/layout";
+import { type Leaf, leaves, mixed, worktreesOf } from "@/lib/layout";
 import { removalLabel, useRemoval } from "@/lib/removing";
 import { renameSession, useRenaming } from "@/lib/session-title";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { activateTab, tabBeside, unsplitTab, useWorkspaces, type WsTab } from "@/lib/workspaces";
+import { activateTab, tabBeside, unsplitTab, useHereKey, useHereRef, useWorkspaces, type WsTab } from "@/lib/workspaces";
 
 // TabStrip is the current worktree's tabs across the top, as in Orca. It is
 // also the window's drag handle. A tab that is not split has no pane header,
@@ -28,6 +29,11 @@ export function TabStrip() {
   const leaving = useRemoval(ws?.ref.box ?? "", ws?.ref.path);
   const active = ws?.tabs.find((t) => t.id === ws.active);
   const lone = active && active.root.kind === "leaf" ? active.root : undefined;
+  // The worktree you are acting in: the focused pane's, which in a tab that
+  // mixes worktrees may not be the tab's. The breadcrumb and Run follow it.
+  const hereKey = useHereKey();
+  const hereRef = useHereRef();
+  const hereLeaving = useRemoval(hereRef?.box ?? "", hereKey !== key ? hereRef?.path : undefined);
   const scroller = useRef<HTMLDivElement>(null);
   const [edges, setEdges] = useState({ left: false, right: false });
 
@@ -93,6 +99,7 @@ export function TabStrip() {
             <TabButton
               key={t.id}
               tab={t}
+              wsKey={key}
               active={t.id === ws.active}
               onActivate={() => activateTab(key, t.id)}
               onClose={() => void closeTab(key, t.id)}
@@ -119,13 +126,24 @@ export function TabStrip() {
               </span>
             </Tip>
           )}
-          <Tip label={`${ws.ref.box}:${ws.ref.path}`} side="bottom">
-            <span data-tauri-drag-region className="max-w-56 truncate">
-              {ws.ref.location}
-              {ws.ref.main ? "" : ` / ${ws.ref.worktree}`}
-              <span className="ml-1.5 rounded bg-accent/70 px-1 py-px font-mono text-[10px]">{ws.ref.box}</span>
+          {hereLeaving && !leaving && (
+            <span role="status" className="flex items-center gap-1.5 rounded-lg bg-accent/70 px-2 py-0.5 text-foreground">
+              <Spinner className="size-3" />
+              {removalLabel(hereLeaving)}
             </span>
-          </Tip>
+          )}
+          {hereRef && (
+            <Tip label={`${hereRef.box}:${hereRef.path}`} side="bottom">
+              <span data-tauri-drag-region className="flex max-w-56 items-center gap-1.5 truncate">
+                <WtDot wsKey={hereKey} />
+                <span className="truncate">
+                  {hereRef.location}
+                  {hereRef.main ? "" : ` / ${hereRef.worktree}`}
+                </span>
+                <span className="rounded bg-accent/70 px-1 py-px font-mono text-[10px]">{hereRef.box}</span>
+              </span>
+            </Tip>
+          )}
           <RunMenu />
           {key && active && lone && (
             <div className="flex items-center border-l pl-1">
@@ -141,6 +159,8 @@ export function TabStrip() {
 
 interface TabProps {
   tab: WsTab;
+  // The workspace that holds the tab.
+  wsKey: string;
   active: boolean;
   onActivate(): void;
   onClose(): void;
@@ -150,10 +170,12 @@ interface TabProps {
   onUnsplit(): void;
 }
 
-function TabButton({ tab, active, onActivate, onClose, onDrag, onSplit, onUnsplit }: TabProps) {
+export function TabButton({ tab, wsKey, active, onActivate, onClose, onDrag, onSplit, onUnsplit }: TabProps) {
   const boxes = useStore((s) => s.boxes);
   const status = useStore((s) => s.status);
   const panes = leaves(tab.root);
+  // A tab with panes of other worktrees wears each one's colour as a dot.
+  const owners = mixed(tab.root, wsKey) ? worktreesOf(tab.root, wsKey) : [];
 
   // A tab is named after its most important pane: an agent that needs you,
   // then one working, then the focused pane.
@@ -201,6 +223,13 @@ function TabButton({ tab, active, onActivate, onClose, onDrag, onSplit, onUnspli
       onDoubleClick={() => session && setEditing(true)}
     >
       {active && <span className="absolute inset-x-0 top-0 h-px bg-foreground/50" />}
+      {owners.length > 0 && (
+        <span className="flex shrink-0 -space-x-0.5" aria-hidden>
+          {owners.map((o) => (
+            <WtDot key={o} wsKey={o} className={cn("size-2 ring-[1.5px]", active ? "ring-background" : "ring-sidebar")} />
+          ))}
+        </span>
+      )}
       {offline ? (
         <CloudOffIcon className="size-3 shrink-0 text-muted-foreground" aria-label={`${c.kind === "terminal" ? c.box : "The box"} is offline`} />
       ) : lead.state && lead.state !== "idle" ? (

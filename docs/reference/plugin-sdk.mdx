@@ -153,7 +153,7 @@ From `@berth/plugin`, backed by the app's live state:
 | `useBoxes()` | `BoxStatus[]` |
 | `useLocations(box)`, `useSessions(box)`, `useStats(box)` | Live, or `undefined` while loading |
 | `useProjects()` | Every [project](/concepts/projects-and-worktrees#projects) across every box: `{ id, name, slug?, remote?, defaultBox, members }` |
-| `useCurrentWorktree()` | The worktree whose workspace is in front, if any |
+| `useCurrentWorktree()` | The worktree the component is for: inside a pane, that pane's (a tab can hold panes of two worktrees side by side); elsewhere, the focused pane's. Undefined with no worktree open |
 | `useEvent(type, handler)` | `on` for a component's lifetime |
 | `useStorage(key, initial)` | Like `useState`, kept in the plugin's storage |
 

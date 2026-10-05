@@ -13,7 +13,7 @@ import { errorMessage } from "@/lib/format";
 import { plainError } from "@/lib/errors";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { currentSpace, openTab, splitPane, useWorkspaces, type WorktreeRef } from "@/lib/workspaces";
+import { focusedPane, openFor, useHereRef, type WorktreeRef } from "@/lib/workspaces";
 import { contribute } from "@/plugins/registry";
 
 type Action = "start" | "stop" | "restart";
@@ -55,15 +55,17 @@ export function useWorktreeServices(ref?: WorktreeRef) {
 }
 
 
-// RunMenu is the tab strip's Run button: the worktree's own services (dev
-// servers, from its repository's .berth/config.json), each on the
-// worktree's ports.
+// RunMenu is the tab strip's Run button: the services (dev servers, from
+// its repository's .berth/config.json) of the worktree you are acting in,
+// the focused pane's, each on that worktree's ports.
 export function RunMenu() {
-  const ref = useWorkspaces((s) => (s.current ? s.spaces[s.current]?.ref : undefined));
+  const ref = useHereRef();
   const { services, error, reload, setServices } = useWorktreeServices(ref);
   const [busy, setBusy] = useState<string>();
   // A service in a terminal is as its session says: Ctrl-C there stops it.
   const sessions = useStore((s) => (ref ? s.boxes[ref.box]?.sessions : undefined));
+  // Nothing runs on a box that is away; the button says so.
+  const away = useStore((s) => !!ref && !!s.status && s.status.boxes.find((b) => b.name === ref.box)?.state !== "online");
   const live = (svc: WorktreeService) => serviceRunning(svc, sessions);
   if (!ref) return null;
 
@@ -93,18 +95,11 @@ export function RunMenu() {
   };
 
   // Beside the focused pane, so the terminal and its page sit together.
-  const besideFocus = (content: Parameters<typeof openTab>[0]) => {
-    const key = useWorkspaces.getState().current;
-    const ws = currentSpace();
-    const tab = ws?.tabs.find((t) => t.id === ws.active);
-    if (key && tab) splitPane(key, tab.id, tab.focus, "row", content);
-    else openTab(content);
-  };
   const openPage = (svc: WorktreeService) => {
     const url = urlFor(svc);
-    if (url) besideFocus({ kind: "browser", url });
+    if (url) openFor({ kind: "browser", url }, { split: focusedPane() ? "row" : undefined });
   };
-  const viewLog = (svc: WorktreeService) => openTab({ kind: "log", box: ref.box, location: ref.location, worktree: ref.worktree, service: svc.name });
+  const viewLog = (svc: WorktreeService) => openFor({ kind: "log", box: ref.box, location: ref.location, worktree: ref.worktree, service: svc.name });
 
   const onPrimary = () => {
     if (!primary) return;
@@ -114,12 +109,12 @@ export function RunMenu() {
 
   return (
     <div className="flex h-6.5 items-stretch rounded-md text-xs">
-      <Tip label={primary ? (running ? `Open ${primary.name}` : `Start ${primary.name}: ${primary.run}`) : "This repository defines no services"} side="bottom">
+      <Tip label={away ? `${ref.box} is offline, so nothing can start there` : primary ? (running ? `Open ${primary.name}` : `Start ${primary.name}: ${primary.run}`) : "This repository defines no services"} side="bottom">
         <button
           type="button"
           // Not disabled when there is nothing to run, so the tooltip can say why.
-          aria-disabled={!primary || busy !== undefined}
-          onClick={() => primary && busy === undefined && onPrimary()}
+          aria-disabled={!primary || busy !== undefined || away}
+          onClick={() => primary && busy === undefined && !away && onPrimary()}
           className="flex items-center gap-1.5 rounded-l-md px-2 text-muted-foreground hover:bg-accent hover:text-foreground aria-disabled:opacity-45 aria-disabled:hover:bg-transparent"
         >
           {busy ? <Spinner className="size-3" /> : running ? <span className="size-1.5 rounded-full bg-success" /> : <PlayIcon className="size-3" />}

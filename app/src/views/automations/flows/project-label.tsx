@@ -3,7 +3,7 @@ import { FolderGitIcon, LayersIcon } from "lucide-react";
 import { type Scope, scopeLocation } from "@/lib/flows";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { currentSpace } from "@/lib/workspaces";
+import { hereRef } from "@/lib/workspaces";
 
 // BoxChip names a box the way the sidebar does.
 export function BoxChip({ box, className }: { box: string; className?: string }) {
@@ -41,10 +41,10 @@ export function savedWhere(box: string, scope: Scope, readOnlyFrom?: "repo" | "k
   return loc ? `Saved on ${box} for ${loc} · not committed` : `Saved on ${box} · runs for every project there`;
 }
 
-// defaultScope is where a new flow goes: the project open in the sidebar,
+// defaultScope is where a new flow goes: the project you are working in,
 // else the first project on the first box that has one.
 export function defaultScope(): { box: string; scope: Scope } | undefined {
-  const ref = currentSpace()?.ref;
+  const ref = hereRef();
   if (ref) return { box: ref.box, scope: `repo:${ref.location}` };
   const { status, boxes } = useStore.getState();
   const online = status?.boxes.filter((b) => b.state === "online").map((b) => b.name) ?? [];

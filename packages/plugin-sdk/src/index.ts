@@ -322,7 +322,8 @@ export declare function useLocations(box: string): Location[] | undefined;
 export declare function useSessions(box: string): Session[] | undefined;
 export declare function useStats(box: string): Stats | undefined;
 export declare function useEvent(type: string, handler: EventHandler): void;
-// The worktree whose workspace is in front, if any.
+// The worktree a component is for: inside a pane, that pane's (a tab can
+// show panes of more than one worktree); elsewhere, the focused pane's.
 export declare function useCurrentWorktree(): CurrentWorktree | undefined;
 // Like useState, kept in the plugin's storage.
 export declare function useStorage<T>(key: string, initial: T): [T, (value: T) => void];

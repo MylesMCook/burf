@@ -12,7 +12,7 @@ import { focusNewPane } from "@/lib/focus-home";
 import { leaves } from "@/lib/layout";
 import { useStore } from "@/lib/store";
 import { portUrl } from "@/lib/browser-url";
-import { activateTab, focusPane, openPanel, useWorkspaces } from "@/lib/workspaces";
+import { activateTab, focusPane, openPanel, showWorktree, useHereRef, useWorkspaces } from "@/lib/workspaces";
 import { useRegistry } from "@/plugins/registry";
 import { Icon } from "@/plugins/ui";
 
@@ -35,15 +35,17 @@ interface Group {
 
 // NewTabMenu is the tab strip's "+", as in Orca: a search over open tabs,
 // dev servers, recent pages and agents, then quick ways to start a terminal,
-// a browser, or any agent in the current worktree.
+// a browser, or any agent in the worktree you are acting in (the focused
+// pane's).
 export function NewTabMenu() {
   const open = useStore((s) => s.newTabMenuOpen);
   const setOpen = useStore((s) => s.setNewTabMenuOpen);
   const [query, setQuery] = useState("");
-  const current = useWorkspaces((s) => s.current);
+  // Agents, panels and dev servers are the focused pane's worktree's.
+  const hereRef = useHereRef();
   const spaces = useWorkspaces((s) => s.spaces);
   const recent = useWorkspaces((s) => s.recentUrls);
-  const ws = current ? spaces[current] : undefined;
+  const ws = useMemo(() => (hereRef ? { ref: hereRef } : undefined), [hereRef]);
   const services = useStore((s) => (ws ? s.boxes[ws.ref.box]?.services : undefined));
   const urlPort = useStore((s) => s.status?.proxy.url_port);
   const boxData = useStore((s) => (ws ? s.boxes[ws.ref.box] : undefined));
@@ -102,7 +104,7 @@ export function NewTabMenu() {
           search: c.kind === "terminal" ? c.session : undefined,
           icon: c.kind === "browser" ? <GlobeIcon /> : <AgentIcon agent={c.kind === "terminal" ? sessionAgent(c.box, c.session) : undefined} />,
           run: done(() => {
-            useWorkspaces.setState((s) => ({ current: key, mounted: s.mounted.includes(key) ? s.mounted : [...s.mounted, key] }));
+            showWorktree(key);
             activateTab(key, t.id);
             focusPane(key, t.id, focus.id);
           }),

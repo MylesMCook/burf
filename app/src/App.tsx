@@ -4,6 +4,7 @@ import { AddLocationDialog } from "@/components/add-location-dialog";
 import { Connecting } from "@/components/agent-offline";
 import { AppSidebar } from "@/components/app-sidebar";
 import { CommandPalette } from "@/components/command-palette";
+import { WorktreePicker } from "@/components/workspace/worktree-picker";
 import { ComposerDialog } from "@/components/conversation/composer-dialog";
 import { NotificationCenter } from "@/components/notifications/notification-center";
 import { LoopsPanel } from "@/components/orchestrate/loops-panel";
@@ -149,6 +150,7 @@ export default function App() {
         </div>
         <ErrorBoundary scope="a dialog">
           <CommandPalette />
+          <WorktreePicker />
           <ComposerDialog />
           <AddLocationDialog />
           <PromptDialogs />

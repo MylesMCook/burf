@@ -208,3 +208,44 @@ export function sideAt(u: number, v: number, centre = false): Side | "center" {
   const d = { left: u, right: 1 - u, top: v, bottom: 1 - v };
   return (Object.keys(d) as Side[]).reduce((a, b) => (d[b] < d[a] ? b : a));
 }
+
+// A workspace as moveBetween needs it: its tabs, and the one showing.
+export interface TabLike {
+  id: string;
+  root: PaneNode;
+  focus: string;
+}
+export interface SpaceLike {
+  tabs: TabLike[];
+  active?: string;
+}
+
+// moveBetween moves a whole tab, or with pane one pane of it, out of
+// workspace src.key and beside dst.pane (on side) in a tab of workspace
+// dst.key: the same workspace, or another, where each moved pane keeps the
+// worktree it belongs to (adopt). Leaves keep their ids. The tab it leaves
+// closes when nothing is left in it. Undefined when the move makes no sense.
+export function moveBetween<S extends SpaceLike>(
+  spaces: Record<string, S>,
+  src: { key: string; tab: string; pane?: string },
+  dst: { key: string; tab: string; pane: string; side: Side },
+): Record<string, S> | undefined {
+  const from = spaces[src.key];
+  const t = from?.tabs.find((x) => x.id === src.tab);
+  const sub = t && (src.pane ? findLeaf(t.root, src.pane) : t.root);
+  if (!from || !t || !sub || (src.key === dst.key && src.tab === dst.tab)) return undefined;
+  if (src.pane === dst.pane) return undefined;
+  const rest = src.pane ? remove(t.root, src.pane) : undefined;
+  const i = from.tabs.indexOf(t);
+  const tabs = rest
+    ? from.tabs.map((x) => (x === t ? { ...x, root: rest, focus: findLeaf(rest, x.focus) ? x.focus : leaves(rest)[0].id } : x))
+    : from.tabs.filter((x) => x !== t);
+  const out: Record<string, S> = { ...spaces, [src.key]: { ...from, tabs, active: tabs.some((x) => x.id === from.active) ? from.active : tabs[Math.min(i, tabs.length - 1)]?.id } };
+  const to = out[dst.key];
+  const d = to?.tabs.find((x) => x.id === dst.tab);
+  if (!to || !d || !findLeaf(d.root, dst.pane)) return undefined;
+  const moved = adopt(sub, src.key, dst.key);
+  const focus = src.pane ?? t.focus;
+  out[dst.key] = { ...to, tabs: to.tabs.map((x) => (x === d ? { ...x, root: place(d.root, dst.pane, dst.side, moved), focus } : x)), active: d.id };
+  return out;
+}

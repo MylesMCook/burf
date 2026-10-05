@@ -3,7 +3,7 @@ import { hostSuffix, portUrl, worktreeHost } from "@/lib/browser-url";
 import { leaves } from "@/lib/layout";
 import { route } from "@/lib/notifications";
 import { useStore } from "@/lib/store";
-import { activateTab, focusPane, openBrowser, refOf, selectWorktree, setPaneContent, useWorkspaces, wsKey } from "@/lib/workspaces";
+import { activateTab, focusPane, openTab, refOf, selectWorktree, setPaneContent, splitPane, useWorkspaces, wsKey } from "@/lib/workspaces";
 
 // An agent on a box runs `berthd preview` to show the person a page: the
 // event names the worktree, the port and the path. The page opens beside the
@@ -54,7 +54,11 @@ function showPreview(box: string, loc: Location, wt: Worktree, url: string) {
       return;
     }
   }
-  openBrowser(url, { split: ws?.tabs.length ? "row" : undefined });
+  // Its own worktree's page, beside the focused pane even when that pane is
+  // a guest from another worktree.
+  const active = ws?.tabs.find((t) => t.id === ws.active);
+  if (active) splitPane(key, active.id, active.focus, "row", { kind: "browser", url });
+  else openTab({ kind: "browser", url }, key);
 }
 
 function safeOrigin(url: string): string | undefined {

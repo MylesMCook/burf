@@ -6,6 +6,7 @@
     { "id": "new-browser", "group": "File", "label": "New browser tab", "keys": "⌘⇧B", "accel": "CmdOrCtrl+Shift+B" },
     { "id": "split-right", "group": "File", "label": "Split right", "keys": "⌘D", "accel": "CmdOrCtrl+D", "sep": true },
     { "id": "split-down", "group": "File", "label": "Split down", "keys": "⌘⇧D", "accel": "CmdOrCtrl+Shift+D" },
+    { "id": "split-worktree", "group": "File", "label": "Split right with another worktree…", "keys": "⌘⌥D", "accel": "CmdOrCtrl+Alt+D", "labs": true },
     { "id": "open-editor", "group": "File", "label": "Open in editor", "keys": "⌘⇧O", "accel": "CmdOrCtrl+Shift+O" },
     { "id": "close-pane", "group": "File", "label": "Close pane", "keys": "⌘W", "accel": "CmdOrCtrl+W", "sep": true },
     { "id": "zen", "group": "View", "label": "Zen", "keys": "⌘.", "accel": "CmdOrCtrl+.", "labs": true },

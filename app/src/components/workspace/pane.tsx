@@ -1,5 +1,5 @@
-import { AppWindowIcon, ArrowLeftRightIcon, EllipsisIcon, GlobeIcon, ImageIcon, MessagesSquareIcon, PencilIcon, ScrollTextIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, SquareTerminalIcon, XIcon } from "lucide-react";
-import { useEffect } from "react";
+import { AppWindowIcon, ArchiveIcon, ArrowLeftRightIcon, Columns2Icon, EllipsisIcon, GlobeIcon, ImageIcon, MessagesSquareIcon, PencilIcon, ScrollTextIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, SquareTerminalIcon, XIcon } from "lucide-react";
+import { useEffect, useMemo } from "react";
 
 import { Tip } from "@/components/tip";
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
@@ -17,14 +17,19 @@ import { PanelIcon, PanelPane } from "@/components/workspace/panel-pane";
 import { ServiceIcon } from "@/components/workspace/service-terminal";
 import { armDrag, useTabDrag } from "@/components/workspace/tab-drag";
 import { TerminalView } from "@/components/workspace/terminal-view";
+import { openWorktreePicker } from "@/components/workspace/worktree-picker";
+import { useTone, WtChip } from "@/components/workspace/worktree-tone";
 import { agentPresets, closePane, openBrowserAt, startSession } from "@/lib/actions";
 import { agentLabel, agentOf, restartCommand, sessionAgent, sessionName, sessionState } from "@/lib/derive";
+import { nameFromKey } from "@/lib/groups";
 import { type Leaf, leaves, paneWorktree } from "@/lib/layout";
+import { PaneContext } from "@/lib/pane-context";
 import { usePrefs } from "@/lib/prefs";
+import { useRemoval } from "@/lib/removing";
 import { useStore } from "@/lib/store";
 import { startRenaming } from "@/lib/session-title";
 import { cn } from "@/lib/utils";
-import { focusPane, paneBeside, paneToTab, setPaneContent, useWorkspaces } from "@/lib/workspaces";
+import { focusPane, paneBeside, paneToTab, setPaneContent, splitKey, useWorkspaces, useWorktreeRef } from "@/lib/workspaces";
 
 export { agentLabel };
 
@@ -37,14 +42,22 @@ interface Props {
   // More than one pane in the tab. Only then does a pane have its own
   // header; a lone pane's actions are in the tab strip.
   split: boolean;
+  // The tab shows panes of more than one worktree: each header names its
+  // pane's worktree in its colour.
+  mixed?: boolean;
 }
 
 // Pane is one leaf of a tab's split tree: a terminal, a browser, a log or a
 // plugin's panel, under a slim header when the tab is split.
-export function Pane({ wsKey, tab, pane, visible, focused, split }: Props) {
+export function Pane({ wsKey, tab, pane, visible, focused, split, mixed }: Props) {
   // The worktree the pane belongs to: its own, in a tab that mixes
   // worktrees, else its tab's.
   const owner = paneWorktree(wsKey, pane);
+  const info = useMemo(() => ({ wsKey, tab, pane: pane.id, worktree: owner }), [wsKey, tab, pane.id, owner]);
+  const tone = useTone(mixed ? owner : undefined);
+  // A guest pane whose worktree was archived or removed: say so, and let it
+  // be closed, rather than show a page or panel for nothing.
+  const gone = useGuestGone(wsKey, pane);
   const focus = () => {
     if (!focused) focusPane(wsKey, tab, pane.id);
   };
@@ -65,48 +78,79 @@ export function Pane({ wsKey, tab, pane, visible, focused, split }: Props) {
   }, [c, session, agent, wsKey, tab, pane.id]);
 
   return (
-    <div className="flex h-full min-h-0 flex-col" onMouseDownCapture={focus}>
-      {split && (
-        // Its header drags the pane beside another, or onto the tab strip as
-        // a tab of its own (tab-drag.tsx). Zen has no strip: there it only
-        // moves beside another pane.
-        <div
-          onPointerDown={(e) => armDrag(e, { kind: "pane", key: wsKey, tab, pane: pane.id }, (c.kind === "terminal" && (session?.title?.trim() || c.title)) || paneLabel(c, agent), <PaneIcon content={c} agent={agent} className="size-3" />)}
-          className={cn("group/header flex h-7 shrink-0 items-center gap-1.5 border-b px-2 text-xs", focused ? "bg-accent/50 text-foreground shadow-[inset_0_2px_0_var(--ring)]" : "text-muted-foreground")}
-        >
-          <PaneTitle pane={pane} />
-          <div className={cn("ml-auto flex items-center transition-opacity", focused ? "opacity-100" : "opacity-0 group-hover/header:opacity-100 focus-within:opacity-100")}>
-            <PaneActions wsKey={wsKey} tab={tab} pane={pane} onClose={close} closable focused={focused} />
+    <PaneContext.Provider value={info}>
+      <div className="flex h-full min-h-0 flex-col" onMouseDownCapture={focus}>
+        {split && (
+          // Its header drags the pane beside another, or onto the tab strip as
+          // a tab of its own (tab-drag.tsx). Zen has no strip: there it only
+          // moves beside another pane. In a tab that mixes worktrees, it names
+          // the pane's worktree, and the focus line is in that one's colour.
+          <div
+            onPointerDown={(e) => armDrag(e, { kind: "pane", key: wsKey, tab, pane: pane.id }, (c.kind === "terminal" && (session?.title?.trim() || c.title)) || paneLabel(c, agent), <PaneIcon content={c} agent={agent} className="size-3" />)}
+            className={cn("group/header flex h-7 shrink-0 items-center gap-1.5 border-b px-2 text-xs", focused ? "bg-accent/50 text-foreground shadow-[inset_0_2px_0_var(--ring)]" : "text-muted-foreground")}
+            style={tone ? { boxShadow: focused ? `inset 0 2px 0 ${tone}` : `inset 0 1px 0 color-mix(in oklab, ${tone} 50%, transparent)` } : undefined}
+          >
+            {tone && <WtChip wsKey={owner} />}
+            <PaneTitle pane={pane} />
+            <div className={cn("ml-auto flex items-center transition-opacity", focused ? "opacity-100" : "opacity-0 group-hover/header:opacity-100 focus-within:opacity-100")}>
+              <PaneActions wsKey={wsKey} tab={tab} pane={pane} onClose={close} closable focused={focused} />
+            </div>
           </div>
+        )}
+        <div className={cn("relative flex min-h-0 flex-1 flex-col transition-opacity", split && !focused && "opacity-85", lifted && "opacity-40")}>
+          {gone && <GonePane name={gone} onClose={close} />}
+          {c.kind === "terminal" && <TerminalView box={c.box} session={c.session} agent={c.agent} command={c.command} wsKey={wsKey} tab={tab} pane={pane.id} visible={visible && view !== "conversation"} focused={focused && view !== "conversation"} onFocus={focus} onClose={close} />}
+          {/* The terminal stays connected underneath, so switching back is instant. */}
+          {c.kind === "terminal" && view === "conversation" && (
+            <div className="absolute inset-0 z-10 flex flex-col">
+              <ConversationPane box={c.box} session={c.session} agent={c.agent} visible={visible} onStartAgain={() => void startSession(restartCommand(c.command) ?? c.agent ?? "", { kind: "replace", tab, pane: pane.id }, c.agent ? agentLabel(c.agent) : "Agent")} onShowTerminal={() => setPaneContent(wsKey, tab, pane.id, { ...c, view: "terminal" })} />
+            </div>
+          )}
+          {c.kind === "browser" && <BrowserPane id={pane.id} url={c.url} visible={visible} worktree={owner} onNavigate={(url) => setPaneContent(wsKey, tab, pane.id, { kind: "browser", url })} />}
+          {c.kind === "log" && <LogView box={c.box} location={c.location} worktree={c.worktree} service={c.service} visible={visible} />}
+          {c.kind === "panel" && <PanelPane wsKey={owner} plugin={c.plugin} panel={c.panel} />}
+          {c.kind === "starting" && (
+            <div className="flex flex-1 items-center justify-center gap-2 text-muted-foreground text-sm">
+              <Spinner className="size-4" />
+              Starting {c.label}…
+            </div>
+          )}
+          {c.kind === "error" && (
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center text-sm">
+              <p className="font-medium">Couldn't start it</p>
+              <ErrorText className="max-w-md items-center text-muted-foreground text-xs" text={c.message} />
+              <Button size="sm" variant="outline" onClick={close}>
+                Close pane
+              </Button>
+            </div>
+          )}
         </div>
-      )}
-      <div className={cn("relative flex min-h-0 flex-1 flex-col transition-opacity", split && !focused && "opacity-85", lifted && "opacity-40")}>
-        {c.kind === "terminal" && <TerminalView box={c.box} session={c.session} agent={c.agent} command={c.command} wsKey={wsKey} tab={tab} pane={pane.id} visible={visible && view !== "conversation"} focused={focused && view !== "conversation"} onFocus={focus} onClose={close} />}
-        {/* The terminal stays connected underneath, so switching back is instant. */}
-        {c.kind === "terminal" && view === "conversation" && (
-          <div className="absolute inset-0 z-10 flex flex-col">
-            <ConversationPane box={c.box} session={c.session} agent={c.agent} visible={visible} onStartAgain={() => void startSession(restartCommand(c.command) ?? c.agent ?? "", { kind: "replace", tab, pane: pane.id }, c.agent ? agentLabel(c.agent) : "Agent")} onShowTerminal={() => setPaneContent(wsKey, tab, pane.id, { ...c, view: "terminal" })} />
-          </div>
-        )}
-        {c.kind === "browser" && <BrowserPane id={pane.id} url={c.url} visible={visible} worktree={owner} onNavigate={(url) => setPaneContent(wsKey, tab, pane.id, { kind: "browser", url })} />}
-        {c.kind === "log" && <LogView box={c.box} location={c.location} worktree={c.worktree} service={c.service} visible={visible} />}
-        {c.kind === "panel" && <PanelPane wsKey={owner} plugin={c.plugin} panel={c.panel} />}
-        {c.kind === "starting" && (
-          <div className="flex flex-1 items-center justify-center gap-2 text-muted-foreground text-sm">
-            <Spinner className="size-4" />
-            Starting {c.label}…
-          </div>
-        )}
-        {c.kind === "error" && (
-          <div className="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center text-sm">
-            <p className="font-medium">Couldn't start it</p>
-            <ErrorText className="max-w-md items-center text-muted-foreground text-xs" text={c.message} />
-            <Button size="sm" variant="outline" onClick={close}>
-              Close pane
-            </Button>
-          </div>
-        )}
       </div>
+    </PaneContext.Provider>
+  );
+}
+
+// useGuestGone is the name of a guest pane's worktree once its box no
+// longer lists it (archived or removed), else undefined. A pane of the
+// tab's own worktree goes with its tab, so only guests can be left behind.
+function useGuestGone(wsKey: string, pane: Leaf): string | undefined {
+  const wt = pane.wt && pane.wt !== wsKey ? pane.wt : undefined;
+  const ref = useWorktreeRef(wt);
+  const listed = useStore((s) => (wt ? !!s.boxes[splitKey(wt).box]?.locations : false));
+  const leaving = useRemoval(wt ? splitKey(wt).box : "", wt ? splitKey(wt).path : undefined);
+  return wt && listed && !ref && !leaving ? nameFromKey(wt) : undefined;
+}
+
+// GonePane stands in for a guest pane whose worktree was archived.
+function GonePane({ name, onClose }: { name: string; onClose(): void }) {
+  return (
+    <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-background p-6 text-center text-sm">
+      <ArchiveIcon className="size-5 text-muted-foreground" />
+      <p className="font-medium">{name} was archived</p>
+      <p className="max-w-xs text-muted-foreground text-xs">Its agents stopped with it, so there is nothing left to show here.</p>
+      <Button size="sm" variant="outline" onClick={onClose}>
+        Close pane
+      </Button>
     </div>
   );
 }
@@ -226,9 +270,11 @@ function PaneTitle({ pane }: { pane: Leaf }) {
 export function PaneActions({ wsKey, tab, pane, onClose, closable, focused = true }: { wsKey: string; tab: string; pane: Leaf; onClose?: () => void; closable?: boolean; focused?: boolean }) {
   const c = pane.content;
   const session = useStore((s) => (c.kind === "terminal" ? s.boxes[c.box]?.sessions?.find((x) => x.name === c.session) : undefined));
-  const ref = useWorkspaces((s) => s.spaces[wsKey]?.ref);
+  // Agents to open beside it are its own worktree's repository's.
+  const ref = useWorktreeRef(paneWorktree(wsKey, pane));
   const agent = session && agentOf(session);
   const close = onClose ?? (() => void closePane(wsKey, tab, pane.id));
+  const labs = usePrefs((p) => p.labs);
   const beside = (dir: "row" | "col") => ({ kind: "split" as const, tab, pane: pane.id, dir });
   // The tab's other panes, for moving this one out or swapping it.
   const others = useWorkspaces((s) => {
@@ -283,6 +329,20 @@ export function PaneActions({ wsKey, tab, pane, onClose, closable, focused = tru
               </span>
               Browser
             </MenuItem>
+            {labs && (
+              <MenuItem
+                onClick={() => {
+                  focusPane(wsKey, tab, pane.id);
+                  openWorktreePicker({ kind: "split" });
+                }}
+              >
+                <span className="flex size-4 items-center justify-center">
+                  <Columns2Icon />
+                </span>
+                Another worktree…
+                {focused && <MenuShortcut>⌘⌥D</MenuShortcut>}
+              </MenuItem>
+            )}
           </MenuGroup>
           <MenuSeparator />
           {c.kind === "terminal" && session && (

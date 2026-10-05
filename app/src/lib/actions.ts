@@ -9,10 +9,10 @@ import { type AgentPreset, boxApi, type Location, type Worktree } from "@/lib/ap
 import { agentLabel, agentOf } from "@/lib/derive";
 import { errorMessage } from "@/lib/format";
 import { plainError } from "@/lib/errors";
-import { findLeaf, type Leaf, leaves, type PaneContent } from "@/lib/layout";
+import { findLeaf, type Leaf, leaves, type PaneContent, paneWorktree } from "@/lib/layout";
 import { scheduleRefresh, useStore } from "@/lib/store";
 import { resolveBrowserInput } from "@/lib/browser-url";
-import { currentSpace, focusSession, openTab, removePane, setPaneContent, splitPane, useWorkspaces, type WorktreeRef, wsKey } from "@/lib/workspaces";
+import { currentSpace, focusSession, here, hereRef, openTab, refFor, removePane, setPaneContent, showWorktree, splitPane, useWorkspaces, type WorktreeRef, wsKey } from "@/lib/workspaces";
 
 // Agents offered when a box does not list its own.
 export const DEFAULT_AGENTS: AgentPreset[] = [
@@ -45,34 +45,48 @@ const refLocation = (r: WorktreeRef) => (r.main ? r.location : `${r.location}/${
 
 export type Target = { kind: "tab" } | { kind: "split"; tab: string; pane: string; dir: "row" | "col" } | { kind: "replace"; tab: string; pane: string };
 
-// place puts content where target says in the current workspace, and
-// returns where it landed.
-function place(content: PaneContent, target: Target): { key: string; tab: string; pane: string } | undefined {
+// targetWorktree is the worktree what lands at target belongs to: beside
+// or in place of a pane, that pane's (a guest's split is a guest too); as a
+// tab, the one you are acting in.
+function targetWorktree(target: Target): string | undefined {
+  if (target.kind === "tab") return here();
+  const { current, spaces } = useWorkspaces.getState();
+  const l = current ? spaces[current]?.tabs.find((t) => t.id === target.tab)?.root : undefined;
+  const p = l && findLeaf(l, target.pane);
+  return current && p ? paneWorktree(current, p) : current;
+}
+
+// place puts content where target says, for worktree wt, and returns where
+// it landed: in the tab showing, or a tab of wt's own, brought to the front.
+function place(content: PaneContent, target: Target, wt: string): { key: string; tab: string; pane: string } | undefined {
   const key = useWorkspaces.getState().current;
-  if (!key) return undefined;
   if (target.kind === "tab") {
-    const r = openTab(content, key);
-    return r && { key, ...r };
+    if (!showWorktree(wt)) return undefined;
+    const r = openTab(content, wt);
+    return r && { key: wt, ...r };
   }
-  if (target.kind === "split") return { key, tab: target.tab, pane: splitPane(key, target.tab, target.pane, target.dir, content) };
+  if (!key) return undefined;
+  if (target.kind === "split") return { key, tab: target.tab, pane: splitPane(key, target.tab, target.pane, target.dir, content, wt) };
   setPaneContent(key, target.tab, target.pane, content);
   return { key, tab: target.tab, pane: target.pane };
 }
 
 // startSession runs a command (an agent, or a shell when empty) in the
-// current worktree and shows it in a new tab, a split, or an existing pane.
-// It resolves to the new session's name, or undefined when it did not start.
-export async function startSession(command: string, target: Target = { kind: "tab" }, label = command || "Terminal"): Promise<string | undefined> {
-  const ws = currentSpace();
+// worktree you are acting in (or, beside a pane, that pane's; or the one
+// given) and shows it in a new tab, a split, or an existing pane. It resolves to the new
+// session's name, or undefined when it did not start.
+export async function startSession(command: string, target: Target = { kind: "tab" }, label = command || "Terminal", worktree?: string): Promise<string | undefined> {
+  const wt = worktree ?? targetWorktree(target);
+  const ref = refFor(wt);
   const client = useStore.getState().client;
-  if (!ws || !client) return;
-  const at = place({ kind: "starting", label }, target);
+  if (!wt || !ref || !client) return;
+  const at = place({ kind: "starting", label }, target, wt);
   if (!at) return;
   try {
-    const s = await boxApi.startSession(client, ws.ref.box, { location: refLocation(ws.ref), command: command || undefined });
-    setPaneContent(at.key, at.tab, at.pane, { kind: "terminal", box: ws.ref.box, session: s.name });
-    scheduleRefresh(ws.ref.box, ["sessions"]);
-    if (command) void offerAgentHooks(ws.ref.box, command, s.name);
+    const s = await boxApi.startSession(client, ref.box, { location: refLocation(ref), command: command || undefined });
+    setPaneContent(at.key, at.tab, at.pane, { kind: "terminal", box: ref.box, session: s.name });
+    scheduleRefresh(ref.box, ["sessions"]);
+    if (command) void offerAgentHooks(ref.box, command, s.name);
     return s.name;
   } catch (err) {
     setPaneContent(at.key, at.tab, at.pane, { kind: "error", message: plainError(err) });
@@ -80,13 +94,14 @@ export async function startSession(command: string, target: Target = { kind: "ta
 }
 
 export function openBrowserAt(url = "", target: Target = { kind: "tab" }) {
-  place({ kind: "browser", url }, target);
+  const wt = targetWorktree(target);
+  if (wt) place({ kind: "browser", url }, target, wt);
 }
 
-// A URL for what was typed: a port opens on the current worktree's box, by
-// the worktree's name when that is its dev server.
+// A URL for what was typed: a port opens on the box of the worktree you are
+// acting in, by the worktree's name when that is its dev server.
 export function resolveUrl(input: string): string | undefined {
-  const ref = currentSpace()?.ref;
+  const ref = hereRef();
   const st = useStore.getState();
   return resolveBrowserInput(input, { ref, services: ref ? st.boxes[ref.box]?.services : undefined, urlPort: st.status?.proxy.url_port });
 }

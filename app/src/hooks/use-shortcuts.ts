@@ -10,7 +10,8 @@ import { isTauri } from "@/lib/api";
 import { toggleNotifications } from "@/lib/notifications";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
-import { activateTab, currentSpace, moveFocus, useWorkspaces } from "@/lib/workspaces";
+import { activateTab, currentSpace, hereRef, moveFocus, useWorkspaces } from "@/lib/workspaces";
+import { openWorktreePicker } from "@/components/workspace/worktree-picker";
 import { zoom } from "@/lib/zoom";
 import { isOnboardingActive } from "@/views/onboarding/onboarding-state";
 
@@ -39,10 +40,12 @@ function run(id: string, from: "key" | "menu", arg?: number | Dir): boolean {
   const wsKey = useWorkspaces.getState().current;
   const tab = ws?.tabs.find((t) => t.id === ws.active);
   const inWorkspace = s.view.kind === "workspace" && !!ws;
+  // The worktree you are acting in: the focused pane's.
+  const at = hereRef();
 
   switch (id) {
     case "new-worktree":
-      s.openNewWorktree(ws ? { box: ws.ref.box, location: ws.ref.location } : {});
+      s.openNewWorktree(at ? { box: at.box, location: at.location } : {});
       return true;
     case "new-terminal":
       if (!ws) return false;
@@ -57,9 +60,17 @@ function run(id: string, from: "key" | "menu", arg?: number | Dir): boolean {
       if (!inWorkspace || !tab) return false;
       void startSession("", { kind: "split", tab: tab.id, pane: tab.focus, dir: id === "split-down" ? "col" : "row" });
       return true;
+    case "split-worktree":
+      if (!inWorkspace || !tab) return false;
+      if (!usePrefs.getState().labs) {
+        if (from === "menu") toastManager.add({ title: "Worktrees side by side are in Labs", description: "Turn on Labs in Settings → General to use them." });
+        return from === "menu";
+      }
+      openWorktreePicker({ kind: "split" });
+      return true;
     case "open-editor":
-      if (!ws) return false;
-      void openEditor({ box: ws.ref.box, path: ws.ref.path });
+      if (!at) return false;
+      void openEditor({ box: at.box, path: at.path });
       return true;
     case "close-pane":
       // ⌘W again while "Close shell?" is open confirms it, as on macOS.
@@ -117,7 +128,8 @@ export function runShortcut(id: string, from: "key" | "menu", arg?: number | Dir
 
 // fromKey is the shortcut a keydown is, if any.
 function fromKey(e: KeyboardEvent): [string, (number | Dir)?] | undefined {
-  if (e.altKey) return e.key in arrows ? ["focus", arrows[e.key]] : undefined;
+  // With ⌥ the key is the character it types (⌥D is ∂), so go by its code.
+  if (e.altKey) return e.key in arrows ? ["focus", arrows[e.key]] : e.code === "KeyD" && !e.shiftKey ? ["split-worktree"] : undefined;
   const key = e.key.toLowerCase();
   const shift = e.shiftKey;
   if (key === ".") return ["zen"];

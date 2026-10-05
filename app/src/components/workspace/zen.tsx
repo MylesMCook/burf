@@ -27,7 +27,8 @@ import { usePrefs } from "@/lib/prefs";
 import { removalLabel, removalOf, useRemoval, useRemovals } from "@/lib/removing";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { focusSession, recentWorktrees, refOf, selectWorktree, useWorkspaces } from "@/lib/workspaces";
+import { focusSession, recentWorktrees, refOf, selectWorktree, useHereKey, useHereRef, useWorkspaces } from "@/lib/workspaces";
+import { useLabel, useTone, WtDot } from "@/components/workspace/worktree-tone";
 
 // Zen (Labs, ⌘.) puts away everything but the agents: no sidebar, no status
 // bar, and one slim bar over every view, with a switcher where the tab strip
@@ -41,6 +42,10 @@ function useHere() {
   const ws = useWorkspaces((s) => (s.current ? s.spaces[s.current] : undefined));
   const tab = ws?.tabs.find((t) => t.id === ws.active);
   const c = tab ? leaves(tab.root).find((l) => l.id === tab.focus)?.content : undefined;
+  // The focused pane's worktree, which in a tab that mixes worktrees need
+  // not be the tab's.
+  const key = useHereKey();
+  const ref = useHereRef();
   const session = useStore((s) => (c?.kind === "terminal" ? s.boxes[c.box]?.sessions?.find((x) => x.name === c.session) : undefined));
   const stats = useStore((s) => (c?.kind === "terminal" ? s.boxes[c.box]?.stats : undefined));
   // The same honesty as the pane: no state while its box is away, ended
@@ -57,8 +62,9 @@ function useHere() {
   if (!ws) return { kind: "home" as const };
   const agent = session ? agentOf(session) : undefined;
   // A titled agent is named after its work; its worktree is in the tooltip.
-  const place = ws.ref.main ? ws.ref.location : ws.ref.worktree;
-  return { kind: "worktree" as const, name: session?.title?.trim() || (c?.kind === "terminal" ? c.title : undefined) || place, place, agent: agent ?? (c?.kind === "terminal" ? c.agent : undefined), state };
+  const at = ref ?? ws.ref;
+  const place = at.main ? at.location : at.worktree;
+  return { kind: "worktree" as const, key, name: session?.title?.trim() || (c?.kind === "terminal" ? c.title : undefined) || place, place, agent: agent ?? (c?.kind === "terminal" ? c.agent : undefined), state };
 }
 
 const ORDER = { waiting: 0, running: 1, finished: 2 } as const;
@@ -69,6 +75,8 @@ const HEADINGS = { waiting: sessionWord("waiting"), running: sessionWord("runnin
 // agents (who needs you first), worktrees, and the actions.
 export function ZenSwitcher({ className }: { className?: string }) {
   const here = useHere();
+  // With two worktrees on screen the place names the pane, not its agent.
+  const placeTone = useTone(here.kind === "worktree" ? here.key : undefined);
   const { pinned, more } = useArrangedNav();
   const all = useAllSessions();
   const boxes = useStore((s) => s.boxes);
@@ -116,7 +124,9 @@ export function ZenSwitcher({ className }: { className?: string }) {
             <span className="truncate font-medium" title={here.place !== here.name ? here.place : undefined}>
               {here.name}
             </span>
-            {here.agent && (
+            {/* Two worktrees on screen: whose pane this is, in its colour. */}
+            <ZenPlace wsKey={here.key} name={here.name} />
+            {here.agent && !placeTone && (
               <span className="flex shrink-0 items-center gap-1 text-muted-foreground">
                 <AgentIcon agent={here.agent} className="size-3" />
                 {agentLabel(here.agent)}
@@ -257,6 +267,20 @@ function AllWorktrees() {
   );
 }
 
+// ZenPlace names the focused pane's worktree in its colour while more than
+// one is on screen (a tab that mixes worktrees, or groups).
+function ZenPlace({ wsKey, name }: { wsKey?: string; name: string }) {
+  const tone = useTone(wsKey);
+  const { label } = useLabel(wsKey);
+  if (!tone || !label) return null;
+  return (
+    <span className="flex shrink-0 items-center gap-1 text-xs" style={{ color: tone }}>
+      <WtDot wsKey={wsKey} className="size-1.5" />
+      {label !== name && label}
+    </span>
+  );
+}
+
 // WorktreeMenu is the open worktree's actions, as the sidebar's ⋯ on its
 // row: open in an editor, new agent or terminal, stop its sessions, remove.
 // useFocusedSession is the session in the focused pane, if it is one.
@@ -287,7 +311,8 @@ function ZenRename({ box, s }: { box: string; s: { name: string; title?: string 
 
 function WorktreeMenu() {
   const focused = useFocusedSession();
-  const ref = useWorkspaces((s) => (s.current ? s.spaces[s.current]?.ref : undefined));
+  // The focused pane's worktree.
+  const ref = useHereRef();
   const workspace = useStore((s) => s.view.kind === "workspace");
   const loc = useStore((s) => (ref ? s.boxes[ref.box]?.locations?.find((l) => l.name === ref.location) : undefined));
   const wt = loc?.worktrees?.find((w) => w.path === ref?.path);

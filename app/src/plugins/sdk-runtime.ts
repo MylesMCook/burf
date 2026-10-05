@@ -3,7 +3,8 @@ import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "r
 
 import { useProjects as useAppProjects } from "@/lib/projects";
 import { NONE, useStore } from "@/lib/store";
-import { useWorkspaces } from "@/lib/workspaces";
+import { PaneContext } from "@/lib/pane-context";
+import { useHereRef, useWorktreeRef } from "@/lib/workspaces";
 import { PluginReactContext, pluginStorage } from "@/plugins/context";
 import { contribute } from "@/plugins/registry";
 
@@ -49,8 +50,14 @@ export function useEvent(type: string, handler: EventHandler) {
   );
 }
 
+// useCurrentWorktree is the worktree a plugin's UI is for: inside a pane,
+// that pane's (a panel beside another worktree's shows its own); elsewhere,
+// the one you are acting in (the focused pane's).
 export function useCurrentWorktree() {
-  return useWorkspaces((s) => (s.current ? s.spaces[s.current]?.ref : undefined));
+  const pane = useContext(PaneContext);
+  const own = useWorktreeRef(pane?.worktree);
+  const here = useHereRef();
+  return pane ? own : here;
 }
 
 export function useStorage<T>(key: string, initial: T): [T, (value: T) => void] {

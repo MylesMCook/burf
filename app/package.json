@@ -14,7 +14,7 @@
     "check:titles": "node scripts/check-titles.mjs",
     "check:plugin-consent": "node scripts/check-plugin-consent.mjs",
     "check:csp": "node scripts/check-csp.mjs",
-    "test": "node --experimental-strip-types --test src/lib/layout.test.ts src/lib/screen.test.ts src/lib/removing.test.ts"
+    "test": "node --experimental-strip-types --test src/lib/layout.test.ts src/lib/groups.test.ts src/lib/screen.test.ts src/lib/removing.test.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

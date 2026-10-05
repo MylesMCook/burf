@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { adopt, bounds, leaf, leaves, mixed, movePane, type PaneNode, paneWorktree, place, remove, sessionsShown, sideAt, split, swap, worktreesOf } from "./layout.ts";
+import { adopt, bounds, leaf, leaves, mixed, moveBetween, movePane, type PaneNode, paneWorktree, place, remove, sessionsShown, sideAt, split, swap, worktreesOf } from "./layout.ts";
 
 const term = (s: string) => leaf({ kind: "terminal", box: "b", session: s });
 const names = (n: PaneNode) => leaves(n).map((l) => (l.content.kind === "terminal" ? l.content.session : "?"));
@@ -125,4 +125,40 @@ test("adopt keeps each pane's worktree when a tree moves to another workspace", 
 test("sessionsShown counts panes of every tree, on that box only", () => {
   const roots = [term("one"), leaf({ kind: "terminal", box: "b", session: "two" }, B), leaf({ kind: "terminal", box: "other", session: "three" })];
   assert.deepEqual([...sessionsShown(roots, "b")].sort(), ["one", "two"]);
+});
+
+test("moveBetween takes a tab into another workspace's pane, as guests", () => {
+  const own = term("a");
+  const tb = term("b1");
+  const tb2 = term("b2");
+  const spaces = {
+    [A]: { tabs: [{ id: "ta", root: own as PaneNode, focus: own.id }], active: "ta" },
+    [B]: { tabs: [{ id: "tb", root: split(tb, tb.id, "col", tb2), focus: tb2.id }, { id: "tb3", root: term("x") as PaneNode, focus: "?" }], active: "tb" },
+  };
+  const got = moveBetween(spaces, { key: B, tab: "tb" }, { key: A, tab: "ta", pane: own.id, side: "right" })!;
+  // B lost the tab and shows its next one; A's tab has both of B's panes, marked B's.
+  assert.deepEqual(got[B].tabs.map((t) => t.id), ["tb3"]);
+  assert.equal(got[B].active, "tb3");
+  const t = got[A].tabs[0];
+  assert.equal(shape(t.root), "row(a,col(b1,b2))");
+  assert.deepEqual(leaves(t.root).map((l) => paneWorktree(A, l)), [A, B, B]);
+  assert.equal(t.focus, tb2.id, "the moved tab's focus comes with it");
+});
+
+test("moveBetween takes one pane out and leaves the rest of its tab", () => {
+  const a = term("a");
+  const b = leaf({ kind: "browser", url: "" }, B);
+  const c = term("c");
+  const spaces = {
+    [A]: { tabs: [{ id: "t1", root: split(a, a.id, "row", b), focus: b.id }, { id: "t2", root: c as PaneNode, focus: c.id }], active: "t1" },
+  };
+  // b (B's page, a guest in t1) moves into t2 of the same workspace.
+  const got = moveBetween(spaces, { key: A, tab: "t1", pane: b.id }, { key: A, tab: "t2", pane: c.id, side: "left" })!;
+  assert.equal(shape(got[A].tabs[0].root), "a");
+  assert.equal(got[A].tabs[0].focus, a.id);
+  assert.equal(got[A].tabs[1].root.kind, "split");
+  assert.equal(leaves(got[A].tabs[1].root)[0].wt, B, "still B's");
+  assert.equal(got[A].active, "t2");
+  // Into its own tab, or onto itself, makes no sense.
+  assert.equal(moveBetween(spaces, { key: A, tab: "t1", pane: b.id }, { key: A, tab: "t1", pane: a.id, side: "left" }), undefined);
 });

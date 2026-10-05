@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { create } from "zustand";
 
 import type { Location, Session, Worktree } from "@/lib/api";
-import { findLeaf, type Leaf, leaf, leaves, mapLeaf, movePane, neighbor, newId, type PaneContent, type PaneNode, paneWorktree, place, remove, sessionsShown, setRatio, type Side, split, swap } from "@/lib/layout";
+import { findLeaf, type Leaf, leaf, leaves, mapLeaf, moveBetween, movePane, neighbor, newId, type PaneContent, type PaneNode, paneWorktree, place, remove, sessionsShown, setRatio, type Side, split, swap, worktreesOf } from "@/lib/layout";
 import { load, save } from "@/lib/storage";
 import { useStore } from "@/lib/store";
 
@@ -43,6 +43,8 @@ export interface Workspace {
 
 interface State {
   current?: string;
+  // A worktree's colour, when the person picked one (lib/groups.ts tones).
+  tones?: Record<string, string>;
   spaces: Record<string, Workspace>;
   // Workspaces opened since launch: their panes stay mounted, so switching
   // back is instant and nothing reconnects.
@@ -138,6 +140,39 @@ export function currentSpace(): Workspace | undefined {
   return s.current ? s.spaces[s.current] : undefined;
 }
 
+// focusedOf is the focused pane of the tab showing, and its tab.
+function focusedOf(s: Pick<State, "current" | "spaces">): { key: string; tab: WsTab; leaf: Leaf } | undefined {
+  const ws = s.current ? s.spaces[s.current] : undefined;
+  const tab = ws?.tabs.find((t) => t.id === ws.active);
+  const l = tab && findLeaf(tab.root, tab.focus);
+  return s.current && tab && l ? { key: s.current, tab, leaf: l } : undefined;
+}
+
+export const focusedPane = () => focusedOf(useWorkspaces.getState());
+
+// hereOf is the worktree you are acting in: the focused pane's
+// (paneWorktree), which in a tab that mixes worktrees need not be the
+// tab's. The breadcrumb, Run, the + menu, ⌘T and ⌘⇧B, the palette and
+// plugins act in it. Without a tab it is the worktree showing.
+export function hereOf(s: Pick<State, "current" | "spaces">): string | undefined {
+  const f = focusedOf(s);
+  return f ? paneWorktree(f.key, f.leaf) : s.current;
+}
+
+// onScreenOf lists the worktrees on screen, in the strip's order: the one
+// showing, then any other whose pane is in the tab showing.
+export function onScreenOf(s: Pick<State, "current" | "spaces">): string[] {
+  const ws = s.current ? s.spaces[s.current] : undefined;
+  const tab = ws?.tabs.find((t) => t.id === ws.active);
+  const own = s.current ? [s.current] : [];
+  return [...new Set([...own, ...(tab && s.current ? worktreesOf(tab.root, s.current) : [])])];
+}
+
+export const here = () => hereOf(useWorkspaces.getState());
+export const hereRef = () => refFor(here());
+export const useHereKey = () => useWorkspaces(hereOf);
+export const useHereRef = () => useWorktreeRef(useHereKey());
+
 // selectWorktree makes a worktree's workspace the one shown.
 export function selectWorktree(ref: WorktreeRef) {
   const key = wsKey(ref.box, ref.path);
@@ -148,6 +183,24 @@ export function selectWorktree(ref: WorktreeRef) {
   }));
   useStore.getState().setView({ kind: "workspace" });
   reconcile(key);
+}
+
+// showWorktree brings a worktree's tabs to the front: what acting in a
+// worktree that is not the one showing does (⌘T in a guest pane opens the
+// terminal in a tab of the guest's worktree). False when nothing knows the
+// worktree.
+export function showWorktree(key: string): boolean {
+  const s = useWorkspaces.getState();
+  if (s.current === key) return true;
+  const ref = refFor(key);
+  if (!ref) return false;
+  useWorkspaces.setState((st) => ({
+    current: key,
+    spaces: { ...st.spaces, [key]: st.spaces[key] ?? { ref, tabs: [], hidden: [], visitedAt: Date.now() } },
+    mounted: st.mounted.includes(key) ? st.mounted : [...st.mounted, key],
+  }));
+  reconcile(key);
+  return true;
 }
 
 // forgetWorktree drops a removed worktree's workspace, and leaves it for
@@ -221,8 +274,10 @@ export function openTab(content: PaneContent, key = useWorkspaces.getState().cur
   return { tab: tab.id, pane: l.id };
 }
 
-export function splitPane(key: string, tabId: string, paneId: string, dir: "row" | "col", content: PaneContent): string {
-  const l = leaf(content);
+// splitPane puts content beside a pane. wt is the worktree it belongs to,
+// when that is not the tab's (a guest pane).
+export function splitPane(key: string, tabId: string, paneId: string, dir: "row" | "col", content: PaneContent, wt?: string): string {
+  const l = leaf(content, wt && wt !== key ? wt : undefined);
   updateTab(key, tabId, (t) => ({ ...t, root: split(t.root, paneId, dir, l), focus: l.id }));
   return l.id;
 }
@@ -289,6 +344,17 @@ export function tabIntoPane(key: string, from: string, to: string, pane: string,
     const tabs = ws.tabs.filter((t) => t.id !== from).map((t) => (t.id === to ? { ...t, root, focus: src.focus } : t));
     return { ...ws, tabs, active: to };
   });
+}
+
+// moveInto moves a tab, or one pane of it, beside a pane of a tab in any
+// workspace (moveBetween): into another worktree's tab, its panes become
+// guests there. The receiving tab comes to the front.
+export function moveInto(src: { key: string; tab: string; pane?: string }, dst: { key: string; tab: string; pane: string; side: Side }) {
+  useWorkspaces.setState((s) => {
+    const spaces = moveBetween(s.spaces, src, dst);
+    return spaces ? { spaces, current: dst.key, mounted: s.mounted.includes(dst.key) ? s.mounted : [...s.mounted, dst.key] } : s;
+  });
+  useStore.getState().setView({ kind: "workspace" });
 }
 
 // tabBeside is the tab menu's Split right and Split down: the tab joins the
@@ -360,9 +426,17 @@ export function openSession(box: string, session: Session) {
   const ref = refOf(box, loc, wt);
   const key = wsKey(box, wt.path);
   update(key, (ws) => ({ ...ws, hidden: ws.hidden.filter((h) => h !== session.name) }));
-  selectWorktree(ref);
+  // A pane may show it as a guest in another worktree's tab: that pane is
+  // where it is, so focus it in place rather than open a second one.
   const found = findSession(box, session.name);
-  if (found && found.key === key) focusPane(key, found.tab, found.pane.id);
+  if (found && found.key !== key) {
+    if (!showWorktree(found.key)) return;
+    activateTab(found.key, found.tab);
+    focusPane(found.key, found.tab, found.pane.id);
+    return;
+  }
+  selectWorktree(ref);
+  if (found) focusPane(key, found.tab, found.pane.id);
   else openTab({ kind: "terminal", box, session: session.name }, key);
 }
 
@@ -392,39 +466,50 @@ export async function focusSession(box: string, session: string) {
 
 export const openTerminal = focusSession;
 
-// openBrowser opens a page in the current worktree's workspace: a new tab,
-// or with split, beside the focused pane.
-export function openBrowser(url: string, opts: { split?: "row" | "col" } = {}) {
-  const key = useWorkspaces.getState().current;
-  const ws = currentSpace();
-  if (!key || !ws) return;
-  const tab = ws.tabs.find((t) => t.id === ws.active);
-  if (opts.split && tab) splitPane(key, tab.id, tab.focus, opts.split, { kind: "browser", url });
-  else openTab({ kind: "browser", url }, key);
+// openFor shows content for the worktree you are acting in (here): with
+// split, beside the focused pane, as a guest when that pane is another
+// worktree's; else as a tab of here's own, brought to the front.
+export function openFor(content: PaneContent, opts: { split?: "row" | "col" } = {}): { key: string; tab: string; pane: string } | undefined {
+  const wt = here();
+  const f = focusedPane();
+  if (!wt) return undefined;
   useStore.getState().setView({ kind: "workspace" });
+  if (opts.split && f) return { key: f.key, tab: f.tab.id, pane: splitPane(f.key, f.tab.id, f.leaf.id, opts.split, content, wt) };
+  if (!showWorktree(wt)) return undefined;
+  const r = openTab(content, wt);
+  return r && { key: wt, ...r };
 }
 
-// openPanel opens a plugin's worktree panel in the current worktree: the tab
-// that already shows it if there is one, else a new tab, or with split,
-// beside the focused pane.
+// openBrowser opens a page in the worktree you are acting in: a new tab, or
+// with split, beside the focused pane.
+export function openBrowser(url: string, opts: { split?: "row" | "col" } = {}) {
+  openFor({ kind: "browser", url }, opts);
+}
+
+// openPanel opens a plugin's worktree panel for the worktree you are acting
+// in: the pane that already shows it if there is one (in the tab showing,
+// then in that worktree's tabs), else a new tab, or with split, beside the
+// focused pane.
 export function openPanel(plugin: string, panel: string, title: string, opts: { split?: "row" | "col" } = {}) {
-  const key = useWorkspaces.getState().current;
-  const ws = currentSpace();
-  if (!key || !ws) return;
-  for (const t of ws.tabs) {
-    const hit = leaves(t.root).find((l) => l.content.kind === "panel" && l.content.plugin === plugin && l.content.panel === panel);
-    if (hit) {
-      activateTab(key, t.id);
-      focusPane(key, t.id, hit.id);
-      useStore.getState().setView({ kind: "workspace" });
+  const wt = here();
+  if (!wt) return;
+  const isIt = (k: string, l: Leaf) => l.content.kind === "panel" && l.content.plugin === plugin && l.content.panel === panel && paneWorktree(k, l) === wt;
+  const f = focusedPane();
+  const near = f && leaves(f.tab.root).find((l) => isIt(f.key, l));
+  if (f && near) {
+    focusPane(f.key, f.tab.id, near.id);
+    useStore.getState().setView({ kind: "workspace" });
+    return;
+  }
+  for (const t of useWorkspaces.getState().spaces[wt]?.tabs ?? []) {
+    const hit = leaves(t.root).find((l) => isIt(wt, l));
+    if (hit && showWorktree(wt)) {
+      activateTab(wt, t.id);
+      focusPane(wt, t.id, hit.id);
       return;
     }
   }
-  const content = { kind: "panel" as const, plugin, panel, title };
-  const tab = ws.tabs.find((t) => t.id === ws.active);
-  if (opts.split && tab) splitPane(key, tab.id, tab.focus, opts.split, content);
-  else openTab(content, key);
-  useStore.getState().setView({ kind: "workspace" });
+  openFor({ kind: "panel", plugin, panel, title }, opts);
 }
 
 // recentWorktrees lists workspaces by when they were last opened.
