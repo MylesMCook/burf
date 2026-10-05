@@ -109,8 +109,21 @@ func (s *Sessions) tmux(ctx context.Context, args ...string) ([]byte, error) {
 // The command is also kept base64-encoded (@berth_command64): some tmux
 // versions (3.4, say) escape "$" when a format reads an option back, so the
 // plain @berth_command would come back changed. Sessions started before it
-// existed only have the plain one.
-const listFormat = "#{session_name}\t#{session_created}\t#{session_attached}\t#{@berth_location}\t#{@berth_command}\t#{pane_dead}\t#{pane_start_path}\t#{@berth_command64}\t#{@berth_agent}\t#{@berth_title}"
+// existed only have the plain one, so only they print it: a command carries
+// its prompt, and a prompt's line breaks or tabs printed here would split
+// the session's line, and the session would vanish from the list.
+const listFormat = "#{session_name}\t#{session_created}\t#{session_attached}\t#{@berth_location}\t#{?@berth_command64,,#{@berth_command}}\t#{pane_dead}\t#{pane_start_path}\t#{@berth_command64}\t#{@berth_agent}\t#{@berth_title}"
+
+// plainCommand is the command as the plain @berth_command keeps it, for
+// builds that read only that: on one line, as a session list needs it.
+func plainCommand(command string) string {
+	return strings.Map(func(r rune) rune {
+		if r == '\n' || r == '\r' || r == '\t' {
+			return ' '
+		}
+		return r
+	}, command)
+}
 
 func (s *Sessions) List(ctx context.Context) ([]Session, error) {
 	if _, err := exec.LookPath("tmux"); err != nil {
@@ -202,12 +215,19 @@ func (s *Sessions) create(ctx context.Context, name, location, dir, command, age
 	}
 	// set-option takes a pane target, whose exact-match form needs the colon.
 	s.tmux(ctx, "set-option", "-t", "="+name+":", "@berth_location", location)
-	s.tmux(ctx, "set-option", "-t", "="+name+":", "@berth_command", command)
+	s.tmux(ctx, "set-option", "-t", "="+name+":", "@berth_command", plainCommand(command))
 	s.tmux(ctx, "set-option", "-t", "="+name+":", "@berth_command64", base64.StdEncoding.EncodeToString([]byte(command)))
 	if agent != "" {
 		s.tmux(ctx, "set-option", "-t", "="+name+":", "@berth_agent", agent)
 	}
-	return s.Get(ctx, name)
+	sess, err := s.Get(ctx, name)
+	if err != nil {
+		// A session it can't read back would run on unseen, and a task
+		// removes its worktree when this fails: stop it too.
+		s.tmux(ctx, "kill-session", "-t", "="+name)
+		return Session{}, err
+	}
+	return sess, nil
 }
 
 // TitleMax is the longest title a session takes, in characters; one made

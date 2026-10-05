@@ -97,6 +97,35 @@ func TestSessionsLifecycle(t *testing.T) {
 	}
 }
 
+// A task's command carries its prompt, line breaks and all: the session
+// must still list, or the task fails ("no session with that name") and
+// removes the worktree it just made.
+func TestASessionWhoseCommandHasLineBreaksStillLists(t *testing.T) {
+	s := testSessions(t)
+	ctx := context.Background()
+	dir := t.TempDir()
+	command := "sleep 30 # 'Reply with hi\nJust that word.\tThanks'"
+	sess, err := s.Create(ctx, "task-1", "demo/reply-with-hi", dir, command, nil)
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if sess.Command != command || sess.Location != "demo/reply-with-hi" {
+		t.Fatalf("created session = %+v", sess)
+	}
+	if _, err := s.Create(ctx, "other", "demo", dir, "sleep 30", nil); err != nil {
+		t.Fatal(err)
+	}
+	all, err := s.List(ctx)
+	if err != nil || len(all) != 2 {
+		t.Fatalf("list = %+v, %v", all, err)
+	}
+	for _, x := range all {
+		if x.Name == "task-1" && x.Command != command {
+			t.Errorf("listed command = %q, want %q", x.Command, command)
+		}
+	}
+}
+
 func TestAFinishedProgramStaysVisible(t *testing.T) {
 	s := testSessions(t)
 	ctx := context.Background()
