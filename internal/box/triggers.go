@@ -204,6 +204,7 @@ func (b *Box) handleTrigger(w http.ResponseWriter, r *http.Request) {
 		fail(http.StatusTooManyRequests, err.Error())
 		return
 	}
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusAccepted)
 	writeJSON(w, map[string]string{"run": s.ID, "status": s.Status})
 }

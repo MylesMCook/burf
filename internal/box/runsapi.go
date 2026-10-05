@@ -98,6 +98,7 @@ func (b *Box) startRun(w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			return runErr(err)
 		}
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusAccepted)
 		writeJSON(w, s)
 		return nil
@@ -144,6 +145,7 @@ func (b *Box) startRun(w http.ResponseWriter, r *http.Request) error {
 	if dup {
 		w.Header().Set("Idempotent-Replay", "true")
 	} else {
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusAccepted)
 	}
 	writeJSON(w, s)

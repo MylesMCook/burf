@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -146,5 +147,101 @@ func TestAWorktreeChecksOutABranchThatAlreadyExists(t *testing.T) {
 	}
 	if wt.Branch != "feature/review-me" {
 		t.Fatalf("branch = %q", wt.Branch)
+	}
+}
+
+// lockWorktree locks a worktree the way git does, by writing its lock file.
+func lockWorktree(t *testing.T, repo, name, reason string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(repo, ".git", "worktrees", name, "locked"), []byte(reason), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestArchivingAWorktreeLeftLockedByAnInterruptedAdd(t *testing.T) {
+	repo := gitRepo(t)
+	ctx := context.Background()
+	l := NewLocations(filepath.Join(t.TempDir(), "locations.json"))
+	if _, err := l.Add(ctx, "cal", repo); err != nil {
+		t.Fatal(err)
+	}
+	wt, err := l.CreateWorktree(ctx, "cal", "audit", "audit", "main")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// An add that was killed halfway leaves git's own lock behind.
+	lockWorktree(t, repo, "cal-audit", "initializing")
+	loc, _ := l.Get(ctx, "cal")
+	if w := loc.Worktrees[1]; !w.Locked || w.LockReason != "initializing" {
+		t.Fatalf("locked worktree = %+v", w)
+	}
+	if err := l.RemoveWorktree(ctx, "cal", "audit", false); err != nil {
+		t.Fatalf("archiving a worktree an interrupted add left locked: %v", err)
+	}
+	if _, err := os.Stat(wt.Path); !os.IsNotExist(err) {
+		t.Fatalf("worktree folder still there: %v", err)
+	}
+	if _, err := l.Dir(ctx, "cal/audit"); !errors.Is(err, ErrUnknownWorktree) {
+		t.Fatalf("removed worktree still resolves: %v", err)
+	}
+}
+
+func TestAWorktreeSomeoneLockedIsLeftAlone(t *testing.T) {
+	repo := gitRepo(t)
+	ctx := context.Background()
+	l := NewLocations(filepath.Join(t.TempDir(), "locations.json"))
+	if _, err := l.Add(ctx, "cal", repo); err != nil {
+		t.Fatal(err)
+	}
+	wt, err := l.CreateWorktree(ctx, "cal", "usb", "usb", "main")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, reason := range []string{"on a USB disk", ""} {
+		lockWorktree(t, repo, "cal-usb", reason)
+		err := l.RemoveWorktree(ctx, "cal", "usb", true)
+		if err == nil {
+			t.Fatalf("removed a worktree locked with reason %q", reason)
+		}
+		if !strings.Contains(err.Error(), "worktree unlock "+wt.Path) || statusFor(err) != 409 {
+			t.Fatalf("refusal doesn't say how to unlock: %v (status %d)", err, statusFor(err))
+		}
+		if reason != "" && !strings.Contains(err.Error(), reason) {
+			t.Fatalf("refusal doesn't give the reason: %v", err)
+		}
+		if _, err := os.Stat(wt.Path); err != nil {
+			t.Fatalf("locked worktree's folder went: %v", err)
+		}
+	}
+}
+
+func TestAFailedAddLeavesNothingBehind(t *testing.T) {
+	repo := gitRepo(t)
+	ctx := context.Background()
+	l := NewLocations(filepath.Join(t.TempDir(), "locations.json"))
+	if _, err := l.Add(ctx, "cal", repo); err != nil {
+		t.Fatal(err)
+	}
+	// A checkout that fails halfway: a post-checkout hook that errors makes
+	// git give up after it has registered (and locked) the worktree.
+	hook := filepath.Join(repo, ".git", "hooks", "post-checkout")
+	os.WriteFile(hook, []byte("#!/bin/sh\nexit 1\n"), 0o755)
+	if _, err := l.CreateWorktree(ctx, "cal", "broken", "broken", "main"); err == nil {
+		t.Skip("this git does not fail an add on its post-checkout hook")
+	}
+	path := filepath.Join(filepath.Dir(repo), "cal-broken")
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("half-made worktree folder left: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(repo, ".git", "worktrees", "cal-broken")); !os.IsNotExist(err) {
+		t.Fatalf("half-made worktree still registered: %v", err)
+	}
+	if branchExists(ctx, repo, "refs/heads/broken") {
+		t.Fatal("the failed add's branch is left")
+	}
+	// And the same name works once the cause is gone.
+	os.Remove(hook)
+	if _, err := l.CreateWorktree(ctx, "cal", "broken", "broken", "main"); err != nil {
+		t.Fatalf("creating again after a failed add: %v", err)
 	}
 }

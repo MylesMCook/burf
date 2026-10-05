@@ -70,7 +70,12 @@ The box's API is `POST /v1/locations/{name}/config/trust` with
   `cargo test`, or a Makefile's `test` target. It is only a default; nothing
   runs it until you start a run with it.
 - `archive` runs before a worktree is removed, after its services stop; if it
-  fails, the worktree stays.
+  fails, the worktree stays, and the app's Details shows what it printed last.
+  While it runs the app shows the worktree as "Archiving…"; once it is gone,
+  its sessions stop and its tabs close.
+- A worktree git left locked by an interrupted `git worktree add` ("locked
+  initializing") is unlocked and removed as usual. One a person locked with
+  `git worktree lock` is left alone, and the error says how to unlock it.
 - Both also get Orca's names (`ORCA_ROOT_PATH`, `ORCA_WORKTREE_PATH`,
   `ORCA_WORKSPACE_NAME`), so setup scripts written for Orca work unchanged.
 

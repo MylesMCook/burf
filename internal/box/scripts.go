@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/sean-brydon/berthd/internal/hooks"
@@ -110,7 +111,28 @@ func runScript(ctx context.Context, script, repo, dir, name, logPath string, tim
 	cmd.Env = append(cmd.Env, extra...)
 	cmd.Stdout, cmd.Stderr = log, log
 	if err := cmd.Run(); err != nil {
+		// What the script said last is why it failed: the error carries it,
+		// so the app's Details can show it without a trip to the box.
+		if tail := logTail(logPath, 40, 4096); tail != "" {
+			return fmt.Errorf("%v (log: %s)\n%s", err, logPath, tail)
+		}
 		return fmt.Errorf("%v (log: %s)", err, logPath)
 	}
 	return nil
+}
+
+// logTail is the last lines of a log, at most max bytes of them.
+func logTail(path string, lines, max int) string {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	if len(b) > max {
+		b = b[len(b)-max:]
+	}
+	all := strings.Split(strings.TrimRight(string(b), "\n"), "\n")
+	if len(all) > lines {
+		all = all[len(all)-lines:]
+	}
+	return strings.TrimSpace(strings.Join(all, "\n"))
 }

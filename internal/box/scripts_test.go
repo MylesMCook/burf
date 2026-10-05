@@ -108,12 +108,16 @@ func TestArchiveRunsBeforeRemovalAndAFailureKeepsTheWorktree(t *testing.T) {
 	loc, _ := b.Locations.Add(ctx, "cal", repo)
 	wt, _ := b.Locations.CreateWorktree(ctx, "cal", "billing", "", "")
 
-	b.lifecycle("berth", "archive", loc, wt.Path, wt.Name, "exit 3", func() error {
+	b.lifecycle("berth", "archive", loc, wt.Path, wt.Name, "echo dropping shop_billing; echo could not drop shop_billing >&2; exit 3", func() error {
 		return b.Locations.RemoveWorktree(ctx, "cal", "billing", true)
 	})
 	failed := waitFor(t, ch, "worktree.archive.failed")
 	if !strings.Contains(failed.Error, "log:") {
 		t.Fatalf("failure does not point at the log: %q", failed.Error)
+	}
+	// What the script said comes with it, for the app's Details.
+	if !strings.Contains(failed.Error, "could not drop shop_billing") || !strings.Contains(failed.Error, "dropping shop_billing") {
+		t.Fatalf("failure does not carry the script's output: %q", failed.Error)
 	}
 	if _, err := os.Stat(wt.Path); err != nil {
 		t.Fatal("a failed archive still removed the worktree")

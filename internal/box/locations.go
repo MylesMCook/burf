@@ -9,10 +9,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -59,6 +61,10 @@ type Worktree struct {
 	SettingUp bool `json:"setting_up,omitempty"`
 	// Port is the first of the worktree's own ports ($BERTH_PORT).
 	Port int `json:"port,omitempty"`
+	// Locked is set when git has the worktree locked, with LockReason
+	// its reason ("initializing" while `git worktree add` runs).
+	Locked     bool   `json:"locked,omitempty"`
+	LockReason string `json:"lock_reason,omitempty"`
 }
 
 var (
@@ -248,7 +254,13 @@ func (l *Locations) CreateWorktreeFrom(ctx context.Context, location string, req
 			args = append(args, base)
 		}
 	}
-	if out, err := git(ctx, args...); err != nil {
+	// The add runs to the end even if whoever asked goes away: one killed
+	// halfway leaves a worktree git keeps locked as "initializing".
+	_, statErr := os.Stat(path)
+	hadPath := statErr == nil
+	hadBranch := branchExists(ctx, loc.Path, "refs/heads/"+branch)
+	if out, err := git(context.WithoutCancel(ctx), args...); err != nil {
+		cleanUpFailedAdd(loc.Path, path, branch, hadPath, hadBranch)
 		return Worktree{}, fmt.Errorf("git worktree add: %s", strings.TrimSpace(string(out)))
 	}
 	for _, w := range describe(ctx, savedLocation{Name: loc.Name, Path: loc.Path}).Worktrees {
@@ -257,6 +269,47 @@ func (l *Locations) CreateWorktreeFrom(ctx context.Context, location string, req
 		}
 	}
 	return Worktree{Name: name, Path: path, Branch: branch}, nil
+}
+
+// cleanUpFailedAdd undoes what a failed `git worktree add` left: its
+// half-made worktree and lock, the folder if it was new, and the branch if
+// the add made it.
+func cleanUpFailedAdd(repo, path, branch string, hadPath, hadBranch bool) {
+	ctx := context.Background()
+	if !hadPath {
+		git(ctx, "-C", repo, "worktree", "unlock", path)
+		git(ctx, "-C", repo, "worktree", "remove", "--force", "--force", path)
+		os.RemoveAll(path)
+	}
+	git(ctx, "-C", repo, "worktree", "prune")
+	if !hadBranch && branchExists(ctx, repo, "refs/heads/"+branch) {
+		git(ctx, "-C", repo, "branch", "-D", branch)
+	}
+}
+
+// gitLockReason is the reason `git worktree add` locks a worktree with
+// while it runs; one still there means the add was interrupted.
+const gitLockReason = "initializing"
+
+// berthLockPrefix starts the reason of any lock Berth itself sets.
+const berthLockPrefix = "berth:"
+
+// ownLock is true for a lock nobody chose: git's own from an interrupted
+// add, or Berth's. Removing such a worktree unlocks it first; a lock a
+// person set with `git worktree lock` is theirs to lift.
+func ownLock(reason string) bool {
+	return reason == gitLockReason || strings.HasPrefix(reason, berthLockPrefix)
+}
+
+// errLocked explains a lock a person set, and how to lift it.
+func errLocked(repo string, w Worktree) error {
+	why := "with no reason given"
+	if w.LockReason != "" {
+		why = fmt.Sprintf("with the reason %q", w.LockReason)
+	}
+	return httpError{status: http.StatusConflict, msg: fmt.Sprintf(
+		"%s is locked (git worktree lock, %s), so it was left as it is. Unlock it on the box with `git -C %s worktree unlock %s`, then try again.",
+		w.Name, why, repo, w.Path)}
 }
 
 func branchExists(ctx context.Context, repo, ref string) bool {
@@ -277,6 +330,14 @@ func (l *Locations) RemoveWorktree(ctx context.Context, location, name string, f
 		}
 		if w.Main {
 			return errors.New("refusing to remove the repository's main checkout")
+		}
+		if w.Locked {
+			if !ownLock(w.LockReason) {
+				return errLocked(loc.Path, w)
+			}
+			if out, err := git(ctx, "-C", loc.Path, "worktree", "unlock", w.Path); err != nil {
+				return fmt.Errorf("git worktree unlock: %s", strings.TrimSpace(string(out)))
+			}
 		}
 		args := []string{"-C", loc.Path, "worktree", "remove", w.Path}
 		if force {
@@ -348,6 +409,10 @@ func parseWorktrees(out []byte, repo string) []Worktree {
 			if cur != nil {
 				cur.Branch = strings.TrimPrefix(value, "refs/heads/")
 			}
+		case "locked":
+			if cur != nil {
+				cur.Locked, cur.LockReason = true, unquoteGit(value)
+			}
 		}
 	}
 	// Worktrees git has lost track of (prunable, e.g. under a cleared /tmp)
@@ -359,6 +424,17 @@ func parseWorktrees(out []byte, repo string) []Worktree {
 		}
 	}
 	return live
+}
+
+// unquoteGit reads a value git may have C-quoted (one with a line break or
+// a quote in it).
+func unquoteGit(v string) string {
+	if strings.HasPrefix(v, `"`) {
+		if u, err := strconv.Unquote(v); err == nil {
+			return u
+		}
+	}
+	return v
 }
 
 func git(ctx context.Context, args ...string) ([]byte, error) {

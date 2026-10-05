@@ -421,7 +421,9 @@ func (b *Box) removeWorktree(w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	b.stopServices(location, name)
+	from := origin(r)
 	removed := func(ctx context.Context) {
+		b.stopSessionsIn(from, dir)
 		b.Locations.Ports.Release(dir)
 		if branch != "" {
 			git(ctx, "-C", loc.Path, "branch", "-D", branch)
@@ -430,7 +432,6 @@ func (b *Box) removeWorktree(w http.ResponseWriter, r *http.Request) error {
 	// A worktree with an archive script is torn down in the background: the
 	// script may take minutes, and removal only follows if it succeeds.
 	if loc.Scripts.Archive != "" {
-		from := origin(r)
 		go b.lifecycle(from, "archive", loc, dir, name, loc.Scripts.Archive, func() error {
 			if err := b.Locations.RemoveWorktree(context.Background(), location, name, force); err != nil {
 				return err
@@ -439,6 +440,7 @@ func (b *Box) removeWorktree(w http.ResponseWriter, r *http.Request) error {
 			b.Events.Publish(events.Event{Type: "worktree.removed", Box: b.Name, Origin: from, Data: map[string]any{"location": location, "name": name, "path": dir}})
 			return nil
 		})
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusAccepted)
 		writeJSON(w, map[string]string{"removing": name, "archive": loc.Scripts.Archive})
 		return nil
@@ -450,6 +452,24 @@ func (b *Box) removeWorktree(w http.ResponseWriter, r *http.Request) error {
 	b.publish(r, "worktree.removed", map[string]any{"location": location, "name": name, "path": dir})
 	writeJSON(w, map[string]string{"removed": name})
 	return nil
+}
+
+// stopSessionsIn ends the sessions working in a removed worktree: their
+// folder is gone, so they would only linger in the app with nowhere to work.
+func (b *Box) stopSessionsIn(from, dir string) {
+	ctx := context.Background()
+	all, err := b.Sessions.List(ctx)
+	if err != nil {
+		return
+	}
+	for _, s := range all {
+		if s.Dir != dir && !strings.HasPrefix(s.Dir, dir+string(filepath.Separator)) {
+			continue
+		}
+		if b.Sessions.Kill(ctx, s.Name) == nil {
+			b.Events.Publish(events.Event{Type: "session.stopped", Box: b.Name, Origin: from, Data: map[string]any{"name": s.Name, "path": s.Dir}})
+		}
+	}
 }
 
 func (b *Box) listSessions(w http.ResponseWriter, r *http.Request) error {

@@ -271,3 +271,47 @@ func TestEmptyListsAreArraysNotNull(t *testing.T) {
 		t.Fatalf("empty list = %s", got)
 	}
 }
+
+func TestArchivingAnswersInJSONAndRemovalStopsTheWorktreesSessions(t *testing.T) {
+	t.Setenv("SHELL", "/bin/sh")
+	c, bus := servedBox(t)
+	seen, stop := bus.Subscribe()
+	defer stop()
+	repo := gitRepo(t)
+	if status := call(t, c, "POST", "/v1/locations", "", map[string]string{"name": "cal", "path": repo}, nil); status != 200 {
+		t.Fatalf("add location: %d", status)
+	}
+	for _, name := range []string{"billing", "keep"} {
+		if status := call(t, c, "POST", "/v1/locations/cal/worktrees", "", WorktreeRequest{Name: name}, nil); status != 200 {
+			t.Fatalf("add worktree %s: %d", name, status)
+		}
+	}
+	var in, other Session
+	call(t, c, "POST", "/v1/sessions", "", map[string]string{"location": "cal/billing", "command": "cat"}, &in)
+	call(t, c, "POST", "/v1/sessions", "", map[string]string{"location": "cal/keep", "command": "cat"}, &other)
+	if status := call(t, c, "PUT", "/v1/locations/cal/scripts", "", map[string]string{"archive": "true"}, nil); status != 200 {
+		t.Fatalf("set scripts: %d", status)
+	}
+
+	resp, err := c.Do(context.Background(), "DELETE", "/v1/locations/cal/worktrees/billing", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	var body map[string]string
+	json.NewDecoder(resp.Body).Decode(&body)
+	// A 202 is still JSON: the app reads "archive" to know it is not gone yet.
+	if resp.StatusCode != 202 || resp.Header.Get("Content-Type") != "application/json" || body["archive"] != "true" {
+		t.Fatalf("archive answered %d %q %v", resp.StatusCode, resp.Header.Get("Content-Type"), body)
+	}
+	waitFor(t, seen, "worktree.removed")
+	var all []Session
+	call(t, c, "GET", "/v1/sessions", "", nil, &all)
+	names := map[string]bool{}
+	for _, s := range all {
+		names[s.Name] = true
+	}
+	if names[in.Name] || !names[other.Name] {
+		t.Fatalf("after removing billing, sessions = %v; want %s gone and %s kept", names, in.Name, other.Name)
+	}
+}
