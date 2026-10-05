@@ -1,4 +1,4 @@
-import { CheckIcon, ChevronRightIcon, CircleAlertIcon, CopyIcon } from "lucide-react";
+import { CheckIcon, ChevronRightIcon, CircleAlertIcon, ClipboardListIcon, CopyIcon } from "lucide-react";
 import type React from "react";
 import { useState } from "react";
 import { create } from "zustand";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogPopup, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toastManager } from "@/components/ui/toast";
 import { detailsFor, type Explained, explain, looksRaw, type NextStep, STEP_LABEL } from "@/lib/errors";
+import { noteToast } from "@/lib/recent-events";
 import { cn } from "@/lib/utils";
 
 // How errors look: a title, one sentence, the one next step, and what the
@@ -86,6 +87,11 @@ function DetailsPopup({ text, title, message }: DetailsReq) {
       </div>
       <DialogFooter variant="bare">
         <DialogClose render={<Button variant="ghost" />}>Close</DialogClose>
+        {/* What's set up and what went wrong lately, redacted, for a bug report. */}
+        <Button variant="outline" data-testid="details-copy-diagnostics" onClick={() => void import("@/lib/diagnostics").then((m) => m.copyDiagnostics())}>
+          <ClipboardListIcon />
+          Copy diagnostics
+        </Button>
         <Button
           variant="outline"
           onClick={async () => {
@@ -172,6 +178,7 @@ function description(e: Explained, title?: React.ReactNode): React.ReactNode {
 export function toastError(err: unknown, opts: { title?: string; box?: string; onStep?: (step: NextStep) => void } = {}) {
   const e = explain(err, { box: opts.box });
   const run = e.step && opts.onStep ? () => opts.onStep!(e.step!) : globalStep(e);
+  noted = { code: e.code, message: e.details ? `${e.message} ${e.details}` : e.message };
   return toastManager.add({
     type: "error",
     title: e.title !== "Something went wrong" ? e.title : (opts.title ?? e.title),
@@ -199,5 +206,12 @@ function humanize<T extends Partial<AddOptions>>(o: T): T {
 
 const add = toastManager.add.bind(toastManager);
 const update = toastManager.update.bind(toastManager);
-toastManager.add = ((o: AddOptions) => add(humanize(o))) as typeof toastManager.add;
+// Every toast is noted for Copy diagnostics (lib/recent-events), an error
+// with its code.
+let noted: { code?: string; message?: string } | undefined;
+toastManager.add = ((o: AddOptions) => {
+  noteToast(o, noted ?? (o.type === "error" && typeof o.description === "string" ? { code: explain(o.description).code } : {}));
+  noted = undefined;
+  return add(humanize(o));
+}) as typeof toastManager.add;
 toastManager.update = ((id: string, u: Partial<AddOptions>) => update(id, humanize(u))) as typeof toastManager.update;

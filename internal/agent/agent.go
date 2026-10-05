@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/sean-brydon/berthd/internal/box"
+	"github.com/sean-brydon/berthd/internal/doctor"
 	"github.com/sean-brydon/berthd/internal/events"
 	"github.com/sean-brydon/berthd/internal/forward"
 	"github.com/sean-brydon/berthd/internal/hooks"
@@ -93,6 +94,9 @@ type Config struct {
 	// where it keeps its images; default to the one on PATH and ~/.codex.
 	Codex     string
 	CodexHome string
+	// Doctor runs `berth doctor`'s checks of this laptop, for the app's
+	// Copy diagnostics (GET /v1/doctor); nil answers that there are none.
+	Doctor func(ctx context.Context) []doctor.Check
 }
 
 // Networks is the set of other tailnets the agent can dial through.

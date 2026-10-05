@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"context"
+	"flag"
 	"fmt"
 	"io"
 	"net/http"
@@ -22,9 +23,18 @@ import (
 // runDoctor checks this laptop, or with a box name, asks that box for its own
 // report. It never changes anything.
 func runDoctor(l laptop, args []string) error {
-	fs, asJSON, err := flags("doctor", args, nil)
+	var report bool
+	fs, asJSON, err := flags("doctor", args, func(fs *flag.FlagSet) {
+		fs.BoolVar(&report, "report", false, "print a short, redacted report to paste into a chat (the app's Copy diagnostics)")
+	})
 	if err != nil {
 		return err
+	}
+	if report {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		fmt.Print(doctor.FormatReport(gatherDiagnostics(ctx, l)))
+		return nil
 	}
 	var checks []doctor.Check
 	if fs.NArg() == 1 {
@@ -37,7 +47,7 @@ func runDoctor(l laptop, args []string) error {
 			return fmt.Errorf("%s: %w", fs.Arg(0), err)
 		}
 	} else {
-		checks = laptopChecks(l)
+		checks = laptopChecks(context.Background(), l)
 	}
 	if asJSON {
 		return printJSON(checks)
@@ -50,7 +60,7 @@ func runDoctor(l laptop, args []string) error {
 	return nil
 }
 
-func laptopChecks(l laptop) []doctor.Check {
+func laptopChecks(ctx context.Context, l laptop) []doctor.Check {
 	const mac = "This computer"
 	var checks []doctor.Check
 	c := agent.NewClient(l.socket())
@@ -59,7 +69,7 @@ func laptopChecks(l laptop) []doctor.Check {
 	} else {
 		checks = append(checks, doctor.Check{Area: mac, Name: "starts at login", Status: doctor.Warn, Detail: "the agent only runs while something starts it", Fix: "berth agent install  (or berth agent to start it now)"})
 	}
-	status, err := c.Status(context.Background())
+	status, err := c.Status(ctx)
 	if err != nil {
 		return append(checks, doctor.Check{Area: mac, Name: "agent", Status: doctor.Fail, Detail: "not running", Fix: "berth status  (starts it)"})
 	}
@@ -70,7 +80,7 @@ func laptopChecks(l laptop) []doctor.Check {
 		checks = append(checks, doctor.Check{Area: mac, Name: "local URLs", Status: doctor.OK, Detail: serviceURLFor("PORT", "BOX", status.Proxy.URLPort)})
 	}
 	var term terminalRenderer
-	if c.Call(context.Background(), "GET", "/v1/app/terminal-renderer", nil, &term) == nil {
+	if c.Call(ctx, "GET", "/v1/app/terminal-renderer", nil, &term) == nil {
 		if check, ok := term.check(mac); ok {
 			checks = append(checks, check)
 		}
@@ -85,7 +95,7 @@ func laptopChecks(l laptop) []doctor.Check {
 	}
 
 	var nets []map[string]any
-	c.Call(context.Background(), "GET", "/v1/networks", nil, &nets)
+	c.Call(ctx, "GET", "/v1/networks", nil, &nets)
 	for _, n := range nets {
 		name, _ := n["name"].(string)
 		state, _ := n["state"].(string)

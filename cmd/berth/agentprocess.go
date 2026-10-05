@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/sean-brydon/berthd/internal/agent"
+	"github.com/sean-brydon/berthd/internal/doctor"
 	"github.com/sean-brydon/berthd/internal/service"
 )
 
@@ -95,6 +96,8 @@ func runAgent(l laptop) error {
 	ctx, stop := signalContext()
 	defer stop()
 	cfg := agent.Config{Dir: l.dir, Socket: l.socket()}
+	// The app's Copy diagnostics shows what `berth doctor` would (GET /v1/doctor).
+	cfg.Doctor = func(ctx context.Context) []doctor.Check { return laptopChecks(ctx, l) }
 	// A second agent (a test, a throwaway home) needs its own ports.
 	if a := os.Getenv("BERTH_PROXY_ADDR"); a != "" {
 		cfg.ProxyAddrs = strings.Split(a, ",")

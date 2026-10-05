@@ -1,6 +1,7 @@
 import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+import { execSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import process from "node:process";
@@ -78,6 +79,16 @@ function workerScript(): Plugin {
   };
 }
 
+// commit is the checkout's short hash, which Copy diagnostics names as the
+// app's build; empty outside a git checkout.
+function commit(): string {
+  try {
+    return execSync("git rev-parse --short HEAD", { cwd: import.meta.dirname, stdio: ["ignore", "pipe", "ignore"] }).toString().trim();
+  } catch {
+    return "";
+  }
+}
+
 // https://vite.dev/config/
 //
 // `vite build --mode demo` (pnpm build:demo) is the live demo on berthd.app:
@@ -95,7 +106,7 @@ export default defineConfig(({ mode }) => ({
   // The diff renderer's highlighting worker loads its languages as chunks,
   // which takes a module worker.
   worker: { format: "es" as const, plugins: () => [noShikiWasm(), workerScript()] },
-  define: { __BERTH_DEMO__: JSON.stringify(mode === "demo") },
+  define: { __BERTH_DEMO__: JSON.stringify(mode === "demo"), __BERTH_COMMIT__: JSON.stringify(commit()) },
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "./src"),

@@ -1,4 +1,8 @@
+import { ClipboardListIcon } from "lucide-react";
+import { useState } from "react";
+
 import { Button } from "@/components/ui/button";
+import { copyDiagnostics } from "@/lib/diagnostics";
 import { ago, bytes } from "@/lib/format";
 import { openDocs, openUrl } from "@/lib/open-url";
 import { NONE, useStore } from "@/lib/store";
@@ -44,6 +48,7 @@ export function AboutSection() {
         })}
       </SettingsGroup>
       <UpdatesGroup />
+      <HelpGroup />
       <SettingsGroup title="Documentation" description="docs.berthd.app, opened in your browser.">
         <div className="grid grid-cols-[max-content_1fr] gap-x-6 gap-y-2 px-4 py-3 text-xs">
           {DOCS.map(([path, title, what]) => (
@@ -57,6 +62,34 @@ export function AboutSection() {
         </div>
       </SettingsGroup>
     </SettingsPage>
+  );
+}
+
+// HelpGroup copies what someone helping needs to know, in one paste
+// (lib/diagnostics); `berth doctor --report` prints the same.
+function HelpGroup() {
+  const [busy, setBusy] = useState(false);
+  return (
+    <SettingsGroup title="Help">
+      <SettingsRow
+        label="Copy diagnostics"
+        description="Versions, berth doctor's checks, the local box and each box, the terminal renderer, theme, Labs, and the last errors and toasts. Tokens, op:// references, emails and your username are taken out."
+      >
+        <Button
+          size="xs"
+          variant="outline"
+          data-testid="copy-diagnostics"
+          loading={busy}
+          onClick={() => {
+            setBusy(true);
+            void copyDiagnostics().finally(() => setBusy(false));
+          }}
+        >
+          <ClipboardListIcon />
+          Copy diagnostics
+        </Button>
+      </SettingsRow>
+    </SettingsGroup>
   );
 }
 

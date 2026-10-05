@@ -22,6 +22,7 @@ func (a *Agent) api(stop context.CancelFunc) http.Handler {
 	mux := http.NewServeMux()
 	a.kitRoutes(mux)
 	a.appStateRoutes(mux)
+	a.doctorRoutes(mux)
 	a.editorRoutes(mux)
 	a.imageGenRoutes(mux)
 	a.queueRoutes(mux)

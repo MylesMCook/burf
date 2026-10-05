@@ -80,6 +80,7 @@ Sessions
 Agent
   berth status [--json]                  Boxes, forwards and the proxy at a glance
   berth doctor [BOX] [--json]            Check this computer (or a box) and how to fix it
+  berth doctor --report                  A short, redacted report to paste into a chat
   berth events [BOX] [--json]            Stream events from this laptop and every box (or only BOX's)
   berth agent                            Run the agent in the foreground
   berth agent start                      Start the agent in the background, if it is not running

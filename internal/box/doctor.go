@@ -24,6 +24,9 @@ func (b *Box) Doctor(ctx context.Context) []doctor.Check {
 		doctor.ToolCheck("Worktrees and sessions", "cloudflared", "public shares", "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/", false),
 		doctor.ToolCheck("Agents", "claude", "Claude Code sessions", "npm install -g @anthropic-ai/claude-code", false),
 		doctor.ToolCheck("Agents", "codex", "Codex sessions", "npm install -g @openai/codex", false),
+		// What sessions and the checks above find tools on: a service often
+		// starts with less than a login shell has.
+		doctor.Check{Area: "Worktrees and sessions", Name: "PATH", Status: doctor.Info, Detail: os.Getenv("PATH")},
 	)
 	if home, err := os.UserHomeDir(); err == nil {
 		for _, t := range integrations.Tools {

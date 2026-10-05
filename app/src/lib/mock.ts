@@ -16,6 +16,7 @@ import { usageCall, usageExec } from "@/lib/mock-usage";
 import { initMockQueue, queueCall } from "@/lib/mock-queue";
 import { computersBoxCall, computersCall, initMockComputers } from "@/lib/mock-computers";
 import { initMockLocalBox, localBoxCall, localBoxFolders, localBoxStream } from "@/lib/mock-local-box";
+import { mockBoxDoctor, mockDiagnosticsCall } from "@/lib/mock-diagnostics";
 import { ApiError } from "@/lib/api";
 import { titleOf } from "@/lib/derive";
 import { demoAttach, demoScreen } from "@/demo/terminal";
@@ -547,6 +548,8 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
   const online = status.boxes.find((b) => b.name === box)?.state === "online";
   // 503, as the agent answers when a request never reached the box.
   if (!online) return Promise.reject(new ApiError(`${box} is offline`, 503));
+  const doc = mockBoxDoctor(box, !!status.boxes.find((b) => b.name === box)?.local, method, path);
+  if (doc) return doc;
   const flows = flowsCall(box, method, path, body, emit, delay);
   if (flows) return flows;
   const runs = runsCall(box, method, path, body, emit, delay);
@@ -1088,6 +1091,8 @@ export function mockClient(): Client {
         const route = r.session ? `sessions/${encodeURIComponent(r.session)}/attachments` : `locations/${r.location}/worktrees/${r.worktree}/attachments`;
         return boxCall(decodeURIComponent(local[1]), "POST", route, { name, data: "AAAA".repeat(30000) }) as Promise<T>;
       }
+      const diag = mockDiagnosticsCall(method, path);
+      if (diag) return diag as Promise<T>;
       const thisMac = localBoxCall(method, path);
       if (thisMac) return thisMac as Promise<T>;
       const boxes = laptopBoxes(method, path, body);
