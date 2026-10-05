@@ -172,7 +172,7 @@ func (s *Sessions) stopService(ctx context.Context, name string) error {
 	if sess.Exited {
 		return nil
 	}
-	serviceStops.Store(name, true)
+	serviceStops.Store(svcKey{s, name}, true)
 	pid := s.panePID(ctx, name)
 	if pid <= 1 {
 		return nil
@@ -247,6 +247,13 @@ var (
 	serviceWatches sync.Map
 )
 
+// svcKey is a terminal service's session in one Sessions: a box has one,
+// but tests run many, one after another, with the same session names.
+type svcKey struct {
+	s    *Sessions
+	name string
+}
+
 // startTerminalService runs a service in its session, with the worktree's
 // environment. A worktree with secrets passes only their references, as a
 // unit does, and the pane's program resolves them in `berthd secret exec`.
@@ -285,7 +292,7 @@ func (b *Box) startTerminalService(ctx context.Context, loc Location, wt Worktre
 			r.Log = b.Units.logPath(serviceUnit(loc.Name, wt.Name, svc.Name))
 		}
 	}
-	serviceStops.Delete(name)
+	serviceStops.Delete(svcKey{b.Sessions, name})
 	if err := b.Sessions.runService(ctx, r); err != nil {
 		return err
 	}
@@ -300,11 +307,12 @@ func (b *Box) watchTerminalService(location string, wt Worktree, service, name s
 	if b.Sessions == nil {
 		return
 	}
-	if _, busy := serviceWatches.LoadOrStore(name, true); busy {
+	key := svcKey{b.Sessions, name}
+	if _, busy := serviceWatches.LoadOrStore(key, true); busy {
 		return
 	}
 	go func() {
-		defer serviceWatches.Delete(name)
+		defer serviceWatches.Delete(key)
 		ctx := context.Background()
 		for {
 			time.Sleep(time.Second)
@@ -315,7 +323,7 @@ func (b *Box) watchTerminalService(location string, wt Worktree, service, name s
 			if !dead {
 				continue
 			}
-			if _, ours := serviceStops.LoadAndDelete(name); !ours {
+			if _, ours := serviceStops.LoadAndDelete(key); !ours {
 				data := map[string]any{"location": location, "name": wt.Name, "path": wt.Path, "service": service, "session": name}
 				if n, err := strconv.Atoi(status); err == nil {
 					data["exit_status"] = n
@@ -334,7 +342,7 @@ func (b *Box) killServiceSession(ctx context.Context, location, worktree, servic
 	}
 	name := serviceSession(location, worktree, service)
 	if sess, err := b.Sessions.Get(ctx, name); err == nil && sess.Service != "" {
-		serviceStops.Store(name, true)
+		serviceStops.Store(svcKey{b.Sessions, name}, true)
 		b.Sessions.Kill(ctx, name)
 	}
 }
