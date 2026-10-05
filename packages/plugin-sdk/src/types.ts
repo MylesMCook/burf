@@ -386,6 +386,9 @@ export interface PluginInfo {
   // Allowed once, but changed since: off until it is reviewed again.
   changed?: boolean;
   hooks?: PluginHook[];
+  // The titles of the Home widgets it adds, from berth-plugin.json's
+  // "homeWidgets", so Home's picker can offer them while it is off.
+  homeWidgets?: string[];
   error?: string;
 }
 

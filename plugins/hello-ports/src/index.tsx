@@ -1,6 +1,6 @@
-import type { BerthPluginContext, ScreenProps, Service, WorktreeSectionProps } from "@berth/plugin";
-import { useBoxes } from "@berth/plugin";
-import { Badge, Button, Empty, EmptyDescription, EmptyHeader, EmptyTitle, Icon, Spinner } from "@berth/plugin/ui";
+import type { BerthPluginContext, HomeWidgetProps, ScreenProps, Service, WorktreeSectionProps } from "@berth/plugin";
+import { useBoxes, useWidgetData } from "@berth/plugin";
+import { Badge, Button, Empty, EmptyDescription, EmptyHeader, EmptyTitle, Icon, Spinner, WidgetEmpty, WidgetRow, WidgetSkeleton } from "@berth/plugin/ui";
 import { useEffect, useState } from "react";
 
 // Hello ports: the smallest useful plugin, kept as an example of the SDK: a
@@ -98,7 +98,35 @@ function PortsHere({ berth, box, path }: WorktreeSectionProps) {
   );
 }
 
+// PortsWidget is a Home widget: the ports listening on every box. Home
+// draws its card and menu; useWidgetData keeps the last read, shows it at
+// once, and reads again every 30s, only while the widget is on screen.
+function PortsWidget({ berth, size }: HomeWidgetProps) {
+  const online = useBoxes()
+    .filter((b) => b.state === "online")
+    .map((b) => b.name);
+  const { data } = useWidgetData<Row[]>(
+    `ports:${online.join(",")}`,
+    async () => (await Promise.all(online.map((box) => berth.api.services(box).then((s) => s.map((x) => ({ ...x, box })), () => [] as Row[])))).flat(),
+    { every: 30_000 },
+  );
+  if (!data) return <WidgetSkeleton rows={3} />;
+  if (!data.length) return <WidgetEmpty scene="dock" title="Nothing is listening" compact />;
+  return (
+    <div>
+      {data.slice(0, size === "t" ? 8 : 3).map((r) => (
+        <WidgetRow key={`${r.box}:${r.port}`} onClick={() => berth.openUrl(berth.api.serviceUrl(r.box, r.port))}>
+          <span className="w-12 shrink-0 font-mono text-xs">:{r.port}</span>
+          <span className="min-w-0 flex-1 truncate">{r.worktree}</span>
+          <span className="text-muted-foreground text-xs">{r.box}</span>
+        </WidgetRow>
+      ))}
+    </div>
+  );
+}
+
 export default function activate(berth: BerthPluginContext) {
+  berth.addHomeWidget({ id: "ports", title: "Hello ports", description: "Every port listening on every box. From the hello-ports example plugin.", icon: "Radio", sizes: ["s", "m", "t"], category: "Fleet", source: "Each online box's services, every 30s while on screen", Component: PortsWidget });
   berth.addScreen({ id: "ports", title: "Hello ports", description: "Everything listening in a worktree, on every box. From the hello-ports plugin.", Component: PortsScreen });
   berth.addSidebarItem({ id: "ports", title: "Hello ports", icon: "Radio", screen: "ports" });
   berth.addWorktreeSection({ id: "ports", title: "Hello ports", Component: PortsHere });

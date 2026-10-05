@@ -31,6 +31,7 @@ import { AgentPicker } from "@/components/new-worktree/agent-picker";
 import { AgentIcon } from "@/components/agent-glyph";
 import { loadDiffs } from "@/components/diff/load";
 import { cn } from "@/lib/utils";
+import { WidgetEmpty, WidgetRow, WidgetSkeleton } from "@/views/home/widgets/parts";
 import { PluginPage, ViewHeader } from "@/views/view-header";
 
 const known = new Set<string>(iconNames);
@@ -136,4 +137,7 @@ export const pluginUi = {
   PluginPage,
   cn,
   loadDiffs,
+  WidgetRow,
+  WidgetEmpty,
+  WidgetSkeleton,
 };

@@ -156,3 +156,14 @@ export interface DiffsModule {
   default: ComponentType<DiffViewerProps>;
 }
 export declare function loadDiffs(): Promise<DiffsModule>;
+
+// For Home widgets (berth.addHomeWidget), so one reads like Berth's own.
+// WidgetRow: one 36px line, a button when it has onClick (label names it
+// for screen readers when its text doesn't say enough).
+export declare const WidgetRow: ComponentType<{ children?: ReactNode; onClick?: () => void; className?: string; label?: string }>;
+// WidgetEmpty: nothing to show. A small scene ("calm", "anchor", "chart",
+// "dock", "storm" for an error…), what that means, and one thing to do.
+// compact drops the scene, for a one-row widget.
+export declare const WidgetEmpty: ComponentType<{ scene?: string; title: string; hint?: ReactNode; action?: string; onAction?: () => void; compact?: boolean }>;
+// WidgetSkeleton: rows while they load, at their height, so nothing moves.
+export declare const WidgetSkeleton: ComponentType<{ rows?: number; className?: string }>;

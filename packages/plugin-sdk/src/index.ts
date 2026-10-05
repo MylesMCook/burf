@@ -106,6 +106,60 @@ export interface WorktreeSection {
 
 export type WorktreeSectionProps = WorktreePanelProps;
 
+// Home's widget sizes, columns by rows on its grid: s 1×1, m 2×1, t 1×2,
+// l 2×2, w 4×1. A row is 184px. In a narrower window the grid has two
+// columns, or one, and a widget is never wider than the grid, so draw for
+// the room you get (container queries work inside the card).
+export type HomeWidgetSize = "s" | "m" | "t" | "l" | "w";
+
+export interface HomeWidgetProps extends ScreenProps {
+  size: HomeWidgetSize;
+  // False while the widget is off screen, Home is behind a worktree, or the
+  // window is hidden. Fetch only while it is true; useWidgetData does.
+  visible: boolean;
+  // True in the "Add widget" picker's preview, which can't be clicked:
+  // draw as usual, but don't take focus or start anything on mount.
+  preview?: boolean;
+}
+
+// A widget people can put on Home, from its "Add widget" picker, where it is
+// listed under your plugin's name. The app draws the card: its heading
+// (icon, title, count, your plugin's name), its menu (size, refresh,
+// remove) and an error boundary. Component draws the body: rows that fit
+// its size, an empty state when there is nothing, a skeleton while loading.
+// Home can hold one of each widget; its id is your plugin's
+// ("<plugin>/<id>") so ids never clash.
+export interface HomeWidget {
+  id: string;
+  title: string;
+  // One line for the picker: what it shows.
+  description?: string;
+  // A lucide icon name for its heading and the picker.
+  icon?: IconName;
+  // Where the picker files it: "Work" suits an issue tracker.
+  category?: "Agents" | "Work" | "Code" | "Fleet" | "You";
+  // The sizes it can take; the first is the one it is added at.
+  sizes: HomeWidgetSize[];
+  // One line for the picker: where its data comes from and how often it is
+  // read ("gh, every 3 minutes while on screen").
+  source?: string;
+  // A hook for the number in its heading ("3"); urgent shows it in amber,
+  // for something that waits on the person. Called on every render.
+  useCount?: () => number | { n: number; urgent?: boolean } | undefined;
+  Component: ComponentType<HomeWidgetProps>;
+}
+
+// What useWidgetData returns: the last read at once (from this launch or
+// the plugin's storage), and whether a new one is under way.
+export interface WidgetData<T> {
+  data?: T;
+  error?: string;
+  loading: boolean;
+  // When data was read, in ms since the epoch.
+  updated?: number;
+  refresh(): void;
+}
+
 // An entry in the command palette (⌘K).
 export interface Command {
   id: string;
@@ -288,6 +342,8 @@ export interface BerthPluginContext {
   addScreen(screen: Screen): Dispose;
   addWorktreePanel(panel: WorktreePanel): Dispose;
   addWorktreeSection(section: WorktreeSection): Dispose;
+  // A widget for Home's grid (see HomeWidget).
+  addHomeWidget(widget: HomeWidget): Dispose;
   addCommand(command: Command): Dispose;
   addStatusBarItem(item: StatusBarItem): Dispose;
   addTheme(theme: Theme): Dispose;
@@ -327,6 +383,12 @@ export declare function useEvent(type: string, handler: EventHandler): void;
 export declare function useCurrentWorktree(): CurrentWorktree | undefined;
 // Like useState, kept in the plugin's storage.
 export declare function useStorage<T>(key: string, initial: T): [T, (value: T) => void];
+// Data for a Home widget, read by load: the last read shows at once (kept in
+// the plugin's storage under key), and a new one starts when it is older
+// than every (ms), only while the widget is visible, and at once on the
+// card's "Refresh now". A new key reads anew, so put what load depends on
+// in it ("prs:" + repos.join(",")).
+export declare function useWidgetData<T>(key: string, load: () => Promise<T>, opts: { every: number }): WidgetData<T>;
 
 // A project is one repository wherever it is checked out, as the app's
 // sidebar shows it: "acme/shop" on devl and on gpu is one project with

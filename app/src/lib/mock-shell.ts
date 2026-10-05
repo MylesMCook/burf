@@ -1,6 +1,7 @@
 import type { ExecResult } from "@/lib/api";
 import { mockDiff } from "@/lib/mock-diff";
 import { mockIssues } from "@/lib/mock-issues";
+import { mockHomeExec } from "@/lib/mock-home";
 
 // mockShell answers the git and gh commands the built-in plugins run through
 // exec, so they can be explored with ?mock=1. Anything else returns
@@ -95,6 +96,8 @@ function decodeBase64(b64: string) {
 }
 
 export function mockShell(box: string, location: string, command: string): ExecResult | undefined {
+  const home = mockHomeExec(location, command);
+  if (home) return home;
   const issues = mockIssues(command);
   if (issues) return issues;
   const diff = mockDiff(location, command);

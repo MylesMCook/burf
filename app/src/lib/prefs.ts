@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 import { type ChatBackground, DEFAULT_CHAT_BACKGROUND, normalizeChatBackground } from "@/lib/chat-background";
+import type { HomeLayout } from "@/lib/home-layout";
 import { load, save } from "@/lib/storage";
 import { DEFAULT_TERMINAL_PREFS, type TerminalPrefs } from "@/lib/terminal";
 
@@ -52,6 +53,9 @@ export interface Prefs {
   chatWidth: ChatWidth;
   // The themes "Match system" uses by day and when macOS is dark.
   systemThemes: { light: string; dark: string };
+  // Home's widgets, in order and size (lib/home-layout.ts). Null until the
+  // person customises Home: they get the default layout, which can change.
+  home: HomeLayout | null;
 }
 
 export type ChatWidth = "narrow" | "default" | "wide" | "xwide" | "full";
@@ -79,6 +83,7 @@ const DEFAULTS: Prefs = {
   chatBackground: DEFAULT_CHAT_BACKGROUND,
   chatWidth: "default",
   systemThemes: { light: "berth-light", dark: "berth-dark" },
+  home: null,
 };
 
 // PREFS_VERSION counts changes of default that saved prefs are moved to

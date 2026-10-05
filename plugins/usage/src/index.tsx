@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AccountsView, type Choices } from "./accounts-view";
 import { ACCOUNT_VAR, runScript, where, type Account, type Accounts, type Report } from "./box";
 import type { Period, Source } from "./data";
+import { UsageWidget } from "./home";
 import { BoxStatus, UsageView, type BoxState } from "./usage-view";
 
 // Usage & accounts: how many tokens Claude Code and Codex used on each box,
@@ -14,6 +15,16 @@ import { BoxStatus, UsageView, type BoxState } from "./usage-view";
 export default definePlugin((berth) => {
   berth.addScreen({ id: "usage", title: "Usage", Component: UsageScreen });
   berth.addSidebarItem({ id: "usage", title: "Usage", icon: "ChartColumn", screen: "usage" });
+  berth.addHomeWidget({
+    id: "usage",
+    title: "Agent usage",
+    description: "Tokens today and this week, Claude Code's cost estimate, and plan limits.",
+    icon: "Gauge",
+    category: "Fleet",
+    sizes: ["m", "s", "l", "t"],
+    source: "usage.py on each box (the agents' own records), every 5 minutes while on screen",
+    Component: UsageWidget,
+  });
   berth.addCommand({ id: "usage", title: "Show agent usage", group: "Agents", run: () => berth.openScreen("usage") });
   berth.addCommand({
     id: "accounts",

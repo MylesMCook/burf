@@ -32,6 +32,7 @@ import {
 } from "@berth/plugin/ui";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { CiWidget, PullRequestsWidget, usePRCount } from "./home";
 import { type Check, checkState, type CheckState, FIELDS, type Outcome, type PR, plainText, quote, readOutcome, since } from "./gh";
 
 // Pull request: the branch's PR as GitHub sees it, read with `gh` on the
@@ -40,6 +41,27 @@ import { type Check, checkState, type CheckState, FIELDS, type Outcome, type PR,
 export default definePlugin((berth) => {
   berth.addWorktreePanel({ id: "pr", title: "Pull request", icon: "GitPullRequest", Component: PullRequestPanel });
   berth.addCommand({ id: "open", title: "Show this worktree's pull request", group: "Git", run: () => berth.openPanel("pr") });
+  berth.addHomeWidget({
+    id: "prs",
+    title: "Pull requests",
+    description: "Pull requests waiting on your review, and your own with their checks.",
+    icon: "GitPullRequest",
+    category: "Code",
+    sizes: ["l", "m", "t", "w"],
+    source: "One GitHub search with gh on a box, every 3 minutes while on screen",
+    useCount: usePRCount,
+    Component: PullRequestsWidget,
+  });
+  berth.addHomeWidget({
+    id: "ci",
+    title: "CI failures",
+    description: "Runs that failed on your worktrees' branches, a click from their logs.",
+    icon: "CircleX",
+    category: "Code",
+    sizes: ["m", "s", "l", "w"],
+    source: "gh run list in each GitHub project, every 3 minutes while on screen",
+    Component: CiWidget,
+  });
 });
 
 // useWorktreeWatch calls onChange when the worktree's branch or commit moves

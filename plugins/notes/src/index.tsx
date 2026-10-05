@@ -1,5 +1,7 @@
 import { definePlugin, worktreeLocation, type WorktreePanelProps } from "@berth/plugin";
 import { Button, Icon, Spinner, Textarea, Tooltip, TooltipPopup, TooltipTrigger, cn } from "@berth/plugin/ui";
+
+import { HomeNote } from "./home";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 // Notes: a scratchpad for each worktree. It lives in the worktree itself, as
@@ -14,6 +16,16 @@ const LIMIT = 40_000; // what one exec request comfortably carries
 export default definePlugin((berth) => {
   berth.addWorktreePanel({ id: "notes", title: "Notes", icon: "NotebookPen", Component: NotesPanel });
   berth.addCommand({ id: "open", title: "Open this worktree's notes", group: "Notes", run: () => berth.openPanel("notes") });
+  berth.addHomeWidget({
+    id: "note",
+    title: "Notes",
+    description: "A note or checklist that stays on Home, kept on this Mac.",
+    icon: "NotebookPen",
+    category: "You",
+    sizes: ["m", "s", "t", "l"],
+    source: "Kept on this Mac; nothing is read",
+    Component: HomeNote,
+  });
 });
 
 // base64 of UTF-8 text, so any note survives the trip through a shell.

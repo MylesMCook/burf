@@ -2,6 +2,7 @@ import type { Activate, BerthPluginContext, EventHandler, Project } from "@berth
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { useProjects as useAppProjects } from "@/lib/projects";
+import { useWidgetDataIn } from "@/lib/widget-data";
 import { NONE, useStore } from "@/lib/store";
 import { PaneContext } from "@/lib/pane-context";
 import { useHereRef, useWorktreeRef } from "@/lib/workspaces";
@@ -72,6 +73,14 @@ export function useStorage<T>(key: string, initial: T): [T, (value: T) => void] 
     [key, ctx?.id],
   );
   return [value, set];
+}
+
+// useWidgetData is a Home widget's data, kept in the plugin's storage and
+// read again only while the widget is visible (lib/widget-data.ts).
+export function useWidgetData<T>(key: string, load: () => Promise<T>, opts: { every: number }) {
+  const ctx = useContext(PluginReactContext);
+  const id = ctx?.id ?? "app";
+  return useWidgetDataIn(pluginStorage(id), id, key, load, opts);
 }
 
 // useProjects is the app's projects, trimmed to what plugins need.

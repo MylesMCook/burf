@@ -1,6 +1,7 @@
 {
   "title": "Guides",
   "pages": [
+    "home",
     "orchestration",
     "runs",
     "browser",

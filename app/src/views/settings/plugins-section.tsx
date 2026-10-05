@@ -191,6 +191,7 @@ function Contributions({ plugin }: { plugin: string }) {
     ...mine(r.sidebarItems).map((i) => `Sidebar: ${i.title}`),
     ...mine(r.worktreePanels).map((i) => `Panel: ${i.title}`),
     ...mine(r.worktreeSections).map((i) => `Worktree section${i.title ? `: ${i.title}` : ""}`),
+    ...mine(r.homeWidgets).map((i) => `Home widget: ${i.title}`),
     ...(mine(r.statusBarItems).length ? ["Status bar"] : []),
     ...(mine(r.commands).length ? [`${mine(r.commands).length} command${mine(r.commands).length === 1 ? "" : "s"}`] : []),
     ...(mine(r.themes).length ? [`${mine(r.themes).length} theme${mine(r.themes).length === 1 ? "" : "s"}`] : []),

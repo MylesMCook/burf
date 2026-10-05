@@ -5,5 +5,6 @@
   "description": "Tokens by agent, model, project and session on each box, from the agents' own records, and switching which Claude Code or Codex login new sessions use.",
   "main": "dist/index.js",
   "builtin": true,
-  "defaultEnabled": false
+  "defaultEnabled": false,
+  "homeWidgets": ["Agent usage"]
 }

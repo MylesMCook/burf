@@ -39,6 +39,7 @@ Each returns a `Dispose`. Everything is also removed when the plugin unloads.
 | `addSidebarItem({ id, title, icon?, screen })` | A place that opens one of its screens, under the sidebar's **More** menu until the person pins it. `icon` is a [lucide](https://lucide.dev/icons) name. |
 | `addWorktreePanel({ id, title, icon?, Component })` | A view about one worktree, opened as a tab or split. `Component` gets `{ berth, box, location, worktree, path, main? }`. |
 | `addWorktreeSection({ id, title?, Component })` | A [section under the composer](#worktree-sections) where work starts in a worktree. `Component` gets `{ berth, box, location, worktree, path, main? }`. |
+| `addHomeWidget({ id, title, icon?, sizes, Component, … })` | A [widget for Home's grid](#home-widgets), in its **Add widget** picker under your plugin's name. `Component` gets `{ berth, size, visible, preview? }`. |
 | `addCommand({ id, title, group?, shortcut?, run })` | An entry in the command palette (⌘K) |
 | `addStatusBarItem({ id, Component, align? })` | Something in the status bar, `left` or `right` |
 | `addTheme(theme)` | A [`Theme`](#types) |
@@ -84,6 +85,71 @@ export default definePlugin((berth) => {
 ```
 
 The `hello-ports` example plugin adds one too: the ports open in the worktree, as buttons.
+
+### Home widgets
+
+[Home](/guides/home) is a grid of widgets under the composer, which people arrange themselves. `addHomeWidget` adds one to its **Add widget** picker, listed under your plugin's name; once someone adds it, it sits on Home with the app's own.
+
+| Field | What it is |
+| --- | --- |
+| `id` | Unique within your plugin. Home keeps it as `<plugin>/<id>`, so ids never clash. |
+| `title`, `description?` | Its heading, and one line in the picker |
+| `icon?` | A [lucide](https://lucide.dev/icons) name for its heading |
+| `category?` | `"Agents"`, `"Work"`, `"Code"`, `"Fleet"` or `"You"`: where the picker files it. An issue tracker is `"Work"`. |
+| `sizes` | The sizes it takes, the first being the one it's added at: `s` 1×1, `m` 2×1, `t` 1×2, `l` 2×2, `w` 4×1, on a four-column grid of 184px rows |
+| `source?` | One line for the picker: where its data comes from and how often it's read |
+| `useCount?` | A hook for the number in its heading: a number, or `{ n, urgent }` (urgent is amber, for something waiting on the person) |
+| `Component` | Its body. Gets `{ berth, size, visible, preview? }`. |
+
+The app draws the card around it: the heading (icon, title, count, your plugin's name), the menu (size, **Refresh now**, remove), and an error boundary, so a widget that throws shows a note in its own card. Your component draws only the rows.
+
+Some rules keep Home quick and steady:
+
+- **Fetch only while `visible`.** It is false when the widget is off screen, Home is behind a worktree, or the window is hidden. `useWidgetData` does this for you, keeps the last read in your storage so it shows at once next time, and reads again on **Refresh now**.
+- **Draw for the room you get.** A narrower window has two columns, or one, and a widget is never wider than the grid. Cards are [container queries](https://tailwindcss.com/docs/responsive-design#container-queries) (`@max-[320px]:hidden`), so hide secondary bits by width.
+- **Hold your size while loading.** Show `WidgetSkeleton` rows, never nothing, so Home doesn't move when data arrives.
+- **Say when there's nothing.** `WidgetEmpty` takes a scene, a title, a hint and one action.
+- In the picker's preview, `preview` is true and nothing can be clicked: don't take focus or start anything on mount.
+
+```tsx
+import { definePlugin, useWidgetData, type HomeWidgetProps } from "@berth/plugin";
+import { WidgetEmpty, WidgetRow, WidgetSkeleton } from "@berth/plugin/ui";
+
+interface Issue { id: string; title: string; url: string }
+
+function Assigned({ berth }: HomeWidgetProps) {
+  const { data, error } = useWidgetData<Issue[]>("assigned", () => fetchAssigned(berth.storage.get("key", "")), { every: 2 * 60_000 });
+  if (!data) return error ? <WidgetEmpty scene="storm" title="Couldn't reach Linear" hint={error} /> : <WidgetSkeleton rows={3} />;
+  if (!data.length) return <WidgetEmpty scene="calm" title="Nothing assigned to you" />;
+  return (
+    <div>
+      {data.slice(0, 6).map((i) => (
+        <WidgetRow key={i.id} onClick={() => berth.openUrl(i.url)}>
+          <span className="w-16 shrink-0 font-mono text-[11px] text-muted-foreground">{i.id}</span>
+          <span className="min-w-0 flex-1 truncate">{i.title}</span>
+        </WidgetRow>
+      ))}
+    </div>
+  );
+}
+
+export default definePlugin((berth) => {
+  berth.addHomeWidget({
+    id: "assigned",
+    title: "Linear",
+    description: "Issues assigned to you, not done.",
+    icon: "ListTodo",
+    category: "Work",
+    sizes: ["l", "m", "t", "w"],
+    source: "Linear's API with your key, every 2 minutes while on screen",
+    Component: Assigned,
+  });
+});
+```
+
+That is how a Linear plugin would add its issues to Home (Berth has no Linear integration yet). The built-in widgets from plugins are worth reading: Pull requests and CI failures in `plugins/pull-request/src/home.tsx`, Agent usage in `plugins/usage/src/home.tsx`, Notes in `plugins/notes/src/home.tsx`, and the smallest, Hello ports, in `plugins/hello-ports`.
+
+A built-in plugin that is off until turned on can list its widgets' titles in `berth-plugin.json` (`"homeWidgets": ["Agent usage"]`), so the picker offers to turn it on.
 
 ## api
 
@@ -156,6 +222,7 @@ From `@berth/plugin`, backed by the app's live state:
 | `useCurrentWorktree()` | The worktree the component is for: inside a pane, that pane's (a tab can hold panes of two worktrees side by side); elsewhere, the focused pane's. Undefined with no worktree open |
 | `useEvent(type, handler)` | `on` for a component's lifetime |
 | `useStorage(key, initial)` | Like `useState`, kept in the plugin's storage |
+| `useWidgetData(key, load, { every })` | For a [Home widget](#home-widgets): `{ data?, error?, loading, updated?, refresh() }`. The last read shows at once (kept in the plugin's storage under `key`); `load()` runs again once it is older than `every` ms, only while the widget is visible, and at once on **Refresh now**. Put what `load` depends on in `key`. |
 
 And two helpers:
 
@@ -178,6 +245,7 @@ the same props as in the app:
 | Controls | `Button`, `Input`, `Textarea`, `Switch`, `Checkbox`, `ToggleGroup`, `ToggleGroupItem`, `PickOne`, `BoxFilter`, `FilterChip`, `AgentPicker`, `Tabs`, `TabsList`, `TabsTab`, `TabsPanel`, `Menu`, `MenuTrigger`, `MenuPopup`, `MenuItem`, `MenuGroup`, `MenuGroupLabel`, `MenuSeparator` |
 | Display | `Badge`, `Kbd`, `Spinner`, `Skeleton`, `Icon` (any lucide icon by name), `AgentIcon`, `Alert`, `AlertTitle`, `AlertDescription`, `Meter`, `MeterLabel`, `MeterTrack`, `MeterIndicator`, `MeterValue`, `Table`, `TableHeader`, `TableBody`, `TableRow`, `TableHead`, `TableCell`, `Empty`, `EmptyHeader`, `EmptyTitle`, `EmptyDescription` |
 | Overlays | `Tip`, `Tooltip`, `TooltipTrigger`, `TooltipPopup`, `AlertDialog` and its parts, `Sheet`, `SheetPopup`, `SheetHeader`, `SheetTitle`, `SheetDescription`, `SheetPanel`, `SheetFooter`, `SheetClose` |
+| Home widgets | `WidgetRow` (one 36px line, a button with `onClick`), `WidgetEmpty` (`scene`, `title`, `hint`, `action`, `onAction`), `WidgetSkeleton` (`rows`) |
 | Utility | `cn(...classes)` |
 | Diffs | `loadDiffs()`: the app's diff renderer ([@pierre/diffs](https://diffs.com), highlighted in workers, themed like the app), loaded on first call and shared with the app. `parse(patch)` reads a git patch; `<default>` draws its files as a scrolling list, split or unified. The built-in Diff panel uses it. |
 

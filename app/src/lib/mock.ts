@@ -117,7 +117,7 @@ const mockPrompted = new Set<string>();
 
 const sessions: Record<string, Session[]> = {
   devl: [
-    { name: "checkout-fix-claude", title: "Fix checkout webhook retries", location: "shop/checkout-fix", dir: "/home/me/work/shop-checkout-fix", command: "claude", created: ago(52), attached: 0, exited: false, agent: "claude", agent_state: "waiting", state_since: ago(4) },
+    { name: "checkout-fix-claude", title: "Fix checkout webhook retries", location: "shop/checkout-fix", dir: "/home/me/work/shop-checkout-fix", command: "claude", created: ago(52), attached: 0, exited: false, agent: "claude", agent_state: "waiting", state_since: ago(4), ask: { tool: "Bash", input: "pnpm prisma migrate dev --name idempotency_key", why: "The fix needs a column for idempotency keys" } },
     // The worktree's dev server, a service in a terminal of its own.
     { name: "svc-shop-checkout-fix-web", title: "Next.js", location: "shop/checkout-fix", dir: "/home/me/work/shop-checkout-fix", command: "pnpm dev --port $BERTH_PORT", created: ago(50), attached: 0, exited: false, service: "web" },
     { name: "qa-deck-codex", title: "Build the QA deck for the release", location: "shop/qa-deck", dir: "/home/me/work/shop-qa-deck", command: "codex", created: ago(18), attached: 1, exited: false, agent: "codex", agent_state: "running", state_since: ago(2) },
@@ -134,7 +134,7 @@ const sessions: Record<string, Session[]> = {
     { name: "judge-v2-claude", title: "Tune the judge prompt", location: "evals/judge-v2", dir: "/home/me/evals-judge-v2", command: "claude", created: ago(9), attached: 0, exited: false, agent: "claude", agent_state: "running", state_since: ago(1) },
     { name: "evals-codex", location: "evals", dir: "/home/me/evals", command: "codex", created: ago(3), attached: 0, exited: false, agent: "codex", agent_state: "idle", state_since: ago(3) },
     // Asks a form of questions (AskUserQuestion) after a reply with code.
-    { name: "shop-claude", title: "Plan the checkout release", location: "shop", dir: "/home/me/shop", command: "claude", created: ago(12), attached: 0, exited: false, agent: "claude", agent_state: "waiting", state_since: ago(2) },
+    { name: "shop-claude", title: "Plan the checkout release", location: "shop", dir: "/home/me/shop", command: "claude", created: ago(12), attached: 0, exited: false, agent: "claude", agent_state: "waiting", state_since: ago(2), ask: { tool: "AskUserQuestion", message: "Three questions about the release window" } },
   ],
 };
 
@@ -176,6 +176,16 @@ const services: Record<string, Service[]> = {
   ],
   gpu: [{ location: "evals", worktree: "judge-v2", path: "/home/me/evals-judge-v2", port: 8888, process: "jupyter" }],
 };
+
+// ?mock=1&firstrun=1: one box paired and nothing else yet (no projects,
+// agents or services), for Home's first run.
+if (new URLSearchParams(location.search).has("firstrun")) {
+  status.boxes = status.boxes.filter((b) => b.name === "devl");
+  status.forwards = [];
+  for (const k of Object.keys(locations)) locations[k] = [];
+  for (const k of Object.keys(sessions)) sessions[k] = [];
+  for (const k of Object.keys(services)) services[k] = [];
+}
 
 // Hooks per machine, editable the way the agent and boxes allow.
 const hooksFiles: Record<string, HooksFile> = {
