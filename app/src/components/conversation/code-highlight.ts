@@ -50,6 +50,21 @@ export function guessLanguage(code: string): string {
   return "text";
 }
 
+// languageName is how a code block's head names its language: as people
+// write it, or the fence's own word for one not listed.
+const NAMES: Record<string, string> = {
+  ts: "TypeScript", typescript: "TypeScript", tsx: "TSX", js: "JavaScript", javascript: "JavaScript", jsx: "JSX", mjs: "JavaScript",
+  sh: "Shell", bash: "Shell", zsh: "Shell", shell: "Shell", console: "Shell", shellsession: "Shell", fish: "Fish",
+  go: "Go", golang: "Go", rs: "Rust", rust: "Rust", py: "Python", python: "Python", rb: "Ruby", ruby: "Ruby", swift: "Swift", kotlin: "Kotlin", java: "Java",
+  c: "C", cpp: "C++", "c++": "C++", cs: "C#", csharp: "C#", php: "PHP", lua: "Lua", sql: "SQL", graphql: "GraphQL",
+  json: "JSON", jsonc: "JSON", yaml: "YAML", yml: "YAML", toml: "TOML", xml: "XML", html: "HTML", css: "CSS", scss: "SCSS",
+  md: "Markdown", markdown: "Markdown", diff: "Diff", patch: "Diff", dockerfile: "Dockerfile", docker: "Dockerfile", makefile: "Makefile", nix: "Nix",
+  text: "Text", txt: "Text", plaintext: "Text",
+};
+export function languageName(lang: string): string {
+  return NAMES[lang] ?? lang.replace(/[<>&"]/g, "");
+}
+
 function languageOf(code: HTMLElement, text: string): string {
   const named = /\blanguage-([\w#+.-]+)/.exec(code.className)?.[1]?.toLowerCase();
   if (!named) return guessLanguage(text);

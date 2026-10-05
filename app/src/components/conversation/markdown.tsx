@@ -3,7 +3,7 @@ import { micromark } from "micromark";
 import { gfm, gfmHtml } from "micromark-extension-gfm";
 import { memo, useMemo, useRef } from "react";
 
-import { useCodeHighlight } from "@/components/conversation/code-highlight";
+import { guessLanguage, languageName, useCodeHighlight } from "@/components/conversation/code-highlight";
 import { Tip } from "@/components/tip";
 import { copyText } from "@/lib/clipboard";
 import { openUrl } from "@/lib/open-url";
@@ -17,7 +17,21 @@ import { openUrl } from "@/lib/open-url";
 // code block has its own Copy, and the reply's Copy takes the Markdown
 // itself, so tables and lists survive a paste into an issue or an editor.
 
-const COPY_CODE = '<button type="button" class="cv-copy-code" data-copy-code aria-label="Copy code">Copy</button>';
+// A code block's head: its language, and Copy (lucide's copy and check).
+const ICON = (d: string) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const COPY_ICON = ICON('<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>');
+const DONE_ICON = ICON('<path d="M20 6 9 17l-5-5"/>');
+const COPY_CODE = `<button type="button" class="cv-copy-code" data-copy-code aria-label="Copy code"><span class="cv-copy-idle">${COPY_ICON}Copy</span><span class="cv-copy-done">${DONE_ICON}Copied</span></button>`;
+
+const unescape = (s: string) => s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+
+// codeBlock wraps a fenced block in its frame, headed by its language as
+// the fence names it or, unnamed, as code-highlight guesses it.
+const codeBlock = (_: string, attrs: string, lang: string | undefined, body: string) => {
+  const name = languageName(lang?.toLowerCase() ?? guessLanguage(unescape(body)));
+  const head = `<div class="cv-pre-head"><span class="cv-pre-lang">${name}</span>${COPY_CODE}</div>`;
+  return `<div class="cv-pre">${head}<pre><code${attrs}>${body}</code></pre></div>`;
+};
 
 export const Markdown = memo(function Markdown({ text, copy = true }: { text: string; copy?: boolean }) {
   const html = useMemo(
@@ -26,8 +40,7 @@ export const Markdown = memo(function Markdown({ text, copy = true }: { text: st
         // Wide tables scroll on their own instead of widening the column.
         .replace(/<table>/g, '<div class="cv-table"><table>')
         .replace(/<\/table>/g, "</table></div>")
-        .replace(/<pre>/g, `<div class="cv-pre">${COPY_CODE}<pre>`)
-        .replace(/<\/pre>/g, "</pre></div>"),
+        .replace(/<pre><code((?: class="language-([^"]+)")?)>([\s\S]*?)<\/code><\/pre>/g, codeBlock),
     [text],
   );
   const body = useRef<HTMLDivElement>(null);
@@ -42,10 +55,14 @@ export const Markdown = memo(function Markdown({ text, copy = true }: { text: st
         dangerouslySetInnerHTML={{ __html: html }}
         onClick={(e) => {
           const el = e.target as HTMLElement;
-          const code = el.closest("[data-copy-code]");
+          const code = el.closest<HTMLElement>("[data-copy-code]");
           if (code) {
-            const pre = code.parentElement?.querySelector("pre");
+            const pre = code.closest(".cv-pre")?.querySelector("pre");
             if (pre) void copyText(pre.textContent ?? "", "Copied the code");
+            // "Copied" for a moment, where the pointer is.
+            code.dataset.copied = "";
+            window.clearTimeout(Number(code.dataset.timer));
+            code.dataset.timer = String(window.setTimeout(() => delete code.dataset.copied, 1600));
             return;
           }
           const a = el.closest("a");

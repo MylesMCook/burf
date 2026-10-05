@@ -1,6 +1,7 @@
 import { CheckIcon, ChevronRightIcon, ClockIcon, CornerDownRightIcon, FileTextIcon, GitCompareArrowsIcon, PencilLineIcon, RotateCwIcon, SearchIcon, SendHorizontalIcon, TerminalIcon, XIcon } from "lucide-react";
 import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 
+import { PixelGrid, PixelLoader } from "@/components/pixel-loader";
 import { Tip } from "@/components/tip";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,6 +21,7 @@ import { ChatSearch, plainMarkdown, type SearchEntry } from "@/components/conver
 import { EditChange, EditPanel } from "@/components/conversation/edit-diff";
 import { ArtifactCard, ArtifactJumper } from "@/components/conversation/artifacts";
 import { QuestionCard } from "@/components/conversation/question-form";
+import { SelectionActions } from "@/components/conversation/selection-actions";
 import { PromptActions, PromptActionsContext, type PromptContext } from "@/components/conversation/prompt-actions";
 import { HelperSheetHost, openHelper } from "@/components/conversation/subagent-view";
 import { isMock } from "@/hooks/use-berth-connection";
@@ -148,6 +150,7 @@ export function ConversationView({ items: live, onAnswer, edits, who = "The agen
                   <ChatSearch api={api} entries={entries} onReveal={setReveal} />
                   <ArtifactJumper api={api} chat={key} rows={blocks} older={history ? older : undefined} onLoadOlder={nearTop} />
                   <TurnSync api={api} rows={blocks} isTurn={isTurn} />
+                  <SelectionActions api={api} chat={key} who={who} />
                 </>
               )
             : undefined}
@@ -238,10 +241,7 @@ function OlderHeader({ older, onLoad }: { older: { loading: boolean; error?: str
   return (
     <div className="flex h-10 items-center justify-center pb-4 text-muted-foreground text-xs">
       {older.loading ? (
-        <span className="flex items-center gap-2">
-          <Spinner className="size-3.5" />
-          Loading earlier messages…
-        </span>
+        <PixelLoader label="Loading earlier messages…" />
       ) : older.error ? (
         <span className="flex items-center gap-2">
           <span className="text-destructive-foreground">Couldn't load earlier messages.</span>
@@ -774,11 +774,7 @@ function Thinking({ since, label, elapsed, meta, step }: { since: number; label?
   const word = label ?? `${HARBOUR_WORDS[Math.floor(now / 4000) % HARBOUR_WORDS.length]}…`;
   return (
     <div className="cv-in flex min-w-0 items-center gap-2">
-      <span className="cv-dots shrink-0" aria-hidden>
-        <i />
-        <i />
-        <i />
-      </span>
+      <PixelGrid className="text-muted-foreground" />
       {step ? (
         <span className="flex min-w-0 items-center gap-1.5">
           <span className="cv-shimmer shrink-0">{doing}</span>

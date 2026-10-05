@@ -11,6 +11,7 @@ import { ChatBackground } from "@/components/conversation/chat-background";
 import { ChatControls } from "@/components/conversation/chat-controls";
 import { ConversationView, type EditActions, QueuedBubble } from "@/components/conversation/conversation-view";
 import { ChatScope } from "@/components/conversation/notice-card";
+import { PixelLoader } from "@/components/pixel-loader";
 import { useComposerMenu } from "@/components/conversation/command-menu";
 import { LiveScreen, useLiveScreen } from "@/components/conversation/live-screen";
 import { QuestionsContext } from "@/components/conversation/question-form";
@@ -22,12 +23,12 @@ import { Button } from "@/components/ui/button";
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
 import { InputGroup, InputGroupAddon, InputGroupTextarea } from "@/components/ui/input-group";
 import { Kbd } from "@/components/ui/kbd";
-import { Spinner } from "@/components/ui/spinner";
 import { toastManager } from "@/components/ui/toast";
 import { isMock } from "@/hooks/use-berth-connection";
 import { startSession } from "@/lib/actions";
 import { ApiError, boxApi, type QueuedPrompt } from "@/lib/api";
 import { type AttachTarget, withAttachments } from "@/lib/attachments";
+import { joinDraft, listenForQuotes, type QuoteFill } from "@/lib/chat-quote";
 import { keyOf, useConversations } from "@/lib/conversation-store";
 import { agentLabel, agentOf, guessAgent, sessionState, worktreeOf } from "@/lib/derive";
 import type { NextStep } from "@/lib/errors";
@@ -462,9 +463,8 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
       <ChatBackground />
       <div className="min-h-0 flex-1 overflow-y-auto pt-6 pr-6 pb-4 pl-6 @[1000px]:pr-[max(24px,var(--berth-loops-w,0px))]">
         {!mock && feed === "loading" && !items.length ? (
-          <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
-            <Spinner className="mr-2 size-4" />
-            Reading the conversation…
+          <div className="flex h-full items-center justify-center text-sm">
+            <PixelLoader label="Reading the conversation…" />
           </div>
         ) : (
           <ChatScope value={{ who, send: reply, showTerminal: onShowTerminal, startAgain: again }}>
@@ -586,11 +586,12 @@ function Reply({ onSend, onFail, who, mode, blocked, hint, attach, agent }: { on
   const input = useRef<HTMLTextAreaElement>(null);
   const to = attach && "session" in attach ? attach.session : undefined;
   const recall = usePromptRecall(attach?.box, to, text, setText, input);
-  const go = () => {
-    const t = withAttachments(text.trim(), att.paths);
-    if (!ready || blocked) return;
-    if (attach?.box && to) noteSent(attach.box, to, text.trim());
-    const kept = text;
+  // Sends what is typed, or a draft put in from elsewhere (a quote).
+  const go = (draft = text) => {
+    const t = withAttachments(draft.trim(), att.paths);
+    if (!(draft.trim() || att.paths.length) || att.blocker || blocked) return;
+    if (attach?.box && to) noteSent(attach.box, to, draft.trim());
+    const kept = draft;
     setText("");
     onSend(t).then(att.clear, (err: unknown) => {
       // What was typed comes back (and the attachments stay), so nothing is
@@ -599,6 +600,22 @@ function Reply({ onSend, onFail, who, mode, blocked, hint, attach, agent }: { on
       onFail(err);
     });
   };
+  // Words quoted from the chat above (selection-actions) come in after
+  // what is typed; with a question, they go at once, as Enter would.
+  const fill = useRef<(f: QuoteFill) => void>(undefined);
+  fill.current = (f) => {
+    const draft = joinDraft(text, f.text);
+    if (f.send && !blocked && !att.blocker) return go(draft);
+    setText(draft);
+    requestAnimationFrame(() => {
+      const el = input.current;
+      if (!el) return;
+      el.focus();
+      el.setSelectionRange(el.value.length, el.value.length);
+      el.scrollTop = el.scrollHeight;
+    });
+  };
+  useEffect(() => (attach?.box && to ? listenForQuotes(keyOf(attach.box, to), (f) => fill.current?.(f)) : undefined), [attach?.box, to]);
   const queue = mode === "queue";
   // While a file uploads, the field says so, and that the reply can be
   // written meanwhile.
@@ -657,7 +674,7 @@ function Reply({ onSend, onFail, who, mode, blocked, hint, attach, agent }: { on
           >
             {/* A disabled button takes no pointer: the wrapper keeps the tip. */}
             <span className="inline-flex">
-              <Button size="icon-sm" className="rounded-lg" variant={queue ? "outline" : "default"} aria-label={queue ? "Queue" : "Send"} disabled={!ready || blocked} onClick={go}>
+              <Button size="icon-sm" className="rounded-lg" variant={queue ? "outline" : "default"} aria-label={queue ? "Queue" : "Send"} disabled={!ready || blocked} onClick={() => go()}>
                 {queue ? <ListPlusIcon /> : <ArrowUpIcon />}
               </Button>
             </span>
@@ -712,9 +729,8 @@ function useStalled(active: boolean, ms: number, reset: string): boolean {
 
 function Reading() {
   return (
-    <div className="flex flex-1 items-center justify-center bg-background text-muted-foreground text-sm">
-      <Spinner className="mr-2 size-4" />
-      Reading the conversation…
+    <div className="flex flex-1 items-center justify-center bg-background text-sm">
+      <PixelLoader label="Reading the conversation…" />
     </div>
   );
 }

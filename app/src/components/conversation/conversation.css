@@ -13,11 +13,6 @@
 .cv-fold[data-closed] { grid-template-rows: 0fr; opacity: 0; }
 .cv-fold[data-closed] > * { visibility: hidden; transition: visibility 0s 320ms; }
 
-.cv-dots { display: inline-flex; gap: 2px; }
-.cv-dots i { width: 4px; height: 4px; border-radius: 50%; background: #e0785a; animation: cv-dot 1.1s ease-in-out infinite; }
-.cv-dots i:nth-child(2) { animation-delay: 0.15s; background: var(--warning); }
-.cv-dots i:nth-child(3) { animation-delay: 0.3s; background: #8b7ff0; }
-@keyframes cv-dot { 50% { transform: translateY(-2px); opacity: 0.45; } }
 
 /* What is in progress: a soft light passing over its label. */
 .cv-shimmer {
@@ -29,9 +24,9 @@
 }
 @keyframes cv-shimmer { from { background-position: 100% 0; } to { background-position: 0% 0; } }
 
-:root[data-berth-hidden] :is(.cv-dots i, .cv-shimmer) { animation-play-state: paused; }
+:root[data-berth-hidden] .cv-shimmer { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) {
-  .cv-in, .cv-dots i, .cv-shimmer { animation: none; }
+  .cv-in, .cv-shimmer { animation: none; }
   .cv-fold { transition: none; }
   .cv-shimmer { color: var(--muted-foreground); background: none; }
 }
@@ -70,12 +65,31 @@
 .cv-md thead th { border-top: 0; font-weight: 500; color: var(--muted-foreground); background: var(--muted); }
 .cv-md td:first-child, .cv-md th:first-child { white-space: nowrap; }
 
-/* A code block's Copy, in its corner while the pointer is over it. */
-.cv-md .cv-pre { position: relative; }
-.cv-md .cv-copy-code { position: absolute; top: 6px; right: 6px; padding: 2px 8px; border-radius: 6px; font-size: 0.7188rem; color: var(--muted-foreground); background: var(--background); border: 1px solid var(--border); opacity: 0; transition: opacity 120ms ease; user-select: none; cursor: pointer; }
-.cv-md .cv-pre:hover .cv-copy-code, .cv-md .cv-copy-code:focus-visible { opacity: 1; }
-.cv-md .cv-copy-code:hover { color: var(--foreground); }
+/* A code block's frame: a head naming its language, with Copy, over the
+   code. The frame is the block's surface (bordered, the composer's radius);
+   the code inside it keeps the editor's background. */
+.cv-md .cv-pre { margin: 0 0 0.75em; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-lg); background: color-mix(in srgb, var(--muted) 60%, var(--background)); }
+.cv-md .cv-pre > pre { margin: 0; border-radius: 0; background: none; }
+.cv-md .cv-pre-head { display: flex; align-items: center; gap: 0.5rem; height: 1.875rem; padding: 0 0.25rem 0 0.75rem; border-bottom: 1px solid color-mix(in srgb, var(--border) 70%, transparent); font-size: 0.7188rem; color: var(--muted-foreground); user-select: none; }
+.cv-md .cv-pre-lang { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cv-md .cv-copy-code { display: inline-flex; align-items: center; height: 1.375rem; padding: 0 0.375rem; border-radius: var(--radius-sm, 0.375rem); color: var(--muted-foreground); cursor: pointer; outline: none; transition: color 120ms ease, background-color 120ms ease; }
+.cv-md .cv-copy-code > span { display: inline-flex; align-items: center; gap: 0.3125rem; }
+.cv-md .cv-copy-code svg { width: 0.8125rem; height: 0.8125rem; }
+.cv-md .cv-copy-code:hover { color: var(--foreground); background: var(--accent); }
+.cv-md .cv-copy-code:focus-visible { box-shadow: 0 0 0 2px var(--ring); }
+.cv-md .cv-copy-code .cv-copy-done, .cv-md .cv-copy-code[data-copied] .cv-copy-idle { display: none; }
+.cv-md .cv-copy-code[data-copied] .cv-copy-done { display: inline-flex; color: var(--success-foreground, var(--foreground)); }
+/* Words quoted from the selection bar stay marked while its field is typed in. */
+::highlight(chat-quote) { background-color: var(--selection, color-mix(in srgb, var(--primary) 28%, transparent)); }
 .cv-md ::selection, [data-selectable] ::selection { background: var(--selection, color-mix(in srgb, var(--primary) 28%, transparent)); }
+
+/* The bar offered by selected words (selection-actions.tsx): it rises a
+   little into place, from below the words when it sits under them. */
+.cv-pop { animation: cv-pop 160ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.cv-pop[data-below] { animation-name: cv-pop-below; }
+@keyframes cv-pop { from { opacity: 0; transform: translateY(3px) scale(0.98); } }
+@keyframes cv-pop-below { from { opacity: 0; transform: translateY(-3px) scale(0.98); } }
+@media (prefers-reduced-motion: reduce) { .cv-pop { animation: none; } }
 
 /* Words read from the agent's screen before its record has them. */
 /* Words read off the agent's screen before its record has them: the reply

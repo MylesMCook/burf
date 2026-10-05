@@ -141,3 +141,56 @@ test("a reply sent while the agent works waits as pending", async ({ app }) => {
   await expect(pending).toContainText("Queued: sends when Claude finishes");
   await expect(pending.getByRole("button", { name: "Send now" })).toBeEnabled();
 });
+
+// selectWords selects an element's words, as a triple click does.
+async function selectWords(el: import("@playwright/test").Locator) {
+  await el.scrollIntoViewIfNeeded();
+  await el.click({ clickCount: 3 });
+}
+
+test("words selected in a reply can be quoted in the reply box", async ({ app }) => {
+  mockOnly();
+  await app.openWorktree("gpu/shop");
+  const words = app.chat.locator(".cv-md li").filter({ hasText: "Retries stop after" });
+  await selectWords(words);
+  const bar = app.page.getByTestId("selection-actions");
+  await expect(bar).toBeVisible();
+  await expect(bar.getByRole("textbox", { name: "Ask Claude about this" })).toBeVisible();
+  await bar.getByRole("button", { name: "Quote in reply" }).click();
+  await expect(bar).toBeHidden();
+  const box = app.composer.getByRole("textbox", { name: "Reply" });
+  await expect(box).toHaveValue("> Retries stop after five tries over ten minutes.\n\n");
+  await expect(box).toBeFocused();
+  // Escape puts the bar away, and a click elsewhere does too.
+  await selectWords(words);
+  await expect(bar).toBeVisible();
+  await app.page.keyboard.press("Escape");
+  await expect(bar).toBeHidden();
+});
+
+test("a question about selected words goes to the agent with them quoted", async ({ app }) => {
+  mockOnly("sends a prompt");
+  await app.openWorktree("gpu/judge-v2");
+  await selectWords(app.chat.locator("[data-kind=text] .cv-md p").first());
+  const bar = app.page.getByTestId("selection-actions");
+  const ask = bar.getByRole("textbox", { name: "Ask Claude about this" });
+  await ask.fill("Which test is failing?");
+  await ask.press("Enter");
+  await expect(bar).toBeHidden();
+  // Claude is mid-turn, so it waits as any reply would.
+  const pending = app.chat.getByTestId("queued-reply");
+  await expect(pending).toContainText("> I’ll start from the failing test in judge-v2 and work outwards.");
+  await expect(pending).toContainText("Which test is failing?");
+});
+
+test("a code block is headed by its language, with a Copy that says so", async ({ app }) => {
+  mockOnly();
+  await app.openWorktree("gpu/shop");
+  const block = app.chat.locator(".cv-md .cv-pre").first();
+  await expect(block.locator(".cv-pre-lang")).toHaveText("TypeScript");
+  const copy = block.getByRole("button", { name: "Copy code" });
+  await expect(copy).toBeVisible();
+  await copy.click();
+  await expect(copy).toHaveText("Copied", { useInnerText: true });
+  expect(await app.page.evaluate(() => navigator.clipboard.readText())).toContain("orders.byIdempotencyKey(event.idempotencyKey)");
+});
