@@ -51,6 +51,10 @@ type Session struct {
 	// hooks, when they said.
 	Queued int  `json:"queued,omitempty"`
 	Ask    *Ask `json:"ask,omitempty"`
+	// Service is set on a worktree service's own terminal (a service with
+	// "terminal": true): the service's name, kept as @berth_service. It is
+	// never an agent, whatever it runs.
+	Service string `json:"service,omitempty"`
 }
 
 var (
@@ -112,7 +116,7 @@ func (s *Sessions) tmux(ctx context.Context, args ...string) ([]byte, error) {
 // existed only have the plain one, so only they print it: a command carries
 // its prompt, and a prompt's line breaks or tabs printed here would split
 // the session's line, and the session would vanish from the list.
-const listFormat = "#{session_name}\t#{session_created}\t#{session_attached}\t#{@berth_location}\t#{?@berth_command64,,#{@berth_command}}\t#{pane_dead}\t#{pane_start_path}\t#{@berth_command64}\t#{@berth_agent}\t#{@berth_title}"
+const listFormat = "#{session_name}\t#{session_created}\t#{session_attached}\t#{@berth_location}\t#{?@berth_command64,,#{@berth_command}}\t#{pane_dead}\t#{pane_start_path}\t#{@berth_command64}\t#{@berth_agent}\t#{@berth_title}\t#{@berth_service}"
 
 // plainCommand is the command as the plain @berth_command keeps it, for
 // builds that read only that: on one line, as a session list needs it.
@@ -144,10 +148,10 @@ func parseSessions(out []byte) []Session {
 	sessions := []Session{}
 	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 		f := strings.Split(line, "\t")
-		for len(f) >= 7 && len(f) < 10 {
+		for len(f) >= 7 && len(f) < 11 {
 			f = append(f, "")
 		}
-		if len(f) != 10 {
+		if len(f) != 11 {
 			continue
 		}
 		command := f[4]
@@ -168,6 +172,7 @@ func parseSessions(out []byte) []Session {
 			Dir:      f[6],
 			Preset:   f[8],
 			Title:    f[9],
+			Service:  f[10],
 		})
 	}
 	return sessions

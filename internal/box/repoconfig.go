@@ -30,7 +30,15 @@ type WorktreeService struct {
 	Run  string `json:"run"`
 	// Autostart starts it when the worktree is created, after setup.
 	Autostart bool `json:"autostart,omitempty"`
+	// Terminal runs it in a terminal of its own (a tmux session) instead of
+	// in the background, which the app shows as a tab: its output live, and
+	// Ctrl-C there stops it. Title names that tab; the name does otherwise.
+	Terminal bool   `json:"terminal,omitempty"`
+	Title    string `json:"title,omitempty"`
 }
+
+// serviceTitleMax is the longest a service's tab title can be.
+const serviceTitleMax = 48
 
 var serviceName = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,31}$`)
 
@@ -50,6 +58,9 @@ func (c RepoConfig) validate() error {
 		seen[s.Name] = true
 		if strings.TrimSpace(s.Run) == "" {
 			return fmt.Errorf("service %s has nothing to run", s.Name)
+		}
+		if len([]rune(s.Title)) > serviceTitleMax || strings.ContainsAny(s.Title, "\r\n\t") {
+			return fmt.Errorf("service %s: title must be one line of at most %d characters", s.Name, serviceTitleMax)
 		}
 	}
 	for k := range c.Env {

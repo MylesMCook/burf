@@ -130,7 +130,9 @@ func (b *Box) Capabilities() []string {
 	// sample project; history: older transcript pages, helpers' own
 	// conversations, fork and rewind (history.go); commands: GET
 	// .../commands and .../files for the chat's "/" and "@".
-	caps := []string{"transcript", "diff", "titles", "sample", "history", "commands"}
+	// service.terminal: a service can run in a terminal of its own
+	// ("terminal": true), listed as a session with "service" set.
+	caps := []string{"transcript", "diff", "titles", "sample", "history", "commands", "service.terminal"}
 	if b.Turns != nil {
 		// controls: POST .../keys, .../interrupt and .../mode, GET
 		// .../controls (controls.go).

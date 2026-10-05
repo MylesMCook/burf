@@ -206,8 +206,12 @@ func wrapperWord(f string) bool {
 }
 
 // agentFor is the agent a session runs: its preset when berth started it
-// with one, else what its command looks like.
+// with one, else what its command looks like. A service's terminal runs
+// none, whatever its command.
 func agentFor(s Session) string {
+	if s.Service != "" {
+		return ""
+	}
 	if s.Preset != "" {
 		for _, p := range builtinAgents {
 			if p.ID == s.Preset {

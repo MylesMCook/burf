@@ -23,6 +23,10 @@ func (b *Box) transcriptFile(r *http.Request, sess Session) (agent, path, where 
 	if agent == "" {
 		agent = agentOf(sess.Command)
 	}
+	if sess.Service != "" {
+		// A service's terminal has no conversation.
+		agent = ""
+	}
 	var id string
 	if b.Turns != nil {
 		if st, ok := b.Turns.State(sess.Name); ok {
@@ -35,7 +39,7 @@ func (b *Box) transcriptFile(r *http.Request, sess Session) (agent, path, where 
 		claims := []transcript.Claim{{Name: sess.Name, ID: id, Started: sess.Created}}
 		if all, err := b.Sessions.List(r.Context()); err == nil {
 			for _, o := range all {
-				if o.Name == sess.Name || o.Dir != sess.Dir || o.Exited {
+				if o.Name == sess.Name || o.Dir != sess.Dir || o.Exited || o.Service != "" {
 					continue
 				}
 				if a := firstNonEmpty(o.Preset, firstNonEmpty(o.Agent, agentOf(o.Command))); a != "claude" {

@@ -28,6 +28,8 @@ guide is in [project config](/guides/project-config).
 | `name` | string | Required. `[a-z0-9][a-z0-9-]*`, at most 32 characters, unique. |
 | `run` | string | Required. Run in the worktree through a login shell, with its environment and `PORT`. |
 | `autostart` | boolean | Start when the worktree is created, after setup succeeds. |
+| `terminal` | boolean | Run in a terminal of its own, shown as a tab in the worktree, instead of in the background. Ctrl-C there stops it. Needs a box with the `service.terminal` capability. See [services in a terminal](/guides/project-config#services-in-a-terminal). |
+| `title` | string | The tab's name, one line of at most 48 characters. Default: `name`. |
 
 ### `agents`
 

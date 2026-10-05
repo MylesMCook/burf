@@ -74,7 +74,7 @@ shop-dev/
     "archive": "$BERTH_KIT_DIR/scripts/archive.sh",
     "ports": 3,
     "env": { "DATABASE_URL": "postgres://localhost/shop_$BERTH_WORKTREE_SLUG" },
-    "services": [{ "name": "web", "run": "pnpm dev --port $BERTH_PORT", "autostart": true }]
+    "services": [{ "name": "web", "run": "pnpm dev --port $BERTH_PORT", "autostart": true, "terminal": true, "title": "Next.js" }]
   }
 }
 ```

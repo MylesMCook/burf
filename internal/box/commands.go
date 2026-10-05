@@ -299,6 +299,9 @@ func containsStr(list []string, s string) bool {
 // sessionAgent is the agent a session runs: its preset, else what the list
 // knows, else its command's first word.
 func sessionAgent(sess Session) string {
+	if sess.Service != "" {
+		return ""
+	}
 	return firstNonEmpty(sess.Preset, firstNonEmpty(sess.Agent, agentOf(sess.Command)))
 }
 

@@ -79,8 +79,8 @@ Berth reads the terminal and sends these itself with `origin: "screen"` and
 | `worktree.archive.started`, `.finished`, `.failed` | the same |
 | `worktree.synced` | `location`, `name`, `mode`, `ok`, `base`, `conflicts` |
 | `worktree.paused`, `worktree.resumed` | `location`, `name`, `path` |
-| `service.started` | `location`, `name`, `path`, `service`, `port` |
-| `service.stopped` | `location`, `name`, `path`, `service` |
+| `service.started` | `location`, `name`, `path`, `service`, `port`; `session` for a service in a terminal |
+| `service.stopped` | `location`, `name`, `path`, `service`; for a service in a terminal whose program ended by itself (Ctrl-C in its tab, a crash), `session` and `exit_status` |
 | `service.failed` | `location`, `name`, `service`, `error` |
 
 ### Automation, config and the box

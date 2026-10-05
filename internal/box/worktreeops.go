@@ -416,16 +416,16 @@ func (b *Box) PauseWorktree(ctx context.Context, location, worktree string) (Wor
 	rec := pausedWorktree{At: time.Now().UTC(), Sessions: []string{}, Services: []string{}}
 	sessions, _ := b.Sessions.List(ctx)
 	for _, s := range sessions {
-		if samePath(s.Dir, wt.Path) && !s.Exited && agentOf(s.Command) != "" {
+		if samePath(s.Dir, wt.Path) && !s.Exited && s.Service == "" && agentOf(s.Command) != "" {
 			if err := b.Sessions.freezeSession(ctx, s.Name, true); err == nil {
 				rec.Sessions = append(rec.Sessions, s.Name)
 			}
 		}
 	}
-	if svcs, err := b.WorktreeServices(ctx, loc.Name, wt.Name); err == nil && b.Units != nil {
+	if svcs, err := b.WorktreeServices(ctx, loc.Name, wt.Name); err == nil {
 		for _, s := range svcs {
 			if s.State != "stopped" {
-				b.Units.Remove(s.Unit)
+				b.haltService(ctx, s)
 				rec.Services = append(rec.Services, s.Name)
 			}
 		}

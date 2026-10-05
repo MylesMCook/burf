@@ -25,6 +25,11 @@ type ServiceStatus struct {
 	State string `json:"state"`
 	Unit  string `json:"unit"`
 	Port  int    `json:"port,omitempty"`
+	// Terminal services run in Session, a tmux session the app shows as a
+	// tab named Title (the name when the config gives none).
+	Terminal bool   `json:"terminal,omitempty"`
+	Title    string `json:"title,omitempty"`
+	Session  string `json:"session,omitempty"`
 }
 
 var ErrUnknownService = errors.New("no service with that name in this repository's config")
@@ -85,9 +90,22 @@ func (b *Box) WorktreeServices(ctx context.Context, location, worktree string) (
 		return nil, err
 	}
 	out := []ServiceStatus{}
+	var sessions []Session
 	for _, s := range cfg.Effective.Services {
 		st := ServiceStatus{Name: s.Name, Run: s.Run, Autostart: s.Autostart, State: "stopped", Unit: serviceUnit(loc.Name, wt.Name, s.Name), Port: wt.Port}
-		if b.Units != nil {
+		if s.Terminal {
+			st.Terminal, st.Title, st.Session = true, serviceTitle(s), serviceSession(loc.Name, wt.Name, s.Name)
+			if sessions == nil && b.Sessions != nil {
+				if sessions, err = b.Sessions.List(ctx); err != nil {
+					sessions = []Session{}
+				}
+			}
+			st.State = terminalState(sessions, st.Session)
+			if st.State == "running" {
+				// Watched since this daemon started it, or from now.
+				b.watchTerminalService(loc.Name, wt, s.Name, st.Session)
+			}
+		} else if b.Units != nil {
 			if u, err := b.Units.Get(st.Unit); err == nil {
 				st.State = u.State
 			}
@@ -99,9 +117,6 @@ func (b *Box) WorktreeServices(ctx context.Context, location, worktree string) (
 
 // StartService (re)installs and starts one service of a worktree.
 func (b *Box) StartService(ctx context.Context, location, worktree, name string) (ServiceStatus, error) {
-	if b.Units == nil {
-		return ServiceStatus{}, httpError{http.StatusNotImplemented, "this box cannot run managed units"}
-	}
 	loc, wt, err := b.worktreeRef(ctx, location, worktree)
 	if err != nil {
 		return ServiceStatus{}, err
@@ -119,6 +134,9 @@ func (b *Box) StartService(ctx context.Context, location, worktree, name string)
 	if svc == nil {
 		return ServiceStatus{}, ErrUnknownService
 	}
+	if svc.Terminal && b.Sessions == nil || !svc.Terminal && b.Units == nil {
+		return ServiceStatus{}, httpError{http.StatusNotImplemented, "this box cannot run managed units"}
+	}
 	parts, err := b.worktreeEnv(ctx, loc.Name, wt)
 	if err != nil {
 		return ServiceStatus{}, err
@@ -132,6 +150,15 @@ func (b *Box) StartService(ctx context.Context, location, worktree, name string)
 	if _, ok := envMap["PORT"]; !ok && envMap["BERTH_PORT"] != "" && parts.refs["PORT"] == "" {
 		envMap["PORT"] = envMap["BERTH_PORT"]
 	}
+	if svc.Terminal {
+		if err := b.startTerminalService(ctx, loc, wt, *svc, envMap, parts.refs); err != nil {
+			return ServiceStatus{}, err
+		}
+		b.Events.Publish(eventf(b, "service.started", map[string]any{"location": loc.Name, "name": wt.Name, "path": wt.Path, "service": name, "port": wt.Port, "session": serviceSession(loc.Name, wt.Name, name)}))
+		return b.serviceStatus(ctx, location, worktree, name)
+	}
+	// It may have run in a terminal before its config changed.
+	b.killServiceSession(ctx, loc.Name, wt.Name, name)
 	program, args := loginShell(), []string{"-lc", "cd " + shellQuote(wt.Path) + " && " + svc.Run}
 	if len(parts.refs) > 0 {
 		// A unit file is on disk and the service manager restarts the
@@ -156,7 +183,9 @@ func (b *Box) StartService(ctx context.Context, location, worktree, name string)
 	return b.serviceStatus(ctx, location, worktree, name)
 }
 
-// StopService stops one service and removes its unit.
+// StopService stops one service and removes its unit. A service in a
+// terminal stops as Ctrl-C would stop it, and its terminal stays, with what
+// it printed, for the next start.
 func (b *Box) StopService(ctx context.Context, location, worktree, name string) (ServiceStatus, error) {
 	loc, wt, err := b.worktreeRef(ctx, location, worktree)
 	if err != nil {
@@ -164,6 +193,11 @@ func (b *Box) StopService(ctx context.Context, location, worktree, name string) 
 	}
 	if b.Units != nil {
 		if _, err := b.Units.Remove(serviceUnit(loc.Name, wt.Name, name)); err != nil && !errors.Is(err, ErrUnknownUnit) {
+			return ServiceStatus{}, err
+		}
+	}
+	if b.Sessions != nil {
+		if err := b.Sessions.stopService(ctx, serviceSession(loc.Name, wt.Name, name)); err != nil {
 			return ServiceStatus{}, err
 		}
 	}
@@ -182,6 +216,20 @@ func (b *Box) serviceStatus(ctx context.Context, location, worktree, name string
 		}
 	}
 	return ServiceStatus{}, ErrUnknownService
+}
+
+// haltService stops a running service for a while (a paused worktree), its
+// terminal kept for when it starts again.
+func (b *Box) haltService(ctx context.Context, s ServiceStatus) {
+	if s.Terminal {
+		if b.Sessions != nil {
+			b.Sessions.stopService(ctx, s.Session)
+		}
+		return
+	}
+	if b.Units != nil {
+		b.Units.Remove(s.Unit)
+	}
 }
 
 // startAutostart starts the services that start with every new worktree.
@@ -204,12 +252,17 @@ func (b *Box) startAutostart(location, worktree string) {
 // its archive script runs: a dev server holding the worktree's database
 // would stop the script from dropping it.
 func (b *Box) stopServices(location, worktree string) {
-	all, err := b.WorktreeServices(context.Background(), location, worktree)
-	if err != nil || b.Units == nil {
+	ctx := context.Background()
+	all, err := b.WorktreeServices(ctx, location, worktree)
+	if err != nil {
 		return
 	}
 	for _, s := range all {
-		b.Units.Remove(s.Unit)
+		if b.Units != nil {
+			b.Units.Remove(s.Unit)
+		}
+		// The terminal goes with the worktree.
+		b.killServiceSession(ctx, location, worktree, s.Name)
 	}
 }
 
@@ -254,14 +307,21 @@ func (b *Box) serviceAction(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (b *Box) serviceLog(w http.ResponseWriter, r *http.Request) error {
-	if b.Units == nil {
-		return httpError{http.StatusNotImplemented, "this box cannot run managed units"}
-	}
 	loc, wt, err := b.worktreeRef(r.Context(), r.PathValue("name"), r.PathValue("worktree"))
 	if err != nil {
 		return err
 	}
-	out, err := b.Units.Tail(serviceUnit(loc.Name, wt.Name, r.PathValue("service")), 256<<10)
+	svc := r.PathValue("service")
+	// A terminal's own screen and history read better than the raw log.
+	if out, ok := b.terminalServiceLog(r.Context(), loc.Name, wt.Name, svc, 256<<10); ok {
+		w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+		w.Write(out)
+		return nil
+	}
+	if b.Units == nil {
+		return httpError{http.StatusNotImplemented, "this box cannot run managed units"}
+	}
+	out, err := b.Units.Tail(serviceUnit(loc.Name, wt.Name, svc), 256<<10)
 	if err != nil {
 		return err
 	}

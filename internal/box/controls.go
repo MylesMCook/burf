@@ -25,6 +25,9 @@ var controlKeys = map[string]string{
 }
 
 func controlAgent(sess Session) string {
+	if sess.Service != "" {
+		return ""
+	}
 	return firstNonEmpty(sess.Preset, firstNonEmpty(sess.Agent, agentOf(sess.Command)))
 }
 
