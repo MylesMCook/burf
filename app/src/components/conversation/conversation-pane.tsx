@@ -122,7 +122,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
     const out = [...items];
     // What was just sent shows at once, until the agent's own record of it
     // arrives (a moment later) and takes its place.
-    for (const [i, p] of sent.entries()) if (!taken(items, p, i + 1)) out.push({ kind: "user", id: `sent:${p.at}`, text: p.text });
+    for (const [i, p] of sent.entries()) if (!taken(items, p, i + 1)) out.push({ kind: "user", id: `sent:${p.at}`, text: p.text, pending: state === "running" });
     if (state === "running") {
       // Its words on screen that its record doesn't have yet (Claude Code
       // writes them after the step it is running), until the record does.
