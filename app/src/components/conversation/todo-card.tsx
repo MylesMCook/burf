@@ -36,7 +36,7 @@ export function TodoCard({ todos, session, working }: { todos: ChatTodo[]; sessi
       <div className="flex items-center gap-2 py-1.5 pr-1.5 pl-3">
         <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)} className="-my-1 flex min-w-0 flex-1 items-center gap-2 rounded-md py-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <ListChecksIcon className={cn("size-3.5 shrink-0", all ? "text-success" : "text-muted-foreground")} aria-hidden />
-          <span className="shrink-0 font-medium text-[13px]">{all ? "All tasks done" : "Tasks"}</span>
+          <span className="shrink-0 font-medium text-[0.8125rem]">{all ? "All tasks done" : "Tasks"}</span>
           <span className="shrink-0 text-muted-foreground text-xs tabular-nums">
             {done} of {todos.length}
           </span>
@@ -66,7 +66,7 @@ export function TodoCard({ todos, session, working }: { todos: ChatTodo[]; sessi
         <div>
           <ol className="max-h-52 overflow-y-auto border-t px-3 py-2">
             {todos.map((t, i) => (
-              <li key={t.id ?? i} className="flex items-start gap-2.5 py-1 text-[13px] leading-snug">
+              <li key={t.id ?? i} className="flex items-start gap-2.5 py-1 text-[0.8125rem] leading-snug">
                 <Glyph status={t.status} working={working} />
                 <span className={cn("min-w-0 flex-1", t.status === "completed" && "text-muted-foreground line-through decoration-muted-foreground/40", t.status === "in_progress" && "font-medium text-foreground", t.status === "pending" && "text-foreground/85")}>
                   {t.status === "in_progress" && t.active ? t.active : t.text}

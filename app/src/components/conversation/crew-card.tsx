@@ -51,7 +51,7 @@ export function CrewCard({ crew, title, className, chat }: { crew: CrewMember[];
               <>
                 <StateGlyph state={c.state} className="mt-[3px]" />
                 <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium text-[13px] leading-5">{c.name.replace(/^Explore:\s*/, "")}</div>
+                  <div className="truncate font-medium text-[0.8125rem] leading-5">{c.name.replace(/^Explore:\s*/, "")}</div>
                   <div className="truncate text-muted-foreground text-xs leading-5">{c.doing}</div>
                 </div>
                 <div className="flex shrink-0 flex-col items-end text-muted-foreground text-xs leading-5">

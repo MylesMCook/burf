@@ -218,7 +218,7 @@ function CommandRow({ c, active }: { c: AgentCommand; active: boolean }) {
   const alias = c.aliases?.length ? c.aliases.join(", ") : undefined;
   return (
     <>
-      <span className="flex min-w-0 shrink-0 items-baseline gap-1.5 font-mono text-[12.5px]">
+      <span className="flex min-w-0 shrink-0 items-baseline gap-1.5 font-mono text-[0.7812rem]">
         <span className="font-medium">{c.name}</span>
         {c.args && <span className="text-muted-foreground">{c.args}</span>}
       </span>
@@ -240,7 +240,7 @@ function FileRow({ path }: { path: string }) {
   return (
     <>
       <FileIcon className="size-3.5 shrink-0 text-muted-foreground" />
-      <span className="min-w-0 flex-1 truncate font-mono text-[12.5px]">
+      <span className="min-w-0 flex-1 truncate font-mono text-[0.7812rem]">
         {cut >= 0 && <span className="text-muted-foreground">{path.slice(0, cut + 1)}</span>}
         <span className="font-medium">{path.slice(cut + 1)}</span>
       </span>
@@ -284,7 +284,7 @@ function PromptChip({ text, command, prefixes, who, side }: { text: string; comm
     words = prefixes?.["!"] ?? "Runs in the shell";
   } else if (t.startsWith("#") && t.length > 1) {
     words = prefixes?.["#"] ?? "Saves to memory";
-    icon = <span className="font-mono text-[10px]">#</span>;
+    icon = <span className="font-mono text-[0.625rem]">#</span>;
   } else if (command) {
     if (command.screen) {
       icon = <SquareTerminalIcon />;
@@ -297,7 +297,7 @@ function PromptChip({ text, command, prefixes, who, side }: { text: string; comm
     <div
       role="status"
       className={cn(
-        "pointer-events-none absolute z-20 flex h-5 min-w-0 max-w-[min(72%,32rem)] items-center gap-1 rounded-full border bg-background px-2 text-[11px] text-muted-foreground [&_svg]:size-3 [&_svg]:shrink-0",
+        "pointer-events-none absolute z-20 flex h-5 min-w-0 max-w-[min(72%,32rem)] items-center gap-1 rounded-full border bg-background px-2 text-[0.6875rem] text-muted-foreground [&_svg]:size-3 [&_svg]:shrink-0",
         // On the field's top edge, over its own padding and the gap above.
         side === "top" ? "top-0 right-3 -translate-y-1/2" : "right-2 bottom-2",
       )}

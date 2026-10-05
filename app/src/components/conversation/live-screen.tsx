@@ -102,7 +102,7 @@ export function LiveScreen({ box, session, agent, onHide, onShowTerminal }: { bo
     <section ref={host} aria-label={`${who}'s own screen`} className="cv-in mb-2 overflow-hidden rounded-lg border bg-card shadow-lg/5">
       <header className="flex min-w-0 items-center gap-2 border-b py-1.5 pr-1.5 pl-3">
         <AgentIcon agent={agent} className="size-3.5 shrink-0" />
-        <span className="min-w-0 flex-1 truncate font-medium text-[13px]">{who} is showing its own screen — answer it here</span>
+        <span className="min-w-0 flex-1 truncate font-medium text-[0.8125rem]">{who} is showing its own screen — answer it here</span>
         <Tip label="Open its terminal">
           <Button size="icon-xs" variant="ghost" aria-label="Open its terminal" onClick={onShowTerminal}>
             <SquareTerminalIcon />

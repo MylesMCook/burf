@@ -246,7 +246,7 @@ function AskedBy({ text }: { text: string }) {
   return (
     <div className="mb-5 rounded-lg border bg-muted/40 px-4 py-3">
       <div className="mb-1.5 font-medium text-muted-foreground text-xs">Asked by the agent</div>
-      <div className={cn("relative text-[13.5px]", long && !open && "max-h-32 overflow-hidden")}>
+      <div className={cn("relative text-[0.8438rem]", long && !open && "max-h-32 overflow-hidden")}>
         <Markdown text={text} copy={false} />
         {long && !open && <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-muted/90 to-transparent" />}
       </div>

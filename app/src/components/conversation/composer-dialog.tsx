@@ -83,7 +83,7 @@ function Compose({ draft }: { draft: ComposerDraft }) {
           </span>
         </span>
         {mode === "start" && !draft.from && (
-          <label className="flex cursor-pointer items-center gap-2 text-[13px] text-muted-foreground">
+          <label className="flex cursor-pointer items-center gap-2 text-[0.8125rem] text-muted-foreground">
             <Switch checked={more} onCheckedChange={setMore} />
             Start more
           </label>
@@ -189,7 +189,7 @@ function ResultRow({ row, onQueue }: { row: RunRow; onQueue(): void }) {
     <div className="rounded-lg border bg-card">
       <div className="flex min-w-0 items-center gap-2 px-3 py-2">
         <AgentIcon agent={session && agentOf(session)} />
-        <span className="min-w-0 truncate font-medium text-[13px]">{title}</span>
+        <span className="min-w-0 truncate font-medium text-[0.8125rem]">{title}</span>
         <span className="min-w-0 shrink truncate text-muted-foreground text-xs">{detail}</span>
         <span className={cn("ml-auto flex shrink-0 items-center gap-1 text-xs", info.className)}>
           {info.spin ? <Spinner className="size-3" /> : info.Icon && <info.Icon className="size-3.5" />}
@@ -197,7 +197,7 @@ function ResultRow({ row, onQueue }: { row: RunRow; onQueue(): void }) {
         </span>
         {row.state === "offline" && (
           <Tip label={`Send it when ${row.box} is back`}>
-            <Button type="button" size="xs" variant="outline" className="h-6 text-[11px]" onClick={onQueue}>
+            <Button type="button" size="xs" variant="outline" className="h-6 text-[0.6875rem]" onClick={onQueue}>
               Queue
             </Button>
           </Tip>
@@ -207,7 +207,7 @@ function ResultRow({ row, onQueue }: { row: RunRow; onQueue(): void }) {
             type="button"
             size="xs"
             variant="ghost"
-            className="h-6 text-[11px]"
+            className="h-6 text-[0.6875rem]"
             onClick={() => {
               closeComposer();
               openQueue();
@@ -220,7 +220,7 @@ function ResultRow({ row, onQueue }: { row: RunRow; onQueue(): void }) {
             type="button"
             size="xs"
             variant="ghost"
-            className="h-6 text-[11px]"
+            className="h-6 text-[0.6875rem]"
             onClick={() => {
               closeComposer();
               void focusSession(row.box, row.session);
@@ -232,7 +232,7 @@ function ResultRow({ row, onQueue }: { row: RunRow; onQueue(): void }) {
       </div>
       {row.error && <p className="border-t px-3 py-1.5 text-destructive-foreground text-xs">{row.error}</p>}
       {row.tail && row.tail.length > 0 && (
-        <div className="space-y-px border-t bg-muted/40 px-3 py-2 font-mono text-[11px] text-foreground/80 leading-snug">
+        <div className="space-y-px border-t bg-muted/40 px-3 py-2 font-mono text-[0.6875rem] text-foreground/80 leading-snug">
           {row.tail.map((l, i) => (
             <div key={i} className="truncate whitespace-pre" title={l}>
               {l}

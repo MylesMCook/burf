@@ -145,7 +145,7 @@ export function ChatControls({ box, session, agent, state, stateSince, dir, who,
               <Button size="xs" variant="outline" loading={stopping} onClick={() => void stop()} aria-label={`Stop ${who}`} className="gap-1.5">
                 <SquareIcon className="size-2.5! fill-current" />
                 Stop
-                <Kbd className="-mr-0.5 h-4 min-w-0 px-1 text-[10px]">Esc</Kbd>
+                <Kbd className="-mr-0.5 h-4 min-w-0 px-1 text-[0.625rem]">Esc</Kbd>
               </Button>
             </Tip>
           )}
@@ -194,7 +194,7 @@ function useDockedNotices({ box, session, dir, state, ended, items, screenLimit 
 
 function Retrying({ r }: { r: NonNullable<ChatSignals["retrying"]> }) {
   return (
-    <div role="status" className="mb-2 flex items-center gap-2 rounded-lg border border-warning/40 bg-warning/[0.06] px-3 py-1.5 text-[13px] dark:bg-warning/[0.08]">
+    <div role="status" className="mb-2 flex items-center gap-2 rounded-lg border border-warning/40 bg-warning/[0.06] px-3 py-1.5 text-[0.8125rem] dark:bg-warning/[0.08]">
       <Spinner className="size-3.5 text-warning-foreground" />
       <span className="min-w-0 flex-1 truncate">{r.message}</span>
       <span className="shrink-0 text-muted-foreground text-xs tabular-nums">{r.attempt ? `Retrying · ${r.attempt}${r.max ? ` of ${r.max}` : ""}` : "Retrying"}</span>
@@ -534,8 +534,8 @@ function JobRow({ box, session, job, now }: { box: string; session: string; job:
       <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)} className="flex w-full min-w-0 items-center gap-2 rounded-md px-1.5 py-1.5 text-left outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring">
         <Icon className="size-3.5 shrink-0 text-muted-foreground" />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[13px]">{job.label || job.command}</span>
-          {job.label && <span className="block truncate font-mono text-[11.5px] text-muted-foreground">{job.command}</span>}
+          <span className="block truncate text-[0.8125rem]">{job.label || job.command}</span>
+          {job.label && <span className="block truncate font-mono text-[0.7188rem] text-muted-foreground">{job.command}</span>}
         </span>
         <State job={job} />
         <span className="w-12 shrink-0 text-right text-muted-foreground text-xs tabular-nums">{took}</span>
@@ -550,7 +550,7 @@ function JobRow({ box, session, job, now }: { box: string; session: string; job:
               <Spinner className="size-3" /> Reading its output…
             </div>
           ) : (
-            <pre ref={pre} data-selectable className="max-h-56 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted/40 px-2.5 py-2 font-mono text-[11.5px] leading-relaxed">
+            <pre ref={pre} data-selectable className="max-h-56 overflow-auto whitespace-pre-wrap break-all rounded-md bg-muted/40 px-2.5 py-2 font-mono text-[0.7188rem] leading-relaxed">
               {detail.truncated && <span className="text-muted-foreground">…{"\n"}</span>}
               {detail.output?.trim() || "(nothing printed yet)"}
             </pre>
@@ -565,18 +565,18 @@ function State({ job }: { job: ChatJob }) {
   switch (job.state) {
     case "running":
     case "starting":
-      return <span className="shrink-0 rounded-full bg-success/12 px-1.5 py-px text-[11px] text-success-foreground">Running</span>;
+      return <span className="shrink-0 rounded-full bg-success/12 px-1.5 py-px text-[0.6875rem] text-success-foreground">Running</span>;
     case "done":
       return (
-        <span className="flex shrink-0 items-center gap-1 text-[11px] text-muted-foreground">
+        <span className="flex shrink-0 items-center gap-1 text-[0.6875rem] text-muted-foreground">
           <CheckIcon className="size-3 text-success" />
           Done
         </span>
       );
     case "failed":
-      return <span className="shrink-0 text-[11px] text-destructive-foreground">Failed</span>;
+      return <span className="shrink-0 text-[0.6875rem] text-destructive-foreground">Failed</span>;
     default:
-      return <span className="shrink-0 text-[11px] text-muted-foreground">Stopped</span>;
+      return <span className="shrink-0 text-[0.6875rem] text-muted-foreground">Stopped</span>;
   }
 }
 

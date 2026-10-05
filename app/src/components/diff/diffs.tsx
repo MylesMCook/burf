@@ -63,8 +63,8 @@ const CSS = `
 :host {
   --diffs-font-family: "JetBrains Mono Variable", ui-monospace, monospace;
   --diffs-header-font-family: "Inter Variable", system-ui, sans-serif;
-  --diffs-font-size: 12px;
-  --diffs-line-height: 20px;
+  --diffs-font-size: 0.75rem;
+  --diffs-line-height: 1.25rem;
   --diffs-font-features: "calt" 0, "liga" 0;
   --diffs-light-bg: var(--berth-diff-bg, var(--background));
   --diffs-dark-bg: var(--berth-diff-bg, var(--background));
@@ -77,7 +77,7 @@ const CSS = `
 }
 pre, code { font-variant-ligatures: none; }
 [data-content-buffer], [data-gutter-buffer] { background-image: none; }
-[data-separator] { font-size: 11px; color: var(--muted-foreground); }
+[data-separator] { font-size: 0.6875rem; color: var(--muted-foreground); }
 `;
 
 // In a chat the card frames the code: no padding above its first line.

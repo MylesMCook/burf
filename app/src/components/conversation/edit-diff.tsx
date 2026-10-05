@@ -236,7 +236,7 @@ export function EditChange({ d, header = true }: { d: ToolDetail; header?: boole
   const wide = width >= SPLIT_MIN;
   const build = useMemo(() => (mod: DiffsModule) => changeOf(mod, d), [d]);
   return (
-    <div ref={ref} data-selectable className="font-mono text-[12px] leading-5 [font-variant-ligatures:none]">
+    <div ref={ref} data-selectable className="font-mono text-[0.75rem] leading-5 [font-variant-ligatures:none]">
       {header && d.file && (
         <div className="flex h-8 items-center gap-2 border-b bg-muted/30 pr-1 pl-3 font-sans text-muted-foreground text-xs">
           <span className="min-w-0 flex-1 truncate">
@@ -378,7 +378,7 @@ export function EditPanel({ file, tool, estimate, loadDiff, loadTool, comments }
                 <span className="min-w-0 flex-1 truncate">{diff.value.untracked ? "A new file" : "Uncommitted changes in this file"}{comments && " · hover a line to comment"}</span>
                 {diff.value.truncated && <span className="shrink-0 text-warning">first 64 KB</span>}
               </div>
-              <div className="font-mono text-[12px] leading-5 [font-variant-ligatures:none]" data-selectable>
+              <div className="font-mono text-[0.75rem] leading-5 [font-variant-ligatures:none]" data-selectable>
                 <DiffBox
                   build={buildFile}
                   size={fileSize}

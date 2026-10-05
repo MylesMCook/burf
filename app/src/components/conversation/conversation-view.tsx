@@ -117,7 +117,7 @@ export function ConversationView({ items: live, onAnswer, edits, who = "The agen
     <RevealContext.Provider value={revealed}>
       <PromptActionsContext.Provider value={ctx}>
         <ChatList
-          className={cn("mx-auto w-full max-w-(--berth-chat-w) text-[14px] text-foreground leading-relaxed", className)}
+          className={cn("mx-auto w-full max-w-(--berth-chat-w) text-[0.875rem] text-foreground leading-relaxed", className)}
           rows={blocks}
           rowKey={blockKey}
           estimate={estimateBlock}
@@ -327,14 +327,14 @@ function WorkFold({ id, steps, live, onAnswer, edits, who }: { id: string; steps
   const summary = workSummary(steps);
   return (
     <div className="cv-in -my-1">
-      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="-ml-1 inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 text-muted-foreground text-[13px] outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+      <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="-ml-1 inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 text-muted-foreground text-[0.8125rem] outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
         <ChevronRightIcon className={cn("size-3.5 transition-transform duration-200", open && "rotate-90")} />
         {live ? <span className="cv-shimmer">Working</span> : "Worked"}
         {summary && <span className="text-muted-foreground/80">· {summary}</span>}
       </button>
       <div className="cv-fold" data-closed={open ? undefined : ""}>
         <div>
-          <div className="mt-2 flex flex-col gap-3 border-l pl-4 text-[13.5px]">
+          <div className="mt-2 flex flex-col gap-3 border-l pl-4 text-[0.8438rem]">
             {drawn && steps.map((it) => <Item key={it.id} it={it} onAnswer={onAnswer} edits={edits} who={who} />)}
           </div>
         </div>
@@ -464,7 +464,7 @@ function Permission({ it, onAnswer, who }: { it: Extract<TranscriptItem, { kind:
       <div className="cv-in flex min-w-0 items-center gap-2 text-muted-foreground">
         {no ? <XIcon className="size-3.5 shrink-0" /> : yes ? <CheckIcon className="size-3.5 shrink-0 text-success" /> : <CornerDownRightIcon className="size-3.5 shrink-0" />}
         <span className="shrink-0">{no ? "Denied" : label === "Always allow" ? "Always allowed" : label === "Allow" ? "Allowed" : label || "Answered"}</span>
-        <span className={cn("truncate text-foreground/80", mono && "font-mono text-[12.5px]")}>{it.detail || what}</span>
+        <span className={cn("truncate text-foreground/80", mono && "font-mono text-[0.7812rem]")}>{it.detail || what}</span>
       </div>
     );
   }
@@ -478,8 +478,8 @@ function Permission({ it, onAnswer, who }: { it: Extract<TranscriptItem, { kind:
             {what && <span className="font-normal"> {what}</span>}
           </span>
         </div>
-        {it.detail && (mono ? <code className="whitespace-pre-wrap break-all rounded-lg bg-muted/40 px-3 py-2 font-mono text-[12.5px]">{it.detail}</code> : <p data-selectable className="whitespace-pre-wrap">{it.detail}</p>)}
-        {it.why && <p className="text-muted-foreground text-[13px]">{it.why}</p>}
+        {it.detail && (mono ? <code className="whitespace-pre-wrap break-all rounded-lg bg-muted/40 px-3 py-2 font-mono text-[0.7812rem]">{it.detail}</code> : <p data-selectable className="whitespace-pre-wrap">{it.detail}</p>)}
+        {it.why && <p className="text-muted-foreground text-[0.8125rem]">{it.why}</p>}
       </div>
       <div className="flex flex-wrap items-center gap-2 border-t px-4 py-3">
         {choices.map((c, i) => (
@@ -518,7 +518,7 @@ function Ask({ it, onAnswer }: { it: Extract<TranscriptItem, { kind: "ask" }>; o
       <div className="cv-in flex min-w-0 items-center gap-2 text-muted-foreground">
         {no ? <XIcon className="size-3.5 shrink-0" /> : <CheckIcon className="size-3.5 shrink-0 text-success" />}
         <span className="shrink-0">{c?.label ?? it.decided}</span>
-        <span className={cn("truncate text-foreground/80", !question && "font-mono text-[12.5px]")}>{it.detail}</span>
+        <span className={cn("truncate text-foreground/80", !question && "font-mono text-[0.7812rem]")}>{it.detail}</span>
       </div>
     );
   }
@@ -529,7 +529,7 @@ function Ask({ it, onAnswer }: { it: Extract<TranscriptItem, { kind: "ask" }>; o
           <span className="size-2 rounded-full bg-warning" aria-hidden />
           {question ? "Needs your answer" : "Wants to run a command"}
         </div>
-        {it.detail && (question ? <p data-selectable className="whitespace-pre-wrap">{it.detail}</p> : <code className="rounded-lg bg-muted/40 px-3 py-2 font-mono text-[12.5px]">{it.detail}</code>)}
+        {it.detail && (question ? <p data-selectable className="whitespace-pre-wrap">{it.detail}</p> : <code className="rounded-lg bg-muted/40 px-3 py-2 font-mono text-[0.7812rem]">{it.detail}</code>)}
       </div>
       <div className="flex flex-wrap items-center gap-2 border-t px-4 py-3">
         {choices.map((c, i) => (
@@ -555,15 +555,15 @@ function Edit({ it, edits }: { it: Extract<TranscriptItem, { kind: "edit" }>; ed
     <>
       <PencilLineIcon className="size-3.5 text-muted-foreground" />
       <span className="text-muted-foreground">Edited</span>
-      <span className="min-w-0 truncate font-mono text-[12.5px]">
+      <span className="min-w-0 truncate font-mono text-[0.7812rem]">
         <span className="text-muted-foreground">{it.file.slice(0, cut + 1)}</span>
         {it.file.slice(cut + 1)}
       </span>
-      {!!it.added && <span className="font-medium font-mono text-[12px] text-success-foreground tabular-nums">+{it.added}</span>}
-      {!!it.removed && <span className="font-medium font-mono text-[12px] text-destructive-foreground tabular-nums">−{it.removed}</span>}
+      {!!it.added && <span className="font-medium font-mono text-[0.75rem] text-success-foreground tabular-nums">+{it.added}</span>}
+      {!!it.removed && <span className="font-medium font-mono text-[0.75rem] text-destructive-foreground tabular-nums">−{it.removed}</span>}
     </>
   );
-  if (!edits) return <div className="cv-in flex min-w-0 items-center gap-2 self-start rounded-lg bg-muted/40 px-2.5 py-1.5 text-[13px]">{label}</div>;
+  if (!edits) return <div className="cv-in flex min-w-0 items-center gap-2 self-start rounded-lg bg-muted/40 px-2.5 py-1.5 text-[0.8125rem]">{label}</div>;
   return (
     <div className={cn("cv-in flex min-w-0 flex-col", open ? "self-stretch" : "self-start")}>
       <div className="flex min-w-0 items-center gap-1">
@@ -571,7 +571,7 @@ function Edit({ it, edits }: { it: Extract<TranscriptItem, { kind: "edit" }>; ed
           type="button"
           onClick={() => setOpen(!open)}
           aria-expanded={open}
-          className="flex min-w-0 items-center gap-2 rounded-lg bg-muted/40 px-2.5 py-1.5 text-left text-[13px] outline-none hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring"
+          className="flex min-w-0 items-center gap-2 rounded-lg bg-muted/40 px-2.5 py-1.5 text-left text-[0.8125rem] outline-none hover:bg-muted/70 focus-visible:ring-2 focus-visible:ring-ring"
         >
           <ChevronRightIcon className={cn("size-3.5 shrink-0 text-muted-foreground transition-transform duration-200", open && "rotate-90")} />
           {label}
@@ -688,7 +688,7 @@ function ToolRow({ c, last, Icon, edits }: { c: ToolCall; last: boolean; Icon: t
         <span>{c.verb}</span>
         <Badge variant="outline" className={cn("min-w-0 gap-1.5 font-normal", !c.file && "font-mono")}>
           {c.file && (
-            <span className="flex size-3 items-center justify-center rounded-[3px] font-bold font-mono text-[6.5px] text-white uppercase" style={{ background: EXT[ext] ?? "#64748b" }}>
+            <span className="flex size-3 items-center justify-center rounded-[3px] font-bold font-mono text-[0.4062rem] text-white uppercase" style={{ background: EXT[ext] ?? "#64748b" }}>
               {ext.slice(0, 2)}
             </span>
           )}
@@ -717,7 +717,7 @@ function ToolRow({ c, last, Icon, edits }: { c: ToolCall; last: boolean; Icon: t
 export function ToolDetailView({ d }: { d: ToolDetail }) {
   const edit = d.old != null || (d.new != null && !d.command);
   return (
-    <div data-selectable className="font-mono text-[12px] leading-5 [font-variant-ligatures:none]">
+    <div data-selectable className="font-mono text-[0.75rem] leading-5 [font-variant-ligatures:none]">
       {(d.command || d.pattern || d.file) && !edit && (
         <div className="flex gap-2 border-b bg-muted/30 px-3 py-1.5">
           <span className="shrink-0 text-muted-foreground">{d.command ? "$" : d.pattern ? "?" : "·"}</span>
@@ -765,7 +765,7 @@ function Thinking({ since, label, elapsed, meta, step }: { since: number; label?
       {step ? (
         <span className="flex min-w-0 items-center gap-1.5">
           <span className="cv-shimmer shrink-0">{doing}</span>
-          <code className="min-w-0 truncate rounded bg-muted px-1.5 py-px font-mono text-[12.5px]">{step.target}</code>
+          <code className="min-w-0 truncate rounded bg-muted px-1.5 py-px font-mono text-[0.7812rem]">{step.target}</code>
         </span>
       ) : (
         <span className="cv-shimmer shrink-0">{word}</span>

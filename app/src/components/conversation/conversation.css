@@ -52,21 +52,21 @@
 .cv-md a { color: var(--foreground); text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 35%, transparent); text-underline-offset: 2px; }
 .cv-md a:hover { text-decoration-color: currentColor; }
 .cv-md code { font-family: var(--font-mono); font-size: 0.88em; padding: 0.1em 0.35em; border-radius: 5px; background: var(--muted); }
-.cv-md pre { margin: 0 0 0.75em; padding: 10px 12px; border-radius: 10px; background: var(--muted); overflow-x: auto; font-size: 12.5px; line-height: 1.5; }
+.cv-md pre { margin: 0 0 0.75em; padding: 10px 12px; border-radius: 10px; background: var(--muted); overflow-x: auto; font-size: 0.7812rem; line-height: 1.5; }
 .cv-md pre code { padding: 0; background: none; font-size: inherit; }
 .cv-md blockquote { margin: 0 0 0.75em; padding-left: 0.9em; border-left: 2px solid var(--border); color: var(--muted-foreground); }
 .cv-md hr { margin: 1em 0; border: 0; border-top: 1px solid var(--border); }
 .cv-md .cv-table { margin: 0 0 0.75em; overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
 /* A cell's words and paths wrap only where they can, so a column of
    file:line references keeps them whole and the table scrolls instead. */
-.cv-md table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; overflow-wrap: normal; }
+.cv-md table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; font-variant-numeric: tabular-nums; overflow-wrap: normal; }
 .cv-md th, .cv-md td { padding: 6px 10px; text-align: left; vertical-align: top; border-top: 1px solid var(--border); }
 .cv-md thead th { border-top: 0; font-weight: 500; color: var(--muted-foreground); background: var(--muted); }
 .cv-md td:first-child, .cv-md th:first-child { white-space: nowrap; }
 
 /* A code block's Copy, in its corner while the pointer is over it. */
 .cv-md .cv-pre { position: relative; }
-.cv-md .cv-copy-code { position: absolute; top: 6px; right: 6px; padding: 2px 8px; border-radius: 6px; font-size: 11.5px; color: var(--muted-foreground); background: var(--background); border: 1px solid var(--border); opacity: 0; transition: opacity 120ms ease; user-select: none; cursor: pointer; }
+.cv-md .cv-copy-code { position: absolute; top: 6px; right: 6px; padding: 2px 8px; border-radius: 6px; font-size: 0.7188rem; color: var(--muted-foreground); background: var(--background); border: 1px solid var(--border); opacity: 0; transition: opacity 120ms ease; user-select: none; cursor: pointer; }
 .cv-md .cv-pre:hover .cv-copy-code, .cv-md .cv-copy-code:focus-visible { opacity: 1; }
 .cv-md .cv-copy-code:hover { color: var(--foreground); }
 .cv-md ::selection, [data-selectable] ::selection { background: color-mix(in srgb, var(--primary) 28%, transparent); }

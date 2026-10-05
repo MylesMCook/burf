@@ -712,8 +712,8 @@ function FirstPrompt({ box, session, agent, name, branch, onSend, onFail }: { bo
           <header className="mb-4 px-2 [text-shadow:0_0_6px_var(--background),0_0_14px_var(--background)]">
             <h1 className="truncate font-semibold text-lg tracking-tight">{name}</h1>
             <div className="mt-1 flex min-w-0 items-center gap-1.5 text-muted-foreground text-xs">
-              {branch && <span className="min-w-0 truncate rounded bg-accent px-1.5 py-px font-mono text-[11px]">{branch}</span>}
-              <span className="shrink-0 rounded bg-accent px-1.5 py-px font-mono text-[11px]">{box}</span>
+              {branch && <span className="min-w-0 truncate rounded bg-accent px-1.5 py-px font-mono text-[0.6875rem]">{branch}</span>}
+              <span className="shrink-0 rounded bg-accent px-1.5 py-px font-mono text-[0.6875rem]">{box}</span>
             </div>
           </header>
           <TaskComposer to={{ box, session, agent }} onSend={onSend} onFail={onFail} autoFocus />

@@ -37,7 +37,7 @@ export function CommandItem({ it, who = "The agent" }: { it: Command; who?: stri
   if (!text && it.command !== "!") {
     return (
       <div data-selectable className="cv-in max-w-[80%] self-end whitespace-pre-wrap rounded-2xl bg-muted px-3.5 py-2">
-        <span className="font-medium font-mono text-[13px]">{it.command}</span>
+        <span className="font-medium font-mono text-[0.8125rem]">{it.command}</span>
         {it.args ? ` ${it.args}` : ""}
       </div>
     );
@@ -46,7 +46,7 @@ export function CommandItem({ it, who = "The agent" }: { it: Command; who?: stri
   // A short answer: one line under what was typed.
   if (!it.markdown && it.command !== "!" && !text.includes("\n") && text.length <= 140) {
     return (
-      <div data-selectable className="cv-in flex min-w-0 items-baseline gap-2 text-muted-foreground text-[13px]">
+      <div data-selectable className="cv-in flex min-w-0 items-baseline gap-2 text-muted-foreground text-[0.8125rem]">
         <SlashIcon className="size-3.5 shrink-0 translate-y-0.5" />
         <span className="shrink-0 font-mono text-foreground">{typed}</span>
         <CornerDownRightIcon className="size-3.5 shrink-0 translate-y-0.5 opacity-60" />
@@ -65,7 +65,7 @@ function OutputCard({ typed, shell, text, markdown, error }: { typed: string; sh
     <div className="cv-in overflow-hidden rounded-lg border bg-muted/32">
       <div className="flex min-w-0 items-center gap-2 border-b bg-muted/48 px-3 py-1.5 text-xs">
         {shell ? <TerminalIcon className="size-3.5 shrink-0 text-muted-foreground" /> : <SlashIcon className="size-3.5 shrink-0 text-muted-foreground" />}
-        <span data-selectable className="min-w-0 truncate font-medium font-mono text-[12.5px]">
+        <span data-selectable className="min-w-0 truncate font-medium font-mono text-[0.7812rem]">
           {typed}
         </span>
         <span className="ml-auto shrink-0 text-muted-foreground">{shell ? "Ran in the shell" : "The agent's own command"}</span>
@@ -74,11 +74,11 @@ function OutputCard({ typed, shell, text, markdown, error }: { typed: string; sh
         {!text ? (
           <p className="px-3 py-2 text-muted-foreground text-xs">No output.</p>
         ) : markdown ? (
-          <div data-selectable className="px-3.5 py-2.5 text-[13px]">
+          <div data-selectable className="px-3.5 py-2.5 text-[0.8125rem]">
             <Markdown text={text} copy={false} />
           </div>
         ) : (
-          <pre data-selectable className={cn("overflow-x-auto px-3 py-2 font-mono text-[12px] leading-relaxed", error && "text-destructive-foreground")}>
+          <pre data-selectable className={cn("overflow-x-auto px-3 py-2 font-mono text-[0.75rem] leading-relaxed", error && "text-destructive-foreground")}>
             {text}
           </pre>
         )}
@@ -101,7 +101,7 @@ function inlineCode(text: string) {
   return text.split(/(`[^`]+`)/).map((part, i) =>
     part.length > 2 && part.startsWith("`") && part.endsWith("`") ? (
       // biome-ignore lint/suspicious/noArrayIndexKey: the parts never move
-      <code key={i} className="rounded bg-muted px-1 py-px font-mono text-[12px] text-foreground">
+      <code key={i} className="rounded bg-muted px-1 py-px font-mono text-[0.75rem] text-foreground">
         {part.slice(1, -1)}
       </code>
     ) : (

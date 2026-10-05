@@ -869,7 +869,7 @@ function Editor({ value, onChange, onSubmit, onPaste, above, autoFocus, label, p
         }}
         aria-label={label}
         placeholder={placeholder}
-        className="field-sizing-content block max-h-60 min-h-[76px] w-full resize-none rounded-[inherit] bg-transparent px-3.5 py-3 text-[14px] outline-none placeholder:text-muted-foreground/72"
+        className="field-sizing-content block max-h-60 min-h-[76px] w-full resize-none rounded-[inherit] bg-transparent px-3.5 py-3 text-[0.875rem] outline-none placeholder:text-muted-foreground/72"
       />
       {hint && <p className="-mt-1 truncate px-3.5 pb-2.5 text-xs">{hint}</p>}
       {menu?.chip}
