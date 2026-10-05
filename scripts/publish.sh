@@ -7,8 +7,11 @@
 # 1. Sets the version in app/package.json, tauri.conf.json and Cargo.toml.
 # 2. Builds the app universal, signs it with the Developer ID, notarizes and
 #    staples it, and checks it (scripts/mac-release.sh), into dist/mac/.
-# 3. Commits "chore: release vX", tags, and pushes main and the tag.
-# 4. Creates the GitHub release (or adds to it) with the dmg, the updater
+# 3. Runs the release checks on that build (scripts/release-check.sh: the
+#    fresh-user test on this Mac, the Linux box test, the upgrade test) and
+#    stops, with nothing tagged, unless they pass.
+# 4. Commits "chore: release vX", tags, and pushes main and the tag.
+# 5. Creates the GitHub release (or adds to it) with the dmg, the updater
 #    archive and its signature, and last latest.json, the feed installed
 #    apps update from.
 #
@@ -92,6 +95,13 @@ PY
 (cd app/src-tauri && { cargo update -p berth --offline >/dev/null 2>&1 || true; })
 
 NOTES="${NOTES:-}" scripts/mac-release.sh "$tag"
+
+# The release tests, on the signed app just built: a new user's first run on
+# this Mac, a fresh Linux box, and upgrading from the last release. Nothing
+# is tagged unless they pass.
+echo "Running the release checks (scripts/release-check.sh)…"
+scripts/release-check.sh --dmg dist/mac/Berth-macos-universal.dmg --signed --version "$tag" ||
+	die "the release checks failed; nothing was tagged or pushed. Reports: dist/release-test/"
 
 git add "${bumped[@]}"
 git commit -q -m "chore: release $tag"

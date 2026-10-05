@@ -1,0 +1,15 @@
+#!/bin/sh
+# A stand-in for Chromium in the Linux release test's box, which fails the
+# way Chromium does on Ubuntu 24.04 when AppArmor stops it making user
+# namespaces: the agent browser's "blocked" path, without a real browser.
+# With --no-sandbox (the box's no_sandbox setting) it fails differently,
+# saying so without the words berthd reads as a sandbox failure, so the
+# test can tell the setting reached it.
+for a in "$@"; do
+	if [ "$a" = --no-sandbox ]; then
+		echo "[0101/000000.000000:ERROR:release_test.cc(1)] release-test stand-in Chromium: the setting reached it (setting-reached), and it exits here" >&2
+		exit 1
+	fi
+done
+echo "[0101/000000.000000:FATAL:zygote_host_impl_linux.cc(128)] No usable sandbox! If you are running on Ubuntu 23.10+ or another Linux distro that has disabled unprivileged user namespaces with AppArmor, see https://chromium.googlesource.com/chromium/src/+/main/docs/security/apparmor-userns-restrictions.md. Otherwise see https://chromium.googlesource.com/chromium/src/+/main/docs/linux/suid_sandbox_development.md for more information on developing with the (older) SUID sandbox. If you want to live dangerously and need an immediate workaround, you can try using --no-sandbox." >&2
+exit 133

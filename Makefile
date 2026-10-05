@@ -94,3 +94,13 @@ release:
 .PHONY: publish
 publish:
 	VERSION=$(VERSION) NOTES="$(NOTES)" scripts/publish.sh
+
+# release-check runs the release tests: the app's first run on this Mac from
+# its dmg, a fresh Linux box in Docker, and upgrading from the last release,
+# each isolated from this machine's own Berth (scripts/release-check.sh).
+# make publish runs it on the signed build and refuses to tag if it fails.
+# DMG=path tests that dmg (default: the one make app-build made last);
+# FROM=vX.Y.Z upgrades from that release.
+.PHONY: release-check
+release-check:
+	scripts/release-check.sh $(if $(DMG),--dmg $(DMG)) $(if $(FROM),--from $(FROM)) --version $(STAMP)

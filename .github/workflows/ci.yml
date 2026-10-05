@@ -36,7 +36,41 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       # ubuntu-latest ships shellcheck. install.sh is served at berthd.app/install.
       - run: shellcheck site/install.sh scripts/build-release.sh scripts/publish.sh scripts/mac-release.sh
+      # The release tests (warnings and errors; their style is their own).
+      - run: shellcheck -x -S warning scripts/release-check.sh scripts/fresh-user-test.sh scripts/linux-box-test.sh scripts/upgrade-test.sh scripts/release-test/common.sh scripts/release-test/macos/lib.sh scripts/release-test/macos/launchctl scripts/release-test/linux/lib.sh scripts/release-test/linux/fake-chromium
       - run: sh -n site/install.sh && dash -n site/install.sh
+
+  # The Linux release tests (scripts/linux-box-test.sh, scripts/upgrade-test.sh):
+  # install.sh on a fresh Ubuntu 24.04 box in Docker (systemd as init),
+  # pairing a fresh laptop, a task with the stand-in agent, the proxy, the
+  # agent browser's sandbox card, and upgrading from the last release. The
+  # macOS half needs the app and a Mac: make release-check runs it before a
+  # release is tagged.
+  release-test-linux:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-tags: true
+          fetch-depth: 0
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: go.mod
+      - name: Fresh box
+        run: scripts/linux-box-test.sh --out "$RUNNER_TEMP/release-test/linux-box"
+      - name: Upgrade from the last release
+        env:
+          # gh downloads the last release's archives.
+          GH_TOKEN: ${{ github.token }}
+        run: scripts/upgrade-test.sh --linux --out "$RUNNER_TEMP/release-test/upgrade-linux"
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-test-linux
+          path: ${{ runner.temp }}/release-test
+          if-no-files-found: ignore
 
   app:
     runs-on: ubuntu-latest

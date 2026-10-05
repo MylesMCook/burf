@@ -1,0 +1,184 @@
+#!/usr/bin/env node
+// A stand-in for Claude Code, for the release tests: it spends no tokens and
+// does the same small task every time, the way the real CLI would be seen
+// by Berth. The tests install it as `claude` (on a Mac in ~/.local/bin of
+// the test's home, where Claude Code's installer puts it; on a Linux box on
+// PATH), so berthd finds it, installs its hooks and starts it.
+//
+// Like Claude Code it:
+//  - runs the hooks berthd installed in ~/.claude/settings.json (SessionStart,
+//    UserPromptSubmit, PostToolUse, Stop) with the payload Claude Code sends;
+//  - writes its conversation to ~/.claude/projects/<folder>/<id>.jsonl, in
+//    Claude Code's format, which Berth's chat reads;
+//  - takes its first prompt as its last argument and later ones typed into
+//    the terminal, one per line.
+//
+// The task, for any prompt: add a /health endpoint and its test to the
+// sample project (examples/hello), commit them, then start its dev server with
+// `node server.js`, which listens on $PORT, the port Berth gives the worktree,
+// as an agent following the berth-preview skill would. What it saw (its
+// arguments, PORT, BERTH_PORT, the server's pid) goes to
+// $BERTH_RELEASE_TEST_ROOT/fake-claude/<id>.json (or $TMPDIR's) for the test
+// to check.
+"use strict";
+const fs = require("node:fs");
+const path = require("node:path");
+const os = require("node:os");
+const crypto = require("node:crypto");
+const { spawn, spawnSync } = require("node:child_process");
+const readline = require("node:readline");
+
+const argv = process.argv.slice(2);
+if (argv.includes("--version") || argv.includes("-v")) {
+  console.log("2.1.0 (Claude Code; Berth release-test stand-in)");
+  process.exit(0);
+}
+// Flags berth passes take a value; the prompt is the one word left over.
+const valued = new Set(["--model", "--effort", "--resume", "-r", "--session-id", "--permission-mode", "--settings"]);
+let prompt = "";
+for (let i = 0; i < argv.length; i++) {
+  if (valued.has(argv[i])) i++;
+  else if (!argv[i].startsWith("-")) prompt = argv[i];
+}
+
+const id = crypto.randomUUID();
+const cwd = process.cwd();
+const configDir = process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), ".claude");
+const transcript = path.join(configDir, "projects", cwd.replace(/[^A-Za-z0-9]/g, "-"), id + ".jsonl");
+fs.mkdirSync(path.dirname(transcript), { recursive: true });
+const reportDir = path.join(process.env.BERTH_RELEASE_TEST_ROOT || os.tmpdir(), "fake-claude");
+fs.mkdirSync(reportDir, { recursive: true });
+const report = { id, cwd, argv, transcript, env: {}, turns: 0, hooks: [], server: null };
+for (const k of ["PORT", "BERTH_PORT", "BERTH_URL", "BERTH_BOX", "BERTH_LOCATION", "BERTH_WORKTREE_NAME", "BERTH_WORKTREE_PATH", "BERTH_SESSION", "HOME", "PATH"]) {
+  if (process.env[k] !== undefined) report.env[k] = process.env[k];
+}
+const saveReport = () => fs.writeFileSync(path.join(reportDir, id + ".json"), JSON.stringify(report, null, 2) + "\n");
+
+// hook runs every command Claude Code would for event, with its payload on
+// stdin, as Claude Code does.
+function hook(event, extra = {}) {
+  let settings = {};
+  try {
+    settings = JSON.parse(fs.readFileSync(path.join(configDir, "settings.json"), "utf8"));
+  } catch {}
+  const groups = (settings.hooks && settings.hooks[event]) || [];
+  const payload = JSON.stringify({ session_id: id, transcript_path: transcript, cwd, hook_event_name: event, ...extra });
+  for (const g of groups) {
+    for (const h of g.hooks || []) {
+      if (h.type !== "command" || !h.command) continue;
+      const r = spawnSync("/bin/sh", ["-c", h.command], { input: payload, cwd, timeout: 15000, encoding: "utf8" });
+      report.hooks.push({ event, command: h.command, status: r.status });
+    }
+  }
+  saveReport();
+}
+
+let parent = null;
+function write(type, message, extra = {}) {
+  const uuid = crypto.randomUUID();
+  const line = { parentUuid: parent, isSidechain: false, userType: "external", cwd, sessionId: id, version: "2.1.0", type, message, uuid, timestamp: new Date().toISOString(), ...extra };
+  parent = uuid;
+  fs.appendFileSync(transcript, JSON.stringify(line) + "\n");
+}
+const say = (text) => write("assistant", { id: "msg_" + crypto.randomBytes(8).toString("hex"), type: "message", role: "assistant", model: "claude-stand-in", content: [{ type: "text", text }], stop_reason: "end_turn", usage: { input_tokens: 0, output_tokens: 0 } });
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const HEALTH_ROUTE = `  if (url.pathname === "/health") {
+    res.writeHead(200, { "content-type": "application/json" });
+    res.end(JSON.stringify({ ok: true }) + "\\n");
+    return;
+  }
+`;
+const HEALTH_TEST = `import { test } from "node:test";
+import assert from "node:assert/strict";
+
+test("GET /health answers ok", async () => {
+  const port = 40000 + Math.floor(Math.random() * 10000);
+  const { spawn } = await import("node:child_process");
+  const server = spawn(process.execPath, ["server.js"], { env: { ...process.env, PORT: String(port) } });
+  try {
+    await new Promise((r) => setTimeout(r, 400));
+    const res = await fetch(\`http://127.0.0.1:\${port}/health\`);
+    assert.deepEqual(await res.json(), { ok: true });
+  } finally {
+    server.kill();
+  }
+});
+`;
+
+// tool records a tool call and its result, as Claude Code writes them.
+function tool(name, input, result) {
+  const toolId = "toolu_" + crypto.randomBytes(10).toString("hex");
+  write("assistant", { id: "msg_" + crypto.randomBytes(8).toString("hex"), type: "message", role: "assistant", model: "claude-stand-in", content: [{ type: "tool_use", id: toolId, name, input }], stop_reason: "tool_use", usage: { input_tokens: 0, output_tokens: 0 } });
+  write("user", { role: "user", content: [{ type: "tool_result", tool_use_id: toolId, content: result }] });
+  hook("PostToolUse", { tool_name: name, tool_input: input });
+}
+
+async function turn(text) {
+  report.turns++;
+  console.log(`\n> ${text}\n`);
+  hook("UserPromptSubmit", { prompt: text });
+  write("user", { role: "user", content: text });
+  await sleep(800);
+  say("I'll add a /health endpoint to server.js, with a test, then start the dev server on the worktree's port.");
+
+  const server = path.join(cwd, "server.js");
+  if (fs.existsSync(server)) {
+    let src = fs.readFileSync(server, "utf8");
+    if (!src.includes('"/health"')) {
+      const anchor = '  if (url.pathname !== "/") {';
+      src = src.includes(anchor) ? src.replace(anchor, HEALTH_ROUTE + anchor) : src;
+      fs.writeFileSync(server, src);
+    }
+    tool("Edit", { file_path: server, old_string: '  if (url.pathname !== "/") {', new_string: HEALTH_ROUTE + '  if (url.pathname !== "/") {' }, "The file server.js has been updated.");
+    const test = path.join(cwd, "health.test.js");
+    fs.writeFileSync(test, HEALTH_TEST);
+    tool("Write", { file_path: test, content: HEALTH_TEST }, "File created successfully at: " + test);
+    console.log("● Edited server.js and wrote health.test.js");
+    // Committed, as agents are usually asked to: archiving a worktree keeps
+    // one with uncommitted work.
+    const git = (...a) => spawnSync("git", ["-c", "user.name=Berth release test", "-c", "user.email=release-test@berth.invalid", ...a], { cwd, encoding: "utf8" });
+    git("add", "server.js", "health.test.js");
+    const c = git("commit", "-q", "-m", "Add a /health endpoint, with a test");
+    tool("Bash", { command: "git commit -am 'Add a /health endpoint, with a test'", description: "Commit" }, c.status === 0 ? "committed" : c.stderr);
+    report.committed = c.status === 0;
+  }
+
+  // The dev server, on whatever port Berth gave this worktree.
+  if (!report.server && fs.existsSync(path.join(cwd, "package.json"))) {
+    const log = fs.openSync(path.join(reportDir, id + ".server.log"), "a");
+    // In the agent's own process group, as a background command of Claude
+    // Code's is: it stops when the session does.
+    const child = spawn(process.execPath, ["server.js"], { cwd, stdio: ["ignore", log, log], env: process.env });
+    report.server = { pid: child.pid, port: process.env.PORT || null };
+    tool("Bash", { command: "node server.js &", description: "Start the dev server" }, `hello on http://localhost:${process.env.PORT || 3000}`);
+    console.log(`● Started the dev server (node server.js, PORT=${process.env.PORT || "unset"})`);
+  }
+  await sleep(500);
+  const done = "Added a /health endpoint that returns {\"ok\": true}, with a test in health.test.js. The dev server is running on this worktree's port.";
+  say(done);
+  console.log("● " + done);
+  hook("Stop", { stop_hook_active: false, last_assistant_message: done });
+  saveReport();
+  process.stdout.write("\n> ");
+}
+
+(async () => {
+  console.log("✻ Claude Code (Berth release-test stand-in) in " + cwd);
+  saveReport();
+  hook("SessionStart", { source: "startup" });
+  if (prompt) await turn(prompt);
+  else process.stdout.write("> ");
+  const rl = readline.createInterface({ input: process.stdin });
+  let busy = Promise.resolve();
+  rl.on("line", (line) => {
+    const t = line.trim();
+    if (!t) return;
+    busy = busy.then(() => turn(t));
+  });
+  rl.on("close", () => {
+    hook("SessionEnd", { reason: "exit" });
+    // Exit, but leave the dev server running, as Claude Code would.
+    setTimeout(() => process.exit(0), 100);
+  });
+})();

@@ -110,7 +110,8 @@ jobs:
         if: steps.published.outputs.published != 'true'
         run: |
           rustup target add aarch64-apple-darwin x86_64-apple-darwin
-          brew install minisign
+          # tmux for this Mac's box in the fresh-user test.
+          brew install minisign tmux
           # spctl's verdict is a check below; with assessments off it
           # would accept anything.
           sudo spctl --master-enable || true
@@ -176,6 +177,33 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
         run: scripts/mac-release.sh "$TAG"
+      # The release tests on the signed app, before anything is uploaded:
+      # a new user's first run (scripts/fresh-user-test.sh) and upgrading
+      # this Mac's box from the last release (scripts/upgrade-test.sh). They
+      # drive the app through the accessibility API, which needs this
+      # runner's terminal to have Accessibility and Screen Recording; where
+      # it hasn't, they can't run here, and say so: scripts/publish.sh and
+      # make release-check run them on a Mac before a tag is pushed.
+      - name: Release tests on the signed app
+        if: steps.published.outputs.published != 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          swiftc -O scripts/release-test/macos/axdrive.swift -o "$RUNNER_TEMP/axdrive"
+          if ! "$RUNNER_TEMP/axdrive" check; then
+            echo "::warning::This runner can't drive the app (no Accessibility or Screen Recording permission), so the macOS release tests didn't run here; run make release-check on a Mac for $TAG"
+            exit 0
+          fi
+          scripts/fresh-user-test.sh --dmg dist/mac/Berth-macos-universal.dmg --signed --out "$RUNNER_TEMP/release-test/fresh-user"
+          scripts/upgrade-test.sh --mac --dmg dist/mac/Berth-macos-universal.dmg --out "$RUNNER_TEMP/release-test/upgrade-mac"
+      - name: Keep the release tests' reports
+        if: always() && steps.published.outputs.published != 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-test-macos
+          path: ${{ runner.temp }}/release-test
+          if-no-files-found: ignore
       - name: Add the app to the release
         if: steps.published.outputs.published != 'true'
         env:

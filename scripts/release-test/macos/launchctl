@@ -1,0 +1,94 @@
+#!/bin/sh
+# launchctl, as the release tests' Berth sees it (scripts/fresh-user-test.sh,
+# scripts/upgrade-test.sh). The test puts this folder first on the app's
+# PATH, and berth and berthd run launchctl by name, so every launchd call
+# the app under test makes comes here.
+#
+# This Mac's own Berth uses the labels dev.berth.berthd and dev.berth.agent.
+# A test that bootstrapped those would replace (and at cleanup remove) the
+# person's real box and agent, so here they become
+# dev.berth.test-<id>.berthd and dev.berth.test-<id>.agent: real launchd
+# jobs, with the plist berthd wrote, so a bare launchd PATH or any other
+# launchd-only bug still shows. The copy launchd runs also gets the test's
+# HOME, TMUX_TMPDIR and ports, so the box keeps to the test's home, its own
+# tmux server and its own ports. Anything else that names a dev.berth label,
+# or a plist outside the test's folder, is refused.
+set -u
+real=/bin/launchctl
+id=${BERTH_RELEASE_TEST_ID:-}
+root=${BERTH_RELEASE_TEST_ROOT:-}
+uid=$(id -u)
+
+log() { [ -z "$root" ] || printf '%s launchctl %s\n' "$(date +%H:%M:%S)" "$*" >>"$root/launchctl.log"; }
+refuse() {
+	echo "launchctl (Berth release test): refused: $*" >&2
+	log "REFUSED $*"
+	exit 1
+}
+
+if [ -z "$id" ] || [ -z "$root" ]; then
+	case "$*" in *dev.berth.*) refuse "$* (no BERTH_RELEASE_TEST_ID here)" ;; esac
+	exec "$real" "$@"
+fi
+
+map() {
+	case $1 in
+	dev.berth.berthd) echo "dev.berth.test-$id.berthd" ;;
+	dev.berth.agent) echo "dev.berth.test-$id.agent" ;;
+	"dev.berth.test-$id."*) echo "$1" ;;
+	*) return 1 ;;
+	esac
+}
+
+log "$*"
+verb=${1:-}
+[ $# -gt 0 ] && shift
+case $verb in
+getenv | list | version | help)
+	case "$*" in *dev.berth.*) refuse "$verb $*" ;; esac
+	exec "$real" "$verb" "$@"
+	;;
+print | kickstart | bootout | enable | disable | blame)
+	set -f
+	out=""
+	for a in "$@"; do
+		case $a in
+		-*) out="$out $a" ;;
+		"gui/$uid") out="$out $a" ;;
+		"gui/$uid/"*)
+			m=$(map "${a#"gui/$uid/"}") || refuse "$verb $*"
+			out="$out gui/$uid/$m"
+			;;
+		*) refuse "$verb $*" ;;
+		esac
+	done
+	# shellcheck disable=SC2086 # one word each, globbing off
+	exec "$real" "$verb" $out
+	;;
+bootstrap)
+	[ "${1:-}" = "gui/$uid" ] && [ $# -eq 2 ] || refuse "bootstrap $*"
+	src=$2
+	case $src in "$root"/*) ;; *) refuse "bootstrap $src: outside $root" ;; esac
+	label=$(/usr/bin/plutil -extract Label raw -o - "$src" 2>/dev/null) || refuse "bootstrap $src: no Label"
+	m=$(map "$label") || refuse "bootstrap $src: label $label"
+	mkdir -p "$root/launchd"
+	dst="$root/launchd/$m.plist"
+	cp "$src" "$dst" || exit 1
+	/usr/bin/plutil -replace Label -string "$m" "$dst" || exit 1
+	/usr/bin/plutil -extract EnvironmentVariables raw -o - "$dst" >/dev/null 2>&1 ||
+		/usr/bin/plutil -insert EnvironmentVariables -dictionary "$dst" || exit 1
+	for k in HOME TMUX_TMPDIR BERTH_UI_ADDR BERTH_PROXY_ADDR BERTH_RELEASE_TEST_ID BERTH_RELEASE_TEST_ROOT; do
+		v=$(printenv "$k") || continue
+		/usr/bin/plutil -replace "EnvironmentVariables.$k" -string "$v" "$dst" || exit 1
+	done
+	# The upgrade test's old box: a locale its tmux needs (upgrade-test.sh).
+	if [ -n "${BERTH_RELEASE_TEST_LANG:-}" ]; then
+		/usr/bin/plutil -replace EnvironmentVariables.LANG -string "$BERTH_RELEASE_TEST_LANG" "$dst" || exit 1
+	fi
+	echo "$m" >>"$root/launchd/labels"
+	exec "$real" bootstrap "gui/$uid" "$dst"
+	;;
+*)
+	refuse "$verb $*"
+	;;
+esac
