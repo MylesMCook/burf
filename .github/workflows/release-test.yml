@@ -1,0 +1,46 @@
+name: release tests
+
+# The full Linux release tests (scripts/linux-box-test.sh and
+# scripts/upgrade-test.sh): install.sh on a fresh Ubuntu 24.04 box in Docker
+# (systemd as init), pairing a fresh laptop, a task with the stand-in agent,
+# the proxy, the agent browser's sandbox card, and upgrading from the last
+# release. Not part of every push or of releasing: weekly, and on demand
+# (Actions → release tests → Run workflow). The macOS half needs a Mac:
+# make release-check.
+on:
+  workflow_dispatch:
+    inputs:
+      from:
+        description: "Release to upgrade from (default: the last one)"
+        required: false
+  schedule:
+    - cron: "17 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: go.mod
+      - name: Fresh box
+        run: scripts/linux-box-test.sh --out "$RUNNER_TEMP/release-test/linux-box"
+      - name: Upgrade from the last release
+        env:
+          # gh downloads the release's archives.
+          GH_TOKEN: ${{ github.token }}
+          FROM: ${{ inputs.from }}
+        run: scripts/upgrade-test.sh --linux ${FROM:+--from "$FROM"} --out "$RUNNER_TEMP/release-test/upgrade-linux"
+      - if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-test-linux
+          path: ${{ runner.temp }}/release-test
+          if-no-files-found: ignore

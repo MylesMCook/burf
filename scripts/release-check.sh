@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# The release checks, together: what make release-check and
-# scripts/publish.sh run, and what must pass before a version is tagged.
+# The full release checks, together: what make release-check runs, by hand,
+# now and then (they aren't part of releasing).
 #
 #   scripts/release-check.sh [--dmg PATH] [--from TAG] [--version vX.Y.Z] [--signed] [--out DIR]
 #                            [--ref COMMIT | --dirty] [--no-build] [--universal] [--any-build]
@@ -19,7 +19,7 @@
 # gate always tests what would be tagged. Every test refuses a dmg built
 # from another commit, or without berthd, unless --any-build;
 # --version is stamped into the Linux builds; --signed also requires the
-# app to be notarized (publish.sh passes it). Off macOS only the Linux
+# app to be notarized. Off macOS only the Linux
 # checks run, and it says so. Reports and screenshots go to --out (default
 # dist/release-test/check-<time>/). Exit status 0 only if every check passed.
 set -euo pipefail
@@ -158,6 +158,6 @@ for r in "${results[@]}"; do
 	case $r in FAIL*) failed=1 ;; esac
 done
 if [ $mac = 0 ]; then
-	echo "  (the macOS checks need a Mac: run make release-check there before tagging)"
+	echo "  (the macOS checks need a Mac: run make release-check there)"
 fi
 exit $failed

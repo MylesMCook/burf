@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # The Linux fresh-box release test, in Docker: a fresh Ubuntu 24.04 box and
-# a fresh laptop, with this checkout's install.sh and builds. Releases are
-# refused unless it passes (make release-check), and CI runs it on every
-# push to main.
+# a fresh laptop, with this checkout's install.sh and builds. Run by hand
+# now and then (make release-check), and weekly in CI (release-test.yml).
 #
 #   scripts/linux-box-test.sh                 builds berthd and berth for the containers
 #   scripts/linux-box-test.sh --dist dist     uses release archives made by make release

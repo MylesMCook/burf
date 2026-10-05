@@ -29,13 +29,15 @@ always finds the newest. The version is stamped into each binary instead
 [`site/install.sh`](https://github.com/sean-brydon/berthd/blob/main/site/install.sh),
 which downloads from the latest release.
 
-## Release checks
+## Full release checks
 
-Every bug new users have hit so far showed only on a fresh install of the
-release: the release CSP blocking the built-in plugins, launchd's PATH
-without Homebrew's tmux, no `PORT` for worktree servers, App Transport
-Security blocking the Browser tab, tmux 3.7 without a locale. So a release is
-tested the way a new user meets it, and isn't tagged unless it passes:
+The bugs new users hit showed only on a fresh install of the release: the
+release CSP blocking the built-in plugins, launchd's PATH without Homebrew's
+tmux, no `PORT` for worktree servers, App Transport Security blocking the
+Browser tab, tmux 3.7 without a locale. A set of tests goes through Berth the
+way a new user meets it. They aren't part of releasing: run them by hand
+now and then, for instance before a release that changes installing,
+onboarding or upgrading:
 
 ```sh
 make release-check      # builds HEAD, as committed, in a clean checkout, then tests it
@@ -71,20 +73,16 @@ The tests run on a copy of the app with its own bundle identifier and its
 agent's port moved, signed again ad hoc for that: the frontend, its CSP, App
 Transport Security and the bundled `berth` and `berthd` are the release's.
 
-`make publish` runs them on the signed build and refuses to tag if they
-fail. CI runs the Linux tests on every push to `main`, and the release
-workflow's macos job runs the macOS tests on the signed app before the
-release leaves draft, where the runner may drive the app; where it can't,
-it says so in a warning, and `make release-check` on a Mac is what counts.
+CI runs the Linux tests weekly, or on demand from the **release tests**
+workflow (`.github/workflows/release-test.yml`); the macOS ones need a Mac.
 
 ## Cut a release with a tag
 
-1. Run `make release-check` on a Mac; it must pass.
-2. On `main`, with CI green, set the version in `app/package.json`,
+1. On `main`, with CI green, set the version in `app/package.json`,
    `app/src-tauri/tauri.conf.json` and `app/src-tauri/Cargo.toml` (and
    `Cargo.lock`), and commit it (`chore: v0.1.2`). The app is built with the
    tag's version either way; this keeps the repository saying the same.
-3. Tag and push:
+2. Tag and push:
 
    ```sh
    git tag v0.1.2
@@ -130,10 +128,8 @@ does the whole release from a clean `main`:
 1. sets the version in the app's `package.json`, `tauri.conf.json` and
    `Cargo.toml`;
 2. builds, signs, notarizes and checks the app with `scripts/mac-release.sh`;
-3. runs the [release checks](#release-checks) on that build, and stops,
-   with nothing tagged, if one fails;
-4. commits `chore: release v0.1.2`, tags it, and pushes `main` and the tag;
-5. creates the GitHub release with the dmg and the updater archive, and
+3. commits `chore: release v0.1.2`, tags it, and pushes `main` and the tag;
+4. creates the GitHub release with the dmg and the updater archive, and
    uploads `latest.json` last.
 
 The tag push still runs the workflow: its release job adds the CLI and

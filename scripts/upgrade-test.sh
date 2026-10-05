@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The upgrade release test: set Berth up with the previous release, use it,
-# upgrade to this build, and check that everything survived. Releases are
-# refused unless it passes (make release-check).
+# upgrade to this build, and check that everything survived. Run by hand
+# now and then (make release-check); its Linux half weekly in CI.
 #
 #   scripts/upgrade-test.sh --linux [--from v0.3.0] [--dist DIR]
 #   scripts/upgrade-test.sh --mac   [--from v0.3.0] [--dmg PATH]

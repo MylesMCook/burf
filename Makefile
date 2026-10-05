@@ -95,10 +95,10 @@ release:
 publish:
 	VERSION=$(VERSION) NOTES="$(NOTES)" scripts/publish.sh
 
-# release-check runs the release tests: the app's first run on this Mac from
-# its dmg, a fresh Linux box in Docker, and upgrading from the last release,
-# each isolated from this machine's own Berth (scripts/release-check.sh).
-# make publish runs it on the signed build and refuses to tag if it fails.
+# release-check runs the full release tests, by hand, now and then (they
+# are not part of releasing): the app's first run on this Mac from its dmg,
+# a fresh Linux box in Docker, and upgrading from the last release, each
+# isolated from this machine's own Berth (scripts/release-check.sh).
 # It builds everything from HEAD as committed (REF=sha for another commit,
 # DIRTY=1 for this checkout's uncommitted changes) in a clean checkout under
 # dist/release-test/; on a Mac that includes the app (UNIVERSAL=1 for both
