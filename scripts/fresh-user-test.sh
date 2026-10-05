@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # The fresh-user release test, on this Mac: the whole first run of the
 # release app, as a new user has it, with nothing of this Mac's own Berth
-# touched. Releases are refused unless it passes (make release-check).
+# touched. Not part of releasing: run it by hand now and then, alone or
+# with the other release tests (make release-check).
 #
 #   scripts/fresh-user-test.sh                 the dmg make app-build last made
 #   scripts/fresh-user-test.sh --dmg PATH      that dmg
@@ -273,7 +274,16 @@ s_terminal() {
 	ax press "Terminal" --role AXCheckBox || return 1
 	ax wait "Terminal input" --timeout 10 || fail "no terminal" || return 1
 	local f="$THOME/.berth/app/terminal-renderer.json" r
-	until_ok 15 test -f "$f" || fail "the app never recorded which terminal renderer it got ($f)" || return 1
+	if ! until_ok 30 test -f "$f"; then
+		# Which it is: a fallback (the app says so) or a record that never
+		# reached the agent.
+		if ax wait "Terminals are using xterm.js" --timeout 2 >/dev/null 2>&1; then
+			fail "terminals fell back to xterm.js (the app's notice says so), and the record of it ($f) never reached the agent"
+		else
+			fail "the app's record of its terminal renderer ($f, PUT /v1/app/terminal-renderer) never reached the agent; no xterm.js fallback notice shows"
+		fi
+		return 1
+	fi
 	r=$(jq_py 'j.get("renderer")' <"$f")
 	[ "$r" = ghostty ] || fail "terminals use $r, not ghostty: $(cat "$f")" || return 1
 	if ax wait "Terminals are using xterm.js" --timeout 1 >/dev/null 2>&1; then fail "the app shows the xterm.js fallback notice" && return 1; fi

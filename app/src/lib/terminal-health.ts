@@ -41,9 +41,20 @@ function handle(o: RendererOutcome) {
       actionProps: { children: "Copy details", onClick: () => void copyText(o.details ?? o.reason ?? "", "Details copied") },
     });
   }
-  const record: RendererRecord = { ...o, at: new Date().toISOString(), user_agent: navigator.userAgent };
-  const client = useStore.getState().client;
-  void client?.laptop("PUT", RENDERER_DOC, record).catch(() => {});
+  void saveRecord({ ...o, at: new Date().toISOString(), user_agent: navigator.userAgent });
+}
+
+// saveRecord keeps trying for a minute: the first terminal can come before
+// the agent answers (it is starting, or restarting after an update), and a
+// record lost then left berth doctor without its "app terminal" line.
+async function saveRecord(record: RendererRecord, tries = 0) {
+  try {
+    const client = useStore.getState().client;
+    if (!client) throw new Error("the agent isn't connected yet");
+    await client.laptop("PUT", RENDERER_DOC, record);
+  } catch {
+    if (tries < 20) window.setTimeout(() => void saveRecord(record, tries + 1), 3000);
+  }
 }
 
 onRendererOutcome(handle);
