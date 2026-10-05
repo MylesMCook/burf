@@ -17,6 +17,8 @@ const refreshes: [prefix: string, parts: BoxPart[]][] = [
   ["location.", ["locations", "services"]],
   ["worktree.", ["locations", "services"]],
   ["session.", ["sessions"]],
+  // A service in a terminal is a session too.
+  ["service.", ["sessions", "services"]],
   ["agent.", ["sessions", "stats"]],
   // A task is a new worktree and the agent in it.
   ["task.", ["locations", "sessions"]],

@@ -125,6 +125,10 @@ export interface WorktreeService {
   name: string;
   run: string;
   autostart?: boolean;
+  // Runs in a terminal of its own, a tab named title (boxes with the
+  // "service.terminal" capability).
+  terminal?: boolean;
+  title?: string;
 }
 
 // RepoConfig is a repository's .berth/config.json, or a box's own layer of
@@ -174,6 +178,7 @@ export interface ServiceStatus extends WorktreeService {
   state: string;
   unit: string;
   port?: number;
+  session?: string;
 }
 
 const enc = encodeURIComponent;

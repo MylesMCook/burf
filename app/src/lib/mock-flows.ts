@@ -1,3 +1,4 @@
+import { mockTerminalService, mockWorktreePath } from "@/lib/mock-services";
 import type { BerthEvent } from "@/lib/api";
 import type { Flow, FlowRun, LocationConfig, RepoConfig, ScopedFlow, ServiceStatus, Step, StepRun } from "@/lib/flows";
 import type { GuardStatus } from "@/components/guard-dialog";
@@ -287,11 +288,22 @@ export function flowsCall(box: string, method: string, path: string, body: unkno
   if (m) {
     const [loc, wt, svc, action] = [m[1], m[2], m[3], m[4]].map((x) => x && decodeURIComponent(x));
     const list = serviceList(box, loc!, wt!);
-    if (!svc) return delay(list);
+    // A service in a terminal is as its session is (lib/mock-services).
+    const live = (s: ServiceStatus, run?: boolean) => {
+      if (!s.terminal) return s;
+      const t = mockTerminalService(box, loc!, wt!, s, run);
+      return { ...s, session: t.session, state: t.running ? "running" : "stopped" };
+    };
+    if (!svc) return delay(list.map((s) => live(s)));
     const s = list.find((x) => x.name === svc);
     if (!s) return Promise.reject(new Error(`no service ${svc}`));
     if (action === "log") return delay(`$ ${s.run}\n  ▲ Next.js 15.3.0\n  - Local: http://localhost:${s.port}\n ✓ Ready in 2.1s\n`);
     s.state = action === "stop" ? "stopped" : "running";
+    if (s.terminal) {
+      const next = live(s, action !== "stop");
+      setTimeout(() => emit({ type: action === "stop" ? "service.stopped" : "service.started", box, data: { location: loc, name: wt, path: mockWorktreePath(box, loc!, wt!), service: s.name, session: next.session } }), 30);
+      return delay(next);
+    }
     return delay(s);
   }
   return undefined;

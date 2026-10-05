@@ -8,6 +8,8 @@ export type SessionState = "ready" | "running" | "waiting" | "finished" | "exite
 export const AGENTS = ["claude", "codex", "opencode", "gemini", "pi", "cursor-agent"];
 
 export function agentOf(s: Session): string | undefined {
+  // A service's terminal runs no agent, whatever its command.
+  if (s.service) return undefined;
   if (s.agent) return s.agent;
   const program = s.command?.trim().split(/\s+/)[0]?.split("/").pop();
   return program && AGENTS.includes(program) ? program : undefined;
@@ -15,6 +17,8 @@ export function agentOf(s: Session): string | undefined {
 
 export function sessionState(s: Session, stats?: Stats): SessionState {
   if (s.exited) return "exited";
+  // Never another agent's state in the same worktree.
+  if (s.service) return "idle";
   if (s.agent_state) return s.agent_state === "idle" ? "ready" : s.agent_state;
   // The box's report is per folder: a state from before this session began
   // is another agent's in the same worktree, not this one's (a new agent
@@ -26,7 +30,8 @@ export function sessionState(s: Session, stats?: Stats): SessionState {
 }
 
 export function worktreeSessions(sessions: Session[] | undefined, wt: Worktree): Session[] {
-  return (sessions ?? []).filter((s) => s.dir === wt.path);
+  // A service's terminal is the service, not work in the worktree.
+  return (sessions ?? []).filter((s) => s.dir === wt.path && !s.service);
 }
 
 // worktreeOf finds the worktree a session runs in.
@@ -52,7 +57,7 @@ export function worktreeOf(locations: Location[] | undefined, s: Session): { loc
 export function sessionName(s: Session, opts: { sessions?: Session[]; locations?: Location[]; place?: boolean; agent?: boolean } = {}): string {
   const title = s.title?.trim();
   const agent = agentOf(s);
-  let name = title || (agent ? agentLabel(agent) : "Shell");
+  let name = title || (agent ? agentLabel(agent) : s.service || "Shell");
   if (title && opts.agent) name += ` · ${agent ? agentLabel(agent) : "Shell"}`;
   const same = title ? [] : (opts.sessions ?? []).filter((o) => o.dir === s.dir && agentOf(o) === agent && !o.exited && !o.title?.trim());
   if (same.length > 1) {
@@ -96,6 +101,7 @@ export function titleOf(prompt: string, max = TITLE_MAX): string {
 // agent ("Claude Code") or "Shell". Untitled sessions are named after their
 // agent already, so it is empty for them.
 export function sessionAgent(s: Session): string {
+  if (s.service) return "Service";
   if (!s.title?.trim()) return "";
   const agent = agentOf(s);
   return agent ? agentLabel(agent) : "Shell";

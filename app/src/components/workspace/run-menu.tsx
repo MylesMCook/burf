@@ -1,10 +1,11 @@
-import { ChevronDownIcon, ExternalLinkIcon, PlayIcon, RotateCwIcon, ScrollTextIcon, Settings2Icon, SquareIcon } from "lucide-react";
+import { ChevronDownIcon, ExternalLinkIcon, PlayIcon, RotateCwIcon, ScrollTextIcon, Settings2Icon, SquareIcon, SquareTerminalIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { Tip } from "@/components/tip";
 import { openProjectSettings } from "@/components/skills/project-settings-dialog";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { Spinner } from "@/components/ui/spinner";
+import { serviceRunning, showServiceTerminal } from "@/components/workspace/service-terminal";
 import { toastManager } from "@/components/ui/toast";
 import { boxApi, type WorktreeService } from "@/lib/api";
 import { portUrl } from "@/lib/browser-url";
@@ -17,9 +18,9 @@ import { contribute } from "@/plugins/registry";
 
 type Action = "start" | "stop" | "restart";
 
-// useWorktreeServices is the current worktree's services, refetched when
-// their events say something changed.
-function useWorktreeServices(ref?: WorktreeRef) {
+// useWorktreeServices is a worktree's services, refetched when their events
+// say something changed.
+export function useWorktreeServices(ref?: WorktreeRef) {
   const client = useStore((s) => s.client);
   const [services, setServices] = useState<WorktreeService[]>();
   const [error, setError] = useState<string>();
@@ -53,7 +54,6 @@ function useWorktreeServices(ref?: WorktreeRef) {
   return { services, error, reload: load, setServices };
 }
 
-const live = (s: WorktreeService) => s.state === "running" || s.state === "activating";
 
 // RunMenu is the tab strip's Run button: the worktree's own services (dev
 // servers, from its repository's .berth/config.json), each on the
@@ -62,6 +62,9 @@ export function RunMenu() {
   const ref = useWorkspaces((s) => (s.current ? s.spaces[s.current]?.ref : undefined));
   const { services, error, reload, setServices } = useWorktreeServices(ref);
   const [busy, setBusy] = useState<string>();
+  // A service in a terminal is as its session says: Ctrl-C there stops it.
+  const sessions = useStore((s) => (ref ? s.boxes[ref.box]?.sessions : undefined));
+  const live = (svc: WorktreeService) => serviceRunning(svc, sessions);
   if (!ref) return null;
 
   const primary = services?.find((s) => s.autostart) ?? services?.[0];
@@ -148,7 +151,7 @@ export function RunMenu() {
               <MenuGroupLabel className="flex items-center gap-1.5">
                 <span className={cn("size-1.5 rounded-full", live(svc) ? "bg-success" : svc.state === "failed" ? "bg-destructive" : "bg-muted-foreground/40")} />
                 <span className="font-medium text-foreground">{svc.name}</span>
-                <span className="truncate font-mono text-[10px]">{svc.state}{svc.port ? ` · :${svc.port}` : ""}</span>
+                <span className="truncate font-mono text-[10px]">{svc.terminal ? (live(svc) ? "running" : "stopped") : svc.state}{svc.port ? ` · :${svc.port}` : ""}</span>
               </MenuGroupLabel>
               {live(svc) ? (
                 <>
@@ -165,6 +168,12 @@ export function RunMenu() {
                 <MenuItem onClick={() => void act(svc, "start")}>
                   <PlayIcon />
                   Start
+                </MenuItem>
+              )}
+              {svc.terminal && svc.session && (
+                <MenuItem onClick={() => void showServiceTerminal(ref, svc)}>
+                  <SquareTerminalIcon />
+                  Show terminal
                 </MenuItem>
               )}
               <MenuItem onClick={() => viewLog(svc)}>

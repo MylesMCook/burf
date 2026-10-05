@@ -589,7 +589,7 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
   const hidden = rows.length - shown.length;
   // With one box, the row itself is the main checkout.
   const mainSel = !multi && !!defMain && inWorkspace && current === wsKey(def.box.name, defMain.path);
-  const allSessions = p.members.flatMap((m) => (boxes[m.box.name]?.sessions ?? []).filter((s) => m.loc.worktrees?.some((w) => w.path === s.dir)));
+  const allSessions = p.members.flatMap((m) => (boxes[m.box.name]?.sessions ?? []).filter((s) => !s.service && m.loc.worktrees?.some((w) => w.path === s.dir)));
   const glyphSessions = multi ? (collapsed ? allSessions : []) : defMain ? worktreeSessions(boxes[def.box.name]?.sessions, defMain) : [];
   const online = p.members.some((m) => m.box.state === "online");
 

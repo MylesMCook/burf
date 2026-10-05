@@ -1,8 +1,14 @@
-import { CableIcon, ChevronRightIcon, CopyIcon, DatabaseIcon, GlobeIcon, MonitorIcon } from "lucide-react";
+import { CableIcon, ChevronRightIcon, CopyIcon, DatabaseIcon, GlobeIcon, MonitorIcon, PlayIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
+import { useWorktreeServices } from "@/components/workspace/run-menu";
+import { ServiceIcon, serviceRunning, showServiceTerminal } from "@/components/workspace/service-terminal";
+import { boxApi, type WorktreeService } from "@/lib/api";
+import { errorMessage } from "@/lib/format";
+import { toastManager } from "@/components/ui/toast";
 import { openBrowserAt } from "@/lib/actions";
 import { hostSuffix, worktreeHost } from "@/lib/browser-url";
 import { copyText } from "@/lib/clipboard";
@@ -68,7 +74,13 @@ function LiveServices({ worktree: ref }: { worktree: WorktreeRef }) {
   const services = useStore((s) => s.boxes[ref.box]?.services ?? NONE);
   const urlPort = useStore((s) => s.status?.proxy.url_port);
   const devPort = useStore((s) => s.boxes[ref.box]?.locations?.find((l) => l.name === ref.location)?.worktrees?.find((w) => w.path === ref.path)?.port);
-  const rows = useMemo(() => liveServices(services, { ref, services, urlPort }, devPort), [services, ref, urlPort, devPort]);
+  const own = useWorktreeServices(ref);
+  const sessions = useStore((s) => s.boxes[ref.box]?.sessions);
+  // What listens on the worktree's own port is its running service when the
+  // box can't name the process (macOS often can't).
+  const ownRun = own.services?.find((svc) => serviceRunning(svc, sessions))?.run;
+  const named = useMemo(() => (ownRun ? services.map((s) => (!s.process && s.path === ref.path && s.port === devPort ? { ...s, process: ownRun } : s)) : services), [services, ownRun, ref.path, devPort]);
+  const rows = useMemo(() => liveServices(named, { ref, services: named, urlPort }, devPort), [named, ref, urlPort, devPort]);
   const [showOther, setShowOther] = useState(false);
   const name = ref.main ? ref.location : ref.worktree;
   const host = worktreeHost(ref);
@@ -78,6 +90,7 @@ function LiveServices({ worktree: ref }: { worktree: WorktreeRef }) {
   return (
     <section aria-label={`Running in ${name}`} className="min-w-0">
       <Heading>Running in {name}</Heading>
+      <TerminalServices worktree={ref} own={own} />
       {main.length ? (
         <ul className="flex min-w-0 flex-col">
           {main.map((r) => (
@@ -118,6 +131,66 @@ function LiveServices({ worktree: ref }: { worktree: WorktreeRef }) {
         </div>
       )}
     </section>
+  );
+}
+
+// TerminalServices are the worktree's services that run in a terminal of
+// their own: each with its state, Start when it is stopped, and its tab.
+function TerminalServices({ worktree: ref, own: { services, reload } }: { worktree: WorktreeRef; own: ReturnType<typeof useWorktreeServices> }) {
+  const sessions = useStore((s) => s.boxes[ref.box]?.sessions);
+  const [busy, setBusy] = useState<string>();
+  const rows = (services ?? []).filter((s) => s.terminal && s.session);
+  if (!rows.length) return null;
+  const start = async (svc: WorktreeService) => {
+    const client = useStore.getState().client;
+    if (!client) return;
+    setBusy(svc.name);
+    try {
+      await boxApi.serviceAction(client, ref.box, ref.location, ref.worktree, svc.name, "start");
+      await useStore.getState().refreshBox(ref.box, ["sessions"]);
+    } catch (err) {
+      toastManager.add({ title: `Could not start ${svc.name}`, description: errorMessage(err), type: "error" });
+    } finally {
+      setBusy(undefined);
+      void reload();
+    }
+  };
+  return (
+    <ul className="flex min-w-0 flex-col">
+      {rows.map((svc) => {
+        const running = serviceRunning(svc, sessions);
+        return (
+          <li key={svc.name} className="flex h-10 min-w-0 items-center gap-3 rounded-md px-2 text-sm hover:bg-accent/60">
+            <span className="flex size-4 shrink-0 items-center justify-center">
+              <ServiceIcon className="size-4" />
+            </span>
+            <span className="flex min-w-0 max-w-[45%] shrink-0 items-baseline gap-1.5">
+              <span className="truncate font-medium">{svc.title || svc.name}</span>
+              {svc.title && svc.title !== svc.name && <span className="truncate font-mono text-[11px] text-muted-foreground">{svc.name}</span>}
+            </span>
+            <Tip label={<span className="block max-w-sm break-all font-mono text-[11px]">{svc.run}</span>}>
+              <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground">{svc.run}</span>
+            </Tip>
+            <span className={cn("flex shrink-0 items-center gap-1.5 text-xs", running ? "text-foreground/80" : "text-muted-foreground")}>
+              <span className={cn("size-1.5 rounded-full", running ? "bg-success" : "bg-muted-foreground/40")} />
+              {running ? "Running" : "Stopped"}
+            </span>
+            {running ? (
+              <span aria-hidden className="size-6 shrink-0" />
+            ) : (
+              <Tip label={`Start ${svc.title || svc.name}`}>
+                <Button size="icon-xs" variant="ghost" aria-label={`Start ${svc.title || svc.name}`} disabled={busy === svc.name} className="shrink-0 text-muted-foreground hover:text-foreground" onClick={() => void start(svc)}>
+                  {busy === svc.name ? <Spinner className="size-3" /> : <PlayIcon />}
+                </Button>
+              </Tip>
+            )}
+            <Button size="xs" variant="outline" className="shrink-0" onClick={() => void showServiceTerminal(ref, svc)}>
+              Show terminal
+            </Button>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 

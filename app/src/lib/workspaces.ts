@@ -154,9 +154,13 @@ export function reconcile(key: string) {
   const here = sessions.filter((s) => s.dir === ws.ref.path);
   const known = new Set(ws.known ?? []);
   const fresh = here.filter((s) => !known.has(s.name));
-  if (!fresh.length && ws.known) return;
+  // A service's terminal has its tab whenever its worktree is open, unless
+  // the person closed it.
+  const services = here.filter((s) => s.service && known.has(s.name));
+  if (!fresh.length && !services.length && ws.known) return;
   const shown = new Set(panes.flatMap((l) => (l.content.kind === "terminal" ? [l.content.session] : [])));
-  const missing = fresh.filter((s) => !shown.has(s.name) && !ws.hidden.includes(s.name));
+  const missing = [...fresh, ...services].filter((s) => !shown.has(s.name) && !ws.hidden.includes(s.name));
+  if (!fresh.length && !missing.length && ws.known) return;
   update(key, (w) => {
     const added = missing.map(newSessionTab(w.ref.box));
     return { ...w, known: cap([...(w.known ?? []), ...fresh.map((s) => s.name)]), tabs: [...w.tabs, ...added], active: w.active ?? added[0]?.id };

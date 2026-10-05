@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 import { confirm } from "@/components/sidebar/confirm";
+import { serviceKeepsRunning } from "@/components/workspace/service-terminal";
 import { toastManager } from "@/components/ui/toast";
 import { usePrefs } from "@/lib/prefs";
 import { offerAgentHooks } from "@/lib/agent-hooks";
@@ -119,7 +120,8 @@ function stopping(leavesToClose: Leaf[], agents: boolean): Stop[] {
     if (l.content.kind !== "terminal") return [];
     const { box, session } = l.content;
     const s = boxes[box]?.sessions?.find((x) => x.name === session);
-    if (!s || s.exited) return [];
+    // A service's terminal never stops with its pane.
+    if (!s || s.exited || s.service) return [];
     const agent = agentOf(s);
     if (agent && !agents) return [];
     return [{ box, session, command: s.command?.trim() || undefined, agent }];
@@ -151,6 +153,10 @@ async function close({ key, tab, leaves: ls }: Closing, stopAgents: boolean) {
     // Marked closed either way: until the stop lands, or for good when it
     // keeps running, a refresh must not give it its tab back.
     removePane(key, tab, l.id, session);
+    if (s?.service) {
+      serviceKeepsRunning(box, s);
+      continue;
+    }
     // A session too new to be listed yet goes by what its pane knows.
     const agent = s ? (s.exited ? undefined : agentOf(s)) : l.content.agent;
     if (agent) (stopAgents ? stopped : kept).push({ agent, box, session });

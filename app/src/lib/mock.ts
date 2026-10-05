@@ -9,6 +9,7 @@ import { reviewCall, reviewExec } from "@/lib/mock-review";
 import { editorsCall } from "@/lib/mock-editors";
 import { imageGenCall } from "@/lib/mock-imagegen";
 import { mockShell } from "@/lib/mock-shell";
+import { mockServiceAttach, wireMockServices } from "@/lib/mock-services";
 import { mockIssueTitle } from "@/lib/mock-issues";
 import { usageCall, usageExec } from "@/lib/mock-usage";
 import { initMockQueue, queueCall } from "@/lib/mock-queue";
@@ -115,6 +116,8 @@ const mockPrompted = new Set<string>();
 const sessions: Record<string, Session[]> = {
   devl: [
     { name: "checkout-fix-claude", title: "Fix checkout webhook retries", location: "shop/checkout-fix", dir: "/home/me/work/shop-checkout-fix", command: "claude", created: ago(52), attached: 0, exited: false, agent: "claude", agent_state: "waiting", state_since: ago(4) },
+    // The worktree's dev server, a service in a terminal of its own.
+    { name: "svc-shop-checkout-fix-web", title: "Next.js", location: "shop/checkout-fix", dir: "/home/me/work/shop-checkout-fix", command: "pnpm dev --port $BERTH_PORT", created: ago(50), attached: 0, exited: false, service: "web" },
     { name: "qa-deck-codex", title: "Build the QA deck for the release", location: "shop/qa-deck", dir: "/home/me/work/shop-qa-deck", command: "codex", created: ago(18), attached: 1, exited: false, agent: "codex", agent_state: "running", state_since: ago(2) },
     { name: "shop-shell", location: "shop", dir: "/home/me/work/shop", command: "", created: ago(300), attached: 0, exited: false },
     { name: "search-perf-claude", title: "Speed up product search", location: "shop/search-perf", dir: "/home/me/work/shop-search-perf", command: "claude", created: ago(95), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(23) },
@@ -211,6 +214,12 @@ const appDocs: Record<string, unknown> = fresh ? {} : { projects: { projects: [{
 
 const listeners = new Set<(e: BerthEvent) => void>();
 const emit = (e: Omit<BerthEvent, "time">) => listeners.forEach((l) => l({ ...e, time: new Date().toISOString() }));
+wireMockServices({
+  sessions: (box) => (sessions[box] ??= []),
+  path: (box, loc, wt) => locations[box]?.find((l) => l.name === loc)?.worktrees?.find((w) => w.name === wt)?.path ?? `/home/me/work/${loc}-${wt}`,
+  port: (box, path) => services[box]?.find((s) => s.path === path && /next/.test(s.process ?? ""))?.port ?? 3100,
+  emit,
+});
 
 // mockDemo is what the live demo's script (src/demo/script.ts) moves agents
 // with. Keys are "box/session".
@@ -597,7 +606,7 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
       version: "0.1.0",
       build: mockBuilds[box] ?? SHIPPED_BUILD,
       tools: ["claude", "codex"],
-      capabilities: ["diff", "turns", "queue", "ask", "journal", "runs", "exec.detach", "browser", "titles", "sample"],
+      capabilities: ["diff", "turns", "queue", "ask", "journal", "runs", "exec.detach", "browser", "titles", "sample", "service.terminal"],
       adapters: {
         claude: { ready: true, started: true, waiting: true, finished: true, final_message: true, via: "hooks" },
         codex: { ready: true, started: true, waiting: true, finished: true, final_message: true, via: "hooks" },
@@ -710,6 +719,8 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
 // A fake terminal: a short Claude-like transcript, then an echoing prompt.
 // The live demo's terminals follow their agent instead, and answer.
 function mockAttach(box: string, session: string, h: TerminalHandlers) {
+  // A service's own terminal (lib/mock-services).
+  if (sessions[box]?.some((x) => x.name === session && x.service)) return mockServiceAttach(box, session, h);
   if (__BERTH_DEMO__) {
     return demoAttach(box, session, h, {
       session: () => sessions[box]?.find((x) => x.name === session),

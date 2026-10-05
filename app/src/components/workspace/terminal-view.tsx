@@ -4,6 +4,7 @@ import { toastError } from "@/components/error-note";
 import { Spinner } from "@/components/ui/spinner";
 import { toastManager } from "@/components/ui/toast";
 import { BoxOffline, SessionEnded } from "@/components/workspace/pane-state";
+import { ServiceStopped } from "@/components/workspace/service-terminal";
 import { useActiveTheme } from "@/hooks/use-theme";
 import { ApiError, type TerminalConnection } from "@/lib/api";
 import { attachable, localPaths, named, onThisComputer, pastedFiles, shrinkImage, uploadAttachment, uploadLocalFile } from "@/lib/attachments";
@@ -52,11 +53,17 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
   // True only once the box's sessions are known and this one is not among
   // them, or is listed as exited: there is nothing live to attach to, so the
   // pane shows the ended state rather than a terminal that seems to run.
+  // A service's terminal stays when its program ends, with what it printed,
+  // to start it again in.
   const gone = useStore((s) => {
     const list = s.boxes[box]?.sessions;
     if (!list) return false;
     const x = list.find((y) => y.name === session);
-    return !x || x.exited;
+    return !x || (x.exited && !x.service);
+  });
+  const stoppedService = useStore((s) => {
+    const x = s.boxes[box]?.sessions?.find((y) => y.name === session);
+    return x?.service && x.exited ? x : undefined;
   });
   // Where the box is: one on this computer reads a pasted laptop path as is.
   const address = useStore((s) => s.status?.boxes.find((b) => b.name === box)?.address);
@@ -318,6 +325,7 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
     <div className="relative min-h-0 flex-1" style={{ background: theme.terminal.background }} onMouseDown={onFocus}>
       <div ref={host} data-terminal className={cn("absolute inset-0 overflow-hidden px-3 pt-2 pb-1 transition-opacity [&_canvas]:block", blocked && "pointer-events-none", state === "offline" && "opacity-40", state === "ended" && "invisible")} />
       {state === "offline" && <BoxOffline box={box} state={boxState} onRetry={() => setRetry((n) => n + 1)} />}
+      {stoppedService && state !== "ended" && state !== "offline" && <ServiceStopped box={box} session={stoppedService} />}
       {state === "ended" && <SessionEnded box={box} session={session} agent={agent} command={command} wsKey={wsKey} tab={tab} pane={pane} onClose={onClose} />}
       {(state === "connecting" || state === "reconnecting") && (
         <div className="pointer-events-none absolute top-2 right-3 flex items-center gap-2 rounded-md border bg-popover/90 px-2 py-1 text-muted-foreground text-xs shadow-sm">

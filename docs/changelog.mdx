@@ -21,6 +21,13 @@ again.
   "3 artifacts" chip at the right of the reply box's controls lists them
   all, newest first: open one, copy its link, or show it in the chat. A
   page published again is marked updated. Boxes need an upgrade for it.
+- **Services in a terminal tab.** A service with `"terminal": true` (in a
+  kit, `.berth/config.json` or a box's own config, with an optional
+  `"title"`) runs in a terminal of its own, which opens as a tab named after
+  it when its worktree does, so a dev server's output is right there.
+  Ctrl-C in the tab stops it, and Start, in the tab or anywhere else, runs it
+  again in the same tab. Closing the tab only hides it; "Running in" and the
+  Run menu have Show terminal. Boxes need an upgrade for it.
 - **Drag tabs into splits.** Drag a tab from the top bar over a pane and
   drop it on an edge to split that pane right, left, up or down, with an
   outline showing where it lands; drop it between tabs to reorder. A pane

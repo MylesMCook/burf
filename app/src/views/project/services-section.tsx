@@ -1,10 +1,11 @@
-import { PlayIcon, PlusIcon, RotateCwIcon, SquareIcon, Trash2Icon, Undo2Icon } from "lucide-react";
+import { PlayIcon, PlusIcon, RotateCwIcon, SquareIcon, SquareTerminalIcon, Trash2Icon, Undo2Icon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { serviceRunning, showServiceTerminal } from "@/components/workspace/service-terminal";
 import { sortedWorktrees } from "@/lib/derive";
 import { type RepoConfig, type ServiceStatus, flowsApi, type WorktreeService } from "@/lib/flows";
 import { errorMessage } from "@/lib/format";
@@ -23,6 +24,9 @@ export function ServicesSection({ repo, draft, setDraft, box, location, urlPort 
   const setOwn = (services: WorktreeService[]) => setDraft({ ...draft, services });
   const update = (name: string, patch: Partial<WorktreeService>) => setOwn(own.map((s) => (s.name === name ? { ...s, ...patch } : s)));
   const host = `<worktree>.${location}.${box}.localhost${urlPort === 80 ? "" : `:${urlPort}`}`;
+  // Boxes that can run a service in a terminal of its own offer it.
+  const terminals = useStore((s) => !!s.boxes[box]?.info?.capabilities?.includes("service.terminal"));
+  const cols = terminals ? "grid-cols-[9rem_minmax(0,1fr)_5.5rem_5rem_auto_3.5rem]" : "grid-cols-[9rem_minmax(0,1fr)_5.5rem_auto_3.5rem]";
 
   return (
     <Section
@@ -54,10 +58,15 @@ export function ServicesSection({ repo, draft, setDraft, box, location, urlPort 
         </p>
       ) : (
         <div className="divide-y divide-border/70">
-          <div className="grid grid-cols-[9rem_minmax(0,1fr)_5.5rem_auto_3.5rem] gap-3 px-4 py-1.5 text-[11px] text-muted-foreground">
+          <div className={cn("grid gap-3 px-4 py-1.5 text-[11px] text-muted-foreground", cols)}>
             <span>Name</span>
             <span>Run</span>
             <span>Autostart</span>
+            {terminals && (
+              <Tip label="Run it in a terminal of its own, shown as a tab in each worktree. Ctrl-C there stops it.">
+                <span>Terminal</span>
+              </Tip>
+            )}
             <span />
             <span />
           </div>
@@ -69,7 +78,7 @@ export function ServicesSection({ repo, draft, setDraft, box, location, urlPort 
             const bad = mine && !NAME.test(mine.name);
             return (
               // By position, so renaming a service keeps its field focused.
-              <div key={i} className="grid grid-cols-[9rem_minmax(0,1fr)_5.5rem_auto_3.5rem] items-center gap-3 px-4 py-2">
+              <div key={i} className={cn("grid items-center gap-3 px-4 py-2", cols)}>
                 {mine && !c ? (
                   // Always the same tooltip: switching it on as the name goes bad would remount the field mid-word.
                   <Tip label="Lowercase letters, digits and dashes">
@@ -86,6 +95,7 @@ export function ServicesSection({ repo, draft, setDraft, box, location, urlPort 
                   </code>
                 )}
                 <Switch checked={!!s.autostart} disabled={!mine} onCheckedChange={(v) => update(name, { autostart: v })} aria-label={`Start ${name} with each new worktree`} />
+                {terminals && <Switch checked={!!s.terminal} disabled={!mine} onCheckedChange={(v) => update(name, { terminal: v })} aria-label={`Run ${name} in a terminal tab`} />}
                 <SourceBadge source={source} box={box} field="services" entry={name} />
                 <span className="flex justify-end">
                   {!mine && (
@@ -121,6 +131,7 @@ function LiveServices({ box, location }: { box: string; location: string }) {
   const worktrees = loc ? sortedWorktrees(loc) : NONE;
   const [state, setState] = useState<Record<string, ServiceStatus[] | string>>({});
   const [busy, setBusy] = useState<string>();
+  const sessions = useStore((s) => s.boxes[box]?.sessions);
 
   const load = useCallback(async () => {
     if (!client) return;
@@ -161,13 +172,20 @@ function LiveServices({ box, location }: { box: string; location: string }) {
           <div key={wt.name} className="flex flex-wrap items-center gap-x-4 gap-y-1.5 px-4 py-2">
             <span className="w-36 truncate text-sm">{wt.main ? location : wt.name}</span>
             {(state[wt.name] as ServiceStatus[]).map((s) => {
-              const running = s.state === "running" || s.state === "active";
+              const running = s.terminal ? serviceRunning(s, sessions) : s.state === "running" || s.state === "active";
               const key = `${wt.name}/${s.name}`;
               return (
                 <span key={s.name} className="inline-flex items-center gap-1.5 rounded-lg border bg-card py-0.5 pr-0.5 pl-2 text-xs">
                   <span className={cn("size-1.5 rounded-full", running ? "bg-success" : "bg-muted-foreground/40")} />
                   <code className="font-mono">{s.name}</code>
                   {s.port && <span className="font-mono text-muted-foreground tabular-nums">:{s.port}</span>}
+                  {s.terminal && s.session && (
+                    <Tip label="Show terminal">
+                      <Button size="icon-xs" variant="ghost" aria-label={`Show ${s.name}'s terminal in ${wt.name}`} onClick={() => void showServiceTerminal({ box, location, worktree: wt.name }, s)}>
+                        <SquareTerminalIcon />
+                      </Button>
+                    </Tip>
+                  )}
                   {running ? (
                     <>
                       <Button size="icon-xs" variant="ghost" aria-label={`Restart ${s.name} in ${wt.name}`} disabled={busy === key} onClick={() => void act(wt.name, s.name, "restart")}>

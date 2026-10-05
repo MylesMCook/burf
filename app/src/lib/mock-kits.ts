@@ -42,7 +42,8 @@ const shopKit: KitInfo = {
       NEXT_PUBLIC_WEBAPP_URL: "http://$BERTH_WORKTREE_NAME.shop.$BERTH_BOX.localhost:1377",
     },
     services: [
-      { name: "web", run: "pnpm dev --port $BERTH_PORT", autostart: true },
+      // The dev server runs in a terminal tab of its own.
+      { name: "web", run: "pnpm dev --port $BERTH_PORT", autostart: true, terminal: true, title: "Next.js" },
       { name: "api", run: "pnpm --filter @shop/api dev --port $BERTH_PORT_1" },
     ],
     flows: [

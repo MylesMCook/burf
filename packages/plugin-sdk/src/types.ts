@@ -117,6 +117,10 @@ export interface Session {
   // (or the first it was sent), about 48 characters, or what someone renamed
   // it to. Absent until there is one; api.renameSession names it.
   title?: string;
+  // Set on a worktree service's own terminal (a service with "terminal":
+  // true, from boxes with the "service.terminal" capability): the service's
+  // name. It never runs an agent, and closing its tab never stops it.
+  service?: string;
 }
 
 // A waiting agent's request, from its hooks rather than its screen: the
@@ -476,6 +480,11 @@ export interface WorktreeService {
   state: string;
   unit: string;
   port?: number;
+  // A service in a terminal of its own runs in session, shown as a tab
+  // named title.
+  terminal?: boolean;
+  title?: string;
+  session?: string;
 }
 
 // Runs: orchestrations the box executes and journals (loops, reviews,

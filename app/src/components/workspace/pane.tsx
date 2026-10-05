@@ -14,6 +14,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { LogView } from "@/components/workspace/log-view";
 import { PanelIcon, PanelPane } from "@/components/workspace/panel-pane";
+import { ServiceIcon } from "@/components/workspace/service-terminal";
 import { armDrag, useTabDrag } from "@/components/workspace/tab-drag";
 import { TerminalView } from "@/components/workspace/terminal-view";
 import { agentPresets, closePane, openBrowserAt, startSession } from "@/lib/actions";
@@ -181,9 +182,11 @@ export function paneLabel(c: Leaf["content"], agent?: string): string {
 
 export function PaneIcon({ content, agent, className }: { content: Leaf["content"]; agent?: string; className?: string }) {
   const c = content;
+  const service = useStore((s) => c.kind === "terminal" && !!s.boxes[c.box]?.sessions?.find((x) => x.name === c.session)?.service);
   if (c.kind === "browser") return <GlobeIcon className={cn("size-3.5 shrink-0", className)} />;
   if (c.kind === "log") return <ScrollTextIcon className={cn("size-3.5 shrink-0", className)} />;
   if (c.kind === "panel") return <PanelIcon plugin={c.plugin} panel={c.panel} className={cn("size-3.5 shrink-0", className)} />;
+  if (service) return <ServiceIcon className={cn("size-3", className)} />;
   return <AgentIcon agent={agent ?? (c.kind === "terminal" ? c.agent : undefined)} className={cn("size-3", className)} />;
 }
 
