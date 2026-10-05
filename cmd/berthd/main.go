@@ -208,6 +208,23 @@ func run(args []string) error {
 	return fmt.Errorf("unknown command %q; run berthd help", args[0])
 }
 
+// utf8Locale gives berthd, and so its tmux server and every session, a
+// UTF-8 locale when it was started with none, as launchd always starts it
+// and systemd can: a terminal gives one, and agents' screens and shells
+// need it. A locale someone set is left alone.
+func utf8Locale() {
+	for _, k := range []string{"LC_ALL", "LC_CTYPE", "LANG"} {
+		if os.Getenv(k) != "" {
+			return
+		}
+	}
+	if runtime.GOOS == "darwin" {
+		os.Setenv("LANG", "en_US.UTF-8")
+	} else {
+		os.Setenv("LANG", "C.UTF-8")
+	}
+}
+
 func serve(b boxHome, args []string) error {
 	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
 	listen := fs.String("listen", "", "address to listen on (default: this box's tailnet address only)")
@@ -219,6 +236,7 @@ func serve(b boxHome, args []string) error {
 		// Homebrew's tmux; find it anyway.
 		service.AugmentPATH()
 	}
+	utf8Locale()
 	if *listen == "" {
 		addr, err := defaultListen(interfaceIPs())
 		if err != nil {
@@ -431,7 +449,7 @@ func attachLocal(args []string) error {
 	if err != nil {
 		return err
 	}
-	return syscall.Exec(tmux, []string{"tmux", "-L", "berth", "attach-session", "-t", "=" + args[0]}, os.Environ())
+	return syscall.Exec(tmux, []string{"tmux", "-u", "-L", "berth", "attach-session", "-t", "=" + args[0]}, os.Environ())
 }
 
 func pair(b boxHome, args []string) error {

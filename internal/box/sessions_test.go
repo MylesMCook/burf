@@ -66,6 +66,26 @@ func testSessions(t *testing.T) *Sessions {
 	return s
 }
 
+// launchd starts berthd with no locale. tmux 3.7 then printed formats with
+// their tabs as "_", so berthd couldn't read a session it had just made
+// and none could start ("the session ended as soon as it started").
+func TestSessionsStartWithNoLocale(t *testing.T) {
+	s := testSessions(t)
+	// TMUX, even empty, also makes tmux assume UTF-8: launchd sets none.
+	for _, k := range []string{"LC_ALL", "LC_CTYPE", "LANG", "TMUX"} {
+		t.Setenv(k, "")
+		os.Unsetenv(k)
+	}
+	ctx := context.Background()
+	sess, err := s.Create(ctx, "no-locale", "cal", t.TempDir(), "sleep 30", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sess.Name != "no-locale" || sess.Location != "cal" || sess.Exited {
+		t.Fatalf("session = %+v", sess)
+	}
+}
+
 func TestSessionsLifecycle(t *testing.T) {
 	s := testSessions(t)
 	ctx := context.Background()

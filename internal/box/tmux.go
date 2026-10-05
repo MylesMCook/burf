@@ -73,6 +73,11 @@ var tmuxTimeout = 15 * time.Second
 
 // tmuxCommand is a command to berth's tmux server, with its own deadline.
 // The cancel func must be called once it has run.
+//
+// -u: launchd starts berthd with no locale (and systemd may), and a tmux
+// client that doesn't think it speaks UTF-8 prints formats with every tab
+// and non-ASCII character as "_" (tmux 3.7 does). berthd reads its
+// sessions back as tab-separated fields, so no session could start.
 func (s *Sessions) tmuxCommand(ctx context.Context, args ...string) (*exec.Cmd, context.Context, context.CancelFunc, error) {
 	bin, err := tmuxPath()
 	if err != nil {
@@ -82,7 +87,7 @@ func (s *Sessions) tmuxCommand(ctx context.Context, args ...string) (*exec.Cmd, 
 		s.trace(args)
 	}
 	cctx, cancel := context.WithTimeout(ctx, tmuxTimeout)
-	return exec.CommandContext(cctx, bin, append([]string{"-L", tmuxSocket, "-f", s.Config}, args...)...), cctx, cancel, nil
+	return exec.CommandContext(cctx, bin, append([]string{"-u", "-L", tmuxSocket, "-f", s.Config}, args...)...), cctx, cancel, nil
 }
 
 // runTmux runs cmd and says why it failed in words: its exit status, that

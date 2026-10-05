@@ -364,7 +364,7 @@ func (s *Sessions) Attach(ctx context.Context, name string, cols, rows int) (*os
 	if err != nil {
 		return nil, nil, err
 	}
-	cmd := exec.CommandContext(ctx, bin, "-L", tmuxSocket, "-f", s.Config, "attach-session", "-t", "="+name)
+	cmd := exec.CommandContext(ctx, bin, "-u", "-L", tmuxSocket, "-f", s.Config, "attach-session", "-t", "="+name)
 	cmd.Env = append(os.Environ(), "TERM=xterm-256color")
 	master, err := terminal.Start(cmd, cols, rows)
 	if err != nil {
