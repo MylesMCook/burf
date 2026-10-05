@@ -51,7 +51,11 @@ jobs:
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" dist/*.tar.gz dist/checksums.txt --clobber
           else
-            gh release create "$TAG" dist/*.tar.gz dist/checksums.txt --verify-tag --title "Berth $TAG" --generate-notes
+            # A draft until the macos job uploads the app's feed: GitHub's
+            # "latest" link skips drafts, so installed apps and the install
+            # script keep using the last full release meanwhile, instead of a
+            # latest.json that 404s.
+            gh release create "$TAG" dist/*.tar.gz dist/checksums.txt --verify-tag --draft --title "Berth $TAG" --generate-notes
           fi
 
   macos:
@@ -190,6 +194,11 @@ jobs:
             dist/mac/Berth-macos-universal.app.tar.gz \
             dist/mac/Berth-macos-universal.app.tar.gz.sig
           gh release upload "$TAG" --clobber dist/mac/latest.json
+      - name: Publish the release
+        # Last: the feed and the app are up, so it can become "latest".
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "$TAG" --draft=false --latest
       - name: Remove the keychain and the API key
         if: always()
         run: |

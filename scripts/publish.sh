@@ -104,10 +104,12 @@ assets=(dist/mac/Berth-macos-universal.dmg dist/mac/Berth-macos-universal.app.ta
 if gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
   gh release upload "$tag" --repo "$repo" --clobber "${assets[@]}"
 elif [ -n "${NOTES:-}" ]; then
-  gh release create "$tag" --repo "$repo" --verify-tag --title "Berth $tag" --notes "$NOTES" "${assets[@]}"
+  gh release create "$tag" --repo "$repo" --verify-tag --draft --title "Berth $tag" --notes "$NOTES" "${assets[@]}"
 else
-  gh release create "$tag" --repo "$repo" --verify-tag --title "Berth $tag" --generate-notes "${assets[@]}"
+  gh release create "$tag" --repo "$repo" --verify-tag --draft --title "Berth $tag" --generate-notes "${assets[@]}"
 fi
 # Last, so the feed never points at an archive that is not there yet.
 gh release upload "$tag" --repo "$repo" --clobber dist/mac/latest.json
+# Only now "latest": until then the feed of the last release stays live.
+gh release edit "$tag" --repo "$repo" --draft=false --latest
 echo "Published $tag. Installed apps offer it within a few hours, or from Settings → About → Check now."
