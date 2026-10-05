@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strings"
 	"time"
 
@@ -144,10 +145,26 @@ func AgentCommandWith(p AgentPreset, prompt, model, effort string) (string, erro
 	if prompt == "" {
 		return cmd, nil
 	}
+	if max := maxPromptArg(); len(prompt) > max {
+		return "", httpError{http.StatusRequestEntityTooLarge, fmt.Sprintf(
+			"the prompt is %d KB, but an agent gets its first prompt as one argument, which this box's kernel caps at %d KB: start it with the start of it and send the rest once it runs, or attach it as a file",
+			len(prompt)>>10, max>>10)}
+	}
 	if p.PromptFlag != "" {
 		return cmd + " " + p.PromptFlag + " " + shellQuote(prompt), nil
 	}
 	return cmd + " " + shellQuote(prompt), nil
+}
+
+// maxPromptArg is the longest first prompt an agent can be started with:
+// the program gets it as one argument, which Linux caps at 128 KB
+// (MAX_ARG_STRLEN) and macOS at its 1 MB for every argument and the
+// environment together. A prompt sent to a running agent has no such cap.
+func maxPromptArg() int {
+	if runtime.GOOS == "linux" {
+		return 128<<10 - 1
+	}
+	return 896 << 10
 }
 
 func shellQuote(s string) string {
@@ -257,11 +274,16 @@ type Task struct {
 
 func (b *Box) addTask(w http.ResponseWriter, r *http.Request) error {
 	var req TaskRequest
-	if err := decode(r, &req); err != nil {
+	if err := decodeLimit(r, &req, maxPromptBody); err != nil {
 		return err
 	}
 	if req.Location == "" || req.Name == "" {
 		return badRequest("a task needs a location and a name")
+	}
+	// Without tmux there is nothing to run the agent in: say so before
+	// making a worktree that would only be removed again.
+	if _, err := tmuxPath(); err != nil {
+		return err
 	}
 	ctx := r.Context()
 	loc, err := b.Locations.Get(ctx, req.Location)

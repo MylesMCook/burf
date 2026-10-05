@@ -189,6 +189,7 @@ func (b *Box) Mount(s *wire.Server) {
 	route("GET /v1/review", b.review)
 	route("GET /v1/info", b.handleInfo)
 	route("GET /v1/doctor", b.handleDoctor)
+	route("GET /v1/requirements", b.requirements)
 	route("POST /v1/upgrade", b.handleUpgrade)
 	route("GET /v1/events", b.streamEvents)
 	route("POST /v1/events", b.emit)
@@ -238,11 +239,31 @@ func (b *Box) publish(r *http.Request, typ string, data map[string]any) events.E
 
 func decode(r *http.Request, v any) error { return decodeLimit(r, v, 64<<10) }
 
+// maxPromptBody bounds a request that carries a prompt (a task, a session,
+// a send): 2 MB, room for a long spec pasted whole. A prompt never goes on
+// a command line, so tmux's and the kernel's limits don't apply to it.
+const maxPromptBody = 2 << 20
+
 func decodeLimit(r *http.Request, v any, limit int64) error {
-	if err := json.NewDecoder(io.LimitReader(r.Body, limit)).Decode(v); err != nil {
+	body := &countingReader{r: io.LimitReader(r.Body, limit)}
+	if err := json.NewDecoder(body).Decode(v); err != nil {
+		if body.n >= limit {
+			return httpError{http.StatusRequestEntityTooLarge, fmt.Sprintf("the request is larger than this box takes (%d KB)", limit>>10)}
+		}
 		return badRequest("invalid request body")
 	}
 	return nil
+}
+
+type countingReader struct {
+	r io.Reader
+	n int64
+}
+
+func (c *countingReader) Read(p []byte) (int, error) {
+	n, err := c.r.Read(p)
+	c.n += int64(n)
+	return n, err
 }
 
 func (b *Box) ports(w http.ResponseWriter, r *http.Request) error {
@@ -499,7 +520,10 @@ type SessionRequest struct {
 
 func (b *Box) addSession(w http.ResponseWriter, r *http.Request) error {
 	var req SessionRequest
-	if err := decode(r, &req); err != nil {
+	if err := decodeLimit(r, &req, maxPromptBody); err != nil {
+		return err
+	}
+	if _, err := tmuxPath(); err != nil {
 		return err
 	}
 	if req.Open != "" && req.Open != "split" && req.Open != "tab" {

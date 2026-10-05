@@ -27,10 +27,19 @@ A session also has a **title**, which is what the app calls it: the first
 line of the prompt it started with ("Fix checkout webhook"), cut to about
 48 characters, with the agent beside it ("Fix checkout webhook · Claude
 Code"). A session started without a prompt takes the title of the first
-prompt it gets, sent through Berth or typed into the agent. Berth keeps
-only the title (tmux option `@berth_title`), never the prompt. Rename it
+prompt it gets, sent through Berth or typed into the agent. The title is a
+tmux option (`@berth_title`). Rename it
 with `berth session rename`, `--title` on `session new` and `task new`, or
 the tab's menu in the app.
+
+A session's command, with the first prompt in it, is kept in a file only
+you can read (`<state>/commands/<session>.cmd`), which the session's login
+shell runs; it goes when the session does. A prompt can be long (a request
+up to 2 MB): it never goes on tmux's command line, which takes about 16 KB.
+The agent itself gets its first prompt as one argument, which Linux caps at
+128 KB and macOS at about 1 MB, so a longer one is refused up front; send
+the rest once the agent runs, as a paste of any length, or attach it as a
+file.
 
 A session is named after where it runs and what it runs
 (`shop-checkout-claude-…`) unless you pass `--name`. Its environment is the

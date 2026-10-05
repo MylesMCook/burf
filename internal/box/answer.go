@@ -149,9 +149,19 @@ type tmuxTerm struct {
 }
 
 func (t tmuxTerm) keys(k ...string) error {
+	if len(k) == 2 && k[0] == "-l" {
+		// Typed text goes in pieces tmux takes; it is still keystrokes.
+		for _, part := range literalChunks(k[1]) {
+			out, err := t.s.tmux(context.Background(), "send-keys", "-t", t.target, "-l", part)
+			if err != nil {
+				return tmuxSendError("send-keys", out, err)
+			}
+		}
+		return nil
+	}
 	out, err := t.s.tmux(context.Background(), append([]string{"send-keys", "-t", t.target}, k...)...)
 	if err != nil {
-		return tmuxSendError("send-keys", out)
+		return tmuxSendError("send-keys", out, err)
 	}
 	return nil
 }

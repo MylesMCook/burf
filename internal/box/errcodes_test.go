@@ -15,7 +15,7 @@ func TestErrorsCarryACode(t *testing.T) {
 		{ErrUnknownSession, CodeNotFound},
 		{fmt.Errorf("x: %w", ErrUnknownWorktree), CodeNotFound},
 		{ErrSessionExited, CodeSessionExited},
-		{tmuxSendError("paste-buffer", []byte("target pane has exited\n")), CodeSessionExited},
+		{tmuxSendError("paste-buffer", []byte("target pane has exited\n"), errors.New("exit status 1")), CodeSessionExited},
 		{ErrSessionExists, CodeSessionExists},
 		{errTmuxMissing, CodeTmuxMissing},
 		{httpError{409, ErrAgentWaiting{"a"}.Error()}, CodeAgentWaiting},

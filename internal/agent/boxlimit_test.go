@@ -9,10 +9,10 @@ import (
 
 func TestBoxBodyLimit(t *testing.T) {
 	for target, want := range map[string]int64{
-		"/v1/sessions":               1 << 20,
+		"/v1/sessions":               3 << 20,
 		"/v1/sessions/s/attachments": 28 << 20,
 		"/v1/locations/demo/worktrees/x/attachments?name=a": 28 << 20,
-		"/v1/sessions/attachments-x/send":                   1 << 20,
+		"/v1/sessions/attachments-x/send":                   3 << 20,
 	} {
 		if got := boxBodyLimit(target); got != want {
 			t.Errorf("%s: %d, want %d", target, got, want)

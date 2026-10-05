@@ -376,7 +376,7 @@ func processTree(pid int) []int {
 func (s *Sessions) freezeSession(ctx context.Context, name string, freeze bool) error {
 	out, err := s.tmux(ctx, "list-panes", "-t", "="+name+":", "-F", "#{pane_pid}")
 	if err != nil {
-		return fmt.Errorf("tmux list-panes: %s", strings.TrimSpace(string(out)))
+		return tmuxError("list-panes", out, err)
 	}
 	for _, f := range strings.Fields(string(out)) {
 		pid, err := strconv.Atoi(f)

@@ -781,7 +781,15 @@ func (a *Agent) refreshLocalBox(ctx context.Context) {
 		say("%v", err)
 		return
 	}
-	if updated {
+	// A plist from before berthd wrote one has launchd's bare PATH, under
+	// which berthd can't find Homebrew's tmux, so no agent starts:
+	// installing again writes the user's PATH into it. Once per agent run
+	// (seen), so a berthd that writes none isn't reinstalled again and again.
+	heal := !updated && localGOOS == "darwin" && unit.Env["PATH"] == ""
+	if heal {
+		say("berthd's service has no PATH, so it can't find tools such as Homebrew's tmux; installing it again with yours")
+	}
+	if updated || heal {
 		if err := runBerthd(ctx, say, unit.Program, home, "install", "--keep-listen"); err != nil {
 			say("reinstalling berthd: %v", err)
 			return

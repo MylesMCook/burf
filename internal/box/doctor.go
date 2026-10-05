@@ -20,7 +20,7 @@ func (b *Box) Doctor(ctx context.Context) []doctor.Check {
 	}
 	checks = append(checks,
 		doctor.ToolCheck("Worktrees and sessions", "git", "locations and worktrees", "Install git with your package manager", true),
-		doctor.ToolCheck("Worktrees and sessions", "tmux", "agent sessions", "sudo apt install tmux  (or your package manager)", true),
+		TmuxCheck(),
 		doctor.ToolCheck("Worktrees and sessions", "cloudflared", "public shares", "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/", false),
 		doctor.ToolCheck("Agents", "claude", "Claude Code sessions", "npm install -g @anthropic-ai/claude-code", false),
 		doctor.ToolCheck("Agents", "codex", "Codex sessions", "npm install -g @openai/codex", false),

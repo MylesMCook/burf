@@ -286,7 +286,7 @@ func TestATerminalServiceWithSecretsPassesOnlyTheirReferences(t *testing.T) {
 		}
 	}
 	line := strings.Join(started, " ")
-	if !strings.Contains(line, "/usr/bin/true secret exec --socket /run/berthd.sock -- ") || !strings.Contains(line, "DB_PASSWORD=op://dev/db/password") || !strings.Contains(line, "&& pnpm dev") {
+	if !strings.Contains(line, "/usr/bin/true secret exec --socket /run/berthd.sock -- ") || !strings.Contains(line, "DB_PASSWORD=op://dev/db/password") || !strings.Contains(line, "&& . '"+b.Sessions.commandPath(serviceSession("cal", "billing", "web"))+"'") {
 		t.Fatalf("new-session = %q", started)
 	}
 	if strings.Contains(line, stubPassword) {

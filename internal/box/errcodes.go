@@ -92,7 +92,7 @@ func codeForStatus(status int) string {
 		return CodeUnsupported
 	case http.StatusTooManyRequests:
 		return CodeTooMany
-	case http.StatusBadRequest, http.StatusConflict, http.StatusMethodNotAllowed:
+	case http.StatusBadRequest, http.StatusConflict, http.StatusMethodNotAllowed, http.StatusRequestEntityTooLarge:
 		return CodeBadRequest
 	}
 	return CodeInternal

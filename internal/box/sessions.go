@@ -11,7 +11,9 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/sean-brydon/berthd/internal/integrations/adapters"
 	"github.com/sean-brydon/berthd/internal/statefile"
@@ -55,6 +57,9 @@ type Session struct {
 	// "terminal": true): the service's name, kept as @berth_service. It is
 	// never an agent, whatever it runs.
 	Service string `json:"service,omitempty"`
+
+	// commandFile is where the session's command is kept, when it is.
+	commandFile string
 }
 
 var (
@@ -69,8 +74,17 @@ var (
 type Sessions struct {
 	// Config is the tmux configuration file for berth's server.
 	Config string
+	// Commands is the folder that keeps each session's command in a file
+	// of its own (NAME.cmd). A command carries the agent's prompt, which
+	// can be any length, and tmux refuses a command line (or an option)
+	// longer than about 16 KB, so neither ever holds it: the pane runs the
+	// file and the session points to it (@berth_command_file).
+	Commands string
 	// trace, in tests, sees every tmux command line.
 	trace func(args []string)
+
+	sweepMu   sync.Mutex
+	lastSweep time.Time
 }
 
 const tmuxSocket = "berth"
@@ -88,7 +102,7 @@ set -g focus-events on
 
 func NewSessions(dir string) (*Sessions, error) {
 	path := filepath.Join(dir, "tmux.conf")
-	s := &Sessions{Config: path}
+	s := &Sessions{Config: path, Commands: filepath.Join(dir, "commands")}
 	if b, err := os.ReadFile(path); err != nil || string(b) != tmuxConfig {
 		if err := statefile.Write(path, []byte(tmuxConfig)); err != nil {
 			return nil, err
@@ -97,17 +111,20 @@ func NewSessions(dir string) (*Sessions, error) {
 		// without one, this fails and the next server reads the file.
 		s.tmux(context.Background(), "source-file", path)
 	}
+	// Commands of sessions that ended while the box was down go now.
+	s.sweepCommands(context.Background(), 0)
 	return s, nil
 }
 
+// tmux runs a command in berth's tmux server. Its error says why it failed
+// (an exit status, a timeout, errTmuxMissing); tmux's own words are in out.
 func (s *Sessions) tmux(ctx context.Context, args ...string) ([]byte, error) {
-	if s.trace != nil {
-		s.trace(args)
+	cmd, cctx, cancel, err := s.tmuxCommand(ctx, args...)
+	if err != nil {
+		return nil, err
 	}
-	ctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, "tmux", append([]string{"-L", tmuxSocket, "-f", s.Config}, args...)...)
-	return cmd.CombinedOutput()
+	return runTmux(ctx, cctx, cmd)
 }
 
 // The command is also kept base64-encoded (@berth_command64): some tmux
@@ -116,11 +133,25 @@ func (s *Sessions) tmux(ctx context.Context, args ...string) ([]byte, error) {
 // existed only have the plain one, so only they print it: a command carries
 // its prompt, and a prompt's line breaks or tabs printed here would split
 // the session's line, and the session would vanish from the list.
-const listFormat = "#{session_name}\t#{session_created}\t#{session_attached}\t#{@berth_location}\t#{?@berth_command64,,#{@berth_command}}\t#{pane_dead}\t#{pane_start_path}\t#{@berth_command64}\t#{@berth_agent}\t#{@berth_title}\t#{@berth_service}"
+//
+// Sessions started since keep their command in a file (@berth_command_file)
+// and only its start in @berth_command, for older builds to show.
+const listFormat = "#{session_name}\t#{session_created}\t#{session_attached}\t#{@berth_location}\t#{?@berth_command64,,#{@berth_command}}\t#{pane_dead}\t#{pane_start_path}\t#{@berth_command64}\t#{@berth_agent}\t#{@berth_title}\t#{@berth_service}\t#{@berth_command_file}"
+
+// plainCommandMax is how much of a command the plain @berth_command keeps.
+const plainCommandMax = 1024
 
 // plainCommand is the command as the plain @berth_command keeps it, for
-// builds that read only that: on one line, as a session list needs it.
+// builds that read only that: on one line, as a session list needs it, and
+// short, as a tmux option must be.
 func plainCommand(command string) string {
+	if len(command) > plainCommandMax {
+		cut := plainCommandMax
+		for cut > 0 && !utf8.RuneStart(command[cut]) {
+			cut--
+		}
+		command = command[:cut]
+	}
 	return strings.Map(func(r rune) rune {
 		if r == '\n' || r == '\r' || r == '\t' {
 			return ' '
@@ -130,28 +161,42 @@ func plainCommand(command string) string {
 }
 
 func (s *Sessions) List(ctx context.Context) ([]Session, error) {
-	if _, err := exec.LookPath("tmux"); err != nil {
-		return nil, errTmuxMissing
+	all, err := s.list(ctx)
+	if err == nil {
+		s.maybeSweep(ctx)
 	}
+	return all, err
+}
+
+func (s *Sessions) list(ctx context.Context) ([]Session, error) {
 	out, err := s.tmux(ctx, "list-sessions", "-F", listFormat)
 	if err != nil {
 		// No server yet simply means no sessions.
 		if strings.Contains(string(out), "no server running") || strings.Contains(string(out), "error connecting") {
 			return []Session{}, nil
 		}
-		return nil, fmt.Errorf("tmux list-sessions: %s", strings.TrimSpace(string(out)))
+		return nil, tmuxError("list-sessions", out, err)
 	}
-	return parseSessions(out), nil
+	all := parseSessions(out)
+	for i := range all {
+		if all[i].commandFile == "" {
+			continue
+		}
+		if command, err := readCommand(all[i].commandFile); err == nil {
+			all[i].Command = command
+		}
+	}
+	return all, nil
 }
 
 func parseSessions(out []byte) []Session {
 	sessions := []Session{}
 	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 		f := strings.Split(line, "\t")
-		for len(f) >= 7 && len(f) < 11 {
+		for len(f) >= 7 && len(f) < 12 {
 			f = append(f, "")
 		}
-		if len(f) != 11 {
+		if len(f) != 12 {
 			continue
 		}
 		command := f[4]
@@ -173,6 +218,8 @@ func parseSessions(out []byte) []Session {
 			Preset:   f[8],
 			Title:    f[9],
 			Service:  f[10],
+
+			commandFile: f[11],
 		})
 	}
 	return sessions
@@ -195,6 +242,9 @@ func (s *Sessions) create(ctx context.Context, name, location, dir, command, age
 	if !sessionName.MatchString(name) {
 		return Session{}, fmt.Errorf("invalid session name %q: use letters, digits, - and _", name)
 	}
+	if _, err := tmuxPath(); err != nil {
+		return Session{}, err
+	}
 	if _, err := s.tmux(ctx, "has-session", "-t", "="+name); err == nil {
 		return Session{}, ErrSessionExists
 	}
@@ -203,8 +253,13 @@ func (s *Sessions) create(ctx context.Context, name, location, dir, command, age
 		shell = "/bin/sh"
 	}
 	argv := []string{shell, "-l"}
+	file := ""
 	if command != "" {
-		argv = []string{shell, "-lc", command}
+		var err error
+		if file, err = s.writeCommand(name, command); err != nil {
+			return Session{}, err
+		}
+		argv = []string{shell, "-lc", sourceCommand(shell, file)}
 	}
 	args := []string{"new-session", "-d", "-s", name, "-c", dir, "-x", "200", "-y", "50"}
 	env = append(append([]string(nil), env...), "BERTH_SESSION="+name)
@@ -215,21 +270,41 @@ func (s *Sessions) create(ctx context.Context, name, location, dir, command, age
 		args = append(args, "-e", kv)
 	}
 	args = append(append(append(args, "--"), wrap...), argv...)
-	if out, err := s.tmux(ctx, args...); err != nil {
-		return Session{}, fmt.Errorf("tmux new-session: %s", strings.TrimSpace(string(out)))
+	// The labels are set in the same tmux command that makes the session,
+	// so no list sees it without them. set-option takes a pane target,
+	// whose exact-match form needs the colon.
+	target := "=" + name + ":"
+	set := func(k, v string) {
+		args = append(args, ";", "set-option", "-t", target, k, v)
 	}
-	// set-option takes a pane target, whose exact-match form needs the colon.
-	s.tmux(ctx, "set-option", "-t", "="+name+":", "@berth_location", location)
-	s.tmux(ctx, "set-option", "-t", "="+name+":", "@berth_command", plainCommand(command))
-	s.tmux(ctx, "set-option", "-t", "="+name+":", "@berth_command64", base64.StdEncoding.EncodeToString([]byte(command)))
+	set("@berth_location", location)
+	set("@berth_command", plainCommand(command))
+	if file != "" {
+		set("@berth_command_file", file)
+	}
 	if agent != "" {
-		s.tmux(ctx, "set-option", "-t", "="+name+":", "@berth_agent", agent)
+		set("@berth_agent", agent)
+	}
+	for i, a := range args {
+		if a != ";" {
+			args[i] = tmuxArg(a)
+		}
+	}
+	if out, err := s.tmux(ctx, args...); err != nil {
+		s.tmux(ctx, "kill-session", "-t", "="+name)
+		s.removeCommand(name)
+		return Session{}, tmuxError("new-session", out, err)
 	}
 	sess, err := s.Get(ctx, name)
 	if err != nil {
 		// A session it can't read back would run on unseen, and a task
 		// removes its worktree when this fails: stop it too.
 		s.tmux(ctx, "kill-session", "-t", "="+name)
+		s.removeCommand(name)
+		if errors.Is(err, ErrUnknownSession) {
+			// It ended at once, as tmux can when its program can't start.
+			return Session{}, fmt.Errorf("tmux new-session: the session ended as soon as it started: %w", err)
+		}
 		return Session{}, err
 	}
 	return sess, nil
@@ -250,7 +325,7 @@ func (s *Sessions) SetTitle(ctx context.Context, name, title string) error {
 		args = []string{"set-option", "-u", "-t", "=" + name + ":", "@berth_title"}
 	}
 	if out, err := s.tmux(ctx, args...); err != nil {
-		return fmt.Errorf("tmux set-option: %s", strings.TrimSpace(string(out)))
+		return tmuxError("set-option", out, err)
 	}
 	return nil
 }
@@ -273,8 +348,9 @@ func (s *Sessions) Kill(ctx context.Context, name string) error {
 		return err
 	}
 	if out, err := s.tmux(ctx, "kill-session", "-t", "="+name); err != nil {
-		return fmt.Errorf("tmux kill-session: %s", strings.TrimSpace(string(out)))
+		return tmuxError("kill-session", out, err)
 	}
+	s.removeCommand(name)
 	return nil
 }
 
@@ -284,7 +360,11 @@ func (s *Sessions) Attach(ctx context.Context, name string, cols, rows int) (*os
 	if _, err := s.Get(ctx, name); err != nil {
 		return nil, nil, err
 	}
-	cmd := exec.CommandContext(ctx, "tmux", "-L", tmuxSocket, "-f", s.Config, "attach-session", "-t", "="+name)
+	bin, err := tmuxPath()
+	if err != nil {
+		return nil, nil, err
+	}
+	cmd := exec.CommandContext(ctx, bin, "-L", tmuxSocket, "-f", s.Config, "attach-session", "-t", "="+name)
 	cmd.Env = append(os.Environ(), "TERM=xterm-256color")
 	master, err := terminal.Start(cmd, cols, rows)
 	if err != nil {
@@ -301,7 +381,7 @@ func (s *Sessions) Screen(ctx context.Context, name string, history int) (string
 	}
 	out, err := s.tmux(ctx, "capture-pane", "-p", "-J", "-t", "="+name+":", "-S", "-"+strconv.Itoa(max(history, 0)))
 	if err != nil {
-		return "", fmt.Errorf("tmux capture-pane: %s", strings.TrimSpace(string(out)))
+		return "", tmuxError("capture-pane", out, err)
 	}
 	return strings.TrimRight(string(out), "\n") + "\n", nil
 }

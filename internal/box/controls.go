@@ -35,7 +35,7 @@ func controlAgent(sess Session) string {
 func (b *Box) pressKeys(ctx context.Context, name string, keys ...string) error {
 	for _, k := range keys {
 		if out, err := b.Sessions.tmux(ctx, "send-keys", "-t", "="+name+":", k); err != nil {
-			return tmuxSendError("send-keys", out)
+			return tmuxSendError("send-keys", out, err)
 		}
 	}
 	return nil

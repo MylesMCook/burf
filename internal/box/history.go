@@ -277,7 +277,7 @@ func (b *Box) driveRewind(ctx context.Context, name, want string, nth int, resto
 	keys := func(k ...string) error {
 		out, err := s.tmux(ctx, append([]string{"send-keys", "-t", target}, k...)...)
 		if err != nil {
-			return tmuxSendError("send-keys", out)
+			return tmuxSendError("send-keys", out, err)
 		}
 		return nil
 	}

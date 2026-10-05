@@ -3,12 +3,10 @@ package box
 import (
 	"context"
 	"crypto/sha1"
-	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"regexp"
 	"sort"
 	"strconv"
@@ -72,10 +70,11 @@ func terminalState(sessions []Session, name string) string {
 type serviceRun struct {
 	Name, Location, Dir string
 	Service, Title      string
-	// Command is the service's run line, as the session reports it.
+	// Command is the service's run line, which the session runs in Dir
+	// through the login shell, behind Wrap when there is one.
 	Command string
 	Env     []string
-	Argv    []string
+	Wrap    []string
 	// Log, when set, gets a copy of everything the program prints.
 	Log string
 }
@@ -94,8 +93,8 @@ func tmuxArg(a string) string {
 // The session's labels are set in the same tmux command that makes it, so
 // no list ever sees it unlabelled (as an agent, say).
 func (s *Sessions) runService(ctx context.Context, r serviceRun) error {
-	if _, err := exec.LookPath("tmux"); err != nil {
-		return errTmuxMissing
+	if _, err := tmuxPath(); err != nil {
+		return err
 	}
 	if !sessionName.MatchString(r.Name) {
 		return fmt.Errorf("invalid session name %q", r.Name)
@@ -118,13 +117,21 @@ func (s *Sessions) runService(ctx context.Context, r serviceRun) error {
 	for _, kv := range r.Env {
 		args = append(args, "-e", kv)
 	}
-	args = append(append(args, "--"), r.Argv...)
+	// The run line is kept in a file, as an agent's command is, and
+	// written again at every start: its config may have changed.
+	file, err := s.writeCommand(r.Name, r.Command)
+	if err != nil {
+		return err
+	}
+	shell := loginShell()
+	argv := []string{shell, "-lc", "cd " + shellQuote(r.Dir) + " && " + sourceCommand(shell, file)}
+	args = append(append(append(args, "--"), r.Wrap...), argv...)
 	set := func(k, v string) {
 		args = append(args, ";", "set-option", "-t", target, k, v)
 	}
 	set("@berth_location", r.Location)
 	set("@berth_command", plainCommand(r.Command))
-	set("@berth_command64", base64.StdEncoding.EncodeToString([]byte(r.Command)))
+	set("@berth_command_file", file)
 	set("@berth_service", r.Service)
 	if fresh {
 		// A title someone gave the tab since stays when it starts again.
@@ -141,8 +148,9 @@ func (s *Sessions) runService(ctx context.Context, r serviceRun) error {
 	if out, err := s.tmux(ctx, args...); err != nil {
 		if fresh {
 			s.tmux(ctx, "kill-session", "-t", "="+r.Name)
+			s.removeCommand(r.Name)
 		}
-		return fmt.Errorf("tmux %s: %s", args[0], strings.TrimSpace(string(out)))
+		return tmuxError(args[0], out, err)
 	}
 	// What the pane says once the program ends (tmux 3.3 and later; older
 	// ones say "Pane is dead").
@@ -250,13 +258,12 @@ func (b *Box) startTerminalService(ctx context.Context, loc Location, wt Worktre
 		}
 	}
 	name := serviceSession(loc.Name, wt.Name, svc.Name)
-	argv := []string{loginShell(), "-lc", "cd " + shellQuote(wt.Path) + " && " + svc.Run}
+	var wrap []string
 	if len(refs) > 0 {
-		wrap, err := b.secretWrap(env, refs)
-		if err != nil {
+		var err error
+		if wrap, err = b.secretWrap(env, refs); err != nil {
 			return err
 		}
-		argv = append(wrap, argv...)
 	}
 	env["BERTH_SESSION"] = name
 	env["BERTH_SERVICE"] = svc.Name
@@ -269,7 +276,7 @@ func (b *Box) startTerminalService(ctx context.Context, loc Location, wt Worktre
 	for _, k := range keys {
 		kv = append(kv, k+"="+env[k])
 	}
-	r := serviceRun{Name: name, Location: loc.Name + "/" + wt.Name, Dir: wt.Path, Service: svc.Name, Title: serviceTitle(svc), Command: svc.Run, Env: kv, Argv: argv}
+	r := serviceRun{Name: name, Location: loc.Name + "/" + wt.Name, Dir: wt.Path, Service: svc.Name, Title: serviceTitle(svc), Command: svc.Run, Env: kv, Wrap: wrap}
 	if wt.Main {
 		r.Location = loc.Name
 	}

@@ -12,9 +12,9 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"text/tabwriter"
@@ -213,6 +213,11 @@ func serve(b boxHome, args []string) error {
 	listen := fs.String("listen", "", "address to listen on (default: this box's tailnet address only)")
 	if err := fs.Parse(args); err != nil {
 		return err
+	}
+	if runtime.GOOS == "darwin" {
+		// A plist from an older install gives launchd's bare PATH, without
+		// Homebrew's tmux; find it anyway.
+		service.AugmentPATH()
 	}
 	if *listen == "" {
 		addr, err := defaultListen(interfaceIPs())
@@ -422,7 +427,7 @@ func attachLocal(args []string) error {
 	if len(args) != 1 {
 		return errors.New("usage: berthd session attach NAME")
 	}
-	tmux, err := exec.LookPath("tmux")
+	tmux, err := box.TmuxPath()
 	if err != nil {
 		return err
 	}

@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -590,8 +591,20 @@ func TestParseVerdict(t *testing.T) {
 }
 
 func TestMapFirstSuccessCancelsOthers(t *testing.T) {
+	// An item not yet started when one succeeds is never run (first_success),
+	// and the map's goroutines start in any order: the fast item wins only
+	// once the slow ones are running, so all three are there to see.
+	var started atomic.Int32
 	h := &fakeHost{leaf: func(ctx context.Context, x *StepCtx) Result {
+		started.Add(1)
 		if x.Vars["item"] == "fast" {
+			for started.Load() < 3 {
+				select {
+				case <-ctx.Done():
+					return Result{Status: Failed}
+				case <-time.After(5 * time.Millisecond):
+				}
+			}
 			return Result{Status: Succeeded}
 		}
 		<-ctx.Done()
@@ -600,9 +613,6 @@ func TestMapFirstSuccessCancelsOthers(t *testing.T) {
 	e, stop := newEngine(t, t.TempDir(), h)
 	defer stop()
 	s, _, _ := e.Start(Request{Flow: []Step{{Kind: "map", Items: []byte(`["slow","slow","fast"]`), Mode: "first_success", Steps: []Step{{Kind: "run", Command: "x"}}}}})
-	// The fast item comes last: an item not yet started when one succeeds
-	// is never run (first_success), so all three are started by the time it
-	// can win.
 	r := waitStatus(t, e, s.ID, Succeeded, Failed)
 	if r.Status != Succeeded {
 		t.Fatal(r.Error)

@@ -277,7 +277,7 @@ func (p *Phone) Handler(b *Box, listenAddr string) http.Handler {
 			Text  string `json:"text"`
 			Enter *bool  `json:"enter"`
 		}
-		if err := decodeLimit(r, &req, 32<<10); err != nil {
+		if err := decodeLimit(r, &req, maxPromptBody); err != nil {
 			writeError(w, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -328,7 +328,8 @@ func (p *Phone) Handler(b *Box, listenAddr string) http.Handler {
 			return
 		}
 		if out, err := b.Sessions.tmux(r.Context(), "send-keys", "-t", "="+name+":", key); err != nil {
-			writeError(w, http.StatusInternalServerError, strings.TrimSpace(string(out)))
+			err = tmuxSendError("send-keys", out, err)
+			writeError(w, statusFor(err), err.Error())
 			return
 		}
 		writeJSON(w, map[string]bool{"sent": true})

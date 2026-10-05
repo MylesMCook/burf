@@ -9,6 +9,31 @@ upgrades with `berth upgrade BOX`, or by running the
 [install command](/getting-started/add-a-box#with-the-install-command)
 again.
 
+## Unreleased
+
+- **Long prompts start.** A task or session whose prompt was over about
+  16 KB failed with "tmux new-session: ." and its worktree was removed: the
+  command went on tmux's command line, which tmux refuses. Each session's
+  command now lives in a file only you can read, which its login shell
+  runs, so a prompt can be up to a 2 MB request (the agent itself takes its
+  first one as one argument: up to 128 KB on Linux, about 1 MB on a Mac,
+  and a longer one is refused up front, saying so). A long message sent to
+  a running agent goes through tmux's stdin, whole. Every tmux failure now
+  says why (its exit status, or a timeout), never an empty reason. Boxes
+  need an upgrade. [Sessions](/concepts/sessions-and-agents#sessions).
+- **This Mac finds Homebrew's tmux.** The Mac's own box runs under launchd,
+  whose bare PATH hid `/opt/homebrew/bin`, so no agent could start there.
+  berthd now looks for tmux in Homebrew's folders too, and its launchd
+  plist carries your login shell's PATH (with Homebrew's and `~/.local/bin`);
+  the agent rewrites an older plist on its next start. `berthd doctor` says
+  how to install tmux on that system.
+- **Missing tmux or agent CLI gets a card, not a failure.** Starting an
+  agent on a box without tmux or the agent's CLI shows how to install it:
+  onboarding and ⌘N show the command (`brew install tmux` on a Mac, with
+  Homebrew first if needed; the package manager on Linux), **Copy and open
+  Terminal** on this Mac, and **Check again**. Nothing is created until
+  it's there.
+
 ## v0.3.4
 
 October 5, 2026.

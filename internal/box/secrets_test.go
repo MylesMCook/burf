@@ -501,7 +501,7 @@ func TestSessionsWithSecretsNeverPutAValueInTmuxsArguments(t *testing.T) {
 	}
 	mu.Unlock()
 	joined := strings.Join(created, "\x00")
-	for _, want := range []string{"SESSION_KEY=op://dev/session/key", "MISSING=op://dev/nope/field", SecretVarsEnv + "=MISSING,SESSION_KEY", "PLAIN=plain-billing", "\x00--\x00" + bin + "\x00secret\x00exec\x00--socket\x00" + b.Socket + "\x00--\x00/bin/sh\x00-lc\x00" + command} {
+	for _, want := range []string{"SESSION_KEY=op://dev/session/key", "MISSING=op://dev/nope/field", SecretVarsEnv + "=MISSING,SESSION_KEY", "PLAIN=plain-billing", "\x00--\x00" + bin + "\x00secret\x00exec\x00--socket\x00" + b.Socket + "\x00--\x00/bin/sh\x00-lc\x00. '" + b.Sessions.commandPath("agent") + "'\x00"} {
 		if !strings.Contains(joined, want) {
 			t.Errorf("new-session lacks %q: %q", want, created)
 		}
@@ -552,8 +552,12 @@ func TestSessionsWithoutSecretsStartAsTheyAlwaysDid(t *testing.T) {
 		want = append(want, "-e", kv)
 	}
 	// Every session tells its agent's hooks which session they are in.
-	want = append(want, "-e", "BERTH_SESSION=plain", "--", "/bin/sh", "-lc", "sleep 30")
-	if !reflect.DeepEqual(created, want) {
+	// The command runs from its file, never from tmux's command line.
+	want = append(want, "-e", "BERTH_SESSION=plain", "--", "/bin/sh", "-lc", ". '"+b.Sessions.commandPath("plain")+"'")
+	if len(created) < len(want) || !reflect.DeepEqual(created[:len(want)], want) {
 		t.Fatalf("new-session = %q\nwant %q", created, want)
+	}
+	if got, err := readCommand(b.Sessions.commandPath("plain")); err != nil || got != "sleep 30" {
+		t.Fatalf("command file = %q, %v", got, err)
 	}
 }

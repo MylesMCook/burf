@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -388,6 +389,52 @@ func TestAnAppUpdateRefreshesTheCopy(t *testing.T) {
 	if b, _ := os.ReadFile(e.stable); !strings.Contains(string(b), "VERSION=v0.3.0") {
 		t.Fatal("downgraded the box")
 	}
+}
+
+// A Mac's berthd installed before plists carried a PATH can't find
+// Homebrew's tmux: the agent's next start installs it again, once, which
+// writes the user's PATH into the plist.
+func TestAPlistWithoutAPATHIsInstalledAgainOnce(t *testing.T) {
+	e := newLocalEnv(t)
+	old := localGOOS
+	t.Cleanup(func() { localGOOS = old })
+	localGOOS = "darwin"
+	copyFile(t, e.bundled, e.stable)
+	e.installUnit(e.stable, "127.0.0.1:7445", e.root)
+	a := &Agent{cfg: Config{Dir: e.dir, CLI: filepath.Join(e.dir, "fake-berth"), Log: log.New(io.Discard, "", 0)}, boxes: trust.NewStore(filepath.Join(e.dir, "boxes.json"))}
+	if err := a.saveLocalRecord(&localBoxRecord{Fingerprint: e.fp.String(), Program: e.stable, Home: e.root, Owned: true}); err != nil {
+		t.Fatal(err)
+	}
+	a.refreshLocalBox(context.Background())
+	if n := strings.Count(e.log(e.berthd), "install --keep-listen"); n != 1 {
+		t.Fatalf("installed %d times:\n%s", n, e.log(e.berthd))
+	}
+	a.refreshLocalBox(context.Background())
+	if n := strings.Count(e.log(e.berthd), "install --keep-listen"); n != 1 {
+		t.Fatalf("installed again (%d times)", n)
+	}
+
+	// One that has a PATH is left alone.
+	b := &Agent{cfg: a.cfg, boxes: a.boxes}
+	unit, _ := os.ReadFile(e.unit)
+	withPath := strings.Replace(string(unit), "<key>BERTH_HOME</key>", "<key>PATH</key><string>/opt/homebrew/bin:/usr/bin</string>\n<key>BERTH_HOME</key>", 1)
+	if goos := runtime.GOOS; goos != "darwin" {
+		withPath = strings.Replace(string(unit), "Environment=", "Environment=PATH=/usr/bin\nEnvironment=", 1)
+	}
+	writeFile(t, e.unit, withPath, 0o644)
+	b.refreshLocalBox(context.Background())
+	if n := strings.Count(e.log(e.berthd), "install --keep-listen"); n != 1 {
+		t.Fatalf("installed one with a PATH again:\n%s", e.log(e.berthd))
+	}
+}
+
+func copyFile(t *testing.T, src, dst string) {
+	t.Helper()
+	b, err := os.ReadFile(src)
+	if err != nil {
+		t.Fatal(err)
+	}
+	writeFile(t, dst, string(b), 0o755)
 }
 
 func TestTheCopyKeepsItsSignatureAndLosesAQuarantine(t *testing.T) {

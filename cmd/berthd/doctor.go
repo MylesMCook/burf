@@ -66,9 +66,7 @@ func runDoctor(b boxHome, args []string) error {
 		}
 	} else {
 		checks = append(checks, doctor.Check{Area: "berthd", Name: "running", Status: doctor.Fail, Detail: "berthd serve is not running", Fix: "berthd install"})
-		for _, t := range []string{"git", "tmux"} {
-			checks = append(checks, doctor.ToolCheck("Worktrees and sessions", t, t, "Install "+t+" with your package manager", true))
-		}
+		checks = append(checks, doctor.ToolCheck("Worktrees and sessions", "git", "git", "Install git with your package manager", true), box.TmuxCheck())
 	}
 	if asJSON {
 		return json.NewEncoder(os.Stdout).Encode(checks)
