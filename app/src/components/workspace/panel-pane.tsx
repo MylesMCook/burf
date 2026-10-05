@@ -38,7 +38,7 @@ export function PanelPane({ wsKey, plugin, panel }: { wsKey: string; plugin: str
   }
   const { Component } = entry.item;
   return (
-    <div className="min-h-0 flex-1 overflow-auto">
+    <div data-testid="panel" data-panel={`${plugin}/${panel}`} className="min-h-0 flex-1 overflow-auto">
       <PluginBoundary plugin={plugin}>
         <Component berth={ctx} box={ref.box} location={ref.location} worktree={ref.worktree} path={ref.path} main={ref.main} />
       </PluginBoundary>

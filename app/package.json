@@ -15,6 +15,8 @@
     "check:plugin-consent": "node scripts/check-plugin-consent.mjs",
     "check:csp": "node scripts/check-csp.mjs",
     "check:themes": "node --experimental-strip-types --test src/themes/contrast.test.ts",
+    "test:e2e": "tsc --noEmit -p e2e && pnpm -s build && playwright test",
+    "smoke:live": "node e2e/live.mjs",
     "test": "node --experimental-strip-types --test src/lib/layout.test.ts src/lib/groups.test.ts src/lib/screen.test.ts src/lib/removing.test.ts src/lib/conversation-store.test.ts src/lib/wheel.test.ts src/lib/browser-url.test.ts src/lib/terminal.test.ts src/lib/browser-sandbox.test.ts src/lib/requirements.test.ts src/lib/diagnostics.test.ts"
   },
   "dependencies": {
@@ -44,6 +46,7 @@
     "zustand": "^5.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/vite": "^4.3.3",
     "@tauri-apps/cli": "^2",
     "@types/node": "^26.6.3",

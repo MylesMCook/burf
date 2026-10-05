@@ -31,7 +31,7 @@ function Layer({ bg }: { bg: Bg }) {
   const { drawn, sheet, pixelated } = useRendered(wrap, canvas, bg);
   const full = usePrefs((p) => p.chatWidth === "full");
   return (
-    <div ref={wrap} aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" style={{ "--chat-sheet": `${Math.round(sheet * 100)}%` } as CSSProperties}>
+    <div ref={wrap} aria-hidden data-testid="chat-background" data-drawn={drawn || undefined} className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" style={{ "--chat-sheet": `${Math.round(sheet * 100)}%` } as CSSProperties}>
       <canvas ref={canvas} className={cn("absolute inset-0 size-full transition-opacity duration-300", pixelated && "[image-rendering:pixelated]", drawn ? "opacity-100" : "opacity-0")} />
       {/* The reading column stays clean: the plain page lies over the
           background behind the conversation and its composer, easing in

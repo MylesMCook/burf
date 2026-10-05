@@ -65,6 +65,24 @@ jobs:
       # The split tree's moves (lib/layout.test.ts).
       - run: pnpm test
       - run: pnpm build
+      # The smoke suite (e2e/): the production build in Playwright's Chromium,
+      # on the mock fixtures, with no page error allowed. The browser is
+      # cached by Playwright's version; --with-deps adds the system libraries.
+      - id: playwright
+        run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+      - uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-chromium-shell
+      - run: pnpm exec playwright install --with-deps --only-shell chromium
+      - run: pnpm test:e2e
+      - if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: e2e-results
+          path: app/node_modules/.e2e-results
+          include-hidden-files: true
+          retention-days: 7
 
   docs-site:
     runs-on: ubuntu-latest

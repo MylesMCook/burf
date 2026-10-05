@@ -9,6 +9,19 @@ upgrades with `berth upgrade BOX`, or by running the
 [install command](/getting-started/add-a-box#with-the-install-command)
 again.
 
+## Unreleased
+
+- **Copy diagnostics.** Settings → About → Help, and an error's Details,
+  copy one short report to paste into a chat: the app's and the agent's
+  versions, `berth doctor`'s checks, this Mac's box (its tools, tmux, agent
+  CLIs and `PATH`), each box's version, capabilities and last error, the
+  terminal renderer, theme, Labs, and the last errors and toasts with their
+  codes. Tokens, `op://` references, emails and your username are taken
+  out. `berth doctor --report` prints the same text.
+- **A smoke suite for the app.** `pnpm test:e2e` (in `app/`) runs the
+  production build in Chromium on the mock fixtures, and CI runs it on every
+  change; `pnpm smoke:live` runs it against your own agent, read only.
+
 ## v0.3.6
 
 October 5, 2026.

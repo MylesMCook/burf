@@ -123,6 +123,7 @@ export function AppSidebar() {
           <Tip label="⇧-click for Developer settings" side="top" align="start">
             <button
               type="button"
+              data-testid="nav-settings"
               // Shift-click goes straight to Developer.
               onClick={(e) => setView({ kind: "settings", section: e.shiftKey ? "developer" : undefined })}
               className={cn("inline-flex h-6.5 items-center gap-1.5 rounded-md px-1.5 text-muted-foreground text-xs hover:bg-sidebar-accent hover:text-foreground", view.kind === "settings" && "text-foreground")}

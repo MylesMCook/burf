@@ -21,7 +21,7 @@ import { ApiError } from "@/lib/api";
 import { titleOf } from "@/lib/derive";
 import { demoAttach, demoScreen } from "@/demo/terminal";
 import { mockHistoryCall } from "@/lib/mock-history";
-import { mockToolDetailSync, WEBHOOK_TEST } from "@/lib/mock-conversation";
+import { mockAnswer, mockToolDetailSync, WEBHOOK_TEST } from "@/lib/mock-conversation";
 
 // Mock mode (?mock=1) runs the whole UI on fixtures, so it can be worked on
 // without an agent or a box. State is mutable: new tasks and sessions appear,
@@ -133,6 +133,8 @@ const sessions: Record<string, Session[]> = {
     { name: "ci-flake-claude", title: "Fix the flaky checkout CI test", location: "shop/ci-flake", dir: "/home/me/shop-ci-flake", command: "claude", created: ago(30), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(6) },
     { name: "judge-v2-claude", title: "Tune the judge prompt", location: "evals/judge-v2", dir: "/home/me/evals-judge-v2", command: "claude", created: ago(9), attached: 0, exited: false, agent: "claude", agent_state: "running", state_since: ago(1) },
     { name: "evals-codex", location: "evals", dir: "/home/me/evals", command: "codex", created: ago(3), attached: 0, exited: false, agent: "codex", agent_state: "idle", state_since: ago(3) },
+    // Asks a form of questions (AskUserQuestion) after a reply with code.
+    { name: "shop-claude", title: "Plan the checkout release", location: "shop", dir: "/home/me/shop", command: "claude", created: ago(12), attached: 0, exited: false, agent: "claude", agent_state: "waiting", state_since: ago(2) },
   ],
 };
 
@@ -608,6 +610,18 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
   if (integrations) return integrations;
   if (key === "GET hooks") return hooksFiles[box] ? delay(hooksFiles[box]) : Promise.reject(new Error("this box has no hooks file"));
   if (key === "PUT hooks") return saveHooks(box, (body as { hooks: Hook[] }).hooks);
+  // The box fills in an agent's form of questions (mock-conversation).
+  const answer = method === "POST" ? /^sessions\/([^/]+)\/answer$/.exec(path) : null;
+  if (answer) {
+    const name = decodeURIComponent(answer[1]);
+    try {
+      const r = mockAnswer(box, name, body as Parameters<typeof mockAnswer>[2]);
+      mockDemo.setAgent(box, name, "finished");
+      return delay(r);
+    } catch (err) {
+      return Promise.reject(new ApiError(String((err as Error).message), 409));
+    }
+  }
   const orchestration = mockOrchestration(box, method, path, body);
   if (orchestration) return orchestration;
   const projects = mockProjects(box, method, path, body);
@@ -618,7 +632,7 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
       version: "0.1.0",
       build: mockBuilds[box] ?? SHIPPED_BUILD,
       tools: ["claude", "codex"],
-      capabilities: ["diff", "turns", "queue", "ask", "journal", "runs", "exec.detach", "browser", "titles", "sample", "service.terminal"],
+      capabilities: ["diff", "turns", "queue", "ask", "answer", "journal", "runs", "exec.detach", "browser", "titles", "sample", "service.terminal"],
       adapters: {
         claude: { ready: true, started: true, waiting: true, finished: true, final_message: true, via: "hooks" },
         codex: { ready: true, started: true, waiting: true, finished: true, final_message: true, via: "hooks" },

@@ -28,6 +28,7 @@ export function ZoomHud() {
     <div
       role="status"
       aria-live="polite"
+      data-testid="zoom-hud"
       data-shown={shown || undefined}
       className={cn(
         "pointer-events-none fixed top-[64px] left-1/2 z-70 flex w-[244px] -translate-x-1/2 flex-col gap-[10px] rounded-lg border bg-popover px-[14px] pt-[12px] pb-[12px] text-popover-foreground shadow-xl/20",

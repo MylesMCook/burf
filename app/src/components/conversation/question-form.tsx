@@ -211,7 +211,7 @@ function Form({ it, who, onSubmit }: { it: Item; who: string; onSubmit(answers: 
   const last = step === steps - 1;
 
   return (
-    <Card className="cv-in overflow-hidden border-warning/60" aria-busy={busy}>
+    <Card data-testid="question-form" className="cv-in overflow-hidden border-warning/60" aria-busy={busy}>
       <div className="flex items-center gap-2 px-4 pt-3.5 pb-3">
         <span className="size-2 shrink-0 rounded-full bg-warning" aria-hidden />
         <span className="min-w-0 flex-1 truncate font-medium">

@@ -331,6 +331,8 @@ function WorktreeRow({
         <Tip side="right" delay={700} label={where}>
           <SidebarMenuSubButton
             render={<button type="button" />}
+            data-testid="worktree-row"
+            data-worktree={`${box}/${wt.main ? loc.name : wt.name}`}
             isActive={selected}
             // Labs: ⌥-click adds its tabs to the strip as a group; dragged
             // onto the strip it does the same, onto a pane it splits its

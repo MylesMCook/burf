@@ -57,7 +57,7 @@ export function ArtifactsChip({ box, session, who, className }: { box: string; s
   const n = list.length;
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger render={<button type="button" className={cn(className, fresh && "text-foreground/85")} aria-label={`${n} ${n === 1 ? "artifact" : "artifacts"} ${who} published${fresh ? ", one new" : ""}`} />}>
+      <PopoverTrigger render={<button type="button" data-testid="artifacts-chip" className={cn(className, fresh && "text-foreground/85")} aria-label={`${n} ${n === 1 ? "artifact" : "artifacts"} ${who} published${fresh ? ", one new" : ""}`} />}>
         <span className="relative flex">
           <AppWindowIcon className="size-3.5" />
           {fresh && <span aria-hidden className="-top-0.5 -right-0.5 absolute size-1.5 rounded-full bg-info ring-2 ring-background" />}
@@ -66,7 +66,7 @@ export function ArtifactsChip({ box, session, who, className }: { box: string; s
           {n} {n === 1 ? "artifact" : "artifacts"}
         </span>
       </PopoverTrigger>
-      <PopoverPopup side="top" align="end" className="w-[min(24rem,calc(100vw-2rem))] [--viewport-inline-padding:--spacing(1.5)] *:data-[slot=popover-viewport]:py-1.5">
+      <PopoverPopup data-testid="artifacts-popover" side="top" align="end" className="w-[min(24rem,calc(100vw-2rem))] [--viewport-inline-padding:--spacing(1.5)] *:data-[slot=popover-viewport]:py-1.5">
         <div className="flex items-baseline justify-between gap-2 px-2 pt-1 pb-1.5">
           <span className="font-medium text-[0.8125rem]">Artifacts</span>
           <span className="text-muted-foreground text-xs">Published by {who} on claude.ai</span>

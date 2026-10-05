@@ -158,7 +158,7 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree }: 
   };
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-background">
+    <div data-testid="browser-pane" data-mode={mode} className="flex min-h-0 flex-1 flex-col bg-background">
       {sandboxView ? (
         <SandboxBar box={ctx.ref!.box} fixed={sandbox === "fixed" || sandbox === "no-sandbox"} onBack={() => setSandboxOpen(false)} />
       ) : agentView && ctx.ref ? (

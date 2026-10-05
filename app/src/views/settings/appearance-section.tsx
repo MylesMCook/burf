@@ -145,6 +145,8 @@ function ThemeCard({ theme, selected, onSelect }: { theme: Theme; selected: bool
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
+      data-testid="theme-option"
+      data-theme-id={theme.id}
       className={cn("group overflow-hidden rounded-xl border text-left outline-none transition-[box-shadow,border-color] focus-visible:ring-2 focus-visible:ring-ring", selected ? "border-ring ring-1 ring-ring" : "hover:border-foreground/25")}
     >
       <div className="relative h-[88px]">

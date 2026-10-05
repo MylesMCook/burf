@@ -173,7 +173,7 @@ function NavRow({ item, list, index, ids }: { item: NavItem; list: NavList; inde
     <SidebarMenuItem {...dropProps(list, index, ids)} className="relative">
       {before && <span className="pointer-events-none absolute inset-x-2 -top-px h-0.5 rounded-full bg-ring" />}
       <ContextRow items={() => navItemActions(item.id, list, ids)}>
-        <SidebarMenuButton size="sm" isActive={item.active} onClick={item.go} {...dragProps(item.id)} className={cn(rowClass, dragging && "opacity-40")}>
+        <SidebarMenuButton size="sm" data-testid={`nav-${item.id}`} isActive={item.active} onClick={item.go} {...dragProps(item.id)} className={cn(rowClass, dragging && "opacity-40")}>
           {item.icon}
           <span>{item.label}</span>
         </SidebarMenuButton>

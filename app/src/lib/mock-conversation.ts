@@ -1,6 +1,7 @@
 import type { Artifact, ToolDetail, CrewMember, TranscriptItem } from "@/lib/transcript";
 import { keyOf, useConversations } from "@/lib/conversation-store";
 import { mockNotice } from "@/lib/chat-controls";
+import { type Question, type QuestionAnswer, shownAnswer } from "@/lib/questions";
 
 // The demo's stand-in for berthd's transcript stream: a short scripted turn
 // played into the conversation store, so the view can be tried with ?mock=1.
@@ -98,9 +99,61 @@ export async function finishTurn(box: string, session: string) {
   );
 }
 
+// The questions gpu's shop agent asks (Claude Code's AskUserQuestion): one
+// pick, several picks, and one for the person's own words. Fixed, like the
+// reply before it, so the app's tests (app/e2e) can walk the form.
+const RELEASE_QUESTIONS: Question[] = [
+  { header: "Release", question: "Which release should the checkout fix go out in?", options: [{ label: "This week's patch", description: "Ships Thursday with the usual checks" }, { label: "Next minor", description: "Two weeks out, with the export work" }, { label: "Hold for QA" }] },
+  { header: "Checks", question: "Which checks should run before it ships?", multi: true, options: [{ label: "Unit tests" }, { label: "E2E on staging" }, { label: "Load test" }, { label: "Manual QA" }] },
+  { header: "Reviewer", question: "Who should review the change?", options: [{ label: "bailey" }, { label: "me" }] },
+];
+
+const RELEASE_PLAN = `## The fix, in short
+
+Webhook retries now reuse the order the first delivery made:
+
+\`\`\`ts
+export async function handleWebhook(event: PaymentEvent): Promise<Order> {
+  const existing = await orders.byIdempotencyKey(event.idempotencyKey);
+  if (existing) return existing;
+  return createOrder(event, { idempotencyKey: event.idempotencyKey });
+}
+\`\`\`
+
+- \`createOrder\` takes the key and stores it.
+- Retries stop after **five** tries over ten minutes.
+
+Before I plan the release, a few questions.`;
+
+function releaseChat(): TranscriptItem[] {
+  return [
+    { kind: "user", id: "rq-u1", text: "Plan the release of the checkout fix." },
+    { kind: "tools", id: "rq-t1", verb: "Read", done: true, items: [{ verb: "Read", target: "webhook.ts", file: true, id: "mock-read-1" }, { verb: "Read", target: "createOrder.ts", file: true, id: "mock-read-2" }] },
+    { kind: "text", id: "rq-x1", text: RELEASE_PLAN },
+    { kind: "question", id: "rq-q1", tool: "mock-ask-release", questions: RELEASE_QUESTIONS },
+  ];
+}
+
+// mockAnswer is the box filling in the form (POST …/answer): the question
+// shows its answers, and the agent goes on.
+export function mockAnswer(box: string, session: string, req: { tool: string; answers: QuestionAnswer[] }): { answered: string[] } {
+  const key = keyOf(box, session);
+  const q = useConversations.getState().items[key]?.find((it) => it.kind === "question" && it.tool === req.tool);
+  if (!q || q.kind !== "question") throw new Error("no question waits for that answer");
+  const answered = q.questions.map((x, i) => shownAnswer(x, req.answers[i]));
+  useConversations.getState().update(key, q.id, { done: true, answers: answered });
+  useConversations.getState().push(key, { kind: "text", id: id(), text: `Thanks. I'll plan it for **${answered[0]}**, with ${answered[1]} first.` });
+  return { answered };
+}
+
 // seedTranscript gives an agent that is already working something to show
 // when it is opened.
 export function seedTranscript(box: string, session: string, state: string, worktree: string): TranscriptItem[] {
+  if (box === "gpu" && session === "shop-claude") {
+    const chat = releaseChat();
+    useConversations.setState((s) => (s.items[keyOf(box, session)] ? s : { items: { ...s.items, [keyOf(box, session)]: chat } }));
+    return chat;
+  }
   const items: TranscriptItem[] = [
     { kind: "user", id: id(), text: `Pick up ${worktree}: read the issue and get it to green.` },
     { kind: "text", id: id(), text: `I’ll start from the failing test in ${worktree} and work outwards.` },

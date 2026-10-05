@@ -359,7 +359,7 @@ function WorkFold({ id, steps, live, onAnswer, edits, who }: { id: string; steps
 // Item is one item, marked with its id for search.
 function Item(props: { it: TranscriptItem; onAnswer(id: string, key: string): void; edits?: EditActions; who: string }) {
   return (
-    <div data-item-id={props.it.id} className="contents">
+    <div data-item-id={props.it.id} data-testid="chat-item" data-kind={props.it.kind} className="contents">
       <ItemBody {...props} />
     </div>
   );
@@ -610,7 +610,7 @@ export function QueuedBubble({ q, who, onSendNow, onCancel }: { q: QueuedPrompt;
     fn().finally(() => setBusy(undefined));
   };
   return (
-    <div className="cv-in flex max-w-[80%] flex-col items-end gap-1 self-end">
+    <div data-testid="queued-reply" className="cv-in flex max-w-[80%] flex-col items-end gap-1 self-end">
       <div className="whitespace-pre-wrap rounded-2xl border border-dashed bg-background px-3.5 py-2 text-foreground/80">
         {q.preview}
         {q.length > q.preview.length && <span className="text-muted-foreground"> ({q.length.toLocaleString()} characters in all)</span>}

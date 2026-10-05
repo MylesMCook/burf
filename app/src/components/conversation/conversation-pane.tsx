@@ -448,7 +448,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
 
   return (
     // The column steps left of the floating loops panel when there is room.
-    <div className="@container relative isolate flex min-h-0 flex-1 flex-col bg-background">
+    <div data-testid="chat" className="@container relative isolate flex min-h-0 flex-1 flex-col bg-background">
       <ChatBackground />
       <div className="min-h-0 flex-1 overflow-y-auto pt-6 pr-6 pb-4 pl-6 @[1000px]:pr-[max(24px,var(--berth-loops-w,0px))]">
         {!mock && feed === "loading" && !items.length ? (
@@ -606,7 +606,7 @@ function Reply({ onSend, onFail, who, mode, blocked, hint, attach, agent }: { on
               ? `Answer ${who}, or ask for something else`
               : "Reply, or ask for something else");
   return (
-    <div className="relative" {...att.dropProps}>
+    <div data-testid="composer" className="relative" {...att.dropProps}>
       {menu.chip}
       {menu.menu}
       {/* Attachments sit inside the frame, above what is typed; the field and

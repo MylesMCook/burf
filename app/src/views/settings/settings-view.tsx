@@ -62,6 +62,7 @@ export function SettingsView() {
                   <button
                     type="button"
                     onClick={() => openSettings(s.id)}
+                    data-testid={`settings-nav-${s.id}`}
                     aria-current={s.id === id ? "page" : undefined}
                     aria-label={s.title}
                     className={cn(
@@ -76,7 +77,7 @@ export function SettingsView() {
               </div>
             ))}
           </nav>
-          <div className="min-w-0 flex-1 overflow-y-auto">
+          <div data-testid={`settings-${id}`} className="min-w-0 flex-1 overflow-y-auto">
             <current.Component key={id} />
           </div>
         </div>

@@ -273,7 +273,7 @@ export function AttachmentChips({ items, onRemove, onRetry, className }: { items
       {items.map((it) => {
         const busy = it.state === "uploading" || it.state === "shrinking";
         return (
-          <li key={it.id} className="group/chip relative min-w-0 cursor-default">
+          <li key={it.id} data-testid="attachment-chip" data-state={it.state} className="group/chip relative min-w-0 cursor-default">
             <Tip
               label={
                 <span className="flex flex-col gap-0.5">
