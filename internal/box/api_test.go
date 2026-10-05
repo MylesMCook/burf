@@ -315,3 +315,38 @@ func TestArchivingAnswersInJSONAndRemovalStopsTheWorktreesSessions(t *testing.T)
 		t.Fatalf("after removing billing, sessions = %v; want %s gone and %s kept", names, in.Name, other.Name)
 	}
 }
+
+func TestHomeSessionStartsInTheUsersHomeAndNowhereElse(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	c, _ := servedBox(t)
+
+	var sess Session
+	if status := call(t, c, "POST", "/v1/sessions", "", map[string]any{"home": true, "command": "cat"}, &sess); status != 200 {
+		t.Fatalf("add home session: %d", status)
+	}
+	if sess.Dir != home || sess.Location != "" || !strings.HasPrefix(sess.Name, "home-cat-") {
+		t.Fatalf("session = %+v, want one in %s with no location", sess, home)
+	}
+	if sess.Agent != "" {
+		t.Fatalf("a home shell is no agent: %+v", sess)
+	}
+	defer call(t, c, "DELETE", "/v1/sessions/"+sess.Name, "", nil, nil)
+
+	// Home is the only folder it takes: no location beside it, no agent,
+	// and the box's own info says it can.
+	for _, body := range []map[string]any{
+		{"home": true, "location": "cal"},
+		{"home": true, "agent": "claude"},
+		{"home": true, "prompt": "do it"},
+	} {
+		var e struct{ Error string }
+		if status := call(t, c, "POST", "/v1/sessions", "", body, &e); status != 400 {
+			t.Errorf("%v = %d (%s), want 400", body, status, e.Error)
+		}
+	}
+	bx := &Box{Events: &events.Bus{}}
+	if caps := strings.Join(bx.Capabilities(), " "); !strings.Contains(caps, "session.home") {
+		t.Errorf("capabilities %q lack session.home", caps)
+	}
+}

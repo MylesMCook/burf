@@ -516,6 +516,10 @@ type SessionRequest struct {
 	Open   string `json:"open,omitempty"`
 	// Title names the work; without one, the prompt's first line does.
 	Title string `json:"title,omitempty"`
+	// Home starts it in the box user's home folder rather than a
+	// location: a terminal on the box, tied to no worktree. It takes a
+	// command or a shell, never an agent preset, and no location.
+	Home bool `json:"home,omitempty"`
 }
 
 func (b *Box) addSession(w http.ResponseWriter, r *http.Request) error {
@@ -528,6 +532,9 @@ func (b *Box) addSession(w http.ResponseWriter, r *http.Request) error {
 	}
 	if req.Open != "" && req.Open != "split" && req.Open != "tab" {
 		return badRequest("open must be split or tab")
+	}
+	if req.Home {
+		return b.addHomeSession(w, r, req)
 	}
 	dir, err := b.Locations.Dir(r.Context(), req.Location)
 	if err != nil {
@@ -561,6 +568,34 @@ func (b *Box) addSession(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	sess = b.titleNew(r.Context(), sess, req.Title, req.Prompt)
+	b.announceOpen(r, sess, req.Open)
+	writeJSON(w, sess)
+	return nil
+}
+
+// addHomeSession starts a session in the home folder of the user berthd
+// runs as, for a terminal on the box that belongs to no worktree. The folder
+// is always that one: the request names no path, so it cannot point
+// anywhere else.
+func (b *Box) addHomeSession(w http.ResponseWriter, r *http.Request, req SessionRequest) error {
+	if req.Location != "" {
+		return badRequest("give a location or home, not both")
+	}
+	if req.Agent != "" || req.Model != "" || req.Effort != "" || req.Prompt != "" {
+		return badRequest("an agent needs a location; home takes a command or a shell")
+	}
+	dir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("this box has no home folder for its user: %w", err)
+	}
+	if req.Name == "" {
+		req.Name = defaultSessionName("home", req.Command)
+	}
+	sess, err := b.startSession(r, req.Name, "", dir, req.Command, "")
+	if err != nil {
+		return err
+	}
+	sess = b.titleNew(r.Context(), sess, req.Title, "")
 	b.announceOpen(r, sess, req.Open)
 	writeJSON(w, sess)
 	return nil

@@ -133,7 +133,9 @@ func (b *Box) Capabilities() []string {
 	// service.terminal: a service can run in a terminal of its own
 	// ("terminal": true), listed as a session with "service" set. answer:
 	// POST .../answer fills in Claude Code's question form (answer.go).
-	caps := []string{"transcript", "diff", "titles", "sample", "history", "commands", "service.terminal", "answer"}
+	// session.home: POST /v1/sessions takes "home": true, a terminal in
+	// the box user's home folder, tied to no worktree.
+	caps := []string{"transcript", "diff", "titles", "sample", "history", "commands", "service.terminal", "answer", "session.home"}
 	if b.Turns != nil {
 		// controls: POST .../keys, .../interrupt and .../mode, GET
 		// .../controls (controls.go).
