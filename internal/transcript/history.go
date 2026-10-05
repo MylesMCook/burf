@@ -70,7 +70,7 @@ func Before(source, path, dir string, before int64, limit int) (Result, error) {
 			}
 			// Every older item has one after it, so its calls are done.
 			for i := range items {
-				if items[i].Kind == "tools" {
+				if items[i].Kind == "tools" || items[i].Kind == "artifact" {
 					items[i].Done, items[i].pending = true, nil
 				}
 			}
@@ -401,6 +401,11 @@ func (c *conv) rewound() {
 	for p, i := range c.prompts {
 		if i >= k {
 			delete(c.prompts, p)
+		}
+	}
+	for id, call := range c.artCalls {
+		if call.item >= k {
+			delete(c.artCalls, id)
 		}
 	}
 }

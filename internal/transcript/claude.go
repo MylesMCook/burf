@@ -52,6 +52,7 @@ type claudeBlock struct {
 	Input     json.RawMessage `json:"input"`
 	ToolUseID string          `json:"tool_use_id"`
 	Content   json.RawMessage `json:"content"`
+	IsError   bool            `json:"is_error"`
 }
 
 func (claudeParser) line(c *conv, b []byte) {
@@ -138,6 +139,7 @@ func (claudeParser) line(c *conv, b []byte) {
 			}
 			c.result(bl.ToolUseID, at)
 			claudeResultSignal(c, bl.ToolUseID, text, at)
+			c.published(bl.ToolUseID, b, text, bl.IsError, at)
 			// A rejected call with words for the agent (a plan sent back
 			// with "Tell Claude what to change") reads as what the person
 			// said.
@@ -185,6 +187,7 @@ func userText(c *conv, s string) {
 		return
 	}
 	c.rewound()
+	c.closeArtifacts()
 	c.prompted(c.add(Item{Kind: "user", ID: c.id(), Text: clip(s, 4000), UUID: c.lineUUID, Parent: c.lineParent}))
 }
 
@@ -248,6 +251,16 @@ func claudeTool(c *conv, bl claudeBlock, at int64) {
 		c.byTool[bl.ID] = -1
 	case "ToolSearch":
 		// Bookkeeping, not work worth a line.
+	case "Artifact":
+		// A page published on claude.ai: a card, and the conversation's
+		// list of them (artifacts.go). Its other actions are steps.
+		if !claudeArtifact(c, bl, in) {
+			action := firstNonEmpty(str("action"), "publish")
+			if asset, _ := in["asset"].(bool); asset {
+				action = "upload"
+			}
+			c.call(bl.ID, ToolCall{Verb: "Run", Target: "Artifact " + action})
+		}
 	default:
 		name := bl.Name
 		if i := strings.LastIndex(name, "__"); i >= 0 {

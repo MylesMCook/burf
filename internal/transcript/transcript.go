@@ -17,7 +17,7 @@ import (
 )
 
 // Item is one entry in the conversation. Kind is user, text, tools, edit,
-// crew or command; the fields each kind uses are as in app/src/lib/transcript.ts.
+// crew, command, notice or artifact; the fields each kind uses are as in app/src/lib/transcript.ts.
 type Item struct {
 	Kind    string     `json:"kind"`
 	ID      string     `json:"id"`
@@ -50,9 +50,18 @@ type Item struct {
 	Args     string `json:"args,omitempty"`
 	Markdown bool   `json:"markdown,omitempty"`
 	Error    bool   `json:"error,omitempty"`
+	// An artifact item (artifacts.go): the page's link once published, what
+	// the agent said it is, and whether it was published before. Text is
+	// its title and File the file published; Error, a publish that failed.
+	URL         string `json:"url,omitempty"`
+	Description string `json:"description,omitempty"`
+	Updated     bool   `json:"updated,omitempty"`
 
 	// pending are the tool calls in a group still waiting for a result.
 	pending map[string]bool
+	// resolved is the index the next item would take when an artifact's
+	// publish settled: a reader asking from it or earlier gets it again.
+	resolved int
 }
 
 // ToolCall is one call in a group: "Read webhook.ts", "Run pnpm test".
@@ -98,6 +107,9 @@ type Result struct {
 	// Signals are the agent's mode, model, context, task list and
 	// background work (signals.go).
 	Signals *Signals `json:"signals,omitempty"`
+	// Artifacts are the pages the agent published on claude.ai, one per
+	// page, newest last (artifacts.go). Every answer has them all.
+	Artifacts []Artifact `json:"artifacts,omitempty"`
 }
 
 const (
@@ -164,6 +176,10 @@ type conv struct {
 	prompts map[string]int
 	idLine  int64
 	lineSeq int
+	// arts are the pages published, newest last; artCalls the publishes
+	// still waiting for their result (artifacts.go).
+	arts     []Artifact
+	artCalls map[string]artCall
 }
 
 func (c *conv) id() string {
@@ -392,7 +408,10 @@ func (r *Reader) Read(source, path, dir string, since int) (Result, error) {
 	}
 	from = min(from, c.base+len(c.items))
 	out := Result{Source: source, Next: c.base + len(c.items), Truncated: c.truncated || c.base > 0, Last: c.lineAt}
-	out.Items = append([]Item{}, c.items[from-c.base:]...)
+	// A publish settles after its item was sent: it comes again, as a
+	// tool group does.
+	out.Items = append(c.artifactsSince(from, since), c.items[from-c.base:]...)
+	out.Artifacts = c.artifacts()
 	out.Crew = append([]CrewMember{}, c.crew...)
 	out.Signals = c.sig.snapshot()
 	return out, nil
