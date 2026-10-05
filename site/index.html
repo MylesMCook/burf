@@ -12,11 +12,17 @@
 <meta property="og:title" content="Berth — coding agents on your own boxes">
 <meta property="og:description" content="Run Claude Code, Codex and other agents on your own dev boxes, and work with them as if they were on your laptop. They keep going when it sleeps.">
 <meta property="og:url" content="https://berthd.app/">
-<meta property="og:image" content="https://berthd.app/assets/og.png">
+<meta property="og:image" content="https://berthd.app/assets/og-film.jpg">
+<meta property="og:image:type" content="image/jpeg">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
-<meta property="og:image:alt" content="berth: agents that keep working when your laptop sleeps, over a dithered painting of a harbour with a lighthouse.">
+<meta property="og:image:alt" content="berth: Your agents, docked. A dithered harbour at dusk, with a lighthouse on the point.">
+<meta property="og:site_name" content="Berth">
 <meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Berth — coding agents on your own boxes">
+<meta name="twitter:description" content="Run Claude Code, Codex and other agents on your own dev boxes, and work with them as if they were on your laptop. They keep going when it sleeps.">
+<meta name="twitter:image" content="https://berthd.app/assets/og-film.jpg">
+<meta name="twitter:image:alt" content="berth: Your agents, docked. A dithered harbour at dusk, with a lighthouse on the point.">
 <link rel="canonical" href="https://berthd.app/">
 <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -24,7 +30,40 @@
 <link rel="preload" href="assets/harbour/day.webp" as="image" media="(prefers-color-scheme: light)">
 <link rel="preload" href="assets/harbour/night.webp" as="image" media="(prefers-color-scheme: dark)">
 <link rel="stylesheet" href="styles.css">
+<noscript><style>.clip img[data-src] { display: none; }</style></noscript>
 <script src="assets/harbour.js" defer></script>
+<script>
+  // The night loop, the chapters' loops and their line scenes come after the
+  // page has loaded: nothing of them stands between the hero and its first
+  // paint.
+  (() => {
+  const later = () => {
+    const css = document.createElement("link");
+    css.rel = "stylesheet";
+    css.href = "assets/scenes.css";
+    document.head.append(css);
+    for (const src of ["assets/hero-loop.js", "assets/clips.js"]) {
+      const s = document.createElement("script");
+      s.src = src;
+      document.head.append(s);
+    }
+  };
+  // After the load, once the harbour has been drawn and painted (or a while
+  // after, without it), when the main thread is idle.
+  let once = false;
+  const go = () => {
+    if (once) return;
+    once = true;
+    requestAnimationFrame(() => requestAnimationFrame(() => (window.requestIdleCallback ? requestIdleCallback(later, { timeout: 2000 }) : setTimeout(later, 300))));
+  };
+  addEventListener("load", () => {
+    const band = document.querySelector(".hero [data-harbour]");
+    if (!band || band.classList.contains("drawn")) return go();
+    band.addEventListener("harbour:drawn", go, { once: true });
+    setTimeout(go, 2500);
+  });
+  })();
+</script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -42,7 +81,11 @@
 <div class="hero" id="top">
   <!-- The harbour: the painting, dithered and dissolving into the page by
        assets/harbour.js; the plain painting until then, or without it. -->
-  <div class="harbour" data-harbour data-day="assets/harbour/day.webp" data-night="assets/harbour/night.webp" aria-hidden="true">
+  <!-- At night (dark mode, or the laptop closed) the harbour comes alive:
+       assets/hero-loop.js brings in the film's loop after the page has
+       loaded, from its first frame, dissolving into the page the same way.
+       Not for reduced motion or Save-Data. -->
+  <div class="harbour" data-harbour data-day="assets/harbour/day.webp" data-night="assets/harbour/night.webp" data-loop="assets/film/hero-loop.mp4 assets/film/hero-loop.webm" data-loop-poster="assets/film/hero-loop-poster.webp" aria-hidden="true">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="assets/harbour/night.webp">
       <img src="assets/harbour/day.webp" alt="" width="1672" height="941" fetchpriority="high">
@@ -51,6 +94,7 @@
     <div class="beam"></div>
   </div>
   <div class="hero-copy">
+    <a class="film-link" href="film/berth-launch-1080p.mp4" data-film aria-haspopup="dialog"><span class="film-play" aria-hidden="true"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M5.5 3.9v8.2a.6.6 0 0 0 .9.5l6.4-4.1a.6.6 0 0 0 0-1L6.4 3.4a.6.6 0 0 0-.9.5Z"/></svg></span>Watch the film<span class="film-time" aria-label="1 minute 15 seconds">1:15</span></a>
     <h1>Agents that keep working when your laptop sleeps.</h1>
     <p class="lede">Berth runs Claude Code, Codex and other coding agents on your own dev boxes. Work with them from your laptop; close it, and they keep going.</p>
     <div class="actions">
@@ -60,13 +104,128 @@
     <div class="install">
       <span class="install-label">On your box</span>
       <code id="install">curl -fsSL https://berthd.app/install | sh</code>
-      <button class="copy" type="button" data-copy="install" hidden>Copy</button>
+      <button class="copy" type="button" data-copy="install">Copy</button>
     </div>
     <p class="note">For Apple silicon and Intel Macs, signed and notarized. Open source. <a href="https://docs.berthd.app/getting-started/install">How to get started<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5 L10.5 8 L6 12.5"/></svg></a></p>
   </div>
 </div>
 
+<!-- Below the harbour, the film's story in six chapters: each a line scene
+     with its one amber light, the film's caption, a few words, and a short
+     muted loop of the real app. The loops (assets/loops/, cut by
+     scripts/loops.sh) load and play only near the viewport; their posters
+     stand in until then, and for good under reduced motion or Save-Data
+     (assets/clips.js). -->
+<section class="chapter" id="start" aria-labelledby="start-h">
+  <div class="wrap">
+    <div class="chapter-head">
+      <div class="chapter-mark"><span class="scene" data-scene="setting-out"></span><span class="kicker">Start</span></div>
+      <h2 id="start-h">One line. A worktree, a box, an agent.</h2>
+      <p>Press ⌘N and say what you want. Berth makes a worktree on the box you choose and starts Claude Code, Codex or another agent in it, with its dev server in a tab of its own.</p>
+    </div>
+    <figure class="clip" data-clip="assets/loops/start.mp4"><img data-src="assets/loops/start.webp" width="1600" height="1000" alt="Berth's New task dialog over the harbour home: a one-line task, the project, the box and Claude Code chosen, and the agent's workspace opening." decoding="async"><noscript><img src="assets/loops/start.webp" width="1600" height="1000" alt="" loading="lazy"></noscript></figure>
+  </div>
+</section>
+
+<section class="chapter" id="work" aria-labelledby="work-h">
+  <div class="wrap">
+    <div class="chapter-head">
+      <div class="chapter-mark"><span class="scene" data-scene="signal"></span><span class="kicker">Watch it work</span></div>
+      <h2 id="work-h">Every step, as it happens.</h2>
+      <p>Commands and reads fold into a line, and edits arrive as diffs. When Claude asks, you answer in place; what it publishes is one click away.</p>
+    </div>
+    <div class="views" data-views>
+      <div class="seg" role="group" aria-label="What the agent shows">
+        <button type="button" aria-pressed="true" data-show="steps">Steps and diffs</button>
+        <button type="button" aria-pressed="false" data-show="ask">Questions</button>
+        <button type="button" aria-pressed="false" data-show="artifacts">Artifacts</button>
+      </div>
+      <div class="stack">
+        <figure class="clip" data-clip="assets/loops/steps.mp4" data-view="steps"><img data-src="assets/loops/steps.webp" width="1600" height="1000" alt="An agent's chat: a live step line while it runs the payment tests, then the edit to webhook.ts as a diff." decoding="async"><noscript><img src="assets/loops/steps.webp" width="1600" height="1000" alt="" loading="lazy"></noscript></figure>
+        <figure class="clip" data-clip="assets/loops/ask.mp4" data-view="ask" aria-hidden="true"><img data-src="assets/loops/ask.webp" width="1600" height="1000" alt="Claude asks three questions in a form inside the chat; each answer is picked in place and submitted." decoding="async"><noscript><img src="assets/loops/ask.webp" width="1600" height="1000" alt="" loading="lazy"></noscript></figure>
+        <figure class="clip" data-clip="assets/loops/artifacts.mp4" data-view="artifacts" aria-hidden="true"><img data-src="assets/loops/artifacts.webp" width="1600" height="1000" alt="The artifacts an agent published, listed in its chat, and the artifacts menu that finds each one." decoding="async"><noscript><img src="assets/loops/artifacts.webp" width="1600" height="1000" alt="" loading="lazy"></noscript></figure>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="chapter" id="side" aria-labelledby="side-h">
+  <div class="wrap">
+    <div class="chapter-head">
+      <div class="chapter-mark"><span class="scene" data-scene="rafted"></span><span class="kicker">Side by side</span></div>
+      <h2 id="side-h">Two worktrees. One view.</h2>
+      <p>Two worktrees share the tab strip as groups, each in its own colour, and split into one tab: one agent's artifacts beside another asking to run a migration.</p>
+    </div>
+    <figure class="clip" data-clip="assets/loops/groups.mp4"><img data-src="assets/loops/groups.webp" width="1600" height="1000" alt="Two worktrees' tabs grouped in one strip, then split side by side: search-perf's artifacts on the left, checkout-fix asking to run a command on the right." decoding="async"><noscript><img src="assets/loops/groups.webp" width="1600" height="1000" alt="" loading="lazy"></noscript></figure>
+  </div>
+</section>
+
+<section class="chapter" id="yours" aria-labelledby="yours-h">
+  <div class="wrap">
+    <div class="chapter-head">
+      <div class="chapter-mark"><span class="scene" data-scene="anchor"></span><span class="kicker">Make it yours</span></div>
+      <h2 id="yours-h">Your themes. Your harbour.</h2>
+      <p>Berth's own themes and nineteen ports of favourites, Dracula to Rosé Pine, carried into the terminal and every diff. A chat background of your own, and ⌘+ when you want it larger.</p>
+    </div>
+    <figure class="clip" data-clip="assets/loops/themes.mp4"><img data-src="assets/loops/themes.webp" width="1600" height="1000" alt="The same chat and diff in Berth Dark, Dracula, Catppuccin Latte and Tokyo Night, then with a harbour as its chat background." decoding="async"><noscript><img src="assets/loops/themes.webp" width="1600" height="1000" alt="" loading="lazy"></noscript></figure>
+  </div>
+</section>
+
+<section class="chapter after-dark" id="night" aria-labelledby="night-h">
+  <div class="night-in" aria-hidden="true"></div>
+  <div class="night-body">
+  <div class="wrap">
+    <div class="chapter-head">
+      <div class="chapter-mark"><span class="scene" data-scene="lighthouse"></span><span class="kicker">It keeps going</span></div>
+      <h2 id="night-h">Close the laptop. They keep going.</h2>
+      <p>The agents run on your boxes, not on your laptop. Close it and they keep working; open it in the morning and what they did is there.</p>
+    </div>
+    <figure class="clip" data-clip="assets/film/hero-loop.mp4"><img data-src="assets/film/hero-loop-poster.webp" width="1600" height="900" alt="The harbour at night: the lighthouse turning, and a green light on the water for each box still working." decoding="async"><noscript><img src="assets/film/hero-loop-poster.webp" width="1600" height="900" alt="" loading="lazy"></noscript></figure>
+    <p class="boxes" aria-label="Two boxes online, three agents working"><span><i></i>devl · 2 agents working</span><span><i></i>gpu · 1 agent working</span></p>
+  </div>
+  </div>
+  <div class="night-out" aria-hidden="true"></div>
+</section>
+
+<section class="chapter install-ch" id="install-now" aria-labelledby="install-h">
+  <div class="wrap">
+    <div class="chapter-mark centered"><span class="scene dawn" data-scene="dawn"></span><span class="kicker">Install</span></div>
+    <h2 id="install-h">Your agents, docked.</h2>
+    <p class="lede-2">The app for your Mac, and berthd on each box. Free and open source.</p>
+    <div class="actions">
+      <a class="btn primary" href="https://github.com/sean-brydon/berthd/releases/latest/download/Berth-macos-universal.dmg"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 2.5 V10.5 M4.5 7 L8 10.5 L11.5 7 M3 13.5 H13"/></svg>Download for macOS</a>
+    </div>
+    <div class="install">
+      <span class="install-label">On your box</span>
+      <code id="install-2">curl -fsSL https://berthd.app/install | sh</code>
+      <button class="copy" type="button" data-copy="install-2">Copy</button>
+    </div>
+    <nav class="ends" aria-label="More">
+      <a href="https://docs.berthd.app/getting-started/install">Read the docs<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5 L10.5 8 L6 12.5"/></svg></a>
+      <a href="https://github.com/sean-brydon/berthd">GitHub<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5 L10.5 8 L6 12.5"/></svg></a>
+      <a href="demo/">Try the live demo<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3.5 L10.5 8 L6 12.5"/></svg></a>
+    </nav>
+  </div>
+</section>
+
 </main>
+
+<!-- The launch film, in a lightbox: native controls, Esc or the backdrop
+     closes it. Nothing of it loads until it's opened (preload="none").
+     The film's files are not in the repository: see README.md, "The film". -->
+<dialog class="film" id="film" aria-labelledby="film-title">
+  <div class="film-bar">
+    <p id="film-title">The Berth launch film <span>1:15</span></p>
+    <form method="dialog"><button class="film-close" type="submit" aria-label="Close the film"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M4 4 L12 12 M12 4 L4 12"/></svg></button></form>
+  </div>
+  <div class="film-frame">
+    <video controls playsinline preload="none" data-poster="assets/film/poster.webp" width="1920" height="1080" autofocus>
+      <source src="film/berth-launch-1080p-av1.webm" type='video/webm; codecs="av01.0.09M.10, opus"'>
+      <source src="film/berth-launch-1080p.mp4" type='video/mp4; codecs="avc1.640032, mp4a.40.2"'>
+    </video>
+    <p class="film-error" hidden>The film didn’t load.</p>
+  </div>
+</dialog>
 
 
 <script>
@@ -104,10 +263,45 @@
     document.addEventListener("visibilitychange", () => root.classList.toggle("hidden", document.hidden));
   })();
 
-  // Copy for the install line, when there is a clipboard.
+  // "Watch the film" opens the lightbox (a modal <dialog>: focus moves in
+  // and comes back, Esc closes it); without <dialog> the link opens the film.
+  (() => {
+    const link = document.querySelector("[data-film]");
+    const dialog = document.getElementById("film");
+    if (!link || typeof dialog.showModal !== "function") return;
+    const video = dialog.querySelector("video");
+    const error = dialog.querySelector(".film-error");
+    const open = () => {
+      if (dialog.open) return;
+      // Its poster too waits for the film to be asked for.
+      if (!video.poster) video.poster = video.dataset.poster;
+      dialog.showModal();
+      video.focus();
+      video.play().catch(() => {});
+    };
+    link.addEventListener("click", (e) => {
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button) return;
+      e.preventDefault();
+      open();
+    });
+    // The backdrop closes it too (a click on the <dialog> itself, outside its frame).
+    dialog.addEventListener("click", (e) => e.target === dialog && dialog.close());
+    dialog.addEventListener("close", () => video.pause());
+    // Every source failed: say so, rather than a black box.
+    video.querySelector("source:last-of-type").addEventListener("error", () => {
+      error.hidden = false;
+      video.hidden = true;
+    });
+    if (location.hash === "#film") open();
+  })();
+
+  // Copy for the install line. It's there from the start, so the line never
+  // moves; without a clipboard (an insecure context) it goes.
   for (const b of document.querySelectorAll("[data-copy]")) {
-    if (!navigator.clipboard) break;
-    b.hidden = false;
+    if (!navigator.clipboard) {
+      b.hidden = true;
+      continue;
+    }
     b.addEventListener("click", async () => {
       try {
         await navigator.clipboard.writeText(document.getElementById(b.dataset.copy).textContent);

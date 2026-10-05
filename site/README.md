@@ -12,22 +12,33 @@ Berth's landing page: static HTML and CSS, no build step. Open
   lighthouse's beam is a CSS wedge of halftone dots from the lamp, sweeping
   by transform only (still for reduced motion, paused when hidden).
 - "Close the laptop" in the header puts the page to night by hand
-  (`data-theme` on `<html>`): the harbour redraws at night, the screenshots
-  and the bands of sea below switch to their dark versions, and a line
-  counts what the agents keep doing while the laptop sleeps.
-- Below the hero, a day in the harbour in five beats (sets out, out at sea,
-  needs you, back at its berth, three at once), each a line and a real
-  screenshot, then a box being added and the night. Bands of pale sea
-  (`--sea`) come in and go out through dithered seams (`assets/seam.svg`,
-  2 px dots of the harbour's Bayer matrix). `assets/dither.js` brings each
-  screenshot in through the same grain as it enters the viewport, once
-  (nothing is hidden without it or for reduced motion). "Needs you" has a
-  Terminal | Conversation switch over the same agent; the install types
-  itself the first time it's in view. The page ends at night whatever the
-  theme: the harbour again (`data-night-only`, dissolving at both ends,
-  drawn only when near), with a lamp lit for each agent still out. Motion
-  pauses offscreen and when the tab is hidden, and is off for reduced
-  motion.
+  (`data-theme` on `<html>`): the harbour redraws at night.
+- At night (dark mode, or the laptop closed) the harbour comes alive:
+  `assets/hero-loop.js` plays the film's seamless loop
+  (`assets/film/hero-loop.mp4`/`.webm`, 7.8 s, ~1.2 MB) in the band, from its
+  first frame (`hero-loop-poster.webp`), dissolving into the page through
+  the same 2 px dots. Its frames are drawn on a canvas, so it can never be the
+  page's largest paint. By day the dithered day painting stays. Nothing of it
+  loads before the hero has painted, and nothing at all for reduced motion or
+  Save-Data.
+- "Watch the film" above the headline opens the launch film in a `<dialog>`
+  lightbox (native controls; Esc, the close button or the backdrop closes it;
+  `#film` opens it). Nothing of the film loads until it's opened. See "The
+  film" below for where its files live.
+- Below the hero, the film's story in six chapters (Start, Watch it work,
+  Side by side, Make it yours, It keeps going, Install): each one of the
+  app's line scenes with its one amber light (`assets/scenes.json` and
+  `assets/scenes.css`, from `scripts/scenes.mjs`), the film's caption as its
+  heading, and a short muted loop of the real app (`assets/loops/`, 0.2-0.7
+  MB each, cut by `scripts/loops.sh` from the film's footage; posters by
+  `scripts/posters.mjs`). "Watch it work" switches between three loops, each
+  handing on to the next until one is chosen. "It keeps going" is always
+  night, and reuses the hero's loop. `assets/clips.js` gives each poster its
+  src and its loop once the page has loaded and it's near, plays loops only
+  in view, and leaves the posters for reduced motion.
+- Everything below the hero (the scenes, the loops, their scripts) is asked
+  for only after the page has loaded and the harbour has been drawn, so the
+  hero's LCP is what it was without them.
 - `assets/shots/`: screenshots from the live demo with Labs on, as WebPs
   per theme at 1x and 2x (720, 1280 and 2080 for the full-window ones), and
   a readable crop of each for phones (`<scene>-<theme>-phone-<width>.webp`;
@@ -39,8 +50,9 @@ Berth's landing page: static HTML and CSS, no build step. Open
   pane-terminal,attempts` with `site/` served on 1460.
 - `demo/`: the live demo, built from `app/` (see below). Committed, so the
   site still has no build step.
-- `assets/og.png`: the 1200×630 link preview (the dithered harbour and the
-  headline); `assets/favicon.svg` and `assets/apple-touch-icon.png`.
+- `assets/og-film.jpg`: the 1200×630 link preview for Open Graph and
+  Twitter, cut from the film's poster (`assets/og.png`, the earlier one, is
+  kept but no longer referenced); `assets/favicon.svg` and `assets/apple-touch-icon.png`.
 - `assets/fonts/`: Inter and JetBrains Mono (SIL OFL, licences beside them).
 - `scripts/capture.mjs`: retakes the screenshots.
 
@@ -85,11 +97,46 @@ phone crops, no app needed), `--url URL` (a demo already served; no
 Vite), `--port N`, `--quality 0.8`, `--skip-plugins`,
 and the environment variables `PLAYWRIGHT_CORE` and `CHROME_CHANNEL`.
 
+## The film
+
+The lightbox plays `film/berth-launch-1080p-av1.webm` (AV1 10-bit + Opus,
+~36 MB) and falls back to `film/berth-launch-1080p.mp4` (H.264 High, 6 Mbps
++ AAC, faststart, ~58 MB), both 1920×1080 at 60 fps, 74.6 s. They are **not
+in the repository**: `site/film/` is ignored. A 36-58 MB file doesn't belong
+in git history (every clone, and the Go module zip, would carry it), and
+serving it from the site's own deployment spends its bandwidth.
+
+Where to put them, best first:
+
+1. **Vercel Blob** on the site's own team: a CDN with range requests and
+   the right `Content-Type`, no trackers, nothing else to sign up for.
+   `vercel blob put film/berth-launch-1080p.mp4 …`, then point the two
+   `<source>`s and the link's `href` in `index.html` at the blob URLs (or
+   add a redirect from `/film/:file` to them in `vercel.json`).
+2. A GitHub release asset: free, but served as an attachment
+   (`application/octet-stream`, behind a redirect), which Safari won't
+   stream in a `<video>`.
+3. YouTube or Vimeo: the least work, but their player brings their
+   cookies and scripts to a page that has none.
+
+To preview the lightbox locally, put the two encodes in `site/film/`.
+They're made from the ProRes master:
+
+```sh
+ffmpeg -i berth-launch-1080p60-prores.mov -i berth-launch-1080p60.mp4 -map 0:v -map 1:a \
+  -c:v libx264 -preset slow -b:v 6M -maxrate 8M -bufsize 12M -profile:v high -pix_fmt yuv420p -g 120 \
+  -c:a aac -b:a 160k -movflags +faststart film/berth-launch-1080p.mp4      # two-pass in practice
+ffmpeg -i berth-launch-1080p60-prores.mov -i berth-launch-1080p60.mp4 -map 0:v -map 1:a \
+  -c:v libsvtav1 -preset 5 -crf 32 -g 240 -pix_fmt yuv420p10le -c:a libopus -b:a 128k \
+  film/berth-launch-1080p-av1.webm
+```
+
 ## Rules
 
 The page follows the brand board (`design/brand/index.html`) and the app:
 Inter and JetBrains Mono, coss-ui's buttons, sentence case, amber only for
-what needs you (the mark's dot). The harbour is the only picture that is not
-a screenshot. Keep it light: about 250 KB to first paint and well under
-1.5 MB after scrolling to the end at 2x; no layout shift (every image has
-its size); no trackers.
+what needs you (the mark's dot). The harbour and the film's night are the only
+pictures that aren't the app. Keep it light: about 250 KB to first paint,
+nothing below the hero requested before the hero has painted, each loop
+under 1 MB; no layout shift (every image and loop has its size); no
+trackers.
