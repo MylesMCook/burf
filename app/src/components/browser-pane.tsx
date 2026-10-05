@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { ArrowLeftIcon, ArrowUpRightIcon, ArrowRightIcon, BotIcon, CrosshairIcon, ExternalLinkIcon, GlobeIcon, RotateCwIcon, SendIcon, ShieldAlertIcon, XIcon } from "lucide-react";
+import { ArrowLeftIcon, ArrowUpRightIcon, ArrowRightIcon, BotIcon, CrosshairIcon, ExternalLinkIcon, GlobeIcon, MonitorSmartphoneIcon, RotateCwIcon, SendIcon, ShieldAlertIcon, XIcon } from "lucide-react";
 import { useEffect, useId, useImperativeHandle, useMemo, useRef, useState } from "react";
 
 import { BrowserSandboxCard, seedSandbox, useSandboxCardState } from "@/components/browser-sandbox";
@@ -8,6 +8,7 @@ import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { isTauri } from "@/lib/api";
+import { openPreviewAt } from "@/lib/actions";
 import { agentBrowserStatus, boxHasBrowser, type Frame, watchAgentBrowser } from "@/lib/agent-browser";
 import { agentOf } from "@/lib/derive";
 import { send as sendPrompt } from "@/lib/orchestrate";
@@ -226,6 +227,9 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree, on
           <ToolButton label="Pick an element for the agent" disabled={!url} onClick={pick}>
             <CrosshairIcon />
           </ToolButton>
+          <ToolButton label="Preview sizes: this page at every size at once" disabled={!url} onClick={() => openPreviewAt(url, { kind: "tab" }, worktree)}>
+            <MonitorSmartphoneIcon />
+          </ToolButton>
           <ToolButton label="Open in your browser" disabled={!url} onClick={() => void openUrl(url)}>
             <ExternalLinkIcon />
           </ToolButton>
@@ -297,7 +301,7 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree, on
 // useBrowserContext gathers what resolving a typed port needs: the pane's
 // worktree (else the one showing), its box's services, and the proxy's URL
 // port.
-function useBrowserContext(worktree?: string): BrowserContext {
+export function useBrowserContext(worktree?: string): BrowserContext {
   const own = useWorktreeRef(worktree);
   const ref = own ?? currentSpace()?.ref;
   const services = useStore((s) => (ref ? s.boxes[ref.box]?.services : undefined));
@@ -552,7 +556,7 @@ function FramedPage({ id, url, onReload, onLoading }: { id: string; url: string;
 // Suggestions offers the pane's worktree's dev servers, by the names the
 // proxy knows them by, and pages opened recently, right under the address
 // bar where the eye already is.
-function Suggestions({ ctx, onPick }: { ctx: BrowserContext; onPick(url: string): void }) {
+export function Suggestions({ ctx, onPick }: { ctx: BrowserContext; onPick(url: string): void }) {
   const list = suggestions(ctx);
   const recent = useWorkspaces((s) => s.recentUrls).slice(0, 5);
   const Row = ({ url, title, note }: { url: string; title: string; note?: string }) => (

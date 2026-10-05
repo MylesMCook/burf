@@ -12,6 +12,8 @@ export type PaneContent =
   // title: the session's title while it ran, so an ended pane keeps its name.
   | { kind: "terminal"; box: string; session: string; agent?: string; command?: string; title?: string; view?: "terminal" | "conversation" }
   | { kind: "browser"; url: string }
+  // The same page at several sizes at once (components/preview-pane).
+  | { kind: "preview"; url: string }
   | { kind: "log"; box: string; location: string; worktree: string; service: string }
   // A plugin's worktree panel, shown for the pane's worktree (paneWorktree).
   | { kind: "panel"; plugin: string; panel: string; title: string }

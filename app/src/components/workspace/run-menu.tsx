@@ -1,4 +1,4 @@
-import { ChevronDownIcon, ExternalLinkIcon, PlayIcon, RotateCwIcon, ScrollTextIcon, Settings2Icon, SquareIcon, SquareTerminalIcon } from "lucide-react";
+import { ChevronDownIcon, ExternalLinkIcon, MonitorSmartphoneIcon, PlayIcon, RotateCwIcon, ScrollTextIcon, Settings2Icon, SquareIcon, SquareTerminalIcon } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { Tip } from "@/components/tip";
@@ -99,6 +99,10 @@ export function RunMenu() {
     const url = urlFor(svc);
     if (url) openFor({ kind: "browser", url }, { split: focusedPane() ? "row" : undefined });
   };
+  const openPreview = (svc: WorktreeService) => {
+    const url = urlFor(svc);
+    if (url) openFor({ kind: "preview", url });
+  };
   const viewLog = (svc: WorktreeService) => openFor({ kind: "log", box: ref.box, location: ref.location, worktree: ref.worktree, service: svc.name });
 
   const onPrimary = () => {
@@ -178,6 +182,10 @@ export function RunMenu() {
               <MenuItem disabled={!urlFor(svc)} onClick={() => openPage(svc)}>
                 <ExternalLinkIcon />
                 Open in browser tab
+              </MenuItem>
+              <MenuItem disabled={!urlFor(svc)} onClick={() => openPreview(svc)}>
+                <MonitorSmartphoneIcon />
+                Preview sizes
               </MenuItem>
             </MenuGroup>
           ))}

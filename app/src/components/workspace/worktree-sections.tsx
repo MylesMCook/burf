@@ -1,4 +1,4 @@
-import { CableIcon, ChevronRightIcon, CopyIcon, DatabaseIcon, GlobeIcon, MonitorIcon, PlayIcon } from "lucide-react";
+import { CableIcon, ChevronRightIcon, CopyIcon, DatabaseIcon, GlobeIcon, MonitorIcon, MonitorSmartphoneIcon, PlayIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { Tip } from "@/components/tip";
@@ -9,7 +9,7 @@ import { ServiceIcon, serviceRunning, showServiceTerminal } from "@/components/w
 import { boxApi, type WorktreeService } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
 import { toastManager } from "@/components/ui/toast";
-import { openBrowserAt } from "@/lib/actions";
+import { openBrowserAt, openPreviewAt } from "@/lib/actions";
 import { hostSuffix, worktreeHost } from "@/lib/browser-url";
 import { copyText } from "@/lib/clipboard";
 import { NONE, useStore } from "@/lib/store";
@@ -218,6 +218,14 @@ function ServiceRow({ row: r }: { row: LiveService }) {
           <CopyIcon />
         </Button>
       </Tip>
+      {web && (
+        <Tip label="This page at every size: phones, tablet and Tailwind's breakpoints">
+          <Button size="xs" variant="ghost" className="shrink-0 text-muted-foreground hover:text-foreground" onClick={() => openPreviewAt(r.url)}>
+            <MonitorSmartphoneIcon />
+            Preview
+          </Button>
+        </Tip>
+      )}
       {web ? (
         <Button size="xs" variant="outline" className="shrink-0" onClick={() => openBrowserAt(r.url)}>
           Open in tab

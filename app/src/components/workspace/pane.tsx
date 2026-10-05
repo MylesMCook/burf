@@ -1,9 +1,10 @@
-import { AppWindowIcon, ArchiveIcon, ArrowLeftRightIcon, Columns2Icon, EllipsisIcon, GlobeIcon, ImageIcon, MessagesSquareIcon, PencilIcon, ScrollTextIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, SquareTerminalIcon, XIcon } from "lucide-react";
+import { AppWindowIcon, ArchiveIcon, ArrowLeftRightIcon, Columns2Icon, EllipsisIcon, GlobeIcon, ImageIcon, MessagesSquareIcon, MonitorSmartphoneIcon, PencilIcon, ScrollTextIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, SquareTerminalIcon, XIcon } from "lucide-react";
 import { useEffect, useMemo } from "react";
 
 import { Tip } from "@/components/tip";
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
 import { BrowserPane } from "@/components/browser-pane";
+import { PreviewPane } from "@/components/preview-pane";
 import { EmptySide } from "@/components/workspace/compare-view";
 import { CompareSideContext, type CompareSide, pageLoading } from "@/lib/compare-actions";
 import { openChatBackgroundSettings } from "@/components/conversation/chat-background";
@@ -21,7 +22,7 @@ import { armDrag, useTabDrag } from "@/components/workspace/tab-drag";
 import { TerminalView } from "@/components/workspace/terminal-view";
 import { openWorktreePicker } from "@/components/workspace/worktree-picker";
 import { useLabel, useTone, WtChip } from "@/components/workspace/worktree-tone";
-import { agentPresets, closePane, openBrowserAt, startSession } from "@/lib/actions";
+import { agentPresets, closePane, openBrowserAt, openPreviewAt, startSession } from "@/lib/actions";
 import { agentLabel, agentOf, restartCommand, sessionAgent, sessionName, sessionState } from "@/lib/derive";
 import { nameFromKey } from "@/lib/groups";
 import { type Leaf, leaves, paneWorktree } from "@/lib/layout";
@@ -117,6 +118,7 @@ export function Pane({ wsKey, tab, pane, visible, focused, split, mixed, compare
             </div>
           )}
           {c.kind === "browser" && <BrowserPane id={pane.id} url={c.url} visible={visible} worktree={owner} onNavigate={(url) => setPaneContent(wsKey, tab, pane.id, { kind: "browser", url })} onLoading={compare ? (l) => pageLoading(pane.id, l) : undefined} />}
+          {c.kind === "preview" && <PreviewPane url={c.url} visible={visible} worktree={owner} onNavigate={(url) => setPaneContent(wsKey, tab, pane.id, { kind: "preview", url })} />}
           {c.kind === "empty" && <EmptySide owner={owner} tab={tab} pane={pane.id} label={c.label} />}
           {c.kind === "log" && <LogView box={c.box} location={c.location} worktree={c.worktree} service={c.service} visible={visible} />}
           {c.kind === "panel" && <PanelPane wsKey={owner} plugin={c.plugin} panel={c.panel} />}
@@ -228,6 +230,8 @@ export function paneLabel(c: Leaf["content"], agent?: string): string {
       return agent || c.agent ? agentLabel((agent ?? c.agent)!) : "Shell";
     case "browser":
       return "Browser";
+    case "preview":
+      return "Preview";
     case "log":
       return `${c.service} log`;
     case "panel":
@@ -243,6 +247,7 @@ export function PaneIcon({ content, agent, className }: { content: Leaf["content
   const c = content;
   const service = useStore((s) => c.kind === "terminal" && !!s.boxes[c.box]?.sessions?.find((x) => x.name === c.session)?.service);
   if (c.kind === "browser") return <GlobeIcon className={cn("size-3.5 shrink-0", className)} />;
+  if (c.kind === "preview") return <MonitorSmartphoneIcon className={cn("size-3.5 shrink-0", className)} />;
   if (c.kind === "log") return <ScrollTextIcon className={cn("size-3.5 shrink-0", className)} />;
   if (c.kind === "panel") return <PanelIcon plugin={c.plugin} panel={c.panel} className={cn("size-3.5 shrink-0", className)} />;
   if (service) return <ServiceIcon className={cn("size-3", className)} />;
@@ -346,6 +351,12 @@ export function PaneActions({ wsKey, tab, pane, onClose, closable, focused = tru
                 <GlobeIcon />
               </span>
               Browser
+            </MenuItem>
+            <MenuItem onClick={() => openPreviewAt("", beside("row"))}>
+              <span className="flex size-4 items-center justify-center">
+                <MonitorSmartphoneIcon />
+              </span>
+              Preview
             </MenuItem>
             {labs && (
               <MenuItem

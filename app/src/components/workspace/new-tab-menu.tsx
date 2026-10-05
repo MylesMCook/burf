@@ -1,4 +1,4 @@
-import { Columns2Icon, GitCompareArrowsIcon, GlobeIcon, HistoryIcon, ListPlusIcon, PlusIcon, PuzzleIcon, RadioIcon, Settings2Icon, SquareTerminalIcon } from "lucide-react";
+import { Columns2Icon, GitCompareArrowsIcon, GlobeIcon, HistoryIcon, ListPlusIcon, MonitorSmartphoneIcon, PlusIcon, PuzzleIcon, RadioIcon, Settings2Icon, SquareTerminalIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { Tip } from "@/components/tip";
@@ -6,12 +6,12 @@ import { AgentIcon } from "@/components/agent-glyph";
 import { Command, CommandCollection, CommandEmpty, CommandGroup, CommandGroupLabel, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
 import { Kbd } from "@/components/ui/kbd";
 import { Popover, PopoverPopup, PopoverTrigger } from "@/components/ui/popover";
-import { agentPresets, openBrowserAt, resolveUrl, startSession } from "@/lib/actions";
+import { agentPresets, openBrowserAt, openPreviewAt, resolveUrl, startSession } from "@/lib/actions";
 import { guessSessionName, sessionName } from "@/lib/derive";
 import { focusNewPane } from "@/lib/focus-home";
 import { leaves } from "@/lib/layout";
 import { useStore } from "@/lib/store";
-import { portUrl } from "@/lib/browser-url";
+import { portUrl, suggestions } from "@/lib/browser-url";
 import { activateTab, focusPane, openPanel, showWorktree, useHereRef, useWorkspaces } from "@/lib/workspaces";
 import { usePrefs } from "@/lib/prefs";
 import { openWorktreePicker } from "@/components/workspace/worktree-picker";
@@ -66,6 +66,8 @@ export function NewTabMenu() {
     const actions: Item[] = [
       { value: "terminal", label: "New terminal", icon: <SquareTerminalIcon />, shortcut: "⌘T", run: done(() => void startSession("")) },
       { value: "browser", label: "New browser tab", icon: <GlobeIcon />, shortcut: "⌘⇧B", run: done(() => openBrowserAt("")) },
+      // The worktree's dev server at every size, when it runs one.
+      { value: "preview sizes breakpoints responsive", label: "Preview", detail: "every size at once", icon: <MonitorSmartphoneIcon />, run: done(() => openPreviewAt(devServerUrl())) },
       ...(labs
         ? [
             { value: "add worktree tabs group", label: "Another worktree's tabs…", icon: <ListPlusIcon />, run: done(() => openWorktreePicker({ kind: "group" })) },
@@ -89,6 +91,7 @@ export function NewTabMenu() {
           }),
         }))
       : [];
+    const devServerUrl = () => (ws ? suggestions({ ref: ws.ref, services, urlPort })[0]?.url : undefined) ?? "";
     const settings: Item[] = [{ value: "agent-settings", label: "Agent settings…", icon: <Settings2Icon />, run: done(() => useStore.getState().setView({ kind: "settings", section: "agents" })) }];
     const history: Item[] = recent.map((u) => ({ value: `recent:${u}`, label: u.replace(/^https?:\/\//, "").replace(/\/$/, ""), search: u, icon: <HistoryIcon />, run: done(() => openBrowserAt(u)) }));
     if (!q) {
@@ -106,13 +109,13 @@ export function NewTabMenu() {
         const focus = leaves(t.root).find((l) => l.id === t.focus) ?? leaves(t.root)[0];
         const c = focus.content;
         // Terminals by what the app calls them everywhere: "Claude Code 2".
-        const what = c.kind === "terminal" ? terminalName(c.box, c.session) : c.kind === "browser" ? c.url.replace(/^https?:\/\//, "") || "Browser" : "Starting";
+        const what = c.kind === "terminal" ? terminalName(c.box, c.session) : c.kind === "browser" ? c.url.replace(/^https?:\/\//, "") || "Browser" : c.kind === "preview" ? `Preview ${c.url.replace(/^https?:\/\//, "")}`.trim() : "Starting";
         return {
           value: `tab:${key}:${t.id}`,
           label: `${what} — ${space.ref.main ? space.ref.location : space.ref.worktree}`,
           detail: space.ref.box,
           search: c.kind === "terminal" ? c.session : undefined,
-          icon: c.kind === "browser" ? <GlobeIcon /> : <AgentIcon agent={c.kind === "terminal" ? sessionAgent(c.box, c.session) : undefined} />,
+          icon: c.kind === "browser" ? <GlobeIcon /> : c.kind === "preview" ? <MonitorSmartphoneIcon /> : <AgentIcon agent={c.kind === "terminal" ? sessionAgent(c.box, c.session) : undefined} />,
           run: done(() => {
             showWorktree(key);
             activateTab(key, t.id);

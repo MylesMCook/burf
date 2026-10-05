@@ -105,6 +105,13 @@ export function openBrowserAt(url = "", target: Target = { kind: "tab" }, worktr
   if (wt) place({ kind: "browser", url }, target, wt);
 }
 
+// openPreviewAt opens a Preview tab: the page at several sizes at once. With
+// no URL it starts on the worktree's dev server, as the Browser tab offers.
+export function openPreviewAt(url = "", target: Target = { kind: "tab" }, worktree?: string) {
+  const wt = worktree ?? targetWorktree(target);
+  if (wt) place({ kind: "preview", url }, target, wt);
+}
+
 // A URL for what was typed: a port opens on the box of the worktree you are
 // acting in, by the worktree's name when that is its dev server.
 export function resolveUrl(input: string): string | undefined {
