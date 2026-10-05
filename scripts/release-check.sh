@@ -80,6 +80,9 @@ else
 	TESTED="$REV"
 	[ -z "$dirty" ] || echo "(this checkout has uncommitted changes; they aren't tested: --dirty tests them)"
 fi
+# The tests are this commit's own, run from the checkout under test: a
+# later change to them in this checkout tests what it was written for.
+TESTS="$SRC_TREE/scripts"
 # The tests check the dmg was built from this commit, and print it.
 export BERTH_RELEASE_TEST_REV=$REV
 {
@@ -138,12 +141,12 @@ if [ $mac = 1 ] && [ -z "$DMG" ]; then
 	echo "Testing $DMG"
 fi
 if [ $mac = 1 ]; then
-	run "Fresh user (macOS app)" "$here/fresh-user-test.sh" --dmg "$DMG" $SIGNED $ANY --out "$OUT/fresh-user"
+	run "Fresh user (macOS app)" "$TESTS/fresh-user-test.sh" --dmg "$DMG" $SIGNED $ANY --out "$OUT/fresh-user"
 fi
-run "Fresh box (Linux, Docker)" "$here/linux-box-test.sh" --dist "$LINUX_DIST" --out "$OUT/linux-box"
-run "Upgrade (Linux box)" "$here/upgrade-test.sh" --linux ${FROM:+--from "$FROM"} --dist "$LINUX_DIST" --out "$OUT/upgrade-linux"
+run "Fresh box (Linux, Docker)" "$TESTS/linux-box-test.sh" --dist "$LINUX_DIST" --out "$OUT/linux-box"
+run "Upgrade (Linux box)" "$TESTS/upgrade-test.sh" --linux ${FROM:+--from "$FROM"} --dist "$LINUX_DIST" --out "$OUT/upgrade-linux"
 if [ $mac = 1 ]; then
-	run "Upgrade (this Mac's box)" "$here/upgrade-test.sh" --mac ${FROM:+--from "$FROM"} --dmg "$DMG" $ANY --out "$OUT/upgrade-mac"
+	run "Upgrade (this Mac's box)" "$TESTS/upgrade-test.sh" --mac ${FROM:+--from "$FROM"} --dmg "$DMG" $ANY --out "$OUT/upgrade-mac"
 fi
 
 echo
