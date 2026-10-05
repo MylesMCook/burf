@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
+import { ZoomHud } from "@/components/zoom-hud";
 import { Sheet, SheetDescription, SheetFooter, SheetHeader, SheetPanel, SheetPopup, SheetTitle } from "@/components/ui/sheet";
 import { isTauri } from "@/lib/api";
 import { usePrefs } from "@/lib/prefs";
@@ -22,6 +23,8 @@ export function ShortcutsSheet() {
   const close = () => useShortcutsSheet.setState({ open: false });
   return (
     <Sheet open={open} onOpenChange={(o) => useShortcutsSheet.setState({ open: o })}>
+      {/* The zoom HUD (⌘+, ⌘−, ⌘0) lives with the sheet that lists those keys. */}
+      <ZoomHud />
       <SheetPopup className="sm:max-w-sm">
         <SheetHeader>
           <SheetTitle>Keyboard shortcuts</SheetTitle>

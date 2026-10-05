@@ -11,6 +11,7 @@ import { toggleNotifications } from "@/lib/notifications";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { activateTab, currentSpace, moveFocus, useWorkspaces } from "@/lib/workspaces";
+import { zoom } from "@/lib/zoom";
 import { isOnboardingActive } from "@/views/onboarding/onboarding-state";
 
 // The app's shortcuts (lib/shortcuts.json) come two ways: as keys, caught on
@@ -25,6 +26,12 @@ const arrows: Record<string, Dir> = { ArrowLeft: "left", ArrowRight: "right", Ar
 // key that does nothing here goes on to the page. arg is the tab's number
 // (tab) or the direction (focus).
 function run(id: string, from: "key" | "menu", arg?: number | Dir): boolean {
+  // Zoom works everywhere, onboarding included.
+  if (id === "zoom-in" || id === "zoom-out" || id === "zoom-reset") {
+    // With a terminal focused it sizes the terminal's font (lib/zoom.ts).
+    zoom(id === "zoom-in" ? 1 : id === "zoom-out" ? -1 : 0);
+    return true;
+  }
   // Until onboarding is done there is nowhere else to go.
   if (isOnboardingActive()) return false;
   const s = useStore.getState();
@@ -124,6 +131,10 @@ function fromKey(e: KeyboardEvent): [string, (number | Dir)?] | undefined {
   if (key === "o" && shift) return ["open-editor"];
   if (key === "d") return [shift ? "split-down" : "split-right"];
   if (key === "w") return ["close-pane"];
+  // ⌘= and ⌘+ (⌘⇧= on most layouts, or the keypad's +) zoom in.
+  if (key === "=" || key === "+" || e.code === "NumpadAdd") return ["zoom-in"];
+  if (key === "-" || key === "_" || key === "−" || e.code === "NumpadSubtract") return ["zoom-out"];
+  if (key === "0" || e.code === "Numpad0") return ["zoom-reset"];
   if (/^[1-9]$/.test(key)) return ["tab", Number(key)];
   return undefined;
 }

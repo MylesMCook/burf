@@ -36,7 +36,7 @@ export function TerminalSection() {
         <SettingsRow label="Font">
           <SimpleSelect className="w-56" options={fonts} value={t.fontFamily} onChange={(fontFamily) => set({ fontFamily })} />
         </SettingsRow>
-        <SettingsRow label="Size">
+        <SettingsRow label="Size" description="Or ⌘+ and ⌘− with a terminal focused; ⌘0 resets it.">
           <Stepper value={t.fontSize} min={9} max={24} onChange={(fontSize) => set({ fontSize })} />
         </SettingsRow>
         <SettingsRow label="Line height" description="1.0 packs lines like Ghostty; higher is airier.">

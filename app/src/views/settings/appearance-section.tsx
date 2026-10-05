@@ -33,13 +33,15 @@ export function AppearanceSection() {
       </section>
 
       <SettingsGroup title="Interface">
-        <SettingsRow label="Text size" description="Everything outside the terminal.">
+        <SettingsRow label="Text size" description="Everything outside the terminal. ⌘+ and ⌘− step it from 11 to 20px.">
           <Segmented
             value={String(uiFontSize)}
             options={[
               { value: "12", label: "Small" },
               { value: "13", label: "Default" },
               { value: "14", label: "Large" },
+              // A size zoomed to (⌘+, ⌘−) that none of these is.
+              ...(uiFontSize < 12 || uiFontSize > 14 ? [{ value: String(uiFontSize), label: `${uiFontSize}px` }] : []),
             ]}
             onChange={(v) => setPrefs({ uiFontSize: Number(v) })}
           />

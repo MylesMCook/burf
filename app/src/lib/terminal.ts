@@ -151,6 +151,9 @@ async function createGhostty(host: HTMLElement, colors: TerminalColors, prefs: T
     delete (t as { focus?: unknown }).focus;
   }
   keepLastColumn(t);
+  // Output still on its way when the terminal is replaced (a new font size,
+  // ⌘+) is dropped: ghostty-web throws on a write after dispose.
+  let disposed = false;
   return {
     get cols() {
       return t.cols;
@@ -158,9 +161,9 @@ async function createGhostty(host: HTMLElement, colors: TerminalColors, prefs: T
     get rows() {
       return t.rows;
     },
-    write: (d) => t.write(d),
+    write: (d) => void (disposed || t.write(d)),
     // Full reset, then erase the scrollback: see createGhostty.
-    reset: () => t.write("\x1bc\x1b[3J"),
+    reset: () => void (disposed || t.write("\x1bc\x1b[3J")),
     fit: () => {
       try {
         fit.fit();
@@ -188,7 +191,10 @@ async function createGhostty(host: HTMLElement, colors: TerminalColors, prefs: T
           callback(links.length ? links : undefined);
         },
       }),
-    dispose: () => t.dispose(),
+    dispose: () => {
+      disposed = true;
+      t.dispose();
+    },
   };
 }
 
