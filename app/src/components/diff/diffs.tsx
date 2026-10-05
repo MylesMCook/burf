@@ -129,6 +129,46 @@ function usePool() {
   return pool;
 }
 
+// ---- Code in a chat reply ----
+
+// highlightCode colours a reply's code block in the pool's workers, with
+// the theme's syntax colours: the block's text as HTML, one span per
+// token, each carrying --diffs-token-light and --diffs-token-dark for
+// conversation.css to pick from. Undefined when the language is unknown
+// or the result wouldn't read back as the same text.
+export async function highlightCode(code: string, lang: string, syntax: Syntax): Promise<string | undefined> {
+  const pool = getOrCreateWorkerPoolSingleton({ poolOptions: POOL_OPTIONS, highlighterOptions: { theme: syntax, langs: [] } });
+  // Used outside a view, the pool still goes once idle.
+  if (users === 0) {
+    window.clearTimeout(idle);
+    idle = window.setTimeout(() => users === 0 && terminateWorkerPoolSingleton(), IDLE);
+  }
+  await pool.initialize();
+  const current = pool.getFileRenderOptions().theme;
+  if (typeof current === "string" || current.dark !== syntax.dark || current.light !== syntax.light) await pool.setRenderOptions({ theme: syntax });
+  const file = { name: `reply.${lang}`, contents: code, lang, cacheKey: `berth-code-${lang}-${hash(code)}-${code.length}` };
+  await pool.primeFileHighlightCache(file);
+  const result = pool.getFileResultCache(file)?.result;
+  if (!result) return undefined;
+  const html = result.code.map((line) => toHTML(line)).join("\n");
+  return unescape(html.replace(/<[^>]+>/g, "")) === code ? html : undefined;
+}
+
+type Hast = { type: string; value?: string; tagName?: string; properties?: Record<string, unknown>; children?: Hast[] };
+
+const escape = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const unescape = (t: string) => t.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&amp;/g, "&");
+
+// toHTML keeps a line's text and its tokens' colours, nothing else of the
+// library's markup: the block stays the plain <code> it was.
+function toHTML(node: unknown): string {
+  const n = node as Hast;
+  if (n.type === "text") return n.value === "\n" ? "" : escape(n.value ?? "");
+  const inner = (n.children ?? []).map(toHTML).join("");
+  const style = n.properties?.style;
+  return n.tagName === "span" && typeof style === "string" && style.includes("--diffs-token") ? `<span style="${escape(style).replace(/"/g, "&quot;")}">${inner}</span>` : inner;
+}
+
 function Pool({ children }: { children: ReactNode }) {
   return <WorkerPoolContext.Provider value={usePool()}>{children}</WorkerPoolContext.Provider>;
 }

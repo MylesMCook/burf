@@ -1,8 +1,9 @@
 import { CopyIcon } from "lucide-react";
 import { micromark } from "micromark";
 import { gfm, gfmHtml } from "micromark-extension-gfm";
-import { memo, useMemo } from "react";
+import { memo, useMemo, useRef } from "react";
 
+import { useCodeHighlight } from "@/components/conversation/code-highlight";
 import { Tip } from "@/components/tip";
 import { copyText } from "@/lib/clipboard";
 import { openUrl } from "@/lib/open-url";
@@ -11,9 +12,10 @@ import { openUrl } from "@/lib/open-url";
 // tables, code, bold and links, as its terminal does. micromark escapes any
 // HTML in the text, so a reply can't inject markup; links open outside.
 //
-// The text is selectable (the app otherwise isn't), every code block has
-// its own Copy, and the reply's Copy takes the Markdown itself, so tables
-// and lists survive a paste into an issue or an editor.
+// The text is selectable (the app otherwise isn't), code blocks take the
+// theme's syntax colours once they've drawn (code-highlight.ts), every
+// code block has its own Copy, and the reply's Copy takes the Markdown
+// itself, so tables and lists survive a paste into an issue or an editor.
 
 const COPY_CODE = '<button type="button" class="cv-copy-code" data-copy-code aria-label="Copy code">Copy</button>';
 
@@ -28,9 +30,12 @@ export const Markdown = memo(function Markdown({ text, copy = true }: { text: st
         .replace(/<\/pre>/g, "</pre></div>"),
     [text],
   );
+  const body = useRef<HTMLDivElement>(null);
+  useCodeHighlight(body, html);
   return (
     <div className="group/md relative cv-in">
       <div
+        ref={body}
         className="cv-md"
         data-selectable
         // biome-ignore lint/security/noDangerouslySetInnerHtml: micromark escapes HTML in the source.

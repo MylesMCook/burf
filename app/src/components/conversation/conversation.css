@@ -52,8 +52,14 @@
 .cv-md a { color: var(--link, var(--foreground)); text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 35%, transparent); text-underline-offset: 2px; }
 .cv-md a:hover { text-decoration-color: currentColor; }
 .cv-md code { font-family: var(--font-mono); font-size: 0.88em; padding: 0.1em 0.35em; border-radius: 5px; background: var(--muted); }
-.cv-md pre { margin: 0 0 0.75em; padding: 10px 12px; border-radius: 10px; background: var(--muted); overflow-x: auto; font-size: 0.7812rem; line-height: 1.5; }
+.cv-md pre { margin: 0 0 0.75em; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--muted) 60%, var(--background)); overflow-x: auto; font-size: 0.7812rem; line-height: 1.5; }
 .cv-md pre code { padding: 0; background: none; font-size: inherit; }
+/* Syntax colours (code-highlight.ts): each token carries its colour for
+   the light and the dark theme; the app's appearance picks one. The block
+   sits nearer the page than other muted surfaces, as the theme's editor
+   does, so its comments keep their contrast. */
+.cv-md pre code span { color: var(--diffs-token-light); font-style: var(--diffs-token-light-font-style); font-weight: var(--diffs-token-light-font-weight); }
+.dark .cv-md pre code span { color: var(--diffs-token-dark); font-style: var(--diffs-token-dark-font-style); font-weight: var(--diffs-token-dark-font-weight); }
 .cv-md blockquote { margin: 0 0 0.75em; padding-left: 0.9em; border-left: 2px solid var(--border); color: var(--muted-foreground); }
 .cv-md hr { margin: 1em 0; border: 0; border-top: 1px solid var(--border); }
 .cv-md .cv-table { margin: 0 0 0.75em; overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; }
