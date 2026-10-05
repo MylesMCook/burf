@@ -11,6 +11,15 @@ again.
 
 ## Unreleased
 
+- **The chat keeps every turn.** A prompt with something pasted in it
+  (Claude Code 2.1 writes those with a new closing tag) was left out of the
+  chat entirely; it now shows as typed. A chat also lost or jumbled turns
+  when the box read the conversation afresh (after a box upgrade, or once
+  no one had looked at it for ten minutes) or a long chat let its oldest
+  live turns go while older ones were loaded: items are now named by where
+  they are in the agent's record, so the chat keeps what it showed, reads
+  what it missed in between, and turns read back after being hidden come
+  back on their own. `/compact` reads as one divider. Boxes need an upgrade.
 - **Worktrees side by side (Labs).** Two or more worktrees share one tab
   strip as tab groups: ⌥-click one in the sidebar, drag it onto the strip,
   or choose "Add to tabs beside…". Each group has its name and colour;
