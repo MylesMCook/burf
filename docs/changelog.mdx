@@ -11,6 +11,16 @@ again.
 
 ## Unreleased
 
+- **The browser tab is your browser.** A browser pane always shows the
+  worktree's page in a real browser on your laptop, through its proxy; the
+  agent's browser on the box shows only while an agent drives it, behind a
+  clearly marked **Agent's view · live**, and now shows the page at once
+  rather than after its next repaint (most still pages never drew). URLs
+  the box writes with its own name (`$BERTH_URL`, `devbox` where you paired
+  it as `devl`) open too, a redirect to another port on the box's
+  `localhost` goes to that port, and a server macOS can't name counts as
+  the worktree's dev server again. Boxes and the laptop agent need an
+  upgrade. [Agent browser](/guides/agent-browser#watching-it).
 - **The chat keeps every turn.** A prompt with something pasted in it
   (Claude Code 2.1 writes those with a new closing tag) was left out of the
   chat entirely; it now shows as typed. A chat also lost or jumbled turns

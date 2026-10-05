@@ -7,12 +7,12 @@ import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { isTauri } from "@/lib/api";
-import { agentBrowserStatus, type AgentBrowserStatus, boxHasBrowser, type Frame, watchAgentBrowser } from "@/lib/agent-browser";
+import { agentBrowserStatus, boxHasBrowser, type Frame, watchAgentBrowser } from "@/lib/agent-browser";
 import { agentOf } from "@/lib/derive";
 import { send as sendPrompt } from "@/lib/orchestrate";
 import { PICKER_SCRIPT, type Pick, parsePick, pickMessage } from "@/lib/picker";
 import { toastManager } from "@/components/ui/toast";
-import { berthUrlLabel, type BrowserContext, describeBerthUrl, hostSuffix, resolveBrowserInput, suggestions, worktreeHost } from "@/lib/browser-url";
+import { berthUrlLabel, boxAliases, type BrowserContext, describeBerthUrl, hostSuffix, resolveBrowserInput, suggestions, worktreeHost } from "@/lib/browser-url";
 import { openUrl } from "@/lib/open-url";
 import { overlayOpen } from "@/lib/overlays";
 import { useStore } from "@/lib/store";
@@ -50,7 +50,13 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree }: 
   // Select the stable list and derive from it: a selector that builds a new
   // array every time never lets the store settle.
   const boxes = useStore((s) => s.status?.boxes);
-  const where = useMemo(() => (url ? describeBerthUrl(url, (boxes ?? []).map((b) => b.name)) : undefined), [url, boxes]);
+  // Each box's own name, as one string so the store can settle on it.
+  const selves = useStore((s) => Object.entries(s.boxes).map(([name, b]) => `${name}=${b?.info?.name ?? ""}`).join(","));
+  const where = useMemo(() => {
+    if (!url) return undefined;
+    const self = new Map(selves.split(",").map((kv) => kv.split("=") as [string, string]));
+    return describeBerthUrl(url, (boxes ?? []).map((b) => b.name), boxAliases((boxes ?? []).map((b) => ({ name: b.name, self: self.get(b.name) }))));
+  }, [url, boxes, selves]);
 
   // The iframe keeps its own history of addresses entered here; the native
   // webview has the page's real history.
@@ -59,6 +65,7 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree }: 
   const [nonce, setNonce] = useState(0);
   const native = useRef<NativeView>(null);
   const address = useRef<HTMLInputElement>(null);
+  const selecting = useRef(false);
 
   useEffect(() => setInput(url), [url]);
 
@@ -94,11 +101,17 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree }: 
 
   const reload = () => (mode === "native" ? native.current?.reload() : setNonce((n) => n + 1));
 
-  // You see your own tab; Agent shows the agent's browser on the box, live,
-  // for a worktree whose box has one.
-  const agentCapable = !!ctx.ref && boxHasBrowser(ctx.ref.box);
-  const [view, setView] = useState<"you" | "agent">("you");
-  const agentView = agentCapable && view === "agent";
+  // The pane is always your own browser, on this laptop, through its proxy.
+  // While an agent drives its own browser on the box for this worktree, its
+  // view can be watched here instead, live, and it says so.
+  const agentLive = useAgentBrowserLive(ctx.ref, visible);
+  const [watching, setWatching] = useState(false);
+  const agentView = watching && !!agentLive?.running;
+  // Where the agent's page is, from its frames as they come.
+  const [agentAt, setAgentAt] = useState<string>();
+  useEffect(() => {
+    if (agentLive && !agentLive.running) setWatching(false);
+  }, [agentLive]);
   const [picked, setPicked] = useState<Pick>();
 
   // A pick from the native webview comes back as an event.
@@ -136,82 +149,90 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree }: 
 
   return (
     <div className="flex min-h-0 flex-1 flex-col bg-background">
-      <form
-        className="flex h-9 shrink-0 items-center gap-1 border-b px-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const next = resolveBrowserInput(input, ctx);
-          if (next) go(next);
-        }}
-      >
-        <ToolButton label="Back" disabled={!url || (mode === "iframe" && at <= 0)} onClick={() => step(-1)}>
-          <ArrowLeftIcon />
-        </ToolButton>
-        <ToolButton label="Forward" disabled={!url || (mode === "iframe" && at >= history.length - 1)} onClick={() => step(1)}>
-          <ArrowRightIcon />
-        </ToolButton>
-        <ToolButton label="Reload" disabled={!url} onClick={reload}>
-          {loading ? <Spinner className="size-3.5" /> : <RotateCwIcon />}
-        </ToolButton>
-        <div className="flex h-6.5 min-w-0 flex-1 items-center rounded-md border bg-muted/50 focus-within:border-ring">
-          {where && (
-            // Tooltips here open upward: below the bar is the page, which in
-            // the app is a native view that would cover them.
-            <Tip label={<span className="break-all font-mono">{url}</span>} className="max-w-md">
-              <span className="ml-1 shrink-0 rounded bg-accent px-1.5 py-px font-medium text-[10px] text-muted-foreground">{berthUrlLabel(where)}</span>
-            </Tip>
-          )}
-          <input
-            ref={address}
-            aria-label="Address"
-            value={input}
-            placeholder="Port (3000), or a URL"
-            spellCheck={false}
-            autoCapitalize="off"
-            autoCorrect="off"
-            onChange={(e) => setInput(e.target.value)}
-            onFocus={(e) => e.target.select()}
-            className="h-full min-w-0 flex-1 bg-transparent px-2 font-mono text-xs outline-none"
-          />
-        </div>
-        {!agentView && (
-          <ToolButton label="Pick an element for the agent" disabled={!url} onClick={pick}>
-            <CrosshairIcon />
-          </ToolButton>
-        )}
-        <ToolButton label="Open in your browser" disabled={!url} onClick={() => void openUrl(url)}>
-          <ExternalLinkIcon />
-        </ToolButton>
-        {agentCapable && (
-          <div className="ml-1 flex shrink-0 rounded-md border p-px text-[11px]" role="group" aria-label="Whose browser">
-            {(["you", "agent"] as const).map((v) => (
-              <button
-                key={v}
-                type="button"
-                aria-pressed={view === v}
-                onClick={() => setView(v)}
-                className={cn("inline-flex h-5.5 items-center gap-1 rounded px-1.5 text-muted-foreground", view === v && "bg-accent text-foreground")}
-              >
-                {v === "agent" && <BotIcon className="size-3" />}
-                {v === "you" ? "You" : "Agent"}
-              </button>
-            ))}
-          </div>
-        )}
-      </form>
-      {picked && ctx.ref && <PickSender pick={picked} ctx={ctx} onDone={() => setPicked(undefined)} />}
-      {failure && mode === "iframe" && <p className="shrink-0 border-b bg-muted/40 px-3 py-1 text-muted-foreground text-xs">The built-in browser could not open ({failure}); showing the page in a frame instead.</p>}
       {agentView && ctx.ref ? (
-        <AgentView
+        <AgentBar
           ctx={ctx}
-          visible={visible}
+          url={agentAt ?? agentLive?.url}
+          onBack={() => setWatching(false)}
           onOpenHere={(u) => {
-            setView("you");
+            setWatching(false);
             go(u);
           }}
         />
-      ) : !url ? (
-        <Suggestions ctx={ctx} onPick={go} />
+      ) : (
+        <form
+          className="flex h-9 shrink-0 items-center gap-1 border-b px-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const next = resolveBrowserInput(input, ctx);
+            if (next) go(next);
+          }}
+        >
+          <ToolButton label="Back" disabled={!url || (mode === "iframe" && at <= 0)} onClick={() => step(-1)}>
+            <ArrowLeftIcon />
+          </ToolButton>
+          <ToolButton label="Forward" disabled={!url || (mode === "iframe" && at >= history.length - 1)} onClick={() => step(1)}>
+            <ArrowRightIcon />
+          </ToolButton>
+          <ToolButton label="Reload" disabled={!url} onClick={reload}>
+            {loading ? <Spinner className="size-3.5" /> : <RotateCwIcon />}
+          </ToolButton>
+          <div className="flex h-6.5 min-w-0 flex-1 items-center rounded-md border bg-muted/50 focus-within:border-ring">
+            {where && (
+              // Tooltips here open upward: below the bar is the page, which in
+              // the app is a native view that would cover them.
+              <Tip label={<span className="break-all font-mono">{url}</span>} className="max-w-md">
+                <span className="ml-1 shrink-0 rounded bg-accent px-1.5 py-px font-medium text-[10px] text-muted-foreground">{berthUrlLabel(where)}</span>
+              </Tip>
+            )}
+            <input
+              ref={address}
+              aria-label="Address"
+              value={input}
+              placeholder="Port (3000), or a URL"
+              spellCheck={false}
+              autoCapitalize="off"
+              autoCorrect="off"
+              onChange={(e) => setInput(e.target.value)}
+              onFocus={(e) => {
+                e.target.select();
+                selecting.current = true;
+              }}
+              // WebKit's mouseup after a click to focus undoes the select:
+              // the first click selects the whole address, as browsers do.
+              onMouseUp={(e) => {
+                if (selecting.current) e.preventDefault();
+                selecting.current = false;
+              }}
+              className="h-full min-w-0 flex-1 bg-transparent px-2 font-mono text-xs outline-none"
+            />
+          </div>
+          <ToolButton label="Pick an element for the agent" disabled={!url} onClick={pick}>
+            <CrosshairIcon />
+          </ToolButton>
+          <ToolButton label="Open in your browser" disabled={!url} onClick={() => void openUrl(url)}>
+            <ExternalLinkIcon />
+          </ToolButton>
+          {agentLive?.running && (
+            <Tip label="An agent is using its own browser on the box for this worktree. Watch it here.">
+              <button
+                type="button"
+                onClick={() => setWatching(true)}
+                className="ml-1 inline-flex h-6.5 shrink-0 items-center gap-1.5 rounded-md border px-2 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                <LiveDot />
+                Agent's view · live
+              </button>
+            </Tip>
+          )}
+        </form>
+      )}
+      {picked && ctx.ref && <PickSender pick={picked} ctx={ctx} onDone={() => setPicked(undefined)} />}
+      {failure && mode === "iframe" && <p className="shrink-0 border-b bg-muted/40 px-3 py-1 text-muted-foreground text-xs">The built-in browser could not open ({failure}); showing the page in a frame instead.</p>}
+      {/* Watching the agent keeps your page as it was, hidden underneath. */}
+      {agentView && ctx.ref && <AgentView ctx={ctx} visible={visible} onUrl={setAgentAt} />}
+      {!url ? (
+        !agentView && <Suggestions ctx={ctx} onPick={go} />
       ) : mode === "native" ? (
         <NativeSurface
           ref={native}
@@ -229,7 +250,9 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree }: 
           }}
         />
       ) : (
-        <FramedPage key={`${url}#${nonce}`} id={id} url={url} onReload={reload} />
+        <div className={cn("flex min-h-0 flex-1 flex-col", agentView && "hidden")}>
+          <FramedPage key={`${url}#${nonce}`} id={id} url={url} onReload={reload} />
+        </div>
       )}
     </div>
   );
@@ -365,7 +388,7 @@ function NativeSurface({ id, url, visible, onUrl, onLoading, onFail, ref }: Nati
   }, [id, shown]);
 
   return (
-    <div ref={surface} className="relative min-h-0 flex-1 bg-white">
+    <div ref={surface} className={cn("relative min-h-0 flex-1 bg-white", !visible && "hidden")}>
       {overlay && visible && <div className="absolute inset-0 bg-background/40" />}
     </div>
   );
@@ -541,60 +564,108 @@ function humanUrl(agentUrl: string, ctx: BrowserContext): string {
   }
 }
 
+export interface AgentLive {
+  running: boolean;
+  url?: string;
+}
+
+// useAgentBrowserLive is whether an agent's browser runs on the box for the
+// pane's worktree, checked while the pane is on screen (undefined until
+// known, and always for a box without one).
+function useAgentBrowserLive(ref: BrowserContext["ref"], visible: boolean): AgentLive | undefined {
+  const box = ref?.box;
+  const location = ref?.location;
+  const worktree = ref?.worktree;
+  const capable = !!box && boxHasBrowser(box);
+  const [live, setLive] = useState<AgentLive>();
+  useEffect(() => {
+    setLive(undefined);
+    if (!capable || !visible || !box || !location || !worktree) return;
+    let on = true;
+    const tick = () =>
+      agentBrowserStatus(box, location, worktree).then(
+        (s) => on && setLive((was) => (was?.running === s.running && was?.url === s.status?.url ? was : { running: s.running, url: s.status?.url })),
+        () => on && setLive({ running: false }),
+      );
+    void tick();
+    const t = window.setInterval(tick, 5000);
+    return () => {
+      on = false;
+      window.clearInterval(t);
+    };
+  }, [capable, visible, box, location, worktree]);
+  return live;
+}
+
+function LiveDot() {
+  return (
+    <span className="relative flex size-1.5 shrink-0">
+      <span className="absolute inline-flex size-full animate-ping rounded-full bg-emerald-500/70" />
+      <span className="relative inline-flex size-1.5 rounded-full bg-emerald-500" />
+    </span>
+  );
+}
+
+// AgentBar stands in for the address bar while you watch the agent's
+// browser: it is plainly not yours, and nothing in it drives the agent's.
+function AgentBar({ ctx, url, onBack, onOpenHere }: { ctx: BrowserContext; url?: string; onBack(): void; onOpenHere(url: string): void }) {
+  const here = url ? humanUrl(url, ctx) : undefined;
+  return (
+    <div className="flex h-9 shrink-0 items-center gap-2 border-b bg-emerald-500/[0.06] px-2 text-xs">
+      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-emerald-500/15 px-2 py-1 font-medium text-[11px] text-emerald-700 dark:text-emerald-300">
+        <BotIcon className="size-3" />
+        Agent's view · live
+        <LiveDot />
+      </span>
+      <Tip label={<span className="break-all font-mono">{url ?? ""}</span>} className="max-w-md">
+        <span className="min-w-0 flex-1 truncate font-mono text-muted-foreground">{here ?? "…"}</span>
+      </Tip>
+      {here && (
+        <Button size="xs" variant="ghost" className="shrink-0" onClick={() => onOpenHere(here)}>
+          Open in your view
+        </Button>
+      )}
+      <Button size="xs" variant="outline" className="shrink-0" onClick={onBack}>
+        <XIcon />
+        Your view
+      </Button>
+    </div>
+  );
+}
+
 // AgentView shows the agent's browser on the box, live: frames stream only
-// while this view is on screen.
-function AgentView({ ctx, visible, onOpenHere }: { ctx: BrowserContext; visible: boolean; onOpenHere(url: string): void }) {
+// while this view is on screen. It only watches; the agent drives.
+function AgentView({ ctx, visible, onUrl }: { ctx: BrowserContext; visible: boolean; onUrl(url?: string): void }) {
   const ref = ctx.ref!;
-  const [status, setStatus] = useState<AgentBrowserStatus>();
   const [frame, setFrame] = useState<Frame>();
   const [error, setError] = useState<string>();
   useEffect(() => {
     if (!visible) return;
-    let live = true;
-    const tick = () =>
-      agentBrowserStatus(ref.box, ref.location, ref.worktree).then(
-        (s) => live && setStatus(s),
-        (e) => live && setError(String(e)),
-      );
-    void tick();
-    const t = window.setInterval(tick, 4000);
-    return () => {
-      live = false;
-      window.clearInterval(t);
-    };
-  }, [visible, ref.box, ref.location, ref.worktree]);
-  const running = !!status?.running;
-  useEffect(() => {
-    if (!visible || !running) return;
     const ac = new AbortController();
-    watchAgentBrowser(ref.box, ref.location, ref.worktree, setFrame, ac.signal).catch(() => {});
-    return () => ac.abort();
-  }, [visible, running, ref.box, ref.location, ref.worktree]);
-  const agentUrl = frame?.url ?? status?.status?.url;
+    setError(undefined);
+    const show = (f: Frame) => {
+      setFrame(f);
+      if (f.url) onUrl(f.url);
+    };
+    watchAgentBrowser(ref.box, ref.location, ref.worktree, show, ac.signal).catch((e) => {
+      if (!ac.signal.aborted) setError(String(e));
+    });
+    return () => {
+      ac.abort();
+      onUrl(undefined);
+    };
+    // onUrl is the pane's state setter, the same every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible, ref.box, ref.location, ref.worktree]);
   return (
-    <div className="flex min-h-0 flex-1 flex-col bg-muted/30">
-      <div className="flex h-7 shrink-0 items-center gap-2 border-b px-3 text-[11px] text-muted-foreground">
-        <BotIcon className="size-3" />
-        <span className="min-w-0 flex-1 truncate font-mono">{running ? (agentUrl ?? "…") : "The agent's browser is closed"}</span>
-        {running && agentUrl && (
-          <button type="button" className="shrink-0 rounded px-1.5 py-0.5 hover:bg-accent hover:text-foreground" onClick={() => onOpenHere(humanUrl(agentUrl, ctx))}>
-            Open here
-          </button>
-        )}
-      </div>
-      <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden p-2">
-        {error ? (
-          <p className="text-muted-foreground text-xs">{error}</p>
-        ) : !running ? (
-          <p className="max-w-xs text-center text-muted-foreground text-xs">
-            An agent in this worktree opens its browser with <code>berthd browser open</code>. Its page shows here, live, while you watch.
-          </p>
-        ) : frame ? (
-          <img alt="The agent's browser" src={`data:${frame.mime ?? "image/jpeg"};base64,${frame.data}`} className="max-h-full max-w-full rounded border bg-white object-contain shadow-sm" />
-        ) : (
-          <Spinner className="size-4" />
-        )}
-      </div>
+    <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-muted/30 p-3">
+      {frame ? (
+        <img alt="The agent's browser" src={`data:${frame.mime ?? "image/jpeg"};base64,${frame.data}`} className="max-h-full max-w-full rounded border bg-white object-contain shadow-sm" />
+      ) : error ? (
+        <p className="max-w-xs text-center text-muted-foreground text-xs">{error}</p>
+      ) : (
+        <Spinner className="size-4" />
+      )}
     </div>
   );
 }

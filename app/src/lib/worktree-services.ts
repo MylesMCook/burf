@@ -1,6 +1,6 @@
 import type { Service } from "@berth/plugin";
 
-import { type BrowserContext, portUrl } from "@/lib/browser-url";
+import { type BrowserContext, portUrl } from "./browser-url.ts";
 
 // What runs in a worktree, as the box sees it (GET services: what listens
 // in the worktree's folder or port block, with its command line), named for
@@ -101,7 +101,10 @@ export function liveServices(services: Service[] | undefined, ctx: Required<Pick
   const known = here.map((s) => ({ s, ...identify(s) }));
   // The dev server: what listens on the worktree's own port, else the
   // lowest framework or runtime that serves pages.
-  const dev = known.find((k) => k.s.port === devPort && k.kind !== "other" && k.kind !== "data") ?? known.find((k) => k.kind === "dev") ?? known.find((k) => k.kind === "web" && RUNTIMES.test(executable(k.s.process) ?? ""));
+  // A listener the box can't name (an older macOS box reports none) on
+  // that port is still the worktree's own server, not a helper.
+  const own = (k: (typeof known)[number]) => k.s.port === devPort && k.kind !== "data" && (k.kind !== "other" || !k.s.process);
+  const dev = known.find(own) ?? known.find((k) => k.kind === "dev") ?? known.find((k) => k.kind === "web" && RUNTIMES.test(executable(k.s.process) ?? ""));
   const order: Record<Kind, number> = { dev: 0, web: 1, data: 2, other: 3 };
   return known
     .map(({ s, name, kind }): LiveService => {

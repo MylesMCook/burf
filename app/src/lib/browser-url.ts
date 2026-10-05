@@ -96,8 +96,10 @@ export interface BerthUrl {
 }
 
 // describeBerthUrl reads a proxy URL back into the box, worktree or port it
-// reaches, for the pane's toolbar. boxes are the paired boxes' names.
-export function describeBerthUrl(url: string, boxes: string[]): BerthUrl | undefined {
+// reaches, for the pane's toolbar. boxes are the paired boxes' names;
+// aliases maps a box's own name, which URLs made on the box carry, to the
+// name it is paired as (see boxAliases).
+export function describeBerthUrl(url: string, boxes: string[], aliases: Record<string, string> = {}): BerthUrl | undefined {
   let host: string;
   try {
     host = new URL(url).hostname.toLowerCase();
@@ -106,11 +108,28 @@ export function describeBerthUrl(url: string, boxes: string[]): BerthUrl | undef
   }
   if (!host.endsWith(".localhost")) return undefined;
   const l = host.slice(0, -".localhost".length).split(".");
-  if (l.length === 3 && boxes.includes(l[2])) return { box: l[2], location: l[1], worktree: l[0] };
-  if (l.length === 2 && boxes.includes(l[1])) {
-    return /^\d+$/.test(l[0]) ? { box: l[1], port: Number(l[0]) } : { box: l[1], location: l[0] };
-  }
+  const box = (label: string) => (boxes.includes(label) ? label : aliases[label] && boxes.includes(aliases[label]) ? aliases[label] : undefined);
+  const b = box(l[l.length - 1]);
+  if (!b) return undefined;
+  if (l.length === 3) return { box: b, location: l[1], worktree: l[0] };
+  if (l.length === 2) return /^\d+$/.test(l[0]) ? { box: b, port: Number(l[0]) } : { box: b, location: l[0] };
   return undefined;
+}
+
+// boxAliases maps each box's own name to the name it is paired as, where
+// they differ and no other box claims it, as the laptop's proxy does.
+export function boxAliases(boxes: { name: string; self?: string }[]): Record<string, string> {
+  const paired = new Set(boxes.map((b) => b.name));
+  const out: Record<string, string> = {};
+  const seen = new Map<string, number>();
+  for (const b of boxes) {
+    const self = b.self?.toLowerCase();
+    if (!self || self === b.name || paired.has(self)) continue;
+    seen.set(self, (seen.get(self) ?? 0) + 1);
+    out[self] = b.name;
+  }
+  for (const [self, n] of seen) if (n > 1) delete out[self];
+  return out;
 }
 
 export function berthUrlLabel(d: BerthUrl): string {

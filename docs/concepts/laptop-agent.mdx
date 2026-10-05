@@ -15,6 +15,8 @@ a forward or a queued prompt.
   pings to notice a connection that died silently and sleep detection;
 - serves **private URLs** on port 1377, `http://3000.devl.localhost:1377/`,
   and runs **forwards** (a fixed local port to a box port) and **routes**;
+  a box's URLs work by the name you paired it as and by the box's own name
+  (see below);
 - relays every online box's **events**, so laptop hooks, plugins and the app
   hear about every agent on every box;
 - runs **laptop hooks** from `~/.berth/hooks.json`;
@@ -23,6 +25,22 @@ a forward or a queued prompt.
 - runs an embedded Tailscale node for each [other tailnet](/getting-started/add-a-box#boxes-on-another-tailnet);
 - keeps your **kits** library and serves your themes, task templates and
   plugins to the app.
+
+## A box's own name
+
+You name a box when you pair it (`devl`), and the box has a name of its own
+(`devbox`, its hostname). URLs the box makes, such as `$BERTH_URL` or an
+app's configured origin, use its own name: `http://checkout.shop.devbox.localhost:1377`.
+The proxy accepts both, so a link an agent prints opens on your laptop, and
+on a new computer that paired the box under another name. It learns each
+box's own name when the box comes online, and skips a name that is also one
+of your paired boxes or that two boxes share. The app's browser tabs show
+either by your name for the box.
+
+A server's redirect to its own `localhost:PORT` goes back to the address you
+opened, and one to another port on the box's loopback (an auth server on
+`localhost:4000`) goes to that port's name, `http://4000.devl.localhost:1377`,
+since `localhost` there means the box, not your laptop.
 
 ## Running it
 

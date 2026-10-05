@@ -13,8 +13,8 @@ that worktree (`$BERTH_URL`, such as
   minutes. Its profile is a throwaway folder deleted when it closes, so its
   cookies are its own, never yours.
 - It reaches only the worktree's own pages, through a proxy inside berthd.
-- You can watch it live in a browser pane (**Agent**), and its screenshots
-  and console errors show in Review.
+- You can watch it live in a browser pane (**Agent's view · live**), and
+  its screenshots and console errors show in Review.
 
 It needs a Chromium on the box: `berthd browser install` downloads
 Playwright's headless shell (about 100 MB on disk), or set `BERTH_CHROMIUM`
@@ -128,12 +128,18 @@ confined the same way, with no setup.
 
 ## Watching it
 
-A browser pane on a worktree whose box has the agent browser shows a **You
-| Agent** switch. **Agent** shows the agent's browser live: berthd casts the
-page (JPEG frames, at most 8 a second, only when the page repaints) only
-while a pane shows it, over the same connection as everything else.
-**Open here** opens the agent's page in your own tab, by your laptop's name
-for the worktree. The phone does not show it.
+A browser pane is always **your** browser: a real one in the app, on this
+laptop, loading the worktree's page through your laptop's proxy. While an
+agent is using its browser for the pane's worktree, the pane's toolbar shows
+**Agent's view · live**. Click it to watch the agent's browser instead:
+berthd casts the page as JPEG frames, at most 8 a second, the page as it is
+the moment you start watching and then every change, only while a pane
+shows it, over the same connection as everything else. The bar turns green
+and says **Agent's view · live** with the agent's URL; you only watch, the
+agent drives. **Open in your view** opens the agent's page in your own tab,
+by your laptop's name for the worktree, and **Your view** goes back to your
+page as you left it. When the agent's browser closes, the pane goes back to
+your view by itself. The phone does not show it.
 
 ## Pointing at something: the element picker
 
