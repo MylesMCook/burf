@@ -15,10 +15,11 @@ release job always stays on GitHub's macOS runners.
   `Linux`, `X64`, `omarchy`), so a push's jobs run side by side. They share
   the container's limits: 12 CPUs, 12 GB of memory, 16k processes.
 - Its only mount is the named volume `berth-runner` at `/runner`: each
-  runner's registration, work dir and tool cache (`_work/_tool`). Home
-  caches (Go modules and build cache, the pnpm store, Playwright's browsers)
-  live in the container and stay warm between jobs, so the workflows skip
-  GitHub's cache actions there.
+  runner's registration, work dir, tool cache (`_work/_tool`) and its jobs'
+  `$HOME` (`home`), so two jobs at once never share a cache directory. The
+  caches there (Go modules and build cache, the pnpm store, Playwright's
+  browsers) stay warm between jobs and across updates, so the workflows skip
+  GitHub's cache actions on omarchy.
 - `--restart unless-stopped`: it comes back when Docker restarts. Docker must
   start at boot for it to survive a reboot: `sudo systemctl enable docker`.
 - Each workflow job picks its runner with:

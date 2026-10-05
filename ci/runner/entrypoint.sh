@@ -10,7 +10,8 @@
 #
 # /runner is the named volume: /runner/<name> is one runner's copy of
 # /opt/actions-runner plus its registration (.runner, .credentials*), its
-# work dir (_work, with the tool cache in _work/_tool) and its logs (_diag).
+# work dir (_work, with the tool cache in _work/_tool), its jobs' home (home)
+# and its logs (_diag).
 set -euo pipefail
 
 # Copy the image's runner into a runner's dir when the image's version is
@@ -21,7 +22,7 @@ sync_runner() {
 	if [ "$(cat "$dir/.berth-runner-version" 2>/dev/null || true)" != "$RUNNER_VERSION" ]; then
 		rsync -a --delete \
 			--exclude=/.runner --exclude=/.credentials --exclude=/.credentials_rsaparams \
-			--exclude=/.env --exclude=/.path --exclude=/_work --exclude=/_diag \
+			--exclude=/.env --exclude=/.path --exclude=/_work --exclude=/_diag --exclude=/home \
 			--exclude=/.berth-runner-version \
 			/opt/actions-runner/ "$dir/"
 		echo "$RUNNER_VERSION" >"$dir/.berth-runner-version"
@@ -51,9 +52,13 @@ register() {
 	done
 }
 
-# One runner, restarted when it exits.
+# One runner, restarted when it exits. Each has its own home in the volume
+# (/runner/<name>/home): runners share the container, and jobs on two of them
+# at once must not install pnpm, Go modules or Playwright into one directory.
 run_one() {
 	cd "$1"
+	export HOME=$1/home
+	mkdir -p "$HOME"
 	while :; do
 		ACTIONS_RUNNER_HOOK_JOB_STARTED=/opt/berth-runner/job-started.sh ./run.sh ||
 			echo "$(basename "$1") exited ($?); restarting in 10s"
