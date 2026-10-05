@@ -33,6 +33,10 @@ or run berthd with `BERTH_BROWSER_NO_SANDBOX=1`, which starts Chromium
 without its sandbox. Berth's proxy still confines it to the worktree's own
 pages either way.
 
+Chromium gets 20 seconds to start. Where its first start is slower (a snap
+package on a small box), run berthd with `BERTH_BROWSER_START_TIMEOUT=60s`;
+the error when it doesn't start ends with what Chromium itself said.
+
 ## Commands
 
 Inside a berth session, commands act on the session's worktree; elsewhere,

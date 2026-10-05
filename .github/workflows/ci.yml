@@ -27,6 +27,8 @@ jobs:
         env:
           BERTH_BROWSER_NO_SANDBOX: "1"
           BERTH_TEST_CHROMIUM: "1"
+          # The runner's Chromium is a snap, slow to start the first time.
+          BERTH_BROWSER_START_TIMEOUT: "90s"
 
   shell:
     runs-on: ubuntu-latest

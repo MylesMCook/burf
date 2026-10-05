@@ -431,16 +431,29 @@ func (m *Browsers) launch(ctx context.Context, loc Location, wt Worktree) (*brow
 		theirs.Close()
 		close(br.done)
 	}()
-	cctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	cctx, cancel := context.WithTimeout(ctx, browserStartTimeout())
 	defer cancel()
 	if err := br.attach(cctx); err != nil {
 		br.shutdown()
 		if out := strings.ToLower(stderr.String()); strings.Contains(out, "sandbox") || strings.Contains(out, "namespace") {
 			return nil, fmt.Errorf("%w: Chromium could not start its sandbox on this box. Allow it with `sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0` (and the same line in /etc/sysctl.d/), or run berthd with BERTH_BROWSER_NO_SANDBOX=1 to run the browser without Chromium's sandbox; Berth's proxy still confines it to the worktree", ErrBrowserSandbox)
 		}
+		if out := strings.TrimSpace(stderr.String()); out != "" {
+			return nil, fmt.Errorf("starting Chromium: %w; it said: %s", err, strings.ReplaceAll(lastLines(out, 6), "\n", " | "))
+		}
 		return nil, fmt.Errorf("starting Chromium: %w", err)
 	}
 	return br, nil
+}
+
+// browserStartTimeout is how long Chromium gets to start: 20s, or
+// BERTH_BROWSER_START_TIMEOUT (a duration) on a box where its first start
+// is slow, such as a snap's.
+func browserStartTimeout() time.Duration {
+	if d, err := time.ParseDuration(os.Getenv("BERTH_BROWSER_START_TIMEOUT")); err == nil && d > 0 {
+		return d
+	}
+	return 20 * time.Second
 }
 
 // ErrBrowserSandbox is a Chromium that could not start its sandbox.
