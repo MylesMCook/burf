@@ -44,7 +44,7 @@ next:
 	for _, p := range ports {
 		for _, t := range trees {
 			if t.port > 0 && p.Port >= t.port && p.Port < t.port+portBlock {
-				out = append(out, Service{Location: t.location, Worktree: t.name, Path: t.path, Port: p.Port, Process: p.Command, Main: t.main})
+				out = append(out, Service{Location: t.location, Worktree: t.name, Path: t.path, Port: p.Port, Process: processOf(p), Main: t.main})
 				continue next
 			}
 		}
@@ -53,13 +53,22 @@ next:
 		}
 		for _, t := range trees {
 			if p.Dir == t.path || strings.HasPrefix(p.Dir, t.path+string(filepath.Separator)) {
-				out = append(out, Service{Location: t.location, Worktree: t.name, Path: t.path, Port: p.Port, Process: p.Command, Main: t.main})
+				out = append(out, Service{Location: t.location, Worktree: t.name, Path: t.path, Port: p.Port, Process: processOf(p), Main: t.main})
 				break
 			}
 		}
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].Port < out[j].Port })
 	return out
+}
+
+// processOf is what runs a port: its command line, or on a box that can't
+// read one (macOS) the program's name, so a server is never nameless.
+func processOf(p Port) string {
+	if p.Command != "" {
+		return p.Command
+	}
+	return p.Process
 }
 
 func (b *Box) handleServices(w http.ResponseWriter, r *http.Request) error {

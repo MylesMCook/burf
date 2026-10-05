@@ -51,3 +51,13 @@ func TestAPortInAWorktreesBlockIsThatWorktreesWhereverItRuns(t *testing.T) {
 		t.Fatalf("services = %+v", got)
 	}
 }
+
+// macOS gives berthd a port's program but not its command line: the server
+// is still named, so the app can tell a dev server from a helper.
+func TestAServerWithoutACommandLineIsNamedByItsProgram(t *testing.T) {
+	locs := []Location{{Name: "demo", Repo: true, Worktrees: []Worktree{{Name: "fix", Path: "/w/demo-fix", Port: 41020}}}}
+	got := Services([]Port{{Port: 41020, Process: "Python"}, {Port: 41021, Process: "node", Command: "node server.js"}}, locs)
+	if len(got) != 2 || got[0].Process != "Python" || got[1].Process != "node server.js" {
+		t.Fatalf("services = %+v", got)
+	}
+}

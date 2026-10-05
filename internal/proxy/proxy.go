@@ -30,6 +30,11 @@ type Proxy struct {
 	// Worktree resolves "<worktree>.<location>[.<box>].localhost" to the
 	// worktree's dev server. Optional.
 	Worktree func(labels []string) (box string, port int, ok bool)
+	// BoxAlias maps a box's own name to the name this laptop paired it as.
+	// A box writes URLs with its own name (BERTH_URL, an app's configured
+	// origin), which on a laptop that calls it something else would lead
+	// nowhere. Optional.
+	BoxAlias func(name string) (paired string, ok bool)
 
 	mu         sync.Mutex
 	transports map[string]*http.Transport
@@ -71,7 +76,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		},
 		ModifyResponse: func(resp *http.Response) error {
 			if loc := resp.Header.Get("Location"); loc != "" {
-				resp.Header.Set("Location", toPublic(loc, publicHost, port))
+				resp.Header.Set("Location", toPublic(loc, publicHost, port, target.Box))
 			}
 			return nil
 		},
@@ -113,6 +118,7 @@ func (p *Proxy) resolve(host string) (box string, port int, status int, why stri
 	if !ok {
 		return "", 0, http.StatusNotFound, ""
 	}
+	labels = p.pairedLabels(labels)
 	if len(labels) == 2 {
 		if _, known := p.Dialer(labels[1]); known {
 			t := Target{Box: labels[1], Label: labels[0]}
@@ -139,6 +145,25 @@ func (p *Proxy) resolve(host string) (box string, port int, status int, why stri
 		return "", 0, http.StatusBadGateway, "No paired box named " + labels[1]
 	}
 	return "", 0, http.StatusNotFound, ""
+}
+
+// pairedLabels names the box in a host's labels as this laptop paired it,
+// when the host used the box's own name instead.
+func (p *Proxy) pairedLabels(labels []string) []string {
+	n := len(labels)
+	if p.BoxAlias == nil || n < 2 || n > 3 {
+		return labels
+	}
+	if _, known := p.Dialer(labels[n-1]); known {
+		return labels
+	}
+	paired, ok := p.BoxAlias(labels[n-1])
+	if !ok {
+		return labels
+	}
+	out := append([]string(nil), labels...)
+	out[n-1] = paired
+	return out
 }
 
 func (p *Proxy) transport(box string) *http.Transport {

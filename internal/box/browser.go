@@ -1504,7 +1504,9 @@ func (br *browser) Eval(ctx context.Context, js string) (BrowserResult, error) {
 }
 
 // Watch adds a screencast watcher. The page is cast only while someone
-// watches: the first starts it, the last stops it.
+// watches: the first starts it, the last stops it. Chromium casts a frame
+// only when the page repaints, so a page sitting still would show nothing:
+// each new watcher gets the page as it is now first.
 func (br *browser) Watch(ctx context.Context) (chan frame, func()) {
 	ch := make(chan frame, 2)
 	br.mu.Lock()
@@ -1513,8 +1515,9 @@ func (br *browser) Watch(ctx context.Context) (chan frame, func()) {
 	br.casting = true
 	br.mu.Unlock()
 	if start {
-		br.cdp.call(ctx, br.session, "Page.startScreencast", map[string]any{"format": "jpeg", "quality": 60, "maxWidth": 1280, "maxHeight": 800, "everyNthFrame": 2}, nil)
+		br.cdp.call(ctx, br.session, "Page.startScreencast", map[string]any{"format": "jpeg", "quality": 60, "maxWidth": 1280, "maxHeight": 800, "everyNthFrame": 1}, nil)
 	}
+	go br.firstFrame(ctx, ch)
 	stop := func() {
 		br.mu.Lock()
 		if _, ok := br.watchers[ch]; ok {
@@ -1533,6 +1536,28 @@ func (br *browser) Watch(ctx context.Context) (chan frame, func()) {
 		}
 	}
 	return ch, stop
+}
+
+// firstFrame sends a watcher the page as it is, unless a cast frame got
+// there first.
+func (br *browser) firstFrame(ctx context.Context, ch chan frame) {
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	var shot struct {
+		Data string `json:"data"`
+	}
+	if err := br.cdp.call(ctx, br.session, "Page.captureScreenshot", map[string]any{"format": "jpeg", "quality": 60}, &shot); err != nil || shot.Data == "" {
+		return
+	}
+	f := frame{Data: shot.Data, Width: 1280, Height: 800, URL: br.currentURL()}
+	br.mu.Lock()
+	defer br.mu.Unlock()
+	if _, ok := br.watchers[ch]; ok && len(ch) == 0 {
+		select {
+		case ch <- f:
+		default:
+		}
+	}
 }
 
 // Artifacts are what a worktree's browser left for Review: the last

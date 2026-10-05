@@ -189,6 +189,9 @@ type Agent struct {
 	imageGenBusy sync.Mutex
 	// outdated remembers which boxes run an older berthd (outdated.go).
 	outdated outdatedCache
+	// selfNames are the boxes' own names, which the proxy accepts too
+	// (aliases.go).
+	selfNames selfNames
 
 	// ctx lives as long as the agent; forwards added through the API run under
 	// it rather than under the request that created them.
@@ -319,6 +322,7 @@ func (a *Agent) startProxy(ctx context.Context) {
 		Index:    http.HandlerFunc(a.serveIndex),
 		Route:    a.route,
 		Worktree: a.worktree,
+		BoxAlias: a.boxAlias,
 	}
 	srv := &http.Server{Handler: a.proxy, ReadHeaderTimeout: 30 * time.Second}
 	context.AfterFunc(ctx, func() { srv.Close() })
@@ -564,6 +568,7 @@ func (a *Agent) check(ctx context.Context, name string, st *boxState) {
 			go a.relay(relayCtx, name, st.client)
 		}
 		a.mu.Unlock()
+		go a.learnSelfName(a.ctx, name, st.client)
 	}
 	switch state {
 	case StateOnline:

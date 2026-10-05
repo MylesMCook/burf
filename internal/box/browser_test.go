@@ -271,6 +271,18 @@ func TestAgentBrowserDrivesARealChromium(t *testing.T) {
 		t.Fatalf("no ref for %s", label)
 		return ""
 	}
+	// A page sitting still still shows: a watcher gets it at once, not on
+	// its next repaint.
+	frames, stopWatching := br.Watch(ctx)
+	select {
+	case f := <-frames:
+		if len(f.Data) < 1000 || !strings.HasSuffix(f.URL, "/") {
+			t.Fatalf("first frame: %d bytes of %q", len(f.Data), f.URL)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("no frame of a still page")
+	}
+	stopWatching()
 	add, email := ref(`"Add (0)"`), ref(`"Email"`)
 	act, err := br.Act(ctx, "click", add, "")
 	if err != nil {

@@ -278,7 +278,29 @@ func (b *Box) browserScreencast(w http.ResponseWriter, r *http.Request) error {
 	bw := bufio.NewWriter(w)
 	enc := json.NewEncoder(bw)
 	flusher, _ := w.(http.Flusher)
-	last := time.Time{}
+	// The answer starts at once, so the app knows it is watching before
+	// the first frame.
+	w.WriteHeader(http.StatusOK)
+	if flusher != nil {
+		flusher.Flush()
+	}
+	send := func(f frame) bool {
+		if enc.Encode(f) != nil || bw.Flush() != nil {
+			return false
+		}
+		if flusher != nil {
+			flusher.Flush()
+		}
+		return true
+	}
+	// At most 8 frames a second reach the laptop, and the last of a burst
+	// always does: the page where it came to rest.
+	const every = 125 * time.Millisecond
+	var (
+		last    time.Time
+		pending *frame
+		later   <-chan time.Time
+	)
 	for {
 		select {
 		case <-r.Context().Done():
@@ -287,16 +309,25 @@ func (b *Box) browserScreencast(w http.ResponseWriter, r *http.Request) error {
 			if !ok {
 				return nil
 			}
-			// At most 8 frames a second reach the laptop.
-			if time.Since(last) < 125*time.Millisecond {
+			if wait := every - time.Since(last); wait > 0 {
+				pending = &f
+				if later == nil {
+					later = time.After(wait)
+				}
 				continue
 			}
 			last = time.Now()
-			if enc.Encode(f) != nil || bw.Flush() != nil {
+			if !send(f) {
 				return nil
 			}
-			if flusher != nil {
-				flusher.Flush()
+		case <-later:
+			later = nil
+			if pending != nil {
+				last = time.Now()
+				if !send(*pending) {
+					return nil
+				}
+				pending = nil
 			}
 		}
 	}

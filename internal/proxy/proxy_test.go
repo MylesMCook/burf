@@ -62,11 +62,14 @@ func TestRewrites(t *testing.T) {
 		"http://localhost:3000/login":   "http://" + public + "/login",
 		"http://127.0.0.1:3000/x":       "http://" + public + "/x",
 		"http://[::1]:3000/x":           "http://" + public + "/x",
-		"http://localhost:4000/other":   "http://localhost:4000/other",
+		"http://localhost:4000/other?x": "http://4000.devl.localhost:1377/other?x",
+		"http://127.0.0.1:5555/":        "http://5555.devl.localhost:1377/",
+		"http://localhost/no-port":      "http://localhost/no-port",
+		"http://example.com:3000/x":     "http://example.com:3000/x",
 		"https://accounts.google.com/o": "https://accounts.google.com/o",
 		"/relative":                     "/relative",
 	} {
-		if got := toPublic(in, public, 3000); got != want {
+		if got := toPublic(in, public, 3000, "devl"); got != want {
 			t.Errorf("toPublic(%q) = %q, want %q", in, got, want)
 		}
 	}
@@ -313,5 +316,55 @@ func TestRoutedHostsPassThroughUnchanged(t *testing.T) {
 	// Hosts outside the route still use port-style routing.
 	if got := get(t, p, "branch.work.cal.localhost", "/", nil).StatusCode; got != http.StatusNotFound {
 		t.Fatalf("an unrouted multi-label host got %d", got)
+	}
+}
+
+// A box writes URLs with its own name (BERTH_URL, an app's origin); a laptop
+// that paired it under another name still reaches it by that name.
+func TestProxyAcceptsTheBoxsOwnName(t *testing.T) {
+	port := app(t)
+	p := newProxy()
+	p.BoxAlias = func(name string) (string, bool) { return "devl", name == "devbox" }
+	var asked []string
+	p.Worktree = func(labels []string) (string, int, bool) {
+		asked = append(asked, strings.Join(labels, "."))
+		if labels[len(labels)-1] == "devl" {
+			return "devl", port, true
+		}
+		return "", 0, false
+	}
+	for _, host := range []string{
+		"checkout.shop.devbox.localhost:1377", // a worktree
+		"shop.devbox.localhost:1377",          // a main checkout
+		strconv.Itoa(port) + ".devbox.localhost:1377",
+	} {
+		resp := get(t, p, host, "/", nil)
+		if body, _ := io.ReadAll(resp.Body); resp.StatusCode != 200 || string(body) != "hello from the box" {
+			t.Errorf("%s: %d %s", host, resp.StatusCode, body)
+		}
+	}
+	if want := "checkout.shop.devl shop.devl"; strings.Join(asked, " ") != want {
+		t.Errorf("worktrees looked up as %q, want %q", asked, want)
+	}
+	// Its redirects stay on the name the page was opened by.
+	resp := get(t, p, strconv.Itoa(port)+".devbox.localhost:1377", "/login", nil)
+	if loc := resp.Header.Get("Location"); loc != "http://"+strconv.Itoa(port)+".devbox.localhost:1377/dashboard" {
+		t.Errorf("redirect to %q", loc)
+	}
+	// An unknown name is still unknown.
+	if resp := get(t, p, "shop.other.localhost:1377", "/", nil); resp.StatusCode != http.StatusNotFound {
+		t.Errorf("shop.other: %d", resp.StatusCode)
+	}
+}
+
+// A paired name always wins over another box's own name.
+func TestPairedNamesWinOverAliases(t *testing.T) {
+	p := newProxy()
+	p.BoxAlias = func(string) (string, bool) { return "elsewhere", true }
+	if got := p.pairedLabels([]string{"shop", "devl"}); strings.Join(got, ".") != "shop.devl" {
+		t.Errorf("got %v", got)
+	}
+	if got := p.pairedLabels([]string{"a", "b", "c", "d"}); strings.Join(got, ".") != "a.b.c.d" {
+		t.Errorf("four labels: %v", got)
 	}
 }

@@ -24,21 +24,34 @@ func toUpstream(value, publicHost string, port int) string {
 }
 
 // toPublic maps a Location the app generated for itself back onto the public
-// host. Other hosts are left alone: an app redirecting to an OAuth provider
-// must keep doing so.
-func toPublic(location, publicHost string, port int) string {
+// host. A redirect to another port on the box's loopback (an auth server on
+// localhost:4000, say) goes to that port's own name, PORT.BOX.localhost, as
+// "localhost" on the box is the box, never this laptop. Other hosts are left
+// alone: an app redirecting to an OAuth provider must keep doing so.
+func toPublic(location, publicHost string, port int, box string) string {
 	u, err := url.Parse(location)
 	if err != nil || u.Host == "" {
 		return location
 	}
 	host, p, err := net.SplitHostPort(u.Host)
-	if err != nil || p != strconv.Itoa(port) {
+	if err != nil {
 		return location
 	}
 	if host != "localhost" && host != "127.0.0.1" && host != "::1" {
 		return location
 	}
 	u.Scheme = "http"
-	u.Host = publicHost
+	if p == strconv.Itoa(port) {
+		u.Host = publicHost
+		return u.String()
+	}
+	other, err := strconv.Atoi(p)
+	if err != nil || other < 1 || other > 65535 || box == "" {
+		return location
+	}
+	u.Host = p + "." + box + ".localhost"
+	if _, proxyPort, err := net.SplitHostPort(publicHost); err == nil {
+		u.Host += ":" + proxyPort
+	}
 	return u.String()
 }
