@@ -20,6 +20,7 @@ import {
   ExternalLinkIcon,
   FolderOpenIcon,
   GitBranchIcon,
+  GitCompareArrowsIcon,
   GitBranchPlusIcon,
   GlobeIcon,
   HomeIcon,
@@ -60,6 +61,7 @@ import { cn } from "@/lib/utils";
 import { removeWorktreeOnBox } from "@/lib/remove-worktree";
 import { addGroup, isShown, refOf, selectWorktree, useWorkspaces, wsKey } from "@/lib/workspaces";
 import { ToneItems } from "@/components/workspace/tab-group";
+import { openWorktreePicker } from "@/components/workspace/worktree-picker";
 import { usePrefs } from "@/lib/prefs";
 import { useRegistry } from "@/plugins/registry";
 import { openAddToBox } from "@/components/sidebar/add-to-box-dialog";
@@ -206,6 +208,7 @@ export function worktreeActions(box: string, loc: Location, wt: Worktree): Actio
   const items: Action[] = [
     item("Open", wt.main ? <HomeIcon /> : <GitBranchIcon />, select),
     ...(grouping && front && !isShown(key) ? [item(`Add to tabs beside ${front.main ? front.location : front.worktree}`, <ListPlusIcon />, () => void addGroup(key), { shortcut: "⌥ Click" })] : []),
+    ...(grouping ? [item("Compare with…", <GitCompareArrowsIcon />, () => openWorktreePicker({ kind: "compare", from: key }))] : []),
     item("New terminal", <SquareTerminalIcon />, () => {
       select();
       void startSession("", { kind: "tab" }, "Terminal", key);

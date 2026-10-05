@@ -12,6 +12,7 @@ import { plainError } from "@/lib/errors";
 import { findLeaf, type Leaf, leaves, type PaneContent, paneWorktree } from "@/lib/layout";
 import { scheduleRefresh, useStore } from "@/lib/store";
 import { resolveBrowserInput } from "@/lib/browser-url";
+import { closeCompare } from "@/lib/compare-actions";
 import { currentSpace, focusSession, here, hereRef, openTab, refFor, removePane, setPaneContent, showWorktree, splitPane, useWorkspaces, type WorktreeRef, wsKey } from "@/lib/workspaces";
 
 // Agents offered when a box does not list its own.
@@ -294,6 +295,9 @@ function askAboutAgents(c: Closing, agents: Stop[]) {
 // closePane closes one pane (⌘W, its ×, "Close pane").
 export function closePane(key: string, tab: string, pane: string) {
   const t = useWorkspaces.getState().spaces[key]?.tabs.find((x) => x.id === tab);
+  // A Compare tab's panes are views of two worktrees: it closes whole, and
+  // nothing in it stops.
+  if (t?.compare) return closeCompare(key, tab);
   const l = t && findLeaf(t.root, pane);
   if (l) ask({ key, tab, leaves: [l] });
 }
@@ -301,6 +305,7 @@ export function closePane(key: string, tab: string, pane: string) {
 // closeTab closes every pane in a tab, asking once for all of them.
 export function closeTab(key: string, tab: string) {
   const t = useWorkspaces.getState().spaces[key]?.tabs.find((x) => x.id === tab);
+  if (t?.compare) return closeCompare(key, tab);
   if (t) ask({ key, tab, leaves: leaves(t.root) });
 }
 

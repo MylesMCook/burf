@@ -13,7 +13,8 @@ import { agentOf, sessionAgent, sessionName, sessionState, sortedWorktrees, work
 import type { PaneContent } from "@/lib/layout";
 import { sessionWord } from "@/lib/state-model";
 import { useStore } from "@/lib/store";
-import { addGroup, bringSession, focusedPane, groupKeys, here, refOf, splitPane, useWorkspaces, type WorktreeRef, wsKey } from "@/lib/workspaces";
+import { closeCompare, openCompare } from "@/lib/compare-actions";
+import { addGroup, bringSession, focusedPane, groupKeys, here, refFor, refOf, splitPane, useWorkspaces, type WorktreeRef, wsKey } from "@/lib/workspaces";
 import { Icon } from "@/plugins/ui";
 import { useRegistry } from "@/plugins/registry";
 
@@ -23,13 +24,18 @@ import { useRegistry } from "@/plugins/registry";
 // The pane it opens belongs to that worktree, as a guest in this tab.
 
 // split: beside the focused pane. group: the worktree's tabs join the
-// strip as a group.
-type Mode = { kind: "split" } | { kind: "group" };
+// strip as a group. compare: a Compare tab of from (else the worktree you
+// are acting in) and the one picked, in place of replace when it is given
+// (a Compare tab whose other side went).
+type Mode = { kind: "split" } | { kind: "group" } | { kind: "compare"; from?: string; replace?: { key: string; tab: string } };
 
 export const useWorktreePicker = create<{ mode?: Mode; picked?: WorktreeRef }>(() => ({}));
 
 export const openWorktreePicker = (mode: Mode) => useWorktreePicker.setState({ mode, picked: undefined });
 const closePicker = () => useWorktreePicker.setState({ mode: undefined, picked: undefined });
+
+// ⌥↵ (or ⌥-click) compares the diffs rather than the default lane.
+let diffsNext = false;
 
 interface Item {
   value: string;
@@ -89,8 +95,9 @@ export function WorktreePicker() {
     if (!mode) return [];
     if (!picked) {
       // Splitting, the worktree you are in is no other; adding a group, the
-      // ones already in the strip are no new group.
-      const skip = here();
+      // ones already in the strip are no new group; comparing, the one it
+      // is compared with.
+      const skip = mode.kind === "compare" ? (mode.from ?? here()) : here();
       const inStrip = mode.kind === "group" ? groupKeys() : [];
       const online = status?.boxes.filter((b) => b.state === "online").map((b) => b.name) ?? [];
       const rows = online.flatMap((box) =>
@@ -114,6 +121,14 @@ export function WorktreePicker() {
                   if (mode.kind === "group") {
                     closePicker();
                     addGroup(key);
+                  } else if (mode.kind === "compare") {
+                    closePicker();
+                    const from = mode.from ?? here();
+                    if (!from) return;
+                    if (mode.replace) closeCompare(mode.replace.key, mode.replace.tab);
+                    const lane = diffsNext ? "diff" : undefined;
+                    diffsNext = false;
+                    openCompare(from, key, lane);
                   } else useWorktreePicker.setState({ picked: refOf(box, loc, wt) });
                 },
               } satisfies Item,
@@ -178,6 +193,8 @@ export function WorktreePicker() {
   }, [mode, picked, boxes, status, spaces, panels, onScreen]);
 
   const name = picked ? (picked.main ? picked.location : picked.worktree) : "";
+  const fromRef = mode?.kind === "compare" ? refFor(mode.from ?? here()) : undefined;
+  const fromName = fromRef ? (fromRef.main ? fromRef.location : fromRef.worktree) : "this worktree";
   return (
     <CommandDialog
       open={!!mode}
@@ -188,12 +205,19 @@ export function WorktreePicker() {
         }
       }}
     >
-      <CommandDialogPopup aria-label={mode?.kind === "group" ? "Add a worktree's tabs" : "Split right with another worktree"}>
+      <CommandDialogPopup aria-label={mode?.kind === "group" ? "Add a worktree's tabs" : mode?.kind === "compare" ? `Compare ${fromName} with another worktree` : "Split right with another worktree"}>
         <Command items={groups} value={query} onValueChange={setQuery} itemToStringValue={(i: unknown) => `${(i as Item).label} ${(i as Item).detail ?? ""}`}>
           <CommandInput
             key={picked ? "what" : "where"}
-            placeholder={picked ? `Show from ${name} beside this pane…` : mode?.kind === "group" ? "Add a worktree's tabs to the strip…" : "Split right with another worktree…"}
+            placeholder={picked ? `Show from ${name} beside this pane…` : mode?.kind === "group" ? "Add a worktree's tabs to the strip…" : mode?.kind === "compare" ? `Compare ${fromName} with…` : "Split right with another worktree…"}
             onKeyDown={(e) => {
+              // ⌥↵ picks as ↵ does, comparing diffs.
+              if (mode?.kind === "compare" && e.key === "Enter" && e.altKey) {
+                e.preventDefault();
+                diffsNext = true;
+                e.currentTarget.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", code: "Enter", bubbles: true, cancelable: true }));
+                return;
+              }
               // Backspace on an empty field goes back to the worktrees.
               if (picked && e.key === "Backspace" && !query) {
                 e.preventDefault();
@@ -209,7 +233,15 @@ export function WorktreePicker() {
                   {group.label && <CommandGroupLabel>{group.label}</CommandGroupLabel>}
                   <CommandCollection>
                     {(item: Item) => (
-                      <CommandItem key={item.value} value={item} className="gap-2" onClick={() => item.run()}>
+                      <CommandItem
+                        key={item.value}
+                        value={item}
+                        className="gap-2"
+                        onClick={(e) => {
+                          if (e.altKey) diffsNext = true;
+                          item.run();
+                        }}
+                      >
                         {item.icon}
                         <span className="truncate">{item.label}</span>
                         {item.detail && <span className="ml-auto min-w-0 shrink truncate text-muted-foreground text-xs">{item.detail}</span>}
@@ -231,13 +263,17 @@ export function WorktreePicker() {
               <span className="flex items-center gap-1">
                 <Kbd>↵</Kbd> add its tabs as a group
               </span>
+            ) : mode?.kind === "compare" ? (
+              <span className="flex items-center gap-1">
+                <Kbd>↵</Kbd> compare <Kbd>⌥↵</Kbd> compare diffs
+              </span>
             ) : (
               <span className="flex items-center gap-1">
                 <Kbd>↵</Kbd> pick, then what to show
               </span>
             )}
             <span className="flex items-center gap-1">
-              {mode?.kind === "group" ? "or ⌥-click it in the sidebar" : "It opens beside the focused pane"} <Kbd>esc</Kbd>
+              {mode?.kind === "group" ? "or ⌥-click it in the sidebar" : mode?.kind === "compare" ? "Side by side, in a Compare tab" : "It opens beside the focused pane"} <Kbd>esc</Kbd>
             </span>
           </CommandFooter>
         </Command>

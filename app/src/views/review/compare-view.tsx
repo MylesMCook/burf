@@ -1,4 +1,4 @@
-import { ArrowLeftIcon, CheckIcon, CrownIcon, GitCompareArrowsIcon, SquareTerminalIcon, XIcon } from "lucide-react";
+import { ArrowLeftIcon, CheckIcon, Columns2Icon, CrownIcon, GitCompareArrowsIcon, SquareTerminalIcon, XIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { AgentIcon } from "@/components/agent-glyph";
@@ -11,7 +11,9 @@ import type { RunCompare } from "@/lib/orchestrate-core";
 import { allRuns, type BoxRun, runs as runsApi, scheduleRuns, useRuns } from "@/lib/runs";
 import { confirm } from "@/components/sidebar/confirm";
 import { cn } from "@/lib/utils";
-import { focusSession } from "@/lib/workspaces";
+import { focusSession, wsKey } from "@/lib/workspaces";
+import { openCompare } from "@/lib/compare-actions";
+import { usePrefs } from "@/lib/prefs";
 import { tokens } from "@/views/automations/flows/runs-tab";
 import { ErrorText } from "@/components/error-note";
 
@@ -93,6 +95,17 @@ export function CompareView({ box, id, onClose }: { box: string; id: string; onC
   const best = [...firsts].sort((a, b) => Number(b.verify.passed) - Number(a.verify.passed) || a.diff.added + a.diff.removed - (b.diff.added + b.diff.removed))[0];
   const isBest = (c: (typeof cands)[number]) => !!best && c.box === best.box && c.runId === best.runId && c.index === best.index;
   const title = data ? `${titleOf(data.run.title)}: ${cands.length} attempt${cands.length === 1 ? "" : "s"}` : id;
+  // Side by side (Labs): an attempt in a Compare tab beside the judge's
+  // pick, or the pick beside the runner-up.
+  const labs = usePrefs((p) => p.labs);
+  const partner = (c: (typeof cands)[number]) => {
+    const others = cands.filter((o) => o !== c && o.path);
+    return (best && !isBest(c) && best.path ? best : undefined) ?? [...others].sort((x, y) => (x.judge.rank ?? 99) - (y.judge.rank ?? 99))[0];
+  };
+  const sideBySide = (c: (typeof cands)[number], o: (typeof cands)[number]) => {
+    if (!c.path || !o.path || !openCompare(wsKey(c.box, c.path), wsKey(o.box, o.path)))
+      toastManager.add({ type: "error", title: "Couldn't put them side by side", description: "One of the attempts' worktrees isn't on its box any more." });
+  };
   // Picking one whose check failed takes work that does not pass: ask first.
   const choose = (c: (typeof cands)[number]) => {
     const go = () => pick(true, { box: c.box, id: c.runId, index: c.index });
@@ -209,7 +222,7 @@ export function CompareView({ box, id, onClose }: { box: string; id: string; onC
                     {files.length > 14 && <li className="text-muted-foreground">and {files.length - 14} more</li>}
                     {!files.length && <li className="text-muted-foreground">No uncommitted changes.</li>}
                   </ul>
-                  <footer className="flex items-center gap-1.5 border-t px-3 py-2">
+                  <footer className="flex flex-wrap items-center gap-1.5 border-t px-3 py-2">
                     {canPick && (
                       <Button size="xs" variant={isBest(c) && c.verify.passed ? "default" : "outline"} disabled={busy} onClick={() => choose(c)}>
                         Pick this one
@@ -221,6 +234,16 @@ export function CompareView({ box, id, onClose }: { box: string; id: string; onC
                         Open session
                       </Button>
                     )}
+                    {labs && c.path && partner(c) && (() => {
+                      const o = partner(c)!;
+                      const which = `#${o.index + 1}${multi && o.box !== c.box ? ` on ${o.box}` : ""}`;
+                      return (
+                        <Button size="xs" variant="ghost" onClick={() => sideBySide(c, o)} aria-label={`Compare attempt ${c.index + 1} side by side with attempt ${which}`}>
+                          <Columns2Icon />
+                          Compare with {which}
+                        </Button>
+                      );
+                    })()}
                   </footer>
                 </section>
               );

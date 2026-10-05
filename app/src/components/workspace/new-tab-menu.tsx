@@ -1,4 +1,4 @@
-import { Columns2Icon, GlobeIcon, HistoryIcon, ListPlusIcon, PlusIcon, PuzzleIcon, RadioIcon, Settings2Icon, SquareTerminalIcon } from "lucide-react";
+import { Columns2Icon, GitCompareArrowsIcon, GlobeIcon, HistoryIcon, ListPlusIcon, PlusIcon, PuzzleIcon, RadioIcon, Settings2Icon, SquareTerminalIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { Tip } from "@/components/tip";
@@ -70,6 +70,7 @@ export function NewTabMenu() {
         ? [
             { value: "add worktree tabs group", label: "Another worktree's tabs…", icon: <ListPlusIcon />, run: done(() => openWorktreePicker({ kind: "group" })) },
             { value: "split another worktree beside", label: "Another worktree beside…", icon: <Columns2Icon />, shortcut: "⌘⌥D", run: done(() => openWorktreePicker({ kind: "split" })) },
+            { value: "compare with another worktree side by side", label: "Compare with…", icon: <GitCompareArrowsIcon />, shortcut: "⌘⌥C", run: done(() => openWorktreePicker({ kind: "compare" })) },
           ]
         : []),
     ];

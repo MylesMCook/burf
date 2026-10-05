@@ -16,6 +16,9 @@ export type PaneContent =
   // A plugin's worktree panel, shown for the pane's worktree (paneWorktree).
   | { kind: "panel"; plugin: string; panel: string; title: string }
   | { kind: "starting"; label: string }
+  // Nothing yet: a Compare tab's side whose worktree runs no agent. It
+  // offers to start one there.
+  | { kind: "empty"; label: string }
   | { kind: "error"; message: string };
 
 export type Pane = PaneContent;

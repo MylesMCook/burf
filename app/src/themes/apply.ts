@@ -1,4 +1,5 @@
 import type { Theme } from "@/lib/api";
+import { toneColors } from "./tones.ts";
 
 // applyTheme writes a theme's colors over the coss tokens in index.css.
 // Inline custom properties on <html> win over the stylesheet's :root and
@@ -47,6 +48,8 @@ export function applyTheme(theme: Theme) {
     "--link": c.link,
     "--selection": c.selection,
   };
+  // Worktree tones, at the lightness this theme's surfaces read them at.
+  for (const [t, v] of Object.entries(toneColors(theme))) vars[`--wt-${t}`] = v;
   const root = document.documentElement;
   for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
   for (const [k, v] of Object.entries(optional)) {

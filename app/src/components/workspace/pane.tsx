@@ -4,6 +4,8 @@ import { useEffect, useMemo } from "react";
 import { Tip } from "@/components/tip";
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
 import { BrowserPane } from "@/components/browser-pane";
+import { EmptySide } from "@/components/workspace/compare-view";
+import { CompareSideContext, type CompareSide, pageLoading } from "@/lib/compare-actions";
 import { openChatBackgroundSettings } from "@/components/conversation/chat-background";
 import { ConversationPane } from "@/components/conversation/conversation-pane";
 import { ErrorText } from "@/components/error-note";
@@ -18,7 +20,7 @@ import { ServiceIcon } from "@/components/workspace/service-terminal";
 import { armDrag, useTabDrag } from "@/components/workspace/tab-drag";
 import { TerminalView } from "@/components/workspace/terminal-view";
 import { openWorktreePicker } from "@/components/workspace/worktree-picker";
-import { useTone, WtChip } from "@/components/workspace/worktree-tone";
+import { useLabel, useTone, WtChip } from "@/components/workspace/worktree-tone";
 import { agentPresets, closePane, openBrowserAt, startSession } from "@/lib/actions";
 import { agentLabel, agentOf, restartCommand, sessionAgent, sessionName, sessionState } from "@/lib/derive";
 import { nameFromKey } from "@/lib/groups";
@@ -45,16 +47,21 @@ interface Props {
   // The tab shows panes of more than one worktree: each header names its
   // pane's worktree in its colour.
   mixed?: boolean;
+  // A side of a Compare tab: no header (the tab's bar names both sides),
+  // and what inside it syncs with the other side knows which it is.
+  compare?: CompareSide;
 }
 
 // Pane is one leaf of a tab's split tree: a terminal, a browser, a log or a
 // plugin's panel, under a slim header when the tab is split.
-export function Pane({ wsKey, tab, pane, visible, focused, split, mixed }: Props) {
+export function Pane({ wsKey, tab, pane, visible, focused, split, mixed, compare }: Props) {
   // The worktree the pane belongs to: its own, in a tab that mixes
   // worktrees, else its tab's.
   const owner = paneWorktree(wsKey, pane);
   const info = useMemo(() => ({ wsKey, tab, pane: pane.id, worktree: owner }), [wsKey, tab, pane.id, owner]);
   const tone = useTone(mixed ? owner : undefined);
+  // Named with its worktree for screen readers: "Claude Code, search-perf".
+  const { label: worktreeName } = useLabel(owner);
   // A guest pane whose worktree was archived or removed: say so, and let it
   // be closed, rather than show a page or panel for nothing.
   const gone = useGuestGone(wsKey, pane);
@@ -79,7 +86,10 @@ export function Pane({ wsKey, tab, pane, visible, focused, split, mixed }: Props
 
   return (
     <PaneContext.Provider value={info}>
-      <div className="flex h-full min-h-0 flex-col" onMouseDownCapture={focus}>
+      <CompareSideContext.Provider value={compare}>
+      <div role="region" aria-label={`${paneLabel(c, agent)}, ${worktreeName}`} className="flex h-full min-h-0 flex-col" onMouseDownCapture={focus}>
+        {/* A Compare tab's side has no header: its focus line is its own. */}
+        {compare && focused && tone && <span aria-hidden className="pointer-events-none absolute inset-x-0 top-0 z-30 h-0.5" style={{ background: tone }} />}
         {split && (
           // Its header drags the pane beside another, or onto the tab strip as
           // a tab of its own (tab-drag.tsx). Zen has no strip: there it only
@@ -106,7 +116,8 @@ export function Pane({ wsKey, tab, pane, visible, focused, split, mixed }: Props
               <ConversationPane box={c.box} session={c.session} agent={c.agent} visible={visible} onStartAgain={() => void startSession(restartCommand(c.command) ?? c.agent ?? "", { kind: "replace", tab, pane: pane.id }, c.agent ? agentLabel(c.agent) : "Agent")} onShowTerminal={() => setPaneContent(wsKey, tab, pane.id, { ...c, view: "terminal" })} />
             </div>
           )}
-          {c.kind === "browser" && <BrowserPane id={pane.id} url={c.url} visible={visible} worktree={owner} onNavigate={(url) => setPaneContent(wsKey, tab, pane.id, { kind: "browser", url })} />}
+          {c.kind === "browser" && <BrowserPane id={pane.id} url={c.url} visible={visible} worktree={owner} onNavigate={(url) => setPaneContent(wsKey, tab, pane.id, { kind: "browser", url })} onLoading={compare ? (l) => pageLoading(pane.id, l) : undefined} />}
+          {c.kind === "empty" && <EmptySide owner={owner} tab={tab} pane={pane.id} label={c.label} />}
           {c.kind === "log" && <LogView box={c.box} location={c.location} worktree={c.worktree} service={c.service} visible={visible} />}
           {c.kind === "panel" && <PanelPane wsKey={owner} plugin={c.plugin} panel={c.panel} />}
           {c.kind === "starting" && (
@@ -126,6 +137,7 @@ export function Pane({ wsKey, tab, pane, visible, focused, split, mixed }: Props
           )}
         </div>
       </div>
+      </CompareSideContext.Provider>
     </PaneContext.Provider>
   );
 }
@@ -267,7 +279,9 @@ function PaneTitle({ pane }: { pane: Leaf }) {
 // PaneActions are a pane's split buttons and its ⋯ menu: in the pane's own
 // header when the tab is split, and in the tab strip when it is not.
 // ⌘W and ⌘D act on the focused pane, so only its buttons name them.
-export function PaneActions({ wsKey, tab, pane, onClose, closable, focused = true }: { wsKey: string; tab: string; pane: Leaf; onClose?: () => void; closable?: boolean; focused?: boolean }) {
+// compact (a tiny window's strip) keeps the ⋯ menu and drops the split
+// buttons; ⌘D and ⌘⇧D still split.
+export function PaneActions({ wsKey, tab, pane, onClose, closable, focused = true, compact }: { wsKey: string; tab: string; pane: Leaf; onClose?: () => void; closable?: boolean; focused?: boolean; compact?: boolean }) {
   const c = pane.content;
   const session = useStore((s) => (c.kind === "terminal" ? s.boxes[c.box]?.sessions?.find((x) => x.name === c.session) : undefined));
   // Agents to open beside it are its own worktree's repository's.
@@ -287,12 +301,16 @@ export function PaneActions({ wsKey, tab, pane, onClose, closable, focused = tru
   return (
     <>
       <ViewSwitch wsKey={wsKey} tab={tab} pane={pane} />
-      <HeaderButton label="Split right" keys={focused ? "⌘D" : undefined} onClick={() => void startSession("", beside("row"))}>
-        <SquareSplitHorizontalIcon />
-      </HeaderButton>
-      <HeaderButton label="Split down" keys={focused ? "⌘⇧D" : undefined} onClick={() => void startSession("", beside("col"))}>
-        <SquareSplitVerticalIcon />
-      </HeaderButton>
+      {!compact && (
+        <>
+          <HeaderButton label="Split right" keys={focused ? "⌘D" : undefined} onClick={() => void startSession("", beside("row"))}>
+            <SquareSplitHorizontalIcon />
+          </HeaderButton>
+          <HeaderButton label="Split down" keys={focused ? "⌘⇧D" : undefined} onClick={() => void startSession("", beside("col"))}>
+            <SquareSplitVerticalIcon />
+          </HeaderButton>
+        </>
+      )}
       <Menu>
         <Tip label="Pane actions">
           <MenuTrigger render={<button type="button" aria-label="Pane actions" className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground data-popup-open:bg-accent" />}>

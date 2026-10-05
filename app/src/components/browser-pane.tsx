@@ -31,6 +31,8 @@ interface Props {
   // The worktree (workspace key) the pane belongs to, which a typed port
   // opens on; unset, the one showing.
   worktree?: string;
+  // Told when a page starts and finishes loading (a Compare tab times both).
+  onLoading?(loading: boolean): void;
 }
 
 type Mode = "native" | "iframe";
@@ -40,7 +42,7 @@ type Mode = "native" | "iframe";
 // http://checkout.shop.devl.localhost:1377/). In the app it is a native child
 // webview laid over the pane, so every page works as in a browser; in a plain
 // browser, or when that fails, it is an iframe.
-export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree }: Props) {
+export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree, onLoading }: Props) {
   const fallbackId = useId();
   const id = useMemo(() => (paneId ?? fallbackId).replace(/[^A-Za-z0-9_-]/g, ""), [paneId, fallbackId]);
   const [mode, setMode] = useState<Mode>(isTauri() ? "native" : "iframe");
@@ -173,7 +175,9 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree }: 
         />
       ) : (
         <form
-          className="flex h-9 shrink-0 items-center gap-1 border-b px-2"
+          // A narrow pane (a Compare tab's side in a small window) keeps the
+          // address, dropping the labels around it.
+          className="@container/bar flex h-9 shrink-0 items-center gap-1 border-b px-2"
           onSubmit={(e) => {
             e.preventDefault();
             const next = resolveBrowserInput(input, ctx);
@@ -194,7 +198,7 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree }: 
               // Tooltips here open upward: below the bar is the page, which in
               // the app is a native view that would cover them.
               <Tip label={<span className="break-all font-mono">{url}</span>} className="max-w-md">
-                <span className="ml-1 shrink-0 rounded bg-accent px-1.5 py-px font-medium text-[10px] text-muted-foreground">{berthUrlLabel(where)}</span>
+                <span className="@max-[26rem]/bar:hidden ml-1 shrink-0 rounded bg-accent px-1.5 py-px font-medium text-[10px] text-muted-foreground">{berthUrlLabel(where)}</span>
               </Tip>
             )}
             <input
@@ -245,7 +249,7 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree }: 
                 className="ml-1 inline-flex h-6.5 shrink-0 items-center gap-1.5 rounded-md border px-2 text-[11px] text-muted-foreground hover:bg-accent hover:text-foreground"
               >
                 <LiveDot />
-                Agent's view · live
+                <span className="@max-[30rem]/bar:sr-only">Agent's view · live</span>
               </button>
             </Tip>
           )}
@@ -272,7 +276,10 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree }: 
             setInput(u);
             if (u !== url) onNavigate(u);
           }}
-          onLoading={setLoading}
+          onLoading={(l) => {
+            setLoading(l);
+            onLoading?.(l);
+          }}
           onFail={(why) => {
             setFailure(why);
             setMode("iframe");
@@ -280,7 +287,7 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree }: 
         />
       ) : (
         <div className={cn("flex min-h-0 flex-1 flex-col", (agentView || sandboxView) && "hidden")}>
-          <FramedPage key={`${url}#${nonce}`} id={id} url={url} onReload={reload} />
+          <FramedPage key={`${url}#${nonce}`} id={id} url={url} onReload={reload} onLoading={onLoading} />
         </div>
       )}
     </div>
@@ -485,8 +492,13 @@ function isLocal(url: string): boolean {
 // available (a plain browser, or when it failed). Sites that refuse to be
 // framed would show the browser's own grey error, so they get a designed
 // fallback instead, as does a page that never finishes loading.
-function FramedPage({ id, url, onReload }: { id: string; url: string; onReload(): void }) {
+function FramedPage({ id, url, onReload, onLoading }: { id: string; url: string; onReload(): void; onLoading?(loading: boolean): void }) {
   const [state, setState] = useState<"loading" | "loaded" | "stuck" | "blocked">(isLocal(url) ? "loading" : "blocked");
+  const told = useRef(onLoading);
+  told.current = onLoading;
+  useEffect(() => {
+    if (state === "loading" || state === "loaded") told.current?.(state === "loading");
+  }, [state]);
   useEffect(() => {
     if (state !== "loading") return;
     const t = window.setTimeout(() => setState("stuck"), 15_000);

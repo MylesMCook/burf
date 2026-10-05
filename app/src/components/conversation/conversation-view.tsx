@@ -28,6 +28,7 @@ import { applyCut, dropOlder, loadOlder, meta, restoreOlder, setCut, useHasHisto
 import { seedLongChat } from "@/lib/mock-history";
 import "@/components/conversation/conversation.css";
 import "@/components/conversation/history.css";
+import { TurnSync } from "@/components/workspace/compare-sync";
 
 // ConversationView draws an agent's turn as a calm transcript rather than a
 // terminal: what was asked, what the agent says, its tool calls folded into
@@ -146,6 +147,7 @@ export function ConversationView({ items: live, onAnswer, edits, who = "The agen
                 <>
                   <ChatSearch api={api} entries={entries} onReveal={setReveal} />
                   <ArtifactJumper api={api} chat={key} rows={blocks} older={history ? older : undefined} onLoadOlder={nearTop} />
+                  <TurnSync api={api} rows={blocks} isTurn={isTurn} />
                 </>
               )
             : undefined}
@@ -160,6 +162,8 @@ export function ConversationView({ items: live, onAnswer, edits, who = "The agen
 const RevealContext = createContext<Set<string>>(new Set());
 
 const blockKey = (b: Block) => (b.kind === "fold" ? b.id : b.it.id);
+// A turn starts where something was asked (a Compare tab's chats line up on it).
+const isTurn = (b: Block) => b.kind !== "fold" && b.it.kind === "user";
 
 // A row's height before it is drawn: near enough that the scroll bar
 // doesn't jump much once it is.

@@ -19,6 +19,18 @@ export const isTone = (t: unknown): t is Tone => typeof t === "string" && (TONES
 
 export const toneVar = (t: Tone) => `var(--wt-${t})`;
 
+// Each tone as OKLCH (lightness, chroma, hue), for light and dark themes.
+// themes/tones.ts moves the lightness, never the hue, until it reads on a
+// theme's own surfaces; index.css holds the same as a fallback.
+export const TONE_LCH: Record<Tone, { light: [number, number, number]; dark: [number, number, number] }> = {
+  violet: { light: [0.53, 0.2, 293], dark: [0.74, 0.14, 293] },
+  cyan: { light: [0.55, 0.11, 212], dark: [0.77, 0.1, 212] },
+  magenta: { light: [0.53, 0.22, 328], dark: [0.73, 0.17, 328] },
+  slate: { light: [0.5, 0.02, 265], dark: [0.74, 0.025, 260] },
+  pink: { light: [0.6, 0.18, 2], dark: [0.8, 0.11, 2] },
+  copper: { light: [0.55, 0.11, 50], dark: [0.76, 0.09, 55] },
+};
+
 // hashTone is a worktree's own tone, the same every time.
 export function hashTone(key: string): number {
   let h = 2166136261;
@@ -76,6 +88,9 @@ export const nameFromKey = (key: string) => key.slice(key.indexOf(":") + 1).spli
 // Below this window width the strip folds every group but the one in front,
 // and pane chips shrink to their dot.
 export const NARROW = "(max-width: 1099px)";
+// Below this, only the group in front shows its tabs; the others wait as
+// chips at the strip's end.
+export const TINY = "(max-width: 799px)";
 
 // Tab groups: the strip can hold several worktrees' tabs, each run of them a
 // group. shown is the groups in order, current the one in front (its

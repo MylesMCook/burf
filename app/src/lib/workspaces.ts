@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { create } from "zustand";
 
 import type { Location, Session, Worktree } from "@/lib/api";
+import { type Compare, rehomeCompares } from "@/lib/compare";
 import { agentOf, sessionState } from "@/lib/derive";
 import { findLeaf, type Leaf, leaf, leaves, mapLeaf, moveBetween, movePane, neighbor, newId, type PaneContent, type PaneNode, paneWorktree, place, remove, sessionsShown, setRatio, type Side, split, swap, worktreesOf } from "@/lib/layout";
 import { foldedOf, groupsOf, NARROW, stepGroup, stripTabs, withGroup, withoutGroup } from "@/lib/groups";
@@ -25,6 +26,8 @@ export interface WsTab {
   id: string;
   root: PaneNode;
   focus: string;
+  // A Compare tab's two worktrees and lanes (lib/compare.ts).
+  compare?: Compare;
 }
 
 export interface Workspace {
@@ -107,7 +110,9 @@ function sanitize(spaces: Record<string, Workspace>): Record<string, Workspace> 
     const tabs: WsTab[] = [];
     for (const t of ws.tabs) {
       let root: PaneNode | undefined = t.root;
-      for (const l of leaves(t.root)) if (l.content.kind === "starting" || l.content.kind === "error") root = root && remove(root, l.id);
+      // A Compare tab keeps its two sides: one that was starting is empty.
+      if (t.compare) root = mapLeaves(t.root, (l) => (l.content.kind === "starting" || l.content.kind === "error" ? { ...l, content: { kind: "empty", label: "Agent" } } : l));
+      else for (const l of leaves(t.root)) if (l.content.kind === "starting" || l.content.kind === "error") root = root && remove(root, l.id);
       if (root) tabs.push({ ...t, root, focus: leaves(root).some((l) => l.id === t.focus) ? t.focus : leaves(root)[0].id });
     }
     out[k] = { ...ws, tabs, active: tabs.some((t) => t.id === ws.active) ? ws.active : tabs[0]?.id, hidden: ws.hidden ?? [] };
@@ -133,6 +138,8 @@ export const useWorkspaces = create<State>()(() => ({
 }));
 
 useWorkspaces.subscribe((s) => save("berth.workspaces", { current: s.current, shown: s.shown, folded: s.folded, tones: s.tones, spaces: s.spaces, recentUrls: s.recentUrls }));
+
+const mapLeaves = (n: PaneNode, fn: (l: Leaf) => Leaf): PaneNode => (n.kind === "leaf" ? fn(n) : { ...n, a: mapLeaves(n.a, fn), b: mapLeaves(n.b, fn) });
 
 function update(key: string, fn: (ws: Workspace) => Workspace) {
   useWorkspaces.setState((s) => (s.spaces[key] ? { spaces: { ...s.spaces, [key]: fn(s.spaces[key]) } } : s));
@@ -350,7 +357,8 @@ export function showWorktree(key: string): boolean {
 export function forgetWorktree(box: string, path: string) {
   const key = wsKey(box, path);
   useWorkspaces.setState((s) => {
-    const { [key]: _gone, ...spaces } = s.spaces;
+    // Its Compare tabs move to the other side's workspace, to show that one.
+    const { [key]: _gone, ...spaces } = rehomeCompares(s.spaces, key);
     const groups = withoutGroup({ shown: groupKeys(s), current: s.current }, key);
     const { [key]: _tone, ...tones } = s.tones ?? {};
     return { spaces, tones, mounted: s.mounted.filter((k) => k !== key), current: s.current === key ? groups.current : s.current, shown: groups.shown, folded: (s.folded ?? []).filter((k) => k !== key) };
@@ -383,7 +391,8 @@ export function reconcile(key: string) {
   if (!ws) return;
   const sessions = useStore.getState().boxes[ws.ref.box]?.sessions;
   if (!sessions) return;
-  const all = Object.entries(spaces).flatMap(([k, w]) => w.tabs.map((t) => ({ k, root: t.root })));
+  // A Compare tab's parked panes count too.
+  const all = Object.entries(spaces).flatMap(([k, w]) => w.tabs.flatMap((t) => [t.root, ...(t.compare?.parked ?? [])].map((root) => ({ k, root }))));
   // A pane starting one of this worktree's sessions, here or as a guest.
   if (all.some(({ k, root }) => leaves(root).some((l) => l.content.kind === "starting" && paneWorktree(k, l) === key))) return;
   const roots = all.map((x) => x.root);
@@ -577,6 +586,7 @@ export function findSession(box: string, session: string): { key: string; tab: s
   for (const [key, ws] of Object.entries(useWorkspaces.getState().spaces)) {
     if (ws.ref.box !== box) continue;
     for (const t of ws.tabs) {
+      if (t.compare) continue;
       const l = leaves(t.root).find((x) => x.content.kind === "terminal" && x.content.session === session);
       if (l) return { key, tab: t.id, pane: l };
     }

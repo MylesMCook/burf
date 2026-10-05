@@ -221,12 +221,38 @@ pane's. The breadcrumb, Run, the + menu, ⌘T, ⌘⇧B, the palette and plugins
 follow it, so ⌘T in another worktree's pane opens its terminal among that
 worktree's tabs. Notifications focus an agent where its pane already is.
 
+**Compare.** A Compare tab puts two worktrees side by side in mirrored
+lanes, for "which attempt wins": **Chat** (their agents' conversations),
+**Diff** (each branch's diff), **Preview** (each dev server's page) and
+**Terminal** (their agents' terminals). Open one with ⌘⌥C, **Compare
+with…** in a worktree's menu or the strip's +, or **Compare with #N** on an
+attempt in Review's Compare (after **Try N ways…**). The picker opens the
+chats when both worktrees run an agent, else the diffs; ⌥↵ always opens the
+diffs. The tab is named `checkout-fix ⇄ search-perf` and lives in the first
+worktree's group. Its bar names both sides in their colours (the one with
+the focus is solid; click a side's name to focus it), each agent's state,
+and what each branch changed since the default branch (`24 files · +2,389
+−33`). In the middle are the lanes (⌥1–4), the hinge that swaps the sides
+(⌘⌥S) and **Sync**: with Sync on, a page opened on one side opens at the
+same path on the other's dev server, with each page's load time in the bar;
+scrolling one diff takes the other to the same file; and scrolling one chat
+takes the other to the same turn. The breadcrumb, Run and ⌘T follow the side
+with the focus. Lanes you leave stay loaded, so coming back reloads nothing,
+and closing the tab stops nothing: its panes are views of the two
+worktrees. A side whose worktree is archived, or whose box goes offline,
+gives the tab to the other side, with a note saying why, **Compare with…**
+to pick another, and a close button.
+
 | Keys | What it does |
 | --- | --- |
 | ⌥-click (sidebar) | Add the worktree's tabs as a group |
 | ⌘⌥D | Split right with another worktree… |
+| ⌘⌥C | Compare with… (in a Compare tab: swap the other side for another worktree) |
+| ⌥1–4 | In a Compare tab: the Chat, Diff, Preview or Terminal lane |
+| ⌘⌥S | In a Compare tab: swap its sides |
 | ⌃⇧⇥ / ⌃⌥⇥ | Previous or next group (⌘1–9 count tabs across the whole strip) |
 | ⌘⇧W | Close the group in front: its tabs leave the strip, and the worktree and its agents carry on. With one group, it closes the window |
+| ← / → | With a tab or a group's label focused: the next or previous one along the strip (Home, End: the ends); Enter or Space shows a tab |
 
 **The group menu.** Click a group's label to fold it to its name and tab
 count; right-click it to fold, pick its colour, or close it. Colours are
@@ -236,9 +262,22 @@ worktree's menu in the sidebar has **Colour** too. Names add the box when
 the same repository is open from two boxes (`search-perf · gpu`).
 
 **Narrow windows.** Below about 1100px, the groups you are not in fold to
-their labels, beside the strip, and pane chips shrink to their colour's dot
-with the name in a tooltip. In zen, the switcher names the focused pane's
-worktree in its colour.
+their labels, beside the strip, pane chips shrink to their dot and a short
+name, and a Compare tab's bar drops the diff numbers. Below about 800px, the
+other groups wait as chips (their dot and name), a Compare tab stacks its
+two sides, one above the other, and the bar's lanes are icons. In zen there is no strip: the switcher names the focused pane's
+worktree in its colour, a Compare tab keeps its bar, and ⌘⌥C, ⌥1–4 and the
+group shortcuts still work.
+
+**Colours and names.** A worktree's colour never stands alone: its group's
+label, a pane's chip and a Compare tab's bar each show a dot and the name,
+and a tab with another worktree's pane names it (`+ search-perf`). Each
+theme sets the colours at the lightness its own surfaces need, so their
+names read as text on its page and sidebar, and stay clear of the colours
+that mean running, waiting, done and failed. Screen readers hear each tab,
+group and pane with its worktree ("Claude Code, checkout-fix, with
+search-perf"), and a group's label says whether it is folded, in front, or
+on an offline box.
 
 **When a worktree goes.** Archiving or removing a worktree takes its group
 off the strip. A pane of it left in another worktree's tab says so, with a

@@ -20,7 +20,9 @@ import { activateTab, closeGroup, focusGroup, foldGroup, setTone, tabBeside, uns
 // one forward, and with it the breadcrumb, Run, ⌘T and the palette. The
 // label folds the group to its name and tab count; its menu folds, colours
 // and closes it (the worktree and its agents carry on).
-export function TabGroup({ wsKey, front, folded, many }: { wsKey: string; front: boolean; folded: boolean; many: boolean }) {
+// compact: a narrow window's chip for a group not in front, its dot and
+// name only.
+export function TabGroup({ wsKey, front, folded, many, compact }: { wsKey: string; front: boolean; folded: boolean; many: boolean; compact?: boolean }) {
   const ws = useWorkspaces((s) => s.spaces[wsKey]);
   const tone = useTone(wsKey);
   if (!ws || !tone) return null;
@@ -31,7 +33,7 @@ export function TabGroup({ wsKey, front, folded, many }: { wsKey: string; front:
   return (
     // Not positioned: the strip measures its tabs' offsets from itself.
     <div data-group={wsKey} className="flex shrink-0 items-stretch" style={{ boxShadow: `inset 0 -2px 0 color-mix(in oklab, ${tone} ${front ? 100 : 40}%, transparent)` }}>
-      <GroupLabel wsKey={wsKey} front={front} folded={folded} count={ws.tabs.length} tone={tone} many={many} />
+      <GroupLabel wsKey={wsKey} front={front} folded={folded} count={ws.tabs.length} tone={tone} many={many} compact={compact} />
       {!folded &&
         ws.tabs.map((t) => (
           <TabButton
@@ -51,7 +53,7 @@ export function TabGroup({ wsKey, front, folded, many }: { wsKey: string; front:
   );
 }
 
-function GroupLabel({ wsKey, front, folded, count, tone, many }: { wsKey: string; front: boolean; folded: boolean; count: number; tone: string; many: boolean }) {
+function GroupLabel({ wsKey, front, folded, count, tone, many, compact }: { wsKey: string; front: boolean; folded: boolean; count: number; tone: string; many: boolean; compact?: boolean }) {
   const { label, ref } = useLabel(wsKey);
   const away = useStore((s) => !!ref && !!s.status && s.status.boxes.find((b) => b.name === ref.box)?.state !== "online");
   const leaving = useRemoval(ref?.box ?? "", ref?.path);
@@ -64,7 +66,8 @@ function GroupLabel({ wsKey, front, folded, count, tone, many }: { wsKey: string
         <Tip label={<span className="flex flex-col">{tip}<span className="text-muted-foreground">Click to {folded ? "unfold" : "fold"}, right-click for more</span></span>} side="bottom" align="start">
           <button
             type="button"
-            aria-label={`${label}, ${count} ${count === 1 ? "tab" : "tabs"}${folded ? ", folded" : ""}`}
+            data-group-label={wsKey}
+            aria-label={`${label} tab group, ${count} ${count === 1 ? "tab" : "tabs"}${front ? ", in front" : ""}${folded ? ", folded" : ""}${leaving ? `, ${removalLabel(leaving)}` : away ? `, ${ref?.box} is offline` : ""}`}
             aria-expanded={!folded}
             onClick={() => {
               if (folded) {
@@ -72,15 +75,15 @@ function GroupLabel({ wsKey, front, folded, count, tone, many }: { wsKey: string
                 focusGroup(wsKey);
               } else foldGroup(wsKey, true);
             }}
-            className="flex shrink-0 items-center px-1.5"
+            className="group/label flex shrink-0 items-center px-1.5 outline-none"
           >
             <span
-              className={cn("inline-flex h-5 max-w-40 items-center gap-1 rounded-md px-1.5 font-medium text-[11px] transition-opacity", (away || leaving) && "opacity-55")}
+              className={cn("inline-flex h-5 items-center gap-1 rounded-md px-1.5 font-medium text-[11px] transition-opacity group-focus-visible/label:ring-2 group-focus-visible/label:ring-ring group-focus-visible/label:ring-offset-1 group-focus-visible/label:ring-offset-sidebar", compact ? "max-w-28" : "max-w-40", (away || leaving) && "opacity-55")}
               style={front ? { background: tone, color: "var(--background)" } : { background: `color-mix(in oklab, ${tone} 15%, transparent)`, color: tone }}
             >
-              {leaving ? <Spinner className="size-3" /> : away ? <CloudOffIcon className="size-3" aria-label={`${ref?.box} is offline`} /> : null}
+              {leaving ? <Spinner className="size-3" /> : away ? <CloudOffIcon className="size-3" aria-hidden /> : <span aria-hidden className="size-1.5 shrink-0 rounded-full" style={{ background: front ? "var(--background)" : tone }} />}
               <span className="truncate">{label}</span>
-              {folded && <span className="tabular-nums opacity-75">{count}</span>}
+              {folded && !compact && <span className="tabular-nums opacity-75">{count}</span>}
             </span>
           </button>
         </Tip>

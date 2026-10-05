@@ -11,7 +11,9 @@ import { isTauri } from "@/lib/api";
 import { toggleNotifications } from "@/lib/notifications";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
-import { activateTab, closeGroup, currentSpace, focusGroup, hereRef, moveFocus, nextGroup, stripTab, useWorkspaces } from "@/lib/workspaces";
+import { focusedSide, LANES } from "@/lib/compare";
+import { compareShowing, setCompareLane, swapCompare } from "@/lib/compare-actions";
+import { activateTab, closeGroup, currentSpace, focusGroup, here, hereRef, moveFocus, nextGroup, stripTab, useWorkspaces } from "@/lib/workspaces";
 import { openWorktreePicker } from "@/components/workspace/worktree-picker";
 import { zoom } from "@/lib/zoom";
 import { isOnboardingActive } from "@/views/onboarding/onboarding-state";
@@ -58,17 +60,46 @@ function run(id: string, from: "key" | "menu", arg?: number | Dir): boolean {
       return true;
     case "split-right":
     case "split-down":
-      if (!inWorkspace || !tab) return false;
+      // A Compare tab is its two sides; ⌘D stays the terminal's there.
+      if (!inWorkspace || !tab || tab.compare) return false;
       void startSession("", { kind: "split", tab: tab.id, pane: tab.focus, dir: id === "split-down" ? "col" : "row" });
       return true;
     case "split-worktree":
-      if (!inWorkspace || !tab) return false;
+      if (!inWorkspace || !tab || tab.compare) return false;
       if (!usePrefs.getState().labs) {
         if (from === "menu") toastManager.add({ title: "Worktrees side by side are in Labs", description: "Turn on Labs in Settings → General to use them." });
         return from === "menu";
       }
       openWorktreePicker({ kind: "split" });
       return true;
+    case "compare": {
+      if (!usePrefs.getState().labs) {
+        if (from === "menu") toastManager.add({ title: "Compare is in Labs", description: "Turn on Labs in Settings → General to use it." });
+        return from === "menu";
+      }
+      if (!here()) return false;
+      // In a Compare tab, ⌘⌥C swaps the side without the focus for another.
+      const showing = compareShowing();
+      if (showing?.tab.compare) {
+        const c = showing.tab.compare;
+        const side = focusedSide(showing.tab);
+        openWorktreePicker({ kind: "compare", from: side ? c.b : c.a, replace: { key: showing.key, tab: showing.tab.id } });
+      } else openWorktreePicker({ kind: "compare" });
+      return true;
+    }
+    case "compare-swap": {
+      const showing = compareShowing();
+      if (!showing) return false;
+      swapCompare(showing.key, showing.tab.id);
+      return true;
+    }
+    case "compare-lane": {
+      const showing = compareShowing();
+      const lane = LANES[Number(arg) - 1];
+      if (!showing || !lane) return false;
+      setCompareLane(showing.key, showing.tab.id, lane);
+      return true;
+    }
     case "open-editor":
       if (!at) return false;
       void openEditor({ box: at.box, path: at.path });
@@ -141,7 +172,11 @@ export function runShortcut(id: string, from: "key" | "menu", arg?: number | Dir
 // fromKey is the shortcut a keydown is, if any.
 function fromKey(e: KeyboardEvent): [string, (number | Dir)?] | undefined {
   // With ⌥ the key is the character it types (⌥D is ∂), so go by its code.
-  if (e.altKey) return e.key in arrows ? ["focus", arrows[e.key]] : e.code === "KeyD" && !e.shiftKey ? ["split-worktree"] : undefined;
+  if (e.altKey) {
+    if (e.key in arrows) return ["focus", arrows[e.key]];
+    if (e.shiftKey) return undefined;
+    return e.code === "KeyD" ? ["split-worktree"] : e.code === "KeyC" ? ["compare"] : e.code === "KeyS" ? ["compare-swap"] : undefined;
+  }
   const key = e.key.toLowerCase();
   const shift = e.shiftKey;
   if (key === ".") return ["zen"];
@@ -176,6 +211,14 @@ export function useShortcuts() {
       // while there is only one.
       if (e.ctrlKey && !e.metaKey && e.key === "Tab" && (e.shiftKey || e.altKey)) {
         if (!runShortcut(e.altKey ? "next-group" : "prev-group", "key")) return;
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
+      // ⌥1–4 pick a Compare tab's lane while one shows; elsewhere they are
+      // the page's or the terminal's.
+      if (e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey && /^Digit[1-4]$/.test(e.code)) {
+        if (!runShortcut("compare-lane", "key", Number(e.code.slice(5)))) return;
         e.preventDefault();
         e.stopPropagation();
         return;

@@ -99,6 +99,11 @@ export function mockShell(box: string, location: string, command: string): ExecR
   if (issues) return issues;
   const diff = mockDiff(location, command);
   if (diff) return diff;
+  // A Compare tab's numbers for each side.
+  if (command.includes("# berth-compare-stat")) {
+    if (!location.includes("/")) return { exit_code: 0, output: "" };
+    return { exit_code: 0, output: location.includes("search") ? " 6 files changed, 214 insertions(+), 97 deletions(-)\n" : " 24 files changed, 2389 insertions(+), 33 deletions(-)\n" };
+  }
   const key = `${box}:${location}`;
   // Main checkouts are clean; worktrees have work in them.
   const clean = !location.includes("/");

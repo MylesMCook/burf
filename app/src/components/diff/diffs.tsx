@@ -10,6 +10,7 @@ import { type CSSProperties, type ReactNode, useCallback, useEffect, useMemo, us
 
 import { useActiveTheme } from "@/hooks/use-theme";
 import { syntaxThemes } from "@/themes/apply";
+import { useFollow } from "@/components/workspace/compare-sync";
 
 export type { FileDiffMetadata };
 
@@ -244,13 +245,22 @@ function Files({ items, layout, wrap, dark, jump, onActive, renderHeader }: View
 
   useEffect(() => () => cancelAnimationFrame(frame.current), []);
 
+  // In a Compare tab, scrolling to a file takes the other side's diff there.
+  const follow = useFollow("file", (id) => {
+    if (!ids.current.includes(String(id))) return false;
+    const go = () => ref.current?.scrollTo({ type: "item", id: String(id), align: "start", offset: 8 });
+    go();
+    setTimeout(go, 150);
+    return true;
+  });
+
   // Stable callbacks: a new one each render would reset the view's options,
   // and with them a scroll on its way to a file.
   const latest = useRef({ renderHeader, onActive });
   latest.current = { renderHeader, onActive };
   const header = useCallback((item: CodeViewItem<undefined>) => latest.current.renderHeader(item.id), []);
   const scrolled = useCallback((top: number, viewer: { getTopForItem(id: string): number | undefined }) => {
-    if (!latest.current.onActive) return;
+    if (!latest.current.onActive && !follow.current.on) return;
     cancelAnimationFrame(frame.current);
     frame.current = requestAnimationFrame(() => {
       let active = ids.current[0];
@@ -260,8 +270,9 @@ function Files({ items, layout, wrap, dark, jump, onActive, renderHeader }: View
         active = id;
       }
       if (active) latest.current.onActive?.(active);
+      if (active) follow.current.moved(active);
     });
-  }, []);
+  }, [follow]);
 
   return (
     <CodeView

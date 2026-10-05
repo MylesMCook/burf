@@ -179,6 +179,8 @@ function hit(source: DragSource, x: number, y: number): Target | undefined {
   const shown = current ? spaces[current] : undefined;
   const tab = shown?.tabs.find((t) => t.id === shown.active);
   if (!area || !tab || x < area.left || x > area.right || y < area.top || y > area.bottom) return undefined;
+  // A Compare tab is its two sides: nothing joins it, and it joins nothing.
+  if (tab.compare || (source.kind === "tab" && own?.tabs.find((t) => t.id === source.tab)?.compare)) return undefined;
   if (source.kind === "tab" && source.key === current && source.tab === tab.id) return undefined;
   if (source.kind === "pane" && (source.key !== current || source.tab !== tab.id)) return undefined;
   const fx = (x - area.left) / area.width;

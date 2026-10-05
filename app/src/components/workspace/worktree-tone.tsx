@@ -2,7 +2,7 @@ import { useMemo } from "react";
 
 import { Tip } from "@/components/tip";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import { assignTones, labelsFor, NARROW, nameFromKey, type Tone, toneVar } from "@/lib/groups";
+import { assignTones, labelsFor, NARROW, nameFromKey, TINY, type Tone, toneVar } from "@/lib/groups";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { usePrefs } from "@/lib/prefs";
@@ -13,8 +13,10 @@ import { groupKeys, onScreenOf, splitKey, useWorkspaces, type WorktreeRef } from
 // are no tones at all, so the app looks as it always has.
 
 // Narrow (lib/groups.ts NARROW): the strip folds the groups you are not in,
-// and pane chips shrink to their dot, the name in a tooltip.
+// and pane chips shrink to their dot and a short name. Tiny (TINY): only
+// the group in front shows its tabs; the others wait as chips.
 export const useNarrow = () => useMediaQuery(NARROW);
+export const useTiny = () => useMediaQuery(TINY);
 
 // useOnScreen is the worktrees on screen, in the strip's order. Joined in
 // the selector, so it only changes when they do.
@@ -72,6 +74,26 @@ export function useLabel(key: string | undefined): { label: string; ref?: Worktr
   }, [key, keys, spaces, boxes]);
 }
 
+// useLabels is useLabel for several worktrees, in order.
+export function useLabels(keys: string[]): string[] {
+  const onScreen = useOnScreen();
+  const spaces = useWorkspaces((s) => s.spaces);
+  const boxes = useStore((s) => s.boxes);
+  const joined = keys.join("\n");
+  return useMemo(() => {
+    const want = joined ? joined.split("\n") : [];
+    const named = [...new Set([...want, ...onScreen])].map((k) => {
+      const ref = spaces[k]?.ref;
+      const { box, path } = splitKey(k);
+      const wt = ref ? undefined : boxes[box]?.locations?.flatMap((l) => (l.worktrees ?? []).map((w) => ({ l, w }))).find((x) => x.w.path === path);
+      const name = ref ? nameOf(ref) : wt ? (wt.w.main ? wt.l.name : wt.w.name) : nameFromKey(k);
+      return { key: k, name, box };
+    });
+    const labels = labelsFor(named);
+    return want.map((k) => labels[k]);
+  }, [joined, onScreen, spaces, boxes]);
+}
+
 // WtDot is a worktree's colour as a dot; nothing while it is alone.
 export function WtDot({ wsKey, className }: { wsKey?: string; className?: string }) {
   const tone = useTone(wsKey);
@@ -80,7 +102,8 @@ export function WtDot({ wsKey, className }: { wsKey?: string; className?: string
 }
 
 // WtChip names a worktree in its colour: on a pane's header in a tab that
-// mixes worktrees. Narrow, it is just the dot, its name in the tooltip.
+// mixes worktrees. Narrow, it is the dot and a short name, the whole name
+// in the tooltip: colour is never all that tells two worktrees apart.
 export function WtChip({ wsKey, className }: { wsKey: string; className?: string }) {
   const tone = useTone(wsKey);
   const { label, ref } = useLabel(wsKey);
@@ -90,12 +113,16 @@ export function WtChip({ wsKey, className }: { wsKey: string; className?: string
   if (narrow)
     return (
       <Tip label={tip} side="bottom" align="start">
-        <span role="img" aria-label={label} className={cn("inline-block size-2 shrink-0 rounded-full", className)} style={{ background: tone }} />
+        <span aria-label={`Pane of ${label}`} className={cn("inline-flex max-w-20 shrink-0 items-center gap-1 font-medium text-[11px]", className)} style={{ color: tone }}>
+          <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: tone }} />
+          <span className="truncate">{label}</span>
+        </span>
       </Tip>
     );
   return (
     <Tip label={tip} side="bottom" align="start">
       <span
+        aria-label={`Pane of ${label}`}
         className={cn("inline-flex h-4.5 max-w-40 shrink-0 items-center gap-1 rounded-md px-1.5 font-medium text-[11px]", className)}
         style={{ background: `color-mix(in oklab, ${tone} 14%, transparent)`, color: tone }}
       >

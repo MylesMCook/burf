@@ -10,7 +10,8 @@ import { PaneActions, PaneIcon, paneLabel } from "@/components/workspace/pane";
 import { RunMenu } from "@/components/workspace/run-menu";
 import { armDrag, StripMarker, useTabDrag } from "@/components/workspace/tab-drag";
 import { TabGroup } from "@/components/workspace/tab-group";
-import { useGroups, useNarrow, WtDot } from "@/components/workspace/worktree-tone";
+import { CompareIcon, useCompareTitle } from "@/components/workspace/compare-view";
+import { useGroups, useLabels, useNarrow, useTiny, WtDot } from "@/components/workspace/worktree-tone";
 import { foldedOf } from "@/lib/groups";
 import { closeTab } from "@/lib/actions";
 import { agentOf, type SessionState, sessionAgent, sessionName, sessionState } from "@/lib/derive";
@@ -32,6 +33,7 @@ export function TabStrip() {
   // tabs are a group; in a narrow window the others fold to their label.
   const groups = useGroups();
   const narrow = useNarrow();
+  const tiny = useTiny();
   const folded = useWorkspaces((s) => s.folded);
   const foldedNow = useMemo(() => new Set(foldedOf({ shown: groups, current: key }, folded, narrow)), [groups, key, folded, narrow]);
   const grouped = groups.length > 1;
@@ -74,8 +76,10 @@ export function TabStrip() {
     const tab = ws?.active ? el?.querySelector<HTMLElement>(`[data-tab="${CSS.escape(ws.active)}"]`) : null;
     if (!el || !tab) return;
     const reveal = () => {
-      const start = tab.offsetLeft;
-      const end = start + tab.offsetWidth;
+      // Its group's label too, when the two fit.
+      const group = tab.closest<HTMLElement>("[data-group]");
+      const start = group && tab.offsetLeft + tab.offsetWidth - group.offsetLeft <= el.clientWidth ? group.offsetLeft : tab.offsetLeft;
+      const end = tab.offsetLeft + tab.offsetWidth;
       if (start < el.scrollLeft) el.scrollLeft = start;
       else if (end > el.scrollLeft + el.clientWidth) el.scrollLeft = end - el.clientWidth;
       measure();
@@ -103,10 +107,13 @@ export function TabStrip() {
           if (!el || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
           el.scrollLeft += e.deltaY;
         }}
+        role="tablist"
+        aria-label="Tabs"
+        onKeyDown={stripKeys}
         className={cn("relative flex min-w-0 items-stretch overflow-x-auto [scrollbar-width:none]", fade)}
       >
         {/* Narrow, only the group in front scrolls here; the others wait as
-            labels beside it, always in view. */}
+            labels beside it, always in view (tiny, as chips). */}
         {grouped &&
           groups.filter((g) => !narrow || g === key).map((g) => <TabGroup key={g} wsKey={g} front={g === key} folded={foldedNow.has(g)} many={grouped} />)}
         {!grouped &&
@@ -127,11 +134,11 @@ export function TabStrip() {
         <StripMarker />
       </div>
       {grouped && narrow && (
-        <div className="flex shrink-0 items-stretch border-l">
+        <div className="flex shrink-0 items-stretch border-l" role="group" aria-label="Other tab groups" onKeyDown={stripKeys}>
           {groups
             .filter((g) => g !== key)
             .map((g) => (
-              <TabGroup key={g} wsKey={g} front={false} folded many={grouped} />
+              <TabGroup key={g} wsKey={g} front={false} folded many={grouped} compact={tiny} />
             ))}
         </div>
       )}
@@ -174,7 +181,7 @@ export function TabStrip() {
           <RunMenu />
           {key && active && lone && (
             <div className="flex items-center border-l pl-1">
-              <PaneActions wsKey={key} tab={active.id} pane={lone} />
+              <PaneActions wsKey={key} tab={active.id} pane={lone} compact={tiny} />
             </div>
           )}
         </div>
@@ -183,6 +190,20 @@ export function TabStrip() {
   );
 }
 
+
+// stripKeys moves the keyboard along the strip: ← and → (Home, End) go
+// between its tabs and its groups' labels, in order; Enter or Space on a tab
+// shows it.
+function stripKeys(e: React.KeyboardEvent<HTMLElement>) {
+  const el = e.target as HTMLElement;
+  if (!el.matches("[data-tab], [data-group-label]") || !["ArrowLeft", "ArrowRight", "Home", "End"].includes(e.key)) return;
+  const all = [...document.querySelectorAll<HTMLElement>("[data-tab-bar] [data-tab], [data-tab-bar] [data-group-label]")];
+  const i = all.indexOf(el);
+  const to = e.key === "Home" ? all[0] : e.key === "End" ? all[all.length - 1] : all[i + (e.key === "ArrowRight" ? 1 : -1)];
+  if (!to) return;
+  e.preventDefault();
+  to.focus();
+}
 
 interface TabProps {
   tab: WsTab;
@@ -203,8 +224,12 @@ export function TabButton({ tab, wsKey, tone, active, onActivate, onClose, onDra
   const boxes = useStore((s) => s.boxes);
   const status = useStore((s) => s.status);
   const panes = leaves(tab.root);
-  // A tab with panes of other worktrees wears each one's colour as a dot.
+  // A tab with panes of other worktrees wears each one's colour as a dot,
+  // and names the others: colour is never all that tells them apart.
   const owners = mixed(tab.root, wsKey) ? worktreesOf(tab.root, wsKey) : [];
+  const names = useLabels(owners.length ? owners : [wsKey]);
+  // A Compare tab is named after its two worktrees.
+  const compared = useCompareTitle(tab);
 
   // A tab is named after its most important pane: an agent that needs you,
   // then one working, then the focused pane.
@@ -223,9 +248,11 @@ export function TabButton({ tab, wsKey, tone, active, onActivate, onClose, onDra
   const offline = c.kind === "terminal" && status?.boxes.find((b) => b.name === c.box)?.state !== "online" && !!status;
   // Named as everywhere else (sessionName): the session's title, or its
   // agent's name; the agent and the session id are in the tooltip.
-  const title = lead.s ? sessionName(lead.s, { sessions: c.kind === "terminal" ? boxes[c.box]?.sessions : undefined }) : (c.kind === "terminal" && c.title) || paneLabel(c, lead.agent);
+  const title = compared ?? (lead.s ? sessionName(lead.s, { sessions: c.kind === "terminal" ? boxes[c.box]?.sessions : undefined }) : (c.kind === "terminal" && c.title) || paneLabel(c, lead.agent));
   const secondary = lead.s ? sessionAgent(lead.s) : "";
-  const session = c.kind === "terminal" && lead.s ? { box: c.box, name: lead.s.name } : undefined;
+  const session = c.kind === "terminal" && lead.s && !tab.compare ? { box: c.box, name: lead.s.name } : undefined;
+  // Read aloud with its worktrees: "Claude Code, checkout-fix, with search-perf".
+  const spoken = compared ? `Compare ${compared}` : [title, names[0], ...(names.length > 1 ? [`with ${names.slice(1).join(" and ")}`] : [])].join(", ");
   const [editingHere, setEditing] = useState(false);
   // Or asked for from the pane's menu.
   const asked = useRenaming((s) => !!session && s.key === `${session.box}/${session.name}`);
@@ -237,8 +264,20 @@ export function TabButton({ tab, wsKey, tone, active, onActivate, onClose, onDra
       onPointerDown={(e) => !editing && onDrag(e, title, <PaneIcon content={c} agent={lead.agent} className="size-3" />)}
       data-tab={tab.id}
       data-ws={wsKey}
+      role="tab"
+      tabIndex={active ? 0 : -1}
+      aria-selected={active}
+      aria-label={spoken}
+      onKeyDown={(e) => {
+        if (e.target !== e.currentTarget || editing) return;
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onActivate();
+        }
+      }}
       className={cn(
-        "group relative flex h-full min-w-24 max-w-56 shrink-0 cursor-default items-center gap-1.5 border-r pr-1 pl-3 text-xs data-popup-open:bg-background/60",
+        "group relative flex h-full min-w-24 shrink-0 cursor-default items-center gap-1.5 border-r pr-1 pl-3 text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset data-popup-open:bg-background/60",
+        tab.compare ? "max-w-72" : "max-w-56",
         active ? "bg-background text-foreground" : "text-muted-foreground hover:bg-background/40 hover:text-foreground",
         dragged && "opacity-50",
       )}
@@ -265,7 +304,7 @@ export function TabButton({ tab, wsKey, tone, active, onActivate, onClose, onDra
       ) : lead.state && lead.state !== "idle" ? (
         <StateGlyph state={lead.state} className="size-3" />
       ) : null}
-      <PaneIcon content={c} agent={lead.agent} className="size-3" />
+      {tab.compare ? <CompareIcon aria-hidden className="size-3 shrink-0" /> : <PaneIcon content={c} agent={lead.agent} className="size-3" />}
       {editing && session ? (
         <TitleInput
           initial={lead.s?.title ?? ""}
@@ -279,7 +318,11 @@ export function TabButton({ tab, wsKey, tone, active, onActivate, onClose, onDra
       ) : (
         <span className="min-w-0 truncate">{title}</span>
       )}
-      {panes.length > 1 && <span className="shrink-0 text-[10px] text-muted-foreground tabular-nums">+{panes.length - 1}</span>}
+      {panes.length > 1 && !tab.compare && (owners.length > 1 ? (
+        <span className="max-w-24 shrink-0 truncate text-[10px] text-muted-foreground">+ {names.slice(1).join(", ")}</span>
+      ) : (
+        <span className="shrink-0 text-[10px] text-muted-foreground tabular-nums">+{panes.length - 1}</span>
+      ))}
       <button
         type="button"
         aria-label={`Close ${title}`}
@@ -300,7 +343,7 @@ export function TabButton({ tab, wsKey, tone, active, onActivate, onClose, onDra
         {editing ? (
           tab$
         ) : (
-          <Tip label={c.kind === "terminal" ? [title, secondary, c.session].filter(Boolean).join(" · ") : undefined} side="bottom" align="start">
+          <Tip label={tab.compare ? `Compare ${title}` : c.kind === "terminal" ? [title, secondary, c.session].filter(Boolean).join(" · ") : undefined} side="bottom" align="start">
             {tab$}
           </Tip>
         )}
@@ -319,7 +362,7 @@ export function TabButton({ tab, wsKey, tone, active, onActivate, onClose, onDra
           </ContextMenuItem>
         )}
         {session && <ContextMenuSeparator />}
-        {onSplit && (
+        {onSplit && !tab.compare && (
           <>
             <ContextMenuItem onClick={() => onSplit("row")}>
               <SquareSplitHorizontalIcon />
@@ -331,13 +374,13 @@ export function TabButton({ tab, wsKey, tone, active, onActivate, onClose, onDra
             </ContextMenuItem>
           </>
         )}
-        {panes.length > 1 && (
+        {panes.length > 1 && !tab.compare && (
           <ContextMenuItem onClick={onUnsplit}>
             <RowsIcon />
             <span className="flex-1">Move panes to their own tabs</span>
           </ContextMenuItem>
         )}
-        {(onSplit || panes.length > 1) && <ContextMenuSeparator />}
+        {(onSplit || panes.length > 1) && !tab.compare && <ContextMenuSeparator />}
         <ContextMenuItem onClick={onClose}>
           <XIcon />
           <span className="flex-1">Close tab</span>
