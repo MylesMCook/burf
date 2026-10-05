@@ -1,4 +1,4 @@
-import type { ToolDetail, CrewMember, TranscriptItem } from "@/lib/transcript";
+import type { Artifact, ToolDetail, CrewMember, TranscriptItem } from "@/lib/transcript";
 import { keyOf, useConversations } from "@/lib/conversation-store";
 import { mockNotice } from "@/lib/chat-controls";
 
@@ -119,7 +119,27 @@ export function seedTranscript(box: string, session: string, state: string, work
       { id: "s2", name: "Explore: fixtures", kind: "subagent", agent: "claude", state: "finished", doing: "Found 2 stale fixtures", since: t - 64_000, until: t - 18_000 },
     ]);
   }
-  if (state === "finished") items.push({ kind: "text", id: id(), text: "All green. The branch is ready for review." });
+  // Two finished sessions published pages on claude.ai: one, and eight.
+  const pages = MOCK_ARTIFACTS[session];
+  if (pages) {
+    const t = Date.now();
+    const list: Artifact[] = [];
+    for (const [i, p] of pages.entries()) {
+      const at = t - p.ago * 60_000;
+      const tool = `mock-artifact-${session}-${i}`;
+      const url = `https://claude.ai/artifact/${p.slug}`;
+      const before = list.findIndex((a) => a.url === url);
+      const updated = before >= 0;
+      if (updated) list.splice(before, 1);
+      list.push({ url, title: p.title, description: p.description ?? (updated ? pages.find((x) => x.slug === p.slug)?.description : undefined), file: "index.html", at, tool, updated });
+      if (p.said) items.push({ kind: "text", id: id(), text: p.said });
+      items.push({ kind: "tools", id: id(), verb: "Run", done: true, items: [{ verb: "Run", target: p.run ?? "pnpm bench search", id: `mock-run-${i}` }] });
+      items.push({ kind: "artifact", id: id(), tool, text: p.title, url, description: list[list.length - 1].description, file: "index.html", done: true, updated });
+    }
+    const key = keyOf(box, session);
+    useConversations.setState((s) => (s.artifacts[key] ? s : { artifacts: { ...s.artifacts, [key]: list } }));
+  }
+  if (state === "finished") items.push({ kind: "text", id: id(), text: pages ? `All green. ${pages.length === 1 ? "The page above has the coverage" : "The pages above have the numbers and screenshots"}; the branch is ready for review.` : "All green. The branch is ready for review." });
   // One finished session shows a notice card (chat-controls).
   const notice = mockNotice(session);
   if (notice) items.push(notice);
@@ -127,6 +147,23 @@ export function seedTranscript(box: string, session: string, state: string, work
   useConversations.setState((s) => (s.items[key] ? s : { items: { ...s.items, [key]: items } }));
   return items;
 }
+
+// The demo's published pages, oldest first: a slug published twice is
+// updated. ago is in minutes.
+const MOCK_ARTIFACTS: Record<string, { slug: string; title: string; description?: string; ago: number; said?: string; run?: string }[]> = {
+  "order-export-claude-3": [{ slug: "ExampleExportTests", title: "Export job test coverage", description: "Which export paths the new tests cover, with the two still missing", ago: 82, said: "I’ll put the coverage in a page you can share.", run: "pnpm test export --coverage" }],
+  "search-perf-claude": [
+    { slug: "ExampleSearchBaseline", title: "Search latency baseline", description: "p50 and p95 for the ten slowest queries before any change", ago: 92, said: "First, a baseline to compare against." },
+    { slug: "ExampleQueryPlans", title: "Query plans, before", description: "EXPLAIN ANALYZE for each slow query, with the sequential scans marked", ago: 86, run: "pnpm db:explain search" },
+    { slug: "ExampleIndexOptions", title: "Index options compared", description: "Trigram, full-text and a covering index, side by side", ago: 71, said: "Three ways to index it; here they are side by side." },
+    { slug: "ExampleSearchBaseline", title: "Search latency: before and after", ago: 54, said: "With the trigram index the baseline page now has both runs." },
+    { slug: "ExampleCacheHits", title: "Result cache hit rate", description: "Hit rate by query shape over a replayed hour of traffic", ago: 47, run: "pnpm replay traffic --hour" },
+    { slug: "ExampleTypeahead", title: "Typeahead debounce trial", description: "How often typeahead queries fire at 80, 150 and 250 ms", ago: 40 },
+    { slug: "ExampleSearchScreens", title: "Search page screenshots", description: "Desktop and phone, light and dark, before and after", ago: 33, run: "pnpm e2e search --screenshots" },
+    { slug: "ExampleRollout", title: "Rollout checklist", description: "Migration order, the flag, and what to watch on the dashboard", ago: 29 },
+    { slug: "ExampleSlowLog", title: "Slow query log, last 24 hours", description: "Every search query over 200 ms since the index went in", ago: 24, said: "Last, the slow log since the change.", run: "pnpm db:slowlog --since 24h" },
+  ],
+};
 
 // What the demo's tool calls show when opened, as a box would send them.
 const DETAILS: Record<string, ToolDetail> = {

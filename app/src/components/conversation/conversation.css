@@ -3,6 +3,9 @@
 
 .cv-in { animation: cv-in 360ms cubic-bezier(0.22, 1, 0.36, 1) both; }
 @keyframes cv-in { from { opacity: 0; transform: translateY(4px); } }
+/* A card brought into view from elsewhere (an artifact's "Show in chat"). */
+.cv-flash, .cv-still .cv-in.cv-flash { animation: cv-flash 1.8s ease-out; }
+@keyframes cv-flash { 0%, 45% { background-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--ring) 80%, transparent); } }
 
 /* A group that folds to nothing. */
 .cv-fold { display: grid; grid-template-rows: 1fr; transition: grid-template-rows 320ms cubic-bezier(0.22, 1, 0.36, 1), opacity 200ms ease; }

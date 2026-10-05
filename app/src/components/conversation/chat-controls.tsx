@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { type KeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
+import { ArtifactsChip, useArtifacts } from "@/components/conversation/artifacts";
 import { NoticeCard } from "@/components/conversation/notice-card";
 import { TodoCard } from "@/components/conversation/todo-card";
 import { toastError } from "@/components/error-note";
@@ -107,6 +108,9 @@ export function ChatControls({ box, session, agent, state, stateSince, dir, who,
   };
 
   const docked = useDockedNotices({ box, session, dir, state, ended, items, screenLimit: controls?.limit });
+  // The pages the agent published stay listed after it has ended.
+  const published = useArtifacts(box, session).length > 0;
+  const chips = !ended && (agent === "claude" || agent === "codex");
 
   return (
     <div data-chat-controls>
@@ -118,14 +122,19 @@ export function ChatControls({ box, session, agent, state, stateSince, dir, who,
       {!ended && sig?.retrying && working && <Retrying r={sig.retrying} />}
       {!ended && !!sig?.todos?.length && <TodoCard todos={sig.todos} session={keyOf(box, session)} working={working} />}
       <div onKeyDown={onKeyDown}>{children}</div>
-      {!ended && (agent === "claude" || agent === "codex") && (
+      {(chips || published) && (
         <div className="mt-1.5 flex min-h-6 flex-wrap items-center gap-x-0.5 gap-y-1 px-0.5">
-          <ModeChip box={box} session={session} agent={agent} sig={sig} screenMode={controls?.mode} onSwitched={refresh} waiting={state === "waiting"} supported={supported} who={who} />
-          <ModelChip box={box} session={session} agent={agent} sig={sig} screenEffort={controls?.effort} busy={working || state === "waiting"} items={items} />
-          <ContextChip box={box} session={session} sig={sig} busy={working || state === "waiting"} />
-          <BackgroundChip box={box} session={session} jobs={sig?.background} who={who} />
+          {chips && agent && (
+            <>
+              <ModeChip box={box} session={session} agent={agent} sig={sig} screenMode={controls?.mode} onSwitched={refresh} waiting={state === "waiting"} supported={supported} who={who} />
+              <ModelChip box={box} session={session} agent={agent} sig={sig} screenEffort={controls?.effort} busy={working || state === "waiting"} items={items} />
+              <ContextChip box={box} session={session} sig={sig} busy={working || state === "waiting"} />
+              <BackgroundChip box={box} session={session} jobs={sig?.background} who={who} />
+            </>
+          )}
           <span className="flex-1" />
-          {working && supported && (
+          <ArtifactsChip box={box} session={session} who={who} className={chip} />
+          {chips && working && supported && (
             <Tip
               label={
                 <span className="flex items-center gap-1.5">

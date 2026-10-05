@@ -30,7 +30,12 @@ export type TranscriptItem =
   // Something the person should know, with one next step: an API error, a
   // usage or rate limit (resets: when, in ms), a hook that failed, a turn
   // they interrupted, an agent that ended (components/conversation/notice-card).
-  | { kind: "notice"; id: string; notice: NoticeKind; level?: "error" | "warning" | "info"; text: string; resets?: number };
+  | { kind: "notice"; id: string; notice: NoticeKind; level?: "error" | "warning" | "info"; text: string; resets?: number }
+  // A page the agent published on claude.ai (Claude Code's Artifact tool):
+  // text is its title, url its link once the result says it, file what was
+  // published. Not done yet: still publishing. error: the publish failed.
+  // updated: it was published before.
+  | { kind: "artifact"; id: string; tool?: string; text: string; url?: string; description?: string; file?: string; done?: boolean; error?: boolean; updated?: boolean };
 
 export type NoticeKind = "api_error" | "limit" | "rate_limit" | "auth" | "billing" | "hook" | "interrupted" | "stop_failure" | "exited";
 
@@ -57,6 +62,19 @@ export interface CrewMember {
   since: number;
   // When it came back, so its time stops.
   until?: number;
+}
+
+// One page the agent published, as the conversation lists them: the latest
+// publish of each, newest last (internal/transcript/artifacts.go). tool is
+// the call that last published it; at, when (ms).
+export interface Artifact {
+  url: string;
+  title: string;
+  description?: string;
+  file?: string;
+  at: number;
+  tool: string;
+  updated?: boolean;
 }
 
 // The summary line a finished group of tool calls folds to: "Read 5 files",

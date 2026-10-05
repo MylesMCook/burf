@@ -5,7 +5,7 @@ import { keyOf, useConversations } from "@/lib/conversation-store";
 import { useEventLog } from "@/lib/events";
 import { choicesIn, type Choice } from "@/lib/screen";
 import { useStore } from "@/lib/store";
-import type { CrewMember, TranscriptItem } from "@/lib/transcript";
+import type { Artifact, CrewMember, TranscriptItem } from "@/lib/transcript";
 
 // The conversation of a session on a box that streams transcripts (its
 // info lists "transcript"): GET sessions/{name}/transcript?since=N returns
@@ -22,6 +22,8 @@ export interface TranscriptResult {
   truncated?: boolean;
   // When the agent last wrote to its record (ms).
   last?: number;
+  // The pages it published on claude.ai, newest last (newer boxes only).
+  artifacts?: Artifact[];
 }
 
 export type FeedState = "loading" | "ready" | "none" | "unsupported" | "error";
@@ -78,6 +80,7 @@ export function useTranscriptFeed(box: string, session: string, dir: string | un
         if (r.items?.length) useConversations.getState().merge(key, r.items);
         useConversations.getState().setCrew(key, r.crew ?? []);
         if (r.last) useConversations.getState().setLast(key, r.last);
+        useConversations.getState().setArtifacts(key, r.artifacts ?? []);
         next.current = r.next ?? next.current;
         setState("ready");
       } catch (err) {

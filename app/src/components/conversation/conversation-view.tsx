@@ -18,6 +18,7 @@ import { NoticeCard } from "@/components/conversation/notice-card";
 import { CommandItem } from "@/components/conversation/command-item";
 import { ChatList } from "@/components/conversation/chat-list";
 import { ChatSearch, plainMarkdown, type SearchEntry } from "@/components/conversation/chat-search";
+import { ArtifactCard, ArtifactJumper } from "@/components/conversation/artifacts";
 import { PromptActions, PromptActionsContext, type PromptContext } from "@/components/conversation/prompt-actions";
 import { HelperSheetHost, openHelper } from "@/components/conversation/subagent-view";
 import { isMock } from "@/hooks/use-berth-connection";
@@ -126,7 +127,14 @@ export function ConversationView({ items: live, onAnswer, edits, who = "The agen
           repin={sent}
           onNearTop={nearTop}
         >
-          {chat ? (api) => <ChatSearch api={api} entries={entries} onReveal={setReveal} /> : undefined}
+          {chat
+            ? (api) => (
+                <>
+                  <ChatSearch api={api} entries={entries} onReveal={setReveal} />
+                  <ArtifactJumper api={api} chat={key} rows={blocks} older={history ? older : undefined} onLoadOlder={nearTop} />
+                </>
+              )
+            : undefined}
         </ChatList>
         {chat && <HelperSheetHost />}
       </PromptActionsContext.Provider>
@@ -156,6 +164,8 @@ function estimateBlock(b: Block): number {
       return 64;
     case "notice":
       return 84;
+    case "artifact":
+      return 54;
     default:
       return 32;
   }
@@ -194,6 +204,8 @@ function searchable(it: TranscriptItem): string {
       return it.text;
     case "ask":
       return it.detail;
+    case "artifact":
+      return [it.text, it.description].filter(Boolean).join("\n");
   }
   return "";
 }
@@ -264,7 +276,7 @@ function foldTurns(items: TranscriptItem[]): Block[] {
     const steps: TranscriptItem[] = [];
     const shown: TranscriptItem[] = [];
     turn.forEach((it, i) => {
-      if ((answer >= 0 && i >= answer && it.kind === "text") || it.kind === "edit" || it.kind === "ask" || it.kind === "thinking" || it.kind === "notice") shown.push(it);
+      if ((answer >= 0 && i >= answer && it.kind === "text") || it.kind === "edit" || it.kind === "artifact" || it.kind === "ask" || it.kind === "thinking" || it.kind === "notice") shown.push(it);
       else steps.push(it);
     });
     if (steps.length) out.push({ kind: "fold", id: `fold-${steps[0].id}`, steps, live: working });
@@ -380,6 +392,8 @@ function ItemBody({ it, onAnswer, edits, who }: { it: TranscriptItem; onAnswer(i
       );
     case "command":
       return <CommandItem it={it} who={who} />;
+    case "artifact":
+      return <ArtifactCard it={it} />;
     case "ask":
       return it.structured ? <Permission it={it} onAnswer={onAnswer} who={who} /> : <Ask it={it} onAnswer={onAnswer} />;
   }
