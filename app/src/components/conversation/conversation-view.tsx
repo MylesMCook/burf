@@ -349,7 +349,7 @@ function ItemBody({ it, onAnswer, edits, who }: { it: TranscriptItem; onAnswer(i
     case "text":
       return it.live ? (
         <div className="cv-live" aria-description="As its screen shows it: its record has these words a moment later">
-          <Markdown text={it.text} />
+          <Markdown text={it.text} copy={false} />
         </div>
       ) : (
         <Markdown text={it.text} />
