@@ -244,7 +244,7 @@ function AskedBy({ text }: { text: string }) {
   const [open, setOpen] = useState(false);
   const long = text.length > 320 || text.split("\n").length > 6;
   return (
-    <div className="mb-5 rounded-xl border bg-muted/40 px-4 py-3">
+    <div className="mb-5 rounded-lg border bg-muted/40 px-4 py-3">
       <div className="mb-1.5 font-medium text-muted-foreground text-xs">Asked by the agent</div>
       <div className={cn("relative text-[13.5px]", long && !open && "max-h-32 overflow-hidden")}>
         <Markdown text={text} copy={false} />

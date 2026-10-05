@@ -62,7 +62,7 @@ function OutputCard({ typed, shell, text, markdown, error }: { typed: string; sh
   const lines = text ? text.split("\n").length : 0;
   const [open, setOpen] = useState(lines <= LONG);
   return (
-    <div className="cv-in overflow-hidden rounded-xl border bg-muted/32">
+    <div className="cv-in overflow-hidden rounded-lg border bg-muted/32">
       <div className="flex min-w-0 items-center gap-2 border-b bg-muted/48 px-3 py-1.5 text-xs">
         {shell ? <TerminalIcon className="size-3.5 shrink-0 text-muted-foreground" /> : <SlashIcon className="size-3.5 shrink-0 text-muted-foreground" />}
         <span data-selectable className="min-w-0 truncate font-medium font-mono text-[12.5px]">

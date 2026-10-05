@@ -75,3 +75,9 @@
 /* Words read off the agent's screen before its record has them: the reply
    as it will read, a little faded, so swapping in the record moves nothing. */
 .cv-live { opacity: 0.75; }
+
+/* Cards in the chat (an approval, a question form) take the composer's
+   radius, not coss-ui Card's rounded-2xl, so a stack of them and the reply
+   box below line up. */
+.cv-in[data-slot="card"] { border-radius: var(--radius-lg); }
+.cv-in[data-slot="card"]::before { border-radius: calc(var(--radius-lg) - 1px); }
