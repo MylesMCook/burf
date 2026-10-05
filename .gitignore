@@ -103,3 +103,7 @@ design/decal/
 
 # Logs a test or script writes beside the code
 internal/**/*.log
+
+# The launch film is hosted outside the repository (site/README.md, "The film");
+# a local copy for previewing the lightbox lives here.
+/site/film/

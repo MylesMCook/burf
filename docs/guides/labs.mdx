@@ -37,12 +37,31 @@ each with its own model. Which models are offered is set per agent: see
 Agent panes get a Terminal | Conversation switch. The conversation is the
 agent's own transcript as a calm list: what you asked, its replies, tool
 calls folded into groups ("Read 5 files"), edits with line counts, and the
-helpers it sent out, which also show as **Crew** in the floating panel. A
-question shows as buttons for its options; answering types the option into
-the agent. A permission reads from Claude Code's own hook ("Claude wants to
+helpers it sent out, which also show as **Crew** in the floating panel.
+
+When Claude asks with its own form (AskUserQuestion, one to four questions
+at once), the chat shows the whole form: each question with its options, one
+pick or several, room for your own words, **Back** and **Next**, and a review
+with **Submit**. The box fills in Claude's form key by key, checking its
+screen as it goes; if anything doesn't match, it stops and Claude's screen
+opens under the chat to finish there. Answers stay in the conversation as
+what you picked. Another agent's question shows as buttons for its options,
+and answering types the option into the agent.
+
+<Shot name="chat-question" alt="A conversation: Claude asks 2 questions in a form, Key, Retries and Review. The first, where the idempotency key should come from, has three options with descriptions, the first picked, and a field for something else; Back and Next below. Under it the folded task list and the reply box, over the chart contours background" caption="Claude's questions in the chat, over the Chart contours background (Settings → Appearance → Chat background)." />
+
+A permission reads from Claude Code's own hook ("Claude wants to
 run `pnpm test`", with its reason), with **Allow**, **Always allow** when the
 agent offers it, and **Deny**, matched to the options on its screen; agents
 without hooks fall back to reading the screen.
+
+A page Claude publishes on claude.ai with its Artifact tool shows as a card
+where it happened, with **Open**. A chip at the right of the reply box's
+controls ("8 artifacts") lists them all, newest first: open one, copy its
+link, or show it in the chat. A page published again is marked
+**Updated**.
+
+<Shot name="chat-artifacts" alt="A finished conversation with a card for each page Claude published (Published or Updated, its title and description, Open), and the 8 artifacts chip open above the reply box, listing them newest first with how long ago" />
 
 An edit opens to the file's current diff in the worktree (folded until you
 open it), with **Open in Review**. Hover a line to comment on it; comments
@@ -215,6 +234,8 @@ its Diff, or a new terminal or agent. Drag a worktree from the sidebar onto
 a pane's edge to split its agent in, or drop a tab from another group into
 a pane. Each pane in such a tab wears a chip with its worktree's name and
 colour, and the focus line takes that colour.
+
+<Shot name="tab-groups" alt="The tab strip with two groups: checkout-fix (its agent's tab) and search-perf in its colour, in front. The search-perf tab has two panes stacked: search-perf's agent as a conversation, with a search-perf chip, and below it checkout-fix's Next.js service terminal, with a checkout-fix chip" caption="Two groups in the strip. checkout-fix's Next.js tab, dropped on the bottom edge of search-perf's pane, runs below it; each pane wears its worktree's chip." />
 
 **Where things happen.** The worktree you are acting in is the focused
 pane's. The breadcrumb, Run, the + menu, ⌘T, ⌘⇧B, the palette and plugins
