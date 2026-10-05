@@ -311,6 +311,21 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
 
   const action = from ? (from.kind === "review" ? "Start review" : "Hand off") : noAgent ? "Create worktree" : attempts ? `Try ${picks.length} ways` : "Start";
 
+  // Trust alone: the repository's config runs from the next worktree on,
+  // with or without a task typed yet.
+  const trustOnly = async () => {
+    if (!pendingTrust || busy) return;
+    setBusy(true);
+    setError(undefined);
+    try {
+      await trustRepo(box, locName, pendingTrust);
+    } catch (err) {
+      setError(plainError(err, { box }));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const submit = async (trustFirst = false) => {
     if (blocker || busy) return;
     setBusy(true);
@@ -509,10 +524,20 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
                   worktree is made but none of this runs.
                 </p>
                 <RepoWants wants={pendingTrust.wants} />
-                <div className="mt-2 flex gap-2">
-                  <Button size="xs" variant="outline" disabled={!!blocker || busy} onClick={() => void submit(true)}>
-                    Trust and {action.toLowerCase()}
+                <div className="mt-2 flex items-center gap-2">
+                  {/* Trusting needs no task; starting does, and says so
+                      rather than sitting there disabled. */}
+                  <Button size="xs" variant="outline" disabled={busy} onClick={() => void trustOnly()}>
+                    Trust
                   </Button>
+                  <Tip label={blocker ?? `Trust it, then ${action.toLowerCase()}`}>
+                    <span>
+                      <Button size="xs" variant="ghost" disabled={!!blocker || busy} onClick={() => void submit(true)}>
+                        Trust and {action.toLowerCase()}
+                      </Button>
+                    </span>
+                  </Tip>
+                  {blocker && <span className="text-muted-foreground text-xs">{blocker}</span>}
                 </div>
               </AlertDescription>
             </Alert>
