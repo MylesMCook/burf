@@ -40,6 +40,43 @@ const SCOPE_HELP: Record<Scope, string> = {
   all: "Commits and uncommitted work since the default branch",
 };
 
+// useWorktreeWatch calls onChange when the worktree's branch or commit moves
+// (and, with dirty, its uncommitted work): an agent mid-turn checks out,
+// commits and rebases without any event saying so. It looks every 15s while
+// the window is shown, and at once on coming back to it.
+function useWorktreeWatch(run: (command: string, timeout?: string) => Promise<{ output: string }>, onChange: () => void, dirty = false) {
+  const changed = useRef(onChange);
+  changed.current = onChange;
+  useEffect(() => {
+    let live = true;
+    let last: string | undefined;
+    let timer = 0;
+    const cmd = `git symbolic-ref -q --short HEAD; git rev-parse -q --verify HEAD${dirty ? "; git status --porcelain 2>/dev/null | cksum" : ""}`;
+    const look = async () => {
+      window.clearTimeout(timer);
+      if (!document.hidden) {
+        try {
+          const { output } = await run(cmd, "15s");
+          if (!live) return;
+          if (last !== undefined && output !== last) changed.current();
+          last = output;
+        } catch {
+          // The box is away; the panel says so when it loads.
+        }
+      }
+      if (live) timer = window.setTimeout(() => void look(), 15_000);
+    };
+    void look();
+    const back = () => void look();
+    window.addEventListener("focus", back);
+    return () => {
+      live = false;
+      window.clearTimeout(timer);
+      window.removeEventListener("focus", back);
+    };
+  }, [run, dirty]);
+}
+
 // The app's light or dark look, which follows .dark on <html>.
 function useDark() {
   const [dark, setDark] = useState(() => document.documentElement.classList.contains("dark"));
@@ -83,6 +120,8 @@ function DiffPanel({ berth, box, location, worktree, path, main }: WorktreePanel
   // An agent finishing, or a terminal here ending, likely changed the diff.
   useEvent("agent.finished", (e) => e.box === box && e.data?.path === path && refresh());
   useEvent("session.stopped", (e) => e.box === box && refresh());
+  // A branch switched, a commit or a rebase mid-turn changes it too.
+  useWorktreeWatch(run, refresh, scope !== "branch");
 
   const result = load.state === "ready" ? load.value : undefined;
   const ok = result?.kind === "ok" ? result : undefined;

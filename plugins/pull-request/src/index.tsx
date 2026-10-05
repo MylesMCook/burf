@@ -30,7 +30,7 @@ import {
   Textarea,
   cn,
 } from "@berth/plugin/ui";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { type Check, checkState, type CheckState, FIELDS, type Outcome, type PR, plainText, quote, readOutcome, since } from "./gh";
 
@@ -41,6 +41,43 @@ export default definePlugin((berth) => {
   berth.addWorktreePanel({ id: "pr", title: "Pull request", icon: "GitPullRequest", Component: PullRequestPanel });
   berth.addCommand({ id: "open", title: "Show this worktree's pull request", group: "Git", run: () => berth.openPanel("pr") });
 });
+
+// useWorktreeWatch calls onChange when the worktree's branch or commit moves
+// (and, with dirty, its uncommitted work): an agent mid-turn checks out,
+// commits and rebases without any event saying so. It looks every 15s while
+// the window is shown, and at once on coming back to it.
+function useWorktreeWatch(run: (command: string, timeout?: string) => Promise<{ output: string }>, onChange: () => void, dirty = false) {
+  const changed = useRef(onChange);
+  changed.current = onChange;
+  useEffect(() => {
+    let live = true;
+    let last: string | undefined;
+    let timer = 0;
+    const cmd = `git symbolic-ref -q --short HEAD; git rev-parse -q --verify HEAD${dirty ? "; git status --porcelain 2>/dev/null | cksum" : ""}`;
+    const look = async () => {
+      window.clearTimeout(timer);
+      if (!document.hidden) {
+        try {
+          const { output } = await run(cmd, "15s");
+          if (!live) return;
+          if (last !== undefined && output !== last) changed.current();
+          last = output;
+        } catch {
+          // The box is away; the panel says so when it loads.
+        }
+      }
+      if (live) timer = window.setTimeout(() => void look(), 15_000);
+    };
+    void look();
+    const back = () => void look();
+    window.addEventListener("focus", back);
+    return () => {
+      live = false;
+      window.clearTimeout(timer);
+      window.removeEventListener("focus", back);
+    };
+  }, [run, dirty]);
+}
 
 function PullRequestPanel({ berth, box, location, worktree, main, path }: WorktreePanelProps) {
   const where = worktreeLocation({ location, worktree, main });
@@ -66,6 +103,8 @@ function PullRequestPanel({ berth, box, location, worktree, main, path }: Worktr
     return () => clearTimeout(t);
   }, [outcome, refresh]);
   useEvent("flow.finished", refresh);
+  // A new branch has its own PR (or none); a push moves this one.
+  useWorktreeWatch(run, refresh);
 
   if (!outcome) return <Loading />;
   switch (outcome.kind) {
