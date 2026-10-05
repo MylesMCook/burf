@@ -26,6 +26,11 @@ type ToolDetail struct {
 	// whole new file in New.
 	Old string `json:"old,omitempty"`
 	New string `json:"new,omitempty"`
+	// Hunks is the change as Claude Code recorded it in the file, numbered
+	// by the file's own lines (its structuredPatch). Older records, other
+	// agents and very large changes have none: Old and New, numbered from
+	// 1, are what there is then.
+	Hunks []Hunk `json:"hunks,omitempty"`
 	// What the call returned, its head and tail when it is long.
 	Output    string `json:"output,omitempty"`
 	Truncated bool   `json:"truncated,omitempty"`
@@ -34,6 +39,17 @@ type ToolDetail struct {
 	Pending bool `json:"pending,omitempty"`
 	// Live is a background shell whose output is still growing.
 	Live bool `json:"live,omitempty"`
+}
+
+// Hunk is one piece of a change, as a unified diff has it: where it starts
+// in the old and new file, how many lines it spans in each, and its lines,
+// each led by ' ', '-' or '+'.
+type Hunk struct {
+	OldStart int      `json:"oldStart"`
+	OldLines int      `json:"oldLines"`
+	NewStart int      `json:"newStart"`
+	NewLines int      `json:"newLines"`
+	Lines    []string `json:"lines"`
 }
 
 // ErrNoTool is a call the transcript doesn't hold (any more).
@@ -174,9 +190,44 @@ func claudeDetail(line []byte, id, dir string, d *ToolDetail) (call, result bool
 			result = true
 			d.Error = b.IsError
 			d.Output, d.Truncated = capOutput(resultFull(b.Content))
+			if !b.IsError {
+				d.Hunks = structuredHunks(l.ToolUseResult)
+			}
 		}
 	}
 	return
+}
+
+// structuredHunks reads the hunks Claude Code keeps beside an edit's or a
+// write's result (toolUseResult.structuredPatch), or none: a result without
+// them, a malformed one, or one past textCap (twice: both sides), which
+// reads as its old and new text instead.
+func structuredHunks(raw json.RawMessage) []Hunk {
+	if len(raw) == 0 || raw[0] != '{' {
+		return nil
+	}
+	var r struct {
+		StructuredPatch []Hunk `json:"structuredPatch"`
+	}
+	if json.Unmarshal(raw, &r) != nil || len(r.StructuredPatch) == 0 {
+		return nil
+	}
+	size := 0
+	for _, h := range r.StructuredPatch {
+		if h.OldStart < 0 || h.NewStart < 0 || h.OldLines < 0 || h.NewLines < 0 || len(h.Lines) == 0 {
+			return nil
+		}
+		for _, l := range h.Lines {
+			if l == "" || !strings.ContainsRune(" -+\\", rune(l[0])) {
+				return nil
+			}
+			size += len(l) + 1
+		}
+		if size > 2*textCap {
+			return nil
+		}
+	}
+	return r.StructuredPatch
 }
 
 // resultFull is a tool result's whole text: a string, or all its text blocks.
