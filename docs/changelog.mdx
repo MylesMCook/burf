@@ -17,6 +17,31 @@ again.
   build has no built-in plugins". They are on by default again; any you
   turned off in Settings → Plugins stay off.
 
+## v0.3.2
+
+October 5, 2026.
+
+- **Built-in plugins on a fresh install.** The release's content policy
+  kept the app from reading its own list of built-in plugins, so a new
+  install had none: Diff, Changes, Pull request, Notes and the rest. Dev
+  builds skip that policy; CI now checks it.
+- **New task with a line break** (⌘N) starts its agent. The box couldn't
+  read back a session whose prompt had a line break, so it removed the
+  worktree it had just made and said "It's gone".
+- **Pasted screenshots upload fast.** A pasted image over 1 MB or 2000 px is
+  shrunk first (a 4 MB screenshot goes up as about 30 KB), files go up as
+  raw bytes rather than base64, and the chip shows progress, its size, and
+  Retry if it fails. Chips sit inside the composer.
+- **Replies with a paste show where they were sent.** Claude Code records a
+  paste wrapped in `<pasted_content>` tags; the chat dropped such a reply,
+  and it showed below the answer instead. Its tags no longer show either.
+- **A reply sent while the agent works** says it hasn't read it yet:
+  "Sent · Claude reads it at its next step".
+- **Diff and Pull request follow the branch** when the agent switches,
+  commits or rebases mid-turn.
+- **Live text** read off the agent's screen looks like the reply, not a
+  quote.
+
 ## v0.3.1
 
 October 5, 2026.
