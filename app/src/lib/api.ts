@@ -124,6 +124,10 @@ export interface Client {
   box<T = unknown>(box: string, method: string, path: string, body?: unknown): Promise<T>;
   // A box API file as bytes, such as an agent browser's screenshot.
   boxBlob(box: string, path: string): Promise<Blob>;
+  // POSTs a file to the box API as its raw bytes (an attachment), telling
+  // onProgress how much has gone; the promise rejects with an AbortError
+  // when signal aborts.
+  upload<T = unknown>(box: string, path: string, body: Blob, onProgress?: (sent: number, total: number) => void, signal?: AbortSignal): Promise<T>;
   // Any laptop API call, such as "GET", "/v1/hooks".
   laptop<T = unknown>(method: string, path: string, body?: unknown): Promise<T>;
   // A laptop API call that answers NDJSON, one value per line, as long
@@ -424,6 +428,43 @@ export function httpClient(ep: Endpoint): Client {
       if (!res.ok) throw new ApiError(`${res.status} ${res.statusText}`, res.status);
       return res.blob();
     },
+    // XHR, not fetch: only it reports how much of the body has gone.
+    upload: <T,>(box: string, path: string, body: Blob, onProgress?: (sent: number, total: number) => void, signal?: AbortSignal) =>
+      new Promise<T>((resolve, reject) => {
+        if (signal?.aborted) return reject(new DOMException("The upload was cancelled", "AbortError"));
+        const xhr = new XMLHttpRequest();
+        xhr.open("POST", `${ep.url}/v1/boxes/${encodeURIComponent(box)}/api/${path}`);
+        xhr.setRequestHeader("Authorization", headers.Authorization);
+        xhr.setRequestHeader("Content-Type", body.type || "application/octet-stream");
+        if (onProgress) xhr.upload.onprogress = (e) => onProgress(e.loaded, e.lengthComputable ? e.total : body.size);
+        const abort = () => xhr.abort();
+        signal?.addEventListener("abort", abort, { once: true });
+        const done = () => signal?.removeEventListener("abort", abort);
+        xhr.onload = () => {
+          done();
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              resolve((xhr.responseText ? JSON.parse(xhr.responseText) : undefined) as T);
+            } catch {
+              reject(new ApiError("The box answered with something that isn't JSON", xhr.status));
+            }
+            return;
+          }
+          const e = errorBody(xhr.responseText, xhr.statusText || `HTTP ${xhr.status}`);
+          const err = new ApiError(e.message, xhr.status, e.code);
+          err.box = box;
+          reject(err);
+        };
+        xhr.onerror = () => {
+          done();
+          reject(new ApiError("The upload didn't reach the Berth agent", 0));
+        };
+        xhr.onabort = () => {
+          done();
+          reject(new DOMException("The upload was cancelled", "AbortError"));
+        };
+        xhr.send(body);
+      }),
     laptop: (method, path, body) => request(method, path, body),
     async stream(method, path, body, onValue, signal) {
       const res = await fetch(ep.url + path, {

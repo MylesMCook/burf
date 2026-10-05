@@ -175,8 +175,8 @@ func (a *Agent) uiEvents(w http.ResponseWriter, r *http.Request) {
 // uiBoxAPI passes a request to a box's API and streams the answer back, so
 // the app reaches every box through the one connection the agent keeps.
 // boxBodyLimit is how large a request the app may send a box: 1 MB, but
-// enough for a pasted file (20 MB, as base64 in JSON) on an attachments
-// route.
+// enough for a pasted file on an attachments route (20 MB as raw bytes, or
+// as base64 in JSON from an older app).
 func boxBodyLimit(target string) int64 {
 	if path, _, _ := strings.Cut(target, "?"); strings.HasSuffix(path, "/attachments") {
 		return 28 << 20

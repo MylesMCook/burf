@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -84,5 +87,51 @@ func TestReadAttachment(t *testing.T) {
 	name, data, err = readAttachment(r)
 	if err != nil || name != "raw.png" || !bytes.Equal(data, pngHeader) {
 		t.Errorf("raw: %q %v", name, err)
+	}
+}
+
+// The app sends an attachment as its raw bytes, named by ?name=, through the
+// laptop agent, which streams it on without a length (chunked).
+func TestRawAttachmentUploadOverTheWire(t *testing.T) {
+	c, _ := servedBox(t)
+	repo := gitRepo(t)
+	if status := call(t, c, "POST", "/v1/locations", "", map[string]string{"name": "cal", "path": repo}, nil); status != 200 {
+		t.Fatalf("add location: %d", status)
+	}
+	if status := call(t, c, "POST", "/v1/locations/cal/worktrees", "", WorktreeRequest{Name: "shots"}, nil); status != 200 {
+		t.Fatalf("add worktree: %d", status)
+	}
+	upload := func(name, ct string, body []byte) (*http.Response, Attachment) {
+		t.Helper()
+		// A reader of unknown length, as the agent's relay is.
+		r := io.MultiReader(bytes.NewReader(body))
+		resp, err := c.DoWithHeader(context.Background(), "POST", "/v1/locations/cal/worktrees/shots/attachments?name="+url.QueryEscape(name), r, http.Header{"Content-Type": {ct}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		var a Attachment
+		json.NewDecoder(resp.Body).Decode(&a)
+		return resp, a
+	}
+
+	webp := append([]byte("RIFF\x24\x00\x00\x00WEBPVP8 "), bytes.Repeat([]byte{0x2a}, 64<<10)...)
+	resp, a := upload("pasted-101502.webp", "image/webp", webp)
+	if resp.StatusCode != 200 {
+		t.Fatalf("upload: %d", resp.StatusCode)
+	}
+	if a.Type != "image/webp" || a.Size != len(webp) || !strings.HasSuffix(a.Name, "-pasted-101502.webp") {
+		t.Errorf("got %+v", a)
+	}
+	if got, err := os.ReadFile(a.Path); err != nil || !bytes.Equal(got, webp) {
+		t.Errorf("saved bytes differ: %v", err)
+	}
+	if !strings.Contains(a.Path, filepath.Join(".berth", "attachments")) {
+		t.Errorf("path %q", a.Path)
+	}
+
+	// Too big is refused, however it is sent.
+	if resp, _ := upload("big.png", "image/png", append(append([]byte{}, pngHeader...), make([]byte, MaxAttachment)...)); resp.StatusCode != http.StatusRequestEntityTooLarge {
+		t.Errorf("too big: %d", resp.StatusCode)
 	}
 }

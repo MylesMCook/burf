@@ -46,30 +46,105 @@ export function pastedFiles(data: DataTransfer | null): File[] {
   return [...data.items].flatMap((it) => (it.kind === "file" ? [it.getAsFile()].filter((f): f is File => !!f) : []));
 }
 
-// A pasted image has no useful name ("image.png"); it is named for when.
+// A pasted image has no useful name ("image.png"); it is named for when,
+// and a second one in the same second is told apart: pasted-101502-2.png.
+let lastStamp = "";
+let sameStamp = 0;
 export function fileName(f: File): string {
   if (f.name && f.name !== "image.png" && f.name !== "blob") return f.name;
   const ext = f.type === "image/jpeg" ? "jpg" : (f.type.split("/")[1] ?? "png");
-  return `pasted-${new Date().toTimeString().slice(0, 8).replaceAll(":", "")}.${ext}`;
+  const stamp = new Date().toTimeString().slice(0, 8).replaceAll(":", "");
+  sameStamp = stamp === lastStamp ? sameStamp + 1 : 1;
+  lastStamp = stamp;
+  return `pasted-${stamp}${sameStamp > 1 ? `-${sameStamp}` : ""}.${ext}`;
 }
 
-function base64(f: Blob): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result).replace(/^data:[^,]*,/, ""));
-    r.onerror = () => reject(r.error ?? new Error("Couldn't read the file"));
-    r.readAsDataURL(f);
-  });
+// named is the file under the name it goes up as, so it is named once.
+export const named = (f: File): File => {
+  const name = fileName(f);
+  return name === f.name ? f : new File([f], name, { type: f.type, lastModified: f.lastModified });
+};
+
+// A pasted screenshot is shrunk before it goes up: a retina one is several
+// MB of PNG, slow over a laptop's upstream, and the agent downsizes an image
+// to about 1568 px on its long edge anyway. Dropped files go as they are, as
+// they may be the real asset. GIFs (which may move) are left alone.
+const SHRINKABLE = ["image/png", "image/jpeg", "image/webp"];
+const SHRINK_OVER = 1 << 20;
+const MAX_EDGE = 2000;
+
+type Canvas = OffscreenCanvas | HTMLCanvasElement;
+
+function canvas(w: number, h: number): Canvas {
+  if (typeof OffscreenCanvas !== "undefined") return new OffscreenCanvas(w, h);
+  const c = document.createElement("canvas");
+  c.width = w;
+  c.height = h;
+  return c;
 }
 
-// uploadAttachment sends a file to the box and resolves to where it is.
-export async function uploadAttachment(client: Client, target: AttachTarget, f: File): Promise<Attachment> {
+function encode(c: Canvas, type: string, quality: number): Promise<Blob | null> {
+  if ("convertToBlob" in c) return c.convertToBlob({ type, quality }).catch(() => null);
+  return new Promise((resolve) => c.toBlob(resolve, type, quality));
+}
+
+// shrinkImage is a pasted image at most 2000 px on its long edge, as WebP
+// (JPEG where the browser can't write WebP, as Safari can't), when it is
+// over 1 MB or larger than that; anything else, or a result no smaller, is
+// the file as it was.
+export async function shrinkImage(f: File): Promise<File> {
+  if (!SHRINKABLE.includes(f.type) || typeof createImageBitmap !== "function") return f;
+  let bmp: ImageBitmap | undefined;
+  try {
+    bmp = await createImageBitmap(f);
+    const long = Math.max(bmp.width, bmp.height);
+    if (f.size <= SHRINK_OVER && long <= MAX_EDGE) return f;
+    const scale = Math.min(1, MAX_EDGE / long);
+    const w = Math.max(1, Math.round(bmp.width * scale));
+    const h = Math.max(1, Math.round(bmp.height * scale));
+    const c = canvas(w, h);
+    const g = c.getContext("2d") as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
+    if (!g) return f;
+    g.imageSmoothingEnabled = true;
+    g.imageSmoothingQuality = "high";
+    g.drawImage(bmp, 0, 0, w, h);
+    let out = await encode(c, "image/webp", 0.9);
+    if (out?.type !== "image/webp") {
+      // JPEG has no transparency: a window's shadow goes on white, not black.
+      g.globalCompositeOperation = "destination-over";
+      g.fillStyle = "#fff";
+      g.fillRect(0, 0, w, h);
+      out = await encode(c, "image/jpeg", 0.9);
+    }
+    if (!out || out.size >= f.size || (out.type !== "image/webp" && out.type !== "image/jpeg")) return f;
+    const ext = out.type === "image/webp" ? "webp" : "jpg";
+    return new File([out], fileName(f).replace(/\.[^.]+$/, "") + `.${ext}`, { type: out.type, lastModified: f.lastModified });
+  } catch {
+    // An image the browser can't decode goes up as it is.
+    return f;
+  } finally {
+    bmp?.close();
+  }
+}
+
+export interface UploadOptions {
+  // sent and total are bytes of the file.
+  onProgress?(sent: number, total: number): void;
+  signal?: AbortSignal;
+}
+
+// uploadAttachment sends a file to the box, as its raw bytes, and resolves
+// to where it is.
+export async function uploadAttachment(client: Client, target: AttachTarget, f: File, o: UploadOptions = {}): Promise<Attachment> {
   if (f.size > MAX_ATTACHMENT) throw new Error(`${f.name || "The file"} is ${Math.round(f.size / 2 ** 20)} MB; attachments can be up to 20 MB.`);
   const route =
     "session" in target
       ? `sessions/${encodeURIComponent(target.session)}/attachments`
       : `locations/${encodeURIComponent(target.location)}/worktrees/${encodeURIComponent(target.worktree)}/attachments`;
-  return client.box<Attachment>(target.box, "POST", route, { name: fileName(f), data: await base64(f) });
+  // The box reads a JSON body as the old base64 form, so a .json file goes
+  // as plain bytes.
+  const body = /json/i.test(f.type) ? f.slice(0, f.size, "application/octet-stream") : f;
+  return client.upload<Attachment>(target.box, `${route}?${new URLSearchParams({ name: fileName(f) })}`, body, o.onProgress, o.signal);
 }
 
 // withAttachments is a prompt with the attachments' paths after it, one to a

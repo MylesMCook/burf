@@ -789,7 +789,7 @@ function ToBody({ to, onSend, onFail, autoFocus, className }: TaskComposerProps 
   const menu = useComposerMenu({ box: to.box, session: to.session, agent: to.agent, text, setText, side: "bottom" });
   const ready = !!text.trim() || att.paths.length > 0;
   const go = async () => {
-    if (!ready || busy || att.uploading || !onSend) return;
+    if (!ready || busy || att.blocker || !onSend) return;
     setBusy(true);
     try {
       await onSend(withAttachments(text.trim(), att.paths));
@@ -812,7 +812,7 @@ function ToBody({ to, onSend, onFail, autoFocus, className }: TaskComposerProps 
             onChange={setText}
             onSubmit={() => void go()}
             onPaste={att.onPaste}
-            above={<AttachmentChips items={att.items} onRemove={att.remove} className="px-3.5 pt-3" />}
+            above={<AttachmentChips items={att.items} onRemove={att.remove} onRetry={att.retry} className="px-3.5 pt-3" />}
             menu={menu}
             autoFocus={autoFocus}
             label={`What should ${who} do?`}
@@ -826,7 +826,7 @@ function ToBody({ to, onSend, onFail, autoFocus, className }: TaskComposerProps 
               {who} · {AGENT_WORDS.idle.lower}, waiting for a first task
             </span>
             <div className="ml-auto">
-              <SendButton label="Send" blocker={att.uploading ? "Uploading attachments…" : ready ? undefined : "Write the first prompt"} busy={busy} onClick={() => void go()} />
+              <SendButton label="Send" blocker={att.blocker ?? (ready ? undefined : "Write the first prompt")} busy={busy} onClick={() => void go()} />
             </div>
           </>
         }

@@ -506,7 +506,7 @@ function Reply({ onSend, onFail, who, mode, blocked, hint, attach, agent }: { on
   const [text, setText] = useState("");
   const att = useAttachments(attach);
   const menu = useComposerMenu({ box: attach?.box, session: attach && "session" in attach ? attach.session : undefined, agent, text, setText });
-  const ready = (!!text.trim() || att.paths.length > 0) && !att.uploading;
+  const ready = (!!text.trim() || att.paths.length > 0) && !att.blocker;
   // Up and Down recall the prompts sent before (lib/history).
   const input = useRef<HTMLTextAreaElement>(null);
   const to = attach && "session" in attach ? attach.session : undefined;
@@ -525,13 +525,33 @@ function Reply({ onSend, onFail, who, mode, blocked, hint, attach, agent }: { on
     });
   };
   const queue = mode === "queue";
-  const placeholder = hint ?? (blocked ? "Pick an answer above first" : queue ? `${who} is working: Enter queues this for when it finishes` : mode === "answer" ? `Answer ${who}, or ask for something else` : "Reply, or ask for something else");
+  // While a file uploads, the field says so, and that the reply can be
+  // written meanwhile.
+  const placeholder =
+    hint ??
+    (blocked
+      ? "Pick an answer above first"
+      : att.uploading
+        ? `${att.blocker}… write your reply meanwhile`
+        : att.failed
+          ? att.blocker
+          : queue
+            ? `${who} is working: it reads this at its next step`
+            : mode === "answer"
+              ? `Answer ${who}, or ask for something else`
+              : "Reply, or ask for something else");
   return (
     <div className="relative" {...att.dropProps}>
       {menu.chip}
       {menu.menu}
-      <AttachmentChips items={att.items} onRemove={att.remove} className="mx-3 rounded-t-lg border border-b-0 bg-muted/40 p-2" />
-      <InputGroup className={cn("**:[textarea]:min-h-0! **:[textarea]:py-2.5!", att.dragging && "border-ring ring-[3px]")}>
+      {/* Attachments sit inside the frame, above what is typed; the field and
+          Send share the row below them. */}
+      <InputGroup className={cn("flex-wrap has-data-[align=block-start]:flex-row **:[textarea]:min-h-0! **:[textarea]:min-w-0 **:[textarea]:flex-1 **:[textarea]:basis-0 **:[textarea]:py-2.5!", att.dragging && "border-ring ring-[3px]")}>
+        {att.items.length > 0 && (
+          <InputGroupAddon align="block-start" className="pt-2.5 pb-0 [&_svg]:mx-0">
+            <AttachmentChips items={att.items} onRemove={att.remove} onRetry={att.retry} className="w-full" />
+          </InputGroupAddon>
+        )}
         <InputGroupTextarea
           ref={input}
           rows={1}
@@ -554,14 +574,19 @@ function Reply({ onSend, onFail, who, mode, blocked, hint, attach, agent }: { on
         <InputGroupAddon align="inline-end" className="me-0! self-end pr-1.5 pb-1.5">
           <Tip
             label={
-              <span className="flex items-center gap-1.5">
-                {queue ? `Queue it for when ${who} finishes` : "Send"} <Kbd>↵</Kbd>
-              </span>
+              att.blocker ?? (
+                <span className="flex items-center gap-1.5">
+                  {queue ? `Queue it for when ${who} finishes` : "Send"} <Kbd>↵</Kbd>
+                </span>
+              )
             }
           >
-            <Button size="icon-sm" className="rounded-lg" variant={queue ? "outline" : "default"} aria-label={queue ? "Queue" : "Send"} disabled={!ready || blocked} onClick={go}>
-              {queue ? <ListPlusIcon /> : <ArrowUpIcon />}
-            </Button>
+            {/* A disabled button takes no pointer: the wrapper keeps the tip. */}
+            <span className="inline-flex">
+              <Button size="icon-sm" className="rounded-lg" variant={queue ? "outline" : "default"} aria-label={queue ? "Queue" : "Send"} disabled={!ready || blocked} onClick={go}>
+                {queue ? <ListPlusIcon /> : <ArrowUpIcon />}
+              </Button>
+            </span>
           </Tip>
         </InputGroupAddon>
       </InputGroup>

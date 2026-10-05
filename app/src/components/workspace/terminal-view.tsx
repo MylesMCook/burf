@@ -6,7 +6,7 @@ import { toastManager } from "@/components/ui/toast";
 import { BoxOffline, SessionEnded } from "@/components/workspace/pane-state";
 import { useActiveTheme } from "@/hooks/use-theme";
 import { ApiError, type TerminalConnection } from "@/lib/api";
-import { attachable, fileName, localPaths, onThisComputer, pastedFiles, uploadAttachment, uploadLocalFile } from "@/lib/attachments";
+import { attachable, localPaths, named, onThisComputer, pastedFiles, shrinkImage, uploadAttachment, uploadLocalFile } from "@/lib/attachments";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { openEditor } from "@/components/editors/open";
@@ -127,14 +127,17 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
     if (!el || !term || !client) return;
     // files are pasted files, or paths on this computer pasted as text
     // (text is pasted as it was if they aren't files here after all).
-    const take = async (files: (File | string)[], text?: string) => {
+    // A pasted screenshot is made smaller first (lib/attachments); a
+    // dropped file goes as it is.
+    const take = async (given: (File | string)[], text?: string, pasted = false) => {
+      const files = given.map((f) => (typeof f === "string" ? f : named(f)));
       let shown: string | undefined;
-      const first = typeof files[0] === "string" ? (files[0].split("/").pop() ?? files[0]) : fileName(files[0]);
+      const first = typeof files[0] === "string" ? (files[0].split("/").pop() ?? files[0]) : files[0].name;
       const slow = window.setTimeout(() => {
         shown = toastManager.add({ type: "loading", title: files.length === 1 ? `Uploading ${first} to ${box}…` : `Uploading ${files.length} files to ${box}…`, timeout: 0 });
       }, 400);
       try {
-        const done = await Promise.all(files.map((f) => (typeof f === "string" ? uploadLocalFile(client, { box, session }, f) : uploadAttachment(client, { box, session }, f))));
+        const done = await Promise.all(files.map(async (f) => (typeof f === "string" ? uploadLocalFile(client, { box, session }, f) : uploadAttachment(client, { box, session }, pasted ? await shrinkImage(f) : f))));
         term.paste(done.map((a) => a.path.replaceAll(" ", "\\ ")).join(" "));
         term.focus();
       } catch (err) {
@@ -154,7 +157,7 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
       if (!fs.length && !paths.length) return;
       e.preventDefault();
       e.stopPropagation();
-      void (fs.length ? take(fs) : take(paths, text));
+      void (fs.length ? take(fs, undefined, true) : take(paths, text));
     };
     const onDragOver = (e: DragEvent) => {
       if (e.dataTransfer?.types.includes("Files")) e.preventDefault();

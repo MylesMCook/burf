@@ -498,11 +498,13 @@ function mockOrchestration(box: string, method: string, path: string, body?: unk
   // An attachment "lands" in the worktree's .berth/attachments, as on a box.
   const am = method === "POST" ? /^(?:sessions\/([^/]+)|locations\/[^/]+\/worktrees\/([^/]+))\/attachments$/.exec(path) : null;
   if (am) {
-    const { name, data } = body as { name: string; data: string };
+    // JSON with base64 data (attach-local below), or a raw upload's name
+    // and size (upload).
+    const { name, data, size } = body as { name: string; data?: string; size?: number };
     const dir = am[1] ? (sessions[box]?.find((x) => x.name === decodeURIComponent(am[1]))?.dir ?? "/home/demo") : `/home/demo/${decodeURIComponent(am[2])}`;
     const stamp = new Date().toISOString().slice(0, 19).replace(/[-:]/g, "").replace("T", "-");
     const type = /\.(png|jpe?g|gif|webp)$/i.test(name) ? `image/${name.split(".").pop()!.toLowerCase().replace("jpg", "jpeg")}` : /\.pdf$/i.test(name) ? "application/pdf" : "text/plain";
-    return delay({ path: `${dir}/.berth/attachments/${stamp}-${name}`, name: `${stamp}-${name}`, type, size: Math.floor((data.length * 3) / 4) });
+    return delay({ path: `${dir}/.berth/attachments/${stamp}-${name}`, name: `${stamp}-${name}`, type, size: size ?? Math.floor(((data ?? "").length * 3) / 4) });
   }
   // secrets/test resolves a reference the way the box would, answering only
   // whether it could and the value's length.
@@ -1043,6 +1045,24 @@ export function mockClient(): Client {
         throw err;
       }),
     boxBlob: async () => new Blob([mockShotSvg()], { type: "image/svg+xml" }),
+    // An upload creeps along at about 1 MB/s, so the chip's progress shows.
+    upload: <T,>(box: string, path: string, body: Blob, onProgress?: (sent: number, total: number) => void, signal?: AbortSignal) =>
+      new Promise<T>((resolve, reject) => {
+        const [route, query = ""] = path.split("?");
+        const name = new URLSearchParams(query).get("name") ?? "file";
+        let sent = 0;
+        const tick = window.setInterval(() => {
+          sent = Math.min(body.size, sent + 100_000);
+          onProgress?.(sent, body.size);
+          if (sent < body.size) return;
+          window.clearInterval(tick);
+          (boxCall(box, "POST", route, { name, size: body.size }) as Promise<T>).then(resolve, reject);
+        }, 100);
+        signal?.addEventListener("abort", () => {
+          window.clearInterval(tick);
+          reject(new DOMException("The upload was cancelled", "AbortError"));
+        });
+      }),
     laptop: <T,>(method: string, path: string, body?: unknown) => {
       if (method === "GET" && path === "/v1/hooks") return delay(hooksFiles.laptop) as Promise<T>;
       if (method === "PUT" && path === "/v1/hooks") return saveHooks("laptop", (body as { hooks: Hook[] }).hooks) as Promise<T>;
