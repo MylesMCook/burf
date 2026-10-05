@@ -8,7 +8,11 @@
 #   scripts/fresh-user-test.sh --tag v0.3.6    that release's dmg, downloaded
 #   options: --out DIR (report and screenshots; default dist/release-test/
 #            fresh-user-<time>), --keep (leave the test's folder), --signed
-#            (fail unless the app is signed, notarized and stapled)
+#            (fail unless the app is signed, notarized and stapled),
+#            --any-build (test a dmg built from another commit than HEAD)
+#
+# The dmg must be a release build (it carries berthd) made from HEAD, as
+# its berth-cli records: the test refuses anything else, naming what it is.
 #
 # It installs the app from the dmg, starts it, goes through onboarding with
 # "this Mac" (a real launchd box), sends the sample's first task to a
@@ -44,7 +48,7 @@ source "$here/release-test/common.sh"
 # shellcheck source=release-test/macos/lib.sh
 source "$here/release-test/macos/lib.sh"
 
-DMG="" TAG="" OUT="" KEEP=0 SIGNED=0
+DMG="" TAG="" OUT="" KEEP=0 SIGNED=0 ANY=""
 while [ $# -gt 0 ]; do
 	case $1 in
 	--dmg) DMG=$2 && shift 2 ;;
@@ -52,6 +56,7 @@ while [ $# -gt 0 ]; do
 	--out) OUT=$2 && shift 2 ;;
 	--keep) KEEP=1 && shift ;;
 	--signed) SIGNED=1 && shift ;;
+	--any-build) ANY=1 && shift ;;
 	-h | --help) sed -n '2,/^set -euo/p' "$0" | sed -e '$d' -e 's/^# \{0,1\}//' && exit 0 ;;
 	*) echo "unknown option $1 (try --help)" >&2 && exit 2 ;;
 	esac
@@ -76,9 +81,12 @@ s_prepare() {
 	if [ -n "$TAG" ]; then
 		DMG=$(download_dmg "$TAG" "$ROOT") || fail "could not download $TAG's dmg" || return 1
 	fi
-	[ -n "$DMG" ] || DMG=$(find_dmg) || fail "no dmg: build one with make app-build, or pass --dmg PATH or --tag vX.Y.Z" || return 1
+	[ -n "$DMG" ] || DMG=$(find_dmg 2>"$ROOT/dmg.find") || fail "$(tr '\n' ' ' <"$ROOT/dmg.find")" || return 1
 	[ -f "$DMG" ] || fail "$DMG does not exist" || return 1
-	detail "$(basename "$DMG"); agent on 127.0.0.1:$UI_PORT, proxy :$PROXY_PORT; home $THOME"
+	# The dmg must be a release build of what is being tested: a stale one
+	# left in target/ once made this test check months-old code.
+	check_dmg "$DMG" "${ANY:-$TAG}" 2>"$ROOT/dmg.check" || fail "$(cat "$ROOT/dmg.check")" || return 1
+	detail "$(basename "$DMG"): Berth $DMG_VERSION built from ${DMG_REVISION:0:9}; agent on 127.0.0.1:$UI_PORT, proxy :$PROXY_PORT; home $THOME"
 }
 
 s_install() {

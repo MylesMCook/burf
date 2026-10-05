@@ -7,7 +7,8 @@
 #   scripts/upgrade-test.sh --mac   [--from v0.3.0] [--dmg PATH]
 #   scripts/upgrade-test.sh         both (--mac only on macOS)
 #   options: --from TAG (default: the newest release tag before this
-#            version), --out DIR, --keep
+#            version), --out DIR, --keep, --any-build (a dmg built from
+#            another commit than HEAD; it must still not be older than --from)
 #
 # Linux (Docker; scripts/release-test/linux): a fresh box and laptop on
 # --from, a task with the stand-in agent left running, a kit applied, the
@@ -38,7 +39,7 @@ here=$(cd "$(dirname "$0")" && pwd)
 source "$here/release-test/common.sh"
 REPO=$(cd "$here/.." && pwd)
 
-MODE="" FROM="" DIST="" DMG="" OUT="" KEEP=0
+MODE="" FROM="" DIST="" DMG="" OUT="" KEEP=0 ANY=""
 while [ $# -gt 0 ]; do
 	case $1 in
 	--linux) MODE="${MODE:+$MODE,}linux" && shift ;;
@@ -48,6 +49,7 @@ while [ $# -gt 0 ]; do
 	--dmg) DMG=$2 && shift 2 ;;
 	--out) OUT=$2 && shift 2 ;;
 	--keep) KEEP=1 && shift ;;
+	--any-build) ANY=1 && shift ;;
 	-h | --help) sed -n '2,/^set -euo/p' "$0" | sed -e '$d' -e 's/^# \{0,1\}//' && exit 0 ;;
 	*) echo "unknown option $1 (try --help)" >&2 && exit 2 ;;
 	esac
@@ -235,8 +237,15 @@ m_prepare() {
 	mac_setup || return 1
 	OLD_DMG=$(download_dmg "$FROM" "$ROOT") || fail "could not download $FROM's dmg" || return 1
 	mv "$OLD_DMG" "$ROOT/old.dmg" && OLD_DMG="$ROOT/old.dmg"
-	[ -n "$DMG" ] || DMG=$(find_dmg) || fail "no dmg of this build: make app-build, or --dmg PATH" || return 1
-	detail "$FROM → $(basename "$DMG")"
+	[ -n "$DMG" ] || DMG=$(find_dmg 2>"$ROOT/dmg.find") || fail "$(tr '\n' ' ' <"$ROOT/dmg.find")" || return 1
+	check_dmg "$DMG" "$ANY" 2>"$ROOT/dmg.check" || fail "$(cat "$ROOT/dmg.check")" || return 1
+	# Never a downgrade: an older build "upgrading" a newer release loses
+	# what the newer one keeps, and looks like a regression.
+	if [ "$(printf '%s\n%s\n' "${FROM#v}" "$DMG_VERSION" | sort -V | head -1)" != "${FROM#v}" ]; then
+		fail "$(basename "$DMG") is Berth $DMG_VERSION, older than $FROM: that's a downgrade, not an upgrade"
+		return 1
+	fi
+	detail "$FROM → $(basename "$DMG"): Berth $DMG_VERSION built from ${DMG_REVISION:0:9}"
 }
 
 m_old() {
@@ -427,8 +436,12 @@ m_prefs() {
 	detail "Keep running, ${PLUGIN_OFF:-no plugin} off${PLUGIN_ON:+, $PLUGIN_ON on}"
 }
 
+# box_online: whether the agent reaches this Mac's box.
+box_online() { api GET /v1/status | jq_py "any(b['name'] == '$BOX' and b.get('state') == 'online' for b in j['boxes'])" >/dev/null; }
 m_session() {
 	[ "$NO_SESSION" = 0 ] || { detail "no session on $FROM"; return 2; }
+	# Unreachable is not gone: say which.
+	until_ok 20 box_online || fail "this Mac's box isn't online: $(api GET /v1/status | head -c 300)" || return 1
 	api GET "/v1/boxes/$BOX/api/sessions" | jq_py "any(s['name'] == '$SESSION' and not s['exited'] for s in j)" >/dev/null ||
 		fail "$SESSION is gone" || return 1
 	kill -0 "$PID0" || fail "the stand-in (pid $PID0) died" || return 1
@@ -440,6 +453,8 @@ new_build() { [ "$(box_build)" = "$NEW_BUILD" ]; }
 m_agent_restart() {
 	OLD_BUILD=$(box_build)
 	NEW_BUILD=$(BERTH_HOME="$ROOT/x" "$APP_UNDER_TEST/Contents/Resources/berthd" version | sed -n 's/.*build \([0-9a-f]*\).*/\1/p')
+	[ -n "$NEW_BUILD" ] || fail "the new app carries no berthd to update the box with" || return 1
+	[ -n "$OLD_BUILD" ] || fail "this Mac's box doesn't answer before the agent restarts" || return 1
 	# As a restart of the Mac: the agent stops, and the app, opened again,
 	# offers to start it (no login item in the test).
 	berth_cli stop >/dev/null 2>&1 || true
@@ -475,7 +490,7 @@ case ",$MODE," in
 	# One report each: run the halves as their own processes.
 	rc=0
 	"$0" --linux --from "$FROM" ${DIST:+--dist "$DIST"} ${OUT:+--out "$OUT/linux"} || rc=1
-	"$0" --mac --from "$FROM" ${DMG:+--dmg "$DMG"} ${OUT:+--out "$OUT/mac"} || rc=1
+	"$0" --mac --from "$FROM" ${DMG:+--dmg "$DMG"} ${ANY:+--any-build} ${OUT:+--out "$OUT/mac"} || rc=1
 	exit $rc
 	;;
 *,linux,*) run_linux ;;

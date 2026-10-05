@@ -99,8 +99,9 @@ publish:
 # its dmg, a fresh Linux box in Docker, and upgrading from the last release,
 # each isolated from this machine's own Berth (scripts/release-check.sh).
 # make publish runs it on the signed build and refuses to tag if it fails.
-# DMG=path tests that dmg (default: the one make app-build made last);
-# FROM=vX.Y.Z upgrades from that release.
+# On a Mac it builds the app from HEAD first (make app-build; UNIVERSAL=1
+# for both architectures, as releases are); DMG=path tests that dmg instead,
+# which must be built from HEAD. FROM=vX.Y.Z upgrades from that release.
 .PHONY: release-check
 release-check:
-	scripts/release-check.sh $(if $(DMG),--dmg $(DMG)) $(if $(FROM),--from $(FROM)) --version $(STAMP)
+	scripts/release-check.sh $(if $(DMG),--dmg $(DMG)) $(if $(FROM),--from $(FROM)) $(if $(UNIVERSAL),--universal) --version $(STAMP)

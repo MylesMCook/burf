@@ -109,15 +109,75 @@ in_test_env() {
 	env -i "${vars[@]}" "$@"
 }
 
-# find_dmg: the dmg `make app-build` (or scripts/mac-release.sh) made last.
+# dmg_info DMG: what a dmg holds, as KEY=VALUE lines: version (the app's),
+# revision (the commit its berth-cli was built from, which Go records in
+# the binary), modified (whether that checkout had changes), and berthd
+# (yes when it carries Contents/Resources/berthd, as a release does).
+dmg_info() {
+	local mnt app
+	mnt=$(mktemp -d /tmp/brtinfo.XXXXXX)
+	hdiutil attach -nobrowse -readonly -noautoopen -mountpoint "$mnt" "$1" >/dev/null 2>&1 || {
+		rmdir "$mnt"
+		return 1
+	}
+	app="$mnt/Berth.app"
+	echo "version=$(plutil -extract CFBundleShortVersionString raw -o - "$app/Contents/Info.plist" 2>/dev/null)"
+	echo "revision=$(LC_ALL=C grep -a -o -m1 'vcs\.revision=[0-9a-f]\{40\}' "$app/Contents/MacOS/berth-cli" 2>/dev/null | head -1 | cut -d= -f2)"
+	echo "modified=$(LC_ALL=C grep -a -o -m1 'vcs\.modified=[a-z]*' "$app/Contents/MacOS/berth-cli" 2>/dev/null | head -1 | cut -d= -f2)"
+	if [ -x "$app/Contents/Resources/berthd" ]; then echo "berthd=yes"; else echo "berthd=no"; fi
+	hdiutil detach "$mnt" >/dev/null 2>&1 || hdiutil detach -force "$mnt" >/dev/null 2>&1
+	rmdir "$mnt" 2>/dev/null
+	return 0
+}
+info_of() { echo "$1" | sed -n "s/^$2=//p"; }
+
+# find_dmg: the newest dmg make app-build (or scripts/mac-release.sh) made
+# from this checkout's HEAD. A dmg built from another commit (an old build
+# left in target/) is never picked: the test would test something else.
 find_dmg() {
-	local d
-	d=$(ls -t "$REPO"/dist/mac/Berth-macos-universal.dmg \
+	local head d info
+	head=$(git -C "$REPO" rev-parse HEAD) || return 1
+	local found
+	# Newest first; the paths have no spaces (target/ and dist/ are ours).
+	# shellcheck disable=SC2012
+	found=$(ls -t "$REPO"/dist/mac/Berth-macos-universal.dmg \
 		"$REPO"/app/src-tauri/target/*/release/bundle/dmg/*.dmg \
-		"$REPO"/app/src-tauri/target/release/bundle/dmg/*.dmg 2>/dev/null | head -1)
-	[ -n "$d" ] && echo "$d"
+		"$REPO"/app/src-tauri/target/release/bundle/dmg/*.dmg 2>/dev/null)
+	for d in $found; do
+		info=$(dmg_info "$d") || continue
+		if [ "$(info_of "$info" revision)" = "$head" ]; then
+			echo "$d"
+			return 0
+		fi
+		echo "  not $d: Berth $(info_of "$info" version), built from $(info_of "$info" revision | cut -c1-9), not HEAD ${head:0:9}" >&2
+	done
+	echo "no dmg built from HEAD (${head:0:9}): build one with make app-build (scripts/release-check.sh does), or pass --dmg PATH" >&2
+	return 1
 }
 
+# check_dmg DMG [ANY]: a dmg shaped as a release (the app, its berth-cli
+# and berthd) and built from HEAD, unless ANY. Says what it holds.
+check_dmg() {
+	local info head rev
+	info=$(dmg_info "$1") || {
+		echo "can't open $1" >&2
+		return 1
+	}
+	DMG_VERSION=$(info_of "$info" version)
+	rev=$(info_of "$info" revision)
+	# shellcheck disable=SC2034 # the tests report it
+	DMG_REVISION=$rev
+	head=$(git -C "$REPO" rev-parse HEAD 2>/dev/null)
+	if [ "$(info_of "$info" berthd)" != yes ]; then
+		echo "$1 (Berth $DMG_VERSION, built from ${rev:0:9}) has no Contents/Resources/berthd: it isn't a release build. Build one with make app-build or scripts/mac-release.sh" >&2
+		return 1
+	fi
+	if [ -z "${2:-}" ] && [ -n "$head" ] && [ "$rev" != "$head" ]; then
+		echo "$1 is Berth $DMG_VERSION built from ${rev:0:9}, not HEAD ${head:0:9}: build HEAD with make app-build, or pass --any-build to test it anyway" >&2
+		return 1
+	fi
+	return 0
+}
 # download_dmg TAG DIR: the release's dmg.
 download_dmg() {
 	gh release download "$1" --repo sean-brydon/berthd --pattern Berth-macos-universal.dmg --dir "$2" --clobber >&2 || return 1

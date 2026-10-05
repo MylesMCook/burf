@@ -38,9 +38,15 @@ Security blocking the Browser tab, tmux 3.7 without a locale. So a release is
 tested the way a new user meets it, and isn't tagged unless it passes:
 
 ```sh
-make app-build          # or scripts/mac-release.sh; make publish builds its own
-make release-check      # DMG=path to test another dmg, FROM=v0.3.0 to upgrade from another release
+make release-check      # builds the app from HEAD, then tests it
+make release-check UNIVERSAL=1        # both architectures, as the release workflow builds it
+make release-check DMG=path FROM=v0.3.0   # a dmg already built from HEAD; upgrade from another release
 ```
+
+Every test checks the dmg first: it must carry `berthd`, as a release
+does, and its `berth-cli` must say it was built from `HEAD` (Go records the
+commit in the binary). A dmg left in `target/` from an older build is
+refused by name, rather than tested as if it were this one.
 
 [`scripts/release-check.sh`](https://github.com/sean-brydon/berthd/blob/main/scripts/release-check.sh)
 runs three tests, each in its own home, ports and launchd labels, removed
@@ -69,7 +75,7 @@ it says so in a warning, and `make release-check` on a Mac is what counts.
 
 ## Cut a release with a tag
 
-1. Build the app and run `make release-check` on a Mac; it must pass.
+1. Run `make release-check` on a Mac; it must pass.
 2. On `main`, with CI green, set the version in `app/package.json`,
    `app/src-tauri/tauri.conf.json` and `app/src-tauri/Cargo.toml` (and
    `Cargo.lock`), and commit it (`chore: v0.1.2`). The app is built with the
