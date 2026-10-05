@@ -24,7 +24,9 @@ type codexItem struct {
 	Arguments string `json:"arguments"`
 	Input     string `json:"input"`
 	CallID    string `json:"call_id"`
-	Content   []struct {
+	// Output is a call's output: request_user_input's answers.
+	Output  json.RawMessage `json:"output"`
+	Content []struct {
 		Type string `json:"type"`
 		Text string `json:"text"`
 	} `json:"content"`
@@ -71,6 +73,9 @@ func (codexParser) line(c *conv, b []byte) {
 		codexCall(c, it)
 	case "function_call_output", "custom_tool_call_output", "local_shell_call_output":
 		c.result(it.CallID, at)
+		var out string
+		_ = json.Unmarshal(it.Output, &out)
+		c.codexAnswered(it.CallID, out)
 	}
 }
 
@@ -80,6 +85,14 @@ func codexCall(c *conv, it codexItem) {
 		codexPlan(c, it.Arguments)
 		c.byTool[it.CallID] = -1
 		return
+	}
+	if it.Name == "request_user_input" {
+		// Its questions, shown with their answers (questions.go).
+		var args map[string]any
+		_ = json.Unmarshal([]byte(it.Arguments), &args)
+		if c.asked(it.CallID, args["questions"]) {
+			return
+		}
 	}
 	if it.Name == "apply_patch" {
 		codexPatch(c, firstNonEmpty(it.Input, patchFromArgs(it.Arguments)), it.CallID)

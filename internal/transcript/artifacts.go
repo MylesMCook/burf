@@ -214,9 +214,9 @@ func htmlTitle(path string) string {
 	return strings.Join(strings.Fields(html.UnescapeString(string(m[1]))), " ")
 }
 
-// artifactsSince are the artifact items before index from that a reader
-// asking from since hasn't seen as they are now: still waiting for their
-// result, or settled after it last read.
+// artifactsSince are the artifact and question items before index from
+// that a reader asking from since hasn't seen as they are now: still
+// waiting for their result, or settled after it last read.
 func (c *conv) artifactsSince(from, since int) []Item {
 	var out []Item
 	for i := range c.items {
@@ -225,7 +225,7 @@ func (c *conv) artifactsSince(from, since int) []Item {
 			break
 		}
 		it := &c.items[i]
-		if it.Kind == "artifact" && (!it.Done || it.resolved >= since) {
+		if (it.Kind == "artifact" || it.Kind == "question") && (!it.Done || it.resolved >= since) {
 			out = append(out, *it)
 		}
 	}

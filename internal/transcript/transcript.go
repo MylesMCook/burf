@@ -17,7 +17,7 @@ import (
 )
 
 // Item is one entry in the conversation. Kind is user, text, tools, edit,
-// crew, command, notice or artifact; the fields each kind uses are as in app/src/lib/transcript.ts.
+// crew, command, notice, artifact or question; the fields each kind uses are as in app/src/lib/transcript.ts.
 type Item struct {
 	Kind    string     `json:"kind"`
 	ID      string     `json:"id"`
@@ -56,6 +56,11 @@ type Item struct {
 	URL         string `json:"url,omitempty"`
 	Description string `json:"description,omitempty"`
 	Updated     bool   `json:"updated,omitempty"`
+	// A question item (questions.go): the questions the agent asked with
+	// its own form, and once answered, the answer to each (Done; Error when
+	// it was not answered).
+	Questions []Question `json:"questions,omitempty"`
+	Answers   []string   `json:"answers,omitempty"`
 
 	// pending are the tool calls in a group still waiting for a result.
 	pending map[string]bool
@@ -180,6 +185,9 @@ type conv struct {
 	// still waiting for their result (artifacts.go).
 	arts     []Artifact
 	artCalls map[string]artCall
+	// askCalls are the questions still waiting for their answer, by call
+	// → absolute index of their item (questions.go).
+	askCalls map[string]int
 }
 
 func (c *conv) id() string {
@@ -408,8 +416,8 @@ func (r *Reader) Read(source, path, dir string, since int) (Result, error) {
 	}
 	from = min(from, c.base+len(c.items))
 	out := Result{Source: source, Next: c.base + len(c.items), Truncated: c.truncated || c.base > 0, Last: c.lineAt}
-	// A publish settles after its item was sent: it comes again, as a
-	// tool group does.
+	// A publish or a question settles after its item was sent: it comes
+	// again, as a tool group does.
 	out.Items = append(c.artifactsSince(from, since), c.items[from-c.base:]...)
 	out.Artifacts = c.artifacts()
 	out.Crew = append([]CrewMember{}, c.crew...)

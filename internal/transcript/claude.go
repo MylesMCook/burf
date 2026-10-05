@@ -140,6 +140,7 @@ func (claudeParser) line(c *conv, b []byte) {
 			c.result(bl.ToolUseID, at)
 			claudeResultSignal(c, bl.ToolUseID, text, at)
 			c.published(bl.ToolUseID, b, text, bl.IsError, at)
+			c.claudeAnswered(bl.ToolUseID, b, text, bl.IsError)
 			// A rejected call with words for the agent (a plan sent back
 			// with "Tell Claude what to change") reads as what the person
 			// said.
@@ -188,6 +189,7 @@ func userText(c *conv, s string) {
 	}
 	c.rewound()
 	c.closeArtifacts()
+	c.closeQuestions()
 	c.prompted(c.add(Item{Kind: "user", ID: c.id(), Text: clip(s, 4000), UUID: c.lineUUID, Parent: c.lineParent}))
 }
 
@@ -238,6 +240,11 @@ func claudeTool(c *conv, bl claudeBlock, at int64) {
 		name := firstNonEmpty(str("description"), str("subagent_type"), "Helper")
 		c.add(Item{Kind: "crew", ID: c.id(), Names: []string{name}, Tool: bl.ID})
 		c.helper(CrewMember{ID: bl.ID, Name: clip(name, 60), Kind: "subagent", Agent: "claude", State: "running", Doing: clip(firstNonEmpty(str("subagent_type"), "Working"), 60), Since: at})
+	case "AskUserQuestion":
+		// Its questions, answered from the chat (questions.go).
+		if !c.asked(bl.ID, in["questions"]) {
+			c.call(bl.ID, ToolCall{Verb: "Run", Target: "AskUserQuestion"})
+		}
 	case "ExitPlanMode":
 		// The plan the agent presents for approval is its answer.
 		if plan := strings.TrimSpace(str("plan")); plan != "" {
