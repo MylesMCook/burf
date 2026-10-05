@@ -31,8 +31,10 @@ Berth's landing page: static HTML and CSS, no build step. Open
   `assets/scenes.css`, from `scripts/scenes.mjs`), the film's caption as its
   heading, and a short muted loop of the real app (`assets/loops/`, 0.2-0.7
   MB each, cut by `scripts/loops.sh` from the film's footage; posters by
-  `scripts/posters.mjs`). "Watch it work" switches between three loops, each
-  handing on to the next until one is chosen. "It keeps going" is always
+  `scripts/posters.mjs`; the Compare tab, which the film predates, by
+  `scripts/compare.mjs` from the app in mock mode). "Watch it work" (steps,
+  questions, artifacts) and "Side by side" (tab groups, Compare) switch
+  between loops, each handing on to the next until one is chosen. "It keeps going" is always
   night, and reuses the hero's loop. `assets/clips.js` gives each poster its
   src and its loop once the page has loaded and it's near, plays loops only
   in view, and leaves the posters for reduced motion.

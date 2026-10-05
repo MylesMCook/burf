@@ -154,9 +154,18 @@
     <div class="chapter-head">
       <div class="chapter-mark"><span class="scene" data-scene="rafted"></span><span class="kicker">Side by side</span></div>
       <h2 id="side-h">Two worktrees. One view.</h2>
-      <p>Two worktrees share the tab strip as groups, each in its own colour, and split into one tab: one agent's artifacts beside another asking to run a migration.</p>
+      <p>Two worktrees share the tab strip as groups, each in its own colour, and split into one tab. Compare puts them in mirrored lanes: their chats, their diffs, their terminals.</p>
     </div>
-    <figure class="clip" data-clip="assets/loops/groups.mp4"><img data-src="assets/loops/groups.webp" width="1600" height="1000" alt="Two worktrees' tabs grouped in one strip, then split side by side: search-perf's artifacts on the left, checkout-fix asking to run a command on the right." decoding="async"><noscript><img src="assets/loops/groups.webp" width="1600" height="1000" alt="" loading="lazy"></noscript></figure>
+    <div class="views" data-views>
+      <div class="seg" role="group" aria-label="Side by side">
+        <button type="button" aria-pressed="true" data-show="groups">Tab groups</button>
+        <button type="button" aria-pressed="false" data-show="compare">Compare</button>
+      </div>
+      <div class="stack">
+        <figure class="clip" data-clip="assets/loops/groups.mp4" data-view="groups"><img data-src="assets/loops/groups.webp" width="1600" height="1000" alt="Two worktrees' tabs grouped in one strip, then split side by side: search-perf's artifacts on the left, checkout-fix asking to run a command on the right." decoding="async"><noscript><img src="assets/loops/groups.webp" width="1600" height="1000" alt="" loading="lazy"></noscript></figure>
+        <figure class="clip" data-clip="assets/loops/compare.mp4" data-view="compare" aria-hidden="true"><img data-src="assets/loops/compare.webp" width="1600" height="1000" alt="A Compare tab: checkout-fix and search-perf side by side in mirrored lanes, their chats, then their branches&#39; diffs, then their agents&#39; terminals." decoding="async"><noscript><img src="assets/loops/compare.webp" width="1600" height="1000" alt="" loading="lazy"></noscript></figure>
+      </div>
+    </div>
   </div>
 </section>
 

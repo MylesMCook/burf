@@ -2,7 +2,8 @@
 # Cuts the page's section loops (site/assets/loops/) from the launch film's
 # sources: the app's recorded footage (60 fps 2560x1600 JPEG frames, one
 # folder per shot). The night ("It keeps going") is the hero's own loop,
-# assets/film/hero-loop.mp4, so it costs nothing more. Each loop is a
+# assets/film/hero-loop.mp4, so it costs nothing more; Compare, which the
+# footage predates, is scripts/compare.mjs. Each loop is a
 # muted H.264 MP4 at 1600x1000, 30 fps, about 4-8 s, whose end crossfades
 # into its start, so it loops without a seam. The posters (the loop's first
 # frame, as WebP) are made by site/scripts/posters.mjs.
