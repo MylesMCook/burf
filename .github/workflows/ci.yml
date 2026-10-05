@@ -59,6 +59,9 @@ jobs:
       - run: pnpm check:titles
       # The release CSP must let the app load its own built-in plugins.
       - run: pnpm check:csp
+      # Every built-in theme's text, states and terminal meet their contrast
+      # (src/themes/contrast.ts).
+      - run: pnpm check:themes
       # The split tree's moves (lib/layout.test.ts).
       - run: pnpm test
       - run: pnpm build

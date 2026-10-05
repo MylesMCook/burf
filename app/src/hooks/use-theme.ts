@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useSyncExternalStore } from "react";
 
 import type { Theme } from "@/lib/api";
+import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { useRegistry } from "@/plugins/registry";
 import { applyTheme } from "@/themes/apply";
@@ -20,7 +21,9 @@ export function useThemes(): Theme[] {
   }, [server, fromPlugins]);
 }
 
-// SYSTEM_THEME follows the computer's light or dark appearance.
+// SYSTEM_THEME follows the computer's light or dark appearance, with a
+// theme for each (Settings › Appearance; Berth Light and Berth Dark unless
+// chosen).
 export const SYSTEM_THEME = "system";
 
 const darkQuery = typeof window !== "undefined" ? window.matchMedia("(prefers-color-scheme: dark)") : undefined;
@@ -39,8 +42,11 @@ export function useActiveTheme(): Theme {
   const themes = useThemes();
   const id = useStore((s) => s.themeId);
   const dark = useSystemDark();
-  const want = id === SYSTEM_THEME ? (dark ? "berth-dark" : "berth-light") : id;
-  return themes.find((t) => t.id === want) ?? berthDark;
+  const system = usePrefs((p) => p.systemThemes);
+  if (id !== SYSTEM_THEME) return themes.find((t) => t.id === id) ?? berthDark;
+  // A pick that has gone (a theme file removed) falls back to Berth's own.
+  const want = dark ? system.dark : system.light;
+  return themes.find((t) => t.id === want) ?? themes.find((t) => t.id === (dark ? "berth-dark" : "berth-light")) ?? berthDark;
 }
 
 // useApplyTheme keeps the document's colors in step with the chosen theme.

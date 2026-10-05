@@ -8,6 +8,9 @@ import { CodeView, type CodeViewHandle, type CodeViewItem, type DiffLineAnnotati
 import { getOrCreateWorkerPoolSingleton, terminateWorkerPoolSingleton } from "@pierre/diffs/worker";
 import { type CSSProperties, type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { useActiveTheme } from "@/hooks/use-theme";
+import { syntaxThemes } from "@/themes/apply";
+
 export type { FileDiffMetadata };
 
 // The highlighter caches by key, so a key names the contents: the same diff
@@ -54,7 +57,17 @@ export function fromTexts(name: string, old: string | undefined, next: string): 
   return parseDiffFromFile(old == null ? null : { name, contents: old, cacheKey: `${key}-a` }, { name, contents: next, cacheKey: `${key}-b` });
 }
 
-const THEMES = { dark: "pierre-dark", light: "pierre-light" };
+// Code is coloured by the app theme's own Shiki theme (Theme.syntax:
+// Dracula's diffs in Dracula), Pierre's light or dark without one. Shiki's
+// themes are each a chunk of their own, loaded the first time a diff shows
+// in that theme, never with the app.
+type Syntax = { dark: string; light: string };
+
+function useSyntax(): Syntax {
+  const theme = useActiveTheme();
+  const { dark, light } = syntaxThemes(theme);
+  return useMemo(() => ({ dark, light }), [dark, light]);
+}
 
 // The app's look inside the library's shadow DOM: its background (a host
 // can set --berth-diff-bg, a chat's card say), borders and mono font, and
@@ -93,13 +106,18 @@ function workerFactory() {
 // The pool: two workers, enough to keep up with scrolling, without the
 // eight a pool starts by default. It outlives the views that use it for a
 // while, so folding an edit and opening the next doesn't start it again.
-const POOL = { poolOptions: { workerFactory, poolSize: 2, totalASTLRUCacheSize: 40 }, highlighterOptions: { theme: THEMES, langs: [] } };
+const POOL_OPTIONS = { workerFactory, poolSize: 2, totalASTLRUCacheSize: 40 };
 const IDLE = 120_000;
 let users = 0;
 let idle = 0;
 
 function usePool() {
-  const [pool] = useState(() => getOrCreateWorkerPoolSingleton(POOL));
+  const syntax = useSyntax();
+  const [pool] = useState(() => getOrCreateWorkerPoolSingleton({ poolOptions: POOL_OPTIONS, highlighterOptions: { theme: syntax, langs: [] } }));
+  // A new app theme re-colours what is open; the pool ignores a pair it has.
+  useEffect(() => {
+    void pool.setRenderOptions({ theme: syntax });
+  }, [pool, syntax]);
   useEffect(() => {
     users++;
     window.clearTimeout(idle);
@@ -148,6 +166,7 @@ export default function Viewer(props: ViewerProps) {
 }
 
 function Files({ items, layout, wrap, dark, jump, onActive, renderHeader }: ViewerProps) {
+  const syntax = useSyntax();
   const ref = useRef<CodeViewHandle<undefined, undefined>>(null);
   const ids = useRef<string[]>([]);
   ids.current = items.map((i) => i.id);
@@ -160,7 +179,7 @@ function Files({ items, layout, wrap, dark, jump, onActive, renderHeader }: View
 
   const options = useMemo(
     () => ({
-      theme: THEMES,
+      theme: syntax,
       themeType: dark ? ("dark" as const) : ("light" as const),
       diffStyle: layout,
       overflow: wrap ? ("wrap" as const) : ("scroll" as const),
@@ -170,7 +189,7 @@ function Files({ items, layout, wrap, dark, jump, onActive, renderHeader }: View
       stickyHeaders: true,
       unsafeCSS: CSS,
     }),
-    [dark, layout, wrap],
+    [dark, layout, wrap, syntax],
   );
 
   useEffect(() => {
@@ -243,9 +262,10 @@ export function Diff({ fileDiff, layout, dark, wrap = true, className, style, no
   const add = useRef(onAddNote);
   add.current = onAddNote;
   const commentable = !!onAddNote;
+  const syntax = useSyntax();
   const options = useMemo(
     () => ({
-      theme: THEMES,
+      theme: syntax,
       themeType: dark ? ("dark" as const) : ("light" as const),
       diffStyle: layout,
       overflow: wrap ? ("wrap" as const) : ("scroll" as const),
@@ -259,7 +279,7 @@ export function Diff({ fileDiff, layout, dark, wrap = true, className, style, no
         ? (r: { start: number; side?: "deletions" | "additions" }) => add.current?.(r.side === "deletions" ? "old" : "new", r.start)
         : undefined,
     }),
-    [dark, layout, wrap, commentable],
+    [dark, layout, wrap, commentable, syntax],
   );
   const annotations = useMemo<DiffLineAnnotation<string>[] | undefined>(
     () => notes?.map((n) => ({ side: n.side === "old" ? "deletions" : "additions", lineNumber: n.line, metadata: n.key })),

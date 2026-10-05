@@ -49,7 +49,7 @@
 .cv-md li { margin: 0.15em 0; }
 .cv-md li > ul, .cv-md li > ol { margin: 0.15em 0 0.2em; }
 .cv-md strong { font-weight: 600; }
-.cv-md a { color: var(--foreground); text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 35%, transparent); text-underline-offset: 2px; }
+.cv-md a { color: var(--link, var(--foreground)); text-decoration: underline; text-decoration-color: color-mix(in srgb, currentColor 35%, transparent); text-underline-offset: 2px; }
 .cv-md a:hover { text-decoration-color: currentColor; }
 .cv-md code { font-family: var(--font-mono); font-size: 0.88em; padding: 0.1em 0.35em; border-radius: 5px; background: var(--muted); }
 .cv-md pre { margin: 0 0 0.75em; padding: 10px 12px; border-radius: 10px; background: var(--muted); overflow-x: auto; font-size: 0.7812rem; line-height: 1.5; }
@@ -69,7 +69,7 @@
 .cv-md .cv-copy-code { position: absolute; top: 6px; right: 6px; padding: 2px 8px; border-radius: 6px; font-size: 0.7188rem; color: var(--muted-foreground); background: var(--background); border: 1px solid var(--border); opacity: 0; transition: opacity 120ms ease; user-select: none; cursor: pointer; }
 .cv-md .cv-pre:hover .cv-copy-code, .cv-md .cv-copy-code:focus-visible { opacity: 1; }
 .cv-md .cv-copy-code:hover { color: var(--foreground); }
-.cv-md ::selection, [data-selectable] ::selection { background: color-mix(in srgb, var(--primary) 28%, transparent); }
+.cv-md ::selection, [data-selectable] ::selection { background: var(--selection, color-mix(in srgb, var(--primary) 28%, transparent)); }
 
 /* Words read from the agent's screen before its record has them. */
 /* Words read off the agent's screen before its record has them: the reply

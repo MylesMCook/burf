@@ -3,21 +3,51 @@ title: Themes
 description: Colour the app and its terminals with a JSON file, or ship a theme in a plugin.
 ---
 
-The app comes with four themes (Berth Dark, Berth Light, Midnight and Paper)
-and **Match system**, which uses Berth Light by day and Berth Dark when
-macOS is dark. Pick one in **Settings → Appearance → Theme**.
+Pick a theme in **Settings → Appearance → Theme**: Berth's own, then ports
+of popular VS Code themes, grouped dark and light, with a search. Each card
+shows the theme's sidebar and terminal, and dots for its primary colour and
+terminal palette. The command palette (⌘K, "theme") previews them as you
+move through.
+
+| | Dark | Light |
+|---|---|---|
+| Berth | Berth Dark, Midnight | Berth Light, Paper |
+| Dracula | Dracula | |
+| One | One Dark Pro | One Light |
+| Catppuccin | Mocha | Latte |
+| Tokyo Night | Tokyo Night | |
+| Nord | Nord | |
+| GitHub | GitHub Dark, GitHub Dark Dimmed | GitHub Light |
+| Gruvbox | Gruvbox Dark | Gruvbox Light |
+| Solarized | Solarized Dark | Solarized Light |
+| Rosé Pine | Rosé Pine | Rosé Pine Dawn |
+| Night Owl | Night Owl | Night Owl Light |
+| Kanagawa | Kanagawa Wave | |
+
+The ports take each theme's own palette for the app, the terminal's 16
+colours and the code in diffs, edits and an agent's replies (each through
+its own Shiki theme, loaded the first time code shows). Where a colour was
+too faint to read, it was lightened or darkened, hue kept: every built-in
+theme keeps body and muted text at 4.5:1, and done, waiting, running and
+failed apart from each other. Sources and licences are in
+[THIRD_PARTY_THEMES.md](https://github.com/sean-brydon/berthd/blob/main/THIRD_PARTY_THEMES.md).
+
+**Match system** follows macOS: one theme by day, another when it's dark.
+Berth Light and Berth Dark unless you pick others beside it.
 
 ## Your own
 
 Add a JSON file to `~/.berth/themes/` on your laptop. It appears in Settings
-within 15 seconds, or as soon as you switch back to the app. A theme with a built-in's id (`berth-dark`,
-`berth-light`, `midnight`, `paper`) replaces it.
+within 15 seconds, or as soon as you switch back to the app, under Dark or
+Light by its `appearance`. A theme with a built-in's id (`berth-dark`,
+`dracula`, …) replaces it.
 
 ```json title="~/.berth/themes/harbour.json"
 {
   "id": "harbour",
   "name": "Harbour",
   "appearance": "dark",
+  "syntax": "github-dark-default",
   "colors": {
     "background": "#1d1e22", "foreground": "#e3e4e8",
     "sidebar": "#18191c", "sidebarForeground": "#a9abb3",
@@ -26,7 +56,8 @@ within 15 seconds, or as soon as you switch back to the app. A theme with a buil
     "accent": "#2a2b31", "accentForeground": "#f1f2f4",
     "primary": "#e3e4e8", "primaryForeground": "#18191c",
     "card": "#212226", "popover": "#222328", "ring": "#5b5d66",
-    "success": "#3fb950", "warning": "#e8a33d", "destructive": "#f0564a"
+    "success": "#3fb950", "warning": "#e8a33d", "destructive": "#f0564a",
+    "info": "#2b7fff"
   },
   "terminal": {
     "background": "#1d1e22", "foreground": "#dcdde2", "cursor": "#e3e4e8", "selectionBackground": "#3a3c45",
@@ -40,12 +71,29 @@ within 15 seconds, or as soon as you switch back to the app. A theme with a buil
 
 A theme needs `id` (defaulting to the file name), `colors` and `terminal`;
 `appearance` is `dark` or `light`. The full type is
-[`Theme`](/reference/plugin-sdk#types).
+[`Theme`](/reference/plugin-sdk#types). Optional, beside those:
+
+- `syntax`: the [Shiki theme](https://shiki.style/themes) that colours code
+  in diffs and replies, by name (`dracula`, `github-light-default`, …).
+  Without it, Pierre's own light or dark.
+- `colors.info`: what is running (a spinner) and notices; the app's blue
+  without it.
+- `colors.successForeground`, `warningForeground`, `destructiveForeground`,
+  `infoForeground`: each state as text, on a light wash of its own colour
+  (badges, banners). Keep them 4.5:1 on that wash.
+- `colors.link` for links in replies (the text colour, underlined, without
+  it) and `colors.selection` for selected text.
+- `terminal.selectionForeground`: selected text in the terminal, where its
+  own colour doesn't read on the selection.
 
 `warning` is mainly the colour of "needs you": the dot of an agent waiting
 for you, and the lamp in the app's drawings. It also marks boxes still
 connecting, memory running low and other warnings, so keep it easy to tell
-apart from `primary`.
+apart from `primary`, `success` (done) and `info` (running).
+
+To check yours against the bar the built-ins meet, copy it into
+`app/src/themes/` in a clone of the repo and run `pnpm check:themes`
+after adding it to `builtinThemes`.
 
 ## In a plugin
 

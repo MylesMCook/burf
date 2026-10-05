@@ -1,5 +1,7 @@
 import type { Theme } from "@/lib/api";
 
+import { vscodeThemes } from "./vscode.ts";
+
 // Built-in themes. More come from ~/.berth/themes/*.json through the agent,
 // and from plugins; a theme with a built-in's id replaces it.
 
@@ -25,6 +27,13 @@ export const berthDark: Theme = {
     success: "#3fb950",
     warning: "#e8a33d",
     destructive: "#f0564a",
+    // The app's own blue for running, and Tailwind's 400s for the states'
+    // text, as the app drew them before themes could set them.
+    info: "#2b7fff",
+    successForeground: "#00d492",
+    warningForeground: "#ffb900",
+    destructiveForeground: "#ff6467",
+    infoForeground: "#51a2ff",
   },
   terminal: {
     background: "#1d1e22",
@@ -73,6 +82,14 @@ export const berthLight: Theme = {
     success: "#1f9d55",
     warning: "#c27a12",
     destructive: "#d93a2e",
+    // The app's own blue for running, and Tailwind's 700s and 800s for the
+    // states' text, as the app drew them before themes could set them
+    // (green a shade darker, for 4.5:1 on its tint).
+    info: "#2b7fff",
+    successForeground: "#00714e",
+    warningForeground: "#973c00",
+    destructiveForeground: "#c10007",
+    infoForeground: "#1447e6",
   },
   terminal: {
     background: "#ffffff",
@@ -120,6 +137,13 @@ export const midnight: Theme = {
     success: "#4ccf8b",
     warning: "#f2b65a",
     destructive: "#ff6b7a",
+    // The app's own blue for running, and Tailwind's 400s for the states'
+    // text, as the app drew them before themes could set them.
+    info: "#2b7fff",
+    successForeground: "#00d492",
+    warningForeground: "#ffb900",
+    destructiveForeground: "#ff6467",
+    infoForeground: "#51a2ff",
   },
   terminal: {
     background: "#0f1420",
@@ -155,7 +179,8 @@ export const paper: Theme = {
     sidebar: "#f3eee2",
     sidebarForeground: "#6d6453",
     muted: "#f0eadc",
-    mutedForeground: "#81786a",
+    // 4.5:1 on the page, the sidebar and cards.
+    mutedForeground: "#746b5d",
     border: "#e4dccb",
     accent: "#ebe3d2",
     accentForeground: "#2e281f",
@@ -167,6 +192,13 @@ export const paper: Theme = {
     success: "#4d8a3b",
     warning: "#b8751a",
     destructive: "#b8432f",
+    // Its own ink for running, and its state colours darkened for text,
+    // 4.5:1 on their tints.
+    info: "#3c6a9e",
+    successForeground: "#316d1d",
+    warningForeground: "#8c5500",
+    destructiveForeground: "#a93521",
+    infoForeground: "#2f5a8a",
   },
   terminal: {
     background: "#fbf8f1",
@@ -192,4 +224,7 @@ export const paper: Theme = {
   },
 };
 
-export const builtinThemes: Theme[] = [berthDark, berthLight, midnight, paper];
+// Berth's own, which the picker lists first.
+export const berthThemes: Theme[] = [berthDark, berthLight, midnight, paper];
+
+export const builtinThemes: Theme[] = [...berthThemes, ...vscodeThemes];

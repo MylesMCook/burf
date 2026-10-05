@@ -50,6 +50,8 @@ export interface Prefs {
   chatBackground: ChatBackground;
   // How wide the conversation's column is (Settings › Appearance › Chat).
   chatWidth: ChatWidth;
+  // The themes "Match system" uses by day and when macOS is dark.
+  systemThemes: { light: string; dark: string };
 }
 
 export type ChatWidth = "narrow" | "default" | "wide" | "xwide" | "full";
@@ -76,6 +78,7 @@ const DEFAULTS: Prefs = {
   autoUpdateBoxes: false,
   chatBackground: DEFAULT_CHAT_BACKGROUND,
   chatWidth: "default",
+  systemThemes: { light: "berth-light", dark: "berth-dark" },
 };
 
 // PREFS_VERSION counts changes of default that saved prefs are moved to
@@ -109,6 +112,7 @@ export const usePrefs = create<Prefs>()(() => ({
   ...savedPrefs,
   terminal: { ...DEFAULTS.terminal, ...saved.terminal },
   notify: { ...DEFAULTS.notify, ...saved.notify },
+  systemThemes: { ...DEFAULTS.systemThemes, ...saved.systemThemes },
   chatBackground: normalizeChatBackground(saved.chatBackground),
 }));
 

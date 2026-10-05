@@ -407,6 +407,19 @@ export interface ThemeColors {
   success: string;
   warning: string;
   destructive: string;
+  // Optional; without them the app uses its own.
+  // info: what is running (a spinner), and notices.
+  info?: string;
+  // Each state's colour as text: a badge's or a banner's words, on a 16%
+  // wash of the state's colour.
+  successForeground?: string;
+  warningForeground?: string;
+  destructiveForeground?: string;
+  infoForeground?: string;
+  // Links in an agent's reply (otherwise the text colour, underlined).
+  link?: string;
+  // Selected text outside the terminal.
+  selection?: string;
 }
 
 export interface TerminalColors {
@@ -414,6 +427,9 @@ export interface TerminalColors {
   foreground: string;
   cursor: string;
   selectionBackground: string;
+  // Selected text, where the text's own colour would not read on the
+  // selection.
+  selectionForeground?: string;
   black: string;
   red: string;
   green: string;
@@ -438,6 +454,10 @@ export interface Theme {
   appearance: "dark" | "light";
   colors: ThemeColors;
   terminal: TerminalColors;
+  // The Shiki theme that colours code in diffs and edits, by its name in
+  // shiki.style/themes ("dracula", "github-light-default", …). It loads
+  // when a diff first shows. Without it, Pierre's own light or dark.
+  syntax?: string;
 }
 
 // A hook from ~/.berth/hooks.json, or one a plugin adds (source

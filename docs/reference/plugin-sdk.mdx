@@ -206,7 +206,7 @@ Go structs have them, in `packages/plugin-sdk/src/types.ts`:
 | `TaskRequest` | `location`, `name`, `branch?`, `base?`, `agent?`, `command?`, `prompt?`, `from_session?`, `pr?`, `ref?`, `open?` |
 | `TaskResult` | `worktree`, `session` |
 | `BerthEvent` | `seq?`, `type`, `time`, `box?`, `origin?`, `error?`, `data?` |
-| `Theme` | `id`, `name`, `appearance` (`dark`, `light`), `colors` (17 UI colours), `terminal` (20 terminal colours) |
+| `Theme` | `id`, `name`, `appearance` (`dark`, `light`), `colors` (17 UI colours, and optional `info`, state text colours, `link`, `selection`), `terminal` (20 terminal colours, and optional `selectionForeground`), optional `syntax` (a Shiki theme for code) |
 | `Hook` | `on`, `run`, `tool?`, `timeout?`, `source?` |
 | `TaskTemplate` | as in [task templates](/guides/task-templates) |
 

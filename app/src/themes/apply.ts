@@ -36,10 +36,32 @@ export function applyTheme(theme: Theme) {
     "--sidebar-ring": c.ring,
     "--terminal-background": theme.terminal.background,
   };
+  // A theme may leave these out: the stylesheet's own then show through,
+  // not the last theme's.
+  const optional: Record<string, string | undefined> = {
+    "--info": c.info,
+    "--success-foreground": c.successForeground,
+    "--warning-foreground": c.warningForeground,
+    "--destructive-foreground": c.destructiveForeground,
+    "--info-foreground": c.infoForeground,
+    "--link": c.link,
+    "--selection": c.selection,
+  };
   const root = document.documentElement;
   for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
+  for (const [k, v] of Object.entries(optional)) {
+    if (v) root.style.setProperty(k, v);
+    else root.style.removeProperty(k);
+  }
   root.classList.toggle("dark", theme.appearance === "dark");
   root.style.colorScheme = theme.appearance;
+}
+
+// syntaxThemes is the Shiki theme pair the diff renderer colours code with:
+// the theme's own on its side, Pierre's on the other.
+export function syntaxThemes(theme: Theme): { dark: string; light: string } {
+  const own = theme.syntax;
+  return { dark: theme.appearance === "dark" && own ? own : "pierre-dark", light: theme.appearance === "light" && own ? own : "pierre-light" };
 }
 
 // xtermTheme is the terminal palette in xterm.js's own names.
