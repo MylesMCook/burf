@@ -7,6 +7,7 @@
 # gh is not installed, from stdin. It goes to a one-off container on its
 # stdin and is never written down, put on a command line or printed.
 set -euo pipefail
+# shellcheck source-path=SCRIPTDIR
 . "$(dirname "$0")/common.sh"
 need docker
 

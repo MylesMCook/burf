@@ -51,16 +51,12 @@ register() {
 	done
 }
 
-# One runner, restarted when it exits; TERM stops it and the loop.
+# One runner, restarted when it exits.
 run_one() {
-	local dir=$1 child=
-	trap 'if [ -n "$child" ]; then kill -TERM "$child" 2>/dev/null; wait "$child"; fi; exit 0' TERM INT
-	cd "$dir"
+	cd "$1"
 	while :; do
-		ACTIONS_RUNNER_HOOK_JOB_STARTED=/opt/berth-runner/job-started.sh ./run.sh &
-		child=$!
-		wait "$child" || echo "$(basename "$dir") exited ($?); restarting in 10s"
-		child=
+		ACTIONS_RUNNER_HOOK_JOB_STARTED=/opt/berth-runner/job-started.sh ./run.sh ||
+			echo "$(basename "$1") exited ($?); restarting in 10s"
 		sleep 10
 	done
 }
@@ -83,11 +79,23 @@ if [ ${#dirs[@]} -eq 0 ]; then
 	exit 1
 fi
 
+# Job control: each runner is its own process group, and its processes do
+# not start with SIGINT and SIGQUIT ignored, as a non-interactive shell's
+# background jobs otherwise do. Jobs would inherit that (a `trap ... INT` in
+# a test would do nothing).
+set -m
 pids=()
 for dir in "${dirs[@]}"; do
 	sync_runner "$dir"
 	run_one "$dir" &
 	pids+=($!)
 done
-trap 'kill -TERM "${pids[@]}" 2>/dev/null; wait' TERM INT
+stop_all() {
+	local p
+	for p in "${pids[@]}"; do
+		kill -TERM -- "-$p" 2>/dev/null || true
+	done
+	wait
+}
+trap stop_all TERM INT
 wait

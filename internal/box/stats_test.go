@@ -38,7 +38,8 @@ func fakeProc(t *testing.T) string {
 }
 
 func TestStatsReadMemoryLoadAndAgents(t *testing.T) {
-	s := collectStats(fakeProc(t))
+	// No cgroup limit: a container running the test has its own.
+	s := collectStatsIn(fakeProc(t), t.TempDir())
 	if s.Uptime != 3600 || len(s.Load) != 3 || s.Load[2] != 1.25 {
 		t.Fatalf("uptime/load = %d %v", s.Uptime, s.Load)
 	}
