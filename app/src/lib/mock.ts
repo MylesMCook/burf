@@ -7,6 +7,7 @@ import { worktreesCall } from "@/lib/mock-worktrees";
 import { kitsCall, kitsStream } from "@/lib/mock-kits";
 import { reviewCall, reviewExec } from "@/lib/mock-review";
 import { editorsCall } from "@/lib/mock-editors";
+import { imageGenCall } from "@/lib/mock-imagegen";
 import { mockShell } from "@/lib/mock-shell";
 import { mockIssueTitle } from "@/lib/mock-issues";
 import { usageCall, usageExec } from "@/lib/mock-usage";
@@ -1078,6 +1079,8 @@ export function mockClient(): Client {
       if (kits) return kits as Promise<T>;
       const eds = editorsCall(method, path, body, delay);
       if (eds) return eds as Promise<T>;
+      const gen = imageGenCall(method, path, delay);
+      if (gen) return gen as Promise<T>;
       return Promise.reject(new Error(`mock: no fixture for ${method} ${path}`));
     },
     stream: mockStream,

@@ -7,6 +7,7 @@ import { TaskComposer } from "@/components/conversation/task-composer";
 import { AttachmentChips, useAttachments } from "@/components/conversation/attachments";
 import { HARBOUR, HARBOUR_MUTE, useHarbourLight } from "@/components/art/harbour-art";
 import { Scene, type SceneName } from "@/components/art/scenes";
+import { ChatBackground } from "@/components/conversation/chat-background";
 import { ChatControls } from "@/components/conversation/chat-controls";
 import { ConversationView, type EditActions, QueuedBubble } from "@/components/conversation/conversation-view";
 import { ChatScope } from "@/components/conversation/notice-card";
@@ -386,7 +387,8 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
 
   return (
     // The column steps left of the floating loops panel when there is room.
-    <div className="@container relative flex min-h-0 flex-1 flex-col bg-background">
+    <div className="@container relative isolate flex min-h-0 flex-1 flex-col bg-background">
+      <ChatBackground />
       <div className="min-h-0 flex-1 overflow-y-auto pt-6 pr-6 pb-4 pl-6 @[1000px]:pr-[max(24px,var(--berth-loops-w,0px))]">
         {!mock && feed === "loading" && !items.length ? (
           <div className="flex h-full items-center justify-center text-muted-foreground text-sm">

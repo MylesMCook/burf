@@ -1,9 +1,10 @@
-import { AppWindowIcon, ArrowLeftRightIcon, EllipsisIcon, GlobeIcon, MessagesSquareIcon, PencilIcon, ScrollTextIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, SquareTerminalIcon, XIcon } from "lucide-react";
+import { AppWindowIcon, ArrowLeftRightIcon, EllipsisIcon, GlobeIcon, ImageIcon, MessagesSquareIcon, PencilIcon, ScrollTextIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, SquareTerminalIcon, XIcon } from "lucide-react";
 import { useEffect } from "react";
 
 import { Tip } from "@/components/tip";
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
 import { BrowserPane } from "@/components/browser-pane";
+import { openChatBackgroundSettings } from "@/components/conversation/chat-background";
 import { ConversationPane } from "@/components/conversation/conversation-pane";
 import { ErrorText } from "@/components/error-note";
 import { SessionActionItems } from "@/components/orchestrate/session-actions";
@@ -282,6 +283,12 @@ export function PaneActions({ wsKey, tab, pane, onClose, closable, focused = tru
             <MenuItem onClick={() => startRenaming(c.box, c.session)}>
               <PencilIcon />
               Rename…
+            </MenuItem>
+          )}
+          {c.kind === "terminal" && agent && (
+            <MenuItem onClick={openChatBackgroundSettings}>
+              <ImageIcon />
+              Chat background…
             </MenuItem>
           )}
           {others.length > 0 && (

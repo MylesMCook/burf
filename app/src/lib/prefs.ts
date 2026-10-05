@@ -1,5 +1,6 @@
 import { create } from "zustand";
 
+import { type ChatBackground, DEFAULT_CHAT_BACKGROUND } from "@/lib/chat-background";
 import { load, save } from "@/lib/storage";
 import { DEFAULT_TERMINAL_PREFS, type TerminalPrefs } from "@/lib/terminal";
 
@@ -44,6 +45,9 @@ export interface Prefs {
   // Update a box's berthd as soon as Berth ships a newer one
   // (lib/outdated.ts). Off: the status bar offers it instead.
   autoUpdateBoxes: boolean;
+  // The picture behind conversations and its effects (Settings ›
+  // Appearance › Chat background); none by default.
+  chatBackground: ChatBackground;
 }
 
 const DEFAULTS: Prefs = {
@@ -64,6 +68,7 @@ const DEFAULTS: Prefs = {
   agentView: "terminal",
   zen: false,
   autoUpdateBoxes: false,
+  chatBackground: DEFAULT_CHAT_BACKGROUND,
 };
 
 // PREFS_VERSION counts changes of default that saved prefs are moved to
@@ -97,6 +102,7 @@ export const usePrefs = create<Prefs>()(() => ({
   ...savedPrefs,
   terminal: { ...DEFAULTS.terminal, ...saved.terminal },
   notify: { ...DEFAULTS.notify, ...saved.notify },
+  chatBackground: { ...DEFAULTS.chatBackground, ...saved.chatBackground },
 }));
 
 usePrefs.subscribe((p) => save("berth.prefs", { ...p, version: PREFS_VERSION }));
@@ -133,6 +139,10 @@ export function useTerminalPrefs(): TerminalPrefs {
 
 export function setPrefs(patch: Partial<Prefs>) {
   usePrefs.setState(patch);
+}
+
+export function setChatBackground(patch: Partial<ChatBackground>) {
+  usePrefs.setState((p) => ({ chatBackground: { ...p.chatBackground, ...patch } }));
 }
 
 export function setTerminalPrefs(patch: Partial<TerminalPrefs>) {

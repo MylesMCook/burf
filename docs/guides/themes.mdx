@@ -53,3 +53,31 @@ A [plugin](/guides/plugins) can ship themes as files, listed under
 `"themes"` in its `berth-plugin.json`, or add one at runtime with
 `berth.addTheme(theme)`. Plugin themes come after yours, so a plugin theme
 with the same id replaces yours.
+
+## Chat background
+
+**Settings → Appearance → Chat background** puts a picture behind
+conversations, in panes and in zen. Pick one:
+
+- **None**, the default.
+- A built-in: **Harbour** (the first-prompt painting, by the time of day,
+  and the night under a dark theme), **Dawn**, **Night**, **Open sea**,
+  **Fog** or **Chart**.
+- **Add…** a picture of your own, or drop one on the section. It is shrunk
+  to at most 2560 px and kept in the app's own storage on this Mac, with
+  the last eight you used.
+- **Generate** one from a prompt. Berth runs Codex's CLI on your Mac with
+  your Codex account (`codex exec`, read-only, in an empty folder), shows
+  the exact command first, and runs it only when you press Generate. It
+  takes 30 to 60 seconds. Without Codex installed and signed in
+  (`codex login`) it says so.
+
+Then shape it under **Effects**: a **Look** to start from (Clear,
+Frosted, Dithered, Ink, Pixel), then **Tone** (Auto moves the picture into
+the theme's light, dark under a dark theme), **Dim**, **Frosted glass**,
+**Pixelate**, **Dither** (the picture's colours, or the theme's ink),
+**Fit** and position. The preview shows a conversation over it.
+
+The conversation always sits on a sheet of frosted glass, as opaque as the
+picture needs for its text to keep WCAG AA contrast, so a busy photo stays
+readable. A pane's **⋯** menu has **Chat background…** to come back here.

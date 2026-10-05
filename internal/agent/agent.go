@@ -89,6 +89,10 @@ type Config struct {
 	// LocalBoxPort is the first port tried for it (default 7445).
 	Berthd       string
 	LocalBoxPort int
+	// Codex is the codex CLI that generates chat backgrounds, and CodexHome
+	// where it keeps its images; default to the one on PATH and ~/.codex.
+	Codex     string
+	CodexHome string
 }
 
 // Networks is the set of other tailnets the agent can dial through.
@@ -181,6 +185,8 @@ type Agent struct {
 	proxySt  ProxyStatus
 	queue    *promptQueue
 	local    localBox
+	// imageGenBusy lets one chat background generate at a time.
+	imageGenBusy sync.Mutex
 	// outdated remembers which boxes run an older berthd (outdated.go).
 	outdated outdatedCache
 

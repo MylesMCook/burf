@@ -23,6 +23,7 @@ func (a *Agent) api(stop context.CancelFunc) http.Handler {
 	a.kitRoutes(mux)
 	a.appStateRoutes(mux)
 	a.editorRoutes(mux)
+	a.imageGenRoutes(mux)
 	a.queueRoutes(mux)
 	mux.HandleFunc("GET /v1/status", func(w http.ResponseWriter, r *http.Request) {
 		a.sync()
