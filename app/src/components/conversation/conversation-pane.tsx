@@ -42,7 +42,7 @@ import { NONE, useStore } from "@/lib/store";
 import type { TranscriptItem } from "@/lib/transcript";
 import { noteSent, usePromptRecall } from "@/lib/history";
 import { plainWords, useScreenStatus } from "@/lib/screen-status";
-import { useAsk, useQueued, useTranscriptFeed } from "@/lib/transcript-feed";
+import { FIRST_READ_TIMEOUT, useAsk, useQueued, useTranscriptFeed } from "@/lib/transcript-feed";
 import { ConfirmDialog } from "@/views/settings/confirm";
 import { cn } from "@/lib/utils";
 import { useReview } from "@/views/review/review-store";
@@ -228,6 +228,15 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
   const ended = state === "exited";
   // In its own pane when the pane says how; otherwise a new tab.
   const again = () => (onStartAgain ? onStartAgain() : void startSession(agent ?? "claude", { kind: "tab" }, agent ? agentLabel(agent) : "Agent"));
+  // "Reading the conversation…" never stays: the box not having listed its
+  // sessions or said what it can do (or a read not settling) a few seconds
+  // on is an error with Retry, which asks the box again.
+  const reading = !mock && !away && (!listed || (feed === "loading" && !items.length && !ended));
+  const stalled = useStalled(reading, FIRST_READ_TIMEOUT + 2_000, `${key}:${attempt}`);
+  const retry = () => {
+    setAttempt((n) => n + 1);
+    void useStore.getState().refreshBox(box);
+  };
 
   // The box is away: what it last said may be stale, so say only that.
   if (away && !mock) {
@@ -245,12 +254,12 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
     );
   }
   // Not known yet: the box hasn't listed its sessions.
-  if (!mock && !listed) return <Reading />;
+  if (!mock && !listed && !stalled) return <Reading />;
 
-  if (!mock && feed === "error" && !items.length && !ended) {
+  if (!mock && (feed === "error" || stalled) && !items.length && !ended) {
     return (
       <PaneEmpty scene="storm" title="Couldn't read the conversation" description={`${box} didn't answer with it. The agent is unaffected; its terminal shows the same work.`}>
-        <Button onClick={() => setAttempt((n) => n + 1)}>
+        <Button onClick={retry}>
           <RefreshCwIcon />
           Retry
         </Button>
@@ -685,6 +694,19 @@ function PaneEmpty({ scene, title, description, children }: { scene?: SceneName;
       </Empty>
     </div>
   );
+}
+
+// useStalled is whether active has held for ms, counted afresh whenever
+// active or reset changes.
+function useStalled(active: boolean, ms: number, reset: string): boolean {
+  const [stalled, setStalled] = useState(false);
+  useEffect(() => {
+    setStalled(false);
+    if (!active) return;
+    const t = window.setTimeout(() => setStalled(true), ms);
+    return () => window.clearTimeout(t);
+  }, [active, ms, reset]);
+  return active && stalled;
 }
 
 function Reading() {

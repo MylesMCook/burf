@@ -62,7 +62,22 @@ export type FeedState = "loading" | "ready" | "none" | "unsupported" | "error";
 
 export const hasTranscripts = (box: string) => !!useStore.getState().boxes[box]?.info?.capabilities?.includes("transcript");
 
+// How long the first read of a chat may take before the chat says the box
+// didn't answer (it offers Retry, and keeps reading behind it), and how long
+// any later read may take before it is given up and tried again.
+export const FIRST_READ_TIMEOUT = 8_000;
+const READ_TIMEOUT = 30_000;
+
 // attempt, when it changes, reads again from where it was (a Retry).
+//
+// One loop reads a chat while it shows: on open, every 2s, and at once when
+// an event about the session arrives. An event never starts the loop over:
+// an agent at work sends one with every tool call, and starting over threw
+// away the answer on its way, so a box slower to answer than the agent's
+// calls came never showed its first answer ("Reading the conversation…" for
+// as long as the agent worked). An event during a read reads again once it
+// is in. Every read has a time limit, so one the box never answers can't
+// hold the chat either.
 export function useTranscriptFeed(box: string, session: string, dir: string | undefined, enabled: boolean, attempt = 0): FeedState {
   const client = useStore((s) => s.client);
   const supported = useStore((s) => !!s.boxes[box]?.info?.capabilities?.includes("transcript"));
@@ -73,15 +88,19 @@ export function useTranscriptFeed(box: string, session: string, dir: string | un
   const next = useRef(0);
   // The reading next counts in (newer boxes).
   const gen = useRef<string | undefined>(undefined);
+  // Reads now, from the loop that is running (a no-op while none is).
+  const kick = useRef<() => void>(() => {});
   const key = keyOf(box, session);
   // The last event about this session: agent.* and session.* carry its
   // name or its directory.
   const latest = useEventLog((s) => s.events.find((e) => e.box === box && (e.type.startsWith("agent.") || e.type.startsWith("session.")) && (e.data?.session === session || e.data?.name === session || (!!dir && e.data?.path === dir)))?.time);
 
-  // A different session starts from the beginning.
+  // A different session starts from the beginning, and is read before it
+  // shows anything (not the last session's state).
   useEffect(() => {
     next.current = 0;
     gen.current = undefined;
+    setState((s) => (s === "unsupported" ? s : "loading"));
   }, [key]);
 
   useEffect(() => {
@@ -94,14 +113,30 @@ export function useTranscriptFeed(box: string, session: string, dir: string | un
     setState((s) => (s === "error" ? "loading" : s));
     let alive = true;
     let busy = false;
+    // An event came while a read was out: read again once it is in.
+    let again = false;
+    let shown = false;
+    let failures = 0;
+    let inflight: AbortController | undefined;
     const read = async () => {
-      if (busy || document.hidden) return;
+      if (!alive) return;
+      if (busy) {
+        again = true;
+        return;
+      }
+      if (document.hidden) return;
       busy = true;
+      again = false;
+      const ctl = new AbortController();
+      inflight = ctl;
+      const limit = shown || failures > 0 ? READ_TIMEOUT : FIRST_READ_TIMEOUT;
+      const timer = window.setTimeout(() => ctl.abort(), limit);
       try {
         const since = next.current;
         const g = since && gen.current ? `&gen=${encodeURIComponent(gen.current)}` : "";
-        const r = await client.box<TranscriptResult>(box, "GET", `sessions/${encodeURIComponent(session)}/transcript?since=${since}${g}`);
+        const r = await client.box<TranscriptResult>(box, "GET", `sessions/${encodeURIComponent(session)}/transcript?since=${since}${g}`, undefined, ctl.signal);
         if (!alive) return;
+        failures = 0;
         if (r.source === "none") {
           setState("none");
           return;
@@ -128,27 +163,35 @@ export function useTranscriptFeed(box: string, session: string, dir: string | un
           // Start it afresh, so no other conversation's lines stay here.
           useConversations.setState((s) => ({ items: { ...s.items, [key]: [] } }));
           next.current = 0;
+          again = true;
           return;
         } else if (r.items?.length) useConversations.getState().merge(key, r.items);
         useConversations.getState().setCrew(key, r.crew ?? []);
         if (r.last) useConversations.getState().setLast(key, r.last);
         useConversations.getState().setArtifacts(key, r.artifacts ?? []);
         next.current = r.next ?? next.current;
+        shown = true;
         setState("ready");
       } catch (err) {
         if (!alive) return;
+        failures++;
         // The session is gone: nothing more will come.
         if ((err as { status?: number } | null)?.status === 404) {
-          alive = false;
-          window.clearInterval(t);
+          stop();
           setState((s) => (s === "ready" ? s : "none"));
           return;
         }
+        // Refused (401, 403), failed, or no answer in time: a chat with
+        // nothing to show says so, with Retry; reading goes on behind it.
         setState((s) => (s === "ready" ? s : "error"));
       } finally {
+        window.clearTimeout(timer);
+        if (inflight === ctl) inflight = undefined;
         busy = false;
+        if (alive && again) void read();
       }
     };
+    kick.current = () => void read();
     void read();
     // An agent's record lands a moment after the event about it (its last
     // words after "finished"): look again soon rather than in 2s.
@@ -158,13 +201,21 @@ export function useTranscriptFeed(box: string, session: string, dir: string | un
       if (!document.hidden) void read();
     };
     document.addEventListener("visibilitychange", onVisible);
-    return () => {
+    function stop() {
       alive = false;
+      kick.current = () => {};
+      inflight?.abort();
       window.clearInterval(t);
       for (const x of soon) window.clearTimeout(x);
       document.removeEventListener("visibilitychange", onVisible);
-    };
-  }, [client, box, session, key, supported, known, enabled, latest, attempt]);
+    }
+    return stop;
+  }, [client, box, session, key, supported, known, enabled, attempt]);
+
+  // An event about the session: read now, in the loop that is running.
+  useEffect(() => {
+    if (latest) kick.current();
+  }, [latest]);
 
   return state;
 }

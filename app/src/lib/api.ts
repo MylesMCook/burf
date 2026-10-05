@@ -121,7 +121,8 @@ export interface Client {
   // Fetches a file from inside a plugin's folder, as bytes: its manifest or
   // main module, which the plugin host hashes before importing.
   pluginFile(plugin: PluginInfo, file: string): Promise<Uint8Array>;
-  box<T = unknown>(box: string, method: string, path: string, body?: unknown): Promise<T>;
+  // signal, when given, abandons the request (it rejects with an AbortError).
+  box<T = unknown>(box: string, method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T>;
   // A box API file as bytes, such as an agent browser's screenshot.
   boxBlob(box: string, path: string): Promise<Blob>;
   // POSTs a file to the box API as its raw bytes (an attachment), telling
@@ -392,11 +393,12 @@ export const laptopApi = {
 export function httpClient(ep: Endpoint): Client {
   const headers = { Authorization: `Bearer ${ep.token}` };
 
-  async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+  async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
     const res = await fetch(ep.url + path, {
       method,
       headers: body === undefined ? headers : { ...headers, "Content-Type": "application/json" },
       body: body === undefined ? undefined : JSON.stringify(body),
+      signal,
     });
     const text = await res.text();
     if (!res.ok) {
@@ -418,8 +420,8 @@ export function httpClient(ep: Endpoint): Client {
       if (!res.ok) throw new ApiError(`${p.id}: ${file}: ${res.status} ${res.statusText}`, res.status);
       return new Uint8Array(await res.arrayBuffer());
     },
-    box: <T,>(box: string, method: string, path: string, body?: unknown) =>
-      request<T>(method, `/v1/boxes/${encodeURIComponent(box)}/api/${path}`, body).catch((err: unknown) => {
+    box: <T,>(box: string, method: string, path: string, body?: unknown, signal?: AbortSignal) =>
+      request<T>(method, `/v1/boxes/${encodeURIComponent(box)}/api/${path}`, body, signal).catch((err: unknown) => {
         if (err instanceof ApiError) err.box = box;
         throw err;
       }),

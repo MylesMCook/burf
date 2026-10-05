@@ -39,6 +39,9 @@ export interface OpenOptions {
   theme?: string;
   // Extra query parameters: view=conversation, fresh, labs…
   params?: Record<string, string>;
+  // A stand-in agent (e2e/fake-agent.ts) to connect to instead of the
+  // mock fixtures.
+  agent?: { url: string; token: string };
 }
 
 export interface App {
@@ -109,7 +112,7 @@ export const test = base.extend<{ app: App }>({
             { prefs: opts.prefs, theme: opts.theme },
           );
         }
-        const q = new URLSearchParams(live ? { token, agent: agentUrl } : { mock: "1" });
+        const q = new URLSearchParams(opts.agent ? { token: opts.agent.token, agent: opts.agent.url } : live ? { token, agent: agentUrl } : { mock: "1" });
         for (const [k, v] of Object.entries(opts.params ?? {})) q.set(k, v);
         await page.goto(`/?${q}`);
         // Connected: the sidebar's places are there and not dimmed.
