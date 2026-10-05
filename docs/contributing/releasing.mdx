@@ -38,14 +38,18 @@ Security blocking the Browser tab, tmux 3.7 without a locale. So a release is
 tested the way a new user meets it, and isn't tagged unless it passes:
 
 ```sh
-make release-check      # builds the app from HEAD, then tests it
+make release-check      # builds HEAD, as committed, in a clean checkout, then tests it
+make release-check REF=1a2b3c4        # another commit; DIRTY=1 tests uncommitted changes instead
 make release-check UNIVERSAL=1        # both architectures, as the release workflow builds it
 make release-check DMG=path FROM=v0.3.0   # a dmg already built from HEAD; upgrade from another release
 ```
 
-Every test checks the dmg first: it must carry `berthd`, as a release
-does, and its `berth-cli` must say it was built from `HEAD` (Go records the
-commit in the binary). A dmg left in `target/` from an older build is
+Uncommitted changes in your checkout are never tested by accident: the
+build happens in `dist/release-test/check-<time>/src`, a checkout of the
+commit alone, and every report starts with the commit it tested. Every
+test checks the dmg first: it must carry `berthd`, as a release
+does, and its `berth-cli` must say it was built from the commit under test (Go
+records the commit in the binary). A dmg left in `target/` from an older build is
 refused by name, rather than tested as if it were this one.
 
 [`scripts/release-check.sh`](https://github.com/sean-brydon/berthd/blob/main/scripts/release-check.sh)

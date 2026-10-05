@@ -136,7 +136,7 @@ info_of() { echo "$1" | sed -n "s/^$2=//p"; }
 # left in target/) is never picked: the test would test something else.
 find_dmg() {
 	local head d info
-	head=$(git -C "$REPO" rev-parse HEAD) || return 1
+	head=${BERTH_RELEASE_TEST_REV:-$(git -C "$REPO" rev-parse HEAD)} || return 1
 	local found
 	# Newest first; the paths have no spaces (target/ and dist/ are ours).
 	# shellcheck disable=SC2012
@@ -167,13 +167,14 @@ check_dmg() {
 	rev=$(info_of "$info" revision)
 	# shellcheck disable=SC2034 # the tests report it
 	DMG_REVISION=$rev
-	head=$(git -C "$REPO" rev-parse HEAD 2>/dev/null)
+	# The commit under test: release-check's, else HEAD.
+	head=${BERTH_RELEASE_TEST_REV:-$(git -C "$REPO" rev-parse HEAD 2>/dev/null)}
 	if [ "$(info_of "$info" berthd)" != yes ]; then
 		echo "$1 (Berth $DMG_VERSION, built from ${rev:0:9}) has no Contents/Resources/berthd: it isn't a release build. Build one with make app-build or scripts/mac-release.sh" >&2
 		return 1
 	fi
 	if [ -z "${2:-}" ] && [ -n "$head" ] && [ "$rev" != "$head" ]; then
-		echo "$1 is Berth $DMG_VERSION built from ${rev:0:9}, not HEAD ${head:0:9}: build HEAD with make app-build, or pass --any-build to test it anyway" >&2
+		echo "$1 is Berth $DMG_VERSION built from ${rev:0:9}, not ${head:0:9}, the commit under test: build it with make app-build, or pass --any-build to test it anyway" >&2
 		return 1
 	fi
 	return 0

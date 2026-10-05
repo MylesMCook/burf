@@ -27,6 +27,9 @@ rt_init() {
 		echo "# $RT_NAME"
 		echo
 		echo "Started $(date '+%Y-%m-%d %H:%M:%S %Z') on $(uname -sm)."
+		if [ -n "${BERTH_RELEASE_TEST_REV:-}" ]; then
+			echo "Commit tested: \`$BERTH_RELEASE_TEST_REV\`."
+		fi
 		echo
 		echo "| # | Step | Result | Time | Detail |"
 		echo "| --- | --- | --- | --- | --- |"
