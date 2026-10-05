@@ -146,7 +146,7 @@ jq_py() {
 	python3 -c '
 import json, sys
 j = json.load(sys.stdin)
-v = eval(sys.argv[1], {"j": j, "any": any, "all": all, "len": len, "sorted": sorted})
+v = eval(sys.argv[1], {"j": j, "any": any, "all": all, "len": len, "sorted": sorted, "isinstance": isinstance, "list": list, "dict": dict})
 if v is None or v is False:
     sys.exit(1)
 print(v if isinstance(v, str) else json.dumps(v))

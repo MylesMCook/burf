@@ -436,14 +436,16 @@ m_prefs() {
 	detail "Keep running, ${PLUGIN_OFF:-no plugin} off${PLUGIN_ON:+, $PLUGIN_ON on}"
 }
 
+session_listed() { api GET "/v1/boxes/$BOX/api/sessions" | jq_py "isinstance(j, list) and any(s['name'] == '$SESSION' and not s['exited'] for s in j)" >/dev/null; }
 # box_online: whether the agent reaches this Mac's box.
 box_online() { api GET /v1/status | jq_py "any(b['name'] == '$BOX' and b.get('state') == 'online' for b in j['boxes'])" >/dev/null; }
 m_session() {
 	[ "$NO_SESSION" = 0 ] || { detail "no session on $FROM"; return 2; }
 	# Unreachable is not gone: say which.
 	until_ok 20 box_online || fail "this Mac's box isn't online: $(api GET /v1/status | head -c 300)" || return 1
-	api GET "/v1/boxes/$BOX/api/sessions" | jq_py "any(s['name'] == '$SESSION' and not s['exited'] for s in j)" >/dev/null ||
-		fail "$SESSION is gone" || return 1
+	# Just after the box restarts its first answers can be an error: ask
+	# again for a while, and say what it answered.
+	until_ok 20 session_listed || fail "$SESSION is not running; the box lists: $(api GET "/v1/boxes/$BOX/api/sessions" | head -c 400)" || return 1
 	kill -0 "$PID0" || fail "the stand-in (pid $PID0) died" || return 1
 	detail "$SESSION running, pid $PID0"
 }
