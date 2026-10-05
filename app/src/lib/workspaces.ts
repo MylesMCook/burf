@@ -1,7 +1,7 @@
 import { create } from "zustand";
 
 import type { Location, Session, Worktree } from "@/lib/api";
-import { type Leaf, leaf, leaves, mapLeaf, neighbor, newId, type PaneContent, type PaneNode, remove, setRatio, split } from "@/lib/layout";
+import { findLeaf, type Leaf, leaf, leaves, mapLeaf, movePane, neighbor, newId, type PaneContent, type PaneNode, place, remove, setRatio, type Side, split, swap } from "@/lib/layout";
 import { load, save } from "@/lib/storage";
 import { useStore } from "@/lib/store";
 
@@ -227,6 +227,71 @@ export function moveTab(key: string, from: number, to: number) {
     const [t] = tabs.splice(from, 1);
     tabs.splice(to, 0, t);
     return { ...ws, tabs };
+  });
+}
+
+// Moving tabs and panes (dragging them, or the tabs' and panes' menus) only
+// rearranges the trees: every pane keeps its id, so PaneLayer never remounts
+// it and its terminal, agent or page carries on as it was.
+
+// tabIntoPane moves every pane of tab from into tab to, on one side of pane,
+// and closes the tab it left.
+export function tabIntoPane(key: string, from: string, to: string, pane: string, side: Side) {
+  if (from === to) return;
+  update(key, (ws) => {
+    const src = ws.tabs.find((t) => t.id === from);
+    const dst = ws.tabs.find((t) => t.id === to);
+    if (!src || !dst || !findLeaf(dst.root, pane)) return ws;
+    const root = place(dst.root, pane, side, src.root);
+    const tabs = ws.tabs.filter((t) => t.id !== from).map((t) => (t.id === to ? { ...t, root, focus: src.focus } : t));
+    return { ...ws, tabs, active: to };
+  });
+}
+
+// tabBeside is the tab menu's Split right and Split down: the tab joins the
+// one showing (or, for the one showing, its neighbour), beside its focused
+// pane.
+export function tabBeside(key: string, from: string, dir: "row" | "col") {
+  const ws = useWorkspaces.getState().spaces[key];
+  if (!ws) return;
+  const i = ws.tabs.findIndex((t) => t.id === from);
+  const to = ws.active !== from ? ws.tabs.find((t) => t.id === ws.active) : (ws.tabs[i - 1] ?? ws.tabs[i + 1]);
+  if (i < 0 || !to) return;
+  tabIntoPane(key, from, to.id, to.focus, dir === "row" ? "right" : "bottom");
+}
+
+// paneBeside moves a pane next to another in its tab, or with "center"
+// swaps the two.
+export function paneBeside(key: string, tab: string, pane: string, target: string, side: Side | "center") {
+  updateTab(key, tab, (t) => ({ ...t, root: side === "center" ? swap(t.root, pane, target) : movePane(t.root, pane, target, side), focus: pane }));
+}
+
+// paneToTab takes a pane out of a split into a tab of its own, at index in
+// the strip (just after its tab when unset). The split it leaves collapses.
+export function paneToTab(key: string, tab: string, pane: string, index?: number) {
+  update(key, (ws) => {
+    const i = ws.tabs.findIndex((t) => t.id === tab);
+    const t = ws.tabs[i];
+    const l = t && findLeaf(t.root, pane);
+    const rest = t && remove(t.root, pane);
+    if (!l || !rest) return ws;
+    const fresh: WsTab = { id: newId(), root: l, focus: l.id };
+    const tabs = ws.tabs.map((x) => (x.id === tab ? { ...x, root: rest, focus: x.focus === pane ? leaves(rest)[0].id : x.focus } : x));
+    tabs.splice(index ?? i + 1, 0, fresh);
+    return { ...ws, tabs, active: fresh.id };
+  });
+}
+
+// unsplitTab gives each pane of a split tab a tab of its own, in place.
+export function unsplitTab(key: string, tab: string) {
+  update(key, (ws) => {
+    const i = ws.tabs.findIndex((t) => t.id === tab);
+    const t = ws.tabs[i];
+    if (!t || t.root.kind === "leaf") return ws;
+    const parts = leaves(t.root).map((l, n): WsTab => ({ id: n === 0 ? t.id : newId(), root: l, focus: l.id }));
+    const tabs = [...ws.tabs];
+    tabs.splice(i, 1, ...parts);
+    return { ...ws, tabs, active: ws.active === tab ? (parts.find((p) => p.focus === t.focus)?.id ?? t.id) : ws.active };
   });
 }
 

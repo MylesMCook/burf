@@ -1,4 +1,4 @@
-import { CloudOffIcon, PencilIcon, XIcon } from "lucide-react";
+import { CloudOffIcon, PencilIcon, RowsIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, XIcon } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 import { StateGlyph } from "@/components/agent-glyph";
@@ -7,21 +7,22 @@ import { ContextMenu, ContextMenuItem, ContextMenuPopup, ContextMenuSeparator, C
 import { NewTabMenu } from "@/components/workspace/new-tab-menu";
 import { PaneActions, PaneIcon, paneLabel } from "@/components/workspace/pane";
 import { RunMenu } from "@/components/workspace/run-menu";
+import { armDrag, StripMarker, useTabDrag } from "@/components/workspace/tab-drag";
 import { closeTab } from "@/lib/actions";
 import { agentOf, type SessionState, sessionAgent, sessionName, sessionState } from "@/lib/derive";
 import { type Leaf, leaves } from "@/lib/layout";
 import { renameSession, useRenaming } from "@/lib/session-title";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { activateTab, moveTab, useWorkspaces, type WsTab } from "@/lib/workspaces";
+import { activateTab, tabBeside, unsplitTab, useWorkspaces, type WsTab } from "@/lib/workspaces";
 
 // TabStrip is the current worktree's tabs across the top, as in Orca. It is
 // also the window's drag handle. A tab that is not split has no pane header,
-// so its pane's actions sit at the strip's right.
+// so its pane's actions sit at the strip's right. A tab drags (tab-drag.tsx)
+// to another place in the strip or into a split beside a pane.
 export function TabStrip() {
   const key = useWorkspaces((s) => s.current);
   const ws = useWorkspaces((s) => (s.current ? s.spaces[s.current] : undefined));
-  const [dragging, setDragging] = useState<number>();
   const active = ws?.tabs.find((t) => t.id === ws.active);
   const lone = active && active.root.kind === "leaf" ? active.root : undefined;
   const scroller = useRef<HTMLDivElement>(null);
@@ -68,13 +69,14 @@ export function TabStrip() {
   const fade = edges.left && edges.right ? "[mask-image:linear-gradient(to_right,transparent,black_24px,black_calc(100%-24px),transparent)]" : edges.left ? "[mask-image:linear-gradient(to_right,transparent,black_24px)]" : edges.right ? "[mask-image:linear-gradient(to_right,black_calc(100%-24px),transparent)]" : "";
 
   return (
-    <div data-tauri-drag-region className="flex h-10 shrink-0 items-stretch border-b bg-sidebar">
+    <div data-tauri-drag-region data-tab-bar className="flex h-10 shrink-0 items-stretch border-b bg-sidebar">
       {/* Tabs scroll when they do not fit (a wheel scrolls them sideways),
           with a fade at each end that has more; + stays just after them,
           outside the scroller, so it never scrolls away. */}
       <div
         ref={scroller}
         data-tauri-drag-region
+        data-tab-strip
         onScroll={measure}
         onWheel={(e) => {
           const el = scroller.current;
@@ -84,20 +86,19 @@ export function TabStrip() {
         className={cn("relative flex min-w-0 items-stretch overflow-x-auto [scrollbar-width:none]", fade)}
       >
         {key &&
-          ws?.tabs.map((t, i) => (
+          ws?.tabs.map((t) => (
             <TabButton
               key={t.id}
               tab={t}
               active={t.id === ws.active}
               onActivate={() => activateTab(key, t.id)}
               onClose={() => void closeTab(key, t.id)}
-              onDragStart={() => setDragging(i)}
-              onDrop={() => {
-                if (dragging !== undefined && dragging !== i) moveTab(key, dragging, i);
-                setDragging(undefined);
-              }}
+              onDrag={(e, label, icon) => armDrag(e, { kind: "tab", key, tab: t.id }, label, icon)}
+              onSplit={ws.tabs.length > 1 ? (dir) => tabBeside(key, t.id, dir) : undefined}
+              onUnsplit={() => unsplitTab(key, t.id)}
             />
           ))}
+        <StripMarker />
       </div>
       {ws && (
         <div className="flex shrink-0 items-center px-1">
@@ -132,11 +133,13 @@ interface TabProps {
   active: boolean;
   onActivate(): void;
   onClose(): void;
-  onDragStart(): void;
-  onDrop(): void;
+  onDrag(e: React.PointerEvent<HTMLElement>, label: string, icon: React.ReactNode): void;
+  // Unset when there is no other tab to split beside.
+  onSplit?(dir: "row" | "col"): void;
+  onUnsplit(): void;
 }
 
-function TabButton({ tab, active, onActivate, onClose, onDragStart, onDrop }: TabProps) {
+function TabButton({ tab, active, onActivate, onClose, onDrag, onSplit, onUnsplit }: TabProps) {
   const boxes = useStore((s) => s.boxes);
   const status = useStore((s) => s.status);
   const panes = leaves(tab.root);
@@ -165,17 +168,16 @@ function TabButton({ tab, active, onActivate, onClose, onDragStart, onDrop }: Ta
   // Or asked for from the pane's menu.
   const asked = useRenaming((s) => !!session && s.key === `${session.box}/${session.name}`);
   const editing = editingHere || asked;
+  const dragged = useTabDrag((s) => s.source?.kind === "tab" && s.source.tab === tab.id);
 
   const tab$ = (
     <div
-      draggable={!editing}
-      onDragStart={onDragStart}
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={onDrop}
+      onPointerDown={(e) => !editing && onDrag(e, title, <PaneIcon content={c} agent={lead.agent} className="size-3" />)}
       data-tab={tab.id}
       className={cn(
         "group relative flex h-full min-w-24 max-w-56 shrink-0 cursor-default items-center gap-1.5 border-r pr-1 pl-3 text-xs data-popup-open:bg-background/60",
         active ? "bg-background text-foreground" : "text-muted-foreground hover:bg-background/40 hover:text-foreground",
+        dragged && "opacity-50",
       )}
       onMouseDown={(e) => {
         // Middle click closes, as in a browser.
@@ -247,6 +249,25 @@ function TabButton({ tab, active, onActivate, onClose, onDragStart, onDrop }: Ta
           </ContextMenuItem>
         )}
         {session && <ContextMenuSeparator />}
+        {onSplit && (
+          <>
+            <ContextMenuItem onClick={() => onSplit("row")}>
+              <SquareSplitHorizontalIcon />
+              <span className="flex-1">Split right</span>
+            </ContextMenuItem>
+            <ContextMenuItem onClick={() => onSplit("col")}>
+              <SquareSplitVerticalIcon />
+              <span className="flex-1">Split down</span>
+            </ContextMenuItem>
+          </>
+        )}
+        {panes.length > 1 && (
+          <ContextMenuItem onClick={onUnsplit}>
+            <RowsIcon />
+            <span className="flex-1">Move panes to their own tabs</span>
+          </ContextMenuItem>
+        )}
+        {(onSplit || panes.length > 1) && <ContextMenuSeparator />}
         <ContextMenuItem onClick={onClose}>
           <XIcon />
           <span className="flex-1">Close tab</span>

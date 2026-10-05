@@ -1,6 +1,7 @@
 import { useRef } from "react";
 
 import { Pane } from "@/components/workspace/pane";
+import { DragGhost, DropOverlay } from "@/components/workspace/tab-drag";
 import { type Divider, layout } from "@/lib/layout";
 import { cn } from "@/lib/utils";
 import { resizeSplit, useWorkspaces } from "@/lib/workspaces";
@@ -10,38 +11,44 @@ const pct = (n: number) => `${n * 100}%`;
 // PaneLayer draws every pane of every workspace opened since launch, in one
 // flat list positioned from each tab's split tree. Keeping them in one list,
 // keyed by pane id, is what lets a terminal survive its tab being split,
-// hidden, or its worktree switched away from: React never remounts it.
+// hidden, moved to another tab, or its worktree switched away from: React
+// never remounts it. They are sorted by id, so a pane moving between tabs
+// never moves in the DOM either (a moved frame would reload).
 export function PaneLayer({ showing }: { showing: boolean }) {
   const area = useRef<HTMLDivElement>(null);
   const current = useWorkspaces((s) => s.current);
   const mounted = useWorkspaces((s) => s.mounted);
   const spaces = useWorkspaces((s) => s.spaces);
 
+  const items = mounted.flatMap((key) => {
+    const ws = spaces[key];
+    if (!ws) return [];
+    return ws.tabs.flatMap((tab) => {
+      const visible = showing && key === current && tab.id === ws.active;
+      const { leaves, dividers } = layout(tab.root);
+      const split = leaves.length > 1;
+      return [
+        ...leaves.map(({ leaf, rect }) => (
+          <div
+            key={leaf.id}
+            // Where the keyboard goes home to when what had it closes (lib/focus-home.ts).
+            data-pane-focused={visible && tab.focus === leaf.id ? "" : undefined}
+            className={cn("absolute overflow-hidden", rect.x > 0 && "border-l", rect.y > 0 && "border-t")}
+            style={{ left: pct(rect.x), top: pct(rect.y), width: pct(rect.w), height: pct(rect.h), display: visible ? "block" : "none" }}
+          >
+            <Pane wsKey={key} tab={tab.id} pane={leaf} visible={visible} focused={tab.focus === leaf.id} split={split} />
+          </div>
+        )),
+        ...(visible ? dividers.map((d) => <DividerHandle key={d.id} d={d} area={area} onRatio={(r) => resizeSplit(key, tab.id, d.id, r)} />) : []),
+      ];
+    });
+  });
+
   return (
-    <div ref={area} className="absolute inset-0" style={{ visibility: showing ? "visible" : "hidden" }}>
-      {mounted.flatMap((key) => {
-        const ws = spaces[key];
-        if (!ws) return [];
-        return ws.tabs.flatMap((tab) => {
-          const visible = showing && key === current && tab.id === ws.active;
-          const { leaves, dividers } = layout(tab.root);
-          const split = leaves.length > 1;
-          return [
-            ...leaves.map(({ leaf, rect }) => (
-              <div
-                key={leaf.id}
-                // Where the keyboard goes home to when what had it closes (lib/focus-home.ts).
-                data-pane-focused={visible && tab.focus === leaf.id ? "" : undefined}
-                className={cn("absolute overflow-hidden", rect.x > 0 && "border-l", rect.y > 0 && "border-t")}
-                style={{ left: pct(rect.x), top: pct(rect.y), width: pct(rect.w), height: pct(rect.h), display: visible ? "block" : "none" }}
-              >
-                <Pane wsKey={key} tab={tab.id} pane={leaf} visible={visible} focused={tab.focus === leaf.id} split={split} />
-              </div>
-            )),
-            ...(visible ? dividers.map((d) => <DividerHandle key={d.id} d={d} area={area} onRatio={(r) => resizeSplit(key, tab.id, d.id, r)} />) : []),
-          ];
-        });
-      })}
+    <div ref={area} data-pane-area className="absolute inset-0" style={{ visibility: showing ? "visible" : "hidden" }}>
+      {items.sort((a, b) => (String(a.key) < String(b.key) ? -1 : 1))}
+      {showing && <DropOverlay />}
+      <DragGhost />
     </div>
   );
 }

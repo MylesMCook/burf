@@ -122,3 +122,54 @@ export function neighbor(node: PaneNode, from: string, dir: "left" | "right" | "
   }
   return best?.id;
 }
+
+// Where a moved pane or tab lands beside another pane.
+export type Side = "left" | "right" | "top" | "bottom";
+
+// place halves the leaf with id and puts sub on one side of it: a whole tab's
+// tree, or a single pane. Leaves keep their ids, so what they show is never
+// remounted.
+export function place(node: PaneNode, id: string, side: Side, sub: PaneNode): PaneNode {
+  const dir = side === "left" || side === "right" ? "row" : "col";
+  const first = side === "left" || side === "top";
+  return mapLeaf(node, id, (l) => ({ kind: "split", id: newId(), dir, ratio: 0.5, a: first ? sub : l, b: first ? l : sub }));
+}
+
+// movePane takes a leaf out of where it is (its sibling closes the gap) and
+// places it beside target in the same tree.
+export function movePane(node: PaneNode, id: string, target: string, side: Side): PaneNode {
+  const moving = findLeaf(node, id);
+  if (!moving || id === target || !findLeaf(node, target)) return node;
+  const rest = remove(node, id);
+  return rest ? place(rest, target, side, moving) : node;
+}
+
+// swap trades two leaves' places.
+export function swap(node: PaneNode, x: string, y: string): PaneNode {
+  const lx = findLeaf(node, x);
+  const ly = findLeaf(node, y);
+  if (!lx || !ly || x === y) return node;
+  const go = (n: PaneNode): PaneNode => (n.kind === "leaf" ? (n.id === x ? ly : n.id === y ? lx : n) : { ...n, a: go(n.a), b: go(n.b) });
+  return go(node);
+}
+
+// bounds is the rectangle the leaves with ids fill together, in fractions of
+// the pane area: where a drop will land, worked out on the tree it makes.
+export function bounds(node: PaneNode, ids: string[]): Rect | undefined {
+  const rects = layout(node).leaves.filter((l) => ids.includes(l.leaf.id)).map((l) => l.rect);
+  if (!rects.length) return undefined;
+  const x = Math.min(...rects.map((r) => r.x));
+  const y = Math.min(...rects.map((r) => r.y));
+  const w = Math.max(...rects.map((r) => r.x + r.w)) - x;
+  const h = Math.max(...rects.map((r) => r.y + r.h)) - y;
+  return { x, y, w, h };
+}
+
+// sideAt says which part of a pane a point is over (u, v from 0 to 1 across
+// and down it): the nearest edge, or with centre, the middle fifth each way
+// first.
+export function sideAt(u: number, v: number, centre = false): Side | "center" {
+  if (centre && Math.abs(u - 0.5) < 0.2 && Math.abs(v - 0.5) < 0.2) return "center";
+  const d = { left: u, right: 1 - u, top: v, bottom: 1 - v };
+  return (Object.keys(d) as Side[]).reduce((a, b) => (d[b] < d[a] ? b : a));
+}

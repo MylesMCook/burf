@@ -54,6 +54,8 @@ jobs:
       - run: pnpm check:titles
       # The release CSP must let the app load its own built-in plugins.
       - run: pnpm check:csp
+      # The split tree's moves (lib/layout.test.ts).
+      - run: pnpm test
       - run: pnpm build
 
   docs-site:

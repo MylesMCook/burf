@@ -1,4 +1,4 @@
-import { EllipsisIcon, GlobeIcon, MessagesSquareIcon, PencilIcon, ScrollTextIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, SquareTerminalIcon, XIcon } from "lucide-react";
+import { AppWindowIcon, ArrowLeftRightIcon, EllipsisIcon, GlobeIcon, MessagesSquareIcon, PencilIcon, ScrollTextIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, SquareTerminalIcon, XIcon } from "lucide-react";
 import { useEffect } from "react";
 
 import { Tip } from "@/components/tip";
@@ -13,15 +13,16 @@ import { Spinner } from "@/components/ui/spinner";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { LogView } from "@/components/workspace/log-view";
 import { PanelIcon, PanelPane } from "@/components/workspace/panel-pane";
+import { armDrag, useTabDrag } from "@/components/workspace/tab-drag";
 import { TerminalView } from "@/components/workspace/terminal-view";
 import { agentPresets, closePane, openBrowserAt, startSession } from "@/lib/actions";
 import { agentLabel, agentOf, restartCommand, sessionAgent, sessionName, sessionState } from "@/lib/derive";
-import type { Leaf } from "@/lib/layout";
+import { type Leaf, leaves } from "@/lib/layout";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { startRenaming } from "@/lib/session-title";
 import { cn } from "@/lib/utils";
-import { focusPane, setPaneContent, useWorkspaces } from "@/lib/workspaces";
+import { focusPane, paneBeside, paneToTab, setPaneContent, useWorkspaces } from "@/lib/workspaces";
 
 export { agentLabel };
 
@@ -50,6 +51,8 @@ export function Pane({ wsKey, tab, pane, visible, focused, split }: Props) {
   // once the session itself is gone.
   const agent = session ? agentOf(session) : undefined;
   const view = usePaneView(pane);
+  // Lifted: being dragged by its header, so it fades while it moves.
+  const lifted = useTabDrag((s) => s.source?.kind === "pane" && s.source.pane === pane.id);
   useEffect(() => {
     if (c.kind !== "terminal" || !session) return;
     const title = session.title?.trim() || undefined;
@@ -59,14 +62,20 @@ export function Pane({ wsKey, tab, pane, visible, focused, split }: Props) {
   return (
     <div className="flex h-full min-h-0 flex-col" onMouseDownCapture={focus}>
       {split && (
-        <div className={cn("group/header flex h-7 shrink-0 items-center gap-1.5 border-b px-2 text-xs", focused ? "bg-accent/50 text-foreground shadow-[inset_0_2px_0_var(--ring)]" : "text-muted-foreground")}>
+        // Its header drags the pane beside another, or onto the tab strip as
+        // a tab of its own (tab-drag.tsx). Zen has no strip: there it only
+        // moves beside another pane.
+        <div
+          onPointerDown={(e) => armDrag(e, { kind: "pane", key: wsKey, tab, pane: pane.id }, (c.kind === "terminal" && (session?.title?.trim() || c.title)) || paneLabel(c, agent), <PaneIcon content={c} agent={agent} className="size-3" />)}
+          className={cn("group/header flex h-7 shrink-0 items-center gap-1.5 border-b px-2 text-xs", focused ? "bg-accent/50 text-foreground shadow-[inset_0_2px_0_var(--ring)]" : "text-muted-foreground")}
+        >
           <PaneTitle pane={pane} />
           <div className={cn("ml-auto flex items-center transition-opacity", focused ? "opacity-100" : "opacity-0 group-hover/header:opacity-100 focus-within:opacity-100")}>
             <PaneActions wsKey={wsKey} tab={tab} pane={pane} onClose={close} closable focused={focused} />
           </div>
         </div>
       )}
-      <div className={cn("relative flex min-h-0 flex-1 flex-col transition-opacity", split && !focused && "opacity-85")}>
+      <div className={cn("relative flex min-h-0 flex-1 flex-col transition-opacity", split && !focused && "opacity-85", lifted && "opacity-40")}>
         {c.kind === "terminal" && <TerminalView box={c.box} session={c.session} agent={c.agent} command={c.command} wsKey={wsKey} tab={tab} pane={pane.id} visible={visible && view !== "conversation"} focused={focused && view !== "conversation"} onFocus={focus} onClose={close} />}
         {/* The terminal stays connected underneath, so switching back is instant. */}
         {c.kind === "terminal" && view === "conversation" && (
@@ -214,6 +223,13 @@ export function PaneActions({ wsKey, tab, pane, onClose, closable, focused = tru
   const agent = session && agentOf(session);
   const close = onClose ?? (() => void closePane(wsKey, tab, pane.id));
   const beside = (dir: "row" | "col") => ({ kind: "split" as const, tab, pane: pane.id, dir });
+  // The tab's other panes, for moving this one out or swapping it.
+  const others = useWorkspaces((s) => {
+    const t = s.spaces[wsKey]?.tabs.find((x) => x.id === tab);
+    return t ? leaves(t.root).filter((l) => l.id !== pane.id).map((l) => l.id).join(" ") : "";
+  })
+    .split(" ")
+    .filter(Boolean);
 
   return (
     <>
@@ -267,6 +283,20 @@ export function PaneActions({ wsKey, tab, pane, onClose, closable, focused = tru
               <PencilIcon />
               Rename…
             </MenuItem>
+          )}
+          {others.length > 0 && (
+            <>
+              <MenuItem onClick={() => paneToTab(wsKey, tab, pane.id)}>
+                <AppWindowIcon />
+                Move to a new tab
+              </MenuItem>
+              {others.length === 1 && (
+                <MenuItem onClick={() => paneBeside(wsKey, tab, pane.id, others[0], "center")}>
+                  <ArrowLeftRightIcon />
+                  Swap with the other pane
+                </MenuItem>
+              )}
+            </>
           )}
           <MenuItem onClick={close}>
             <XIcon />
