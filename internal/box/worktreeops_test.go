@@ -119,9 +119,12 @@ func TestPausedAgentsStopAndCarryOnWhereTheyWere(t *testing.T) {
 	if st, err := b.ResumeWorktree(ctx, "app", "feature"); err != nil || st.Paused {
 		t.Fatalf("resume: %+v %v", st, err)
 	}
-	time.Sleep(800 * time.Millisecond)
-	if screen() == frozen {
-		t.Fatal("a resumed session did not carry on")
+	// It prints every 0.2s once resumed; a loaded machine may take a while
+	// to schedule it and to draw what it printed.
+	for deadline := time.Now().Add(5 * time.Second); screen() == frozen; time.Sleep(100 * time.Millisecond) {
+		if time.Now().After(deadline) {
+			t.Fatal("a resumed session did not carry on")
+		}
 	}
 }
 
