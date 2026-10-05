@@ -612,8 +612,14 @@ export function openSession(box: string, session: Session) {
     return;
   }
   selectWorktree(ref);
-  if (found) focusPane(key, found.tab, found.pane.id);
-  else openTab({ kind: "terminal", box, session: session.name }, key);
+  // Selecting the worktree reconciles its tabs, which gives a session new
+  // to it a tab of its own: use that one rather than opening a second (a
+  // new task's session showed twice, attached at two sizes).
+  const now = found ?? findSession(box, session.name);
+  if (now) {
+    activateTab(now.key, now.tab);
+    focusPane(now.key, now.tab, now.pane.id);
+  } else openTab({ kind: "terminal", box, session: session.name }, key);
 }
 
 export function rememberUrl(url: string) {
