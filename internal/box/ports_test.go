@@ -57,6 +57,19 @@ func TestParseLsof(t *testing.T) {
 	}
 }
 
+func TestParseLsofDirs(t *testing.T) {
+	out := []byte("p501\nfcwd\nn/Users/me/work/hello-health\np77\nfcwd\nn/\np9\nfcwd\nn(readlink: Permission denied)\n")
+	got := parseLsofDirs(out)
+	if len(got) != 2 || got[501] != "/Users/me/work/hello-health" || got[77] != "/" {
+		t.Fatalf("parseLsofDirs = %v", got)
+	}
+	ports := []Port{{Port: 3000, PID: 501}, {Port: 5432, PID: 9}}
+	withDirs(ports, got)
+	if ports[0].Dir != "/Users/me/work/hello-health" || ports[1].Dir != "" {
+		t.Fatalf("withDirs = %+v", ports)
+	}
+}
+
 func TestListPortsFindsARealListener(t *testing.T) {
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -72,6 +85,14 @@ func TestListPortsFindsARealListener(t *testing.T) {
 		if p.Port == want {
 			if p.PID != os.Getpid() {
 				t.Fatalf("port %d owned by pid %d, want this test (%d)", want, p.PID, os.Getpid())
+			}
+			// Its folder says which worktree it serves, on macOS too.
+			wd, _ := os.Getwd()
+			if real, err := filepath.EvalSymlinks(wd); err == nil {
+				wd = real
+			}
+			if p.Dir != wd {
+				t.Fatalf("port %d's folder = %q, want %q", want, p.Dir, wd)
 			}
 			return
 		}

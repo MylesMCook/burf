@@ -37,7 +37,61 @@ func ListPorts(ctx context.Context) ([]Port, error) {
 	if err != nil && len(out) == 0 {
 		return nil, err
 	}
-	return mergePorts(parseLsof(out)), nil
+	ports := mergePorts(parseLsof(out))
+	withDirs(ports, lsofDirs(ctx, ports))
+	return ports, nil
+}
+
+// lsofDirs reads each listening process's working directory, which says
+// which worktree a dev server belongs to, as /proc/PID/cwd does on Linux.
+// Without it a Mac's box could only place a server on the worktree's own
+// $BERTH_PORT, so `npm start` on port 3000 in a worktree had no
+// WORKTREE.LOCATION.BOX.localhost URL. lsof exits non-zero when one of the
+// processes is gone or not readable, and still prints the rest.
+func lsofDirs(ctx context.Context, ports []Port) map[int]string {
+	var pids []string
+	seen := map[int]bool{}
+	for _, p := range ports {
+		if p.PID > 0 && !seen[p.PID] {
+			seen[p.PID] = true
+			pids = append(pids, strconv.Itoa(p.PID))
+		}
+	}
+	if len(pids) == 0 {
+		return nil
+	}
+	out, _ := exec.CommandContext(ctx, "lsof", "-a", "-nP", "-d", "cwd", "-p", strings.Join(pids, ","), "-Fpn").Output()
+	return parseLsofDirs(out)
+}
+
+// parseLsofDirs reads `lsof -d cwd -Fpn` output: p<pid>, f<fd>, n<path>.
+func parseLsofDirs(b []byte) map[int]string {
+	dirs := map[int]string{}
+	pid := 0
+	scanner := bufio.NewScanner(bytes.NewReader(b))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if line == "" {
+			continue
+		}
+		switch line[0] {
+		case 'p':
+			pid, _ = strconv.Atoi(line[1:])
+		case 'n':
+			if pid > 0 && strings.HasPrefix(line[1:], "/") {
+				dirs[pid] = line[1:]
+			}
+		}
+	}
+	return dirs
+}
+
+func withDirs(ports []Port, dirs map[int]string) {
+	for i := range ports {
+		if d, ok := dirs[ports[i].PID]; ok && ports[i].Dir == "" {
+			ports[i].Dir = d
+		}
+	}
 }
 
 func procPorts(root string) ([]Port, error) {

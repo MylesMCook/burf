@@ -53,10 +53,14 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			p.Index.ServeHTTP(w, r)
 			return
 		}
+		detail := "Use http://PORT.BOX.localhost or http://WORKTREE.LOCATION.BOX.localhost"
 		if why == "" {
 			why = "Berth doesn't know this address"
+		} else if nothing, ok := strings.CutPrefix(why, nothingRunning); ok {
+			why = "Nothing is running in " + nothing + " yet"
+			detail = "Start its dev server in the worktree's terminal (npm start, npm run dev…) on $BERTH_PORT: berth sets PORT to it there, and a server started in the worktree's folder shows up here within seconds. Any other port on the box is http://PORT.BOX.localhost."
 		}
-		page(w, status, why, "Use http://PORT.BOX.localhost or http://WORKTREE.LOCATION.BOX.localhost")
+		page(w, status, why, detail)
 		return
 	}
 	target := Target{Box: box}
@@ -109,6 +113,9 @@ func (p *Proxy) passThrough(w http.ResponseWriter, r *http.Request, box string, 
 	rp.ServeHTTP(w, r)
 }
 
+// nothingRunning starts the reason for a worktree name with no server yet.
+const nothingRunning = "No running server for "
+
 // transport keeps one connection pool per box. Each pooled connection is a
 // stream to the box, dialed through whatever client the box has right now.
 // resolve turns a request host into a box port: PORT.BOX or SERVICE.BOX
@@ -139,7 +146,7 @@ func (p *Proxy) resolve(host string) (box string, port int, status int, why stri
 		if box, port, ok := p.Worktree(labels); ok {
 			return box, port, 0, ""
 		}
-		return "", 0, http.StatusNotFound, "No running server for " + strings.Join(labels, ".")
+		return "", 0, http.StatusNotFound, nothingRunning + strings.Join(labels, ".")
 	}
 	if len(labels) == 2 {
 		return "", 0, http.StatusBadGateway, "No paired box named " + labels[1]

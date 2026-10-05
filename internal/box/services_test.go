@@ -1,6 +1,10 @@
 package box
 
-import "testing"
+import (
+	"os"
+	"path/filepath"
+	"testing"
+)
 
 func TestServicesBelongToTheDeepestWorktreeContainingTheProcess(t *testing.T) {
 	locations := []Location{
@@ -58,6 +62,23 @@ func TestAServerWithoutACommandLineIsNamedByItsProgram(t *testing.T) {
 	locs := []Location{{Name: "demo", Repo: true, Worktrees: []Worktree{{Name: "fix", Path: "/w/demo-fix", Port: 41020}}}}
 	got := Services([]Port{{Port: 41020, Process: "Python"}, {Port: 41021, Process: "node", Command: "node server.js"}}, locs)
 	if len(got) != 2 || got[0].Process != "Python" || got[1].Process != "node server.js" {
+		t.Fatalf("services = %+v", got)
+	}
+}
+
+// macOS reports a process's folder with symlinks resolved (/private/tmp for
+// /tmp), so a worktree under a symlink still owns the server running in it.
+func TestAServerInAWorktreeReachedThroughASymlinkIsThatWorktrees(t *testing.T) {
+	dir := t.TempDir()
+	os.MkdirAll(filepath.Join(dir, "hello-health"), 0o755)
+	link := filepath.Join(t.TempDir(), "work")
+	if err := os.Symlink(dir, link); err != nil {
+		t.Skip(err)
+	}
+	resolved, _ := filepath.EvalSymlinks(filepath.Join(dir, "hello-health"))
+	locs := []Location{{Name: "hello", Repo: true, Worktrees: []Worktree{{Name: "health", Path: filepath.Join(link, "hello-health"), Port: 41010}}}}
+	got := Services([]Port{{Port: 3000, Dir: resolved}}, locs)
+	if len(got) != 1 || got[0].Worktree != "health" || got[0].Path != filepath.Join(link, "hello-health") {
 		t.Fatalf("services = %+v", got)
 	}
 }

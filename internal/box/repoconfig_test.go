@@ -191,3 +191,39 @@ func TestAgentPresetsComeFromEveryLayer(t *testing.T) {
 		t.Fatalf("a box-only preset was missed: %+v %v", p, ok)
 	}
 }
+
+// The hello sample and most dev servers listen on $PORT. A worktree's
+// terminals and agents get its own, so `npm start` lands in the worktree's
+// block and its WORKTREE.LOCATION.BOX.localhost URL works on any box; a
+// project that sets PORT itself keeps its value.
+func TestAWorktreesTerminalsGetItsPortAsPORT(t *testing.T) {
+	ctx := context.Background()
+	repo := gitRepo(t)
+	b := &Box{Name: "devbox", Locations: NewLocations(filepath.Join(t.TempDir(), "locations.json")), Events: &events.Bus{}}
+	b.Locations.Add(ctx, "hello", repo)
+	wt, err := b.Locations.CreateWorktree(ctx, "hello", "health", "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	envOf := func() map[string]string {
+		env, _ := b.sessionEnv(ctx, wt.Path)
+		m := map[string]string{}
+		for _, kv := range env {
+			k, v, _ := strings.Cut(kv, "=")
+			if _, dup := m[k]; dup {
+				t.Fatalf("%s is set twice in %v", k, env)
+			}
+			m[k] = v
+		}
+		return m
+	}
+	if e := envOf(); e["BERTH_PORT"] == "" || e["PORT"] != e["BERTH_PORT"] {
+		t.Fatalf("PORT = %q, BERTH_PORT = %q", e["PORT"], e["BERTH_PORT"])
+	}
+	if err := b.Locations.SetLocalConfig("hello", RepoConfig{Env: map[string]string{"PORT": "8080"}}); err != nil {
+		t.Fatal(err)
+	}
+	if e := envOf(); e["PORT"] != "8080" {
+		t.Fatalf("the project's PORT was replaced: %q", e["PORT"])
+	}
+}

@@ -94,7 +94,7 @@ agents, `exec`, repository hooks, flow steps, services):
 | `BERTH_BROWSER_PROXY`, `PLAYWRIGHT_MCP_PROXY_SERVER`, `PLAYWRIGHT_MCP_PROXY_BYPASS` | Its [browser proxy](/guides/agent-browser#a-browser-you-run-yourself) |
 | `BERTH_KIT_DIR` | Its kit's files, when it has a kit |
 | then | the box's `env.json`, the project's `env`, and resolved secrets |
-| `PORT` | Services only, unless `env` sets it |
+| `PORT` | `$BERTH_PORT`, for servers that read `PORT`, unless the box or `env` sets it |
 | `ORCA_ROOT_PATH`, `ORCA_WORKTREE_PATH`, `ORCA_WORKSPACE_NAME` | Setup and archive scripts, for scripts written for Orca |
 
 ### What a hook gets

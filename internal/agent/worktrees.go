@@ -16,13 +16,22 @@ type serviceCache struct {
 	list []box.Service
 }
 
+// serviceRecheck is how old the map may be before a URL that found nothing
+// asks the box again: a dev server started a moment ago opens at once rather
+// than after serviceTTL.
+const serviceRecheck = time.Second
+
 // services returns which worktree each listening server on a box belongs to.
 func (a *Agent) services(ctx context.Context, name string) []box.Service {
+	return a.servicesWithin(ctx, name, serviceTTL)
+}
+
+func (a *Agent) servicesWithin(ctx context.Context, name string, maxAge time.Duration) []box.Service {
 	a.mu.Lock()
 	cached, fresh := a.svc[name]
 	st := a.clients[name]
 	a.mu.Unlock()
-	if fresh && time.Since(cached.at) < serviceTTL {
+	if fresh && time.Since(cached.at) < maxAge {
 		return cached.list
 	}
 	if st == nil || st.status.State != StateOnline {
@@ -51,11 +60,18 @@ func (a *Agent) services(ctx context.Context, name string) []box.Service {
 func (a *Agent) worktree(labels []string) (string, int, bool) {
 	ctx := context.Background()
 	lowest := func(boxName string, match func(box.Service) bool) (int, bool) {
-		port := 0
-		for _, s := range a.services(ctx, boxName) {
-			if match(s) && (port == 0 || s.Port < port) {
-				port = s.Port
+		find := func(list []box.Service) int {
+			port := 0
+			for _, s := range list {
+				if match(s) && (port == 0 || s.Port < port) {
+					port = s.Port
+				}
 			}
+			return port
+		}
+		port := find(a.services(ctx, boxName))
+		if port == 0 {
+			port = find(a.servicesWithin(ctx, boxName, serviceRecheck))
 		}
 		return port, port != 0
 	}

@@ -176,6 +176,18 @@ func TestProxyExplainsAClosedPort(t *testing.T) {
 	}
 }
 
+// A worktree's URL opened before its dev server runs says so, and how to
+// start it, rather than a bare "not found".
+func TestProxyExplainsAWorktreeWithNothingRunning(t *testing.T) {
+	p := newProxy()
+	p.Worktree = func([]string) (string, int, bool) { return "", 0, false }
+	resp := get(t, p, "health.hello.devl.localhost:1377", "/", nil)
+	body, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode != http.StatusNotFound || !strings.Contains(string(body), "Nothing is running in health.hello.devl yet") || !strings.Contains(string(body), "$BERTH_PORT") {
+		t.Fatalf("idle worktree: %d %q", resp.StatusCode, body)
+	}
+}
+
 // The proxy's own pages often show inside the app's browser tab, so they
 // are styled HTML that follows the system's dark mode, never a bare white
 // page or plain text.

@@ -27,6 +27,9 @@ func Services(ports []Port, locations []Location) []Service {
 		location, name, path string
 		main                 bool
 		port                 int
+		// real is path with symlinks resolved: macOS reports a process's
+		// directory that way (/private/tmp for /tmp).
+		real string
 	}
 	var trees []tree
 	for _, l := range locations {
@@ -35,10 +38,19 @@ func Services(ports []Port, locations []Location) []Service {
 			continue
 		}
 		for _, w := range l.Worktrees {
-			trees = append(trees, tree{l.Name, w.Name, w.Path, w.Main, w.Port})
+			trees = append(trees, tree{location: l.Name, name: w.Name, path: w.Path, main: w.Main, port: w.Port})
+		}
+	}
+	for i := range trees {
+		trees[i].real = trees[i].path
+		if r, err := filepath.EvalSymlinks(trees[i].path); err == nil {
+			trees[i].real = r
 		}
 	}
 	sort.Slice(trees, func(i, j int) bool { return len(trees[i].path) > len(trees[j].path) })
+	under := func(dir, root string) bool {
+		return dir == root || strings.HasPrefix(dir, root+string(filepath.Separator))
+	}
 	var out []Service
 next:
 	for _, p := range ports {
@@ -52,7 +64,7 @@ next:
 			continue
 		}
 		for _, t := range trees {
-			if p.Dir == t.path || strings.HasPrefix(p.Dir, t.path+string(filepath.Separator)) {
+			if under(p.Dir, t.path) || under(p.Dir, t.real) {
 				out = append(out, Service{Location: t.location, Worktree: t.name, Path: t.path, Port: p.Port, Process: processOf(p), Main: t.main})
 				break
 			}

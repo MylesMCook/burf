@@ -116,8 +116,8 @@ restarting and come back if they crash, with their output in a log.
 
 - `autostart` ones start when the worktree is created, after setup succeeds.
 - All of them stop before the archive script runs.
-- A service also gets `PORT` (its worktree's `$BERTH_PORT`) unless `env`
-  sets it.
+- A service gets `PORT` (its worktree's `$BERTH_PORT`) unless `env` sets
+  it, as do the worktree's terminals and agents.
 - Start, stop and open them from the app's **Run** menu, or:
 
 ```sh

@@ -146,10 +146,6 @@ func (b *Box) StartService(ctx context.Context, location, worktree, name string)
 		k, v, _ := strings.Cut(kv, "=")
 		envMap[k] = v
 	}
-	// Many dev servers read PORT; give it the worktree's own.
-	if _, ok := envMap["PORT"]; !ok && envMap["BERTH_PORT"] != "" && parts.refs["PORT"] == "" {
-		envMap["PORT"] = envMap["BERTH_PORT"]
-	}
 	if svc.Terminal {
 		if err := b.startTerminalService(ctx, loc, wt, *svc, envMap, parts.refs); err != nil {
 			return ServiceStatus{}, err

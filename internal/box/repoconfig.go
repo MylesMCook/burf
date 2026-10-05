@@ -381,6 +381,14 @@ func (b *Box) worktreeEnv(ctx context.Context, location string, wt Worktree) (wo
 	for k, v := range cfg.Effective.Env {
 		merged[k] = v
 	}
+	// Many dev servers read PORT (the hello sample, Express, Next.js): give
+	// it the worktree's own in every terminal, agent and service, unless the
+	// box or the project sets it. Without it every worktree's `npm start`
+	// took the same default port, and on a Mac, where a server's folder was
+	// not known, its worktree's URL led nowhere.
+	if _, ok := merged["PORT"]; !ok && vars["BERTH_PORT"] != "" {
+		vars["PORT"] = vars["BERTH_PORT"]
+	}
 	keys := make([]string, 0, len(merged))
 	for k := range merged {
 		keys = append(keys, k)
