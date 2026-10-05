@@ -97,7 +97,9 @@ export function render(out: HTMLCanvasElement, src: Source, w: number, h: number
     const lift = theme.dark ? 0.85 : 1;
     // A gradient is soft and slow, so it takes more; a pattern's dark lines
     // on a light page read stronger than light ones on a dark page.
-    const scale = hue ? (theme.dark ? 1.9 : 1.5) : theme.dark ? 1 : 0.8;
+    // Lines read as strokes through letters, so they are the faintest; a
+    // dot grid less so.
+    const scale = hue ? (theme.dark ? 1.9 : 1.5) : src.id === "dots" ? (theme.dark ? 0.9 : 0.75) : theme.dark ? 0.6 : 0.5;
     ink(data, ww, wh, f, o, theme, hue ? (p, c) => mixInto(c, fg, [hue[p * 3], hue[p * 3 + 1], hue[p * 3 + 2]], lift) : (_p, c) => mixInto(c, fg, SEA, 0.5), scale);
   }
 
@@ -235,10 +237,14 @@ export function contrast(a: RGB, b: RGB) {
   return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
 }
 
-// sheetFor is how opaque the reading sheet must be: over the background as
-// text sees it (a copy averaged over a few px, so a 1-dot line counts as
-// the faint line it reads as), the worst 2% of it, body text keeps 7:1 and
-// muted text 4.5:1.
+// sheetFor is how opaque the clean column over the background must be,
+// at least SHEET_FLOOR. Under text the background may only whisper: over
+// its most contrasting colour (the background as text sees it, averaged
+// over a few px so a 1-dot line counts as the faint line it reads as),
+// the sheet leaves at most UNDER_TEXT of contrast against the plain page,
+// and body text 7:1, muted text 4.5:1.
+const SHEET_FLOOR = 0.86;
+const UNDER_TEXT = 1.06;
 function sheetFor(c: HTMLCanvasElement, t: ThemeColours): number {
   const sw = Math.min(c.width, 160);
   const sh = Math.max(1, Math.round((sw * c.height) / c.width));
@@ -248,10 +254,14 @@ function sheetFor(c: HTMLCanvasElement, t: ThemeColours): number {
   const all: { c: RGB; k: number }[] = [];
   for (let i = 0; i < px.length; i += 4) {
     const col: RGB = [px[i], px[i + 1], px[i + 2]];
-    all.push({ c: col, k: contrast(t.muted, col) });
+    all.push({ c: col, k: contrast(t.bg, col) });
   }
   all.sort((a, b) => b.k - a.k);
-  return sheetOver(all[Math.floor(all.length * 0.98)]?.c ?? t.bg, t);
+  // The worst 0.5%: a line is a small share of a pattern's pixels.
+  const worst = all[Math.floor(all.length * 0.005)]?.c ?? t.bg;
+  let a = sheetOver(worst, t);
+  while (a < 0.99 && contrast(mix(worst, t.bg, a), t.bg) > UNDER_TEXT) a += 0.01;
+  return Math.max(SHEET_FLOOR, Math.min(0.99, a));
 }
 
 // sheetOver is the least opacity at which the theme's text reads over the

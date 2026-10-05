@@ -44,7 +44,7 @@ export interface ChatBackground {
 export const DEFAULT_CHAT_BACKGROUND: ChatBackground = {
   source: "none",
   builtin: "contours",
-  strength: 0.5,
+  strength: 0.35,
   dither: "fine",
   tone: "colour",
   original: false,

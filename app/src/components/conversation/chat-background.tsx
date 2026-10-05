@@ -29,18 +29,22 @@ function Layer({ bg }: { bg: Bg }) {
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const { drawn, sheet, pixelated } = useRendered(wrap, canvas, bg);
+  const full = usePrefs((p) => p.chatWidth === "full");
   return (
     <div ref={wrap} aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden" style={{ "--chat-sheet": `${Math.round(sheet * 100)}%` } as CSSProperties}>
       <canvas ref={canvas} className={cn("absolute inset-0 size-full transition-opacity duration-300", pixelated && "[image-rendering:pixelated]", drawn ? "opacity-100" : "opacity-0")} />
-      {/* The sheet follows the conversation's column: the pane's padding,
-          the loops panel's room when there is room for it, the chat's width. */}
-      {sheet > 0 && (
-        <div className="absolute inset-y-0 right-6 left-6 @[1000px]:right-[max(24px,var(--berth-loops-w,0px))]">
-          <div className="relative mx-auto h-full max-w-(--berth-chat-w)">
-            <div data-glass={bg.original || undefined} className={cn("cb-sheet absolute inset-y-0 -inset-x-32 transition-opacity duration-300", drawn ? "opacity-100" : "opacity-0")} />
-          </div>
+      {/* The reading column stays clean: the plain page lies over the
+          background behind the conversation and its composer, easing in
+          from the column's edges, so the background lives in the margins.
+          It follows the column: the pane's padding, the loops panel's room
+          when there is room for it, the chat's width. At Full the column
+          is the pane, so the fade is wider and the edges keep a little. A
+          picture shown as it is is loud, so its fade ends before the column. */}
+      <div className="absolute inset-y-0 right-6 left-6 @[1000px]:right-[max(24px,var(--berth-loops-w,0px))]">
+        <div className="relative mx-auto h-full max-w-(--berth-chat-w)">
+          <div data-glass={bg.original || undefined} data-full={full || undefined} className={cn("cb-sheet absolute inset-y-0 transition-opacity duration-300", bg.original ? "-inset-x-24" : "-inset-x-6", drawn ? "opacity-100" : "opacity-0")} />
         </div>
-      )}
+      </div>
     </div>
   );
 }

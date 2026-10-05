@@ -294,7 +294,7 @@ function PreviewLayer({ wrap, canvas, bg }: { wrap: React.RefObject<HTMLDivEleme
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0 -z-10" style={{ "--chat-sheet": `${Math.round(sheet * 100)}%` } as CSSProperties}>
       <canvas ref={canvas} className={cn("absolute inset-0 size-full transition-opacity duration-300", pixelated && "[image-rendering:pixelated]", drawn ? "opacity-100" : "opacity-0")} />
-      {sheet > 0 && <div data-glass={bg.original || undefined} className={cn("cb-sheet absolute inset-y-0 left-1/2 w-[70%] -translate-x-1/2 transition-opacity", drawn ? "opacity-100" : "opacity-0")} />}
+      <div data-glass={bg.original || undefined} className={cn("cb-sheet cb-sheet-preview absolute inset-y-0 left-1/2 w-[68%] -translate-x-1/2 transition-opacity", drawn ? "opacity-100" : "opacity-0")} />
     </div>
   );
 }
@@ -317,7 +317,7 @@ function Effects({ bg }: { bg: ChatBackground }) {
           ) : undefined
         }
       >
-        <SettingsRow label="Strength" description="How far it rises from the page. When it is strong enough to fight the text, the conversation gets a quiet backing.">
+        <SettingsRow label="Strength" description="How far it rises from the page, in the margins. Behind the conversation it always fades to a whisper.">
           <Amount value={bg.strength} max={1} onChange={(strength) => setChatBackground({ strength })} />
         </SettingsRow>
         <SettingsRow label="Dither" description={asIs ? "Off while the picture is shown as it is." : "Dots, like the harbour on a new agent: fine or coarse, or smooth."} className={cn(asIs && "opacity-60")}>
