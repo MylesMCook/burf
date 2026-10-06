@@ -155,7 +155,9 @@ function hint(s: StepRow, agents: string[]): string | undefined {
 }
 
 function QuickRow({ step: s, run, host, user, busy, agents, needed, onRetry }: { step: StepRow; run: InstallRun; host: string; user: string; busy: boolean; agents: string[]; needed: boolean; onRetry(): void }) {
-  const message = s.state === "skip" ? s.message?.replace(/^skipped: /, "") : s.id === "connect" && s.state === "done" ? s.message : undefined;
+  // What it did, where that says more than the hint: who it connected as,
+  // lingering on without sudo, or why a step was skipped.
+  const message = s.state === "skip" ? s.message?.replace(/^skipped: /, "") : (s.id === "connect" || s.id === "linger") && s.state === "done" ? s.message : undefined;
   return (
     <li data-testid={`quick-step-${s.id}`} data-state={s.state} data-needs={s.needs ?? ""} className={cn("rounded-lg px-2 py-1.5", (needed || s.needs === "ask") && "bg-warning/8", s.state === "fail" && "bg-destructive/6")}>
       <div className="flex min-w-0 items-center gap-2.5">
