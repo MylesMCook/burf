@@ -285,7 +285,14 @@ function acmeView(box?: string): TeamView {
     steps: planSteps(setup),
     projects,
     access: { readable: readable.length, total: projects.length, missing: projects.filter((p) => !p.access).map((p) => p.repo) },
-    keys: { shared: teamScenario === "partial" ? 4 : 5, ask: [{ project: "shop", key: "MAIL_API_KEY", set: !!run?.keys_set.includes("shop/MAIL_API_KEY") }] },
+    keys: {
+      shared: teamScenario === "partial" ? 4 : 5,
+      ask: [{ project: "shop", key: "MAIL_API_KEY", set: !!run?.keys_set.includes("shop/MAIL_API_KEY") }],
+      // The shared keys that are 1Password references, by name, for typing
+      // them instead when 1Password is skipped.
+      onepassword: opKeys(setup, readable.map((p) => p.id)).map((k) => ({ ...k, set: !!run?.keys_set.includes(`${k.project}/${k.key}`) })),
+      onepassword_required: setup.onepassword === "required",
+    },
     warnings: [],
   };
   view.source = orgSource;
@@ -297,6 +304,17 @@ function acmeView(box?: string): TeamView {
 
 // linkView is the same setup read from the link: its owner is a user, and
 // the commit is the branch's.
+function opKeys(setup: TeamSetup, projects: string[]) {
+  return Object.entries(setup.keys ?? {})
+    .filter(([p]) => projects.includes(p))
+    .flatMap(([project, k]) =>
+      Object.entries(k.shared ?? {})
+        .filter(([, ref]) => ref.startsWith("op://"))
+        .map(([key]) => ({ project, key }))
+        .sort((a, b) => a.key.localeCompare(b.key)),
+    );
+}
+
 function linkView(box?: string): TeamView {
   const v = acmeView(box);
   v.org = { login: "jo-acme", name: "Jo Acme", avatar_url: JO_AVATAR, verified: false, type: "User", html_url: "https://github.com/jo-acme" };
@@ -548,8 +566,26 @@ function setup(org: string, req: SetupRequest): Promise<TeamStatus> {
     const keys = Object.entries(req.keys ?? {}).flatMap(([p, kv]) => Object.keys(kv).filter((k) => kv[k]).map((k) => `${p}/${k}`));
     const own = (v.steps ?? []).filter((s) => !s.berth);
     const berths = (v.steps ?? []).filter((s) => s.berth);
-    const steps = again ? [...own, { id: "playwright", title: "Playwright's system libraries", sudo: true, commands: [] }, ...berths] : (v.steps ?? []);
+    const skipOP = !!req.skip_onepassword;
+    if (skipOP && v.keys.onepassword_required) return Promise.reject(new ApiError("This team setup needs 1Password for its shared keys", 400));
+    const all = again ? [...own, { id: "playwright", title: "Playwright's system libraries", sudo: true, commands: [] }, ...berths] : (v.steps ?? []);
+    const steps = skipOP ? all.filter((s) => s.id !== "1password") : all;
     r = newRun(box, "acme", "Acme", commit, steps, projects, keys);
+    // Each project's keys: those left blank are missing; with 1Password
+    // skipped, its references wait aside for Use 1Password.
+    const ops = opKeys(v.setup!, picked);
+    r.onepassword_skipped = skipOP || undefined;
+    for (const p of r.projects) {
+      const k = v.setup?.keys?.[p.id];
+      if (!k) continue;
+      p.keys = [...Object.keys(k.shared ?? {}), ...(k.ask ?? [])].sort();
+      p.missing = p.keys.filter((name) => {
+        if (keys.includes(`${p.id}/${name}`)) return false;
+        const isOp = ops.some((o) => o.project === p.id && o.key === name);
+        return skipOP ? isOp || (k.ask ?? []).includes(name) : (k.ask ?? []).includes(name);
+      });
+      if (skipOP) p.deferred = ops.filter((o) => o.project === p.id).map((o) => o.key);
+    }
     if (again) {
       // Repos already there stay ready; only the new one is cloned.
       for (const p of r.projects) if (p.id !== "search") Object.assign(p, { state: "ready", location: p.id });
@@ -643,7 +679,7 @@ export function teamLaptopCall(method: string, path: string, body: unknown, dela
 
 export function teamBoxCall(box: string, method: string, path: string, body: unknown, delay: Delay): Promise<unknown> | undefined {
   if (method === "GET" && path === "team") return delay(Object.values(runs).filter((r) => r.box === box));
-  const m = /^team\/([^/]+)(?:\/(retry))?$/.exec(path);
+  const m = /^team\/([^/]+)(?:\/(retry|onepassword))?$/.exec(path);
   if (!m) return undefined;
   const id = decodeURIComponent(m[1]);
   if (method === "GET" && !m[2]) {
@@ -651,7 +687,26 @@ export function teamBoxCall(box: string, method: string, path: string, body: unk
     return r ? delay(r) : Promise.reject(new ApiError(`no team setup ${id} on ${box}`, 404));
   }
   if (method === "POST" && m[2] === "retry") return retry(box, id, (body as { from: string }).from);
+  if (method === "POST" && m[2] === "onepassword") return useOnePassword(box, id);
   return undefined;
+}
+
+// useOnePassword is Use 1Password after skipping it: the references go back
+// in (no longer missing), and the 1Password step runs on its own.
+function useOnePassword(box: string, id: string): Promise<TeamStatus> {
+  const r = runs[`${box}/${id}`];
+  if (!r || !ctx) return Promise.reject(new ApiError(`no team setup ${id} on ${box}`, 404));
+  r.onepassword_skipped = undefined;
+  for (const p of r.projects) {
+    p.missing = p.missing?.filter((k) => !p.deferred?.includes(k));
+    p.deferred = undefined;
+  }
+  if (!r.steps.some((s) => s.id === "1password")) r.steps.push({ id: "1password", title: `1Password on ${box}`, sudo: false, state: "todo" });
+  const at = r.steps.findIndex((s) => s.id === "1password");
+  for (let i = 0; i < at; i++) if (r.steps[i].state !== "done") r.steps[i].state = "skipped";
+  startSession(box, r.session!);
+  void play(r, at);
+  return ctx.delay(r);
 }
 
 export const isTeamSession = (box: string, session: string) => !!runs[`${box}/${session.replace(/^team-/, "")}`] && session.startsWith("team-");

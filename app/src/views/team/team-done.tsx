@@ -1,11 +1,12 @@
-import { ArrowRightIcon, GitBranchPlusIcon, LockIcon, Settings2Icon } from "lucide-react";
+import { ArrowRightIcon, GitBranchPlusIcon, KeyRoundIcon, LockIcon, Settings2Icon } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { startWork } from "@/lib/start-work";
 import { useStore } from "@/lib/store";
-import { sudoCount, type TeamStatus, type TeamView } from "@/lib/team";
+import { missingKeys, sudoCount, type TeamStatus, type TeamView } from "@/lib/team";
+import { UseOnePassword } from "@/views/team/team-keys-note";
 import { GitHubMark, OrgAvatar, SourceTag, SudoTag } from "@/views/team/team-parts";
 
 // TeamDone is "You're set up": the team's suggested first task, ready to
@@ -57,6 +58,7 @@ export function TeamDone({ view, run, onShowPlan, onReviewUpdate }: { view: Team
         </div>
       </div>
       <div className="mx-auto max-w-4xl px-8 pt-6 pb-16 @max-[819px]:px-5">
+        <MissingKeys run={run} />
         {first && firstLoc && (
           <section className="rounded-xl border bg-card p-4" aria-label="Your first task">
             <p className="font-medium text-sm">Your first task, suggested by {name}</p>
@@ -108,5 +110,41 @@ export function TeamDone({ view, run, onShowPlan, onReviewUpdate }: { view: Team
         </div>
       </div>
     </div>
+  );
+}
+
+// MissingKeys lists the keys left blank, by repo, with where to add them,
+// and 1Password to turn on when it was skipped.
+function MissingKeys({ run }: { run: TeamStatus }) {
+  const missing = missingKeys(run);
+  if (!missing.length && !run.onepassword_skipped) return null;
+  return (
+    <section data-testid="team-missing-keys" className="mb-5 rounded-xl border border-warning/30 bg-warning/6 px-4 py-3">
+      <p className="flex items-center gap-2 font-medium text-sm">
+        <KeyRoundIcon className="size-4 text-warning-foreground" />
+        {missing.length ? "Missing keys: add them in Project settings" : "1Password skipped: the keys you typed are used"}
+      </p>
+      {missing.length > 0 && (
+        <ul className="mt-2 ml-6 space-y-1.5">
+          {missing.map((m) => (
+            <li key={m.project} className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+              <span className="font-medium font-mono">{m.project}</span>
+              <span className="min-w-0 font-mono text-muted-foreground">{m.keys.join(", ")}</span>
+              {m.location && (
+                <Button size="xs" variant="ghost" className="ms-auto" onClick={() => useStore.getState().setView({ kind: "project", box: run.box, location: m.location! })}>
+                  <Settings2Icon /> Project settings
+                </Button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      {run.onepassword_skipped && (
+        <div className="mt-2.5 ml-6 flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
+          <UseOnePassword run={run} />
+          <span>reads the shared keys with the team's 1Password references instead; op signs in once on {run.box}</span>
+        </div>
+      )}
+    </section>
   );
 }

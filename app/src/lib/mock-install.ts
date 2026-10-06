@@ -142,6 +142,7 @@ export function mockInstallTerminal(req: GuidedInstallRequest, _cols: number, _r
     }
     if (req.trust_host_key) out(`    Trusted ${where}'s host key (${req.trust_host_key}).\n`);
     step("connect", "done", `${user}@${where}, linux/arm64`);
+    if (!req.guided) return quiet();
     out(`\n${B}Berth will set this box up:${X}\n`);
     out(` 1. Install berthd\n      ${D}upload berthd-linux-arm64 → ~/.local/bin/berthd${X}\n`);
     out(` 2. Keep berthd running after you log out${Y}  [sudo]${X}\n      ${D}sudo loginctl enable-linger ${user}${X}\n`);
@@ -240,6 +241,93 @@ export function mockInstallTerminal(req: GuidedInstallRequest, _cols: number, _r
     }
     step("pair", "start");
     await wait(600);
+    const name = req.name || where.split(".")[0];
+    const ip = deps?.boxIP(where) ?? "100.64.0.11";
+    deps?.addBox(name, `${ip}:7444`, req.network);
+    step("pair", "done", name);
+    out(`\nReady: paired with ${name} at ${ip}:7444. SSH is no longer needed for this box.\n`);
+    exit(0);
+  };
+  // quiet is the default add (no --guided): no plan, no Enter; only a step
+  // that needs sudo's password asks. "nogit" in the host: git is missing
+  // (its step asks for the password); "rootlinger": lingering needs root
+  // and nothing else does (asked about first, skippable); both together
+  // share one terminal, so sudo asks once.
+  const quiet = async () => {
+    const nogit = /nogit/.test(host);
+    const rootLinger = /rootlinger/.test(host);
+    let told = false;
+    const password = async (id: string) => {
+      if (!told) {
+        step(id, "sudo");
+        out(`    This needs root: sudo asks for ${user}'s password on this box.\n    Type it and press Enter. It goes to sudo here; Berth never sees it or keeps it.\n`);
+        out(`[sudo] password for ${user}: `);
+        echo = false;
+        await readLine();
+        echo = true;
+        out("\n");
+        told = true;
+      }
+    };
+    if (pending("berthd")) {
+      step("berthd", "start");
+      out(`    Uploading berthd-linux-arm64 (11 MB) to ~/.local/bin/berthd\n`);
+      await wait(600);
+      out(`\n${B}==> berthd, as your user service${X}\n    Installed /home/${user}/.config/systemd/user/berthd.service; berthd is serving on 100.64.0.11:7444.\n`);
+      step("berthd", "done");
+    }
+    let linger = pending("linger");
+    if (linger && !rootLinger) {
+      step("linger", "start");
+      await wait(250);
+      step("linger", "done", "on, without sudo");
+      linger = false;
+    }
+    if (linger && rootLinger && !nogit) {
+      step("linger", "ask", `Keep berthd running after you log out? It needs root: sudo asks for ${user}'s password on the box. Skip it, and berthd stops when your last login there ends.`);
+      out(`\n${B}Keep berthd running after you log out? [Y/n]${X} `);
+      const a = (await readLine()).trim().toLowerCase();
+      if (a === "n" || a === "no") {
+        step("linger", "skip", `skipped: berthd stops when you log out. To keep it running, run sudo loginctl enable-linger ${user} on the box`);
+        linger = false;
+      }
+    }
+    if (linger) {
+      step("linger", "start");
+      out(`\n${B}==> Keeping berthd running after you log out${X}\n`);
+      await password("linger");
+      await wait(300);
+      out(`    Lingering is on: berthd keeps running when you log out.\n`);
+      step("linger", "done");
+    }
+    if (pending("tools")) {
+      step("tools", "start");
+      out(`    Uploading Berth's tmux for linux/arm64 (1 MB) to ~/.local/bin/tmux\n\n${B}==> tmux and git${X}\n    tmux: Berth's own build, tmux 3.7c (no sudo needed)\n`);
+      if (nogit) {
+        out("    Installing git with apt-get\n");
+        await password("tools");
+        for (const l of ["Reading package lists...", "Setting up git (1:2.43.0-1ubuntu7.3) ..."]) {
+          out(`${l}\n`);
+          await wait(250);
+        }
+      }
+      out(`    git: git version 2.43.0\n`);
+      step("tools", "done");
+    }
+    if (pending("agents") && req.agents.length) {
+      step("agents", "start");
+      out(`\n${B}==> Agent CLIs: ${names(req.agents)}${X}\n`);
+      await wait(700);
+      for (const id of req.agents) out(`${names([id])} installed: /home/${user}/.local/bin/${MOCK_AGENTS.find((a) => a.id === id)?.command}\n`);
+      step("agents", "done");
+    }
+    if (pending("integrations")) {
+      step("integrations", "start");
+      await wait(300);
+      step("integrations", "done");
+    }
+    step("pair", "start");
+    await wait(500);
     const name = req.name || where.split(".")[0];
     const ip = deps?.boxIP(where) ?? "100.64.0.11";
     deps?.addBox(name, `${ip}:7444`, req.network);
