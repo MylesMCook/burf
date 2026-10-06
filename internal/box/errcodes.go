@@ -24,6 +24,8 @@ import (
 //	git_failed       git refused; the message carries git's words
 //	command_failed   a program the box ran failed
 //	too_many         slow down and try again
+//	file_changed     a write named a version of the file that is no longer
+//	                 there (412); the answer carries the file as it is now
 //	bad_request      the request itself was wrong
 //	internal         anything else
 const (
@@ -92,8 +94,10 @@ func codeForStatus(status int) string {
 		return CodeUnsupported
 	case http.StatusTooManyRequests:
 		return CodeTooMany
-	case http.StatusBadRequest, http.StatusConflict, http.StatusMethodNotAllowed, http.StatusRequestEntityTooLarge:
+	case http.StatusBadRequest, http.StatusConflict, http.StatusMethodNotAllowed, http.StatusRequestEntityTooLarge, http.StatusPreconditionRequired, http.StatusUnsupportedMediaType:
 		return CodeBadRequest
+	case http.StatusPreconditionFailed:
+		return CodeFileChanged
 	}
 	return CodeInternal
 }

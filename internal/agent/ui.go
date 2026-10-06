@@ -117,7 +117,7 @@ func (a *Agent) ui(token, hostport string, inner http.Handler) http.Handler {
 		if o := r.Header.Get("Origin"); uiOrigins[o] || devOrigin.MatchString(o) {
 			h := w.Header()
 			h.Set("Access-Control-Allow-Origin", o)
-			h.Set("Access-Control-Allow-Headers", "Authorization, Content-Type")
+			h.Set("Access-Control-Allow-Headers", "Authorization, Content-Type, If-Match, If-None-Match")
 			h.Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
 			h.Set("Vary", "Origin")
 		}
@@ -180,8 +180,13 @@ func (a *Agent) uiEvents(w http.ResponseWriter, r *http.Request) {
 // on an attachments route (20 MB as raw bytes, or as base64 in JSON from an
 // older app).
 func boxBodyLimit(target string) int64 {
-	if path, _, _ := strings.Cut(target, "?"); strings.HasSuffix(path, "/attachments") {
+	path, _, _ := strings.Cut(target, "?")
+	if strings.HasSuffix(path, "/attachments") {
 		return 28 << 20
+	}
+	// A File tab's save: up to 2 MB of text, JSON-escaped.
+	if strings.HasSuffix(path, "/file") {
+		return 9 << 20
 	}
 	return 3 << 20
 }
@@ -212,8 +217,11 @@ func (a *Agent) uiBoxAPI(w http.ResponseWriter, r *http.Request) {
 		target += "?" + r.URL.RawQuery
 	}
 	header := http.Header{box.OriginHeader: {"app"}}
-	if ct := r.Header.Get("Content-Type"); ct != "" {
-		header.Set("Content-Type", ct)
+	// A file's write names the version it replaces (box/worktreefiles.go).
+	for _, k := range []string{"Content-Type", "If-Match", "If-None-Match"} {
+		if v := r.Header.Get(k); v != "" {
+			header.Set(k, v)
+		}
 	}
 	var body io.Reader
 	if r.ContentLength != 0 {

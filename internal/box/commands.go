@@ -603,26 +603,15 @@ type filesEntry struct {
 	more  bool
 }
 
-var filesCache sync.Map // session name → filesEntry
-
 func (b *Box) listFiles(w http.ResponseWriter, r *http.Request) error {
 	sess, err := b.Sessions.Get(r.Context(), r.PathValue("name"))
 	if err != nil {
 		return err
 	}
-	var all []string
-	var more bool
-	if v, ok := filesCache.Load(sess.Name); ok {
-		if e := v.(filesEntry); e.dir == sess.Dir && time.Since(e.at) < 30*time.Second {
-			all, more = e.files, e.more
-		}
-	}
-	if all == nil {
-		all, more, err = gitFiles(r.Context(), sess.Dir)
-		if err != nil {
-			return err
-		}
-		filesCache.Store(sess.Name, filesEntry{at: time.Now(), dir: sess.Dir, files: all, more: more})
+	// The same list the worktree's ⌘P reads, cached by folder.
+	all, more, err := cachedFiles(r.Context(), sess.Dir)
+	if err != nil {
+		return err
 	}
 	limit := maxFileResults
 	if n, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && n > 0 && n < limit {

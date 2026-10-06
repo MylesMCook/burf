@@ -121,6 +121,27 @@ func TestTheAppReachesBoxAPIsAndTerminalsThroughTheAgent(t *testing.T) {
 	if resp, body := uiCall(t, a, "GET", "/v1/boxes/devbox/api/turns/fix%232", tok); resp.StatusCode != 200 || !strings.Contains(body, `"id":"fix#2"`) {
 		t.Fatalf("turn with #: %d %s", resp.StatusCode, body)
 	}
+	// A File tab's save names the version it replaces: the agent passes
+	// If-Match on, and the box's 412 (with the file now) comes back.
+	b.server.Handle("PUT /v1/locations/{name}/worktrees/{worktree}/file", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusPreconditionFailed)
+		w.Write([]byte(`{"code":"file_changed","if_match":"` + r.Header.Get("If-Match") + `","if_none":"` + r.Header.Get("If-None-Match") + `"}`))
+	}))
+	req, _ := http.NewRequest("PUT", "http://"+a.ui+"/v1/boxes/devbox/api/locations/shop/worktrees/fix/file?path=a.ts", strings.NewReader(`{"content":"x"}`))
+	req.Header.Set("Authorization", "Bearer "+tok)
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("If-Match", "sha256-abc")
+	req.Header.Set("If-None-Match", "*")
+	fresp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fbody, _ := io.ReadAll(fresp.Body)
+	fresp.Body.Close()
+	if fresp.StatusCode != 412 || !strings.Contains(string(fbody), `"if_match":"sha256-abc"`) || !strings.Contains(string(fbody), `"if_none":"*"`) {
+		t.Fatalf("file save: %d %s", fresp.StatusCode, fbody)
+	}
 	if resp, _ := uiCall(t, a, "GET", "/v1/boxes/nobox/api/services", tok); resp.StatusCode != 404 {
 		t.Fatalf("unknown box: %d, want 404", resp.StatusCode)
 	}

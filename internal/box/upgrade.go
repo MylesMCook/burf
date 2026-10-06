@@ -134,8 +134,10 @@ func (b *Box) Capabilities() []string {
 	// ("terminal": true), listed as a session with "service" set. answer:
 	// POST .../answer fills in Claude Code's question form (answer.go).
 	// session.home: POST /v1/sessions takes "home": true, a terminal in
-	// the box user's home folder, tied to no worktree.
-	caps := []string{"transcript", "diff", "titles", "sample", "history", "commands", "service.terminal", "answer", "session.home"}
+	// the box user's home folder, tied to no worktree. files: a worktree's
+	// ⌘P list, its files read and written with etags, and what the agents'
+	// latest turns touched (worktreefiles.go, touched.go).
+	caps := []string{"transcript", "diff", "titles", "sample", "history", "commands", "service.terminal", "answer", "session.home", "files"}
 	if b.Turns != nil {
 		// controls: POST .../keys, .../interrupt and .../mode, GET
 		// .../controls (controls.go).

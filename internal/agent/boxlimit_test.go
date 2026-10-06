@@ -13,6 +13,8 @@ func TestBoxBodyLimit(t *testing.T) {
 		"/v1/sessions/s/attachments": 28 << 20,
 		"/v1/locations/demo/worktrees/x/attachments?name=a": 28 << 20,
 		"/v1/sessions/attachments-x/send":                   3 << 20,
+		"/v1/locations/demo/worktrees/x/file?path=a.ts":     9 << 20,
+		"/v1/locations/demo/worktrees/x/files?q=file":       3 << 20,
 	} {
 		if got := boxBodyLimit(target); got != want {
 			t.Errorf("%s: %d, want %d", target, got, want)
