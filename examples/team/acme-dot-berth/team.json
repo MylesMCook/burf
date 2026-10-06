@@ -1,0 +1,61 @@
+{
+  "$comment": "An example team setup for Berth (schema berth.team/v1), for Acme, a made-up org whose shop (acme/shop) needs Node, Postgres and Redis. Berth reads <org>/.berth/team.json. Placeholders are in README.md; no secrets live here.",
+  "schema": "berth.team/v1",
+  "id": "acme",
+  "name": "Acme",
+  "org": "acme",
+  "description": "Everything an Acme engineer needs on their box: system updates, Docker, gh and 1Password CLIs, Node and Yarn, Postgres and Redis in Docker, then the shop cloned, migrated and seeded.",
+  "contact": "#eng-onboarding on Slack",
+  "$contact": "A placeholder channel.",
+  "docs": "https://github.com/acme/.berth#readme",
+  "box": {
+    "os": ["ubuntu>=22.04", "debian>=12", "macos>=14"],
+    "$os": "Ubuntu 22.04/24.04 and Debian 12 are tested first; macOS (Homebrew with OrbStack, Docker Desktop or Colima) is best effort.",
+    "script": "box/setup.sh",
+    "settings": {
+      "SHOP_POSTGRES_VERSION": "18",
+      "SHOP_REDIS_VERSION": "8"
+    },
+    "$settings_why": "The one place these versions live; Berth gives them to box/setup.sh as BERTH_SETTING_SHOP_POSTGRES_VERSION and BERTH_SETTING_SHOP_REDIS_VERSION, and by hand it reads them from here. A new Postgres major does not move existing data: the step says how.",
+    "steps": [
+      { "id": "update", "title": "System updates", "detail": "apt-get update and upgrade (brew update on macOS); counts as done for 24 hours", "sudo": true },
+      { "id": "packages", "title": "System packages", "detail": "git, curl, jq, unzip, build tools, python3, openssl, and psql and pg_dump of the Postgres version (PostgreSQL apt repository)", "sudo": true },
+      { "id": "docker", "title": "Docker", "detail": "Docker Engine from Docker's apt repository, started at boot, and you in the docker group", "sudo": true },
+      { "id": "cli", "title": "GitHub CLI and 1Password CLI", "detail": "gh for the box's own GitHub sign-in and clones; op for the shared keys", "sudo": true },
+      { "id": "node", "title": "Node with fnm", "detail": "the version the shop names (.nvmrc, .node-version or engines), in your home folder, on the PATH of login shells" },
+      { "id": "yarn", "title": "Yarn with corepack", "detail": "the shop's packageManager picks the version" },
+      { "id": "postgres", "title": "Postgres in Docker", "detail": "shop-postgres, the version in box.settings (18), on 127.0.0.1:5433, database shop, volume shop-postgres-data, restarts unless stopped" },
+      { "id": "redis", "title": "Redis in Docker", "detail": "shop-redis, the version in box.settings (8), on 127.0.0.1:6379, volume shop-redis-data, restarts unless stopped" }
+    ]
+  },
+  "agents": ["claude", "codex"],
+  "$agents": "The agent CLIs every Acme box gets. Berth installs them as a step of its own, after the steps above, into ~/.local/bin without sudo (Claude Code with its native installer, Codex from its pinned GitHub release, checksum checked), then their hooks and skills. Each engineer signs in to them on first start.",
+  "projects": [
+    {
+      "id": "shop",
+      "$id": "The project's name on the box. It is part of each worktree's URL (<worktree>.shop.<box>.localhost), so it has no dots.",
+      "repo": "acme/shop",
+      "path": "~/code/shop",
+      "required": true,
+      "kit": "https://github.com/acme/berth-kit-shop@5476af4fedde311e2a4ba77089cfd0dd9c0f0f2a",
+      "$kit": "Used only while acme/shop has no .berth/config.json of its own. Pinned to a commit, so an update to the kit is a change to this file.",
+      "init": "box/init-shop.sh",
+      "init_detail": "once in the main checkout: Node from fnm, .env from .env.example with DATABASE_URL and REDIS_URL at the Docker services, yarn install, yarn db:migrate, yarn db:seed",
+      "first_task": "Find an open issue labelled \"good first issue\" in acme/shop, explain how you'd fix it, and make the change in a new worktree"
+    }
+  ],
+  "keys": {
+    "$comment": "No secrets in git. shared: op:// references, read on the box with the engineer's own 1Password when a worktree needs them. ask: each engineer's own, asked for once and kept on their box. Ports, URLs and databases are the kit's job, not this. Names follow op://dev/dev_<project>_<service>/<field>.",
+    "shop": {
+      "from": ".env.example",
+      "shared": {
+        "STRIPE_SECRET_KEY": "op://dev/dev_shop_stripe/secret_key",
+        "STRIPE_PUBLISHABLE_KEY": "op://dev/dev_shop_stripe/publishable_key",
+        "STRIPE_WEBHOOK_SECRET": "op://dev/dev_shop_stripe/webhook_secret",
+        "MAPS_API_KEY": "op://dev/dev_shop_maps/api_key"
+      },
+      "ask": ["MAIL_API_KEY"]
+    }
+  },
+  "updates": { "notify": true }
+}
