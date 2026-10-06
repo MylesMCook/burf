@@ -142,7 +142,9 @@ function MissingKeys({ run }: { run: TeamStatus }) {
       {run.onepassword_skipped && (
         <div className="mt-2.5 ml-6 flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
           <UseOnePassword run={run} />
-          <span>reads the shared keys with the team's 1Password references instead; op signs in once on {run.box}</span>
+          <span className="min-w-0">
+            reads the shared keys from the team's 1Password instead; op signs in once on <span className="whitespace-nowrap">{run.box}</span>
+          </span>
         </div>
       )}
     </section>
