@@ -35,14 +35,15 @@ import (
 const usage = `berth — connect this laptop to development boxes
 
 Boxes
-  berth add ssh [user@]HOST [--name N] [--agents claude,codex|none] [--yes] [--from STEP]
-        [--network NET] [--listen ADDR] [--address ADDR] [--identity FILE]
+  berth add ssh [user@]HOST [--name N] [--agents claude,codex|none] [--guided] [--yes]
+        [--from STEP] [--network NET] [--listen ADDR] [--address ADDR] [--identity FILE]
         [--trust-host-key SHA256:…] [--no-integrations] [-- SSH OPTIONS]
-                                         Set a box up over SSH (once), guided: shows the plan,
-                                         then on Enter installs berthd, tmux and git if missing
-                                         (sudo asks for your password on the box), the agent
-                                         CLIs (Claude Code by default) and their hooks, and
-                                         pairs. --yes asks nothing; --from STEP retries from it
+                                         Set a box up over SSH (once): installs berthd, tmux and
+                                         git if missing, the agent CLIs (Claude Code by default)
+                                         and their hooks, and pairs. Only a step that needs
+                                         sudo's password (git missing) stops for it. --guided
+                                         shows the whole plan first and waits for Enter; --yes
+                                         asks nothing; --from STEP retries from it
   berth pair '<link>' [--name N] [--network NET]
                                          Pair with a box (link from berthd pair)
   berth invite [--boxes a,b] [--for NAME] [--yes] [--json]

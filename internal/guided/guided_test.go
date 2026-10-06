@@ -178,7 +178,7 @@ func TestPlanBeforeConnecting(t *testing.T) {
 	if !tools.Sudo || tools.When == "" || !strings.Contains(tools.Commands[0], "~/.local/bin/tmux") {
 		t.Errorf("tools = %+v", tools)
 	}
-	if l := find(steps, StepLinger); !l.Sudo || l.Commands[0] != "sudo loginctl enable-linger demo" {
+	if l := find(steps, StepLinger); !l.Sudo || !strings.HasPrefix(l.Commands[0], "loginctl enable-linger demo ") || !strings.HasPrefix(l.Commands[1], "sudo loginctl enable-linger demo ") {
 		t.Errorf("linger = %+v", l)
 	}
 	if a := find(steps, StepAgents); a.Title != "Claude Code and Codex" || !strings.Contains(strings.Join(a.Commands, "\n"), "https://claude.ai/install.sh") {
@@ -271,19 +271,30 @@ func fakeBox(t *testing.T, sudoAsks bool, uid string) (home string, env []string
 	if sudoAsks {
 		nopass = "1"
 	}
-	write(filepath.Join(bin, "sudo"), `if [ "$1" = -n ]; then shift; [ "$1" = true ] && exit `+nopass+`; [ `+nopass+` = 1 ] && exit 1; fi
+	write(filepath.Join(bin, "sudo"), `asks=`+nopass+`
+if [ "$1" = -n ]; then shift; [ "$asks" = 1 ] && exit 1; fi
+[ "$1" = true ] && exit 0
 echo "sudo $*" >>"$LOG"
-printf '[sudo] password for me: '; read -r pw; echo
+if [ "$asks" = 1 ]; then printf '[sudo] password for me: '; read -r pw; echo; fi
 case "$1" in env) shift; shift ;; esac
+SUDO_USER=me
+export SUDO_USER
 "$@"`)
 	write(filepath.Join(bin, "apt-get"), `echo "apt-get $*" >>"$LOG"; case "$*" in *install*) printf '#!/bin/sh\necho git version 2.43\n' >"$FAKEBIN/git"; chmod +x "$FAKEBIN/git";; esac`)
-	write(filepath.Join(bin, "loginctl"), `echo "loginctl $*" >>"$LOG"; case "$1" in show-user) echo Linger=no;; esac`)
+	// loginctl turns lingering on for root, or for the user where polkit
+	// lets them (POLKIT=1), as Debian 12 does; else access is denied, as on
+	// an Ubuntu without polkitd.
+	write(filepath.Join(bin, "loginctl"), `echo "loginctl $*" >>"$LOG"
+case "$1" in
+show-user) if [ -f "$FAKEBIN/lingering" ]; then echo Linger=yes; else echo Linger=no; fi ;;
+enable-linger) if [ -n "$SUDO_USER" ] || [ "$POLKIT" = 1 ]; then touch "$FAKEBIN/lingering"; else echo "Could not enable linger: Access denied" >&2; exit 1; fi ;;
+esac`)
 	write(filepath.Join(bin, "id"), `case "$1" in -u) echo `+uid+`;; *) echo me;; esac`)
 	// Only what the script needs from the system, so the system's own git
 	// (macOS has one) doesn't count as the box's.
 	sys := filepath.Join(dir, "sys")
 	os.MkdirAll(sys, 0o755)
-	for _, tool := range []string{"sh", "sed", "cat", "chmod"} {
+	for _, tool := range []string{"sh", "sed", "cat", "chmod", "touch"} {
 		p, err := exec.LookPath(tool)
 		if err != nil {
 			t.Fatal(err)
@@ -338,7 +349,8 @@ func TestScriptRunsWithSudoAsking(t *testing.T) {
 	if err != nil {
 		t.Fatalf("%v\n%s", err, out)
 	}
-	if got := states(events); got != "berthd:start berthd:done linger:start linger:done tools:start tools:done integrations:start integrations:done" {
+	// sudo asks once, at the first step that needs it, and says so first.
+	if got := states(events); got != "berthd:start berthd:done linger:start linger:sudo linger:done tools:start tools:done integrations:start integrations:done" {
 		t.Errorf("events = %s\n%s", got, out)
 	}
 	if strings.Contains(out, "Next: berthd pair") || strings.Contains(out, "hunter2") {

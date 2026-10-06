@@ -62,7 +62,7 @@ func addSSH(l laptop, args []string) error {
 	return err
 }
 
-const addSSHUsage = "usage: berth add ssh [user@]HOST [--name N] [--agents claude,codex|none] [--yes] [--from STEP] [--network NET] [--listen ADDR] [--address ADDR] [--identity FILE] [--trust-host-key SHA256:…] [--no-integrations] [-- SSH OPTIONS]"
+const addSSHUsage = "usage: berth add ssh [user@]HOST [--name N] [--agents claude,codex|none] [--guided] [--yes] [--from STEP] [--network NET] [--listen ADDR] [--address ADDR] [--identity FILE] [--trust-host-key SHA256:…] [--no-integrations] [-- SSH OPTIONS]"
 
 func addSSHSteps(l laptop, args []string) error {
 	var sshArgs []string
@@ -83,6 +83,7 @@ func addSSHSteps(l laptop, args []string) error {
 	noIntegrations := fs.Bool("no-integrations", false, "don't install hooks and skills for the agent CLIs on the box")
 	agentList := fs.String("agents", strings.Join(agentcli.Defaults(), ","), "agent CLIs to install on the box: claude, codex, cursor, opencode, or none")
 	yes := fs.Bool("yes", false, "ask nothing: don't wait for Enter, and stop with the command to run where sudo would ask for a password")
+	guidedFlag := fs.Bool("guided", false, "show the whole plan first, wait for Enter, and run every step in one terminal; without it, steps run on their own and only one that needs sudo's password asks")
 	from := fs.String("from", "", "start from this step (connect, berthd, linger, tools, agents, integrations, pair); the ones before it are kept")
 	pos, err := parseAnywhere(fs, args)
 	if err != nil || len(pos) != 1 {
@@ -277,20 +278,24 @@ func addSSHSteps(l laptop, args []string) error {
 		if !interactive {
 			return connectFailed(fmt.Errorf("%s has no tailnet (Tailscale) address, so Berth won't choose where berthd listens. Install Tailscale on it, or set it up again with --listen 0.0.0.0:7444 to listen on every interface (only laptops you pair can connect: both keys are pinned)", host))
 		}
-		printPlan(rep, steps, rep.color)
+		if *guidedFlag {
+			printPlan(rep, steps, rep.color)
+		}
 		if !askListenEverywhere(os.Stdin, rep, host, rep.color) {
 			return errors.New("stopped before anything was installed. To listen on every interface, set it up again with --listen 0.0.0.0:7444; or install Tailscale on the box")
 		}
 		opts.Listen = "0.0.0.0:7444"
 		steps = guided.Plan(opts, &probe)
 		rep.setPlan(steps)
-	} else {
+	} else if *guidedFlag {
 		printPlan(rep, steps, rep.color)
 		if interactive && fromIdx == 0 && !waitForEnter(os.Stdin, rep, rep.color) {
 			return errors.New("stopped before anything was installed")
 		}
 	}
-	fmt.Fprint(rep, "\r\n")
+	if *guidedFlag {
+		fmt.Fprint(rep, "\r\n")
+	}
 
 	pending := func(id string) bool { return guided.Index(id) >= fromIdx }
 	var run []string
@@ -328,14 +333,68 @@ func addSSHSteps(l laptop, args []string) error {
 			return err
 		}
 	}
-	if len(run) > 0 {
-		script := guided.Script(opts, probe, run)
+	// runSegment uploads the script for some of the steps and runs it: in a
+	// terminal when one of them needs sudo's password, else without.
+	runSegment := func(seg guided.Segment) error {
+		o := opts
+		o.Ask = seg.Terminal || (*guidedFlag && interactive)
+		script := guided.Script(o, probe, seg.Steps)
 		if _, err := ssh([]byte(script), "mkdir -p ~/.cache/berth && cat > ~/.cache/berth/guided-install.sh"); err != nil {
-			rep.fail(run[0], err.Error())
+			rep.fail(seg.Steps[0], err.Error())
 			return err
 		}
-		if err := runSteps(rep, sshArgs, env, target, interactive); err != nil {
-			return err
+		return runSteps(rep, sshArgs, env, target, o.Ask)
+	}
+	lingerNote := ""
+	if *guidedFlag {
+		// The guided install: every step in one terminal, so sudo asks once.
+		if len(run) > 0 {
+			if err := runSegment(guided.Segment{Steps: run, Terminal: interactive}); err != nil {
+				return err
+			}
+		}
+	} else if len(run) > 0 {
+		// The quiet install: berthd first, then lingering where the box
+		// allows it without a password; only what still needs sudo's
+		// password runs in a terminal.
+		if run[0] == guided.StepBerthd {
+			if err := runSegment(guided.Segment{Steps: run[:1]}); err != nil {
+				return err
+			}
+			run = run[1:]
+		}
+		if has(guided.StepLinger) {
+			out, err := ssh(nil, guided.LingerTry)
+			if err == nil && guided.LingerOn(string(out)) {
+				probe.Linger = "yes"
+				rep.start(guided.StepLinger)
+				rep.done(guided.StepLinger, "on, without sudo")
+				run = slices.DeleteFunc(run, func(s string) bool { return s == guided.StepLinger })
+			}
+		}
+		if has(guided.StepLinger) && probe.Linger != "yes" {
+			// Lingering needs a password (or root) here. Alongside git, it
+			// rides in the same terminal; on its own, it is asked about, and
+			// skipped when nobody can type the password.
+			skip := false
+			switch {
+			case !probe.Sudo:
+				skip = true
+			case guided.AskLinger(run, opts, probe):
+				skip = !interactive || !rep.askYes(os.Stdin, guided.StepLinger, guided.LingerQuestion(probe.User))
+			case !interactive:
+				skip = true
+			}
+			if skip {
+				rep.skip(guided.StepLinger, guided.LingerSkipped(probe.User))
+				lingerNote = "berthd stops when you log out of " + host + ": run `sudo loginctl enable-linger " + probe.User + "` there to keep it running."
+				run = slices.DeleteFunc(run, func(s string) bool { return s == guided.StepLinger })
+			}
+		}
+		for _, seg := range guided.Segments(run, func(s string) bool { return interactive && guided.NeedsPassword(s, opts, probe) }) {
+			if err := runSegment(seg); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -350,6 +409,9 @@ func addSSHSteps(l laptop, args []string) error {
 	}
 	rep.done(guided.StepPair, name2)
 	fmt.Fprintf(rep, "\r\nReady: paired with %s at %s. SSH is no longer needed for this box.\r\n", name2, addr)
+	if lingerNote != "" && !markers {
+		fmt.Fprintf(rep, "Note: %s\r\n", lingerNote)
+	}
 	if !markers && len(chosen) == 1 {
 		fmt.Fprintf(rep, "%s asks you to sign in the first time you start it there.\r\n", agentcli.Names(chosen))
 	} else if !markers && len(chosen) > 1 {

@@ -22,8 +22,11 @@ import (
 	"github.com/sean-brydon/berthd/internal/trust"
 )
 
-// The guided install: the app shows the plan (GET /v1/ssh/install-plan),
-// then runs `berth add ssh` in a pseudo-terminal here, on the laptop,
+// Adding a box over SSH: the app runs `berth add ssh` in a pseudo-terminal
+// here. Quiet by default (Add a box): the steps run on their own and the
+// app shows the terminal only while sudo asks for a password. Guided
+// (guided=1, from Team setup): the app shows the plan (GET
+// /v1/ssh/install-plan) first, then runs it, on the laptop,
 // relayed over a WebSocket (GET /v1/boxes/add-ssh/terminal) to a terminal
 // it shows full screen. The person presses Enter there to start and types
 // sudo's password when it asks on the box: those bytes pass through this
@@ -37,6 +40,10 @@ type installRequest struct {
 	Host, Name, Network, Address, Identity, TrustHostKey, Listen, From string
 	Agents                                                             []string
 	NoIntegrations                                                     bool
+	// Guided asks for the whole plan and one terminal (Team setup's add a
+	// box); without it the install is quiet, and a terminal shows only for
+	// a step that needs sudo's password.
+	Guided bool
 }
 
 func readInstallRequest(q map[string][]string) (installRequest, error) {
@@ -46,7 +53,7 @@ func readInstallRequest(q map[string][]string) (installRequest, error) {
 		}
 		return ""
 	}
-	r := installRequest{Host: get("host"), Name: get("name"), Network: get("network"), Address: get("address"), Identity: get("identity"), TrustHostKey: get("trust_host_key"), Listen: get("listen"), From: get("from"), NoIntegrations: get("no_integrations") == "1"}
+	r := installRequest{Host: get("host"), Name: get("name"), Network: get("network"), Address: get("address"), Identity: get("identity"), TrustHostKey: get("trust_host_key"), Listen: get("listen"), From: get("from"), NoIntegrations: get("no_integrations") == "1", Guided: get("guided") == "1"}
 	if err := argOK(r.Host, r.Name, r.Network, r.Address, r.Identity, r.TrustHostKey, r.Listen, r.From); err != nil || r.Host == "" {
 		return r, errors.New("an SSH host is needed, like me@devbox")
 	}
@@ -79,6 +86,9 @@ func (r installRequest) args() []string {
 	}
 	if r.NoIntegrations {
 		args = append(args, "--no-integrations")
+	}
+	if r.Guided {
+		args = append(args, "--guided")
 	}
 	return args
 }

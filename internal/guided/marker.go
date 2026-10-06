@@ -21,9 +21,12 @@ import (
 //	::berth-step <id> <state> [message]
 //
 // States are start, done, fail, skip; open (the message is a page for the
-// person to open, such as Tailscale SSH's login approval); and cmd (the
+// person to open, such as Tailscale SSH's login approval); cmd (the
 // message is the command to run by hand, when a step can't do its work
-// without a person, as with sudo's password and no terminal).
+// without a person, as with sudo's password and no terminal); sudo (sudo is
+// about to ask for the password in the terminal: the app shows it); and ask
+// (the message is a yes-or-no question, answered with a line on the
+// terminal's input: y or n).
 const MarkerPrefix = "::berth-step "
 
 // FailurePrefix starts the line `berth add ssh` prints a failed SSH login
@@ -43,6 +46,8 @@ const (
 	Skip  = "skip"
 	Open  = "open"
 	Cmd   = "cmd"
+	Sudo  = "sudo"
+	Ask   = "ask"
 )
 
 // Event is one marker.
@@ -74,7 +79,7 @@ func ParseMarker(line string) (Event, bool) {
 		return Event{}, false
 	}
 	switch f[1] {
-	case Start, Done, Fail, Skip, Open, Cmd:
+	case Start, Done, Fail, Skip, Open, Cmd, Sudo, Ask:
 	default:
 		return Event{}, false
 	}

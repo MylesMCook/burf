@@ -118,9 +118,32 @@ func (r *stepReporter) event(e guided.Event) {
 		fmt.Fprintf(r.out, "%s%s %s: %s\r\n", lead, r.paint("31", "✗"), t, e.Message)
 	case guided.Open:
 		fmt.Fprintf(r.out, "%sTailscale SSH asks you to approve this login in your browser: %s\r\n", lead, e.Message)
-	case guided.Cmd:
-		// The script prints the command itself.
+	case guided.Cmd, guided.Sudo:
+		// The script prints the command, and sudo its own prompt.
+	case guided.Ask:
+		msg := e.Message + " [Y/n]"
+		fmt.Fprintf(r.out, "%s%s ", lead, r.paint("1", msg))
+		r.midLine = true
 	}
+}
+
+// askYes asks a yes-or-no question about a step, as a marker for the app
+// (which answers on the terminal's input with y or n) or drawn for a
+// person; Enter means yes. in is where the answer comes from.
+func (r *stepReporter) askYes(in io.Reader, step, question string) bool {
+	r.event(guided.Event{Step: step, State: guided.Ask, Message: question})
+	line, err := bufio.NewReader(in).ReadString('\n')
+	r.mu.Lock()
+	r.midLine = false
+	r.mu.Unlock()
+	if err != nil && line == "" {
+		return false
+	}
+	switch strings.ToLower(strings.TrimSpace(line)) {
+	case "", "y", "yes":
+		return true
+	}
+	return false
 }
 
 // remote is an event from the box's step script, which prints its own

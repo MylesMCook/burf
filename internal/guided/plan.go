@@ -287,11 +287,11 @@ func Plan(o Options, p *Probe) []Step {
 	steps = append(steps, berthd)
 
 	linger := Step{ID: StepLinger, Title: "Keep berthd running after you log out", Where: "box", Sudo: true,
-		Detail:   "systemd stops a user's services at logout unless lingering is on for them.",
-		Commands: []string{"sudo loginctl enable-linger " + user}}
+		Detail:   "systemd stops a user's services at logout unless lingering is on for them. Many boxes let you turn it on yourself; others need root.",
+		Commands: []string{"loginctl enable-linger " + user + "   (no sudo, where the box allows it)", "sudo loginctl enable-linger " + user + "   (otherwise)"}}
 	switch {
 	case p == nil:
-		linger.When = "only if lingering is off"
+		linger.When = "only if the box needs root for it"
 		steps = append(steps, linger)
 	case p.OS == "linux" && p.Linger != "yes":
 		steps = append(steps, linger)

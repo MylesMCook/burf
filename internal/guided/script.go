@@ -34,7 +34,8 @@ BERTHD="$B/berthd"
 PATH="$B:$PATH"
 export PATH
 ASK=%d
-m() { printf '%s%%s\n' "$*"; }
+CUR=
+m() { [ "$2" != start ] || CUR=$1; printf '%s%%s\n' "$*"; }
 # Colour only in a terminal: --yes and scripts get plain text.
 if [ -t 1 ]; then BOLD=$(printf '\033[1m') RED=$(printf '\033[31m') OFF=$(printf '\033[0m'); else BOLD= RED= OFF=; fi
 title() { printf '\n%%s==> %%s%%s\n' "$BOLD" "$1" "$OFF"; }
@@ -61,6 +62,7 @@ asroot() {
   if sudo -n true 2>/dev/null; then sudo -n "$@"; return; fi
   [ "$ASK" = 1 ] || return 99
   if [ -z "$told" ]; then
+    m "$CUR" sudo
     note "This needs root: sudo asks for $(id -un)'s password on this box."
     note "Type it and press Enter. It goes to sudo here; Berth never sees it or keeps it."
     told=1
@@ -94,6 +96,8 @@ title "Keeping berthd running after you log out"
 u=$(id -un)
 if [ "$(loginctl show-user "$u" -p Linger 2>/dev/null)" = Linger=yes ]; then
   note "Lingering is already on for $u."
+elif loginctl enable-linger "$u" >/dev/null 2>&1 && [ "$(loginctl show-user "$u" -p Linger 2>/dev/null)" = Linger=yes ]; then
+  note "Lingering is on (this box lets you turn it on for yourself, without sudo)."
 else
   asroot loginctl enable-linger "$u"
   c=$?
