@@ -168,14 +168,14 @@ test("a file too large or not text is refused with a reason; a picture shows", a
   await expect(picker(app).getByRole("option").first()).toHaveAttribute("data-path", "data/exports/orders-2026-09.csv");
   await app.page.keyboard.press("Enter");
   const big = app.page.locator("[data-testid=file-pane][data-path='data/exports/orders-2026-09.csv']");
-  await expect(big.getByTestId("file-refusal")).toContainText("too large to open here");
+  await expect(big.getByTestId("file-refusal")).toContainText("Too large to open here");
   await expect(big.getByTestId("file-refusal")).toContainText("14.2 MB");
   await expect(big.getByRole("button", { name: /Open in/ }).first()).toBeVisible();
 
   await openPicker(app);
   await app.page.keyboard.type("shop-sans");
   await app.page.keyboard.press("Enter");
-  await expect(app.page.locator("[data-testid=file-pane][data-path$='shop-sans.woff2'] [data-testid=file-refusal]")).toContainText("isn't text");
+  await expect(app.page.locator("[data-testid=file-pane][data-path$='shop-sans.woff2'] [data-testid=file-refusal]")).toContainText("Not a text file");
 
   await openPicker(app);
   await app.page.keyboard.type("logo.png");

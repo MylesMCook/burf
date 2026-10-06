@@ -5,6 +5,7 @@
     "orchestration",
     "runs",
     "browser",
+    "files",
     "agent-browser",
     "offline-queue",
     "automations",

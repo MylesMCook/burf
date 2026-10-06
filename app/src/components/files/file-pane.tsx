@@ -101,7 +101,7 @@ export function FilePane({ path, owner, visible, onClose }: Props) {
   if (doc.state === "error") body = <Refusal path={path} title={`Couldn't open ${fileName(path)}`} detail={<ErrorText text={doc.error} className="items-center text-muted-foreground text-xs" />} retry={() => ref && void openDoc(owner, ref, path)} />;
   else if (doc.state === "gone") body = <Refusal path={path} icon={<FileX2Icon className="size-5 text-muted-foreground" />} title={`${fileName(path)} isn't in this worktree any more`} detail="It was deleted or moved on the box." onClose={onClose} />;
   else if (doc.image && !doc.tooLarge) body = <ImageView doc={doc} />;
-  else if (doc.binary || doc.tooLarge) body = <Refusal path={path} title={doc.tooLarge ? `${fileName(path)} is too large to open here` : `${fileName(path)} isn't text`} detail={doc.reason} external />;
+  else if (doc.binary || doc.tooLarge) body = <Refusal path={path} title={doc.tooLarge ? "Too large to open here" : "Not a text file"} detail={doc.reason} external />;
   else if (showCompare) body = <CompareMine doc={doc} />;
   else
     body = (

@@ -11,6 +11,19 @@ again.
 
 ## Unreleased
 
+- **⌘P finds a file, and a File tab opens it.** In any worktree, ⌘P lists
+  the files the agent changed this turn first, with their `+/−` lines,
+  then the ones you opened lately; type to search every file, fuzzily,
+  with letters in the file's name counting most. On a wide window the
+  highlighted file shows beside the list at the agent's first change. ↵
+  opens a File tab, ⌥↵ opens it beside the pane, ⌘↵ in your editor. The
+  File tab marks the agent's changes this turn in the margin (yours,
+  unsaved, in grey), steps through them, saves with ⌘S, and is coloured
+  by your theme's own syntax colours, as diffs are. When the agent writes
+  the file under your unsaved edits, nothing is overwritten: a banner
+  offers Reload, Keep mine or Compare (side by side in the diff view).
+  Large and binary files say why they don't open; pictures show. See
+  [Go to file and File tabs](/guides/files).
 - **A file dropped on the window no longer replaces the app.** Dropping a
   file from Finder where nothing takes it used to open it in Berth's place,
   a whole-window markdown file with no way back. Now it is refused, and a
