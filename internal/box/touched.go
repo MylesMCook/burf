@@ -31,7 +31,10 @@ type TouchedFile struct {
 	Created bool `json:"created,omitempty"`
 	Deleted bool `json:"deleted,omitempty"`
 	// At is when the agent last wrote it (Unix ms).
-	At      int64  `json:"at,omitempty"`
+	At int64 `json:"at,omitempty"`
+	// Live: the agent wrote it in the last liveFor and its session is
+	// working still, so it is likely writing it now.
+	Live    bool   `json:"live,omitempty"`
 	Session string `json:"session"`
 	Agent   string `json:"agent"`
 	// Base is what Added and Removed count from: "turn", the file as the
@@ -46,6 +49,10 @@ type FileTurn struct {
 	TouchedFile
 	Before *string `json:"before"`
 }
+
+// liveFor is how long after an agent's write the file counts as being
+// written (TouchedFile.Live), while the agent works.
+const liveFor = 20 * time.Second
 
 func (b *Box) worktreeTouched(w http.ResponseWriter, r *http.Request) error {
 	_, wt, err := b.worktreeRef(r.Context(), r.PathValue("name"), r.PathValue("worktree"))
@@ -81,6 +88,9 @@ func (b *Box) touchedIn(r *http.Request, wt Worktree) []FileTurn {
 	if err != nil {
 		return nil
 	}
+	// Each agent's state: a file is live only while its agent works.
+	sessions = b.enrich(r.Context(), sessions)
+	now := time.Now()
 	root, err := filepath.EvalSymlinks(wt.Path)
 	if err != nil {
 		return nil
@@ -111,6 +121,7 @@ func (b *Box) touchedIn(r *http.Request, wt Worktree) []FileTurn {
 				continue
 			}
 			ft.Session, ft.Agent = s.Name, agent
+			ft.Live = s.AgentState == "running" && !ft.Deleted && ft.At > 0 && now.Sub(time.UnixMilli(ft.At)) < liveFor
 			if have, ok := byPath[ft.Path]; !ok || ft.At > have.At {
 				byPath[ft.Path] = ft
 			}

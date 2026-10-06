@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -27,6 +28,7 @@ import (
 // worktree with no agent in it.
 //
 //	GET /v1/locations/{name}/worktrees/{worktree}/files?q=&limit=
+//	GET /v1/locations/{name}/worktrees/{worktree}/files?dir=   (worktreefolder.go)
 //	GET /v1/locations/{name}/worktrees/{worktree}/file?path=[&stat=1][&raw=1][&turn=1]
 //	PUT /v1/locations/{name}/worktrees/{worktree}/file?path=   If-Match: "<etag>" | If-None-Match: *
 //	GET /v1/locations/{name}/worktrees/{worktree}/touched
@@ -387,6 +389,10 @@ func (b *Box) putWorktreeFile(w http.ResponseWriter, r *http.Request) error {
 	if err := writeAtomic(abs, data, mode); err != nil {
 		return err
 	}
+	if !exists {
+		// A new file shows in the Files panel and ⌘P at once.
+		forgetWorktreeFiles(wt.Path)
+	}
 	out := WorktreeFile{Path: rel, Etag: etagOf(data), Size: int64(len(data))}
 	if st, err := os.Stat(abs); err == nil {
 		out.Mtime = st.ModTime().UnixMilli()
@@ -452,9 +458,18 @@ func (b *Box) listWorktreeFiles(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	if r.URL.Query().Has("dir") {
+		return b.listWorktreeFolder(w, r, wt)
+	}
 	all, more, err := cachedFiles(r.Context(), wt.Path)
 	if err != nil {
 		return err
+	}
+	if more {
+		// Past maxListedFiles the list loses the tracked files late in
+		// the alphabet (git lists the untracked first): what the agents
+		// touched this turn is searched all the same.
+		all = withTouched(all, b.touchedIn(r, wt))
 	}
 	limit := maxFileResults
 	if n, err := strconv.Atoi(r.URL.Query().Get("limit")); err == nil && n > 0 {
@@ -468,6 +483,21 @@ func (b *Box) listWorktreeFiles(w http.ResponseWriter, r *http.Request) error {
 	}
 	writeJSON(w, FileList{Files: files[:min(limit, len(files))], Truncated: more})
 	return nil
+}
+
+// withTouched is all with the touched files it lacks (those still there)
+// added at its end.
+func withTouched(all []string, touched []FileTurn) []string {
+	var extra []string
+	for _, t := range touched {
+		if !t.Deleted && !slices.Contains(all, t.Path) && !slices.Contains(extra, t.Path) {
+			extra = append(extra, t.Path)
+		}
+	}
+	if len(extra) == 0 {
+		return all
+	}
+	return append(slices.Clip(all), extra...)
 }
 
 // RankFiles is the files that match q, best first, as the ⌘P picker ranks

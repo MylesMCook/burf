@@ -454,7 +454,7 @@ func TestTouchedReadsTheAgentsRecord(t *testing.T) {
 		t.Fatalf("touched: %+v", touched.Files)
 	}
 	f := touched.Files[0]
-	if f.Path != "src/webhook.ts" || f.Added != 1 || f.Removed != 0 || f.Agent != "claude" || f.Session != sess.Name || f.Base != "turn" || f.At == 0 {
+	if f.Path != "src/webhook.ts" || f.Added != 1 || f.Removed != 0 || f.Agent != "claude" || f.Session != sess.Name || f.Base != "turn" || f.At == 0 || !f.Live {
 		t.Fatalf("touched: %+v", f)
 	}
 	_, got, _ := fileCall(t, c, "GET", fileURL("src/webhook.ts", "&turn=1"), nil, nil)

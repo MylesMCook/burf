@@ -136,8 +136,10 @@ func (b *Box) Capabilities() []string {
 	// session.home: POST /v1/sessions takes "home": true, a terminal in
 	// the box user's home folder, tied to no worktree. files: a worktree's
 	// ⌘P list, its files read and written with etags, and what the agents'
-	// latest turns touched (worktreefiles.go, touched.go).
-	caps := []string{"transcript", "diff", "titles", "sample", "history", "commands", "service.terminal", "answer", "session.home", "files"}
+	// latest turns touched (worktreefiles.go, touched.go). files.dir:
+	// GET .../files?dir= lists one folder for the Files panel
+	// (worktreefolder.go), and touched files say live.
+	caps := []string{"transcript", "diff", "titles", "sample", "history", "commands", "service.terminal", "answer", "session.home", "files", "files.dir"}
 	if b.Turns != nil {
 		// controls: POST .../keys, .../interrupt and .../mode, GET
 		// .../controls (controls.go).
