@@ -67,7 +67,7 @@ func codeFor(err error) string {
 	case errors.Is(err, ErrUnknownLocation), errors.Is(err, ErrUnknownWorktree), errors.Is(err, ErrUnknownSession), errors.Is(err, ErrUnknownShare), errors.Is(err, ErrUnknownUnit):
 		return CodeNotFound
 	case errors.As(err, &he):
-		if strings.Contains(he.msg, "is waiting for someone to answer it") {
+		if strings.Contains(he.msg, "is waiting for someone to answer it") || strings.Contains(he.msg, "is asking whether to trust this folder") {
 			return CodeAgentWaiting
 		}
 		return codeForStatus(he.status)

@@ -183,6 +183,28 @@ func (b *Box) sendPrompt(ctx context.Context, name string, req SendRequest, orig
 		// Typed now or queued for later, nothing would ever read it.
 		return SendResult{}, ErrSessionExited
 	}
+	hold := func() (SendResult, error) {
+		tr, err := b.Turns.Queue(name, req.Text, enter, from, req.IdemKey)
+		if err != nil {
+			return SendResult{}, err
+		}
+		e := b.Events.Publish(events.Event{Type: "session.queued", Box: b.Name, Origin: origin, Data: map[string]any{"name": name, "turn": tr.ID}})
+		return SendResult{Queued: true, Turn: tr.ID, Seq: e.Seq, At: e.Time.UTC()}, nil
+	}
+	if agent := agentFor(sess); agent != "" {
+		// A new agent reads nothing until it has drawn. At its startup
+		// question (startup.go) a prompt is held for it, now or idle:
+		// typed, the question drops it and its Enter answers. A key alone,
+		// or Enter, is someone answering. Text meant for the question
+		// (forced, or a key and Enter) is no answer it takes: refused.
+		b.awaitDrawn(ctx, name)
+		if req.Text != "" && !(isKey(req.Text) && !enter) && b.atStartupQuestion(ctx, Session{Name: name, Agent: agent}) {
+			if b.Turns == nil || req.Force || isKey(req.Text) {
+				return SendResult{}, startupText(agent)
+			}
+			return hold()
+		}
+	}
 	waiting := ""
 	if b.Turns != nil {
 		if st := b.enrich(ctx, []Session{sess})[0]; st.AgentState == "waiting" {
@@ -193,12 +215,7 @@ func (b *Box) sendPrompt(ctx context.Context, name string, req SendRequest, orig
 		return SendResult{}, httpError{http.StatusConflict, ErrAgentWaiting{name}.Error()}
 	}
 	if b.Turns != nil && req.When == "idle" && !b.Turns.Ready(name) {
-		tr, err := b.Turns.Queue(name, req.Text, enter, from, req.IdemKey)
-		if err != nil {
-			return SendResult{}, err
-		}
-		e := b.Events.Publish(events.Event{Type: "session.queued", Box: b.Name, Origin: origin, Data: map[string]any{"name": name, "turn": tr.ID}})
-		return SendResult{Queued: true, Turn: tr.ID, Seq: e.Seq, At: e.Time.UTC()}, nil
+		return hold()
 	}
 	if err := b.Sessions.Send(ctx, name, req.Text, enter); err != nil {
 		return SendResult{}, err

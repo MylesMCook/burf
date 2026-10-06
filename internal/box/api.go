@@ -571,7 +571,7 @@ func (b *Box) addSession(w http.ResponseWriter, r *http.Request) error {
 		req.Name = defaultSessionName(req.Location, req.Command)
 	}
 	preset := req.Agent
-	sess, err := b.startSession(r, req.Name, req.Location, dir, req.Command, preset)
+	sess, err := b.startSession(r, req.Name, req.Location, dir, req.Command, preset, preset != "" && req.Prompt != "")
 	if err != nil {
 		return err
 	}
@@ -599,7 +599,7 @@ func (b *Box) addHomeSession(w http.ResponseWriter, r *http.Request, req Session
 	if req.Name == "" {
 		req.Name = defaultSessionName("home", req.Command)
 	}
-	sess, err := b.startSession(r, req.Name, "", dir, req.Command, "")
+	sess, err := b.startSession(r, req.Name, "", dir, req.Command, "", false)
 	if err != nil {
 		return err
 	}
@@ -619,8 +619,9 @@ func (b *Box) announceOpen(r *http.Request, sess Session, open string) {
 }
 
 // startSession runs command in dir once the hooks allow it; preset is the
-// agent preset it runs, if any.
-func (b *Box) startSession(r *http.Request, name, location, dir, command, preset string) (Session, error) {
+// agent preset it runs, if any, and prompted says its command carries a
+// first prompt.
+func (b *Box) startSession(r *http.Request, name, location, dir, command, preset string, prompted bool) (Session, error) {
 	data := map[string]any{"name": name, "location": location, "path": dir, "command": command}
 	if err := b.before(r, "session.start", data); err != nil {
 		return Session{}, err
@@ -633,10 +634,11 @@ func (b *Box) startSession(r *http.Request, name, location, dir, command, preset
 		data["agent"] = a
 	}
 	b.publish(r, "session.started", data)
-	sess = b.enrich(r.Context(), []Session{sess})[0]
-	if sess.Agent != "" {
-		go b.watchStartup(origin(r), sess)
+	if prompted {
+		b.startupPrompt(origin(r), gateOrigin(r), Session{Name: sess.Name, Agent: agentFor(sess)})
 	}
+	sess = b.enrich(r.Context(), []Session{sess})[0]
+	b.beginStartup(origin(r), sess)
 	return sess, nil
 }
 

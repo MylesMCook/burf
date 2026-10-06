@@ -25,6 +25,19 @@ again.
   Large and binary files say why they don't open; pictures show. See
   [Go to file and File tabs](/guides/files).
 
+- **Prompts wait for an agent's trust question.** In a folder it hasn't
+  seen, Claude Code (and Codex) first asks whether to trust it, and that
+  question takes keys only: a prompt typed into it was dropped, and the
+  Enter after it answered the question, which with Claude Code's
+  highlighted "No, exit" ended the session before its first prompt ran.
+  The box now watches a new agent until it is at its prompt. A prompt sent
+  while it asks is held and typed once you've answered and it has run the
+  prompt it was started with (that one, given on its command line, was
+  always kept); one sent before it has drawn waits a moment first. The chat
+  shows the question in the agent's own screen, to answer there, with the
+  first prompt marked as sent, and no longer offers a Yes or No that would
+  type a word into it. Needs the box updated.
+
 - **The chat streams while Claude writes.** A reply now grows in the chat
   as it does in the terminal, read off Claude Code's screen, with a caret
   where the words end; when Claude Code records the message it takes the

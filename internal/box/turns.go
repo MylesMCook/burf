@@ -1471,6 +1471,12 @@ func (t *Turns) Expire(now time.Time) int {
 // deliverInbox types each idle session's next held prompt.
 func (b *Box) deliverInbox(ctx context.Context) {
 	for _, it := range b.Turns.nextDeliveries() {
+		if b.startupHeld(ctx, it.Session) {
+			// Still starting, or at its startup question: typed now, it
+			// would be lost. The watch kicks the inbox once it is ready.
+			b.Turns.putBack(it)
+			continue
+		}
 		unlock := b.lockSend(it.Session)
 		if err := b.Sessions.Send(ctx, it.Session, it.Text, it.Enter); err != nil {
 			b.Turns.failQueued(it, err.Error())
@@ -1529,6 +1535,11 @@ func (b *Box) pollScreens(ctx context.Context) {
 		}
 		if sess.Exited {
 			b.Turns.Exited(name)
+			continue
+		}
+		if b.startingState(name) == startAsking {
+			// Its startup watch reads it: a question that sits still is
+			// not a turn that ended.
 			continue
 		}
 		screen, err := b.Sessions.Screen(ctx, name, 0)

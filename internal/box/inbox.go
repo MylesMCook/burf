@@ -62,6 +62,10 @@ func (b *Box) sendQueued(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	if agent := agentFor(sess); b.atStartupQuestion(ctx, Session{Name: name, Agent: agent}) {
+		// Even forced: the question would drop the text and take its Enter.
+		return startupText(agent)
+	}
 	waiting := ""
 	if st := b.enrich(ctx, []Session{sess})[0]; st.AgentState == "waiting" {
 		waiting = st.Turn

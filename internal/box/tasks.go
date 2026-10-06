@@ -8,7 +8,6 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
-	"time"
 
 	"github.com/sean-brydon/berthd/internal/events"
 	"github.com/sean-brydon/berthd/internal/wire"
@@ -315,7 +314,7 @@ func (b *Box) addTask(w http.ResponseWriter, r *http.Request) error {
 	if req.Command == "" {
 		preset = req.Agent
 	}
-	sess, err := b.startSession(r, defaultSessionName(where, command), where, wt.Path, command, preset)
+	sess, err := b.startSession(r, defaultSessionName(where, command), where, wt.Path, command, preset, preset != "" && req.Prompt != "")
 	if err != nil {
 		// A task is a worktree with an agent in it: without the agent, the
 		// worktree it made goes too, so a retry starts clean.
@@ -334,33 +333,6 @@ func (b *Box) addTask(w http.ResponseWriter, r *http.Request) error {
 	b.watchCaller(r, Watch{Kind: "task", Session: sess.Name})
 	writeJSON(w, Task{Worktree: wt, Session: sess})
 	return nil
-}
-
-// startupPrompts are questions agents ask before their own hooks are
-// running, so nothing else would say the agent is waiting.
-var startupPrompts = []string{
-	"Yes, I trust this folder",       // Claude Code, in a folder it has not seen
-	"Do you trust the files in this", // older Claude Code
-}
-
-// watchStartup looks at a new agent session's screen while it starts and
-// reports it waiting if it stops at a startup question.
-func (b *Box) watchStartup(from string, sess Session) {
-	for _, wait := range []time.Duration{2 * time.Second, 3 * time.Second, 5 * time.Second, 10 * time.Second} {
-		time.Sleep(wait)
-		screen, err := b.Sessions.Screen(context.Background(), sess.Name, 0)
-		if err != nil {
-			return
-		}
-		for _, p := range startupPrompts {
-			if strings.Contains(screen, p) {
-				b.Events.Publish(events.Event{Type: "agent.waiting", Box: b.Name, Origin: from, Data: map[string]any{
-					"path": sess.Dir, "agent": sess.Agent, "session": sess.Name, "reason": "startup question",
-				}})
-				return
-			}
-		}
-	}
 }
 
 // before asks the hooks gating typ, the box's and then the repository's,
