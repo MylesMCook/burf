@@ -15,7 +15,7 @@ const checklist = (page: Page) => page.getByTestId("team-checklist").locator("vi
 
 async function startRun(page: Page) {
   await checklist(page).getByTestId("team-run").click();
-  await expect(step(page, "packages")).toHaveAttribute("data-state", "waiting");
+  await expect(step(page, "update")).toHaveAttribute("data-state", "waiting");
 }
 
 test("first run: Joining a team? opens the team setup in the whole window", async ({ app }) => {
@@ -86,6 +86,12 @@ test("every line opens to its commands, and Read every command shows the .berth 
   await repo(page, "shop").getByRole("button").first().click();
   await expect(repo(page, "shop")).toContainText("git clone https://github.com/acme/shop");
   await expect(step(page, "github")).toContainText("Berth");
+  // The keys are 1Password references: Berth signs op in on the box, as a
+  // step of its own after GitHub's.
+  await expect(step(page, "1password")).toContainText("1Password on the box");
+  await expect(step(page, "1password")).toContainText("Berth");
+  await step(page, "1password").getByRole("button").first().click();
+  await expect(step(page, "1password")).toContainText("berthd secret signin");
   await page.getByTestId("read-every-command").click();
   await expect(page.getByTestId("team-file")).toContainText("set -euo pipefail");
   await expect(page.getByText(/lines call sudo, marked/)).toBeVisible();
@@ -118,19 +124,20 @@ test("box and keys: one line, the asked key entered once", async ({ app }) => {
   await expect(keys).toHaveText("5 from 1Password · 1 to enter");
   await checklist(page).getByLabel(/MAIL_API_KEY/).fill("SG.test");
   await expect(keys).toHaveText("5 from 1Password · 1 entered");
-  await expect(checklist(page)).toContainText("3 steps ask for your password on sean-dev");
+  await expect(checklist(page)).toContainText("4 steps ask for your password on sean-dev");
+  await expect(checklist(page)).toContainText("It signs in to GitHub itself, and to 1Password, in its own terminal");
 });
 
 test("running: sudo waits in the box's terminal, then the box signs in to GitHub with a code", async ({ app }) => {
   const { page } = app;
   await app.open({ params: { team: "acme", teamhold: "github", "team-page": "acme" } });
   await startRun(page);
-  await expect(step(page, "packages")).toContainText("Type it in the terminal below; Berth doesn't see or keep it");
+  await expect(step(page, "update")).toContainText("Type it in the terminal below; Berth doesn't see or keep it");
   // The sidebar and the status bar show it from the start.
   await expect(page.getByTestId("team-status")).toContainText("Setting up sean-dev for Acme · waiting for your password");
   await expect(page.getByTestId("team-sidebar")).toContainText("queued");
   // The password goes to the terminal, never to Berth.
-  await step(page, "packages").locator("[data-pane-kind], .xterm, canvas, [contenteditable]").first().click().catch(() => {});
+  await step(page, "update").locator("[data-pane-kind], .xterm, canvas, [contenteditable]").first().click().catch(() => {});
   await page.keyboard.type("hunter2");
   await page.keyboard.press("Enter");
   await advance(page, "sudo");
@@ -138,6 +145,39 @@ test("running: sudo waits in the box's terminal, then the box signs in to GitHub
   await expect(page.getByTestId("device-code")).toContainText("C4L1-7Q2M");
   await expect(page.getByRole("button", { name: /Open github.com\/login\/device/ })).toBeVisible();
   await expect(page.getByTestId("team-runcard").locator("visible=true")).toContainText("Sign the box in to GitHub");
+});
+
+test("1Password: op asks in the box's terminal, which the step shows, then the setup carries on", async ({ app }) => {
+  const { page } = app;
+  await app.open({ params: { team: "acme", teamhold: "1password", "team-page": "acme" } });
+  await startRun(page);
+  await advance(page, "sudo");
+  await expect(step(page, "1password")).toHaveAttribute("data-state", "waiting", { timeout: 15_000 });
+  await expect(step(page, "1password")).toContainText("op on sean-dev is asking you to sign in to 1Password");
+  await expect(step(page, "1password")).toContainText("Berth keeps only op's session there");
+  await expect(page.getByTestId("team-runcard").locator("visible=true")).toContainText("Sign the box in to 1Password");
+  await expect(page.getByTestId("team-status")).toContainText("waiting for 1Password");
+  await advance(page, "1password");
+  // The box is done (its steps fold into one line), and the repos follow.
+  await expect(step(page, "1password")).toHaveCount(0, { timeout: 10_000 });
+  await expect(repo(page, "shop")).toHaveAttribute("data-state", "ready", { timeout: 20_000 });
+});
+
+test("a box without tmux: the Box check says how to install it, and setup waits for it", async ({ app }) => {
+  const { page } = app;
+  await app.open({ params: { team: "acme", tmux: "missing", "team-page": "acme" } });
+  const box = page.getByTestId("check-box").locator("visible=true");
+  await expect(box).toHaveAttribute("data-state", "warn");
+  await expect(box).toContainText("Install tmux on sean-dev");
+  await expect(box).toContainText("Berth runs the team setup's steps, and later your agents, in tmux on the box.");
+  await expect(box).toContainText("sudo apt install tmux");
+  await expect(checklist(page).getByTestId("team-run")).toBeDisabled();
+  await expect(checklist(page)).toContainText("Install tmux on sean-dev first");
+  // Installed on the box: Check again finds it.
+  await box.getByRole("button", { name: "Check again" }).click();
+  await box.getByRole("button", { name: "Check again" }).click();
+  await expect(box).toHaveAttribute("data-state", "done");
+  await expect(checklist(page).getByTestId("team-run")).toBeEnabled();
 });
 
 test("a repo that's ready offers Start on it while the others set up", async ({ app }) => {
@@ -165,8 +205,8 @@ test("a failed step shows why, and Retry goes on from it to You're set up", asyn
   await expect(step(page, "postgres")).toHaveAttribute("data-state", "failed", { timeout: 15_000 });
   await expect(step(page, "postgres")).toContainText("port is already allocated");
   await expect(step(page, "docker")).toHaveAttribute("data-state", "done");
-  await expect(page.getByTestId("team-status")).toContainText("Acme setup stopped at Postgres 16 in Docker");
-  await step(page, "postgres").getByRole("button", { name: "Retry from Postgres 16" }).click();
+  await expect(page.getByTestId("team-status")).toContainText("Acme setup stopped at Postgres in Docker");
+  await step(page, "postgres").getByRole("button", { name: "Retry from Postgres" }).click();
   await expect(page.getByRole("heading", { name: "You're set up for Acme" })).toBeVisible({ timeout: 25_000 });
 });
 
