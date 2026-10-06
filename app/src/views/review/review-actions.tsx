@@ -2,6 +2,7 @@ import { AlertTriangleIcon, GitCommitHorizontalIcon, GitPullRequestIcon, UploadI
 import { useEffect, useMemo, useState } from "react";
 
 import { AgentIcon } from "@/components/agent-glyph";
+import { AttachmentChips, useAttachments } from "@/components/conversation/attachments";
 import { PickOne } from "@/components/pick-one";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogDescription, DialogFooter, DialogHeader, DialogPanel, DialogPopup, DialogTitle } from "@/components/ui/dialog";
@@ -9,6 +10,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { Textarea } from "@/components/ui/textarea";
 import { toastManager } from "@/components/ui/toast";
 import { boxApi } from "@/lib/api";
+import { withAttachments } from "@/lib/attachments";
 import { agentLabel } from "@/lib/derive";
 import { plainError } from "@/lib/errors";
 import { describeCode, quote } from "@/lib/git/parse";
@@ -211,17 +213,22 @@ export function SendBackDialog({ entry, onClose }: { entry?: ReviewEntry; onClos
   const [note, setNote] = useState("Changes requested: ");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
+  // A screenshot of what's wrong, say: it goes up to the agent's worktree.
+  const files = useAttachments(entry ? { box: entry.box, session: entry.session } : undefined);
   useEffect(() => {
     setNote("Changes requested: ");
     setError(undefined);
+    files.clear();
+    // Only when the entry changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entry]);
   if (!entry) return null;
   const go = async () => {
-    if (!client || busy || !note.replace(/^Changes requested:\s*/, "").trim()) return;
+    if (!client || busy || files.blocker || !note.replace(/^Changes requested:\s*/, "").trim()) return;
     setBusy(true);
     try {
       // The person writes this note, so it goes in even at a question.
-      await boxApi.send(client, entry.box, entry.session, note.trim(), true, { when: "now", force: true });
+      await boxApi.send(client, entry.box, entry.session, withAttachments(note.trim(), files.paths), true, { when: "now", force: true });
       toastManager.add({ title: `Sent back to ${agentLabel(entry.agent)}`, description: entry.main ? entry.location : entry.worktree, type: "success" });
       void refreshReview();
       onClose();
@@ -241,10 +248,12 @@ export function SendBackDialog({ entry, onClose }: { entry?: ReviewEntry; onClos
           </div>
           <DialogDescription>Typed into {agentLabel(entry.agent)}'s session as your next prompt. It leaves the inbox while it works.</DialogDescription>
         </DialogHeader>
-        <DialogPanel className="flex flex-col gap-2 px-5 pb-5">
+        <DialogPanel {...files.dropProps} className={cn("flex flex-col gap-2 px-5 pb-5", files.dragging && "outline-2 outline-ring/60 outline-dashed -outline-offset-4")}>
+          <AttachmentChips items={files.items} onRemove={files.remove} onRetry={files.retry} />
           <Textarea
             value={note}
             onChange={(e) => setNote(e.target.value)}
+            onPaste={files.onPaste}
             rows={5}
             autoFocus
             onFocus={(e) => e.currentTarget.setSelectionRange(e.currentTarget.value.length, e.currentTarget.value.length)}
@@ -255,7 +264,7 @@ export function SendBackDialog({ entry, onClose }: { entry?: ReviewEntry; onClos
           <Button variant="ghost" onClick={onClose} disabled={busy}>
             Cancel
           </Button>
-          <Button onClick={() => void go()} loading={busy} disabled={!note.replace(/^Changes requested:\s*/, "").trim()}>
+          <Button onClick={() => void go()} loading={busy} disabled={!!files.blocker || !note.replace(/^Changes requested:\s*/, "").trim()}>
             Send back
             <Kbd className="ml-1 h-4.5 bg-primary-foreground/15 text-[10px] text-primary-foreground">⌘↵</Kbd>
           </Button>

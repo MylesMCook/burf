@@ -1,6 +1,7 @@
 import { GitBranchIcon, PencilIcon, Undo2Icon } from "lucide-react";
 import { createContext, useContext, useState } from "react";
 
+import { AttachmentChips, useAttachments } from "@/components/conversation/attachments";
 import { toastError } from "@/components/error-note";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { Radio, RadioGroup } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { toastManager } from "@/components/ui/toast";
 import { isMock } from "@/hooks/use-berth-connection";
+import { withAttachments } from "@/lib/attachments";
 import { historyApi, meta, putDraft, setCut } from "@/lib/history";
 import { useStore } from "@/lib/store";
 import { findSession, focusPane } from "@/lib/workspaces";
@@ -86,12 +88,14 @@ const title = (text: string) => {
 function ForkDialog({ ctx, it, onClose }: { ctx: PromptContext; it: Extract<TranscriptItem, { kind: "user" }>; onClose(): void }) {
   const [text, setText] = useState(it.text);
   const [busy, setBusy] = useState(false);
+  // The fork works in this worktree: files dropped or pasted go up there.
+  const files = useAttachments({ box: ctx.box, session: ctx.session });
   const fork = async () => {
     const client = useStore.getState().client;
-    if (!client) return;
+    if (!client || files.blocker) return;
     setBusy(true);
     try {
-      const s = await historyApi.fork(client, ctx.box, ctx.session, { at: meta(it).parent ?? (isMock() ? `id:${it.id}` : undefined), text: text.trim() || undefined, title: `Fork of ${title(it.text)}`, open: "tab" });
+      const s = await historyApi.fork(client, ctx.box, ctx.session, { at: meta(it).parent ?? (isMock() ? `id:${it.id}` : undefined), text: withAttachments(text.trim(), files.paths) || undefined, title: `Fork of ${title(it.text)}`, open: "tab" });
       toastManager.add({ type: "success", title: "Forked", description: `A new ${ctx.who} with the conversation up to this message, in its own tab.` });
       onClose();
       // The box opens it as a tab beside this one; asked for here, it comes
@@ -119,10 +123,12 @@ function ForkDialog({ ctx, it, onClose }: { ctx: PromptContext; it: Extract<Tran
             A new {ctx.who} in this worktree, with everything said before this message. It starts with the message below; change it to try another way. This conversation is left as it is.
           </DialogDescription>
         </DialogHeader>
-        <DialogPanel>
+        <DialogPanel {...files.dropProps} className={cn(files.dragging && "outline-2 outline-ring/60 outline-dashed -outline-offset-4")}>
+          <AttachmentChips items={files.items} onRemove={files.remove} onRetry={files.retry} className="mb-2" />
           <Textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
+            onPaste={files.onPaste}
             aria-label="The fork's first message"
             className="max-h-60 min-h-24"
             autoFocus
@@ -137,7 +143,7 @@ function ForkDialog({ ctx, it, onClose }: { ctx: PromptContext; it: Extract<Tran
         </DialogPanel>
         <DialogFooter>
           <DialogClose render={<Button variant="ghost" />}>Cancel</DialogClose>
-          <Button loading={busy} onClick={() => void fork()}>
+          <Button loading={busy} disabled={!!files.blocker} onClick={() => void fork()}>
             <GitBranchIcon />
             Fork
           </Button>

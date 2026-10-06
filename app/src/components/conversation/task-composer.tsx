@@ -9,7 +9,7 @@ import { useBranches, useResolve } from "@/components/new-worktree/use-resolve";
 import { withDefaults } from "@/components/prompts/shared";
 import { RepoWants, trustRepo, useRepoTrustFor } from "@/components/repo-trust";
 import { RequirementsCard, useRequirementsCard } from "@/components/requirements-card";
-import { AttachmentChips, useAttachments } from "@/components/conversation/attachments";
+import { AttachmentChips, type Attachments, useAttachments } from "@/components/conversation/attachments";
 import { type ComposerMenu, useComposerMenu } from "@/components/conversation/command-menu";
 import { ErrorText, toastError } from "@/components/error-note";
 import { Tip } from "@/components/tip";
@@ -20,7 +20,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { toastManager } from "@/components/ui/toast";
 import { type SessionEntry, useAllSessions } from "@/hooks/use-agent-counts";
 import { agentPresets } from "@/lib/actions";
-import { withAttachments } from "@/lib/attachments";
+import { type AttachTarget, withAttachments } from "@/lib/attachments";
 import { type ComposerDraft, openComposer } from "@/lib/composer";
 import { agentLabel, agentOf, sessionName, sessionState } from "@/lib/derive";
 import { plainError } from "@/lib/errors";
@@ -283,6 +283,27 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
 
+  // Files dropped or pasted for the agent go up to the box before it
+  // starts, and their paths go with the task: into the worktree it works
+  // in when that is there (the main checkout, the one open, the session's
+  // it follows), else the project's main checkout, as a new worktree has
+  // yet to be made. A worktree alone takes no files.
+  const pinnedWt = pinned?.at?.split("/")[1];
+  const worktrees = useStore((s) => s.boxes[box]?.locations?.find((l) => l.name === locName)?.worktrees) ?? location?.worktrees;
+  const mainWt = worktrees?.find((w) => w.main)?.name;
+  const attachTo: AttachTarget | undefined = noAgent
+    ? undefined
+    : from
+      ? { box: from.box, session: from.session }
+      : box && locName && (pinnedWt ?? mainWt)
+        ? { box, location: locName, worktree: (pinnedWt ?? mainWt)! }
+        : undefined;
+  // A project chosen whose checkout is still loading: the files wait for it.
+  const files = useAttachments(attachTo, {
+    waiting: !noAgent && !attachTo && !!box && !!locName,
+    without: noAgent ? "A worktree alone takes no files: pick an agent to give them to." : "Choose a project first: the files go up to its box.",
+  });
+
   // What the box lacks to run an agent (tmux, the agent's CLI), from the
   // box itself, before anything is created: its card says how to install it.
   const reqAgent = picks.length === 1 && !template?.command ? picks[0].agent : undefined;
@@ -303,7 +324,9 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
           ? attempts
             ? "Describe the task for the attempts"
             : "Describe the task first"
-          : input.trim() && pending && resolving
+          : !noAgent && files.blocker
+            ? files.blocker
+            : input.trim() && pending && resolving
             ? "Reading what it starts from…"
             : attempts && !boxHasRuns(box)
               ? `${box} needs a newer berthd to try several ways`
@@ -341,7 +364,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
     }
     const values = { ...wt.vars, name: name || "" };
     const d: StartDraft = {
-      text: noAgent ? "" : (fillTemplate(text.trim(), values) ?? text.trim()),
+      text: noAgent ? "" : withAttachments(fillTemplate(text.trim(), values) ?? text.trim(), files.paths),
       box,
       location: locName,
       where,
@@ -369,6 +392,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
     }
     touched.current = false;
     setText("");
+    files.clear();
     setStartFrom("");
     setWt((v) => ({ name: "", branch: "", base: "", template: v.template, vars: v.vars }));
     setEdited(new Set());
@@ -473,6 +497,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
   return (
     <Shell
       className={className}
+      drop={files}
       head={
         (tabs || followed || hasOptions) && (
           <>
@@ -500,6 +525,8 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
             setText(v);
           }}
           onSubmit={() => void submit()}
+          onPaste={files.onPaste}
+          above={!noAgent && <AttachmentChips items={files.items} onRemove={files.remove} onRetry={files.retry} className="px-3.5 pt-3" />}
           autoFocus={autoFocus}
           label={noAgent ? "What the worktree starts from" : "What should your agents work on?"}
           placeholder={
@@ -673,6 +700,13 @@ function SendBody({ draft, text, setText, tabs, dialog, autoFocus, onDone, onKin
     onKind?.(v.loop ? "loop" : "send");
   }, [v.loop, onKind]);
 
+  // Files go up to the first agent's worktree, and every agent picked is
+  // given their paths: so the agents must share a box, which can read them.
+  const oneBox = chosen.length > 0 && chosen.every((e) => e.box === chosen[0].box);
+  const files = useAttachments(oneBox ? { box: chosen[0].box, session: chosen[0].session.name } : undefined, {
+    without: chosen.length ? "The agents picked are on more than one box: pick agents on one box to give them files." : "Pick the agents first: the files go up to their box.",
+  });
+
   const textFor = (e: SessionEntry) => overrides[entryKey(e)] ?? fillPrompt(text, { ...builtinValues(e.box, e.session, boxes[e.box]?.locations), ...asked });
   const missingFor = (e: SessionEntry) => {
     const have = builtinValues(e.box, e.session, boxes[e.box]?.locations);
@@ -691,7 +725,18 @@ function SendBody({ draft, text, setText, tabs, dialog, autoFocus, onDone, onKin
     const found = boxes[t.box]?.sessions?.find((x) => x.name === t.session);
     return found ? sessionName(found, { agent: true }) : t.session;
   });
-  const blocker = ended.length && !chosen.length ? `${endedNames.join(", ")} has ended` : !chosen.length ? "Pick the agents to send to" : !text.trim() && !v.loop ? "Write the prompt first" : v.loop && !v.check.trim() ? "Give the check to run" : undefined;
+  const blocker =
+    ended.length && !chosen.length
+      ? `${endedNames.join(", ")} has ended`
+      : !chosen.length
+        ? "Pick the agents to send to"
+        : !text.trim() && !files.paths.length && !v.loop
+          ? "Write the prompt first"
+          : v.loop && !v.check.trim()
+            ? "Give the check to run"
+            : files.items.length && !oneBox
+              ? "Files go to agents on one box: pick agents on one box, or remove the files"
+              : files.blocker;
   const action = v.loop ? (chosen.length > 1 ? `Loop ${chosen.length} agents` : "Start loop") : chosen.length > 1 ? `Send to ${chosen.length} agents` : "Send";
 
   const submit = () => {
@@ -699,7 +744,7 @@ function SendBody({ draft, text, setText, tabs, dialog, autoFocus, onDone, onKin
     const title = prompt?.title ?? (text.trim().split("\n")[0].slice(0, 60) || "Prompt");
     const ok = sendWork({
       targets: chosen.map((e) => ({ box: e.box, session: e.session.name })),
-      texts: chosen.map(textFor),
+      texts: chosen.map((e) => withAttachments(textFor(e), files.paths)),
       title,
       wait: v.wait && !v.loop,
       queueOffline: v.queueOffline,
@@ -709,6 +754,7 @@ function SendBody({ draft, text, setText, tabs, dialog, autoFocus, onDone, onKin
     if (!ok) return;
     if (!v.loop && chosen.length === 1 && !v.wait) toastManager.add({ type: "success", title: `Sent to ${sessionName(chosen[0].session, { agent: true })}` });
     setText("");
+    files.clear();
     setOverrides({});
     onDone?.({ mode: "send", results: !v.loop && (chosen.length > 1 || v.wait) });
   };
@@ -716,6 +762,7 @@ function SendBody({ draft, text, setText, tabs, dialog, autoFocus, onDone, onKin
   return (
     <Shell
       className={className}
+      drop={files}
       head={
         <>
           {tabs}
@@ -734,6 +781,8 @@ function SendBody({ draft, text, setText, tabs, dialog, autoFocus, onDone, onKin
           value={text}
           onChange={setText}
           onSubmit={submit}
+          onPaste={files.onPaste}
+          above={<AttachmentChips items={files.items} onRemove={files.remove} onRetry={files.retry} className="px-3.5 pt-3" />}
           autoFocus={autoFocus}
           label="What to tell them"
           placeholder={v.loop ? "The first prompt (empty runs the check first)" : "What should they do next? Variables like {{branch}} fill in for each agent."}
@@ -837,43 +886,44 @@ function ToBody({ to, onSend, onFail, autoFocus, className }: TaskComposerProps 
     }
   };
   return (
-    <div {...att.dropProps} className={cn("rounded-2xl", att.dragging && "outline-2 outline-ring/60 outline-dashed outline-offset-4")}>
-      <Shell
-        className={className}
-        editor={
-          <Editor
-            value={text}
-            onChange={setText}
-            onSubmit={() => void go()}
-            onPaste={att.onPaste}
-            above={<AttachmentChips items={att.items} onRemove={att.remove} onRetry={att.retry} className="px-3.5 pt-3" />}
-            menu={menu}
-            autoFocus={autoFocus}
-            label={`What should ${who} do?`}
-            placeholder={`What should ${who} do?`}
-          />
-        }
-        footer={
-          <>
-            <span className="flex min-w-0 items-center gap-1.5 px-2.5 text-muted-foreground text-xs">
-              <AgentIcon agent={to.agent} className="size-3.5" />
-              {who} · {AGENT_WORDS.idle.lower}, waiting for a first task
-            </span>
-            <div className="ml-auto">
-              <SendButton label="Send" blocker={att.blocker ?? (ready ? undefined : "Write the first prompt")} busy={busy} onClick={() => void go()} />
-            </div>
-          </>
-        }
-      />
-    </div>
+    <Shell
+      className={className}
+      drop={att}
+      editor={
+        <Editor
+          value={text}
+          onChange={setText}
+          onSubmit={() => void go()}
+          onPaste={att.onPaste}
+          above={<AttachmentChips items={att.items} onRemove={att.remove} onRetry={att.retry} className="px-3.5 pt-3" />}
+          menu={menu}
+          autoFocus={autoFocus}
+          label={`What should ${who} do?`}
+          placeholder={`What should ${who} do?`}
+        />
+      }
+      footer={
+        <>
+          <span className="flex min-w-0 items-center gap-1.5 px-2.5 text-muted-foreground text-xs">
+            <AgentIcon agent={to.agent} className="size-3.5" />
+            {who} · {AGENT_WORDS.idle.lower}, waiting for a first task
+          </span>
+          <div className="ml-auto">
+            <SendButton label="Send" blocker={att.blocker ?? (ready ? undefined : "Write the first prompt")} busy={busy} onClick={() => void go()} />
+          </div>
+        </>
+      }
+    />
   );
 }
 
 // ---- The frame ------------------------------------------------------------
 
-function Shell({ head, editor, options, notice, footer, className }: { head?: React.ReactNode; editor: React.ReactNode; options?: React.ReactNode; notice?: React.ReactNode; footer: React.ReactNode; className?: string }) {
+// drop: the composer's attachments, which a file dropped anywhere on the
+// frame joins; while one is held over it, the frame is outlined.
+function Shell({ head, editor, options, notice, footer, drop, className }: { head?: React.ReactNode; editor: React.ReactNode; options?: React.ReactNode; notice?: React.ReactNode; footer: React.ReactNode; drop?: Attachments; className?: string }) {
   return (
-    <Frame className={cn("w-full shadow-lg/5", className)}>
+    <Frame data-testid="task-composer" data-dragging={drop?.dragging || undefined} {...drop?.dropProps} className={cn("w-full shadow-lg/5", drop?.dragging && "outline-2 outline-ring/60 outline-dashed outline-offset-4", className)}>
       {head && <div className="-mt-0.5 mb-0.5 flex h-8 min-w-0 items-center gap-0.5 px-0.5">{head}</div>}
       <FramePanel className="p-0 ring-ring/24 transition-shadow has-[textarea:focus-visible]:border-ring has-[textarea:focus-visible]:ring-[3px]">{editor}</FramePanel>
       {options && <FramePanel className="flex max-h-[min(46vh,30rem)] flex-col gap-4 overflow-y-auto p-3.5">{options}</FramePanel>}

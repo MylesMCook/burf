@@ -9,6 +9,17 @@ upgrades with `berth upgrade BOX`, or by running the
 [install command](/getting-started/add-a-box#with-the-install-command)
 again.
 
+## Unreleased
+
+- **A file dropped on the window no longer replaces the app.** Dropping a
+  file from Finder where nothing takes it used to open it in Berth's place,
+  a whole-window markdown file with no way back. Now it is refused, and a
+  hint says to drop it on a message box or a terminal. Home's composer,
+  the ⌘N task box, Running agents, Fork and Send back now take dropped or
+  pasted files, as the reply box does: they go up to the box and their
+  paths go with the prompt (for a new worktree, into the project's main
+  checkout until the worktree exists).
+
 ## v0.3.7
 
 - **The folded sidebar shows your agents, not initials.** With the sidebar

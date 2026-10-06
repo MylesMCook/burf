@@ -18,6 +18,7 @@ import { ErrorDetailsHost } from "@/components/error-note";
 import { ShortcutsSheet } from "@/components/shortcuts-sheet";
 import { CustomizeSidebarSheet } from "@/components/sidebar/nav";
 import { ToastProvider } from "@/components/ui/toast";
+import { FileDropGuard } from "@/components/file-drop-guard";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Launcher } from "@/components/workspace/launcher";
 import { PaneLayer } from "@/components/workspace/pane-layer";
@@ -106,6 +107,7 @@ export default function App() {
             <ConfirmHost />
             <ErrorDetailsHost />
           </ErrorBoundary>
+          <FileDropGuard />
         </ToastProvider>
       </TooltipProvider>
     );
@@ -170,6 +172,7 @@ export default function App() {
           <ReviewSheet />
           <NotificationCenter />
         </ErrorBoundary>
+        <FileDropGuard />
         {DemoGuide && (
           <Suspense>
             <DemoGuide />

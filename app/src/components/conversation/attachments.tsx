@@ -42,7 +42,14 @@ const shrinks = (f: File, pasted: boolean) => pasted && isImage(f.type) && f.typ
 // ready ones are for the prompt. A paste without files (text, HTML, a URL)
 // is left to the field. Each upload shows how far it has got; one that
 // fails can be retried, and taking a chip out stops its upload.
-export function useAttachments(target: AttachTarget | undefined) {
+//
+// A composer whose target can change before it sends (the project or box of
+// a new task, the agents picked for a prompt) sends its files again to the
+// new one, so their paths are where the agent will look. Until there is a
+// target, a file waits for it when one is on its way (waiting: the
+// project's checkout is still loading, say); otherwise without says why a
+// file can't go, when one is dropped or pasted.
+export function useAttachments(target: AttachTarget | undefined, { without, waiting }: { without?: string; waiting?: boolean } = {}) {
   const client = useStore((s) => s.client);
   const [items, setItems] = useState<PendingAttachment[]>([]);
   const [dragging, setDragging] = useState(false);
@@ -52,6 +59,8 @@ export function useAttachments(target: AttachTarget | undefined) {
   // What each unfinished chip is doing: how to try it again, and how to
   // stop it.
   const jobs = useRef(new Map<string, { retry(): void; abort?: AbortController }>());
+  // What each chip was made from, to send it again to another target.
+  const sources = useRef(new Map<string, File | string>());
   useEffect(
     () => () => {
       for (const j of jobs.current.values()) j.abort?.abort();
@@ -63,6 +72,7 @@ export function useAttachments(target: AttachTarget | undefined) {
 
   const send = (id: string, f: File) => {
     if (!client || !target) return;
+    sources.current.set(id, f);
     const abort = new AbortController();
     jobs.current.set(id, { retry: () => send(id, f), abort });
     patch(id, { state: "uploading", progress: 0, error: undefined });
@@ -93,9 +103,10 @@ export function useAttachments(target: AttachTarget | undefined) {
   // pasted: the files came from a paste, so screenshots among them shrink.
   const add = useCallback(
     (files: File[], pasted = false) => {
-      if (!client || !target) return;
+      if (!client || (!target && !waiting)) return;
       // A pasted screenshot over the limit may fit once it is shrunk.
-      const ok = files.filter((f) => attachable(f) && (f.size <= MAX_ATTACHMENT || shrinks(f, pasted)));
+      // (Not one waiting for a target: it goes as it is.)
+      const ok = files.filter((f) => attachable(f) && (f.size <= MAX_ATTACHMENT || (!!target && shrinks(f, pasted))));
       const refused = files.filter((f) => !ok.includes(f));
       if (refused.length) {
         const big = refused.some((f) => attachable(f));
@@ -111,6 +122,13 @@ export function useAttachments(target: AttachTarget | undefined) {
         const shrink = shrinks(f, pasted);
         const item: PendingAttachment = { id, name: f.name, type: f.type, size: f.size, preview: isImage(f.type) ? URL.createObjectURL(f) : undefined, state: shrink ? "shrinking" : "uploading", progress: 0 };
         setItems((l) => [...l, item]);
+        // No target yet: it goes when there is one (the effect below).
+        if (!target) {
+          sources.current.set(id, f);
+          jobs.current.set(id, { retry: () => {} });
+          patch(id, { state: "uploading", progress: undefined });
+          continue;
+        }
         if (!shrink) {
           send(id, f);
           continue;
@@ -126,8 +144,39 @@ export function useAttachments(target: AttachTarget | undefined) {
     },
     // send reads the same client and target.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [client, target],
+    [client, target, waiting],
   );
+
+  // sendLocal has the laptop agent upload a file on this computer. missing,
+  // on the first try, is told when the path isn't a file here, and the
+  // chip goes; any other failure stays on the chip, to retry.
+  const sendLocal = (id: string, path: string, missing?: (oldAgent: boolean) => void) => {
+    if (!client || !target) return;
+    const job = { retry: () => sendLocal(id, path) };
+    jobs.current.set(id, job);
+    sources.current.set(id, path);
+    patch(id, { state: "uploading", error: undefined });
+    uploadLocalFile(client, target, path).then(
+      (a) => {
+        if (jobs.current.get(id) !== job) return;
+        jobs.current.delete(id);
+        patch(id, { name: a.name.replace(/^\d{8}-\d{6}-/, ""), size: a.size, state: "ready", path: a.path });
+      },
+      (err: unknown) => {
+        if (jobs.current.get(id) !== job) return;
+        const notHere = err instanceof ApiError && err.code === "attach_local" && /^no file at/.test(err.message);
+        // An agent from before attach-local: the path goes as text, and
+        // the person hears why the box may not see it.
+        const oldAgent = err instanceof ApiError && err.status === 404 && !err.code;
+        if (missing && (notHere || oldAgent)) {
+          jobs.current.delete(id);
+          sources.current.delete(id);
+          setItems((l) => l.filter((x) => x.id !== id));
+          missing(oldAgent);
+        } else patch(id, { state: "error", error: errorMessage(err) });
+      },
+    );
+  };
 
   // Paths to files on this computer, pasted as text, go up through the
   // laptop agent. A path that isn't a file here (one copied from the box's
@@ -135,43 +184,53 @@ export function useAttachments(target: AttachTarget | undefined) {
   const addLocal = (paths: string[], asText: () => void) => {
     if (!client || !target) return;
     let missed = 0;
-    const sendLocal = (id: string, path: string, first: boolean) => {
-      const job = { retry: () => sendLocal(id, path, false) };
-      jobs.current.set(id, job);
-      patch(id, { state: "uploading", error: undefined });
-      uploadLocalFile(client, target, path).then(
-        (a) => {
-          if (jobs.current.get(id) !== job) return;
-          jobs.current.delete(id);
-          patch(id, { name: a.name.replace(/^\d{8}-\d{6}-/, ""), size: a.size, state: "ready", path: a.path });
-        },
-        (err: unknown) => {
-          if (jobs.current.get(id) !== job) return;
-          const notHere = err instanceof ApiError && err.code === "attach_local" && /^no file at/.test(err.message);
-          // An agent from before attach-local: the path goes as text, and
-          // the person hears why the box may not see it.
-          const oldAgent = err instanceof ApiError && err.status === 404 && !err.code;
-          if (first && oldAgent && !missed) toastManager.add({ type: "warning", title: "Pasted the path as text", description: "Restart the Berth agent to upload files from this computer; the box can't read a path here." });
-          if (first && (notHere || oldAgent)) {
-            jobs.current.delete(id);
-            setItems((l) => l.filter((x) => x.id !== id));
-            if (++missed === paths.length) asText();
-          } else patch(id, { state: "error", error: errorMessage(err) });
-        },
-      );
-    };
     for (const path of paths) {
       const id = `att${++seq}`;
       const name = path.split("/").pop() ?? path;
       const type = /\.pdf$/i.test(name) ? "application/pdf" : `image/${(name.split(".").pop() ?? "png").toLowerCase().replace("jpg", "jpeg")}`;
       setItems((l) => [...l, { id, name, type, size: 0, state: "uploading" }]);
-      sendLocal(id, path, true);
+      sendLocal(id, path, (oldAgent) => {
+        if (oldAgent && !missed) toastManager.add({ type: "warning", title: "Pasted the path as text", description: "Restart the Berth agent to upload files from this computer; the box can't read a path here." });
+        if (++missed === paths.length) asText();
+      });
     }
   };
 
+  // Another target: what was sent goes again, to where the agent will be.
+  const targetKey = target ? JSON.stringify(target) : "";
+  const lastKey = useRef(targetKey);
+  useEffect(() => {
+    if (targetKey === lastKey.current) return;
+    lastKey.current = targetKey;
+    if (!targetKey) return;
+    for (const it of live.current) {
+      const src = sources.current.get(it.id);
+      if (src === undefined) continue;
+      jobs.current.get(it.id)?.abort?.abort();
+      if (typeof src === "string") sendLocal(it.id, src);
+      else send(it.id, src);
+    }
+    // send and sendLocal are this render's, with the new target.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetKey]);
+
+  // Nowhere to send a file yet: say why, once a drop or a paste brings one.
+  const refuse = () => toastManager.add({ type: "warning", title: "Can't attach files here yet", description: without });
+
   const onPaste = (e: React.ClipboardEvent) => {
-    if (!target) return;
     const files = pastedFiles(e.clipboardData);
+    if (!target && waiting && files.length) {
+      e.preventDefault();
+      add(files, true);
+      return;
+    }
+    if (!target) {
+      if (files.length && without) {
+        e.preventDefault();
+        refuse();
+      }
+      return;
+    }
     if (files.length) {
       e.preventDefault();
       add(files, true);
@@ -191,7 +250,7 @@ export function useAttachments(target: AttachTarget | undefined) {
   const hasFiles = (e: React.DragEvent) => [...e.dataTransfer.types].includes("Files");
   const dropProps = {
     onDragOver: (e: React.DragEvent) => {
-      if (!hasFiles(e) || !target) return;
+      if (!hasFiles(e) || (!target && !waiting && !without)) return;
       e.preventDefault();
       e.dataTransfer.dropEffect = "copy";
       setDragging(true);
@@ -202,14 +261,16 @@ export function useAttachments(target: AttachTarget | undefined) {
     onDrop: (e: React.DragEvent) => {
       setDragging(false);
       const files = pastedFiles(e.dataTransfer);
-      if (!files.length || !target) return;
+      if (!files.length || (!target && !waiting && !without)) return;
       e.preventDefault();
-      add(files);
+      if (target || waiting) add(files);
+      else refuse();
     },
   };
   const remove = (id: string) => {
     jobs.current.get(id)?.abort?.abort();
     jobs.current.delete(id);
+    sources.current.delete(id);
     setItems((l) => {
       const gone = l.find((x) => x.id === id);
       if (gone?.preview) URL.revokeObjectURL(gone.preview);
@@ -220,6 +281,7 @@ export function useAttachments(target: AttachTarget | undefined) {
   const clear = () => {
     for (const j of jobs.current.values()) j.abort?.abort();
     jobs.current.clear();
+    sources.current.clear();
     setItems((l) => {
       for (const x of l) if (x.preview) URL.revokeObjectURL(x.preview);
       return [];
