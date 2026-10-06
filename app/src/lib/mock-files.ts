@@ -256,6 +256,8 @@ interface Touched {
   before?: string;
   after: string;
   ago: number;
+  // When the agent wrote it, exactly (a live write in mock mode).
+  atMs?: number;
 }
 
 const TOUCHED: Touched[] = [
@@ -272,6 +274,39 @@ export const MOCK_RECENT: Record<string, string[]> = {
 };
 
 const isShop = (loc: string) => loc === "shop";
+
+// ---- A big repository (?big=N) ----
+// The Files panel and ⌘P are checked on a big repository too: the shop's
+// files plus N made-up ones in a monorepo's shape, every name synthetic.
+// ⌘P searches at most maxListedFiles (20,000, as internal/box/commands.go)
+// and says truncated past it; the panel lists a folder at a time, whole.
+const MAX_LISTED = 20_000;
+const WORDS = ["billing", "catalog", "search", "identity", "inventory", "pricing", "shipping", "reviews", "analytics", "notify", "media", "tax", "loyalty", "gift", "returns", "audit", "support", "ledger", "promo", "fulfil"];
+const PARTS = ["api", "model", "store", "hooks", "utils", "view", "client", "schema", "queue", "worker", "cache", "events"];
+const KINDS = [".ts", ".tsx", ".test.ts", ".md", ".json", ".sql", ".css"];
+function bigFiles(n: number): string[] {
+  const out: string[] = [];
+  for (let i = 0; out.length < n; i++) {
+    const pkg = WORDS[i % WORDS.length] + (i >= WORDS.length * 40 ? `-${Math.floor(i / (WORDS.length * 40))}` : "");
+    const area = PARTS[Math.floor(i / WORDS.length) % PARTS.length];
+    const sub = Math.floor(i / (WORDS.length * PARTS.length)) % 4;
+    const kind = KINDS[i % KINDS.length];
+    const top = i % 9 === 0 ? "services" : "packages";
+    out.push(`${top}/${pkg}/src/${area}${sub ? `/v${sub}` : ""}/${PARTS[(i * 7) % PARTS.length]}-${i}${kind}`);
+  }
+  return out.sort();
+}
+const bigN = typeof window !== "undefined" ? Number(new URLSearchParams(location.search).get("big")) || 0 : 0;
+let bigList: string[] | undefined;
+function shopFiles(): string[] {
+  if (!bigN) return SHOP_FILES;
+  return (bigList ??= [...new Set([...SHOP_FILES, ...bigFiles(bigN)])].sort());
+}
+// What ⌘P searches: the files in git's order, cut at the cap.
+function capped(loc: string): { files: string[]; truncated: boolean } {
+  const all = listOf(loc);
+  return { files: all.slice(0, MAX_LISTED), truncated: all.length > MAX_LISTED };
+}
 const hasTurn = (loc: string, wt: string) => loc === "shop" && wt === "checkout-fix";
 
 // A file's text as it starts: the agent's version for what it touched, a
@@ -304,14 +339,14 @@ interface Entry {
 const disk = new Map<string, Entry>();
 const started = Date.now();
 const keyOf = (box: string, loc: string, wt: string, path: string) => `${box}\0${loc}\0${wt}\0${path}`;
-const listOf = (loc: string) => (isShop(loc) ? SHOP_FILES : OTHER_FILES);
+const listOf = (loc: string) => (isShop(loc) ? shopFiles() : OTHER_FILES);
 
 function entry(box: string, loc: string, wt: string, path: string): Entry | undefined {
   const k = keyOf(box, loc, wt, path);
   if (disk.has(k)) return disk.get(k);
-  if (!listOf(loc).includes(path)) return undefined;
+  if (!listOf(loc).includes(path) && !(hasTurn(loc, wt) && TOUCHED.some((t) => t.path === path))) return undefined;
   const t = hasTurn(loc, wt) ? TOUCHED.find((x) => x.path === path) : undefined;
-  const mtime = t ? started - t.ago * 60_000 : started - 86_400_000;
+  const mtime = t ? (t.atMs ?? started - t.ago * 60_000) : started - 86_400_000;
   let e: Entry;
   if (path.endsWith(".png")) e = { kind: "image", size: 18_432, mtime };
   else if (path.endsWith(".woff2")) e = { kind: "binary", size: 48_200, mtime };
@@ -348,7 +383,10 @@ async function touchedOf(box: string, loc: string, wt: string) {
     const e = entry(box, loc, wt, t.path);
     const now = e?.content ?? "";
     const c = changes(t.before, now);
-    return { path: t.path, added: c.added, removed: c.removed, created: t.before == null || undefined, at: started - t.ago * 60_000, session: "checkout-fix-claude", agent: "claude", base: "turn", before: t.before ?? null };
+    const at = t.atMs ?? started - t.ago * 60_000;
+    // Live, as the box says it: written in the last 20s (the box also asks
+    // that the session works; the app checks that itself).
+    return { path: t.path, added: c.added, removed: c.removed, created: t.before == null || undefined, at, live: Date.now() - at < 20_000 || undefined, session: "checkout-fix-claude", agent: "claude", base: "turn", before: t.before ?? null };
   }).sort((a, b) => b.at - a.at || (a.path < b.path ? -1 : 1));
 }
 
@@ -368,11 +406,39 @@ export function mockFilesCall(box: string, method: string, path: string, body?: 
   const loc = decodeURIComponent(l);
   const wt = decodeURIComponent(w);
   const q = new URLSearchParams(query);
+  const mine = `${box}\0${loc}\0${wt}\0`;
+  const made = () => [...disk.entries()].filter(([k, e]) => k.startsWith(mine) && e.mtime >= 0).map(([k]) => k.split("\0")[3]);
+  const gone = () => new Set([...disk.entries()].filter(([k, e]) => k.startsWith(mine) && e.mtime < 0).map(([k]) => k.split("\0")[3]));
+  if (route === "files" && method === "GET" && q.has("dir")) {
+    // One folder's children, whole, folders first (worktreefolder.go).
+    const raw = q.get("dir") ?? "";
+    const dir = raw.replace(/^\.$/, "").replace(/\/+$/, "");
+    if (dir.startsWith("/")) return Promise.reject(new ApiError(`give the folder relative to the worktree, not ${dir}`, 400, "bad_request"));
+    if (dir.split("/").some((p) => p === ".." || p.toLowerCase() === ".git")) return Promise.reject(new ApiError("that path is outside the worktree", 403, "refused"));
+    const pre = dir ? `${dir}/` : "";
+    const out = gone();
+    const dirs = new Set<string>();
+    const files = new Set<string>();
+    for (const p of new Set([...listOf(loc), ...made()])) {
+      if (!p.startsWith(pre) || out.has(p)) continue;
+      const rest = p.slice(pre.length);
+      const slash = rest.indexOf("/");
+      if (slash < 0) files.add(rest);
+      else dirs.add(rest.slice(0, slash));
+    }
+    if (dir && !dirs.size && !files.size) return Promise.reject(new ApiError(`${dir} isn't in this worktree`, 404, "not_found"));
+    const sort = (a: string, b: string) => a.localeCompare(b, undefined, { sensitivity: "base", numeric: true });
+    const entries = [...[...dirs].sort(sort).map((name) => ({ name, dir: true, children: true })), ...[...files].sort(sort).map((name) => ({ name }))];
+    return wait({ dir, entries }, bigN ? 120 : 50);
+  }
   if (route === "files" && method === "GET") {
     const limit = Math.min(Number(q.get("limit")) || 50, 200);
-    const all = listOf(loc).filter((p) => !disk.has(keyOf(box, loc, wt, p)) || disk.get(keyOf(box, loc, wt, p))!.mtime >= 0);
-    const extra = [...disk.keys()].filter((k) => k.startsWith(`${box}\0${loc}\0${wt}\0`)).map((k) => k.split("\0")[3]).filter((p) => !all.includes(p));
-    return wait({ files: rank(q.get("q") ?? "", [...all, ...extra]).slice(0, limit).map((x) => x.path) });
+    const { files, truncated } = capped(loc);
+    const out = gone();
+    const all = files.filter((p) => !out.has(p));
+    // Past the cap, what the agent touched is searched all the same.
+    const extra = [...made(), ...(truncated && hasTurn(loc, wt) ? TOUCHED.map((t) => t.path) : [])].filter((p) => !all.includes(p));
+    return wait({ files: rank(q.get("q") ?? "", [...all, ...new Set(extra)]).slice(0, limit).map((x) => x.path), truncated: truncated || undefined });
   }
   if (route === "touched" && method === "GET") return touchedOf(box, loc, wt).then((files) => wait({ files: files.map(({ before: _, ...f }) => f) }));
   const file = q.get("path") ?? "";
@@ -418,11 +484,31 @@ function agentWrites(path: string, content: string | null, where = { box: "devl"
   else disk.set(k, { content, mtime: Date.now() });
 }
 
+// agentWorks puts checkout-fix's Claude to work, or back to waiting.
+function agentWorks(on = true) {
+  void import("@/lib/mock").then((m) => m.mockDemo.setAgent("devl", "checkout-fix-claude", on ? "running" : "waiting"));
+}
+
 if (typeof window !== "undefined" && new URLSearchParams(location.search).has("mock")) {
   (window as unknown as { __berthMockFiles: unknown }).__berthMockFiles = {
     agentWrites,
     // The agent's next edit to webhook.ts: a metrics import and a counter.
     agentEditsWebhook: () => agentWrites("apps/web/lib/payments/webhook.ts", WEBHOOK_AGAIN),
+    // The agent writing a file right now (the Files panel's live mark): a
+    // new version, touched this very moment, with the agent working.
+    agentWritesLive: (path = "apps/web/lib/checkout/totals.ts") => {
+      const where = { box: "devl", location: "shop", worktree: "checkout-fix" };
+      const before = entry(where.box, where.location, where.worktree, path)?.content;
+      const now = Date.now();
+      const after = (before ?? "") + "\n// Rounds each line before summing, so totals match the receipt.\nexport const roundLine = (cents: number) => Math.round(cents);\n";
+      const had = TOUCHED.find((t) => t.path === path);
+      if (had) Object.assign(had, { after, atMs: now });
+      else TOUCHED.push({ path, before, after, ago: 0, atMs: now });
+      agentWrites(path, after, where);
+      agentWorks(true);
+    },
+    // checkout-fix's agent starts (or stops) working.
+    agentWorks,
     // What the mock disk holds now, for checking a save.
     contentOf: (path: string, where = { box: "devl", location: "shop", worktree: "checkout-fix" }) => entry(where.box, where.location, where.worktree, path)?.content,
   };

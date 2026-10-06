@@ -69,7 +69,7 @@ function Picker() {
   const touched = useFiles((s) => (ws ? s.touched[ws] : undefined));
   const wide = useWide();
   const [query, setQuery] = useState("");
-  const [found, setFound] = useState<{ q: string; files: string[] }>();
+  const [found, setFound] = useState<{ q: string; files: string[]; truncated?: boolean }>();
   const [error, setError] = useState<string>();
   const [at, setAt] = useState(0);
   const list = useRef<HTMLDivElement>(null);
@@ -87,7 +87,7 @@ function Picker() {
     const id = window.setTimeout(() => {
       filesApi.list(client, ref, q, 120, ac.signal).then(
         (r) => {
-          setFound({ q, files: r.files ?? [] });
+          setFound({ q, files: r.files ?? [], truncated: r.truncated });
           setError(undefined);
         },
         (err: unknown) => !ac.signal.aborted && setError(errorMessage(err)),
@@ -202,7 +202,14 @@ function Picker() {
         <span className="flex items-center gap-1">
           <Kbd>⌘↵</Kbd> {editor}
         </span>
-        <span className="ml-auto flex items-center gap-1">
+        {/* Past the box's 20,000-file list (internal/box/commands.go): the
+            search covers those, plus what the agents touched. */}
+        {q && found?.truncated && (
+          <span className="ml-auto truncate text-muted-foreground" data-testid="file-picker-truncated">
+            Searching the first 20,000 files
+          </span>
+        )}
+        <span className={cn("flex items-center gap-1", !(q && found?.truncated) && "ml-auto")}>
           <Kbd>esc</Kbd> close
         </span>
       </CommandFooter>

@@ -18,6 +18,7 @@ import { openWorktreePicker } from "@/components/workspace/worktree-picker";
 import { newTerminal } from "@/components/box-picker";
 import { zoom } from "@/lib/zoom";
 import { docKey, save, setPickerOpen, useFiles } from "@/lib/files";
+import { toggleTree } from "@/lib/file-tree";
 import { findLeaf, paneWorktree } from "@/lib/layout";
 import { isOnboardingActive } from "@/views/onboarding/onboarding-state";
 
@@ -138,6 +139,10 @@ function run(id: string, from: "key" | "menu", arg?: number | Dir): boolean {
       if (s.paletteOpen) s.setPaletteOpen(false);
       setPickerOpen(!useFiles.getState().pickerOpen);
       return true;
+    case "file-tree":
+      // ⌘⇧E: the Files panel beside the worktree's tabs.
+      toggleTree();
+      return true;
     case "save-file": {
       // ⌘S in a File tab, wherever in it the focus is.
       const leaf = inWorkspace && tab && wsKey ? findLeaf(tab.root, tab.focus) : undefined;
@@ -201,6 +206,7 @@ function fromKey(e: KeyboardEvent): [string, (number | Dir)?] | undefined {
   if (key === "k") return ["palette"];
   if (key === "p" && !shift) return ["files"];
   if (key === "s" && !shift) return ["save-file"];
+  if (key === "e" && shift) return ["file-tree"];
   if (key === "n") return [shift ? "notifications" : "new-worktree"];
   if (key === "j") return ["dashboard"];
   if (key === "t" && !shift) return ["new-terminal"];

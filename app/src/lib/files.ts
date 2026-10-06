@@ -37,11 +37,22 @@ export interface TouchedFile {
   created?: boolean;
   deleted?: boolean;
   at?: number;
+  // The agent wrote it in the last 20s and its session is working: it is
+  // likely writing it now.
+  live?: boolean;
   session: string;
   agent: string;
   // What the counts are from: the file as the turn found it, or the last
   // commit when the agent's record doesn't keep it.
   base: "turn" | "head";
+}
+
+// WorktreeFolder is one folder's children (GET …/files?dir=): a folder's
+// children says it has something to open (a submodule's doesn't).
+export interface WorktreeFolder {
+  dir: string;
+  entries: { name: string; dir?: boolean; children?: boolean }[] | null;
+  truncated?: boolean;
 }
 
 export interface FileTurn extends TouchedFile {
@@ -60,6 +71,10 @@ export const filesApi = {
   // write replaces the version etag names, or with none makes a new file.
   write: (c: Client, ref: WorktreeRef, path: string, content: string, etag: string | undefined) =>
     c.box<WorktreeFile>(ref.box, "PUT", `${base(ref)}/file?path=${enc(path)}`, { content }, undefined, etag ? { "If-Match": `"${etag}"` } : { "If-None-Match": "*" }),
+  // One folder's children, folders first ("" is the top), for the Files
+  // panel (internal/box/worktreefolder.go).
+  dir: (c: Client, ref: WorktreeRef, dir: string, signal?: AbortSignal) =>
+    c.box<WorktreeFolder>(ref.box, "GET", `${base(ref)}/files?dir=${enc(dir)}`, undefined, signal),
   touched: (c: Client, ref: WorktreeRef) => c.box<{ files: TouchedFile[] | null }>(ref.box, "GET", `${base(ref)}/touched`),
   image: (c: Client, ref: WorktreeRef, path: string) => c.boxBlob(ref.box, `${base(ref)}/file?path=${enc(path)}&raw=1`),
 };

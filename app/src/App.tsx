@@ -5,6 +5,7 @@ import { Connecting } from "@/components/agent-offline";
 import { AppSidebar } from "@/components/app-sidebar";
 import { CommandPalette } from "@/components/command-palette";
 import { FilePicker } from "@/components/files/file-picker";
+import { TreeDockFrame } from "@/components/files/tree-dock";
 import { WorktreePicker } from "@/components/workspace/worktree-picker";
 import { ComposerDialog } from "@/components/conversation/composer-dialog";
 import { NotificationCenter } from "@/components/notifications/notification-center";
@@ -146,7 +147,9 @@ export default function App() {
               )}
               <main className="relative min-h-0 flex-1">
                 {/* Always mounted: terminals keep running behind other views. */}
-                <PaneLayer showing={workspace} />
+                <TreeDockFrame showing={workspace && view.kind === "workspace"}>
+                  <PaneLayer showing={workspace} />
+                </TreeDockFrame>
                 <ErrorBoundary key={view.kind} scope={viewTitles[view.kind as keyof typeof viewTitles] || (view.kind === "workspace" ? "the workspace" : undefined)} onLeave={view.kind === "workspace" ? undefined : () => useStore.getState().setView({ kind: "workspace" })}>
                   <MainView />
                 </ErrorBoundary>

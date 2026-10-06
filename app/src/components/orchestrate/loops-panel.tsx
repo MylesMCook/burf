@@ -43,8 +43,9 @@ function detail(l: Loop): string {
   return l.message.replace(/ round\(s\)/, l.round === 1 ? " round" : " rounds");
 }
 
-// The panel docks above the status bar (26px) with a 12px gap; toasts stack
-// above the panel by reading its height from --berth-loops-h.
+// The panel docks above the status bar (26px) with a 12px gap, left of the
+// Files panel when that is docked (--berth-dock-w); toasts stack above the
+// panel by reading its height from --berth-loops-h.
 const STATUS_BAR = 26;
 const GAP = 12;
 
@@ -100,7 +101,7 @@ export function LoopsPanel() {
   // page's own controls; it opens again on a click, or when a loop needs you.
   if (folded && !loops.some((l) => l.outcome === "needs-you")) {
     return (
-      <div ref={ref} style={{ bottom, right: GAP }} className="fixed z-40" role="region" aria-label="Loops">
+      <div ref={ref} style={{ bottom, right: `calc(${GAP}px + var(--berth-dock-w, 0px))` }} className="fixed z-40" role="region" aria-label="Loops">
         <Button size="sm" variant="outline" className="rounded-full bg-popover shadow-lg/5" onClick={() => setFolded(false)} aria-expanded={false}>
           {live ? <Spinner className="size-3.5" /> : <RepeatIcon />}
           {loops.length ? `${loops.length} loop${loops.length === 1 ? "" : "s"}${live ? ` · ${live} running` : ""}` : "Crew"}
@@ -110,7 +111,7 @@ export function LoopsPanel() {
     );
   }
   return (
-    <div ref={ref} style={{ bottom, right: GAP }} className="fixed z-40 flex max-h-[50vh] w-88 flex-col gap-2 overflow-y-auto" role="region" aria-label="Loops">
+    <div ref={ref} style={{ bottom, right: `calc(${GAP}px + var(--berth-dock-w, 0px))` }} className="fixed z-40 flex max-h-[50vh] w-88 flex-col gap-2 overflow-y-auto" role="region" aria-label="Loops">
       {crew && <CrewCard key={crew.key} crew={crew.members} chat={chatOf(crew.key)} />}
       {loops.map((l) => (
         <LoopCard key={l.id} loop={l} />

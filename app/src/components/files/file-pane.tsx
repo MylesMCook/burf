@@ -112,7 +112,7 @@ export function FilePane({ path, owner, visible, onClose }: Props) {
 
   return (
     <div ref={frame} className="relative flex min-h-0 min-w-0 flex-1 flex-col bg-background" data-testid="file-pane" data-state={doc.state} data-path={path} data-wrap={wrap || undefined}>
-      <FileHeader doc={doc} dirty={dirty} added={marks?.added} removed={marks?.removed} hunks={hunks.length} at={at} onStep={step} wrap={wrap} text={!doc.binary && !doc.tooLarge && doc.state === "ready"} />
+      <FileHeader narrow={narrow} doc={doc} dirty={dirty} added={marks?.added} removed={marks?.removed} hunks={hunks.length} at={at} onStep={step} wrap={wrap} text={!doc.binary && !doc.tooLarge && doc.state === "ready"} />
       {doc.conflict && !showCompare && <ConflictBanner doc={doc} />}
       {body}
     </div>
@@ -121,9 +121,11 @@ export function FilePane({ path, owner, visible, onClose }: Props) {
 
 // ---- The header ----
 
-function Crumbs({ path, dirty }: { path: string; dirty: boolean }) {
+function Crumbs({ path, dirty, compact }: { path: string; dirty: boolean; compact?: boolean }) {
   const parts = path.split("/");
-  const dirs = parts.slice(0, -1);
+  // A narrow pane (a split, or beside the Files panel) shows the name
+  // alone, rather than folders squeezed to a stray chevron.
+  const dirs = compact ? [] : parts.slice(0, -1);
   return (
     <span className="flex min-w-0 items-center gap-0.5 text-xs" aria-label={path} data-testid="file-crumbs">
       {dirs.map((p, i) => (
@@ -183,7 +185,7 @@ function SaveState({ doc }: { doc: Doc }) {
   return null;
 }
 
-function FileHeader({ doc, dirty, added, removed, hunks, at, onStep, wrap, text }: { doc: Doc; dirty: boolean; added?: number; removed?: number; hunks: number; at: number; onStep(d: number): void; wrap: boolean; text: boolean }) {
+function FileHeader({ narrow, doc, dirty, added, removed, hunks, at, onStep, wrap, text }: { narrow?: boolean; doc: Doc; dirty: boolean; added?: number; removed?: number; hunks: number; at: number; onStep(d: number): void; wrap: boolean; text: boolean }) {
   const turn = doc.turn;
   const [, tick] = useState(0);
   // "2m ago" keeps up.
@@ -193,7 +195,7 @@ function FileHeader({ doc, dirty, added, removed, hunks, at, onStep, wrap, text 
   }, []);
   return (
     <div className="flex h-8 shrink-0 items-center gap-2 border-b px-3" data-testid="file-header">
-      <Crumbs path={doc.path} dirty={dirty} />
+      <Crumbs path={doc.path} dirty={dirty} compact={narrow} />
       <SaveState doc={doc} />
       <div className="ml-auto flex shrink-0 items-center gap-1">
         {turn && text && (

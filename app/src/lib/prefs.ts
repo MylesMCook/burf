@@ -54,6 +54,8 @@ export interface Prefs {
   // Show the reply Claude is writing as it grows (lib/draft), read from its
   // screen. Off: replies appear once written (Settings › Appearance › Chat).
   chatDrafts: boolean;
+  // The Files panel beside the worktree's tabs (⌘⇧E), for every worktree.
+  filesPanel: boolean;
   // The themes "Match system" uses by day and when macOS is dark.
   systemThemes: { light: string; dark: string };
   // Home's widgets, in order and size (lib/home-layout.ts). Null until the
@@ -86,6 +88,7 @@ const DEFAULTS: Prefs = {
   chatBackground: DEFAULT_CHAT_BACKGROUND,
   chatWidth: "default",
   chatDrafts: true,
+  filesPanel: false,
   systemThemes: { light: "berth-light", dark: "berth-dark" },
   home: null,
 };

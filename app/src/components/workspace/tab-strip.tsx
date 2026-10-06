@@ -2,6 +2,7 @@ import { CloudOffIcon, PencilIcon, RowsIcon, SquareSplitHorizontalIcon, SquareSp
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { StateGlyph } from "@/components/agent-glyph";
+import { DockButton } from "@/components/files/tree-dock";
 import { Tip } from "@/components/tip";
 import { Spinner } from "@/components/ui/spinner";
 import { ContextMenu, ContextMenuItem, ContextMenuPopup, ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger } from "@/components/ui/context-menu";
@@ -180,6 +181,7 @@ export function TabStrip() {
             </Tip>
           )}
           <RunMenu />
+          <DockButton />
           {key && active && lone && (
             <div className="flex items-center border-l pl-1">
               <PaneActions wsKey={key} tab={active.id} pane={lone} compact={tiny} />
