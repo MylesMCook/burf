@@ -480,10 +480,12 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
   }
 
   return (
-    // The column steps left of the floating loops panel when there is room.
+    // The column steps left of the floating loops panel when there is room
+    // (a pane 900px wide, as beside the Files panel); in a narrower one the
+    // composer rises above the loops pill instead.
     <div data-testid="chat" className="@container relative isolate flex min-h-0 flex-1 flex-col bg-background">
       <ChatBackground />
-      <div className="min-h-0 flex-1 overflow-y-auto pt-6 pr-6 pb-4 pl-6 @[1000px]:pr-[max(24px,var(--berth-loops-w,0px))]">
+      <div className="min-h-0 flex-1 overflow-y-auto pt-6 pr-6 pb-4 pl-6 @[900px]:pr-[max(24px,var(--berth-loops-w,0px))]">
         {!mock && feed === "loading" && !items.length ? (
           <div className="flex h-full items-center justify-center text-sm">
             <PixelLoader label="Reading the conversation…" />
@@ -496,7 +498,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
           </ChatScope>
         )}
       </div>
-      <div className="pr-6 pb-4 pl-6 @[1000px]:pr-[max(24px,var(--berth-loops-w,0px))]">
+      <div className="pr-6 pb-4 pl-6 @max-[899px]:pb-[max(16px,calc(var(--berth-loops-h,0px)+4px))] @[900px]:pr-[max(24px,var(--berth-loops-w,0px))]">
         <div className="mx-auto w-full max-w-(--berth-chat-w)">
           <ChatControls box={box} session={session} agent={agent} state={state} stateSince={s?.state_since} dir={s?.dir} who={who} visible={visible} ended={ended} onShowTerminal={onShowTerminal} onStartAgain={again} onSend={reply}>
           {ended ? (

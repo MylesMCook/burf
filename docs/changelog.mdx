@@ -11,6 +11,22 @@ again.
 
 ## Unreleased
 
+- **The Files panel.** ⌘⇧E (or View → Files panel, or its button in the
+  tab strip) shows the worktree's files at the right, beside whatever tab
+  is in front, so you can watch what the agent touches while you read its
+  Chat. **All** lists the worktree a folder at a time; **Changed** folds it
+  to this turn's files, with `+/−` lines and A/M/D letters. It opens on
+  Changed while the agent works and on All otherwise, until you pick. Blue
+  dots mark folders with changes inside, and the file the agent is writing
+  gets a live mark while it works. Click a file to open it in a File tab;
+  **New file** makes an empty one in the folder you are on, and is the
+  only thing the panel does to files. Below a 1100px window it floats over
+  the tabs and goes on esc. It stays open across restarts. The box lists a
+  folder at a time (`GET …/files?dir=`), so the panel isn't limited to the
+  20,000 files ⌘P searches; past that, ⌘P also searches what the agent
+  changed, and says so. See
+  [the Files panel](/guides/files#the-files-panel).
+
 - **⌘P finds a file, and a File tab opens it.** In any worktree, ⌘P lists
   the files the agent changed this turn first, with their `+/−` lines,
   then the ones you opened lately; type to search every file, fuzzily,

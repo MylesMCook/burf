@@ -40,7 +40,7 @@ function Layer({ bg }: { bg: Bg }) {
           when there is room for it, the chat's width. At Full the column
           is the pane, so the fade is wider and the edges keep a little. A
           picture shown as it is is loud, so its fade ends before the column. */}
-      <div className="absolute inset-y-0 right-6 left-6 @[1000px]:right-[max(24px,var(--berth-loops-w,0px))]">
+      <div className="absolute inset-y-0 right-6 left-6 @[900px]:right-[max(24px,var(--berth-loops-w,0px))]">
         <div className="relative mx-auto h-full max-w-(--berth-chat-w)">
           <div data-glass={bg.original || undefined} data-full={full || undefined} className={cn("cb-sheet absolute inset-y-0 transition-opacity duration-300", bg.original ? "-inset-x-24" : "-inset-x-6", drawn ? "opacity-100" : "opacity-0")} />
         </div>
