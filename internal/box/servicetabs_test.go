@@ -326,3 +326,31 @@ func countEvents(ch <-chan events.Event, typ string) int {
 		}
 	}
 }
+
+func TestSignalNumberReadsTmuxNames(t *testing.T) {
+	for in, want := range map[string]int{"int": 2, "INT": 2, "SIGTERM": 15, "9": 9, "": 0, "usr1": 0} {
+		if got := signalNumber(in); got != want {
+			t.Errorf("signalNumber(%q) = %d, want %d", in, got, want)
+		}
+	}
+}
+
+// A program a signal ends has no exit status in tmux, only the signal (CI's
+// dash died of the Ctrl-C a service traps): it reads as the shell's
+// 128+signal, so the stop event still says 130.
+func TestPaneDeadOfASignalIsItsShellStatus(t *testing.T) {
+	s := testSessions(t)
+	ctx := context.Background()
+	if out, err := s.tmux(ctx, "new-session", "-d", "-s", "sig", "sh -c 'sleep 0.2; kill -INT $$; sleep 5'", ";", "set-option", "-t", "sig", "remain-on-exit", "on"); err != nil {
+		t.Fatalf("new-session: %s", out)
+	}
+	var status string
+	waitUntil(t, "the pane to die", 5*time.Second, func() bool {
+		dead, st, ok := s.paneDead(ctx, "sig")
+		status = st
+		return ok && dead
+	})
+	if status != "130" {
+		t.Fatalf("status = %q, want 130", status)
+	}
+}

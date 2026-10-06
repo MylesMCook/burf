@@ -154,7 +154,7 @@ func (s *Sessions) runService(ctx context.Context, r serviceRun) error {
 	}
 	// What the pane says once the program ends (tmux 3.3 and later; older
 	// ones say "Pane is dead").
-	s.tmux(ctx, "set-option", "-w", "-t", target, "remain-on-exit-format", tmuxArg("#[fg=yellow]■#[default] "+r.Title+" stopped (exit #{pane_dead_status}). Start it again from Berth to run it here."))
+	s.tmux(ctx, "set-option", "-w", "-t", target, "remain-on-exit-format", tmuxArg("#[fg=yellow]■#[default] "+r.Title+" stopped (#{?pane_dead_signal,signal #{pane_dead_signal},exit #{pane_dead_status}}). Start it again from Berth to run it here."))
 	return nil
 }
 
@@ -208,20 +208,47 @@ func (s *Sessions) panePID(ctx context.Context, name string) int {
 }
 
 // paneDead says whether a session's program has ended; ok is false when
-// there is no such session.
+// there is no such session. A program a signal ended (dash, Ubuntu's sh,
+// dies of the Ctrl-C it traps) has no exit status in tmux, only a signal:
+// its status is then the shell's 128+signal.
 func (s *Sessions) paneDead(ctx context.Context, name string) (dead bool, status string, ok bool) {
-	out, err := s.tmux(ctx, "display-message", "-p", "-t", "="+name+":", "#{pane_dead} #{pane_dead_status}")
+	out, err := s.tmux(ctx, "display-message", "-p", "-t", "="+name+":", "#{pane_dead}|#{pane_dead_status}|#{pane_dead_signal}")
 	if err != nil {
 		return false, "", false
 	}
-	f := strings.Fields(string(out))
-	if len(f) == 0 {
+	f := strings.Split(strings.TrimSpace(string(out)), "|")
+	if f[0] == "" {
 		return false, "", false
 	}
 	if len(f) > 1 {
 		status = f[1]
 	}
+	if len(f) > 2 && status == "" {
+		if n := signalNumber(f[2]); n > 0 {
+			status = strconv.Itoa(128 + n)
+		}
+	}
 	return f[0] == "1", status, true
+}
+
+// signalNumber is a signal tmux names ("int", or a number on older tmux).
+func signalNumber(sig string) int {
+	if n, err := strconv.Atoi(sig); err == nil {
+		return n
+	}
+	switch strings.ToLower(strings.TrimPrefix(strings.ToUpper(sig), "SIG")) {
+	case "hup":
+		return 1
+	case "int":
+		return 2
+	case "quit":
+		return 3
+	case "kill":
+		return 9
+	case "term":
+		return 15
+	}
+	return 0
 }
 
 func (s *Sessions) waitDead(ctx context.Context, name string, d time.Duration) bool {
