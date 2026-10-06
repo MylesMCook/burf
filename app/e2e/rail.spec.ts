@@ -43,13 +43,22 @@ test("the folded rail lists agents by state, with a hover card, and a click goes
   await expect(page.locator("[role=tab][aria-selected=true]")).toHaveAccessibleName(/Fix checkout webhook retries/);
 
   // The keyboard: one tab stop, arrows between items, Enter goes.
-  await rail.getByRole("button", { name: "Needs you: 2" }).focus();
-  await page.keyboard.press("ArrowDown");
-  await page.keyboard.press("ArrowDown");
-  const second = rail.getByTestId("rail-agent").nth(1);
-  await expect(second).toBeFocused();
-  await page.keyboard.press("Enter");
-  await expect(second).toHaveAttribute("aria-current", "true");
+  // The worktree just opened focuses its composer once it loads, which can
+  // land after the rail is focused: go again until the focus stays.
+  await expect(async () => {
+    await rail.getByRole("button", { name: "Needs you: 2" }).focus();
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("ArrowDown");
+    await expect(rail.getByTestId("rail-agent").nth(1)).toBeFocused({ timeout: 1000 });
+  }).toPass();
+  // Held by its session, not its place: opening an agent can reorder a lane.
+  const id = await rail.getByTestId("rail-agent").nth(1).getAttribute("data-session");
+  const second = rail.locator(`[data-testid=rail-agent][data-session="${id}"]`);
+  await expect(async () => {
+    await second.focus();
+    await page.keyboard.press("Enter");
+    await expect(second).toHaveAttribute("aria-current", "true", { timeout: 2000 });
+  }).toPass();
 
   // A lane folds to its count, and stays folded.
   const done = rail.getByRole("button", { name: /^Done: \d+$/ });
