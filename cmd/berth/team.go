@@ -27,9 +27,10 @@ const teamUsage = `berth team — set a box up the way your team's are, from <or
   berth team show ORG [--box BOX] [--json]   What the team setup does: the org, the commit,
                                              each box step (and which need your password),
                                              each repo (and whether you can read it), the keys
-  berth team setup ORG BOX [--yes] [--only ID,…] [--key PROJECT/KEY=VALUE]…
+  berth team setup ORG BOX [--yes] [--only ID,…] [--no-1password] [--key PROJECT/KEY=VALUE]…
                                              Run it on BOX: the steps in a terminal on the box
-                                             (sudo asks for your password there), then the repos
+                                             (sudo asks for your password there), then the repos.
+                                             --no-1password asks for the shared keys instead
   berth team status [--json]                 Each team setup you accepted, and how it stands
   berth team retry ORG [--from STEP|PROJECT] [--box BOX]
                                              Start a failed setup again from where it stopped
@@ -70,12 +71,13 @@ func teamCommand(l laptop, args []string) error {
 		fs := flag.NewFlagSet("team setup", flag.ContinueOnError)
 		yes := fs.Bool("yes", false, "run it without asking")
 		only := fs.String("only", "", "set up only these projects (comma-separated ids); required ones always")
+		noOP := fs.Bool("no-1password", false, "skip 1Password: type the shared keys once instead (Enter leaves one missing), and never sign op in on the box")
 		var keys keyFlags
 		fs.Var(&keys, "key", "PROJECT/KEY=VALUE, a key the team setup asks for (repeatable)")
 		if err := fs.Parse(reorder(args[1:])); err != nil || fs.NArg() != 2 {
-			return errors.New("usage: berth team setup ORG BOX [--yes] [--only ID,…] [--key PROJECT/KEY=VALUE]…")
+			return errors.New("usage: berth team setup ORG BOX [--yes] [--only ID,…] [--no-1password] [--key PROJECT/KEY=VALUE]…")
 		}
-		return teamSetup(ctx, c, fs.Arg(0), fs.Arg(1), *yes, *only, keys)
+		return teamSetup(ctx, c, fs.Arg(0), fs.Arg(1), *yes, *only, keys, *noOP)
 	case "status":
 		asJSON := len(args) > 1 && args[1] == "--json"
 		var rows []struct {
@@ -239,12 +241,15 @@ func describeTeam(v agent.TeamView) {
 	}
 }
 
-func teamSetup(ctx context.Context, c *agent.Client, org, boxName string, yes bool, only string, keys keyFlags) error {
+func teamSetup(ctx context.Context, c *agent.Client, org, boxName string, yes bool, only string, keys keyFlags, noOP bool) error {
 	v, err := teamView(ctx, c, org, boxName)
 	if err != nil {
 		return err
 	}
-	req := agent.TeamSetupRequest{Box: boxName, Keys: map[string]map[string]string{}}
+	req := agent.TeamSetupRequest{Box: boxName, Keys: map[string]map[string]string{}, SkipOnePassword: noOP}
+	if noOP && v.Keys.OnePasswordRequired {
+		return fmt.Errorf("%s's team setup needs 1Password for its shared keys; run it without --no-1password", v.Setup.Name)
+	}
 	switch v.State {
 	case "found":
 		req.Commit = v.Commit.SHA
@@ -276,7 +281,12 @@ func teamSetup(ctx context.Context, c *agent.Client, org, boxName string, yes bo
 			return errors.New("not set up")
 		}
 	}
-	for _, a := range v.Keys.Ask {
+	asks := v.Keys.Ask
+	if noOP {
+		// Skipping 1Password: its keys are asked for once, as the others.
+		asks = append(append([]agent.TeamAsk{}, v.Keys.OnePassword...), asks...)
+	}
+	for _, a := range asks {
 		if a.Set || req.Keys[a.Project][a.Key] != "" || !term.IsTerminal(int(os.Stdin.Fd())) {
 			continue
 		}
@@ -296,6 +306,9 @@ func teamSetup(ctx context.Context, c *agent.Client, org, boxName string, yes bo
 	var st box.TeamStatus
 	if err := c.Call(ctx, "POST", "/v1/team/"+url.PathEscape(org)+"/setup", req, &st); err != nil {
 		return err
+	}
+	if noOP {
+		fmt.Println("1Password skipped: keys left blank are missing; add them in Project settings, or turn 1Password on there later.")
 	}
 	return followTeam(ctx, c, boxName, st)
 }

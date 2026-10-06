@@ -69,7 +69,23 @@ type Setup struct {
 	Agents   []string  `json:"agents,omitempty"`
 	Projects []Project `json:"projects"`
 	Keys     KeySet    `json:"keys,omitempty"`
-	Updates  Updates   `json:"updates"`
+	// OnePassword says whether engineers may skip 1Password for the shared
+	// keys: "optional" (the default) lets them type each key once instead,
+	// or leave it blank; "required" means the box must sign op in.
+	OnePassword string  `json:"onepassword,omitempty"`
+	Updates     Updates `json:"updates"`
+}
+
+// 1Password policies (team.json's "onepassword").
+const (
+	OnePasswordOptional = "optional"
+	OnePasswordRequired = "required"
+)
+
+// RequiresOnePassword reports whether the shared keys can only come from
+// 1Password: the team says so, and there are op:// references to read.
+func (s *Setup) RequiresOnePassword() bool {
+	return s.OnePassword == OnePasswordRequired && s.UsesOnePassword()
 }
 
 // Box is what a box needs once, before any repository.
@@ -228,7 +244,7 @@ func Parse(data []byte) (*Setup, []string, error) {
 
 // known lists the fields of each object in team.json, for warnings.
 var known = map[string][]string{
-	"":        {"schema", "id", "name", "org", "description", "contact", "docs", "box", "agents", "projects", "keys", "updates"},
+	"":        {"schema", "id", "name", "org", "description", "contact", "docs", "box", "agents", "projects", "keys", "onepassword", "updates"},
 	"box":     {"os", "script", "steps", "settings"},
 	"step":    {"id", "title", "detail", "sudo"},
 	"project": {"id", "repo", "path", "required", "kit", "init", "init_detail", "first_task"},
@@ -355,6 +371,11 @@ func (s *Setup) Validate() error {
 		if strings.TrimSpace(st.Title) == "" {
 			return fmt.Errorf("box.steps[%d] (%s) has no title", i, st.ID)
 		}
+	}
+	switch s.OnePassword {
+	case "", OnePasswordOptional, OnePasswordRequired:
+	default:
+		return fmt.Errorf(`onepassword is %q; it is "optional" (the default: engineers may type the shared keys instead) or "required"`, s.OnePassword)
 	}
 	if _, err := agentcli.ParseList(strings.Join(s.Agents, ",")); err != nil {
 		return fmt.Errorf("agents: %v", err)
@@ -483,7 +504,8 @@ func URLSafeName(s string) string {
 func ValidProjectID(id string) bool { return projectPattern.MatchString(id) }
 
 // UsesOnePassword reports whether any project's shared keys are 1Password
-// references, so the box needs op signed in.
+// references, so the box needs op signed in (unless the engineer skips
+// 1Password, where the team allows it, and types the keys instead).
 func (s *Setup) UsesOnePassword() bool {
 	for id, k := range s.Keys {
 		if strings.HasPrefix(id, "$") {
@@ -497,6 +519,9 @@ func (s *Setup) UsesOnePassword() bool {
 	}
 	return false
 }
+
+// IsOnePasswordRef reports whether a shared key's reference is 1Password's.
+func IsOnePasswordRef(ref string) bool { return strings.HasPrefix(ref, "op://") }
 
 // ProjectPath is where p is cloned: its path, or ~/code/<id>.
 func (p Project) ProjectPath() string {

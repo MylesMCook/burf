@@ -11,6 +11,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"sort"
 	"strings"
 	"time"
 
@@ -28,6 +29,10 @@ type TeamSetupRequest struct {
 	Projects []string                     `json:"projects,omitempty"`
 	Keys     map[string]map[string]string `json:"keys,omitempty"`
 	Repos    []string                     `json:"repos,omitempty"`
+	// SkipOnePassword skips 1Password for the shared keys, where the team
+	// allows it: op is never signed in or called for them; Keys holds the
+	// values typed for them instead, and those left blank are missing.
+	SkipOnePassword bool `json:"skip_onepassword,omitempty"`
 }
 
 var errTeamChanged = errors.New("the team setup changed since you reviewed it; review it again")
@@ -56,6 +61,10 @@ func (a *Agent) teamBundle(ctx context.Context, g ghCLI, src team.Source, req Te
 	}
 	if !strings.HasPrefix(r.commit.SHA, req.Commit) {
 		return box.TeamBundle{}, nil, cleanup, errTeamChanged
+	}
+	skipOP := req.SkipOnePassword && r.setup.UsesOnePassword()
+	if skipOP && r.setup.RequiresOnePassword() {
+		return box.TeamBundle{}, nil, cleanup, fmt.Errorf("%s's team setup needs 1Password for its shared keys (\"onepassword\": \"required\" in team.json)", r.setup.Name)
 	}
 	projects := a.checkProjects(ctx, g, r, true)
 	var kitDirs []string
@@ -102,15 +111,30 @@ func (a *Agent) teamBundle(ctx context.Context, g ghCLI, src team.Source, req Te
 		}
 		if k, ok := r.setup.Keys[v.ID]; ok {
 			plan.Env = map[string]string{}
+			typed := req.Keys[v.ID]
 			for name, ref := range k.Shared {
+				plan.Keys = append(plan.Keys, name)
+				if skipOP && team.IsOnePasswordRef(ref) {
+					// Skipped: never op. What was typed, if anything; the
+					// reference waits aside for Use 1Password.
+					if plan.Deferred == nil {
+						plan.Deferred = map[string]string{}
+					}
+					plan.Deferred[name] = ref
+					if val := typed[name]; val != "" {
+						plan.Env[name] = val
+					}
+					continue
+				}
 				plan.Env[name] = ref
 			}
-			typed := req.Keys[v.ID]
 			for _, name := range k.Ask {
+				plan.Keys = append(plan.Keys, name)
 				if val := typed[name]; val != "" {
 					plan.Env[name] = val
 				}
 			}
+			sort.Strings(plan.Keys)
 		}
 		tb.Projects = append(tb.Projects, plan)
 	}
@@ -120,7 +144,8 @@ func (a *Agent) teamBundle(ctx context.Context, g ghCLI, src team.Source, req Te
 	// The box reads the shared keys' op:// references with its own op,
 	// which Berth signs in as a step, so nothing asks in a service's
 	// terminal later.
-	tb.OnePassword = tb.GitHub && r.setup.UsesOnePassword()
+	tb.OnePassword = tb.GitHub && r.setup.UsesOnePassword() && !skipOP
+	tb.OnePasswordSkipped = tb.GitHub && skipOP
 	return tb, &r, cleanup, nil
 }
 

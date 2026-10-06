@@ -189,6 +189,12 @@ type TeamAccess struct {
 type TeamKeysView struct {
 	Shared int       `json:"shared"`
 	Ask    []TeamAsk `json:"ask"`
+	// OnePassword are the shared keys that are 1Password references: read
+	// on the box with op, or, when the engineer skips 1Password, typed once
+	// here like the asked keys (or left blank).
+	OnePassword []TeamAsk `json:"onepassword"`
+	// OnePasswordRequired: the team doesn't let engineers skip 1Password.
+	OnePasswordRequired bool `json:"onepassword_required,omitempty"`
 }
 
 // TeamRepoChoice is one of an org's repositories, for an org with no .berth.
@@ -824,7 +830,7 @@ func (a *Agent) teamView(ctx context.Context, key, boxName string, fromLink bool
 	if err != nil {
 		return TeamView{}, err
 	}
-	v := TeamView{Org: r.org, State: r.state, Source: r.sourceView(ctx, g), Projects: []TeamProjectView{}, Warnings: append([]string{}, r.warnings...), Keys: TeamKeysView{Ask: []TeamAsk{}}, Access: TeamAccess{Missing: []string{}}}
+	v := TeamView{Org: r.org, State: r.state, Source: r.sourceView(ctx, g), Projects: []TeamProjectView{}, Warnings: append([]string{}, r.warnings...), Keys: TeamKeysView{Ask: []TeamAsk{}, OnePassword: []TeamAsk{}}, Access: TeamAccess{Missing: []string{}}}
 	switch r.state {
 	case "no-org", "unreadable":
 		return v, nil
@@ -837,6 +843,7 @@ func (a *Agent) teamView(ctx context.Context, key, boxName string, fromLink bool
 		return v, nil
 	}
 	v.Repo, v.Commit, v.Setup, v.Files, v.Steps = r.repo, r.commit, r.setup, r.fileViews(), r.stepViews()
+	v.Keys.OnePasswordRequired = r.setup.RequiresOnePassword()
 	set := a.keysOnBox(ctx, boxName, r.setup.ID)
 	for _, tp := range a.checkProjects(ctx, g, r, true) {
 		if tp.kit != nil {
@@ -853,6 +860,11 @@ func (a *Agent) teamView(ctx context.Context, key, boxName string, fromLink bool
 			v.Keys.Shared += len(tp.view.Keys.Shared)
 			for _, k := range tp.view.Keys.Ask {
 				v.Keys.Ask = append(v.Keys.Ask, TeamAsk{Project: tp.view.ID, Key: k, Set: set[tp.view.ID+"/"+k]})
+			}
+			for _, k := range tp.view.Keys.Shared {
+				if team.IsOnePasswordRef(r.setup.Keys[tp.view.ID].Shared[k]) {
+					v.Keys.OnePassword = append(v.Keys.OnePassword, TeamAsk{Project: tp.view.ID, Key: k, Set: set[tp.view.ID+"/"+k]})
+				}
 			}
 		}
 	}

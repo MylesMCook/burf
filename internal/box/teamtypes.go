@@ -23,6 +23,10 @@ type TeamBundle struct {
 	// OnePassword adds Berth's other step, after GitHub, when the keys are
 	// 1Password references: op signed in on the box, in its terminal.
 	OnePassword bool `json:"onepassword,omitempty"`
+	// OnePasswordSkipped says the engineer skipped 1Password: the shared
+	// keys' references are kept aside (each project's Deferred), op is
+	// never called for them, and Use 1Password puts them back later.
+	OnePasswordSkipped bool `json:"onepassword_skipped,omitempty"`
 	// Agents adds Berth's agents step, after the team's own: these agent
 	// CLIs installed on the box, with their hooks and skills.
 	Agents []string `json:"agents,omitempty"`
@@ -56,6 +60,13 @@ type TeamProjectPlan struct {
 	// Env is laid into the project's own config on this box: secret
 	// references for shared keys, and the values the engineer typed.
 	Env map[string]string `json:"env,omitempty"`
+	// Keys are the names of every key the team lists for the project
+	// (shared and asked), so the box can say which are still missing.
+	Keys []string `json:"keys,omitempty"`
+	// Deferred are the shared keys' 1Password references, name → op://…,
+	// when the engineer skipped 1Password: not in the project's config, so
+	// nothing reads them with op, until Use 1Password lays them in.
+	Deferred map[string]string `json:"deferred,omitempty"`
 }
 
 // Team step and project states.
@@ -86,10 +97,13 @@ type TeamStatus struct {
 	Steps    []TeamStepStatus    `json:"steps"`
 	Projects []TeamProjectStatus `json:"projects"`
 	// KeysSet are "project/KEY" the box has a value or reference for.
-	KeysSet []string  `json:"keys_set"`
-	Started time.Time `json:"started"`
-	Updated time.Time `json:"updated"`
-	Error   string    `json:"error,omitempty"`
+	KeysSet []string `json:"keys_set"`
+	// OnePasswordSkipped says 1Password was skipped for the shared keys,
+	// which Use 1Password (POST /v1/team/{id}/onepassword) can undo.
+	OnePasswordSkipped bool      `json:"onepassword_skipped,omitempty"`
+	Started            time.Time `json:"started"`
+	Updated            time.Time `json:"updated"`
+	Error              string    `json:"error,omitempty"`
 }
 
 type TeamStepStatus struct {
@@ -115,4 +129,11 @@ type TeamProjectStatus struct {
 	Warnings []string `json:"warnings,omitempty"`
 	// Line is the latest line of what it is doing (git's progress, say).
 	Line string `json:"line,omitempty"`
+	// Keys are the names of the keys the team lists for it; Missing, those
+	// its config on this box has no value for yet (left blank when asked),
+	// to add in Project settings. Missing is worked out when read.
+	Keys    []string `json:"keys,omitempty"`
+	Missing []string `json:"missing,omitempty"`
+	// Deferred are the keys 1Password would give it, while skipped.
+	Deferred []string `json:"deferred,omitempty"`
 }

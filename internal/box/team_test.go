@@ -612,3 +612,81 @@ func TestLoginLookupFindsAToolOnTheLoginShellsPath(t *testing.T) {
 		t.Fatal("the name ran as a command")
 	}
 }
+
+// A setup that skipped 1Password: no op step and no op:// reference in a
+// project's config, so op is never called; the keys left blank are listed
+// as missing; Use 1Password later lays the references in and signs op in.
+func TestSkippedOnePasswordListsMissingKeysAndCanBeTurnedOnLater(t *testing.T) {
+	f := newTeamFixture(t)
+	f.gh.SignIn("engineer")
+	tb := f.bundle()
+	tb.Steps, tb.Script = nil, ""
+	tb.Projects = tb.Projects[:1]
+	tb.OnePasswordSkipped = true
+	tb.Projects[0].Env = map[string]string{"STRIPE_KEY": "sk_test_typed"}
+	tb.Projects[0].Keys = []string{"DAILY", "MAIL_KEY", "STRIPE_KEY"}
+	tb.Projects[0].Deferred = map[string]string{"STRIPE_KEY": "op://Dev/Stripe/key", "DAILY": "op://Dev/Daily/key"}
+	st, err := f.b.StartTeam(context.Background(), tb)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, s := range st.Steps {
+		if s.ID == team.OnePasswordStep {
+			t.Fatalf("a skipped 1Password still has its step: %+v", st.Steps)
+		}
+	}
+	if !st.OnePasswordSkipped {
+		t.Fatalf("not marked skipped: %+v", st)
+	}
+	f.waitFor("done", func(st TeamStatus) bool { return st.Phase == "done" || st.Phase == "failed" })
+	env := func() map[string]string {
+		s, err := f.b.Locations.saved("web")
+		if err != nil || s.Config == nil {
+			t.Fatalf("web's config: %v %+v", err, s)
+		}
+		return s.Config.Env
+	}
+	if e := env(); e["STRIPE_KEY"] != "sk_test_typed" || e["DAILY"] != "" || e["MAIL_KEY"] != "" {
+		t.Fatalf("web env: %v", e)
+	}
+	if _, err := os.Stat(filepath.Join(f.marks, "op-signed-in")); err == nil {
+		t.Fatal("op was signed in")
+	}
+	web := f.b.Teams(context.Background())[0].Projects[0]
+	if strings.Join(web.Missing, ",") != "DAILY,MAIL_KEY" || strings.Join(web.Deferred, ",") != "DAILY,STRIPE_KEY" {
+		t.Fatalf("missing %v deferred %v", web.Missing, web.Deferred)
+	}
+	// Added later in Project settings: no longer missing.
+	f.b.mergeLocalEnv("web", map[string]string{"MAIL_KEY": "SG.later"})
+	if web := f.b.Teams(context.Background())[0].Projects[0]; strings.Join(web.Missing, ",") != "DAILY" {
+		t.Fatalf("missing after adding one: %v", web.Missing)
+	}
+
+	// Use 1Password: the references go in, op signs in in the terminal.
+	st, err = f.b.UseOnePassword(context.Background(), "acme")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if last := st.Steps[len(st.Steps)-1]; last.ID != team.OnePasswordStep || st.OnePasswordSkipped {
+		t.Fatalf("steps %+v", st.Steps)
+	}
+	if e := env(); e["STRIPE_KEY"] != "op://Dev/Stripe/key" || e["DAILY"] != "op://Dev/Daily/key" || e["MAIL_KEY"] != "SG.later" {
+		t.Fatalf("env after Use 1Password: %v", e)
+	}
+	f.waitFor("op's question", func(st TeamStatus) bool { return st.Steps[len(st.Steps)-1].State == TeamWaiting })
+	if f.step("github").State != TeamSkipped && f.step("github").State != TeamDone {
+		t.Fatalf("the steps before 1Password ran again: %+v", f.step("github"))
+	}
+	f.typeIn("op-pass")
+	st = f.waitFor("done", func(st TeamStatus) bool { return st.Phase == "done" || st.Phase == "failed" })
+	if st.Phase != "done" {
+		t.Fatalf("%+v", st)
+	}
+	if web := f.b.Teams(context.Background())[0].Projects[0]; len(web.Missing) != 0 || len(web.Deferred) != 0 {
+		t.Fatalf("after: missing %v deferred %v", web.Missing, web.Deferred)
+	}
+	// Nothing left to turn on.
+	if _, err := f.b.UseOnePassword(context.Background(), "acme"); err == nil {
+		t.Fatal("Use 1Password twice")
+	}
+}

@@ -121,6 +121,24 @@ func TestUsesOnePassword(t *testing.T) {
 	}
 }
 
+func TestOnePasswordPolicy(t *testing.T) {
+	s, warn, err := Parse([]byte(minimal))
+	if err != nil || s.RequiresOnePassword() || len(warn) != 0 {
+		t.Fatalf("default: %v %v %v", s.RequiresOnePassword(), warn, err)
+	}
+	req := strings.Replace(minimal, `"org":"acme",`, `"org":"acme","onepassword":"required",`, 1)
+	if s, warn, err = Parse([]byte(req)); err != nil || !s.RequiresOnePassword() || len(warn) != 0 {
+		t.Fatalf("required: %v %v %v", s, warn, err)
+	}
+	// Required means nothing without a 1Password reference to read.
+	if s, _, _ = Parse([]byte(strings.Replace(req, `"op://Dev/Stripe/key"`, `"env://STRIPE"`, 1))); s.RequiresOnePassword() {
+		t.Fatal("required with no op:// key")
+	}
+	if _, _, err = Parse([]byte(strings.Replace(minimal, `"org":"acme",`, `"org":"acme","onepassword":"always",`, 1))); err == nil || !strings.Contains(err.Error(), `"optional"`) {
+		t.Fatalf("a bad policy: %v", err)
+	}
+}
+
 const minimal = `{"schema":"berth.team/v1","id":"acme","name":"Acme","org":"acme",
  "box":{"script":"box/setup.sh","steps":[{"id":"tools","title":"Tools","sudo":true},{"id":"db","title":"Database"}]},
  "projects":[{"id":"web","repo":"acme/web","kit":"./kits/web"},{"id":"api","repo":"acme/api","path":"~/src/api","required":true}],

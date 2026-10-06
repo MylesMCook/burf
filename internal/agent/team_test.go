@@ -526,3 +526,75 @@ func TestSetupFromALinkThroughTheRoutes(t *testing.T) {
 		t.Fatalf("accepted: %s", body)
 	}
 }
+
+// Skipping 1Password: no op step, no op:// reference in any project's
+// config (so nothing on the box ever calls op for them), the shared keys
+// typed instead where they were, and the rest left for later.
+func TestSkippingOnePasswordNeverReachesOp(t *testing.T) {
+	g, kitCommit := acmeGitHub(t)
+	b := newBox(t)
+	var got box.TeamBundle
+	b.server.Handle("POST /v1/team", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		raw, _ := io.ReadAll(r.Body)
+		got = box.TeamBundle{}
+		json.Unmarshal(raw, &got)
+		json.NewEncoder(w).Encode(box.TeamStatus{ID: got.ID, Phase: "steps", Steps: []box.TeamStepStatus{}, Projects: []box.TeamProjectStatus{}, KeysSet: []string{}})
+	}))
+	a := startAgent(t, b.pairLaptop())
+	tok := uiToken(t, a)
+	eventually(t, "box online", func() bool { return stateOf(t, a) == StateOnline })
+	st, _ := a.client.Status(context.Background())
+	boxName := st.Boxes[0].Name
+
+	_, body := uiCall(t, a, http.MethodGet, "/v1/team/acme", tok)
+	var v TeamView
+	if err := json.Unmarshal([]byte(body), &v); err != nil || v.Commit == nil {
+		t.Fatalf("view: %s", body)
+	}
+	// The page can ask for the 1Password keys by name; the team lets you skip.
+	if len(v.Keys.OnePassword) != 2 || v.Keys.OnePassword[0].Key != "DAILY" || v.Keys.OnePassword[1].Key != "STRIPE_KEY" || v.Keys.OnePasswordRequired {
+		t.Fatalf("1Password keys: %+v", v.Keys)
+	}
+	code, body := uiPost(t, a, "/v1/team/acme/setup", tok, TeamSetupRequest{Box: boxName, Commit: v.Commit.Short, SkipOnePassword: true,
+		Keys: map[string]map[string]string{"web": {"STRIPE_KEY": "sk_test_typed", "DAILY": "", "MAIL_KEY": ""}}})
+	if code != 200 {
+		t.Fatalf("setup: %d %s", code, body)
+	}
+	if got.OnePassword || !got.OnePasswordSkipped {
+		t.Fatalf("the 1Password step is still there: %+v", got)
+	}
+	for _, p := range got.Projects {
+		for k, val := range p.Env {
+			if strings.HasPrefix(val, "op://") {
+				t.Fatalf("%s/%s is still a 1Password reference: %s", p.ID, k, val)
+			}
+		}
+	}
+	var web box.TeamProjectPlan
+	for _, p := range got.Projects {
+		if p.ID == "web" {
+			web = p
+		}
+	}
+	if web.Env["STRIPE_KEY"] != "sk_test_typed" || len(web.Env) != 1 {
+		t.Fatalf("web env: %v", web.Env)
+	}
+	// The references wait aside for Use 1Password; every key is listed, so
+	// the box can say which are missing.
+	if web.Deferred["STRIPE_KEY"] != "op://Dev/Stripe/key" || web.Deferred["DAILY"] != "op://Dev/Daily/key" || strings.Join(web.Keys, ",") != "DAILY,MAIL_KEY,STRIPE_KEY" {
+		t.Fatalf("web: deferred %v keys %v", web.Deferred, web.Keys)
+	}
+
+	// A team that requires 1Password: skipping is refused, and says why.
+	g.Repo("acme/.berth", map[string]string{"team.json": strings.Replace(acmeTeamJSON("https://github.com/acme/kits/tree/"+kitCommit[:7]+"/tools"), `"contact":"#onboarding",`, `"contact":"#onboarding","onepassword":"required",`, 1)}, teamtest.Repo{})
+	_, body = uiCall(t, a, http.MethodGet, "/v1/team/acme", tok)
+	v = TeamView{}
+	json.Unmarshal([]byte(body), &v)
+	if !v.Keys.OnePasswordRequired {
+		t.Fatalf("required not shown: %+v", v.Keys)
+	}
+	code, body = uiPost(t, a, "/v1/team/acme/setup", tok, TeamSetupRequest{Box: boxName, Commit: v.Commit.Short, SkipOnePassword: true})
+	if code == 200 || !strings.Contains(body, "needs 1Password") {
+		t.Fatalf("skipping a required 1Password: %d %s", code, body)
+	}
+}

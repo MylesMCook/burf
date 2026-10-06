@@ -125,6 +125,8 @@ func (t *TeamRunner) readBundle(id string) (TeamBundle, error) {
 // teamSession is the terminal a team's steps run in.
 func teamSession(id string) string { return "team-" + id }
 
+var envNamePattern = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
+
 // validateBundle checks what the laptop sent before anything is written.
 func validateBundle(tb *TeamBundle) error {
 	if !teamIDPattern.MatchString(tb.ID) {
@@ -195,8 +197,18 @@ func validateBundle(tb *TeamBundle) error {
 			}
 			p.Init = c
 		}
+		for _, k := range p.Keys {
+			if !envNamePattern.MatchString(k) {
+				return badRequest("project %s: %q is not a variable name", p.ID, k)
+			}
+		}
+		for k, ref := range p.Deferred {
+			if !envNamePattern.MatchString(k) || !team.IsOnePasswordRef(ref) {
+				return badRequest("project %s: deferred %q must be a variable name with an op:// reference", p.ID, k)
+			}
+		}
 		for k := range p.Env {
-			if !regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`).MatchString(k) {
+			if !envNamePattern.MatchString(k) {
 				return badRequest("project %s: %q is not a variable name", p.ID, k)
 			}
 		}
@@ -279,8 +291,9 @@ func (b *Box) StartTeam(ctx context.Context, tb TeamBundle) (TeamStatus, error) 
 	}
 	st.Projects = []TeamProjectStatus{}
 	for _, p := range tb.Projects {
-		st.Projects = append(st.Projects, TeamProjectStatus{ID: p.ID, Repo: p.Repo, State: TeamQueued})
+		st.Projects = append(st.Projects, TeamProjectStatus{ID: p.ID, Repo: p.Repo, State: TeamQueued, Keys: p.Keys, Deferred: sortedNames(p.Deferred)})
 	}
+	st.OnePasswordSkipped = tb.OnePasswordSkipped
 	from := 0
 	if tb.Start != "" {
 		for i, s := range st.Steps {
@@ -1198,7 +1211,7 @@ func (b *Box) Teams(ctx context.Context) []TeamStatus {
 	dirs, _ := filepath.Glob(filepath.Join(b.Team.Dir, "*", "state.json"))
 	for _, p := range dirs {
 		if st, err := b.Team.readState(filepath.Base(filepath.Dir(p))); err == nil {
-			out = append(out, st)
+			out = append(out, b.withMissing(st))
 		}
 	}
 	return out
@@ -1239,7 +1252,7 @@ func (b *Box) getTeam(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	writeJSON(w, st)
+	writeJSON(w, b.withMissing(st))
 	return nil
 }
 
@@ -1262,5 +1275,144 @@ func (b *Box) retryTeam(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	writeJSON(w, st)
+	return nil
+}
+
+func sortedNames(m map[string]string) []string {
+	if len(m) == 0 {
+		return nil
+	}
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// withMissing works out each project's missing keys: those the team lists
+// that its config on this box has no value for (left blank when they were
+// asked for, or added and since removed). Project settings lists them.
+func (b *Box) withMissing(st TeamStatus) TeamStatus {
+	all, _ := b.Locations.read()
+	for i := range st.Projects {
+		p := &st.Projects[i]
+		p.Missing = nil
+		if len(p.Keys) == 0 || p.Location == "" {
+			continue
+		}
+		have := map[string]bool{}
+		for _, s := range all {
+			if s.Name == p.Location && s.Config != nil {
+				for k, v := range s.Config.Env {
+					if v != "" {
+						have[k] = true
+					}
+				}
+			}
+		}
+		for _, k := range p.Keys {
+			if !have[k] {
+				p.Missing = append(p.Missing, k)
+			}
+		}
+	}
+	return st
+}
+
+// UseOnePassword turns 1Password on for a team setup that skipped it: the
+// shared keys' op:// references go back into each project's config on this
+// box (in place of what was typed for them), and the 1Password step signs
+// op in, in the team's terminal, as a first setup would have. From then on
+// berthd reads the references with op when a worktree needs them.
+func (b *Box) UseOnePassword(ctx context.Context, id string) (TeamStatus, error) {
+	if b.Team == nil {
+		return TeamStatus{}, httpError{http.StatusNotImplemented, "this box does not run team setups"}
+	}
+	t := b.Team
+	unlock := t.lock(id)
+	defer unlock()
+	st, err := t.readState(id)
+	if err != nil {
+		return TeamStatus{}, err
+	}
+	if st.Phase == "steps" && t.isRunning(id) || st.Phase == "projects" && t.isRunning(id+"/projects") {
+		return st, httpError{http.StatusConflict, "it is still running; use 1Password when it has finished"}
+	}
+	tb, err := t.readBundle(id)
+	if err != nil {
+		return st, err
+	}
+	refs := 0
+	for i := range tb.Projects {
+		p := &tb.Projects[i]
+		if len(p.Deferred) == 0 {
+			continue
+		}
+		refs += len(p.Deferred)
+		if p.Env == nil {
+			p.Env = map[string]string{}
+		}
+		for k, ref := range p.Deferred {
+			p.Env[k] = ref
+		}
+		for j := range st.Projects {
+			if s := &st.Projects[j]; s.ID == p.ID {
+				if s.Location != "" {
+					if err := b.mergeLocalEnv(s.Location, p.Deferred); err != nil {
+						return st, err
+					}
+				}
+				s.Deferred = nil
+			}
+		}
+		p.Deferred = nil
+	}
+	if refs == 0 && !tb.OnePasswordSkipped {
+		return st, badRequest("%s's team setup has no 1Password references set aside", st.Name)
+	}
+	tb.OnePassword, tb.OnePasswordSkipped = true, false
+	raw, _ := json.Marshal(tb)
+	dir := t.dir(id)
+	if err := statefile.Write(filepath.Join(dir, "bundle.json"), raw); err != nil {
+		return st, err
+	}
+	os.Chmod(filepath.Join(dir, "bundle.json"), 0o600)
+	if err := os.WriteFile(filepath.Join(dir, "run.sh"), []byte(teamRunScript(tb)), 0o755); err != nil {
+		return st, err
+	}
+	st.OnePasswordSkipped = false
+	at := -1
+	for i, s := range st.Steps {
+		if s.ID == team.OnePasswordStep {
+			at = i
+		}
+	}
+	if at < 0 {
+		st.Steps = append(st.Steps, TeamStepStatus{ID: team.OnePasswordStep, Title: "1Password on " + b.Name, State: TeamTodo})
+		at = len(st.Steps) - 1
+	}
+	// Only the 1Password step runs: the steps before it stay as they were.
+	for i := at; i < len(st.Steps); i++ {
+		st.Steps[i].State, st.Steps[i].Error, st.Steps[i].Secs, st.Steps[i].Started = TeamTodo, "", 0, nil
+	}
+	st.KeysSet = b.teamKeysSet(ctx, tb)
+	b.publishTeam("team.retry", map[string]any{"team": id, "from": team.OnePasswordStep})
+	return b.runSteps(st, at)
+}
+
+func (b *Box) useOnePassword(w http.ResponseWriter, r *http.Request) error {
+	id := r.PathValue("id")
+	if !teamIDPattern.MatchString(id) {
+		return badRequest("no team setup %q", id)
+	}
+	if err := b.before(r, "team.retry", map[string]any{"team": id, "from": team.OnePasswordStep}); err != nil {
+		return err
+	}
+	st, err := b.UseOnePassword(r.Context(), id)
+	if err != nil {
+		return err
+	}
+	writeJSON(w, b.withMissing(st))
 	return nil
 }

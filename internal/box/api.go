@@ -118,6 +118,7 @@ func (b *Box) Mount(s *wire.Server) {
 	route("POST /v1/team", b.postTeam)
 	route("GET /v1/team/{id}", b.getTeam)
 	route("POST /v1/team/{id}/retry", b.retryTeam)
+	route("POST /v1/team/{id}/onepassword", b.useOnePassword)
 	route("POST /v1/locations/new", b.newLocation)
 	route("POST /v1/locations/{name}/resolve", b.resolve)
 	route("GET /v1/locations/{name}/branches", b.listBranches)
