@@ -44,6 +44,7 @@ import { SettingsGroup, SettingsRow, useSettingsRow } from "@/views/settings/row
 // in zen: code, tables and edits keep scrolling inside their own blocks.
 export function ChatWidthSettings() {
   const width = usePrefs((p) => p.chatWidth);
+  const drafts = usePrefs((p) => p.chatDrafts);
   return (
     <SettingsGroup title="Chat">
       <SettingsRow label="Width" description="How wide conversations run. Full takes the pane's width.">
@@ -58,6 +59,9 @@ export function ChatWidthSettings() {
           ]}
           onChange={(chatWidth: ChatWidth) => setPrefs({ chatWidth })}
         />
+      </SettingsRow>
+      <SettingsRow label="Show replies as they're written" description="Claude's reply grows in the chat as it writes, read from its terminal. Off: each reply appears once it's finished.">
+        <Switch checked={drafts} onCheckedChange={(chatDrafts) => setPrefs({ chatDrafts })} aria-label="Show replies as they're written" />
       </SettingsRow>
     </SettingsGroup>
   );

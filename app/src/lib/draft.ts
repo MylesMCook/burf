@@ -4,6 +4,7 @@ import { create } from "zustand";
 import { keyOf } from "@/lib/conversation-store";
 import { type Draft, type DraftRead, mergeDraft } from "@/lib/draft-text";
 import type { LiveStatus } from "@/lib/screen-status";
+import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 
 // The reply Claude Code is writing, read from its screen while the chat
@@ -51,7 +52,10 @@ export const useMockDrafts = create<{ reads: Record<string, DraftRead | undefine
 export function useDraft({ box, session, agent, enabled, mock }: { box: string; session: string; agent?: string; enabled: boolean; mock: boolean }): DraftFeed {
   const client = useStore((s) => s.client);
   const capable = useStore((s) => !!s.boxes[box]?.info?.capabilities?.includes("draft"));
-  const supported = mock || (capable && agent === "claude");
+  // Turned off in Settings: replies land whole, and the pane reads the
+  // agent's status line the older way (lib/screen-status).
+  const on = usePrefs((p) => p.chatDrafts);
+  const supported = on && (mock || (capable && agent === "claude"));
   const [draft, setDraft] = useState<Draft>();
   const [status, setStatus] = useState<LiveStatus>();
   const take = useRef((read: DraftRead | undefined) => setDraft((prev) => (read ? mergeDraft(prev, read, nextId) : undefined)));
@@ -66,8 +70,8 @@ export function useDraft({ box, session, agent, enabled, mock }: { box: string; 
   // The demo: its screen is a store.
   const mockRead = useMockDrafts((s) => (mock ? s.reads[key] : undefined));
   useEffect(() => {
-    if (mock) take.current(mockRead);
-  }, [mock, mockRead]);
+    if (mock) take.current(on ? mockRead : undefined);
+  }, [mock, mockRead, on]);
 
   useEffect(() => {
     if (mock || !supported || !client) return;

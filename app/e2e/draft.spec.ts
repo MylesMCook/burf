@@ -30,6 +30,25 @@ const REPLY = [
   "- The rubric's `refusal` rule no longer marks a correct refusal down.",
 ].join("\n");
 
+test("with replies-as-written off in Settings, no draft shows and the reply lands whole", async ({ app }) => {
+  mockOnly("drives the demo's screen");
+  await app.open({ params: { view: "conversation" } });
+  const appearance = await app.openSettings("appearance");
+  const toggle = appearance.getByRole("switch", { name: "Show replies as they're written" });
+  await expect(toggle).toBeChecked();
+  await toggle.click();
+  await expect.poll(() => app.stored("berth.prefs")).toMatchObject({ chatDrafts: false });
+
+  await app.openWorktree("gpu/judge-v2");
+  await expect(app.chat.locator("[data-kind=thinking]")).toHaveCount(1);
+  await draftHook(app.page, "show", REPLY);
+  // A beat for a draft to have drawn, had it been on.
+  await app.page.waitForTimeout(400);
+  await expect(app.chat.locator("[data-testid=chat-item][data-draft]")).toHaveCount(0);
+  await draftHook(app.page, "land", REPLY);
+  await expect(app.chat.getByText("Judge v2 agrees with people on")).toBeVisible();
+});
+
 test("a reply grows as a draft, then its message takes the same row", async ({ app }) => {
   mockOnly("drives the demo's screen");
   await app.open({ params: { view: "conversation" } });
