@@ -88,14 +88,14 @@ const shopSetup: TeamSetup = {
     shop: {
       from: ".env.example",
       shared: {
-        STRIPE_SECRET_KEY: "op://Dev/Acme Stripe test/secret key",
-        STRIPE_PUBLISHABLE_KEY: "op://Dev/Acme Stripe test/publishable key",
-        STRIPE_WEBHOOK_SECRET: "op://Dev/Acme Stripe test/webhook secret",
-        MAPS_API_KEY: "op://Dev/Acme Maps dev/credential",
+        STRIPE_SECRET_KEY: "op://dev/dev_shop_stripe/secret_key",
+        STRIPE_PUBLISHABLE_KEY: "op://dev/dev_shop_stripe/publishable_key",
+        STRIPE_WEBHOOK_SECRET: "op://dev/dev_shop_stripe/webhook_secret",
+        MAPS_API_KEY: "op://dev/dev_shop_maps/api_key",
       },
       ask: ["MAIL_API_KEY"],
     },
-    "billing-api": { from: ".env.example", shared: { SHOP_API_KEY: "op://Dev/Acme API dev/credential" } },
+    "billing-api": { from: ".env.example", shared: { SHOP_API_KEY: "op://dev/dev_billing_api_shop/api_key" } },
   },
   updates: { notify: true },
 };
