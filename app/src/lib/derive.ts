@@ -160,3 +160,11 @@ export function restartCommand(command?: string): string | undefined {
   if (!command) return command;
   return command.replace(/(?:\s+(?:--prompt|-i))?\s+'(?:[^']|'\\'')*'\s*$/, "");
 }
+
+// firstPrompt is that prompt, unquoted, for a session berth started with
+// an agent preset (whose command it wrote); undefined for anything else.
+export function firstPrompt(s?: Pick<Session, "command" | "preset">): string | undefined {
+  if (!s?.preset || !s.command) return undefined;
+  const m = s.command.match(/\s'((?:[^']|'\\'')*)'\s*$/);
+  return m ? m[1].replaceAll("'\\''", "'") : undefined;
+}

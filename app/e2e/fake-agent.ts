@@ -33,6 +33,10 @@ export interface FakeAgent {
   draft: () => Answer;
   // What the box says it can do (info). Default: transcript and turns.
   capabilities: string[];
+  // Fields laid over the session as the box lists it (its state, command…).
+  session: Record<string, unknown>;
+  // The session's screen (GET sessions/fix-claude/screen). Default: blank.
+  screen: () => string;
   // Every request, as "METHOD path?query".
   calls: string[];
   // Sends an event to the app's stream.
@@ -57,6 +61,8 @@ export async function fakeAgent(): Promise<FakeAgent> {
     transcript: () => ({ body: { source: "claude", items: ITEMS, next: 2, crew: [], gen: "1.0", start: 10, file: "abc" } }),
     draft: () => ({ body: { agent: "claude" } }),
     capabilities: ["transcript", "turns"],
+    session: {},
+    screen: () => "",
     event(e) {
       const ev = { seq: ++seq, time: now(), box: BOX, origin: "claude", ...e };
       for (const s of streams) s.write(`data: ${JSON.stringify(ev)}\n\n`);
@@ -90,7 +96,7 @@ export async function fakeAgent(): Promise<FakeAgent> {
       },
     ],
     sessions: () => [
-      { name: SESSION, title: "Fix the flaky checkout test", location: "shop/fix", dir: DIR, command: "claude", created, attached: 0, exited: false, agent: "claude", agent_state: "running", state_since: now() },
+      { name: SESSION, title: "Fix the flaky checkout test", location: "shop/fix", dir: DIR, command: "claude", created, attached: 0, exited: false, agent: "claude", agent_state: "running", state_since: now(), ...agent.session },
     ],
     stats: () => ({}),
     services: () => [],
@@ -131,7 +137,7 @@ export async function fakeAgent(): Promise<FakeAgent> {
         if (res.destroyed) return;
         return send(res, a.status ?? 200, a.body);
       }
-      if (rest === `sessions/${SESSION}/screen`) return send(res, 200, { screen: "" });
+      if (rest === `sessions/${SESSION}/screen`) return send(res, 200, { screen: agent.screen() });
       if (rest === `sessions/${SESSION}/draft`) {
         const a = agent.draft();
         return send(res, a.status ?? 200, a.body);

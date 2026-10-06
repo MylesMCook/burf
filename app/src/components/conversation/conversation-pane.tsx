@@ -30,7 +30,7 @@ import { ApiError, boxApi, type QueuedPrompt } from "@/lib/api";
 import { type AttachTarget, withAttachments } from "@/lib/attachments";
 import { joinDraft, listenForQuotes, type QuoteFill } from "@/lib/chat-quote";
 import { keyOf, useConversations } from "@/lib/conversation-store";
-import { agentLabel, agentOf, guessAgent, sessionState, worktreeOf } from "@/lib/derive";
+import { agentLabel, agentOf, firstPrompt, guessAgent, sessionState, worktreeOf } from "@/lib/derive";
 import type { NextStep } from "@/lib/errors";
 import { errorMessage } from "@/lib/format";
 import { finishTurn, mockToolDetail, seedTranscript } from "@/lib/mock-conversation";
@@ -139,11 +139,23 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
     seedTranscript(box, session, sessionState(s, stats), wt ? (wt.worktree.main ? wt.location.name : wt.worktree.name) : session);
   }, [mock, s, key, box, session, stats, locations]);
 
+  // The prompt it was started with (a long one, its start).
+  const command = s?.command;
+  const preset = s?.preset;
+  const startedWith = useMemo(() => {
+    const p = firstPrompt({ command, preset });
+    return p && p.length > 4000 ? `${p.slice(0, 4000)}…` : p;
+  }, [command, preset]);
+
   // What the box does not send, from the session's state: thinking while it
   // works, its question while it waits.
   const shown = useMemo(() => {
     if (mock) return withDraft(items, drafts.draft).items;
     const sentNow: TranscriptItem[] = [];
+    // Started with a prompt it hasn't read yet, as it waits at a question
+    // of its own (whether to trust its folder): the prompt shows as sent.
+    // Its record takes its place once it reads it.
+    if (startedWith && state === "waiting" && !items.some((it) => it.kind === "user")) sentNow.push({ kind: "user", id: "sent:first", text: startedWith, pending: true });
     // What was just sent shows at once, until the agent's own record of it
     // arrives (a moment later) and takes its place.
     for (const [i, p] of sent.entries()) if (!taken(items, p, i + 1)) sentNow.push({ kind: "user", id: `sent:${p.at}`, text: p.text, pending: state === "running" });
@@ -187,7 +199,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
       out.push({ kind: "ask", id: "live:ask", tool: "Question", detail: s?.ask?.message || ask.detail, choices: ask.choices, decided });
     }
     return out;
-  }, [mock, items, state, s?.state_since, s?.ask, s?.created, ask, answered, sent, prompted, onScreen, last, formAsk, drafts.draft, drafts.status, drafts.supported]);
+  }, [mock, items, state, s?.state_since, s?.ask, s?.created, startedWith, ask, answered, sent, prompted, onScreen, last, formAsk, drafts.draft, drafts.status, drafts.supported]);
 
   const edits = useMemo<EditActions | undefined>(() => {
     if (!client || (!canDiff && !mock)) return undefined;

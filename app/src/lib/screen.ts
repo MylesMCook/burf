@@ -104,3 +104,10 @@ export function screenAt(agent: string | undefined, screen: string): "prompt" | 
   if (hinted || choicesIn(screen).length) return "interactive";
   return "unknown";
 }
+
+// keysOnly says the screen's foot is a screen of the agent's own that only
+// keys answer (Claude Code's "Do you trust this folder?", a picker): key
+// hints and no numbered options. It is no question a word or a Yes answers.
+export function keysOnly(screen: string): boolean {
+  return !choicesIn(screen).length && !questionFormIn(screen) && screenAt(undefined, screen) === "interactive";
+}

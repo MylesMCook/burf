@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { choicesIn, questionFormIn, screenAt } from "./screen.ts";
+import { choicesIn, keysOnly, questionFormIn, screenAt } from "./screen.ts";
 
 const RULE = "─".repeat(80);
 
@@ -90,4 +90,13 @@ test("a permission prompt is a menu, not a form", () => {
 test("answers in the conversation above the prompt aren't a form", () => {
   const done = ["⏺ User answered Claude's questions:", "  ⎿  · Pick a colour: → Green", RULE, "❯ ", RULE, "  ⏵⏵ auto mode on"].join("\n");
   assert.equal(questionFormIn(done), false);
+});
+
+test("a trust question is answered with keys, never a word", () => {
+  const trust = ["", " Accessing workspace:", "", " /w/shop-fix", "", " Quick safety check: Is this a project you created or one you trust?", "", " ❯ No, exit", "   Yes, I trust this folder", "", " Enter to confirm · Esc to cancel", ""].join("\n");
+  assert.equal(keysOnly(trust), true);
+  // Numbered, as older Claude Code asks it: its options answer it.
+  const numbered = [" Do you trust the files in this folder?", "", " ❯ 1. Yes, proceed", "   2. No, exit", "", " Enter to confirm · Esc to exit"].join("\n");
+  assert.equal(keysOnly(numbered), false);
+  assert.equal(keysOnly("Overwrite the lockfile? (y/n)"), false);
 });
