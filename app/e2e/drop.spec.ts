@@ -36,9 +36,13 @@ test("a file dropped where nothing takes it doesn't replace the app, and a hint 
   await expect(hint).not.toHaveAttribute("data-shown");
 
   // Held over a widget: refused, so the browser won't open it there.
-  expect(await fire(page, WIDGET, "dragover")).toBe(true);
-  await expect(hint).toHaveAttribute("data-shown", "true");
-  await expect(hint).toHaveText("Drop on a message box or a terminal to attach");
+  // A real drag sends dragover every ~50ms and the hint goes 200ms after the
+  // last: keep it coming until the hint is read.
+  await expect(async () => {
+    expect(await fire(page, WIDGET, "dragover")).toBe(true);
+    await expect(hint).toHaveAttribute("data-shown", "true", { timeout: 150 });
+    await expect(hint).toHaveText("Drop on a message box or a terminal to attach", { timeout: 150 });
+  }).toPass();
   // Let go: the drop's default (opening the file) is prevented.
   expect(await fire(page, WIDGET, "drop")).toBe(true);
   await expect(hint).not.toHaveAttribute("data-shown");
