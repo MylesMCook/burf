@@ -95,7 +95,10 @@ test("a permission is allowed once from Home", async ({ app }) => {
   // A question is answered in the agent's own form, not here.
   await expect(needs.getByRole("button", { name: "Answer: Plan the checkout release" })).toBeVisible();
   await allow.click();
-  await expect(needs.getByText(/Allowed · resuming|Nothing needs you/).first()).toBeVisible();
+  // The row says it's resuming until the agent's state moves on, and then
+  // leaves, so either way its Allow is gone (the question stays).
+  await expect(allow).toBeHidden();
+  await expect(needs.getByRole("button", { name: "Answer: Plan the checkout release" })).toBeVisible();
 });
 
 test("dragging a widget's heading moves it", async ({ app }) => {
@@ -106,6 +109,16 @@ test("dragging a widget's heading moves it", async ({ app }) => {
   const handle = grid.getByRole("button", { name: "Move Recently finished", exact: true });
   await handle.scrollIntoViewIfNeeded();
   await page.mouse.wheel(0, 120);
+  // The wheel scrolls after it returns: measure once the page is still.
+  let last = "";
+  await expect
+    .poll(async () => {
+      const now = JSON.stringify(await handle.boundingBox());
+      const still = now === last;
+      last = now;
+      return still;
+    })
+    .toBe(true);
   const from = await handle.boundingBox();
   const to = await grid.locator('[data-widget="needs-you"]').boundingBox();
   if (!from || !to) throw new Error("no boxes");
