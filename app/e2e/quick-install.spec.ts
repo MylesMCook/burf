@@ -1,4 +1,4 @@
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 import { type App, expect, mockOnly, test } from "./fixtures";
 
@@ -33,6 +33,14 @@ async function watchTerminal(page: Page) {
   });
 }
 const terminalSeen = (page: Page) => page.evaluate(() => (window as unknown as { __terminalSeen: string[][] }).__terminalSeen);
+
+// typeIn gives the dialog's terminal the keyboard, once it has drawn itself.
+async function typeIn(page: Page, term: Locator) {
+  await expect(async () => {
+    await term.getByTestId("install-terminal").click();
+    expect(await page.evaluate(() => !!document.activeElement?.closest("[data-testid=install-terminal]"))).toBe(true);
+  }).toPass();
+}
 
 async function addBox(app: App, host: string) {
   const { page } = app;
@@ -79,7 +87,7 @@ test("git missing: the terminal opens for that step alone, sudo's password goes 
   const term = dialog(page).getByTestId("quick-terminal");
   await expect(term).toBeVisible();
   expect(await terminalSeen(page)).toEqual([["tools"]]);
-  await term.getByTestId("install-terminal").click();
+  await typeIn(page, term);
   await page.keyboard.type("s3cret-pw");
   await page.keyboard.press("Enter");
   // The terminal goes once the password is in, and the rest run quietly.
@@ -110,7 +118,7 @@ test("lingering alone needs root: Keep it running opens the terminal for its pas
   await expect(dialog(page)).toHaveAttribute("data-needs", "password");
   const term = dialog(page).getByTestId("quick-terminal");
   await expect(term).toBeVisible();
-  await term.getByTestId("install-terminal").click();
+  await typeIn(page, term);
   await page.keyboard.type("pw");
   await page.keyboard.press("Enter");
   await expect(dialog(page)).toHaveAttribute("data-state", "ready", { timeout: 20_000 });
