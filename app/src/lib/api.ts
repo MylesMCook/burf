@@ -74,6 +74,9 @@ export class ApiError extends Error {
   // The last few by message, so an error that reaches a toast only as text
   // still has its code (lib/errors.ts).
   static recent = new Map<string, ApiError>();
+  // The whole answer, when it was JSON: a refused file write (412) carries
+  // the file as it is now (lib/files.ts).
+  detail?: Record<string, unknown>;
   constructor(
     message: string,
     readonly status: number,
@@ -87,10 +90,10 @@ export class ApiError extends Error {
 }
 
 // errorBody reads {error, code} from a failed response's text.
-function errorBody(text: string, fallback: string): { message: string; code?: string } {
+function errorBody(text: string, fallback: string): { message: string; code?: string; detail?: Record<string, unknown> } {
   try {
     const j = JSON.parse(text) as { error?: string; code?: string };
-    return { message: j.error ?? (text.trim() || fallback), code: j.code };
+    return { message: j.error ?? (text.trim() || fallback), code: j.code, detail: j && typeof j === "object" ? (j as Record<string, unknown>) : undefined };
   } catch {
     // Not JSON: a plain-text error is already the message.
     return { message: text.trim() || fallback };
@@ -122,7 +125,8 @@ export interface Client {
   // main module, which the plugin host hashes before importing.
   pluginFile(plugin: PluginInfo, file: string): Promise<Uint8Array>;
   // signal, when given, abandons the request (it rejects with an AbortError).
-  box<T = unknown>(box: string, method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T>;
+  // headers carries a write's precondition (If-Match) to the box.
+  box<T = unknown>(box: string, method: string, path: string, body?: unknown, signal?: AbortSignal, headers?: Record<string, string>): Promise<T>;
   // A box API file as bytes, such as an agent browser's screenshot.
   boxBlob(box: string, path: string): Promise<Blob>;
   // POSTs a file to the box API as its raw bytes (an attachment), telling
@@ -395,17 +399,19 @@ export const laptopApi = {
 export function httpClient(ep: Endpoint): Client {
   const headers = { Authorization: `Bearer ${ep.token}` };
 
-  async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
+  async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal, extra?: Record<string, string>): Promise<T> {
     const res = await fetch(ep.url + path, {
       method,
-      headers: body === undefined ? headers : { ...headers, "Content-Type": "application/json" },
+      headers: { ...headers, ...(body === undefined ? {} : { "Content-Type": "application/json" }), ...extra },
       body: body === undefined ? undefined : JSON.stringify(body),
       signal,
     });
     const text = await res.text();
     if (!res.ok) {
       const e = errorBody(text, res.statusText);
-      throw new ApiError(e.message, res.status, e.code);
+      const err = new ApiError(e.message, res.status, e.code);
+      err.detail = e.detail;
+      throw err;
     }
     // Logs come back as plain text; everything else is JSON.
     if (res.headers.get("Content-Type")?.startsWith("text/plain")) return text as T;
@@ -422,8 +428,8 @@ export function httpClient(ep: Endpoint): Client {
       if (!res.ok) throw new ApiError(`${p.id}: ${file}: ${res.status} ${res.statusText}`, res.status);
       return new Uint8Array(await res.arrayBuffer());
     },
-    box: <T,>(box: string, method: string, path: string, body?: unknown, signal?: AbortSignal) =>
-      request<T>(method, `/v1/boxes/${encodeURIComponent(box)}/api/${path}`, body, signal).catch((err: unknown) => {
+    box: <T,>(box: string, method: string, path: string, body?: unknown, signal?: AbortSignal, extra?: Record<string, string>) =>
+      request<T>(method, `/v1/boxes/${encodeURIComponent(box)}/api/${path}`, body, signal, extra).catch((err: unknown) => {
         if (err instanceof ApiError) err.box = box;
         throw err;
       }),

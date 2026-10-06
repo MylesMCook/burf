@@ -6,6 +6,7 @@ import { Tip } from "@/components/tip";
 import { Spinner } from "@/components/ui/spinner";
 import { ContextMenu, ContextMenuItem, ContextMenuPopup, ContextMenuSeparator, ContextMenuShortcut, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { NewTabMenu } from "@/components/workspace/new-tab-menu";
+import { FileTabState } from "@/components/files/file-bits";
 import { PaneActions, PaneIcon, paneLabel } from "@/components/workspace/pane";
 import { RunMenu } from "@/components/workspace/run-menu";
 import { armDrag, StripMarker, useTabDrag } from "@/components/workspace/tab-drag";
@@ -15,7 +16,7 @@ import { useGroups, useLabels, useNarrow, useTiny, WtDot } from "@/components/wo
 import { foldedOf } from "@/lib/groups";
 import { closeTab } from "@/lib/actions";
 import { agentOf, type SessionState, sessionAgent, sessionName, sessionState } from "@/lib/derive";
-import { type Leaf, leaves, mixed, worktreesOf } from "@/lib/layout";
+import { type Leaf, leaves, mixed, paneWorktree, worktreesOf } from "@/lib/layout";
 import { removalLabel, useRemoval } from "@/lib/removing";
 import { renameSession, useRenaming } from "@/lib/session-title";
 import { useStore } from "@/lib/store";
@@ -318,6 +319,7 @@ export function TabButton({ tab, wsKey, tone, active, onActivate, onClose, onDra
       ) : (
         <span className="min-w-0 truncate">{title}</span>
       )}
+      {c.kind === "file" && <FileTabState ws={paneWorktree(wsKey, lead.l)} path={c.path} />}
       {panes.length > 1 && !tab.compare && (owners.length > 1 ? (
         <span className="max-w-24 shrink-0 truncate text-[10px] text-muted-foreground">+ {names.slice(1).join(", ")}</span>
       ) : (

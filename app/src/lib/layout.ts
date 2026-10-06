@@ -15,6 +15,8 @@ export type PaneContent =
   // The same page at several sizes at once (components/preview-pane).
   | { kind: "preview"; url: string }
   | { kind: "log"; box: string; location: string; worktree: string; service: string }
+  // A file of the pane's worktree, in the File tab's editor (lib/files.ts).
+  | { kind: "file"; path: string }
   // A plugin's worktree panel, shown for the pane's worktree (paneWorktree).
   | { kind: "panel"; plugin: string; panel: string; title: string }
   | { kind: "starting"; label: string }

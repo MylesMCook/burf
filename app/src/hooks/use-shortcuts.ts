@@ -17,6 +17,8 @@ import { activateTab, closeGroup, currentSpace, focusGroup, hereRef, moveFocus, 
 import { openWorktreePicker } from "@/components/workspace/worktree-picker";
 import { newTerminal } from "@/components/box-picker";
 import { zoom } from "@/lib/zoom";
+import { docKey, save, setPickerOpen, useFiles } from "@/lib/files";
+import { findLeaf, paneWorktree } from "@/lib/layout";
 import { isOnboardingActive } from "@/views/onboarding/onboarding-state";
 
 // The app's shortcuts (lib/shortcuts.json) come two ways: as keys, caught on
@@ -128,8 +130,21 @@ function run(id: string, from: "key" | "menu", arg?: number | Dir): boolean {
       toggleNotifications();
       return true;
     case "palette":
+      if (useFiles.getState().pickerOpen) setPickerOpen(false);
       s.setPaletteOpen(!s.paletteOpen);
       return true;
+    case "files":
+      // ⌘P finds a file in the worktree you are acting in.
+      if (s.paletteOpen) s.setPaletteOpen(false);
+      setPickerOpen(!useFiles.getState().pickerOpen);
+      return true;
+    case "save-file": {
+      // ⌘S in a File tab, wherever in it the focus is.
+      const leaf = inWorkspace && tab && wsKey ? findLeaf(tab.root, tab.focus) : undefined;
+      if (!leaf || leaf.content.kind !== "file" || !wsKey) return false;
+      void save(docKey(paneWorktree(wsKey, leaf), leaf.content.path));
+      return true;
+    }
     case "tab": {
       // Counted across the whole strip, every unfolded group's tabs.
       const t = stripTab(Number(arg));
@@ -184,6 +199,8 @@ function fromKey(e: KeyboardEvent): [string, (number | Dir)?] | undefined {
   if (key === "\\") return ["sidebar"];
   if (key === "/" && !shift) return ["shortcuts"];
   if (key === "k") return ["palette"];
+  if (key === "p" && !shift) return ["files"];
+  if (key === "s" && !shift) return ["save-file"];
   if (key === "n") return [shift ? "notifications" : "new-worktree"];
   if (key === "j") return ["dashboard"];
   if (key === "t" && !shift) return ["new-terminal"];

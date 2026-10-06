@@ -1,10 +1,11 @@
 import { AppWindowIcon, ArchiveIcon, ArrowLeftRightIcon, Columns2Icon, EllipsisIcon, GlobeIcon, ImageIcon, MessagesSquareIcon, MonitorSmartphoneIcon, PencilIcon, ScrollTextIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, SquareTerminalIcon, XIcon } from "lucide-react";
-import { useEffect, useMemo } from "react";
+import { lazy, Suspense, useEffect, useMemo } from "react";
 
 import { Tip } from "@/components/tip";
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
 import { BrowserPane } from "@/components/browser-pane";
 import { PreviewPane } from "@/components/preview-pane";
+import { FileGlyph } from "@/components/files/file-bits";
 import { EmptySide } from "@/components/workspace/compare-view";
 import { CompareSideContext, type CompareSide, pageLoading } from "@/lib/compare-actions";
 import { openChatBackgroundSettings } from "@/components/conversation/chat-background";
@@ -35,6 +36,9 @@ import { cn } from "@/lib/utils";
 import { focusPane, paneBeside, paneToTab, setPaneContent, splitKey, useWorkspaces, useWorktreeRef } from "@/lib/workspaces";
 
 export { agentLabel };
+
+// A File tab's pane and its editor load the first time one shows.
+const FilePane = lazy(() => import("@/components/files/file-pane"));
 
 interface Props {
   wsKey: string;
@@ -119,6 +123,11 @@ export function Pane({ wsKey, tab, pane, visible, focused, split, mixed, compare
           )}
           {c.kind === "browser" && <BrowserPane id={pane.id} url={c.url} visible={visible} worktree={owner} onNavigate={(url) => setPaneContent(wsKey, tab, pane.id, { kind: "browser", url })} onLoading={compare ? (l) => pageLoading(pane.id, l) : undefined} />}
           {c.kind === "preview" && <PreviewPane url={c.url} visible={visible} worktree={owner} onNavigate={(url) => setPaneContent(wsKey, tab, pane.id, { kind: "preview", url })} />}
+          {c.kind === "file" && (
+            <Suspense fallback={<div className="flex flex-1 items-center justify-center"><Spinner className="size-4 text-muted-foreground" /></div>}>
+              <FilePane path={c.path} owner={owner} visible={visible} onClose={close} />
+            </Suspense>
+          )}
           {c.kind === "empty" && <EmptySide owner={owner} tab={tab} pane={pane.id} label={c.label} />}
           {c.kind === "log" && <LogView box={c.box} location={c.location} worktree={c.worktree} service={c.service} visible={visible} />}
           {c.kind === "panel" && <PanelPane wsKey={owner} plugin={c.plugin} panel={c.panel} />}
@@ -232,6 +241,8 @@ export function paneLabel(c: Leaf["content"], agent?: string): string {
       return "Browser";
     case "preview":
       return "Preview";
+    case "file":
+      return c.path.slice(c.path.lastIndexOf("/") + 1);
     case "log":
       return `${c.service} log`;
     case "panel":
@@ -247,6 +258,7 @@ export function PaneIcon({ content, agent, className }: { content: Leaf["content
   const c = content;
   const service = useStore((s) => c.kind === "terminal" && !!s.boxes[c.box]?.sessions?.find((x) => x.name === c.session)?.service);
   if (c.kind === "browser") return <GlobeIcon className={cn("size-3.5 shrink-0", className)} />;
+  if (c.kind === "file") return <FileGlyph path={c.path} className={className} />;
   if (c.kind === "preview") return <MonitorSmartphoneIcon className={cn("size-3.5 shrink-0", className)} />;
   if (c.kind === "log") return <ScrollTextIcon className={cn("size-3.5 shrink-0", className)} />;
   if (c.kind === "panel") return <PanelIcon plugin={c.plugin} panel={c.panel} className={cn("size-3.5 shrink-0", className)} />;

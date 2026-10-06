@@ -1,3 +1,4 @@
+import { mockFileBlob, mockFilesCall } from "@/lib/mock-files";
 import type { BerthEvent, Client, Hook, HooksFile, Location, Service, Session, Stats, Status, TerminalHandlers, Turn } from "@/lib/api";
 import { flowsCall } from "@/lib/mock-flows";
 import { runsCall } from "@/lib/mock-runs";
@@ -1088,12 +1089,12 @@ export function mockClient(): Client {
       if (!res.ok) throw new Error(`${p.id}: ${res.status} (run pnpm build in plugins/${p.id})`);
       return new Uint8Array(await res.arrayBuffer());
     },
-    box: <T,>(box: string, method: string, path: string, body?: unknown) =>
-      (boxCall(box, method, path, body) as Promise<T>).catch((err: unknown) => {
+    box: <T,>(box: string, method: string, path: string, body?: unknown, _signal?: AbortSignal, headers?: Record<string, string>) =>
+      ((mockFilesCall(box, method, path, body, headers) ?? boxCall(box, method, path, body)) as Promise<T>).catch((err: unknown) => {
         if (err instanceof ApiError) err.box = box;
         throw err;
       }),
-    boxBlob: async () => new Blob([mockShotSvg()], { type: "image/svg+xml" }),
+    boxBlob: async (_box, path) => mockFileBlob(path) ?? new Blob([mockShotSvg()], { type: "image/svg+xml" }),
     // An upload creeps along at about 1 MB/s, so the chip's progress shows.
     upload: <T,>(box: string, path: string, body: Blob, onProgress?: (sent: number, total: number) => void, signal?: AbortSignal) =>
       new Promise<T>((resolve, reject) => {

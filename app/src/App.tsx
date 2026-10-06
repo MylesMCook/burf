@@ -4,6 +4,7 @@ import { AddLocationDialog } from "@/components/add-location-dialog";
 import { Connecting } from "@/components/agent-offline";
 import { AppSidebar } from "@/components/app-sidebar";
 import { CommandPalette } from "@/components/command-palette";
+import { FilePicker } from "@/components/files/file-picker";
 import { WorktreePicker } from "@/components/workspace/worktree-picker";
 import { ComposerDialog } from "@/components/conversation/composer-dialog";
 import { NotificationCenter } from "@/components/notifications/notification-center";
@@ -156,6 +157,7 @@ export default function App() {
         </div>
         <ErrorBoundary scope="a dialog">
           <CommandPalette />
+          <FilePicker />
           <WorktreePicker />
           <BoxPicker />
           <ComposerDialog />
