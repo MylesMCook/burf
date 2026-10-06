@@ -1,5 +1,5 @@
 import { ArrowLeftIcon, ArrowRightIcon, CopyIcon, ExternalLinkIcon, LockIcon, RotateCwIcon, SearchIcon } from "lucide-react";
-import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ErrorText } from "@/components/error-note";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { copyText } from "@/lib/clipboard";
 import { ago, errorMessage } from "@/lib/format";
 import { openUrl } from "@/lib/open-url";
 import { useStore } from "@/lib/store";
-import { type GitHubState, isLink, loadTeams, putRun, refreshGitHub, runFor, sudoCount, teamApi, type TeamStatus, type TeamView as View, teamRef, useTeam } from "@/lib/team";
+import { type GitHubState, isLink, loadTeams, type PlanStep, putRun, refreshGitHub, runFor, sudoCount, teamApi, type TeamStatus, type TeamView as View, teamRef, useTeam, useTeamAddBox } from "@/lib/team";
 import { focusSession } from "@/lib/workspaces";
 import { finishOnboarding } from "@/views/onboarding/onboarding-state";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
@@ -238,6 +238,8 @@ function OrgPage({ org, from, wantBox, wantUpdate, github, onOrg }: { org: strin
   const [reviewUpdate, setReviewUpdate] = useState(!!wantUpdate);
   const [showPlan, setShowPlan] = useState(false);
   const [checks, setChecks] = useState(0);
+  // 1Password or not, for the shared keys that are op:// references.
+  const [skipOP, setSkipOP] = useState(false);
 
   // The box: the one asked for, the one it was set up on, else the online
   // box with the fewest projects (a new one, usually). Chosen again as the
@@ -273,6 +275,31 @@ function OrgPage({ org, from, wantBox, wantUpdate, github, onOrg }: { org: strin
   const noTmux = useBoxRequirements(box).req?.tmux.found === false;
   const updating = reviewUpdate && !!view?.update;
 
+  // Adding a box from this page is the guided install, which then starts
+  // this setup on the new box in the same screen, as the button would.
+  const startRef = useRef<(box: string) => Promise<TeamStatus>>(null);
+  const retryRef = useRef<(box: string, from: string) => Promise<TeamStatus>>(null);
+  useEffect(() => {
+    if (!view || (view.state !== "found" && view.state !== "none")) return;
+    const sel = picked ?? new Set<string>();
+    const steps: PlanStep[] =
+      view.state === "found"
+        ? (view.steps ?? []).filter((s) => !(skipOP && s.id === "1password"))
+        : [{ id: "github", title: "GitHub on the box", sudo: false, berth: true, commands: ["gh auth login --hostname github.com --git-protocol https --web"] }];
+    const repos = view.state === "found" ? view.projects.filter((x) => x.access && (x.required || sel.has(x.id))).length : sel.size;
+    useTeamAddBox.setState({
+      ctx: {
+        org: view.setup?.org ?? org,
+        name: view.setup?.name ?? view.org.name,
+        steps,
+        repos,
+        start: (b) => startRef.current!(b),
+        retry: (b, from) => retryRef.current!(b, from),
+      },
+    });
+    return () => useTeamAddBox.setState({ ctx: undefined });
+  }, [view, picked, skipOP, org]);
+
   if (error) {
     return (
       <Centered>
@@ -299,37 +326,52 @@ function OrgPage({ org, from, wantBox, wantUpdate, github, onOrg }: { org: strin
   const key = view.source?.key ?? org;
   const name = view.setup?.name ?? view.org.name;
 
+  // The shared keys are typed instead of read with 1Password: the team
+  // allows it, and there are op:// keys to skip.
+  const opKeys = view.keys.onepassword ?? [];
+  const skipping = skipOP && opKeys.length > 0 && !view.keys.onepassword_required;
+  const setupOn = async (box: string): Promise<TeamStatus> => {
+    if (!client) throw new Error("not connected");
+    const byProject: Record<string, Record<string, string>> = {};
+    for (const [id, v] of Object.entries(keys)) {
+      if (!v) continue;
+      const [p, k] = id.split("/");
+      // A 1Password key's typed value goes only when 1Password is skipped.
+      if (!skipping && opKeys.some((o) => o.project === p && o.key === k)) continue;
+      (byProject[p] ??= {})[k] = v;
+    }
+    const req =
+      view.state === "none"
+        ? { box, repos: [...sel] }
+        : { box, commit: updating ? view.update!.to : view.commit?.sha, projects: view.projects.filter((x) => x.access && (x.required || sel.has(x.id))).map((x) => x.id), keys: byProject, skip_onepassword: skipping || undefined };
+    const s = await teamApi.setup(client, key, req);
+    putRun(s);
+    if (updating) {
+      useTeam.setState((t) => {
+        const updates = { ...t.updates };
+        delete updates[key];
+        return { updates };
+      });
+    }
+    setKeys({});
+    setReviewUpdate(false);
+    setShowPlan(false);
+    setBox(box);
+    setChosen(true);
+    // From the first run, the app around it comes now: the sidebar and the
+    // status bar show the setup as it goes.
+    finishOnboarding();
+    useStore.getState().setView({ kind: "team", org: key, box });
+    void useStore.getState().refreshBox(box, ["sessions", "locations"]);
+    return s;
+  };
+  startRef.current = setupOn;
+  retryRef.current = (b, from) => teamApi.retry(client!, key, b, from);
   const start = async () => {
     if (!client || !box) return;
     setBusy(true);
     try {
-      const byProject: Record<string, Record<string, string>> = {};
-      for (const [id, v] of Object.entries(keys)) {
-        if (!v) continue;
-        const [p, k] = id.split("/");
-        (byProject[p] ??= {})[k] = v;
-      }
-      const req =
-        view.state === "none"
-          ? { box, repos: [...sel] }
-          : { box, commit: updating ? view.update!.to : view.commit?.sha, projects: view.projects.filter((x) => x.access && (x.required || sel.has(x.id))).map((x) => x.id), keys: byProject };
-      const s = await teamApi.setup(client, key, req);
-      putRun(s);
-      if (updating) {
-        useTeam.setState((t) => {
-          const updates = { ...t.updates };
-          delete updates[key];
-          return { updates };
-        });
-      }
-      setKeys({});
-      setReviewUpdate(false);
-      setShowPlan(false);
-      // From the first run, the app around it comes now: the sidebar and the
-      // status bar show the setup as it goes.
-      finishOnboarding();
-      useStore.getState().setView({ kind: "team", org: key, box });
-      void useStore.getState().refreshBox(box, ["sessions", "locations"]);
+      await setupOn(box);
     } catch (err) {
       // A box without tmux: the Box check says how to install it.
       if (err instanceof ApiError && err.code === "tmux_missing") noteTmuxMissing(box);
@@ -388,7 +430,9 @@ function OrgPage({ org, from, wantBox, wantUpdate, github, onOrg }: { org: strin
         busy={busy}
         onRun={start}
         noTmux={noTmux}
-        onePassword={view.steps?.some((s) => s.id === "1password")}
+        onePassword={view.steps?.some((s) => s.id === "1password") && !skipping}
+        skipOP={skipping}
+        onSkipOP={setSkipOP}
       />
     );
 
@@ -397,7 +441,7 @@ function OrgPage({ org, from, wantBox, wantUpdate, github, onOrg }: { org: strin
       <OrgHeader view={view} from={from} badge={updating ? <span className="rounded-full bg-info/10 px-2.5 py-1 font-medium text-info-foreground text-xs">Update · {view.update!.from} → {view.update!.to}</span> : undefined} />
       <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_300px] gap-8 px-8 pt-6 pb-16 @max-[819px]:grid-cols-1 @max-[819px]:gap-4 @max-[819px]:px-5 @max-[819px]:pt-4">
         <div className="min-w-0 @max-[819px]:order-2">
-          <Plan view={view} run={live} box={box} picked={sel} onPick={(id, on) => setPicked((p) => toggled(p, id, on))} onRetry={retry} onOpenTerminal={openTerminal} onStartOn={startOn} onFiles={() => setFiles(true)} update={updating ? view.update : undefined} />
+          <Plan view={(live ? live.onepassword_skipped : skipping) ? { ...view, steps: view.steps?.filter((s) => s.id !== "1password") } : view} skipOP={live ? live.onepassword_skipped : skipping} run={live} box={box} picked={sel} onPick={(id, on) => setPicked((p) => toggled(p, id, on))} onRetry={retry} onOpenTerminal={openTerminal} onStartOn={startOn} onFiles={() => setFiles(true)} update={updating ? view.update : undefined} />
         </div>
         <div className="@max-[819px]:order-1">
           <div className="sticky top-4 @max-[819px]:hidden">{rail(false)}</div>

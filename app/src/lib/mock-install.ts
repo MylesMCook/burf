@@ -56,7 +56,7 @@ export function mockInstallPlan(host: string, agents: string[]): InstallPlan {
       title: "Keep berthd running after you log out",
       where: "box",
       sudo: true,
-      when: "only if lingering is off",
+      when: "only if the box needs root for it",
       detail: "systemd stops a user's services at logout unless lingering is on for them.",
       commands: [`sudo loginctl enable-linger ${user}`],
     },

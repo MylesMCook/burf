@@ -8,7 +8,8 @@ import { Spinner } from "@/components/ui/spinner";
 import { laptopApi, type SshFailure, type SshPlan } from "@/lib/api";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { GuidedInstall, useInstallTarget } from "@/views/onboarding/guided-install";
+import { GuidedInstall, type TeamAfterInstall, useAgentChoice, useInstallTarget } from "@/views/onboarding/guided-install";
+import { InlineAgents, QuickInstall } from "@/views/onboarding/quick-install";
 import { InstallCommand } from "@/views/onboarding/install-command";
 
 type Suggestion = { value: string; label: string; detail: string; os?: string; network?: string };
@@ -25,6 +26,7 @@ export function SshSetup({
   onPaired,
   onSignIn: _onSignIn,
   readyLabel,
+  team,
 }: {
   network?: string;
   // Changing retry runs the setup again: after signing in to a tailnet.
@@ -32,16 +34,20 @@ export function SshSetup({
   onRunning(running: boolean): void;
   onPaired(box: string): void;
   onSignIn(): void;
-  // The guided install's last button ("Continue", "Back to Team setup").
+  // The install's last button ("Continue", "Back to Team setup").
   readyLabel?: string;
+  // From Team setup: the guided install, with the team's steps after it.
+  // Otherwise adding a box is quiet: the compact dialog.
+  team?: TeamAfterInstall;
 }) {
+  const [agents, setAgents] = useAgentChoice();
   const [host, setHost] = useState("");
   const [name, setName] = useState("");
   const [active, setActive] = useState(-1);
   const [focused, setFocused] = useState(false);
   const field = useRef<HTMLInputElement>(null);
-  // Setting up opens the guided install, full screen: the plan, then the
-  // terminal it runs in.
+  // Setting up opens the quick install's dialog (or, from Team setup, the
+  // guided install, full screen).
   const install = useInstallTarget();
   const state = install.target ? "running" : "ready";
   useEffect(() => onRunning(!!install.target), [install.target, onRunning]);
@@ -171,6 +177,8 @@ export function SshSetup({
         )}
       </div>
 
+      {!team && <InlineAgents value={agents} onChange={setAgents} disabled={running} />}
+
       {showSuggestions && (
         <ul role="listbox" aria-label="Hosts" className="mt-1 overflow-hidden rounded-lg border bg-popover p-1">
           {matches.map((s, i) => (
@@ -195,15 +203,28 @@ export function SshSetup({
         </ul>
       )}
 
-      <GuidedInstall
-        target={install.target}
-        readyLabel={readyLabel}
-        onClose={install.close}
-        onReady={(box) => {
-          install.close();
-          onPaired(box);
-        }}
-      />
+      {team ? (
+        <GuidedInstall
+          target={install.target}
+          readyLabel={readyLabel}
+          team={team}
+          onClose={install.close}
+          onReady={(box) => {
+            install.close();
+            onPaired(box);
+          }}
+        />
+      ) : (
+        <QuickInstall
+          target={install.target && { ...install.target, agents }}
+          readyLabel={readyLabel}
+          onClose={install.close}
+          onReady={(box) => {
+            install.close();
+            onPaired(box);
+          }}
+        />
+      )}
     </div>
   );
 }

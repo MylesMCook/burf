@@ -157,9 +157,14 @@ export interface GuidedInstallRequest {
   agents: string[];
   // Start from this step; the ones before it are kept.
   from?: string;
+  // The whole plan and one terminal (Team setup's add a box); without it
+  // the install is quiet and a terminal shows only while sudo asks.
+  guided?: boolean;
 }
 
-export type InstallStepState = "start" | "done" | "fail" | "skip" | "open" | "cmd";
+// sudo: sudo is about to ask for the password in the terminal. ask: a
+// yes-or-no question (the message), answered on the terminal's input.
+export type InstallStepState = "start" | "done" | "fail" | "skip" | "open" | "cmd" | "sudo" | "ask";
 
 export type InstallEvent =
   | { type: "step"; step: string; state: InstallStepState; message?: string }
@@ -668,6 +673,7 @@ function followEvents(ep: Endpoint, onEvent: (e: BerthEvent) => void, onConnect:
 export function installQuery(req: GuidedInstallRequest, cols: number, rows: number, token?: string): URLSearchParams {
   const q = new URLSearchParams({ host: req.host, agents: req.agents.join(",") || "none", cols: String(cols), rows: String(rows) });
   for (const k of ["name", "network", "identity", "trust_host_key", "from"] as const) if (req[k]) q.set(k, req[k]!);
+  if (req.guided) q.set("guided", "1");
   if (token) q.set("token", token);
   return q;
 }

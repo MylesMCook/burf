@@ -10,7 +10,8 @@ import { plainError } from "@/lib/errors";
 import { openUrl } from "@/lib/open-url";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { GuidedInstall, useInstallTarget } from "@/views/onboarding/guided-install";
+import { GuidedInstall, type TeamAfterInstall, useAgentChoice, useInstallTarget } from "@/views/onboarding/guided-install";
+import { InlineAgents, QuickInstall } from "@/views/onboarding/quick-install";
 import { useSshPlan } from "@/views/onboarding/ssh-setup";
 import { discoverNetwork, type SystemTailnet, sortMachines, type TailnetSource } from "@/views/onboarding/tailnet";
 
@@ -30,6 +31,7 @@ export function TailnetMachines({
   onPaired,
   onSignIn,
   readyLabel,
+  team,
 }: {
   sources: TailnetSource[];
   system?: SystemTailnet;
@@ -40,6 +42,7 @@ export function TailnetMachines({
   onPaired(box: string): void;
   onSignIn(): void;
   readyLabel?: string;
+  team?: TeamAfterInstall;
 }) {
   const source = sources.find((s) => s.key === active) ?? sources[0];
   const found = useDiscovery(source, system);
@@ -85,6 +88,7 @@ export function TailnetMachines({
         onPaired={onPaired}
         onSignIn={onSignIn}
         readyLabel={readyLabel}
+        team={team}
       />
     </section>
   );
@@ -129,6 +133,7 @@ function MachineList({
   onPaired,
   onSignIn,
   readyLabel,
+  team,
 }: {
   source: TailnetSource;
   found: Found;
@@ -140,6 +145,7 @@ function MachineList({
   onPaired(box: string): void;
   onSignIn(): void;
   readyLabel?: string;
+  team?: TeamAfterInstall;
 }) {
   const [filter, setFilter] = useState("");
   const all = useMemo(() => (found.state === "ok" ? sortMachines(found.discovery.machines) : []), [found]);
@@ -216,6 +222,7 @@ function MachineList({
           onPaired={onPaired}
           onClose={() => onPick(undefined)}
           readyLabel={readyLabel}
+          team={team}
         />
       )}
     </div>
@@ -274,6 +281,7 @@ function MachineSetup({
   onPaired,
   onClose: _onClose,
   readyLabel,
+  team,
 }: {
   machine: Machine;
   user: string;
@@ -282,7 +290,9 @@ function MachineSetup({
   onPaired(box: string): void;
   onClose(): void;
   readyLabel?: string;
+  team?: TeamAfterInstall;
 }) {
+  const [agents, setAgents] = useAgentChoice();
   // A Berth network is dialed by address; this Mac's tailnet by name.
   const host = network ? m.ip : m.dns_name || m.ip;
   const plan = useSshPlan(m.os === "linux" ? host : "", network);
@@ -290,7 +300,8 @@ function MachineSetup({
   const [user, setUser] = useState(suggested);
   const [touched, setTouched] = useState(false);
   const [name, setName] = useState(() => boxName(m.name, boxes?.map((b) => b.name) ?? []));
-  // Install and pair opens the guided install, full screen.
+  // Install and pair opens the quick install's dialog (from Team setup, the
+  // guided install, full screen).
   const install = useInstallTarget();
   const running = !!install.target;
   const state = running ? "running" : "ready";
@@ -384,20 +395,34 @@ function MachineSetup({
           />
         </span>
       </div>
+      {!team && <InlineAgents value={agents} onChange={setAgents} disabled={running} />}
       {state === "ready" && (
         <p className="mt-1 text-muted-foreground text-xs leading-relaxed">
           Berth logs in once to install berthd for that user. It listens on {m.name}'s tailnet address only, and Berth never needs SSH for it again.
         </p>
       )}
-      <GuidedInstall
-        target={install.target}
-        readyLabel={readyLabel}
-        onClose={install.close}
-        onReady={(box) => {
-          install.close();
-          onPaired(box);
-        }}
-      />
+      {team ? (
+        <GuidedInstall
+          target={install.target}
+          readyLabel={readyLabel}
+          team={team}
+          onClose={install.close}
+          onReady={(box) => {
+            install.close();
+            onPaired(box);
+          }}
+        />
+      ) : (
+        <QuickInstall
+          target={install.target && { ...install.target, agents }}
+          readyLabel={readyLabel}
+          onClose={install.close}
+          onReady={(box) => {
+            install.close();
+            onPaired(box);
+          }}
+        />
+      )}
     </div>
   );
 }

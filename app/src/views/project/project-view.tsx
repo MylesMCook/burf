@@ -20,6 +20,7 @@ import { mergeConfig } from "@/lib/kits";
 import { KitSection } from "@/views/project/kit-section";
 import { KitLayer, LayeredScript, Section, SourceBadge } from "@/views/project/parts";
 import { ServicesSection } from "@/views/project/services-section";
+import { ProjectTeamKeys } from "@/views/team/team-keys-note";
 import { clean, useProjectConfig } from "@/views/project/use-project-config";
 import { ViewHeader } from "@/views/view-header";
 import { ErrorText } from "@/components/error-note";
@@ -181,6 +182,7 @@ export function ProjectView({ box, location }: { box: string; location: string }
                   </div>
                 </Section>
 
+                <ProjectTeamKeys box={box} location={location} env={{ ...(base?.env ?? {}), ...(draft.env ?? {}) }} onAdd={(keys) => setDraft({ ...draft, env: { ...Object.fromEntries(keys.map((k) => [k, ""])), ...(draft.env ?? {}) } })} />
                 <EnvSection repo={base} draft={draft} setDraft={setDraft} box={box} />
                 <PortsSection repo={base} draft={draft} setDraft={setDraft} box={box} />
                 <ServicesSection repo={base} draft={draft} setDraft={setDraft} box={box} location={location} urlPort={urlPort} />

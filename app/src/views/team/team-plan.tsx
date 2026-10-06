@@ -26,6 +26,8 @@ export interface PlanProps {
   onStartOn(project: string): void;
   onFiles(): void;
   update?: TeamUpdate | null;
+  // 1Password skipped: its keys are typed on the checklist instead.
+  skipOP?: boolean;
 }
 
 function StepHead({ s }: { s: PlanStep }) {
@@ -280,11 +282,19 @@ export function Plan(p: PlanProps) {
         <Section id="plan-keys" title="Keys" aside="what the repos' .env.example asks for; ports, URLs and databases are the kits' job">
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-xl border bg-card px-4 py-3 text-[13px]">
             {run ? <StateIcon state={run.phase === "steps" ? "todo" : "done"} /> : <KeyRoundIcon className="size-4 text-muted-foreground" />}
-            {view.keys.shared > 0 && <span>From 1Password: {plural(view.keys.shared, "key")}</span>}
-            {asks.length > 0 && (
-              <span className="text-muted-foreground">
-                · {asks.length} to enter ({asks.map((a) => a.key).join(", ")})
+            {p.skipOP ? (
+              <span data-testid="plan-keys-skip">
+                1Password skipped: {plural((view.keys.onepassword?.length ?? 0) + asks.length, "key")} to enter ({[...(view.keys.onepassword ?? []), ...asks].map((a) => a.key).join(", ")}); blank ones are listed as missing
               </span>
+            ) : (
+              <>
+                {view.keys.shared > 0 && <span>From 1Password: {plural(view.keys.shared, "key")}</span>}
+                {asks.length > 0 && (
+                  <span className="text-muted-foreground">
+                    · {asks.length} to enter ({asks.map((a) => a.key).join(", ")})
+                  </span>
+                )}
+              </>
             )}
             <span className="ml-auto text-muted-foreground text-xs">Values stay on your box, never in git</span>
           </div>

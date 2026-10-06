@@ -63,12 +63,20 @@ export interface ChecklistProps {
   noTmux?: boolean;
   // The keys are 1Password references: Berth signs op in on the box.
   onePassword?: boolean;
+  // 1Password skipped: the shared keys are typed here instead.
+  skipOP?: boolean;
+  onSkipOP?(skip: boolean): void;
 }
 
 export function Checklist(p: ChecklistProps) {
   const { view, github, compact } = p;
-  const asks = view.keys.ask.filter((k) => !k.set);
-  const keyCount = view.keys.shared + asks.length;
+  // The shared keys that are 1Password references: read with op, or, with
+  // 1Password skipped, typed here once (or left blank) like the asked ones.
+  const opKeys = view.keys.onepassword ?? [];
+  const opRequired = !!view.keys.onepassword_required;
+  const own = view.keys.ask.filter((k) => !k.set);
+  const asks = p.skipOP ? [...opKeys.filter((k) => !k.set).map((k) => ({ ...k, shared: true })), ...own.map((k) => ({ ...k, shared: false }))] : own.map((k) => ({ ...k, shared: false }));
+  const keyCount = view.keys.shared + own.length;
   const missing = view.access.missing;
   const accessLine =
     view.state === "found" && view.access.total > 0 ? (
@@ -111,26 +119,57 @@ export function Checklist(p: ChecklistProps) {
       )}
     </div>
   );
+  const opChoice = opKeys.length > 0 && p.onSkipOP && (
+    <div className="mb-2">
+      <div role="radiogroup" aria-label="1Password" className="inline-flex rounded-lg border bg-muted/40 p-0.5 text-xs">
+        {[
+          { skip: false, label: "Use 1Password", id: "op-use" },
+          { skip: true, label: "Skip 1Password", id: "op-skip" },
+        ].map((o) => (
+          <button
+            key={o.id}
+            type="button"
+            role="radio"
+            aria-checked={!!p.skipOP === o.skip}
+            data-testid={o.id}
+            disabled={o.skip && opRequired}
+            onClick={() => p.onSkipOP?.(o.skip)}
+            className={cn("rounded-md px-2.5 py-1 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50", !!p.skipOP === o.skip ? "bg-background font-medium text-foreground shadow-xs/5" : "text-muted-foreground hover:text-foreground")}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+      <p data-testid="op-note" className="mt-1.5 text-[11.5px] text-muted-foreground leading-relaxed">
+        {opRequired
+          ? `${view.setup?.name ?? "The team"} requires 1Password for its ${plural(opKeys.length, "shared key")}: op signs in once, in ${p.box ?? "the box"}'s terminal.`
+          : p.skipOP
+            ? "Type each shared key once, or leave it blank: blank ones are listed as missing keys, to add in Project settings. op is never used; you can turn 1Password on later."
+            : `${plural(opKeys.length, "shared key")} read on ${p.box ?? "the box"} with your 1Password: op signs in once, in its terminal.`}
+      </p>
+    </div>
+  );
   const keyInputs = asks.length > 0 && (
     <div className="space-y-1.5">
       {asks.map((k) => {
         const id = `${k.project}/${k.key}`;
         return (
-          <label key={id} className="block">
+          <label key={id} className="block" data-testid={`key-input-${k.key}`}>
             <span className="mb-1 flex items-baseline gap-1.5 text-xs">
               <span className="font-mono">{k.key}</span>
-              <span className="text-muted-foreground">yours alone</span>
+              <span className="text-muted-foreground">{k.shared ? "the team's, from 1Password" : "yours alone"}</span>
             </span>
-            <Input size="sm" type="password" autoComplete="off" placeholder="Paste it once" className="font-mono [&_input::placeholder]:font-sans" value={p.keys[id] ?? ""} onChange={(e) => p.onKey(id, e.target.value)} />
+            <Input size="sm" type="password" autoComplete="off" placeholder={p.skipOP ? "Paste it, or leave it blank" : "Paste it once"} className="font-mono [&_input::placeholder]:font-sans" value={p.keys[id] ?? ""} onChange={(e) => p.onKey(id, e.target.value)} />
           </label>
         );
       })}
     </div>
   );
   const entered = asks.filter((k) => p.keys[`${k.project}/${k.key}`]).length;
+  const fromOP = p.skipOP ? view.keys.shared - opKeys.length : view.keys.shared;
   const keysValue = (
     <span data-testid="keys-line" className="text-muted-foreground">
-      {[view.keys.shared ? `${view.keys.shared} from 1Password` : "", asks.length - entered ? `${asks.length - entered} to enter` : entered ? `${entered} entered` : ""].filter(Boolean).join(" · ")}
+      {[fromOP ? `${fromOP} ${p.skipOP ? "shared" : "from 1Password"}` : "", asks.length - entered ? `${asks.length - entered} to enter` : entered ? `${entered} entered` : ""].filter(Boolean).join(" · ")}
     </span>
   );
 
@@ -172,6 +211,7 @@ export function Checklist(p: ChecklistProps) {
             </Check>
             {keyCount > 0 && (
               <Check compact n={3} title="Keys" state={asks.length && asks.some((k) => !p.keys[`${k.project}/${k.key}`]) ? "active" : "done"} value={keysValue}>
+                {opChoice}
                 {keyInputs}
               </Check>
             )}
@@ -200,8 +240,9 @@ export function Checklist(p: ChecklistProps) {
         </Check>
         {keyCount > 0 && (
           <Check n={3} title="Keys" state={asks.length && asks.some((k) => !p.keys[`${k.project}/${k.key}`]) ? "active" : "done"} value={keysValue}>
+            {opChoice}
             {keyInputs}
-            {asks.length > 0 && <p className="mt-1.5 text-[11px] text-muted-foreground">Kept on {p.box ?? "the box"} only, never in git. Leave it empty to skip.</p>}
+            {asks.length > 0 && <p className="mt-1.5 text-[11px] text-muted-foreground">Kept on {p.box ?? "the box"} only, never in git. Leave one empty to skip it: it is listed as missing.</p>}
           </Check>
         )}
       </div>

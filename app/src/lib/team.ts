@@ -63,6 +63,9 @@ export interface TeamSetup {
   agents?: string[];
   projects?: TeamProjectSpec[];
   keys?: Record<string, TeamKeys>;
+  // "optional" (the default): engineers may skip 1Password and type the
+  // shared keys instead; "required": the box signs op in.
+  onepassword?: "optional" | "required";
   updates?: { notify?: boolean };
 }
 
@@ -156,6 +159,12 @@ export interface TeamSource {
   key: string;
 }
 
+export interface TeamAsk {
+  project: string;
+  key: string;
+  set?: boolean;
+}
+
 export interface TeamView {
   // For a link, the owner of the repo read, not the team the setup is for
   // (that is setup.org).
@@ -169,7 +178,14 @@ export interface TeamView {
   steps?: PlanStep[];
   projects: ProjectView[];
   access: { readable: number; total: number; missing: string[] };
-  keys: { shared: number; ask: { project: string; key: string; set?: boolean }[] };
+  keys: {
+    shared: number;
+    ask: TeamAsk[];
+    // The shared keys that are 1Password references: typed once instead
+    // when 1Password is skipped.
+    onepassword?: TeamAsk[];
+    onepassword_required?: boolean;
+  };
   repos?: OrgRepo[];
   accepted?: { commit: string; box: string; at: string };
   update?: TeamUpdate | null;
@@ -188,8 +204,24 @@ export interface TeamStatus {
   phase: "steps" | "projects" | "done" | "failed";
   session?: string;
   steps: { id: string; title: string; sudo: boolean; state: StepState; secs?: number; error?: string; code?: string; url?: string }[];
-  projects: { id: string; repo: string; state: RepoState; location?: string; error?: string; trust?: string; warnings?: string[]; line?: string }[];
+  projects: {
+    id: string;
+    repo: string;
+    state: RepoState;
+    location?: string;
+    error?: string;
+    trust?: string;
+    warnings?: string[];
+    line?: string;
+    // The keys the team lists for it; those its config on the box has no
+    // value for yet; and those 1Password would give it, while skipped.
+    keys?: string[];
+    missing?: string[];
+    deferred?: string[];
+  }[];
   keys_set: string[];
+  // 1Password was skipped for the shared keys; Use 1Password undoes it.
+  onepassword_skipped?: boolean;
   started: string;
   updated: string;
   error?: string;
@@ -213,6 +245,9 @@ export interface SetupRequest {
   projects?: string[];
   keys?: Record<string, Record<string, string>>;
   repos?: string[];
+  // Skip 1Password: op is never signed in or called for the shared keys,
+  // which come typed in keys instead (blank ones are missing).
+  skip_onepassword?: boolean;
 }
 
 const enc = encodeURIComponent;
@@ -234,7 +269,16 @@ export const teamApi = {
   // The box's own record of the setups it ran.
   onBox: async (c: Client, box: string) => (await c.box<TeamStatus[] | null>(box, "GET", "team")) ?? [],
   status: (c: Client, box: string, id: string) => c.box<TeamStatus>(box, "GET", `team/${enc(id)}`),
+  // Use 1Password after skipping it: the references go back into each
+  // project's config, and op signs in in the team's terminal.
+  useOnePassword: (c: Client, box: string, id: string) => c.box<TeamStatus>(box, "POST", `team/${enc(id)}/onepassword`, {}),
 };
+
+// missingKeys is what a run left without a value, by project: keys left
+// blank when asked (or skipped with 1Password), to add in Project settings.
+export function missingKeys(run?: Pick<TeamStatus, "projects">): { project: string; location?: string; keys: string[] }[] {
+  return (run?.projects ?? []).filter((p) => p.missing?.length).map((p) => ({ project: p.id, location: p.location, keys: p.missing! }));
+}
 
 export { isLink, teamRef, validOrg } from "@/lib/team-ref";
 
@@ -400,10 +444,12 @@ export function plural(n: number, one: string, many = `${one}s`) {
 }
 
 // keysLine is the keys step in one line: "5 from 1Password · 1 to enter".
-export function keysLine(v: Pick<TeamView, "keys">, entered = 0): string {
-  const ask = v.keys.ask.filter((k) => !k.set).length - entered;
+export function keysLine(v: Pick<TeamView, "keys">, entered = 0, skipOP = false): string {
+  const ops = skipOP ? (v.keys.onepassword ?? []).filter((k) => !k.set).length : 0;
+  const ask = v.keys.ask.filter((k) => !k.set).length + ops - entered;
   const parts: string[] = [];
-  if (v.keys.shared) parts.push(`${v.keys.shared} from 1Password`);
+  const fromOP = skipOP ? v.keys.shared - (v.keys.onepassword?.length ?? 0) : v.keys.shared;
+  if (fromOP) parts.push(`${fromOP} ${skipOP ? "shared" : "from 1Password"}`);
   if (ask > 0) parts.push(`${ask} to enter`);
   return parts.join(" · ");
 }
@@ -417,3 +463,27 @@ export function durationOf(secs?: number): string {
   const s = Math.round(secs % 60);
   return s ? `${m}m ${s}s` : `${m}m`;
 }
+
+// ——— adding a box from Team setup ———
+
+// TeamAfterInstall is Team setup's part when a box is added from its page:
+// the guided install's plan shows the team's steps after its own, and once
+// the box is ready the same screen starts the team's setup on it and shows
+// its terminal. Two phases of one screen: the install runs over SSH before
+// berthd is there, and the team's steps then run in berthd's own terminal
+// on the box (which keeps going if this window closes), so sudo may ask
+// once in each.
+export interface TeamAfterInstall {
+  // What runFor takes for its runs.
+  org: string;
+  name: string;
+  steps: PlanStep[];
+  repos: number;
+  // Starts the setup on the new box, with what the page has chosen (repos,
+  // keys, 1Password or not).
+  start(box: string): Promise<TeamStatus>;
+  retry(box: string, from: string): Promise<TeamStatus>;
+}
+
+// The Team setup page registers itself here while it is open.
+export const useTeamAddBox = create<{ ctx?: TeamAfterInstall }>()(() => ({}));
