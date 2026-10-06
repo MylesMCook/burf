@@ -57,9 +57,10 @@ test("files dropped on Home's composer attach, and Start takes them", async ({ a
   const composer = page.getByTestId("task-composer");
   const editor = composer.getByRole("textbox", { name: "What should your agents work on?" });
   await expect(editor).toBeVisible();
-  // The files go to the project's box: wait until there is one.
-  await expect(composer.getByRole("button", { name: /^Project: / })).toBeVisible();
-  await expect(composer.getByRole("button", { name: /^Box: / })).toBeVisible();
+  // The files go to the project's box: wait until there is one (not
+  // "Loading…" or "Connecting…" while the fixtures arrive).
+  await expect(composer.getByRole("button", { name: /^Project: (?!Loading)/ })).toBeVisible();
+  await expect(composer.getByRole("button", { name: /^Box: (?!Connecting|No box)/ })).toBeVisible();
 
   // Held over the composer: taken, and no hint.
   expect(await fire(page, '[data-testid="task-composer"] textarea', "dragover")).toBe(true);
