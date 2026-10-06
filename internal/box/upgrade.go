@@ -143,6 +143,10 @@ func (b *Box) Capabilities() []string {
 		// .../controls (controls.go).
 		caps = append(caps, "turns", "queue", "ask", "controls")
 	}
+	// draft: GET .../draft, the reply Claude Code is writing, read from its
+	// screen (draft.go); and transcript.changed when a shown chat's
+	// transcript is written to (transcriptwatch.go).
+	caps = append(caps, "draft")
 	if b.Runs != nil {
 		caps = append(caps, "runs", "exec.detach")
 	}

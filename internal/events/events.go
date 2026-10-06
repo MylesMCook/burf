@@ -10,6 +10,15 @@ import (
 	"time"
 )
 
+// TranscriptChanged says an agent wrote to its transcript, which a chat is
+// showing: sent at most every few hundred milliseconds per session while
+// its agent writes (box/transcriptwatch.go), so the app reads it at once.
+// It is chatter: "*" hooks don't run for it, only hooks that name it.
+const TranscriptChanged = "transcript.changed"
+
+// Chatty says events of type typ come too often for hooks on "*".
+func Chatty(typ string) bool { return typ == TranscriptChanged }
+
 type Event struct {
 	// Seq numbers the box's events in the order they happened, from its
 	// journal. It is 0 where nothing numbers them (the laptop's own events).

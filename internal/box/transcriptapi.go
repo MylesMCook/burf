@@ -94,6 +94,8 @@ func (b *Box) transcript(w http.ResponseWriter, r *http.Request) error {
 	if r.URL.Query().Has("before") {
 		return olderPage(w, r, agent, path, sess.Dir)
 	}
+	// A chat reads this while it shows: tell it as soon as the agent writes.
+	b.transcriptWatch().seen(sess.Name, sess.Dir, path)
 	// gen is the reading since counts in: one the box let go is read
 	// afresh, and answered whole (transcript.Result.Gen).
 	res, err := transcripts.Follow(agent, path, sess.Dir, max(since, 0), r.URL.Query().Get("gen"))

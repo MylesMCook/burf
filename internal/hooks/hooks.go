@@ -86,7 +86,7 @@ func MatchesBefore(h Hook, e events.Event) bool {
 func pattern(on, typ string) bool {
 	switch {
 	case on == "*":
-		return true
+		return !events.Chatty(typ)
 	case strings.HasSuffix(on, ".*"):
 		return strings.HasPrefix(typ, strings.TrimSuffix(on, "*"))
 	}
