@@ -139,7 +139,7 @@ func TestAProfileOrASnapLetsChromiumMakeNamespaces(t *testing.T) {
 	os.WriteFile(filepath.Join(dir, "chrome"), []byte("abi <abi/4.0>,\nprofile chrome /opt/google/chrome/chrome flags=(unconfined) {\n  userns,\n}\n"), 0o644)
 	os.WriteFile(filepath.Join(dir, "other"), []byte("profile other /usr/bin/other {\n}\n"), 0o644)
 	for bin, want := range map[string]bool{
-		"/opt/google/chrome/chrome": true,
+		"/opt/google/chrome/chrome":                           true,
 		"/snap/chromium/3000/usr/lib/chromium-browser/chrome": true,
 		"/home/me/.cache/ms-playwright/chromium_headless_shell-1200/chrome-headless-shell-linux64/chrome-headless-shell": false,
 		"/usr/bin/other": false,
