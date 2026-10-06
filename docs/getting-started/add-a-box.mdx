@@ -84,7 +84,7 @@ that can't run berthd are left out; a long list gets a filter.
 or the `User` your `~/.ssh/config` gives that host; change it if the box's
 user differs) and what to call the box, then runs
 [`berth add ssh`](#over-ssh) to the machine's MagicDNS name with its output
-as it goes. berthd listens on the machine's tailnet address only, so there is
+in the [compact dialog](#in-the-app). berthd listens on the machine's tailnet address only, so there is
 nothing to open to the internet and nothing to choose.
 
 - **Tailscale SSH.** Machines running Tailscale SSH (`tailscale set --ssh`)
@@ -187,55 +187,111 @@ read it before piping it to `sh` if you like.
 
 ## Over SSH
 
-If you can `ssh me@my-box`, Berth sets the box up from here in one guided
-flow, with nothing to install on the box by hand: berthd, tmux and git when
-they're missing, the agent CLIs you choose, their hooks, and the pairing.
+If you can `ssh me@my-box`, Berth sets the box up from here, with nothing to
+install on the box by hand: berthd, tmux and git when they're missing, the
+agent CLIs you choose, their hooks, and the pairing. Adding a box is quiet:
+there is no plan to read and nothing to press. Berth stops only for a step
+that truly needs `sudo`'s password on the box, and only for that step.
 
 ### In the app
 
-**Add a box › Or let Berth set it up over SSH** (or **Install and pair** on a
-machine on your tailnet) opens the guided install, full screen:
+**Add a box › Or let Berth set it up over SSH** takes `user@host`, with
+**Agents** right below it: Claude Code is ticked; Codex, Cursor Agent and
+OpenCode are there to add, and your choice is remembered for the next box.
+**Install and pair** on a machine [on your tailnet](#on-your-tailnet) has the
+same choice. **Set up** opens a compact dialog with a short checklist:
+Connect, Install berthd, tmux and git, the agents, Agent integrations, Pair.
+Each step ticks as it ends.
 
-1. **The plan.** What will run, step by step, with the exact commands a click
-   away and the steps that may need `sudo` marked. Above it, **Agents**:
-   Claude Code is ticked; Codex, Cursor Agent and OpenCode are there to add.
-   Your choice is remembered for the next box.
-2. **The terminal.** Open the terminal and install starts `berth add ssh` in
-   a terminal on this computer, shown full screen beside a checklist of the
-   steps. Press **Enter** in it to start. When `sudo` on the box asks
-   for your password, the banner says so: type it in the terminal. What you
-   type goes to the box through this terminal and nowhere else; Berth never
-   sees, keeps or logs it.
-3. **Ready.** Each step ticks as it ends. A step that fails shows what failed
-   (with any command to run as a copyable line) and **Retry from here**,
-   which runs again from that step; the steps before it are kept. At the end
-   the box is paired, and the button goes on to it (or back to
-   [Team setup](/guides/team-setup) when that's where you came from).
+- **Nothing needs a password** (the usual case: git is there, and the box
+  lets you keep berthd running after you log out without root): no terminal
+  ever shows, and the dialog ends with **my-box is ready** and **Go to
+  my-box**.
+- **git is missing**: when the **tmux and git** step needs root, its row is
+  marked **sudo** and a small terminal opens in the dialog, for that step
+  alone. Type your password there and press Enter; it goes to `sudo` on the
+  box and nowhere else, and Berth never sees, keeps or logs it. The terminal
+  closes when the step is done, and the rest go on quietly.
+- **Keeping berthd running after you log out needs root**, and nothing else
+  does: the dialog asks first. **Keep it running** opens the terminal for
+  the password; **Skip** goes on without it (berthd then stops when your last
+  login there ends, and `sudo loginctl enable-linger me` on the box turns it
+  on later). When git needs the password too, both go in the same terminal,
+  so `sudo` asks once.
 
-A login problem stops at the first step with what to do: trust a new host
-key, try another key file, or install with the command on the box instead.
+A step that fails shows why, any command to run as a copyable line, and
+**Retry from here**, which runs again from that step; the steps before it are
+kept. **Show what the box printed** opens its output. A login problem stops
+at the first step with what to do: trust a new host key, try another key
+file, or install with the command on the box instead.
+
+Adding a box from [Team setup](/guides/team-setup) is
+[the guided install](#the-guided-install) instead.
 
 ### From a terminal
 
-The same flow, in your own terminal:
+The same, in your own terminal:
 
 ```sh
 berth add ssh me@my-box --agents claude,codex
 ```
 
-It connects, reads what the box has, prints the plan, and waits for
-**Enter**:
+It connects, reads what the box has, and goes: no plan, no Enter. Steps
+that need nothing from you run over SSH without a terminal; a step that
+needs `sudo`'s password runs in one (`ssh -t`), where `sudo` asks:
 
-```text title="On a fresh Ubuntu 24.04 box"
+```text title="On a fresh Ubuntu 24.04 box without git"
 ==> Connect to me@my-box
 ✓ Connect to me@my-box (me@my-box, linux/arm64)
+==> Install berthd
+    Uploading berthd-linux-arm64 (15 MB) to ~/.local/bin/berthd
+    Installed /home/me/.config/systemd/user/berthd.service; berthd is serving on 100.101.102.103:7444.
+✓ Install berthd
 
+==> Keeping berthd running after you log out
+    This needs root: sudo asks for me's password on this box.
+    Type it and press Enter. It goes to sudo here; Berth never sees it or keeps it.
+[sudo] password for me:
+    Lingering is on: berthd keeps running when you log out.
+✓ Keep berthd running after you log out
+
+==> tmux and git
+    Installing git with apt-get
+    …
+✓ tmux and git
+
+==> Agent CLIs: Claude Code and Codex
+…
+✓ Pair with this computer
+
+Ready: paired with my-box at 100.101.102.103:7444. SSH is no longer needed for this box.
+```
+
+Lingering only needing root (git is there) asks
+`Keep berthd running after you log out? [Y/n]` first; Enter says yes, `n`
+skips it and says the command to run later. Running it again is safe: each
+step checks first, and on a box that is set up it only reinstalls the
+service and pairs again.
+
+### The guided install
+
+`berth add ssh --guided`, and adding a box from [Team setup](/guides/team-setup),
+show the whole plan first: what will run, step by step, the exact commands,
+and which steps may need `sudo`. In the app it is full screen, with the
+agents to choose and, from Team setup, the team's own steps listed after
+Berth's. Then every step runs in one terminal, full screen beside a
+checklist: press **Enter** in it to start, and type your password when
+`sudo` asks. From Team setup, when the box is ready the team's setup starts
+on it in the same screen, and **Back to Team setup** goes on from there.
+
+```text title="berth add ssh me@my-box --agents claude,codex --guided"
 Berth will set this box up:
  1. Install berthd
       upload berthd-linux-arm64 → ~/.local/bin/berthd
       ~/.local/bin/berthd install --no-tools --no-integrations --keep-listen
  2. Keep berthd running after you log out  [sudo]
-      sudo loginctl enable-linger me
+      loginctl enable-linger me   (no sudo, where the box allows it)
+      sudo loginctl enable-linger me   (otherwise)
  3. tmux and git  [sudo]
       upload tmux-linux-arm64 → ~/.local/bin/tmux   (Berth's own build: no sudo)
       sudo apt-get update -q
@@ -249,19 +305,15 @@ Berth will set this box up:
 Press Enter to start, or Ctrl-C to stop.
 ```
 
-Then it uploads berthd (and Berth's tmux, below), and runs the box's steps
-in one terminal on the box (`ssh -t`), so `sudo` asks for your password once,
-there. It ends with `Ready: paired with my-box`. Running it again is safe:
-each step checks first, and on a box that is set up it only reinstalls the
-service and pairs again.
-
 What each step does:
 
 - **berthd** goes in `~/.local/bin` and runs as your user service (systemd on
   Linux, launchd on macOS), with `~/.local/bin` on its `PATH`.
 - **Lingering** (Linux): systemd stops a user's services at logout unless
-  lingering is on, so it is turned on with `sudo loginctl enable-linger`,
-  only if it is off.
+  lingering is on, so it is turned on, only if it is off: first with
+  `loginctl enable-linger` alone, which many boxes allow for your own
+  account, or with `sudo` when `sudo` needs no password. Only when neither
+  works does it need your password (see above).
 - **tmux and git**, only what is missing. `berth` and the app carry a static
   tmux for Linux (amd64 and arm64), so a box without tmux gets that one in
   `~/.local/bin`, with no sudo. git comes from the box's package manager
@@ -297,7 +349,7 @@ with `adduser me && usermod -aG sudo me`).
 
 ### Without a terminal
 
-With `--yes`, or with no terminal (a script, CI), nothing waits for Enter and
+With `--yes`, or with no terminal (a script, CI), nothing waits and
 nothing can type a password: steps that need `sudo` use it only when it asks
 for nothing, and otherwise stop with the command to run on the box:
 
@@ -323,7 +375,8 @@ Options:
 | --- | --- |
 | `--name N` | What to call the box in Berth (default: its hostname). It becomes part of URLs like `3000.N.localhost`. |
 | `--agents LIST` | The agent CLIs to install: `claude`, `codex`, `cursor`, `opencode`, comma-separated, or `none` (default `claude`). |
-| `--yes` | Ask nothing: don't wait for Enter, and stop with the command to run where `sudo` would ask for a password. |
+| `--guided` | Show the whole plan first, wait for Enter, and run every step in one terminal (what Team setup does). Without it, steps run on their own and only one that needs `sudo`'s password asks. |
+| `--yes` | Ask nothing, and stop with the command to run where `sudo` would ask for a password. |
 | `--from STEP` | Start from a step (`berthd`, `linger`, `tools`, `agents`, `integrations`, `pair`), keeping the ones before it. It still connects first. |
 | `--network NET` | Reach the box through one of [your other tailnets](#boxes-on-another-tailnet). |
 | `--listen ADDR` | Where berthd listens, for a box without a tailnet address. |
@@ -379,8 +432,8 @@ the first-run setup, show one screen with every way in:
    link. Enter pairs.
 3. **Or let Berth set it up over SSH** takes `user@host` (Tab completes hosts
    from `~/.ssh/config` and machines on your tailnet), says which SSH agent
-   or keys it will use before connecting, and runs `berth add ssh` with its
-   output as it goes.
+   or keys it will use before connecting, and runs `berth add ssh` quietly,
+   with a short checklist ([over SSH](#over-ssh)).
 
 Without a tailnet, the install command comes first and **Or use Tailscale**
 sits beside the SSH option. When a box can't be reached and might be on a

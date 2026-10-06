@@ -36,7 +36,10 @@ last and when, and the commit Berth will run. **What you'll get** lists:
   as it is at that commit.
 - **Repos**: each repository, where it is cloned, and where its setup comes
   from: the **repo's .berth/config.json**, the **team kit**, or none.
-- **Keys**: one line, such as "5 from 1Password · 1 to enter".
+- **Keys**: one line, such as "5 from 1Password · 1 to enter". When the
+  shared keys are 1Password references, the **Keys** check offers **Use
+  1Password** (the default) or **Skip 1Password**; see
+  [skipping 1Password](#skipping-1password).
 
 On the right is a short checklist, **GitHub**, **Box** and **Keys**, which
 ends in **Set up for Acme**. Pressing it turns the same rows into
@@ -123,6 +126,30 @@ own signs in only the shell it runs in, which berthd can't see.) A
 [service account](https://developer.1password.com/docs/service-accounts/)
 never ends: see [secrets](/guides/secrets).
 
+### Skipping 1Password
+
+1Password is optional unless the team says otherwise. **Skip 1Password**, in
+the **Keys** check, asks for each shared key there, beside the asked ones,
+marked **the team's, from 1Password**: type it once, or leave it blank. Then:
+
+- there is no **1Password on the box** step, and no `op://` reference goes
+  into any project's config on the box, so nothing ever calls `op` for them;
+- the keys you typed are kept on that box, in each project's own config, as
+  asked keys are;
+- the ones left blank are **missing keys**: **You're set up** lists them by
+  repository, with **Project settings** beside each, and the project's
+  settings list them too until they have a value.
+
+**Use 1Password**, on **You're set up**, in a project's settings or in
+Settings › Boxes, turns it on later: the references go back into each
+project's config in place of what was typed, and the 1Password step signs
+op in on the box, once, in its terminal. The steps before it don't run
+again.
+
+A team that wants its keys only from 1Password says so in `team.json`
+(`"onepassword": "required"`); the page then offers no **Skip**, and says
+why. Without it, or with `"optional"`, engineers may skip.
+
 ### Agent CLIs on the box
 
 A team setup can name the agent CLIs every engineer's box gets
@@ -144,8 +171,16 @@ so the box needs tmux (and git). [Adding the box over SSH](/getting-started/add-
 gives it both: Berth's own tmux (no sudo) and git in the guided terminal,
 where `sudo` asks for your password; the install command installs both when
 it can, or says the command to run. The Team setup page checks the box too,
-and says **Install tmux on devbox**, with the command, until it is there. A
-box you add from Team setup comes back to it when it is **Ready**.
+and says **Install tmux on devbox**, with the command, until it is there.
+
+Adding a box from Team setup (the **+** beside the box, or **Add a box**
+while the page is open) is the full [guided install](/getting-started/add-a-box#the-guided-install),
+not the quick one: the whole plan, full screen, with the team's steps listed
+after Berth's, then one terminal on this computer for Berth's steps. When the
+box is ready, the team's setup starts on it in the same screen, its steps
+under Berth's and its terminal beside them, and **Back to Team setup** goes
+on from there. Anywhere else, adding a box is
+[quiet](/getting-started/add-a-box#over-ssh).
 
 ### Groups a step adds you to
 
@@ -186,6 +221,7 @@ berth team show acme                      # the org, the commit, the steps, each
 berth team setup acme devbox              # run it on devbox; prints progress, and where to type your password
 berth team status                         # each team setup you accepted, and how it stands
 berth team retry acme --from postgres     # start again from a step (or a repo)
+berth team setup acme devbox --no-1password   # skip 1Password: type the shared keys once (Enter leaves one missing)
 ```
 
 `berth team setup` follows the setup until it ends; the steps run in the
@@ -283,6 +319,7 @@ branch is offered as an update, like the org's own.
 | `projects[].id` | lowercase letters, digits and dashes, not starting or ending with a dash. It is part of every worktree's URL (`<worktree>.<id>.<box>.localhost`), so an id with a dot is refused: for `acme/acme.com`, use `"id": "site"` with `"path": "~/code/acme.com"` to keep the folder. (An org without a `.berth` names each picked repo this way itself: `acme.com` becomes `acme-com`.) |
 | `projects[].kit` | for a repository without its own `.berth/config.json`: a kit link pinned to a commit (`https://github.com/o/kit@7f93797`, or `…/tree/<commit>/<dir>`), or a folder inside `.berth` (`./projects/api`). A link without a commit is refused |
 | `keys.<project>` | `from` (default `.env.example`), `shared` (name → `op://…` or `env://…` reference; a value is refused), `ask` (names each engineer enters once) |
+| `onepassword` | optional: `"optional"` (the default) lets engineers [skip 1Password](#skipping-1password) and type the shared keys instead; `"required"` means the box must sign op in. Anything else is refused |
 | `updates.notify` | default `true`: offer newer commits as updates |
 
 Fields starting with `$` are comments, at any level (`"$why"` inside
