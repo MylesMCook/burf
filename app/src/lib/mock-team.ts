@@ -22,6 +22,8 @@ import type { Accepted, GitHubState, OrgRepo, PlanStep, ProjectView, SetupReques
 // github.com/jo-acme/acme-setup/tree/team-setup/team is the same
 // Acme setup, read from a user's repo on a branch; any other link can't
 // be read.
+// &team-op=required: the team requires 1Password for its shared keys,
+// so Skip 1Password isn't offered.
 // &teamhold=github,repos keeps the run at those points until
 // window.__teamMock.advance(name), for screenshots; the sudo prompt always
 // waits for a password typed in its terminal (or advance("sudo")).
@@ -98,6 +100,8 @@ const shopSetup: TeamSetup = {
     },
     "billing-api": { from: ".env.example", shared: { SHOP_API_KEY: "op://dev/dev_billing_api_shop/api_key" } },
   },
+  // The shared keys are 1Password references; the team can skip it.
+  onepassword: params.get("team-op") === "required" ? "required" : "optional",
   updates: { notify: true },
 };
 
