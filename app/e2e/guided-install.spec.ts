@@ -2,29 +2,37 @@ import type { Page } from "@playwright/test";
 
 import { type App, expect, mockOnly, test } from "./fixtures";
 
-// The guided install (views/onboarding/guided-install.tsx): adding a box
-// over SSH shows the plan with the agents to choose, then runs berth add
-// ssh in a terminal here, full screen, beside a checklist the step markers
-// keep up to date. The mock (lib/mock-install.ts) plays a fresh Ubuntu box:
-// Enter to start, sudo asking for a password, a word in the host picking a
-// path ("flaky" fails a step once, "newkey" an unknown host key).
+// The guided install (views/onboarding/guided-install.tsx) is adding a box
+// from Team setup: the plan, full screen, with the agents to choose and the
+// team's steps after Berth's, then berth add ssh --guided in a terminal here
+// beside a checklist the step markers keep up to date, then the team's
+// setup on the new box in the same screen. (Adding a box anywhere else is
+// the quick install: quick-install.spec.ts.) The mock (lib/mock-install.ts)
+// plays a fresh Ubuntu box: Enter to start, sudo asking for a password, a
+// word in the host picking a path ("flaky" fails a step once, "newkey" an
+// unknown host key). The team is the mock's Acme (?team=acme).
 
 test.beforeEach(() => mockOnly("the guided install's terminal is a mock fixture"));
 test.describe.configure({ timeout: 60_000 });
 
 const guided = (page: Page) => page.getByTestId("guided-install");
 const step = (page: Page, id: string) => guided(page).getByTestId(`step-${id}`);
+const advance = (page: Page, name: string) => page.evaluate((n) => (window as unknown as { __teamMock: { advance(n: string): void } }).__teamMock.advance(n), name);
 
+// openPlan adds a box from Acme's Team setup page, which opens the guided
+// install's plan.
 async function openPlan(app: App, host: string) {
   const { page } = app;
-  await app.open();
-  await app.openSettings("boxes");
-  await page.getByRole("button", { name: "Add a box" }).first().click();
+  await app.open({ params: { team: "acme", "team-page": "acme" } });
+  await page.getByRole("button", { name: "Add a box" }).locator("visible=true").first().click();
   await page.getByText("Or let Berth set it up over SSH").click();
   await page.getByLabel("SSH host, like me@my-box").fill(host);
+  // Team setup's add a box has the agents in the plan, not inline.
+  await expect(page.getByTestId("inline-agents")).toHaveCount(0);
   await page.getByTestId("ssh-set-up").click();
   await expect(guided(page)).toHaveAttribute("data-stage", "plan");
   await expect(page.getByTestId("install-plan")).toBeVisible();
+  await expect(page.getByTestId("quick-install")).toHaveCount(0);
 }
 
 async function startRun(page: Page) {
@@ -38,9 +46,10 @@ async function startRun(page: Page) {
   await expect(page.getByTestId("install-banner")).not.toHaveAttribute("data-waiting", "enter");
 }
 
-test("the plan, then the terminal: Enter to start, sudo's password, Ready", async ({ app }) => {
+test("from Team setup: the whole plan, the terminal, sudo's password, then the team's setup on the new box", async ({ app }) => {
   const { page } = app;
   await openPlan(app, "demo@my-box");
+  await expect(guided(page)).toContainText("Set up demo@my-box for Acme");
   // The plan says what runs, which steps need sudo, and the exact commands.
   const plan = page.getByTestId("install-plan");
   await expect(plan.getByTestId("plan-connect")).toContainText("Connect to demo@my-box");
@@ -51,6 +60,11 @@ test("the plan, then the terminal: Enter to start, sudo's password, Ready", asyn
   // Claude Code is ticked the first time.
   await expect(page.getByTestId("agent-claude")).toHaveAttribute("data-checked", "true");
   await expect(plan.getByTestId("plan-agents")).toContainText("Claude Code");
+  // Then the team's own steps, after Berth's.
+  const team = page.getByTestId("install-plan-team");
+  await expect(guided(page)).toContainText("Then Acme's setup");
+  await expect(team.getByTestId("plan-team-packages")).toContainText("System packages");
+  await expect(team.getByTestId("plan-team-1password")).toBeVisible();
 
   await startRun(page);
   // sudo asks on the box: the checklist and the banner say so.
@@ -60,13 +74,21 @@ test("the plan, then the terminal: Enter to start, sudo's password, Ready", asyn
   await expect(step(page, "berthd")).toHaveAttribute("data-state", "done");
   await page.keyboard.type("s3cret-pw");
   await page.keyboard.press("Enter");
-  await expect(page.getByTestId("install-ready")).toBeVisible({ timeout: 30_000 });
-  for (const id of ["connect", "berthd", "linger", "tools", "agents", "integrations", "pair"]) await expect(step(page, id)).toHaveAttribute("data-state", "done");
+  // The box is ready, and Acme's setup starts on it in the same screen.
+  const phase = page.getByTestId("team-phase");
+  await expect(phase).toBeVisible({ timeout: 30_000 });
+  for (const id of ["connect", "berthd", "linger", "tools", "agents", "integrations", "pair"]) await expect(guided(page).getByTestId(`step-${id}`)).toHaveAttribute("data-state", "done");
+  await expect(phase.getByTestId("team-step-update")).toHaveAttribute("data-state", "running", { timeout: 10_000 });
+  await advance(page, "sudo");
+  await expect(phase.getByTestId("team-step-github")).toHaveAttribute("data-state", /done|running/, { timeout: 15_000 });
+  await expect(guided(page).getByTestId("install-continue")).toBeVisible({ timeout: 20_000 });
   // The password went to the box's terminal and nowhere the app keeps.
   expect(await page.evaluate(() => JSON.stringify({ ...localStorage }) + JSON.stringify({ ...sessionStorage }) + document.body.innerText)).not.toContain("s3cret-pw");
-  await page.getByTestId("install-continue").click();
+  await guided(page).getByTestId("install-continue").click();
   await expect(guided(page)).toHaveCount(0);
-  await expect(page.getByTestId("settings-boxes")).toContainText("my-box");
+  // Back on Team setup, on the new box.
+  await expect(page.getByTestId("team-page")).toBeVisible();
+  await expect(page.getByTestId("team-sidebar")).toContainText("Acme on my-box");
 });
 
 test("the agents chosen are installed, and remembered for the next box", async ({ app }) => {
@@ -104,7 +126,7 @@ test("a failed step offers its command and Retry from it; the steps before stay 
   await step(page, "tools").getByTestId("retry-tools").click();
   await expect(step(page, "linger")).toHaveAttribute("data-state", "done");
   await expect(step(page, "tools")).toHaveAttribute("data-state", "running");
-  await expect(page.getByTestId("install-ready")).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByTestId("team-phase")).toBeVisible({ timeout: 30_000 });
   await expect(step(page, "tools")).toHaveAttribute("data-state", "done");
 });
 

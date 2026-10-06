@@ -324,3 +324,96 @@ test("a link that can't be read says so, and never offers the repo picker", asyn
   await expect(page.getByTestId("team-unreadable")).toContainText("someone/private-setup@main");
   await expect(page.getByTestId("team-none")).toHaveCount(0);
 });
+
+// Skipping 1Password. Acme's shared keys are 1Password references: shop has
+// four and asks for one of its own, billing-api has one.
+const ACME = { team: "acme", "team-page": "acme" };
+const acmeRun = (page: Page) =>
+  page.evaluate(() => {
+    const runs = (window as unknown as { __teamMock: { runs: Record<string, { steps: { id: string }[]; onepassword_skipped?: boolean }> } }).__teamMock.runs;
+    const r = runs["sean-dev/acme"];
+    return r && { steps: r.steps.map((s) => s.id), skipped: !!r.onepassword_skipped };
+  });
+
+test("Skip 1Password: the shared keys are typed once, blank ones listed as missing, op never asked", async ({ app }) => {
+  const { page } = app;
+  await app.open({ params: ACME });
+  const list = checklist(page);
+  // 1Password is the default when the keys are op:// references.
+  await expect(list.getByTestId("op-use")).toHaveAttribute("aria-checked", "true");
+  await expect(list.getByTestId("keys-line")).toHaveText("5 from 1Password · 1 to enter");
+  await expect(step(page, "1password")).toBeVisible();
+  await list.getByTestId("op-skip").click();
+  await expect(list.getByTestId("op-skip")).toHaveAttribute("aria-checked", "true");
+  await expect(list.getByTestId("op-note")).toContainText("leave it blank");
+  // Each shared key is asked for, beside the asked one.
+  await expect(list.getByTestId("keys-line")).toHaveText("6 to enter");
+  await expect(list.getByTestId("key-input-STRIPE_SECRET_KEY")).toContainText("the team's, from 1Password");
+  await expect(list.getByTestId("key-input-MAIL_API_KEY")).toContainText("yours alone");
+  await list.getByLabel(/STRIPE_SECRET_KEY/).fill("sk_test_typed");
+  await list.getByLabel(/MAIL_API_KEY/).fill("mail-test");
+  await expect(list.getByTestId("keys-line")).toHaveText("4 to enter");
+  // The plan has no 1Password step, and says the keys are typed.
+  await expect(step(page, "1password")).toHaveCount(0);
+  await expect(page.getByTestId("plan-keys-skip")).toContainText("1Password skipped");
+  await expect(list).toContainText("It signs in to GitHub itself in its own terminal");
+
+  await list.getByTestId("team-run").click();
+  await expect(step(page, "update")).toHaveAttribute("data-state", "waiting");
+  await advance(page, "sudo");
+  await expect(page.getByRole("heading", { name: "You're set up for Acme" })).toBeVisible({ timeout: 25_000 });
+  // op was never part of it: no 1Password step ran on the box.
+  expect(await acmeRun(page)).toEqual({ steps: ["update", "packages", "docker", "cli", "node", "yarn", "postgres", "redis", "agents", "github"], skipped: true });
+  // The blank ones, listed by repo with where to add them; 1Password can come later.
+  const missing = page.getByTestId("team-missing-keys");
+  await expect(missing).toContainText("Missing keys: add them in Project settings");
+  await expect(missing).toContainText("MAPS_API_KEY, STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET");
+  await expect(missing).toContainText("SHOP_API_KEY");
+  await expect(missing).not.toContainText("STRIPE_SECRET_KEY");
+  await expect(missing).not.toContainText("MAIL_API_KEY");
+  await expect(missing.getByTestId("use-1password")).toBeVisible();
+  // The project says so too, in its settings.
+  await missing.getByRole("button", { name: "Project settings" }).first().click();
+  const note = page.getByTestId("project-missing-keys");
+  await expect(note).toContainText("MAPS_API_KEY");
+  await expect(note.getByTestId("use-1password")).toBeVisible();
+  // Use 1Password: the references go back, and op signs in once.
+  await note.getByTestId("use-1password").click();
+  await expect(step(page, "1password")).toBeVisible();
+  await expect.poll(async () => (await acmeRun(page))?.skipped).toBe(false);
+});
+
+test("Skip 1Password with every key left blank: all of them are missing, and the setup still finishes", async ({ app }) => {
+  const { page } = app;
+  await app.open({ params: ACME });
+  const list = checklist(page);
+  await list.getByTestId("op-skip").click();
+  await expect(list.getByTestId("keys-line")).toHaveText("6 to enter");
+  await list.getByTestId("team-run").click();
+  await expect(step(page, "update")).toHaveAttribute("data-state", "waiting");
+  await advance(page, "sudo");
+  await expect(page.getByRole("heading", { name: "You're set up for Acme" })).toBeVisible({ timeout: 25_000 });
+  const missing = page.getByTestId("team-missing-keys");
+  for (const k of ["MAIL_API_KEY", "MAPS_API_KEY", "STRIPE_PUBLISHABLE_KEY", "STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET", "SHOP_API_KEY"]) await expect(missing).toContainText(k);
+  expect((await acmeRun(page))?.steps).not.toContain("1password");
+});
+
+test("Use 1Password (the default): the keys aren't asked for, and op signs in on the box", async ({ app }) => {
+  const { page } = app;
+  await app.open({ params: { ...ACME, teamhold: "1password" } });
+  const list = checklist(page);
+  await expect(list.getByTestId("key-input-STRIPE_SECRET_KEY")).toHaveCount(0);
+  await list.getByTestId("team-run").click();
+  await expect(step(page, "update")).toHaveAttribute("data-state", "waiting");
+  await advance(page, "sudo");
+  await expect(step(page, "1password")).toHaveAttribute("data-state", "waiting", { timeout: 15_000 });
+  expect(await acmeRun(page)).toMatchObject({ skipped: false });
+});
+
+test("a team that requires 1Password: Skip isn't offered, and says why", async ({ app }) => {
+  const { page } = app;
+  await app.open({ params: { ...ACME, "team-op": "required" } });
+  const list = checklist(page);
+  await expect(list.getByTestId("op-skip")).toBeDisabled();
+  await expect(list.getByTestId("op-note")).toContainText("Acme requires 1Password for its 5 shared keys");
+});
