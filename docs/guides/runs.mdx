@@ -205,10 +205,17 @@ JSON:
 | `berth_screen` | the last lines (at most 60) |
 | `berth_task_new` | the new session and worktree |
 | `berth_send` | the turn (held until the agent is idle, by default) |
-| `berth_wait_turn` | the state after at most 90 s; if not ended, a cursor to call again with |
+| `berth_wait_turn` | the state after at most 90 s; if not ended, a cursor to call again with (for short waits) |
 | `berth_exec` | a detached run; with `wait` (at most 90 s) its exit code and failing tail |
 | `berth_run_start`, `berth_run_get`, `berth_run_cancel` | a run, in brief |
 | `berth_attempts` | an attempts run |
 
 Agents can start and follow runs but not decide their gates: those are a
 person's.
+
+The tools that start work (`berth_task_new`, `berth_send`, `berth_exec`,
+`berth_run_start`, `berth_attempts`) take `notify` (default true) and answer
+`"notify": true` when the agent will
+[hear back](/guides/orchestration#hearing-back): a `<berth-notification>`
+arrives in its session when the work ends, needs a person or reaches a gate,
+so it ends its turn rather than calling `berth_wait_turn` in a loop.

@@ -35,6 +35,21 @@ again.
   chat's transcript changes. Codex chats show messages as they land, as
   before. Needs the box updated; older boxes keep working as they did.
 
+- **An agent hears back when work it started is done.** An agent that
+  starts a task in a worktree, prompts another agent, or starts a run no
+  longer has to keep polling to find out it finished. Berth remembers who
+  asked and, when the work finishes, fails, needs a person or reaches a
+  gate, types one short `<berth-notification>` into the asking agent's
+  session at its next idle: the agent's answer, the files it changed with
+  their line counts, its branch and how to review and merge it, and where
+  to read more. Several that land together arrive as one message; each is
+  said once, never in a circle, never to an agent that's gone, and at most
+  one every 15 seconds. The skills and MCP tools now tell agents to end
+  their turn rather than wait, and `notify: false` (or `--no-notify`) opts
+  out. In the app the report reads as a card in the chat, with a button to
+  open the agent it's about. See
+  [hearing back](/guides/orchestration#hearing-back).
+
 - **A file dropped on the window no longer replaces the app.** Dropping a
   file from Finder where nothing takes it used to open it in Berth's place,
   a whole-window markdown file with no way back. Now it is refused, and a

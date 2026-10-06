@@ -70,6 +70,10 @@ berthd session screen shop-fix-login-claude-1a2b --history 200
   trust this folder?". Wait with `berthd session wait NAME --for idle,waiting`:
   `idle` means it is at its prompt; `waiting` means it needs the user, so
   tell them. Never poll the screen for a prompt.
+- An agent you start with `task new` reports back to you: when its turn
+  ends (or it needs a person) berth types a `<berth-notification>` into your
+  session at your next idle. End your turn rather than waiting on it; see
+  berth-orchestrate.
 
 A branch that already exists, locally or on origin, is checked out as it is.
 Session names are printed when they start and listed by `sessions`. Do not run

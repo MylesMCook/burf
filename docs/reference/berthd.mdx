@@ -64,13 +64,13 @@ asks the app to open the page as a browser tab beside the agent; the
 | --- | --- |
 | `berthd sessions [--json]` | List sessions |
 | `berthd agents [--json]` | Agent CLIs this box can start |
-| `berthd task new LOC/NAME [--agent ID] [--prompt TEXT] [--open split\|tab] [--branch B] [--base REF] [-- COMMAND...]` | A worktree with an agent (or a command) running in it |
+| `berthd task new LOC/NAME [--agent ID] [--prompt TEXT] [--open split\|tab] [--branch B] [--base REF] [--no-notify] [-- COMMAND...]` | A worktree with an agent (or a command) running in it; from an agent's session, that agent [hears back](/guides/orchestration#hearing-back) when its first turn ends |
 | `berthd session new LOC[/WORKTREE] [--name N] [--agent ID [--prompt TEXT]] [--open split\|tab] [-- COMMAND...]` | Start an agent or a command (default: a shell) there |
 | `berthd session screen NAME [--history N]` | Print what the session shows |
-| `berthd session send NAME TEXT [--when now\|idle] [--force] [--idem KEY] [--no-enter] [--wait [--timeout 30m]]` | Type a prompt into a session (or hold it until the agent is idle), and wait for its turn |
+| `berthd session send NAME TEXT [--when now\|idle] [--force] [--idem KEY] [--no-enter] [--wait [--timeout 30m]] [--no-notify]` | Type a prompt into a session (or hold it until the agent is idle), and wait for its turn; without `--wait`, an agent sending it hears back when the turn ends |
 | `berthd session wait NAME [--turn ID] [--for finished,waiting] [--timeout 30m]` | Wait for a turn (from `session send`), or its agent's current one, to end |
 | `berthd session turns NAME [--limit 10] [--json]` | List a session's turns: who prompted, how it ended, how long it took |
-| `berthd exec LOC[/WORKTREE] [--timeout 10m] [--detach] -- COMMAND...` | Run a command there and print its output; `--detach` runs it as a run |
+| `berthd exec LOC[/WORKTREE] [--timeout 10m] [--detach [--no-notify]] -- COMMAND...` | Run a command there and print its output; `--detach` runs it as a run, which reports back to an agent that started it |
 | `berthd loop SESSION --check CMD [--prompt TEXT] [--max 5] [--turn-timeout 30m] [--cancel-on-exit] [--detach]` | Prompt, wait, check, and feed failures back, as a durable run |
 | `berthd runs`, `berthd run start\|get\|logs\|approve\|reject\|cancel\|templates …` | [Runs](/guides/runs), as `berth run` without the box |
 | `berthd browser open\|snapshot\|click\|fill\|press\|select\|hover\|check\|wait\|shot\|console\|network\|eval\|status\|close [LOC/WT] …` | The worktree's [agent browser](/guides/agent-browser); inside a session, its own worktree |

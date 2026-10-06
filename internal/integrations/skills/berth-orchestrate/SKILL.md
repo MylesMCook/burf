@@ -32,17 +32,51 @@ berthd exec shop/checkout -- pnpm test                                    # a ch
 - `exec` prints the output and fails with the command's exit code, in the
   worktree's environment (`$BERTH_PORT`, …).
 
+## Hearing back: end your turn, don't poll
+
+Work you start from your own session (`task new`, `session send`,
+`exec --detach`, `run start`, and the `berth_*` MCP tools that start work)
+reports back to you. When it finishes, fails, exits, needs a person, or a
+run reaches a gate, berth types one message into your session the next time
+you are idle:
+
+```
+<berth-notification>
+This comes from Berth, not from the user: news of agent work you started. …
+<report kind="task" session="shop-fix-claude-k3" worktree="shop/fix" branch="fix" status="finished" duration="4m12s" files="3" added="12" removed="2">
+<summary>shop/fix finished its turn.</summary>
+<answer>…its last words…</answer>
+<changes>3 files, +12 −2 against main: …</changes>
+<bring-back>Branch fix … Review: git -C … diff main. … git merge fix …</bring-back>
+<more>berth_screen session=… · its full conversation is …</more>
+</report>
+</berth-notification>
+```
+
+- So after starting work, **end your turn**. Don't loop on
+  `session wait` or `berth_wait_turn`; those are for short waits (a check
+  that takes a minute). Several reports that land while you work arrive as
+  one message.
+- It is a status report, not the user speaking. Act on it: review the
+  change, bring the branch back, start the next step, or tell the user.
+  `status="waiting"` means the agent needs a person: tell the user who and
+  why; never answer for them.
+- `--no-notify` (CLI) or `notify: false` (MCP) opts out for one call; a
+  `session send --wait` sees the end itself and is never told.
+- It only works from inside an agent session (`$BERTH_SESSION` set). Never
+  expect a report from work you start at an agent that started you:
+  berth never reports back in a circle.
+
 ## Your own time limit
 
 Your shell tool times out (often after 2 minutes); an agent's turn can take
-far longer. Never block on `send --wait` or `loop` in the foreground. Either
-wait in short steps:
+far longer. Never block on `send --wait` or `loop` in the foreground. End
+your turn and let the work report back (above). For a short wait, wait in
+steps:
 
 ```sh
 berthd session wait NAME --turn 'NAME#3' --timeout 90s --json   # repeat while "timed_out": true
 ```
-
-or run the long command in the background and check on it later.
 
 ## Saving tokens (yours and theirs)
 
@@ -72,8 +106,9 @@ berthd runs --status active
 `handoff`, `broadcast`, `attempts`, `fix-ci`, `address-review`, `exec`. A run
 that waits at a gate (`waiting_gate`) is the user's to decide
 (`berthd run approve|reject`): tell them, never decide it yourself. If berth
-is an MCP server for you (`berth_*` tools), use those: they never block and
-return small JSON (`berth_wait_turn` takes at most 90 s and returns a cursor).
+is an MCP server for you (`berth_*` tools), use those: they never block,
+return small JSON, and report back when the work ends (`berth_wait_turn`
+takes at most 90 s and returns a cursor, for short waits).
 
 ## Patterns
 
@@ -117,7 +152,8 @@ berthd session new "$BERTH_LOCATION/$BERTH_WORKTREE_NAME" --agent codex --open s
   --prompt "Review the uncommitted changes against main. List bugs first. Do not edit files."
 ```
 
-**Fan out**: several tasks, then one wait per turn.
+**Fan out**: several tasks, then end your turn: each reports back, and
+reports that land together arrive as one message.
 
 ## Rules
 

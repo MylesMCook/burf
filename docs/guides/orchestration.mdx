@@ -76,6 +76,63 @@ works for older clients: the box places `after` in its journal's order, so a
 caller whose clock runs ahead or behind the box's still sees the turn end.
 A wait that times out reports the last state it saw.
 
+## Hearing back
+
+An agent that starts work through Berth doesn't have to wait for it. When it
+makes a task, sends a prompt, starts a run or a detached `exec` from its own
+session, the box remembers who asked. When that work finishes, fails or
+exits, waits for a person, or a run reaches a gate, the box types one short
+message into the asking agent's session the next time it is idle, the way
+Claude Code tells an agent a background task is done:
+
+```
+<berth-notification>
+This comes from Berth, not from the user: news of agent work you started. …
+<report kind="task" session="shop-checkout-fix-claude-k3" worktree="shop/checkout-fix" branch="checkout-fix" status="finished" duration="4m12s" files="3" added="12" removed="2">
+<summary>shop/checkout-fix finished its turn.</summary>
+<answer>Fixed the rounding in totals.ts and added a test…</answer>
+<changes>3 files, +12 −2 against main: totals.ts +10 −1, …</changes>
+<bring-back>Branch checkout-fix, in /w/checkout-fix. Review: git -C /w/checkout-fix diff main. … git merge checkout-fix …</bring-back>
+<more>berth_screen session=shop-checkout-fix-claude-k3 shows its screen; its full conversation is ~/.claude/projects/…</more>
+</report>
+</berth-notification>
+```
+
+So the agent ends its turn instead of polling `session wait` or
+`berth_wait_turn`, and picks up when the report arrives. Each report has
+the session, worktree, branch, status and how long it took; the agent's last
+words (trimmed); the files changed with their line counts; for a worktree,
+how to review and merge its branch (or hand it on with the
+[`handoff` template](/guides/runs#templates)); and where to read more. In
+the app, the asking agent's chat shows each report as a card ("checkout-fix
+finished · +12 −2 · 4m12s") with an **Open** button, not the tagged text.
+
+- **Who asked.** The [MCP tools](/guides/runs#from-an-agent-mcp) and the
+  `berthd` commands that start work (`task new`, `session send`,
+  `exec --detach`, `run start`) name the agent's own session
+  (`$BERTH_SESSION`) to the box. Codex starts its MCP servers without that
+  variable, so `berthd mcp` then asks the box which session's pane its agent
+  runs in. Only callers on the box's own socket can name one, and only an
+  agent session is ever told. Opt out for one call with
+  `notify: false` or `--no-notify`; `session send --wait` and
+  `run start --follow` see the end themselves and are never told.
+- **When.** At the asking agent's next idle, through the same queue as
+  `--when idle`, so it never interrupts a turn and never types into an agent
+  that waits for you. Reports that land while it works go as one message.
+- **Once.** Each turn's end, each wait for a person, and each gate is
+  reported once, and a `berth_wait_turn` that sees a turn end drops its
+  report. Watches and undelivered reports are kept in the box's state
+  (`notify.json`), so a restart loses none.
+- **Never in a circle.** A report is never itself a watch, work can't report
+  back to an agent that reports to it, and an agent that ended its turn to
+  wait for work of its own reports once that is back and it is done.
+- **Limits.** At most one message every 15 seconds and 30 an hour per agent,
+  20 reports held at once. An agent whose session is gone (stopped, or its
+  worktree archived) is never typed into: what it would have been told is
+  dropped.
+
+`GET /v1/notify` lists who hears back about what.
+
 ## Exec
 
 ```sh
@@ -193,9 +250,11 @@ The skills Berth installs (`berthd integrations install claude`) teach
 agents these commands, so an agent can split work across worktrees, ask
 another agent for a review, or loop on a check by itself. The
 `berth-orchestrate` skill also tells them never to answer another agent's
-question on the user's behalf. See [agent integrations](/guides/agent-integrations).
-The same install adds `berthd mcp`, an MCP server of typed, non-blocking
-tools for the same things; see [runs](/guides/runs#from-an-agent-mcp).
+question on the user's behalf, and to end their turn once they start work
+rather than poll: [it reports back](#hearing-back). See
+[agent integrations](/guides/agent-integrations). The same install adds
+`berthd mcp`, an MCP server of typed, non-blocking tools for the same
+things; see [runs](/guides/runs#from-an-agent-mcp).
 
 ## From a plugin
 
@@ -222,5 +281,6 @@ flows, handoff packets, the judge's summaries) are short and capped, and
 idempotency keys mean a resumed caller never sends the same prompt twice.
 Each [template's budget](/guides/runs#templates) is in its description
 (`berth run templates`). An agent's shell tool usually times out within
-minutes, so the skill tells agents to wait in short steps
-(`session wait --turn ID --timeout 90s`, repeated) or in the background.
+minutes, so the skill tells agents to end their turn and let the work
+[report back](#hearing-back), and to wait in short steps
+(`session wait --turn ID --timeout 90s`) only for short waits.
