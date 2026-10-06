@@ -4,6 +4,7 @@ import { mockNotice } from "@/lib/chat-controls";
 import { useMockDrafts } from "@/lib/draft";
 import type { DraftRead } from "@/lib/draft-text";
 import { type Question, type QuestionAnswer, shownAnswer } from "@/lib/questions";
+import { mockReports } from "@/lib/mock-reports";
 
 // The demo's stand-in for berthd's transcript stream: a short scripted turn
 // played into the conversation store, so the view can be tried with ?mock=1.
@@ -224,6 +225,8 @@ export function seedTranscript(box: string, session: string, state: string, work
   // One finished session shows a notice card (chat-controls).
   const notice = mockNotice(session);
   if (notice) items.push(notice);
+  // One heard back from the agents it started (report-card).
+  items.push(...mockReports(session));
   const key = keyOf(box, session);
   useConversations.setState((s) => (s.items[key] ? s : { items: { ...s.items, [key]: items } }));
   return items;

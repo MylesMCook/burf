@@ -42,7 +42,32 @@ export type TranscriptItem =
   // Questions the agent asked with a form of its own (Claude Code's
   // AskUserQuestion, Codex's request_user_input; lib/questions). Once done,
   // answers holds what was answered, one per question; error: it wasn't.
-  | { kind: "question"; id: string; tool?: string; questions: Question[]; answers?: string[]; done?: boolean; error?: boolean };
+  | { kind: "question"; id: string; tool?: string; questions: Question[]; answers?: string[]; done?: boolean; error?: boolean }
+  // Work this agent started that Berth reported back on (a
+  // <berth-notification> typed into its session): a prompt from Berth, not
+  // the person (components/conversation/report-card).
+  | { kind: "report"; id: string; report: BerthReport };
+
+// One piece of work a <berth-notification> reports on
+// (internal/transcript/report.go).
+export interface BerthReport {
+  kind: "task" | "turn" | "run";
+  session?: string;
+  run?: string;
+  template?: string;
+  title?: string;
+  worktree?: string;
+  branch?: string;
+  // finished, failed, exited, lost or waiting; a run's own status.
+  status: string;
+  duration?: string;
+  files?: number;
+  added?: number;
+  removed?: number;
+  summary?: string;
+  answer?: string;
+  needs?: string;
+}
 
 export type NoticeKind = "api_error" | "limit" | "rate_limit" | "auth" | "billing" | "hook" | "interrupted" | "stop_failure" | "exited";
 

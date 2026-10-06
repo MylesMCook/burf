@@ -64,6 +64,9 @@ type Item struct {
 	// it was not answered).
 	Questions []Question `json:"questions,omitempty"`
 	Answers   []string   `json:"answers,omitempty"`
+	// A report item (report.go): work the agent started that berth said
+	// ended, waits for a person, or reached a gate.
+	Report *Report `json:"report,omitempty"`
 
 	// pending are the tool calls in a group still waiting for a result.
 	pending map[string]bool

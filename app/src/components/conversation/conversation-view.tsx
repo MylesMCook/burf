@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { Markdown } from "@/components/conversation/markdown";
 import { HARBOUR_WORDS } from "@/lib/screen-status";
 import { NoticeCard } from "@/components/conversation/notice-card";
+import { ReportCard, reportName, reportWord } from "@/components/conversation/report-card";
 import { CommandItem } from "@/components/conversation/command-item";
 import { ChatList } from "@/components/conversation/chat-list";
 import { ChatSearch, plainMarkdown, type SearchEntry } from "@/components/conversation/chat-search";
@@ -191,6 +192,8 @@ function estimateBlock(b: Block): number {
       return 54;
     case "question":
       return it.done ? 40 : 360;
+    case "report":
+      return it.report.answer || it.report.needs ? 78 : 40;
     default:
       return 32;
   }
@@ -233,6 +236,8 @@ function searchable(it: TranscriptItem): string {
       return [it.text, it.description].filter(Boolean).join("\n");
     case "question":
       return it.questions.map((q, i) => [q.question, it.answers?.[i]].filter(Boolean).join("\n")).join("\n");
+    case "report":
+      return [`${reportName(it.report)} ${reportWord(it.report)}`, it.report.answer, it.report.needs].filter(Boolean).join("\n");
   }
   return "";
 }
@@ -308,8 +313,9 @@ function foldTurns(items: TranscriptItem[]): Block[] {
     turn = [];
   };
   for (const it of items) {
-    // A command typed to the agent is the person's, like a prompt.
-    if (it.kind === "user" || it.kind === "command") {
+    // A command typed to the agent is the person's, like a prompt; a report
+    // from Berth starts a turn too.
+    if (it.kind === "user" || it.kind === "command" || it.kind === "report") {
       flush(false);
       out.push({ kind: "item", it });
     } else turn.push(it);
@@ -416,6 +422,8 @@ function ItemBody({ it, onAnswer, edits, who }: { it: TranscriptItem; onAnswer(i
       return <ArtifactCard it={it} />;
     case "question":
       return <QuestionCard it={it} who={who} />;
+    case "report":
+      return <ReportCard it={it} />;
     case "ask":
       return it.structured ? <Permission it={it} onAnswer={onAnswer} who={who} /> : <Ask it={it} onAnswer={onAnswer} />;
   }

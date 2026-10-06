@@ -195,6 +195,11 @@ func userText(c *conv, s string) {
 	if commandText(c, s) {
 		return
 	}
+	if berthReports(c, s) {
+		c.closeArtifacts()
+		c.closeQuestions()
+		return
+	}
 	if s == "" || strings.HasPrefix(s, "<") || strings.HasPrefix(s, "Caveat:") {
 		return
 	}
