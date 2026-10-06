@@ -91,10 +91,36 @@
 @keyframes cv-pop-below { from { opacity: 0; transform: translateY(-3px) scale(0.98); } }
 @media (prefers-reduced-motion: reduce) { .cv-pop { animation: none; } }
 
-/* Words read from the agent's screen before its record has them. */
-/* Words read off the agent's screen before its record has them: the reply
-   as it will read, a little faded, so swapping in the record moves nothing. */
-.cv-live { opacity: 0.75; }
+/* A reply being written, read off the agent's screen before its record
+   has it (a draft): it reads as the reply will, a shade quieter, with a
+   caret where the words end. The message that replaces it is the same
+   element with its words swapped: the caret goes and the shade lifts, and
+   nothing moves. */
+.cv-md { transition: opacity 260ms ease; }
+[data-draft] > .cv-md { opacity: 0.86; }
+.cv-caret {
+  display: inline-block;
+  width: 0.55em;
+  height: 1.1em;
+  margin-left: 0.15em;
+  vertical-align: -0.2em;
+  border-radius: 2px;
+  background: var(--foreground);
+  opacity: 0.5;
+  animation: cv-caret 1.2s ease-in-out infinite;
+}
+.cv-md pre .cv-caret { height: 1em; vertical-align: -0.15em; }
+@keyframes cv-caret { 50% { opacity: 0.12; } }
+/* A draft whose start is above the agent's screen. */
+.cv-clipped { margin: 0 0 0.6em; color: var(--muted-foreground); font-size: 0.75rem; }
+.cv-clipped > span { margin-right: 0.25em; letter-spacing: 0.08em; }
+/* Half a code block isn't worth copying yet. */
+[data-draft] .cv-copy-code { visibility: hidden; }
+:root[data-berth-hidden] .cv-caret { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .cv-caret { animation: none; }
+  .cv-md { transition: none; }
+}
 
 /* Cards in the chat (an approval, a question form) take the composer's
    radius, not coss-ui Card's rounded-2xl, so a stack of them and the reply

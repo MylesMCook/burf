@@ -43,6 +43,8 @@ import { NONE, useStore } from "@/lib/store";
 import type { TranscriptItem } from "@/lib/transcript";
 import { noteSent, usePromptRecall } from "@/lib/history";
 import { plainWords, useScreenStatus } from "@/lib/screen-status";
+import { useDraft } from "@/lib/draft";
+import { withDraft } from "@/lib/draft-text";
 import { FIRST_READ_TIMEOUT, useAsk, useQueued, useTranscriptFeed } from "@/lib/transcript-feed";
 import { ConfirmDialog } from "@/views/settings/confirm";
 import { cn } from "@/lib/utils";
@@ -116,8 +118,10 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
   const canDiff = useStore((st) => !!st.boxes[box]?.info?.capabilities?.includes("diff"));
   // A session the box no longer lists is named from what the pane remembers.
   const agent = (s ? agentOf(s) : undefined) ?? remembered ?? guessAgent(session);
-  // While it works: its status line and latest words from its screen.
-  const onScreen = useScreenStatus(box, session, agent, visible && !mock && !away && state === "running");
+  // While it works: the reply it is writing and its status line, from its
+  // screen (lib/draft); a box without drafts gives its latest words.
+  const drafts = useDraft({ box, session, agent, enabled: visible && !away && state === "running", mock });
+  const onScreen = useScreenStatus(box, session, agent, visible && !mock && !away && state === "running" && !drafts.supported);
   const last = useConversations((st) => st.last[key]);
   const who = agent === "claude" ? "Claude" : agent ? agentLabel(agent) : "The agent";
   const [stuck, setStuck] = useState<{ at?: string; why: string }>();
@@ -138,15 +142,19 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
   // What the box does not send, from the session's state: thinking while it
   // works, its question while it waits.
   const shown = useMemo(() => {
-    if (mock) return items;
-    const out = [...items];
+    if (mock) return withDraft(items, drafts.draft).items;
+    const sentNow: TranscriptItem[] = [];
     // What was just sent shows at once, until the agent's own record of it
     // arrives (a moment later) and takes its place.
-    for (const [i, p] of sent.entries()) if (!taken(items, p, i + 1)) out.push({ kind: "user", id: `sent:${p.at}`, text: p.text, pending: state === "running" });
+    for (const [i, p] of sent.entries()) if (!taken(items, p, i + 1)) sentNow.push({ kind: "user", id: `sent:${p.at}`, text: p.text, pending: state === "running" });
+    // The reply being written, as its screen shows it, until its record has
+    // the words; the record's message then takes the draft's row. Kept a
+    // moment after the turn ends, as the two land in either order.
+    const { items: out } = withDraft([...items, ...sentNow], drafts.draft);
     if (state === "running") {
       // Its words on screen that its record doesn't have yet (Claude Code
       // writes them after the step it is running), until the record does.
-      if (onScreen?.said) {
+      if (onScreen?.said && !drafts.supported) {
         const said = plainWords(onScreen.said).slice(0, 80);
         if (said.length > 8 && !items.slice(-12).some((it) => it.kind === "text" && plainWords(it.text).includes(said))) out.push({ kind: "text", id: "live:said", text: onScreen.said, live: true });
       }
@@ -155,7 +163,9 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
       const began = Date.parse(s?.state_since ?? s?.created ?? "") || Date.now();
       const end = items[items.length - 1];
       const call = end?.kind === "tools" && !end.done ? end.items?.[end.items.length - 1] : undefined;
-      const status = onScreen?.status;
+      const status = drafts.supported ? drafts.status : onScreen?.status;
+      // It stays under a draft too, so the message replacing it moves
+      // nothing.
       if (call) out.push({ kind: "thinking", id: "live:thinking", since: call.at ?? began, step: { verb: call.verb, target: call.target }, meta: status?.tokens });
       else out.push({ kind: "thinking", id: "live:thinking", since: Math.max(last ?? 0, began), label: status?.word, elapsed: status?.elapsed, meta: status?.tokens });
     }
@@ -177,7 +187,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
       out.push({ kind: "ask", id: "live:ask", tool: "Question", detail: s?.ask?.message || ask.detail, choices: ask.choices, decided });
     }
     return out;
-  }, [mock, items, state, s?.state_since, s?.ask, s?.created, ask, answered, sent, prompted, onScreen, last, formAsk]);
+  }, [mock, items, state, s?.state_since, s?.ask, s?.created, ask, answered, sent, prompted, onScreen, last, formAsk, drafts.draft, drafts.status, drafts.supported]);
 
   const edits = useMemo<EditActions | undefined>(() => {
     if (!client || (!canDiff && !mock)) return undefined;

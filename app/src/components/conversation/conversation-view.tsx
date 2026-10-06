@@ -26,6 +26,7 @@ import { PromptActions, PromptActionsContext, type PromptContext } from "@/compo
 import { HelperSheetHost, openHelper } from "@/components/conversation/subagent-view";
 import { isMock } from "@/hooks/use-berth-connection";
 import { keyOf } from "@/lib/conversation-store";
+import { rowKeyOf } from "@/lib/draft-text";
 import { applyCut, dropOlder, loadOlder, meta, restoreOlder, setCut, useHasHistory, useHistory, useOlder } from "@/lib/history";
 import { seedLongChat } from "@/lib/mock-history";
 import "@/components/conversation/conversation.css";
@@ -164,7 +165,8 @@ export function ConversationView({ items: live, onAnswer, edits, who = "The agen
 // What search opens to show a match: folds and tool groups, by id.
 const RevealContext = createContext<Set<string>>(new Set());
 
-const blockKey = (b: Block) => (b.kind === "fold" ? b.id : b.it.id);
+// A message that replaced a draft keeps the draft's row (lib/draft-text).
+const blockKey = (b: Block) => (b.kind === "fold" ? b.id : rowKeyOf(b.it.id));
 // A turn starts where something was asked (a Compare tab's chats line up on it).
 const isTurn = (b: Block) => b.kind !== "fold" && b.it.kind === "user";
 
@@ -363,7 +365,7 @@ function WorkFold({ id, steps, live, onAnswer, edits, who }: { id: string; steps
 // Item is one item, marked with its id for search.
 function Item(props: { it: TranscriptItem; onAnswer(id: string, key: string): void; edits?: EditActions; who: string }) {
   return (
-    <div data-item-id={props.it.id} data-testid="chat-item" data-kind={props.it.kind} className="contents">
+    <div data-item-id={props.it.id} data-testid="chat-item" data-kind={props.it.kind} data-draft={props.it.kind === "text" && props.it.live ? "" : undefined} className="contents">
       <ItemBody {...props} />
     </div>
   );
@@ -386,13 +388,9 @@ function ItemBody({ it, onAnswer, edits, who }: { it: TranscriptItem; onAnswer(i
         </div>
       );
     case "text":
-      return it.live ? (
-        <div className="cv-live" aria-description="As its screen shows it: its record has these words a moment later">
-          <Markdown text={it.text} copy={false} />
-        </div>
-      ) : (
-        <Markdown text={it.text} />
-      );
+      // A draft (the reply as the agent's screen shows it) draws as the
+      // message will, so the message replaces it in place.
+      return <Markdown text={it.text} draft={it.live} clipped={it.clipped} />;
     case "thinking":
       return <Thinking since={it.since} label={it.label} elapsed={it.elapsed} meta={it.meta} step={it.step} />;
     case "tools":

@@ -28,6 +28,11 @@ export interface FakeAgent {
   // The box's answer to GET sessions/fix-claude/transcript?…; the query
   // is given. Default: two items, from a fresh reading.
   transcript: (query: URLSearchParams) => Answer | Promise<Answer>;
+  // The box's answer to GET sessions/fix-claude/draft (boxes with "draft"
+  // in capabilities): the reply its screen shows being written.
+  draft: () => Answer;
+  // What the box says it can do (info). Default: transcript and turns.
+  capabilities: string[];
   // Every request, as "METHOD path?query".
   calls: string[];
   // Sends an event to the app's stream.
@@ -50,6 +55,8 @@ export async function fakeAgent(): Promise<FakeAgent> {
     token: "e2e-token",
     calls: [],
     transcript: () => ({ body: { source: "claude", items: ITEMS, next: 2, crew: [], gen: "1.0", start: 10, file: "abc" } }),
+    draft: () => ({ body: { agent: "claude" } }),
+    capabilities: ["transcript", "turns"],
     event(e) {
       const ev = { seq: ++seq, time: now(), box: BOX, origin: "claude", ...e };
       for (const s of streams) s.write(`data: ${JSON.stringify(ev)}\n\n`);
@@ -70,7 +77,7 @@ export async function fakeAgent(): Promise<FakeAgent> {
     proxy: { port: 1377, url_port: 1377 },
   });
   const box: Record<string, () => unknown> = {
-    info: () => ({ name: BOX, version: "0.3.7", build: "e2e", tools: ["claude"], capabilities: ["transcript", "turns"], agents: [{ id: "claude", name: "Claude Code", command: "claude" }] }),
+    info: () => ({ name: BOX, version: "0.3.7", build: "e2e", tools: ["claude"], capabilities: agent.capabilities, agents: [{ id: "claude", name: "Claude Code", command: "claude" }] }),
     locations: () => [
       {
         name: "shop",
@@ -125,6 +132,10 @@ export async function fakeAgent(): Promise<FakeAgent> {
         return send(res, a.status ?? 200, a.body);
       }
       if (rest === `sessions/${SESSION}/screen`) return send(res, 200, { screen: "" });
+      if (rest === `sessions/${SESSION}/draft`) {
+        const a = agent.draft();
+        return send(res, a.status ?? 200, a.body);
+      }
       if (box[rest]) return send(res, 200, box[rest]());
     }
     send(res, 404, { error: "not on this agent", code: "not_found" });

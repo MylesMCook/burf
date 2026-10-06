@@ -1,6 +1,8 @@
 import type { Artifact, ToolDetail, CrewMember, TranscriptItem } from "@/lib/transcript";
 import { keyOf, useConversations } from "@/lib/conversation-store";
 import { mockNotice } from "@/lib/chat-controls";
+import { useMockDrafts } from "@/lib/draft";
+import type { DraftRead } from "@/lib/draft-text";
 import { type Question, type QuestionAnswer, shownAnswer } from "@/lib/questions";
 
 // The demo's stand-in for berthd's transcript stream: a short scripted turn
@@ -10,16 +12,39 @@ let n = 0;
 const id = () => `m${++n}`;
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-// Text arrives a few words at a time, as a streamed reply does.
+// What the demo agent's screen shows it writing (lib/draft).
+const showDraft = (key: string, read: DraftRead | undefined) => useMockDrafts.setState((s) => ({ reads: { ...s.reads, [key]: read } }));
+
+// Text arrives a few words at a time, as a streamed reply does: on the
+// agent's screen first (a draft), then in its record, whose message takes
+// the draft's place; the screen still shows it a moment after.
 async function stream(key: string, text: string) {
-  const s = useConversations.getState();
-  const item = { kind: "text" as const, id: id(), text: "" };
-  s.push(key, item);
   const words = text.split(" ");
   for (let i = 0; i < words.length; i += 3) {
     await wait(70);
-    useConversations.getState().update(key, item.id, { text: words.slice(0, i + 3).join(" ") });
+    showDraft(key, { text: words.slice(0, i + 3).join(" ") });
   }
+  useConversations.getState().push(key, { kind: "text", id: id(), text });
+  await wait(400);
+  showDraft(key, undefined);
+}
+
+// The demo's screen, for the app's tests and screenshots (app/e2e): show
+// what an agent is writing, land its message in its record, or clear it.
+if (typeof window !== "undefined" && new URLSearchParams(window.location.search).has("mock")) {
+  (window as unknown as { __berthDraft: unknown }).__berthDraft = {
+    show: (box: string, session: string, text: string, clipped?: boolean) => showDraft(keyOf(box, session), { text, clipped }),
+    // In the record above the demo's own "thinking" row, as a real
+    // record has none.
+    land: (box: string, session: string, text: string) =>
+      useConversations.setState((s) => {
+        const all = s.items[keyOf(box, session)] ?? [];
+        let at = all.length;
+        while (at > 0 && all[at - 1].kind === "thinking") at--;
+        return { items: { ...s.items, [keyOf(box, session)]: [...all.slice(0, at), { kind: "text", id: id(), text }, ...all.slice(at)] } };
+      }),
+    clear: (box: string, session: string) => showDraft(keyOf(box, session), undefined),
+  };
 }
 
 async function think(key: string, ms: number) {

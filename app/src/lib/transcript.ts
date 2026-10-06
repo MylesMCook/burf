@@ -10,8 +10,9 @@ export type TranscriptItem =
   // pending: sent from here, and the agent hasn't read it yet.
   | { kind: "user"; id: string; text: string; pending?: boolean }
   // live: words read from the agent's screen that its record doesn't
-  // have yet, replaced by the record's own once it catches up.
-  | { kind: "text"; id: string; text: string; live?: boolean }
+  // have yet (a draft, lib/draft-text), replaced by the record's own once
+  // it catches up. clipped: the draft's start is above the agent's screen.
+  | { kind: "text"; id: string; text: string; live?: boolean; clipped?: boolean }
   | { kind: "tools"; id: string; verb: string; items?: ToolCall[]; done?: boolean }
   | { kind: "edit"; id: string; file: string; added: number; removed: number; tool?: string }
   // A question for the person. choices are the agent's own numbered options

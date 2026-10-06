@@ -11,6 +11,7 @@ import { handleSessionOpen } from "@/lib/session-open";
 import { archiveFailed, worktreeGone } from "@/lib/remove-worktree";
 import { markRemoving, markScript, removalOf, useRemovals } from "@/lib/removing";
 import { type BoxPart, scheduleRefresh, useStore } from "@/lib/store";
+import { noteTranscriptChanged } from "@/lib/transcript-pings";
 import { dispatch } from "@/plugins/registry";
 
 // What each kind of event invalidates on its box.
@@ -31,6 +32,9 @@ export const useEventLog = create<{ events: BerthEvent[] }>()(() => ({ events: [
 // handleEvent is the one place events land: plugins hear them, the store
 // refetches what they changed, and agents that need someone notify.
 export function handleEvent(e: BerthEvent) {
+  // An agent wrote to a transcript a chat shows: chatter, a few a second,
+  // for that chat alone (lib/transcript-pings).
+  if (e.type === "transcript.changed") return noteTranscriptChanged(e);
   useEventLog.setState((s) => ({ events: [e, ...s.events].slice(0, 200) }));
   dispatch(e);
   const store = useStore.getState();

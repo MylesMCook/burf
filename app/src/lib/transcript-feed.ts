@@ -6,6 +6,7 @@ import { dropOlder, historyApi } from "@/lib/history";
 import { useEventLog } from "@/lib/events";
 import { choicesIn, type Choice, questionFormIn } from "@/lib/screen";
 import { useStore } from "@/lib/store";
+import { useTranscriptPings } from "@/lib/transcript-pings";
 import type { Artifact, CrewMember, TranscriptItem } from "@/lib/transcript";
 
 // The conversation of a session on a box that streams transcripts (its
@@ -13,7 +14,9 @@ import type { Artifact, CrewMember, TranscriptItem } from "@/lib/transcript";
 // the items from index N, the index to ask from next, and the crew. A tool
 // group still open is sent again, so items merge by id. It is read while a
 // conversation is showing: on open, every 2s, and at once when an event
-// about the session arrives; never while hidden.
+// about the session arrives, or the box says the agent wrote to it
+// (transcript.changed, newer boxes: within a few hundred milliseconds of a
+// step); never while hidden.
 
 export interface TranscriptResult {
   source: "claude" | "codex" | "none";
@@ -94,6 +97,7 @@ export function useTranscriptFeed(box: string, session: string, dir: string | un
   // The last event about this session: agent.* and session.* carry its
   // name or its directory.
   const latest = useEventLog((s) => s.events.find((e) => e.box === box && (e.type.startsWith("agent.") || e.type.startsWith("session.")) && (e.data?.session === session || e.data?.name === session || (!!dir && e.data?.path === dir)))?.time);
+  const wrote = useTranscriptPings((s) => s.at[`${box}|${session}`]);
 
   // A different session starts from the beginning, and is read before it
   // shows anything (not the last session's state).
@@ -212,10 +216,11 @@ export function useTranscriptFeed(box: string, session: string, dir: string | un
     return stop;
   }, [client, box, session, key, supported, known, enabled, attempt]);
 
-  // An event about the session: read now, in the loop that is running.
+  // An event about the session, or a write to its transcript: read now, in
+  // the loop that is running.
   useEffect(() => {
-    if (latest) kick.current();
-  }, [latest]);
+    if (latest || wrote) kick.current();
+  }, [latest, wrote]);
 
   return state;
 }

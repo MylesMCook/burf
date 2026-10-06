@@ -6,7 +6,9 @@ import { memo, useMemo, useRef } from "react";
 import { guessLanguage, languageName, useCodeHighlight } from "@/components/conversation/code-highlight";
 import { Tip } from "@/components/tip";
 import { copyText } from "@/lib/clipboard";
+import { caretAfter } from "@/lib/draft-text";
 import { openUrl } from "@/lib/open-url";
+import { cn } from "@/lib/utils";
 
 // Markdown draws an agent's reply as the agent wrote it: headings, lists,
 // tables, code, bold and links, as its terminal does. micromark escapes any
@@ -33,20 +35,32 @@ const codeBlock = (_: string, attrs: string, lang: string | undefined, body: str
   return `<div class="cv-pre">${head}<pre><code${attrs}>${body}</code></pre></div>`;
 };
 
-export const Markdown = memo(function Markdown({ text, copy = true }: { text: string; copy?: boolean }) {
-  const html = useMemo(
-    () =>
-      micromark(text, { extensions: [gfm()], htmlExtensions: [gfmHtml()] })
-        // Wide tables scroll on their own instead of widening the column.
-        .replace(/<table>/g, '<div class="cv-table"><table>')
-        .replace(/<\/table>/g, "</table></div>")
-        .replace(/<pre><code((?: class="language-([^"]+)")?)>([\s\S]*?)<\/code><\/pre>/g, codeBlock),
-    [text],
-  );
+// A draft (the reply as the agent's screen shows it while it writes) ends
+// in a caret, says "…" above when its start is off the screen, and keeps
+// the room its Copy will take, so the message that replaces it lands in
+// place: the same element, its words swapped (lib/draft-text).
+const CARET = '<span class="cv-caret" aria-hidden="true"></span>';
+
+export const Markdown = memo(function Markdown({ text, copy = true, draft = false, clipped = false }: { text: string; copy?: boolean; draft?: boolean; clipped?: boolean }) {
+  const html = useMemo(() => {
+    const out = micromark(text, { extensions: [gfm()], htmlExtensions: [gfmHtml()] })
+      // Wide tables scroll on their own instead of widening the column.
+      .replace(/<table>/g, '<div class="cv-table"><table>')
+      .replace(/<\/table>/g, "</table></div>")
+      .replace(/<pre><code((?: class="language-([^"]+)")?)>([\s\S]*?)<\/code><\/pre>/g, codeBlock);
+    // A draft's code blocks name no language: its screen doesn't say, and
+    // a guess would change when the message lands.
+    return draft ? caretAfter(out.replace(/<span class="cv-pre-lang">[^<]*<\/span>/g, '<span class="cv-pre-lang"></span>'), CARET) : out;
+  }, [text, draft]);
   const body = useRef<HTMLDivElement>(null);
   useCodeHighlight(body, html);
   return (
-    <div className="group/md relative cv-in">
+    <div className="group/md relative cv-in" data-draft={draft ? "" : undefined} aria-busy={draft || undefined} aria-description={draft ? "Still being written: as the agent's screen shows it" : undefined}>
+      {draft && clipped && (
+        <p className="cv-clipped">
+          <span aria-hidden>…</span> Its start is above the agent's screen: the whole reply shows once it's written
+        </p>
+      )}
       <div
         ref={body}
         className="cv-md"
@@ -73,7 +87,7 @@ export const Markdown = memo(function Markdown({ text, copy = true }: { text: st
         }}
       />
       {copy && (
-        <div className="mt-1 flex h-6 opacity-0 transition-opacity focus-within:opacity-100 group-hover/md:opacity-100">
+        <div className={cn("mt-1 flex h-6 opacity-0 transition-opacity focus-within:opacity-100 group-hover/md:opacity-100", draft && "invisible")} aria-hidden={draft || undefined}>
           <Tip label="Copy as Markdown">
             <button type="button" aria-label="Copy reply" onClick={() => void copyText(text, "Copied the reply")} className="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
               <CopyIcon className="size-3.5" />
