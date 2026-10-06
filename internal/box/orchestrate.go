@@ -153,6 +153,9 @@ func (b *Box) sendToSession(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	if res.Turn != "" {
+		b.watchCaller(r, Watch{Kind: "turn", Session: name, Turn: res.Turn})
+	}
 	writeJSON(w, res)
 	return nil
 }
@@ -486,6 +489,7 @@ func (b *Box) handleExec(w http.ResponseWriter, r *http.Request) error {
 		if err != nil {
 			return badRequest("%v", err)
 		}
+		b.watchCaller(r, Watch{Kind: "run", Run: s.ID})
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusAccepted)
 		writeJSON(w, map[string]any{"run": s.ID, "status": s.Status, "detached": true})

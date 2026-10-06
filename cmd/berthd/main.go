@@ -360,6 +360,9 @@ func serve(b boxHome, args []string) error {
 		}
 	}
 	go turns.Run(ctx, bx)
+	// Agents hear back about work they started, after the ledger has it.
+	bx.Reports = &box.Notifier{Path: filepath.Join(b.dir, "notify.json")}
+	go bx.Reports.Run(ctx, bx)
 	go bx.RunRepoHooks(ctx, logger)
 	// Runs that were going when berthd stopped carry on from their journals.
 	bx.Runs.Resume(ctx)

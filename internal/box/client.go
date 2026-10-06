@@ -31,6 +31,9 @@ type Doer interface {
 type Client struct {
 	Doer   Doer
 	Origin string
+	// Caller, when set, is the agent session the calls are made for: the
+	// box reports back to it when work it starts ends (notify.go).
+	Caller string
 }
 
 func NewClient(d Doer) *Client {
@@ -61,6 +64,9 @@ func (c *Client) callHeader(ctx context.Context, method, path string, extra http
 	}
 	if validOrigin.MatchString(c.Origin) {
 		header.Set(OriginHeader, c.Origin)
+	}
+	if c.Caller != "" {
+		header.Set(CallerHeader, c.Caller)
 	}
 	resp, err := c.Doer.DoWithHeader(ctx, method, path, body, header)
 	if err != nil {

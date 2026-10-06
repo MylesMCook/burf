@@ -85,6 +85,8 @@ type Box struct {
 	BrowserProxies *BrowserProxies
 	// Browsers runs agents' headless browsers, one per active worktree.
 	Browsers *Browsers
+	// Reports tells an agent when work it started ends (notify.go).
+	Reports *Notifier
 }
 
 func (b *Box) own(path string) {
@@ -202,6 +204,7 @@ func (b *Box) Mount(s *wire.Server) {
 	b.mountHistory(route)
 	b.mountAnswer(route)
 	b.mountBrowser(route)
+	b.mountNotify(route)
 	b.mountPairing(s, route)
 }
 

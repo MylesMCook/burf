@@ -107,11 +107,12 @@ func runStart(ctx context.Context, c *box.Client, args []string, out io.Writer) 
 	idem := fs.String("idem", "", "idempotency key: a retried start returns the same run")
 	params := paramFlags{}
 	fs.Var(params, "param", "a template parameter, key=value (repeatable)")
+	noNotify := fs.Bool("no-notify", false, "don't tell this agent (BERTH_SESSION) when it ends or waits at a gate")
 	pos, err := parse(fs, args)
 	if err != nil || *template == "" || len(pos) > 0 {
-		return usageErr("run start --template T [--param k=v]... [--follow] [--idem KEY] [--json]")
+		return usageErr("run start --template T [--param k=v]... [--follow] [--idem KEY] [--no-notify] [--json]")
 	}
-	s, err := c.StartRun(ctx, box.RunRequest{Template: *template, Params: params}, *idem)
+	s, err := reportBack(c, *noNotify || *follow).StartRun(ctx, box.RunRequest{Template: *template, Params: params}, *idem)
 	if err != nil {
 		return err
 	}

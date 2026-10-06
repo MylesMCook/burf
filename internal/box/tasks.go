@@ -331,6 +331,7 @@ func (b *Box) addTask(w http.ResponseWriter, r *http.Request) error {
 		"session": sess.Name, "agent": req.Agent, "from_session": req.FromSession,
 	})
 	b.announceOpen(r, sess, req.Open)
+	b.watchCaller(r, Watch{Kind: "task", Session: sess.Name})
 	writeJSON(w, Task{Worktree: wt, Session: sess})
 	return nil
 }

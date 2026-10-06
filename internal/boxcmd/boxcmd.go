@@ -47,21 +47,21 @@ var usageSections = []struct {
 	{"Agent sessions", [][2]string{
 		{"%[1]s sessions%[3]s [--json]", "List sessions"},
 		{"%[1]s agents%[3]s [--json]", "Agent CLIs this box can start"},
-		{"%[1]s task new %[2]sLOC/NAME [--agent ID] [--prompt TEXT] [--title T] [--open split|tab] [--branch B] [--base REF] [-- COMMAND...]", "A worktree with an agent (or COMMAND) running in it"},
+		{"%[1]s task new %[2]sLOC/NAME [--agent ID] [--prompt TEXT] [--title T] [--open split|tab] [--branch B] [--base REF] [--no-notify] [-- COMMAND...]", "A worktree with an agent (or COMMAND) running in it; run from\nan agent, it hears back when the first turn ends"},
 		{"%[1]s session new %[2]sLOC[/WORKTREE] [--name N] [--agent ID [--prompt TEXT]] [--title T] [--open split|tab] [-- COMMAND...]", "Start an agent or COMMAND (default: a shell) there"},
 		{"%[1]s session rename %[2]sNAME [TITLE]", "Name a session's work (no TITLE clears it; a prompt names an untitled one)"},
 		{"%[1]s session screen %[2]sNAME [--history N]", "Print what the session shows"},
-		{"%[1]s session send %[2]sNAME TEXT [--when now|idle] [--force] [--idem KEY] [--no-enter] [--wait [--timeout 30m]]%[4]s", "Type a prompt into a session (or hold it until the agent is idle), and wait for its turn"},
+		{"%[1]s session send %[2]sNAME TEXT [--when now|idle] [--force] [--idem KEY] [--no-enter] [--wait [--timeout 30m]] [--no-notify]%[4]s", "Type a prompt into a session (or hold it until the agent is idle), and wait for its turn"},
 		{"%[1]s session wait %[2]sNAME [--turn ID] [--for finished,waiting] [--timeout 30m]", "Wait for a turn, or its agent's current one, to end"},
 		{"%[1]s session turns %[2]sNAME [--limit 10] [--json]", "List a session's turns"},
-		{"%[1]s exec %[2]sLOC[/WORKTREE] [--timeout 10m] [--detach] -- COMMAND...", "Run a command there and print its output (--detach: as a run)"},
+		{"%[1]s exec %[2]sLOC[/WORKTREE] [--timeout 10m] [--detach [--no-notify]] -- COMMAND...", "Run a command there and print its output (--detach: as a run)"},
 		{"%[1]s loop %[2]sSESSION --check CMD [--prompt TEXT] [--max 5] [--turn-timeout 30m]\n         [--cancel-on-exit] [--detach]", "Prompt, wait, check, and feed failures back: a durable\nrun on the box (Ctrl-C detaches)"},
 		{"%[1]s session kill %[2]sNAME", "Stop a session"},
 	}},
 	{"Runs (durable, on the box)", [][2]string{
 		{"%[1]s runs%[3]s [--status active|done|S] [--template T] [--limit 20] [--json]", "List runs"},
 		{"%[1]s run templates%[3]s [--json]", "The templates and their parameters"},
-		{"%[1]s run start%[3]s --template T [--param k=v]... [--follow] [--idem KEY] [--json]", "Start a run (loop, review, handoff, broadcast, attempts, ...)"},
+		{"%[1]s run start%[3]s --template T [--param k=v]... [--follow] [--idem KEY] [--no-notify] [--json]", "Start a run (loop, review, handoff, broadcast, attempts, ...)"},
 		{"%[1]s run get %[2]sRUN [--json]", "A run's steps, gate, attempts and tokens"},
 		{"%[1]s run logs %[2]sRUN [--since N] [--follow] [--json]", "Its journal, as it happens"},
 		{"%[1]s run approve|reject %[2]sRUN [STEP] [--pick N] [--note TEXT]", "Decide the gate it waits at"},
@@ -358,15 +358,17 @@ func Run(ctx context.Context, c *box.Client, args []string, out io.Writer) error
 		force := fs.Bool("force", false, "type even into an agent that is waiting for someone")
 		idem := fs.String("idem", "", "a key that makes a retried send return the turn it already made")
 		queue := fs.Bool("queue", false, "if the box cannot be reached, queue the prompt to send when it is back")
+		noNotify := fs.Bool("no-notify", false, "don't tell this agent (BERTH_SESSION) when the turn ends")
 		pos, err := parse(fs, rest)
 		if err != nil || len(pos) != 2 {
-			return usageErr("session send NAME TEXT [--when now|idle] [--force] [--idem KEY] [--no-enter] [--wait [--timeout 30m]] [--queue]")
+			return usageErr("session send NAME TEXT [--when now|idle] [--force] [--idem KEY] [--no-enter] [--wait [--timeout 30m]] [--queue] [--no-notify]")
 		}
 		if *queue && Queue == nil {
 			return errors.New("--queue is for the laptop: berth session send BOX/NAME TEXT --queue")
 		}
 		enter := !*noEnter
-		res, err := c.Send(ctx, pos[0], box.SendRequest{Text: pos[1], Enter: &enter, When: *when, Force: *force, IdemKey: *idem})
+		// One who waits here sees the end itself.
+		res, err := reportBack(c, *noNotify || *wait).Send(ctx, pos[0], box.SendRequest{Text: pos[1], Enter: &enter, When: *when, Force: *force, IdemKey: *idem})
 		if err != nil {
 			if !*queue {
 				return err
@@ -940,15 +942,16 @@ func execCmd(ctx context.Context, c *box.Client, args []string, out io.Writer) e
 	fs, asJSON := flags(args)
 	timeout := fs.String("timeout", "10m", "stop the command after this long")
 	detach := fs.Bool("detach", false, "run it as a run on the box and return its ID")
+	noNotify := fs.Bool("no-notify", false, "with --detach, don't tell this agent (BERTH_SESSION) when it ends")
 	pos, err := parse(fs, args)
 	if err != nil || len(pos) != 1 || len(command) == 0 {
-		return usageErr("exec LOC[/WORKTREE] [--timeout 10m] [--detach] -- COMMAND...")
+		return usageErr("exec LOC[/WORKTREE] [--timeout 10m] [--detach [--no-notify]] -- COMMAND...")
 	}
 	if *detach {
 		var started struct {
 			Run string `json:"run"`
 		}
-		if err := c.Call(ctx, "POST", "/v1/exec", box.ExecRequest{Location: pos[0], Command: commandLine(command), Timeout: *timeout, Detach: true}, &started); err != nil {
+		if err := reportBack(c, *noNotify).Call(ctx, "POST", "/v1/exec", box.ExecRequest{Location: pos[0], Command: commandLine(command), Timeout: *timeout, Detach: true}, &started); err != nil {
 			return err
 		}
 		return show(out, *asJSON, started, func() { fmt.Fprintf(out, "Running as %s; see: run get %s\n", started.Run, started.Run) })
@@ -1057,8 +1060,9 @@ func taskNew(ctx context.Context, c *box.Client, args []string, out io.Writer) e
 	fs.StringVar(&req.Branch, "branch", "", "branch to create (default: the worktree name)")
 	fs.StringVar(&req.Base, "base", "", "ref to branch from")
 	fs.StringVar(&req.Title, "title", "", "name the work (default: the prompt's first line)")
+	noNotify := fs.Bool("no-notify", false, "don't tell this agent (BERTH_SESSION) when the new agent's first turn ends")
 	pos, err := parse(fs, args)
-	usage := "task new LOC/NAME [--agent ID] [--prompt TEXT] [--title T] [--open split|tab] [--branch B] [--base REF] [-- COMMAND...]"
+	usage := "task new LOC/NAME [--agent ID] [--prompt TEXT] [--title T] [--open split|tab] [--branch B] [--base REF] [--no-notify] [-- COMMAND...]"
 	if err != nil || len(pos) != 1 {
 		return usageErr(usage)
 	}
@@ -1067,7 +1071,7 @@ func taskNew(ctx context.Context, c *box.Client, args []string, out io.Writer) e
 		return usageErr(usage)
 	}
 	req.Location, req.Name = loc, name
-	task, err := c.AddTask(ctx, req)
+	task, err := reportBack(c, *noNotify).AddTask(ctx, req)
 	if err != nil {
 		return err
 	}

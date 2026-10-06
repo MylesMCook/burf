@@ -142,6 +142,7 @@ func (b *Box) startRun(w http.ResponseWriter, r *http.Request) error {
 		}
 		return badRequest("%v", err)
 	}
+	b.watchCaller(r, Watch{Kind: "run", Run: s.ID})
 	if dup {
 		w.Header().Set("Idempotent-Replay", "true")
 	} else {
