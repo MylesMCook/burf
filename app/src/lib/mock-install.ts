@@ -111,9 +111,13 @@ export function mockInstallTerminal(req: GuidedInstallRequest, _cols: number, _r
     });
   const out = (s: string) => !closed && h.onData(s.replace(/\n/g, "\r\n"));
   const step = (id: string, state: InstallStepState, message?: string) => !closed && h.onEvent({ type: "step", step: id, state, message });
+  // Lines typed before anything reads them wait, as a terminal's input does.
+  const typed: string[] = [];
   const readLine = () =>
     new Promise<string>((resolve) => {
-      waiter = resolve;
+      const line = typed.shift();
+      if (line !== undefined) resolve(line);
+      else waiter = resolve;
     });
   const host = req.host;
   const where = host.split("@").pop() ?? host;
@@ -347,7 +351,8 @@ export function mockInstallTerminal(req: GuidedInstallRequest, _cols: number, _r
           const line = input;
           input = "";
           if (echo) out("\n");
-          w?.(line);
+          if (w) w(line);
+          else typed.push(line);
         } else if (c === "\x7f") {
           input = input.slice(0, -1);
         } else if (c === "\x03") {

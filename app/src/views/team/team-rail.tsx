@@ -155,9 +155,10 @@ export function Checklist(p: ChecklistProps) {
         const id = `${k.project}/${k.key}`;
         return (
           <label key={id} className="block" data-testid={`key-input-${k.key}`}>
-            <span className="mb-1 flex items-baseline gap-1.5 text-xs">
-              <span className="font-mono">{k.key}</span>
-              <span className="text-muted-foreground">{k.shared ? "the team's, from 1Password" : "yours alone"}</span>
+            {/* A long name pushes the note to its own line, whole. */}
+            <span className="mb-1 flex flex-wrap items-baseline gap-x-1.5 text-xs">
+              <span className="min-w-0 break-all font-mono">{k.key}</span>
+              <span className="whitespace-nowrap text-muted-foreground">{k.shared ? "the team's, from 1Password" : "yours alone"}</span>
             </span>
             <Input size="sm" type="password" autoComplete="off" placeholder={p.skipOP ? "Paste it, or leave it blank" : "Paste it once"} className="font-mono [&_input::placeholder]:font-sans" value={p.keys[id] ?? ""} onChange={(e) => p.onKey(id, e.target.value)} />
           </label>

@@ -1037,8 +1037,9 @@ export function agentNames(ids: string[]) {
 
 // InstallTerminal is Berth's terminal (ghostty-web, or xterm.js) on the
 // install's pseudo-terminal: what it shows comes from berth add ssh, and
-// what is typed goes back to it.
-export function InstallTerminal({ run, className }: { run: InstallRun; className?: string }) {
+// what is typed goes back to it. fontSize, when given, overrides the
+// terminal's own: the quick install's compact dialog uses a smaller one.
+export function InstallTerminal({ run, className, fontSize }: { run: InstallRun; className?: string; fontSize?: number }) {
   const host = useRef<HTMLDivElement>(null);
   const theme = useActiveTheme();
   const prefs = usePrefs((p) => p.terminal);
@@ -1051,7 +1052,7 @@ export function InstallTerminal({ run, className }: { run: InstallRun; className
     const mount = document.createElement("div");
     mount.className = "h-full w-full";
     host.current!.appendChild(mount);
-    void createTerminal(mount, theme.terminal, prefs).then((made) => {
+    void createTerminal(mount, theme.terminal, fontSize ? { ...prefs, fontSize } : prefs).then((made) => {
       if (disposed) {
         made.dispose();
         return;
@@ -1070,7 +1071,7 @@ export function InstallTerminal({ run, className }: { run: InstallRun; className
       mount.remove();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prefs.renderer, prefs.fontFamily, prefs.fontSize, theme.id]);
+  }, [prefs.renderer, prefs.fontFamily, prefs.fontSize, fontSize, theme.id]);
 
   useEffect(() => {
     if (!term || !host.current) return;
@@ -1095,7 +1096,7 @@ export function InstallTerminal({ run, className }: { run: InstallRun; className
 
   return (
     <div className={cn("relative min-h-0 flex-1", className)} style={{ background: theme.terminal.background }} onMouseDown={() => term?.focus()}>
-      <div ref={host} data-terminal data-testid="install-terminal" className="absolute inset-0 overflow-hidden px-4 pt-3 pb-2 [&_canvas]:block" />
+      <div ref={host} data-terminal data-testid="install-terminal" className={cn("absolute inset-0 overflow-hidden pt-3 pb-2 [&_canvas]:block", fontSize ? "px-3" : "px-4")} />
     </div>
   );
 }

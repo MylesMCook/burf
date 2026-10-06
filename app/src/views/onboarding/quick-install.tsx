@@ -68,7 +68,7 @@ export function QuickInstall({ target, onClose, onReady, readyLabel }: { target?
 
   return (
     <Dialog open={!!target} onOpenChange={(o) => !o && !busy && onClose()}>
-      <DialogPopup data-testid="quick-install" data-state={ready ? "ready" : run.state} data-needs={needed ? "password" : asking ? "ask" : question ? "answer" : ""} className="sm:max-w-md" showCloseButton={!busy}>
+      <DialogPopup data-testid="quick-install" data-state={ready ? "ready" : run.state} data-needs={needed ? "password" : asking ? "ask" : question ? "answer" : ""} className={cn("transition-[max-width]", showTerminal || output ? "sm:max-w-2xl" : "sm:max-w-md")} showCloseButton={!busy}>
         <DialogHeader className="pb-3">
           <div className="flex items-center gap-2.5">
             <span className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-muted/50 text-muted-foreground">
@@ -93,7 +93,7 @@ export function QuickInstall({ target, onClose, onReady, readyLabel }: { target?
           )}
           {showTerminal && (
             <div className="mt-2 flex h-44 flex-col overflow-hidden rounded-lg border" data-testid="quick-terminal">
-              <InstallTerminal run={run} />
+              <InstallTerminal run={run} fontSize={11.5} />
             </div>
           )}
           {run.failure && run.state === "failed" && <FailurePanel failure={run.failure} identity={identity} setIdentity={setIdentity} onRetry={(trust) => run.start(request({ trust_host_key: trust ?? target?.trust_host_key }))} />}
@@ -104,7 +104,7 @@ export function QuickInstall({ target, onClose, onReady, readyLabel }: { target?
               </button>
               {output && (
                 <div className="mt-2 flex h-44 flex-col overflow-hidden rounded-lg border" data-testid="quick-output">
-                  <InstallTerminal run={run} />
+                  <InstallTerminal run={run} fontSize={11.5} />
                 </div>
               )}
             </div>
