@@ -14,7 +14,7 @@ import { NotificationBell } from "@/components/notifications/notification-center
 import { newSection } from "@/components/sidebar/actions";
 import { MoreItems, Nav as PlacesNav, useArrangedNav } from "@/components/sidebar/nav";
 import { Projects, useSidebarPrefs } from "@/components/sidebar/projects";
-import { RailWorktrees } from "@/components/sidebar/rail-worktrees";
+import { RailAgents } from "@/components/sidebar/rail";
 import { Tip } from "@/components/tip";
 import { Kbd } from "@/components/ui/kbd";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
@@ -149,8 +149,9 @@ export function AppSidebar() {
 }
 
 // Rail is the sidebar folded away (⌘\): the window's controls, the places
-// in the sidebar's own order, the active worktrees, and a way back. It keeps
-// clear of the traffic lights like the full one, which is why it is 76px.
+// in the sidebar's own order, the agents by state (sidebar/rail.tsx), and a
+// way back. It keeps clear of the traffic lights like the full one, which is
+// why it is 76px.
 function Rail() {
   const view = useStore((s) => s.view);
   const setView = useStore((s) => s.setView);
@@ -200,9 +201,8 @@ function Rail() {
           </MenuPopup>
         </Menu>
       </div>
-      {/* RailWorktrees fits its tiles to this height, never scrolls. */}
-      <div className="min-h-0 w-full flex-1 overflow-hidden">
-        <RailWorktrees />
+      <div className="mt-2 min-h-0 w-full flex-1">
+        <RailAgents />
       </div>
       <div className="flex flex-col items-center gap-1 pt-1 pb-2">
         {item("Settings", <SettingsIcon />, view.kind === "settings", () => setView({ kind: "settings" }))}

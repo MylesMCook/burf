@@ -22,6 +22,7 @@ import { titleOf } from "@/lib/derive";
 import { demoAttach, demoScreen } from "@/demo/terminal";
 import { mockHistoryCall } from "@/lib/mock-history";
 import { mockAnswer, mockToolDetailSync, WEBHOOK_TEST } from "@/lib/mock-conversation";
+import { crowd } from "@/lib/mock-crowd";
 
 // Mock mode (?mock=1) runs the whole UI on fixtures, so it can be worked on
 // without an agent or a box. State is mutable: new tasks and sessions appear,
@@ -160,6 +161,9 @@ const stats: Record<string, Stats> = {
     hooks: true,
   },
 };
+
+// ?mock=1&crowd=1: many more agents, on more boxes (lib/mock-crowd.ts).
+if (new URLSearchParams(location.search).has("crowd")) crowd({ status, locations, sessions, stats });
 
 const services: Record<string, Service[]> = {
   devl: [
