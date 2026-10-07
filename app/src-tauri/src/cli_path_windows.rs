@@ -33,7 +33,7 @@ fn path_action(action: PathAction) -> Result<String, String> {
         return Err("PATH integration is only available in an installed build".into());
     }
     let dir = cli_dir()?;
-    if !dir.join("berth.exe").is_file() {
+    if matches!(action, PathAction::Add) && !dir.join("berth.exe").is_file() {
         return Err("this build carries no command to add to PATH".into());
     }
     let root = std::env::var_os("SystemRoot").ok_or("Windows system directory is unavailable")?;
