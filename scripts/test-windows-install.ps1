@@ -74,7 +74,7 @@ foreach ($name in 'BERTH_HOME', 'BERTH_USER_DIR', 'BERTH_UI_ADDR', 'BERTH_PROXY_
 }
 # The per-run folder is disposable, but not under OS TEMP: login tasks refuse
 # temporary compiler binaries. Retain its synthetic keys and evidence afterward.
-$runRoot = Join-Path ([Environment]::GetFolderPath('MyDocuments')) ('Codex\windows-install-' + [Guid]::NewGuid().ToString('N'))
+$runRoot = Join-Path ([Environment]::GetFolderPath('MyDocuments')) ('Codex\' + [DateTime]::Now.ToString('yyyy-MM-dd') + '-windows-install-' + [Guid]::NewGuid().ToString('N'))
 $installRoot = Join-Path $runRoot 'Berth app'
 $stateRoot = Join-Path $runRoot "Berth's state & data"
 $evidence = Join-Path $runRoot 'evidence'
