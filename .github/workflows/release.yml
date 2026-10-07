@@ -7,7 +7,8 @@ name: release
 # notarized and stapled (scripts/mac-release.sh), and adds the dmg, the
 # updater archive and latest.json, the feed installed apps update from. No
 # asset name carries a version, so releases/latest/download/<name> always
-# finds the newest. The release job runs on omarchy, the owner's self-hosted
+# finds the newest. The checks job (all of ci.yml) must pass first. The
+# release job runs on omarchy, the owner's self-hosted
 # runner (ci/runner/), when the repository variable SELF_HOSTED is true.
 on:
   push:
@@ -21,6 +22,13 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # All of CI (ci.yml: Go with -race and a real Chromium, shellcheck, the
+  # app's checks, tests, build and Playwright suite, the docs build) on the
+  # tagged commit. Nothing is built or published unless it passes, so a
+  # release needs no test run on a laptop.
+  checks:
+    uses: ./.github/workflows/ci.yml
+
   # Berth's static tmux for Linux boxes, which berth and the app carry for
   # boxes without one. Built in Docker (zig cross-compiles both
   # architectures from pinned, checksummed sources), on a hosted runner,
@@ -45,7 +53,7 @@ jobs:
           if-no-files-found: error
 
   release:
-    needs: tmux
+    needs: [tmux, checks]
     runs-on: ${{ (vars.SELF_HOSTED == 'true' && github.event_name == 'push' && github.actor == github.repository_owner) && fromJSON('["self-hosted","omarchy"]') || 'ubuntu-latest' }}
     permissions:
       contents: write
@@ -70,18 +78,11 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false
-      - run: sudo apt-get update && sudo apt-get install -y tmux shellcheck
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: tmux
           path: bin
       - run: chmod +x bin/tmux-linux-amd64 bin/tmux-linux-arm64
-      - run: go vet ./...
-      - run: go test -race ./...
-        # GitHub's Ubuntu runners stop Chromium's sandbox (user namespaces).
-        env:
-          BERTH_BROWSER_NO_SANDBOX: "1"
-      - run: shellcheck site/install.sh scripts/build-release.sh scripts/build-tmux.sh scripts/publish.sh scripts/mac-release.sh
       - name: Build archives
         run: make release VERSION="$GITHUB_REF_NAME"
       - name: Check the stamped version
