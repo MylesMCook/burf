@@ -203,7 +203,8 @@ func TestAgentTextIsShort(t *testing.T) {
 		"/deals         375,1280  NEW: 404 before",
 		"(aside.filters in main#results)",
 		"⚠ now scrolls sideways: 125px wider than the screen",
-		"look: /s/img/00000000000000d3.png",
+		"look: 00000000000000d3.png",
+		"look: before|after crops of each shot's largest change, in /s/img/",
 		"/search         1280  unchanged",
 		"/about                unchanged at every size",
 	} {

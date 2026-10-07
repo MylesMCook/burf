@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"image"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"strconv"
@@ -362,12 +361,13 @@ func agentText(vd VisualDiff, id string, n int, imgDir string) string {
 	fmt.Fprintf(&b, "%s\n", vd.Summary.Text)
 	both := len(vd.Settings.ColorSchemes) > 1
 	sizeName := func(s vdShot) string {
-		if both {
-			return strconv.Itoa(s.Size) + s.Scheme[:1]
+		if both && s.Scheme == "dark" {
+			return strconv.Itoa(s.Size) + " dark"
 		}
 		return strconv.Itoa(s.Size)
 	}
 	pad := strings.Repeat(" ", 22)
+	crops := false
 	for _, p := range vd.Pages {
 		var unchanged, lines []string
 		var sizes [][]string
@@ -399,7 +399,8 @@ func agentText(vd VisualDiff, id string, n int, imgDir string) string {
 					}
 				}
 				if len(s.Crops) > 0 && imgDir != "" {
-					l += "\n" + pad + "look: " + filepath.Join(imgDir, s.Crops[0])
+					l += "\n" + pad + "look: " + s.Crops[0]
+					crops = true
 				}
 				lines = append(lines, l)
 				sizes = append(sizes, nil)
@@ -435,6 +436,11 @@ func agentText(vd VisualDiff, id string, n int, imgDir string) string {
 		} else if len(unchanged) > 0 {
 			fmt.Fprintf(&b, "  %-14s %5s  unchanged\n", p.Path, strings.Join(unchanged, ","))
 		}
+	}
+	if crops {
+		// One folder for every crop: paths of hex names cost an agent
+		// tokens on every line.
+		fmt.Fprintf(&b, "look: before|after crops of each shot's largest change, in %s/\n", imgDir)
 	}
 	fmt.Fprintf(&b, "artifact: %s (shown in the user's Berth; re-run after a fix to update it)", id)
 	return b.String()

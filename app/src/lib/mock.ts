@@ -1225,6 +1225,7 @@ const skillCatalog = [
   { name: "berth-hooks", description: "Automate berth with hooks and gates at the right scope.", version: "f20829fe718c" },
   { name: "berth-orchestrate", description: "Drive other coding agents: prompt, wait, check, loop, hand off, review.", version: "66660a4b14c8" },
   { name: "berth-preview", description: "Run the worktree's dev server on its port and show it in the Berth app.", version: "e1454dda1a21" },
+  { name: "berth-visual-diff", description: "Screenshot the worktree's pages and main's, diff them, and show what moved.", version: "5d0c1a9e7f42" },
 ];
 type MockSkillState = "installed" | "outdated" | "missing";
 const skillStates: Record<string, Record<string, MockSkillState>> = {};
