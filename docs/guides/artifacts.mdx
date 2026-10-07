@@ -32,6 +32,15 @@ Agents learn this from the `berth-artifacts` skill, which
   under the reply box, a tab's **Board** button, or the grid button in the
   worktree's toolbar, beside Files.
 
+## Visual diffs
+
+What a change did to the app's pages is an artifact of its own kind:
+`berthd shots compare` screenshots the worktree's pages and main's at
+phone, tablet and desktop widths, diffs them, and shows the result as a
+before/after slider with a heatmap, numbered regions and what broke (a
+page that scrolls sideways, a 500). It versions, updates live and sits on
+the board like any other artifact. See [visual diffs](/guides/visual-diffs).
+
 ## Kinds
 
 | Kind | The file | Drawn by |
@@ -41,6 +50,8 @@ Agents learn this from the `berth-artifacts` skill, which
 | diagram | Mermaid (`.mmd`) | Berth draws flowcharts; other Mermaid diagrams show as source |
 | notes | Markdown (`.md`) | Berth, without raw HTML |
 | page | one `.html` file | the page itself, sandboxed on its own origin |
+
+| visualdiff | made by `berthd shots compare`, never added by hand | Berth: a before/after slider, heatmap and regions ([visual diffs](/guides/visual-diffs)) |
 
 The kind comes from the file, or `--kind`. Data artifacts may be 1 MB and
 5,000 rows; a page 2 MB.

@@ -28,6 +28,25 @@ again.
   Codex when and how (`berthd integrations install`). The claude.ai chip
   now reads **N published**. [Artifacts](/guides/artifacts).
 
+- **Visual diffs: what a change did to your pages.** After a UI change, an
+  agent runs `berthd shots compare`: the worktree's pages and main's are
+  shot at 375, 768 and 1280 pixels wide in a short-lived Chromium of their
+  own (reduced motion, animations settled, fonts and images loaded, lazy
+  content scrolled in, UTC), diffed pixel by pixel with content that only
+  moved counted as moved, and kept as an artifact in its chat, in about 5
+  seconds for 6 pages × 3 sizes. The tab opens on the biggest change: a
+  before/after **Slider**, **Side by side**, **Flicker** or **Onion skin**,
+  a **Heatmap** with **Glow**, numbered regions named by their element,
+  **Changes ‹ n of N ›** (n and p), **All shots** in a grid, and chips for
+  a page that now scrolls sideways, fails or is new. **Accept as
+  baseline** keeps the after-shots; comparing again with
+  `--base accepted` gives the all clear. Masks and defaults go in
+  `.berth/config.json`'s `shots`; `--color-scheme both` shoots light and
+  dark; with main's dev server stopped it compares with the turn-start
+  baseline (`berthd shots baseline`) and says so. The agent reads about 450
+  tokens. The `berth-visual-diff` skill teaches Claude Code and Codex to
+  check before saying done. [Visual diffs](/guides/visual-diffs).
+
 - **Give a worktree a name you can read.** A worktree made from a pasted
   link is called `https-linear-app-acme`. **Rename…** in its menu,
   double-click or F2 on its sidebar row (Enter saves, Esc cancels), or

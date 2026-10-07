@@ -97,7 +97,7 @@ Berth reads the terminal and sends these itself with `origin: "screen"` and
 | `run.gate` | the same, with `step`, `gate_title`, `pick`: it waits for someone. A `notify` (`kind: "run.gate"`) goes with it |
 | `run.gate_decided` | the same, with `step`, `approve`, `by` |
 | `browser.opened`, `browser.closed` | `location`, `name`, `path`; `closed` has `reason` (`idle`, `closed`, the guard, another worktree needing one, its worktree removed) |
-| `artifact.added`, `artifact.updated`, `artifact.removed` | `id`, `title`, `kind`, `location`, `name`, `path`, `version`, and `session` when an agent made it; `problem` when a rewrite of its file wasn't taken. A rewrite the box noticed has origin `watch`. See [artifacts](/guides/artifacts) |
+| `artifact.added`, `artifact.updated`, `artifact.removed` | `id`, `title`, `kind`, `location`, `name`, `path`, `version`, and `session` when an agent made it; `problem` when a rewrite of its file wasn't taken. A rewrite the box noticed has origin `watch`; a visual diff from `berthd shots compare` has origin `shots` and its `summary`. See [artifacts](/guides/artifacts) |
 | `browser.failed` | `location`, `name`, `path`, `reason`: `sandbox` (Chromium's sandbox can't start; see [agent browser](/guides/agent-browser#when-ubuntu-blocks-it)) or `error` |
 | `browser.navigated` | `location`, `name`, `path`, `url`: the [agent browser](/guides/agent-browser) loaded a page |
 | `browser.shot` | `location`, `name`, `path`, `file`, `url` |

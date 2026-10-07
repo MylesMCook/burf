@@ -188,6 +188,15 @@ Variables: `--berth-bg`, `--berth-fg`, `--berth-card`, `--berth-muted`,
 `--chart-1` … `--chart-5`, `--chart-grid`, `--chart-scale-01` … `-05`
 (low to high).
 
+## Visual before/after: a kind of its own
+
+For what a change did to a web app's pages, don't screenshot and chart it
+yourself: `berthd shots compare` makes a **visual diff** (before and after
+at phone, tablet and desktop widths, a heatmap, the changed regions, and
+what broke) and shows it like any other artifact. See the
+berth-visual-diff skill. `berthd artifact add` refuses a visual diff made
+by hand.
+
 ## Update it, don't make a new one
 
 Rewrite the same file: Berth watches the file you registered and shows the
