@@ -395,7 +395,7 @@ function CommitDetails({ row, base, branch, mergeBase, where }: { row: GraphRow;
           ) : (
             <span className="tabular-nums">
               {detail.files} file{detail.files === 1 ? "" : "s"}
-              <span className="ml-2 text-success">+{detail.added}</span>
+              <span className="ml-2 text-success-foreground">+{detail.added}</span>
               <span className="ml-1.5 text-destructive-foreground">−{detail.removed}</span>
               {row.merge && <span className="ml-2 text-muted-foreground">vs its first parent</span>}
             </span>
@@ -460,7 +460,7 @@ function parseRefs(refs?: string): Ref[] {
 }
 
 function ProgressLine({ p }: { p: RowProgress }) {
-  const tone = p.state === "ok" ? "text-success" : p.state === "conflict" ? "text-warning-foreground" : p.state === "failed" ? "text-destructive-foreground" : "text-muted-foreground";
+  const tone = p.state === "ok" ? "text-success-foreground" : p.state === "conflict" ? "text-warning-foreground" : p.state === "failed" ? "text-destructive-foreground" : "text-muted-foreground";
   return (
     <div className={cn("border-b bg-muted/30 px-6 py-2 text-xs", tone)}>
       {p.state === "running" ? "Working…" : p.message}

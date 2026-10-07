@@ -262,7 +262,7 @@ function WorktreeRow({
                   {r.changed}
                 </span>
               )}
-              {r.untracked > 0 && <span className="text-success">+{r.untracked}</span>}
+              {r.untracked > 0 && <span className="text-success-foreground">+{r.untracked}</span>}
             </>
           )}
         </div>
@@ -364,7 +364,7 @@ function ProgressMark({ p }: { p?: RowProgress }) {
     ) : p.state === "queued" ? (
       <span className="size-1.5 rounded-full bg-muted-foreground/40" />
     ) : p.state === "ok" ? (
-      <CheckIcon className="size-3.5 text-success" />
+      <CheckIcon className="size-3.5 text-success-foreground" />
     ) : p.state === "conflict" ? (
       <AlertTriangleIcon className="size-3.5 text-warning" />
     ) : p.state === "failed" ? (

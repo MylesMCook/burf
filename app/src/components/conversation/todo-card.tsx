@@ -68,7 +68,7 @@ export function TodoCard({ todos, session, working }: { todos: ChatTodo[]; sessi
             {todos.map((t, i) => (
               <li key={t.id ?? i} className="flex items-start gap-2.5 py-1 text-[0.8125rem] leading-snug">
                 <Glyph status={t.status} working={working} />
-                <span className={cn("min-w-0 flex-1", t.status === "completed" && "text-muted-foreground line-through decoration-muted-foreground/40", t.status === "in_progress" && "font-medium text-foreground", t.status === "pending" && "text-foreground/85")}>
+                <span className={cn("min-w-0 flex-1", t.status === "completed" && "text-muted-foreground line-through decoration-muted-foreground/40", t.status === "in_progress" && "font-medium text-foreground", t.status === "pending" && "text-foreground")}>
                   {t.status === "in_progress" && t.active ? t.active : t.text}
                 </span>
               </li>

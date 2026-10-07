@@ -17,6 +17,7 @@ import type { Changes } from "@/lib/file-marks";
 import { patchText } from "@/lib/file-marks";
 import { cssVars, readableStyles, type ShikiTheme, syntaxColors } from "@/lib/syntax-colors";
 import { syntaxThemes } from "@/themes/apply";
+import { mix, readable } from "@/themes/color";
 
 export interface CodeEditorProps {
   path: string;
@@ -103,7 +104,10 @@ const highlight = HighlightStyle.define([
 // Until the theme's Shiki colours load (once per theme), its terminal
 // palette stands in.
 function fallbackVars(theme: Theme): Record<string, string> {
-  const c = theme.terminal;
+  // The terminal's colours, made to read on the page (and the active
+  // line's tint) as the Shiki ones are.
+  const bg = mix(theme.colors.foreground, theme.colors.background, 0.035);
+  const c = Object.fromEntries(Object.entries(theme.terminal).map(([k, v]) => [k, readable(v, bg)])) as unknown as Theme["terminal"];
   const fg = theme.colors.foreground;
   return {
     "--syn-text": fg,
@@ -125,8 +129,9 @@ const shikiCache = new Map<string, Record<string, string>>();
 // useSyntaxVars is the active theme's code colours as custom properties.
 function useSyntaxVars(theme: Theme): Record<string, string> {
   const name = theme.appearance === "dark" ? syntaxThemes(theme).dark : syntaxThemes(theme).light;
-  // Each colour reads on this theme's background (4.5:1, lightness only).
-  const bg = theme.colors.background;
+  // Each colour reads on this theme's background (4.5:1, lightness only),
+  // the active line's tint included.
+  const bg = mix(theme.colors.foreground, theme.colors.background, 0.035);
   const key = `${name}|${bg}`;
   const [vars, setVars] = useState(() => shikiCache.get(key));
   useEffect(() => {
