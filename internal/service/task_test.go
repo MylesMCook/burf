@@ -2,8 +2,10 @@ package service
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
@@ -21,27 +23,40 @@ var windowsSpec = Spec{
 }
 
 type fakeScheduler struct {
-	xml       string
-	state     int
-	queries   int
-	mutations []string
-	queryErr  error
+	xml        string
+	state      int
+	queries    int
+	mutations  []string
+	queryErr   error
+	queryDelay time.Duration
 }
 
 func fakeWindowsScheduler(t *testing.T) *fakeScheduler {
 	t.Helper()
-	oldOS, oldSID, oldCmd, oldInput := goos, windowsSID, command, commandInput
+	oldOS, oldSID, oldCmd := goos, windowsSID, taskCommand
 	goos = "windows"
 	windowsSID = func() (string, error) { return "S-1-5-21-123-456-789-1001", nil }
 	t.Setenv("SystemRoot", `C:\Windows`)
 	f := &fakeScheduler{state: 3}
-	command = func(name string, args ...string) ([]byte, error) {
-		if name != powershellPath() || len(args) != 5 || args[4] == "" {
-			t.Fatalf("unexpected command %s %v", name, args)
+	taskCommand = func(ctx context.Context, input []byte, args ...string) ([]byte, error) {
+		if len(args) != 5 || args[4] == "" {
+			t.Fatalf("unexpected command %v", args)
 		}
 		script := decodePowerShell(t, args[4])
+		if input != nil {
+			f.mutations = append(f.mutations, script)
+			f.xml = string(input)
+			return nil, nil
+		}
 		if strings.Contains(script, "ConvertTo-Json") {
 			f.queries++
+			if f.queryDelay != 0 {
+				select {
+				case <-ctx.Done():
+					return nil, ctx.Err()
+				case <-time.After(f.queryDelay):
+				}
+			}
 			if f.queryErr != nil {
 				return nil, f.queryErr
 			}
@@ -53,16 +68,67 @@ func fakeWindowsScheduler(t *testing.T) *fakeScheduler {
 		}
 		return nil, nil
 	}
-	commandInput = func(name string, input []byte, args ...string) ([]byte, error) {
-		if name != powershellPath() || len(args) != 5 {
-			t.Fatal("registration did not use the OS PowerShell executable")
-		}
-		f.mutations = append(f.mutations, decodePowerShell(t, args[4]))
-		f.xml = string(input)
-		return nil, nil
-	}
-	t.Cleanup(func() { goos, windowsSID, command, commandInput = oldOS, oldSID, oldCmd, oldInput })
+	t.Cleanup(func() { goos, windowsSID, taskCommand = oldOS, oldSID, oldCmd })
 	return f
+}
+
+func TestWindowsTaskWaitHonorsDeadlineDuringStalledQuery(t *testing.T) {
+	f := fakeWindowsScheduler(t)
+	b, err := Render(windowsSpec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.xml, f.state, f.queryDelay = string(b), 4, 250*time.Millisecond
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Millisecond)
+	defer cancel()
+	started := time.Now()
+	err = WaitStopped(ctx, windowsSpec)
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("stalled query = %v", err)
+	}
+	if elapsed := time.Since(started); elapsed > 150*time.Millisecond {
+		t.Fatalf("20ms deadline took %v while querying Task Scheduler", elapsed)
+	}
+}
+
+func TestWindowsTaskOwnershipSurvivesOlderLauncherBytes(t *testing.T) {
+	f := fakeWindowsScheduler(t)
+	b, err := Render(windowsSpec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc taskDocument
+	if err := xml.Unmarshal(b, &doc); err != nil {
+		t.Fatal(err)
+	}
+	oldArgs := doc.Actions.Exec[0].Arguments
+	legacyArgs := "-NoLogo -NoProfile -NonInteractive -EncodedCommand " + encodePowerShell("# Previous launcher release\n"+windowsTaskScript(windowsSpec))
+	data := strings.Replace(string(b), esc(oldArgs), esc(legacyArgs), 1)
+	// The metadata envelope is versioned independently from the launcher.
+	var metadata map[string]json.RawMessage
+	raw, _ := base64.StdEncoding.DecodeString(strings.TrimPrefix(doc.Registration.Source, taskSource))
+	if err := json.Unmarshal(raw, &metadata); err != nil {
+		t.Fatal(err)
+	}
+	if _, finalized := metadata["spec"]; finalized {
+		hash := sha256.Sum256([]byte(legacyArgs))
+		metadata["launcher_sha256"], _ = json.Marshal(hex.EncodeToString(hash[:]))
+		raw, _ = json.Marshal(metadata)
+		data = strings.Replace(data, doc.Registration.Source, taskSource+base64.StdEncoding.EncodeToString(raw), 1)
+	}
+	f.xml = data
+	u, ok, err := Read(windowsSpec.Name)
+	if err != nil || !ok || u.Program != windowsSpec.Program {
+		t.Fatalf("older launcher was rejected: %+v ok=%v err=%v", u, ok, err)
+	}
+	updated := windowsSpec
+	updated.Program = `C:\Users\Alex\Updated Berth\berth.exe`
+	if _, err := Install(updated); err != nil {
+		t.Fatalf("could not replace the owned older launcher: %v", err)
+	}
+	if !Installed(updated) {
+		t.Fatal("updated launcher is not installed")
+	}
 }
 
 func decodePowerShell(t *testing.T, encoded string) string {
@@ -161,6 +227,7 @@ func TestWindowsTaskRefusesForeignTaskAndQueryFailures(t *testing.T) {
 		strings.Replace(string(b), "LeastPrivilege", "HighestAvailable", 1),
 		strings.Replace(string(b), "S-1-5-21-123-456-789-1001", "S-1-5-21-123-456-789-1002", -1),
 		strings.Replace(string(b), "<AllowHardTerminate>false</AllowHardTerminate>", "", 1),
+		strings.Replace(string(b), "-EncodedCommand ", "-EncodedCommand changed", 1),
 		strings.Replace(string(b), "</Actions>", "<ComHandler><ClassId>foreign</ClassId></ComHandler></Actions>", 1),
 		strings.Replace(string(b), "</Triggers>", "<BootTrigger/></Triggers>", 1),
 		`<Task xmlns="` + taskNamespace + `"><RegistrationInfo><Source>someone else</Source></RegistrationInfo></Task>`,
@@ -239,5 +306,21 @@ func TestWindowsTaskIdentityIsUserSpecificAndStableAcrossExecutableUpdates(t *te
 	otherUser, _ := UnitPath(s)
 	if otherUser == first {
 		t.Fatal("two users share the same task identity")
+	}
+}
+
+func TestWindowsSchedulerControlsHaveBoundedQueryDeadline(t *testing.T) {
+	fakeWindowsScheduler(t)
+	queried := false
+	taskCommand = func(ctx context.Context, input []byte, args ...string) ([]byte, error) {
+		queried = true
+		deadline, ok := ctx.Deadline()
+		if !ok || time.Until(deadline) > schedulerCommandTimeout {
+			t.Fatal("scheduler query has no bounded deadline")
+		}
+		return []byte(`{"found":false}`), nil
+	}
+	if _, _, err := Read(windowsSpec.Name); err != nil || !queried {
+		t.Fatalf("query=%v err=%v", queried, err)
 	}
 }

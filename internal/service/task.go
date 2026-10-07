@@ -1,16 +1,19 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"sort"
@@ -23,8 +26,36 @@ import (
 
 const taskSource = "berth-task-v1:"
 const taskNamespace = "http://schemas.microsoft.com/windows/2004/02/mit/task"
+const taskArgumentsPrefix = "-NoLogo -NoProfile -NonInteractive -EncodedCommand "
+const schedulerCommandTimeout = 15 * time.Second
 
 var windowsSID = currentWindowsSID
+
+var taskCommand = func(ctx context.Context, input []byte, args ...string) ([]byte, error) {
+	cmd := exec.CommandContext(ctx, powershellPath(), args...)
+	configureCommand(cmd)
+	if input != nil {
+		cmd.Stdin = bytes.NewReader(input)
+	}
+	cmd.WaitDelay = time.Second
+	out, err := cmd.CombinedOutput()
+	if ctx.Err() != nil {
+		return out, ctx.Err()
+	}
+	return out, err
+}
+
+// Launcher bytes evolve independently from the service identity. The hash
+// detects edits to the stored action; the OS namespace and SID own the task.
+type taskMetadata struct {
+	Spec           Spec   `json:"spec"`
+	LauncherSHA256 string `json:"launcher_sha256"`
+}
+
+func launcherHash(arguments string) string {
+	hash := sha256.Sum256([]byte(arguments))
+	return hex.EncodeToString(hash[:])
+}
 
 // Windows tasks run only in the current user's interactive session. Their
 // names include the SID so two users cannot replace each other's agent.
@@ -51,11 +82,17 @@ func powershellPath() string {
 }
 
 func powershell(script string) ([]byte, error) {
-	return command(powershellPath(), "-NoLogo", "-NoProfile", "-NonInteractive", "-EncodedCommand", encodePowerShell(script))
+	return powershellContext(context.Background(), nil, script)
 }
 
 func powershellInput(script string, input []byte) ([]byte, error) {
-	return commandInput(powershellPath(), input, "-NoLogo", "-NoProfile", "-NonInteractive", "-EncodedCommand", encodePowerShell(script))
+	return powershellContext(context.Background(), input, script)
+}
+
+func powershellContext(ctx context.Context, input []byte, script string) ([]byte, error) {
+	ctx, cancel := context.WithTimeout(ctx, schedulerCommandTimeout)
+	defer cancel()
+	return taskCommand(ctx, input, "-NoLogo", "-NoProfile", "-NonInteractive", "-EncodedCommand", encodePowerShell(script))
 }
 
 func encodePowerShell(s string) string {
@@ -70,6 +107,7 @@ func encodePowerShell(s string) string {
 func psQuote(s string) string { return "'" + strings.ReplaceAll(s, "'", "''") + "'" }
 
 const taskConnect = `$ErrorActionPreference = 'Stop'
+[Console]::InputEncoding = [Text.UTF8Encoding]::new($false)
 [Console]::OutputEncoding = [Text.UTF8Encoding]::new($false)
 $scheduler = New-Object -ComObject 'Schedule.Service'
 $scheduler.Connect()
@@ -181,13 +219,13 @@ func renderWindowsTask(s Spec) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	metadata, err := json.Marshal(s)
-	if err != nil {
-		return nil, err
-	}
-	arguments := "-NoLogo -NoProfile -NonInteractive -EncodedCommand " + encodePowerShell(windowsTaskScript(s))
+	arguments := taskArgumentsPrefix + encodePowerShell(windowsTaskScript(s))
 	if len(arguments) > 30000 {
 		return nil, errors.New("Windows service arguments exceed the process command-line limit")
+	}
+	metadata, err := json.Marshal(taskMetadata{Spec: s, LauncherSHA256: launcherHash(arguments)})
+	if err != nil {
+		return nil, err
 	}
 	return []byte(fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
 <Task version="1.2" xmlns="%s">
@@ -223,11 +261,18 @@ func windowsAbsolute(path string) bool {
 }
 
 func readWindowsTask(name string) (windowsTask, Spec, error) {
+	return readWindowsTaskContext(context.Background(), name)
+}
+
+func readWindowsTaskContext(ctx context.Context, name string) (windowsTask, Spec, error) {
+	if err := ctx.Err(); err != nil {
+		return windowsTask{}, Spec{}, err
+	}
 	path, err := windowsTaskName(name)
 	if err != nil {
 		return windowsTask{}, Spec{}, err
 	}
-	out, err := powershell(taskLookup(path) + `if ($task) {
+	out, err := powershellContext(ctx, nil, taskLookup(path)+`if ($task) {
   [Console]::Out.Write((@{found=$true;xml=$task.Xml;state=[int]$task.State} | ConvertTo-Json -Compress))
 } else { [Console]::Out.Write('{"found":false}') }
 `)
@@ -262,12 +307,16 @@ func ownedWindowsTask(data []byte, name string) (Spec, error) {
 	if err != nil {
 		return Spec{}, err
 	}
-	var s Spec
-	if err := json.Unmarshal(b, &s); err != nil {
+	var metadata taskMetadata
+	if err := json.Unmarshal(b, &metadata); err != nil {
 		return Spec{}, err
 	}
+	s := metadata.Spec
 	if s.Name != name {
 		return Spec{}, errors.New("the Windows task has a different service identity")
+	}
+	if len(doc.Actions.Exec) != 1 || !strings.HasPrefix(doc.Actions.Exec[0].Arguments, taskArgumentsPrefix) || metadata.LauncherSHA256 != launcherHash(doc.Actions.Exec[0].Arguments) {
+		return Spec{}, errors.New("the Windows task launcher differs from its recorded configuration")
 	}
 	want, err := renderWindowsTask(s)
 	if err != nil {
@@ -277,6 +326,10 @@ func ownedWindowsTask(data []byte, name string) (Spec, error) {
 	if err := xml.Unmarshal(want, &expected); err != nil {
 		return Spec{}, err
 	}
+	// Keep checking the SID, executable, Spec and settings without requiring
+	// an older owned task's launcher to equal this release's implementation.
+	expected.Registration.Source = doc.Registration.Source
+	expected.Actions.Exec[0].Arguments = doc.Actions.Exec[0].Arguments
 	if !reflect.DeepEqual(doc, expected) {
 		return Spec{}, errors.New("the Windows task principal or action differs from its Berth configuration")
 	}
@@ -406,7 +459,7 @@ func WaitStopped(ctx context.Context, s Spec) error {
 		return nil
 	}
 	for {
-		task, _, err := readWindowsTask(s.Name)
+		task, _, err := readWindowsTaskContext(ctx, s.Name)
 		if err != nil {
 			return err
 		}
@@ -497,12 +550,20 @@ using System.Diagnostics;
 using System.IO;
 using System.Threading;
 public static class BerthTaskProcess {
-  private static void Copy(Stream source, Stream output) {
+  private static void ReportLogFailure(Exception error) {
+    try { Console.Error.WriteLine("Berth could not write the service log: " + error.Message); } catch { }
+  }
+  private static void Copy(Stream source, Stream output, Action<Exception> failed) {
     var buffer = new byte[8192];
     int count;
-    while ((count = source.Read(buffer, 0, buffer.Length)) > 0) {
-      lock (output) { output.Write(buffer, 0, count); output.Flush(); }
-    }
+    bool writable = true;
+    try {
+      while ((count = source.Read(buffer, 0, buffer.Length)) > 0) {
+        if (!writable) continue;
+        try { lock (output) { output.Write(buffer, 0, count); output.Flush(); } }
+        catch (Exception error) { writable = false; failed(error); }
+      }
+    } catch (Exception error) { failed(error); }
   }
   public static int Run(string program, string arguments, string[] keys, string[] values, string log, bool restartAlways) {
     do {
@@ -514,6 +575,9 @@ public static class BerthTaskProcess {
         for (int i = 0; i < keys.Length; i++) p.StartInfo.EnvironmentVariables[keys[i]] = values[i];
         Stream output = null;
         Thread stdout = null, stderr = null;
+        Exception logFailure = null;
+        var failureLock = new object();
+        Action<Exception> failed = error => { lock (failureLock) { if (logFailure == null) logFailure = error; } };
         try {
           if (log.Length > 0) {
             output = new FileStream(log, FileMode.Append, FileAccess.Write, FileShare.Read);
@@ -522,14 +586,19 @@ public static class BerthTaskProcess {
           }
           p.Start();
           if (output != null) {
-            stdout = new Thread(() => Copy(p.StandardOutput.BaseStream, output));
-            stderr = new Thread(() => Copy(p.StandardError.BaseStream, output));
+            stdout = new Thread(() => Copy(p.StandardOutput.BaseStream, output, failed));
+            stderr = new Thread(() => Copy(p.StandardError.BaseStream, output, failed));
             stdout.Start(); stderr.Start();
           }
           p.WaitForExit();
           if (stdout != null) { stdout.Join(); stderr.Join(); }
+          if (logFailure != null) ReportLogFailure(logFailure);
           if (!restartAlways) return p.ExitCode;
-        } finally { if (output != null) output.Dispose(); }
+        } finally {
+          if (output != null) {
+            try { output.Dispose(); } catch (Exception error) { ReportLogFailure(error); }
+          }
+        }
       }
       Thread.Sleep(5000);
     } while (restartAlways);

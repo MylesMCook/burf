@@ -1,16 +1,32 @@
 package service
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"golang.org/x/sys/windows"
 )
+
+func TestWindowsPowerShellControlHonorsCallerDeadline(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+	defer cancel()
+	started := time.Now()
+	_, err := powershellContext(ctx, nil, "Start-Sleep -Seconds 30")
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("control deadline = %v", err)
+	}
+	if time.Since(started) > 2*time.Second {
+		t.Fatal("the cancelled control process did not exit promptly")
+	}
+}
 
 // This test executes only a child process in a test-owned directory. It does
 // not connect to Task Scheduler, register a task, or change login startup.
@@ -66,6 +82,65 @@ func TestWindowsTaskLauncherNativeArgumentsEnvironmentLogAndExit(t *testing.T) {
 		}
 	}
 }
+
+func TestWindowsTaskLoggingFailureStillDrainsAndWaitsForChild(t *testing.T) {
+	dir := t.TempDir()
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	marker := filepath.Join(dir, "child-finished")
+	s := Spec{Program: exe, Args: []string{"-test.run=^TestWindowsTaskLoggingChildProcess$"}, Env: map[string]string{"BERTH_LOG_CHILD": marker}, LogPath: filepath.Join(dir, "log")}
+	script := windowsTaskScript(s)
+	script = strings.Replace(script, taskProcessSource, taskProcessSource+failingLogStream, 1)
+	broken := strings.Replace(script, "output = new FileStream(log, FileMode.Append, FileAccess.Write, FileShare.Read);", "output = new BerthFailingLog();", 1)
+	if broken == script {
+		t.Fatal("the failing writer fixture did not replace the log stream")
+	}
+	started := time.Now()
+	out, err := powershell(broken)
+	if err != nil {
+		t.Fatalf("launcher changed the clean child exit status after a log failure: %v output=%s", err, out)
+	}
+	if _, err := os.Stat(marker); err != nil {
+		t.Fatalf("launcher returned before the chatty child finished: %v output=%s", err, out)
+	}
+	if time.Since(started) < 200*time.Millisecond || !strings.Contains(string(out), "injected log failure") {
+		t.Fatalf("logging failure was not reported after waiting: %s", out)
+	}
+}
+
+func TestWindowsTaskLoggingChildProcess(t *testing.T) {
+	marker := os.Getenv("BERTH_LOG_CHILD")
+	if marker == "" {
+		return
+	}
+	data := make([]byte, 32<<10)
+	for i := 0; i < 32; i++ {
+		os.Stdout.Write(data)
+		os.Stderr.Write(data)
+	}
+	time.Sleep(200 * time.Millisecond)
+	if err := os.WriteFile(marker, []byte("finished"), 0o600); err != nil {
+		os.Exit(19)
+	}
+	os.Exit(0)
+}
+
+const failingLogStream = `
+public sealed class BerthFailingLog : Stream {
+  public override bool CanRead { get { return false; } }
+  public override bool CanSeek { get { return false; } }
+  public override bool CanWrite { get { return true; } }
+  public override long Length { get { throw new NotSupportedException(); } }
+  public override long Position { get { throw new NotSupportedException(); } set { throw new NotSupportedException(); } }
+  public override void Flush() { throw new IOException("injected log failure"); }
+  public override void Write(byte[] buffer, int offset, int count) { throw new IOException("injected log failure"); }
+  public override int Read(byte[] buffer, int offset, int count) { throw new NotSupportedException(); }
+  public override long Seek(long offset, SeekOrigin origin) { throw new NotSupportedException(); }
+  public override void SetLength(long value) { throw new NotSupportedException(); }
+}
+`
 
 func TestWindowsTaskChildProcess(t *testing.T) {
 	status := os.Getenv("BERTH_TASK_CHILD")

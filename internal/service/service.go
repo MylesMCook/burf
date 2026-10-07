@@ -48,12 +48,6 @@ var (
 		configureCommand(cmd)
 		return cmd.CombinedOutput()
 	}
-	commandInput = func(name string, input []byte, args ...string) ([]byte, error) {
-		cmd := exec.Command(name, args...)
-		configureCommand(cmd)
-		cmd.Stdin = bytes.NewReader(input)
-		return cmd.CombinedOutput()
-	}
 	lookPath   = exec.LookPath
 	runUserDir = "/run/user"
 )
