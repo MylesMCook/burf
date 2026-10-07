@@ -100,7 +100,7 @@ func (b *Box) handleServices(w http.ResponseWriter, r *http.Request) error {
 func Tools() []string {
 	var have []string
 	for _, t := range []string{"claude", "codex", "opencode", "gemini", "pi"} {
-		if _, err := toolPath(t); err == nil {
+		if _, ok := agentFound(t); ok {
 			have = append(have, t)
 		}
 	}

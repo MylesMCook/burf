@@ -23,6 +23,8 @@ export interface PlanProps {
   onPick(id: string, on: boolean): void;
   onRetry(from: string): void;
   onOpenTerminal(): void;
+  // Opens a repo's first-time setup terminal on the box.
+  onOpenSession?(session: string): void;
   onStartOn(project: string): void;
   onFiles(): void;
   update?: TeamUpdate | null;
@@ -240,6 +242,18 @@ export function Plan(p: PlanProps) {
                       <Button size="xs" onClick={() => p.onStartOn(x.id)}>
                         Start on {x.id}
                       </Button>
+                    ) : r?.state === "setting-up" && r.session && p.onOpenSession ? (
+                      // Its first-time setup runs in a terminal of its own:
+                      // its last line here, and the terminal a click away,
+                      // in front when it asks something.
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className={cn("max-w-48 truncate text-xs", r.waiting ? "text-warning-foreground" : "text-muted-foreground")} data-testid={`repo-line-${x.id}`}>
+                          {r.waiting ? "waiting for you" : (r.line ?? "setting up")}
+                        </span>
+                        <Button size="xs" variant={r.waiting ? "default" : "ghost"} onClick={() => p.onOpenSession?.(r.session!)} data-testid={`repo-terminal-${x.id}`}>
+                          <SquareTerminalIcon /> {r.waiting ? "Answer in its terminal" : "Terminal"}
+                        </Button>
+                      </span>
                     ) : r?.state === "cloning" || r?.state === "setting-up" ? (
                       <span className="max-w-48 truncate text-muted-foreground text-xs">{r.line ?? (r.state === "cloning" ? "cloning" : "setting up")}</span>
                     ) : r?.state === "queued" ? (

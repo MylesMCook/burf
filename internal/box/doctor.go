@@ -25,12 +25,13 @@ func (b *Box) Doctor(ctx context.Context) []doctor.Check {
 		doctor.ToolCheck("Worktrees and sessions", "git", "locations and worktrees", "Install git with your package manager", true),
 		TmuxCheck(),
 		doctor.ToolCheck("Worktrees and sessions", "cloudflared", "public shares", "https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/", false),
-		doctor.ToolCheck("Agents", "claude", "Claude Code sessions", "npm install -g @anthropic-ai/claude-code", false),
-		doctor.ToolCheck("Agents", "codex", "Codex sessions", "npm install -g @openai/codex", false),
 		// What sessions and the checks above find tools on: a service often
 		// starts with less than a login shell has.
 		doctor.Check{Area: "Worktrees and sessions", Name: "PATH", Status: doctor.Info, Detail: os.Getenv("PATH")},
 	)
+	// Doctor looks for the agent CLIs afresh: one installed since shows.
+	b.refreshAgents(ctx)
+	checks = append(checks, agentChecks()...)
 	if m := groups.Now(); len(m.Groups) > 0 {
 		checks = append(checks, doctor.Check{Area: "Worktrees and sessions", Name: "groups", Status: doctor.Info,
 			Detail: "you joined " + strings.Join(m.Groups, ", ") + " after berthd started, so berthd lacks it; what berthd starts now (terminals, services, scripts, hooks) gets it through sg",

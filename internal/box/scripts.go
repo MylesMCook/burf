@@ -88,6 +88,11 @@ func scriptsFor(saved savedLocation) Scripts {
 
 // runScript runs a lifecycle script in the worktree through a login shell, so
 // tools the user installed are on PATH, logging to logPath.
+// quietEnv keeps setup that runs unattended (a team project's init, a
+// worktree's setup script) from stopping at a question nobody sees:
+// corepack asks before it downloads the yarn or pnpm a repository pins.
+var quietEnv = []string{"COREPACK_ENABLE_DOWNLOAD_PROMPT=0"}
+
 func runScript(ctx context.Context, script, repo, dir, name, logPath string, timeout time.Duration, extra []string) error {
 	if err := os.MkdirAll(filepath.Dir(logPath), 0o700); err != nil {
 		return err
@@ -108,6 +113,10 @@ func runScript(ctx context.Context, script, repo, dir, name, logPath string, tim
 	cmd.Env = append(os.Environ(),
 		"BERTH_ROOT_PATH="+repo, "BERTH_WORKTREE_PATH="+dir, "BERTH_WORKTREE_NAME="+name,
 		"ORCA_ROOT_PATH="+repo, "ORCA_WORKTREE_PATH="+dir, "ORCA_WORKSPACE_NAME="+name)
+	// A script has no terminal to answer a question in: corepack fetches
+	// the yarn or pnpm a repository pins without asking. The repository's
+	// own env (extra) can say otherwise.
+	cmd.Env = append(cmd.Env, quietEnv...)
 	cmd.Env = append(cmd.Env, extra...)
 	cmd.Stdout, cmd.Stderr = log, log
 	if err := cmd.Run(); err != nil {

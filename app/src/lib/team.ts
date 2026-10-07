@@ -213,6 +213,10 @@ export interface TeamStatus {
     trust?: string;
     warnings?: string[];
     line?: string;
+    // The terminal its first-time setup (init) runs in, and whether that
+    // terminal waits for an answer there (a [Y/n], a password).
+    session?: string;
+    waiting?: boolean;
     // The keys the team lists for it; those its config on the box has no
     // value for yet; and those 1Password would give it, while skipped.
     keys?: string[];

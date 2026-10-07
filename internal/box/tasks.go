@@ -55,7 +55,7 @@ var builtinAgents = []AgentPreset{
 func Presets(loc *Location) []AgentPreset {
 	var out []AgentPreset
 	for _, p := range builtinAgents {
-		if _, err := toolPath(p.Command); err == nil {
+		if _, ok := agentFound(p.Command); ok {
 			out = append(out, p)
 		}
 	}

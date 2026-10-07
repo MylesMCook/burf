@@ -276,7 +276,7 @@ export function RunCard({ run, github, os, onOpenTerminal, onRetry, onBackground
       <RotateCwIcon /> Retry from {shortTitle(retryFrom.title)}
     </Button>
   ) : (
-    <Button size="sm" variant="outline" className={compact ? undefined : "min-w-0 flex-1"} onClick={onOpenTerminal} disabled={!run.session}>
+    <Button size="sm" variant="outline" className={compact ? undefined : "min-w-0 flex-1"} onClick={onOpenTerminal} disabled={!run.session && !run.projects.some((p) => p.session)}>
       <SquareTerminalIcon /> Open terminal
     </Button>
   );
@@ -366,6 +366,15 @@ export function runSummary(run: TeamStatus): { title: string; detail: string; to
   if (waiting?.id === "1password")
     return { title: "Sign the box in to 1Password", detail: `op asks in ${run.box}'s terminal, once, so Berth can read the team's shared keys. Box step ${running + 1} of ${steps.length}, then ${plural(repos.length, "repo")}.`, tone: "waiting", pct, status: "waiting for 1Password" };
   if (waiting) return { title: "Waiting for your password", detail: `sudo asks in ${run.box}'s terminal. Box step ${running + 1} of ${steps.length}, then ${plural(repos.length, "repo")}.`, tone: "waiting", pct, status: "waiting for your password" };
+  const asking = run.projects.find((p) => p.waiting && p.state === "setting-up");
+  if (asking)
+    return {
+      title: `${asking.id} is asking something`,
+      detail: `Its first-time setup waits for an answer in its terminal on ${run.box}${asking.line ? `: “${asking.line}”` : ""}. Open the terminal and answer; the rest carries on.`,
+      tone: "waiting",
+      pct,
+      status: `${asking.id} waits for you`,
+    };
   if (run.phase === "projects") {
     const busy = repos.filter((p) => p.state !== "ready").map((p) => p.id);
     return {

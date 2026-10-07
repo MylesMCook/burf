@@ -108,6 +108,8 @@ func (b *Box) installAgentCLIs(w http.ResponseWriter, r *http.Request) error {
 		send(map[string]any{"done": true, "error": msg})
 		return nil
 	}
+	// Installed now, so found now: the app offers them straight away.
+	b.refreshAgents(r.Context())
 	b.publish(r, "agents.installed", map[string]any{"agents": ids})
 	send(map[string]any{"done": true})
 	return nil

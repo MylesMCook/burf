@@ -606,6 +606,8 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
   const review = reviewCall(box, method, path, sessions[box]);
   if (review) return review;
   if (method === "GET" && path === "agents") return delay(mockBoxAgents(box));
+  // Look again: the same two, found afresh.
+  if (method === "POST" && path === "agents/refresh") return delay({ agents: [], agent_paths: [], shell: "/bin/bash", shell_ok: true });
   if (method === "GET" && path === "requirements") {
     reqAsks[box] = (reqAsks[box] ?? 0) + 1;
     return delay(mockRequirements(box, !!status.boxes.find((b) => b.name === box)?.local, reqAsks[box] - 1));
@@ -662,7 +664,13 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
       tools: ["claude", "codex"],
       home: HOME,
       // gpu runs an older berthd (mockBuilds): it can't keep worktree names.
-      capabilities: ["diff", "turns", "queue", "ask", "answer", "journal", "runs", "exec.detach", "browser", "browser.devtools", "titles", "sample", "service.terminal", "session.home", "agents.install", ...(box === "gpu" ? [] : ["worktree.titles"])],
+      capabilities: ["diff", "turns", "queue", "ask", "answer", "journal", "runs", "exec.detach", "browser", "browser.devtools", "titles", "sample", "service.terminal", "session.home", "agents.install", ...(box === "gpu" ? [] : ["worktree.titles", "agents.paths"])],
+      // Claude Code from npm under nvm, as the person's shell finds it;
+      // Codex from Berth's own installer.
+      agent_paths: [
+        { id: "claude", name: "Claude Code", command: "claude", path: `${HOME}/.nvm/versions/node/v22.9.0/bin/claude`, version: "2.1.3 (Claude Code)", install: "npm", via: "shell" },
+        { id: "codex", name: "Codex", command: "codex", path: `${HOME}/.local/bin/codex`, version: "codex-cli 0.46.0", via: "shell" },
+      ],
       adapters: {
         claude: { ready: true, started: true, waiting: true, finished: true, final_message: true, via: "hooks" },
         codex: { ready: true, started: true, waiting: true, finished: true, final_message: true, via: "hooks" },

@@ -702,6 +702,7 @@ func (b *Box) stepTick(id string) bool {
 		// found before they ran.
 		groups.Forget()
 		forgetLoginTools()
+		b.refreshAgentsSoon()
 	case ended != "":
 		st.Phase = "failed"
 		st.Error = "stopped at " + failedStep(st)
@@ -739,6 +740,18 @@ func failedStep(st TeamStatus) string {
 		}
 	}
 	return ""
+}
+
+// initPrompt is a terminal waiting for an answer: what a step's prompt
+// looks like, and a [Y/n] or (yes/no) question anywhere at the end.
+var initPrompt = regexp.MustCompile(`(?i)(\[sudo\] password for [^:]*:|password:|\[y/n\]|\(y(/n)?\)|\(yes/no[^)]*\)\??|press enter[^\n]*|continue\? ?)\s*$`)
+
+// clipLine keeps a line to n characters.
+func clipLine(s string, n int) string {
+	if r := []rune(s); len(r) > n {
+		return string(r[:n-1]) + "…"
+	}
+	return s
 }
 
 func lastLine(screen string) string {
@@ -1053,6 +1066,17 @@ func (b *Box) runInit(ctx context.Context, tb TeamBundle, p TeamProjectPlan, loc
 		}
 		b.Sessions.SetTitle(ctx, name, p.ID+" first-time setup")
 	}
+	b.updateProject(tb.ID, p.ID, func(s *TeamProjectStatus) { s.Session = name })
+	// Its terminal is watched: its last line is the project's progress, and
+	// a question there (corepack's [Y/n], a password) says the project
+	// waits for an answer in that terminal, where nobody would otherwise
+	// look until they opened the main checkout.
+	waiting, line, sent := false, "", time.Time{}
+	defer func() {
+		if waiting {
+			b.updateProject(tb.ID, p.ID, func(s *TeamProjectStatus) { s.Waiting = false })
+		}
+	}()
 	for {
 		if raw, err := os.ReadFile(status); err == nil {
 			code := strings.TrimSpace(string(raw))
@@ -1066,6 +1090,21 @@ func (b *Box) runInit(ctx context.Context, tb TeamBundle, p TeamProjectPlan, loc
 				continue
 			}
 			return fmt.Errorf("its init script (%s) ended without finishing", p.Init)
+		}
+		if screen, err := b.Sessions.Screen(ctx, name, 0); err == nil {
+			last := clipLine(lastLine(screen), 160)
+			ask := initPrompt.MatchString(last)
+			if last != line || ask != waiting {
+				flipped := ask != waiting
+				line, waiting = last, ask
+				b.updateProject(tb.ID, p.ID, func(s *TeamProjectStatus) { s.Line, s.Waiting = last, ask })
+				// The app reads the project again on its events: a question
+				// at once, its progress at most once a second.
+				if flipped || time.Since(sent) > time.Second {
+					sent = time.Now()
+					b.publishTeam("team.project", map[string]any{"team": tb.ID, "project": p.ID, "state": TeamSettingUp, "location": location, "waiting": ask, "session": name})
+				}
+			}
 		}
 		select {
 		case <-ctx.Done():
@@ -1086,6 +1125,7 @@ func initEnv(ctx context.Context, b *Box, tb TeamBundle, location, dest, files s
 	}
 	env := []string{"BERTH_BOX=" + b.Name, "BERTH_LOCATION=" + location, "BERTH_ROOT_PATH=" + dest, "BERTH_LOCATION_PATH=" + dest,
 		"BERTH_TEAM=" + tb.ID, "BERTH_TEAM_DIR=" + files}
+	env = append(env, quietEnv...)
 	if cfg, err := b.Locations.Config(ctx, location); err == nil && cfg.Kit != nil && cfg.Kit.Dir != "" {
 		env = append(env, "BERTH_KIT_DIR="+cfg.Kit.Dir)
 	}

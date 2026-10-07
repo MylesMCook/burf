@@ -244,8 +244,8 @@ func (b *Box) requirements(w http.ResponseWriter, r *http.Request) error {
 	req := Requirements{OS: runtime.GOOS, Tmux: tmuxRequirement(), Agents: []AgentRequirement{}}
 	for _, p := range builtinAgents {
 		a := AgentRequirement{ID: p.ID, Name: p.Name, Command: p.Command, Install: agentInstalls[p.ID]}
-		if path, err := toolPath(p.Command); err == nil {
-			a.Found, a.Path, a.Install = true, path, ""
+		if f, ok := agentFound(p.Command); ok {
+			a.Found, a.Path, a.Install = true, f.Path, ""
 		} else if path, ok := doctor.Tool(p.Command); ok {
 			a.Found, a.Path, a.Install = true, path, ""
 		}

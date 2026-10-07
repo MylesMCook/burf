@@ -20,6 +20,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/sean-brydon/berthd/internal/agentpath"
 )
 
 // Agent is an agent CLI Berth knows how to install.
@@ -167,6 +169,9 @@ type Installer struct {
 	Run func(ctx context.Context, out io.Writer, env []string, name string, args ...string) error
 	// LookPath finds a program on PATH.
 	LookPath func(string) (string, error)
+	// Locate, when set, finds an agent as the person's terminal would
+	// (internal/agentpath): an npm install under nvm counts as installed.
+	Locate func(command string) (string, bool)
 	// Codex is the sha256 of each archive, by target; nil is the pinned
 	// release's.
 	Codex map[string]string
@@ -174,7 +179,15 @@ type Installer struct {
 
 // New is an installer for this user on this machine.
 func New(home, goos, goarch string, out io.Writer) *Installer {
-	return &Installer{Home: home, GOOS: goos, GOARCH: goarch, Out: out, Fetch: httpFetch, Run: runProgram, LookPath: exec.LookPath}
+	in := &Installer{Home: home, GOOS: goos, GOARCH: goarch, Out: out, Fetch: httpFetch, Run: runProgram, LookPath: exec.LookPath}
+	if d := agentpath.Default(); filepath.Clean(d.Home) == filepath.Clean(home) {
+		f := &agentpath.Finder{Home: home, Shell: d.Shell, NoVersion: true}
+		in.Locate = func(command string) (string, bool) {
+			r, ok := f.Find(command)
+			return r.Path, ok
+		}
+	}
+	return in
 }
 
 // Result is what one install did.
@@ -187,9 +200,20 @@ type Result struct {
 // BinDir is where agents go: ~/.local/bin.
 func (in *Installer) BinDir() string { return filepath.Join(in.Home, ".local", "bin") }
 
-// Find reports where an agent's command is: ~/.local/bin, then the places
-// its own installer uses, then PATH.
+// Find reports where an agent's command is: as the person's shell finds it
+// (Locate), else ~/.local/bin, then the places its own installer uses, then
+// PATH.
 func (in *Installer) Find(a Agent) (string, bool) {
+	if in.Locate != nil {
+		if p, ok := in.Locate(a.Command); ok {
+			return p, true
+		}
+	}
+	return in.findInstalled(a)
+}
+
+// findInstalled is where Berth's own install of a would be.
+func (in *Installer) findInstalled(a Agent) (string, bool) {
 	dirs := []string{in.BinDir()}
 	if a.ID == "opencode" {
 		dirs = append(dirs, filepath.Join(in.Home, ".opencode", "bin"))
@@ -244,7 +268,7 @@ func (in *Installer) Install(ctx context.Context, id string) (Result, error) {
 	if err != nil {
 		return Result{}, fmt.Errorf("%s did not install: %w", a.Name, err)
 	}
-	p, ok := in.Find(a)
+	p, ok := in.findInstalled(a)
 	if !ok {
 		return Result{}, fmt.Errorf("%s's installer finished, but there is no %s in %s", a.Name, a.Command, in.BinDir())
 	}

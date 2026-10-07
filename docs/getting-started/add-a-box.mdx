@@ -23,6 +23,29 @@ TLS; it never needs SSH to reach the box, and at most uses it once, to install.
   over SSH installs the ones you pick; and optionally `cloudflared` for
   public shares
 
+### Agent CLIs you installed yourself
+
+An agent CLI counts wherever your own terminal on the box finds it, not
+only where Berth's installer puts it (`~/.local/bin`). berthd runs as a
+service, whose `PATH` doesn't have what your shell's startup files add, so
+it asks your shell the way a terminal starts it, interactive and login
+(`$SHELL -lic`), and reads only its answer, past any banner. `npm i -g
+@anthropic-ai/claude-code` under nvm (which lives in `~/.bashrc`), fnm,
+volta, bun, pnpm, a custom npm prefix or Homebrew is found that way. If
+the shell can't answer within ten seconds, berthd looks in those folders
+itself: `~/.local/bin`, `npm prefix -g`, nvm's and fnm's default Node (then
+their other versions), `~/.volta/bin`, `~/.bun/bin`, `~/.npm-global/bin`
+and Homebrew's.
+
+When there are two installs (npm's and Berth's, say), the one your shell
+finds first is used. Agents start with it, by the `PATH` it was found
+with, so an npm CLI finds the `node` beside it. `berthd doctor` and
+**Settings → Boxes** show which one, with its version and how it was
+installed, such as `Claude Code 2.1.3 · ~/.nvm/…/bin/claude (npm)`. berthd
+keeps the answer: it looks again when doctor runs, after **Add agents…**,
+an integrations install or a team setup's steps, and when you click **Look
+again** under the box in **Settings → Boxes**.
+
 ## This Mac
 
 No server yet? The Mac the app runs on can be your first box. In the app,
