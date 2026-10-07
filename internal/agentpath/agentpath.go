@@ -370,23 +370,29 @@ func (f *Finder) lookup(ctx context.Context, names []string) (map[string]Found, 
 	}
 	// Versions run in parallel: node takes a moment to start.
 	if !f.NoVersion {
-		var wg sync.WaitGroup
-		var mu sync.Mutex
+		// The map is only read while they run and written after, as
+		// ranging over it while a goroutine writes to it is a race.
+		var todo []string
 		for name, r := range out {
-			if r.Path == "" || name == "npm" || name == "node" {
-				continue
+			if r.Path != "" && name != "npm" && name != "node" {
+				todo = append(todo, name)
 			}
+		}
+		versions := make([]string, len(todo))
+		var wg sync.WaitGroup
+		for i, name := range todo {
 			wg.Add(1)
-			go func(name string, r Found) {
+			go func(i int, r Found) {
 				defer wg.Done()
-				v := f.version(ctx, r)
-				mu.Lock()
-				r.Version = v
-				out[name] = r
-				mu.Unlock()
-			}(name, r)
+				versions[i] = f.version(ctx, r)
+			}(i, out[name])
 		}
 		wg.Wait()
+		for i, name := range todo {
+			r := out[name]
+			r.Version = versions[i]
+			out[name] = r
+		}
 	}
 	return out, st
 }

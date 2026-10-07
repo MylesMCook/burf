@@ -362,7 +362,7 @@ After a step that adds the engineer to a group, the steps left run with it
 ### A project's init
 
 `projects[].init` runs once in the fresh clone, in a terminal of its own on
-the box (`team-<id>-<project>`, titled "<project> first-time setup"), with
+the box (`team-<id>-<project>`, titled "`<project>` first-time setup"), with
 what a kit's scripts get, and `COREPACK_ENABLE_DOWNLOAD_PROMPT=0`, so
 corepack fetches the yarn or pnpm a repository pins without asking (worktree
 setup scripts get it too). Anything else that asks waits in that terminal,
