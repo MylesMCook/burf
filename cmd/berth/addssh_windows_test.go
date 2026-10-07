@@ -100,3 +100,14 @@ func TestSSHProxyProcessHelper(t *testing.T) {
 	}
 	os.Exit(2)
 }
+
+func TestWindowsAddSSHRefusesBeforeInspectingAnIdentity(t *testing.T) {
+	missing := filepath.Join(t.TempDir(), "identity-that-does-not-exist")
+	err := addSSHSteps(laptop{}, []string{"user@127.0.0.1", "--identity", missing})
+	if err == nil || !strings.Contains(err.Error(), "SSH provisioning from Windows is not supported") {
+		t.Fatalf("Windows add ssh = %v, want the platform refusal before key inspection", err)
+	}
+	if !strings.Contains(err.Error(), "berth pair") {
+		t.Fatalf("the refusal omitted the supported pairing path: %v", err)
+	}
+}
