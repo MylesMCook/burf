@@ -8,13 +8,16 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	box "github.com/sean-brydon/berthd/internal/boxclient"
+	"github.com/sean-brydon/berthd/internal/openurl"
 	"github.com/sean-brydon/berthd/internal/sshconfig"
 )
 
@@ -246,7 +249,7 @@ func cleanAbs(p string) (string, bool) {
 	if p == "" || !strings.HasPrefix(p, "/") || strings.ContainsAny(p, "\x00\n\r") {
 		return "", false
 	}
-	return filepath.Clean(p), true
+	return path.Clean(p), true
 }
 
 // openCommand works out how to open req: a CLI command, or a URL for open.
@@ -295,7 +298,7 @@ func (a *Agent) openCommand(ctx context.Context, req OpenRequest) (OpenResult, e
 		}
 		return f
 	}
-	open := func(u string) OpenResult { return OpenResult{Command: []string{"open", u}} }
+	open := func(u string) OpenResult { return OpenResult{Command: openurl.Command(runtime.GOOS, u)} }
 
 	if sshconfig.Local(peer.Address) {
 		switch {
@@ -354,7 +357,10 @@ func (a *Agent) runOpen(r OpenResult) error {
 		return a.cfg.Run(r.Command)
 	}
 	cmd := exec.Command(r.Command[0], r.Command[1:]...)
-	cmd.Env = append(os.Environ(), "PATH="+os.Getenv("PATH")+":/opt/homebrew/bin:/usr/local/bin")
+	cmd.Env = os.Environ()
+	if runtime.GOOS != "windows" {
+		cmd.Env = append(cmd.Env, "PATH="+os.Getenv("PATH")+":/opt/homebrew/bin:/usr/local/bin")
+	}
 	if err := cmd.Start(); err != nil {
 		return err
 	}

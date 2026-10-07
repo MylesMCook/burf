@@ -6,11 +6,10 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"os/exec"
-	"runtime"
 	"text/tabwriter"
 
 	"github.com/sean-brydon/berthd/internal/forward"
+	"github.com/sean-brydon/berthd/internal/openurl"
 	"github.com/sean-brydon/berthd/internal/wire"
 )
 
@@ -44,11 +43,7 @@ func networkCommand(l laptop, args []string) error {
 		}
 		info, err := c.Login(context.Background(), args[1], func(url string) {
 			fmt.Printf("Sign in to the tailnet for %q:\n  %s\n", args[1], url)
-			opener := "xdg-open"
-			if runtime.GOOS == "darwin" {
-				opener = "open"
-			}
-			exec.Command(opener, url).Start()
+			openurl.Open(url)
 		})
 		if err != nil {
 			return err

@@ -11,8 +11,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
-	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -20,6 +18,7 @@ import (
 	box "github.com/sean-brydon/berthd/internal/boxclient"
 	"github.com/sean-brydon/berthd/internal/identity"
 	"github.com/sean-brydon/berthd/internal/network"
+	"github.com/sean-brydon/berthd/internal/openurl"
 	"github.com/sean-brydon/berthd/internal/pairing"
 	"github.com/sean-brydon/berthd/internal/terminal"
 	"github.com/sean-brydon/berthd/internal/trust"
@@ -642,11 +641,7 @@ func networkLogin(l laptop, name string) error {
 	}
 	_, err = c.Login(context.Background(), name, func(url string) {
 		fmt.Printf("Sign in to the tailnet for %q:\n  %s\n", name, url)
-		opener := "xdg-open"
-		if runtime.GOOS == "darwin" {
-			opener = "open"
-		}
-		exec.Command(opener, url).Start()
+		openurl.Open(url)
 	})
 	return err
 }
