@@ -1,4 +1,4 @@
-import { MotionConfig } from "motion/react";
+import { MotionConfig, MotionGlobalConfig } from "motion/react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Area } from "@/components/charts/area";
@@ -109,6 +109,17 @@ function narrowBars(p: ChartPlan, width: number): ChartPlan {
   if (p.type !== "bar" || p.horizontal || !width) return p;
   const longest = Math.max(...p.data.map((r) => String(r[p.x] ?? "").length));
   return longest * 7 + 16 > width / Math.max(1, p.data.length) ? { ...p, horizontal: true } : p;
+}
+
+// Reduce motion: bklit's charts are drawn at once. MotionConfig's
+// reducedMotion keeps their fades and reveals (1.1s); this skips them.
+if (typeof matchMedia !== "undefined") {
+  const still = matchMedia("(prefers-reduced-motion: reduce)");
+  const apply = () => {
+    MotionGlobalConfig.skipAnimations = still.matches;
+  };
+  apply();
+  still.addEventListener("change", apply);
 }
 
 // useDocumentChartVars puts the theme's chart variables on <html> while a
