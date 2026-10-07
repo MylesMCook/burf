@@ -127,11 +127,19 @@ test("projects fold and open, and drag into a section", async ({ app }) => {
   await expect(sidebar.getByTestId("worktree-row")).toHaveCount(309);
   const all = 309;
 
-  await page.getByRole("button", { name: "Hide acme-api", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Show acme-api", exact: true })).toBeVisible();
+  // The project's row is the tree's node (aria-expanded); its chevron is
+  // the pointer's way to fold it, with a tip from the list's one tooltip,
+  // and ← → on the row the keyboard's (keyboard.spec.ts).
+  const project = sidebar.locator('[data-sidebar="menu-button"][aria-expanded]').filter({ has: page.getByText("acme-api", { exact: true }) });
+  const chevron = project.locator("[data-fold]");
+  await chevron.hover();
+  await expect(page.locator("[data-slot=tooltip-popup]")).toHaveText("Hide acme-api");
+  await chevron.click();
+  await expect(project).toHaveAttribute("aria-expanded", "false");
   const folded = await sidebar.getByTestId("worktree-row").count();
   expect(folded).toBeLessThan(all - 90);
-  await page.getByRole("button", { name: "Show acme-api", exact: true }).click();
+  await chevron.click();
+  await expect(project).toHaveAttribute("aria-expanded", "true");
   await expect(sidebar.getByTestId("worktree-row")).toHaveCount(all);
 
   // Dragged onto Personal, a project moves there (in the plain fixtures:

@@ -245,6 +245,7 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
             <Tip label={collapsed ? `Show ${loc.name}` : `Hide ${loc.name}`} side="right">
               <span
                 aria-hidden
+                data-fold=""
                 className="-ml-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground"
                 onClick={(e) => {
                   e.stopPropagation();
@@ -719,6 +720,7 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
             <Tip label={collapsed ? `Show ${p.name}` : `Hide ${p.name}`} side="right">
               <span
                 aria-hidden
+                data-fold=""
                 className="-ml-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground"
                 onClick={(e) => {
                   e.stopPropagation();

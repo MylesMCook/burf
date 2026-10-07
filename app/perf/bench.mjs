@@ -614,13 +614,15 @@ async function benchFleet(browser, worktrees) {
     await page.waitForTimeout(300);
   }
 
-  // Fold a project and open it again (the first project, by its chevron).
-  const project = await page.evaluate(() => document.querySelector('[aria-label^="Hide "]')?.getAttribute("aria-label")?.slice(5));
+  // Fold a project and open it again (the first project, by its chevron;
+  // the project's row says whether it is open, aria-expanded).
+  const project = await page.evaluate(() => document.querySelector("[data-fold]")?.closest("[aria-expanded]")?.textContent?.trim().slice(0, 40));
   if (project) {
     const rowsNow = () => "return document.querySelectorAll('[data-testid=worktree-row]').length";
     const before = await page.evaluate(new Function(rowsNow()));
-    res.collapse = await act(page, cdp, `document.querySelector('[aria-label="Hide ' + arg + '"]').click()`, `return document.querySelector('[aria-label="Show ' + arg + '"]') !== null`, project);
-    res.expand = await act(page, cdp, `document.querySelector('[aria-label="Show ' + arg + '"]').click()`, `return document.querySelector('[aria-label="Hide ' + arg + '"]') !== null`, project);
+    const open = (v) => `return document.querySelector('[data-fold]').closest('[aria-expanded]').getAttribute('aria-expanded') === '${v}'`;
+    res.collapse = await act(page, cdp, `document.querySelector('[data-fold]').click()`, open("false"), project);
+    res.expand = await act(page, cdp, `document.querySelector('[data-fold]').click()`, open("true"), project);
     res.collapse.project = project;
     res.expand.rowsBack = (await page.evaluate(new Function(rowsNow()))) === before;
   }
