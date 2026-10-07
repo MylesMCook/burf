@@ -134,11 +134,11 @@ function Shown({ art }: { art: Art }) {
                   role="radio"
                   aria-checked={x.n === v.n}
                   onClick={() => setN(x.n === cur.n ? null : x.n)}
-                  className={cn("inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-xs", x.n === v.n ? "border-ring bg-accent text-foreground" : "text-muted-foreground hover:bg-accent/60")}
+                  className={cn("inline-flex min-w-0 max-w-full items-center gap-1.5 whitespace-nowrap rounded-md border px-2 py-0.5 text-xs", x.n === v.n ? "border-ring bg-accent text-foreground" : "text-muted-foreground hover:bg-accent/60")}
                 >
                   <span className="font-medium tabular-nums">v{x.n}</span>
                   <span className="tabular-nums">{x.n === cur.n ? "latest" : when(x.at)}</span>
-                  {x.note && <span className="max-w-[14rem] truncate">· {x.note}</span>}
+                  {x.note && <span className="min-w-0 max-w-[14rem] truncate">· {x.note}</span>}
                   <span className="text-muted-foreground/70 tabular-nums">· {sizeLabel(x.size)}</span>
                 </button>
               ))}

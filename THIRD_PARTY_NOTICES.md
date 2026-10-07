@@ -47,7 +47,8 @@ Beautiful UI's Code Block and Selection Actions, with no code from them.
 The sources are vendored the shadcn way and are Berth's to maintain. Berth's
 changes: `shimmering-text.tsx` lives beside the charts (the registry's
 import path pointed outside the folder), and a line or area chart may label
-its x axis from the data (`__label`) instead of a date. The registry's edits
+its x axis from the data (`__label`) instead of a date, and a horizontal
+bar chart's category names may be up to 160px wide (from 70). The registry's edits
 to `index.css` were not taken; Berth sets bklit's `--chart-*` variables
 from the active theme (`app/src/lib/art/theme.ts`). Bklit Studio is not
 used.

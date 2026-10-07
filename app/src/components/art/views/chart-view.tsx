@@ -137,7 +137,7 @@ function Drawn({ spec, p, thumb }: { spec: BerthChart; p: ChartPlan; thumb?: boo
   switch (p.type) {
     case "bar":
       return (
-        <BarChart data={p.data} xDataKey={p.x} aspectRatio="auto" className={fill} stacked={p.stacked} orientation={p.horizontal ? "horizontal" : "vertical"} margin={p.horizontal ? { ...margin, left: thumb ? 90 : 120 } : margin} barGap={0.28}>
+        <BarChart data={p.data} xDataKey={p.x} aspectRatio="auto" className={fill} stacked={p.stacked} orientation={p.horizontal ? "horizontal" : "vertical"} margin={p.horizontal ? { ...margin, right: 12, left: Math.round(Math.min(180, Math.max(60, Math.max(...p.data.map((r) => String(r[p.x] ?? "").length)) * (thumb ? 6.4 : 7.2) + 24))) } : margin} barGap={0.28}>
           <Grid horizontal={!p.horizontal} vertical={p.horizontal} />
           {p.series.map((s) => (
             <Bar key={s.key} dataKey={s.key} fill={s.color} stroke={s.color} lineCap={4} animationType="grow" />
