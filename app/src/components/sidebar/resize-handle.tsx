@@ -73,6 +73,11 @@ function apply() {
 
 function end(cancel: boolean) {
   if (!drag) return;
+  // A move the next frame would have drawn counts.
+  if (drag.frame && !cancel) {
+    cancelAnimationFrame(drag.frame);
+    apply();
+  }
   const d = drag;
   drag = undefined;
   if (d.frame) cancelAnimationFrame(d.frame);

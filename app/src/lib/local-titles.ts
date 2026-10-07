@@ -1,18 +1,36 @@
 import type { Location, Worktree } from "@/lib/api";
-import { load, save } from "@/lib/storage";
 
 // Worktree display names kept on this laptop alone, for a box whose berthd
 // is older than worktree titles (it doesn't list "worktree.titles"). They
 // are laid over its worktrees as they arrive (lib/store), so the rest of
 // the app reads wt.title either way; once the box is updated they move to
 // it (lib/worktree-names).
+//
+// No value imports from "@/": pnpm test runs this file in plain node.
 
 const KEY = "berth.worktreeTitles";
 
 // By box, then worktree path.
 type Saved = Record<string, Record<string, string>>;
 
-let saved: Saved = load<Saved>(KEY, {});
+// Storage can be missing or throw (private windows, plain node); names are
+// then kept for this run only.
+function load(): Saved {
+  try {
+    return JSON.parse(localStorage.getItem(KEY) ?? "{}") as Saved;
+  } catch {
+    return {};
+  }
+}
+function save(v: Saved) {
+  try {
+    localStorage.setItem(KEY, JSON.stringify(v));
+  } catch {
+    // Kept in memory.
+  }
+}
+
+let saved: Saved = load();
 
 export function localTitle(box: string, path: string): string | undefined {
   return saved[box]?.[path] || undefined;
@@ -30,7 +48,7 @@ export function setLocalTitle(box: string, path: string, title: string) {
   else delete forBox[path];
   saved = { ...saved, [box]: forBox };
   if (!Object.keys(forBox).length) delete saved[box];
-  save(KEY, saved);
+  save(saved);
 }
 
 // withLocalTitles lays this laptop's names over a box's worktrees that the
@@ -40,9 +58,4 @@ export function withLocalTitles(box: string, locations: Location[] | null | unde
   if (!locations || !mine) return locations ?? [];
   const named = (wt: Worktree): Worktree => (wt.title || !mine[wt.path] ? wt : { ...wt, title: mine[wt.path] });
   return locations.map((loc) => (loc.worktrees?.some((w) => mine[w.path]) ? { ...loc, worktrees: loc.worktrees.map(named) } : loc));
-}
-
-// For tests: start again from what storage holds.
-export function reloadLocalTitles() {
-  saved = load<Saved>(KEY, {});
 }
