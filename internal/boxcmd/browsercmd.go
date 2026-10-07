@@ -251,7 +251,7 @@ func browserCmd(ctx context.Context, c *box.Client, sub string, args []string, o
 				fmt.Fprintln(out, "No browsers open.")
 			}
 			for _, b := range all {
-				fmt.Fprintf(out, "%s/%s  %s  %d MB  last used %s\n", b.Location, b.Worktree, b.URL, b.RSS>>20, b.LastUsed.Local().Format("15:04"))
+				fmt.Fprintf(out, "%s/%s  %s  %s  %d MB  last used %s\n", b.Location, b.Worktree, b.URL, b.Size, b.RSS>>20, b.LastUsed.Local().Format("15:04"))
 			}
 		})
 	}

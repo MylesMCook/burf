@@ -14,19 +14,22 @@ interface Size {
 let size: Size = { width: 1920, height: 1080, scale: 1 };
 const label = (v: Size) => `${v.width}×${v.height}${v.scale !== 1 ? ` @${v.scale}x` : ""}`;
 
-// The drawing is 1280 wide, laid out for the page's width and drawn at its
-// scale, as Chromium would.
+// The drawing is laid out at the page's own width, as the shop's page
+// would be (a column at most 1100 wide), and drawn at the page's scale.
 const svg = (count: number, v: Size = size) => {
-  const vw = 1280;
-  const vh = Math.round((v.height / v.width) * vw);
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${v.width * v.scale}" height="${v.height * v.scale}" viewBox="0 0 ${vw} ${vh}">
+  const vw = v.width;
+  const vh = v.height;
+  const cw = Math.min(1100, vw - 48);
+  const x = Math.round((vw - cw) / 2);
+  const narrow = vw < 600;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${vw * v.scale}" height="${vh * v.scale}" viewBox="0 0 ${vw} ${vh}">
 <rect width="${vw}" height="${vh}" fill="#f8fafc"/><rect width="${vw}" height="64" fill="#0f172a"/>
-<text x="40" y="41" font-family="system-ui" font-size="22" fill="#fff">acme shop</text>
-<text x="40" y="140" font-family="system-ui" font-size="40" font-weight="700" fill="#0f172a">Cart</text>
-<rect x="40" y="180" width="760" height="96" rx="12" fill="#fff" stroke="#e2e8f0"/>
-<text x="64" y="236" font-family="system-ui" font-size="22" fill="#334155">Ceramic mug × ${count}</text>
-<rect x="40" y="320" width="220" height="56" rx="10" fill="#6366f1"/><text x="76" y="356" font-family="system-ui" font-size="22" fill="#fff">Checkout</text>
-<text x="40" y="440" font-family="system-ui" font-size="18" fill="#64748b">The agent's browser on devl, ${label(v)}</text></svg>`;
+<text x="${x}" y="41" font-family="system-ui" font-size="22" fill="#fff">acme shop</text>
+<text x="${x}" y="140" font-family="system-ui" font-size="40" font-weight="700" fill="#0f172a">Cart</text>
+<rect x="${x}" y="180" width="${Math.min(760, cw)}" height="96" rx="12" fill="#fff" stroke="#e2e8f0"/>
+<text x="${x + 24}" y="236" font-family="system-ui" font-size="22" fill="#334155">Ceramic mug × ${count}</text>
+<rect x="${x}" y="320" width="${narrow ? cw : 220}" height="56" rx="10" fill="#6366f1"/><text x="${narrow ? x + cw / 2 - 44 : x + 36}" y="356" font-family="system-ui" font-size="22" fill="#fff">Checkout</text>
+<text x="${x}" y="440" font-family="system-ui" font-size="${narrow ? 14 : 18}" fill="#64748b">The agent's browser on devl, ${label(v)}</text></svg>`;
 };
 
 export const mockShotSvg = () => svg(2);
