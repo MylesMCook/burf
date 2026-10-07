@@ -74,9 +74,10 @@ const GROUPS = [
 const AGENTS = { claude: "C", codex: "X", opencode: "O", gemini: "G", cursor: "U" };
 const AGENT_NAMES = { claude: "Claude Code", codex: "Codex", opencode: "OpenCode", gemini: "Gemini", cursor: "Cursor" };
 
+// A worktree by its display name when it was given one (worktree_title).
 function where(s) {
   const [loc, wt] = String(s.location || "").split("/");
-  return { worktree: wt || loc || s.name, repo: loc || "" };
+  return { worktree: s.worktree_title || wt || loc || s.name, repo: loc || "" };
 }
 function ago(t) {
   if (!t) return "";

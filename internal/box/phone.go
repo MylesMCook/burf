@@ -261,7 +261,18 @@ func (p *Phone) Handler(b *Box, listenAddr string) http.Handler {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
-		writeJSON(w, b.enrich(r.Context(), all))
+		// Each session with its worktree's display name, which the phone
+		// shows in place of the worktree's own (worktreetitles.go).
+		titles := b.Locations.TitlesByPath()
+		type phoneSession struct {
+			Session
+			WorktreeTitle string `json:"worktree_title,omitempty"`
+		}
+		out := []phoneSession{}
+		for _, s := range b.enrich(r.Context(), all) {
+			out = append(out, phoneSession{Session: s, WorktreeTitle: titles[s.Dir]})
+		}
+		writeJSON(w, out)
 	})
 	api.HandleFunc("GET /phone/v1/sessions/{name}/screen", func(w http.ResponseWriter, r *http.Request) {
 		history, _ := strconv.Atoi(r.URL.Query().Get("history"))

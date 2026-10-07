@@ -67,6 +67,19 @@ func (l *Locations) SetWorktreeTitle(ctx context.Context, location, name, title 
 	return *wt, nil
 }
 
+// TitlesByPath is every worktree's title, by path, read from locations.json
+// alone (no git): cheap enough for each listing of sessions.
+func (l *Locations) TitlesByPath() map[string]string {
+	saved, _ := l.read()
+	out := map[string]string{}
+	for _, s := range saved {
+		for p, t := range s.Titles {
+			out[p] = t
+		}
+	}
+	return out
+}
+
 // forgetTitle drops the title of a worktree that went.
 func (l *Locations) forgetTitle(location, path string) {
 	l.update(func(all []savedLocation) ([]savedLocation, error) {

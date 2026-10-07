@@ -2,6 +2,7 @@ package box
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"slices"
@@ -173,5 +174,38 @@ func TestRenameWorktreeOverTheWire(t *testing.T) {
 func TestBoxSaysItNamesWorktrees(t *testing.T) {
 	if !slices.Contains((&Box{Events: &events.Bus{}}).Capabilities(), "worktree.titles") {
 		t.Fatal("worktree.titles missing from the capabilities")
+	}
+}
+
+func TestThePhoneListsSessionsWithTheirWorktreesDisplayName(t *testing.T) {
+	b, _, h := phoneBox(t)
+	repo := gitRepo(t)
+	ctx := context.Background()
+	b.Locations.Add(ctx, "cal", repo)
+	wt, err := b.Locations.CreateWorktree(ctx, "cal", "https-linear-app-acme", "", "main")
+	if err != nil {
+		t.Fatal(err)
+	}
+	b.Locations.SetWorktreeTitle(ctx, "cal", wt.Name, "Cart badge")
+	if _, err := b.Sessions.Create(ctx, "named", "cal/"+wt.Name, wt.Path, "cat", nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := b.Sessions.Create(ctx, "plain", "cal", repo, "cat", nil); err != nil {
+		t.Fatal(err)
+	}
+	w := phoneReq(t, h, "GET", "/phone/v1/sessions", phoneAddr, "right-token", "")
+	var got []struct {
+		Name          string `json:"name"`
+		WorktreeTitle string `json:"worktree_title"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+		t.Fatalf("%v: %s", err, w.Body)
+	}
+	titles := map[string]string{}
+	for _, s := range got {
+		titles[s.Name] = s.WorktreeTitle
+	}
+	if titles["named"] != "Cart badge" || titles["plain"] != "" || len(got) != 2 {
+		t.Fatalf("phone sessions = %s", w.Body)
 	}
 }
