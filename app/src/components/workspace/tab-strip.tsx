@@ -347,18 +347,19 @@ export function TabButton({ tab, wsKey, tone, active, onActivate, onClose, onDra
       {/* The pointer's way to close. A tab can't hold a button for screen
           readers and the keyboard (it is one control): they close it from
           its menu (Shift-F10 or the menu key) or with ⌘W. */}
-      <span
-        aria-hidden
-        title={`Close ${title}`}
-        data-tab-close=""
-        onClick={(e) => {
-          e.stopPropagation();
-          onClose();
-        }}
-        className={cn("ml-auto inline-flex size-5 shrink-0 cursor-default items-center justify-center rounded hover:bg-accent", active ? "opacity-70" : "opacity-0 group-hover:opacity-70")}
-      >
-        <XIcon className="size-3" />
-      </span>
+      <Tip label={`Close ${title}`} side="bottom">
+        <span
+          aria-hidden
+          data-tab-close=""
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+          className={cn("ml-auto inline-flex size-5 shrink-0 cursor-default items-center justify-center rounded hover:bg-accent", active ? "opacity-70" : "opacity-0 group-hover:opacity-70")}
+        >
+          <XIcon className="size-3" />
+        </span>
+      </Tip>
     </div>
   );
 

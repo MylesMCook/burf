@@ -242,17 +242,18 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
             className={cn("h-[calc(var(--side-row)+0.125rem)] gap-1.5 font-medium text-[13px] text-foreground", !online && "text-muted-foreground")}
           >
             {/* The pointer's way; the keyboard's is ← and → on the row. */}
-            <span
-              aria-hidden
-              title={collapsed ? `Show ${loc.name}` : `Hide ${loc.name}`}
-              className="-ml-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggle();
-              }}
-            >
-              <ChevronRightIcon className={cn("size-3 transition-transform", !collapsed && "rotate-90")} />
-            </span>
+            <Tip label={collapsed ? `Show ${loc.name}` : `Hide ${loc.name}`} side="right">
+              <span
+                aria-hidden
+                className="-ml-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggle();
+                }}
+              >
+                <ChevronRightIcon className={cn("size-3 transition-transform", !collapsed && "rotate-90")} />
+              </span>
+            </Tip>
             <LeadIcon sessions={!all && main ? mainSessions : []} data={data} icon={<FolderGitIcon />} />
             <span className="min-w-0 truncate">{loc.name}</span>
             {chip && <BoxChip box={box} />}
@@ -715,17 +716,18 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
             }}
             className={cn("h-[calc(var(--side-row)+0.125rem)] gap-1.5 font-medium text-[13px] text-foreground", !online && "text-muted-foreground")}
           >
-            <span
-              aria-hidden
-              title={collapsed ? `Show ${p.name}` : `Hide ${p.name}`}
-              className="-ml-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground"
-              onClick={(e) => {
-                e.stopPropagation();
-                update({ collapsed: { ...prefs.collapsed, [key]: !collapsed } });
-              }}
-            >
-              <ChevronRightIcon className={cn("size-3 transition-transform", !collapsed && "rotate-90")} />
-            </span>
+            <Tip label={collapsed ? `Show ${p.name}` : `Hide ${p.name}`} side="right">
+              <span
+                aria-hidden
+                className="-ml-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  update({ collapsed: { ...prefs.collapsed, [key]: !collapsed } });
+                }}
+              >
+                <ChevronRightIcon className={cn("size-3 transition-transform", !collapsed && "rotate-90")} />
+              </span>
+            </Tip>
             <LeadIcon sessions={!all ? glyphSessions : []} data={boxes[def.box.name]} icon={<FolderGitIcon />} />
             <span className="min-w-0 truncate">{p.name}</span>
             {chips && (
