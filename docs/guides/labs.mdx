@@ -64,6 +64,38 @@ link, or show it in the chat. A page published again is marked
 
 <Shot name="chat-artifacts" alt="A finished conversation with a card for each page Claude published (Published or Updated, its title and description, Open), and the 8 artifacts chip open above the reply box, listing them newest first with how long ago" />
 
+Messages to the agent that you didn't type read as what they are. Claude
+Code hands each of them to the model as if it were a prompt; the chat
+doesn't:
+
+- **Another agent's message** is a card: the sender's avatar in its own
+  colour, its name and kind (Helper, Teammate, Lead, Session), what kind of
+  message it is (Report, Question, Update, Instruction, Failed), how long
+  it took, and "↵ to Claude" (its tip says you didn't type it). **Open**
+  opens a helper's conversation in a tab. A report shows its heading and
+  gist, and **Read report** unfolds the whole of it in place; one longer
+  than a screen offers **Open in tab** (or the full report in a sheet).
+- **A question from a teammate or another session** is marked
+  **needs you** until Claude answers it or you write, and the Crew strip
+  counts it. **Reply** puts it in the reply box as a quote, with
+  "Reply to *sender*:" after it, for Claude to pass on.
+- **Claude Code's pings** about background work are one line: "✓ Run the
+  billing tests completed", "✕ Fix retry tests failed · ×2". Successes
+  that came together fold into one ("✓ 3 finished", open to each); a
+  failure always shows. A helper's own "finished" notice folds into its
+  report.
+- **A message you sent while Claude worked** is your bubble, marked "Sent
+  while Claude was working". Claude Code's `<system-reminder>` notes never
+  show.
+
+Teammates (Claude Code's agent teams) join the **Crew** strip once they
+have written, and a helper that reported back has a **Report** badge that
+brings its report into view. Berth's own reports (see
+[hearing back](/guides/orchestration#hearing-back)) take the same head. This
+needs a box from this release; an older box shows these messages as it did.
+Codex's helpers answer through a tool call, so there is nothing of this kind
+in a Codex chat.
+
 An edit opens to the file's current diff in the worktree (folded until you
 open it), with **Open in Review**. Hover a line to comment on it; comments
 also work in Review, and **Send to agent** sends them as one short prompt

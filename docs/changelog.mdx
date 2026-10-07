@@ -9,6 +9,29 @@ upgrades with `berth upgrade BOX`, or by running the
 [install command](/getting-started/add-a-box#with-the-install-command)
 again.
 
+## Unreleased
+
+- **Messages from other agents are theirs, not yours.** Claude Code hands
+  a helper's hand-back, a teammate's message, another session's, the
+  lead's note and its own background notices to the model as if they were
+  prompts. The chat showed some as your own bubble (tags, JSON and
+  reminders included) and dropped the rest, so Claude answered reports you
+  never saw. Now each is a card beside Berth's reports: the sender's
+  avatar and colour, its name and kind, Report, Question, Update,
+  Instruction or Failed, how long it took, "to Claude", and **Open** for a
+  helper's tab. **Read report** unfolds a report in place; one longer than
+  a screen opens in its helper's tab or a sheet. A teammate's or session's
+  question **needs you** until it's answered, with **Reply**. Background
+  pings are one line, successes close together fold into "✓ 3 finished",
+  failures always show (×2 when repeated). A message you sent mid-turn is
+  marked "Sent while Claude was working", and `<system-reminder>` notes
+  are gone. Teammates join the Crew strip, helpers that reported back get a
+  **Report** badge, and Berth's own report cards take the same head. Needs
+  the box updated; an older box shows these as before.
+  [Conversation view](/guides/labs#conversation-view).
+- **The crew's times fit.** A helper out for 10 minutes or more no longer
+  wraps its time onto two lines ("12m / 00s").
+
 ## v0.3.9
 
 - **A helper opens in its own tab.** Click a helper in the crew, or in
