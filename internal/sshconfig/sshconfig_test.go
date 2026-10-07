@@ -3,6 +3,7 @@ package sshconfig
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -82,8 +83,19 @@ func TestOnlyBerthsOwnFilesAreRemoved(t *testing.T) {
 
 func TestPathsWithSpacesAreQuoted(t *testing.T) {
 	h := Host{Box: "b", Address: "10.0.0.1", Network: "work net", Berth: "/Applications/My Apps/berth"}
-	if got := h.Render(); !strings.Contains(got, "ProxyCommand '/Applications/My Apps/berth' network proxy 'work net' %h %p") {
+	want := "ProxyCommand '/Applications/My Apps/berth' network proxy 'work net' %h %p"
+	if runtime.GOOS == "windows" {
+		want = `ProxyCommand "/Applications/My Apps/berth" network proxy "work net" %h %p`
+	}
+	if got := h.Render(); !strings.Contains(got, want) {
 		t.Fatalf("render = %q", got)
+	}
+}
+
+func TestProxyCommandKeepsLiteralPercentTokens(t *testing.T) {
+	command := ProxyCommand("/opt/berth%h", "net%p")
+	if !strings.Contains(command, "berth%%h") || !strings.Contains(command, "net%%p") || !strings.HasSuffix(command, " %h %p") {
+		t.Fatalf("OpenSSH tokens were not separated from literal arguments: %q", command)
 	}
 }
 

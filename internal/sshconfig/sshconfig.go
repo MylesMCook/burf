@@ -93,7 +93,7 @@ func (h Host) Render() string {
 		fmt.Fprintf(&b, "  User %s\n", h.User)
 	}
 	if h.Network != "" {
-		fmt.Fprintf(&b, "  ProxyCommand %s network proxy %s %%h %%p\n", shellQuote(h.Berth), shellQuote(h.Network))
+		fmt.Fprintf(&b, "  ProxyCommand %s\n", ProxyCommand(h.Berth, h.Network))
 	}
 	if h.IdentityAgent != "" {
 		fmt.Fprintf(&b, "  IdentityAgent \"%s\"\n", h.IdentityAgent)
@@ -284,13 +284,4 @@ func lines(s string) []string {
 		return nil
 	}
 	return strings.Split(s, "\n")
-}
-
-func shellQuote(s string) string {
-	if s != "" && strings.IndexFunc(s, func(r rune) bool {
-		return !(r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("/._-+:@", r))
-	}) < 0 {
-		return s
-	}
-	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
 }

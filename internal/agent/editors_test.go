@@ -13,16 +13,19 @@ import (
 	"github.com/sean-brydon/berthd/internal/trust"
 )
 
-// fakeCursor installs a Cursor app with its CLI in the agent's apps folder.
+// fakeCursor exposes a bundled Cursor CLI on Unix and a PATH CLI on Windows.
 func fakeCursor(t *testing.T, a *runningAgent) string {
 	t.Helper()
 	cli := filepath.Join(a.dir, "apps", "Cursor.app", "Contents", "Resources", "app", "bin", "cursor")
-	os.MkdirAll(filepath.Dir(cli), 0o755)
-	os.WriteFile(cli, []byte("editor fixture"), 0o755)
 	if runtime.GOOS == "windows" {
 		cli = filepath.Join(a.dir, "apps", "cursor.exe")
-		os.WriteFile(cli, []byte("editor fixture"), 0o755)
 		t.Setenv("PATH", filepath.Dir(cli)+string(os.PathListSeparator)+os.Getenv("PATH"))
+	}
+	if err := os.MkdirAll(filepath.Dir(cli), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(cli, []byte("editor fixture"), 0o755); err != nil {
+		t.Fatal(err)
 	}
 	return cli
 }

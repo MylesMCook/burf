@@ -19,6 +19,7 @@ import (
 	"github.com/sean-brydon/berthd/internal/agentcli"
 	"github.com/sean-brydon/berthd/internal/guided"
 	"github.com/sean-brydon/berthd/internal/pairing"
+	"github.com/sean-brydon/berthd/internal/sshconfig"
 	"github.com/sean-brydon/berthd/internal/sshsetup"
 	"github.com/sean-brydon/berthd/internal/trust"
 	"github.com/sean-brydon/berthd/internal/wire"
@@ -112,7 +113,7 @@ func addSSHSteps(l laptop, args []string) error {
 	}
 	if *via != "" {
 		// SSH to the box through the same network berth will use. ssh runs
-		// ProxyCommand with a shell, so every word is quoted.
+		// ProxyCommand with the local platform's argument rules.
 		sshArgs = append([]string{"-o", proxyCommand(exe, *via)}, sshArgs...)
 	}
 	if *identity != "" {
@@ -540,7 +541,7 @@ func checkNetwork(network string) error {
 // proxyCommand is the ssh option that reaches a box through a berth network.
 // %h and %p are ssh's own tokens and stay outside the quotes.
 func proxyCommand(exe, network string) string {
-	return fmt.Sprintf("ProxyCommand=%s network proxy %s %%h %%p", shellQuote(exe), shellQuote(network))
+	return "ProxyCommand=" + sshconfig.ProxyCommand(exe, network)
 }
 
 // openMaster authenticates once and leaves a shared connection in the
