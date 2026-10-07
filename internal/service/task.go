@@ -235,8 +235,7 @@ func renderWindowsTask(s Spec) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return []byte(fmt.Sprintf(`<?xml version="1.0" encoding="UTF-8"?>
-<Task version="1.2" xmlns="%s">
+	return []byte(fmt.Sprintf(`<Task version="1.2" xmlns="%s">
   <RegistrationInfo><Description>%s</Description><Source>%s</Source></RegistrationInfo>
   <Triggers><LogonTrigger><Enabled>true</Enabled><ExecutionTimeLimit>PT0S</ExecutionTimeLimit><UserId>%s</UserId></LogonTrigger></Triggers>
   <Principals><Principal id="BerthUser"><UserId>%s</UserId><LogonType>InteractiveToken</LogonType><RunLevel>LeastPrivilege</RunLevel></Principal></Principals>
@@ -305,7 +304,7 @@ func ownedWindowsTask(data []byte, name string) (Spec, error) {
 		return Spec{}, err
 	}
 	var doc taskDocument
-	if err := xml.Unmarshal(data, &doc); err != nil {
+	if err := windowsTaskDecoder(data).Decode(&doc); err != nil {
 		return Spec{}, err
 	}
 	if doc.XMLName.Space != taskNamespace || !strings.HasPrefix(doc.Registration.Source, taskSource) {
@@ -357,8 +356,21 @@ func validWindowsTaskArguments(arguments string) bool {
 	return err == nil && len(command) > 0 && len(command)%2 == 0 && base64.StdEncoding.EncodeToString(command) == encoded
 }
 
+func windowsTaskDecoder(data []byte) *xml.Decoder {
+	d := xml.NewDecoder(bytes.NewReader(data))
+	// Task Scheduler declares UTF-16 in its COM string, which JSON has already
+	// transcoded to UTF-8 before the ownership check receives these bytes.
+	d.CharsetReader = func(charset string, input io.Reader) (io.Reader, error) {
+		if strings.EqualFold(charset, "utf-16") {
+			return input, nil
+		}
+		return nil, fmt.Errorf("unsupported Windows task XML encoding %q", charset)
+	}
+	return d
+}
+
 func validateWindowsTaskActions(data []byte) error {
-	d := xml.NewDecoder(strings.NewReader(string(data)))
+	d := windowsTaskDecoder(data)
 	var parents []string
 	for {
 		token, err := d.Token()
@@ -441,8 +453,8 @@ func windowsInstall(s Spec) (string, error) {
 	sid, _ := windowsSID()
 	script := taskGuard(path, task) + "if ($task -and ($task.State -eq 4 -or $task.State -eq 2)) { throw 'Stop the Windows service cleanly before replacing its task' }\n" +
 		"$xml = [Console]::In.ReadToEnd()\n$registered = $folder.RegisterTask(" + psQuote(path) + ", $xml, 6, " + psQuote(sid) + ", $null, 3, $null)\n$null = $registered.Run($null)\n"
-	if _, err := powershellInput(script, data); err != nil {
-		return "", fmt.Errorf("installing Windows task %s: %w", path, err)
+	if out, err := powershellInput(script, data); err != nil {
+		return "", fmt.Errorf("installing Windows task %s: %w: %s", path, err, strings.TrimSpace(string(out)))
 	}
 	return path, nil
 }
@@ -467,8 +479,8 @@ func windowsUninstall(s Spec) (string, error) {
 	}
 	path, _ := windowsTaskName(s.Name)
 	script := taskGuard(path, task) + "if ($task.State -eq 4 -or $task.State -eq 2) { throw 'Stop the Windows service cleanly before removing its task' }\n$folder.DeleteTask(" + psQuote(path) + ", 0)\n"
-	if _, err := powershell(script); err != nil {
-		return "", fmt.Errorf("removing Windows task %s: %w", path, err)
+	if out, err := powershell(script); err != nil {
+		return "", fmt.Errorf("removing Windows task %s: %w: %s", path, err, strings.TrimSpace(string(out)))
 	}
 	return path, nil
 }
@@ -504,8 +516,8 @@ func windowsStart(s Spec) error {
 		return errors.New("the Windows service is not installed for this Berth configuration")
 	}
 	path, _ := windowsTaskName(s.Name)
-	if _, err := powershell(taskGuard(path, task) + "$null = $task.Run($null)\n"); err != nil {
-		return fmt.Errorf("starting Windows task %s: %w", path, err)
+	if out, err := powershell(taskGuard(path, task) + "$null = $task.Run($null)\n"); err != nil {
+		return fmt.Errorf("starting Windows task %s: %w: %s", path, err, strings.TrimSpace(string(out)))
 	}
 	return nil
 }

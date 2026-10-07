@@ -130,6 +130,38 @@ func TestWindowsTaskLaunchesWithHiddenPowerShellWindow(t *testing.T) {
 	}
 }
 
+func TestWindowsTaskOwnershipReadsTranscodedCOMXML(t *testing.T) {
+	fakeWindowsScheduler(t)
+	b, err := Render(windowsSpec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	xmlText := strings.TrimPrefix(string(b), `<?xml version="1.0" encoding="UTF-8"?>`)
+	b = []byte(`<?xml version="1.0" encoding="UTF-16"?>` + xmlText)
+	if _, err := ownedWindowsTask(b, windowsSpec.Name); err != nil {
+		t.Fatalf("Task Scheduler's transcoded COM string was rejected: %v", err)
+	}
+	b = []byte(strings.Replace(string(b), "LeastPrivilege", "HighestAvailable", 1))
+	if _, err := ownedWindowsTask(b, windowsSpec.Name); err == nil {
+		t.Fatal("changed task principal was accepted")
+	}
+}
+
+func TestWindowsTaskInstallRetainsSchedulerDiagnostics(t *testing.T) {
+	fakeWindowsScheduler(t)
+	failure := errors.New("PowerShell exited")
+	taskCommand = func(ctx context.Context, input []byte, args ...string) ([]byte, error) {
+		if input == nil {
+			return []byte(`{"found":false}`), nil
+		}
+		return []byte("0x8004131A: unable to switch the encoding"), failure
+	}
+	_, err := Install(windowsSpec)
+	if !errors.Is(err, failure) || !strings.Contains(err.Error(), "0x8004131A") {
+		t.Fatalf("scheduler failure lost its diagnostic: %v", err)
+	}
+}
+
 func TestWindowsTaskOwnershipRejectsMalformedAndUnrecordedLaunchers(t *testing.T) {
 	fakeWindowsScheduler(t)
 	b, err := Render(windowsSpec)
