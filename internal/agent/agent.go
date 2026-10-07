@@ -16,7 +16,6 @@ import (
 	"sort"
 	"strconv"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/sean-brydon/berthd/internal/box"
@@ -170,10 +169,11 @@ type ProxyStatus struct {
 }
 
 type Status struct {
-	Boxes    []BoxStatus     `json:"boxes"`
-	Forwards []ForwardStatus `json:"forwards"`
-	Routes   []Route         `json:"routes"`
-	Proxy    ProxyStatus     `json:"proxy"`
+	SSHSetupSupported bool            `json:"ssh_setup_supported"`
+	Boxes             []BoxStatus     `json:"boxes"`
+	Forwards          []ForwardStatus `json:"forwards"`
+	Routes            []Route         `json:"routes"`
+	Proxy             ProxyStatus     `json:"proxy"`
 }
 
 type Agent struct {
@@ -269,7 +269,7 @@ func Run(ctx context.Context, cfg Config) error {
 		return err
 	}
 	defer os.Remove(cfg.Socket)
-	if err := os.Chmod(cfg.Socket, 0o600); err != nil {
+	if err := statefile.Private(cfg.Socket); err != nil {
 		apiLn.Close()
 		return err
 	}
@@ -301,18 +301,17 @@ func Run(ctx context.Context, cfg Config) error {
 // is reported to the caller, which exits cleanly so a supervisor does not
 // restart it against the winner forever.
 func lockAgent(dir string) (func(), error) {
-	if err := os.MkdirAll(dir, 0o700); err != nil {
+	if err := statefile.EnsurePrivateDir(dir); err != nil {
 		return nil, err
 	}
-	f, err := os.OpenFile(filepath.Join(dir, "agent.lock"), os.O_CREATE|os.O_RDWR, 0o600)
+	unlock, acquired, err := statefile.TryLock(filepath.Join(dir, "agent"))
 	if err != nil {
 		return nil, err
 	}
-	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
-		f.Close()
+	if !acquired {
 		return nil, ErrAlreadyRunning
 	}
-	return func() { syscall.Flock(int(f.Fd()), syscall.LOCK_UN); f.Close() }, nil
+	return unlock, nil
 }
 
 func (a *Agent) publish(e Event) {
@@ -702,7 +701,7 @@ func (a *Agent) removeForward(id string) (Forward, error) {
 func (a *Agent) status() Status {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	s := Status{Boxes: []BoxStatus{}, Forwards: []ForwardStatus{}, Routes: []Route{}, Proxy: a.proxySt}
+	s := Status{SSHSetupSupported: runtime.GOOS != "windows", Boxes: []BoxStatus{}, Forwards: []ForwardStatus{}, Routes: []Route{}, Proxy: a.proxySt}
 	if routes, err := a.routes.list(); err == nil && routes != nil {
 		s.Routes = routes
 	}

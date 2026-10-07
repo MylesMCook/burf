@@ -10,9 +10,9 @@ import (
 	"path/filepath"
 	"sort"
 	"sync"
-	"syscall"
 	"time"
 
+	"github.com/sean-brydon/berthd/internal/statefile"
 	"github.com/sean-brydon/berthd/internal/version"
 )
 
@@ -95,18 +95,16 @@ func (c *Client) WaitStopped(ctx context.Context, dir string) error {
 
 // lockFree says whether no agent holds dir's agent lock.
 func lockFree(dir string) bool {
-	f, err := os.OpenFile(filepath.Join(dir, "agent.lock"), os.O_RDWR, 0)
-	if errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(filepath.Join(dir, "agent.lock")); errors.Is(err, os.ErrNotExist) {
 		return true
-	}
-	if err != nil {
+	} else if err != nil {
 		return false
 	}
-	defer f.Close()
-	if syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB) != nil {
+	unlock, acquired, err := statefile.TryLock(filepath.Join(dir, "agent"))
+	if err != nil || !acquired {
 		return false
 	}
-	syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+	unlock()
 	return true
 }
 

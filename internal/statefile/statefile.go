@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"syscall"
 )
 
 // Home returns the state directory: BERTH_HOME when set, otherwise the OS
@@ -46,10 +45,10 @@ func UserDir() (string, error) {
 // observes a partial file. Files are private to the owner.
 func Write(path string, data []byte) error {
 	dir := filepath.Dir(path)
-	if err := os.MkdirAll(dir, 0o700); err != nil {
+	if err := makePrivateDirs(dir); err != nil {
 		return err
 	}
-	f, err := os.CreateTemp(dir, "."+filepath.Base(path)+"-*")
+	f, err := createPrivateTemp(dir, "."+filepath.Base(path)+"-")
 	if err != nil {
 		return err
 	}
@@ -89,19 +88,40 @@ func WriteWithBackup(path string, data []byte) error {
 // Lock takes an exclusive lock shared by every process using path, so a
 // read-modify-write by the daemon and the CLI cannot interleave.
 func Lock(path string) (unlock func(), err error) {
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
-		return nil, err
+	unlock, _, err = lock(path, false)
+	return unlock, err
+}
+
+// TryLock takes the same lock as Lock without waiting for another process.
+// A held lock returns acquired=false; filesystem errors remain errors.
+func TryLock(path string) (unlock func(), acquired bool, err error) {
+	return lock(path, true)
+}
+
+func lock(path string, nonblocking bool) (func(), bool, error) {
+	if err := makePrivateDirs(filepath.Dir(path)); err != nil {
+		return nil, false, err
 	}
 	f, err := os.OpenFile(path+".lock", os.O_CREATE|os.O_RDWR, 0o600)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
-	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX); err != nil {
+	unlock, acquired, err := lockFile(f, nonblocking)
+	if err != nil || !acquired {
 		f.Close()
-		return nil, err
+		return nil, acquired, err
 	}
-	return func() {
-		syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
-		f.Close()
-	}, nil
+	return func() { unlock(); f.Close() }, true, nil
 }
+
+// EnsurePrivateDir secures an application-owned directory. It must not be
+// used on shared parents such as the user's home or config directory.
+func EnsurePrivateDir(dir string) error {
+	if err := makePrivateDirs(dir); err != nil {
+		return err
+	}
+	return privateDir(dir)
+}
+
+// Private restricts an application-owned file or socket to its owner.
+func Private(path string) error { return privateFile(path) }

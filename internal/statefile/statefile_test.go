@@ -13,13 +13,7 @@ func TestWriteIsPrivateAndLeavesNoTemporaryFiles(t *testing.T) {
 	if err := Write(path, []byte("one")); err != nil {
 		t.Fatal(err)
 	}
-	info, err := os.Stat(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if info.Mode().Perm() != 0o600 {
-		t.Fatalf("mode %v, want 0600", info.Mode().Perm())
-	}
+	assertPrivate(t, path)
 	entries, err := os.ReadDir(filepath.Dir(path))
 	if err != nil {
 		t.Fatal(err)
@@ -97,8 +91,31 @@ func TestHomeRejectsRelativeOverride(t *testing.T) {
 	if _, err := Home(); err == nil {
 		t.Fatal("relative BERTH_HOME accepted")
 	}
-	t.Setenv("BERTH_HOME", "/abs/dir")
-	if got, err := Home(); err != nil || got != "/abs/dir" {
+	abs := t.TempDir()
+	t.Setenv("BERTH_HOME", abs)
+	if got, err := Home(); err != nil || got != abs {
 		t.Fatalf("Home() = %q, %v", got, err)
 	}
+}
+
+func TestTryLockReportsContentionAndReleases(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "agent")
+	unlock, acquired, err := TryLock(path)
+	if err != nil || !acquired {
+		t.Fatalf("first lock: acquired=%v, err=%v", acquired, err)
+	}
+	other, acquired, err := TryLock(path)
+	if other != nil {
+		other()
+	}
+	if err != nil || acquired {
+		unlock()
+		t.Fatalf("contending lock: acquired=%v, err=%v", acquired, err)
+	}
+	unlock()
+	unlock, acquired, err = TryLock(path)
+	if err != nil || !acquired {
+		t.Fatalf("released lock: acquired=%v, err=%v", acquired, err)
+	}
+	unlock()
 }

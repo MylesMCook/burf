@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -140,6 +141,10 @@ func bundledTmux(exe string) bool {
 }
 
 func (a *Agent) addSSHTerminal(w http.ResponseWriter, r *http.Request) {
+	if runtime.GOOS == "windows" {
+		writeCoded(w, http.StatusNotImplemented, "Windows supports pairing with an installed box; interactive SSH setup is not available", "unsupported_platform")
+		return
+	}
 	req, err := readInstallRequest(r.URL.Query())
 	if err != nil {
 		writeError(w, http.StatusBadRequest, err.Error())

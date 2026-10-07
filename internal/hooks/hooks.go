@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/groups"
 	"github.com/sean-brydon/berthd/internal/statefile"
 )
 
@@ -341,7 +340,10 @@ func Exec(ctx context.Context, h Hook, e events.Event, def time.Duration, extra 
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	payload, _ := json.Marshal(e)
-	cmd := groups.CommandContext(ctx, "/bin/sh", "-c", h.Run)
+	cmd, err := shellCommand(ctx, h.Run)
+	if err != nil {
+		return nil, err
+	}
 	cmd.Dir = h.Dir
 	cmd.Env = append(os.Environ(), Env(e, h.Tool)...)
 	if strings.HasPrefix(h.Source, "plugin:") {
