@@ -59,6 +59,12 @@ var usageSections = []struct {
 		{"%[1]s loop %[2]sSESSION --check CMD [--prompt TEXT] [--max 5] [--turn-timeout 30m]\n         [--cancel-on-exit] [--detach]", "Prompt, wait, check, and feed failures back: a durable\nrun on the box (Ctrl-C detaches)"},
 		{"%[1]s session kill %[2]sNAME", "Stop a session"},
 	}},
+	{"Artifacts (what agents make for you to look at)", [][2]string{
+		{"%[1]s artifact add FILE --title T [--kind chart|table|diagram|page|notes] [--id ID] [--note N]\n         [--by HELPER] [--in LOC/WT]", "Show a berth.chart JSON, CSV, Mermaid, Markdown or one HTML file in\nthe Berth app; rewriting the file updates it live"},
+		{"%[1]s artifact list [%[2]sLOC/WT] [--json]", "A worktree's artifacts"},
+		{"%[1]s artifact show ID [--content [--version N]] [--json]", "One artifact and its versions, or its content"},
+		{"%[1]s artifact rm ID", "Forget an artifact"},
+	}},
 	{"Runs (durable, on the box)", [][2]string{
 		{"%[1]s runs%[3]s [--status active|done|S] [--template T] [--limit 20] [--json]", "List runs"},
 		{"%[1]s run templates%[3]s [--json]", "The templates and their parameters"},
@@ -163,6 +169,7 @@ var Commands = map[string]int{
 	"units": 1, "unit": 2,
 	"secret": 2,
 	"runs":   1, "run": 2, "flow": 2, "browser": 2,
+	"artifact": 2,
 }
 
 // Run executes args, which start with the command words, against c.
@@ -232,6 +239,8 @@ func Run(ctx context.Context, c *box.Client, args []string, out io.Writer) error
 	case "browser open", "browser snapshot", "browser click", "browser fill", "browser press", "browser select", "browser hover", "browser check",
 		"browser wait", "browser shot", "browser console", "browser network", "browser status", "browser close", "browser eval", "browser allow", "browser list", "browser reap":
 		return browserCmd(ctx, c, strings.TrimPrefix(cmd, "browser "), rest, out)
+	case "artifact add", "artifact list", "artifact ls", "artifact show", "artifact rm":
+		return artifactCmd(ctx, c, strings.TrimPrefix(cmd, "artifact "), rest, out)
 	case "run start", "run get", "run logs", "run cancel", "run approve", "run reject", "run templates":
 		return runCmd(ctx, c, strings.TrimPrefix(cmd, "run "), rest, out)
 	case "location scripts":

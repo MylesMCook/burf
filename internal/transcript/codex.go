@@ -76,6 +76,7 @@ func (codexParser) line(c *conv, b []byte) {
 		var out string
 		_ = json.Unmarshal(it.Output, &out)
 		c.codexAnswered(it.CallID, out)
+		c.localArtifacts(it.CallID, out)
 	}
 }
 
