@@ -36,6 +36,7 @@ import { useWindowTitle } from "@/hooks/use-window-title";
 import { useApplyTheme } from "@/hooks/use-theme";
 import { startOutdatedWatch } from "@/lib/outdated";
 import { startRunsWatch } from "@/lib/runs";
+import { watchStillness } from "@/lib/still";
 import { useStore } from "@/lib/store";
 import { startUpdater } from "@/lib/updater";
 import { cn } from "@/lib/utils";
@@ -72,6 +73,8 @@ export default function App() {
   useWindowTitle();
   // Checks for a newer Berth on launch and every few hours (lib/updater.ts).
   useEffect(startUpdater, []);
+  // Spinners and shimmers hold still while the window is in the background.
+  useEffect(watchStillness, []);
   // Runs on the boxes (loops, attempts, flows): kept fresh for the loops
   // panel, Automations and Review (lib/runs.ts).
   const connectedToAgent = useStore((s) => !!s.client);

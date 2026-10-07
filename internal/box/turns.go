@@ -132,6 +132,7 @@ type Turns struct {
 	// Ambiguous counts cwd-only events that matched more than one session.
 	Ambiguous atomic.Uint64
 	kick      chan struct{}
+	saveSoon  chan struct{}
 	loaded    bool
 	stop      func()
 }
@@ -192,6 +193,18 @@ func (t *Turns) init() {
 		t.dirs = map[string]dirState{}
 		t.changed = make(chan struct{})
 		t.kick = make(chan struct{}, 1)
+		t.saveSoon = make(chan struct{}, 1)
+	}
+}
+
+// markDirty says the ledger has changes to write, and wakes Run to write
+// them (within 100ms, with whatever else changes meanwhile); the caller
+// holds t.mu.
+func (t *Turns) markDirty() {
+	t.dirty = true
+	select {
+	case t.saveSoon <- struct{}{}:
+	default:
 	}
 }
 
@@ -276,7 +289,7 @@ func (t *Turns) load() {
 		}
 	}
 	t.trimDirs()
-	t.dirty = true
+	t.markDirty()
 }
 
 func (t *Turns) loadInbox() {
@@ -317,7 +330,7 @@ func (t *Turns) trimDirs() {
 
 // bump wakes waiters; the caller holds t.mu.
 func (t *Turns) bump() {
-	t.dirty = true
+	t.markDirty()
 	close(t.changed)
 	t.changed = make(chan struct{})
 }
@@ -1208,7 +1221,7 @@ func (t *Turns) nextDeliveries() []inboxItem {
 			out = append(out, s.inbox[0])
 			s.inbox = s.inbox[1:]
 			t.inboxD = true
-			t.dirty = true
+			t.markDirty()
 		}
 	}
 	return out
@@ -1385,10 +1398,12 @@ func (t *Turns) appendArchive(turns []Turn) {
 func (t *Turns) Run(ctx context.Context, b *Box) {
 	t.mu.Lock()
 	t.init()
-	kick := t.kick
+	kick, saveSoon := t.kick, t.saveSoon
 	t.mu.Unlock()
-	flush := time.NewTicker(100 * time.Millisecond)
-	defer flush.Stop()
+	// The ledger is written 100ms after it changes, with whatever else
+	// changes meanwhile; nothing wakes for it while nothing changes (a
+	// 100ms ticker woke an idle box ten times a second).
+	var flush <-chan time.Time
 	refresh := time.NewTicker(10 * time.Second)
 	defer refresh.Stop()
 	screen := time.NewTicker(2 * time.Second)
@@ -1401,7 +1416,12 @@ func (t *Turns) Run(ctx context.Context, b *Box) {
 		select {
 		case <-ctx.Done():
 			return
-		case <-flush.C:
+		case <-saveSoon:
+			if flush == nil {
+				flush = time.After(100 * time.Millisecond)
+			}
+		case <-flush:
+			flush = nil
 			t.save()
 		case <-refresh.C:
 			if b != nil {

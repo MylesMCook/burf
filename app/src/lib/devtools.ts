@@ -1,8 +1,9 @@
 import { listen } from "@tauri-apps/api/event";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { create } from "zustand";
 
 import { type AgentDevtools, appendConsole, appendNetwork, type ConsoleEntry, errorCount, fromAgent, type NetEntry, parseReport, type Report } from "@/lib/devtools-model";
+import { poll, type Poller } from "@/lib/poll";
 import { useStore } from "@/lib/store";
 
 // A Browser tab's Console and Network drawer, per pane: what the page said
@@ -168,33 +169,47 @@ export function useDevtoolsFeed({ key, mode, url, visible, proxyPort }: FeedOpti
     return () => window.removeEventListener("message", onMessage);
   }, [key, mode]);
 
-  // The proxy's log for the page's host.
+  // The proxy's log for the page's host: every second while the pane shows
+  // and the page asks for things, backing off to 8s while it doesn't (30s
+  // behind another tab, for the tab's badge), and never while the window is
+  // hidden. Anything a shown page reports (a console line, a load) looks
+  // again at once: its requests come with it.
   const host = url ? proxiedHost(url, proxyPort) : undefined;
+  const heard = useDevtools((s) => {
+    const c = s.logs[key]?.console;
+    return c?.length ? `${c.length}:${c[c.length - 1].time}:${c[c.length - 1].count}` : "";
+  });
+  const poller = useRef<Poller>(null);
   useEffect(() => {
     if (!host) return;
     let after = 0;
-    let on = true;
-    let timer = 0;
-    const tick = async () => {
-      const client = useStore.getState().client;
-      if (client) {
+    const p = poll(
+      async () => {
+        const client = useStore.getState().client;
+        if (!client) return;
         try {
           const r = await client.laptop<{ requests: NetEntry[] | null; last: number }>("GET", `/v1/proxy/requests?host=${encodeURIComponent(host)}&after=${after}`);
-          if (!on) return;
+          if (p !== poller.current) return;
+          const fresh = (r.requests ?? []).some((n) => n.seq > after);
           ingestNetwork(key, r.requests ?? []);
           after = Math.max(after, r.last ?? 0);
+          return fresh;
         } catch {
           // An agent that doesn't keep the log yet (older), or is away.
+          return false;
         }
-      }
-      if (on) timer = window.setTimeout(tick, visible ? 1000 : 4000);
-    };
-    void tick();
+      },
+      visible ? { every: 1000, max: 8000 } : { every: 4000, max: 30_000 },
+    );
+    poller.current = p;
     return () => {
-      on = false;
-      window.clearTimeout(timer);
+      p.stop();
+      if (poller.current === p) poller.current = null;
     };
   }, [key, host, visible]);
+  useEffect(() => {
+    if (heard && visible) poller.current?.kick();
+  }, [heard, visible]);
 
   // Gone with the pane.
   useEffect(() => () => dropLog(key), [key]);
@@ -211,21 +226,30 @@ export function useAgentDevtoolsFeed(key: string, ref: { box: string; location: 
   useEffect(() => {
     if (!on || !capable || !box || !location || !worktree) return;
     let live = true;
-    let timer = 0;
-    const tick = async () => {
-      const client = useStore.getState().client;
-      try {
-        const d = await client?.box<AgentDevtools>(box, "GET", `worktrees/${encodeURIComponent(location)}/${encodeURIComponent(worktree)}/browser/devtools`);
-        if (live && d) setAgentLog(key, d);
-      } catch {
-        // The box is away; the drawer keeps what it had.
-      }
-      if (live) timer = window.setTimeout(tick, 2000);
-    };
-    void tick();
+    let last = "";
+    // Every 2s while it changes, up to 8s while it doesn't; never while
+    // the window is hidden.
+    const p = poll(
+      async () => {
+        const client = useStore.getState().client;
+        try {
+          const d = await client?.box<AgentDevtools>(box, "GET", `worktrees/${encodeURIComponent(location)}/${encodeURIComponent(worktree)}/browser/devtools`);
+          if (!live || !d) return false;
+          const sig = JSON.stringify(d);
+          if (sig === last) return false;
+          last = sig;
+          setAgentLog(key, d);
+          return true;
+        } catch {
+          // The box is away; the drawer keeps what it had.
+          return false;
+        }
+      },
+      { every: 2000, max: 8000 },
+    );
     return () => {
       live = false;
-      window.clearTimeout(timer);
+      p.stop();
     };
   }, [key, on, capable, box, location, worktree]);
   return capable;

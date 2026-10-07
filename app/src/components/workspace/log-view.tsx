@@ -36,7 +36,7 @@ export function LogView({ box, location, worktree, service, visible }: Props) {
       }
     };
     void load();
-    const timer = window.setInterval(load, 2000);
+    const timer = window.setInterval(() => !document.hidden && void load(), 2000);
     return () => {
       stopped = true;
       window.clearInterval(timer);

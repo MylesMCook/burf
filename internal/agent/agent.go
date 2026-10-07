@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/sean-brydon/berthd/internal/box"
+	"github.com/sean-brydon/berthd/internal/debugserver"
 	"github.com/sean-brydon/berthd/internal/doctor"
 	"github.com/sean-brydon/berthd/internal/events"
 	"github.com/sean-brydon/berthd/internal/forward"
@@ -304,6 +305,8 @@ func Run(ctx context.Context, cfg Config) error {
 
 	handler := a.api(cancel)
 	a.startUI(ctx, handler)
+	// BERTH_DEBUG_ADDR: goroutines, open files and profiles, for measuring.
+	debugserver.Start(ctx, a.cfg.Log.Printf)
 	api := &http.Server{Handler: handler, ReadHeaderTimeout: 10 * time.Second}
 	stop := context.AfterFunc(ctx, func() { api.Close() })
 	defer stop()

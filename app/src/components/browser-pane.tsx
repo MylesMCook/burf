@@ -20,6 +20,7 @@ import { berthUrlLabel, boxAliases, type BrowserContext, describeBerthUrl, hostS
 import { openUrl } from "@/lib/open-url";
 import { initialPageLoads, type PageEvent, pageEvent, type PageLoads, reloadLoop, settle } from "@/lib/page-loads";
 import { overlayOpen } from "@/lib/overlays";
+import { poll } from "@/lib/poll";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { demoDevServer } from "@/demo/dev-server";
@@ -731,21 +732,29 @@ function useAgentBrowserLive(ref: BrowserContext["ref"], visible: boolean): Agen
     setLive(undefined);
     if (!capable || !visible || !box || !location || !worktree) return;
     let on = true;
-    const tick = () =>
-      agentBrowserStatus(box, location, worktree).then(
-        (s) => {
-          if (!on) return;
-          seedSandbox(box, s.health);
-          const size = s.status?.size ?? s.size;
-          setLive((was) => (was?.running === s.running && was?.url === s.status?.url && was?.size === size ? was : { running: s.running, url: s.status?.url, size }));
-        },
-        () => on && setLive({ running: false }),
-      );
-    void tick();
-    const t = window.setInterval(tick, 5000);
+    let seen = "";
+    // Every 5s, backing off to 30s while nothing changes; never while the
+    // window is hidden (lib/poll).
+    const p = poll(
+      () =>
+        agentBrowserStatus(box, location, worktree).then(
+          (s) => {
+            if (!on) return false;
+            seedSandbox(box, s.health);
+            const size = s.status?.size ?? s.size;
+            setLive((was) => (was?.running === s.running && was?.url === s.status?.url && was?.size === size ? was : { running: s.running, url: s.status?.url, size }));
+            const now = `${s.running}|${s.status?.url ?? ""}|${size ?? ""}`;
+            const changed = now !== seen;
+            seen = now;
+            return changed;
+          },
+          () => (on && setLive({ running: false }), false),
+        ),
+      { every: 5000, max: 30_000 },
+    );
     return () => {
       on = false;
-      window.clearInterval(t);
+      p.stop();
     };
   }, [capable, visible, box, location, worktree]);
   return live;

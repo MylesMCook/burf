@@ -160,6 +160,14 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
 
   useEffect(() => term?.setTheme(theme.terminal), [term, theme]);
 
+  // Hidden, it draws nothing and takes its output in batches; shown, it
+  // catches up and redraws (lib/terminal, lib/term-output). The agent
+  // batches too, so a hidden one's output arrives a second at a time
+  // (TerminalConnection.pace); a minimised window counts as hidden.
+  const windowShown = useWindowShown();
+  useEffect(() => term?.setVisible(visible), [term, visible]);
+  useEffect(() => conn.current?.pace?.(visible && windowShown ? 0 : HIDDEN_PACE), [visible, windowShown, state]);
+
   // A pasted or dropped image (a PDF, a text file, a file copied in Finder)
   // can't be typed: it goes up to the session's worktree on the box and its
   // path is pasted instead, which Claude Code takes as the image. Text pastes
@@ -406,6 +414,20 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
       )}
     </div>
   );
+}
+
+// How long a hidden terminal's output may wait at the agent, in ms.
+const HIDDEN_PACE = 1000;
+
+// useWindowShown is false while the window is hidden (minimised, covered).
+function useWindowShown(): boolean {
+  const [shown, setShown] = useState(() => !document.hidden);
+  useEffect(() => {
+    const sync = () => setShown(!document.hidden);
+    document.addEventListener("visibilitychange", sync);
+    return () => document.removeEventListener("visibilitychange", sync);
+  }, []);
+  return shown;
 }
 
 function somethingElseHasFocus(mine: HTMLElement | null): boolean {

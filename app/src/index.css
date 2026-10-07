@@ -384,3 +384,12 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* The window in the background for a while, or hidden (lib/still.ts): the
+   endless decorative animations hold still. Only these: a toast or a
+   menu's own entrance still plays, so nothing waits on focus to appear. */
+:root[data-berth-still] :is(.animate-spin, .animate-ping, .animate-pulse, .cv-shimmer),
+:root[data-berth-still] :is(.animate-spin, .animate-ping, .animate-pulse, .cv-shimmer)::before,
+:root[data-berth-still] :is(.animate-spin, .animate-ping, .animate-pulse, .cv-shimmer)::after {
+  animation-play-state: paused !important;
+}

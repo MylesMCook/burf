@@ -132,6 +132,26 @@ again.
   **Board**) so the before/after starts near the top.
   [Visual diffs](/guides/visual-diffs).
 
+- **Berth rests when nothing happens.** Left open with a couple of chats,
+  two Browser tabs and their drawers, a Preview tab and the Files panel,
+  the app asked the agent about 170 times a minute and kept its main
+  thread busy about 12% of the time, hidden or not, because every terminal
+  drew on every frame whether or not it showed. Now a terminal in a hidden
+  tab draws nothing and gets its output a second at a time (the agent
+  batches it), and one on screen draws only when something changes: with
+  a dozen terminals printing behind other tabs, the main thread went from
+  most of a core to about a tenth of one, typing in the one in front echoes in
+  about 30 ms instead of 400, and switching to one takes 30 ms instead of
+  400. At rest the app asks about 55 times a minute, and nothing while
+  the window is hidden or the Mac sleeps; it catches up the moment you
+  come back. Spinners and shimmers hold still once the window has been in
+  the background for 30 seconds. Closing a terminal now frees its memory
+  (it kept all of it before), a full Console drawer no longer redraws
+  every row for each new line, xterm.js (the fallback renderer) no longer
+  stalls with noisy terminals in background tabs, and an idle box's
+  daemon no longer wakes thirty times a second. `pnpm perf:soak` and
+  `pnpm perf:terminals` measure it; the smoke suite checks it stays so.
+
 - **Give a worktree a name you can read.** A worktree made from a pasted
   link is called `https-linear-app-acme`. **Rename…** in its menu,
   double-click or F2 on its sidebar row (Enter saves, Esc cancels), or

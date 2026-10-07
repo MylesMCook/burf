@@ -32,7 +32,7 @@ function useServices(berth: BerthPluginContext): Row[] | undefined {
       if (!cancelled) setRows(all.flat());
     };
     void load();
-    const timer = setInterval(load, 10_000);
+    const timer = setInterval(() => !document.hidden && void load(), 10_000);
     return () => {
       cancelled = true;
       clearInterval(timer);

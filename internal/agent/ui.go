@@ -287,8 +287,9 @@ func (a *Agent) relayBox(w http.ResponseWriter, r *http.Request, c *wire.Client,
 }
 
 // uiAttach bridges a WebSocket to a session's terminal on a box. Binary
-// messages are keystrokes, text messages are resizes; the box's output comes
-// back as binary messages. Closing either side detaches.
+// messages are keystrokes, text messages are resizes and the pace the app
+// wants output at (termpace.go); the box's output comes back as binary
+// messages. Closing either side detaches.
 func (a *Agent) uiAttach(w http.ResponseWriter, r *http.Request) {
 	a.sync()
 	c, ok := a.client(r.PathValue("box"))
@@ -313,6 +314,7 @@ func (a *Agent) uiAttach(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer stream.Close()
+	out := newPacedOutput()
 	go func() {
 		defer cancel()
 		for {
@@ -324,9 +326,17 @@ func (a *Agent) uiAttach(w http.ResponseWriter, r *http.Request) {
 				var m struct {
 					Type       string `json:"type"`
 					Cols, Rows int
+					// pace: how long the app is happy to wait for output, in
+					// ms, while the terminal is hidden (termpace.go).
+					MS int `json:"ms"`
 				}
-				if json.Unmarshal(msg, &m) == nil && m.Type == "resize" {
-					err = terminal.WriteResize(stream, m.Cols, m.Rows)
+				if json.Unmarshal(msg, &m) == nil {
+					switch m.Type {
+					case "resize":
+						err = terminal.WriteResize(stream, m.Cols, m.Rows)
+					case "pace":
+						out.setPace(m.MS)
+					}
 				}
 			} else {
 				err = terminal.WriteData(stream, msg)
@@ -336,18 +346,10 @@ func (a *Agent) uiAttach(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}()
-	buf := make([]byte, 32<<10)
-	for {
-		n, err := stream.Read(buf)
-		if n > 0 {
-			if werr := ws.Write(ctx, websocket.MessageBinary, buf[:n]); werr != nil {
-				return
-			}
-		}
-		if err != nil {
-			ws.Close(websocket.StatusNormalClosure, "session detached")
-			return
-		}
+	go out.read(ctx, stream)
+	err = out.write(ctx, func(b []byte) error { return ws.Write(ctx, websocket.MessageBinary, b) })
+	if err != nil && ctx.Err() == nil {
+		ws.Close(websocket.StatusNormalClosure, "session detached")
 	}
 }
 

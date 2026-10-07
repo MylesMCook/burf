@@ -105,6 +105,11 @@ function errorBody(text: string, fallback: string): { message: string; code?: st
 export interface TerminalConnection {
   send(data: Uint8Array | string): void;
   resize(cols: number, rows: number): void;
+  // How long output may wait to be sent, in ms: 0 while the terminal shows,
+  // more while it is hidden, so a noisy program behind another tab comes in
+  // a batch at a time (the agent's termpace.go). Kept across reconnects;
+  // an older agent ignores it.
+  pace?(ms: number): void;
   close(): void;
 }
 
@@ -729,7 +734,12 @@ function attachSocket(url: string, h: TerminalHandlers, onText?: (e: InstallEven
     ended = true;
     h.onClose(closedByUs);
   };
-  ws.onopen = () => h.onOpen();
+  let paceMs = 0;
+  const sendPace = () => ws.send(JSON.stringify({ type: "pace", ms: paceMs }));
+  ws.onopen = () => {
+    if (paceMs) sendPace();
+    h.onOpen();
+  };
   ws.onmessage = (m) => {
     if (typeof m.data === "string" && onText) {
       try {
@@ -750,6 +760,11 @@ function attachSocket(url: string, h: TerminalHandlers, onText?: (e: InstallEven
     },
     resize(cols, rows) {
       if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "resize", cols, rows }));
+    },
+    pace(ms) {
+      if (ms === paceMs) return;
+      paceMs = ms;
+      if (ws.readyState === WebSocket.OPEN) sendPace();
     },
     close() {
       closedByUs = true;

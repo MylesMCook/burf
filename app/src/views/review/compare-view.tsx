@@ -59,7 +59,7 @@ export function CompareView({ box, id, onClose }: { box: string; id: string; onC
   };
   useEffect(() => {
     void load();
-    const t = setInterval(() => void load(), 4000);
+    const t = setInterval(() => !document.hidden && void load(), 4000);
     return () => clearInterval(t);
   }, [runsKey]);
 
