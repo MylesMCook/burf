@@ -6,3 +6,6 @@ declare const __BERTH_DEMO__: boolean;
 
 // The checkout's short commit hash at build time (vite.config.ts), or "".
 declare const __BERTH_COMMIT__: string;
+
+// app/package.json's version at build time (vite.config.ts).
+declare const __BERTH_VERSION__: string;
