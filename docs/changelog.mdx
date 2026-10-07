@@ -11,6 +11,18 @@ again.
 
 ## Unreleased
 
+- **Long chats stay quick.** In a chat of 2,000 turns, each update of a
+  reply being written took about 57 ms, as every row was drawn again and
+  every message re-read for ⌘F; now only the reply's own row draws, in
+  about 15 ms, the same as in a short chat. Typing in the reply box no
+  longer makes the whole window restyle on each key (about 8 ms a key,
+  at any length). Scrolling a long chat from top to bottom quickly no
+  longer drops half its frames, and a chat holds half the memory. Words
+  you select stay selected while the chat scrolls past them, so dragging
+  or Shift-clicking across many messages copies all of them, and screen
+  readers hear the chat as a list that says where each message is.
+  [Conversation view](/guides/labs#conversation-view).
+
 - **The Browser tab stops spinning once a page has loaded.** A page that
   adds a frame after it loads (a chat widget, an embed) used to leave the
   spinner on for good. Only the page itself counts now, and a load that

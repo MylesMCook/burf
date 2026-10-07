@@ -294,6 +294,15 @@ async function benchChat(browser, turns, shots) {
       await p.$eval(sc, mid);
       await p.waitForTimeout(700);
       await p.$eval(sc, mid);
+      await p.waitForTimeout(700);
+      // A code block near the top of the view, once highlighted.
+      await p.$eval(sc, (e) => {
+        const top = e.getBoundingClientRect().top;
+        const pre = [...e.querySelectorAll(".cv-pre")].find((x) => x.getBoundingClientRect().top > top - 400);
+        if (!pre) return;
+        e.dispatchEvent(new WheelEvent("wheel", { deltaY: 1 }));
+        e.scrollTop += pre.getBoundingClientRect().top - top - 120;
+      });
       await p.waitForTimeout(1500);
       await p.waitForTimeout(800);
       mkdirSync(join(out, "shots"), { recursive: true });
