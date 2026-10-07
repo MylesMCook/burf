@@ -1,6 +1,6 @@
 import "./art.css";
 
-import { BotIcon, CodeIcon, EyeIcon, HistoryIcon, LayoutGridIcon, LockIcon, SearchXIcon, TriangleAlertIcon } from "lucide-react";
+import { BotIcon, ChevronDownIcon, CodeIcon, EyeIcon, HistoryIcon, LayoutGridIcon, LockIcon, SearchXIcon, TriangleAlertIcon } from "lucide-react";
 import { lazy, Suspense, useContext, useEffect, useMemo, useState } from "react";
 
 import { ArtGlyph, GistLine, KindWord, usePulse, when } from "@/components/art/art-card";
@@ -9,7 +9,8 @@ import { kindOf } from "@/components/art/kinds";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { type Art, latest, sizeLabel, useArt, useArtBody, useArtifact } from "@/lib/art/model";
+import { Menu, MenuGroup, MenuGroupLabel, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "@/components/ui/menu";
+import { type Art, type ArtVersion, latest, sizeLabel, useArt, useArtBody, useArtifact } from "@/lib/art/model";
 import { openBoard } from "@/lib/art/open";
 import { PaneContext } from "@/lib/pane-context";
 import { cn } from "@/lib/utils";
@@ -71,12 +72,16 @@ function Shown({ art }: { art: Art }) {
   useEffect(() => useArt.getState().seen(art.id), [art.id, cur.n]);
   const sandboxed = kind.drawn === "sandbox";
   const fill = art.kind !== "notes";
+  // A compact kind's header, in a pane under 40rem (the pane is the
+  // container): these classes apply there only (KindSpec.compact).
+  const narrow = (cls: string) => (kind.compact ? cls : "");
+  const pick = (n: number) => setN(n === cur.n ? null : n);
 
   return (
-    <div data-testid="artifact-pane" data-art-id={art.id} className="flex min-h-0 flex-1 flex-col bg-background">
-      <header className="shrink-0 border-b px-5 pt-3 pb-2.5">
+    <div data-testid="artifact-pane" data-art-id={art.id} className={cn("flex min-h-0 flex-1 flex-col bg-background", kind.compact && "@container/art")}>
+      <header className={cn("shrink-0 border-b px-5 pt-3 pb-2.5", narrow("@max-[40rem]/art:px-3 @max-[40rem]/art:py-1.5"))} data-art-header>
         <div className={cn("mx-auto flex w-full flex-col gap-1.5", kind.wide ? "max-w-[88rem]" : "max-w-[72rem]")}>
-          <div className="flex min-w-0 items-center gap-1.5 text-muted-foreground text-xs">
+          <div className={cn("flex min-w-0 items-center gap-1.5 text-muted-foreground text-xs", narrow("@max-[40rem]/art:sr-only"))}>
             <BotIcon className="size-3.5 shrink-0" aria-hidden />
             <span className="min-w-0 truncate">Made by {madeBy(art)}</span>
             {art.file && (
@@ -92,32 +97,33 @@ function Shown({ art }: { art: Art }) {
               </span>
             </Tip>
           </div>
-          <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
-            <ArtGlyph art={art} body={body} className="size-4 text-muted-foreground" />
-            <h2 className="min-w-0 truncate font-semibold text-base">{art.title}</h2>
-            <span className="shrink-0 text-muted-foreground text-xs">
+          <div className={cn("flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1", narrow("@max-[40rem]/art:flex-nowrap @max-[40rem]/art:gap-x-1.5"))}>
+            <ArtGlyph art={art} body={body} className="size-4 shrink-0 text-muted-foreground" />
+            <h2 className={cn("min-w-0 truncate font-semibold text-base", narrow("@max-[40rem]/art:text-sm"))}>{art.title}</h2>
+            <span className={cn("shrink-0 text-muted-foreground text-xs", narrow("@max-[40rem]/art:hidden"))}>
               <KindWord art={art} />
             </span>
-            <span data-testid="art-live" data-pulse={pulse || undefined} className={cn("inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-[0.6875rem] tabular-nums", pulse ? "art-pulse border-info/40 bg-info/10 text-info-foreground" : "text-muted-foreground")}>
+            <span data-testid="art-live" data-pulse={pulse || undefined} className={cn("inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-[0.6875rem] tabular-nums", pulse ? "art-pulse border-info/40 bg-info/10 text-info-foreground" : "text-muted-foreground", narrow("@max-[40rem]/art:hidden"))}>
               <span className={cn("size-1.5 rounded-full", pulse ? "art-dot bg-info" : art.watched ? "bg-success" : "bg-muted-foreground/60")} aria-hidden />
               {pulse ? `Updated just now · v${cur.n}` : `${art.watched ? "Live" : "Latest"} · v${cur.n} · ${when(cur.at)}`}
             </span>
+            {kind.compact && <VersionMenu art={art} cur={cur} v={v} pulse={pulse} onPick={pick} className="hidden @max-[40rem]/art:inline-flex" />}
             <span className="ml-auto flex shrink-0 items-center gap-0.5">
               <Tip label={source ? "Show the artifact" : "Show its source"}>
                 <Button size="xs" variant={source ? "secondary" : "ghost"} className="text-muted-foreground" onClick={() => setSource((s) => !s)} aria-pressed={source} data-testid="art-source-toggle">
                   {source ? <EyeIcon /> : <CodeIcon />}
-                  {source ? "Artifact" : "Source"}
+                  <span className={narrow("@max-[40rem]/art:sr-only")}>{source ? "Artifact" : "Source"}</span>
                 </Button>
               </Tip>
               <Tip label="All of this worktree's artifacts">
                 <Button size="xs" variant="ghost" className="text-muted-foreground" onClick={() => pane && openBoard(pane.worktree, { focus: art.id })} data-testid="art-board-link">
                   <LayoutGridIcon />
-                  Board
+                  <span className={narrow("@max-[40rem]/art:sr-only")}>Board</span>
                 </Button>
               </Tip>
             </span>
           </div>
-          <GistLine art={art} className="text-[0.8125rem]" />
+          <GistLine art={art} className={cn("text-[0.8125rem]", narrow("@max-[40rem]/art:sr-only"))} />
           {art.problem && (
             <div className="flex items-center gap-1.5 text-warning-foreground text-xs">
               <TriangleAlertIcon className="size-3.5 shrink-0" aria-hidden />
@@ -125,7 +131,7 @@ function Shown({ art }: { art: Art }) {
             </div>
           )}
           {art.versions.length > 1 && (
-            <div className="flex flex-wrap items-center gap-1 pt-0.5" role="radiogroup" aria-label="Versions" data-testid="art-versions">
+            <div className={cn("flex flex-wrap items-center gap-1 pt-0.5", narrow("@max-[40rem]/art:hidden"))} role="radiogroup" aria-label="Versions" data-testid="art-versions">
               <HistoryIcon className="me-0.5 size-3.5 text-muted-foreground" aria-hidden />
               {[...art.versions].reverse().map((x) => (
                 <button
@@ -133,13 +139,13 @@ function Shown({ art }: { art: Art }) {
                   type="button"
                   role="radio"
                   aria-checked={x.n === v.n}
-                  onClick={() => setN(x.n === cur.n ? null : x.n)}
+                  onClick={() => pick(x.n)}
                   className={cn("inline-flex min-w-0 max-w-full items-center gap-1.5 whitespace-nowrap rounded-md border px-2 py-0.5 text-xs", x.n === v.n ? "border-ring bg-accent text-foreground" : "text-muted-foreground hover:bg-accent/60")}
                 >
                   <span className="font-medium tabular-nums">v{x.n}</span>
                   <span className="tabular-nums">{x.n === cur.n ? "latest" : when(x.at)}</span>
                   {x.note && <span className="min-w-0 max-w-[14rem] truncate">· {x.note}</span>}
-                  <span className="text-muted-foreground/70 tabular-nums">· {sizeLabel(x.size)}</span>
+                  <span className="text-muted-foreground tabular-nums">· {sizeLabel(x.size)}</span>
                 </button>
               ))}
             </div>
@@ -157,7 +163,9 @@ function Shown({ art }: { art: Art }) {
           </Button>
         </div>
       )}
-      <div className={cn("min-h-0 flex-1 overflow-auto", fill || source ? "flex flex-col p-4" : "px-5 py-5")}>
+      {/* Focusable, so the keyboard can scroll it when nothing in it takes
+          focus (a long source, notes). */}
+      <div tabIndex={0} aria-label={art.title} role="region" className={cn("min-h-0 flex-1 overflow-auto outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset", fill || source ? "flex flex-col p-4" : "px-5 py-5")}>
         <div className={cn("mx-auto w-full", kind.wide ? "max-w-[88rem]" : "max-w-[72rem]", (fill || source) && "flex min-h-0 flex-1 flex-col")}>
           {source ? (
             body === undefined ? null : (
@@ -173,5 +181,43 @@ function Shown({ art }: { art: Art }) {
         </div>
       </div>
     </div>
+  );
+}
+
+// VersionMenu is a compact header's Live pill and versions strip in one:
+// the version shown, which opens the list of them.
+function VersionMenu({ art, cur, v, pulse, onPick, className }: { art: Art; cur: ArtVersion; v: ArtVersion; pulse: boolean; onPick(n: number): void; className?: string }) {
+  const state = pulse ? "Updated just now" : art.watched ? "Live" : "Latest";
+  return (
+    <Menu>
+      <MenuTrigger
+        aria-label={`Version: v${v.n}${v.n === cur.n ? `, the latest (${state.toLowerCase()})` : `, the latest is v${cur.n}`}. ${art.versions.length} ${art.versions.length === 1 ? "version" : "versions"}`}
+        data-testid="art-version-menu"
+        data-pulse={pulse || undefined}
+        className={cn("shrink-0 items-center gap-1 rounded-full border px-1.5 py-0.5 text-[0.6875rem] tabular-nums outline-none focus-visible:ring-2 focus-visible:ring-ring", pulse ? "art-pulse border-info/40 bg-info/10 text-info-foreground" : "text-muted-foreground hover:bg-accent/60", className)}
+      >
+        <span className={cn("size-1.5 rounded-full", pulse ? "art-dot bg-info" : art.watched ? "bg-success" : "bg-muted-foreground/60")} aria-hidden />
+        v{v.n}
+        <ChevronDownIcon className="size-3" aria-hidden />
+      </MenuTrigger>
+      <MenuPopup align="start" className="min-w-56">
+        <MenuGroup>
+          <MenuGroupLabel>
+            {state} · v{cur.n} · {when(cur.at)}
+          </MenuGroupLabel>
+          <MenuRadioGroup value={String(v.n)} onValueChange={(x) => onPick(Number(x))}>
+            {[...art.versions].reverse().map((x) => (
+              <MenuRadioItem key={x.n} value={String(x.n)}>
+                <span className="flex min-w-0 items-center gap-1.5">
+                  <span className="font-medium tabular-nums">v{x.n}</span>
+                  <span className="text-muted-foreground tabular-nums">{x.n === cur.n ? "latest" : when(x.at)}</span>
+                  {x.note && <span className="min-w-0 max-w-[14rem] truncate text-muted-foreground">· {x.note}</span>}
+                </span>
+              </MenuRadioItem>
+            ))}
+          </MenuRadioGroup>
+        </MenuGroup>
+      </MenuPopup>
+    </Menu>
   );
 }

@@ -45,6 +45,12 @@ export interface KindSpec {
   Chips?: LazyExoticComponent<ComponentType<{ art: Art; body: string }>>;
   // Its tab is wider than the others' (a visual diff's screenshots).
   wide?: boolean;
+  // It draws its own summary and toolbar above what it shows (a visual
+  // diff), so in a narrow pane (under 40rem: beside the chat, a split) its
+  // tab's header folds to one line, the title, a version menu, Source and
+  // Board, and what it shows starts near the top. Who made it and the
+  // headline stay for screen readers.
+  compact?: boolean;
 }
 
 const chartIcons: Partial<Record<ChartType, LucideIcon>> = { line: ChartSplineIcon, area: ChartSplineIcon, gauge: GaugeIcon, pie: ChartPieIcon, ring: ChartPieIcon, sankey: GitForkIcon, funnel: FilterIcon, heatmap: Grid3x3Icon };
@@ -127,6 +133,7 @@ registerKind({
   View: lazy(() => import("@/components/art/views/vdiff-view")),
   Chips: lazy(() => import("@/components/art/views/vdiff-chips")),
   wide: true,
+  compact: true,
 });
 
 // A kind this app doesn't know (a newer box): its source, as text.

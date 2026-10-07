@@ -46,9 +46,12 @@ function VisualDiffView({ art, version, v }: { art: Art; version: ArtVersion; v:
 function Summary({ art, version, v }: { art: Art; version: ArtVersion; v: VisualDiff }) {
   const n = v.settings.sizes.length;
   const sch = schemes(v);
+  // Under 480px (beside the chat) it is one line, what needs a look and
+  // Accept, so the stage starts near the top; the counts and timing stay
+  // for screen readers.
   return (
-    <div className="flex min-w-0 flex-col gap-1.5" data-vd-summary>
-      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 text-muted-foreground text-xs">
+    <div className="flex min-w-0 flex-col gap-1.5 @max-[480px]:flex-row @max-[480px]:flex-wrap @max-[480px]:items-center" data-vd-summary>
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 text-muted-foreground text-xs @max-[480px]:order-2 @max-[480px]:ml-auto">
         <span className="hidden min-w-0 truncate font-mono @[560px]:inline" data-vd-compare>
           {v.base.kind === "baseline" ? `${v.base.label} baseline` : v.base.label}
           {v.base.commit ? `@${v.base.commit}` : ""} → {v.head.label}
@@ -58,7 +61,7 @@ function Summary({ art, version, v }: { art: Art; version: ArtVersion; v: Visual
         <span aria-hidden className="hidden @[560px]:inline">
           ·
         </span>
-        <span className="shrink-0 tabular-nums">
+        <span className="shrink-0 tabular-nums @max-[480px]:sr-only">
           {v.pages.length} {v.pages.length === 1 ? "page" : "pages"} × {n} {n === 1 ? "size" : "sizes"}
           {sch.length > 1 ? " × light and dark" : sch[0] === "dark" ? " (dark)" : ""} in {(v.timing.total_ms / 1000).toFixed(1)}s
         </span>
@@ -66,12 +69,12 @@ function Summary({ art, version, v }: { art: Art; version: ArtVersion; v: Visual
         <AcceptButton art={art} version={version} v={v} />
       </div>
       {v.notice && (
-        <div className="flex items-start gap-1.5 text-warning-foreground text-xs" data-vd-notice>
+        <div className="flex items-start gap-1.5 text-warning-foreground text-xs @max-[480px]:order-3 @max-[480px]:w-full" data-vd-notice>
           <InfoIcon className="mt-px size-3.5 shrink-0" aria-hidden />
           <span className="min-w-0">{v.notice}</span>
         </div>
       )}
-      <VdiffChips v={v} />
+      <VdiffChips v={v} className="@max-[480px]:order-1" />
     </div>
   );
 }
@@ -182,7 +185,7 @@ function AcceptButton({ art, version, v }: { art: Art; version: ArtVersion; v: V
         <Tip label={isLatest ? "Later compares with --base accepted measure against these shots" : "Only the latest version can be accepted"}>
           <Button size="xs" variant="outline" disabled={!isLatest} onClick={() => setAsk(true)} data-vd-accept>
             <StampIcon />
-            Accept as baseline
+            Accept<span className="@max-[480px]:sr-only"> as baseline</span>
           </Button>
         </Tip>
       )}
@@ -242,8 +245,12 @@ function SliderFirst({ art, v }: { art: Art; v: VisualDiff }) {
       if (t?.closest?.("input,textarea,select,[contenteditable],[role=slider],.xterm")) return;
       const el = root.current;
       if (!el || !el.offsetParent) return;
+      // The keyboard is in this artifact, or nowhere in particular: on
+      // <body>, or home on a region round it (lib/focus-home.ts puts it on
+      // <main> when what had it went away, as the chat's Open does).
       const active = document.activeElement;
-      if (active && active !== document.body && !el.closest("[data-testid=artifact-pane]")?.contains(active)) return;
+      const art = el.closest("[data-testid=artifact-pane]");
+      if (active && active !== document.body && !art?.contains(active) && !(art && active.contains(art))) return;
       if (e.key === "n" || e.key === "]") {
         e.preventDefault();
         go((step ?? -1) + 1);
@@ -266,7 +273,7 @@ function SliderFirst({ art, v }: { art: Art; v: VisualDiff }) {
           <ArrowLeftIcon />
         </Button>
       </Tip>
-      <span className="min-w-[2.75rem] text-center tabular-nums @[560px]:min-w-[3.5rem]" data-vd-step>
+      <span className="min-w-[2.25rem] text-center tabular-nums @[480px]:min-w-[2.75rem] @[560px]:min-w-[3.5rem]" data-vd-step>
         {step !== undefined ? `${step + 1} of ${items.length}` : `${items.length}`}
       </span>
       <Tip label="Next change · n">
@@ -504,7 +511,7 @@ function Seg<T extends string>({ value, onChange, items, label }: { value: T; on
     <div className="inline-flex rounded-lg border bg-muted/40 p-0.5" role="radiogroup" aria-label={label}>
       {items.map((it) => (
         <Tip key={it.v} label={it.label}>
-          <button type="button" role="radio" aria-checked={value === it.v} aria-label={it.label} data-vd-mode={it.v} onClick={() => onChange(it.v)} className={cn("inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs", value === it.v ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground")}>
+          <button type="button" role="radio" aria-checked={value === it.v} aria-label={it.label} data-vd-mode={it.v} onClick={() => onChange(it.v)} className={cn("inline-flex items-center gap-1 rounded-md px-1.5 py-1 text-xs @[480px]:px-2", value === it.v ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground")}>
             <it.icon className="size-3.5" />
             <span className="hidden @[900px]:inline">{it.label}</span>
           </button>
@@ -519,7 +526,7 @@ function OverlayControls({ ov, shot }: { ov: ReturnType<typeof useOverlays>; sho
   return (
     <div className="inline-flex items-center gap-1">
       <Tip label="Changed pixels, glowing by how much they changed">
-        <button type="button" aria-pressed={ov.heat} data-vd-heat-toggle onClick={() => ov.setHeat((h) => !h)} disabled={!shot.heat} className={cn("inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs disabled:opacity-50", ov.heat && shot.heat ? "border-[#f97316]/50 bg-[#f97316]/10 text-foreground" : "text-muted-foreground hover:bg-accent/60")}>
+        <button type="button" aria-pressed={ov.heat} aria-label="Heatmap" data-vd-heat-toggle onClick={() => ov.setHeat((h) => !h)} disabled={!shot.heat} className={cn("inline-flex items-center gap-1 rounded-md border px-1.5 py-1 text-xs disabled:opacity-50 @[480px]:px-2", ov.heat && shot.heat ? "border-[#f97316]/50 bg-[#f97316]/10 text-foreground" : "text-muted-foreground hover:bg-accent/60")}>
           <FlameIcon className={cn("size-3.5", ov.heat && shot.heat && "text-[#f97316]")} aria-hidden />
           <span className="hidden @[560px]:inline">Heatmap</span>
         </button>
@@ -530,7 +537,7 @@ function OverlayControls({ ov, shot }: { ov: ReturnType<typeof useOverlays>; sho
         </span>
       )}
       <Tip label="Numbered boxes around each change">
-        <button type="button" aria-pressed={ov.regions} data-vd-regions-toggle onClick={() => ov.setRegions((r) => !r)} className={cn("inline-flex items-center gap-1 rounded-md border px-2 py-1 text-xs", ov.regions ? "border-[#2563eb]/40 bg-[#2563eb]/8 text-foreground" : "text-muted-foreground hover:bg-accent/60")}>
+        <button type="button" aria-pressed={ov.regions} aria-label={n ? `Regions, ${n}` : "Regions"} data-vd-regions-toggle onClick={() => ov.setRegions((r) => !r)} className={cn("inline-flex items-center gap-1 rounded-md border px-1.5 py-1 text-xs @[480px]:px-2", ov.regions ? "border-[#2563eb]/40 bg-[#2563eb]/8 text-foreground" : "text-muted-foreground hover:bg-accent/60")}>
           <SquareDashedIcon className={cn("size-3.5", ov.regions && "text-[#3b82f6]")} aria-hidden />
           <span className="hidden @[560px]:inline">Regions</span>
           {n ? <span className="text-muted-foreground tabular-nums">{n}</span> : null}
