@@ -29,40 +29,52 @@ test("a box that drops off says it is reconnecting, counts down to the next try,
   agent.away = { state: "offline", retryAt: new Date(Date.now() + 9000).toISOString(), attempts: 3, since: new Date(Date.now() - 75_000).toISOString() };
   agent.event({ type: "box.disconnected", data: { box: BOX } });
   const pane = app.page.locator("[data-testid=pane]:visible");
-  await expect(pane.getByText(`Reconnecting to ${BOX}…`)).toBeVisible();
-  const line = pane.getByTestId("retry-line");
+  await expect(pane.getByText(`Reconnecting to ${BOX}…`).first()).toBeVisible();
+  const line = pane.getByTestId("retry-line").first();
   await expect(line).toContainText(/Next try in [6-9]s · away 1m 1[5-9]s/);
   // It counts down, by itself.
   await expect(line).toContainText(/Next try in [1-5]s/, { timeout: 6000 });
-  await pane.getByRole("button", { name: "Try now" }).click();
+  // The chat's own (its terminal's, under it, says the same).
+  await app.page.getByRole("button", { name: "Try now" }).filter({ visible: true }).last().click();
   await expect.poll(() => agent.calls.filter((c) => c === `POST /v1/refresh?box=${BOX}`).length).toBe(1);
   // Back: the chat as it was.
   agent.away = undefined;
   agent.event({ type: "box.connected", data: { box: BOX } });
   await expect(app.chat.getByText("The retry loop never backs off; fixed it.")).toBeVisible();
-  await expect(pane.getByText(`Reconnecting to ${BOX}…`)).toHaveCount(0);
+  // (The stand-in has no terminals, so the one under the chat keeps trying.)
+  await expect(app.chat.getByText(`Reconnecting to ${BOX}…`)).toHaveCount(0);
 });
 
 test("a message sent again after the link dropped its answer carries the same key, so the box types it once", async ({ app }) => {
   agent.session = { agent_state: "finished" };
+  // Claude at its prompt, so the chat takes the reply (not its own screen).
+  const rule = "─".repeat(60);
+  agent.screen = () => `${rule}\n❯ \n${rule}\n`;
   await openChat(app);
-  agent.send = () => (agent.sends.length === 1 ? "drop" : { body: { sent: true, duplicate: true, turn: `${SESSION}#2`, seq: 9, at: new Date().toISOString() } });
+  // The box has it, but no answer gets back. Chromium itself sends a POST
+  // again when its connection closes before an answer (as on a stale
+  // keep-alive), so the link drops until the app gives up.
+  let dropping = true;
+  agent.send = () => (dropping ? "drop" : { body: { sent: true, duplicate: true, turn: `${SESSION}#2`, seq: 9, at: new Date().toISOString() } });
   const box = app.composer.getByRole("textbox", { name: "Reply" });
   await box.fill("Run the checkout suite again");
   await box.press("Enter");
   // The answer never came: the words come back to the box to send again.
   await expect(box).toHaveValue("Run the checkout suite again");
+  dropping = false;
+  const tried = agent.sends.length;
   await box.press("Enter");
-  await expect.poll(() => agent.sends.length).toBe(2);
-  const [first, second] = agent.sends;
+  await expect.poll(() => agent.sends.length).toBe(tried + 1);
+  // Every copy, the browser's own retry and the person's, is one message.
+  const first = agent.sends[0];
   expect(first.idem_key).toBeTruthy();
-  expect(second.idem_key).toBe(first.idem_key);
+  for (const s of agent.sends) expect(s.idem_key).toBe(first.idem_key);
   // Different words are a different message.
   await expect(box).toHaveValue("");
   await box.fill("And the cart tests");
   await box.press("Enter");
-  await expect.poll(() => agent.sends.length).toBe(3);
-  expect(agent.sends[2].idem_key).not.toBe(first.idem_key);
+  await expect.poll(() => agent.sends.length).toBe(tried + 2);
+  expect(agent.sends.at(-1)!.idem_key).not.toBe(first.idem_key);
 });
 
 test("the event stream comes back after the agent drops it, and reads once rather than in a storm", async ({ app }) => {
