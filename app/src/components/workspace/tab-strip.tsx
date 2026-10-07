@@ -3,6 +3,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 
 import { StateGlyph } from "@/components/agent-glyph";
 import { TabErrorBadge } from "@/components/browser-devtools";
+import { BoardButton } from "@/components/art/board-buttons";
 import { DockButton } from "@/components/files/tree-dock";
 import { Tip } from "@/components/tip";
 import { Spinner } from "@/components/ui/spinner";
@@ -187,6 +188,7 @@ export function TabStrip() {
             </Tip>
           )}
           <RunMenu />
+          <BoardButton />
           <DockButton />
           {key && active && lone && (
             <div className="flex items-center border-l pl-1">

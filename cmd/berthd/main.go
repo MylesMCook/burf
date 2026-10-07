@@ -367,9 +367,13 @@ func serve(b boxHome, args []string) error {
 	bx.BrowserProxies = &box.BrowserProxies{Path: filepath.Join(b.dir, "browser-proxies.json")}
 	defer bx.BrowserProxies.CloseAll()
 	bx.NewBrowsers(filepath.Join(b.dir, "browser"), rc.MaxBrowsers)
+	bx.ShotsDir = filepath.Join(b.dir, "shots")
 	// agent-browser sessions (Vercel's CLI) go with the berth session that
 	// started them.
 	bx.AgentBrowsers = box.NewAgentBrowsers(bx.Sessions)
+	bx.Artifacts = &box.ArtifactStore{Dir: filepath.Join(b.dir, "artifacts"), Events: bus, Box: hostname}
+	go bx.Artifacts.Run(ctx)
+	go bx.RunShots(ctx)
 	bx.Team = &box.TeamRunner{Dir: filepath.Join(b.dir, "team")}
 	defer bx.Team.Stop()
 	bx.Mount(s)

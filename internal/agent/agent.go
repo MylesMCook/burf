@@ -10,6 +10,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -352,6 +353,15 @@ func (a *Agent) startProxy(ctx context.Context) {
 		Route:    a.route,
 		Worktree: a.worktree,
 		BoxAlias: a.boxAlias,
+		// An artifact's page, for its own origin (proxy/artifact.go): over
+		// this laptop's paired channel, so the page never holds a token.
+		Artifact: func(ctx context.Context, name, id, version string) (*http.Response, error) {
+			c, ok := a.client(name)
+			if !ok {
+				return nil, fmt.Errorf("no paired box named %s", name)
+			}
+			return c.DoWithHeader(ctx, http.MethodGet, "/v1/artifacts/"+url.PathEscape(id)+"/v/"+url.PathEscape(version), nil, http.Header{box.OriginHeader: {"proxy"}})
+		},
 	}
 	srv := &http.Server{Handler: a.proxy, ReadHeaderTimeout: 30 * time.Second}
 	context.AfterFunc(ctx, func() { srv.Close() })

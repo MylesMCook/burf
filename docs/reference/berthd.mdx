@@ -79,6 +79,9 @@ asks the app to open the page as a browser tab beside the agent; the
 | `berthd browser open\|snapshot\|click\|fill\|press\|select\|hover\|check\|wait\|shot\|console\|network\|eval\|status\|close [LOC/WT] …` | The worktree's [agent browser](/guides/agent-browser); inside a session, its own worktree |
 | `berthd browser list`, `berthd browser allow ORIGIN`, `berthd browser install` | Browsers running; allow a public origin; download a Chromium |
 | `berthd browser reap [--dry-run] [--json]` | Close the [agent-browser](/guides/agent-browser#agent-browser) sessions (Vercel's CLI) that Berth sessions which have ended left running; `--dry-run` only lists them. `berthd doctor` reports them too |
+| `berthd shots compare [LOC/WT] [--pages / /login] [--sizes 375 768 1280] [--base main\|turn-start\|accepted\|NAME] [--mask SEL]... [--color-scheme light\|dark\|both] [--title T] [--note N] [--new]` | Screenshot the worktree's pages and the base's, diff them, and keep a [visual diff](/guides/visual-diffs); a re-run is its next version. Prints what changed, in about 450 tokens |
+| `berthd shots baseline [LOC/WT] [--name turn-start] [--pages …] [--sizes …] [--color-scheme …]` | Save the worktree's pages as a baseline to compare with later |
+| `berthd shots accept [LOC/WT] ID` | Keep a visual diff's after-shots as the worktree's `accepted` baseline (the app's **Accept as baseline**) |
 | `berthd flow secret FLOW [--scope S]` | Make a webhook flow's signing secret |
 | `berthd session rename NAME [TITLE]` | Name a session's work; no TITLE clears it |
 | `berthd session kill NAME` | Stop a session |

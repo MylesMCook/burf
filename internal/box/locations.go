@@ -107,6 +107,9 @@ func (l *Locations) Add(ctx context.Context, name, path string) (Location, error
 	if !trust.ValidName(name) {
 		return Location{}, fmt.Errorf("invalid location name %q", name)
 	}
+	if ReservedName(name) {
+		return Location{}, fmt.Errorf("location names can't start with %q: the proxy keeps those for artifacts", ArtifactHostPrefix)
+	}
 	abs, err := filepath.Abs(expandHome(path))
 	if err != nil {
 		return Location{}, err
@@ -222,6 +225,9 @@ func (l *Locations) CreateWorktreeFrom(ctx context.Context, location string, req
 	name, branch, base := req.Name, req.Branch, req.Base
 	if !trust.ValidName(name) {
 		return Worktree{}, fmt.Errorf("invalid worktree name %q", name)
+	}
+	if ReservedName(name) {
+		return Worktree{}, fmt.Errorf("worktree names can't start with %q: the proxy keeps those for artifacts", ArtifactHostPrefix)
 	}
 	loc, err := l.Get(ctx, location)
 	if err != nil {

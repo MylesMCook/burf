@@ -463,4 +463,5 @@ func (b *Box) mountBrowser(route func(string, func(http.ResponseWriter, *http.Re
 	route("PUT /v1/browser/settings", b.putBrowserSettings)
 	route("POST /v1/browser/check", b.checkBrowser)
 	route("POST /v1/browser/reap", b.browserReap)
+	b.mountShots(route)
 }

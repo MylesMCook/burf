@@ -26,6 +26,32 @@ function devPlugins(): Plugin {
   };
 }
 
+// mockVdiff serves the visual-diff fixtures' images (real runs of berthd
+// shots compare, e2e/fixtures/vdiff-img/) at /__mock-vdiff/ to mock mode,
+// in the dev server and vite preview (the e2e suite) only: no build ships
+// them.
+function mockVdiff(): Plugin {
+  const root = path.resolve(import.meta.dirname, "e2e/fixtures/vdiff-img");
+  const serve = (req: { url?: string }, res: import("node:http").ServerResponse, next: () => void) => {
+    const name = decodeURIComponent((req.url ?? "").split("?")[0]).replace(/^\//, "");
+    if (!/^[0-9a-f]{16}\.png$/.test(name)) return next();
+    const file = path.join(root, name);
+    if (!fs.existsSync(file)) return next();
+    res.setHeader("Content-Type", "image/png");
+    res.setHeader("Cache-Control", "max-age=3600");
+    fs.createReadStream(file).pipe(res);
+  };
+  return {
+    name: "berth-mock-vdiff",
+    configureServer(server) {
+      server.middlewares.use("/__mock-vdiff/", serve);
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use("/__mock-vdiff/", serve);
+    },
+  };
+}
+
 // demoPage makes the demo build's page work from any folder (berthd.app/demo/):
 // the plugin shims and the icon by relative paths, a title and no indexing,
 // and a fresh demo on every load (the app's remembered layout cleared).
@@ -102,7 +128,7 @@ const argPort = process.argv.includes("--port") ? process.argv[process.argv.inde
 
 export default defineConfig(({ mode }) => ({
   cacheDir: argPort && argPort !== "1420" ? `node_modules/.vite-${argPort}` : "node_modules/.vite",
-  plugins: [react(), tailwindcss(), devPlugins(), noShikiWasm(), ...(mode === "demo" ? [demoPage()] : [])],
+  plugins: [react(), tailwindcss(), devPlugins(), mockVdiff(), noShikiWasm(), ...(mode === "demo" ? [demoPage()] : [])],
   // The diff renderer's highlighting worker loads its languages as chunks,
   // which takes a module worker.
   worker: { format: "es" as const, plugins: () => [noShikiWasm(), workerScript()] },

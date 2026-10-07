@@ -18,7 +18,7 @@ func TestBerthShipsItsSkillsWithFrontmatter(t *testing.T) {
 			t.Errorf("%s: name %q, description %q, version %q", s.Name, frontmatter(b, "name"), s.Description, s.Version)
 		}
 	}
-	if strings.Join(names, ",") != "berth,berth-browser,berth-hooks,berth-orchestrate,berth-preview" {
+	if strings.Join(names, ",") != "berth,berth-artifacts,berth-browser,berth-hooks,berth-orchestrate,berth-preview,berth-visual-diff" {
 		t.Fatalf("skills = %v", names)
 	}
 }

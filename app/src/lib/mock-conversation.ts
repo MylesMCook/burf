@@ -1,3 +1,4 @@
+import { ART_BOX, ART_SESSION, artChat } from "@/lib/art/mock-chat";
 import type { Artifact, ToolDetail, CrewMember, TranscriptItem } from "@/lib/transcript";
 import { keyOf, useConversations } from "@/lib/conversation-store";
 import { mockNotice } from "@/lib/chat-controls";
@@ -245,6 +246,8 @@ export function seedTranscript(box: string, session: string, state: string, work
     useConversations.setState((s) => (s.artifacts[key] ? s : { artifacts: { ...s.artifacts, [key]: list } }));
   }
   if (state === "finished") items.push({ kind: "text", id: id(), text: pages ? `All green. ${pages.length === 1 ? "The page above has the coverage" : "The pages above have the numbers and screenshots"}; the branch is ready for review.` : "All green. The branch is ready for review." });
+  // The search-perf agent then made artifacts here (components/art).
+  if (box === ART_BOX && session === ART_SESSION) items.push(...artChat());
   // One finished session shows a notice card (chat-controls).
   const notice = mockNotice(session);
   if (notice) items.push(notice);

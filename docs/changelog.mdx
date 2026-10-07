@@ -93,6 +93,41 @@ again.
   a Preview tab, Rename this worktree and Do not disturb; the shortcuts
   sheet adds F2, ⌘F, ↵, esc, ← → and ⇧F10. With Reduce motion on in
   macOS, spinners, shimmer and pulses hold still and nothing slides.
+- **Artifacts: charts, tables, diagrams and small pages from your agents,
+  live.** An agent writes a `berth.chart` JSON, a CSV, Mermaid, Markdown or
+  one HTML file and runs `berthd artifact add`; its chat shows a card with a
+  live thumbnail and the headline its data gives ("/search 1,240 → 410 ms
+  (−67%)", "3 failed of 16"). Open it as a tab, or ⌘-click to open it
+  beside the chat; the tab has a Live pill that pulses when the agent
+  rewrites the file, its versions (the first and the newest eight) and its
+  source. **N artifacts** under the reply box, or the grid button in the
+  worktree's toolbar, opens the worktree's board, filtered by Charts,
+  Tables, Diagrams, Pages and Notes. Charts are drawn with
+  [bklit UI](https://ui.bklit.com) in your theme, in all 23; a page runs on
+  its own origin with no network and no access to Berth. The box keeps
+  them outside the worktree, checks each version, and refuses one that
+  looks like a secret. The `berth-artifacts` skill teaches Claude Code and
+  Codex when and how (`berthd integrations install`). The claude.ai chip
+  now reads **N published**. [Artifacts](/guides/artifacts).
+
+- **Visual diffs: what a change did to your pages.** After a UI change, an
+  agent runs `berthd shots compare`: the worktree's pages and main's are
+  shot at 375, 768 and 1280 pixels wide in a short-lived Chromium of their
+  own (reduced motion, animations settled, fonts and images loaded, lazy
+  content scrolled in, UTC), diffed pixel by pixel with content that only
+  moved counted as moved, and kept as an artifact in its chat, in about 5
+  seconds for 6 pages × 3 sizes. The tab opens on the biggest change: a
+  before/after **Slider**, **Side by side**, **Flicker** or **Onion skin**,
+  a **Heatmap** with **Glow**, numbered regions named by their element,
+  **Changes ‹ n of N ›** (n and p), **All shots** in a grid, and chips for
+  a page that now scrolls sideways, fails or is new. **Accept as
+  baseline** keeps the after-shots; comparing again with
+  `--base accepted` gives the all clear. Masks and defaults go in
+  `.berth/config.json`'s `shots`; `--color-scheme both` shoots light and
+  dark; with main's dev server stopped it compares with the turn-start
+  baseline (`berthd shots baseline`) and says so. The agent reads about 450
+  tokens. The `berth-visual-diff` skill teaches Claude Code and Codex to
+  check before saying done. [Visual diffs](/guides/visual-diffs).
 
 - **Give a worktree a name you can read.** A worktree made from a pasted
   link is called `https-linear-app-acme`. **Rename…** in its menu,

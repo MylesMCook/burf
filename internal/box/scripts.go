@@ -55,6 +55,9 @@ type RepoConfig struct {
 	// this repository's worktrees (a sign-in provider, say). It applies once
 	// the box trusts the repository's config.
 	BrowserAllow []string `json:"browser_allow,omitempty"`
+	// Shots is what `berthd shots compare` screenshots and diffs by
+	// default: pages, sizes, and selectors to mask (shots.go).
+	Shots *ShotsConfig `json:"shots,omitempty"`
 }
 
 // ReadRepoConfig reads repo's .berth/config.json; ok is false without one.

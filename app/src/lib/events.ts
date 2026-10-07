@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 import type { BerthEvent } from "@/lib/api";
+import { handleArtifactEvent } from "@/lib/art/model";
 import { agentLabel, agentOf, sessionAgent, sessionName } from "@/lib/derive";
 import { isLive, useLoops } from "@/lib/loops";
 import { flowKey, resolveFromEvent, route, secretKey, serviceKey } from "@/lib/notifications";
@@ -95,6 +96,8 @@ function notifyFor(e: BerthEvent) {
     }
   }
   if (e.type === "preview.open") handlePreview(e);
+  // An artifact added, rewritten or removed: the worktree's list, live.
+  if (e.type.startsWith("artifact.")) handleArtifactEvent(e);
   if (e.type === "session.open") handleSessionOpen(e);
   // A removed worktree's workspace goes too, wherever it was removed from;
   // one being archived (from here, the CLI or another laptop) shows as

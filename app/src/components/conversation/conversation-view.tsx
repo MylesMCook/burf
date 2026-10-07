@@ -217,7 +217,7 @@ function guessHeight(b: Block): number {
     case "notice":
       return 84;
     case "artifact":
-      return 54;
+      return it.local ? (it.updated ? 40 : 112) : 54;
     case "question":
       return it.done ? 40 : 360;
     case "report":

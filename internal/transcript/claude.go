@@ -162,6 +162,9 @@ func (claudeParser) line(c *conv, b []byte) {
 			c.result(bl.ToolUseID, at)
 			claudeResultSignal(c, bl.ToolUseID, text, at)
 			c.published(bl.ToolUseID, b, text, bl.IsError, at)
+			if !bl.IsError {
+				c.localArtifacts(bl.ToolUseID, text)
+			}
 			c.claudeAnswered(bl.ToolUseID, b, text, bl.IsError)
 			// A rejected call with words for the agent (a plan sent back
 			// with "Tell Claude what to change") reads as what the person

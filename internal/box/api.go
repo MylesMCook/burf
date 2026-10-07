@@ -86,12 +86,17 @@ type Box struct {
 	Triggers *TriggerSecrets
 	// BrowserProxies confine each worktree's browser to its own pages.
 	BrowserProxies *BrowserProxies
+	// ShotsDir keeps visual-diff baselines (`berthd shots`, shots.go).
+	ShotsDir string
 	// Browsers runs agents' headless browsers, one per active worktree.
 	Browsers *Browsers
 	// Reports tells an agent when work it started ends (notify.go).
 	Reports *Notifier
 	// Team runs team setups (team.go); nil on a box without them.
 	Team *TeamRunner
+	// Artifacts keeps what agents made for the person to look at
+	// (artifacts.go); nil on a box without them.
+	Artifacts *ArtifactStore
 }
 
 func (b *Box) own(path string) {
@@ -219,6 +224,7 @@ func (b *Box) Mount(s *wire.Server) {
 	b.mountAnswer(route)
 	b.mountBrowser(route)
 	b.mountNotify(route)
+	b.mountArtifacts(route)
 	b.mountPairing(s, route)
 }
 
@@ -238,7 +244,7 @@ func statusFor(err error) int {
 	switch {
 	case errors.As(err, &he):
 		return he.status
-	case errors.Is(err, ErrUnknownLocation), errors.Is(err, ErrUnknownWorktree), errors.Is(err, ErrUnknownSession), errors.Is(err, ErrUnknownShare), errors.Is(err, ErrUnknownUnit):
+	case errors.Is(err, ErrUnknownLocation), errors.Is(err, ErrUnknownWorktree), errors.Is(err, ErrUnknownSession), errors.Is(err, ErrUnknownShare), errors.Is(err, ErrUnknownUnit), errors.Is(err, ErrUnknownArtifact):
 		return http.StatusNotFound
 	case errors.Is(err, ErrSessionExists), errors.Is(err, ErrSessionExited):
 		return http.StatusConflict

@@ -1,5 +1,5 @@
 import { Toolbar as ToolbarPrimitive } from "@base-ui/react/toolbar";
-import { ArchiveIcon, ArrowLeftRightIcon, BotIcon, CloudOffIcon, FileDiffIcon, GitCompareArrowsIcon, GlobeIcon, Link2Icon, Link2OffIcon, MessagesSquareIcon, SquareTerminalIcon, XIcon } from "lucide-react";
+import { ArchiveIcon, ArrowLeftRightIcon, BotIcon, CloudOffIcon, FileDiffIcon, GitCompareArrowsIcon, GlobeIcon, Link2Icon, Link2OffIcon, MessagesSquareIcon, SquareTerminalIcon, XIcon, LayoutGridIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
@@ -26,13 +26,14 @@ import { focusPane, leadAgent, splitKey, useWorkspaces, useWorktreeRef, type WsT
 // The bar's height: PaneLayer lays the panes out below it.
 export const COMPARE_BAR = 40;
 
-const LANE_ICON: Record<Lane, typeof GlobeIcon> = { chat: MessagesSquareIcon, diff: FileDiffIcon, preview: GlobeIcon, terminal: SquareTerminalIcon };
+const LANE_ICON: Record<Lane, typeof GlobeIcon> = { chat: MessagesSquareIcon, diff: FileDiffIcon, preview: GlobeIcon, terminal: SquareTerminalIcon, artifacts: LayoutGridIcon };
 
 const SYNC_HELP: Record<Lane, string> = {
   chat: "Scrolling one chat takes the other to the same turn",
   diff: "Scrolling one diff takes the other to the same file",
   preview: "A page opened on one side opens at the same path on the other",
   terminal: "Terminals don't sync; the other lanes do",
+  artifacts: "Each side's board of what its agents made",
 };
 
 const TINY = "(max-width: 799px)";

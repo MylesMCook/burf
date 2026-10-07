@@ -276,9 +276,9 @@ export function useShortcuts() {
         e.stopPropagation();
         return;
       }
-      // ⌥1–4 pick a Compare tab's lane while one shows; elsewhere they are
+      // ⌥1–5 pick a Compare tab's lane while one shows; elsewhere they are
       // the page's or the terminal's.
-      if (e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey && /^Digit[1-4]$/.test(e.code)) {
+      if (e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey && /^Digit[1-5]$/.test(e.code)) {
         if (!runShortcut("compare-lane", "key", Number(e.code.slice(5)))) return;
         e.preventDefault();
         e.stopPropagation();

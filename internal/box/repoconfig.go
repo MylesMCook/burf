@@ -112,6 +112,9 @@ func merge(repo, local RepoConfig) RepoConfig {
 	out.Hooks = append(append([]hooks.Hook{}, repo.Hooks...), local.Hooks...)
 	out.Flows = mergeBy(repo.Flows, local.Flows, func(f Flow) string { return f.ID })
 	out.BrowserAllow = append(append([]string{}, repo.BrowserAllow...), local.BrowserAllow...)
+	if local.Shots != nil {
+		out.Shots = local.Shots
+	}
 	return out
 }
 
