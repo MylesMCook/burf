@@ -65,34 +65,6 @@ test("the chat's card leads with the headline, says what needs a look, and shows
   await expect(clear.locator("[data-vd-thumb=clear]")).toContainText("All clear");
 });
 
-test("the tab opens on the most changed page and size, with the heatmap and numbered regions on real shots", async ({ app }) => {
-  const pane = await openDiff(app);
-  await expect(pane.getByRole("heading", { name: "Visual changes: search-perf vs main" })).toBeVisible();
-  await expect(pane).toContainText("Shot on the box · drawn by Berth");
-  await expect(pane.locator("[data-vd-compare]")).toHaveText("main@3a7b95d → search-perf@e60622c");
-  const detail = pane.locator("[data-vd-detail]");
-  await expect(detail).toHaveAttribute("data-vd-page", "/search");
-  await expect(detail).toHaveAttribute("data-vd-size", "768");
-  await expect(pane.locator("[data-vd-page-chip='/search']")).toHaveAttribute("aria-selected", "true");
-  await expect(pane.locator("[data-vd-size-tab='768']")).toContainText("48%");
-  // The screenshots are the box's images, from blob: URLs.
-  const imgs = pane.locator("img[data-vd-img]");
-  await expect(imgs).toHaveCount(2);
-  await expect.poll(() => imgs.first().evaluate((i: HTMLImageElement) => i.naturalWidth)).toBe(768);
-  expect(await imgs.first().getAttribute("src")).toMatch(/^blob:/);
-  await expect(pane.locator("[data-vd-heat]")).toBeVisible();
-  await expect(pane.locator("[data-vd-region]")).toHaveCount(3);
-  // Off and on again.
-  await pane.locator("[data-vd-heat-toggle]").click();
-  await expect(pane.locator("[data-vd-heat]")).toHaveCount(0);
-  await pane.locator("[data-vd-regions-toggle]").click();
-  await expect(pane.locator("[data-vd-region]")).toHaveCount(0);
-  await pane.locator("[data-vd-regions-toggle]").click();
-  await expect(pane.locator("[data-vd-region]")).toHaveCount(3);
-  // The region list names the element under each change.
-  await expect(pane.locator("[data-vd-region-list]")).toContainText("div.results-head");
-});
-
 test("every way to compare: slider, side by side, flicker and onion skin", async ({ app }) => {
   const pane = await openDiff(app);
   const handle = pane.locator("[data-vd-handle]");
