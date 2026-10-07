@@ -145,8 +145,11 @@ function BoxHeader({ box, empty }: { box: BoxStatus; empty: boolean }) {
   const online = box.state === "online";
   return (
     <ContextRow items={() => boxActions(box)}>
+      {/* Focusable for its menu (Shift-F10 or the menu key). */}
       <div
         tabIndex={0}
+        role="group"
+        aria-label={`${box.name}, ${online ? "online" : awayText(box)}`}
         className="group/row relative flex h-7 outline-none focus-visible:ring-2 focus-visible:ring-ring items-center gap-1.5 rounded-md pr-1 pl-2 font-medium text-[11px] text-muted-foreground hover:bg-sidebar-accent"
       >
         {online ? <ServerIcon className="size-3" /> : <ServerOffIcon className="size-3" />}
@@ -228,12 +231,20 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
             isActive={mainSel && !all}
             disabled={!online || !main}
             onClick={() => main && open(main)}
+            // → shows its worktrees, ← hides them, as in a tree.
+            aria-expanded={!collapsed}
+            onKeyDown={(e: React.KeyboardEvent) => {
+              if ((e.key === "ArrowRight" && collapsed) || (e.key === "ArrowLeft" && !collapsed)) {
+                e.preventDefault();
+                toggle();
+              }
+            }}
             className={cn("h-[calc(var(--side-row)+0.125rem)] gap-1.5 font-medium text-[13px] text-foreground", !online && "text-muted-foreground")}
           >
+            {/* The pointer's way; the keyboard's is ← and → on the row. */}
             <span
-              role="button"
-              tabIndex={-1}
-              aria-label={collapsed ? `Show ${loc.name}` : `Hide ${loc.name}`}
+              aria-hidden
+              title={collapsed ? `Show ${loc.name}` : `Hide ${loc.name}`}
               className="-ml-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground"
               onClick={(e) => {
                 e.stopPropagation();
@@ -373,7 +384,7 @@ function WorktreeRow({
             <LeadIcon sessions={away ? [] : sessions} data={data} icon={wt.main ? <HomeIcon /> : <GitBranchIcon />} />
             <span className={cn("min-w-0 truncate", away && "opacity-70")}>{name}</span>
             {/* Its own name beside the title, when the sidebar is wide enough. */}
-            {!wt.main && wt.title && <span data-testid="worktree-row-name" className="hidden min-w-0 max-w-max grow basis-0 truncate font-mono text-[10px] text-muted-foreground/70 @min-[17rem]/side:inline">{wt.name}</span>}
+            {!wt.main && wt.title && <span data-testid="worktree-row-name" className="hidden min-w-0 max-w-max grow basis-0 truncate font-mono text-[10px] text-muted-foreground @min-[17rem]/side:inline">{wt.name}</span>}
             {/* On screen beside another worktree: its colour. */}
             <WtDot wsKey={key} className="size-1.5" />
             {/* Narrower than the default the name needs the room more; the
@@ -682,12 +693,18 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
             isActive={mainSel && !all}
             disabled={!online}
             onClick={() => defMain && def.box.state === "online" && selectWorktree(refOf(def.box.name, def.loc, defMain))}
+            aria-expanded={!collapsed}
+            onKeyDown={(e: React.KeyboardEvent) => {
+              if ((e.key === "ArrowRight" && collapsed) || (e.key === "ArrowLeft" && !collapsed)) {
+                e.preventDefault();
+                update({ collapsed: { ...prefs.collapsed, [key]: !collapsed } });
+              }
+            }}
             className={cn("h-[calc(var(--side-row)+0.125rem)] gap-1.5 font-medium text-[13px] text-foreground", !online && "text-muted-foreground")}
           >
             <span
-              role="button"
-              tabIndex={-1}
-              aria-label={collapsed ? `Show ${p.name}` : `Hide ${p.name}`}
+              aria-hidden
+              title={collapsed ? `Show ${p.name}` : `Hide ${p.name}`}
               className="-ml-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground"
               onClick={(e) => {
                 e.stopPropagation();

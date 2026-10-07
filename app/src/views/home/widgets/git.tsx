@@ -171,7 +171,7 @@ function Bars({ days }: { days: Day[] }) {
 
 function ChartSkeleton() {
   return (
-    <div className="flex h-full flex-col gap-2 px-2 pb-1" aria-busy="true" aria-label="Loading">
+    <div className="flex h-full flex-col gap-2 px-2 pb-1" role="status" aria-busy="true" aria-label="Loading">
       <WidgetSkeleton rows={1} className="-mx-2" />
       <div className="flex flex-1 items-end gap-[2px]">
         {Array.from({ length: DAYS }, (_, i) => (

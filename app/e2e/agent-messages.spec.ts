@@ -221,7 +221,8 @@ test.describe("from a box", () => {
     });
     await app.open({ agent, params: { view: "conversation" } });
     await app.openWorktree(`${BOX}/fix`);
-    await expect(app.chat.locator("[data-kind=user]").first()).toHaveText("Fix the acme refunds");
+    // "You:" is for screen readers (sr-only), the rest is the prompt as sent.
+    await expect(app.chat.locator("[data-kind=user]").first()).toHaveText("You: Fix the acme refunds");
     await expect(app.chat).not.toContainText("system-reminder");
     await expect(app.chat).not.toContainText("task tools");
     await expect(app.chat).not.toContainText("Only a reminder");

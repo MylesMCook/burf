@@ -164,7 +164,7 @@ export function ReviewView() {
         </Empty>
       ) : (
         <div className="flex min-h-0 flex-1">
-          <aside className="flex w-80 shrink-0 flex-col border-r max-xl:w-64">
+          <aside aria-label="Work to review" className="flex w-80 shrink-0 flex-col border-r max-xl:w-64">
             <ul className="min-h-0 flex-1 overflow-y-auto p-2" aria-label="Work to review">
               {entries.map((e) => (
                 <Row key={e.key} entry={e} active={e.key === selected?.key} onSelect={() => setSelectedKey(e.key)} onOpen={() => void focusSession(e.box, e.session)} />

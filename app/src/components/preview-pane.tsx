@@ -805,7 +805,7 @@ function FrameTile({ frame: f, scale, src, host, strategy, root, allowed, status
     <div ref={tile} data-testid="preview-frame" data-frame={f.id} data-status={status} data-theme={f.theme} className="flex shrink-0 flex-col" style={{ width: w }}>
       <div className="group/label relative flex items-center gap-1.5 overflow-hidden text-xs" style={{ height: LABEL - 6, marginBottom: 6 }}>
         <Tip label={statusHelp(status, synced)} side="bottom" align="start">
-          <span aria-label={statusHelp(status, synced)} className={cn("size-1.5 shrink-0 rounded-full", status === "live" ? (synced ? "bg-success" : "bg-muted-foreground/60") : status === "plain" ? "bg-warning" : "bg-muted-foreground/30")} />
+          <span role="img" aria-label={statusHelp(status, synced)} className={cn("size-1.5 shrink-0 rounded-full", status === "live" ? (synced ? "bg-success" : "bg-muted-foreground/60") : status === "plain" ? "bg-warning" : "bg-muted-foreground/30")} />
         </Tip>
         <Tip label={`${f.detail} · shown at ${percent(scale)}`} side="bottom" align="start">
           <span className={cn("shrink-0 font-medium", f.kind === "breakpoint" && "font-mono")}>{f.label}</span>
@@ -813,8 +813,8 @@ function FrameTile({ frame: f, scale, src, host, strategy, root, allowed, status
         <span className="min-w-0 truncate text-muted-foreground tabular-nums">
           {f.w} × {f.h}
           {/* A narrow frame keeps its size; its scale is in the tooltip. */}
-          {w >= 200 && <span className="text-muted-foreground/70"> · {percent(scale)}</span>}
-          {shownUrl && <span className="font-mono text-muted-foreground/70"> · {shownUrl}</span>}
+          {w >= 200 && <span className="text-muted-foreground"> · {percent(scale)}</span>}
+          {shownUrl && <span className="font-mono text-muted-foreground"> · {shownUrl}</span>}
         </span>
         {f.theme !== "auto" && (
           <span aria-hidden className="ml-auto flex shrink-0 items-center text-muted-foreground group-focus-within/label:invisible group-hover/label:invisible [&_svg]:size-3">

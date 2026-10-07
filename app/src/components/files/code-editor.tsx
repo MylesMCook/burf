@@ -161,7 +161,8 @@ const chrome = EditorView.theme({
   },
   ".cm-content": { padding: "10px 0 40vh", caretColor: "var(--foreground)" },
   ".cm-line": { padding: "0 24px 0 14px" },
-  ".cm-gutters": { backgroundColor: "var(--background)", border: "none", color: "color-mix(in oklab, var(--muted-foreground) 62%, transparent)" },
+  // Line numbers read at 4.5:1, as muted text does everywhere.
+  ".cm-gutters": { backgroundColor: "var(--background)", border: "none", color: "var(--muted-foreground)" },
   ".cm-lineNumbers .cm-gutterElement": { padding: "0 4px 0 18px", minWidth: "40px", fontVariantNumeric: "tabular-nums" },
   ".cm-activeLineGutter": { backgroundColor: "transparent" },
   "&.cm-focused .cm-activeLineGutter": { color: "var(--foreground)" },
@@ -298,7 +299,8 @@ export function CodeEditor({ path, text, onChange, onSave, changes, conflictLine
           chrome,
           EditorState.readOnly.of(!!readOnly),
           EditorView.editable.of(!readOnly),
-          EditorView.contentAttributes.of({ "aria-label": `${path.split("/").pop()}, ${readOnly ? "read only" : "editable"}` }),
+          // Read only, it still takes the keyboard, to scroll with the arrows.
+          EditorView.contentAttributes.of({ "aria-label": `${path.split("/").pop()}, ${readOnly ? "read only" : "editable"}`, ...(readOnly ? { tabindex: "0" } : {}) }),
           keymap.of([{ key: "Mod-s", preventDefault: true, run: () => (cb.current.onSave?.(), true) }, indentWithTab, ...defaultKeymap, ...historyKeymap, ...searchKeymap]),
           EditorView.updateListener.of((u) => {
             if (u.docChanged) cb.current.onChange?.(u.state.doc.toString());

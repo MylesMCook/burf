@@ -138,7 +138,7 @@ export function GuardDialog({ box, open, onOpenChange }: { box: string; open: bo
               />
               <span>%</span>
               <div className="w-40">
-                <SimpleSelect value={draft.sustain ?? "1m"} onChange={(sustain) => setDraft({ ...draft, sustain })} options={SUSTAIN} size="sm" />
+                <SimpleSelect aria-label="For how long" value={draft.sustain ?? "1m"} onChange={(sustain) => setDraft({ ...draft, sustain })} options={SUSTAIN} size="sm" />
               </div>
             </div>
             <ol className="flex flex-col gap-2 text-sm">

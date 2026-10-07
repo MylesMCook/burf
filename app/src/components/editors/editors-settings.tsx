@@ -125,7 +125,7 @@ export function EditorsSettings() {
                     <span className={cn("rounded px-1.5 py-px uppercase tracking-wide", c.action === "remove" ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground")}>{c.action}</span>
                     <span className="min-w-0 truncate">{c.path}</span>
                   </div>
-                  <pre className="overflow-x-auto px-3 py-2 font-mono text-[11px] leading-relaxed">
+                  <pre tabIndex={0} className="overflow-x-auto px-3 py-2 font-mono text-[11px] leading-relaxed outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset">
                     {c.diff.trimEnd().split("\n").map((l, i) => (
                       <div key={i} className={cn(l.startsWith("+ ") && "text-success", l.startsWith("- ") && "text-destructive", l.startsWith("  ") && "text-muted-foreground")}>
                         {l || " "}
