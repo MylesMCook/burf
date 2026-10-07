@@ -839,3 +839,62 @@ export function openHelperPane(h: HelperRef & { title?: string }, how: "tab" | "
     return { ...ws, tabs, active: tab.id };
   });
 }
+
+// openArtifactPane shows an artifact of worktree wt (or with no id, wt's
+// board): the pane already showing it is brought forward; otherwise beside
+// from (the chat a card is in) with split, or as a tab just after from's,
+// or with no from, in wt's workspace. A board already open takes focus.
+export function openArtifactPane(content: Extract<PaneContent, { kind: "artifact" }>, wt: string, how: "tab" | "split" = "tab", from?: { wsKey: string; tab: string; pane: string }) {
+  const s = useWorkspaces.getState();
+  const same = (key: string, l: Leaf) => l.content.kind === "artifact" && (l.content.id ?? "") === (content.id ?? "") && paneWorktree(key, l) === wt;
+  let open: { key: string; tab: string; pane: Leaf } | undefined;
+  for (const [key, ws] of Object.entries(s.spaces)) {
+    for (const t of ws.tabs) {
+      const l = leaves(t.root).find((x) => same(key, x));
+      if (l && !open) open = { key, tab: t.id, pane: l };
+    }
+  }
+  const fromTab = from && s.spaces[from.wsKey]?.tabs.find((t) => t.id === from.tab);
+  const fromLeaf = fromTab && from ? findLeaf(fromTab.root, from.pane) : undefined;
+  useStore.getState().setView({ kind: "workspace" });
+  if (open && (how === "tab" || !fromLeaf || (open.key === from?.wsKey && open.tab === from?.tab))) {
+    if (!isShown(open.key)) showWorktree(open.key);
+    else focusGroup(open.key);
+    activateTab(open.key, open.tab);
+    focusPane(open.key, open.tab, open.pane.id);
+    if (content.focus !== undefined && open.pane.content.kind === "artifact") setPaneContent(open.key, open.tab, open.pane.id, { ...open.pane.content, focus: content.focus });
+    return;
+  }
+  if (open && fromLeaf && from) {
+    moveInto({ key: open.key, tab: open.tab, pane: open.pane.id }, { key: from.wsKey, tab: from.tab, pane: from.pane, side: "right" });
+    return;
+  }
+  if (!fromLeaf || !from) {
+    if (!showWorktree(wt)) return;
+    if (how === "split") {
+      const f = focusedPane();
+      if (f && f.key === wt) {
+        splitPane(f.key, f.tab.id, f.leaf.id, "row", content, wt);
+        return;
+      }
+    }
+    openTab(content, wt);
+    return;
+  }
+  if (isShown(from.wsKey)) focusGroup(from.wsKey);
+  else showWorktree(from.wsKey);
+  if (how === "split") {
+    splitPane(from.wsKey, from.tab, from.pane, "row", content, wt);
+    return;
+  }
+  const l = leaf(content, wt !== from.wsKey ? wt : undefined);
+  const tab: WsTab = { id: newId(), root: l, focus: l.id };
+  update(from.wsKey, (ws) => {
+    const tabs = [...ws.tabs];
+    let i = tabs.findIndex((t) => t.id === from.tab);
+    // After the artifacts already opened from this chat.
+    while (i >= 0 && i + 1 < tabs.length && leaves(tabs[i + 1].root).every((x) => x.content.kind === "artifact")) i++;
+    tabs.splice(i < 0 ? tabs.length : i + 1, 0, tab);
+    return { ...ws, tabs, active: tab.id };
+  });
+}

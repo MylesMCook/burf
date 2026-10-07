@@ -243,6 +243,14 @@ const appDocs: Record<string, unknown> = fresh ? {} : { projects: { projects: [{
 
 const listeners = new Set<(e: BerthEvent) => void>();
 const emit = (e: Omit<BerthEvent, "time">) => listeners.forEach((l) => l({ ...e, time: new Date().toISOString() }));
+// The artifacts' fixtures, wired to the event stream when first loaded;
+// window.__art.bump() plays a live update (a rewritten file's new version).
+const artifactsMock = () =>
+  import("@/lib/art/mock-artifacts").then((m) => {
+    m.wireArtifactsMock(emit);
+    return m;
+  });
+if (typeof window !== "undefined") (window as unknown as { __art: unknown }).__art = { bump: () => artifactsMock().then((m) => m.bumpArtifacts()) };
 wireMockServices({
   sessions: (box) => (sessions[box] ??= []),
   path: (box, loc, wt) => locations[box]?.find((l) => l.name === loc)?.worktrees?.find((w) => w.name === wt)?.path ?? `/home/me/work/${loc}-${wt}`,
@@ -577,6 +585,8 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
   if (!online) return Promise.reject(new ApiError(`${box} is offline`, 503));
   const doc = mockBoxDoctor(box, !!status.boxes.find((b) => b.name === box)?.local, method, path);
   if (doc) return doc;
+  // In-app artifacts (lib/art/mock-artifacts.ts, loaded when first asked).
+  if (/^locations\/[^/]+\/worktrees\/[^/]+\/artifacts/.test(path)) return artifactsMock().then((m) => delay(m.artifactsMockCall(box, method, path) ?? null));
   const team = teamBoxCall(box, method, path, body, delay);
   if (team) return team;
   const flows = flowsCall(box, method, path, body, emit, delay);
@@ -662,7 +672,7 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
       tools: ["claude", "codex"],
       home: HOME,
       // gpu runs an older berthd (mockBuilds): it can't keep worktree names.
-      capabilities: ["diff", "turns", "queue", "ask", "answer", "journal", "runs", "exec.detach", "browser", "browser.devtools", "titles", "sample", "service.terminal", "session.home", "agents.install", ...(box === "gpu" ? [] : ["worktree.titles"])],
+      capabilities: ["diff", "turns", "queue", "ask", "answer", "journal", "runs", "exec.detach", "browser", "browser.devtools", "titles", "sample", "service.terminal", "session.home", "agents.install", "artifacts", ...(box === "gpu" ? [] : ["worktree.titles"])],
       adapters: {
         claude: { ready: true, started: true, waiting: true, finished: true, final_message: true, via: "hooks" },
         codex: { ready: true, started: true, waiting: true, finished: true, final_message: true, via: "hooks" },
@@ -1146,7 +1156,7 @@ export function mockClient(): Client {
         if (err instanceof ApiError) err.box = box;
         throw err;
       }),
-    boxBlob: async (_box, path) => mockFileBlob(path) ?? new Blob([mockShotSvg()], { type: "image/svg+xml" }),
+    boxBlob: async (_box, path) => (/\/artifacts\/[0-9a-f]{10}\/v\/\d+$/.test(path) ? ((await artifactsMock()).artifactBlob(path) ?? Promise.reject(new ApiError("no such artifact", 404))) : (mockFileBlob(path) ?? new Blob([mockShotSvg()], { type: "image/svg+xml" }))),
     // An upload creeps along at about 1 MB/s, so the chip's progress shows.
     upload: <T,>(box: string, path: string, body: Blob, onProgress?: (sent: number, total: number) => void, signal?: AbortSignal) =>
       new Promise<T>((resolve, reject) => {

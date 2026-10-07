@@ -243,7 +243,7 @@ func hexOf(b []byte) string {
 }
 
 // The e2e suite serves artifact pages with exactly these headers and
-// documents (app/e2e/art-origin.json), to check in a real browser that a
+// documents (app/src/lib/art/origin.gen.json, which the app also uses for its mock frames), to check in a real browser that a
 // hostile page can't reach the app or the network. It must match what the
 // proxy sends: BERTH_UPDATE_FIXTURES=1 rewrites it.
 func TestArtifactOriginFixtureIsCurrent(t *testing.T) {
@@ -258,7 +258,7 @@ func TestArtifactOriginFixtureIsCurrent(t *testing.T) {
 	}
 	want, _ := json.MarshalIndent(fixture, "", "  ")
 	want = append(want, '\n')
-	path := filepath.Join("..", "..", "app", "e2e", "art-origin.json")
+	path := filepath.Join("..", "..", "app", "src", "lib", "art", "origin.gen.json")
 	if os.Getenv("BERTH_UPDATE_FIXTURES") != "" {
 		if err := os.WriteFile(path, want, 0o644); err != nil {
 			t.Fatal(err)

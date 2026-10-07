@@ -1,5 +1,8 @@
-import { AppWindowIcon, ArchiveIcon, ArrowLeftRightIcon, BotIcon, Columns2Icon, EllipsisIcon, GlobeIcon, ImageIcon, MessagesSquareIcon, MonitorSmartphoneIcon, PencilIcon, ScrollTextIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, SquareTerminalIcon, XIcon } from "lucide-react";
+import { AppWindowIcon, ArchiveIcon, ChartColumnIcon, LayoutGridIcon, ArrowLeftRightIcon, BotIcon, Columns2Icon, EllipsisIcon, GlobeIcon, ImageIcon, MessagesSquareIcon, MonitorSmartphoneIcon, PencilIcon, ScrollTextIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, SquareTerminalIcon, XIcon } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo } from "react";
+
+import { ArtifactPane } from "@/components/art/artifact-pane";
+import { kindOf } from "@/components/art/kinds";
 
 import { Tip } from "@/components/tip";
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
@@ -130,6 +133,7 @@ export function Pane({ wsKey, tab, pane, visible, focused, split, mixed, compare
               <FilePane path={c.path} owner={owner} visible={visible} onClose={close} />
             </Suspense>
           )}
+          {c.kind === "artifact" && <ArtifactPane id={c.id} focus={c.focus} />}
           {c.kind === "helper" && <HelperPane box={c.box} session={c.session} helper={c.helper} title={c.title} onClose={close} onResolve={(id, title) => setPaneContent(wsKey, tab, pane.id, { ...c, helper: id, title })} />}
           {c.kind === "empty" && <EmptySide owner={owner} tab={tab} pane={pane.id} label={c.label} />}
           {c.kind === "log" && <LogView box={c.box} location={c.location} worktree={c.worktree} service={c.service} visible={visible} />}
@@ -250,6 +254,8 @@ export function paneLabel(c: Leaf["content"], agent?: string): string {
       return `${c.service} log`;
     case "helper":
       return c.title || "Helper";
+    case "artifact":
+      return c.id ? c.title || "Artifact" : "Artifacts";
     case "panel":
       return c.title;
     case "starting":
@@ -266,6 +272,10 @@ export function PaneIcon({ content, agent, className }: { content: Leaf["content
   if (c.kind === "file") return <FileGlyph path={c.path} className={className} />;
   if (c.kind === "preview") return <MonitorSmartphoneIcon className={cn("size-3.5 shrink-0", className)} />;
   if (c.kind === "helper") return <BotIcon className={cn("size-3.5 shrink-0", className)} />;
+  if (c.kind === "artifact") {
+    const Icon = c.id ? (c.art ? kindOf(c.art).icon() : ChartColumnIcon) : LayoutGridIcon;
+    return <Icon className={cn("size-3.5 shrink-0", className)} />;
+  }
   if (c.kind === "log") return <ScrollTextIcon className={cn("size-3.5 shrink-0", className)} />;
   if (c.kind === "panel") return <PanelIcon plugin={c.plugin} panel={c.panel} className={cn("size-3.5 shrink-0", className)} />;
   if (service) return <ServiceIcon className={cn("size-3", className)} />;

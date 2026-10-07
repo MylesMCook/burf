@@ -24,6 +24,11 @@ export type PaneContent =
   | { kind: "helper"; box: string; session: string; helper: string; title?: string }
   // A plugin's worktree panel, shown for the pane's worktree (paneWorktree).
   | { kind: "panel"; plugin: string; panel: string; title: string }
+  // An artifact an agent made in the pane's worktree (components/art): one
+  // by id, or without one the worktree's board, focus the one it leads with.
+  // title is its title, kept so the tab is named before the box answers.
+  // art: the artifact's kind, for the tab's icon.
+  | { kind: "artifact"; id?: string; title?: string; focus?: string; art?: string }
   | { kind: "starting"; label: string }
   // Nothing yet: a Compare tab's side whose worktree runs no agent. It
   // offers to start one there.

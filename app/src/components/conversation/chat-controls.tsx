@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import { type KeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
+import { ArtBoardChip, useSessionArt } from "@/components/art/board-buttons";
 import { ArtifactsChip, useArtifacts } from "@/components/conversation/artifacts";
 import { CrewCard } from "@/components/conversation/crew-card";
 import { teammatesOf } from "@/lib/agent-messages";
@@ -118,7 +119,9 @@ export function ChatControls({ box, session, agent, state, stateSince, dir, who,
   const teammates = useMemo(() => teammatesOf(items), [items]);
   const docked = useDockedNotices({ box, session, dir, state, ended, items, screenLimit: controls?.limit });
   // The pages the agent published stay listed after it has ended.
-  const published = useArtifacts(box, session).length > 0;
+  const pages = useArtifacts(box, session).length;
+  const made = useSessionArt(box, session).length;
+  const published = pages > 0 || made > 0;
   const chips = !ended && (agent === "claude" || agent === "codex");
 
   return (
@@ -143,6 +146,7 @@ export function ChatControls({ box, session, agent, state, stateSince, dir, who,
             </>
           )}
           <span className="flex-1" />
+          <ArtBoardChip box={box} session={session} className={chip} />
           <ArtifactsChip box={box} session={session} who={who} className={chip} />
           {chips && working && supported && (
             <Tip

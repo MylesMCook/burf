@@ -2,6 +2,7 @@ import { AppWindowIcon, ExternalLinkIcon, LinkIcon, LocateFixedIcon } from "luci
 import { useEffect, useMemo, useRef, useState } from "react";
 import { create } from "zustand";
 
+import { LocalArtifactCard } from "@/components/art/art-card";
 import type { ChatListApi } from "@/components/conversation/chat-list";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
@@ -62,9 +63,7 @@ export function ArtifactsChip({ box, session, who, className }: { box: string; s
           <AppWindowIcon className="size-3.5" />
           {fresh && <span aria-hidden className="-top-0.5 -right-0.5 absolute size-1.5 rounded-full bg-info ring-2 ring-background" />}
         </span>
-        <span className="tabular-nums">
-          {n} {n === 1 ? "artifact" : "artifacts"}
-        </span>
+        <span className="tabular-nums">{n} published</span>
       </PopoverTrigger>
       <PopoverPopup data-testid="artifacts-popover" side="top" align="end" className="w-[min(24rem,calc(100vw-2rem))] [--viewport-inline-padding:--spacing(1.5)] *:data-[slot=popover-viewport]:py-1.5">
         <div className="flex items-baseline justify-between gap-2 px-2 pt-1 pb-1.5">
@@ -141,6 +140,8 @@ function ArtifactGlyph({ className }: { className?: string }) {
 // ArtifactCard is a publish where it happened in the chat: the page's
 // title, and Open once it has a link.
 export function ArtifactCard({ it }: { it: Extract<TranscriptItem, { kind: "artifact" }> }) {
+  // One kept on the box (berthd artifact add), not a page on claude.ai.
+  if (it.local) return <LocalArtifactCard it={it} />;
   const publishing = !it.done && !it.url;
   const status = it.error ? "Didn't publish" : publishing ? "Publishing" : it.updated ? "Updated" : "Published";
   const sub = it.error ? undefined : it.description;

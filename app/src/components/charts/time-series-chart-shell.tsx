@@ -405,7 +405,12 @@ const TimeSeriesChartCore = memo(function TimeSeriesChartCore({
   );
 
   const dateLabels = useMemo(
-    () => visiblePlotData.map((d) => shortDateFmt.format(xAccessor(d))),
+    // Berth: a row may carry its own x label (lib/art/chart-spec.ts
+    // X_LABEL) when its x values are labels, not dates.
+    () =>
+      visiblePlotData.map((d) =>
+        typeof d.__label === "string" ? d.__label : shortDateFmt.format(xAccessor(d))
+      ),
     [visiblePlotData, xAccessor]
   );
 

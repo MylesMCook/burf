@@ -39,7 +39,9 @@ export type TranscriptItem =
   // text is its title, url its link once the result says it, file what was
   // published. Not done yet: still publishing. error: the publish failed.
   // updated: it was published before.
-  | { kind: "artifact"; id: string; tool?: string; text: string; url?: string; description?: string; file?: string; done?: boolean; error?: boolean; updated?: boolean }
+  // local: an artifact kept on the box instead (`berthd artifact add`,
+  // components/art), by id, and version the version the command made.
+  | { kind: "artifact"; id: string; tool?: string; text: string; url?: string; description?: string; file?: string; done?: boolean; error?: boolean; updated?: boolean; local?: string; version?: number }
   // Questions the agent asked with a form of its own (Claude Code's
   // AskUserQuestion, Codex's request_user_input; lib/questions). Once done,
   // answers holds what was answered, one per question; error: it wasn't.
