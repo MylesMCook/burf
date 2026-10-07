@@ -6,6 +6,7 @@ import test from "node:test";
 
 const source = await readFile(new URL("../app/src-tauri/windows/cli-path.ps1", import.meta.url), "utf8");
 const hooks = await readFile(new URL("../app/src-tauri/windows/hooks.nsh", import.meta.url), "utf8");
+const acceptance = await readFile(new URL("./test-windows-install.ps1", import.meta.url), "utf8");
 const psQuote = (s) => "'" + s.replaceAll("'", "''") + "'";
 function powershell(command) {
   const executable = join(process.env.SystemRoot, "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
@@ -36,6 +37,26 @@ test("native embedded Status works without loading an unsigned script file", { s
   const directory = "C:\\Berth's & $Literal; Tools\\cli";
   const command = `& {\n${source}\n} -Action 'Status' -CliDirectory ${psQuote(directory)}`;
   assert.equal(powershell(command), "missing");
+});
+
+test("manual acceptance keeps protected actions behind installer preflight", () => {
+  assert.match(acceptance, /Run as the ordinary login user, without elevation/);
+  assert.match(acceptance, /Pre-existing Berth registration would be replaced/);
+  assert.match(acceptance, /Fresh installation registered a task/);
+  assert.match(acceptance, /Cleanup did not restore the exact user PATH/);
+  assert.match(acceptance, /client\/boxes\.json/);
+  assert.match(acceptance, /Uninstall-TestCopy/);
+  assert.ok(!acceptance.includes("ExecutionPolicy"));
+  assert.ok(!acceptance.includes("DeleteTask("));
+  assert.ok(!acceptance.includes("Stop-Process"));
+});
+
+test("manual acceptance runner parses without executing host actions", { skip: process.platform !== "win32" }, () => {
+  const command = `$tokens=$null; $errors=$null
+$null=[Management.Automation.Language.Parser]::ParseInput(${psQuote(acceptance)}, [ref]$tokens, [ref]$errors)
+if ($errors.Count) { throw $errors[0] }
+[Console]::Out.Write('valid')`;
+  assert.equal(powershell(command), "valid");
 });
 
 test("native PATH edits preserve unrelated entries and literal directory names", { skip: process.platform !== "win32" }, () => {

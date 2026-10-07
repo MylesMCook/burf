@@ -52,3 +52,9 @@ From the repository root, `node --test scripts/windows-installer-template.test.m
 Use a fresh `BERTH_HOME` and separate client ports for native tests. Do not point synthetic checks at a personal running agent. Local client hooks use PowerShell syntax on Windows; Berth does not translate POSIX shell commands. Commands executed on Unix boxes still use the box's shell.
 
 The Windows CI job compiles Rust, runs native Go tests, and builds an unsigned installer without release secrets. Browser tests exercise Windows shortcut labels and capability-based onboarding with isolated fixtures. A maintainer must still check the native window, WebView2 child panes, terminal clipboard, pairing with a real Unix box, opt-in login startup, installed CLI lookup, upgrade with an active agent, failed upgrade recovery, and ownership-safe uninstall on Windows. Compilation and fixtures do not establish those native GUI outcomes.
+
+## Manual installer acceptance
+
+After explicit approval for a Windows host, use `scripts/test-windows-install.ps1 -Installer <first.exe> -UpgradeInstaller <higher-version.exe>`. This is never run by CI. It refuses elevation and existing product, URL-scheme, PATH-owner, or shortcut registrations before installation. WebView2 must already be present.
+
+The runner creates a unique folder under Documents/Codex and uses a synthetic `BERTH_HOME`, user directory, and loopback ports. It checks fresh-install consent, private API startup, a login task owned by `cli/berth.exe`, literal isolated task environment, an explicitly added PATH entry, manual higher-version upgrade, clean stop beyond the crash-retry interval, and supported uninstall. It compares the final task set and exact user PATH with their baselines, verifies personal preview pairing/identity files are unchanged, and retains synthetic keys and local evidence for inspection. It does not test failed-upgrade rollback without a separately prepared artifact and assertions.
