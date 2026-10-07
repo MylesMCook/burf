@@ -124,7 +124,8 @@ test("projects fold and open, and drag into a section", async ({ app }) => {
   await app.open({ params: FLEET });
   const page = app.page;
   const sidebar = page.getByTestId("sidebar");
-  const all = await sidebar.getByTestId("worktree-row").count();
+  await expect(sidebar.getByTestId("worktree-row")).toHaveCount(309);
+  const all = 309;
 
   await page.getByRole("button", { name: "Hide acme-api", exact: true }).click();
   await expect(page.getByRole("button", { name: "Show acme-api", exact: true })).toBeVisible();
