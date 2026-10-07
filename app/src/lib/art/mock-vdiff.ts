@@ -26,11 +26,11 @@ export const VD_SEEDS: VdSeed[] = [
     title: "Visual changes: search-perf vs main",
     key: "visualdiff:main",
     versions: [
-      { body: VD_V1, ago: 14, note: "first pass" },
-      { body: VD_V2, ago: 6, note: "filters collapse on phones; account fixed" },
+      { body: VD_V1, ago: 58, note: "first pass" },
+      { body: VD_V2, ago: 52, note: "filters collapse on phones; account fixed" },
     ],
   },
-  { id: VD_CLEAR_ID, title: "Visual changes: search-perf vs accepted", key: "visualdiff:accepted", versions: [{ body: VD_CLEAR, ago: 2 }] },
+  { id: VD_CLEAR_ID, title: "Visual changes: search-perf vs accepted", key: "visualdiff:accepted", versions: [{ body: VD_CLEAR, ago: 47 }] },
 ];
 
 export const VD_V2_BODY = VD_V2;
@@ -53,7 +53,7 @@ export async function vdiffImage(path: string): Promise<Blob | undefined> {
 
 // The worktree's baselines: turn-start from the start of the turn; Accept
 // as baseline adds "accepted".
-const baselines: { name: string; taken: string; commit?: string; shots: number; from?: string; from_version?: number }[] = [{ name: "turn-start", taken: new Date(Date.now() - 16 * 60_000).toISOString(), commit: "3a7b95d", shots: 18 }];
+const baselines: { name: string; taken: string; commit?: string; shots: number; from?: string; from_version?: number }[] = [{ name: "turn-start", taken: new Date(Date.now() - 60 * 60_000).toISOString(), commit: "3a7b95d", shots: 18 }];
 
 export function vdiffShotsCall(method: string, path: string, body: unknown, latest: (id: string) => number | undefined): unknown | undefined {
   if (!/^worktrees\/shop\/search-perf\/shots\//.test(path)) return undefined;

@@ -17,6 +17,8 @@ const run = (target: string): TranscriptItem => ({ kind: "tools", id: id(), verb
 // work.
 export function artChat(): TranscriptItem[] {
   return [
+    // Earlier in the turn: the agent's UI change, checked with visual diffs.
+    ...vdiffChat(),
     { kind: "user", id: id(), text: "Show me the numbers here in Berth as you go: where the time goes, what you change, and how it moves." },
     { kind: "crew", id: id(), names: ["Explore: map search"] },
     run('berthd artifact add notes/search-map.mmd --title "How acme search is wired" --by "Explore: map search"'),
@@ -36,7 +38,6 @@ export function artChat(): TranscriptItem[] {
     card("b8d6e4f2a0", "Where a search request goes"),
     card("c1e2f3a4b5", "Suggest cache hit rate"),
     { kind: "text", id: id(), text: "The rest are on the worktree's board: the search-to-checkout funnel, traffic by hour, where /search spends its time, and searches by source." },
-    ...vdiffChat(),
   ];
 }
 
