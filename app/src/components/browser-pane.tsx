@@ -16,6 +16,7 @@ import { PICKER_SCRIPT, type Pick, parsePick, pickMessage } from "@/lib/picker";
 import { toastManager } from "@/components/ui/toast";
 import { berthUrlLabel, boxAliases, type BrowserContext, describeBerthUrl, hostSuffix, resolveBrowserInput, suggestions, worktreeHost } from "@/lib/browser-url";
 import { openUrl } from "@/lib/open-url";
+import { initialPageLoads, type PageEvent, pageEvent, type PageLoads, reloadLoop, settle } from "@/lib/page-loads";
 import { overlayOpen } from "@/lib/overlays";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -50,6 +51,10 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree, on
   const [failure, setFailure] = useState<string>();
   const [input, setInput] = useState(url);
   const [loading, setLoading] = useState(false);
+  // A page reloading itself over and over (lib/page-loads.ts), and the one
+  // the notice was dismissed for.
+  const [loop, setLoop] = useState<{ url: string; count: number }>();
+  const [loopDismissed, setLoopDismissed] = useState<string>();
   const ctx = useBrowserContext(worktree);
   // Select the stable list and derive from it: a selector that builds a new
   // array every time never lets the store settle.
@@ -260,6 +265,9 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree, on
         </form>
       )}
       {picked && ctx.ref && <PickSender pick={picked} ctx={ctx} onDone={() => setPicked(undefined)} />}
+      {mode === "native" && loop && loop.url !== loopDismissed && !agentView && !sandboxView && (
+        <ReloadLoopNotice loop={loop} onOpen={() => void openUrl(loop.url)} onDismiss={() => setLoopDismissed(loop.url)} />
+      )}
       {failure && mode === "iframe" && <p className="shrink-0 border-b bg-muted/40 px-3 py-1 text-muted-foreground text-xs">The built-in browser could not open ({failure}); showing the page in a frame instead.</p>}
       {/* Watching the agent keeps your page as it was, hidden underneath. */}
       {agentView && ctx.ref && <AgentView ctx={ctx} visible={visible} onUrl={setAgentAt} />}
@@ -284,6 +292,7 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree, on
             setLoading(l);
             onLoading?.(l);
           }}
+          onReloadLoop={setLoop}
           onFail={(why) => {
             setFailure(why);
             setMode("iframe");
@@ -320,6 +329,7 @@ interface NativeProps {
   visible: boolean;
   onUrl(url: string): void;
   onLoading(loading: boolean): void;
+  onReloadLoop(loop: { url: string; count: number } | undefined): void;
   onFail(why: string): void;
   ref: React.Ref<NativeView>;
 }
@@ -327,14 +337,14 @@ interface NativeProps {
 interface Navigated {
   id: string;
   url: string;
-  state: "started" | "finished";
+  state: "started" | "committed" | "finished";
 }
 
 // NativeSurface reserves the pane's space and keeps a child webview of the
 // same size on top of it: open on mount, follow every move and resize, hide
 // while the pane is hidden or one of the app's own popups is open (a native
 // view would cover it), and close on unmount.
-function NativeSurface({ id, url, visible, onUrl, onLoading, onFail, ref }: NativeProps) {
+function NativeSurface({ id, url, visible, onUrl, onLoading, onReloadLoop, onFail, ref }: NativeProps) {
   const surface = useRef<HTMLDivElement>(null);
   const opened = useRef(false);
   // Every call waits for the ones before it, so a hide or a resize never
@@ -350,10 +360,36 @@ function NativeSurface({ id, url, visible, onUrl, onLoading, onFail, ref }: Nati
   const reported = useRef<string>(undefined);
   const overlay = useAppOverlay();
   const shown = visible && !overlay;
-  const callbacks = useRef({ onUrl, onLoading, onFail });
-  callbacks.current = { onUrl, onLoading, onFail };
+  const callbacks = useRef({ onUrl, onLoading, onReloadLoop, onFail });
+  callbacks.current = { onUrl, onLoading, onReloadLoop, onFail };
 
-  useImperativeHandle(ref, () => ({ step: (d) => void send(d < 0 ? "browser_back" : "browser_forward"), reload: () => void send("browser_reload") }), [id]);
+  // Whether the page is loading, and whether it keeps reloading itself, from
+  // the webview's events and the app's own navigations (lib/page-loads.ts).
+  const loads = useRef<PageLoads>(initialPageLoads);
+  const apply = (next: PageLoads) => {
+    const was = loads.current;
+    loads.current = next;
+    if (next.loading !== was.loading) callbacks.current.onLoading(next.loading);
+    const a = reloadLoop(was);
+    const b = reloadLoop(next);
+    if (a?.url !== b?.url || a?.count !== b?.count) callbacks.current.onReloadLoop(b);
+  };
+  const note = (kind: PageEvent["kind"], url?: string) => apply(pageEvent(loads.current, { kind, url, at: Date.now() }));
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      step: (d) => {
+        note("step");
+        void send(d < 0 ? "browser_back" : "browser_forward");
+      },
+      reload: () => {
+        note("user");
+        void send("browser_reload");
+      },
+    }),
+    [id],
+  );
 
   // Follow the page's own navigations.
   useEffect(() => {
@@ -361,16 +397,22 @@ function NativeSurface({ id, url, visible, onUrl, onLoading, onFail, ref }: Nati
     let gone = false;
     void listen<Navigated>("berth://browser", (e) => {
       if (e.payload.id !== id) return;
-      callbacks.current.onLoading(e.payload.state === "started");
+      note(e.payload.state, e.payload.url);
       if (e.payload.state === "finished") {
         reported.current = e.payload.url;
         callbacks.current.onUrl(e.payload.url);
       }
     }).then((un) => (gone ? un() : (stop = un)));
+    // A navigation that started in a frame inside the page never finishes the
+    // page: stop its spinner after a while.
+    const timer = window.setInterval(() => apply(settle(loads.current, Date.now())), 1000);
     return () => {
       gone = true;
       stop?.();
+      window.clearInterval(timer);
     };
+    // apply and note read refs only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   // Open once; navigate when the pane's URL changes from outside.
@@ -380,13 +422,17 @@ function NativeSurface({ id, url, visible, onUrl, onLoading, onFail, ref }: Nati
     if (!opened.current) {
       const r = bounds(el);
       opened.current = true;
+      note("user");
       send("browser_open", { url, ...r }).catch((err) => {
         opened.current = false;
         callbacks.current.onFail(String(err));
       });
       return;
     }
-    if (url !== reported.current) void send("browser_navigate", { url });
+    if (url !== reported.current) {
+      note("user");
+      void send("browser_navigate", { url });
+    }
   }, [id, url]);
 
   // Close with the pane.
@@ -490,6 +536,30 @@ function isLocal(url: string): boolean {
   } catch {
     return false;
   }
+}
+
+// ReloadLoopNotice says that the page keeps reloading itself, which is the
+// page's own doing, and offers your own browser. It sits above the page,
+// which is a native view that would cover anything drawn over it.
+function ReloadLoopNotice({ loop, onOpen, onDismiss }: { loop: { url: string; count: number }; onOpen(): void; onDismiss(): void }) {
+  return (
+    <div role="status" className="flex shrink-0 items-start gap-2 border-b bg-warning/8 px-3 py-2 text-xs">
+      <RotateCwIcon className="mt-0.5 size-3.5 shrink-0 text-warning-foreground" />
+      <div className="min-w-0 flex-1">
+        <p className="font-medium text-foreground">This page keeps reloading itself</p>
+        <p className="text-muted-foreground">
+          It has loaded {loop.count} times in a row without being asked. That is the page's own code reloading it (a dev server's client does this when a script fails to load), and it can happen in WebKit, the engine this tab uses, but not in Chrome. Your browser may show it fine.
+        </p>
+      </div>
+      <Button size="sm" onClick={onOpen}>
+        <ExternalLinkIcon />
+        Open in your browser
+      </Button>
+      <Button size="sm" variant="ghost" onClick={onDismiss}>
+        Dismiss
+      </Button>
+    </div>
+  );
 }
 
 // FramedPage shows a page in an iframe, where the native view is not
