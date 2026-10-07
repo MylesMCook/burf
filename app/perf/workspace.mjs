@@ -79,8 +79,11 @@ export async function routes(context) {
   await context.route(/^https?:\/\/(?:localhost|127\.0\.0\.1):(?:1377|1378|1379)\//, (r) => r.abort());
 }
 
+// The tab in front, and the worktree whose row shows it.
 export async function activeTab(page) {
-  return page.locator('[data-tab-strip] [data-tab][aria-selected="true"]:visible').first().getAttribute("data-tab");
+  const id = await page.locator('[data-tab-strip] [data-tab][aria-selected="true"]:visible').first().getAttribute("data-tab");
+  const w = await page.locator('[data-testid=worktree-row][data-active="true"]').first().getAttribute("data-worktree");
+  return { id, w };
 }
 
 export async function newTab(page, option) {
@@ -157,12 +160,17 @@ export async function show(page, views, view) {
     await page.getByTestId("nav-home").click();
     return;
   }
-  if (await page.getByTestId("nav-home").getAttribute("data-active").catch(() => null)) {
-    // Back to the workspace: its worktree's row.
+  const { id, w } = views[view];
+  const tab = page.locator(`[data-tab-strip] [data-tab="${id}"]`).first();
+  await page.locator(`[data-testid=worktree-row][data-worktree="${w}"]`).click();
+  // Grouped worktrees share a strip: the tab may be in either.
+  if (!(await tab.isVisible().catch(() => false))) {
+    for (const other of ["devl/checkout-fix", "devl/search-perf", "devl/qa-deck"]) {
+      await page.locator(`[data-testid=worktree-row][data-worktree="${other}"]`).click();
+      if (await tab.isVisible().catch(() => false)) break;
+    }
   }
-  await page.locator('[data-testid=worktree-row][data-worktree="devl/checkout-fix"]').click();
-  const id = views[view];
-  await page.locator(`[data-tab-strip] [data-tab="${id}"]`).first().click();
+  await tab.click();
 }
 
 // ---- Measuring ----------------------------------------------------------------

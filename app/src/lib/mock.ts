@@ -1130,7 +1130,15 @@ export function mockClient(): Client {
 function counted(c: Client): Client {
   const calls: Record<string, number> = {};
   (window as unknown as { __berthCalls: Record<string, number> }).__berthCalls = calls;
-  const tally = (k: string) => void (calls[k] = (calls[k] ?? 0) + 1);
+  // A test that sets window.__berthCallStacks = {} also gets who asked.
+  const stacks = () => (window as unknown as { __berthCallStacks?: Record<string, Record<string, number>> }).__berthCallStacks;
+  const tally = (k: string) => {
+    calls[k] = (calls[k] ?? 0) + 1;
+    const s = stacks();
+    if (!s) return;
+    const at = (new Error().stack ?? "").split("\n").slice(3, 8).join(" < ");
+    (s[k] ??= {})[at] = (s[k][at] ?? 0) + 1;
+  };
   const bare = (p: string) => p.split("?")[0];
   return new Proxy(c, {
     get(target, name, recv) {
