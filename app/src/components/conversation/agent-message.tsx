@@ -125,7 +125,7 @@ export function CardHead({ avatar, name, kind, chip, extra, took, tip, open }: {
         </span>
       )}
       <Tip label={tip}>
-        <span data-to-agent className="ml-auto inline-flex shrink-0 items-center gap-1 pl-2 text-[0.75rem] text-muted-foreground/70">
+        <span data-to-agent className="ml-auto inline-flex shrink-0 items-center gap-1 pl-2 text-[0.75rem] text-muted-foreground">
           <CornerDownLeftIcon className="size-3" aria-hidden />
           <span className="hidden @[360px]:inline">to {who}</span>
         </span>

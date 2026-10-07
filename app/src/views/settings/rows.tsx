@@ -34,7 +34,7 @@ export function SettingsGroup({ title, description, actions, children }: { title
         <div className="mb-2 flex items-end gap-3">
           <div className="min-w-0 flex-1">
             {title && <h2 className="font-medium text-[13px] text-muted-foreground">{title}</h2>}
-            {description && <p className="mt-0.5 text-muted-foreground/80 text-xs">{description}</p>}
+            {description && <p className="mt-0.5 text-muted-foreground text-xs">{description}</p>}
           </div>
           {actions}
         </div>

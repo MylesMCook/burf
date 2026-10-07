@@ -48,7 +48,7 @@ export function StatusBar() {
         </Tip>
       ) : isMock() && !new URLSearchParams(location.search).has("shots") && (
         <Tip label="Showing made-up data (?mock=1)">
-          <span className="rounded border border-warning/40 px-1 text-warning/80">mock</span>
+          <span className="rounded border border-warning/40 px-1 text-warning-foreground">mock</span>
         </Tip>
       )}
       {connection.state === "offline" && restarting ? (

@@ -273,7 +273,7 @@ function Side({ wsKey, tab, i, pane, focused, shown, other, stats, preview, tiny
         <span aria-hidden className="size-1.5 shrink-0 rounded-full" style={{ background: focused ? "var(--background)" : tone }} />
         <span className="truncate">{label}</span>
         {/* Its box, unless its name already says it (the same repository on two). */}
-        {ref && !tiny && !label.endsWith(` · ${ref.box}`) && <span className="shrink-0 font-mono text-[10px] opacity-75">{ref.box}</span>}
+        {ref && !tiny && !label.endsWith(` · ${ref.box}`) && <span className="shrink-0 font-mono text-[10px]">{ref.box}</span>}
       </ToolbarPrimitive.Button>
     </Tip>
   );

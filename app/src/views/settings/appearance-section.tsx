@@ -38,7 +38,7 @@ export function AppearanceSection() {
         <div className="mb-2 flex items-end gap-3">
           <div className="min-w-0 flex-1">
             <h2 className="font-medium text-[13px] text-muted-foreground">Theme</h2>
-            <p className="mt-0.5 text-muted-foreground/80 text-xs">
+            <p className="mt-0.5 text-muted-foreground text-xs">
               Add your own as JSON in <Code>~/.berth/themes/</Code>, or install a plugin that ships one.
             </p>
           </div>
