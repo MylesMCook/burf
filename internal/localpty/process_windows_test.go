@@ -194,8 +194,8 @@ func TestPTYConcurrentCloseStopsTreeWithoutReader(t *testing.T) {
 
 func TestPTYUnreadOverflowStopsOwnedProcess(t *testing.T) {
 	p, _ := helper(t, "flood")
-	if err := bounded(t, p.Wait); err == nil {
-		t.Fatal("overflow should stop process")
+	if err := bounded(t, p.Wait); !errors.Is(err, ErrOutputOverflow) {
+		t.Fatalf("overflow should stop process and report its cause: %v", err)
 	}
 	_, err := io.Copy(io.Discard, p)
 	if !errors.Is(err, ErrOutputOverflow) {

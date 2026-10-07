@@ -210,8 +210,13 @@ func (p *Process) reap(handle windows.Handle) {
 		}
 	}
 	windows.CloseHandle(handle)
-	p.waitErr = err
 	p.finish()
+	p.readMu.Lock()
+	if errors.Is(p.readErr, ErrOutputOverflow) {
+		err = ErrOutputOverflow
+	}
+	p.readMu.Unlock()
+	p.waitErr = err
 	close(p.done)
 }
 
