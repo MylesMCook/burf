@@ -20,7 +20,9 @@ import (
 )
 
 // Item is one entry in the conversation. Kind is user, text, tools, edit,
-// crew, command, notice, artifact or question; the fields each kind uses are as in app/src/lib/transcript.ts.
+// crew, command, notice, artifact, question, report, agent-message or
+// ping; the fields each kind uses are as in app/src/lib/transcript.ts. An
+// app that doesn't know a kind draws nothing for it.
 type Item struct {
 	Kind    string     `json:"kind"`
 	ID      string     `json:"id"`
@@ -67,9 +69,17 @@ type Item struct {
 	// A report item (report.go): work the agent started that berth said
 	// ended, waits for a person, or reached a gate.
 	Report *Report `json:"report,omitempty"`
+	// An agent-message or ping item (peer.go): a message from another
+	// agent or from Claude Code, not the person.
+	Msg *Message `json:"msg,omitempty"`
+	// MidTurn: a prompt the person typed while the agent worked.
+	MidTurn bool `json:"midTurn,omitempty"`
 
 	// pending are the tool calls in a group still waiting for a result.
 	pending map[string]bool
+	// confirmed: a hand-back's card that its helper's notification
+	// folded into already (peer.go).
+	confirmed bool
 	// resolved is the index the next item would take when an artifact's
 	// publish settled: a reader asking from it or earlier gets it again.
 	resolved int
@@ -167,6 +177,10 @@ type conv struct {
 	byTool   map[string]int // tool call ID → absolute index of its group
 	crew     []CrewMember
 	crewByID map[string]int
+	// agentIDs are helpers' agent IDs → the call that started each.
+	agentIDs map[string]string
+	// via is how each recent message arrived, and when (peer.go).
+	via map[string][2]int
 	// background are helpers started in the background, still out.
 	background map[string]bool
 	offset     int64

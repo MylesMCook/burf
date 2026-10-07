@@ -37,7 +37,12 @@ type claudeLine struct {
 	Attachment *struct {
 		Type   string          `json:"type"`
 		Prompt json.RawMessage `json:"prompt"`
+		Origin *Origin         `json:"origin"`
 	} `json:"attachment"`
+	// Origin says who a user turn is from (Claude Code 2.1): the person
+	// (human), another agent (peer), the lead (coordinator) or a task's
+	// notification (peer.go).
+	Origin *Origin `json:"origin"`
 }
 
 type claudeMessage struct {
@@ -63,6 +68,15 @@ func (claudeParser) line(c *conv, b []byte) {
 	}
 	c.lineUUID, c.lineParent = l.UUID, l.ParentUUID
 	if l.IsMeta {
+		// A message from another agent, Claude Code's notification or a
+		// note around the person's mid-turn message, marked meta: read for
+		// what it is (peer.go), not dropped.
+		if l.Type == "user" && l.Origin != nil && metaOrigins[l.Origin.Kind] {
+			if s := userString(l.Message); s != "" {
+				c.userTurn(s, l.Origin, turnMeta, parseTime(l.Timestamp))
+			}
+			return
+		}
 		commandMeta(c, l)
 		return
 	}
@@ -101,11 +115,7 @@ func (claudeParser) line(c *conv, b []byte) {
 		// Shown where the model read it, so a reply never sits above the
 		// message it answers.
 		if t := strings.TrimSpace(unwrapPasted(resultFull(l.Attachment.Prompt))); t != "" {
-			userText(c, t)
-			if c.queued == nil {
-				c.queued = map[string]bool{}
-			}
-			c.queued[t] = true
+			c.userTurn(t, l.Attachment.Origin, turnQueued, at)
 		}
 		return
 	}
@@ -120,8 +130,7 @@ func (claudeParser) line(c *conv, b []byte) {
 	var s string
 	if json.Unmarshal(m.Content, &s) == nil {
 		if l.Type == "user" {
-			helperDone(c, s, at)
-			userText(c, s)
+			c.userTurn(s, l.Origin, turnPrompt, at)
 		}
 		return
 	}
@@ -133,7 +142,6 @@ func (claudeParser) line(c *conv, b []byte) {
 	for _, bl := range blocks {
 		switch {
 		case l.Type == "user" && bl.Type == "text":
-			helperDone(c, bl.Text, at)
 			typed = append(typed, bl.Text)
 		case l.Type == "user" && bl.Type == "image":
 			typed = append(typed, "[image]")
@@ -143,6 +151,13 @@ func (claudeParser) line(c *conv, b []byte) {
 			text := resultText(bl.Content)
 			if strings.HasPrefix(text, "Async agent launched") {
 				c.launched(bl.ToolUseID)
+			}
+			// Its agent ID, which its notifications and hand-back name.
+			if m := agentIDRe.FindStringSubmatch(text); m != nil {
+				if c.agentIDs == nil {
+					c.agentIDs = map[string]string{}
+				}
+				c.agentIDs[m[1]] = bl.ToolUseID
 			}
 			c.result(bl.ToolUseID, at)
 			claudeResultSignal(c, bl.ToolUseID, text, at)
@@ -163,7 +178,7 @@ func (claudeParser) line(c *conv, b []byte) {
 		}
 	}
 	if len(typed) > 0 {
-		userText(c, strings.Join(typed, "\n"))
+		c.userTurn(strings.Join(typed, "\n"), l.Origin, turnPrompt, at)
 	}
 }
 
@@ -183,6 +198,32 @@ func unwrapPasted(s string) string {
 		return s
 	}
 	return pastedTag.ReplaceAllString(pastedRe.ReplaceAllString(s, "$1"), "")
+}
+
+// metaOrigins are the origins of the isMeta lines worth reading.
+var metaOrigins = map[string]bool{"human": true, "peer": true, "coordinator": true, "task-notification": true}
+
+// userString is a user line's text: a plain string, or its text blocks.
+func userString(raw json.RawMessage) string {
+	var m claudeMessage
+	if json.Unmarshal(raw, &m) != nil {
+		return ""
+	}
+	var s string
+	if json.Unmarshal(m.Content, &s) == nil {
+		return s
+	}
+	var blocks []claudeBlock
+	if json.Unmarshal(m.Content, &blocks) != nil {
+		return ""
+	}
+	var parts []string
+	for _, b := range blocks {
+		if b.Type == "text" {
+			parts = append(parts, b.Text)
+		}
+	}
+	return strings.Join(parts, "\n")
 }
 
 func userText(c *conv, s string) {
@@ -211,6 +252,8 @@ func userText(c *conv, s string) {
 	c.rewound()
 	c.closeArtifacts()
 	c.closeQuestions()
+	// The person has seen the questions other agents asked before it.
+	c.repliedTo("")
 	c.prompted(c.add(Item{Kind: "user", ID: c.id(), Text: clip(s, 4000), UUID: c.lineUUID, Parent: c.lineParent}))
 }
 
@@ -223,6 +266,10 @@ func claudeTool(c *conv, bl claudeBlock, at int64) {
 		return
 	}
 	switch bl.Name {
+	case "SendMessage":
+		// An answer to another agent: its question is no longer open.
+		c.repliedTo(firstNonEmpty(str("to"), str("recipient"), str("session")))
+		c.call(bl.ID, ToolCall{Verb: "Run", Target: "SendMessage"})
 	case "Read", "NotebookRead":
 		c.call(bl.ID, ToolCall{Verb: "Read", Target: filepath.Base(str("file_path")), File: true})
 	case "Glob", "Grep", "LS", "WebSearch", "WebFetch":
@@ -314,6 +361,8 @@ func resultText(raw json.RawMessage) string {
 	}
 	return ""
 }
+
+var agentIDRe = regexp.MustCompile(`agentId: ([a-z0-9]+)`)
 
 var taskNote = regexp.MustCompile(`(?s)<task-notification>.*?<tool-use-id>([^<]+)</tool-use-id>.*?<status>([^<]+)</status>`)
 
