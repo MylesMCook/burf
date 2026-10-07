@@ -86,6 +86,8 @@ type Box struct {
 	Triggers *TriggerSecrets
 	// BrowserProxies confine each worktree's browser to its own pages.
 	BrowserProxies *BrowserProxies
+	// ShotsDir keeps visual-diff baselines (`berthd shots`, shots.go).
+	ShotsDir string
 	// Browsers runs agents' headless browsers, one per active worktree.
 	Browsers *Browsers
 	// Reports tells an agent when work it started ends (notify.go).

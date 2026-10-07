@@ -441,26 +441,8 @@ func (m *Browsers) start(ctx context.Context, bin, proxy string) (*browser, erro
 			return nil, err
 		}
 	}
-	args := []string{
-		"--headless=new", "--remote-debugging-pipe", "--user-data-dir=" + profile,
-		"--proxy-server=" + proxy, "--proxy-bypass-list=<-loopback>",
-		"--no-first-run", "--no-default-browser-check", "--disable-background-networking", "--disable-sync",
-		"--disable-extensions", "--disable-component-update", "--disable-default-apps", "--mute-audio",
-		"--disable-features=DnsOverHttps,Translate,MediaRouter,OptimizationHints,AutofillServerCommunication,CertificateTransparencyComponentUpdater,InterestFeedContentSuggestions,PrivacySandboxSettings4",
-		"--dns-over-https-mode=off", "--disable-client-side-phishing-detection", "--disable-domain-reliability", "--no-pings", "--disable-breakpad",
-		"--force-webrtc-ip-handling-policy=disable_non_proxied_udp", "--window-size=1280,800", "--hide-scrollbars",
-	}
-	if runtime.GOOS == "linux" {
-		args = append(args, "--disable-dev-shm-usage")
-	}
-	// Ubuntu 24.04 and others stop Chromium making the user namespaces its
-	// sandbox needs. The owner can choose to run without it (the box's
-	// setting, or BERTH_BROWSER_NO_SANDBOX): the browser is still confined
-	// to its worktree by the proxy.
-	if off, _ := m.noSandbox(); off {
-		args = append(args, "--no-sandbox")
-	}
-	args = append(args, "about:blank")
+	off, _ := m.noSandbox()
+	args := append(chromiumArgs(profile, proxy, off), "about:blank")
 	toChrome, ours, err := os.Pipe() // chrome reads fd 3
 	if err != nil {
 		return nil, err
@@ -503,6 +485,32 @@ func (m *Browsers) start(ctx context.Context, bin, proxy string) (*browser, erro
 		return nil, fmt.Errorf("starting Chromium: %w", err)
 	}
 	return br, nil
+}
+
+// chromiumArgs is how berthd runs Chromium, the agents' browser and the
+// shots browser alike: headless, its only way out through proxy, without
+// its background services.
+func chromiumArgs(profile, proxy string, noSandbox bool) []string {
+	args := []string{
+		"--headless=new", "--remote-debugging-pipe", "--user-data-dir=" + profile,
+		"--proxy-server=" + proxy, "--proxy-bypass-list=<-loopback>",
+		"--no-first-run", "--no-default-browser-check", "--disable-background-networking", "--disable-sync",
+		"--disable-extensions", "--disable-component-update", "--disable-default-apps", "--mute-audio",
+		"--disable-features=DnsOverHttps,Translate,MediaRouter,OptimizationHints,AutofillServerCommunication,CertificateTransparencyComponentUpdater,InterestFeedContentSuggestions,PrivacySandboxSettings4",
+		"--dns-over-https-mode=off", "--disable-client-side-phishing-detection", "--disable-domain-reliability", "--no-pings", "--disable-breakpad",
+		"--force-webrtc-ip-handling-policy=disable_non_proxied_udp", "--window-size=1280,800", "--hide-scrollbars",
+	}
+	if runtime.GOOS == "linux" {
+		args = append(args, "--disable-dev-shm-usage")
+	}
+	// Ubuntu 24.04 and others stop Chromium making the user namespaces its
+	// sandbox needs. The owner can choose to run without it (the box's
+	// setting, or BERTH_BROWSER_NO_SANDBOX): the browser is still confined
+	// to its worktree by the proxy.
+	if noSandbox {
+		args = append(args, "--no-sandbox")
+	}
+	return args
 }
 
 // browserStartTimeout is how long Chromium gets to start: 20s, or

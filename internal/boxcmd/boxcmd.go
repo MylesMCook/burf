@@ -85,6 +85,11 @@ var usageSections = []struct {
 		{"%[1]s browser allow%[3]s ORIGIN", "Let agents' browsers load a public origin (the box owner's)"},
 		{"%[1]s browser reap%[3]s [--dry-run] [--json]", "Close agent-browser (Vercel's CLI) sessions left by ended berth sessions"},
 	}},
+	{"Visual diffs (before/after screenshots of a worktree's pages)", [][2]string{
+		{"%[1]s shots compare %[2]s[LOC/WT] [--pages / /login] [--sizes 375 768 1280]\n         [--base main|turn-start|accepted|NAME] [--mask SEL]... [--color-scheme light|dark|both]\n         [--title T] [--note N] [--new]", "Shoot the worktree's pages and the base's, diff them, and\nkeep a visual diff (a new version on a re-run)"},
+		{"%[1]s shots baseline %[2]s[LOC/WT] [--name turn-start] [--pages …] [--sizes …]", "Save the worktree's pages as a baseline to compare with later"},
+		{"%[1]s shots accept %[2]s[LOC/WT] ID", "Keep a visual diff's after-shots as the accepted baseline"},
+	}},
 	{"Ports and sharing", [][2]string{
 		{"%[1]s ports%[3]s [--json]", "What is listening on the box"},
 		{"%[1]s stats%[3]s [--json]", "Memory, disk, load, and agents running or waiting"},
@@ -162,7 +167,7 @@ var Commands = map[string]int{
 	"skills": 1, "preview": 1, "service": 2,
 	"units": 1, "unit": 2,
 	"secret": 2,
-	"runs":   1, "run": 2, "flow": 2, "browser": 2,
+	"runs":   1, "run": 2, "flow": 2, "browser": 2, "shots": 2,
 }
 
 // Run executes args, which start with the command words, against c.
@@ -232,6 +237,8 @@ func Run(ctx context.Context, c *box.Client, args []string, out io.Writer) error
 	case "browser open", "browser snapshot", "browser click", "browser fill", "browser press", "browser select", "browser hover", "browser check",
 		"browser wait", "browser shot", "browser console", "browser network", "browser status", "browser close", "browser eval", "browser allow", "browser list", "browser reap":
 		return browserCmd(ctx, c, strings.TrimPrefix(cmd, "browser "), rest, out)
+	case "shots compare", "shots baseline", "shots accept":
+		return shotsCmd(ctx, c, strings.TrimPrefix(cmd, "shots "), rest, out)
 	case "run start", "run get", "run logs", "run cancel", "run approve", "run reject", "run templates":
 		return runCmd(ctx, c, strings.TrimPrefix(cmd, "run "), rest, out)
 	case "location scripts":
