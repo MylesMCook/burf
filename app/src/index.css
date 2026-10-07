@@ -335,3 +335,16 @@
   --wt-copper: oklch(0.76 0.09 55);
   --wt-slate: oklch(0.74 0.025 260);
 }
+
+/* While the sidebar's edge is dragged (components/sidebar/resize-handle.tsx):
+   the resize cursor everywhere, no text selected, and frames (previews,
+   plugin screens) let the pointer through so the drag isn't lost to them. */
+.berth-resizing,
+.berth-resizing * {
+  cursor: col-resize !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+.berth-resizing iframe {
+  pointer-events: none;
+}

@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 import { type ChatBackground, DEFAULT_CHAT_BACKGROUND, normalizeChatBackground } from "@/lib/chat-background";
 import type { HomeLayout } from "@/lib/home-layout";
+import { clampWidth, SIDEBAR_DEFAULT } from "@/lib/sidebar-width";
 import { load, save } from "@/lib/storage";
 import { DEFAULT_TERMINAL_PREFS, type TerminalPrefs } from "@/lib/terminal";
 
@@ -21,6 +22,8 @@ export interface Prefs {
   enabledPlugins: string[];
   // The sidebar folded to a rail of icons (⌘\).
   sidebarCollapsed: boolean;
+  // How wide the open sidebar is, dragged by its edge (lib/sidebar-width).
+  sidebarWidth: number;
   // Ask before closing a pane or tab stops a shell on its box.
   confirmCloseShells: boolean;
   // What closing an agent's pane or tab does to the agent: stop it (with a
@@ -79,6 +82,7 @@ const DEFAULTS: Prefs = {
   disabledPlugins: [],
   enabledPlugins: [],
   sidebarCollapsed: false,
+  sidebarWidth: SIDEBAR_DEFAULT,
   confirmCloseShells: true,
   closeAgents: "stop",
   closeAgentsChosen: false,
@@ -130,6 +134,7 @@ export const usePrefs = create<Prefs>()(() => ({
   notify: { ...DEFAULTS.notify, ...saved.notify },
   systemThemes: { ...DEFAULTS.systemThemes, ...saved.systemThemes },
   chatBackground: normalizeChatBackground(saved.chatBackground),
+  sidebarWidth: clampWidth(saved.sidebarWidth ?? SIDEBAR_DEFAULT),
 }));
 
 usePrefs.subscribe((p) => save("berth.prefs", { ...p, version: PREFS_VERSION }));
@@ -154,10 +159,13 @@ function applyUiPrefs(p: Prefs) {
   root.dataset.density = p.density;
   // Every chat column reads its width from here (components/conversation).
   root.style.setProperty("--berth-chat-w", CHAT_WIDTHS[p.chatWidth] ?? CHAT_WIDTHS.default);
+  // The sidebar reads its width from here; a drag sets it as it goes
+  // (components/sidebar/resize-handle.tsx) and saves it here at the end.
+  root.style.setProperty("--sidebar-w", `${p.sidebarWidth}px`);
 }
 applyUiPrefs(usePrefs.getState());
 usePrefs.subscribe((p, prev) => {
-  if (p.uiFontSize !== prev.uiFontSize || p.density !== prev.density || p.chatWidth !== prev.chatWidth) applyUiPrefs(p);
+  if (p.uiFontSize !== prev.uiFontSize || p.density !== prev.density || p.chatWidth !== prev.chatWidth || p.sidebarWidth !== prev.sidebarWidth) applyUiPrefs(p);
 });
 
 // useTerminalPrefs is what a terminal needs to draw itself; it changes only

@@ -15,12 +15,14 @@ import { newSection } from "@/components/sidebar/actions";
 import { MoreItems, Nav as PlacesNav, useArrangedNav } from "@/components/sidebar/nav";
 import { Projects, useSidebarPrefs } from "@/components/sidebar/projects";
 import { RailAgents } from "@/components/sidebar/rail";
+import { SidebarResizeHandle } from "@/components/sidebar/resize-handle";
 import { Tip } from "@/components/tip";
 import { Kbd } from "@/components/ui/kbd";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { SidebarContext, type SidebarContextProps } from "@/components/ui/sidebar";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
+import { SIDEBAR_DEFAULT, SIDEBAR_MAX, SIDEBAR_MIN } from "@/lib/sidebar-width";
 import { cn } from "@/lib/utils";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
 import { TeamSidebarCard } from "@/views/team/team-entry";
@@ -52,7 +54,15 @@ export function AppSidebar() {
 
   return (
     <SidebarContext.Provider value={context}>
-      <aside className="flex w-60 shrink-0 flex-col border-sidebar-border border-r bg-sidebar text-sidebar-foreground">
+      {/* Its width is --sidebar-w (prefs, or a drag as it runs), held to the
+          narrowest and widest (lib/sidebar-width) even as the window shrinks;
+          a container, so rows show more of a worktree when there is room. */}
+      <aside
+        data-testid="sidebar"
+        style={{ width: `clamp(${SIDEBAR_MIN}px, var(--sidebar-w, ${SIDEBAR_DEFAULT}px), max(${SIDEBAR_DEFAULT}px, min(${SIDEBAR_MAX}px, 40vw)))` }}
+        className="@container/side relative flex shrink-0 flex-col border-sidebar-border border-r bg-sidebar text-sidebar-foreground"
+      >
+        <SidebarResizeHandle />
         {/* Room for the macOS traffic lights; the strip drags the window. */}
         <div data-tauri-drag-region className="flex h-10 shrink-0 items-center justify-end px-2">
           <NotificationBell />
@@ -174,7 +184,8 @@ function Rail() {
     </Tip>
   );
   return (
-    <aside className="flex w-19 shrink-0 flex-col items-center border-sidebar-border border-r bg-sidebar">
+    <aside data-testid="sidebar-rail" className="relative flex w-19 shrink-0 flex-col items-center border-sidebar-border border-r bg-sidebar">
+      <SidebarResizeHandle folded />
       <div data-tauri-drag-region className="h-10 w-full shrink-0" />
       <div className="flex flex-col items-center gap-1">
         {item("Search (⌘K)", <SearchIcon />, false, () => useStore.getState().setPaletteOpen(true))}
