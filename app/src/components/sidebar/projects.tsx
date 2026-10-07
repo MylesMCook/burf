@@ -11,10 +11,10 @@ import {
   SquareTerminalIcon,
   Trash2Icon,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 
 import { AgentIcon, BoxStateDot, StateGlyph } from "@/components/agent-glyph";
-import { type Action, boxActions, ContextRow, DotsMenu, newSection, projectActions, projectGroupActions, worktreeActions } from "@/components/sidebar/actions";
+import { type Action, Armed, boxActions, useArmed, ContextRow, DotsMenu, newSection, projectActions, projectGroupActions, worktreeActions } from "@/components/sidebar/actions";
 import { confirm } from "@/components/sidebar/confirm";
 import { type Project, projectActions as groupActions, useProjects } from "@/lib/project-groups";
 import { Tip } from "@/components/tip";
@@ -292,17 +292,7 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
   );
 }
 
-function WorktreeRow({
-  box,
-  loc,
-  wt,
-  sessions,
-  data,
-  selected,
-  onOpen,
-  chip,
-  away,
-}: {
+interface WorktreeRowProps {
   box: string;
   loc: Location;
   wt: Worktree;
@@ -316,7 +306,26 @@ function WorktreeRow({
   // so the worktree you have open never vanishes from under you; what it
   // last ran is not shown, since the box cannot say whether it still runs.
   away?: BoxStatus;
-}) {
+}
+
+// A row is drawn again only when what it shows changed: its worktree, its
+// sessions, the box's report of its agents, whether it is selected, and its
+// box chip's name and state. onOpen opens the worktree it was given, and
+// the store keeps what a refresh didn't change (lib/share.ts), so a rename
+// or an agent's new state draws one row, not hundreds.
+const sameList = (a: Session[], b: Session[]) => a.length === b.length && a.every((s, i) => s === b[i]);
+const sameRow = (a: WorktreeRowProps, b: WorktreeRowProps) =>
+  a.box === b.box &&
+  a.loc === b.loc &&
+  a.wt === b.wt &&
+  a.selected === b.selected &&
+  a.away === b.away &&
+  a.chip?.name === b.chip?.name &&
+  a.chip?.state === b.chip?.state &&
+  a.data?.stats?.agents === b.data?.stats?.agents &&
+  sameList(a.sessions, b.sessions);
+
+const WorktreeRow = memo(function WorktreeRow({ box, loc, wt, sessions, data, selected, onOpen, chip, away }: WorktreeRowProps) {
   // Its agents by what they work on ("Fix checkout webhook · Claude Code").
   const agents = away ? [] : sessions.filter((s) => agentOf(s) && !s.exited).map((s) => sessionName(s, { sessions, agent: true }));
   // A renamed worktree's tip says its own name and branch under the title.
@@ -392,7 +401,7 @@ function WorktreeRow({
       </ContextRow>
     </SidebarMenuSubItem>
   );
-}
+}, sameRow);
 
 // LeavingRow is a worktree being archived or removed, in the row's place
 // and size so nothing shifts when it goes.
@@ -474,8 +483,10 @@ function Glyphs({ sessions, data }: { sessions: Session[]; data?: BoxData }) {
 // RowOverlay holds a row's actions over its trailing end. It only fades
 // (opacity, 100ms), and paints the row's hover colour, opaque, with a short
 // fade on its left edge, so it covers chips, counts and glyphs under it and
-// nothing in the row moves.
+// nothing in the row moves. Its buttons and their menus are only made once
+// the row is first pointed at or focused (Armed).
 function RowOverlay({ className, children }: { className?: string; children: React.ReactNode }) {
+  if (!useArmed()) return null;
   return (
     <div className={cn("pointer-events-none absolute inset-y-0 right-0 flex items-center rounded-r-lg pr-1 pl-4 opacity-0 transition-opacity duration-100 [background:linear-gradient(var(--sidebar-accent),var(--sidebar-accent)),var(--sidebar)] [mask-image:linear-gradient(to_right,transparent,black_16px)] focus-within:pointer-events-auto focus-within:opacity-100 group-hover/row:pointer-events-auto group-hover/row:opacity-100 has-[[data-popup-open]]:pointer-events-auto has-[[data-popup-open]]:opacity-100", className)}>
       {children}
@@ -595,7 +606,9 @@ function ProjectSections({ prefs, update }: { prefs: SidebarPrefs; update(p: Par
                   <span className="font-normal normal-case tracking-normal">{inside.length || ""}</span>
                 </button>
                 <span className="opacity-0 group-hover/row:opacity-100 has-[[data-popup-open]]:opacity-100">
-                  <DotsMenu label={`${name} section`} items={() => sectionActions(name)} />
+                  <Armed>
+                    <DotsMenu label={`${name} section`} items={() => sectionActions(name)} />
+                  </Armed>
                 </span>
               </div>
             </ContextRow>

@@ -16,6 +16,7 @@ import { MoreItems, Nav as PlacesNav, useArrangedNav } from "@/components/sideba
 import { Projects, useSidebarPrefs } from "@/components/sidebar/projects";
 import { RailAgents } from "@/components/sidebar/rail";
 import { SidebarResizeHandle } from "@/components/sidebar/resize-handle";
+import { RowLayer } from "@/components/sidebar/row-layer";
 import { Tip } from "@/components/tip";
 import { Kbd } from "@/components/ui/kbd";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
@@ -54,12 +55,13 @@ export function AppSidebar() {
 
   return (
     <SidebarContext.Provider value={context}>
-      {/* Its width is --sidebar-w (prefs, or a drag as it runs), held to the
-          narrowest and widest (lib/sidebar-width) even as the window shrinks;
-          a container, so rows show more of a worktree when there is room. */}
+      {/* Its width is --sidebar-w (prefs), or --sidebar-live as a drag
+          runs, held to the narrowest and widest (lib/sidebar-width) even as
+          the window shrinks; a container, so rows show more of a worktree
+          when there is room. */}
       <aside
         data-testid="sidebar"
-        style={{ width: `clamp(${SIDEBAR_MIN}px, var(--sidebar-w, ${SIDEBAR_DEFAULT}px), max(${SIDEBAR_DEFAULT}px, min(${SIDEBAR_MAX}px, 40vw)))` }}
+        style={{ width: `clamp(${SIDEBAR_MIN}px, var(--sidebar-live, var(--sidebar-w, ${SIDEBAR_DEFAULT}px)), max(${SIDEBAR_DEFAULT}px, min(${SIDEBAR_MAX}px, 40vw)))` }}
         className="@container/side relative flex shrink-0 flex-col border-sidebar-border border-r bg-sidebar text-sidebar-foreground"
       >
         <SidebarResizeHandle />
@@ -128,9 +130,10 @@ export function AppSidebar() {
           </Menu>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
+        {/* One context menu and one tooltip for every row in it. */}
+        <RowLayer className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
           <Projects prefs={prefs} update={update} />
-        </div>
+        </RowLayer>
 
         <div className="flex h-9 shrink-0 items-center gap-1 border-sidebar-border border-t px-2">
           <Tip label="⇧-click for Developer settings" side="top" align="start">

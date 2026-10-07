@@ -111,6 +111,20 @@ again.
   readers hear the chat as a list that says where each message is.
   [Conversation view](/guides/labs#conversation-view).
 
+- **The sidebar stays quick with hundreds of worktrees.** With 300
+  worktrees, each with an agent, every row used to build its right-click
+  menu, its ⋯ and + menus and its tooltips up front: about 1.2 s of work
+  as the app started, and 120 MB of memory. Now the sidebar and the folded
+  rail share one menu and one tooltip, and a row draws its buttons when
+  you first point at it or tab to it: the start costs no more than with a
+  handful of worktrees, memory is about 20 MB, and folding a project,
+  renaming a row or going to Home no longer draws every row again. Agents'
+  spinning and pulsing state icons rest while scrolled out of sight, which
+  kept the app busy even when nothing happened, and dragging the
+  sidebar's edge no longer restyles the whole window on every frame (it
+  stuttered at a few frames a second). Right-click, Shift+F10, the menu
+  key, F2 and double-click work as before.
+
 - **The Browser tab stops spinning once a page has loaded.** A page that
   adds a frame after it loads (a chat widget, an embed) used to leave the
   spinner on for good. Only the page itself counts now, and a load that

@@ -277,6 +277,20 @@
   }
 }
 
+/* The sidebar's width as its edge is dragged (sidebar/resize-handle.tsx),
+   set on the sidebar itself: not inherited, so a frame of the drag
+   restyles the sidebar alone, not every element under it. */
+@property --sidebar-live {
+  syntax: "*";
+  inherits: false;
+}
+
+/* A sidebar or rail row out of sight (RowMenus in sidebar/actions.tsx):
+   its agent's glyph stops spinning or pulsing until it is scrolled back. */
+[data-offscreen] * {
+  animation-play-state: paused !important;
+}
+
 /* xterm.js: let the theme's background show through, and keep the
    scrollbar quiet. */
 .xterm .xterm-viewport {
