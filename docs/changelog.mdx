@@ -11,6 +11,15 @@ again.
 
 ## Unreleased
 
+- **The Browser tab stops spinning once a page has loaded.** A page that
+  adds a frame after it loads (a chat widget, an embed) used to leave the
+  spinner on for good. Only the page itself counts now, and a load that
+  never starts gives up after ten seconds. A page whose own code keeps
+  reloading it (four times in a row) says so, with **Open in your
+  browser**. Next.js 16.3 reloads a page once in WebKit after a redirect
+  to a page with a Cross-Origin-Opener-Policy header; Next 16.4 fixes it,
+  or set `experimental.reactDebugChannel: false`.
+
 - **Messages from other agents are theirs, not yours.** Claude Code hands
   a helper's hand-back, a teammate's message, another session's, the
   lead's note and its own background notices to the model as if they were
