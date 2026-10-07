@@ -94,3 +94,17 @@ test("UTF-8 split across packets joins whole", () => {
   clock.fire();
   assert.equal(text(got[0]), "✻ done");
 });
+
+test("an infinite wait hands over only on showing, or once a lot waits", () => {
+  const got: Chunk[] = [];
+  const clock = fakeClock();
+  const gate = new OutputGate((d) => got.push(d), clock, Infinity, 10);
+  gate.setOpen(false);
+  gate.write("12345");
+  assert.equal(clock.pending, 0, "no timer");
+  gate.setOpen(true);
+  assert.deepEqual(got.map(text), ["12345"]);
+  gate.setOpen(false);
+  gate.write("1234567890");
+  assert.equal(got.length, 2, "over the limit: now");
+});

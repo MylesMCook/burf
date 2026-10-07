@@ -54,7 +54,8 @@ export class OutputGate {
     this.waiting.push(d);
     this.bytes += d.length;
     if (this.bytes >= this.maxBytes) return this.flush();
-    if (!this.timer) this.timer = this.clock.set(() => this.flush(), this.flushMs);
+    // An infinite wait: only a lot waiting, or showing, hands it over.
+    if (!this.timer && Number.isFinite(this.flushMs)) this.timer = this.clock.set(() => this.flush(), this.flushMs);
   }
 
   setOpen(open: boolean) {

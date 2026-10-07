@@ -1,5 +1,5 @@
 import type { TerminalColors } from "@/lib/api";
-import { OutputGate } from "./term-output.ts";
+import { HIDDEN_FLUSH_MS, OutputGate } from "./term-output.ts";
 
 // One small interface over the terminal emulator, so the renderer can be
 // swapped: ghostty-web (Ghostty's VT parser in WASM, drawn on a canvas) by
@@ -123,7 +123,7 @@ export async function createTerminal(host: HTMLElement, colors: TerminalColors, 
   await document.fonts.load(`${prefs.fontSize}px ${prefs.fontFamily}`).catch(() => {});
   if (prefs.renderer === "xterm") {
     report({ renderer: "xterm", chosen: "xterm" });
-    return gated(await createXterm(host, colors, prefs));
+    return gated(await createXterm(host, colors, prefs), XTERM_HIDDEN_FLUSH);
   }
   try {
     const t = await createGhostty(host, colors, prefs);
@@ -132,9 +132,16 @@ export async function createTerminal(host: HTMLElement, colors: TerminalColors, 
   } catch (err) {
     console.error("ghostty-web failed to start; using xterm.js", err);
     report({ renderer: "xterm", chosen: "ghostty", reason: err instanceof Error ? err.message : String(err), details: fallbackDetails(err) });
-    return gated(await createXterm(host, colors, prefs));
+    return gated(await createXterm(host, colors, prefs), XTERM_HIDDEN_FLUSH);
   }
 }
+
+// xterm.js, hidden, takes nothing until it shows (or 512 KB waits): every
+// write to a hidden xterm.js re-measured each glyph of the rows it redrew
+// (its DOM renderer's width cache keeps nothing measured in a hidden
+// element, display: none), a forced layout per character, which kept the
+// main thread busy with only a few noisy terminals in background tabs.
+const XTERM_HIDDEN_FLUSH = Infinity;
 
 // In mock mode, and with ?perf, the emulator is left on its element for the
 // app's tests and perf/terminals.mjs and perf/live.mjs, which read the
@@ -148,8 +155,8 @@ function forTests(host: HTMLElement, t: object) {
 // gated puts an OutputGate in front of a renderer's writes: shown, output
 // goes straight in; hidden, it waits and goes in batches, and the renderer
 // is told to stop drawing.
-function gated(t: RawHandle): TermHandle {
-  const gate = new OutputGate((d) => t.write(d));
+function gated(t: RawHandle, hiddenFlushMs = HIDDEN_FLUSH_MS): TermHandle {
+  const gate = new OutputGate((d) => t.write(d), undefined, hiddenFlushMs);
   let shown = true;
   let open = true;
   // A hidden window (minimised, covered, another Space) counts as hidden.
