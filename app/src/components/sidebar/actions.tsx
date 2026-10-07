@@ -36,7 +36,7 @@ import {
   WorkflowIcon,
   WrenchIcon,
 } from "lucide-react";
-import { type ComponentProps, createContext, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { type ComponentProps, createContext, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode, type TouchEvent, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { AgentIcon } from "@/components/agent-glyph";
 import { EditorMenuItems } from "@/components/editors/editor-menu";
@@ -176,10 +176,11 @@ interface RowMenuHost {
 const RowMenuContext = createContext<RowMenuHost | null>(null);
 const ArmedContext = createContext(true);
 
-// Armed draws its children once the row it is in has been pointed at or
-// focused (always, outside a RowMenus).
+// useArmed says whether the row it is in has been pointed at or focused
+// (always, outside a RowMenus); Armed draws its children only then.
+export const useArmed = () => useContext(ArmedContext);
 export function Armed({ children }: { children: ReactNode }) {
-  return useContext(ArmedContext) ? children : null;
+  return useArmed() ? children : null;
 }
 
 const rowOf = (t: EventTarget | null) => (t instanceof Element ? t.closest<HTMLElement>("[data-row-menu]") : null);
@@ -207,19 +208,22 @@ export function RowMenus({ children, onKeyDown, ...props }: ComponentProps<"div"
     row.current = el;
     el?.setAttribute("data-menu-open", "");
   };
+  const pick = (e: ReactMouseEvent<HTMLDivElement> | TouchEvent<HTMLDivElement>) => {
+    const el = rowOf(e.target);
+    const entry = el && e.currentTarget.contains(el) ? host.rows.get(el.dataset.rowMenu ?? "") : undefined;
+    if (!el || !entry) return e.stopPropagation();
+    mark(el);
+    setItems({ fn: entry.items.current });
+  };
   return (
     <RowMenuContext.Provider value={host}>
       <ContextMenu onOpenChange={(open) => !open && mark(undefined)}>
         <ContextMenuTrigger
           {...props}
-          // Whose menu it is, before the trigger opens it; outside a row, none.
-          onContextMenuCapture={(e: ReactMouseEvent<HTMLDivElement>) => {
-            const el = rowOf(e.target);
-            const entry = el && e.currentTarget.contains(el) ? host.rows.get(el.dataset.rowMenu ?? "") : undefined;
-            if (!el || !entry) return e.stopPropagation();
-            mark(el);
-            setItems({ fn: entry.items.current });
-          }}
+          // Whose menu it is, before the trigger opens it (a right-click, or
+          // a touch held down); outside a row, none.
+          onContextMenuCapture={pick}
+          onTouchStartCapture={pick}
           onKeyDown={(e: KeyboardEvent<HTMLDivElement>) => {
             onKeyDown?.(e);
             const el = rowOf(e.target);

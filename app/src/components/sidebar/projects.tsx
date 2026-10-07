@@ -14,7 +14,7 @@ import {
 import { memo, useMemo, useState } from "react";
 
 import { AgentIcon, BoxStateDot, StateGlyph } from "@/components/agent-glyph";
-import { type Action, Armed, boxActions, ContextRow, DotsMenu, newSection, projectActions, projectGroupActions, worktreeActions } from "@/components/sidebar/actions";
+import { type Action, Armed, boxActions, useArmed, ContextRow, DotsMenu, newSection, projectActions, projectGroupActions, worktreeActions } from "@/components/sidebar/actions";
 import { confirm } from "@/components/sidebar/confirm";
 import { type Project, projectActions as groupActions, useProjects } from "@/lib/project-groups";
 import { Tip } from "@/components/tip";
@@ -486,9 +486,10 @@ function Glyphs({ sessions, data }: { sessions: Session[]; data?: BoxData }) {
 // nothing in the row moves. Its buttons and their menus are only made once
 // the row is first pointed at or focused (Armed).
 function RowOverlay({ className, children }: { className?: string; children: React.ReactNode }) {
+  if (!useArmed()) return null;
   return (
     <div className={cn("pointer-events-none absolute inset-y-0 right-0 flex items-center rounded-r-lg pr-1 pl-4 opacity-0 transition-opacity duration-100 [background:linear-gradient(var(--sidebar-accent),var(--sidebar-accent)),var(--sidebar)] [mask-image:linear-gradient(to_right,transparent,black_16px)] focus-within:pointer-events-auto focus-within:opacity-100 group-hover/row:pointer-events-auto group-hover/row:opacity-100 has-[[data-popup-open]]:pointer-events-auto has-[[data-popup-open]]:opacity-100", className)}>
-      <Armed>{children}</Armed>
+      {children}
     </div>
   );
 }
