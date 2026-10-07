@@ -6,6 +6,7 @@
     "runs",
     "browser",
     "files",
+    "artifacts",
     "agent-browser",
     "offline-queue",
     "automations",
