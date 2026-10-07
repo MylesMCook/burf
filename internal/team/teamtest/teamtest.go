@@ -34,19 +34,30 @@ func FakeGH() string {
 // signed out until SignIn.
 func New(t *testing.T) *GitHub {
 	t.Helper()
-	if _, err := exec.LookPath("python3"); err != nil {
-		t.Skip("the fake gh needs python3")
+	if _, err := exec.LookPath("git"); err != nil {
+		t.Skip("the fake GitHub repositories need git")
 	}
 	dir := t.TempDir()
 	g := &GitHub{t: t, Root: filepath.Join(dir, "github"), Bin: filepath.Join(dir, "bin"), Log: filepath.Join(dir, "gh.log")}
 	os.MkdirAll(g.Root, 0o755)
 	os.MkdirAll(g.Bin, 0o755)
-	b, err := os.ReadFile(FakeGH())
+	exe, err := os.Executable()
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(g.Bin, "gh"), b, 0o755); err != nil {
-		t.Fatal(err)
+	name := "gh"
+	if runtime.GOOS == "windows" {
+		name += ".exe"
+	}
+	bin := filepath.Join(g.Bin, name)
+	if err := os.Link(exe, bin); err != nil {
+		b, err := os.ReadFile(exe)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(bin, b, 0o755); err != nil {
+			t.Fatal(err)
+		}
 	}
 	t.Setenv("PATH", g.Bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	t.Setenv("GH_FAKE_ROOT", g.Root)
@@ -161,7 +172,7 @@ func (g *GitHub) git(dir string, args ...string) string {
 	if dir != "" {
 		cmd.Dir = dir
 	}
-	cmd.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL=/dev/null", "GIT_CONFIG_SYSTEM=/dev/null")
+	cmd.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_CONFIG_SYSTEM="+os.DevNull)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		g.t.Fatalf("git %v: %v\n%s", args, err, out)

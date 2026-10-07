@@ -227,7 +227,7 @@ func startAgentWith(t *testing.T, dir string, nets Networks) *runningAgent {
 			Now:            clk.Now,
 			Networks:       nets,
 			UIAddr:         uiAddr,
-			CLI:            filepath.Join(dir, "fake-berth"),
+			CLI:            cliFixturePath(dir, "fake-berth"),
 			SSHDir:         filepath.Join(dir, "ssh"),
 			EditorRoots:    []string{filepath.Join(dir, "apps")},
 			Run:            recordRun,

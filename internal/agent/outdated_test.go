@@ -18,14 +18,8 @@ func TestTheAppLearnsWhichBoxesAreOutdated(t *testing.T) {
 	eventually(t, "box online", func() bool { return stateOf(t, a) == StateOnline })
 	// The CLI answers the check; this one counts how often it is asked.
 	count := filepath.Join(a.dir, "checks")
-	script := `#!/bin/sh
-echo x >> "` + count + `"
-if [ "$1 $3 $4" = "upgrade --check --json" ]; then printf '{"box":"%s","current":"aaa","available":"bbb","outdated":true}\n' "$2"; exit 0; fi
-echo "ran $*"
-`
-	if err := os.WriteFile(filepath.Join(a.dir, "fake-berth"), []byte(script), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	installCLI(t, cliFixturePath(a.dir, "fake-berth"), cliFixture{Mode: "outdated", Count: count})
+
 	read := func(q string) []OutdatedBox {
 		resp, body := uiCall(t, a, "GET", "/v1/boxes/outdated"+q, tok)
 		if resp.StatusCode != 200 {

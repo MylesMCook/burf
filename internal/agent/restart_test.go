@@ -18,10 +18,8 @@ func TestARestartLetsWorkUnderWayFinishFirst(t *testing.T) {
 	a := startAgent(t, b.pairLaptop())
 	tok := uiToken(t, a)
 	release := filepath.Join(a.dir, "release")
-	script := "#!/bin/sh\necho started\nwhile [ ! -e " + release + " ]; do sleep 0.05; done\necho \"ran $*\"\n"
-	if err := os.WriteFile(filepath.Join(a.dir, "fake-berth"), []byte(script), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	installCLI(t, cliFixturePath(a.dir, "fake-berth"), cliFixture{Mode: "restart", Release: release})
+
 	ctx := context.Background()
 
 	info, err := a.client.Info(ctx)

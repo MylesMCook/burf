@@ -1,3 +1,5 @@
+//go:build !windows
+
 package agent
 
 import (
@@ -118,16 +120,6 @@ func newLocalEnv(t *testing.T) *localEnv {
 }
 
 func fakeBerthd(v string) string { return strings.Replace(fakeBerthdScript, "%VERSION%", v, 1) }
-
-func writeFile(t *testing.T, path, content string, mode os.FileMode) {
-	t.Helper()
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(path, []byte(content), mode); err != nil {
-		t.Fatal(err)
-	}
-}
 
 func (e *localEnv) log(path string) string {
 	b, _ := os.ReadFile(path)
@@ -476,25 +468,6 @@ func TestTheCopyKeepsItsSignatureAndLosesAQuarantine(t *testing.T) {
 	verifies = false
 	if err := checkCopy(context.Background(), src, dst, say); err == nil || !strings.Contains(err.Error(), "fails its code signature check") || isFile(dst) {
 		t.Fatalf("a copy that fails its signature check: %v", err)
-	}
-}
-
-func TestNewerRelease(t *testing.T) {
-	for _, c := range []struct {
-		a, b string
-		want bool
-	}{
-		{"v0.2.0", "v0.1.9", true},
-		{"v0.10.0", "v0.9.0", true},
-		{"v1.0.0", "v1.0.0", false},
-		{"v0.1.0", "v0.2.0", false},
-		{"dev", "v0.1.0", false},
-		{"v0.1.0", "dev", false},
-		{"v0.1", "v0.0.1", false},
-	} {
-		if got := newerRelease(c.a, c.b); got != c.want {
-			t.Errorf("newerRelease(%q, %q) = %v", c.a, c.b, got)
-		}
 	}
 }
 

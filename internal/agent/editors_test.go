@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -13,34 +13,17 @@ import (
 	"github.com/sean-brydon/berthd/internal/trust"
 )
 
-var ran struct {
-	sync.Mutex
-	commands [][]string
-}
-
-// recordRun stands in for starting an editor: tests read what would run.
-func recordRun(cmd []string) error {
-	ran.Lock()
-	ran.commands = append(ran.commands, cmd)
-	ran.Unlock()
-	return nil
-}
-
-func lastRun() []string {
-	ran.Lock()
-	defer ran.Unlock()
-	if len(ran.commands) == 0 {
-		return nil
-	}
-	return ran.commands[len(ran.commands)-1]
-}
-
 // fakeCursor installs a Cursor app with its CLI in the agent's apps folder.
 func fakeCursor(t *testing.T, a *runningAgent) string {
 	t.Helper()
 	cli := filepath.Join(a.dir, "apps", "Cursor.app", "Contents", "Resources", "app", "bin", "cursor")
 	os.MkdirAll(filepath.Dir(cli), 0o755)
-	os.WriteFile(cli, []byte("#!/bin/sh\n"), 0o755)
+	os.WriteFile(cli, []byte("editor fixture"), 0o755)
+	if runtime.GOOS == "windows" {
+		cli = filepath.Join(a.dir, "apps", "cursor.exe")
+		os.WriteFile(cli, []byte("editor fixture"), 0o755)
+		t.Setenv("PATH", filepath.Dir(cli)+string(os.PathListSeparator)+os.Getenv("PATH"))
+	}
 	return cli
 }
 
@@ -84,7 +67,15 @@ func TestEditorsOpenLocalBoxesDirectlyAndRemoteOnesOverSSH(t *testing.T) {
 		t.Fatalf("before setup: %d %s", resp.StatusCode, body)
 	}
 	_, body = uiSend(t, a, "GET", "/v1/ssh-config", tok, "")
-	if !strings.Contains(body, "berth/devl.conf") || !strings.Contains(body, "network proxy personal %h %p") || !strings.Contains(body, sshconfig.IncludeLine) {
+	var plan struct{ Changes []sshconfig.Change }
+	if err := json.Unmarshal([]byte(body), &plan); err != nil {
+		t.Fatal(err)
+	}
+	haveHost := false
+	for _, change := range plan.Changes {
+		haveHost = haveHost || change.Path == filepath.Join(a.dir, "ssh", "berth", "devl.conf")
+	}
+	if !haveHost || !strings.Contains(body, "network proxy personal %h %p") || !strings.Contains(body, sshconfig.IncludeLine) {
 		t.Fatalf("plan = %s", body)
 	}
 	if _, err := os.Stat(filepath.Join(a.dir, "ssh", "berth")); !os.IsNotExist(err) {
