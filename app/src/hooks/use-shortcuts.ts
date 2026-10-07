@@ -22,7 +22,7 @@ import { toggleTree } from "@/lib/file-tree";
 import { findLeaf, leaves, paneWorktree } from "@/lib/layout";
 import { paneKey, toggleDrawer } from "@/lib/devtools";
 import { isOnboardingActive } from "@/views/onboarding/onboarding-state";
-import { focusWithin, rescueFocus } from "@/lib/focus-home";
+import { firstFocusable, rescueFocus } from "@/lib/focus-home";
 
 // The app's shortcuts (lib/shortcuts.json) come two ways: as keys, caught on
 // the window before a terminal sees them, and, in the Mac app, from the menu
@@ -196,17 +196,23 @@ function run(id: string, from: "key" | "menu", arg?: number | Dir): boolean {
 // handOff moves the keyboard with a panel a shortcut showed or hid: to the
 // panel's first control (or target) once it is there, or home when the
 // panel that had the keyboard went away.
+// Called just after the toggle, before React draws it, so the page still
+// shows whether the panel was open.
 function handOff(target: string, panel: string) {
-  const had = !!document.activeElement?.closest(panel);
-  window.setTimeout(() => {
+  if (document.querySelector(panel)) {
+    // Closing: home, if the keyboard was in it.
+    if (document.activeElement?.closest(panel)) window.setTimeout(() => !document.querySelector(panel) && rescueFocus(0), 60);
+    return;
+  }
+  // Opening: once the panel has drawn something to focus (a second at most).
+  const until = Date.now() + 1500;
+  const tick = () => {
     const el = document.querySelector<HTMLElement>(target);
-    if (!el) {
-      if (had) rescueFocus(0);
-      return;
-    }
-    if (el.matches(panel)) focusWithin(() => el);
-    else el.focus({ preventScroll: true });
-  }, 60);
+    const t = el && (el.matches(panel) ? firstFocusable(el) : el);
+    if (t) t.focus({ preventScroll: true });
+    else if (Date.now() < until) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
 }
 
 // One press can arrive both ways (the page's keydown, then the menu bar, or

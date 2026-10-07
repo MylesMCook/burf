@@ -58,6 +58,7 @@ import { SettingsView } from "@/views/settings/settings-view";
 import { HomeView } from "@/views/home/home-view";
 import { usePrefs } from "@/lib/prefs";
 import { placeLabel } from "@/lib/worktree-names";
+import { useRescueRemovedFocus } from "@/lib/focus-home";
 
 // The live demo's guide and script (pnpm build:demo); not in the app.
 const DemoGuide = __BERTH_DEMO__ ? lazy(() => import("@/demo/guide")) : null;
@@ -88,6 +89,8 @@ export default function App() {
   // Without the status bar, what floats over its corner (toasts, the loops
   // panel) comes down to the window's edge.
   useEffect(() => document.documentElement.style.setProperty("--berth-status-h", zen ? "0px" : "26px"), [zen]);
+  // The keyboard is never dropped on <body> by what had it going away.
+  useRescueRemovedFocus();
   // Onboarding has no tabs yet, so it gets the plain strip, not the tab strip.
   const onboarding = useOnboardingActive();
   // Home (no worktree, or a box's home terminals over it) has its own strip.

@@ -876,7 +876,7 @@ function FrameTile({ frame: f, scale, src, host, strategy, root, allowed, status
   );
 }
 
-const tileBtn = "inline-flex size-5.5 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground [&_svg]:size-3.5";
+const tileBtn = "inline-flex size-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground [&_svg]:size-3.5";
 
 function statusHelp(status: Status, synced: boolean): string {
   switch (status) {

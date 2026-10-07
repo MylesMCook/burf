@@ -34,9 +34,11 @@ const shows = (page: Page) =>
         .map((c) => [c.outlineStyle, c.outlineWidth, c.outlineColor, c.boxShadow, c.borderColor, c.backgroundColor, c.opacity].join("|"))
         .join("#");
     const frame = () => new Promise((r) => requestAnimationFrame(() => r(null)));
+    // A ring may fade in (a transition, even reduced, ends a frame or two on).
+    await new Promise((r) => setTimeout(r, 200));
     const on = snap();
     el.blur();
-    await frame();
+    await new Promise((r) => setTimeout(r, 200));
     const off = snap();
     el.focus({ preventScroll: true });
     await frame();
@@ -173,6 +175,8 @@ test("⌘⇧E puts the keyboard in the Files panel, and New file names one there
   await app.open();
   await app.openWorktree("devl/checkout-fix");
   const page = app.page;
+  // From its terminal, which takes the keyboard as it attaches.
+  await expect.poll(() => focused(page).then((f) => f?.label)).toBe("Terminal input");
   await page.keyboard.press("Meta+Shift+E");
   const panel = page.getByTestId("files-panel");
   await expect(panel).toBeVisible();
@@ -241,7 +245,8 @@ test("rename a worktree with F2; Enter and Esc give the row back the keyboard", 
 test("a project folds with ← and → on its row", async ({ app }) => {
   await app.open();
   const page = app.page;
-  const project = page.locator('[data-sidebar="menu-button"][aria-expanded]').first();
+  // A project's row (the More menu's button is expanded-able too, as a menu).
+  const project = page.locator('[data-sidebar="menu-button"][aria-expanded]:not([aria-haspopup])').first();
   await project.focus();
   await expect(project).toHaveAttribute("aria-expanded", "true");
   await page.keyboard.press("ArrowLeft");
@@ -254,7 +259,9 @@ test("the sidebar's edge resizes from the keyboard, and shows it has it", async 
   await app.open();
   const page = app.page;
   const handle = page.getByRole("separator", { name: "Resize the sidebar" });
-  await handle.focus();
+  // Reached with the keyboard: the sidebar's first stop, before Home.
+  await page.getByTestId("nav-home").focus();
+  await pressTo(page, handle, "Shift+Tab", 5);
   expect(await shows(page)).toBe(true);
   await page.keyboard.press("ArrowRight");
   await expect(handle).toHaveAttribute("aria-valuenow", "256");
@@ -298,7 +305,7 @@ test("⌘K lists what the menus and shortcuts do", async ({ app }) => {
     ["review", "Review"],
     ["preview", "New Preview tab"],
     ["rename", "Rename this worktree…"],
-    ["terminal settings", "Settings: Terminal"],
+    ["settings: terminal", "Settings: Terminal"],
     ["do not disturb", "Turn on Do not disturb"],
   ]) {
     await page.keyboard.press("ControlOrMeta+a");
@@ -361,7 +368,9 @@ test("the shortcuts sheet traps the keyboard while open, and Esc gives it back",
   await expect(sheet).toBeVisible();
   for (let i = 0; i < 8; i++) {
     await page.keyboard.press("Tab");
-    expect(await page.evaluate(() => !!document.activeElement?.closest("[role=dialog]")), "Tab left the open sheet").toBe(true);
+    // The trap's own guards sit just outside the popup and send the keyboard
+    // round to its start; anything else outside is a leak.
+    expect(await page.evaluate(() => !!document.activeElement?.closest("[role=dialog], [data-floating-ui-focus-guard], [data-base-ui-focus-guard], span[aria-hidden=true]")), "Tab left the open sheet").toBe(true);
   }
   await page.keyboard.press("Escape");
   await expect(sheet).toHaveCount(0);

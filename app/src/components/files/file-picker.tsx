@@ -13,6 +13,7 @@ import { errorMessage } from "@/lib/format";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { useHereKey, useHereRef } from "@/lib/workspaces";
+import { focusNewPane } from "@/lib/focus-home";
 
 // The preview, with the editor, is its own chunk.
 const Preview = lazy(() => import("@/components/files/file-preview"));
@@ -132,6 +133,8 @@ function Picker() {
     if (!e) return;
     setPickerOpen(false);
     openFile(e.path, how);
+    // The file takes the keyboard, in its tab or beside (not in an editor app).
+    if (how !== "external") focusNewPane();
   };
   // ↵ before the box has answered what you typed opens its best match as
   // soon as it does.
