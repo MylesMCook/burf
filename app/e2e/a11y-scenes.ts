@@ -10,6 +10,9 @@ export interface Scene {
   // The checks that need the whole app on screen; contrast runs these in
   // every built-in theme.
   key?: boolean;
+  // Another state of a screen another scene already checks: run only with
+  // A11Y_FULL=1, to keep CI quick.
+  extra?: boolean;
   run(app: App, theme: string): Promise<void>;
 }
 
@@ -151,6 +154,7 @@ export const scenes: Scene[] = [
   },
   {
     id: "chat-question",
+    extra: true,
     async run(app, theme) {
       await chat(app, theme, "gpu/shop");
       await expect(app.chat.getByTestId("question-form")).toBeVisible();
@@ -325,6 +329,7 @@ export const scenes: Scene[] = [
   },
   {
     id: "artifact-versions",
+    extra: true,
     async run(app, theme) {
       const pane = await openArt(app, theme, P95);
       await app.page.evaluate(() => (window as unknown as { __art: { bump(): Promise<void> } }).__art.bump());
@@ -334,6 +339,7 @@ export const scenes: Scene[] = [
   },
   {
     id: "artifact-source",
+    extra: true,
     async run(app, theme) {
       const pane = await openArt(app, theme, P95);
       await pane.getByTestId("art-source-toggle").click();
@@ -351,6 +357,7 @@ export const scenes: Scene[] = [
   },
   {
     id: "artifact-table",
+    extra: true,
     async run(app, theme) {
       await chat(app, theme, "devl/search-perf");
       await app.page.getByTestId("art-chip").click();
@@ -369,6 +376,7 @@ export const scenes: Scene[] = [
   },
   {
     id: "artifact-diagram",
+    extra: true,
     async run(app, theme) {
       const pane = await fromBoard(app, theme, "a1f3c0d2e4");
       await expect(pane.locator("[data-art-diagram] svg").first()).toBeVisible();
@@ -376,6 +384,7 @@ export const scenes: Scene[] = [
   },
   {
     id: "artifact-notes",
+    extra: true,
     async run(app, theme) {
       const pane = await fromBoard(app, theme, "c4d9e2b7a1");
       await expect(pane.locator("[data-art-notes]")).toBeVisible();
@@ -383,6 +392,7 @@ export const scenes: Scene[] = [
   },
   {
     id: "artifact-compare-lane",
+    extra: true,
     async run(app, theme) {
       await chat(app, theme, "devl/search-perf");
       await app.page.keyboard.press("Meta+Alt+KeyC");
@@ -415,6 +425,7 @@ export const scenes: Scene[] = [
   },
   {
     id: "visual-diff-side-by-side",
+    extra: true,
     async run(app, theme) {
       const pane = await openArt(app, theme, VD);
       await pane.locator("[data-vd-mode=side]").click();
@@ -423,6 +434,7 @@ export const scenes: Scene[] = [
   },
   {
     id: "visual-diff-onion",
+    extra: true,
     async run(app, theme) {
       const pane = await openArt(app, theme, VD);
       await pane.locator("[data-vd-mode=onion]").click();
@@ -431,6 +443,7 @@ export const scenes: Scene[] = [
   },
   {
     id: "visual-diff-all-shots",
+    extra: true,
     async run(app, theme) {
       const pane = await openArt(app, theme, VD);
       await pane.locator("[data-vd-all]").click();
@@ -447,6 +460,7 @@ export const scenes: Scene[] = [
   },
   {
     id: "visual-diff-accept",
+    extra: true,
     async run(app, theme) {
       const pane = await openArt(app, theme, VD);
       await pane.locator("[data-vd-accept]").click();
@@ -455,6 +469,7 @@ export const scenes: Scene[] = [
   },
   {
     id: "visual-diff-all-clear",
+    extra: true,
     async run(app, theme) {
       const pane = await openArt(app, theme, CLEAR);
       await expect(pane.locator("[data-vd-all-clear]")).toBeVisible();
