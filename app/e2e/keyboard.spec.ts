@@ -1,7 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
 
 import { openBrowser } from "./a11y-scenes";
-import { type App, expect, mockOnly, test } from "./fixtures";
+import { type App, agentWorktree, expect, mockOnly, test } from "./fixtures";
 
 // The core flows with the keyboard alone: Tab and Shift-Tab, arrows, Enter,
 // Esc and the documented shortcuts (lib/shortcuts.json). After every step
@@ -56,7 +56,7 @@ async function pressTo(page: Page, target: Locator, key = "Tab", max = 40) {
 
 const chat = async (app: App, wt: string) => {
   await app.open({ params: { view: "conversation" } });
-  await app.openWorktree(wt);
+  await app.openWorktree(await agentWorktree(app, wt));
   await expect(app.chat).toBeVisible();
 };
 
@@ -196,7 +196,7 @@ test("⌘⇧E puts the keyboard in the Files panel, and New file names one there
 
 test("split, switch tabs and move between panes with the keyboard", async ({ app }) => {
   await app.open({ params: { view: "conversation" } });
-  await app.openWorktree("devl/checkout-fix");
+  await app.openWorktree(await agentWorktree(app, "devl/checkout-fix"));
   const page = app.page;
   await page.keyboard.press("Meta+d");
   await expect(app.panes).toHaveCount(2);
@@ -292,7 +292,7 @@ test("⌘K reaches Settings and a theme is chosen with the keyboard", async ({ a
 
 test("⌘K lists what the menus and shortcuts do", async ({ app }) => {
   await app.open();
-  await app.openWorktree("devl/checkout-fix");
+  await app.openWorktree(await agentWorktree(app, "devl/checkout-fix"));
   const page = app.page;
   await page.keyboard.press("Meta+k");
   const list = page.getByRole("listbox");

@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 
-import { expect, mockOnly, test } from "./fixtures";
+import { agentWorktree, expect, mockOnly, test } from "./fixtures";
 
 // Reduce motion (index.css, lib/motion.ts): with it on, nothing on screen
 // keeps moving: no spinner, shimmer, pulse, the pixel loader, the harbour
@@ -32,12 +32,13 @@ test("Home, its widgets and the sidebar's spinners hold still", async ({ app }) 
 
 test("a working agent's chat holds still: no shimmer, spinner or pulse", async ({ app }) => {
   await app.open({ params: { view: "conversation" } });
-  await app.openWorktree("gpu/judge-v2");
+  await app.openWorktree(await agentWorktree(app, "gpu/judge-v2"));
   await expect(app.chat).toBeVisible();
   expect(await moving(app.page)).toEqual([]);
 });
 
 test("the folded rail and a sheet open without moving", async ({ app }) => {
+  mockOnly("the rail lists the mock's agents");
   await app.open();
   await app.page.getByRole("button", { name: "Hide the sidebar" }).click();
   await expect(app.page.getByRole("navigation", { name: "Agents" })).toBeVisible();

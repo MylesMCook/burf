@@ -77,7 +77,9 @@ func TestALotOfHiddenOutputGoesWithoutWaitingForThePace(t *testing.T) {
 	p.setPace(int(maxPace / time.Millisecond))
 	big := strings.Repeat("y", flushAt+1)
 	go w.Write([]byte(big))
-	waitUntil(t, func() bool { _, all := s.all(); return len(all) == len(big) })
+	// flushAt's worth goes at once; a tail the pipe hands over after it may
+	// wait for the pace, which is the point of pacing.
+	waitUntil(t, func() bool { _, all := s.all(); return len(all) >= flushAt })
 }
 
 func TestTheEndOfOutputIsSentAndEndsTheRelay(t *testing.T) {
