@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { BanIcon, BugIcon, ChevronRightIcon, CircleXIcon, InfoIcon, SendIcon, SquareDashedMousePointerIcon, SquareTerminalIcon, TriangleAlertIcon, XIcon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
@@ -276,8 +276,8 @@ function ConsoleList({ log, agent, sending, onSend }: { log?: PaneLog; agent?: b
         className="min-h-0 flex-1 overflow-y-auto font-mono text-[11.5px] leading-[1.45]"
       >
         {log?.dropped ? <p className="border-b px-3 py-1 text-muted-foreground">{log.dropped} earlier messages were dropped: the page logged faster than they could be kept.</p> : null}
-        {shown.map((e, i) => (
-          <ConsoleRow key={`${i}:${e.time}:${e.text.slice(0, 40)}`} e={e} sending={e === sending} onSend={() => onSend(e)} />
+        {shown.map((e) => (
+          <ConsoleRow key={rowKey(e)} e={e} sending={e === sending} onSend={onSend} />
         ))}
         {!shown.length && (
           <p className="px-3 py-3 font-sans text-muted-foreground">
@@ -312,7 +312,22 @@ function LevelIcon({ level }: { level: ConsoleEntry["level"] }) {
   return <span className="size-3.5 shrink-0" />;
 }
 
-function ConsoleRow({ e, sending, onSend }: { e: ConsoleEntry; sending: boolean; onSend(): void }) {
+// Each entry's row keeps its key while newer lines push older ones out of
+// the kept list (lib/devtools-model, CONSOLE_LIMIT): keyed by place, a page
+// logging once a second remade every row of a full console every second.
+const rowKeys = new WeakMap<ConsoleEntry, number>();
+let nextRowKey = 0;
+function rowKey(e: ConsoleEntry): number {
+  let k = rowKeys.get(e);
+  if (k === undefined) rowKeys.set(e, (k = ++nextRowKey));
+  return k;
+}
+
+// A row draws again only when its entry or selection changes, not for each
+// new line below it. onSend is the drawer's, which only sets state.
+const ConsoleRow = memo(ConsoleRowView, (a, b) => a.e === b.e && a.sending === b.sending);
+
+function ConsoleRowView({ e, sending, onSend }: { e: ConsoleEntry; sending: boolean; onSend(e: ConsoleEntry): void }) {
   const [open, setOpen] = useState(false);
   const stack = !!e.stack;
   const sendable = e.level === "error" || e.level === "warn";
@@ -338,7 +353,7 @@ function ConsoleRow({ e, sending, onSend }: { e: ConsoleEntry; sending: boolean;
           <span className="mt-px max-w-48 shrink-0 truncate text-[11px] text-muted-foreground underline decoration-dotted underline-offset-2">{shortAt(e.at)}</span>
         </Tip>
       )}
-      {sendable && <SendButton onClick={onSend} />}
+      {sendable && <SendButton onClick={() => onSend(e)} />}
     </div>
   );
 }
