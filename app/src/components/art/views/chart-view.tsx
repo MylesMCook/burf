@@ -1,5 +1,5 @@
 import { MotionConfig } from "motion/react";
-import { useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { Area } from "@/components/charts/area";
 import { AreaChart } from "@/components/charts/area-chart";
@@ -38,11 +38,22 @@ const THUMB_W = 560;
 
 export default function ChartView({ body, size, height }: ViewProps) {
   const spec = useMemo(() => parseChart(body), [body]);
+  const [box, width] = useWidth();
   useDocumentChartVars();
   if (!spec) return <Broken why="This chart's JSON doesn't parse." />;
   const p = plan(spec);
   if (size === "thumb") {
     const h = height ?? 120;
+    // The funnel measures itself on screen, scaled or not: drawn at the
+    // thumbnail's own size.
+    if (p.type === "funnel")
+      return (
+        <div className="pointer-events-none" style={{ height: h }} aria-hidden>
+          <MotionConfig reducedMotion="user">
+            <Drawn spec={spec} p={p} thumb />
+          </MotionConfig>
+        </div>
+      );
     return (
       <Thumb h={h} width={THUMB_W}>
         <div className="art-thumb-chart h-full">
@@ -61,10 +72,10 @@ export default function ChartView({ body, size, height }: ViewProps) {
           <Legend spec={spec} />
         </div>
       )}
-      <div className="relative max-h-[36rem] min-h-[14rem] flex-1">
+      <div ref={box} className="relative max-h-[36rem] min-h-[14rem] flex-1">
         <div className="absolute inset-0">
           <MotionConfig reducedMotion="user">
-            <Drawn spec={spec} p={p} />
+            <Drawn spec={spec} p={narrowBars(p, width)} />
           </MotionConfig>
         </div>
       </div>
@@ -78,6 +89,26 @@ export default function ChartView({ body, size, height }: ViewProps) {
       ) : null}
     </div>
   );
+}
+
+function useWidth(): [React.RefCallback<HTMLDivElement>, number] {
+  const [w, setW] = useState(0);
+  const ro = useRef<ResizeObserver | null>(null);
+  const ref = useCallback((el: HTMLDivElement | null) => {
+    ro.current?.disconnect();
+    if (!el) return;
+    ro.current = new ResizeObserver(([e]) => setW(e.contentRect.width));
+    ro.current.observe(el);
+  }, []);
+  return [ref, w];
+}
+
+// narrowBars lays a bar chart sideways when its categories' names wouldn't
+// fit under the bars.
+function narrowBars(p: ChartPlan, width: number): ChartPlan {
+  if (p.type !== "bar" || p.horizontal || !width) return p;
+  const longest = Math.max(...p.data.map((r) => String(r[p.x] ?? "").length));
+  return longest * 7 + 16 > width / Math.max(1, p.data.length) ? { ...p, horizontal: true } : p;
 }
 
 // useDocumentChartVars puts the theme's chart variables on <html> while a

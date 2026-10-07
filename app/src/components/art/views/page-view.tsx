@@ -82,7 +82,7 @@ function Poster({ body, height, title }: { body: string; height: number; title: 
         <span className="min-w-0 flex-1 truncate font-medium text-[0.75rem] text-foreground">{title}</span>
         <LockIcon className="size-3" />
       </div>
-      {g && <div className="line-clamp-2 font-semibold text-[0.8125rem] leading-snug">{g.text}</div>}
+      {g && <div className={cn("font-semibold text-[0.8125rem] leading-snug", height < 110 ? "truncate" : "line-clamp-2")}>{g.text}</div>}
       <div className={cn("text-[0.6875rem] text-muted-foreground leading-snug", height < 110 ? "line-clamp-2" : "line-clamp-3")}>{words}</div>
       <div className="mt-auto flex gap-1">
         {[62, 40, 78].map((w) => (

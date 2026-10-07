@@ -14,11 +14,13 @@ export function Thumb({ h, width = 720, children }: { h: number; width?: number;
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const k = (w || 240) / width;
+  // Drawn at least at width, wider when there is room: never scaled up.
+  const W = Math.max(width, w);
+  const k = (w || 240) / W;
   return (
     <div ref={ref} className="pointer-events-none relative w-full overflow-hidden" style={{ height: h }} aria-hidden>
       {w > 0 && (
-        <div className="absolute top-0 left-0 origin-top-left" style={{ width, height: h / k, transform: `scale(${k})` }}>
+        <div className="absolute top-0 left-0 origin-top-left" style={{ width: W, height: h / k, transform: `scale(${k})` }}>
           {children}
         </div>
       )}

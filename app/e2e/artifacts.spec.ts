@@ -131,8 +131,8 @@ test("Compare's Artifacts lane shows each side's board", async ({ app }) => {
   const boards = app.page.locator("[data-pane-area] [data-compare-side]:visible [data-testid=artifact-board]");
   await expect(boards).toHaveCount(2);
   // search-perf's agents made thirteen; checkout-fix's none yet.
-  await expect(boards.nth(0).locator("[data-art-tile]")).toHaveCount(13);
-  await expect(boards.nth(1)).toContainText("No artifacts here yet");
+  await expect(boards.filter({ hasText: "13 made by its agents" }).locator("[data-art-tile]")).toHaveCount(13);
+  await expect(boards.filter({ hasText: "No artifacts here yet" })).toHaveCount(1);
 });
 
 const TYPES: [string, string, string][] = [
@@ -148,6 +148,8 @@ const TYPES: [string, string, string][] = [
 ];
 
 test("every chart type draws, and the other kinds too", async ({ app }) => {
+  // Twelve artifacts opened one after another.
+  test.slow();
   await openChat(app);
   await app.page.getByTestId("art-chip").click();
   for (const [id, type, mark] of TYPES) {
