@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import type { TranscriptItem } from "@/lib/transcript";
-import { foldPings, needsYou, overScreen, senderColor, teammatesOf, type PingItem } from "./agent-messages.ts";
+import { foldPings, needsYou, overScreen, senderColor, teammatesOf, type PingItem, withoutReminders } from "./agent-messages.ts";
 
 const ping = (id: string, status: string, at?: number): PingItem => ({ kind: "ping", id, msg: { from: { id: "b", name: "Background command", kind: "harness" }, status, summary: id, at } });
 const text = (id: string): TranscriptItem => ({ kind: "text", id, text: id });
@@ -52,4 +52,10 @@ test("teammates are listed once each, with their latest message", () => {
 test("a report longer than about a screen is over it", () => {
   assert.equal(overScreen("short"), false);
   assert.equal(overScreen(Array.from({ length: 60 }, (_, i) => `line ${i}`).join("\n")), true);
+});
+
+test("reminders an older box left in a prompt don't show", () => {
+  assert.equal(withoutReminders("Fix it\n\n<system-reminder>\nUse the task tools.\n</system-reminder>"), "Fix it");
+  assert.equal(withoutReminders("<system-reminder>x</system-reminder>"), "");
+  assert.equal(withoutReminders("plain"), "plain");
 });

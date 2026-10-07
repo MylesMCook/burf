@@ -133,3 +133,8 @@ const firstLine = (s: string) => s.split("\n").find((l) => l.trim())?.trim() ?? 
 export function messageText(m: AgentMessage): string {
   return [m.from.name, m.title, m.summary, m.body].filter(Boolean).join("\n");
 }
+
+// withoutReminders is a prompt without the <system-reminder> blocks Claude
+// Code appends to it: the box takes them out (peer.go), and an older box
+// that doesn't still never shows them as the person's words.
+export const withoutReminders = (s: string) => (s.includes("<system-reminder>") ? s.replace(/\s*<system-reminder>[\s\S]*?<\/system-reminder>\s*/g, "\n").trim() : s);

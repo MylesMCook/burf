@@ -17,7 +17,7 @@ import { HARBOUR_WORDS } from "@/lib/screen-status";
 import { NoticeCard } from "@/components/conversation/notice-card";
 import { ReportCard, reportName, reportWord } from "@/components/conversation/report-card";
 import { AgentMessageCard, MidTurnMark, PingGroup, PingLine } from "@/components/conversation/agent-message";
-import { foldPings, messageText, type PingItem } from "@/lib/agent-messages";
+import { foldPings, messageText, type PingItem, withoutReminders } from "@/lib/agent-messages";
 import { CommandItem } from "@/components/conversation/command-item";
 import { ChatList } from "@/components/conversation/chat-list";
 import { ChatSearch, plainMarkdown, type SearchEntry } from "@/components/conversation/chat-search";
@@ -227,7 +227,7 @@ function searchEntries(blocks: Block[]): SearchEntry[] {
 function searchable(it: TranscriptItem): string {
   switch (it.kind) {
     case "user":
-      return it.text;
+      return withoutReminders(it.text);
     case "text":
       return plainMarkdown(it.text);
     case "tools":
@@ -400,13 +400,15 @@ function Item(props: { it: TranscriptItem; onAnswer(id: string, key: string): vo
 
 function ItemBody({ it, onAnswer, edits, who }: { it: TranscriptItem; onAnswer(id: string, key: string): void; edits?: EditActions; who: string }) {
   switch (it.kind) {
-    case "user":
+    case "user": {
+      const text = withoutReminders(it.text);
+      if (!text) return null;
       return (
         <div className="hs-prompt flex w-full flex-col items-end gap-1">
           <div className="flex w-full items-end justify-end gap-1.5">
             {!it.pending && <PromptActions it={it} />}
             <div data-selectable className={cn("cv-in min-w-0 max-w-[80%] whitespace-pre-wrap rounded-2xl bg-muted px-3.5 py-2", it.pending && "opacity-70")}>
-              {it.text}
+              {text}
             </div>
           </div>
           {/* Sent mid-turn: the agent takes it at its next step, as its own
@@ -415,6 +417,7 @@ function ItemBody({ it, onAnswer, edits, who }: { it: TranscriptItem; onAnswer(i
           {it.midTurn && !it.pending && <MidTurnMark who={who} />}
         </div>
       );
+    }
     case "text":
       // A draft (the reply as the agent's screen shows it) draws as the
       // message will, so the message replaces it in place.

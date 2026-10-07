@@ -16,14 +16,15 @@ test("a report from Berth reads as a card with a way to the agent", async ({ app
 
   const done = app.chat.locator("[data-report=finished]");
   await expect(done).toContainText("search-perf");
-  await expect(done).toContainText("finished");
+  // The head agents' messages have (agent-message): a chip says how it went.
+  await expect(done.locator("[data-chip]")).toHaveText("Finished");
   await expect(done).toContainText("+48");
   await expect(done).toContainText("−12");
   await expect(done).toContainText("Search is 3× faster");
 
   const waiting = app.chat.locator("[data-report=waiting]");
   await expect(waiting).toContainText("checkout-fix");
-  await expect(waiting).toContainText("needs you");
+  await expect(waiting.locator("[data-chip]")).toHaveText("Needs you");
   await expect(waiting).toContainText("pnpm prisma migrate dev");
 
   // Never the tagged text, never a prompt of the person's.
