@@ -44,3 +44,22 @@ input, resizing and owned-process cleanup on Windows, not just cross-compilation
 App acceptance tests must cover unavailable CLIs, read-only history and terminal
 reconnection. A successful cross-build is not evidence of native execution or
 desktop usability.
+
+Focused checks:
+
+```sh
+GORACE=atexit_sleep_ms=0 go test -race ./internal/agent ./internal/localagent ./internal/localhistory ./internal/localpty ./internal/transcript
+go vet ./internal/agent ./internal/localagent ./internal/localhistory ./internal/localpty ./internal/transcript
+cd app && pnpm test && pnpm test:e2e -- local-computer.spec.ts windows-client.spec.ts first-run.spec.ts chat.spec.ts
+```
+
+The race setting removes the race runtime's exit delay from synthetic CLI
+subprocesses; it does not disable race detection. Execute Windows test binaries
+for `internal/localpty` and `internal/localhistory` on Windows. The optional
+`BERTH_TEST_INSTALLED_LOCAL_AGENTS=1` test in `internal/agent` checks the installed
+CLIs through ConPTY using `--version`, without starting a model turn.
+
+On Windows, `scripts/test-windows-local.ps1 -Binary <berth.exe>` checks a disposable
+local client. `-ExistingHistory` additionally discovers the current user's local
+conversations and parses one page per source, printing counts only. It does not
+start an agent, edit transcripts, register a login task or change pairings.
