@@ -621,3 +621,29 @@ func TestVisualDiffRoutes(t *testing.T) {
 		t.Fatal("accepted a chart")
 	}
 }
+
+func TestBaselinesGoWithTheirWorktree(t *testing.T) {
+	bx := &Box{Name: "devbox", Events: &events.Bus{}, ShotsDir: t.TempDir()}
+	dir := filepath.Join(bx.ShotsDir, "shop", "search-perf", "baselines", "turn-start")
+	keep := filepath.Join(bx.ShotsDir, "shop", "other", "baselines", "turn-start")
+	os.MkdirAll(dir, 0o755)
+	os.MkdirAll(keep, 0o755)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go bx.RunShots(ctx)
+	time.Sleep(50 * time.Millisecond)
+	bx.Events.Publish(events.Event{Type: "worktree.removed", Data: map[string]any{"location": "shop", "name": "../shop"}})
+	bx.Events.Publish(events.Event{Type: "worktree.removed", Data: map[string]any{"location": "shop", "name": "search-perf", "path": "/w/x"}})
+	for i := 0; i < 100; i++ {
+		if _, err := os.Stat(filepath.Join(bx.ShotsDir, "shop", "search-perf")); err != nil {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if _, err := os.Stat(filepath.Join(bx.ShotsDir, "shop", "search-perf")); err == nil {
+		t.Fatal("the removed worktree's baselines stayed")
+	}
+	if _, err := os.Stat(keep); err != nil {
+		t.Fatal("another worktree's baselines went")
+	}
+}

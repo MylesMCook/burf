@@ -376,3 +376,32 @@ func (b *Box) AcceptBaseline(ctx context.Context, locName, wtName, id string) (S
 	}
 	return ShotsResult{Text: fmt.Sprintf("accepted %s v%d as %s/%s's baseline: %d shots. Compare with it: berthd shots compare --base accepted", id, n, loc.Name, wt.Name, len(bl.Shots)), Artifact: id, Version: n}, nil
 }
+
+// RunShots forgets a worktree's baselines when the worktree is removed
+// (its visual diffs go with its artifacts).
+func (b *Box) RunShots(ctx context.Context) {
+	if b.Events == nil {
+		return
+	}
+	ch, unsub := b.Events.SubscribeNamed("shots")
+	defer unsub()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case e, ok := <-ch:
+			if !ok {
+				return
+			}
+			if e.Type != "worktree.removed" {
+				continue
+			}
+			loc, _ := e.Data["location"].(string)
+			name, _ := e.Data["name"].(string)
+			if loc == "" || name == "" || strings.ContainsAny(loc+name, `/\`) || loc == ".." || name == ".." {
+				continue
+			}
+			os.RemoveAll(filepath.Join(b.shotsDir(), loc, name))
+		}
+	}
+}

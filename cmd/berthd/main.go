@@ -373,6 +373,7 @@ func serve(b boxHome, args []string) error {
 	bx.AgentBrowsers = box.NewAgentBrowsers(bx.Sessions)
 	bx.Artifacts = &box.ArtifactStore{Dir: filepath.Join(b.dir, "artifacts"), Events: bus, Box: hostname}
 	go bx.Artifacts.Run(ctx)
+	go bx.RunShots(ctx)
 	bx.Team = &box.TeamRunner{Dir: filepath.Join(b.dir, "team")}
 	defer bx.Team.Stop()
 	bx.Mount(s)

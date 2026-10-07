@@ -82,7 +82,7 @@ func shotsCmd(ctx context.Context, c *box.Client, sub string, args []string, out
 	if err != nil {
 		return err
 	}
-	req := box.ShotsRequest{Pages: l["pages"], Mask: l["mask"], Session: os.Getenv("BERTH_SESSION")}
+	req := box.ShotsRequest{Pages: l["pages"], Mask: l["mask"], Session: os.Getenv("BERTH_SESSION"), Agent: os.Getenv("BERTH_AGENT")}
 	if cs := l["color-scheme"]; len(cs) > 0 {
 		req.ColorScheme = cs[0]
 	}
