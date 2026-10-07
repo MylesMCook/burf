@@ -1,4 +1,5 @@
 !include LogicLib.nsh
+!define MUI_CUSTOMFUNCTION_ABORT BerthRecover
 Var BerthAgentProgram
 Var BerthLoginProgram
 Var BerthWasRunning
@@ -127,10 +128,6 @@ Function BerthRecover
 FunctionEnd
 
 Function .onInstFailed
-  Call BerthRecover
-FunctionEnd
-
-Function .onUserAbort
   Call BerthRecover
 FunctionEnd
 

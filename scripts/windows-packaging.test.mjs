@@ -20,6 +20,8 @@ test("uninstall and installer recovery use only inspected bundled candidates", (
   assert.match(hooks, /BerthFlag "owned_running"/);
   assert.match(hooks, /"\$BerthLoginProgram" agent uninstall/);
   assert.match(hooks, /Function \.onInstFailed\n  Call BerthRecover/);
+  assert.match(hooks, /!define MUI_CUSTOMFUNCTION_ABORT BerthRecover/);
+  assert.ok(!hooks.includes("Function .onUserAbort"));
   assert.match(hooks, /BerthRestore "cli\\berth\.exe"/);
   assert.match(hooks, /"\$INSTDIR\\Berth\.exe" --remove-cli-path/);
   assert.ok(!hooks.includes("-File"));
