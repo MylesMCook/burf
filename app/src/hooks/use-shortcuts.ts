@@ -22,6 +22,7 @@ import { toggleTree } from "@/lib/file-tree";
 import { findLeaf, leaves, paneWorktree } from "@/lib/layout";
 import { paneKey, toggleDrawer } from "@/lib/devtools";
 import { isOnboardingActive } from "@/views/onboarding/onboarding-state";
+import { focusWithin, rescueFocus } from "@/lib/focus-home";
 
 // The app's shortcuts (lib/shortcuts.json) come two ways: as keys, caught on
 // the window before a terminal sees them, and, in the Mac app, from the menu
@@ -148,11 +149,14 @@ function run(id: string, from: "key" | "menu", arg?: number | Dir): boolean {
       const pane = focused?.content.kind === "browser" ? focused : leaves(tab.root).find((l) => l.content.kind === "browser");
       if (!pane) return false;
       toggleDrawer(paneKey(pane.id));
+      // The keyboard follows: into the drawer as it opens, home as it goes.
+      handOff("[data-testid=devtools-drawer] [role=tab][aria-selected=true]", "[data-testid=devtools-drawer]");
       return true;
     }
     case "file-tree":
       // ⌘⇧E: the Files panel beside the worktree's tabs.
       toggleTree();
+      handOff("[data-testid=files-panel]", "[data-testid=files-panel]");
       return true;
     case "save-file": {
       // ⌘S in a File tab, wherever in it the focus is.
@@ -187,6 +191,22 @@ function run(id: string, from: "key" | "menu", arg?: number | Dir): boolean {
       return true;
   }
   return false;
+}
+
+// handOff moves the keyboard with a panel a shortcut showed or hid: to the
+// panel's first control (or target) once it is there, or home when the
+// panel that had the keyboard went away.
+function handOff(target: string, panel: string) {
+  const had = !!document.activeElement?.closest(panel);
+  window.setTimeout(() => {
+    const el = document.querySelector<HTMLElement>(target);
+    if (!el) {
+      if (had) rescueFocus(0);
+      return;
+    }
+    if (el.matches(panel)) focusWithin(() => el);
+    else el.focus({ preventScroll: true });
+  }, 60);
 }
 
 // One press can arrive both ways (the page's keydown, then the menu bar, or

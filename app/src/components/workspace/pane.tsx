@@ -116,7 +116,13 @@ export function Pane({ wsKey, tab, pane, visible, focused, split, mixed, compare
         )}
         <div className={cn("relative flex min-h-0 flex-1 flex-col transition-opacity", split && !focused && "opacity-85", lifted && "opacity-40")}>
           {gone && <GonePane name={gone} onClose={close} />}
-          {c.kind === "terminal" && <TerminalView box={c.box} session={c.session} agent={c.agent} command={c.command} wsKey={wsKey} tab={tab} pane={pane.id} visible={visible && view !== "conversation"} focused={focused && view !== "conversation"} onFocus={focus} onClose={close} />}
+          {/* Under a chat the terminal is out of reach: Tab never lands in its
+              hidden input, where it would type a tab and keep the focus. */}
+          {c.kind === "terminal" && (
+            <div className="contents" inert={view === "conversation" || undefined}>
+              <TerminalView box={c.box} session={c.session} agent={c.agent} command={c.command} wsKey={wsKey} tab={tab} pane={pane.id} visible={visible && view !== "conversation"} focused={focused && view !== "conversation"} onFocus={focus} onClose={close} />
+            </div>
+          )}
           {/* The terminal stays connected underneath, so switching back is instant. */}
           {c.kind === "terminal" && view === "conversation" && (
             <div className="absolute inset-0 z-10 flex flex-col">

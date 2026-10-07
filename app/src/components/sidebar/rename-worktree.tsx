@@ -52,11 +52,14 @@ export function WorktreeNameField({ box, loc, wt, onDone }: { box: string; loc: 
     }, 60);
     return () => window.clearTimeout(t);
   }, []);
-  const finish = (next?: string) => {
+  const finish = (next?: string, refocus = false) => {
     if (done.current) return;
     done.current = true;
     onDone();
     if (next !== undefined) void renameWorktree(box, loc, wt, next);
+    // Enter and Esc hand the keyboard back to the row, not to the page.
+    if (refocus)
+      requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-testid="worktree-row"][data-worktree="${CSS.escape(`${box}/${wt.name}`)}"]`)?.focus());
   };
   return (
     <div data-testid="worktree-rename" className="flex flex-col gap-1 rounded-lg bg-sidebar-accent/60 px-1.5 py-1">
@@ -70,8 +73,8 @@ export function WorktreeNameField({ box, loc, wt, onDone }: { box: string; loc: 
         onChange={(e) => setV(e.target.value)}
         onKeyDown={(e) => {
           e.stopPropagation();
-          if (e.key === "Enter") finish(v);
-          if (e.key === "Escape") finish();
+          if (e.key === "Enter") finish(v, true);
+          if (e.key === "Escape") finish(undefined, true);
         }}
         onBlur={(e) => {
           // A click on the suggestion is not leaving.

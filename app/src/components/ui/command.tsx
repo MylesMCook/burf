@@ -3,6 +3,7 @@
 import { Dialog as CommandDialogPrimitive } from "@base-ui/react/dialog";
 import { SearchIcon } from "lucide-react";
 import type * as React from "react";
+import { FocusRescue } from "@/lib/focus-home";
 import { cn } from "@/lib/utils";
 import {
   Autocomplete,
@@ -88,6 +89,7 @@ export function CommandDialogPopup({
           data-slot="command-dialog-popup"
           {...props}
         >
+          <FocusRescue />
           {children}
         </CommandDialogPrimitive.Popup>
       </CommandDialogViewport>
