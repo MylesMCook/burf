@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -74,9 +75,16 @@ func TestEventDataCannotReplaceFixedVariables(t *testing.T) {
 func TestRunnerRunsMatchingHooksWithTheEventOnStdin(t *testing.T) {
 	dir := t.TempDir()
 	out := filepath.Join(dir, "out")
+	run := "cat > " + out + "; echo \" $BERTH_ORIGIN\" >> " + out
+	nonmatching := "echo should-not-run >> " + out
+	if runtime.GOOS == "windows" {
+		quoted := "'" + strings.ReplaceAll(out, "'", "''") + "'"
+		run = "[IO.File]::WriteAllText(" + quoted + ", [Console]::In.ReadToEnd() + ' ' + $env:BERTH_ORIGIN)"
+		nonmatching = "[IO.File]::AppendAllText(" + quoted + ", 'should-not-run')"
+	}
 	cfg := Config{Hooks: []Hook{
-		{On: "worktree.*", Run: "cat > " + out + "; echo \" $BERTH_ORIGIN\" >> " + out, Tool: "herdr"},
-		{On: "session.started", Run: "echo should-not-run >> " + out},
+		{On: "worktree.*", Run: run, Tool: "herdr"},
+		{On: "session.started", Run: nonmatching},
 	}}
 	b, _ := json.Marshal(cfg)
 	path := filepath.Join(dir, "hooks.json")
@@ -115,11 +123,15 @@ func TestABrokenConfigRunsNothingAndDoesNotCrash(t *testing.T) {
 
 func TestBeforeHooksGateOnlyTheirAction(t *testing.T) {
 	dir := t.TempDir()
-	cfg := `{"hooks":[
-		{"on":"before:worktree.create","run":"echo 'branches must start with fix/' >&2; exit 1"},
-		{"on":"worktree.create","run":"exit 1"}
-	]}`
-	os.WriteFile(filepath.Join(dir, "hooks.json"), []byte(cfg), 0o600)
+	run := "echo 'branches must start with fix/' >&2; exit 1"
+	if runtime.GOOS == "windows" {
+		run = "[Console]::Error.WriteLine('branches must start with fix/'); exit 1"
+	}
+	cfg, _ := json.Marshal(Config{Hooks: []Hook{
+		{On: "before:worktree.create", Run: run},
+		{On: "worktree.create", Run: "exit 1"},
+	}})
+	os.WriteFile(filepath.Join(dir, "hooks.json"), cfg, 0o600)
 	r := &Runner{Path: filepath.Join(dir, "hooks.json")}
 	err := r.Before(context.Background(), events.Event{Type: "worktree.create"})
 	if err == nil || !strings.Contains(err.Error(), "branches must start with fix/") {
@@ -141,7 +153,12 @@ func TestPluginHooksRunInThePluginsFolderUnlessDisabled(t *testing.T) {
 	plugins := t.TempDir()
 	dir := filepath.Join(plugins, "notify")
 	os.MkdirAll(dir, 0o700)
-	os.WriteFile(filepath.Join(dir, PluginManifest), []byte(`{"id":"notify","hooks":[{"on":"before:session.start","run":"pwd; exit 3"}]}`), 0o600)
+	run := "pwd; exit 3"
+	if runtime.GOOS == "windows" {
+		run = "[Console]::Out.WriteLine((Get-Location).ProviderPath); exit 3"
+	}
+	manifest, _ := json.Marshal(map[string]any{"id": "notify", "hooks": []Hook{{On: "before:session.start", Run: run}}})
+	os.WriteFile(filepath.Join(dir, PluginManifest), manifest, 0o600)
 	r := &Runner{Path: filepath.Join(t.TempDir(), "missing.json"), PluginsDir: plugins}
 	if err := r.Before(context.Background(), events.Event{Type: "session.start"}); err != nil {
 		t.Fatalf("a plugin nobody allowed ran its hook: %v", err)
