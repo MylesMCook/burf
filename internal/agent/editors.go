@@ -94,7 +94,7 @@ func (a *Agent) editors() []Editor {
 
 func isExecutable(p string) bool {
 	info, err := os.Stat(p)
-	return err == nil && !info.IsDir() && info.Mode()&0o111 != 0
+	return err == nil && info.Mode().IsRegular() && (runtime.GOOS == "windows" || info.Mode()&0o111 != 0)
 }
 
 // lookPath also looks where Homebrew and installers put CLIs, since the
