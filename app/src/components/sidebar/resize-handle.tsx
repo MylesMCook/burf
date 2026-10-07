@@ -181,7 +181,7 @@ export function SidebarResizeHandle({ folded = false }: { folded?: boolean }) {
         className={cn(
           "group/handle absolute inset-y-0 -right-[4px] z-30 w-[8px] cursor-col-resize touch-none outline-none",
           // A line at the edge on hover, focus and while dragging.
-          "after:absolute after:inset-y-0 after:left-[3px] after:w-[2px] after:rounded-full after:bg-transparent after:transition-colors after:delay-75 hover:after:bg-ring/70 focus-visible:after:bg-ring data-dragging:after:bg-ring data-dragging:after:delay-0",
+          "after:absolute after:inset-y-0 after:left-[3px] after:w-[2px] after:rounded-full after:bg-transparent after:transition-colors after:delay-75 hover:after:bg-ring focus-visible:after:bg-ring data-dragging:after:bg-ring data-dragging:after:delay-0",
         )}
       />
     </Tip>

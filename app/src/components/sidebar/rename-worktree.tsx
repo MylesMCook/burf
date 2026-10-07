@@ -81,7 +81,8 @@ export function WorktreeNameField({ box, loc, wt, onDone }: { box: string; loc: 
         className="h-6 w-full min-w-0 rounded-md border border-ring bg-background px-1.5 text-[13px] text-foreground outline-none ring-2 ring-ring/24 placeholder:text-muted-foreground/72"
       />
       <span id={`wt-hint-${CSS.escape(wt.path)}`} className="px-0.5 text-[11px] text-muted-foreground leading-snug [overflow-wrap:anywhere]">
-        {branchHint(box, wt)} Empty shows its name.
+        The branch stays <span className="font-mono text-[10.5px] text-foreground/75">{wt.branch || wt.name}</span>.
+        {boxNamesWorktrees(box) === false ? ` Kept on this laptop: ${box} is older.` : ""} Empty shows its name.
       </span>
       {suggestion && suggestion !== v.trim() && (
         <button
