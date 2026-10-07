@@ -19,7 +19,8 @@ import { newTerminal } from "@/components/box-picker";
 import { zoom } from "@/lib/zoom";
 import { docKey, save, setPickerOpen, useFiles } from "@/lib/files";
 import { toggleTree } from "@/lib/file-tree";
-import { findLeaf, paneWorktree } from "@/lib/layout";
+import { findLeaf, leaves, paneWorktree } from "@/lib/layout";
+import { paneKey, toggleDrawer } from "@/lib/devtools";
 import { isOnboardingActive } from "@/views/onboarding/onboarding-state";
 
 // The app's shortcuts (lib/shortcuts.json) come two ways: as keys, caught on
@@ -139,6 +140,16 @@ function run(id: string, from: "key" | "menu", arg?: number | Dir): boolean {
       if (s.paletteOpen) s.setPaletteOpen(false);
       setPickerOpen(!useFiles.getState().pickerOpen);
       return true;
+    case "devtools": {
+      // ⌘⌥I: the focused Browser pane's Console and Network drawer, else
+      // the tab's first Browser pane's.
+      if (!inWorkspace || !tab) return false;
+      const focused = findLeaf(tab.root, tab.focus);
+      const pane = focused?.content.kind === "browser" ? focused : leaves(tab.root).find((l) => l.content.kind === "browser");
+      if (!pane) return false;
+      toggleDrawer(paneKey(pane.id));
+      return true;
+    }
     case "file-tree":
       // ⌘⇧E: the Files panel beside the worktree's tabs.
       toggleTree();
@@ -196,7 +207,7 @@ function fromKey(e: KeyboardEvent): [string, (number | Dir)?] | undefined {
   if (e.altKey) {
     if (e.key in arrows) return ["focus", arrows[e.key]];
     if (e.shiftKey) return undefined;
-    return e.code === "KeyD" ? ["split-worktree"] : e.code === "KeyC" ? ["compare"] : e.code === "KeyS" ? ["compare-swap"] : undefined;
+    return e.code === "KeyD" ? ["split-worktree"] : e.code === "KeyC" ? ["compare"] : e.code === "KeyS" ? ["compare-swap"] : e.code === "KeyI" ? ["devtools"] : undefined;
   }
   const key = e.key.toLowerCase();
   const shift = e.shiftKey;

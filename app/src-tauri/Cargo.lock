@@ -245,6 +245,7 @@ name = "berth"
 version = "0.3.9"
 dependencies = [
  "dirs 6.0.0",
+ "objc2",
  "serde",
  "serde_json",
  "tauri",

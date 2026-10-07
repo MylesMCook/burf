@@ -452,6 +452,24 @@ func TestProxyServesBoxPortsAtLocalhostNames(t *testing.T) {
 	if want := "app on the box saw localhost:" + strconv.Itoa(port); string(body) != want {
 		t.Fatalf("proxy body = %q, want %q", body, want)
 	}
+
+	// The Browser tab's Network drawer reads what the proxy relayed.
+	var log struct {
+		Requests []struct {
+			Path   string `json:"path"`
+			Status int    `json:"status"`
+		} `json:"requests"`
+		Last int64 `json:"last"`
+	}
+	if err := a.client.Call(context.Background(), http.MethodGet, "/v1/proxy/requests?host="+req.Host, nil, &log); err != nil {
+		t.Fatal(err)
+	}
+	if len(log.Requests) != 1 || log.Requests[0].Path != "/" || log.Requests[0].Status != 200 || log.Last != 1 {
+		t.Fatalf("request log = %+v", log)
+	}
+	if err := a.client.Call(context.Background(), http.MethodGet, "/v1/proxy/requests?host="+req.Host+"&after=1", nil, &log); err != nil || len(log.Requests) != 0 {
+		t.Fatalf("request log after 1 = %+v, %v", log, err)
+	}
 }
 
 func TestOnlyOneAgentRunsPerStateDirectory(t *testing.T) {

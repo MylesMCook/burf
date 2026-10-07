@@ -4,6 +4,7 @@ import { flowsCall } from "@/lib/mock-flows";
 import { runsCall } from "@/lib/mock-runs";
 import { mockRequirements } from "@/lib/mock-requirements";
 import { browserCall, mockScreencast, mockShotSvg } from "@/lib/mock-browser";
+import { mockDevtoolsCall } from "@/lib/mock-devtools";
 import { phoneCall } from "@/lib/mock-phone";
 import { worktreesCall } from "@/lib/mock-worktrees";
 import { kitsCall, kitsStream } from "@/lib/mock-kits";
@@ -653,7 +654,7 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
       build: mockBuilds[box] ?? SHIPPED_BUILD,
       tools: ["claude", "codex"],
       home: HOME,
-      capabilities: ["diff", "turns", "queue", "ask", "answer", "journal", "runs", "exec.detach", "browser", "titles", "sample", "service.terminal", "session.home", "agents.install"],
+      capabilities: ["diff", "turns", "queue", "ask", "answer", "journal", "runs", "exec.detach", "browser", "browser.devtools", "titles", "sample", "service.terminal", "session.home", "agents.install"],
       adapters: {
         claude: { ready: true, started: true, waiting: true, finished: true, final_message: true, via: "hooks" },
         codex: { ready: true, started: true, waiting: true, finished: true, final_message: true, via: "hooks" },
@@ -1162,6 +1163,8 @@ export function mockClient(): Client {
       }
       const diag = mockDiagnosticsCall(method, path);
       if (diag) return diag as Promise<T>;
+      const requests = mockDevtoolsCall(method, path);
+      if (requests) return delay(requests) as Promise<T>;
       const thisMac = localBoxCall(method, path);
       if (thisMac) return thisMac as Promise<T>;
       const boxes = laptopBoxes(method, path, body);

@@ -6,6 +6,11 @@
 // Commands that create webviews are async: Window::add_child waits for the
 // main thread, which a synchronous command would already be holding.
 
+use std::collections::HashSet;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
 use serde::Serialize;
 use tauri::webview::{PageLoadEvent, WebviewBuilder};
 use tauri::{AppHandle, Emitter, LogicalPosition, LogicalSize, Manager, Url, Webview, WebviewUrl};
@@ -54,6 +59,101 @@ struct Picked {
     url: String,
 }
 
+// The Console drawer's script, the same file the laptop's proxy puts into a
+// Browser tab's frame (internal/proxy/devtools.js). It runs at the start of
+// every page in a pane and keeps what the page logs; the pane's watcher
+// (watch_console) asks it for what is new and sends it to the app as
+// CONSOLE_EVENT.
+const DEVTOOLS_JS: &str = include_str!("../../../internal/proxy/devtools.js");
+
+const CONSOLE_EVENT: &str = "berth://browser-console";
+
+#[derive(Clone, Serialize)]
+struct Console {
+    id: String,
+    // The script's report, as JSON (lib/devtools.ts reads it).
+    data: String,
+}
+
+// DRAIN asks the page's script for what is new. It always returns a string,
+// whatever the page has done to its globals: WebKit's result must be
+// something JSON can write.
+const DRAIN: &str = "(function(){try{var d=window.__berthDevtools;var s=d&&typeof d.drain==='function'?d.drain():'';return typeof s==='string'?s:'';}catch(e){return '';}})()";
+
+// Panes with a watcher, by label: one each, even when a pane reopens.
+static WATCHED: Mutex<Option<HashSet<String>>> = Mutex::new(None);
+
+fn now_ms() -> u64 {
+    SystemTime::now().duration_since(UNIX_EPOCH).map(|d| d.as_millis() as u64).unwrap_or(0)
+}
+
+// watch_console drains a pane's console twice a second, until the pane
+// closes. One question at a time: a page busy in a loop answers late, and
+// questions must not pile up behind it.
+fn watch_console(app: AppHandle, id: String, label: String) {
+    {
+        let mut w = WATCHED.lock().unwrap_or_else(|e| e.into_inner());
+        if !w.get_or_insert_with(HashSet::new).insert(label.clone()) {
+            return;
+        }
+    }
+    std::thread::spawn(move || {
+        let asked = Arc::new(AtomicU64::new(0));
+        loop {
+            std::thread::sleep(Duration::from_millis(500));
+            let Some(wv) = app.get_webview(&label) else { break };
+            let since = asked.load(Ordering::SeqCst);
+            if since != 0 && now_ms().saturating_sub(since) < 5000 {
+                continue;
+            }
+            asked.store(now_ms(), Ordering::SeqCst);
+            let (app2, id2, asked2) = (app.clone(), id.clone(), asked.clone());
+            let sent = wv.eval_with_callback(DRAIN, move |json| {
+                asked2.store(0, Ordering::SeqCst);
+                // The drain's string, as JSON: "" when nothing is new.
+                let Ok(data) = serde_json::from_str::<String>(&json) else { return };
+                if !data.is_empty() {
+                    let _ = app2.emit(CONSOLE_EVENT, Console { id: id2.clone(), data });
+                }
+            });
+            if sent.is_err() {
+                asked.store(0, Ordering::SeqCst);
+            }
+        }
+        if let Some(w) = WATCHED.lock().unwrap_or_else(|e| e.into_inner()).as_mut() {
+            w.remove(&label);
+        }
+    });
+}
+
+// inspector_in_own_window makes a pane's Web Inspector open in a window of
+// its own. WebKit docks it into the inspected view's superview by default,
+// sized as if the view filled it: for a pane laid over the app, that would
+// cover the app and resize the pane under the app's feet. Giving it an
+// attachment view too small to dock beside (a hidden, empty subview of the
+// pane) leaves it no choice; docking is then refused too. Private WebKit
+// API (_setInspectorAttachmentView:), checked for before use.
+#[cfg(target_os = "macos")]
+fn inspector_in_own_window(wv: &Webview) {
+    use objc2::rc::{Allocated, Retained};
+    use objc2::runtime::{AnyClass, AnyObject};
+    use objc2::{msg_send, sel};
+    let _ = wv.with_webview(|pv| unsafe {
+        let wk = pv.inner() as *mut AnyObject;
+        let Some(wk) = wk.as_ref() else { return };
+        let responds: bool = msg_send![wk, respondsToSelector: sel!(_setInspectorAttachmentView:)];
+        let Some(class) = AnyClass::get(c"NSView") else { return };
+        if !responds {
+            return;
+        }
+        let blank: Allocated<AnyObject> = msg_send![class, alloc];
+        let Some(view): Option<Retained<AnyObject>> = msg_send![blank, init] else { return };
+        let _: () = msg_send![&*view, setHidden: true];
+        let _: () = msg_send![wk, addSubview: &*view];
+        let _: () = msg_send![wk, _setInspectorAttachmentView: &*view];
+    });
+}
+
 #[tauri::command]
 pub async fn browser_open(app: AppHandle, id: String, url: String, x: f64, y: f64, w: f64, h: f64) -> Result<(), String> {
     let label = label(&id)?;
@@ -69,6 +169,8 @@ pub async fn browser_open(app: AppHandle, id: String, url: String, x: f64, y: f6
     let pick_id = id.clone();
     let load_id = id.clone();
     let builder = WebviewBuilder::new(&label, WebviewUrl::External(url))
+        .initialization_script(DEVTOOLS_JS)
+        .devtools(true)
         .on_navigation(move |u| {
             if u.scheme() == "berth-pick" {
                 let _ = pick_app.emit(PICK_EVENT, Picked { id: pick_id.clone(), url: u.to_string() });
@@ -85,9 +187,12 @@ pub async fn browser_open(app: AppHandle, id: String, url: String, x: f64, y: f6
             };
             let _ = wv.app_handle().emit(EVENT, Navigated { id: load_id.clone(), url: payload.url().to_string(), state });
         });
-    window
+    let _wv = window
         .add_child(builder, LogicalPosition::new(x, y), LogicalSize::new(w.max(1.0), h.max(1.0)))
         .map_err(|e| e.to_string())?;
+    #[cfg(target_os = "macos")]
+    inspector_in_own_window(&_wv);
+    watch_console(app.clone(), id, label);
     Ok(())
 }
 
@@ -134,6 +239,15 @@ pub async fn browser_pick(app: AppHandle, id: String, script: String) -> Result<
         return Err("picker script too large".into());
     }
     find(&app, &id)?.eval(&script).map_err(|e| e.to_string())
+}
+
+// browser_inspect opens WebKit's Web Inspector for a pane's page, in its own
+// window (inspector_in_own_window). The page's own right-click menu has
+// Inspect Element too.
+#[tauri::command]
+pub async fn browser_inspect(app: AppHandle, id: String) -> Result<(), String> {
+    find(&app, &id)?.open_devtools();
+    Ok(())
 }
 
 #[tauri::command]

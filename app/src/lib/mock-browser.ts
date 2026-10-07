@@ -1,3 +1,5 @@
+import { mockAgentDevtools } from "@/lib/mock-devtools";
+
 // The demo's agent browser: the checkout-fix worktree on devl has one open,
 // cast as a drawing of the shop's cart page, with two shots for Review.
 
@@ -26,5 +28,7 @@ export function browserCall(box: string, method: string, path: string): unknown 
   if (method === "GET" && path === "worktrees/shop/checkout-fix/browser/status")
     return { running: true, text: "open: http://checkout-fix.shop.devl.localhost:1377/cart (312 MB)", status: { url: "http://checkout-fix.shop.devl.localhost:1377/cart", rss_bytes: 312 << 20 } };
   if (method === "GET" && path.endsWith("/browser/status")) return { running: false, text: "no browser open" };
+  if (method === "GET" && path === "worktrees/shop/checkout-fix/browser/devtools") return mockAgentDevtools;
+  if (method === "GET" && path.endsWith("/browser/devtools")) return { running: false, console: [], failures: [] };
   return undefined;
 }

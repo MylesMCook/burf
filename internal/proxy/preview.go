@@ -201,7 +201,10 @@ func framable(h http.Header) {
 // previewPolicy is a Content-Security-Policy without frame-ancestors, whose
 // script-src (or default-src, when that is what limits scripts) also allows
 // the preview script.
-func previewPolicy(policy string) string {
+func previewPolicy(policy string) string { return scriptPolicy(policy, previewHash) }
+
+// scriptPolicy is previewPolicy for the script with the given hash.
+func scriptPolicy(policy, hash string) string {
 	var out []string
 	scripts := false
 	for _, d := range strings.Split(policy, ";") {
@@ -215,14 +218,14 @@ func previewPolicy(policy string) string {
 			continue
 		case "script-src", "script-src-elem":
 			scripts = true
-			d = allowScript(d)
+			d = allowScript(d, hash)
 		}
 		out = append(out, d)
 	}
 	if !scripts {
 		for i, d := range out {
 			if strings.ToLower(strings.Fields(d)[0]) == "default-src" {
-				out[i] = allowScript(d)
+				out[i] = allowScript(d, hash)
 			}
 		}
 	}
@@ -232,7 +235,7 @@ func previewPolicy(policy string) string {
 // allowScript adds the script's hash to a source list, unless the list
 // already lets any inline script run ('unsafe-inline' without a hash or a
 // nonce, which a hash would turn off) or allows none at all.
-func allowScript(directive string) string {
+func allowScript(directive, hash string) string {
 	sources := strings.Fields(directive)[1:]
 	inline, keyed := false, false
 	for _, s := range sources {
@@ -250,12 +253,15 @@ func allowScript(directive string) string {
 	if inline && !keyed {
 		return directive
 	}
-	return directive + " " + previewHash
+	return directive + " " + hash
 }
 
 // injectPreview puts the script into an HTML response's head as it streams.
-func injectPreview(resp *http.Response) {
-	resp.Body = &injector{src: resp.Body}
+func injectPreview(resp *http.Response) { injectScript(resp, previewTag) }
+
+// injectScript puts a script tag into an HTML response's head as it streams.
+func injectScript(resp *http.Response, tag []byte) {
+	resp.Body = &injector{src: resp.Body, tag: tag}
 	resp.ContentLength = -1
 	resp.Header.Del("Content-Length")
 	resp.Header.Del("Etag")
@@ -283,6 +289,7 @@ const injectLimit = 64 << 10
 // <html>, else the doctype, else at the start.
 type injector struct {
 	src  io.ReadCloser
+	tag  []byte
 	buf  []byte
 	out  []byte
 	done bool
@@ -295,7 +302,7 @@ func (j *injector) Read(p []byte) (int, error) {
 		n, err := j.src.Read(chunk)
 		j.buf = append(j.buf, chunk[:n]...)
 		if at, ok := insertPoint(j.buf, err != nil || len(j.buf) >= injectLimit); ok {
-			j.out = append(append(append([]byte(nil), j.buf[:at]...), previewTag...), j.buf[at:]...)
+			j.out = append(append(append([]byte(nil), j.buf[:at]...), j.tag...), j.buf[at:]...)
 			j.buf = nil
 			j.done = true
 		}

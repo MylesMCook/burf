@@ -32,6 +32,19 @@ again.
 - **The crew's times fit.** A helper out for 10 minutes or more no longer
   wraps its time onto two lines ("12m / 00s").
 
+- **Developer tools in the Browser tab.** **Inspect** opens WebKit's Web
+  Inspector for the page, in its own window, and the page's right-click
+  menu has **Inspect Element**, in release builds too (a private WebKit
+  setting the App Store refuses; Berth ships outside it). **Console and
+  network** (⌘⌥I) opens a drawer under the page: its console since it
+  loaded, uncaught errors and rejections with their stacks, and its
+  requests from the laptop proxy's log, failed ones marked. **Send to
+  agent** on an error or a failed request hands the worktree's agent the
+  error, its stack or the request and its answer, and the page's address.
+  The Browser tab and its toolbar count the page's errors. Watching the
+  agent's browser, the drawer shows its console and failed requests.
+  [Browser tab](/guides/browser#developer-tools)
+
 ## v0.3.9
 
 - **A helper opens in its own tab.** Click a helper in the crew, or in
