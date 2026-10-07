@@ -300,6 +300,11 @@ func TestPTYHelper(t *testing.T) {
 			time.Sleep(time.Hour)
 		}
 	case "no-input":
+		var mode uint32
+		input := windows.Handle(os.Stdin.Fd())
+		if windows.GetConsoleMode(input, &mode) != nil || windows.SetConsoleMode(input, mode&^windows.ENABLE_ECHO_INPUT) != nil {
+			os.Exit(2)
+		}
 		if os.WriteFile(os.Getenv("BERTH_LOCALPTY_RESULT"), []byte("ready"), 0600) != nil {
 			os.Exit(2)
 		}
