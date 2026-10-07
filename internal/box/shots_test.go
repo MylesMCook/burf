@@ -49,6 +49,9 @@ func TestDiffPairVerdicts(t *testing.T) {
 	if s := diffPair(store, shotOf(page, 200), shot{status: 500, why: ""}, 375, cfg); s.Verdict != "error" || s.Why != "after: HTTP 500" {
 		t.Fatalf("a 500: %+v", s)
 	}
+	if s := diffPair(store, shot{status: 404}, shot{status: 404}, 375, cfg); s.Verdict != "unchanged" || s.Why != "404 on both sides" {
+		t.Fatalf("404 on both sides: %+v", s)
+	}
 	if s := diffPair(store, shot{status: 404}, shotOf(page, 200), 375, cfg); s.Verdict != "new" || s.After.Img == "" {
 		t.Fatalf("new: %+v", s)
 	}

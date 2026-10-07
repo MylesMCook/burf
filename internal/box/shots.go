@@ -566,7 +566,9 @@ func diffPair(store *imgStore, before, after shot, size int, cfg ShotsConfig) vd
 	case bad(before) && !missing(before):
 		verdict, out.Why = "error", "before: "+describe(before)
 	case missing(before) && missing(after):
-		verdict, out.Why = "error", "404 on both sides"
+		// Not there on either side: nothing changed (a page listed in
+		// the config that neither side has yet).
+		verdict, out.Why = "unchanged", "404 on both sides"
 	case missing(after):
 		verdict, out.Why = "removed", fmt.Sprintf("404 after, %d before", before.status)
 	case missing(before):
