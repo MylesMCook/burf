@@ -856,6 +856,8 @@ export function openArtifactPane(content: Extract<PaneContent, { kind: "artifact
   }
   const fromTab = from && s.spaces[from.wsKey]?.tabs.find((t) => t.id === from.tab);
   const fromLeaf = fromTab && from ? findLeaf(fromTab.root, from.pane) : undefined;
+  // A Compare tab keeps its two sides: from one, an artifact opens as a tab.
+  if (fromTab?.compare) how = "tab";
   useStore.getState().setView({ kind: "workspace" });
   if (open && (how === "tab" || !fromLeaf || (open.key === from?.wsKey && open.tab === from?.tab))) {
     if (!isShown(open.key)) showWorktree(open.key);

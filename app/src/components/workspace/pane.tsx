@@ -1,8 +1,6 @@
-import { AppWindowIcon, ArchiveIcon, ChartColumnIcon, LayoutGridIcon, ArrowLeftRightIcon, BotIcon, Columns2Icon, EllipsisIcon, GlobeIcon, ImageIcon, MessagesSquareIcon, MonitorSmartphoneIcon, PencilIcon, ScrollTextIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, SquareTerminalIcon, XIcon } from "lucide-react";
+import { AppWindowIcon, ArchiveIcon, ChartColumnIcon, FileTextIcon, LayoutGridIcon, TableIcon, WorkflowIcon, ArrowLeftRightIcon, BotIcon, Columns2Icon, EllipsisIcon, GlobeIcon, ImageIcon, MessagesSquareIcon, MonitorSmartphoneIcon, PencilIcon, ScrollTextIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, SquareTerminalIcon, XIcon } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo } from "react";
 
-import { ArtifactPane } from "@/components/art/artifact-pane";
-import { kindOf } from "@/components/art/kinds";
 
 import { Tip } from "@/components/tip";
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
@@ -43,6 +41,10 @@ import { focusPane, paneBeside, paneToTab, setPaneContent, splitKey, useWorkspac
 export { agentLabel };
 
 // A File tab's pane and its editor load the first time one shows.
+// An artifact or a worktree's board (components/art), loaded when first shown.
+const ArtifactPane = lazy(() => import("@/components/art/artifact-pane").then((m) => ({ default: m.ArtifactPane })));
+const ART_ICONS: Record<string, typeof ChartColumnIcon> = { chart: ChartColumnIcon, table: TableIcon, diagram: WorkflowIcon, page: AppWindowIcon, notes: FileTextIcon };
+
 const FilePane = lazy(() => import("@/components/files/file-pane"));
 
 interface Props {
@@ -133,7 +135,11 @@ export function Pane({ wsKey, tab, pane, visible, focused, split, mixed, compare
               <FilePane path={c.path} owner={owner} visible={visible} onClose={close} />
             </Suspense>
           )}
-          {c.kind === "artifact" && <ArtifactPane id={c.id} focus={c.focus} />}
+          {c.kind === "artifact" && (
+            <Suspense fallback={<div className="flex-1" />}>
+              <ArtifactPane id={c.id} focus={c.focus} />
+            </Suspense>
+          )}
           {c.kind === "helper" && <HelperPane box={c.box} session={c.session} helper={c.helper} title={c.title} onClose={close} onResolve={(id, title) => setPaneContent(wsKey, tab, pane.id, { ...c, helper: id, title })} />}
           {c.kind === "empty" && <EmptySide owner={owner} tab={tab} pane={pane.id} label={c.label} />}
           {c.kind === "log" && <LogView box={c.box} location={c.location} worktree={c.worktree} service={c.service} visible={visible} />}
@@ -273,7 +279,7 @@ export function PaneIcon({ content, agent, className }: { content: Leaf["content
   if (c.kind === "preview") return <MonitorSmartphoneIcon className={cn("size-3.5 shrink-0", className)} />;
   if (c.kind === "helper") return <BotIcon className={cn("size-3.5 shrink-0", className)} />;
   if (c.kind === "artifact") {
-    const Icon = c.id ? (c.art ? kindOf(c.art).icon() : ChartColumnIcon) : LayoutGridIcon;
+    const Icon = c.id ? (ART_ICONS[c.art ?? ""] ?? ChartColumnIcon) : LayoutGridIcon;
     return <Icon className={cn("size-3.5 shrink-0", className)} />;
   }
   if (c.kind === "log") return <ScrollTextIcon className={cn("size-3.5 shrink-0", className)} />;

@@ -118,6 +118,23 @@ test("the board shows the worktree's artifacts, filters by kind, and opens one",
   await expect(app.page.getByTestId("art-board-button")).toContainText("13");
 });
 
+test("Compare's Artifacts lane shows each side's board", async ({ app }) => {
+  await app.open({ params: { view: "conversation" } });
+  await app.openWorktree("devl/search-perf");
+  await app.page.keyboard.press("Meta+Alt+KeyC");
+  const input = app.page.getByPlaceholder("Compare search-perf with…");
+  await input.fill("checkout-fix");
+  await input.press("Enter");
+  const bar = app.page.getByRole("toolbar", { name: "Compare search-perf and checkout-fix" });
+  await app.page.keyboard.press("Alt+Digit5");
+  await expect(bar.getByRole("button", { name: "Artifacts lane" })).toHaveAttribute("aria-pressed", "true");
+  const boards = app.page.locator("[data-pane-area] [data-compare-side]:visible [data-testid=artifact-board]");
+  await expect(boards).toHaveCount(2);
+  // search-perf's agents made thirteen; checkout-fix's none yet.
+  await expect(boards.nth(0).locator("[data-art-tile]")).toHaveCount(13);
+  await expect(boards.nth(1)).toContainText("No artifacts here yet");
+});
+
 const TYPES: [string, string, string][] = [
   ["d2e8f1a0b3", "bar", "svg rect"],
   ["a3c7d9e1b2", "line", "svg path"],

@@ -1,8 +1,7 @@
 import { AppWindowIcon, ExternalLinkIcon, LinkIcon, LocateFixedIcon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { create } from "zustand";
 
-import { LocalArtifactCard } from "@/components/art/art-card";
 import type { ChatListApi } from "@/components/conversation/chat-list";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
@@ -139,9 +138,18 @@ function ArtifactGlyph({ className }: { className?: string }) {
 
 // ArtifactCard is a publish where it happened in the chat: the page's
 // title, and Open once it has a link.
+// An artifact kept on the box (components/art), loaded the first time a
+// chat shows one.
+const LocalArtifactCard = lazy(() => import("@/components/art/art-card").then((m) => ({ default: m.LocalArtifactCard })));
+
 export function ArtifactCard({ it }: { it: Extract<TranscriptItem, { kind: "artifact" }> }) {
   // One kept on the box (berthd artifact add), not a page on claude.ai.
-  if (it.local) return <LocalArtifactCard it={it} />;
+  if (it.local)
+    return (
+      <Suspense fallback={<div className="cv-in h-[6.5rem] w-[min(100%,40rem)] animate-pulse self-start rounded-lg border bg-card" />}>
+        <LocalArtifactCard it={it} />
+      </Suspense>
+    );
   const publishing = !it.done && !it.url;
   const status = it.error ? "Didn't publish" : publishing ? "Publishing" : it.updated ? "Updated" : "Published";
   const sub = it.error ? undefined : it.description;
