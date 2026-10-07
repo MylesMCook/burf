@@ -14,6 +14,7 @@ import { parseDiff } from "@/lib/git/parse";
 import { load as loadPref, save as savePref } from "@/lib/storage";
 import type { ToolDetail } from "@/lib/transcript";
 import { cn } from "@/lib/utils";
+import { scrollBehavior } from "@/lib/motion";
 
 // An agent's edits in a chat, drawn by the app's diff renderer (@pierre/
 // diffs, components/diff): highlighted, numbered by the file's own lines
@@ -326,7 +327,7 @@ export function EditPanel({ file, tool, estimate, loadDiff, loadTool, comments }
   }, []);
   const shown = late || (current !== "loading" && lib !== undefined);
   useEffect(() => {
-    if (shown) ref.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    if (shown) ref.current?.scrollIntoView({ block: "nearest", behavior: scrollBehavior() });
   }, [shown, ref]);
 
   const buildFile = useMemo(() => (diff.state === "ready" ? (mod: DiffsModule) => mod.parse(diff.value.diff)[0] : undefined), [diff]);
