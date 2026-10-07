@@ -109,7 +109,10 @@ export const test = base.extend<{ app: App }>({
               if (prefs) localStorage.setItem("berth.prefs", JSON.stringify(prefs));
               if (theme) localStorage.setItem("berth.ui", JSON.stringify({ themeId: theme }));
             },
-            { prefs: opts.prefs, theme: opts.theme },
+            // Prefs an older Berth saved would get the What's new note
+            // after an update; it stays away unless a test asks for it
+            // (whats-new.spec.ts).
+            { prefs: opts.prefs && { whatsNewSeen: "999.0.0", ...opts.prefs }, theme: opts.theme },
           );
         }
         const q = new URLSearchParams(opts.agent ? { token: opts.agent.token, agent: opts.agent.url } : live ? { token, agent: agentUrl } : { mock: "1" });

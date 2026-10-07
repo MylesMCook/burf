@@ -18,6 +18,7 @@ import { AddToBoxDialog } from "@/components/sidebar/add-to-box-dialog";
 import { ConfirmHost } from "@/components/sidebar/confirm";
 import { ErrorDetailsHost } from "@/components/error-note";
 import { ShortcutsSheet } from "@/components/shortcuts-sheet";
+import { WhatsNewDialog } from "@/components/whats-new/whats-new-dialog";
 import { CustomizeSidebarSheet } from "@/components/sidebar/nav";
 import { ToastProvider } from "@/components/ui/toast";
 import { FileDropGuard } from "@/components/file-drop-guard";
@@ -39,6 +40,7 @@ import { startRunsWatch } from "@/lib/runs";
 import { watchStillness } from "@/lib/still";
 import { useStore } from "@/lib/store";
 import { startUpdater } from "@/lib/updater";
+import { useWhatsNewAfterUpdate } from "@/lib/whats-new";
 import { cn } from "@/lib/utils";
 import { homeBox, useWorkspaces } from "@/lib/workspaces";
 import { AutomationsView } from "@/views/automations";
@@ -102,6 +104,9 @@ export default function App() {
   // Until onboarding is done it is the whole window: no sidebar, status
   // bar, palette or shortcuts to wander off through.
   const gated = onboarding && connected;
+  // Once after an update: the release's highlights (lib/whats-new.ts),
+  // never over onboarding.
+  useWhatsNewAfterUpdate(!gated);
   useEffect(() => {
     // Team setup is the one page first run opens over the welcome.
     if (gated && !["workspace", "team"].includes(useStore.getState().view.kind)) useStore.getState().setView({ kind: "workspace" });
@@ -194,6 +199,7 @@ export default function App() {
           <ShortcutsSheet />
           <ReviewSheet />
           <NotificationCenter />
+          <WhatsNewDialog />
         </ErrorBoundary>
         <FileDropGuard />
         <Announcer />

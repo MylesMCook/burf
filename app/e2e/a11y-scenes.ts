@@ -106,6 +106,27 @@ export const scenes: Scene[] = [
     },
   },
   {
+    // What's new (components/whats-new), its first and its key-hint slide.
+    id: "whats-new",
+    key: true,
+    async run(app, theme) {
+      await app.open({ theme });
+      await app.openSettings("about");
+      await app.page.getByTestId("about-whats-new").click();
+      await expect(app.page.getByTestId("whats-new")).toBeVisible();
+      await app.page.keyboard.press("ArrowRight");
+      await app.page.keyboard.press("ArrowRight");
+      await expect(app.page.getByRole("tab", { name: "Console and network" })).toHaveAttribute("aria-selected", "true");
+    },
+  },
+  {
+    id: "whats-new-nudge",
+    async run(app, theme) {
+      await app.open({ theme, prefs: { whatsNewSeen: "0.3.9", version: 3 }, params: { version: "0.3.10" } });
+      await expect(app.page.getByTestId("whats-new-nudge")).toBeVisible();
+    },
+  },
+  {
     id: "shortcuts-sheet",
     async run(app, theme) {
       await app.open({ theme });

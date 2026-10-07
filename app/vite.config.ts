@@ -115,6 +115,12 @@ function commit(): string {
   }
 }
 
+// appVersion is package.json's version, which make publish sets for each
+// release, the same the Tauri shell reports; the What's new card keys on it.
+function appVersion(): string {
+  return JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, "package.json"), "utf8")).version;
+}
+
 // https://vite.dev/config/
 //
 // `vite build --mode demo` (pnpm build:demo) is the live demo on berthd.app:
@@ -132,7 +138,7 @@ export default defineConfig(({ mode }) => ({
   // The diff renderer's highlighting worker loads its languages as chunks,
   // which takes a module worker.
   worker: { format: "es" as const, plugins: () => [noShikiWasm(), workerScript()] },
-  define: { __BERTH_DEMO__: JSON.stringify(mode === "demo"), __BERTH_COMMIT__: JSON.stringify(commit()) },
+  define: { __BERTH_DEMO__: JSON.stringify(mode === "demo"), __BERTH_COMMIT__: JSON.stringify(commit()), __BERTH_VERSION__: JSON.stringify(appVersion()) },
   resolve: {
     alias: {
       "@": path.resolve(import.meta.dirname, "./src"),

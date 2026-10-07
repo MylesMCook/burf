@@ -8,6 +8,7 @@ import {
   HouseIcon,
   KeyboardIcon,
   Minimize2Icon,
+  SparkleIcon,
   BookMarkedIcon,
   CodeXmlIcon,
   ArrowUpRightIcon,
@@ -69,6 +70,7 @@ import { useStore } from "@/lib/store";
 import { isLink, teamRef } from "@/lib/team-ref";
 import { focusedPane, focusSession, goHome, hereRef, recentWorktrees, refOf, selectWorktree, useWorkspaces } from "@/lib/workspaces";
 import { openShortcuts } from "@/components/shortcuts-sheet";
+import { hasWhatsNew, openWhatsNew } from "@/lib/whats-new";
 import { openWorktreePicker } from "@/components/workspace/worktree-picker";
 import { newTerminal } from "@/components/box-picker";
 import { openCustomize, useArrangedNav } from "@/components/sidebar/nav";
@@ -202,6 +204,7 @@ export function CommandPalette() {
       { value: "home harbour start", label: "Home", icon: slot(<HouseIcon />), run: go(goHome) },
       { value: "review inbox approve changes", label: "Review", icon: slot(<InboxIcon />), run: go(() => st.setView({ kind: "review" })) },
       { value: "dashboard", label: "Agent Dashboard", icon: slot(<LayoutDashboardIcon />), shortcut: keysFor("dashboard"), run: go(() => st.setView({ kind: "dashboard" })) },
+      ...(hasWhatsNew() ? [{ value: "whats new release notes changes update", label: "What's new in Berth", icon: slot(<SparkleIcon />), run: go(() => openWhatsNew("palette")) }] : []),
       { value: "keyboard shortcuts keys help", label: "Keyboard shortcuts", icon: slot(<KeyboardIcon />), shortcut: keysFor("shortcuts"), run: go(openShortcuts) },
       { value: "notifications inbox bell", label: "Notifications", icon: slot(<BellIcon />), shortcut: keysFor("notifications"), run: go(() => setNotificationsOpen(true)) },
       { value: "notification settings", label: "Notification settings", icon: slot(<BellIcon />), run: go(() => st.setView({ kind: "settings", section: "notifications" })) },

@@ -24,6 +24,7 @@ import { SidebarContext, type SidebarContextProps } from "@/components/ui/sideba
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { SIDEBAR_DEFAULT, SIDEBAR_MAX, SIDEBAR_MIN } from "@/lib/sidebar-width";
+import { WhatsNewNudge } from "@/components/whats-new/whats-new-dialog";
 import { cn } from "@/lib/utils";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
 import { TeamSidebarCard } from "@/views/team/team-entry";
@@ -136,6 +137,7 @@ export function AppSidebar() {
           <Projects prefs={prefs} update={update} />
         </RowLayer>
 
+        <WhatsNewNudge />
         <div className="flex h-9 shrink-0 items-center gap-1 border-sidebar-border border-t px-2">
           <Tip label="⇧-click for Developer settings" side="top" align="start">
             <button
