@@ -161,6 +161,13 @@ func (b *Box) Capabilities() []string {
 		// versions (artifactsapi.go), artifact.* events, and the art-
 		// origin's content (GET /v1/artifacts/{id}/v/{n}).
 		caps = append(caps, "artifacts")
+		if b.Browsers != nil {
+			// visualdiff: berthd shots compare keeps visual diffs as
+			// artifacts of kind visualdiff, their images at GET
+			// .../artifacts/{id}/img/{name}, and Accept as baseline at
+			// POST /v1/worktrees/{loc}/{wt}/shots/accept (shots.go).
+			caps = append(caps, "visualdiff")
+		}
 	}
 	if b.Team != nil {
 		// team: GET/POST /v1/team and POST /v1/team/{id}/retry run team

@@ -3,6 +3,7 @@ package box
 import (
 	"errors"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strconv"
 
@@ -30,6 +31,7 @@ func (b *Box) mountArtifacts(route func(string, func(http.ResponseWriter, *http.
 	route("DELETE "+p+"/{id}", b.removeArtifact)
 	route("GET "+p+"/{id}/v/{n}", b.artifactContent)
 	route("GET /v1/artifacts/{id}/v/{n}", b.artifactContent)
+	route("GET "+p+"/{id}/img/{img}", b.artifactImage)
 }
 
 var errNoArtifacts = httpError{http.StatusNotImplemented, "this box keeps no artifacts"}
@@ -88,6 +90,11 @@ func (b *Box) addArtifact(w http.ResponseWriter, r *http.Request) error {
 	}
 	if req.ID != "" && !ValidArtifactID(req.ID) {
 		return badRequest("%q isn't an artifact id (berthd artifact list shows them)", req.ID)
+	}
+	// A visual diff is what berthd shots compare saw; an agent can't write
+	// one of its own.
+	if kind, _, err := classifyArtifact(req.Kind, req.Name, []byte(req.Content)); err == nil && kind == "visualdiff" {
+		return badRequest("a visual diff is made by berthd shots compare, not added")
 	}
 	if err := b.before(r, "artifact.add", map[string]any{"location": loc.Name, "name": wt.Name, "path": wt.Path, "title": req.Title, "kind": req.Kind, "id": req.ID}); err != nil {
 		return err
@@ -201,4 +208,37 @@ func notFound(err error) error {
 		return httpError{http.StatusNotFound, err.Error()}
 	}
 	return err
+}
+
+// artifactImage is one image of a visual diff: a PNG named by its content
+// hash, from the artifact's own img/ folder. The app reads it with the
+// box's credentials and draws it from a blob: URL, so no image is ever on
+// an origin of its own, and only an artifact of a kind that has images
+// answers.
+func (b *Box) artifactImage(w http.ResponseWriter, r *http.Request) error {
+	_, wt, err := b.artifactWorktree(r)
+	if err != nil {
+		return err
+	}
+	a, err := b.Artifacts.Get(r.PathValue("id"), wt.Path)
+	if err != nil {
+		return notFound(err)
+	}
+	name := r.PathValue("img")
+	if a.Kind != "visualdiff" || !vdImgRe.MatchString(name) {
+		return httpError{http.StatusNotFound, "no such image"}
+	}
+	body, err := os.ReadFile(filepath.Join(b.Artifacts.Folder(a.ID), "img", name))
+	if err != nil {
+		return httpError{http.StatusNotFound, "no such image (its version may have been dropped)"}
+	}
+	h := w.Header()
+	h.Set("Content-Type", "image/png")
+	h.Set("X-Content-Type-Options", "nosniff")
+	h.Set("Content-Security-Policy", "default-src 'none'; sandbox")
+	// Named by its content: it never changes.
+	h.Set("Cache-Control", "private, max-age=31536000, immutable")
+	h.Set("Content-Length", strconv.Itoa(len(body)))
+	_, _ = w.Write(body)
+	return nil
 }

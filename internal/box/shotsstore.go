@@ -3,7 +3,6 @@ package box
 import (
 	"bytes"
 	"context"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -13,11 +12,13 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/sean-brydon/berthd/internal/events"
 	"github.com/sean-brydon/berthd/internal/statefile"
 )
 
@@ -84,135 +85,101 @@ func dirSize(dir string) int {
 
 // --- the diffs ----------------------------------------------------------------
 
-// visualDiffs is where a compare keeps its result: a visual diff per
-// worktree and base, a new version per re-run.
-type visualDiffs interface {
-	// prepare finds the worktree's visual diff with key to add a version
-	// to (unless fresh), or makes one; imgDir is where its images go.
-	prepare(loc Location, wt Worktree, key string, fresh bool) (id, imgDir string, err error)
-	// commit keeps the manifest as the diff's next version.
-	commit(loc Location, wt Worktree, id, key string, raw []byte, title, note, session string) (n int, err error)
-	// latest is the diff's newest manifest and its image folder.
-	latest(loc Location, wt Worktree, id string) (VisualDiff, int, string, error)
-}
+// A visual diff is an artifact (artifacts.go) of kind visualdiff: each
+// version's content is its manifest, and its images sit in the artifact's
+// folder, img/, shared by every version (a re-run adds only what changed).
+// The artifact store keeps the first version and the newest 8; an image no
+// kept version names goes with the versions.
 
-// dirDiffs keeps visual diffs in the box's shots folder:
-// <dir>/<loc>/<wt>/diffs/<id>/{meta.json, v<n>.json, img/}. The first
-// version and the newest 8 are kept; images no kept version names go.
-type dirDiffs struct{ dir string }
-
-type vdMeta struct {
-	ID       string      `json:"id"`
-	Kind     string      `json:"kind"`
-	Key      string      `json:"key"` // visualdiff:<base>
-	Title    string      `json:"title"`
-	By       string      `json:"by,omitempty"`
-	Created  time.Time   `json:"created"`
-	Versions []vdVersion `json:"versions"`
-}
-
-type vdVersion struct {
-	N    int       `json:"n"`
-	At   time.Time `json:"at"`
-	Note string    `json:"note,omitempty"`
-}
-
-const vdKeepNewest = 8
-
-var vdIDRe = regexp.MustCompile(`^vd-[0-9a-f]{8}$`)
-
-func (d dirDiffs) root(loc Location, wt Worktree) string {
-	return filepath.Join(d.dir, loc.Name, wt.Name, "diffs")
-}
-
-func (d dirDiffs) meta(dir string) (vdMeta, error) {
-	var m vdMeta
-	raw, err := os.ReadFile(filepath.Join(dir, "meta.json"))
-	if err == nil {
-		err = json.Unmarshal(raw, &m)
+// prepareDiff finds the worktree's visual diff with key to add a version
+// to (unless fresh), or reserves an id for a new one; imgDir is where its
+// images go.
+func (b *Box) prepareDiff(wt Worktree, key string, fresh bool) (id, imgDir string, existing bool, err error) {
+	if b.Artifacts == nil {
+		return "", "", false, errNoArtifacts
 	}
-	return m, err
-}
-
-func (d dirDiffs) prepare(loc Location, wt Worktree, key string, fresh bool) (string, string, error) {
-	root := d.root(loc, wt)
 	if !fresh {
-		ents, _ := os.ReadDir(root)
-		var best vdMeta
-		for _, e := range ents {
-			m, err := d.meta(filepath.Join(root, e.Name()))
-			if err == nil && m.Key == key && m.ID == e.Name() && m.Created.After(best.Created) {
-				best = m
+		for _, a := range b.Artifacts.List(wt.Path) { // newest change first
+			if a.Kind == "visualdiff" && a.Key == key {
+				id, existing = a.ID, true
+				break
 			}
 		}
-		if best.ID != "" {
-			return best.ID, filepath.Join(root, best.ID, "img"), nil
-		}
 	}
-	var r [4]byte
-	rand.Read(r[:])
-	id := "vd-" + hex.EncodeToString(r[:])
-	if err := os.MkdirAll(filepath.Join(root, id, "img"), 0o755); err != nil {
-		return "", "", err
+	if id == "" {
+		id = b.Artifacts.ReserveID()
 	}
-	return id, filepath.Join(root, id, "img"), nil
+	imgDir = filepath.Join(b.Artifacts.Folder(id), "img")
+	return id, imgDir, existing, os.MkdirAll(imgDir, 0o700)
 }
 
-func (d dirDiffs) commit(loc Location, wt Worktree, id, key string, raw []byte, title, note, session string) (int, error) {
-	dir := filepath.Join(d.root(loc, wt), id)
-	m, err := d.meta(dir)
+// commitDiff keeps raw as the visual diff's next version, announces it as
+// any artifact's (artifact.added or artifact.updated), and drops the
+// images no kept version names.
+func (b *Box) commitDiff(loc Location, wt Worktree, id string, existing bool, key string, raw []byte, title, note string, by ArtifactBy) (Artifact, error) {
+	in := ArtifactInput{Title: title, Kind: "visualdiff", Note: note, Name: "visualdiff.json", Content: raw, By: by, Key: key}
+	if existing {
+		in.ID = id
+	} else {
+		in.NewID = id
+	}
+	a, _, err := b.Artifacts.Add(loc.Name, wt.Name, wt.Path, in)
 	if err != nil {
-		m = vdMeta{ID: id, Kind: "visualdiff", Key: key, Created: time.Now().UTC(), By: session}
+		return a, err
 	}
-	n := 1
-	if len(m.Versions) > 0 {
-		n = m.Versions[len(m.Versions)-1].N + 1
-	}
-	if err := statefile.Write(filepath.Join(dir, "v"+strconv.Itoa(n)+".json"), raw); err != nil {
-		return 0, err
-	}
-	m.Title = title
-	m.Versions = append(m.Versions, vdVersion{N: n, At: time.Now().UTC(), Note: note})
-	if len(m.Versions) > vdKeepNewest+1 {
-		for _, v := range m.Versions[1 : len(m.Versions)-vdKeepNewest] {
-			os.Remove(filepath.Join(dir, "v"+strconv.Itoa(v.N)+".json"))
-		}
-		m.Versions = append(m.Versions[:1], m.Versions[len(m.Versions)-vdKeepNewest:]...)
-		keep := map[string]bool{}
-		for _, v := range m.Versions {
-			if vd, err := readManifest(filepath.Join(dir, "v"+strconv.Itoa(v.N)+".json")); err == nil {
+	keep := map[string]bool{}
+	for _, v := range a.Versions {
+		if _, _, body, err := b.Artifacts.Content(a.ID, wt.Path, v.N); err == nil {
+			var vd VisualDiff
+			if json.Unmarshal(body, &vd) == nil {
 				for _, im := range vd.Images() {
 					keep[im] = true
 				}
 			}
 		}
-		gcImages(filepath.Join(dir, "img"), keep)
 	}
-	mraw, _ := json.MarshalIndent(m, "", "  ")
-	return n, statefile.Write(filepath.Join(dir, "meta.json"), mraw)
+	gcImages(filepath.Join(b.Artifacts.Folder(a.ID), "img"), keep)
+	typ := "artifact.updated"
+	if !existing {
+		typ = "artifact.added"
+	}
+	if b.Events != nil {
+		data := artifactEventData(a)
+		data["summary"] = summaryOf(raw)
+		b.Events.Publish(events.Event{Type: typ, Box: b.Name, Origin: "shots", Data: data})
+	}
+	return a, nil
 }
 
-func (d dirDiffs) latest(loc Location, wt Worktree, id string) (VisualDiff, int, string, error) {
-	if !vdIDRe.MatchString(id) {
-		return VisualDiff{}, 0, "", badRequest("%q isn't a visual diff's id (vd- and 8 hex digits)", id)
+func summaryOf(raw []byte) string {
+	var vd struct {
+		Summary vdSummary `json:"summary"`
 	}
-	dir := filepath.Join(d.root(loc, wt), id)
-	m, err := d.meta(dir)
-	if err != nil || len(m.Versions) == 0 {
-		return VisualDiff{}, 0, "", badRequest("no visual diff %s in %s/%s", id, loc.Name, wt.Name)
-	}
-	n := m.Versions[len(m.Versions)-1].N
-	vd, err := readManifest(filepath.Join(dir, "v"+strconv.Itoa(n)+".json"))
-	return vd, n, filepath.Join(dir, "img"), err
+	json.Unmarshal(raw, &vd)
+	return vd.Summary.Text
 }
 
-func readManifest(path string) (VisualDiff, error) {
+// latestDiff is a visual diff's newest manifest, its version and its
+// image folder.
+func (b *Box) latestDiff(wt Worktree, id string) (VisualDiff, int, string, error) {
+	if b.Artifacts == nil {
+		return VisualDiff{}, 0, "", errNoArtifacts
+	}
+	if !ValidArtifactID(id) {
+		return VisualDiff{}, 0, "", badRequest("%q isn't an artifact id (the visual diff's, from berthd shots compare)", id)
+	}
+	a, v, body, err := b.Artifacts.Content(id, wt.Path, 0)
+	if err != nil {
+		return VisualDiff{}, 0, "", notFound(err)
+	}
+	if a.Kind != "visualdiff" {
+		return VisualDiff{}, 0, "", badRequest("%s is a %s, not a visual diff", id, a.Kind)
+	}
 	var vd VisualDiff
-	raw, err := os.ReadFile(path)
-	if err == nil {
-		err = json.Unmarshal(raw, &vd)
+	if err := json.Unmarshal(body, &vd); err != nil {
+		return vd, 0, "", err
 	}
-	return vd, err
+	return vd, v.N, filepath.Join(b.Artifacts.Folder(id), "img"), nil
 }
 
 // --- baselines ------------------------------------------------------------------
@@ -225,6 +192,42 @@ type baseline struct {
 	Commit   string                  `json:"commit,omitempty"`
 	Chromium string                  `json:"chromium,omitempty"`
 	Shots    map[string]baselineShot `json:"shots"` // shotKey →
+	// From is the visual diff an accepted baseline was taken from.
+	From        string `json:"from,omitempty"`
+	FromVersion int    `json:"from_version,omitempty"`
+}
+
+// BaselineInfo is a baseline as GET .../shots/baselines lists it.
+type BaselineInfo struct {
+	Name        string    `json:"name"`
+	Taken       time.Time `json:"taken"`
+	Commit      string    `json:"commit,omitempty"`
+	Shots       int       `json:"shots"`
+	From        string    `json:"from,omitempty"`
+	FromVersion int       `json:"from_version,omitempty"`
+}
+
+// Baselines are a worktree's saved baselines, newest first.
+func (b *Box) Baselines(ctx context.Context, locName, wtName string) ([]BaselineInfo, error) {
+	loc, wt, err := b.worktreeRef(ctx, locName, wtName)
+	if err != nil {
+		return nil, err
+	}
+	root := filepath.Dir(b.baselineDir(loc, wt, "x"))
+	ents, _ := os.ReadDir(root)
+	out := []BaselineInfo{}
+	for _, e := range ents {
+		if !baselineNameRe.MatchString(e.Name()) {
+			continue
+		}
+		bl, err := readBaseline(filepath.Join(root, e.Name()))
+		if err != nil {
+			continue
+		}
+		out = append(out, BaselineInfo{Name: bl.Name, Taken: bl.Taken, Commit: bl.Commit, Shots: len(bl.Shots), From: bl.From, FromVersion: bl.FromVersion})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Taken.After(out[j].Taken) })
+	return out, nil
 }
 
 type baselineShot struct {
@@ -343,11 +346,11 @@ func (b *Box) AcceptBaseline(ctx context.Context, locName, wtName, id string) (S
 	if err != nil {
 		return ShotsResult{}, err
 	}
-	vd, n, imgDir, err := b.diffs().latest(loc, wt, id)
+	vd, n, imgDir, err := b.latestDiff(wt, id)
 	if err != nil {
 		return ShotsResult{}, err
 	}
-	bl := &baseline{Name: "accepted", Taken: time.Now().UTC(), Commit: vd.Head.Commit, Chromium: vd.Settings.Chromium, Shots: map[string]baselineShot{}}
+	bl := &baseline{Name: "accepted", Taken: time.Now().UTC(), Commit: vd.Head.Commit, Chromium: vd.Settings.Chromium, Shots: map[string]baselineShot{}, From: id, FromVersion: n}
 	_, err = writeBaseline(b.baselineDir(loc, wt, "accepted"), bl, func(store *imgStore) {
 		for _, p := range vd.Pages {
 			for _, s := range p.Shots {

@@ -66,6 +66,10 @@ var artifactKinds = map[string]ArtifactKind{
 	"diagram": {Name: "diagram", Formats: []string{"mermaid"}, MaxSize: maxDataArtifact},
 	"notes":   {Name: "notes", Formats: []string{"markdown"}, MaxSize: maxDataArtifact},
 	"page":    {Name: "page", Formats: []string{"html"}, MaxSize: maxPageArtifact},
+	// A visual diff: a berth.visualdiff/v1 manifest per version, its
+	// images by content hash beside the versions (img/). Only
+	// `berthd shots compare` makes one (shots.go).
+	"visualdiff": {Name: "visualdiff", Formats: []string{"visualdiff"}, MaxSize: maxVisualDiff},
 }
 
 // ArtifactKinds are the kinds this box takes, sorted.
@@ -78,7 +82,7 @@ func ArtifactKinds() []string {
 	return out
 }
 
-var formatExt = map[string]string{"chart": "json", "csv": "csv", "tsv": "tsv", "json": "json", "mermaid": "mmd", "markdown": "md", "html": "html"}
+var formatExt = map[string]string{"visualdiff": "json", "chart": "json", "csv": "csv", "tsv": "tsv", "json": "json", "mermaid": "mmd", "markdown": "md", "html": "html"}
 
 // ArtifactBy is who made an artifact: the berth session (and its agent)
 // the command ran in, and a helper's name when a helper said it.
@@ -115,6 +119,9 @@ type Artifact struct {
 	Updated time.Time  `json:"updated"`
 	// Watched: a rewrite of Source becomes a new version.
 	Watched bool `json:"watched,omitempty"`
+	// Key makes a re-run a new version of this artifact rather than a new
+	// one: a visual diff's is visualdiff:<base>.
+	Key string `json:"key,omitempty"`
 	// Problem is why the source's latest rewrite wasn't taken (it didn't
 	// parse, grew too big, looked like a secret); cleared by the next
 	// version.
@@ -144,6 +151,11 @@ type ArtifactInput struct {
 	By      ArtifactBy
 	// Watch the source for rewrites.
 	Watch bool
+	// Key, for a new artifact: see Artifact.Key.
+	Key string
+	// NewID is the id a new artifact takes, one ReserveID gave (its
+	// folder may hold files already, such as a visual diff's images).
+	NewID string
 }
 
 // ArtifactStore keeps the box's artifacts.
@@ -154,9 +166,10 @@ type ArtifactStore struct {
 	// Now is the clock (tests).
 	Now func() time.Time
 
-	mu     sync.Mutex
-	loaded bool
-	byID   map[string]*Artifact
+	mu       sync.Mutex
+	loaded   bool
+	byID     map[string]*Artifact
+	reserved map[string]bool
 	// watch is what the watcher saw of each watched source last.
 	watch map[string]sourceStat
 }
@@ -341,11 +354,15 @@ func (s *ArtifactStore) Add(loc, wt, path string, in ArtifactInput) (a Artifact,
 		if n >= maxArtifactsPerWorktree {
 			return a, false, badRequest("this worktree keeps %d artifacts already; update one (--id) or remove some (berthd artifact rm)", n)
 		}
-		id := newArtifactID()
-		for s.byID[id] != nil {
+		id := in.NewID
+		if !ValidArtifactID(id) || s.byID[id] != nil {
 			id = newArtifactID()
+			for s.byID[id] != nil || s.reserved[id] {
+				id = newArtifactID()
+			}
 		}
-		cur = &Artifact{ID: id, Title: in.Title, Kind: kind, Format: format, Location: loc, Worktree: wt, Path: path, By: in.By, Created: now}
+		delete(s.reserved, id)
+		cur = &Artifact{ID: id, Title: in.Title, Kind: kind, Format: format, Location: loc, Worktree: wt, Path: path, By: in.By, Created: now, Key: in.Key}
 	}
 	if in.Title != "" {
 		cur.Title = in.Title
@@ -406,6 +423,26 @@ func (s *ArtifactStore) appendVersion(a *Artifact, content []byte, hash, note st
 	return nil
 }
 
+// ReserveID gives an id no artifact has, for a new artifact whose files
+// are written before it is added (a visual diff's images).
+func (s *ArtifactStore) ReserveID() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.load()
+	if s.reserved == nil {
+		s.reserved = map[string]bool{}
+	}
+	id := newArtifactID()
+	for s.byID[id] != nil || s.reserved[id] {
+		id = newArtifactID()
+	}
+	s.reserved[id] = true
+	return id
+}
+
+// Folder is where an artifact's files are kept.
+func (s *ArtifactStore) Folder(id string) string { return filepath.Join(s.Dir, id) }
+
 // Remove forgets an artifact and its versions.
 func (s *ArtifactStore) Remove(id, path string) (Artifact, error) {
 	s.mu.Lock()
@@ -458,8 +495,11 @@ func classifyArtifact(kind, name string, content []byte) (string, string, error)
 	ext := strings.ToLower(strings.TrimPrefix(filepath.Ext(name), "."))
 	trim := strings.TrimSpace(string(content))
 	isChart := strings.HasPrefix(trim, "{") && chartSchemaRe.MatchString(firstBytes(trim, 4096))
+	isVisualDiff := strings.HasPrefix(trim, "{") && visualDiffSchemaRe.MatchString(firstBytes(trim, 4096))
 	format := ""
 	switch {
+	case isVisualDiff:
+		format = "visualdiff"
 	case isChart:
 		format = "chart"
 	case ext == "csv":
@@ -507,7 +547,10 @@ func classifyArtifact(kind, name string, content []byte) (string, string, error)
 	return kind, format, nil
 }
 
-var chartSchemaRe = regexp.MustCompile(`"\$schema"\s*:\s*"berth\.chart/v1"`)
+var (
+	chartSchemaRe      = regexp.MustCompile(`"\$schema"\s*:\s*"berth\.chart/v1"`)
+	visualDiffSchemaRe = regexp.MustCompile(`"\$schema"\s*:\s*"berth\.visualdiff/v1"`)
+)
 
 func firstBytes(s string, n int) string {
 	if len(s) > n {
@@ -547,6 +590,8 @@ func checkArtifact(kind, format string, content []byte) error {
 		return badRequest("refused: this looks like it holds a secret (%s). Artifacts are kept on the box and shown in the app; leave secrets, tokens and keys out", what)
 	}
 	switch format {
+	case "visualdiff":
+		return ValidateVisualDiff(content)
 	case "chart":
 		return ValidateChart(content)
 	case "json":

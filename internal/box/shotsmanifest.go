@@ -346,7 +346,8 @@ func pctText(p float64) string {
 // with its largest region named by the element under it, a ⚠ for a
 // sideways scroll, and a before|after crop to look at; errors and new
 // pages one line per page, unchanged pages one line.
-func agentText(vd VisualDiff, id string, n int, imgDir string) string {
+func agentText(vd VisualDiff, a Artifact, imgDir string) string {
+	id, n := a.ID, a.Latest().N
 	var b strings.Builder
 	schemes := ""
 	if len(vd.Settings.ColorSchemes) > 1 {
@@ -442,7 +443,9 @@ func agentText(vd VisualDiff, id string, n int, imgDir string) string {
 		// tokens on every line.
 		fmt.Fprintf(&b, "look: before|after crops of each shot's largest change, in %s/\n", imgDir)
 	}
-	fmt.Fprintf(&b, "artifact: %s (shown in the user's Berth; re-run after a fix to update it)", id)
+	// The line the chat turns into a card (transcript/localartifacts.go).
+	fmt.Fprintf(&b, "Artifact %s v%d · visualdiff · %s\n", id, n, strings.NewReplacer("\n", " ", `"`, "'", `\`, "/").Replace(a.Title))
+	b.WriteString("Shown in the user's Berth beside your chat; compare again after a fix to update it.")
 	return b.String()
 }
 

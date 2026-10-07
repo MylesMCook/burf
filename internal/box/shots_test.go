@@ -7,6 +7,7 @@ import (
 	"image"
 	"image/color"
 	"image/draw"
+	"io"
 	"net"
 	"net/http"
 	"os"
@@ -194,10 +195,11 @@ func TestValidateVisualDiff(t *testing.T) {
 func TestAgentTextIsShort(t *testing.T) {
 	vd := sampleVisualDiff()
 	vd.Summary = summarize(vd.Pages)
-	text := agentText(vd, "vd-50a4e501", 1, "/s/img")
+	text := agentText(vd, Artifact{ID: "50a4e501aa", Kind: "visualdiff", Title: "Visual changes: search-perf vs main", Versions: []ArtifactVersion{{N: 1}}}, "/s/img")
 	t.Logf("%d bytes:\n%s", len(text), text)
 	for _, want := range []string{
-		"visual diff vd-50a4e501 v1: search-perf vs main, 4 pages × 2 sizes in 5.6s",
+		"visual diff 50a4e501aa v1: search-perf vs main, 4 pages × 2 sizes in 5.6s",
+		"Artifact 50a4e501aa v1 · visualdiff · Visual changes: search-perf vs main\n",
 		"1 of 4 pages changed · most: /search at 375 (30%) · 1 layout warning · 2 new shots · 2 errors",
 		"/account       375,1280  ERROR: after: HTTP 500 · page error: TypeError: user is undefined",
 		"/deals         375,1280  NEW: 404 before",
@@ -239,19 +241,18 @@ func TestImageStoreKeepsOneCopy(t *testing.T) {
 	}
 }
 
-func TestDirDiffsVersionsAndRetention(t *testing.T) {
-	d := dirDiffs{dir: t.TempDir()}
-	loc, wt := Location{Name: "shop"}, Worktree{Name: "search-perf"}
-	id, imgDir, err := d.prepare(loc, wt, "visualdiff:main", false)
-	if err != nil || !vdIDRe.MatchString(id) {
-		t.Fatalf("prepare: %s %v", id, err)
-	}
-	var first string
+func TestVisualDiffsAreArtifacts(t *testing.T) {
+	bx := &Box{Name: "devbox", Artifacts: &ArtifactStore{Dir: t.TempDir()}, Events: &events.Bus{}}
+	loc, wt := Location{Name: "shop"}, Worktree{Name: "search-perf", Path: "/w/shop-search-perf"}
+	ch, unsub := bx.Events.Subscribe()
+	defer unsub()
+	var id, first string
 	for i := 1; i <= 12; i++ {
-		id2, _, _ := d.prepare(loc, wt, "visualdiff:main", false)
-		if i > 1 && id2 != id {
-			t.Fatalf("v%d went to a new diff %s", i, id2)
+		got, imgDir, existing, err := bx.prepareDiff(wt, "visualdiff:main", false)
+		if err != nil || !ValidArtifactID(got) || existing != (i > 1) || (i > 1 && got != id) {
+			t.Fatalf("prepare %d: %s %v %v", i, got, existing, err)
 		}
+		id = got
 		s := &imgStore{dir: imgDir}
 		name := s.put(encodePNG(flat(4, i, white)))
 		if i == 1 {
@@ -261,37 +262,50 @@ func TestDirDiffsVersionsAndRetention(t *testing.T) {
 		vd.Pages = vd.Pages[:1]
 		vd.Pages[0].Shots[0].After.Img = name
 		raw, _ := json.Marshal(vd)
-		n, err := d.commit(loc, wt, id, "visualdiff:main", raw, vd.Title, "", "")
-		if err != nil || n != i {
-			t.Fatalf("commit %d: %d %v", i, n, err)
+		a, err := bx.commitDiff(loc, wt, id, existing, "visualdiff:main", raw, vd.Title, fmt.Sprintf("run %d", i), ArtifactBy{Session: "search-perf-claude"})
+		if err != nil || a.ID != id || a.Latest().N != i || a.Kind != "visualdiff" || a.Key != "visualdiff:main" {
+			t.Fatalf("commit %d: %+v %v", i, a, err)
+		}
+		e := <-ch
+		if (i == 1) != (e.Type == "artifact.added") || e.Data["kind"] != "visualdiff" || e.Data["summary"] == nil {
+			t.Fatalf("event %d: %+v", i, e)
 		}
 	}
-	m, _ := d.meta(filepath.Join(d.root(loc, wt), id))
+	a, _ := bx.Artifacts.Get(id, wt.Path)
 	var ns []string
-	for _, v := range m.Versions {
+	for _, v := range a.Versions {
 		ns = append(ns, strconv.Itoa(v.N))
 	}
 	if strings.Join(ns, ",") != "1,5,6,7,8,9,10,11,12" {
 		t.Fatalf("kept %v", ns)
 	}
+	imgDir := filepath.Join(bx.Artifacts.Folder(id), "img")
 	if _, err := os.Stat(filepath.Join(imgDir, first)); err != nil {
 		t.Fatal("the first version's image went")
 	}
 	if _, err := os.Stat(filepath.Join(imgDir, imgName(encodePNG(flat(4, 3, white))))); err == nil {
 		t.Fatal("a dropped version's image stayed")
 	}
-	vd, n, _, err := d.latest(loc, wt, id)
-	if err != nil || n != 12 || vd.Schema != VisualDiffSchema {
+	vd, n, dir, err := bx.latestDiff(wt, id)
+	if err != nil || n != 12 || vd.Schema != VisualDiffSchema || dir != imgDir {
 		t.Fatalf("latest: %d %v", n, err)
 	}
-	if other, _, _ := d.prepare(loc, wt, "visualdiff:accepted", false); other == id {
+	if other, _, existing, _ := bx.prepareDiff(wt, "visualdiff:accepted", false); other == id || existing {
 		t.Fatal("another base is another diff")
 	}
-	if fresh, _, _ := d.prepare(loc, wt, "visualdiff:main", true); fresh == id {
+	if fresh, _, _, _ := bx.prepareDiff(wt, "visualdiff:main", true); fresh == id {
 		t.Fatal("--new is a new diff")
 	}
-	if _, _, _, err := d.latest(loc, wt, "../../etc"); err == nil {
+	if _, _, _, err := bx.latestDiff(wt, "../../etc"); err == nil {
 		t.Fatal("a bad id was read")
+	}
+	if _, _, _, err := bx.latestDiff(Worktree{Path: "/w/other"}, id); err == nil {
+		t.Fatal("another worktree's diff was read")
+	}
+	// An agent can't add a visual diff of its own.
+	raw, _ := json.Marshal(sampleVisualDiff())
+	if kind, format, err := classifyArtifact("", "vd.json", raw); err != nil || kind != "visualdiff" || format != "visualdiff" {
+		t.Fatalf("classify: %s %s %v", kind, format, err)
 	}
 }
 
@@ -444,6 +458,7 @@ func TestShotsCompareWithARealChromium(t *testing.T) {
 	}
 	b, wt, _ := shotsBox(t, page(true))
 	b.ShotsDir = t.TempDir()
+	b.Artifacts = &ArtifactStore{Dir: t.TempDir()}
 	b.NewBrowsers(t.TempDir(), 2)
 	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
 	defer cancel()
@@ -472,7 +487,7 @@ func TestShotsCompareWithARealChromium(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Logf("%s", res.Text)
-	vd, n, imgDir, err := b.diffs().latest(loc, wt, res.Artifact)
+	vd, n, imgDir, err := b.latestDiff(wt, res.Artifact)
 	if err != nil || n != 1 {
 		t.Fatalf("latest: %v", err)
 	}
@@ -508,6 +523,9 @@ func TestShotsCompareWithARealChromium(t *testing.T) {
 	if _, err := b.AcceptBaseline(ctx, "cal", "billing", res.Artifact); err != nil {
 		t.Fatal(err)
 	}
+	if bls, err := b.Baselines(ctx, "cal", "billing"); err != nil || len(bls) != 1 || bls[0].Name != "accepted" || bls[0].From != res.Artifact || bls[0].FromVersion != 2 {
+		t.Fatalf("baselines: %+v %v", bls, err)
+	}
 	req.Pages = []string{"/", "/search", "/deals"}
 	req.Base = "accepted"
 	clear, err := b.ShotsCompare(ctx, "cal", "billing", req)
@@ -524,5 +542,82 @@ func TestShotsCompareWithARealChromium(t *testing.T) {
 	both, err := b.ShotsCompare(ctx, "cal", "billing", ShotsRequest{Pages: []string{"/"}, Sizes: []int{375}, Mask: []string{"time"}, Base: "turn-start", ColorScheme: "both"})
 	if err != nil || !strings.Contains(both.Text, "× 2 schemes") || !strings.Contains(both.Text, "No visual changes") {
 		t.Fatalf("both schemes: %v\n%s", err, both.Text)
+	}
+}
+
+// The visual diff's routes: its images (only real image names, only a
+// visual diff's), Accept as baseline, the baselines, and no visual diff
+// added by hand.
+func TestVisualDiffRoutes(t *testing.T) {
+	repo := gitRepo(t)
+	ctx := context.Background()
+	bus := &events.Bus{Sequence: true}
+	bx := &Box{Name: "devbox", Locations: NewLocations(filepath.Join(t.TempDir(), "locations.json")), Events: bus, ShotsDir: t.TempDir()}
+	bx.Artifacts = &ArtifactStore{Dir: t.TempDir(), Events: bus, Box: "devbox"}
+	if _, err := bx.Locations.Add(ctx, "shop", repo); err != nil {
+		t.Fatal(err)
+	}
+	loc, _ := bx.Locations.Get(ctx, "shop")
+	wt := loc.Worktrees[0]
+	c := localBox(t, bx)
+
+	id, imgDir, existing, err := bx.prepareDiff(wt, "visualdiff:main", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	png1 := encodePNG(flat(375, 812, white))
+	name := (&imgStore{dir: imgDir}).put(png1)
+	vd := sampleVisualDiff()
+	vd.Pages = vd.Pages[:1]
+	vd.Pages[0].Shots[0].After.Img = name
+	raw, _ := json.Marshal(vd)
+	if _, err := bx.commitDiff(loc, wt, id, existing, "visualdiff:main", raw, vd.Title, "", ArtifactBy{}); err != nil {
+		t.Fatal(err)
+	}
+	base := "/v1/locations/shop/worktrees/" + wt.Name + "/artifacts/" + id
+	get := func(path string) (*http.Response, []byte) {
+		resp, err := c.Doer.DoWithHeader(ctx, "GET", path, nil, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer resp.Body.Close()
+		body, _ := io.ReadAll(resp.Body)
+		return resp, body
+	}
+	resp, body := get(base + "/img/" + name)
+	if resp.StatusCode != 200 || resp.Header.Get("Content-Type") != "image/png" || resp.Header.Get("X-Content-Type-Options") != "nosniff" || !strings.Contains(resp.Header.Get("Content-Security-Policy"), "sandbox") || string(body) != string(png1) {
+		t.Fatalf("image: %d %v", resp.StatusCode, resp.Header)
+	}
+	for _, bad := range []string{"0000000000000000.png", "meta.json", "..%2Fmeta.json", "v1.json"} {
+		if resp, _ := get(base + "/img/" + bad); resp.StatusCode != 404 {
+			t.Fatalf("%s: %d", bad, resp.StatusCode)
+		}
+	}
+	// A chart has no images.
+	var chart AddArtifactResult
+	if err := c.Call(ctx, "POST", "/v1/locations/shop/worktrees/"+wt.Name+"/artifacts", addArtifactRequest{Title: "p95", Name: "p95.json", Content: barChart}, &chart); err != nil {
+		t.Fatal(err)
+	}
+	os.MkdirAll(filepath.Join(bx.Artifacts.Folder(chart.Artifact.ID), "img"), 0o700)
+	os.WriteFile(filepath.Join(bx.Artifacts.Folder(chart.Artifact.ID), "img", name), png1, 0o600)
+	if resp, _ := get("/v1/locations/shop/worktrees/" + wt.Name + "/artifacts/" + chart.Artifact.ID + "/img/" + name); resp.StatusCode != 404 {
+		t.Fatalf("a chart's image: %d", resp.StatusCode)
+	}
+	// No visual diff by hand.
+	err = c.Call(ctx, "POST", "/v1/locations/shop/worktrees/"+wt.Name+"/artifacts", addArtifactRequest{Title: "fake", Name: "vd.json", Content: string(raw)}, nil)
+	if err == nil || !strings.Contains(err.Error(), "berthd shots compare") {
+		t.Fatalf("a hand-made visual diff: %v", err)
+	}
+	// Accept, then the baselines.
+	var acc ShotsResult
+	if err := c.Call(ctx, "POST", "/v1/worktrees/shop/"+wt.Name+"/shots/accept", map[string]string{"artifact": id}, &acc); err != nil || !strings.Contains(acc.Text, "accepted "+id+" v1") {
+		t.Fatalf("accept: %+v %v", acc, err)
+	}
+	var bls []BaselineInfo
+	if err := c.Call(ctx, "GET", "/v1/worktrees/shop/"+wt.Name+"/shots/baselines", nil, &bls); err != nil || len(bls) != 1 || bls[0].From != id || bls[0].Shots != 1 {
+		t.Fatalf("baselines: %+v %v", bls, err)
+	}
+	if err := c.Call(ctx, "POST", "/v1/worktrees/shop/"+wt.Name+"/shots/accept", map[string]string{"artifact": chart.Artifact.ID}, nil); err == nil {
+		t.Fatal("accepted a chart")
 	}
 }

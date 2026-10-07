@@ -163,6 +163,7 @@ type ShotsRequest struct {
 	Base        string `json:"base,omitempty"`
 	ColorScheme string `json:"color_scheme,omitempty"`
 	Session     string `json:"session,omitempty"`
+	Agent       string `json:"agent,omitempty"`
 	Title       string `json:"title,omitempty"`
 	Note        string `json:"note,omitempty"`
 	New         bool   `json:"new,omitempty"` // a new visual diff, not a new version
@@ -190,8 +191,6 @@ func (b *Box) shotsDir() string {
 	}
 	return filepath.Join(os.TempDir(), "berth-shots")
 }
-
-func (b *Box) diffs() visualDiffs { return dirDiffs{dir: b.shotsDir()} }
 
 func shotsConfigFor(wt Worktree) ShotsConfig {
 	if c, ok, _ := ReadRepoConfig(wt.Path); ok && c.Shots != nil {
@@ -356,6 +355,9 @@ func (b *Box) ShotsCompare(ctx context.Context, locName, wtName string, req Shot
 	if b.Browsers == nil {
 		return ShotsResult{}, errors.New("this box has no browser")
 	}
+	if b.Artifacts == nil && req.Save == "" {
+		return ShotsResult{}, errNoArtifacts
+	}
 	p, err := b.planShots(ctx, locName, wtName, req)
 	if err != nil {
 		return ShotsResult{}, err
@@ -431,8 +433,7 @@ func (b *Box) ShotsCompare(ctx context.Context, locName, wtName string, req Shot
 	}
 
 	key := "visualdiff:" + p.base
-	store := b.diffs()
-	id, imgDir, err := store.prepare(p.loc, p.wt, key, req.New)
+	id, imgDir, existing, err := b.prepareDiff(p.wt, key, req.New)
 	if err != nil {
 		return ShotsResult{}, err
 	}
@@ -526,11 +527,12 @@ func (b *Box) ShotsCompare(ctx context.Context, locName, wtName string, req Shot
 	if err := ValidateVisualDiff(raw); err != nil {
 		return ShotsResult{}, fmt.Errorf("the visual diff came out invalid: %w", err)
 	}
-	n, err := store.commit(p.loc, p.wt, id, key, raw, vd.Title, req.Note, req.Session)
+	a, err := b.commitDiff(p.loc, p.wt, id, existing, key, raw, vd.Title, req.Note, ArtifactBy{Session: clipRunes(req.Session, 80), Agent: clipRunes(req.Agent, 40)})
 	if err != nil {
 		return ShotsResult{}, err
 	}
-	return ShotsResult{Text: agentText(vd, id, n, imgDir), Artifact: id, Version: n, Dir: filepath.Dir(imgDir)}, nil
+	n := a.Latest().N
+	return ShotsResult{Text: agentText(vd, a, imgDir), Artifact: a.ID, Version: n, Dir: filepath.Dir(imgDir)}, nil
 }
 
 // diffPair compares one shot's two sides and stores its images.
@@ -640,6 +642,7 @@ func round(x float64, places int) float64 {
 
 // POST /v1/worktrees/{loc}/{wt}/shots/compare  ShotsRequest → ShotsResult
 // POST /v1/worktrees/{loc}/{wt}/shots/accept   {artifact} → ShotsResult
+// GET  /v1/worktrees/{loc}/{wt}/shots/baselines → []BaselineInfo
 func (b *Box) mountShots(route func(string, func(http.ResponseWriter, *http.Request) error)) {
 	route("POST /v1/worktrees/{loc}/{wt}/shots/compare", func(w http.ResponseWriter, r *http.Request) error {
 		var req ShotsRequest
@@ -651,6 +654,14 @@ func (b *Box) mountShots(route func(string, func(http.ResponseWriter, *http.Requ
 			return err
 		}
 		writeJSON(w, res)
+		return nil
+	})
+	route("GET /v1/worktrees/{loc}/{wt}/shots/baselines", func(w http.ResponseWriter, r *http.Request) error {
+		list, err := b.Baselines(r.Context(), r.PathValue("loc"), r.PathValue("wt"))
+		if err != nil {
+			return err
+		}
+		writeJSON(w, list)
 		return nil
 	})
 	route("POST /v1/worktrees/{loc}/{wt}/shots/accept", func(w http.ResponseWriter, r *http.Request) error {
