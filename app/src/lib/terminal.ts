@@ -1,5 +1,5 @@
 import type { TerminalColors } from "@/lib/api";
-import { OutputGate } from "@/lib/term-output";
+import { OutputGate } from "./term-output.ts";
 
 // One small interface over the terminal emulator, so the renderer can be
 // swapped: ghostty-web (Ghostty's VT parser in WASM, drawn on a canvas) by
