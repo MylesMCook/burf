@@ -63,9 +63,12 @@ func addSSH(l laptop, args []string) error {
 	return err
 }
 
-const addSSHUsage = "usage: berth add ssh [user@]HOST [--name N] [--agents claude,codex|none] [--guided] [--yes] [--from STEP] [--network NET] [--listen ADDR] [--address ADDR] [--identity FILE] [--trust-host-key SHA256:…] [--no-integrations] [-- SSH OPTIONS]"
+const addSSHUsage = "usage: berth add ssh [user@]HOST [--name N] [--agents claude,codex|none] [--guided] [--yes] [--from STEP] [--network NET] [--listen ADDR] [--address ADDR] [--identity FILE] [--trust-host-key SHA256:…] [--no-integrations] [-- SSH OPTIONS] (macOS and Linux clients only)"
 
 func addSSHSteps(l laptop, args []string) error {
+	if runtime.GOOS == "windows" {
+		return errors.New("SSH provisioning from Windows is not supported; install berthd on a macOS or Linux box and run berth pair with its pairing link")
+	}
 	var sshArgs []string
 	for i, a := range args {
 		if a == "--" {

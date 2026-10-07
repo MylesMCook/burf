@@ -20,7 +20,7 @@ the `BOX/` prefix.
 
 | Command | What it does |
 | --- | --- |
-| `berth add ssh [user@]HOST [--name N] [--agents claude,codex\|none] [--guided] [--yes] [--from STEP] [--network NET] [--listen ADDR] [--address ADDR] [--identity FILE] [--trust-host-key SHA256:…] [--no-integrations] [-- SSH OPTIONS]` | Set a box up over SSH (once), quietly: installs berthd, tmux and git if missing (Berth's own tmux needs no sudo), the agent CLIs (`--agents`, Claude Code by default) and their hooks, and pairs, with no plan and no Enter. Only a step that needs `sudo`'s password (git missing, or lingering the box allows only as root) runs in a terminal, where `sudo` asks; lingering alone is asked about first and can be skipped. `--guided` shows the whole plan, waits for Enter, and runs every step in one terminal. `--yes` (or no terminal) asks nothing and stops with the command to run where `sudo` would need a password; `--from` retries from a step. See [add a box](/getting-started/add-a-box#over-ssh). |
+| `berth add ssh [user@]HOST [--name N] [--agents claude,codex\|none] [--guided] [--yes] [--from STEP] [--network NET] [--listen ADDR] [--address ADDR] [--identity FILE] [--trust-host-key SHA256:…] [--no-integrations] [-- SSH OPTIONS]` | From a macOS or Linux client, set a box up over SSH (once), quietly: installs berthd, tmux and git if missing (Berth's own tmux needs no sudo), the agent CLIs (`--agents`, Claude Code by default) and their hooks, and pairs, with no plan and no Enter. Only a step that needs `sudo`'s password (git missing, or lingering the box allows only as root) runs in a terminal, where `sudo` asks; lingering alone is asked about first and can be skipped. `--guided` shows the whole plan, waits for Enter, and runs every step in one terminal. `--yes` (or no terminal) asks nothing and stops with the command to run where `sudo` would need a password; `--from` retries from a step. See [add a box](/getting-started/add-a-box#over-ssh). |
 | `berth pair '<link>' [--name N] [--network NET]` | Pair with a box, from the link `berthd pair` prints |
 | `berth invite [--boxes a,b] [--for NAME] [--yes] [--json]` | A join link for another computer of yours: a fresh single-use code from each box (every paired box, or `--boxes`), valid ten minutes. Offline boxes are left out and listed. Asks first unless `--yes`; `--for` names the computer in the boxes' events. See [more than one computer](/guides/more-computers). |
 | `berth join '<link>'\|- [--check] [--yes] [--json]` | Pair this computer with every box in a join link (`-` reads it from stdin; pasting the whole message is fine). Each box reports `paired`, `already`, `needs-network` (sign in to its tailnet, then join again) or `failed`; `--check` only says what the link holds |
@@ -32,8 +32,10 @@ the `BOX/` prefix.
 | `berth ping BOX` | Check a box answers and still trusts you |
 | `berth upgrade BOX [--check] [--json]` | Upgrade the box's daemon over Berth's own connection (no SSH); `--check` only reports whether it is older |
 | `berth edit BOX/PROJECT[/WT] [FILE[:LINE[:COL]]] [--in cursor\|vscode\|windsurf\|zed]` | Open a worktree, or a file at a line, in your editor (default: the first installed) |
-| `berth ssh-config [--write] [--json]` | Show (then write) the SSH hosts editors use: `berth-<box>` |
+| `berth ssh-config [--write] [--json]` | Show (then write) the SSH hosts editors use: `berth-<box>`. Windows entries require native Windows OpenSSH. |
 | `berth forget BOX` | Remove a box from this laptop |
+
+Windows clients pair with already-running macOS or Linux boxes. `berth add ssh` and GUI SSH provisioning are unavailable from Windows; install Berth on the box first, then use its pairing link. See the [Windows client scope](/contributing/windows#ssh-provisioning-and-editors).
 
 `berth discover --json` prints `{ user, machines, tailscale, tailnet }`:
 `user` is the SSH user to suggest (yours on this computer), `tailscale` is
