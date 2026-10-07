@@ -41,7 +41,9 @@ type Highlights = { set(name: string, h: unknown): void; delete(name: string): v
 const highlights = (): Highlights | undefined => (globalThis as unknown as { CSS?: { highlights?: Highlights } }).CSS?.highlights;
 const Highlight = (globalThis as unknown as { Highlight?: new (...r: Range[]) => unknown }).Highlight;
 
-export function ChatSearch({ api, entries, onReveal }: { api: ChatListApi; entries: SearchEntry[]; onReveal(ids: string[]): void }) {
+// entries gives what to look through: asked for only while search is open
+// with words to find, so a closed search costs a long chat nothing.
+export function ChatSearch({ api, entries, onReveal }: { api: ChatListApi; entries(): SearchEntry[]; onReveal(ids: string[]): void }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [at, setAt] = useState(0);
@@ -83,7 +85,7 @@ export function ChatSearch({ api, entries, onReveal }: { api: ChatListApi; entri
   const hits = useMemo<Hit[]>(() => {
     if (!open || q.length < 1) return [];
     const out: Hit[] = [];
-    for (const e of entries) {
+    for (const e of entries()) {
       const t = e.text.toLowerCase();
       let i = t.indexOf(q);
       let n = 0;

@@ -32,7 +32,9 @@ export interface PromptContext {
   idle: boolean;
   who: string;
   // Every item, older turns included: which of equal prompts this is.
-  items: TranscriptItem[];
+  // Read when asked, so the context doesn't change (and every prompt draw
+  // again) as the chat grows.
+  items(): TranscriptItem[];
 }
 
 export const PromptActionsContext = createContext<PromptContext | null>(null);
@@ -160,8 +162,9 @@ function RewindDialog({ ctx, it, onClose }: { ctx: PromptContext; it: Extract<Tr
     const client = useStore.getState().client;
     if (!client) return;
     // Which of the prompts reading the same this is, counting back.
-    const i = ctx.items.findIndex((x) => x.id === it.id);
-    const nth = ctx.items.slice(i + 1).filter((x) => x.kind === "user" && x.text.trim() === it.text.trim()).length;
+    const items = ctx.items();
+    const i = items.findIndex((x) => x.id === it.id);
+    const nth = items.slice(i + 1).filter((x) => x.kind === "user" && x.text.trim() === it.text.trim()).length;
     setBusy(true);
     try {
       const r = await historyApi.rewind(client, ctx.box, ctx.session, { text: it.text, nth, restore });

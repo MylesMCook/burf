@@ -3,6 +3,7 @@
 import { Field as FieldPrimitive } from "@base-ui/react/field";
 import { mergeProps } from "@base-ui/react/merge-props";
 import type * as React from "react";
+import { useCallback, useLayoutEffect, useRef } from "react";
 import { cn } from "@/lib/utils";
 
 export type TextareaProps = React.ComponentPropsWithoutRef<"textarea"> &
@@ -38,7 +39,7 @@ export function Textarea({
         id={props.id}
         name={props.name}
         render={(defaultProps: React.ComponentProps<"textarea">) => (
-          <textarea
+          <ValueTextarea
             className={cn(
               "field-sizing-content min-h-17.5 w-full rounded-[inherit] px-[calc(--spacing(3)-1px)] py-[calc(--spacing(1.5)-1px)] text-foreground outline-none placeholder:text-muted-foreground/72 max-sm:min-h-20.5",
               size === "sm" &&
@@ -53,6 +54,33 @@ export function Textarea({
       />
     </span>
   );
+}
+
+// ValueTextarea is a textarea whose value, when it is given one, is set as
+// the element's property rather than by React. React writes a controlled
+// textarea's text node (its defaultValue) on every update as well, and in
+// Chromium that one change re-checks the app's :has() rules up the whole
+// page: about 8 ms a keystroke in the chat's reply box, the same in a
+// short chat or a long one. The property alone doesn't (0.04 ms). It reads
+// and behaves as a controlled one: what is typed comes through onChange,
+// and a value set from outside (cleared after sending, a recalled prompt)
+// replaces what is there.
+function ValueTextarea({ value, ref, ...props }: React.ComponentProps<"textarea">) {
+  const el = useRef<HTMLTextAreaElement | null>(null);
+  const setRef = useCallback(
+    (node: HTMLTextAreaElement | null) => {
+      el.current = node;
+      if (typeof ref === "function") ref(node);
+      else if (ref) ref.current = node;
+    },
+    [ref],
+  );
+  const text = value == null ? undefined : String(value);
+  useLayoutEffect(() => {
+    const t = el.current;
+    if (t && text !== undefined && t.value !== text) t.value = text;
+  }, [text]);
+  return <textarea ref={setRef} {...props} />;
 }
 
 export { FieldPrimitive };
