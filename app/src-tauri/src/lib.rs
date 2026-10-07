@@ -42,20 +42,13 @@ fn ui_endpoint() -> Result<Endpoint, String> {
     })
 }
 
-// Developer tools for the page that asked, from Settings → Developer. Tauri
-// only includes them in debug builds.
+// Developer tools for the page that asked, from Settings → Developer. The
+// "devtools" feature (Cargo.toml) keeps them in release builds too, for the
+// Browser tab's Web Inspector.
 #[tauri::command]
 fn open_devtools(webview: tauri::Webview) -> Result<(), String> {
-    #[cfg(debug_assertions)]
-    {
-        webview.open_devtools();
-        Ok(())
-    }
-    #[cfg(not(debug_assertions))]
-    {
-        let _ = webview;
-        Err("developer tools are only in debug builds of Berth".into())
-    }
+    webview.open_devtools();
+    Ok(())
 }
 
 // restart_app relaunches Berth, after the webview has installed a
@@ -125,6 +118,7 @@ pub fn run() {
             browser::browser_forward,
             browser::browser_reload,
             browser::browser_pick,
+            browser::browser_inspect,
             browser::browser_close,
         ])
         .run(tauri::generate_context!())
