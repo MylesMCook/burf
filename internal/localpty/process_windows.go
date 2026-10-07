@@ -120,6 +120,9 @@ func Start(program string, args []string, dir string, env []string, cols, rows i
 	}
 	si := windows.StartupInfoEx{ProcThreadAttributeList: attrs.List()}
 	si.Cb = uint32(unsafe.Sizeof(si))
+	// Explicit null standard handles select ConPTY. Without this flag Windows
+	// can duplicate a redirected parent's streams even with inheritHandles=false.
+	si.Flags = windows.STARTF_USESTDHANDLES
 	var pi windows.ProcessInformation
 	flags := uint32(windows.EXTENDED_STARTUPINFO_PRESENT | windows.CREATE_UNICODE_ENVIRONMENT | windows.CREATE_SUSPENDED)
 	if err = windows.CreateProcess(app, command, nil, nil, false, flags, envPtr, cwd, &si.StartupInfo, &pi); err != nil {

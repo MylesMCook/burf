@@ -227,6 +227,7 @@ func TestPTYHelper(t *testing.T) {
 	if mode == "" {
 		return
 	}
+	time.AfterFunc(10*time.Second, func() { os.Exit(97) })
 	switch mode {
 	case "metadata":
 		cwd, _ := os.Getwd()
@@ -263,9 +264,14 @@ func TestPTYHelper(t *testing.T) {
 			time.Sleep(time.Hour)
 		}
 	case "flood":
-		for {
+		var consoleMode uint32
+		if windows.GetConsoleMode(windows.Handle(os.Stdout.Fd()), &consoleMode) != nil {
+			os.Exit(4)
+		}
+		for range 4096 {
 			fmt.Println(strings.Repeat("output-", 100))
 		}
+		os.Exit(9)
 	default:
 		os.Exit(3)
 	}
