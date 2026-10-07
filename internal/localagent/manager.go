@@ -9,6 +9,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"sync"
 	"time"
@@ -17,6 +18,7 @@ import (
 const outputLimit = 1 << 20
 
 var ErrNotFound = errors.New("local session not found")
+var conversationID = regexp.MustCompile(`^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$`)
 
 type Process interface {
 	io.ReadWriteCloser
@@ -29,6 +31,7 @@ type Launch func(program string, args []string, dir string, env []string, cols, 
 type Command struct {
 	Program string
 	Args    []string
+	CanFork bool
 }
 
 type Session struct {
@@ -57,6 +60,7 @@ type running struct {
 	output    []byte
 	end       int64
 	closeOnce sync.Once
+	originID  string
 }
 
 func (r *running) close() { r.closeOnce.Do(func() { close(r.done); _ = r.process.Close() }) }
@@ -74,6 +78,19 @@ func New(commands map[string]Command, launch Launch) *Manager {
 }
 
 func (m *Manager) Start(agent, cwd string) (Session, error) {
+	return m.start(agent, cwd, "")
+}
+
+// Fork continues saved history under a new CLI session ID. Never resume an
+// externally owned session in place: another application may still write it.
+func (m *Manager) Fork(agent, cwd, sourceID string) (Session, error) {
+	if !conversationID.MatchString(sourceID) {
+		return Session{}, errors.New("this conversation has no supported session ID")
+	}
+	return m.start(agent, cwd, sourceID)
+}
+
+func (m *Manager) start(agent, cwd, sourceID string) (Session, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if m.closed {
@@ -82,6 +99,20 @@ func (m *Manager) Start(agent, cwd string) (Session, error) {
 	command, ok := m.commands[agent]
 	if !ok || command.Program == "" {
 		return Session{}, errors.New("agent CLI is not installed")
+	}
+	if sourceID != "" {
+		if !command.CanFork {
+			return Session{}, errors.New("installed agent CLI does not support continuing a copy")
+		}
+		command.Args = append([]string(nil), command.Args...)
+		switch agent {
+		case "codex":
+			command.Args = append(command.Args, "fork", sourceID)
+		case "claude":
+			command.Args = append(command.Args, "--resume", sourceID, "--fork-session")
+		default:
+			return Session{}, errors.New("agent does not support conversation continuation")
+		}
 	}
 	if !filepath.IsAbs(cwd) {
 		return Session{}, errors.New("project directory must be an absolute path")
@@ -95,6 +126,11 @@ func (m *Manager) Start(agent, cwd string) (Session, error) {
 	for _, r := range m.sessions {
 		r.mu.Lock()
 		if r.session.State == "running" {
+			if sourceID != "" && r.originID == sourceID && r.session.Agent == agent {
+				s := r.session
+				r.mu.Unlock()
+				return s, nil
+			}
 			active++
 		}
 		r.mu.Unlock()
@@ -111,7 +147,7 @@ func (m *Manager) Start(agent, cwd string) (Session, error) {
 		return Session{}, err
 	}
 	s := Session{ID: hex.EncodeToString(id[:]), Agent: agent, CWD: cwd, State: "running", StartedAt: time.Now().UTC()}
-	r := &running{session: s, process: p, input: make(chan string, 8), done: make(chan struct{})}
+	r := &running{session: s, process: p, input: make(chan string, 8), done: make(chan struct{}), originID: sourceID}
 	// Keep exited terminals available for reconnect, but never grow without bound.
 	if len(m.sessions) >= 32 {
 		var oldest string

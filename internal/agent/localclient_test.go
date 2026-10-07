@@ -7,6 +7,9 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
+	"reflect"
 	"runtime"
 	"strings"
 	"sync"
@@ -20,19 +23,86 @@ import (
 func TestLocalRoutesRequireAuthAndLoopback(t *testing.T) {
 	a := &Agent{}
 	h := a.ui("local-test-token", "127.0.0.1:1378", http.NotFoundHandler())
-	for _, path := range []string{"/v1/local", "/v1/local/conversations", "/v1/local/sessions/foreign/output"} {
+	for _, endpoint := range [][2]string{{"GET", "/v1/local"}, {"GET", "/v1/local/conversations"}, {"GET", "/v1/local/sessions/foreign/output"}, {"POST", "/v1/local/conversations/foreign/fork"}} {
 		for _, tc := range []struct {
 			host, token string
 			status      int
 		}{{"localhost:1378", "", 401}, {"localhost:1378", "bad", 401}, {"evil.example:1378", "local-test-token", 403}} {
-			r := httptest.NewRequest("GET", "http://"+tc.host+path, nil)
+			r := httptest.NewRequest(endpoint[0], "http://"+tc.host+endpoint[1], nil)
 			r.Header.Set("Authorization", "Bearer "+tc.token)
 			w := httptest.NewRecorder()
 			h.ServeHTTP(w, r)
 			if w.Code != tc.status {
-				t.Fatalf("%s: %d", path, w.Code)
+				t.Fatalf("%s: %d", endpoint[1], w.Code)
 			}
 		}
+	}
+}
+
+func TestLocalContinuationAPI(t *testing.T) {
+	if runtime.GOOS != "windows" {
+		t.Skip("native local API is Windows only")
+	}
+	dir := t.TempDir()
+	const sourceID = "12345678-1234-4321-8123-123456789abc"
+	path := filepath.Join(dir, "sessions", "2026", "10", "07", "rollout-test.jsonl")
+	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
+		t.Fatal(err)
+	}
+	meta, _ := json.Marshal(map[string]any{"type": "session_meta", "payload": map[string]any{"id": sourceID, "cwd": dir, "source": "cli"}})
+	if err := os.WriteFile(path, append(meta, '\n'), 0600); err != nil {
+		t.Fatal(err)
+	}
+	original, _ := os.ReadFile(path)
+	a := &Agent{ctx: context.Background()}
+	calls := 0
+	a.localClient.once.Do(func() {
+		a.localClient.commands = map[string]localagent.Command{"codex": {Program: "synthetic.exe", CanFork: true}}
+		a.localClient.history = localhistory.New(localhistory.Config{CodexHome: dir, ClaudeHome: dir})
+		a.localClient.manager = localagent.New(a.localClient.commands, func(_ string, args []string, cwd string, _ []string, _, _ int) (localagent.Process, error) {
+			calls++
+			if !reflect.DeepEqual(args, []string{"fork", sourceID}) || cwd != dir {
+				t.Fatalf("unexpected launch: %q %q", args, cwd)
+			}
+			r, w := io.Pipe()
+			return &localTestProcess{r: r, w: w}, nil
+		})
+	})
+	defer a.localClient.manager.Close()
+	h := a.ui("local-test-token", "127.0.0.1:1378", http.NotFoundHandler())
+	call := func(method, path string) *httptest.ResponseRecorder {
+		r := httptest.NewRequest(method, "http://localhost:1378"+path, nil)
+		r.Header.Set("Authorization", "Bearer local-test-token")
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, r)
+		return w
+	}
+	if w := call("POST", "/v1/local/conversations/"+sourceID+"/fork"); w.Code != 404 {
+		t.Fatal(w.Code)
+	}
+	w := call("GET", "/v1/local/conversations")
+	var list []localhistory.Conversation
+	if err := json.Unmarshal(w.Body.Bytes(), &list); err != nil || len(list) != 1 {
+		t.Fatal("history discovery", err)
+	}
+	endpoint := "/v1/local/conversations/" + list[0].ID + "/fork"
+	for i := 0; i < 2; i++ {
+		if w := call("POST", endpoint); w.Code != 201 {
+			t.Fatal(w.Code, w.Body.String())
+		}
+	}
+	if calls != 1 {
+		t.Fatal("duplicate continuation", calls)
+	}
+	after, _ := os.ReadFile(path)
+	if string(original) != string(after) {
+		t.Fatal("source history changed")
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	if w := call("POST", endpoint); w.Code != 404 {
+		t.Fatal("missing source accepted", w.Code)
 	}
 }
 

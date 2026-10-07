@@ -169,29 +169,11 @@ func (s *Store) List(ctx context.Context) ([]Conversation, error) {
 // Read accepts only an opaque ID from discovery. Revalidate the source record
 // before reading, so a replaced file cannot silently become another chat.
 func (s *Store) Read(ctx context.Context, id string, before int64) (transcript.Result, error) {
-	if err := ctx.Err(); err != nil {
+	r, f, err := s.openRecord(ctx, id)
+	if err != nil {
 		return transcript.Result{}, err
 	}
-	s.mu.RLock()
-	r, ok := s.records[id]
-	s.mu.RUnlock()
-	if !ok {
-		return transcript.Result{}, ErrNotFound
-	}
-	root, err := os.OpenRoot(r.home)
-	if err != nil {
-		return transcript.Result{}, ErrNotFound
-	}
-	defer root.Close()
-	f, err := safeOpen(root, r.path)
-	if err != nil {
-		return transcript.Result{}, ErrNotFound
-	}
 	defer f.Close()
-	identity, cwd, _ := metadata(f, r.Source)
-	if identity != r.identity || cwd != r.Cwd {
-		return transcript.Result{}, ErrNotFound
-	}
 	result, err := transcript.BeforeFile(r.Source, f, r.Cwd, before, pageSize)
 	if err != nil {
 		return transcript.Result{}, errors.New("cannot read local conversation")
@@ -200,6 +182,54 @@ func (s *Store) Read(ctx context.Context, id string, before int64) (transcript.R
 		return transcript.Result{}, err
 	}
 	return result, nil
+}
+
+type Continuation struct {
+	Source    string
+	SessionID string
+	Cwd       string
+}
+
+// Continuation resolves only discovered, still-valid history. Callers cannot
+// supply a transcript path, command line or raw session ID through the API.
+func (s *Store) Continuation(ctx context.Context, id string) (Continuation, error) {
+	r, f, err := s.openRecord(ctx, id)
+	if err != nil {
+		return Continuation{}, err
+	}
+	f.Close()
+	return Continuation{Source: r.Source, SessionID: r.identity, Cwd: r.Cwd}, nil
+}
+
+func (s *Store) openRecord(ctx context.Context, id string) (record, *os.File, error) {
+	if err := ctx.Err(); err != nil {
+		return record{}, nil, err
+	}
+	s.mu.RLock()
+	r, ok := s.records[id]
+	s.mu.RUnlock()
+	if !ok {
+		return record{}, nil, ErrNotFound
+	}
+	root, err := os.OpenRoot(r.home)
+	if err != nil {
+		return record{}, nil, ErrNotFound
+	}
+	defer root.Close()
+	f, err := safeOpen(root, r.path)
+	if err != nil {
+		return record{}, nil, ErrNotFound
+	}
+	identity, cwd, _ := metadata(f, r.Source)
+	if identity != r.identity || cwd != r.Cwd {
+		f.Close()
+		return record{}, nil, ErrNotFound
+	}
+	if err := ctx.Err(); err != nil {
+		f.Close()
+		return record{}, nil, err
+	}
+	return r, f, nil
 }
 
 // Reject links before opening; os.Root additionally prevents a concurrent

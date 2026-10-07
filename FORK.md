@@ -12,6 +12,10 @@ patches small and upstream contributions straightforward.
   project and readable without modifying their source files.
 - Imported history is read-only. It is not represented as a running agent,
   and opening it never resumes or takes over another application's process.
+- **Continue in Berth** explicitly starts an interactive copy using the installed
+  CLI's fork command. The original conversation stays unchanged, even if another
+  application still has it open. Repeated clicks reuse a running continuation.
+  The original project directory must still exist and the CLI must support forks.
 - Installed native agent CLIs can run in a Berth-owned Windows terminal,
   receive input, resize, and stop without affecting externally started agents.
 - Local sessions belong to the client backend. They survive closing a view,
@@ -45,7 +49,8 @@ enabled.
 Synthetic transcript fixtures must cover discovery, read-only pagination,
 malformed files and path containment. Native terminal tests must verify output,
 input, resizing and owned-process cleanup on Windows, not just cross-compilation.
-App acceptance tests must cover unavailable CLIs, read-only history and terminal
+App acceptance tests must cover unavailable CLIs, read-only history, explicit
+continuation and its failure cases, and terminal
 reconnection. A successful cross-build is not evidence of native execution or
 desktop usability.
 

@@ -42,7 +42,8 @@ func (a *Agent) localClientRoutes(mux *http.ServeMux) {
 		home, _ := os.UserHomeDir()
 		agents := make([]map[string]any, 0, 2)
 		for _, id := range []string{"claude", "codex"} {
-			agents = append(agents, map[string]any{"id": id, "available": a.localClient.commands[id].Program != ""})
+			command := a.localClient.commands[id]
+			agents = append(agents, map[string]any{"id": id, "available": command.Program != "", "can_fork": command.CanFork})
 		}
 		writeJSON(w, http.StatusOK, map[string]any{"supported": true, "name": name, "home": home, "agents": agents, "sessions": a.localClient.manager.List()})
 	})
@@ -82,6 +83,25 @@ func (a *Agent) localClientRoutes(mux *http.ServeMux) {
 			return
 		}
 		writeJSON(w, 200, result)
+	})
+	handle("POST /v1/local/conversations/{id}/fork", func(w http.ResponseWriter, r *http.Request) {
+		done, err := a.work.begin("continuing a local conversation")
+		if err != nil {
+			writeCoded(w, 503, err.Error(), "agent_restarting")
+			return
+		}
+		defer done()
+		source, err := a.localClient.history.Continuation(r.Context(), r.PathValue("id"))
+		if err != nil {
+			localClientError(w, err)
+			return
+		}
+		s, err := a.localClient.manager.Fork(source.Source, source.Cwd, source.SessionID)
+		if err != nil {
+			localClientError(w, err)
+			return
+		}
+		writeJSON(w, http.StatusCreated, s)
 	})
 	handle("POST /v1/local/sessions", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {

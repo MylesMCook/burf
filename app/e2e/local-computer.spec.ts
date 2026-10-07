@@ -5,7 +5,7 @@ const cwd = "C:\\Projects\\shop";
 const conversation = { id: "history-1", source: "codex", title: "Checkout history", cwd, updated_at: "2026-01-01T12:00:00Z", read_only: true };
 const session = { id: "owned-1", agent: "claude", cwd, state: "running", started_at: "2026-01-01T12:00:00Z" };
 
-async function localFixture(app: App, options: { supported?: boolean; available?: boolean; failStart?: boolean; noBoxes?: boolean; mobile?: boolean; failHistory?: boolean; outputFailOnce?: boolean } = {}) {
+async function localFixture(app: App, options: { supported?: boolean; available?: boolean; canFork?: boolean; failStart?: boolean; noBoxes?: boolean; mobile?: boolean; failHistory?: boolean; outputFailOnce?: boolean } = {}) {
   const agent = await fakeAgent();
   const calls: { method: string; path: string; body: unknown }[] = [];
   let running = true;
@@ -18,12 +18,12 @@ async function localFixture(app: App, options: { supported?: boolean; available?
     calls.push({ method: req.method(), path: url.pathname + url.search, body: req.postDataJSON() });
     let body: unknown;
     let status = 200;
-    if (url.pathname === "/v1/local") body = { supported: options.supported ?? true, name: "work-hp", home: cwd, agents: [{ id: "claude", available: options.available ?? true }, { id: "codex", available: false }], sessions: started ? [{ ...session, state: running ? "running" : "exited" }] : [] };
+    if (url.pathname === "/v1/local") body = { supported: options.supported ?? true, name: "work-hp", home: cwd, agents: [{ id: "claude", available: options.available ?? true }, { id: "codex", available: options.canFork ?? false, can_fork: options.canFork ?? false }], sessions: started ? [{ ...session, state: running ? "running" : "exited" }] : [] };
     else if (url.pathname === "/v1/local/conversations") { status = options.failHistory ? 500 : 200; body = options.failHistory ? { error: "History scan failed" } : [conversation]; }
     else if (url.pathname === "/v1/local/conversations/history-1") body = url.searchParams.has("before")
       ? { items: [{ kind: "user", id: "older", off: 0, text: "Earlier request" }], more: false, start: 0 }
       : { items: [{ kind: "user", id: "u1", off: 100, text: "My saved request" }, { kind: "text", id: "a1", off: 200, text: "Saved response" }, { kind: "ask", id: "ask1", off: 300, tool: "Run", detail: "Historical permission", choices: [{ key: "yes", label: "Allow" }] }], more: true, start: 100 };
-    else if (url.pathname === "/v1/local/sessions" && req.method() === "POST") {
+    else if ((url.pathname === "/v1/local/sessions" || url.pathname === "/v1/local/conversations/history-1/fork") && req.method() === "POST") {
       started = !options.failStart;
       status = options.failStart ? 400 : 200;
       body = options.failStart ? { error: "Project folder does not exist" } : session;
@@ -56,6 +56,45 @@ test("local computer opens read-only history and older messages without session 
     await app.page.getByRole("button", { name: "Load older messages" }).click();
     await expect.poll(() => calls.some((c) => c.path === "/v1/local/conversations/history-1?before=100")).toBe(true);
     await expect(app.page.getByText("Earlier request", { exact: true })).toBeVisible();
+    expect(calls.filter((c) => c.method !== "GET")).toEqual([]);
+  } finally { await agent.close(); }
+});
+
+test("explicit continuation opens an owned terminal without answering historical permissions", async ({ app }) => {
+  const { agent, calls } = await localFixture(app, { canFork: true });
+  try {
+    await app.page.getByTestId("nav-local").click();
+    await app.page.getByRole("button", { name: /Checkout history/ }).click();
+    await expect(app.page.getByText("Saved response", { exact: true })).toBeVisible();
+    expect(calls.filter((c) => c.method !== "GET")).toEqual([]);
+    await app.page.getByRole("button", { name: "Continue in Berth", exact: true }).click();
+    await expect(app.page.getByTestId("local-terminal")).toBeVisible();
+    await expect(app.page.locator("[data-testid=local-terminal] .xterm-rows")).toContainText("Local terminal ready");
+    expect(calls.filter((c) => c.method === "POST" && c.path === "/v1/local/conversations/history-1/fork")).toHaveLength(1);
+    expect(calls.filter((c) => c.method === "POST" && c.path === "/v1/local/sessions")).toHaveLength(0);
+  } finally { await agent.close(); }
+});
+
+test("failed continuation preserves readable history and permits retry", async ({ app }) => {
+  const { agent, calls } = await localFixture(app, { canFork: true, failStart: true });
+  try {
+    await app.page.getByTestId("nav-local").click();
+    await app.page.getByRole("button", { name: /Checkout history/ }).click();
+    await app.page.getByRole("button", { name: "Continue in Berth", exact: true }).click();
+    await expect(app.page.getByRole("alert")).toContainText("Project folder does not exist");
+    await expect(app.page.getByText("Saved response", { exact: true })).toBeVisible();
+    await expect(app.page.getByRole("button", { name: "Continue in Berth", exact: true })).toBeEnabled();
+    expect(calls.filter((c) => c.method === "POST" && c.path.endsWith("/fork"))).toHaveLength(1);
+  } finally { await agent.close(); }
+});
+
+test("an older CLI keeps history readable but cannot continue it", async ({ app }) => {
+  const { agent, calls } = await localFixture(app);
+  try {
+    await app.page.getByTestId("nav-local").click();
+    await app.page.getByRole("button", { name: /Checkout history/ }).click();
+    await expect(app.page.getByText("Saved response", { exact: true })).toBeVisible();
+    await expect(app.page.getByRole("button", { name: "Continue in Berth", exact: true })).toBeDisabled();
     expect(calls.filter((c) => c.method !== "GET")).toEqual([]);
   } finally { await agent.close(); }
 });

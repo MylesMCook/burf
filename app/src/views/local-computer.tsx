@@ -1,4 +1,4 @@
-import { ArrowLeftIcon, FolderIcon, MessageSquareIcon, PlusIcon, RotateCwIcon, TerminalIcon } from "lucide-react";
+import { ArrowLeftIcon, FolderIcon, GitForkIcon, MessageSquareIcon, PlusIcon, RotateCwIcon, TerminalIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ConversationView } from "@/components/conversation/conversation-view";
 import { Button } from "@/components/ui/button";
@@ -84,7 +84,10 @@ export function LocalComputerView() {
       </aside>
       <section className={cn("flex min-h-0 min-w-0 flex-1 flex-col", !selection && "hidden sm:flex")}>
         {selection && <div className="border-b px-3 py-1 sm:hidden"><Button size="sm" variant="ghost" onClick={() => select(undefined)}><ArrowLeftIcon />Conversations</Button></div>}
-        {selection?.kind === "history" && <LocalHistory key={selection.conversation.id} client={client} conversation={selection.conversation} />}
+        {selection?.kind === "history" && <LocalHistory key={selection.conversation.id} client={client} conversation={selection.conversation} canFork={!!local?.agents.find((a) => a.id === selection.conversation.source)?.can_fork} onStart={(session, conversationID) => {
+          changeSession(session);
+          select((current) => current?.kind === "history" && current.conversation.id === conversationID ? { kind: "session", session } : current);
+        }} />}
         {selection?.kind === "session" && <LocalTerminal key={selection.session.id} client={client} session={selection.session} onChange={changeSession} />}
         {selection?.kind === "new" && local && <NewLocalAgent client={client} local={local} onStart={(session) => { changeSession(session); select({ kind: "session", session }); }} />}
         {!selection && <div className="m-auto px-6 text-sm text-muted-foreground">Select a conversation or start an agent.</div>}
@@ -93,10 +96,13 @@ export function LocalComputerView() {
   </div>;
 }
 
-function LocalHistory({ client, conversation }: { client: Client; conversation: LocalConversation }) {
+function LocalHistory({ client, conversation, canFork, onStart }: { client: Client; conversation: LocalConversation; canFork: boolean; onStart(session: LocalSession, conversationID: string): void }) {
   const [page, setPage] = useState<LocalHistoryPage>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [starting, setStarting] = useState(false);
+  const [startError, setStartError] = useState("");
+  const startingRef = useRef(false);
   const request = useRef<AbortController | null>(null);
   const load = useCallback(async (before?: number) => {
     request.current?.abort();
@@ -118,13 +124,24 @@ function LocalHistory({ client, conversation }: { client: Client; conversation: 
   useEffect(() => { void load(); return () => request.current?.abort(); }, [load]);
   const before = page?.start ?? page?.items[0]?.off;
   return <>
-    <div className="flex min-w-0 items-center gap-3 border-b px-4 py-3"><h2 className="min-w-0 flex-1 truncate text-sm font-medium" title={conversation.title}>{conversation.title}</h2><span className="shrink-0 text-xs text-muted-foreground">Read-only</span></div>
-    <div className="flex items-center gap-2 px-4 py-2">
+    <div className="flex min-w-0 flex-wrap items-center gap-3 border-b px-4 py-3"><h2 className="min-w-0 flex-1 truncate text-sm font-medium" title={conversation.title}>{conversation.title}</h2><span className="shrink-0 text-xs text-muted-foreground">Read-only</span></div>
+    <div className="flex flex-wrap items-center gap-2 px-4 py-2">
+      <Tip label={canFork ? "Continue as a new chat; the original stays unchanged" : "Installed CLI does not support continuing a copy"}>
+        <Button size="sm" variant="outline" disabled={!canFork || starting} onClick={async () => {
+          if (startingRef.current) return;
+          startingRef.current = true;
+          setStarting(true); setStartError("");
+          try { onStart(await localApi.fork(client, conversation.id), conversation.id); }
+          catch (e) { setStartError(errorMessage(e)); }
+          finally { startingRef.current = false; setStarting(false); }
+        }}><GitForkIcon />{starting ? "Starting..." : "Continue in Berth"}</Button>
+      </Tip>
       {page?.more && before !== undefined && <Button size="sm" variant="outline" disabled={loading} onClick={() => void load(before)}>Load older messages</Button>}
       <Tip label="Refresh conversation"><Button size="icon-sm" variant="ghost" aria-label="Refresh conversation" disabled={loading} onClick={() => void load()}><RotateCwIcon className="size-4" /></Button></Tip>
       {loading && <span role="status" className="text-xs text-muted-foreground">Loading conversation...</span>}
     </div>
     {error && <p role="alert" className="px-4 py-2 text-sm text-destructive">{error}</p>}
+    {startError && <p role="alert" className="px-4 py-2 text-sm text-destructive">{startError}</p>}
     <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3" data-testid="local-history"><ConversationView items={page?.items ?? []} onAnswer={() => {}} who={localAgentName(conversation.source)} readOnly /></div>
   </>;
 }
