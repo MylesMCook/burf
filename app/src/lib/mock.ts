@@ -47,6 +47,7 @@ const status: Status = {
   routes: [],
   proxy: { port: 1377, url_port: 1377 },
 };
+if (new URLSearchParams(location.search).get("client") === "windows") Object.assign(status, { ssh_setup_supported: false });
 
 // The berthd build each box runs, and the one this Berth ships: gpu is
 // behind until it is updated (GET /v1/boxes/outdated).

@@ -64,6 +64,7 @@ export function AddBoxFlow({
   // The guided install's last button: on to the next step of the first
   // run, back to Team setup when it opened this, else to the box.
   const fromTeam = useStore((s) => s.view.kind === "team");
+  const sshSupported = useStore((s) => !s.status || !("ssh_setup_supported" in s.status) || s.status.ssh_setup_supported !== false);
   const readyLabel = variant === "page" ? "Continue" : fromTeam ? "Back to Team setup" : undefined;
   // From Team setup, adding a box is the guided install, with the team's
   // steps after Berth's; anywhere else it is the quick one.
@@ -99,7 +100,7 @@ export function AddBoxFlow({
   const head = signingIn
     ? {
         title: "Sign in to another tailnet",
-        description: "For a box on a tailnet this computer isn't on: a personal one while this Mac is on work's, say. Berth joins it as its own device, so nothing changes for the rest of this Mac.",
+        description: "For a box on a tailnet this computer isn't on. Berth joins it as its own device, so nothing changes for the rest of this computer.",
       }
     : intro;
   const onBack = signingIn ? () => setSigningIn(undefined) : onExit;
@@ -194,14 +195,14 @@ export function AddBoxFlow({
                 </CollapsiblePanel>
               </Collapsible>
             )}
-            <Collapsible open={sshOpen} onOpenChange={setSshOpen}>
+            {sshSupported && <Collapsible open={sshOpen} onOpenChange={setSshOpen}>
               <Trigger>Or let Berth set it up over SSH</Trigger>
               <CollapsiblePanel>
                 <div className="pt-3">
                   <SshSetup network={network} retry={retry.ssh} onRunning={setBusy} onPaired={setPaired} onSignIn={() => setSigningIn("ssh")} readyLabel={readyLabel} team={team} />
                 </div>
               </CollapsiblePanel>
-            </Collapsible>
+            </Collapsible>}
           </div>
         </div>
       )}

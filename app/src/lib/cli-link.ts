@@ -23,3 +23,7 @@ export async function cliLinkStatus(): Promise<CliLink | null> {
 export async function installCliLink(): Promise<CliLink> {
   return invoke<CliLink>("install_cli_link");
 }
+
+export async function removeCliLink(): Promise<CliLink> {
+  return invoke<CliLink>("remove_cli_link");
+}

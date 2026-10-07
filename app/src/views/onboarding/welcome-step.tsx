@@ -40,7 +40,7 @@ export function WelcomeStep({ local, onThisMac, onRemote, onJoin }: { local?: bo
           primary={local === false}
           icon={<ServerIcon />}
           title="Connect a remote box"
-          detail="A VPS or dev machine, over your tailnet, SSH or a pairing link. Agents keep going when this Mac sleeps."
+          detail="A Linux or Mac dev machine connected with a pairing link. Agents keep going when this computer sleeps."
           action={
             <Button variant={local === false ? "default" : "outline"} autoFocus={local === false} onClick={onRemote}>
               Connect a box

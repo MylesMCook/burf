@@ -111,6 +111,16 @@ pub fn install_cli_link() -> Result<CliLink, String> {
     status()
 }
 
+#[tauri::command]
+pub fn remove_cli_link() -> Result<CliLink, String> {
+    let current = status()?;
+    if current.state != "linked" {
+        return Err("the berth link is not owned by this app".into());
+    }
+    std::fs::remove_file(link_path()?).map_err(|e| e.to_string())?;
+    status()
+}
+
 #[cfg(unix)]
 fn symlink(src: &Path, link: &Path) -> std::io::Result<()> {
     std::os::unix::fs::symlink(src, link)

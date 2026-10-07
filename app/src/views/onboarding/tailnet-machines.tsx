@@ -295,7 +295,8 @@ function MachineSetup({
   const [agents, setAgents] = useAgentChoice();
   // A Berth network is dialed by address; this Mac's tailnet by name.
   const host = network ? m.ip : m.dns_name || m.ip;
-  const plan = useSshPlan(m.os === "linux" ? host : "", network);
+  const sshSupported = useStore((s) => !s.status || !("ssh_setup_supported" in s.status) || s.status.ssh_setup_supported !== false);
+  const plan = useSshPlan(sshSupported && m.os === "linux" ? host : "", network);
   const boxes = useStore((s) => s.status?.boxes);
   const [user, setUser] = useState(suggested);
   const [touched, setTouched] = useState(false);
@@ -313,11 +314,11 @@ function MachineSetup({
     if (planned && !touched) setUser(planned);
   }, [planned, touched]);
 
-  if (m.os !== "linux") {
+  if (m.os !== "linux" || !sshSupported) {
     return (
       <div className="border-t p-3">
         <p className="text-muted-foreground text-xs leading-relaxed">
-          Berth sets up Linux machines over SSH. On a Mac like {m.name}, run the command in step 1 below, then paste what it prints into step 2.
+          Run the command in step 1 below on {m.name}, then paste what it prints into step 2.
         </p>
       </div>
     );

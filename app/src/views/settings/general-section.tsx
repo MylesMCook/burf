@@ -4,7 +4,8 @@ import { PickOne } from "@/components/pick-one";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { toastManager } from "@/components/ui/toast";
-import { type CliLink, cliLinkStatus, installCliLink } from "@/lib/cli-link";
+import { type CliLink, cliLinkStatus, installCliLink, removeCliLink } from "@/lib/cli-link";
+import { isWindows } from "@/lib/platform";
 import { errorMessage } from "@/lib/format";
 import { setPrefs, usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
@@ -101,6 +102,9 @@ function CommandLineGroup() {
     cliLinkStatus().then(setCli, () => setCli(null));
   }, []);
   if (cli === undefined) return null;
+  if (isWindows()) {
+    return <WindowsCommandLine cli={cli} onChange={setCli} />;
+  }
 
   let description: React.ReactNode;
   let control: React.ReactNode = null;
@@ -161,6 +165,32 @@ function CommandLineGroup() {
     <SettingsGroup title="Command line">
       <SettingsRow label="The berth command" description={description}>
         {control}
+      </SettingsRow>
+    </SettingsGroup>
+  );
+}
+
+function WindowsCommandLine({ cli, onChange }: { cli: CliLink | null; onChange(cli: CliLink): void }) {
+  const installed = cli?.state === "linked";
+  const external = cli?.state === "file";
+  return (
+    <SettingsGroup title="Command line">
+      <SettingsRow label="The berth command" description={cli?.bundled ? <>
+        <Code>{cli.bundled}</Code> is the app's command. {installed || external ? "New terminals can run berth." : "Add its folder to your user PATH so new terminals can run berth."}
+      </> : "PATH integration is available in an installed build."}>
+        {external ? <Value>Already on PATH</Value> : cli?.bundled && <ConfirmButton
+          label={installed ? "Remove from PATH" : "Add to PATH"}
+          title={installed ? "Remove Berth from your PATH?" : "Add Berth to your PATH?"}
+          description={<>{installed ? "Removes only the folder Berth added." : "Adds this folder to your user PATH:"} <Code>{cli.link}</Code>. Existing terminals keep their current environment.</>}
+          confirm={installed ? "Remove" : "Add"}
+          onConfirm={async () => {
+            try {
+              onChange(await (installed ? removeCliLink() : installCliLink()));
+            } catch (error) {
+              toastManager.add({ title: "Could not change Berth's PATH entry", description: errorMessage(error), type: "error" });
+            }
+          }}
+        />}
       </SettingsRow>
     </SettingsGroup>
   );

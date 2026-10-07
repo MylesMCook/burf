@@ -59,6 +59,8 @@ APP_TARGET ?= $(TRIPLE)
 SIDECAR := app/src-tauri/binaries
 APP_VERSION := $(if $(filter dev,$(VERSION)),,$(patsubst v%,%,$(VERSION)))
 APP_GOARCH := $(if $(findstring aarch64,$(APP_TARGET)),arm64,$(if $(findstring x86_64,$(APP_TARGET)),amd64))
+APP_GOOS := $(if $(findstring windows,$(APP_TARGET)),windows,$(if $(findstring apple-darwin,$(APP_TARGET)),darwin,$(if $(findstring linux,$(APP_TARGET)),linux)))
+APP_EXE := $(if $(filter windows,$(APP_GOOS)),.exe,)
 
 .PHONY: app-binaries app-dev app-build
 app-binaries: daemons
@@ -71,13 +73,19 @@ ifeq ($(APP_TARGET),universal-apple-darwin)
 	GOOS=darwin GOARCH=amd64 $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(SIDECAR)/berthd-darwin-amd64 ./cmd/berthd
 	lipo -create -output $(SIDECAR)/berthd-local $(SIDECAR)/berthd-darwin-arm64 $(SIDECAR)/berthd-darwin-amd64
 else
-	$(if $(APP_GOARCH),GOARCH=$(APP_GOARCH)) $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(SIDECAR)/berth-cli-$(APP_TARGET) ./cmd/berth
-	$(if $(APP_GOARCH),GOARCH=$(APP_GOARCH)) $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(SIDECAR)/berthd-local ./cmd/berthd
+	$(if $(APP_GOOS),GOOS=$(APP_GOOS)) $(if $(APP_GOARCH),GOARCH=$(APP_GOARCH)) $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(SIDECAR)/berth-cli-$(APP_TARGET)$(APP_EXE) ./cmd/berth
+ifeq ($(APP_GOOS),windows)
+	cp $(SIDECAR)/berth-cli-$(APP_TARGET).exe $(SIDECAR)/berth-windows-amd64.exe
+else
+	$(if $(APP_GOOS),GOOS=$(APP_GOOS)) $(if $(APP_GOARCH),GOARCH=$(APP_GOARCH)) $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(SIDECAR)/berthd-local ./cmd/berthd
 endif
+endif
+ifneq ($(APP_GOOS),windows)
 	if [ -n "$$APPLE_SIGNING_IDENTITY" ]; then \
 		codesign --force --options runtime --timestamp --identifier dev.berth.berthd \
 			--sign "$$APPLE_SIGNING_IDENTITY" $(SIDECAR)/berthd-local; \
 	fi
+endif
 	cp $(BIN)/berthd-linux-amd64 $(BIN)/berthd-linux-arm64 $(SIDECAR)/
 	@# The app carries Berth's tmux for Linux boxes; a release must have it.
 	scripts/build-tmux.sh $(BIN)
@@ -86,11 +94,20 @@ endif
 app-dev: all
 	cd app && pnpm tauri dev
 
+ifeq ($(APP_GOOS),windows)
+app-build:
+	powershell.exe -NoProfile -File scripts/windows-build.ps1 $(if $(APP_VERSION),-Version $(APP_VERSION)) $(if $(TAURI_SIGNING_PRIVATE_KEY),-Release)
+else
 app-build: app-binaries
 	cd app && pnpm tauri build --config src-tauri/tauri.bundle.conf.json \
 		$(if $(APP_VERSION),--config '{"version":"$(APP_VERSION)"}') \
 		$(if $(filter $(TRIPLE),$(APP_TARGET)),,--target $(APP_TARGET)) \
 		$$([ -z "$$TAURI_SIGNING_PRIVATE_KEY" ] || echo --config src-tauri/tauri.updater.conf.json)
+endif
+
+.PHONY: app-build-windows
+app-build-windows:
+	powershell.exe -NoProfile -File scripts/windows-build.ps1 $(if $(APP_VERSION),-Version $(APP_VERSION))
 
 # release builds the archives a GitHub release carries, and checksums.txt,
 # into dist/: berthd and berth for linux and darwin, amd64 and arm64. The

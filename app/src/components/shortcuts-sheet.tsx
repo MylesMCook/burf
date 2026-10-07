@@ -30,7 +30,7 @@ export function ShortcutsSheet() {
           <SheetTitle>Keyboard shortcuts</SheetTitle>
           <SheetDescription>
             They work everywhere in the window, terminals included.{" "}
-            {isTauri() ? "You’ll find them in the menu bar too, under File, View, Go and Help." : "In the Mac app they’re in the menu bar too."}
+            {isTauri() ? "You’ll find them in the menu bar too, under File, View, Go and Help." : "In the desktop app they’re in the menu bar too."}
           </SheetDescription>
         </SheetHeader>
         <SheetPanel className="flex flex-col gap-4">

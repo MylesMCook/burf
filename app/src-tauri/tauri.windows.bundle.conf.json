@@ -1,0 +1,14 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "externalBin": ["binaries/berth-cli"],
+    "resources": {
+      "binaries/berth-windows-amd64.exe": "cli/berth.exe",
+      "binaries/berthd-linux-amd64": "berthd-linux-amd64",
+      "binaries/berthd-linux-arm64": "berthd-linux-arm64",
+      "binaries/tmux-linux-amd64": "tmux-linux-amd64",
+      "binaries/tmux-linux-arm64": "tmux-linux-arm64",
+      "windows/cli-path.ps1": "cli-path.ps1"
+    }
+  }
+}

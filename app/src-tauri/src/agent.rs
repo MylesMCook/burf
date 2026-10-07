@@ -17,7 +17,14 @@ use std::process::{Command, Stdio};
 // The bundled CLI's name. It cannot be "berth": that is the app's own
 // executable in Contents/MacOS (and target/debug), and macOS file names
 // ignore case, so "Berth" would collide too.
+#[cfg(not(target_os = "windows"))]
 pub const SIDECAR: &str = "berth-cli";
+#[cfg(target_os = "windows")]
+pub const SIDECAR: &str = "berth-cli.exe";
+
+fn repository_cli() -> PathBuf {
+    Path::new(env!("CARGO_MANIFEST_DIR")).join(if cfg!(windows) { "../../bin/berth.exe" } else { "../../bin/berth" })
+}
 
 #[derive(Serialize)]
 pub struct AgentBinary {
@@ -55,19 +62,25 @@ pub fn find_berth() -> Option<(PathBuf, &'static str)> {
     #[cfg(debug_assertions)]
     {
         // app/src-tauri is two levels below the repository; make puts berth in bin/.
-        let p = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../bin/berth");
+        let p = repository_cli();
         if is_executable(&p) {
             return Some((p.canonicalize().unwrap_or(p), "repository"));
         }
         // An app started from Finder has a bare PATH, so look where berth is
         // usually installed rather than on it.
+        #[cfg(target_os = "windows")]
+        return None;
+        #[cfg(not(target_os = "windows"))]
         let mut candidates: Vec<PathBuf> = Vec::new();
+        #[cfg(not(target_os = "windows"))]
+        {
         if let Some(home) = dirs::home_dir() {
             candidates.push(home.join(".local/bin/berth"));
         }
         candidates.push(PathBuf::from("/opt/homebrew/bin/berth"));
         candidates.push(PathBuf::from("/usr/local/bin/berth"));
         return candidates.into_iter().find(|p| is_executable(p)).map(|p| (p, "installed"));
+        }
     }
     #[cfg(not(debug_assertions))]
     None
@@ -138,8 +151,13 @@ fn parse_team(described: &str) -> Option<String> {
 // The agent it starts writes to its own log, not to these pipes, so this
 // returns as soon as berth does.
 pub fn run(bin: &Path, args: &[&str]) -> Result<String, String> {
-    let out = Command::new(bin)
-        .args(args)
+    let mut command = Command::new(bin);
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x08000000); // CREATE_NO_WINDOW for background CLI calls.
+    }
+    let out = command.args(args)
         .stdin(Stdio::null())
         .output()
         .map_err(|e| format!("could not run {}: {e}", bin.display()))?;
@@ -196,6 +214,22 @@ pub async fn restart_stale_agent() -> Result<String, String> {
         .map_err(|e| e.to_string())?
 }
 
+// Remember whether a Windows update must recover the agent on failure.
+// The NSIS hook drains it immediately before copying the new executable.
+#[tauri::command]
+pub async fn prepare_app_update() -> Result<bool, String> {
+    if !cfg!(target_os = "windows") {
+        return Ok(false);
+    }
+    let (bin, _) = find_berth().ok_or("Berth could not find its berth command")?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let status = run(&bin, &["agent", "status", "--json"])?;
+        let status: serde_json::Value = serde_json::from_str(&status).map_err(|e| e.to_string())?;
+        let running = status.get("running").and_then(|v| v.as_bool()).unwrap_or(false);
+        Ok(running)
+    }).await.map_err(|e| e.to_string())?
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -204,8 +238,9 @@ mod tests {
     // it there), and `berth agent start` starts an agent that outlives the
     // call. It runs in its own BERTH_HOME so it cannot touch a real agent.
     #[test]
+    #[cfg(unix)]
     fn starts_the_agent_from_the_repository() {
-        let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../bin/berth");
+        let repo = repository_cli();
         if !is_executable(&repo) {
             eprintln!("skipped: no bin/berth (run make build)");
             return;
@@ -239,7 +274,7 @@ mod tests {
 
     #[test]
     fn run_reports_why_berth_failed() {
-        let repo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../bin/berth");
+        let repo = repository_cli();
         if !is_executable(&repo) {
             return;
         }

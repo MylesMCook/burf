@@ -98,11 +98,21 @@ export async function restartToUpdate() {
   const state = useUpdater.getState();
   if (!update || state.status !== "ready") return;
   useUpdater.setState({ status: "installing", version: state.version }, true);
+  let restartAgent = false;
   try {
+    restartAgent = await invoke<boolean>("prepare_app_update");
     await update.install();
     await invoke("restart_app");
   } catch (e) {
-    useUpdater.setState({ status: "error", error: e instanceof Error ? e.message : String(e), checkedAt: Date.now() }, true);
+    let error = e instanceof Error ? e.message : String(e);
+    if (restartAgent) {
+      try {
+        await invoke("start_agent", { atLogin: false });
+      } catch (restartError) {
+        error += ` The previous agent could not restart: ${String(restartError)}`;
+      }
+    }
+    useUpdater.setState({ status: "error", error, checkedAt: Date.now() }, true);
     pending = null;
   }
 }

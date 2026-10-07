@@ -3,6 +3,10 @@ use std::path::PathBuf;
 
 mod agent;
 mod browser;
+#[cfg(not(target_os = "windows"))]
+mod cli_link;
+#[cfg(target_os = "windows")]
+#[path = "cli_path_windows.rs"]
 mod cli_link;
 mod menu;
 
@@ -74,7 +78,15 @@ fn open_terminal() -> Result<(), String> {
             .map(|_| ())
             .map_err(|e| format!("couldn't open Terminal: {e}"))
     }
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "windows")]
+    {
+        let root = std::env::var_os("SystemRoot").ok_or("Windows system directory is unavailable")?;
+        std::process::Command::new(PathBuf::from(root).join("System32/cmd.exe"))
+            .spawn()
+            .map(|_| ())
+            .map_err(|e| format!("couldn't open Command Prompt: {e}"))
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
         Err("opening a terminal is only for macOS".into())
     }
@@ -106,9 +118,11 @@ pub fn run() {
             open_terminal,
             cli_link::cli_link_status,
             cli_link::install_cli_link,
+            cli_link::remove_cli_link,
             agent::agent_binary,
             agent::start_agent,
             agent::restart_stale_agent,
+            agent::prepare_app_update,
             browser::browser_open,
             browser::browser_set_bounds,
             browser::browser_show,

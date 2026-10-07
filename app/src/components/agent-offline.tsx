@@ -98,7 +98,7 @@ function AgentOffline({ error }: { error?: string }) {
                 <Checkbox className="mt-0.5" checked={atLogin} disabled={busy} onCheckedChange={(v) => setAtLogin(!!v)} />
                 <span>
                   Start at login
-                  <span className="block text-muted-foreground text-xs">Also starts it whenever you log in to this Mac, and restarts it if it stops.</span>
+                  <span className="block text-muted-foreground text-xs">Also starts it whenever you log in to this computer, and restarts it if it stops.</span>
                 </span>
               </label>
               {phase.kind === "failed" && (

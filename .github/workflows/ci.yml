@@ -12,6 +12,57 @@ permissions:
 # repository variable SELF_HOSTED is true and the event is the owner's push;
 # everything else, pull requests included, runs on ubuntu-latest.
 jobs:
+  windows-helpers:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - run: scripts/build-tmux.sh bin amd64 arm64
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-tmux
+          path: bin/tmux-linux-*
+          if-no-files-found: error
+
+  windows:
+    needs: windows-helpers
+    runs-on: windows-2022
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: go.mod
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+        with:
+          version: 11
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: windows-tmux
+          path: bin
+      - run: go test ./internal/service ./internal/agent ./cmd/berth
+      - run: pnpm install --frozen-lockfile
+        working-directory: app
+      - run: node --experimental-strip-types --test src/lib/platform.test.ts
+        working-directory: app
+      - run: cargo test --locked --manifest-path app/src-tauri/Cargo.toml --lib
+      # No signing key enters this job. PR installers are unsigned test artifacts.
+      - run: ./scripts/windows-build.ps1 -Version 0.0.0
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: windows-unsigned
+          path: dist/windows/*
+          if-no-files-found: error
+          retention-days: 7
+
   go:
     runs-on: ${{ (vars.SELF_HOSTED == 'true' && github.event_name == 'push' && github.actor == github.repository_owner) && fromJSON('["self-hosted","omarchy"]') || 'ubuntu-latest' }}
     steps:
@@ -117,6 +168,7 @@ jobs:
       - run: pnpm check:themes
       # The split tree's moves (lib/layout.test.ts).
       - run: pnpm test
+      - run: pnpm test:platform
       - run: pnpm build
       # The smoke suite (e2e/): the production build in Playwright's Chromium,
       # on the mock fixtures, with no page error allowed. The browser is
