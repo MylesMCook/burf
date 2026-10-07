@@ -80,7 +80,7 @@ func TestSummarize(t *testing.T) {
 	if s.Text != "1 of 3 pages changed · most: / at 375 (4.2%) · 1 new shot · 1 error" {
 		t.Fatalf("summary %q", s.Text)
 	}
-	if s := summarize([]vdPage{{Path: "/", Shots: []vdShot{{Verdict: "unchanged"}, {Verdict: "unchanged"}}}}); s.Text != "No visual changes · 1 page × 2 shots" {
+	if s := summarize([]vdPage{{Path: "/", Shots: []vdShot{{Size: 375, Verdict: "unchanged"}, {Size: 1280, Verdict: "unchanged"}}}}); s.Text != "No visual changes · 1 page × 2 sizes" {
 		t.Fatalf("all clear %q", s.Text)
 	}
 }

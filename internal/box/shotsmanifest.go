@@ -265,12 +265,13 @@ func summarize(pages []vdPage) vdSummary {
 	var s vdSummary
 	worst, worstSize, worstScheme := "", 0, ""
 	changedPages := 0
-	schemes := map[string]bool{}
+	schemes, sizes := map[string]bool{}, map[int]bool{}
 	for _, p := range pages {
 		pc := false
 		for _, sh := range p.Shots {
 			s.Shots++
 			schemes[sh.Scheme] = true
+			sizes[sh.Size] = true
 			switch sh.Verdict {
 			case "changed":
 				s.Changed++
@@ -303,7 +304,11 @@ func summarize(pages []vdPage) vdSummary {
 	var parts []string
 	switch {
 	case s.Changed == 0 && s.New == 0 && s.Removed == 0 && s.Errors == 0:
-		parts = append(parts, fmt.Sprintf("No visual changes · %s × %d shots", count(len(pages), "page", "pages"), s.Shots/max(1, len(pages))))
+		what := fmt.Sprintf("No visual changes · %s × %s", count(len(pages), "page", "pages"), count(len(sizes), "size", "sizes"))
+		if len(schemes) > 1 {
+			what += " × 2 schemes"
+		}
+		parts = append(parts, what)
 	case s.Changed > 0:
 		parts = append(parts, fmt.Sprintf("%d of %d pages changed · most: %s at %s (%s)", changedPages, len(pages), worst, at, pctText(s.MaxPct)))
 	}
