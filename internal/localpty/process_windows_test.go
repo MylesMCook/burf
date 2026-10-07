@@ -203,6 +203,42 @@ func TestPTYUnreadOverflowStopsOwnedProcess(t *testing.T) {
 	}
 }
 
+func TestPTYCloseInterruptsBlockedWrite(t *testing.T) {
+	p, dir := helper(t, "no-input")
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		if _, err := os.Stat(filepath.Join(dir, "result.json")); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("non-reading helper did not become ready")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	written := make(chan error, 1)
+	go func() {
+		_, err := p.Write([]byte(strings.Repeat("a", 8*1024*1024)))
+		written <- err
+	}()
+	select {
+	case err := <-written:
+		t.Fatalf("write finished before close, blocked-write condition not established: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+	if err := bounded(t, p.Close); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-written:
+		if err == nil {
+			t.Fatal("interrupted write reported success")
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("close did not interrupt blocked input writer")
+	}
+	bounded(t, p.Wait)
+}
+
 func TestPTYCmd(t *testing.T) {
 	program := filepath.Join(os.Getenv("SystemRoot"), "System32", "cmd.exe")
 	p, err := Start(program, []string{"/d", "/q", "/c", "echo LOCALPTY-CMD"}, t.TempDir(), nil, 80, 24)
@@ -260,6 +296,13 @@ func TestPTYHelper(t *testing.T) {
 			time.Sleep(time.Hour)
 		}
 	case "idle":
+		for {
+			time.Sleep(time.Hour)
+		}
+	case "no-input":
+		if os.WriteFile(os.Getenv("BERTH_LOCALPTY_RESULT"), []byte("ready"), 0600) != nil {
+			os.Exit(2)
+		}
 		for {
 			time.Sleep(time.Hour)
 		}
