@@ -19,6 +19,9 @@ import type { AgentMessage, CrewMember, ToolDetail, TranscriptItem } from "@/lib
 //                       with an agent in some state (the sidebar, Home).
 //   bench=term&lines=N  every terminal starts with N lines of output, and
 //                       the wheel scrolls through them as tmux would.
+//   bench=noisy&rate=N  every terminal prints N lines a second, as a build
+//                       or a log tail does, and echoes what is typed at
+//                       once (perf/terminals.mjs, perf/soak.mjs).
 
 const q = typeof window === "undefined" ? new URLSearchParams() : new URLSearchParams(window.location.search);
 export const BENCH = q.get("bench") ?? "";
@@ -313,6 +316,52 @@ export function benchTerm(h: { onOpen(): void; onData(d: string): void; onClose(
     close() {
       open = false;
       window.clearTimeout(t);
+      h.onClose(true);
+    },
+  };
+}
+
+// noisyTerm prints rate lines a second, in batches every 50ms as a box
+// sends them, and echoes typing straight away, as a shell would between
+// lines of output: what perf/terminals.mjs types into while others stream.
+// window.__berthNoise.quietLatest() stops the newest one printing (the
+// terminal a test types into while the others stream).
+const noisy: { quiet: boolean }[] = [];
+if (typeof window !== "undefined" && BENCH === "noisy")
+  (window as unknown as { __berthNoise: unknown }).__berthNoise = {
+    quietLatest: () => noisy.length && (noisy[noisy.length - 1].quiet = true),
+    count: () => noisy.length,
+  };
+
+export function noisyTerm(h: { onOpen(): void; onData(d: string): void; onClose(byUs: boolean): void }) {
+  const rate = num("rate", 20);
+  const me = { quiet: false };
+  noisy.push(me);
+  let open = true;
+  let i = 0;
+  let owed = 0;
+  let tick = 0;
+  const t = window.setTimeout(() => {
+    h.onOpen();
+    h.onData("\x1b[2J\x1b[H");
+    tick = window.setInterval(() => {
+      if (!open || me.quiet) return;
+      owed += rate / 20;
+      const out: string[] = [];
+      for (; owed >= 1; owed--) out.push(`${termLine(i++)}\r\n`);
+      if (out.length) h.onData(out.join(""));
+    }, 50);
+  }, 100);
+  return {
+    send(data: Uint8Array | string) {
+      h.onData(typeof data === "string" ? data : new TextDecoder().decode(data));
+    },
+    resize() {},
+    close() {
+      open = false;
+      window.clearTimeout(t);
+      window.clearInterval(tick);
+      noisy.splice(noisy.indexOf(me), 1);
       h.onClose(true);
     },
   };

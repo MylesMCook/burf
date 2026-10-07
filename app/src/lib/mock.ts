@@ -25,7 +25,7 @@ import { ApiError } from "@/lib/api";
 import { titleOf } from "@/lib/derive";
 import { demoAttach, demoScreen } from "@/demo/terminal";
 import { mockHistoryCall } from "@/lib/mock-history";
-import { BENCH, benchFleet, benchTerm, seedBenchChats } from "@/lib/mock-bench";
+import { BENCH, benchFleet, benchTerm, noisyTerm, seedBenchChats } from "@/lib/mock-bench";
 import { mockAnswer, mockToolDetailSync, WEBHOOK_TEST } from "@/lib/mock-conversation";
 import { crowd } from "@/lib/mock-crowd";
 
@@ -268,7 +268,9 @@ export const mockDemo = {
 // An agent finishes its turn, then starts again, so the board moves. A new
 // account has no agents, so nothing moves there. The live demo moves its
 // agents on its own script instead (src/demo/script.ts).
-if (!fresh && !__BERTH_DEMO__) setInterval(() => {
+// ?still keeps it at rest, for measuring the app while nothing changes
+// (perf/soak.mjs).
+if (!fresh && !__BERTH_DEMO__ && !new URLSearchParams(location.search).has("still")) setInterval(() => {
   const s = sessions.devl.find((x) => x.name === "qa-deck-codex");
   if (!s) return;
   s.agent_state = s.agent_state === "running" ? "waiting" : "running";
@@ -813,6 +815,7 @@ function mockAttach(box: string, session: string, h: TerminalHandlers) {
     });
   }
   if (BENCH === "term") return benchTerm(h);
+  if (BENCH === "noisy") return noisyTerm(h);
   const timers: number[] = [];
   let open = true;
   const s = sessions[box]?.find((x) => x.name === session);
@@ -1117,6 +1120,34 @@ export function mockClient(): Client {
     teamWired = true;
     initTeamMock({ status, locations, sessions, emit, delay, addBox: (name, address) => addMockBox(name, address) });
   }
+  return counted(mockAgent());
+}
+
+// counted tallies what the app asks the mock agent for, as requests to a
+// real one would be, on window.__berthCalls ("GET box/sessions/x/transcript"
+// → count): the soak test (perf/soak.mjs) reads how often the app asks
+// while nothing changes.
+function counted(c: Client): Client {
+  const calls: Record<string, number> = {};
+  (window as unknown as { __berthCalls: Record<string, number> }).__berthCalls = calls;
+  const tally = (k: string) => void (calls[k] = (calls[k] ?? 0) + 1);
+  const bare = (p: string) => p.split("?")[0];
+  return new Proxy(c, {
+    get(target, name, recv) {
+      const v = Reflect.get(target, name, recv);
+      if (typeof v !== "function" || typeof name !== "string") return v;
+      return (...a: unknown[]) => {
+        if (name === "box") tally(`${a[1]} ${a[0]}/${bare(String(a[2]))}`);
+        else if (name === "laptop") tally(`${a[0]} ${bare(String(a[1]))}`);
+        else if (name === "stream") tally(`${a[0]} ${bare(String(a[1]))}`);
+        else tally(name);
+        return (v as (...x: unknown[]) => unknown).apply(target, a);
+      };
+    },
+  });
+}
+
+function mockAgent(): Client {
   return {
     status: () => delay(status),
     themes: () => delay([]),
