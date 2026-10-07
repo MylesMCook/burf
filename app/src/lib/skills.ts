@@ -46,6 +46,7 @@ export const skillSummaries: Record<string, string> = {
   "berth-orchestrate": "Prompt, wait for, check and hand off to other agents",
   "berth-preview": "Run the dev server on the worktree's port and show it to you here",
   "berth-hooks": "Write hooks and gates for this box, a repo or the laptop",
+  "berth-browser": "Open, click through and screenshot the worktree's page at any size",
   "berth-artifacts": "Show you charts, tables, diagrams and small pages here, live",
   "berth-visual-diff": "Screenshot pages before and after a change and show what moved",
 };

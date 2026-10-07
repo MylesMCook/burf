@@ -1247,6 +1247,8 @@ export function mockClient(): Client {
 // every state shows. Project copies start missing and are kept out of git.
 const skillCatalog = [
   { name: "berth", description: "Use berth to work across development boxes — repos, worktrees, tasks, sessions, ports and the repo's config.", version: "eb32be71b151" },
+  { name: "berth-artifacts", description: "Show the user data as a chart, table, diagram, notes or a small page in their Berth app instead of a wall of text.", version: "3b7e9c41d2a0" },
+  { name: "berth-browser", description: "Use the worktree's own page in a headless browser on the box: snapshot, click, fill, screenshot, console errors and the page's size.", version: "a84f0d27c6e3" },
   { name: "berth-hooks", description: "Automate berth with hooks and gates at the right scope.", version: "f20829fe718c" },
   { name: "berth-orchestrate", description: "Drive other coding agents: prompt, wait, check, loop, hand off, review.", version: "66660a4b14c8" },
   { name: "berth-preview", description: "Run the worktree's dev server on its port and show it in the Berth app.", version: "e1454dda1a21" },
