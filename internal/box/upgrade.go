@@ -35,6 +35,8 @@ type Info struct {
 	Tools []string `json:"tools"`
 	// Agents are the agent presets this box can start.
 	Agents []AgentPreset `json:"agents"`
+	// AgentPaths say where each built-in agent's CLI was found.
+	AgentPaths []AgentPath `json:"agent_paths,omitempty"`
 	// Capabilities name the API features this box has, so clients can use
 	// them when present: "turns" (turn IDs from send, turn waits),
 	// "journal" (GET /v1/events?since=SEQ).
@@ -106,7 +108,7 @@ func (b *Box) handleInfo(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	i.Name, i.Agents = b.Name, Presets(nil)
+	i.Name, i.Agents, i.AgentPaths = b.Name, Presets(nil), AgentPaths()
 	if u, err := user.Current(); err == nil {
 		i.User = u.Username
 	}
@@ -143,7 +145,9 @@ func (b *Box) Capabilities() []string {
 	// CLIs added to the box without sudo (agentinstall.go).
 	// worktree.titles: worktrees carry a display name (PATCH
 	// /v1/locations/{name}/worktrees/{worktree} names one, worktreetitles.go).
-	caps := []string{"transcript", "diff", "titles", "sample", "history", "commands", "service.terminal", "answer", "session.home", "files", "files.dir", "agents.install", "worktree.titles"}
+	// agents.paths: info says where each agent CLI was found
+	// (agent_paths), and POST /v1/agents/refresh looks again (agentpaths.go).
+	caps := []string{"transcript", "diff", "titles", "sample", "history", "commands", "service.terminal", "answer", "session.home", "files", "files.dir", "agents.install", "worktree.titles", "agents.paths"}
 	if b.Turns != nil {
 		// controls: POST .../keys, .../interrupt and .../mode, GET
 		// .../controls (controls.go).

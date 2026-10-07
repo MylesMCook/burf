@@ -210,6 +210,7 @@ func (b *Box) Mount(s *wire.Server) {
 	route("GET /v1/requirements", b.requirements)
 	route("GET /v1/agents", b.listAgentCLIs)
 	route("POST /v1/agents/install", b.installAgentCLIs)
+	route("POST /v1/agents/refresh", b.lookAgainForAgents)
 	route("POST /v1/upgrade", b.handleUpgrade)
 	route("GET /v1/events", b.streamEvents)
 	route("POST /v1/events", b.emit)

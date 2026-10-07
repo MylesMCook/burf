@@ -12,7 +12,7 @@ import { Menu, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@/compone
 import { Switch } from "@/components/ui/switch";
 import { toastManager } from "@/components/ui/toast";
 import { OutdatedNotice, UpgradeBox } from "@/components/upgrade-box";
-import { type BoxStatus, laptopApi } from "@/lib/api";
+import { type AgentPath, type BoxStatus, laptopApi } from "@/lib/api";
 import { explain } from "@/lib/errors";
 import { errorMessage } from "@/lib/format";
 import { updateBoxes, useOutdated } from "@/lib/outdated";
@@ -186,6 +186,7 @@ function BoxRow({ box }: { box: BoxStatus }) {
       </div>
       {/* The agent's browser can't start here (Chromium's sandbox), or runs without it. */}
       {online && <BrowserSandboxCard box={box.name} full className="mt-3" />}
+      {online && <BoxAgents box={box.name} />}
       {online && <BoxOnePasswordNote box={box.name} />}
       {update && update.state !== "queued" && <CommandLog className="mt-3" lines={update.lines ?? []} done={update.state === "done"} error={update.error} />}
       {update?.state === "queued" && <p className="mt-2 text-muted-foreground text-xs">Waiting for the box before it to finish updating…</p>}
@@ -217,4 +218,67 @@ function BoxRow({ box }: { box: BoxStatus }) {
       />
     </div>
   );
+}
+
+// The agent CLIs a box found, each with its version and where it is, as the
+// person's own terminal there finds it (an npm install under nvm too), and
+// Look again for one installed since.
+function BoxAgents({ box }: { box: string }) {
+  const info = useStore((s) => s.boxes[box]?.info);
+  const [looking, setLooking] = useState(false);
+  if (!info?.capabilities?.includes("agents.paths")) return null;
+  const paths = info.agent_paths ?? [];
+  const lookAgain = async () => {
+    const st = useStore.getState();
+    if (!st.client) return;
+    setLooking(true);
+    try {
+      await st.client.box(box, "POST", "agents/refresh");
+      await st.refreshBox(box, ["info"]);
+    } catch (err) {
+      toastManager.add({ title: `Couldn't look for agents on ${box}`, description: errorMessage(err), type: "error" });
+    } finally {
+      setLooking(false);
+    }
+  };
+  return (
+    <div className="mt-2 flex items-start gap-3" data-testid="box-agents">
+      <div className="min-w-0 flex-1 space-y-0.5 text-[11px]">
+        {paths.length ? (
+          paths.map((a) => (
+            <div key={a.id} className="flex min-w-0 items-baseline gap-1.5">
+              <span className="shrink-0">{agentVersion(a)}</span>
+              <span className="text-muted-foreground">·</span>
+              <Tip label={a.path}>
+                <span className="truncate font-mono text-muted-foreground">{shortPath(a.path, info.home)}</span>
+              </Tip>
+              {a.install && <span className="shrink-0 text-muted-foreground">({a.install})</span>}
+            </div>
+          ))
+        ) : (
+          <div className="text-muted-foreground">No agent CLIs found on {box}.</div>
+        )}
+      </div>
+      <Button size="xs" variant="ghost" loading={looking} onClick={() => void lookAgain()} data-testid="box-agents-refresh">
+        <RefreshCwIcon /> Look again
+      </Button>
+    </div>
+  );
+}
+
+// agentVersion is "Claude Code 2.1.3": the agent's name and the version
+// number its --version printed.
+export function agentVersion(a: AgentPath): string {
+  const v = a.version?.match(/\d+\.\d+[\w.+-]*/)?.[0];
+  return v ? `${a.name} ${v}` : a.name;
+}
+
+// shortPath is a path with home as ~ and the middle of a long one as …:
+// ~/.nvm/…/bin/claude.
+export function shortPath(path: string, home?: string): string {
+  let p = path;
+  if (home && (p === home || p.startsWith(`${home}/`))) p = `~${p.slice(home.length)}`;
+  const parts = p.split("/");
+  // ~, .nvm, versions, node, v22, bin, claude: keep the first two and the last two.
+  return parts.length > 5 ? [...parts.slice(0, 2), "…", ...parts.slice(-2)].join("/") : p;
 }

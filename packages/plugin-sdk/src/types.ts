@@ -275,6 +275,20 @@ export interface AgentPreset {
   efforts?: string[];
 }
 
+// AgentPath is where a box found an agent CLI: through the person's shell
+// ("shell"), on berthd's PATH ("path") or in a folder installers use
+// ("dir"), and how it was installed when the path says (npm, Homebrew, bun,
+// volta, pnpm).
+export interface AgentPath {
+  id: string;
+  name: string;
+  command: string;
+  path: string;
+  version?: string;
+  install?: string;
+  via?: string;
+}
+
 export interface BoxInfo {
   name?: string;
   version?: string;
@@ -283,6 +297,10 @@ export interface BoxInfo {
   build?: string;
   tools?: string[];
   agents?: AgentPreset[];
+  // The box user's home folder.
+  home?: string;
+  // Where each built-in agent's CLI was found (boxes with "agents.paths").
+  agent_paths?: AgentPath[];
   // Optional API features: "turns" (send returns a turn; turn waits),
   // "journal" (events carry a seq; GET events?since=SEQ replays).
   capabilities?: string[];

@@ -74,6 +74,8 @@ func (b *Box) installIntegrations(w http.ResponseWriter, r *http.Request) error 
 	if err := b.before(r, "integrations.install", data); err != nil {
 		return err
 	}
+	// One installed since berthd last looked counts.
+	b.refreshAgents(r.Context())
 	var out bytes.Buffer
 	if err := integrations.InstallTool(home, req.Tool, self, &out); err != nil {
 		return badRequest("%v", err)

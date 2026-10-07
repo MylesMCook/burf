@@ -702,6 +702,7 @@ func (b *Box) stepTick(id string) bool {
 		// found before they ran.
 		groups.Forget()
 		forgetLoginTools()
+		b.refreshAgentsSoon()
 	case ended != "":
 		st.Phase = "failed"
 		st.Error = "stopped at " + failedStep(st)

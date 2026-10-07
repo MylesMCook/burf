@@ -21,9 +21,9 @@ func fakeMachine(t *testing.T, tools ...string) string {
 	}
 	t.Setenv("HOME", home)
 	t.Setenv("PATH", bin)
-	old := systemBinDirs
-	systemBinDirs = nil
-	t.Cleanup(func() { systemBinDirs = old })
+	old, oldAsk := systemBinDirs, askShell
+	systemBinDirs, askShell = nil, false
+	t.Cleanup(func() { systemBinDirs, askShell = old, oldAsk })
 	return home
 }
 

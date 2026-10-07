@@ -26,6 +26,8 @@ const refreshes: [prefix: string, parts: BoxPart[]][] = [
   ["agent.", ["sessions", "stats"]],
   // A task is a new worktree and the agent in it.
   ["task.", ["locations", "sessions"]],
+  // Agent CLIs added or found on the box: the agents it offers.
+  ["agents.", ["info"]],
 ];
 
 // The most recent events, newest first, for the Automations view.
