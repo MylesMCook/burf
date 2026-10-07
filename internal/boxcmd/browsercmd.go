@@ -45,13 +45,25 @@ func browserCall(ctx context.Context, c *box.Client, loc, wt, method, action str
 	return nil
 }
 
+// checkSize says what is wrong with a size or a scale before anything is
+// sent: the box checks again.
+func checkSize(size, scale string) error {
+	if size == "" && scale == "" {
+		return nil
+	}
+	_, err := box.DefaultViewport.Resolve(size, scale)
+	return err
+}
+
 func browserCmd(ctx context.Context, c *box.Client, sub string, args []string, out io.Writer) error {
 	switch sub {
 	case "open":
 		fs, _ := flags(args)
+		size := fs.String("size", "", "the page's size first: WIDTHxHEIGHT or a preset (phone, phone-max, tablet, laptop, desktop)")
+		scale := fs.String("scale", "", "the device scale factor first, 1 to 3")
 		pos, err := parse(fs, args)
 		if err != nil || len(pos) > 2 {
-			return usageErr("browser open [LOC/WT] [PATH|URL]")
+			return usageErr("browser open [LOC/WT] [PATH|URL] [--size WxH|PRESET] [--scale N]")
 		}
 		loc, wt, rest, err := browserWorktree(pos)
 		if err != nil {
@@ -61,7 +73,30 @@ func browserCmd(ctx context.Context, c *box.Client, sub string, args []string, o
 		if len(rest) > 0 {
 			target = rest[0]
 		}
-		return browserCall(ctx, c, loc, wt, "POST", "open", map[string]string{"url": target}, out)
+		if err := checkSize(*size, *scale); err != nil {
+			return err
+		}
+		return browserCall(ctx, c, loc, wt, "POST", "open", map[string]string{"url": target, "size": *size, "scale": *scale}, out)
+	case "resize":
+		fs, _ := flags(args)
+		scale := fs.String("scale", "", "the device scale factor, 1 to 3 (2 for a Retina screen)")
+		pos, err := parse(fs, args)
+		if err != nil || len(pos) > 2 {
+			return usageErr("browser resize [LOC/WT] WxH|PRESET [--scale N]")
+		}
+		loc, wt, rest, err := browserWorktree(pos)
+		if err != nil {
+			return err
+		}
+		size := ""
+		if len(rest) > 0 {
+			size = rest[0]
+		}
+		// Nothing to set says what can be, presets and all.
+		if _, err := box.DefaultViewport.Resolve(size, *scale); err != nil {
+			return err
+		}
+		return browserCall(ctx, c, loc, wt, "POST", "resize", map[string]string{"size": size, "scale": *scale}, out)
 	case "snapshot":
 		fs, _ := flags(args)
 		full := fs.Bool("full", false, "every element, not just what you can act on")
@@ -121,16 +156,17 @@ func browserCmd(ctx context.Context, c *box.Client, sub string, args []string, o
 		fs, _ := flags(args)
 		el := fs.String("el", "", "only this element (@REF or a CSS selector)")
 		full := fs.Bool("full", false, "the whole page, not just what shows")
-		width := fs.Int("width", 800, "the image's width in pixels")
+		width := fs.Int("width", 800, "the image's width in pixels, at most")
+		native := fs.Bool("native", false, "at the page's own size and scale, not shrunk to --width")
 		pos, err := parse(fs, args)
 		if err != nil || len(pos) > 1 {
-			return usageErr("browser shot [LOC/WT] [--el @REF] [--full] [--width 800]")
+			return usageErr("browser shot [LOC/WT] [--el @REF] [--full] [--width 800 | --native]")
 		}
 		loc, wt, _, err := browserWorktree(pos)
 		if err != nil {
 			return err
 		}
-		return browserCall(ctx, c, loc, wt, "POST", "shot", map[string]any{"el": *el, "full": *full, "width": *width}, out)
+		return browserCall(ctx, c, loc, wt, "POST", "shot", map[string]any{"el": *el, "full": *full, "width": *width, "native": *native}, out)
 	case "console":
 		fs, _ := flags(args)
 		all := fs.Bool("all", false, "every level, not just errors and warnings")

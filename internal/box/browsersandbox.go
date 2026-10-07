@@ -80,8 +80,12 @@ type BrowserHealth struct {
 	Error string     `json:"error,omitempty"`
 	At    *time.Time `json:"at,omitempty"`
 	// Fix is the command that allows the sandbox, when that is the fix.
-	Fix  string `json:"fix,omitempty"`
-	Text string `json:"text"`
+	Fix string `json:"fix,omitempty"`
+	// Viewport is the size a browser opens at unless an agent chose
+	// another for its worktree, and Size it as text.
+	Viewport Viewport `json:"viewport"`
+	Size     string   `json:"size"`
+	Text     string   `json:"text"`
 }
 
 // startFailure is the last browser start that failed, until one succeeds.
@@ -161,7 +165,7 @@ func (m *Browsers) noteStart(err error) {
 
 // Health says whether a browser can start, without starting one.
 func (m *Browsers) Health() BrowserHealth {
-	h := BrowserHealth{State: "ok", Userns: readUserns(), Setting: m.Settings(), Env: os.Getenv("BERTH_BROWSER_NO_SANDBOX")}
+	h := BrowserHealth{State: "ok", Userns: readUserns(), Setting: m.Settings(), Env: os.Getenv("BERTH_BROWSER_NO_SANDBOX"), Viewport: DefaultViewport, Size: DefaultViewport.String()}
 	h.NoSandbox, h.NoSandboxFrom = m.noSandbox()
 	m.mu.Lock()
 	fail, startedOK := m.failure, m.startedOK
@@ -196,7 +200,7 @@ func (m *Browsers) Health() BrowserHealth {
 	case h.NoSandbox:
 		h.Text = "browsers start without Chromium's sandbox; Berth's proxy still confines them to the worktree's own pages"
 	default:
-		h.Text = "browsers can start"
+		h.Text = "browsers can start; pages open at " + DefaultViewport.String() + " unless an agent sets a size"
 	}
 	return h
 }

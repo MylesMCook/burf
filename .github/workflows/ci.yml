@@ -42,7 +42,7 @@ jobs:
       - run: go test -race ./...
       # A real Chromium alone, without the race detector or every other
       # package's tests starving it: it times out starting otherwise.
-      - run: go test ./internal/box/ -run 'TestAgentBrowserDrivesARealChromium' -count=1 -v
+      - run: go test ./internal/box/ -run 'TestAgentBrowserDrivesARealChromium|TestTheBrowserSizeReachesARealChromium' -count=1 -v
         # GitHub's Ubuntu runners stop Chromium's sandbox (user namespaces).
         env:
           BERTH_BROWSER_NO_SANDBOX: "1"
