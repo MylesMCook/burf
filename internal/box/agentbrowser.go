@@ -163,6 +163,21 @@ func sameSocket(tmux, path string) bool {
 	return norm(sock) == norm(path)
 }
 
+// tmuxServerRuns says whether the tmux server a pane's TMUX value
+// (socket,pid,index) names still runs.
+func tmuxServerRuns(tmux string) bool {
+	f := strings.Split(tmux, ",")
+	if len(f) < 2 {
+		return false
+	}
+	pid, err := strconv.Atoi(f[1])
+	if err != nil || pid <= 0 {
+		return false
+	}
+	err = syscall.Kill(pid, 0)
+	return err == nil || errors.Is(err, syscall.EPERM)
+}
+
 func (a *AgentBrowsers) procs() ([]proc, error) {
 	if a.scan != nil {
 		return a.scan()
@@ -209,6 +224,12 @@ func (a *AgentBrowsers) group(ps []proc, live map[string]bool) []AgentBrowserSes
 		g := byKey[k]
 		if g == nil {
 			g = &AgentBrowserSession{BerthSession: k.berth, Live: live[k.berth], Session: k.session, Namespace: k.namespace, env: p.Env}
+			// tmux listing no sessions while its server still runs is a
+			// listing to doubt, not every session ended: a server with no
+			// sessions exits.
+			if live != nil && len(live) == 0 && tmuxServerRuns(p.Env["TMUX"]) {
+				g.Live = true
+			}
 			byKey[k] = g
 			keys = append(keys, k)
 		}

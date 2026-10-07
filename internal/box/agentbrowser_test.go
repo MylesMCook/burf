@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"syscall"
 	"testing"
@@ -265,7 +266,7 @@ func (f *fakeAB) procsOf(daemon int) []int {
 // BERTH_SESSION) and those from another tmux server.
 func TestReapClosesOnlyEndedBerthSessionsAgentBrowsers(t *testing.T) {
 	f := newFakeAB(t)
-	ours := "TMUX=/tmp/tmux-test/berth,4242,0"
+	ours := "TMUX=/tmp/tmux-test/berth," + strconv.Itoa(deadPID(t)) + ",0"
 	gone, goneProfile := f.start("gone", "BERTH_SESSION=task-gone", ours)
 	stubborn, stubbornProfile := f.start("stubborn", "BERTH_SESSION=task-stubborn", ours, "FAKE_IGNORE_CLOSE=1", "FAKE_IGNORE_TERM=1")
 	alive, aliveProfile := f.start("alive", "BERTH_SESSION=task-alive", ours)
@@ -325,7 +326,8 @@ func TestReapClosesOnlyEndedBerthSessionsAgentBrowsers(t *testing.T) {
 		t.Fatalf("close log:\n%s", got)
 	}
 
-	// The session that ran ends now: Reap for it alone takes only its own.
+	// The session that ran ends now, the last one, and its tmux server
+	// with it: Reap for it alone takes only its own.
 	a.Live = func(context.Context) (map[string]bool, error) { return map[string]bool{}, nil }
 	if done, err := a.Reap(context.Background(), "task-alive"); err != nil || len(done) != 1 {
 		t.Fatalf("Reap(task-alive) = %+v, %v", done, err)
@@ -363,8 +365,15 @@ func TestStoppingASessionReapsItsAgentBrowsers(t *testing.T) {
 	if _, err := s.Create(ctx, "agent1", "", t.TempDir(), "sleep 600", nil); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := s.Create(ctx, "agent2", "", t.TempDir(), "sleep 600", nil); err != nil {
+		t.Fatal(err)
+	}
+	server, err := s.tmux(ctx, "display-message", "-p", "-t", "=agent1:", "#{pid}")
+	if err != nil {
+		t.Fatal(err)
+	}
 	// What the agent's agent-browser would carry: its session's TMUX.
-	daemon, _ := f.start("work", "BERTH_SESSION=agent1", "TMUX="+a.Socket+",1,0")
+	daemon, _ := f.start("work", "BERTH_SESSION=agent1", "TMUX="+a.Socket+","+strings.TrimSpace(string(server))+",0")
 	go a.Run(ctxRun, t.Logf)
 	<-ready
 	time.Sleep(200 * time.Millisecond)
@@ -380,6 +389,62 @@ func TestStoppingASessionReapsItsAgentBrowsers(t *testing.T) {
 			t.Fatalf("still running after the session stopped: %v", f.procsOf(daemon))
 		}
 		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+// deadPID is the id of a process that has ended.
+func deadPID(t *testing.T) int {
+	t.Helper()
+	cmd := exec.Command("true")
+	if err := cmd.Run(); err != nil {
+		t.Fatal(err)
+	}
+	return cmd.Process.Pid
+}
+
+// tmux listing no sessions while its server runs (a listing that went
+// wrong) closes nothing.
+func TestAnEmptyListingFromARunningTmuxClosesNothing(t *testing.T) {
+	procs := []proc{{PID: 10, Exe: "/x/agent-browser", Env: map[string]string{"AGENT_BROWSER_DAEMON": "1", "BERTH_SESSION": "task", "TMUX": "/tmp/tmux-1/berth," + strconv.Itoa(os.Getpid()) + ",0"}}}
+	a := &AgentBrowsers{Socket: "/tmp/tmux-1/berth", scan: func() ([]proc, error) { return procs, nil },
+		Live:     func(context.Context) (map[string]bool, error) { return map[string]bool{}, nil },
+		closeCmd: func(context.Context, AgentBrowserSession) error { t.Fatal("closed"); return nil },
+		signal:   func(int, syscall.Signal) error { t.Fatal("signalled"); return nil }}
+	if done, err := a.Reap(context.Background(), ""); err != nil || len(done) != 0 {
+		t.Fatalf("Reap = %+v, %v", done, err)
+	}
+	procs[0].Env["TMUX"] = "/tmp/tmux-1/berth," + strconv.Itoa(deadPID(t)) + ",0"
+	if all, _ := a.List(context.Background()); len(all) != 1 || all[0].Live {
+		t.Fatalf("with its server gone: %+v", all)
+	}
+}
+
+// A session whose program exited stays listed (its last output is kept)
+// but no longer counts as running, so what it left is closed.
+func TestAnExitedSessionIsNotLive(t *testing.T) {
+	s := testSessions(t)
+	ctx := context.Background()
+	for _, c := range []struct{ name, cmd string }{{"runs", "sleep 600"}, {"exits", "true"}} {
+		if _, err := s.Create(ctx, c.name, "", t.TempDir(), c.cmd, nil); err != nil {
+			t.Fatal(err)
+		}
+	}
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		live, err := s.live(ctx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if live["runs"] && !live["exits"] {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("live = %v", live)
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+	if _, err := s.Get(ctx, "exits"); err != nil {
+		t.Fatalf("the exited session is gone from the list: %v", err)
 	}
 }
 
