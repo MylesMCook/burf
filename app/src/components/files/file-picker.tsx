@@ -9,7 +9,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { Spinner } from "@/components/ui/spinner";
 import { rank } from "@/lib/file-match";
 import { filesApi, type How, loadTouched, openFile, setPickerOpen, type TouchedFile, useFiles } from "@/lib/files";
-import { errorMessage } from "@/lib/format";
+import { explain } from "@/lib/errors";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { useHereKey, useHereRef } from "@/lib/workspaces";
@@ -65,6 +65,9 @@ function Picker() {
   const ref = useHereRef();
   const { label: where } = useLabel(ws);
   const client = useStore((s) => s.client);
+  // Asked again when its box comes back, so an error from while it was away
+  // doesn't stay.
+  const online = useStore((s) => (ref ? s.status?.boxes.find((b) => b.name === ref.box)?.state === "online" : false));
   const recent = useFiles((s) => (ws ? s.recent[ws] : undefined));
   const touched = useFiles((s) => (ws ? s.touched[ws] : undefined));
   const wide = useWide();
@@ -90,14 +93,19 @@ function Picker() {
           setFound({ q, files: r.files ?? [], truncated: r.truncated });
           setError(undefined);
         },
-        (err: unknown) => !ac.signal.aborted && setError(errorMessage(err)),
+        (err: unknown) => {
+          if (ac.signal.aborted) return;
+          // In words (a box away, one not answering), not the transport's.
+          const e = explain(err, { box: ref.box });
+          setError(`${e.title}. ${e.message}`);
+        },
       );
     }, 50);
     return () => {
       window.clearTimeout(id);
       ac.abort();
     };
-  }, [query, client, ref]);
+  }, [query, client, ref, online]);
 
   const groups = useMemo<Group[]>(() => {
     const files = touched?.files.filter((f) => !f.deleted) ?? [];

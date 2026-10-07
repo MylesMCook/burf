@@ -4,6 +4,7 @@ import { boxApi, type BoxInfo, type Client, type Location, type Service, type Se
 import { closeComposer, fromOrchestrateDraft, fromWorktreeDraft, openComposer } from "@/lib/composer";
 import { errorMessage } from "@/lib/format";
 import { withLocalTitles } from "@/lib/local-titles";
+import { coalesce } from "@/lib/net";
 import { load, save } from "@/lib/storage";
 
 // The app's state. Everything here can be rebuilt from the agent at any
@@ -158,7 +159,10 @@ export const useStore = create<State & Actions>()((set, get) => ({
     });
   },
 
-  async refreshAll() {
+  // One at a time: a reconnect, a focus, an event and the poll landing
+  // together (as they do after a sleep) cost one refresh and at most one
+  // more, never a pile of them (lib/net.ts).
+  refreshAll: coalesce(async () => {
     const { client } = get();
     if (!client) return;
     await get().refreshStatus();
@@ -168,7 +172,7 @@ export const useStore = create<State & Actions>()((set, get) => ({
       client.themes().then((serverThemes) => set({ serverThemes }), () => {}),
       client.templates().then((templates) => set({ templates }), () => {}),
     ]);
-  },
+  }),
 
   setView: (view) => set({ view }),
 

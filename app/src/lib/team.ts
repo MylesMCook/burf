@@ -419,11 +419,22 @@ function announce(before: TeamStatus | undefined, now: TeamStatus) {
   }
 }
 
+// refreshRunsOn reads every run on box again: after it was away, what the
+// page shows may be behind.
+export function refreshRunsOn(box: string) {
+  for (const r of Object.values(useTeam.getState().runs)) if (r.box === box && r.phase !== "done") refreshRun(box, r.id);
+}
+
 // handleTeamEvent keeps runs current from the box's team.* events.
 export function handleTeamEvent(e: BerthEvent) {
   const d = (e.data ?? {}) as { team?: string; org?: string; project?: string; state?: string; location?: string };
   if (e.type === "team.update" && d.org) {
     void loadTeams();
+    return;
+  }
+  if (e.type === "box.connected") {
+    const box = (e.data as { box?: string } | undefined)?.box ?? e.box;
+    if (box) refreshRunsOn(box);
     return;
   }
   if (!e.box || !d.team) return;

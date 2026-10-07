@@ -1,5 +1,6 @@
 import type { ToolDetail } from "@/lib/transcript";
 import { invoke } from "@tauri-apps/api/core";
+import { readTimeout, reconnectDelay, STREAM_SILENCE_MS } from "@/lib/net";
 import type {
   BerthEvent,
   BoxInfo,
@@ -498,13 +499,28 @@ export function httpClient(ep: Endpoint): Client {
   const headers = { Authorization: `Bearer ${ep.token}` };
 
   async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal, extra?: Record<string, string>): Promise<T> {
-    const res = await fetch(ep.url + path, {
-      method,
-      headers: { ...headers, ...(body === undefined ? {} : { "Content-Type": "application/json" }), ...extra },
-      body: body === undefined ? undefined : JSON.stringify(body),
-      signal,
-    });
-    const text = await res.text();
+    // A read gets a time limit (lib/net.ts), so a box that stops answering
+    // mid-request fails with words rather than a spinner that never ends.
+    const limit = readTimeout(method, path);
+    const timer = limit ? AbortSignal.timeout(limit) : undefined;
+    const sig = timer ? (signal ? AbortSignal.any([signal, timer]) : timer) : signal;
+    let res: Response;
+    let text: string;
+    try {
+      res = await fetch(ep.url + path, {
+        method,
+        headers: { ...headers, ...(body === undefined ? {} : { "Content-Type": "application/json" }), ...extra },
+        body: body === undefined ? undefined : JSON.stringify(body),
+        signal: sig,
+      });
+      text = await res.text();
+    } catch (err) {
+      if (timer?.aborted && !signal?.aborted) {
+        const box = /^\/v1\/boxes\/([^/]+)\//.exec(path)?.[1];
+        throw new ApiError(`${box ? decodeURIComponent(box) : "Berth's agent"} didn't answer in ${Math.round(limit! / 1000)}s`, 504, "box_timeout");
+      }
+      throw err;
+    }
     if (!res.ok) {
       const e = errorBody(text, res.statusText);
       const err = new ApiError(e.message, res.status, e.code);
@@ -629,20 +645,33 @@ export function httpClient(ep: Endpoint): Client {
 // EventSource can send the token, and reconnects with backoff when the
 // stream ends: after sleep, or while the agent restarts.
 function followEvents(ep: Endpoint, onEvent: (e: BerthEvent) => void, onConnect: () => void, signal: AbortSignal) {
-  let delay = 500;
+  let attempt = 0;
   const loop = async () => {
     while (!signal.aborted) {
+      // A stream that goes silent past the agent's keepalive is dead though
+      // not closed (the agent paused, the laptop slept): drop it and open
+      // another, which refetches what was missed (onConnect).
+      const mine = new AbortController();
+      const stop = () => mine.abort();
+      signal.addEventListener("abort", stop, { once: true });
+      let silence = 0;
+      const quiet = () => {
+        window.clearTimeout(silence);
+        silence = window.setTimeout(stop, STREAM_SILENCE_MS);
+      };
       try {
+        quiet();
         const res = await fetch(`${ep.url}/v1/events`, {
           headers: { Authorization: `Bearer ${ep.token}`, Accept: "text/event-stream" },
-          signal,
+          signal: mine.signal,
         });
         if (!res.ok || !res.body) throw new Error(`events: ${res.status}`);
-        delay = 500;
+        attempt = 0;
         onConnect();
         const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
         let buf = "";
         for (;;) {
+          quiet();
           const { value, done } = await reader.read();
           if (done) break;
           buf += value;
@@ -665,9 +694,13 @@ function followEvents(ep: Endpoint, onEvent: (e: BerthEvent) => void, onConnect:
         }
       } catch {
         if (signal.aborted) return;
+      } finally {
+        window.clearTimeout(silence);
+        signal.removeEventListener("abort", stop);
       }
-      await new Promise((r) => setTimeout(r, delay));
-      delay = Math.min(delay * 2, 10_000);
+      // Backoff with jitter (lib/net.ts), so windows that lost the agent
+      // together don't all come back in the same instant.
+      await new Promise((r) => setTimeout(r, reconnectDelay(++attempt)));
     }
   };
   void loop();

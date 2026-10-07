@@ -56,7 +56,7 @@ export function handleEvent(e: BerthEvent) {
   // Prompts queued for a box that was away: the list, and what came of them.
   if (e.type.startsWith("queue.")) handleQueueEvent(e);
   // A team setup's runner on a box, or a newer commit of one (lib/team).
-  if (e.type.startsWith("team.")) handleTeamEvent(e);
+  if (e.type.startsWith("team.") || e.type === "box.connected") handleTeamEvent(e);
   notifyFor(e);
 }
 
