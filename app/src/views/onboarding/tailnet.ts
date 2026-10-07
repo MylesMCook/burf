@@ -114,7 +114,7 @@ export interface TailnetSource {
 
 export function sourcesOf(system: SystemTailnet | undefined, networks: NetworkInfo[]): TailnetSource[] {
   const out: TailnetSource[] = [];
-  if (system?.state === "running") out.push({ key: "system", label: system.name || "This Mac's tailnet" });
+  if (system?.state === "running") out.push({ key: "system", label: system.name || "This computer's tailnet" });
   for (const n of networks) out.push({ key: `network:${n.name}`, label: n.name, network: n.name });
   return out;
 }

@@ -10,7 +10,7 @@ test("⌘⌥C compares the worktree you are in with another, side by side", asyn
   mockOnly();
   const page = app.page;
   await app.openWorktree("devl/checkout-fix");
-  await page.keyboard.press("Meta+Alt+KeyC");
+  await page.keyboard.press("ControlOrMeta+Alt+KeyC");
   const input = page.getByPlaceholder("Compare checkout-fix with…");
   await expect(input).toBeVisible();
   await input.fill("search-perf");

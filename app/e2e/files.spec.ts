@@ -27,7 +27,7 @@ test.beforeEach(async ({ app }) => {
 const picker = (app: { page: import("@playwright/test").Page }) => app.page.getByTestId("file-picker");
 
 async function openPicker(app: { page: import("@playwright/test").Page }) {
-  await app.page.keyboard.press("Meta+p");
+  await app.page.keyboard.press("ControlOrMeta+p");
   await expect(picker(app)).toBeVisible();
 }
 
@@ -104,7 +104,7 @@ test("an edit marks the tab, and ⌘S saves it to the box", async ({ app }) => {
   const tab = app.page.locator("[data-tab-strip] [data-tab][aria-selected=true]");
   await expect(tab.getByTestId("file-tab-dirty")).toBeVisible();
   await expect(pane.locator(".cm-agent-bar[data-mark=own]")).not.toHaveCount(0);
-  await app.page.keyboard.press("Meta+s");
+  await app.page.keyboard.press("ControlOrMeta+s");
   await expect(pane.getByTestId("file-saved")).toBeVisible();
   await expect(tab.getByTestId("file-tab-dirty")).toHaveCount(0);
   expect(await app.page.evaluate((p) => window.__berthMockFiles.contentOf(p), WEBHOOK)).toContain("// reviewed\n");
@@ -124,7 +124,7 @@ async function conflict(app: { page: import("@playwright/test").Page }) {
   await expect(app.page.locator("[data-tab-strip] [data-tab][aria-selected=true]").getByTestId("file-tab-conflict")).toBeVisible();
   await expect(pane.locator(".cm-conflict-line")).not.toHaveCount(0);
   // ⌘S waits for a choice: the agent's version stays on the box.
-  await app.page.keyboard.press("Meta+s");
+  await app.page.keyboard.press("ControlOrMeta+s");
   expect(await app.page.evaluate((p) => window.__berthMockFiles.contentOf(p), WEBHOOK)).toContain("metrics.increment");
   return { pane, banner };
 }
@@ -143,7 +143,7 @@ test("a conflict's Keep mine saves yours over the agent's, on purpose", async ({
   await banner.getByRole("button", { name: "Keep mine" }).click();
   await expect(banner).toBeHidden();
   await expect(pane.locator(".cm-content")).toContainText("// mine");
-  await app.page.keyboard.press("Meta+s");
+  await app.page.keyboard.press("ControlOrMeta+s");
   await expect(pane.getByTestId("file-saved")).toBeVisible();
   const disk = await app.page.evaluate((p) => window.__berthMockFiles.contentOf(p), WEBHOOK);
   expect(disk).toContain("// mine");

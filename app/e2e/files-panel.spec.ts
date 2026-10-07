@@ -37,7 +37,7 @@ test("⌘⇧E shows and hides the Files panel, and it stays open across a restar
   // Closed, the strip's button says the turn changed files.
   await expect(app.page.getByTestId("files-panel-dot")).toBeVisible();
 
-  await app.page.keyboard.press("Meta+Shift+E");
+  await app.page.keyboard.press("ControlOrMeta+Shift+E");
   await expect(panel(app.page)).toBeVisible();
   await expect(panel(app.page)).not.toHaveAttribute("data-float");
   await expect(app.page.getByTestId("files-panel-button")).toHaveAttribute("aria-pressed", "true");
@@ -176,7 +176,7 @@ test("below 1100px the panel floats over the tabs, and goes on esc or a pick", a
   await app.openWorktree("devl/checkout-fix");
   // Docked open is a pref for wide windows: a narrow one starts without it.
   await expect(panel(app.page)).toHaveCount(0);
-  await app.page.keyboard.press("Meta+Shift+E");
+  await app.page.keyboard.press("ControlOrMeta+Shift+E");
   await expect(panel(app.page)).toHaveAttribute("data-float", "true");
   await expect(app.page.getByTestId("tree-scrim")).toBeVisible();
   // Floating, it takes nothing from the panes.
@@ -209,7 +209,7 @@ test("a big repository lists every folder, past the 20,000 ⌘P searches", async
   await expect(tree(app.page).locator('[role=treeitem][data-path^="services/"]').first()).toBeVisible();
   await expect(panel(app.page).getByTestId("tree-truncated")).toHaveCount(0);
   // ⌘P says it searches the first 20,000.
-  await app.page.keyboard.press("Meta+p");
+  await app.page.keyboard.press("ControlOrMeta+p");
   await app.page.keyboard.type("webhook");
   await expect(app.page.getByTestId("file-picker-truncated")).toBeVisible();
 });

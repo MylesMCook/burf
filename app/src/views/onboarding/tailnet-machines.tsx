@@ -230,6 +230,7 @@ function MachineList({
 }
 
 function MachineRow({ machine: m, picked, locked, autoFocus, onPick }: { machine: Machine; picked: boolean; locked: boolean; autoFocus?: boolean; onPick(): void }) {
+  const sshSupported = useStore((s) => !s.status || !("ssh_setup_supported" in s.status) || s.status.ssh_setup_supported !== false);
   const kind = m.os === "linux" ? "Linux" : m.os;
   return (
     <li className={cn("flex h-10 items-center gap-2.5 ps-3 pe-2", picked && "bg-accent/50", !m.online && !m.box && "text-muted-foreground")}>
@@ -254,8 +255,8 @@ function MachineRow({ machine: m, picked, locked, autoFocus, onPick }: { machine
           </Button>
         ) : (
           <Tip label={locked ? "Another machine is being set up" : undefined}>
-            <Button size="xs" variant="outline" disabled={locked} autoFocus={autoFocus} onClick={onPick} aria-label={`Set up ${m.name}`}>
-              Set up
+            <Button size="xs" variant="outline" disabled={locked} autoFocus={autoFocus} onClick={onPick} aria-label={`${sshSupported ? "Set up" : "Pair"} ${m.name}`}>
+              {sshSupported ? "Set up" : "Pair"}
             </Button>
           </Tip>
         )}
@@ -436,16 +437,16 @@ export function UseTailscale({ system, onRefresh, onSignIn }: { system?: SystemT
     state === "missing"
       ? undefined
       : state === "logged-out"
-        ? "Tailscale is on this Mac, but signed out. Sign in from its menu bar icon and your machines show up here."
+        ? "Tailscale is on this computer, but signed out. Sign in from its app and your machines show up here."
         : state === "stopped"
-          ? "Tailscale is on this Mac, but not connected. Connect from its menu bar icon and your machines show up here."
+          ? "Tailscale is on this computer, but not connected. Connect from its app and your machines show up here."
           : state === "running"
             ? `Nothing on ${system?.name || "your tailnet"} can be a box yet: berthd runs on Linux and macOS.`
-            : "Berth couldn't ask Tailscale on this Mac for its machines.";
+            : "Berth couldn't ask Tailscale on this computer for its machines.";
   return (
     <div className="space-y-3">
       <p className="text-muted-foreground text-xs leading-relaxed">
-        Tailscale puts your machines on one private network. With it on this Mac, they're listed here and Berth sets one up in a click: no ports to open, and berthd listens on the tailnet only.
+        Tailscale puts your machines on one private network. With it on this computer, they're listed here. Pair a box with the link its install command prints.
       </p>
       {said && <p className="text-sm">{said}</p>}
       <div className="flex flex-wrap items-center gap-2">

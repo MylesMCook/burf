@@ -67,15 +67,15 @@ test("⌘+ makes a chat's text bigger, ⌘0 puts it back", async ({ app }) => {
   const before = await size();
   // The chat has the keyboard, not a terminal: ⌘+ sizes the interface.
   await app.chat.locator("[data-testid=chat-item]").first().click();
-  await app.page.keyboard.press("Meta+Equal");
-  await app.page.keyboard.press("Meta+Equal");
+  await app.page.keyboard.press("ControlOrMeta+Equal");
+  await app.page.keyboard.press("ControlOrMeta+Equal");
   const hud = app.page.getByTestId("zoom-hud");
   await expect(hud).toHaveAttribute("data-shown", "true");
   await expect(hud).toContainText("Text size");
   await expect(hud).toContainText("15px");
   await expect.poll(size).toBeGreaterThan(before);
   await expect.poll(() => app.stored("berth.prefs")).toMatchObject({ uiFontSize: 15 });
-  await app.page.keyboard.press("Meta+Digit0");
+  await app.page.keyboard.press("ControlOrMeta+Digit0");
   await expect.poll(size).toBe(before);
   await expect(hud).toContainText("13px");
 });

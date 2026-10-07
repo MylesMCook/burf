@@ -10,8 +10,13 @@ test("Windows pairs a remote box without local-box or interactive SSH choices", 
   await expect(app.page.getByRole("heading", { name: "Welcome to Berth" })).toBeVisible();
   await expect(app.page.getByRole("button", { name: "Start on this Mac" })).toHaveCount(0);
   await app.page.getByRole("button", { name: "Connect a box", exact: true }).click();
-  await expect(app.page.getByText("Paste what it printed", { exact: true })).toBeVisible();
+  await expect(app.page.getByRole("heading", { name: "Paste what it printed", exact: true })).toBeVisible();
   await expect(app.page.getByText("Or let Berth set it up over SSH", { exact: true })).toHaveCount(0);
+  await expect(app.page.getByRole("button", { name: /^Set up / })).toHaveCount(0);
+  await app.page.getByRole("textbox", { name: "Pairing link" }).fill("berth://100.64.0.42:7444?code=test&fp=test");
+  await app.page.getByRole("textbox", { name: "Name in Berth" }).fill("windows-box");
+  await app.page.getByRole("button", { name: "Pair", exact: true }).click();
+  await expect(app.page.getByText("Paired with windows-box", { exact: true })).toBeVisible();
 });
 
 test("Windows command shortcuts use Control and show Windows labels", async ({ app }) => {

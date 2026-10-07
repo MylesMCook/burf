@@ -12,7 +12,7 @@ test("⌘T on Home asks which box, then opens a terminal in its home over Home",
   await expect(page.locator("[data-home-tab]")).toHaveCount(0);
   await expect(app.worktree("devl/checkout-fix")).toBeVisible();
 
-  await page.keyboard.press("Meta+KeyT");
+  await page.keyboard.press("ControlOrMeta+KeyT");
   const picker = page.getByRole("dialog", { name: "New terminal on a box" });
   await expect(picker).toBeVisible();
   // Every box, the offline one disabled with why.
@@ -43,7 +43,7 @@ test("⌘T on Home asks which box, then opens a terminal in its home over Home",
   await expect(tab).toHaveAttribute("aria-selected", "false");
 
   // The pick is remembered: next time it is first, and ↵ opens it.
-  await page.keyboard.press("Meta+KeyT");
+  await page.keyboard.press("ControlOrMeta+KeyT");
   await expect(picker).toBeVisible();
   await expect(picker.locator("[data-box]").first()).toHaveAttribute("data-box", "gpu");
   await expect(picker.locator("[data-box=gpu]")).toContainText("last used");
@@ -69,7 +69,7 @@ test("⌘T in a worktree still opens its terminal there", async ({ app }) => {
   await app.openWorktree("devl/checkout-fix");
   const strip = app.page.locator("[data-tab-strip]");
   const before = await strip.locator("[data-tab]").count();
-  await app.page.keyboard.press("Meta+KeyT");
+  await app.page.keyboard.press("ControlOrMeta+KeyT");
   await expect(strip.locator("[data-tab]")).toHaveCount(before + 1);
   await expect(app.page.getByRole("dialog", { name: "New terminal on a box" })).toHaveCount(0);
   await expect(strip.locator("[data-tab]").last()).toHaveAttribute("data-ws", "devl:/home/me/work/shop-checkout-fix");

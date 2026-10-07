@@ -59,7 +59,7 @@ test("the drawer shows the page's console and requests, filters them, and sends 
   await expect(pane.getByRole("button", { name: "Inspect" })).toBeDisabled();
 
   // ⌘⌥I opens the drawer on its Console.
-  await page.keyboard.press("Meta+Alt+KeyI");
+  await page.keyboard.press("ControlOrMeta+Alt+KeyI");
   const drawer = pane.getByTestId("devtools-drawer");
   await expect(drawer).toBeVisible();
   const rows = drawer.getByTestId("console-row");
@@ -124,7 +124,7 @@ test("the drawer shows the page's console and requests, filters them, and sends 
   await expect(pane.getByTestId("devtools-badge")).toHaveText("2");
 
   // ⌘⌥I again closes it; the toolbar button opens it.
-  await page.keyboard.press("Meta+Alt+KeyI");
+  await page.keyboard.press("ControlOrMeta+Alt+KeyI");
   await expect(drawer).toHaveCount(0);
   await pane.getByTestId("devtools-toggle").click();
   await expect(drawer).toBeVisible();
