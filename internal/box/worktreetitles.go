@@ -9,7 +9,7 @@ import (
 )
 
 // A worktree is named by its folder, which is often a slug made from a
-// pasted link ("https-linear-app-calcom"). A person can give it a display
+// pasted link ("https-linear-app-acme"). A person can give it a display
 // name, its title, to show in its place in every client: the app on each
 // laptop, the phone, the CLI's listings. It is a label only: the branch and
 // the folder keep their names, so nothing on the box moves. The titles live

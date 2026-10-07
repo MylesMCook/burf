@@ -1,5 +1,5 @@
-import { useVirtualizer, type Virtualizer } from "@tanstack/react-virtual";
-import { memo, type ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { defaultRangeExtractor, type Range, useVirtualizer, type Virtualizer } from "@tanstack/react-virtual";
+import { memo, type ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { cn } from "@/lib/utils";
 
@@ -7,7 +7,18 @@ import { cn } from "@/lib/utils";
 // near the view (a long chat holds thousands), each measured as it draws.
 // It keeps to the foot while new work arrives, unless the person has
 // scrolled up to read; rows added above (older turns) leave what they read
-// where it was. A row seen before draws without its entrance motion.
+// where it was, as does a row above the view that grows or shrinks (a fold
+// opened, a code block coloured). A row seen before draws without its
+// entrance motion.
+//
+// Words selected in it stay selectable as it scrolls: while a selection is
+// in the chat, every row from where it starts to where it ends stays drawn
+// (up to HOLD_MAX rows), so dragging or Shift-clicking past the screen
+// selects, and copies, all of them. Rows beyond that are not drawn, so ⌘A
+// takes the rows drawn; each reply's own Copy takes all of its words.
+//
+// For assistive technology it is a list: each row a list item that says
+// where it is in the whole conversation, drawn or not.
 
 export interface ChatListApi {
   // Bring a row to the middle of the view.
@@ -39,6 +50,10 @@ export interface ChatListProps<T> {
 }
 
 const GAP = 16;
+// The most rows a selection keeps drawn, from its start to its end.
+const HOLD_MAX = 1000;
+
+const sameKeys = (a: string[], b: string[]) => a.length === b.length && a.every((k, i) => k === b[i]);
 // Far enough up to read before older turns are fetched.
 const NEAR_TOP = 900;
 
@@ -61,11 +76,61 @@ export function ChatList<T>({ rows, rowKey, estimate, render, header, tail, grew
     return () => ro.disconnect();
   }, [scroller]);
 
+  // The virtualizer works out every row's place again whenever its key
+  // function changes: that is a new one only when the rows' keys changed,
+  // not each time a row's content does (a draft's words, every 600ms).
+  const keys = useMemo(() => rows.map(rowKey), [rows, rowKey]);
+  const keyOf = useRef<{ keys: string[]; fn(i: number): string }>(null);
+  if (!keyOf.current || !sameKeys(keyOf.current.keys, keys)) keyOf.current = { keys, fn: (i) => keys[i] };
+  const latest = useRef(rows);
+  latest.current = rows;
+  const guess = useRef(estimate);
+  guess.current = estimate;
+  const estimateSize = useCallback((i: number) => guess.current(latest.current[i]), []);
+
+  // The rows a selection starts and ends in, by key, while there is one.
+  const [held, setHeld] = useState<{ from: string; to: string }>();
+  useEffect(() => {
+    const rowOf = (n: Node | null) => {
+      const el = n instanceof Element ? n : n?.parentElement;
+      const row = el?.closest<HTMLElement>("[data-chat-row]");
+      return row && root.current?.contains(row) ? row.dataset.chatRow : undefined;
+    };
+    const on = () => {
+      const sel = document.getSelection();
+      const from = sel && !sel.isCollapsed ? rowOf(sel.anchorNode) : undefined;
+      const to = sel && !sel.isCollapsed ? rowOf(sel.focusNode) : undefined;
+      // A selection whose end is outside the rows (dragged onto the header
+      // or the reply box) holds from its start.
+      setHeld((h) => (!from ? undefined : h?.from === from && h.to === (to ?? from) ? h : { from, to: to ?? from }));
+    };
+    document.addEventListener("selectionchange", on);
+    return () => document.removeEventListener("selectionchange", on);
+  }, []);
+  const heldAt = useMemo(() => {
+    if (!held) return undefined;
+    const a = keys.indexOf(held.from);
+    const b = keys.indexOf(held.to);
+    return a < 0 ? undefined : [a, b < 0 ? a : b] as const;
+  }, [held, keys]);
+  const rangeExtractor = useCallback(
+    (r: Range) => {
+      const drawn = defaultRangeExtractor(r);
+      if (!heldAt) return drawn;
+      const lo = Math.min(heldAt[0], heldAt[1], r.startIndex);
+      const hi = Math.max(heldAt[0], heldAt[1], r.endIndex);
+      if (hi - lo <= HOLD_MAX) return Array.from({ length: hi - lo + 1 }, (_, i) => lo + i);
+      return [...new Set([...drawn, heldAt[0], heldAt[1]])].sort((x, y) => x - y);
+    },
+    [heldAt],
+  );
+
   const v = useVirtualizer<HTMLElement, Element>({
     count: rows.length,
     getScrollElement: () => scroller,
-    estimateSize: (i) => estimate(rows[i]),
-    getItemKey: (i) => rowKey(rows[i]),
+    estimateSize,
+    getItemKey: keyOf.current.fn,
+    rangeExtractor,
     overscan: 6,
     gap: GAP,
     scrollMargin: margin,
@@ -149,12 +214,15 @@ export function ChatList<T>({ rows, rowKey, estimate, render, header, tail, grew
   return (
     <div ref={root} className={cn("flex flex-col", className)}>
       <div ref={top}>{header}</div>
-      <div className="relative w-full" style={{ height: v.getTotalSize() }}>
+      <div role="list" aria-label="Conversation" className="relative w-full" style={{ height: v.getTotalSize() }}>
         {items.map((vi) => {
           const key = String(vi.key);
           return (
             <div
               key={key}
+              role="listitem"
+              aria-posinset={vi.index + 1}
+              aria-setsize={rows.length}
               data-chat-row={key}
               data-index={vi.index}
               ref={v.measureElement}

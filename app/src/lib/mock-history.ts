@@ -2,6 +2,7 @@ import type { Session } from "@/lib/api";
 import { keyOf, useConversations } from "@/lib/conversation-store";
 import type { Helper, TranscriptPage } from "@/lib/history";
 import type { ToolDetail, TranscriptItem } from "@/lib/transcript";
+import { benchOlder } from "@/lib/mock-bench";
 
 // The demo's stand-in for the box's history endpoints (?mock=1): older
 // turns of a long chat (?long=5000 seeds one, for measuring), the helpers'
@@ -60,6 +61,8 @@ export function seedLongChat(box: string, session: string) {
 }
 
 function olderPage(key: string, before: number, limit: number): TranscriptPage {
+  const bench = benchOlder(key, before, limit);
+  if (bench) return bench;
   const n = long.get(key) ?? 0;
   const end = Math.min(n, Math.floor(before / 1000) - 1);
   const start = Math.max(0, end - limit);

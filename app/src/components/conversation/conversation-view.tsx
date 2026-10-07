@@ -94,20 +94,32 @@ export function ConversationView({ items: live, onAnswer, edits, who = "The agen
     if (chat && cut && !live.some((it) => meta(it).uuid === cut)) setCut(chat.box, chat.session, undefined);
   }, [chat, cut, live]);
   // Older turns end where the live ones begin: one read afresh may reach
-  // back over some of them.
+  // back over some of them. Worked out again only when the older turns or
+  // where the live ones start change, not as the live ones grow.
+  const from = live.find((it) => meta(it).off !== undefined);
+  const at = from ? meta(from).off! : Infinity;
+  const olderAll = useMemo(() => (history ? older.items.filter((it) => (meta(it).off ?? 0) < at) : []), [history, older.items, at]);
   const before = useMemo(() => {
-    if (!history || !older.items.length) return older.items;
-    const ids = new Set(live.map((it) => it.id));
-    const from = live.find((it) => meta(it).off !== undefined);
-    const at = from ? meta(from).off! : Infinity;
-    return older.items.filter((it) => !ids.has(it.id) && (meta(it).off ?? 0) < at);
-  }, [history, older.items, live]);
+    if (!olderAll.length) return olderAll;
+    // An item can't be both (a live one starts at or after at), but a
+    // window read afresh may give one without its place.
+    const loose = live.filter((it) => meta(it).off === undefined);
+    if (!loose.length) return olderAll;
+    const ids = new Set(loose.map((it) => it.id));
+    return olderAll.filter((it) => !ids.has(it.id));
+  }, [olderAll, live]);
   const items = useMemo(() => (history ? [...before, ...applyCut(live, cut)] : live), [history, before, live, cut]);
-  const blocks = useMemo(() => foldTurns(items), [items]);
+  // Rows keep their objects while their items do (foldTurns), so as a
+  // draft streams only its own row draws again.
+  const folds = useRef<FoldCache>(null);
+  folds.current ??= newFoldCache();
+  const blocks = useMemo(() => foldTurns(items, folds.current!), [items]);
   const last = items[items.length - 1];
   const grew = last?.kind === "text" ? last.text.length : last?.kind === "tools" ? (last.items?.length ?? 0) : 0;
   // A prompt or command sent brings the view back to the foot.
-  const sent = useMemo(() => [...items].reverse().find((it) => it.kind === "user" || it.kind === "command")?.id, [items]);
+  const sent = useMemo(() => {
+    for (let i = items.length - 1; i >= 0; i--) if (items[i].kind === "user" || items[i].kind === "command") return items[i].id;
+  }, [items]);
   const oldest = items.length ? meta(items[0]).off : undefined;
   const nearTop = history && oldest ? () => void loadOlder(chat!.box, chat!.session, oldest) : undefined;
   // Shown again after its older turns went: they come back as they were.
@@ -116,10 +128,13 @@ export function ConversationView({ items: live, onAnswer, edits, who = "The agen
   }, [history, chat?.box, chat?.session, chat?.visible, older.depth, older.loading, oldest]);
   const [reveal, setReveal] = useState<string[]>([]);
   const revealed = useMemo(() => new Set(reveal), [reveal]);
-  const entries = useMemo(() => (chat ? searchEntries(blocks) : []), [chat, blocks]);
+  // What ⌘F looks through, worked out only while it is open.
+  const entries = useCallback(() => searchEntries(blocks), [blocks]);
+  const itemsNow = useRef(items);
+  itemsNow.current = items;
   const ctx = useMemo<PromptContext | null>(
-    () => (chat ? { box: chat.box, session: chat.session, claude: history && chat.agent === "claude", idle: chat.idle ?? true, who, items } : null),
-    [chat, history, who, items],
+    () => (chat ? { box: chat.box, session: chat.session, claude: history && chat.agent === "claude", idle: chat.idle ?? true, who, items: () => itemsNow.current } : null),
+    [chat?.box, chat?.session, chat?.agent, chat?.idle, history, who],
   );
   // One function for every row, so a row draws again only when it changes.
   const answerTo = useRef(onAnswer);
@@ -176,8 +191,16 @@ const blockKey = (b: Block) => (b.kind === "item" ? rowKeyOf(b.it.id) : b.id);
 const isTurn = (b: Block) => b.kind === "item" && b.it.kind === "user";
 
 // A row's height before it is drawn: near enough that the scroll bar
-// doesn't jump much once it is.
+// doesn't jump much once it is. Worked out once per row: a long chat has
+// thousands, and the list asks again whenever rows come or go.
+const estimates = new WeakMap<Block, number>();
 function estimateBlock(b: Block): number {
+  let h = estimates.get(b);
+  if (h === undefined) estimates.set(b, (h = guessHeight(b)));
+  return h;
+}
+
+function guessHeight(b: Block): number {
   if (b.kind === "fold") return 28;
   if (b.kind === "pings") return 22;
   const it = b.it;
@@ -224,7 +247,15 @@ function searchEntries(blocks: Block[]): SearchEntry[] {
   return out;
 }
 
+// An item's words, once per item: it is the same object until it changes.
+const words = new WeakMap<TranscriptItem, string>();
 function searchable(it: TranscriptItem): string {
+  let w = words.get(it);
+  if (w === undefined) words.set(it, (w = wordsOf(it)));
+  return w;
+}
+
+function wordsOf(it: TranscriptItem): string {
   switch (it.kind) {
     case "user":
       return withoutReminders(it.text);
@@ -295,53 +326,104 @@ function OlderHeader({ older, onLoad }: { older: { loading: boolean; error?: str
 // (pings).
 type Block = { kind: "item"; it: TranscriptItem } | { kind: "fold"; id: string; steps: TranscriptItem[]; live: boolean } | { kind: "pings"; id: string; items: PingItem[] };
 
-function foldTurns(items: TranscriptItem[]): Block[] {
+// FoldCache keeps the rows already made, so folding a chat again (a draft
+// grew, a step finished) makes new rows only for what changed: a row
+// whose items are the same is the same object, and the list draws it
+// again only when it isn't. Each turn's rows are kept by its first item,
+// with the items they were made from; a turn whose items are all the
+// same objects is not folded again.
+interface FoldCache {
+  turns: WeakMap<TranscriptItem, { items: TranscriptItem[]; working: boolean; blocks: Block[] }>;
+  items: WeakMap<TranscriptItem, Block>;
+  folds: WeakMap<TranscriptItem, Extract<Block, { kind: "fold" }>>;
+  pings: WeakMap<PingItem, Extract<Block, { kind: "pings" }>>;
+}
+
+const newFoldCache = (): FoldCache => ({ turns: new WeakMap(), items: new WeakMap(), folds: new WeakMap(), pings: new WeakMap() });
+
+const sameList = <T,>(a: readonly T[], b: readonly T[]) => a.length === b.length && a.every((x, i) => x === b[i]);
+
+function itemBlock(it: TranscriptItem, c: FoldCache): Block {
+  let b = c.items.get(it);
+  if (!b) c.items.set(it, (b = { kind: "item", it }));
+  return b;
+}
+
+// foldTurn folds one turn's items: its steps into one row, then what it
+// shows.
+function foldTurn(turn: TranscriptItem[], working: boolean, c: FoldCache): Block[] {
+  // The answer: the turn's last words, once it has finished; while it
+  // works, its latest words. When it says several things after its last
+  // step, the answer starts at the longest of them: a reply and a note
+  // after it both show, a "now I'll write it up" before it stays folded.
+  let answer = -1;
+  for (let i = turn.length - 1; i >= 0; i--)
+    if (turn[i].kind === "text") {
+      answer = i;
+      const len = (j: number) => {
+        const t = turn[j];
+        return t.kind === "text" ? t.text.length : 0;
+      };
+      for (let j = i - 1; j >= 0 && (turn[j].kind === "text" || turn[j].kind === "edit"); j--) if (len(j) > len(answer)) answer = j;
+      break;
+    }
+  const steps: TranscriptItem[] = [];
+  const shown: TranscriptItem[] = [];
+  turn.forEach((it, i) => {
+    if ((answer >= 0 && i >= answer && it.kind === "text") || it.kind === "edit" || it.kind === "artifact" || it.kind === "question" || it.kind === "ask" || it.kind === "thinking" || it.kind === "notice") shown.push(it);
+    else steps.push(it);
+  });
+  const out: Block[] = [];
+  if (steps.length) {
+    const was = c.folds.get(steps[0]);
+    const fold = was && was.live === working && sameList(was.steps, steps) ? was : { kind: "fold" as const, id: `fold-${steps[0].id}`, steps, live: working };
+    c.folds.set(steps[0], fold);
+    out.push(fold);
+  }
+  for (const it of shown) out.push(itemBlock(it, c));
+  return out;
+}
+
+function foldTurns(items: TranscriptItem[], c: FoldCache = newFoldCache()): Block[] {
   const last = items[items.length - 1];
   const live = !!last && (last.kind === "thinking" || (last.kind === "ask" && !last.decided) || (last.kind === "question" && !last.done));
   const out: Block[] = [];
-  let turn: TranscriptItem[] = [];
-  const flush = (isLast: boolean) => {
-    if (!turn.length) return;
+  let start = -1;
+  const flush = (end: number, isLast: boolean) => {
+    if (start < 0) return;
     const working = isLast && live;
-    // The answer: the turn's last words, once it has finished; while it
-    // works, its latest words. When it says several things after its last
-    // step, the answer starts at the longest of them: a reply and a note
-    // after it both show, a "now I'll write it up" before it stays folded.
-    let answer = -1;
-    for (let i = turn.length - 1; i >= 0; i--)
-      if (turn[i].kind === "text") {
-        answer = i;
-        const len = (j: number) => {
-          const t = turn[j];
-          return t.kind === "text" ? t.text.length : 0;
-        };
-        for (let j = i - 1; j >= 0 && (turn[j].kind === "text" || turn[j].kind === "edit"); j--) if (len(j) > len(answer)) answer = j;
-        break;
-      }
-    const steps: TranscriptItem[] = [];
-    const shown: TranscriptItem[] = [];
-    turn.forEach((it, i) => {
-      if ((answer >= 0 && i >= answer && it.kind === "text") || it.kind === "edit" || it.kind === "artifact" || it.kind === "question" || it.kind === "ask" || it.kind === "thinking" || it.kind === "notice") shown.push(it);
-      else steps.push(it);
-    });
-    if (steps.length) out.push({ kind: "fold", id: `fold-${steps[0].id}`, steps, live: working });
-    for (const it of shown) out.push({ kind: "item", it });
-    turn = [];
+    const first = items[start];
+    const was = c.turns.get(first);
+    let blocks: Block[];
+    if (was && was.working === working && was.items.length === end - start && was.items.every((x, i) => x === items[start + i])) blocks = was.blocks;
+    else {
+      const turn = items.slice(start, end);
+      blocks = foldTurn(turn, working, c);
+      c.turns.set(first, { items: turn, working, blocks });
+    }
+    for (const b of blocks) out.push(b);
+    start = -1;
   };
-  for (const it of items) {
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i];
     // A command typed to the agent is the person's, like a prompt; a report
     // from Berth starts a turn too, as does a message from another agent or
     // Claude Code: each is something the agent answers.
     if (it.kind === "user" || it.kind === "command" || it.kind === "report" || it.kind === "agent-message" || it.kind === "ping") {
-      flush(false);
-      out.push({ kind: "item", it });
-    } else turn.push(it);
+      flush(i, false);
+      out.push(itemBlock(it, c));
+    } else if (start < 0) start = i;
   }
-  flush(true);
+  flush(items.length, true);
   return foldPings<Block>(
     out,
     (b) => (b.kind === "item" && b.it.kind === "ping" ? b.it : undefined),
-    (run) => ({ kind: "pings", id: `pings-${run[0].id}`, items: run }),
+    (run) => {
+      const was = c.pings.get(run[0]);
+      const group = was && sameList(was.items, run) ? was : { kind: "pings" as const, id: `pings-${run[0].id}`, items: run };
+      c.pings.set(run[0], group);
+      return group;
+    },
   );
 }
 

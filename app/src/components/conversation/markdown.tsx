@@ -41,17 +41,35 @@ const codeBlock = (_: string, attrs: string, lang: string | undefined, body: str
 // place: the same element, its words swapped (lib/draft-text).
 const CARET = '<span class="cv-caret" aria-hidden="true"></span>';
 
+// Replies drawn before, by their words: a long chat's rows come and go as
+// it scrolls, and one scrolled back to draws without parsing again. Drafts
+// change with every read, so they aren't kept.
+const drawn = new Map<string, string>();
+const DRAWN_MAX = 300;
+
+function toHtml(text: string, draft: boolean): string {
+  const kept = draft ? undefined : drawn.get(text);
+  if (kept !== undefined) {
+    // Most recently used last, so the oldest go first.
+    drawn.delete(text);
+    drawn.set(text, kept);
+    return kept;
+  }
+  const out = micromark(text, { extensions: [gfm()], htmlExtensions: [gfmHtml()] })
+    // Wide tables scroll on their own instead of widening the column.
+    .replace(/<table>/g, '<div class="cv-table"><table>')
+    .replace(/<\/table>/g, "</table></div>")
+    .replace(/<pre><code((?: class="language-([^"]+)")?)>([\s\S]*?)<\/code><\/pre>/g, codeBlock);
+  // A draft's code blocks name no language: its screen doesn't say, and
+  // a guess would change when the message lands.
+  if (draft) return caretAfter(out.replace(/<span class="cv-pre-lang">[^<]*<\/span>/g, '<span class="cv-pre-lang"></span>'), CARET);
+  drawn.set(text, out);
+  if (drawn.size > DRAWN_MAX) drawn.delete(drawn.keys().next().value as string);
+  return out;
+}
+
 export const Markdown = memo(function Markdown({ text, copy = true, draft = false, clipped = false }: { text: string; copy?: boolean; draft?: boolean; clipped?: boolean }) {
-  const html = useMemo(() => {
-    const out = micromark(text, { extensions: [gfm()], htmlExtensions: [gfmHtml()] })
-      // Wide tables scroll on their own instead of widening the column.
-      .replace(/<table>/g, '<div class="cv-table"><table>')
-      .replace(/<\/table>/g, "</table></div>")
-      .replace(/<pre><code((?: class="language-([^"]+)")?)>([\s\S]*?)<\/code><\/pre>/g, codeBlock);
-    // A draft's code blocks name no language: its screen doesn't say, and
-    // a guess would change when the message lands.
-    return draft ? caretAfter(out.replace(/<span class="cv-pre-lang">[^<]*<\/span>/g, '<span class="cv-pre-lang"></span>'), CARET) : out;
-  }, [text, draft]);
+  const html = useMemo(() => toHtml(text, draft), [text, draft]);
   const body = useRef<HTMLDivElement>(null);
   useCodeHighlight(body, html);
   return (
