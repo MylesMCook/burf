@@ -6,6 +6,7 @@ import { filesApi, loadTouched, useFiles } from "@/lib/files";
 import { usePrefs } from "@/lib/prefs";
 import { load, save } from "@/lib/storage";
 import { useStore } from "@/lib/store";
+import { poll } from "@/lib/poll";
 import { allRows, changedRows, defaultFilter, type Filter, type Listing, type Touch, type TreeRow } from "@/lib/tree-model";
 import type { WorktreeRef } from "@/lib/workspaces";
 
@@ -151,16 +152,26 @@ export function useFilter(ws: string, working: boolean): Filter {
 }
 
 // useTouchedLive keeps what the agents touched fresh: every 2.5s while the
-// panel shows (so the live marker comes and goes as they write), every 10s
-// while it is closed and an agent works (for the button's dot), and when
-// an agent starts or stops.
+// panel shows and they write (so the live marker comes and goes as they
+// do), backing off to 20s while nothing changes; every 10s up to 30s while
+// it is closed and an agent works (for the button's dot); at once when an
+// agent starts or stops; and never while the window is hidden.
 export function useTouchedLive(ws: string | undefined, ref: WorktreeRef | undefined, showing: boolean, working: boolean) {
   useEffect(() => {
     if (!ws || !ref) return;
-    void loadTouched(ws, ref);
-    if (!showing && !working) return;
-    const id = window.setInterval(() => document.visibilityState === "visible" && void loadTouched(ws, ref), showing ? 2500 : 10_000);
-    return () => window.clearInterval(id);
+    if (!showing && !working) {
+      void loadTouched(ws, ref);
+      return;
+    }
+    const p = poll(
+      async () => {
+        const was = useFiles.getState().touched[ws];
+        await loadTouched(ws, ref);
+        return useFiles.getState().touched[ws] !== was;
+      },
+      showing ? { every: 2500, max: 20_000 } : { every: 10_000, max: 30_000 },
+    );
+    return () => p.stop();
   }, [ws, ref, showing, working]);
 }
 

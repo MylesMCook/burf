@@ -2,6 +2,7 @@ import { create } from "zustand";
 
 import type { Run, RunSummary } from "@/lib/api";
 import { type BoxCaller, runsApi, terminal } from "@/lib/orchestrate-core";
+import { poll } from "@/lib/poll";
 import { load, save } from "@/lib/storage";
 import { useStore } from "@/lib/store";
 
@@ -81,19 +82,28 @@ export function dismissRun(box: string, id: string) {
 }
 
 // startRunsWatch loads every online box's runs and keeps the active ones
-// fresh. It returns a stop function.
+// fresh: every 5s while they change, backing off to 30s while they don't
+// (a run's events reload its box at once, scheduleRuns), and not while the
+// window is hidden. It returns a stop function.
 export function startRunsWatch(): () => void {
-  const tick = () => {
-    const boxes = useStore.getState().boxes;
-    for (const box of Object.keys(boxes)) {
-      if (!boxHasRuns(box)) continue;
-      const list = useRuns.getState().byBox[box];
-      if (!list || list.some(isActive)) void refreshRuns(box);
-    }
-  };
-  tick();
-  const t = setInterval(tick, 5000);
-  return () => clearInterval(t);
+  const p = poll(
+    async () => {
+      const boxes = useStore.getState().boxes;
+      const before = useRuns.getState().byBox;
+      const reads: Promise<void>[] = [];
+      for (const box of Object.keys(boxes)) {
+        if (!boxHasRuns(box)) continue;
+        const list = before[box];
+        if (!list || list.some(isActive)) reads.push(refreshRuns(box));
+      }
+      if (!reads.length) return false;
+      await Promise.all(reads);
+      const after = useRuns.getState().byBox;
+      return Object.keys(after).some((b) => JSON.stringify(after[b]) !== JSON.stringify(before[b]));
+    },
+    { every: 5000, max: 30_000 },
+  );
+  return () => p.stop();
 }
 
 // getRun reads one run with its steps.

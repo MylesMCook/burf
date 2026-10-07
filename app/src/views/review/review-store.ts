@@ -218,7 +218,8 @@ export function watchReview() {
   useStore.subscribe((s, prev) => {
     if (s.client !== prev.client || s.status?.boxes.length !== prev.status?.boxes.length) soon();
   });
-  window.setInterval(() => void refreshReview(), 60_000);
+  // A backstop to the events above, and not while the window is hidden.
+  window.setInterval(() => !document.hidden && void refreshReview(), 60_000);
   soon();
 }
 

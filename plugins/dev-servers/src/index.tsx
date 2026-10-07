@@ -84,7 +84,7 @@ function useServers(berth: BerthPluginContext) {
       if (live) setListening(all.flat());
     };
     void load();
-    const t = setInterval(load, 10_000);
+    const t = setInterval(() => !document.hidden && void load(), 10_000);
     return () => {
       live = false;
       clearInterval(t);
