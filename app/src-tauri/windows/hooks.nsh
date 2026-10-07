@@ -1,25 +1,34 @@
 !include LogicLib.nsh
 !define MUI_CUSTOMFUNCTION_ABORT BerthRecover
+${UnStrLoc}
 Var BerthAgentProgram
 Var BerthLoginProgram
 Var BerthWasRunning
 Var BerthAgentStopped
 Var BerthStatus
 
-!macro BerthFlag NAME RESULT
+!macro BerthFlag NAME RESULT CONTEXT
   StrCpy ${RESULT} 0
+!if "${CONTEXT}" == "uninstall"
+  ${UnStrLoc} $2 $BerthStatus '"${NAME}": true' '>'
+!else
   ${StrLoc} $2 $BerthStatus '"${NAME}": true' '>'
+!endif
   ${If} $2 != ""
     StrCpy ${RESULT} 1
   ${Else}
+!if "${CONTEXT}" == "uninstall"
+    ${UnStrLoc} $2 $BerthStatus '"${NAME}":true' '>'
+!else
     ${StrLoc} $2 $BerthStatus '"${NAME}":true' '>'
+!endif
     ${If} $2 != ""
       StrCpy ${RESULT} 1
     ${EndIf}
   ${EndIf}
 !macroend
 
-!macro BerthInspect PROGRAM
+!macro BerthInspect PROGRAM CONTEXT
   ${If} ${FileExists} "${PROGRAM}"
     nsExec::ExecToStack '"${PROGRAM}" agent status --json'
     Pop $0
@@ -28,11 +37,11 @@ Var BerthStatus
       SetErrorLevel 1
       Abort "Berth could not inspect the current client safely. The installed files were kept."
     ${EndIf}
-    !insertmacro BerthFlag "installed" $1
+    !insertmacro BerthFlag "installed" $1 "${CONTEXT}"
     ${If} $1 = 1
       StrCpy $BerthLoginProgram "${PROGRAM}"
     ${EndIf}
-    !insertmacro BerthFlag "owned_running" $1
+    !insertmacro BerthFlag "owned_running" $1 "${CONTEXT}"
     ${If} $1 = 1
       StrCpy $BerthAgentProgram "${PROGRAM}"
       StrCpy $BerthWasRunning 1
@@ -40,13 +49,13 @@ Var BerthStatus
   ${EndIf}
 !macroend
 
-!macro BerthInspectInstallation
+!macro BerthInspectInstallation CONTEXT
   StrCpy $BerthAgentProgram ""
   StrCpy $BerthLoginProgram ""
   StrCpy $BerthWasRunning 0
   StrCpy $BerthAgentStopped 0
-  !insertmacro BerthInspect "$INSTDIR\berth-cli.exe"
-  !insertmacro BerthInspect "$INSTDIR\cli\berth.exe"
+  !insertmacro BerthInspect "$INSTDIR\berth-cli.exe" "${CONTEXT}"
+  !insertmacro BerthInspect "$INSTDIR\cli\berth.exe" "${CONTEXT}"
 !macroend
 
 !macro BerthDrain
@@ -76,7 +85,7 @@ Var BerthStatus
 ; The patched maintenance page treats a normal upgrade as /UPDATE. It never
 ; calls the old uninstaller, so startup/PATH consent and all old files survive.
 !macro NSIS_HOOK_PREINSTALL
-  !insertmacro BerthInspectInstallation
+  !insertmacro BerthInspectInstallation "install"
   InitPluginsDir
   CreateDirectory "$PLUGINSDIR\berth-rollback\cli"
   !insertmacro BerthBackup "berth-cli.exe" "$PLUGINSDIR\berth-rollback"
@@ -132,7 +141,7 @@ Function .onInstFailed
 FunctionEnd
 
 !macro NSIS_HOOK_PREUNINSTALL
-  !insertmacro BerthInspectInstallation
+  !insertmacro BerthInspectInstallation "uninstall"
   !insertmacro BerthDrain
   ${If} $BerthLoginProgram != ""
     ; The correct bundled candidate owns the exact executable task identity.
