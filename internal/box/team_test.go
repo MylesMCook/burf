@@ -13,6 +13,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/sean-brydon/berthd/internal/boxclient"
 	"github.com/sean-brydon/berthd/internal/events"
 	"github.com/sean-brydon/berthd/internal/team"
 	"github.com/sean-brydon/berthd/internal/team/teamtest"
@@ -73,9 +74,9 @@ func newTeamFixture(t *testing.T) *teamFixture {
 	gitconfig := filepath.Join(t.TempDir(), "gitconfig")
 	os.WriteFile(gitconfig, []byte("[url \"file://"+gh.Root+"/\"]\n\tinsteadOf = https://github.com/\n"), 0o644)
 	t.Setenv("GIT_CONFIG_GLOBAL", gitconfig)
-	old := GitProtocols
-	GitProtocols += ":file"
-	t.Cleanup(func() { GitProtocols = old })
+	old := boxclient.GitProtocols
+	boxclient.GitProtocols += ":file"
+	t.Cleanup(func() { boxclient.GitProtocols = old })
 	state := t.TempDir()
 	bus := &events.Bus{}
 	// berthd secret signin, as the 1Password step runs it: --check passes

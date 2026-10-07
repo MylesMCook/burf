@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/sean-brydon/berthd/internal/agent"
-	"github.com/sean-brydon/berthd/internal/box"
+	box "github.com/sean-brydon/berthd/internal/boxclient"
 	"github.com/sean-brydon/berthd/internal/doctor"
 	"github.com/sean-brydon/berthd/internal/pfredirect"
 	"github.com/sean-brydon/berthd/internal/service"

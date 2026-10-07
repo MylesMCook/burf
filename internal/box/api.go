@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/sean-brydon/berthd/internal/box/runs"
+	"github.com/sean-brydon/berthd/internal/boxclient"
 	"github.com/sean-brydon/berthd/internal/doctor"
 	"github.com/sean-brydon/berthd/internal/events"
 	"github.com/sean-brydon/berthd/internal/hooks"
@@ -26,9 +27,7 @@ import (
 
 // OriginHeader names the tool a request comes from, so the events it causes
 // carry that origin and hooks driving the same tool skip them.
-const OriginHeader = "X-Berth-Origin"
-
-var validOrigin = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,31}$`)
+const OriginHeader = boxclient.OriginHeader
 
 type Box struct {
 	Name      string
@@ -248,7 +247,7 @@ func statusFor(err error) int {
 }
 
 func origin(r *http.Request) string {
-	if o := r.Header.Get(OriginHeader); validOrigin.MatchString(o) {
+	if o := r.Header.Get(OriginHeader); boxclient.ValidOrigin(o) {
 		return o
 	}
 	return "berth"
@@ -525,23 +524,7 @@ func (b *Box) listSessions(w http.ResponseWriter, r *http.Request) error {
 
 // SessionRequest starts a session: Command, or the Agent preset with its
 // first Prompt. Open asks the app to show it ("split" or "tab").
-type SessionRequest struct {
-	Name     string `json:"name,omitempty"`
-	Location string `json:"location"`
-	Command  string `json:"command,omitempty"`
-	Agent    string `json:"agent,omitempty"`
-	Prompt   string `json:"prompt,omitempty"`
-	// Model and Effort, with an agent: see TaskRequest.
-	Model  string `json:"model,omitempty"`
-	Effort string `json:"effort,omitempty"`
-	Open   string `json:"open,omitempty"`
-	// Title names the work; without one, the prompt's first line does.
-	Title string `json:"title,omitempty"`
-	// Home starts it in the box user's home folder rather than a
-	// location: a terminal on the box, tied to no worktree. It takes a
-	// command or a shell, never an agent preset, and no location.
-	Home bool `json:"home,omitempty"`
-}
+type SessionRequest = boxclient.SessionRequest
 
 func (b *Box) addSession(w http.ResponseWriter, r *http.Request) error {
 	var req SessionRequest

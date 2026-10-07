@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/sean-brydon/berthd/internal/integrations/adapters"
 	"io"
 	"net/http"
 	"os"
@@ -15,6 +14,8 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/sean-brydon/berthd/internal/boxclient"
+	"github.com/sean-brydon/berthd/internal/integrations/adapters"
 	"github.com/sean-brydon/berthd/internal/version"
 )
 
@@ -23,25 +24,7 @@ const maxDaemonSize = 64 << 20
 
 // Info describes the running daemon, so a laptop can pick the right build to
 // upload and tell whether the box already runs it.
-type Info struct {
-	Name  string `json:"name"`
-	OS    string `json:"os"`
-	Arch  string `json:"arch"`
-	Build string `json:"build"`
-	// User and Home are the account berthd runs as, which is the one to
-	// log in as over SSH, for editors.
-	User  string   `json:"user,omitempty"`
-	Home  string   `json:"home,omitempty"`
-	Tools []string `json:"tools"`
-	// Agents are the agent presets this box can start.
-	Agents []AgentPreset `json:"agents"`
-	// Capabilities name the API features this box has, so clients can use
-	// them when present: "turns" (turn IDs from send, turn waits),
-	// "journal" (GET /v1/events?since=SEQ).
-	Capabilities []string `json:"capabilities"`
-	// Adapters say what each agent can report, for the app.
-	Adapters map[string]adapters.Caps `json:"adapters,omitempty"`
-}
+type Info = boxclient.Info
 
 // BuildID identifies a daemon build by its bytes.
 func BuildID(binary []byte) string { return version.BuildID(binary) }

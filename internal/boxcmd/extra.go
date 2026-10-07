@@ -12,7 +12,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/sean-brydon/berthd/internal/box"
+	box "github.com/sean-brydon/berthd/internal/boxclient"
 )
 
 // Commands for skills, previews, a repository's config, and worktree

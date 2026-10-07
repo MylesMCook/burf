@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sean-brydon/berthd/internal/box"
+	box "github.com/sean-brydon/berthd/internal/boxclient"
 )
 
 // recorder is a fake box that records each request and replies with body.

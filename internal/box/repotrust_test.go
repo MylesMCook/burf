@@ -57,7 +57,7 @@ func TestAnUntrustedRepoConfigIsShownButNothingOfItRuns(t *testing.T) {
 	if e.Env["KIT"] != "1" || e.Env["OWN"] != "1" || e.Env["BASH_ENV"] != "" || e.Env["DB_PASSWORD"] != "" {
 		t.Fatalf("env = %v", e.Env)
 	}
-	if c.Repo == nil || c.Repo.runsAnything() {
+	if c.Repo == nil || configRunsAnything(*c.Repo) {
 		t.Fatalf("repo layer = %+v", c.Repo)
 	}
 	loc, _ := l.Get(ctx, "cal")

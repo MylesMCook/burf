@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/sean-brydon/berthd/internal/boxclient"
 	"github.com/sean-brydon/berthd/internal/events"
 	"github.com/sean-brydon/berthd/internal/groups"
 )
@@ -18,20 +19,7 @@ import (
 // worktree's environment and so its own $BERTH_PORT.
 
 // ServiceStatus is one of a worktree's services.
-type ServiceStatus struct {
-	Name      string `json:"name"`
-	Run       string `json:"run"`
-	Autostart bool   `json:"autostart,omitempty"`
-	// State is the unit's, or "stopped" when it is not installed.
-	State string `json:"state"`
-	Unit  string `json:"unit"`
-	Port  int    `json:"port,omitempty"`
-	// Terminal services run in Session, a tmux session the app shows as a
-	// tab named Title (the name when the config gives none).
-	Terminal bool   `json:"terminal,omitempty"`
-	Title    string `json:"title,omitempty"`
-	Session  string `json:"session,omitempty"`
-}
+type ServiceStatus = boxclient.ServiceStatus
 
 var ErrUnknownService = errors.New("no service with that name in this repository's config")
 

@@ -15,6 +15,7 @@ import (
 	"time"
 
 	"github.com/sean-brydon/berthd/internal/box/runs"
+	"github.com/sean-brydon/berthd/internal/boxclient"
 	"github.com/sean-brydon/berthd/internal/events"
 	"github.com/sean-brydon/berthd/internal/statefile"
 	"github.com/sean-brydon/berthd/internal/wire"
@@ -36,26 +37,10 @@ import (
 // CallerHeader names the agent session that asks for work, from its
 // BERTH_SESSION: the box reports back to it. Only callers on the box's own
 // socket may name one, and only an agent session is reported to.
-const CallerHeader = "X-Berth-Caller"
+const CallerHeader = boxclient.CallerHeader
 
 // Watch is one piece of work a session asked to hear back about.
-type Watch struct {
-	// ID is what is watched: "turn:<id>", "task:<session>" or "run:<id>".
-	ID     string `json:"id"`
-	Kind   string `json:"kind"` // turn, task or run
-	Parent string `json:"parent"`
-	// Session is the child session (turn and task); Turn the turn reported
-	// on, once there is one. A task's first turn is the first numbered
-	// above After.
-	Session string    `json:"session,omitempty"`
-	Turn    string    `json:"turn,omitempty"`
-	After   int       `json:"after,omitempty"`
-	Run     string    `json:"run,omitempty"`
-	Created time.Time `json:"created"`
-	// Rearmed counts the turns that ended while the child still waited on
-	// work of its own: it reports when that is back and its next turn ends.
-	Rearmed int `json:"rearmed,omitempty"`
-}
+type Watch = boxclient.Watch
 
 // Report is one thing to tell a parent.
 type Report struct {
@@ -770,7 +755,7 @@ func checkSession(h notifyHost, w *Watch, live map[string]liveSession, waitingOn
 	f := found{turn: tr.ID}
 	start := firstTime(tr.Started, tr.Sent, tr.Queued)
 	switch {
-	case tr.ended():
+	case turnEnded(&tr):
 		if now.Sub(tr.Ended) < notifySettle {
 			f.later = true
 			return f

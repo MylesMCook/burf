@@ -4,6 +4,8 @@ import (
 	"errors"
 	"net/http"
 	"strings"
+
+	"github.com/sean-brydon/berthd/internal/boxclient"
 )
 
 // Every error the box answers with is {"error": "...", "code": "..."}. The
@@ -29,19 +31,19 @@ import (
 //	bad_request      the request itself was wrong
 //	internal         anything else
 const (
-	CodeNotFound      = "not_found"
-	CodeSessionExited = "session_exited"
-	CodeSessionExists = "session_exists"
-	CodeAgentWaiting  = "agent_waiting"
-	CodeRefused       = "refused"
-	CodeUnsupported   = "unsupported"
-	CodeTmuxMissing   = "tmux_missing"
-	CodeBrowserBlock  = "browser_blocked"
-	CodeGitFailed     = "git_failed"
-	CodeCommandFailed = "command_failed"
-	CodeTooMany       = "too_many"
-	CodeBadRequest    = "bad_request"
-	CodeInternal      = "internal"
+	CodeNotFound      = boxclient.CodeNotFound
+	CodeSessionExited = boxclient.CodeSessionExited
+	CodeSessionExists = boxclient.CodeSessionExists
+	CodeAgentWaiting  = boxclient.CodeAgentWaiting
+	CodeRefused       = boxclient.CodeRefused
+	CodeUnsupported   = boxclient.CodeUnsupported
+	CodeTmuxMissing   = boxclient.CodeTmuxMissing
+	CodeBrowserBlock  = boxclient.CodeBrowserBlock
+	CodeGitFailed     = boxclient.CodeGitFailed
+	CodeCommandFailed = boxclient.CodeCommandFailed
+	CodeTooMany       = boxclient.CodeTooMany
+	CodeBadRequest    = boxclient.CodeBadRequest
+	CodeInternal      = boxclient.CodeInternal
 )
 
 // ErrSessionExited refuses to type into a session whose program has ended:

@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/sean-brydon/berthd/internal/agentcli"
+	"github.com/sean-brydon/berthd/internal/boxclient"
 	"github.com/sean-brydon/berthd/internal/events"
 	"github.com/sean-brydon/berthd/internal/groups"
 	"github.com/sean-brydon/berthd/internal/statefile"
@@ -945,7 +946,7 @@ func gitClone(ctx context.Context, url, dest string, line func(string)) error {
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Minute)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "git", "clone", "--progress", "--", url, dest)
-	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "GIT_ALLOW_PROTOCOL="+GitProtocols)
+	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "GIT_ALLOW_PROTOCOL="+boxclient.GitProtocols)
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		return err

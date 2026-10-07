@@ -17,20 +17,15 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/sean-brydon/berthd/internal/boxclient"
 )
 
 // Share makes one port on the box public through a Cloudflare quick tunnel.
 // It is the only way anything becomes public, it exists only on request, and
 // it ends when revoked or when berthd stops. The box runs the tunnel, so a
 // shared link keeps working while the laptop sleeps.
-type Share struct {
-	ID      string    `json:"id"`
-	Port    int       `json:"port"`
-	URL     string    `json:"url"`
-	Started time.Time `json:"started"`
-	State   string    `json:"state"`
-	Error   string    `json:"error,omitempty"`
-}
+type Share = boxclient.Share
 
 var (
 	ErrUnknownShare   = errors.New("no share with that id")

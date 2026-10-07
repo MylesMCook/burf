@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/sean-brydon/berthd/internal/box/runs"
+	"github.com/sean-brydon/berthd/internal/boxclient"
 )
 
 // The runs API:
@@ -23,27 +24,7 @@ import (
 //	POST /v1/runs/{id}/gates/{step}/decide {approve, note, pick}; step "current" is the open one
 
 // RunRequest starts a run.
-type RunRequest struct {
-	Template string         `json:"template,omitempty"`
-	Params   map[string]any `json:"params,omitempty"`
-	Title    string         `json:"title,omitempty"`
-	// Flow is ad-hoc steps instead of a template.
-	Flow []runs.Step `json:"flow,omitempty"`
-	// FlowID (with Scope) runs one of the box's configured flows now, with
-	// Data as its event's data.
-	FlowID string         `json:"flow_id,omitempty"`
-	Scope  string         `json:"scope,omitempty"`
-	Data   map[string]any `json:"data,omitempty"`
-	// Session and Path set the scope of ad-hoc steps.
-	Session string       `json:"session,omitempty"`
-	Path    string       `json:"path,omitempty"`
-	Group   string       `json:"group,omitempty"`
-	Parent  string       `json:"parent,omitempty"`
-	Budget  *runs.Budget `json:"budget,omitempty"`
-	// IdemKey is the Idempotency-Key, for callers that cannot send headers
-	// (the app, through the laptop's agent).
-	IdemKey string `json:"idem_key,omitempty"`
-}
+type RunRequest = boxclient.RunRequest
 
 func (b *Box) runsOrNotFound() (*runs.Engine, error) {
 	if b.Runs == nil {
@@ -256,11 +237,7 @@ func (b *Box) cancelRun(w http.ResponseWriter, r *http.Request) error {
 }
 
 // GateDecision decides a gate.
-type GateDecision struct {
-	Approve bool   `json:"approve"`
-	Note    string `json:"note,omitempty"`
-	Pick    *int   `json:"pick,omitempty"`
-}
+type GateDecision = boxclient.GateDecision
 
 func (b *Box) decideGate(w http.ResponseWriter, r *http.Request) error {
 	eng, err := b.runsOrNotFound()

@@ -8,54 +8,22 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sean-brydon/berthd/internal/boxclient"
 	"github.com/sean-brydon/berthd/internal/groups"
-	"github.com/sean-brydon/berthd/internal/hooks"
 )
 
 // Scripts are a location's worktree lifecycle commands. They get
 // BERTH_ROOT_PATH, BERTH_WORKTREE_PATH and BERTH_WORKTREE_NAME, and Orca's
 // ORCA_* names for the same values, so a script written for Orca runs
 // unchanged.
-type Scripts struct {
-	Setup   string `json:"setup,omitempty"`
-	Archive string `json:"archive,omitempty"`
-	// From says where the scripts came from: "berth" when set on the
-	// location, "kit" from its kit, "repo" from the repository's
-	// .berth/config.json.
-	From string `json:"from,omitempty"`
-}
+type Scripts = boxclient.Scripts
 
 // RepoConfigFile is where a repository describes how berth sets up its
 // worktrees, committed alongside the code so every box does the same.
-const RepoConfigFile = ".berth/config.json"
+const RepoConfigFile = boxclient.RepoConfigFile
 
 // RepoConfig is a repository's .berth/config.json.
-type RepoConfig struct {
-	Setup   string `json:"setup,omitempty"`
-	Archive string `json:"archive,omitempty"`
-	// Check is the command that says the work is right ("pnpm test && pnpm
-	// lint"): what Try N ways and loops verify with unless told otherwise.
-	Check string `json:"check,omitempty"`
-	// Agents adds ways to start agents here, or replaces built-ins by ID,
-	// e.g. {"id": "claude", "command": "claude --model opus"}.
-	Agents []AgentPreset `json:"agents,omitempty"`
-	// Ports is how many ports each worktree needs ($BERTH_PORT,
-	// $BERTH_PORT_1, …). Every worktree has at least one.
-	Ports int `json:"ports,omitempty"`
-	// Env is added to everything run in a worktree, with $BERTH_* expanded:
-	// {"DATABASE_URL": "postgres://localhost/$BERTH_WORKTREE_SLUG"}.
-	Env map[string]string `json:"env,omitempty"`
-	// Services run in every worktree, such as its dev server.
-	Services []WorktreeService `json:"services,omitempty"`
-	// Hooks run for this repository's events only, in the worktree.
-	Hooks []hooks.Hook `json:"hooks,omitempty"`
-	// Flows are automations for this repository's worktrees.
-	Flows []Flow `json:"flows,omitempty"`
-	// BrowserAllow asks for public origins an agent's browser may load in
-	// this repository's worktrees (a sign-in provider, say). It applies once
-	// the box trusts the repository's config.
-	BrowserAllow []string `json:"browser_allow,omitempty"`
-}
+type RepoConfig = boxclient.RepoConfig
 
 // ReadRepoConfig reads repo's .berth/config.json; ok is false without one.
 // It is the file as committed, trusted or not: what runs comes from

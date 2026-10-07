@@ -13,8 +13,8 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/box"
 	"github.com/sean-brydon/berthd/internal/box/runs"
+	box "github.com/sean-brydon/berthd/internal/boxclient"
 )
 
 // Durable runs from the command line: start one from a template, follow

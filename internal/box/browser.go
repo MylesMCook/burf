@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sean-brydon/berthd/internal/boxclient"
 	"github.com/sean-brydon/berthd/internal/events"
 )
 
@@ -891,18 +892,7 @@ func (br *browser) settle(ctx context.Context, max time.Duration) {
 }
 
 // BrowserStatus is a browser as status and lists show it.
-type BrowserStatus struct {
-	Location string    `json:"location"`
-	Worktree string    `json:"worktree"`
-	Path     string    `json:"path"`
-	URL      string    `json:"url,omitempty"`
-	PID      int       `json:"pid"`
-	RSS      uint64    `json:"rss_bytes,omitempty"`
-	Started  time.Time `json:"started"`
-	LastUsed time.Time `json:"last_used"`
-	Watchers int       `json:"watchers"`
-	Refused  int       `json:"refused,omitempty"`
-}
+type BrowserStatus = boxclient.BrowserStatus
 
 func (br *browser) status() BrowserStatus {
 	br.mu.Lock()

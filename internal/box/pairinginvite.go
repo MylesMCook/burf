@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/sean-brydon/berthd/internal/boxclient"
 	"github.com/sean-brydon/berthd/internal/trust"
 	"github.com/sean-brydon/berthd/internal/wire"
 )
@@ -64,13 +65,7 @@ func (i *Invites) allow(now time.Time) bool {
 }
 
 // PairingInvite is a fresh pairing code and what a new laptop needs with it.
-type PairingInvite struct {
-	Box         string    `json:"box"`
-	Fingerprint string    `json:"fingerprint"`
-	Addresses   []string  `json:"addresses"`
-	Code        string    `json:"code"`
-	Expires     time.Time `json:"expires"`
-}
+type PairingInvite = boxclient.PairingInvite
 
 // ClientInfo is one laptop the box trusts.
 type ClientInfo struct {

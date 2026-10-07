@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/box"
+	box "github.com/sean-brydon/berthd/internal/boxclient"
 )
 
 // serviceTTL bounds how stale the map of servers to worktrees may be; a dev

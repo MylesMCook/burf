@@ -1,11 +1,11 @@
 package box
 
 import (
-	"encoding/json"
 	"net/http"
 	"os"
 	"path/filepath"
 
+	"github.com/sean-brydon/berthd/internal/boxclient"
 	"github.com/sean-brydon/berthd/internal/integrations"
 )
 
@@ -13,61 +13,15 @@ import (
 // box's user, or inside one location's repository for just that project.
 
 // SkillTargets is a skill's state for each agent tool in one place.
-type SkillTargets map[string]integrations.SkillState
+type SkillTargets = boxclient.SkillTargets
 
 // SkillRow is one skill and where it is installed.
-type SkillRow struct {
-	integrations.SkillInfo
-	User    SkillTargets `json:"user"`
-	Project SkillTargets `json:"project,omitempty"`
-	// Excluded is, per agent, whether the project copy is kept out of git.
-	Excluded map[string]bool `json:"excluded,omitempty"`
-}
+type SkillRow = boxclient.SkillRow
 
-type SkillsReport struct {
-	Agents []string `json:"agents"`
-	// UserDirs and ProjectDirs are where each agent's skills go.
-	UserDirs    map[string]string `json:"user_dirs"`
-	ProjectDirs map[string]string `json:"project_dirs,omitempty"`
-	Location    string            `json:"location,omitempty"`
-	Skills      []SkillRow        `json:"skills"`
-}
+type SkillsReport = boxclient.SkillsReport
 
 // SkillsRequest installs or removes skills.
-type SkillsRequest struct {
-	// Skills are names, or ["all"].
-	Skills []string `json:"skills"`
-	// Agent is claude, codex, or all.
-	Agent string `json:"agent"`
-	// Target is user or project; project needs Location.
-	Target   string `json:"target"`
-	Location string `json:"location,omitempty"`
-	// Commit leaves project skills visible to git, to be committed and
-	// shared; by default they are listed in .git/info/exclude.
-	Commit bool `json:"commit,omitempty"`
-}
-
-// UnmarshalJSON accepts "skills": "all" as well as a list.
-func (r *SkillsRequest) UnmarshalJSON(b []byte) error {
-	type plain SkillsRequest
-	var raw struct {
-		plain
-		Skills json.RawMessage `json:"skills"`
-	}
-	if err := json.Unmarshal(b, &raw); err != nil {
-		return err
-	}
-	*r = SkillsRequest(raw.plain)
-	if len(raw.Skills) > 0 {
-		var one string
-		if json.Unmarshal(raw.Skills, &one) == nil {
-			r.Skills = []string{one}
-		} else if err := json.Unmarshal(raw.Skills, &r.Skills); err != nil {
-			return err
-		}
-	}
-	return nil
-}
+type SkillsRequest = boxclient.SkillsRequest
 
 // SkillsReport lists the skills berth ships and where they are installed,
 // including inside location's repository when location is set.

@@ -11,6 +11,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"github.com/sean-brydon/berthd/internal/boxclient"
 )
 
 // A kit packages how a project is set up — scripts, environment, ports,
@@ -20,61 +22,23 @@ import (
 // box's own, so it can be updated or removed without touching either.
 
 // Kit is a kit's manifest, kit.json.
-type Kit struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
-	Version     string `json:"version,omitempty"`
-	// Match suggests the projects a kit is for.
-	Match KitMatch `json:"match,omitempty"`
-	// Requires lists tools the box needs; missing ones are reported, not
-	// fatal, since a setup script may install them. They are looked for as
-	// the box user's login shell finds them (logintools.go).
-	Requires []KitRequirement `json:"requires,omitempty"`
-	Config   RepoConfig       `json:"config"`
-	// Files are small files carried in kit.json itself, path → content, so
-	// a kit can be one file (a gist).
-	Files map[string]string `json:"files,omitempty"`
-}
+type Kit = boxclient.Kit
 
-type KitMatch struct {
-	// Slug is the repository's "owner/repo".
-	Slug string `json:"slug,omitempty"`
-}
+type KitMatch = boxclient.KitMatch
 
-type KitRequirement struct {
-	Tool string `json:"tool"`
-	Hint string `json:"hint,omitempty"`
-}
+type KitRequirement = boxclient.KitRequirement
 
 // InstalledKit is a kit as a location has it.
-type InstalledKit struct {
-	ID          string     `json:"id"`
-	Name        string     `json:"name"`
-	Version     string     `json:"version,omitempty"`
-	Source      string     `json:"source,omitempty"`
-	Hash        string     `json:"hash,omitempty"`
-	Dir         string     `json:"dir"`
-	Config      RepoConfig `json:"config"`
-	InstalledAt time.Time  `json:"installed_at"`
-}
+type InstalledKit = boxclient.InstalledKit
 
 var kitID = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,47}$`)
 
 // KitInstall is a kit on its way to a box: the manifest, its files (path →
 // base64), where it came from, and a hash of everything for updates.
-type KitInstall struct {
-	Kit    Kit               `json:"kit"`
-	Files  map[string]string `json:"files,omitempty"`
-	Source string            `json:"source,omitempty"`
-	Hash   string            `json:"hash,omitempty"`
-}
+type KitInstall = boxclient.KitInstall
 
 // KitResult reports an install.
-type KitResult struct {
-	Kit      InstalledKit `json:"kit"`
-	Warnings []string     `json:"warnings"`
-}
+type KitResult = boxclient.KitResult
 
 // cleanKitPath accepts a relative path that stays inside the kit's folder.
 func cleanKitPath(p string) (string, error) {
@@ -95,7 +59,7 @@ func (b *Box) InstallKit(ctx context.Context, location string, in KitInstall) (K
 	if strings.TrimSpace(k.Name) == "" {
 		k.Name = k.ID
 	}
-	if err := k.Config.validate(); err != nil {
+	if err := validateConfig(k.Config); err != nil {
 		return KitResult{}, badRequest("kit %s: %v", k.ID, err)
 	}
 	if b.KitsDir == "" {
@@ -221,11 +185,7 @@ func (b *Box) deleteKit(w http.ResponseWriter, r *http.Request) error {
 }
 
 // InstalledKitAt is one location's kit, for listing a box's kits.
-type InstalledKitAt struct {
-	Location string       `json:"location"`
-	Slug     string       `json:"slug,omitempty"`
-	Kit      InstalledKit `json:"kit"`
-}
+type InstalledKitAt = boxclient.InstalledKitAt
 
 func (b *Box) listKits(w http.ResponseWriter, r *http.Request) error {
 	all, err := b.Locations.read()

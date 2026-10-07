@@ -18,57 +18,16 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sean-brydon/berthd/internal/boxclient"
 	"github.com/sean-brydon/berthd/internal/statefile"
 	"github.com/sean-brydon/berthd/internal/trust"
 )
 
 // Location is a named place on a box where work happens: a repository or any
 // directory. Agents and worktrees are created relative to a location.
-type Location struct {
-	Name string `json:"name"`
-	Path string `json:"path"`
-	// Repo is true when Path is the root of a git repository.
-	Repo      bool       `json:"repo"`
-	Worktrees []Worktree `json:"worktrees,omitempty"`
-	// Scripts run when berth creates or removes worktrees here.
-	Scripts Scripts `json:"scripts"`
-	// Agents are the repository's own agent presets.
-	Agents []AgentPreset `json:"agents,omitempty"`
-	// Remote is origin's URL, Slug its "owner/repo", and DefaultBranch
-	// what new branches start from.
-	Remote        string `json:"remote,omitempty"`
-	Slug          string `json:"slug,omitempty"`
-	DefaultBranch string `json:"default_branch,omitempty"`
-	// RepoTrust is whether this box runs the repository's
-	// .berth/config.json: "none" without one, "trusted", or "untrusted" /
-	// "changed" while it waits to be trusted and only its ports apply.
-	RepoTrust string `json:"repo_trust,omitempty"`
-	// Check is how to tell the work here is right: the config's "check",
-	// else one found in the repository (CheckFrom "config" or "detected").
-	Check     string `json:"check,omitempty"`
-	CheckFrom string `json:"check_from,omitempty"`
-}
+type Location = boxclient.Location
 
-type Worktree struct {
-	Name   string `json:"name"`
-	Path   string `json:"path"`
-	Branch string `json:"branch,omitempty"`
-	Head   string `json:"head,omitempty"`
-	// Main marks the repository's own checkout.
-	Main bool `json:"main,omitempty"`
-	// SettingUp is true when the tool that made it is still running its
-	// setup; a worktree.setup event follows.
-	SettingUp bool `json:"setting_up,omitempty"`
-	// Port is the first of the worktree's own ports ($BERTH_PORT).
-	Port int `json:"port,omitempty"`
-	// Locked is set when git has the worktree locked, with LockReason
-	// its reason ("initializing" while `git worktree add` runs).
-	Locked     bool   `json:"locked,omitempty"`
-	LockReason string `json:"lock_reason,omitempty"`
-	// Title is the name a person gave the worktree to show in its place
-	// (worktreetitles.go): a label only, its branch and folder keep Name.
-	Title string `json:"title,omitempty"`
-}
+type Worktree = boxclient.Worktree
 
 var (
 	ErrUnknownLocation = errors.New("no location with that name")

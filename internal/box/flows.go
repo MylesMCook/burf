@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/sean-brydon/berthd/internal/box/runs"
+	"github.com/sean-brydon/berthd/internal/boxclient"
 	"github.com/sean-brydon/berthd/internal/events"
 	"github.com/sean-brydon/berthd/internal/hooks"
 	"github.com/sean-brydon/berthd/internal/statefile"
@@ -30,22 +31,7 @@ import (
 // the repository, then its kit's, then this box's own, the most local flow
 // with an id replacing the others.
 
-type Flow struct {
-	ID      string  `json:"id"`
-	Name    string  `json:"name"`
-	Enabled bool    `json:"enabled"`
-	Trigger Trigger `json:"trigger"`
-	Steps   []Step  `json:"steps"`
-	// MaxRunsPerHour stops a flow that keeps triggering itself, such as one
-	// prompting the agent whose finishing started it. Zero means
-	// DefaultMaxRunsPerHour.
-	MaxRunsPerHour int `json:"max_runs_per_hour,omitempty"`
-	// A trigger for a worktree where this flow's run is still going waits
-	// for it: at most Queue of them (default 5). Coalesce merges new GitHub
-	// items into the run already waiting instead, as {{event.items}}.
-	Queue    int  `json:"queue,omitempty"`
-	Coalesce bool `json:"coalesce,omitempty"`
-}
+type Flow = boxclient.Flow
 
 // DefaultMaxRunsPerHour is how many times a flow may start in an hour when
 // it doesn't say. The app's DEFAULT_MAX_RUNS_PER_HOUR (app/src/lib/flows.ts)
@@ -55,61 +41,21 @@ const DefaultMaxRunsPerHour = 20
 // Trigger is what starts a flow, narrowed by Where: an event, a schedule,
 // something happening on GitHub, or a signed POST to the box (Webhook).
 // Exactly one is set.
-type Trigger struct {
-	Event string `json:"event,omitempty"`
-	// Schedule is a cron expression (minute hour day month weekday) or a
-	// shortcut like @daily, in the box's local time.
-	Schedule string `json:"schedule,omitempty"`
-	// EachWorktree runs a scheduled flow once per worktree matching Where,
-	// rather than once at the repository's main checkout.
-	EachWorktree bool           `json:"each_worktree,omitempty"`
-	GitHub       *GitHubTrigger `json:"github,omitempty"`
-	// Webhook starts the flow from POST /v1/triggers/<id>, signed with
-	// the flow's secret (berth flows secret).
-	Webhook *WebhookTrigger `json:"webhook,omitempty"`
-	Where   Where           `json:"where,omitempty"`
-}
+type Trigger = boxclient.Trigger
 
 // WebhookTrigger starts a flow from a signed POST: a CI job on the tailnet,
 // or a Linear or Slack bridge you host.
-type WebhookTrigger struct {
-	// Worktree picks the worktree from a field of the posted JSON naming a
-	// branch (default "branch"); without it the run is at the repository's
-	// main checkout.
-	BranchField string `json:"branch_field,omitempty"`
-}
+type WebhookTrigger = boxclient.WebhookTrigger
 
 // GitHubTrigger watches the pull requests of a project's worktrees, or its
 // issues.
-type GitHubTrigger struct {
-	// On is review_comment, pr_review, check_failed or pr_merged (a
-	// worktree's pull request), or issue_labeled or issue_assigned (the
-	// repository's open issues).
-	On string `json:"on"`
-	// Poll is how often to look, at least 1m; default 2m.
-	Poll string `json:"poll,omitempty"`
-	// Label is the label issue_labeled watches for.
-	Label string `json:"label,omitempty"`
-	// Assignee is who issue_assigned watches for; default @me, the account
-	// gh is signed in as.
-	Assignee string `json:"assignee,omitempty"`
-}
+type GitHubTrigger = boxclient.GitHubTrigger
 
 var githubOns = map[string]bool{"review_comment": true, "pr_review": true, "check_failed": true, "pr_merged": true, "issue_labeled": true, "issue_assigned": true}
 
 // Where narrows a trigger; empty fields match anything. Branch takes a
 // trailing * for a prefix.
-type Where struct {
-	Location string `json:"location,omitempty"`
-	Agent    string `json:"agent,omitempty"`
-	Branch   string `json:"branch,omitempty"`
-	// Author limits GitHub triggers to comments and reviews by these
-	// logins, or by the repository's "collaborators" (owners, members and
-	// collaborators); "*" is anyone. review_comment and pr_review default
-	// to collaborators: anyone can comment on a public repository, and the
-	// comment reaches an agent's prompt.
-	Author []string `json:"author,omitempty"`
-}
+type Where = boxclient.Where
 
 // Step is one action of a flow: a run's step (see internal/box/runs).
 // The kinds flows always had keep their meaning:
@@ -127,7 +73,7 @@ type Where struct {
 // "always". Text fields take {{event.FIELD}}, {{worktree.path}},
 // {{prev.output}}, {{prev.exit_code}} and {{steps.ID.output}}, filled in
 // for each kind of field as flowtemplate.go describes: never as code.
-type Step = runs.Step
+type Step = boxclient.Step
 
 // StepRun is what one step of a run did.
 type StepRun = runs.StepRun

@@ -34,12 +34,12 @@ func TestServiceSessionNamesAreValidUniqueAndShort(t *testing.T) {
 
 func TestAServiceTitleIsOneShortLine(t *testing.T) {
 	ok := RepoConfig{Services: []WorktreeService{{Name: "web", Run: "pnpm dev", Terminal: true, Title: "Next.js"}}}
-	if err := ok.validate(); err != nil {
+	if err := validateConfig(ok); err != nil {
 		t.Fatal(err)
 	}
 	for _, title := range []string{"two\nlines", strings.Repeat("t", serviceTitleMax+1)} {
 		bad := RepoConfig{Services: []WorktreeService{{Name: "web", Run: "pnpm dev", Terminal: true, Title: title}}}
-		if err := bad.validate(); err == nil {
+		if err := validateConfig(bad); err == nil {
 			t.Errorf("title %q was accepted", title)
 		}
 	}

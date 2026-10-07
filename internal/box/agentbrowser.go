@@ -15,6 +15,8 @@ import (
 	"sync"
 	"syscall"
 	"time"
+
+	"github.com/sean-brydon/berthd/internal/boxclient"
 )
 
 // Agents often drive a browser with Vercel's agent-browser CLI (npx
@@ -60,24 +62,7 @@ func withAgentBrowserIdle(env []string) []string {
 // AgentBrowserSession is one agent-browser session a berth session started:
 // its daemon and the browser processes under it.
 type AgentBrowserSession struct {
-	// BerthSession is the berth session that started it, and Live whether
-	// that session's program still runs.
-	BerthSession string `json:"berth_session"`
-	Live         bool   `json:"live"`
-	// Session is agent-browser's own session name (--session), Namespace
-	// its --namespace, if any.
-	Session   string `json:"session"`
-	Namespace string `json:"namespace,omitempty"`
-	// Daemon is the daemon's process, 0 when it is gone and only its
-	// browser is left; PIDs are all of its processes, the daemon's first.
-	Daemon int   `json:"daemon,omitempty"`
-	PIDs   []int `json:"pids"`
-	// Profiles are the browser's throwaway profile folders.
-	Profiles []string `json:"profiles,omitempty"`
-	// ClosedBy, once reaped, says what ended it: "agent-browser close",
-	// "SIGTERM" or "SIGKILL".
-	ClosedBy string `json:"closed_by,omitempty"`
-
+	boxclient.AgentBrowserSession
 	exe string
 	env map[string]string
 }
@@ -223,7 +208,7 @@ func (a *AgentBrowsers) group(ps []proc, live map[string]bool) []AgentBrowserSes
 		}
 		g := byKey[k]
 		if g == nil {
-			g = &AgentBrowserSession{BerthSession: k.berth, Live: live[k.berth], Session: k.session, Namespace: k.namespace, env: p.Env}
+			g = &AgentBrowserSession{AgentBrowserSession: boxclient.AgentBrowserSession{BerthSession: k.berth, Live: live[k.berth], Session: k.session, Namespace: k.namespace}, env: p.Env}
 			// tmux listing no sessions while its server still runs is a
 			// listing to doubt, not every session ended: a server with no
 			// sessions exits.

@@ -14,6 +14,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/sean-brydon/berthd/internal/box/runs"
+	"github.com/sean-brydon/berthd/internal/boxclient"
 	"github.com/sean-brydon/berthd/internal/events"
 	"github.com/sean-brydon/berthd/internal/groups"
 	"github.com/sean-brydon/berthd/internal/hooks"
@@ -114,25 +115,12 @@ func isKey(text string) bool {
 // a question) unless Force: an Enter there would pick an answer for the
 // person. Requests without When, from older clients, type at once as
 // before. IdemKey makes a retried send return the turn it already made.
-type SendRequest struct {
-	Text    string `json:"text"`
-	Enter   *bool  `json:"enter,omitempty"`
-	When    string `json:"when,omitempty"`
-	Force   bool   `json:"force,omitempty"`
-	IdemKey string `json:"idem_key,omitempty"`
-}
+type SendRequest = boxclient.SendRequest
 
 // SendResult names the turn a send started or queued, the journal Seq of
 // the send, and the box's time, which callers wait from rather than their
 // own clock.
-type SendResult struct {
-	Sent      bool      `json:"sent"`
-	Queued    bool      `json:"queued,omitempty"`
-	Duplicate bool      `json:"duplicate,omitempty"`
-	Turn      string    `json:"turn,omitempty"`
-	Seq       int64     `json:"seq,omitempty"`
-	At        time.Time `json:"at"`
-}
+type SendResult = boxclient.SendResult
 
 // ErrAgentWaiting refuses to type into an agent that waits for someone.
 type ErrAgentWaiting struct{ Session string }
@@ -260,12 +248,7 @@ func (b *Box) sendPrompt(ctx context.Context, name string, req SendRequest, orig
 }
 
 // WaitResult is what an agent was doing when a wait ended.
-type WaitResult struct {
-	State    string `json:"state"`
-	TimedOut bool   `json:"timed_out"`
-	// Turn is the turn the state belongs to, when the box keeps turns.
-	Turn string `json:"turn,omitempty"`
-}
+type WaitResult = boxclient.WaitResult
 
 func waitTimeout(v string, def time.Duration) (time.Duration, error) {
 	if v == "" {
@@ -369,11 +352,7 @@ func (b *Box) waitForSession(w http.ResponseWriter, r *http.Request) error {
 }
 
 // TurnWait is what a turn wait returns.
-type TurnWait struct {
-	Turn     Turn   `json:"turn"`
-	State    string `json:"state"`
-	TimedOut bool   `json:"timed_out"`
-}
+type TurnWait = boxclient.TurnWait
 
 func (b *Box) getTurn(w http.ResponseWriter, r *http.Request) error {
 	if b.Turns == nil {
@@ -448,21 +427,9 @@ func (b *Box) listTurns(w http.ResponseWriter, r *http.Request) error {
 
 // ExecRequest runs a command to completion in a location or worktree, such
 // as the check a loop runs after each of an agent's turns.
-type ExecRequest struct {
-	Location string `json:"location"`
-	Command  string `json:"command"`
-	Timeout  string `json:"timeout,omitempty"`
-	// Detach answers at once with a run whose result holds the exit code
-	// and output, so no caller blocks (or times out) on a long check.
-	Detach bool `json:"detach,omitempty"`
-}
+type ExecRequest = boxclient.ExecRequest
 
-type ExecResult struct {
-	ExitCode int    `json:"exit_code"`
-	Output   string `json:"output"`
-	// Truncated is true when only the end of the output is kept.
-	Truncated bool `json:"truncated,omitempty"`
-}
+type ExecResult = boxclient.ExecResult
 
 const execOutputLimit = 64 << 10
 

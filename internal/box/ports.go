@@ -13,19 +13,12 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/sean-brydon/berthd/internal/boxclient"
 )
 
 // Port is a TCP port something on the box is listening on.
-type Port struct {
-	Port    int    `json:"port"`
-	Address string `json:"address"`
-	PID     int    `json:"pid,omitempty"`
-	Process string `json:"process,omitempty"`
-	Command string `json:"command,omitempty"`
-	// Dir is the process's working directory, which says which worktree a
-	// dev server belongs to.
-	Dir string `json:"dir,omitempty"`
-}
+type Port = boxclient.Port
 
 // ListPorts reports listening TCP ports. Process details are only visible for
 // processes the daemon's user can inspect.
