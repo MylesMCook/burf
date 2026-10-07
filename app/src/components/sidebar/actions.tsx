@@ -183,6 +183,12 @@ export function Armed({ children }: { children: ReactNode }) {
   return useArmed() ? children : null;
 }
 
+// unmarked is a RowMenus' props without its open and pressed marks.
+function unmarked<P extends object>(p: P): P {
+  const { "data-popup-open": _open, "data-pressed": _pressed, ...rest } = p as P & { "data-popup-open"?: unknown; "data-pressed"?: unknown };
+  return rest as P;
+}
+
 const rowOf = (t: EventTarget | null) => (t instanceof Element ? t.closest<HTMLElement>("[data-row-menu]") : null);
 
 // RowMenus holds rows (ContextRow) and opens their context menus: on a
@@ -220,6 +226,9 @@ export function RowMenus({ children, onKeyDown, ...props }: ComponentProps<"div"
       <ContextMenu onOpenChange={(open) => !open && mark(undefined)}>
         <ContextMenuTrigger
           {...props}
+          // Not marked open itself: an attribute on a list this big restyled
+          // all of it (60 ms at 300 worktrees); the row is marked instead.
+          render={(p) => <div {...unmarked(p)} />}
           // Whose menu it is, before the trigger opens it (a right-click, or
           // a touch held down); outside a row, none.
           onContextMenuCapture={pick}
