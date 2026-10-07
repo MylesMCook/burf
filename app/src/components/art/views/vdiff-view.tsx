@@ -865,8 +865,8 @@ function VdiffThumb({ art, v, height }: { art: Art; v: VisualDiff; height: numbe
   const aspect = w / height;
   const shot = it.shot;
   const fh = shot.size / aspect;
-  const reg = shot.regions?.[0];
-  // The first screen, or the biggest change when it sits further down.
+  // The first screen, or the first change when it sits further down.
+  const reg = [...(shot.regions ?? [])].sort((a, b) => a.y - b.y)[0];
   const r = reg && reg.y > fh * 0.7 ? frame({ x: 0, y: reg.y, w: shot.size, h: reg.h }, shot.size, Math.max(shot.after?.h ?? 0, shot.before?.h ?? 0), aspect) : { x: 0, y: 0, w: shot.size, h: fh };
   return (
     <div ref={ref} className="relative overflow-hidden rounded-sm" style={{ height }} data-vd-thumb="wipe">
