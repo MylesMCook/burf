@@ -9,14 +9,22 @@ import { cn } from "@/lib/utils";
 // double-click it for the default width, or focus it and use ← and →. Past
 // the narrowest a drag folds the sidebar to the rail, and dragging the
 // rail's edge out opens it again. While a drag runs the width goes straight
-// to the --sidebar-w variable the sidebar reads (no re-render of the
-// sidebar per frame); prefs keep it once the drag ends.
+// to the sidebar's own --sidebar-live (no re-render of the sidebar per
+// frame); prefs keep it, as --sidebar-w on the root, once the drag ends.
+// --sidebar-live isn't inherited (index.css), so a frame of the drag
+// restyles the sidebar alone: a variable on the root restyled every
+// element under it, 60 ms a frame with 300 worktrees.
 
 const root = () => document.documentElement;
+const sidebars = () => document.querySelectorAll<HTMLElement>("[data-testid=sidebar]");
 
-// live sets the width the sidebar shows, during a drag.
-function live(width: number) {
-  root().style.setProperty("--sidebar-w", `${width}px`);
+// live sets the width the sidebar shows, during a drag; undefined puts
+// back the one prefs keep.
+function live(width?: number) {
+  for (const el of sidebars()) {
+    if (width === undefined) el.style.removeProperty("--sidebar-live");
+    else el.style.setProperty("--sidebar-live", `${width}px`);
+  }
 }
 
 // Panes that size themselves to their box (terminals, a Browser tab's
@@ -87,17 +95,15 @@ function end(cancel: boolean) {
   window.removeEventListener("pointercancel", onUp);
   window.removeEventListener("keydown", onKey, true);
   window.removeEventListener("blur", onUp);
-  const p = usePrefs.getState();
   if (cancel) {
     // Esc puts it back as it was.
-    live(p.sidebarWidth);
     usePrefs.setState({ sidebarCollapsed: d.wasFolded });
-  } else if (d.folded) {
-    // Folded by the drag: it opens again at the width it had.
-    live(p.sidebarWidth);
-  } else if (d.moved) {
+  } else if (!d.folded && d.moved) {
+    // Kept (prefs set --sidebar-w); folded by the drag, it opens again at
+    // the width it had.
     usePrefs.setState({ sidebarWidth: d.width });
   }
+  live(undefined);
   requestAnimationFrame(settled);
 }
 

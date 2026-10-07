@@ -33,7 +33,8 @@
 //
 //   start       long tasks from load to quiet, JS heap, DOM nodes, the
 //               sidebar's own elements, and the main thread at rest
-//   sidebar     scrolled top to foot; a project folded and opened again;
+//   sidebar     scrolled top to foot; its edge dragged wider and back; a
+//               project folded and opened again;
 //               a row's context menu (Shift+F10) and ⋯ menu opened; a row
 //               renamed in place (double-click to the field, Enter to the
 //               new name drawn)
@@ -578,6 +579,40 @@ async function benchFleet(browser, worktrees) {
     if (sc) sc.scrollTop = 0;
   });
   await page.waitForTimeout(300);
+
+  // The sidebar's edge dragged wider and back, 80 moves a frame apart.
+  const handle = await page.locator("[data-sidebar-handle]").first().boundingBox();
+  if (handle) {
+    const hx = handle.x + handle.width / 2;
+    const hy = handle.y + 300;
+    await page.mouse.move(hx, hy);
+    await page.mouse.down();
+    const rec = page.evaluate(
+      () =>
+        new Promise((done) => {
+          const times = [];
+          const tick = (t) => {
+            times.push(t);
+            if (window.__dragDone) return done(times.slice(1).map((x, k) => x - times[k]));
+            requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        }),
+    );
+    const d0 = await metrics(cdp);
+    for (let i = 0; i < 80; i++) {
+      await page.mouse.move(hx + (i % 40 < 20 ? i % 20 : 20 - (i % 20)) * 4, hy);
+      await page.waitForTimeout(16);
+    }
+    const d1 = await metrics(cdp);
+    await page.evaluate(() => (window.__dragDone = true));
+    res.sidebarDrag = frameStats(await rec);
+    res.sidebarDrag.styleMs = r1((d1.RecalcStyleDuration - d0.RecalcStyleDuration) * 1000);
+    res.sidebarDrag.mainThreadMs = r1((d1.TaskDuration - d0.TaskDuration) * 1000);
+    await page.keyboard.press("Escape");
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+  }
 
   // Fold a project and open it again (the first project, by its chevron).
   const project = await page.evaluate(() => document.querySelector('[aria-label^="Hide "]')?.getAttribute("aria-label")?.slice(5));

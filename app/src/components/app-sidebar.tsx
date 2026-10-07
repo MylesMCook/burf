@@ -55,12 +55,13 @@ export function AppSidebar() {
 
   return (
     <SidebarContext.Provider value={context}>
-      {/* Its width is --sidebar-w (prefs, or a drag as it runs), held to the
-          narrowest and widest (lib/sidebar-width) even as the window shrinks;
-          a container, so rows show more of a worktree when there is room. */}
+      {/* Its width is --sidebar-w (prefs), or --sidebar-live as a drag
+          runs, held to the narrowest and widest (lib/sidebar-width) even as
+          the window shrinks; a container, so rows show more of a worktree
+          when there is room. */}
       <aside
         data-testid="sidebar"
-        style={{ width: `clamp(${SIDEBAR_MIN}px, var(--sidebar-w, ${SIDEBAR_DEFAULT}px), max(${SIDEBAR_DEFAULT}px, min(${SIDEBAR_MAX}px, 40vw)))` }}
+        style={{ width: `clamp(${SIDEBAR_MIN}px, var(--sidebar-live, var(--sidebar-w, ${SIDEBAR_DEFAULT}px)), max(${SIDEBAR_DEFAULT}px, min(${SIDEBAR_MAX}px, 40vw)))` }}
         className="@container/side relative flex shrink-0 flex-col border-sidebar-border border-r bg-sidebar text-sidebar-foreground"
       >
         <SidebarResizeHandle />

@@ -64,6 +64,7 @@ const fleetChecks = () => [
   ["sidebar DOM nodes", fleet.sidebar?.nodes, 6500],
   ["at rest: main thread (ms a second)", fleet.idle?.mainThreadMsPerSec, 500],
   ["sidebar scroll: dropped frames (%)", fleet.sidebarScroll.droppedPct, 10],
+  ["sidebar edge dragged: dropped frames (%)", fleet.sidebarDrag?.droppedPct, 20],
   ["fold a project (ms)", fleet.collapse?.ms, 250],
   ["open it again (ms)", fleet.expand?.ms, 300],
   ["a row's context menu (ms)", fleet.contextMenu?.ms, 300],
