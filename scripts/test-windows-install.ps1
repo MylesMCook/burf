@@ -24,7 +24,7 @@ $guardKeys = @(
     'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Berth',
     'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Berth',
     'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Berth',
-    'HKCU:\Software\Sean Brydon\Berth', 'HKLM:\Software\Sean Brydon\Berth',
+    'HKCU:\Software\berth\Berth', 'HKLM:\Software\berth\Berth',
     'HKCU:\Software\Classes\berth', 'HKLM:\Software\Classes\berth',
     'HKCU:\Software\Berth\CommandLine'
 )

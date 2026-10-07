@@ -48,7 +48,7 @@ jobs:
         with:
           name: windows-tmux
           path: bin
-      - run: go test ./internal/service ./internal/agent ./cmd/berth
+      - run: go test ./internal/statefile ./internal/terminal ./internal/boxclient ./internal/proxy ./internal/network ./internal/sshconfig ./internal/hooks ./internal/service ./internal/agent ./cmd/berth
       - run: pnpm install --frozen-lockfile
         working-directory: app
       - run: node --experimental-strip-types --test src/lib/platform.test.ts
