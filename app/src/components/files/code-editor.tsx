@@ -15,7 +15,7 @@ import { useActiveTheme } from "@/hooks/use-theme";
 import type { Theme } from "@/lib/api";
 import type { Changes } from "@/lib/file-marks";
 import { patchText } from "@/lib/file-marks";
-import { cssVars, type ShikiTheme, syntaxColors } from "@/lib/syntax-colors";
+import { cssVars, readableStyles, type ShikiTheme, syntaxColors } from "@/lib/syntax-colors";
 import { syntaxThemes } from "@/themes/apply";
 
 export interface CodeEditorProps {
@@ -125,24 +125,27 @@ const shikiCache = new Map<string, Record<string, string>>();
 // useSyntaxVars is the active theme's code colours as custom properties.
 function useSyntaxVars(theme: Theme): Record<string, string> {
   const name = theme.appearance === "dark" ? syntaxThemes(theme).dark : syntaxThemes(theme).light;
-  const [vars, setVars] = useState(() => shikiCache.get(name));
+  // Each colour reads on this theme's background (4.5:1, lightness only).
+  const bg = theme.colors.background;
+  const key = `${name}|${bg}`;
+  const [vars, setVars] = useState(() => shikiCache.get(key));
   useEffect(() => {
-    const have = shikiCache.get(name);
+    const have = shikiCache.get(key);
     if (have) return setVars(have);
     setVars(undefined);
     let live = true;
     import("@pierre/diffs")
       .then((m) => m.resolveTheme(name))
       .then((resolved) => {
-        const out = cssVars(syntaxColors(resolved as unknown as ShikiTheme));
-        shikiCache.set(name, out);
+        const out = cssVars(readableStyles(syntaxColors(resolved as unknown as ShikiTheme), bg));
+        shikiCache.set(key, out);
         if (live) setVars(out);
       })
       .catch(() => {});
     return () => {
       live = false;
     };
-  }, [name]);
+  }, [name, key, bg]);
   return vars ?? fallbackVars(theme);
 }
 
@@ -299,8 +302,8 @@ export function CodeEditor({ path, text, onChange, onSave, changes, conflictLine
           chrome,
           EditorState.readOnly.of(!!readOnly),
           EditorView.editable.of(!readOnly),
-          // Read only, it still takes the keyboard, to scroll with the arrows.
-          EditorView.contentAttributes.of({ "aria-label": `${path.split("/").pop()}, ${readOnly ? "read only" : "editable"}`, ...(readOnly ? { tabindex: "0" } : {}) }),
+          // In the Tab order always: read only, it still scrolls with the arrows.
+          EditorView.contentAttributes.of({ "aria-label": `${path.split("/").pop()}, ${readOnly ? "read only" : "editable"}`, tabindex: "0" }),
           keymap.of([{ key: "Mod-s", preventDefault: true, run: () => (cb.current.onSave?.(), true) }, indentWithTab, ...defaultKeymap, ...historyKeymap, ...searchKeymap]),
           EditorView.updateListener.of((u) => {
             if (u.docChanged) cb.current.onChange?.(u.state.doc.toString());

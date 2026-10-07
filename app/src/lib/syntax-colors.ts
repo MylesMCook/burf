@@ -6,6 +6,8 @@
 // theme's rules give the first of them any rule matches. Pure, so node's
 // test runner reads it (syntax-colors.test.ts).
 
+import { readable } from "../themes/color.ts";
+
 export interface ThemeRule {
   scope?: string | string[];
   settings?: { foreground?: string; fontStyle?: string };
@@ -121,6 +123,25 @@ export function syntaxColors(theme: ShikiTheme): Record<string, Style> {
 
 // cssVars turns the styles into the editor's custom properties
 // (--syn-<role>, --syn-<role>-i for italic, --syn-<role>-b for bold).
+// readableStyles is every role's colour at 4.5:1 on the code's background
+// at least, moved in lightness only: a theme's soft comments and light
+// strings keep their hue and read (WCAG AA). The same colours as the
+// diffs, a shade darker or lighter where those fall short.
+export function readableStyles(styles: Record<string, Style>, bg: string, min = 4.5): Record<string, Style> {
+  return Object.fromEntries(Object.entries(styles).map(([role, s]) => [role, s.color ? { ...s, color: readable(s.color, bg, min) } : s]));
+}
+
+// readableTokens does the same to highlighted HTML from the diff renderer,
+// whose spans carry their colours as --diffs-token-dark and -light.
+export function readableTokens(html: string, bg: string, min = 4.5): string {
+  const seen = new Map<string, string>();
+  return html.replace(/(--diffs-token-(?:dark|light):)(#[0-9a-fA-F]{6,8})/g, (_, k: string, c: string) => {
+    let r = seen.get(c);
+    if (!r) seen.set(c, (r = readable(c, bg, min)));
+    return k + r;
+  });
+}
+
 export function cssVars(styles: Record<string, Style>): Record<string, string> {
   const vars: Record<string, string> = {};
   for (const [role, s] of Object.entries(styles)) {

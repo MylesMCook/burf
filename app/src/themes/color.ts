@@ -90,3 +90,20 @@ export function distance(a: string, b: string): number {
   const y = oklab(b);
   return Math.hypot(x[0] - y[0], x[1] - y[1], x[2] - y[2]);
 }
+
+// readable is fg moved in lightness only, hue and chroma kept, until it is
+// min:1 on bg: darker on a light background, lighter on a dark one. A
+// colour that already reads is returned as it is.
+export function readable(fg: string, bg: string, min = 4.5): string {
+  const solid = over(fg, bg);
+  if (contrast(solid, bg) >= min) return fg;
+  const [L, C, H] = oklch(solid);
+  const darker = contrast("#000000", bg) > contrast("#ffffff", bg);
+  for (let step = 1; step <= 400; step++) {
+    const l = darker ? L - step * 0.0025 : L + step * 0.0025;
+    if (l < 0 || l > 1) break;
+    const x = fromOklch(l, C, H);
+    if (contrast(x, bg) >= min) return x;
+  }
+  return darker ? "#000000" : "#ffffff";
+}
