@@ -13,6 +13,7 @@ import { openAddBox } from "@/views/onboarding/add-box-dialog";
 import { useAgentRows } from "./agents";
 import { fitRows, useHomeWidget } from "./env";
 import { Bar, More, shortAgo, WidgetEmpty, WidgetRow, WidgetSkeleton } from "./parts";
+import { placeLabel } from "@/lib/worktree-names";
 
 // Boxes and what runs on them: both from what the app already polls (each
 // box's stats every 30s, its services), so they cost nothing extra.
@@ -123,7 +124,7 @@ export function ServicesWidget() {
       {shown.map((s) => (
         <WidgetRow
           key={`${s.box}:${s.port}`}
-          label={`Open ${s.main ? s.location : `${s.location} / ${s.worktree}`} on port ${s.port}`}
+          label={`Open ${placeLabel(s, boxes)} on port ${s.port}`}
           onClick={() => {
             const ref = { box: s.box, location: s.location, worktree: s.worktree, path: s.path, main: s.main };
             selectWorktree(ref);
@@ -132,7 +133,7 @@ export function ServicesWidget() {
         >
           <span className="size-1.5 shrink-0 rounded-full bg-success" aria-hidden />
           <span className="w-11 shrink-0 font-mono text-[11px] tabular-nums">:{s.port}</span>
-          <span className="min-w-0 flex-1 truncate">{s.main ? s.location : `${s.location} / ${s.worktree}`}</span>
+          <span className="min-w-0 flex-1 truncate">{placeLabel(s, boxes)}</span>
           {span.c > 1 && <span className="shrink-0 truncate text-muted-foreground text-xs @max-[260px]:hidden">{s.name}</span>}
           <ArrowUpRightIcon className="size-3.5 shrink-0 text-muted-foreground opacity-0 group-hover/row:opacity-100 group-focus-visible/row:opacity-100" />
         </WidgetRow>

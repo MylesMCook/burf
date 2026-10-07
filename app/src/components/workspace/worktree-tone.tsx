@@ -3,10 +3,13 @@ import { useMemo } from "react";
 import { Tip } from "@/components/tip";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { assignTones, labelsFor, NARROW, nameFromKey, TINY, type Tone, toneVar } from "@/lib/groups";
-import { useStore } from "@/lib/store";
+import { type BoxData, useStore } from "@/lib/store";
+import { shortLabel, worktreeLabel } from "@/lib/worktree-names";
 import { cn } from "@/lib/utils";
 import { usePrefs } from "@/lib/prefs";
 import { groupKeys, onScreenOf, splitKey, useWorkspaces, type WorktreeRef } from "@/lib/workspaces";
+
+type BoxesData = Record<string, BoxData>;
 
 // Worktrees side by side: each worktree on screen wears one colour (its
 // tone) and a name that tells it apart. With one worktree on screen there
@@ -47,7 +50,8 @@ export function useTone(key: string | undefined): string | undefined {
   return t ? toneVar(t) : undefined;
 }
 
-const nameOf = (ref: WorktreeRef) => (ref.main ? ref.location : ref.worktree);
+// A worktree is named by its display name when it has one (lib/worktree-names).
+const nameOf = (ref: WorktreeRef, boxes: BoxesData) => shortLabel(ref, boxes);
 
 // useLabel names a worktree as the sidebar does, with its box added when
 // another on screen has the same name (the same repository on two boxes).
@@ -68,7 +72,7 @@ export function useLabel(key: string | undefined): { label: string; ref?: Worktr
     };
     const named = [...new Set([key, ...keys])].map((k) => {
       const ref = refOf(k);
-      return { key: k, name: ref ? nameOf(ref) : nameFromKey(k), box: splitKey(k).box };
+      return { key: k, name: ref ? nameOf(ref, boxes) : nameFromKey(k), box: splitKey(k).box };
     });
     return { label: labelsFor(named)[key], ref: refOf(key) };
   }, [key, keys, spaces, boxes]);
@@ -86,7 +90,7 @@ export function useLabels(keys: string[]): string[] {
       const ref = spaces[k]?.ref;
       const { box, path } = splitKey(k);
       const wt = ref ? undefined : boxes[box]?.locations?.flatMap((l) => (l.worktrees ?? []).map((w) => ({ l, w }))).find((x) => x.w.path === path);
-      const name = ref ? nameOf(ref) : wt ? (wt.w.main ? wt.l.name : wt.w.name) : nameFromKey(k);
+      const name = ref ? nameOf(ref, boxes) : wt ? worktreeLabel(wt.w, wt.l) : nameFromKey(k);
       return { key: k, name, box };
     });
     const labels = labelsFor(named);
@@ -109,7 +113,7 @@ export function WtChip({ wsKey, className }: { wsKey: string; className?: string
   const { label, ref } = useLabel(wsKey);
   const narrow = useNarrow();
   if (!tone) return null;
-  const tip = ref ? `${label} on ${ref.box} · ${ref.path}` : label;
+  const tip = ref ? `${label}${label !== (ref.main ? ref.location : ref.worktree) ? ` (${ref.worktree})` : ""} on ${ref.box} · ${ref.path}` : label;
   if (narrow)
     return (
       <Tip label={tip} side="bottom" align="start">

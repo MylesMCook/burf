@@ -65,6 +65,8 @@ import { openWorktreePicker } from "@/components/workspace/worktree-picker";
 import { usePrefs } from "@/lib/prefs";
 import { useRegistry } from "@/plugins/registry";
 import { openAddToBox } from "@/components/sidebar/add-to-box-dialog";
+import { openRenameWorktree } from "@/components/sidebar/rename-worktree";
+import { renameWorktree, shortLabel, worktreeLabel } from "@/lib/worktree-names";
 import { openHomeTerminal } from "@/components/box-picker";
 import { boxLoad } from "@/components/sidebar/box-load";
 import { kitsApi } from "@/lib/kits";
@@ -196,7 +198,7 @@ export function worktreeActions(box: string, loc: Location, wt: Worktree): Actio
   const sessions = worktreeSessions(st.boxes[box]?.sessions, wt).filter((s) => !s.exited);
   const agentSession = sessions.find((s) => agentOf(s));
   const url = urlFor(box, loc, wt);
-  const name = wt.main ? loc.name : wt.name;
+  const name = worktreeLabel(wt, loc);
   const select = () => selectWorktree(refOf(box, loc, wt));
   // What these start is this worktree's, whatever pane has the focus there.
   const key = wsKey(box, wt.path);
@@ -208,7 +210,7 @@ export function worktreeActions(box: string, loc: Location, wt: Worktree): Actio
   const grouping = usePrefs.getState().labs;
   const items: Action[] = [
     item("Open", wt.main ? <HomeIcon /> : <GitBranchIcon />, select),
-    ...(grouping && front && !isShown(key) ? [item(`Add to tabs beside ${front.main ? front.location : front.worktree}`, <ListPlusIcon />, () => void addGroup(key), { shortcut: "⌥ Click" })] : []),
+    ...(grouping && front && !isShown(key) ? [item(`Add to tabs beside ${shortLabel(front)}`, <ListPlusIcon />, () => void addGroup(key), { shortcut: "⌥ Click" })] : []),
     ...(grouping ? [item("Compare with…", <GitCompareArrowsIcon />, () => openWorktreePicker({ kind: "compare", from: key }))] : []),
     item("New terminal", <SquareTerminalIcon />, () => {
       select();
@@ -236,6 +238,11 @@ export function worktreeActions(box: string, loc: Location, wt: Worktree): Actio
   if (agentSession) items.push({ type: "sub", label: "Orchestrate", icon: <WorkflowIcon />, items: () => <SessionActionItems box={box} session={agentSession.name} /> });
   // A branch's pull request can fix its own CI and review comments.
   if (!wt.main && wt.branch && boxHasRuns(box)) items.push({ type: "sub", label: "Auto-fix this PR", icon: <WrenchIcon />, items: () => <AutoFixItems box={box} path={wt.path} /> });
+  // A display name for it; the branch and folder keep theirs.
+  if (!wt.main) {
+    items.push(sep, item("Rename…", <PencilIcon />, () => openRenameWorktree(box, loc, wt), { shortcut: "F2" }));
+    if (wt.title) items.push(item(`Show as ${wt.name}`, <span className="size-4" />, () => void renameWorktree(box, loc, wt, "")));
+  }
   items.push(sep, item("Copy path", <CopyIcon />, () => copy(wt.path, "path")));
   if (wt.branch) items.push(item("Copy branch", <GitBranchIcon />, () => copy(wt.branch!, "branch name")));
   if (url) items.push(item("Copy URL", <LinkIcon />, () => copy(url, "URL")));
@@ -273,7 +280,7 @@ export function worktreeActions(box: string, loc: Location, wt: Worktree): Actio
 export function archiveWorktree(box: string, loc: Location, wt: Worktree) {
   const script = loc.scripts?.archive;
   confirm({
-    title: `Archive ${wt.name}?`,
+    title: `Archive ${worktreeLabel(wt)}?`,
     description: `${script ? "The repo's archive script runs, then its" : "Its"} folder on ${box} goes and its sessions and services stop. ${wt.branch ? `Branch ${wt.branch} stays, so you can pick it up again.` : ""}`,
     detail: script ? <span className="font-mono">{script}</span> : undefined,
     confirm: "Archive",
@@ -297,7 +304,7 @@ export function archiveWorktree(box: string, loc: Location, wt: Worktree) {
 // worktree…" and the dashboard's "Stop and remove worktree…".
 export function removeWorktree(box: string, loc: Location, wt: Worktree) {
   confirm({
-    title: `Remove ${wt.name}?`,
+    title: `Remove ${worktreeLabel(wt)}?`,
     description: `Its folder on ${box} is deleted. The repository's teardown script runs first, and the worktree's services and sessions stop.`,
     detail: (
       <>

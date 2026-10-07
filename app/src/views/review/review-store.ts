@@ -6,6 +6,7 @@ import { useEventLog } from "@/lib/events";
 import { type FlowRun, flowsApi } from "@/lib/flows";
 import { load, save } from "@/lib/storage";
 import { useStore } from "@/lib/store";
+import { titleAt, useTitleAt } from "@/lib/worktree-names";
 
 // The review inbox: agents' finished work on every box, from each box's
 // GET review. An item leaves when its agent works again, its changes are
@@ -92,6 +93,11 @@ export const useReview = create<ReviewState>()(() => ({
 }));
 
 export const entryKey = (box: string, path: string) => `${box}|${path}`;
+
+// reviewName is what an item is called on screen: its worktree's display
+// name when it was given one (lib/worktree-names), else its name.
+export const reviewName = (e: ReviewEntry) => titleAt(e.box, e.path) ?? (e.main ? e.location : e.worktree);
+export const useReviewName = (e: ReviewEntry) => useTitleAt(e.box, e.path) ?? (e.main ? e.location : e.worktree);
 
 // where is the exec location for an item: "shop" or "shop/checkout".
 export const where = (e: ReviewItem) => (e.main ? e.location : `${e.location}/${e.worktree}`);

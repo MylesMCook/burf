@@ -23,7 +23,7 @@ import { useStore } from "@/lib/store";
 import { useSessionTitle } from "@/hooks/use-session-name";
 import { cn } from "@/lib/utils";
 import type { ApproveMode } from "@/views/review/review-actions";
-import { type ReviewEntry, useReview, where } from "@/views/review/review-store";
+import { type ReviewEntry, useReview, useReviewName, where } from "@/views/review/review-store";
 import { lastMessage } from "@/views/review/summary";
 
 export interface DetailActions {
@@ -44,7 +44,8 @@ export function ReviewDetail({ entry, actions }: { entry: ReviewEntry; actions: 
   const unpushed = entry.upstream ? entry.ahead : entry.base_ahead;
   // Led by the work the agent did, when its session has a title.
   const work = useSessionTitle(entry.box, entry.session);
-  const title = work ?? (entry.main ? entry.location : entry.worktree);
+  const name = useReviewName(entry);
+  const title = work ?? name;
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -66,7 +67,7 @@ export function ReviewDetail({ entry, actions }: { entry: ReviewEntry; actions: 
             </div>
             <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-xs">
               <span>
-                {work && `${entry.main ? entry.location : entry.worktree} · `}
+                {work && `${name} · `}
                 {entry.box} · {entry.location}
               </span>
               {entry.branch && (

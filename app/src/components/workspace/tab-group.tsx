@@ -1,5 +1,6 @@
-import { CloudOffIcon, FoldHorizontalIcon, PaletteIcon, UnfoldHorizontalIcon, XIcon } from "lucide-react";
+import { CloudOffIcon, FoldHorizontalIcon, PaletteIcon, PencilIcon, UnfoldHorizontalIcon, XIcon } from "lucide-react";
 
+import { openRenameWorktree } from "@/components/sidebar/rename-worktree";
 import { Tip } from "@/components/tip";
 import { ContextMenu, ContextMenuItem, ContextMenuPopup, ContextMenuRadioGroup, ContextMenuRadioItem, ContextMenuSeparator, ContextMenuShortcut, ContextMenuSub, ContextMenuSubPopup, ContextMenuSubTrigger, ContextMenuTrigger } from "@/components/ui/context-menu";
 import { MenuRadioGroup, MenuRadioItem } from "@/components/ui/menu";
@@ -12,6 +13,7 @@ import { TONES, toneVar } from "@/lib/groups";
 import { removalLabel, useRemoval } from "@/lib/removing";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { findWorktree } from "@/lib/worktree-names";
 import { activateTab, closeGroup, focusGroup, foldGroup, setTone, tabBeside, unsplitTab, useWorkspaces } from "@/lib/workspaces";
 
 // TabGroup (Labs) is one worktree's run of tabs in a strip shared with
@@ -58,7 +60,9 @@ function GroupLabel({ wsKey, front, folded, count, tone, many, compact }: { wsKe
   const away = useStore((s) => !!ref && !!s.status && s.status.boxes.find((b) => b.name === ref.box)?.state !== "online");
   const leaving = useRemoval(ref?.box ?? "", ref?.path);
   const picked = useWorkspaces((s) => s.tones?.[wsKey]);
-  const where = ref ? `${label} on ${ref.box}` : label;
+  // A renamed worktree's own name follows its title.
+  const own = ref && !ref.main && label !== ref.worktree && !label.startsWith(`${ref.worktree} `) ? ` (${ref.worktree})` : "";
+  const where = ref ? `${label}${own} on ${ref.box}` : label;
   const tip = leaving ? `${where} · ${removalLabel(leaving)}` : away ? `${where} · ${ref?.box} is offline` : folded ? `${where} · ${count} ${count === 1 ? "tab" : "tabs"}, folded` : where;
   return (
     <ContextMenu>
@@ -93,6 +97,17 @@ function GroupLabel({ wsKey, front, folded, count, tone, many, compact }: { wsKe
           {folded ? <UnfoldHorizontalIcon /> : <FoldHorizontalIcon />}
           <span className="flex-1">{folded ? "Unfold" : "Fold to its name"}</span>
         </ContextMenuItem>
+        {ref && !ref.main && (
+          <ContextMenuItem
+            onClick={() => {
+              const at = findWorktree(ref.box, ref.path);
+              if (at) openRenameWorktree(ref.box, at.loc, at.wt, { inPlace: false });
+            }}
+          >
+            <PencilIcon />
+            <span className="flex-1">Rename worktree…</span>
+          </ContextMenuItem>
+        )}
         <ContextMenuSub>
           <ContextMenuSubTrigger>
             <PaletteIcon />

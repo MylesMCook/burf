@@ -23,6 +23,7 @@ import { NONE, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { openSession, type WorktreeRef } from "@/lib/workspaces";
 import { sessionWord } from "@/lib/state-model";
+import { useTitleAt } from "@/lib/worktree-names";
 
 // The model's words (lib/state-model.ts); a shell is just "open".
 const stateWords = (s: SessionState) => (s === "idle" ? "open" : sessionWord(s, true));
@@ -58,7 +59,7 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
   const stopping = usePendingStops((s) => s.sessions);
   const [all, setAll] = useState(false);
   const list = useRef<HTMLDivElement>(null);
-  const name = ref.main ? ref.location : ref.worktree;
+  const name = useTitleAt(ref.box, ref.path) ?? (ref.main ? ref.location : ref.worktree);
   const labs = usePrefs((p) => p.labs);
   const light = useHarbourLight();
 

@@ -17,6 +17,7 @@ import { useReview } from "@/views/review/review-store";
 
 import { fitRows, useHomeWidget } from "./env";
 import { DiffStat, More, shortAgo, WidgetEmpty, WidgetRow, WidgetSkeleton } from "./parts";
+import { placeLabel, worktreeLabel } from "@/lib/worktree-names";
 
 // The agents' widgets: what needs you (answered in place where it can be),
 // what is working and on which step, what just finished, and where you and
@@ -46,7 +47,7 @@ export function useAgentRows(): AgentRow[] {
       const agent = agentOf(e.session);
       if (!agent || (e.state !== "waiting" && e.state !== "running" && e.state !== "finished")) continue;
       const wt = worktreeOf(boxes[e.box]?.locations, e.session);
-      const place = wt ? (wt.worktree.main ? wt.location.name : `${wt.location.name} / ${wt.worktree.name}`) : "";
+      const place = wt ? (wt.worktree.main ? wt.location.name : `${wt.location.name} / ${worktreeLabel(wt.worktree)}`) : "";
       rows.push({
         key: `${e.box}/${e.session.name}`,
         box: e.box,
@@ -311,12 +312,13 @@ interface Area {
 // changed state in it, whichever is later.
 export function useAreas(): Area[] {
   const spaces = useWorkspaces((s) => s.spaces);
+  const boxes = useStore((s) => s.boxes);
   const rows = useAgentRows();
   return useMemo(() => {
     const out = new Map<string, Area>();
     const touch = (ref: WorktreeRef, at: number, agent?: AgentRow) => {
       const k = `${ref.box}:${ref.path}`;
-      const a = out.get(k) ?? { ref, label: ref.main ? ref.location : `${ref.location} / ${ref.worktree}`, project: ref.location, at: 0, agents: [] };
+      const a = out.get(k) ?? { ref, label: placeLabel(ref, boxes), project: ref.location, at: 0, agents: [] };
       a.at = Math.max(a.at, at);
       if (agent) a.agents.push(agent);
       out.set(k, a);
@@ -324,7 +326,7 @@ export function useAreas(): Area[] {
     for (const [key, w] of Object.entries(spaces)) if (!homeBox(key) && w.visitedAt && w.ref?.path) touch(w.ref, w.visitedAt);
     for (const r of rows) if (r.worktree) touch(r.worktree, Date.parse(r.since ?? "") || 0, r);
     return [...out.values()].sort((a, b) => b.at - a.at);
-  }, [spaces, rows]);
+  }, [spaces, rows, boxes]);
 }
 
 export function AreasWidget() {

@@ -16,7 +16,7 @@ import { plainError } from "@/lib/errors";
 import { describeCode, quote } from "@/lib/git/parse";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { forgetPullRequest, markReviewed, type ReviewEntry, refreshReview, useReview, where } from "@/views/review/review-store";
+import { forgetPullRequest, markReviewed, type ReviewEntry, refreshReview, reviewName, useReview, where } from "@/views/review/review-store";
 import { commitMessage, lastMessage } from "@/views/review/summary";
 import { ErrorText } from "@/components/error-note";
 
@@ -82,7 +82,7 @@ function Target({ entry }: { entry: ReviewEntry }) {
   return (
     <span className="inline-flex min-w-0 items-center gap-1.5 rounded-md border bg-muted/40 px-1.5 py-0.5 text-muted-foreground text-xs">
       <AgentIcon agent={entry.agent} />
-      <span className="truncate text-foreground">{entry.main ? entry.location : entry.worktree}</span>
+      <span className="truncate text-foreground">{reviewName(entry)}</span>
       <span className="shrink-0">· {entry.box}</span>
     </span>
   );
@@ -229,7 +229,7 @@ export function SendBackDialog({ entry, onClose }: { entry?: ReviewEntry; onClos
     try {
       // The person writes this note, so it goes in even at a question.
       await boxApi.send(client, entry.box, entry.session, withAttachments(note.trim(), files.paths), true, { when: "now", force: true });
-      toastManager.add({ title: `Sent back to ${agentLabel(entry.agent)}`, description: entry.main ? entry.location : entry.worktree, type: "success" });
+      toastManager.add({ title: `Sent back to ${agentLabel(entry.agent)}`, description: reviewName(entry), type: "success" });
       void refreshReview();
       onClose();
     } catch (err) {
@@ -285,7 +285,7 @@ export function DiscardDialog({ entry, onClose }: { entry?: ReviewEntry; onClose
     setError(undefined);
     try {
       await run(DISCARD_COMMAND);
-      toastManager.add({ title: `Discarded changes in ${entry.main ? entry.location : entry.worktree}`, type: "success" });
+      toastManager.add({ title: `Discarded changes in ${reviewName(entry)}`, type: "success" });
       await refreshReview();
       onClose();
     } catch (err) {

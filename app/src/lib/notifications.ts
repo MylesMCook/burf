@@ -7,6 +7,7 @@ import { usePrefs } from "@/lib/prefs";
 import { load, save } from "@/lib/storage";
 import { useStore } from "@/lib/store";
 import { focusSession, refOf, selectWorktree } from "@/lib/workspaces";
+import { titleAt } from "@/lib/worktree-names";
 
 // The notification centre: one router every event-driven notification goes
 // through, so the person's settings decide where each kind shows (the
@@ -348,7 +349,8 @@ export function route(input: NoteInput): string | undefined {
   const note = ch.centre ? upsert(input, new Date().toISOString()) : undefined;
   const quiet = quietNow(prefs) && !(input.category === "waiting" && prefs.dnd.allowWaiting);
   if (quiet) return note?.id;
-  const where = [note?.worktree ?? note?.project, input.box].filter(Boolean).join(" · ");
+  const named = input.box && input.path && (note?.worktree ?? input.worktree) ? titleAt(input.box, input.path) : undefined;
+  const where = [named ?? note?.worktree ?? note?.project, input.box].filter(Boolean).join(" · ");
   const body = [where, input.detail].filter(Boolean).join(" · ") || undefined;
   let shown = false;
   if (ch.toast && !(note && useNotifications.getState().open)) {

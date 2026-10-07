@@ -1,7 +1,9 @@
-import { ChevronRightIcon, ServerOffIcon } from "lucide-react";
+import { ChevronRightIcon, PencilIcon, ServerOffIcon, SquareArrowOutUpRightIcon } from "lucide-react";
 import { type KeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
+import { ContextRow } from "@/components/sidebar/actions";
+import { openRenameWorktree } from "@/components/sidebar/rename-worktree";
 import { Tip } from "@/components/tip";
 import { useTones } from "@/components/workspace/worktree-tone";
 import type { Location, Session, Worktree } from "@/lib/api";
@@ -15,6 +17,7 @@ import { NONE, useStore } from "@/lib/store";
 import { toneVar } from "@/lib/groups";
 import { cn } from "@/lib/utils";
 import { addGroup, openSession, useWorkspaces, wsKey } from "@/lib/workspaces";
+import { renameWorktree, worktreeLabel } from "@/lib/worktree-names";
 
 // ---- What the rail knows -------------------------------------------------
 
@@ -89,12 +92,13 @@ export function useRailAgents(): RailAgent[] {
     // Lanes in order, and inside one by place, so a tile only moves when
     // its agent changes state.
     const order = (e: RailAgent) => LANES.indexOf(e.lane);
-    return out.sort((x, y) => order(x) - order(y) || x.project.localeCompare(y.project) || x.wt.name.localeCompare(y.wt.name) || x.box.localeCompare(y.box) || x.session.name.localeCompare(y.session.name));
+    return out.sort((x, y) => order(x) - order(y) || x.project.localeCompare(y.project) || worktreeLabel(x.wt).localeCompare(worktreeLabel(y.wt)) || x.box.localeCompare(y.box) || x.session.name.localeCompare(y.session.name));
   }, [boxes, data, current, inWorkspace, projects, tones]);
 }
 
-const wtName = (e: Pick<RailAgent, "wt" | "loc">) => (e.wt.main ? e.loc.name : e.wt.name);
-const place = (e: RailAgent) => (e.wt.main ? `${e.project}` : `${e.project} / ${e.wt.name}`);
+// A worktree by its display name, when it was given one (lib/worktree-names).
+const wtName = (e: Pick<RailAgent, "wt" | "loc">) => worktreeLabel(e.wt, e.loc);
+const place = (e: RailAgent) => (e.wt.main ? `${e.project}` : `${e.project} / ${worktreeLabel(e.wt)}`);
 
 function focus(e: RailAgent, alt = false) {
   if (alt && usePrefs.getState().labs) return void addGroup(e.key);
@@ -133,7 +137,7 @@ export function AgentCard({ e }: { e: RailAgent }) {
           )}
         </span>
       </span>
-      <span className="font-medium text-[13px] text-foreground leading-snug">{e.session.title ?? (e.wt.main ? "Main checkout" : e.wt.name)}</span>
+      <span className="font-medium text-[13px] text-foreground leading-snug">{e.session.title ?? (e.wt.main ? "Main checkout" : worktreeLabel(e.wt))}</span>
       {ask && (ask.input || ask.message) && (
         <span className="line-clamp-2 break-words rounded bg-muted/60 px-1.5 py-0.5 font-mono text-[11px] text-foreground/80">
           {ask.tool ? `${ask.tool}: ` : ""}
@@ -142,9 +146,12 @@ export function AgentCard({ e }: { e: RailAgent }) {
       )}
       <span className="flex items-center gap-1 text-muted-foreground">
         {e.tone && <span aria-hidden className="size-1.5 shrink-0 rounded-full" style={{ background: e.tone }} />}
-        <span className="truncate">{e.wt.main ? `${e.project} · main checkout` : `${e.project} / ${e.wt.name}`}</span>
+        <span className="truncate">{e.wt.main ? `${e.project} · main checkout` : place(e)}</span>
         <span className="ml-auto shrink-0 font-mono text-[11px]">{e.box}</span>
       </span>
+      {/* A renamed worktree's own name, which its branch and folder keep. */}
+      {!e.wt.main && e.wt.title && <span className="truncate font-mono text-[11px] text-muted-foreground">{e.wt.name}</span>}
+      {!e.wt.main && !e.away && <span className="text-[11px] text-muted-foreground/80">Right-click or F2 to rename the worktree</span>}
       {e.away && <span className="text-muted-foreground">Last seen {sessionWord(e.state, true)}. It may have moved on.</span>}
     </span>
   );
@@ -229,36 +236,58 @@ function Ring({ e }: { e: RailAgent }) {
   return <span aria-hidden className={cn(base, "border-[1.5px] border-success/70")} />;
 }
 
+// tileActions are a tile's menu: go to it, and name its worktree.
+function tileActions(e: RailAgent) {
+  const rename = () => openRenameWorktree(e.box, e.loc, e.wt, { inPlace: false });
+  return [
+    { type: "item" as const, label: "Open", icon: <SquareArrowOutUpRightIcon />, run: () => focus(e) },
+    ...(e.wt.main || e.away
+      ? []
+      : [
+          { type: "sep" as const },
+          { type: "item" as const, label: "Rename worktree…", icon: <PencilIcon />, shortcut: "F2", run: rename },
+          ...(e.wt.title ? [{ type: "item" as const, label: `Show as ${e.wt.name}`, icon: <span className="size-4" />, run: () => void renameWorktree(e.box, e.loc, e.wt, "") }] : []),
+        ]),
+  ];
+}
+
 function AgentTile({ e }: { e: RailAgent }) {
   return (
     <li className="relative">
       {/* On screen: a bar at the rail's edge, in its tab group's colour. */}
       {e.selected || e.tone ? <span aria-hidden className="absolute top-2 -left-1 h-5 w-[3px] rounded-r-full" style={{ background: e.tone ?? "var(--foreground)" }} /> : null}
-      <Tip side="right" align="start" className="max-w-none" label={<AgentCard e={e} />}>
-        <button
-          type="button"
-          data-rail-item
-          data-testid="rail-agent"
-          data-agent-state={e.away ? "away" : e.state}
-          data-session={`${e.box}/${e.session.name}`}
-          tabIndex={-1}
-          aria-label={label(e)}
-          aria-current={e.selected || undefined}
-          onClick={(ev) => focus(e, ev.altKey)}
-          className="group flex w-full flex-col items-center gap-1 rounded-lg px-0.5 pt-1.5 pb-1 outline-none hover:bg-sidebar-accent/60 focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <span className={cn("relative inline-flex size-7 items-center justify-center rounded-full bg-sidebar-accent", e.lane === "waiting" && "bg-warning/12", e.selected && "bg-foreground/12", e.away && "opacity-60")}>
-            <AgentIcon agent={e.agent} className="size-3.5" />
-            <Ring e={e} />
-          </span>
-          <span
-            className={cn("line-clamp-2 w-full text-center text-[10px] leading-[11px] [overflow-wrap:anywhere]", e.selected ? "font-medium text-foreground" : "text-muted-foreground group-hover:text-foreground", e.away && "opacity-70")}
-            style={e.tone ? { color: e.tone } : undefined}
+      <ContextRow items={() => tileActions(e)}>
+        <Tip side="right" align="start" className="max-w-none" label={<AgentCard e={e} />}>
+          <button
+            type="button"
+            data-rail-item
+            data-testid="rail-agent"
+            data-agent-state={e.away ? "away" : e.state}
+            data-session={`${e.box}/${e.session.name}`}
+            tabIndex={-1}
+            aria-label={label(e)}
+            aria-current={e.selected || undefined}
+            onClick={(ev) => focus(e, ev.altKey)}
+            onKeyDown={(ev) => {
+              if (ev.key !== "F2" || e.wt.main || e.away) return;
+              ev.preventDefault();
+              openRenameWorktree(e.box, e.loc, e.wt, { inPlace: false });
+            }}
+            className="group flex w-full flex-col items-center gap-1 rounded-lg px-0.5 pt-1.5 pb-1 outline-none hover:bg-sidebar-accent/60 focus-visible:ring-2 focus-visible:ring-ring"
           >
-            {wtName(e)}
-          </span>
-        </button>
-      </Tip>
+            <span className={cn("relative inline-flex size-7 items-center justify-center rounded-full bg-sidebar-accent", e.lane === "waiting" && "bg-warning/12", e.selected && "bg-foreground/12", e.away && "opacity-60")}>
+              <AgentIcon agent={e.agent} className="size-3.5" />
+              <Ring e={e} />
+            </span>
+            <span
+              className={cn("line-clamp-2 w-full text-center text-[10px] leading-[11px] [overflow-wrap:anywhere]", e.selected ? "font-medium text-foreground" : "text-muted-foreground group-hover:text-foreground", e.away && "opacity-70")}
+              style={e.tone ? { color: e.tone } : undefined}
+            >
+              {wtName(e)}
+            </span>
+          </button>
+        </Tip>
+      </ContextRow>
     </li>
   );
 }

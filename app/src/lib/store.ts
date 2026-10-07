@@ -3,6 +3,7 @@ import { create } from "zustand";
 import { boxApi, type BoxInfo, type Client, type Location, type Service, type Session, type Stats, type Status, type TaskTemplate, type Theme } from "@/lib/api";
 import { closeComposer, fromOrchestrateDraft, fromWorktreeDraft, openComposer } from "@/lib/composer";
 import { errorMessage } from "@/lib/format";
+import { withLocalTitles } from "@/lib/local-titles";
 import { load, save } from "@/lib/storage";
 
 // The app's state. Everything here can be rebuilt from the agent at any
@@ -103,7 +104,8 @@ export type BoxPart = "locations" | "sessions" | "stats" | "services" | "info";
 const ALL_PARTS: BoxPart[] = ["locations", "sessions", "stats", "services", "info"];
 
 const fetchers: Record<BoxPart, (c: Client, box: string) => Promise<unknown>> = {
-  locations: boxApi.locations,
+  // A box too old to name worktrees has this laptop's names laid over.
+  locations: async (c, box) => withLocalTitles(box, await boxApi.locations(c, box)),
   sessions: boxApi.sessions,
   stats: boxApi.stats,
   services: boxApi.services,

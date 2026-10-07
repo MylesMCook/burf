@@ -255,6 +255,10 @@ export const boxApi = {
     c.box<Session>(box, "POST", "sessions", req),
   stopSession: (c: Client, box: string, name: string) => c.box(box, "DELETE", `sessions/${encodeURIComponent(name)}`),
   // Names a session's work; "" clears its title.
+  // renameWorktree gives a worktree a display name ("" clears it), on boxes
+  // that list "worktree.titles" (lib/worktree-names).
+  renameWorktree: (c: Client, box: string, location: string, worktree: string, title: string) =>
+    c.box<Worktree>(box, "PATCH", `locations/${encodeURIComponent(location)}/worktrees/${encodeURIComponent(worktree)}`, { title }),
   renameSession: (c: Client, box: string, name: string, title: string) => c.box<Session>(box, "PATCH", `sessions/${encodeURIComponent(name)}`, { title }),
   createTask: (c: Client, box: string, task: TaskRequest) => c.box<TaskResult>(box, "POST", "tasks", task),
   // A worktree's own services, from its repository's config.

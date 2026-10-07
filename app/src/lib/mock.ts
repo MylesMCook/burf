@@ -77,6 +77,8 @@ const locations: Record<string, Location[]> = {
         { name: "qa-deck", path: "/home/me/work/shop-qa-deck", branch: "me/qa-deck" },
         { name: "search-perf", path: "/home/me/work/shop-search-perf", branch: "me/search-perf" },
         { name: "order-export", path: "/home/me/work/shop-order-export", branch: "me/order-export" },
+        // Named after a pasted link, as a worktree made from one is.
+        { name: "https-linear-app-acme", path: "/home/me/work/shop-https-linear-app-acme", branch: "https-linear-app-acme" },
       ],
     },
     {
@@ -132,6 +134,7 @@ const sessions: Record<string, Session[]> = {
     { name: "order-export-claude", title: "Export orders as CSV from the admin", location: "shop/order-export", dir: "/home/me/work/shop-order-export", command: "claude 'Export orders as CSV from the admin'", created: ago(1700), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(1560) },
     { name: "order-export-claude-2", location: "shop/order-export", dir: "/home/me/work/shop-order-export", command: "claude", created: ago(320), attached: 0, exited: false, agent: "claude", agent_state: "idle", state_since: ago(290) },
     { name: "order-export-claude-3", title: "Add tests for the export job", location: "shop/order-export", dir: "/home/me/work/shop-order-export", command: "claude 'Add tests for the export job'", created: ago(140), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(75) },
+    { name: "https-linear-app-acme-claude", title: "Fix the cart badge after a refund", location: "shop/https-linear-app-acme", dir: "/home/me/work/shop-https-linear-app-acme", command: "claude", created: ago(44), attached: 0, exited: false, agent: "claude", agent_state: "idle", state_since: ago(40) },
     { name: "notes-claude", location: "notes", dir: "/home/me/work/notes", command: "claude", created: ago(700), attached: 0, exited: true, agent: "claude" },
   ],
   gpu: [
@@ -654,7 +657,8 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
       build: mockBuilds[box] ?? SHIPPED_BUILD,
       tools: ["claude", "codex"],
       home: HOME,
-      capabilities: ["diff", "turns", "queue", "ask", "answer", "journal", "runs", "exec.detach", "browser", "browser.devtools", "titles", "sample", "service.terminal", "session.home", "agents.install"],
+      // gpu runs an older berthd (mockBuilds): it can't keep worktree names.
+      capabilities: ["diff", "turns", "queue", "ask", "answer", "journal", "runs", "exec.detach", "browser", "browser.devtools", "titles", "sample", "service.terminal", "session.home", "agents.install", ...(box === "gpu" ? [] : ["worktree.titles"])],
       adapters: {
         claude: { ready: true, started: true, waiting: true, finished: true, final_message: true, via: "hooks" },
         codex: { ready: true, started: true, waiting: true, finished: true, final_message: true, via: "hooks" },
@@ -747,6 +751,19 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
     locations[box] = (locations[box] ?? []).filter((x) => x.name !== loc);
     setTimeout(() => emit({ type: "location.removed", box, data: { location: loc } }), 50);
     return delay({ removed: loc });
+  }
+  // Naming a worktree: its title, or "" to clear it. gpu's berthd is too
+  // old, and answers as one does: DELETE is there, PATCH is not.
+  const nameWt = /^locations\/([^/]+)\/worktrees\/([^/?]+)$/.exec(path);
+  if (method === "PATCH" && nameWt) {
+    if (box === "gpu") return Promise.reject(new ApiError("Method Not Allowed", 405));
+    const [, loc, wt] = nameWt.map((x) => x && decodeURIComponent(x));
+    const w = locations[box]?.find((x) => x.name === loc)?.worktrees?.find((x) => x.name === wt);
+    if (!w) return Promise.reject(new ApiError("no worktree with that name in the location", 404));
+    const title = titleOf((body as { title?: string }).title ?? "", 80);
+    w.title = title && title !== w.name ? title : undefined;
+    setTimeout(() => emit({ type: "worktree.renamed", box, data: { location: loc, name: wt, path: w.path } }), 30);
+    return delay({ ...w });
   }
   // Renaming a session: its title, or "" to clear it.
   if (method === "PATCH" && /^sessions\/[^/]+$/.test(path)) {

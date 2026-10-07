@@ -29,6 +29,7 @@ import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { focusSession, homeBox, recentWorktrees, refOf, selectWorktree, useHereKey, useHereRef, useWorkspaces } from "@/lib/workspaces";
 import { useLabel, useTone, WtDot } from "@/components/workspace/worktree-tone";
+import { placeLabel, worktreeLabel } from "@/lib/worktree-names";
 
 // Zen (Labs, ⌘.) puts away everything but the agents: no sidebar, no status
 // bar, and one slim bar over every view, with a switcher where the tab strip
@@ -88,7 +89,7 @@ export function ZenSwitcher({ className }: { className?: string }) {
         .filter((e) => agentOf(e.session) && (e.state === "waiting" || e.state === "running" || e.state === "finished"))
         .map((e) => {
           const wt = worktreeOf(boxes[e.box]?.locations, e.session);
-          const place = wt ? (wt.worktree.main ? wt.location.name : wt.worktree.name) : e.session.name;
+          const place = wt ? worktreeLabel(wt.worktree, wt.location) : e.session.name;
           // Named after its work when it has a title, with its place after.
           const title = e.session.title?.trim();
           return { e, state: e.state as keyof typeof ORDER, title: title || place, place: title ? place : undefined };
@@ -181,7 +182,7 @@ export function ZenSwitcher({ className }: { className?: string }) {
             return (
               <MenuItem key={`${w.ref.box}:${w.ref.path}`} disabled={!!leaving} onClick={() => selectWorktree(w.ref)}>
                 <GitBranchIcon />
-                <span className="min-w-0 flex-1 truncate">{w.ref.main ? w.ref.location : `${w.ref.location} / ${w.ref.worktree}`}</span>
+                <span className="min-w-0 flex-1 truncate">{placeLabel(w.ref)}</span>
                 <span className="text-muted-foreground text-xs">{leaving ? removalLabel(leaving) : w.ref.box}</span>
               </MenuItem>
             );
@@ -252,7 +253,7 @@ function AllWorktrees() {
                       return (
                         <MenuItem key={wt.path} disabled={!!leaving} onClick={() => selectWorktree(refOf(box, loc, wt))}>
                           {wt.main ? <HouseIcon /> : <GitBranchIcon />}
-                          <span className="min-w-0 flex-1 truncate">{wt.main ? "main" : wt.name}</span>
+                          <span className="min-w-0 flex-1 truncate">{wt.main ? "main" : worktreeLabel(wt)}</span>
                           {leaving && <span className="text-muted-foreground text-xs">{removalLabel(leaving)}</span>}
                         </MenuItem>
                       );
@@ -330,7 +331,7 @@ function WorktreeMenu() {
   return (
     <Menu>
       <Tip label="Worktree actions">
-        <MenuTrigger render={<Button size="icon-sm" variant="ghost" aria-label={`${wt.main ? loc.name : wt.name} actions`} />}>
+        <MenuTrigger render={<Button size="icon-sm" variant="ghost" aria-label={`${worktreeLabel(wt, loc)} actions`} />}>
           <EllipsisIcon />
         </MenuTrigger>
       </Tip>

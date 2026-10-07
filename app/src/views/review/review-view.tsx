@@ -19,7 +19,7 @@ import { type ApproveMode, ApproveDialog, DiscardDialog, SendBackDialog } from "
 import { ReviewDetail } from "@/views/review/review-detail";
 import { CompareStrip, CompareView } from "@/views/review/compare-view";
 import { allRuns, useRuns } from "@/lib/runs";
-import { markReviewed, type ReviewEntry, refreshReview, useReview, visibleEntries, watchReview } from "@/views/review/review-store";
+import { markReviewed, type ReviewEntry, refreshReview, reviewName, useReview, useReviewName, visibleEntries, watchReview } from "@/views/review/review-store";
 import { Tip } from "@/components/tip";
 import { BoxError, NeedsUpdate } from "@/components/upgrade-box";
 
@@ -82,7 +82,7 @@ export function ReviewView() {
         const next = entries[index + 1] ?? entries[index - 1];
         markReviewed(selected);
         setSelectedKey(next?.key);
-        toastManager.add({ title: `Marked ${selected.main ? selected.location : selected.worktree} reviewed`, description: "It comes back if the agent changes anything.", type: "info" });
+        toastManager.add({ title: `Marked ${reviewName(selected)} reviewed`, description: "It comes back if the agent changes anything.", type: "info" });
       },
     }),
     [selected, entries, index],
@@ -226,6 +226,7 @@ function Row({ entry, active, onSelect, onOpen }: { entry: ReviewEntry; active: 
   const waiting = entry.agent_state === "waiting";
   // Led by the work the agent did, when its session has a title.
   const work = useSessionTitle(entry.box, entry.session);
+  const name = useReviewName(entry);
   return (
     <li id={`review-${entry.key}`}>
       <button
@@ -240,11 +241,11 @@ function Row({ entry, active, onSelect, onOpen }: { entry: ReviewEntry; active: 
       >
         <span className="flex min-w-0 items-center gap-2">
           <AgentIcon agent={entry.agent} />
-          <span className="min-w-0 flex-1 truncate font-medium text-[13px]">{work ?? (entry.main ? entry.location : entry.worktree)}</span>
+          <span className="min-w-0 flex-1 truncate font-medium text-[13px]">{work ?? name}</span>
           <span className={cn("shrink-0 text-[11px] tabular-nums", waiting ? "text-warning-foreground" : "text-muted-foreground")}>{waiting ? "needs you" : ago(entry.state_since)}</span>
         </span>
         <span className="truncate pl-5.5 text-[11px] text-muted-foreground">
-          {work && `${entry.main ? entry.location : entry.worktree} · `}
+          {work && `${name} · `}
           {entry.box} · {entry.location}
           {entry.branch && <span className="opacity-70"> · {entry.branch}</span>}
         </span>

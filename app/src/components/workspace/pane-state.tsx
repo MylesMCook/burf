@@ -8,6 +8,7 @@ import { agentLabel, restartCommand } from "@/lib/derive";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { useWorkspaces } from "@/lib/workspaces";
+import { useTitleAt } from "@/lib/worktree-names";
 
 // The states a terminal pane shows when there is nothing to attach to: the
 // session ended, or its box is out of reach. Each is a small drawing, one
@@ -31,7 +32,8 @@ function PaneState({ art, title, detail, children, panel }: { art: React.ReactNo
 export function SessionEnded({ box, session, agent, command, wsKey, tab, pane, onClose }: { box: string; session: string; agent?: string; command?: string; wsKey: string; tab: string; pane: string; onClose(): void }) {
   const ref = useWorkspaces((s) => s.spaces[wsKey]?.ref);
   const label = agent ? agentLabel(agent) : "Shell";
-  const where = ref ? (ref.main ? ref.location : ref.worktree) : undefined;
+  const named = useTitleAt(ref?.box, ref?.path);
+  const where = ref ? (named ?? (ref.main ? ref.location : ref.worktree)) : undefined;
   return (
     <PaneState
       art={<Scene name="ended" width={144} />}

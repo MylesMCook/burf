@@ -1,4 +1,4 @@
-import { CircleArrowUpIcon, RefreshCwIcon } from "lucide-react";
+import { CircleArrowUpIcon, GitBranchIcon, RefreshCwIcon } from "lucide-react";
 import { useState } from "react";
 
 import { StatusDot } from "@/components/agent-glyph";
@@ -17,6 +17,9 @@ import { cn } from "@/lib/utils";
 import { PluginBoundary, pluginContexts } from "@/plugins/plugin-boundary";
 import { TeamStatusItem } from "@/views/team/team-entry";
 import { useRegistry } from "@/plugins/registry";
+import { openRenameWorktree } from "@/components/sidebar/rename-worktree";
+import { homeBox, useWorkspaces } from "@/lib/workspaces";
+import { findWorktree } from "@/lib/worktree-names";
 
 // StatusBar is the strip along the bottom: what agents are doing on the
 // left, the boxes on the right. Every item goes somewhere when clicked.
@@ -73,6 +76,7 @@ export function StatusBar() {
           </Item>
         </>
       )}
+      <WorktreeItem />
       <TeamStatusItem />
       <QueueIndicator />
       {items
@@ -145,6 +149,36 @@ export function StatusBar() {
         </button>
       </Tip>
     </footer>
+  );
+}
+
+// WorktreeItem names the worktree in front, by its display name when it
+// has one, and renames it when clicked.
+function WorktreeItem() {
+  const at = useWorkspaces((s) => (s.current && !homeBox(s.current) ? s.spaces[s.current]?.ref : undefined));
+  const inWorkspace = useStore((s) => s.view.kind === "workspace");
+  const boxes = useStore((s) => s.boxes);
+  const found = at?.path ? findWorktree(at.box, at.path, boxes) : undefined;
+  if (!inWorkspace || !at || !found) return null;
+  const { loc, wt } = found;
+  const title = wt.title?.trim();
+  const own = [wt.name, wt.branch && wt.branch !== wt.name ? `branch ${wt.branch}` : undefined].filter(Boolean).join(" · ");
+  if (wt.main) return null;
+  return (
+    <Item
+      data-testid="status-worktree"
+      className="min-w-0 @max-[700px]:hidden"
+      tip={
+        <span className="flex flex-col">
+          {title ? `${title} · ${own}` : own}
+          <span className="text-muted-foreground">Click to rename it (F2 in the sidebar)</span>
+        </span>
+      }
+      onClick={() => openRenameWorktree(at.box, loc, wt, { inPlace: false })}
+    >
+      <GitBranchIcon className="size-3 shrink-0" />
+      <span className="max-w-56 truncate">{title || wt.name}</span>
+    </Item>
   );
 }
 

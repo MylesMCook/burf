@@ -17,6 +17,7 @@ import { usePrefs } from "@/lib/prefs";
 import { openWorktreePicker } from "@/components/workspace/worktree-picker";
 import { useRegistry } from "@/plugins/registry";
 import { Icon } from "@/plugins/ui";
+import { shortLabel } from "@/lib/worktree-names";
 
 interface Item {
   value: string;
@@ -112,9 +113,9 @@ export function NewTabMenu() {
         const what = c.kind === "terminal" ? terminalName(c.box, c.session) : c.kind === "browser" ? c.url.replace(/^https?:\/\//, "") || "Browser" : c.kind === "preview" ? `Preview ${c.url.replace(/^https?:\/\//, "")}`.trim() : c.kind === "helper" ? `Helper ${c.title ?? ""}`.trim() : "Starting";
         return {
           value: `tab:${key}:${t.id}`,
-          label: `${what} — ${space.ref.main ? space.ref.location : space.ref.worktree}`,
+          label: `${what} — ${shortLabel(space.ref)}`,
           detail: space.ref.box,
-          search: c.kind === "terminal" ? c.session : undefined,
+          search: [c.kind === "terminal" ? c.session : undefined, space.ref.worktree].filter(Boolean).join(" ") || undefined,
           icon: c.kind === "browser" ? <GlobeIcon /> : c.kind === "preview" ? <MonitorSmartphoneIcon /> : <AgentIcon agent={c.kind === "terminal" ? sessionAgent(c.box, c.session) : undefined} />,
           run: done(() => {
             showWorktree(key);

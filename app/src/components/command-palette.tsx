@@ -68,6 +68,7 @@ import { useRegistry } from "@/plugins/registry";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
 import { openAttempts, openComposer } from "@/lib/composer";
 import { defaultScope } from "@/views/automations/flows/project-label";
+import { placeLabel, worktreeLabel } from "@/lib/worktree-names";
 
 // defaultScopeRef is a project to try things in when no worktree is open.
 function defaultScopeRef(): { box: string; location: string } | undefined {
@@ -213,7 +214,7 @@ export function CommandPalette() {
         label: sessionName(session, { sessions: boxes[box]?.sessions, locations: boxes[box]?.locations, place: true }),
         // Its state in the same words as everywhere else, then where.
         detail: [sessionAgent(session), state !== "idle" && sessionWord(state), where?.worktree.branch, box].filter(Boolean).join(" · "),
-        search: session.name,
+        search: [session.name, where?.worktree.title ? where.worktree.name : undefined].filter(Boolean).join(" "),
         icon: (
           <span className="flex w-8 shrink-0 items-center gap-1">
             <AgentIcon agent={agent} />
@@ -229,8 +230,10 @@ export function CommandPalette() {
       (boxes[box]?.locations ?? []).flatMap((loc) =>
         sortedWorktrees(loc).map((wt) => ({
           value: `wt:${box}:${wt.path}`,
-          label: wt.main ? loc.name : `${loc.name} / ${wt.name}`,
-          detail: [wt.branch, box].filter(Boolean).join(" · "),
+          label: wt.main ? loc.name : `${loc.name} / ${worktreeLabel(wt)}`,
+          // A renamed worktree still answers to its own name and branch.
+          detail: [wt.title ? wt.name : undefined, wt.branch !== wt.name || !wt.title ? wt.branch : undefined, box].filter(Boolean).join(" · "),
+          search: [wt.name, wt.title, wt.branch].filter(Boolean).join(" "),
           icon: slot(<GitBranchIcon />),
           run: go(() => selectWorktree(refOf(box, loc, wt))),
         })),
@@ -281,8 +284,9 @@ export function CommandPalette() {
       const waiting = sessions.filter((s) => s.state === "waiting").map(sessionItem);
       const recent: Item[] = recentWorktrees(spaces, 5).map((w) => ({
         value: `recent:${w.ref.box}:${w.ref.path}`,
-        label: w.ref.main ? w.ref.location : `${w.ref.location} / ${w.ref.worktree}`,
+        label: placeLabel(w.ref),
         detail: w.ref.box,
+        search: w.ref.worktree,
         icon: slot(<GitBranchIcon />),
         run: go(() => selectWorktree(w.ref)),
       }));

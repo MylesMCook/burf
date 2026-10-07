@@ -66,6 +66,7 @@ import {
 } from "@/lib/notifications";
 import { type BoxData, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { titleAt } from "@/lib/worktree-names";
 
 // useMinute re-renders once a minute, so relative times and snoozes move.
 export function useMinute(): number {
@@ -197,7 +198,9 @@ const clock = (iso: string) => new Date(iso).toLocaleTimeString(undefined, { hou
 // contextOf says where a note happened the way the sidebar does: "shop /
 // checkout-fix · devl", or "shop · devl" for a main checkout.
 function contextOf(n: Note, boxes: Record<string, BoxData>): string {
-  let where = n.project ? (n.worktree && n.worktree !== n.project ? `${n.project} / ${n.worktree}` : n.project) : n.worktree;
+  // A worktree given a display name since is called by it.
+  const wt = (n.box && n.path && !placeIsMain(n) && titleAt(n.box, n.path, boxes)) || n.worktree;
+  let where = n.project ? (wt && wt !== n.project ? `${n.project} / ${wt}` : n.project) : wt;
   if (!where && n.box && n.session) {
     const data = boxes[n.box];
     const s = data?.sessions?.find((x) => x.name === n.session);
@@ -205,6 +208,8 @@ function contextOf(n: Note, boxes: Record<string, BoxData>): string {
   }
   return [where, n.box].filter(Boolean).join(" · ");
 }
+
+const placeIsMain = (n: Note) => !n.worktree && !!n.project;
 
 // An item is one row: a note, or resolved repeats of one folded together.
 interface Item {

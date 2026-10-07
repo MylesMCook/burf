@@ -34,6 +34,8 @@ import { BOX_WORDS, boxState, WORKTREE_WORDS } from "@/lib/state-model";
 import { useNotifications } from "@/lib/notifications";
 import { usePrefs } from "@/lib/prefs";
 import { removalLabel, removalOf, useRemoval, useRemovals } from "@/lib/removing";
+import { WorktreeNameField } from "@/components/sidebar/rename-worktree";
+import { renameKey, startRenamingWorktree, stopRenamingWorktree, useRenamingWorktree, worktreeLabel } from "@/lib/worktree-names";
 
 // Projects lists repositories, as Orca does: one group per repository on a
 // box (the same repository on two boxes is two groups, told apart by the
@@ -95,7 +97,7 @@ export function Projects({ prefs, update }: { prefs: SidebarPrefs; update(p: Par
     for (const b of boxes) {
       for (const loc of data[b.name]?.locations ?? []) {
         const wts = loc.worktrees ?? [];
-        out.push({ key: `${b.name}/${loc.name}`, box: b, loc, main: wts.find((w) => w.main), worktrees: wts.filter((w) => !w.main).sort((x, y) => x.name.localeCompare(y.name)) });
+        out.push({ key: `${b.name}/${loc.name}`, box: b, loc, main: wts.find((w) => w.main), worktrees: wts.filter((w) => !w.main).sort((x, y) => worktreeLabel(x).localeCompare(worktreeLabel(y))) });
       }
     }
     return out.sort((a, b) => a.loc.name.localeCompare(b.loc.name) || a.box.name.localeCompare(b.box.name));
@@ -317,14 +319,32 @@ function WorktreeRow({
 }) {
   // Its agents by what they work on ("Fix checkout webhook · Claude Code").
   const agents = away ? [] : sessions.filter((s) => agentOf(s) && !s.exited).map((s) => sessionName(s, { sessions, agent: true }));
-  const where = <PlaceTip name={`${wt.main ? "Main checkout" : wt.name}${wt.branch && wt.branch !== wt.name ? ` · ${wt.branch}` : ""}`} work={agents} lines={[wt.path, ...(away ? [`${away.name} is ${awayText(away)}`] : [])]} />;
+  // A renamed worktree's tip says its own name and branch under the title.
+  const own = `${wt.name}${wt.branch && wt.branch !== wt.name ? ` · ${wt.branch}` : ""}`;
+  const where = (
+    <PlaceTip
+      name={wt.main ? `Main checkout${wt.branch && wt.branch !== wt.name ? ` · ${wt.branch}` : ""}` : wt.title ? wt.title : own}
+      sub={!wt.main && wt.title ? own : undefined}
+      work={agents}
+      lines={[wt.path, ...(away ? [`${away.name} is ${awayText(away)}`] : [])]}
+    />
+  );
   // On its way out (lib/removing.ts): dimmed, with nothing to open or do,
   // until the box says it went or puts it back.
   const removal = useRemoval(box, wt.path);
   const labs = usePrefs((p) => p.labs);
+  const editing = useRenamingWorktree((s) => s.key === renameKey(box, wt.path));
   if (removal) return <LeavingRow wt={wt} label={removalLabel(removal)} script={removal.script} />;
   const key = wsKey(box, wt.path);
-  const name = wt.main ? (wt.branch ?? "main") : wt.name;
+  const name = wt.main ? (wt.branch ?? "main") : worktreeLabel(wt);
+  // A worktree on an away box can still be renamed: the name waits for it.
+  const canRename = !wt.main && !away;
+  if (editing && canRename)
+    return (
+      <SidebarMenuSubItem>
+        <WorktreeNameField box={box} loc={loc} wt={wt} onDone={stopRenamingWorktree} />
+      </SidebarMenuSubItem>
+    );
   return (
     <SidebarMenuSubItem>
       <ContextRow items={() => (away ? awayActions(away) : worktreeActions(box, loc, wt))} className="group/row relative">
@@ -333,16 +353,27 @@ function WorktreeRow({
             render={<button type="button" />}
             data-testid="worktree-row"
             data-worktree={`${box}/${wt.main ? loc.name : wt.name}`}
+            data-title={wt.title || undefined}
             isActive={selected}
             // Labs: ⌥-click adds its tabs to the strip as a group; dragged
             // onto the strip it does the same, onto a pane it splits its
             // agent in (tab-drag.tsx).
             onClick={(e: React.MouseEvent) => (e.altKey && labs ? void addGroup(key) : onOpen())}
-            onPointerDown={(e: React.PointerEvent<HTMLElement>) => labs && !away && armDrag(e, { kind: "worktree", key }, wt.main ? loc.name : wt.name, wt.main ? <HomeIcon className="size-3" /> : <GitBranchIcon className="size-3" />)}
+            // Double-click or F2 renames it in place.
+            onDoubleClick={() => canRename && startRenamingWorktree(box, wt.path)}
+            onKeyDown={(e: React.KeyboardEvent) => {
+              if (e.key === "F2" && canRename) {
+                e.preventDefault();
+                startRenamingWorktree(box, wt.path);
+              }
+            }}
+            onPointerDown={(e: React.PointerEvent<HTMLElement>) => labs && !away && armDrag(e, { kind: "worktree", key }, wt.main ? loc.name : name, wt.main ? <HomeIcon className="size-3" /> : <GitBranchIcon className="size-3" />)}
             className={cn("h-side-row w-full text-[13px] sm:h-side-row [&>svg]:text-muted-foreground", away && "text-muted-foreground")}
           >
             <LeadIcon sessions={away ? [] : sessions} data={data} icon={wt.main ? <HomeIcon /> : <GitBranchIcon />} />
             <span className={cn("min-w-0 truncate", away && "opacity-70")}>{name}</span>
+            {/* Its own name beside the title, when the sidebar is wide enough. */}
+            {!wt.main && wt.title && <span data-testid="worktree-row-name" className="hidden min-w-0 shrink-[2] truncate font-mono text-[10px] text-muted-foreground/70 @min-[17rem]/side:inline">{wt.name}</span>}
             {/* On screen beside another worktree: its colour. */}
             <WtDot wsKey={key} className="size-1.5" />
             {chip && <BoxChip box={chip} />}
@@ -365,7 +396,7 @@ function LeavingRow({ wt, label, script }: { wt: Worktree; label: string; script
       <Tip side="right" delay={400} label={script ? "The repo's archive script is running on the box. The worktree goes when it finishes, or comes back if it fails." : "Waiting for the box."}>
         <div aria-disabled="true" aria-busy="true" data-leaving="" className="flex h-side-row w-full cursor-default items-center gap-2 rounded-lg px-2 text-[13px] text-muted-foreground">
           <Spinner className="size-3.5 shrink-0 opacity-70" />
-          <span className="min-w-0 truncate line-through decoration-muted-foreground/40 opacity-70">{wt.name}</span>
+          <span className="min-w-0 truncate line-through decoration-muted-foreground/40 opacity-70">{worktreeLabel(wt)}</span>
           <span className="ml-auto shrink-0 text-[10px]">{label}</span>
         </div>
       </Tip>
@@ -460,12 +491,12 @@ function RowActions({ box, loc, wt, project, onNewWorktree }: { box: string; loc
       )}
       {!onNewWorktree && (
         <Menu>
-          <MenuTrigger render={<RowButton label={`Start in ${wt.name}`} />}>
+          <MenuTrigger render={<RowButton label={`Start in ${worktreeLabel(wt, loc)}`} />}>
             <PlusIcon />
           </MenuTrigger>
           <MenuPopup align="start" className="min-w-48">
             <MenuGroup>
-              <MenuGroupLabel>Start in {wt.main ? loc.name : wt.name}</MenuGroupLabel>
+              <MenuGroupLabel>Start in {worktreeLabel(wt, loc)}</MenuGroupLabel>
               {agentPresets(box, loc).map((p) => (
                 <MenuItem
                   key={p.id}
@@ -494,7 +525,7 @@ function RowActions({ box, loc, wt, project, onNewWorktree }: { box: string; loc
           </MenuPopup>
         </Menu>
       )}
-      <DotsMenu label={`${wt.main ? loc.name : wt.name} actions`} items={() => (project ? projectActions(box, loc) : worktreeActions(box, loc, wt))} />
+      <DotsMenu label={`${worktreeLabel(wt, loc)} actions`} items={() => (project ? projectActions(box, loc) : worktreeActions(box, loc, wt))} />
     </RowOverlay>
   );
 }
@@ -619,7 +650,7 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
     const data = boxes[m.box.name];
     return (m.loc.worktrees ?? [])
       .filter((w) => (multi ? true : !w.main))
-      .sort((a, b) => Number(!!b.main) - Number(!!a.main) || a.name.localeCompare(b.name))
+      .sort((a, b) => Number(!!b.main) - Number(!!a.main) || worktreeLabel(a).localeCompare(worktreeLabel(b)))
       .map((wt) => ({ m, wt, data, sessions: worktreeSessions(data?.sessions, wt), selected: inWorkspace && current === wsKey(m.box.name, wt.path) }));
   });
   const active = rows.filter((r) => r.sessions.some((s) => !s.exited) || r.selected || removalOf(removals, r.m.box.name, r.wt.path));
@@ -747,10 +778,11 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
 }
 
 // PlaceTip says where a sidebar row is: its name, then its path on each box.
-function PlaceTip({ name, lines, work = [] }: { name: string; lines: string[]; work?: string[] }) {
+function PlaceTip({ name, sub, lines, work = [] }: { name: string; sub?: string; lines: string[]; work?: string[] }) {
   return (
     <span className="flex max-w-96 flex-col gap-0.5">
       <span>{name}</span>
+      {sub && <span className="font-mono text-[11px] text-muted-foreground">{sub}</span>}
       {work.map((w, i) => (
         <span key={i} className="truncate text-[12px]">
           {w}

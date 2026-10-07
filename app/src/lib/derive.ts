@@ -135,11 +135,12 @@ function programIn(id: string): { prog: string; place: string } | undefined {
 }
 
 // sessionPlace is where a session runs: "shop" for a main checkout, "shop /
-// checkout-fix" for a worktree.
+// checkout-fix" for a worktree, or "shop / Fix checkout" once it was given
+// a display name.
 export function sessionPlace(s: Session, locations?: Location[]): string {
   const where = worktreeOf(locations, s);
   if (!where) return s.location ?? s.name;
-  return where.worktree.main ? where.location.name : `${where.location.name} / ${where.worktree.name}`;
+  return where.worktree.main ? where.location.name : `${where.location.name} / ${where.worktree.title?.trim() || where.worktree.name}`;
 }
 
 // Worktrees are listed main first, then by name.

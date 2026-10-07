@@ -14,6 +14,7 @@ import { markRemoving, markScript, removalOf, useRemovals } from "@/lib/removing
 import { type BoxPart, scheduleRefresh, useStore } from "@/lib/store";
 import { noteTranscriptChanged } from "@/lib/transcript-pings";
 import { dispatch } from "@/plugins/registry";
+import { titleAt } from "@/lib/worktree-names";
 
 // What each kind of event invalidates on its box.
 const refreshes: [prefix: string, parts: BoxPart[]][] = [
@@ -106,7 +107,7 @@ function notifyFor(e: BerthEvent) {
     const name = str(d.name);
     route({
       category: "setupFailed",
-      title: `${e.type === "worktree.archive.failed" ? "Archiving" : "Setup"} failed for ${name ?? "a worktree"}`,
+      title: `${e.type === "worktree.archive.failed" ? "Archiving" : "Setup"} failed for ${(box && str(d.path) && titleAt(box, str(d.path)!)) || name || "a worktree"}`,
       detail: e.error,
       tone: "error",
       box,

@@ -51,6 +51,9 @@ export interface Worktree {
   setting_up?: boolean;
   // The first of the worktree's own ports ($BERTH_PORT).
   port?: number;
+  // A display name a person gave it, shown in its place; its branch and
+  // folder keep name. Boxes that list "worktree.titles" carry it.
+  title?: string;
 }
 
 export interface Scripts {

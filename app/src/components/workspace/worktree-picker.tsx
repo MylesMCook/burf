@@ -17,6 +17,7 @@ import { closeCompare, openCompare } from "@/lib/compare-actions";
 import { addGroup, bringSession, focusedPane, groupKeys, here, refFor, refOf, splitPane, useWorkspaces, type WorktreeRef, wsKey } from "@/lib/workspaces";
 import { Icon } from "@/plugins/ui";
 import { useRegistry } from "@/plugins/registry";
+import { worktreeLabel } from "@/lib/worktree-names";
 
 // The worktree picker (Labs): ⌘⌥D, "Split right with another worktree…".
 // First a worktree, then what of it to show beside the focused pane: one of
@@ -38,6 +39,8 @@ const closePicker = () => useWorktreePicker.setState({ mode: undefined, picked: 
 let diffsNext = false;
 
 interface Item {
+  // Words it answers to besides its label: a renamed worktree's own name.
+  search?: string;
   value: string;
   label: string;
   detail?: string;
@@ -113,7 +116,8 @@ export function WorktreePicker() {
               item: {
                 trailing: onScreen.includes(key) ? <OnScreen wsKey={key} /> : undefined,
                 value: `wt:${key}`,
-                label: wt.main ? loc.name : `${loc.name} / ${wt.name}`,
+                label: wt.main ? loc.name : `${loc.name} / ${worktreeLabel(wt)}`,
+                search: [wt.name, wt.branch].filter(Boolean).join(" "),
                 detail: [agent ? sessionName(agent, { sessions: boxes[box]?.sessions }) : wt.branch, box].filter(Boolean).join(" · "),
                 icon: slot(state && state !== "idle" ? <StateGlyph state={state} className="size-3.5" /> : wt.main ? <HomeIcon /> : <GitBranchIcon />),
                 run: () => {
@@ -206,7 +210,7 @@ export function WorktreePicker() {
       }}
     >
       <CommandDialogPopup aria-label={mode?.kind === "group" ? "Add a worktree's tabs" : mode?.kind === "compare" ? `Compare ${fromName} with another worktree` : "Split right with another worktree"}>
-        <Command items={groups} value={query} onValueChange={setQuery} itemToStringValue={(i: unknown) => `${(i as Item).label} ${(i as Item).detail ?? ""}`}>
+        <Command items={groups} value={query} onValueChange={setQuery} itemToStringValue={(i: unknown) => `${(i as Item).label} ${(i as Item).detail ?? ""} ${(i as Item).search ?? ""}`}>
           <CommandInput
             key={picked ? "what" : "where"}
             placeholder={picked ? `Show from ${name} beside this pane…` : mode?.kind === "group" ? "Add a worktree's tabs to the strip…" : mode?.kind === "compare" ? `Compare ${fromName} with…` : "Split right with another worktree…"}
