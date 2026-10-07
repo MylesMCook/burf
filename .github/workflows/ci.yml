@@ -11,6 +11,13 @@ on:
 permissions:
   contents: read
 
+# A newer push cancels the run still going for an older one, on main too.
+# A release's checks (workflow_call) run under the tag's ref, so they are
+# never cancelled by a push to main.
+concurrency:
+  group: ci-${{ github.workflow_ref }}-${{ github.ref }}
+  cancel-in-progress: true
+
 # Jobs run on omarchy, the owner's self-hosted runner (ci/runner/), when the
 # repository variable SELF_HOSTED is true and the event is the owner's push;
 # everything else, pull requests included, runs on ubuntu-latest.
