@@ -101,8 +101,8 @@ test("the board shows the worktree's artifacts, filters by kind, and opens one",
   await app.page.getByTestId("art-chip").click();
   const board = app.page.getByTestId("artifact-board");
   await expect(board).toBeVisible();
-  await expect(board.locator("[data-art-tile]")).toHaveCount(13);
-  for (const [kind, n] of [["chart", 9], ["table", 1], ["diagram", 1], ["page", 1], ["notes", 1]] as const) {
+  await expect(board.locator("[data-art-tile]")).toHaveCount(15);
+  for (const [kind, n] of [["chart", 9], ["table", 1], ["diagram", 1], ["page", 1], ["notes", 1], ["visualdiff", 2]] as const) {
     await board.locator(`[data-filter=${kind}]`).click();
     await expect(board.locator("[data-art-tile]")).toHaveCount(n);
   }
@@ -115,7 +115,7 @@ test("the board shows the worktree's artifacts, filters by kind, and opens one",
   // The tab's Board button, and the toolbar's, come back to the board.
   await pane.getByTestId("art-board-link").click();
   await expect(app.page.getByTestId("artifact-board")).toBeVisible();
-  await expect(app.page.getByTestId("art-board-button")).toContainText("13");
+  await expect(app.page.getByTestId("art-board-button")).toContainText("15");
 });
 
 test("Compare's Artifacts lane shows each side's board", async ({ app }) => {
@@ -131,7 +131,7 @@ test("Compare's Artifacts lane shows each side's board", async ({ app }) => {
   const boards = app.page.locator("[data-pane-area] [data-compare-side]:visible [data-testid=artifact-board]");
   await expect(boards).toHaveCount(2);
   // search-perf's agents made thirteen; checkout-fix's none yet.
-  await expect(boards.filter({ hasText: "13 made by its agents" }).locator("[data-art-tile]")).toHaveCount(13);
+  await expect(boards.filter({ hasText: "15 made by its agents" }).locator("[data-art-tile]")).toHaveCount(15);
   await expect(boards.filter({ hasText: "No artifacts here yet" })).toHaveCount(1);
 });
 

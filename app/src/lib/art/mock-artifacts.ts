@@ -10,6 +10,7 @@ import { keyOf, useConversations } from "@/lib/conversation-store";
 // as when the agent rewrites the files).
 
 import { ART_BOX, ART_SESSION } from "@/lib/art/mock-chat";
+import { VD_ID, VD_SEEDS, VD_V2_BODY, vdiffImage, vdiffShotsCall } from "@/lib/art/mock-vdiff";
 const LOC = "shop";
 const WT = "search-perf";
 const PATH = "/home/me/work/shop-search-perf";
@@ -318,6 +319,29 @@ function seed() {
       versions,
     });
   }
+  // Visual diffs: made by berthd shots compare, so no file and no watch.
+  for (const s of VD_SEEDS) {
+    const versions = s.versions.map((v, i) => {
+      bodies.set(`${s.id}/${i + 1}`, v.body);
+      return { n: i + 1, at: iso(v.ago), size: new TextEncoder().encode(v.body).length, sha256: `mockvd${i}`, note: v.note };
+    });
+    kept.push({ id: s.id, title: s.title, kind: "visualdiff", format: "visualdiff", location: LOC, worktree: WT, path: PATH, by: { session: ART_SESSION, agent: "claude" }, created: versions[0].at, updated: versions[versions.length - 1].at, versions });
+  }
+}
+
+// The box's shots routes: the baselines, and Accept as baseline.
+export function shotsMockCall(method: string, path: string, body: unknown): unknown | undefined {
+  seed();
+  return vdiffShotsCall(method, path, body, (id) => kept.find((a) => a.id === id && a.kind === "visualdiff")?.versions.at(-1)?.n);
+}
+
+export function artifactImage(path: string): Promise<Blob | undefined> {
+  return vdiffImage(path);
+}
+
+// bumpVdiff: the agent compares again; a new version lands live.
+export function bumpVdiff() {
+  addVersion(VD_ID, VD_V2_BODY, "compared again");
 }
 
 const base = `locations/${LOC}/worktrees/${WT}/artifacts`;

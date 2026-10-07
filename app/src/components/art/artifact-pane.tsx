@@ -75,7 +75,7 @@ function Shown({ art }: { art: Art }) {
   return (
     <div data-testid="artifact-pane" data-art-id={art.id} className="flex min-h-0 flex-1 flex-col bg-background">
       <header className="shrink-0 border-b px-5 pt-3 pb-2.5">
-        <div className="mx-auto flex w-full max-w-[72rem] flex-col gap-1.5">
+        <div className={cn("mx-auto flex w-full flex-col gap-1.5", kind.wide ? "max-w-[88rem]" : "max-w-[72rem]")}>
           <div className="flex min-w-0 items-center gap-1.5 text-muted-foreground text-xs">
             <BotIcon className="size-3.5 shrink-0" aria-hidden />
             <span className="min-w-0 truncate">Made by {madeBy(art)}</span>
@@ -88,7 +88,7 @@ function Shown({ art }: { art: Art }) {
             <Tip label={sandboxed ? "Runs on its own origin in a sandbox: no network, no access to Berth" : "Drawn by Berth from its data: no code of the agent's runs"}>
               <span className="ml-auto inline-flex shrink-0 items-center gap-1">
                 <LockIcon className="size-3" aria-hidden />
-                {sandboxed ? "Sandboxed page" : "Drawn by Berth"}
+                {sandboxed ? "Sandboxed page" : (kind.drawnLabel ?? "Drawn by Berth")}
               </span>
             </Tip>
           </div>
@@ -158,7 +158,7 @@ function Shown({ art }: { art: Art }) {
         </div>
       )}
       <div className={cn("min-h-0 flex-1 overflow-auto", fill || source ? "flex flex-col p-4" : "px-5 py-5")}>
-        <div className={cn("mx-auto w-full max-w-[72rem]", (fill || source) && "flex min-h-0 flex-1 flex-col")}>
+        <div className={cn("mx-auto w-full", kind.wide ? "max-w-[88rem]" : "max-w-[72rem]", (fill || source) && "flex min-h-0 flex-1 flex-col")}>
           {source ? (
             body === undefined ? null : (
               <Suspense fallback={null}>

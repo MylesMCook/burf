@@ -1,7 +1,7 @@
 import "./art.css";
 
 import { ArrowUpRightIcon, PanelRightIcon } from "lucide-react";
-import { useContext, useEffect, useState } from "react";
+import { Suspense, useContext, useEffect, useState } from "react";
 
 import { ArtView } from "@/components/art/art-view";
 import { kindOf, kindWord } from "@/components/art/kinds";
@@ -67,6 +67,21 @@ export function GistLine({ art, className }: { art: Art; className?: string }) {
     <span data-art-gist className={cn("block truncate tabular-nums", g.tone === "good" ? "text-success-foreground" : g.tone === "bad" ? "text-destructive-foreground" : "text-foreground/85", className)}>
       {g.text}
     </span>
+  );
+}
+
+// KindChips is the row a kind puts under the headline (a visual diff's
+// "/search at 375 scrolls sideways"), if it has one.
+export function KindChips({ art, className }: { art: Art; className?: string }) {
+  const { body } = useArtBody(art);
+  const Chips = kindOf(art.kind).Chips;
+  if (!Chips || body === undefined) return null;
+  return (
+    <div className={className} data-art-chips>
+      <Suspense fallback={null}>
+        <Chips art={art} body={body} />
+      </Suspense>
+    </div>
   );
 }
 
@@ -138,6 +153,7 @@ function Card({ art }: { art: Art }) {
           </span>
         </div>
         <GistLine art={art} className="font-medium" />
+        <KindChips art={art} />
         <div className="flex min-w-0 items-center gap-x-1.5 text-muted-foreground text-xs">
           <span className="shrink-0">
             <KindWord art={art} />

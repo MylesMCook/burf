@@ -3,7 +3,7 @@ import "./art.css";
 import { ArrowUpRightIcon, LayoutGridIcon, PanelRightIcon } from "lucide-react";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 
-import { ArtGlyph, artTime, GistLine, KindWord, Press, usePulse, when } from "@/components/art/art-card";
+import { ArtGlyph, artTime, GistLine, KindChips, KindWord, Press, usePulse, when } from "@/components/art/art-card";
 import { ArtView } from "@/components/art/art-view";
 import { allKinds } from "@/components/art/kinds";
 import { Tip } from "@/components/tip";
@@ -95,6 +95,7 @@ function Tile({ art, lead }: { art: Art; lead?: boolean }) {
         <div className="min-w-0 flex-1">
           <div className="truncate font-medium text-[0.8125rem]">{art.title}</div>
           <GistLine art={art} className="text-xs" />
+          {lead && <KindChips art={art} className="py-0.5" />}
           <div className="flex min-w-0 items-center gap-1 text-muted-foreground text-xs">
             <span className="truncate">
               <KindWord art={art} />

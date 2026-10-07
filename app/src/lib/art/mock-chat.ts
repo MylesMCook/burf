@@ -1,3 +1,4 @@
+import { vdiffChat } from "@/lib/art/mock-vdiff-chat";
 import type { TranscriptItem } from "@/lib/transcript";
 
 // Mock mode's chat side of artifacts (the content is lib/art/mock-
@@ -35,6 +36,7 @@ export function artChat(): TranscriptItem[] {
     card("b8d6e4f2a0", "Where a search request goes"),
     card("c1e2f3a4b5", "Suggest cache hit rate"),
     { kind: "text", id: id(), text: "The rest are on the worktree's board: the search-to-checkout funnel, traffic by hour, where /search spends its time, and searches by source." },
+    ...vdiffChat(),
   ];
 }
 

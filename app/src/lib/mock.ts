@@ -250,7 +250,7 @@ const artifactsMock = () =>
     m.wireArtifactsMock(emit);
     return m;
   });
-if (typeof window !== "undefined") (window as unknown as { __art: unknown }).__art = { bump: () => artifactsMock().then((m) => m.bumpArtifacts()) };
+if (typeof window !== "undefined") (window as unknown as { __art: unknown }).__art = { bump: () => artifactsMock().then((m) => m.bumpArtifacts()), vdiff: () => artifactsMock().then((m) => m.bumpVdiff()) };
 wireMockServices({
   sessions: (box) => (sessions[box] ??= []),
   path: (box, loc, wt) => locations[box]?.find((l) => l.name === loc)?.worktrees?.find((w) => w.name === wt)?.path ?? `/home/me/work/${loc}-${wt}`,
@@ -587,6 +587,12 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
   if (doc) return doc;
   // In-app artifacts (lib/art/mock-artifacts.ts, loaded when first asked).
   if (/^locations\/[^/]+\/worktrees\/[^/]+\/artifacts/.test(path)) return artifactsMock().then((m) => delay(m.artifactsMockCall(box, method, path) ?? null));
+  // Visual diffs' baselines and Accept as baseline (internal/box/shots.go).
+  if (/^worktrees\/[^/]+\/[^/]+\/shots\//.test(path))
+    return artifactsMock().then((m) => {
+      const r = m.shotsMockCall(method, path, body);
+      return r === undefined ? Promise.reject(new ApiError("no visual diffs here", 404)) : delay(r);
+    });
   const team = teamBoxCall(box, method, path, body, delay);
   if (team) return team;
   const flows = flowsCall(box, method, path, body, emit, delay);
@@ -1156,7 +1162,8 @@ export function mockClient(): Client {
         if (err instanceof ApiError) err.box = box;
         throw err;
       }),
-    boxBlob: async (_box, path) => (/\/artifacts\/[0-9a-f]{10}\/v\/\d+$/.test(path) ? ((await artifactsMock()).artifactBlob(path) ?? Promise.reject(new ApiError("no such artifact", 404))) : (mockFileBlob(path) ?? new Blob([mockShotSvg()], { type: "image/svg+xml" }))),
+    boxBlob: async (_box, path) =>
+      /\/artifacts\/[0-9a-f]{10}\/img\/[0-9a-f]{16}\.png$/.test(path) ? ((await (await artifactsMock()).artifactImage(path)) ?? Promise.reject(new ApiError("no such image", 404))) : (/\/artifacts\/[0-9a-f]{10}\/v\/\d+$/.test(path) ? ((await artifactsMock()).artifactBlob(path) ?? Promise.reject(new ApiError("no such artifact", 404))) : (mockFileBlob(path) ?? new Blob([mockShotSvg()], { type: "image/svg+xml" }))),
     // An upload creeps along at about 1 MB/s, so the chip's progress shows.
     upload: <T,>(box: string, path: string, body: Blob, onProgress?: (sent: number, total: number) => void, signal?: AbortSignal) =>
       new Promise<T>((resolve, reject) => {

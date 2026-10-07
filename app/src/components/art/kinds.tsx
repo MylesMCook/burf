@@ -1,9 +1,10 @@
-import { AppWindowIcon, ChartColumnIcon, ChartPieIcon, ChartSplineIcon, FileTextIcon, FilterIcon, GaugeIcon, GitForkIcon, Grid3x3Icon, type LucideIcon, ShapesIcon, TableIcon, WorkflowIcon } from "lucide-react";
+import { AppWindowIcon, ChartColumnIcon, ChartPieIcon, ChartSplineIcon, FileTextIcon, FilterIcon, GaugeIcon, GitForkIcon, Grid3x3Icon, type LucideIcon, ScanEyeIcon, ShapesIcon, TableIcon, WorkflowIcon } from "lucide-react";
 import { type ComponentType, lazy, type LazyExoticComponent } from "react";
 
 import type { Art, ArtVersion } from "@/lib/art/model";
 import { type ChartType, parseChart } from "@/lib/art/chart-spec";
 import { type Gist, gist } from "@/lib/art/gist";
+import { parseVdiff, vdiffGist } from "@/lib/art/vdiff";
 
 // The kinds of artifact the app knows, and how each is drawn. A kind is a
 // box-side entry (internal/box/artifacts.go artifactKinds) and one here:
@@ -36,7 +37,14 @@ export interface KindSpec {
   gist?(art: Art, body: string): Gist | undefined;
   // Drawn by Berth itself, or a sandboxed page.
   drawn: "berth" | "sandbox";
+  // What the tab's header says about where it comes from, when more than
+  // "Drawn by Berth".
+  drawnLabel?: string;
   View: LazyExoticComponent<ComponentType<ViewProps>>;
+  // A row under the headline on a card or tile: what needs a look.
+  Chips?: LazyExoticComponent<ComponentType<{ art: Art; body: string }>>;
+  // Its tab is wider than the others' (a visual diff's screenshots).
+  wide?: boolean;
 }
 
 const chartIcons: Partial<Record<ChartType, LucideIcon>> = { line: ChartSplineIcon, area: ChartSplineIcon, gauge: GaugeIcon, pie: ChartPieIcon, ring: ChartPieIcon, sankey: GitForkIcon, funnel: FilterIcon, heatmap: Grid3x3Icon };
@@ -103,6 +111,22 @@ registerKind({
   gist: (a, body) => gist(a.kind, a.format, body),
   drawn: "berth",
   View: lazy(() => import("@/components/art/views/notes-view")),
+});
+
+registerKind({
+  kind: "visualdiff",
+  label: "Visual diff",
+  plural: "Visual diffs",
+  icon: () => ScanEyeIcon,
+  gist: (_a, body) => {
+    const v = parseVdiff(body);
+    return v ? vdiffGist(v) : undefined;
+  },
+  drawn: "berth",
+  drawnLabel: "Shot on the box · drawn by Berth",
+  View: lazy(() => import("@/components/art/views/vdiff-view")),
+  Chips: lazy(() => import("@/components/art/views/vdiff-chips")),
+  wide: true,
 });
 
 // A kind this app doesn't know (a newer box): its source, as text.
