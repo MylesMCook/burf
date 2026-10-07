@@ -15,6 +15,7 @@
     { "id": "compare-lane", "group": "View", "label": "Compare lanes", "keys": "⌥1–4", "labs": true, "what": "In a Compare tab: its Chat, Diff, Preview or Terminal lane" },
     { "id": "compare-swap", "group": "View", "label": "Swap compared sides", "keys": "⌘⌥S", "accel": "CmdOrCtrl+Alt+S", "labs": true, "sep": true, "what": "In a Compare tab: swap its two sides" },
     { "id": "file-tree", "group": "View", "label": "Files panel", "keys": "⌘⇧E", "accel": "CmdOrCtrl+Shift+E", "what": "Show or hide the worktree's files beside its tabs: everything, or what the agent changed this turn" },
+    { "id": "devtools", "group": "View", "label": "Console and network", "keys": "⌘⌥I", "accel": "CmdOrCtrl+Alt+I", "what": "In a Browser tab: show or hide the page's Console and Network drawer" },
     { "id": "sidebar", "group": "View", "label": "Show or hide the sidebar", "keys": "⌘\\", "accel": "CmdOrCtrl+\\" },
     { "id": "dashboard", "group": "View", "label": "Agent Dashboard", "keys": "⌘J", "accel": "CmdOrCtrl+J" },
     { "id": "notifications", "group": "View", "label": "Notifications", "keys": "⌘⇧N", "accel": "CmdOrCtrl+Shift+N" },

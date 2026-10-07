@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import { ArrowLeftIcon, ArrowUpRightIcon, ArrowRightIcon, BotIcon, CrosshairIcon, ExternalLinkIcon, GlobeIcon, MonitorSmartphoneIcon, RotateCwIcon, SendIcon, ShieldAlertIcon, XIcon } from "lucide-react";
 import { useEffect, useId, useImperativeHandle, useMemo, useRef, useState } from "react";
 
+import { DevtoolsDrawer, DevtoolsToggle, InspectButton } from "@/components/browser-devtools";
 import { BrowserSandboxCard, seedSandbox, useSandboxCardState } from "@/components/browser-sandbox";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
@@ -11,6 +12,7 @@ import { isTauri } from "@/lib/api";
 import { openPreviewAt } from "@/lib/actions";
 import { agentBrowserStatus, boxHasBrowser, type Frame, watchAgentBrowser } from "@/lib/agent-browser";
 import { agentOf } from "@/lib/derive";
+import { DEVTOOLS_FRAME, proxiedHost, useAgentDevtoolsFeed, useDevtoolsFeed, useDrawerOpen, withDevtoolsFlag } from "@/lib/devtools";
 import { send as sendPrompt } from "@/lib/orchestrate";
 import { PICKER_SCRIPT, type Pick, parsePick, pickMessage } from "@/lib/picker";
 import { toastManager } from "@/components/ui/toast";
@@ -126,6 +128,15 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree, on
     if (sandbox === "hidden") setSandboxOpen(false);
   }, [sandbox]);
   const [picked, setPicked] = useState<Pick>();
+  // The Console and Network drawer (browser-devtools.tsx): the page's, and
+  // the agent's browser's while its view shows.
+  const proxyPort = useStore((s) => s.status?.proxy.url_port);
+  const proxied = !!url && !!proxiedHost(url, proxyPort);
+  useDevtoolsFeed({ key: id, mode, url, visible, proxyPort });
+  const drawer = useDrawerOpen(id) && !!url;
+  const agentKey = `${id}-agent`;
+  const agentDrawer = useDrawerOpen(agentKey);
+  const agentDevtools = useAgentDevtoolsFeed(agentKey, ctx.ref, agentView && agentDrawer);
 
   // A pick from the native webview comes back as an event.
   useEffect(() => {
@@ -168,6 +179,7 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree, on
         <AgentBar
           ctx={ctx}
           url={agentAt ?? agentLive?.url}
+          logKey={agentDevtools ? agentKey : undefined}
           onBack={() => setWatching(false)}
           onOpenHere={(u) => {
             setWatching(false);
@@ -227,6 +239,8 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree, on
           <ToolButton label="Pick an element for the agent" disabled={!url} onClick={pick}>
             <CrosshairIcon />
           </ToolButton>
+          <InspectButton id={id} native={mode === "native"} disabled={!url} />
+          <DevtoolsToggle logKey={id} disabled={!url} />
           <ToolButton label="Preview sizes: this page at every size at once" disabled={!url} onClick={() => openPreviewAt(url, { kind: "tab" }, worktree)}>
             <MonitorSmartphoneIcon />
           </ToolButton>
@@ -291,9 +305,11 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree, on
         />
       ) : (
         <div className={cn("flex min-h-0 flex-1 flex-col", (agentView || sandboxView) && "hidden")}>
-          <FramedPage key={`${url}#${nonce}`} id={id} url={url} onReload={reload} onLoading={onLoading} />
+          <FramedPage key={`${url}#${nonce}`} id={id} url={url} devtools={proxied} onReload={reload} onLoading={onLoading} />
         </div>
       )}
+      {drawer && !agentView && !sandboxView && <DevtoolsDrawer logKey={id} pageUrl={url} ctx={ctx} proxied={proxied} />}
+      {agentView && agentDrawer && agentDevtools && <DevtoolsDrawer logKey={agentKey} pageUrl={agentAt ?? agentLive?.url ?? ""} ctx={ctx} proxied agent />}
     </div>
   );
 }
@@ -496,7 +512,9 @@ function isLocal(url: string): boolean {
 // available (a plain browser, or when it failed). Sites that refuse to be
 // framed would show the browser's own grey error, so they get a designed
 // fallback instead, as does a page that never finishes loading.
-function FramedPage({ id, url, onReload, onLoading }: { id: string; url: string; onReload(): void; onLoading?(loading: boolean): void }) {
+// devtools asks the proxy for the page with the Console drawer's script in
+// it (a worktree's page only: the flag must not reach another server).
+function FramedPage({ id, url, devtools, onReload, onLoading }: { id: string; url: string; devtools?: boolean; onReload(): void; onLoading?(loading: boolean): void }) {
   const [state, setState] = useState<"loading" | "loaded" | "stuck" | "blocked">(isLocal(url) ? "loading" : "blocked");
   const told = useRef(onLoading);
   told.current = onLoading;
@@ -543,7 +561,8 @@ function FramedPage({ id, url, onReload, onLoading }: { id: string; url: string;
   return (
     <iframe
       data-pane={id}
-      src={__BERTH_DEMO__ ? undefined : url}
+      name={devtools && !__BERTH_DEMO__ ? `${DEVTOOLS_FRAME}${id}` : undefined}
+      src={__BERTH_DEMO__ ? undefined : devtools ? withDevtoolsFlag(url) : url}
       srcDoc={__BERTH_DEMO__ ? demoDevServer(url) : undefined}
       title={url}
       onLoad={() => setState("loaded")}
@@ -657,7 +676,7 @@ function LiveDot() {
 
 // AgentBar stands in for the address bar while you watch the agent's
 // browser: it is plainly not yours, and nothing in it drives the agent's.
-function AgentBar({ ctx, url, onBack, onOpenHere }: { ctx: BrowserContext; url?: string; onBack(): void; onOpenHere(url: string): void }) {
+function AgentBar({ ctx, url, logKey, onBack, onOpenHere }: { ctx: BrowserContext; url?: string; logKey?: string; onBack(): void; onOpenHere(url: string): void }) {
   const here = url ? humanUrl(url, ctx) : undefined;
   return (
     <div className="flex h-9 shrink-0 items-center gap-2 border-b bg-emerald-500/[0.06] px-2 text-xs">
@@ -669,6 +688,7 @@ function AgentBar({ ctx, url, onBack, onOpenHere }: { ctx: BrowserContext; url?:
       <Tip label={<span className="break-all font-mono">{url ?? ""}</span>} className="max-w-md">
         <span className="min-w-0 flex-1 truncate font-mono text-muted-foreground">{here ?? "…"}</span>
       </Tip>
+      {logKey && <DevtoolsToggle logKey={logKey} />}
       {here && (
         <Button size="xs" variant="ghost" className="shrink-0" onClick={() => onOpenHere(here)}>
           Open in your view

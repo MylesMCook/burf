@@ -2,6 +2,7 @@ import { CloudOffIcon, PencilIcon, RowsIcon, SquareSplitHorizontalIcon, SquareSp
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { StateGlyph } from "@/components/agent-glyph";
+import { TabErrorBadge } from "@/components/browser-devtools";
 import { DockButton } from "@/components/files/tree-dock";
 import { Tip } from "@/components/tip";
 import { Spinner } from "@/components/ui/spinner";
@@ -16,6 +17,7 @@ import { TabGroup } from "@/components/workspace/tab-group";
 import { CompareIcon, useCompareTitle } from "@/components/workspace/compare-view";
 import { useGroups, useLabels, useNarrow, useTiny, WtDot } from "@/components/workspace/worktree-tone";
 import { foldedOf } from "@/lib/groups";
+import { paneKey } from "@/lib/devtools";
 import { closeTab } from "@/lib/actions";
 import { agentOf, type SessionState, sessionAgent, sessionName, sessionState } from "@/lib/derive";
 import { type Leaf, leaves, mixed, paneWorktree, worktreesOf } from "@/lib/layout";
@@ -228,6 +230,8 @@ export function TabButton({ tab, wsKey, tone, active, onActivate, onClose, onDra
   const boxes = useStore((s) => s.boxes);
   const status = useStore((s) => s.status);
   const panes = leaves(tab.root);
+  // Its Browser panes, whose page errors the tab counts.
+  const browsers = panes.filter((l) => l.content.kind === "browser").map((l) => paneKey(l.id));
   // A tab with panes of other worktrees wears each one's colour as a dot,
   // and names the others: colour is never all that tells them apart.
   const owners = mixed(tab.root, wsKey) ? worktreesOf(tab.root, wsKey) : [];
@@ -326,6 +330,7 @@ export function TabButton({ tab, wsKey, tone, active, onActivate, onClose, onDra
         <span className="min-w-0 truncate">{title}</span>
       )}
       {c.kind === "file" && <FileTabState ws={paneWorktree(wsKey, lead.l)} path={c.path} />}
+      {browsers.length > 0 && <TabErrorBadge paneIds={browsers} />}
       {panes.length > 1 && !tab.compare && (owners.length > 1 ? (
         <span className="max-w-24 shrink-0 truncate text-[10px] text-muted-foreground">+ {names.slice(1).join(", ")}</span>
       ) : (

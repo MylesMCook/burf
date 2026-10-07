@@ -82,6 +82,7 @@ test("a browser tab shows a worktree's dev server in a frame", async ({ app }) =
   await address.fill("3001");
   await address.press("Enter");
   const frame = pane.locator("iframe");
-  await expect(frame).toHaveAttribute("src", "http://checkout-fix.shop.devl.localhost:1377/");
+  // The frame asks the proxy for the console script (internal/proxy/devtools.go).
+  await expect(frame).toHaveAttribute("src", "http://checkout-fix.shop.devl.localhost:1377/?__berth_devtools=1");
   await expect(pane.frameLocator("iframe").getByRole("heading", { name: "Stub dev server" })).toBeVisible();
 });
