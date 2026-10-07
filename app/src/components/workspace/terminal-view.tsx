@@ -127,6 +127,10 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
 
   useEffect(() => term?.setTheme(theme.terminal), [term, theme]);
 
+  // Hidden, it draws nothing and takes its output in batches; shown, it
+  // catches up and redraws (lib/terminal, lib/term-output).
+  useEffect(() => term?.setVisible(visible), [term, visible]);
+
   // A pasted or dropped image (a PDF, a text file, a file copied in Finder)
   // can't be typed: it goes up to the session's worktree on the box and its
   // path is pasted instead, which Claude Code takes as the image. Text pastes
