@@ -128,7 +128,7 @@ function SpotlightCard({ open, release }: { open: boolean; release: Release }) {
                 </TabsPrimitive.Tab>
               ))}
             </TabsPrimitive.List>
-            <Also release={release} className="mt-auto border-t px-5 pt-4 pb-5" />
+            <Also release={release} className="mt-auto px-5 pt-4 pb-6" />
           </div>
           <div className="relative flex min-w-0 flex-1 flex-col">
             <DialogClose aria-label="Close" className="absolute top-2 right-2 z-10" render={<Button size="icon" variant="ghost" />}>
@@ -143,7 +143,7 @@ function SpotlightCard({ open, release }: { open: boolean; release: Release }) {
                 <div className="overflow-hidden rounded-xl border bg-background shadow-xs">
                   <WhatsNewArt art={it.art} />
                 </div>
-                <div className="flex min-h-[6.25rem] flex-col gap-1.5 max-sm:min-h-0">
+                <div className="flex min-h-[6.75rem] flex-col gap-1.5 max-sm:min-h-0">
                   <h3 className="font-semibold text-base">{it.title}</h3>
                   <p className="text-muted-foreground text-sm leading-relaxed">{it.body}</p>
                 </div>
@@ -175,9 +175,9 @@ function SpotlightCard({ open, release }: { open: boolean; release: Release }) {
                   <ChevronLeftIcon />
                 </Button>
                 {last ? (
-                  <DialogClose render={<Button size="sm" variant="ghost" />}>Done</DialogClose>
+                  <DialogClose render={<Button size="sm" variant="ghost" className="min-w-14" />}>Done</DialogClose>
                 ) : (
-                  <Button size="sm" variant="ghost" onClick={() => step(1)}>
+                  <Button size="sm" variant="ghost" className="min-w-14" onClick={() => step(1)}>
                     Next
                   </Button>
                 )}
