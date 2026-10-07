@@ -39,6 +39,50 @@ func TestWindowsPowerShellJSONIsSeparateFromProgress(t *testing.T) {
 	}
 }
 
+func TestWindowsTaskRegistrationAsOrdinaryUser(t *testing.T) {
+	if os.Getenv("BERTH_TEST_WINDOWS_TASK") != "1" {
+		t.Skip("requires explicit approval to register and remove one synthetic user task")
+	}
+	if windows.GetCurrentProcessToken().IsElevated() {
+		t.Fatal("this acceptance test requires a non-administrator token")
+	}
+	dir := t.TempDir()
+	s := Spec{
+		Name:    fmt.Sprintf("berth-native-check-%d-%d", os.Getpid(), time.Now().UnixNano()),
+		Program: filepath.Join(os.Getenv("SystemRoot"), "System32", "cmd.exe"),
+		Args:    []string{"/d", "/c", "exit 0"},
+		Env:     map[string]string{"BERTH_HOME": dir}, LogPath: filepath.Join(dir, "task.log"),
+	}
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		if err := WaitStopped(ctx, s); err != nil {
+			t.Error(err)
+			return
+		}
+		if _, err := Uninstall(s); err != nil {
+			t.Error(err)
+		}
+	})
+	if _, err := Install(s); err != nil {
+		t.Fatal(err)
+	}
+	if !Installed(s) {
+		t.Fatal("the created task did not retain its owned configuration")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	if err := WaitStopped(ctx, s); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Uninstall(s); err != nil {
+		t.Fatal(err)
+	}
+	if _, found, err := Read(s.Name); err != nil || found {
+		t.Fatalf("synthetic task remains after uninstall: found=%v err=%v", found, err)
+	}
+}
+
 func TestWindowsTaskXMLValidationCreatesNoTask(t *testing.T) {
 	sid, err := windowsSID()
 	if err != nil {

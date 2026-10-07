@@ -53,6 +53,16 @@ From the repository root, `node --test scripts/windows-installer-template.test.m
 
 Use a fresh `BERTH_HOME` and separate client ports for native tests. Do not point synthetic checks at a personal running agent. Local client hooks use PowerShell syntax on Windows; Berth does not translate POSIX shell commands. Commands executed on Unix boxes still use the box's shell.
 
+With explicit approval on a disposable Windows host, run the focused task-registration check from a non-administrator terminal:
+
+```powershell
+$env:BERTH_TEST_WINDOWS_TASK = '1'
+try { go test ./internal/service -run '^TestWindowsTaskRegistrationAsOrdinaryUser$' -v }
+finally { Remove-Item Env:BERTH_TEST_WINDOWS_TASK }
+```
+
+It creates, runs and removes one uniquely named task with synthetic state. Normal test runs skip it. Passing XML validation or running tests as administrator does not prove that ordinary-user task registration works. A registration denial must be investigated without disabling endpoint protection or changing machine policy.
+
 Long Windows state paths keep their data in place and use a stable, private socket under the user's local cache `berth-ipc` directory. Ordinary state paths retain their in-directory socket.
 
 The Windows CI job compiles Rust, runs native Go tests, and builds an unsigned installer without release secrets. Browser tests exercise Windows shortcut labels and capability-based onboarding with isolated fixtures. A maintainer must still check the native window, WebView2 child panes, terminal clipboard, pairing with a real Unix box, opt-in login startup, installed CLI lookup, upgrade with an active agent, failed upgrade recovery, and ownership-safe uninstall on Windows. Compilation and fixtures do not establish those native GUI outcomes.

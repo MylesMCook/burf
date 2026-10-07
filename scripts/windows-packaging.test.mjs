@@ -59,6 +59,22 @@ if ($errors.Count) { throw $errors[0] }
   assert.equal(powershell(command), "valid");
 });
 
+test("manual acceptance final error names the failed step", { skip: process.platform !== "win32" }, () => {
+  const command = `$ErrorActionPreference='Stop'
+$tokens=$null; $errors=$null
+$ast=[Management.Automation.Language.Parser]::ParseInput(${psQuote(acceptance)}, [ref]$tokens, [ref]$errors)
+if ($errors.Count) { throw $errors[0] }
+$statement=$ast.EndBlock.Statements | Where-Object { $_ -is [Management.Automation.Language.IfStatementAst] -and $_.Clauses[0].Item1.Extent.Text -eq '$failure' } | Select-Object -Last 1
+if (!$statement) { throw 'Final failure check was not found.' }
+$failure='The synthetic client command failed: agent install.'
+$evidence='C:\\synthetic evidence'
+$caught=$null
+try { Invoke-Expression $statement.Extent.Text } catch { $caught=$_.Exception.Message }
+if (!$caught -or !$caught.Contains($failure) -or !$caught.Contains($evidence)) { throw 'Final error discarded the failed step or evidence path.' }
+[Console]::Out.Write('retained')`;
+  assert.equal(powershell(command), "retained");
+});
+
 test("manual acceptance captures all native stderr before rejecting a failed CLI", { skip: process.platform !== "win32" }, () => {
   const command = `$ErrorActionPreference='Stop'
 $tokens=$null; $errors=$null

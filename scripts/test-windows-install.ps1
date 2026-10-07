@@ -274,5 +274,5 @@ try {
     foreach ($name in $saved.Keys) { [Environment]::SetEnvironmentVariable($name, $saved[$name], 'Process') }
     @{ passed = !$failure; steps = @($events); error = $failure; retained_state = $stateRoot } | ConvertTo-Json -Depth 3 | Out-File (Join-Path $evidence 'result.json') -Encoding utf8
 }
-if ($failure) { throw "Windows install acceptance failed. Local evidence: $evidence" }
+if ($failure) { throw "Windows install acceptance failed: $failure Local evidence: $evidence" }
 Write-Output "PASS: isolated install, startup, PATH, upgrade, clean stop and uninstall. Local evidence: $evidence"
