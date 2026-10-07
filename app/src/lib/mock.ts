@@ -25,6 +25,7 @@ import { ApiError } from "@/lib/api";
 import { titleOf } from "@/lib/derive";
 import { demoAttach, demoScreen } from "@/demo/terminal";
 import { mockHistoryCall } from "@/lib/mock-history";
+import { BENCH, benchFleet, benchTerm, seedBenchChats } from "@/lib/mock-bench";
 import { mockAnswer, mockToolDetailSync, WEBHOOK_TEST } from "@/lib/mock-conversation";
 import { crowd } from "@/lib/mock-crowd";
 
@@ -168,6 +169,9 @@ const stats: Record<string, Stats> = {
 
 // ?mock=1&crowd=1: many more agents, on more boxes (lib/mock-crowd.ts).
 if (new URLSearchParams(location.search).has("crowd")) crowd({ status, locations, sessions, stats });
+// ?mock=1&bench=…: far more than the fixtures, for measuring (lib/mock-bench.ts).
+if (BENCH === "fleet") benchFleet({ status, locations, sessions, stats });
+if (BENCH === "chat") seedBenchChats();
 
 const services: Record<string, Service[]> = {
   devl: [
@@ -791,6 +795,7 @@ function mockAttach(box: string, session: string, h: TerminalHandlers) {
       },
     });
   }
+  if (BENCH === "term") return benchTerm(h);
   const timers: number[] = [];
   let open = true;
   const s = sessions[box]?.find((x) => x.name === session);

@@ -6,6 +6,7 @@ import type { DraftRead } from "@/lib/draft-text";
 import { type Question, type QuestionAnswer, shownAnswer } from "@/lib/questions";
 import { mockReports } from "@/lib/mock-reports";
 import { MESSAGES_SESSION, messagesChat } from "@/lib/mock-agent-messages";
+import { benchToolDetail } from "@/lib/mock-bench";
 
 // The demo's stand-in for berthd's transcript stream: a short scripted turn
 // played into the conversation store, so the view can be tried with ?mock=1.
@@ -466,7 +467,7 @@ export const mockToolDetailSync = (file: string): ToolDetail | undefined => Obje
 
 export const mockToolDetail = async (id: string): Promise<ToolDetail> => {
   await wait(250);
-  const d = DETAILS[id];
+  const d = DETAILS[id] ?? benchToolDetail(id);
   if (!d) throw new Error("That step isn't in the demo.");
   return d;
 };
