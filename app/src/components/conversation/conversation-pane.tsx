@@ -17,6 +17,7 @@ import { LiveScreen, useLiveScreen } from "@/components/conversation/live-screen
 import { QuestionsContext } from "@/components/conversation/question-form";
 import { toastError } from "@/components/error-note";
 import { UpgradeBox } from "@/components/upgrade-box";
+import { RetryLine } from "@/components/workspace/pane-state";
 import { SessionWorktreeSections } from "@/components/workspace/worktree-sections";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
@@ -27,6 +28,7 @@ import { toastManager } from "@/components/ui/toast";
 import { isMock } from "@/hooks/use-berth-connection";
 import { startSession } from "@/lib/actions";
 import { ApiError, boxApi, type QueuedPrompt } from "@/lib/api";
+import { tryNow } from "@/lib/reconnect";
 import { type AttachTarget, withAttachments } from "@/lib/attachments";
 import { joinDraft, listenForQuotes, type QuoteFill } from "@/lib/chat-quote";
 import { keyOf, useConversations } from "@/lib/conversation-store";
@@ -228,6 +230,10 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
   // The agent's own screen (/model's picker, a dialog) opens as a live
   // terminal under the conversation; a question its hooks describe doesn't.
   const [nudge, setNudge] = useState(0);
+  // A reply's idempotency key, kept until the box confirms it: sent again
+  // after an error (the link dropped once the box had it), the same words
+  // carry the same key, and the box types them once.
+  const idem = useRef<{ text: string; key: string }>(undefined);
   // What the chat answers itself: a form of questions it can fill in, a
   // permission or menu whose options it read. Anything else (options it
   // can't read, a form it can't fill in, an answer that didn't take)
@@ -267,12 +273,17 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
     return (
       <PaneEmpty
         scene="offline"
-        title={boxStatus?.state === "connecting" ? `Connecting to ${box}…` : `${box} is ${boxWord(boxStatus?.state)}`}
-        description={`${agent ? agentLabel(agent) : "The agent"} ${s?.exited ? "had ended before then" : "keeps running there"}. This comes back by itself when ${box} is reachable again.`}
+        title={boxStatus?.state === "connecting" ? `Connecting to ${box}…` : boxStatus?.state === "untrusted" ? `${box} is ${boxWord(boxStatus?.state)}` : `Reconnecting to ${box}…`}
+        description={
+          <>
+            {boxStatus?.state !== "untrusted" && <RetryLine box={box} className="mb-1.5" />}
+            {`${agent ? agentLabel(agent) : "The agent"} ${s?.exited ? "had ended before then" : "keeps running there"}. This comes back by itself when ${box} is reachable again.`}
+          </>
+        }
       >
-        <Button variant="outline" onClick={() => void useStore.getState().refreshAll()}>
+        <Button variant="outline" onClick={() => void tryNow(box)}>
           <RefreshCwIcon />
-          Retry now
+          Try now
         </Button>
       </PaneEmpty>
     );
@@ -354,7 +365,9 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
     if (!client) return;
     // Typed for the person, at once when the agent waits for them, else
     // held until it is idle; the transcript shows it once the agent reads it.
-    const r = await boxApi.send(client, box, session, text, true, state === "waiting" ? { when: "now", force: true } : { when: "idle" });
+    if (idem.current?.text !== text) idem.current = { text, key: `app-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}` };
+    const r = await boxApi.send(client, box, session, text, true, { ...(state === "waiting" ? { when: "now", force: true } : { when: "idle" }), idem_key: idem.current.key });
+    idem.current = undefined;
     if (r.queued) queue.refresh();
     // A command ("/model", "!ls") shows as itself once the agent runs it;
     // one that opens a screen of its own is looked for at once.
@@ -711,7 +724,7 @@ function Reply({ onSend, onFail, who, mode, blocked, hint, attach, agent }: { on
 
 // PaneEmpty is one of the pane's quiet states: a scene, what happened, and
 // what to do next.
-function PaneEmpty({ scene, title, description, children }: { scene?: SceneName; title: string; description: string; children?: React.ReactNode }) {
+function PaneEmpty({ scene, title, description, children }: { scene?: SceneName; title: string; description: React.ReactNode; children?: React.ReactNode }) {
   return (
     <div className="flex flex-1 items-center justify-center bg-background p-6">
       <Empty>

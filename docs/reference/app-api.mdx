@@ -36,13 +36,17 @@ The agent serves the app on `http://127.0.0.1:1378`.
   `git_failed`, `command_failed`, `too_many`, `bad_request` and `internal`. The
   agent adds `box_unreachable` (the request never reached the box, 503, or may
   have, 502), `box_unknown` (no paired box by that name) and `box_outdated`
-  (the box's berthd doesn't have that route yet).
+  (the box's berthd doesn't have that route yet). A request for a box the
+  agent knows is offline is answered at once with 503 `box_unreachable` and
+  `Retry-After` (seconds to its next try), rather than after a dial timeout.
+  The app gives each read (`GET`, but not a `…/wait` long poll) 30 seconds
+  and then fails it as `box_timeout` (504).
 
 ## Laptop
 
 | Method and path | Returns |
 | --- | --- |
-| `GET /v1/status` | `{ boxes: BoxStatus[], forwards, routes, proxy }` |
+| `GET /v1/status` | `{ boxes: BoxStatus[], forwards, routes, proxy }`. A box that isn't online carries `retry_at` (when the agent tries it next) and `attempts` (failed tries in a row) |
 | `GET /v1/events` | Server-sent events: one `data: <Event JSON>` per event, from this laptop and every online box (box events carry `box`) |
 | `POST /v1/forwards` | `{ box, local, remote }` → the forward |
 | `DELETE /v1/forwards/{id}` | the removed forward |
@@ -84,7 +88,7 @@ The app also uses these, mostly as the CLI does:
 
 | Method and path | What it does |
 | --- | --- |
-| `POST /v1/refresh` | Check every box now; returns the status |
+| `POST /v1/refresh` | Check every box now; returns the status. `?box=NAME` checks only that one (the app's **Try now**) |
 | `POST /v1/routes`, `DELETE /v1/routes?pattern=P` | `{ pattern, box, port }`: add or remove a [route](/reference/cli#reaching-services) |
 | `POST /v1/events` | `{ type, origin?, data? }`: announce an event on this laptop, as `berth emit` |
 | `GET /v1/networks`, `GET /v1/networks/{name}/peers`, `POST /v1/networks/{name}/login` | Joined networks, their machines, and joining one |

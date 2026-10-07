@@ -39,6 +39,16 @@ export interface FakeAgent {
   screen: () => string;
   // Every request, as "METHOD path?query".
   calls: string[];
+  // The box as the agent's status shows it: online, or away with when the
+  // agent tries it next. Away, the box's API answers 503 as the agent does.
+  away?: { state: "offline" | "connecting"; retryAt?: string; attempts?: number; since?: string };
+  // The bodies of POST sessions/fix-claude/send, in order, and how the box
+  // answers each: "drop" ends the connection without an answer (the link
+  // dropped once the box had it).
+  sends: Record<string, unknown>[];
+  send: (body: Record<string, unknown>) => Answer | "drop";
+  // Ends every event stream, as an agent restarting does.
+  dropStreams(): void;
   // Sends an event to the app's stream.
   event(e: { type: string; data?: Record<string, unknown> }): void;
   close(): Promise<void>;
@@ -58,6 +68,12 @@ export async function fakeAgent(): Promise<FakeAgent> {
     url: "",
     token: "e2e-token",
     calls: [],
+    sends: [],
+    send: () => ({ body: { sent: true, turn: `${SESSION}#2`, seq: 9, at: now() } }),
+    dropStreams() {
+      for (const s of streams) s.destroy();
+      streams.clear();
+    },
     transcript: () => ({ body: { source: "claude", items: ITEMS, next: 2, crew: [], gen: "1.0", start: 10, file: "abc" } }),
     draft: () => ({ body: { agent: "claude" } }),
     capabilities: ["transcript", "turns"],
@@ -77,7 +93,11 @@ export async function fakeAgent(): Promise<FakeAgent> {
 
   const created = new Date(Date.now() - 10 * 60_000).toISOString();
   const status = () => ({
-    boxes: [{ name: BOX, address: "devl:7444", fingerprint: "e2e", state: "online", since: created, latency_ms: 3 }],
+    boxes: [
+      agent.away
+        ? { name: BOX, address: "devl:7444", fingerprint: "e2e", state: agent.away.state, since: agent.away.since ?? created, retry_at: agent.away.retryAt, attempts: agent.away.attempts, error: "dial tcp 100.64.0.4:7444: i/o timeout" }
+        : { name: BOX, address: "devl:7444", fingerprint: "e2e", state: "online", since: created, latency_ms: 3 },
+    ],
     forwards: [],
     routes: [],
     proxy: { port: 1377, url_port: 1377 },
@@ -127,6 +147,18 @@ export async function fakeAgent(): Promise<FakeAgent> {
       return;
     }
     if (req.method === "GET" && p === "/v1/status") return send(res, 200, status());
+    if (req.method === "POST" && p === "/v1/refresh") return send(res, 200, status());
+    if (agent.away && p.startsWith(`/v1/boxes/${BOX}/api/`)) return send(res, 503, { error: `${BOX} is offline; Berth is reconnecting`, code: "box_unreachable" });
+    if (req.method === "POST" && p === `/v1/boxes/${BOX}/api/sessions/${SESSION}/send`) {
+      let raw = "";
+      for await (const c of req) raw += c;
+      const body = JSON.parse(raw || "{}") as Record<string, unknown>;
+      agent.sends.push(body);
+      const a = agent.send(body);
+      if (a === "drop") return void res.destroy();
+      if (a.delay) await new Promise((r) => setTimeout(r, a.delay));
+      return send(res, a.status ?? 200, a.body);
+    }
     if (req.method === "GET" && (p === "/v1/themes" || p === "/v1/templates" || p === "/v1/plugins")) return send(res, 200, []);
     const m = /^\/v1\/boxes\/([^/]+)\/api\/(.*)$/.exec(p);
     if (m && m[1] === BOX && req.method === "GET") {

@@ -28,6 +28,27 @@ again.
   `.berth/browser/`, as the guide says, rather than the folder berthd
   started in.
 
+- **A slow or dropping link to a box says so, and recovers by itself.**
+  Tested against boxes 200–900 ms away, links with jitter, a bandwidth cap,
+  stalls, resets, outages of 10 s, 60 s and 5 minutes, and a laptop asleep.
+  A box that drops off now reads **Reconnecting to devl… Next try in 6s**
+  in its terminals, chats and a team setup in progress, with **Try now**
+  (which checks the box at once; it used to only re-read what the agent
+  already knew). The agent tries an away box after about 2 s, then 4 and
+  every 8 s, each with jitter (never less often than before), checks a box
+  at once when a request to it has had no answer for 5 s, and answers
+  requests for an away box at once rather than after a 15 s dial,
+  so ⌘P, Files and the rest stop spinning. Reads now give up after 30 s
+  with "devl isn't answering" instead of spinning on, and ⌘P says why in
+  words and searches again when the box is back. Typing into a terminal
+  that gets nothing back for 4 s shows **Waiting for devl to answer…**. A
+  chat message sent again after a dropped answer carries the same
+  idempotency key, so it is typed once, not twice. The app's event stream
+  to the agent reconnects with jittered backoff and is dropped and opened
+  again after 45 s of silence (a laptop that slept), and refreshes that
+  land together after a reconnect run as one instead of piling up.
+  [Slow and dropping networks](/concepts/laptop-agent#slow-and-dropping-networks).
+
 - **Give a worktree a name you can read.** A worktree made from a pasted
   link is called `https-linear-app-acme`. **Rename…** in its menu,
   double-click or F2 on its sidebar row (Enter saves, Esc cancels), or

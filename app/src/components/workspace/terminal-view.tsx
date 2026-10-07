@@ -9,6 +9,7 @@ import { useActiveTheme } from "@/hooks/use-theme";
 import { ApiError, type TerminalConnection } from "@/lib/api";
 import { attachable, localPaths, named, onThisComputer, pastedFiles, shrinkImage, uploadAttachment, uploadLocalFile } from "@/lib/attachments";
 import { usePrefs } from "@/lib/prefs";
+import { tryNow } from "@/lib/reconnect";
 import { useStore } from "@/lib/store";
 import { openEditor } from "@/components/editors/open";
 import { findPaths, resolveIn } from "@/lib/editor-paths";
@@ -18,6 +19,12 @@ import { cn } from "@/lib/utils";
 import { WheelBatcher, wheelPixels } from "@/lib/wheel";
 
 type ConnState = "connecting" | "open" | "reconnecting" | "offline" | "ended";
+
+// Typing that has had no answer this long means the box may have gone.
+const STALL_MS = 4000;
+// Keys typed while reattaching are sent when it is back within this long.
+const HOLD_MS = 10_000;
+const HOLD_BYTES = 4096;
 
 interface Props {
   box: string;
@@ -45,6 +52,20 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
   const wheel = useRef<WheelBatcher>(null);
   const [state, setState] = useState<ConnState>("connecting");
   const [retry, setRetry] = useState(0);
+  // Typing that gets nothing back: when the last keystroke went and when the
+  // box last wrote. A box that stops answering mid-session (a link that
+  // drops packets rather than closing) shows here in seconds, and the agent
+  // is asked to check it now (STALL_MS).
+  const typedAt = useRef(0);
+  const heardAt = useRef(0);
+  const [stalled, setStalled] = useState(false);
+  // Keys typed while the terminal reattaches after a drop (a reset link, a
+  // box that blinked) are held and sent once it is back, if it is back
+  // soon: a reattach takes a second, and those keys were meant for it.
+  // Older than HOLD_MS, or more than HOLD_BYTES, they are dropped, and the
+  // terminal says how many.
+  const open = useRef(false);
+  const held = useRef<{ at: number; data: string[]; bytes: number }>({ at: 0, data: [], bytes: 0 });
   const theme = useActiveTheme();
   const themeRef = useRef(theme);
   themeRef.current = theme;
@@ -92,7 +113,19 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
         return;
       }
       t = made;
-      t.onData((d) => conn.current?.send(d));
+      t.onData((d) => {
+        if (!open.current) {
+          const h = held.current;
+          if (!h.data.length) h.at = Date.now();
+          if (h.bytes + d.length <= HOLD_BYTES) {
+            h.data.push(d);
+            h.bytes += d.length;
+          }
+          return;
+        }
+        conn.current?.send(d);
+        if (!typedAt.current || typedAt.current <= heardAt.current) typedAt.current = Date.now();
+      });
       t.onResize(({ cols, rows }) => conn.current?.resize(cols, rows));
       // ⌘-click a file path to open it at its line in your editor.
       t.registerLinkFinder((line) => {
@@ -207,17 +240,27 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
         onOpen() {
           if (stopped) return;
           attempt = 0;
+          typedAt.current = 0;
+          setStalled(false);
+          open.current = true;
           // The box redraws the whole screen on attach; start from a clean one.
           term.reset();
           setState("open");
           mine.resize(term.cols, term.rows);
+          const h = held.current;
+          held.current = { at: 0, data: [], bytes: 0 };
+          if (h.data.length && Date.now() - h.at < HOLD_MS) for (const d of h.data) mine.send(d);
+          else if (h.data.length) toastManager.add({ type: "warning", title: `Some typing didn't reach ${box}`, description: `${h.bytes} ${h.bytes === 1 ? "key" : "keys"} typed while it was away weren't sent.` });
         },
         onData: (d) => {
           if (stopped || conn.current !== mine) return;
+          heardAt.current = Date.now();
+          setStalled(false);
           term.write(d);
           wheel.current?.output(d);
         },
         onClose(byUs) {
+          open.current = false;
           if (byUs || stopped) return;
           setState("reconnecting");
           attempt++;
@@ -235,6 +278,24 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
       conn.current = null;
     };
   }, [client, term, boxState, gone, box, session, retry]);
+
+  // Typed, and nothing back for a while: say so, and have the agent check
+  // the box now rather than at its next tick.
+  useEffect(() => {
+    if (state !== "open") {
+      setStalled(false);
+      return;
+    }
+    const t = window.setInterval(() => {
+      const typed = typedAt.current;
+      if (!typed || typed <= heardAt.current || Date.now() - typed < STALL_MS) return;
+      setStalled((was) => {
+        if (!was) void tryNow(box);
+        return true;
+      });
+    }, 1000);
+    return () => window.clearInterval(t);
+  }, [state, box]);
 
   // Fit to the pane whenever it is shown or resized.
   useEffect(() => {
@@ -331,6 +392,12 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
       {state === "offline" && <BoxOffline box={box} state={boxState} onRetry={() => setRetry((n) => n + 1)} />}
       {stoppedService && state !== "ended" && state !== "offline" && <ServiceStopped box={box} session={stoppedService} />}
       {state === "ended" && <SessionEnded box={box} session={session} agent={agent} command={command} wsKey={wsKey} tab={tab} pane={pane} onClose={onClose} />}
+      {state === "open" && stalled && (
+        <div data-testid="terminal-stalled" className="pointer-events-none absolute top-2 right-3 flex items-center gap-2 rounded-md border bg-popover/90 px-2 py-1 text-muted-foreground text-xs shadow-sm">
+          <Spinner className="size-3" />
+          {`Waiting for ${box} to answer… what you type may not arrive`}
+        </div>
+      )}
       {(state === "connecting" || state === "reconnecting") && (
         <div className="pointer-events-none absolute top-2 right-3 flex items-center gap-2 rounded-md border bg-popover/90 px-2 py-1 text-muted-foreground text-xs shadow-sm">
           <Spinner className="size-3" />

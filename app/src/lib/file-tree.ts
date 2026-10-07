@@ -2,6 +2,7 @@ import { useEffect, useMemo } from "react";
 import { create } from "zustand";
 
 import { agentOf, sessionState } from "@/lib/derive";
+import { explain } from "@/lib/errors";
 import { filesApi, loadTouched, useFiles } from "@/lib/files";
 import { usePrefs } from "@/lib/prefs";
 import { load, save } from "@/lib/storage";
@@ -72,7 +73,8 @@ const FRESH = 10_000;
 export async function loadDir(ws: string, ref: WorktreeRef, dir: string, force = false) {
   const k = dkey(ws, dir);
   const have = useTree.getState().dirs[k];
-  if (have && !force && (have.state === "loading" || Date.now() - have.at < FRESH)) return;
+  // A listing that failed is asked for again next time, not kept as fresh.
+  if (have && !force && (have.state === "loading" || (have.state !== "error" && Date.now() - have.at < FRESH))) return;
   const c = useStore.getState().client;
   if (!c) return;
   if (!have) useTree.setState((s) => ({ dirs: { ...s.dirs, [k]: { state: "loading", dirs: [], files: [], at: Date.now() } } }));
@@ -88,7 +90,9 @@ export async function loadDir(ws: string, ref: WorktreeRef, dir: string, force =
     }
     useTree.setState((s) => ({ dirs: { ...s.dirs, [k]: { state: "ready", dirs, files, truncated: r.truncated, at: Date.now() } } }));
   } catch (err) {
-    useTree.setState((s) => ({ dirs: { ...s.dirs, [k]: { state: "error", dirs: [], files: [], error: err instanceof Error ? err.message : String(err), at: Date.now() } } }));
+    // In words (a box away, one not answering), not the transport's.
+    const e = explain(err, { box: ref.box });
+    useTree.setState((s) => ({ dirs: { ...s.dirs, [k]: { state: "error", dirs: [], files: [], error: `${e.title}. ${e.message}`, at: Date.now() } } }));
   }
 }
 
@@ -171,6 +175,9 @@ export function useTreeRows(ws: string, ref: WorktreeRef, filter: Filter, workin
   const closed = useTree((s) => s.closed[ws]);
   const dirs = useTree((s) => s.dirs);
   const touchedList = useFiles((s) => s.touched[ws]?.files);
+  // Listed again when the box comes back, so an error from while it was
+  // away doesn't stay.
+  const online = useStore((s) => s.status?.boxes.find((b) => b.name === ref.box)?.state === "online");
   const touched = useMemo<Touch[]>(() => touchedList ?? [], [touchedList]);
 
   // The top and every open folder; again when the agents make or delete a
@@ -179,7 +186,7 @@ export function useTreeRows(ws: string, ref: WorktreeRef, filter: Filter, workin
   useEffect(() => {
     if (filter !== "all") return;
     for (const d of ["", ...(expanded ?? [])]) void loadDir(ws, ref, d);
-  }, [ws, ref, filter, expanded]);
+  }, [ws, ref, filter, expanded, online]);
   useEffect(() => {
     if (filter !== "all" || !made) return;
     const t = window.setTimeout(() => {

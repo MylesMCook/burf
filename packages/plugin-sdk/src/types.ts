@@ -14,6 +14,10 @@ export interface BoxStatus {
   since: string;
   // A box on this computer itself (Use this Mac).
   local?: boolean;
+  // When the agent next tries a box that isn't online, and how many tries
+  // in a row have failed.
+  retry_at?: string;
+  attempts?: number;
 }
 
 export interface Forward {
