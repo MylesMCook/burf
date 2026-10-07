@@ -38,6 +38,43 @@ Beautiful UI's Code Block and Selection Actions, with no code from them.
 > OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 > USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+## bklit UI
+
+| Used in Berth | Source | Author | Licence |
+|---|---|---|---|
+| The chart components that draw `berth.chart/v1` artifacts (`app/src/components/charts/`): bar, line, area, funnel, sankey, gauge, pie and ring charts and their shared parts | [bklit UI](https://ui.bklit.com), [github.com/bklit/bklit-ui](https://github.com/bklit/bklit-ui), installed from its shadcn registry (`@bklit`) | Copyright (c) 2026 uixmat | MIT |
+
+The sources are vendored the shadcn way and are Berth's to maintain. Berth's
+changes: `shimmering-text.tsx` lives beside the charts (the registry's
+import path pointed outside the folder), and a line or area chart may label
+its x axis from the data (`__label`) instead of a date, and a horizontal
+bar chart's category names may be up to 160px wide (from 70). The registry's edits
+to `index.css` were not taken; Berth sets bklit's `--chart-*` variables
+from the active theme (`app/src/lib/art/theme.ts`). Bklit Studio is not
+used.
+
+> MIT License
+>
+> Copyright (c) 2026 uixmat
+>
+> Permission is hereby granted, free of charge, to any person obtaining a copy
+> of this software and associated documentation files (the "Software"), to deal
+> in the Software without restriction, including without limitation the rights
+> to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+> copies of the Software, and to permit persons to whom the Software is
+> furnished to do so, subject to the following conditions:
+>
+> The above copyright notice and this permission notice shall be included in all
+> copies or substantial portions of the Software.
+>
+> THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+> IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+> FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+> AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+> LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+> OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+> SOFTWARE.
+
 ## Berth's tmux for Linux boxes
 
 `berth` and the app carry a static tmux for Linux boxes (`tmux-linux-amd64`,

@@ -12,7 +12,7 @@
     { "id": "close-pane", "group": "File", "label": "Close pane", "keys": "⌘W", "accel": "CmdOrCtrl+W", "sep": true },
     { "id": "close-group", "group": "File", "label": "Close group", "keys": "⌘⇧W", "accel": "CmdOrCtrl+Shift+W", "what": "Close the tab group (its worktree and agents carry on); with one group, the window" },
     { "id": "zen", "group": "View", "label": "Zen", "keys": "⌘.", "accel": "CmdOrCtrl+.", "labs": true },
-    { "id": "compare-lane", "group": "View", "label": "Compare lanes", "keys": "⌥1–4", "labs": true, "what": "In a Compare tab: its Chat, Diff, Preview or Terminal lane" },
+    { "id": "compare-lane", "group": "View", "label": "Compare lanes", "keys": "⌥1–5", "labs": true, "what": "In a Compare tab: its Chat, Diff, Preview, Terminal or Artifacts lane" },
     { "id": "compare-swap", "group": "View", "label": "Swap compared sides", "keys": "⌘⌥S", "accel": "CmdOrCtrl+Alt+S", "labs": true, "sep": true, "what": "In a Compare tab: swap its two sides" },
     { "id": "file-tree", "group": "View", "label": "Files panel", "keys": "⌘⇧E", "accel": "CmdOrCtrl+Shift+E", "what": "Show or hide the worktree's files beside its tabs: everything, or what the agent changed this turn" },
     { "id": "devtools", "group": "View", "label": "Console and network", "keys": "⌘⌥I", "accel": "CmdOrCtrl+Alt+I", "what": "In a Browser tab: show or hide the page's Console and Network drawer" },

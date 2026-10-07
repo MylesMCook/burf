@@ -5,7 +5,7 @@
 // breadcrumb, Run, ⌘T and the palette follow whichever side has the focus.
 //
 // A lane is what both sides show: their agents' chats, their diffs, their
-// dev servers' pages, or their agents' terminals. Chat and Terminal are one
+// dev servers' pages, their agents' terminals, or their artifacts' boards. Chat and Terminal are one
 // pane per side (the agent's), seen as its conversation or its terminal.
 // The panes of a lane not showing are parked, still mounted, so coming back
 // to it reloads nothing. These are the pure parts; lib/compare-actions.ts
@@ -13,13 +13,14 @@
 
 import { type Leaf, leaf, leaves, newId, type PaneContent, type PaneNode, paneWorktree } from "./layout.ts";
 
-export const LANES = ["chat", "diff", "preview", "terminal"] as const;
+export const LANES = ["chat", "diff", "preview", "terminal", "artifacts"] as const;
 export type Lane = (typeof LANES)[number];
 export const isLane = (l: unknown): l is Lane => typeof l === "string" && (LANES as readonly string[]).includes(l);
-export const LANE_LABEL: Record<Lane, string> = { chat: "Chat", diff: "Diff", preview: "Preview", terminal: "Terminal" };
+export const LANE_LABEL: Record<Lane, string> = { chat: "Chat", diff: "Diff", preview: "Preview", terminal: "Terminal", artifacts: "Artifacts" };
 
 // The panes a lane needs: Chat and Terminal share each side's agent pane.
-export type Kind = "agent" | "diff" | "preview";
+// Artifacts: each side's board (components/art).
+export type Kind = "agent" | "diff" | "preview" | "artifacts";
 export const kindOf = (l: Lane): Kind => (l === "chat" || l === "terminal" ? "agent" : l);
 
 export interface Compare {

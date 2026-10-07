@@ -277,8 +277,9 @@ worktree's tabs. Notifications focus an agent where its pane already is.
 
 **Compare.** A Compare tab puts two worktrees side by side in mirrored
 lanes, for "which attempt wins": **Chat** (their agents' conversations),
-**Diff** (each branch's diff), **Preview** (each dev server's page) and
-**Terminal** (their agents' terminals). Open one with ⌘⌥C, **Compare
+**Diff** (each branch's diff), **Preview** (each dev server's page),
+**Terminal** (their agents' terminals) and **Artifacts** (each side's
+[board](/guides/artifacts)). Open one with ⌘⌥C, **Compare
 with…** in a worktree's menu or the strip's +, or **Compare with #N** on an
 attempt in Review's Compare (after **Try N ways…**). The picker opens the
 chats when both worktrees run an agent, else the diffs; ⌥↵ always opens the
@@ -286,7 +287,7 @@ diffs. The tab is named `checkout-fix ⇄ search-perf` and lives in the first
 worktree's group. Its bar names both sides in their colours (the one with
 the focus is solid; click a side's name to focus it), each agent's state,
 and what each branch changed since the default branch (`24 files · +2,389
-−33`). In the middle are the lanes (⌥1–4), the hinge that swaps the sides
+−33`). In the middle are the lanes (⌥1–5), the hinge that swaps the sides
 (⌘⌥S) and **Sync**: with Sync on, a page opened on one side opens at the
 same path on the other's dev server, with each page's load time in the bar;
 scrolling one diff takes the other to the same file; and scrolling one chat
@@ -302,7 +303,7 @@ to pick another, and a close button.
 | ⌥-click (sidebar) | Add the worktree's tabs as a group |
 | ⌘⌥D | Split right with another worktree… |
 | ⌘⌥C | Compare with… (in a Compare tab: swap the other side for another worktree) |
-| ⌥1–4 | In a Compare tab: the Chat, Diff, Preview or Terminal lane |
+| ⌥1–5 | In a Compare tab: the Chat, Diff, Preview, Terminal or Artifacts lane |
 | ⌘⌥S | In a Compare tab: swap its sides |
 | ⌃⇧⇥ / ⌃⌥⇥ | Previous or next group (⌘1–9 count tabs across the whole strip) |
 | ⌘⇧W | Close the group in front: its tabs leave the strip, and the worktree and its agents carry on. With one group, it closes the window |
@@ -320,7 +321,7 @@ their labels, beside the strip, pane chips shrink to their dot and a short
 name, and a Compare tab's bar drops the diff numbers. Below about 800px, the
 other groups wait as chips (their dot and name), a Compare tab stacks its
 two sides, one above the other, and the bar's lanes are icons. In zen there is no strip: the switcher names the focused pane's
-worktree in its colour, a Compare tab keeps its bar, and ⌘⌥C, ⌥1–4 and the
+worktree in its colour, a Compare tab keeps its bar, and ⌘⌥C, ⌥1–5 and the
 group shortcuts still work.
 
 **Colours and names.** A worktree's colour never stands alone: its group's

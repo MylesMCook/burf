@@ -11,6 +11,23 @@ again.
 
 ## Unreleased
 
+- **Artifacts: charts, tables, diagrams and small pages from your agents,
+  live.** An agent writes a `berth.chart` JSON, a CSV, Mermaid, Markdown or
+  one HTML file and runs `berthd artifact add`; its chat shows a card with a
+  live thumbnail and the headline its data gives ("/search 1,240 → 410 ms
+  (−67%)", "3 failed of 16"). Open it as a tab, or ⌘-click to open it
+  beside the chat; the tab has a Live pill that pulses when the agent
+  rewrites the file, its versions (the first and the newest eight) and its
+  source. **N artifacts** under the reply box, or the grid button in the
+  worktree's toolbar, opens the worktree's board, filtered by Charts,
+  Tables, Diagrams, Pages and Notes. Charts are drawn with
+  [bklit UI](https://ui.bklit.com) in your theme, in all 23; a page runs on
+  its own origin with no network and no access to Berth. The box keeps
+  them outside the worktree, checks each version, and refuses one that
+  looks like a secret. The `berth-artifacts` skill teaches Claude Code and
+  Codex when and how (`berthd integrations install`). The claude.ai chip
+  now reads **N published**. [Artifacts](/guides/artifacts).
+
 - **Give a worktree a name you can read.** A worktree made from a pasted
   link is called `https-linear-app-acme`. **Rename…** in its menu,
   double-click or F2 on its sidebar row (Enter saves, Esc cancels), or

@@ -371,6 +371,8 @@ func serve(b boxHome, args []string) error {
 	// agent-browser sessions (Vercel's CLI) go with the berth session that
 	// started them.
 	bx.AgentBrowsers = box.NewAgentBrowsers(bx.Sessions)
+	bx.Artifacts = &box.ArtifactStore{Dir: filepath.Join(b.dir, "artifacts"), Events: bus, Box: hostname}
+	go bx.Artifacts.Run(ctx)
 	bx.Team = &box.TeamRunner{Dir: filepath.Join(b.dir, "team")}
 	defer bx.Team.Stop()
 	bx.Mount(s)

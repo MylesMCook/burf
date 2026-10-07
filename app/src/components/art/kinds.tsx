@@ -1,0 +1,123 @@
+import { AppWindowIcon, ChartColumnIcon, ChartPieIcon, ChartSplineIcon, FileTextIcon, FilterIcon, GaugeIcon, GitForkIcon, Grid3x3Icon, type LucideIcon, ShapesIcon, TableIcon, WorkflowIcon } from "lucide-react";
+import { type ComponentType, lazy, type LazyExoticComponent } from "react";
+
+import type { Art, ArtVersion } from "@/lib/art/model";
+import { type ChartType, parseChart } from "@/lib/art/chart-spec";
+import { type Gist, gist } from "@/lib/art/gist";
+
+// The kinds of artifact the app knows, and how each is drawn. A kind is a
+// box-side entry (internal/box/artifacts.go artifactKinds) and one here:
+// its names, its icon, its headline, and a viewer loaded the first time
+// one is drawn. A new kind — a visual diff of before/after screenshots,
+// say — registers itself with registerKind and needs nothing else changed:
+// cards, tabs, the board and its filters all go through this table.
+
+export type ViewSize = "thumb" | "full";
+
+export interface ViewProps {
+  art: Art;
+  version: ArtVersion;
+  // The version's content (text: a spec, a table, Mermaid, Markdown, HTML).
+  body: string;
+  size: ViewSize;
+  // A thumbnail's height in pixels; a full view fills its pane.
+  height?: number;
+}
+
+export interface KindSpec {
+  kind: string;
+  // "Chart", and the board's filter, "Charts".
+  label: string;
+  plural: string;
+  icon(body?: string): LucideIcon;
+  // What a person calls one: "Bar chart", "Table".
+  word?(body?: string): string;
+  // The one-line headline from the content.
+  gist?(art: Art, body: string): Gist | undefined;
+  // Drawn by Berth itself, or a sandboxed page.
+  drawn: "berth" | "sandbox";
+  View: LazyExoticComponent<ComponentType<ViewProps>>;
+}
+
+const chartIcons: Partial<Record<ChartType, LucideIcon>> = { line: ChartSplineIcon, area: ChartSplineIcon, gauge: GaugeIcon, pie: ChartPieIcon, ring: ChartPieIcon, sankey: GitForkIcon, funnel: FilterIcon, heatmap: Grid3x3Icon };
+const chartWords: Record<ChartType, string> = { bar: "Bar chart", line: "Line chart", area: "Area chart", funnel: "Funnel", sankey: "Flow", gauge: "Gauge", pie: "Pie chart", ring: "Ring chart", heatmap: "Heatmap" };
+
+const kinds = new Map<string, KindSpec>();
+
+export function registerKind(spec: KindSpec) {
+  kinds.set(spec.kind, spec);
+}
+
+registerKind({
+  kind: "chart",
+  label: "Chart",
+  plural: "Charts",
+  icon: (body) => {
+    const t = body ? parseChart(body)?.type : undefined;
+    return (t && chartIcons[t]) || ChartColumnIcon;
+  },
+  word: (body) => {
+    const t = body ? parseChart(body)?.type : undefined;
+    return t ? chartWords[t] : "Chart";
+  },
+  gist: (a, body) => gist(a.kind, a.format, body),
+  drawn: "berth",
+  View: lazy(() => import("@/components/art/views/chart-view")),
+});
+
+registerKind({
+  kind: "table",
+  label: "Table",
+  plural: "Tables",
+  icon: () => TableIcon,
+  gist: (a, body) => gist(a.kind, a.format, body),
+  drawn: "berth",
+  View: lazy(() => import("@/components/art/views/table-view")),
+});
+
+registerKind({
+  kind: "diagram",
+  label: "Diagram",
+  plural: "Diagrams",
+  icon: () => WorkflowIcon,
+  gist: (a, body) => gist(a.kind, a.format, body),
+  drawn: "berth",
+  View: lazy(() => import("@/components/art/views/diagram-view")),
+});
+
+registerKind({
+  kind: "page",
+  label: "Page",
+  plural: "Pages",
+  icon: () => AppWindowIcon,
+  gist: (a, body) => gist(a.kind, a.format, body),
+  drawn: "sandbox",
+  View: lazy(() => import("@/components/art/views/page-view")),
+});
+
+registerKind({
+  kind: "notes",
+  label: "Notes",
+  plural: "Notes",
+  icon: () => FileTextIcon,
+  gist: (a, body) => gist(a.kind, a.format, body),
+  drawn: "berth",
+  View: lazy(() => import("@/components/art/views/notes-view")),
+});
+
+// A kind this app doesn't know (a newer box): its source, as text.
+const unknownKind = (kind: string): KindSpec => ({
+  kind,
+  label: kind[0]?.toUpperCase() + kind.slice(1),
+  plural: kind,
+  icon: () => ShapesIcon,
+  drawn: "berth",
+  View: lazy(() => import("@/components/art/views/source-view")),
+});
+
+export const kindOf = (kind: string): KindSpec => kinds.get(kind) ?? unknownKind(kind);
+
+// The board's filters, in this order, for the kinds there are.
+export const allKinds = (): KindSpec[] => [...kinds.values()];
+
+export const kindWord = (a: Art, body?: string) => kindOf(a.kind).word?.(body) ?? kindOf(a.kind).label;

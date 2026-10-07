@@ -35,7 +35,15 @@ type Proxy struct {
 	// origin), which on a laptop that calls it something else would lead
 	// nowhere. Optional.
 	BoxAlias func(name string) (paired string, ok bool)
+	// Artifact fetches an artifact's page from a box, for its own origin
+	// art-<id>.<box>.localhost (artifact.go). Optional: without it those
+	// hosts answer 404.
+	Artifact ArtifactFunc
+	// LibFetch fetches a pinned library for artifact pages; nil uses the
+	// network (tests set it).
+	LibFetch func(ctx context.Context, url string) ([]byte, error)
 
+	libs       libCache
 	mu         sync.Mutex
 	transports map[string]*http.Transport
 	preview    previewState
@@ -43,6 +51,12 @@ type Proxy struct {
 }
 
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// An artifact's own origin: answered here, never forwarded, never
+	// logged with a worktree's pages (artifact.go).
+	if box, id, ok := p.artTarget(r.Host); ok {
+		p.serveArtifact(w, r, box, id)
+		return
+	}
 	// Every request is logged for the Browser tab's Network drawer
 	// (requestlog.go).
 	lw := p.logRequest(w, r)
