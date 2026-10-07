@@ -96,7 +96,8 @@ export function startRunsWatch(): () => void {
         const list = before[box];
         if (!list || list.some(isActive)) reads.push(refreshRuns(box));
       }
-      if (!reads.length) return false;
+      // A box whose info hasn't come yet may have runs: no backing off yet.
+      if (!reads.length) return Object.values(boxes).some((b) => !b.info) ? undefined : false;
       await Promise.all(reads);
       const after = useRuns.getState().byBox;
       return Object.keys(after).some((b) => JSON.stringify(after[b]) !== JSON.stringify(before[b]));

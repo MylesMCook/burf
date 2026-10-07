@@ -61,8 +61,15 @@ const DRAWS = () => {
 // again.
 async function click(page, loc) {
   for (let i = 0; ; i++) {
+    // Quiet worktrees fold under "N more worktrees" in the sidebar.
+    if (!(await loc.count())) {
+      const more = page.getByText(/^\d+ more worktrees?$/);
+      for (const m of await more.all()) await m.click().catch(() => {});
+    }
     try {
-      return await loc.click({ timeout: 5000 });
+      // A page busy drawing (the old renderer, nineteen terminals) can
+      // starve the stability check: after a first try, click regardless.
+      return await loc.click({ timeout: 15_000, force: i > 0 });
     } catch (err) {
       if (i >= 3) throw err;
       await page.keyboard.press("Escape");
