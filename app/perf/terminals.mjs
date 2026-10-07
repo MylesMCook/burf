@@ -5,6 +5,7 @@
 //
 //   pnpm build && node perf/terminals.mjs [--port 1433] [--rate 20]
 //        [--renderers ghostty,xterm] [--out dir] [--label after] [--dist dir]
+//        [--worktrees 5]
 //
 // For each renderer it measures:
 //
@@ -39,7 +40,8 @@ const renderers = String(args.renderers ?? "ghostty,xterm").split(",");
 const out = resolve(String(args.out ?? join(app, "node_modules/.perf/terminals")));
 mkdirSync(out, { recursive: true });
 const base = `http://localhost:${port}`;
-const WORKTREES = ["devl/checkout-fix", "devl/search-perf", "devl/order-export", "devl/qa-deck", "devl/https-linear-app-acme"];
+// --worktrees N uses the first N (each gets three or four terminals).
+const WORKTREES = ["devl/checkout-fix", "devl/search-perf", "devl/order-export", "devl/qa-deck", "devl/https-linear-app-acme"].slice(0, Number(args.worktrees ?? 5));
 
 // Canvas draws, by whether the canvas is on screen: a hidden terminal
 // should draw nothing.
