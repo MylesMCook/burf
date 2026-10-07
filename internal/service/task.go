@@ -26,7 +26,8 @@ import (
 
 const taskSource = "berth-task-v1:"
 const taskNamespace = "http://schemas.microsoft.com/windows/2004/02/mit/task"
-const taskArgumentsPrefix = "-NoLogo -NoProfile -NonInteractive -EncodedCommand "
+const taskArgumentsPrefix = "-NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -EncodedCommand "
+const legacyTaskArgumentsPrefix = "-NoLogo -NoProfile -NonInteractive -EncodedCommand "
 const schedulerCommandTimeout = 15 * time.Second
 
 var windowsSID = currentWindowsSID
@@ -315,7 +316,7 @@ func ownedWindowsTask(data []byte, name string) (Spec, error) {
 	if s.Name != name {
 		return Spec{}, errors.New("the Windows task has a different service identity")
 	}
-	if len(doc.Actions.Exec) != 1 || !strings.HasPrefix(doc.Actions.Exec[0].Arguments, taskArgumentsPrefix) || metadata.LauncherSHA256 != launcherHash(doc.Actions.Exec[0].Arguments) {
+	if len(doc.Actions.Exec) != 1 || !validWindowsTaskArguments(doc.Actions.Exec[0].Arguments) || metadata.LauncherSHA256 != launcherHash(doc.Actions.Exec[0].Arguments) {
 		return Spec{}, errors.New("the Windows task launcher differs from its recorded configuration")
 	}
 	want, err := renderWindowsTask(s)
@@ -334,6 +335,19 @@ func ownedWindowsTask(data []byte, name string) (Spec, error) {
 		return Spec{}, errors.New("the Windows task principal or action differs from its Berth configuration")
 	}
 	return s, nil
+}
+
+func validWindowsTaskArguments(arguments string) bool {
+	encoded, ok := strings.CutPrefix(arguments, taskArgumentsPrefix)
+	if !ok {
+		encoded, ok = strings.CutPrefix(arguments, legacyTaskArgumentsPrefix)
+	}
+	if !ok {
+		return false
+	}
+	// Require one canonical base64 argument containing UTF-16LE bytes.
+	command, err := base64.StdEncoding.DecodeString(encoded)
+	return err == nil && len(command) > 0 && len(command)%2 == 0 && base64.StdEncoding.EncodeToString(command) == encoded
 }
 
 func validateWindowsTaskActions(data []byte) error {

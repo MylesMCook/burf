@@ -2,10 +2,8 @@ package service
 
 import (
 	"context"
-	"crypto/sha256"
 	"encoding/base64"
 	"encoding/binary"
-	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
@@ -97,28 +95,10 @@ func TestWindowsTaskOwnershipSurvivesOlderLauncherBytes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	var doc taskDocument
-	if err := xml.Unmarshal(b, &doc); err != nil {
-		t.Fatal(err)
-	}
-	oldArgs := doc.Actions.Exec[0].Arguments
 	legacyArgs := "-NoLogo -NoProfile -NonInteractive -EncodedCommand " + encodePowerShell("# Previous launcher release\n"+windowsTaskScript(windowsSpec))
-	data := strings.Replace(string(b), esc(oldArgs), esc(legacyArgs), 1)
-	// The metadata envelope is versioned independently from the launcher.
-	var metadata map[string]json.RawMessage
-	raw, _ := base64.StdEncoding.DecodeString(strings.TrimPrefix(doc.Registration.Source, taskSource))
-	if err := json.Unmarshal(raw, &metadata); err != nil {
-		t.Fatal(err)
-	}
-	if _, finalized := metadata["spec"]; finalized {
-		hash := sha256.Sum256([]byte(legacyArgs))
-		metadata["launcher_sha256"], _ = json.Marshal(hex.EncodeToString(hash[:]))
-		raw, _ = json.Marshal(metadata)
-		data = strings.Replace(data, doc.Registration.Source, taskSource+base64.StdEncoding.EncodeToString(raw), 1)
-	}
-	f.xml = data
+	f.xml = rewriteWindowsTaskLauncher(t, b, legacyArgs, launcherHash(legacyArgs))
 	u, ok, err := Read(windowsSpec.Name)
-	if err != nil || !ok || u.Program != windowsSpec.Program {
+	if err != nil || !ok || u.Program != windowsSpec.Program || !reflect.DeepEqual(u.Args, windowsSpec.Args) || !reflect.DeepEqual(u.Env, windowsSpec.Env) {
 		t.Fatalf("older launcher was rejected: %+v ok=%v err=%v", u, ok, err)
 	}
 	updated := windowsSpec
@@ -129,6 +109,102 @@ func TestWindowsTaskOwnershipSurvivesOlderLauncherBytes(t *testing.T) {
 	if !Installed(updated) {
 		t.Fatal("updated launcher is not installed")
 	}
+}
+
+func TestWindowsTaskLaunchesWithHiddenPowerShellWindow(t *testing.T) {
+	fakeWindowsScheduler(t)
+	b, err := Render(windowsSpec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var doc taskDocument
+	if err := xml.Unmarshal(b, &doc); err != nil {
+		t.Fatal(err)
+	}
+	want := "-NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -EncodedCommand " + encodePowerShell(windowsTaskScript(windowsSpec))
+	if got := doc.Actions.Exec[0].Arguments; got != want {
+		t.Fatal("PowerShell action differs from the exact hidden-window launcher")
+	}
+	if _, err := ownedWindowsTask(b, windowsSpec.Name); err != nil {
+		t.Fatalf("new hidden action failed ownership validation: %v", err)
+	}
+}
+
+func TestWindowsTaskOwnershipRejectsMalformedAndUnrecordedLaunchers(t *testing.T) {
+	fakeWindowsScheduler(t)
+	b, err := Render(windowsSpec)
+	if err != nil {
+		t.Fatal(err)
+	}
+	encoded := encodePowerShell("# Previous launcher release\n" + windowsTaskScript(windowsSpec))
+	legacyPrefix := "-NoLogo -NoProfile -NonInteractive -EncodedCommand "
+	hiddenPrefix := "-NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -EncodedCommand "
+	for _, tt := range []struct {
+		name string
+		args string
+		hash string
+	}{
+		{"visible style", strings.Replace(hiddenPrefix, "Hidden", "Normal", 1) + encoded, ""},
+		{"missing style", strings.Replace(hiddenPrefix, " Hidden", "", 1) + encoded, ""},
+		{"extra option", "-NoLogo -NoProfile -NonInteractive -NoExit -EncodedCommand " + encoded, ""},
+		{"prefix whitespace", " " + legacyPrefix + encoded, ""},
+		{"empty command", legacyPrefix, ""},
+		{"invalid base64", legacyPrefix + "not-base64", ""},
+		{"odd UTF16 bytes", legacyPrefix + base64.StdEncoding.EncodeToString([]byte{'x'}), ""},
+		{"encoded whitespace", legacyPrefix + encoded + "\n", ""},
+		{"trailing option", hiddenPrefix + encoded + " -NoExit", ""},
+		{"legacy hash mismatch", legacyPrefix + encoded, launcherHash("different launcher")},
+		{"hidden hash mismatch", hiddenPrefix + encoded, launcherHash("different launcher")},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			hash := tt.hash
+			if hash == "" {
+				hash = launcherHash(tt.args)
+			}
+			data := rewriteWindowsTaskLauncher(t, b, tt.args, hash)
+			if _, err := ownedWindowsTask([]byte(data), windowsSpec.Name); err == nil {
+				t.Fatal("accepted a malformed or unrecorded launcher")
+			}
+		})
+	}
+	legacyArgs := legacyPrefix + encoded
+	legacy := rewriteWindowsTaskLauncher(t, b, legacyArgs, launcherHash(legacyArgs))
+	for _, data := range []string{
+		strings.Replace(legacy, "S-1-5-21-123-456-789-1001", "S-1-5-21-123-456-789-1002", -1),
+		strings.Replace(legacy, "LeastPrivilege", "HighestAvailable", 1),
+		strings.Replace(legacy, "<AllowHardTerminate>false</AllowHardTerminate>", "", 1),
+		strings.Replace(legacy, esc(powershellPath()), esc(`C:\foreign.exe`), 1),
+	} {
+		if _, err := ownedWindowsTask([]byte(data), windowsSpec.Name); err == nil {
+			t.Fatal("accepted a legacy launcher with a changed principal, action or settings")
+		}
+	}
+	if _, err := ownedWindowsTask([]byte(legacy), "another-service"); err == nil {
+		t.Fatal("accepted a legacy launcher with a different service identity")
+	}
+}
+
+func rewriteWindowsTaskLauncher(t *testing.T, data []byte, arguments, hash string) string {
+	t.Helper()
+	var doc taskDocument
+	if err := xml.Unmarshal(data, &doc); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(doc.Registration.Source, taskSource))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var metadata taskMetadata
+	if err := json.Unmarshal(raw, &metadata); err != nil {
+		t.Fatal(err)
+	}
+	metadata.LauncherSHA256 = hash
+	raw, err = json.Marshal(metadata)
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated := strings.Replace(string(data), esc(doc.Actions.Exec[0].Arguments), esc(arguments), 1)
+	return strings.Replace(updated, doc.Registration.Source, taskSource+base64.StdEncoding.EncodeToString(raw), 1)
 }
 
 func decodePowerShell(t *testing.T, encoded string) string {
@@ -168,7 +244,7 @@ func TestWindowsTaskPreservesInteractiveLoginAndCleanStop(t *testing.T) {
 	if err := xml.Unmarshal(b, &doc); err != nil {
 		t.Fatal(err)
 	}
-	script := decodePowerShell(t, strings.TrimPrefix(doc.Actions.Exec[0].Arguments, "-NoLogo -NoProfile -NonInteractive -EncodedCommand "))
+	script := decodePowerShell(t, strings.TrimPrefix(doc.Actions.Exec[0].Arguments, taskArgumentsPrefix))
 	for _, want := range []string{"if (!restartAlways) return p.ExitCode;", "p.StartInfo.UseShellExecute = false;", "[string[]]@('BERTH_HOME','ODD')", "'a''b$c`d\ne'", ", $false))"} {
 		if !strings.Contains(script, want) {
 			t.Errorf("launcher is missing %q", want)
