@@ -35,7 +35,10 @@ fn find(app: &AppHandle, id: &str) -> Result<Webview, String> {
 struct Navigated {
     id: String,
     url: String,
-    // "started" or "finished"
+    // "started": a navigation is about to begin, in the page or in a frame
+    // inside it (the navigation policy is asked for every frame, and a
+    // frame's load never finishes the page); "committed": the page itself
+    // began showing a new document; "finished": the page itself finished.
     state: &'static str,
 }
 
@@ -76,7 +79,8 @@ pub async fn browser_open(app: AppHandle, id: String, url: String, x: f64, y: f6
         })
         .on_page_load(move |wv, payload| {
             let state = match payload.event() {
-                PageLoadEvent::Started => "started",
+                // wry reports the main frame's commit as Started.
+                PageLoadEvent::Started => "committed",
                 PageLoadEvent::Finished => "finished",
             };
             let _ = wv.app_handle().emit(EVENT, Navigated { id: load_id.clone(), url: payload.url().to_string(), state });
