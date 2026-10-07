@@ -16,6 +16,8 @@ import { Markdown } from "@/components/conversation/markdown";
 import { HARBOUR_WORDS } from "@/lib/screen-status";
 import { NoticeCard } from "@/components/conversation/notice-card";
 import { ReportCard, reportName, reportWord } from "@/components/conversation/report-card";
+import { AgentMessageCard, MidTurnMark, PingGroup, PingLine } from "@/components/conversation/agent-message";
+import { foldPings, messageText, type PingItem } from "@/lib/agent-messages";
 import { CommandItem } from "@/components/conversation/command-item";
 import { ChatList } from "@/components/conversation/chat-list";
 import { ChatSearch, plainMarkdown, type SearchEntry } from "@/components/conversation/chat-search";
@@ -124,7 +126,8 @@ export function ConversationView({ items: live, onAnswer, edits, who = "The agen
   answerTo.current = onAnswer;
   const answer = useCallback((id: string, key: string) => answerTo.current(id, key), []);
   const renderBlock = useCallback(
-    (b: Block) => (b.kind === "fold" ? <WorkFold id={b.id} steps={b.steps} live={b.live} onAnswer={answer} edits={edits} who={who} /> : <Item it={b.it} onAnswer={answer} edits={edits} who={who} />),
+    (b: Block) =>
+      b.kind === "fold" ? <WorkFold id={b.id} steps={b.steps} live={b.live} onAnswer={answer} edits={edits} who={who} /> : b.kind === "pings" ? <PingGroup items={b.items} /> : <Item it={b.it} onAnswer={answer} edits={edits} who={who} />,
     [answer, edits, who],
   );
   const header =
@@ -168,14 +171,15 @@ export function ConversationView({ items: live, onAnswer, edits, who = "The agen
 const RevealContext = createContext<Set<string>>(new Set());
 
 // A message that replaced a draft keeps the draft's row (lib/draft-text).
-const blockKey = (b: Block) => (b.kind === "fold" ? b.id : rowKeyOf(b.it.id));
+const blockKey = (b: Block) => (b.kind === "item" ? rowKeyOf(b.it.id) : b.id);
 // A turn starts where something was asked (a Compare tab's chats line up on it).
-const isTurn = (b: Block) => b.kind !== "fold" && b.it.kind === "user";
+const isTurn = (b: Block) => b.kind === "item" && b.it.kind === "user";
 
 // A row's height before it is drawn: near enough that the scroll bar
 // doesn't jump much once it is.
 function estimateBlock(b: Block): number {
   if (b.kind === "fold") return 28;
+  if (b.kind === "pings") return 22;
   const it = b.it;
   const lines = (t: string, per: number) => t.split("\n").reduce((n, l) => n + Math.max(1, Math.ceil(l.length / per)), 0);
   switch (it.kind) {
@@ -195,6 +199,10 @@ function estimateBlock(b: Block): number {
       return it.done ? 40 : 360;
     case "report":
       return it.report.answer || it.report.needs ? 78 : 40;
+    case "agent-message":
+      return it.msg.intent === "report" ? 104 : 40 + 22 * Math.min(lines(it.msg.body ?? "", 84), 12);
+    case "ping":
+      return 22;
     default:
       return 32;
   }
@@ -210,6 +218,7 @@ function searchEntries(blocks: Block[]): SearchEntry[] {
       if (text) out.push({ row, item: it.id, text, open: it.kind === "tools" ? [...open, it.id] : open });
     };
     if (b.kind === "fold") for (const it of b.steps) add(it, [b.id]);
+    else if (b.kind === "pings") for (const it of b.items) add(it, []);
     else add(b.it, []);
   });
   return out;
@@ -239,6 +248,10 @@ function searchable(it: TranscriptItem): string {
       return it.questions.map((q, i) => [q.question, it.answers?.[i]].filter(Boolean).join("\n")).join("\n");
     case "report":
       return [`${reportName(it.report)} ${reportWord(it.report)}`, it.report.answer, it.report.needs].filter(Boolean).join("\n");
+    case "agent-message":
+      return messageText(it.msg);
+    case "ping":
+      return it.msg.summary ?? "";
   }
   return "";
 }
@@ -278,7 +291,9 @@ function OlderHeader({ older, onLoad }: { older: { loading: boolean; error?: str
 // answer. The steps in between (its narration and tool calls) fold into one
 // line, "Worked · ran 3 commands, read 5 files", opened on demand. While it
 // works, the line says so and its latest words stay in view.
-type Block = { kind: "item"; it: TranscriptItem } | { kind: "fold"; id: string; steps: TranscriptItem[]; live: boolean };
+// Successes from Claude Code that came close together fold into one line
+// (pings).
+type Block = { kind: "item"; it: TranscriptItem } | { kind: "fold"; id: string; steps: TranscriptItem[]; live: boolean } | { kind: "pings"; id: string; items: PingItem[] };
 
 function foldTurns(items: TranscriptItem[]): Block[] {
   const last = items[items.length - 1];
@@ -315,14 +330,19 @@ function foldTurns(items: TranscriptItem[]): Block[] {
   };
   for (const it of items) {
     // A command typed to the agent is the person's, like a prompt; a report
-    // from Berth starts a turn too.
-    if (it.kind === "user" || it.kind === "command" || it.kind === "report") {
+    // from Berth starts a turn too, as does a message from another agent or
+    // Claude Code: each is something the agent answers.
+    if (it.kind === "user" || it.kind === "command" || it.kind === "report" || it.kind === "agent-message" || it.kind === "ping") {
       flush(false);
       out.push({ kind: "item", it });
     } else turn.push(it);
   }
   flush(true);
-  return out;
+  return foldPings<Block>(
+    out,
+    (b) => (b.kind === "item" && b.it.kind === "ping" ? b.it : undefined),
+    (run) => ({ kind: "pings", id: `pings-${run[0].id}`, items: run }),
+  );
 }
 
 function workSummary(steps: TranscriptItem[]): string {
@@ -392,6 +412,7 @@ function ItemBody({ it, onAnswer, edits, who }: { it: TranscriptItem; onAnswer(i
           {/* Sent mid-turn: the agent takes it at its next step, as its own
               terminal shows a queued message. */}
           {it.pending && <span className="pe-1 text-muted-foreground text-xs">Sent · {who} reads it at its next step</span>}
+          {it.midTurn && !it.pending && <MidTurnMark who={who} />}
         </div>
       );
     case "text":
@@ -425,6 +446,10 @@ function ItemBody({ it, onAnswer, edits, who }: { it: TranscriptItem; onAnswer(i
       return <QuestionCard it={it} who={who} />;
     case "report":
       return <ReportCard it={it} />;
+    case "agent-message":
+      return <AgentMessageCard it={it} />;
+    case "ping":
+      return <PingLine it={it} />;
     case "ask":
       return it.structured ? <Permission it={it} onAnswer={onAnswer} who={who} /> : <Ask it={it} onAnswer={onAnswer} />;
   }

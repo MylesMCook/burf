@@ -164,12 +164,15 @@ export function ArtifactCard({ it }: { it: Extract<TranscriptItem, { kind: "arti
 
 // --- Show in chat ---
 
-// A request to bring a publish's card into view, in the chat it belongs to.
-const useJump = create<{ to?: { chat: string; tool: string; n: number } }>(() => ({}));
+// A request to bring a publish's card (by its call) or any item (by its
+// id: a helper's report, from the crew) into view, in the chat it belongs
+// to.
+const useJump = create<{ to?: { chat: string; tool?: string; item?: string; n: number } }>(() => ({}));
 let jumps = 0;
 const jumpTo = (chat: string, tool: string) => useJump.setState({ to: { chat, tool, n: ++jumps } });
+export const showInChat = (chat: string, item: string) => useJump.setState({ to: { chat, item, n: ++jumps } });
 
-type Row = { kind: "item"; it: TranscriptItem } | { kind: "fold" };
+type Row = { kind: "item"; it: TranscriptItem } | { kind: "fold" | "pings" };
 
 // ArtifactJumper brings a card the list asked for into view and marks it
 // for a moment. A card further back than the chat holds loads the older
@@ -179,12 +182,13 @@ export function ArtifactJumper({ api, chat, rows, older, onLoadOlder }: { api: C
   const handled = useRef(0);
   useEffect(() => {
     if (!to || handled.current === to.n) return;
-    const i = rows.findIndex((r) => r.kind === "item" && r.it.kind === "artifact" && r.it.tool === to.tool);
+    const i = rows.findIndex((r) => r.kind === "item" && (to.item ? r.it.id === to.item : r.it.kind === "artifact" && r.it.tool === to.tool));
     if (i < 0) {
       if (older?.loading) return;
       if (older?.more && onLoadOlder) return void onLoadOlder();
       handled.current = to.n;
-      toastManager.add({ type: "info", title: "That publish isn't in this chat any more", description: "Its page is still on claude.ai: open it from the list." });
+      if (to.item) toastManager.add({ type: "info", title: "That message isn't in this chat any more" });
+      else toastManager.add({ type: "info", title: "That publish isn't in this chat any more", description: "Its page is still on claude.ai: open it from the list." });
       return;
     }
     handled.current = to.n;

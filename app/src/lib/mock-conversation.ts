@@ -5,6 +5,7 @@ import { useMockDrafts } from "@/lib/draft";
 import type { DraftRead } from "@/lib/draft-text";
 import { type Question, type QuestionAnswer, shownAnswer } from "@/lib/questions";
 import { mockReports } from "@/lib/mock-reports";
+import { MESSAGES_SESSION, messagesChat } from "@/lib/mock-agent-messages";
 
 // The demo's stand-in for berthd's transcript stream: a short scripted turn
 // played into the conversation store, so the view can be tried with ?mock=1.
@@ -187,6 +188,15 @@ export function mockAnswer(box: string, session: string, req: { tool: string; an
 // seedTranscript gives an agent that is already working something to show
 // when it is opened.
 export function seedTranscript(box: string, session: string, state: string, worktree: string): TranscriptItem[] {
+  // Messages from other agents and Claude Code (agent-message): a story, or
+  // with ?scene=busy a teammate on a busy team.
+  if (box === "gpu" && session === MESSAGES_SESSION) {
+    const key = keyOf(box, session);
+    const { items, crew } = messagesChat(new URLSearchParams(location.search).get("scene"));
+    if (!useConversations.getState().crew[key]) useConversations.getState().setCrew(key, crew);
+    useConversations.setState((s) => (s.items[key] ? s : { items: { ...s.items, [key]: items } }));
+    return useConversations.getState().items[key] ?? items;
+  }
   if (box === "gpu" && session === "shop-claude") {
     const chat = releaseChat();
     useConversations.setState((s) => (s.items[keyOf(box, session)] ? s : { items: { ...s.items, [keyOf(box, session)]: chat } }));

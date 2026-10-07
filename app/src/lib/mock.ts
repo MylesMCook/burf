@@ -134,7 +134,7 @@ const sessions: Record<string, Session[]> = {
     { name: "notes-claude", location: "notes", dir: "/home/me/work/notes", command: "claude", created: ago(700), attached: 0, exited: true, agent: "claude" },
   ],
   gpu: [
-    { name: "ci-flake-claude", title: "Fix the flaky checkout CI test", location: "shop/ci-flake", dir: "/home/me/shop-ci-flake", command: "claude", created: ago(30), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(6) },
+    { name: "ci-flake-claude", title: "Move acme billing to the new ledger", location: "shop/ci-flake", dir: "/home/me/shop-ci-flake", command: "claude", created: ago(30), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(6) },
     { name: "judge-v2-claude", title: "Tune the judge prompt", location: "evals/judge-v2", dir: "/home/me/evals-judge-v2", command: "claude", created: ago(9), attached: 0, exited: false, agent: "claude", agent_state: "running", state_since: ago(1) },
     { name: "evals-codex", location: "evals", dir: "/home/me/evals", command: "codex", created: ago(3), attached: 0, exited: false, agent: "codex", agent_state: "idle", state_since: ago(3) },
     // Asks a form of questions (AskUserQuestion) after a reply with code.

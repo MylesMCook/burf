@@ -7,8 +7,9 @@ import type { Question } from "@/lib/questions";
 // kept by Berth.
 
 export type TranscriptItem =
-  // pending: sent from here, and the agent hasn't read it yet.
-  | { kind: "user"; id: string; text: string; pending?: boolean }
+  // pending: sent from here, and the agent hasn't read it yet. midTurn:
+  // typed while the agent worked, which it read at its next step.
+  | { kind: "user"; id: string; text: string; pending?: boolean; midTurn?: boolean }
   // live: words read from the agent's screen that its record doesn't
   // have yet (a draft, lib/draft-text), replaced by the record's own once
   // it catches up. clipped: the draft's start is above the agent's screen.
@@ -46,7 +47,48 @@ export type TranscriptItem =
   // Work this agent started that Berth reported back on (a
   // <berth-notification> typed into its session): a prompt from Berth, not
   // the person (components/conversation/report-card).
-  | { kind: "report"; id: string; report: BerthReport };
+  | { kind: "report"; id: string; report: BerthReport }
+  // A message to the agent from another agent (a helper's hand-back, a
+  // teammate, another session, the lead), or a status from Claude Code
+  // itself (ping: a background task done or failed). Never the person's
+  // (internal/transcript/peer.go, components/conversation/agent-message).
+  | { kind: "agent-message"; id: string; msg: AgentMessage }
+  | { kind: "ping"; id: string; msg: AgentMessage };
+
+// Who a message to the agent is from. helper is the crew member's id when
+// it is one of this agent's helpers, so its conversation can open.
+export interface MessageSender {
+  id: string;
+  name: string;
+  // harness: Claude Code itself.
+  kind: "helper" | "teammate" | "session" | "lead" | "harness";
+  // A teammate's own colour (blue, green, yellow…).
+  color?: string;
+  helper?: string;
+}
+
+export interface AgentMessage {
+  from: MessageSender;
+  // An agent-message's: report, question, update or instruction.
+  intent?: "report" | "question" | "update" | "instruction";
+  // finished, failed or stopped on a message; done, failed, stopped or
+  // info on a ping.
+  status?: string;
+  // A report's first heading and its gist in a line.
+  title?: string;
+  summary?: string;
+  body?: string;
+  // Where Claude Code saved a report too long for its record (body is its
+  // preview then).
+  saved?: string;
+  task?: string;
+  // How many times it was said, once more than once.
+  repeat?: number;
+  // When it arrived (ms).
+  at?: number;
+  // A question the agent answered since, or the person wrote after.
+  answered?: boolean;
+}
 
 // One piece of work a <berth-notification> reports on
 // (internal/transcript/report.go).

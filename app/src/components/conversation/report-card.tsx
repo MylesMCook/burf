@@ -1,7 +1,7 @@
-import { ArrowUpRightIcon, ChevronDownIcon, CircleXIcon, MilestoneIcon } from "lucide-react";
+import { ArrowUpRightIcon, CheckIcon, ChevronDownIcon, CircleDotIcon, CircleStopIcon, CircleXIcon, MilestoneIcon } from "lucide-react";
 import { useContext, useState } from "react";
 
-import { StateGlyph } from "@/components/agent-glyph";
+import { BerthAvatar, CardHead, type Chip } from "@/components/conversation/agent-message";
 import { PromptActionsContext } from "@/components/conversation/prompt-actions";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,8 @@ const WORDS: Record<string, [string, Tone]> = {
   interrupted: ["was interrupted", "ended"],
 };
 
+const cap = (w: string) => w.charAt(0).toUpperCase() + w.slice(1);
+
 // name is what the report is about, as the person knows it: the worktree,
 // else the session, else the run.
 export function reportName(r: BerthReport): string {
@@ -44,18 +46,14 @@ export function reportWord(r: BerthReport): string {
   return WORDS[r.status]?.[0] ?? r.status.replace(/_/g, " ");
 }
 
-function Glyph({ tone }: { tone: Tone }) {
-  switch (tone) {
-    case "done":
-      return <StateGlyph state="finished" />;
-    case "needs":
-      return <StateGlyph state="waiting" />;
-    case "failed":
-      return <CircleXIcon className="size-3.5 shrink-0 text-destructive-foreground" aria-hidden />;
-    default:
-      return <StateGlyph state="exited" />;
-  }
-}
+// The chip each status gets: the same family as an agent's message
+// (agent-message), so Berth's reports and other agents' read as one kind.
+const CHIP: Record<Tone, Chip> = {
+  done: { word: "Finished", Icon: CheckIcon, tone: "good" },
+  needs: { word: "Needs you", Icon: CircleDotIcon, tone: "ask" },
+  failed: { word: "Failed", Icon: CircleXIcon, tone: "bad" },
+  ended: { word: "Ended", Icon: CircleStopIcon, tone: "plain" },
+};
 
 const Dot = () => (
   <span className="shrink-0 text-muted-foreground/60" aria-hidden>
@@ -81,42 +79,40 @@ export function ReportCard({ it }: { it: Extract<TranscriptItem, { kind: "report
       role="group"
       aria-label={`Berth: ${name} ${word}`}
       className={cn(
-        "cv-in flex w-[min(100%,40rem)] min-w-0 flex-col self-start overflow-hidden rounded-lg border bg-card text-[0.8125rem] shadow-xs/5",
+        "cv-in flex w-[min(100%,40rem)] min-w-0 flex-col self-start overflow-hidden rounded-lg border bg-card text-[0.8125rem] shadow-xs/5 @container",
         tone === "needs" && "border-warning/45",
         tone === "failed" && "border-destructive/35",
       )}
     >
-      <div className="flex min-h-8 min-w-0 items-center gap-1.5 py-1 pr-1 pl-2.5">
-        <span className="mr-0.5 inline-flex shrink-0">{r.status === "waiting_gate" ? <MilestoneIcon className="size-3.5 text-warning-foreground" aria-hidden /> : <Glyph tone={tone} />}</span>
-        <span className="min-w-0 shrink truncate">
-          <span className="font-medium">{name}</span> <span className={cn(tone === "needs" ? "text-warning-foreground" : tone === "failed" ? "text-destructive-foreground" : "text-muted-foreground")}>{word}</span>
-        </span>
-        {changed && (
-          <>
-            <Dot />
-            <span className="shrink-0 tabular-nums" aria-label={`${r.added ?? 0} lines added, ${r.removed ?? 0} removed`}>
-              <span className="text-success-foreground">+{r.added ?? 0}</span> <span className="text-destructive-foreground">−{r.removed ?? 0}</span>
-            </span>
-          </>
-        )}
-        {r.duration && (
-          <span className="hidden shrink-0 items-center gap-1.5 text-muted-foreground tabular-nums @[480px]:inline-flex">
-            <Dot />
-            {r.duration}
-          </span>
-        )}
-        <Tip label={`Berth reported back on ${about}, which this agent started. It isn't something you typed.`}>
-          <span className="ml-auto shrink-0 pl-2 text-[0.75rem] text-muted-foreground/70">from Berth</span>
-        </Tip>
-        {session && box && (
-          <Tip label={`Open ${session.title || session.name}`}>
-            <Button size="xs" variant="ghost" className="shrink-0 text-muted-foreground hover:text-foreground" onClick={() => openSession(box, session)}>
-              Open
-              <ArrowUpRightIcon />
-            </Button>
-          </Tip>
-        )}
-      </div>
+      <CardHead
+        avatar={<BerthAvatar />}
+        name={name}
+        kind={r.kind === "run" ? "Run" : "Agent"}
+        chip={r.status === "waiting_gate" ? { word: "At a gate", Icon: MilestoneIcon, tone: "ask" } : { ...CHIP[tone], word: r.kind === "run" || tone !== "done" ? cap(word) : CHIP[tone].word }}
+        extra={
+          changed && (
+            <>
+              <Dot />
+              <span className="shrink-0 text-xs tabular-nums" aria-label={`${r.added ?? 0} lines added, ${r.removed ?? 0} removed`}>
+                <span className="text-success-foreground">+{r.added ?? 0}</span> <span className="text-destructive-foreground">−{r.removed ?? 0}</span>
+              </span>
+            </>
+          )
+        }
+        took={r.duration}
+        tip={`Berth reported back on ${about}, which this agent started, and sent it to the agent. You didn't type it.`}
+        open={
+          session &&
+          box && (
+            <Tip label={`Open ${session.title || session.name}`}>
+              <Button size="xs" variant="ghost" className="shrink-0 text-muted-foreground hover:text-foreground" onClick={() => openSession(box, session)}>
+                Open
+                <ArrowUpRightIcon />
+              </Button>
+            </Tip>
+          )
+        }
+      />
       {detail && (
         <button
           type="button"

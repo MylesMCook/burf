@@ -16,6 +16,7 @@ import { type KeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useStat
 
 import { ArtifactsChip, useArtifacts } from "@/components/conversation/artifacts";
 import { CrewCard } from "@/components/conversation/crew-card";
+import { teammatesOf } from "@/lib/agent-messages";
 import { NoticeCard } from "@/components/conversation/notice-card";
 import { TodoCard } from "@/components/conversation/todo-card";
 import { toastError } from "@/components/error-note";
@@ -113,6 +114,8 @@ export function ChatControls({ box, session, agent, state, stateSince, dir, who,
     void stop();
   };
 
+  // Teammates who wrote to the agent join its crew.
+  const teammates = useMemo(() => teammatesOf(items), [items]);
   const docked = useDockedNotices({ box, session, dir, state, ended, items, screenLimit: controls?.limit });
   // The pages the agent published stay listed after it has ended.
   const published = useArtifacts(box, session).length > 0;
@@ -126,7 +129,7 @@ export function ChatControls({ box, session, agent, state, stateSince, dir, who,
         </div>
       ))}
       {!ended && sig?.retrying && working && <Retrying r={sig.retrying} />}
-      {!ended && labs && !!crew?.length && <CrewCard key={keyOf(box, session)} crew={crew} chat={{ box, session }} />}
+      {!ended && labs && (!!crew?.length || teammates.length > 0) && <CrewCard key={keyOf(box, session)} crew={crew ?? []} teammates={teammates} chat={{ box, session }} />}
       {!ended && !!sig?.todos?.length && <TodoCard todos={sig.todos} session={keyOf(box, session)} working={working} />}
       <div onKeyDown={onKeyDown}>{children}</div>
       {(chips || published) && (
