@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"sync"
 	"time"
@@ -221,6 +222,13 @@ func (a *Agent) restartRoutes(mux *http.ServeMux, stop context.CancelFunc) {
 	})
 	mux.HandleFunc("POST /v1/stop", func(w http.ResponseWriter, r *http.Request) {
 		drain := r.URL.Query().Get("drain") != ""
+		if drain && runtime.GOOS == "windows" {
+			a.initLocalClient()
+			if err := a.localClient.manager.PrepareRestart(); err != nil {
+				writeCoded(w, http.StatusConflict, err.Error(), "local_sessions_running")
+				return
+			}
+		}
 		busy, _ := a.work.busy()
 		writeJSON(w, http.StatusOK, map[string]any{"stopping": true, "busy": busy})
 		// Reply before stopping, or the caller would see a dropped connection.

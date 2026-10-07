@@ -100,6 +100,7 @@ func (a *Agent) ui(token, hostport string, inner http.Handler) http.Handler {
 	a.guidedRoutes(mux)
 	a.outdatedRoutes(mux)
 	a.localBoxRoutes(mux)
+	a.localClientRoutes(mux)
 	a.joinRoutes(mux)
 	mux.HandleFunc("POST /v1/stop", func(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "the app cannot stop the agent")

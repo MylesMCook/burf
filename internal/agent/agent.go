@@ -177,18 +177,19 @@ type Status struct {
 }
 
 type Agent struct {
-	seqs     *seqStore
-	cfg      Config
-	hooks    *hooks.Runner
-	id       *identity.Identity
-	boxes    *trust.Store
-	forwards forwardStore
-	routes   routeStore
-	bus      events.Bus
-	proxy    *proxy.Proxy
-	proxySt  ProxyStatus
-	queue    *promptQueue
-	local    localBox
+	seqs        *seqStore
+	cfg         Config
+	hooks       *hooks.Runner
+	id          *identity.Identity
+	boxes       *trust.Store
+	forwards    forwardStore
+	routes      routeStore
+	bus         events.Bus
+	proxy       *proxy.Proxy
+	proxySt     ProxyStatus
+	queue       *promptQueue
+	local       localBox
+	localClient localClient
 	// imageGenBusy lets one chat background generate at a time.
 	imageGenBusy sync.Mutex
 	// outdated remembers which boxes run an older berthd (outdated.go).
@@ -265,6 +266,16 @@ func Run(ctx context.Context, cfg Config) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	a.ctx = ctx
+	defer func() {
+		// Joining initialization prevents a late HTTP request starting a process
+		// after shutdown has already closed the manager.
+		if runtime.GOOS == "windows" {
+			a.initLocalClient()
+		}
+		if a.localClient.manager != nil {
+			a.localClient.manager.Close()
+		}
+	}()
 	a.queue = newPromptQueue(ctx, filepath.Join(cfg.Dir, "queue.json"), agentBoxes{a}, a.publish, cfg.Now, cfg.Log.Printf, cfg.QueueIdleTimeout, cfg.QueueWaitStep)
 
 	// Holding the agent lock means any socket file left here is stale.
