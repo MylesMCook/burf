@@ -19,9 +19,13 @@ patches small and upstream contributions straightforward.
   after a backend crash or restart.
 - Remote Mac and Linux sessions continue to use the existing box protocol.
 
-Local transcript discovery does not fetch cloud-only conversations. Agent
+Local discovery currently indexes top-level active transcripts, not helper
+sessions, archived Codex sessions or cloud-only conversations. Agent
 authentication and permission prompts remain the installed CLI's responsibility.
 The fork does not install CLIs, bypass agent approvals, or change host security.
+
+When an installed Codex CLI advertises `--no-daemon`, local terminals use that
+mode so their process stays owned by Berth instead of a shared Codex server.
 
 ## Updates
 
@@ -60,6 +64,7 @@ for `internal/localpty` and `internal/localhistory` on Windows. The optional
 CLIs through ConPTY using `--version`, without starting a model turn.
 
 On Windows, `scripts/test-windows-local.ps1 -Binary <berth.exe>` checks a disposable
-local client. `-ExistingHistory` additionally discovers the current user's local
+local client and starts available CLIs with synthetic agent homes, without
+submitting prompts. `-ExistingHistory` instead discovers the current user's local
 conversations and parses one page per source, printing counts only. It does not
-start an agent, edit transcripts, register a login task or change pairings.
+start a coding agent, edit transcripts, register a login task or change pairings.

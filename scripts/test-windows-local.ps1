@@ -20,6 +20,7 @@ $env:BERTH_PROXY_ADDR = '127.0.0.1:0'
 if (!$ExistingHistory) {
     $env:CODEX_HOME = Join-Path $state 'codex'
     $env:CLAUDE_CONFIG_DIR = Join-Path $state 'claude'
+    New-Item -ItemType Directory -Force $env:CODEX_HOME,$env:CLAUDE_CONFIG_DIR | Out-Null
 }
 $started = $false
 try {
@@ -42,7 +43,46 @@ try {
             # Never log titles, paths, prompts, transcript items or the API token.
             Write-Output "PASS: $source history discovered ($($found.Count)); one read-only page parsed."
         }
-    } elseif ($chats.Count) { throw 'Synthetic empty history was not empty' }
+    } else {
+        if ($chats.Count) { throw 'Synthetic empty history was not empty' }
+        $project = Join-Path $state 'project'
+        New-Item -ItemType Directory -Force $project | Out-Null
+        foreach ($tool in @($local.agents | Where-Object { $_.available })) {
+            $session = $null
+            try {
+                $body = @{ agent = $tool.id; cwd = $project } | ConvertTo-Json
+                $session = Invoke-RestMethod -Method Post -Headers $headers -ContentType 'application/json' -Body $body -Uri "$endpoint/v1/local/sessions" -TimeoutSec 30
+                $until = [DateTime]::UtcNow.AddSeconds(15)
+                do {
+                    $output = Invoke-RestMethod -Headers $headers -Uri "$endpoint/v1/local/sessions/$($session.id)/output?after=0" -TimeoutSec 5
+                    if ($output.data) { break }
+                    if ($output.state -eq 'exited') { throw "$($tool.id) exited before terminal output" }
+                    Start-Sleep -Milliseconds 100
+                } while ([DateTime]::UtcNow -lt $until)
+                if (!$output.data) { throw "$($tool.id) terminal did not produce output" }
+                Start-Sleep -Milliseconds 500
+                $output = Invoke-RestMethod -Headers $headers -Uri "$endpoint/v1/local/sessions/$($session.id)/output" -TimeoutSec 5
+                if ($output.state -ne 'running') {
+                    $diagnostic = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($output.data))
+                    throw "$($tool.id) did not remain interactive: $($output.exit_error) $diagnostic"
+                }
+                $resize = @{ cols = 110; rows = 32 } | ConvertTo-Json
+                Invoke-RestMethod -Method Post -Headers $headers -ContentType 'application/json' -Body $resize -Uri "$endpoint/v1/local/sessions/$($session.id)/resize" -TimeoutSec 5 | Out-Null
+                Write-Output "PASS: installed $($tool.id) started through the local API with terminal output and resize. No prompt submitted."
+            } finally {
+                if ($session) {
+                    Invoke-RestMethod -Method Delete -Headers $headers -Uri "$endpoint/v1/local/sessions/$($session.id)" -TimeoutSec 15 | Out-Null
+                    $until = [DateTime]::UtcNow.AddSeconds(5)
+                    do {
+                        $output = Invoke-RestMethod -Headers $headers -Uri "$endpoint/v1/local/sessions/$($session.id)/output" -TimeoutSec 5
+                        if ($output.state -eq 'exited') { break }
+                        Start-Sleep -Milliseconds 100
+                    } while ([DateTime]::UtcNow -lt $until)
+                    if ($output.state -ne 'exited') { throw 'Owned test agent did not stop' }
+                }
+            }
+        }
+    }
     & $Binary agent stop --drain | Out-Null
     if ($LASTEXITCODE) { throw 'Isolated client failed to stop' }
     $started = $false

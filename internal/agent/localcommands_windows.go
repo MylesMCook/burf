@@ -48,6 +48,18 @@ func localAgentCommands() map[string]localagent.Command {
 			}
 		}
 	}
+	if command, ok := out["codex"]; ok {
+		// Newer Codex CLIs default to their own background server. Keep the
+		// interactive process owned by this terminal when that mode exists.
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		cmd := exec.CommandContext(ctx, command.Program, "--help")
+		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
+		if help, err := cmd.Output(); err == nil && strings.Contains(string(help), "--no-daemon") {
+			command.Args = []string{"--no-daemon"}
+			out["codex"] = command
+		}
+		cancel()
+	}
 	return out
 }
 
