@@ -132,8 +132,11 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         "Edit",
         true,
         &[
+            #[cfg(target_os = "macos")]
             &PredefinedMenuItem::undo(app, None)?,
+            #[cfg(target_os = "macos")]
             &PredefinedMenuItem::redo(app, None)?,
+            #[cfg(target_os = "macos")]
             &PredefinedMenuItem::separator(app)?,
             &PredefinedMenuItem::cut(app, None)?,
             &PredefinedMenuItem::copy(app, None)?,
