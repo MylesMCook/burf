@@ -7,6 +7,9 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 if ($env:OS -ne 'Windows_NT') { throw 'This acceptance runner requires Windows.' }
+$repository = if ($PSScriptRoot) { Split-Path -Parent $PSScriptRoot } else { (Get-Location).Path }
+$pathSource = Join-Path $repository 'app/src-tauri/windows/cli-path.ps1'
+if (!(Test-Path -LiteralPath $pathSource -PathType Leaf)) { throw 'Invoke inline acceptance from the repository root so its reviewed PATH command can be found.' }
 $identity = [Security.Principal.WindowsIdentity]::GetCurrent()
 $principal = [Security.Principal.WindowsPrincipal]::new($identity)
 if ($principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { throw 'Run as the ordinary login user, without elevation.' }
@@ -127,7 +130,7 @@ function Wait-Agent([string]$ExpectedExe, [int]$PreviousPID = 0) {
     throw 'The isolated agent did not answer from the expected executable and loopback port.'
 }
 function Invoke-PathAction([string]$Action) {
-    $source = [IO.File]::ReadAllText((Join-Path $PSScriptRoot '../app/src-tauri/windows/cli-path.ps1'))
+    $source = [IO.File]::ReadAllText($pathSource)
     $directory = (Join-Path $installRoot 'cli').Replace("'", "''")
     $command = "& {`n$source`n} -Action '$Action' -CliDirectory '$directory'"
     $powerShell = Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
