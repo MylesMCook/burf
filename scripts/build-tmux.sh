@@ -31,6 +31,15 @@ NCURSES_SHA256=136d91bc269a9a5785e5f9e980bc76ab57428f604ce3e5a5a90cebc767971cc6
 # alpine:3.22, the multi-architecture index.
 ALPINE=alpine@sha256:5291449c3df73caf6ed85e649dec1b9e818b39a5d8c871e97afc13e9cd5e8fa8
 
+# Binaries already here (a release's Mac job downloads them from the tmux
+# job, and has no Docker) need nothing built, so nothing needs Docker.
+built=1
+for arch in $archs; do [ -x "$out/tmux-linux-$arch" ] || built=0; done
+if [ "$built" = 1 ]; then
+	for arch in $archs; do echo "tmux-linux-$arch: already built ($out/tmux-linux-$arch)"; done
+	exit 0
+fi
+
 command -v docker >/dev/null 2>&1 || {
 	echo "build-tmux: needs Docker to build Berth's tmux; without it, berth add ssh installs tmux with the box's package manager instead" >&2
 	exit 2
