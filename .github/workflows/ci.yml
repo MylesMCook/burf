@@ -149,6 +149,9 @@ jobs:
                   s.close()
           ')" >> "$GITHUB_ENV"
       - run: pnpm test:e2e
+        env:
+          # omarchy has 16 cores; a hosted runner has 4.
+          E2E_WORKERS: ${{ runner.environment == 'self-hosted' && '6' || '2' }}
       - if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
