@@ -58,6 +58,33 @@ berth worktree rm devl/shop/checkout [--force]
 - Worktrees made by any other tool appear too, with a `worktree.created`
   event whose origin is `detected`.
 
+### Display names
+
+A worktree made from a pasted link is named after it
+(`https-linear-app-acme`). Give it a **display name** to show in its place:
+**Rename…** in its menu, double-click or F2 on its sidebar row (Enter saves,
+Esc cancels), right-click or F2 on its tile in the folded rail, its tab
+group's menu, or its name in the status bar. When its agent's task reads as
+a name, the field offers it.
+
+It is a label only: the branch and the folder keep their names, so nothing
+on the box moves, and an empty name shows the worktree's own again. The box
+keeps it with the location in `locations.json`, so your other laptops, the
+[phone](/guides/phone) and the CLI see it too, and it goes with the worktree
+when that is removed. The app shows it wherever the worktree appears (the
+sidebar, the rail, tab groups, ⌘K and ⌘P, Home, Review, notifications, the
+status bar and the window's title), with the worktree's own name beside it
+where there is room and in its tooltip; ⌘K finds it by either.
+
+```sh
+berth worktree rename devl/shop/https-linear-app-acme "Cart badge after refund"
+berth worktree rename devl/shop/https-linear-app-acme     # its own name again
+```
+
+A box running a berthd from before display names keeps the name on this
+laptop only, and says so once with **Update**; once the box is updated the
+name moves to it.
+
 ### Setup and teardown
 
 When a worktree is created, the repository's **setup** script runs in it (in

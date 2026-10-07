@@ -11,6 +11,28 @@ again.
 
 ## Unreleased
 
+- **Give a worktree a name you can read.** A worktree made from a pasted
+  link is called `https-linear-app-acme`. **Rename…** in its menu,
+  double-click or F2 on its sidebar row (Enter saves, Esc cancels), or
+  right-click or F2 on its tile in the folded rail gives it a display name;
+  the field says the branch stays as it is, and offers the name its agent's
+  task gives. It is a label only: the branch and folder don't move, and an
+  empty name shows the worktree's own again. The box keeps it, so your
+  other laptops, the phone and `berth worktree rename BOX/LOC/NAME "Name"`
+  see it too. It shows in the sidebar, the rail, tab groups, ⌘K and ⌘P,
+  Home, Review, notifications, the status bar (new: the worktree in front,
+  click to rename) and the window's title, with the worktree's own name in
+  its tooltip and beside it when the sidebar is wide; ⌘K finds either. A box
+  that isn't updated keeps it on this laptop only, and says so once.
+  [Display names](/concepts/projects-and-worktrees#display-names).
+- **Drag the sidebar wider or narrower.** Its right edge sizes it from
+  200px, where a worktree's name still reads, to 420px (and never more than
+  40% of the window), and the width is kept. Double-click the edge for the
+  default 240px; focus it for ← and → (Shift for bigger steps), Home and
+  End. Dragged past its narrowest it folds to the rail, as in VS Code, and
+  dragging the rail's edge out opens it again; Esc mid-drag puts it back.
+  Terminals and the Browser tab follow as you drag.
+
 - **The Browser tab stops spinning once a page has loaded.** A page that
   adds a frame after it loads (a chat widget, an embed) used to leave the
   spinner on for good. Only the page itself counts now, and a load that

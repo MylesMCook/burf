@@ -118,6 +118,7 @@ failed after it went out (the box may have acted on it). The box API:
 | `DELETE locations/{name}` | |
 | `POST locations/{name}/worktrees` | `{ name, branch?, base?, pr?, ref? }` → `Worktree`; runs the setup script |
 | `DELETE locations/{name}/worktrees/{wt}?force=1` | |
+| `PATCH locations/{name}/worktrees/{wt}` | `{ title }` → `Worktree`: its display name (`title`), shown in place of its name; `""` clears it. The branch and folder are untouched; `worktree.renamed` follows. Boxes that take it list `worktree.titles` in `capabilities`; an older one answers 405 |
 | `GET sessions` | `Session[]` |
 | `POST sessions` | `{ name?, location: "loc" or "loc/wt", command?, agent?, prompt?, open? }` → `Session`. Or `{ home: true, command?, name? }`: a terminal in the box user's home folder, tied to no worktree (no location, no agent); boxes that take it list `session.home` in `capabilities` |
 | `DELETE sessions/{name}` | |

@@ -54,6 +54,7 @@ starts.
 | `berthd preview [LOC/WORKTREE] [PORT] [--path /x]` | Open a worktree's page in the Berth app |
 | `berthd worktree new LOC/NAME [--branch B] [--base REF]` | Create a git worktree and run its setup |
 | `berthd worktree rm LOC/NAME [--force]` | Remove a worktree |
+| `berthd worktree rename LOC/NAME [TITLE]` | Give a worktree a display name (no TITLE clears it) |
 
 `berthd preview` with no arguments uses the worktree it runs in (from
 `$BERTH_WORKTREE_PATH` or the current directory) and its `$BERTH_PORT`. It
