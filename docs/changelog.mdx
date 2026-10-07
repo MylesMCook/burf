@@ -11,6 +11,22 @@ again.
 
 ## Unreleased
 
+- **The agent's browser has the size the agent chooses.** It opens at
+  1920×1080 now (it was 1280×800), and an agent sets another with
+  `berthd browser resize 390x844 --scale 3`, a preset (`phone`,
+  `phone-max` and `tablet` as in Preview, `laptop`, `desktop`), or
+  `open --size … --scale …`. The size is kept for the worktree until it
+  changes, a running browser changes at once, and widths from 320 to 3840,
+  heights from 240 to 2160 and scales from 1 to 3 are allowed, with an error
+  that says the range otherwise. `open`, `status`, `list`, `doctor` and
+  `GET /v1/browser/health` say the size; `shot` follows it (`--native` for
+  the page's own pixels). In the app, **Agent's view** says the size and the
+  zoom it shows the page at, and fits the page to the pane without enlarging
+  it past its own size, so a 2x page stays sharp. The `berth-browser` skill
+  tells agents to check a phone size too. [Agent browser](/guides/agent-browser#size)
+- Files an agent's browser downloads land in the worktree's
+  `.berth/browser/` again, rather than the folder berthd started in.
+
 - **Give a worktree a name you can read.** A worktree made from a pasted
   link is called `https-linear-app-acme`. **Rename…** in its menu,
   double-click or F2 on its sidebar row (Enter saves, Esc cancels), or
