@@ -147,6 +147,9 @@ try {
   await page.getByTestId("nav-home").waitFor();
   await page.locator("[aria-disabled=true]:has([data-testid=nav-home])").waitFor({ state: "detached" }).catch(() => {});
   await page.waitForTimeout(2000);
+  // Quiet worktrees fold under "N more worktrees".
+  const more = page.getByText(/^\d+ more worktrees?$/).first();
+  if (await more.isVisible().catch(() => false)) await more.click();
   res.debugStart = { agent: await debug(args["debug-agent"]), box: await debug(args["debug-box"]) };
 
   // Terminals: per worktree, perWorktree loops, and one quiet one last.
@@ -178,8 +181,33 @@ try {
 
   await page.getByTestId("nav-home").click();
   await page.waitForTimeout(2000);
+  if (args.profile) {
+    // --profile: where the main thread goes while every terminal is hidden.
+    await cdp.send("Profiler.enable");
+    await cdp.send("Profiler.start");
+  }
   res.hidden = await window_(30_000);
   log("all hidden", JSON.stringify(res.hidden));
+  if (args.profile) {
+    const { profile } = await cdp.send("Profiler.stop");
+    const byId = new Map(profile.nodes.map((n) => [n.id, n]));
+    const parent = new Map();
+    for (const n of profile.nodes) for (const c of n.children ?? []) parent.set(c, n.id);
+    const self = new Map();
+    const incl = new Map();
+    profile.samples.forEach((id, i) => {
+      const dt = (profile.timeDeltas[i] ?? 0) / 1000;
+      const name = (n) => `${n.callFrame.functionName || "(anon)"} ${n.callFrame.url.split("/").pop()}:${n.callFrame.lineNumber}`;
+      self.set(name(byId.get(id)), (self.get(name(byId.get(id))) ?? 0) + dt);
+      const seen = new Set();
+      for (let x = id; x; x = parent.get(x)) {
+        const k = name(byId.get(x));
+        if (!seen.has(k)) incl.set(k, (incl.get(k) ?? 0) + dt), seen.add(k);
+      }
+    });
+    const top = (m) => [...m].sort((a, b) => b[1] - a[1]).slice(0, 30).map(([k, v]) => `${Math.round(v)} ${k}`);
+    res.hiddenProfile = { self: top(self), inclusive: top(incl) };
+  }
 
   const noisy = tabs.filter((t) => !t.quiet);
   const shown = noisy[noisy.length - 1];
