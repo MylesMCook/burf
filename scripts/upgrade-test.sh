@@ -65,7 +65,7 @@ if [ -z "$FROM" ]; then
 	cur="v$(python3 -c 'import json; print(json.load(open("'"$REPO"'/app/package.json"))["version"])')"
 	FROM=$(git -C "$REPO" tag --list 'v*' --sort=-v:refname | grep -v -x "$cur" | head -1 || true)
 	# A shallow checkout (CI) has no tags: ask GitHub.
-	[ -n "$FROM" ] || FROM=$(gh release list --repo sean-brydon/berthd --exclude-drafts --json tagName --jq '.[].tagName' 2>/dev/null | grep -v -x "$cur" | head -1 || true)
+	[ -n "$FROM" ] || FROM=$(gh release list --repo cosscom/shipyard --exclude-drafts --json tagName --jq '.[].tagName' 2>/dev/null | grep -v -x "$cur" | head -1 || true)
 	[ -n "$FROM" ] || {
 		echo "no earlier release to upgrade from; pass --from vX.Y.Z" >&2
 		exit 2

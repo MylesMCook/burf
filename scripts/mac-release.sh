@@ -43,7 +43,7 @@ version="${version#v}"
 tag="v$version"
 notarize=1
 [ "${2:-}" = "--no-notarize" ] && notarize=0
-repo="sean-brydon/berthd"
+repo="cosscom/shipyard"
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
 

@@ -29,7 +29,7 @@ set -euo pipefail
 version="${VERSION:?set VERSION, e.g. make publish VERSION=0.3.0}"
 version="${version#v}"
 tag="v$version"
-repo="sean-brydon/berthd"
+repo="cosscom/shipyard"
 updater_op="${BERTH_UPDATER_KEY_OP:-op://Personal/Calport updater signing key/private key}"
 apple_op="${BERTH_APPLE_OP_ITEM:-op://Personal/Berth Developer Id}"
 root="$(cd "$(dirname "$0")/.." && pwd)"

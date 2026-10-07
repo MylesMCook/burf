@@ -11,7 +11,7 @@ tree, using the app's own UI kit, so they look like the rest of Berth.
 Berth's built-ins are written the same way, against the same SDK: Git
 changes, Diff, Pull request, Dev servers, Box monitor, Activity, Notes, Issues and
 Prompt library (see
-[`plugins/`](https://github.com/sean-brydon/berthd/tree/main/plugins)).
+[`plugins/`](https://github.com/cosscom/shipyard/tree/main/plugins)).
 They ship inside the app and are on from the first launch, with no prompt:
 Settings → Plugins turns one off, and the app remembers that. A plugin of
 yours with the same id replaces a built-in.
@@ -42,7 +42,7 @@ those from `activate` is optional.
 
 ## Set up a project
 
-Copy [`plugins/hello-ports`](https://github.com/sean-brydon/berthd/tree/main/plugins/hello-ports),
+Copy [`plugins/hello-ports`](https://github.com/cosscom/shipyard/tree/main/plugins/hello-ports),
 the smallest complete example: a screen listing every dev server on every
 box, a sidebar item, a command and an event handler. Its pieces:
 
@@ -62,7 +62,7 @@ box, a sidebar item, a command and an event handler. Its pieces:
 ```
 
 `@berth/plugin` is the SDK in
-[`packages/plugin-sdk`](https://github.com/sean-brydon/berthd/tree/main/packages/plugin-sdk):
+[`packages/plugin-sdk`](https://github.com/cosscom/shipyard/tree/main/packages/plugin-sdk):
 types only, since the app provides the real thing at runtime.
 
 ```js title="build.mjs"
@@ -249,4 +249,4 @@ the same `where`.
 For every call, hook and component, see
 [the plugin SDK reference](/reference/plugin-sdk); for more complete
 examples, read the built-ins in
-[`plugins/`](https://github.com/sean-brydon/berthd/tree/main/plugins).
+[`plugins/`](https://github.com/cosscom/shipyard/tree/main/plugins).

@@ -45,7 +45,7 @@ stops them; the app is a view you can close and reopen at any time.
 curl -fsSL https://berthd.app/install | sh
 ```
 
-It downloads `berthd` from the [latest release](https://github.com/sean-brydon/berthd/releases/latest),
+It downloads `berthd` from the [latest release](https://github.com/cosscom/shipyard/releases/latest),
 checks it against the release's checksums, installs it for that user (no
 root), starts it as a systemd user service (launchd on macOS), installs the
 hooks that let Claude Code, Codex and Cursor report their state
@@ -53,7 +53,7 @@ hooks that let Claude Code, Codex and Cursor report their state
 once, for ten minutes. Run it again to upgrade in place; `sh -s -- --help`
 lists the options.
 
-**On your Mac**, [download Berth](https://github.com/sean-brydon/berthd/releases/latest/download/Berth-macos-universal.dmg)
+**On your Mac**, [download Berth](https://github.com/cosscom/shipyard/releases/latest/download/Berth-macos-universal.dmg)
 (`Berth-macos-universal.dmg`, for Apple silicon and Intel, signed and
 notarized), drag it to Applications and open it. The app carries the
 `berth` CLI and the Linux daemons `berth add ssh` uploads, and offers to
@@ -69,7 +69,7 @@ laptop, or for the CLI alone, download it from the release (use
 
 ```sh
 mkdir -p ~/.local/bin
-curl -fsSL https://github.com/sean-brydon/berthd/releases/latest/download/berth-linux-amd64.tar.gz | tar -xz -C ~/.local/bin
+curl -fsSL https://github.com/cosscom/shipyard/releases/latest/download/berth-linux-amd64.tar.gz | tar -xz -C ~/.local/bin
 ```
 
 Paste the box's link into the app (**Add a box**), or:
@@ -96,7 +96,7 @@ With Go 1.27, Node 22, pnpm and Rust. `make all` builds `berth` and
 agent:
 
 ```sh
-git clone https://github.com/sean-brydon/berthd
+git clone https://github.com/cosscom/shipyard
 cd berthd && make all
 cd app && pnpm install && pnpm tauri dev
 ```

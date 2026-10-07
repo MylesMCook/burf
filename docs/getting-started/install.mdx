@@ -5,7 +5,7 @@ description: One line puts berthd on a box. On your Mac, download the Berth app,
 
 Berth has two halves: `berthd`, the daemon on each box your agents run on,
 and on your laptop the Berth app with the `berth` CLI inside it. The
-[release](https://github.com/sean-brydon/berthd/releases) carries the app
+[release](https://github.com/cosscom/shipyard/releases) carries the app
 for macOS, and `berthd` and `berth` for Linux and macOS, amd64 and arm64.
 
 ## What you need
@@ -78,7 +78,7 @@ see [over SSH](/getting-started/add-a-box#over-ssh).
 
 ## Install the app
 
-[Download Berth for macOS](https://github.com/sean-brydon/berthd/releases/latest/download/Berth-macos-universal.dmg),
+[Download Berth for macOS](https://github.com/cosscom/shipyard/releases/latest/download/Berth-macos-universal.dmg),
 open the disk image, drag **Berth** to **Applications**, and open it. It's
 one app for Apple silicon and Intel Macs, signed with a Developer ID and
 notarized by Apple, so it opens like any other.
@@ -96,7 +96,7 @@ installs the `berthd` it carries and pairs with it, with no terminal (see
 [this Mac](/getting-started/add-a-box#this-mac)); agents then run while the
 Mac is awake, and you can add a server later. Then **Use the sample** makes
 a tiny sample project (`hello`, a Node web server and its test, from
-[`examples/hello`](https://github.com/sean-brydon/berthd/tree/main/examples/hello))
+[`examples/hello`](https://github.com/cosscom/shipyard/tree/main/examples/hello))
 in `~/work/hello`, or add one of your own; and the composer opens with a
 small first task written for the sample: press Enter and the first agent
 starts in a worktree of its own. **Connect a remote box**, beside **Start on
@@ -137,12 +137,12 @@ On a Linux laptop, or for the CLI alone, download it from the release:
 
 ```sh
 mkdir -p ~/.local/bin
-curl -fsSL "https://github.com/sean-brydon/berthd/releases/latest/download/berth-$(uname -s | tr A-Z a-z)-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar -xz -C ~/.local/bin
+curl -fsSL "https://github.com/cosscom/shipyard/releases/latest/download/berth-$(uname -s | tr A-Z a-z)-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar -xz -C ~/.local/bin
 ```
 
 That fetches `berth-linux-amd64.tar.gz` on an x86-64 Linux machine (the
 archive for each platform, and `checksums.txt`, are on the
-[release page](https://github.com/sean-brydon/berthd/releases/latest)). It
+[release page](https://github.com/cosscom/shipyard/releases/latest)). It
 holds three files:
 
 | File | What it is |
@@ -218,7 +218,7 @@ For working on Berth, or a laptop the release doesn't cover. You need
 the desktop app.
 
 ```sh
-git clone https://github.com/sean-brydon/berthd
+git clone https://github.com/cosscom/shipyard
 cd berthd
 make all
 ```

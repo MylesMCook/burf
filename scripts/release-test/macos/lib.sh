@@ -181,7 +181,7 @@ check_dmg() {
 }
 # download_dmg TAG DIR: the release's dmg.
 download_dmg() {
-	gh release download "$1" --repo sean-brydon/berthd --pattern Berth-macos-universal.dmg --dir "$2" --clobber >&2 || return 1
+	gh release download "$1" --repo cosscom/shipyard --pattern Berth-macos-universal.dmg --dir "$2" --clobber >&2 || return 1
 	echo "$2/Berth-macos-universal.dmg"
 }
 

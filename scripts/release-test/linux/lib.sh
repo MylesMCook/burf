@@ -59,7 +59,7 @@ download_dist() {
 	local tag=$1 dir=$2 arch
 	arch=$(docker_arch) || return 1
 	mkdir -p "$dir"
-	gh release download "$tag" --repo sean-brydon/berthd --dir "$dir" --clobber \
+	gh release download "$tag" --repo cosscom/shipyard --dir "$dir" --clobber \
 		--pattern "berthd-linux-$arch.tar.gz" --pattern "berth-linux-$arch.tar.gz" --pattern checksums.txt || return 1
 	cp "$REPO/site/install.sh" "$dir/install.sh"
 }
