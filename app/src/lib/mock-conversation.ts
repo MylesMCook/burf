@@ -46,6 +46,18 @@ if (typeof window !== "undefined" && new URLSearchParams(window.location.search)
       }),
     clear: (box: string, session: string) => showDraft(keyOf(box, session), undefined),
   };
+  // An agent's crew: helpers started `ago` seconds back, and back `back`
+  // seconds ago once finished.
+  type Hired = Omit<CrewMember, "since" | "until" | "kind" | "agent"> & { kind?: CrewMember["kind"]; ago: number; back?: number };
+  (window as unknown as { __berthCrew: unknown }).__berthCrew = {
+    set: (box: string, session: string, members: Hired[]) => {
+      const t = Date.now();
+      crew(
+        keyOf(box, session),
+        members.map(({ ago, back, ...m }) => ({ kind: "subagent", agent: "claude", ...m, since: t - ago * 1000, until: back === undefined ? undefined : t - back * 1000 })),
+      );
+    },
+  };
 }
 
 async function think(key: string, ms: number) {

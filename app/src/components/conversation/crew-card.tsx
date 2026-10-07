@@ -1,86 +1,146 @@
 import { ChevronDownIcon, ChevronRightIcon, UsersIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { StateGlyph } from "@/components/agent-glyph";
 import { HelperSheetHost, openHelper } from "@/components/conversation/subagent-view";
+import { keyOf } from "@/lib/conversation-store";
 import { useHasHistory } from "@/lib/history";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
 import type { CrewMember } from "@/lib/transcript";
 import { cn } from "@/lib/utils";
 
 // CrewCard lists the helpers working beside one agent: the subagents it
-// started, and Berth's own (an attempt, a reviewer, a loop). It folds to its
-// header. `title` names whose crew it is.
+// started, and Berth's own (an attempt, a reviewer, a loop). It belongs to
+// the conversation, so it docks above the reply box beside the task list
+// (TodoCard), in each chat pane for its own agent. Folded it is one line:
+// how many, and how many are still working; open, every helper with what
+// it is doing and for how long.
+//
+// Open while helpers work; once every one is back it folds itself after a
+// moment (AUTO_FOLD_MS), unless you opened or folded it since. Each chat
+// remembers its own fold while the app runs, as the task list does.
+
+export const AUTO_FOLD_MS = 4000;
 
 const KIND: Record<CrewMember["kind"], string> = { subagent: "Subagent", attempt: "Attempt", reviewer: "Reviewer", loop: "Loop" };
+
+// The fold each chat was left in, and whether you chose it (a fold you
+// chose is kept when new helpers start; one the card made is undone).
+const folds = new Map<string, { open: boolean; yours: boolean; at: number }>();
 
 const elapsed = (ms: number) => {
   const s = Math.max(1, Math.round(ms / 1000));
   return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s`;
 };
 
-// With chat (its box and session), a subagent opens to its own conversation.
-export function CrewCard({ crew, title, className, chat }: { crew: CrewMember[]; title?: string; className?: string; chat?: { box: string; session: string } }) {
-  const [open, setOpen] = useState(true);
-  const [now, setNow] = useState(Date.now());
+// With history on the box, a subagent opens to its own conversation.
+export function CrewCard({ crew, chat }: { crew: CrewMember[]; chat: { box: string; session: string } }) {
+  const key = keyOf(chat.box, chat.session);
   const busy = crew.filter((c) => c.state !== "finished").length;
-  const history = useHasHistory(chat?.box ?? "");
-  const helpers = history ? chat : undefined;
+  const working = busy > 0;
+  const [open, setOpenState] = useState(() => folds.get(key)?.open ?? working);
+  const [now, setNow] = useState(Date.now());
+  const history = useHasHistory(chat.box);
+  const setOpen = (o: boolean, yours: boolean) => {
+    folds.set(key, { open: o, yours, at: Date.now() });
+    setOpenState(o);
+  };
+
   useEffect(() => {
-    if (!busy) return;
+    if (!working) return;
     const t = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(t);
-  }, [busy]);
+  }, [working]);
 
+  // Helpers sent out open it again (unless you folded it); all back folds
+  // it after a moment (unless you touched it since they came back).
+  const was = useRef(working);
+  useEffect(() => {
+    const before = was.current;
+    was.current = working;
+    if (working === before) return;
+    const f = folds.get(key);
+    if (working) {
+      if (!f?.yours || f.open) setOpen(true, false);
+      return;
+    }
+    const back = Date.now();
+    const t = window.setTimeout(() => {
+      const g = folds.get(key);
+      if (!(g?.yours && g.at >= back)) setOpen(false, false);
+    }, AUTO_FOLD_MS);
+    return () => window.clearTimeout(t);
+  }, [working, key]);
+
+  const first = crew.find((c) => c.state !== "finished");
   return (
-    <Card className={cn("rounded-xl bg-popover text-sm shadow-lg/5 before:rounded-[calc(var(--radius-xl)-1px)]", className)} role="region" aria-label="Crew">
-      <button type="button" data-crew-toggle onClick={() => setOpen((o) => !o)} aria-expanded={open} className="flex h-10 w-full items-center gap-2 rounded-xl px-3 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring">
-        <UsersIcon className="size-3.5 text-muted-foreground" />
-        <span className="font-medium">Crew</span>
-        {title && <span className="min-w-0 truncate text-muted-foreground text-xs">{title}</span>}
-        <Badge variant={busy ? "info" : "success"} className="ml-auto">
-          {busy ? `${busy} working` : "All back"}
-        </Badge>
-        <ChevronDownIcon className={cn("size-3.5 text-muted-foreground transition-transform", !open && "-rotate-90")} />
-      </button>
-      {open && (
-        <ul className="border-t p-1">
-          {crew.map((c) => {
-            const row = (
-              <>
-                <StateGlyph state={c.state} className="mt-[3px]" />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium text-[0.8125rem] leading-5">{c.name.replace(/^Explore:\s*/, "")}</div>
-                  <div className="truncate text-muted-foreground text-xs leading-5">{c.doing}</div>
-                </div>
-                <div className="flex shrink-0 flex-col items-end text-muted-foreground text-xs leading-5">
-                  <span>{KIND[c.kind]}</span>
-                  <span className="font-mono tabular-nums">{elapsed((c.state === "finished" ? (c.until ?? now) : now) - c.since)}</span>
-                </div>
-              </>
-            );
-            return (
-              <li key={c.id}>
-                {helpers && c.kind === "subagent" ? (
-                  <button
-                    type="button"
-                    onClick={() => openHelper(helpers.box, helpers.session, c.id)}
-                    aria-label={`${c.name}: open its conversation`}
-                    className="group flex w-full items-start gap-2.5 rounded-lg px-2 py-1.5 text-left outline-none hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    {row}
-                    <ChevronRightIcon className="mt-[3px] size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
-                  </button>
-                ) : (
-                  <div className="flex items-start gap-2.5 rounded-lg px-2 py-1.5">{row}</div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-      {helpers && <HelperSheetHost />}
-    </Card>
+    <section aria-label="Crew" data-crew data-open={open ? "" : undefined} className="mb-2 overflow-hidden rounded-lg border bg-card shadow-xs/5">
+      <div className="flex items-center gap-2 py-1.5 pr-1.5 pl-3">
+        <button
+          type="button"
+          data-crew-toggle
+          aria-expanded={open}
+          onClick={() => setOpen(!open, true)}
+          className="-my-1 flex min-w-0 flex-1 items-center gap-2 rounded-md py-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <UsersIcon className={cn("size-3.5 shrink-0", working ? "text-muted-foreground" : "text-success")} aria-hidden />
+          <span className="shrink-0 font-medium text-[0.8125rem]">Crew</span>
+          <span className="shrink-0 text-muted-foreground/60 text-xs" aria-hidden>
+            ·
+          </span>
+          <span className="shrink-0 text-muted-foreground text-xs tabular-nums">{crew.length}</span>
+          <span className="shrink-0 text-muted-foreground/60 text-xs" aria-hidden>
+            ·
+          </span>
+          <span className={cn("shrink-0 text-xs", working ? "text-info-foreground" : "text-success-foreground")} data-crew-status>
+            {working ? `${busy} working` : "All back"}
+          </span>
+          {!open && first && (
+            <>
+              <span className="shrink-0 text-muted-foreground/60 text-xs" aria-hidden>
+                ·
+              </span>
+              <span className="cv-shimmer min-w-0 truncate text-muted-foreground text-xs">{first.doing}</span>
+            </>
+          )}
+          <ChevronDownIcon className={cn("ml-auto size-3.5 shrink-0 text-muted-foreground transition-transform duration-200", open && "rotate-180")} aria-hidden />
+        </button>
+      </div>
+      <div className="cv-fold" data-closed={open ? undefined : ""}>
+        <div>
+          {/* About four rows, then it scrolls. */}
+          <ul className="max-h-[8.25rem] overflow-y-auto border-t p-1" data-crew-list>
+            {crew.map((c) => {
+              const row = (
+                <>
+                  <StateGlyph state={c.state} />
+                  <span className="min-w-0 max-w-[45%] shrink-0 truncate font-medium">{c.name.replace(/^Explore:\s*/, "")}</span>
+                  <span className="min-w-0 flex-1 truncate text-muted-foreground text-xs">{c.doing}</span>
+                  <span className="shrink-0 text-muted-foreground text-xs @max-[560px]:hidden">{KIND[c.kind]}</span>
+                  <span className="w-12 shrink-0 text-right font-mono text-muted-foreground text-xs tabular-nums">{elapsed((c.state === "finished" ? (c.until ?? now) : now) - c.since)}</span>
+                </>
+              );
+              return (
+                <li key={c.id}>
+                  {history && c.kind === "subagent" ? (
+                    <button
+                      type="button"
+                      onClick={() => openHelper(chat.box, chat.session, c.id)}
+                      aria-label={`${c.name}: open its conversation`}
+                      className="group flex h-7 w-full items-center gap-2.5 rounded-md pr-1 pl-2 text-left text-[0.8125rem] outline-none hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      {row}
+                      <ChevronRightIcon className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
+                    </button>
+                  ) : (
+                    <div className="flex h-7 items-center gap-2.5 rounded-md pr-[1.375rem] pl-2 text-[0.8125rem]">{row}</div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </div>
+      {history && <HelperSheetHost />}
+    </section>
   );
 }

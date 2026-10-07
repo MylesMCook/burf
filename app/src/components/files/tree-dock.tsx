@@ -67,8 +67,8 @@ export function TreeDockFrame({ showing, children }: { showing: boolean; childre
   }, [narrow]);
   const working = useWorkingSessions(ref);
   useTouchedLive(ws, ref, on, working.size > 0);
-  // The loops pill and crew card sit clear of a docked panel; a floating
-  // one covers them with the rest.
+  // The loops panel sits clear of a docked panel; a floating
+  // one covers it with the rest.
   useEffect(() => {
     document.documentElement.style.setProperty("--berth-dock-w", on && !float ? `${DOCK_W}px` : "0px");
   }, [on, float]);

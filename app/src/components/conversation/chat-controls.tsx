@@ -15,6 +15,7 @@ import {
 import { type KeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
 import { ArtifactsChip, useArtifacts } from "@/components/conversation/artifacts";
+import { CrewCard } from "@/components/conversation/crew-card";
 import { NoticeCard } from "@/components/conversation/notice-card";
 import { TodoCard } from "@/components/conversation/todo-card";
 import { toastError } from "@/components/error-note";
@@ -46,6 +47,7 @@ import {
 } from "@/lib/chat-controls";
 import { keyOf, useConversations } from "@/lib/conversation-store";
 import { useEventLog } from "@/lib/events";
+import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import type { ToolDetail, TranscriptItem } from "@/lib/transcript";
 import { cn } from "@/lib/utils";
@@ -53,9 +55,10 @@ import { cn } from "@/lib/utils";
 // ChatControls is everything around the reply box that lets the chat stand
 // in for the agent's terminal: Stop (and Esc in the reply box) while it
 // works, its permission mode and model, how full its context is, the work
-// it left running in the background, its task list docked above, and the
-// notices only its state or screen knows (a turn that ended in an error, an
-// agent that exited, a limit shown on screen). The reply box is its child.
+// it left running in the background, its task list and crew docked above,
+// and the notices only its state or screen knows (a turn that ended in an
+// error, an agent that exited, a limit shown on screen). The reply box is
+// its child.
 
 export interface ChatControlsProps {
   box: string;
@@ -83,6 +86,9 @@ export function ChatControls({ box, session, agent, state, stateSince, dir, who,
   const working = state === "running";
   const [stopping, setStopping] = useState(false);
   const items = useConversations((s) => s.items[keyOf(box, session)]);
+  // The helpers it sent out (Labs), docked with its task list.
+  const labs = usePrefs((p) => p.labs);
+  const crew = useConversations((s) => s.crew[keyOf(box, session)]);
   const scope = { who, send: onSend, showTerminal: onShowTerminal, startAgain: onStartAgain };
 
   const stop = async () => {
@@ -120,6 +126,7 @@ export function ChatControls({ box, session, agent, state, stateSince, dir, who,
         </div>
       ))}
       {!ended && sig?.retrying && working && <Retrying r={sig.retrying} />}
+      {!ended && labs && !!crew?.length && <CrewCard key={keyOf(box, session)} crew={crew} chat={{ box, session }} />}
       {!ended && !!sig?.todos?.length && <TodoCard todos={sig.todos} session={keyOf(box, session)} working={working} />}
       <div onKeyDown={onKeyDown}>{children}</div>
       {(chips || published) && (

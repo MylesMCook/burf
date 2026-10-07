@@ -1,20 +1,15 @@
 import { CheckIcon, ChevronDownIcon, ChevronRightIcon, ChevronUpIcon, CircleAlertIcon, HandIcon, RepeatIcon, CircleStopIcon, XIcon } from "lucide-react";
 import { useLayoutEffect, useRef, useState } from "react";
 
-import { CrewCard } from "@/components/conversation/crew-card";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useSessionName } from "@/hooks/use-session-name";
 import { dismissLoop, isLive, type Loop, useLoops } from "@/lib/loops";
 import { allRuns, type BoxRun, dismissRun, runs as runsApi, useRuns } from "@/lib/runs";
-import { keyOf, useConversations } from "@/lib/conversation-store";
-import { leaves } from "@/lib/layout";
-import { usePrefs } from "@/lib/prefs";
-import type { CrewMember } from "@/lib/transcript";
 import { load, save } from "@/lib/storage";
 import { cn } from "@/lib/utils";
-import { focusSession, useWorkspaces } from "@/lib/workspaces";
+import { focusSession } from "@/lib/workspaces";
 
 const phases: Record<Loop["phase"], string> = {
   prompting: "Prompting",
@@ -50,7 +45,9 @@ const STATUS_BAR = 26;
 const GAP = 12;
 
 // LoopsPanel stacks running and finished loops in the corner: what each is
-// doing, its round, and the last check's output on demand.
+// doing, its round, and the last check's output on demand. Loops are the
+// window's; an agent's crew is its conversation's (CrewCard, docked above
+// its reply box). With no loops the panel is gone and reserves no room.
 export function LoopsPanel() {
   const local = useLoops((s) => s.loops);
   const byBox = useRuns((s) => s.byBox);
@@ -63,7 +60,6 @@ export function LoopsPanel() {
     .filter((r) => !r.finished || Date.now() - new Date(r.finished).getTime() < 30 * 60_000)
     .map(loopOfRun);
   const loops = [...local, ...fromRuns];
-  const crew = useFocusedCrew();
   const [folded, setFoldedState] = useState(() => load("berth.loops.folded", false));
   const setFolded = (f: boolean) => {
     setFoldedState(f);
@@ -92,9 +88,9 @@ export function LoopsPanel() {
       root.style.setProperty("--berth-loops-h", "0px");
       root.style.setProperty("--berth-loops-w", "0px");
     };
-  }, [loops.length, !!crew, folded]);
+  }, [loops.length, folded]);
 
-  if (!loops.length && !crew) return null;
+  if (!loops.length) return null;
   const live = loops.filter(isLive).length;
   const bottom = `calc(var(--berth-status-h, ${STATUS_BAR}px) + ${GAP}px)`;
   // Folded, the panel is one pill in the corner, so it never sits over a
@@ -104,7 +100,7 @@ export function LoopsPanel() {
       <div ref={ref} style={{ bottom, right: `calc(${GAP}px + var(--berth-dock-w, 0px))` }} className="fixed z-40" role="region" aria-label="Loops">
         <Button size="sm" variant="outline" className="rounded-full bg-popover shadow-lg/5" onClick={() => setFolded(false)} aria-expanded={false}>
           {live ? <Spinner className="size-3.5" /> : <RepeatIcon />}
-          {loops.length ? `${loops.length} loop${loops.length === 1 ? "" : "s"}${live ? ` · ${live} running` : ""}` : "Crew"}
+          {`${loops.length} loop${loops.length === 1 ? "" : "s"}${live ? ` · ${live} running` : ""}`}
           <ChevronUpIcon />
         </Button>
       </div>
@@ -112,7 +108,6 @@ export function LoopsPanel() {
   }
   return (
     <div ref={ref} style={{ bottom, right: `calc(${GAP}px + var(--berth-dock-w, 0px))` }} className="fixed z-40 flex max-h-[50vh] w-88 flex-col gap-2 overflow-y-auto" role="region" aria-label="Loops">
-      {crew && <CrewCard key={crew.key} crew={crew.members} chat={chatOf(crew.key)} />}
       {loops.map((l) => (
         <LoopCard key={l.id} loop={l} />
       ))}
@@ -122,27 +117,6 @@ export function LoopsPanel() {
       </Button>
     </div>
   );
-}
-
-// chatOf is the box and session a crew's key ("box/session") names.
-const chatOf = (key: string) => {
-  const i = key.indexOf("/");
-  return i > 0 ? { box: key.slice(0, i), session: key.slice(i + 1) } : undefined;
-};
-
-// useFocusedCrew is the crew of the agent in the focused pane (Labs): the
-// helpers its conversation says it sent out, while there are any.
-function useFocusedCrew(): { key: string; members: CrewMember[] } | undefined {
-  const labs = usePrefs((p) => p.labs);
-  const target = useWorkspaces((s) => {
-    const ws = s.current ? s.spaces[s.current] : undefined;
-    const tab = ws?.tabs.find((t) => t.id === ws.active);
-    const c = tab && leaves(tab.root).find((l) => l.id === tab.focus)?.content;
-    return c?.kind === "terminal" ? keyOf(c.box, c.session) : undefined;
-  });
-  const members = useConversations((s) => (target ? s.crew[target] : undefined));
-  if (!labs || !target || !members?.length) return undefined;
-  return { key: target, members };
 }
 
 // loopOfRun shows a loop run as the panel shows a loop. Its round and
