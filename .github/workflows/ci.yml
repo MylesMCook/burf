@@ -132,6 +132,22 @@ jobs:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-chromium-shell
       - run: pnpm exec playwright install --with-deps --only-shell chromium
+      # omarchy's runners share one network, so two runs at once would both
+      # take Playwright's default port: each takes a free one of its own.
+      - name: Pick a free port for the e2e server
+        run: |
+          echo "E2E_PORT=$(python3 -c '
+          import random, socket
+          ports = list(range(1421, 1440)); random.shuffle(ports)
+          for p in ports:
+              s = socket.socket()
+              try:
+                  s.bind(("127.0.0.1", p)); print(p); break
+              except OSError:
+                  pass
+              finally:
+                  s.close()
+          ')" >> "$GITHUB_ENV"
       - run: pnpm test:e2e
       - if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
