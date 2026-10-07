@@ -266,7 +266,7 @@ function SliderFirst({ art, v }: { art: Art; v: VisualDiff }) {
           <ArrowLeftIcon />
         </Button>
       </Tip>
-      <span className="min-w-[3.5rem] text-center tabular-nums" data-vd-step>
+      <span className="min-w-[2.75rem] text-center tabular-nums @[560px]:min-w-[3.5rem]" data-vd-step>
         {step !== undefined ? `${step + 1} of ${items.length}` : `${items.length}`}
       </span>
       <Tip label="Next change · n">
@@ -411,10 +411,10 @@ function Detail({ art, v, pages, page, shot, scheme, setPage, setSize, lead, ext
           </div>
           {extra && <div className="hidden shrink-0 @[760px]:block">{extra}</div>}
         </div>
-        <div className="flex flex-wrap items-center gap-x-2.5 gap-y-2">
+        <div className="flex flex-wrap items-center gap-x-1.5 gap-y-1.5 @[560px]:gap-x-2.5 @[560px]:gap-y-2">
           <SizeTabs shots={shots} cur={shot.size} onPick={setSize} />
           {schemeSeg}
-          <span className="ml-auto" />
+          <span className="ml-auto hidden @[560px]:block" />
           <Seg<StageMode>
             label="How to compare"
             value={mode}
