@@ -34,6 +34,11 @@ test("a box that drops off says it is reconnecting, counts down to the next try,
   await expect(line).toContainText(/Next try in [6-9]s · away 1m 1[5-9]s/);
   // It counts down, by itself.
   await expect(line).toContainText(/Next try in [1-5]s/, { timeout: 6000 });
+  // That try fails and the agent sets the next, with no event: once the
+  // try is due the app reads it, rather than wait for the backstop.
+  await expect(line).toContainText("Trying now…", { timeout: 8000 });
+  agent.away = { ...agent.away!, retryAt: new Date(Date.now() + 20_000).toISOString(), attempts: 4 };
+  await expect(line).toContainText(/Next try in 1[5-9]s/, { timeout: 6000 });
   // The chat's own (its terminal's, under it, says the same).
   await app.page.getByRole("button", { name: "Try now" }).filter({ visible: true }).last().click();
   await expect.poll(() => agent.calls.filter((c) => c === `POST /v1/refresh?box=${BOX}`).length).toBe(1);
