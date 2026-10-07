@@ -69,23 +69,62 @@ name it as `LOC/WT` (and from a laptop, `berth browser open BOX/LOC/WT`).
 
 | Command | Prints |
 | --- | --- |
-| `berthd browser open [PATH\|URL]` | The URL, the title, and a compact snapshot of what you can act on, each with a ref: `- button "Save" [@e3]`. Then new console errors and failed requests |
+| `berthd browser open [PATH\|URL] [--size WxH\|PRESET] [--scale N]` | The URL, the title, the page's size, and a compact snapshot of what you can act on, each with a ref: `- button "Save" [@e3]`. Then new console errors and failed requests |
+| `berthd browser resize WxH\|PRESET [--scale N]` | The page's new size (see [Size](#size)) |
 | `berthd browser click\|hover\|check @REF` | Only what changed: `+`/`-` lines, new errors |
 | `berthd browser fill\|select @REF VALUE` | The same |
 | `berthd browser press [@REF] KEY` | `Enter`, `Tab`, `Escape`, arrows… |
 | `berthd browser wait --text T \| --url U \| --idle [--timeout 10s]` | `ok`, or what it saw when it timed out |
 | `berthd browser snapshot [--full] [--delta] [--selector SEL] [--depth N]` | The page again; `--full` adds its text |
-| `berthd browser shot [--el @REF] [--full] [--width 800]` | The path of a PNG, never the image |
+| `berthd browser shot [--el @REF] [--full] [--width 800 \| --native]` | The path of a PNG and its size, never the image |
 | `berthd browser console [--all]` | Errors and warnings since the last look (`--all`: every level) |
 | `berthd browser network` | Failed requests since the last look |
 | `berthd browser eval JS` | Its value, at most 2 KB |
-| `berthd browser status\|close`, `berthd browser list` | Whether it runs, its memory |
+| `berthd browser status\|close`, `berthd browser list` | Whether it runs, its size, its memory |
 | `berthd browser allow ORIGIN` | Lets agents' browsers on the box load a public origin |
 | `berthd browser reap [--dry-run]` | Closes [agent-browser](#agent-browser) sessions left by Berth sessions that ended |
 
 A ref names the same element across snapshots until the page navigates. The
 `berth-browser` skill (installed with the others) teaches agents these
 commands and to read deltas rather than whole pages.
+
+## Size
+
+The page is **1920×1080 at scale 1** until an agent chooses another size,
+for a worktree, with `berthd browser resize` or `open --size`:
+
+```sh
+berthd browser resize 1280x800            # CSS pixels, WIDTHxHEIGHT
+berthd browser resize phone --scale 3     # a preset, at three device pixels per CSS pixel
+berthd browser resize --scale 2           # the same size, at 2x
+berthd browser open /cart --size tablet   # resize, then open
+berthd browser resize default             # 1920x1080 at 1x again
+```
+
+| Preset | Size | |
+| --- | --- | --- |
+| `phone` | 390×844 | iPhone 15 / 16, as in [Preview](/guides/browser) |
+| `phone-max` | 430×932 | iPhone 15 / 16 Pro Max |
+| `tablet` | 820×1180 | iPad Air |
+| `laptop` | 1280×800 | |
+| `desktop`, `default` | 1920×1080 | |
+
+A preset sets scale 1 unless `--scale` says otherwise; a plain size or a
+scale alone keeps what it doesn't name. Sizes run from 320 to 3840 CSS
+pixels wide and 240 to 2160 tall, and the scale from 1 to 3; anything else
+is refused with the range, before anything starts.
+
+The size is kept per worktree (in `<state>/box/browser/viewports.json`)
+until it changes, across the browser closing and berthd restarting, and goes
+when the worktree is removed. A running browser changes at once; one that
+isn't running starts at it. `open`, `status` (`GET …/browser/status`, which
+also says the size a browser will open at) and `berthd browser list` print
+it; `GET /v1/browser/health` and `berthd doctor` give the default.
+
+Screenshots are of the page at its size: `shot` is at most 800 pixels wide
+by default (about 530 tokens), and `shot --native` is the page's own pixels,
+its size times its scale (a 390×844 page at 3x is 1170×2532). The live view
+is cast at the page's pixels, at most 2560 on a side.
 
 ## What it costs an agent
 
@@ -199,7 +238,10 @@ shows it, over the same connection as everything else. The bar turns green
 and says **Agent's view · live** with the agent's URL; you only watch, the
 agent drives. **Open in your view** opens the agent's page in your own tab,
 by your laptop's name for the worktree, and **Your view** goes back to your
-page as you left it. When the agent's browser closes, the pane goes back to
+page as you left it. The bar also shows the agent's page size (`1920×1080`,
+`390×844 @3x`) and, when the pane is smaller, the zoom it is shown at: the
+page is fitted to the pane but never enlarged past its own size, so it
+stays sharp. When the agent's browser closes, the pane goes back to
 your view by itself. The phone does not show it.
 
 <Shot name="agent-browser" alt="A browser pane in Agent's view, live: a green bar with the agent's URL, Open in your view and Your view, over the agent's page, a cart" />

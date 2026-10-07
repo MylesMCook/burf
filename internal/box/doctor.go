@@ -75,7 +75,7 @@ func (b *Box) Doctor(ctx context.Context) []doctor.Check {
 		if p, err := FindChromium(); err != nil {
 			checks = append(checks, doctor.Check{Area: "Agents", Name: "agent browser", Status: doctor.Info, Detail: "no Chromium for agents' browsers", Fix: "berthd browser install"})
 		} else {
-			checks = append(checks, doctor.Check{Area: "Agents", Name: "agent browser", Status: doctor.OK, Detail: fmt.Sprintf("Chromium at %s; at most %d at once", p, b.Browsers.limit())})
+			checks = append(checks, doctor.Check{Area: "Agents", Name: "agent browser", Status: doctor.OK, Detail: fmt.Sprintf("Chromium at %s; at most %d at once; pages at %s unless an agent sets a size", p, b.Browsers.limit(), DefaultViewport)})
 			checks = append(checks, browserSandboxChecks(b.Browsers.Health())...)
 		}
 	}

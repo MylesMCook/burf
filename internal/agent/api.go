@@ -34,7 +34,8 @@ func (a *Agent) api(stop context.CancelFunc) http.Handler {
 		writeJSON(w, http.StatusOK, a.status())
 	})
 	mux.HandleFunc("POST /v1/refresh", func(w http.ResponseWriter, r *http.Request) {
-		a.checkAll(r.Context())
+		// ?box= checks only that box: the app's Try now.
+		a.checkBoxes(r.Context(), true, r.URL.Query().Get("box"))
 		writeJSON(w, http.StatusOK, a.status())
 	})
 	mux.HandleFunc("POST /v1/forwards", func(w http.ResponseWriter, r *http.Request) {

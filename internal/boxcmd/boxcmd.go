@@ -70,13 +70,14 @@ var usageSections = []struct {
 		{"%[1]s flow secret%[3]s FLOW [--scope S] [--json]", "Make a webhook flow's signing secret (shown once)"},
 	}},
 	{"Agent browser (a headless browser on the box, per worktree)", [][2]string{
-		{"%[1]s browser open %[2]s[LOC/WT] [PATH|URL]", "Open the worktree's page ($BERTH_URL); prints a compact snapshot with @refs"},
+		{"%[1]s browser open %[2]s[LOC/WT] [PATH|URL] [--size WxH|PRESET] [--scale N]", "Open the worktree's page ($BERTH_URL); prints a compact snapshot with @refs"},
+		{"%[1]s browser resize %[2]s[LOC/WT] WxH|PRESET [--scale N]", "Set the page's size (default 1920x1080; phone 390x844, tablet, laptop); kept until changed"},
 		{"%[1]s browser snapshot %[2]s[LOC/WT] [--full] [--delta] [--selector SEL] [--depth N]", "The page's elements (interactive by default; capped)"},
 		{"%[1]s browser click|hover|check %[2]s[LOC/WT] @REF", "Act on an element; prints what changed"},
 		{"%[1]s browser fill|select %[2]s[LOC/WT] @REF VALUE", "Fill a field or pick an option"},
 		{"%[1]s browser press %[2]s[LOC/WT] [@REF] KEY", "Press Enter, Tab, Escape…"},
 		{"%[1]s browser wait %[2]s[LOC/WT] --text T | --url U | --idle [--timeout 10s]", "Wait for the page"},
-		{"%[1]s browser shot %[2]s[LOC/WT] [--el @REF] [--full] [--width 800]", "Save a screenshot; prints its path"},
+		{"%[1]s browser shot %[2]s[LOC/WT] [--el @REF] [--full] [--width 800 | --native]", "Save a screenshot; prints its path and size"},
 		{"%[1]s browser console %[2]s[LOC/WT] [--all]", "New console errors and warnings since the last look"},
 		{"%[1]s browser network %[2]s[LOC/WT]", "Failed requests since the last look"},
 		{"%[1]s browser eval %[2]s[LOC/WT] JS", "Run JavaScript in the page (output capped at 2 KB)"},
@@ -229,7 +230,7 @@ func Run(ctx context.Context, c *box.Client, args []string, out io.Writer) error
 		return runsCmd(ctx, c, rest, out)
 	case "flow secret":
 		return flowSecret(ctx, c, rest, out)
-	case "browser open", "browser snapshot", "browser click", "browser fill", "browser press", "browser select", "browser hover", "browser check",
+	case "browser open", "browser resize", "browser snapshot", "browser click", "browser fill", "browser press", "browser select", "browser hover", "browser check",
 		"browser wait", "browser shot", "browser console", "browser network", "browser status", "browser close", "browser eval", "browser allow", "browser list", "browser reap":
 		return browserCmd(ctx, c, strings.TrimPrefix(cmd, "browser "), rest, out)
 	case "run start", "run get", "run logs", "run cancel", "run approve", "run reject", "run templates":

@@ -7,6 +7,8 @@ import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { RetryLine } from "@/components/workspace/pane-state";
+import { useStore } from "@/lib/store";
 import { type GitHubState, plural, type TeamStatus, type TeamView } from "@/lib/team";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/views/team/team-parts";
@@ -264,7 +266,22 @@ function GitHubWho({ github }: { github: GitHubState }) {
 // RunCard is the rail while the setup runs: where it is, how far, and the
 // one thing to do now.
 export function RunCard({ run, github, os, onOpenTerminal, onRetry, onBackground, compact }: { run: TeamStatus; github?: GitHubState; os?: string; onOpenTerminal(): void; onRetry(from: string): void; onBackground(): void; compact?: boolean }) {
-  const { title, detail, tone, pct, retryFrom } = runSummary(run);
+  const summary = runSummary(run);
+  const { tone, pct, retryFrom } = summary;
+  // The box out of reach mid-run: what the card last heard may be stale, so
+  // it says so, and when Berth tries next. The setup runs on in the box's
+  // terminal; the card catches up from the box's events when it is back.
+  const boxState = useStore((s) => s.status?.boxes.find((b) => b.name === run.box)?.state);
+  const away = !!boxState && boxState !== "online" && run.phase !== "done";
+  const title = away ? `Reconnecting to ${run.box}…` : summary.title;
+  const detail = away ? (
+    <>
+      <RetryLine box={run.box} />
+      {`It was at: ${summary.title}. The setup carries on there, and this catches up when ${run.box} is back.`}
+    </>
+  ) : (
+    summary.detail
+  );
   const icon = tone === "failed" ? <CircleAlertIcon className="size-4 shrink-0 text-destructive" /> : tone === "waiting" ? <KeyRoundIcon className="size-4 shrink-0 text-warning-foreground" /> : tone === "done" ? <CheckIcon className="size-4 shrink-0 text-success" /> : <Spinner className="size-4 shrink-0" />;
   const bar = (
     <div className="h-1.5 overflow-hidden rounded-full bg-muted" role="progressbar" aria-valuenow={Math.round(pct * 100)} aria-valuemin={0} aria-valuemax={100} aria-label="Setup progress">
@@ -295,7 +312,7 @@ export function RunCard({ run, github, os, onOpenTerminal, onRetry, onBackground
               {icon}
               {title}
             </p>
-            <p className="mt-0.5 text-muted-foreground text-xs leading-relaxed">{detail}</p>
+            <div className="mt-0.5 text-muted-foreground text-xs leading-relaxed">{detail}</div>
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
             {primary}
@@ -313,7 +330,7 @@ export function RunCard({ run, github, os, onOpenTerminal, onRetry, onBackground
           {icon}
           {title}
         </p>
-        <p className="mt-1 text-muted-foreground text-xs leading-relaxed">{detail}</p>
+        <div className="mt-1 text-muted-foreground text-xs leading-relaxed">{detail}</div>
         <div className="mt-3">{bar}</div>
       </div>
       <div className="space-y-1.5 border-t px-4 py-3 text-xs">

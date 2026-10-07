@@ -7,10 +7,21 @@ import { useStore } from "@/lib/store";
 // agent drives (berthd browser …). The app only watches it: its status, a
 // live screencast while a pane shows it, and the shots it left for Review.
 
+// The agent's browser's page size: CSS pixels at a device scale, which the
+// agent chooses (berthd browser resize); 1920×1080 at 1x by default.
+export interface Viewport {
+  width: number;
+  height: number;
+  scale: number;
+}
+
 export interface AgentBrowserStatus {
   running: boolean;
   text: string;
-  status?: { url?: string; rss_bytes?: number; watchers?: number };
+  status?: { url?: string; rss_bytes?: number; watchers?: number; viewport?: Viewport; size?: string };
+  // The size it has, or opens at ("1920×1080", "390×844 @3x").
+  viewport?: Viewport;
+  size?: string;
   // Why one can't start, while none runs and it couldn't.
   health?: BrowserHealth;
 }
@@ -52,12 +63,26 @@ export function agentBrowserStatus(box: string, location: string, worktree: stri
   return c.box<AgentBrowserStatus>(box, "GET", `${base(location, worktree)}/status`);
 }
 
+// A frame of the agent's page: w×h CSS pixels, its image at the page's
+// scale (up to w·scale wide), so it shows sharp at up to w×h.
 export interface Frame {
   data: string;
   mime?: string;
   w: number;
   h: number;
+  scale?: number;
   url?: string;
+}
+
+// sizeLabel is a size as the box says it: 1920×1080, or 390×844 @3x.
+export const sizeLabel = (w: number, h: number, scale?: number) => `${w}×${h}${scale && scale !== 1 ? ` @${scale}x` : ""}`;
+
+// fitFrame is how big a w×h page shows in a space: as large as fits, but
+// never past its own size, which would blur it.
+export function fitFrame(w: number, h: number, availW: number, availH: number): { w: number; h: number; zoom: number } {
+  if (w <= 0 || h <= 0 || availW <= 0 || availH <= 0) return { w: 0, h: 0, zoom: 0 };
+  const zoom = Math.min(1, availW / w, availH / h);
+  return { w: Math.floor(w * zoom), h: Math.floor(h * zoom), zoom };
 }
 
 // watchAgentBrowser streams the page as JPEG frames while signal is live:

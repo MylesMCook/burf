@@ -12,7 +12,12 @@ a forward or a queued prompt.
 ## What it does
 
 - keeps one pinned TLS connection per box, reconnecting forever, with health
-  pings to notice a connection that died silently and sleep detection;
+  pings to notice a connection that died silently and sleep detection. A
+  box that stops answering is tried again after about 2 seconds, then 4
+  and every 8, each give or take 20% so boxes don't all retry at once; a
+  request that waits 5 seconds for an answer has the box checked at once,
+  and a request for a box known to be away is answered straight away
+  instead of waiting out a dial ([Slow and dropping networks](#slow-and-dropping-networks));
 - serves **private URLs** on port 1377, `http://3000.devl.localhost:1377/`,
   and runs **forwards** (a fixed local port to a box port) and **routes**;
   a box's URLs work by the name you paired it as and by the box's own name
@@ -92,3 +97,26 @@ task templates, themes, plugins, kits. The full list is in
 
 Next: [the security model](/concepts/security), how the agent and your boxes
 trust each other.
+
+## Slow and dropping networks
+
+Boxes are often far away (100–900 ms over Tailscale), and links drop. What
+you see when one does:
+
+- **Reconnecting to devl… Next try in 6s.** A terminal, a chat and a team
+  setup in progress say the box is away, count down to the agent's next
+  try, and offer **Try now**. The session keeps running on the box; the
+  terminal comes back as it was, and the chat and the setup catch up from
+  the box's events, which the agent asks for from the last one it saw.
+- **Waiting for devl to answer…** Typing in a terminal that gets nothing
+  back for 4 seconds says so (what you type may not arrive while the link is
+  down), and has the agent check the box now.
+- **devl isn't answering.** A read that has no answer in 30 seconds (⌘P,
+  the Files panel, a diff) fails with that, rather than spinning, and asks
+  you to try again in a moment.
+- A message sent again after the link dropped its answer carries the same
+  idempotency key, so the box types it once.
+- The app's own connection to the agent (its event stream) is dropped and
+  opened again if it is silent for 45 seconds, as after the laptop sleeps,
+  with a jittered backoff, and refetches what changed; refreshes that land
+  together run as one.

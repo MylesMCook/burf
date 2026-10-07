@@ -39,6 +39,44 @@ again.
   install` no longer installs a second copy, and `berthd integrations
   install` finds it the same way.
   [Agent CLIs you installed yourself](/getting-started/add-a-box#agent-clis-you-installed-yourself).
+- **The agent's browser has the size the agent chooses.** It opens at
+  1920×1080 now (it was 1280×800), and an agent sets another with
+  `berthd browser resize 390x844 --scale 3`, a preset (`phone`,
+  `phone-max` and `tablet` as in Preview, `laptop`, `desktop`), or
+  `open --size … --scale …`. The size is kept for the worktree until it
+  changes, a running browser changes at once, and widths from 320 to 3840,
+  heights from 240 to 2160 and scales from 1 to 3 are allowed, with an error
+  that says the range otherwise. `open`, `status`, `list`, `doctor` and
+  `GET /v1/browser/health` say the size; `shot` follows it (`--native` for
+  the page's own pixels). In the app, **Agent's view** says the size and the
+  zoom it shows the page at, and fits the page to the pane without enlarging
+  it past its own size, so a 2x page stays sharp. The `berth-browser` skill
+  tells agents to check a phone size too. [Agent browser](/guides/agent-browser#size)
+- Files an agent's browser downloads land in the worktree's
+  `.berth/browser/`, as the guide says, rather than the folder berthd
+  started in.
+
+- **A slow or dropping link to a box says so, and recovers by itself.**
+  Tested against boxes 200–900 ms away, links with jitter, a bandwidth cap,
+  stalls, resets, outages of 10 s, 60 s and 5 minutes, and a laptop asleep.
+  A box that drops off now reads **Reconnecting to devl… Next try in 6s**
+  in its terminals, chats and a team setup in progress, with **Try now**
+  (which checks the box at once; it used to only re-read what the agent
+  already knew). The agent tries an away box after about 2 s, then 4 and
+  every 8 s, each with jitter (never less often than before), checks a box
+  at once when a request to it has had no answer for 5 s, and answers
+  requests for an away box at once rather than after a 15 s dial,
+  so ⌘P, Files and the rest stop spinning. Reads now give up after 30 s
+  with "devl isn't answering" instead of spinning on, and ⌘P says why in
+  words and searches again when the box is back. Typing into a terminal
+  that gets nothing back for 4 s shows **Waiting for devl to answer…**. A
+  chat message sent again after a dropped answer carries the same
+  idempotency key, so it is typed once, not twice. The app's event stream
+  to the agent reconnects with jittered backoff and is dropped and opened
+  again after 45 s of silence (a laptop that slept), and refreshes that
+  land together after a reconnect run as one instead of piling up.
+  [Slow and dropping networks](/concepts/laptop-agent#slow-and-dropping-networks).
+
 - **Give a worktree a name you can read.** A worktree made from a pasted
   link is called `https-linear-app-acme`. **Rename…** in its menu,
   double-click or F2 on its sidebar row (Enter saves, Esc cancels), or

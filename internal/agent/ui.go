@@ -213,6 +213,16 @@ func (a *Agent) uiBoxAPI(w http.ResponseWriter, r *http.Request) {
 		writeCoded(w, http.StatusNotFound, "no paired box named "+r.PathValue("box"), "box_unknown")
 		return
 	}
+	// A box the agent knows is away answers at once, rather than after a
+	// dial timeout (15s, or longer on a link that drops packets): the app
+	// shows it reconnecting instead of a spinner.
+	if msg, retry, away := a.away(r.PathValue("box")); away {
+		if retry > 0 {
+			w.Header().Set("Retry-After", strconv.Itoa(int(retry.Round(time.Second)/time.Second)))
+		}
+		writeCoded(w, http.StatusServiceUnavailable, msg, "box_unreachable")
+		return
+	}
 	target := "/v1/" + boxAPIPath(r)
 	if r.URL.RawQuery != "" {
 		target += "?" + r.URL.RawQuery
@@ -233,7 +243,11 @@ func (a *Agent) uiBoxAPI(w http.ResponseWriter, r *http.Request) {
 
 // relayBox sends one request to a box and streams its answer back.
 func (a *Agent) relayBox(w http.ResponseWriter, r *http.Request, c *wire.Client, method, target string, body io.Reader, header http.Header) {
+	// A box slow to answer may have gone: check it now rather than at the
+	// next tick, so the app learns it is away in seconds, not half a minute.
+	slow := time.AfterFunc(slowAnswer, a.checkSoon)
 	resp, err := c.DoWithHeader(r.Context(), method, target, body, header)
+	slow.Stop()
 	if err != nil {
 		a.checkSoon()
 		// 503: the request never reached the box, so it is safe to queue
