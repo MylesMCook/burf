@@ -139,7 +139,11 @@ export const useStore = create<State & Actions>()((set, get) => ({
     if (!client) return;
     try {
       const status = share(get().status, await client.status());
-      set({ status, connection: { state: "online" } });
+      // Online and as it was: nothing to set, so nothing drawn again (a
+      // refresh lands while a chat streams).
+      const was = get();
+      if (status === was.status && was.connection.state === "online" && !was.connection.error) return;
+      set({ status, connection: was.connection.state === "online" && !was.connection.error ? was.connection : { state: "online" } });
     } catch (err) {
       set({ connection: { state: "offline", error: errorMessage(err) } });
     }
@@ -175,8 +179,10 @@ export const useStore = create<State & Actions>()((set, get) => ({
     const online = get().status?.boxes.filter((b) => b.state === "online") ?? [];
     await Promise.all([
       ...online.map((b) => get().refreshBox(b.name)),
-      client.themes().then((serverThemes) => set({ serverThemes }), () => {}),
-      client.templates().then((templates) => set({ templates }), () => {}),
+      // Kept as they were when unchanged (lib/share.ts): a refresh landing
+      // mid-stream re-rendered everything drawn from the theme.
+      client.themes().then((t) => set((s) => (share(s.serverThemes, t) === s.serverThemes ? s : { serverThemes: t })), () => {}),
+      client.templates().then((t) => set((s) => (share(s.templates, t) === s.templates ? s : { templates: t })), () => {}),
     ]);
   }),
 
