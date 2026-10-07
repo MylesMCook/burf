@@ -32,7 +32,7 @@ export function TodoCard({ todos, session, working }: { todos: ChatTodo[]; sessi
   if (!todos.length || dismissed) return null;
   const pct = Math.round((done / todos.length) * 100);
   return (
-    <section aria-label="Tasks" data-todos className="mb-2 overflow-hidden rounded-lg border bg-card shadow-xs/5">
+    <section role="group" aria-label="Tasks" data-todos className="mb-2 overflow-hidden rounded-lg border bg-card shadow-xs/5">
       <div className="flex items-center gap-2 py-1.5 pr-1.5 pl-3">
         <button type="button" aria-expanded={open} onClick={() => setOpen((o) => !o)} className="-my-1 flex min-w-0 flex-1 items-center gap-2 rounded-md py-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring">
           <ListChecksIcon className={cn("size-3.5 shrink-0", all ? "text-success" : "text-muted-foreground")} aria-hidden />
@@ -68,7 +68,7 @@ export function TodoCard({ todos, session, working }: { todos: ChatTodo[]; sessi
             {todos.map((t, i) => (
               <li key={t.id ?? i} className="flex items-start gap-2.5 py-1 text-[0.8125rem] leading-snug">
                 <Glyph status={t.status} working={working} />
-                <span className={cn("min-w-0 flex-1", t.status === "completed" && "text-muted-foreground line-through decoration-muted-foreground/40", t.status === "in_progress" && "font-medium text-foreground", t.status === "pending" && "text-foreground/85")}>
+                <span className={cn("min-w-0 flex-1", t.status === "completed" && "text-muted-foreground line-through decoration-muted-foreground/40", t.status === "in_progress" && "font-medium text-foreground", t.status === "pending" && "text-foreground")}>
                   {t.status === "in_progress" && t.active ? t.active : t.text}
                 </span>
               </li>
@@ -83,15 +83,15 @@ export function TodoCard({ todos, session, working }: { todos: ChatTodo[]; sessi
 function Glyph({ status, working }: { status: ChatTodo["status"]; working: boolean }) {
   if (status === "completed")
     return (
-      <span className="mt-px flex size-4 shrink-0 items-center justify-center rounded-full bg-success/15 text-success" aria-label="Done">
+      <span className="mt-px flex size-4 shrink-0 items-center justify-center rounded-full bg-success/15 text-success" role="img" aria-label="Done">
         <CheckIcon className="size-2.5" strokeWidth={3} />
       </span>
     );
   if (status === "in_progress")
     return (
-      <span className="mt-px flex size-4 shrink-0 items-center justify-center" aria-label="In progress">
+      <span className="mt-px flex size-4 shrink-0 items-center justify-center" role="img" aria-label="In progress">
         {working ? <Spinner className="size-3.5" /> : <span className="size-2 rounded-full bg-foreground/70" />}
       </span>
     );
-  return <span className="mt-px size-4 shrink-0 rounded-full border border-muted-foreground/40 border-dashed" aria-label="To do" />;
+  return <span className="mt-px size-4 shrink-0 rounded-full border border-muted-foreground/40 border-dashed" role="img" aria-label="To do" />;
 }

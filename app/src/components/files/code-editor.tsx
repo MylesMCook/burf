@@ -15,8 +15,9 @@ import { useActiveTheme } from "@/hooks/use-theme";
 import type { Theme } from "@/lib/api";
 import type { Changes } from "@/lib/file-marks";
 import { patchText } from "@/lib/file-marks";
-import { cssVars, type ShikiTheme, syntaxColors } from "@/lib/syntax-colors";
+import { cssVars, readableStyles, type ShikiTheme, syntaxColors } from "@/lib/syntax-colors";
 import { syntaxThemes } from "@/themes/apply";
+import { mix, readable } from "@/themes/color";
 
 export interface CodeEditorProps {
   path: string;
@@ -103,7 +104,10 @@ const highlight = HighlightStyle.define([
 // Until the theme's Shiki colours load (once per theme), its terminal
 // palette stands in.
 function fallbackVars(theme: Theme): Record<string, string> {
-  const c = theme.terminal;
+  // The terminal's colours, made to read on the page (and the active
+  // line's tint) as the Shiki ones are.
+  const bg = mix(theme.colors.foreground, theme.colors.background, 0.035);
+  const c = Object.fromEntries(Object.entries(theme.terminal).map(([k, v]) => [k, readable(v, bg)])) as unknown as Theme["terminal"];
   const fg = theme.colors.foreground;
   return {
     "--syn-text": fg,
@@ -125,24 +129,28 @@ const shikiCache = new Map<string, Record<string, string>>();
 // useSyntaxVars is the active theme's code colours as custom properties.
 function useSyntaxVars(theme: Theme): Record<string, string> {
   const name = theme.appearance === "dark" ? syntaxThemes(theme).dark : syntaxThemes(theme).light;
-  const [vars, setVars] = useState(() => shikiCache.get(name));
+  // Each colour reads on this theme's background (4.5:1, lightness only),
+  // the active line's tint included.
+  const bg = mix(theme.colors.foreground, theme.colors.background, 0.035);
+  const key = `${name}|${bg}`;
+  const [vars, setVars] = useState(() => shikiCache.get(key));
   useEffect(() => {
-    const have = shikiCache.get(name);
+    const have = shikiCache.get(key);
     if (have) return setVars(have);
     setVars(undefined);
     let live = true;
     import("@pierre/diffs")
       .then((m) => m.resolveTheme(name))
       .then((resolved) => {
-        const out = cssVars(syntaxColors(resolved as unknown as ShikiTheme));
-        shikiCache.set(name, out);
+        const out = cssVars(readableStyles(syntaxColors(resolved as unknown as ShikiTheme), bg));
+        shikiCache.set(key, out);
         if (live) setVars(out);
       })
       .catch(() => {});
     return () => {
       live = false;
     };
-  }, [name]);
+  }, [name, key, bg]);
   return vars ?? fallbackVars(theme);
 }
 
@@ -161,7 +169,8 @@ const chrome = EditorView.theme({
   },
   ".cm-content": { padding: "10px 0 40vh", caretColor: "var(--foreground)" },
   ".cm-line": { padding: "0 24px 0 14px" },
-  ".cm-gutters": { backgroundColor: "var(--background)", border: "none", color: "color-mix(in oklab, var(--muted-foreground) 62%, transparent)" },
+  // Line numbers read at 4.5:1, as muted text does everywhere.
+  ".cm-gutters": { backgroundColor: "var(--background)", border: "none", color: "var(--muted-foreground)" },
   ".cm-lineNumbers .cm-gutterElement": { padding: "0 4px 0 18px", minWidth: "40px", fontVariantNumeric: "tabular-nums" },
   ".cm-activeLineGutter": { backgroundColor: "transparent" },
   "&.cm-focused .cm-activeLineGutter": { color: "var(--foreground)" },
@@ -298,7 +307,8 @@ export function CodeEditor({ path, text, onChange, onSave, changes, conflictLine
           chrome,
           EditorState.readOnly.of(!!readOnly),
           EditorView.editable.of(!readOnly),
-          EditorView.contentAttributes.of({ "aria-label": `${path.split("/").pop()}, ${readOnly ? "read only" : "editable"}` }),
+          // In the Tab order always: read only, it still scrolls with the arrows.
+          EditorView.contentAttributes.of({ "aria-label": `${path.split("/").pop()}, ${readOnly ? "read only" : "editable"}`, tabindex: "0" }),
           keymap.of([{ key: "Mod-s", preventDefault: true, run: () => (cb.current.onSave?.(), true) }, indentWithTab, ...defaultKeymap, ...historyKeymap, ...searchKeymap]),
           EditorView.updateListener.of((u) => {
             if (u.docChanged) cb.current.onChange?.(u.state.doc.toString());

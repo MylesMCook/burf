@@ -5,8 +5,12 @@ import { contrast, distance, over } from "./color.ts";
 // every built-in theme; a theme of your own is not held to it):
 //
 // - Text is AA, 4.5:1: body text on every surface it sits on, muted text
-//   on the page and the sidebar, a button's label on the button, links,
-//   and the terminal's text on its background.
+//   on the page, the sidebar, cards, menus and a highlighted row (a menu's
+//   item under the keyboard, a hovered row), the sidebar's text on its
+//   selected row, a button's label on the button, links, and the
+//   terminal's text on its background.
+// - The focus ring is 3:1 on every surface it is drawn on (WCAG's bar for
+//   UI that isn't text), so the keyboard's place is always seen.
 // - A state's text colour (success, warning, destructive, info) is 4.5:1
 //   on its own tint, the 16% wash badges and banners put behind it.
 // - A state's own colour, a dot or a spinner, is 3:1 on the page and the
@@ -40,8 +44,17 @@ export function checks(t: Theme): Check[] {
     text(`foreground on ${name}`, c.foreground, bg);
   }
   text("sidebarForeground on sidebar", c.sidebarForeground, c.sidebar);
-  for (const [name, bg] of [["background", c.background], ["sidebar", c.sidebar], ["card", c.card]] as const) {
+  for (const [name, bg] of [["background", c.background], ["sidebar", c.sidebar], ["card", c.card], ["popover", c.popover]] as const) {
     text(`mutedForeground on ${name}`, c.mutedForeground, bg);
+  }
+  // A highlighted row: the accent over the page, over a menu, and the chip
+  // (muted) wash.
+  text("mutedForeground on a highlighted row", c.mutedForeground, over(c.accent, c.background));
+  text("mutedForeground on a highlighted menu item", c.mutedForeground, over(c.accent, c.popover));
+  text("mutedForeground on muted", c.mutedForeground, over(c.muted, c.background));
+  text("sidebarForeground on the sidebar's selected row", c.sidebarForeground, over(c.accent, c.sidebar));
+  for (const [name, bg] of [["background", c.background], ["sidebar", c.sidebar], ["card", c.card], ["popover", c.popover]] as const) {
+    out.push({ what: `ring on ${name}`, value: contrast(c.ring, bg), min: UI });
   }
   text("accentForeground on accent", c.accentForeground, c.accent);
   text("primaryForeground on primary", c.primaryForeground, c.primary);

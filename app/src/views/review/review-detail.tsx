@@ -74,7 +74,7 @@ export function ReviewDetail({ entry, actions }: { entry: ReviewEntry; actions: 
                 <span className="inline-flex min-w-0 items-center gap-1 font-mono">
                   <GitBranchIcon className="size-3" />
                   <span className="truncate">{entry.branch}</span>
-                  {entry.base && <span className="opacity-70">→ {entry.base.replace(/^origin\//, "")}</span>}
+                  {entry.base && <span className="text-muted-foreground">→ {entry.base.replace(/^origin\//, "")}</span>}
                 </span>
               )}
               {unpushed > 0 && (
@@ -86,7 +86,7 @@ export function ReviewDetail({ entry, actions }: { entry: ReviewEntry; actions: 
                 <button type="button" onClick={() => void openUrl(pr.url)} className="inline-flex items-center gap-1 hover:text-foreground">
                   <GitPullRequestIcon className="size-3" />
                   PR #{pr.number}
-                  <span className="opacity-70">· {pr.isDraft ? "draft" : pr.state.toLowerCase()}</span>
+                  <span className="text-muted-foreground">· {pr.isDraft ? "draft" : pr.state.toLowerCase()}</span>
                 </button>
               )}
             </div>
@@ -256,7 +256,7 @@ function LastCheck({ run, loop }: { run?: ReturnType<typeof useReview.getState>[
   return (
     <Frame variant="card">
       <FrameHeader className="flex-row items-center gap-2 px-4 py-2.5">
-        <span className={cn("inline-flex size-4 items-center justify-center rounded-full", pending ? "bg-muted" : passed ? "bg-success/15 text-success" : "bg-destructive/15 text-destructive")}>
+        <span className={cn("inline-flex size-4 items-center justify-center rounded-full", pending ? "bg-muted" : passed ? "bg-success/15 text-success-foreground" : "bg-destructive/15 text-destructive-foreground")}>
           {pending ? <span className="size-1.5 animate-pulse rounded-full bg-muted-foreground" /> : passed ? <CheckIcon className="size-3" /> : <XIcon className="size-3" />}
         </span>
         <FrameTitle className="min-w-0 truncate font-medium text-[13px]">
@@ -340,7 +340,7 @@ function Changes({ entry }: { entry: ReviewEntry }) {
           </button>
         ))}
         <span className="ml-auto pr-2 font-mono text-[11px] tabular-nums">
-          <span className="text-success">+{added}</span> <span className="text-destructive">−{removed}</span>
+          <span className="text-success-foreground">+{added}</span> <span className="text-destructive-foreground">−{removed}</span>
         </span>
       </FrameHeader>
       <FramePanel className="flex h-[30rem] min-h-0 overflow-hidden p-0">
@@ -388,7 +388,7 @@ function CommentsBar({ entry }: { entry: ReviewEntry }) {
     const last = Math.max(...sent.map((c) => c.sent ?? 0));
     return (
       <div className="flex items-center gap-2 rounded-xl border bg-muted/40 px-4 py-2.5 text-[13px]">
-        <CheckIcon className="size-3.5 text-success" />
+        <CheckIcon className="size-3.5 text-success-foreground" />
         <span className="min-w-0 flex-1 truncate">
           Sent {sent.length} comment{sent.length === 1 ? "" : "s"} to {who} {ago(new Date(last).toISOString())}
         </span>

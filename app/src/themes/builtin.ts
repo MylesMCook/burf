@@ -5,6 +5,9 @@ import { vscodeThemes } from "./vscode.ts";
 // Built-in themes. More come from ~/.berth/themes/*.json through the agent,
 // and from plugins; a theme with a built-in's id replaces it.
 
+// Accessibility pass: focus ring #5b5d66 → #6c6e77, muted text #8a8c95 →
+// #91939c (focus rings 3:1, muted text 4.5:1 on popovers and highlighted
+// rows).
 export const berthDark: Theme = {
   id: "berth-dark",
   name: "Berth Dark",
@@ -15,7 +18,7 @@ export const berthDark: Theme = {
     sidebar: "#18191c",
     sidebarForeground: "#a9abb3",
     muted: "#25262b",
-    mutedForeground: "#8a8c95",
+    mutedForeground: "#91939c",
     border: "#2c2d33",
     accent: "#2a2b31",
     accentForeground: "#f1f2f4",
@@ -23,7 +26,7 @@ export const berthDark: Theme = {
     primaryForeground: "#18191c",
     card: "#212226",
     popover: "#222328",
-    ring: "#5b5d66",
+    ring: "#6c6e77",
     success: "#3fb950",
     warning: "#e8a33d",
     destructive: "#f0564a",
@@ -59,6 +62,8 @@ export const berthDark: Theme = {
   },
 };
 
+// Accessibility pass: focus ring #a3a5ad → #888a92 (focus rings 3:1, muted
+// text 4.5:1 on popovers and highlighted rows).
 export const berthLight: Theme = {
   id: "berth-light",
   name: "Berth Light",
@@ -78,7 +83,7 @@ export const berthLight: Theme = {
     primaryForeground: "#fafafa",
     card: "#ffffff",
     popover: "#ffffff",
-    ring: "#a3a5ad",
+    ring: "#888a92",
     success: "#1f9d55",
     warning: "#c27a12",
     destructive: "#d93a2e",
@@ -115,6 +120,9 @@ export const berthLight: Theme = {
   },
 };
 
+// Accessibility pass: focus ring #4a5b85 → #566792, muted text #7886a6 →
+// #7c8aaa (focus rings 3:1, muted text 4.5:1 on popovers and highlighted
+// rows).
 export const midnight: Theme = {
   id: "midnight",
   name: "Midnight",
@@ -125,7 +133,7 @@ export const midnight: Theme = {
     sidebar: "#0b0f19",
     sidebarForeground: "#93a0bd",
     muted: "#161c2b",
-    mutedForeground: "#7886a6",
+    mutedForeground: "#7c8aaa",
     border: "#1e2639",
     accent: "#1a2236",
     accentForeground: "#e7ecf8",
@@ -133,7 +141,7 @@ export const midnight: Theme = {
     primaryForeground: "#0b0f19",
     card: "#121828",
     popover: "#141b2c",
-    ring: "#4a5b85",
+    ring: "#566792",
     success: "#4ccf8b",
     warning: "#f2b65a",
     destructive: "#ff6b7a",
@@ -169,6 +177,9 @@ export const midnight: Theme = {
   },
 };
 
+// Accessibility pass: focus ring #b3a68c → #93876e, muted text #746b5d →
+// #6d6456 (focus rings 3:1, muted text 4.5:1 on popovers and highlighted
+// rows).
 export const paper: Theme = {
   id: "paper",
   name: "Paper",
@@ -180,7 +191,7 @@ export const paper: Theme = {
     sidebarForeground: "#6d6453",
     muted: "#f0eadc",
     // 4.5:1 on the page, the sidebar and cards.
-    mutedForeground: "#746b5d",
+    mutedForeground: "#6d6456",
     border: "#e4dccb",
     accent: "#ebe3d2",
     accentForeground: "#2e281f",
@@ -188,7 +199,7 @@ export const paper: Theme = {
     primaryForeground: "#fbf8f1",
     card: "#fdfbf6",
     popover: "#fdfbf6",
-    ring: "#b3a68c",
+    ring: "#93876e",
     success: "#4d8a3b",
     warning: "#b8751a",
     destructive: "#b8432f",

@@ -15,7 +15,8 @@ import { OVERLAYS } from "@/lib/overlays";
 const FIELD = "[contenteditable=true], textarea:not([disabled]), input:not([disabled]):not([type=hidden]), select:not([disabled])";
 const CONTROL = "button:not([disabled]), [href], [tabindex]:not([tabindex='-1'])";
 
-const shown = (el: Element): el is HTMLElement => el instanceof HTMLElement && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== "hidden";
+// Shown and reachable: not under an inert region (a chat's terminal, say).
+const shown = (el: Element): el is HTMLElement => el instanceof HTMLElement && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== "hidden" && !el.closest("[inert]");
 
 // firstFocusable is where the keyboard starts inside a region: what a view
 // marked data-autofocus, else its first field, else its first control.
@@ -117,12 +118,20 @@ export function useKeepFocusIn(ref: RefObject<HTMLElement | null>) {
 
 // focusNewPane gives the keyboard to the pane that just opened (a panel
 // from the New tab menu): once the menu is gone and the pane has something
-// to focus, its first field or control. Gives up after a second.
+// to focus, its first field or control. Gives up after three seconds.
 export function focusNewPane() {
-  const until = Date.now() + 1000;
+  // A pane can take a while to draw its content (a file read from the box),
+  // and the pane in front until then is the old one: wait for another.
+  const until = Date.now() + 3000;
+  const before = document.querySelector("main [data-pane-focused]");
+  // Its field (a file's editor, a reply box) once drawn, over a toolbar's
+  // button; a pane with none gets its first control after a moment.
+  const fieldsFirst = Date.now() + 1500;
   const tick = () => {
-    const pane = document.querySelector("main [data-pane-focused]");
-    const t = !document.querySelector(OVERLAYS) && pane ? firstFocusable(pane, (el) => !el.closest(".group\\/header")) : undefined;
+    const now = document.querySelector("main [data-pane-focused]");
+    const pane = now !== before ? now : null;
+    const keep = (el: HTMLElement) => !el.closest(".group\\/header") && (Date.now() > fieldsFirst || el.matches(`[data-autofocus], ${FIELD}`));
+    const t = !document.querySelector(OVERLAYS) && pane ? firstFocusable(pane, keep) : undefined;
     if (t) {
       t.focus({ preventScroll: true });
       // Writing carries on from the end, not above what is there.
@@ -136,4 +145,32 @@ export function focusNewPane() {
     } else if (Date.now() < until) requestAnimationFrame(tick);
   };
   requestAnimationFrame(tick);
+}
+
+// useRescueRemovedFocus is the window's net: when what had the keyboard is
+// taken out of the page (a permission answered, a form submitted, a row
+// that redraws), the keyboard goes home rather than to <body>. Only then:
+// a click on the page's background, which leaves the last control in
+// place, is left alone, so a selection being made isn't disturbed.
+export function useRescueRemovedFocus() {
+  useEffect(() => {
+    let last: Element | null = null;
+    const onIn = (e: FocusEvent) => {
+      last = e.target instanceof Element ? e.target : null;
+    };
+    const mo = new MutationObserver(() => {
+      if (!last || !lost()) return;
+      // Looked at once per loss: gone, or hidden with its tab, it is
+      // rescued; still there, the person clicked away from it.
+      const gone = !last.isConnected || last.getClientRects().length === 0;
+      last = null;
+      if (gone) rescueFocus();
+    });
+    document.addEventListener("focusin", onIn);
+    mo.observe(document.body, { childList: true, subtree: true });
+    return () => {
+      document.removeEventListener("focusin", onIn);
+      mo.disconnect();
+    };
+  }, []);
 }

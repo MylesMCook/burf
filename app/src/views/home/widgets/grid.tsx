@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { add, columnsFor, LAYOUT_VERSION, move, moveToward, type Placed, readLayout, remove, resize, SIZE_ORDER, SIZES, snapSize, stepSize, type WidgetSize } from "@/lib/home-layout";
 import { setPrefs, usePrefs } from "@/lib/prefs";
 import { cn } from "@/lib/utils";
+import { scrollBehavior } from "@/lib/motion";
 import { usePluginsLoading } from "@/plugins/registry";
 
 import { useOnScreen, WidgetBoundary, WidgetHeading, WidgetMenu } from "./card";
@@ -256,7 +257,7 @@ export function HomeGrid({ className }: { className?: string }) {
           setPicker(false);
           say(`${titleOf(id)} added`);
           // Show where it went.
-          requestAnimationFrame(() => document.querySelector(`[data-widget="${CSS.escape(id)}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" }));
+          requestAnimationFrame(() => document.querySelector(`[data-widget="${CSS.escape(id)}"]`)?.scrollIntoView({ block: "nearest", behavior: scrollBehavior() }));
         }}
       />
     </section>
@@ -419,7 +420,7 @@ function SizeChips({ def, size, onSize }: { def: WidgetDef; size: WidgetSize; on
 function PendingCell({ p }: { p: Placed }) {
   return (
     <div role="listitem" data-widget={p.id} className={cn("relative min-h-0 min-w-0", SPAN[p.size] ?? SPAN.m)}>
-      <div className="flex size-full flex-col gap-3 rounded-lg border bg-card p-3" aria-busy="true" aria-label="Loading">
+      <div className="flex size-full flex-col gap-3 rounded-lg border bg-card p-3" role="status" aria-busy="true" aria-label="Loading">
         <Skeleton className="h-3.5 w-28" />
         <Skeleton className="h-3 w-3/4" />
         <Skeleton className="h-3 w-1/2" />

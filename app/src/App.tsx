@@ -28,6 +28,7 @@ import { TabStrip } from "@/components/workspace/tab-strip";
 import { HomeTabs } from "@/components/workspace/home-tabs";
 import { BoxPicker } from "@/components/box-picker";
 import { FakeTrafficLights, ZenBar } from "@/components/workspace/zen";
+import { Announcer } from "@/components/announcer";
 import { fakeTrafficLights } from "@/lib/api";
 import { useBerthConnection } from "@/hooks/use-berth-connection";
 import { useShortcuts } from "@/hooks/use-shortcuts";
@@ -56,6 +57,8 @@ import { OnboardingView } from "@/views/onboarding/onboarding-view";
 import { SettingsView } from "@/views/settings/settings-view";
 import { HomeView } from "@/views/home/home-view";
 import { usePrefs } from "@/lib/prefs";
+import { placeLabel } from "@/lib/worktree-names";
+import { useRescueRemovedFocus } from "@/lib/focus-home";
 
 // The live demo's guide and script (pnpm build:demo); not in the app.
 const DemoGuide = __BERTH_DEMO__ ? lazy(() => import("@/demo/guide")) : null;
@@ -86,6 +89,8 @@ export default function App() {
   // Without the status bar, what floats over its corner (toasts, the loops
   // panel) comes down to the window's edge.
   useEffect(() => document.documentElement.style.setProperty("--berth-status-h", zen ? "0px" : "26px"), [zen]);
+  // The keyboard is never dropped on <body> by what had it going away.
+  useRescueRemovedFocus();
   // Onboarding has no tabs yet, so it gets the plain strip, not the tab strip.
   const onboarding = useOnboardingActive();
   // Home (no worktree, or a box's home terminals over it) has its own strip.
@@ -118,6 +123,7 @@ export default function App() {
             <ErrorDetailsHost />
           </ErrorBoundary>
           <FileDropGuard />
+          <Announcer />
         </ToastProvider>
       </TooltipProvider>
     );
@@ -146,7 +152,8 @@ export default function App() {
               {zen && !onboarding ? (
                 <ZenBar />
               ) : workspace && !onboarding ? (
-                <Disconnectable className="shrink-0 flex-col">
+                <Disconnectable className="shrink-0 flex-col" label="Tab bar">
+                  {!onHome && <WorkspaceHeading />}
                   {onHome ? <HomeTabs /> : <TabStrip />}
                 </Disconnectable>
               ) : !workspace ? null /* every other view's ViewHeader is the strip */ : (
@@ -186,6 +193,7 @@ export default function App() {
           <NotificationCenter />
         </ErrorBoundary>
         <FileDropGuard />
+        <Announcer />
         {DemoGuide && (
           <Suspense>
             <DemoGuide />
@@ -245,10 +253,18 @@ function NoWorktree() {
 
 // Disconnectable dims what cannot work until the agent answers.
 // Inert as well, so the keyboard cannot reach it either.
-function Disconnectable({ children, className }: { children: React.ReactNode; className?: string }) {
+// WorkspaceHeading names the worktree in front for screen readers, as the
+// window's title does: the page's one heading while its tabs show.
+function WorkspaceHeading() {
+  const ref = useWorkspaces((s) => (s.current && !homeBox(s.current) ? s.spaces[s.current]?.ref : undefined));
+  const label = useStore((s) => (ref?.path ? placeLabel(ref, s.boxes) : undefined));
+  return label ? <h1 className="sr-only">{label}</h1> : null;
+}
+
+function Disconnectable({ children, className, label }: { children: React.ReactNode; className?: string; label?: string }) {
   const offline = useStore((s) => !s.client);
   return (
-    <div className={cn("flex", className, offline && "pointer-events-none opacity-50")} aria-disabled={offline || undefined} inert={offline || undefined}>
+    <div role={label ? "region" : undefined} aria-label={label} className={cn("flex", className, offline && "pointer-events-none opacity-50")} aria-disabled={offline || undefined} inert={offline || undefined}>
       {children}
     </div>
   );

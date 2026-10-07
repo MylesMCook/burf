@@ -145,17 +145,55 @@ export function DevtoolsDrawer({ logKey, pageUrl, ctx, proxied, agent }: DrawerP
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
   };
+  // Or focus the edge: ↑ and ↓ (⇧ for bigger steps), Home and End.
+  const nudge = (e: React.KeyboardEvent) => {
+    const max = Math.max(160, (root.current?.parentElement?.clientHeight ?? 800) - 120);
+    const step = e.shiftKey ? 64 : 16;
+    const next = e.key === "ArrowUp" ? height + step : e.key === "ArrowDown" ? height - step : e.key === "Home" ? 120 : e.key === "End" ? max : undefined;
+    if (next === undefined) return;
+    e.preventDefault();
+    const h = Math.round(Math.min(max, Math.max(120, next)));
+    setHeight(h);
+    try {
+      localStorage.setItem(HEIGHT_KEY, String(h));
+    } catch {
+      // Only a convenience.
+    }
+  };
 
   return (
     <section ref={root} data-testid="devtools-drawer" aria-label="Console and network" style={{ height }} className="relative flex max-h-[75%] min-h-30 shrink-0 flex-col border-t bg-background text-xs">
-      <div role="separator" aria-orientation="horizontal" aria-label="Resize the drawer" onPointerDown={drag} className="absolute inset-x-0 -top-1 z-10 h-2 cursor-row-resize" />
+      <div
+        role="separator"
+        tabIndex={0}
+        aria-orientation="horizontal"
+        aria-label="Resize the drawer"
+        aria-valuenow={height}
+        aria-valuemin={120}
+        onPointerDown={drag}
+        onKeyDown={nudge}
+        className="absolute inset-x-0 -top-1 z-10 h-2 cursor-row-resize outline-none focus-visible:bg-ring"
+      />
       <div className="flex h-8 shrink-0 items-center gap-0.5 border-b px-1.5">
-        <DrawerTab active={tab === "console"} onClick={() => setDrawerTab(logKey, "console")} count={consoleErrors}>
-          Console
-        </DrawerTab>
-        <DrawerTab active={tab === "network"} onClick={() => setDrawerTab(logKey, "network")} count={failures}>
-          Network
-        </DrawerTab>
+        <div
+          role="tablist"
+          aria-label="Console and network"
+          className="flex items-center gap-0.5"
+          onKeyDown={(e) => {
+            if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+            e.preventDefault();
+            const next = tab === "console" ? "network" : "console";
+            setDrawerTab(logKey, next);
+            e.currentTarget.querySelector<HTMLElement>(`[data-drawer-tab=${next}]`)?.focus();
+          }}
+        >
+          <DrawerTab id="console" active={tab === "console"} onClick={() => setDrawerTab(logKey, "console")} count={consoleErrors}>
+            Console
+          </DrawerTab>
+          <DrawerTab id="network" active={tab === "network"} onClick={() => setDrawerTab(logKey, "network")} count={failures}>
+            Network
+          </DrawerTab>
+        </div>
         {agent && <span className="ml-2 truncate text-[11px] text-muted-foreground">The agent's browser, on its box</span>}
         <div className="ml-auto flex items-center gap-0.5">
           {!agent && (
@@ -182,12 +220,14 @@ export function DevtoolsDrawer({ logKey, pageUrl, ctx, proxied, agent }: DrawerP
   );
 }
 
-function DrawerTab({ active, onClick, count, children }: { active: boolean; onClick(): void; count: number; children: React.ReactNode }) {
+function DrawerTab({ id, active, onClick, count, children }: { id: string; active: boolean; onClick(): void; count: number; children: React.ReactNode }) {
   return (
     <button
       type="button"
       role="tab"
+      data-drawer-tab={id}
       aria-selected={active}
+      tabIndex={active ? 0 : -1}
       onClick={onClick}
       className={cn("inline-flex h-6 items-center gap-1.5 rounded-md px-2 font-medium text-[11.5px]", active ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground")}
     >

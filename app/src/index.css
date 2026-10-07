@@ -238,8 +238,11 @@
 }
 
 @layer base {
+  /* The browser's own focus outline, where a control draws no ring of its
+     own, is the theme's ring at full strength: 3:1 on every surface
+     (themes/contrast.ts). */
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
     }
   html, body {
     overscroll-behavior: none;
@@ -361,4 +364,23 @@
 }
 .berth-resizing iframe {
   pointer-events: none;
+}
+
+/* Reduce motion (System Settings → Accessibility → Display): animations
+   and transitions finish at once, so spinners, shimmer, pulses and the
+   Live dot hold still and drawers and dialogs appear without sliding.
+   Components with their own still frame (the pixel loader, the harbour,
+   the onboarding art) say so in their stylesheets; this catches the rest.
+   Scrolls the app starts itself jump too (lib/motion.ts). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
 }

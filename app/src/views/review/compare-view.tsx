@@ -139,7 +139,7 @@ export function CompareView({ box, id, onClose }: { box: string; id: string; onC
           </Button>
         )}
       </div>
-      {error && <ErrorText className="px-6 py-3 text-destructive text-sm" text={error} />}
+      {error && <ErrorText className="px-6 py-3 text-destructive-foreground text-sm" text={error} />}
       {!data && !error && (
         <div className="flex flex-1 items-center justify-center gap-2 text-muted-foreground text-sm">
           <Spinner className="size-4" /> Reading the attempts…
@@ -172,7 +172,7 @@ export function CompareView({ box, id, onClose }: { box: string; id: string; onC
                       </span>
                     )}
                     {c.picked && (
-                      <span className="ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] text-success">
+                      <span className="ml-auto inline-flex shrink-0 items-center gap-1 whitespace-nowrap text-[11px] text-success-foreground">
                         <CheckIcon className="size-3" />
                         picked
                       </span>
@@ -180,13 +180,13 @@ export function CompareView({ box, id, onClose }: { box: string; id: string; onC
                   </header>
                   <dl className="grid grid-cols-[80px_1fr] gap-x-2 gap-y-1 px-3 py-2 text-xs">
                     <dt className="text-muted-foreground">Check</dt>
-                    <dd className={c.verify.passed ? "text-success" : "text-destructive"}>
+                    <dd className={c.verify.passed ? "text-success-foreground" : "text-destructive-foreground"}>
                       {c.verify.passed ? "passed" : `failed (exit ${c.verify.exit_code})`}
                       {c.verify.rounds ? ` in ${c.verify.rounds} round${c.verify.rounds === 1 ? "" : "s"}` : ""}
                     </dd>
                     <dt className="text-muted-foreground">Changes</dt>
                     <dd className="font-mono tabular-nums">
-                      {c.diff.files} files <span className="text-success">+{c.diff.added}</span> <span className="text-destructive">−{c.diff.removed}</span> · {c.diff.commits} commits
+                      {c.diff.files} files <span className="text-success-foreground">+{c.diff.added}</span> <span className="text-destructive-foreground">−{c.diff.removed}</span> · {c.diff.commits} commits
                     </dd>
                     {c.judge.rank ? (
                       <>
@@ -215,8 +215,8 @@ export function CompareView({ box, id, onClose }: { box: string; id: string; onC
                     {files.slice(0, 14).map((f) => (
                       <li key={f.path} className="flex items-center gap-2">
                         <span className="min-w-0 flex-1 truncate font-mono">{f.path}</span>
-                        <span className="font-mono text-success tabular-nums">+{f.added ?? 0}</span>
-                        <span className="font-mono text-destructive tabular-nums">−{f.removed ?? 0}</span>
+                        <span className="font-mono text-success-foreground tabular-nums">+{f.added ?? 0}</span>
+                        <span className="font-mono text-destructive-foreground tabular-nums">−{f.removed ?? 0}</span>
                       </li>
                     ))}
                     {files.length > 14 && <li className="text-muted-foreground">and {files.length - 14} more</li>}

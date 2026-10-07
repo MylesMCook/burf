@@ -60,6 +60,7 @@ export function AppSidebar() {
           the window shrinks; a container, so rows show more of a worktree
           when there is room. */}
       <aside
+        aria-label="Sidebar"
         data-testid="sidebar"
         style={{ width: `clamp(${SIDEBAR_MIN}px, var(--sidebar-live, var(--sidebar-w, ${SIDEBAR_DEFAULT}px)), max(${SIDEBAR_DEFAULT}px, min(${SIDEBAR_MAX}px, 40vw)))` }}
         className="@container/side relative flex shrink-0 flex-col border-sidebar-border border-r bg-sidebar text-sidebar-foreground"
@@ -140,6 +141,7 @@ export function AppSidebar() {
             <button
               type="button"
               data-testid="nav-settings"
+              aria-current={view.kind === "settings" ? "page" : undefined}
               // Shift-click goes straight to Developer.
               onClick={(e) => setView({ kind: "settings", section: e.shiftKey ? "developer" : undefined })}
               className={cn("inline-flex h-6.5 items-center gap-1.5 rounded-md px-1.5 text-muted-foreground text-xs hover:bg-sidebar-accent hover:text-foreground", view.kind === "settings" && "text-foreground")}
@@ -187,7 +189,7 @@ function Rail() {
     </Tip>
   );
   return (
-    <aside data-testid="sidebar-rail" className="relative flex w-19 shrink-0 flex-col items-center border-sidebar-border border-r bg-sidebar">
+    <aside aria-label="Sidebar" data-testid="sidebar-rail" className="relative flex w-19 shrink-0 flex-col items-center border-sidebar-border border-r bg-sidebar">
       <SidebarResizeHandle folded />
       <div data-tauri-drag-region className="h-10 w-full shrink-0" />
       <div className="flex flex-col items-center gap-1">

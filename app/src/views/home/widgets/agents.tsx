@@ -264,7 +264,7 @@ function WorkingRow({ r }: { r: AgentRow }) {
       </span>
       <span className="flex min-w-0 items-center gap-1.5 pl-6 text-muted-foreground text-xs">
         <span className="min-w-0 truncate font-mono text-[11px]">{step?.now ?? `${agentLabel(r.agent)} · ${r.where}`}</span>
-        {step?.sub && <span className="min-w-0 flex-1 truncate font-mono text-[11px] opacity-70 @max-[300px]:hidden">· {step.sub}</span>}
+        {step?.sub && <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-muted-foreground @max-[300px]:hidden">· {step.sub}</span>}
       </span>
     </button>
   );

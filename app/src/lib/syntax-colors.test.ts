@@ -5,7 +5,7 @@ import { test } from "node:test";
 import { builtinThemes } from "../themes/builtin.ts";
 import { syntaxThemes } from "../themes/apply.ts";
 import { contrast, over } from "../themes/color.ts";
-import { type ShikiTheme, styleFor, syntaxColors } from "./syntax-colors.ts";
+import { readableStyles, readableTokens, type ShikiTheme, styleFor, syntaxColors } from "./syntax-colors.ts";
 
 const theme: ShikiTheme = {
   fg: "#eeeeee",
@@ -59,4 +59,26 @@ test("every built-in theme's code colours resolve and read", async () => {
     const distinct = new Set([s.keyword.color, s.string.color, s.comment.color].map((c) => c!.toLowerCase().slice(0, 7)));
     assert.equal(distinct.size, 3, `${t.id}: keyword ${s.keyword.color}, string ${s.string.color}, comment ${s.comment.color}`);
   }
+});
+
+// The colours code is drawn in read on the theme's background, 4.5:1 (WCAG
+// AA): each is the Shiki theme's own, a shade darker or lighter where it
+// falls short, and one that reads already is left alone.
+test("every built-in theme's code colours read at 4.5:1 once made readable", async () => {
+  const { resolveTheme } = (await import("@pierre/diffs")) as { resolveTheme: (n: string) => Promise<ShikiTheme> };
+  for (const t of builtinThemes) {
+    const pair = syntaxThemes(t);
+    const shiki = await resolveTheme(t.appearance === "dark" ? pair.dark : pair.light);
+    const raw = syntaxColors(shiki);
+    const bg = t.colors.background;
+    const s = readableStyles(raw, bg);
+    for (const [role, st] of Object.entries(s)) {
+      if (!st.color) continue;
+      const c = contrast(over(st.color, bg), bg);
+      assert.ok(c >= 4.5 - 1e-9, `${t.id} ${role} ${st.color} on ${bg}: ${c.toFixed(2)}`);
+      if (contrast(over(raw[role].color!, bg), bg) >= 4.5) assert.equal(st.color, raw[role].color, `${t.id} ${role} kept`);
+    }
+  }
+  const html = '<span style="--diffs-token-dark:#636363;--diffs-token-light:#636363">(</span>';
+  assert.ok(contrast(readableTokens(html, "#1d1e22").match(/#[0-9a-f]{6}/i)![0], "#1d1e22") >= 4.5);
 });

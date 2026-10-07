@@ -16,6 +16,7 @@ import { openUrl } from "@/lib/open-url";
 import { useStore } from "@/lib/store";
 import { type GitHubState, isLink, loadTeams, type PlanStep, putRun, refreshGitHub, runFor, sudoCount, teamApi, type TeamStatus, type TeamView as View, teamRef, useTeam, useTeamAddBox } from "@/lib/team";
 import { focusSession } from "@/lib/workspaces";
+import { useKeepFocusIn } from "@/lib/focus-home";
 import { finishOnboarding } from "@/views/onboarding/onboarding-state";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
 import { TeamDone } from "@/views/team/team-done";
@@ -34,6 +35,9 @@ type From = "onboarding" | "addbox" | "link" | "sidebar" | "palette";
 export function TeamSetupView({ org: initial, from, box: wantBox, update, onBack }: { org?: string; from?: From; box?: string; update?: boolean; onBack?(): void }) {
   const [org, setOrg] = useState(initial ?? "");
   useEffect(() => setOrg(initial ?? ""), [initial]);
+  // A step that swaps in place keeps the keyboard on the page.
+  const page = useRef<HTMLDivElement>(null);
+  useKeepFocusIn(page);
   const github = useTeam((s) => s.github);
   useEffect(() => {
     void refreshGitHub();
@@ -73,7 +77,7 @@ export function TeamSetupView({ org: initial, from, box: wantBox, update, onBack
           </Button>
         </div>
       )}
-      <div data-testid="team-page" className="min-h-0 flex-1 overflow-y-auto">
+      <div ref={page} data-testid="team-page" className="min-h-0 flex-1 overflow-y-auto">
         {body}
       </div>
     </div>

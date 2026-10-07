@@ -2,7 +2,9 @@ import { type RefObject, useEffect, useLayoutEffect } from "react";
 
 import { loadDiffs } from "@/components/diff/load";
 import { useActiveTheme } from "@/hooks/use-theme";
+import { readableTokens } from "@/lib/syntax-colors";
 import { syntaxThemes } from "@/themes/apply";
+import { mix, over } from "@/themes/color";
 
 // Code blocks in an agent's reply, coloured as the diffs are: the theme's
 // own Shiki theme, tokenized in the diff renderer's workers. Nothing loads
@@ -74,8 +76,12 @@ function languageOf(code: HTMLElement, text: string): string {
 // useCodeHighlight colours the code blocks under ref whenever its HTML (or
 // the theme) changes.
 export function useCodeHighlight(ref: RefObject<HTMLElement | null>, html: string) {
-  const { dark, light } = syntaxThemes(useActiveTheme());
-  const themeKey = `${dark}|${light}`;
+  const theme = useActiveTheme();
+  const { dark, light } = syntaxThemes(theme);
+  // A block's background (conversation.css: the muted wash at 60% over the
+  // page), which every token colour is made to read on, 4.5:1.
+  const bg = mix(over(theme.colors.muted, theme.colors.background), theme.colors.background, 0.6);
+  const themeKey = `${dark}|${light}|${bg}`;
 
   // Blocks already done in this theme colour before paint, no flash.
   useLayoutEffect(() => {
@@ -93,7 +99,8 @@ export function useCodeHighlight(ref: RefObject<HTMLElement | null>, html: strin
       const mod = await loadDiffs().catch(() => undefined);
       for (const { el, key, text, lang } of todo) {
         if (!live || !mod) return;
-        const out = await mod.highlightCode(text, lang, { dark, light }).catch(() => undefined);
+        const raw = await mod.highlightCode(text, lang, { dark, light }).catch(() => undefined);
+        const out = raw && readableTokens(raw, bg);
         remember(key, out ?? null);
         // The block may have been drawn again, or changed, meanwhile.
         if (live && out && el.isConnected && el.textContent === text) el.innerHTML = out;
@@ -103,7 +110,7 @@ export function useCodeHighlight(ref: RefObject<HTMLElement | null>, html: strin
       live = false;
       window.clearTimeout(timer);
     };
-  }, [ref, html, themeKey, dark, light]);
+  }, [ref, html, themeKey, dark, light, bg]);
 }
 
 function blocks(root: HTMLElement | null, themeKey: string) {

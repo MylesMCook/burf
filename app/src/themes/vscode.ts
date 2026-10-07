@@ -9,6 +9,8 @@ import type { Theme } from "@/lib/api";
 
 // Dracula, from dracula/visual-studio-code.
 // Nudged: muted text #6272a4 → #8495c9.
+// Accessibility pass: muted text #8495c9 → #8fa1d5 (focus rings 3:1, muted
+// text 4.5:1 on popovers and highlighted rows).
 export const dracula: Theme = {
   id: "dracula",
   name: "Dracula",
@@ -20,7 +22,7 @@ export const dracula: Theme = {
     sidebar: "#21222c",
     sidebarForeground: "#cdcdca",
     muted: "#343746",
-    mutedForeground: "#8495c9",
+    mutedForeground: "#8fa1d5",
     border: "#191a21",
     accent: "#353747",
     accentForeground: "#f8f8f2",
@@ -68,6 +70,8 @@ export const dracula: Theme = {
 // Nudged: muted text #7f848e → #9297a2.
 // Nudged: selection #404859 → #3d4556.
 // Nudged: terminal bright black #4f5666 → #6d7586.
+// Accessibility pass: muted text #9297a2 → #9499a4 (focus rings 3:1, muted
+// text 4.5:1 on popovers and highlighted rows).
 export const oneDarkPro: Theme = {
   id: "one-dark-pro",
   name: "One Dark Pro",
@@ -79,7 +83,7 @@ export const oneDarkPro: Theme = {
     sidebar: "#21252b",
     sidebarForeground: "#abb2bf",
     muted: "#2c313a",
-    mutedForeground: "#9297a2",
+    mutedForeground: "#9499a4",
     border: "#181a1f",
     accent: "#2c313a",
     accentForeground: "#d7dae0",
@@ -186,6 +190,8 @@ export const oneLight: Theme = {
 
 // Catppuccin Mocha, from catppuccin/vscode.
 // Nudged: terminal bright black #585b70 → #65697e.
+// Accessibility pass: muted text #9399b2 → #959bb4 (focus rings 3:1, muted
+// text 4.5:1 on popovers and highlighted rows).
 export const catppuccinMocha: Theme = {
   id: "catppuccin-mocha",
   name: "Catppuccin Mocha",
@@ -197,7 +203,7 @@ export const catppuccinMocha: Theme = {
     sidebar: "#181825",
     sidebarForeground: "#bac2de",
     muted: "#313244",
-    mutedForeground: "#9399b2",
+    mutedForeground: "#959bb4",
     border: "#313244",
     accent: "#282839",
     accentForeground: "#cdd6f4",
@@ -247,6 +253,8 @@ export const catppuccinMocha: Theme = {
 // Nudged: warning #df8e1d → #bd7501.
 // Nudged: link #1e66f5 → #1b63f2.
 // Nudged: terminal selected text #4c4f69 → #3f425b.
+// Accessibility pass: muted text #65687e → #5e6177 (focus rings 3:1, muted
+// text 4.5:1 on popovers and highlighted rows).
 export const catppuccinLatte: Theme = {
   id: "catppuccin-latte",
   name: "Catppuccin Latte",
@@ -258,7 +266,7 @@ export const catppuccinLatte: Theme = {
     sidebar: "#e6e9ef",
     sidebarForeground: "#5c5f77",
     muted: "#e6e9ef",
-    mutedForeground: "#65687e",
+    mutedForeground: "#5e6177",
     border: "#ccd0da",
     accent: "#dde0e7",
     accentForeground: "#4c4f69",
@@ -307,6 +315,9 @@ export const catppuccinLatte: Theme = {
 // Nudged: sidebar text #787c99 → #7a7e9b.
 // Nudged: muted text #565f89 → #7c86b2.
 // Nudged: terminal bright black #363b54 → #5c627e.
+// Accessibility pass: focus ring #3d59a1 → #4c69b3, muted text #7c86b2 →
+// #7f89b5, sidebar text #7a7e9b → #8589a7 (focus rings 3:1, muted text 4.5:1
+// on popovers and highlighted rows).
 export const tokyoNight: Theme = {
   id: "tokyo-night",
   name: "Tokyo Night",
@@ -316,9 +327,9 @@ export const tokyoNight: Theme = {
     background: "#1a1b26",
     foreground: "#a9b1d6",
     sidebar: "#16161e",
-    sidebarForeground: "#7a7e9b",
+    sidebarForeground: "#8589a7",
     muted: "#1f2335",
-    mutedForeground: "#7c86b2",
+    mutedForeground: "#7f89b5",
     border: "#101014",
     accent: "#202330",
     accentForeground: "#c0caf5",
@@ -326,7 +337,7 @@ export const tokyoNight: Theme = {
     primaryForeground: "#16161e",
     card: "#1e2030",
     popover: "#16161e",
-    ring: "#3d59a1",
+    ring: "#4c69b3",
     success: "#9ece6a",
     warning: "#e0af68",
     destructive: "#f7768e",
@@ -365,6 +376,8 @@ export const tokyoNight: Theme = {
 // Nord, from nordtheme/visual-studio-code.
 // Nudged: muted text #616e88 → #94a2bd.
 // Nudged: terminal bright black #4c566a → #727d92.
+// Accessibility pass: muted text #94a2bd → #a1afcb (focus rings 3:1, muted
+// text 4.5:1 on popovers and highlighted rows).
 export const nord: Theme = {
   id: "nord",
   name: "Nord",
@@ -376,7 +389,7 @@ export const nord: Theme = {
     sidebar: "#2e3440",
     sidebarForeground: "#d8dee9e6",
     muted: "#3b4252",
-    mutedForeground: "#94a2bd",
+    mutedForeground: "#a1afcb",
     border: "#3b4252",
     accent: "#3b4252",
     accentForeground: "#eceff4",
@@ -421,6 +434,8 @@ export const nord: Theme = {
 };
 
 // GitHub Dark, from primer/github-vscode-theme.
+// Accessibility pass: muted text #7d8590 → #858d98 (focus rings 3:1, muted
+// text 4.5:1 on popovers and highlighted rows).
 export const githubDark: Theme = {
   id: "github-dark",
   name: "GitHub Dark",
@@ -432,7 +447,7 @@ export const githubDark: Theme = {
     sidebar: "#010409",
     sidebarForeground: "#c9d1d9",
     muted: "#161b22",
-    mutedForeground: "#7d8590",
+    mutedForeground: "#858d98",
     border: "#30363d",
     accent: "#20252c",
     accentForeground: "#e6edf3",
@@ -481,6 +496,9 @@ export const githubDark: Theme = {
 // Nudged: selection #3c4d68 → #394a65.
 // Nudged: terminal bright black #636e7b → #66717f.
 // Nudged: terminal selected text #adbac7 → #b1becb.
+// Accessibility pass: focus ring #316dca → #3e7bd9, muted text #8f9caa →
+// #929fad (focus rings 3:1, muted text 4.5:1 on popovers and highlighted
+// rows).
 export const githubDarkDimmed: Theme = {
   id: "github-dark-dimmed",
   name: "GitHub Dark Dimmed",
@@ -492,7 +510,7 @@ export const githubDarkDimmed: Theme = {
     sidebar: "#1c2128",
     sidebarForeground: "#adbac7",
     muted: "#2d333b",
-    mutedForeground: "#8f9caa",
+    mutedForeground: "#929fad",
     border: "#444c56",
     accent: "#2f353d",
     accentForeground: "#adbac7",
@@ -500,7 +518,7 @@ export const githubDarkDimmed: Theme = {
     primaryForeground: "#ffffff",
     card: "#2d333b",
     popover: "#2d333b",
-    ring: "#316dca",
+    ring: "#3e7bd9",
     success: "#57ab5a",
     warning: "#c69026",
     destructive: "#e5534b",
@@ -538,6 +556,8 @@ export const githubDarkDimmed: Theme = {
 };
 
 // GitHub Light, from primer/github-vscode-theme.
+// Accessibility pass: muted text #656d76 → #646c75 (focus rings 3:1, muted
+// text 4.5:1 on popovers and highlighted rows).
 export const githubLight: Theme = {
   id: "github-light",
   name: "GitHub Light",
@@ -549,7 +569,7 @@ export const githubLight: Theme = {
     sidebar: "#f6f8fa",
     sidebarForeground: "#1f2328",
     muted: "#f6f8fa",
-    mutedForeground: "#656d76",
+    mutedForeground: "#646c75",
     border: "#d0d7de",
     accent: "#eaeef2",
     accentForeground: "#1f2328",
@@ -594,6 +614,8 @@ export const githubLight: Theme = {
 };
 
 // Gruvbox Dark, from jdinhify/vscode-theme-gruvbox.
+// Accessibility pass: muted text #a89984 → #b0a18c (focus rings 3:1, muted
+// text 4.5:1 on popovers and highlighted rows).
 export const gruvboxDark: Theme = {
   id: "gruvbox-dark",
   name: "Gruvbox Dark",
@@ -605,7 +627,7 @@ export const gruvboxDark: Theme = {
     sidebar: "#282828",
     sidebarForeground: "#d5c4a1",
     muted: "#32302f",
-    mutedForeground: "#a89984",
+    mutedForeground: "#b0a18c",
     border: "#3c3836",
     accent: "#3c3836",
     accentForeground: "#ebdbb2",
@@ -651,6 +673,8 @@ export const gruvboxDark: Theme = {
 
 // Gruvbox Light, from jdinhify/vscode-theme-gruvbox.
 // Nudged: muted text #7c6f64 → #776a5f.
+// Accessibility pass: muted text #776a5f → #716459 (focus rings 3:1, muted
+// text 4.5:1 on popovers and highlighted rows).
 export const gruvboxLight: Theme = {
   id: "gruvbox-light",
   name: "Gruvbox Light",
@@ -662,7 +686,7 @@ export const gruvboxLight: Theme = {
     sidebar: "#fbf1c7",
     sidebarForeground: "#504945",
     muted: "#f2e5bc",
-    mutedForeground: "#776a5f",
+    mutedForeground: "#716459",
     border: "#ebdbb2",
     accent: "#f3e6bc",
     accentForeground: "#3c3836",
@@ -714,6 +738,9 @@ export const gruvboxLight: Theme = {
 // Nudged: selection #274642 → #1d3c39.
 // Nudged: terminal bright black #586e75 → #5d737a.
 // Nudged: terminal selected text #839496 → #9eafb1.
+// Accessibility pass: muted text #859698 → #92a3a5, sidebar text #93a1a1 →
+// #94a2a2 (focus rings 3:1, muted text 4.5:1 on popovers and highlighted
+// rows).
 export const solarizedDark: Theme = {
   id: "solarized-dark",
   name: "Solarized Dark",
@@ -723,9 +750,9 @@ export const solarizedDark: Theme = {
     background: "#002b36",
     foreground: "#94a2a2",
     sidebar: "#00212b",
-    sidebarForeground: "#93a1a1",
+    sidebarForeground: "#94a2a2",
     muted: "#073642",
-    mutedForeground: "#859698",
+    mutedForeground: "#92a3a5",
     border: "#0b4250",
     accent: "#003c4a",
     accentForeground: "#94a2a2",
@@ -777,6 +804,9 @@ export const solarizedDark: Theme = {
 // Nudged: warning #b58900 → #a87f03.
 // Nudged: link #268bd2 → #0076ba.
 // Nudged: terminal selected text #586e75 → #566c73.
+// Accessibility pass: focus ring #b49471 → #9d7e5c, muted text #566c74 →
+// #556b73 (focus rings 3:1, muted text 4.5:1 on popovers and highlighted
+// rows).
 export const solarizedLight: Theme = {
   id: "solarized-light",
   name: "Solarized Light",
@@ -788,7 +818,7 @@ export const solarizedLight: Theme = {
     sidebar: "#eee8d5",
     sidebarForeground: "#4a6067",
     muted: "#eee8d5",
-    mutedForeground: "#566c74",
+    mutedForeground: "#556b73",
     border: "#ddd6c1",
     accent: "#f5eacb",
     accentForeground: "#3f555c",
@@ -796,7 +826,7 @@ export const solarizedLight: Theme = {
     primaryForeground: "#fdf6e3",
     card: "#fdf6e3",
     popover: "#eee8d5",
-    ring: "#b49471",
+    ring: "#9d7e5c",
     success: "#13958c",
     warning: "#a87f03",
     destructive: "#dc322f",
@@ -834,6 +864,9 @@ export const solarizedLight: Theme = {
 };
 
 // Rosé Pine, from rose-pine/vscode.
+// Accessibility pass: muted text #908caa → #928eac, sidebar text #908caa →
+// #928eac (focus rings 3:1, muted text 4.5:1 on popovers and highlighted
+// rows).
 export const rosePine: Theme = {
   id: "rose-pine",
   name: "Rosé Pine",
@@ -843,9 +876,9 @@ export const rosePine: Theme = {
     background: "#191724",
     foreground: "#e0def4",
     sidebar: "#191724",
-    sidebarForeground: "#908caa",
+    sidebarForeground: "#928eac",
     muted: "#1f1d2e",
-    mutedForeground: "#908caa",
+    mutedForeground: "#928eac",
     border: "#26233a",
     accent: "#2a2838",
     accentForeground: "#e0def4",
@@ -895,6 +928,9 @@ export const rosePine: Theme = {
 // Nudged: primary (for its label) #907aa9 → #7d6795.
 // Nudged: warning #ea9d34 → #c57e06.
 // Nudged: link #907aa9 → #7d6795.
+// Accessibility pass: muted text #716d8a → #6a6682, sidebar text #716d8a →
+// #6a6682 (focus rings 3:1, muted text 4.5:1 on popovers and highlighted
+// rows).
 export const rosePineDawn: Theme = {
   id: "rose-pine-dawn",
   name: "Rosé Pine Dawn",
@@ -904,9 +940,9 @@ export const rosePineDawn: Theme = {
     background: "#faf4ed",
     foreground: "#575279",
     sidebar: "#faf4ed",
-    sidebarForeground: "#716d8a",
+    sidebarForeground: "#6a6682",
     muted: "#f2e9e1",
-    mutedForeground: "#716d8a",
+    mutedForeground: "#6a6682",
     border: "#dfdad9",
     accent: "#efe9e5",
     accentForeground: "#575279",
@@ -953,6 +989,9 @@ export const rosePineDawn: Theme = {
 // Night Owl, from sdras/night-owl-vscode-theme.
 // Nudged: muted text #637777 → #728686.
 // Nudged: terminal bright black #575656 → #636262.
+// Accessibility pass: focus ring #7e57c2 → #7f59c4, muted text #728686 →
+// #7e9292 (focus rings 3:1, muted text 4.5:1 on popovers and highlighted
+// rows).
 export const nightOwl: Theme = {
   id: "night-owl",
   name: "Night Owl",
@@ -964,7 +1003,7 @@ export const nightOwl: Theme = {
     sidebar: "#011627",
     sidebarForeground: "#89a4bb",
     muted: "#0b253a",
-    mutedForeground: "#728686",
+    mutedForeground: "#7e9292",
     border: "#122d42",
     accent: "#0e293f",
     accentForeground: "#d6deeb",
@@ -972,7 +1011,7 @@ export const nightOwl: Theme = {
     primaryForeground: "#011627",
     card: "#031b2e",
     popover: "#0b253a",
-    ring: "#7e57c2",
+    ring: "#7f59c4",
     success: "#22da6e",
     warning: "#ecc48d",
     destructive: "#ef5350",
@@ -1013,6 +1052,9 @@ export const nightOwl: Theme = {
 // Nudged: primary (for its label) #288ed7 → #037bc3.
 // Nudged: warning #daaa01 → #ac8504.
 // Nudged: link #288ed7 → #0379bf.
+// Accessibility pass: focus ring #2aa298 → #1b9990, muted text #5b717b →
+// #536973 (focus rings 3:1, muted text 4.5:1 on popovers and highlighted
+// rows).
 export const nightOwlLight: Theme = {
   id: "night-owl-light",
   name: "Night Owl Light",
@@ -1024,7 +1066,7 @@ export const nightOwlLight: Theme = {
     sidebar: "#f0f0f0",
     sidebarForeground: "#403f53",
     muted: "#f0f0f0",
-    mutedForeground: "#5b717b",
+    mutedForeground: "#536973",
     border: "#d9d9d9",
     accent: "#d3e8f8",
     accentForeground: "#403f53",
@@ -1032,7 +1074,7 @@ export const nightOwlLight: Theme = {
     primaryForeground: "#ffffff",
     card: "#ffffff",
     popover: "#ffffff",
-    ring: "#2aa298",
+    ring: "#1b9990",
     success: "#08916a",
     warning: "#ac8504",
     destructive: "#de3d3b",
@@ -1070,6 +1112,8 @@ export const nightOwlLight: Theme = {
 
 // Kanagawa Wave, from metapho-re/kanagawa-vscode-theme, after rebelot/kanagawa.nvim.
 // Nudged: muted text #727169 → #8c8b83.
+// Accessibility pass: muted text #8c8b83 → #94938a (focus rings 3:1, muted
+// text 4.5:1 on popovers and highlighted rows).
 export const kanagawaWave: Theme = {
   id: "kanagawa-wave",
   name: "Kanagawa Wave",
@@ -1081,7 +1125,7 @@ export const kanagawaWave: Theme = {
     sidebar: "#1a1a22",
     sidebarForeground: "#c8c093",
     muted: "#2a2a37",
-    mutedForeground: "#8c8b83",
+    mutedForeground: "#94938a",
     border: "#16161d",
     accent: "#2a2a37",
     accentForeground: "#dcd7ba",

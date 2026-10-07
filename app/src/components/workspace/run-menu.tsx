@@ -130,7 +130,7 @@ export function RunMenu() {
           if (open) void reload();
         }}
       >
-        <MenuTrigger render={<button type="button" aria-label="Services" className="flex items-center rounded-r-md px-1 text-muted-foreground hover:bg-accent hover:text-foreground data-popup-open:bg-accent" />}>
+        <MenuTrigger render={<button type="button" aria-label="Services" className="flex min-w-6 items-center justify-center rounded-r-md px-1 text-muted-foreground hover:bg-accent hover:text-foreground data-popup-open:bg-accent" />}>
           <ChevronDownIcon className="size-3" />
         </MenuTrigger>
         <MenuPopup align="end" className="min-w-64">

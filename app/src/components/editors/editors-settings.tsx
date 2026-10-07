@@ -70,7 +70,7 @@ export function EditorsSettings() {
         </Button>
       }
     >
-      {error && <ErrorText className="px-4 py-3 text-destructive text-sm" text={error} />}
+      {error && <ErrorText className="px-4 py-3 text-destructive-foreground text-sm" text={error} />}
       {!editors && !error && (
         <div className="flex items-center gap-2 px-4 py-3 text-muted-foreground text-sm">
           <Spinner className="size-3.5" /> Looking for editors…
@@ -100,7 +100,7 @@ export function EditorsSettings() {
               <div className="text-sm">SSH hosts for editors</div>
               <div className="mt-0.5 text-muted-foreground text-xs leading-relaxed">
                 {ready ? (
-                  <span className="inline-flex items-center gap-1 text-success">
+                  <span className="inline-flex items-center gap-1 text-success-foreground">
                     <CheckCircle2Icon className="size-3.5" /> Set up. Editors reach {remote.map((h) => h.host).join(", ")}.
                   </span>
                 ) : (
@@ -122,12 +122,12 @@ export function EditorsSettings() {
               {plan.changes.map((c) => (
                 <div key={c.path} className="overflow-hidden rounded-lg border">
                   <div className="flex items-center gap-2 border-b bg-muted/40 px-3 py-1.5 font-mono text-[11px]">
-                    <span className={cn("rounded px-1.5 py-px uppercase tracking-wide", c.action === "remove" ? "bg-destructive/10 text-destructive" : "bg-muted text-muted-foreground")}>{c.action}</span>
+                    <span className={cn("rounded px-1.5 py-px uppercase tracking-wide", c.action === "remove" ? "bg-destructive/10 text-destructive-foreground" : "bg-muted text-muted-foreground")}>{c.action}</span>
                     <span className="min-w-0 truncate">{c.path}</span>
                   </div>
-                  <pre className="overflow-x-auto px-3 py-2 font-mono text-[11px] leading-relaxed">
+                  <pre tabIndex={0} className="overflow-x-auto px-3 py-2 font-mono text-[11px] leading-relaxed outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset">
                     {c.diff.trimEnd().split("\n").map((l, i) => (
-                      <div key={i} className={cn(l.startsWith("+ ") && "text-success", l.startsWith("- ") && "text-destructive", l.startsWith("  ") && "text-muted-foreground")}>
+                      <div key={i} className={cn(l.startsWith("+ ") && "text-success-foreground", l.startsWith("- ") && "text-destructive-foreground", l.startsWith("  ") && "text-muted-foreground")}>
                         {l || " "}
                       </div>
                     ))}

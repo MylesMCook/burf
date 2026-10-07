@@ -27,6 +27,7 @@ import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { activateTab, tabBeside, unsplitTab, useHereKey, useHereRef, useWorkspaces, type WsTab } from "@/lib/workspaces";
 import { useTitleAt } from "@/lib/worktree-names";
+import { isContextMenuKey, openContextMenu } from "@/lib/context-menu-key";
 
 // TabStrip is the current worktree's tabs across the top, as in Orca. It is
 // also the window's drag handle. A tab that is not split has no pane header,
@@ -286,6 +287,9 @@ export function TabButton({ tab, wsKey, tone, active, onActivate, onClose, onDra
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           onActivate();
+        } else if (isContextMenuKey(e)) {
+          e.preventDefault();
+          openContextMenu(e.currentTarget);
         }
       }}
       className={cn(
@@ -338,17 +342,21 @@ export function TabButton({ tab, wsKey, tone, active, onActivate, onClose, onDra
       ) : (
         <span className="shrink-0 text-[10px] text-muted-foreground tabular-nums">+{panes.length - 1}</span>
       ))}
-      <button
-        type="button"
-        aria-label={`Close ${title}`}
+      {/* The pointer's way to close. A tab can't hold a button for screen
+          readers and the keyboard (it is one control): they close it from
+          its menu (Shift-F10 or the menu key) or with ⌘W. */}
+      <span
+        aria-hidden
+        title={`Close ${title}`}
+        data-tab-close=""
         onClick={(e) => {
           e.stopPropagation();
           onClose();
         }}
-        className={cn("ml-auto inline-flex size-5 shrink-0 items-center justify-center rounded hover:bg-accent", active ? "opacity-70" : "opacity-0 group-hover:opacity-70")}
+        className={cn("ml-auto inline-flex size-5 shrink-0 cursor-default items-center justify-center rounded hover:bg-accent", active ? "opacity-70" : "opacity-0 group-hover:opacity-70")}
       >
         <XIcon className="size-3" />
-      </button>
+      </span>
     </div>
   );
 
@@ -423,10 +431,13 @@ export function TitleInput({ initial, placeholder, onDone }: { initial: string; 
     }, 60);
     return () => window.clearTimeout(t);
   }, []);
-  const finish = (next?: string) => {
+  const finish = (next?: string, refocus = false) => {
     if (done.current) return;
     done.current = true;
+    // Enter and Esc give the keyboard back to the tab it renamed.
+    const tab = refocus ? input.current?.closest<HTMLElement>("[data-tab]")?.dataset.tab : undefined;
     onDone(next);
+    if (tab) requestAnimationFrame(() => document.querySelector<HTMLElement>(`[data-tab="${CSS.escape(tab)}"]`)?.focus());
   };
   return (
     <input
@@ -439,8 +450,8 @@ export function TitleInput({ initial, placeholder, onDone }: { initial: string; 
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => {
         e.stopPropagation();
-        if (e.key === "Enter") finish(v.trim());
-        if (e.key === "Escape") finish();
+        if (e.key === "Enter") finish(v.trim(), true);
+        if (e.key === "Escape") finish(undefined, true);
       }}
       onBlur={() => ready.current && finish(v.trim())}
       className="h-6 w-48 min-w-0 rounded border border-ring bg-background px-1.5 text-foreground text-xs outline-none ring-2 ring-ring/24 placeholder:text-muted-foreground/72"

@@ -210,7 +210,7 @@ export function AttemptsOptions({
             <Input size="sm" aria-label={`Extra words for attempt ${i + 1}`} value={v.extras[i]?.suffix ?? ""} placeholder="and, for this one… (optional)" onChange={(e) => extra(i, { suffix: e.target.value })} />
             {otherBoxes.length > 0 && (
               <div className="w-28 shrink-0">
-                <SimpleSelect size="sm" className="min-w-0" value={v.extras[i]?.box || box} onChange={(b) => extra(i, { box: b })} options={[box, ...otherBoxes].map((b) => ({ value: b, label: b }))} />
+                <SimpleSelect aria-label={`Box for attempt ${i + 1}`} size="sm" className="min-w-0" value={v.extras[i]?.box || box} onChange={(b) => extra(i, { box: b })} options={[box, ...otherBoxes].map((b) => ({ value: b, label: b }))} />
               </div>
             )}
           </div>
