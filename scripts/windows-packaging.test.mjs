@@ -59,6 +59,29 @@ if ($errors.Count) { throw $errors[0] }
   assert.equal(powershell(command), "valid");
 });
 
+test("manual acceptance captures all native stderr before rejecting a failed CLI", { skip: process.platform !== "win32" }, () => {
+  const command = `$ErrorActionPreference='Stop'
+$tokens=$null; $errors=$null
+$ast=[Management.Automation.Language.Parser]::ParseInput(${psQuote(acceptance)}, [ref]$tokens, [ref]$errors)
+if ($errors.Count) { throw $errors[0] }
+$function=$ast.Find({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Invoke-Berth'}, $true)
+Invoke-Expression $function.Extent.Text
+$evidence=Join-Path $env:TEMP ('berth-stderr-test-' + [Guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $evidence | Out-Null
+try {
+  $child=Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
+  $caught=$false
+  try { Invoke-Berth $child @('-NoProfile','-NonInteractive','-Command', "[Console]::Error.WriteLine('berth: task error: #< CLIXML'); [Console]::Error.WriteLine('SCHEDULER DETAIL 0x80070005'); exit 17") | Out-Null }
+  catch { $caught=$true }
+  if (!$caught) { throw 'The failed CLI was accepted.' }
+  if ($ErrorActionPreference -ne 'Stop') { throw 'The caller error policy changed.' }
+  $diagnostic=Get-Content -Raw -LiteralPath (Join-Path $evidence 'cli-failure.log')
+  if (!$diagnostic.Contains('#< CLIXML') -or !$diagnostic.Contains('SCHEDULER DETAIL 0x80070005')) { throw ('Native stderr was truncated: ' + $diagnostic) }
+  [Console]::Out.Write('captured')
+} finally { Remove-Item -LiteralPath $evidence -Recurse -Force }`;
+  assert.equal(powershell(command), "captured");
+});
+
 test("native PATH edits preserve unrelated entries and literal directory names", { skip: process.platform !== "win32" }, () => {
   const directory = "C:\\Berth's & $Literal; Tools\\cli";
   // Parse and load only the pure functions, without executing registry code.

@@ -44,16 +44,27 @@ func TestWindowsTaskXMLValidationCreatesNoTask(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s := Spec{Name: "berth-validation-only", Program: `C:\Berth\berth.exe`, Args: []string{"agent"}, Env: map[string]string{"BERTH_HOME": `C:\Berth\state`}}
-	data, err := renderWindowsTask(s)
-	if err != nil {
-		t.Fatal(err)
-	}
-	path, err := windowsTaskName(s.Name)
-	if err != nil {
-		t.Fatal(err)
-	}
-	script := taskConnect + `$xml = [Console]::In.ReadToEnd()
+	root := filepath.Join(os.Getenv("USERPROFILE"), "Folder with spaces "+strings.Repeat("b", 70), "Documents", "Codex", "windows-install-"+strings.Repeat("a", 32))
+	home := filepath.Join(root, "Berth's state & data")
+	for _, s := range []Spec{
+		{Name: "berth-validation-only", Program: `C:\Berth\berth.exe`, Args: []string{"agent"}, Env: map[string]string{"BERTH_HOME": `C:\Berth\state`}},
+		{
+			Name: "berth-validation-long-home", Description: "berth agent",
+			Program: filepath.Join(root, "Berth app", "cli", "berth.exe"), Args: []string{"agent"},
+			Env:     map[string]string{"BERTH_HOME": home, "BERTH_USER_DIR": filepath.Join(home, "user"), "BERTH_UI_ADDR": "127.0.0.1:15380", "BERTH_PROXY_ADDR": "127.0.0.1:15381"},
+			LogPath: filepath.Join(home, "client", "agent.log"),
+		},
+	} {
+		t.Run(s.Name, func(t *testing.T) {
+			data, err := renderWindowsTask(s)
+			if err != nil {
+				t.Fatal(err)
+			}
+			path, err := windowsTaskName(s.Name)
+			if err != nil {
+				t.Fatal(err)
+			}
+			script := taskConnect + `$xml = [Console]::In.ReadToEnd()
 try {
   $null = $folder.RegisterTask(` + psQuote(path) + `, $xml, 1, ` + psQuote(sid) + `, $null, 3, $null)
   $definition = $scheduler.NewTask(0)
@@ -65,13 +76,15 @@ try {
   [Console]::Out.Write(('0x{0:X8} {1}' -f $e.HResult, $e.Message))
 }
 `
-	out, err := powershellInput(script, data)
-	var result struct{ XML string }
-	if err != nil || json.Unmarshal(out, &result) != nil || result.XML == "" {
-		t.Fatalf("validation-only failed: %s (%v)", out, err)
-	}
-	if _, err := ownedWindowsTask([]byte(result.XML), s.Name); err != nil {
-		t.Fatalf("Task Scheduler's in-memory XML failed ownership validation: %v", err)
+			out, err := powershellInput(script, data)
+			var result struct{ XML string }
+			if err != nil || json.Unmarshal(out, &result) != nil || result.XML == "" {
+				t.Fatalf("validation-only failed: %s (%v)", out, err)
+			}
+			if _, err := ownedWindowsTask([]byte(result.XML), s.Name); err != nil {
+				t.Fatalf("Task Scheduler's in-memory XML failed ownership validation: %v", err)
+			}
+		})
 	}
 }
 

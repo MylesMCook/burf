@@ -106,12 +106,21 @@ function Invoke-Installer([string]$Artifact) {
     $script:activeInstaller = $null
 }
 function Invoke-Berth([string]$Binary, [string[]]$Arguments) {
-    $output = & $Binary @Arguments 2>&1
-    if ($LASTEXITCODE -ne 0) {
-        $output | Out-File (Join-Path $evidence 'cli-failure.log') -Append
+    if (!(Test-Path -LiteralPath $Binary -PathType Leaf)) { throw 'The synthetic client executable is missing.' }
+    $previousPolicy = $ErrorActionPreference
+    try {
+        # Windows PowerShell turns native stderr into error records. Collect
+        # all of them before checking the exit code, then restore caller policy.
+        $ErrorActionPreference = 'Continue'
+        $output = & $Binary @Arguments 2>&1
+        $code = $LASTEXITCODE
+    } finally { $ErrorActionPreference = $previousPolicy }
+    $text = $output -join [Environment]::NewLine
+    if ($code -ne 0) {
+        $text | Out-File (Join-Path $evidence 'cli-failure.log') -Append
         throw "The synthetic client command failed: $($Arguments -join ' ')."
     }
-    return ($output -join [Environment]::NewLine)
+    return $text
 }
 function Agent-Status([string]$Binary) { return (Invoke-Berth $Binary @('agent', 'status', '--json')) | ConvertFrom-Json }
 function Read-Agent {
