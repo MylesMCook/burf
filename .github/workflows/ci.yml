@@ -4,6 +4,9 @@ on:
   push:
     branches: [main]
   pull_request:
+  # release.yml runs all of this on the tag first, and fails the release on
+  # any failure.
+  workflow_call:
 
 permissions:
   contents: read
