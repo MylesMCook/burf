@@ -1,4 +1,4 @@
-import { AppWindowIcon, ArchiveIcon, ArrowLeftRightIcon, Columns2Icon, EllipsisIcon, GlobeIcon, ImageIcon, MessagesSquareIcon, MonitorSmartphoneIcon, PencilIcon, ScrollTextIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, SquareTerminalIcon, XIcon } from "lucide-react";
+import { AppWindowIcon, ArchiveIcon, ArrowLeftRightIcon, BotIcon, Columns2Icon, EllipsisIcon, GlobeIcon, ImageIcon, MessagesSquareIcon, MonitorSmartphoneIcon, PencilIcon, ScrollTextIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, SquareTerminalIcon, XIcon } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo } from "react";
 
 import { Tip } from "@/components/tip";
@@ -10,6 +10,8 @@ import { EmptySide } from "@/components/workspace/compare-view";
 import { CompareSideContext, type CompareSide, pageLoading } from "@/lib/compare-actions";
 import { openChatBackgroundSettings } from "@/components/conversation/chat-background";
 import { ConversationPane } from "@/components/conversation/conversation-pane";
+import { HelperPane } from "@/components/conversation/helper-pane";
+import { helperKey, useHelperInfo } from "@/components/conversation/subagent-view";
 import { ErrorText } from "@/components/error-note";
 import { SessionActionItems } from "@/components/orchestrate/session-actions";
 import { Button } from "@/components/ui/button";
@@ -128,6 +130,7 @@ export function Pane({ wsKey, tab, pane, visible, focused, split, mixed, compare
               <FilePane path={c.path} owner={owner} visible={visible} onClose={close} />
             </Suspense>
           )}
+          {c.kind === "helper" && <HelperPane box={c.box} session={c.session} helper={c.helper} title={c.title} onClose={close} onResolve={(id, title) => setPaneContent(wsKey, tab, pane.id, { ...c, helper: id, title })} />}
           {c.kind === "empty" && <EmptySide owner={owner} tab={tab} pane={pane.id} label={c.label} />}
           {c.kind === "log" && <LogView box={c.box} location={c.location} worktree={c.worktree} service={c.service} visible={visible} />}
           {c.kind === "panel" && <PanelPane wsKey={owner} plugin={c.plugin} panel={c.panel} />}
@@ -245,6 +248,8 @@ export function paneLabel(c: Leaf["content"], agent?: string): string {
       return c.path.slice(c.path.lastIndexOf("/") + 1);
     case "log":
       return `${c.service} log`;
+    case "helper":
+      return c.title || "Helper";
     case "panel":
       return c.title;
     case "starting":
@@ -260,6 +265,7 @@ export function PaneIcon({ content, agent, className }: { content: Leaf["content
   if (c.kind === "browser") return <GlobeIcon className={cn("size-3.5 shrink-0", className)} />;
   if (c.kind === "file") return <FileGlyph path={c.path} className={className} />;
   if (c.kind === "preview") return <MonitorSmartphoneIcon className={cn("size-3.5 shrink-0", className)} />;
+  if (c.kind === "helper") return <BotIcon className={cn("size-3.5 shrink-0", className)} />;
   if (c.kind === "log") return <ScrollTextIcon className={cn("size-3.5 shrink-0", className)} />;
   if (c.kind === "panel") return <PanelIcon plugin={c.plugin} panel={c.panel} className={cn("size-3.5 shrink-0", className)} />;
   if (service) return <ServiceIcon className={cn("size-3", className)} />;
@@ -280,7 +286,8 @@ function PaneTitle({ pane }: { pane: Leaf }) {
   // once the box no longer lists the session.
   const away = useStore((s) => c.kind === "terminal" && !!s.status && s.status.boxes.find((b) => b.name === c.box)?.state !== "online");
   const gone = useStore((s) => c.kind === "terminal" && !session && !!s.boxes[c.box]?.sessions);
-  const state = away ? undefined : session ? sessionState(session, stats) : gone ? "exited" : undefined;
+  const helper = useHelperState(c);
+  const state = helper ?? (away ? undefined : session ? sessionState(session, stats) : gone ? "exited" : undefined);
   return (
     <Tip label={c.kind === "terminal" ? `${c.session} on ${c.box}${away ? ` · ${c.box} is offline` : ""}` : undefined} align="start">
       <span className="flex min-w-0 items-center gap-1.5">
@@ -291,6 +298,12 @@ function PaneTitle({ pane }: { pane: Leaf }) {
       </span>
     </Tip>
   );
+}
+
+// useHelperState is how a helper's pane's helper is doing: working, or
+// back.
+export function useHelperState(c: Leaf["content"]): "running" | "finished" | undefined {
+  return useHelperInfo((s) => (c.kind === "helper" ? s[helperKey(c.box, c.session, c.helper)]?.state : undefined));
 }
 
 // PaneActions are a pane's split buttons and its ⋯ menu: in the pane's own

@@ -1,4 +1,4 @@
-import { BotIcon, ChevronDownIcon, EyeIcon, RefreshCwIcon } from "lucide-react";
+import { AppWindowIcon, BotIcon, ChevronDownIcon, EyeIcon, RefreshCwIcon } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { create } from "zustand";
 
@@ -15,26 +15,90 @@ import { type Helper, historyApi } from "@/lib/history";
 import { useStore } from "@/lib/store";
 import type { TranscriptItem } from "@/lib/transcript";
 import { cn } from "@/lib/utils";
+import { openHelperPane } from "@/lib/workspaces";
 
 // A helper's own conversation (a subagent Claude Code started), opened from
-// the crew or from "Sent out 2 helpers" in the chat: read-only, in a sheet
-// beside the chat, drawn as the chat is (its replies in Markdown, its steps
-// folded, each call opening to what it ran and printed). Its siblings are a
-// click away at the top. It reads while open, and holds nothing after.
+// the crew or from "Sent out 2 helpers" in the chat: read-only, drawn as the
+// chat is (its replies in Markdown, its steps folded, each call opening to
+// what it ran and printed). A click opens it as a tab of its own beside the
+// chat (helper-pane.tsx), ⌘-click beside the chat in a split, and ⌥-click
+// peeks at it in a sheet over the chat, where its siblings are a click away
+// at the top and Open in tab keeps it. It reads while open, and holds
+// nothing after.
+
+// Where a helper was opened from: the chat's pane, so its tab opens beside
+// that chat.
+export interface From {
+  wsKey: string;
+  tab: string;
+  pane: string;
+}
 
 interface OpenHelper {
   box: string;
   session: string;
   // The helper's id, or the id of the call that started it.
   ref: string;
+  from?: From;
 }
 
 // The sheet is drawn by one host (the first mounted), wherever the helper
 // was opened from.
 const useHelperSheet = create<{ open?: OpenHelper; hosts: string[] }>()(() => ({ hosts: [] }));
 
-export function openHelper(box: string, session: string, ref: string) {
-  useHelperSheet.setState({ open: { box, session, ref } });
+// peekHelper shows a helper's conversation in the sheet beside the chat.
+export function peekHelper(box: string, session: string, ref: string, from?: From) {
+  useHelperSheet.setState({ open: { box, session, ref, from } });
+}
+
+// openHelper opens a helper as a click asks: ⌥ peeks in the sheet, ⌘ (Ctrl
+// elsewhere) opens it beside the chat in a split, and a plain click as a
+// tab beside the chat's, or the tab it already has.
+export function openHelper(box: string, session: string, ref: string, opts: { from?: From; title?: string; event?: { metaKey: boolean; ctrlKey: boolean; altKey: boolean } } = {}) {
+  const e = opts.event;
+  if (e?.altKey) return peekHelper(box, session, ref, opts.from);
+  openHelperPane({ box, session, ref, title: opts.title }, e && (e.metaKey || e.ctrlKey) ? "split" : "tab", opts.from);
+}
+
+// What each open helper is and how it is doing, by box/session/id, for its
+// tab in the strip: written by its pane as it reads.
+export const helperKey = (box: string, session: string, id: string) => `${box}/${session}/${id}`;
+export const useHelperInfo = create<Record<string, { name: string; state: Helper["state"] }>>()(() => ({}));
+
+// matchHelper finds a helper by its id, the call that started it, or its
+// name.
+export function matchHelper(helpers: Helper[] | undefined, ref: string): Helper | undefined {
+  const name = ref.replace(/^Explore:\s*/, "");
+  return helpers?.find((x) => x.id === ref || x.tool === ref) ?? helpers?.find((x) => x.name === ref || x.name === name);
+}
+
+// useHelpers reads a session's helpers: again every few seconds while any
+// works, and with retry while the one wanted isn't among them yet (a
+// record written a moment later, or a box coming back).
+export function useHelpers(box: string, session: string, opts: { enabled?: boolean; retry?: boolean } = {}) {
+  const client = useStore((s) => s.client);
+  const [helpers, setHelpers] = useState<Helper[]>();
+  const [error, setError] = useState<string>();
+  const [attempt, setAttempt] = useState(0);
+  const busy = !!helpers?.some((h) => h.state === "running");
+  const enabled = opts.enabled ?? true;
+  useEffect(() => {
+    if (!client || !enabled) return;
+    let alive = true;
+    const read = () =>
+      historyApi.helpers(client, box, session).then(
+        (hs) => alive && (setHelpers(hs), setError(undefined)),
+        (err) => alive && setError(errorMessage(err)),
+      );
+    void read();
+    const every = busy ? 3000 : opts.retry ? 5000 : 0;
+    const t = every ? window.setInterval(read, every) : 0;
+    return () => {
+      alive = false;
+      window.clearInterval(t);
+    };
+  }, [client, box, session, busy, enabled, opts.retry, attempt]);
+  return { helpers, error, retry: () => setAttempt((n) => n + 1) };
 }
 
 export function HelperSheetHost() {
@@ -54,33 +118,13 @@ const elapsed = (ms: number) => {
   return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s`;
 };
 
-function HelperSheet({ box, session, ref: first, onClose }: OpenHelper & { onClose(): void }) {
-  const client = useStore((s) => s.client);
+function HelperSheet({ box, session, ref: first, from, onClose }: OpenHelper & { onClose(): void }) {
   const parent = useStore((s) => s.boxes[box]?.sessions?.find((x) => x.name === session)?.title);
-  const [helpers, setHelpers] = useState<Helper[]>();
-  const [listError, setListError] = useState<string>();
+  const { helpers, error: listError } = useHelpers(box, session);
   const [sel, setSel] = useState(first);
   useEffect(() => setSel(first), [first]);
 
-  // The helpers, again every few seconds while any works.
-  const busy = !!helpers?.some((h) => h.state === "running");
-  useEffect(() => {
-    if (!client) return;
-    let alive = true;
-    const read = () =>
-      historyApi.helpers(client, box, session).then(
-        (hs) => alive && (setHelpers(hs), setListError(undefined)),
-        (err) => alive && setListError(errorMessage(err)),
-      );
-    void read();
-    const t = busy ? window.setInterval(read, 3000) : 0;
-    return () => {
-      alive = false;
-      window.clearInterval(t);
-    };
-  }, [client, box, session, busy]);
-
-  const h = helpers?.find((x) => x.id === sel || x.tool === sel) ?? helpers?.find((x) => x.name === sel);
+  const h = matchHelper(helpers, sel);
   const siblings = helpers?.filter((x) => (x.depth ?? 1) <= 1 || x.id === h?.id) ?? [];
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
@@ -102,7 +146,23 @@ function HelperSheet({ box, session, ref: first, onClose }: OpenHelper & { onClo
               Read-only
             </span>
           </div>
-          <SheetTitle className="truncate pr-10 text-lg">{h?.name ?? (helpers ? "Helper not found" : "Opening the helper…")}</SheetTitle>
+          <div className="flex items-center gap-3 pr-10">
+            <SheetTitle className="min-w-0 flex-1 truncate text-lg">{h?.name ?? (helpers ? "Helper not found" : "Opening the helper…")}</SheetTitle>
+            {h && (
+              <Button
+                size="sm"
+                variant="outline"
+                className="shrink-0"
+                onClick={() => {
+                  onClose();
+                  openHelperPane({ box, session, ref: h.id, title: h.name }, "tab", from);
+                }}
+              >
+                <AppWindowIcon />
+                Open in tab
+              </Button>
+            )}
+          </div>
           {h && (
             <SheetDescription render={<div />} className="flex flex-wrap items-center gap-x-3 gap-y-1">
               <span className="flex items-center gap-1.5">
@@ -148,7 +208,9 @@ function HelperSheet({ box, session, ref: first, onClose }: OpenHelper & { onClo
   );
 }
 
-function HelperChat({ box, session, h }: { box: string; session: string; h: Helper }) {
+// HelperChat is a helper's conversation, read while it works. In a tab
+// (wide) it keeps to the chat's column; in the sheet it fills it.
+export function HelperChat({ box, session, h, wide }: { box: string; session: string; h: Helper; wide?: boolean }) {
   const client = useStore((s) => s.client);
   const [items, setItems] = useState<TranscriptItem[]>([]);
   const [state, setState] = useState<"loading" | "ready" | "error">("loading");
@@ -216,6 +278,7 @@ function HelperChat({ box, session, h }: { box: string; session: string; h: Help
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto px-6 pt-5 pb-8">
+      <div className={cn(wide && "mx-auto w-full max-w-(--berth-chat-w)")}>
       {prompt && <AskedBy text={prompt} />}
       {state === "loading" && (
         <div className="flex h-32 items-center justify-center text-muted-foreground text-sm">
@@ -234,6 +297,7 @@ function HelperChat({ box, session, h }: { box: string; session: string; h: Help
       )}
       {state === "ready" && !shown.length && <p className="text-muted-foreground text-sm">It hasn't done anything yet.</p>}
       {state === "ready" && shown.length > 0 && <ConversationView items={shown} onAnswer={() => {}} edits={edits} who="The helper" className="max-w-none" />}
+      </div>
     </div>
   );
 }

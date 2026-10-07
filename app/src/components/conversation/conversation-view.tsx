@@ -25,6 +25,7 @@ import { QuestionCard } from "@/components/conversation/question-form";
 import { SelectionActions } from "@/components/conversation/selection-actions";
 import { PromptActions, PromptActionsContext, type PromptContext } from "@/components/conversation/prompt-actions";
 import { HelperSheetHost, openHelper } from "@/components/conversation/subagent-view";
+import { PaneContext } from "@/lib/pane-context";
 import { isMock } from "@/hooks/use-berth-connection";
 import { keyOf } from "@/lib/conversation-store";
 import { rowKeyOf } from "@/lib/draft-text";
@@ -412,7 +413,7 @@ function ItemBody({ it, onAnswer, edits, who }: { it: TranscriptItem; onAnswer(i
             Sent out {it.names.length} helper{it.names.length === 1 ? "" : "s"}
           </span>
           {it.names.map((n) => (
-            <HelperChip key={n} name={n} tool={meta(it).tool} />
+            <HelperChip key={n} name={n} tool={it.names.length === 1 ? meta(it).tool : undefined} />
           ))}
         </div>
       );
@@ -430,14 +431,17 @@ function ItemBody({ it, onAnswer, edits, who }: { it: TranscriptItem; onAnswer(i
 }
 
 // HelperChip is a helper the agent sent out; where its own conversation can
-// be read, a click opens it.
+// be read, a click opens it as the crew's rows do (a tab, ⌘ a split, ⌥ a
+// peek).
 function HelperChip({ name, tool }: { name: string; tool?: string }) {
   const ctx = useContext(PromptActionsContext);
+  const pane = useContext(PaneContext);
   const label = name.replace(/^Explore:\s*/, "");
   if (!ctx?.claude) return <Badge variant="secondary">{label}</Badge>;
+  const from = pane && { wsKey: pane.wsKey, tab: pane.tab, pane: pane.pane };
   return (
-    <Tip label="Open its conversation">
-      <Badge variant="secondary" render={<button type="button" onClick={() => openHelper(ctx.box, ctx.session, tool ?? label)} />} className="cursor-pointer outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring">
+    <Tip label={<span className="flex flex-col"><span>Open its conversation in a tab</span><span className="text-muted-foreground">⌘-click beside the chat · ⌥-click to peek</span></span>}>
+      <Badge variant="secondary" render={<button type="button" data-helper-chip={label} onClick={(e) => openHelper(ctx.box, ctx.session, tool ?? label, { from, title: label, event: e })} />} className="cursor-pointer outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring">
         {label}
         <ChevronRightIcon className="-mr-0.5 size-3 opacity-60" />
       </Badge>

@@ -109,7 +109,7 @@ export function NewTabMenu() {
         const focus = leaves(t.root).find((l) => l.id === t.focus) ?? leaves(t.root)[0];
         const c = focus.content;
         // Terminals by what the app calls them everywhere: "Claude Code 2".
-        const what = c.kind === "terminal" ? terminalName(c.box, c.session) : c.kind === "browser" ? c.url.replace(/^https?:\/\//, "") || "Browser" : c.kind === "preview" ? `Preview ${c.url.replace(/^https?:\/\//, "")}`.trim() : "Starting";
+        const what = c.kind === "terminal" ? terminalName(c.box, c.session) : c.kind === "browser" ? c.url.replace(/^https?:\/\//, "") || "Browser" : c.kind === "preview" ? `Preview ${c.url.replace(/^https?:\/\//, "")}`.trim() : c.kind === "helper" ? `Helper ${c.title ?? ""}`.trim() : "Starting";
         return {
           value: `tab:${key}:${t.id}`,
           label: `${what} — ${space.ref.main ? space.ref.location : space.ref.worktree}`,

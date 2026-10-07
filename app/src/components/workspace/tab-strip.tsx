@@ -9,6 +9,7 @@ import { ContextMenu, ContextMenuItem, ContextMenuPopup, ContextMenuSeparator, C
 import { NewTabMenu } from "@/components/workspace/new-tab-menu";
 import { FileTabState } from "@/components/files/file-bits";
 import { PaneActions, PaneIcon, paneLabel } from "@/components/workspace/pane";
+import { helperKey, useHelperInfo } from "@/components/conversation/subagent-view";
 import { RunMenu } from "@/components/workspace/run-menu";
 import { armDrag, StripMarker, useTabDrag } from "@/components/workspace/tab-drag";
 import { TabGroup } from "@/components/workspace/tab-group";
@@ -234,15 +235,18 @@ export function TabButton({ tab, wsKey, tone, active, onActivate, onClose, onDra
   // A Compare tab is named after its two worktrees.
   const compared = useCompareTitle(tab);
 
+  const helpers = useHelperInfo();
   // A tab is named after its most important pane: an agent that needs you,
-  // then one working, then the focused pane.
+  // then one working, then the focused pane. A helper's pane says whether
+  // its helper is working or back.
   const ranked = panes
     .map((l) => {
       const c = l.content;
       const s = c.kind === "terminal" ? boxes[c.box]?.sessions?.find((x) => x.name === c.session) : undefined;
       // A session the box no longer lists has ended, as its pane says.
       const gone = c.kind === "terminal" && !s && !!boxes[c.box]?.sessions;
-      const state: SessionState | undefined = s && c.kind === "terminal" ? sessionState(s, boxes[c.box]?.stats) : gone ? "exited" : undefined;
+      const helper = c.kind === "helper" ? helpers[helperKey(c.box, c.session, c.helper)]?.state : undefined;
+      const state: SessionState | undefined = helper ?? (s && c.kind === "terminal" ? sessionState(s, boxes[c.box]?.stats) : gone ? "exited" : undefined);
       return { l, s, state, agent: s ? agentOf(s) : c.kind === "terminal" ? c.agent : undefined };
     })
     .sort((a, b) => rank(a, tab.focus) - rank(b, tab.focus));
@@ -347,7 +351,7 @@ export function TabButton({ tab, wsKey, tone, active, onActivate, onClose, onDra
         {editing ? (
           tab$
         ) : (
-          <Tip label={tab.compare ? `Compare ${title}` : c.kind === "terminal" ? [title, secondary, c.session].filter(Boolean).join(" · ") : undefined} side="bottom" align="start">
+          <Tip label={tab.compare ? `Compare ${title}` : c.kind === "terminal" ? [title, secondary, c.session].filter(Boolean).join(" · ") : c.kind === "helper" ? `${title} · a helper's conversation, read-only` : undefined} side="bottom" align="start">
             {tab$}
           </Tip>
         )}

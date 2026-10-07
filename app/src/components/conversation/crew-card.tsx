@@ -1,10 +1,12 @@
-import { ChevronDownIcon, ChevronRightIcon, UsersIcon } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { ChevronDownIcon, ChevronRightIcon, EyeIcon, UsersIcon } from "lucide-react";
+import { useContext, useEffect, useRef, useState } from "react";
 
 import { StateGlyph } from "@/components/agent-glyph";
-import { HelperSheetHost, openHelper } from "@/components/conversation/subagent-view";
+import { HelperSheetHost, openHelper, peekHelper } from "@/components/conversation/subagent-view";
+import { Tip } from "@/components/tip";
 import { keyOf } from "@/lib/conversation-store";
 import { useHasHistory } from "@/lib/history";
+import { PaneContext } from "@/lib/pane-context";
 import type { CrewMember } from "@/lib/transcript";
 import { cn } from "@/lib/utils";
 
@@ -32,9 +34,13 @@ const elapsed = (ms: number) => {
   return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, "0")}s`;
 };
 
-// With history on the box, a subagent opens to its own conversation.
+// With history on the box, a subagent opens to its own conversation: a
+// click as a tab beside this chat's (or the tab it has), ⌘-click beside the
+// chat in a split, ⌥-click (or its eye) a peek in the sheet.
 export function CrewCard({ crew, chat }: { crew: CrewMember[]; chat: { box: string; session: string } }) {
   const key = keyOf(chat.box, chat.session);
+  const pane = useContext(PaneContext);
+  const from = pane && { wsKey: pane.wsKey, tab: pane.tab, pane: pane.pane };
   const busy = crew.filter((c) => c.state !== "finished").length;
   const working = busy > 0;
   const [open, setOpenState] = useState(() => folds.get(key)?.open ?? working);
@@ -120,17 +126,32 @@ export function CrewCard({ crew, chat }: { crew: CrewMember[]; chat: { box: stri
                 </>
               );
               return (
-                <li key={c.id}>
+                <li key={c.id} className="group/row relative">
                   {history && c.kind === "subagent" ? (
-                    <button
-                      type="button"
-                      onClick={() => openHelper(chat.box, chat.session, c.id)}
-                      aria-label={`${c.name}: open its conversation`}
-                      className="group flex h-7 w-full items-center gap-2.5 rounded-md pr-1 pl-2 text-left text-[0.8125rem] outline-none hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      {row}
-                      <ChevronRightIcon className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100" />
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        data-helper={c.id}
+                        onClick={(e) => openHelper(chat.box, chat.session, c.id, { from, title: c.name, event: e })}
+                        aria-label={`${c.name}: open its conversation in a tab`}
+                        title="Open in a tab · ⌘-click to open beside the chat · ⌥-click to peek"
+                        className="flex h-7 w-full items-center gap-2.5 rounded-md pr-1 pl-2 text-left text-[0.8125rem] outline-none hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        {row}
+                        <ChevronRightIcon className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/row:opacity-0 group-focus-within/row:opacity-100" />
+                      </button>
+                      <Tip label="Peek (⌥-click)">
+                        <button
+                          type="button"
+                          data-helper-peek
+                          aria-label={`Peek at ${c.name}`}
+                          onClick={() => peekHelper(chat.box, chat.session, c.id, from)}
+                          className="absolute top-0.5 right-0.5 inline-flex size-6 items-center justify-center rounded text-muted-foreground opacity-0 outline-none transition-opacity hover:bg-accent hover:text-foreground focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring group-hover/row:opacity-100"
+                        >
+                          <EyeIcon className="size-3.5" />
+                        </button>
+                      </Tip>
+                    </>
                   ) : (
                     <div className="flex h-7 items-center gap-2.5 rounded-md pr-[1.375rem] pl-2 text-[0.8125rem]">{row}</div>
                   )}

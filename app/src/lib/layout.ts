@@ -17,6 +17,11 @@ export type PaneContent =
   | { kind: "log"; box: string; location: string; worktree: string; service: string }
   // A file of the pane's worktree, in the File tab's editor (lib/files.ts).
   | { kind: "file"; path: string }
+  // A helper's own conversation (a subagent its agent sent out), read-only
+  // (components/conversation/helper-pane.tsx). helper is its id once known
+  // (the call's id or its name until then); title is its name, kept so the
+  // tab is named before the box answers, and after a restart.
+  | { kind: "helper"; box: string; session: string; helper: string; title?: string }
   // A plugin's worktree panel, shown for the pane's worktree (paneWorktree).
   | { kind: "panel"; plugin: string; panel: string; title: string }
   | { kind: "starting"; label: string }
