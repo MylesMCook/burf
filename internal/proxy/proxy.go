@@ -39,9 +39,18 @@ type Proxy struct {
 	mu         sync.Mutex
 	transports map[string]*http.Transport
 	preview    previewState
+	requests   requestLog
 }
 
 func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Every request is logged for the Browser tab's Network drawer
+	// (requestlog.go).
+	lw := p.logRequest(w, r)
+	defer lw.finish()
+	p.serve(lw, r)
+}
+
+func (p *Proxy) serve(w http.ResponseWriter, r *http.Request) {
 	if p.Route != nil {
 		if box, port, ok := p.Route(hostOnly(r.Host)); ok {
 			p.passThrough(w, r, box, port)
@@ -70,6 +79,9 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// A Preview tab's frame (preview.go): its page gets the preview script,
 	// and its requests the cookies a frame is not sent.
 	preview := p.preview.kind(r, jarHost)
+	// A Browser tab frame's page that asked for the console script
+	// (devtools.go).
+	devtools := preview == "" && devtoolsPage(r)
 	rp := &httputil.ReverseProxy{
 		Transport: p.transport(target.Box),
 		Rewrite: func(pr *httputil.ProxyRequest) {
@@ -94,6 +106,9 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				pr.Out.Header.Del("If-None-Match")
 				pr.Out.Header.Del("If-Modified-Since")
 			}
+			if devtools {
+				devtoolsRequest(pr.Out)
+			}
 		},
 		ModifyResponse: func(resp *http.Response) error {
 			if loc := resp.Header.Get("Location"); loc != "" {
@@ -105,6 +120,9 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				if r.Method == http.MethodGet && isHTML(resp) {
 					injectPreview(resp)
 				}
+			}
+			if devtools {
+				devtoolsResponse(resp)
 			}
 			return nil
 		},
@@ -253,6 +271,7 @@ const PageStyle = `<meta name="viewport" content="width=device-width,initial-sca
 	`footer{margin-top:2.5rem;padding-top:.75rem;border-top:1px solid var(--line);color:var(--muted);font-size:12px}</style>`
 
 func page(w http.ResponseWriter, status int, title, detail string) {
+	noteFailure(w, title)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
 	fmt.Fprintf(w, `<!doctype html><html lang="en"><meta charset="utf-8"><title>%s</title>%s<body><h1>%s</h1><p>%s</p><footer>%d %s · berth</footer>`,

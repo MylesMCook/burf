@@ -400,6 +400,7 @@ func (b *Box) mountBrowser(route func(string, func(http.ResponseWriter, *http.Re
 	route("POST "+p+"eval", b.browserEval)
 	route("GET "+p+"console", b.browserConsole)
 	route("GET "+p+"network", b.browserNetwork)
+	route("GET "+p+"devtools", b.browserDevtools)
 	route("GET "+p+"status", b.browserStatus)
 	route("POST "+p+"close", b.browserClose)
 	route("GET "+p+"screencast", b.browserScreencast)

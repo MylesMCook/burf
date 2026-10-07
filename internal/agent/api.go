@@ -6,9 +6,11 @@ import (
 	"errors"
 	"net/http"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/sean-brydon/berthd/internal/forward"
+	"github.com/sean-brydon/berthd/internal/proxy"
 )
 
 var (
@@ -65,6 +67,22 @@ func (a *Agent) api(stop context.CancelFunc) http.Handler {
 			return
 		}
 		writeJSON(w, http.StatusOK, f)
+	})
+	// The requests the proxy relayed for a page host, for the Browser tab's
+	// Network drawer: ?host=checkout.shop.devl.localhost&after=<seq>.
+	mux.HandleFunc("GET /v1/proxy/requests", func(w http.ResponseWriter, r *http.Request) {
+		host := r.URL.Query().Get("host")
+		if host == "" {
+			writeError(w, http.StatusBadRequest, "host is required")
+			return
+		}
+		after, _ := strconv.ParseInt(r.URL.Query().Get("after"), 10, 64)
+		if a.proxy == nil {
+			writeJSON(w, http.StatusOK, map[string]any{"requests": []proxy.Request{}, "last": 0})
+			return
+		}
+		list, last := a.proxy.Requests(host, after)
+		writeJSON(w, http.StatusOK, map[string]any{"requests": list, "last": last})
 	})
 	mux.HandleFunc("POST /v1/routes", func(w http.ResponseWriter, r *http.Request) {
 		var req Route
