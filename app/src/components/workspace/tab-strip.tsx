@@ -26,6 +26,7 @@ import { renameSession, useRenaming } from "@/lib/session-title";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { activateTab, tabBeside, unsplitTab, useHereKey, useHereRef, useWorkspaces, type WsTab } from "@/lib/workspaces";
+import { useTitleAt } from "@/lib/worktree-names";
 
 // TabStrip is the current worktree's tabs across the top, as in Orca. It is
 // also the window's drag handle. A tab that is not split has no pane header,
@@ -51,6 +52,7 @@ export function TabStrip() {
   // mixes worktrees may not be the tab's. The breadcrumb and Run follow it.
   const hereKey = useHereKey();
   const hereRef = useHereRef();
+  const hereTitle = useTitleAt(hereRef?.box, hereRef?.path);
   const hereLeaving = useRemoval(hereRef?.box ?? "", hereKey !== key ? hereRef?.path : undefined);
   const scroller = useRef<HTMLDivElement>(null);
   const [edges, setEdges] = useState({ left: false, right: false });
@@ -172,12 +174,12 @@ export function TabStrip() {
           {/* With groups, the solid label already names the worktree in
               front; the breadcrumb only speaks up for a guest pane. */}
           {hereRef && !(grouped && hereKey === key) && (
-            <Tip label={`${hereRef.box}:${hereRef.path}`} side="bottom">
+            <Tip label={`${hereTitle && !hereRef.main ? `${hereRef.worktree} · ` : ""}${hereRef.box}:${hereRef.path}`} side="bottom">
               <span data-tauri-drag-region className="flex max-w-56 items-center gap-1.5 truncate">
                 <WtDot wsKey={hereKey} />
                 <span className="truncate">
                   {hereRef.location}
-                  {hereRef.main ? "" : ` / ${hereRef.worktree}`}
+                  {hereRef.main ? "" : ` / ${hereTitle ?? hereRef.worktree}`}
                 </span>
                 <span className="rounded bg-accent/70 px-1 py-px font-mono text-[10px]">{hereRef.box}</span>
               </span>

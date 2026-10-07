@@ -18,6 +18,7 @@ import { type LiveService, liveServices } from "@/lib/worktree-services";
 import type { WorktreeRef } from "@/lib/workspaces";
 import { PluginBoundary, pluginContexts } from "@/plugins/plugin-boundary";
 import { useRegistry } from "@/plugins/registry";
+import { useTitleAt } from "@/lib/worktree-names";
 
 // WorktreeSections sit under the composer wherever work starts in a
 // worktree (its launcher, and a new agent's first prompt): what runs there,
@@ -82,7 +83,7 @@ function LiveServices({ worktree: ref }: { worktree: WorktreeRef }) {
   const named = useMemo(() => (ownRun ? services.map((s) => (!s.process && s.path === ref.path && s.port === devPort ? { ...s, process: ownRun } : s)) : services), [services, ownRun, ref.path, devPort]);
   const rows = useMemo(() => liveServices(named, { ref, services: named, urlPort }, devPort), [named, ref, urlPort, devPort]);
   const [showOther, setShowOther] = useState(false);
-  const name = ref.main ? ref.location : ref.worktree;
+  const name = useTitleAt(ref.box, ref.path) ?? (ref.main ? ref.location : ref.worktree);
   const host = worktreeHost(ref);
   const main = rows.filter((r) => r.kind !== "other");
   const other = rows.filter((r) => r.kind === "other");

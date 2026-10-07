@@ -373,7 +373,7 @@ function WorktreeRow({
             <LeadIcon sessions={away ? [] : sessions} data={data} icon={wt.main ? <HomeIcon /> : <GitBranchIcon />} />
             <span className={cn("min-w-0 truncate", away && "opacity-70")}>{name}</span>
             {/* Its own name beside the title, when the sidebar is wide enough. */}
-            {!wt.main && wt.title && <span data-testid="worktree-row-name" className="hidden min-w-0 shrink-[2] truncate font-mono text-[10px] text-muted-foreground/70 @min-[17rem]/side:inline">{wt.name}</span>}
+            {!wt.main && wt.title && <span data-testid="worktree-row-name" className="hidden min-w-0 shrink-[100] truncate font-mono text-[10px] text-muted-foreground/70 @min-[17rem]/side:inline">{wt.name}</span>}
             {/* On screen beside another worktree: its colour. */}
             <WtDot wsKey={key} className="size-1.5" />
             {chip && <BoxChip box={chip} />}
