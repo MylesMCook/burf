@@ -42,14 +42,15 @@ let running: Promise<void> | null = null;
 
 // updatesSupported is whether this copy of Berth can update itself: the
 // packaged app. A dev build (pnpm tauri dev) can check, but only by hand.
-export const updatesSupported = () => isTauri();
+// Fork builds stay off the upstream feed until they have their own signed updates.
+export const updatesSupported = () => isTauri() && import.meta.env.VITE_BERTH_FORK !== "true";
 
 // checkForUpdate checks once, and downloads what it finds. A check while
 // one runs joins it. `manual` is a click on Check now: only then is a
 // failure worth showing; a failed check in the background waits for the
 // next one.
 export function checkForUpdate({ manual = false } = {}): Promise<void> {
-  if (!isTauri()) return Promise.resolve();
+  if (!updatesSupported()) return Promise.resolve();
   running ??= run(manual).finally(() => {
     running = null;
   });
@@ -168,7 +169,7 @@ let started = false;
 // only: a dev build would otherwise offer to replace itself with a release.
 // A dev build leaves the agent alone too (it is often the one you run).
 export function startUpdater() {
-  if (started || !isTauri() || import.meta.env.DEV) return;
+  if (started || !updatesSupported() || import.meta.env.DEV) return;
   started = true;
   void afterLaunch();
   // Let the window and the agent connection settle first.

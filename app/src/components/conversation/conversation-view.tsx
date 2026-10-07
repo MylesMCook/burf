@@ -55,6 +55,8 @@ export interface ConversationViewProps {
   tail?: ReactNode;
   tailSize?: number;
   className?: string;
+  // Imported history has no live permissions, file actions or session control.
+  readOnly?: boolean;
   // The session this is the chat of: older turns load as it scrolls up,
   // ⌘F finds in it, and prompts can be edited, forked and rewound (idle:
   // the agent rests, so a rewind can drive it).
@@ -73,7 +75,9 @@ export interface EditActions {
   review(file: string): void;
 }
 
-export function ConversationView({ items: live, onAnswer, edits, who = "The agent", tail, tailSize = 0, className, chat }: ConversationViewProps) {
+export function ConversationView({ items: live, onAnswer, edits, who = "The agent", tail, tailSize = 0, className, chat: liveChat, readOnly = false }: ConversationViewProps) {
+  const chat = readOnly ? undefined : liveChat;
+  if (readOnly) edits = undefined;
   const key = chat ? keyOf(chat.box, chat.session) : "";
   const history = useHasHistory(chat?.box ?? "") && !!chat;
   const older = useOlder(key);
@@ -151,6 +155,7 @@ export function ConversationView({ items: live, onAnswer, edits, who = "The agen
     ) : undefined;
 
   return (
+    <ReadOnlyContext.Provider value={readOnly}>
     <RevealContext.Provider value={revealed}>
       <PromptActionsContext.Provider value={ctx}>
         <ChatList
@@ -179,11 +184,13 @@ export function ConversationView({ items: live, onAnswer, edits, who = "The agen
         {chat && <HelperSheetHost />}
       </PromptActionsContext.Provider>
     </RevealContext.Provider>
+    </ReadOnlyContext.Provider>
   );
 }
 
 // What search opens to show a match: folds and tool groups, by id.
 const RevealContext = createContext<Set<string>>(new Set());
+const ReadOnlyContext = createContext(false);
 
 // A message that replaced a draft keeps the draft's row (lib/draft-text).
 const blockKey = (b: Block) => (b.kind === "item" ? rowKeyOf(b.it.id) : b.id);
@@ -481,6 +488,9 @@ function Item(props: { it: TranscriptItem; onAnswer(id: string, key: string): vo
 }
 
 function ItemBody({ it, onAnswer, edits, who }: { it: TranscriptItem; onAnswer(id: string, key: string): void; edits?: EditActions; who: string }) {
+  const readOnly = useContext(ReadOnlyContext);
+  if (readOnly && it.kind === "ask") return <div className="space-y-1 text-sm text-muted-foreground"><p>{it.tool}: {it.detail}</p><p>{it.decided ? `Recorded answer: ${it.decided}` : "No answer recorded"}</p></div>;
+  if (readOnly && it.kind === "question") return <div className="space-y-2 text-sm">{it.questions.map((q, i) => <div key={i}><p>{q.question}</p><p className="text-muted-foreground">{it.answers?.[i] || "No answer recorded"}</p></div>)}</div>;
   switch (it.kind) {
     case "user": {
       const text = withoutReminders(it.text);
@@ -488,7 +498,7 @@ function ItemBody({ it, onAnswer, edits, who }: { it: TranscriptItem; onAnswer(i
       return (
         <div className="hs-prompt flex w-full flex-col items-end gap-1">
           <div className="flex w-full items-end justify-end gap-1.5">
-            {!it.pending && <PromptActions it={it} />}
+            {!readOnly && !it.pending && <PromptActions it={it} />}
             <div data-selectable className={cn("cv-in min-w-0 max-w-[80%] whitespace-pre-wrap rounded-2xl bg-muted px-3.5 py-2", it.pending && "opacity-70")}>
               {text}
             </div>
