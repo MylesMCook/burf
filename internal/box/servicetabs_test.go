@@ -190,15 +190,22 @@ func TestATerminalServiceRunsInItsOwnSessionStopsWithCtrlCAndStartsAgainInIt(t *
 	// Start runs it again in the same terminal, with the title someone gave
 	// the tab kept.
 	b.Sessions.SetTitle(ctx, st.Session, "Web (mine)")
+	// How much it had printed, so the new run's own words can be told apart
+	// (the shell a Ctrl-C ended may not have said "bye" first).
+	before, _ := b.terminalServiceLog(ctx, "cal", "billing", "web", 1<<20)
 	if st, err = b.StartService(ctx, "cal", "billing", "web"); err != nil || st.State != "running" {
 		t.Fatalf("start again = %+v, %v", st, err)
 	}
 	if s, _ := b.Sessions.Get(ctx, st.Session); s.Exited || s.Title != "Web (mine)" || s.Service != "web" {
 		t.Fatalf("restarted session = %+v", s)
 	}
-	waitUntil(t, "its output again", 5*time.Second, func() bool {
+	waitUntil(t, "its output again", 15*time.Second, func() bool {
 		out, _ := b.terminalServiceLog(ctx, "cal", "billing", "web", 1<<20)
-		return strings.Count(string(out), want) >= 2 || strings.Contains(string(out), "bye")
+		// Appended to the old log, or a log started afresh.
+		if len(out) >= len(before) && strings.HasPrefix(string(out), string(before)) {
+			return strings.Contains(string(out[len(before):]), want)
+		}
+		return strings.Contains(string(out), want)
 	})
 
 	// Stop from the app stops it the same way, with one event.
