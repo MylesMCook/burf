@@ -172,6 +172,8 @@ const tryIt = async (k, fn) => { try { const v = await fn(); out[k] = "ran:" + S
   await tryIt("beacon", () => navigator.sendBeacon("LEAK?beacon", "x"));
   await tryIt("img", () => new Promise((res, rej) => { const i = new Image(); i.onload = res; i.onerror = () => rej(new Error("img")); i.src = "LEAK?img"; }));
   await tryIt("rtc", () => new RTCPeerConnection());
+  // A fresh realm to get WebRTC back from: an about:blank frame.
+  await tryIt("rtcFrame", () => { document.body.appendChild(document.createElement("iframe")); const W = window.frames[window.frames.length - 1]; return new W.RTCPeerConnection({ iceServers: [{ urls: "stun:127.0.0.1:3478" }] }); });
   await tryIt("open", () => window.open("LEAK?open"));
   await tryIt("topNav", () => { window.top.location = "LEAK?top"; });
   await tryIt("form", () => document.getElementById("f").submit());
@@ -223,7 +225,7 @@ test("a hostile page on its own origin can't reach the app, the laptop agent or 
     const inner = app.page.frameLocator('iframe[data-art-frame="origin"]').frameLocator("#page");
     await expect(inner.locator("body[data-results]")).toBeAttached();
     const results = JSON.parse((await inner.locator("body").getAttribute("data-results")) ?? "{}") as Record<string, string>;
-    for (const k of ["parentDoc", "topDoc", "cookie", "storage", "fetch", "agent", "xhr", "ws", "img", "rtc"]) {
+    for (const k of ["parentDoc", "topDoc", "cookie", "storage", "fetch", "agent", "xhr", "ws", "img", "rtc", "rtcFrame"]) {
       expect(results[k], `${k}: ${results[k]}`).toMatch(/^blocked:/);
     }
     // A popup, a top navigation, a form or a beacon may say it tried
