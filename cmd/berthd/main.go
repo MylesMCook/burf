@@ -22,6 +22,7 @@ import (
 
 	"github.com/sean-brydon/berthd/internal/box"
 	"github.com/sean-brydon/berthd/internal/boxcmd"
+	"github.com/sean-brydon/berthd/internal/debugserver"
 	"github.com/sean-brydon/berthd/internal/doctor"
 	"github.com/sean-brydon/berthd/internal/events"
 	"github.com/sean-brydon/berthd/internal/hooks"
@@ -452,6 +453,8 @@ func serve(b boxHome, args []string) error {
 	}()
 	go s.ServeLocal(ctx, local)
 	go hookRunner.Run(ctx, bus)
+	// BERTH_DEBUG_ADDR: goroutines, open files and profiles, for measuring.
+	debugserver.Start(ctx, logger.Printf)
 
 	logger.Printf("berthd serving %s as %q (%s); local API %s", ln.Addr(), hostname, id.Fingerprint().Short(), b.socket())
 	return s.Serve(ctx, ln)
