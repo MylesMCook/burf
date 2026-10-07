@@ -667,7 +667,11 @@ func readDaemon(exe, daemon string) ([]byte, error) {
 		exe = resolved
 	}
 	dir := filepath.Dir(exe)
-	for _, path := range []string{filepath.Join(dir, daemon), filepath.Join(dir, "..", "Resources", daemon)} {
+	candidates := []string{filepath.Join(dir, daemon), filepath.Join(dir, "..", "Resources", daemon)}
+	if runtime.GOOS == "windows" && strings.EqualFold(filepath.Base(dir), "cli") {
+		candidates = append(candidates, filepath.Join(dir, "..", daemon))
+	}
+	for _, path := range candidates {
 		if b, err := os.ReadFile(path); err == nil {
 			return b, nil
 		}

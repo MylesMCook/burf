@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -186,7 +187,11 @@ func (c *clock) jump(d time.Duration) {
 // longer than the 104-byte limit for Unix socket paths.
 func shortSocket(t *testing.T) string {
 	t.Helper()
-	dir, err := os.MkdirTemp("/tmp", "cp")
+	base := "/tmp"
+	if runtime.GOOS == "windows" {
+		base = os.TempDir()
+	}
+	dir, err := os.MkdirTemp(base, "cp")
 	if err != nil {
 		t.Fatal(err)
 	}
