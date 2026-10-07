@@ -17,6 +17,60 @@ toolbar can pick an element for the worktree's agent, watch the
 [agent's browser](/guides/agent-browser), and open the page as a Preview tab
 (**Preview sizes**).
 
+### Developer tools
+
+Two layers, both in the Browser tab's toolbar.
+
+**Inspect** opens WebKit's Web Inspector for the page (Elements, Console,
+Network, Sources, Storage…), in a window of its own. Right-click the page
+for **Inspect Element** too. It is the Berth app's: a Browser tab in a plain
+browser shows the page in a frame, which has none.
+
+**Console and network** (⌘⌥I, or **View → Console and network**) opens a
+drawer under the page. Drag its top edge to resize it.
+
+- **Console** is what the page logged since it loaded (`console.log`,
+  `info`, `warn`, `error`, `debug`, `assert`), every uncaught error and
+  unhandled promise rejection, and images or scripts that failed to load.
+  An entry with a stack folds it out; the same line again counts up. Filter
+  by level or text, and **Clear** it. A reload or a new page starts afresh.
+- **Network** is the page's requests: method, path, status, type, time and
+  size, with failed ones (4xx, 5xx, no answer) marked and a **Failed**
+  filter. Click one for its full address and, for a failed JSON or text
+  answer, how it began. It lists a worktree's page: the requests that go
+  through the laptop's proxy, which keeps the last 200 for each host (a
+  call to another worktree's address is listed under the page that made
+  it). For another site, use the Web Inspector's Network tab.
+- **Send to agent**, on an error, a warning or a failed request, sends the
+  worktree's agent what happened (the error, where it was thrown and its
+  stack, or the request and its answer) with the page's address and a note
+  of yours. The element picker sends a picked element the same way.
+
+The toolbar button and the Browser tab show the page's errors since it
+loaded: console errors and failed requests. While you watch the
+[agent's browser](/guides/agent-browser), the button opens the same drawer
+for the agent's page: the console lines and failed requests its box keeps,
+without marking them seen for the agent.
+
+<Callout title="A private WebKit setting">
+The Web Inspector in a release build of the Mac app uses a private WebKit
+setting (`developerExtrasEnabled`, through Tauri's `devtools` feature),
+which the Mac App Store refuses. Berth is notarized and distributed outside
+it, so that is fine. The inspector always opens in its own window: docked,
+WebKit would size it as if the page filled the window.
+</Callout>
+
+How the drawer gets its data: the page runs a small script
+(`internal/proxy/devtools.js`) that keeps what it logs. The native web view
+runs it at the start of every page and asks it twice a second for what's
+new. In a frame (a plain browser), the page is asked for with
+`?__berth_devtools=1`, and the proxy puts the same script in, as it does
+the Preview tab's; it only goes into a frame Berth named, and the flag never
+reaches your dev server. Requests come from the proxy's own log
+(`GET /v1/proxy/requests?host=` on the laptop agent's API), which sees
+every request a worktree's page makes, including ones that never reach the
+page's JavaScript.
+
 ## Preview tab
 
 A Preview tab shows the same page at several sizes at once, each in a frame

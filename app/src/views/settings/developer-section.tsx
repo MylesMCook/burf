@@ -146,7 +146,7 @@ export function DeveloperSection() {
           </Button>
         </SettingsRow>
         {isTauri() && (
-          <SettingsRow label="Developer tools" description="The web inspector for this window. Debug builds only.">
+          <SettingsRow label="Developer tools" description="The Web Inspector for Berth's own window. A Browser tab's page has its own: Inspect in its toolbar.">
             <Button
               size="xs"
               variant="outline"

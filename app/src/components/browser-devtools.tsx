@@ -174,9 +174,9 @@ export function DevtoolsDrawer({ logKey, pageUrl, ctx, proxied, agent }: DrawerP
       </div>
       {sending && <Sender sending={sending} pageUrl={pageUrl} ctx={ctx} agent={agent} onDone={() => setSending(undefined)} />}
       {tab === "console" ? (
-        <ConsoleList log={log} agent={agent} onSend={(entry) => setSending({ kind: "console", entry })} />
+        <ConsoleList log={log} agent={agent} sending={sending?.kind === "console" ? sending.entry : undefined} onSend={(entry) => setSending({ kind: "console", entry })} />
       ) : (
-        <NetworkList log={log} pageUrl={pageUrl} proxied={proxied || !!agent} agent={agent} onSend={(entry) => setSending({ kind: "request", entry })} />
+        <NetworkList log={log} pageUrl={pageUrl} proxied={proxied || !!agent} agent={agent} sending={sending?.kind === "request" ? sending.entry : undefined} onSend={(entry) => setSending({ kind: "request", entry })} />
       )}
     </section>
   );
@@ -231,7 +231,7 @@ function FilterBar({ children, filter, onFilter }: { children: React.ReactNode; 
 
 type LevelFilter = "all" | "error" | "warn" | "info";
 
-function ConsoleList({ log, agent, onSend }: { log?: PaneLog; agent?: boolean; onSend(e: ConsoleEntry): void }) {
+function ConsoleList({ log, agent, sending, onSend }: { log?: PaneLog; agent?: boolean; sending?: ConsoleEntry; onSend(e: ConsoleEntry): void }) {
   const [level, setLevel] = useState<LevelFilter>("all");
   const [filter, setFilter] = useState("");
   const list = log?.console ?? [];
@@ -277,7 +277,7 @@ function ConsoleList({ log, agent, onSend }: { log?: PaneLog; agent?: boolean; o
       >
         {log?.dropped ? <p className="border-b px-3 py-1 text-muted-foreground">{log.dropped} earlier messages were dropped: the page logged faster than they could be kept.</p> : null}
         {shown.map((e, i) => (
-          <ConsoleRow key={`${i}:${e.time}:${e.text.slice(0, 40)}`} e={e} onSend={() => onSend(e)} />
+          <ConsoleRow key={`${i}:${e.time}:${e.text.slice(0, 40)}`} e={e} sending={e === sending} onSend={() => onSend(e)} />
         ))}
         {!shown.length && (
           <p className="px-3 py-3 font-sans text-muted-foreground">
@@ -312,12 +312,12 @@ function LevelIcon({ level }: { level: ConsoleEntry["level"] }) {
   return <span className="size-3.5 shrink-0" />;
 }
 
-function ConsoleRow({ e, onSend }: { e: ConsoleEntry; onSend(): void }) {
+function ConsoleRow({ e, sending, onSend }: { e: ConsoleEntry; sending: boolean; onSend(): void }) {
   const [open, setOpen] = useState(false);
   const stack = !!e.stack;
   const sendable = e.level === "error" || e.level === "warn";
   return (
-    <div data-testid="console-row" data-level={e.level} className={cn("group relative flex items-start gap-1.5 border-b border-border/60 py-1 pr-2 pl-2", LEVEL_STYLE[e.level])}>
+    <div data-testid="console-row" data-level={e.level} data-selected={sending} className={cn("group relative flex items-start gap-1.5 border-b border-border/60 py-1 pr-2 pl-2", LEVEL_STYLE[e.level], sending && "shadow-[inset_2px_0_0_var(--color-ring)]")}>
       <LevelIcon level={e.level} />
       {stack ? (
         <button type="button" aria-label={open ? "Hide the stack" : "Show the stack"} aria-expanded={open} onClick={() => setOpen((o) => !o)} className="mt-px inline-flex size-3.5 shrink-0 items-center justify-center rounded opacity-70 hover:bg-foreground/10 hover:opacity-100">
@@ -362,9 +362,9 @@ function SendButton({ onClick }: { onClick(): void }) {
   );
 }
 
-const COLS = "grid grid-cols-[3.25rem_3.5rem_minmax(0,1fr)_4.5rem_4rem_4.25rem_auto] items-center gap-x-2";
+const COLS = "grid grid-cols-[4rem_3.25rem_minmax(0,1fr)_4.5rem_4rem_4.25rem_auto] items-center gap-x-2";
 
-function NetworkList({ log, pageUrl, proxied, agent, onSend }: { log?: PaneLog; pageUrl: string; proxied: boolean; agent?: boolean; onSend(n: NetEntry): void }) {
+function NetworkList({ log, pageUrl, proxied, agent, sending, onSend }: { log?: PaneLog; pageUrl: string; proxied: boolean; agent?: boolean; sending?: NetEntry; onSend(n: NetEntry): void }) {
   const [onlyFailed, setOnlyFailed] = useState(false);
   const [filter, setFilter] = useState("");
   const [selected, setSelected] = useState<number>();
@@ -417,7 +417,7 @@ function NetworkList({ log, pageUrl, proxied, agent, onSend }: { log?: PaneLog; 
                 data-selected={open}
                 aria-selected={open}
                 onClick={() => setSelected(open ? undefined : n.seq)}
-                className={cn(COLS, "group cursor-default border-b border-border/60 px-2 py-1 font-mono", bad ? "bg-destructive/[0.07] text-destructive-foreground" : "hover:bg-accent/50", open && !bad && "bg-accent/60")}
+                className={cn(COLS, "group cursor-default border-b border-border/60 px-2 py-1 font-mono", bad ? "bg-destructive/[0.07] text-destructive-foreground" : "hover:bg-accent/50", open && !bad && "bg-accent/60", (open || n === sending) && "shadow-[inset_2px_0_0_var(--color-ring)]")}
               >
                 <span role="cell" className={cn("tabular-nums", !bad && n.status >= 300 && "text-muted-foreground", n.error === "canceled" && "text-muted-foreground")}>
                   {statusText(n)}
@@ -463,6 +463,13 @@ function NetworkList({ log, pageUrl, proxied, agent, onSend }: { log?: PaneLog; 
 }
 
 function RequestDetail({ n, pageUrl }: { n: NetEntry; pageUrl: string }) {
+  const box = useRef<HTMLDivElement>(null);
+  // Opened at the foot of the list, it scrolls into view.
+  // (A block body: scrollIntoView may return a promise, which an effect
+  // must not.)
+  useEffect(() => {
+    box.current?.scrollIntoView({ block: "nearest" });
+  }, []);
   let url = n.path;
   try {
     const page = new URL(pageUrl);
@@ -471,7 +478,7 @@ function RequestDetail({ n, pageUrl }: { n: NetEntry; pageUrl: string }) {
     // The path alone.
   }
   return (
-    <div className="space-y-1 border-b bg-muted/40 px-3 py-2 font-mono text-[11px]">
+    <div ref={box} className="space-y-1 border-b bg-muted/40 px-3 py-2 font-mono text-[11px]">
       <p className="break-all">{url}</p>
       <p className="text-muted-foreground">
         {statusText(n)}
