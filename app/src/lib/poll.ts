@@ -9,7 +9,8 @@
 // look returns whether it found anything new: true goes back to every,
 // false doubles the wait up to max, and nothing (undefined) keeps it. A
 // look that throws counts as nothing new. kick() looks now (an event said
-// something changed) and goes back to every.
+// something changed), or as soon as every has passed since the last look,
+// and goes back to every.
 //
 // A timer that fires much later than it was set for means the Mac slept:
 // that look counts as coming back, too.
@@ -41,6 +42,7 @@ export function poll(look: () => unknown, o: PollOptions): Poller {
   let busy = false;
   let again = false;
   let stopped = false;
+  let started = 0;
 
   const schedule = (ms: number) => {
     window.clearTimeout(timer);
@@ -62,6 +64,7 @@ export function poll(look: () => unknown, o: PollOptions): Poller {
     // Late by far more than the wait: the Mac slept.
     if (due && Date.now() - due > Math.max(10_000, wait)) wait = o.every;
     busy = true;
+    started = Date.now();
     let changed: unknown;
     try {
       changed = await look();
@@ -108,7 +111,10 @@ export function poll(look: () => unknown, o: PollOptions): Poller {
     kick() {
       if (stopped) return;
       wait = o.every;
-      void run();
+      // Never more often than every: a burst of kicks is one look.
+      const since = Date.now() - started;
+      if (busy || since >= o.every) void run();
+      else schedule(o.every - since);
     },
   };
 }

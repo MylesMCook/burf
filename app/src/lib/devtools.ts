@@ -190,7 +190,7 @@ export function useDevtoolsFeed({ key, mode, url, visible, proxyPort }: FeedOpti
         try {
           const r = await client.laptop<{ requests: NetEntry[] | null; last: number }>("GET", `/v1/proxy/requests?host=${encodeURIComponent(host)}&after=${after}`);
           if (p !== poller.current) return;
-          const fresh = (r.requests ?? []).length > 0;
+          const fresh = (r.requests ?? []).some((n) => n.seq > after);
           ingestNetwork(key, r.requests ?? []);
           after = Math.max(after, r.last ?? 0);
           return fresh;
