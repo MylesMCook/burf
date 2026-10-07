@@ -81,6 +81,7 @@ name it as `LOC/WT` (and from a laptop, `berth browser open BOX/LOC/WT`).
 | `berthd browser eval JS` | Its value, at most 2 KB |
 | `berthd browser status\|close`, `berthd browser list` | Whether it runs, its memory |
 | `berthd browser allow ORIGIN` | Lets agents' browsers on the box load a public origin |
+| `berthd browser reap [--dry-run]` | Closes [agent-browser](#agent-browser) sessions left by Berth sessions that ended |
 
 A ref names the same element across snapshots until the page navigates. The
 `berth-browser` skill (installed with the others) teaches agents these
@@ -150,6 +151,41 @@ Every worktree's environment has `BERTH_BROWSER_PROXY` and, for Playwright
 MCP, `PLAYWRIGHT_MCP_PROXY_SERVER` and `PLAYWRIGHT_MCP_PROXY_BYPASS=<-loopback>`,
 so a browser an agent starts itself is routed through the same proxy and
 confined the same way, with no setup.
+
+### agent-browser
+
+Agents often reach for Vercel's
+[agent-browser](https://github.com/vercel-labs/agent-browser) CLI
+(`npx agent-browser open URL`) instead. Each of its sessions is a daemon
+and a headless Chrome with a throwaway profile, and both run until the
+agent runs `agent-browser close`, which agents forget. On a box that runs
+agents all day they pile up, each Chrome burning CPU. The `berth-browser`
+skill tells agents to use `berthd browser` for the worktree's pages, and to
+run `agent-browser close` when they use agent-browser anyway. Berth also
+cleans up after them:
+
+- **Idle timeout.** Every session Berth starts gets
+  `AGENT_BROWSER_IDLE_TIMEOUT_MS=600000`, so an agent-browser left idle for
+  10 minutes closes its Chrome, removes its profile and exits, like Berth's
+  own browser. Set the variable in the box's `~/.berth/env.json`, the
+  project's `env` in `.berth/config.json`, or berthd's own environment to
+  change it; `0` turns the timeout off. Berth never replaces a value you
+  set.
+- **Closed with its session.** When a Berth session stops, its program
+  exits, or its worktree is archived, Berth closes the agent-browser
+  sessions it started: `agent-browser close` first, as the agent would
+  have, then `SIGTERM` (and `SIGKILL`) for what is left, and the profile
+  folder goes. It checks every minute, and at once when you stop a session.
+- **Only Berth's.** agent-browser's daemon and its Chrome keep the
+  environment of the agent that started them, so Berth knows them by
+  `AGENT_BROWSER_DAEMON` together with the `BERTH_SESSION` and `TMUX` of a
+  session in its own tmux server (read from `/proc` on Linux, and with
+  `sysctl` as `ps -E` does on a Mac). An agent-browser you run by hand, or
+  from another tmux, has neither and is never touched.
+
+`berthd doctor` lists agent-browser sessions whose Berth session has ended
+under **agent-browser sessions**, and `berthd browser reap` closes them now
+(`--dry-run` only lists them).
 
 ## Watching it
 

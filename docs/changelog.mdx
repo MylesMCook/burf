@@ -20,6 +20,19 @@ again.
   now has **Open in tab**. The tab splits, drags and groups like any other,
   and is there again after a restart; a helper whose record is gone, or
   whose box is offline, says so.
+- **agent-browser no longer piles up on a box.** Agents that drive Vercel's
+  agent-browser CLI instead of Berth's browser left a daemon and a headless
+  Chrome running for every session they forgot to close, and on a busy box
+  those Chromes ate the CPU. Every session Berth starts now gets
+  `AGENT_BROWSER_IDLE_TIMEOUT_MS=600000`, so an idle one closes after 10
+  minutes (set it in the box's `env.json` or the project's `env` to change
+  it, `0` to turn it off). When a Berth session stops, exits or its
+  worktree is archived, Berth closes the agent-browser sessions it started,
+  and only those: one run by hand is never touched. `berthd doctor` lists
+  any left behind and `berthd browser reap` closes them. The
+  `berth-browser` skill now tells agents to use `berthd browser` for the
+  worktree's pages, and to run `agent-browser close` when they use
+  agent-browser anyway. [Agent browser](/guides/agent-browser#agent-browser).
 
 ## v0.3.9
 

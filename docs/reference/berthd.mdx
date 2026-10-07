@@ -77,6 +77,7 @@ asks the app to open the page as a browser tab beside the agent; the
 | `berthd runs`, `berthd run start\|get\|logs\|approve\|reject\|cancel\|templates …` | [Runs](/guides/runs), as `berth run` without the box |
 | `berthd browser open\|snapshot\|click\|fill\|press\|select\|hover\|check\|wait\|shot\|console\|network\|eval\|status\|close [LOC/WT] …` | The worktree's [agent browser](/guides/agent-browser); inside a session, its own worktree |
 | `berthd browser list`, `berthd browser allow ORIGIN`, `berthd browser install` | Browsers running; allow a public origin; download a Chromium |
+| `berthd browser reap [--dry-run] [--json]` | Close the [agent-browser](/guides/agent-browser#agent-browser) sessions (Vercel's CLI) that Berth sessions which have ended left running; `--dry-run` only lists them. `berthd doctor` reports them too |
 | `berthd flow secret FLOW [--scope S]` | Make a webhook flow's signing secret |
 | `berthd session rename NAME [TITLE]` | Name a session's work; no TITLE clears it |
 | `berthd session kill NAME` | Stop a session |
