@@ -39,9 +39,16 @@ var taskCommand = func(ctx context.Context, input []byte, args ...string) ([]byt
 		cmd.Stdin = bytes.NewReader(input)
 	}
 	cmd.WaitDelay = time.Second
-	out, err := cmd.CombinedOutput()
+	// PowerShell emits CLIXML progress on stderr, separately from JSON stdout.
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout, cmd.Stderr = &stdout, &stderr
+	err := cmd.Run()
+	out := stdout.Bytes()
 	if ctx.Err() != nil {
 		return out, ctx.Err()
+	}
+	if err != nil || len(out) == 0 {
+		out = append(out, stderr.Bytes()...)
 	}
 	return out, err
 }

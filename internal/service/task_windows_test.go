@@ -28,6 +28,17 @@ func TestWindowsPowerShellControlHonorsCallerDeadline(t *testing.T) {
 	}
 }
 
+func TestWindowsPowerShellJSONIsSeparateFromProgress(t *testing.T) {
+	out, err := powershell(`$ProgressPreference='Continue'; Write-Progress -Activity 'test-only progress' -Status 'working'; [Console]::Out.Write('{"found":false}')`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var result struct{ Found bool }
+	if err := json.Unmarshal(out, &result); err != nil || result.Found {
+		t.Fatalf("structured stdout was contaminated: %q (%v)", out, err)
+	}
+}
+
 // This test executes only a child process in a test-owned directory. It does
 // not connect to Task Scheduler, register a task, or change login startup.
 func TestWindowsTaskLauncherNativeArgumentsEnvironmentLogAndExit(t *testing.T) {
