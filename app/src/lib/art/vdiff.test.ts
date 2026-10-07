@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
-import { allClear, changes, firstPage, flags, overflow, parseVdiff, pct, sortedPages, thumbShot, vdiffGist, worstShot } from "./vdiff.ts";
+import { allClear, changes, firstPage, flags, overflow, parseVdiff, pct, schemeOf, schemes, shotKey, sortedPages, thumbShot, vdiffGist, worstShot } from "./vdiff.ts";
 
 // Real runs of berthd shots compare (mock-vdiff/): v1 has a sideways
 // scroll and a failing page, v2 fixed both, and the all clear.
@@ -58,4 +58,14 @@ test("flags, the gist and the all clear", () => {
 
 test("percentages read as a person says them", () => {
   assert.deepEqual([pct(48.13), pct(5.07), pct(0.264), pct(0)], ["48%", "5.1%", "0.26%", "0%"]);
+});
+
+test("both colour schemes: each shot says its own, light when it doesn't", () => {
+  const both = { ...v2, settings: { ...v2.settings, color_scheme: "both", color_schemes: ["light", "dark"] as ("light" | "dark")[] } };
+  assert.deepEqual(schemes(both), ["light", "dark"]);
+  assert.deepEqual(schemes(v2), ["light"]);
+  const s = v2.pages[0].shots[0];
+  assert.equal(schemeOf(s), "light");
+  assert.equal(shotKey({ ...s, scheme: "dark" }), `${s.size} dark`);
+  assert.equal(shotKey(s), `${s.size}`);
 });

@@ -47,7 +47,7 @@ function Summary({ art, version, v }: { art: Art; version: ArtVersion; v: Visual
   const n = v.settings.sizes.length;
   const sch = schemes(v);
   return (
-    <div className="flex min-w-0 flex-col gap-1.5 pb-3" data-vd-summary>
+    <div className="flex min-w-0 flex-col gap-1.5" data-vd-summary>
       <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5 text-muted-foreground text-xs">
         <span className="hidden min-w-0 truncate font-mono @[560px]:inline" data-vd-compare>
           {v.base.kind === "baseline" ? `${v.base.label} baseline` : v.base.label}
@@ -305,7 +305,7 @@ function SliderFirst({ art, v }: { art: Art; v: VisualDiff }) {
     <div ref={root} className="flex min-w-0 flex-col" data-vd-slider-first>
       {all ? (
         <>
-          <div className="sticky top-0 z-40 -mx-4 flex flex-wrap items-center gap-2 border-b bg-background/95 px-4 pt-1 pb-2.5 backdrop-blur">
+          <div className="sticky -top-4 z-40 -mx-4 flex flex-wrap items-center gap-2 border-b bg-background/95 px-4 pt-4 pb-2.5 backdrop-blur">
             {allBtn}
             <span className="hidden text-muted-foreground text-xs @[560px]:inline">most changed first · click a shot to compare it</span>
             <span className="ml-auto" />
@@ -403,7 +403,7 @@ function Detail({ art, v, pages, page, shot, scheme, setPage, setSize, lead, ext
   const shots = page.shots.filter((s) => schemeOf(s) === scheme);
   return (
     <div data-vd-detail data-vd-page={page.path} data-vd-size={shot.size} className="flex min-w-0 flex-col">
-      <div className="sticky top-0 z-40 -mx-4 flex flex-col gap-2 border-b bg-background/95 px-4 pt-1 pb-2.5 backdrop-blur" data-vd-toolbar>
+      <div className="sticky -top-4 z-40 -mx-4 flex flex-col gap-2 border-b bg-background/95 px-4 pt-4 pb-2.5 backdrop-blur" data-vd-toolbar>
         <div className="flex min-w-0 items-center gap-2">
           {lead}
           <div className="min-w-0 flex-1">

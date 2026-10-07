@@ -1,6 +1,7 @@
 import { ArrowDownIcon, ChevronsLeftRightIcon, MoveHorizontalIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
+import { Tip } from "@/components/tip";
 import type { Art } from "@/lib/art/model";
 import { overflow, type VdRegion, type VdShot, type VisualDiff } from "@/lib/art/vdiff";
 import { useVdImage } from "@/lib/art/vdiff-img";
@@ -232,7 +233,9 @@ function MaskMarks({ shot, W, H }: { shot: VdShot; W: number; H: number }) {
   return (
     <>
       {(shot.masks ?? []).map(([x, y, w, h], i) => (
-        <div key={`m${i}`} title="Masked: dynamic content, left out of the diff" data-vd-mask className="pointer-events-auto absolute rounded-[2px] border border-[#71717a]/60 border-dashed bg-[repeating-linear-gradient(135deg,rgba(113,113,122,0.35)_0_4px,transparent_4px_8px)]" style={box({ x, y, w, h }, W, H)} />
+        <Tip key={`m${i}`} label="Masked: dynamic content, left out of the diff">
+          <div role="img" aria-label="Masked: dynamic content, left out of the diff" data-vd-mask className="pointer-events-auto absolute rounded-[2px] border border-[#71717a]/60 border-dashed bg-[repeating-linear-gradient(135deg,rgba(113,113,122,0.35)_0_4px,transparent_4px_8px)]" style={box({ x, y, w, h }, W, H)} />
+        </Tip>
       ))}
     </>
   );
@@ -240,7 +243,7 @@ function MaskMarks({ shot, W, H }: { shot: VdShot; W: number; H: number }) {
 
 function RegionBox({ r, n, W, H, loud }: { r: VdRegion; n: number; W: number; H: number; loud?: boolean }) {
   return (
-    <div data-vd-region={n} data-loud={loud || undefined} title={r.el} className={cn("pointer-events-none absolute z-10 rounded-[3px]", loud && "vd-loud")} style={{ ...box({ x: r.x - 3, y: r.y - 3, w: r.w + 6, h: r.h + 6 }, W, H), boxShadow: `0 0 0 ${loud ? 3 : 2}px ${REGION}, 0 0 0 ${loud ? 5 : 3}px rgba(255,255,255,0.7)` }}>
+    <div data-vd-region={n} data-loud={loud || undefined} className={cn("pointer-events-none absolute z-10 rounded-[3px]", loud && "vd-loud")} style={{ ...box({ x: r.x - 3, y: r.y - 3, w: r.w + 6, h: r.h + 6 }, W, H), boxShadow: `0 0 0 ${loud ? 3 : 2}px ${REGION}, 0 0 0 ${loud ? 5 : 3}px rgba(255,255,255,0.7)` }}>
       <span className="absolute -top-[9px] -left-[9px] inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 font-semibold text-[10.5px] text-white tabular-nums shadow" style={{ background: REGION }}>
         {n}
       </span>
