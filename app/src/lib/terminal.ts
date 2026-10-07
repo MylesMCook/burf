@@ -136,11 +136,13 @@ export async function createTerminal(host: HTMLElement, colors: TerminalColors, 
   }
 }
 
-// In mock mode the emulator is left on its element for the app's tests and
-// perf/terminals.mjs, which read the screen back (buffer.active, the same
-// shape in both renderers) to check that a hidden terminal catches up.
+// In mock mode, and with ?perf, the emulator is left on its element for the
+// app's tests and perf/terminals.mjs and perf/live.mjs, which read the
+// screen back (buffer.active, the same shape in both renderers) to check
+// that a hidden terminal catches up and to time a key's echo.
 function forTests(host: HTMLElement, t: object) {
-  if (new URLSearchParams(location.search).has("mock")) (host as HTMLElement & { __berthTerm?: object }).__berthTerm = t;
+  const q = new URLSearchParams(location.search);
+  if (q.has("mock") || q.has("perf")) (host as HTMLElement & { __berthTerm?: object }).__berthTerm = t;
 }
 
 // gated puts an OutputGate in front of a renderer's writes: shown, output

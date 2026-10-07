@@ -111,7 +111,9 @@ export const INSTRUMENT = () => {
     S.fetches++;
     try {
       const u = new URL(typeof input === "string" ? input : (input.url ?? String(input)), location.href);
-      const k = `${init?.method ?? "GET"} ${u.host === location.host ? "" : u.host}${u.pathname}`;
+      // A data: URL (ghostty-web's WASM) is its type, not its half-megabyte body.
+      const where = u.protocol === "data:" ? `data:${u.pathname.split(/[;,]/)[0]}` : `${u.host === location.host ? "" : u.host}${u.pathname}`;
+      const k = `${init?.method ?? "GET"} ${where}`.slice(0, 160);
       S.fetchByPath[k] = (S.fetchByPath[k] ?? 0) + 1;
     } catch {}
     return f.call(w, input, init);
