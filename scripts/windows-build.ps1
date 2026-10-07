@@ -36,7 +36,9 @@ try {
     & node (Join-Path $PSScriptRoot 'windows-installer-template.mjs')
     if ($LASTEXITCODE -ne 0) { throw 'The locked Windows installer template could not be prepared.' }
     Push-Location (Join-Path $root 'app')
+    $oldFork = $env:VITE_BERTH_FORK
     try {
+        $env:VITE_BERTH_FORK = 'true'
         $arguments = @('tauri', 'build', '--target', 'x86_64-pc-windows-msvc', '--config', 'src-tauri/tauri.windows.conf.json', '--config', 'src-tauri/tauri.windows.bundle.conf.json')
         if ($Version -ne 'dev') {
             $versionConfig = Join-Path $binaries 'windows.version.conf.json'
@@ -46,7 +48,7 @@ try {
         if ($Release) { $arguments += @('--config', 'src-tauri/tauri.updater.conf.json') }
         & pnpm @arguments
         if ($LASTEXITCODE -ne 0) { throw 'Tauri Windows build failed.' }
-    } finally { Pop-Location }
+    } finally { $env:VITE_BERTH_FORK = $oldFork; Pop-Location }
     $out = Join-Path $root 'dist/windows'
     New-Item -ItemType Directory -Force $out | Out-Null
     $bundle = Join-Path $root 'app/src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis'

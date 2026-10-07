@@ -1,5 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
+  "identifier": "dev.myles.berth.windows",
   "mainBinaryName": "Berth",
   "app": {
     "windows": [
@@ -28,7 +29,7 @@
   },
   "plugins": {
     "updater": {
-      "endpoints": ["https://github.com/sean-brydon/berthd/releases/latest/download/latest-windows.json"],
+      "endpoints": [],
       "windows": { "installMode": "passive" }
     }
   }
