@@ -16,6 +16,7 @@ import { MoreItems, Nav as PlacesNav, useArrangedNav } from "@/components/sideba
 import { Projects, useSidebarPrefs } from "@/components/sidebar/projects";
 import { RailAgents } from "@/components/sidebar/rail";
 import { SidebarResizeHandle } from "@/components/sidebar/resize-handle";
+import { RowLayer } from "@/components/sidebar/row-layer";
 import { Tip } from "@/components/tip";
 import { Kbd } from "@/components/ui/kbd";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
@@ -128,9 +129,10 @@ export function AppSidebar() {
           </Menu>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
+        {/* One context menu and one tooltip for every row in it. */}
+        <RowLayer className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
           <Projects prefs={prefs} update={update} />
-        </div>
+        </RowLayer>
 
         <div className="flex h-9 shrink-0 items-center gap-1 border-sidebar-border border-t px-2">
           <Tip label="⇧-click for Developer settings" side="top" align="start">

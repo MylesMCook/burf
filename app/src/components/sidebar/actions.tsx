@@ -36,7 +36,7 @@ import {
   WorkflowIcon,
   WrenchIcon,
 } from "lucide-react";
-import { type ReactNode, useEffect, useState } from "react";
+import { type ComponentProps, createContext, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { AgentIcon } from "@/components/agent-glyph";
 import { EditorMenuItems } from "@/components/editors/editor-menu";
@@ -89,8 +89,11 @@ const item = (label: string, icon: ReactNode, run: () => void, more: Partial<Ext
 const sep: Action = { type: "sep" };
 
 // ActionItems draws actions as menu items; it works inside a Menu or a
-// ContextMenu, which share their parts.
-export function ActionItems({ items }: { items: Action[] }) {
+// ContextMenu, which share their parts. Given a function, it makes them as
+// it draws: a menu's popup is only drawn while open, so a row's actions are
+// only worked out when its menu opens.
+export function ActionItems({ items: from }: { items: Action[] | (() => Action[]) }) {
+  const items = typeof from === "function" ? from() : from;
   return (
     <>
       {items.map((a, i) => {
@@ -149,16 +152,135 @@ export function DotsMenu({ label, items }: { label: string; items: () => Action[
         </MenuTrigger>
       </Tip>
       <MenuPopup align="start" className="min-w-56">
-        <ActionItems items={items()} />
+        <ActionItems items={items} />
       </MenuPopup>
     </Menu>
   );
 }
 
+// ---- Rows' menus ------------------------------------------------------------------
+
+// A list of hundreds of rows (the sidebar's, the rail's) can't afford a
+// context menu, ⋯ menu and tooltips of its own on every row: it is a
+// RowMenus, with one context menu for all its rows, and each row only draws
+// its buttons once the pointer or focus first comes to it ("armed").
+
+interface RowMenuHost {
+  rows: Map<string, { items: { current: () => Action[] }; arm(): void }>;
+  // Marks rows out of sight (data-offscreen), where agents' state glyphs
+  // stop spinning and pulsing (index.css): hundreds of running animations
+  // kept the main thread busy at rest.
+  sight?: IntersectionObserver;
+}
+
+const RowMenuContext = createContext<RowMenuHost | null>(null);
+const ArmedContext = createContext(true);
+
+// Armed draws its children once the row it is in has been pointed at or
+// focused (always, outside a RowMenus).
+export function Armed({ children }: { children: ReactNode }) {
+  return useContext(ArmedContext) ? children : null;
+}
+
+const rowOf = (t: EventTarget | null) => (t instanceof Element ? t.closest<HTMLElement>("[data-row-menu]") : null);
+
+// RowMenus holds rows (ContextRow) and opens their context menus: on a
+// right-click, or Shift+F10 or the menu key on a focused row. It renders a
+// div, with the props given.
+export function RowMenus({ children, onKeyDown, ...props }: ComponentProps<"div">) {
+  const host = useMemo<RowMenuHost>(
+    () => ({
+      rows: new Map(),
+      sight:
+        typeof IntersectionObserver === "undefined"
+          ? undefined
+          : new IntersectionObserver((es) => {
+              for (const e of es) e.target.toggleAttribute("data-offscreen", !e.isIntersecting);
+            }),
+    }),
+    [],
+  );
+  const [items, setItems] = useState<{ fn: () => Action[] }>();
+  const row = useRef<HTMLElement>(undefined);
+  const mark = (el?: HTMLElement) => {
+    row.current?.removeAttribute("data-menu-open");
+    row.current = el;
+    el?.setAttribute("data-menu-open", "");
+  };
+  return (
+    <RowMenuContext.Provider value={host}>
+      <ContextMenu onOpenChange={(open) => !open && mark(undefined)}>
+        <ContextMenuTrigger
+          {...props}
+          // Whose menu it is, before the trigger opens it; outside a row, none.
+          onContextMenuCapture={(e: ReactMouseEvent<HTMLDivElement>) => {
+            const el = rowOf(e.target);
+            const entry = el && e.currentTarget.contains(el) ? host.rows.get(el.dataset.rowMenu ?? "") : undefined;
+            if (!el || !entry) return e.stopPropagation();
+            mark(el);
+            setItems({ fn: entry.items.current });
+          }}
+          onKeyDown={(e: KeyboardEvent<HTMLDivElement>) => {
+            onKeyDown?.(e);
+            const el = rowOf(e.target);
+            if (!el || !e.currentTarget.contains(el)) return;
+            // Shift+Tab goes back to the row before's last button: draw them.
+            if (e.key === "Tab" && e.shiftKey) {
+              const all = [...e.currentTarget.querySelectorAll<HTMLElement>("[data-row-menu]")];
+              const prev = all[all.indexOf(el) - 1];
+              if (prev) host.rows.get(prev.dataset.rowMenu ?? "")?.arm();
+              return;
+            }
+            if (e.key !== "ContextMenu" && !(e.shiftKey && e.key === "F10")) return;
+            e.preventDefault();
+            const r = (document.activeElement as HTMLElement | null)?.getBoundingClientRect() ?? el.getBoundingClientRect();
+            el.dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true, clientX: r.left + 24, clientY: r.top + r.height / 2, button: 2 }));
+          }}
+        >
+          {children}
+          {/* Inside the trigger, so tooltips in it reach a tip layer round it. */}
+          <ContextMenuPopup className="min-w-56">{items && <ActionItems items={items.fn} />}</ContextMenuPopup>
+        </ContextMenuTrigger>
+      </ContextMenu>
+    </RowMenuContext.Provider>
+  );
+}
+
 // ContextRow gives a row a right-click menu. The row looks selected while
 // its menu is open, and Shift+F10 or the menu key opens it from the
-// keyboard on a focused row.
-export function ContextRow({ items, children, className }: { items: () => Action[]; children: ReactNode; className?: string }) {
+// keyboard on a focused row. Inside a RowMenus it is a plain div that
+// RowMenus opens a menu for; elsewhere it is a context menu of its own.
+export function ContextRow(props: { items: () => Action[]; children: ReactNode; className?: string }) {
+  const host = useContext(RowMenuContext);
+  return host ? <HostedRow host={host} {...props} /> : <OwnContextRow {...props} />;
+}
+
+function HostedRow({ host, items, children, className }: { host: RowMenuHost; items: () => Action[]; children: ReactNode; className?: string }) {
+  const id = useId();
+  const ref = useRef(items);
+  ref.current = items;
+  const [armed, setArmed] = useState(false);
+  useLayoutEffect(() => {
+    host.rows.set(id, { items: ref, arm: () => setArmed(true) });
+    return () => void host.rows.delete(id);
+  }, [host, id]);
+  const watch = useCallback(
+    (el: HTMLDivElement | null) => {
+      if (!el || !host.sight) return;
+      host.sight.observe(el);
+      return () => host.sight?.unobserve(el);
+    },
+    [host],
+  );
+  const arm = armed ? undefined : () => setArmed(true);
+  return (
+    <div ref={watch} data-row-menu={id} onPointerEnter={arm} onFocus={arm} className={cn("block rounded-md data-menu-open:bg-sidebar-accent", className)}>
+      <ArmedContext.Provider value={armed}>{children}</ArmedContext.Provider>
+    </div>
+  );
+}
+
+function OwnContextRow({ items, children, className }: { items: () => Action[]; children: ReactNode; className?: string }) {
   return (
     <ContextMenu>
       <ContextMenuTrigger
@@ -174,7 +296,7 @@ export function ContextRow({ items, children, className }: { items: () => Action
         {children}
       </ContextMenuTrigger>
       <ContextMenuPopup className="min-w-56">
-        <ActionItems items={items()} />
+        <ActionItems items={items} />
       </ContextMenuPopup>
     </ContextMenu>
   );

@@ -277,6 +277,12 @@
   }
 }
 
+/* A sidebar or rail row out of sight (RowMenus in sidebar/actions.tsx):
+   its agent's glyph stops spinning or pulsing until it is scrolled back. */
+[data-offscreen] * {
+  animation-play-state: paused !important;
+}
+
 /* xterm.js: let the theme's background show through, and keep the
    scrollbar quiet. */
 .xterm .xterm-viewport {

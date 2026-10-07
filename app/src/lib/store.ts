@@ -4,6 +4,7 @@ import { boxApi, type BoxInfo, type Client, type Location, type Service, type Se
 import { closeComposer, fromOrchestrateDraft, fromWorktreeDraft, openComposer } from "@/lib/composer";
 import { errorMessage } from "@/lib/format";
 import { withLocalTitles } from "@/lib/local-titles";
+import { share } from "@/lib/share";
 import { load, save } from "@/lib/storage";
 
 // The app's state. Everything here can be rebuilt from the agent at any
@@ -136,7 +137,7 @@ export const useStore = create<State & Actions>()((set, get) => ({
     const { client } = get();
     if (!client) return;
     try {
-      const status = await client.status();
+      const status = share(get().status, await client.status());
       set({ status, connection: { state: "online" } });
     } catch (err) {
       set({ connection: { state: "offline", error: errorMessage(err) } });
@@ -148,12 +149,17 @@ export const useStore = create<State & Actions>()((set, get) => ({
     if (!client) return;
     const results = await Promise.allSettled(parts.map((p) => fetchers[p](client, box)));
     set((s) => {
-      const next: BoxData = { ...s.boxes[box], error: undefined };
+      const prev = s.boxes[box];
+      const next: BoxData = { ...prev, error: undefined };
       results.forEach((r, i) => {
         // info is optional on older daemons; a failure there is not the box's.
-        if (r.status === "fulfilled") (next as Record<string, unknown>)[parts[i]] = r.value;
+        // What is as it was keeps its objects (lib/share.ts), so rows drawn
+        // from them aren't drawn again.
+        if (r.status === "fulfilled") (next as Record<string, unknown>)[parts[i]] = share(prev?.[parts[i]], r.value);
         else if (parts[i] !== "info") next.error = errorMessage(r.reason);
       });
+      // Nothing new: nothing to draw.
+      if (prev && prev.error === next.error && parts.every((p) => prev[p] === next[p])) return s;
       return { boxes: { ...s.boxes, [box]: next } };
     });
   },
