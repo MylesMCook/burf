@@ -33,6 +33,8 @@ try {
     }
     if ($StageOnly) { return }
     if ($env:OS -ne 'Windows_NT') { throw 'The desktop installer must be built on Windows.' }
+    & node (Join-Path $PSScriptRoot 'windows-installer-template.mjs')
+    if ($LASTEXITCODE -ne 0) { throw 'The locked Windows installer template could not be prepared.' }
     Push-Location (Join-Path $root 'app')
     try {
         $arguments = @('tauri', 'build', '--target', 'x86_64-pc-windows-msvc', '--config', 'src-tauri/tauri.windows.conf.json', '--config', 'src-tauri/tauri.windows.bundle.conf.json')

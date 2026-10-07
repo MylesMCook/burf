@@ -1,85 +1,160 @@
 !include LogicLib.nsh
+Var BerthAgentProgram
+Var BerthLoginProgram
+Var BerthWasRunning
 Var BerthAgentStopped
+Var BerthStatus
 
-; Keep the old executable until all files have been copied. A failed install
-; restores it before starting the old agent; box sessions remain on the boxes.
-!macro NSIS_HOOK_PREINSTALL
-  StrCpy $BerthAgentStopped 0
-  ${If} ${FileExists} "$INSTDIR\berth-cli.exe"
-    CopyFiles /SILENT "$INSTDIR\berth-cli.exe" "$INSTDIR\berth-cli.previous.exe"
-    IfErrors berth_stop_failed
-    nsExec::ExecToStack '"$INSTDIR\berth-cli.exe" agent status --json'
-    Pop $0
-    Pop $1
-    ; Start is idempotent; only preserve a process that was actually running.
-    ${StrLoc} $2 $1 '"running": true' '>'
+!macro BerthFlag NAME RESULT
+  StrCpy ${RESULT} 0
+  ${StrLoc} $2 $BerthStatus '"${NAME}": true' '>'
+  ${If} $2 != ""
+    StrCpy ${RESULT} 1
+  ${Else}
+    ${StrLoc} $2 $BerthStatus '"${NAME}":true' '>'
     ${If} $2 != ""
-      StrCpy $BerthAgentStopped 1
-    ${Else}
-      ${StrLoc} $2 $1 '"running":true' '>'
-      ${If} $2 != ""
-        StrCpy $BerthAgentStopped 1
-      ${EndIf}
+      StrCpy ${RESULT} 1
     ${EndIf}
-    nsExec::ExecToStack '"$INSTDIR\berth-cli.exe" agent stop --drain'
+  ${EndIf}
+!macroend
+
+!macro BerthInspect PROGRAM
+  ${If} ${FileExists} "${PROGRAM}"
+    nsExec::ExecToStack '"${PROGRAM}" agent status --json'
+    Pop $0
+    Pop $BerthStatus
+    ${If} $0 != 0
+      SetErrorLevel 1
+      Abort "Berth could not inspect the current client safely. The installed files were kept."
+    ${EndIf}
+    !insertmacro BerthFlag "installed" $1
+    ${If} $1 = 1
+      StrCpy $BerthLoginProgram "${PROGRAM}"
+    ${EndIf}
+    !insertmacro BerthFlag "owned_running" $1
+    ${If} $1 = 1
+      StrCpy $BerthAgentProgram "${PROGRAM}"
+      StrCpy $BerthWasRunning 1
+    ${EndIf}
+  ${EndIf}
+!macroend
+
+!macro BerthInspectInstallation
+  StrCpy $BerthAgentProgram ""
+  StrCpy $BerthLoginProgram ""
+  StrCpy $BerthWasRunning 0
+  StrCpy $BerthAgentStopped 0
+  !insertmacro BerthInspect "$INSTDIR\berth-cli.exe"
+  !insertmacro BerthInspect "$INSTDIR\cli\berth.exe"
+!macroend
+
+!macro BerthDrain
+  ${If} $BerthWasRunning = 1
+    nsExec::ExecToStack '"$BerthAgentProgram" agent stop --drain'
     Pop $0
     Pop $1
     ${If} $0 != 0
-      berth_stop_failed:
       SetErrorLevel 1
       Abort "Berth could not stop its local agent safely. The installed files were kept."
     ${EndIf}
+    StrCpy $BerthAgentStopped 1
   ${EndIf}
+!macroend
+
+!macro BerthBackup FILE DIRECTORY
+  ${If} ${FileExists} "$INSTDIR\${FILE}"
+    ClearErrors
+    CopyFiles /SILENT "$INSTDIR\${FILE}" "${DIRECTORY}"
+    ${If} ${Errors}
+      SetErrorLevel 1
+      Abort "Berth could not preserve the old client for recovery. The installed files were kept."
+    ${EndIf}
+  ${EndIf}
+!macroend
+
+; The patched maintenance page treats a normal upgrade as /UPDATE. It never
+; calls the old uninstaller, so startup/PATH consent and all old files survive.
+!macro NSIS_HOOK_PREINSTALL
+  !insertmacro BerthInspectInstallation
+  InitPluginsDir
+  CreateDirectory "$PLUGINSDIR\berth-rollback\cli"
+  !insertmacro BerthBackup "berth-cli.exe" "$PLUGINSDIR\berth-rollback"
+  !insertmacro BerthBackup "cli\berth.exe" "$PLUGINSDIR\berth-rollback\cli"
+  !insertmacro BerthBackup "Berth.exe" "$PLUGINSDIR\berth-rollback"
+  !insertmacro BerthDrain
 !macroend
 
 !macro NSIS_HOOK_POSTINSTALL
   ${If} $BerthAgentStopped = 1
-    nsExec::ExecToStack '"$INSTDIR\berth-cli.exe" agent start'
-    Pop $0
-    Pop $1
-  ${EndIf}
-  Delete "$INSTDIR\berth-cli.previous.exe"
-!macroend
-
-Function .onInstFailed
-  ${If} ${FileExists} "$INSTDIR\berth-cli.previous.exe"
-    CopyFiles /SILENT "$INSTDIR\berth-cli.previous.exe" "$INSTDIR\berth-cli.exe"
-    ${If} $BerthAgentStopped = 1
-      nsExec::ExecToStack '"$INSTDIR\berth-cli.exe" agent start'
-      Pop $0
-      Pop $1
+    ; Reconfigure an opted-in task with the new binary, retaining its owner.
+    ${If} $BerthLoginProgram != ""
+      nsExec::ExecToStack '"$BerthLoginProgram" agent install'
+    ${Else}
+      nsExec::ExecToStack '"$BerthAgentProgram" agent start'
     ${EndIf}
-  ${EndIf}
-FunctionEnd
-
-Function .onUserAbort
-  ${If} $BerthAgentStopped = 1
-    nsExec::ExecToStack '"$INSTDIR\berth-cli.exe" agent start'
-    Pop $0
-    Pop $1
-  ${EndIf}
-FunctionEnd
-
-!macro NSIS_HOOK_PREUNINSTALL
-  ${If} ${FileExists} "$INSTDIR\berth-cli.exe"
-    nsExec::ExecToStack '"$INSTDIR\berth-cli.exe" agent stop --drain'
     Pop $0
     Pop $1
     ${If} $0 != 0
       SetErrorLevel 1
-      Abort "Berth could not stop its local agent safely. Uninstall was cancelled."
+      Abort "Berth could not restart the updated client. Restoring the previous client."
     ${EndIf}
-    ; The CLI verifies ownership before removing a per-user login task.
-    nsExec::ExecToStack '"$INSTDIR\berth-cli.exe" agent uninstall'
+    StrCpy $BerthAgentStopped 0
+  ${EndIf}
+!macroend
+
+!macro BerthRestore FILE
+  ${If} ${FileExists} "$PLUGINSDIR\berth-rollback\${FILE}"
+    System::Call 'kernel32::CopyFileW(w "$PLUGINSDIR\berth-rollback\${FILE}", w "$INSTDIR\${FILE}", i 0) i .r0'
+    ${If} $0 = 0
+      DetailPrint "Could not restore $INSTDIR\${FILE}"
+    ${EndIf}
+  ${EndIf}
+!macroend
+
+Function BerthRecover
+  !insertmacro BerthRestore "berth-cli.exe"
+  !insertmacro BerthRestore "cli\berth.exe"
+  !insertmacro BerthRestore "Berth.exe"
+  ${If} $BerthAgentStopped = 1
+    nsExec::ExecToStack '"$BerthAgentProgram" agent start'
     Pop $0
     Pop $1
     ${If} $0 != 0
+      MessageBox MB_ICONSTOP "The previous Berth client could not restart. Its state is retained; open Berth again to retry."
+    ${EndIf}
+    StrCpy $BerthAgentStopped 0
+  ${EndIf}
+FunctionEnd
+
+Function .onInstFailed
+  Call BerthRecover
+FunctionEnd
+
+Function .onUserAbort
+  Call BerthRecover
+FunctionEnd
+
+!macro NSIS_HOOK_PREUNINSTALL
+  !insertmacro BerthInspectInstallation
+  !insertmacro BerthDrain
+  ${If} $BerthLoginProgram != ""
+    ; The correct bundled candidate owns the exact executable task identity.
+    nsExec::ExecToStack '"$BerthLoginProgram" agent uninstall'
+    Pop $0
+    Pop $1
+    ${If} $0 != 0
+      ${If} $BerthAgentStopped = 1
+        nsExec::ExecToStack '"$BerthAgentProgram" agent start'
+        Pop $0
+        Pop $1
+      ${EndIf}
       SetErrorLevel 1
       Abort "Berth could not remove its owned login task. Uninstall was cancelled."
     ${EndIf}
   ${EndIf}
-  ${If} ${FileExists} "$INSTDIR\cli-path.ps1"
-    nsExec::ExecToStack '"$SYSDIR\WindowsPowerShell\v1.0\powershell.exe" -NoProfile -NonInteractive -File "$INSTDIR\cli-path.ps1" -Action Remove -CliDirectory "$INSTDIR\cli"'
+  ${If} ${FileExists} "$INSTDIR\Berth.exe"
+    ; A headless mode of the old app uses its embedded registry command.
+    nsExec::ExecToStack '"$INSTDIR\Berth.exe" --remove-cli-path'
     Pop $0
     Pop $1
     ${If} $0 != 0
@@ -87,5 +162,5 @@ FunctionEnd
       Abort "Berth could not remove its PATH entry. Uninstall was cancelled."
     ${EndIf}
   ${EndIf}
-  ; State is under the user's config directory, outside this installation.
+  ; Agent keys, pairing and configuration live outside the installation.
 !macroend

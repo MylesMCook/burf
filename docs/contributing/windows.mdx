@@ -25,7 +25,9 @@ The script writes `dist/windows/Berth-windows-x64-setup.exe`, `berth-windows-amd
 
 NSIS installs for the current user without elevation. Installation does not change PATH or register a login task. The app's **Start at login** checkbox explicitly enables the per-user login task. Settings > General > Command line explicitly adds the `cli` folder to the user's PATH, with a removal control. Uninstall removes only Berth's owned PATH entry and login task. Agent keys and paired-box state remain in the user's Berth config directory.
 
-The installer calls the old bundled `berth agent stop --drain` before replacing files. That command must wait for the process to exit; a timeout cancels installation instead of killing it. A failed installation restores the old sidecar and starts its agent again. Remote sessions remain on their boxes. An updater install drains through the same hooks, and installation errors also attempt to restart the previous agent from the app.
+The installer checks both bundled CLI candidates and stops only a process owned by one of them with `berth agent stop --drain`. That command waits for the process to exit; a timeout cancels installation instead of killing it. A failed installation restores the old client executables and starts the previously running client again. Remote sessions remain on their boxes. Recovery belongs to the installer because the Windows updater exits the app after launching it.
+
+Both a normal higher-version installer and the in-app updater replace files in place, preserving explicit PATH and login consent. The build script obtains the exact locked Tauri CLI's NSIS template, verifies its pinned SHA256, and generates a small maintenance-page patch in the ignored `binaries` directory. No copy of the full template is maintained in the repository. A CLI update requires reviewing that patch and its pinned template version. PATH integration uses a command embedded in the app, and uninstall runs the old app's headless cleanup mode. No unsigned PowerShell script file is executed and no execution-policy setting changes.
 
 Only the maintainer's `v*` tag release job receives the existing `TAURI_SIGNING_PRIVATE_KEY`. Pass `-Release` to make a signed updater artifact. Windows uses `latest-windows.json` and the `windows-x86_64` platform key. macOS keeps `latest.json`. The Tauri updater signature authenticates updates; this release does not require or create an Authenticode certificate. Windows may show its standard unsigned-app warning.
 
@@ -38,6 +40,8 @@ cd app
 node --experimental-strip-types --test src/lib/platform.test.ts
 pnpm exec playwright test e2e/windows-client.spec.ts
 ```
+
+From the repository root, `node --test scripts/windows-installer-template.test.mjs scripts/windows-packaging.test.mjs` checks the upgrade patch and ownership/recovery wiring. On Windows it also runs the embedded read-only PATH query and pure PATH transformations under the existing PowerShell policy. These tests do not edit PATH or register tasks.
 
 Use a fresh `BERTH_HOME` and separate client ports for native tests. Do not point synthetic checks at a personal running agent. Local client hooks use PowerShell syntax on Windows; Berth does not translate POSIX shell commands. Commands executed on Unix boxes still use the box's shell.
 

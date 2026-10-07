@@ -7,8 +7,7 @@
       "binaries/berthd-linux-amd64": "berthd-linux-amd64",
       "binaries/berthd-linux-arm64": "berthd-linux-arm64",
       "binaries/tmux-linux-amd64": "tmux-linux-amd64",
-      "binaries/tmux-linux-arm64": "tmux-linux-arm64",
-      "windows/cli-path.ps1": "cli-path.ps1"
+      "binaries/tmux-linux-arm64": "tmux-linux-arm64"
     }
   }
 }

@@ -2,15 +2,23 @@ param(
     [Parameter(Mandatory)][ValidateSet('Status', 'Add', 'Remove')][string]$Action,
     [Parameter(Mandatory)][string]$CliDirectory
 )
+function Add-BerthPathValue([string]$Path, [string]$Directory) {
+    if (@($Path.Split(';') | Where-Object { $_.TrimEnd('\') -ieq $Directory }).Count -gt 0) { return $Path }
+    if ($Path -eq '') { return $Directory }
+    return $Path + ';' + $Directory
+}
+function Remove-BerthPathValue([string]$Path, [string]$Directory) {
+    return (@($Path.Split(';') | Where-Object { $_.TrimEnd('\') -ine $Directory }) -join ';')
+}
 $ErrorActionPreference = 'Stop'
 $directory = [IO.Path]::GetFullPath($CliDirectory).TrimEnd('\')
+if ($Action -eq 'Add' -and $directory.Contains(';')) { throw 'A Windows PATH entry cannot contain a semicolon. Install Berth in another folder before adding its command.' }
 $ownerKey = 'HKCU:\Software\Berth\CommandLine'
 $environment = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment', $true)
 if ($null -eq $environment) { throw 'The user Environment registry key is unavailable.' }
 try {
     $path = [string]$environment.GetValue('Path', '', [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames)
-    $parts = @($path.Split(';') | Where-Object { $_ -ne '' })
-    $present = @($parts | Where-Object { $_.TrimEnd('\') -ieq $directory }).Count -gt 0
+    $present = @($path.Split(';') | Where-Object { $_.TrimEnd('\') -ieq $directory }).Count -gt 0
     $owned = (Get-ItemProperty -LiteralPath $ownerKey -Name Directory -ErrorAction SilentlyContinue).Directory
     if ($Action -eq 'Status') {
         if ($present -and $owned -ieq $directory) { 'linked' } elseif ($present) { 'external' } else { 'missing' }
@@ -18,19 +26,26 @@ try {
     }
     if ($Action -eq 'Add') {
         if (!(Test-Path -LiteralPath (Join-Path $directory 'berth.exe') -PathType Leaf)) { throw 'The bundled berth.exe is missing.' }
-        if (!$present) {
-            $parts += $directory
-            New-Item -Path $ownerKey -Force | Out-Null
-            Set-ItemProperty -LiteralPath $ownerKey -Name Directory -Value $directory
-        }
+        if ($present) { exit 0 }
+        $next = Add-BerthPathValue $path $directory
     } elseif ($owned -ieq $directory) {
-        $parts = @($parts | Where-Object { $_.TrimEnd('\') -ine $directory })
-        Remove-Item -LiteralPath $ownerKey -ErrorAction Stop
+        $next = Remove-BerthPathValue $path $directory
     } else {
         exit 0
     }
     $kind = if ($environment.GetValueNames() -contains 'Path') { $environment.GetValueKind('Path') } else { [Microsoft.Win32.RegistryValueKind]::ExpandString }
-    $environment.SetValue('Path', ($parts -join ';'), $kind)
+    $environment.SetValue('Path', $next, $kind)
+    try {
+        if ($Action -eq 'Add') {
+            New-Item -Path $ownerKey -Force | Out-Null
+            Set-ItemProperty -LiteralPath $ownerKey -Name Directory -Value $directory
+        } else {
+            Remove-Item -LiteralPath $ownerKey -ErrorAction Stop
+        }
+    } catch {
+        $environment.SetValue('Path', $path, $kind)
+        throw
+    }
 } finally {
     $environment.Dispose()
 }

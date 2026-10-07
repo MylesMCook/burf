@@ -21,6 +21,7 @@
     "windows": {
       "nsis": {
         "installMode": "currentUser",
+        "template": "binaries/windows-installer.nsi",
         "installerHooks": "windows/hooks.nsh"
       }
     }

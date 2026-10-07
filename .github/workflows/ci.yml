@@ -53,6 +53,7 @@ jobs:
         working-directory: app
       - run: node --experimental-strip-types --test src/lib/platform.test.ts
         working-directory: app
+      - run: node --test scripts/windows-installer-template.test.mjs scripts/windows-packaging.test.mjs
       - run: cargo test --locked --manifest-path app/src-tauri/Cargo.toml --lib
       # No signing key enters this job. PR installers are unsigned test artifacts.
       - run: ./scripts/windows-build.ps1 -Version 0.0.0
@@ -169,6 +170,7 @@ jobs:
       # The split tree's moves (lib/layout.test.ts).
       - run: pnpm test
       - run: pnpm test:platform
+      - run: node --test ../scripts/windows-installer-template.test.mjs ../scripts/windows-packaging.test.mjs
       - run: pnpm build
       # The smoke suite (e2e/): the production build in Playwright's Chromium,
       # on the mock fixtures, with no page error allowed. The browser is
