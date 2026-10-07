@@ -24,6 +24,8 @@ import type { Accepted, GitHubState, OrgRepo, PlanStep, ProjectView, SetupReques
 // be read.
 // &team-op=required: the team requires 1Password for its shared keys,
 // so Skip 1Password isn't offered.
+// &teamhold=init: the first repo's first-time setup stops at a question
+// in its own terminal (corepack's [Y/n]) until advance("init").
 // &teamhold=github,repos keeps the run at those points until
 // window.__teamMock.advance(name), for screenshots; the sudo prompt always
 // waits for a password typed in its terminal (or advance("sudo")).
@@ -520,7 +522,19 @@ async function project(r: TeamStatus, p: TeamStatus["projects"][number], i: numb
   p.state = "setting-up";
   p.line = p.id === "shop" ? "box/init-shop.sh · yarn install" : p.id === "billing-api" ? "yarn install" : "pnpm install";
   addLocation(r.box, p);
+  // Its first-time setup runs in a terminal of its own, in its checkout.
+  p.session = `team-${r.id}-${p.id}`;
+  initSession(r.box, p.session, `/home/me/code/${p.id}`, p.location ?? p.id, `${p.id} first-time setup`);
   touch(r, "team.project", { project: p.id, state: p.state, location: p.location });
+  if (i === 0 && holds.has("init")) {
+    p.waiting = true;
+    p.line = "! Corepack is about to download https://repo.yarnpkg.com/4.9.1/packages/yarnpkg-cli/bin/yarn.js. Do you want to continue? [Y/n]";
+    touch(r, "team.project", { project: p.id, state: p.state, location: p.location, waiting: true });
+    await gate("init");
+    p.waiting = undefined;
+    p.line = "yarn install";
+    touch(r, "team.project", { project: p.id, state: p.state, location: p.location, waiting: false });
+  }
   if (i === 0) await wait(700);
   else await gate(`repos-${p.id}`, holds.has("repos") ? undefined : 2200 + i * 300);
   p.state = "ready";
@@ -538,6 +552,14 @@ function addLocation(box: string, p: TeamStatus["projects"][number]) {
   const path = `/home/me/code/${name}`;
   list.push({ name, path, repo: true, remote: `https://github.com/${p.repo}.git`, slug: p.repo, default_branch: "main", scripts: {}, worktrees: [{ name, path, branch: "main", main: true }] });
   ctx.emit({ type: "location.added", box, data: { location: name, path, url: `https://github.com/${p.repo}.git` } });
+}
+
+function initSession(box: string, name: string, dir: string, location: string, title: string) {
+  if (!ctx) return;
+  const list = (ctx.sessions[box] ??= []);
+  if (list.some((s) => s.name === name)) return;
+  list.push({ name, location, dir, command: `cd ${dir} && ~/.berth/team/init.sh`, created: iso(), attached: 0, exited: false, title });
+  ctx.emit({ type: "session.started", box, data: { name, location, path: dir, command: "init.sh" } });
 }
 
 function startSession(box: string, name: string) {

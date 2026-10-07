@@ -11,6 +11,19 @@ again.
 
 ## Unreleased
 
+- **A team setup's repos are ready when it says so.** Each repo's
+  first-time setup (its init) runs in a terminal of its own on the box,
+  which the Team setup page never showed. An init that stopped at a question,
+  such as corepack's "Do you want to continue? [Y/n]" before it downloads
+  yarn, left the repo setting up until opening its main checkout happened to
+  show that terminal; answering there finished the setup, which is why
+  worktrees only worked after **Open main checkout**. Now corepack doesn't
+  ask (in inits and worktree setup scripts). A repo's row shows its init's
+  last line and a **Terminal** button. When the init asks anything, the row
+  says **waiting for you**, the status card names the repo, and **Answer in
+  its terminal** opens it. **Open main checkout** is a way to open the repo
+  again, not a step.
+  [Progress, failure and Retry](/guides/team-setup#progress-failure-and-retry).
 - **An agent CLI you installed with npm is found.** Claude Code installed
   with `npm i -g @anthropic-ai/claude-code` under nvm (or fnm, volta, bun,
   pnpm, a custom npm prefix or Homebrew) wasn't picked up on a new box,

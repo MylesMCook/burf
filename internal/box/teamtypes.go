@@ -127,8 +127,14 @@ type TeamProjectStatus struct {
 	Error    string   `json:"error,omitempty"`
 	Trust    string   `json:"trust,omitempty"`
 	Warnings []string `json:"warnings,omitempty"`
-	// Line is the latest line of what it is doing (git's progress, say).
+	// Line is the latest line of what it is doing (git's progress, then its
+	// init terminal's last line).
 	Line string `json:"line,omitempty"`
+	// Session is the terminal its init runs in, and Waiting says that
+	// terminal waits for an answer (a [Y/n], a password): the project is
+	// not ready until someone gives it there.
+	Session string `json:"session,omitempty"`
+	Waiting bool   `json:"waiting,omitempty"`
 	// Keys are the names of the keys the team lists for it; Missing, those
 	// its config on this box has no value for yet (left blank when asked),
 	// to add in Project settings. Missing is worked out when read.

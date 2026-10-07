@@ -160,7 +160,7 @@ s_show() {
 }
 
 s_setup() {
-	bx "touch /tmp/fail-db"
+	bx "touch /tmp/fail-db /tmp/init-asks"
 	local res
 	res=$(laptop_api POST "/v1/team/acme/setup" "{\"box\":\"$BOX\",\"commit\":\"${COMMIT:0:7}\",\"keys\":{\"web\":{\"MAIL_KEY\":\"SG.e2e\"}}}") || return 1
 	echo "$res"
@@ -221,11 +221,30 @@ s_op_signin() {
 	screen | tail -2
 	screen | grep -q "Enter the password for dev@acme.test" || fail "no op question in the terminal" || return 1
 	send "op-pass" || return 1
+	# api's init asks a question in its own terminal: the project says it
+	# waits, and which terminal; answered there, the setup finishes.
+	until_ok 120 team_is 'j["phase"] in ("done", "failed") or any(p.get("waiting") for p in j["projects"])' || fail "the setup did not finish: $(team_json)" || return 1
+	team_is '[p for p in j["projects"] if p["id"] == "api"][0].get("session") == "team-acme-api" and "[Y/n]" in [p for p in j["projects"] if p["id"] == "api"][0].get("line", "") and j["phase"] == "projects"' >/dev/null || fail "api's question is not reported: $(team_json)" || return 1
+	bx "rm /tmp/init-asks"
+	laptop_api POST "/v1/boxes/$BOX/api/sessions/team-acme-api/send" '{"text":"y","enter":true}' >/dev/null || return 1
 	until_ok 120 team_is 'j["phase"] in ("done", "failed")' || fail "the setup did not finish: $(team_json)" || return 1
 	team_is 'j["phase"] == "done" and j["steps"][4]["state"] == "done"' >/dev/null || fail "it failed: $(team_json)" || return 1
 	bx 'test "$(stat -c %a ~/.config/berth/box/op-session)" = 600' || fail "op's session is not kept, or not private" || return 1
 	lp "berth secret test $BOX op://Dev/Stripe/key" | grep -q "Resolved op://Dev/Stripe/key: 17 characters" || fail "berthd can't read 1Password after signing in" || return 1
-	detail "1Password on the box waited at op's question in the terminal; answered there, berthd reads op://Dev/Stripe/key with op's session (kept 0600)"
+	detail "1Password on the box waited at op's question in the terminal; answered there, berthd reads op://Dev/Stripe/key with op's session (kept 0600); api's init asked [Y/n] in its own terminal, reported as waiting in team-acme-api, and finished once answered there"
+}
+
+# Straight after the setup, with nothing opened in the app: each repo makes
+# a worktree from the CLI at once.
+s_worktree_now() {
+	local out p
+	for p in web api; do
+		out=$(lp "berth worktree new $BOX/$p/first-task" 2>&1) || fail "berth worktree new $p/first-task right after the setup: $out" || return 1
+		echo "$out"
+		bx "test -d ~/code/$p-first-task" || fail "no worktree folder for $p" || return 1
+		lp "berth worktree rm $BOX/$p/first-task --force" >/dev/null || fail "could not remove $p/first-task" || return 1
+	done
+	detail "berth worktree new web/first-task and api/first-task worked straight after the setup, with nothing opened in the app"
 }
 
 s_projects() {
@@ -347,6 +366,7 @@ RT_CRITICAL=1 step "A failing step stops the setup" s_fail
 RT_CRITICAL=1 step "Retry from it; berthd restarts mid-step" s_retry_restart
 RT_CRITICAL=1 step "The box's own GitHub sign-in" s_box_github
 RT_CRITICAL=1 step "Berth's 1Password step" s_op_signin
+step "A worktree from the CLI straight after the setup" s_worktree_now
 step "Repos cloned and set up" s_projects
 step "A second run skips what is done" s_rerun
 step "A newer .berth is an update to review" s_update
