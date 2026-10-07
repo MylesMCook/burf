@@ -44,9 +44,21 @@ func agentService(l laptop) (service.Spec, error) {
 		Description: "berth agent",
 		Program:     exe,
 		Args:        []string{"agent"},
-		Env:         map[string]string{"BERTH_HOME": home},
+		Env:         agentServiceEnv(home, runtime.GOOS),
 		LogPath:     filepath.Join(l.dir, "agent.log"),
 	}, nil
+}
+
+func agentServiceEnv(home, platform string) map[string]string {
+	env := map[string]string{"BERTH_HOME": home}
+	if platform == "windows" {
+		for _, name := range []string{"BERTH_USER_DIR", "BERTH_UI_ADDR", "BERTH_PROXY_ADDR"} {
+			if value := os.Getenv(name); value != "" {
+				env[name] = value
+			}
+		}
+	}
+	return env
 }
 
 // ensureAgent returns a client for a running agent, starting one if needed:
