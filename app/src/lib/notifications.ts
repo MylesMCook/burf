@@ -8,6 +8,7 @@ import { load, save } from "@/lib/storage";
 import { useStore } from "@/lib/store";
 import { focusSession, refOf, selectWorktree } from "@/lib/workspaces";
 import { titleAt } from "@/lib/worktree-names";
+import { announce } from "@/lib/announce";
 
 // The notification centre: one router every event-driven notification goes
 // through, so the person's settings decide where each kind shows (the
@@ -353,9 +354,15 @@ export function route(input: NoteInput): string | undefined {
   const where = [named ?? note?.worktree ?? note?.project, input.box].filter(Boolean).join(" · ");
   const body = [where, input.detail].filter(Boolean).join(" · ") || undefined;
   let shown = false;
+  // What needs you and what failed interrupts a screen reader; the rest
+  // waits for a pause.
+  const urgent = input.tone === "error" || categoryInfo(input.category).needs;
   if (ch.toast && !(note && useNotifications.getState().open)) {
-    showToast(input, body, note);
+    showToast(input, body, note, urgent);
     shown = true;
+  } else if (note) {
+    // Kept in the centre without a toast: heard all the same.
+    announce([input.title, body].filter(Boolean).join(". "), urgent);
   }
   if (ch.system && !document.hasFocus()) {
     void systemNotification(input.title, body);
@@ -365,7 +372,7 @@ export function route(input: NoteInput): string | undefined {
   return note?.id;
 }
 
-function showToast(input: NoteInput, body: string | undefined, note?: Note) {
+function showToast(input: NoteInput, body: string | undefined, note?: Note, urgent = false) {
   const label = actionLabel(input.action, input.label, !!input.run);
   const act = input.run ?? (input.action ? () => runAction(input.action!) : undefined);
   let id = "";
@@ -373,6 +380,8 @@ function showToast(input: NoteInput, body: string | undefined, note?: Note) {
     title: input.title,
     description: body,
     type: input.tone ?? "info",
+    // High: an alert, read out at once; low waits for the reader to pause.
+    priority: urgent ? "high" : "low",
     actionProps: act
       ? {
           children: label,
