@@ -68,7 +68,7 @@ func TestWindowsEditorBatchLaunchersUseFolderURLsAndNativeExecutablesKeepLines(t
 					if !reflect.DeepEqual(commands[len(commands)-1], want) {
 						t.Fatalf("editor launched %q, want %q", commands[len(commands)-1], want)
 					}
-					if !native && file != "" && !strings.Contains(result.Note, "links open folders only") {
+					if !native && file != "" && (!strings.Contains(result.Note, "links open folders only") || !strings.Contains(result.Note, "native .exe")) {
 						t.Fatalf("batch-only launcher did not explain its file/line fallback: %+v", result)
 					}
 				}

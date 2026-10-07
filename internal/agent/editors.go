@@ -85,6 +85,13 @@ func (a *Agent) editors() []Editor {
 				}
 			}
 		}
+		// Batch launchers cannot be started as native Windows process images.
+		if runtime.GOOS == "windows" {
+			switch strings.ToLower(filepath.Ext(e.CLI)) {
+			case ".cmd", ".bat":
+				e.CLI = ""
+			}
+		}
 		// VS Code's remote URLs open folders only; the CLI goes to a line.
 		e.Lines = e.CLI != "" && e.vscode
 		out = append(out, e)
@@ -332,6 +339,9 @@ func (a *Agent) openCommand(ctx context.Context, req OpenRequest) (OpenResult, e
 		r := open(ed.scheme + "://vscode-remote/ssh-remote+" + host + (&url.URL{Path: folder}).EscapedPath())
 		if file != "" {
 			r.Note = "Opened the folder: " + ed.Name + "'s links open folders only. Install its command line tool to jump to files."
+			if runtime.GOOS == "windows" {
+				r.Note = "Opened the folder: " + ed.Name + "'s links open folders only. A native .exe command line tool is needed to jump to files."
+			}
 		}
 		return r, nil
 	}
