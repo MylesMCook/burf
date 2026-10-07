@@ -320,12 +320,17 @@ async function benchChat(browser, turns, shots) {
   const box = page.locator("[data-testid=pane]:visible [data-testid=composer] textarea");
   const typing = async (label) => {
     await box.click();
+    const words = "Look at the acme ledger retries and tell me what changed";
     const from = await page.evaluate(() => performance.now());
-    await page.keyboard.type("Look at the acme ledger retries and tell me what changed", { delay: 35 });
+    const m0 = await metrics(cdp);
+    await page.keyboard.type(words, { delay: 35 });
+    const m1 = await metrics(cdp);
     const ev = await page.evaluate((from) => window.__perf.events.filter((e) => e.start >= from && /key|input/.test(e.name)), from);
     await box.fill("");
     const d = ev.map((e) => e.dur);
-    return { label, events: ev.length, p50: pctl(d, 50), p95: pctl(d, 95), max: r1(Math.max(0, ...d)) };
+    // Event Timing's durations are rounded to 8 ms and include the wait for
+    // the next frame, so the main thread's own time per key says more.
+    return { label, events: ev.length, p50: pctl(d, 50), p95: pctl(d, 95), max: r1(Math.max(0, ...d)), mainThreadMsPerKey: r1(((m1.TaskDuration - m0.TaskDuration) * 1000) / words.length), styleMsPerKey: r1(((m1.RecalcStyleDuration - m0.RecalcStyleDuration) * 1000) / words.length) };
   };
   res.typing = await typing("at rest");
 
