@@ -129,17 +129,18 @@ export function CrewCard({ crew, chat }: { crew: CrewMember[]; chat: { box: stri
                 <li key={c.id} className="group/row relative">
                   {history && c.kind === "subagent" ? (
                     <>
+                      <Tip label="Open in a tab · ⌘-click beside the chat · ⌥-click to peek" side="top" align="start" wrapClassName="block w-full">
                       <button
                         type="button"
                         data-helper={c.id}
                         onClick={(e) => openHelper(chat.box, chat.session, c.id, { from, title: c.name, event: e })}
                         aria-label={`${c.name}: open its conversation in a tab`}
-                        title="Open in a tab · ⌘-click to open beside the chat · ⌥-click to peek"
                         className="flex h-7 w-full items-center gap-2.5 rounded-md pr-1 pl-2 text-left text-[0.8125rem] outline-none hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-ring"
                       >
                         {row}
                         <ChevronRightIcon className="size-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover/row:opacity-0 group-focus-within/row:opacity-100" />
                       </button>
+                      </Tip>
                       <Tip label="Peek (⌥-click)">
                         <button
                           type="button"
