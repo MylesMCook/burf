@@ -530,6 +530,8 @@ func TestSessionsWithSecretsNeverPutAValueInTmuxsArguments(t *testing.T) {
 }
 
 func TestSessionsWithoutSecretsStartAsTheyAlwaysDid(t *testing.T) {
+	t.Setenv(AgentBrowserIdleEnv, "")
+	os.Unsetenv(AgentBrowserIdleEnv)
 	ctx := context.Background()
 	repo := gitRepo(t)
 	dir := t.TempDir()
@@ -552,9 +554,10 @@ func TestSessionsWithoutSecretsStartAsTheyAlwaysDid(t *testing.T) {
 	for _, kv := range env {
 		want = append(want, "-e", kv)
 	}
-	// Every session tells its agent's hooks which session they are in.
-	// The command runs from its file, never from tmux's command line.
-	want = append(want, "-e", "BERTH_SESSION=plain", "--", "/bin/sh", "-lc", ". '"+b.Sessions.commandPath("plain")+"'")
+	// Every session closes an idle agent-browser, and tells its agent's
+	// hooks which session they are in. The command runs from its file,
+	// never from tmux's command line.
+	want = append(want, "-e", AgentBrowserIdleEnv+"="+AgentBrowserIdleDefault, "-e", "BERTH_SESSION=plain", "--", "/bin/sh", "-lc", ". '"+b.Sessions.commandPath("plain")+"'")
 	if len(created) < len(want) || !reflect.DeepEqual(created[:len(want)], want) {
 		t.Fatalf("new-session = %q\nwant %q", created, want)
 	}

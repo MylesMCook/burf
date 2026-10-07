@@ -216,3 +216,18 @@ func TestSessionSendQueueHandsAFailedSendToTheQueue(t *testing.T) {
 		t.Fatalf("plain send: %v (queued %q)", err, got.session)
 	}
 }
+
+func TestBrowserReapAsksTheBox(t *testing.T) {
+	reply := `{"sessions":[{"berth_session":"old-task","session":"qa","daemon":10,"pids":[10,11]}],"text":"Closed 1 agent-browser session left by ended berth sessions:\n  \"qa\" of old-task (daemon 10, 2 processes)"}`
+	r, out := run(t, reply, "browser", "reap")
+	if r.method != "POST" || r.path != "/v1/browser/reap" || r.body["dry_run"] != false {
+		t.Fatalf("request %s %s %v", r.method, r.path, r.body)
+	}
+	if !strings.HasPrefix(out, "Closed 1 agent-browser session") {
+		t.Fatalf("out = %q", out)
+	}
+	r, out = run(t, reply, "browser", "reap", "--dry-run", "--json")
+	if r.body["dry_run"] != true || !strings.Contains(out, `"berth_session": "old-task"`) {
+		t.Fatalf("dry run: %v, out = %q", r.body, out)
+	}
+}

@@ -34,8 +34,11 @@ type Box struct {
 	Name      string
 	Locations *Locations
 	Sessions  *Sessions
-	Shares    *Shares
-	Events    *events.Bus
+	// AgentBrowsers closes the agent-browser sessions berth sessions
+	// leave behind; nil leaves them alone.
+	AgentBrowsers *AgentBrowsers
+	Shares        *Shares
+	Events        *events.Bus
 	// Watcher, when set, is told about berth's own worktree changes so it
 	// does not announce them a second time.
 	Watcher *Watcher

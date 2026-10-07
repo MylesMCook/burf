@@ -82,6 +82,7 @@ var usageSections = []struct {
 		{"%[1]s browser status|close %[2]s[LOC/WT]", "Whether it runs, or close it"},
 		{"%[1]s browser list%[3]s [--json]", "Browsers running on the box"},
 		{"%[1]s browser allow%[3]s ORIGIN", "Let agents' browsers load a public origin (the box owner's)"},
+		{"%[1]s browser reap%[3]s [--dry-run] [--json]", "Close agent-browser (Vercel's CLI) sessions left by ended berth sessions"},
 	}},
 	{"Ports and sharing", [][2]string{
 		{"%[1]s ports%[3]s [--json]", "What is listening on the box"},
@@ -228,7 +229,7 @@ func Run(ctx context.Context, c *box.Client, args []string, out io.Writer) error
 	case "flow secret":
 		return flowSecret(ctx, c, rest, out)
 	case "browser open", "browser snapshot", "browser click", "browser fill", "browser press", "browser select", "browser hover", "browser check",
-		"browser wait", "browser shot", "browser console", "browser network", "browser status", "browser close", "browser eval", "browser allow", "browser list":
+		"browser wait", "browser shot", "browser console", "browser network", "browser status", "browser close", "browser eval", "browser allow", "browser list", "browser reap":
 		return browserCmd(ctx, c, strings.TrimPrefix(cmd, "browser "), rest, out)
 	case "run start", "run get", "run logs", "run cancel", "run approve", "run reject", "run templates":
 		return runCmd(ctx, c, strings.TrimPrefix(cmd, "run "), rest, out)

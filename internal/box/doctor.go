@@ -2,6 +2,7 @@ package box
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -77,6 +78,9 @@ func (b *Box) Doctor(ctx context.Context) []doctor.Check {
 			checks = append(checks, browserSandboxChecks(b.Browsers.Health())...)
 		}
 	}
+	if c, ok := b.agentBrowserCheck(ctx); ok {
+		checks = append(checks, c)
+	}
 	return checks
 }
 
@@ -140,4 +144,42 @@ func (b *Box) eventChecks() []doctor.Check {
 func (b *Box) handleDoctor(w http.ResponseWriter, r *http.Request) error {
 	writeJSON(w, b.Doctor(r.Context()))
 	return nil
+}
+
+// agentBrowserCheck reports agent-browser sessions (Vercel's CLI) whose
+// berth session has ended: berth closes them within a minute, so any here
+// are stuck or were left while berthd was down.
+func (b *Box) agentBrowserCheck(ctx context.Context) (doctor.Check, bool) {
+	if b.AgentBrowsers == nil {
+		return doctor.Check{}, false
+	}
+	all, err := b.AgentBrowsers.List(ctx)
+	if errors.Is(err, errNoProcs) {
+		return doctor.Check{}, false
+	}
+	c := doctor.Check{Area: "Agents", Name: "agent-browser sessions"}
+	if err != nil {
+		c.Status, c.Detail = doctor.Info, "could not look: "+err.Error()
+		return c, true
+	}
+	var orphans []string
+	live := 0
+	for _, s := range all {
+		if s.Live {
+			live++
+		} else {
+			orphans = append(orphans, s.describe())
+		}
+	}
+	switch {
+	case len(orphans) > 0:
+		c.Status = doctor.Warn
+		c.Detail = fmt.Sprintf("%d left running by berth sessions that ended: %s", len(orphans), strings.Join(orphans, "; "))
+		c.Fix = "berthd browser reap"
+	case live > 0:
+		c.Status, c.Detail = doctor.OK, fmt.Sprintf("%d open, each closed when its berth session ends", live)
+	default:
+		c.Status, c.Detail = doctor.OK, "none left behind"
+	}
+	return c, true
 }

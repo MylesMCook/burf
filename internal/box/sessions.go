@@ -81,6 +81,9 @@ type Sessions struct {
 	// longer than about 16 KB, so neither ever holds it: the pane runs the
 	// file and the session points to it (@berth_command_file).
 	Commands string
+	// Ended, when set, hears that berth stopped a session, so what the
+	// session left running (agent-browser's browsers) can go too.
+	Ended func()
 	// trace, in tests, sees every tmux command line.
 	trace func(args []string)
 
@@ -238,7 +241,9 @@ func (s *Sessions) Create(ctx context.Context, name, location, dir, command stri
 // which says which agent runs in it, stays the one asked for.
 //
 // Every session gets BERTH_SESSION (its name) and, for an agent preset,
-// BERTH_AGENT, so the agent's hooks can say which session they come from.
+// BERTH_AGENT, so the agent's hooks can say which session they come from,
+// and agent-browser's idle timeout unless env or berthd's own environment
+// sets it.
 func (s *Sessions) create(ctx context.Context, name, location, dir, command, agent string, env, wrap []string) (Session, error) {
 	if !sessionName.MatchString(name) {
 		return Session{}, fmt.Errorf("invalid session name %q: use letters, digits, - and _", name)
@@ -263,7 +268,7 @@ func (s *Sessions) create(ctx context.Context, name, location, dir, command, age
 		argv = []string{shell, "-lc", sourceCommand(shell, file)}
 	}
 	args := []string{"new-session", "-d", "-s", name, "-c", dir, "-x", "200", "-y", "50"}
-	env = append(append([]string(nil), env...), "BERTH_SESSION="+name)
+	env = append(withAgentBrowserIdle(append([]string(nil), env...)), "BERTH_SESSION="+name)
 	if agent != "" {
 		env = append(env, "BERTH_AGENT="+agent)
 	}
@@ -354,6 +359,9 @@ func (s *Sessions) Kill(ctx context.Context, name string) error {
 		return tmuxError("kill-session", out, err)
 	}
 	s.removeCommand(name)
+	if s.Ended != nil {
+		s.Ended()
+	}
 	return nil
 }
 

@@ -187,6 +187,20 @@ func browserCmd(ctx context.Context, c *box.Client, sub string, args []string, o
 		}
 		fmt.Fprintln(out, res.Text)
 		return nil
+	case "reap":
+		fs, asJSON := flags(args)
+		dry := fs.Bool("dry-run", false, "only list them")
+		if pos, err := parse(fs, args); err != nil || len(pos) > 0 {
+			return usageErr("browser reap [--dry-run] [--json]")
+		}
+		var res struct {
+			Sessions []box.AgentBrowserSession `json:"sessions"`
+			Text     string                    `json:"text"`
+		}
+		if err := c.Call(ctx, "POST", "/v1/browser/reap", map[string]bool{"dry_run": *dry}, &res); err != nil {
+			return err
+		}
+		return show(out, *asJSON, res.Sessions, func() { fmt.Fprintln(out, res.Text) })
 	case "list":
 		fs, asJSON := flags(args)
 		if pos, err := parse(fs, args); err != nil || len(pos) > 0 {

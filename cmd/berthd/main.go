@@ -367,6 +367,9 @@ func serve(b boxHome, args []string) error {
 	bx.BrowserProxies = &box.BrowserProxies{Path: filepath.Join(b.dir, "browser-proxies.json")}
 	defer bx.BrowserProxies.CloseAll()
 	bx.NewBrowsers(filepath.Join(b.dir, "browser"), rc.MaxBrowsers)
+	// agent-browser sessions (Vercel's CLI) go with the berth session that
+	// started them.
+	bx.AgentBrowsers = box.NewAgentBrowsers(bx.Sessions)
 	bx.Team = &box.TeamRunner{Dir: filepath.Join(b.dir, "team")}
 	defer bx.Team.Stop()
 	bx.Mount(s)
@@ -396,6 +399,7 @@ func serve(b boxHome, args []string) error {
 		}
 	}()
 	go bx.Flows.Run(ctx, bx)
+	go bx.AgentBrowsers.Run(ctx, logger.Printf)
 	browsersDone := make(chan struct{})
 	go func() { bx.Browsers.Run(ctx); close(browsersDone) }()
 	// Chromium goes with berthd.

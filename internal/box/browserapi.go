@@ -28,6 +28,8 @@ import (
 //	GET  /v1/worktrees/{loc}/{wt}/browser/screencast  NDJSON frames while you watch
 //	GET  /v1/worktrees/{loc}/{wt}/browser/shots/{name}
 //	GET  /v1/browsers, POST /v1/browser/allow {origin}
+//	POST /v1/browser/reap {dry_run}: agent-browser sessions ended berth
+//	     sessions left
 //	GET  /v1/browser/health, PUT /v1/browser/settings, POST /v1/browser/check (browsersandbox.go)
 //
 // Every answer an agent reads is {text}: short, capped, as the CLI prints it.
@@ -407,4 +409,5 @@ func (b *Box) mountBrowser(route func(string, func(http.ResponseWriter, *http.Re
 	route("GET /v1/browser/health", b.browserHealth)
 	route("PUT /v1/browser/settings", b.putBrowserSettings)
 	route("POST /v1/browser/check", b.checkBrowser)
+	route("POST /v1/browser/reap", b.browserReap)
 }
