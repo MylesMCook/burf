@@ -2,6 +2,7 @@ package terminal
 
 import (
 	"errors"
+	"io"
 	"os"
 	"os/exec"
 
@@ -36,9 +37,17 @@ func MakeRaw(fd uintptr) (func(), error) {
 	if err := windows.GetConsoleMode(input, &oldInput); err != nil {
 		return nil, err
 	}
+	oldCodePage, err := windows.GetConsoleCP()
+	if err != nil {
+		return nil, err
+	}
+	if err := windows.SetConsoleCP(65001); err != nil {
+		return nil, err
+	}
 	raw := oldInput &^ (windows.ENABLE_ECHO_INPUT | windows.ENABLE_LINE_INPUT | windows.ENABLE_PROCESSED_INPUT | windows.ENABLE_QUICK_EDIT_MODE)
 	raw |= windows.ENABLE_EXTENDED_FLAGS | windows.ENABLE_VIRTUAL_TERMINAL_INPUT
 	if err := windows.SetConsoleMode(input, raw); err != nil {
+		windows.SetConsoleCP(oldCodePage)
 		return nil, err
 	}
 	output := windows.Handle(os.Stdout.Fd())
@@ -47,13 +56,36 @@ func MakeRaw(fd uintptr) (func(), error) {
 	if hasOutput {
 		if err := windows.SetConsoleMode(output, oldOutput|windows.ENABLE_VIRTUAL_TERMINAL_PROCESSING); err != nil {
 			windows.SetConsoleMode(input, oldInput)
+			windows.SetConsoleCP(oldCodePage)
 			return nil, err
 		}
 	}
 	return func() {
 		windows.SetConsoleMode(input, oldInput)
+		windows.SetConsoleCP(oldCodePage)
 		if hasOutput {
 			windows.SetConsoleMode(output, oldOutput)
 		}
 	}, nil
+}
+
+// ReadInput bypasses Go's cooked-console reader, which interprets Ctrl-Z as
+// EOF even after MakeRaw. ReadFile preserves it as input for the remote PTY.
+func ReadInput(f *os.File, p []byte) (int, error) {
+	if !IsTerminal(f.Fd()) {
+		return f.Read(p)
+	}
+	return readConsoleInput(f, p)
+}
+
+func readConsoleInput(f *os.File, p []byte) (int, error) {
+	if len(p) == 0 {
+		return 0, nil
+	}
+	var n uint32
+	err := windows.ReadFile(windows.Handle(f.Fd()), p, &n, nil)
+	if err == nil && n == 0 {
+		err = io.EOF
+	}
+	return int(n), err
 }

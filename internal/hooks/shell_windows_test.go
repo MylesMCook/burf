@@ -10,7 +10,7 @@ import (
 )
 
 func TestNativeWindowsHookReceivesTheEventAndEnvironment(t *testing.T) {
-	h := Hook{Run: "[Console]::Write([Console]::In.ReadToEnd()); [Console]::WriteLine(); [Console]::Write($env:BERTH_TOOL)", Tool: "windows-test"}
+	h := Hook{Run: "[Console]::Write([Console]::In.ReadToEnd()); [Console]::WriteLine(); [Console]::Write($env:BERTH_ORIGIN)", Tool: "windows-test"}
 	e := events.Event{Type: "unit.test"}
 	out, err := Exec(context.Background(), h, e, 15*time.Second, nil)
 	if err != nil {
