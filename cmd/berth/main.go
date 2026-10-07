@@ -132,7 +132,7 @@ func (l laptop) identity() (*identity.Identity, error) {
 	return identity.LoadOrCreate(filepath.Join(l.dir, "identity.pem"))
 }
 func (l laptop) boxes() *trust.Store { return trust.NewStore(filepath.Join(l.dir, "boxes.json")) }
-func (l laptop) socket() string      { return filepath.Join(l.dir, "agent.sock") }
+func (l laptop) socket() string      { return agent.SocketPath(l.dir) }
 
 func signalContext() (context.Context, context.CancelFunc) {
 	return signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

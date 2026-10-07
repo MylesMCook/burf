@@ -109,7 +109,7 @@ type Networks interface {
 
 func (c *Config) defaults() {
 	if c.Socket == "" {
-		c.Socket = filepath.Join(c.Dir, "agent.sock")
+		c.Socket = SocketPath(c.Dir)
 	}
 	if c.ProxyAddrs == nil {
 		port := strconv.Itoa(DefaultProxyPort)
@@ -235,6 +235,11 @@ func Run(ctx context.Context, cfg Config) error {
 	cfg.defaults()
 	if len(cfg.Socket) > 100 {
 		return fmt.Errorf("agent socket path %s is too long for a Unix socket; set a shorter BERTH_HOME", cfg.Socket)
+	}
+	if runtime.GOOS == "windows" && cfg.Socket == SocketPath(cfg.Dir) && filepath.Dir(cfg.Socket) != cfg.Dir {
+		if err := statefile.EnsurePrivateDir(filepath.Dir(cfg.Socket)); err != nil {
+			return err
+		}
 	}
 	unlock, err := lockAgent(cfg.Dir)
 	if err != nil {

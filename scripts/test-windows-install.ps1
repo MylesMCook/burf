@@ -145,6 +145,18 @@ function Uninstall-TestCopy {
     $process = Start-Process -FilePath $uninstaller -ArgumentList "/S _?=$installRoot" -PassThru
     if (!$process.WaitForExit(180000) -or $process.ExitCode -ne 0) { throw 'The supported uninstaller did not complete successfully.' }
     $script:uninstalled = $true
+    # Tauri retains an install-location preference without deleting app data.
+    # Remove only this synthetic run's exact preference, not shared app data.
+    $path = 'Software\berth\Berth'
+    $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($path, $true)
+    if ($key) {
+        try {
+            $names = @($key.GetValueNames())
+            Assert-Acceptance ($key.SubKeyCount -eq 0 -and $names.Count -eq 1 -and $names[0] -eq '' -and $key.GetValue('') -ieq $installRoot) 'An unrelated install-location preference must be preserved.'
+            $key.DeleteValue('', $true)
+        } finally { $key.Dispose() }
+        [Microsoft.Win32.Registry]::CurrentUser.DeleteSubKey($path, $false)
+    }
 }
 
 try {
