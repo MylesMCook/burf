@@ -784,7 +784,7 @@ function AgentBar({
   const zoom = size && size.zoom > 0 && size.zoom < 0.995 ? `${Math.round(size.zoom * 100)}%` : undefined;
   return (
     <div className="flex h-9 shrink-0 items-center gap-2 border-b bg-emerald-500/[0.06] px-2 text-xs">
-      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-emerald-500/15 px-2 py-1 font-medium text-[11px] text-emerald-700 dark:text-emerald-300">
+      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-emerald-500/15 px-2 py-1 font-medium text-[11px] text-emerald-800 dark:text-emerald-300">
         <BotIcon className="size-3" />
         Agent's view · live
         <LiveDot />
@@ -804,7 +804,7 @@ function AgentBar({
         >
           <span data-testid="agent-size" className="inline-flex shrink-0 items-center gap-1 rounded-md bg-emerald-500/10 px-1.5 py-0.5 font-mono text-[11px] text-emerald-800 tabular-nums dark:text-emerald-200">
             {label}
-            {zoom && <span className="text-emerald-800/60 dark:text-emerald-200/60">· {zoom}</span>}
+            {zoom && <span className="font-sans text-emerald-800 dark:text-emerald-200">· {zoom}</span>}
           </span>
         </Tip>
       )}

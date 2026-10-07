@@ -33,6 +33,52 @@ export async function openBrowser(app: App) {
 
 const CART = `<!doctype html><html lang="en"><title>Cart</title><body><h1>Cart</h1><script>console.error("checkout failed: 500");</script></body></html>`;
 
+// Artifacts and visual diffs (components/art): the search-perf agent's,
+// in its chat (lib/art/mock-artifacts.ts, lib/art/mock-vdiff.ts).
+const P95 = "d2e8f1a0b3";
+const VD = "46ab3c4e1b";
+const CLEAR = "39fdf22244";
+const artCard = (app: App, id: string) => app.page.locator(`[data-testid=pane]:visible [data-art-card="${id}"]`).first();
+const artPane = (app: App) => app.page.locator("[data-testid=pane][data-pane-kind=artifact]:visible");
+
+// reachCard scrolls the chat up, as a person would, until the card is drawn.
+async function reachCard(app: App, id: string) {
+  const c = artCard(app, id);
+  // Drawn already near the end of the chat (the p95 chart), or further up.
+  await c.waitFor({ state: "attached", timeout: 3000 }).catch(() => {});
+  const box = await app.chat.boundingBox();
+  if (box) await app.page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  for (let i = 0; i < 60 && (await c.count()) === 0; i++) {
+    await app.page.mouse.wheel(0, -600);
+    await app.page.waitForTimeout(60);
+  }
+  await c.scrollIntoViewIfNeeded();
+  return c;
+}
+
+async function openArt(app: App, theme: string, id: string) {
+  await chat(app, theme, "devl/search-perf");
+  const c = await reachCard(app, id);
+  await c.getByRole("button", { name: "Open", exact: true }).click();
+  return artPane(app);
+}
+
+// atRest takes the pointer off the board's tiles: a chart under it shows
+// that segment and dims the rest (bklit's hover), which isn't how it rests.
+async function atRest(app: App) {
+  await app.page.mouse.move(1, 1);
+  // And its thumbnails done drawing.
+  await app.page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running" || a.effect?.getComputedTiming().iterations === Infinity), null, { timeout: 5000 }).catch(() => {});
+}
+
+// fromBoard opens one of search-perf's artifacts from its board.
+async function fromBoard(app: App, theme: string, id: string) {
+  await chat(app, theme, "devl/search-perf");
+  await app.page.getByTestId("art-chip").click();
+  await app.page.locator(`[data-art-tile="${id}"]`).getByRole("button", { name: /^Open .*/ }).last().click();
+  return app.page.locator(`[data-testid=artifact-pane][data-art-id="${id}"]:visible`);
+}
+
 const settings = (section: string): Scene => ({
   id: `settings-${section}`,
   key: section === "appearance" || section === "general",
@@ -238,6 +284,201 @@ export const scenes: Scene[] = [
       await app.open({ theme });
       await app.page.getByRole("button", { name: "Hide the sidebar" }).click();
       await expect(app.page.getByRole("navigation", { name: "Agents" })).toBeVisible();
+    },
+  },
+  {
+    id: "artifact-card",
+    async run(app, theme) {
+      await chat(app, theme, "devl/search-perf");
+      const c = artCard(app, P95);
+      await c.scrollIntoViewIfNeeded();
+      await expect(c.locator("[data-art-size=thumb] svg").first()).toBeAttached();
+    },
+  },
+  {
+    id: "artifact-chart",
+    async run(app, theme) {
+      const pane = await openArt(app, theme, P95);
+      await expect(pane.locator("[data-chart-type=bar]")).toBeVisible();
+    },
+  },
+  {
+    id: "artifact-versions",
+    async run(app, theme) {
+      const pane = await openArt(app, theme, P95);
+      await app.page.evaluate(() => (window as unknown as { __art: { bump(): Promise<void> } }).__art.bump());
+      await pane.getByTestId("art-versions").getByRole("radio", { name: /v1/ }).click();
+      await expect(pane.getByTestId("art-old")).toContainText("Showing v1");
+    },
+  },
+  {
+    id: "artifact-source",
+    async run(app, theme) {
+      const pane = await openArt(app, theme, P95);
+      await pane.getByTestId("art-source-toggle").click();
+      await expect(pane.getByTestId("art-source")).toBeVisible();
+    },
+  },
+  {
+    id: "artifact-board",
+    async run(app, theme) {
+      await chat(app, theme, "devl/search-perf");
+      await app.page.getByTestId("art-chip").click();
+      await expect(app.page.getByTestId("artifact-board").locator("[data-art-tile]").first()).toBeVisible();
+      await atRest(app);
+    },
+  },
+  {
+    id: "artifact-table",
+    async run(app, theme) {
+      await chat(app, theme, "devl/search-perf");
+      await app.page.getByTestId("art-chip").click();
+      const board = app.page.getByTestId("artifact-board");
+      await board.locator("[data-filter=table]").click();
+      await board.getByRole("button", { name: "Open Search test results", exact: true }).last().click();
+      await expect(artPane(app).locator("[data-art-table]")).toBeVisible();
+    },
+  },
+  {
+    id: "artifact-heatmap",
+    async run(app, theme) {
+      const pane = await fromBoard(app, theme, "b7c2a9e1f0");
+      await expect(pane.locator("[data-heatmap]")).toBeVisible();
+    },
+  },
+  {
+    id: "artifact-diagram",
+    async run(app, theme) {
+      const pane = await fromBoard(app, theme, "a1f3c0d2e4");
+      await expect(pane.locator("[data-art-diagram] svg").first()).toBeVisible();
+    },
+  },
+  {
+    id: "artifact-notes",
+    async run(app, theme) {
+      const pane = await fromBoard(app, theme, "c4d9e2b7a1");
+      await expect(pane.locator("[data-art-notes]")).toBeVisible();
+    },
+  },
+  {
+    id: "artifact-compare-lane",
+    async run(app, theme) {
+      await chat(app, theme, "devl/search-perf");
+      await app.page.keyboard.press("Meta+Alt+KeyC");
+      const input = app.page.getByPlaceholder("Compare search-perf with…");
+      await input.fill("checkout-fix");
+      await input.press("Enter");
+      await expect(app.page.getByRole("toolbar", { name: /^Compare / })).toBeVisible();
+      await app.page.keyboard.press("Alt+Digit5");
+      await expect(app.page.locator("[data-pane-area] [data-compare-side]:visible [data-testid=artifact-board]")).toHaveCount(2);
+      await atRest(app);
+    },
+  },
+  {
+    id: "visual-diff-card",
+    async run(app, theme) {
+      await chat(app, theme, "devl/search-perf");
+      const c = await reachCard(app, VD);
+      await expect(c.locator("[data-vd-thumb=wipe]")).toBeVisible();
+    },
+  },
+  {
+    id: "visual-diff",
+    async run(app, theme) {
+      const pane = await openArt(app, theme, VD);
+      await expect(pane.locator("[data-vd-canvas]").first()).toBeVisible();
+      // A change chosen, so its caption and loud region show too.
+      await pane.getByRole("button", { name: "Next change" }).locator("visible=true").click();
+      await expect(pane.locator("[data-vd-caption]")).toBeVisible();
+    },
+  },
+  {
+    id: "visual-diff-side-by-side",
+    async run(app, theme) {
+      const pane = await openArt(app, theme, VD);
+      await pane.locator("[data-vd-mode=side]").click();
+      await expect(pane.locator("[data-vd-stage=side] [data-vd-canvas]")).toHaveCount(2);
+    },
+  },
+  {
+    id: "visual-diff-onion",
+    async run(app, theme) {
+      const pane = await openArt(app, theme, VD);
+      await pane.locator("[data-vd-mode=onion]").click();
+      await expect(pane.locator("[data-vd-stage=onion]")).toBeVisible();
+    },
+  },
+  {
+    id: "visual-diff-all-shots",
+    async run(app, theme) {
+      const pane = await openArt(app, theme, VD);
+      await pane.locator("[data-vd-all]").click();
+      await expect(pane.locator("[data-vd-grid] [data-vd-cell]").first()).toBeVisible();
+    },
+  },
+  {
+    id: "visual-diff-older",
+    async run(app, theme) {
+      const pane = await openArt(app, theme, VD);
+      await pane.getByTestId("art-versions").getByRole("radio", { name: /v1/ }).click();
+      await expect(pane.locator("[data-vd-banner=bad]")).toBeVisible();
+    },
+  },
+  {
+    id: "visual-diff-accept",
+    async run(app, theme) {
+      const pane = await openArt(app, theme, VD);
+      await pane.locator("[data-vd-accept]").click();
+      await expect(pane.locator("[data-vd-accept-ask]")).toBeVisible();
+    },
+  },
+  {
+    id: "visual-diff-all-clear",
+    async run(app, theme) {
+      const pane = await openArt(app, theme, CLEAR);
+      await expect(pane.locator("[data-vd-all-clear]")).toBeVisible();
+    },
+  },
+  {
+    // Beside the chat in a small window: the compact header (KindSpec
+    // compact), its version menu open.
+    id: "visual-diff-narrow",
+    async run(app, theme) {
+      await app.page.setViewportSize({ width: 900, height: 900 });
+      await chat(app, theme, "devl/search-perf");
+      const c = await reachCard(app, VD);
+      await c.getByRole("button", { name: "Open Visual changes: search-perf vs main beside the chat" }).click();
+      const pane = artPane(app);
+      await expect(pane.locator("[data-vd-canvas]").first()).toBeVisible();
+      await pane.getByTestId("art-version-menu").click();
+      await expect(app.page.getByRole("menuitemradio").first()).toBeVisible();
+      // The chat beside it is left out: it is the chat-* scenes' (checked
+      // there in full), and here it is the unfocused pane, which a split
+      // dims to 85% (workspace/pane.tsx) to show where the keyboard is.
+      await app.page.locator("[data-testid=pane]:visible").filter({ has: app.page.locator("[data-testid=chat]") }).evaluate((el) => el.setAttribute("data-a11y-skip", ""));
+    },
+  },
+  {
+    id: "agent-browser-size",
+    async run(app, theme) {
+      await app.open({ theme });
+      await app.openWorktree("devl/checkout-fix");
+      await app.page.getByRole("button", { name: "New tab" }).click();
+      await app.page.getByRole("option", { name: /New browser tab/ }).click();
+      const pane = app.page.locator("[data-testid=browser-pane]:visible");
+      await pane.getByRole("button", { name: /Agent's view/ }).click();
+      await expect(pane.getByTestId("agent-size")).toContainText("1920×1080");
+    },
+  },
+  {
+    id: "team-setup-init-waiting",
+    async run(app, theme) {
+      const { page } = app;
+      await app.open({ theme, params: { team: "acme", teamhold: "init", "team-page": "acme" } });
+      await page.getByTestId("team-checklist").locator("visible=true").getByTestId("team-run").click();
+      await expect(page.getByTestId("step-update")).toHaveAttribute("data-state", "waiting");
+      await page.evaluate(() => (window as unknown as { __teamMock: { advance(n: string): void } }).__teamMock.advance("sudo"));
+      await expect(page.getByTestId("repo-line-shop")).toHaveText("waiting for you", { timeout: 20_000 });
     },
   },
   {

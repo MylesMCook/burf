@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 
-import { expect, test } from "./fixtures";
+import { expect, mockOnly, test } from "./fixtures";
 
 // Reduce motion (index.css, lib/motion.ts): with it on, nothing on screen
 // keeps moving: no spinner, shimmer, pulse, the pixel loader, the harbour
@@ -50,4 +50,25 @@ test("first run's welcome art holds still", async ({ app }) => {
   await app.page.goto("/?mock=1&fresh=1");
   await expect(app.page.locator("main")).toBeVisible();
   expect(await moving(app.page)).toEqual([]);
+});
+
+test("an artifact's chart, its Live pill after an update, and a visual diff hold still", async ({ app }) => {
+  mockOnly("drives the demo's artifacts");
+  await app.open({ params: { view: "conversation" } });
+  await app.openWorktree("devl/search-perf");
+  const page = app.page;
+  const p95 = page.locator('[data-testid=pane]:visible [data-art-card="d2e8f1a0b3"]').first();
+  await p95.scrollIntoViewIfNeeded();
+  await p95.getByRole("button", { name: "Open p95 before and after beside the chat" }).click();
+  const pane = page.locator("[data-testid=pane][data-pane-kind=artifact]:visible");
+  await expect(pane.locator("[data-chart-type=bar]")).toBeVisible();
+  // A new version: the pill says so without pulsing.
+  await page.evaluate(() => (window as unknown as { __art: { bump(): Promise<void> } }).__art.bump());
+  await expect(pane.getByTestId("art-live")).toHaveAttribute("data-pulse", "true");
+  expect(await moving(page)).toEqual([]);
+  // The board's tiles and a visual diff's stage.
+  await page.getByTestId("art-board-button").click();
+  await page.locator('[data-art-tile="46ab3c4e1b"]').getByRole("button", { name: /^Open .*/ }).last().click();
+  await expect(page.locator("[data-testid=pane][data-pane-kind=artifact]:visible [data-vd-canvas]").first()).toBeVisible();
+  expect(await moving(page)).toEqual([]);
 });

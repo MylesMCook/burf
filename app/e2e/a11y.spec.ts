@@ -16,6 +16,10 @@ import { expect, mockOnly, test } from "./fixtures";
 
 const report = process.env.A11Y_REPORT;
 const allThemes = process.env.A11Y_THEMES === "all";
+// Reduce motion from the start, so what animates itself as it mounts (an
+// artifact's bklit chart, its heatmap cells) is read at rest, not mid-fade.
+test.use({ reducedMotion: "reduce" });
+
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"];
 
 async function audit(page: import("@playwright/test").Page, only?: string[]) {

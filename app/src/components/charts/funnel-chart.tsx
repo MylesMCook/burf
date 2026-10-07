@@ -1,7 +1,7 @@
 "use client";
 
 import type { Transition } from "motion/react";
-import { motion, useTransform } from "motion/react";
+import { motion, useReducedMotion, useTransform } from "motion/react";
 import {
   type CSSProperties,
   type ReactNode,
@@ -622,6 +622,9 @@ function SegmentLabel({
   align?: "center" | "start" | "end";
 }) {
   const display = stage.displayValue ?? formatValue(stage.value);
+  // Berth: with Reduce motion the labels are there at once, not faded in
+  // (MotionConfig's reducedMotion keeps opacity animations).
+  const still = useReducedMotion();
 
   const valueEl = showValues && (
     <span className="whitespace-nowrap font-semibold text-foreground text-sm">
@@ -648,7 +651,7 @@ function SegmentLabel({
           "absolute inset-0 flex",
           isHorizontal ? "flex-col items-center" : "flex-row items-center"
         )}
-        initial={{ opacity: 0 }}
+        initial={still ? false : { opacity: 0 }}
         transition={{
           delay: index * staggerDelay + 0.25,
           duration: 0.35,
@@ -714,7 +717,7 @@ function SegmentLabel({
           ? cn("flex-col items-center", justifyMap[align])
           : cn("flex-row items-center", justifyMap[align])
       )}
-      initial={{ opacity: 0 }}
+      initial={still ? false : { opacity: 0 }}
       style={{
         padding: isHorizontal ? "8% 0" : "0 8%",
       }}

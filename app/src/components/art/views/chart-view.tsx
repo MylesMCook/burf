@@ -252,7 +252,7 @@ function Heatmap({ p, units, thumb }: { p: Extract<ChartPlan, { type: "heatmap" 
                     className="art-cell rounded-[4px] text-center tabular-nums"
                     data-level={lv}
                     aria-label={v === null ? `${r} at ${c}: no data` : `${r} at ${c}: ${fmt(v, units)}`}
-                    style={{ background: lv < 0 ? "transparent" : `var(--chart-scale-0${lv + 1})`, color: lv >= 2 ? "var(--chart-heat-ink-hi)" : lv === 1 ? "var(--chart-foreground)" : "var(--chart-heat-ink-lo)", animationDelay: `${Math.min(ri * 40 + ci * 12, 600)}ms` }}
+                    style={{ background: lv < 0 ? "transparent" : `var(--chart-scale-0${lv + 1})`, color: `var(--chart-heat-ink-${lv + 1})`, animationDelay: `${Math.min(ri * 40 + ci * 12, 600)}ms` }}
                   >
                     {v === null ? "" : fmt(v)}
                   </td>
