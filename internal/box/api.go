@@ -158,6 +158,7 @@ func (b *Box) Mount(s *wire.Server) {
 	route("POST /v1/locations/{name}/worktrees/{worktree}/services/{service}/{action}", b.serviceAction)
 	route("GET /v1/locations/{name}/worktrees/{worktree}/services/{service}/log", b.serviceLog)
 	route("DELETE /v1/locations/{name}/worktrees/{worktree}", b.removeWorktree)
+	route("PATCH /v1/locations/{name}/worktrees/{worktree}", b.renameWorktree)
 	route("POST /v1/tasks", b.addTask)
 	route("GET /v1/services", b.handleServices)
 	route("GET /v1/sessions", b.listSessions)

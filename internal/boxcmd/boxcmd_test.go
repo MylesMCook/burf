@@ -231,3 +231,39 @@ func TestBrowserReapAsksTheBox(t *testing.T) {
 		t.Fatalf("dry run: %v, out = %q", r.body, out)
 	}
 }
+
+func TestWorktreeRenameSetsAndClearsTheDisplayName(t *testing.T) {
+	r, out := run(t, `{"name":"https-linear-app-acme","path":"/w/cal-https-linear-app-acme","branch":"https-linear-app-acme","title":"Fix checkout"}`,
+		"worktree", "rename", "cal/https-linear-app-acme", "Fix checkout")
+	if r.method != "PATCH" || r.path != "/v1/locations/cal/worktrees/https-linear-app-acme" || r.body["title"] != "Fix checkout" {
+		t.Fatalf("rename: %s %s %v", r.method, r.path, r.body)
+	}
+	if !strings.Contains(out, `"Fix checkout"`) || !strings.Contains(out, "branch https-linear-app-acme is unchanged") {
+		t.Fatalf("rename said %q", out)
+	}
+	r, out = run(t, `{"name":"https-linear-app-acme","path":"/w/x"}`, "worktree", "rename", "cal/https-linear-app-acme")
+	if v, ok := r.body["title"]; !ok || v != "" {
+		t.Fatalf("clear body = %v", r.body)
+	}
+	if !strings.Contains(out, "by its name again") {
+		t.Fatalf("clear said %q", out)
+	}
+}
+
+// oldBox answers like a berthd from before worktree titles: the path has
+// DELETE, so PATCH is 405.
+type oldBox struct{}
+
+func (oldBox) DoWithHeader(context.Context, string, string, io.Reader, http.Header) (*http.Response, error) {
+	rec := httptest.NewRecorder()
+	http.Error(rec, "Method Not Allowed", http.StatusMethodNotAllowed)
+	return rec.Result(), nil
+}
+
+func TestWorktreeRenameOnAnOlderBoxSaysToUpdate(t *testing.T) {
+	var out bytes.Buffer
+	err := Run(context.Background(), &box.Client{Doer: oldBox{}}, []string{"worktree", "rename", "cal/x", "Name"}, &out)
+	if err == nil || !strings.Contains(err.Error(), "older berthd") {
+		t.Fatalf("err = %v", err)
+	}
+}

@@ -40,6 +40,7 @@ type Commit struct {
 type WorktreeStatus struct {
 	Location string  `json:"location"`
 	Name     string  `json:"name"`
+	Title    string  `json:"title,omitempty"`
 	Path     string  `json:"path"`
 	Branch   string  `json:"branch,omitempty"`
 	Main     bool    `json:"main,omitempty"`
@@ -80,7 +81,7 @@ func baseOf(ctx context.Context, wt Worktree, loc Location) string {
 }
 
 func (b *Box) worktreeStatus(ctx context.Context, loc Location, wt Worktree, sessions []Session) WorktreeStatus {
-	st := WorktreeStatus{Location: loc.Name, Name: wt.Name, Path: wt.Path, Branch: wt.Branch, Main: wt.Main, Port: wt.Port}
+	st := WorktreeStatus{Location: loc.Name, Name: wt.Name, Title: wt.Title, Path: wt.Path, Branch: wt.Branch, Main: wt.Main, Port: wt.Port}
 	st.Base = baseOf(ctx, wt, loc)
 	if st.Base != "" {
 		if out, err := git(ctx, "-C", wt.Path, "rev-list", "--left-right", "--count", st.Base+"...HEAD"); err == nil {

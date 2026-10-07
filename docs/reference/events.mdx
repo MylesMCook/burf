@@ -75,6 +75,7 @@ Berth reads the terminal and sends these itself with `origin: "screen"` and
 | `location.removed` | `location` |
 | `worktree.created` | `location`, `name`, `path`, `branch` (origin `detected` when another tool made it); `repo_config`: `untrusted` or `changed` when the repository's config was not run because it is not trusted |
 | `worktree.removed` | `location`, `name`, `path` |
+| `worktree.renamed` | `location`, `name`, `path`: its display name changed (set or cleared); never the name itself |
 | `worktree.setup.started`, `.finished`, `.failed` | `location`, `name`, `path`, `script`, `log` |
 | `worktree.archive.started`, `.finished`, `.failed` | the same |
 | `worktree.synced` | `location`, `name`, `mode`, `ok`, `base`, `conflicts` |
@@ -163,6 +164,7 @@ exits non-zero refuses it with what it printed. Gates in a laptop's
 | `before:location.add` | `location`, `path`, `url` |
 | `before:worktree.create` | `location`, `name`, `branch`, `base` |
 | `before:worktree.remove` | `location`, `name`, `path` |
+| `before:worktree.rename` | `location`, `name`, `title` (`""` clears it) |
 | `before:worktree.sync` | `location`, `name`, `mode` |
 | `before:worktree.pause`, `before:worktree.resume` | `location`, `name` |
 | `before:task.create` | `location`, `name`, `branch`, `base`, `agent`, `command` |

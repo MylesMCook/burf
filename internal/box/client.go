@@ -196,6 +196,12 @@ func (c *Client) Screen(ctx context.Context, name string, history int) (string, 
 }
 
 // RenameSession names a session's work; an empty title clears it.
+// RenameWorktree gives a worktree a display name; "" clears it.
+func (c *Client) RenameWorktree(ctx context.Context, location, name, title string) (out Worktree, err error) {
+	path := "/v1/locations/" + url.PathEscape(location) + "/worktrees/" + url.PathEscape(name)
+	return out, c.call(ctx, http.MethodPatch, path, map[string]string{"title": title}, &out)
+}
+
 func (c *Client) RenameSession(ctx context.Context, name, title string) (out Session, err error) {
 	return out, c.call(ctx, http.MethodPatch, "/v1/sessions/"+url.PathEscape(name), map[string]string{"title": title}, &out)
 }

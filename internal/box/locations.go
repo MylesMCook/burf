@@ -65,6 +65,9 @@ type Worktree struct {
 	// its reason ("initializing" while `git worktree add` runs).
 	Locked     bool   `json:"locked,omitempty"`
 	LockReason string `json:"lock_reason,omitempty"`
+	// Title is the name a person gave the worktree to show in its place
+	// (worktreetitles.go): a label only, its branch and folder keep Name.
+	Title string `json:"title,omitempty"`
 }
 
 var (
@@ -95,6 +98,9 @@ type savedLocation struct {
 	// RepoTrust is the sha256 of the repository's .berth/config.json as
 	// someone trusted it here; any other version of the file does not run.
 	RepoTrust string `json:"repo_trust,omitempty"`
+	// Titles are the worktrees' display names, by worktree path
+	// (worktreetitles.go).
+	Titles map[string]string `json:"titles,omitempty"`
 }
 
 func (l *Locations) Add(ctx context.Context, name, path string) (Location, error) {
@@ -346,6 +352,8 @@ func (l *Locations) RemoveWorktree(ctx context.Context, location, name string, f
 		if out, err := git(ctx, args...); err != nil {
 			return fmt.Errorf("git worktree remove: %s", strings.TrimSpace(string(out)))
 		}
+		// A worktree made again under the same name starts without a title.
+		l.forgetTitle(location, w.Path)
 		return nil
 	}
 	return ErrUnknownWorktree
@@ -377,6 +385,9 @@ func describe(ctx context.Context, s savedLocation) Location {
 		loc.Check, loc.CheckFrom = c, "detected"
 	}
 	loc.Worktrees = parseWorktrees(out, s.Path)
+	for i := range loc.Worktrees {
+		loc.Worktrees[i].Title = s.Titles[loc.Worktrees[i].Path]
+	}
 	return loc
 }
 

@@ -141,7 +141,9 @@ func (b *Box) Capabilities() []string {
 	// (worktreefolder.go), and touched files say live.
 	// agents.install: GET /v1/agents and POST /v1/agents/install, agent
 	// CLIs added to the box without sudo (agentinstall.go).
-	caps := []string{"transcript", "diff", "titles", "sample", "history", "commands", "service.terminal", "answer", "session.home", "files", "files.dir", "agents.install"}
+	// worktree.titles: worktrees carry a display name (PATCH
+	// /v1/locations/{name}/worktrees/{worktree} names one, worktreetitles.go).
+	caps := []string{"transcript", "diff", "titles", "sample", "history", "commands", "service.terminal", "answer", "session.home", "files", "files.dir", "agents.install", "worktree.titles"}
 	if b.Turns != nil {
 		// controls: POST .../keys, .../interrupt and .../mode, GET
 		// .../controls (controls.go).

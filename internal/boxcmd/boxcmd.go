@@ -43,6 +43,7 @@ var usageSections = []struct {
 		{"%[1]s preview %[2]s[LOC/WORKTREE] [PORT] [--path /x]", "Open a worktree's page in the Berth app"},
 		{"%[1]s worktree new %[2]sLOC/NAME [--branch B] [--base REF]", "Create a git worktree and run its setup"},
 		{"%[1]s worktree rm %[2]sLOC/NAME [--force]", "Remove a worktree"},
+		{"%[1]s worktree rename %[2]sLOC/NAME [TITLE]", "Give a worktree a display name (its branch and folder keep\ntheir names; no TITLE clears it)"},
 	}},
 	{"Agent sessions", [][2]string{
 		{"%[1]s sessions%[3]s [--json]", "List sessions"},
@@ -344,6 +345,35 @@ func Run(ctx context.Context, c *box.Client, args []string, out io.Writer) error
 		}
 		fmt.Fprintf(out, "Removed worktree %s/%s\n", loc, name)
 		return nil
+	case "worktree rename":
+		fs, asJSON := flags(rest)
+		pos, err := parse(fs, rest)
+		if err != nil || len(pos) < 1 || len(pos) > 2 {
+			return usageErr("worktree rename LOC/NAME [TITLE]")
+		}
+		loc, name, ok := strings.Cut(pos[0], "/")
+		if !ok || name == "" {
+			return usageErr("worktree rename LOC/NAME [TITLE]")
+		}
+		title := ""
+		if len(pos) == 2 {
+			title = pos[1]
+		}
+		wt, err := c.RenameWorktree(ctx, loc, name, title)
+		if err != nil {
+			// An older berthd has DELETE on this path but not PATCH.
+			if strings.Contains(err.Error(), "405") {
+				return fmt.Errorf("this box runs an older berthd without worktree names; update it (berth upgrade) and try again")
+			}
+			return err
+		}
+		return show(out, *asJSON, wt, func() {
+			if wt.Title == "" {
+				fmt.Fprintf(out, "%s/%s shows by its name again\n", loc, wt.Name)
+			} else {
+				fmt.Fprintf(out, "%s/%s shows as %q (its branch %s is unchanged)\n", loc, wt.Name, wt.Title, wt.Branch)
+			}
+		})
 	case "sessions":
 		return sessions(ctx, c, rest, out)
 	case "session new":
@@ -758,6 +788,10 @@ func locations(ctx context.Context, c *box.Client, args []string, out io.Writer)
 				branch := w.Branch
 				if branch == "" {
 					branch = "detached " + w.Head
+				}
+				if w.Title != "" {
+					fmt.Fprintf(out, "  %s/%s  %q  %s  (%s)\n", l.Name, w.Name, w.Title, w.Path, branch)
+					continue
 				}
 				fmt.Fprintf(out, "  %s/%s  %s  (%s)\n", l.Name, w.Name, w.Path, branch)
 			}
