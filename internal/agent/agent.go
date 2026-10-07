@@ -442,12 +442,13 @@ func (st *boxState) close() {
 }
 
 // scheduleRetryLocked sets when a box that failed its check is tried next:
-// soon at first (a fifth of the health interval), doubling to the interval
-// itself, with jitter, so a short blip reconnects in seconds and a box
-// that stays away is tried no more often than before. a.mu is held.
+// soon at first (a fifth of the health interval), doubling to four fifths
+// of it, with jitter (±20%, so at most the interval itself), so a short
+// blip reconnects in seconds and a box that stays away is tried at least
+// as often as before. a.mu is held.
 func (a *Agent) scheduleRetryLocked(name string, st *boxState) {
 	st.fails++
-	d := backoff(st.fails, a.cfg.HealthInterval/5, a.cfg.HealthInterval)
+	d := backoff(st.fails, a.cfg.HealthInterval/5, a.cfg.HealthInterval*4/5)
 	st.retryAt = time.Now().Add(d)
 	at := a.cfg.Now().Add(d)
 	st.status.RetryAt, st.status.Attempts = &at, st.fails

@@ -17,10 +17,10 @@ again.
   A box that drops off now reads **Reconnecting to devl… Next try in 6s**
   in its terminals, chats and a team setup in progress, with **Try now**
   (which checks the box at once; it used to only re-read what the agent
-  already knew). The agent tries an away box after about 2 s, then 4, 8 and
-  every 10 s, each with jitter, notices an outage in about 13 s instead of
-  about 25 s (a request with no answer after 5 s has the box checked), and
-  answers requests for an away box at once rather than after a 15 s dial,
+  already knew). The agent tries an away box after about 2 s, then 4 and
+  every 8 s, each with jitter (never less often than before), checks a box
+  at once when a request to it has had no answer for 5 s, and answers
+  requests for an away box at once rather than after a 15 s dial,
   so ⌘P, Files and the rest stop spinning. Reads now give up after 30 s
   with "devl isn't answering" instead of spinning on, and ⌘P says why in
   words and searches again when the box is back. Typing into a terminal

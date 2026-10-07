@@ -13,8 +13,8 @@ a forward or a queued prompt.
 
 - keeps one pinned TLS connection per box, reconnecting forever, with health
   pings to notice a connection that died silently and sleep detection. A
-  box that stops answering is tried again after about 2 seconds, then 4, 8
-  and every 10, each give or take 20% so boxes don't all retry at once; a
+  box that stops answering is tried again after about 2 seconds, then 4
+  and every 8, each give or take 20% so boxes don't all retry at once; a
   request that waits 5 seconds for an answer has the box checked at once,
   and a request for a box known to be away is answered straight away
   instead of waiting out a dial ([Slow and dropping networks](#slow-and-dropping-networks));
