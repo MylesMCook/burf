@@ -9,10 +9,13 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/netip"
 	"os"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	box "github.com/sean-brydon/berthd/internal/boxclient"
@@ -43,6 +46,40 @@ const (
 	// keeps a link from looking expired a moment early. The box decides.
 	expirySkew = time.Minute
 )
+
+var existingPrivateForward = network.SystemTCPForward
+var pairInvitedBox = wire.PairVia
+
+const localOnlyJoinError = "this link has only local-only addresses, which would connect to this computer instead of the box; enable private sharing on the inviting computer, then make a new invite"
+
+// A source computer's localhost, wildcard listener or interface-local IP
+// cannot be transferred to another computer as a box address.
+func shareableAddresses(addresses []string) []string {
+	var out []string
+	seen := map[string]bool{}
+	for _, address := range addresses {
+		if !pairing.ValidAddress(address) || seen[address] {
+			continue
+		}
+		host, _, _ := net.SplitHostPort(address)
+		host = strings.TrimSuffix(strings.ToLower(host), ".")
+		if host == "localhost" || host == "localhost.localdomain" || strings.HasSuffix(host, ".localhost") {
+			continue
+		}
+		if ip, err := netip.ParseAddr(host); err == nil {
+			ip = ip.Unmap()
+			if ip.IsLoopback() || ip.IsUnspecified() || ip.IsLinkLocalUnicast() || ip.IsMulticast() || ip.Zone() != "" {
+				continue
+			}
+		}
+		seen[address] = true
+		out = append(out, address)
+		if len(out) == 4 {
+			break
+		}
+	}
+	return out
+}
 
 // InvitedBox is a box in an invite, as the inviting computer reports it:
 // never the code.
@@ -202,11 +239,18 @@ func makeInvite(ctx context.Context, l laptop, peers []trust.Peer, forName strin
 			}
 			// The connection was pinned to p's key, so that is the key the
 			// new computer pins too, whatever the answer says.
-			addrs := []string{p.Address}
-			for _, a := range got.Addresses {
-				if a != p.Address && pairing.ValidAddress(a) && len(addrs) < 4 {
-					addrs = append(addrs, a)
+			addrs := shareableAddresses(append([]string{p.Address}, got.Addresses...))
+			if len(addrs) == 0 && p.Network == "" {
+				// Only the default-network connection proves this daemon is
+				// reached locally. A named network's loopback is not that proof.
+				forwarded, err := existingPrivateForward(ctx, p.Address)
+				if err == nil {
+					addrs = shareableAddresses(forwarded)
 				}
+			}
+			if len(addrs) == 0 {
+				answers[i] = answer{err: errors.New("this box is local-only; configure private sharing on this computer (such as a Tailscale Serve TCP forward), then make a new invite")}
+				return
 			}
 			ib := pairing.InviteBox{Name: p.Name, Addresses: addrs, Fingerprint: p.Fingerprint, Code: code, Network: p.Network, Tailnet: tailnets[p.Network]}
 			answers[i] = answer{
@@ -523,11 +567,17 @@ func localNetworks(l laptop, inv pairing.Invite) map[string]network.Info {
 func checkJoin(l laptop, inv pairing.Invite, networks map[string]network.Info) []JoinResult {
 	out := make([]JoinResult, len(inv.Boxes))
 	for i, b := range inv.Boxes {
-		r := JoinResult{Name: b.Name, Status: joinReady, Network: b.Network, Tailnet: b.Tailnet, Address: b.Addresses[0]}
+		addresses := shareableAddresses(b.Addresses)
+		r := JoinResult{Name: b.Name, Status: joinReady, Network: b.Network, Tailnet: b.Tailnet}
 		if p, ok, _ := l.boxes().Trusted(b.Fingerprint); ok {
 			r.Status, r.Name, r.Address, r.Network = joinAlready, p.Name, p.Address, p.Network
+		} else if len(addresses) == 0 {
+			r.Status, r.Error = joinFailed, localOnlyJoinError
 		} else if b.Network != "" && networks[b.Network].State != "Running" {
 			r.SignIn = true
+		}
+		if r.Status == joinReady {
+			r.Address = addresses[0]
 		}
 		out[i] = r
 	}
@@ -568,6 +618,18 @@ type joinRoute struct {
 	timeout time.Duration
 }
 
+// Check the actual resolved socket address before connecting too, so a DNS
+// alias or an alternate numeric spelling cannot direct a join to loopback.
+func joinDirectDial(ctx context.Context, network, address string) (net.Conn, error) {
+	dialer := net.Dialer{KeepAlive: 30 * time.Second, ControlContext: func(_ context.Context, _ string, resolved string, _ syscall.RawConn) error {
+		if len(shareableAddresses([]string{resolved})) == 0 {
+			return errors.New(localOnlyJoinError)
+		}
+		return nil
+	}}
+	return dialer.DialContext(ctx, network, address)
+}
+
 func joinOne(ctx context.Context, l laptop, id *identity.Identity, me string, b pairing.InviteBox, networks map[string]network.Info) JoinResult {
 	r := JoinResult{Name: b.Name, Network: b.Network, Tailnet: b.Tailnet}
 	if p, ok, err := l.boxes().Trusted(b.Fingerprint); err != nil {
@@ -575,6 +637,11 @@ func joinOne(ctx context.Context, l laptop, id *identity.Identity, me string, b 
 		return r
 	} else if ok {
 		r.Status, r.Name, r.Address, r.Network = joinAlready, p.Name, p.Address, p.Network
+		return r
+	}
+	addresses := shareableAddresses(b.Addresses)
+	if len(addresses) == 0 {
+		r.Status, r.Error = joinFailed, localOnlyJoinError
 		return r
 	}
 	var routes []joinRoute
@@ -585,21 +652,21 @@ func joinOne(ctx context.Context, l laptop, id *identity.Identity, me string, b 
 			routes = append(routes, joinRoute{network: b.Network, dial: dial})
 		}
 	}
-	direct := joinRoute{}
+	direct := joinRoute{dial: joinDirectDial}
 	if b.Network != "" {
 		direct.timeout = directTimeout
 	}
 	routes = append(routes, direct)
 	var lastErr error
 	for _, rt := range routes {
-		for _, addr := range b.Addresses {
+		for _, addr := range addresses {
 			tok := pairing.Token{Address: addr, Fingerprint: b.Fingerprint, Code: b.Code}
 			attempt := ctx
 			cancel := func() {}
 			if rt.timeout > 0 {
 				attempt, cancel = context.WithTimeout(ctx, rt.timeout)
 			}
-			_, err := wire.PairVia(attempt, id, tok, me, rt.dial)
+			_, err := pairInvitedBox(attempt, id, tok, me, rt.dial)
 			cancel()
 			if err == nil {
 				peer := trust.Peer{Name: b.Name, Address: addr, Network: rt.network, Fingerprint: b.Fingerprint, PairedAt: time.Now().UTC()}
@@ -630,7 +697,7 @@ func joinOne(ctx context.Context, l laptop, id *identity.Identity, me string, b 
 		r.Error = "sign in to the " + b.Network + " network to reach it"
 		return r
 	}
-	r.Status, r.Error = joinFailed, fmt.Sprintf("could not reach it at %s: %v", strings.Join(b.Addresses, ", "), lastErr)
+	r.Status, r.Error = joinFailed, fmt.Sprintf("could not reach it at %s: %v", strings.Join(addresses, ", "), lastErr)
 	return r
 }
 

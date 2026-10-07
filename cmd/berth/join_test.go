@@ -21,6 +21,10 @@ import (
 // throwawayBox runs a box's server on loopback with invites on, and returns
 // how a laptop would know it once paired, and its trust store.
 func throwawayBox(t *testing.T, name string, ttl time.Duration) (trust.Peer, *wire.Server, func()) {
+	return throwawayBoxAddress(t, name, ttl, func(port string) string { return net.JoinHostPort(name+".example.test", port) })
+}
+
+func throwawayBoxAddress(t *testing.T, name string, ttl time.Duration, advertised func(string) string) (trust.Peer, *wire.Server, func()) {
 	t.Helper()
 	dir := t.TempDir()
 	id, err := identity.LoadOrCreate(filepath.Join(dir, "identity.pem"))
@@ -38,6 +42,10 @@ func throwawayBox(t *testing.T, name string, ttl time.Duration) (trust.Peer, *wi
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
+	}
+	if advertised != nil {
+		_, port, _ := net.SplitHostPort(ln.Addr().String())
+		bx.Invites.Address = func() string { return advertised(port) }
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
@@ -77,10 +85,11 @@ func pingAll(t *testing.T, l laptop) {
 	t.Helper()
 	peers, _ := l.boxes().List()
 	for _, p := range peers {
-		c, err := l.boxClient(p.Name)
+		id, err := l.identity()
 		if err != nil {
 			t.Fatal(err)
 		}
+		c := wire.NewClientVia(id, p, fixtureBoxDial)
 		if _, err := c.Ping(context.Background()); err != nil {
 			t.Errorf("%s: %s: %v", l.dir, p.Name, err)
 		}
@@ -90,6 +99,12 @@ func pingAll(t *testing.T, l laptop) {
 
 func mustInvite(t *testing.T, l laptop) (InviteOutput, pairing.Invite) {
 	t.Helper()
+	old := pairInvitedBox
+	pairInvitedBox = func(ctx context.Context, id *identity.Identity, tok pairing.Token, name string, dial wire.DialFunc) (string, error) {
+		dial = fixtureBoxDial
+		return wire.PairVia(ctx, id, tok, name, dial)
+	}
+	t.Cleanup(func() { pairInvitedBox = old })
 	peers, err := selectBoxes(l, "")
 	if err != nil {
 		t.Fatal(err)
@@ -103,6 +118,19 @@ func mustInvite(t *testing.T, l laptop) (InviteOutput, pairing.Invite) {
 		t.Fatal(err)
 	}
 	return out, inv
+}
+
+// The fixtures are on one host. Keep the real TLS/key/code exchange while
+// modelling transferable addresses instead of exporting their loopback bind.
+func fixtureBoxDial(ctx context.Context, network, address string) (net.Conn, error) {
+	host, port, err := net.SplitHostPort(address)
+	if err != nil {
+		return nil, err
+	}
+	if strings.HasSuffix(host, ".example.test") {
+		address = net.JoinHostPort("127.0.0.1", port)
+	}
+	return (&net.Dialer{}).DialContext(ctx, network, address)
 }
 
 func statuses(rs []JoinResult) string {
@@ -234,6 +262,42 @@ func TestAnOfflineBoxIsLeftOutOfAnInvite(t *testing.T) {
 	out, inv := mustInvite(t, macbook)
 	if len(out.Boxes) != 1 || out.Boxes[0].Name != "devl" || len(out.Skipped) != 1 || out.Skipped[0].Name != "cal" || len(inv.Boxes) != 1 {
 		t.Fatalf("invite = %+v", out)
+	}
+}
+
+func TestLocalOnlyBoxIsSkippedWithPrivateSharingReason(t *testing.T) {
+	local, localSrv, _ := throwawayBoxAddress(t, "local", time.Minute, nil)
+	remote, remoteSrv, _ := throwawayBox(t, "remote", time.Minute)
+	l := pairedLaptop(t, served{local, localSrv}, served{remote, remoteSrv})
+	old := existingPrivateForward
+	existingPrivateForward = func(context.Context, string) ([]string, error) { return nil, nil }
+	t.Cleanup(func() { existingPrivateForward = old })
+	out, inv := mustInvite(t, l)
+	if len(out.Boxes) != 1 || out.Boxes[0].Name != "remote" || len(out.Skipped) != 1 || out.Skipped[0].Name != "local" || !strings.Contains(out.Skipped[0].Error, "private sharing") {
+		t.Fatalf("local-only box was silently advertised: %+v", out)
+	}
+	if len(inv.Boxes) != 1 || len(shareableAddresses(inv.Boxes[0].Addresses)) != len(inv.Boxes[0].Addresses) {
+		t.Fatalf("invite contains non-transferable addresses: %+v", inv.Boxes)
+	}
+	if _, err := makeInvite(context.Background(), l, []trust.Peer{local}, ""); err == nil || !strings.Contains(err.Error(), "local-only") {
+		t.Fatalf("local-only invite = %v", err)
+	}
+}
+
+func TestInviteReusesOnlyVerifiedExistingPrivateForward(t *testing.T) {
+	local, localSrv, _ := throwawayBoxAddress(t, "local", time.Minute, nil)
+	l := pairedLaptop(t, served{local, localSrv})
+	old := existingPrivateForward
+	existingPrivateForward = func(_ context.Context, address string) ([]string, error) {
+		if address != local.Address {
+			t.Fatalf("sharing lookup target=%s", address)
+		}
+		return []string{"100.64.0.10:7445"}, nil
+	}
+	t.Cleanup(func() { existingPrivateForward = old })
+	out, inv := mustInvite(t, l)
+	if len(out.Boxes) != 1 || len(inv.Boxes) != 1 || len(inv.Boxes[0].Addresses) != 1 || inv.Boxes[0].Addresses[0] != "100.64.0.10:7445" || inv.Boxes[0].Fingerprint != local.Fingerprint {
+		t.Fatalf("forwarded invite=%+v", inv)
 	}
 }
 
