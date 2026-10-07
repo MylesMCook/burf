@@ -66,7 +66,7 @@ func Write(path string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	return os.Rename(tmp, path)
+	return replaceFile(tmp, path)
 }
 
 // WriteWithBackup keeps the previous contents at path+".bak" whenever they

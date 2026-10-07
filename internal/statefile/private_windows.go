@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -70,6 +71,19 @@ func privateDir(dir string) error {
 }
 
 func privateFile(path string) error { return setPrivate(path, false) }
+
+func replaceFile(from, to string) error {
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		err := os.Rename(from, to)
+		if err == nil || (!errors.Is(err, windows.ERROR_SHARING_VIOLATION) && !errors.Is(err, windows.ERROR_ACCESS_DENIED)) || !time.Now().Before(deadline) {
+			return err
+		}
+		// Ordinary Windows readers do not share delete access. Keep the old
+		// state intact while brief reads or antivirus scans finish.
+		time.Sleep(20 * time.Millisecond)
+	}
+}
 
 func setPrivate(path string, directory bool) error {
 	sd, err := privateDescriptor(directory)
