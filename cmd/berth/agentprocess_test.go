@@ -3,7 +3,10 @@ package main
 import (
 	"context"
 	"errors"
+	"path/filepath"
 	"reflect"
+	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/sean-brydon/berthd/internal/agent"
@@ -16,6 +19,30 @@ type stopClient struct {
 	stopErr error
 	waitErr error
 	steps   *[]string
+}
+
+func TestRunningAgentOwnershipRequiresItsExecutableIdentity(t *testing.T) {
+	program := filepath.Join(t.TempDir(), "berth-cli.exe")
+	for _, tc := range []struct {
+		name string
+		exe  string
+		err  error
+		want bool
+	}{
+		{"same executable", program, nil, true},
+		{"other executable", filepath.Join(filepath.Dir(program), "other.exe"), nil, false},
+		{"missing identity", "", nil, false},
+		{"failed query", program, errors.New("unreachable"), false},
+		{"case rules", strings.ToUpper(program), nil, runtime.GOOS == "windows"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			steps := []string{}
+			c := stopClient{info: agent.AgentInfo{Exe: tc.exe}, infoErr: tc.err, steps: &steps}
+			if got := ownsRunningAgent(context.Background(), c, program); got != tc.want {
+				t.Fatalf("owned = %v, want %v", got, tc.want)
+			}
+		})
+	}
 }
 
 func (c stopClient) Running(context.Context) bool { return c.running }

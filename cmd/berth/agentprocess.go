@@ -218,6 +218,14 @@ func agentCommand(l laptop, args []string) error {
 			if !strings.EqualFold(filepath.Clean(unit.Program), filepath.Clean(spec.Program)) || !strings.EqualFold(filepath.Clean(unit.Env["BERTH_HOME"]), filepath.Clean(spec.Env["BERTH_HOME"])) {
 				return errors.New("the Windows login task belongs to another Berth executable or home")
 			}
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			c := agent.NewClient(l.socket())
+			running := c.Running(ctx)
+			owned := ownsRunningAgent(ctx, c, spec.Program)
+			cancel()
+			if running && !owned {
+				return errors.New("another Berth executable is running for this home; its process and login task were left unchanged")
+			}
 			if _, err := stopAgent(l, true); err != nil {
 				return err
 			}
@@ -236,14 +244,33 @@ func agentCommand(l laptop, args []string) error {
 		fmt.Printf("Removed %s\n", path)
 		return nil
 	case "status":
-		running := agent.NewClient(l.socket()).Running(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		c := agent.NewClient(l.socket())
+		running := c.Running(ctx)
 		if len(args) > 1 && args[1] == "--json" {
-			return printJSON(map[string]bool{"installed": service.Installed(spec), "running": running})
+			return printJSON(map[string]bool{"installed": service.Installed(spec), "running": running, "owned_running": running && ownsRunningAgent(ctx, c, spec.Program)})
 		}
 		fmt.Printf("service installed: %v\nagent running: %v\n", service.Installed(spec), running)
 		return nil
 	}
 	return errors.New("usage: berth agent [start|stop|restart|install|uninstall|status]")
+}
+
+type agentIdentityClient interface {
+	Info(context.Context) (agent.AgentInfo, error)
+}
+
+func ownsRunningAgent(ctx context.Context, c agentIdentityClient, program string) bool {
+	info, err := c.Info(ctx)
+	if err != nil || info.Exe == "" {
+		return false
+	}
+	actual, expected := filepath.Clean(info.Exe), filepath.Clean(program)
+	if runtime.GOOS == "windows" {
+		return strings.EqualFold(actual, expected)
+	}
+	return actual == expected
 }
 
 type agentStopClient interface {
