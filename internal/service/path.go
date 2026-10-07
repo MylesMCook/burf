@@ -11,7 +11,6 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 )
 
@@ -61,6 +60,9 @@ func ComposePATH(login, home string) string {
 // ServicePATH is the PATH a berth service should run with: the user's
 // login-shell PATH, when it can be had within a few seconds, with ToolDirs.
 func ServicePATH() string {
+	if runtime.GOOS == "windows" {
+		return os.Getenv("PATH")
+	}
 	home, _ := os.UserHomeDir()
 	login, err := LoginShellPATH(5 * time.Second)
 	if err != nil || login == "" {
@@ -75,6 +77,12 @@ const pathMark = "__BERTH_PATH__"
 // would start it, for its PATH. It runs in a session of its own, so an
 // interactive shell never takes a terminal over.
 func LoginShellPATH(timeout time.Duration) (string, error) {
+	if runtime.GOOS == "windows" {
+		if path := os.Getenv("PATH"); path != "" {
+			return path, nil
+		}
+		return "", errNoPATH
+	}
 	shell := UserShell()
 	script := `printf '` + pathMark + `%s` + pathMark + `' "$PATH"`
 	if filepath.Base(shell) == "fish" {
@@ -83,7 +91,7 @@ func LoginShellPATH(timeout time.Duration) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, shell, "-lic", script)
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	configureShell(cmd)
 	cmd.WaitDelay = time.Second
 	out, err := cmd.Output()
 	if p, ok := markedPATH(out); ok {
@@ -116,6 +124,9 @@ func markedPATH(out []byte) (string, bool) {
 // the directory service on a Mac, /etc/passwd elsewhere), else the
 // system's default.
 func UserShell() string {
+	if runtime.GOOS == "windows" {
+		return os.Getenv("COMSPEC")
+	}
 	if s := os.Getenv("SHELL"); filepath.IsAbs(s) {
 		return s
 	}
@@ -146,6 +157,9 @@ func UserShell() string {
 // PATH, for a berthd started by a plist without one (an older install), so
 // it still finds Homebrew's tmux. It returns the PATH it set.
 func AugmentPATH() string {
+	if runtime.GOOS == "windows" {
+		return os.Getenv("PATH")
+	}
 	home, _ := os.UserHomeDir()
 	cur := os.Getenv("PATH")
 	have := map[string]bool{}

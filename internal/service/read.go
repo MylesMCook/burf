@@ -45,6 +45,9 @@ func (u Unit) Arg(flag string) string {
 // Read reads the unit installed under name; ok is false when there is none.
 // It understands what Render writes, which is all Install ever installs.
 func Read(name string) (u Unit, ok bool, err error) {
+	if goos == "windows" {
+		return windowsRead(name)
+	}
 	path, err := unitPath(Spec{Name: name})
 	if err != nil {
 		return Unit{}, false, err

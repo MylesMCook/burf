@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"os"
@@ -9,12 +10,12 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/sean-brydon/berthd/internal/agent"
 	"github.com/sean-brydon/berthd/internal/doctor"
 	"github.com/sean-brydon/berthd/internal/service"
+	"github.com/sean-brydon/berthd/internal/statefile"
 	"github.com/sean-brydon/berthd/internal/version"
 )
 
@@ -33,6 +34,10 @@ func agentService(l laptop) (service.Spec, error) {
 	name := "berth-agent"
 	if runtime.GOOS == "darwin" {
 		name = "dev.berth.agent"
+	} else if runtime.GOOS == "windows" {
+		// Separate BERTH_HOME values have independent agents and login tasks.
+		hash := sha256.Sum256([]byte(strings.ToLower(filepath.Clean(home))))
+		name += fmt.Sprintf("-%x", hash[:6])
 	}
 	return service.Spec{
 		Name:        name,
@@ -73,7 +78,7 @@ func ensureAgent(l laptop) (*agent.Client, error) {
 }
 
 func spawnAgent(l laptop, exe string) error {
-	if err := os.MkdirAll(l.dir, 0o700); err != nil {
+	if err := statefile.EnsurePrivateDir(l.dir); err != nil {
 		return err
 	}
 	logFile, err := os.OpenFile(filepath.Join(l.dir, "agent.log"), os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600)
@@ -81,10 +86,13 @@ func spawnAgent(l laptop, exe string) error {
 		return err
 	}
 	defer logFile.Close()
+	if err := statefile.Private(logFile.Name()); err != nil {
+		return err
+	}
 	cmd := exec.Command(exe, "agent")
 	cmd.Env = append(os.Environ(), "BERTH_HOME="+filepath.Dir(l.dir))
 	cmd.Stdout, cmd.Stderr = logFile, logFile
-	cmd.SysProcAttr = &syscall.SysProcAttr{Setsid: true}
+	detachAgentProcess(cmd)
 	if err := cmd.Start(); err != nil {
 		return err
 	}
@@ -133,10 +141,21 @@ func agentCommand(l laptop, args []string) error {
 		fmt.Println("The berth agent is running.")
 		return nil
 	case "install":
+		if runtime.GOOS == "windows" {
+			unit, installed, err := service.Read(spec.Name)
+			if err != nil {
+				return err
+			}
+			if installed && !strings.EqualFold(filepath.Clean(unit.Env["BERTH_HOME"]), filepath.Clean(spec.Env["BERTH_HOME"])) {
+				return errors.New("the Windows login task belongs to another Berth home")
+			}
+		}
 		// The supervisor starts its own agent; a running one would hold the lock.
-		if c := agent.NewClient(l.socket()); c.Running(context.Background()) {
-			c.Stop(context.Background())
-			time.Sleep(200 * time.Millisecond)
+		if _, err := stopAgent(l, true); err != nil {
+			return err
+		}
+		if err := waitAgentService(spec); err != nil {
+			return err
 		}
 		path, err := service.Install(spec)
 		if err != nil {
@@ -168,7 +187,44 @@ func agentCommand(l laptop, args []string) error {
 		}
 		fmt.Println(res.Message)
 		return nil
+	case "stop":
+		drain := false
+		for _, a := range args[1:] {
+			if a != "--drain" {
+				return errors.New("usage: berth agent stop [--drain]")
+			}
+			drain = true
+		}
+		stopped, err := stopAgent(l, drain)
+		if err != nil {
+			return err
+		}
+		if stopped {
+			fmt.Println("Stopped the berth agent.")
+		} else {
+			fmt.Println("The berth agent is not running.")
+		}
+		return nil
 	case "uninstall":
+		if runtime.GOOS == "windows" {
+			unit, installed, err := service.Read(spec.Name)
+			if err != nil {
+				return err
+			}
+			if !installed {
+				fmt.Println("The agent service is not installed.")
+				return nil
+			}
+			if !strings.EqualFold(filepath.Clean(unit.Program), filepath.Clean(spec.Program)) || !strings.EqualFold(filepath.Clean(unit.Env["BERTH_HOME"]), filepath.Clean(spec.Env["BERTH_HOME"])) {
+				return errors.New("the Windows login task belongs to another Berth executable or home")
+			}
+			if _, err := stopAgent(l, true); err != nil {
+				return err
+			}
+			if err := waitAgentService(spec); err != nil {
+				return err
+			}
+		}
 		path, err := service.Uninstall(spec)
 		if err != nil {
 			return err
@@ -187,7 +243,60 @@ func agentCommand(l laptop, args []string) error {
 		fmt.Printf("service installed: %v\nagent running: %v\n", service.Installed(spec), running)
 		return nil
 	}
-	return errors.New("usage: berth agent [start|restart|install|uninstall|status]")
+	return errors.New("usage: berth agent [start|stop|restart|install|uninstall|status]")
+}
+
+type agentStopClient interface {
+	Running(context.Context) bool
+	Info(context.Context) (agent.AgentInfo, error)
+	Stop(context.Context) error
+	StopDrained(context.Context) error
+	WaitStopped(context.Context, string) error
+}
+
+var agentProcessWaiter = openAgentProcess
+
+func stopAgent(l laptop, drain bool) (bool, error) {
+	return stopAgentClient(context.Background(), agent.NewClient(l.socket()), l.dir, drain)
+}
+
+func waitAgentService(spec service.Spec) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	return service.WaitStopped(ctx, spec)
+}
+
+// Capture the Windows process handle while the authenticated agent answers.
+// Lock release happens before process exit and alone cannot permit an update.
+func stopAgentClient(ctx context.Context, c agentStopClient, dir string, drain bool) (bool, error) {
+	if !c.Running(ctx) {
+		return false, nil
+	}
+	ictx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	info, _ := c.Info(ictx)
+	cancel()
+	wait, closeProcess, err := agentProcessWaiter(info.PID)
+	if err != nil {
+		return false, fmt.Errorf("waiting for the berth agent process: %w", err)
+	}
+	defer closeProcess()
+	wctx, cancel := context.WithTimeout(ctx, agentDrainWait)
+	defer cancel()
+	if drain {
+		err = c.StopDrained(wctx)
+	} else {
+		err = c.Stop(wctx)
+	}
+	if err != nil {
+		return false, fmt.Errorf("stopping the berth agent: %w", err)
+	}
+	if err := c.WaitStopped(wctx, dir); err != nil {
+		return false, err
+	}
+	if err := wait(wctx); err != nil {
+		return false, fmt.Errorf("the berth agent process did not exit: %w", err)
+	}
+	return true, nil
 }
 
 // RestartResult is what `berth agent restart --json` reports.
@@ -234,19 +343,16 @@ func restartAgent(l laptop, spec service.Spec, ifStale bool) (RestartResult, err
 	if errors.Is(infoErr, agent.ErrNoAgentInfo) {
 		from = "an older release"
 	}
-	if err := c.StopDrained(ctx); err != nil {
-		return RestartResult{}, fmt.Errorf("stopping the berth agent: %w", err)
-	}
-	wctx, cancel := context.WithTimeout(ctx, agentDrainWait)
-	err := c.WaitStopped(wctx, l.dir)
-	cancel()
-	if err != nil {
+	if _, err := stopAgentClient(ctx, c, l.dir, true); err != nil {
 		return RestartResult{}, err
 	}
 	asService := false
 	if u, ok, _ := service.Read(spec.Name); ok && u.Program == spec.Program && u.Env["BERTH_HOME"] == spec.Env["BERTH_HOME"] {
 		// Installed for this berth: installing it again (as it is, or as
 		// this berth writes it now) starts it.
+		if err := waitAgentService(spec); err != nil {
+			return RestartResult{}, err
+		}
 		if _, err := service.Install(spec); err != nil {
 			return RestartResult{}, err
 		}

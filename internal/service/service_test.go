@@ -139,12 +139,12 @@ func TestInstallRefusesTemporaryAndRelativeBinaries(t *testing.T) {
 }
 
 func TestUnsupportedPlatform(t *testing.T) {
-	stub(t, "windows")
+	stub(t, "freebsd")
 	if _, err := Render(spec); err == nil {
-		t.Fatal("rendered a unit for windows")
+		t.Fatal("rendered a unit for freebsd")
 	}
 	if Installed(spec) {
-		t.Fatal("reported installed on windows")
+		t.Fatal("reported installed on freebsd")
 	}
 }
 

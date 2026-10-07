@@ -7,12 +7,8 @@ import (
 	"io"
 	"net/url"
 	"os"
-	"os/exec"
-	"os/signal"
-	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
 
 	box "github.com/sean-brydon/berthd/internal/boxclient"
 	"github.com/sean-brydon/berthd/internal/boxcmd"
@@ -131,20 +127,12 @@ func attach(l laptop, args []string) error {
 		}
 		defer restore()
 	}
-	winch := make(chan os.Signal, 1)
-	signal.Notify(winch, syscall.SIGWINCH)
-	defer signal.Stop(winch)
-	go func() {
-		for range winch {
-			if c, r, err := terminal.Size(stdout); err == nil {
-				terminal.WriteResize(conn, c, r)
-			}
-		}
-	}()
+	stopResize := watchTerminalResize(stdout, func(cols, rows int) { terminal.WriteResize(conn, cols, rows) })
+	defer stopResize()
 	go func() {
 		buf := make([]byte, 32<<10)
 		for {
-			n, err := os.Stdin.Read(buf)
+			n, err := terminal.ReadInput(os.Stdin, buf)
 			if n > 0 && terminal.WriteData(conn, buf[:n]) != nil {
 				return
 			}
@@ -169,14 +157,5 @@ func openTerminal(args []string) error {
 	if err != nil {
 		return err
 	}
-	return openTerminalRunning(shellQuote(exe) + " attach " + shellQuote(args[0]))
-}
-
-// openTerminalRunning opens the system terminal running command.
-func openTerminalRunning(command string) error {
-	if runtime.GOOS != "darwin" {
-		return exec.Command("x-terminal-emulator", "-e", "sh", "-c", command).Start()
-	}
-	script := fmt.Sprintf("tell application \"Terminal\"\n  do script %q\n  activate\nend tell", command)
-	return exec.Command("osascript", "-e", script).Run()
+	return openTerminalCommand(exe, []string{"attach", args[0]})
 }
