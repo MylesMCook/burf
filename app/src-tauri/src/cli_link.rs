@@ -4,8 +4,9 @@ use std::path::{Path, PathBuf};
 // "Install the burf command" in Settings → General. Burf.app carries the
 // burf CLI as Contents/MacOS/burf-cli; this links ~/.local/bin/burf to it,
 // so a terminal gets the same burf the app runs, and it updates with the
-// app. Nothing happens until the person asks, and the screen says first
-// what will be replaced.
+// app. A new install links it once by itself, into an empty spot only
+// (src/lib/cli-setup.ts). Replacing something that is already there happens
+// only when the person asks, and the screen says first what will be replaced.
 
 #[derive(Serialize)]
 pub struct CliLink {
@@ -55,6 +56,15 @@ fn blocked(p: &Path) -> Option<String> {
     None
 }
 
+// A copy started with a state folder of its own (BERTH_HOME) is not the one
+// a plain `burf` in a terminal reaches: that command would start a second,
+// empty client. Its command is not linked.
+fn own_state(home: Option<std::ffi::OsString>) -> Option<String> {
+    home.filter(|h| !h.is_empty()).map(|_| {
+        "This copy of Burf keeps its state in a folder of its own (BERTH_HOME), so a burf command in a terminal would not reach it.".to_string()
+    })
+}
+
 fn status() -> Result<CliLink, String> {
     let link = link_path()?;
     let bundled = bundled();
@@ -72,7 +82,7 @@ fn status() -> Result<CliLink, String> {
     };
     Ok(CliLink {
         link: link.display().to_string(),
-        blocked: bundled.as_deref().and_then(blocked),
+        blocked: own_state(std::env::var_os("BERTH_HOME")).or_else(|| bundled.as_deref().and_then(blocked)),
         bundled: bundled.map(|p| p.display().to_string()),
         state,
         target: target.map(|p| p.display().to_string()),
@@ -90,7 +100,7 @@ pub fn cli_link_status() -> Result<CliLink, String> {
 #[tauri::command]
 pub fn install_cli_link() -> Result<CliLink, String> {
     let src = bundled().ok_or("this build of Burf carries no burf command to link to")?;
-    if let Some(why) = blocked(&src) {
+    if let Some(why) = own_state(std::env::var_os("BERTH_HOME")).or_else(|| blocked(&src)) {
         return Err(why);
     }
     let link = link_path()?;
@@ -129,4 +139,17 @@ fn symlink(src: &Path, link: &Path) -> std::io::Result<()> {
 #[cfg(not(unix))]
 fn symlink(_: &Path, _: &Path) -> std::io::Result<()> {
     Err(std::io::Error::other("only on macOS and Linux"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_copy_with_its_own_state_folder_is_not_linked() {
+        assert!(own_state(None).is_none());
+        assert!(own_state(Some("".into())).is_none());
+        let why = own_state(Some("/tmp/qa-home".into())).expect("blocked");
+        assert!(why.contains("BERTH_HOME"));
+    }
 }

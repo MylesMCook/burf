@@ -69,6 +69,9 @@ export interface Prefs {
   // The newest version whose What's new card was shown, or that was
   // running when the card had nothing to show (lib/whats-new.ts).
   whatsNewSeen: string | null;
+  // Set once an installed Burf has decided about putting its burf command on
+  // the PATH (lib/cli-setup.ts), so removing it in Settings stays removed.
+  cliLinkOffered: boolean;
 }
 
 export type ChatWidth = "narrow" | "default" | "wide" | "xwide" | "full";
@@ -102,6 +105,7 @@ const DEFAULTS: Prefs = {
   home: null,
   installAgents: null,
   whatsNewSeen: null,
+  cliLinkOffered: false,
 };
 
 // PREFS_VERSION counts changes of default that saved prefs are moved to

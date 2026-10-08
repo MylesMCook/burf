@@ -31,6 +31,7 @@ import { BoxPicker } from "@/components/box-picker";
 import { FakeTrafficLights, ZenBar } from "@/components/workspace/zen";
 import { Announcer } from "@/components/announcer";
 import { fakeTrafficLights } from "@/lib/api";
+import { linkCliOnce } from "@/lib/cli-setup";
 import { useBerthConnection } from "@/hooks/use-burf-connection";
 import { useShortcuts } from "@/hooks/use-shortcuts";
 import { useWindowTitle } from "@/hooks/use-window-title";
@@ -83,6 +84,9 @@ export default function App() {
   useWindowTitle();
   // Checks for a newer Burf on launch and every few hours (lib/updater.ts).
   useEffect(startUpdater, []);
+  // First run of an installed Burf: its burf command goes on the PATH, once
+  // (lib/cli-setup.ts).
+  useEffect(() => void linkCliOnce(), []);
   // Spinners and shimmers hold still while the window is in the background.
   useEffect(watchStillness, []);
   // Runs on the boxes (loops, attempts, flows): kept fresh for the loops

@@ -23,6 +23,15 @@ pub struct CliLink {
     target: Option<String>,
 }
 
+// A copy started with a state folder of its own (BERTH_HOME) is not the one
+// a plain `burf` in a terminal reaches: that command would start a second,
+// empty client. Its folder is not added to PATH.
+fn own_state(home: Option<std::ffi::OsString>) -> Option<String> {
+    home.filter(|h| !h.is_empty()).map(|_| {
+        "This copy of Burf keeps its state in a folder of its own (BERTH_HOME), so a burf command in a terminal would not reach it.".to_string()
+    })
+}
+
 fn cli_dir() -> Result<PathBuf, String> {
     let exe = std::env::current_exe().map_err(|e| e.to_string())?;
     Ok(exe.parent().ok_or("no application directory")?.join("cli"))
@@ -62,7 +71,7 @@ pub fn cli_link_status() -> Result<CliLink, String> {
     Ok(CliLink {
         link: dir.display().to_string(),
         bundled: bundled.then(|| dir.join("burf.exe").display().to_string()),
-        blocked: None,
+        blocked: own_state(std::env::var_os("BERTH_HOME")),
         state,
         target: None,
     })
@@ -70,6 +79,9 @@ pub fn cli_link_status() -> Result<CliLink, String> {
 
 #[tauri::command]
 pub fn install_cli_link() -> Result<CliLink, String> {
+    if let Some(why) = own_state(std::env::var_os("BERTH_HOME")) {
+        return Err(why);
+    }
     path_action(PathAction::Add)?;
     cli_link_status()
 }
@@ -93,5 +105,12 @@ mod tests {
         let command = path_command(PathAction::Add, std::path::Path::new(r"C:\Burf's & $Tools\cli"));
         assert!(command.ends_with(r"-Action 'Add' -CliDirectory 'C:\Burf''s & $Tools\cli'"));
         assert!(!command.contains("ExecutionPolicy"));
+    }
+
+    #[test]
+    fn a_copy_with_its_own_state_folder_is_not_added_to_path() {
+        assert!(own_state(None).is_none());
+        assert!(own_state(Some("".into())).is_none());
+        assert!(own_state(Some(r"C:\Temp\qa-home".into())).expect("blocked").contains("BERTH_HOME"));
     }
 }
