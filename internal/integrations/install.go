@@ -17,7 +17,12 @@ import (
 // keeping every existing setting and hook. It reports whether it changed
 // anything; running it again is a no-op.
 func InstallClaudeHooks(settingsPath, bin string) (bool, error) {
-	return editJSON(settingsPath, func(root map[string]any) bool {
+	f, rel := fileAt(settingsPath)
+	return installClaudeHooks(f, rel, bin)
+}
+
+func installClaudeHooks(f files, rel, bin string) (bool, error) {
+	return editJSON(f, rel, func(root map[string]any) bool {
 		hooks := object(root, "hooks")
 		changed := false
 		// UserPromptSubmit and PostToolUse mark the agent busy again, so a
@@ -51,7 +56,12 @@ func addNested(hooks map[string]any, event, command string) bool {
 // them only once they are trusted in Codex (/hooks); until then notify
 // still reports finished turns.
 func InstallCodexHooks(path, bin string) (bool, error) {
-	return editJSON(path, func(root map[string]any) bool {
+	f, rel := fileAt(path)
+	return installCodexHooks(f, rel, bin)
+}
+
+func installCodexHooks(f files, rel, bin string) (bool, error) {
+	return editJSON(f, rel, func(root map[string]any) bool {
 		hooks := object(root, "hooks")
 		changed := false
 		for _, event := range []string{"SessionStart", "UserPromptSubmit", "PermissionRequest", "Stop"} {
@@ -66,7 +76,8 @@ func InstallCodexHooks(path, bin string) (bool, error) {
 // InstallGeminiHooks adds berth's hooks to Gemini CLI's settings.json,
 // keeping every other setting.
 func InstallGeminiHooks(path, bin string) (bool, error) {
-	return editJSON(path, func(root map[string]any) bool {
+	f, rel := fileAt(path)
+	return editJSON(f, rel, func(root map[string]any) bool {
 		hooks := object(root, "hooks")
 		changed := false
 		for _, event := range []string{"SessionStart", "BeforeAgent", "Notification", "AfterAgent", "SessionEnd"} {
@@ -94,7 +105,8 @@ func InstallOpenCodePlugin(path, bin string) (bool, error) {
 // InstallCursorHooks appends berth's hook to Cursor's hooks file, after any
 // hooks other tools (such as Orca) already registered there.
 func InstallCursorHooks(hooksPath, bin string) (bool, error) {
-	return editJSON(hooksPath, func(root map[string]any) bool {
+	f, rel := fileAt(hooksPath)
+	return editJSON(f, rel, func(root map[string]any) bool {
 		if _, ok := root["version"]; !ok {
 			root["version"] = 1
 		}
@@ -126,7 +138,12 @@ var notifyKey = regexp.MustCompile(`(?m)^[ \t]*notify[ \t]*=`)
 // adding a notify setting to its config.toml. A config that already has a
 // notify setting is left alone: ErrNotifyTaken unless it is berth's.
 func InstallCodexNotify(configPath, bin string) (bool, error) {
-	before, err := os.ReadFile(configPath)
+	f, rel := fileAt(configPath)
+	return installCodexNotify(f, rel, bin)
+}
+
+func installCodexNotify(f files, rel, bin string) (bool, error) {
+	before, err := f.read(rel)
 	if err != nil && !os.IsNotExist(err) {
 		return false, err
 	}
@@ -138,22 +155,12 @@ func InstallCodexNotify(configPath, bin string) (bool, error) {
 	}
 	// Top-level keys come before the first table, so the line goes first.
 	after := codexNotify(bin) + "\n" + string(before)
-	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
-		return false, err
-	}
-	mode := os.FileMode(0o644)
 	if len(before) > 0 {
-		if err := os.WriteFile(configPath+".berth-backup", before, 0o600); err != nil {
+		if err := f.backup(rel, before); err != nil {
 			return false, err
 		}
-		if info, err := os.Stat(configPath); err == nil {
-			mode = info.Mode().Perm()
-		}
 	}
-	if err := statefile.Write(configPath, []byte(after)); err != nil {
-		return false, err
-	}
-	return true, os.Chmod(configPath, mode)
+	return true, f.write(rel, []byte(after), 0o644)
 }
 
 func codexNotify(bin string) string {
@@ -198,16 +205,17 @@ func containsCommand(list []any, command string) bool {
 	return false
 }
 
-// editJSON applies change to a JSON object file and writes it back only when
-// something changed, keeping the previous contents at path+".berth-backup".
-// A file that is not a JSON object is left untouched.
-func editJSON(path string, change func(map[string]any) bool) (bool, error) {
+// editJSON applies change to a JSON object file, rel below f, and writes
+// it back only when something changed, keeping the previous contents at
+// rel+".berth-backup" and the file's mode. A file that is not a JSON object
+// is left untouched.
+func editJSON(f files, rel string, change func(map[string]any) bool) (bool, error) {
 	root := map[string]any{}
-	before, err := os.ReadFile(path)
+	before, err := f.read(rel)
 	switch {
 	case err == nil:
 		if err := json.Unmarshal(before, &root); err != nil {
-			return false, fmt.Errorf("%s is not valid JSON, so berth left it alone: %w", path, err)
+			return false, fmt.Errorf("%s is not valid JSON, so berth left it alone: %w", f.path(rel), err)
 		}
 	case !os.IsNotExist(err):
 		return false, err
@@ -219,22 +227,12 @@ func editJSON(path string, change func(map[string]any) bool) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return false, err
-	}
 	if len(before) > 0 {
-		if err := os.WriteFile(path+".berth-backup", before, 0o600); err != nil {
+		if err := f.backup(rel, before); err != nil {
 			return false, err
 		}
 	}
-	mode := os.FileMode(0o644)
-	if info, err := os.Stat(path); err == nil {
-		mode = info.Mode().Perm()
-	}
-	if err := statefile.Write(path, append(out, '\n')); err != nil {
-		return false, err
-	}
-	return true, os.Chmod(path, mode)
+	return true, f.write(rel, append(out, '\n'), 0o644)
 }
 
 // berth's MCP server is `berthd mcp`: only the box daemon serves it, as it
@@ -244,7 +242,12 @@ func mcpBin(bin string) bool { return filepath.Base(bin) == "berthd" }
 // InstallMCP adds berth's MCP server to a JSON settings file's mcpServers
 // (Claude Code's ~/.claude.json, Gemini CLI's settings.json).
 func InstallMCP(path, bin string, claude bool) (bool, error) {
-	return editJSON(path, func(root map[string]any) bool {
+	f, rel := fileAt(path)
+	return installMCP(f, rel, bin, claude)
+}
+
+func installMCP(f files, rel, bin string, claude bool) (bool, error) {
+	return editJSON(f, rel, func(root map[string]any) bool {
 		servers := object(root, "mcpServers")
 		want := map[string]any{"command": bin, "args": []any{"mcp"}}
 		if claude {
@@ -260,7 +263,12 @@ func InstallMCP(path, bin string, claude bool) (bool, error) {
 
 // InstallCodexMCP adds [mcp_servers.berth] to Codex's config.toml.
 func InstallCodexMCP(configPath, bin string) (bool, error) {
-	before, err := os.ReadFile(configPath)
+	f, rel := fileAt(configPath)
+	return installCodexMCP(f, rel, bin)
+}
+
+func installCodexMCP(f files, rel, bin string) (bool, error) {
+	before, err := f.read(rel)
 	if err != nil && !os.IsNotExist(err) {
 		return false, err
 	}
@@ -272,13 +280,10 @@ func InstallCodexMCP(configPath, bin string) (bool, error) {
 		after += "\n"
 	}
 	after += fmt.Sprintf("\n[mcp_servers.berth]\ncommand = %q\nargs = [\"mcp\"]\n", bin)
-	if err := os.MkdirAll(filepath.Dir(configPath), 0o755); err != nil {
-		return false, err
-	}
 	if len(before) > 0 {
-		if err := os.WriteFile(configPath+".berth-backup", before, 0o600); err != nil {
+		if err := f.backup(rel, before); err != nil {
 			return false, err
 		}
 	}
-	return true, statefile.Write(configPath, []byte(after))
+	return true, f.write(rel, []byte(after), 0o600)
 }

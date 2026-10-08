@@ -21,7 +21,8 @@ type Tool struct {
 	// not on this process's PATH.
 	configDir string
 	// hookFile and hookMarker find berth's hook in the tool's settings;
-	// currentFile and currentMarker, this release's hooks.
+	// currentFile and currentMarker, this release's hooks. Claude Code's and
+	// Codex's are in each account folder instead (accountHooks).
 	hookFile, hookMarker       string
 	currentFile, currentMarker string
 }
@@ -29,12 +30,8 @@ type Tool struct {
 // Tools are the agent CLIs `integrations install` knows, in the order they
 // are reported.
 var Tools = []Tool{
-	{ID: "claude", Name: "Claude Code", Command: "claude", configDir: ".claude",
-		hookFile: filepath.Join(".claude", "settings.json"), hookMarker: "hook claude Stop",
-		currentMarker: "hook claude PostToolUse"},
-	{ID: "codex", Name: "Codex", Command: "codex", configDir: ".codex",
-		hookFile: filepath.Join(".codex", "config.toml"), hookMarker: `"hook", "codex"`,
-		currentFile: filepath.Join(".codex", "hooks.json"), currentMarker: "hook codex Stop"},
+	{ID: "claude", Name: "Claude Code", Command: "claude", configDir: ".claude"},
+	{ID: "codex", Name: "Codex", Command: "codex", configDir: ".codex"},
 	// ~/.cursor also belongs to the Cursor editor, so only the CLI counts.
 	{ID: "cursor", Name: "Cursor Agent", Command: "cursor-agent",
 		hookFile: filepath.Join(".cursor", "hooks.json"), hookMarker: "hook cursor stop",
@@ -73,8 +70,14 @@ func (t Tool) Present(home string) bool {
 }
 
 // Hooked reports whether berth's hook is in t's settings in home: any berth
-// or berthd binary's, so a hook installed from another path counts.
+// or berthd binary's, so a hook installed from another path counts. For
+// Claude Code and Codex it is the default account's; AccountStates has the
+// others.
 func (t Tool) Hooked(home string) bool {
+	if _, ok := AccountVars[t.ID]; ok {
+		hooked, _ := accountHooks(t.ID, defaultAccount(home, t.ID).Dir)
+		return hooked
+	}
 	b, err := os.ReadFile(filepath.Join(home, t.hookFile))
 	return err == nil && bytes.Contains(b, []byte(t.hookMarker))
 }
@@ -82,6 +85,10 @@ func (t Tool) Hooked(home string) bool {
 // Current reports whether t's hooks are this release's: an older berth's
 // lack the signals turns need (Claude's PostToolUse, say).
 func (t Tool) Current(home string) bool {
+	if _, ok := AccountVars[t.ID]; ok {
+		_, current := accountHooks(t.ID, defaultAccount(home, t.ID).Dir)
+		return current
+	}
 	if !t.Hooked(home) {
 		return false
 	}
@@ -97,11 +104,17 @@ func (t Tool) Current(home string) bool {
 }
 
 // RefreshHooked brings hooks berth installed before up to this release's,
-// as an upgrade does; tools without berth's hooks are left alone. It
-// returns the tools it updated.
+// as an upgrade does, and gives Claude Code and Codex accounts added since
+// what their default account has; tools without berth's hooks are left
+// alone. It returns what it updated: "claude", or "claude in DIR" for one
+// account.
 func RefreshHooked(home, bin string) []string {
 	var done []string
 	for _, t := range Tools {
+		if _, ok := AccountVars[t.ID]; ok {
+			done = append(done, refreshAccounts(home, t.ID, bin)...)
+			continue
+		}
 		if t.Hooked(home) && !t.Current(home) {
 			if InstallTool(home, t.ID, bin, io.Discard) == nil {
 				done = append(done, t.ID)

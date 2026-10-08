@@ -116,7 +116,7 @@ export async function localBoxStream(method: string, path: string, body: unknown
   }
   await say(`  Installed ${HOME}/Library/LaunchAgents/dev.berth.berthd.plist; berthd is serving on ${ADDRESS}.`, 1200);
   await say("  Agent integrations (hooks for needs-you, working and done; Shipyard's skills):", 300);
-  await say(`    Claude Code: skills in ${HOME}/.claude/skills; hooks added in ${HOME}/.claude/settings.json`, 300);
+  await say(`    Claude Code: hooks and 7 skills in ~/.claude`, 300);
   await say("Pairing this laptop with it…", 500);
   d.addBox(NAME, ADDRESS);
   const added = d.status.boxes.find((b) => b.name === NAME);

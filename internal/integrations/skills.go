@@ -81,7 +81,9 @@ func frontmatter(b []byte, key string) string {
 // (user skills) or a repository (project skills).
 var skillDirs = map[string]string{
 	"claude": filepath.Join(".claude", "skills"),
-	// Codex reads $HOME/.agents/skills and <repo>/.agents/skills.
+	// Codex reads $HOME/.agents/skills and <repo>/.agents/skills. It is
+	// $HOME's, not $CODEX_HOME's: every Codex account on the machine reads
+	// the same user skills, so they are installed once, not per account.
 	"codex": filepath.Join(".agents", "skills"),
 }
 
@@ -116,6 +118,11 @@ func SkillStatus(root, agent, name string) (SkillState, error) {
 	if err != nil {
 		return "", err
 	}
+	return skillStatusIn(dir, name)
+}
+
+// skillStatusIn reports one skill in a skills folder.
+func skillStatusIn(dir, name string) (SkillState, error) {
 	want, err := SkillContent(name)
 	if err != nil {
 		return "", fmt.Errorf("berth has no skill called %s", name)
@@ -148,10 +155,21 @@ func InstallProjectSkills(repo, agent string, names []string) ([]string, error) 
 }
 
 func installSkills(root, agent string, names []string, strict bool) ([]string, error) {
-	dir, err := SkillDir(root, agent)
-	if err != nil {
-		return nil, err
+	rel, ok := skillDirs[agent]
+	if !ok {
+		return nil, fmt.Errorf("unknown agent %q; use claude or codex", agent)
 	}
+	written, err := installSkillsIn(root, rel, names, strict)
+	if err == nil && agent == "codex" {
+		removeLegacyCodex(root, names, strict)
+	}
+	return written, err
+}
+
+// installSkillsIn writes the named skills into the folder rel below root.
+// strict refuses any symbolic link below root.
+func installSkillsIn(root, rel string, names []string, strict bool) ([]string, error) {
+	dir := filepath.Join(root, rel)
 	var written []string
 	for _, name := range names {
 		b, err := SkillContent(name)
@@ -160,8 +178,7 @@ func installSkills(root, agent string, names []string, strict bool) ([]string, e
 		}
 		path := filepath.Join(dir, name, "SKILL.md")
 		if strict {
-			rel, _ := filepath.Rel(root, path)
-			err = writeNoFollow(root, rel, b, 0o644)
+			err = writeNoFollow(root, filepath.Join(rel, name, "SKILL.md"), b, 0o644)
 		} else if err = os.MkdirAll(filepath.Dir(path), 0o755); err == nil {
 			err = os.WriteFile(path, b, 0o644)
 		}
@@ -169,9 +186,6 @@ func installSkills(root, agent string, names []string, strict bool) ([]string, e
 			return written, err
 		}
 		written = append(written, path)
-	}
-	if agent == "codex" {
-		removeLegacyCodex(root, names, strict)
 	}
 	return written, nil
 }
@@ -204,10 +218,17 @@ func UninstallProjectSkills(repo, agent string, names []string) ([]string, error
 }
 
 func uninstallSkills(root, agent string, names []string, strict bool) ([]string, error) {
-	dir, err := SkillDir(root, agent)
-	if err != nil {
-		return nil, err
+	rel, ok := skillDirs[agent]
+	if !ok {
+		return nil, fmt.Errorf("unknown agent %q; use claude or codex", agent)
 	}
+	return uninstallSkillsIn(root, rel, names, strict)
+}
+
+// uninstallSkillsIn removes the named skills from the folder rel below
+// root. strict refuses anything reached through a symbolic link below root.
+func uninstallSkillsIn(root, rel string, names []string, strict bool) ([]string, error) {
+	dir := filepath.Join(root, rel)
 	var removed []string
 	for _, name := range names {
 		if _, err := SkillContent(name); err != nil {
@@ -215,8 +236,7 @@ func uninstallSkills(root, agent string, names []string, strict bool) ([]string,
 		}
 		skill := filepath.Join(dir, name)
 		if strict {
-			rel, _ := filepath.Rel(root, filepath.Join(skill, "SKILL.md"))
-			if err := noLinks(root, rel); err != nil {
+			if err := noLinks(root, filepath.Join(rel, name, "SKILL.md")); err != nil {
 				return removed, err
 			}
 		}

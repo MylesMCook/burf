@@ -78,6 +78,17 @@ bar, or `berth upgrade BOX`. Agents keep running through the update.
   on the client (Next.js, React Router: `history.pushState`) left the
   address bar on the first URL, since nothing loaded. It now shows where the
   page is, within half a second.
+- **Every agent account gets Shipyard's hooks and skills.** A Claude Code or
+  Codex session started on another account (the Usage plugin's accounts,
+  which set `CLAUDE_CONFIG_DIR` or `CODEX_HOME`) ran without Shipyard's
+  hooks, so the box guessed from the screen when it was working, done or
+  needed you, and without Shipyard's skills. `berthd integrations install`
+  now puts them in every account folder (the default, those in
+  `~/.berth/accounts`, and any the box or a project picks), **Add account…**
+  puts them in the new one, and berthd adds them to an account a session
+  starts on before its agent runs. `berthd integrations` and `berthd doctor`
+  list them per account. See
+  [Agent integrations](/guides/agent-integrations#every-account).
 - **A chat on another account reads its conversation.** An agent started on
   another Claude Code or Codex account (the Usage plugin's accounts, which
   set `CLAUDE_CONFIG_DIR` or `CODEX_HOME`) wrote its conversation to that
