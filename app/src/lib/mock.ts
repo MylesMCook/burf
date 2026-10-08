@@ -1,4 +1,5 @@
 import { mockFileBlob, mockFilesCall } from "@/lib/mock-files";
+import { LINEAR_USAGE, processesCall } from "./mock-processes";
 import type { BerthEvent, Client, Hook, HooksFile, Location, Service, Session, SshFailure, Stats, Status, TerminalHandlers, Turn } from "@/lib/api";
 import { flowsCall } from "@/lib/mock-flows";
 import { runsCall } from "@/lib/mock-runs";
@@ -171,7 +172,9 @@ const sessions: Record<string, Session[]> = {
     { name: "order-export-claude", title: "Export orders as CSV from the admin", location: "shop/order-export", dir: "/home/me/work/shop-order-export", command: "claude 'Export orders as CSV from the admin'", created: ago(1700), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(1560) },
     { name: "order-export-claude-2", location: "shop/order-export", dir: "/home/me/work/shop-order-export", command: "claude", created: ago(320), attached: 0, exited: false, agent: "claude", agent_state: "idle", state_since: ago(290) },
     { name: "order-export-claude-3", title: "Add tests for the export job", location: "shop/order-export", dir: "/home/me/work/shop-order-export", command: "claude 'Add tests for the export job'", created: ago(140), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(75) },
-    { name: "https-linear-app-acme-claude", title: "Fix the cart badge after a refund", location: "shop/https-linear-app-acme", dir: "/home/me/work/shop-https-linear-app-acme", command: "claude", created: ago(44), attached: 0, exited: false, agent: "claude", agent_state: "idle", state_since: ago(40) },
+    // Its repository's Playwright tests run near its 12 GB memory limit
+    // (mock-processes).
+    { name: "https-linear-app-acme-claude", title: "Fix the cart badge after a refund", location: "shop/https-linear-app-acme", dir: "/home/me/work/shop-https-linear-app-acme", command: "claude", created: ago(44), attached: 0, exited: false, agent: "claude", agent_state: "idle", state_since: ago(40), scope: "berth-https-linear-app-acme-claude-tq1.scope", usage: LINEAR_USAGE },
     { name: "notes-claude", location: "notes", dir: "/home/me/work/notes", command: "claude", created: ago(700), attached: 0, exited: true, agent: "claude" },
   ],
   gpu: [
@@ -639,6 +642,12 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
   if (runs) return runs;
   const browser = browserCall(box, method, path);
   if (browser) return delay(browser);
+  try {
+    const procs = processesCall(box, method, path, emit);
+    if (procs !== undefined) return delay(procs);
+  } catch (err) {
+    return Promise.reject(new ApiError((err as Error).message, /didn't start/.test((err as Error).message) ? 403 : 404));
+  }
   const computers = computersBoxCall(box, method, path);
   if (computers) return computers;
   const thisMac = localBoxFolders(box, method, path);
@@ -718,7 +727,7 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
       tools: ["claude", "codex"],
       home: HOME,
       // gpu runs an older berthd (mockBuilds): it can't keep worktree names.
-      capabilities: ["diff", "turns", "queue", "ask", "answer", "journal", "runs", "exec.detach", "browser", "browser.devtools", "titles", "sample", "service.terminal", "session.home", "agents.install", "artifacts", ...(box === "gpu" ? [] : ["worktree.titles", "agents.paths"])],
+      capabilities: ["diff", "turns", "queue", "ask", "answer", "journal", "runs", "exec.detach", "browser", "browser.devtools", "titles", "sample", "service.terminal", "session.home", "agents.install", "artifacts", "processes", ...(box === "gpu" ? [] : ["worktree.titles", "agents.paths"])],
       // Claude Code from npm under nvm, as the person's shell finds it;
       // Codex from Shipyard's own installer.
       agent_paths: [

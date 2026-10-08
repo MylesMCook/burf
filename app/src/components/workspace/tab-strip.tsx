@@ -1,4 +1,4 @@
-import { CloudOffIcon, PencilIcon, RowsIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, XIcon } from "lucide-react";
+import { CloudOffIcon, GaugeIcon, PencilIcon, RowsIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, XIcon } from "lucide-react";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { StateGlyph } from "@/components/agent-glyph";
@@ -25,6 +25,7 @@ import { type Leaf, leaves, mixed, paneWorktree, worktreesOf } from "@/lib/layou
 import { removalLabel, useRemoval } from "@/lib/removing";
 import { renameSession, useRenaming } from "@/lib/session-title";
 import { useStore } from "@/lib/store";
+import { memoryNote } from "@/lib/processes";
 import { cn } from "@/lib/utils";
 import { activateTab, tabBeside, unsplitTab, useHereKey, useHereRef, useWorkspaces, type WsTab } from "@/lib/workspaces";
 import { useTitleAt } from "@/lib/worktree-names";
@@ -323,6 +324,8 @@ export function TabButton({ tab, wsKey, tone, active, onActivate, onClose, onDra
       ) : lead.state && lead.state !== "idle" ? (
         <StateGlyph state={lead.state} className="size-3" />
       ) : null}
+      {/* Near the box's per-session memory limit (its chat says more). */}
+      {!offline && memoryNote(lead.s?.usage) && <GaugeIcon data-testid="tab-memory" className="size-3 shrink-0 text-warning-foreground dark:text-warning" aria-label={`This session is ${memoryNote(lead.s?.usage)}`} />}
       {tab.compare ? <CompareIcon aria-hidden className="size-3 shrink-0" /> : <PaneIcon content={c} agent={lead.agent} className="size-3" />}
       {editing && session ? (
         <TitleInput

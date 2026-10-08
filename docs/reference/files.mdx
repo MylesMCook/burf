@@ -100,7 +100,7 @@ agents, `exec`, repository hooks, flow steps, services):
 | `BERTH_KIT_DIR` | Its kit's files, when it has a kit |
 | then | the box's `env.json`, the project's `env`, and resolved secrets |
 | `PORT` | `$BERTH_PORT`, for servers that read `PORT`, unless the box or `env` sets it |
-| `AGENT_BROWSER_IDLE_TIMEOUT_MS` | Terminals and agents: `600000`, so an [agent-browser](/guides/agent-browser#agent-browser) left idle closes after 10 minutes, unless the box, `env` or berthd's environment sets it |
+| `AGENT_BROWSER_IDLE_TIMEOUT_MS` | Terminals and agents: `300000`, so an [agent-browser](/guides/agent-browser#agent-browser) left idle closes after 5 minutes, unless the box, `env` or berthd's environment sets it |
 | `ORCA_ROOT_PATH`, `ORCA_WORKTREE_PATH`, `ORCA_WORKSPACE_NAME` | Setup and archive scripts, for scripts written for Orca |
 
 ### What a hook gets

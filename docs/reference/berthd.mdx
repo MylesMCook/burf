@@ -92,6 +92,8 @@ asks the app to open the page as a browser tab beside the agent; the
 | --- | --- |
 | `berthd ports [--json]` | What is listening on the box |
 | `berthd stats [--json]` | Memory, disk, load, and agents running or waiting |
+| `berthd ps [--json]` | Every [browser on the box](/guides/agent-browser#every-browser-on-a-box) with who started it, its CPU, memory and age, and what each session's processes use |
+| `berthd ps stop ID` | Stop a browser from that list (an ID like `b-4182-…`), or end a session (`s-NAME`) and everything it started |
 | `berthd info` | The box's name, OS, build, tools and agent presets, as JSON |
 | `berthd share PORT` | Make a port public (Cloudflare quick tunnel; needs `cloudflared`) |
 | `berthd shares [--json]` | List public shares |

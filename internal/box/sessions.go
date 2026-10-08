@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 	"unicode/utf8"
 
@@ -58,9 +59,16 @@ type Session struct {
 	// "terminal": true): the service's name, kept as @berth_service. It is
 	// never an agent, whatever it runs.
 	Service string `json:"service,omitempty"`
+	// Scope is the systemd scope unit its program runs in (@berth_scope),
+	// on boxes where sessions get one; Usage what its processes use, in
+	// the session list.
+	Scope string     `json:"scope,omitempty"`
+	Usage *ProcUsage `json:"usage,omitempty"`
 
-	// commandFile is where the session's command is kept, when it is.
+	// commandFile is where the session's command is kept, when it is;
+	// panePID the process its pane runs.
 	commandFile string
+	panePID     int
 }
 
 var (
@@ -84,8 +92,20 @@ type Sessions struct {
 	// Ended, when set, hears that berth stopped a session, so what the
 	// session left running (agent-browser's browsers) can go too.
 	Ended func()
+	// Reap, when set, closes the agent-browser sessions a session that
+	// berth ended started, their own way, before the rest of what it
+	// started is stopped.
+	Reap func(ctx context.Context, session string)
+	// Scopes, when set, gives each new session a systemd scope of its own
+	// (scopes.go); MemoryHigh is the ceiling a new scope gets (0: none).
+	Scopes     scopeManager
+	MemoryHigh func() uint64
 	// trace, in tests, sees every tmux command line.
 	trace func(args []string)
+	// procs and signal stand in for the system in tests.
+	procs   func() ([]procStat, error)
+	signal  func(pid int, sig syscall.Signal)
+	cleanup sync.WaitGroup
 
 	sweepMu   sync.Mutex
 	lastSweep time.Time
@@ -165,7 +185,7 @@ func (s *Sessions) tmux(ctx context.Context, args ...string) ([]byte, error) {
 //
 // Sessions started since keep their command in a file (@berth_command_file)
 // and only its start in @berth_command, for older builds to show.
-const listFormat = "#{session_name}\t#{session_created}\t#{session_attached}\t#{@berth_location}\t#{?@berth_command64,,#{@berth_command}}\t#{pane_dead}\t#{pane_start_path}\t#{@berth_command64}\t#{@berth_agent}\t#{@berth_title}\t#{@berth_service}\t#{@berth_command_file}"
+const listFormat = "#{session_name}\t#{session_created}\t#{session_attached}\t#{@berth_location}\t#{?@berth_command64,,#{@berth_command}}\t#{pane_dead}\t#{pane_start_path}\t#{@berth_command64}\t#{@berth_agent}\t#{@berth_title}\t#{@berth_service}\t#{@berth_command_file}\t#{@berth_scope}\t#{pane_pid}"
 
 // plainCommandMax is how much of a command the plain @berth_command keeps.
 const plainCommandMax = 1024
@@ -222,10 +242,10 @@ func parseSessions(out []byte) []Session {
 	sessions := []Session{}
 	for _, line := range strings.Split(strings.TrimSpace(string(out)), "\n") {
 		f := strings.Split(line, "\t")
-		for len(f) >= 7 && len(f) < 12 {
+		for len(f) >= 7 && len(f) < 14 {
 			f = append(f, "")
 		}
-		if len(f) != 12 {
+		if len(f) != 14 {
 			continue
 		}
 		command := f[4]
@@ -236,6 +256,7 @@ func parseSessions(out []byte) []Session {
 		}
 		created, _ := strconv.ParseInt(f[1], 10, 64)
 		attached, _ := strconv.Atoi(f[2])
+		panePID, _ := strconv.Atoi(f[13])
 		sessions = append(sessions, Session{
 			Name:     f[0],
 			Created:  time.Unix(created, 0).UTC(),
@@ -247,8 +268,10 @@ func parseSessions(out []byte) []Session {
 			Preset:   f[8],
 			Title:    f[9],
 			Service:  f[10],
+			Scope:    f[12],
 
 			commandFile: f[11],
+			panePID:     panePID,
 		})
 	}
 	return sessions
@@ -300,9 +323,23 @@ func (s *Sessions) create(ctx context.Context, name, location, dir, command, age
 	for _, kv := range env {
 		args = append(args, "-e", kv)
 	}
+	// A new session's program runs in a scope of its own, where the box
+	// has them, so it and everything it starts can be stopped together.
+	scope := ""
+	var scopeArgs []string
+	if s.Scopes != nil && s.Scopes.Available(ctx) {
+		scope = scopeUnit(name, time.Now())
+		scopeArgs = s.Scopes.Wrap(scope, "Shipyard session "+name, s.memoryHigh())
+		// systemd-run finds the user's manager by these.
+		for _, k := range []string{"XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS"} {
+			if v := os.Getenv(k); v != "" {
+				args = append(args, "-e", k+"="+v)
+			}
+		}
+	}
 	// A group the user joined since berthd started (docker, say) is given
 	// to the new session through sg.
-	args = append(append(args, "--"), groups.Wrap(append(append([]string(nil), wrap...), argv...))...)
+	args = append(append(append(args, "--"), scopeArgs...), groups.Wrap(append(append([]string(nil), wrap...), argv...))...)
 	// The labels are set in the same tmux command that makes the session,
 	// so no list sees it without them. set-option takes a pane target,
 	// whose exact-match form needs the colon.
@@ -317,6 +354,9 @@ func (s *Sessions) create(ctx context.Context, name, location, dir, command, age
 	}
 	if agent != "" {
 		set("@berth_agent", agent)
+	}
+	if scope != "" {
+		set("@berth_scope", scope)
 	}
 	for i, a := range args {
 		if a != ";" {
@@ -384,14 +424,29 @@ func (s *Sessions) Get(ctx context.Context, name string) (Session, error) {
 	return Session{}, ErrUnknownSession
 }
 
+// Kill ends a session and, in the background, everything it started
+// (scopes.go).
 func (s *Sessions) Kill(ctx context.Context, name string) error {
-	if _, err := s.Get(ctx, name); err != nil {
+	sess, err := s.Get(ctx, name)
+	if err != nil {
 		return err
+	}
+	// What runs in its panes is found before they go, while it is still
+	// their descendant.
+	at := time.Now()
+	var found []procStat
+	if ps, err := s.snapshot(); err == nil {
+		found = sessionProcs(ps, name, s.panePIDs(ctx, name), tmuxSocketPath(), at, useMarkers)
 	}
 	if out, err := s.tmux(ctx, "kill-session", "-t", "="+name); err != nil {
 		return tmuxError("kill-session", out, err)
 	}
 	s.removeCommand(name)
+	s.cleanup.Add(1)
+	go func() {
+		defer s.cleanup.Done()
+		s.endSession(sess, found, at)
+	}()
 	if s.Ended != nil {
 		s.Ended()
 	}
