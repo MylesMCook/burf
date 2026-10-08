@@ -79,6 +79,9 @@ test("from Team setup: the whole plan, the terminal, sudo's password, then the t
   await expect(phase).toBeVisible({ timeout: 30_000 });
   for (const id of ["connect", "berthd", "linger", "tools", "agents", "integrations", "pair"]) await expect(guided(page).getByTestId(`step-${id}`)).toHaveAttribute("data-state", "done");
   await expect(phase.getByTestId("team-step-update")).toHaveAttribute("data-state", "running", { timeout: 10_000 });
+  // The checklist renders both running and waiting as running. Wait for the
+  // actual password prompt before acknowledging the mock's password gate.
+  await expect(phase.getByText("sudo is asking for your password on my-box.")).toBeVisible();
   await advance(page, "sudo");
   await expect(phase.getByTestId("team-step-github")).toHaveAttribute("data-state", /done|running/, { timeout: 15_000 });
   await expect(guided(page).getByTestId("install-continue")).toBeVisible({ timeout: 20_000 });

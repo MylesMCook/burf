@@ -41,12 +41,20 @@ export interface LocalOutput {
   exit_error?: string;
 }
 
+async function launch<T>(request: Promise<T>, signal?: AbortSignal): Promise<T> {
+  try { return await request; }
+  catch (e) {
+    if (signal?.aborted || e instanceof ApiError && (e.status >= 400 && e.status < 500 && e.status !== 408 || e.code === "agent_restarting")) throw e;
+    throw new Error("The agent may have started. Refresh This computer to find it before trying again.");
+  }
+}
+
 export const localApi = {
   status: (c: Client, signal?: AbortSignal) => c.laptop<LocalComputer>("GET", "/v1/local", undefined, signal),
   conversations: (c: Client, signal?: AbortSignal) => c.laptop<LocalConversation[]>("GET", "/v1/local/conversations", undefined, signal),
   history: (c: Client, id: string, before?: number, signal?: AbortSignal) => c.laptop<LocalHistoryPage>("GET", `/v1/local/conversations/${encodeURIComponent(id)}${before === undefined ? "" : `?before=${before}`}`, undefined, signal),
-  start: (c: Client, agent: LocalAgent, cwd: string, signal?: AbortSignal) => c.laptop<LocalSession>("POST", "/v1/local/sessions", { agent, cwd }, signal),
-  fork: (c: Client, id: string, signal?: AbortSignal) => c.laptop<LocalSession>("POST", `/v1/local/conversations/${encodeURIComponent(id)}/fork`, undefined, signal),
+  start: (c: Client, agent: LocalAgent, cwd: string, signal?: AbortSignal) => launch(c.laptop<LocalSession>("POST", "/v1/local/sessions", { agent, cwd }, signal), signal),
+  fork: (c: Client, id: string, signal?: AbortSignal) => launch(c.laptop<LocalSession>("POST", `/v1/local/conversations/${encodeURIComponent(id)}/fork`, undefined, signal), signal),
   stop: (c: Client, id: string) => c.laptop("DELETE", `/v1/local/sessions/${encodeURIComponent(id)}`),
   output: (c: Client, id: string, after: number, signal?: AbortSignal) => c.laptop<LocalOutput>("GET", `/v1/local/sessions/${encodeURIComponent(id)}/output?after=${after}`, undefined, signal),
   input: async (c: Client, id: string, data: string, signal?: AbortSignal) => {

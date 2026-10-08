@@ -33,6 +33,8 @@ The fork does not install CLIs, bypass agent approvals, or change host security.
 
 If terminal input loses its response, Berth reports that it may have arrived.
 Reconnecting reads output from the same owned session and never resends input.
+If a launch response is lost, Berth reports that an agent may have started and
+asks the user to refresh This computer before intentionally trying again.
 Canceling a request after the process already started cannot undo that launch;
 refresh This computer to find the owned session before intentionally trying again.
 
@@ -87,3 +89,6 @@ synthetic localagent, localhistory, localpty and agent test binaries natively.
 Installed-provider smoke is disabled. See the
 [native acceptance checklist](scripts/WINDOWS-LOCAL-ACCEPTANCE.md) for the
 remaining desktop and actual CLI fork checks.
+The [installed-provider smoke proposal](scripts/WINDOWS-PROVIDER-SMOKE-PROPOSAL.md)
+defines synthetic context and separates no-turn checks from model turns that
+need specific approval.

@@ -5,13 +5,15 @@ const cwd = "C:\\Projects\\shop";
 const conversation = { id: "history-1", source: "codex", title: "Checkout history", cwd, updated_at: "2026-01-01T12:00:00Z", read_only: true };
 const session = { id: "owned-1", agent: "claude", cwd, state: "running", started_at: "2026-01-01T12:00:00Z" };
 
-async function localFixture(app: App, options: { supported?: boolean; available?: boolean; canFork?: boolean; failStart?: boolean; noBoxes?: boolean; mobile?: boolean; failHistory?: boolean; outputFailOnce?: boolean; inputFailOnce?: boolean; source?: "claude" | "codex"; forkGate?: Promise<void> } = {}) {
+async function localFixture(app: App, options: { supported?: boolean; available?: boolean; canFork?: boolean; failStart?: boolean; noBoxes?: boolean; mobile?: boolean; failHistory?: boolean; outputFailOnce?: boolean; inputFailOnce?: boolean; source?: "claude" | "codex"; forkGate?: Promise<void>; forkResponseFailOnce?: boolean; forkError?: { status: number; message: string } } = {}) {
   const agent = await fakeAgent();
   const calls: { method: string; path: string; body: unknown }[] = [];
   let running = true;
   let started = false;
   let outputFailed = false;
   let inputFailed = false;
+  let forkResponseFailed = false;
+  let launches = 0;
   let ownedSession = session;
   const history = { ...conversation, source: options.source ?? conversation.source };
   if (options.noBoxes) await app.context.route(`${agent.url}/v1/status`, (route) => route.fulfill({ json: { boxes: [], forwards: [], routes: [], proxy: { port: 1377, url_port: 1377 } } }));
@@ -31,9 +33,18 @@ async function localFixture(app: App, options: { supported?: boolean; available?
         ownedSession = { ...session, agent: history.source };
         if (options.forkGate) await options.forkGate;
       }
-      started = !options.failStart;
-      status = options.failStart ? 400 : 200;
-      body = options.failStart ? { error: "Project folder does not exist" } : ownedSession;
+      const failure = url.pathname.endsWith("/fork") ? options.forkError : undefined;
+      if (!options.failStart && !failure) {
+        if (!started) launches++;
+        started = true;
+      }
+      status = failure?.status ?? (options.failStart ? 400 : 200);
+      body = failure ? { error: failure.message } : options.failStart ? { error: "Project folder does not exist" } : ownedSession;
+      if (url.pathname.endsWith("/fork") && options.forkResponseFailOnce && !forkResponseFailed) {
+        forkResponseFailed = true;
+        await route.abort("connectionreset");
+        return;
+      }
     } else if (url.pathname.endsWith("/input") && options.inputFailOnce && !inputFailed) {
       inputFailed = true;
       await route.abort("connectionreset");
@@ -48,7 +59,7 @@ async function localFixture(app: App, options: { supported?: boolean; available?
   });
   await app.open({ agent });
   if (options.mobile) await app.page.getByRole("button", { name: "Hide the sidebar", exact: true }).click();
-  return { agent, calls };
+  return { agent, calls, launches: () => launches };
 }
 
 test.beforeEach(() => mockOnly("isolated local-computer API"));
@@ -69,6 +80,83 @@ test("local computer opens read-only history and older messages without session 
     await expect(app.page.getByText("Earlier request", { exact: true })).toBeVisible();
     expect(calls.filter((c) => c.method !== "GET")).toEqual([]);
   } finally { await agent.close(); }
+});
+
+test("repeated continuation clicks and returning to history reuse the owned session", async ({ app }) => {
+  let release!: () => void;
+  const forkGate = new Promise<void>((resolve) => { release = resolve; });
+  const { agent, calls, launches } = await localFixture(app, { canFork: true, forkGate });
+  try {
+    await app.page.getByTestId("nav-local").click();
+    await app.page.getByRole("button", { name: /Checkout history/ }).click();
+    const start = app.page.getByRole("button", { name: "Continue in Berth", exact: true });
+    await start.evaluate((button) => { if (button instanceof HTMLButtonElement) { button.click(); button.click(); } });
+    await expect(app.page.getByRole("button", { name: "Starting...", exact: true })).toBeDisabled();
+    await expect.poll(() => calls.filter((c) => c.path.endsWith("/fork")).length).toBe(1);
+    release();
+    await expect(app.page.getByTestId("local-terminal")).toBeVisible();
+    await app.page.getByRole("button", { name: /Checkout history/ }).click();
+    await app.page.getByRole("button", { name: "Continue in Berth", exact: true }).click();
+    await expect(app.page.getByTestId("local-terminal")).toBeVisible();
+    expect(calls.filter((c) => c.path.endsWith("/fork"))).toHaveLength(2);
+    expect(launches()).toBe(1);
+    expect(new Set(calls.filter((c) => c.path.includes("/output?")).map((c) => c.path.split("/output?")[0]))).toEqual(new Set(["/v1/local/sessions/owned-1"]));
+  } finally { release(); await agent.close(); }
+});
+
+test("an interrupted continuation response is uncertain and refresh finds its owned session without replay", async ({ app }, info) => {
+  const { agent, calls, launches } = await localFixture(app, { canFork: true, forkResponseFailOnce: true });
+  try {
+    await app.page.getByTestId("nav-local").click();
+    await app.page.getByRole("button", { name: /Checkout history/ }).click();
+    await app.page.getByRole("button", { name: "Continue in Berth", exact: true }).click();
+    await expect(app.page.getByRole("alert")).toContainText("The agent may have started");
+    await expect(app.page.getByText("Saved response", { exact: true })).toBeVisible();
+    await app.page.screenshot({ path: info.outputPath("continuation-uncertain.png") });
+    await app.page.getByRole("button", { name: "Refresh local conversations", exact: true }).click();
+    await app.page.getByRole("button", { name: /^Codex.*running$/ }).click();
+    await expect(app.page.locator("[data-testid=local-terminal] .xterm-rows")).toContainText("Local terminal ready");
+    expect(calls.filter((c) => c.path.endsWith("/fork"))).toHaveLength(1);
+    expect(calls.filter((c) => c.path.endsWith("/input"))).toHaveLength(0);
+    expect(launches()).toBe(1);
+  } finally { await agent.close(); }
+});
+
+for (const reason of ["Local conversation no longer exists", "Local conversation was replaced"]) {
+  test(`refused continuation keeps readable history: ${reason}`, async ({ app }) => {
+    const { agent, calls, launches } = await localFixture(app, { canFork: true, forkError: { status: 404, message: reason } });
+    try {
+      await app.page.getByTestId("nav-local").click();
+      await app.page.getByRole("button", { name: /Checkout history/ }).click();
+      await app.page.getByRole("button", { name: "Continue in Berth", exact: true }).click();
+      await expect(app.page.getByRole("alert")).toContainText(reason);
+      await expect(app.page.getByText("Saved response", { exact: true })).toBeVisible();
+      await app.page.getByRole("button", { name: "Refresh local conversations", exact: true }).click();
+      expect(calls.filter((c) => c.path.endsWith("/fork"))).toHaveLength(1);
+      expect(launches()).toBe(0);
+    } finally { await agent.close(); }
+  });
+}
+
+test("late transcript response never replaces a newly selected conversation", async ({ app }) => {
+  const { agent, calls } = await localFixture(app, { canFork: true });
+  let release!: () => void;
+  const gate = new Promise<void>((resolve) => { release = resolve; });
+  let pending = false;
+  await app.context.route(`${agent.url}/v1/local/conversations`, (route) => route.fulfill({ json: [conversation, { ...conversation, id: "history-2", source: "claude", title: "Second history" }] }));
+  await app.context.route(`${agent.url}/v1/local/conversations/history-1`, async (route) => { pending = true; await gate; await route.fulfill({ json: { items: [{ kind: "text", id: "old-response", text: "Old late response" }], more: false } }); });
+  await app.context.route(`${agent.url}/v1/local/conversations/history-2`, (route) => route.fulfill({ json: { items: [{ kind: "text", id: "second-response", text: "Second saved response" }], more: false } }));
+  try {
+    await app.page.getByTestId("nav-local").click();
+    await app.page.getByRole("button", { name: /Checkout history/ }).click();
+    await expect.poll(() => pending).toBe(true);
+    await app.page.getByRole("button", { name: /Second history/ }).click();
+    await expect(app.page.getByText("Second saved response", { exact: true })).toBeVisible();
+    release();
+    await expect(app.page.getByRole("heading", { name: "Second history", exact: true })).toBeVisible();
+    await expect(app.page.getByText("Old late response", { exact: true })).toHaveCount(0);
+    expect(calls.filter((c) => c.method !== "GET")).toHaveLength(0);
+  } finally { release(); await agent.close(); }
 });
 
 test("explicit continuation opens an owned terminal without answering historical permissions", async ({ app }) => {
@@ -169,6 +257,26 @@ test("terminal reconnect recovers output without starting another agent", async 
     await app.page.getByRole("button", { name: "Reconnect terminal", exact: true }).click();
     await expect(app.page.locator("[data-testid=local-terminal] .xterm-rows")).toContainText("Local terminal ready");
     expect(calls.filter((c) => c.method === "POST" && c.path === "/v1/local/sessions")).toHaveLength(1);
+  } finally { await agent.close(); }
+});
+
+test("reconnecting a missing terminal reports the error without recreating its agent", async ({ app }) => {
+  const { agent, calls } = await localFixture(app);
+  let reads = 0;
+  await app.context.route(`${agent.url}/v1/local/sessions/owned-1/output**`, (route) => {
+    reads++;
+    return route.fulfill({ status: 404, json: { error: "Local session no longer exists" } });
+  });
+  try {
+    await app.page.getByTestId("nav-local").click();
+    await app.page.getByRole("button", { name: "New agent", exact: true }).click();
+    await app.page.getByRole("button", { name: "Start agent", exact: true }).click();
+    await expect(app.page.getByRole("alert")).toContainText("Local session no longer exists");
+    await app.page.getByRole("button", { name: "Reconnect terminal", exact: true }).click();
+    await expect.poll(() => reads).toBe(2);
+    await expect(app.page.getByRole("alert")).toContainText("Local session no longer exists");
+    expect(calls.filter((c) => c.method === "POST" && c.path === "/v1/local/sessions")).toHaveLength(1);
+    expect(calls.filter((c) => c.path.endsWith("/fork") || c.path.endsWith("/input"))).toHaveLength(0);
   } finally { await agent.close(); }
 });
 
