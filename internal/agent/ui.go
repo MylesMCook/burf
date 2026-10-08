@@ -127,6 +127,12 @@ func (a *Agent) ui(token, hostport string, inner http.Handler) http.Handler {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
+		// The one request without a credential: an extension trading the
+		// pairing code its user typed (browserpair.go).
+		if r.Method == http.MethodPost && r.URL.Path == "/v1/browser/pair" {
+			a.browserRedeem(w, r)
+			return
+		}
 		got, _ := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 		// A browser cannot set headers on a WebSocket, so the terminal's
 		// upgrade alone may carry the token in its query. Everywhere else a
@@ -135,8 +141,11 @@ func (a *Agent) ui(token, hostport string, inner http.Handler) http.Handler {
 			got = r.URL.Query().Get("token")
 		}
 		if subtle.ConstantTimeCompare([]byte(got), []byte(token)) != 1 {
-			writeError(w, http.StatusUnauthorized, "missing or wrong token")
-			return
+			// Not the app: a paired browser, within what a browser may do.
+			if status, msg := a.browserAuthorize(got, r); status != 0 {
+				writeError(w, status, msg)
+				return
+			}
 		}
 		mux.ServeHTTP(w, r)
 	})

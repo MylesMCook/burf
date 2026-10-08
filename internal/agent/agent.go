@@ -190,6 +190,8 @@ type Agent struct {
 	queue       *promptQueue
 	local       localBox
 	localClient localClient
+	// browser holds the paired browser extensions (browserpair.go).
+	browser browserPairs
 	// imageGenBusy lets one chat background generate at a time.
 	imageGenBusy sync.Mutex
 	// outdated remembers which boxes run an older berthd (outdated.go).

@@ -100,6 +100,8 @@ Agent
   burf id                               Print this laptop's fingerprint
   burf version                          Print this build's version
   burf ui-token                         The desktop app's API address and token, as JSON
+  burf browser pair|list|revoke ID      Pair a browser extension with a one-time code; it gets a
+                                         credential for chats and their browser tools only
 
 BERTH_HOME overrides the state directory.
 `
@@ -263,6 +265,8 @@ func run(args []string) error {
 		return integrations.Install(rest, exe, os.Stdout)
 	case "queue":
 		return queueCmd(l, rest)
+	case "browser":
+		return browserCmd(l, rest)
 	case "emit":
 		// An event for this laptop, unless it names a paired box first.
 		if len(rest) > 0 {

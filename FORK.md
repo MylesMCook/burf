@@ -130,8 +130,8 @@ installed box upgrade. `tasks.md` records those separate delivery gates.
 
 A box that advertises `chat.browser` lets a structured chat act in the browser
 of the client that started it. This is Burf's side of the sitegeist extension
-work. The extension, its scoped credential and the chat view inside it are not
-implemented yet, so nothing in the app starts a browser chat today.
+work. The extension and the chat view inside it are not implemented yet, so
+nothing starts a browser chat today.
 
 - `POST /v1/chats` also takes `browser.tools`: 1 to 16 tools (`name`,
   `description`, optional object `input_schema`), validated before any provider
@@ -164,6 +164,37 @@ and no turn. Not verified: a model choosing a tool in a real turn, the
 provider's approval prompt in a real turn, an installed daemon, and Windows-local
 chats, which have no box socket and so no bridge. The chat view still words a
 `browser` approval as a command.
+
+#### Browser Credential and Pairing
+
+A browser extension never holds the app's token, which opens terminals, files,
+pairings and settings. It pairs with this computer's Burf client and gets its
+own credential:
+
+- `burf browser pair` (or the app, `POST /v1/browser/pairing`) prints a code.
+  It lasts ten minutes, works once, is replaced by the next one and closes
+  after five wrong guesses.
+- The extension trades it at `POST /v1/browser/pair` (`code`, `name`), the one
+  app API request made without a credential. Only an extension page origin may
+  trade a code, so a web page cannot pair or spend the user's guesses.
+- The credential opens `GET /v1/browser/boxes` (names and state only) and, on
+  each box, `info`, `locations`, structured chats, and the bridge's waiting
+  calls and answers. Everything else answers 403, including terminals, files,
+  sessions, events, pairing itself and the bridge's box-only routes.
+- At most eight browsers are paired. Credentials are stored hashed in
+  `browser-pairings.json` in the state directory. `burf browser list` shows
+  them and `burf browser revoke ID` ends one at once.
+
+A paired browser is a chat client: it can start chats in registered projects,
+send messages and answer approvals there. The credential limits what a
+compromised extension reaches beyond that; it is not a sandbox for chat itself.
+
+Acceptance is in `internal/agent/browserpair_test.go` and
+`cmd/burf/browser_test.go`. A headless Chromium 153 extension page also paired
+with the real handler and used its credential, after an ordinary web page
+failed with the same code. Not verified: an installed client, the `burf
+browser` command against a real agent, and Firefox. The app has no pairing
+screen yet.
 
 ### Structured Local Codex
 
