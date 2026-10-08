@@ -309,6 +309,12 @@ func (b *Box) addTask(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	// Handed off from an agent's worktree: it nests under that one.
+	if parent := b.parentFor(ctx, loc, req.FromSession); parent != "" {
+		if err := b.Locations.SetWorktreeParent(req.Location, wt.Path, parent); err == nil {
+			wt.Parent = parent
+		}
+	}
 	where := req.Location + "/" + wt.Name
 	preset := ""
 	if req.Command == "" {

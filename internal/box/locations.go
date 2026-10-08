@@ -68,6 +68,9 @@ type Worktree struct {
 	// Title is the name a person gave the worktree to show in its place
 	// (worktreetitles.go): a label only, its branch and folder keep Name.
 	Title string `json:"title,omitempty"`
+	// Parent is the path of the worktree whose agent handed this one off,
+	// for clients to nest it under (worktreeparents.go).
+	Parent string `json:"parent,omitempty"`
 }
 
 var (
@@ -101,6 +104,9 @@ type savedLocation struct {
 	// Titles are the worktrees' display names, by worktree path
 	// (worktreetitles.go).
 	Titles map[string]string `json:"titles,omitempty"`
+	// Parents are the worktrees handed off from another, child path to
+	// parent path (worktreeparents.go).
+	Parents map[string]string `json:"parents,omitempty"`
 }
 
 func (l *Locations) Add(ctx context.Context, name, path string) (Location, error) {
@@ -360,6 +366,7 @@ func (l *Locations) RemoveWorktree(ctx context.Context, location, name string, f
 		}
 		// A worktree made again under the same name starts without a title.
 		l.forgetTitle(location, w.Path)
+		l.forgetParent(location, w.Path)
 		return nil
 	}
 	return ErrUnknownWorktree
@@ -394,6 +401,7 @@ func describe(ctx context.Context, s savedLocation) Location {
 	for i := range loc.Worktrees {
 		loc.Worktrees[i].Title = s.Titles[loc.Worktrees[i].Path]
 	}
+	withParents(loc.Worktrees, s.Parents)
 	return loc
 }
 
