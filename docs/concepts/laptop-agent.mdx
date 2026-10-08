@@ -3,7 +3,7 @@ title: The laptop agent
 description: The background process that holds every box connection, serves private URLs, and outlives the app.
 ---
 
-The **berth agent** (`berth agent`) runs on your laptop in the background. It
+The **Shipyard agent** (`berth agent`) runs on your laptop in the background. It
 holds a connection to every paired box, runs saved forwards and the
 `*.localhost` proxy, and serves a local API that the CLI and the desktop app
 are clients of. Closing the app, or the app crashing, never stops a session,
@@ -50,7 +50,7 @@ since `localhost` there means the box, not your laptop.
 ## Running it
 
 Any command that needs the agent starts it, and when the desktop app finds
-it isn't running, it offers to: **Start the Berth agent** runs
+it isn't running, it offers to: **Start the Shipyard agent** runs
 `berth agent start`, and ticking **Start at login** installs it as a service
 instead. To have it start at login and restart after a crash from a
 terminal:
@@ -64,7 +64,7 @@ berth agent restart      # restart it once its work under way is done
 berth stop               # stop it, and every forward
 ```
 
-The agent outlives the app, so an update to Berth would leave it running
+The agent outlives the app, so an update to Shipyard would leave it running
 the old version. The updated app restarts it as it starts (`berth agent
 restart --if-stale`), whether the app started it or it starts at login:
 the agent first finishes what it's doing (adding or upgrading a box,

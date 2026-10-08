@@ -11,7 +11,7 @@ import { CommandLog } from "@/views/settings/command-log";
 type State = "ready" | "running" | "done" | "failed";
 
 // UseThisMac is Add a box's way to skip a server: this Mac becomes the box.
-// One button installs the berthd Berth carries as a launch agent that
+// One button installs the berthd Shipyard carries as a launch agent that
 // listens on this Mac only, and pairs with it; the log shows each step as it
 // happens. Without a tailnet to list it comes first; with one, it sits below
 // the tailnet's machines, compact: a second choice after them. Either way it
@@ -106,14 +106,14 @@ export function UseThisMac({
       </div>
       {state === "ready" && !compact && (
         <p className="mt-2 ps-11 text-muted-foreground text-xs leading-relaxed">
-          {reuse ? "Uses the berthd already installed here. " : "Berth installs berthd for your user, no password needed. "}
+          {reuse ? "Uses the berthd already installed here. " : "Shipyard installs berthd for your user, no password needed. "}
           It listens on this Mac only, so nothing opens to your network.
         </p>
       )}
       {state !== "ready" && <CommandLog className="mt-3" lines={lines} done={state === "done"} error={error} />}
       {state === "done" && paired && (
         <p className="mt-2 text-muted-foreground text-xs">
-          This Mac is <span className="text-foreground">{paired}</span> in Berth.
+          This Mac is <span className="text-foreground">{paired}</span> in Shipyard.
         </p>
       )}
     </section>

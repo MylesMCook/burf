@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/agentpath"
+	"github.com/cosscom/shipyard/internal/agentpath"
 )
 
 // A kit's requires are checked the way its scripts and services will find

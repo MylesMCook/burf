@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/identity"
+	"github.com/cosscom/shipyard/internal/identity"
 )
 
 type connKey struct{}

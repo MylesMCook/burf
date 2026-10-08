@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/identity"
+	"github.com/cosscom/shipyard/internal/identity"
 )
 
 func fp() identity.Fingerprint {

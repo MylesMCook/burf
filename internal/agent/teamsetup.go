@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/box"
-	"github.com/sean-brydon/berthd/internal/team"
+	"github.com/cosscom/shipyard/internal/box"
+	"github.com/cosscom/shipyard/internal/team"
 )
 
 // TeamSetupRequest starts a team setup on a box: the commit the engineer
@@ -139,10 +139,10 @@ func (a *Agent) teamBundle(ctx context.Context, g ghCLI, src team.Source, req Te
 		tb.Projects = append(tb.Projects, plan)
 	}
 	tb.GitHub = len(tb.Projects) > 0
-	// The agent CLIs the team names, installed by Berth's own step.
+	// The agent CLIs the team names, installed by Shipyard's own step.
 	tb.Agents = r.setup.Agents
 	// The box reads the shared keys' op:// references with its own op,
-	// which Berth signs in as a step, so nothing asks in a service's
+	// which Shipyard signs in as a step, so nothing asks in a service's
 	// terminal later.
 	tb.OnePassword = tb.GitHub && r.setup.UsesOnePassword() && !skipOP
 	tb.OnePasswordSkipped = tb.GitHub && skipOP

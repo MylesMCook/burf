@@ -1,11 +1,11 @@
 ---
 title: Files and environment
-description: Where Berth keeps its state on the laptop and on boxes, and the variables it sets and reads.
+description: Where Shipyard keeps its state on the laptop and on boxes, and the variables it sets and reads.
 ---
 
-Berth keeps two kinds of files:
+Shipyard keeps two kinds of files:
 
-- **State**, which Berth writes: identities, trust stores, sockets, logs.
+- **State**, which Shipyard writes: identities, trust stores, sockets, logs.
   It lives in the state directory: `~/Library/Application Support/berth` on
   a Mac, `~/.config/berth` (or `$XDG_CONFIG_HOME/berth`) on Linux.
   `BERTH_HOME` moves it; it must be an absolute path.
@@ -56,7 +56,7 @@ State, in `<state>/box/`:
 | `kits/<location>/<kit>/` | Installed kits' files (`$BERTH_KIT_DIR`) |
 | `paused.json` | Paused worktrees |
 | `agent-states.json` | What each agent last reported, by working directory |
-| `tmux.conf` | The configuration of Berth's tmux server |
+| `tmux.conf` | The configuration of Shipyard's tmux server |
 | `commands/<session>.cmd` | Each session's command, prompt and all (0600), which its login shell runs; removed with the session |
 | `phone.json` | The phone companion: on or off, its token, notifications |
 | `runs/index.json`, `runs/<id>.jsonl` | [Runs](/guides/runs): the index, and each run's journal; finished runs past 100 per flow or template, or 30 days, are removed |
@@ -105,7 +105,7 @@ agents, `exec`, repository hooks, flow steps, services):
 
 See [events and gates](/reference/events#what-a-hook-gets).
 
-### What Berth reads
+### What Shipyard reads
 
 | Variable | Meaning |
 | --- | --- |

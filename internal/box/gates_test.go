@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/hooks"
-	"github.com/sean-brydon/berthd/internal/wire"
+	"github.com/cosscom/shipyard/internal/events"
+	"github.com/cosscom/shipyard/internal/hooks"
+	"github.com/cosscom/shipyard/internal/wire"
 )
 
 // A gate scoped to a tool lets that tool's own actions through. Over the

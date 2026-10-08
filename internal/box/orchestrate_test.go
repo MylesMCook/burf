@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/hooks"
+	"github.com/cosscom/shipyard/internal/events"
+	"github.com/cosscom/shipyard/internal/hooks"
 )
 
 func TestSendWaitAndExecOrchestrateASession(t *testing.T) {

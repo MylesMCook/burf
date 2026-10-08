@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sean-brydon/berthd/internal/doctor"
+	"github.com/cosscom/shipyard/internal/doctor"
 )
 
 // The app records which renderer its terminals got; doctor says when

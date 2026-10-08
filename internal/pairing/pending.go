@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/statefile"
+	"github.com/cosscom/shipyard/internal/statefile"
 )
 
 // Pending stores the codes a box has issued and not yet seen used. It is shared

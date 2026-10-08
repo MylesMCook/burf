@@ -2,7 +2,7 @@
 // capture.mjs takes the landing page's screenshots from the live demo (Vite
 // on app/ in demo mode, ?shots=1, which leaves out the demo's guide, badge
 // and script; Labs on): the harbour home, a conversation, the dashboard and
-// zen, in headless Chrome at 2x in Berth Dark and Berth Light. It writes
+// zen, in headless Chrome at 2x in Shipyard Dark and Shipyard Light. It writes
 // WebPs into site/assets/shots/: <scene>-<dark|light>-<width>.webp at the
 // scene's widths. Vite is stopped when it finishes, fails or is interrupted.
 //
@@ -346,7 +346,7 @@ async function main() {
       for (const theme of themes) {
         const viewport = scene.viewport ?? { width: 1280, height: 800 };
         // The demo follows the system's light or dark, as the website does,
-        // and starts afresh on every load: Berth Light or Berth Dark, compact.
+        // and starts afresh on every load: Shipyard Light or Shipyard Dark, compact.
         const ctx = await browser.newContext({ viewport, deviceScaleFactor: 2, colorScheme: theme === "light" ? "light" : "dark" });
         const page = await ctx.newPage();
         const errors = [];

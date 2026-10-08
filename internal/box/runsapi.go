@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sean-brydon/berthd/internal/box/runs"
+	"github.com/cosscom/shipyard/internal/box/runs"
 )
 
 // The runs API:

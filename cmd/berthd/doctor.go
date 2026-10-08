@@ -8,9 +8,9 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/sean-brydon/berthd/internal/box"
-	"github.com/sean-brydon/berthd/internal/doctor"
-	"github.com/sean-brydon/berthd/internal/service"
+	"github.com/cosscom/shipyard/internal/box"
+	"github.com/cosscom/shipyard/internal/doctor"
+	"github.com/cosscom/shipyard/internal/service"
 )
 
 // daemonChecks runs inside berthd serve, where the listen address is known.

@@ -366,11 +366,14 @@ test("the shortcuts sheet traps the keyboard while open, and Esc gives it back",
   await page.keyboard.press("Meta+Slash");
   const sheet = page.getByRole("dialog", { name: "Keyboard shortcuts" });
   await expect(sheet).toBeVisible();
+  // The trap's own guards sit just outside the popup and send the keyboard
+  // round to its start; anything else outside is a leak. Focus settles a
+  // moment after each key on a slow runner.
+  const inside = () => page.evaluate(() => !!document.activeElement?.closest("[role=dialog], [data-floating-ui-focus-guard], [data-base-ui-focus-guard], span[aria-hidden=true]"));
+  await expect.poll(inside, { message: "the sheet took the keyboard" }).toBe(true);
   for (let i = 0; i < 8; i++) {
     await page.keyboard.press("Tab");
-    // The trap's own guards sit just outside the popup and send the keyboard
-    // round to its start; anything else outside is a leak.
-    expect(await page.evaluate(() => !!document.activeElement?.closest("[role=dialog], [data-floating-ui-focus-guard], [data-base-ui-focus-guard], span[aria-hidden=true]")), "Tab left the open sheet").toBe(true);
+    await expect.poll(inside, { message: "Tab left the open sheet", timeout: 2000 }).toBe(true);
   }
   await page.keyboard.press("Escape");
   await expect(sheet).toHaveCount(0);

@@ -1,6 +1,6 @@
 # site
 
-Berth's landing page: static HTML and CSS, no build step. Open
+Shipyard's landing page: static HTML and CSS, no build step. Open
 `index.html`, or serve the folder as it is.
 
 - `index.html`, `styles.css`: the page. Light and dark follow the system.

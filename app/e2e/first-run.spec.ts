@@ -13,7 +13,7 @@ test("a fresh install starts with Labs on and the harbour home", async ({ app })
   await expect(app.page.getByRole("heading", { name: "What should your agents work on?" })).toBeVisible();
 });
 
-test("prefs an older Berth saved move to this version's defaults", async ({ app }) => {
+test("prefs an older Shipyard saved move to this version's defaults", async ({ app }) => {
   // Version 2 saved Labs off and "keep" only as the defaults of the day.
   await app.open({ prefs: { labs: false, closeAgents: "keep", agentCloseTips: 2, version: 2 } });
   await expect.poll(() => app.stored("berth.prefs")).toMatchObject({ labs: true, version: 3 });

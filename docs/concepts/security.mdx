@@ -1,11 +1,11 @@
 ---
 title: Security model
-description: Who Berth trusts and for what, how laptops and boxes prove who they are, what guards repository config, kits, flows and plugins, and what is still open.
+description: Who Shipyard trusts and for what, how laptops and boxes prove who they are, what guards repository config, kits, flows and plugins, and what is still open.
 ---
 
-Every connection in Berth is between two keys that have met before. Nothing
+Every connection in Shipyard is between two keys that have met before. Nothing
 on a box is reachable without a paired laptop, and nothing is public unless
-someone shares it. Inside that, Berth runs other people's code and data (a
+someone shares it. Inside that, Shipyard runs other people's code and data (a
 repository's config, a kit, a plugin, a pull request's comments), and asks
 before any of it runs.
 
@@ -107,7 +107,7 @@ A laptop's system Tailscale can be on only one tailnet. For boxes on another
 embedded Tailscale node per named network (`berth network login personal`, a
 one-time browser sign-in). Each paired box records the network it is reached
 through; pairing, the agent's connections and `add ssh` all dial through it.
-Berth's own pinned TLS still runs on top: the tailnet only provides the route.
+Shipyard's own pinned TLS still runs on top: the tailnet only provides the route.
 
 ## On the laptop
 
@@ -151,13 +151,13 @@ tell them never to share a port unless a person asked.
 - **The Mac app** is signed with a Developer ID and notarized by Apple.
   [Its updates](/getting-started/install#updates) come from the latest GitHub
   release, over HTTPS, and are installed only if they carry a valid
-  signature from Berth's updater key, whose public half is built into the
+  signature from Shipyard's updater key, whose public half is built into the
   app. Nothing installs until you choose **Restart to update**.
 - **berthd and the CLI** from a release are checked against the release's
   `checksums.txt` by the install script. That catches a broken or truncated
   download, but the checksums come from the same release, so they don't
   prove who made it (see [known limits](#known-limits)).
-- **`berth upgrade BOX`** uploads the matching daemon over Berth's own
+- **`berth upgrade BOX`** uploads the matching daemon over Shipyard's own
   connection. The box runs the upload once to check it starts and reads the
   box's own identity, swaps it in, and re-executes in place, keeping its PID
   so the supervisor sees no restart and sessions are untouched. Public shares
@@ -220,7 +220,7 @@ output. That data is only ever text:
   `ssh` and `git` transports, so a link can't use `file://` to read a local
   repository or `ext::` to run a command. (A kit can still come from a
   folder on your laptop, which is copied, not cloned.)
-- Installing Berth's [skills](/guides/agent-integrations#skills) into a
+- Installing Shipyard's [skills](/guides/agent-integrations#skills) into a
   repository refuses to follow symbolic links, so a repository can't
   redirect the write to a file elsewhere on the box.
 

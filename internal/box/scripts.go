@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/groups"
-	"github.com/sean-brydon/berthd/internal/hooks"
+	"github.com/cosscom/shipyard/internal/groups"
+	"github.com/cosscom/shipyard/internal/hooks"
 )
 
 // Scripts are a location's worktree lifecycle commands. They get

@@ -55,7 +55,7 @@ export function NotificationsSection() {
   const columns: [keyof Channels, string, string][] = [
     ["centre", "Centre", "Kept in the notification centre"],
     ["toast", "Toast", "A toast in the window"],
-    ["system", mac ? "macOS" : "System", mac ? "A macOS notification while Berth is in the background" : "A system notification while Berth is in the background"],
+    ["system", mac ? "macOS" : "System", mac ? "A macOS notification while Shipyard is in the background" : "A system notification while Shipyard is in the background"],
   ];
   const dndDescription = quiet.on
     ? quiet.by === "schedule"
@@ -166,7 +166,7 @@ export function NotificationsSection() {
             Send a test
           </Button>
         </SettingsRow>
-        <SettingsRow label="History" description={`${count} kept on this laptop, up to 500. Berth only hears events while it is open, so anything from while it was closed isn't here.`} />
+        <SettingsRow label="History" description={`${count} kept on this laptop, up to 500. Shipyard only hears events while it is open, so anything from while it was closed isn't here.`} />
       </SettingsGroup>
     </SettingsPage>
   );

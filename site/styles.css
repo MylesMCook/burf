@@ -1,5 +1,5 @@
-/* Berth's landing page. The app's type (Inter, JetBrains Mono), its tokens
-   (Berth Light and Berth Dark, following the system) and coss-ui's buttons.
+/* Shipyard's landing page. The app's type (Inter, JetBrains Mono), its tokens
+   (Shipyard Light and Shipyard Dark, following the system) and coss-ui's buttons.
    The harbour at the top is the only picture that isn't a screenshot. */
 
 @font-face {
@@ -759,7 +759,7 @@ code {
 }
 
 /* A loop: its poster sizes the frame; the video fades in over it once it
-   plays. The footage is the app in Berth Dark, so the frame is dark too. */
+   plays. The footage is the app in Shipyard Dark, so the frame is dark too. */
 .clip {
   position: relative;
   margin: 0;
@@ -940,6 +940,12 @@ code {
   .night-body .clip img,
   .night-body .clip video {
     object-position: 12% 50%;
+  }
+}
+/* Below 400px the name stands alone, so a phone's header fits. */
+@media (max-width: 400px) {
+  .brand svg {
+    display: none;
   }
 }
 /* A phone's header keeps "Close the laptop" on one line. */

@@ -13,11 +13,11 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/version"
+	"github.com/cosscom/shipyard/internal/version"
 )
 
 // Restarting the agent cleanly, for an update. The app's updater replaces
-// Berth.app under a running agent, which goes on running the old code (and
+// Shipyard.app under a running agent, which goes on running the old code (and
 // keeps this computer's box on the old berthd) until it restarts. The
 // updated app asks `berth agent restart --if-stale`, which reads what the
 // agent runs (GET /v1/agent), and when it is older than the berth asking,

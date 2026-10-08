@@ -20,19 +20,19 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/box"
-	"github.com/sean-brydon/berthd/internal/debugserver"
-	"github.com/sean-brydon/berthd/internal/doctor"
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/forward"
-	"github.com/sean-brydon/berthd/internal/hooks"
-	"github.com/sean-brydon/berthd/internal/identity"
-	"github.com/sean-brydon/berthd/internal/network"
-	"github.com/sean-brydon/berthd/internal/pfredirect"
-	"github.com/sean-brydon/berthd/internal/proxy"
-	"github.com/sean-brydon/berthd/internal/statefile"
-	"github.com/sean-brydon/berthd/internal/trust"
-	"github.com/sean-brydon/berthd/internal/wire"
+	"github.com/cosscom/shipyard/internal/box"
+	"github.com/cosscom/shipyard/internal/debugserver"
+	"github.com/cosscom/shipyard/internal/doctor"
+	"github.com/cosscom/shipyard/internal/events"
+	"github.com/cosscom/shipyard/internal/forward"
+	"github.com/cosscom/shipyard/internal/hooks"
+	"github.com/cosscom/shipyard/internal/identity"
+	"github.com/cosscom/shipyard/internal/network"
+	"github.com/cosscom/shipyard/internal/pfredirect"
+	"github.com/cosscom/shipyard/internal/proxy"
+	"github.com/cosscom/shipyard/internal/statefile"
+	"github.com/cosscom/shipyard/internal/trust"
+	"github.com/cosscom/shipyard/internal/wire"
 )
 
 const (
@@ -577,7 +577,7 @@ func (a *Agent) away(name string) (string, time.Duration, bool) {
 		return "", 0, false
 	}
 	retry := time.Until(st.retryAt)
-	msg := name + " is offline; Berth is reconnecting"
+	msg := name + " is offline; Shipyard is reconnecting"
 	if retry > 0 {
 		msg += fmt.Sprintf(" (next try in %ds)", int(retry.Round(time.Second)/time.Second))
 	}

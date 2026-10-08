@@ -10,8 +10,8 @@ import (
 	"regexp"
 	"sort"
 
-	"github.com/sean-brydon/berthd/internal/doctor"
-	"github.com/sean-brydon/berthd/internal/service"
+	"github.com/cosscom/shipyard/internal/doctor"
+	"github.com/cosscom/shipyard/internal/service"
 )
 
 // Unit is a long-lived program berthd runs on the box under the platform's

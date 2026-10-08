@@ -14,9 +14,9 @@ import (
 
 	"golang.org/x/term"
 
-	"github.com/sean-brydon/berthd/internal/agent"
-	"github.com/sean-brydon/berthd/internal/box"
-	"github.com/sean-brydon/berthd/internal/team"
+	"github.com/cosscom/shipyard/internal/agent"
+	"github.com/cosscom/shipyard/internal/box"
+	"github.com/cosscom/shipyard/internal/team"
 )
 
 const teamUsage = `berth team — set a box up the way your team's are, from <org>/.berth on GitHub
@@ -160,7 +160,7 @@ func describeTeam(v agent.TeamView) {
 	case "none":
 		fmt.Printf("%s has no team setup you can read (no %s/.berth).\n", v.Org.Name, v.Org.Login)
 		if len(v.Repos) > 0 {
-			fmt.Println("\nIts repos you can read (* has its own Berth setup):")
+			fmt.Println("\nIts repos you can read (* has its own Shipyard setup):")
 			for _, r := range v.Repos {
 				mark := " "
 				if r.HasBerth {
@@ -202,7 +202,7 @@ func describeTeam(v agent.TeamView) {
 			tag = " [sudo]"
 		}
 		if st.Berth {
-			tag = " [Berth]"
+			tag = " [Shipyard]"
 		}
 		fmt.Printf("  %-28s%s %s\n", st.Title, tag, st.Detail)
 	}

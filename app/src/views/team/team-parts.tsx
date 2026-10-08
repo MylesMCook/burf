@@ -46,7 +46,7 @@ export function Avatar({ src, name, size = 16 }: { src?: string; name: string; s
 
 export function SudoTag({ className }: { className?: string }) {
   return (
-    <Tip label="Asks for your password on the box, in its terminal. Berth never sees it.">
+    <Tip label="Asks for your password on the box, in its terminal. Shipyard never sees it.">
       <span className={cn("inline-flex shrink-0 items-center gap-1 rounded-md border border-warning/35 bg-warning/8 px-1.5 py-px font-medium text-[10.5px] text-warning-foreground", className)}>
         <KeyRoundIcon className="size-2.5" /> sudo
       </span>
@@ -56,8 +56,8 @@ export function SudoTag({ className }: { className?: string }) {
 
 export function BerthTag() {
   return (
-    <Tip label="Berth's own step, in every team setup: the box signs in to GitHub itself, so this computer's sign-in is never copied there">
-      <span className="inline-flex shrink-0 items-center rounded-md border px-1.5 py-px text-[10.5px] text-muted-foreground">Berth</span>
+    <Tip label="Shipyard's own step, in every team setup: the box signs in to GitHub itself, so this computer's sign-in is never copied there">
+      <span className="inline-flex shrink-0 items-center rounded-md border px-1.5 py-px text-[10.5px] text-muted-foreground">Shipyard</span>
     </Tip>
   );
 }
@@ -178,7 +178,7 @@ export const card = "divide-y overflow-hidden rounded-xl border bg-card";
 
 // OrgHeader reads like the org's repo on GitHub, so the page is GitHub
 // continued: who publishes this setup, which repo, who changed it last and
-// when, and the commit Berth will use. A setup loaded from a link names the
+// when, and the commit Shipyard will use. A setup loaded from a link names the
 // repo and branch it came from instead, and claims nothing for the team it
 // is for: it isn't that team's own .berth.
 export function OrgHeader({ view, compact, badge, from }: { view: TeamView; compact?: boolean; badge?: ReactNode; from?: string }) {
@@ -239,7 +239,7 @@ export function OrgHeader({ view, compact, badge, from }: { view: TeamView; comp
                     Updated {ago(commit.date)} by <Avatar src={commit.author_avatar} name={commit.author} size={14} /> {commit.author}
                   </span>
                   <span aria-hidden>·</span>
-                  <Tip label={`Berth uses this commit, as you reviewed it: ${commit.message}`}>
+                  <Tip label={`Shipyard uses this commit, as you reviewed it: ${commit.message}`}>
                     <span data-testid="team-commit" className="inline-flex items-center gap-1 font-mono">
                       <GitCommitHorizontalIcon className="size-3" />
                       {commit.short}

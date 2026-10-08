@@ -6,11 +6,11 @@ import (
 	"os"
 	"strings"
 
-	"github.com/sean-brydon/berthd/internal/integrations"
+	"github.com/cosscom/shipyard/internal/integrations"
 )
 
 // Integrations are the hooks agent CLIs on this box run to report their
-// needs-you, working and done states, and berth's skills. berthd install
+// needs-you, working and done states, and Shipyard's skills. berthd install
 // sets them up for the CLIs it finds; these let the app add them for a CLI
 // installed since.
 

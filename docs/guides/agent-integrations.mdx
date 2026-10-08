@@ -1,14 +1,14 @@
 ---
 title: Agent integrations
-description: Claude Code, Codex, Cursor, Gemini CLI and OpenCode hooks, the skills Berth teaches agents, and announcing events from any tool.
+description: Claude Code, Codex, Cursor, Gemini CLI and OpenCode hooks, the skills Shipyard teaches agents, and announcing events from any tool.
 ---
 
-berth works with the tools around it in both directions: tools drive
-berth through its CLI, and berth drives tools through hooks. Every event
+Shipyard works with the tools around it in both directions: tools drive
+Shipyard through its CLI, `berth`, and Shipyard drives tools through hooks. Every event
 records the tool it came from, so a change never bounces back and forth
 between two tools.
 
-## Agent tools → berth
+## Agent tools → Shipyard
 
 ### Claude Code, Codex, Cursor, Gemini CLI, OpenCode
 
@@ -25,20 +25,20 @@ first starts that agent on the box, and `berth doctor BOX` (or
 `berthd doctor` on the box) warns about each agent CLI without its hooks,
 with the command that installs them.
 
-- **Claude Code**: installs berth's skills in `~/.claude/skills/` and
+- **Claude Code**: installs Shipyard's skills in `~/.claude/skills/` and
   `SessionStart` / `UserPromptSubmit` / `PostToolUse` / `PermissionRequest` /
   `Notification` / `Stop` / `StopFailure` / `SessionEnd` hooks in
   `~/.claude/settings.json`. Only permission and question notifications mean
   "needs you"; the idle reminder and login notices are ignored.
 - **Cursor**: appends `sessionStart`, `beforeSubmitPrompt` and `stop` hooks to
   `~/.cursor/hooks.json`, after any hooks already there (Orca's are kept).
-- **Codex**: installs berth's skills in `~/.agents/skills/`, where Codex
-  reads user skills (a copy an older berth left in `~/.codex/skills/` is
+- **Codex**: installs Shipyard's skills in `~/.agents/skills/`, where Codex
+  reads user skills (a copy an older version left in `~/.codex/skills/` is
   removed), adds `SessionStart` / `UserPromptSubmit` / `PermissionRequest` /
   `Stop` hooks to `~/.codex/hooks.json` (trust them once in Codex with
   `/hooks`), and a `notify` line to `~/.codex/config.toml` for versions
   without hooks. Codex runs a single notify program, so when the config
-  already sets one to something else, berth leaves it and prints the line to
+  already sets one to something else, Shipyard leaves it and prints the line to
   change yourself.
 - **Gemini CLI**: `SessionStart` / `BeforeAgent` / `Notification` /
   `AfterAgent` / `SessionEnd` hooks in `~/.gemini/settings.json`.
@@ -46,12 +46,12 @@ with the command that installs them.
   runs the hook when a session gets busy, asks for a permission, or goes idle.
 
 After an upgrade, berthd brings hooks it installed before up to date when it
-starts. Every session berth starts has `BERTH_SESSION` (and, for an agent
-preset, `BERTH_AGENT`) in its environment; the hook sends it along, so berth
+starts. Every session Shipyard starts has `BERTH_SESSION` (and, for an agent
+preset, `BERTH_AGENT`) in its environment; the hook sends it along, so Shipyard
 knows which session a hook came from when agents share a worktree. When
 berthd is down, `berthd hook` keeps the event in `~/.berth/box/spool/` and
 berthd publishes it, in order, when it starts. What each agent can report,
-and how berth fills the gaps, is in
+and how Shipyard fills the gaps, is in
 [turns](/concepts/sessions-and-agents#turns).
 
 Installs are idempotent, keep every existing setting, back up the previous
@@ -64,15 +64,15 @@ leave the tool. A hook never fails or blocks the tool that called it.
 
 ### Skills
 
-berth ships its skills embedded in the binary:
+Shipyard ships its skills embedded in the binary:
 
 | Skill | Teaches agents to |
 | --- | --- |
 | `berth` | find their way around: boxes, repos, worktrees, tasks, sessions, the worktree's `$BERTH_*` variables and ports, `.berth/config.json`, services |
 | `berth-orchestrate` | prompt, wait for, check, loop, hand off to and review with other agents, and never answer for the human |
-| `berth-preview` | run the dev server on the worktree's port and open it in the user's Berth app (`berthd preview`) |
+| `berth-preview` | run the dev server on the worktree's port and open it in the user's Shipyard app (`berthd preview`) |
 | `berth-hooks` | write hooks and gates at the right scope, with the event catalog |
-| `berth-artifacts` | show you a chart, table, diagram, notes or a small page in Berth instead of a wall of text, and update it live ([Artifacts](/guides/artifacts)) |
+| `berth-artifacts` | show you a chart, table, diagram, notes or a small page in Shipyard instead of a wall of text, and update it live ([Artifacts](/guides/artifacts)) |
 | `berth-visual-diff` | check what a change did to the app's pages before saying done (`berthd shots compare`): phone, tablet and desktop shots of the worktree and main, diffed, with what broke ([Visual diffs](/guides/visual-diffs)) |
 
 Install them for the box's user, or inside one repository for just that
@@ -94,9 +94,9 @@ berth skills devl install                             # the same from a laptop
 
 Project skills are listed in the repository's `.git/info/exclude` so they are
 not committed, unless installed with `--commit`. `berthd skills` reports each
-copy as installed, outdated (berth has a newer version: install again) or
+copy as installed, outdated (Shipyard has a newer version: install again) or
 missing; the app shows the same in Settings → Agents and in a project's
-settings. Removing only deletes a folder whose `SKILL.md` is berth's skill of
+settings. Removing only deletes a folder whose `SKILL.md` is Shipyard's skill of
 that name.
 
 The API is `GET /v1/skills[?location=L]`, and `POST /v1/skills/install` and
@@ -119,13 +119,13 @@ berthd emit deploy.done url=https://… --origin mytool      # on a box
 ## Worktrees from any tool
 
 berthd watches its locations. A worktree created by another app, an agent,
-or plain `git worktree add` shows up in berth and produces a
+or plain `git worktree add` shows up in Shipyard and produces a
 `worktree.created` event with origin `detected`. Nothing needs configuring in
 those tools.
 
-## berth → tools
+## Shipyard → tools
 
-berth drives other tools through hooks and plugins rather than adapters
+Shipyard drives other tools through hooks and plugins rather than adapters
 built into it: a hook on `worktree.created` can register the worktree with
 any tool that has a CLI, and a plugin can ship those hooks along with its UI.
 See [hooks](/guides/hooks) and [plugins](/guides/plugins).

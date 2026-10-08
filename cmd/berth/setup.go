@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sean-brydon/berthd/internal/agent"
-	"github.com/sean-brydon/berthd/internal/pfredirect"
+	"github.com/cosscom/shipyard/internal/agent"
+	"github.com/cosscom/shipyard/internal/pfredirect"
 )
 
 // serviceURLFor is the private URL of a service; the port is left out once
@@ -41,7 +41,7 @@ func setup(args []string) error {
 		if remove {
 			command += " --remove"
 		}
-		prompt := "Berth wants to redirect localhost port 80 so your box URLs need no port."
+		prompt := "Shipyard wants to redirect localhost port 80 so your box URLs need no port."
 		script := fmt.Sprintf("do shell script %q with prompt %q with administrator privileges", command, prompt)
 		out, err := exec.Command("osascript", "-e", script).CombinedOutput()
 		text := strings.TrimSpace(string(out))

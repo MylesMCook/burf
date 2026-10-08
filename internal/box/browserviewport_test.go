@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/events"
+	"github.com/cosscom/shipyard/internal/events"
 )
 
 func TestBrowserSizesParseWithClearErrors(t *testing.T) {
@@ -284,6 +284,7 @@ func TestTheBrowserSizeReachesARealChromium(t *testing.T) {
 	checkFrame := func(wantW, wantH, pxW, pxH int) {
 		t.Helper()
 		deadline := time.After(10 * time.Second)
+		last := "none"
 		for {
 			select {
 			case f := <-frames:
@@ -296,11 +297,15 @@ func TestTheBrowserSizeReachesARealChromium(t *testing.T) {
 					t.Fatalf("frame: %v", err)
 				}
 				if img.Width != pxW || img.Height != pxH {
-					t.Fatalf("a %dx%d frame is %dx%d pixels, want %dx%d", f.Width, f.Height, img.Width, img.Height, pxW, pxH)
+					// Chromium can cast a frame or two of the old window
+					// under the new size while it resizes; a slow runner
+					// sees them.
+					last = fmt.Sprintf("%dx%d", img.Width, img.Height)
+					continue
 				}
 				return
 			case <-deadline:
-				t.Fatalf("no %dx%d frame", wantW, wantH)
+				t.Fatalf("no %dx%d frame of %dx%d pixels (the last was %s)", wantW, wantH, pxW, pxH, last)
 			}
 		}
 	}

@@ -34,7 +34,7 @@ export function useBerthConnection() {
       while (!abort.signal.aborted) {
         try {
           // ?mock=offline is the "not running" screen until its agent starts.
-          if (mockAgentDown()) throw new Error("the Berth agent has not started yet (mock)");
+          if (mockAgentDown()) throw new Error("the Shipyard agent has not started yet (mock)");
           if (isMock()) return mockClient();
           const client = httpClient(await endpoint());
           await client.status();

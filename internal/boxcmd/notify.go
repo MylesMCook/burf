@@ -3,7 +3,7 @@ package boxcmd
 import (
 	"os"
 
-	"github.com/sean-brydon/berthd/internal/box"
+	"github.com/cosscom/shipyard/internal/box"
 )
 
 // reportBack is c making a call that starts work for the agent session

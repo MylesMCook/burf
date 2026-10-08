@@ -1,4 +1,4 @@
-// Package agentcli installs the agent CLIs Berth runs (Claude Code, Codex,
+// Package agentcli installs the agent CLIs Shipyard runs (Claude Code, Codex,
 // Cursor Agent, OpenCode) on a box, as the box's user, without sudo, into
 // ~/.local/bin. Each install checks first and does nothing when the agent
 // is already there, so running it again is safe. Signing in stays the
@@ -21,27 +21,27 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/agentpath"
+	"github.com/cosscom/shipyard/internal/agentpath"
 )
 
-// Agent is an agent CLI Berth knows how to install.
+// Agent is an agent CLI Shipyard knows how to install.
 type Agent struct {
 	ID      string `json:"id"`
 	Name    string `json:"name"`
 	Command string `json:"command"`
-	// Install is what Berth runs, as a person would type it.
+	// Install is what Shipyard runs, as a person would type it.
 	Install string `json:"install,omitempty"`
 	// Verified says how the download is checked.
 	Verified string `json:"verified,omitempty"`
 	// Default agents are ticked when nothing was chosen before.
 	Default bool `json:"default,omitempty"`
-	// Offered is false for an agent Berth leaves to the person; Why says
+	// Offered is false for an agent Shipyard leaves to the person; Why says
 	// why, and Install then is the command to type.
 	Offered bool   `json:"offered"`
 	Why     string `json:"why,omitempty"`
 }
 
-// CodexVersion is the Codex release Berth installs: pinned, with each
+// CodexVersion is the Codex release Shipyard installs: pinned, with each
 // archive's sha256 below, so a box gets exactly the build that was checked.
 const CodexVersion = "0.160.1"
 
@@ -77,7 +77,7 @@ var Catalog = []Agent{
 		Verified: "OpenCode's installer, over HTTPS; it publishes no checksums for it"},
 	{ID: "gemini", Name: "Gemini CLI", Command: "gemini",
 		Install: "npm install -g @google/gemini-cli",
-		Why:     "it installs with npm and needs Node.js 20 or newer, which Berth doesn't install; install Node, then run the command"},
+		Why:     "it installs with npm and needs Node.js 20 or newer, which Shipyard doesn't install; install Node, then run the command"},
 }
 
 // ByID finds an agent in the catalog.
@@ -102,7 +102,7 @@ func Defaults() []string {
 }
 
 // ParseList reads a comma- or space-separated list of agent ids ("none"
-// is the empty list), refusing ids Berth doesn't install. Repeats go.
+// is the empty list), refusing ids Shipyard doesn't install. Repeats go.
 func ParseList(s string) ([]string, error) {
 	s = strings.TrimSpace(s)
 	if s == "" || s == "none" {
@@ -113,10 +113,10 @@ func ParseList(s string) ([]string, error) {
 	for _, id := range strings.FieldsFunc(s, func(r rune) bool { return r == ',' || r == ' ' }) {
 		a, ok := ByID(id)
 		if !ok {
-			return nil, fmt.Errorf("%q is not an agent Berth installs (%s)", id, strings.Join(offeredIDs(), ", "))
+			return nil, fmt.Errorf("%q is not an agent Shipyard installs (%s)", id, strings.Join(offeredIDs(), ", "))
 		}
 		if !a.Offered {
-			return nil, fmt.Errorf("Berth doesn't install %s: %s (%s)", a.Name, a.Why, a.Install)
+			return nil, fmt.Errorf("Shipyard doesn't install %s: %s (%s)", a.Name, a.Why, a.Install)
 		}
 		if !seen[id] {
 			seen[id] = true
@@ -212,7 +212,7 @@ func (in *Installer) Find(a Agent) (string, bool) {
 	return in.findInstalled(a)
 }
 
-// findInstalled is where Berth's own install of a would be.
+// findInstalled is where Shipyard's own install of a would be.
 func (in *Installer) findInstalled(a Agent) (string, bool) {
 	dirs := []string{in.BinDir()}
 	if a.ID == "opencode" {
@@ -239,10 +239,10 @@ func (in *Installer) findInstalled(a Agent) (string, bool) {
 func (in *Installer) Install(ctx context.Context, id string) (Result, error) {
 	a, ok := ByID(id)
 	if !ok {
-		return Result{}, fmt.Errorf("%q is not an agent Berth installs", id)
+		return Result{}, fmt.Errorf("%q is not an agent Shipyard installs", id)
 	}
 	if !a.Offered {
-		return Result{}, fmt.Errorf("Berth doesn't install %s: %s (%s)", a.Name, a.Why, a.Install)
+		return Result{}, fmt.Errorf("Shipyard doesn't install %s: %s (%s)", a.Name, a.Why, a.Install)
 	}
 	if p, ok := in.Find(a); ok {
 		fmt.Fprintf(in.Out, "%s is already installed (%s)\n", a.Name, p)
@@ -324,7 +324,7 @@ func codexTarget(goos, goarch string) string {
 	return ""
 }
 
-// CodexURL is the archive Berth downloads for a platform.
+// CodexURL is the archive Shipyard downloads for a platform.
 func CodexURL(goos, goarch string) string {
 	t := codexTarget(goos, goarch)
 	if t == "" {

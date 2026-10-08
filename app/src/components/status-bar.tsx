@@ -54,7 +54,7 @@ export function StatusBar() {
       {connection.state === "offline" && restarting ? (
         <span className="flex items-center gap-1.5">
           <Spinner className="size-3" />
-          Restarting the Berth agent…
+          Restarting the Shipyard agent…
         </span>
       ) : connection.state === "offline" ? (
         <Tip label={connection.error}>
@@ -182,7 +182,7 @@ function WorktreeItem() {
   );
 }
 
-// UpdateItem shows once a newer Berth is downloaded, and restarts into it
+// UpdateItem shows once a newer Shipyard is downloaded, and restarts into it
 // when clicked. Checking and downloading stay out of sight.
 function UpdateItem() {
   const update = useUpdater();
@@ -192,7 +192,7 @@ function UpdateItem() {
     <Item
       className="text-foreground"
       disabled={installing}
-      tip={`Berth ${update.version} is downloaded. Restarting reopens this window; agents keep running on their boxes.`}
+      tip={`Shipyard ${update.version} is downloaded. Restarting reopens this window; agents keep running on their boxes.`}
       onClick={() => void restartToUpdate()}
     >
       <CircleArrowUpIcon className="size-3 text-success" />
@@ -218,7 +218,7 @@ function OutdatedItem() {
   const n = outdated.length;
   return (
     <span className="flex items-center gap-1.5">
-      <Item tip={`${outdated.join(", ")} ${n === 1 ? "runs" : "run"} an older berthd than this Berth ships.`} onClick={() => useStore.getState().setView({ kind: "settings", section: "boxes" })}>
+      <Item tip={`${outdated.join(", ")} ${n === 1 ? "runs" : "run"} an older berthd than this Shipyard ships.`} onClick={() => useStore.getState().setView({ kind: "settings", section: "boxes" })}>
         <CircleArrowUpIcon className="size-3 text-info" />
         {n === 1 ? `${outdated[0]} runs` : `${n} boxes run`} an older berthd
       </Item>

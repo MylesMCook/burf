@@ -14,8 +14,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/box"
-	"github.com/sean-brydon/berthd/internal/sshconfig"
+	"github.com/cosscom/shipyard/internal/box"
+	"github.com/cosscom/shipyard/internal/sshconfig"
 )
 
 // Opening a worktree, or a file at a line, in the editor on this computer.

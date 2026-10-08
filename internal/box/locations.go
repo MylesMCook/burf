@@ -18,8 +18,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/statefile"
-	"github.com/sean-brydon/berthd/internal/trust"
+	"github.com/cosscom/shipyard/internal/statefile"
+	"github.com/cosscom/shipyard/internal/trust"
 )
 
 // Location is a named place on a box where work happens: a repository or any
@@ -303,11 +303,11 @@ func cleanUpFailedAdd(repo, path, branch string, hadPath, hadBranch bool) {
 // while it runs; one still there means the add was interrupted.
 const gitLockReason = "initializing"
 
-// berthLockPrefix starts the reason of any lock Berth itself sets.
+// berthLockPrefix starts the reason of any lock Shipyard itself sets.
 const berthLockPrefix = "berth:"
 
 // ownLock is true for a lock nobody chose: git's own from an interrupted
-// add, or Berth's. Removing such a worktree unlocks it first; a lock a
+// add, or Shipyard's. Removing such a worktree unlocks it first; a lock a
 // person set with `git worktree lock` is theirs to lift.
 func ownLock(reason string) bool {
 	return reason == gitLockReason || strings.HasPrefix(reason, berthLockPrefix)

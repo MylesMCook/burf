@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sean-brydon/berthd/internal/agentcli"
+	"github.com/cosscom/shipyard/internal/agentcli"
 )
 
 // Change is one difference between two commits of a team setup, as an
@@ -75,7 +75,7 @@ func Diff(old, new *Setup, oldFiles, newFiles map[string]string) []Change {
 	for _, a := range new.Agents {
 		has[a] = true
 		if !had[a] {
-			out = append(out, Change{Kind: "add", Area: "agent", ID: a, Text: agentcli.Names([]string{a}), Detail: "installed on the box by Berth, without sudo"})
+			out = append(out, Change{Kind: "add", Area: "agent", ID: a, Text: agentcli.Names([]string{a}), Detail: "installed on the box by Shipyard, without sudo"})
 		}
 	}
 	for _, a := range old.Agents {

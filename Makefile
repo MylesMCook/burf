@@ -3,13 +3,13 @@ GO ?= go
 # checkout is "dev". VERSION=1.2.3 and VERSION=v1.2.3 both stamp v1.2.3.
 VERSION ?= dev
 STAMP := $(if $(filter dev,$(VERSION)),dev,v$(patsubst v%,%,$(VERSION)))
-LDFLAGS := -s -w -X github.com/sean-brydon/berthd/internal/version.Version=$(STAMP)
+LDFLAGS := -s -w -X github.com/cosscom/shipyard/internal/version.Version=$(STAMP)
 BIN := bin
 
 .PHONY: all build daemons test clean
 
 # berth for this machine, plus berthd for every box platform, side by side
-# in bin/ so `berth add ssh` can find the right daemon to upload, and Berth's
+# in bin/ so `berth add ssh` can find the right daemon to upload, and Shipyard's
 # own static tmux for Linux boxes (tmux-linux-amd64, -arm64), which it
 # uploads to a box that has none.
 all: build daemons
@@ -17,7 +17,7 @@ all: build daemons
 build:
 	$(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(BIN)/ ./cmd/berth ./cmd/berthd
 
-# TMUX=0 leaves Berth's tmux out. It is built once (scripts/build-tmux.sh,
+# TMUX=0 leaves Shipyard's tmux out. It is built once (scripts/build-tmux.sh,
 # pinned sources in a pinned Alpine container, so it needs Docker) and kept
 # in bin/; without Docker, make says so and goes on, and berth add ssh then
 # installs tmux with the box's package manager instead.
@@ -27,7 +27,7 @@ daemons:
 	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(BIN)/berthd-linux-amd64 ./cmd/berthd
 	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(BIN)/berthd-linux-arm64 ./cmd/berthd
 ifneq ($(TMUX),0)
-	@scripts/build-tmux.sh $(BIN) || echo "make daemons: Berth's tmux was not built (above says why); berth add ssh installs tmux with the box's package manager instead"
+	@scripts/build-tmux.sh $(BIN) || echo "make daemons: Shipyard's tmux was not built (above says why); berth add ssh installs tmux with the box's package manager instead"
 endif
 
 test:
@@ -45,7 +45,7 @@ clean:
 # and `cargo check` work without them; in dev the app starts the agent from
 # bin/berth, and Use this Mac finds bin/berthd beside it.
 #
-# make app-build builds Berth.app and a dmg for this Mac. Releases build
+# make app-build builds Shipyard.app and a dmg for this Mac. Releases build
 # APP_TARGET=universal-apple-darwin, one app for Apple silicon and Intel, with
 # berth-cli and berthd made universal by lipo (scripts/mac-release.sh). The
 # Mac berthd runs as its own process outside the app, so with
@@ -79,7 +79,7 @@ endif
 			--sign "$$APPLE_SIGNING_IDENTITY" $(SIDECAR)/berthd-local; \
 	fi
 	cp $(BIN)/berthd-linux-amd64 $(BIN)/berthd-linux-arm64 $(SIDECAR)/
-	@# The app carries Berth's tmux for Linux boxes; a release must have it.
+	@# The app carries Shipyard's tmux for Linux boxes; a release must have it.
 	scripts/build-tmux.sh $(BIN)
 	cp $(BIN)/tmux-linux-amd64 $(BIN)/tmux-linux-arm64 $(SIDECAR)/
 
@@ -112,7 +112,7 @@ publish:
 # release-check runs the full release tests, by hand, now and then (they
 # are not part of releasing): the app's first run on this Mac from its dmg,
 # a fresh Linux box in Docker, and upgrading from the last release, each
-# isolated from this machine's own Berth (scripts/release-check.sh).
+# isolated from this machine's own Shipyard (scripts/release-check.sh).
 # It builds everything from HEAD as committed (REF=sha for another commit,
 # DIRTY=1 for this checkout's uncommitted changes) in a clean checkout under
 # dist/release-test/; on a Mac that includes the app (UNIVERSAL=1 for both

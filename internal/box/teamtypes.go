@@ -3,7 +3,7 @@ package box
 import (
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/team"
+	"github.com/cosscom/shipyard/internal/team"
 )
 
 // TeamBundle is a team setup on its way to a box: what the laptop read
@@ -18,16 +18,16 @@ type TeamBundle struct {
 	// Script runs the steps (team.Box.Script, inside Files).
 	Script string      `json:"script,omitempty"`
 	Steps  []team.Step `json:"steps"`
-	// GitHub adds Berth's own step: gh auth login on the box.
+	// GitHub adds Shipyard's own step: gh auth login on the box.
 	GitHub bool `json:"github"`
-	// OnePassword adds Berth's other step, after GitHub, when the keys are
+	// OnePassword adds Shipyard's other step, after GitHub, when the keys are
 	// 1Password references: op signed in on the box, in its terminal.
 	OnePassword bool `json:"onepassword,omitempty"`
 	// OnePasswordSkipped says the engineer skipped 1Password: the shared
 	// keys' references are kept aside (each project's Deferred), op is
 	// never called for them, and Use 1Password puts them back later.
 	OnePasswordSkipped bool `json:"onepassword_skipped,omitempty"`
-	// Agents adds Berth's agents step, after the team's own: these agent
+	// Agents adds Shipyard's agents step, after the team's own: these agent
 	// CLIs installed on the box, with their hooks and skills.
 	Agents []string `json:"agents,omitempty"`
 	// Settings are team.json's box.settings, which the script (and each

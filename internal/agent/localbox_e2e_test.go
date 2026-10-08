@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/service"
+	"github.com/cosscom/shipyard/internal/service"
 )
 
 // The whole of Use this Mac with the real berth and berthd, opt in:

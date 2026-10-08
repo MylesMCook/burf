@@ -59,7 +59,7 @@ export function PluginConsentDialog() {
             {again ? `${name} has changed` : `Allow ${name}?`}
           </DialogTitle>
           <DialogDescription>
-            {again ? `Its code is different from the version you allowed, so it's off until you review it again.` : `This plugin isn't part of Berth.`} Plugins aren't sandboxed: once on, it runs inside Berth with the
+            {again ? `Its code is different from the version you allowed, so it's off until you review it again.` : `This plugin isn't part of Shipyard.`} Plugins aren't sandboxed: once on, it runs inside Shipyard with the
             app's own access.
           </DialogDescription>
         </DialogHeader>
@@ -100,7 +100,7 @@ export function PluginConsentDialog() {
               </ul>
             </div>
           )}
-          <p className="text-muted-foreground text-xs">Allow only plugins you trust. Berth asks again whenever the plugin's code changes, and you can turn it off in Settings → Plugins.</p>
+          <p className="text-muted-foreground text-xs">Allow only plugins you trust. Shipyard asks again whenever the plugin's code changes, and you can turn it off in Settings → Plugins.</p>
           {error && <ErrorText className="text-destructive-foreground text-xs" text={error} />}
         </DialogPanel>
         <DialogFooter>

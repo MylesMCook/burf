@@ -6,11 +6,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/pairing"
-	"github.com/sean-brydon/berthd/internal/trust"
+	"github.com/cosscom/shipyard/internal/pairing"
+	"github.com/cosscom/shipyard/internal/trust"
 )
 
-// The app's "Add another computer" and "I already use Berth on another
+// The app's "Add another computer" and "I already use Shipyard on another
 // computer": berth invite and berth join, run by the agent like the rest of
 // box management. The join link goes to the CLI on its stdin, never in its
 // arguments, where other users of this computer could read it in ps.
