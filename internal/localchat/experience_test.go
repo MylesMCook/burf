@@ -262,3 +262,48 @@ func TestEffortIsAProviderNameNotAFixedList(t *testing.T) {
 		}
 	}
 }
+
+func TestFullAccessIsExplicitNamedAndReversible(t *testing.T) {
+	m, f, s := newTestChat(t)
+	got, _ := m.Get(s.ID)
+	if got.Options.Permission != "strict" || !strings.Contains(strings.Join(got.Permissions, " "), "full-access") {
+		t.Fatal("full access must be offered, never assumed", got.Options, got.Permissions)
+	}
+	policies := func() (out []map[string]any) {
+		f.mu.Lock()
+		defer f.mu.Unlock()
+		for _, p := range f.packets {
+			if p.Method == "turn/start" {
+				var v map[string]any
+				_ = json.Unmarshal(p.Params, &v)
+				out = append(out, v)
+			}
+		}
+		return out
+	}
+	if err := m.Send(context.Background(), s.ID, "plain"); err != nil {
+		t.Fatal(err)
+	}
+	if v := policies()[0]; v["sandboxPolicy"] != nil || v["approvalPolicy"] != nil {
+		t.Fatal("a message without a choice changed permissions", v)
+	}
+	_ = m.Interrupt(context.Background(), s.ID)
+	if err := m.SendWith(context.Background(), s.ID, "open", TurnOptions{Permission: "full-access"}); err != nil {
+		t.Fatal(err)
+	}
+	v := policies()[1]
+	if v["approvalPolicy"] != "never" || v["sandboxPolicy"].(map[string]any)["type"] != "dangerFullAccess" {
+		t.Fatal(v)
+	}
+	if got, _ = m.Get(s.ID); got.Options.Permission != "full-access" {
+		t.Fatal(got.Options)
+	}
+	_ = m.Interrupt(context.Background(), s.ID)
+	if err := m.SendWith(context.Background(), s.ID, "close", TurnOptions{Permission: "strict"}); err != nil {
+		t.Fatal(err)
+	}
+	v = policies()[2]
+	if v["approvalPolicy"] != "untrusted" || v["sandboxPolicy"].(map[string]any)["type"] != "readOnly" {
+		t.Fatal("returning to strict did not restore the sandbox", v)
+	}
+}

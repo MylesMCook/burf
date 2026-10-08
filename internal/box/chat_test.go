@@ -272,7 +272,7 @@ func TestChatStartingProcessPreventsUpgradeRace(t *testing.T) {
 
 func TestChatUnavailableRuntimeIsExplicit(t *testing.T) {
 	b, h, _ := chatFixture(t)
-	if caps := strings.Join(b.Capabilities(), " "); !strings.Contains(caps, "chat.codex") || !strings.Contains(caps, "chat.options") {
+	if caps := strings.Join(b.Capabilities(), " "); !strings.Contains(caps, "chat.codex") || !strings.Contains(caps, "chat.options") || !strings.Contains(caps, "chat.full-access") {
 		t.Fatal("available chat runtime not advertised", caps)
 	}
 	b.Chats.Close()
@@ -281,7 +281,7 @@ func TestChatUnavailableRuntimeIsExplicit(t *testing.T) {
 		t.Fatalf("unavailable runtime: %d", w.Code)
 	}
 	for _, cap := range b.Capabilities() {
-		if cap == "chat.codex" || cap == "chat.options" {
+		if strings.HasPrefix(cap, "chat.") {
 			t.Fatal("advertised unavailable chat runtime")
 		}
 	}

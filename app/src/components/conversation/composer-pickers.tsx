@@ -22,7 +22,7 @@ import {
 import type { SessionEntry } from "@/hooks/use-agent-counts";
 import type { AgentPreset } from "@/lib/api";
 import type { AgentPick } from "@/lib/composer";
-import { chatPermissions } from "@/lib/local-computer";
+import { BASE_PERMISSIONS, chatPermissions } from "@/lib/local-computer";
 import { sessionAgent, sessionName, sessionPlace } from "@/lib/derive";
 import { promptsFor, usePrompts } from "@/lib/prompts";
 import { useStore } from "@/lib/store";
@@ -97,6 +97,7 @@ export function AgentsPicker({
   onNone,
   onCompare,
   permission,
+  permissions,
   onPermission,
 }: {
   presets: PickerPreset[];
@@ -111,9 +112,10 @@ export function AgentsPicker({
   onCompare?(on: boolean): void;
   // A structured chat's permission mode, where the box takes one.
   permission?: ChatPermission;
+  permissions?: string[];
   onPermission?(p: ChatPermission): void;
 }) {
-  if (single) return <SingleAgentPicker presets={presets} sel={sel} none={none} allowNone={allowNone} onChange={onChange} onNone={onNone} onCompare={onCompare} permission={permission} onPermission={onPermission} />;
+  if (single) return <SingleAgentPicker presets={presets} sel={sel} none={none} allowNone={allowNone} onChange={onChange} onNone={onNone} onCompare={onCompare} permission={permission} permissions={permissions} onPermission={onPermission} />;
   const label = none ? "No agent" : pickLabel(sel, copies, presets);
   const ids = none ? [] : Object.keys(sel);
   // Unticking the last pick leaves it: there is always one agent, unless
@@ -235,7 +237,7 @@ type ChatPermission = keyof typeof chatPermissions;
 export type PickerPreset = AgentPreset & { model_names?: Record<string, string> };
 const permissionLabels = Object.fromEntries(Object.entries(chatPermissions).map(([id, p]) => [id, p.label]));
 
-function SingleAgentPicker({ presets, sel, none, allowNone, onChange, onNone, onCompare, permission, onPermission }: {
+function SingleAgentPicker({ presets, sel, none, allowNone, onChange, onNone, onCompare, permission, permissions, onPermission }: {
   presets: PickerPreset[];
   sel: Chosen;
   none?: boolean;
@@ -244,6 +246,7 @@ function SingleAgentPicker({ presets, sel, none, allowNone, onChange, onNone, on
   onNone?(on: boolean): void;
   onCompare?(on: boolean): void;
   permission?: ChatPermission;
+  permissions?: string[];
   onPermission?(p: ChatPermission): void;
 }) {
   const id = Object.keys(sel)[0] ?? "";
@@ -310,7 +313,7 @@ function SingleAgentPicker({ presets, sel, none, allowNone, onChange, onNone, on
       </Menu>
       {!none && preset?.model_flag && !!preset.models?.length && <AgentOption label="Model" value={choice.models[0] ?? ""} values={preset.models} labels={preset.model_names} onChange={(model) => onChange({ [id]: { ...choice, models: [model] } })} />}
       {!none && preset?.effort_flag && !!preset.efforts?.length && <AgentOption label="Reasoning" value={choice.effort} values={preset.efforts} onChange={(effort) => onChange({ [id]: { ...choice, effort } })} />}
-      {!none && permission && onPermission && <AgentOption label="Permissions" value={permission} values={Object.keys(chatPermissions)} labels={permissionLabels} required onChange={(p) => onPermission(p as ChatPermission)} />}
+      {!none && permission && onPermission && <AgentOption label="Permissions" value={permission} values={permissions ?? BASE_PERMISSIONS} labels={permissionLabels} required onChange={(p) => onPermission(p as ChatPermission)} />}
     </>
   );
 }

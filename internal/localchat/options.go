@@ -27,7 +27,7 @@ func (o TurnOptions) validate() error {
 		return errors.New("invalid reasoning effort")
 	}
 	switch o.Permission {
-	case "", "strict", "read-only", "workspace":
+	case "", "strict", "read-only", "workspace", "full-access":
 	default:
 		return errors.New("invalid permission mode")
 	}
@@ -47,11 +47,20 @@ func (o TurnOptions) apply(p map[string]any, cwd string) {
 		if o.Permission == "strict" {
 			p["approvalPolicy"] = "untrusted"
 		}
+		// Only ever the user's explicit choice for the next message: no sandbox, no questions.
+		if o.Permission == "full-access" {
+			p["approvalPolicy"] = "never"
+			p["sandboxPolicy"] = map[string]any{"type": "dangerFullAccess"}
+		}
 		if o.Permission == "workspace" {
 			p["sandboxPolicy"] = map[string]any{"type": "workspaceWrite", "writableRoots": []string{cwd}, "networkAccess": false, "excludeSlashTmp": true, "excludeTmpdirEnvVar": true}
 		}
 	}
 }
+
+// Permissions are the modes this backend accepts, so a newer client offers an
+// older one nothing it would refuse.
+var Permissions = []string{"strict", "read-only", "workspace", "full-access"}
 
 type Model struct {
 	Model                     string `json:"model"`

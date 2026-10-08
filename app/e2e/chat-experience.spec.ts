@@ -155,3 +155,36 @@ test("a turn the provider refuses keeps the chat, the draft and the previous set
     expect(sends).toBe(2);
   } finally { await agent.close(); }
 });
+
+test("full access is offered only where the backend lists it, warns before it applies and is not remembered", async ({ app }) => {
+  const agent = await fakeAgent();
+  const base = { agent: "codex", mode: "chat", cwd: "C:\\Projects\\shop", state: "idle", started_at: "2026-10-08T12:00:00Z", thread_id: "thread", composer: true, options: { permission: "strict" } as { permission: string }, approvals: [] };
+  const current = { ...base, id: "current", permissions: ["strict", "read-only", "workspace", "full-access"], items: [] as unknown[] };
+  const earlier = { ...base, id: "earlier", started_at: "2026-10-08T11:00:00Z", items: [] as unknown[] };
+  const sent: unknown[] = [];
+  await app.context.route(`${agent.url}/v1/local**`, async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === "/v1/local") return route.fulfill({ json: { supported: true, name: "work-hp", home: base.cwd, agents: [], sessions: [current, earlier] } });
+    if (path.endsWith("/conversations")) return route.fulfill({ json: [] });
+    if (path.endsWith("/models")) return route.fulfill({ json: [] });
+    if (path.endsWith("/messages")) { sent.push(route.request().postDataJSON()); current.options = { permission: "full-access" }; current.items = [{ id: "u", kind: "user", text: "Go" }]; }
+    return route.fulfill({ json: path.includes("/earlier") ? earlier : current });
+  });
+  try {
+    await app.open({ agent }); await app.page.getByTestId("nav-local").click();
+    const pane = app.page.getByTestId("local-chat");
+    await app.page.getByRole("button", { name: /Codex.*idle/ }).last().click();
+    await expect(pane.getByLabel("Chat permissions").getByRole("option")).toHaveText(["Ask every time", "Read only", "Edit workspace"]);
+    await app.page.getByRole("button", { name: /Codex.*idle/ }).first().click();
+    await expect(pane.getByLabel("Chat permissions").getByRole("option")).toHaveText(["Ask every time", "Read only", "Edit workspace", "Full access"]);
+    await pane.getByLabel("Chat permissions").selectOption("full-access");
+    await expect(pane.getByText(/From your next message: Codex runs any command and changes any file/)).toBeVisible();
+    await expect(pane.locator("header").getByText("Ask every time", { exact: true })).toBeVisible();
+    expect(sent).toEqual([]);
+    await pane.getByRole("textbox", { name: "Message Codex" }).fill("Go");
+    await pane.getByRole("button", { name: "Send message" }).click();
+    await expect(pane.locator("header").getByText("Full access", { exact: true })).toBeVisible();
+    expect(sent).toEqual([{ text: "Go", options: { permission: "full-access" } }]);
+    expect(await app.stored("berth.chat.permission")).toBeNull();
+  } finally { await agent.close(); }
+});

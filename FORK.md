@@ -148,10 +148,14 @@ installed box upgrade. `tasks.md` records those separate delivery gates.
   apply from the next message. Permission is one of Ask every time (the
   starting mode: read-only sandbox, untrusted commands ask), Read only
   (sandboxed reads run unasked) or Edit workspace (edits inside the project run
-  unasked). Network stays off and unrestricted access is not offered. The last
-  permission chosen is remembered and offered to the next empty chat, where it
-  takes effect only with that chat's first message; chats with history keep
-  their own. The header shows only what the provider accepted. A submitted
+  unasked). Network stays off in those three. Full access removes the sandbox
+  and all approval prompts for that chat, including network; it is offered only
+  where the backend lists it (`permissions` on the session, `chat.full-access`
+  on a box), must be chosen for each chat, shows a warning before the message
+  that applies it, and is never remembered. Choosing another mode restores the
+  sandbox from the next message. The last of the other permissions chosen is
+  remembered and offered to the next empty chat, where it takes effect only
+  with that chat's first message; chats with history keep their own. The header shows only what the provider accepted. A submitted
   message is visible at once and is replaced by the provider's echo, never
   duplicated.
 - Launch/send failures never automatically retry. A turn the provider answers
