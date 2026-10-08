@@ -100,6 +100,8 @@ var usageSections = []struct {
 	{"Ports and sharing", [][2]string{
 		{"%[1]s ports%[3]s [--json]", "What is listening on the box"},
 		{"%[1]s stats%[3]s [--json]", "Memory, disk, load, and agents running or waiting"},
+		{"%[1]s ps%[3]s [--json]", "Browsers on the box (who started each, CPU, memory, age) and\nwhat each session's processes use"},
+		{"%[1]s ps stop%[3]s ID", "Stop a browser from that list, or end a session (s-NAME)"},
 		{"%[1]s info%[3]s", "The box's name, OS, build, tools and agent presets, as JSON"},
 		{"%[1]s share%[3]s PORT", "Make a port public (Cloudflare quick tunnel)"},
 		{"%[1]s shares%[3]s [--json]", "List public shares"},
@@ -168,7 +170,7 @@ var Queue func(ctx context.Context, session, text string, enter bool, cause erro
 var Commands = map[string]int{
 	"locations": 1, "location": 2, "worktree": 2,
 	"sessions": 1, "session": 2, "task": 2, "agents": 1, "exec": 1, "loop": 1,
-	"services": 1, "info": 1, "stats": 1,
+	"services": 1, "info": 1, "stats": 1, "ps": 1,
 	"ports": 1, "share": 1, "shares": 1, "unshare": 1,
 	"emit": 1, "events": 1,
 	"skills": 1, "preview": 1, "service": 2,
@@ -309,6 +311,8 @@ func Run(ctx context.Context, c *box.Client, args []string, out io.Writer) error
 			return err
 		}
 		return show(out, true, i, func() {})
+	case "ps":
+		return ps(ctx, c, rest, out)
 	case "stats":
 		fs, asJSON := flags(rest)
 		parse(fs, rest)

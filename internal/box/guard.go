@@ -37,6 +37,27 @@ type GuardConfig struct {
 	// StopServices and PauseAgents turn each step off when false.
 	StopServices *bool `json:"stop_services,omitempty"`
 	PauseAgents  *bool `json:"pause_agents,omitempty"`
+	// SessionMemoryGB is a memory ceiling for each session's processes, in
+	// GB (0: none). It applies where sessions run in a systemd scope (Linux
+	// with systemd): near it a session is slowed down and Shipyard says so;
+	// nothing is killed. It holds whether or not the guard is on.
+	SessionMemoryGB int `json:"session_memory_gb,omitempty"`
+}
+
+// SessionMemoryHigh is the per-session ceiling in bytes, 0 for none.
+func (c GuardConfig) SessionMemoryHigh() uint64 {
+	if c.SessionMemoryGB <= 0 {
+		return 0
+	}
+	return uint64(c.SessionMemoryGB) << 30
+}
+
+// SessionMemoryHigh is the saved per-session ceiling in bytes.
+func (g *Guard) SessionMemoryHigh() uint64 {
+	if g == nil {
+		return 0
+	}
+	return g.config().SessionMemoryHigh()
 }
 
 func (c GuardConfig) threshold() float64 {
@@ -54,6 +75,9 @@ func (c GuardConfig) sustain() time.Duration {
 }
 
 func (c GuardConfig) validate() error {
+	if c.SessionMemoryGB < 0 || c.SessionMemoryGB > 4096 {
+		return errors.New("the session memory limit must be between 1 and 4096 GB, or 0 for none")
+	}
 	if c.MemoryPercent != 0 && (c.MemoryPercent < 50 || c.MemoryPercent > 99) {
 		return errors.New("the memory threshold must be between 50 and 99 percent")
 	}
@@ -291,6 +315,9 @@ type GuardStatus struct {
 	Percent   float64       `json:"memory_percent"`
 	OverSince time.Time     `json:"over_since,omitzero"`
 	Actions   []GuardAction `json:"actions"`
+	// SessionScopes says sessions here run in scopes, so a per-session
+	// memory limit takes effect.
+	SessionScopes bool `json:"session_scopes"`
 }
 
 func (b *Box) guardStatus() GuardStatus {
@@ -299,7 +326,8 @@ func (b *Box) guardStatus() GuardStatus {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	acts := append([]GuardAction{}, g.actions...)
-	return GuardStatus{Config: g.config(), Memory: mem, Percent: percent(mem), OverSince: g.overSince, Actions: acts}
+	scopes := b.Sessions != nil && b.Sessions.Scopes != nil && b.Sessions.Scopes.Available(context.Background())
+	return GuardStatus{Config: g.config(), Memory: mem, Percent: percent(mem), OverSince: g.overSince, Actions: acts, SessionScopes: scopes}
 }
 
 func (b *Box) getGuard(w http.ResponseWriter, r *http.Request) error {
@@ -326,9 +354,14 @@ func (b *Box) putGuard(w http.ResponseWriter, r *http.Request) error {
 	if err := b.before(r, "config.change", map[string]any{"guard": req.Config.Enabled}); err != nil {
 		return err
 	}
+	before := b.Guard.config().SessionMemoryHigh()
 	data, _ := json.MarshalIndent(req.Config, "", "  ")
 	if err := statefile.Write(b.Guard.Path, append(data, '\n')); err != nil {
 		return err
+	}
+	// Running sessions take a new per-session ceiling at once.
+	if after := req.Config.SessionMemoryHigh(); after != before && b.Sessions != nil {
+		b.Sessions.ApplyMemoryHigh(r.Context(), after)
 	}
 	b.publish(r, "config.changed", map[string]any{"guard": req.Config.Enabled})
 	writeJSON(w, b.guardStatus())

@@ -11,6 +11,28 @@ again.
 
 ## Unreleased
 
+- **Sessions clean up after themselves.** Ending a session now stops
+  everything it started, such as a repository's Playwright tests and their
+  browsers or a dev server, even ones left running in the background after
+  the agent was killed. On Linux with systemd each new session runs in a
+  scope of its own, which also lets it outlive berthd as before; elsewhere
+  Shipyard finds the session's processes by their tree (and, on Linux, the
+  session's marker). Your own processes and tmux are never touched.
+- **See and stop a box's browsers.** Click a box's memory meter in the
+  status bar to see every Chromium, Chrome and Firefox on it, with who
+  started it (Shipyard's agent browser, an agent-browser session, a
+  session's tests, one left behind, or yours), its CPU, memory and age, and
+  **Stop** for Shipyard's and its sessions'. The sessions using the most
+  memory are below. Settings → Boxes shows the same, and agents see it with
+  `berthd ps` and in `berthd doctor`.
+- **A memory limit per session.** Settings → Boxes can hold each session on
+  a box under a limit, such as 12 GB (Linux with systemd). A session near it
+  is slowed down, never stopped, and its chat and tab say "using 11.8 GB,
+  near its 12 GB limit".
+- **A lighter agent browser.** It closes after 5 idle minutes instead of 10
+  (agent-browser sessions too), keeps to two renderer processes, and caps a
+  page's JavaScript heap at 512 MB, which saves about 35 MB per browser
+  (`BERTH_BROWSER_JS_HEAP_MB` raises it).
 - **A slow or relayed link to a box stays connected and says why.** A box
   reached through a Tailscale relay far away (80 ms, then 2 s) used to flip
   to offline and back: the agent called a box away after one health check

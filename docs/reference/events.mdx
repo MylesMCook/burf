@@ -49,6 +49,7 @@ and dashes.
 | `task.created` | `location`, `name`, `path`, `branch`, `session`, `agent`, `from_session` |
 | `session.started` | `name`, `location`, `path`, `command` |
 | `session.stopped` | `name` |
+| `session.memory` | `name`, `location`, `memory`, `memory_high`, `near_limit`, `text`: a session came near its [memory limit](/concepts/sessions-and-agents#sessions-clean-up-after-themselves) (`near_limit: true`), or went well below it again |
 | `session.renamed` | `name`: its title changed (a rename, or its first prompt named it); never the title or the prompt |
 | `session.sent` | `name`, `from`, `idem_key?`, `turn?`: a prompt was typed in (never the prompt) |
 | `session.queued` | `name`, `turn`: a prompt is held until the agent is idle (`when: "idle"`) |
@@ -103,6 +104,7 @@ Shipyard reads the terminal and sends these itself with `origin: "screen"` and
 | `browser.shot` | `location`, `name`, `path`, `file`, `url` |
 | `notify` | `title`, `body`, `flow`, `path`, `location`: a flow's or the guard's notification |
 | `guard.acted` | `action`, `location`, `name`, `path`, `services`, `sessions`, `memory_percent`, `reason` |
+| `process.stopped` | `id`, `text`: a browser (or a session) was stopped from the [box's browsers](/guides/agent-browser#every-browser-on-a-box) |
 | `config.changed` | what changed: `location`, `flows`, `env` or `guard`; with `location`, `trust` (`trusted` or `untrusted`) when the repository's config was trusted or no longer is |
 | `hooks.changed` | |
 | `kit.installed` | `location`, `kit`, `version`, `source`, `warnings` |
@@ -183,6 +185,7 @@ exits non-zero refuses it with what it printed. Gates in a laptop's
 | `before:browser.open` | `location`, `name`, `path`, `url`: an agent browser opening a page |
 | `before:browser.eval`, `before:browser.watch` | `location`, `name`, `path`: running JavaScript in it, watching it live |
 | `before:browser.allow` | `origin`: letting agents' browsers load a public origin |
+| `before:process.stop` | `id`: stopping a browser or session from the box's browsers list |
 | `before:kit.install` | `location`, `kit`, `source` |
 | `before:kit.remove` | `location` |
 | `before:team.setup` | `team`, `org`, `commit`: a team setup about to start on the box |

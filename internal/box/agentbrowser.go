@@ -39,8 +39,8 @@ import (
 const AgentBrowserIdleEnv = "AGENT_BROWSER_IDLE_TIMEOUT_MS"
 
 // AgentBrowserIdleDefault is what berth sets it to unless the person, the
-// box or the project does: ten idle minutes, as berth's own browser.
-const AgentBrowserIdleDefault = "600000"
+// box or the project does: five idle minutes, as berth's own browser.
+const AgentBrowserIdleDefault = "300000"
 
 // withAgentBrowserIdle adds the idle timeout to a session's environment,
 // unless the environment already sets it (the box's env.json or the
@@ -114,6 +114,7 @@ func (a *AgentBrowsers) pokes() chan struct{} {
 func NewAgentBrowsers(s *Sessions) *AgentBrowsers {
 	a := &AgentBrowsers{Socket: tmuxSocketPath(), Live: s.live}
 	s.Ended = a.Poke
+	s.Reap = func(ctx context.Context, session string) { a.Reap(ctx, session) }
 	return a
 }
 

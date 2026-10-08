@@ -1,3 +1,4 @@
+import { BoxProcessesCard } from "@/components/box-processes";
 import { ArrowUpCircleIcon, BotIcon, CopyIcon, EllipsisIcon, PlusIcon, RefreshCwIcon, ShieldIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
 
@@ -190,6 +191,7 @@ function BoxRow({ box }: { box: BoxStatus }) {
       </div>
       {/* The agent's browser can't start here (Chromium's sandbox), or runs without it. */}
       {online && <BrowserSandboxCard box={box.name} full className="mt-3" />}
+      {online && <BoxProcessesCard box={box.name} className="mt-3" />}
       {online && <BoxAgents box={box.name} />}
       {online && <BoxOnePasswordNote box={box.name} />}
       {update && update.state !== "queued" && <CommandLog className="mt-3" lines={update.lines ?? []} done={update.state === "done"} error={update.error} />}

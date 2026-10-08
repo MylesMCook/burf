@@ -7,7 +7,7 @@ description: Use your worktree's own page in a headless browser on the box — o
 
 Each worktree has a headless Chromium on the box that opens exactly the URL
 the user sees (`$BERTH_URL`, e.g. `http://checkout.shop.devl.localhost:1377`).
-It starts on first use, closes after 10 idle minutes, and can only reach this
+It starts on first use, closes after 5 idle minutes, and can only reach this
 worktree's own pages: other worktrees, databases, berthd and the internet are
 refused. You need no flags: inside a berth session, commands act on your
 worktree.
@@ -86,3 +86,6 @@ berthd browser open /cart --size 390x844 # set it and open in one step
   terminal on the box. Don't run sudo, pass `--no-sandbox`, or start a
   browser of your own to get around it.
 - The user may be watching your browser live in their Shipyard app.
+- `berthd ps` lists every browser on the box, who started it and what it
+  costs. If your tests left one running (a Playwright run you stopped, say),
+  stop it with `berthd ps stop ID`; never stop one it says isn't Shipyard's.

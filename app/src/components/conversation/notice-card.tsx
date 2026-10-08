@@ -37,6 +37,7 @@ const TITLES: Record<NoticeKind, (who: string) => string> = {
   interrupted: () => "Interrupted",
   stop_failure: () => "The turn ended with an error",
   exited: (who) => `${who} exited unexpectedly`,
+  memory: (who) => `${who} is near its memory limit`,
 };
 
 const ICONS: Record<NoticeKind, typeof CircleAlertIcon> = {
@@ -49,6 +50,7 @@ const ICONS: Record<NoticeKind, typeof CircleAlertIcon> = {
   interrupted: SquareIcon,
   stop_failure: TriangleAlertIcon,
   exited: OctagonXIcon,
+  memory: GaugeIcon,
 };
 
 // The words under the title: the agent's own, without "API Error:".

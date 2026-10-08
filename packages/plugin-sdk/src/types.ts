@@ -153,6 +153,13 @@ export interface Session {
   // true, from boxes with the "service.terminal" capability): the service's
   // name. It never runs an agent, and closing its tab never stops it.
   service?: string;
+  // The systemd scope its processes run in, on boxes where sessions get
+  // one (Linux with systemd), and what they use: memory (bytes, page cache
+  // included), its ceiling if the box sets one (Settings → Boxes), processor
+  // seconds, and near_limit from 90% of the ceiling. Near it, the box slows
+  // the session down; nothing is stopped.
+  scope?: string;
+  usage?: { memory: number; memory_high?: number; cpu_s: number; cpu_percent?: number; processes?: number; near_limit?: boolean; throttled?: number; scoped?: boolean };
 }
 
 // A waiting agent's request, from its hooks rather than its screen: the

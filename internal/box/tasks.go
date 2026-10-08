@@ -366,6 +366,9 @@ func gateOrigin(r *http.Request) string {
 func (b *Box) enrich(ctx context.Context, all []Session) []Session {
 	for i := range all {
 		s := &all[i]
+		if u, ok := b.Sessions.scopeUsage(ctx, *s); ok && !s.Exited {
+			s.Usage = &u
+		}
 		s.Agent = agentFor(*s)
 		if s.Agent == "" {
 			continue
