@@ -29,3 +29,9 @@ test("one command shows at most four", () => {
   const lines = ["a", "b", "c", "d", "e"].map((x, i) => `Artifact ${String(i).repeat(10)} v1 · table · ${x}`);
   assert.equal(chatArtifacts(tool(["for f in *.csv; do berthd artifact add $f; done", ...lines].join("\n"))).length, 4);
 });
+
+test("Burf's own tool answers with the same line (seen from a real Codex turn)", () => {
+  const [a] = chatArtifacts(tool("mcpToolCall · berth_artifact_add\nArtifact 7d395167b9 v1 · notes · Search speed-up plan\nShown in your chat and on cal's board. Rewrite plan.md to update it live; berthd artifact add again only to retitle or add --note."));
+  assert.equal(a.local, "7d395167b9");
+  assert.equal(a.text, "Search speed-up plan");
+});

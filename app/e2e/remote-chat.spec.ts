@@ -16,7 +16,7 @@ async function fixture(context: BrowserContext, supported = true, options = fals
   const agent = await fakeAgent();
   const base = `/v1/boxes/${BOX}/api/`;
   const calls: { method: string; path: string; body: unknown }[] = [];
-  const chat = { id: "remote-1", agent: "codex", mode: "chat", location: "shop/fix", cwd: DIR, state: "idle", started_at: "2026-10-08T12:00:00Z", thread_id: "remote-provider-thread", turn_id: "", items: [] as { id: string; kind: string; text: string }[], approvals: [] as { id: string; kind: string; detail: string }[] };
+  const chat = { id: "remote-1", agent: "codex", mode: "chat", location: "shop/fix", cwd: DIR, state: "idle", started_at: "2026-10-08T12:00:00Z", thread_id: "remote-provider-thread", turn_id: "", items: [] as { id: string; kind: string; text: string }[], approvals: [] as { id: string; kind: string; detail: string }[], reports: undefined as Record<string, object[]> | undefined };
   // art: what the box keeps for the worktree (berthd artifact add), with each one's content. Unset, the box keeps none.
   const control = { listed: false, lostSend: false, lostStart: false, offline: false, startDelay: 0, art: undefined as { id: string; title: string; kind: string; format: string; body: string }[] | undefined, title: "" };
   await context.route(`${agent.url}${base}**`, async (route) => {
@@ -494,5 +494,59 @@ test("a Codex chat is headed by the name its worktree was given", async ({ app }
     // The folder is still there to read, on hover.
     await expect(header.getByText("Fix checkout totals", { exact: true })).toHaveAttribute("title", DIR);
     await expect(header).not.toContainText(DIR);
+  } finally { await f.agent.close(); }
+});
+
+test("Burf's own tool asks in the chat before it acts, once or not at all", async ({ app }) => {
+  const f = await fixture(app.context);
+  f.control.listed = true;
+  f.chat.state = "waiting"; f.chat.turn_id = "turn-1";
+  f.chat.items = [{ id: "u", kind: "user", text: "Deploy it" }];
+  f.chat.approvals = [{ id: "tool-1", kind: "tool", detail: "berth_exec\nlocation: shop/fix\n$ make deploy" }];
+  try {
+    await app.open({ agent: f.agent });
+    await openWorktree(app);
+    await app.page.getByRole("region", { name: "Codex chats" }).getByRole("button", { name: /Codex chat/ }).click();
+    const ask = app.page.getByRole("region", { name: "Approval required" });
+    // The question is in the person's words, with exactly what would run.
+    await expect(ask.getByRole("heading", { name: "Run this command outside the sandbox?" })).toBeVisible();
+    await expect(ask.locator("pre")).toHaveText("location: shop/fix\n$ make deploy");
+    await expect(ask).toContainText("outside Codex's sandbox");
+    // No standing yes for a tool.
+    await expect(ask.getByRole("button", { name: "Always in this chat" })).toHaveCount(0);
+    await expect(ask.getByRole("button", { name: "Allow always" })).toHaveCount(0);
+    await expect(ask.getByRole("button", { name: "Deny", exact: true })).toBeVisible();
+    await ask.getByRole("button", { name: "Allow once", exact: true }).click();
+    expect(f.calls.filter((c) => c.path.endsWith("/approvals"))).toEqual([{ method: "POST", path: "chats/remote-1/approvals", body: { id: "tool-1", decision: "accept" } }]);
+  } finally { await f.agent.close(); }
+});
+
+test("what became of work the chat started arrives as Burf's card, not as the person's message", async ({ app }) => {
+  const f = await fixture(app.context);
+  f.control.listed = true;
+  const text = '<berth-notification>\nThis comes from Burf, not from the user.\n<report kind="task" session="shop-api-claude" worktree="shop/api" status="finished"><answer>The checkout test passes now.</answer></report>\n</berth-notification>';
+  f.chat.items = [
+    { id: "u", kind: "user", text: "Have another agent fix the checkout test" },
+    { id: "a", kind: "assistant", text: "Started. I will hear back." },
+    { id: "r1", kind: "report", text },
+    // A report this app cannot read still shows as Burf's, in plain words.
+    { id: "r2", kind: "report", text: "A run ended." },
+  ];
+  f.chat.reports = { r1: [{ kind: "task", session: "shop-api-claude", worktree: "shop/api", status: "finished", answer: "The checkout test passes now." }] };
+  try {
+    await app.open({ agent: f.agent });
+    await openWorktree(app);
+    await app.page.getByRole("region", { name: "Codex chats" }).getByRole("button", { name: /Codex chat/ }).click();
+    const chat = app.page.getByTestId("remote-chat");
+    const fromBurf = chat.getByRole("region", { name: "From Burf" });
+    await expect(fromBurf).toHaveCount(2);
+    const card = fromBurf.first().getByRole("group", { name: "Burf: api finished" });
+    await expect(card).toBeVisible();
+    await expect(fromBurf.first()).not.toContainText("berth-notification");
+    await expect(fromBurf.nth(1)).toContainText("A run ended.");
+    // It is not shown as something the person said.
+    await expect(chat.getByRole("article", { name: "You", exact: true })).toHaveCount(1);
+    await expect(chat.getByRole("article", { name: "Codex", exact: true })).toHaveCount(1);
+    await app.page.screenshot({ path: test.info().outputPath("chat-report.png") });
   } finally { await f.agent.close(); }
 });

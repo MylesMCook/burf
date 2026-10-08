@@ -35,7 +35,8 @@ type browserFixture struct {
 	started  chan json.RawMessage
 }
 
-func newBrowserFixture(t *testing.T) *browserFixture {
+// extra mounts routes of a test's own beside the chat routes.
+func newBrowserFixture(t *testing.T, extra ...func(b *Box, add func(string, func(http.ResponseWriter, *http.Request) error))) *browserFixture {
 	t.Helper()
 	bin := t.TempDir()
 	if err := os.WriteFile(filepath.Join(bin, "codex"), []byte("#!/bin/sh\n"), 0700); err != nil {
@@ -86,7 +87,7 @@ func newBrowserFixture(t *testing.T) *browserFixture {
 	t.Cleanup(b.CloseChats)
 	mux := http.NewServeMux()
 	ws := &wire.Server{}
-	b.mountChats(func(pattern string, h func(http.ResponseWriter, *http.Request) error) {
+	add := func(pattern string, h func(http.ResponseWriter, *http.Request) error) {
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if err := h(w, r); err != nil {
 				writeErr(w, err)
@@ -94,7 +95,11 @@ func newBrowserFixture(t *testing.T) *browserFixture {
 		})
 		mux.Handle(pattern, handler)
 		ws.Handle(pattern, handler)
-	})
+	}
+	b.mountChats(add)
+	for _, mount := range extra {
+		mount(b, add)
+	}
 	ln, err := net.Listen("unix", b.Socket)
 	if err != nil {
 		t.Fatal(err)
@@ -313,8 +318,9 @@ func TestBrowserToolsNeedTheBoxSocketAndPlainChatsAreUnchanged(t *testing.T) {
 	if w.Code != 201 || strings.Contains(w.Body.String(), `"browser"`) {
 		t.Fatalf("plain chat: %d %s", w.Code, w.Body)
 	}
-	if params := <-f.started; strings.Contains(string(params), "config") {
-		t.Fatalf("a plain chat's thread changed: %s", params)
+	// Its thread names no bridge; Burf's own tools are every chat's (chattools.go).
+	if params := <-f.started; strings.Contains(string(params), localchat.BrowserServer) {
+		t.Fatalf("a plain chat's thread was given a browser: %s", params)
 	}
 	var plain Chat
 	_ = json.Unmarshal(w.Body.Bytes(), &plain)

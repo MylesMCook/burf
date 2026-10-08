@@ -42,9 +42,21 @@ var (
 // berthReports reads a <berth-notification> into one report item per
 // piece of work, and says whether s was one.
 func berthReports(c *conv, s string) bool {
-	if !strings.HasPrefix(s, "<berth-notification>") {
-		return false
+	reports, ok := Reports(s)
+	for i := range reports {
+		c.add(Item{Kind: "report", ID: c.id(), Report: &reports[i]})
 	}
+	return ok
+}
+
+// Reports reads a <berth-notification> into one report per piece of work,
+// and says whether s was one. A structured chat shows the same cards from
+// the message Burf sent it (box/chattools.go).
+func Reports(s string) ([]Report, bool) {
+	if !strings.HasPrefix(s, "<berth-notification>") {
+		return nil, false
+	}
+	var out []Report
 	for _, m := range reportRe.FindAllStringSubmatch(s, -1) {
 		r := Report{}
 		for _, a := range attrRe.FindAllStringSubmatch(m[1], -1) {
@@ -81,9 +93,9 @@ func berthReports(c *conv, s string) bool {
 		r.Summary = clip(strings.TrimSpace(tagText(body, "summary")), 400)
 		r.Answer = clip(strings.TrimSpace(tagText(body, "answer")), 2000)
 		r.Needs = clip(strings.TrimSpace(tagText(body, "needs")), 600)
-		c.add(Item{Kind: "report", ID: c.id(), Report: &r})
+		out = append(out, r)
 	}
-	return true
+	return out, true
 }
 
 // tagText is what <tag>…</tag> holds in s, without the zero-width space

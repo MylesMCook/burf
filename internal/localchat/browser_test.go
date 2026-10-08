@@ -17,6 +17,15 @@ var snapshotTool = BrowserTool{Name: "browser_snapshot", Description: "Read the 
 // thread was started and opens turn-1 for each message.
 func newBrowserChat(t *testing.T, tools ...BrowserTool) (*Manager, *fakeServer, Session, error) {
 	t.Helper()
+	return newChatWith(t, LaunchOptions{Browser: &Browser{Tools: tools, Server: func(chat string) (string, []string) {
+		return "/synthetic/burfd", []string{"browser-mcp", "--chat", chat}
+	}}})
+}
+
+// newChatWith starts a chat with the given options on the synthetic provider.
+// setup runs on the manager before the chat starts.
+func newChatWith(t *testing.T, options LaunchOptions, setup ...func(*Manager)) (*Manager, *fakeServer, Session, error) {
+	t.Helper()
 	f := &fakeServer{}
 	m := New("synthetic.exe", func(LaunchOptions) (Process, error) {
 		client, server := net.Pipe()
@@ -36,6 +45,10 @@ func newBrowserChat(t *testing.T, tools ...BrowserTool) (*Manager, *fakeServer, 
 				case "thread/start":
 					f.send(map[string]any{"id": p.ID, "result": map[string]any{"thread": map[string]string{"id": "owned-thread"}}})
 				case "turn/start":
+					if f.onTurn != nil {
+						f.onTurn(p)
+						continue
+					}
 					f.event("turn/started", map[string]any{"threadId": "owned-thread", "turn": map[string]string{"id": "turn-1"}})
 					f.send(map[string]any{"id": p.ID, "result": map[string]any{"turn": map[string]string{"id": "turn-1"}}})
 				}
@@ -44,10 +57,11 @@ func newBrowserChat(t *testing.T, tools ...BrowserTool) (*Manager, *fakeServer, 
 		return client, nil
 	})
 	t.Cleanup(m.Close)
-	browser := &Browser{Tools: tools, Server: func(chat string) (string, []string) {
-		return "/synthetic/burfd", []string{"browser-mcp", "--chat", chat}
-	}}
-	s, err := m.StartWith(context.Background(), LaunchOptions{Program: "synthetic.exe", CWD: t.TempDir(), Browser: browser})
+	for _, f := range setup {
+		f(m)
+	}
+	options.Program, options.CWD = "synthetic.exe", t.TempDir()
+	s, err := m.StartWith(context.Background(), options)
 	return m, f, s, err
 }
 

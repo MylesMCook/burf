@@ -137,8 +137,11 @@ func (b *Box) Capabilities() []string {
 		// chat.browser: POST /v1/chats takes the client's browser tools, and
 		// the chat offers their calls for that browser to answer
 		// (chatbrowser.go).
+		// chat.tools: a chat has Burf's own tools, asks its person before
+		// one acts (an approval of kind "tool"), and takes reports of the
+		// work it started as items of kind "report" (chattools.go).
 		if b.Socket != "" {
-			caps = append(caps, "chat.browser")
+			caps = append(caps, "chat.browser", "chat.tools")
 		}
 	}
 	if b.Turns != nil {

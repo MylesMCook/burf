@@ -3,11 +3,13 @@ import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "r
 import { WorktreeArtChip } from "@/components/art/board-buttons";
 import { ArtifactCard } from "@/components/conversation/artifacts";
 import { Markdown } from "@/components/conversation/markdown";
+import { ReportCard } from "@/components/conversation/report-card";
 import { Button } from "@/components/ui/button";
 import { Tip } from "@/components/tip";
 import type { Client } from "@/lib/api";
 import { loadArtifacts, useArt, useHasArtifacts } from "@/lib/art/model";
 import { chatArtifacts } from "@/lib/chat-artifacts";
+import { toolAsk } from "@/lib/chat-tools";
 import { errorMessage } from "@/lib/format";
 import { PaneContext } from "@/lib/pane-context";
 import { refFor } from "@/lib/workspaces";
@@ -139,19 +141,20 @@ export function StructuredChat({ transport, session, onChange, testId = "local-c
       <div className="mx-auto w-full max-w-(--berth-chat-w) space-y-5 text-sm leading-relaxed text-foreground">
         {chat?.truncated && <p className="text-xs text-muted-foreground">Earlier output is no longer in this live view.</p>}
         {chat?.items.length === 0 && !submitted && <h3 className="py-8 text-center text-lg font-medium">{running ? "Codex is working…" : chat.state === "starting" ? "Starting Codex…" : "New chat"}</h3>}
-        {groups.map((group) => group[0].kind === "tool" ? <div key={group[0].id} className="min-w-0"><details className="min-w-0 text-xs"><summary className="cursor-pointer text-muted-foreground">Tool activity · {group.length}{group.some((i) => i.status === "inProgress") ? " · working" : ""}</summary>{group.map((item) => <pre key={item.id} className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-words border-l pl-3">{item.text}</pre>)}</details>{group.flatMap((item) => made.get(item.id) ?? []).map((artifact) => <div key={artifact.id} className="mt-2 flex text-sm"><ArtifactCard it={artifact} /></div>)}</div> : <article key={group[0].id} className="min-w-0" aria-label={group[0].kind === "user" ? "You" : "Codex"}><h3 className="mb-2 text-xs font-medium text-muted-foreground">{group[0].kind === "user" ? "You" : "Codex"}</h3><Markdown text={group[0].text} /></article>)}
+        {groups.map((group) => group[0].kind === "tool" ? <div key={group[0].id} className="min-w-0"><details className="min-w-0 text-xs"><summary className="cursor-pointer text-muted-foreground">Tool activity · {group.length}{group.some((i) => i.status === "inProgress") ? " · working" : ""}</summary>{group.map((item) => <pre key={item.id} className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-words border-l pl-3">{item.text}</pre>)}</details>{group.flatMap((item) => made.get(item.id) ?? []).map((artifact) => <div key={artifact.id} className="mt-2 flex text-sm"><ArtifactCard it={artifact} /></div>)}</div> : group[0].kind === "report" ? <section key={group[0].id} aria-label="From Burf" className="flex min-w-0 flex-col gap-2"><h3 className="text-xs font-medium text-muted-foreground">Burf · work this chat started</h3>{chat?.reports?.[group[0].id]?.length ? chat.reports[group[0].id].map((report, index) => <ReportCard key={index} it={{ kind: "report", id: `${group[0].id}:${index}`, report }} />) : <p className="whitespace-pre-wrap break-words text-xs text-muted-foreground">{group[0].text}</p>}</section> : <article key={group[0].id} className="min-w-0" aria-label={group[0].kind === "user" ? "You" : "Codex"}><h3 className="mb-2 text-xs font-medium text-muted-foreground">{group[0].kind === "user" ? "You" : "Codex"}</h3><Markdown text={group[0].text} /></article>)}
         {submitted && !chat?.items.some((item) => item.kind === "user" && !submittedItems.current.has(item.id)) && <article aria-label="Sending message"><h3 className="mb-2 text-xs text-muted-foreground">You · sending</h3><Markdown text={submitted} /></article>}
         {!!chat?.approvals.length && <p className="text-xs font-medium text-warning">{chat.approvals.length} pending {chat.approvals.length === 1 ? "approval" : "approvals"}</p>}
-        {chat?.approvals.map((approval, index) => <section key={approval.id} aria-label="Approval required" className="border-l-2 border-warning pl-3">
-          <details open={index === 0}><summary className="cursor-pointer truncate text-xs font-medium">{approval.kind === "files" ? "File changes" : approval.detail.split("\n")[0]}</summary>
-          <h3 className="text-sm font-medium">{approval.kind === "files" ? "Allow file changes?" : "Allow this command?"}</h3>
+        {chat?.approvals.map((approval, index) => { const ask = approval.kind === "tool" ? toolAsk(approval.detail) : undefined; return <section key={approval.id} aria-label="Approval required" className="border-l-2 border-warning pl-3">
+          <details open={index === 0}><summary className="cursor-pointer truncate text-xs font-medium">{ask ? `Burf · ${ask.tool}` : approval.kind === "files" ? "File changes" : approval.detail.split("\n")[0]}</summary>
+          <h3 className="text-sm font-medium">{ask ? ask.question : approval.kind === "files" ? "Allow file changes?" : approval.kind === "browser" ? "Allow this in your browser?" : "Allow this command?"}</h3>
           {approval.reason && <p className="mt-2 text-sm">{approval.reason}</p>}
-          <pre className="my-3 max-h-80 overflow-auto whitespace-pre-wrap break-words text-xs">{approval.detail}</pre>
+          {(!ask || ask.what) && <pre className="my-3 max-h-80 overflow-auto whitespace-pre-wrap break-words text-xs">{ask ? ask.what : approval.detail}</pre>}
+          {ask && <p className="mb-2 text-xs text-muted-foreground">Codex asked Burf to do this. It runs on the box, outside Codex's sandbox.</p>}
           {approval.execpolicy?.length ? <p className="mb-2 break-words text-xs text-muted-foreground">Allow always saves this command prefix to the Codex account's rules, including other chats and projects: <code>{JSON.stringify(approval.execpolicy)}</code></p> : null}
           <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={busy || offline} onClick={() => void mutate(() => transport.approve(approval.id, "decline"))}>Deny</Button><Button size="sm" disabled={busy || offline} onClick={() => void mutate(() => transport.approve(approval.id, "accept"))}>Allow once</Button>{approval.session_allowed && <Button size="sm" variant="outline" disabled={busy || offline} onClick={() => void mutate(() => transport.approve(approval.id, "acceptForSession"))}>Always in this chat</Button>}{!!approval.execpolicy?.length && <Button size="sm" variant="outline" disabled={busy || offline} onClick={() => void mutate(() => transport.approve(approval.id, "acceptAlways"))}>Allow always</Button>}</div>
           {approval.session_allowed && <p className="mt-2 text-xs text-muted-foreground">Chat-only approval applies to {approval.kind === "files" ? "these files" : "matching commands in Codex's approval cache"}, until this chat stops.</p>}
           </details>
-        </section>)}
+        </section>; })}
       </div>
     </div>
     <form className="shrink-0 px-4 pb-4 pt-2 sm:px-6" onSubmit={(event) => {

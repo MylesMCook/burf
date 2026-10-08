@@ -199,6 +199,70 @@ failed with the same code. Not verified: an installed client, the `burf
 browser` command against a real agent, and Firefox. The app has no pairing
 screen yet.
 
+### Chat Tools
+
+A box that advertises `chat.tools` gives every structured chat Burf's own tools.
+Codex's sandbox refuses the box's socket in every mode (checked with `codex
+sandbox` on 0.162.0), so nothing a chat's agent runs as a command can add an
+artifact, start a task or hear back from one.
+
+- Each chat's thread is started with one stdio MCP server named `berth`: `burfd
+  mcp --socket PATH --chat ID`, in that thread's start configuration only. It is
+  the name the account's own Burf server has, so on this thread it takes that
+  one's place. The account's Codex configuration is not edited and the box adds
+  no listener.
+- It is the ordinary tool server (`internal/mcpserver`) with the chat as its
+  caller (`chat:<id>`), plus `berth_artifact_add`: show a file from inside the
+  chat's folder as an artifact. The answer leads with the line the chat view
+  already reads, so the card appears. The tool opens the file beneath the
+  chat's folder (`os.Root`), so a link leading out of the folder is not
+  followed whenever it was put there, and it does not wait on a pipe. It gives
+  the box the content and no path: the box would watch a path and read it again
+  later. A new version is another call with the artifact's `id`.
+- A tool that acts outside the sandbox (`berth_exec`, `berth_task_new`,
+  `berth_send`, `berth_run_start`, `berth_run_cancel`, `berth_attempts`) first
+  asks the chat's person: `POST /v1/chats/{id}/tools/approve` (`tool`,
+  `detail`), box socket only, held until answered. It shows as an approval of
+  kind `tool` whose detail is the tool's name, then what it would do. It is
+  allowed once or denied; there is no standing yes. A tool can ask only in a
+  turn the provider has opened. A turn started in full access is not asked; the
+  turn's own permission decides, not the last one accepted. The person is shown
+  everything that would run or nothing runs: every argument is shown as the tool
+  itself reads it, nested parameters as the JSON sent on. A call is refused
+  before anyone is asked when its detail is over 6 KiB, when it holds a run of
+  more than 64 blank characters, or when a name or string at any depth holds a
+  character that would not read as written: anything that is not a letter,
+  mark, number, punctuation, symbol or space, and anything Unicode draws as
+  nothing by default (joiners, variation selectors, fillers). Look-alike
+  letters from another alphabet are not caught, and a command that runs a
+  script shows the command, not the script. An unanswered question refuses the tool after
+  290 seconds. A turn that ends or a chat that stops withdraws it.
+- Work the chat starts reports back to the chat. The notifier treats a live
+  chat as a parent, waits for it to be idle and sends the report as a turn. The
+  item has kind `report`, and `GET /v1/chats/{id}` adds `reports`, the work each
+  one tells of, so the view draws the same card a terminal chat does. One
+  notification holds at most 48 KiB of reports, oldest first; the rest follow.
+  A run's title and error are trimmed like its other parts, and a notification
+  still too long for a chat is replaced by one line saying so, so a chat is
+  never given up on over a long report.
+- The artifact watch (every artifact, not only a chat's) opens a source that
+  is inside its worktree beneath the worktree (`os.Root`): a link leading out,
+  in the file's place or a folder's above it, is not followed. A source that
+  was registered from outside its worktree is read only as the file itself,
+  never a link in its place. Neither waits on a pipe.
+- The provider approves these tools (`default_tools_approval_mode = "approve"`)
+  because the chat itself asks first.
+
+Acceptance is in `internal/localchat/tools_test.go`,
+`internal/box/chattools_test.go` and `internal/mcpserver/chat_test.go`, with
+synthetic peers, and `app/e2e/remote-chat.spec.ts` for the view. One real turn
+ran in an isolated harness: installed, signed-in `codex-cli 0.162.0`, strict
+permission, an account that already names a `berth` server. Codex called
+`berth_artifact_add`, no approval was asked, the artifact was kept as Codex's
+and the chat item carried its line. Not verified with a real provider: a tool
+that asks, a report arriving, an installed daemon. Windows-local chats have no
+box socket and so no tools.
+
 ### Structured Local Codex
 
 - New Codex chats launch an owned `codex app-server --listen stdio://` process,

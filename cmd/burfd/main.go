@@ -68,6 +68,9 @@ const usage = `burfd — the Burf daemon for a development box
                                           (--check: only say whether it can read now)
   burfd mcp                              A stdio MCP server of berth's tools for agents on this box
                                           (integrations install adds it to Claude, Codex and Gemini)
+  burfd mcp --socket PATH --chat ID      The same server as one structured chat's provider starts it:
+                                          the chat is told what became of the work it starts, can show
+                                          a file as an artifact, and its person is asked before a tool acts
   burfd browser-mcp --socket PATH --chat ID
                                           The stdio MCP server one structured chat's provider starts to
                                           reach the browser of the client that started that chat
@@ -144,6 +147,21 @@ func run(args []string) error {
 		c := box.NewClient(box.NewLocal(*socket))
 		c.Origin = "mcp"
 		return browsermcp.Serve(context.Background(), c, *chat, os.Stdin, os.Stdout)
+	}
+	// A chat's own tool server, started the same way.
+	if args[0] == "mcp" && len(args) > 1 {
+		fs := flag.NewFlagSet("mcp", flag.ContinueOnError)
+		socket := fs.String("socket", "", "the box's local API socket")
+		chat := fs.String("chat", "", "the chat these tools work for")
+		if err := fs.Parse(args[1:]); err != nil {
+			return err
+		}
+		if *socket == "" || *chat == "" || fs.NArg() != 0 {
+			return errors.New("usage: burfd mcp --socket PATH --chat ID")
+		}
+		c := box.NewClient(box.NewLocal(*socket))
+		c.Origin = "mcp"
+		return mcpserver.ServeChat(context.Background(), c, *chat, os.Stdin, os.Stdout)
 	}
 	home, err := statefile.Home()
 	if err != nil {

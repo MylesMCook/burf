@@ -105,16 +105,16 @@ func (b *Browser) validate() error {
 	return nil
 }
 
-// threadConfig is the per-thread provider configuration that offers the tools.
-// They are approved at the provider because the browser itself is the reviewer:
-// it asks the user per site before acting.
-func (b *Browser) threadConfig(chat string) map[string]any {
+// serverConfig is the provider's entry for the bridge, on this chat's thread
+// only. Its tools are approved at the provider because the browser itself is
+// the reviewer: it asks the user per site before acting.
+func (b *Browser) serverConfig(chat string) map[string]any {
 	command, args := b.Server(chat)
-	return map[string]any{"mcp_servers": map[string]any{BrowserServer: map[string]any{
+	return map[string]any{
 		"command": command, "args": args,
 		"default_tools_approval_mode": "approve",
 		"tool_timeout_sec":            browserToolTimeout,
-	}}}
+	}
 }
 
 func (r *BrowserResult) validate() error {

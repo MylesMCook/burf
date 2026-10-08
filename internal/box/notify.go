@@ -639,6 +639,9 @@ func (n *Notifier) deliver(ctx context.Context, h notifyHost, p string, live map
 	if !h.ready(p) {
 		return 0 // its turn ending kicks the next look
 	}
+	// As many as one message holds, oldest first; the rest wait their turn
+	// instead of failing the delivery over and over until the parent is dropped.
+	reps = fitReports(reps, dropped)
 	text := NotificationText(reps, dropped)
 	err := h.deliver(ctx, p, text)
 	n.mu.Lock()
@@ -676,7 +679,23 @@ func (n *Notifier) deliver(ctx context.Context, h notifyHost, p string, live map
 	delete(n.st.Failures, p)
 	n.st.Sent[p] = append(n.st.Sent[p], now)
 	n.dirty = true
+	if len(left) > 0 {
+		return notifyMinGap
+	}
 	return 0
+}
+
+// maxNotificationText is the most one notification says: under what a
+// structured chat takes as a message (64 KiB), with room to spare.
+const maxNotificationText = 48 << 10
+
+// fitReports is the reports, oldest first, that one notification holds. One
+// always goes, however long: a report's own parts are trimmed where it is made.
+func fitReports(reps []Report, dropped int) []Report {
+	for len(reps) > 1 && len(NotificationText(reps, dropped)) > maxNotificationText {
+		reps = reps[:len(reps)-1]
+	}
+	return reps
 }
 
 // checkRun looks at a run: a gate opened, or the run ended.
@@ -834,12 +853,22 @@ func askText(a Ask) string {
 // named itself (CallerHeader) on the box's own socket and runs an agent.
 func (b *Box) watchCaller(r *http.Request, w Watch) {
 	caller := strings.TrimSpace(r.Header.Get(CallerHeader))
-	if caller == "" || b.Reports == nil || !wire.IsLocal(r.Context()) || !sessionName.MatchString(caller) {
+	if caller == "" || b.Reports == nil || !wire.IsLocal(r.Context()) {
 		return
 	}
-	sess, err := b.Sessions.Get(r.Context(), caller)
-	if err != nil || sess.Exited || agentFor(sess) == "" {
-		return
+	// A structured chat's own tools name the chat (chattools.go).
+	if chat, ok := b.chatOf(caller); ok {
+		if chat.State == "exited" {
+			return
+		}
+	} else {
+		if !sessionName.MatchString(caller) {
+			return
+		}
+		sess, err := b.Sessions.Get(r.Context(), caller)
+		if err != nil || sess.Exited || agentFor(sess) == "" {
+			return
+		}
 	}
 	w.Parent = caller
 	if w.Kind == "task" && b.Turns != nil {

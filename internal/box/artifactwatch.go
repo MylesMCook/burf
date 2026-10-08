@@ -3,8 +3,12 @@ package box
 import (
 	"context"
 	"errors"
+	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
+	"syscall"
 	"time"
 
 	"github.com/MylesMCook/burf/internal/events"
@@ -131,31 +135,85 @@ func (s *ArtifactStore) Poll() {
 	}
 }
 
-func (s *ArtifactStore) takeSource(id, path, loc, wt, source string) {
-	content, err := os.ReadFile(source)
+// readSource reads a watched source for its worktree. A source inside the
+// worktree is opened beneath it (os.Root), every folder on the way checked
+// as it is walked: a link that leads out of the worktree, put in the file's
+// place or a folder's at any moment, is not followed. A source registered
+// from outside the worktree is read only as the file itself, never a link.
+// Neither waits on a pipe.
+func readSource(worktree, source string) ([]byte, error) {
+	bases := []string{worktree}
+	if real, err := filepath.EvalSymlinks(worktree); err == nil && real != worktree {
+		bases = append(bases, real)
+	}
+	for _, base := range bases {
+		rel, err := filepath.Rel(base, source)
+		if err != nil || rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) || filepath.IsAbs(rel) {
+			continue
+		}
+		root, err := os.OpenRoot(base)
+		if err != nil {
+			return nil, err
+		}
+		defer root.Close()
+		f, err := root.OpenFile(rel, os.O_RDONLY|syscall.O_NONBLOCK, 0)
+		if err != nil {
+			return nil, err
+		}
+		return readOrdinary(f)
+	}
+	f, err := os.OpenFile(source, os.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_NONBLOCK, 0)
 	if err != nil {
+		return nil, err
+	}
+	return readOrdinary(f)
+}
+
+// readOrdinary reads an open file if it is an ordinary one, up to twice the
+// largest artifact: the store says which limit a larger one broke.
+func readOrdinary(f *os.File) ([]byte, error) {
+	defer f.Close()
+	if fi, err := f.Stat(); err != nil || !fi.Mode().IsRegular() {
+		return nil, errors.New("the source is no longer a file")
+	}
+	return io.ReadAll(io.LimitReader(f, 2*maxPageArtifact))
+}
+
+func (s *ArtifactStore) takeSource(id, path, loc, wt, source string) {
+	content, err := readSource(path, source)
+	if err != nil {
+		// Gone for now is nothing to say. Something there that is not
+		// read is: the artifact would otherwise go stale in silence.
+		if !errors.Is(err, fs.ErrNotExist) {
+			s.problem(id, "its file is no longer an ordinary file reached without leaving the worktree (a link that leads out, or is absolute, is not followed)")
+		}
 		return
 	}
 	a, changed, err := s.Add(loc, wt, path, ArtifactInput{ID: id, Name: filepath.Base(source), Source: source, Content: content, Watch: true})
 	if err != nil {
-		if errors.Is(err, ErrUnknownArtifact) {
-			return
+		if !errors.Is(err, ErrUnknownArtifact) {
+			s.problem(id, err.Error())
 		}
-		s.mu.Lock()
-		if c, ok := s.byID[id]; ok && c.Problem != err.Error() {
-			c.Problem = err.Error()
-			_ = s.save(c)
-			cp := clone(c)
-			s.mu.Unlock()
-			s.publish("artifact.updated", cp, "watch")
-			return
-		}
-		s.mu.Unlock()
 		return
 	}
 	if changed {
 		s.publish("artifact.updated", a, "watch")
 	}
+}
+
+// problem records why an artifact's latest rewrite wasn't taken, once.
+func (s *ArtifactStore) problem(id, why string) {
+	s.mu.Lock()
+	c, ok := s.byID[id]
+	if !ok || c.Problem == why {
+		s.mu.Unlock()
+		return
+	}
+	c.Problem = why
+	_ = s.save(c)
+	cp := clone(c)
+	s.mu.Unlock()
+	s.publish("artifact.updated", cp, "watch")
 }
 
 // publish announces a change to the app (and hooks).

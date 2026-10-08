@@ -32,6 +32,8 @@ type LaunchOptions struct {
 	Env []string
 	// Browser, when set, offers one client's browser tools to this chat only.
 	Browser *Browser
+	// Tools, when set, gives this chat Burf's own tools.
+	Tools *Tools
 }
 type Launch func(LaunchOptions) (Process, error)
 
@@ -135,6 +137,16 @@ type running struct {
 	// browser holds the provider calls waiting for the chat's browser.
 	browser     map[string]chan BrowserResult
 	browserWake chan struct{}
+	// tools says the chat was given Burf's tools; toolAsks holds the ones
+	// waiting for the person's answer.
+	tools    bool
+	toolAsks map[string]chan bool
+	// permission is what the running turn was started with. The session's
+	// own is only the last one the provider accepted, which a turn that is
+	// starting has not replaced yet.
+	permission string
+	// idle runs, off the lock, each time a turn ends.
+	idle func()
 }
 type Manager struct {
 	mu       sync.Mutex
@@ -144,6 +156,9 @@ type Manager struct {
 	closed   bool
 	probe    sync.Mutex
 	listed   map[string]listedModels
+	// Idle, when set before any chat starts, is called each time a chat's
+	// turn ends: whoever holds messages for an idle chat looks again.
+	Idle func()
 }
 
 func New(program string, launch Launch) *Manager {
@@ -172,8 +187,15 @@ func (m *Manager) StartWith(ctx context.Context, options LaunchOptions) (Session
 	var result json.RawMessage
 	if err == nil {
 		params := map[string]any{"cwd": r.session.CWD, "approvalPolicy": "untrusted", "sandbox": "read-only", "approvalsReviewer": "user"}
+		servers := map[string]any{}
 		if options.Browser != nil {
-			params["config"] = options.Browser.threadConfig(r.session.ID)
+			servers[BrowserServer] = options.Browser.serverConfig(r.session.ID)
+		}
+		if options.Tools != nil {
+			servers[ToolServer] = options.Tools.serverConfig(r.session.ID)
+		}
+		if len(servers) > 0 {
+			params["config"] = map[string]any{"mcp_servers": servers}
 		}
 		result, err = r.call(initCtx, "thread/start", params)
 	}
@@ -232,6 +254,9 @@ func (m *Manager) startProcess(ctx context.Context, options LaunchOptions) (*run
 			return nil, err
 		}
 	}
+	if options.Tools != nil && options.Tools.Server == nil {
+		return nil, errors.New("Burf tools are unavailable")
+	}
 	active := 0
 	for _, r := range m.sessions {
 		r.mu.Lock()
@@ -251,7 +276,7 @@ func (m *Manager) startProcess(ctx context.Context, options LaunchOptions) (*run
 	if err != nil {
 		return nil, err
 	}
-	r := &running{process: p, writes: make(chan []byte, 16), done: make(chan struct{}), pending: make(map[string]chan packet), approvals: make(map[string]json.RawMessage), browser: make(map[string]chan BrowserResult), browserWake: make(chan struct{})}
+	r := &running{process: p, writes: make(chan []byte, 16), done: make(chan struct{}), pending: make(map[string]chan packet), approvals: make(map[string]json.RawMessage), browser: make(map[string]chan BrowserResult), browserWake: make(chan struct{}), tools: options.Tools != nil, toolAsks: make(map[string]chan bool), idle: m.Idle}
 	r.session = Session{ID: hex.EncodeToString(bytes[:]), Agent: "codex", Mode: "chat", CWD: cwd, State: "starting", StartedAt: time.Now().UTC(), Items: []Item{}, Approvals: []Approval{}, Options: TurnOptions{Permission: "strict"}, Composer: true, Permissions: Permissions}
 	if options.Browser != nil {
 		r.session.Browser = &BrowserState{Tools: append([]BrowserTool{}, options.Browser.Tools...), Calls: []BrowserCall{}}
@@ -325,6 +350,12 @@ func (m *Manager) Send(ctx context.Context, id, text string) error {
 	return m.SendWith(ctx, id, text, TurnOptions{})
 }
 func (m *Manager) SendWith(ctx context.Context, id, text string, options TurnOptions) error {
+	return m.send(ctx, id, text, options, "user")
+}
+
+// send starts a turn with a message of the given kind: the person's ("user")
+// or Burf's own ("report").
+func (m *Manager) send(ctx context.Context, id, text string, options TurnOptions, kind string) error {
 	if err := options.validate(); err != nil {
 		return err
 	}
@@ -351,7 +382,11 @@ func (m *Manager) SendWith(ctx context.Context, id, text string, options TurnOpt
 	submitted := fmt.Sprintf("submitted-%d", r.next+1)
 	r.submitted = submitted
 	params["clientUserMessageId"] = submitted
-	r.put(Item{ID: submitted, Kind: "user", Text: text})
+	r.put(Item{ID: submitted, Kind: kind, Text: text})
+	r.permission = options.Permission
+	if r.permission == "" {
+		r.permission = r.session.Options.Permission
+	}
 	r.session.State = "running"
 	r.session.Error = ""
 	r.mu.Unlock()
@@ -433,6 +468,10 @@ func (m *Manager) Decide(id, approval, decision string) error {
 	r.op.Lock()
 	defer r.op.Unlock()
 	r.mu.Lock()
+	if own, err := r.decideTool(approval, decision); own {
+		r.mu.Unlock()
+		return err
+	}
 	raw, ok := r.approvals[approval]
 	if !ok || r.session.State == "exited" {
 		r.mu.Unlock()
@@ -464,7 +503,7 @@ func (m *Manager) Decide(id, approval, decision string) error {
 			break
 		}
 	}
-	if len(r.approvals) == 0 {
+	if len(r.approvals)+len(r.toolAsks) == 0 {
 		r.session.State = "running"
 	}
 	result := map[string]any{"decision": value}
@@ -530,6 +569,7 @@ func (r *running) invalidate(reason string) {
 	r.session.Approvals = []Approval{}
 	r.approvals = map[string]json.RawMessage{}
 	r.cancelBrowser()
+	r.cancelTools()
 	if reason != "" {
 		r.session.Error = reason
 	}
@@ -746,10 +786,20 @@ func (r *running) event(p packet) {
 			Status   string `json:"status"`
 			Output   string `json:"aggregatedOutput"`
 			Tool     string `json:"tool"`
+			Server   string `json:"server"`
 			Content  []struct {
 				Type string `json:"type"`
 				Text string `json:"text"`
 			} `json:"content"`
+			Result *struct {
+				Content []struct {
+					Type string `json:"type"`
+					Text string `json:"text"`
+				} `json:"content"`
+			} `json:"result"`
+			Error *struct {
+				Message string `json:"message"`
+			} `json:"error"`
 			Changes []fileChange `json:"changes"`
 		} `json:"item"`
 	}
@@ -796,6 +846,10 @@ func (r *running) event(p packet) {
 		r.session.Approvals = []Approval{}
 		r.approvals = map[string]json.RawMessage{}
 		r.cancelBrowser()
+		r.cancelTools()
+		if r.idle != nil {
+			go r.idle()
+		}
 		if v.Turn.Error != nil {
 			r.session.Error = clip(v.Turn.Error.Message)
 		}
@@ -816,9 +870,18 @@ func (r *running) event(p packet) {
 			// echoes can be delayed or absent; submitted text stays visible either way.
 			// A turn carries one message, so an echo without a client identity is
 			// this one even when the provider normalized its text.
+			// The provider says a message twice, started and completed: the
+			// second finds the first already in place, and stays Burf's too.
+			for _, old := range r.session.Items {
+				if old.ID == it.ID && old.Kind == "report" {
+					it.Kind = "report"
+				}
+			}
 			if r.submitted != "" {
 				for i, old := range r.session.Items {
 					if old.ID == r.submitted && (v.Item.ClientID == r.submitted || v.Item.ClientID == "") {
+						// Burf's own message stays marked as Burf's.
+						it.Kind = old.Kind
 						r.session.Items[i] = it
 						r.submitted = ""
 						return
@@ -846,6 +909,20 @@ func (r *running) event(p packet) {
 			it.Text = v.Item.Type
 			if v.Item.Tool != "" {
 				it.Text += " · " + v.Item.Tool
+			}
+			// What Burf's own tool answered is part of the conversation: an
+			// added artifact is recognised by its line, as from a command.
+			if v.Item.Type == "mcpToolCall" && v.Item.Server == ToolServer && r.tools {
+				if v.Item.Result != nil {
+					for _, c := range v.Item.Result.Content {
+						if c.Type == "text" && c.Text != "" {
+							it.Text += "\n" + c.Text
+						}
+					}
+				}
+				if v.Item.Error != nil && v.Item.Error.Message != "" {
+					it.Text += "\n" + v.Item.Error.Message
+				}
 			}
 		}
 		it.Truncated = it.Truncated || len(it.Text) > maxText

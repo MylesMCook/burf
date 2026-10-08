@@ -1,3 +1,4 @@
+import type { BerthReport } from "@/lib/transcript";
 import { useEffect, useState } from "react";
 import { load, save } from "@/lib/storage";
 import { ApiError, type Client } from "@/lib/api";
@@ -68,8 +69,12 @@ export interface LocalChat extends LocalSession {
   permissions?: string[];
   thread_id: string;
   turn_id?: string;
-  items: { id: string; kind: "user" | "assistant" | "tool"; text: string; status?: string }[];
-  approvals: { id: string; kind: "command" | "files"; detail: string; reason?: string; session_allowed?: boolean; execpolicy?: string[] }[];
+  // report: Burf's own message, what became of work the chat started (chat.tools).
+  items: { id: string; kind: "user" | "assistant" | "tool" | "report"; text: string; status?: string }[];
+  // The work each report item tells of, by item id.
+  reports?: Record<string, BerthReport[]>;
+  // browser and tool: one of Burf's own tools asks before it acts.
+  approvals: { id: string; kind: "command" | "files" | "browser" | "tool"; detail: string; reason?: string; session_allowed?: boolean; execpolicy?: string[] }[];
   error?: string;
   truncated?: boolean;
 }

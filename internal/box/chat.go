@@ -15,6 +15,7 @@ import (
 	"sync"
 
 	"github.com/MylesMCook/burf/internal/localchat"
+	"github.com/MylesMCook/burf/internal/transcript"
 )
 
 type chatState struct {
@@ -27,12 +28,21 @@ type chatState struct {
 type Chat struct {
 	localchat.Session
 	Location string `json:"location"`
+	// Reports are Burf's own messages (items of kind "report") read into
+	// the work they report on, by item id: a card each, never tagged text.
+	Reports map[string][]transcript.Report `json:"reports,omitempty"`
 }
 
 // EnableChats installs an owned runtime; it does not launch a provider.
 func (b *Box) EnableChats() {
 	if runtime.GOOS == "darwin" || runtime.GOOS == "linux" {
 		b.Chats = localchat.New("", localchat.StartProcess)
+		// A report held for a chat goes in as soon as its turn ends.
+		b.Chats.Idle = func() {
+			if b.Reports != nil {
+				b.Reports.Kick()
+			}
+		}
 	}
 }
 
@@ -48,7 +58,19 @@ func (b *Box) CloseChats() {
 func (b *Box) chatSnapshot(s localchat.Session) Chat {
 	b.chatState.mu.Lock()
 	defer b.chatState.mu.Unlock()
-	return Chat{Session: s, Location: b.chatState.locations[s.ID]}
+	chat := Chat{Session: s, Location: b.chatState.locations[s.ID]}
+	for _, it := range s.Items {
+		if it.Kind != "report" {
+			continue
+		}
+		if reports, ok := transcript.Reports(it.Text); ok && len(reports) > 0 {
+			if chat.Reports == nil {
+				chat.Reports = map[string][]transcript.Report{}
+			}
+			chat.Reports[it.ID] = reports
+		}
+	}
+	return chat
 }
 
 func chatError(err error) error {
@@ -199,6 +221,7 @@ func (b *Box) mountChats(route func(string, func(http.ResponseWriter, *http.Requ
 		return nil
 	})
 	b.mountChatBrowser(add)
+	b.mountChatTools(add)
 }
 
 func (b *Box) startChat(w http.ResponseWriter, r *http.Request) error {
@@ -239,6 +262,7 @@ func (b *Box) startChat(w http.ResponseWriter, r *http.Request) error {
 			return err
 		}
 	}
+	opts.Tools = b.chatTools()
 	s, err := b.Chats.StartWith(r.Context(), opts)
 	if s.ID != "" {
 		b.chatState.mu.Lock()
