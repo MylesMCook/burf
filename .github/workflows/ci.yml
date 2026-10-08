@@ -1,9 +1,10 @@
 name: ci
 
+# Pull requests are checked; a push to main is not (it was checked as its
+# pull request). Run it on main by hand from the Actions tab if needed.
 on:
-  push:
-    branches: [main]
   pull_request:
+  workflow_dispatch:
   # release.yml runs all of this on the tag first, and fails the release on
   # any failure.
   workflow_call:
@@ -11,7 +12,7 @@ on:
 permissions:
   contents: read
 
-# A newer push cancels the run still going for an older one, on main too.
+# A newer push to a pull request cancels the run still going for the older one.
 # A release's checks (workflow_call) run under the tag's ref, so they are
 # never cancelled by a push to main.
 concurrency:
