@@ -13,11 +13,14 @@ a forward or a queued prompt.
 
 - keeps one pinned TLS connection per box, reconnecting forever, with health
   pings to notice a connection that died silently and sleep detection. A
-  box that stops answering is tried again after about 2 seconds, then 4
-  and every 8, each give or take 20% so boxes don't all retry at once; a
-  request that waits 5 seconds for an answer has the box checked at once,
-  and a request for a box known to be away is answered straight away
-  instead of waiting out a dial ([Slow and dropping networks](#slow-and-dropping-networks));
+  box whose check is slow or gets no answer is marked **slow** and checked
+  again in about 2 seconds; only a second failure in a row (or a refused
+  connection, a wrong key, or the box saying it is stopping) takes it
+  away, and away it is tried again after about 2 seconds, then 4 and every
+  8, each give or take 20% so boxes don't all retry at once. A request
+  that waits 10 seconds for an answer has the box checked at once, and a
+  request for a box known to be away is answered straight away instead of
+  waiting out a dial ([Slow and dropping networks](#slow-and-dropping-networks));
 - serves **private URLs** on port 1377, `http://3000.devl.localhost:1377/`,
   and runs **forwards** (a fixed local port to a box port) and **routes**;
   a box's URLs work by the name you paired it as and by the box's own name
@@ -100,8 +103,34 @@ trust each other.
 
 ## Slow and dropping networks
 
-Boxes are often far away (100–900 ms over Tailscale), and links drop. What
-you see when one does:
+Boxes are often far away (100–900 ms over Tailscale), and links drop. A
+link through one of Tailscale's relays can sit at 80 ms and then spike to 2
+seconds. Shipyard rides that out rather than calling the box offline:
+
+- **Slow, not offline.** A health check (every 10 seconds) that takes over
+  1.5 seconds, or gets no answer in 8, marks the box **slow**: the status
+  bar says `1/1 box online · slow`, the sidebar lists the box with "slow",
+  and **Settings › Boxes** says why ("health check took 1.9s") with its
+  latency. Requests to a slow box still go through, and its connection is
+  kept, so terminals and chats on it carry on. It is checked again about 2
+  seconds later, with 10 seconds to answer; one good check makes it online
+  again.
+- **Away** takes two failed checks in a row, so a box that really went
+  shows **Reconnecting** about 20 seconds after it stopped answering (8 s,
+  2 s, then 10 s). A refused connection, a key other than the box's
+  pairing's, or the box saying it is stopping (berthd restarting) is away
+  at the first check.
+- The agent's log (`berth agent` in a terminal, or its log file) has a
+  line for every change, with why, and nothing for the checks in between:
+
+  ```
+  box cal: online → slow (health check took 6.2s)
+  box cal: slow → away (2 checks failed: no answer in 10s)
+  box cal: away → online (health check took 84ms)
+  box cal: relayed through Tailscale's New York server: no direct connection (this computer's nearest is London)
+  ```
+
+What you see when a box does drop off:
 
 - **Reconnecting to devl… Next try in 6s.** A terminal, a chat and a team
   setup in progress say the box is away, count down to the agent's next
@@ -120,3 +149,46 @@ you see when one does:
   opened again if it is silent for 45 seconds, as after the laptop sleeps,
   with a jittered backoff, and refetches what changed; refreshes that land
   together run as one.
+
+## A relayed link
+
+Tailscale connects two machines directly when it can. When it can't, it
+carries their traffic through one of its relay (DERP) servers, which works
+anywhere but adds the trip to that server and back, and slows down when
+the server is busy. The relay used is the box's nearest, which can be on
+another continent from you. **Settings › Boxes** says when this happens:
+
+> Relayed through Tailscale's New York server: no direct connection (this
+> computer's nearest is London)
+
+`berth doctor BOX` says the same, under **Link from this computer**. For a
+box on this computer's own Tailscale, the agent asks `tailscale status`
+(read only, at most every two minutes); for a box on one of its own
+[networks](/getting-started/add-a-box#boxes-on-another-tailnet), it asks
+that network.
+
+Why it happens: both ends are behind NAT that Tailscale can't get through
+(a "hard" NAT, where the port changes with every destination, often on
+phone hotspots, corporate networks and some home routers), or UDP is
+blocked on the way. A VM at a cloud or hosting provider is usually behind
+the provider's NAT too. You can check with `tailscale netcheck` on each
+end: `MappingVariesByDestIP: true` is a hard NAT.
+
+What fixes it, best first:
+
+- **Let UDP 41641 in to the box.** Tailscale's direct connections use UDP
+  port 41641. Open it inbound in the box's cloud firewall or security
+  group, and the two ends can meet directly even when your end is behind a
+  hard NAT.
+- **A VM behind its host's NAT needs a port forward there**: forward UDP
+  41641 on the host (or the provider's NAT, router or load balancer) to the
+  VM. `ufw` on the VM is often inactive and is rarely the blocker; check
+  with `sudo ufw status` before changing it.
+- **A nearer relay, or a peer relay.** If a direct connection isn't
+  possible, a Tailscale peer relay on a
+  machine with an open UDP port near you both, or a custom DERP server
+  nearer than the one in use, cuts the detour.
+
+Run `tailscale ping BOX` after a change: it says `via DERP(nyc)` while
+relayed and an IP address and port once it is direct. The note in
+**Settings › Boxes** goes within a couple of minutes.

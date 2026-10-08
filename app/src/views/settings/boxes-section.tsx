@@ -16,6 +16,8 @@ import { OutdatedNotice, UpgradeBox } from "@/components/upgrade-box";
 import { type AgentPath, type BoxStatus, laptopApi } from "@/lib/api";
 import { explain } from "@/lib/errors";
 import { errorMessage } from "@/lib/format";
+import { latencyText, RELAYED_DOCS, relayNote, slowNote } from "@/lib/link";
+import { openDocs } from "@/lib/open-url";
 import { updateBoxes, useOutdated } from "@/lib/outdated";
 import { usePrefs } from "@/lib/prefs";
 import { BOX_WORDS, boxWhy } from "@/lib/state-model";
@@ -116,10 +118,11 @@ function BoxRow({ box }: { box: BoxStatus }) {
             <span>{box.name}</span>
             {box.local && <span className="rounded border px-1 text-[10px] text-muted-foreground uppercase tracking-wide">This Mac</span>}
             <span className={cn("text-xs", state === "online" ? "text-muted-foreground" : state === "outdated" ? "text-info-foreground" : state === "unreachable" ? "text-destructive-foreground" : "text-muted-foreground")}>
-              {state === "online" && box.latency_ms != null ? `${box.latency_ms} ms` : BOX_WORDS[state].word}
+              {state === "online" && box.latency_ms != null ? latencyText(box.latency_ms, box.link) : BOX_WORDS[state].word}
             </span>
           </div>
           <div className="truncate font-mono text-[11px] text-muted-foreground">{details.join(" · ")}</div>
+          {online && <LinkNotes box={box} />}
           {problem && (
             <div className="mt-0.5 text-[11px] text-muted-foreground">
               {problem.message}
@@ -219,6 +222,33 @@ function BoxRow({ box }: { box: BoxStatus }) {
           }
         }}
       />
+    </div>
+  );
+}
+
+// LinkNotes say, quietly, why a box's link is slow and whether Tailscale
+// relays it: still connected, so no banner, only what to do about it.
+function LinkNotes({ box }: { box: BoxStatus }) {
+  const slow = slowNote(box.link);
+  const relay = relayNote(box.link?.path);
+  if (!slow && !relay) return null;
+  const latency = box.link?.slow ? latencyText(box.latency_ms, box.link) : undefined;
+  return (
+    <div className="mt-0.5 space-y-0.5 text-[11px] text-muted-foreground" data-testid="box-link">
+      {slow && (
+        <div>
+          {slow}
+          {latency && <span className="tabular-nums"> Latency {latency}.</span>}
+        </div>
+      )}
+      {relay && (
+        <div data-testid="box-relayed">
+          {relay}.{" "}
+          <button type="button" onClick={() => void openDocs(RELAYED_DOCS)} className="underline underline-offset-2 hover:text-foreground">
+            Learn more
+          </button>
+        </div>
+      )}
     </div>
   );
 }
