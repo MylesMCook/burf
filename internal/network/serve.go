@@ -8,12 +8,12 @@ import (
 	"net"
 	"net/netip"
 	"os"
-	"os/exec"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/sean-brydon/berthd/internal/backgroundcmd"
 	"tailscale.com/ipn"
 	"tailscale.com/ipn/ipnstate"
 )
@@ -30,7 +30,7 @@ func (b *serveJSONOutput) Write(p []byte) (int, error) {
 }
 
 var serveCLIOutput = func(ctx context.Context, cli string, args ...string) ([]byte, error) {
-	cmd := exec.CommandContext(ctx, cli, args...)
+	cmd := backgroundcmd.CommandContext(ctx, cli, args...)
 	cmd.Env = append(os.Environ(), "TAILSCALE_BE_CLI=1")
 	cmd.WaitDelay = time.Second
 	var out serveJSONOutput

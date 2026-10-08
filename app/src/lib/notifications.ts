@@ -107,6 +107,8 @@ export interface Note {
 export interface NoteInput {
   category: Category;
   title: string;
+  // Keep background activity in the centre without interrupting the person.
+  silent?: boolean;
   detail?: string;
   tone?: Tone;
   box?: string;
@@ -348,7 +350,7 @@ export function route(input: NoteInput): string | undefined {
   const ch = prefs.categories[input.category] ?? categoryInfo(input.category).defaults;
   const note = ch.centre ? upsert(input, new Date().toISOString()) : undefined;
   const quiet = quietNow(prefs) && !(input.category === "waiting" && prefs.dnd.allowWaiting);
-  if (quiet) return note?.id;
+  if (input.silent || quiet) return note?.id;
   const named = input.box && input.path && (note?.worktree ?? input.worktree) ? titleAt(input.box, input.path) : undefined;
   const where = [named ?? note?.worktree ?? note?.project, input.box].filter(Boolean).join(" · ");
   const body = [where, input.detail].filter(Boolean).join(" · ") || undefined;
@@ -507,7 +509,7 @@ export function resolveFromEvent(e: BerthEvent) {
     case "agent.started":
     case "agent.ready":
     case "agent.finished":
-      resolve((n) => n.category === "waiting" && same(n) && !!path && n.path === path);
+      resolve((n) => n.category === "waiting" && same(n) && (d.session ? n.session === d.session : !n.session && !!path && n.path === path));
       return;
     case "session.stopped":
       resolve((n) => n.category === "waiting" && same(n) && !!d.name && n.session === d.name);

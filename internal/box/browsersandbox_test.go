@@ -150,6 +150,34 @@ func TestAProfileOrASnapLetsChromiumMakeNamespaces(t *testing.T) {
 	}
 }
 
+func TestChromeLauncherUsesBrowserProfileForSandboxPrediction(t *testing.T) {
+	dir := t.TempDir()
+	was := apparmorDir
+	apparmorDir = dir
+	t.Cleanup(func() { apparmorDir = was })
+	profile := filepath.Join(dir, "chrome")
+	for _, tc := range []struct {
+		name, contents string
+		want           bool
+	}{
+		{"browser allowed", "profile chrome /opt/google/chrome/chrome flags=(unconfined) {\n userns,\n}\n", true},
+		{"browser not allowed", "profile chrome /opt/google/chrome/chrome {\n}\n", false},
+		{"different browser allowed", "profile other /opt/other/chrome {\n userns,\n}\n", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := os.WriteFile(profile, []byte(tc.contents), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if got := profileAllowsUserns("/opt/google/chrome/google-chrome"); got != tc.want {
+				t.Fatalf("Chrome launcher: %v, want %v", got, tc.want)
+			}
+			if profileAllowsUserns("/tmp/google-chrome") {
+				t.Fatal("an unrelated launcher must not inherit Chrome's profile")
+			}
+		})
+	}
+}
+
 func TestTheSandboxSettingOverTheAPI(t *testing.T) {
 	fakeUserns(t, "1")
 	dir := t.TempDir()

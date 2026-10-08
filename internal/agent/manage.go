@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sean-brydon/berthd/internal/backgroundcmd"
 	"github.com/sean-brydon/berthd/internal/hooks"
 	"github.com/sean-brydon/berthd/internal/sshsetup"
 	"github.com/sean-brydon/berthd/internal/trust"
@@ -34,7 +35,7 @@ func (a *Agent) cli(ctx context.Context, args ...string) *exec.Cmd {
 	if err != nil {
 		bin = "berth"
 	}
-	cmd := exec.CommandContext(ctx, bin, args...)
+	cmd := backgroundcmd.CommandContext(ctx, bin, args...)
 	// The CLI finds this laptop's state the same way the agent did.
 	cmd.Env = append(os.Environ(), "BERTH_HOME="+filepath.Dir(a.cfg.Dir), sshsetup.FailureEnv+"=1")
 	return cmd

@@ -6,9 +6,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 
+	"github.com/sean-brydon/berthd/internal/backgroundcmd"
 	"github.com/sean-brydon/berthd/internal/localagent"
 )
 
@@ -36,8 +36,7 @@ func localAgentCommands() map[string]localagent.Command {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 		ps := filepath.Join(os.Getenv("SystemRoot"), "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
-		cmd := exec.CommandContext(ctx, ps, "-NoProfile", "-NonInteractive", "-Command", "Get-AppxPackage -Name OpenAI.Codex | Select-Object -First 1 -ExpandProperty InstallLocation")
-		cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
+		cmd := backgroundcmd.CommandContext(ctx, ps, "-NoProfile", "-NonInteractive", "-Command", "Get-AppxPackage -Name OpenAI.Codex | Select-Object -First 1 -ExpandProperty InstallLocation")
 		if b, err := cmd.Output(); err == nil {
 			root := strings.TrimSpace(string(b))
 			if filepath.IsAbs(root) {
@@ -68,8 +67,7 @@ func localAgentCommands() map[string]localagent.Command {
 func localCommandHelp(program string, args ...string) string {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(ctx, program, args...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
+	cmd := backgroundcmd.CommandContext(ctx, program, args...)
 	help, err := cmd.Output()
 	if err != nil {
 		return ""

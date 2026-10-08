@@ -239,6 +239,13 @@ func profileAllowsUserns(bin string) bool {
 	if strings.HasPrefix(bin, "/snap/") {
 		return true
 	}
+	profileBins := []string{bin}
+	// Google's packaged launcher execs this ELF binary. AppArmor grants
+	// namespaces to the binary, not the shell script found on PATH. Keep
+	// this specific to the known launcher, not arbitrary adjacent files.
+	if bin == "/opt/google/chrome/google-chrome" {
+		profileBins = append(profileBins, "/opt/google/chrome/chrome")
+	}
 	entries, err := os.ReadDir(apparmorDir)
 	if err != nil {
 		return false
@@ -252,8 +259,12 @@ func profileAllowsUserns(bin string) bool {
 			continue
 		}
 		s := string(b)
-		if strings.Contains(s, bin) && strings.Contains(s, "userns") {
-			return true
+		if strings.Contains(s, "userns") {
+			for _, candidate := range profileBins {
+				if strings.Contains(s, candidate) {
+					return true
+				}
+			}
 		}
 	}
 	return false
