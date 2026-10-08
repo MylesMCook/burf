@@ -11,6 +11,12 @@ again.
 
 ## Unreleased
 
+- **`berth ping` says a box's latency.** It printed one number that was
+  connecting, TLS and a request together (about three round trips), so a box
+  100 ms away read as 300 ms. It now says how long connecting took, then
+  pings on the open connection, as the app uses it: `cal: 88ms 90ms 118ms
+  (min 88ms, avg 99ms, max 118ms on the open connection)`. `-c N` sets how
+  many.
 - **The Browser tab's address follows the page.** An app that changes pages
   on the client (Next.js, React Router: `history.pushState`) left the
   address bar on the first URL, since nothing loaded. It now shows where the

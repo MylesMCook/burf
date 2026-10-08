@@ -57,7 +57,7 @@ Boxes
   berth discover [--network NET] [--json]
                                          Machines on the tailnet that could be boxes
   berth boxes [--json]                   List paired boxes and whether they are online
-  berth ping BOX                         Check a box answers and still trusts you
+  berth ping BOX [-c N]                  Check a box answers and still trusts you, and its latency
   berth upgrade BOX [--check] [--json]   Upgrade the box's daemon over berth (no SSH); --check only reports
   berth kit add|apply|list|save …        Set projects up the same way on every box; see berth kit help
   berth team show|setup|status|retry …   Set a box up the way your team's are, from <org>/.berth
@@ -428,20 +428,57 @@ func listBoxes(l laptop, args []string) error {
 }
 
 func ping(l laptop, args []string) error {
-	if len(args) != 1 {
-		return errors.New("usage: berth ping <box>")
+	count := 4
+	var names []string
+	for i := 0; i < len(args); i++ {
+		switch a := args[i]; {
+		case a == "-c" && i+1 < len(args):
+			n, err := strconv.Atoi(args[i+1])
+			if err != nil || n < 1 || n > 100 {
+				return errors.New("berth ping: -c takes a count from 1 to 100")
+			}
+			count, i = n, i+1
+		default:
+			names = append(names, a)
+		}
 	}
-	client, err := l.boxClient(args[0])
+	if len(names) != 1 {
+		return errors.New("usage: berth ping <box> [-c COUNT]")
+	}
+	client, err := l.boxClient(names[0])
 	if err != nil {
 		return err
 	}
 	defer client.Reset()
 	box := client.Box()
+	// The first request opens the connection (TCP, then TLS), so it costs
+	// several round trips; the rest reuse it, as the app does, and are one
+	// round trip each: the box's latency.
 	start := time.Now()
 	if _, err := client.Ping(context.Background()); err != nil {
 		return fmt.Errorf("%s: %w", box.Name, err)
 	}
-	fmt.Printf("%s: ok (%s)\n", box.Name, time.Since(start).Round(time.Millisecond))
+	fmt.Printf("%s: ok, connected in %s\n", box.Name, time.Since(start).Round(time.Millisecond))
+	var rtts []time.Duration
+	for i := 1; i < count; i++ {
+		time.Sleep(200 * time.Millisecond)
+		t := time.Now()
+		if _, err := client.Ping(context.Background()); err != nil {
+			return fmt.Errorf("%s: %w", box.Name, err)
+		}
+		rtts = append(rtts, time.Since(t))
+	}
+	if len(rtts) == 0 {
+		return nil
+	}
+	lo, hi, sum := rtts[0], rtts[0], time.Duration(0)
+	parts := make([]string, len(rtts))
+	for i, d := range rtts {
+		lo, hi, sum = min(lo, d), max(hi, d), sum+d
+		parts[i] = d.Round(time.Millisecond).String()
+	}
+	avg := sum / time.Duration(len(rtts))
+	fmt.Printf("%s: %s (min %s, avg %s, max %s on the open connection)\n", box.Name, strings.Join(parts, " "), lo.Round(time.Millisecond), avg.Round(time.Millisecond), hi.Round(time.Millisecond))
 	return nil
 }
 
