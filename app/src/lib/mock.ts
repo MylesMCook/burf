@@ -867,6 +867,10 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
 
 // A fake terminal: a short Claude-like transcript, then an echoing prompt.
 // The live demo's terminals follow their agent instead, and answer.
+// ?echoDelay=300 holds every echo of typing back that many ms, like a slow
+// link to the box, for predictive echo (lib/predict) to show.
+const ECHO_DELAY = Number(new URLSearchParams(location.search).get("echoDelay")) || 0;
+
 function mockAttach(box: string, session: string, h: TerminalHandlers) {
   // A service's own terminal (lib/mock-services).
   if (sessions[box]?.some((x) => x.name === session && x.service)) return mockServiceAttach(box, session, h);
@@ -912,7 +916,9 @@ function mockAttach(box: string, session: string, h: TerminalHandlers) {
   return {
     send(data: Uint8Array | string) {
       const text = typeof data === "string" ? data : new TextDecoder().decode(data);
-      h.onData(text.replace(/\r/g, "\r\n\x1b[2m(mock: nothing runs here)\x1b[0m\r\n\x1b[1m❯\x1b[0m ").replace(/\x7f/g, "\b \b"));
+      const echo = text.replace(/\r/g, "\r\n\x1b[2m(mock: nothing runs here)\x1b[0m\r\n\x1b[1m❯\x1b[0m ").replace(/\x7f/g, "\b \b");
+      if (!ECHO_DELAY) h.onData(echo);
+      else timers.push(window.setTimeout(() => open && h.onData(echo), ECHO_DELAY));
     },
     resize() {},
     close() {

@@ -63,6 +63,14 @@ again.
   pings on the open connection, as the app uses it: `cal: 88ms 90ms 118ms
   (min 88ms, avg 99ms, max 118ms on the open connection)`. `-c N` sets how
   many.
+- **Typing in a terminal keeps up on a slow link.** On a box 80 ms to 2 s
+  away (a relayed Tailscale link), a shell showed each key only once the box
+  had echoed it. Now what you type shows at once, underlined until the box's
+  echo agrees, as in Mosh; anything the box draws differently takes every
+  prediction back, and password prompts never show one. It turns on by
+  itself when the round trip is over about 60 ms: **Settings → Terminal →
+  Predict typing** has Always and Never too. See
+  [Terminals](/guides/terminals#typing-on-a-slow-link).
 - **The Browser tab's address follows the page.** An app that changes pages
   on the client (Next.js, React Router: `history.pushState`) left the
   address bar on the first URL, since nothing loaded. It now shows where the

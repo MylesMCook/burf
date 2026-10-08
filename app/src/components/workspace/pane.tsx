@@ -127,7 +127,10 @@ export function Pane({ wsKey, tab, pane, visible, focused, split, mixed, compare
               hidden input, where it would type a tab and keep the focus. */}
           {c.kind === "terminal" && (
             <div className="contents" inert={view === "conversation" || undefined}>
-              <TerminalView box={c.box} session={c.session} agent={c.agent} command={c.command} wsKey={wsKey} tab={tab} pane={pane.id} visible={visible && view !== "conversation"} focused={focused && view !== "conversation"} onFocus={focus} onClose={close} />
+              {/* Typing shows before the box echoes it on a slow link, in a
+                  shell; an agent's own screen (Claude Code, Codex) draws
+                  its input its own way, so it gets none. */}
+              <TerminalView box={c.box} session={c.session} agent={c.agent} command={c.command} wsKey={wsKey} tab={tab} pane={pane.id} visible={visible && view !== "conversation"} focused={focused && view !== "conversation"} predict={!c.agent && !agent} onFocus={focus} onClose={close} />
             </div>
           )}
           {/* The terminal stays connected underneath, so switching back is instant. */}
