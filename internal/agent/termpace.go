@@ -85,6 +85,14 @@ func (p *pacedOutput) read(ctx context.Context, src io.Reader) {
 	}
 }
 
+// resume lets write carry on after the output it was reading ended, for
+// the output of another attach to the same terminal.
+func (p *pacedOutput) resume() {
+	p.mu.Lock()
+	p.ended = nil
+	p.mu.Unlock()
+}
+
 // write sends output with send at the pace, until the output ends (its
 // error) or ctx does.
 func (p *pacedOutput) write(ctx context.Context, send func([]byte) error) error {

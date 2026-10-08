@@ -416,7 +416,7 @@ func listBoxes(l laptop, args []string) error {
 		return nil
 	}
 	w := tabwriter.NewWriter(os.Stdout, 0, 0, 2, ' ', 0)
-	fmt.Fprintln(w, "NAME\tSTATE\tADDRESS\tLATENCY\tFINGERPRINT")
+	fmt.Fprintln(w, "NAME\tSTATE\tADDRESS\tROUTE\tLATENCY\tFINGERPRINT")
 	for _, b := range s.Boxes {
 		latency := "-"
 		if b.LatencyMs > 0 {
@@ -427,10 +427,10 @@ func listBoxes(l laptop, args []string) error {
 			// Online over a slow link: berth doctor BOX says why.
 			state = "online (slow)"
 		}
-		if p := b.Link.Path; p != nil && p.Relayed() {
+		if b.RelayedNow() {
 			latency += " relayed"
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", b.Name, state, b.Address, latency, b.Fingerprint[:12])
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n", b.Name, state, b.Address, activeRoute(b), latency, b.Fingerprint[:12])
 	}
 	return w.Flush()
 }
