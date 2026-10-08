@@ -25,6 +25,8 @@ import { NONE, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
 import { AddAgents } from "@/views/onboarding/guided-install";
+import { BoxRouteList, BoxRoutes } from "@/views/settings/box-routes";
+import { activeRoute, viaRoute } from "@/lib/box-routes";
 import { BoxOnePasswordNote } from "@/views/team/team-keys-note";
 import { CommandLog } from "@/views/settings/command-log";
 import { ConfirmDialog } from "@/views/settings/confirm";
@@ -98,6 +100,7 @@ function BoxRow({ box }: { box: BoxStatus }) {
   const [addingAgents, setAddingAgents] = useState(false);
   const canAddAgents = !!info?.capabilities?.includes("agents.install");
   const [retrying, setRetrying] = useState(false);
+  const [routesOpen, setRoutesOpen] = useState(false);
   const online = box.state === "online";
   const state = useBoxState(box.name);
   const upgrading = update?.state === "queued" || update?.state === "running";
@@ -122,6 +125,7 @@ function BoxRow({ box }: { box: BoxStatus }) {
             </span>
           </div>
           <div className="truncate font-mono text-[11px] text-muted-foreground">{details.join(" · ")}</div>
+          <BoxRoutes box={box} open={routesOpen} onOpenChange={setRoutesOpen} />
           {online && <LinkNotes box={box} />}
           {problem && (
             <div className="mt-0.5 text-[11px] text-muted-foreground">
@@ -189,6 +193,7 @@ function BoxRow({ box }: { box: BoxStatus }) {
           </MenuPopup>
         </Menu>
       </div>
+      {routesOpen && !box.local && <BoxRouteList box={box} />}
       {/* The agent's browser can't start here (Chromium's sandbox), or runs without it. */}
       {online && <BrowserSandboxCard box={box.name} full className="mt-3" />}
       {online && <BoxProcessesCard box={box.name} className="mt-3" />}
@@ -243,7 +248,8 @@ function LinkNotes({ box }: { box: BoxStatus }) {
       )}
       {relay && (
         <div data-testid="box-relayed">
-          {relay}.{" "}
+          {relay}
+          {box.route && box.route !== "paired" && activeRoute(box) ? `; Shipyard goes ${viaRoute(box)} instead` : ""}.{" "}
           <button type="button" onClick={() => void openDocs(RELAYED_DOCS)} className="underline underline-offset-2 hover:text-foreground">
             Learn more
           </button>

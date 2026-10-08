@@ -30,6 +30,8 @@ import (
 	"github.com/cosscom/shipyard/internal/network"
 	"github.com/cosscom/shipyard/internal/pfredirect"
 	"github.com/cosscom/shipyard/internal/proxy"
+	"github.com/cosscom/shipyard/internal/sshroute"
+	"github.com/cosscom/shipyard/internal/sshsetup"
 	"github.com/cosscom/shipyard/internal/statefile"
 	"github.com/cosscom/shipyard/internal/trust"
 	"github.com/cosscom/shipyard/internal/wire"
@@ -112,6 +114,15 @@ type Config struct {
 	// Doctor runs `berth doctor`'s checks of this laptop, for the app's
 	// Copy diagnostics (GET /v1/doctor); nil answers that there are none.
 	Doctor func(ctx context.Context) []doctor.Check
+	// Routes to boxes (boxroutes.go): SSH is the ssh program SSH routes run
+	// ("ssh" on the PATH), SSHFinder finds the SSH agent it uses when this
+	// process has none (nil: this computer's), SSHHosts lists the hosts
+	// ~/.ssh/config names (nil reads it), and RouteTiming how quickly
+	// routes are judged (zero: wire.DefaultRouteTiming).
+	SSH         string
+	SSHFinder   *sshsetup.Finder
+	SSHHosts    func() []string
+	RouteTiming wire.RouteTiming
 }
 
 // Networks is the set of other tailnets the agent can dial through.
@@ -184,6 +195,10 @@ type BoxStatus struct {
 	// Link is how well the laptop reaches it (link.go): slow or not, the
 	// latency's recent max and jitter, and whether Tailscale relays it.
 	Link Link `json:"link,omitzero"`
+	// Route is the ID of the route new requests to the box take, and Routes
+	// every way the agent knows to reach it (boxroutes.go).
+	Route  string        `json:"route,omitempty"`
+	Routes []RouteStatus `json:"routes,omitempty"`
 }
 
 type ForwardStatus struct {
@@ -242,6 +257,13 @@ type Agent struct {
 	tsAt     time.Time
 	tsStatus *ipnstate.Status
 	tsErr    error
+	// held keeps a terminal's typing that a route going down may have
+	// lost, for its next attach (attachkeys.go); hosts the hosts
+	// ~/.ssh/config names, read now and then (boxroutes.go).
+	held    heldKeys
+	hostsMu sync.Mutex
+	hostsAt time.Time
+	hosts   []string
 
 	mu      sync.Mutex
 	svc     map[string]serviceCache
@@ -271,6 +293,10 @@ type boxState struct {
 	samples  []time.Duration
 	pathAt   time.Time
 	learning bool
+	// routeKey is the routes the client was given, and ssh the SSH route's
+	// dialer, if it has one (boxroutes.go).
+	routeKey string
+	ssh      *sshroute.Dialer
 }
 
 type runningForward struct {
@@ -330,6 +356,7 @@ func Run(ctx context.Context, cfg Config) error {
 	a.sync()
 	a.startSavedForwards(ctx)
 	go a.healthLoop(ctx)
+	go a.routeLoop(ctx)
 	go a.keepLocalBoxCurrent(ctx)
 	go a.watchTeamUpdates(ctx)
 	a.hooks = &hooks.Runner{Path: filepath.Join(cfg.UserDir, "hooks.json"), PluginsDir: filepath.Join(cfg.UserDir, "plugins"), Log: cfg.Log}
@@ -450,12 +477,14 @@ func (a *Agent) sync() {
 		a.cfg.Log.Printf("reading paired boxes: %v", err)
 		return
 	}
+	settings := a.routeSettings()
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	seen := map[string]bool{}
 	for _, p := range peers {
 		seen[p.Name] = true
 		if st, ok := a.clients[p.Name]; ok && st.peer == p {
+			a.applyRoutesLocked(p.Name, st, settings[p.Name].forPeer(p))
 			continue
 		}
 		if st, ok := a.clients[p.Name]; ok {
@@ -467,6 +496,7 @@ func (a *Agent) sync() {
 			back:   make(chan struct{}, 1),
 			status: BoxStatus{Name: p.Name, Address: p.Address, Network: p.Network, Fingerprint: p.Fingerprint.String(), State: StateConnecting, Since: a.cfg.Now()},
 		}
+		a.applyRoutesLocked(p.Name, a.clients[p.Name], settings[p.Name].forPeer(p))
 	}
 	for name, st := range a.clients {
 		if !seen[name] {
@@ -484,6 +514,9 @@ func (st *boxState) close() {
 		st.retry.Stop()
 	}
 	st.client.Reset()
+	if st.ssh != nil {
+		go st.ssh.Close()
+	}
 }
 
 // scheduleRetryLocked sets when a box that failed its check is tried next:
@@ -520,6 +553,8 @@ func (a *Agent) scheduleRetryLocked(name string, st *boxState) {
 // reconnects until the box is removed.
 func (a *Agent) relay(ctx context.Context, name string, c *wire.Client, back <-chan struct{}) {
 	bc := box.NewClient(c)
+	// The agent's own stream doesn't make the box count as in use.
+	ctx = wire.Background(ctx)
 	// The last event seen: a reconnect (after sleep, say) asks the box's
 	// journal for what it missed, up to the box's replay limit. It is kept
 	// on disk, so a restart of the agent catches up too.
@@ -697,9 +732,9 @@ func (a *Agent) check(ctx context.Context, name string, st *boxState) {
 	a.mu.Unlock()
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	start := time.Now()
-	_, err := st.client.Ping(ctx)
-	latency := time.Since(start)
+	// Over the active route, or the first other one to answer when it
+	// stalls (boxroutes.go): latency is the route's that answered.
+	_, latency, err := st.client.PingTimed(ctx)
 	if ctx.Err() != nil && errors.Is(ctx.Err(), context.Canceled) {
 		return
 	}
@@ -893,6 +928,8 @@ func (a *Agent) removeForward(id string) (Forward, error) {
 }
 
 func (a *Agent) status() Status {
+	settings := a.routeSettings()
+	hosts := a.configHosts()
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	s := Status{Boxes: []BoxStatus{}, Forwards: []ForwardStatus{}, Routes: []Route{}, Proxy: a.proxySt}
@@ -906,6 +943,8 @@ func (a *Agent) status() Status {
 	for _, st := range a.clients {
 		b := st.status
 		b.Local = a.isLocal(st.peer)
+		b.Route, b.Routes = a.routeStatusLocked(st, settings[b.Name].forPeer(st.peer), hosts)
+		markRelayed(&b)
 		s.Boxes = append(s.Boxes, b)
 	}
 	for _, rf := range a.running {

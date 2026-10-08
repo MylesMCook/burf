@@ -9,6 +9,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { useUpdateAll } from "@/components/upgrade-box";
 import { useAgentCounts } from "@/hooks/use-agent-counts";
 import { isMock } from "@/hooks/use-berth-connection";
+import { viaRoute } from "@/lib/box-routes";
 import { useOutdatedBoxes } from "@/lib/outdated";
 import { AGENT_WORDS, BOX_WORDS, boxState } from "@/lib/state-model";
 import { useStore } from "@/lib/store";
@@ -104,8 +105,9 @@ export function StatusBar() {
         const mem = boxes[b.name]?.stats?.memory;
         if (!mem?.total) return null;
         // Each box's memory goes first when the bar runs short of room.
-        // Clicked, it lists the box's browsers and heavy sessions.
-        return <BoxMeter key={b.name} box={b.name} mem={mem} className="@max-[900px]:hidden" />;
+        // Clicked, it lists the box's browsers and heavy sessions; its tip
+        // names the route Shipyard reaches the box by.
+        return <BoxMeter key={b.name} box={b.name} mem={mem} route={viaRoute(b)} className="@max-[900px]:hidden" />;
       })}
       {forwards > 0 && (
         <Item tip="Ports forwarded to this computer" onClick={() => go({ kind: "settings", section: "developer" })}>
@@ -119,6 +121,7 @@ export function StatusBar() {
             <span key={b.name} className="flex items-center gap-1.5">
               <StatusDot state={st} />
               {b.name}: {BOX_WORDS[st].lower}
+              {b.state === "online" && viaRoute(b) && <span className="text-muted-foreground">· {viaRoute(b)}</span>}
             </span>
           );
         })}

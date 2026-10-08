@@ -7,6 +7,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,6 +17,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cosscom/shipyard/internal/agent"
 	"github.com/cosscom/shipyard/internal/agentcli"
 	"github.com/cosscom/shipyard/internal/guided"
 	"github.com/cosscom/shipyard/internal/pairing"
@@ -407,6 +409,16 @@ func addSSHSteps(l laptop, args []string) error {
 		rep.fail(guided.StepPair, err.Error())
 		return err
 	}
+	// The host it was added with is a second way to reach it, which the
+	// agent uses when it is the faster one (Settings › Boxes turns it off).
+	// A box on another network is reached through that network either way.
+	if *via == "" {
+		listenAt := opts.Listen
+		if listenAt == "" {
+			listenAt = probe.Listen
+		}
+		recordSSHRoute(l, name2, target, *identity, forwardFor(listenAt))
+	}
 	rep.done(guided.StepPair, name2)
 	fmt.Fprintf(rep, "\r\nReady: paired with %s at %s. SSH is no longer needed for this box.\r\n", name2, addr)
 	if lingerNote != "" && !markers {
@@ -517,6 +529,40 @@ func pairOverSSH(l laptop, ssh func([]byte, string) ([]byte, error), address, na
 		c.Refresh(context.Background())
 	}
 	return peer.Name, peer.Address, nil
+}
+
+// recordSSHRoute remembers how a box was reached over SSH, for the agent's
+// SSH route to it. Only the host as typed and the key file's path are kept.
+func recordSSHRoute(l laptop, box, target, identityFile, forward string) {
+	p, ok, err := l.boxes().ByName(box)
+	if err != nil || !ok {
+		return
+	}
+	if identityFile != "" {
+		if abs, err := expandHome(identityFile); err == nil {
+			identityFile = abs
+		}
+	}
+	if err := agent.RecordSSHRoute(l.dir, p.Name, p.Fingerprint.String(), target, identityFile, forward); err != nil {
+		return
+	}
+	if c := agentIfRunning(l); c != nil {
+		c.Refresh(context.Background())
+	}
+}
+
+// forwardFor is where an SSH route reaches berthd on the box, given where
+// it listens: on every interface, its loopback; on one address, that
+// address; unknown (its tailnet address), the address it was paired at.
+func forwardFor(listen string) string {
+	host, port, err := net.SplitHostPort(listen)
+	switch {
+	case err != nil:
+		return ""
+	case host == "" || host == "0.0.0.0" || host == "::":
+		return net.JoinHostPort("127.0.0.1", port)
+	}
+	return listen
 }
 
 // checkName refuses a --name that cannot be a hostname before any work is

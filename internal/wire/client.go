@@ -168,15 +168,24 @@ func dialTLSVia(ctx context.Context, cfg *tls.Config, address string, dial DialF
 	return tc, nil
 }
 
-// Client talks to one paired box over a single pooled HTTP/2 connection, which
-// carries every ping and stream. Health pings detect a connection that died
-// silently, and Reset abandons it immediately when the caller knows better.
+// Client talks to one paired box over a pooled HTTP/2 connection per route
+// (routes.go), which carries every ping and stream. Health pings detect a
+// connection that died silently, and Reset abandons it immediately when the
+// caller knows better.
 type Client struct {
-	id        *identity.Identity
-	box       trust.Peer
-	dial      DialFunc
-	mu        sync.Mutex
-	transport *http.Transport
+	id  *identity.Identity
+	box trust.Peer
+
+	mu     sync.Mutex
+	routes []*route
+	active *route
+	timing RouteTiming
+	// lastUse is when something other than a check last asked the box for
+	// anything, and streams how many such streams are open: a box in use
+	// has its other routes measured.
+	lastUse  time.Time
+	streams  int
+	onChange func(RouteChange)
 }
 
 func NewClient(id *identity.Identity, box trust.Peer) *Client {
@@ -185,18 +194,32 @@ func NewClient(id *identity.Identity, box trust.Peer) *Client {
 
 // NewClientVia is NewClient over a specific dialer, such as another tailnet.
 func NewClientVia(id *identity.Identity, box trust.Peer, dial DialFunc) *Client {
-	c := &Client{id: id, box: box, dial: dial}
-	c.transport = c.newTransport()
+	return NewClientRoutes(id, box, []Route{{ID: RoutePaired, Kind: RouteTailscale, Label: "Tailscale", Dial: dial}})
+}
+
+// NewClientRoutes is a client that reaches the box over several routes,
+// the first of which it starts on.
+func NewClientRoutes(id *identity.Identity, box trust.Peer, routes []Route) *Client {
+	c := &Client{id: id, box: box, timing: DefaultRouteTiming}
+	c.SetRoutes(routes)
 	return c
 }
 
-func (c *Client) newTransport() *http.Transport {
+func (c *Client) newTransport(r *route) *http.Transport {
 	protocols := new(http.Protocols)
 	protocols.SetHTTP2(true)
+	dial := defaultDial(r.Dial)
 	return &http.Transport{
-		TLSClientConfig:     clientConfig(c.id, c.box.Fingerprint),
-		Protocols:           protocols,
-		DialContext:         defaultDial(c.dial),
+		// The same pinned TLS on every route: a route is only a transport.
+		TLSClientConfig: clientConfig(c.id, c.box.Fingerprint),
+		Protocols:       protocols,
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			conn, err := dial(ctx, network, addr)
+			if err != nil {
+				return nil, err
+			}
+			return c.track(r, conn), nil
+		},
 		TLSHandshakeTimeout: dialTimeout,
 		// Some calls wait on slow tools (Orca fetches before it creates a
 		// worktree); the pings below are what detect a dead connection.
@@ -206,23 +229,23 @@ func (c *Client) newTransport() *http.Transport {
 	}
 }
 
-func (c *Client) current() *http.Transport {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	return c.transport
-}
-
 func (c *Client) Box() trust.Peer { return c.box }
 
-// Reset makes the next request dial a fresh connection. After sleep or a
-// network change the pooled connection may be dead yet still carry streams,
-// so closing idle connections alone would leave new streams queued behind it.
+// Reset makes the next request dial a fresh connection, on every route.
+// After sleep or a network change the pooled connection may be dead yet
+// still carry streams, so closing idle connections alone would leave new
+// streams queued behind it.
 func (c *Client) Reset() {
 	c.mu.Lock()
-	old := c.transport
-	c.transport = c.newTransport()
+	var old []*http.Transport
+	for _, r := range c.routes {
+		old = append(old, r.transport)
+		r.transport = c.newTransport(r)
+	}
 	c.mu.Unlock()
-	old.CloseIdleConnections()
+	for _, t := range old {
+		t.CloseIdleConnections()
+	}
 }
 
 // Do sends an authenticated request to the box.
@@ -231,8 +254,10 @@ func (c *Client) Do(ctx context.Context, method, path string, body io.Reader) (*
 }
 
 // DoWithHeader is Do with extra request headers, such as the origin a tool
-// attributes its request to.
+// attributes its request to. It goes over the active route; one that could
+// not even be opened is tried on the others, since the box never saw it.
 func (c *Client) DoWithHeader(ctx context.Context, method, path string, body io.Reader, header http.Header) (*http.Response, error) {
+	c.touch(ctx)
 	req, err := http.NewRequestWithContext(ctx, method, "https://"+c.box.Address+path, body)
 	if err != nil {
 		return nil, err
@@ -240,40 +265,29 @@ func (c *Client) DoWithHeader(ctx context.Context, method, path string, body io.
 	for k, v := range header {
 		req.Header[k] = v
 	}
-	resp, err := c.current().RoundTrip(req)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode == http.StatusUnauthorized {
-		resp.Body.Close()
-		return nil, ErrUntrusted
-	}
-	return resp, nil
+	resp, _, err := c.roundTrip(req, func() (*http.Request, bool) {
+		if req.Body == nil || req.Body == http.NoBody {
+			return req.Clone(ctx), true
+		}
+		if req.GetBody == nil {
+			return nil, false
+		}
+		b, err := req.GetBody()
+		if err != nil {
+			return nil, false
+		}
+		again := req.Clone(ctx)
+		again.Body = b
+		return again, true
+	})
+	return resp, err
 }
 
 // Ping checks that the box is reachable and still trusts this laptop, and
 // returns the name it reports.
 func (c *Client) Ping(ctx context.Context) (string, error) {
-	resp, err := c.Do(ctx, http.MethodGet, "/v1/ping", nil)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		var e errorResponse
-		if json.NewDecoder(io.LimitReader(resp.Body, 4096)).Decode(&e) == nil && e.Code == codeStopping {
-			return "", ErrStopping
-		}
-		if e.Error != "" {
-			return "", errors.New(e.Error)
-		}
-		return "", fmt.Errorf("box replied %s", resp.Status)
-	}
-	var out nameResponse
-	if err := json.NewDecoder(io.LimitReader(resp.Body, 4096)).Decode(&out); err != nil {
-		return "", err
-	}
-	return out.Name, nil
+	name, _, err := c.PingTimed(ctx)
+	return name, err
 }
 
 // DialPort opens a stream to a port on the box's loopback. ctx bounds only the
@@ -283,12 +297,34 @@ func (c *Client) DialPort(ctx context.Context, port int) (net.Conn, error) {
 }
 
 // OpenStream starts a two-way stream with a box route that reads the request
-// body while writing its response, such as a port or a terminal.
+// body while writing its response, such as a port or a terminal. It goes
+// over the active route, and stays on it: a stream moves to another route
+// only by being opened again, once its own is declared down.
 func (c *Client) OpenStream(ctx context.Context, path, label string) (net.Conn, error) {
+	c.touch(ctx)
 	streamCtx, cancel := context.WithCancel(context.Background())
+	if background(ctx) {
+		streamCtx = Background(streamCtx)
+	}
 	stop := context.AfterFunc(ctx, cancel)
-	pr, pw := io.Pipe()
-	resp, err := c.Do(streamCtx, http.MethodPost, path, pr)
+	var pw *io.PipeWriter
+	// Each try gets its own pipe: a request that fails closes its body.
+	attempt := func() (*http.Request, bool) {
+		var pr *io.PipeReader
+		pr, pw = io.Pipe()
+		req, err := http.NewRequestWithContext(streamCtx, http.MethodPost, "https://"+c.box.Address+path, pr)
+		if err != nil {
+			return nil, false
+		}
+		return req, true
+	}
+	first, ok := attempt()
+	if !ok {
+		stop()
+		cancel()
+		return nil, fmt.Errorf("bad stream path %q", path)
+	}
+	resp, r, err := c.roundTrip(first, attempt)
 	stop()
 	if err == nil && resp.StatusCode != http.StatusOK {
 		err = responseError(resp)
@@ -302,11 +338,26 @@ func (c *Client) OpenStream(ctx context.Context, path, label string) (net.Conn, 
 		}
 		return nil, err
 	}
+	counted := !background(ctx)
+	if counted {
+		c.mu.Lock()
+		c.streams++
+		c.mu.Unlock()
+	}
 	return &streamConn{
-		body:   resp.Body,
-		pw:     pw,
-		cancel: cancel,
+		body: resp.Body,
+		pw:   pw,
+		cancel: func() {
+			cancel()
+			if counted {
+				c.mu.Lock()
+				c.streams--
+				c.lastUse = time.Now()
+				c.mu.Unlock()
+			}
+		},
 		remote: streamAddr(label),
+		route:  r.ID,
 	}, nil
 }
 
