@@ -1,4 +1,4 @@
-// Package hooks runs user commands when berth events happen, which is how
+// Package hooks runs user commands when burf events happen, which is how
 // berth drives other tools and how people script it.
 //
 // Hooks live in ~/.berth/hooks.json on the machine that should run them, and
@@ -26,8 +26,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/statefile"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/statefile"
 )
 
 type Hook struct {

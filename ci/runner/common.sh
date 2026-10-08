@@ -3,7 +3,7 @@
 # DOCKER_HOST=ssh://berth-omarchy to run these from the laptop.
 # shellcheck shell=bash
 
-REPO=${REPO:-sean-brydon/berthd}
+REPO=${REPO:-MylesMCook/burf}
 RUNNER_PREFIX=${RUNNER_PREFIX:-omarchy}  # runners are omarchy-1..omarchy-$RUNNERS
 RUNNERS=${RUNNERS:-4}                    # jobs at once (install time only)
 RUNNER_LABELS=${RUNNER_LABELS:-omarchy}  # plus self-hosted, Linux, X64

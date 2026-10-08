@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { create } from "zustand";
 
-import { isMock } from "@/hooks/use-berth-connection";
+import { isMock } from "@/hooks/use-burf-connection";
 import { boxApi } from "@/lib/api";
 import { keyOf, useConversations } from "@/lib/conversation-store";
 import { useEventLog } from "@/lib/events";

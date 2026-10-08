@@ -13,7 +13,7 @@ import { useStore } from "@/lib/store";
 
 export const call: BoxCaller = (box, method, path, body) => {
   const c = useStore.getState().client;
-  if (!c) return Promise.reject(new Error("not connected to the Berth agent"));
+  if (!c) return Promise.reject(new Error("not connected to the Burf agent"));
   return c.box(box, method, path, body);
 };
 

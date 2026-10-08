@@ -13,14 +13,14 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/statefile"
-	"github.com/sean-brydon/berthd/internal/version"
+	"github.com/MylesMCook/burf/internal/statefile"
+	"github.com/MylesMCook/burf/internal/version"
 )
 
 // Restarting the agent cleanly, for an update. The app's updater replaces
-// Berth.app under a running agent, which goes on running the old code (and
+// Burf.app under a running agent, which goes on running the old code (and
 // keeps this computer's box on the old berthd) until it restarts. The
-// updated app asks `berth agent restart --if-stale`, which reads what the
+// updated app asks `burf agent restart --if-stale`, which reads what the
 // agent runs (GET /v1/agent), and when it is older than the berth asking,
 // stops it with ?drain=1 and starts the new one.
 //
@@ -88,7 +88,7 @@ func (c *Client) WaitStopped(ctx context.Context, dir string) error {
 		}
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("the berth agent did not stop: %w", ctx.Err())
+			return fmt.Errorf("the burf agent did not stop: %w", ctx.Err())
 		case <-time.After(100 * time.Millisecond):
 		}
 	}
@@ -138,7 +138,7 @@ type workSet struct {
 	wg       sync.WaitGroup
 }
 
-var errDraining = errors.New("the berth agent is restarting; try again in a moment")
+var errDraining = errors.New("the burf agent is restarting; try again in a moment")
 
 // begin starts a piece of work, unless the agent is draining.
 func (w *workSet) begin(what string) (done func(), err error) {

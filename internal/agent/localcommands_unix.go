@@ -2,6 +2,6 @@
 
 package agent
 
-import "github.com/sean-brydon/berthd/internal/localagent"
+import "github.com/MylesMCook/burf/internal/localagent"
 
 func localAgentCommands() map[string]localagent.Command { return map[string]localagent.Command{} }

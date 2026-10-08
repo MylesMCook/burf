@@ -18,12 +18,12 @@ function GitHubIcon() {
 export function SiteHeader() {
   return (
     <header className="berth-site-header">
-      <Link href="/" className="berth-brand berth-site-brand" aria-label="Berth docs, home">
+      <Link href="/" className="berth-brand berth-site-brand" aria-label="Burf docs, home">
         <Mark className="berth-brand-mark" />
         <span className="berth-brand-word">berth</span>
         <span className="berth-brand-docs">docs</span>
       </Link>
-      <nav aria-label="Berth" className="berth-site-nav">
+      <nav aria-label="Burf" className="berth-site-nav">
         <a href={landingUrl}>
           berthd.app
           <ArrowUpRight aria-hidden="true" />
@@ -50,7 +50,7 @@ export function SiteLink({ className }: { className?: string }) {
 // The menu drawer's way out, labelled: the website and the code.
 export function DrawerLinks() {
   return (
-    <nav aria-label="Berth" className="berth-drawer-links">
+    <nav aria-label="Burf" className="berth-drawer-links">
       <a href={landingUrl}>
         <Mark className="berth-drawer-mark" />
         berthd.app

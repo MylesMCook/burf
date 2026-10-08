@@ -56,8 +56,8 @@ export type BoxState = "online" | "outdated" | "offline" | "unreachable" | "conn
 export const BOX_WORDS: Record<BoxState, { word: string; lower: string; hint: string }> = {
   online: { word: "Online", lower: "online", hint: "Connected" },
   outdated: { word: "Outdated", lower: "outdated", hint: "Connected, but runs an older berthd; update it" },
-  offline: { word: "Offline", lower: "offline", hint: "Not answering; Berth reconnects on its own when it's back" },
-  unreachable: { word: "Unreachable", lower: "unreachable", hint: "Answers, but Berth can't use it" },
+  offline: { word: "Offline", lower: "offline", hint: "Not answering; Burf reconnects on its own when it's back" },
+  unreachable: { word: "Unreachable", lower: "unreachable", hint: "Answers, but Burf can't use it" },
   connecting: { word: "Connecting", lower: "connecting", hint: "Reaching it now" },
 };
 
@@ -79,10 +79,10 @@ export function boxState(b: Pick<BoxStatus, "state"> | undefined, data?: BoxData
 
 // boxWhy is a sentence on why a box is in its state, for tooltips.
 export function boxWhy(name: string, b: Pick<BoxStatus, "state" | "error"> | undefined, state: BoxState): string {
-  if (b?.state === "untrusted") return `${name} answered with a different identity than when it was paired, so Berth won't talk to it. Pair it again if it was rebuilt.`;
-  if (state === "outdated") return `${name} runs an older berthd than this Berth ships. Updating keeps its agents running.`;
+  if (b?.state === "untrusted") return `${name} answered with a different identity than when it was paired, so Burf won't talk to it. Pair it again if it was rebuilt.`;
+  if (state === "outdated") return `${name} runs an older berthd than this Burf ships. Updating keeps its agents running.`;
   if (state === "unreachable") return `${name} is connected, but its API isn't answering.`;
-  if (state === "offline") return `${name} is offline. Its agents keep running there; Berth reconnects on its own.`;
+  if (state === "offline") return `${name} is offline. Its agents keep running there; Burf reconnects on its own.`;
   if (state === "connecting") return `Connecting to ${name}…`;
   return `${name} is online.`;
 }

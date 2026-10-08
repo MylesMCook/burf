@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sean-brydon/berthd/internal/service"
+	"github.com/MylesMCook/burf/internal/service"
 )
 
 // fakeService models the unit files on disk rather than a set of installed

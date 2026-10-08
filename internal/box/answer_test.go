@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/transcript"
+	"github.com/MylesMCook/burf/internal/transcript"
 )
 
 // fakeForm is Claude Code's AskUserQuestion form (2.1), drawn as its

@@ -6,7 +6,7 @@ import (
 	"context"
 	"os/exec"
 
-	"github.com/sean-brydon/berthd/internal/groups"
+	"github.com/MylesMCook/burf/internal/groups"
 )
 
 func shellCommand(ctx context.Context, command string) (*exec.Cmd, error) {

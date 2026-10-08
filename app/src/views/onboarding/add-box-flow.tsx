@@ -25,7 +25,7 @@ export type AddBoxStage = "start" | "working" | "tailnet" | "paired";
 type From = "link" | "ssh" | "tailnet";
 
 // AddBoxFlow is every way to add a box, on one screen. When this computer
-// reaches a tailnet (its own Tailscale, or one Berth signed in to), that
+// reaches a tailnet (its own Tailscale, or one Burf signed in to), that
 // tailnet's machines come first, each set up in a click; then the install
 // command to run on any box and the field for the link it prints; then
 // setting a box up over SSH by hand. Without a tailnet, the tailnet path
@@ -67,7 +67,7 @@ export function AddBoxFlow({
   const sshSupported = useStore((s) => !s.status || !("ssh_setup_supported" in s.status) || s.status.ssh_setup_supported !== false);
   const readyLabel = variant === "page" ? "Continue" : fromTeam ? "Back to Team setup" : undefined;
   // From Team setup, adding a box is the guided install, with the team's
-  // steps after Berth's; anywhere else it is the quick one.
+  // steps after Burf's; anywhere else it is the quick one.
   const teamCtx = useTeamAddBox((s) => s.ctx);
   const team = fromTeam ? teamCtx : undefined;
 
@@ -100,7 +100,7 @@ export function AddBoxFlow({
   const head = signingIn
     ? {
         title: "Sign in to another tailnet",
-        description: "For a box on a tailnet this computer isn't on. Berth joins it as its own device, so nothing changes for the rest of this computer.",
+        description: "For a box on a tailnet this computer isn't on. Burf joins it as its own device, so nothing changes for the rest of this computer.",
       }
     : intro;
   const onBack = signingIn ? () => setSigningIn(undefined) : onExit;
@@ -196,7 +196,7 @@ export function AddBoxFlow({
               </Collapsible>
             )}
             {sshSupported && <Collapsible open={sshOpen} onOpenChange={setSshOpen}>
-              <Trigger>Or let Berth set it up over SSH</Trigger>
+              <Trigger>Or let Burf set it up over SSH</Trigger>
               <CollapsiblePanel>
                 <div className="pt-3">
                   <SshSetup network={network} retry={retry.ssh} onRunning={setBusy} onPaired={setPaired} onSignIn={() => setSigningIn("ssh")} readyLabel={readyLabel} team={team} />

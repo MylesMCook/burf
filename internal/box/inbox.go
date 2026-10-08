@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/events"
+	"github.com/MylesMCook/burf/internal/events"
 )
 
 // The inbox's API: what a session holds until its agent is idle (sends

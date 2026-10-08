@@ -1,7 +1,7 @@
 import { type KeyboardEvent, type RefObject, useEffect, useRef } from "react";
 import { create } from "zustand";
 
-import { isMock } from "@/hooks/use-berth-connection";
+import { isMock } from "@/hooks/use-burf-connection";
 import type { Client, Session } from "@/lib/api";
 import { keyOf, offOf, onSpill, useConversations } from "@/lib/conversation-store";
 import { useStore } from "@/lib/store";

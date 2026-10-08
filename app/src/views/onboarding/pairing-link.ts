@@ -1,6 +1,6 @@
 // Pairing links look like berth://100.64.0.1:7444?code=…&fp=…, printed by
 // `berthd pair` and by the install script among other lines. People paste
-// the whole output, or the link inside quotes from `berth pair '…'`.
+// the whole output, or the link inside quotes from `burf pair '…'`.
 
 const LINK = /berth:\/\/[^\s'"`<>]+/;
 

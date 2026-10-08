@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/sshconfig"
-	"github.com/sean-brydon/berthd/internal/trust"
+	"github.com/MylesMCook/burf/internal/sshconfig"
+	"github.com/MylesMCook/burf/internal/trust"
 )
 
 // fakeCursor exposes a bundled Cursor CLI on Unix and a PATH CLI on Windows.

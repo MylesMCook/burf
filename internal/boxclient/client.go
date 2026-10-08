@@ -16,8 +16,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/doctor"
-	"github.com/sean-brydon/berthd/internal/events"
+	"github.com/MylesMCook/burf/internal/doctor"
+	"github.com/MylesMCook/burf/internal/events"
 )
 
 // Doer sends a request to a box: a wire.Client from a laptop, or a Local

@@ -64,7 +64,7 @@ func TestRedact(t *testing.T) {
 		{"node_modules/.bin/agent-browser-linux-x64/daemon", "", "node_modules/.bin/agent-browser-linux-x64/daemon"},
 		{"internationalization-and-localization-settings", "", "internationalization-and-localization-settings"},
 		{"12345678901234567890123456789012345", "", "12345678901234567890123456789012345"},
-		{"7.1k tokens · berth ui-token", "", "7.1k tokens · berth ui-token"},
+		{"7.1k tokens · burf ui-token", "", "7.1k tokens · burf ui-token"},
 	} {
 		if got := Redact(tc.in, tc.home); got != tc.want {
 			t.Errorf("Redact(%q) = %q, want %q", tc.in, got, tc.want)

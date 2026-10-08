@@ -6,7 +6,7 @@ import (
 	"crypto/tls"
 	"errors"
 
-	"github.com/sean-brydon/berthd/internal/identity"
+	"github.com/MylesMCook/burf/internal/identity"
 )
 
 var errPinMismatch = errors.New("box presented a key that does not match its pairing; refusing to connect")

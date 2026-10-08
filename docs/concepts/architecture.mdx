@@ -1,9 +1,9 @@
 ---
-title: How Berth works
+title: How Burf works
 description: The box serves, the laptop connects, and the app is only a view.
 ---
 
-Berth connects a laptop to remote development boxes (any VPS, on a tailnet or
+Burf connects a laptop to remote development boxes (any VPS, on a tailnet or
 not) and makes the services, worktrees and agent sessions on them usable as
 if they were local. Nothing is public unless someone explicitly shares it.
 
@@ -25,7 +25,7 @@ if they were local. Nothing is public unless someone explicitly shares it.
 
 ## Components
 
-<Diagram caption="The desktop app and the CLI talk to the berth agent on the same laptop. The agent keeps one pinned TLS connection to berthd on each box, which owns that box's locations, sessions and shares.">
+<Diagram caption="The desktop app and the CLI talk to the burf agent on the same laptop. The agent keeps one pinned TLS connection to berthd on each box, which owns that box's locations, sessions and shares.">
   <DiagramGroup label="Your laptop" icon="laptop">
     <DiagramNode title="Clients">
       - Desktop app
@@ -33,7 +33,7 @@ if they were local. Nothing is public unless someone explicitly shares it.
       - Agent hooks and skill
     </DiagramNode>
     <DiagramEdge label="Local API" details={['Unix socket', 'loopback']} line="solid" />
-    <DiagramNode title="berth agent">
+    <DiagramNode title="burf agent">
       - Box health
       - Forwards
       - `*.localhost`
@@ -56,7 +56,7 @@ if they were local. Nothing is public unless someone explicitly shares it.
   box's locations, sessions, services, shares, hooks and flows. Tools on the
   box reach it through a private Unix socket with the same API. See
   [boxes](/concepts/boxes).
-- **The berth agent** runs on the laptop. It keeps a connection to every box,
+- **The burf agent** runs on the laptop. It keeps a connection to every box,
   runs forwards and the `*.localhost` proxy, relays every box's events, runs
   laptop hooks, holds the offline prompt queue, and owns the embedded tailnet
   nodes. The CLI and the app talk to it, so closing the app drops nothing.
@@ -90,7 +90,7 @@ One event model on both sides; each event records the tool it came from:
 ```
 
 The laptop agent relays every online box's events with `box` set, so
-anything on the laptop (a hook, the app, a plugin, `berth events`) hears about
+anything on the laptop (a hook, the app, a plugin, `burf events`) hears about
 every agent on every box. [Hooks](/guides/hooks) run commands for matching
 events; `before:` hooks gate actions on the box and can refuse them.
 [Flows](/guides/automations) run several steps on the box. Agent tool hooks
@@ -103,7 +103,7 @@ forward only identifiers and paths, never prompts. The catalog is in
   commands, status bar items, themes. They can carry hooks and kits.
 - [Kits](/guides/kits) package how a project is set up, and travel as a link.
 - [Skills](/guides/agent-integrations#skills) teach the agents on a box to use
-  Berth themselves.
+  Burf themselves.
 
 Next, read about [boxes](/concepts/boxes), or
 [add one](/getting-started/add-a-box) if you haven't yet.

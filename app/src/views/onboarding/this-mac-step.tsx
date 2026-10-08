@@ -26,7 +26,7 @@ export function ThisMacStep({ status, onStage, onDone, onRemote, onBack }: { sta
       <StepHeader
         variant="page"
         title="Setting up this Mac"
-        description="Berth installs berthd for your user, no password needed. It listens on this Mac only, so nothing opens to your network."
+        description="Burf installs berthd for your user, no password needed. It listens on this Mac only, so nothing opens to your network."
         onBack={running ? undefined : onBack}
       />
       <UseThisMac status={status} autoStart className="mt-6" onRunning={setRunning} onPaired={setPaired} />

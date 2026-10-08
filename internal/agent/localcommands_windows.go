@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/localagent"
+	"github.com/MylesMCook/burf/internal/localagent"
 )
 
 // Resolve installed native CLIs, never execute an npm batch shim through a shell.

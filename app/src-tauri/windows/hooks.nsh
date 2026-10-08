@@ -35,7 +35,7 @@ Var BerthStatus
     Pop $BerthStatus
     ${If} $0 != 0
       SetErrorLevel 1
-      Abort "Berth could not inspect the current client safely. The installed files were kept."
+      Abort "Burf could not inspect the current client safely. The installed files were kept."
     ${EndIf}
     !insertmacro BerthFlag "installed" $1 "${CONTEXT}"
     ${If} $1 = 1
@@ -54,8 +54,11 @@ Var BerthStatus
   StrCpy $BerthLoginProgram ""
   StrCpy $BerthWasRunning 0
   StrCpy $BerthAgentStopped 0
+  ; Inspect older fork installations before changing any files.
   !insertmacro BerthInspect "$INSTDIR\berth-cli.exe" "${CONTEXT}"
   !insertmacro BerthInspect "$INSTDIR\cli\berth.exe" "${CONTEXT}"
+  !insertmacro BerthInspect "$INSTDIR\burf-cli.exe" "${CONTEXT}"
+  !insertmacro BerthInspect "$INSTDIR\cli\burf.exe" "${CONTEXT}"
 !macroend
 
 !macro BerthDrain
@@ -65,7 +68,7 @@ Var BerthStatus
     Pop $1
     ${If} $0 != 0
       SetErrorLevel 1
-      Abort "Berth could not stop its local agent safely. The installed files were kept."
+      Abort "Burf could not stop its local agent safely. The installed files were kept."
     ${EndIf}
     StrCpy $BerthAgentStopped 1
   ${EndIf}
@@ -77,7 +80,7 @@ Var BerthStatus
     CopyFiles /SILENT "$INSTDIR\${FILE}" "${DIRECTORY}"
     ${If} ${Errors}
       SetErrorLevel 1
-      Abort "Berth could not preserve the old client for recovery. The installed files were kept."
+      Abort "Burf could not preserve the old client for recovery. The installed files were kept."
     ${EndIf}
   ${EndIf}
 !macroend
@@ -88,6 +91,9 @@ Var BerthStatus
   !insertmacro BerthInspectInstallation "install"
   InitPluginsDir
   CreateDirectory "$PLUGINSDIR\berth-rollback\cli"
+  !insertmacro BerthBackup "burf-cli.exe" "$PLUGINSDIR\berth-rollback"
+  !insertmacro BerthBackup "cli\burf.exe" "$PLUGINSDIR\berth-rollback\cli"
+  !insertmacro BerthBackup "Burf.exe" "$PLUGINSDIR\berth-rollback"
   !insertmacro BerthBackup "berth-cli.exe" "$PLUGINSDIR\berth-rollback"
   !insertmacro BerthBackup "cli\berth.exe" "$PLUGINSDIR\berth-rollback\cli"
   !insertmacro BerthBackup "Berth.exe" "$PLUGINSDIR\berth-rollback"
@@ -106,7 +112,7 @@ Var BerthStatus
     Pop $1
     ${If} $0 != 0
       SetErrorLevel 1
-      Abort "Berth could not restart the updated client. Restoring the previous client."
+      Abort "Burf could not restart the updated client. Restoring the previous client."
     ${EndIf}
     StrCpy $BerthAgentStopped 0
   ${EndIf}
@@ -125,12 +131,15 @@ Function BerthRecover
   !insertmacro BerthRestore "berth-cli.exe"
   !insertmacro BerthRestore "cli\berth.exe"
   !insertmacro BerthRestore "Berth.exe"
+  !insertmacro BerthRestore "burf-cli.exe"
+  !insertmacro BerthRestore "cli\burf.exe"
+  !insertmacro BerthRestore "Burf.exe"
   ${If} $BerthAgentStopped = 1
     nsExec::ExecToStack '"$BerthAgentProgram" agent start'
     Pop $0
     Pop $1
     ${If} $0 != 0
-      MessageBox MB_ICONSTOP "The previous Berth client could not restart. Its state is retained; open Berth again to retry."
+      MessageBox MB_ICONSTOP "The previous Burf client could not restart. Its state is retained; open Burf again to retry."
     ${EndIf}
     StrCpy $BerthAgentStopped 0
   ${EndIf}
@@ -155,17 +164,17 @@ FunctionEnd
         Pop $1
       ${EndIf}
       SetErrorLevel 1
-      Abort "Berth could not remove its owned login task. Uninstall was cancelled."
+      Abort "Burf could not remove its owned login task. Uninstall was cancelled."
     ${EndIf}
   ${EndIf}
-  ${If} ${FileExists} "$INSTDIR\Berth.exe"
+  ${If} ${FileExists} "$INSTDIR\Burf.exe"
     ; A headless mode of the old app uses its embedded registry command.
-    nsExec::ExecToStack '"$INSTDIR\Berth.exe" --remove-cli-path'
+    nsExec::ExecToStack '"$INSTDIR\Burf.exe" --remove-cli-path'
     Pop $0
     Pop $1
     ${If} $0 != 0
       SetErrorLevel 1
-      Abort "Berth could not remove its PATH entry. Uninstall was cancelled."
+      Abort "Burf could not remove its PATH entry. Uninstall was cancelled."
     ${EndIf}
   ${EndIf}
   ; Agent keys, pairing and configuration live outside the installation.

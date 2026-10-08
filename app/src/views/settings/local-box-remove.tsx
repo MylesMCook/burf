@@ -10,7 +10,7 @@ import { useStore } from "@/lib/store";
 import { CommandLog } from "@/views/settings/command-log";
 
 // RemoveLocalBoxDialog stops using this Mac as a box (Use this Mac,
-// undone): Berth forgets the box, stops berthd here and removes its launch
+// undone): Burf forgets the box, stops berthd here and removes its launch
 // agent. Its data stays unless asked: the box's keys, projects list and
 // session records. Repositories are never touched.
 export function RemoveLocalBoxDialog({ box, open, onOpenChange }: { box: string; open: boolean; onOpenChange(open: boolean): void }) {
@@ -42,7 +42,7 @@ export function RemoveLocalBoxDialog({ box, open, onOpenChange }: { box: string;
         <AlertDialogHeader>
           <AlertDialogTitle>Stop using this Mac as a box?</AlertDialogTitle>
           <AlertDialogDescription>
-            Berth forgets {box}, stops berthd on this Mac and removes its launch agent. Your repositories and files stay where they are, and agents still running here keep going until they finish.
+            Burf forgets {box}, stops berthd on this Mac and removes its launch agent. Your repositories and files stay where they are, and agents still running here keep going until they finish.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <div className="px-6">

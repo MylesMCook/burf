@@ -12,7 +12,7 @@ import { Children, isValidElement, type CSSProperties, type ReactNode } from 're
 //         - Desktop app
 //       </DiagramNode>
 //       <DiagramEdge label="Local API" details={['Unix socket']} line="solid" />
-//       <DiagramNode title="berth agent" />
+//       <DiagramNode title="burf agent" />
 //     </DiagramGroup>
 //     <DiagramEdge label="TLS 1.3, HTTP/2" details={['pinned keys']} />
 //     <DiagramGroup label="Each box" icon="box">…</DiagramGroup>

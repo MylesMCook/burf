@@ -14,7 +14,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sean-brydon/berthd/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/boxclient"
 )
 
 // Port is a TCP port something on the box is listening on.

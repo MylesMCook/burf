@@ -15,15 +15,15 @@ $env:BERTH_USER_DIR = Join-Path $state 'user'
 $env:BERTH_UI_ADDR = "127.0.0.1:$uiPort"
 $env:BERTH_PROXY_ADDR = '127.0.0.1:0'
 $started = $false
-function Invoke-Berth([string[]]$Arguments) {
+function Invoke-Burf([string[]]$Arguments) {
     $output = & $Binary @Arguments
     if ($LASTEXITCODE -ne 0) { throw "berth $($Arguments -join ' ') failed" }
     return $output
 }
 try {
-    Invoke-Berth @('agent', 'start') | Out-Null
+    Invoke-Burf @('agent', 'start') | Out-Null
     $started = $true
-    $status = (Invoke-Berth @('status', '--json')) | ConvertFrom-Json
+    $status = (Invoke-Burf @('status', '--json')) | ConvertFrom-Json
     if ($status.ssh_setup_supported -ne $false -or $status.boxes.Count -ne 0) { throw 'Fresh Windows client status is incorrect.' }
     $tokenFile = Join-Path $state 'client/ui-token'
     $token = [IO.File]::ReadAllText($tokenFile).Trim()
@@ -39,10 +39,10 @@ try {
     if ($api.Headers['Access-Control-Allow-Origin'] -ne 'http://tauri.localhost') { throw 'Windows Tauri origin was rejected.' }
     $info = Invoke-RestMethod -Headers $headers "$endpoint/v1/agent"
     if ($info.pid -le 0) { throw 'The agent did not report its process.' }
-    Invoke-Berth @('agent', 'stop', '--drain') | Out-Null
+    Invoke-Burf @('agent', 'stop', '--drain') | Out-Null
     $started = $false
     if (Get-Process -Id $info.pid -ErrorAction SilentlyContinue) { throw 'Drain-stop returned before the process exited.' }
-    $after = (Invoke-Berth @('agent', 'status', '--json')) | ConvertFrom-Json
+    $after = (Invoke-Burf @('agent', 'status', '--json')) | ConvertFrom-Json
     if ($after.running -or $after.installed) { throw 'Smoke test left a process or login task running.' }
     Write-Output 'PASS: native Windows start, status, private app API, Tauri origin, and drained process exit. No login task was installed.'
 } finally {

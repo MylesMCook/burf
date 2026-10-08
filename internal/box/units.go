@@ -10,9 +10,9 @@ import (
 	"regexp"
 	"sort"
 
-	"github.com/sean-brydon/berthd/internal/boxclient"
-	"github.com/sean-brydon/berthd/internal/doctor"
-	"github.com/sean-brydon/berthd/internal/service"
+	"github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/doctor"
+	"github.com/MylesMCook/burf/internal/service"
 )
 
 // Unit is a long-lived program berthd runs on the box under the platform's

@@ -1,17 +1,17 @@
-Berth diagnostics · 2026-10-05 17:41 UTC
+Burf diagnostics · 2026-10-05 17:41 UTC
 App: 0.3.6 (build d05a0df) · macOS 26.3 arm64
 Agent: online · berth 0.3.6 (build 4f1c2a9e0b7d)
 Terminal: xterm.js (ghostty-web failed: WebAssembly.compile(): refused by Content Security Policy)
 Look: theme berth-dark · Labs on (agents as conversation, zen off)
 
-Laptop (berth doctor)
+Laptop (burf doctor)
   ✓ starts at login  background agent installed
   ✓ agent  running
   ✓ local URLs  http://PORT.BOX.localhost
   ! app terminal  xterm.js: ghostty-web couldn't start (WebAssembly.compile(): refused) → Settings → Terminal → Copy details, and send them to us
   ✓ short URLs via ::1  reaches berth
-  ! short URLs via 127.0.0.1  answered by another program: nginx → Stop that program, then: berth setup port80
-  ✗ work  signed out as [email] → berth network login work
+  ! short URLs via 127.0.0.1  answered by another program: nginx → Stop that program, then: burf setup port80
+  ✗ work  signed out as [email] → burf network login work
   ✓ devl  online, 38ms
   ! old-vps  offline: dial tcp 203.0.113.7:7444: i/o timeout → Check the box is on, then on it: berthd doctor
   ✓ Claude Code  connected

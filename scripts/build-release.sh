@@ -1,9 +1,9 @@
 #!/bin/sh
 # Build the CLI and daemon archives a release carries, into dist/:
 #
-#   berthd-<os>-<arch>.tar.gz   berthd, for linux/amd64, linux/arm64, darwin/arm64, darwin/amd64
-#   berth-<os>-<arch>.tar.gz    berth, plus the Linux daemons `berth add ssh` and
-#                               `berth upgrade` upload, and Berth's static tmux
+#   burfd-<os>-<arch>.tar.gz   berthd, for linux/amd64, linux/arm64, darwin/arm64, darwin/amd64
+#   burf-<os>-<arch>.tar.gz    berth, plus the Linux daemons `burf add ssh` and
+#                               `burf upgrade` upload, and Burf's static tmux
 #                               for Linux boxes (tmux-linux-amd64, -arm64), for
 #                               the same four platforms
 #   checksums.txt               sha256 of every archive, as sha256sum prints it
@@ -25,14 +25,14 @@ esac
 root=$(cd "$(dirname "$0")/.." && pwd)
 dist="$root/dist"
 go=${GO:-go}
-ldflags="-s -w -X github.com/sean-brydon/berthd/internal/version.Version=$version"
+ldflags="-s -w -X github.com/MylesMCook/burf/internal/version.Version=$version"
 platforms="linux/amd64 linux/arm64 darwin/arm64 darwin/amd64"
 
 rm -rf "$dist"
 mkdir -p "$dist/stage"
 cd "$root"
 
-# Berth's tmux, built once into bin/ (scripts/build-tmux.sh, which needs
+# Burf's tmux, built once into bin/ (scripts/build-tmux.sh, which needs
 # Docker), or put there by the release workflow's tmux job.
 tmux_dir=${TMUX_DIR:-$root/bin}
 if [ ! -x "$tmux_dir/tmux-linux-amd64" ] || [ ! -x "$tmux_dir/tmux-linux-arm64" ]; then
@@ -46,15 +46,17 @@ build() { # build PACKAGE OS ARCH OUT
 for p in $platforms; do
 	os=${p%/*} arch=${p#*/}
 	echo "berthd $version $os/$arch"
-	build ./cmd/berthd "$os" "$arch" "$dist/stage/berthd-$os-$arch/berthd"
+	build ./cmd/burfd "$os" "$arch" "$dist/stage/burfd-$os-$arch/burfd"
+	cp "$dist/stage/burfd-$os-$arch/burfd" "$dist/stage/burfd-$os-$arch/berthd"
 done
 for p in $platforms; do
 	os=${p%/*} arch=${p#*/}
 	echo "berth $version $os/$arch"
-	dir="$dist/stage/berth-$os-$arch"
-	build ./cmd/berth "$os" "$arch" "$dir/berth"
+	dir="$dist/stage/burf-$os-$arch"
+	build ./cmd/burf "$os" "$arch" "$dir/burf"
+	cp "$dir/burf" "$dir/berth"
 	for a in amd64 arm64; do
-		cp "$dist/stage/berthd-linux-$a/berthd" "$dir/berthd-linux-$a"
+		cp "$dist/stage/burfd-linux-$a/berthd" "$dir/berthd-linux-$a"
 		cp "$tmux_dir/tmux-linux-$a" "$dir/tmux-linux-$a"
 	done
 done

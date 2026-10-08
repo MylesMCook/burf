@@ -1,11 +1,11 @@
 ---
 title: Install
-description: One line puts berthd on a box. On your Mac, download the Berth app, which carries the berth CLI and updates itself.
+description: One line puts berthd on a box. On your Mac, download the Burf app, which carries the berth CLI and updates itself.
 ---
 
-Berth has two halves: `berthd`, the daemon on each box your agents run on,
-and on your laptop the Berth app with the `berth` CLI inside it. The
-[release](https://github.com/sean-brydon/berthd/releases) carries the app
+Burf has two halves: `berthd`, the daemon on each box your agents run on,
+and on your laptop the Burf app with the `berth` CLI inside it. The
+[release](https://github.com/MylesMCook/burf/releases) carries the app
 for macOS, and `berthd` and `berth` for Linux and macOS, amd64 and arm64.
 
 ## What you need
@@ -50,12 +50,12 @@ curl -fsSL https://berthd.app/install | sh
     Claude Code: skills in /home/me/.claude/skills; hooks added in /home/me/.claude/settings.json
     Not found: Codex, Cursor Agent. After installing one, run: /home/me/.local/bin/berthd integrations install codex|cursor
 
-berthd v0.1.0 is running. Paste this link into Berth on your laptop
+berthd v0.1.0 is running. Paste this link into Burf on your laptop
 (Add a box). It works once, for ten minutes:
 
   berth://100.101.102.103:7444?code=…&fp=…
 
-Or on your laptop:  berth pair 'berth://100.101.102.103:7444?code=…&fp=…'
+Or on your laptop:  burf pair 'berth://100.101.102.103:7444?code=…&fp=…'
 
 Your laptop will dial 100.101.102.103:7444. A new link any time: berthd pair
 ```
@@ -73,30 +73,30 @@ to upgrade, are in [add a box](/getting-started/add-a-box#with-the-install-comma
 Keep the link it prints for [pairing](#pair-your-laptop-with-the-box).
 
 Rather not run anything on the box? Once the CLI is on your laptop,
-`berth add ssh me@my-box` installs berthd over SSH and pairs in one step:
+`burf add ssh me@my-box` installs berthd over SSH and pairs in one step:
 see [over SSH](/getting-started/add-a-box#over-ssh).
 
 ## Install the app
 
-[Download Berth for macOS](https://github.com/sean-brydon/berthd/releases/latest/download/Berth-macos-universal.dmg),
-open the disk image, drag **Berth** to **Applications**, and open it. It's
+[Download Burf for macOS](https://github.com/MylesMCook/burf/releases/latest/download/Burf-macos-universal.dmg),
+open the disk image, drag **Burf** to **Applications**, and open it. It's
 one app for Apple silicon and Intel Macs, signed with a Developer ID and
 notarized by Apple, so it opens like any other.
 
 The app carries the `berth` CLI, the Linux builds of `berthd` that
-`berth add ssh` and `berth upgrade` upload, and a `berthd` for the Mac itself
+`burf add ssh` and `burf upgrade` upload, and a `berthd` for the Mac itself
 (`Contents/Resources/berthd`, signed and notarized with the app) for
 [Use this Mac](/getting-started/add-a-box#this-mac), so there is nothing else
 to install on the laptop. When the [laptop agent](#start-the-laptop-agent)
 isn't running, the app offers to start it.
 
 While no box is paired, it opens on a short setup that gets you to a running
-agent in about a minute. Its first choice is **Start on this Mac**: Berth
+agent in about a minute. Its first choice is **Start on this Mac**: Burf
 installs the `berthd` it carries and pairs with it, with no terminal (see
 [this Mac](/getting-started/add-a-box#this-mac)); agents then run while the
 Mac is awake, and you can add a server later. Then **Use the sample** makes
 a tiny sample project (`hello`, a Node web server and its test, from
-[`examples/hello`](https://github.com/sean-brydon/berthd/tree/main/examples/hello))
+[`examples/hello`](https://github.com/MylesMCook/burf/tree/main/examples/hello))
 in `~/work/hello`, or add one of your own; and the composer opens with a
 small first task written for the sample: press Enter and the first agent
 starts in a worktree of its own. **Connect a remote box**, beside **Start on
@@ -110,7 +110,7 @@ The app checks for a new release when it opens and every few hours after,
 and downloads it in the background. When one is ready, **Restart to
 update** shows in the status bar and in **Settings → About**; it never
 restarts by itself. Restarting the app doesn't stop your agents: they run
-on the boxes. The updated app restarts the Berth agent once it has finished
+on the boxes. The updated app restarts the Burf agent once it has finished
 what it's doing, so it runs the new version too, and this Mac's box is
 brought up to date; a note says **Updated to vX.Y.Z**. **Settings → About →
 Check now** checks straight away.
@@ -120,10 +120,10 @@ Check now** checks straight away.
 To use `berth` in a terminal, open **Settings → General** in the app and,
 under **Command line**, click **Install** next to **The berth command**. It
 asks first, then links `~/.local/bin/berth` to the copy inside the app
-(`Berth.app/Contents/MacOS/berth-cli`), so the command updates with the
+(`Burf.app/Contents/MacOS/burf-cli`), so the command updates with the
 app. If `~/.local/bin` isn't on your `PATH`, add it
 (`export PATH="$HOME/.local/bin:$PATH"` in your shell's profile); these
-pages write `berth`. `berth help` lists every command.
+pages write `berth`. `burf help` lists every command.
 
 ### The CLI without the app
 
@@ -131,20 +131,20 @@ On a Linux laptop, or for the CLI alone, download it from the release:
 
 ```sh
 mkdir -p ~/.local/bin
-curl -fsSL "https://github.com/sean-brydon/berthd/releases/latest/download/berth-$(uname -s | tr A-Z a-z)-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar -xz -C ~/.local/bin
+curl -fsSL "https://github.com/MylesMCook/burf/releases/latest/download/berth-$(uname -s | tr A-Z a-z)-$(uname -m | sed 's/x86_64/amd64/;s/aarch64/arm64/').tar.gz" | tar -xz -C ~/.local/bin
 ```
 
 That fetches `berth-linux-amd64.tar.gz` on an x86-64 Linux machine (the
 archive for each platform, and `checksums.txt`, are on the
-[release page](https://github.com/sean-brydon/berthd/releases/latest)). It
+[release page](https://github.com/MylesMCook/burf/releases/latest)). It
 holds three files:
 
 | File | What it is |
 | --- | --- |
 | `berth` | The laptop CLI and background agent, for this computer |
-| `berthd-linux-amd64`, `berthd-linux-arm64` | The box daemon for Linux boxes, which `berth add ssh` and `berth upgrade` upload |
+| `berthd-linux-amd64`, `berthd-linux-arm64` | The box daemon for Linux boxes, which `burf add ssh` and `burf upgrade` upload |
 
-Keep them together: `berth add ssh` and `berth upgrade` look for
+Keep them together: `burf add ssh` and `burf upgrade` look for
 `berthd-<os>-<arch>` beside their own executable.
 
 ## Pair your laptop with the box
@@ -153,7 +153,7 @@ Paste the link the installer printed into the app (**Add a box**; pasting
 all of the output is fine), or:
 
 ```sh
-berth pair 'berth://100.101.102.103:7444?code=…&fp=…'
+burf pair 'berth://100.101.102.103:7444?code=…&fp=…'
 ```
 
 The link works once and expires after ten minutes; `berthd pair` on the box
@@ -164,24 +164,24 @@ mutual TLS. More in [add a box](/getting-started/add-a-box#with-a-pairing-link).
 
 The CLI and the app are clients of the **laptop agent**, a background process
 that holds the connection to every box (see [the laptop agent](/concepts/laptop-agent)).
-Any command that needs it starts it (`berth boxes`, for one). To have it
+Any command that needs it starts it (`burf boxes`, for one). To have it
 start at login and come back after a crash, install it as a service
 (launchd on macOS, a systemd user unit on Linux):
 
 ```sh
-berth agent install     # berth agent status | uninstall
+burf agent install     # burf agent status | uninstall
 ```
 
 If the agent isn't running when the desktop app opens, the app offers to
-start it: **Start the Berth agent** runs `berth agent start`, and ticking
-**Start at login** first runs `berth agent install` instead. Nothing is
+start it: **Start the Burf agent** runs `burf agent start`, and ticking
+**Start at login** first runs `burf agent install` instead. Nothing is
 installed unless you tick it. The app runs only the copy of `berth` it
 carries, and only while it is signed by the same team as the app (see
 [the security model](/concepts/security#on-the-laptop)). A dev build
 (`pnpm tauri dev`) runs `BERTH_CLI` when set, then the repository's
 `bin/berth` when there is one, and otherwise `berth` from `~/.local/bin`,
 `/opt/homebrew/bin` or `/usr/local/bin`. Without any of them, the app shows
-the command to run in a terminal (`berth status`) and connects as soon as
+the command to run in a terminal (`burf status`) and connects as soon as
 the agent is up.
 
 ## Optional: shorter URLs
@@ -190,7 +190,7 @@ Every port on a box has a private URL like `http://3000.my-box.localhost:1377/`.
 On a Mac, you can drop the `:1377`:
 
 ```sh
-berth setup port80      # asks for your admin password once; --remove undoes it
+burf setup port80      # asks for your admin password once; --remove undoes it
 ```
 
 It redirects port 80 to 1377 on this computer. On Linux, grant the agent
@@ -199,20 +199,20 @@ It redirects port 80 to 1377 on this computer. On Linux, grant the agent
 ## Check everything
 
 ```sh
-berth doctor            # this computer: the agent, URLs, networks, boxes, agent tools
-berth doctor my-box     # a box: git, tmux, cloudflared, agents, where it listens
+burf doctor            # this computer: the agent, URLs, networks, boxes, agent tools
+burf doctor my-box     # a box: git, tmux, cloudflared, agents, where it listens
 ```
 
 Each check that fails says how to fix it.
 
 ## Build from source
 
-For working on Berth, or a laptop the release doesn't cover. You need
+For working on Burf, or a laptop the release doesn't cover. You need
 **Go 1.27** for `berth` and `berthd`, and **Node 22, pnpm and Rust** for
 the desktop app.
 
 ```sh
-git clone https://github.com/sean-brydon/berthd
+git clone https://github.com/MylesMCook/burf
 cd berthd
 make all
 ```
@@ -237,7 +237,7 @@ pnpm tauri dev
 It runs the clone's `bin/berth` for the laptop agent, or the one in
 `~/.local/bin` if you downloaded the CLI instead of building it, so with
 the CLI from the release you can run the app without Go. `make app-build`
-builds `Berth.app` and its disk image, with the CLI and the Linux daemons
+builds `Burf.app` and its disk image, with the CLI and the Linux daemons
 inside, under `app/src-tauri/target/release/bundle/`.
 
 ## Next

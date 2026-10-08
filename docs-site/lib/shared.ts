@@ -1,4 +1,4 @@
-export const appName = 'Berth';
+export const appName = 'Burf';
 export const siteUrl = 'https://docs.berthd.app';
 export const landingUrl = 'https://berthd.app';
 

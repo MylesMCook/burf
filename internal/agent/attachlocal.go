@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	box "github.com/sean-brydon/berthd/internal/boxclient"
+	box "github.com/MylesMCook/burf/internal/boxclient"
 )
 
 // A path pasted into the app (a screenshot's /var/folders/…/Screenshot.png,

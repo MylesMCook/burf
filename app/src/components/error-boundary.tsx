@@ -30,7 +30,7 @@ export class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, info: ErrorInfo) {
     this.setState({ stack: info.componentStack ?? undefined });
     // Kept for anyone who does have a console attached, such as a dev build.
-    console.error(`Berth: ${this.props.scope ?? "the app"} hit an error it could not render through:`, error, info.componentStack);
+    console.error(`Burf: ${this.props.scope ?? "the app"} hit an error it could not render through:`, error, info.componentStack);
   }
 
   render() {
@@ -45,9 +45,9 @@ export class ErrorBoundary extends Component<Props, State> {
             <EmptyMedia>
               <Scene name="storm" />
             </EmptyMedia>
-            <EmptyTitle>{scope ? `Something in ${scope} broke` : "Berth hit an error"}</EmptyTitle>
+            <EmptyTitle>{scope ? `Something in ${scope} broke` : "Burf hit an error"}</EmptyTitle>
             <EmptyDescription>
-              {scope ? "The rest of Berth still works. " : ""}
+              {scope ? "The rest of Burf still works. " : ""}
               {error.message || String(error)}
             </EmptyDescription>
           </EmptyHeader>

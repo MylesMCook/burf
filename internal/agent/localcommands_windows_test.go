@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/localpty"
+	"github.com/MylesMCook/burf/internal/localpty"
 )
 
 func TestInstalledLocalAgentCommands(t *testing.T) {

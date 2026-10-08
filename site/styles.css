@@ -1,5 +1,5 @@
-/* Berth's landing page. The app's type (Inter, JetBrains Mono), its tokens
-   (Berth Light and Berth Dark, following the system) and coss-ui's buttons.
+/* Burf's landing page. The app's type (Inter, JetBrains Mono), its tokens
+   (Burf Light and Burf Dark, following the system) and coss-ui's buttons.
    The harbour at the top is the only picture that isn't a screenshot. */
 
 @font-face {
@@ -759,7 +759,7 @@ code {
 }
 
 /* A loop: its poster sizes the frame; the video fades in over it once it
-   plays. The footage is the app in Berth Dark, so the frame is dark too. */
+   plays. The footage is the app in Burf Dark, so the frame is dark too. */
 .clip {
   position: relative;
   margin: 0;

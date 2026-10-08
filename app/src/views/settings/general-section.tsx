@@ -58,7 +58,7 @@ export function GeneralSection() {
       <CommandLineGroup />
 
       <SettingsGroup title="Startup">
-        <SettingsRow label="Open Berth at login" description="Not available yet. Your boxes keep running either way: closing Berth never stops an agent.">
+        <SettingsRow label="Open Burf at login" description="Not available yet. Your boxes keep running either way: closing Burf never stops an agent.">
           <Switch checked={false} disabled />
         </SettingsRow>
       </SettingsGroup>
@@ -76,10 +76,10 @@ export function GeneralSection() {
           label="Port"
           description={
             port === 80 ? (
-              "URLs have no port: port 80 on this computer points at Berth."
+              "URLs have no port: port 80 on this computer points at Burf."
             ) : (
               <>
-                URLs end in <Code>:{port}</Code>. To drop it, <Code>berth setup port80</Code> points port 80 on this computer at Berth (it asks for your password once; skip it if something else already uses port 80).
+                URLs end in <Code>:{port}</Code>. To drop it, <Code>burf setup port80</Code> points port 80 on this computer at Burf (it asks for your password once; skip it if something else already uses port 80).
               </>
             )
           }
@@ -91,10 +91,10 @@ export function GeneralSection() {
   );
 }
 
-const LINK = "~/.local/bin/berth";
+const LINK = "~/.local/bin/burf";
 
-// CommandLineGroup puts the berth CLI that Berth.app carries on the PATH, as
-// a link at ~/.local/bin/berth, so a terminal runs the same berth as the app
+// CommandLineGroup puts the burf CLI that Burf.app carries on the PATH, as
+// a link at ~/.local/bin/burf, so a terminal runs the same burf as the app
 // and it updates with the app. It asks first, and says what it replaces.
 function CommandLineGroup() {
   const [cli, setCli] = useState<CliLink | null | undefined>(undefined);
@@ -111,13 +111,13 @@ function CommandLineGroup() {
   if (!cli?.bundled) {
     description = (
       <>
-        The Berth app carries its own <Code>berth</Code>; this build has none. From a clone, run <Code>bin/berth</Code> after <Code>make all</Code>.
+        The Burf app carries its own <Code>burf</Code>; this build has none. From a clone, run <Code>bin/burf</Code> after <Code>make all</Code>.
       </>
     );
   } else if (cli.state === "linked") {
     description = (
       <>
-        <Code>{LINK}</Code> runs the copy inside Berth.app, so it updates with the app. If a terminal can't find <Code>berth</Code>, add <Code>~/.local/bin</Code> to your <Code>PATH</Code>.
+        <Code>{LINK}</Code> runs the copy inside Burf.app, so it updates with the app. If a terminal can't find <Code>burf</Code>, add <Code>~/.local/bin</Code> to your <Code>PATH</Code>.
       </>
     );
     control = <Value>Installed</Value>;
@@ -131,19 +131,19 @@ function CommandLineGroup() {
       ) : cli.state === "file" ? (
         <>
           {" "}
-          The <Code>berth</Code> there now is kept as <Code>berth.previous</Code>.
+          The <Code>burf</Code> there now is kept as <Code>burf.previous</Code>.
         </>
       ) : null;
     description = cli.blocked ?? (
       <>
-        Links <Code>{LINK}</Code> to the copy inside Berth.app, so <Code>berth</Code> in a terminal is the one the app runs, and updates with it.{replaces}
+        Links <Code>{LINK}</Code> to the copy inside Burf.app, so <Code>burf</Code> in a terminal is the one the app runs, and updates with it.{replaces}
       </>
     );
     control = (
       <ConfirmButton
         label="Install"
         disabled={!!cli.blocked}
-        title="Install the berth command?"
+        title="Install the burf command?"
         description={
           <>
             This links <Code>{LINK}</Code> to <Code>{cli.bundled}</Code>.{replaces} If <Code>~/.local/bin</Code> isn't on your <Code>PATH</Code>, add <Code>{'export PATH="$HOME/.local/bin:$PATH"'}</Code> to your shell's profile.
@@ -153,9 +153,9 @@ function CommandLineGroup() {
         onConfirm={async () => {
           try {
             setCli(await installCliLink());
-            toastManager.add({ title: "Installed the berth command", description: `${LINK} now runs Berth's copy.`, type: "success" });
+            toastManager.add({ title: "Installed the burf command", description: `${LINK} now runs Burf's copy.`, type: "success" });
           } catch (e) {
-            toastManager.add({ title: "Could not install the berth command", description: errorMessage(e), type: "error" });
+            toastManager.add({ title: "Could not install the burf command", description: errorMessage(e), type: "error" });
           }
         }}
       />
@@ -163,7 +163,7 @@ function CommandLineGroup() {
   }
   return (
     <SettingsGroup title="Command line">
-      <SettingsRow label="The berth command" description={description}>
+      <SettingsRow label="The burf command" description={description}>
         {control}
       </SettingsRow>
     </SettingsGroup>
@@ -175,19 +175,19 @@ function WindowsCommandLine({ cli, onChange }: { cli: CliLink | null; onChange(c
   const external = cli?.state === "file";
   return (
     <SettingsGroup title="Command line">
-      <SettingsRow label="The berth command" description={cli?.bundled ? <>
-        <Code>{cli.bundled}</Code> is the app's command. {installed || external ? "New terminals can run berth." : "Add its folder to your user PATH so new terminals can run berth."}
+      <SettingsRow label="The burf command" description={cli?.bundled ? <>
+        <Code>{cli.bundled}</Code> is the app's command. {installed || external ? "New terminals can run burf." : "Add its folder to your user PATH so new terminals can run burf."}
       </> : "PATH integration is available in an installed build."}>
         {external ? <Value>Already on PATH</Value> : cli?.bundled && <ConfirmButton
           label={installed ? "Remove from PATH" : "Add to PATH"}
-          title={installed ? "Remove Berth from your PATH?" : "Add Berth to your PATH?"}
-          description={<>{installed ? "Removes only the folder Berth added." : "Adds this folder to your user PATH:"} <Code>{cli.link}</Code>. Existing terminals keep their current environment.</>}
+          title={installed ? "Remove Burf from your PATH?" : "Add Burf to your PATH?"}
+          description={<>{installed ? "Removes only the folder Burf added." : "Adds this folder to your user PATH:"} <Code>{cli.link}</Code>. Existing terminals keep their current environment.</>}
           confirm={installed ? "Remove" : "Add"}
           onConfirm={async () => {
             try {
               onChange(await (installed ? removeCliLink() : installCliLink()));
             } catch (error) {
-              toastManager.add({ title: "Could not change Berth's PATH entry", description: errorMessage(error), type: "error" });
+              toastManager.add({ title: "Could not change Burf's PATH entry", description: errorMessage(error), type: "error" });
             }
           }}
         />}

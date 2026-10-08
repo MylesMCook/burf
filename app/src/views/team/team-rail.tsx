@@ -61,7 +61,7 @@ export interface ChecklistProps {
   compact?: boolean;
   // The box has no tmux, which the steps' terminal runs in.
   noTmux?: boolean;
-  // The keys are 1Password references: Berth signs op in on the box.
+  // The keys are 1Password references: Burf signs op in on the box.
   onePassword?: boolean;
   // 1Password skipped: the shared keys are typed here instead.
   skipOP?: boolean;
@@ -185,7 +185,7 @@ export function Checklist(p: ChecklistProps) {
         <KeyRoundIcon className="mt-0.5 size-3 shrink-0 text-warning-foreground" />
         {p.sudo > 0 ? (
           <span>
-            {plural(p.sudo, "step")} {p.sudo === 1 ? "asks" : "ask"} for your password on {p.box ?? "the box"}. You type it; Berth doesn't keep it.
+            {plural(p.sudo, "step")} {p.sudo === 1 ? "asks" : "ask"} for your password on {p.box ?? "the box"}. You type it; Burf doesn't keep it.
           </span>
         ) : (
           <span>Nothing here asks for your password.</span>
@@ -364,7 +364,7 @@ export function runSummary(run: TeamStatus): { title: string; detail: string; to
   if (waiting?.id === "github")
     return { title: "Sign the box in to GitHub", detail: `Enter the code at github.com/login/device. Box step ${running + 1} of ${steps.length}, then ${plural(repos.length, "repo")}.`, tone: "waiting", pct, status: "waiting for GitHub's code" };
   if (waiting?.id === "1password")
-    return { title: "Sign the box in to 1Password", detail: `op asks in ${run.box}'s terminal, once, so Berth can read the team's shared keys. Box step ${running + 1} of ${steps.length}, then ${plural(repos.length, "repo")}.`, tone: "waiting", pct, status: "waiting for 1Password" };
+    return { title: "Sign the box in to 1Password", detail: `op asks in ${run.box}'s terminal, once, so Burf can read the team's shared keys. Box step ${running + 1} of ${steps.length}, then ${plural(repos.length, "repo")}.`, tone: "waiting", pct, status: "waiting for 1Password" };
   if (waiting) return { title: "Waiting for your password", detail: `sudo asks in ${run.box}'s terminal. Box step ${running + 1} of ${steps.length}, then ${plural(repos.length, "repo")}.`, tone: "waiting", pct, status: "waiting for your password" };
   if (run.phase === "projects") {
     const busy = repos.filter((p) => p.state !== "ready").map((p) => p.id);

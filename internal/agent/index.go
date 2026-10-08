@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sean-brydon/berthd/internal/proxy"
+	"github.com/MylesMCook/burf/internal/proxy"
 )
 
 // serveIndex lists what the proxy can reach, at plain http://localhost:1377/.
@@ -20,7 +20,7 @@ func (a *Agent) serveIndex(w http.ResponseWriter, r *http.Request) {
 	var b strings.Builder
 	b.WriteString(`<!doctype html><html lang="en"><meta charset="utf-8"><title>berth</title>` + proxy.PageStyle + `<body><h1>berth</h1>`)
 	if len(s.Boxes) == 0 {
-		b.WriteString(`<p>No paired boxes. Run <code>berthd pair</code> on a box, then <code>berth pair '&lt;link&gt;'</code>.</p>`)
+		b.WriteString(`<p>No paired boxes. Run <code>berthd pair</code> on a box, then <code>burf pair '&lt;link&gt;'</code>.</p>`)
 	}
 	for _, box := range s.Boxes {
 		fmt.Fprintf(&b, `<h2>%s <small>%s</small></h2>`,

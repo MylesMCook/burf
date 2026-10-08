@@ -7,7 +7,7 @@ export const CLI_VERSION = "2.12.1";
 const TEMPLATE_SHA256 = "dabed59013b1d78b879a1a85bc7f2eed2993b33a9a90cdabe5946de3d3950597";
 const SOURCE = `https://raw.githubusercontent.com/tauri-apps/tauri/tauri-cli-v${CLI_VERSION}/crates/tauri-bundler/src/bundle/windows/nsis/installer.nsi`;
 const MARKER = '  nsis_tauri_utils::SemverCompare "${VERSION}" $R0\n  Pop $R0\n';
-const OVERINSTALL = `  ; Berth upgrades preserve the installed task, PATH consent and rollback files.
+const OVERINSTALL = `  ; Burf upgrades preserve the installed task, PATH consent and rollback files.
   ; Skip the maintenance page so its uninstall-before-install choice cannot run.
   \${If} $WixMode <> 1
   \${AndIf} $R0 = 1

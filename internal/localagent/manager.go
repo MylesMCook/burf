@@ -351,7 +351,7 @@ func (m *Manager) PrepareRestart() error {
 		active := r.session.State == "running"
 		r.mu.Unlock()
 		if active {
-			return errors.New("stop local Windows agents before restarting Berth")
+			return errors.New("stop local Windows agents before restarting Burf")
 		}
 	}
 	m.closed = true

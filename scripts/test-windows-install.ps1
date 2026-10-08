@@ -21,24 +21,24 @@ $upgradeVersion = [version]([Diagnostics.FileVersionInfo]::GetVersionInfo($Upgra
 if ($upgradeVersion -le $installVersion) { throw 'UpgradeInstaller must have a higher product version.' }
 
 $guardKeys = @(
-    'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Berth',
-    'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Berth',
-    'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Berth',
-    'HKCU:\Software\berth\Berth', 'HKLM:\Software\berth\Berth',
+    'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Burf',
+    'HKLM:\Software\Microsoft\Windows\CurrentVersion\Uninstall\Burf',
+    'HKLM:\Software\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Burf',
+    'HKCU:\Software\berth\Burf', 'HKLM:\Software\berth\Burf',
     'HKCU:\Software\Classes\berth', 'HKLM:\Software\Classes\berth',
-    'HKCU:\Software\Berth\CommandLine'
+    'HKCU:\Software\Burf\CommandLine'
 )
 foreach ($key in $guardKeys) {
-    if (Test-Path -LiteralPath $key) { throw "Pre-existing Berth registration would be replaced: $key" }
+    if (Test-Path -LiteralPath $key) { throw "Pre-existing Burf registration would be replaced: $key" }
 }
 $shortcuts = @(
-    (Join-Path ([Environment]::GetFolderPath('DesktopDirectory')) 'Berth.lnk'),
-    (Join-Path ([Environment]::GetFolderPath('Programs')) 'Berth.lnk'),
-    (Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'Berth.lnk'),
-    (Join-Path ([Environment]::GetFolderPath('CommonPrograms')) 'Berth.lnk')
+    (Join-Path ([Environment]::GetFolderPath('DesktopDirectory')) 'Burf.lnk'),
+    (Join-Path ([Environment]::GetFolderPath('Programs')) 'Burf.lnk'),
+    (Join-Path ([Environment]::GetFolderPath('CommonDesktopDirectory')) 'Burf.lnk'),
+    (Join-Path ([Environment]::GetFolderPath('CommonPrograms')) 'Burf.lnk')
 )
 foreach ($shortcut in $shortcuts) {
-    if (Test-Path -LiteralPath $shortcut) { throw 'A pre-existing Berth shortcut would be replaced.' }
+    if (Test-Path -LiteralPath $shortcut) { throw 'A pre-existing Burf shortcut would be replaced.' }
 }
 $webviewKeys = @(
     'HKCU:\Software\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}',
@@ -75,8 +75,8 @@ foreach ($name in 'BERTH_HOME', 'BERTH_USER_DIR', 'BERTH_UI_ADDR', 'BERTH_PROXY_
 # The per-run folder is disposable, but not under OS TEMP: login tasks refuse
 # temporary compiler binaries. Retain its synthetic keys and evidence afterward.
 $runRoot = Join-Path ([Environment]::GetFolderPath('MyDocuments')) ('Codex\' + [DateTime]::Now.ToString('yyyy-MM-dd') + '-windows-install-' + [Guid]::NewGuid().ToString('N'))
-$installRoot = Join-Path $runRoot 'Berth app'
-$stateRoot = Join-Path $runRoot "Berth's state & data"
+$installRoot = Join-Path $runRoot 'Burf app'
+$stateRoot = Join-Path $runRoot "Burf's state & data"
 $evidence = Join-Path $runRoot 'evidence'
 New-Item -ItemType Directory -Path $evidence -Force | Out-Null
 $log = Join-Path $evidence 'acceptance.log'
@@ -105,7 +105,7 @@ function Invoke-Installer([string]$Artifact) {
     if ($script:activeInstaller.ExitCode -ne 0) { throw "Installer failed with exit code $($script:activeInstaller.ExitCode)." }
     $script:activeInstaller = $null
 }
-function Invoke-Berth([string]$Binary, [string[]]$Arguments) {
+function Invoke-Burf([string]$Binary, [string[]]$Arguments) {
     if (!(Test-Path -LiteralPath $Binary -PathType Leaf)) { throw 'The synthetic client executable is missing.' }
     $previousPolicy = $ErrorActionPreference
     try {
@@ -122,7 +122,7 @@ function Invoke-Berth([string]$Binary, [string[]]$Arguments) {
     }
     return $text
 }
-function Agent-Status([string]$Binary) { return (Invoke-Berth $Binary @('agent', 'status', '--json')) | ConvertFrom-Json }
+function Agent-Status([string]$Binary) { return (Invoke-Burf $Binary @('agent', 'status', '--json')) | ConvertFrom-Json }
 function Read-Agent {
     $token = [IO.File]::ReadAllText((Join-Path $stateRoot 'client/ui-token')).Trim()
     return Invoke-RestMethod -Uri "$endpoint/v1/agent" -Headers @{ Authorization = "Bearer $token" } -TimeoutSec 3
@@ -156,7 +156,7 @@ function Uninstall-TestCopy {
     $script:uninstalled = $true
     # Tauri retains an install-location preference without deleting app data.
     # Remove only this synthetic run's exact preference, not shared app data.
-    $path = 'Software\berth\Berth'
+    $path = 'Software\berth\Burf'
     $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($path, $true)
     if ($key) {
         try {
@@ -178,17 +178,17 @@ try {
     $endpoint = "http://127.0.0.1:$uiPort"
     Record-Step 'Preflight passed; synthetic home, user directory and unique loopback ports selected.'
     Invoke-Installer $Installer
-    $sidecar = Join-Path $installRoot 'berth-cli.exe'
-    $cli = Join-Path (Join-Path $installRoot 'cli') 'berth.exe'
+    $sidecar = Join-Path $installRoot 'burf-cli.exe'
+    $cli = Join-Path (Join-Path $installRoot 'cli') 'burf.exe'
     Assert-Acceptance ((Test-Path $sidecar -PathType Leaf) -and (Test-Path $cli -PathType Leaf)) 'The installed package is missing a CLI candidate.'
     Assert-Acceptance ((Read-UserPath) -ceq $baselinePath) 'Fresh installation changed user PATH.'
-    Assert-Acceptance (!(Test-Path 'HKCU:\Software\Berth\CommandLine')) 'Fresh installation created PATH consent.'
+    Assert-Acceptance (!(Test-Path 'HKCU:\Software\Burf\CommandLine')) 'Fresh installation created PATH consent.'
     Assert-Acceptance (Tasks-MatchBaseline) 'Fresh installation registered a task.'
     $fresh = Agent-Status $sidecar
     Assert-Acceptance (!$fresh.running -and !$fresh.installed) 'Fresh installation started or installed an agent without consent.'
     Record-Step 'Fresh installer changed neither startup nor PATH.'
 
-    Invoke-Berth $sidecar @('agent', 'start') | Out-Null
+    Invoke-Burf $sidecar @('agent', 'start') | Out-Null
     $knownAgent = Wait-Agent $sidecar
     $privateAPI = $false
     try { Invoke-WebRequest -UseBasicParsing -Uri "$endpoint/v1/status" -TimeoutSec 3 | Out-Null } catch {
@@ -202,7 +202,7 @@ try {
     Record-Step 'Private sidecar started an actual process and token-protected API.'
 
     # Exercise the public CLI resource as the login-task owner, not the sidecar.
-    Invoke-Berth $cli @('agent', 'install') | Out-Null
+    Invoke-Burf $cli @('agent', 'install') | Out-Null
     $knownAgent = Wait-Agent $cli $knownAgent.pid
     $newTasks = @(Read-TaskNames | Where-Object { $baselineTasks -notcontains $_ })
     Assert-Acceptance ($newTasks.Count -eq 1) 'Opt-in startup did not create exactly one task.'
@@ -214,7 +214,7 @@ try {
     $user = $xml.SelectSingleNode('/t:Task/t:Principals/t:Principal', $namespace)
     Assert-Acceptance ($user.UserId -eq $identity.User.Value -and $user.LogonType -eq 'InteractiveToken' -and $user.RunLevel -eq 'LeastPrivilege') 'The test login task changed its user or privilege boundary.'
     $metadata = $xml.SelectSingleNode('/t:Task/t:RegistrationInfo/t:Source', $namespace).InnerText
-    Assert-Acceptance ($metadata.StartsWith('berth-task-v1:')) 'The test task lacks Berth ownership metadata.'
+    Assert-Acceptance ($metadata.StartsWith('berth-task-v1:')) 'The test task lacks Burf ownership metadata.'
     $stored = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($metadata.Substring('berth-task-v1:'.Length))) | ConvertFrom-Json
     foreach ($name in 'BERTH_HOME', 'BERTH_USER_DIR', 'BERTH_UI_ADDR', 'BERTH_PROXY_ADDR') {
         Assert-Acceptance ($stored.spec.Env.$name -ceq [Environment]::GetEnvironmentVariable($name, 'Process')) 'The login task lost an explicit isolated environment value.'
@@ -229,18 +229,18 @@ try {
     Record-Step 'Explicit PATH consent added exactly the installed CLI folder.'
 
     $beforeUpgrade = $knownAgent
-    $beforeVersion = Invoke-Berth $cli @('version')
+    $beforeVersion = Invoke-Burf $cli @('version')
     Invoke-Installer $UpgradeInstaller
     $knownAgent = Wait-Agent $cli $beforeUpgrade.pid
     Assert-Acceptance (!(Get-Process -Id $beforeUpgrade.pid -ErrorAction SilentlyContinue)) 'Upgrade returned while the old agent process still existed.'
-    Assert-Acceptance ((Invoke-Berth $cli @('version')) -cne $beforeVersion) 'The higher-version artifact did not change the bundled CLI version.'
+    Assert-Acceptance ((Invoke-Burf $cli @('version')) -cne $beforeVersion) 'The higher-version artifact did not change the bundled CLI version.'
     Assert-Acceptance ((Agent-Status $cli).installed) 'Upgrade lost opt-in login startup.'
     Assert-Acceptance ((Read-UserPath) -ceq $expectedPath -and (Invoke-PathAction 'Status') -eq 'linked') 'Upgrade lost or modified PATH consent.'
     Assert-Acceptance ((Get-FileHash $identityPath).Hash -eq $identityHash -and (Get-FileHash $tokenPath).Hash -eq $tokenHash) 'Upgrade changed the synthetic client keys.'
     Assert-Acceptance ($taskFolder.GetTask($testTask).State -eq 4) 'Upgrade left the owned login task stopped.'
     Record-Step 'Manual higher-version upgrade exited the old PID, restarted the new version and retained keys/task/PATH.'
 
-    Invoke-Berth $cli @('agent', 'stop', '--drain') | Out-Null
+    Invoke-Burf $cli @('agent', 'stop', '--drain') | Out-Null
     Assert-Acceptance (!(Get-Process -Id $knownAgent.pid -ErrorAction SilentlyContinue)) 'Clean stop returned before process exit.'
     $knownAgent = $null
     # Task Scheduler's crash retry interval is one minute; observe past it.
@@ -251,7 +251,7 @@ try {
     }
     Record-Step 'Clean stop stayed stopped beyond the crash retry interval.'
     Uninstall-TestCopy
-    Assert-Acceptance (!(Test-Path (Join-Path $installRoot 'Berth.exe')) -and !(Test-Path $cli) -and !(Test-Path $sidecar)) 'Uninstall retained client executables.'
+    Assert-Acceptance (!(Test-Path (Join-Path $installRoot 'Burf.exe')) -and !(Test-Path $cli) -and !(Test-Path $sidecar)) 'Uninstall retained client executables.'
     Assert-Acceptance ((Get-FileHash $identityPath).Hash -eq $identityHash -and (Get-FileHash $tokenPath).Hash -eq $tokenHash) 'Uninstall removed or changed retained synthetic keys.'
     Record-Step 'Supported uninstall removed the app/task/PATH and retained synthetic keys.'
 } catch {

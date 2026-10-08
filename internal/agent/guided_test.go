@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sean-brydon/berthd/internal/guided"
+	"github.com/MylesMCook/burf/internal/guided"
 )
 
 func TestGuidedInstallRefusesFlags(t *testing.T) {

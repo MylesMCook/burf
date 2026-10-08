@@ -18,8 +18,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/examples"
-	"github.com/sean-brydon/berthd/internal/boxclient"
+	"github.com/MylesMCook/burf/examples"
+	"github.com/MylesMCook/burf/internal/boxclient"
 )
 
 // Adding projects and starting worktrees from what people actually have in

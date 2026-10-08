@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Berth",
+  "productName": "Burf",
   "version": "0.3.9",
-  "identifier": "dev.berth.app",
+  "identifier": "dev.myles.burf",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Berth",
+        "title": "Burf",
         "width": 1400,
         "height": 900,
         "minWidth": 900,
@@ -54,10 +54,9 @@
       }
     },
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQyRjgwQTIwQzRFOTQyMjMKUldRalF1bkVJQXI0MGxrUFdXL1ZZM0JwSW9rQm85ZTZnR1NlbWlPN1piUjVsUmxGMS9RM2RBeHAK",
-      "endpoints": [
-        "https://github.com/sean-brydon/berthd/releases/latest/download/latest.json"
-      ]
+      "pubkey": "",
+      "endpoints": []
     }
-  }
+  },
+  "mainBinaryName": "Burf"
 }

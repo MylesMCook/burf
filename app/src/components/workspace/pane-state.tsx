@@ -67,13 +67,13 @@ export function SessionEnded({ box, session, agent, command, wsKey, tab, pane, o
 }
 
 // BoxOffline sits over the dimmed screen: the session is still running on
-// the box, and Berth reattaches on its own when the box is back.
+// the box, and Burf reattaches on its own when the box is back.
 export function BoxOffline({ box, state, onRetry }: { box: string; state?: string; onRetry(): void }) {
   const title = state === "connecting" ? `Connecting to ${box}…` : state === "untrusted" ? `${box} is unreachable` : `${box} is offline`;
   const detail =
     state === "untrusted"
-      ? "It answered with a different identity than when it was paired, so Berth won't talk to it. Pair it again if it was rebuilt."
-      : "The session keeps running there; Berth reconnects on its own when the box is back.";
+      ? "It answered with a different identity than when it was paired, so Burf won't talk to it. Pair it again if it was rebuilt."
+      : "The session keeps running there; Burf reconnects on its own when the box is back.";
   return (
     <PaneState
       panel

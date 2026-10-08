@@ -21,7 +21,7 @@ import (
 	"time"
 	"unicode/utf16"
 
-	"github.com/sean-brydon/berthd/internal/statefile"
+	"github.com/MylesMCook/burf/internal/statefile"
 )
 
 const taskSource = "berth-task-v1:"
@@ -297,7 +297,7 @@ func readWindowsTaskContext(ctx context.Context, name string) (windowsTask, Spec
 	return task, s, err
 }
 
-// The principal and action must both belong to Berth. A matching task name
+// The principal and action must both belong to Burf. A matching task name
 // alone is never enough to overwrite, run or remove somebody else's task.
 func ownedWindowsTask(data []byte, name string) (Spec, error) {
 	if err := validateWindowsTaskActions(data); err != nil {
@@ -308,7 +308,7 @@ func ownedWindowsTask(data []byte, name string) (Spec, error) {
 		return Spec{}, err
 	}
 	if doc.XMLName.Space != taskNamespace || !strings.HasPrefix(doc.Registration.Source, taskSource) {
-		return Spec{}, errors.New("the Windows task is not owned by Berth")
+		return Spec{}, errors.New("the Windows task is not owned by Burf")
 	}
 	b, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(doc.Registration.Source, taskSource))
 	if err != nil {
@@ -338,7 +338,7 @@ func ownedWindowsTask(data []byte, name string) (Spec, error) {
 	expected.Registration.Source = doc.Registration.Source
 	expected.Actions.Exec[0].Arguments = doc.Actions.Exec[0].Arguments
 	if !reflect.DeepEqual(doc, expected) {
-		return Spec{}, errors.New("the Windows task principal or action differs from its Berth configuration")
+		return Spec{}, errors.New("the Windows task principal or action differs from its Burf configuration")
 	}
 	return s, nil
 }
@@ -385,7 +385,7 @@ func validateWindowsTaskActions(data []byte) error {
 			if len(parents) > 0 {
 				parent := parents[len(parents)-1]
 				if parent == "Actions" && t.Name.Local != "Exec" || parent == "Triggers" && t.Name.Local != "LogonTrigger" || parent == "Exec" && t.Name.Local != "Command" && t.Name.Local != "Arguments" {
-					return errors.New("the Windows task contains actions or triggers Berth did not install")
+					return errors.New("the Windows task contains actions or triggers Burf did not install")
 				}
 			}
 			parents = append(parents, t.Name.Local)
@@ -439,7 +439,7 @@ func windowsInstall(s Spec) (string, error) {
 		return "", err
 	}
 	if task.Found && !sameWindowsHome(have.Env["BERTH_HOME"], s.Env["BERTH_HOME"]) {
-		return "", errors.New("the Windows task belongs to another Berth home")
+		return "", errors.New("the Windows task belongs to another Burf home")
 	}
 	if task.Found && (task.State == 4 || task.State == 2) {
 		return "", errors.New("stop the Windows service cleanly before replacing its task")
@@ -469,10 +469,10 @@ func windowsUninstall(s Spec) (string, error) {
 		return "", err
 	}
 	if !sameWindowsHome(have.Env["BERTH_HOME"], s.Env["BERTH_HOME"]) {
-		return "", errors.New("the Windows task belongs to another Berth home")
+		return "", errors.New("the Windows task belongs to another Burf home")
 	}
 	if !sameWindowsHome(have.Program, s.Program) {
-		return "", errors.New("the Windows task belongs to another Berth executable")
+		return "", errors.New("the Windows task belongs to another Burf executable")
 	}
 	if task.State == 4 || task.State == 2 {
 		return "", errors.New("stop the Windows service cleanly before removing its task")
@@ -513,7 +513,7 @@ func windowsStart(s Spec) error {
 		return err
 	}
 	if !task.Found || !reflect.DeepEqual(have, s) {
-		return errors.New("the Windows service is not installed for this Berth configuration")
+		return errors.New("the Windows service is not installed for this Burf configuration")
 	}
 	path, _ := windowsTaskName(s.Name)
 	if out, err := powershell(taskGuard(path, task) + "$null = $task.Run($null)\n"); err != nil {
@@ -575,7 +575,7 @@ func windowsTaskScript(s Spec) string {
 	return script + "exit 1\n}\n"
 }
 
-// The OS-owned PowerShell launcher releases Berth's image after the child
+// The OS-owned PowerShell launcher releases Burf's image after the child
 // exits. It forwards the actual exit status to Task Scheduler. Both output
 // streams append their original bytes to the log and finish before it returns.
 const taskProcessSource = `using System;
@@ -584,7 +584,7 @@ using System.IO;
 using System.Threading;
 public static class BerthTaskProcess {
   private static void ReportLogFailure(Exception error) {
-    try { Console.Error.WriteLine("Berth could not write the service log: " + error.Message); } catch { }
+    try { Console.Error.WriteLine("Burf could not write the service log: " + error.Message); } catch { }
   }
   private static void Copy(Stream source, Stream output, Action<Exception> failed) {
     var buffer = new byte[8192];

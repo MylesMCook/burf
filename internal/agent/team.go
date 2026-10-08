@@ -18,10 +18,10 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/sean-brydon/berthd/internal/agentcli"
-	box "github.com/sean-brydon/berthd/internal/boxclient"
-	"github.com/sean-brydon/berthd/internal/statefile"
-	"github.com/sean-brydon/berthd/internal/team"
+	"github.com/MylesMCook/burf/internal/agentcli"
+	box "github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/statefile"
+	"github.com/MylesMCook/burf/internal/team"
 )
 
 // Team setups on the laptop: read <org>/.berth with the person's gh, check
@@ -53,7 +53,7 @@ type TeamStepView struct {
 	Title  string `json:"title"`
 	Detail string `json:"detail,omitempty"`
 	Sudo   bool   `json:"sudo"`
-	// Berth marks the steps Berth adds: the box's own GitHub sign-in, and
+	// Burf marks the steps Burf adds: the box's own GitHub sign-in, and
 	// 1Password's when the keys need it.
 	Berth    bool     `json:"berth,omitempty"`
 	Commands []string `json:"commands"`
@@ -376,7 +376,7 @@ func agentsStepView(ids []string) TeamStepView {
 	}
 	return TeamStepView{
 		ID: team.AgentsStep, Title: agentcli.Names(ids) + " on the box", Berth: true,
-		Detail:   "The agent CLIs the team uses, installed into ~/.local/bin without sudo, with Berth's hooks and skills. Signing in to each stays yours",
+		Detail:   "The agent CLIs the team uses, installed into ~/.local/bin without sudo, with Burf's hooks and skills. Signing in to each stays yours",
 		Commands: cmds,
 	}
 }
@@ -384,7 +384,7 @@ func agentsStepView(ids []string) TeamStepView {
 func onePasswordStepView() TeamStepView {
 	return TeamStepView{
 		ID: team.OnePasswordStep, Title: "1Password on the box", Berth: true,
-		Detail: "The shared keys are 1Password references: op signs in on the box, in its terminal, so Berth reads them without asking in a service's terminal",
+		Detail: "The shared keys are 1Password references: op signs in on the box, in its terminal, so Burf reads them without asking in a service's terminal",
 		Commands: []string{
 			"berthd secret signin --check || berthd secret signin   # op signin; its session kept for berthd, readable by you alone",
 		},
@@ -970,7 +970,7 @@ func (a *Agent) checkTeamUpdates(ctx context.Context) {
 	}
 }
 
-// teamRoutes serves the Team setup page and berth team.
+// teamRoutes serves the Team setup page and burf team.
 func (a *Agent) teamRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/github", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, githubState(r.Context()))

@@ -1,6 +1,6 @@
 package box
 
-import "github.com/sean-brydon/berthd/internal/boxclient"
+import "github.com/MylesMCook/burf/internal/boxclient"
 
 // TeamBundle is a team setup on its way to a box: what the laptop read
 // through its own gh at the commit the engineer reviewed, so the box needs

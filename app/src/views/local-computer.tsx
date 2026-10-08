@@ -68,7 +68,7 @@ export function LocalComputerView() {
       <aside aria-label="Local conversations" className={cn("w-full shrink-0 overflow-y-auto border-r sm:w-64 lg:w-72", selection && "hidden sm:block")}>
         <div className="p-3"><Input aria-label="Search local conversations" placeholder="Search conversations" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
         {!!local?.sessions?.length && <section className="pb-3">
-          <h2 className="px-3 py-1 text-xs font-medium text-muted-foreground">Started in Berth</h2>
+          <h2 className="px-3 py-1 text-xs font-medium text-muted-foreground">Started in Burf</h2>
           {local.sessions.map((s) => <button key={s.id} type="button" onClick={() => select({ kind: "session", session: s })} className={cn("flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-accent", selection?.kind === "session" && selection.session.id === s.id && "bg-accent")}>
             <TerminalIcon className="size-4 shrink-0" /><span className="min-w-0 flex-1"><span className="block truncate">{localAgentName(s.agent)}</span><span className="block truncate text-muted-foreground" title={s.cwd}>{s.cwd}</span></span><span className="text-muted-foreground">{s.state}</span>
           </button>)}
@@ -141,7 +141,7 @@ function LocalHistory({ client, conversation, canFork, onStart }: { client: Clie
           }
           catch (e) { if (!controller.signal.aborted) setStartError(errorMessage(e)); }
           finally { startingRef.current = false; setStarting(false); }
-        }}><GitForkIcon />{starting ? "Starting..." : "Continue in Berth"}</Button>
+        }}><GitForkIcon />{starting ? "Starting..." : "Continue in Burf"}</Button>
       </Tip>
       {page?.more && before !== undefined && <Button size="sm" variant="outline" disabled={loading} onClick={() => void load(before)}>Load older messages</Button>}
       <Tip label="Refresh conversation"><Button size="icon-sm" variant="ghost" aria-label="Refresh conversation" disabled={loading} onClick={() => void load()}><RotateCwIcon className="size-4" /></Button></Tip>

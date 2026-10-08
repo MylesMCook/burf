@@ -14,8 +14,8 @@ const editors: Editor[] = [
 let written = false;
 
 const conf = (box: string, addr: string, net?: string) =>
-  `# Written by berth ssh-config for the box ${box}; berth rewrites it.\nHost berth-${box}\n  HostName ${addr}\n  User me\n` +
-  (net ? `  ProxyCommand /Applications/Berth.app/Contents/MacOS/berth network proxy ${net} %h %p\n` : "");
+  `# Written by burf ssh-config for the box ${box}; berth rewrites it.\nHost berth-${box}\n  HostName ${addr}\n  User me\n` +
+  (net ? `  ProxyCommand /Applications/Burf.app/Contents/MacOS/burf network proxy ${net} %h %p\n` : "");
 
 const plus = (s: string) =>
   s

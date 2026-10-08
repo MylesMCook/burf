@@ -7,6 +7,7 @@ import test from "node:test";
 const source = await readFile(new URL("../app/src-tauri/windows/cli-path.ps1", import.meta.url), "utf8");
 const hooks = await readFile(new URL("../app/src-tauri/windows/hooks.nsh", import.meta.url), "utf8");
 const acceptance = await readFile(new URL("./test-windows-install.ps1", import.meta.url), "utf8");
+const bundle = JSON.parse(await readFile(new URL("../app/src-tauri/tauri.windows.bundle.conf.json", import.meta.url), "utf8"));
 const psQuote = (s) => "'" + s.replaceAll("'", "''") + "'";
 function powershell(command) {
   const executable = join(process.env.SystemRoot, "System32", "WindowsPowerShell", "v1.0", "powershell.exe");
@@ -16,10 +17,15 @@ function powershell(command) {
 }
 
 test("uninstall and installer recovery use only inspected bundled candidates", () => {
-  assert.match(hooks, /BerthInspect "\$INSTDIR\\berth-cli\.exe"/);
-  assert.match(hooks, /BerthInspect "\$INSTDIR\\cli\\berth\.exe"/);
+  assert.match(hooks, /BerthInspect "\$INSTDIR\\burf-cli\.exe"/);
+  assert.match(hooks, /BerthInspect "\$INSTDIR\\cli\\burf\.exe"/);
   assert.match(hooks, /BerthFlag "owned_running"/);
   assert.match(hooks, /"\$BerthLoginProgram" agent uninstall/);
+  assert.match(hooks, /BerthInspect "\$INSTDIR\\berth-cli\.exe"/);
+  assert.match(hooks, /BerthBackup "Berth\.exe"/);
+  assert.match(hooks, /"\$BerthLoginProgram" agent install/);
+  assert.deepEqual(bundle.bundle.externalBin, ["binaries/berth-cli"]);
+  assert.equal(bundle.bundle.resources["binaries/burf-windows-legacy.exe"], "cli/berth.exe");
   assert.match(hooks, /Function \.onInstFailed\n  Call BerthRecover/);
   assert.match(hooks, /!define MUI_CUSTOMFUNCTION_ABORT BerthRecover/);
   assert.ok(!hooks.includes("Function .onUserAbort"));
@@ -27,21 +33,21 @@ test("uninstall and installer recovery use only inspected bundled candidates", (
   assert.match(hooks, /NSIS_HOOK_PREINSTALL\n  !insertmacro BerthInspectInstallation "install"/);
   assert.match(hooks, /NSIS_HOOK_PREUNINSTALL\n  !insertmacro BerthInspectInstallation "uninstall"/);
   assert.match(hooks, /!if "\$\{CONTEXT\}" == "uninstall"\n  \$\{UnStrLoc\}/);
-  assert.match(hooks, /BerthRestore "cli\\berth\.exe"/);
-  assert.match(hooks, /"\$INSTDIR\\Berth\.exe" --remove-cli-path/);
+  assert.match(hooks, /BerthRestore "cli\\burf\.exe"/);
+  assert.match(hooks, /"\$INSTDIR\\Burf\.exe" --remove-cli-path/);
   assert.ok(!hooks.includes("-File"));
   assert.ok(!source.includes("ExecutionPolicy"));
 });
 
 test("native embedded Status works without loading an unsigned script file", { skip: process.platform !== "win32" }, () => {
-  const directory = "C:\\Berth's & $Literal; Tools\\cli";
+  const directory = "C:\\Burf's & $Literal; Tools\\cli";
   const command = `& {\n${source}\n} -Action 'Status' -CliDirectory ${psQuote(directory)}`;
   assert.equal(powershell(command), "missing");
 });
 
 test("manual acceptance keeps protected actions behind installer preflight", () => {
   assert.match(acceptance, /Run as the ordinary login user, without elevation/);
-  assert.match(acceptance, /Pre-existing Berth registration would be replaced/);
+  assert.match(acceptance, /Pre-existing Burf registration would be replaced/);
   assert.match(acceptance, /Fresh installation registered a task/);
   assert.match(acceptance, /Cleanup did not restore the exact user PATH/);
   assert.match(acceptance, /client\/boxes\.json/);
@@ -80,14 +86,14 @@ test("manual acceptance captures all native stderr before rejecting a failed CLI
 $tokens=$null; $errors=$null
 $ast=[Management.Automation.Language.Parser]::ParseInput(${psQuote(acceptance)}, [ref]$tokens, [ref]$errors)
 if ($errors.Count) { throw $errors[0] }
-$function=$ast.Find({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Invoke-Berth'}, $true)
+$function=$ast.Find({param($node) $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Invoke-Burf'}, $true)
 Invoke-Expression $function.Extent.Text
 $evidence=Join-Path $env:TEMP ('berth-stderr-test-' + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $evidence | Out-Null
 try {
   $child=Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
   $caught=$false
-  try { Invoke-Berth $child @('-NoProfile','-NonInteractive','-Command', "[Console]::Error.WriteLine('berth: task error: #< CLIXML'); [Console]::Error.WriteLine('SCHEDULER DETAIL 0x80070005'); exit 17") | Out-Null }
+  try { Invoke-Burf $child @('-NoProfile','-NonInteractive','-Command', "[Console]::Error.WriteLine('berth: task error: #< CLIXML'); [Console]::Error.WriteLine('SCHEDULER DETAIL 0x80070005'); exit 17") | Out-Null }
   catch { $caught=$true }
   if (!$caught) { throw 'The failed CLI was accepted.' }
   if ($ErrorActionPreference -ne 'Stop') { throw 'The caller error policy changed.' }
@@ -99,7 +105,7 @@ try {
 });
 
 test("native PATH edits preserve unrelated entries and literal directory names", { skip: process.platform !== "win32" }, () => {
-  const directory = "C:\\Berth's & $Literal; Tools\\cli";
+  const directory = "C:\\Burf's & $Literal; Tools\\cli";
   // Parse and load only the pure functions, without executing registry code.
   const command = `$ErrorActionPreference='Stop'
 $tokens=$null; $errors=$null

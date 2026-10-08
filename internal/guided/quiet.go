@@ -2,7 +2,7 @@ package guided
 
 import "strings"
 
-// The quiet install is what `berth add ssh` does by default, and the app's
+// The quiet install is what `burf add ssh` does by default, and the app's
 // Add a box: no plan to read and no Enter to press. Every step that needs
 // nothing from the person runs over SSH without a terminal; only a step
 // that truly needs sudo's password (git missing, or lingering that the box

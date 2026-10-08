@@ -15,7 +15,7 @@ import (
 	"github.com/coder/websocket"
 )
 
-// The guided install runs berth add ssh in a terminal here: the app gets
+// The guided install runs burf add ssh in a terminal here: the app gets
 // its screen as bytes and its steps as JSON, and what the person types
 // reaches the command (sudo's password, on a real box) without the agent
 // keeping it anywhere.

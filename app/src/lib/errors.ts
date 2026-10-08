@@ -85,13 +85,13 @@ export function explain(err: unknown, ctx: { box?: string } = {}): Explained {
   if (code === "box_outdated" || code === "unsupported" || /^404 page not found$|doesn't have this yet|too old to|needs a newer berthd/i.test(raw))
     return out(`${box ?? "This box"} needs an update`, "It runs an older berthd that doesn't have this yet. Updating keeps its agents running.", "update-box");
   // A box without tmux answers 503 too: it is there, but can't run agents.
-  if (code === "tmux_missing" || /tmux is not installed/.test(raw)) return out(`tmux isn't installed${on}`, "Berth runs agents inside tmux. Install it on the box, then try again.", "retry");
+  if (code === "tmux_missing" || /tmux is not installed/.test(raw)) return out(`tmux isn't installed${on}`, "Burf runs agents inside tmux. Install it on the box, then try again.", "retry");
   // The laptop can't get through.
   if (code === "box_unreachable" || status === 502 || status === 503 || /dial tcp|i\/o timeout|connection refused|no route to host|network is unreachable|connection reset|broken pipe|context deadline exceeded|is offline|unexpected EOF|^EOF$/i.test(raw))
-    return out(`Can't reach ${it}`, "It may be asleep or offline. Berth reconnects on its own when it's back.", "reconnect");
+    return out(`Can't reach ${it}`, "It may be asleep or offline. Burf reconnects on its own when it's back.", "reconnect");
   if (/failed to fetch|networkerror|load failed|no agent token/i.test(raw))
-    return out("Can't reach Berth's agent", "The app lost its connection to the agent on this computer. It reconnects on its own.", "reconnect");
-  if (code === "box_unknown" || /^no paired box named/.test(raw)) return out("That box isn't paired", "Berth doesn't know a box by that name any more. Add it again from Settings → Boxes.");
+    return out("Can't reach Burf's agent", "The app lost its connection to the agent on this computer. It reconnects on its own.", "reconnect");
+  if (code === "box_unknown" || /^no paired box named/.test(raw)) return out("That box isn't paired", "Burf doesn't know a box by that name any more. Add it again from Settings → Boxes.");
   if (code === "too_many" || status === 429) return out("Too many tries", "Wait a minute, then try again.", "retry");
   if (code === "refused" || /hook stopped/.test(raw)) {
     const said = raw.split(": ").slice(1).join(": ").trim();
@@ -106,7 +106,7 @@ export function explain(err: unknown, ctx: { box?: string } = {}): Explained {
   // says how to unlock it, which Details keeps whole.
   if (/ is locked \(git worktree lock/.test(raw)) {
     const why = /with the reason "([^"]*)"/.exec(raw)?.[1];
-    return out("It's locked", `Someone locked it with git worktree lock${why ? ` ("${why}")` : ""}, so Berth left it as it is. Details has how to unlock it.`);
+    return out("It's locked", `Someone locked it with git worktree lock${why ? ` ("${why}")` : ""}, so Burf left it as it is. Details has how to unlock it.`);
   }
   // git, in its own words.
   if (code === "git_failed" || /^git |fatal: /.test(raw)) {
@@ -126,9 +126,9 @@ export function explain(err: unknown, ctx: { box?: string } = {}): Explained {
     }
     return out(`${box ?? "The box"} couldn't run that`, "Details has what it said.", "retry");
   }
-  if (status === 401) return out("Berth's agent didn't accept the app", "Restart Berth to connect again.", "reconnect");
-  if (looksRaw(raw)) return out("Something went wrong", `Berth couldn't finish that${on}.`, "retry");
-  return { title: "Something went wrong", message: sentence(raw) || "Berth couldn't finish that.", code, box };
+  if (status === 401) return out("Burf's agent didn't accept the app", "Restart Burf to connect again.", "reconnect");
+  if (looksRaw(raw)) return out("Something went wrong", `Burf couldn't finish that${on}.`, "retry");
+  return { title: "Something went wrong", message: sentence(raw) || "Burf couldn't finish that.", code, box };
 }
 
 // The friendly sentence for each raw text, for the inline errors that keep

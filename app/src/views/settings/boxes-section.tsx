@@ -36,7 +36,7 @@ export function BoxesSection() {
       title="Boxes"
       description={
         <>
-          The machines your agents run on. Each runs berthd; this computer only connects to them. <Code>berth boxes</Code> shows the same.
+          The machines your agents run on. Each runs berthd; this computer only connects to them. <Code>burf boxes</Code> shows the same.
         </>
       }
     >
@@ -62,8 +62,8 @@ export function BoxesSection() {
       </SettingsGroup>
       {boxes.length > 0 && (
         <SettingsGroup>
-          <SettingsRow label="Update boxes automatically when Berth updates" description="Each box gets the berthd this Berth ships as soon as it's online. Agents keep running through an update.">
-            <Switch checked={auto} onCheckedChange={(autoUpdateBoxes) => usePrefs.setState({ autoUpdateBoxes })} aria-label="Update boxes automatically when Berth updates" />
+          <SettingsRow label="Update boxes automatically when Burf updates" description="Each box gets the berthd this Burf ships as soon as it's online. Agents keep running through an update.">
+            <Switch checked={auto} onCheckedChange={(autoUpdateBoxes) => usePrefs.setState({ autoUpdateBoxes })} aria-label="Update boxes automatically when Burf updates" />
           </SettingsRow>
         </SettingsGroup>
       )}

@@ -1,6 +1,6 @@
 import type { Check } from "@/lib/api";
 
-// Copy diagnostics in mock mode (?mock=1): the laptop's `berth doctor`
+// Copy diagnostics in mock mode (?mock=1): the laptop's `burf doctor`
 // (GET /v1/doctor) and a box's own doctor, fixed so the report is the same
 // every time. They carry a home folder, an email and an op:// reference on
 // purpose: the copied report must show none of them (lib/diagnostics-format).
@@ -12,9 +12,9 @@ const LAPTOP: Check[] = [
   { area: "This computer", name: "starts at login", status: "ok", detail: "background agent installed" },
   { area: "This computer", name: "agent", status: "ok", detail: "running" },
   { area: "This computer", name: "local URLs", status: "ok", detail: "http://PORT.BOX.localhost:1377" },
-  { area: "This computer", name: "short URLs", status: "info", detail: "URLs include :1377", fix: "berth setup port80" },
+  { area: "This computer", name: "short URLs", status: "info", detail: "URLs include :1377", fix: "burf setup port80" },
   { area: "This computer", name: "image generation", status: "ok", detail: `codex at ${HOME}/.local/bin/codex, key from op://Private/OpenAI/credential` },
-  { area: "Networks", name: "work", status: "fail", detail: "signed out (mock.user@example.com)", fix: "berth network login work" },
+  { area: "Networks", name: "work", status: "fail", detail: "signed out (mock.user@example.com)", fix: "burf network login work" },
   { area: "Boxes", name: "devl", status: "ok", detail: "online, 38ms" },
   { area: "Boxes", name: "gpu", status: "ok", detail: "online, 112ms" },
   { area: "Boxes", name: "old-vps", status: "warn", detail: "offline: dial tcp: i/o timeout", fix: "Check the box is on, then on it: berthd doctor" },

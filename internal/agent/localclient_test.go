@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/localagent"
-	"github.com/sean-brydon/berthd/internal/localhistory"
+	"github.com/MylesMCook/burf/internal/localagent"
+	"github.com/MylesMCook/burf/internal/localhistory"
 )
 
 func TestLocalRoutesRequireAuthAndLoopback(t *testing.T) {

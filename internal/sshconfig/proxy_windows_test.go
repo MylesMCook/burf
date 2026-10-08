@@ -9,7 +9,7 @@ import (
 )
 
 func TestWindowsProxyCommandPreservesArguments(t *testing.T) {
-	const exe = `C:\Program Files\Berth's & ^ (%h)\berth.exe`
+	const exe = `C:\Program Files\Burf's & ^ (%h)\berth.exe`
 	for _, network := range []string{"", "personal", "work net", `x&echo injected`, `x|echo injected`, `x\" y\`, "$(touch marker)", "`touch marker`", "%h%p", "x\ny"} {
 		command := ProxyCommand(exe, network)
 		expanded := strings.NewReplacer("%%", "%", "%h", "host", "%p", "22").Replace(command)

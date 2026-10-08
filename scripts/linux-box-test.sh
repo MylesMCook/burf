@@ -40,7 +40,7 @@ done
 # The cleanup (in the sourced lib) reads it.
 export KEEP
 OUT=${OUT:-$REPO/dist/release-test/linux-box-$(date +%Y%m%d-%H%M%S)}
-rt_init "Berth fresh-box test (Linux, Docker)" "$OUT"
+rt_init "Burf fresh-box test (Linux, Docker)" "$OUT"
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/berth-linux-test.XXXXXX")
 trap 'linux_cleanup >>"$RT_LOG" 2>&1; rm -rf "$WORK"' EXIT
 trap 'exit 130' INT TERM
@@ -73,13 +73,13 @@ s_install() {
 	detail "$v, a systemd user service; pairing link printed"
 }
 
-box_pings() { lp "berth ping $BOX"; }
+box_pings() { lp "burf ping $BOX"; }
 s_pair() {
 	laptop_cli || fail "could not install berth on the laptop from the archive" || return 1
-	lp "berth pair '$PAIR_LINK' --json" || fail "berth pair failed" || return 1
-	BOX=$(lp "berth boxes --json" | jq_py '[b["name"] for b in j][0]') || fail "no box after pairing" || return 1
-	until_ok 30 box_pings || fail "$BOX does not answer berth ping" || return 1
-	detail "the laptop paired with $BOX from a fresh home; $(lp "berth version")"
+	lp "burf pair '$PAIR_LINK' --json" || fail "burf pair failed" || return 1
+	BOX=$(lp "burf boxes --json" | jq_py '[b["name"] for b in j][0]') || fail "no box after pairing" || return 1
+	until_ok 30 box_pings || fail "$BOX does not answer burf ping" || return 1
+	detail "the laptop paired with $BOX from a fresh home; $(lp "burf version")"
 }
 
 s_sample() {
@@ -94,8 +94,8 @@ report_json() { bx 'cat /tmp/fake-claude/*.json' 2>/dev/null; }
 turn_ended() { report_json | grep -q '"event": "Stop"'; }
 session_finished() { lp "berth sessions $BOX --json" | grep -q -E '"agent_state": *"finished"'; }
 s_task() {
-	lp "berth task new $BOX/hello/$WT --agent claude --prompt 'Add a /health endpoint to server.js that returns {\"ok\": true}, with a test'" ||
-		fail "berth task new failed" || return 1
+	lp "burf task new $BOX/hello/$WT --agent claude --prompt 'Add a /health endpoint to server.js that returns {\"ok\": true}, with a test'" ||
+		fail "burf task new failed" || return 1
 	until_ok 60 turn_ended || fail "the stand-in agent's turn never ended: $(bx 'ls /tmp/fake-claude; tmux -L berth ls' 2>&1 | tr '\n' ' ')" || return 1
 	until_ok 30 session_finished || fail "the box never saw the turn finish: $(lp "berth sessions $BOX --json")" || return 1
 	detail "the stand-in ran in $BOX/hello/$WT; its hooks reported the turn finished"
@@ -154,9 +154,9 @@ s_remove() {
 
 s_doctor() {
 	local out
-	out=$(lp "berth doctor $BOX --json" 2>&1) || true
+	out=$(lp "burf doctor $BOX --json" 2>&1) || true
 	echo "$out"
-	detail "berth doctor $BOX: $(echo "$out" | grep -o '"status": *"fail"' | wc -l | tr -d ' ') failing checks (informational)"
+	detail "burf doctor $BOX: $(echo "$out" | grep -o '"status": *"fail"' | wc -l | tr -d ' ') failing checks (informational)"
 }
 
 RT_CRITICAL=1 step "Build the release archives and the Ubuntu image" s_build
@@ -169,5 +169,5 @@ step "Dev server on \$BERTH_PORT" s_dev_server
 step "Worktree URL through the proxy" s_url
 step "Agent browser: blocked by the sandbox, with the fixes" s_browser_sandbox
 step "Remove the worktree" s_remove
-step "berth doctor on the box" s_doctor
+step "burf doctor on the box" s_doctor
 rt_finish

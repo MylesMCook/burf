@@ -8,7 +8,7 @@ import { onRendererOutcome, type RendererOutcome } from "@/lib/terminal";
 // where ghostty-web failed looked fine and nobody knew why. Now the first
 // fallback of a run says so once, with the reason and a Copy details button,
 // and every run records which renderer it got in ~/.berth/app/
-// terminal-renderer.json, which `berth doctor` reads.
+// terminal-renderer.json, which `burf doctor` reads.
 
 export const RENDERER_DOC = "/v1/app/terminal-renderer";
 
@@ -46,7 +46,7 @@ function handle(o: RendererOutcome) {
 
 // saveRecord keeps trying for a minute: the first terminal can come before
 // the agent answers (it is starting, or restarting after an update), and a
-// record lost then left berth doctor without its "app terminal" line.
+// record lost then left burf doctor without its "app terminal" line.
 async function saveRecord(record: RendererRecord, tries = 0) {
   try {
     const client = useStore.getState().client;

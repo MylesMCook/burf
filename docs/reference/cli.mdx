@@ -4,8 +4,8 @@ description: Every command of berth, the laptop CLI.
 ---
 
 `berth` runs on your laptop. It talks to the [laptop agent](/concepts/laptop-agent),
-starting it if needed, and through it to every box. `berth help` prints this
-list; `berth kit help` the kit commands, `berth team help` the team setup ones.
+starting it if needed, and through it to every box. `burf help` prints this
+list; `burf kit help` the kit commands, `burf team help` the team setup ones.
 
 - **Addressing.** A box is `devl`; a location on it `devl/shop`; a worktree
   `devl/shop/checkout`; a session `devl/SESSION`.
@@ -20,24 +20,24 @@ the `BOX/` prefix.
 
 | Command | What it does |
 | --- | --- |
-| `berth add ssh [user@]HOST [--name N] [--agents claude,codex\|none] [--guided] [--yes] [--from STEP] [--network NET] [--listen ADDR] [--address ADDR] [--identity FILE] [--trust-host-key SHA256:…] [--no-integrations] [-- SSH OPTIONS]` | From a macOS or Linux client, set a box up over SSH (once), quietly: installs berthd, tmux and git if missing (Berth's own tmux needs no sudo), the agent CLIs (`--agents`, Claude Code by default) and their hooks, and pairs, with no plan and no Enter. Only a step that needs `sudo`'s password (git missing, or lingering the box allows only as root) runs in a terminal, where `sudo` asks; lingering alone is asked about first and can be skipped. `--guided` shows the whole plan, waits for Enter, and runs every step in one terminal. `--yes` (or no terminal) asks nothing and stops with the command to run where `sudo` would need a password; `--from` retries from a step. See [add a box](/getting-started/add-a-box#over-ssh). |
-| `berth pair '<link>' [--name N] [--network NET]` | Pair with a box, from the link `berthd pair` prints |
-| `berth invite [--boxes a,b] [--for NAME] [--yes] [--json]` | A join link for another computer of yours: a fresh single-use code from each box (every paired box, or `--boxes`), valid ten minutes. Offline boxes are left out and listed. Asks first unless `--yes`; `--for` names the computer in the boxes' events. See [more than one computer](/guides/more-computers). |
-| `berth join '<link>'\|- [--check] [--yes] [--json]` | Pair this computer with every box in a join link (`-` reads it from stdin; pasting the whole message is fine). Each box reports `paired`, `already`, `needs-network` (sign in to its tailnet, then join again) or `failed`; `--check` only says what the link holds |
-| `berth network login NAME` | Join another tailnet (a personal one, say) to reach its boxes |
-| `berth network proxy NAME HOST PORT` | Connect stdin and stdout to HOST:PORT through that network, for SSH's `ProxyCommand` |
-| `berth networks [--json]` | Joined networks |
-| `berth discover [--network NET] [--json]` | Machines on the tailnet that could be boxes |
-| `berth boxes [--json]` | Paired boxes and whether they are online |
-| `berth ping BOX` | Check a box answers and still trusts you |
-| `berth upgrade BOX [--check] [--json]` | Upgrade the box's daemon over Berth's own connection (no SSH); `--check` only reports whether it is older |
-| `berth edit BOX/PROJECT[/WT] [FILE[:LINE[:COL]]] [--in cursor\|vscode\|windsurf\|zed]` | Open a worktree, or a file at a line, in your editor (default: the first installed) |
-| `berth ssh-config [--write] [--json]` | Show (then write) the SSH hosts editors use: `berth-<box>`. Windows entries require native Windows OpenSSH. |
-| `berth forget BOX` | Remove a box from this laptop |
+| `burf add ssh [user@]HOST [--name N] [--agents claude,codex\|none] [--guided] [--yes] [--from STEP] [--network NET] [--listen ADDR] [--address ADDR] [--identity FILE] [--trust-host-key SHA256:…] [--no-integrations] [-- SSH OPTIONS]` | From a macOS or Linux client, set a box up over SSH (once), quietly: installs berthd, tmux and git if missing (Burf's own tmux needs no sudo), the agent CLIs (`--agents`, Claude Code by default) and their hooks, and pairs, with no plan and no Enter. Only a step that needs `sudo`'s password (git missing, or lingering the box allows only as root) runs in a terminal, where `sudo` asks; lingering alone is asked about first and can be skipped. `--guided` shows the whole plan, waits for Enter, and runs every step in one terminal. `--yes` (or no terminal) asks nothing and stops with the command to run where `sudo` would need a password; `--from` retries from a step. See [add a box](/getting-started/add-a-box#over-ssh). |
+| `burf pair '<link>' [--name N] [--network NET]` | Pair with a box, from the link `berthd pair` prints |
+| `burf invite [--boxes a,b] [--for NAME] [--yes] [--json]` | A join link for another computer of yours: a fresh single-use code from each box (every paired box, or `--boxes`), valid ten minutes. Offline boxes are left out and listed. Asks first unless `--yes`; `--for` names the computer in the boxes' events. See [more than one computer](/guides/more-computers). |
+| `burf join '<link>'\|- [--check] [--yes] [--json]` | Pair this computer with every box in a join link (`-` reads it from stdin; pasting the whole message is fine). Each box reports `paired`, `already`, `needs-network` (sign in to its tailnet, then join again) or `failed`; `--check` only says what the link holds |
+| `burf network login NAME` | Join another tailnet (a personal one, say) to reach its boxes |
+| `burf network proxy NAME HOST PORT` | Connect stdin and stdout to HOST:PORT through that network, for SSH's `ProxyCommand` |
+| `burf networks [--json]` | Joined networks |
+| `burf discover [--network NET] [--json]` | Machines on the tailnet that could be boxes |
+| `burf boxes [--json]` | Paired boxes and whether they are online |
+| `burf ping BOX` | Check a box answers and still trusts you |
+| `burf upgrade BOX [--check] [--json]` | Upgrade the box's daemon over Burf's own connection (no SSH); `--check` only reports whether it is older |
+| `burf edit BOX/PROJECT[/WT] [FILE[:LINE[:COL]]] [--in cursor\|vscode\|windsurf\|zed]` | Open a worktree, or a file at a line, in your editor (default: the first installed) |
+| `burf ssh-config [--write] [--json]` | Show (then write) the SSH hosts editors use: `berth-<box>`. Windows entries require native Windows OpenSSH. |
+| `burf forget BOX` | Remove a box from this laptop |
 
-Windows clients pair with already-running macOS or Linux boxes. `berth add ssh` and GUI SSH provisioning are unavailable from Windows; install Berth on the box first, then use its pairing link. See the [Windows client scope](/contributing/windows#ssh-provisioning-and-editors).
+Windows clients pair with already-running macOS or Linux boxes. `burf add ssh` and GUI SSH provisioning are unavailable from Windows; install Burf on the box first, then use its pairing link. See the [Windows client scope](/contributing/windows#ssh-provisioning-and-editors).
 
-`berth discover --json` prints `{ user, machines, tailscale, tailnet }`:
+`burf discover --json` prints `{ user, machines, tailscale, tailnet }`:
 `user` is the SSH user to suggest (yours on this computer), `tailscale` is
 this computer's Tailscale (`running`, `stopped`, `logged-out` or `missing`;
 anything but `running` lists no machines rather than failing), and
@@ -51,14 +51,14 @@ network's, and `tailscale` and `tailnet` are left out.
 
 | Command | What it does |
 | --- | --- |
-| `berth kit list [--json]` | Kits on this laptop, and where each is installed |
-| `berth kit add LINK [--yes]` | Fetch a kit (git repo, `…/tree/REF/DIR`, gist, `kit.json` URL or folder), show what it does, and keep it |
-| `berth kit show ID` | Everything a kit does and every file it carries |
-| `berth kit apply ID BOX/PROJECT...` | Install it on projects |
-| `berth kit update ID` | Fetch it again from its link |
-| `berth kit rm ID` | Forget a kit on this laptop |
-| `berth kit remove BOX/PROJECT` | Uninstall a project's kit |
-| `berth kit save BOX/PROJECT ID [--name N]` | Make a kit of how a project is set up on a box |
+| `burf kit list [--json]` | Kits on this laptop, and where each is installed |
+| `burf kit add LINK [--yes]` | Fetch a kit (git repo, `…/tree/REF/DIR`, gist, `kit.json` URL or folder), show what it does, and keep it |
+| `burf kit show ID` | Everything a kit does and every file it carries |
+| `burf kit apply ID BOX/PROJECT...` | Install it on projects |
+| `burf kit update ID` | Fetch it again from its link |
+| `burf kit rm ID` | Forget a kit on this laptop |
+| `burf kit remove BOX/PROJECT` | Uninstall a project's kit |
+| `burf kit save BOX/PROJECT ID [--name N]` | Make a kit of how a project is set up on a box |
 
 See [kits](/guides/kits).
 
@@ -66,10 +66,10 @@ See [kits](/guides/kits).
 
 | Command | What it does |
 | --- | --- |
-| `berth team show ORG [--box BOX] [--json]` | What `<org>/.berth` does: the org, the pinned commit, each box step (and which ask for your password), each repo and whether you can read it, the keys, and an update if there is one |
-| `berth team setup ORG BOX [--yes] [--only ID,…] [--no-1password] [--key PROJECT/KEY=VALUE]…` | Run it on BOX: the steps in a terminal on the box (`berth attach BOX/team-<id>` to type your password), then the repos; asks for keys it needs, and follows the progress. `--no-1password` [skips 1Password](/guides/team-setup#skipping-1password): the shared keys are asked for once instead (Enter leaves one missing) and op is never signed in on the box; refused when the team's `team.json` says `"onepassword": "required"` |
-| `berth team status [--json]` | Each team setup you accepted, its box, commit, state and progress |
-| `berth team retry ORG [--from STEP\|PROJECT] [--box BOX]` | Start a failed setup again from a step or a repo |
+| `burf team show ORG [--box BOX] [--json]` | What `<org>/.berth` does: the org, the pinned commit, each box step (and which ask for your password), each repo and whether you can read it, the keys, and an update if there is one |
+| `burf team setup ORG BOX [--yes] [--only ID,…] [--no-1password] [--key PROJECT/KEY=VALUE]…` | Run it on BOX: the steps in a terminal on the box (`burf attach BOX/team-<id>` to type your password), then the repos; asks for keys it needs, and follows the progress. `--no-1password` [skips 1Password](/guides/team-setup#skipping-1password): the shared keys are asked for once instead (Enter leaves one missing) and op is never signed in on the box; refused when the team's `team.json` says `"onepassword": "required"` |
+| `burf team status [--json]` | Each team setup you accepted, its box, commit, state and progress |
+| `burf team retry ORG [--from STEP\|PROJECT] [--box BOX]` | Start a failed setup again from a step or a repo |
 
 `ORG` is a GitHub org, whose `<org>/.berth` holds the team setup, or a link
 to one anywhere: `github.com/OWNER/REPO[@REF]` or
@@ -80,13 +80,13 @@ signs in with its own. See [team setup](/guides/team-setup).
 
 | Command | What it does |
 | --- | --- |
-| `berth url BOX PORT\|SERVICE` | Print the private URL for a port, or a service by name |
-| `berth open BOX PORT\|SERVICE` | Open that URL in your browser |
-| `berth forward BOX PORTS [--json]` | Forward local ports: `3000`, `8080:3000`, `3000-3005` |
-| `berth forwards [--json]` | List forwards |
-| `berth unforward ID` | Stop and forget a forward |
-| `berth route add '*.x.localhost' BOX PORT` | Send every matching host to a box port, `Host` unchanged |
-| `berth routes [--json]` | List routes (`berth route rm PATTERN` removes one) |
+| `burf url BOX PORT\|SERVICE` | Print the private URL for a port, or a service by name |
+| `burf open BOX PORT\|SERVICE` | Open that URL in your browser |
+| `burf forward BOX PORTS [--json]` | Forward local ports: `3000`, `8080:3000`, `3000-3005` |
+| `burf forwards [--json]` | List forwards |
+| `burf unforward ID` | Stop and forget a forward |
+| `burf route add '*.x.localhost' BOX PORT` | Send every matching host to a box port, `Host` unchanged |
+| `burf routes [--json]` | List routes (`burf route rm PATTERN` removes one) |
 | `berth units BOX [--json]` | Managed units on a box |
 | `berth unit add BOX/NAME -- COMMAND...` | Install and start a unit |
 | `berth unit get BOX/NAME [--json]` | A unit's state and where its log is |
@@ -98,31 +98,31 @@ signs in with its own. See [team setup](/guides/team-setup).
 
 | Command | What it does |
 | --- | --- |
-| `berth status [--json]` | Boxes, forwards and the proxy at a glance |
-| `berth doctor [BOX] [--json]` | Check this computer (or a box) and how to fix it |
-| `berth events [BOX] [--json]` | Stream events from this laptop and every box as they happen (box events carry `box`); with `BOX`, only that box's |
-| `berth agent` | Run the agent in the foreground |
-| `berth agent start` | Start the agent in the background if it isn't running (what the app's **Start the Berth agent** runs) |
-| `berth agent restart [--if-stale] [--json]` | Restart the agent once its work under way is done; `--if-stale` only when it's older than this `berth` (what the app runs as it starts, after an update) |
-| `berth agent install\|uninstall\|status` | Run the agent at login, restart it on crashes |
-| `berth setup port80 [--remove]` | Drop `:1377` from URLs (macOS; asks for your admin password once) |
-| `berth stop` | Stop the agent (and every forward) |
-| `berth id` | Print this laptop's fingerprint |
-| `berth version` | Print this build's version |
-| `berth ui-token` | The desktop app's API address and token, as JSON |
+| `burf status [--json]` | Boxes, forwards and the proxy at a glance |
+| `burf doctor [BOX] [--json]` | Check this computer (or a box) and how to fix it |
+| `burf events [BOX] [--json]` | Stream events from this laptop and every box as they happen (box events carry `box`); with `BOX`, only that box's |
+| `burf agent` | Run the agent in the foreground |
+| `burf agent start` | Start the agent in the background if it isn't running (what the app's **Start the Burf agent** runs) |
+| `burf agent restart [--if-stale] [--json]` | Restart the agent once its work under way is done; `--if-stale` only when it's older than this `berth` (what the app runs as it starts, after an update) |
+| `burf agent install\|uninstall\|status` | Run the agent at login, restart it on crashes |
+| `burf setup port80 [--remove]` | Drop `:1377` from URLs (macOS; asks for your admin password once) |
+| `burf stop` | Stop the agent (and every forward) |
+| `burf id` | Print this laptop's fingerprint |
+| `burf version` | Print this build's version |
+| `burf ui-token` | The desktop app's API address and token, as JSON |
 
 ## Locations and worktrees
 
 | Command | What it does |
 | --- | --- |
 | `berth locations BOX [--json]` | Locations and their worktrees |
-| `berth location add BOX/NAME PATH` | Register a repo or directory |
-| `berth location rm BOX/NAME` | Forget a location (files are untouched) |
-| `berth location scripts BOX/NAME [--setup CMD] [--archive CMD] [--clear]` | Worktree setup and archive scripts (default: the repo's `.berth/config.json`) |
-| `berth location config BOX/NAME [--json] [--trust HASH\|--untrust]` | The repo's, the box's and the effective config; trust the repo's to run it |
+| `burf location add BOX/NAME PATH` | Register a repo or directory |
+| `burf location rm BOX/NAME` | Forget a location (files are untouched) |
+| `burf location scripts BOX/NAME [--setup CMD] [--archive CMD] [--clear]` | Worktree setup and archive scripts (default: the repo's `.berth/config.json`) |
+| `burf location config BOX/NAME [--json] [--trust HASH\|--untrust]` | The repo's, the box's and the effective config; trust the repo's to run it |
 | `berth services BOX [--json]` | Which worktree each running server belongs to |
 | `berth service list\|start\|stop\|restart\|log BOX/LOC/WORKTREE [SERVICE]` | A worktree's services from the repo's config |
-| `berth preview BOX/[LOC/WORKTREE] [PORT] [--path /x]` | Open a worktree's page in the Berth app |
+| `berth preview BOX/[LOC/WORKTREE] [PORT] [--path /x]` | Open a worktree's page in the Burf app |
 | `berth worktree new BOX/LOC/NAME [--branch B] [--base REF]` | Create a git worktree and run its setup |
 | `berth worktree rm BOX/LOC/NAME [--force]` | Remove a worktree |
 | `berth worktree rename BOX/LOC/NAME [TITLE]` | Give a worktree a [display name](/concepts/projects-and-worktrees#display-names); its branch and folder keep their names, and no TITLE clears it |
@@ -133,7 +133,7 @@ signs in with its own. See [team setup](/guides/team-setup).
 | --- | --- |
 | `berth sessions BOX [--json]` | List sessions |
 | `berth agents BOX [--json]` | Agent CLIs this box can start |
-| `berth task new BOX/LOC/NAME [--agent ID] [--prompt TEXT] [--open split\|tab] [--branch B] [--base REF] [-- COMMAND...]` | A worktree with an agent (or a command) running in it |
+| `burf task new BOX/LOC/NAME [--agent ID] [--prompt TEXT] [--open split\|tab] [--branch B] [--base REF] [-- COMMAND...]` | A worktree with an agent (or a command) running in it |
 | `berth session new BOX/LOC[/WORKTREE] [--name N] [--agent ID [--prompt TEXT]] [--open split\|tab] [-- COMMAND...]` | Start an agent or a command (default: a shell) there |
 | `berth session screen BOX/NAME [--history N]` | Print what the session shows |
 | `berth session send BOX/NAME TEXT [--when now\|idle] [--force] [--idem KEY] [--no-enter] [--wait [--timeout 30m]] [--queue]` | Type a prompt into a session (or hold it until the agent is idle), and wait for its turn |
@@ -143,9 +143,9 @@ signs in with its own. See [team setup](/guides/team-setup).
 | `berth loop BOX/SESSION --check CMD [--prompt TEXT] [--max 5] [--turn-timeout 30m] [--cancel-on-exit] [--detach]` | Prompt, wait, check, and feed failures back: a [durable run](/guides/runs) on the box (Ctrl-C stops following, not the loop) |
 | `berth session rename BOX/NAME [TITLE]` | Name a session's work, as the app shows it; no TITLE clears it |
 | `berth session kill BOX/NAME` | Stop a session |
-| `berth attach BOX/SESSION` | Attach this terminal to a session (detach: Ctrl-b d) |
-| `berth terminal BOX/SESSION` | Open a new terminal window attached to a session |
-| `berth queue [--json]` | Prompts waiting for their box (`berth queue rm\|retry\|send ID`) |
+| `burf attach BOX/SESSION` | Attach this terminal to a session (detach: Ctrl-b d) |
+| `burf terminal BOX/SESSION` | Open a new terminal window attached to a session |
+| `burf queue [--json]` | Prompts waiting for their box (`burf queue rm\|retry\|send ID`) |
 
 See [orchestration](/guides/orchestration) and
 [the offline queue](/guides/offline-queue).
@@ -187,16 +187,16 @@ See [orchestration](/guides/orchestration) and
 
 | Command | What it does |
 | --- | --- |
-| `berth skills BOX [list\|install\|uninstall] [SKILL...] [--agent claude\|codex\|all] [--target user\|project] [--location LOC] [--commit]` | Teach Claude Code and Codex on a box to use Berth |
+| `berth skills BOX [list\|install\|uninstall] [SKILL...] [--agent claude\|codex\|all] [--target user\|project] [--location LOC] [--commit]` | Teach Claude Code and Codex on a box to use Burf |
 | `berth secret test BOX REF` | Check a box can resolve `op://vault/item/field` or `env://NAME` (prints the value's length, never the value) |
-| `berth emit TYPE [key=value...]` | Announce an event on this laptop |
-| `berth emit BOX TYPE [key=value...] [--origin TOOL]` | Announce an event on a box |
+| `burf emit TYPE [key=value...]` | Announce an event on this laptop |
+| `burf emit BOX TYPE [key=value...] [--origin TOOL]` | Announce an event on a box |
 
 ## Integrations
 
 | Command | What it does |
 | --- | --- |
-| `berth integrations install claude\|cursor\|codex\|gemini\|opencode\|all` | Install Berth's skills and agent hooks for a tool, on this laptop |
-| `berth hook TOOL EVENT [PAYLOAD]` | What those hooks run: turns a tool's hook into a Berth event |
+| `berth integrations install claude\|cursor\|codex\|gemini\|opencode\|all` | Install Burf's skills and agent hooks for a tool, on this laptop |
+| `berth hook TOOL EVENT [PAYLOAD]` | What those hooks run: turns a tool's hook into a Burf event |
 
 See [agent integrations](/guides/agent-integrations).

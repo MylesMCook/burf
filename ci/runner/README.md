@@ -43,7 +43,7 @@ No code change either way. With `false`, the container can keep running idle.
 ## Install, update, remove
 
 Run these from a checkout on the laptop; Docker talks to omarchy over SSH
-(`berth ssh-config` sets up the `berth-omarchy` host). Your user on omarchy
+(`burf ssh-config` sets up the `berth-omarchy` host). Your user on omarchy
 must be in the `docker` group.
 
 ```sh
@@ -53,7 +53,7 @@ DOCKER_HOST=ssh://berth-omarchy ci/runner/uninstall.sh  # unregister, remove all
 ```
 
 - **install.sh** asks GitHub for a registration token with
-  `gh api -X POST repos/sean-brydon/berthd/actions/runners/registration-token`
+  `gh api -X POST repos/MylesMCook/burf/actions/runners/registration-token`
   (it needs repository admin; without gh it reads the token from stdin). The
   token goes to a one-off container on stdin and from there to `config.sh`
   through its environment: it is never on a command line, in the running
@@ -86,7 +86,7 @@ off omarchy:
    other event get `ubuntu-latest`.
 2. **The job-started hook** (`job-started.sh`, baked into the image, run by
    the runner before every job) fails any job that is not a `push` to
-   `refs/heads/main` or `refs/tags/v*` of sean-brydon/berthd whose actor and
+   `refs/heads/main` or `refs/tags/v*` of MylesMCook/burf whose actor and
    triggering actor are both the owner. A pull request can rewrite the
    workflow's `runs-on`, but not this script.
 3. **Only the owner can push**: they are the only collaborator, and the

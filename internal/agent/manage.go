@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/hooks"
-	"github.com/sean-brydon/berthd/internal/sshsetup"
-	"github.com/sean-brydon/berthd/internal/trust"
+	"github.com/MylesMCook/burf/internal/hooks"
+	"github.com/MylesMCook/burf/internal/sshsetup"
+	"github.com/MylesMCook/burf/internal/trust"
 )
 
 // Adding, pairing, upgrading and forgetting boxes are the CLI's job, and the
@@ -55,7 +55,7 @@ func argOK(values ...string) error {
 
 // runJSON runs a CLI command that prints JSON and returns its output as is.
 func (a *Agent) runJSON(w http.ResponseWriter, r *http.Request, args ...string) {
-	done, err := a.work.begin("berth " + args[0])
+	done, err := a.work.begin("burf " + args[0])
 	if err != nil {
 		writeCoded(w, http.StatusServiceUnavailable, err.Error(), "agent_restarting")
 		return
@@ -94,7 +94,7 @@ type StreamLine struct {
 
 // runStream runs a CLI command and streams its output as NDJSON lines.
 func (a *Agent) runStream(w http.ResponseWriter, r *http.Request, timeout time.Duration, args ...string) {
-	finished, err := a.work.begin("berth " + strings.Join(args[:min(2, len(args))], " "))
+	finished, err := a.work.begin("burf " + strings.Join(args[:min(2, len(args))], " "))
 	if err != nil {
 		writeCoded(w, http.StatusServiceUnavailable, err.Error(), "agent_restarting")
 		return

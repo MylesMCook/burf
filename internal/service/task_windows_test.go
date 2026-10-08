@@ -89,12 +89,12 @@ func TestWindowsTaskXMLValidationCreatesNoTask(t *testing.T) {
 		t.Fatal(err)
 	}
 	root := filepath.Join(os.Getenv("USERPROFILE"), "Folder with spaces "+strings.Repeat("b", 70), "Documents", "Codex", "windows-install-"+strings.Repeat("a", 32))
-	home := filepath.Join(root, "Berth's state & data")
+	home := filepath.Join(root, "Burf's state & data")
 	for _, s := range []Spec{
-		{Name: "berth-validation-only", Program: `C:\Berth\berth.exe`, Args: []string{"agent"}, Env: map[string]string{"BERTH_HOME": `C:\Berth\state`}},
+		{Name: "berth-validation-only", Program: `C:\Burf\berth.exe`, Args: []string{"agent"}, Env: map[string]string{"BERTH_HOME": `C:\Burf\state`}},
 		{
-			Name: "berth-validation-long-home", Description: "berth agent",
-			Program: filepath.Join(root, "Berth app", "cli", "berth.exe"), Args: []string{"agent"},
+			Name: "berth-validation-long-home", Description: "burf agent",
+			Program: filepath.Join(root, "Burf app", "cli", "berth.exe"), Args: []string{"agent"},
 			Env:     map[string]string{"BERTH_HOME": home, "BERTH_USER_DIR": filepath.Join(home, "user"), "BERTH_UI_ADDR": "127.0.0.1:15380", "BERTH_PROXY_ADDR": "127.0.0.1:15381"},
 			LogPath: filepath.Join(home, "client", "agent.log"),
 		},
@@ -135,7 +135,7 @@ try {
 // This test executes only a child process in a test-owned directory. It does
 // not connect to Task Scheduler, register a task, or change login startup.
 func TestWindowsTaskLauncherNativeArgumentsEnvironmentLogAndExit(t *testing.T) {
-	dir := filepath.Join(t.TempDir(), "Berth's quoted & space")
+	dir := filepath.Join(t.TempDir(), "Burf's quoted & space")
 	if err := os.Mkdir(dir, 0o700); err != nil {
 		t.Fatal(err)
 	}

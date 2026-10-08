@@ -82,7 +82,7 @@ export function SkillsPanel({ box, location, className, hideTitle }: { box: stri
           </CardFrameTitle>
         )}
         <CardFrameDescription className="text-xs">
-          {location ? "Only agents working in this repository learn them." : "Every agent the box's user runs learns them."} They teach Claude Code and Codex to use Berth.
+          {location ? "Only agents working in this repository learn them." : "Every agent the box's user runs learns them."} They teach Claude Code and Codex to use Burf.
         </CardFrameDescription>
         <CardFrameAction>
           <Button size="xs" variant={pending ? "default" : "outline"} disabled={!report || !pending || !!busy} onClick={() => change("all", true, { skills: "all", agent: "all" })}>

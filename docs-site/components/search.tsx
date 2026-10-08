@@ -84,7 +84,7 @@ function trim(results: SortedResult[], query: string): Item[] {
 function ResultItem({ item, onClick }: { item: Item; onClick: () => void }) {
   // The index's breadcrumbs start at the site's own name; only the section
   // says anything.
-  const section = item.section ?? item.breadcrumbs?.filter((b) => b !== 'Berth').at(-1);
+  const section = item.section ?? item.breadcrumbs?.filter((b) => b !== 'Burf').at(-1);
   if (item.type === 'page') {
     return (
       <SearchDialogListItem item={item} onClick={onClick} className="berth-search-item" data-kind="page">

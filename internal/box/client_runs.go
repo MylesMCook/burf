@@ -1,5 +1,5 @@
 package box
 
-import "github.com/sean-brydon/berthd/internal/boxclient"
+import "github.com/MylesMCook/burf/internal/boxclient"
 
 type RunRecord = boxclient.RunRecord

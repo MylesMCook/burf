@@ -33,7 +33,7 @@ fn path_action(action: PathAction) -> Result<String, String> {
         return Err("PATH integration is only available in an installed build".into());
     }
     let dir = cli_dir()?;
-    if matches!(action, PathAction::Add) && !dir.join("berth.exe").is_file() {
+    if matches!(action, PathAction::Add) && !dir.join("burf.exe").is_file() {
         return Err("this build carries no command to add to PATH".into());
     }
     let root = std::env::var_os("SystemRoot").ok_or("Windows system directory is unavailable")?;
@@ -51,7 +51,7 @@ fn path_action(action: PathAction) -> Result<String, String> {
 #[tauri::command]
 pub fn cli_link_status() -> Result<CliLink, String> {
     let dir = cli_dir()?;
-    let bundled = !cfg!(debug_assertions) && dir.join("berth.exe").is_file();
+    let bundled = !cfg!(debug_assertions) && dir.join("burf.exe").is_file();
     let state = if !bundled { "missing" } else {
         match path_action(PathAction::Status)?.as_str() {
             "linked" => "linked",
@@ -61,7 +61,7 @@ pub fn cli_link_status() -> Result<CliLink, String> {
     };
     Ok(CliLink {
         link: dir.display().to_string(),
-        bundled: bundled.then(|| dir.join("berth.exe").display().to_string()),
+        bundled: bundled.then(|| dir.join("burf.exe").display().to_string()),
         blocked: None,
         state,
         target: None,
@@ -90,8 +90,8 @@ mod tests {
 
     #[test]
     fn embedded_command_keeps_directory_literal() {
-        let command = path_command(PathAction::Add, std::path::Path::new(r"C:\Berth's & $Tools\cli"));
-        assert!(command.ends_with(r"-Action 'Add' -CliDirectory 'C:\Berth''s & $Tools\cli'"));
+        let command = path_command(PathAction::Add, std::path::Path::new(r"C:\Burf's & $Tools\cli"));
+        assert!(command.ends_with(r"-Action 'Add' -CliDirectory 'C:\Burf''s & $Tools\cli'"));
         assert!(!command.contains("ExecutionPolicy"));
     }
 }

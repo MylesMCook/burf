@@ -9,9 +9,9 @@ import (
 	"strconv"
 	"sync"
 
-	"github.com/sean-brydon/berthd/internal/localagent"
-	"github.com/sean-brydon/berthd/internal/localhistory"
-	"github.com/sean-brydon/berthd/internal/localpty"
+	"github.com/MylesMCook/burf/internal/localagent"
+	"github.com/MylesMCook/burf/internal/localhistory"
+	"github.com/MylesMCook/burf/internal/localpty"
 )
 
 type localClient struct {

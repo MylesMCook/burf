@@ -4,7 +4,7 @@ description: Every call, hook, component and type in @berth/plugin and @berth/pl
 ---
 
 `@berth/plugin` is in
-[`packages/plugin-sdk`](https://github.com/sean-brydon/berthd/tree/main/packages/plugin-sdk).
+[`packages/plugin-sdk`](https://github.com/MylesMCook/burf/tree/main/packages/plugin-sdk).
 It is types only: at runtime the app provides one shared copy of
 `@berth/plugin`, `@berth/plugin/ui` and React to every plugin. A guide is in
 [writing a plugin](/guides/plugins).
@@ -147,7 +147,7 @@ export default definePlugin((berth) => {
 });
 ```
 
-That is how a Linear plugin would add its issues to Home (Berth has no Linear integration yet). The built-in widgets from plugins are worth reading: Pull requests and CI failures in `plugins/pull-request/src/home.tsx`, Agent usage in `plugins/usage/src/home.tsx`, Notes in `plugins/notes/src/home.tsx`, and the smallest, Hello ports, in `plugins/hello-ports`.
+That is how a Linear plugin would add its issues to Home (Burf has no Linear integration yet). The built-in widgets from plugins are worth reading: Pull requests and CI failures in `plugins/pull-request/src/home.tsx`, Agent usage in `plugins/usage/src/home.tsx`, Notes in `plugins/notes/src/home.tsx`, and the smallest, Hello ports, in `plugins/hello-ports`.
 
 A built-in plugin that is off until turned on can list its widgets' titles in `berth-plugin.json` (`"homeWidgets": ["Agent usage"]`), so the picker offers to turn it on.
 

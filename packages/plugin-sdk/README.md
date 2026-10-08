@@ -1,6 +1,6 @@
 # @berth/plugin
 
-Types for Berth plugins. A plugin is an ES module whose default export
+Types for Burf plugins. A plugin is an ES module whose default export
 receives a `BerthPluginContext`, registers what it adds, and may return a
 cleanup function:
 
@@ -43,4 +43,4 @@ the app's tree. Put the bundle and a `berth-plugin.json` in
 { "id": "hello", "name": "Hello", "version": "0.1.0", "main": "dist/index.js" }
 ```
 
-See `plugins/hello-ports` in the Berth repository for a complete example.
+See `plugins/hello-ports` in the Burf repository for a complete example.

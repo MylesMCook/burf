@@ -8,11 +8,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/doctor"
-	"github.com/sean-brydon/berthd/internal/version"
+	"github.com/MylesMCook/burf/internal/doctor"
+	"github.com/MylesMCook/burf/internal/version"
 )
 
-// DoctorReport answers GET /v1/doctor: `berth doctor`'s checks of this
+// DoctorReport answers GET /v1/doctor: `burf doctor`'s checks of this
 // laptop and what the agent is, for the app's Copy diagnostics.
 type DoctorReport struct {
 	Version string         `json:"version"`

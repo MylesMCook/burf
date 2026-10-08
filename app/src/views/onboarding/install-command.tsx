@@ -8,7 +8,7 @@ import { cn } from "@/lib/utils";
 // The one line that installs berthd on a box (site/install.sh, served at
 // berthd.app/install): it installs for the user who runs it, starts the
 // service, and prints a pairing link.
-export const INSTALL_COMMAND = "curl -fsSL https://berthd.app/install | sh";
+export const INSTALL_COMMAND = "curl -fsSL https://raw.githubusercontent.com/MylesMCook/burf/main/site/install.sh | sh";
 
 // InstallCommand shows the line to run on the box, with a copy button.
 export function InstallCommand({ className }: { className?: string }) {

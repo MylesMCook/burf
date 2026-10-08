@@ -18,18 +18,18 @@ import (
 	"sync"
 	"time"
 
-	box "github.com/sean-brydon/berthd/internal/boxclient"
-	"github.com/sean-brydon/berthd/internal/doctor"
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/forward"
-	"github.com/sean-brydon/berthd/internal/hooks"
-	"github.com/sean-brydon/berthd/internal/identity"
-	"github.com/sean-brydon/berthd/internal/network"
-	"github.com/sean-brydon/berthd/internal/pfredirect"
-	"github.com/sean-brydon/berthd/internal/proxy"
-	"github.com/sean-brydon/berthd/internal/statefile"
-	"github.com/sean-brydon/berthd/internal/trust"
-	"github.com/sean-brydon/berthd/internal/wire"
+	box "github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/doctor"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/forward"
+	"github.com/MylesMCook/burf/internal/hooks"
+	"github.com/MylesMCook/burf/internal/identity"
+	"github.com/MylesMCook/burf/internal/network"
+	"github.com/MylesMCook/burf/internal/pfredirect"
+	"github.com/MylesMCook/burf/internal/proxy"
+	"github.com/MylesMCook/burf/internal/statefile"
+	"github.com/MylesMCook/burf/internal/trust"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 const (
@@ -93,7 +93,7 @@ type Config struct {
 	// where it keeps its images; default to the one on PATH and ~/.codex.
 	Codex     string
 	CodexHome string
-	// Doctor runs `berth doctor`'s checks of this laptop, for the app's
+	// Doctor runs `burf doctor`'s checks of this laptop, for the app's
 	// Copy diagnostics (GET /v1/doctor); nil answers that there are none.
 	Doctor func(ctx context.Context) []doctor.Check
 }
@@ -229,7 +229,7 @@ type runningForward struct {
 }
 
 // ErrAlreadyRunning means another agent owns this state directory.
-var ErrAlreadyRunning = errors.New("another berth agent is already running")
+var ErrAlreadyRunning = errors.New("another burf agent is already running")
 
 // Run serves until ctx is cancelled or a client asks the agent to stop.
 func Run(ctx context.Context, cfg Config) error {
@@ -304,7 +304,7 @@ func Run(ctx context.Context, cfg Config) error {
 	stop := context.AfterFunc(ctx, func() { api.Close() })
 	defer stop()
 	a.publish(Event{Type: EventAgentStarted})
-	a.cfg.Log.Printf("berth agent running; API %s, proxy port %d", cfg.Socket, a.proxySt.Port)
+	a.cfg.Log.Printf("burf agent running; API %s, proxy port %d", cfg.Socket, a.proxySt.Port)
 	err = api.Serve(apiLn)
 	a.shutdown()
 	if errors.Is(err, http.ErrServerClosed) {

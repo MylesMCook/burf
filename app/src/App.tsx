@@ -29,7 +29,7 @@ import { HomeTabs } from "@/components/workspace/home-tabs";
 import { BoxPicker } from "@/components/box-picker";
 import { FakeTrafficLights, ZenBar } from "@/components/workspace/zen";
 import { fakeTrafficLights } from "@/lib/api";
-import { useBerthConnection } from "@/hooks/use-berth-connection";
+import { useBerthConnection } from "@/hooks/use-burf-connection";
 import { useShortcuts } from "@/hooks/use-shortcuts";
 import { useWindowTitle } from "@/hooks/use-window-title";
 import { useApplyTheme } from "@/hooks/use-theme";
@@ -75,7 +75,7 @@ export default function App() {
   }, [local?.supported, noBoxes]);
   useShortcuts();
   useWindowTitle();
-  // Checks for a newer Berth on launch and every few hours (lib/updater.ts).
+  // Checks for a newer Burf on launch and every few hours (lib/updater.ts).
   useEffect(startUpdater, []);
   // Runs on the boxes (loops, attempts, flows): kept fresh for the loops
   // panel, Automations and Review (lib/runs.ts).

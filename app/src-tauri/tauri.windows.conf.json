@@ -1,11 +1,11 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "identifier": "dev.myles.berth.windows",
-  "mainBinaryName": "Berth",
+  "mainBinaryName": "Burf",
   "app": {
     "windows": [
       {
-        "title": "Berth",
+        "title": "Burf",
         "width": 1400,
         "height": 900,
         "minWidth": 900,
@@ -18,7 +18,9 @@
     ]
   },
   "bundle": {
-    "targets": ["nsis"],
+    "targets": [
+      "nsis"
+    ],
     "windows": {
       "nsis": {
         "installMode": "currentUser",
@@ -30,7 +32,10 @@
   "plugins": {
     "updater": {
       "endpoints": [],
-      "windows": { "installMode": "passive" }
+      "windows": {
+        "installMode": "passive"
+      }
     }
-  }
+  },
+  "productName": "Burf"
 }

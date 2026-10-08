@@ -1,4 +1,4 @@
-// The app's UI kit, shared with plugins so they look like the rest of Berth.
+// The app's UI kit, shared with plugins so they look like the rest of Burf.
 // Components take the same props as in the app (coss ui, built on Base UI);
 // they are typed loosely here so the SDK does not depend on the app's source.
 import type { ComponentType, ReactNode } from "react";
@@ -157,7 +157,7 @@ export interface DiffsModule {
 }
 export declare function loadDiffs(): Promise<DiffsModule>;
 
-// For Home widgets (berth.addHomeWidget), so one reads like Berth's own.
+// For Home widgets (berth.addHomeWidget), so one reads like Burf's own.
 // WidgetRow: one 36px line, a button when it has onClick (label names it
 // for screen readers when its text doesn't say enough).
 export declare const WidgetRow: ComponentType<{ children?: ReactNode; onClick?: () => void; className?: string; label?: string }>;

@@ -17,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/trust"
+	"github.com/MylesMCook/burf/internal/trust"
 	"tailscale.com/tsnet"
 )
 
@@ -29,7 +29,7 @@ type Info struct {
 	IPs     []string `json:"ips,omitempty"`
 }
 
-var ErrNeedsLogin = errors.New("network needs a login; run: berth network login")
+var ErrNeedsLogin = errors.New("network needs a login; run: burf network login")
 
 type Manager struct {
 	// Dir holds one state directory per network.

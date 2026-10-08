@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sean-brydon/berthd/internal/wire"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 func TestTheAppLearnsWhichBoxesAreOutdated(t *testing.T) {

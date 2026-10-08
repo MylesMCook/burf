@@ -1,7 +1,7 @@
 import { toastError } from "@/components/error-note";
 import { noteTmuxMissing, tmuxMissing } from "@/components/requirements-card";
 import { toastManager } from "@/components/ui/toast";
-import { isMock } from "@/hooks/use-berth-connection";
+import { isMock } from "@/hooks/use-burf-connection";
 import { agentPresets } from "@/lib/actions";
 import { offerAgentHooks } from "@/lib/agent-hooks";
 import type { Session, TaskResult, Worktree } from "@/lib/api";

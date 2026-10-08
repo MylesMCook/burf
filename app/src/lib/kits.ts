@@ -110,7 +110,7 @@ export const kitsApi = {
   },
 };
 
-// kitLink is the link that opens a kit in Berth, for kits added from one.
+// kitLink is the link that opens a kit in Burf, for kits added from one.
 export function kitLink(src: string): string {
   return `berth://kit?src=${enc(src)}`;
 }
