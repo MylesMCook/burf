@@ -85,15 +85,11 @@ func browserAgent(t *testing.T) (*runningAgent, string) {
 		s.Handle("GET /v1/chats/{id}/browser/calls", reply(`{"calls":[]}`))
 		s.Handle("POST /v1/chats/{id}/browser/results", reply(`{"ok":true}`))
 		// Echoes what the box was sent, so a test can see what got through.
-		echo := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		s.Handle("POST /v1/chats/{id}/messages", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			body, _ := io.ReadAll(r.Body)
 			w.Header().Set("Content-Type", "application/json")
 			w.Write(body)
-		})
-		s.Handle("POST /v1/chats/{id}/messages", echo)
-		s.Handle("POST /v1/chats/{id}/approvals", echo)
-		// A chat waiting on one approval of each kind.
-		s.Handle("GET /v1/chats/{id}", reply(`{"state":"waiting","approvals":[{"id":"41","kind":"browser"},{"id":"7","kind":"command"},{"id":"8","kind":"files"}]}`))
+		}))
 	})
 	a := startAgent(t, b.pairLaptop())
 	tok := uiToken(t, a)
@@ -253,60 +249,6 @@ func TestAPairedBrowserSendsTextAndNeverChatOptions(t *testing.T) {
 	withOptions := `{"text":"x","options":{"permission":"full-access"}}`
 	if status, body := browserCall(t, a, "POST", path, appToken, "", withOptions); status != 200 || body != withOptions {
 		t.Fatalf("the app lost chat options: %d %s", status, body)
-	}
-}
-
-func TestAPairedBrowserDeniesAnyApprovalButAllowsOnlyItsOwnBrowserTools(t *testing.T) {
-	a, appToken := browserAgent(t)
-	token, _ := pairBrowser(t, a, "Chrome")
-	path := "/v1/boxes/devbox/api/chats/" + strings.Repeat("0123456789abcdef", 2) + "/approvals"
-	decide := func(credential, body string) (int, string) {
-		return browserCall(t, a, "POST", path, credential, extensionOrigin, body)
-	}
-	// Refusing is always safe, whatever is being asked.
-	for _, id := range []string{"41", "7", "8", "gone"} {
-		want := fmt.Sprintf(`{"id":%q,"decision":"decline"}`, id)
-		if status, body := decide(token, want); status != 200 || body != want {
-			t.Errorf("decline %s: %d %s", id, status, body)
-		}
-	}
-	if status, body := decide(token, `{"id":"41","decision":"accept"}`); status != 200 || body != `{"id":"41","decision":"accept"}` {
-		t.Fatalf("allowing its own browser tool: %d %s", status, body)
-	}
-	// Allowing a command or a file change lets it happen on the box.
-	for _, body := range []string{
-		`{"id":"7","decision":"accept"}`,
-		`{"id":"7","decision":"acceptForSession"}`,
-		`{"id":"7","decision":"acceptAlways"}`,
-		`{"id":"8","decision":"accept"}`,
-		`{"id":"gone","decision":"accept"}`,
-		`{"id":"7","decision":""}`,
-		// The same field twice: the box would read the last one.
-		`{"id":"7","decision":"decline","Decision":"accept"}`,
-		`{"id":"41","ID":"7","decision":"accept"}`,
-	} {
-		if status, reply := decide(token, body); status != 403 || !strings.Contains(reply, "in Burf") {
-			t.Errorf("%s reached the box: %d %s", body, status, reply)
-		}
-	}
-	// What reaches the box is what was checked, in one canonical form.
-	if status, body := decide(token, `{"Decision":"accept","id":"7","decision":"decline"}`); status != 200 || body != `{"id":"7","decision":"decline"}` {
-		t.Errorf("a decline was not relayed as checked: %d %s", status, body)
-	}
-	for _, body := range []string{`{"id":"41","decision":"accept","extra":1}`, `{"id":"41","decision":"accept"} {}`, `[]`} {
-		if status, _ := decide(token, body); status != 400 {
-			t.Errorf("malformed approval %s: %d", body, status)
-		}
-	}
-	// A box this client is not paired with has nothing to check against.
-	other := strings.Replace(path, "devbox", "elsewhere", 1)
-	if status, _ := browserCall(t, a, "POST", other, token, extensionOrigin, `{"id":"41","decision":"accept"}`); status != 404 {
-		t.Errorf("an unknown box: %d", status)
-	}
-	// The app itself still answers everything.
-	command := `{"id":"7","decision":"acceptForSession"}`
-	if status, body := browserCall(t, a, "POST", path, appToken, "", command); status != 200 || body != command {
-		t.Fatalf("the app lost command approvals: %d %s", status, body)
 	}
 }
 

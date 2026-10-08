@@ -185,18 +185,12 @@ own credential:
   `browser-pairings.json` in the state directory. `burf browser list` shows
   them and `burf browser revoke ID` ends one at once.
 
-A paired browser can start chats in registered projects and talk in them, and
-nothing it does there reaches the box without Burf:
-
-- It sends a message's text and nothing else. A chat's model, effort and
-  permission, full access included, are chosen in Burf.
-- It can deny any approval, and allow only one of kind `browser`. Allowing a
-  command or a file change lets it happen on the box, so that is answered in
-  Burf. This is deliberate for now and may be opened up later; the check is one
-  function, `browserApprovalBody`.
-
-The agent in such a chat still reads the project under the chat's sandbox, and
-its replies reach the browser. The credential is not a sandbox for that.
+A paired browser is a chat client: it can start chats in registered projects,
+send messages and answer approvals there. It sends a message's text and nothing
+else: a chat's model, effort and permission, full access included, are chosen
+in Burf. The credential limits what a compromised extension reaches beyond
+chat; it is not a sandbox for chat itself, since an approval it answers lets a
+command run.
 
 Acceptance is in `internal/agent/browserpair_test.go` and
 `cmd/burf/browser_test.go`. A headless Chromium 153 extension page also paired
