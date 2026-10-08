@@ -22,6 +22,7 @@ import (
 
 	"github.com/MylesMCook/burf/internal/box"
 	"github.com/MylesMCook/burf/internal/boxcmd"
+	"github.com/MylesMCook/burf/internal/browsermcp"
 	"github.com/MylesMCook/burf/internal/doctor"
 	"github.com/MylesMCook/burf/internal/events"
 	"github.com/MylesMCook/burf/internal/hooks"
@@ -66,6 +67,9 @@ const usage = `burfd — the Burf daemon for a development box
                                           (--check: only say whether it can read now)
   burfd mcp                              A stdio MCP server of berth's tools for agents on this box
                                           (integrations install adds it to Claude, Codex and Gemini)
+  burfd browser-mcp --socket PATH --chat ID
+                                          The stdio MCP server one structured chat's provider starts to
+                                          reach the browser of the client that started that chat
   burfd agents install [--integrations] [--markers] claude|codex|cursor|opencode ...
                                           Install agent CLIs into ~/.local/bin, without sudo (each is
                                           skipped when it is already here)
@@ -123,6 +127,22 @@ func run(args []string) error {
 	if args[0] == "version" || args[0] == "--version" {
 		fmt.Println(version.Line("burfd"))
 		return nil
+	}
+	// A provider starts the bridge with a bare environment, so it is told
+	// its socket and chat outright and needs no state directory.
+	if args[0] == "browser-mcp" {
+		fs := flag.NewFlagSet("browser-mcp", flag.ContinueOnError)
+		socket := fs.String("socket", "", "the box's local API socket")
+		chat := fs.String("chat", "", "the chat whose browser this bridge serves")
+		if err := fs.Parse(args[1:]); err != nil {
+			return err
+		}
+		if *socket == "" || *chat == "" || fs.NArg() != 0 {
+			return errors.New("usage: burfd browser-mcp --socket PATH --chat ID")
+		}
+		c := box.NewClient(box.NewLocal(*socket))
+		c.Origin = "mcp"
+		return browsermcp.Serve(context.Background(), c, *chat, os.Stdin, os.Stdout)
 	}
 	home, err := statefile.Home()
 	if err != nil {

@@ -71,8 +71,10 @@ func (b *Box) beforeChat(r *http.Request, typ string) error {
 }
 
 // This API never accepts a raw executable, environment, or filesystem path.
-func decodeChat(r *http.Request, v any) error {
-	d := json.NewDecoder(io.LimitReader(r.Body, (64<<10)+1))
+func decodeChat(r *http.Request, v any) error { return decodeChatLimit(r, v, 64<<10) }
+
+func decodeChatLimit(r *http.Request, v any, limit int64) error {
+	d := json.NewDecoder(io.LimitReader(r.Body, limit+1))
 	d.DisallowUnknownFields()
 	if err := d.Decode(v); err != nil {
 		return badRequest("invalid chat request")
@@ -196,13 +198,16 @@ func (b *Box) mountChats(route func(string, func(http.ResponseWriter, *http.Requ
 		writeJSON(w, map[string]bool{"ok": true})
 		return nil
 	})
+	b.mountChatBrowser(add)
 }
 
 func (b *Box) startChat(w http.ResponseWriter, r *http.Request) error {
 	var req struct {
 		Location string `json:"location"`
+		// Browser, with chat.browser, offers the client's browser tools.
+		Browser *chatBrowserRequest `json:"browser"`
 	}
-	if err := decodeChat(r, &req); err != nil {
+	if err := decodeChatLimit(r, &req, maxChatStartBody); err != nil {
 		return err
 	}
 	b.chatState.mu.Lock()
@@ -228,6 +233,11 @@ func (b *Box) startChat(w http.ResponseWriter, r *http.Request) error {
 	opts, err := b.chatOptions(r.Context(), req.Location)
 	if err != nil {
 		return badRequest("%v", err)
+	}
+	if req.Browser != nil {
+		if opts.Browser, err = b.chatBrowser(req.Browser); err != nil {
+			return err
+		}
 	}
 	s, err := b.Chats.StartWith(r.Context(), opts)
 	if s.ID != "" {

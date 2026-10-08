@@ -97,7 +97,8 @@ terminal behavior. Structured state is shown in each chat pane and its project
 chat list; the older global working counter still counts terminal-backed agents.
 
 `GET /v1/chats` lists the box's bounded in-memory registry; `POST /v1/chats`
-accepts only `{ "location": "project[/worktree]" }`. Individual chats support
+accepts only `{ "location": "project[/worktree]" }`, plus `browser` on a box
+with `chat.browser` (Browser Bridge, below). Individual chats support
 GET, DELETE, and POST to `/messages` (`text`), `/interrupt`, and `/approvals`
 (`id`, `decision`: `accept` or `decline`). With `chat.options`, `/messages` also
 takes `options` (`model`, `effort`, `permission`), `GET /models` lists the owned
@@ -124,6 +125,45 @@ No new service supervisor is installed.
 Implementation is distinct from deployment. Synthetic protocol/API/browser
 tests and native process tests do not establish a signed-in provider turn or an
 installed box upgrade. `tasks.md` records those separate delivery gates.
+
+### Browser Bridge
+
+A box that advertises `chat.browser` lets a structured chat act in the browser
+of the client that started it. This is Burf's side of the sitegeist extension
+work. The extension, its scoped credential and the chat view inside it are not
+implemented yet, so nothing in the app starts a browser chat today.
+
+- `POST /v1/chats` also takes `browser.tools`: 1 to 16 tools (`name`,
+  `description`, optional object `input_schema`), validated before any provider
+  starts. Older daemons reject the field, so clients send it only to boxes with
+  the capability. A chat without it starts exactly as before.
+- The provider reaches the tools through one stdio MCP server, `burfd
+  browser-mcp --socket PATH --chat ID`, named `burf_browser` in that thread's
+  start configuration only. The signed-in account's Codex configuration is not
+  edited and the box adds no listener.
+- A tool call waits on the chat. `GET /v1/chats/{id}` and `GET
+  /v1/chats/{id}/browser/calls?wait=N` (at most 25 seconds) show waiting calls.
+  `POST /v1/chats/{id}/browser/results` (`id`, `content`, `is_error`) answers
+  one, once, through the `session.send` gate. An answer carries at most 16 text
+  or image items and 2 MiB.
+- Only the box's own socket may ask the browser to act (`browser/tools`,
+  `browser/calls`). A paired client can watch and answer, never issue calls.
+- Calls run only during a turn, at most four at a time. An unanswered call
+  fails after 290 seconds without stopping the chat. A turn that ends or a chat
+  that stops cancels its waiting calls. Nothing is retried and a late answer is
+  refused.
+- The tools are approved at the provider (`default_tools_approval_mode =
+  "approve"`) because the browser is the reviewer: it must ask the user per site
+  before acting. If the provider still asks, that request is a one-use approval
+  of kind `browser`. Every other elicitation stops the chat as before.
+
+Acceptance is in `internal/localchat/browser_test.go` and
+`internal/box/chatbrowser_test.go`, with synthetic peers. The built bridge was
+also started by installed `codex-cli 0.162.0` using an empty account directory
+and no turn. Not verified: a model choosing a tool in a real turn, the
+provider's approval prompt in a real turn, an installed daemon, and Windows-local
+chats, which have no box socket and so no bridge. The chat view still words a
+`browser` approval as a command.
 
 ### Structured Local Codex
 
