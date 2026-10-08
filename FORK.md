@@ -186,9 +186,9 @@ own credential:
   them and `burf browser revoke ID` ends one at once.
 
 A paired browser is a chat client: it can start chats in registered projects,
-send messages and answer approvals there. It sends a message's text and nothing
-else: a chat's model, effort and permission, full access included, are chosen
-in Burf. The credential limits what a compromised extension reaches beyond
+send messages and answer approvals there. With a message it sends text and may choose
+the model and reasoning effort; a chat's permission, full access included, is
+chosen in Burf. The credential limits what a compromised extension reaches beyond
 chat; it is not a sandbox for chat itself, since an approval it answers lets a
 command run.
 

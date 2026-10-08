@@ -292,11 +292,14 @@ func (a *Agent) browserAuthorize(token string, r *http.Request) (int, string) {
 
 var browserMessage = regexp.MustCompile(`/chats/[0-9a-f]{32}/messages$`)
 
-// browserMessageBody lets a paired browser send text and nothing else. A
-// message can also carry a chat's model, effort and permission, up to full
-// access to the box; those are chosen in Burf, never by a browser extension.
+// browserMessageBody lets a paired browser send a message's text and choose
+// the model and reasoning effort that answer it, and nothing else. A message
+// can also carry a chat's permission, up to full access to the box; that is
+// chosen in Burf, never by a browser extension. The box gets exactly what was
+// checked here, not the bytes that were sent.
 func browserMessageBody(r *http.Request) (int, string) {
 	const limit = 3 << 20
+	const refused = "a paired browser can send text, a model and an effort; a chat's permissions are chosen in Burf"
 	body, err := io.ReadAll(io.LimitReader(r.Body, limit+1))
 	if err != nil || len(body) > limit {
 		return http.StatusRequestEntityTooLarge, "the message is too large"
@@ -305,11 +308,38 @@ func browserMessageBody(r *http.Request) (int, string) {
 	if json.Unmarshal(body, &fields) != nil {
 		return http.StatusBadRequest, "invalid request"
 	}
-	for name := range fields {
-		if name != "text" {
-			return http.StatusForbidden, "a paired browser can send only text; choose a chat's model and permissions in Burf"
+	out := map[string]any{}
+	for name, raw := range fields {
+		switch name {
+		case "text":
+			var text string
+			if json.Unmarshal(raw, &text) != nil {
+				return http.StatusBadRequest, "invalid request"
+			}
+			out["text"] = text
+		case "options":
+			var options map[string]json.RawMessage
+			if json.Unmarshal(raw, &options) != nil {
+				return http.StatusBadRequest, "invalid request"
+			}
+			chosen := map[string]string{}
+			for option, value := range options {
+				var text string
+				if (option != "model" && option != "effort") || json.Unmarshal(value, &text) != nil {
+					return http.StatusForbidden, refused
+				}
+				if text != "" {
+					chosen[option] = text
+				}
+			}
+			if len(chosen) > 0 {
+				out["options"] = chosen
+			}
+		default:
+			return http.StatusForbidden, refused
 		}
 	}
+	body, _ = json.Marshal(out)
 	r.Body = io.NopCloser(bytes.NewReader(body))
 	r.ContentLength = int64(len(body))
 	return 0, ""

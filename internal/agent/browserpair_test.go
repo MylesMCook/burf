@@ -222,30 +222,46 @@ func TestAPairedBrowserReachesOnlyChatsAndTheirBrowserTools(t *testing.T) {
 	}
 }
 
-func TestAPairedBrowserSendsTextAndNeverChatOptions(t *testing.T) {
+func TestAPairedBrowserChoosesModelAndEffortButNeverPermissions(t *testing.T) {
 	a, appToken := browserAgent(t)
 	token, _ := pairBrowser(t, a, "Chrome")
 	path := "/v1/boxes/devbox/api/chats/" + strings.Repeat("0123456789abcdef", 2) + "/messages"
-	if status, body := browserCall(t, a, "POST", path, token, extensionOrigin, `{"text":"open example.com"}`); status != 200 || body != `{"text":"open example.com"}` {
-		t.Fatalf("a text message did not reach the box whole: %d %s", status, body)
+	send := func(body string) (int, string) { return browserCall(t, a, "POST", path, token, extensionOrigin, body) }
+	// Text alone, and text with a model and an effort, reach the box in one canonical form.
+	for sent, relayed := range map[string]string{
+		`{"text":"open example.com"}`:                                      `{"text":"open example.com"}`,
+		`{"options":{"effort":"high","model":"gpt-synthetic"},"text":"x"}`: `{"options":{"effort":"high","model":"gpt-synthetic"},"text":"x"}`,
+		`{"text":"x","options":{"model":"gpt-synthetic"}}`:                 `{"options":{"model":"gpt-synthetic"},"text":"x"}`,
+		`{"text":"x","options":{"model":"","effort":""}}`:                  `{"text":"x"}`,
+		`{"text":"x","options":{}}`:                                        `{"text":"x"}`,
+	} {
+		if status, body := send(sent); status != 200 || body != relayed {
+			t.Errorf("%s reached the box as %d %s, want %s", sent, status, body, relayed)
+		}
 	}
 	// A message can raise a chat to full access. That choice is not a browser's.
 	for _, body := range []string{
 		`{"text":"x","options":{"permission":"full-access"}}`,
+		`{"text":"x","options":{"model":"gpt-synthetic","permission":"workspace"}}`,
+		`{"text":"x","options":{"Permission":"full-access"}}`,
+		`{"text":"x","options":{"permi\u017f\u017fion":"full-access"}}`,
+		`{"text":"x","options":{"model":{"permission":"full-access"}}}`,
 		`{"text":"x","Options":{"permission":"full-access"}}`,
 		`{"text":"x","OPTIONS":{"model":"other"}}`,
-		`{"text":"x","optionſ":{"permission":"full-access"}}`,
+		`{"text":"x","option\u017f":{"permission":"full-access"}}`,
 		`{"options":{"permission":"workspace"},"text":"x"}`,
 		`{"text":"x","anything":1}`,
 	} {
-		if status, reply := browserCall(t, a, "POST", path, token, extensionOrigin, body); status != 403 || !strings.Contains(reply, "only text") {
+		if status, reply := send(body); status != 403 || !strings.Contains(reply, "permissions are chosen in Burf") {
 			t.Errorf("%s reached the box: %d %s", body, status, reply)
 		}
 	}
-	if status, _ := browserCall(t, a, "POST", path, token, extensionOrigin, `["text"]`); status != 400 {
-		t.Errorf("a malformed message: %d", status)
+	for _, body := range []string{`["text"]`, `{"text":7}`, `{"text":"x","options":"high"}`} {
+		if status, _ := send(body); status != 400 {
+			t.Errorf("a malformed message %s: %d", body, status)
+		}
 	}
-	// The app itself still chooses options.
+	// The app itself still chooses everything.
 	withOptions := `{"text":"x","options":{"permission":"full-access"}}`
 	if status, body := browserCall(t, a, "POST", path, appToken, "", withOptions); status != 200 || body != withOptions {
 		t.Fatalf("the app lost chat options: %d %s", status, body)
