@@ -76,7 +76,7 @@ export function StructuredChat({ transport, session, onChange, testId = "local-c
     prepared.current = true;
     if (transport.models) void transport.models().then((list) => { if (alive.current) setModels(Array.isArray(list) ? list : []); }).catch(() => { if (alive.current) setModelsError("Model choices are unavailable. Current settings are unchanged."); });
     const saved = savedChatPermission();
-    if (saved && !chat.items.length && !options.permission && saved !== (chat.options?.permission ?? "strict")) setOptions((o) => ({ ...o, permission: saved }));
+    if (saved && (chat.permissions ?? BASE_PERMISSIONS).includes(saved) && !chat.items.length && !options.permission && saved !== (chat.options?.permission ?? "strict")) setOptions((o) => ({ ...o, permission: saved }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
   const mutate = async (action: () => Promise<unknown>) => {

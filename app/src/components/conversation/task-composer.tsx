@@ -373,7 +373,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
   const chatControls = structuredCodex && hasChatOptions(box);
   const codexModels = useChatModels(box, locName, chatControls);
   const [chosenPermission, setPermission] = useState<keyof typeof chatPermissions>(() => savedChatPermission() ?? "strict");
-  // Full access is offered only where the box takes it, and for one launch at a time.
+  // Full access is offered only where the box takes it.
   const permission = chosenPermission === "full-access" && !hasFullAccess(box) ? "strict" : chosenPermission;
   const pickerPresets = !codexModels?.length
     ? presets
@@ -459,7 +459,6 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
     const ok = await startWork(d);
     setBusy(false);
     if (!ok) return;
-    if (chosenPermission === "full-access") setPermission(savedChatPermission() ?? "strict");
     if (project) {
       save(LAST_PROJECT, project.id);
       save(lastBoxKey(project.id), box);

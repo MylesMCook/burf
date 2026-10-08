@@ -55,13 +55,12 @@ export const chatPermissions = {
 // Backends that predate a mode do not list it, and are never sent it.
 export const BASE_PERMISSIONS = ["strict", "read-only", "workspace"];
 const CHAT_PERMISSION = "berth.chat.permission";
-// The mode last chosen, offered to the next new chat. It is applied by a message, never on its own.
-// Full access is chosen per chat and never carried to the next one.
+// The mode last chosen, offered to the next new chat where its backend takes it. It is applied by a message, never on its own.
 export function savedChatPermission(): ChatOptions["permission"] {
   const saved = load<string>(CHAT_PERMISSION, "");
-  return BASE_PERMISSIONS.includes(saved) ? (saved as ChatOptions["permission"]) : undefined;
+  return saved in chatPermissions ? (saved as ChatOptions["permission"]) : undefined;
 }
-export const saveChatPermission = (permission: NonNullable<ChatOptions["permission"]>) => { if (permission !== "full-access") save(CHAT_PERMISSION, permission); };
+export const saveChatPermission = (permission: NonNullable<ChatOptions["permission"]>) => save(CHAT_PERMISSION, permission);
 export interface ChatModel { model: string; displayName: string; defaultReasoningEffort: string; supportedReasoningEfforts: { reasoningEffort: string }[] }
 export interface LocalChat extends LocalSession {
   composer?: boolean;

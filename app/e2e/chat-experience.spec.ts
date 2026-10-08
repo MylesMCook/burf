@@ -156,7 +156,7 @@ test("a turn the provider refuses keeps the chat, the draft and the previous set
   } finally { await agent.close(); }
 });
 
-test("full access is offered only where the backend lists it, warns before it applies and is not remembered", async ({ app }) => {
+test("full access is offered only where the backend lists it, warns before it applies and is remembered", async ({ app }) => {
   const agent = await fakeAgent();
   const base = { agent: "codex", mode: "chat", cwd: "C:\\Projects\\shop", state: "idle", started_at: "2026-10-08T12:00:00Z", thread_id: "thread", composer: true, options: { permission: "strict" } as { permission: string }, approvals: [] };
   const current = { ...base, id: "current", permissions: ["strict", "read-only", "workspace", "full-access"], items: [] as unknown[] };
@@ -185,6 +185,11 @@ test("full access is offered only where the backend lists it, warns before it ap
     await pane.getByRole("button", { name: "Send message" }).click();
     await expect(pane.locator("header").getByText("Full access", { exact: true })).toBeVisible();
     expect(sent).toEqual([{ text: "Go", options: { permission: "full-access" } }]);
-    expect(await app.stored("berth.chat.permission")).toBeNull();
+    expect(await app.stored("berth.chat.permission")).toBe("full-access");
+    // The empty chat on a backend that does not list it is not offered the remembered mode.
+    await app.page.reload(); await app.page.getByTestId("nav-local").click();
+    await app.page.getByRole("button", { name: /Codex.*idle/ }).last().click();
+    await expect(pane.getByRole("heading", { name: "New chat" })).toBeVisible();
+    await expect(pane.getByLabel("Chat permissions")).toHaveValue("strict");
   } finally { await agent.close(); }
 });
