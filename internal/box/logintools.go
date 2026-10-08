@@ -2,15 +2,18 @@ package box
 
 import (
 	"context"
-	"os/exec"
+	"os"
 	"regexp"
-	"strings"
 	"sync"
 	"time"
+
+	"github.com/MylesMCook/burf/internal/agentpath"
 )
 
 // A kit's requires are checked the way its scripts and services will find
-// the tools: through the box user's login shell. berthd's own PATH is the
+// the tools: through the box user's shell, login and interactive as a
+// terminal starts it (a login shell alone never reads ~/.bashrc, where nvm
+// puts node). berthd's own PATH is the
 // one it started with, often a service manager's, and misses what a team
 // setup's steps just put on a login shell's PATH (fnm's node, corepack's
 // yarn), which made a project warn "node is not installed" right after the
@@ -30,19 +33,15 @@ var loginTools = struct {
 	m map[string]loginToolEntry
 }{m: map[string]loginToolEntry{}}
 
-// loginLookup asks the login shell where name is: tests replace it.
+// loginLookup asks the user's shell where name is: tests replace it. The
+// name is an argument, never part of the script, and only what the shell
+// prints between markers counts, past any banner its rc files print.
 var loginLookup = func(ctx context.Context, name string) string {
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	// The name is an argument, never part of the script.
-	cmd := exec.CommandContext(ctx, loginShell(), "-lc", `command -v "$0"`, name)
-	cmd.WaitDelay = time.Second
-	out, err := cmd.Output()
-	if err != nil {
+	if !agentpath.SafeName(name) {
 		return ""
 	}
-	lines := strings.Split(strings.TrimSpace(string(out)), "\n")
-	return strings.TrimSpace(lines[len(lines)-1])
+	ans, _ := agentpath.AskShell(ctx, loginShell(), []string{name}, os.Environ(), 10*time.Second)
+	return ans.Commands[name]
 }
 
 // findTool finds a tool on berthd's PATH or, failing that, as the box

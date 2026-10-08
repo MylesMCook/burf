@@ -267,3 +267,45 @@ func TestWorktreeRenameOnAnOlderBoxSaysToUpdate(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestBrowserSizesFromTheCommandLine(t *testing.T) {
+	reply := `{"text":"size: 390×844 @2x"}`
+	r, out := run(t, reply, "browser", "resize", "cal/billing", "390x844", "--scale", "2")
+	if r.method != "POST" || r.path != "/v1/worktrees/cal/billing/browser/resize" || r.body["size"] != "390x844" || r.body["scale"] != "2" || out != "size: 390×844 @2x\n" {
+		t.Fatalf("resize: %s %s %v %q", r.method, r.path, r.body, out)
+	}
+	r, _ = run(t, reply, "browser", "resize", "cal/billing", "--scale", "3")
+	if r.body["size"] != "" || r.body["scale"] != "3" {
+		t.Fatalf("scale only: %v", r.body)
+	}
+	r, _ = run(t, reply, "browser", "resize", "cal/billing", "phone")
+	if r.body["size"] != "phone" {
+		t.Fatalf("preset: %v", r.body)
+	}
+	r, _ = run(t, `{"text":"url: x"}`, "browser", "open", "cal/billing", "/cart", "--size", "1280x800", "--scale", "2")
+	if r.path != "/v1/worktrees/cal/billing/browser/open" || r.body["url"] != "/cart" || r.body["size"] != "1280x800" || r.body["scale"] != "2" {
+		t.Fatalf("open: %s %v", r.path, r.body)
+	}
+	r, _ = run(t, `{"text":"shot"}`, "browser", "shot", "cal/billing", "--native")
+	if r.body["native"] != true {
+		t.Fatalf("shot: %v", r.body)
+	}
+	// A size out of range never reaches the box, and says why.
+	for _, args := range [][]string{
+		{"browser", "resize", "cal/billing", "100x100"},
+		{"browser", "resize", "cal/billing", "1280x800", "--scale", "5"},
+		{"browser", "resize", "cal/billing", "huge"},
+		{"browser", "resize", "cal/billing"},
+		{"browser", "open", "cal/billing", "--size", "99999x1"},
+	} {
+		rec := &recorder{reply: reply}
+		err := Run(context.Background(), &box.Client{Doer: rec}, args, io.Discard)
+		if err == nil || rec.path != "" {
+			t.Errorf("%v: %v (sent %q)", args, err, rec.path)
+		}
+	}
+	err := Run(context.Background(), &box.Client{Doer: &recorder{}}, []string{"browser", "resize", "cal/billing", "5000x800"}, io.Discard)
+	if err == nil || !strings.Contains(err.Error(), "width 5000 is out of range: 320 to 3840") {
+		t.Fatalf("error: %v", err)
+	}
+}

@@ -112,7 +112,7 @@ export function OnboardingView() {
 function Progress({ at }: { at: Step["kind"] }) {
   const i = ORDER.indexOf(at);
   return (
-    <div className="flex items-center gap-1.5" aria-label={`Step ${i + 1} of ${ORDER.length}`}>
+    <div className="flex items-center gap-1.5" role="img" aria-label={`Step ${i + 1} of ${ORDER.length}`}>
       {ORDER.map((k, n) => (
         <span key={k} className={cn("h-1 rounded-full transition-all duration-300", n === i ? "w-6 bg-foreground" : n < i ? "w-3 bg-foreground/50" : "w-3 bg-foreground/15")} />
       ))}

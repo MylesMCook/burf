@@ -91,6 +91,15 @@ before it stay done. Repositories that are ready while others still set up
 get **Start on** that repo, and a toast says so if the page is not in front.
 At the end, **You're set up** offers the team's first task.
 
+A repository that is set up is ready for worktrees at once, from the
+sidebar, ⌘N or `berth worktree new`, with nothing else to open. While its
+[init](#a-projects-init) runs, its row shows the last line of its terminal
+and a **Terminal** button. If the init stops at a question (a `[Y/n]`, a
+password), the row says **waiting for you**, the status card names the repo,
+and **Answer in its terminal** opens it; the repo is ready once it is
+answered. **Open main checkout** only opens the repo; it is not part of the
+setup.
+
 The box keeps its progress on disk (`box/team/<id>/` in its state directory), so a setup
 carries on after berthd restarts: the terminal keeps running in tmux, and
 berthd reads where it got to.
@@ -353,7 +362,11 @@ After a step that adds the engineer to a group, the steps left run with it
 ### A project's init
 
 `projects[].init` runs once in the fresh clone, in a terminal of its own on
-the box, with what a kit's scripts get:
+the box (`team-<id>-<project>`, titled "`<project>` first-time setup"), with
+what a kit's scripts get, and `COREPACK_ENABLE_DOWNLOAD_PROMPT=0`, so
+corepack fetches the yarn or pnpm a repository pins without asking (worktree
+setup scripts get it too). Anything else that asks waits in that terminal,
+and the Team setup page says so:
 
 | Variable | |
 | --- | --- |

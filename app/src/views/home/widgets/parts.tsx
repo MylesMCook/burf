@@ -51,7 +51,7 @@ export function WidgetEmpty({ scene = "calm", title, hint, action, onAction, com
 // will have, so nothing moves when they arrive.
 export function WidgetSkeleton({ rows = 3, className }: { rows?: number; className?: string }) {
   return (
-    <div className={cn("flex flex-col", className)} aria-busy="true" aria-label="Loading">
+    <div className={cn("flex flex-col", className)} role="status" aria-busy="true" aria-label="Loading">
       {Array.from({ length: rows }, (_, i) => (
         <div key={i} className="flex h-9 items-center gap-2.5 px-2">
           <Skeleton className="size-3.5 rounded-full" />

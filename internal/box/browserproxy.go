@@ -202,6 +202,17 @@ type browserScope struct {
 }
 
 func (b *Box) browserScope(ctx context.Context, path string) (browserScope, bool) {
+	ports, err := ListPorts(ctx)
+	if err != nil {
+		ports = nil
+	}
+	return b.browserScopeWith(ctx, path, ports)
+}
+
+// browserScopeWith is browserScope with the box's listening ports already
+// listed (lsof on a Mac is slow; a caller scoping several worktrees at
+// once lists them once).
+func (b *Box) browserScopeWith(ctx context.Context, path string, ports []Port) (browserScope, bool) {
 	loc, wt, ok := b.worktreeAt(ctx, path)
 	if !ok {
 		return browserScope{}, false
@@ -216,7 +227,7 @@ func (b *Box) browserScope(ctx context.Context, path string) (browserScope, bool
 	for i := 0; i < n && base > 0; i++ {
 		s.ports = append(s.ports, base+i)
 	}
-	if ports, err := ListPorts(ctx); err == nil {
+	if ports != nil {
 		locs := []Location{loc}
 		for _, sv := range Services(ports, locs) {
 			if samePath(sv.Path, wt.Path) {

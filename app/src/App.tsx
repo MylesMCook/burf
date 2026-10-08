@@ -18,6 +18,7 @@ import { AddToBoxDialog } from "@/components/sidebar/add-to-box-dialog";
 import { ConfirmHost } from "@/components/sidebar/confirm";
 import { ErrorDetailsHost } from "@/components/error-note";
 import { ShortcutsSheet } from "@/components/shortcuts-sheet";
+import { WhatsNewDialog } from "@/components/whats-new/whats-new-dialog";
 import { CustomizeSidebarSheet } from "@/components/sidebar/nav";
 import { ToastProvider } from "@/components/ui/toast";
 import { FileDropGuard } from "@/components/file-drop-guard";
@@ -28,6 +29,7 @@ import { TabStrip } from "@/components/workspace/tab-strip";
 import { HomeTabs } from "@/components/workspace/home-tabs";
 import { BoxPicker } from "@/components/box-picker";
 import { FakeTrafficLights, ZenBar } from "@/components/workspace/zen";
+import { Announcer } from "@/components/announcer";
 import { fakeTrafficLights } from "@/lib/api";
 import { useBerthConnection } from "@/hooks/use-burf-connection";
 import { useShortcuts } from "@/hooks/use-shortcuts";
@@ -35,8 +37,10 @@ import { useWindowTitle } from "@/hooks/use-window-title";
 import { useApplyTheme } from "@/hooks/use-theme";
 import { startOutdatedWatch } from "@/lib/outdated";
 import { startRunsWatch } from "@/lib/runs";
+import { watchStillness } from "@/lib/still";
 import { useStore } from "@/lib/store";
 import { startUpdater } from "@/lib/updater";
+import { useWhatsNewAfterUpdate } from "@/lib/whats-new";
 import { cn } from "@/lib/utils";
 import { homeBox, useWorkspaces } from "@/lib/workspaces";
 import { AutomationsView } from "@/views/automations";
@@ -57,6 +61,8 @@ import { SettingsView } from "@/views/settings/settings-view";
 import { HomeView } from "@/views/home/home-view";
 import { usePrefs } from "@/lib/prefs";
 import { useLocalComputer } from "@/lib/local-computer";
+import { placeLabel } from "@/lib/worktree-names";
+import { useRescueRemovedFocus } from "@/lib/focus-home";
 
 // The live demo's guide and script (pnpm build:demo); not in the app.
 const DemoGuide = __BERTH_DEMO__ ? lazy(() => import("@/demo/guide")) : null;
@@ -77,6 +83,8 @@ export default function App() {
   useWindowTitle();
   // Checks for a newer Burf on launch and every few hours (lib/updater.ts).
   useEffect(startUpdater, []);
+  // Spinners and shimmers hold still while the window is in the background.
+  useEffect(watchStillness, []);
   // Runs on the boxes (loops, attempts, flows): kept fresh for the loops
   // panel, Automations and Review (lib/runs.ts).
   const connectedToAgent = useStore((s) => !!s.client);
@@ -94,6 +102,8 @@ export default function App() {
   // Without the status bar, what floats over its corner (toasts, the loops
   // panel) comes down to the window's edge.
   useEffect(() => document.documentElement.style.setProperty("--berth-status-h", zen ? "0px" : "26px"), [zen]);
+  // The keyboard is never dropped on <body> by what had it going away.
+  useRescueRemovedFocus();
   // Onboarding has no tabs yet, so it gets the plain strip, not the tab strip.
   const onboarding = useOnboardingActive();
   // Home (no worktree, or a box's home terminals over it) has its own strip.
@@ -102,6 +112,9 @@ export default function App() {
   // Until onboarding is done it is the whole window: no sidebar, status
   // bar, palette or shortcuts to wander off through.
   const gated = onboarding && connected;
+  // Once after an update: the release's highlights (lib/whats-new.ts),
+  // never over onboarding.
+  useWhatsNewAfterUpdate(!gated);
   useEffect(() => {
     // Team setup is the one page first run opens over the welcome.
     if (gated && !["workspace", "team"].includes(useStore.getState().view.kind)) useStore.getState().setView({ kind: "workspace" });
@@ -126,6 +139,7 @@ export default function App() {
             <ErrorDetailsHost />
           </ErrorBoundary>
           <FileDropGuard />
+          <Announcer />
         </ToastProvider>
       </TooltipProvider>
     );
@@ -154,7 +168,8 @@ export default function App() {
               {zen && !onboarding ? (
                 <ZenBar />
               ) : workspace && !onboarding ? (
-                <Disconnectable className="shrink-0 flex-col">
+                <Disconnectable className="shrink-0 flex-col" label="Tab bar">
+                  {!onHome && <WorkspaceHeading />}
                   {onHome ? <HomeTabs /> : <TabStrip />}
                 </Disconnectable>
               ) : !workspace ? null /* every other view's ViewHeader is the strip */ : (
@@ -192,8 +207,10 @@ export default function App() {
           <ShortcutsSheet />
           <ReviewSheet />
           <NotificationCenter />
+          <WhatsNewDialog />
         </ErrorBoundary>
         <FileDropGuard />
+        <Announcer />
         {DemoGuide && (
           <Suspense>
             <DemoGuide />
@@ -254,10 +271,18 @@ function NoWorktree() {
 
 // Disconnectable dims what cannot work until the agent answers.
 // Inert as well, so the keyboard cannot reach it either.
-function Disconnectable({ children, className }: { children: React.ReactNode; className?: string }) {
+// WorkspaceHeading names the worktree in front for screen readers, as the
+// window's title does: the page's one heading while its tabs show.
+function WorkspaceHeading() {
+  const ref = useWorkspaces((s) => (s.current && !homeBox(s.current) ? s.spaces[s.current]?.ref : undefined));
+  const label = useStore((s) => (ref?.path ? placeLabel(ref, s.boxes) : undefined));
+  return label ? <h1 className="sr-only">{label}</h1> : null;
+}
+
+function Disconnectable({ children, className, label }: { children: React.ReactNode; className?: string; label?: string }) {
   const offline = useStore((s) => !s.client);
   return (
-    <div className={cn("flex", className, offline && "pointer-events-none opacity-50")} aria-disabled={offline || undefined} inert={offline || undefined}>
+    <div role={label ? "region" : undefined} aria-label={label} className={cn("flex", className, offline && "pointer-events-none opacity-50")} aria-disabled={offline || undefined} inert={offline || undefined}>
       {children}
     </div>
   );

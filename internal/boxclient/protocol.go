@@ -74,6 +74,9 @@ type BrowserStatus struct {
 	LastUsed time.Time `json:"last_used"`
 	Watchers int       `json:"watchers"`
 	Refused  int       `json:"refused,omitempty"`
+	// Viewport is the page's size, and Size it as text (1920×1080).
+	Viewport Viewport `json:"viewport"`
+	Size     string   `json:"size"`
 }
 
 // Every error the box answers with is {"error": "...", "code": "..."}. The
@@ -555,6 +558,9 @@ type RepoConfig struct {
 	// this repository's worktrees (a sign-in provider, say). It applies once
 	// the box trusts the repository's config.
 	BrowserAllow []string `json:"browser_allow,omitempty"`
+	// Shots is what `berthd shots compare` screenshots and diffs by
+	// default: pages, sizes, and selectors to mask.
+	Shots *ShotsConfig `json:"shots,omitempty"`
 }
 
 // SecretReport is what `berthd secret exec` tells the box after resolving a
@@ -918,8 +924,14 @@ type TeamProjectStatus struct {
 	Error    string   `json:"error,omitempty"`
 	Trust    string   `json:"trust,omitempty"`
 	Warnings []string `json:"warnings,omitempty"`
-	// Line is the latest line of what it is doing (git's progress, say).
+	// Line is the latest line of what it is doing (git's progress, then its
+	// init terminal's last line).
 	Line string `json:"line,omitempty"`
+	// Session is the terminal its init runs in, and Waiting says that
+	// terminal waits for an answer (a [Y/n], a password): the project is
+	// not ready until someone gives it there.
+	Session string `json:"session,omitempty"`
+	Waiting bool   `json:"waiting,omitempty"`
 	// Keys are the names of the keys the team lists for it; Missing, those
 	// its config on this box has no value for yet (left blank when asked),
 	// to add in Project settings. Missing is worked out when read.
@@ -1007,6 +1019,54 @@ type UnitRequest struct {
 	Env     map[string]string `json:"env"`
 }
 
+// ShotsConfig is .berth/config.json's "shots": what to compare by default.
+// The box keeps its own copy with behaviour; the two stay field for field.
+type ShotsConfig struct {
+	// Pages are paths, "/" first: ["/", "/login", "/pricing"].
+	Pages []string `json:"pages,omitempty"`
+	// Sizes are viewport widths in CSS pixels (default 375, 768, 1280).
+	Sizes []int `json:"sizes,omitempty"`
+	// Mask hides dynamic content from the diff: CSS selectors, such as
+	// "time", "[data-testid=avatar]", ".relative-date".
+	Mask []string `json:"mask,omitempty"`
+	// Threshold is the colour distance (0-1) under which two pixels are
+	// the same (default 0.03: both sides render in one Chromium, so there
+	// is no cross-machine noise to forgive, and pixelmatch's 0.1 misses a
+	// white card moving over an off-white page).
+	Threshold float64 `json:"threshold,omitempty"`
+	// Unchanged is the share of changed pixels, in percent, under which a
+	// shot counts as unchanged (default 0.02).
+	Unchanged float64 `json:"unchanged_below,omitempty"`
+	// MaxHeight caps a full-page shot, in CSS pixels (default 4000).
+	MaxHeight int `json:"max_height,omitempty"`
+	// Scale is the device pixel ratio (default 1).
+	Scale float64 `json:"scale,omitempty"`
+	// ColorScheme is the prefers-color-scheme pages see: light (default),
+	// dark, or both (every shot twice).
+	ColorScheme string `json:"color_scheme,omitempty"`
+	// WaitFor is a selector every page must show before its shot.
+	WaitFor string `json:"wait_for,omitempty"`
+	// Seed makes Math.random repeat the same numbers on every load.
+	Seed bool `json:"seed_random,omitempty"`
+	// Parallel caps the browser tabs shooting at once (default: one per
+	// side, size and scheme, at most the box's CPUs and 8).
+	Parallel int `json:"parallel,omitempty"`
+}
+
+// AgentPath is one agent CLI as a box has it: where, which version, and
+// how it was installed, for Settings › Boxes and doctor.
+type AgentPath struct {
+	ID      string `json:"id"`
+	Name    string `json:"name"`
+	Command string `json:"command"`
+	Path    string `json:"path"`
+	Version string `json:"version,omitempty"`
+	// Install is "npm", "Homebrew", "bun", "volta", "pnpm" or "".
+	Install string `json:"install,omitempty"`
+	// Via is "shell", "path" or "dir" (agentpath.Found).
+	Via string `json:"via,omitempty"`
+}
+
 // Info describes the running daemon, so a laptop can pick the right build to
 // upload and tell whether the box already runs it.
 type Info struct {
@@ -1021,6 +1081,8 @@ type Info struct {
 	Tools []string `json:"tools"`
 	// Agents are the agent presets this box can start.
 	Agents []AgentPreset `json:"agents"`
+	// AgentPaths say where each built-in agent's CLI was found.
+	AgentPaths []AgentPath `json:"agent_paths,omitempty"`
 	// Capabilities name the API features this box has, so clients can use
 	// them when present: "turns" (turn IDs from send, turn waits),
 	// "journal" (GET /v1/events?since=SEQ).
@@ -1078,6 +1140,9 @@ func merge(repo, local RepoConfig) RepoConfig {
 	out.Hooks = append(append([]hooks.Hook{}, repo.Hooks...), local.Hooks...)
 	out.Flows = mergeBy(repo.Flows, local.Flows, func(f Flow) string { return f.ID })
 	out.BrowserAllow = append(append([]string{}, repo.BrowserAllow...), local.BrowserAllow...)
+	if local.Shots != nil {
+		out.Shots = local.Shots
+	}
 	return out
 }
 

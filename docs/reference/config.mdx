@@ -20,6 +20,7 @@ guide is in [project config](/guides/project-config).
 | `agents` | array | [Agent presets](#agents) to add, or to replace built-ins by `id`. |
 | `hooks` | array | [Hooks](#hooks) for this repository's events only, run in the worktree. |
 | `flows` | array | [Flows](#flows) for this repository's worktrees. |
+| `shots` | object | What `berthd shots compare` [shoots and diffs](#shots) by default. Read from the worktree's own file, trusted or not: it names pages and selectors and runs nothing. |
 
 ### `services`
 
@@ -106,6 +107,25 @@ Each step:
 | `duration` | string | `sleep`: how long, kept across restarts. |
 
 Variables and behaviour are in [automations](/guides/automations#steps).
+
+### `shots`
+
+Defaults for [visual diffs](/guides/visual-diffs). Flags on
+`berthd shots compare` override them for one run (`--mask` adds to `mask`).
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `pages` | array | Paths to shoot, such as `["/", "/login"]`. Default `["/"]`; at most 50. |
+| `sizes` | array | Viewport widths in CSS pixels, 240 to 2560, at most 6. Default `[375, 768, 1280]` (shot at 812, 1024 and 800 pixels high). |
+| `mask` | array | CSS selectors of dynamic content (clocks, avatars, relative dates), painted flat on both sides and left out of the diff. |
+| `threshold` | number | The colour distance, 0 to 1, under which two pixels count as the same. Default `0.03`. |
+| `unchanged_below` | number | The share of changed pixels, in percent, under which a shot counts as unchanged. Default `0.02`. |
+| `max_height` | number | Full-page shots stop here, in CSS pixels. Default `4000`. |
+| `scale` | number | Device pixel ratio, up to 3. Default `1`. |
+| `color_scheme` | string | `light` (default), `dark`, or `both` (every shot in each). |
+| `wait_for` | string | A selector every page must show before its shot (up to 10 seconds). |
+| `seed_random` | boolean | `Math.random` repeats the same numbers on every load. |
+| `parallel` | number | Browser tabs shooting at once. Default: the box's CPUs, from 2 to 8. |
 
 ## How layers merge
 

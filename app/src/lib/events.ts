@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 import type { BerthEvent } from "@/lib/api";
+import { handleArtifactEvent } from "@/lib/art/model";
 import { agentLabel, agentOf, sessionAgent, sessionName } from "@/lib/derive";
 import { isLive, useLoops } from "@/lib/loops";
 import { flowKey, resolveFromEvent, route, secretKey, serviceKey } from "@/lib/notifications";
@@ -26,6 +27,8 @@ const refreshes: [prefix: string, parts: BoxPart[]][] = [
   ["agent.", ["sessions", "stats"]],
   // A task is a new worktree and the agent in it.
   ["task.", ["locations", "sessions"]],
+  // Agent CLIs added or found on the box: the agents it offers.
+  ["agents.", ["info"]],
 ];
 
 // The most recent events, newest first, for the Automations view.
@@ -56,7 +59,7 @@ export function handleEvent(e: BerthEvent) {
   // Prompts queued for a box that was away: the list, and what came of them.
   if (e.type.startsWith("queue.")) handleQueueEvent(e);
   // A team setup's runner on a box, or a newer commit of one (lib/team).
-  if (e.type.startsWith("team.")) handleTeamEvent(e);
+  if (e.type.startsWith("team.") || e.type === "box.connected") handleTeamEvent(e);
   notifyFor(e);
 }
 
@@ -96,6 +99,8 @@ function notifyFor(e: BerthEvent) {
     }
   }
   if (e.type === "preview.open") handlePreview(e);
+  // An artifact added, rewritten or removed: the worktree's list, live.
+  if (e.type.startsWith("artifact.")) handleArtifactEvent(e);
   if (e.type === "session.open") handleSessionOpen(e);
   // A removed worktree's workspace goes too, wherever it was removed from;
   // one being archived (from here, the CLI or another laptop) shows as

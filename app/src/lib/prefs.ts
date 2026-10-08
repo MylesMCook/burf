@@ -66,6 +66,9 @@ export interface Prefs {
   // The agent CLIs the guided install last put on a box (Add a box ›
   // Agents); null until the person chooses, when Claude Code is ticked.
   installAgents: string[] | null;
+  // The newest version whose What's new card was shown, or that was
+  // running when the card had nothing to show (lib/whats-new.ts).
+  whatsNewSeen: string | null;
 }
 
 export type ChatWidth = "narrow" | "default" | "wide" | "xwide" | "full";
@@ -98,6 +101,7 @@ const DEFAULTS: Prefs = {
   systemThemes: { light: "berth-light", dark: "berth-dark" },
   home: null,
   installAgents: null,
+  whatsNewSeen: null,
 };
 
 // PREFS_VERSION counts changes of default that saved prefs are moved to
@@ -123,7 +127,11 @@ export function migratePrefs(saved: Saved): Saved {
   return out;
 }
 
-const saved = migratePrefs(load<Saved>("berth.prefs", {}));
+const stored = load<Saved>("berth.prefs", {});
+// Nothing saved before: a new install (or storage that was cleared), which
+// has nothing to catch up on (lib/whats-new.ts).
+export const firstRun = !stored || !Object.keys(stored).length;
+const saved = migratePrefs(stored ?? {});
 const { version: _version, ...savedPrefs } = saved;
 
 export const usePrefs = create<Prefs>()(() => ({

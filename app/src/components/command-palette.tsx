@@ -1,9 +1,14 @@
 import {
   BellIcon,
+  BellOffIcon,
+  InboxIcon,
+  MonitorSmartphoneIcon,
+  PencilIcon,
   Columns2Icon,
   HouseIcon,
   KeyboardIcon,
   Minimize2Icon,
+  SparkleIcon,
   BookMarkedIcon,
   CodeXmlIcon,
   ArrowUpRightIcon,
@@ -51,15 +56,21 @@ import { Kbd } from "@/components/ui/kbd";
 import { useAllSessions } from "@/hooks/use-agent-counts";
 import { sessionWord } from "@/lib/state-model";
 import { useThemes } from "@/hooks/use-theme";
-import { openBrowserAt, resolveUrl } from "@/lib/actions";
+import { openBrowserAt, openPreviewAt, resolveUrl } from "@/lib/actions";
+import { FROM_TABLE } from "@/lib/palette-shortcuts";
+import { describe, keysFor, SHORTCUTS } from "@/lib/shortcuts";
+import { runShortcut } from "@/hooks/use-shortcuts";
+import { openRenameWorktree } from "@/components/sidebar/rename-worktree";
+import type { SettingsSectionId } from "@/views/settings/settings-view";
 import { agentOf, sessionAgent, sessionName, sortedWorktrees, worktreeOf } from "@/lib/derive";
 import { openBroadcast, openPromptPicker } from "@/lib/prompts";
-import { setNotificationsOpen } from "@/lib/notifications";
+import { quietNow, setDoNotDisturb, setNotificationsOpen } from "@/lib/notifications";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { isLink, teamRef } from "@/lib/team-ref";
 import { focusedPane, focusSession, goHome, hereRef, recentWorktrees, refOf, selectWorktree, useWorkspaces } from "@/lib/workspaces";
 import { openShortcuts } from "@/components/shortcuts-sheet";
+import { hasWhatsNew, openWhatsNew } from "@/lib/whats-new";
 import { openWorktreePicker } from "@/components/workspace/worktree-picker";
 import { newTerminal } from "@/components/box-picker";
 import { openCustomize, useArrangedNav } from "@/components/sidebar/nav";
@@ -69,6 +80,31 @@ import { openAddBox } from "@/views/onboarding/add-box-dialog";
 import { openAttempts, openComposer } from "@/lib/composer";
 import { defaultScope } from "@/views/automations/flows/project-label";
 import { placeLabel, worktreeLabel } from "@/lib/worktree-names";
+
+// Settings' sections ⌘K goes to, with words they answer to besides their name.
+const SETTINGS_SECTIONS: [SettingsSectionId, string, string][] = [
+  ["general", "General", "close agents tabs"],
+  ["appearance", "Appearance", "theme density font chat background width"],
+  ["terminal", "Terminal", "font cursor scrollback renderer"],
+  ["boxes", "Boxes", "servers ssh"],
+  ["computers", "Computers", "laptops devices"],
+  ["phone", "Phone", "mobile pair"],
+  ["agents", "Agents", "claude codex install"],
+  ["plugins", "Plugins", "extensions"],
+  ["shortcuts", "Shortcuts", "keys keyboard"],
+  ["labs", "Labs", "experiments"],
+  ["about", "About", "version update"],
+];
+
+// renameHere offers to rename the worktree you are in (F2 on its row).
+function renameHere(go: (fn: () => void) => () => void) {
+  const at = hereRef();
+  if (!at || at.main) return [];
+  const loc = useStore.getState().boxes[at.box]?.locations?.find((l) => l.name === at.location);
+  const wt = loc?.worktrees?.find((w) => w.path === at.path);
+  if (!loc || !wt) return [];
+  return [{ value: `rename worktree display name ${wt.name}`, label: "Rename this worktree…", icon: slot(<PencilIcon />), shortcut: keysFor("rename"), run: go(() => openRenameWorktree(at.box, loc, wt)) }];
+}
 
 // defaultScopeRef is a project to try things in when no worktree is open.
 function defaultScopeRef(): { box: string; location: string } | undefined {
@@ -132,7 +168,7 @@ export function CommandPalette() {
     const q = query.trim();
 
     const actions: Item[] = [
-      { value: "new-worktree task start agent", label: "New task…", icon: slot(<GitBranchPlusIcon />), shortcut: "⌘N", run: go(() => {
+      { value: "new-worktree task start agent", label: "New task…", icon: slot(<GitBranchPlusIcon />), shortcut: keysFor("new-worktree"), run: go(() => {
         const at = hereRef();
         st.openNewWorktree(at ? { box: at.box, location: at.location } : {});
       }) },
@@ -140,15 +176,15 @@ export function CommandPalette() {
         const at = hereRef();
         openComposer({ noAgent: true, ...(at ? { box: at.box, location: at.location } : {}) });
       }) },
-      { value: "new-terminal", label: "New terminal", icon: slot(<SquareTerminalIcon />), shortcut: "⌘T", run: go(newTerminal) },
-      { value: "new-browser", label: "New browser tab", icon: slot(<GlobeIcon />), shortcut: "⌘⇧B", run: go(() => openBrowserAt("")) },
-      { value: "open in editor cursor vscode zed", label: "Open in editor", icon: slot(<CodeXmlIcon />), shortcut: "⌘⇧O", run: go(() => {
+      { value: "new-terminal", label: "New terminal", icon: slot(<SquareTerminalIcon />), shortcut: keysFor("new-terminal"), run: go(newTerminal) },
+      { value: "new-browser", label: "New browser tab", icon: slot(<GlobeIcon />), shortcut: keysFor("new-browser"), run: go(() => openBrowserAt("")) },
+      { value: "open in editor cursor vscode zed", label: "Open in editor", icon: slot(<CodeXmlIcon />), shortcut: keysFor("open-editor"), run: go(() => {
         const at = hereRef();
         if (at) void openEditor({ box: at.box, path: at.path });
       }) },
       { value: "new-tab", label: "New tab…", icon: slot(<PanelTopIcon />), run: go(() => st.setNewTabMenuOpen(true)) },
       ...(usePrefs.getState().labs && st.view.kind === "workspace" && focusedPane()
-        ? [{ value: "split right with another worktree side by side guest pane", label: "Split right with another worktree…", icon: slot(<Columns2Icon />), shortcut: "⌘⌥D", run: go(() => openWorktreePicker({ kind: "split" })) }]
+        ? [{ value: "split right with another worktree side by side guest pane", label: "Split right with another worktree…", icon: slot(<Columns2Icon />), shortcut: keysFor("split-worktree"), run: go(() => openWorktreePicker({ kind: "split" })) }]
         : []),
       { value: "send saved prompt library", label: "Send a saved prompt…", icon: slot(<BookMarkedIcon />), run: go(() => openPromptPicker()) },
       { value: "broadcast prompt several agents running", label: "Send a prompt to several agents…", icon: slot(<UsersIcon />), run: go(() => openBroadcast()) },
@@ -163,13 +199,27 @@ export function CommandPalette() {
       },
       { value: "add-location", label: "Add a project…", icon: slot(<FolderPlusIcon />), run: go(() => st.openAddProject()) },
       ...(usePrefs.getState().labs
-        ? [{ value: "zen focus calm hide sidebar labs", label: usePrefs.getState().zen ? "Leave zen" : "Zen: only the agents", icon: slot(<Minimize2Icon />), shortcut: "⌘.", run: go(() => usePrefs.setState((p) => ({ zen: !p.zen }))) }]
+        ? [{ value: "zen focus calm hide sidebar labs", label: usePrefs.getState().zen ? "Leave zen" : "Zen: only the agents", icon: slot(<Minimize2Icon />), shortcut: keysFor("zen"), run: go(() => usePrefs.setState((p) => ({ zen: !p.zen }))) }]
         : []),
-      ...(usePrefs.getState().labs ? [{ value: "home harbour start", label: "Home", icon: slot(<HouseIcon />), run: go(goHome) }] : []),
-      { value: "dashboard", label: "Agent Dashboard", icon: slot(<LayoutDashboardIcon />), shortcut: "⌘J", run: go(() => st.setView({ kind: "dashboard" })) },
-      { value: "keyboard shortcuts keys help", label: "Keyboard shortcuts", icon: slot(<KeyboardIcon />), shortcut: "⌘/", run: go(openShortcuts) },
-      { value: "notifications inbox bell", label: "Notifications", icon: slot(<BellIcon />), shortcut: "⌘⇧N", run: go(() => setNotificationsOpen(true)) },
-      { value: "notification settings do not disturb", label: "Notification settings", icon: slot(<BellIcon />), run: go(() => st.setView({ kind: "settings", section: "notifications" })) },
+      { value: "home harbour start", label: "Home", icon: slot(<HouseIcon />), run: go(goHome) },
+      { value: "review inbox approve changes", label: "Review", icon: slot(<InboxIcon />), run: go(() => st.setView({ kind: "review" })) },
+      { value: "dashboard", label: "Agent Dashboard", icon: slot(<LayoutDashboardIcon />), shortcut: keysFor("dashboard"), run: go(() => st.setView({ kind: "dashboard" })) },
+      ...(hasWhatsNew() ? [{ value: "whats new release notes changes update", label: "What's new in Burf", icon: slot(<SparkleIcon />), run: go(() => openWhatsNew("palette")) }] : []),
+      { value: "keyboard shortcuts keys help", label: "Keyboard shortcuts", icon: slot(<KeyboardIcon />), shortcut: keysFor("shortcuts"), run: go(openShortcuts) },
+      { value: "notifications inbox bell", label: "Notifications", icon: slot(<BellIcon />), shortcut: keysFor("notifications"), run: go(() => setNotificationsOpen(true)) },
+      { value: "notification settings", label: "Notification settings", icon: slot(<BellIcon />), run: go(() => st.setView({ kind: "settings", section: "notifications" })) },
+      quietNow()
+        ? { value: "do not disturb off quiet notifications", label: "Turn off Do not disturb", icon: slot(<BellIcon />), run: go(() => setDoNotDisturb(false)) }
+        : { value: "do not disturb on quiet notifications silence", label: "Turn on Do not disturb", icon: slot(<BellOffIcon />), run: go(() => setDoNotDisturb(true)) },
+      { value: "new preview tab sizes responsive", label: "New Preview tab", icon: slot(<MonitorSmartphoneIcon />), run: go(() => openPreviewAt("")) },
+      ...renameHere(go),
+      // The shortcuts it has no item of its own for, as the menu bar names
+      // them (lib/palette-shortcuts.ts).
+      ...FROM_TABLE.flatMap((id) => {
+        const k = SHORTCUTS.find((x) => x.id === id);
+        if (!k || (k.labs && !usePrefs.getState().labs)) return [];
+        return [{ value: `shortcut ${id} ${describe(k)}`, label: k.label, icon: slot(<KeyboardIcon />), shortcut: k.keys, run: go(() => void runShortcut(id, "menu")) }];
+      }),
       { value: "worktrees", label: "Worktrees", icon: slot(<GitBranchIcon />), run: go(() => st.setView({ kind: "worktrees" })) },
       { value: "automations", label: "Automations", icon: slot(<WorkflowIcon />), run: go(() => st.setView({ kind: "automations" })) },
       { value: "kits", label: "Kits", icon: slot(<PackageIcon />), run: go(() => st.setView({ kind: "kits" })) },
@@ -182,6 +232,8 @@ export function CommandPalette() {
         ? [{ value: `team setup link ${q}`, label: "Open team setup from link", detail: teamRef(q), search: q, icon: slot(<UsersIcon />), run: go(() => st.setView({ kind: "team", org: teamRef(q), from: "palette" })) }]
         : []),
       { value: "settings-developer", label: "Developer settings", icon: slot(<CodeIcon />), run: go(() => st.setView({ kind: "settings", section: "developer" })) },
+      // Each part of Settings, by name ("appearance", "theme", "terminal").
+      ...SETTINGS_SECTIONS.map(([section, label, words]) => ({ value: `settings ${section} ${words}`, label: `Settings: ${label}`, icon: slot(<SettingsIcon />), run: go(() => st.setView({ kind: "settings", section })) })),
       { value: "customize-sidebar", label: "Customize sidebar…", icon: slot(<SlidersHorizontalIcon />), run: go(() => openCustomize()) },
       { value: "refresh", label: "Refresh everything", icon: slot(<RefreshCwIcon />), run: go(() => void st.refreshAll()) },
       { value: "reload-plugins", label: "Reload plugins", icon: slot(<PuzzleIcon />), run: go(() => st.client && void loadPlugins(st.client)) },
@@ -314,7 +366,7 @@ export function CommandPalette() {
     ].filter((g) => g.items.length);
     // close is stable enough: it only reads refs and store setters.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessions, boxes, status, themes, themeId, spaces, pluginCommands, query, nav.hidden]);
+  }, [sessions, boxes, status, themes, themeId, spaces, pluginCommands, query, nav.hidden, open]);
 
   return (
     <CommandDialog
@@ -324,7 +376,7 @@ export function CommandPalette() {
         else close();
       }}
     >
-      <CommandDialogPopup>
+      <CommandDialogPopup aria-label="Search and commands">
         <Command
           items={groups}
           value={query}
@@ -339,7 +391,7 @@ export function CommandPalette() {
             useStore.getState().setTheme(t);
           }}
         >
-          <CommandInput placeholder="Jump to a session, worktree, or command…" />
+          <CommandInput aria-label="Search sessions, worktrees and commands" placeholder="Jump to a session, worktree, or command…" />
           <CommandPanel>
             <CommandEmpty>Nothing matches.</CommandEmpty>
             <CommandList>

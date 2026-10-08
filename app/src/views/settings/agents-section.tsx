@@ -81,7 +81,7 @@ export function AgentsSection() {
                             <CheckIcon className="mx-auto size-4 text-success-foreground" aria-label={`On ${b.name}`} />
                           ) : (
                             <Tooltip>
-                              <TooltipTrigger render={<span className="inline-flex cursor-help text-muted-foreground/50" />} aria-label={`Not on ${b.name}`}>
+                              <TooltipTrigger render={<button type="button" className="inline-flex cursor-help rounded text-muted-foreground/50 outline-none focus-visible:ring-2 focus-visible:ring-ring" />} aria-label={`Not on ${b.name}`}>
                                 <MinusIcon className="size-4" />
                               </TooltipTrigger>
                               <TooltipPopup className="max-w-72">

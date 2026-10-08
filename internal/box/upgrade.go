@@ -89,7 +89,7 @@ func (b *Box) handleInfo(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
-	i.Name, i.Agents = b.Name, Presets(nil)
+	i.Name, i.Agents, i.AgentPaths = b.Name, Presets(nil), AgentPaths()
 	if u, err := user.Current(); err == nil {
 		i.User = u.Username
 	}
@@ -126,7 +126,9 @@ func (b *Box) Capabilities() []string {
 	// CLIs added to the box without sudo (agentinstall.go).
 	// worktree.titles: worktrees carry a display name (PATCH
 	// /v1/locations/{name}/worktrees/{worktree} names one, worktreetitles.go).
-	caps := []string{"transcript", "diff", "titles", "sample", "history", "commands", "service.terminal", "answer", "session.home", "files", "files.dir", "agents.install", "worktree.titles"}
+	// agents.paths: info says where each agent CLI was found
+	// (agent_paths), and POST /v1/agents/refresh looks again (agentpaths.go).
+	caps := []string{"transcript", "diff", "titles", "sample", "history", "commands", "service.terminal", "answer", "session.home", "files", "files.dir", "agents.install", "worktree.titles", "agents.paths"}
 	if b.Chats != nil {
 		// chat.options: messages take per-turn model, effort and permission,
 		// and approvals take scoped decisions. Older daemons reject both.
@@ -144,6 +146,19 @@ func (b *Box) Capabilities() []string {
 	caps = append(caps, "draft")
 	if b.Runs != nil {
 		caps = append(caps, "runs", "exec.detach")
+	}
+	if b.Artifacts != nil {
+		// artifacts: berthd artifact add, a worktree's artifacts and their
+		// versions (artifactsapi.go), artifact.* events, and the art-
+		// origin's content (GET /v1/artifacts/{id}/v/{n}).
+		caps = append(caps, "artifacts")
+		if b.Browsers != nil {
+			// visualdiff: berthd shots compare keeps visual diffs as
+			// artifacts of kind visualdiff, their images at GET
+			// .../artifacts/{id}/img/{name}, and Accept as baseline at
+			// POST /v1/worktrees/{loc}/{wt}/shots/accept (shots.go).
+			caps = append(caps, "visualdiff")
+		}
 	}
 	if b.Team != nil {
 		// team: GET/POST /v1/team and POST /v1/team/{id}/retry run team

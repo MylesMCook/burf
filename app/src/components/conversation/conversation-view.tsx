@@ -224,7 +224,7 @@ function guessHeight(b: Block): number {
     case "notice":
       return 84;
     case "artifact":
-      return 54;
+      return it.local ? (it.updated ? 40 : 112) : 54;
     case "question":
       return it.done ? 40 : 360;
     case "report":
@@ -465,7 +465,7 @@ function WorkFold({ id, steps, live, onAnswer, edits, who }: { id: string; steps
       <button type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} className="-ml-1 inline-flex items-center gap-1.5 rounded-md px-1 py-0.5 text-muted-foreground text-[0.8125rem] outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
         <ChevronRightIcon className={cn("size-3.5 transition-transform duration-200", open && "rotate-90")} />
         {live ? <span className="cv-shimmer">Working</span> : "Worked"}
-        {summary && <span className="text-muted-foreground/80">· {summary}</span>}
+        {summary && <span>· {summary}</span>}
       </button>
       <div className="cv-fold" data-closed={open ? undefined : ""}>
         <div>
@@ -500,6 +500,8 @@ function ItemBody({ it, onAnswer, edits, who }: { it: TranscriptItem; onAnswer(i
           <div className="flex w-full items-end justify-end gap-1.5">
             {!readOnly && !it.pending && <PromptActions it={it} />}
             <div data-selectable className={cn("cv-in min-w-0 max-w-[80%] whitespace-pre-wrap rounded-2xl bg-muted px-3.5 py-2", it.pending && "opacity-70")}>
+              {/* Who speaks, for screen readers; never copied with the words. */}
+              <span className="sr-only select-none">You: </span>
               {text}
             </div>
           </div>
@@ -513,7 +515,12 @@ function ItemBody({ it, onAnswer, edits, who }: { it: TranscriptItem; onAnswer(i
     case "text":
       // A draft (the reply as the agent's screen shows it) draws as the
       // message will, so the message replaces it in place.
-      return <Markdown text={it.text} draft={it.live} clipped={it.clipped} />;
+      return (
+        <>
+          <span className="sr-only select-none">{who}: </span>
+          <Markdown text={it.text} draft={it.live} clipped={it.clipped} />
+        </>
+      );
     case "thinking":
       return <Thinking since={it.since} label={it.label} elapsed={it.elapsed} meta={it.meta} step={it.step} />;
     case "tools":

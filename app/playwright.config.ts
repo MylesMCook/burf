@@ -16,7 +16,8 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   // A failure is a failure: the fixtures are fixed and nothing waits on time.
   retries: 0,
-  workers: process.env.CI ? 2 : live ? 2 : undefined,
+  // E2E_WORKERS: CI sets 6 on omarchy (16 cores), 2 on hosted runners.
+  workers: process.env.E2E_WORKERS ? Number(process.env.E2E_WORKERS) : process.env.CI ? 2 : live ? 2 : undefined,
   timeout: 30_000,
   expect: { timeout: 10_000 },
   reporter: process.env.CI ? [["list"], ["github"]] : [["list"]],

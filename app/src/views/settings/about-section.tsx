@@ -8,6 +8,7 @@ import { openDocs, openUrl } from "@/lib/open-url";
 import { NONE, useStore } from "@/lib/store";
 import { checkForUpdate, restartToUpdate, updatesSupported, useUpdater } from "@/lib/updater";
 import { useAppVersion } from "@/views/settings/app-version";
+import { hasWhatsNew, openWhatsNew } from "@/lib/whats-new";
 import { SettingsGroup, SettingsPage, SettingsRow } from "@/views/settings/rows";
 
 const DOCS: [path: string, title: string, what: string][] = [
@@ -35,6 +36,11 @@ export function AboutSection() {
       <SettingsGroup title="Versions">
         <SettingsRow label="App">
           <span className="font-mono text-muted-foreground text-xs">{version}</span>
+          {hasWhatsNew() && (
+            <Button size="xs" variant="outline" data-testid="about-whats-new" onClick={() => openWhatsNew("about")}>
+              What's new
+            </Button>
+          )}
         </SettingsRow>
         <SettingsRow label="Laptop agent" description="Holds the connection to every box, the private URLs and forwards.">
           <span className="font-mono text-muted-foreground text-xs">127.0.0.1:1378 · proxy :{proxy?.port ?? "-"}</span>

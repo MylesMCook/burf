@@ -4,9 +4,19 @@ on:
   push:
     branches: [main]
   pull_request:
+  # release.yml runs all of this on the tag first, and fails the release on
+  # any failure.
+  workflow_call:
 
 permissions:
   contents: read
+
+# A newer push cancels the run still going for an older one, on main too.
+# A release's checks (workflow_call) run under the tag's ref, so they are
+# never cancelled by a push to main.
+concurrency:
+  group: ci-${{ github.workflow_ref }}-${{ github.ref }}
+  cancel-in-progress: true
 
 # Jobs run on omarchy, the owner's self-hosted runner (ci/runner/), when the
 # repository variable SELF_HOSTED is true and the event is the owner's push;
@@ -89,12 +99,13 @@ jobs:
           # A self-hosted runner keeps its Go caches between jobs.
           cache: ${{ runner.environment == 'github-hosted' }}
       # Sessions are tmux sessions, so their tests need it.
-      - run: sudo apt-get update && sudo apt-get install -y tmux
+      # omarchy's image has it; apt's mirrors are slow from there.
+      - run: command -v tmux >/dev/null || { sudo apt-get update && sudo apt-get install -y tmux; }
       - run: go vet ./...
       - run: go test -race ./...
       # A real Chromium alone, without the race detector or every other
       # package's tests starving it: it times out starting otherwise.
-      - run: go test ./internal/box/ -run 'TestAgentBrowserDrivesARealChromium' -count=1 -v
+      - run: go test ./internal/box/ -run 'TestAgentBrowserDrivesARealChromium|TestTheBrowserSizeReachesARealChromium' -count=1 -v
         # GitHub's Ubuntu runners stop Chromium's sandbox (user namespaces).
         env:
           BERTH_BROWSER_NO_SANDBOX: "1"
@@ -176,14 +187,38 @@ jobs:
       # on the mock fixtures, with no page error allowed. The browser is
       # cached by Playwright's version; --with-deps adds the system libraries.
       - id: playwright
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
       - uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
-        if: runner.environment == 'github-hosted' # a self-hosted runner keeps it
+        if: runner.environment == 'github-hosted' && !startsWith(github.ref, 'refs/tags/') # a self-hosted runner keeps it
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ steps.playwright.outputs.version }}-chromium-shell
       - run: pnpm exec playwright install --with-deps --only-shell chromium
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+      # omarchy's runners share one network, so two runs at once would both
+      # take Playwright's default port: each takes a free one of its own.
+      - name: Pick a free port for the e2e server
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        run: |
+          echo "E2E_PORT=$(python3 -c '
+          import random, socket
+          ports = list(range(1421, 1440)); random.shuffle(ports)
+          for p in ports:
+              s = socket.socket()
+              try:
+                  s.bind(("127.0.0.1", p)); print(p); break
+              except OSError:
+                  pass
+              finally:
+                  s.close()
+          ')" >> "$GITHUB_ENV"
+      # A release (a tag) skips the e2e suite for now; main runs it.
       - run: pnpm test:e2e
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        env:
+          # omarchy has 16 cores; a hosted runner has 4.
+          E2E_WORKERS: ${{ runner.environment == 'self-hosted' && '6' || '2' }}
       - if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:

@@ -691,3 +691,60 @@ func TestSkippedOnePasswordListsMissingKeysAndCanBeTurnedOnLater(t *testing.T) {
 		t.Fatal("Use 1Password twice")
 	}
 }
+
+// A project's init that stops at a question (corepack's download prompt, a
+// host key) used to leave the project "setting up" in a terminal nobody was
+// shown, until opening the main checkout happened to show it: the project
+// says it waits, names that terminal, and shows its last line; answered
+// there, it is ready, and worktrees come at once.
+func TestAnInitThatAsksSaysSoAndNamesItsTerminal(t *testing.T) {
+	f := newTeamFixture(t)
+	tb := f.bundle()
+	tb.Steps, tb.GitHub = nil, false
+	tb.Projects = tb.Projects[1:]
+	tb.Files["box/init-api.sh"] = b64(`#!/bin/sh
+echo "corepack=$COREPACK_ENABLE_DOWNLOAD_PROMPT" >"$MARKS/init-corepack"
+echo "Installing dependencies"
+printf '? The authenticity of host can'"'"'t be established. Do you want to continue? [Y/n] '
+read -r answer
+[ "$answer" = y ] || exit 4
+echo "Done"
+`)
+	if _, err := f.b.StartTeam(context.Background(), tb); err != nil {
+		t.Fatal(err)
+	}
+	st := f.waitFor("api waiting", func(st TeamStatus) bool { return st.Projects[0].Waiting })
+	api := st.Projects[0]
+	if api.State != TeamSettingUp || api.Session != "team-acme-api" || !strings.Contains(api.Line, "[Y/n]") || st.Phase != "projects" {
+		t.Fatalf("api: %+v (phase %s)", api, st.Phase)
+	}
+	if got, _ := os.ReadFile(filepath.Join(f.marks, "init-corepack")); strings.TrimSpace(string(got)) != "corepack=0" {
+		t.Fatalf("init env: %q", got)
+	}
+	if err := f.b.Sessions.Send(context.Background(), api.Session, "y", true); err != nil {
+		t.Fatal(err)
+	}
+	st = f.waitFor("done", func(st TeamStatus) bool { return st.Phase == "done" || st.Phase == "failed" })
+	if api = st.Projects[0]; st.Phase != "done" || api.State != TeamReady || api.Waiting || api.Line != "" {
+		t.Fatalf("after answering: %+v (phase %s)", api, st.Phase)
+	}
+	// Ready means ready: a worktree comes straight away.
+	if _, err := f.b.Locations.CreateWorktreeFrom(context.Background(), api.Location, WorktreeRequest{Name: "first-task"}); err != nil {
+		t.Fatalf("a worktree right after the setup: %v", err)
+	}
+}
+
+func TestInitPrompts(t *testing.T) {
+	for line, want := range map[string]bool{
+		"! Corepack is about to download https://repo.yarnpkg.com/4.9.1/packages/yarnpkg-cli/bin/yarn.js. Do you want to continue? [Y/n]": true,
+		"Are you sure you want to continue connecting (yes/no/[fingerprint])?":                                                            true,
+		"[sudo] password for dev:": true,
+		"Need to install the following packages: prisma Ok to proceed? (y)": true,
+		"➤ YN0000: · Done in 41s":                                           false,
+		"Installing dependencies":                                           false,
+	} {
+		if got := initPrompt.MatchString(line); got != want {
+			t.Errorf("%q: %v", line, got)
+		}
+	}
+}

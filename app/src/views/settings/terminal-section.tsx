@@ -112,6 +112,9 @@ function TerminalPreview({ prefs }: { prefs: TerminalPrefs }) {
   return (
     <div
       aria-hidden
+      // A picture of a terminal in the theme's ANSI colours, the programs'
+      // own choice: the axe spec leaves it out (the app's text it checks).
+      data-a11y-skip
       className="overflow-hidden rounded-xl border px-4 py-3"
       style={{ background: t.background, color: t.foreground, fontFamily: prefs.fontFamily, fontSize: prefs.fontSize, lineHeight: prefs.lineHeight }}
     >

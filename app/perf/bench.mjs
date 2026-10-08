@@ -6,9 +6,9 @@
 //
 //   pnpm build && node perf/bench.mjs [--turns 50,500,2000] [--port 1431]
 //        [--out perf-results] [--only chat,term,fleet] [--runs 1]
-//        [--trace] [--shots]
+//        [--trace] [--shots] [--dist other/dist] [--worktrees 300]
 //
-// It serves dist/ with vite preview on --port (1421–1439 leave the dev
+// It serves dist/ (or --dist, another build to compare) with vite preview on --port (1421–1439 leave the dev
 // app's 1420 alone) and writes numbers.json (and with --shots, screenshots
 // of the longest chat mid-scroll, dark and light) to --out. What it
 // measures, per chat size:
@@ -27,6 +27,19 @@
 //               metrics) and the chat rows that rendered again (React's
 //               commits, read through the DevTools hook)
 //   switch      to the second long chat and back
+//
+// and with --only fleet (--worktrees, 300 by default) the sidebar, Home and
+// the folded rail with that many more worktrees, each with an agent:
+//
+//   start       long tasks from load to quiet, JS heap, DOM nodes, the
+//               sidebar's own elements, and the main thread at rest
+//   sidebar     scrolled top to foot; its edge dragged wider and back; a
+//               project folded and opened again;
+//               a row's context menu (Shift+F10) and ⋯ menu opened; a row
+//               renamed in place (double-click to the field, Enter to the
+//               new name drawn)
+//   home, rail  going to Home; folding the sidebar, then a start with it
+//               folded
 //
 // It is a benchmark: numbers move with the machine. perf/guard.mjs checks
 // generous limits on its output (pnpm perf:guard).
@@ -67,18 +80,31 @@ const SESSION_A = { box: "devl", session: "search-perf-claude" };
 // ---- The server -------------------------------------------------------------
 
 async function serve() {
-  const p = spawn("pnpm", ["exec", "vite", "preview", "--port", String(port), "--strictPort"], { cwd: app, stdio: ["ignore", "pipe", "pipe"] });
+  // Another server on the port would be measured in this build's place.
+  const busy = await fetch(base).then(
+    () => true,
+    () => false,
+  );
+  if (busy) throw new Error(`something already answers on ${port}: pick a free port with --port`);
+  // Its own process group, so vite goes with pnpm when it is stopped.
+  const p = spawn("pnpm", ["exec", "vite", "preview", "--port", String(port), "--strictPort", ...(args.dist ? ["--outDir", resolve(String(args.dist))] : [])], { cwd: app, stdio: ["ignore", "pipe", "pipe"], detached: true });
+  const stop = () => {
+    try {
+      process.kill(-p.pid, "SIGTERM");
+    } catch {}
+  };
   let log = "";
   p.stdout.on("data", (d) => (log += d));
   p.stderr.on("data", (d) => (log += d));
   for (let i = 0; i < 100; i++) {
+    if (p.exitCode !== null) break;
     try {
       const r = await fetch(base);
-      if (r.ok) return p;
+      if (r.ok) return { kill: stop };
     } catch {}
     await new Promise((r) => setTimeout(r, 200));
   }
-  p.kill();
+  stop();
   throw new Error(`vite preview didn't start on ${port}:\n${log}`);
 }
 
@@ -460,6 +486,40 @@ async function benchTerm(browser, lines, renderer) {
 
 // ---- Sidebar and Home -------------------------------------------------------------
 
+// act runs fn in the page (a click, a key) and times it to the frame after
+// the app's response is drawn (until(), polled each frame, says when), with
+// the main thread's own time (CDP) and the long tasks it caused.
+async function act(page, cdp, fn, until, arg) {
+  const m0 = await metrics(cdp);
+  const r = await page.evaluate(
+    ({ fn, until, arg }) =>
+      new Promise((done) => {
+        const go = new Function("arg", fn);
+        const ready = new Function("arg", until);
+        const t0 = performance.now();
+        go(arg);
+        const start = performance.now();
+        const tick = () => {
+          if (ready(arg) || performance.now() - t0 > 10_000) return setTimeout(() => done({ t0, syncMs: start - t0, drawnMs: performance.now() - t0 }));
+          requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      }),
+    { fn, until, arg },
+  );
+  const q = await quiet(page, r.t0, 300, 10_000);
+  const m1 = await metrics(cdp);
+  return { ms: r1(r.drawnMs), syncMs: r1(r.syncMs), mainThreadMs: r1((m1.TaskDuration - m0.TaskDuration) * 1000 - 0), longTasks: q.n, longTaskMs: r1(q.total) };
+}
+
+// The sidebar's own size: its elements, and Base UI's roots and listeners
+// are what made it slow (one context menu, ⋯ menu, + menu and tooltips a row).
+const sidebarSize = (page, sel) =>
+  page.evaluate((sel) => {
+    const s = document.querySelector(sel);
+    return { nodes: s ? s.getElementsByTagName("*").length + 1 : 0, rows: s ? s.querySelectorAll("[data-testid=worktree-row]").length : 0 };
+  }, sel);
+
 async function benchFleet(browser, worktrees) {
   const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, colorScheme: "dark" });
   await context.addInitScript(INIT);
@@ -470,19 +530,29 @@ async function benchFleet(browser, worktrees) {
   await cdp.send("Performance.enable", { timeDomain: "timeTicks" });
   const t0 = Date.now();
   await page.goto(`${base}/?mock=1&bench=fleet&worktrees=${worktrees}`);
-  await page.locator("[data-testid=worktree-row]").nth(Math.min(worktrees, 200)).waitFor({ state: "attached", timeout: 60_000 });
+  await page.locator("[data-testid=worktree-row]").nth(Math.min(worktrees, 200)).waitFor({ state: "attached", timeout: 60_000 }).catch(() => {});
+  await page.locator("[data-testid=worktree-row]").first().waitFor({ state: "attached", timeout: 60_000 });
   const listed = Date.now() - t0;
   const q = await quiet(page, 0, 500, 30_000);
   const res = { worktrees, sidebarListedMs: listed, quietMs: r1(q.end), longTasks: q.n, longTaskMs: r1(q.total) };
   res.rows = await page.locator("[data-testid=worktree-row]").count();
   res.memory = await memory(page, cdp);
+  res.sidebar = await sidebarSize(page, "[data-testid=sidebar]");
+  // At rest: the main thread's time over 3 s with nothing happening (the
+  // agents' state glyphs spin and pulse).
+  const i0 = await metrics(cdp);
+  await page.waitForTimeout(3000);
+  const i1 = await metrics(cdp);
+  res.idle = { mainThreadMsPerSec: r1(((i1.TaskDuration - i0.TaskDuration) * 1000) / 3), layoutMs: r1((i1.LayoutDuration - i0.LayoutDuration) * 1000), styleMs: r1((i1.RecalcStyleDuration - i0.RecalcStyleDuration) * 1000) };
   // The sidebar scrolled top to foot.
   const side = await page.evaluateHandle(() => {
     const row = document.querySelector("[data-testid=worktree-row]");
     let e = row;
     while (e && !(e.scrollHeight > e.clientHeight + 4 && /auto|scroll/.test(getComputedStyle(e).overflowY))) e = e.parentElement;
+    if (e) e.setAttribute("data-bench-side", "");
     return e;
   });
+  const m0 = await metrics(cdp);
   res.sidebarScroll = frameStats(
     await page.evaluate(
       (sc) =>
@@ -501,12 +571,116 @@ async function benchFleet(browser, worktrees) {
       side,
     ),
   );
+  const m1 = await metrics(cdp);
+  res.sidebarScroll.mainThreadMs = r1((m1.TaskDuration - m0.TaskDuration) * 1000);
+  res.sidebarScroll.mainThreadMsPerFrame = r1(res.sidebarScroll.mainThreadMs / Math.max(1, res.sidebarScroll.frames));
+  await page.evaluate(() => {
+    const sc = document.querySelector("[data-bench-side]");
+    if (sc) sc.scrollTop = 0;
+  });
+  await page.waitForTimeout(300);
+
+  // The sidebar's edge dragged wider and back, 80 moves a frame apart.
+  const handle = await page.locator("[data-sidebar-handle]").first().boundingBox();
+  if (handle) {
+    const hx = handle.x + handle.width / 2;
+    const hy = handle.y + 300;
+    await page.mouse.move(hx, hy);
+    await page.mouse.down();
+    const rec = page.evaluate(
+      () =>
+        new Promise((done) => {
+          const times = [];
+          const tick = (t) => {
+            times.push(t);
+            if (window.__dragDone) return done(times.slice(1).map((x, k) => x - times[k]));
+            requestAnimationFrame(tick);
+          };
+          requestAnimationFrame(tick);
+        }),
+    );
+    const d0 = await metrics(cdp);
+    for (let i = 0; i < 80; i++) {
+      await page.mouse.move(hx + (i % 40 < 20 ? i % 20 : 20 - (i % 20)) * 4, hy);
+      await page.waitForTimeout(16);
+    }
+    const d1 = await metrics(cdp);
+    await page.evaluate(() => (window.__dragDone = true));
+    res.sidebarDrag = frameStats(await rec);
+    res.sidebarDrag.styleMs = r1((d1.RecalcStyleDuration - d0.RecalcStyleDuration) * 1000);
+    res.sidebarDrag.mainThreadMs = r1((d1.TaskDuration - d0.TaskDuration) * 1000);
+    await page.keyboard.press("Escape");
+    await page.mouse.up();
+    await page.waitForTimeout(300);
+  }
+
+  // Fold a project and open it again (the first project, by its chevron;
+  // the project's row says whether it is open, aria-expanded).
+  const project = await page.evaluate(() => document.querySelector("[data-fold]")?.closest("[aria-expanded]")?.textContent?.trim().slice(0, 40));
+  if (project) {
+    const rowsNow = () => "return document.querySelectorAll('[data-testid=worktree-row]').length";
+    const before = await page.evaluate(new Function(rowsNow()));
+    const open = (v) => `return document.querySelector('[data-fold]').closest('[aria-expanded]').getAttribute('aria-expanded') === '${v}'`;
+    res.collapse = await act(page, cdp, `document.querySelector('[data-fold]').click()`, open("false"), project);
+    res.expand = await act(page, cdp, `document.querySelector('[data-fold]').click()`, open("true"), project);
+    res.collapse.project = project;
+    res.expand.rowsBack = (await page.evaluate(new Function(rowsNow()))) === before;
+  }
+
+  // A row's context menu, opened as the menu key does (Shift+F10).
+  const wt = await page.evaluate(() => [...document.querySelectorAll("[data-testid=worktree-row]")].find((r) => !r.dataset.worktree.endsWith("/" + r.dataset.worktree.split("/")[0]) && r.getBoundingClientRect().top > 300)?.dataset.worktree);
+  if (wt) {
+    const row = `[data-testid=worktree-row][data-worktree="${wt}"]`;
+    await page.locator(row).focus();
+    res.contextMenu = await act(page, cdp, `document.activeElement.dispatchEvent(new KeyboardEvent("keydown", { key: "F10", shiftKey: true, bubbles: true, cancelable: true }))`, `return !!document.querySelector("[role=menu]")`);
+    await page.keyboard.press("Escape");
+    await page.locator("[role=menu]").waitFor({ state: "detached" }).catch(() => {});
+    await page.waitForTimeout(300);
+    // The ⋯ menu: hover the row, then click its actions button.
+    await page.locator(row).hover();
+    await page.waitForTimeout(200);
+    const dots = page.locator(row).locator("xpath=..").locator('[aria-label$=" actions"]');
+    const bb = await dots.boundingBox();
+    const d0 = await page.evaluate(() => performance.now());
+    const dm0 = await metrics(cdp);
+    await page.mouse.click(bb.x + bb.width / 2, bb.y + bb.height / 2);
+    await page.locator("[role=menu]").waitFor();
+    const d1 = await page.evaluate(() => new Promise((r) => requestAnimationFrame(() => setTimeout(() => r(performance.now())))));
+    const dq = await quiet(page, d0, 300, 10_000);
+    const dm1 = await metrics(cdp);
+    res.dotsMenu = { ms: r1(d1 - d0), mainThreadMs: r1((dm1.TaskDuration - dm0.TaskDuration) * 1000), longTasks: dq.n, longTaskMs: r1(dq.total) };
+    await page.keyboard.press("Escape");
+    await page.locator("[role=menu]").waitFor({ state: "detached" }).catch(() => {});
+    await page.mouse.move(800, 400);
+    await page.waitForTimeout(300);
+
+    // Rename in place: double-click to the field, then Enter to the new name.
+    res.renameOpen = await act(page, cdp, `document.querySelector(arg).dispatchEvent(new MouseEvent("dblclick", { bubbles: true }))`, `return !!document.querySelector("[data-testid=worktree-rename] input")`, row);
+    const field = page.locator("[data-testid=worktree-rename] input");
+    await page.waitForTimeout(150);
+    await field.fill("Acme bench rename");
+    res.renameSave = await act(page, cdp, `document.querySelector("[data-testid=worktree-rename] input").dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", bubbles: true, cancelable: true }))`, `return !!document.querySelector('[data-testid=worktree-row][data-title="Acme bench rename"]')`);
+    res.renameSave.worktree = wt;
+  }
+
   // Home with every agent.
   const h0 = await page.evaluate(() => performance.now());
   await page.getByTestId("nav-home").click();
   await page.waitForTimeout(50);
   const hq = await quiet(page, h0, 500, 30_000);
   res.home = { quietMs: r1(Math.max(hq.end, h0) - h0), longTasks: hq.n, longTaskMs: r1(hq.total), ...(await memory(page, cdp)) };
+
+  // The folded rail with every agent: folding to it, then a start with it.
+  res.fold = await act(page, cdp, `document.querySelector('[aria-label="Hide the sidebar"]').click()`, `return !!document.querySelector("[data-testid=sidebar-rail] [data-testid=rail-agent]")`);
+  await page.waitForTimeout(300);
+  await page.reload();
+  await page.locator("[data-testid=rail-agent]").first().waitFor({ timeout: 60_000 });
+  const rq = await quiet(page, 0, 500, 30_000);
+  res.rail = { quietMs: r1(rq.end), longTasks: rq.n, longTaskMs: r1(rq.total), tiles: await page.locator("[data-testid=rail-agent]").count(), ...(await sidebarSize(page, "[data-testid=sidebar-rail]")), memory: await memory(page, cdp) };
+  await page.evaluate(() => {
+    const p = JSON.parse(localStorage.getItem("berth.prefs") ?? "{}");
+    localStorage.setItem("berth.prefs", JSON.stringify({ ...p, sidebarCollapsed: false }));
+  });
   res.errors = errors;
   await context.close();
   return res;

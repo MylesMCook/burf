@@ -17,6 +17,7 @@ import { MoreItems, Nav as PlacesNav, useArrangedNav } from "@/components/sideba
 import { Projects, useSidebarPrefs } from "@/components/sidebar/projects";
 import { RailAgents } from "@/components/sidebar/rail";
 import { SidebarResizeHandle } from "@/components/sidebar/resize-handle";
+import { RowLayer } from "@/components/sidebar/row-layer";
 import { Tip } from "@/components/tip";
 import { Kbd } from "@/components/ui/kbd";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
@@ -25,6 +26,7 @@ import { usePrefs } from "@/lib/prefs";
 import { useLocalComputer } from "@/lib/local-computer";
 import { useStore } from "@/lib/store";
 import { SIDEBAR_DEFAULT, SIDEBAR_MAX, SIDEBAR_MIN } from "@/lib/sidebar-width";
+import { WhatsNewNudge } from "@/components/whats-new/whats-new-dialog";
 import { cn } from "@/lib/utils";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
 import { TeamSidebarCard } from "@/views/team/team-entry";
@@ -56,12 +58,14 @@ export function AppSidebar() {
 
   return (
     <SidebarContext.Provider value={context}>
-      {/* Its width is --sidebar-w (prefs, or a drag as it runs), held to the
-          narrowest and widest (lib/sidebar-width) even as the window shrinks;
-          a container, so rows show more of a worktree when there is room. */}
+      {/* Its width is --sidebar-w (prefs), or --sidebar-live as a drag
+          runs, held to the narrowest and widest (lib/sidebar-width) even as
+          the window shrinks; a container, so rows show more of a worktree
+          when there is room. */}
       <aside
+        aria-label="Sidebar"
         data-testid="sidebar"
-        style={{ width: `clamp(${SIDEBAR_MIN}px, var(--sidebar-w, ${SIDEBAR_DEFAULT}px), max(${SIDEBAR_DEFAULT}px, min(${SIDEBAR_MAX}px, 40vw)))` }}
+        style={{ width: `clamp(${SIDEBAR_MIN}px, var(--sidebar-live, var(--sidebar-w, ${SIDEBAR_DEFAULT}px)), max(${SIDEBAR_DEFAULT}px, min(${SIDEBAR_MAX}px, 40vw)))` }}
         className="@container/side relative flex shrink-0 flex-col border-sidebar-border border-r bg-sidebar text-sidebar-foreground"
       >
         <SidebarResizeHandle />
@@ -130,16 +134,19 @@ export function AppSidebar() {
           </Menu>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
+        {/* One context menu and one tooltip for every row in it. */}
+        <RowLayer className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
           <LocalComputerLink />
           <Projects prefs={prefs} update={update} />
-        </div>
+        </RowLayer>
 
+        <WhatsNewNudge />
         <div className="flex h-9 shrink-0 items-center gap-1 border-sidebar-border border-t px-2">
           <Tip label="⇧-click for Developer settings" side="top" align="start">
             <button
               type="button"
               data-testid="nav-settings"
+              aria-current={view.kind === "settings" ? "page" : undefined}
               // Shift-click goes straight to Developer.
               onClick={(e) => setView({ kind: "settings", section: e.shiftKey ? "developer" : undefined })}
               className={cn("inline-flex h-6.5 items-center gap-1.5 rounded-md px-1.5 text-muted-foreground text-xs hover:bg-sidebar-accent hover:text-foreground", view.kind === "settings" && "text-foreground")}
@@ -203,7 +210,7 @@ function Rail() {
     </Tip>
   );
   return (
-    <aside data-testid="sidebar-rail" className="relative flex w-19 shrink-0 flex-col items-center border-sidebar-border border-r bg-sidebar">
+    <aside aria-label="Sidebar" data-testid="sidebar-rail" className="relative flex w-19 shrink-0 flex-col items-center border-sidebar-border border-r bg-sidebar">
       <SidebarResizeHandle folded />
       <div data-tauri-drag-region className="h-10 w-full shrink-0" />
       <div className="flex flex-col items-center gap-1">

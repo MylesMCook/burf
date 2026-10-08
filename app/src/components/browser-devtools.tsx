@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { BanIcon, BugIcon, ChevronRightIcon, CircleXIcon, InfoIcon, SendIcon, SquareDashedMousePointerIcon, SquareTerminalIcon, TriangleAlertIcon, XIcon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
@@ -145,17 +145,55 @@ export function DevtoolsDrawer({ logKey, pageUrl, ctx, proxied, agent }: DrawerP
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
   };
+  // Or focus the edge: ↑ and ↓ (⇧ for bigger steps), Home and End.
+  const nudge = (e: React.KeyboardEvent) => {
+    const max = Math.max(160, (root.current?.parentElement?.clientHeight ?? 800) - 120);
+    const step = e.shiftKey ? 64 : 16;
+    const next = e.key === "ArrowUp" ? height + step : e.key === "ArrowDown" ? height - step : e.key === "Home" ? 120 : e.key === "End" ? max : undefined;
+    if (next === undefined) return;
+    e.preventDefault();
+    const h = Math.round(Math.min(max, Math.max(120, next)));
+    setHeight(h);
+    try {
+      localStorage.setItem(HEIGHT_KEY, String(h));
+    } catch {
+      // Only a convenience.
+    }
+  };
 
   return (
     <section ref={root} data-testid="devtools-drawer" aria-label="Console and network" style={{ height }} className="relative flex max-h-[75%] min-h-30 shrink-0 flex-col border-t bg-background text-xs">
-      <div role="separator" aria-orientation="horizontal" aria-label="Resize the drawer" onPointerDown={drag} className="absolute inset-x-0 -top-1 z-10 h-2 cursor-row-resize" />
+      <div
+        role="separator"
+        tabIndex={0}
+        aria-orientation="horizontal"
+        aria-label="Resize the drawer"
+        aria-valuenow={height}
+        aria-valuemin={120}
+        onPointerDown={drag}
+        onKeyDown={nudge}
+        className="absolute inset-x-0 -top-1 z-10 h-2 cursor-row-resize outline-none focus-visible:bg-ring"
+      />
       <div className="flex h-8 shrink-0 items-center gap-0.5 border-b px-1.5">
-        <DrawerTab active={tab === "console"} onClick={() => setDrawerTab(logKey, "console")} count={consoleErrors}>
-          Console
-        </DrawerTab>
-        <DrawerTab active={tab === "network"} onClick={() => setDrawerTab(logKey, "network")} count={failures}>
-          Network
-        </DrawerTab>
+        <div
+          role="tablist"
+          aria-label="Console and network"
+          className="flex items-center gap-0.5"
+          onKeyDown={(e) => {
+            if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+            e.preventDefault();
+            const next = tab === "console" ? "network" : "console";
+            setDrawerTab(logKey, next);
+            e.currentTarget.querySelector<HTMLElement>(`[data-drawer-tab=${next}]`)?.focus();
+          }}
+        >
+          <DrawerTab id="console" active={tab === "console"} onClick={() => setDrawerTab(logKey, "console")} count={consoleErrors}>
+            Console
+          </DrawerTab>
+          <DrawerTab id="network" active={tab === "network"} onClick={() => setDrawerTab(logKey, "network")} count={failures}>
+            Network
+          </DrawerTab>
+        </div>
         {agent && <span className="ml-2 truncate text-[11px] text-muted-foreground">The agent's browser, on its box</span>}
         <div className="ml-auto flex items-center gap-0.5">
           {!agent && (
@@ -182,12 +220,14 @@ export function DevtoolsDrawer({ logKey, pageUrl, ctx, proxied, agent }: DrawerP
   );
 }
 
-function DrawerTab({ active, onClick, count, children }: { active: boolean; onClick(): void; count: number; children: React.ReactNode }) {
+function DrawerTab({ id, active, onClick, count, children }: { id: string; active: boolean; onClick(): void; count: number; children: React.ReactNode }) {
   return (
     <button
       type="button"
       role="tab"
+      data-drawer-tab={id}
       aria-selected={active}
+      tabIndex={active ? 0 : -1}
       onClick={onClick}
       className={cn("inline-flex h-6 items-center gap-1.5 rounded-md px-2 font-medium text-[11.5px]", active ? "bg-accent text-foreground" : "text-muted-foreground hover:bg-accent/60 hover:text-foreground")}
     >
@@ -276,8 +316,8 @@ function ConsoleList({ log, agent, sending, onSend }: { log?: PaneLog; agent?: b
         className="min-h-0 flex-1 overflow-y-auto font-mono text-[11.5px] leading-[1.45]"
       >
         {log?.dropped ? <p className="border-b px-3 py-1 text-muted-foreground">{log.dropped} earlier messages were dropped: the page logged faster than they could be kept.</p> : null}
-        {shown.map((e, i) => (
-          <ConsoleRow key={`${i}:${e.time}:${e.text.slice(0, 40)}`} e={e} sending={e === sending} onSend={() => onSend(e)} />
+        {shown.map((e) => (
+          <ConsoleRow key={rowKey(e)} e={e} sending={e === sending} onSend={onSend} />
         ))}
         {!shown.length && (
           <p className="px-3 py-3 font-sans text-muted-foreground">
@@ -312,7 +352,22 @@ function LevelIcon({ level }: { level: ConsoleEntry["level"] }) {
   return <span className="size-3.5 shrink-0" />;
 }
 
-function ConsoleRow({ e, sending, onSend }: { e: ConsoleEntry; sending: boolean; onSend(): void }) {
+// Each entry's row keeps its key while newer lines push older ones out of
+// the kept list (lib/devtools-model, CONSOLE_LIMIT): keyed by place, a page
+// logging once a second remade every row of a full console every second.
+const rowKeys = new WeakMap<ConsoleEntry, number>();
+let nextRowKey = 0;
+function rowKey(e: ConsoleEntry): number {
+  let k = rowKeys.get(e);
+  if (k === undefined) rowKeys.set(e, (k = ++nextRowKey));
+  return k;
+}
+
+// A row draws again only when its entry or selection changes, not for each
+// new line below it. onSend is the drawer's, which only sets state.
+const ConsoleRow = memo(ConsoleRowView, (a, b) => a.e === b.e && a.sending === b.sending);
+
+function ConsoleRowView({ e, sending, onSend }: { e: ConsoleEntry; sending: boolean; onSend(e: ConsoleEntry): void }) {
   const [open, setOpen] = useState(false);
   const stack = !!e.stack;
   const sendable = e.level === "error" || e.level === "warn";
@@ -338,7 +393,7 @@ function ConsoleRow({ e, sending, onSend }: { e: ConsoleEntry; sending: boolean;
           <span className="mt-px max-w-48 shrink-0 truncate text-[11px] text-muted-foreground underline decoration-dotted underline-offset-2">{shortAt(e.at)}</span>
         </Tip>
       )}
-      {sendable && <SendButton onClick={onSend} />}
+      {sendable && <SendButton onClick={() => onSend(e)} />}
     </div>
   );
 }

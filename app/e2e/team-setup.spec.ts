@@ -197,6 +197,33 @@ test("a repo that's ready offers Start on it while the others set up", async ({ 
   await expect(composer).toContainText("sean-dev");
 });
 
+// A repo's first-time setup runs in a terminal of its own in its checkout.
+// When it stops at a question, the page says so and opens that terminal,
+// rather than leaving it to be found by opening the main checkout; once
+// answered the setup finishes, and a worktree is a click away.
+test("a repo's first-time setup that asks something says so, and its terminal is a click away", async ({ app }) => {
+  const { page } = app;
+  await app.open({ params: { team: "acme", teamhold: "init", "team-page": "acme" } });
+  await startRun(page);
+  await advance(page, "sudo");
+  const shop = repo(page, "shop");
+  await expect(shop.getByTestId("repo-line-shop")).toHaveText("waiting for you", { timeout: 20_000 });
+  await expect(page.getByTestId("team-status")).toContainText("shop waits for you");
+  await shop.getByTestId("repo-terminal-shop").click();
+  // Its terminal, in front: the question is answered there.
+  await expect(page.getByRole("tab", { name: /shop first-time setup/ }).first()).toBeVisible();
+  await advance(page, "init");
+  await page.getByTestId("team-sidebar").click();
+  await expect(page.getByRole("heading", { name: "You're set up for Acme" })).toBeVisible({ timeout: 25_000 });
+  // Ready means ready: New task on shop opens the composer there at once.
+  await page.getByTestId("team-done").getByRole("button", { name: "New task" }).first().click();
+  const composer = page.getByRole("dialog");
+  await expect(composer).toContainText("shop");
+  await composer.getByRole("textbox").first().fill("say hello");
+  await composer.getByRole("button", { name: /^Start/ }).click();
+  await expect(composer).toBeHidden();
+});
+
 test("a failed step shows why, and Retry goes on from it to You're set up", async ({ app }) => {
   const { page } = app;
   await app.open({ params: { team: "fail", "team-page": "acme" } });

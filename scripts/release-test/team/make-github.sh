@@ -87,7 +87,7 @@ case "${1:-all}" in
   *) "step_$1" ;;
 esac
 S
-printf '#!/bin/sh\nset -eu\n{ echo "api init in $(pwd)"; echo "groups $(id -nG)"; env | grep -E "^BERTH_(KIT_DIR|LOCATION|ROOT_PATH|SETTING_ACME_PG)=" | sort; . "$BERTH_KIT_DIR/lib.sh" && echo "kit lib: $(acme_kit_lib)"; } > "$HOME/.acme-api-init"\n' > "$w/box/init-api.sh"
+printf '#!/bin/sh\nset -eu\n{ echo "api init in $(pwd)"; echo "groups $(id -nG)"; env | grep -E "^BERTH_(KIT_DIR|LOCATION|ROOT_PATH|SETTING_ACME_PG)=" | sort; . "$BERTH_KIT_DIR/lib.sh" && echo "kit lib: $(acme_kit_lib)"; } > "$HOME/.acme-api-init"\nif [ -e /tmp/init-asks ]; then printf "? Corepack is about to download yarn. Do you want to continue? [Y/n] "; read -r a; [ "$a" = y ]; fi\n' > "$w/box/init-api.sh"
 chmod +x "$w/box/setup.sh" "$w/box/init-api.sh"
 # The kit's own code, which the init reuses through BERTH_KIT_DIR.
 echo 'acme_kit_lib() { echo "from the kit"; }' > "$w/kits/api/lib.sh"

@@ -1,5 +1,6 @@
-import { AppWindowIcon, ArchiveIcon, ArrowLeftRightIcon, BotIcon, Columns2Icon, EllipsisIcon, GlobeIcon, ImageIcon, MessagesSquareIcon, MonitorSmartphoneIcon, PencilIcon, ScrollTextIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, SquareTerminalIcon, XIcon } from "lucide-react";
+import { AppWindowIcon, ArchiveIcon, ChartColumnIcon, FileTextIcon, LayoutGridIcon, TableIcon, WorkflowIcon, ArrowLeftRightIcon, BotIcon, Columns2Icon, EllipsisIcon, GlobeIcon, ImageIcon, MessagesSquareIcon, MonitorSmartphoneIcon, PencilIcon, ScrollTextIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, SquareTerminalIcon, XIcon } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo } from "react";
+
 
 import { Tip } from "@/components/tip";
 import { RemoteChatPane } from "@/views/remote-chat";
@@ -42,6 +43,10 @@ import { focusPane, paneBeside, paneToTab, setPaneContent, splitKey, useWorkspac
 export { agentLabel };
 
 // A File tab's pane and its editor load the first time one shows.
+// An artifact or a worktree's board (components/art), loaded when first shown.
+const ArtifactPane = lazy(() => import("@/components/art/artifact-pane").then((m) => ({ default: m.ArtifactPane })));
+const ART_ICONS: Record<string, typeof ChartColumnIcon> = { chart: ChartColumnIcon, table: TableIcon, diagram: WorkflowIcon, page: AppWindowIcon, notes: FileTextIcon };
+
 const FilePane = lazy(() => import("@/components/files/file-pane"));
 
 interface Props {
@@ -119,7 +124,13 @@ export function Pane({ wsKey, tab, pane, visible, focused, split, mixed, compare
         <div className={cn("relative flex min-h-0 flex-1 flex-col transition-opacity", split && !focused && "opacity-85", lifted && "opacity-40")}>
           {gone && <GonePane name={gone} onClose={close} />}
           {c.kind === "remote-chat" && <RemoteChatPane box={c.box} id={c.chat} cwd={c.cwd} draft={c.draft} options={c.options} onSaved={(saved) => setPaneContent(wsKey, tab, pane.id, { ...c, ...saved })} />}
-          {c.kind === "terminal" && <TerminalView box={c.box} session={c.session} agent={c.agent} command={c.command} wsKey={wsKey} tab={tab} pane={pane.id} visible={visible && view !== "conversation"} focused={focused && view !== "conversation"} onFocus={focus} onClose={close} />}
+          {/* Under a chat the terminal is out of reach: Tab never lands in its
+              hidden input, where it would type a tab and keep the focus. */}
+          {c.kind === "terminal" && (
+            <div className="contents" inert={view === "conversation" || undefined}>
+              <TerminalView box={c.box} session={c.session} agent={c.agent} command={c.command} wsKey={wsKey} tab={tab} pane={pane.id} visible={visible && view !== "conversation"} focused={focused && view !== "conversation"} onFocus={focus} onClose={close} />
+            </div>
+          )}
           {/* The terminal stays connected underneath, so switching back is instant. */}
           {c.kind === "terminal" && view === "conversation" && (
             <div className="absolute inset-0 z-10 flex flex-col">
@@ -131,6 +142,11 @@ export function Pane({ wsKey, tab, pane, visible, focused, split, mixed, compare
           {c.kind === "file" && (
             <Suspense fallback={<div className="flex flex-1 items-center justify-center"><Spinner className="size-4 text-muted-foreground" /></div>}>
               <FilePane path={c.path} owner={owner} visible={visible} onClose={close} />
+            </Suspense>
+          )}
+          {c.kind === "artifact" && (
+            <Suspense fallback={<div className="flex-1" />}>
+              <ArtifactPane id={c.id} focus={c.focus} />
             </Suspense>
           )}
           {c.kind === "helper" && <HelperPane box={c.box} session={c.session} helper={c.helper} title={c.title} onClose={close} onResolve={(id, title) => setPaneContent(wsKey, tab, pane.id, { ...c, helper: id, title })} />}
@@ -253,6 +269,8 @@ export function paneLabel(c: Leaf["content"], agent?: string): string {
       return `${c.service} log`;
     case "helper":
       return c.title || "Helper";
+    case "artifact":
+      return c.id ? c.title || "Artifact" : "Artifacts";
     case "panel":
       return c.title;
     case "starting":
@@ -270,6 +288,10 @@ export function PaneIcon({ content, agent, className }: { content: Leaf["content
   if (c.kind === "file") return <FileGlyph path={c.path} className={className} />;
   if (c.kind === "preview") return <MonitorSmartphoneIcon className={cn("size-3.5 shrink-0", className)} />;
   if (c.kind === "helper") return <BotIcon className={cn("size-3.5 shrink-0", className)} />;
+  if (c.kind === "artifact") {
+    const Icon = c.id ? (ART_ICONS[c.art ?? ""] ?? ChartColumnIcon) : LayoutGridIcon;
+    return <Icon className={cn("size-3.5 shrink-0", className)} />;
+  }
   if (c.kind === "log") return <ScrollTextIcon className={cn("size-3.5 shrink-0", className)} />;
   if (c.kind === "panel") return <PanelIcon plugin={c.plugin} panel={c.panel} className={cn("size-3.5 shrink-0", className)} />;
   if (service) return <ServiceIcon className={cn("size-3", className)} />;

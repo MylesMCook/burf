@@ -77,7 +77,7 @@ test("local computer opens read-only history and older messages without session 
     await expect(app.page.getByTestId("composer")).toHaveCount(0);
     await app.page.getByRole("button", { name: "Load older messages" }).click();
     await expect.poll(() => calls.some((c) => c.path === "/v1/local/conversations/history-1?before=100")).toBe(true);
-    await expect(app.page.getByText("Earlier request", { exact: true })).toBeVisible();
+    await expect(app.page.getByRole("list", { name: "Conversation" }).getByRole("listitem").filter({ hasText: "Earlier request" })).toBeVisible();
     expect(calls.filter((c) => c.method !== "GET")).toEqual([]);
   } finally { await agent.close(); }
 });
@@ -110,7 +110,7 @@ test("an interrupted continuation response is uncertain and refresh finds its ow
     await app.page.getByTestId("nav-local").click();
     await app.page.getByRole("button", { name: /Checkout history/ }).click();
     await app.page.getByRole("button", { name: "Continue in Burf", exact: true }).click();
-    await expect(app.page.getByRole("alert")).toContainText("The agent may have started");
+    await expect(app.page.locator('[role="alert"]:not([data-testid^="announce"])')).toContainText("The agent may have started");
     await expect(app.page.getByText("Saved response", { exact: true })).toBeVisible();
     await app.page.screenshot({ path: info.outputPath("continuation-uncertain.png") });
     await app.page.getByRole("button", { name: "Refresh local conversations", exact: true }).click();
@@ -129,7 +129,7 @@ for (const reason of ["Local conversation no longer exists", "Local conversation
       await app.page.getByTestId("nav-local").click();
       await app.page.getByRole("button", { name: /Checkout history/ }).click();
       await app.page.getByRole("button", { name: "Continue in Burf", exact: true }).click();
-      await expect(app.page.getByRole("alert")).toContainText(reason);
+      await expect(app.page.locator('[role="alert"]:not([data-testid^="announce"])')).toContainText(reason);
       await expect(app.page.getByText("Saved response", { exact: true })).toBeVisible();
       await app.page.getByRole("button", { name: "Refresh local conversations", exact: true }).click();
       expect(calls.filter((c) => c.path.endsWith("/fork"))).toHaveLength(1);
@@ -213,7 +213,7 @@ test("lost input response warns of uncertain delivery and reconnect never replay
     await app.page.getByRole("button", { name: "Start agent", exact: true }).click();
     await expect(app.page.locator("[data-testid=local-terminal] .xterm-rows")).toContainText("Local terminal ready");
     await app.page.locator("[data-testid=local-terminal] textarea").fill("hello");
-    await expect(app.page.getByRole("alert")).toContainText("Terminal input may have arrived");
+    await expect(app.page.locator('[role="alert"]:not([data-testid^="announce"])')).toContainText("Terminal input may have arrived");
     const delivered = calls.filter((c) => c.path.endsWith("/input")).length;
     expect(delivered).toBeGreaterThan(0);
     await app.page.getByRole("button", { name: "Reconnect terminal", exact: true }).click();
@@ -229,7 +229,7 @@ test("failed continuation preserves readable history and permits retry", async (
     await app.page.getByTestId("nav-local").click();
     await app.page.getByRole("button", { name: /Checkout history/ }).click();
     await app.page.getByRole("button", { name: "Continue in Burf", exact: true }).click();
-    await expect(app.page.getByRole("alert")).toContainText("Project folder does not exist");
+    await expect(app.page.locator('[role="alert"]:not([data-testid^="announce"])')).toContainText("Project folder does not exist");
     await expect(app.page.getByText("Saved response", { exact: true })).toBeVisible();
     await expect(app.page.getByRole("button", { name: "Continue in Burf", exact: true })).toBeEnabled();
     expect(calls.filter((c) => c.method === "POST" && c.path.endsWith("/fork"))).toHaveLength(1);
@@ -253,7 +253,7 @@ test("terminal reconnect recovers output without starting another agent", async 
     await app.page.getByTestId("nav-local").click();
     await app.page.getByRole("button", { name: "New agent", exact: true }).click();
     await app.page.getByRole("button", { name: "Start agent", exact: true }).click();
-    await expect(app.page.getByRole("alert")).toContainText("Terminal temporarily unavailable");
+    await expect(app.page.locator('[role="alert"]:not([data-testid^="announce"])')).toContainText("Terminal temporarily unavailable");
     await app.page.getByRole("button", { name: "Reconnect terminal", exact: true }).click();
     await expect(app.page.locator("[data-testid=local-terminal] .xterm-rows")).toContainText("Local terminal ready");
     expect(calls.filter((c) => c.method === "POST" && c.path === "/v1/local/sessions")).toHaveLength(1);
@@ -271,10 +271,10 @@ test("reconnecting a missing terminal reports the error without recreating its a
     await app.page.getByTestId("nav-local").click();
     await app.page.getByRole("button", { name: "New agent", exact: true }).click();
     await app.page.getByRole("button", { name: "Start agent", exact: true }).click();
-    await expect(app.page.getByRole("alert")).toContainText("Local session no longer exists");
+    await expect(app.page.locator('[role="alert"]:not([data-testid^="announce"])')).toContainText("Local session no longer exists");
     await app.page.getByRole("button", { name: "Reconnect terminal", exact: true }).click();
     await expect.poll(() => reads).toBe(2);
-    await expect(app.page.getByRole("alert")).toContainText("Local session no longer exists");
+    await expect(app.page.locator('[role="alert"]:not([data-testid^="announce"])')).toContainText("Local session no longer exists");
     expect(calls.filter((c) => c.method === "POST" && c.path === "/v1/local/sessions")).toHaveLength(1);
     expect(calls.filter((c) => c.path.endsWith("/fork") || c.path.endsWith("/input"))).toHaveLength(0);
   } finally { await agent.close(); }
@@ -324,7 +324,7 @@ test("failed history scan does not block starting an installed agent", async ({ 
   const { agent } = await localFixture(app, { failHistory: true });
   try {
     await app.page.getByTestId("nav-local").click();
-    await expect(app.page.getByRole("alert")).toContainText("History scan failed");
+    await expect(app.page.locator('[role="alert"]:not([data-testid^="announce"])')).toContainText("History scan failed");
     await app.page.getByRole("button", { name: "New agent", exact: true }).click();
     await expect(app.page.getByRole("button", { name: "Start agent", exact: true })).toBeEnabled();
   } finally { await agent.close(); }
@@ -359,7 +359,7 @@ test("unavailable agent cannot start and a failed launch keeps its error", async
     await app.page.getByRole("button", { name: "New agent", exact: true }).click();
     await expect(app.page.getByRole("option", { name: "Codex (not installed)" })).toHaveJSProperty("disabled", true);
     await app.page.getByRole("button", { name: "Start agent", exact: true }).click();
-    await expect(app.page.getByRole("alert")).toContainText("Project folder does not exist");
+    await expect(app.page.locator('[role="alert"]:not([data-testid^="announce"])')).toContainText("Project folder does not exist");
     await expect(app.page.getByLabel("Project directory")).toHaveValue(cwd);
   } finally { await agent.close(); }
 });

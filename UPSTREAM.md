@@ -89,6 +89,44 @@ Two new feature commits since `b140a0f` remain deferred:
 
 Neither commit was merged or deployed.
 
+## Integrated: `add33bd` (2026-10-08)
+
+Merged upstream `add33bd` (the fork's `main`, 103 commits past the common
+ancestor `5c74cf4`) into `codex/windows-client`, keeping ancestry. Upstream is
+now 58 commits further (`v0.3.12`), beginning with its rename to Shipyard; that
+remains a separate intake.
+
+Arrived with this merge: artifacts and charts, visual diffs (`shots`), browser
+viewport sizes, agent CLI discovery from the login shell (`agentpath`,
+`agents.paths`), the debug server, What's New, idle-terminal pacing, send
+idempotency keys, a screen-reader announcer and keyboard-focus work, and the
+release workflow's CI gate. New frontend dependencies come from upstream's
+lockfile (visx, d3, motion, number-flow, axe-core for tests). No Go modules
+were added.
+
+Adapted to Burf rather than taken as written:
+
+- New Go files use the Burf module path. Product wording added by upstream
+  says Burf; identifiers, protocol and state names are unchanged.
+- Protocol types the CLI needs on every platform live in `internal/boxclient`
+  (`Viewport` and its size arithmetic, `Artifact`, `ShotsRequest`,
+  `ShotsResult`, `AgentPath`, and the new `BrowserStatus`, `RepoConfig`,
+  `TeamProjectStatus` and `Info` fields). `internal/box` aliases them, so the
+  Windows client does not import the Unix-only box package. `ShotsConfig`
+  keeps its behaviour in `internal/box` with a field-for-field copy in
+  `boxclient`; a field added to one must be added to the other.
+- `internal/agentpath` has a Windows build boundary: probes run hidden with no
+  console window instead of in a Unix session.
+- Updater endpoints stay empty, the app keeps the Burf identity, and repository
+  links stay on the fork. The desktop version follows upstream to 0.3.10.
+- Fork tests were updated for upstream behaviour that preserves the contracts
+  above: the announcer's empty `role=alert`, the send `idem_key`, the terminal
+  `pace` control message and the conversation list markup. Upstream's keyboard
+  spec assumes the terminal view; two cases run with it selected because Burf
+  opens agents as chat, where a new pane does not yet take the keyboard.
+
+Not deployed: no installed client or daemon was updated by this merge.
+
 ## Accepted Fixes
 
 - `150ffc9b1ff972e43d5c408da6f488af1243e47e`: account-specific Claude and

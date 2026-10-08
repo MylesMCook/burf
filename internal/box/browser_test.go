@@ -30,6 +30,22 @@ func browserBox(t *testing.T, page http.HandlerFunc) (*Box, Worktree, int) {
 	b := &Box{Name: "devbox", Locations: NewLocations(filepath.Join(dir, "locations.json")), Events: &events.Bus{}, Sessions: testSessions(t),
 		Flows: &Flows{Path: filepath.Join(dir, "flows.json")}}
 	b.Locations.Add(ctx, "cal", repo)
+	// A port block something else on this machine listens on (a dev
+	// server left running) is held for nobody, so the worktree gets a free
+	// one.
+	for i := range 50 {
+		held := filepath.Join(dir, fmt.Sprintf("held-%d", i))
+		os.MkdirAll(held, 0o700)
+		p, err := b.Locations.Ports.For(held)
+		if err != nil || p == 0 {
+			break
+		}
+		if ln, err := net.Listen("tcp", "127.0.0.1:"+strconv.Itoa(p)); err == nil {
+			ln.Close()
+			b.Locations.Ports.Release(held)
+			break
+		}
+	}
 	wt, err := b.Locations.CreateWorktree(ctx, "cal", "billing", "", "")
 	if err != nil {
 		t.Fatal(err)
@@ -302,7 +318,7 @@ func TestAgentBrowserDrivesARealChromium(t *testing.T) {
 	if w, _ := br.Wait(ctx, "Saved ann@example.com", "", false, 5*time.Second); w.Text != "ok" {
 		t.Fatalf("after Enter: %s / %s", w.Text, act.Text)
 	}
-	shot, err := br.Shot(ctx, "", false, 800)
+	shot, err := br.Shot(ctx, "", false, 800, false)
 	if err != nil {
 		t.Fatal(err)
 	}

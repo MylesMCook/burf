@@ -1,5 +1,5 @@
 import { ArrowLeftIcon, ArrowRightIcon, CheckIcon, ListChecksIcon, PencilIcon, SendHorizontalIcon, SquareTerminalIcon, XIcon } from "lucide-react";
-import { createContext, type ReactNode, useContext, useState } from "react";
+import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -186,6 +186,21 @@ function Form({ it, who, onSubmit }: { it: Item; who: string; onSubmit(answers: 
   const reviewed = qs.length > 1 || qs.some((q) => q.multi);
   const steps = qs.length + (reviewed ? 1 : 0);
   const [step, setStep] = useState(0);
+  // The keyboard moves with the step: Next turns disabled on a new step and
+  // the old step's controls go, so whoever had the keyboard in the form
+  // gets the new step's first control, not <body>.
+  const card = useRef<HTMLDivElement>(null);
+  const body = useRef<HTMLDivElement>(null);
+  const follow = useRef(false);
+  const go = (n: number) => {
+    follow.current = !!card.current?.contains(document.activeElement);
+    setStep(n);
+  };
+  useEffect(() => {
+    if (!follow.current) return;
+    follow.current = false;
+    body.current?.querySelector<HTMLElement>('[role=radio][tabindex="0"], [role=radio], [role=checkbox], textarea, input:not([type=hidden]):not([aria-hidden=true]), button:not([disabled])')?.focus({ preventScroll: true });
+  }, [step]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string>();
   const answers = drafts.map(toAnswer);
@@ -205,13 +220,13 @@ function Form({ it, who, onSubmit }: { it: Item; who: string; onSubmit(answers: 
   };
   const next = () => {
     if (!review && !done[step]) return;
-    if (step < steps - 1) setStep(step + 1);
+    if (step < steps - 1) go(step + 1);
     else void submit();
   };
   const last = step === steps - 1;
 
   return (
-    <Card data-testid="question-form" className="cv-in overflow-hidden border-warning/60" aria-busy={busy}>
+    <Card ref={card} data-testid="question-form" className="cv-in overflow-hidden border-warning/60" aria-busy={busy}>
       <div className="flex items-center gap-2 px-4 pt-3.5 pb-3">
         <span className="size-2 shrink-0 rounded-full bg-warning" aria-hidden />
         <span className="min-w-0 flex-1 truncate font-medium">
@@ -234,7 +249,7 @@ function Form({ it, who, onSubmit }: { it: Item; who: string; onSubmit(answers: 
                 type="button"
                 disabled={busy || !reachable}
                 aria-current={i === step ? "step" : undefined}
-                onClick={() => setStep(i)}
+                onClick={() => go(i)}
                 className={cn(
                   "flex h-6.5 shrink-0 items-center gap-1.5 rounded-md border px-2 text-xs outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-default disabled:opacity-50",
                   i === step ? "border-foreground/25 bg-accent font-medium text-foreground" : "border-transparent text-muted-foreground enabled:hover:bg-accent/60 enabled:hover:text-foreground",
@@ -247,16 +262,16 @@ function Form({ it, who, onSubmit }: { it: Item; who: string; onSubmit(answers: 
           })}
         </nav>
       )}
-      <div className="border-t bg-muted/20 px-4 py-4">
+      <div ref={body} className="border-t bg-muted/20 px-4 py-4">
         {review ? (
-          <Review questions={qs} answers={answers} onEdit={setStep} disabled={busy} />
+          <Review questions={qs} answers={answers} onEdit={go} disabled={busy} />
         ) : (
           <Step key={step} q={q} d={drafts[step]} disabled={busy} onChange={(f) => set(step, f)} onEnter={next} />
         )}
       </div>
       <div className="flex items-center gap-2 border-t px-4 py-3">
         {steps > 1 && (
-          <Button size="sm" variant="ghost" disabled={busy || step === 0} onClick={() => setStep(step - 1)}>
+          <Button size="sm" variant="ghost" disabled={busy || step === 0} onClick={() => go(step - 1)}>
             <ArrowLeftIcon />
             Back
           </Button>

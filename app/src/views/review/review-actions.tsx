@@ -192,7 +192,7 @@ export function ApproveDialog({ entry, initial, onClose }: { entry?: ReviewEntry
               </span>
             </p>
           )}
-          {(error || output) && <pre className={cn("max-h-40 overflow-auto whitespace-pre-wrap rounded-md p-2 font-mono text-[11px]", error ? "bg-destructive/8 text-destructive" : "bg-muted/60 text-muted-foreground")}>{error ?? output}</pre>}
+          {(error || output) && <pre className={cn("max-h-40 overflow-auto whitespace-pre-wrap rounded-md p-2 font-mono text-[11px]", error ? "bg-destructive/8 text-destructive-foreground" : "bg-muted/60 text-muted-foreground")}>{error ?? output}</pre>}
         </DialogPanel>
         <DialogFooter className="items-center px-5 py-3">
           <Button variant="ghost" onClick={onClose} disabled={busy}>
@@ -258,7 +258,7 @@ export function SendBackDialog({ entry, onClose }: { entry?: ReviewEntry; onClos
             autoFocus
             onFocus={(e) => e.currentTarget.setSelectionRange(e.currentTarget.value.length, e.currentTarget.value.length)}
           />
-          {error && <ErrorText className="rounded-md bg-destructive/8 p-2 text-xs text-destructive" text={error} />}
+          {error && <ErrorText className="rounded-md bg-destructive/8 p-2 text-xs text-destructive-foreground" text={error} />}
         </DialogPanel>
         <DialogFooter className="items-center px-5 py-3">
           <Button variant="ghost" onClick={onClose} disabled={busy}>
@@ -322,14 +322,14 @@ export function DiscardDialog({ entry, onClose }: { entry?: ReviewEntry; onClose
                 <span className="min-w-0 flex-1 truncate">{f.path}</span>
                 {!f.binary && (
                   <span className="shrink-0 tabular-nums">
-                    <span className="text-success">+{f.added}</span> <span className="text-destructive">−{f.removed}</span>
+                    <span className="text-success-foreground">+{f.added}</span> <span className="text-destructive-foreground">−{f.removed}</span>
                   </span>
                 )}
               </li>
             ))}
           </ul>
           <p className="font-mono text-[11px] text-muted-foreground">{DISCARD_COMMAND}</p>
-          {error && <ErrorText className="rounded-md bg-destructive/8 p-2 text-xs text-destructive" text={error} />}
+          {error && <ErrorText className="rounded-md bg-destructive/8 p-2 text-xs text-destructive-foreground" text={error} />}
         </DialogPanel>
         <DialogFooter className="items-center px-5 py-3">
           <Button variant="ghost" onClick={onClose} disabled={busy}>

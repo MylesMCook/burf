@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { isTauri } from "@/lib/api";
 import { openPreviewAt } from "@/lib/actions";
-import { agentBrowserStatus, boxHasBrowser, type Frame, watchAgentBrowser } from "@/lib/agent-browser";
+import { agentBrowserStatus, boxHasBrowser, fitFrame, type Frame, sizeLabel, watchAgentBrowser } from "@/lib/agent-browser";
 import { agentOf } from "@/lib/derive";
 import { DEVTOOLS_FRAME, proxiedHost, useAgentDevtoolsFeed, useDevtoolsFeed, useDrawerOpen, withDevtoolsFlag } from "@/lib/devtools";
 import { send as sendPrompt } from "@/lib/orchestrate";
@@ -20,6 +20,7 @@ import { berthUrlLabel, boxAliases, type BrowserContext, describeBerthUrl, hostS
 import { openUrl } from "@/lib/open-url";
 import { initialPageLoads, type PageEvent, pageEvent, type PageLoads, reloadLoop, settle } from "@/lib/page-loads";
 import { overlayOpen } from "@/lib/overlays";
+import { poll } from "@/lib/poll";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { demoDevServer } from "@/demo/dev-server";
@@ -118,8 +119,10 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree, on
   const agentLive = useAgentBrowserLive(ctx.ref, visible);
   const [watching, setWatching] = useState(false);
   const agentView = watching && !!agentLive?.running;
-  // Where the agent's page is, from its frames as they come.
+  // Where the agent's page is, from its frames as they come, and its size
+  // and how much of it shows.
   const [agentAt, setAgentAt] = useState<string>();
+  const [agentSize, setAgentSize] = useState<AgentSize>();
   useEffect(() => {
     if (agentLive && !agentLive.running) setWatching(false);
   }, [agentLive]);
@@ -184,6 +187,8 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree, on
         <AgentBar
           ctx={ctx}
           url={agentAt ?? agentLive?.url}
+          size={agentSize}
+          fallbackSize={agentLive?.size}
           logKey={agentDevtools ? agentKey : undefined}
           onBack={() => setWatching(false)}
           onOpenHere={(u) => {
@@ -284,7 +289,7 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree, on
       )}
       {failure && mode === "iframe" && <p className="shrink-0 border-b bg-muted/40 px-3 py-1 text-muted-foreground text-xs">The built-in browser could not open ({failure}); showing the page in a frame instead.</p>}
       {/* Watching the agent keeps your page as it was, hidden underneath. */}
-      {agentView && ctx.ref && <AgentView ctx={ctx} visible={visible} onUrl={setAgentAt} />}
+      {agentView && ctx.ref && <AgentView ctx={ctx} visible={visible} onUrl={setAgentAt} onSize={setAgentSize} />}
       {sandboxView && (
         <div className="flex min-h-0 flex-1 items-start justify-center overflow-y-auto bg-muted/30 p-6 pt-12">
           <BrowserSandboxCard box={ctx.ref!.box} worktree={ctx.ref} className="w-full max-w-2xl bg-background shadow-xs" />
@@ -701,6 +706,17 @@ function humanUrl(agentUrl: string, ctx: BrowserContext): string {
 export interface AgentLive {
   running: boolean;
   url?: string;
+  // Its page's size, as the box says it: 1920×1080.
+  size?: string;
+}
+
+// AgentSize is the agent's page as the view shows it: w×h CSS pixels at a
+// scale, shown at zoom (1 is its own size).
+interface AgentSize {
+  w: number;
+  h: number;
+  scale?: number;
+  zoom: number;
 }
 
 // useAgentBrowserLive is whether an agent's browser runs on the box for the
@@ -716,20 +732,29 @@ function useAgentBrowserLive(ref: BrowserContext["ref"], visible: boolean): Agen
     setLive(undefined);
     if (!capable || !visible || !box || !location || !worktree) return;
     let on = true;
-    const tick = () =>
-      agentBrowserStatus(box, location, worktree).then(
-        (s) => {
-          if (!on) return;
-          seedSandbox(box, s.health);
-          setLive((was) => (was?.running === s.running && was?.url === s.status?.url ? was : { running: s.running, url: s.status?.url }));
-        },
-        () => on && setLive({ running: false }),
-      );
-    void tick();
-    const t = window.setInterval(tick, 5000);
+    let seen = "";
+    // Every 5s, backing off to 30s while nothing changes; never while the
+    // window is hidden (lib/poll).
+    const p = poll(
+      () =>
+        agentBrowserStatus(box, location, worktree).then(
+          (s) => {
+            if (!on) return false;
+            seedSandbox(box, s.health);
+            const size = s.status?.size ?? s.size;
+            setLive((was) => (was?.running === s.running && was?.url === s.status?.url && was?.size === size ? was : { running: s.running, url: s.status?.url, size }));
+            const now = `${s.running}|${s.status?.url ?? ""}|${size ?? ""}`;
+            const changed = now !== seen;
+            seen = now;
+            return changed;
+          },
+          () => (on && setLive({ running: false }), false),
+        ),
+      { every: 5000, max: 30_000 },
+    );
     return () => {
       on = false;
-      window.clearInterval(t);
+      p.stop();
     };
   }, [capable, visible, box, location, worktree]);
   return live;
@@ -746,11 +771,29 @@ function LiveDot() {
 
 // AgentBar stands in for the address bar while you watch the agent's
 // browser: it is plainly not yours, and nothing in it drives the agent's.
-function AgentBar({ ctx, url, logKey, onBack, onOpenHere }: { ctx: BrowserContext; url?: string; logKey?: string; onBack(): void; onOpenHere(url: string): void }) {
+function AgentBar({
+  ctx,
+  url,
+  size,
+  fallbackSize,
+  logKey,
+  onBack,
+  onOpenHere,
+}: {
+  ctx: BrowserContext;
+  url?: string;
+  size?: AgentSize;
+  fallbackSize?: string;
+  logKey?: string;
+  onBack(): void;
+  onOpenHere(url: string): void;
+}) {
   const here = url ? humanUrl(url, ctx) : undefined;
+  const label = size ? sizeLabel(size.w, size.h, size.scale) : fallbackSize;
+  const zoom = size && size.zoom > 0 && size.zoom < 0.995 ? `${Math.round(size.zoom * 100)}%` : undefined;
   return (
     <div className="flex h-9 shrink-0 items-center gap-2 border-b bg-emerald-500/[0.06] px-2 text-xs">
-      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-emerald-500/15 px-2 py-1 font-medium text-[11px] text-emerald-700 dark:text-emerald-300">
+      <span className="inline-flex shrink-0 items-center gap-1.5 rounded-md bg-emerald-500/15 px-2 py-1 font-medium text-[11px] text-emerald-800 dark:text-emerald-300">
         <BotIcon className="size-3" />
         Agent's view · live
         <LiveDot />
@@ -758,6 +801,22 @@ function AgentBar({ ctx, url, logKey, onBack, onOpenHere }: { ctx: BrowserContex
       <Tip label={<span className="break-all font-mono">{url ?? ""}</span>} className="max-w-md">
         <span className="min-w-0 flex-1 truncate font-mono text-muted-foreground">{here ?? "…"}</span>
       </Tip>
+      {label && (
+        <Tip
+          label={
+            <span>
+              The agent's page is {label}
+              {zoom ? `, shown at ${zoom} to fit` : ", at its own size"}. Agents set it with <span className="font-mono">berthd browser resize</span>.
+            </span>
+          }
+          className="max-w-xs"
+        >
+          <span data-testid="agent-size" className="inline-flex shrink-0 items-center gap-1 rounded-md bg-emerald-500/10 px-1.5 py-0.5 font-mono text-[11px] text-emerald-800 tabular-nums dark:text-emerald-200">
+            {label}
+            {zoom && <span className="font-sans text-emerald-800 dark:text-emerald-200">· {zoom}</span>}
+          </span>
+        </Tip>
+      )}
       {logKey && <DevtoolsToggle logKey={logKey} />}
       {here && (
         <Button size="xs" variant="ghost" className="shrink-0" onClick={() => onOpenHere(here)}>
@@ -791,11 +850,34 @@ function SandboxBar({ box, fixed, onBack }: { box: string; fixed: boolean; onBac
 }
 
 // AgentView shows the agent's browser on the box, live: frames stream only
-// while this view is on screen. It only watches; the agent drives.
-function AgentView({ ctx, visible, onUrl }: { ctx: BrowserContext; visible: boolean; onUrl(url?: string): void }) {
+// while this view is on screen. It only watches; the agent drives. The page
+// shows as large as the pane allows but never past its own size: a frame's
+// image is the page at its scale, so up to its CSS size it stays sharp.
+function AgentView({ ctx, visible, onUrl, onSize }: { ctx: BrowserContext; visible: boolean; onUrl(url?: string): void; onSize(size?: AgentSize): void }) {
   const ref = ctx.ref!;
   const [frame, setFrame] = useState<Frame>();
   const [error, setError] = useState<string>();
+  const space = useRef<HTMLDivElement>(null);
+  const [avail, setAvail] = useState<{ w: number; h: number }>();
+  useEffect(() => {
+    const el = space.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([e]) => {
+      const r = e.contentRect;
+      setAvail((was) => (was && was.w === Math.floor(r.width) && was.h === Math.floor(r.height) ? was : { w: Math.floor(r.width), h: Math.floor(r.height) }));
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const fw = frame?.w ?? 0;
+  const fh = frame?.h ?? 0;
+  const fit = useMemo(() => (avail ? fitFrame(fw, fh, avail.w, avail.h) : undefined), [fw, fh, avail]);
+  useEffect(() => {
+    onSize(fw && fit ? { w: fw, h: fh, scale: frame?.scale, zoom: fit.zoom } : undefined);
+    // onSize is the pane's state setter, the same every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fw, fh, frame?.scale, fit?.zoom]);
+  useEffect(() => () => onSize(undefined), []); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!visible) return;
     const ac = new AbortController();
@@ -815,9 +897,18 @@ function AgentView({ ctx, visible, onUrl }: { ctx: BrowserContext; visible: bool
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, ref.box, ref.location, ref.worktree]);
   return (
-    <div className="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-muted/30 p-3">
+    <div ref={space} className="flex min-h-0 flex-1 items-center justify-center overflow-hidden bg-muted/30 p-3">
       {frame ? (
-        <img alt="The agent's browser" src={`data:${frame.mime ?? "image/jpeg"};base64,${frame.data}`} className="max-h-full max-w-full rounded border bg-white object-contain shadow-sm" />
+        <img
+          alt="The agent's browser"
+          data-testid="agent-frame"
+          data-size={sizeLabel(frame.w, frame.h, frame.scale)}
+          src={`data:${frame.mime ?? "image/jpeg"};base64,${frame.data}`}
+          // A ring, not a border: a border would take two pixels off the
+          // image and blur it at its own size.
+          className="max-h-full max-w-full shrink-0 rounded bg-white object-contain shadow-sm ring-1 ring-border"
+          style={fit && fit.w > 0 ? { width: fit.w, height: fit.h } : undefined}
+        />
       ) : error ? (
         <p className="max-w-xs text-center text-muted-foreground text-xs">{error}</p>
       ) : (

@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 
 export type Run = (command: string) => Promise<ExecResult>;
 
-const toneClass = { add: "text-success", new: "text-success", del: "text-destructive", mod: "text-warning", ren: "text-info" } as const;
+const toneClass = { add: "text-success-foreground", new: "text-success-foreground", del: "text-destructive-foreground", mod: "text-warning", ren: "text-info" } as const;
 
 export function FileRow({ file, active, onSelect, comments }: { file: FileChange; active: boolean; onSelect(): void; comments?: number }) {
   const { label, tone } = describeCode(file.code);
@@ -50,7 +50,7 @@ export function FileRow({ file, active, onSelect, comments }: { file: FileChange
             <span className="text-muted-foreground">bin</span>
           ) : (
             <span className="shrink-0 font-mono text-[11px] tabular-nums">
-              <span className="text-success">+{file.added ?? 0}</span> <span className="text-destructive">−{file.removed ?? 0}</span>
+              <span className="text-success-foreground">+{file.added ?? 0}</span> <span className="text-destructive-foreground">−{file.removed ?? 0}</span>
             </span>
           )}
         </button>

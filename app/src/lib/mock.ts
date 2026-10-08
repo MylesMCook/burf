@@ -25,7 +25,7 @@ import { ApiError } from "@/lib/api";
 import { titleOf } from "@/lib/derive";
 import { demoAttach, demoScreen } from "@/demo/terminal";
 import { mockHistoryCall } from "@/lib/mock-history";
-import { BENCH, benchFleet, benchTerm, seedBenchChats } from "@/lib/mock-bench";
+import { BENCH, benchFleet, benchTerm, noisyTerm, seedBenchChats } from "@/lib/mock-bench";
 import { mockAnswer, mockToolDetailSync, WEBHOOK_TEST } from "@/lib/mock-conversation";
 import { crowd } from "@/lib/mock-crowd";
 
@@ -244,6 +244,14 @@ const appDocs: Record<string, unknown> = fresh ? {} : { projects: { projects: [{
 
 const listeners = new Set<(e: BerthEvent) => void>();
 const emit = (e: Omit<BerthEvent, "time">) => listeners.forEach((l) => l({ ...e, time: new Date().toISOString() }));
+// The artifacts' fixtures, wired to the event stream when first loaded;
+// window.__art.bump() plays a live update (a rewritten file's new version).
+const artifactsMock = () =>
+  import("@/lib/art/mock-artifacts").then((m) => {
+    m.wireArtifactsMock(emit);
+    return m;
+  });
+if (typeof window !== "undefined") (window as unknown as { __art: unknown }).__art = { bump: () => artifactsMock().then((m) => m.bumpArtifacts()), vdiff: () => artifactsMock().then((m) => m.bumpVdiff()) };
 wireMockServices({
   sessions: (box) => (sessions[box] ??= []),
   path: (box, loc, wt) => locations[box]?.find((l) => l.name === loc)?.worktrees?.find((w) => w.name === wt)?.path ?? `/home/me/work/${loc}-${wt}`,
@@ -269,7 +277,9 @@ export const mockDemo = {
 // An agent finishes its turn, then starts again, so the board moves. A new
 // account has no agents, so nothing moves there. The live demo moves its
 // agents on its own script instead (src/demo/script.ts).
-if (!fresh && !__BERTH_DEMO__) setInterval(() => {
+// ?still keeps it at rest, for measuring the app while nothing changes
+// (perf/soak.mjs).
+if (!fresh && !__BERTH_DEMO__ && !new URLSearchParams(location.search).has("still")) setInterval(() => {
   const s = sessions.devl.find((x) => x.name === "qa-deck-codex");
   if (!s) return;
   s.agent_state = s.agent_state === "running" ? "waiting" : "running";
@@ -578,6 +588,14 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
   if (!online) return Promise.reject(new ApiError(`${box} is offline`, 503));
   const doc = mockBoxDoctor(box, !!status.boxes.find((b) => b.name === box)?.local, method, path);
   if (doc) return doc;
+  // In-app artifacts (lib/art/mock-artifacts.ts, loaded when first asked).
+  if (/^locations\/[^/]+\/worktrees\/[^/]+\/artifacts/.test(path)) return artifactsMock().then((m) => delay(m.artifactsMockCall(box, method, path) ?? null));
+  // Visual diffs' baselines and Accept as baseline (internal/box/shots.go).
+  if (/^worktrees\/[^/]+\/[^/]+\/shots\//.test(path))
+    return artifactsMock().then((m) => {
+      const r = m.shotsMockCall(method, path, body);
+      return r === undefined ? Promise.reject(new ApiError("no visual diffs here", 404)) : delay(r);
+    });
   const team = teamBoxCall(box, method, path, body, delay);
   if (team) return team;
   const flows = flowsCall(box, method, path, body, emit, delay);
@@ -607,6 +625,8 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
   const review = reviewCall(box, method, path, sessions[box]);
   if (review) return review;
   if (method === "GET" && path === "agents") return delay(mockBoxAgents(box));
+  // Look again: the same two, found afresh.
+  if (method === "POST" && path === "agents/refresh") return delay({ agents: [], agent_paths: [], shell: "/bin/bash", shell_ok: true });
   if (method === "GET" && path === "requirements") {
     reqAsks[box] = (reqAsks[box] ?? 0) + 1;
     return delay(mockRequirements(box, !!status.boxes.find((b) => b.name === box)?.local, reqAsks[box] - 1));
@@ -663,7 +683,13 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
       tools: ["claude", "codex"],
       home: HOME,
       // gpu runs an older berthd (mockBuilds): it can't keep worktree names.
-      capabilities: ["diff", "turns", "queue", "ask", "answer", "journal", "runs", "exec.detach", "browser", "browser.devtools", "titles", "sample", "service.terminal", "session.home", "agents.install", ...(box === "gpu" ? [] : ["worktree.titles"])],
+      capabilities: ["diff", "turns", "queue", "ask", "answer", "journal", "runs", "exec.detach", "browser", "browser.devtools", "titles", "sample", "service.terminal", "session.home", "agents.install", "artifacts", ...(box === "gpu" ? [] : ["worktree.titles", "agents.paths"])],
+      // Claude Code from npm under nvm, as the person's shell finds it;
+      // Codex from Burf's own installer.
+      agent_paths: [
+        { id: "claude", name: "Claude Code", command: "claude", path: `${HOME}/.nvm/versions/node/v22.9.0/bin/claude`, version: "2.1.3 (Claude Code)", install: "npm", via: "shell" },
+        { id: "codex", name: "Codex", command: "codex", path: `${HOME}/.local/bin/codex`, version: "codex-cli 0.46.0", via: "shell" },
+      ],
       adapters: {
         claude: { ready: true, started: true, waiting: true, finished: true, final_message: true, via: "hooks" },
         codex: { ready: true, started: true, waiting: true, finished: true, final_message: true, via: "hooks" },
@@ -814,6 +840,7 @@ function mockAttach(box: string, session: string, h: TerminalHandlers) {
     });
   }
   if (BENCH === "term") return benchTerm(h);
+  if (BENCH === "noisy") return noisyTerm(h);
   const timers: number[] = [];
   let open = true;
   const s = sessions[box]?.find((x) => x.name === session);
@@ -1118,6 +1145,42 @@ export function mockClient(): Client {
     teamWired = true;
     initTeamMock({ status, locations, sessions, emit, delay, addBox: (name, address) => addMockBox(name, address) });
   }
+  return counted(mockAgent());
+}
+
+// counted tallies what the app asks the mock agent for, as requests to a
+// real one would be, on window.__berthCalls ("GET box/sessions/x/transcript"
+// → count): the soak test (perf/soak.mjs) reads how often the app asks
+// while nothing changes.
+function counted(c: Client): Client {
+  const calls: Record<string, number> = {};
+  (window as unknown as { __berthCalls: Record<string, number> }).__berthCalls = calls;
+  // A test that sets window.__berthCallStacks = {} also gets who asked.
+  const stacks = () => (window as unknown as { __berthCallStacks?: Record<string, Record<string, number>> }).__berthCallStacks;
+  const tally = (k: string) => {
+    calls[k] = (calls[k] ?? 0) + 1;
+    const s = stacks();
+    if (!s) return;
+    const at = (new Error().stack ?? "").split("\n").slice(3, 8).join(" < ");
+    (s[k] ??= {})[at] = (s[k][at] ?? 0) + 1;
+  };
+  const bare = (p: string) => p.split("?")[0];
+  return new Proxy(c, {
+    get(target, name, recv) {
+      const v = Reflect.get(target, name, recv);
+      if (typeof v !== "function" || typeof name !== "string") return v;
+      return (...a: unknown[]) => {
+        if (name === "box") tally(`${a[1]} ${a[0]}/${bare(String(a[2]))}`);
+        else if (name === "laptop") tally(`${a[0]} ${bare(String(a[1]))}`);
+        else if (name === "stream") tally(`${a[0]} ${bare(String(a[1]))}`);
+        else tally(name);
+        return (v as (...x: unknown[]) => unknown).apply(target, a);
+      };
+    },
+  });
+}
+
+function mockAgent(): Client {
   return {
     status: () => delay(status),
     themes: () => delay([]),
@@ -1147,7 +1210,8 @@ export function mockClient(): Client {
         if (err instanceof ApiError) err.box = box;
         throw err;
       }),
-    boxBlob: async (_box, path) => mockFileBlob(path) ?? new Blob([mockShotSvg()], { type: "image/svg+xml" }),
+    boxBlob: async (_box, path) =>
+      /\/artifacts\/[0-9a-f]{10}\/img\/[0-9a-f]{16}\.png$/.test(path) ? ((await (await artifactsMock()).artifactImage(path)) ?? Promise.reject(new ApiError("no such image", 404))) : (/\/artifacts\/[0-9a-f]{10}\/v\/\d+$/.test(path) ? ((await artifactsMock()).artifactBlob(path) ?? Promise.reject(new ApiError("no such artifact", 404))) : (mockFileBlob(path) ?? new Blob([mockShotSvg()], { type: "image/svg+xml" }))),
     // An upload creeps along at about 1 MB/s, so the chip's progress shows.
     upload: <T,>(box: string, path: string, body: Blob, onProgress?: (sent: number, total: number) => void, signal?: AbortSignal) =>
       new Promise<T>((resolve, reject) => {
@@ -1223,9 +1287,12 @@ export function mockClient(): Client {
 // every state shows. Project copies start missing and are kept out of git.
 const skillCatalog = [
   { name: "berth", description: "Use berth to work across development boxes — repos, worktrees, tasks, sessions, ports and the repo's config.", version: "eb32be71b151" },
+  { name: "berth-artifacts", description: "Show the user data as a chart, table, diagram, notes or a small page in their Burf app instead of a wall of text.", version: "3b7e9c41d2a0" },
+  { name: "berth-browser", description: "Use the worktree's own page in a headless browser on the box: snapshot, click, fill, screenshot, console errors and the page's size.", version: "a84f0d27c6e3" },
   { name: "berth-hooks", description: "Automate berth with hooks and gates at the right scope.", version: "f20829fe718c" },
   { name: "berth-orchestrate", description: "Drive other coding agents: prompt, wait, check, loop, hand off, review.", version: "66660a4b14c8" },
   { name: "berth-preview", description: "Run the worktree's dev server on its port and show it in the Burf app.", version: "e1454dda1a21" },
+  { name: "berth-visual-diff", description: "Screenshot the worktree's pages and main's, diff them, and show what moved.", version: "5d0c1a9e7f42" },
 ];
 type MockSkillState = "installed" | "outdated" | "missing";
 const skillStates: Record<string, Record<string, MockSkillState>> = {};

@@ -84,6 +84,7 @@ const READ_TIMEOUT = 30_000;
 export function useTranscriptFeed(box: string, session: string, dir: string | undefined, enabled: boolean, attempt = 0): FeedState {
   const client = useStore((s) => s.client);
   const supported = useStore((s) => !!s.boxes[box]?.info?.capabilities?.includes("transcript"));
+  const pinged = useStore((s) => !!s.boxes[box]?.info?.capabilities?.includes("draft"));
   // Until the box has said what it can do (just after the app starts or
   // reconnects), it is not "too old": it is still loading.
   const known = useStore((s) => !!s.boxes[box]?.info);
@@ -200,7 +201,11 @@ export function useTranscriptFeed(box: string, session: string, dir: string | un
     // An agent's record lands a moment after the event about it (its last
     // words after "finished"): look again soon rather than in 2s.
     const soon = [600, 1500].map((ms) => window.setTimeout(() => void read(), ms));
-    const t = window.setInterval(() => void read(), 2000);
+    // A box that says when a shown chat's transcript is written to
+    // (transcript.changed, with "draft") is read at once on each, so the
+    // look here is a backstop: every 4s, inside the 8s for which the box
+    // keeps watching after a read (transcriptwatch.go). Others every 2s.
+    const t = window.setInterval(() => void read(), pinged ? 4000 : 2000);
     const onVisible = () => {
       if (!document.hidden) void read();
     };
@@ -214,7 +219,7 @@ export function useTranscriptFeed(box: string, session: string, dir: string | un
       document.removeEventListener("visibilitychange", onVisible);
     }
     return stop;
-  }, [client, box, session, key, supported, known, enabled, attempt]);
+  }, [client, box, session, key, supported, known, enabled, attempt, pinged]);
 
   // An event about the session, or a write to its transcript: read now, in
   // the loop that is running.

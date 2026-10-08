@@ -286,7 +286,11 @@ export async function loadTouched(ws: string, ref: WorktreeRef): Promise<void> {
   if (!c) return;
   try {
     const r = await filesApi.touched(c, ref);
-    useFiles.setState((s) => ({ touched: { ...s.touched, [ws]: { files: r.files ?? [], at: Date.now() } } }));
+    const files = r.files ?? [];
+    // The same answer as last time changes nothing, so nothing draws again.
+    const was = useFiles.getState().touched[ws];
+    if (was && JSON.stringify(was.files) === JSON.stringify(files)) return;
+    useFiles.setState((s) => ({ touched: { ...s.touched, [ws]: { files, at: Date.now() } } }));
   } catch {
     // An older box, or none reachable: the picker lists recents only.
     useFiles.setState((s) => ({ touched: { ...s.touched, [ws]: { files: [], at: Date.now() } } }));

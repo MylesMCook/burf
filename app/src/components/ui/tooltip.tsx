@@ -25,6 +25,10 @@ if (typeof window !== "undefined") {
   );
 }
 
+// focusFromKeyboard says whether the keyboard just moved focus, for
+// tooltips that open on focus without a trigger of their own (tip.tsx).
+export const focusFromKeyboard = () => Date.now() - lastNav <= 600;
+
 export function Tooltip({ onOpenChange, ...props }: TooltipPrimitive.Root.Props): React.ReactElement {
   return (
     <TooltipPrimitive.Root

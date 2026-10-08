@@ -5,6 +5,8 @@ import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { startSession } from "@/lib/actions";
 import { agentLabel, restartCommand } from "@/lib/derive";
+import { retryLine } from "@/lib/net";
+import { tryNow, useAway } from "@/lib/reconnect";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { useWorkspaces } from "@/lib/workspaces";
@@ -66,30 +68,47 @@ export function SessionEnded({ box, session, agent, command, wsKey, tab, pane, o
   );
 }
 
+// RetryLine counts down to the agent's next try of a box that is away
+// ("Next try in 6s · away 1m 5s"), from the agent's status.
+export function RetryLine({ box, className }: { box: string; className?: string }) {
+  const line = retryLine(useAway(box));
+  if (!line) return null;
+  return (
+    <span data-testid="retry-line" aria-live="polite" className={cn("mb-1 block font-medium text-foreground/72 tabular-nums", className)}>
+      {line}
+    </span>
+  );
+}
+
 // BoxOffline sits over the dimmed screen: the session is still running on
 // the box, and Burf reattaches on its own when the box is back.
 export function BoxOffline({ box, state, onRetry }: { box: string; state?: string; onRetry(): void }) {
-  const title = state === "connecting" ? `Connecting to ${box}…` : state === "untrusted" ? `${box} is unreachable` : `${box} is offline`;
+  const title = state === "connecting" ? `Connecting to ${box}…` : state === "untrusted" ? `${box} is unreachable` : `Reconnecting to ${box}…`;
   const detail =
     state === "untrusted"
       ? "It answered with a different identity than when it was paired, so Burf won't talk to it. Pair it again if it was rebuilt."
-      : "The session keeps running there; Burf reconnects on its own when the box is back.";
+      : "The session keeps running there, and this terminal comes back as it was.";
   return (
     <PaneState
       panel
       art={<Scene name="offline" width={128} />}
       title={<p className="font-medium text-sm">{title}</p>}
-      detail={<p className="max-w-xs">{detail}</p>}
+      detail={
+        <>
+          {state !== "untrusted" && <RetryLine box={box} />}
+          <p className="max-w-xs">{detail}</p>
+        </>
+      }
     >
       <Button
         size="sm"
         onClick={() => {
-          void useStore.getState().refreshStatus();
+          void tryNow(box);
           onRetry();
         }}
       >
         <RotateCwIcon />
-        Retry now
+        Try now
       </Button>
       <Button size="sm" variant="outline" onClick={() => useStore.getState().setView({ kind: "settings", section: "boxes" })}>
         <ServerIcon />

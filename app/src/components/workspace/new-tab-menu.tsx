@@ -162,9 +162,9 @@ export function NewTabMenu() {
           <PlusIcon className="size-4" />
         </PopoverTrigger>
       </Tip>
-      <PopoverPopup align="start" sideOffset={2} className="w-88 p-0 [&_[data-slot=popover-viewport]]:p-0">
+      <PopoverPopup aria-label="New tab" align="start" sideOffset={2} className="w-88 p-0 [&_[data-slot=popover-viewport]]:p-0">
         <Command items={groups} value={query} onValueChange={setQuery} itemToStringValue={(i: unknown) => `${(i as Item).label} ${(i as Item).detail ?? ""} ${(i as Item).search ?? ""}`}>
-          <CommandInput placeholder="Search open tabs, history, URLs, agents…" className="text-sm" />
+          <CommandInput aria-label="Search open tabs, history, URLs and agents" placeholder="Search open tabs, history, URLs, agents…" className="text-sm" />
           <CommandSeparator className="my-0" />
           <CommandEmpty>Nothing matches. Type a port or a URL to open it.</CommandEmpty>
           <CommandList className="max-h-96">

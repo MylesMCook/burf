@@ -34,7 +34,7 @@ export function SettingsGroup({ title, description, actions, children }: { title
         <div className="mb-2 flex items-end gap-3">
           <div className="min-w-0 flex-1">
             {title && <h2 className="font-medium text-[13px] text-muted-foreground">{title}</h2>}
-            {description && <p className="mt-0.5 text-muted-foreground/80 text-xs">{description}</p>}
+            {description && <p className="mt-0.5 text-muted-foreground text-xs">{description}</p>}
           </div>
           {actions}
         </div>
@@ -96,7 +96,7 @@ export function SettingsRow({ label, description, children, className }: { label
 
 // Code is a path or a command inside a description.
 export function Code({ children }: { children: ReactNode }) {
-  return <code className="rounded bg-muted px-1 py-px font-mono text-[11px] text-foreground/90">{children}</code>;
+  return <code className="rounded bg-muted px-1 py-px font-mono text-[11px] text-foreground">{children}</code>;
 }
 
 // Value shows a setting that is read, not edited here, as a quiet chip.

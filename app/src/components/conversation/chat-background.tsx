@@ -8,6 +8,7 @@ import { type Img, render, type RGB, type Source, type ThemeColours } from "@/li
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { scrollBehavior } from "@/lib/motion";
 
 import "@/components/conversation/chat-background.css";
 
@@ -53,7 +54,7 @@ function Layer({ bg }: { bg: Bg }) {
 // background, for the pane menu's "Chat background…".
 export function openChatBackgroundSettings() {
   useStore.getState().setView({ kind: "settings", section: "appearance" });
-  window.setTimeout(() => document.getElementById("chat-background")?.scrollIntoView({ block: "start", behavior: "smooth" }), 80);
+  window.setTimeout(() => document.getElementById("chat-background")?.scrollIntoView({ block: "start", behavior: scrollBehavior() }), 80);
 }
 
 // useRendered draws bg into the canvas at the size of wrap, and again when

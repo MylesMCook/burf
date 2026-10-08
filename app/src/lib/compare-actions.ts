@@ -36,6 +36,7 @@ function makeFor(path?: string) {
       const s = leadAgent(side);
       return s ? { kind: "terminal", box: splitKey(side).box, session: s } : { kind: "empty", label: "Agent" };
     }
+    if (kind === "artifacts") return { kind: "artifact", title: "Artifacts" };
     if (kind === "diff") return hasDiff() ? { kind: "panel", plugin: "diff", panel: "diff", title: "Diff" } : { kind: "empty", label: "Diff" };
     return { kind: "browser", url: previewUrl(side, path) };
   };

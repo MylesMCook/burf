@@ -232,10 +232,7 @@ func (s *Sessions) create(ctx context.Context, name, location, dir, command, age
 	if _, err := s.tmux(ctx, "has-session", "-t", "="+name); err == nil {
 		return Session{}, ErrSessionExists
 	}
-	shell := os.Getenv("SHELL")
-	if shell == "" {
-		shell = "/bin/sh"
-	}
+	shell := sessionShell()
 	argv := []string{shell, "-l"}
 	file := ""
 	if command != "" {
@@ -243,7 +240,10 @@ func (s *Sessions) create(ctx context.Context, name, location, dir, command, age
 		if file, err = s.writeCommand(name, command); err != nil {
 			return Session{}, err
 		}
-		argv = []string{shell, "-lc", sourceCommand(shell, file)}
+		// An agent starts with the PATH its CLI was found with: an npm
+		// install under nvm is on an interactive shell's PATH, which a
+		// login shell alone (-l) never reads.
+		argv = []string{shell, "-lc", withPATH(shell, launchPATH(command, agent), sourceCommand(shell, file))}
 	}
 	args := []string{"new-session", "-d", "-s", name, "-c", dir, "-x", "200", "-y", "50"}
 	env = append(withAgentBrowserIdle(append([]string(nil), env...)), "BERTH_SESSION="+name)
@@ -294,6 +294,14 @@ func (s *Sessions) create(ctx context.Context, name, location, dir, command, age
 		return Session{}, err
 	}
 	return sess, nil
+}
+
+// sessionShell is the shell a session runs in.
+func sessionShell() string {
+	if s := os.Getenv("SHELL"); s != "" {
+		return s
+	}
+	return "/bin/sh"
 }
 
 // TitleMax is the longest title a session takes, in characters; one made

@@ -15,6 +15,10 @@ import { loadPlugins } from "@/plugins/host";
 // The live demo (pnpm build:demo) is always mock mode.
 export const isMock = () => __BERTH_DEMO__ || new URLSearchParams(location.search).has("mock");
 
+// How often everything is fetched again while connected, in case an event
+// was missed: the event stream says what changed as it does.
+const BACKSTOP = 60_000;
+
 // useBerthConnection finds the agent, keeps trying until it answers, then
 // follows its events and polls slowly as a backstop. Every reconnect of the
 // event stream refetches everything, so nothing missed while away (sleep, a
@@ -55,17 +59,28 @@ export function useBerthConnection() {
       // Project menus show each project's kit status.
       void reloadKits();
       client.events(handleEvent, () => void refreshAll(), abort.signal);
-      poll = window.setInterval(() => void refreshAll(), 15_000);
+      // The backstop: events say what changed, so this only catches what
+      // one missed. Not while the window is hidden; coming back refreshes.
+      poll = window.setInterval(() => !document.hidden && void refreshAll(), BACKSTOP);
     });
 
-    const onWake = () => void useStore.getState().refreshAll();
+    // Focus and visibility come back together: one refresh for both.
+    let woke = 0;
+    const onWake = () => {
+      if (Date.now() - woke < 2000) return;
+      woke = Date.now();
+      void useStore.getState().refreshAll();
+    };
+    const onVisible = () => !document.hidden && onWake();
     window.addEventListener("focus", onWake);
     window.addEventListener("online", onWake);
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       abort.abort();
       window.clearInterval(poll);
       window.removeEventListener("focus", onWake);
       window.removeEventListener("online", onWake);
+      document.removeEventListener("visibilitychange", onVisible);
     };
   }, []);
 }

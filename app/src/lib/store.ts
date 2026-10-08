@@ -4,6 +4,8 @@ import { boxApi, type BoxInfo, type Client, type Location, type Service, type Se
 import { closeComposer, fromOrchestrateDraft, fromWorktreeDraft, openComposer } from "@/lib/composer";
 import { errorMessage } from "@/lib/format";
 import { withLocalTitles } from "@/lib/local-titles";
+import { coalesce } from "@/lib/net";
+import { share } from "@/lib/share";
 import { load, save } from "@/lib/storage";
 
 // The app's state. Everything here can be rebuilt from the agent at any
@@ -137,8 +139,12 @@ export const useStore = create<State & Actions>()((set, get) => ({
     const { client } = get();
     if (!client) return;
     try {
-      const status = await client.status();
-      set({ status, connection: { state: "online" } });
+      const status = share(get().status, await client.status());
+      // Online and as it was: nothing to set, so nothing drawn again (a
+      // refresh lands while a chat streams).
+      const was = get();
+      if (status === was.status && was.connection.state === "online" && !was.connection.error) return;
+      set({ status, connection: was.connection.state === "online" && !was.connection.error ? was.connection : { state: "online" } });
     } catch (err) {
       set({ connection: { state: "offline", error: errorMessage(err) } });
     }
@@ -149,27 +155,37 @@ export const useStore = create<State & Actions>()((set, get) => ({
     if (!client) return;
     const results = await Promise.allSettled(parts.map((p) => fetchers[p](client, box)));
     set((s) => {
-      const next: BoxData = { ...s.boxes[box], error: undefined };
+      const prev = s.boxes[box];
+      const next: BoxData = { ...prev, error: undefined };
       results.forEach((r, i) => {
         // info is optional on older daemons; a failure there is not the box's.
-        if (r.status === "fulfilled") (next as Record<string, unknown>)[parts[i]] = r.value;
+        // What is as it was keeps its objects (lib/share.ts), so rows drawn
+        // from them aren't drawn again.
+        if (r.status === "fulfilled") (next as Record<string, unknown>)[parts[i]] = share(prev?.[parts[i]], r.value);
         else if (parts[i] !== "info") next.error = errorMessage(r.reason);
       });
+      // Nothing new: nothing to draw.
+      if (prev && prev.error === next.error && parts.every((p) => prev[p] === next[p])) return s;
       return { boxes: { ...s.boxes, [box]: next } };
     });
   },
 
-  async refreshAll() {
+  // One at a time: a reconnect, a focus, an event and the poll landing
+  // together (as they do after a sleep) cost one refresh and at most one
+  // more, never a pile of them (lib/net.ts).
+  refreshAll: coalesce(async () => {
     const { client } = get();
     if (!client) return;
     await get().refreshStatus();
     const online = get().status?.boxes.filter((b) => b.state === "online") ?? [];
     await Promise.all([
       ...online.map((b) => get().refreshBox(b.name)),
-      client.themes().then((serverThemes) => set({ serverThemes }), () => {}),
-      client.templates().then((templates) => set({ templates }), () => {}),
+      // Kept as they were when unchanged (lib/share.ts): a refresh landing
+      // mid-stream re-rendered everything drawn from the theme.
+      client.themes().then((t) => set((s) => (share(s.serverThemes, t) === s.serverThemes ? s : { serverThemes: t })), () => {}),
+      client.templates().then((t) => set((s) => (share(s.templates, t) === s.templates ? s : { templates: t })), () => {}),
     ]);
-  },
+  }),
 
   setView: (view) => set({ view }),
 

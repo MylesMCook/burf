@@ -11,10 +11,10 @@ import {
   SquareTerminalIcon,
   Trash2Icon,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 
 import { AgentIcon, BoxStateDot, StateGlyph } from "@/components/agent-glyph";
-import { type Action, boxActions, ContextRow, DotsMenu, newSection, projectActions, projectGroupActions, worktreeActions } from "@/components/sidebar/actions";
+import { type Action, Armed, boxActions, useArmed, ContextRow, DotsMenu, newSection, projectActions, projectGroupActions, worktreeActions } from "@/components/sidebar/actions";
 import { confirm } from "@/components/sidebar/confirm";
 import { type Project, projectActions as groupActions, useProjects } from "@/lib/project-groups";
 import { Tip } from "@/components/tip";
@@ -145,8 +145,11 @@ function BoxHeader({ box, empty }: { box: BoxStatus; empty: boolean }) {
   const online = box.state === "online";
   return (
     <ContextRow items={() => boxActions(box)}>
+      {/* Focusable for its menu (Shift-F10 or the menu key). */}
       <div
         tabIndex={0}
+        role="group"
+        aria-label={`${box.name}, ${online ? "online" : awayText(box)}`}
         className="group/row relative flex h-7 outline-none focus-visible:ring-2 focus-visible:ring-ring items-center gap-1.5 rounded-md pr-1 pl-2 font-medium text-[11px] text-muted-foreground hover:bg-sidebar-accent"
       >
         {online ? <ServerIcon className="size-3" /> : <ServerOffIcon className="size-3" />}
@@ -228,20 +231,30 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
             isActive={mainSel && !all}
             disabled={!online || !main}
             onClick={() => main && open(main)}
+            // → shows its worktrees, ← hides them, as in a tree.
+            aria-expanded={!collapsed}
+            onKeyDown={(e: React.KeyboardEvent) => {
+              if ((e.key === "ArrowRight" && collapsed) || (e.key === "ArrowLeft" && !collapsed)) {
+                e.preventDefault();
+                toggle();
+              }
+            }}
             className={cn("h-[calc(var(--side-row)+0.125rem)] gap-1.5 font-medium text-[13px] text-foreground", !online && "text-muted-foreground")}
           >
-            <span
-              role="button"
-              tabIndex={-1}
-              aria-label={collapsed ? `Show ${loc.name}` : `Hide ${loc.name}`}
-              className="-ml-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggle();
-              }}
-            >
-              <ChevronRightIcon className={cn("size-3 transition-transform", !collapsed && "rotate-90")} />
-            </span>
+            {/* The pointer's way; the keyboard's is ← and → on the row. */}
+            <Tip label={collapsed ? `Show ${loc.name}` : `Hide ${loc.name}`} side="right">
+              <span
+                aria-hidden
+                data-fold=""
+                className="-ml-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggle();
+                }}
+              >
+                <ChevronRightIcon className={cn("size-3 transition-transform", !collapsed && "rotate-90")} />
+              </span>
+            </Tip>
             <LeadIcon sessions={!all && main ? mainSessions : []} data={data} icon={<FolderGitIcon />} />
             <span className="min-w-0 truncate">{loc.name}</span>
             {chip && <BoxChip box={box} />}
@@ -292,17 +305,7 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
   );
 }
 
-function WorktreeRow({
-  box,
-  loc,
-  wt,
-  sessions,
-  data,
-  selected,
-  onOpen,
-  chip,
-  away,
-}: {
+interface WorktreeRowProps {
   box: string;
   loc: Location;
   wt: Worktree;
@@ -316,7 +319,26 @@ function WorktreeRow({
   // so the worktree you have open never vanishes from under you; what it
   // last ran is not shown, since the box cannot say whether it still runs.
   away?: BoxStatus;
-}) {
+}
+
+// A row is drawn again only when what it shows changed: its worktree, its
+// sessions, the box's report of its agents, whether it is selected, and its
+// box chip's name and state. onOpen opens the worktree it was given, and
+// the store keeps what a refresh didn't change (lib/share.ts), so a rename
+// or an agent's new state draws one row, not hundreds.
+const sameList = (a: Session[], b: Session[]) => a.length === b.length && a.every((s, i) => s === b[i]);
+const sameRow = (a: WorktreeRowProps, b: WorktreeRowProps) =>
+  a.box === b.box &&
+  a.loc === b.loc &&
+  a.wt === b.wt &&
+  a.selected === b.selected &&
+  a.away === b.away &&
+  a.chip?.name === b.chip?.name &&
+  a.chip?.state === b.chip?.state &&
+  a.data?.stats?.agents === b.data?.stats?.agents &&
+  sameList(a.sessions, b.sessions);
+
+const WorktreeRow = memo(function WorktreeRow({ box, loc, wt, sessions, data, selected, onOpen, chip, away }: WorktreeRowProps) {
   // Its agents by what they work on ("Fix checkout webhook · Claude Code").
   const agents = away ? [] : sessions.filter((s) => agentOf(s) && !s.exited).map((s) => sessionName(s, { sessions, agent: true }));
   // A renamed worktree's tip says its own name and branch under the title.
@@ -373,7 +395,7 @@ function WorktreeRow({
             <LeadIcon sessions={away ? [] : sessions} data={data} icon={wt.main ? <HomeIcon /> : <GitBranchIcon />} />
             <span className={cn("min-w-0 truncate", away && "opacity-70")}>{name}</span>
             {/* Its own name beside the title, when the sidebar is wide enough. */}
-            {!wt.main && wt.title && <span data-testid="worktree-row-name" className="hidden min-w-0 max-w-max grow basis-0 truncate font-mono text-[10px] text-muted-foreground/70 @min-[17rem]/side:inline">{wt.name}</span>}
+            {!wt.main && wt.title && <span data-testid="worktree-row-name" className="hidden min-w-0 max-w-max grow basis-0 truncate font-mono text-[10px] text-muted-foreground @min-[17rem]/side:inline">{wt.name}</span>}
             {/* On screen beside another worktree: its colour. */}
             <WtDot wsKey={key} className="size-1.5" />
             {/* Narrower than the default the name needs the room more; the
@@ -392,7 +414,7 @@ function WorktreeRow({
       </ContextRow>
     </SidebarMenuSubItem>
   );
-}
+}, sameRow);
 
 // LeavingRow is a worktree being archived or removed, in the row's place
 // and size so nothing shifts when it goes.
@@ -474,8 +496,10 @@ function Glyphs({ sessions, data }: { sessions: Session[]; data?: BoxData }) {
 // RowOverlay holds a row's actions over its trailing end. It only fades
 // (opacity, 100ms), and paints the row's hover colour, opaque, with a short
 // fade on its left edge, so it covers chips, counts and glyphs under it and
-// nothing in the row moves.
+// nothing in the row moves. Its buttons and their menus are only made once
+// the row is first pointed at or focused (Armed).
 function RowOverlay({ className, children }: { className?: string; children: React.ReactNode }) {
+  if (!useArmed()) return null;
   return (
     <div className={cn("pointer-events-none absolute inset-y-0 right-0 flex items-center rounded-r-lg pr-1 pl-4 opacity-0 transition-opacity duration-100 [background:linear-gradient(var(--sidebar-accent),var(--sidebar-accent)),var(--sidebar)] [mask-image:linear-gradient(to_right,transparent,black_16px)] focus-within:pointer-events-auto focus-within:opacity-100 group-hover/row:pointer-events-auto group-hover/row:opacity-100 has-[[data-popup-open]]:pointer-events-auto has-[[data-popup-open]]:opacity-100", className)}>
       {children}
@@ -595,7 +619,9 @@ function ProjectSections({ prefs, update }: { prefs: SidebarPrefs; update(p: Par
                   <span className="font-normal normal-case tracking-normal">{inside.length || ""}</span>
                 </button>
                 <span className="opacity-0 group-hover/row:opacity-100 has-[[data-popup-open]]:opacity-100">
-                  <DotsMenu label={`${name} section`} items={() => sectionActions(name)} />
+                  <Armed>
+                    <DotsMenu label={`${name} section`} items={() => sectionActions(name)} />
+                  </Armed>
                 </span>
               </div>
             </ContextRow>
@@ -682,20 +708,28 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
             isActive={mainSel && !all}
             disabled={!online}
             onClick={() => defMain && def.box.state === "online" && selectWorktree(refOf(def.box.name, def.loc, defMain))}
+            aria-expanded={!collapsed}
+            onKeyDown={(e: React.KeyboardEvent) => {
+              if ((e.key === "ArrowRight" && collapsed) || (e.key === "ArrowLeft" && !collapsed)) {
+                e.preventDefault();
+                update({ collapsed: { ...prefs.collapsed, [key]: !collapsed } });
+              }
+            }}
             className={cn("h-[calc(var(--side-row)+0.125rem)] gap-1.5 font-medium text-[13px] text-foreground", !online && "text-muted-foreground")}
           >
-            <span
-              role="button"
-              tabIndex={-1}
-              aria-label={collapsed ? `Show ${p.name}` : `Hide ${p.name}`}
-              className="-ml-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground"
-              onClick={(e) => {
-                e.stopPropagation();
-                update({ collapsed: { ...prefs.collapsed, [key]: !collapsed } });
-              }}
-            >
-              <ChevronRightIcon className={cn("size-3 transition-transform", !collapsed && "rotate-90")} />
-            </span>
+            <Tip label={collapsed ? `Show ${p.name}` : `Hide ${p.name}`} side="right">
+              <span
+                aria-hidden
+                data-fold=""
+                className="-ml-0.5 inline-flex size-4 shrink-0 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  update({ collapsed: { ...prefs.collapsed, [key]: !collapsed } });
+                }}
+              >
+                <ChevronRightIcon className={cn("size-3 transition-transform", !collapsed && "rotate-90")} />
+              </span>
+            </Tip>
             <LeadIcon sessions={!all ? glyphSessions : []} data={boxes[def.box.name]} icon={<FolderGitIcon />} />
             <span className="min-w-0 truncate">{p.name}</span>
             {chips && (

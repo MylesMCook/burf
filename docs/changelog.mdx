@@ -3,13 +3,165 @@ title: Changelog
 description: What changed in each Berth release, newest first.
 ---
 
-Releases are on [GitHub](https://github.com/sean-brydon/berthd/releases).
+Releases are on [GitHub](https://github.com/cosscom/shipyard/releases).
 The Mac app [updates itself](/getting-started/install#updates); a box
 upgrades with `berth upgrade BOX`, or by running the
 [install command](/getting-started/add-a-box#with-the-install-command)
 again.
 
-## Unreleased
+## v0.3.10
+
+- **What's new, once after an update.** The Mac app updates itself
+  quietly, so its new things went unseen. After an update, a note at the
+  foot of the sidebar says what's new (with the sidebar folded, the card
+  opens instead). The card shows the release's highlights one at a time,
+  each with a small picture of it in the app and **Show me**, which goes
+  there: the worktree's artifacts board, a visual diff, a Browser tab with
+  its console open, or renaming a worktree; the rest show their keys or
+  their guide. ← and → page through it, Esc closes it. A new install
+  doesn't get it, and × on the note puts it away for good. **Settings →
+  About → What's new** and ⌘K open it again.
+  [Updates](/getting-started/install#updates).
+- **A team setup's repos are ready when it says so.** Each repo's
+  first-time setup (its init) runs in a terminal of its own on the box,
+  which the Team setup page never showed. An init that stopped at a question,
+  such as corepack's "Do you want to continue? [Y/n]" before it downloads
+  yarn, left the repo setting up until opening its main checkout happened to
+  show that terminal; answering there finished the setup, which is why
+  worktrees only worked after **Open main checkout**. Now corepack doesn't
+  ask (in inits and worktree setup scripts). A repo's row shows its init's
+  last line and a **Terminal** button. When the init asks anything, the row
+  says **waiting for you**, the status card names the repo, and **Answer in
+  its terminal** opens it. **Open main checkout** is a way to open the repo
+  again, not a step.
+  [Progress, failure and Retry](/guides/team-setup#progress-failure-and-retry).
+- **An agent CLI you installed with npm is found.** Claude Code installed
+  with `npm i -g @anthropic-ai/claude-code` under nvm (or fnm, volta, bun,
+  pnpm, a custom npm prefix or Homebrew) wasn't picked up on a new box,
+  where the one **Add agents…** installs was: berthd runs as a service, and
+  only your interactive shell's `~/.bashrc` knows where nvm put it. berthd
+  now asks your shell as a terminal starts it (`$SHELL -lic`, reading only
+  its answer, past any banner, and giving up after ten seconds), then looks
+  in the folders those installers use. With both installs, the one your
+  shell finds first is used. Agents start with it and the `PATH` it was
+  found with, so its `node` is found too. `berthd doctor` and **Settings →
+  Boxes** say which one, such as `Claude Code 2.1.3 · ~/.nvm/…/bin/claude
+  (npm)`, with **Look again** for one installed since; `berthd agents
+  install` no longer installs a second copy, and `berthd integrations
+  install` finds it the same way.
+  [Agent CLIs you installed yourself](/getting-started/add-a-box#agent-clis-you-installed-yourself).
+- **The agent's browser has the size the agent chooses.** It opens at
+  1920×1080 now (it was 1280×800), and an agent sets another with
+  `berthd browser resize 390x844 --scale 3`, a preset (`phone`,
+  `phone-max` and `tablet` as in Preview, `laptop`, `desktop`), or
+  `open --size … --scale …`. The size is kept for the worktree until it
+  changes, a running browser changes at once, and widths from 320 to 3840,
+  heights from 240 to 2160 and scales from 1 to 3 are allowed, with an error
+  that says the range otherwise. `open`, `status`, `list`, `doctor` and
+  `GET /v1/browser/health` say the size; `shot` follows it (`--native` for
+  the page's own pixels). In the app, **Agent's view** says the size and the
+  zoom it shows the page at, and fits the page to the pane without enlarging
+  it past its own size, so a 2x page stays sharp. The `berth-browser` skill
+  tells agents to check a phone size too. [Agent browser](/guides/agent-browser#size)
+- Files an agent's browser downloads land in the worktree's
+  `.berth/browser/`, as the guide says, rather than the folder berthd
+  started in.
+
+- **A slow or dropping link to a box says so, and recovers by itself.**
+  Tested against boxes 200–900 ms away, links with jitter, a bandwidth cap,
+  stalls, resets, outages of 10 s, 60 s and 5 minutes, and a laptop asleep.
+  A box that drops off now reads **Reconnecting to devl… Next try in 6s**
+  in its terminals, chats and a team setup in progress, with **Try now**
+  (which checks the box at once; it used to only re-read what the agent
+  already knew). The agent tries an away box after about 2 s, then 4 and
+  every 8 s, each with jitter (never less often than before), checks a box
+  at once when a request to it has had no answer for 5 s, and answers
+  requests for an away box at once rather than after a 15 s dial,
+  so ⌘P, Files and the rest stop spinning. Reads now give up after 30 s
+  with "devl isn't answering" instead of spinning on, and ⌘P says why in
+  words and searches again when the box is back. Typing into a terminal
+  that gets nothing back for 4 s shows **Waiting for devl to answer…**. A
+  chat message sent again after a dropped answer carries the same
+  idempotency key, so it is typed once, not twice. The app's event stream
+  to the agent reconnects with jittered backoff and is dropped and opened
+  again after 45 s of silence (a laptop that slept), and refreshes that
+  land together after a reconnect run as one instead of piling up.
+  [Slow and dropping networks](/concepts/laptop-agent#slow-and-dropping-networks).
+- **Burf works from the keyboard and with a screen reader.** Under a
+  chat, its agent's terminal no longer takes Tab and keeps it. Closing
+  ⌘K, ⌘P or a rename gives the keyboard back instead of dropping it;
+  a file opened from ⌘P takes the keyboard, as do the Files panel (⌘⇧E)
+  and the console drawer (⌘⌥I), whose tabs switch with the arrows and
+  whose edge sizes with ↑ and ↓. Shift-F10 opens a tab's menu, ← and →
+  fold a project in the sidebar, answering a permission or a question
+  keeps the keyboard, and focus rings show in every theme
+  (3:1, and muted text 4.5:1 on menus and highlighted rows: 22 themes
+  moved a shade; code in the File tab and in chats reads at 4.5:1 too,
+  each colour a shade darker or lighter). Screen readers hear who said
+  each message in a chat,
+  and hear an agent that finishes, needs you or fails, alerts first.
+  ⌘K now lists every shortcut's action, each part of Settings, Review,
+  a Preview tab, Rename this worktree and Do not disturb; the shortcuts
+  sheet adds F2, ⌘F, ↵, esc, ← → and ⇧F10. With Reduce motion on in
+  macOS, spinners, shimmer and pulses hold still and nothing slides.
+- **Artifacts: charts, tables, diagrams and small pages from your agents,
+  live.** An agent writes a `berth.chart` JSON, a CSV, Mermaid, Markdown or
+  one HTML file and runs `berthd artifact add`; its chat shows a card with a
+  live thumbnail and the headline its data gives ("/search 1,240 → 410 ms
+  (−67%)", "3 failed of 16"). Open it as a tab, or ⌘-click to open it
+  beside the chat; the tab has a Live pill that pulses when the agent
+  rewrites the file, its versions (the first and the newest eight) and its
+  source. **N artifacts** under the reply box, or the grid button in the
+  worktree's toolbar, opens the worktree's board, filtered by Charts,
+  Tables, Diagrams, Pages and Notes. Charts are drawn with
+  [bklit UI](https://ui.bklit.com) in your theme, in all 23; a page runs on
+  its own origin with no network and no access to Burf. The box keeps
+  them outside the worktree, checks each version, and refuses one that
+  looks like a secret. The `berth-artifacts` skill teaches Claude Code and
+  Codex when and how (`berthd integrations install`). The claude.ai chip
+  now reads **N published**. [Artifacts](/guides/artifacts).
+
+- **Visual diffs: what a change did to your pages.** After a UI change, an
+  agent runs `berthd shots compare`: the worktree's pages and main's are
+  shot at 375, 768 and 1280 pixels wide in a short-lived Chromium of their
+  own (reduced motion, animations settled, fonts and images loaded, lazy
+  content scrolled in, UTC), diffed pixel by pixel with content that only
+  moved counted as moved, and kept as an artifact in its chat, in about 5
+  seconds for 6 pages × 3 sizes. The tab opens on the biggest change: a
+  before/after **Slider**, **Side by side**, **Flicker** or **Onion skin**,
+  a **Heatmap** with **Glow**, numbered regions named by their element,
+  **Changes ‹ n of N ›** (n and p), **All shots** in a grid, and chips for
+  a page that now scrolls sideways, fails or is new. **Accept as
+  baseline** keeps the after-shots; comparing again with
+  `--base accepted` gives the all clear. Masks and defaults go in
+  `.berth/config.json`'s `shots`; `--color-scheme both` shoots light and
+  dark; with main's dev server stopped it compares with the turn-start
+  baseline (`berthd shots baseline`) and says so. The agent reads about 450
+  tokens. The `berth-visual-diff` skill teaches Claude Code and Codex to
+  check before saying done. Beside the chat, in a narrow pane, its tab's
+  header folds to one line (the title, a version menu, **Source** and
+  **Board**) so the before/after starts near the top.
+  [Visual diffs](/guides/visual-diffs).
+
+- **Burf rests when nothing happens.** Left open with a couple of chats,
+  two Browser tabs and their drawers, a Preview tab and the Files panel,
+  the app asked the agent about 170 times a minute and kept its main
+  thread busy about 12% of the time, hidden or not, because every terminal
+  drew on every frame whether or not it showed. Now a terminal in a hidden
+  tab draws nothing and gets its output a second at a time (the agent
+  batches it), and one on screen draws only when something changes: with
+  a dozen terminals printing behind other tabs, the main thread went from
+  most of a core to about a tenth of one, typing in the one in front echoes in
+  about 30 ms instead of 400, and switching to one takes 30 ms instead of
+  400. At rest the app asks about 55 times a minute, and nothing while
+  the window is hidden or the Mac sleeps; it catches up the moment you
+  come back. Spinners and shimmers hold still once the window has been in
+  the background for 30 seconds. Closing a terminal now frees its memory
+  (it kept all of it before), a full Console drawer no longer redraws
+  every row for each new line, xterm.js (the fallback renderer) no longer
+  stalls with noisy terminals in background tabs, and an idle box's
+  daemon no longer wakes thirty times a second. `pnpm perf:soak` and
+  `pnpm perf:terminals` measure it; the smoke suite checks it stays so.
 
 - **Give a worktree a name you can read.** A worktree made from a pasted
   link is called `https-linear-app-acme`. **Rename…** in its menu,
@@ -44,6 +196,20 @@ again.
   or Shift-clicking across many messages copies all of them, and screen
   readers hear the chat as a list that says where each message is.
   [Conversation view](/guides/labs#conversation-view).
+
+- **The sidebar stays quick with hundreds of worktrees.** With 300
+  worktrees, each with an agent, every row used to build its right-click
+  menu, its ⋯ and + menus and its tooltips up front: about 1.2 s of work
+  as the app started, and 120 MB of memory. Now the sidebar and the folded
+  rail share one menu and one tooltip, and a row draws its buttons when
+  you first point at it or tab to it: the start costs no more than with a
+  handful of worktrees, memory is about 20 MB, and folding a project,
+  renaming a row or going to Home no longer draws every row again. Agents'
+  spinning and pulsing state icons rest while scrolled out of sight, which
+  kept the app busy even when nothing happened, and dragging the
+  sidebar's edge no longer restyles the whole window on every frame (it
+  stuttered at a few frames a second). Right-click, Shift+F10, the menu
+  key, F2 and double-click work as before.
 
 - **The Browser tab stops spinning once a page has loaded.** A page that
   adds a frame after it loads (a chat widget, an embed) used to leave the

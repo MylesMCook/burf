@@ -16,7 +16,7 @@ import {
 import { useSyncExternalStore } from "react";
 
 // Box monitor: how loaded each box is, sampled every 15 seconds while the app
-// is open (the status bar already shows each box's memory), with an hour of history and a notification when a box is about
+// is open and on screen (the status bar already shows each box's memory), with an hour of history and a notification when a box is about
 // to run out of memory or disk. Agents and dev servers are heavy; a box
 // that runs out stops them.
 
@@ -87,12 +87,19 @@ export default definePlugin((berth) => {
   };
 
   void sample();
-  const timer = setInterval(() => void sample(), EVERY);
+  // Not while the window is hidden: nobody is looking, and a hidden Burf
+  // shouldn't keep the Mac awake. Coming back samples at once.
+  const timer = setInterval(() => !document.hidden && void sample(), EVERY);
+  const back = () => !document.hidden && void sample();
+  document.addEventListener("visibilitychange", back);
 
   berth.addScreen({ id: "boxes", title: "Box monitor", description: "Memory, disk and load on every online box, sampled every 15 seconds while Burf is open.", Component: MonitorScreen });
   berth.addSidebarItem({ id: "boxes", title: "Box monitor", icon: "Activity", screen: "boxes" });
   berth.addCommand({ id: "boxes", title: "Show box monitor", group: "Boxes", run: () => berth.openScreen("boxes") });
-  return () => clearInterval(timer);
+  return () => {
+    clearInterval(timer);
+    document.removeEventListener("visibilitychange", back);
+  };
 });
 
 function check(berth: BerthPluginContext, warned: Set<string>, box: string, what: "memory" | "disk", frac: number) {

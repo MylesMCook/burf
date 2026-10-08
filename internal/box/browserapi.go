@@ -15,11 +15,14 @@ import (
 
 // The browser API, per worktree:
 //
-//	POST /v1/worktrees/{loc}/{wt}/browser/open      {url}: a path, a URL, or "" for the worktree's own
+//	POST /v1/worktrees/{loc}/{wt}/browser/open      {url, size, scale}: a path, a URL, or "" for the
+//	     worktree's own; size (1280x800, phone) and scale resize it first
+//	POST /v1/worktrees/{loc}/{wt}/browser/resize    {size, scale}: kept for the worktree, applied now
+//	     if its browser runs
 //	POST /v1/worktrees/{loc}/{wt}/browser/act       {action, target, value}
 //	POST /v1/worktrees/{loc}/{wt}/browser/snapshot  {full, delta, selector, depth}
 //	POST /v1/worktrees/{loc}/{wt}/browser/wait      {text, url, idle, timeout}
-//	POST /v1/worktrees/{loc}/{wt}/browser/shot      {el, full, width}
+//	POST /v1/worktrees/{loc}/{wt}/browser/shot      {el, full, width, native}
 //	POST /v1/worktrees/{loc}/{wt}/browser/eval      {js}
 //	GET  /v1/worktrees/{loc}/{wt}/browser/console?all=1
 //	GET  /v1/worktrees/{loc}/{wt}/browser/network
@@ -70,12 +73,22 @@ func (b *Box) browserFor(r *http.Request, start bool) (*browser, Location, Workt
 
 func (b *Box) browserOpen(w http.ResponseWriter, r *http.Request) error {
 	var req struct {
-		URL string `json:"url"`
+		URL   string `json:"url"`
+		Size  string `json:"size"`
+		Scale string `json:"scale"`
 	}
 	decode(r, &req)
 	loc, wt, err := b.browserTarget(r)
 	if err != nil {
 		return err
+	}
+	var size *Viewport
+	if req.Size != "" || req.Scale != "" {
+		v, err := b.Browsers.Viewport(wt.Path).Resolve(req.Size, req.Scale)
+		if err != nil {
+			return badRequest("%v", err)
+		}
+		size = &v
 	}
 	target := worktreeURL(b.Name, loc.Name, wt)
 	if target == "" {
@@ -96,6 +109,12 @@ func (b *Box) browserOpen(w http.ResponseWriter, r *http.Request) error {
 	if err := b.before(r, "browser.open", map[string]any{"location": loc.Name, "name": wt.Name, "path": wt.Path, "url": target}); err != nil {
 		return err
 	}
+	// The size first: a browser that starts, starts at it.
+	if size != nil {
+		if _, err := b.Browsers.Resize(r.Context(), wt.Path, *size); err != nil {
+			return err
+		}
+	}
 	br, _, _, err := b.browserFor(r, true)
 	if err != nil {
 		return err
@@ -105,6 +124,36 @@ func (b *Box) browserOpen(w http.ResponseWriter, r *http.Request) error {
 		return err
 	}
 	writeJSON(w, res)
+	return nil
+}
+
+// browserResize sets the worktree's browser size: kept until it changes,
+// applied at once to a browser that runs, else when one starts.
+func (b *Box) browserResize(w http.ResponseWriter, r *http.Request) error {
+	var req struct {
+		Size  string `json:"size"`
+		Scale string `json:"scale"`
+	}
+	if err := decode(r, &req); err != nil {
+		return err
+	}
+	_, wt, err := b.browserTarget(r)
+	if err != nil {
+		return err
+	}
+	v, err := b.Browsers.Viewport(wt.Path).Resolve(req.Size, req.Scale)
+	if err != nil {
+		return badRequest("%v", err)
+	}
+	br, err := b.Browsers.Resize(r.Context(), wt.Path, v)
+	if err != nil {
+		return err
+	}
+	text := "size: " + v.String() + "; no browser is open, so it opens at this size"
+	if br != nil {
+		text = "size: " + v.String()
+	}
+	writeJSON(w, map[string]any{"viewport": v, "size": v.String(), "running": br != nil, "text": text})
 	return nil
 }
 
@@ -172,16 +221,17 @@ func (b *Box) browserWait(w http.ResponseWriter, r *http.Request) error {
 
 func (b *Box) browserShot(w http.ResponseWriter, r *http.Request) error {
 	var req struct {
-		El    string `json:"el"`
-		Full  bool   `json:"full"`
-		Width int    `json:"width"`
+		El     string `json:"el"`
+		Full   bool   `json:"full"`
+		Width  int    `json:"width"`
+		Native bool   `json:"native"`
 	}
 	decode(r, &req)
 	br, _, _, err := b.browserFor(r, false)
 	if err != nil {
 		return err
 	}
-	res, err := br.Shot(r.Context(), req.El, req.Full, req.Width)
+	res, err := br.Shot(r.Context(), req.El, req.Full, req.Width, req.Native)
 	if err != nil {
 		return badRequest("%v", err)
 	}
@@ -237,7 +287,8 @@ func (b *Box) browserStatus(w http.ResponseWriter, r *http.Request) error {
 	br := b.Browsers.Lookup(wt.Path)
 	if br == nil {
 		// Why one can't start, if it can't: cheap, without starting it.
-		res := map[string]any{"running": false, "text": "no browser open"}
+		v := b.Browsers.Viewport(wt.Path)
+		res := map[string]any{"running": false, "viewport": v, "size": v.String(), "text": "no browser open; it opens at " + v.String()}
 		if h := b.Browsers.Health(); h.State != "ok" {
 			res["health"], res["text"] = h, "no browser open; "+h.Text
 		}
@@ -245,11 +296,11 @@ func (b *Box) browserStatus(w http.ResponseWriter, r *http.Request) error {
 		return nil
 	}
 	st := br.status()
-	text := "open: " + st.URL
+	text := "open: " + st.URL + " · " + st.Size
 	if st.RSS > 0 {
 		text += " (" + strconvMB(st.RSS) + ")"
 	}
-	writeJSON(w, map[string]any{"running": true, "status": st, "text": text})
+	writeJSON(w, map[string]any{"running": true, "status": st, "viewport": st.Viewport, "size": st.Size, "text": text})
 	return nil
 }
 
@@ -303,7 +354,7 @@ func (b *Box) browserScreencast(w http.ResponseWriter, r *http.Request) error {
 	}
 	// At most 8 frames a second reach the laptop, and the last of a burst
 	// always does: the page where it came to rest.
-	const every = 125 * time.Millisecond
+	const every = castEvery
 	var (
 		last    time.Time
 		pending *frame
@@ -393,6 +444,7 @@ func (b *Box) browserAllow(w http.ResponseWriter, r *http.Request) error {
 func (b *Box) mountBrowser(route func(string, func(http.ResponseWriter, *http.Request) error)) {
 	p := "/v1/worktrees/{loc}/{wt}/browser/"
 	route("POST "+p+"open", b.browserOpen)
+	route("POST "+p+"resize", b.browserResize)
 	route("POST "+p+"act", b.browserAct)
 	route("POST "+p+"snapshot", b.browserSnapshot)
 	route("POST "+p+"wait", b.browserWait)
@@ -411,4 +463,5 @@ func (b *Box) mountBrowser(route func(string, func(http.ResponseWriter, *http.Re
 	route("PUT /v1/browser/settings", b.putBrowserSettings)
 	route("POST /v1/browser/check", b.checkBrowser)
 	route("POST /v1/browser/reap", b.browserReap)
+	b.mountShots(route)
 }

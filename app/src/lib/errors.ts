@@ -86,6 +86,10 @@ export function explain(err: unknown, ctx: { box?: string } = {}): Explained {
     return out(`${box ?? "This box"} needs an update`, "It runs an older berthd that doesn't have this yet. Updating keeps its agents running.", "update-box");
   // A box without tmux answers 503 too: it is there, but can't run agents.
   if (code === "tmux_missing" || /tmux is not installed/.test(raw)) return out(`tmux isn't installed${on}`, "Burf runs agents inside tmux. Install it on the box, then try again.", "retry");
+  // A read that got no answer in time (lib/net.ts): the link is slow or
+  // has just dropped; the agent says which once it has checked.
+  if (code === "box_timeout" || status === 504)
+    return out(`${box ?? "The box"} isn't answering`, "The connection may be slow or down. Burf keeps trying; try again in a moment.", "retry");
   // The laptop can't get through.
   if (code === "box_unreachable" || status === 502 || status === 503 || /dial tcp|i\/o timeout|connection refused|no route to host|network is unreachable|connection reset|broken pipe|context deadline exceeded|is offline|unexpected EOF|^EOF$/i.test(raw))
     return out(`Can't reach ${it}`, "It may be asleep or offline. Burf reconnects on its own when it's back.", "reconnect");

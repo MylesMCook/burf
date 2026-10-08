@@ -56,7 +56,7 @@ test("⌘T on Home asks which box, then opens a terminal in its home over Home",
 
   // Closing the last one leaves plain Home.
   await tab.click();
-  await tab.getByRole("button", { name: /^Close/ }).click();
+  await tab.locator("[data-tab-close]").click();
   const confirm = page.getByRole("alertdialog");
   if (await confirm.isVisible().catch(() => false)) await confirm.getByRole("button", { name: /Close/ }).click();
   await expect(page.locator("[data-home-tab]")).toHaveCount(0);

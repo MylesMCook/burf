@@ -122,7 +122,8 @@ test("the first message is sent once and appears in the conversation", async ({ 
   await reply.press("Enter");
   await expect(app.chat.locator("[data-kind=user]")).toContainText("Write a focused regression test");
   await expect(reply).toHaveValue("");
-  expect(requests).toEqual([{ text: "Write a focused regression test", enter: true, when: "idle" }]);
+  // One request, carrying the key that lets the box drop a deliberate resend of the same text.
+  expect(requests).toEqual([{ text: "Write a focused regression test", enter: true, when: "idle", idem_key: expect.stringMatching(/^app-/) }]);
 });
 
 test("a failed first send restores the draft without retrying automatically", async ({ app }) => {

@@ -238,8 +238,11 @@
 }
 
 @layer base {
+  /* The browser's own focus outline, where a control draws no ring of its
+     own, is the theme's ring at full strength: 3:1 on every surface
+     (themes/contrast.ts). */
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border outline-ring;
     }
   html, body {
     overscroll-behavior: none;
@@ -275,6 +278,20 @@
     scrollbar-width: thin;
     scrollbar-color: color-mix(in srgb, var(--foreground) 16%, transparent) transparent;
   }
+}
+
+/* The sidebar's width as its edge is dragged (sidebar/resize-handle.tsx),
+   set on the sidebar itself: not inherited, so a frame of the drag
+   restyles the sidebar alone, not every element under it. */
+@property --sidebar-live {
+  syntax: "*";
+  inherits: false;
+}
+
+/* A sidebar or rail row out of sight (RowMenus in sidebar/actions.tsx):
+   its agent's glyph stops spinning or pulsing until it is scrolled back. */
+[data-offscreen] * {
+  animation-play-state: paused !important;
 }
 
 /* xterm.js: let the theme's background show through, and keep the
@@ -347,4 +364,32 @@
 }
 .berth-resizing iframe {
   pointer-events: none;
+}
+
+/* Reduce motion (System Settings → Accessibility → Display): animations
+   and transitions finish at once, so spinners, shimmer, pulses and the
+   Live dot hold still and drawers and dialogs appear without sliding.
+   Components with their own still frame (the pixel loader, the harbour,
+   the onboarding art) say so in their stylesheets; this catches the rest.
+   Scrolls the app starts itself jump too (lib/motion.ts). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* The window in the background for a while, or hidden (lib/still.ts): the
+   endless decorative animations hold still. Only these: a toast or a
+   menu's own entrance still plays, so nothing waits on focus to appear. */
+:root[data-berth-still] :is(.animate-spin, .animate-ping, .animate-pulse, .cv-shimmer),
+:root[data-berth-still] :is(.animate-spin, .animate-ping, .animate-pulse, .cv-shimmer)::before,
+:root[data-berth-still] :is(.animate-spin, .animate-ping, .animate-pulse, .cv-shimmer)::after {
+  animation-play-state: paused !important;
 }

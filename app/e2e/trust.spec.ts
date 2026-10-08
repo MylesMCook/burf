@@ -67,8 +67,8 @@ test("Codex folder access interrupts a falsely running empty chat without granti
   await reply.press("Enter");
   await expect(reply).toHaveValue("Do not send this into the trust question");
   expect(sends).toEqual([]);
-  // Attachment may resize its terminal, but it must never send a key.
-  expect(inputs.every((message) => typeof message === "string" && JSON.parse(message).type === "resize")).toBe(true);
+  // Attachment may size and pace its terminal (text control messages), but it must never send a key (binary).
+  expect(inputs.every((message) => typeof message === "string" && ["resize", "pace"].includes(JSON.parse(message).type))).toBe(true);
 });
 
 for (const theme of ["berth-dark", "berth-light"]) {

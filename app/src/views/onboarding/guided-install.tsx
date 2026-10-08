@@ -90,7 +90,7 @@ export function GuidedInstall({ target, onClose, onReady, readyLabel, team }: { 
     >
       <DialogPrimitive.Portal>
         <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-background" />
-        <DialogPrimitive.Popup data-testid="guided-install" data-stage={stage} className="fixed inset-0 z-50 flex flex-col bg-background text-foreground outline-none">
+        <DialogPrimitive.Popup aria-label={`Set up ${target?.host ?? "a box"}`} data-testid="guided-install" data-stage={stage} className="fixed inset-0 z-50 flex flex-col bg-background text-foreground outline-none">
           {target && stage === "plan" && <PlanStage target={target} agents={agents} onAgents={setAgents} onStart={start} onClose={onClose} team={team} />}
           {target && stage === "run" && (
             <RunStage

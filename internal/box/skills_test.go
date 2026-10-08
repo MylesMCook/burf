@@ -19,7 +19,7 @@ func TestSkillsInstallForTheUserAndForOneProject(t *testing.T) {
 
 	var rep SkillsReport
 	call(t, c, "GET", "/v1/skills", "", nil, &rep)
-	if len(rep.Skills) != 5 || rep.Skills[0].User["claude"] != integrations.SkillMissing || rep.Skills[0].Project != nil {
+	if len(rep.Skills) != 7 || rep.Skills[0].User["claude"] != integrations.SkillMissing || rep.Skills[0].Project != nil {
 		t.Fatalf("report = %+v", rep)
 	}
 

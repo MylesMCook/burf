@@ -164,7 +164,7 @@ export function ReviewView() {
         </Empty>
       ) : (
         <div className="flex min-h-0 flex-1">
-          <aside className="flex w-80 shrink-0 flex-col border-r max-xl:w-64">
+          <aside aria-label="Work to review" className="flex w-80 shrink-0 flex-col border-r max-xl:w-64">
             <ul className="min-h-0 flex-1 overflow-y-auto p-2" aria-label="Work to review">
               {entries.map((e) => (
                 <Row key={e.key} entry={e} active={e.key === selected?.key} onSelect={() => setSelectedKey(e.key)} onOpen={() => void focusSession(e.box, e.session)} />
@@ -247,19 +247,19 @@ function Row({ entry, active, onSelect, onOpen }: { entry: ReviewEntry; active: 
         <span className="truncate pl-5.5 text-[11px] text-muted-foreground">
           {work && `${name} · `}
           {entry.box} · {entry.location}
-          {entry.branch && <span className="opacity-70"> · {entry.branch}</span>}
+          {entry.branch && <span> · {entry.branch}</span>}
         </span>
         <span className="flex min-w-0 items-center gap-2 overflow-hidden whitespace-nowrap pl-5.5 text-[11px] text-muted-foreground">
           <span>
             {files} file{files === 1 ? "" : "s"}
           </span>
           <span className="font-mono tabular-nums">
-            <span className="text-success">+{added}</span> <span className="text-destructive">−{removed}</span>
+            <span className="text-success-foreground">+{added}</span> <span className="text-destructive-foreground">−{removed}</span>
           </span>
           {!entry.files.length && entry.base_ahead > 0 && <span>committed</span>}
           {run && run.status !== "running" && (
             <Tip label={`Flow ${run.flow} ${run.status}`}>
-              <span className={cn("inline-flex items-center gap-0.5", run.status === "succeeded" ? "text-success" : "text-destructive")}>
+              <span className={cn("inline-flex items-center gap-0.5", run.status === "succeeded" ? "text-success-foreground" : "text-destructive-foreground")}>
                 {run.status === "succeeded" ? <CheckIcon aria-label="passed" className="size-3" /> : <XIcon aria-label="failed" className="size-3" />}
                 check
               </span>

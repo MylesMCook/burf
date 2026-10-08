@@ -104,7 +104,7 @@ test("uncertain remote sends retain the draft and reconnect never replays it", a
     const draft = app.page.getByRole("textbox", { name: "Message Codex" });
     await draft.fill("Do not replay");
     await app.page.getByRole("button", { name: "Send message", exact: true }).click();
-    await expect(app.page.getByRole("alert")).toContainText("may have arrived");
+    await expect(app.page.locator('[role="alert"]:not([data-testid^="announce"])')).toContainText("may have arrived");
     await expect(draft).toHaveValue("Do not replay");
     f.control.offline = true;
     await app.page.getByRole("button", { name: "Refresh chat", exact: true }).click();

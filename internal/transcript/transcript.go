@@ -61,6 +61,11 @@ type Item struct {
 	URL         string `json:"url,omitempty"`
 	Description string `json:"description,omitempty"`
 	Updated     bool   `json:"updated,omitempty"`
+	// Local is an artifact kept on the box (`berthd artifact add`,
+	// localartifacts.go) instead of a page: its id, and Version the
+	// version the command made.
+	Local   string `json:"local,omitempty"`
+	Version int    `json:"version,omitempty"`
 	// A question item (questions.go): the questions the agent asked with
 	// its own form, and once answered, the answer to each (Done; Error when
 	// it was not answered).

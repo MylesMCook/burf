@@ -107,6 +107,9 @@ func (h *runHost) headless(ctx context.Context, x *runs.StepCtx) runs.Result {
 			args = append(args, "--add-dir", shellQuote(d))
 		}
 		command := strings.Join(args, " ")
+		// The agent's CLI is found with the PATH it was found with, as an
+		// agent's own session finds it.
+		command = withPATH(sessionShell(), launchPATH("", agent), command)
 		where := "headless"
 		if l, wt, ok := b.worktreeAt(ctx, dir); ok {
 			where = l.Name + "/" + wt.Name

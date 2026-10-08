@@ -10,6 +10,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -19,6 +20,7 @@ import (
 	"time"
 
 	box "github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/debugserver"
 	"github.com/MylesMCook/burf/internal/doctor"
 	"github.com/MylesMCook/burf/internal/events"
 	"github.com/MylesMCook/burf/internal/forward"
@@ -38,6 +40,10 @@ const (
 	pingTimeout           = 8 * time.Second
 	// A tick arriving this much later than scheduled means the laptop slept.
 	wakeSkew = 20 * time.Second
+	// A box's event stream that ends is followed again after a wait that
+	// starts here and doubles up to relayRetryMax (with jitter).
+	relayRetryBase = time.Second
+	relayRetryMax  = 30 * time.Second
 )
 
 const (
@@ -152,6 +158,11 @@ type BoxStatus struct {
 	Since       time.Time `json:"since"`
 	// Local marks a box on this computer itself (Use this Mac).
 	Local bool `json:"local,omitempty"`
+	// RetryAt is when the agent next tries a box that isn't online, and
+	// Attempts how many tries in a row have failed: the app counts down to
+	// it ("Reconnecting to devl… next try in 6s").
+	RetryAt  *time.Time `json:"retry_at,omitempty"`
+	Attempts int        `json:"attempts,omitempty"`
 }
 
 type ForwardStatus struct {
@@ -219,6 +230,16 @@ type boxState struct {
 	status BoxStatus
 	// stopRelay ends the goroutine relaying this box's events, if running.
 	stopRelay context.CancelFunc
+	// A box that isn't online is tried again with backoff (backoff.go):
+	// fails in a row, the next try (monotonic time) and its timer; checking
+	// while a check is under way, so a slow one isn't doubled.
+	fails    int
+	retryAt  time.Time
+	retry    *time.Timer
+	checking bool
+	// back wakes the event relay waiting out its backoff when the box
+	// answers again.
+	back chan struct{}
 }
 
 type runningForward struct {
@@ -303,6 +324,8 @@ func Run(ctx context.Context, cfg Config) error {
 
 	handler := a.api(cancel)
 	a.startUI(ctx, handler)
+	// BERTH_DEBUG_ADDR: goroutines, open files and profiles, for measuring.
+	debugserver.Start(ctx, a.cfg.Log.Printf)
 	api := &http.Server{Handler: handler, ReadHeaderTimeout: 10 * time.Second}
 	stop := context.AfterFunc(ctx, func() { api.Close() })
 	defer stop()
@@ -351,6 +374,15 @@ func (a *Agent) startProxy(ctx context.Context) {
 		Route:    a.route,
 		Worktree: a.worktree,
 		BoxAlias: a.boxAlias,
+		// An artifact's page, for its own origin (proxy/artifact.go): over
+		// this laptop's paired channel, so the page never holds a token.
+		Artifact: func(ctx context.Context, name, id, version string) (*http.Response, error) {
+			c, ok := a.client(name)
+			if !ok {
+				return nil, fmt.Errorf("no paired box named %s", name)
+			}
+			return c.DoWithHeader(ctx, http.MethodGet, "/v1/artifacts/"+url.PathEscape(id)+"/v/"+url.PathEscape(version), nil, http.Header{box.OriginHeader: {"proxy"}})
+		},
 	}
 	srv := &http.Server{Handler: a.proxy, ReadHeaderTimeout: 30 * time.Second}
 	context.AfterFunc(ctx, func() { srv.Close() })
@@ -418,6 +450,7 @@ func (a *Agent) sync() {
 		a.clients[p.Name] = &boxState{
 			peer:   p,
 			client: wire.NewClientVia(a.id, p, a.dialerFor(p.Network)),
+			back:   make(chan struct{}, 1),
 			status: BoxStatus{Name: p.Name, Address: p.Address, Network: p.Network, Fingerprint: p.Fingerprint.String(), State: StateConnecting, Since: a.cfg.Now()},
 		}
 	}
@@ -433,13 +466,40 @@ func (st *boxState) close() {
 	if st.stopRelay != nil {
 		st.stopRelay()
 	}
+	if st.retry != nil {
+		st.retry.Stop()
+	}
 	st.client.Reset()
+}
+
+// scheduleRetryLocked sets when a box that failed its check is tried next:
+// soon at first (a fifth of the health interval), doubling to four fifths
+// of it, with jitter (±20%, so at most the interval itself), so a short
+// blip reconnects in seconds and a box that stays away is tried at least
+// as often as before. a.mu is held.
+func (a *Agent) scheduleRetryLocked(name string, st *boxState) {
+	st.fails++
+	d := backoff(st.fails, a.cfg.HealthInterval/5, a.cfg.HealthInterval*4/5)
+	st.retryAt = time.Now().Add(d)
+	at := a.cfg.Now().Add(d)
+	st.status.RetryAt, st.status.Attempts = &at, st.fails
+	if st.retry != nil {
+		st.retry.Stop()
+	}
+	st.retry = time.AfterFunc(d, func() {
+		a.mu.Lock()
+		current := a.clients[name] == st
+		a.mu.Unlock()
+		if current && a.ctx.Err() == nil {
+			a.check(a.ctx, name, st)
+		}
+	})
 }
 
 // relay republishes a box's events on the agent's bus under the laptop's name
 // for the box, so hooks and the app see one stream for every box. The stream
 // reconnects until the box is removed.
-func (a *Agent) relay(ctx context.Context, name string, c *wire.Client) {
+func (a *Agent) relay(ctx context.Context, name string, c *wire.Client, back <-chan struct{}) {
 	bc := box.NewClient(c)
 	// The last event seen: a reconnect (after sleep, say) asks the box's
 	// journal for what it missed, up to the box's replay limit. It is kept
@@ -459,9 +519,12 @@ func (a *Agent) relay(ctx context.Context, name string, c *wire.Client) {
 			}
 		}
 	}()
+	attempt := 0
 	for ctx.Err() == nil {
 		first := true
+		got := false
 		bc.EventsSince(ctx, last, func(e events.Event) {
+			got = true
 			if e.Seq > 0 {
 				if e.Seq <= last && !(first && last > 0) {
 					return
@@ -475,10 +538,19 @@ func (a *Agent) relay(ctx context.Context, name string, c *wire.Client) {
 			e.Box = name
 			a.bus.Publish(e)
 		})
+		// The stream ended: the box went away, or the link dropped. Try
+		// again after a short wait, longer each time nothing came through,
+		// with jitter, from the last event seen (EventsSince replays the
+		// rest from the box's journal).
+		if got {
+			attempt = 0
+		}
+		attempt++
 		select {
 		case <-ctx.Done():
 			return
-		case <-time.After(5 * time.Second):
+		case <-time.After(backoff(attempt, relayRetryBase, relayRetryMax)):
+		case <-back:
 		}
 	}
 }
@@ -497,13 +569,40 @@ func (a *Agent) healthLoop(ctx context.Context) {
 		case <-a.wake:
 		}
 		now := a.cfg.Now()
-		if now.Sub(last) > interval+wakeSkew {
+		woke := now.Sub(last) > interval+wakeSkew
+		if woke {
 			a.cfg.Log.Printf("clock jumped %s; the laptop slept, reconnecting every box", now.Sub(last).Round(time.Second))
 			a.resetAll()
 		}
 		last = now
-		a.checkAll(ctx)
+		// Boxes that are away are tried on their own backoff, except right
+		// after a wake, when every box is tried at once.
+		a.checkBoxes(ctx, woke, "")
 	}
+}
+
+// slowAnswer is how long a request to a box may wait for its answer to
+// begin before the box is checked, in case it went away.
+const slowAnswer = 5 * time.Second
+
+// away says whether the agent knows a box is offline, how to say so, and
+// how long until it tries the box again.
+func (a *Agent) away(name string) (string, time.Duration, bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	st, ok := a.clients[name]
+	if !ok || st.status.State != StateOffline {
+		return "", 0, false
+	}
+	retry := time.Until(st.retryAt)
+	msg := name + " is offline; Burf is reconnecting"
+	if retry > 0 {
+		msg += fmt.Sprintf(" (next try in %ds)", int(retry.Round(time.Second)/time.Second))
+	}
+	if st.status.Error != "" {
+		msg += ": " + st.status.Error
+	}
+	return msg, retry, true
 }
 
 // checkSoon asks the health loop to run now instead of at its next tick.
@@ -523,12 +622,23 @@ func (a *Agent) resetAll() {
 	}
 }
 
-func (a *Agent) checkAll(ctx context.Context) {
+func (a *Agent) checkAll(ctx context.Context) { a.checkBoxes(ctx, true, "") }
+
+// checkBoxes checks every box (or only one), now. Unless forced, a box that
+// is away waits for its own retry (scheduleRetry) rather than the tick.
+func (a *Agent) checkBoxes(ctx context.Context, force bool, only string) {
 	a.sync()
 	a.retryFailedForwards(ctx)
 	a.mu.Lock()
 	boxes := make(map[string]*boxState, len(a.clients))
+	now := time.Now()
 	for name, st := range a.clients {
+		if only != "" && name != only {
+			continue
+		}
+		if !force && st.status.State != StateOnline && now.Before(st.retryAt) {
+			continue
+		}
 		boxes[name] = st
 	}
 	a.mu.Unlock()
@@ -546,6 +656,18 @@ func (a *Agent) checkAll(ctx context.Context) {
 }
 
 func (a *Agent) check(ctx context.Context, name string, st *boxState) {
+	a.mu.Lock()
+	if st.checking {
+		a.mu.Unlock()
+		return
+	}
+	st.checking = true
+	a.mu.Unlock()
+	defer func() {
+		a.mu.Lock()
+		st.checking = false
+		a.mu.Unlock()
+	}()
 	ctx, cancel := context.WithTimeout(ctx, pingTimeout)
 	defer cancel()
 	start := time.Now()
@@ -575,8 +697,14 @@ func (a *Agent) check(ctx context.Context, name string, st *boxState) {
 	st.status.LatencyMs = 0
 	if err != nil {
 		st.status.Error = err.Error()
+		a.scheduleRetryLocked(name, st)
 	} else {
 		st.status.LatencyMs = latency.Milliseconds()
+		st.fails, st.retryAt, st.status.RetryAt, st.status.Attempts = 0, time.Time{}, nil, 0
+		if st.retry != nil {
+			st.retry.Stop()
+			st.retry = nil
+		}
 	}
 	a.mu.Unlock()
 
@@ -593,13 +721,17 @@ func (a *Agent) check(ctx context.Context, name string, st *boxState) {
 		if st.stopRelay == nil && a.clients[name] == st {
 			relayCtx, stop := context.WithCancel(a.ctx)
 			st.stopRelay = stop
-			go a.relay(relayCtx, name, st.client)
+			go a.relay(relayCtx, name, st.client, st.back)
 		}
 		a.mu.Unlock()
 		go a.learnSelfName(a.ctx, name, st.client)
 	}
 	switch state {
 	case StateOnline:
+		select {
+		case st.back <- struct{}{}:
+		default:
+		}
 		a.proxy.ResetBox(name)
 		a.publish(Event{Type: EventBoxConnected, Box: name})
 		a.queue.kick(name)

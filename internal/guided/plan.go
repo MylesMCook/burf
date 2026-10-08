@@ -103,8 +103,13 @@ if command -v sudo >/dev/null 2>&1; then
   echo 'sudo yes'
   if sudo -n true >/dev/null 2>&1; then echo 'sudo_nopasswd yes'; fi
 fi
+# An agent counts wherever an installer puts it, npm's under nvm, fnm,
+# volta or bun too: SSH's shell reads no ~/.bashrc, where nvm lives.
 for a in claude codex cursor-agent opencode gemini; do
-  if command -v "$a" >/dev/null 2>&1 || [ -x "$B/$a" ] || { [ "$a" = opencode ] && [ -x "$HOME/.opencode/bin/opencode" ]; }; then echo "agent $a"; fi
+  if command -v "$a" >/dev/null 2>&1 || [ -x "$B/$a" ] || { [ "$a" = opencode ] && [ -x "$HOME/.opencode/bin/opencode" ]; }; then echo "agent $a"; continue; fi
+  for p in "$HOME"/.nvm/versions/node/*/bin/"$a" "$HOME"/.local/share/fnm/aliases/default/bin/"$a" "$HOME/.volta/bin/$a" "$HOME/.bun/bin/$a" "$HOME/.npm-global/bin/$a" "/usr/local/bin/$a" "/opt/homebrew/bin/$a"; do
+    if [ -x "$p" ]; then echo "agent $a"; break; fi
+  done
 done
 if [ -x "$B/berthd" ]; then
   echo "berthd $("$B/berthd" version 2>/dev/null | cut -d' ' -f2)"

@@ -22,6 +22,7 @@ import (
 
 	"github.com/MylesMCook/burf/internal/box"
 	"github.com/MylesMCook/burf/internal/boxcmd"
+	"github.com/MylesMCook/burf/internal/debugserver"
 	"github.com/MylesMCook/burf/internal/doctor"
 	"github.com/MylesMCook/burf/internal/events"
 	"github.com/MylesMCook/burf/internal/hooks"
@@ -369,9 +370,13 @@ func serve(b boxHome, args []string) error {
 	bx.BrowserProxies = &box.BrowserProxies{Path: filepath.Join(b.dir, "browser-proxies.json")}
 	defer bx.BrowserProxies.CloseAll()
 	bx.NewBrowsers(filepath.Join(b.dir, "browser"), rc.MaxBrowsers)
+	bx.ShotsDir = filepath.Join(b.dir, "shots")
 	// agent-browser sessions (Vercel's CLI) go with the burf session that
 	// started them.
 	bx.AgentBrowsers = box.NewAgentBrowsers(bx.Sessions)
+	bx.Artifacts = &box.ArtifactStore{Dir: filepath.Join(b.dir, "artifacts"), Events: bus, Box: hostname}
+	go bx.Artifacts.Run(ctx)
+	go bx.RunShots(ctx)
 	bx.Team = &box.TeamRunner{Dir: filepath.Join(b.dir, "team")}
 	defer bx.Team.Stop()
 	bx.Mount(s)
@@ -454,6 +459,8 @@ func serve(b boxHome, args []string) error {
 	}()
 	go s.ServeLocal(ctx, local)
 	go hookRunner.Run(ctx, bus)
+	// BERTH_DEBUG_ADDR: goroutines, open files and profiles, for measuring.
+	debugserver.Start(ctx, logger.Printf)
 
 	logger.Printf("berthd serving %s as %q (%s); local API %s", ln.Addr(), hostname, id.Fingerprint().Short(), b.socket())
 	return s.Serve(ctx, ln)

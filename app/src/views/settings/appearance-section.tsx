@@ -38,7 +38,7 @@ export function AppearanceSection() {
         <div className="mb-2 flex items-end gap-3">
           <div className="min-w-0 flex-1">
             <h2 className="font-medium text-[13px] text-muted-foreground">Theme</h2>
-            <p className="mt-0.5 text-muted-foreground/80 text-xs">
+            <p className="mt-0.5 text-muted-foreground text-xs">
               Add your own as JSON in <Code>~/.berth/themes/</Code>, or install a plugin that ships one.
             </p>
           </div>
@@ -149,7 +149,9 @@ function ThemeCard({ theme, selected, onSelect }: { theme: Theme; selected: bool
       data-theme-id={theme.id}
       className={cn("group overflow-hidden rounded-xl border text-left outline-none transition-[box-shadow,border-color] focus-visible:ring-2 focus-visible:ring-ring", selected ? "border-ring ring-1 ring-ring" : "hover:border-foreground/25")}
     >
-      <div className="relative h-[88px]">
+      {/* A picture of the theme (its name says which): its sample text is in
+          the theme's terminal colours, which the axe spec leaves out. */}
+      <div aria-hidden data-a11y-skip className="relative h-[88px]">
         <Preview theme={theme} />
         <Dots theme={theme} />
       </div>

@@ -3,10 +3,12 @@ package box
 import (
 	"context"
 	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -59,6 +61,7 @@ type Browsers struct {
 	Idle time.Duration
 
 	mu   sync.Mutex
+	vpMu sync.Mutex // viewports.json
 	b    *Box
 	open map[string]*browser // worktree path →
 	stop chan struct{}
@@ -81,11 +84,14 @@ type netFailure struct {
 	text string
 }
 
+// frame is a screencast frame: a JPEG of the page, w×h CSS pixels at the
+// page's scale (the image itself is up to w·scale × h·scale).
 type frame struct {
-	Data   string `json:"data"`
-	Width  int    `json:"w"`
-	Height int    `json:"h"`
-	URL    string `json:"url,omitempty"`
+	Data   string  `json:"data"`
+	Width  int     `json:"w"`
+	Height int     `json:"h"`
+	Scale  float64 `json:"scale,omitempty"`
+	URL    string  `json:"url,omitempty"`
 }
 
 type browser struct {
@@ -122,6 +128,9 @@ type browser struct {
 	watchers    map[chan frame]struct{}
 	casting     bool
 	refusedSeen int
+	viewport    Viewport
+	recapturing bool // a sharp frame is being taken
+	dirty       bool // and the page changed again since
 }
 
 // NewBrowsers makes the box's browser manager.
@@ -151,6 +160,7 @@ func (m *Browsers) Run(ctx context.Context) {
 			if ok && e.Type == "worktree.removed" {
 				if p, _ := e.Data["path"].(string); p != "" {
 					m.Close(p, "its worktree was removed")
+					m.forgetViewport(p)
 					if m.b.BrowserProxies != nil {
 						m.b.BrowserProxies.Close(p)
 					}
@@ -393,11 +403,11 @@ func (m *Browsers) launch(ctx context.Context, loc Location, wt Worktree) (*brow
 	if err != nil {
 		return nil, err
 	}
-	br, err := m.start(ctx, bin, px.Addr())
+	br, err := m.start(ctx, bin, px.Addr(), wt.Path, m.Viewport(wt.Path))
 	if err != nil {
 		return nil, err
 	}
-	br.path, br.location, br.worktree = wt.Path, loc.Name, wt.Name
+	br.location, br.worktree = loc.Name, wt.Name
 	return br, nil
 }
 
@@ -413,7 +423,7 @@ func (m *Browsers) Check(ctx context.Context) error {
 		if err == nil {
 			var br *browser
 			// A proxy that refuses everything: the page is about:blank.
-			if br, err = m.start(ctx, bin, "127.0.0.1:9"); err == nil {
+			if br, err = m.start(ctx, bin, "127.0.0.1:9", "", DefaultViewport); err == nil {
 				br.shutdown()
 			}
 		}
@@ -433,8 +443,9 @@ func (m *Browsers) simulatedSandbox() error {
 	return sandboxError("1")
 }
 
-// start runs Chromium with its only way out through proxy.
-func (m *Browsers) start(ctx context.Context, bin, proxy string) (*browser, error) {
+// start runs Chromium with its only way out through proxy, for the
+// worktree at path (where downloads go), at the size v.
+func (m *Browsers) start(ctx context.Context, bin, proxy, path string, v Viewport) (*browser, error) {
 	profile, err := os.MkdirTemp(filepath.Join(m.Dir, "profiles"), "p-")
 	if err != nil {
 		os.MkdirAll(filepath.Join(m.Dir, "profiles"), 0o700)
@@ -442,26 +453,8 @@ func (m *Browsers) start(ctx context.Context, bin, proxy string) (*browser, erro
 			return nil, err
 		}
 	}
-	args := []string{
-		"--headless=new", "--remote-debugging-pipe", "--user-data-dir=" + profile,
-		"--proxy-server=" + proxy, "--proxy-bypass-list=<-loopback>",
-		"--no-first-run", "--no-default-browser-check", "--disable-background-networking", "--disable-sync",
-		"--disable-extensions", "--disable-component-update", "--disable-default-apps", "--mute-audio",
-		"--disable-features=DnsOverHttps,Translate,MediaRouter,OptimizationHints,AutofillServerCommunication,CertificateTransparencyComponentUpdater,InterestFeedContentSuggestions,PrivacySandboxSettings4",
-		"--dns-over-https-mode=off", "--disable-client-side-phishing-detection", "--disable-domain-reliability", "--no-pings", "--disable-breakpad",
-		"--force-webrtc-ip-handling-policy=disable_non_proxied_udp", "--window-size=1280,800", "--hide-scrollbars",
-	}
-	if runtime.GOOS == "linux" {
-		args = append(args, "--disable-dev-shm-usage")
-	}
-	// Ubuntu 24.04 and others stop Chromium making the user namespaces its
-	// sandbox needs. The owner can choose to run without it (the box's
-	// setting, or BERTH_BROWSER_NO_SANDBOX): the browser is still confined
-	// to its worktree by the proxy.
-	if off, _ := m.noSandbox(); off {
-		args = append(args, "--no-sandbox")
-	}
-	args = append(args, "about:blank")
+	off, _ := m.noSandbox()
+	args := append(chromiumArgs(profile, proxy, off, v), "about:blank")
 	toChrome, ours, err := os.Pipe() // chrome reads fd 3
 	if err != nil {
 		return nil, err
@@ -482,7 +475,7 @@ func (m *Browsers) start(ctx context.Context, bin, proxy string) (*browser, erro
 	}
 	toChrome.Close()
 	fromChrome.Close()
-	br := &browser{m: m, cmd: cmd, profile: profile, started: time.Now(), lastUsed: time.Now(),
+	br := &browser{m: m, cmd: cmd, path: path, viewport: v, profile: profile, started: time.Now(), lastUsed: time.Now(),
 		done: make(chan struct{}), refs: map[int64]string{}, reqs: map[string]string{}, inflight: map[string]bool{}, watchers: map[chan frame]struct{}{}}
 	br.cdp = newCDP(ours, theirs, br.onEvent)
 	go func() {
@@ -504,6 +497,32 @@ func (m *Browsers) start(ctx context.Context, bin, proxy string) (*browser, erro
 		return nil, fmt.Errorf("starting Chromium: %w", err)
 	}
 	return br, nil
+}
+
+// chromiumArgs is how berthd runs Chromium, the agents' browser and the
+// shots browser alike: headless, its only way out through proxy, without
+// its background services, with a window of size v.
+func chromiumArgs(profile, proxy string, noSandbox bool, v Viewport) []string {
+	args := []string{
+		"--headless=new", "--remote-debugging-pipe", "--user-data-dir=" + profile,
+		"--proxy-server=" + proxy, "--proxy-bypass-list=<-loopback>",
+		"--no-first-run", "--no-default-browser-check", "--disable-background-networking", "--disable-sync",
+		"--disable-extensions", "--disable-component-update", "--disable-default-apps", "--mute-audio",
+		"--disable-features=DnsOverHttps,Translate,MediaRouter,OptimizationHints,AutofillServerCommunication,CertificateTransparencyComponentUpdater,InterestFeedContentSuggestions,PrivacySandboxSettings4",
+		"--dns-over-https-mode=off", "--disable-client-side-phishing-detection", "--disable-domain-reliability", "--no-pings", "--disable-breakpad",
+		"--force-webrtc-ip-handling-policy=disable_non_proxied_udp", fmt.Sprintf("--window-size=%d,%d", v.Width, v.Height), "--hide-scrollbars",
+	}
+	if runtime.GOOS == "linux" {
+		args = append(args, "--disable-dev-shm-usage")
+	}
+	// Ubuntu 24.04 and others stop Chromium making the user namespaces its
+	// sandbox needs. The owner can choose to run without it (the box's
+	// setting, or BERTH_BROWSER_NO_SANDBOX): the browser is still confined
+	// to its worktree by the proxy.
+	if noSandbox {
+		args = append(args, "--no-sandbox")
+	}
+	return args
 }
 
 // browserStartTimeout is how long Chromium gets to start: 20s, or
@@ -578,10 +597,15 @@ func (br *browser) attach(ctx context.Context) error {
 			return err
 		}
 	}
+	if err := br.applyViewport(ctx, br.viewport); err != nil {
+		return err
+	}
 	// Downloads land in the worktree, where the agent can read them.
-	dl := filepath.Join(br.path, ".berth", "browser")
-	os.MkdirAll(dl, 0o755)
-	br.cdp.call(ctx, "", "Browser.setDownloadBehavior", map[string]any{"behavior": "allow", "downloadPath": dl}, nil)
+	if br.path != "" {
+		dl := filepath.Join(br.path, ".berth", "browser")
+		os.MkdirAll(dl, 0o755)
+		br.cdp.call(ctx, "", "Browser.setDownloadBehavior", map[string]any{"behavior": "allow", "downloadPath": dl}, nil)
+	}
 	return nil
 }
 
@@ -770,7 +794,15 @@ func (br *browser) onEvent(method, session string, params json.RawMessage) {
 		json.Unmarshal(params, &p)
 		go br.cdp.call(context.Background(), br.session, "Page.screencastFrameAck", map[string]any{"sessionId": p.SessionID}, nil)
 		br.mu.Lock()
-		f := frame{Data: p.Data, Width: int(p.Metadata.DeviceWidth), Height: int(p.Metadata.DeviceHeight), URL: br.url}
+		if br.viewport.DeviceScale() != 1 {
+			// Chromium casts at the window's own scale, 1, whatever the
+			// page's: a frame says the page changed, and a capture at
+			// the page's scale is sent instead, so the view stays sharp.
+			br.recaptureLocked()
+			br.mu.Unlock()
+			return
+		}
+		f := frame{Data: p.Data, Width: int(p.Metadata.DeviceWidth), Height: int(p.Metadata.DeviceHeight), Scale: br.viewport.DeviceScale(), URL: br.url}
 		for ch := range br.watchers {
 			// A slow watcher misses frames rather than holding the rest.
 			select {
@@ -896,8 +928,12 @@ type BrowserStatus = boxclient.BrowserStatus
 
 func (br *browser) status() BrowserStatus {
 	br.mu.Lock()
-	st := BrowserStatus{Location: br.location, Worktree: br.worktree, Path: br.path, URL: br.url, Started: br.started, LastUsed: br.lastUsed, Watchers: len(br.watchers)}
+	st := BrowserStatus{Location: br.location, Worktree: br.worktree, Path: br.path, URL: br.url, Started: br.started, LastUsed: br.lastUsed, Watchers: len(br.watchers), Viewport: br.viewport}
 	br.mu.Unlock()
+	if st.Viewport.Width == 0 {
+		st.Viewport = DefaultViewport
+	}
+	st.Size = st.Viewport.String()
 	if br.cmd.Process != nil {
 		st.PID = br.cmd.Process.Pid
 		st.RSS = treeRSS(st.PID)
@@ -1025,7 +1061,7 @@ func (br *browser) Open(ctx context.Context, url string) (BrowserResult, error) 
 	br.mu.Lock()
 	br.lastSnap, br.lastSnapURL = full, cur
 	br.mu.Unlock()
-	fmt.Fprintf(&b, "url: %s\ntitle: %s\n", cur, clip(br.pageTitle(ctx), 120))
+	fmt.Fprintf(&b, "url: %s\ntitle: %s\nsize: %s\n", cur, clip(br.pageTitle(ctx), 120), br.currentViewport())
 	text, file := br.capLines(lines, firstLookCap)
 	b.WriteString(strings.TrimRight(text, "\n"))
 	br.appendLogs(&b, consoleAfter, netAfter)
@@ -1420,15 +1456,19 @@ func jsString(s string) string {
 	return string(b)
 }
 
-// Shot saves a screenshot (width px wide, 800 by default) and prints its
-// path, never the image.
-func (br *browser) Shot(ctx context.Context, el string, full bool, width int) (BrowserResult, error) {
+// Shot saves a screenshot and prints its path, never the image: at most
+// width pixels wide (800 by default, which an agent reads for about 530
+// tokens), or with native the page's own pixels, its size at its scale.
+func (br *browser) Shot(ctx context.Context, el string, full bool, width int, native bool) (BrowserResult, error) {
 	br.run.Lock()
 	defer br.run.Unlock()
 	br.touch()
-	if width <= 0 || width > 1600 {
+	if width <= 0 {
 		width = 800
 	}
+	width = min(width, maxViewportW*int(maxViewportScale))
+	v := br.currentViewport()
+	dpr := v.DeviceScale()
 	var metrics struct {
 		CSSLayoutViewport struct {
 			ClientWidth  float64 `json:"clientWidth"`
@@ -1464,11 +1504,12 @@ func (br *browser) Shot(ctx context.Context, el string, full bool, width int) (B
 		x, y, w, h = q[0], q[1], q[2]-q[0], q[5]-q[1]
 	}
 	if w <= 0 || h <= 0 {
-		w, h = 1280, 800
+		w, h = float64(v.Width), float64(v.Height)
 	}
-	scale := float64(width) / w
-	if scale > 1 {
-		scale = 1
+	// The image is w·scale·dpr pixels wide: the page's pixels, or fewer.
+	scale := 1.0
+	if !native {
+		scale = min(1, float64(width)/(w*dpr))
 	}
 	var shot struct {
 		Data string `json:"data"`
@@ -1493,7 +1534,19 @@ func (br *browser) Shot(ctx context.Context, el string, full bool, width int) (B
 	pruneShots(dir, keepShots)
 	cur := br.currentURL()
 	br.m.b.Events.Publish(events.Event{Type: "browser.shot", Box: br.m.b.Name, Origin: "browser", Data: map[string]any{"location": br.location, "name": br.worktree, "path": br.path, "file": name, "url": cur}})
-	return BrowserResult{Text: fmt.Sprintf("shot: %s (%dx%d)", file, int(w*scale), int(h*scale)), URL: cur, File: file}, nil
+	pw, ph := pngSize(raw)
+	if pw == 0 {
+		pw, ph = int(math.Round(w*scale*dpr)), int(math.Round(h*scale*dpr))
+	}
+	return BrowserResult{Text: fmt.Sprintf("shot: %s (%dx%d of the %s page)", file, pw, ph, v), URL: cur, File: file}, nil
+}
+
+// pngSize reads a PNG's width and height from its header.
+func pngSize(b []byte) (int, int) {
+	if len(b) < 24 || string(b[1:4]) != "PNG" {
+		return 0, 0
+	}
+	return int(binary.BigEndian.Uint32(b[16:20])), int(binary.BigEndian.Uint32(b[20:24]))
 }
 
 func pruneShots(dir string, keep int) {
@@ -1561,7 +1614,7 @@ func (br *browser) Watch(ctx context.Context) (chan frame, func()) {
 	br.casting = true
 	br.mu.Unlock()
 	if start {
-		br.cdp.call(ctx, br.session, "Page.startScreencast", map[string]any{"format": "jpeg", "quality": 60, "maxWidth": 1280, "maxHeight": 800, "everyNthFrame": 1}, nil)
+		br.cdp.call(ctx, br.session, "Page.startScreencast", br.castParams(br.currentViewport()), nil)
 	}
 	go br.firstFrame(ctx, ch)
 	stop := func() {
@@ -1589,13 +1642,10 @@ func (br *browser) Watch(ctx context.Context) (chan frame, func()) {
 func (br *browser) firstFrame(ctx context.Context, ch chan frame) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-	var shot struct {
-		Data string `json:"data"`
-	}
-	if err := br.cdp.call(ctx, br.session, "Page.captureScreenshot", map[string]any{"format": "jpeg", "quality": 60}, &shot); err != nil || shot.Data == "" {
+	f, err := br.captureFrame(ctx)
+	if err != nil {
 		return
 	}
-	f := frame{Data: shot.Data, Width: 1280, Height: 800, URL: br.currentURL()}
 	br.mu.Lock()
 	defer br.mu.Unlock()
 	if _, ok := br.watchers[ch]; ok && len(ch) == 0 {

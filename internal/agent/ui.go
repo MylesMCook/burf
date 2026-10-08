@@ -214,6 +214,16 @@ func (a *Agent) uiBoxAPI(w http.ResponseWriter, r *http.Request) {
 		writeCoded(w, http.StatusNotFound, "no paired box named "+r.PathValue("box"), "box_unknown")
 		return
 	}
+	// A box the agent knows is away answers at once, rather than after a
+	// dial timeout (15s, or longer on a link that drops packets): the app
+	// shows it reconnecting instead of a spinner.
+	if msg, retry, away := a.away(r.PathValue("box")); away {
+		if retry > 0 {
+			w.Header().Set("Retry-After", strconv.Itoa(int(retry.Round(time.Second)/time.Second)))
+		}
+		writeCoded(w, http.StatusServiceUnavailable, msg, "box_unreachable")
+		return
+	}
 	target := "/v1/" + boxAPIPath(r)
 	if r.URL.RawQuery != "" {
 		target += "?" + r.URL.RawQuery
@@ -234,7 +244,11 @@ func (a *Agent) uiBoxAPI(w http.ResponseWriter, r *http.Request) {
 
 // relayBox sends one request to a box and streams its answer back.
 func (a *Agent) relayBox(w http.ResponseWriter, r *http.Request, c *wire.Client, method, target string, body io.Reader, header http.Header) {
+	// A box slow to answer may have gone: check it now rather than at the
+	// next tick, so the app learns it is away in seconds, not half a minute.
+	slow := time.AfterFunc(slowAnswer, a.checkSoon)
 	resp, err := c.DoWithHeader(r.Context(), method, target, body, header)
+	slow.Stop()
 	if err != nil {
 		a.checkSoon()
 		// 503: the request never reached the box, so it is safe to queue
@@ -274,8 +288,9 @@ func (a *Agent) relayBox(w http.ResponseWriter, r *http.Request, c *wire.Client,
 }
 
 // uiAttach bridges a WebSocket to a session's terminal on a box. Binary
-// messages are keystrokes, text messages are resizes; the box's output comes
-// back as binary messages. Closing either side detaches.
+// messages are keystrokes, text messages are resizes and the pace the app
+// wants output at (termpace.go); the box's output comes back as binary
+// messages. Closing either side detaches.
 func (a *Agent) uiAttach(w http.ResponseWriter, r *http.Request) {
 	a.sync()
 	c, ok := a.client(r.PathValue("box"))
@@ -300,6 +315,7 @@ func (a *Agent) uiAttach(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer stream.Close()
+	out := newPacedOutput()
 	go func() {
 		defer cancel()
 		for {
@@ -311,9 +327,17 @@ func (a *Agent) uiAttach(w http.ResponseWriter, r *http.Request) {
 				var m struct {
 					Type       string `json:"type"`
 					Cols, Rows int
+					// pace: how long the app is happy to wait for output, in
+					// ms, while the terminal is hidden (termpace.go).
+					MS int `json:"ms"`
 				}
-				if json.Unmarshal(msg, &m) == nil && m.Type == "resize" {
-					err = terminal.WriteResize(stream, m.Cols, m.Rows)
+				if json.Unmarshal(msg, &m) == nil {
+					switch m.Type {
+					case "resize":
+						err = terminal.WriteResize(stream, m.Cols, m.Rows)
+					case "pace":
+						out.setPace(m.MS)
+					}
 				}
 			} else {
 				err = terminal.WriteData(stream, msg)
@@ -323,18 +347,10 @@ func (a *Agent) uiAttach(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}()
-	buf := make([]byte, 32<<10)
-	for {
-		n, err := stream.Read(buf)
-		if n > 0 {
-			if werr := ws.Write(ctx, websocket.MessageBinary, buf[:n]); werr != nil {
-				return
-			}
-		}
-		if err != nil {
-			ws.Close(websocket.StatusNormalClosure, "session detached")
-			return
-		}
+	go out.read(ctx, stream)
+	err = out.write(ctx, func(b []byte) error { return ws.Write(ctx, websocket.MessageBinary, b) })
+	if err != nil && ctx.Err() == nil {
+		ws.Close(websocket.StatusNormalClosure, "session detached")
 	}
 }
 

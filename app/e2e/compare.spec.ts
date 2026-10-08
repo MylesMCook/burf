@@ -31,7 +31,7 @@ test("⌘⌥C compares the worktree you are in with another, side by side", asyn
   // The tab is named after both, and closing it stops neither agent.
   const tab = page.getByRole("tab", { name: "Compare search-perf ⇄ checkout-fix" });
   await expect(tab).toBeVisible();
-  await tab.getByRole("button", { name: /^Close/ }).click();
+  await tab.locator("[data-tab-close]").click();
   await expect(tab).toHaveCount(0);
   await expect(page.getByText(/Stopped/)).toHaveCount(0);
 });

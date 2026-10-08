@@ -4,6 +4,7 @@ import { type KeyboardEvent, type ReactNode, useEffect, useMemo, useRef, useStat
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
 import { ContextRow } from "@/components/sidebar/actions";
 import { openRenameWorktree } from "@/components/sidebar/rename-worktree";
+import { RowLayer } from "@/components/sidebar/row-layer";
 import { Tip } from "@/components/tip";
 import { useTones } from "@/components/workspace/worktree-tone";
 import type { Location, Session, Worktree } from "@/lib/api";
@@ -206,8 +207,9 @@ function Scroller({ children, label: name }: { children: ReactNode; label: strin
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // One context menu and tooltip for every tile (RowLayer).
   return (
-    <div
+    <RowLayer
       ref={roving.ref}
       data-rail-scroll
       role="navigation"
@@ -220,7 +222,7 @@ function Scroller({ children, label: name }: { children: ReactNode; label: strin
       }}
     >
       {children}
-    </div>
+    </RowLayer>
   );
 }
 

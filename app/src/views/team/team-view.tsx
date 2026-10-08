@@ -16,6 +16,7 @@ import { openUrl } from "@/lib/open-url";
 import { useStore } from "@/lib/store";
 import { type GitHubState, isLink, loadTeams, type PlanStep, putRun, refreshGitHub, runFor, sudoCount, teamApi, type TeamStatus, type TeamView as View, teamRef, useTeam, useTeamAddBox } from "@/lib/team";
 import { focusSession } from "@/lib/workspaces";
+import { useKeepFocusIn } from "@/lib/focus-home";
 import { finishOnboarding } from "@/views/onboarding/onboarding-state";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
 import { TeamDone } from "@/views/team/team-done";
@@ -34,6 +35,9 @@ type From = "onboarding" | "addbox" | "link" | "sidebar" | "palette";
 export function TeamSetupView({ org: initial, from, box: wantBox, update, onBack }: { org?: string; from?: From; box?: string; update?: boolean; onBack?(): void }) {
   const [org, setOrg] = useState(initial ?? "");
   useEffect(() => setOrg(initial ?? ""), [initial]);
+  // A step that swaps in place keeps the keyboard on the page.
+  const page = useRef<HTMLDivElement>(null);
+  useKeepFocusIn(page);
   const github = useTeam((s) => s.github);
   useEffect(() => {
     void refreshGitHub();
@@ -73,7 +77,7 @@ export function TeamSetupView({ org: initial, from, box: wantBox, update, onBack
           </Button>
         </div>
       )}
-      <div data-testid="team-page" className="min-h-0 flex-1 overflow-y-auto">
+      <div ref={page} data-testid="team-page" className="min-h-0 flex-1 overflow-y-auto">
         {body}
       </div>
     </div>
@@ -388,7 +392,13 @@ function OrgPage({ org, from, wantBox, wantUpdate, github, onOrg }: { org: strin
       toastManager.add({ type: "error", title: "Couldn't retry", description: errorMessage(err) });
     }
   };
-  const openTerminal = () => run?.session && void focusSession(run.box, run.session);
+  // The terminal that needs you: a repo's first-time setup that asks
+  // something, else the steps'.
+  const openTerminal = () => {
+    const s = run?.projects.find((x) => x.waiting && x.session)?.session ?? run?.session;
+    if (run && s) void focusSession(run.box, s);
+  };
+  const openSession = (s: string) => run && void focusSession(run.box, s);
   const startOn = (project: string) => {
     const r = run?.projects.find((x) => x.id === project);
     if (!run || !r?.location) return;
@@ -441,7 +451,7 @@ function OrgPage({ org, from, wantBox, wantUpdate, github, onOrg }: { org: strin
       <OrgHeader view={view} from={from} badge={updating ? <span className="rounded-full bg-info/10 px-2.5 py-1 font-medium text-info-foreground text-xs">Update · {view.update!.from} → {view.update!.to}</span> : undefined} />
       <div className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)_300px] gap-8 px-8 pt-6 pb-16 @max-[819px]:grid-cols-1 @max-[819px]:gap-4 @max-[819px]:px-5 @max-[819px]:pt-4">
         <div className="min-w-0 @max-[819px]:order-2">
-          <Plan view={(live ? live.onepassword_skipped : skipping) ? { ...view, steps: view.steps?.filter((s) => s.id !== "1password") } : view} skipOP={live ? live.onepassword_skipped : skipping} run={live} box={box} picked={sel} onPick={(id, on) => setPicked((p) => toggled(p, id, on))} onRetry={retry} onOpenTerminal={openTerminal} onStartOn={startOn} onFiles={() => setFiles(true)} update={updating ? view.update : undefined} />
+          <Plan view={(live ? live.onepassword_skipped : skipping) ? { ...view, steps: view.steps?.filter((s) => s.id !== "1password") } : view} skipOP={live ? live.onepassword_skipped : skipping} run={live} box={box} picked={sel} onPick={(id, on) => setPicked((p) => toggled(p, id, on))} onRetry={retry} onOpenTerminal={openTerminal} onOpenSession={openSession} onStartOn={startOn} onFiles={() => setFiles(true)} update={updating ? view.update : undefined} />
         </div>
         <div className="@max-[819px]:order-1">
           <div className="sticky top-4 @max-[819px]:hidden">{rail(false)}</div>

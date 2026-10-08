@@ -94,7 +94,7 @@ for (const failure of ["connectionreset", "rejected"] as const) test(`a ${failur
     await app.page.getByRole("button", { name: /Codex.*idle/ }).click();
     await app.page.getByRole("textbox", { name: "Message Codex" }).fill("Exactly once");
     await app.page.getByRole("button", { name: "Send message", exact: true }).click();
-    await expect(app.page.getByRole("alert")).toContainText(failure === "rejected" ? "Chat is not ready" : "may have arrived");
+    await expect(app.page.locator('[role="alert"]:not([data-testid^="announce"])')).toContainText(failure === "rejected" ? "Chat is not ready" : "may have arrived");
     if (failure === "connectionreset") await expect(app.page.getByRole("article", { name: "You", exact: true })).toContainText("Exactly once");
     await app.page.getByRole("button", { name: "Refresh chat", exact: true }).click();
     await expect(app.page.getByRole("textbox", { name: "Message Codex" })).toHaveValue("Exactly once");

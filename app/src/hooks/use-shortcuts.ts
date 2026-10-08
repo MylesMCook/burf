@@ -23,6 +23,7 @@ import { toggleTree } from "@/lib/file-tree";
 import { findLeaf, leaves, paneWorktree } from "@/lib/layout";
 import { paneKey, toggleDrawer } from "@/lib/devtools";
 import { isOnboardingActive } from "@/views/onboarding/onboarding-state";
+import { firstFocusable, rescueFocus } from "@/lib/focus-home";
 
 // The app's shortcuts (lib/shortcuts.json) come two ways: as keys, caught on
 // the window before a terminal sees them, and, in the Mac app, from the menu
@@ -149,11 +150,14 @@ function run(id: string, from: "key" | "menu", arg?: number | Dir): boolean {
       const pane = focused?.content.kind === "browser" ? focused : leaves(tab.root).find((l) => l.content.kind === "browser");
       if (!pane) return false;
       toggleDrawer(paneKey(pane.id));
+      // The keyboard follows: into the drawer as it opens, home as it goes.
+      handOff("[data-testid=devtools-drawer] [role=tab][aria-selected=true]", "[data-testid=devtools-drawer]");
       return true;
     }
     case "file-tree":
       // ⌘⇧E: the Files panel beside the worktree's tabs.
       toggleTree();
+      handOff("[data-testid=files-panel]", "[data-testid=files-panel]");
       return true;
     case "save-file": {
       // ⌘S in a File tab, wherever in it the focus is.
@@ -188,6 +192,28 @@ function run(id: string, from: "key" | "menu", arg?: number | Dir): boolean {
       return true;
   }
   return false;
+}
+
+// handOff moves the keyboard with a panel a shortcut showed or hid: to the
+// panel's first control (or target) once it is there, or home when the
+// panel that had the keyboard went away.
+// Called just after the toggle, before React draws it, so the page still
+// shows whether the panel was open.
+function handOff(target: string, panel: string) {
+  if (document.querySelector(panel)) {
+    // Closing: home, if the keyboard was in it.
+    if (document.activeElement?.closest(panel)) window.setTimeout(() => !document.querySelector(panel) && rescueFocus(0), 60);
+    return;
+  }
+  // Opening: once the panel has drawn something to focus (a second at most).
+  const until = Date.now() + 1500;
+  const tick = () => {
+    const el = document.querySelector<HTMLElement>(target);
+    const t = el && (el.matches(panel) ? firstFocusable(el) : el);
+    if (t) t.focus({ preventScroll: true });
+    else if (Date.now() < until) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
 }
 
 // One press can arrive both ways (the page's keydown, then the menu bar, or
@@ -251,9 +277,9 @@ export function useShortcuts() {
         e.stopPropagation();
         return;
       }
-      // ⌥1–4 pick a Compare tab's lane while one shows; elsewhere they are
+      // ⌥1–5 pick a Compare tab's lane while one shows; elsewhere they are
       // the page's or the terminal's.
-      if (e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey && /^Digit[1-4]$/.test(e.code)) {
+      if (e.altKey && !e.metaKey && !e.ctrlKey && !e.shiftKey && /^Digit[1-5]$/.test(e.code)) {
         if (!runShortcut("compare-lane", "key", Number(e.code.slice(5)))) return;
         e.preventDefault();
         e.stopPropagation();

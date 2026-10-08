@@ -1,6 +1,7 @@
 import type { ToolDetail } from "@/lib/transcript";
 import { invoke } from "@tauri-apps/api/core";
 import { isMac } from "@/lib/platform";
+import { readTimeout, reconnectDelay, STREAM_SILENCE_MS } from "@/lib/net";
 import type {
   BerthEvent,
   BoxInfo,
@@ -105,6 +106,11 @@ function errorBody(text: string, fallback: string): { message: string; code?: st
 export interface TerminalConnection {
   send(data: Uint8Array | string): void;
   resize(cols: number, rows: number): void;
+  // How long output may wait to be sent, in ms: 0 while the terminal shows,
+  // more while it is hidden, so a noisy program behind another tab comes in
+  // a batch at a time (the agent's termpace.go). Kept across reconnects;
+  // an older agent ignores it.
+  pace?(ms: number): void;
   close(): void;
 }
 
@@ -499,13 +505,28 @@ export function httpClient(ep: Endpoint): Client {
   const headers = { Authorization: `Bearer ${ep.token}` };
 
   async function request<T>(method: string, path: string, body?: unknown, signal?: AbortSignal, extra?: Record<string, string>): Promise<T> {
-    const res = await fetch(ep.url + path, {
-      method,
-      headers: { ...headers, ...(body === undefined ? {} : { "Content-Type": "application/json" }), ...extra },
-      body: body === undefined ? undefined : JSON.stringify(body),
-      signal,
-    });
-    const text = await res.text();
+    // A read gets a time limit (lib/net.ts), so a box that stops answering
+    // mid-request fails with words rather than a spinner that never ends.
+    const limit = readTimeout(method, path);
+    const timer = limit ? AbortSignal.timeout(limit) : undefined;
+    const sig = timer ? (signal ? AbortSignal.any([signal, timer]) : timer) : signal;
+    let res: Response;
+    let text: string;
+    try {
+      res = await fetch(ep.url + path, {
+        method,
+        headers: { ...headers, ...(body === undefined ? {} : { "Content-Type": "application/json" }), ...extra },
+        body: body === undefined ? undefined : JSON.stringify(body),
+        signal: sig,
+      });
+      text = await res.text();
+    } catch (err) {
+      if (timer?.aborted && !signal?.aborted) {
+        const box = /^\/v1\/boxes\/([^/]+)\//.exec(path)?.[1];
+        throw new ApiError(`${box ? decodeURIComponent(box) : "Burf's agent"} didn't answer in ${Math.round(limit! / 1000)}s`, 504, "box_timeout");
+      }
+      throw err;
+    }
     if (!res.ok) {
       const e = errorBody(text, res.statusText);
       const err = new ApiError(e.message, res.status, e.code);
@@ -630,20 +651,33 @@ export function httpClient(ep: Endpoint): Client {
 // EventSource can send the token, and reconnects with backoff when the
 // stream ends: after sleep, or while the agent restarts.
 function followEvents(ep: Endpoint, onEvent: (e: BerthEvent) => void, onConnect: () => void, signal: AbortSignal) {
-  let delay = 500;
+  let attempt = 0;
   const loop = async () => {
     while (!signal.aborted) {
+      // A stream that goes silent past the agent's keepalive is dead though
+      // not closed (the agent paused, the laptop slept): drop it and open
+      // another, which refetches what was missed (onConnect).
+      const mine = new AbortController();
+      const stop = () => mine.abort();
+      signal.addEventListener("abort", stop, { once: true });
+      let silence = 0;
+      const quiet = () => {
+        window.clearTimeout(silence);
+        silence = window.setTimeout(stop, STREAM_SILENCE_MS);
+      };
       try {
+        quiet();
         const res = await fetch(`${ep.url}/v1/events`, {
           headers: { Authorization: `Bearer ${ep.token}`, Accept: "text/event-stream" },
-          signal,
+          signal: mine.signal,
         });
         if (!res.ok || !res.body) throw new Error(`events: ${res.status}`);
-        delay = 500;
+        attempt = 0;
         onConnect();
         const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
         let buf = "";
         for (;;) {
+          quiet();
           const { value, done } = await reader.read();
           if (done) break;
           buf += value;
@@ -666,9 +700,13 @@ function followEvents(ep: Endpoint, onEvent: (e: BerthEvent) => void, onConnect:
         }
       } catch {
         if (signal.aborted) return;
+      } finally {
+        window.clearTimeout(silence);
+        signal.removeEventListener("abort", stop);
       }
-      await new Promise((r) => setTimeout(r, delay));
-      delay = Math.min(delay * 2, 10_000);
+      // Backoff with jitter (lib/net.ts), so windows that lost the agent
+      // together don't all come back in the same instant.
+      await new Promise((r) => setTimeout(r, reconnectDelay(++attempt)));
     }
   };
   void loop();
@@ -697,7 +735,12 @@ function attachSocket(url: string, h: TerminalHandlers, onText?: (e: InstallEven
     ended = true;
     h.onClose(closedByUs);
   };
-  ws.onopen = () => h.onOpen();
+  let paceMs = 0;
+  const sendPace = () => ws.send(JSON.stringify({ type: "pace", ms: paceMs }));
+  ws.onopen = () => {
+    if (paceMs) sendPace();
+    h.onOpen();
+  };
   ws.onmessage = (m) => {
     if (typeof m.data === "string" && onText) {
       try {
@@ -718,6 +761,11 @@ function attachSocket(url: string, h: TerminalHandlers, onText?: (e: InstallEven
     },
     resize(cols, rows) {
       if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: "resize", cols, rows }));
+    },
+    pace(ms) {
+      if (ms === paceMs) return;
+      paceMs = ms;
+      if (ws.readyState === WebSocket.OPEN) sendPace();
     },
     close() {
       closedByUs = true;

@@ -113,7 +113,7 @@ export function SkillsPanel({ box, location, className, hideTitle }: { box: stri
             <div className="min-w-0 pr-3">
               <div className="flex items-baseline gap-2">
                 <span className="font-medium font-mono text-[12.5px]">{s.name}</span>
-                <span className="font-mono text-[10px] text-muted-foreground/70">{s.version.slice(0, 7)}</span>
+                <span className="font-mono text-[10px] text-muted-foreground">{s.version.slice(0, 7)}</span>
               </div>
               <p className="line-clamp-2 text-muted-foreground text-xs leading-snug" title={s.description}>
                 {skillSummary(s)}

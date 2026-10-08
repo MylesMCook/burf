@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
+
+	"github.com/MylesMCook/burf/internal/agentpath"
 )
 
 // Tool is an agent CLI berth has integrations for.
@@ -54,19 +55,13 @@ func ToolByID(id string) (Tool, bool) {
 	return Tool{}, false
 }
 
-// Present reports whether t is on this machine: its command on PATH or where
-// agent CLIs install themselves (an SSH command's or a service's PATH often
-// leaves those out), or its settings folder in home.
+// Present reports whether t is on this machine: its command found as the
+// person's terminal finds it (internal/agentpath: their interactive shell,
+// then PATH and where agent CLIs install themselves, nvm, fnm, volta, npm's
+// prefix and the like, which an SSH command's or a service's PATH leaves
+// out), or its settings folder in home.
 func (t Tool) Present(home string) bool {
-	if _, err := exec.LookPath(t.Command); err == nil {
-		return true
-	}
-	for _, dir := range binDirs(home) {
-		if isExecutable(filepath.Join(dir, t.Command)) {
-			return true
-		}
-	}
-	if t.ID == "claude" && isExecutable(filepath.Join(home, ".claude", "local", "claude")) {
+	if _, ok := finderFor(home).Find(t.Command); ok {
 		return true
 	}
 	if t.configDir != "" {
@@ -116,23 +111,21 @@ func RefreshHooked(home, bin string) []string {
 	return done
 }
 
-// systemBinDirs are searched after home's; tests empty it.
+// systemBinDirs are searched after home's, for another home than this
+// user's; tests empty it.
 var systemBinDirs = []string{"/usr/local/bin", "/opt/homebrew/bin"}
 
-// binDirs are where agent CLIs are commonly installed outside a minimal PATH.
-func binDirs(home string) []string {
-	dirs := []string{
-		filepath.Join(home, ".local", "bin"),
-		filepath.Join(home, ".npm-global", "bin"),
-		filepath.Join(home, ".bun", "bin"),
-		filepath.Join(home, ".volta", "bin"),
+// askShell says this user's home is looked in through their shell; tests
+// turn it off.
+var askShell = true
+
+// finderFor finds agent CLIs for home: this user's through their shell
+// (agentpath.Default), another's in its folders alone.
+func finderFor(home string) *agentpath.Finder {
+	if d := agentpath.Default(); askShell && filepath.Clean(d.Home) == filepath.Clean(home) {
+		return d
 	}
-	dirs = append(dirs, systemBinDirs...)
-	// nvm keeps each Node version's global packages apart.
-	if nvm, _ := filepath.Glob(filepath.Join(home, ".nvm", "versions", "node", "*", "bin")); len(nvm) > 0 {
-		dirs = append(dirs, nvm...)
-	}
-	return dirs
+	return &agentpath.Finder{Home: home, Env: []string{"HOME=" + home, "PATH=" + os.Getenv("PATH")}, NoVersion: true, NoNPM: true, NoCache: true, SystemDirs: append([]string{}, systemBinDirs...)}
 }
 
 func isExecutable(path string) bool {

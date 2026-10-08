@@ -54,6 +54,8 @@ type Journal struct {
 	closed   bool
 	stop     chan struct{}
 	stopped  chan struct{}
+	// wake tells syncLoop something was written.
+	wake chan struct{}
 }
 
 const (
@@ -127,7 +129,7 @@ func (j *Journal) open() error {
 		}
 		j.f, j.segStart, j.size, j.seq = f, last, size, seq
 	}
-	j.stop, j.stopped = make(chan struct{}), make(chan struct{})
+	j.stop, j.stopped, j.wake = make(chan struct{}), make(chan struct{}), make(chan struct{}, 1)
 	go j.syncLoop()
 	return nil
 }
@@ -252,6 +254,10 @@ func (j *Journal) Append(e *Event) error {
 		return err
 	}
 	j.dirty = true
+	select {
+	case j.wake <- struct{}{}:
+	default:
+	}
 	j.tail[j.tailAt] = tailEntry{e.Seq, e.Time, line}
 	j.tailAt = (j.tailAt + 1) % tailSize
 	j.tailN = min(j.tailN+1, tailSize)
@@ -298,13 +304,22 @@ func (j *Journal) prune() {
 	j.index = kept
 }
 
+// syncLoop makes appends durable within SyncEvery of the first of them,
+// with one fsync for all that came in between. It sleeps while nothing is
+// written: a ticker here woke an idle box twenty times a second.
 func (j *Journal) syncLoop() {
 	defer close(j.stopped)
-	t := time.NewTicker(j.SyncEvery)
-	defer t.Stop()
 	for {
 		select {
 		case <-j.stop:
+			j.Sync()
+			return
+		case <-j.wake:
+		}
+		t := time.NewTimer(j.SyncEvery)
+		select {
+		case <-j.stop:
+			t.Stop()
 			j.Sync()
 			return
 		case <-t.C:

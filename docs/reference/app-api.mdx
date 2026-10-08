@@ -36,13 +36,17 @@ The agent serves the app on `http://127.0.0.1:1378`.
   `git_failed`, `command_failed`, `too_many`, `bad_request` and `internal`. The
   agent adds `box_unreachable` (the request never reached the box, 503, or may
   have, 502), `box_unknown` (no paired box by that name) and `box_outdated`
-  (the box's berthd doesn't have that route yet).
+  (the box's berthd doesn't have that route yet). A request for a box the
+  agent knows is offline is answered at once with 503 `box_unreachable` and
+  `Retry-After` (seconds to its next try), rather than after a dial timeout.
+  The app gives each read (`GET`, but not a `…/wait` long poll) 30 seconds
+  and then fails it as `box_timeout` (504).
 
 ## Laptop
 
 | Method and path | Returns |
 | --- | --- |
-| `GET /v1/status` | `{ boxes: BoxStatus[], forwards, routes, proxy }` |
+| `GET /v1/status` | `{ boxes: BoxStatus[], forwards, routes, proxy }`. A box that isn't online carries `retry_at` (when the agent tries it next) and `attempts` (failed tries in a row) |
 | `GET /v1/events` | Server-sent events: one `data: <Event JSON>` per event, from this laptop and every online box (box events carry `box`) |
 | `POST /v1/forwards` | `{ box, local, remote }` → the forward |
 | `DELETE /v1/forwards/{id}` | the removed forward |
@@ -84,7 +88,7 @@ The app also uses these, mostly as the CLI does:
 
 | Method and path | What it does |
 | --- | --- |
-| `POST /v1/refresh` | Check every box now; returns the status |
+| `POST /v1/refresh` | Check every box now; returns the status. `?box=NAME` checks only that one (the app's **Try now**) |
 | `POST /v1/routes`, `DELETE /v1/routes?pattern=P` | `{ pattern, box, port }`: add or remove a [route](/reference/cli#reaching-services) |
 | `POST /v1/events` | `{ type, origin?, data? }`: announce an event on this laptop, as `burf emit` |
 | `GET /v1/networks`, `GET /v1/networks/{name}/peers`, `POST /v1/networks/{name}/login` | Joined networks, their machines, and joining one |
@@ -181,7 +185,7 @@ failed after it went out (the box may have acted on it). The box API:
 | `POST exec` | `{ location, command, timeout?, detach? }`: run a command to completion; with `detach`, answers at once with `{ run }` |
 | `GET runs`, `POST runs`, `GET runs/templates`, `GET runs/{id}`, `GET runs/{id}/events?since=N`, `POST runs/{id}/cancel`, `POST runs/{id}/gates/{step}/decide` | [durable runs](/guides/runs#api); `POST runs` takes an `Idempotency-Key` header or `idem_key` |
 | `GET autofix`, `PUT autofix` | `{ path, ci, review, check?, max? }`: a worktree's [Auto-fix this PR](/guides/automations#auto-fix-this-pr) |
-| `POST worktrees/{loc}/{wt}/browser/{open,act,snapshot,wait,shot,eval,close}`, `GET …/browser/{console,network,status,screencast}`, `GET …/browser/shots/{name}`, `GET browsers`, `POST browser/allow` | the [agent browser](/guides/agent-browser); answers are `{ text }` as the CLI prints them; `screencast` streams `{ data, w, h, url }` JPEG frames while you read it |
+| `POST worktrees/{loc}/{wt}/browser/{open,resize,act,snapshot,wait,shot,eval,close}`, `GET …/browser/{console,network,status,screencast}`, `GET …/browser/shots/{name}`, `GET browsers`, `POST browser/allow` | the [agent browser](/guides/agent-browser); answers are `{ text }` as the CLI prints them; `resize` takes `{ size, scale }` (`"390x844"` or a preset, `"2"`), as `open` does too; `status` has `size` and `viewport` `{ width, height, scale }`; `screencast` streams `{ data, w, h, scale, url }` JPEG frames while you read it, `w`×`h` in CSS pixels and the image at `scale` |
 | `POST flows/{id}/secret` | `{ scope? }`: a webhook flow's new signing secret, shown once |
 | `POST triggers/{flow}` | start a [webhook flow](/guides/automations#from-a-webhook); signed, not authenticated as a laptop |
 | `POST upgrade` | replace berthd with the binary in the body and restart (`burf upgrade`) |
