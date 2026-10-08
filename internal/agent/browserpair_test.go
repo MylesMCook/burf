@@ -84,6 +84,12 @@ func browserAgent(t *testing.T) (*runningAgent, string) {
 		s.Handle("GET /v1/chats", reply(`{"chats":[]}`))
 		s.Handle("GET /v1/chats/{id}/browser/calls", reply(`{"calls":[]}`))
 		s.Handle("POST /v1/chats/{id}/browser/results", reply(`{"ok":true}`))
+		// Echoes what the box was sent, so a test can see what got through.
+		s.Handle("POST /v1/chats/{id}/messages", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			body, _ := io.ReadAll(r.Body)
+			w.Header().Set("Content-Type", "application/json")
+			w.Write(body)
+		}))
 	})
 	a := startAgent(t, b.pairLaptop())
 	tok := uiToken(t, a)
@@ -213,6 +219,36 @@ func TestAPairedBrowserReachesOnlyChatsAndTheirBrowserTools(t *testing.T) {
 	}
 	if status, _ := browserCall(t, a, "GET", "/v1/browser/pairings", appToken, "", ""); status != 200 {
 		t.Fatalf("the app cannot list paired browsers: %d", status)
+	}
+}
+
+func TestAPairedBrowserSendsTextAndNeverChatOptions(t *testing.T) {
+	a, appToken := browserAgent(t)
+	token, _ := pairBrowser(t, a, "Chrome")
+	path := "/v1/boxes/devbox/api/chats/" + strings.Repeat("0123456789abcdef", 2) + "/messages"
+	if status, body := browserCall(t, a, "POST", path, token, extensionOrigin, `{"text":"open example.com"}`); status != 200 || body != `{"text":"open example.com"}` {
+		t.Fatalf("a text message did not reach the box whole: %d %s", status, body)
+	}
+	// A message can raise a chat to full access. That choice is not a browser's.
+	for _, body := range []string{
+		`{"text":"x","options":{"permission":"full-access"}}`,
+		`{"text":"x","Options":{"permission":"full-access"}}`,
+		`{"text":"x","OPTIONS":{"model":"other"}}`,
+		`{"text":"x","optionſ":{"permission":"full-access"}}`,
+		`{"options":{"permission":"workspace"},"text":"x"}`,
+		`{"text":"x","anything":1}`,
+	} {
+		if status, reply := browserCall(t, a, "POST", path, token, extensionOrigin, body); status != 403 || !strings.Contains(reply, "only text") {
+			t.Errorf("%s reached the box: %d %s", body, status, reply)
+		}
+	}
+	if status, _ := browserCall(t, a, "POST", path, token, extensionOrigin, `["text"]`); status != 400 {
+		t.Errorf("a malformed message: %d", status)
+	}
+	// The app itself still chooses options.
+	withOptions := `{"text":"x","options":{"permission":"full-access"}}`
+	if status, body := browserCall(t, a, "POST", path, appToken, "", withOptions); status != 200 || body != withOptions {
+		t.Fatalf("the app lost chat options: %d %s", status, body)
 	}
 }
 

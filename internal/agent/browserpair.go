@@ -1,12 +1,14 @@
 package agent
 
 import (
+	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"io"
 	"math/big"
 	"net/http"
 	"os"
@@ -282,6 +284,34 @@ func (a *Agent) browserAuthorize(token string, r *http.Request) (int, string) {
 	if !browserScope(r) {
 		return http.StatusForbidden, "a paired browser can only use chats and their browser tools"
 	}
+	if r.Method == http.MethodPost && browserMessage.MatchString(r.URL.EscapedPath()) {
+		return browserMessageBody(r)
+	}
+	return 0, ""
+}
+
+var browserMessage = regexp.MustCompile(`/chats/[0-9a-f]{32}/messages$`)
+
+// browserMessageBody lets a paired browser send text and nothing else. A
+// message can also carry a chat's model, effort and permission, up to full
+// access to the box; those are chosen in Burf, never by a browser extension.
+func browserMessageBody(r *http.Request) (int, string) {
+	const limit = 3 << 20
+	body, err := io.ReadAll(io.LimitReader(r.Body, limit+1))
+	if err != nil || len(body) > limit {
+		return http.StatusRequestEntityTooLarge, "the message is too large"
+	}
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(body, &fields) != nil {
+		return http.StatusBadRequest, "invalid request"
+	}
+	for name := range fields {
+		if name != "text" {
+			return http.StatusForbidden, "a paired browser can send only text; choose a chat's model and permissions in Burf"
+		}
+	}
+	r.Body = io.NopCloser(bytes.NewReader(body))
+	r.ContentLength = int64(len(body))
 	return 0, ""
 }
 
