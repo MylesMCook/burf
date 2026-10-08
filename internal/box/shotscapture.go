@@ -83,7 +83,7 @@ func (m *Browsers) startShooter(ctx context.Context, proxy string) (*shooter, er
 	cmd := exec.Command(bin, args...)
 	cmd.ExtraFiles = []*os.File{toChrome, fromChrome}
 	cmd.Dir = profile
-	cmd.Env = append(os.Environ(), "HOME="+profile)
+	cmd.Env = append(os.Environ(), "HOME="+profile, "BERTH_BROWSER=shots")
 	stderr := &stderrTail{max: 4 << 10}
 	cmd.Stderr = stderr
 	if err := cmd.Start(); err != nil {
