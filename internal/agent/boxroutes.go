@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/cosscom/shipyard/internal/sshroute"
@@ -301,15 +300,11 @@ func (a *Agent) routeLoop(ctx context.Context) {
 			}
 		}
 		a.mu.Unlock()
-		var wg sync.WaitGroup
+		// Each box on its own: a slow first SSH login to one doesn't hold up
+		// another's checks. A route being measured isn't measured twice.
 		for _, c := range clients {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				c.ProbeRoutes(ctx)
-			}()
+			go c.ProbeRoutes(ctx)
 		}
-		wg.Wait()
 	}
 }
 

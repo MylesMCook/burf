@@ -28,7 +28,7 @@ the `BOX/` prefix.
 | `berth network proxy NAME HOST PORT` | Connect stdin and stdout to HOST:PORT through that network, for SSH's `ProxyCommand` |
 | `berth networks [--json]` | Joined networks |
 | `berth discover [--network NET] [--json]` | Machines on the tailnet that could be boxes |
-| `berth boxes [--json]` | Paired boxes and whether they are online |
+| `berth boxes [--json]` | Paired boxes, whether they are online, and the [route](/concepts/laptop-agent#routes-to-a-box) each is reached by |
 | `berth ping BOX [-c N]` | Check a box answers and still trusts you: how long connecting took, then N−1 round trips on the open connection (its latency) |
 | `berth upgrade BOX [--check] [--json]` | Upgrade the box's daemon over Shipyard's own connection (no SSH); `--check` only reports whether it is older |
 | `berth edit BOX/PROJECT[/WT] [FILE[:LINE[:COL]]] [--in cursor\|vscode\|windsurf\|zed]` | Open a worktree, or a file at a line, in your editor (default: the first installed) |
@@ -97,7 +97,7 @@ signs in with its own. See [team setup](/guides/team-setup).
 | Command | What it does |
 | --- | --- |
 | `berth status [--json]` | Boxes, forwards and the proxy at a glance |
-| `berth doctor [BOX] [--json]` | Check this computer (or a box) and how to fix it |
+| `berth doctor [BOX] [--json]` | Check this computer (or a box, with the routes to it) and how to fix it |
 | `berth events [BOX] [--json]` | Stream events from this laptop and every box as they happen (box events carry `box`); with `BOX`, only that box's |
 | `berth agent` | Run the agent in the foreground |
 | `berth agent start` | Start the agent in the background if it isn't running (what the app's **Start the Shipyard agent** runs) |

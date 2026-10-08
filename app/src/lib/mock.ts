@@ -39,9 +39,45 @@ const GB = 1024 ** 3;
 
 const status: Status = {
   boxes: [
-    { name: "devl", address: "100.64.0.4:7444", fingerprint: "sha256:9f2c…", state: "online", latency_ms: 38, since: ago(140) },
-    { name: "gpu", address: "100.64.0.19:7444", network: "personal", fingerprint: "sha256:41ab…", state: "online", latency_ms: 112, since: ago(30) },
-    { name: "old-vps", address: "203.0.113.7:7444", fingerprint: "sha256:c0de…", state: "offline", error: "dial tcp: i/o timeout", since: ago(600) },
+    {
+      name: "devl",
+      address: "100.64.0.4:7444",
+      fingerprint: "sha256:9f2c…",
+      state: "online",
+      latency_ms: 24,
+      since: ago(140),
+      // Added over SSH: SSH is the faster route, Tailscale relays.
+      link: { path: { via: "relay", relay: "nyc", relay_name: "New York", nearest: "London" } },
+      route: "ssh",
+      routes: [
+        { id: "ssh", kind: "ssh", label: "SSH", detail: "alex@devl", state: "up", latency_ms: 24, active: true, auto: true },
+        { id: "paired", kind: "tailscale", label: "Tailscale relayed", detail: "100.64.0.4:7444", state: "up", latency_ms: 140 },
+      ],
+    },
+    {
+      name: "gpu",
+      address: "100.64.0.19:7444",
+      network: "personal",
+      fingerprint: "sha256:41ab…",
+      state: "online",
+      latency_ms: 112,
+      since: ago(30),
+      route: "paired",
+      routes: [
+        { id: "paired", kind: "tailscale", label: "Tailscale (personal)", detail: "100.64.0.19:7444", state: "up", latency_ms: 112, active: true },
+        { id: "ssh", kind: "ssh", label: "SSH", detail: "gpu", state: "off", suggested: true },
+      ],
+    },
+    {
+      name: "old-vps",
+      address: "203.0.113.7:7444",
+      fingerprint: "sha256:c0de…",
+      state: "offline",
+      error: "dial tcp: i/o timeout",
+      since: ago(600),
+      route: "paired",
+      routes: [{ id: "paired", kind: "direct", label: "Direct", detail: "203.0.113.7:7444", state: "down", active: true, error: "dial tcp: i/o timeout" }],
+    },
   ],
   forwards: [{ id: "f1", box: "devl", local: 5432, remote: 5432, state: "listening" }],
   routes: [],
@@ -982,7 +1018,58 @@ function mockSshFailure(host: string, trusted?: string) {
   return undefined;
 }
 
+// mockRoutes changes a box's routes the way the agent does (boxroutes.go):
+// an added route is measured at once, and a box keeps one route on.
+function mockRoutes(method: string, path: string, body: unknown): Promise<unknown> | undefined {
+  const m = /^\/v1\/boxes\/([^/]+)\/routes(?:\/([^/]+))?$/.exec(path);
+  const box = m && status.boxes.find((b) => b.name === decodeURIComponent(m[1]));
+  if (!m || !box) return undefined;
+  const routes = (box.routes ??= []);
+  const id = m[2] && decodeURIComponent(m[2]);
+  const settle = () => {
+    if (!routes.some((r) => r.active && r.state !== "off")) {
+      for (const r of routes) r.active = false;
+      const next = routes.filter((r) => r.state === "up").sort((a, b) => (a.latency_ms ?? 0) - (b.latency_ms ?? 0))[0];
+      if (next) next.active = true;
+    }
+    box.route = routes.find((r) => r.active)?.id;
+    emit({ type: "box.route", box: box.name });
+    return delay(routes);
+  };
+  if (method === "POST" && !id) {
+    const r = body as { kind: string; host?: string; address?: string };
+    if (r.kind === "ssh") {
+      if (!r.host || r.host.startsWith("-")) return Promise.reject(new ApiError(`"${r.host ?? ""}" is not an SSH host`, 400));
+      box.routes = routes.filter((x) => x.kind !== "ssh");
+      box.routes.push({ id: "ssh", kind: "ssh", label: "SSH", detail: r.host, state: "up", latency_ms: 31 });
+      return settle();
+    }
+    if (!r.address || !/:\d+$/.test(r.address)) return Promise.reject(new ApiError(`"${r.address ?? ""}" is not a host:port`, 400));
+    box.routes = routes.filter((x) => x.id !== `direct:${r.address}`);
+    box.routes.push({ id: `direct:${r.address}`, kind: "direct", label: "Direct", detail: r.address, state: "up", latency_ms: 9 });
+    return settle();
+  }
+  const route = routes.find((r) => r.id === id);
+  if (!route) return Promise.reject(new ApiError("the box has no route with that id", 404));
+  if (method === "PATCH") {
+    const off = (body as { off: boolean }).off;
+    if (off && !routes.some((r) => r.id !== id && r.state !== "off")) return Promise.reject(new ApiError("a box needs one route on: turn another on first", 400));
+    route.state = off ? "off" : "up";
+    route.latency_ms = off ? undefined : (route.latency_ms ?? 30);
+    if (off) route.active = false;
+    return settle();
+  }
+  if (method === "DELETE") {
+    if (id === "paired") return Promise.reject(new ApiError("the address the box was paired at can be turned off, not removed", 400));
+    box.routes = routes.filter((r) => r.id !== id);
+    return settle();
+  }
+  return undefined;
+}
+
 function laptopBoxes(method: string, path: string, body: unknown): Promise<unknown> | undefined {
+  const routed = path.includes("/routes") ? mockRoutes(method, path, body) : undefined;
+  if (routed) return routed;
   if (method === "GET" && path.startsWith("/v1/discover")) {
     const network = new URLSearchParams(path.split("?")[1] ?? "").get("network");
     return delay(network ? discoverNetwork(network) : discovery);

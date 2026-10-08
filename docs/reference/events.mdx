@@ -144,6 +144,7 @@ runs, so `flow` and `scope` name one flow.
 | `box.connected` | |
 | `box.disconnected`, `box.untrusted` | none; the envelope's `error` says why |
 | `box.link` | `slow`, `reason` when a box's link turns slow or steady again; none when Tailscale starts or stops relaying it. The box stays online either way |
+| `box.route` | `route` (the id of the route now in use), `from`, `down` (a route declared down, whose streams moved); none when a route was added or turned on or off |
 | `forward.started`, `forward.failed`, `forward.removed` | `id`, `local`, `remote` (and the envelope's `error` on a failure) |
 | `queue.changed` | `queued`, `failed` |
 | `queue.delivered` | `id`, `box`, `session`, `attempts` |

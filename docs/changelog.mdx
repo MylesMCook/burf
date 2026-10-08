@@ -11,6 +11,15 @@ again.
 
 ## Unreleased
 
+- **More than one way to each box.** Shipyard can now reach a box over SSH
+  and at other addresses as well as over Tailscale, and sends new requests
+  over the fastest route that works. When the route in use stops answering,
+  requests move to another within seconds; open terminals follow once it is
+  clearly down, without closing, and keys typed meanwhile still arrive. A
+  box you added over SSH gets its SSH route on its own. Settings › Boxes
+  shows each box's routes with their latency ("via SSH, 24 ms · Tailscale,
+  140 ms"), and turns them on or off; `berth boxes` shows the route in use
+  and `berth doctor BOX` lists them all.
 - **A slow or relayed link to a box stays connected and says why.** A box
   reached through a Tailscale relay far away (80 ms, then 2 s) used to flip
   to offline and back: the agent called a box away after one health check

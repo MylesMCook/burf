@@ -8,6 +8,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { useUpdateAll } from "@/components/upgrade-box";
 import { useAgentCounts } from "@/hooks/use-agent-counts";
 import { isMock } from "@/hooks/use-berth-connection";
+import { viaRoute } from "@/lib/box-routes";
 import { bytes } from "@/lib/format";
 import { useOutdatedBoxes } from "@/lib/outdated";
 import { AGENT_WORDS, BOX_WORDS, boxState } from "@/lib/state-model";
@@ -106,7 +107,7 @@ export function StatusBar() {
         const used = mem.used / mem.total;
         return (
           // Each box's memory goes first when the bar runs short of room.
-          <Item key={b.name} className={cn("@max-[900px]:hidden", used > 0.85 && "text-warning-foreground dark:text-warning")} tip={`${b.name} memory: ${bytes(mem.used)} of ${bytes(mem.total)} in use`} onClick={() => go({ kind: "settings", section: "boxes" })}>
+          <Item key={b.name} className={cn("@max-[900px]:hidden", used > 0.85 && "text-warning-foreground dark:text-warning")} tip={[`${b.name} memory: ${bytes(mem.used)} of ${bytes(mem.total)} in use`, viaRoute(b)].filter(Boolean).join(" · ")} onClick={() => go({ kind: "settings", section: "boxes" })}>
             {b.name}
             <span className="relative h-1.5 w-6 overflow-hidden rounded-full bg-muted-foreground/20">
               <span className={cn("absolute inset-y-0 left-0 rounded-full", used > 0.85 ? "bg-warning" : "bg-muted-foreground/60")} style={{ width: `${Math.round(used * 100)}%` }} />
@@ -127,6 +128,7 @@ export function StatusBar() {
             <span key={b.name} className="flex items-center gap-1.5">
               <StatusDot state={st} />
               {b.name}: {BOX_WORDS[st].lower}
+              {b.state === "online" && viaRoute(b) && <span className="text-muted-foreground">· {viaRoute(b)}</span>}
             </span>
           );
         })}

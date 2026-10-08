@@ -21,6 +21,8 @@ State, in `<state>/client/`:
 | `identity.pem` | This laptop's key |
 | `boxes.json` | Paired boxes, their addresses, fingerprints and networks |
 | `forwards.json`, `routes.json` | Saved forwards and routes |
+| `box-routes.json` | The [routes to each box](/concepts/laptop-agent#routes-to-a-box) besides its paired address (an SSH host, other addresses), and the ones turned off |
+| `ssh/` | The SSH routes' shared connections (ControlMaster sockets) |
 | `queue.json` | The [offline prompt queue](/guides/offline-queue) |
 | `agent.sock`, `agent.lock`, `agent.log` | The laptop agent's socket, lock and log |
 | `ui-token` | The token for [the app's API](/reference/app-api) (mode 0600) |
