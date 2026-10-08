@@ -5,7 +5,7 @@ import { explain } from "@/lib/errors";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 
-// Boxes that run an older berthd than this Burf ships. The laptop agent
+// Boxes whose agent build differs from the one Burf ships. The laptop agent
 // answers (GET /v1/boxes/outdated, which asks `burf upgrade BOX --check`);
 // the app says so once, calmly, in the status bar and Settings → Boxes, and
 // Update all runs the same upgrade as Settings → Boxes → Update, one box at
@@ -31,7 +31,7 @@ const NO_BOXES: string[] = [];
 let lastKey = "";
 let lastList: string[] = NO_BOXES;
 
-// useOutdatedBoxes is the online boxes that run an older berthd, by name.
+// useOutdatedBoxes keeps the legacy API name; hashes do not order versions.
 export function useOutdatedBoxes(): string[] {
   const boxes = useOutdated((s) => s.boxes);
   const online = useStore((s) => s.status?.boxes);
@@ -129,7 +129,7 @@ async function announce(todo: string[], failed: string[]) {
       actionProps: { children: "Retry", onClick: () => void updateBoxes(failed) },
     });
   }
-  if (ok.length) toastManager.add({ type: "success", title: ok.length === 1 ? `${ok[0]} is up to date` : `${ok.length} boxes are up to date`, description: ok.length === 1 ? "Its agents kept running." : "Their agents kept running." });
+  if (ok.length) toastManager.add({ type: "success", title: ok.length === 1 ? `Bundled agent installed on ${ok[0]}` : `Bundled agents installed on ${ok.length} boxes`, description: "The box agent build now matches this Burf's bundle." });
 }
 
 // Each box is updated automatically once per build Burf ships, so a box

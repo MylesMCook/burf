@@ -19,7 +19,7 @@ export function UpgradeBox({ box, size = "default", variant = "default", label, 
   const button = (
     <Button size={size} variant={variant} className={className} onClick={() => void updateBoxes([box])} disabled={busy}>
       {busy ? <Spinner /> : <RefreshCwIcon />}
-      {busy ? (u?.state === "queued" ? `${box} is next…` : `Updating ${box}…`) : (label ?? `Update ${box}`)}
+      {busy ? (u?.state === "queued" ? `${box} is next…` : `Updating ${box}…`) : (label ?? `Install bundled agent on ${box}`)}
     </Button>
   );
   // While it runs, the upgrade's latest line is a hover away.
@@ -44,9 +44,8 @@ export function useUpdateAll() {
   };
 }
 
-// OutdatedNotice is the calm, app-wide line: "2 boxes run an older berthd
-// — Update all", with progress while it runs. Not a modal; nothing waits
-// on it.
+// Build hashes identify content, not version order. Keep the legacy API's
+// "outdated" field, but describe only the comparison it actually proves.
 export function OutdatedNotice({ className }: { className?: string }) {
   const { outdated, busy, running, progress, updateAll } = useUpdateAll();
   if (!outdated.length && !busy) return null;
@@ -56,18 +55,18 @@ export function OutdatedNotice({ className }: { className?: string }) {
       <span className="min-w-0 flex-1">
         {busy ? (
           <>
-            Updating {running ?? "boxes"}… <span className="text-muted-foreground">({progress}) Agents keep running.</span>
+            Installing bundled agent on {running ?? "boxes"}… <span className="text-muted-foreground">({progress})</span>
           </>
         ) : (
           <>
-            {outdated.length === 1 ? `${outdated[0]} runs` : `${outdated.length} boxes run`} an older berthd.{" "}
-            <span className="text-muted-foreground">Updating keeps {outdated.length === 1 ? "its" : "their"} agents running.</span>
+            {outdated.length === 1 ? `${outdated[0]} has` : `${outdated.length} boxes have`} a different agent build.{" "}
+            <span className="text-muted-foreground">Build IDs do not indicate which is newer.</span>
           </>
         )}
       </span>
       <Button size="xs" variant="outline" disabled={busy} onClick={updateAll}>
         {busy ? <Spinner /> : <RefreshCwIcon />}
-        {busy ? "Updating…" : outdated.length === 1 ? `Update ${outdated[0]}` : "Update all"}
+        {busy ? "Installing…" : outdated.length === 1 ? "Install bundled agent" : "Install bundled agents"}
       </Button>
     </div>
   );
@@ -81,7 +80,7 @@ export function BoxError({ box, error, what, className }: { box: string; error: 
   if (e.step === "update-box") {
     return (
       <NeedsUpdate box={box} className={className}>
-        <span className="font-medium">{box}</span> runs an older berthd without {what}. Updating keeps its agents running.
+        <span className="font-medium">{box}</span>'s box agent does not support {what}. The install action uses Burf's bundled agent.
       </NeedsUpdate>
     );
   }

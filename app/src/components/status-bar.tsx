@@ -201,7 +201,7 @@ function UpdateItem() {
   );
 }
 
-// OutdatedItem is the calm notice that boxes run an older berthd, with
+// OutdatedItem reports boxes whose agent differs from the bundled build, with
 // Update all in one click and its progress while it runs. Settings → Boxes
 // says the same, with each box's output.
 function OutdatedItem() {
@@ -209,7 +209,7 @@ function OutdatedItem() {
   if (!outdated.length && !busy) return null;
   if (busy) {
     return (
-      <Item className="text-foreground" tip="Agents keep running while a box updates. Settings → Boxes shows each box's output." onClick={() => useStore.getState().setView({ kind: "settings", section: "boxes" })}>
+      <Item className="text-foreground" tip="Installing Burf's bundled box agent. Settings → Boxes shows each box's output." onClick={() => useStore.getState().setView({ kind: "settings", section: "boxes" })}>
         <Spinner className="size-3" />
         Updating {running ?? "boxes"}… {progress && <span className="text-muted-foreground tabular-nums">{progress}</span>}
       </Item>
@@ -218,13 +218,13 @@ function OutdatedItem() {
   const n = outdated.length;
   return (
     <span className="flex items-center gap-1.5">
-      <Item tip={`${outdated.join(", ")} ${n === 1 ? "runs" : "run"} an older berthd than this Burf ships.`} onClick={() => useStore.getState().setView({ kind: "settings", section: "boxes" })}>
+      <Item tip={`${outdated.join(", ")} ${n === 1 ? "has" : "have"} a different agent build from Burf's bundle, not necessarily an older one.`} onClick={() => useStore.getState().setView({ kind: "settings", section: "boxes" })}>
         <CircleArrowUpIcon className="size-3 text-info" />
-        {n === 1 ? `${outdated[0]} runs` : `${n} boxes run`} an older berthd
+        {n === 1 ? `${outdated[0]}: different build` : `${n} different builds`}
       </Item>
       <span aria-hidden className="text-muted-foreground/60">—</span>
-      <Item className="font-medium text-foreground" tip="Updates each box in turn; agents keep running" onClick={updateAll}>
-        {n === 1 ? "Update" : "Update all"}
+      <Item className="font-medium text-foreground" tip="Replaces each box agent with the build bundled with Burf" onClick={updateAll}>
+        Install bundled
       </Item>
     </span>
   );

@@ -38,7 +38,7 @@ export interface Endpoint {
 }
 
 // OutdatedBox is GET /v1/boxes/outdated's answer for one online box:
-// whether it runs an older berthd than this Burf ships. error is set when
+// whether its agent differs from Burf's bundled build. error is set when
 // the check couldn't tell.
 export interface OutdatedBox {
   box: string;
@@ -444,7 +444,7 @@ export const laptopApi = {
   forget: (c: Client, box: string) => c.laptop("DELETE", `/v1/boxes/${encodeURIComponent(box)}`),
   upgrade: (c: Client, box: string, onLine: (line: string) => void, signal?: AbortSignal) =>
     runCommand(c, "POST", `/v1/boxes/${encodeURIComponent(box)}/upgrade`, undefined, onLine, signal),
-  // outdated says which online boxes run an older berthd than this Burf
+  // outdated says which online boxes run a different agent build than this Burf
   // ships (lib/outdated.ts).
   outdated: (c: Client, fresh?: boolean) => c.laptop<{ boxes: OutdatedBox[] }>("GET", `/v1/boxes/outdated${fresh ? "?fresh=1" : ""}`),
   // addSsh installs berthd on a host over SSH and pairs with it. It rejects

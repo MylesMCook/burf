@@ -9,6 +9,7 @@ import { toastManager } from "@/components/ui/toast";
 import { type Editor, editorsApi, installedEditors, pickEditor, setPreferredEditor, type SSHPlan, usePreferredEditor } from "@/lib/editors";
 import { errorMessage } from "@/lib/format";
 import { plainError } from "@/lib/errors";
+import { isMac } from "@/lib/platform";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Code, SettingsGroup, SettingsRow } from "@/views/settings/rows";
@@ -48,7 +49,7 @@ export function EditorsSettings() {
     setWriting(true);
     try {
       setPlan(await editorsApi.sshWrite(client));
-      toastManager.add({ title: "SSH set up for editors", description: "Each box is now berth-<box> in your SSH config.", type: "success" });
+      toastManager.add({ title: "SSH configuration saved", description: "Editor host entries are ready. SSH authentication is checked when you connect.", type: "success" });
     } catch (err) {
       toastManager.add({ title: "Could not write the SSH config", description: errorMessage(err), type: "error" });
     } finally {
@@ -61,7 +62,7 @@ export function EditorsSettings() {
       title="Editors"
       description={
         <>
-          Open a worktree, or a file at a line, in your editor over its remote SSH. <Kbd>⌘⇧O</Kbd> opens the current worktree; ⌘-click a path in a terminal.
+          Optional: open remote projects in an external editor. Chats and agents in Burf do not need SSH editor setup. <Kbd>⌘⇧O</Kbd> opens the current worktree; {isMac() ? "⌘" : "Ctrl"}-click a path in a terminal.
         </>
       }
       actions={
@@ -101,19 +102,18 @@ export function EditorsSettings() {
               <div className="mt-0.5 text-muted-foreground text-xs leading-relaxed">
                 {ready ? (
                   <span className="inline-flex items-center gap-1 text-success">
-                    <CheckCircle2Icon className="size-3.5" /> Set up. Editors reach {remote.map((h) => h.host).join(", ")}.
+                    <CheckCircle2Icon className="size-3.5" /> Configuration saved for {remote.map((h) => h.host).join(", ")}. SSH authentication is checked when you connect.
                   </span>
                 ) : (
                   <>
-                    Your editor reaches each box as <Code>berth-&lt;box&gt;</Code>; boxes on another tailnet go through Burf's own connection. This adds the files
-                    below and one Include line at the top of <Code>~/.ssh/config</Code>, which is backed up first.
+                    Review the SSH entries below for your external editor. Existing <Code>berth-&lt;box&gt;</Code> names are kept for compatibility. This writes the listed files and an Include line in <Code>~/.ssh/config</Code>, with a backup before changing it. It does not install an editor, grant SSH access or change the remote machine.
                   </>
                 )}
               </div>
             </div>
             {!ready && (
               <Button size="sm" onClick={() => void write()} disabled={writing}>
-                {writing && <Spinner className="size-3.5" />} Set up SSH for editors
+                {writing && <Spinner className="size-3.5" />} Write SSH configuration
               </Button>
             )}
           </div>
