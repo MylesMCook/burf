@@ -64,12 +64,15 @@ else
 fi
 
 name="Berth-linux-$arch-alpha"
+# Tauri keeps the resources in /usr/lib/<productName>.
+product="$(python3 -c 'import json; print(json.load(open("app/src-tauri/tauri.conf.json"))["productName"])')"
+lib="usr/lib/$product"
 bundle="${CARGO_TARGET_DIR:-app/src-tauri/target}/release/bundle"
 out="dist/linux"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
-step "Building Berth $version for Linux ($arch), an alpha"
+step "Building Shipyard $version for Linux ($arch), an alpha"
 rm -rf "$bundle"
 make app-build VERSION="$version"
 
@@ -86,21 +89,21 @@ fi
 # where linux.rs stages them from.
 check_tree() {
   local dir="$1" exe f v
-  for exe in usr/bin/berth-app usr/bin/berth-cli usr/lib/Berth/berthd; do
+  for exe in usr/bin/berth-app usr/bin/berth-cli $lib/berthd; do
     [ -x "$dir/$exe" ] || die "$dir carries no $exe"
     file -L "$dir/$exe" | grep -q "ELF 64-bit.*$elf" || die "$dir/$exe is not built for $arch: $(file -L "$dir/$exe")"
   done
   for f in berthd-linux-amd64 berthd-linux-arm64 tmux-linux-amd64 tmux-linux-arm64; do
-    [ -f "$dir/usr/lib/Berth/$f" ] || die "$dir carries no usr/lib/Berth/$f"
+    [ -f "$dir/$lib/$f" ] || die "$dir carries no $lib/$f"
   done
   # The CLI and this computer's berthd are static, like the release's.
-  for exe in usr/bin/berth-cli usr/lib/Berth/berthd; do
+  for exe in usr/bin/berth-cli $lib/berthd; do
     file -L "$dir/$exe" | grep -q "statically linked" || die "$dir/$exe is not statically linked"
   done
   v="$("$dir/usr/bin/berth-cli" version 2>&1 || true)"
   [[ "$v" == "berth $tag "* ]] || die "$dir/usr/bin/berth-cli says \"$v\", not berth $tag"
-  v="$("$dir/usr/lib/Berth/berthd" version 2>&1 || true)"
-  [[ "$v" == "berthd $tag "* ]] || die "$dir/usr/lib/Berth/berthd says \"$v\", not berthd $tag"
+  v="$("$dir/$lib/berthd" version 2>&1 || true)"
+  [[ "$v" == "berthd $tag "* ]] || die "$dir/$lib/berthd says \"$v\", not berthd $tag"
   ok "$dir"
 }
 

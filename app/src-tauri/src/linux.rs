@@ -4,9 +4,9 @@
 // agent install` makes it a systemd user unit (internal/service). Either way
 // it runs from a path that must still be there after the app quits and after
 // it updates. The app's own copy is not such a path: an AppImage runs from a
-// FUSE mount (/tmp/.mount_Berth…) that changes at every launch and goes away
+// FUSE mount (/tmp/.mount_…) that changes at every launch and goes away
 // when the app quits, and the .deb keeps the CLI in /usr/bin but the Linux
-// daemons and tmux, which berth uploads to boxes, in /usr/lib/Berth, where
+// daemons and tmux, which berth uploads to boxes, in /usr/lib/Shipyard, where
 // berth does not look for them.
 //
 // So the packaged app stages what it carries into one folder of its own,
