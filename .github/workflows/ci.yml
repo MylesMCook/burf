@@ -51,6 +51,10 @@ jobs:
       - run: command -v tmux >/dev/null || { sudo apt-get update && sudo apt-get install -y tmux; }
       - run: go vet ./...
       - run: go test -race ./...
+        # GitHub's Ubuntu runners stop Chromium's sandbox (user namespaces),
+        # which changes what the agent browser's status says.
+        env:
+          BERTH_BROWSER_NO_SANDBOX: "1"
       # A real Chromium alone, without the race detector or every other
       # package's tests starving it: it times out starting otherwise.
       - run: go test ./internal/box/ -run 'TestAgentBrowserDrivesARealChromium|TestTheBrowserSizeReachesARealChromium' -count=1 -v
