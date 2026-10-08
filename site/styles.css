@@ -433,6 +433,16 @@ code {
   width: 13px;
   height: 13px;
 }
+/* The Linux app is an alpha: a quiet line under the Mac download. */
+.note.linux-alpha {
+  margin-top: 4px;
+  font-size: 12px;
+}
+.note.linux-alpha a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: var(--muted);
+}
 
 .kicker {
   display: flex;
