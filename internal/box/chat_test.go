@@ -17,6 +17,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/MylesMCook/burf/internal/agentpath"
 	"github.com/MylesMCook/burf/internal/events"
 	"github.com/MylesMCook/burf/internal/hooks"
 	"github.com/MylesMCook/burf/internal/identity"
@@ -547,5 +548,49 @@ func TestChatModelsAreListedForALocationWithoutStartingAChat(t *testing.T) {
 	}
 	if w := chatRequest(h, "GET", "/v1/chats/models", ""); w.Code != 400 {
 		t.Fatalf("missing location: %d %s", w.Code, w.Body)
+	}
+}
+
+// A Codex installed with npm under a version manager is on no service's
+// PATH. A terminal session finds it through the person's shell; a chat
+// starts the same one, with the PATH it was found with so it finds node.
+func TestChatFindsCodexWhereATerminalSessionWould(t *testing.T) {
+	b, _, _ := chatFixture(t)
+	npm := t.TempDir()
+	codex := filepath.Join(npm, "codex")
+	if err := os.WriteFile(codex, []byte("#!/bin/sh\n"), 0700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", "/usr/bin:/bin")
+	t.Setenv("HOME", t.TempDir())
+	installed := true
+	old := agentFinder
+	t.Cleanup(func() { agentFinder = old })
+	finder := &agentpath.Finder{Home: t.TempDir(), NoCache: true, NoVersion: true, NoNPM: true, SystemDirs: []string{}, LookPath: func(name string) (string, error) {
+		if installed && name == "codex" {
+			return codex, nil
+		}
+		return "", os.ErrNotExist
+	}}
+	agentFinder = func() *agentpath.Finder { return finder }
+	o, err := b.chatOptions(context.Background(), "project")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if o.Program != codex {
+		t.Fatalf("program %q, want %q", o.Program, codex)
+	}
+	path := ""
+	for _, kv := range o.Env {
+		if v, ok := strings.CutPrefix(kv, "PATH="); ok {
+			path = v
+		}
+	}
+	if dirs := filepath.SplitList(path); len(dirs) < 3 || dirs[0] != npm || !strings.HasSuffix(path, "/usr/bin:/bin") {
+		t.Fatalf("PATH %q: want the install's folder first, then the project's own", path)
+	}
+	installed = false
+	if _, err := b.chatOptions(context.Background(), "project"); err == nil || !strings.Contains(err.Error(), "not installed") {
+		t.Fatalf("no Codex anywhere: %v", err)
 	}
 }

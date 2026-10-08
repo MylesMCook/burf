@@ -336,6 +336,11 @@ func (b *Box) chatOptions(ctx context.Context, ref string) (localchat.LaunchOpti
 	return opts, nil
 }
 
+// chatCodexPath is the Codex a chat runs: the one on the project's
+// executable path, else the one a terminal session would start
+// (agentFound: the person's shell finds an npm install under nvm, which no
+// service's PATH has). That one is launched with the PATH it was found
+// with, before the project's own, so it finds its node.
 func chatCodexPath(env map[string]string) (string, error) {
 	dirs := filepath.SplitList(env["PATH"])
 	if home := env["HOME"]; filepath.IsAbs(home) {
@@ -350,6 +355,12 @@ func chatCodexPath(env map[string]string) (string, error) {
 		if err == nil && st.Mode().IsRegular() && st.Mode().Perm()&0111 != 0 {
 			return p, nil
 		}
+	}
+	if f, ok := agentFound("codex"); ok && filepath.IsAbs(f.Path) {
+		if f.PATH != "" {
+			env["PATH"] = strings.TrimSuffix(f.PATH+string(os.PathListSeparator)+env["PATH"], string(os.PathListSeparator))
+		}
+		return f.Path, nil
 	}
 	return "", fmt.Errorf("Codex is not installed on this project's executable path")
 }
