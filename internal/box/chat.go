@@ -61,6 +61,18 @@ func chatError(err error) error {
 	return httpError{409, err.Error()}
 }
 
+func (b *Box) beforeChat(r *http.Request, typ string) error {
+	s, err := b.Chats.Get(r.PathValue("id"))
+	if err != nil {
+		return chatError(err)
+	}
+	chat := b.chatSnapshot(s)
+	return b.before(r, typ, map[string]any{
+		"name": s.ID, "location": chat.Location, "path": s.CWD,
+		"agent": s.Agent, "mode": "chat",
+	})
+}
+
 // This API never accepts a raw executable, environment, or filesystem path.
 func decodeChat(r *http.Request, v any) error {
 	d := json.NewDecoder(io.LimitReader(r.Body, (64<<10)+1))
@@ -107,6 +119,9 @@ func (b *Box) mountChats(route func(string, func(http.ResponseWriter, *http.Requ
 		if err := decodeChat(r, &req); err != nil {
 			return err
 		}
+		if err := b.beforeChat(r, "session.send"); err != nil {
+			return err
+		}
 		if err := b.Chats.Send(r.Context(), r.PathValue("id"), req.Text); err != nil {
 			return chatError(err)
 		}
@@ -114,6 +129,9 @@ func (b *Box) mountChats(route func(string, func(http.ResponseWriter, *http.Requ
 		return nil
 	})
 	add("POST /v1/chats/{id}/interrupt", func(w http.ResponseWriter, r *http.Request) error {
+		if err := b.beforeChat(r, "session.send"); err != nil {
+			return err
+		}
 		if err := b.Chats.Interrupt(r.Context(), r.PathValue("id")); err != nil {
 			return chatError(err)
 		}
@@ -128,6 +146,9 @@ func (b *Box) mountChats(route func(string, func(http.ResponseWriter, *http.Requ
 		if err := decodeChat(r, &req); err != nil {
 			return err
 		}
+		if err := b.beforeChat(r, "session.send"); err != nil {
+			return err
+		}
 		if err := b.Chats.Decide(r.PathValue("id"), req.ID, req.Decision); err != nil {
 			return chatError(err)
 		}
@@ -135,6 +156,9 @@ func (b *Box) mountChats(route func(string, func(http.ResponseWriter, *http.Requ
 		return nil
 	})
 	add("DELETE /v1/chats/{id}", func(w http.ResponseWriter, r *http.Request) error {
+		if err := b.beforeChat(r, "session.stop"); err != nil {
+			return err
+		}
 		if err := b.Chats.Stop(r.PathValue("id")); err != nil {
 			return chatError(err)
 		}
@@ -158,12 +182,21 @@ func (b *Box) startChat(w http.ResponseWriter, r *http.Request) error {
 	b.chatState.starting++
 	b.chatState.mu.Unlock()
 	defer func() { b.chatState.mu.Lock(); b.chatState.starting--; b.chatState.mu.Unlock() }()
-	opts, err := b.chatOptions(r.Context(), req.Location)
+	dir, err := b.Locations.Dir(r.Context(), req.Location)
 	if err != nil {
 		return badRequest("%v", err)
 	}
-	if err := b.before(r, "chat.start", map[string]any{"location": req.Location, "agent": "codex"}); err != nil {
+	// Structured launches obey the same gates as terminal agent launches.
+	// Gate before resolving the launch environment or invoking provider help.
+	if err := b.before(r, "session.start", map[string]any{
+		"location": req.Location, "path": dir, "agent": "codex", "mode": "chat",
+		"command": "codex app-server --listen stdio://",
+	}); err != nil {
 		return err
+	}
+	opts, err := b.chatOptions(r.Context(), req.Location)
+	if err != nil {
+		return badRequest("%v", err)
 	}
 	s, err := b.Chats.StartWith(r.Context(), opts)
 	if s.ID != "" {

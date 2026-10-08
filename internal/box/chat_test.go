@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/hooks"
 	"github.com/MylesMCook/burf/internal/identity"
 	"github.com/MylesMCook/burf/internal/localchat"
 	"github.com/MylesMCook/burf/internal/pairing"
@@ -25,7 +26,7 @@ import (
 	"github.com/MylesMCook/burf/internal/wire"
 )
 
-func chatFixture(t *testing.T) (*Box, http.Handler, *atomic.Int32) {
+func chatFixture(t *testing.T, actions ...*atomic.Int32) (*Box, http.Handler, *atomic.Int32) {
 	t.Helper()
 	dir := t.TempDir()
 	bin := t.TempDir()
@@ -52,6 +53,11 @@ func chatFixture(t *testing.T) (*Box, http.Handler, *atomic.Int32) {
 					Params json.RawMessage
 				}
 				_ = json.Unmarshal(scan.Bytes(), &p)
+				if p.Method != "initialize" && p.Method != "initialized" && p.Method != "thread/start" {
+					for _, n := range actions {
+						n.Add(1)
+					}
+				}
 				result := any(map[string]any{})
 				switch p.Method {
 				case "initialized":
@@ -313,6 +319,108 @@ func TestChatUnsupportedCodexFailsBeforeRuntime(t *testing.T) {
 	w := chatRequest(h, "POST", "/v1/chats", `{"location":"project"}`)
 	if w.Code != 400 || count.Load() != 0 {
 		t.Fatalf("unsupported Codex: %d %s", w.Code, w.Body)
+	}
+}
+
+func TestChatStartGatePrecedesProviderProbeAndSecretResolution(t *testing.T) {
+	for _, on := range []string{"before:*", "before:session.start"} {
+		t.Run(on, func(t *testing.T) {
+			b, h, count := chatFixture(t)
+			dir := t.TempDir()
+			probe := filepath.Join(dir, "probe-called")
+			program := filepath.Join(dir, "codex")
+			if err := os.WriteFile(program, []byte("#!/bin/sh\ntouch '"+probe+"'\nprintf '%s' --listen\n"), 0700); err != nil {
+				t.Fatal(err)
+			}
+			op, calls := stubOpFile(t)
+			b.Secrets = &Secrets{Op: op}
+			if err := b.Locations.SetLocalConfig("project", RepoConfig{Env: map[string]string{"PATH": dir + ":" + os.Getenv("PATH"), "TEST_SECRET": "op://dev/db/password"}}); err != nil {
+				t.Fatal(err)
+			}
+			cfg := filepath.Join(dir, "hooks.json")
+			body, _ := json.Marshal(map[string]any{"hooks": []hooks.Hook{{On: on, Run: "echo launch denied; exit 1"}}})
+			if err := os.WriteFile(cfg, body, 0600); err != nil {
+				t.Fatal(err)
+			}
+			b.Hooks = &hooks.Runner{Path: cfg}
+			w := chatRequest(h, "POST", "/v1/chats", `{"location":"project"}`)
+			if w.Code != 403 || !strings.Contains(w.Body.String(), "launch denied") {
+				t.Errorf("gate: %d %s", w.Code, w.Body)
+			}
+			if _, err := os.Stat(probe); !os.IsNotExist(err) {
+				t.Error("vetoed start ran the Codex capability probe")
+			}
+			if n := opCalls(t, calls); n != 0 {
+				t.Errorf("vetoed start resolved secrets %d times", n)
+			}
+			if count.Load() != 0 {
+				t.Error("vetoed start launched the provider runtime")
+			}
+		})
+	}
+}
+
+func TestChatMutationGatesPrecedeProviderActions(t *testing.T) {
+	for _, scope := range []string{"box", "project"} {
+		t.Run(scope, func(t *testing.T) {
+			var actions atomic.Int32
+			b, h, _ := chatFixture(t, &actions)
+			w := chatRequest(h, "POST", "/v1/chats", `{"location":"project"}`)
+			var s Chat
+			_ = json.Unmarshal(w.Body.Bytes(), &s)
+			if w.Code != 201 {
+				t.Fatal(w.Body)
+			}
+			metadata := filepath.Join(t.TempDir(), "event.json")
+			run := "cat > '" + metadata + "'; echo action denied; exit 1"
+			gates := []hooks.Hook{{On: "before:session.send", Run: run}, {On: "before:session.stop", Run: run}}
+			if scope == "box" {
+				cfg := filepath.Join(t.TempDir(), "hooks.json")
+				data, _ := json.Marshal(hooks.Config{Hooks: gates})
+				if err := os.WriteFile(cfg, data, 0600); err != nil {
+					t.Fatal(err)
+				}
+				b.Hooks = &hooks.Runner{Path: cfg}
+			} else if err := b.Locations.SetLocalConfig("project", RepoConfig{Hooks: gates}); err != nil {
+				t.Fatal(err)
+			}
+			for _, tc := range []struct{ method, suffix, body, event string }{
+				{"POST", "/messages", `{"text":"private synthetic prompt"}`, "session.send"},
+				{"POST", "/interrupt", "", "session.send"},
+				{"POST", "/approvals", `{"id":"unknown","decision":"accept"}`, "session.send"},
+				{"DELETE", "", "", "session.stop"},
+			} {
+				w = chatRequest(h, tc.method, "/v1/chats/"+s.ID+tc.suffix, tc.body)
+				if w.Code != 403 || !strings.Contains(w.Body.String(), "action denied") {
+					t.Errorf("%s: %d %s", tc.suffix, w.Code, w.Body)
+				}
+				data, err := os.ReadFile(metadata)
+				if err != nil {
+					t.Errorf("gate metadata absent: %v", err)
+					continue
+				}
+				var e events.Event
+				_ = json.Unmarshal(data, &e)
+				if e.Type != tc.event || e.Data["location"] != "project" || e.Data["path"] != s.CWD {
+					t.Errorf("incorrect gate scope: %+v", e)
+				}
+				if bytes.Contains(data, []byte("private synthetic prompt")) || e.Data["env"] != nil {
+					t.Error("gate metadata leaked chat content or environment")
+				}
+				current, err := b.Chats.Get(s.ID)
+				if err != nil || current.State != "idle" || len(current.Items) != 0 {
+					t.Errorf("veto changed owned chat: %+v %v", current, err)
+				}
+			}
+			if actions.Load() != 0 {
+				t.Errorf("vetoed requests reached provider %d times", actions.Load())
+			}
+			b.CloseChats()
+			ended, err := b.Chats.Get(s.ID)
+			if err != nil || ended.State != "exited" {
+				t.Fatalf("lifecycle cleanup was vetoed: %+v %v", ended, err)
+			}
+		})
 	}
 }
 
