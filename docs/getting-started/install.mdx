@@ -88,6 +88,20 @@ open the disk image, drag **Shipyard** to **Applications**, and open it. It's
 one app for Apple silicon and Intel Macs, signed with a Developer ID and
 notarized by Apple, so it opens like any other.
 
+Or install it with [Homebrew](https://brew.sh); this repository is its own
+tap:
+
+```sh
+brew tap cosscom/shipyard https://github.com/cosscom/shipyard
+brew install --cask cosscom/shipyard/shipyard
+```
+
+The cask links `berth` into Homebrew's `bin` too, so there's no
+[command to install](#the-berth-command). The app still updates itself;
+`brew uninstall --cask shipyard` removes the app and leaves your boxes,
+pairings and agents alone; `--zap` also stops this Mac's laptop agent and
+box and removes `~/.berth`.
+
 The app carries the `berth` CLI, the Linux builds of `berthd` that
 `berth add ssh` and `berth upgrade` upload, and a `berthd` for the Mac itself
 (`Contents/Resources/berthd`, signed and notarized with the app) for
