@@ -63,7 +63,7 @@ berthd session screen shop-fix-login-claude-1a2b --history 200
 - Start agents with `--agent ID --prompt TEXT` (ids from `berthd agents`),
   never `-- claude "…"`: berth builds and quotes the command for that agent.
 - `--open split` (beside the user's focused terminal) or `--open tab` shows
-  it in the user's Berth app when they are looking at that worktree, and
+  it in the user's Shipyard app when they are looking at that worktree, and
   offers it otherwise. Use it whenever the user asks for an agent "beside
   me", "in a split" or "in a new tab".
 - A new agent may stop at a question before it is ready, such as "do you

@@ -1,4 +1,4 @@
-// Berth on a phone. Each box you pair serves this page on its tailnet
+// Shipyard on a phone. Each box you pair serves this page on its tailnet
 // address; one page reads every paired box, so the list covers all of them.
 "use strict";
 
@@ -147,7 +147,7 @@ async function loadAll() {
 
 async function showList() {
   clearTimeout(timer);
-  setBar("Berth", "", null);
+  setBar("Shipyard", "", null);
   if (!boxes.length) return showPairing();
   const results = await loadAll();
   if (route().kind !== "list") return;
@@ -159,7 +159,7 @@ async function showList() {
   const gated = allRuns.filter((r) => r.status === "waiting_gate");
   const going = allRuns.filter((r) => r.status === "running" || r.status === "queued");
   const waiting = all.filter((s) => s.agent_state === "waiting").length + gated.length;
-  setBar("Berth", waiting ? waiting + " need" + (waiting === 1 ? "s" : "") + " you" : all.length ? "Nothing needs you" : "", null);
+  setBar("Shipyard", waiting ? waiting + " need" + (waiting === 1 ? "s" : "") + " you" : all.length ? "Nothing needs you" : "", null);
 
   let html = "";
   if (gated.length || going.length) {
@@ -386,12 +386,12 @@ async function pressKey(key) {
 // --- pairing and boxes --------------------------------------------------------
 
 function showPairing() {
-  setBar("Berth", "", null);
+  setBar("Shipyard", "", null);
   main.innerHTML = `<div class="hero">
     <h1>Pair this phone</h1>
     <p class="note">See which agents need you and answer them from here, across all your boxes.</p>
     <ol>
-      <li>On your laptop, open Berth → Settings → Phone.</li>
+      <li>On your laptop, open Shipyard → Settings → Phone.</li>
       <li>Turn on phone access for your boxes.</li>
       <li>Scan the code with this phone's camera.</li>
     </ol>
@@ -405,7 +405,7 @@ function showBoxes() {
   main.innerHTML = `<div class="boxes">${boxes
     .map((b, i) => `<div class="boxrow"><div><b>${esc(b.name)}</b><br><span>${esc(b.url)}</span></div><button class="btn ghost" type="button" data-forget="${i}">Forget</button></div>`)
     .join("")}</div>
-    <p class="note">To add a box, scan its code from Berth → Settings → Phone. Forgetting a box only removes it from this phone; turn phone access off in Berth to stop it answering.</p>`;
+    <p class="note">To add a box, scan its code from Shipyard → Settings → Phone. Forgetting a box only removes it from this phone; turn phone access off in Shipyard to stop it answering.</p>`;
 }
 
 // --- routing and chrome ---------------------------------------------------------

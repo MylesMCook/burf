@@ -17,7 +17,7 @@ import (
 
 const Usage = `Integrations
   %[1]s integrations install claude|cursor|codex|gemini|opencode|all|present
-                         Install berth's skills and agent hooks for a tool
+                         Install Shipyard's skills and agent hooks for a tool
   %[1]s hook TOOL EVENT [PAYLOAD]
                          What those hooks run: turns a tool's hook into a
                          berth event (agent.finished, agent.waiting)
@@ -86,7 +86,7 @@ func Install(args []string, bin string, out io.Writer) error {
 	return nil
 }
 
-// InstallTool installs berth's skills and hooks for one tool in home, for
+// InstallTool installs Shipyard's skills and hooks for one tool in home, for
 // the binary at bin, and says what it did on out. Running it again changes
 // nothing that is already in place.
 func InstallTool(home, tool, bin string, out io.Writer) error {

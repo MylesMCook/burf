@@ -223,7 +223,7 @@ func (q *promptQueue) load() {
 		switch it.State {
 		case QueueSending:
 			it.State = QueueFailed
-			it.Error = "Berth stopped while sending this, so it may have arrived. Check the session, then retry or discard it."
+			it.Error = "Shipyard stopped while sending this, so it may have arrived. Check the session, then retry or discard it."
 			interrupted = append(interrupted, *it)
 		case QueueWaiting, "":
 			it.State = QueueQueued
