@@ -372,6 +372,10 @@ func serve(b boxHome, args []string) error {
 	// agent-browser sessions (Vercel's CLI) go with the berth session that
 	// started them.
 	bx.AgentBrowsers = box.NewAgentBrowsers(bx.Sessions)
+	// Each new session runs in a systemd scope of its own where the box
+	// has a user manager, so ending it stops all it started.
+	bx.Sessions.Scopes = box.NewSystemdScopes()
+	bx.Sessions.MemoryHigh = bx.Guard.SessionMemoryHigh
 	bx.Artifacts = &box.ArtifactStore{Dir: filepath.Join(b.dir, "artifacts"), Events: bus, Box: hostname}
 	go bx.Artifacts.Run(ctx)
 	go bx.RunShots(ctx)
@@ -428,6 +432,7 @@ func serve(b boxHome, args []string) error {
 	}
 	go bx.Phone.Run(ctx, bx)
 	go bx.Guard.Run(ctx, bx)
+	go bx.WatchSessionMemory(ctx)
 
 	os.Remove(b.socket())
 	local, err := net.Listen("unix", b.socket())
