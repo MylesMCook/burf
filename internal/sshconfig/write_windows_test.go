@@ -28,7 +28,7 @@ func TestSSHFilesDoNotInheritBroadWindowsPermissions(t *testing.T) {
 	if err := c.Apply(mustPlan(t, c, hosts())); err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"config", "config.berth-backup", "berth/cal.conf", "berth/devl.conf"} {
+	for _, name := range []string{"config", "config.berth-backup", "berth", "berth/cal.conf", "berth/devl.conf"} {
 		path := filepath.Join(dir, name)
 		sd, err := windows.GetNamedSecurityInfo(path, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION)
 		if err != nil {

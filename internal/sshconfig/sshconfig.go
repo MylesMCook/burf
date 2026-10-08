@@ -203,7 +203,7 @@ func (c Config) Apply(plan []Change) error {
 			}
 			continue
 		}
-		if err := os.MkdirAll(filepath.Dir(ch.Path), 0o700); err != nil {
+		if err := c.prepareDir(filepath.Dir(ch.Path)); err != nil {
 			return err
 		}
 		if filepath.Base(ch.Path) == "config" && filepath.Dir(ch.Path) == c.Dir {
