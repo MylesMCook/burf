@@ -75,9 +75,7 @@ underlying behavior. Upstream currently makes E2E non-blocking (`24c19c6`);
 that policy is not adopted as Burf acceptance. The snapshot has not been
 merged wholesale; individual adaptations are recorded below.
 
-## Accepted Fixes
-
-### Follow-Up Snapshot
+## Follow-Up Snapshot
 
 Fetched `4783caa` on 2026-10-08 while integrating branding and local chat.
 Against local `46e8219`, this is 156 upstream-only commits (128 non-merge).
@@ -90,6 +88,8 @@ Two new feature commits since `b140a0f` remain deferred:
   disabled updater boundary. A signed Burf distribution is separate work.
 
 Neither commit was merged or deployed.
+
+## Accepted Fixes
 
 - `150ffc9b1ff972e43d5c408da6f488af1243e47e`: account-specific Claude and
   Codex transcripts on remote boxes. Adapted locally without provider config
