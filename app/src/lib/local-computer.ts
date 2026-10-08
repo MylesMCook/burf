@@ -42,11 +42,16 @@ export interface LocalOutput {
   exit_error?: string;
 }
 
+export type ChatDecision = "accept" | "decline" | "acceptForSession" | "acceptAlways";
+export interface ChatOptions { model?: string; effort?: string; permission?: "strict" | "read-only" | "workspace" }
+export interface ChatModel { model: string; displayName: string; defaultReasoningEffort: string; supportedReasoningEfforts: { reasoningEffort: string }[] }
 export interface LocalChat extends LocalSession {
+  composer?: boolean;
+  options?: ChatOptions;
   thread_id: string;
   turn_id?: string;
   items: { id: string; kind: "user" | "assistant" | "tool"; text: string; status?: string }[];
-  approvals: { id: string; kind: "command" | "files"; detail: string; reason?: string }[];
+  approvals: { id: string; kind: "command" | "files"; detail: string; reason?: string; session_allowed?: boolean; execpolicy?: string[] }[];
   error?: string;
   truncated?: boolean;
 }
@@ -71,9 +76,10 @@ async function launch<T>(request: Promise<T>, signal?: AbortSignal): Promise<T> 
 export const localApi = {
   startChat: (c: Client, cwd: string, signal?: AbortSignal) => launch(c.laptop<LocalChat>("POST", "/v1/local/chats", { cwd }, signal), signal),
   chat: (c: Client, id: string, signal?: AbortSignal) => c.laptop<LocalChat>("GET", chatPath(id), undefined, signal),
-  message: (c: Client, id: string, text: string) => chatMutation(c.laptop("POST", `${chatPath(id)}/messages`, { text })),
+  message: (c: Client, id: string, text: string, options?: ChatOptions) => chatMutation(c.laptop("POST", `${chatPath(id)}/messages`, { text, ...(options && Object.keys(options).length ? { options } : {}) })),
+  models: (c: Client, id: string) => c.laptop<ChatModel[]>("GET", `${chatPath(id)}/models`),
   interruptChat: (c: Client, id: string) => chatMutation(c.laptop("POST", `${chatPath(id)}/interrupt`)),
-  approveChat: (c: Client, id: string, approval: string, decision: "accept" | "decline") => chatMutation(c.laptop("POST", `${chatPath(id)}/approvals`, { id: approval, decision })),
+  approveChat: (c: Client, id: string, approval: string, decision: ChatDecision) => chatMutation(c.laptop("POST", `${chatPath(id)}/approvals`, { id: approval, decision })),
   stopChat: (c: Client, id: string) => chatMutation(c.laptop("DELETE", chatPath(id))),
   status: (c: Client, signal?: AbortSignal) => c.laptop<LocalComputer>("GET", "/v1/local", undefined, signal),
   conversations: (c: Client, signal?: AbortSignal) => c.laptop<LocalConversation[]>("GET", "/v1/local/conversations", undefined, signal),

@@ -10,7 +10,7 @@ async function openWorktree(app: App) {
   await app.openWorktree(`${BOX}/fix`);
 }
 
-async function fixture(context: BrowserContext, supported = true) {
+async function fixture(context: BrowserContext, supported = true, options = false) {
   const agent = await fakeAgent();
   const base = `/v1/boxes/${BOX}/api/`;
   const calls: { method: string; path: string; body: unknown }[] = [];
@@ -20,7 +20,7 @@ async function fixture(context: BrowserContext, supported = true) {
     const path = new URL(route.request().url()).pathname.slice(base.length);
     const method = route.request().method();
     calls.push({ method, path, body: route.request().postDataJSON() });
-    if (path === "info") return route.fulfill({ json: { name: BOX, version: "test", capabilities: supported ? ["chat.codex", "transcript"] : ["transcript"], agents: [{ id: "codex", name: "Codex", command: "codex" }, { id: "custom", name: "Custom Codex", command: "codex --model custom" }] } });
+    if (path === "info") return route.fulfill({ json: { name: BOX, version: "test", capabilities: supported ? ["chat.codex", "transcript", ...(options ? ["chat.options"] : [])] : ["transcript"], agents: [{ id: "codex", name: "Codex", command: "codex" }, { id: "custom", name: "Custom Codex", command: "codex --model custom" }] } });
     if (path === "sessions") return route.fulfill({ json: method === "POST" ? { name: "legacy-codex" } : [] });
     if (!path.startsWith("chats")) return route.continue();
     if (control.offline) return route.abort("connectionreset");
@@ -64,7 +64,7 @@ test("new remote Codex uses structured requests and reload recovers the same cha
     expect(f.calls.filter((c) => c.path.endsWith("/messages"))).toHaveLength(1);
     expect(f.calls.some((c) => c.path.startsWith("sessions/") || c.method === "POST" && c.path === "sessions")).toBe(false);
     await app.page.getByRole("button", { name: "Stop chat", exact: true }).click();
-    await expect(app.page.getByTestId("remote-chat").getByRole("status")).toHaveText("exited");
+    await expect(app.page.getByTestId("remote-chat").getByRole("status")).toHaveText("Stopped");
   } finally { await f.agent.close(); }
 });
 
@@ -108,7 +108,7 @@ test("uncertain remote sends retain the draft and reconnect never replays it", a
     await expect(app.page.getByRole("button", { name: "Send message", exact: true })).toBeDisabled();
     f.control.offline = false;
     await app.page.getByRole("button", { name: "Refresh chat", exact: true }).click();
-    await expect(app.page.getByTestId("remote-chat").getByRole("status")).toHaveText("idle");
+    await expect(app.page.getByTestId("remote-chat").getByRole("status")).toHaveText("Ready");
     await expect(draft).toHaveValue("Do not replay");
     expect(f.calls.filter((c) => c.path.endsWith("/messages"))).toHaveLength(1);
     await app.page.reload();
@@ -156,6 +156,24 @@ test("the existing-worktree composer starts Codex with default settings without 
     await expect(app.page.getByRole("article", { name: "You", exact: true })).toContainText("Explain this repository");
     expect(f.calls.filter((c) => c.method === "POST" && c.path === "chats")).toHaveLength(1);
     expect(f.calls.filter((c) => c.path.endsWith("/messages"))).toHaveLength(1);
+    // Older daemons reject unknown fields: defaults send the text alone.
+    expect(f.calls.find((c) => c.path.endsWith("/messages"))?.body).toEqual({ text: "Explain this repository" });
+    expect(f.calls.some((c) => c.method === "POST" && c.path === "sessions")).toBe(false);
+  } finally { await f.agent.close(); }
+});
+
+test("the composer carries a chosen effort into the first message on boxes that take options", async ({ app }) => {
+  const f = await fixture(app.context, true, true);
+  await app.context.addInitScript((box) => localStorage.setItem(`berth.composer.picks.${box}/shop`, JSON.stringify([{ agent: "codex", effort: "high" }])), BOX);
+  try {
+    await app.open({ agent: f.agent });
+    await openWorktree(app);
+    await app.page.getByRole("textbox", { name: "What should your agents work on?" }).fill("Think carefully");
+    await app.page.getByRole("button", { name: "Start", exact: true }).click();
+    await expect(app.page.getByTestId("remote-chat")).toBeVisible();
+    await expect(app.page.getByRole("article", { name: "You", exact: true })).toHaveCount(1);
+    const sends = f.calls.filter((c) => c.path.endsWith("/messages"));
+    expect(sends.map((c) => c.body)).toEqual([{ text: "Think carefully", options: { effort: "high" } }]);
     expect(f.calls.some((c) => c.method === "POST" && c.path === "sessions")).toBe(false);
   } finally { await f.agent.close(); }
 });

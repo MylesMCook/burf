@@ -21,7 +21,7 @@ import { toastManager } from "@/components/ui/toast";
 import { type SessionEntry, useAllSessions } from "@/hooks/use-agent-counts";
 import { agentPresets } from "@/lib/actions";
 import { type AttachTarget, withAttachments } from "@/lib/attachments";
-import { type ComposerDraft, openComposer } from "@/lib/composer";
+import { type AgentPick, type ComposerDraft, openComposer } from "@/lib/composer";
 import { agentLabel, agentOf, sessionName, sessionState } from "@/lib/derive";
 import { plainError } from "@/lib/errors";
 import { sessionLocation } from "@/lib/orchestrate";
@@ -77,6 +77,9 @@ const EMPTY: ComposerDraft = {};
 const LAST_PROJECT = "berth.newWorktree.project.v2";
 const lastBoxKey = (project: string) => `berth.newWorktree.box.${project}`;
 const picksKey = (box: string, loc: string) => `berth.composer.picks.${box}/${loc}`;
+const defaultAgentKey = (box: string, loc: string) => `berth.composer.default.${box}/${loc}`;
+const providerChoicesKey = (box: string, loc: string) => `berth.composer.providers.${box}/${loc}`;
+const comparisonKey = (box: string, loc: string) => `berth.composer.comparison.${box}/${loc}`;
 const checkKey = (box: string, loc: string) => `berth.loop.check.${box}/${loc.split("/")[0]}`;
 
 // defaultCheck is the check last used for a project, else the one its box
@@ -175,27 +178,80 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
       return other ? toChosen([{ agent: other.id }]) : {};
     }
     if (from) return fromSession && agentOf(fromSession) ? toChosen([{ agent: agentOf(fromSession)! }]) : {};
-    const saved = box ? load<{ agent: string; model?: string; effort?: string }[]>(picksKey(box, locName), []) : [];
-    return saved.length === 1 ? toChosen(saved) : {};
+    const saved = box ? load<AgentPick[]>(picksKey(box, locName), []) : [];
+    const preferred = box ? load<AgentPick | undefined>(defaultAgentKey(box, locName), undefined) : undefined;
+    // Older multi-picks are retained for explicit comparison, never auto-launched.
+    return preferred ? toChosen([preferred]) : saved.length ? toChosen(saved.slice(0, 1)) : {};
   };
+  const [comparison, setComparison] = useState(!from && (!!draft.attempts || (draft.agents?.length ?? 0) > 1));
+  const singleChoice = useRef<Chosen | undefined>(undefined);
   const [chosen, setChosen] = useState<Chosen>(initialAgents);
   const agentsTouched = useRef(false);
+  const agentScope = `${box}/${locName}`;
+  const previousScope = useRef(agentScope);
   const agentPlace = `${box}/${locName}/${presets.map((p) => p.id).join(",")}/${fromSession ? agentOf(fromSession) : ""}`;
   useEffect(() => {
+    if (previousScope.current !== agentScope) {
+      agentsTouched.current = false;
+      singleChoice.current = undefined;
+      previousScope.current = agentScope;
+    }
     if (!agentsTouched.current) setChosen(initialAgents());
     // Only when where they would come from changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agentPlace]);
   const pickAgents = (c: Chosen) => {
     agentsTouched.current = true;
+    if (comparison) {
+      setChosen(c);
+      save(comparisonKey(box, locName), expand(c, copies));
+      return;
+    }
+    const id = Object.keys(c)[0];
+    const remembered = load<Chosen>(providerChoicesKey(box, locName), {});
+    if (id !== Object.keys(sel)[0] && remembered[id]) {
+      const p = presets.find((p) => p.id === id);
+      const old = remembered[id];
+      c = { [id]: {
+        models: [p?.model_flag && p.models?.includes(old.models[0]) ? old.models[0] : ""],
+        effort: p?.effort_flag && p.efforts?.includes(old.effort) ? old.effort : "",
+      } };
+    }
     setChosen(c);
+    // Explicit drafts, handoffs and templates are one-off choices, not defaults.
+    if (!from && !draft.agents?.length && !draft.template && !wt.template) {
+      save(defaultAgentKey(box, locName), expand(c, 1)[0]);
+      save(providerChoicesKey(box, locName), { ...remembered, ...c });
+    }
   };
   const [copies, setCopies] = useState(1);
   const [noAgent, setNoAgent] = useState(!!draft.noAgent);
   const live: Chosen = Object.fromEntries(Object.entries(chosen).filter(([id, c]) => c.models.length && presets.some((p) => p.id === id)));
   const sel: Chosen = Object.keys(live).length ? live : presets[0] ? { [presets[0].id]: { models: [""], effort: "" } } : {};
-  const picks = noAgent ? [] : expand(sel, from ? 1 : copies).slice(0, from ? 1 : undefined);
+  const picks = noAgent ? [] : expand(sel, comparison ? copies : 1).slice(0, comparison ? undefined : 1);
   const attempts = picks.length > 1;
+  const switchComparison = (on: boolean) => {
+    agentsTouched.current = true;
+    setNoAgent(false);
+    setComparison(on);
+    setOptionsOpen(on);
+    if (!on) {
+      setChosen(singleChoice.current ?? toChosen(expand(sel, 1).slice(0, 1)));
+      setCopies(1);
+      return;
+    }
+    singleChoice.current = toChosen(expand(sel, 1).slice(0, 1));
+    const saved = load<AgentPick[]>(comparisonKey(box, locName), load<AgentPick[]>(picksKey(box, locName), []));
+    const available = saved.filter((p) => presets.some((a) => a.id === p.agent));
+    const initial = available.length > 1 ? toChosen(available) : { ...sel };
+    if (expand(initial, 1).length === 1) {
+      const other = presets.find((p) => !(p.id in initial));
+      if (other) initial[other.id] = { models: [""], effort: "" };
+    }
+    const restored = expand(initial, 1).length;
+    setChosen(initial);
+    setCopies(available.length > restored && available.length % restored === 0 ? Math.min(3, available.length / restored) : restored < 2 ? 2 : 1);
+  };
   useEffect(() => onKind?.(noAgent ? "worktree" : attempts ? "attempts" : "start"), [onKind, noAgent, attempts]);
 
   // A hand-off or a review starts from what the agent should read.
@@ -609,17 +665,18 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
             </>
           )}
           {(!pinned || from?.kind === "handoff") && !attempts && <Pick label="Where" icon={<GitBranchIcon />} value={where} options={whereOptions} onPick={(v) => setWhere(v as "new" | "main" | "here")} />}
-          <div className="ml-auto flex min-w-0 items-center gap-1">
+          <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1">
             <AgentsPicker
               presets={presets}
               sel={sel}
               copies={copies}
               none={noAgent}
-              single={!!from}
+              single={!comparison}
               allowNone={fresh && !from && !fixed}
               onChange={pickAgents}
-              onCopies={setCopies}
+              onCopies={(n) => { setCopies(n); save(comparisonKey(box, locName), expand(sel, n)); }}
               onNone={setNoAgent}
+              onCompare={!from ? switchComparison : undefined}
             />
             <SendButton label={action} dialog={dialog} blocker={blocker} busy={busy} onClick={() => void submit()} />
           </div>

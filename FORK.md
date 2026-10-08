@@ -66,6 +66,14 @@ imported-history continuations retain their terminal paths; imported histories
 remain read-only. Never infer provider conversation identity from the latest
 transcript in a folder. Evaluate future upstream features against this direction.
 
+### Launcher Agent Selection
+
+The composer selects one provider. Choosing another replaces it and becomes the
+default for that project; model and reasoning are separate single choices kept
+per provider. Compare agents is an explicit switch that restores the attempts,
+judge and pull-request options with its own saved selection. Earlier saved
+multi-agent picks are kept for comparison and never launched as an ordinary chat.
+
 ### Structured Remote Codex
 
 The built-in New Codex action and single-agent composer on an existing registered
@@ -76,9 +84,12 @@ remote views share the structured message/approval interface below.
 
 The box resolves the registered location, effective project/box environment and
 `CODEX_HOME` before launch. Invalid configuration, unresolved secrets and custom
-Codex commands fail closed. Credentials are not copied. This first slice uses
-the provider's configured model/effort; explicit composer overrides are rejected,
-not silently discarded. Create/open a worktree before starting structured chat.
+Codex commands fail closed. Credentials are not copied. A box that advertises
+`chat.options` takes the composer's model and effort with the first message, or
+holds them as the opened chat's next-message choices when no message was written.
+Older boxes use the provider's configured model/effort; explicit choices are
+rejected before launch, not silently discarded. Create/open a worktree before
+starting structured chat.
 Multi-agent orchestration, handoffs and custom commands retain their existing
 terminal behavior. Structured state is shown in each chat pane and its project
 chat list; the older global working counter still counts terminal-backed agents.
@@ -86,8 +97,13 @@ chat list; the older global working counter still counts terminal-backed agents.
 `GET /v1/chats` lists the box's bounded in-memory registry; `POST /v1/chats`
 accepts only `{ "location": "project[/worktree]" }`. Individual chats support
 GET, DELETE, and POST to `/messages` (`text`), `/interrupt`, and `/approvals`
-(`id`, `decision`: `accept` or `decline`). Session responses include stable
-provider thread/turn IDs and location. Reopening the desktop reads that same
+(`id`, `decision`: `accept` or `decline`). With `chat.options`, `/messages` also
+takes `options` (`model`, `effort`, `permission`), `GET /models` lists the owned
+provider's models, and approvals take the scoped decisions described under
+Structured Local Codex. Older daemons reject unknown request fields, so clients
+omit `options` entirely unless the session reports `composer`. Session responses
+include stable provider thread/turn IDs, location and the last options the
+provider accepted. Reopening the desktop reads that same
 registry and never starts or replays a turn. A lost launch response tells the
 user to recover the existing chat before intentionally starting another.
 
@@ -114,11 +130,21 @@ installed box upgrade. `tasks.md` records those separate delivery gates.
   message submission and interruption use JSON requests, not terminal keys.
 - The thread requests read-only sandboxing and untrusted-command approvals with
   the user as reviewer. Provider-requested command and file-change approvals
-  offer Allow once and Deny. No persistent policy changes are offered. Unknown
+  offer Deny, Allow once and Always in this chat (the provider's session
+  approval cache, gone when the chat stops). Allow always appears only when the
+  provider proposes a command rule; Burf returns that exact proposal, which the
+  provider saves to the signed-in account's rules for every chat and project,
+  and the prompt says so. Burf never composes or widens a rule. Unknown
   interactions, missing/truncated file details and broader root grants stop the
   owned process without granting permission. A login or unsupported interaction
   must be resolved outside this initial chat integration. The first slice does
   not claim native edit capability or loosen a restrictive provider profile.
+- Chat options apply from the next message: model, reasoning effort and one of
+  Strict read-only (the default), Read-only that asks on escalation, or Workspace
+  edits that asks on escalation. Network stays off and unrestricted access is
+  not offered. The header shows only what the provider accepted; pending choices
+  are labelled Next message. A submitted message is visible at once and is
+  replaced by the provider's echo, never duplicated.
 - Launch/send failures never automatically retry. An uncertain send stops the
   owned chat rather than risking replay. Refresh reads the same in-memory session.
   Closing its view does not stop the process; Stop chat and backend shutdown do.

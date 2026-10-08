@@ -270,13 +270,16 @@ func TestChatStartingProcessPreventsUpgradeRace(t *testing.T) {
 
 func TestChatUnavailableRuntimeIsExplicit(t *testing.T) {
 	b, h, _ := chatFixture(t)
+	if caps := strings.Join(b.Capabilities(), " "); !strings.Contains(caps, "chat.codex") || !strings.Contains(caps, "chat.options") {
+		t.Fatal("available chat runtime not advertised", caps)
+	}
 	b.Chats.Close()
 	b.Chats = nil
 	if w := chatRequest(h, "GET", "/v1/chats", ""); w.Code != 501 {
 		t.Fatalf("unavailable runtime: %d", w.Code)
 	}
 	for _, cap := range b.Capabilities() {
-		if cap == "chat.codex" {
+		if cap == "chat.codex" || cap == "chat.options" {
 			t.Fatal("advertised unavailable chat runtime")
 		}
 	}
@@ -307,8 +310,10 @@ func TestChatFailedHandshakeRetainsLocationForRefresh(t *testing.T) {
 	}
 }
 
-func TestChatUnsupportedCodexFailsBeforeRuntime(t *testing.T) {
-	b, h, count := chatFixture(t)
+func TestChatUnsupportedCodexFailsOwnedHandshake(t *testing.T) {
+	b, h, _ := chatFixture(t)
+	b.Chats.Close()
+	b.Chats = localchat.New("", localchat.StartProcess)
 	bin := t.TempDir()
 	if err := os.WriteFile(filepath.Join(bin, "codex"), []byte("#!/bin/sh\necho old-version\n"), 0700); err != nil {
 		t.Fatal(err)
@@ -317,8 +322,13 @@ func TestChatUnsupportedCodexFailsBeforeRuntime(t *testing.T) {
 		t.Fatal(err)
 	}
 	w := chatRequest(h, "POST", "/v1/chats", `{"location":"project"}`)
-	if w.Code != 400 || count.Load() != 0 {
+	if w.Code != 409 {
 		t.Fatalf("unsupported Codex: %d %s", w.Code, w.Body)
+	}
+	for _, chat := range b.Chats.List() {
+		if chat.State != "exited" {
+			t.Fatal("unsupported CLI left running", chat.State)
+		}
 	}
 }
 

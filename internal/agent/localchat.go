@@ -2,6 +2,7 @@ package agent
 
 import (
 	"errors"
+	"github.com/MylesMCook/burf/internal/localchat"
 	"net/http"
 )
 
@@ -38,16 +39,25 @@ func (a *Agent) localChatRoutes(handle func(string, http.HandlerFunc)) {
 	})
 	handle("POST /v1/local/chats/{id}/messages", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
-			Text string `json:"text"`
+			Text    string                `json:"text"`
+			Options localchat.TurnOptions `json:"options"`
 		}
 		if !decodeBody(w, r, &req) {
 			return
 		}
-		if err := a.localClient.chats.Send(r.Context(), r.PathValue("id"), req.Text); err != nil {
+		if err := a.localClient.chats.SendWith(r.Context(), r.PathValue("id"), req.Text, req.Options); err != nil {
 			localClientError(w, err)
 			return
 		}
 		writeJSON(w, 200, map[string]bool{"ok": true})
+	})
+	handle("GET /v1/local/chats/{id}/models", func(w http.ResponseWriter, r *http.Request) {
+		models, err := a.localClient.chats.Models(r.Context(), r.PathValue("id"))
+		if err != nil {
+			localClientError(w, err)
+			return
+		}
+		writeJSON(w, 200, models)
 	})
 	handle("POST /v1/local/chats/{id}/interrupt", func(w http.ResponseWriter, r *http.Request) {
 		if err := a.localClient.chats.Interrupt(r.Context(), r.PathValue("id")); err != nil {

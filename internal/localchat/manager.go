@@ -41,11 +41,13 @@ type Item struct {
 	sourceType string
 }
 type Approval struct {
-	ID     string `json:"id"`
-	Kind   string `json:"kind"`
-	Detail string `json:"detail"`
-	Reason string `json:"reason,omitempty"`
-	itemID string
+	ID             string   `json:"id"`
+	Kind           string   `json:"kind"`
+	Detail         string   `json:"detail"`
+	Reason         string   `json:"reason,omitempty"`
+	SessionAllowed bool     `json:"session_allowed,omitempty"`
+	Execpolicy     []string `json:"execpolicy,omitempty"`
+	itemID         string
 }
 
 type fileChange struct {
@@ -75,18 +77,20 @@ func patchDetail(changes []fileChange) (string, bool) {
 }
 
 type Session struct {
-	ID        string     `json:"id"`
-	Agent     string     `json:"agent"`
-	Mode      string     `json:"mode"`
-	CWD       string     `json:"cwd"`
-	State     string     `json:"state"`
-	StartedAt time.Time  `json:"started_at"`
-	ThreadID  string     `json:"thread_id"`
-	TurnID    string     `json:"turn_id,omitempty"`
-	Items     []Item     `json:"items"`
-	Approvals []Approval `json:"approvals"`
-	Error     string     `json:"error,omitempty"`
-	Truncated bool       `json:"truncated,omitempty"`
+	ID        string      `json:"id"`
+	Agent     string      `json:"agent"`
+	Mode      string      `json:"mode"`
+	CWD       string      `json:"cwd"`
+	State     string      `json:"state"`
+	StartedAt time.Time   `json:"started_at"`
+	ThreadID  string      `json:"thread_id"`
+	TurnID    string      `json:"turn_id,omitempty"`
+	Items     []Item      `json:"items"`
+	Approvals []Approval  `json:"approvals"`
+	Error     string      `json:"error,omitempty"`
+	Truncated bool        `json:"truncated,omitempty"`
+	Options   TurnOptions `json:"options"`
+	Composer  bool        `json:"composer"`
 }
 type packet struct {
 	ID     json.RawMessage `json:"id,omitempty"`
@@ -109,6 +113,7 @@ type running struct {
 	next      uint64
 	pending   map[string]chan packet
 	approvals map[string]json.RawMessage
+	submitted string
 }
 type Manager struct {
 	mu       sync.Mutex
@@ -215,7 +220,7 @@ func (m *Manager) startProcess(ctx context.Context, options LaunchOptions) (*run
 		return nil, err
 	}
 	r := &running{process: p, writes: make(chan []byte, 16), done: make(chan struct{}), pending: make(map[string]chan packet), approvals: make(map[string]json.RawMessage)}
-	r.session = Session{ID: hex.EncodeToString(bytes[:]), Agent: "codex", Mode: "chat", CWD: cwd, State: "starting", StartedAt: time.Now().UTC(), Items: []Item{}, Approvals: []Approval{}}
+	r.session = Session{ID: hex.EncodeToString(bytes[:]), Agent: "codex", Mode: "chat", CWD: cwd, State: "starting", StartedAt: time.Now().UTC(), Items: []Item{}, Approvals: []Approval{}, Options: TurnOptions{Permission: "strict"}, Composer: true}
 	if len(m.sessions) >= 32 {
 		var oldest string
 		var at time.Time
@@ -249,6 +254,9 @@ func (r *running) snapshot() Session {
 	s := r.session
 	s.Items = append([]Item{}, s.Items...)
 	s.Approvals = append([]Approval{}, s.Approvals...)
+	for i := range s.Approvals {
+		s.Approvals[i].Execpolicy = append([]string(nil), s.Approvals[i].Execpolicy...)
+	}
 	return s
 }
 func (m *Manager) Get(id string) (Session, error) {
@@ -272,6 +280,12 @@ func (m *Manager) List() []Session {
 	return out
 }
 func (m *Manager) Send(ctx context.Context, id, text string) error {
+	return m.SendWith(ctx, id, text, TurnOptions{})
+}
+func (m *Manager) SendWith(ctx context.Context, id, text string, options TurnOptions) error {
+	if err := options.validate(); err != nil {
+		return err
+	}
 	if strings.TrimSpace(text) == "" || len(text) > 64<<10 {
 		return errors.New("message must contain 1 to 65536 bytes")
 	}
@@ -290,10 +304,15 @@ func (m *Manager) Send(ctx context.Context, id, text string) error {
 		return errors.New("chat is not ready for a message")
 	}
 	thread := r.session.ThreadID
+	params := map[string]any{"threadId": thread, "input": []any{map[string]any{"type": "text", "text": text}}}
+	options.apply(params, r.session.CWD)
+	r.submitted = fmt.Sprintf("submitted-%d", r.next+1)
+	params["clientUserMessageId"] = r.submitted
+	r.put(Item{ID: r.submitted, Kind: "user", Text: text})
 	r.session.State = "running"
 	r.session.Error = ""
 	r.mu.Unlock()
-	result, e := r.call(ctx, "turn/start", map[string]any{"threadId": thread, "input": []any{map[string]any{"type": "text", "text": text}}})
+	result, e := r.call(ctx, "turn/start", params)
 	if e != nil {
 		r.finish("Message delivery is uncertain; this chat was stopped and will not replay the message. " + e.Error())
 		return errors.New("message may have arrived; chat stopped without replay")
@@ -308,6 +327,15 @@ func (m *Manager) Send(ctx context.Context, id, text string) error {
 		return errors.New("message may have arrived; Codex returned no turn identity")
 	}
 	r.mu.Lock()
+	if options.Model != "" {
+		r.session.Options.Model = options.Model
+	}
+	if options.Effort != "" {
+		r.session.Options.Effort = options.Effort
+	}
+	if options.Permission != "" {
+		r.session.Options.Permission = options.Permission
+	}
 	if r.session.State == "running" && r.session.TurnID == "" {
 		r.session.TurnID = reply.Turn.ID
 	}
@@ -332,8 +360,8 @@ func (m *Manager) Interrupt(ctx context.Context, id string) error {
 	return e
 }
 func (m *Manager) Decide(id, approval, decision string) error {
-	if decision != "accept" && decision != "decline" {
-		return errors.New("approval must be allow once or deny")
+	if decision != "accept" && decision != "decline" && decision != "acceptForSession" && decision != "acceptAlways" {
+		return errors.New("unsupported approval decision")
 	}
 	r, e := m.get(id)
 	if e != nil {
@@ -347,6 +375,23 @@ func (m *Manager) Decide(id, approval, decision string) error {
 		r.mu.Unlock()
 		return errors.New("approval is no longer pending")
 	}
+	var value any = decision
+	for _, a := range r.session.Approvals {
+		if a.ID != approval {
+			continue
+		}
+		if decision == "acceptForSession" && !a.SessionAllowed {
+			r.mu.Unlock()
+			return errors.New("session approval is not supported for this request")
+		}
+		if decision == "acceptAlways" {
+			if len(a.Execpolicy) == 0 {
+				r.mu.Unlock()
+				return errors.New("Codex did not propose a persistent command rule")
+			}
+			value = map[string]any{"acceptWithExecpolicyAmendment": map[string]any{"execpolicy_amendment": a.Execpolicy}}
+		}
+	}
 	delete(r.approvals, approval)
 	for i, a := range r.session.Approvals {
 		if a.ID == approval {
@@ -357,7 +402,7 @@ func (m *Manager) Decide(id, approval, decision string) error {
 	if len(r.approvals) == 0 {
 		r.session.State = "running"
 	}
-	e = r.queue(map[string]any{"id": raw, "result": map[string]string{"decision": decision}})
+	e = r.queue(map[string]any{"id": raw, "result": map[string]any{"decision": value}})
 	r.mu.Unlock()
 	if e != nil {
 		r.finish("Approval delivery could not be confirmed; chat stopped without replay.")
@@ -536,14 +581,15 @@ func (r *running) trim() {
 }
 func (r *running) approval(p packet) {
 	var v struct {
-		ThreadID  string `json:"threadId"`
-		TurnID    string `json:"turnId"`
-		ItemID    string `json:"itemId"`
-		Command   string `json:"command"`
-		CWD       string `json:"cwd"`
-		Reason    string `json:"reason"`
-		GrantRoot string `json:"grantRoot"`
-		Kind      string `json:"kind"`
+		ThreadID   string   `json:"threadId"`
+		TurnID     string   `json:"turnId"`
+		ItemID     string   `json:"itemId"`
+		Command    string   `json:"command"`
+		CWD        string   `json:"cwd"`
+		Reason     string   `json:"reason"`
+		GrantRoot  string   `json:"grantRoot"`
+		Kind       string   `json:"kind"`
+		Execpolicy []string `json:"proposedExecpolicyAmendment"`
 	}
 	_ = json.Unmarshal(p.Params, &v)
 	r.mu.Lock()
@@ -576,8 +622,20 @@ func (r *running) approval(p packet) {
 		supported = false
 	}
 	if supported {
+		var rule []string
+		if kind == "command" && len(v.Execpolicy) > 0 && len(v.Execpolicy) <= 64 {
+			valid := true
+			for _, arg := range v.Execpolicy {
+				if arg == "" || len(arg) > 4096 || strings.ContainsAny(arg, "\x00\r\n") {
+					valid = false
+				}
+			}
+			if valid {
+				rule = append([]string(nil), v.Execpolicy...)
+			}
+		}
 		r.approvals[key] = append(json.RawMessage(nil), p.ID...)
-		r.session.Approvals = append(r.session.Approvals, Approval{ID: key, Kind: kind, Detail: clip(detail), Reason: clip(v.Reason), itemID: v.ItemID})
+		r.session.Approvals = append(r.session.Approvals, Approval{ID: key, Kind: kind, Detail: clip(detail), Reason: clip(v.Reason), itemID: v.ItemID, SessionAllowed: true, Execpolicy: rule})
 		r.session.State = "waiting"
 		r.mu.Unlock()
 		return
@@ -603,14 +661,15 @@ func (r *running) event(p packet) {
 			} `json:"error"`
 		} `json:"turn"`
 		Item struct {
-			ID      string `json:"id"`
-			Type    string `json:"type"`
-			Text    string `json:"text"`
-			Command string `json:"command"`
-			Status  string `json:"status"`
-			Output  string `json:"aggregatedOutput"`
-			Tool    string `json:"tool"`
-			Content []struct {
+			ID       string `json:"id"`
+			ClientID string `json:"clientId"`
+			Type     string `json:"type"`
+			Text     string `json:"text"`
+			Command  string `json:"command"`
+			Status   string `json:"status"`
+			Output   string `json:"aggregatedOutput"`
+			Tool     string `json:"tool"`
+			Content  []struct {
 				Type string `json:"type"`
 				Text string `json:"text"`
 			} `json:"content"`
@@ -655,6 +714,7 @@ func (r *running) event(p packet) {
 			return
 		}
 		r.session.TurnID = ""
+		r.submitted = ""
 		r.session.State = "idle"
 		r.session.Approvals = []Approval{}
 		r.approvals = map[string]json.RawMessage{}
@@ -672,6 +732,19 @@ func (r *running) event(p packet) {
 			for _, c := range v.Item.Content {
 				if c.Type == "text" {
 					it.Text += c.Text
+				}
+			}
+			// Replace only the provisional message from this owned turn. Provider
+			// echoes can be delayed or absent; submitted text stays visible either way.
+			// A turn carries one message, so an echo without a client identity is
+			// this one even when the provider normalized its text.
+			if r.submitted != "" {
+				for i, old := range r.session.Items {
+					if old.ID == r.submitted && (v.Item.ClientID == r.submitted || v.Item.ClientID == "") {
+						r.session.Items[i] = it
+						r.submitted = ""
+						return
+					}
 				}
 			}
 		case "agentMessage":

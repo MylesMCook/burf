@@ -15,7 +15,7 @@ second browser-test stack. From `app/`:
 pnpm test
 pnpm exec tsc --noEmit -p e2e
 pnpm run build --logLevel error
-pnpm exec playwright test remote-chat.spec.ts local-chat.spec.ts chat-first.spec.ts chat.spec.ts chat-feed.spec.ts first-run.spec.ts local-computer.spec.ts windows-client.spec.ts diagnostics.spec.ts trust.spec.ts workspace.spec.ts --workers=2
+pnpm exec playwright test remote-chat.spec.ts local-chat.spec.ts chat-first.spec.ts chat.spec.ts chat-feed.spec.ts first-run.spec.ts local-computer.spec.ts windows-client.spec.ts diagnostics.spec.ts trust.spec.ts workspace.spec.ts chat-experience.spec.ts agent-picker.spec.ts --workers=2
 ```
 
 These acceptance tests use synthetic fixtures and isolated loopback servers.

@@ -128,7 +128,9 @@ func (b *Box) Capabilities() []string {
 	// /v1/locations/{name}/worktrees/{worktree} names one, worktreetitles.go).
 	caps := []string{"transcript", "diff", "titles", "sample", "history", "commands", "service.terminal", "answer", "session.home", "files", "files.dir", "agents.install", "worktree.titles"}
 	if b.Chats != nil {
-		caps = append(caps, "chat.codex")
+		// chat.options: messages take per-turn model, effort and permission,
+		// and approvals take scoped decisions. Older daemons reject both.
+		caps = append(caps, "chat.codex", "chat.options")
 	}
 	if b.Turns != nil {
 		// controls: POST .../keys, .../interrupt and .../mode, GET

@@ -1,7 +1,6 @@
 package box
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -9,13 +8,11 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/MylesMCook/burf/internal/localchat"
 )
@@ -114,7 +111,8 @@ func (b *Box) mountChats(route func(string, func(http.ResponseWriter, *http.Requ
 	})
 	add("POST /v1/chats/{id}/messages", func(w http.ResponseWriter, r *http.Request) error {
 		var req struct {
-			Text string `json:"text"`
+			Text    string                `json:"text"`
+			Options localchat.TurnOptions `json:"options"`
 		}
 		if err := decodeChat(r, &req); err != nil {
 			return err
@@ -122,10 +120,18 @@ func (b *Box) mountChats(route func(string, func(http.ResponseWriter, *http.Requ
 		if err := b.beforeChat(r, "session.send"); err != nil {
 			return err
 		}
-		if err := b.Chats.Send(r.Context(), r.PathValue("id"), req.Text); err != nil {
+		if err := b.Chats.SendWith(r.Context(), r.PathValue("id"), req.Text, req.Options); err != nil {
 			return chatError(err)
 		}
 		writeJSON(w, map[string]bool{"ok": true})
+		return nil
+	})
+	add("GET /v1/chats/{id}/models", func(w http.ResponseWriter, r *http.Request) error {
+		models, err := b.Chats.Models(r.Context(), r.PathValue("id"))
+		if err != nil {
+			return chatError(err)
+		}
+		writeJSON(w, models)
 		return nil
 	})
 	add("POST /v1/chats/{id}/interrupt", func(w http.ResponseWriter, r *http.Request) error {
@@ -290,30 +296,9 @@ func (b *Box) chatOptions(ctx context.Context, ref string) (localchat.LaunchOpti
 	for _, k := range keys {
 		opts.Env = append(opts.Env, k+"="+env[k])
 	}
-	probeCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	cmd := exec.CommandContext(probeCtx, program, "app-server", "--help")
-	cmd.Dir = dir
-	cmd.Env = opts.Env
-	cmd.WaitDelay = time.Second
-	var out boundedChatOutput
-	cmd.Stdout = &out
-	cmd.Stderr = io.Discard
-	if err := cmd.Run(); err != nil || !strings.Contains(out.String(), "--listen") {
-		return opts, errors.New("installed Codex does not advertise the app-server stdio interface")
-	}
+	// The owned, timeout-bounded initialize handshake validates the actual CLI.
+	// Spawning a second process for --help delayed every new chat.
 	return opts, nil
-}
-
-type boundedChatOutput struct{ bytes.Buffer }
-
-func (b *boundedChatOutput) Write(p []byte) (int, error) {
-	n := len(p)
-	if b.Len() < 64<<10 {
-		keep := min(n, (64<<10)-b.Len())
-		_, _ = b.Buffer.Write(p[:keep])
-	}
-	return n, nil
 }
 
 func chatCodexPath(env map[string]string) (string, error) {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ApiError, type Client } from "@/lib/api";
-import type { LocalChat } from "@/lib/local-computer";
+import type { LocalChat, ChatOptions, ChatModel, ChatDecision } from "@/lib/local-computer";
 import { useStore } from "@/lib/store";
 import { leaves } from "@/lib/layout";
 import { openTab, showWorktree, useWorkspaces, wsKey, type WorktreeRef } from "@/lib/workspaces";
@@ -23,24 +23,28 @@ export const remoteChatApi = {
   list: (client: Client, box: string, signal?: AbortSignal) => client.box<{ chats: RemoteChatSummary[] }>(box, "GET", "chats", undefined, signal),
   start: (client: Client, box: string, location: string) => mutation(client.box<RemoteChat>(box, "POST", "chats", { location }), true),
   read: (client: Client, box: string, id: string, signal?: AbortSignal) => client.box<RemoteChat>(box, "GET", path(id), undefined, signal),
-  message: (client: Client, box: string, id: string, text: string) => mutation(client.box(box, "POST", `${path(id)}/messages`, { text })),
+  message: (client: Client, box: string, id: string, text: string, options?: ChatOptions) => mutation(client.box(box, "POST", `${path(id)}/messages`, { text, ...(options && Object.keys(options).length ? { options } : {}) })),
+  models: (client: Client, box: string, id: string) => client.box<ChatModel[]>(box, "GET", `${path(id)}/models`),
   interrupt: (client: Client, box: string, id: string) => mutation(client.box(box, "POST", `${path(id)}/interrupt`)),
   stop: (client: Client, box: string, id: string) => mutation(client.box(box, "DELETE", path(id))),
-  approve: (client: Client, box: string, id: string, approval: string, decision: "accept" | "decline") => mutation(client.box(box, "POST", `${path(id)}/approvals`, { id: approval, decision })),
+  approve: (client: Client, box: string, id: string, approval: string, decision: ChatDecision) => mutation(client.box(box, "POST", `${path(id)}/approvals`, { id: approval, decision })),
 };
+
+// Older daemons reject unknown message fields, so options go only to boxes that say they take them.
+export const hasChatOptions = (box: string) => !!useStore.getState().boxes[box]?.info?.capabilities?.includes("chat.options");
 
 export function hasRemoteCodex(box: string, command: string): boolean {
   return command === "codex" && !!useStore.getState().boxes[box]?.info?.capabilities?.includes("chat.codex");
 }
 
 // Recover views from the daemon's owned registry, never from folder history.
-export function openRemoteChat(box: string, chat: RemoteChatSummary, ref: WorktreeRef, draft?: string) {
+export function openRemoteChat(box: string, chat: RemoteChatSummary, ref: WorktreeRef, draft?: string, options?: ChatOptions) {
   const key = wsKey(box, ref.path);
   const existing = useWorkspaces.getState().spaces[key]?.tabs.find((tab) => leaves(tab.root).some((l) => l.content.kind === "remote-chat" && l.content.box === box && l.content.chat === chat.id));
   showWorktree(key);
   if (existing) {
     useWorkspaces.setState((s) => ({ spaces: { ...s.spaces, [key]: { ...s.spaces[key], active: existing.id } } }));
-  } else openTab({ kind: "remote-chat", box, chat: chat.id, cwd: chat.cwd, draft }, key);
+  } else openTab({ kind: "remote-chat", box, chat: chat.id, cwd: chat.cwd, draft, options }, key);
 }
 
 export function useRemoteChats(box: string, location: string) {

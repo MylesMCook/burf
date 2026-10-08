@@ -206,8 +206,8 @@ func TestApprovalIsExplicitScopedAndOneUse(t *testing.T) {
 		}
 	}
 	f.mu.Unlock()
-	if e := m.Decide(s.ID, got.Approvals[0].ID, "acceptForSession"); e == nil {
-		t.Fatal("allowed persistent approval")
+	if e := m.Decide(s.ID, got.Approvals[0].ID, "acceptAlways"); e == nil {
+		t.Fatal("allowed persistent approval without a provider proposal")
 	}
 	if e := m.Decide(s.ID, "foreign", "accept"); e == nil {
 		t.Fatal("allowed unrelated approval")

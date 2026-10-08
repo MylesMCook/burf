@@ -18,7 +18,7 @@ import { boxHasRuns, runs, scheduleRuns } from "@/lib/runs";
 import { save } from "@/lib/storage";
 import { useStore } from "@/lib/store";
 import { findSession, focusSession, selectWorktree, setPaneContent, splitPane } from "@/lib/workspaces";
-import { hasRemoteCodex, openRemoteChat, remoteChatApi } from "@/lib/remote-chat";
+import { hasChatOptions, hasRemoteCodex, openRemoteChat, remoteChatApi } from "@/lib/remote-chat";
 
 // startWork does what the composer gathered (lib/composer): a task in a new
 // worktree, an agent in the main checkout or a worktree already open, a
@@ -106,7 +106,9 @@ export async function startWork(d: StartDraft): Promise<boolean> {
   const presets = agentPresets(d.box, d.location);
   const structured = pick?.agent === "codex" && hasRemoteCodex(d.box, presets.find((p) => p.id === "codex")?.command ?? "");
   if (structured && !d.worktree?.command) {
-    if (pick.model || pick.effort) return fail("Choose Codex defaults", new Error("Structured Codex chats currently use the box's configured model and effort. Clear these overrides before starting."), d.box);
+    const options = { ...(pick.model ? { model: pick.model } : {}), ...(pick.effort ? { effort: pick.effort } : {}) };
+    const chosen = Object.keys(options).length > 0;
+    if (chosen && !hasChatOptions(d.box)) return fail("Choose Codex defaults", new Error(`${d.box} runs an older Burf that starts Codex chats with its configured model and effort. Clear these choices or update the box.`), d.box);
     if (d.where === "new") return fail("Open a worktree first", new Error("Create the worktree without an agent, then start Codex chat inside it."), d.box);
     const location = d.where === "here" ? (d.at ?? d.location) : d.location;
     const loc = useStore.getState().boxes[d.box]?.locations?.find((l) => l.name === d.location);
@@ -116,13 +118,13 @@ export async function startWork(d: StartDraft): Promise<boolean> {
       const chat = await remoteChatApi.start(client, d.box, location);
       const ref = { box: d.box, location: d.location, worktree: wt.name, path: wt.path, main: wt.main };
       try {
-        if (d.text.trim()) await remoteChatApi.message(client, d.box, chat.id, d.text);
+        if (d.text.trim()) await remoteChatApi.message(client, d.box, chat.id, d.text, options);
       } catch (error) {
-        openRemoteChat(d.box, chat, ref, d.text);
+        openRemoteChat(d.box, chat, ref, d.text, chosen ? options : undefined);
         return fail("Could not confirm the message", error, d.box);
       }
-      openRemoteChat(d.box, chat, ref);
-      save(`berth.composer.picks.${d.box}/${d.location}`, d.picks);
+      // Without a first message nothing has confirmed the choices yet: the chat's first send carries them.
+      openRemoteChat(d.box, chat, ref, undefined, chosen && !d.text.trim() ? options : undefined);
       return true;
     } catch (error) { return fail("Couldn't start Codex", error, d.box); }
   }
@@ -166,7 +168,6 @@ export async function startWork(d: StartDraft): Promise<boolean> {
     if (isMock() && d.text) void playTurn(d.box, session, d.text);
     await useStore.getState().refreshBox(d.box, ["locations", "sessions"]);
     await focusSession(d.box, session);
-    save(`berth.composer.picks.${d.box}/${d.location}`, d.picks);
     void offerAgentHooks(d.box, d.worktree?.command ?? presets.find((p) => p.id === pick.agent)?.command ?? pick.agent, session);
     return true;
   } catch (err) {
@@ -214,7 +215,8 @@ async function startAttempts(d: StartDraft): Promise<boolean> {
       scheduleRuns(box, 0);
       first ??= { box, id: run.id };
     }
-    save(`berth.composer.picks.${d.box}/${d.location}`, d.picks);
+    // Comparison history must not replace the normal new-chat preference.
+    save(`berth.composer.comparison.${d.box}/${d.location}`, d.picks);
     const run = first!;
     toastManager.add({
       type: "success",
