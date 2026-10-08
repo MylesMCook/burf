@@ -22,13 +22,33 @@ func (b *Box) parentFor(ctx context.Context, loc Location, session string) strin
 	if err != nil {
 		return ""
 	}
-	_, name := worktreeFor([]Location{loc}, s.Dir)
+	return parentAt(loc, s.Dir)
+}
+
+// parentAt is the path of loc's worktree that dir is in, when it is one
+// other than its main checkout.
+func parentAt(loc Location, dir string) string {
+	if dir == "" {
+		return ""
+	}
+	_, name := worktreeFor([]Location{loc}, dir)
 	for _, w := range loc.Worktrees {
 		if w.Name == name && !w.Main {
 			return w.Path
 		}
 	}
 	return ""
+}
+
+// namedParent is the path of loc's worktree called name, for a worktree
+// made with WorktreeRequest.Parent; the main checkout is no parent.
+func namedParent(loc Location, name string) (string, error) {
+	for _, w := range loc.Worktrees {
+		if w.Name == name && !w.Main {
+			return w.Path, nil
+		}
+	}
+	return "", badRequest("%s has no worktree %q to nest under", loc.Name, name)
 }
 
 // SetWorktreeParent puts the worktree at child under the one at parent.

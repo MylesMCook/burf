@@ -15,6 +15,12 @@ again.
   then `brew install --cask cosscom/shipyard/shipyard`, installs the Mac app
   and puts `berth` on your `PATH`.
 
+- **Handed-off worktrees nest under the one they came from.** When an
+  agent starts a task, or hands its work off, the new worktree shows under
+  the agent's own in the sidebar, folded behind a "1 child" pill. `berthd
+  worktree new … --parent NAME` nests one by hand, such as a stacked branch
+  under the branch it builds on.
+
 ## v0.3.11
 
 Most of this needs each box's new `berthd`: use **Update all** in the status

@@ -52,7 +52,7 @@ starts.
 | `berthd services [--json]` | Which worktree each running server belongs to |
 | `berthd service list\|start\|stop\|restart\|log LOC/WORKTREE [SERVICE]` | A worktree's services from the repo's config |
 | `berthd preview [LOC/WORKTREE] [PORT] [--path /x]` | Open a worktree's page in the Shipyard app |
-| `berthd worktree new LOC/NAME [--branch B] [--base REF]` | Create a git worktree and run its setup |
+| `berthd worktree new LOC/NAME [--branch B] [--base REF] [--parent NAME]` | Create a git worktree and run its setup; `--parent` nests it under another worktree of the location |
 | `berthd worktree rm LOC/NAME [--force]` | Remove a worktree |
 | `berthd worktree rename LOC/NAME [TITLE]` | Give a worktree a display name (no TITLE clears it) |
 
@@ -67,7 +67,7 @@ asks the app to open the page as a browser tab beside the agent; the
 | --- | --- |
 | `berthd sessions [--json]` | List sessions |
 | `berthd agents [--json]` | Agent CLIs this box can start |
-| `berthd task new LOC/NAME [--agent ID] [--prompt TEXT] [--open split\|tab] [--branch B] [--base REF] [--no-notify] [-- COMMAND...]` | A worktree with an agent (or a command) running in it; from an agent's session, that agent [hears back](/guides/orchestration#hearing-back) when its first turn ends |
+| `berthd task new LOC/NAME [--agent ID] [--prompt TEXT] [--open split\|tab] [--branch B] [--base REF] [--no-notify] [-- COMMAND...]` | A worktree with an agent (or a command) running in it; from an agent's session, that agent [hears back](/guides/orchestration#hearing-back) when its first turn ends, and the new worktree nests under that agent's |
 | `berthd session new LOC[/WORKTREE] [--name N] [--agent ID [--prompt TEXT]] [--open split\|tab] [-- COMMAND...]` | Start an agent or a command (default: a shell) there |
 | `berthd session screen NAME [--history N]` | Print what the session shows |
 | `berthd session send NAME TEXT [--when now\|idle] [--force] [--idem KEY] [--no-enter] [--wait [--timeout 30m]] [--no-notify]` | Type a prompt into a session (or hold it until the agent is idle), and wait for its turn; without `--wait`, an agent sending it hears back when the turn ends |

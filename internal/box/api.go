@@ -393,6 +393,13 @@ func (b *Box) addWorktree(w http.ResponseWriter, r *http.Request) error {
 // createWorktree makes a git worktree once the hooks allow it, then runs the
 // location's setup script in the background.
 func (b *Box) createWorktree(r *http.Request, loc Location, req WorktreeRequest) (Worktree, error) {
+	parent := ""
+	if req.Parent != "" {
+		var err error
+		if parent, err = namedParent(loc, req.Parent); err != nil {
+			return Worktree{}, err
+		}
+	}
 	if err := b.before(r, "worktree.create", map[string]any{
 		"location": loc.Name, "name": req.Name, "branch": req.Branch, "base": req.Base,
 	}); err != nil {
@@ -403,6 +410,11 @@ func (b *Box) createWorktree(r *http.Request, loc Location, req WorktreeRequest)
 		return Worktree{}, err
 	}
 	b.own(wt.Path)
+	if parent != "" {
+		if err := b.Locations.SetWorktreeParent(loc.Name, wt.Path, parent); err == nil {
+			wt.Parent = parent
+		}
+	}
 	created := map[string]any{
 		"location": loc.Name, "name": wt.Name, "path": wt.Path, "branch": wt.Branch,
 	}

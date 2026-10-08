@@ -20,6 +20,9 @@ type WorktreeRequest struct {
 	// pull/<PR>/head) is fetched into Branch when origin has no such branch.
 	PR  int    `json:"pr,omitempty"`
 	Ref string `json:"ref,omitempty"`
+	// Parent names another worktree of the location to nest this one
+	// under, like a stacked branch under the one it builds on.
+	Parent string `json:"parent,omitempty"`
 }
 
 // toolPath finds a tool on PATH or in ~/.local/bin, where agent CLIs install
