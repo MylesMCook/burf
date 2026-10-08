@@ -58,8 +58,11 @@ type Server struct {
 	local     *http.ServeMux
 	pairLimit *pairLimiter
 	streams   atomic.Int64
-	open      openConns
-	recheck   chan struct{}
+	// stopping is set once Serve's context ends: a ping then answers that
+	// the box is going, rather than looking like a link that dropped.
+	stopping atomic.Bool
+	open     openConns
+	recheck  chan struct{}
 }
 
 // ActiveStreams reports how many port streams are open right now.
@@ -156,13 +159,28 @@ func (s *Server) Serve(ctx context.Context, ln net.Listener) error {
 			return context.WithValue(ctx, connKey{}, c)
 		},
 	}
-	stop := context.AfterFunc(ctx, func() { srv.Close() })
+	stopped := make(chan struct{})
+	stop := context.AfterFunc(ctx, func() {
+		defer close(stopped)
+		// Say so before going: Shutdown stops listening and sends each
+		// laptop's connection a GOAWAY, so a laptop knows the box is
+		// stopping rather than that its link went quiet. Then close
+		// whatever is still open (event streams, terminals).
+		s.stopping.Store(true)
+		grace, cancel := context.WithTimeout(context.Background(), stopGrace)
+		defer cancel()
+		srv.Shutdown(grace)
+		srv.Close()
+	})
 	defer stop()
 	watchCtx, endWatch := context.WithCancel(ctx)
 	defer endWatch()
 	go s.watchRevocations(watchCtx)
 	err := srv.ServeTLS(ln, "", "")
 	if errors.Is(err, http.ErrServerClosed) && ctx.Err() != nil {
+		if !stop() {
+			<-stopped
+		}
 		return nil
 	}
 	return err
@@ -285,6 +303,10 @@ func (s *Server) handlePair(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handlePing(w http.ResponseWriter, r *http.Request) {
+	if s.stopping.Load() {
+		writeJSON(w, http.StatusServiceUnavailable, errorResponse{Error: ErrStopping.Error(), Code: codeStopping})
+		return
+	}
 	writeJSON(w, http.StatusOK, nameResponse{Name: s.Name})
 }
 
@@ -362,7 +384,15 @@ func (f flushWriter) Write(b []byte) (int, error) {
 
 type errorResponse struct {
 	Error string `json:"error"`
+	Code  string `json:"code,omitempty"`
 }
+
+// codeStopping marks a ping answered by a box on its way down.
+const codeStopping = "box_stopping"
+
+// stopGrace is how long a stopping box waits for its laptops to take its
+// GOAWAY before it closes their connections.
+const stopGrace = 250 * time.Millisecond
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")

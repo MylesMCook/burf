@@ -106,8 +106,9 @@ export function Projects({ prefs, update }: { prefs: SidebarPrefs; update(p: Par
   const group = (list: Repo[], chip: boolean) => list.map((r) => <RepoGroup key={r.key} repo={r} chip={chip} prefs={prefs} update={update} />);
 
   // By repository, boxes only appear when there is something to say: an
-  // empty box, or one that is not online.
-  const notable = boxes.filter((b) => b.state !== "online" || !data[b.name]?.locations?.length);
+  // empty box, one that is not online, or one whose link is slow (below the
+  // projects, so nothing above it moves).
+  const notable = boxes.filter((b) => b.state !== "online" || b.link?.slow || !data[b.name]?.locations?.length);
 
   return (
     <>
@@ -149,7 +150,7 @@ function BoxHeader({ box, empty }: { box: BoxStatus; empty: boolean }) {
       <div
         tabIndex={0}
         role="group"
-        aria-label={`${box.name}, ${online ? "online" : awayText(box)}`}
+        aria-label={`${box.name}, ${online ? (box.link?.slow ? "online, slow link" : "online") : awayText(box)}`}
         className="group/row relative flex h-7 outline-none focus-visible:ring-2 focus-visible:ring-ring items-center gap-1.5 rounded-md pr-1 pl-2 font-medium text-[11px] text-muted-foreground hover:bg-sidebar-accent"
       >
         {online ? <ServerIcon className="size-3" /> : <ServerOffIcon className="size-3" />}
@@ -157,7 +158,8 @@ function BoxHeader({ box, empty }: { box: BoxStatus; empty: boolean }) {
         {online ? (
           <span className="ml-auto flex items-center gap-1.5 font-normal normal-case tracking-normal tabular-nums">
             {empty && <span>no projects</span>}
-            {box.latency_ms !== undefined && <span>{box.latency_ms} ms</span>}
+            {/* A slow link says so instead of its latency: still online, not alarming. */}
+            {box.link?.slow ? <span data-testid="box-slow">slow</span> : box.latency_ms !== undefined && <span>{box.latency_ms} ms</span>}
             <BoxStateDot box={box.name} />
           </span>
         ) : (
@@ -195,10 +197,12 @@ function BoxChip({ box }: { box: BoxStatus }) {
       )}
     >
       {!online && <span className="size-1.5 rounded-full bg-muted-foreground/50" />}
+      {online && box.link?.slow && <span className="size-1.5 rounded-full bg-success/45" />}
       {box.name}
     </span>
   );
   // The name says it all while the box is up; otherwise say why it is dim.
+  if (online && box.link?.slow) return <Tip label={`${box.name}'s link is slow; requests still go through`}>{chip}</Tip>;
   return online ? chip : <Tip label={`${box.name} is ${awayText(box)}`}>{chip}</Tip>;
 }
 

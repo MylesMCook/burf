@@ -18,6 +18,31 @@ export interface BoxStatus {
   // in a row have failed.
   retry_at?: string;
   attempts?: number;
+  // How well the laptop reaches it: slow (requests still go through), the
+  // latency's recent max and jitter, and whether Tailscale relays it.
+  link?: BoxLink;
+}
+
+export interface BoxLink {
+  slow?: boolean;
+  // Why it's slow ("health check took 1.9s"), or why it went away.
+  reason?: string;
+  max_ms?: number;
+  jitter_ms?: number;
+  path?: BoxPath;
+}
+
+// How the box is reached over Tailscale, when that can be told.
+export interface BoxPath {
+  via: "direct" | "relay" | "peer-relay";
+  // The relay (DERP) region: "nyc", and its city, "New York".
+  relay?: string;
+  relay_name?: string;
+  // This computer's own nearest relay region's city.
+  nearest?: string;
+  endpoint?: string;
+  // The agent network the box is reached on; absent for this computer's own Tailscale.
+  tailnet?: string;
 }
 
 export interface Forward {

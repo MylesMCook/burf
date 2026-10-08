@@ -40,6 +40,7 @@ export const CATALOG: CatalogEntry[] = [
   { on: "box.upgraded", label: "Box upgraded", where: "box", fields: ["build"] },
   { on: "box.connected", label: "Box connected", where: "laptop", fields: [] },
   { on: "box.disconnected", label: "Box disconnected", where: "laptop", fields: [] },
+  { on: "box.link", label: "Box link slow or steady again", where: "laptop", fields: ["slow", "reason"] },
   { on: "forward.failed", label: "Forward failed", where: "laptop", fields: ["id", "local", "remote"] },
   { on: "laptop.started", label: "Shipyard started", where: "laptop", fields: [] },
   { on: "before:worktree.create", label: "Before a worktree is made", where: "box", gate: true, fields: ["location", "name", "branch", "base"] },

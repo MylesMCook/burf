@@ -11,6 +11,21 @@ again.
 
 ## Unreleased
 
+- **A slow or relayed link to a box stays connected and says why.** A box
+  reached through a Tailscale relay far away (80 ms, then 2 s) used to flip
+  to offline and back: the agent called a box away after one health check
+  with no answer, and checked it whenever a request had waited 5 s. Now a
+  slow or unanswered check marks the box **slow**, not offline: requests to
+  it still go through and its connection, with the terminals on it, is
+  kept. Only a second failure in a row takes it away (a refused connection,
+  a changed key or berthd stopping still does at once), so a box that
+  really went shows Reconnecting in about 20 s. A request now waits 10 s
+  before it has the box checked. The status bar and sidebar say "slow",
+  quietly; **Settings › Boxes** shows the latency, why it's slow, and when
+  Tailscale relays the box: "Relayed through Tailscale's New York server:
+  no direct connection", with what fixes it. `berth doctor BOX` says so
+  too, and the agent's log has a line for every change of a box's state,
+  with why. [A relayed link](/concepts/laptop-agent#a-relayed-link).
 - **`berth ping` says a box's latency.** It printed one number that was
   connecting, TLS and a request together (about three round trips), so a box
   100 ms away read as 300 ms. It now says how long connecting took, then

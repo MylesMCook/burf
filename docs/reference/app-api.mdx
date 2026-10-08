@@ -46,7 +46,7 @@ The agent serves the app on `http://127.0.0.1:1378`.
 
 | Method and path | Returns |
 | --- | --- |
-| `GET /v1/status` | `{ boxes: BoxStatus[], forwards, routes, proxy }`. A box that isn't online carries `retry_at` (when the agent tries it next) and `attempts` (failed tries in a row) |
+| `GET /v1/status` | `{ boxes: BoxStatus[], forwards, routes, proxy }`. A box that isn't online carries `retry_at` (when the agent tries it next) and `attempts` (failed tries in a row). `link` says how well it is reached: `slow` (still online; requests go through) and `reason`, the recent `max_ms` and `jitter_ms`, and `path` (`via`: `direct`, `relay` with `relay` and `relay_name`, or `peer-relay`) when Tailscale can tell |
 | `GET /v1/events` | Server-sent events: one `data: <Event JSON>` per event, from this laptop and every online box (box events carry `box`) |
 | `POST /v1/forwards` | `{ box, local, remote }` → the forward |
 | `DELETE /v1/forwards/{id}` | the removed forward |

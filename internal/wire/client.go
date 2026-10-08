@@ -79,6 +79,16 @@ func Unsent(err error) bool {
 // expired, or never issued by it.
 var ErrPairingRefused = errors.New("box refused pairing: the link may be expired, already used, or for another box; run `berthd pair` for a new one")
 
+// ErrStopping means the box answered that it is on its way down (berthd
+// stopping or restarting), rather than going quiet.
+var ErrStopping = errors.New("the box is stopping")
+
+// Stopping reports whether err shows the box said it is going: a ping it
+// answered so, or the HTTP/2 GOAWAY a stopping box sends its connections.
+func Stopping(err error) bool {
+	return err != nil && (errors.Is(err, ErrStopping) || strings.Contains(err.Error(), "GOAWAY"))
+}
+
 // ErrUntrusted means the box answered but no longer trusts this laptop.
 var ErrUntrusted = errors.New("box no longer trusts this laptop; pair again")
 
@@ -250,7 +260,14 @@ func (c *Client) Ping(ctx context.Context) (string, error) {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		return "", responseError(resp)
+		var e errorResponse
+		if json.NewDecoder(io.LimitReader(resp.Body, 4096)).Decode(&e) == nil && e.Code == codeStopping {
+			return "", ErrStopping
+		}
+		if e.Error != "" {
+			return "", errors.New(e.Error)
+		}
+		return "", fmt.Errorf("box replied %s", resp.Status)
 	}
 	var out nameResponse
 	if err := json.NewDecoder(io.LimitReader(resp.Body, 4096)).Decode(&out); err != nil {

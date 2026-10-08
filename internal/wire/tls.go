@@ -9,7 +9,9 @@ import (
 	"github.com/cosscom/shipyard/internal/identity"
 )
 
-var errPinMismatch = errors.New("box presented a key that does not match its pairing; refusing to connect")
+// ErrPinMismatch means the box answered with a key other than the one it
+// was paired with: a rebuilt box, or something else at its address.
+var ErrPinMismatch = errors.New("box presented a key that does not match its pairing; refusing to connect")
 
 // serverConfig asks every client for a certificate but authorizes nothing
 // itself: an unknown key may only attempt pairing, decided per request.
@@ -32,7 +34,7 @@ func clientConfig(id *identity.Identity, pin identity.Fingerprint) *tls.Config {
 		InsecureSkipVerify: true,
 		VerifyConnection: func(cs tls.ConnectionState) error {
 			if len(cs.PeerCertificates) == 0 || identity.FingerprintOf(cs.PeerCertificates[0]) != pin {
-				return errPinMismatch
+				return ErrPinMismatch
 			}
 			return nil
 		},
