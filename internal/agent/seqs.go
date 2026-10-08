@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/statefile"
+	"github.com/cosscom/shipyard/internal/statefile"
 )
 
 // seqStore keeps the last event Seq seen from each box across restarts of

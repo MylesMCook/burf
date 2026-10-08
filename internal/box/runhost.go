@@ -18,10 +18,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/box/runs"
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/groups"
-	"github.com/sean-brydon/berthd/internal/hooks"
+	"github.com/cosscom/shipyard/internal/box/runs"
+	"github.com/cosscom/shipyard/internal/events"
+	"github.com/cosscom/shipyard/internal/groups"
+	"github.com/cosscom/shipyard/internal/hooks"
 )
 
 // runHost does runs' leaf steps on this box: commands in worktrees,

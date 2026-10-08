@@ -15,9 +15,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/box"
-	"github.com/sean-brydon/berthd/internal/team"
-	"github.com/sean-brydon/berthd/internal/team/teamtest"
+	"github.com/cosscom/shipyard/internal/box"
+	"github.com/cosscom/shipyard/internal/team"
+	"github.com/cosscom/shipyard/internal/team/teamtest"
 )
 
 const acmeSetupSh = `#!/bin/sh

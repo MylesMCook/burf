@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/transcript"
+	"github.com/cosscom/shipyard/internal/transcript"
 )
 
 // transcriptFile is which agent a session runs and the file holding its

@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/hooks"
-	"github.com/sean-brydon/berthd/internal/transcript"
-	"github.com/sean-brydon/berthd/internal/wire"
+	"github.com/cosscom/shipyard/internal/events"
+	"github.com/cosscom/shipyard/internal/hooks"
+	"github.com/cosscom/shipyard/internal/transcript"
+	"github.com/cosscom/shipyard/internal/wire"
 )
 
 // clockWatch is a watcher on a clock the test moves, driven by hand.

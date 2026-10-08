@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/sean-brydon/berthd/internal/agentpath"
+	"github.com/cosscom/shipyard/internal/agentpath"
 )
 
 // Tool is an agent CLI berth has integrations for.

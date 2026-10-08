@@ -21,10 +21,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/box/runs"
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/integrations/adapters"
-	"github.com/sean-brydon/berthd/internal/statefile"
+	"github.com/cosscom/shipyard/internal/box/runs"
+	"github.com/cosscom/shipyard/internal/events"
+	"github.com/cosscom/shipyard/internal/integrations/adapters"
+	"github.com/cosscom/shipyard/internal/statefile"
 )
 
 // Phone access: berthd serves a small web app for a phone on the box's

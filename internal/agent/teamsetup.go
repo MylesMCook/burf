@@ -15,8 +15,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/box"
-	"github.com/sean-brydon/berthd/internal/team"
+	"github.com/cosscom/shipyard/internal/box"
+	"github.com/cosscom/shipyard/internal/team"
 )
 
 // TeamSetupRequest starts a team setup on a box: the commit the engineer

@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/statefile"
+	"github.com/cosscom/shipyard/internal/statefile"
 )
 
 // Chromium's sandbox. Ubuntu 24.04 (and others) stop unprivileged programs

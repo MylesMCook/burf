@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/events"
+	"github.com/cosscom/shipyard/internal/events"
 )
 
 const Usage = `Integrations

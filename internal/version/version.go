@@ -1,5 +1,5 @@
 // Package version says which release a berth binary is. Release builds stamp
-// Version with -ldflags "-X github.com/sean-brydon/berthd/internal/version.Version=v1.2.3";
+// Version with -ldflags "-X github.com/cosscom/shipyard/internal/version.Version=v1.2.3";
 // anything built from a checkout is "dev".
 //
 // The build ID is the other half: a digest of the binary's own bytes. Two

@@ -3,7 +3,7 @@ GO ?= go
 # checkout is "dev". VERSION=1.2.3 and VERSION=v1.2.3 both stamp v1.2.3.
 VERSION ?= dev
 STAMP := $(if $(filter dev,$(VERSION)),dev,v$(patsubst v%,%,$(VERSION)))
-LDFLAGS := -s -w -X github.com/sean-brydon/berthd/internal/version.Version=$(STAMP)
+LDFLAGS := -s -w -X github.com/cosscom/shipyard/internal/version.Version=$(STAMP)
 BIN := bin
 
 .PHONY: all build daemons test clean

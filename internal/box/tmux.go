@@ -13,7 +13,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/doctor"
+	"github.com/cosscom/shipyard/internal/doctor"
 )
 
 // tmuxDirs are searched for tmux after PATH. berthd started by the app or

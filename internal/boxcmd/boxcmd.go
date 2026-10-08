@@ -16,8 +16,8 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/box"
-	"github.com/sean-brydon/berthd/internal/events"
+	"github.com/cosscom/shipyard/internal/box"
+	"github.com/cosscom/shipyard/internal/events"
 )
 
 // usageColumn is where descriptions start in Usage; a command line too long

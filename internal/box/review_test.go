@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/events"
+	"github.com/cosscom/shipyard/internal/events"
 )
 
 func TestReviewListsAFinishedAgentsChangesAndCommits(t *testing.T) {

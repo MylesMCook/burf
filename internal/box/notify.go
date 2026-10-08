@@ -14,10 +14,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/box/runs"
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/statefile"
-	"github.com/sean-brydon/berthd/internal/wire"
+	"github.com/cosscom/shipyard/internal/box/runs"
+	"github.com/cosscom/shipyard/internal/events"
+	"github.com/cosscom/shipyard/internal/statefile"
+	"github.com/cosscom/shipyard/internal/wire"
 )
 
 // Reporting back: when an agent starts work through berth (a task, a

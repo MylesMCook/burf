@@ -12,7 +12,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/events"
+	"github.com/cosscom/shipyard/internal/events"
 )
 
 // maxSpooled bounds the spool: a box whose daemon stays down for days does

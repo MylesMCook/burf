@@ -16,10 +16,10 @@ import (
 
 	"github.com/coder/websocket"
 
-	"github.com/sean-brydon/berthd/internal/agentcli"
-	"github.com/sean-brydon/berthd/internal/guided"
-	"github.com/sean-brydon/berthd/internal/terminal"
-	"github.com/sean-brydon/berthd/internal/trust"
+	"github.com/cosscom/shipyard/internal/agentcli"
+	"github.com/cosscom/shipyard/internal/guided"
+	"github.com/cosscom/shipyard/internal/terminal"
+	"github.com/cosscom/shipyard/internal/trust"
 )
 
 // Adding a box over SSH: the app runs `berth add ssh` in a pseudo-terminal

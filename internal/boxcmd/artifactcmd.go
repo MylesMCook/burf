@@ -14,7 +14,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/box"
+	"github.com/cosscom/shipyard/internal/box"
 )
 
 // Artifacts from the command line: an agent registers a file it made for

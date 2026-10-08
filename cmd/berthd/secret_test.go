@@ -12,7 +12,7 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/sean-brydon/berthd/internal/box"
+	"github.com/cosscom/shipyard/internal/box"
 )
 
 // The wrapper replaces its process, so the test runs it in a copy of the

@@ -15,13 +15,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/box/runs"
-	"github.com/sean-brydon/berthd/internal/doctor"
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/hooks"
-	"github.com/sean-brydon/berthd/internal/integrations/adapters"
-	"github.com/sean-brydon/berthd/internal/terminal"
-	"github.com/sean-brydon/berthd/internal/wire"
+	"github.com/cosscom/shipyard/internal/box/runs"
+	"github.com/cosscom/shipyard/internal/doctor"
+	"github.com/cosscom/shipyard/internal/events"
+	"github.com/cosscom/shipyard/internal/hooks"
+	"github.com/cosscom/shipyard/internal/integrations/adapters"
+	"github.com/cosscom/shipyard/internal/terminal"
+	"github.com/cosscom/shipyard/internal/wire"
 )
 
 // OriginHeader names the tool a request comes from, so the events it causes

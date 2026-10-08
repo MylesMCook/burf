@@ -18,9 +18,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/box"
-	"github.com/sean-brydon/berthd/internal/statefile"
-	"github.com/sean-brydon/berthd/internal/wire"
+	"github.com/cosscom/shipyard/internal/box"
+	"github.com/cosscom/shipyard/internal/statefile"
+	"github.com/cosscom/shipyard/internal/wire"
 )
 
 // The offline prompt queue. Boxes drop off — the laptop sleeps, Wi-Fi goes,

@@ -18,10 +18,10 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/sean-brydon/berthd/internal/agentcli"
-	"github.com/sean-brydon/berthd/internal/box"
-	"github.com/sean-brydon/berthd/internal/statefile"
-	"github.com/sean-brydon/berthd/internal/team"
+	"github.com/cosscom/shipyard/internal/agentcli"
+	"github.com/cosscom/shipyard/internal/box"
+	"github.com/cosscom/shipyard/internal/statefile"
+	"github.com/cosscom/shipyard/internal/team"
 )
 
 // Team setups on the laptop: read <org>/.berth with the person's gh, check

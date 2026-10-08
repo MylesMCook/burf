@@ -8,7 +8,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/sean-brydon/berthd/internal/guided"
+	"github.com/cosscom/shipyard/internal/guided"
 )
 
 // stepReporter shows the guided install's steps: as markers, one line each,

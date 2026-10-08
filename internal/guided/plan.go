@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sean-brydon/berthd/internal/agentcli"
+	"github.com/cosscom/shipyard/internal/agentcli"
 )
 
 // The steps, in the order they run. connect and pair run on the laptop;

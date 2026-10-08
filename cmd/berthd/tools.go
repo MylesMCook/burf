@@ -8,8 +8,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/sean-brydon/berthd/internal/box"
-	"github.com/sean-brydon/berthd/internal/guided"
+	"github.com/cosscom/shipyard/internal/box"
+	"github.com/cosscom/shipyard/internal/guided"
 )
 
 // Berth needs two tools on a box before anything else works: tmux, which

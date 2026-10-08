@@ -15,12 +15,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/identity"
-	"github.com/sean-brydon/berthd/internal/pairing"
-	"github.com/sean-brydon/berthd/internal/terminal"
-	"github.com/sean-brydon/berthd/internal/trust"
-	"github.com/sean-brydon/berthd/internal/wire"
+	"github.com/cosscom/shipyard/internal/events"
+	"github.com/cosscom/shipyard/internal/identity"
+	"github.com/cosscom/shipyard/internal/pairing"
+	"github.com/cosscom/shipyard/internal/terminal"
+	"github.com/cosscom/shipyard/internal/trust"
+	"github.com/cosscom/shipyard/internal/wire"
 )
 
 // servedBox runs berthd's server with the box routes mounted and returns a

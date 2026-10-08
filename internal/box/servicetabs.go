@@ -15,7 +15,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/groups"
+	"github.com/cosscom/shipyard/internal/groups"
 )
 
 // A service with "terminal": true runs in a terminal of its own instead of

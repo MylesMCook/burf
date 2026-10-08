@@ -16,9 +16,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/integrations"
-	"github.com/sean-brydon/berthd/internal/service"
-	"github.com/sean-brydon/berthd/internal/version"
+	"github.com/cosscom/shipyard/internal/integrations"
+	"github.com/cosscom/shipyard/internal/service"
+	"github.com/cosscom/shipyard/internal/version"
 )
 
 func daemonService(b boxHome, listen string) service.Spec {

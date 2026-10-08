@@ -13,8 +13,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/box"
-	"github.com/sean-brydon/berthd/internal/statefile"
+	"github.com/cosscom/shipyard/internal/box"
+	"github.com/cosscom/shipyard/internal/statefile"
 )
 
 // secretExec is how a worktree's service gets its secrets: its unit runs

@@ -18,8 +18,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/statefile"
-	"github.com/sean-brydon/berthd/internal/trust"
+	"github.com/cosscom/shipyard/internal/statefile"
+	"github.com/cosscom/shipyard/internal/trust"
 )
 
 // Location is a named place on a box where work happens: a repository or any

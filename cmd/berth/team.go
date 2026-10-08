@@ -14,9 +14,9 @@ import (
 
 	"golang.org/x/term"
 
-	"github.com/sean-brydon/berthd/internal/agent"
-	"github.com/sean-brydon/berthd/internal/box"
-	"github.com/sean-brydon/berthd/internal/team"
+	"github.com/cosscom/shipyard/internal/agent"
+	"github.com/cosscom/shipyard/internal/box"
+	"github.com/cosscom/shipyard/internal/team"
 )
 
 const teamUsage = `berth team — set a box up the way your team's are, from <org>/.berth on GitHub

@@ -5,7 +5,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sean-brydon/berthd/internal/agentcli"
+	"github.com/cosscom/shipyard/internal/agentcli"
 )
 
 // Change is one difference between two commits of a team setup, as an

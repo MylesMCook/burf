@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/events"
+	"github.com/cosscom/shipyard/internal/events"
 )
 
 func drain(ch <-chan events.Event) []events.Event {

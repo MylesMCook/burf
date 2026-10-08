@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/agentpath"
+	"github.com/cosscom/shipyard/internal/agentpath"
 )
 
 // Agent is an agent CLI Berth knows how to install.

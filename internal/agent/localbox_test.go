@@ -15,9 +15,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/identity"
-	"github.com/sean-brydon/berthd/internal/service"
-	"github.com/sean-brydon/berthd/internal/trust"
+	"github.com/cosscom/shipyard/internal/identity"
+	"github.com/cosscom/shipyard/internal/service"
+	"github.com/cosscom/shipyard/internal/trust"
 )
 
 // A fake berthd for Use this Mac: it logs each run, and install writes the

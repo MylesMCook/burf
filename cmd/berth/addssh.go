@@ -16,12 +16,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/agentcli"
-	"github.com/sean-brydon/berthd/internal/guided"
-	"github.com/sean-brydon/berthd/internal/pairing"
-	"github.com/sean-brydon/berthd/internal/sshsetup"
-	"github.com/sean-brydon/berthd/internal/trust"
-	"github.com/sean-brydon/berthd/internal/wire"
+	"github.com/cosscom/shipyard/internal/agentcli"
+	"github.com/cosscom/shipyard/internal/guided"
+	"github.com/cosscom/shipyard/internal/pairing"
+	"github.com/cosscom/shipyard/internal/sshsetup"
+	"github.com/cosscom/shipyard/internal/trust"
+	"github.com/cosscom/shipyard/internal/wire"
 )
 
 // daemonFor maps `uname -sm` output to the berthd build for that box.

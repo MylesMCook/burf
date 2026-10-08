@@ -17,13 +17,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/box"
-	"github.com/sean-brydon/berthd/internal/identity"
-	"github.com/sean-brydon/berthd/internal/network"
-	"github.com/sean-brydon/berthd/internal/pairing"
-	"github.com/sean-brydon/berthd/internal/terminal"
-	"github.com/sean-brydon/berthd/internal/trust"
-	"github.com/sean-brydon/berthd/internal/wire"
+	"github.com/cosscom/shipyard/internal/box"
+	"github.com/cosscom/shipyard/internal/identity"
+	"github.com/cosscom/shipyard/internal/network"
+	"github.com/cosscom/shipyard/internal/pairing"
+	"github.com/cosscom/shipyard/internal/terminal"
+	"github.com/cosscom/shipyard/internal/trust"
+	"github.com/cosscom/shipyard/internal/wire"
 )
 
 // berth invite asks each paired box for a fresh pairing code and bundles

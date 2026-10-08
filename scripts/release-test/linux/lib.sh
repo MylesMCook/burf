@@ -27,7 +27,7 @@ build_dist() {
 	local dir=$1 version=$2 arch
 	arch=$(docker_arch) || return 1
 	mkdir -p "$dir/stage/berthd" "$dir/stage/berth"
-	local ld="-s -w -X github.com/sean-brydon/berthd/internal/version.Version=$version"
+	local ld="-s -w -X github.com/cosscom/shipyard/internal/version.Version=$version"
 	(cd "$REPO" && CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -ldflags "$ld" -o "$dir/stage/berthd/berthd" ./cmd/berthd) || return 1
 	(cd "$REPO" && CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -ldflags "$ld" -o "$dir/stage/berth/berth" ./cmd/berth) || return 1
 	cp "$dir/stage/berthd/berthd" "$dir/stage/berth/berthd-linux-$arch"

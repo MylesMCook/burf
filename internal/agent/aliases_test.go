@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/sean-brydon/berthd/internal/box"
-	"github.com/sean-brydon/berthd/internal/wire"
+	"github.com/cosscom/shipyard/internal/box"
+	"github.com/cosscom/shipyard/internal/wire"
 )
 
 // The box calls itself dev-sean; this laptop paired it as devbox. A URL the

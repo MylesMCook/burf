@@ -3,7 +3,7 @@ package box
 import (
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/team"
+	"github.com/cosscom/shipyard/internal/team"
 )
 
 // TeamBundle is a team setup on its way to a box: what the laptop read

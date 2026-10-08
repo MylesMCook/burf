@@ -20,16 +20,16 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/agent"
-	"github.com/sean-brydon/berthd/internal/boxcmd"
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/identity"
-	"github.com/sean-brydon/berthd/internal/integrations"
-	"github.com/sean-brydon/berthd/internal/pairing"
-	"github.com/sean-brydon/berthd/internal/statefile"
-	"github.com/sean-brydon/berthd/internal/trust"
-	"github.com/sean-brydon/berthd/internal/version"
-	"github.com/sean-brydon/berthd/internal/wire"
+	"github.com/cosscom/shipyard/internal/agent"
+	"github.com/cosscom/shipyard/internal/boxcmd"
+	"github.com/cosscom/shipyard/internal/events"
+	"github.com/cosscom/shipyard/internal/identity"
+	"github.com/cosscom/shipyard/internal/integrations"
+	"github.com/cosscom/shipyard/internal/pairing"
+	"github.com/cosscom/shipyard/internal/statefile"
+	"github.com/cosscom/shipyard/internal/trust"
+	"github.com/cosscom/shipyard/internal/version"
+	"github.com/cosscom/shipyard/internal/wire"
 )
 
 const usage = `berth — connect this laptop to development boxes

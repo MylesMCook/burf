@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sean-brydon/berthd/internal/proxy"
+	"github.com/cosscom/shipyard/internal/proxy"
 )
 
 // serveIndex lists what the proxy can reach, at plain http://localhost:1377/.

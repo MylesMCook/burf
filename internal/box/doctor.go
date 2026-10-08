@@ -8,9 +8,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/sean-brydon/berthd/internal/doctor"
-	"github.com/sean-brydon/berthd/internal/groups"
-	"github.com/sean-brydon/berthd/internal/integrations"
+	"github.com/cosscom/shipyard/internal/doctor"
+	"github.com/cosscom/shipyard/internal/groups"
+	"github.com/cosscom/shipyard/internal/integrations"
 )
 
 // Doctor reports what this box can do and what is missing. Daemon-level

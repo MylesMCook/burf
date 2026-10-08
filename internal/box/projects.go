@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/examples"
+	"github.com/cosscom/shipyard/examples"
 )
 
 // Adding projects and starting worktrees from what people actually have in

@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/agentpath"
-	"github.com/sean-brydon/berthd/internal/doctor"
+	"github.com/cosscom/shipyard/internal/agentpath"
+	"github.com/cosscom/shipyard/internal/doctor"
 )
 
 // Agent CLIs are found as the person's own terminal finds them

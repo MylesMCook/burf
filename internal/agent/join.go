@@ -6,8 +6,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/pairing"
-	"github.com/sean-brydon/berthd/internal/trust"
+	"github.com/cosscom/shipyard/internal/pairing"
+	"github.com/cosscom/shipyard/internal/trust"
 )
 
 // The app's "Add another computer" and "I already use Berth on another

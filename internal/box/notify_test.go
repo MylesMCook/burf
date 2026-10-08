@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/box/runs"
-	"github.com/sean-brydon/berthd/internal/transcript"
+	"github.com/cosscom/shipyard/internal/box/runs"
+	"github.com/cosscom/shipyard/internal/transcript"
 )
 
 // fakeNotifyHost is a box as the notifier sees it, run by the test.

@@ -1,4 +1,4 @@
-module github.com/sean-brydon/berthd
+module github.com/cosscom/shipyard
 
 go 1.27.0
 

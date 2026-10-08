@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/team"
-	"github.com/sean-brydon/berthd/internal/team/teamtest"
+	"github.com/cosscom/shipyard/internal/events"
+	"github.com/cosscom/shipyard/internal/team"
+	"github.com/cosscom/shipyard/internal/team/teamtest"
 )
 
 // The team's box script, as Acme's is written: one subcommand per

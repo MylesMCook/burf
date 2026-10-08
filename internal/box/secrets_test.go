@@ -15,9 +15,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/service"
-	"github.com/sean-brydon/berthd/internal/wire"
+	"github.com/cosscom/shipyard/internal/events"
+	"github.com/cosscom/shipyard/internal/service"
+	"github.com/cosscom/shipyard/internal/wire"
 )
 
 // No test may ever reach a real 1Password account: the shared resolver and
@@ -416,7 +416,7 @@ func TestSessionsWithSecretsNeverPutAValueInTmuxsArguments(t *testing.T) {
 	}
 	// The real wrapper, built from this tree.
 	bin := filepath.Join(t.TempDir(), "berthd")
-	if out, err := exec.Command("go", "build", "-o", bin, "github.com/sean-brydon/berthd/cmd/berthd").CombinedOutput(); err != nil {
+	if out, err := exec.Command("go", "build", "-o", bin, "github.com/cosscom/shipyard/cmd/berthd").CombinedOutput(); err != nil {
 		t.Fatalf("building berthd: %v\n%s", err, out)
 	}
 	op, calls := stubOpFile(t)

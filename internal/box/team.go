@@ -18,11 +18,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/agentcli"
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/groups"
-	"github.com/sean-brydon/berthd/internal/statefile"
-	"github.com/sean-brydon/berthd/internal/team"
+	"github.com/cosscom/shipyard/internal/agentcli"
+	"github.com/cosscom/shipyard/internal/events"
+	"github.com/cosscom/shipyard/internal/groups"
+	"github.com/cosscom/shipyard/internal/statefile"
+	"github.com/cosscom/shipyard/internal/team"
 )
 
 // A team setup on a box. The laptop sends what it read of <org>/.berth

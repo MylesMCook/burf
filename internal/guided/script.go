@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/sean-brydon/berthd/internal/agentcli"
+	"github.com/cosscom/shipyard/internal/agentcli"
 )
 
 // Script is the shell script that runs the box's steps (run, in Order) on

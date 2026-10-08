@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/events"
+	"github.com/cosscom/shipyard/internal/events"
 )
 
 // E13: hooks that ran while berthd was down are published, in order and

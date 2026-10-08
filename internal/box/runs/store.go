@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/statefile"
+	"github.com/cosscom/shipyard/internal/statefile"
 )
 
 // Storage: one JSONL journal per run, runs/<id>.jsonl, and runs/index.json

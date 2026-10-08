@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/sean-brydon/berthd/internal/usagecheck"
+	"github.com/cosscom/shipyard/internal/usagecheck"
 )
 
 // Every flag a command defines is in its usage error and in berthd help,

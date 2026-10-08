@@ -6,7 +6,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/sean-brydon/berthd/internal/integrations"
+	"github.com/cosscom/shipyard/internal/integrations"
 )
 
 // Integrations are the hooks agent CLIs on this box run to report their

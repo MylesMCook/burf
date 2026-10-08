@@ -13,7 +13,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/version"
+	"github.com/cosscom/shipyard/internal/version"
 )
 
 // Restarting the agent cleanly, for an update. The app's updater replaces

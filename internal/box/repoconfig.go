@@ -13,8 +13,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/sean-brydon/berthd/internal/hooks"
-	"github.com/sean-brydon/berthd/internal/statefile"
+	"github.com/cosscom/shipyard/internal/hooks"
+	"github.com/cosscom/shipyard/internal/statefile"
 )
 
 // What a repository asks of every worktree: its own ports, environment,

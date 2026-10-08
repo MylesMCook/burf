@@ -25,7 +25,7 @@ esac
 root=$(cd "$(dirname "$0")/.." && pwd)
 dist="$root/dist"
 go=${GO:-go}
-ldflags="-s -w -X github.com/sean-brydon/berthd/internal/version.Version=$version"
+ldflags="-s -w -X github.com/cosscom/shipyard/internal/version.Version=$version"
 platforms="linux/amd64 linux/arm64 darwin/arm64 darwin/amd64"
 
 rm -rf "$dist"

@@ -9,8 +9,8 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/wire"
+	"github.com/cosscom/shipyard/internal/events"
+	"github.com/cosscom/shipyard/internal/wire"
 )
 
 // AgentPreset is a way to start a coding agent: what the app offers when it
