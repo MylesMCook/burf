@@ -11,6 +11,7 @@ import { openUrl } from "@/lib/open-url";
 import { parseRequirements, type Requirements, type RequirementsCard as CardKind, requirementsCard, requirementsCopy } from "@/lib/requirements";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
+import { thisComputer } from "@/lib/platform";
 
 // The card that says what a box is missing before an agent can start on it
 // (lib/requirements.ts says why), with the command to install it, typed out
@@ -115,7 +116,7 @@ async function copy(text: string): Promise<boolean> {
 }
 
 // RequirementsCard says what box is missing and how to install it. agent
-// is the agent about to start; label names the box ("this Mac").
+// is the agent about to start; label names the box (thisComputer("this Mac")).
 // team is the Team setup page's: its steps run in tmux, so only tmux counts.
 export function RequirementsCard({ box, agent, noAgent, team, className }: { box: string; agent?: string; noAgent?: boolean; team?: boolean; className?: string }) {
   const local = useIsLocalBox(box);
@@ -197,7 +198,7 @@ export function RequirementsCard({ box, agent, noAgent, team, className }: { box
             <RefreshCwIcon />
             Check again
           </Button>
-          {checked && !entry.checking && <span className="text-muted-foreground text-xs">Still missing on {local ? "this Mac" : box}.</span>}
+          {checked && !entry.checking && <span className="text-muted-foreground text-xs">Still missing on {local ? thisComputer("this Mac") : box}.</span>}
         </div>
       </div>
     </div>

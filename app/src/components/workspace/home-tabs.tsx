@@ -9,6 +9,7 @@ import { closeTab } from "@/lib/actions";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { activateTab, goHome, homeBox, showHome, tabBeside, unsplitTab, useWorkspaces } from "@/lib/workspaces";
+import { platformKeys } from "@/lib/platform";
 
 // HomeTabs is the strip over Home: the terminals open in boxes' homes
 // (lib/box-home.ts), each box's after a chip that names it ("devl · ~"),
@@ -114,7 +115,7 @@ function NewHomeTerminal({ box }: { box: string }) {
       label={
         <span className="flex items-center gap-2">
           New terminal on {box}
-          <span className="text-muted-foreground">⌘T</span>
+          <span className="text-muted-foreground">{platformKeys("⌘T")}</span>
         </span>
       }
       side="bottom"

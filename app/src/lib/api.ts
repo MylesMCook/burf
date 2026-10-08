@@ -1,6 +1,7 @@
 import type { ToolDetail } from "@/lib/transcript";
 import { invoke } from "@tauri-apps/api/core";
 import { readTimeout, reconnectDelay, STREAM_SILENCE_MS } from "@/lib/net";
+import { IS_LINUX } from "@/lib/platform";
 import type {
   BerthEvent,
   BoxInfo,
@@ -54,7 +55,8 @@ export const isTauri = (): boolean => "__TAURI_INTERNALS__" in window;
 // left (the Tauri window's overlay title bar), so a strip there leaves them
 // room. ?traffic=1 in the mock draws and counts them, for screenshots.
 export const fakeTrafficLights = (): boolean => !isTauri() && new URLSearchParams(location.search).has("mock") && new URLSearchParams(location.search).has("traffic");
-export const hasTrafficLights = (): boolean => isTauri() || fakeTrafficLights();
+// The Linux app has its window manager's title bar instead.
+export const hasTrafficLights = (): boolean => (isTauri() && !IS_LINUX) || fakeTrafficLights();
 
 // endpoint finds the agent and its token: from the Tauri shell, which reads
 // the token file, or in a plain browser from ?token= or the Vite env.

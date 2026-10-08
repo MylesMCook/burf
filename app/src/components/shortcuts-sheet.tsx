@@ -6,6 +6,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { ZoomHud } from "@/components/zoom-hud";
 import { Sheet, SheetDescription, SheetFooter, SheetHeader, SheetPanel, SheetPopup, SheetTitle } from "@/components/ui/sheet";
 import { isTauri } from "@/lib/api";
+import { IS_LINUX, LINUX_TERMINAL_KEYS } from "@/lib/platform";
 import { usePrefs } from "@/lib/prefs";
 import { describe, SHORTCUT_GROUPS, SHORTCUTS } from "@/lib/shortcuts";
 import { useStore } from "@/lib/store";
@@ -29,8 +30,14 @@ export function ShortcutsSheet() {
         <SheetHeader>
           <SheetTitle>Keyboard shortcuts</SheetTitle>
           <SheetDescription>
-            They work everywhere in the window, terminals included.{" "}
-            {isTauri() ? "You’ll find them in the menu bar too, under File, View, Go and Help." : "In the Mac app they’re in the menu bar too."}
+            {IS_LINUX ? (
+              LINUX_TERMINAL_KEYS
+            ) : (
+              <>
+                They work everywhere in the window, terminals included.{" "}
+                {isTauri() ? "You’ll find them in the menu bar too, under File, View, Go and Help." : "In the Mac app they’re in the menu bar too."}
+              </>
+            )}
           </SheetDescription>
         </SheetHeader>
         <SheetPanel className="flex flex-col gap-4">

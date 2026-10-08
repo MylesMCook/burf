@@ -8,6 +8,8 @@ import { ServiceStopped } from "@/components/workspace/service-terminal";
 import { useActiveTheme } from "@/hooks/use-theme";
 import { ApiError, type TerminalConnection } from "@/lib/api";
 import { attachable, localPaths, named, onThisComputer, pastedFiles, shrinkImage, uploadAttachment, uploadLocalFile } from "@/lib/attachments";
+import { copyText } from "@/lib/clipboard";
+import { IS_LINUX } from "@/lib/platform";
 import { usePrefs } from "@/lib/prefs";
 import { tryNow } from "@/lib/reconnect";
 import { useStore } from "@/lib/store";
@@ -218,10 +220,30 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
       e.preventDefault();
       void take(fs);
     };
+    // On Linux, Ctrl+Shift+C and Ctrl+Shift+V copy and paste, as in other
+    // Linux terminals; Ctrl+C and Ctrl+V are the shell's.
+    const onKey = (e: KeyboardEvent) => {
+      if (!IS_LINUX || !e.ctrlKey || !e.shiftKey || e.altKey || e.metaKey) return;
+      if (e.code === "KeyC") {
+        e.preventDefault();
+        e.stopPropagation();
+        const text = term.selection();
+        if (text) void navigator.clipboard.writeText(text).catch(() => copyText(text));
+      } else if (e.code === "KeyV") {
+        e.preventDefault();
+        e.stopPropagation();
+        void navigator.clipboard.readText().then(
+          (text) => text && term.paste(text),
+          () => toastManager.add({ type: "error", title: "Couldn't paste", description: "The clipboard refused it." }),
+        );
+      }
+    };
+    el.addEventListener("keydown", onKey, true);
     el.addEventListener("paste", onPaste, true);
     el.addEventListener("dragover", onDragOver);
     el.addEventListener("drop", onDrop);
     return () => {
+      el.removeEventListener("keydown", onKey, true);
       el.removeEventListener("paste", onPaste, true);
       el.removeEventListener("dragover", onDragOver);
       el.removeEventListener("drop", onDrop);

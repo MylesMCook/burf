@@ -27,6 +27,7 @@ import { CommandLog } from "@/views/settings/command-log";
 import { ConfirmDialog } from "@/views/settings/confirm";
 import { RemoveLocalBoxDialog } from "@/views/settings/local-box-remove";
 import { Code, SettingsGroup, SettingsPage, SettingsRow } from "@/views/settings/rows";
+import { thisComputer } from "@/lib/platform";
 
 export function BoxesSection() {
   const boxes = useStore((s) => s.status?.boxes ?? NONE);
@@ -174,7 +175,7 @@ function BoxRow({ box }: { box: BoxStatus }) {
             {box.local && (
               <MenuItem variant="destructive" onClick={() => setRemovingLocal(true)}>
                 <Trash2Icon />
-                Stop using this Mac…
+                {thisComputer("Stop using this Mac…")}
               </MenuItem>
             )}
             <MenuItem variant="destructive" onClick={() => setForgetting(true)}>

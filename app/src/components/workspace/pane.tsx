@@ -37,6 +37,7 @@ import { useStore } from "@/lib/store";
 import { startRenaming } from "@/lib/session-title";
 import { cn } from "@/lib/utils";
 import { focusPane, paneBeside, paneToTab, setPaneContent, splitKey, useWorkspaces, useWorktreeRef } from "@/lib/workspaces";
+import { platformKeys } from "@/lib/platform";
 
 export { agentLabel };
 
@@ -469,7 +470,7 @@ function HeaderButton({ label, keys, onClick, children }: { label: string; keys?
       label={
         <span className="flex items-center gap-2">
           {label}
-          {keys && <span className="text-muted-foreground">{keys}</span>}
+          {keys && <span className="text-muted-foreground">{platformKeys(keys)}</span>}
         </span>
       }
     >

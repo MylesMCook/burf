@@ -7,6 +7,7 @@ import { localBoxApi, type LocalBoxStatus, useLocalBoxName } from "@/lib/local-b
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { CommandLog } from "@/views/settings/command-log";
+import { thisComputer } from "@/lib/platform";
 
 type State = "ready" | "running" | "done" | "failed";
 
@@ -80,7 +81,7 @@ export function UseThisMac({
         </span>
         <div className="min-w-0 flex-1">
           <h2 id="this-mac-heading" className="text-sm">
-            Use this Mac
+            {thisComputer("Use this Mac")}
           </h2>
           <p className="mt-0.5 text-muted-foreground text-xs leading-relaxed" aria-live="polite">
             {autoStart
@@ -90,8 +91,8 @@ export function UseThisMac({
                   ? "It stopped before pairing; the log below says where."
                   : state === "done"
                     ? "Ready. Next, a project for your first agent."
-                    : "Agents run here while this Mac is awake."
-              : "No server yet? Agents run here, while this Mac is awake: they pause when it sleeps. You can add a server later."}
+                    : thisComputer("Agents run here while this Mac is awake.")
+              : thisComputer("No server yet? Agents run here, while this Mac is awake: they pause when it sleeps. You can add a server later.")}
           </p>
         </div>
         {state === "done" ? (
@@ -100,14 +101,14 @@ export function UseThisMac({
           </span>
         ) : (
           <Button size="sm" variant="outline" className="shrink-0" autoFocus={autoFocus} loading={state === "running"} onClick={() => void run()}>
-            {state === "failed" ? "Try again" : "Set up this Mac"}
+            {state === "failed" ? "Try again" : thisComputer("Set up this Mac")}
           </Button>
         )}
       </div>
       {state === "ready" && !compact && (
         <p className="mt-2 ps-11 text-muted-foreground text-xs leading-relaxed">
           {reuse ? "Uses the berthd already installed here. " : "Shipyard installs berthd for your user, no password needed. "}
-          It listens on this Mac only, so nothing opens to your network.
+          {thisComputer("It listens on this Mac only, so nothing opens to your network.")}
         </p>
       )}
       {state !== "ready" && <CommandLog className="mt-3" lines={lines} done={state === "done"} error={error} />}

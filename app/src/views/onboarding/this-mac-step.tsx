@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import type { LocalBoxStatus } from "@/lib/local-box";
 import type { AddBoxStage } from "@/views/onboarding/add-box-flow";
 import { UseThisMac } from "@/views/onboarding/local-box";
+import { thisComputer } from "@/lib/platform";
 
 // ThisMacStep makes this Mac the box, at once: the person chose it on the
 // welcome. The log shows each step; once paired it moves on by itself, and
@@ -25,8 +26,8 @@ export function ThisMacStep({ status, onStage, onDone, onRemote, onBack }: { sta
     <div>
       <StepHeader
         variant="page"
-        title="Setting up this Mac"
-        description="Shipyard installs berthd for your user, no password needed. It listens on this Mac only, so nothing opens to your network."
+        title={thisComputer("Setting up this Mac")}
+        description={thisComputer("Shipyard installs berthd for your user, no password needed. It listens on this Mac only, so nothing opens to your network.")}
         onBack={running ? undefined : onBack}
       />
       <UseThisMac status={status} autoStart className="mt-6" onRunning={setRunning} onPaired={setPaired} />

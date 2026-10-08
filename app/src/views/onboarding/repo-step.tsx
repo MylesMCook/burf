@@ -10,14 +10,15 @@ import type { Location } from "@/lib/api";
 import { plainError } from "@/lib/errors";
 import { useIsLocalBox } from "@/lib/local-box";
 import { NONE, useStore } from "@/lib/store";
+import { thisComputer } from "@/lib/platform";
 
 type Way = "browse" | "clone" | "create";
 
 const wayTitles: Record<Way, string> = { browse: "Browse folders", clone: "Clone from URL", create: "Create a new project" };
 // On this Mac's own box (Use this Mac) the folders are this Mac's.
 const wayDetails = (box: string, local: boolean): Record<Way, string> => ({
-  browse: local ? "A repository already on this Mac, from your own folders" : `A repository already cloned on ${box}`,
-  clone: local ? "GitHub, GitLab or any git remote, cloned onto this Mac" : "GitHub, GitLab or any git remote, cloned by the box",
+  browse: local ? thisComputer("A repository already on this Mac, from your own folders") : `A repository already cloned on ${box}`,
+  clone: local ? thisComputer("GitHub, GitLab or any git remote, cloned onto this Mac") : "GitHub, GitLab or any git remote, cloned by the box",
   create: "An empty repository, ready for worktrees",
 });
 
@@ -32,7 +33,7 @@ export const SAMPLE = "hello";
 export function RepoStep({ box, onDone }: { box: string; onDone(location: string, sample?: boolean): void }) {
   const existing = useStore((s) => s.boxes[box]?.locations ?? NONE);
   const local = useIsLocalBox(box);
-  const where = local ? "this Mac" : box;
+  const where = local ? thisComputer("this Mac") : box;
   const [way, setWay] = useState<Way>();
   // A box just paired may not have said what it can do yet.
   const caps = useStore((s) => s.boxes[box]?.info?.capabilities);
@@ -69,7 +70,7 @@ export function RepoStep({ box, onDone }: { box: string; onDone(location: string
         variant="page"
         title={way ? wayTitles[way] : `Add a project on ${where}`}
         description={
-          way ? wayDetails(box, local)[way] : `A git repository on ${local ? "this Mac" : "the box"}. Each piece of work gets its own worktree beside it, so agents never trip over each other.`
+          way ? wayDetails(box, local)[way] : `A git repository on ${local ? thisComputer("this Mac") : "the box"}. Each piece of work gets its own worktree beside it, so agents never trip over each other.`
         }
         onBack={way ? () => setWay(undefined) : undefined}
       />

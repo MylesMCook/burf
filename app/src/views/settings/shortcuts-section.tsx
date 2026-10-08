@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
 import { isTauri } from "@/lib/api";
+import { IS_LINUX, LINUX_TERMINAL_KEYS, platformKeys } from "@/lib/platform";
 import { usePrefs } from "@/lib/prefs";
 import { describe, SHORTCUT_GROUPS, SHORTCUTS } from "@/lib/shortcuts";
 import { SettingsGroup, SettingsPage, SettingsRow } from "@/views/settings/rows";
@@ -17,13 +18,13 @@ export function ShortcutsSection() {
   const q = query.trim().toLowerCase();
   const grouped = SHORTCUT_GROUPS.map((title) => ({
     title,
-    items: SHORTCUTS.filter((s) => s.group === title && (!q || describe(s).toLowerCase().includes(q) || s.keys.toLowerCase().includes(q))),
+    items: SHORTCUTS.filter((s) => s.group === title && (!q || describe(s).toLowerCase().includes(q) || platformKeys(s.keys).toLowerCase().includes(q))),
   })).filter((g) => g.items.length > 0);
 
   return (
     <SettingsPage
       title="Shortcuts"
-      description={`They work everywhere in the window, terminals included: the app sees them first.${isTauri() ? " Most are in the menu bar too." : ""}`}
+      description={IS_LINUX ? LINUX_TERMINAL_KEYS : `They work everywhere in the window, terminals included: the app sees them first.${isTauri() ? " Most are in the menu bar too." : ""}`}
     >
       <div className="relative">
         <SearchIcon className="pointer-events-none absolute top-1/2 left-2.5 z-10 size-3.5 -translate-y-1/2 text-muted-foreground" />
