@@ -49,6 +49,16 @@ jobs:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           persist-credentials: false
+      # The sources are pinned in build-tmux.sh, so the binaries only change
+      # with it. tmux-cache.yml keeps them cached on main, which a tag's run
+      # can read; build-tmux.sh keeps binaries it finds, so a hit skips the
+      # Docker build (about 6 minutes).
+      - uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        with:
+          path: |
+            bin/tmux-linux-amd64
+            bin/tmux-linux-arm64
+          key: tmux-${{ hashFiles('scripts/build-tmux.sh') }}
       - run: scripts/build-tmux.sh bin amd64 arm64
       - name: Check they run
         run: |
