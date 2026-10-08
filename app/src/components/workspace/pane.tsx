@@ -2,6 +2,7 @@ import { AppWindowIcon, ArchiveIcon, ArrowLeftRightIcon, BotIcon, Columns2Icon, 
 import { lazy, Suspense, useEffect, useMemo } from "react";
 
 import { Tip } from "@/components/tip";
+import { RemoteChatPane } from "@/views/remote-chat";
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
 import { BrowserPane } from "@/components/browser-pane";
 import { PreviewPane } from "@/components/preview-pane";
@@ -117,6 +118,7 @@ export function Pane({ wsKey, tab, pane, visible, focused, split, mixed, compare
         )}
         <div className={cn("relative flex min-h-0 flex-1 flex-col transition-opacity", split && !focused && "opacity-85", lifted && "opacity-40")}>
           {gone && <GonePane name={gone} onClose={close} />}
+          {c.kind === "remote-chat" && <RemoteChatPane box={c.box} id={c.chat} cwd={c.cwd} draft={c.draft} onDraftChange={(draft) => setPaneContent(wsKey, tab, pane.id, { ...c, draft: draft || undefined })} />}
           {c.kind === "terminal" && <TerminalView box={c.box} session={c.session} agent={c.agent} command={c.command} wsKey={wsKey} tab={tab} pane={pane.id} visible={visible && view !== "conversation"} focused={focused && view !== "conversation"} onFocus={focus} onClose={close} />}
           {/* The terminal stays connected underneath, so switching back is instant. */}
           {c.kind === "terminal" && view === "conversation" && (
@@ -237,6 +239,8 @@ export function ViewSwitch({ wsKey, tab, pane }: { wsKey: string; tab: string; p
 // "Shell", "Browser", or the plugin panel's title.
 export function paneLabel(c: Leaf["content"], agent?: string): string {
   switch (c.kind) {
+    case "remote-chat":
+      return "Codex chat";
     case "terminal":
       return agent || c.agent ? agentLabel((agent ?? c.agent)!) : "Shell";
     case "browser":
@@ -261,6 +265,7 @@ export function paneLabel(c: Leaf["content"], agent?: string): string {
 export function PaneIcon({ content, agent, className }: { content: Leaf["content"]; agent?: string; className?: string }) {
   const c = content;
   const service = useStore((s) => c.kind === "terminal" && !!s.boxes[c.box]?.sessions?.find((x) => x.name === c.session)?.service);
+  if (c.kind === "remote-chat") return <AgentIcon agent="codex" className={className} />;
   if (c.kind === "browser") return <GlobeIcon className={cn("size-3.5 shrink-0", className)} />;
   if (c.kind === "file") return <FileGlyph path={c.path} className={className} />;
   if (c.kind === "preview") return <MonitorSmartphoneIcon className={cn("size-3.5 shrink-0", className)} />;
@@ -357,7 +362,7 @@ export function PaneActions({ wsKey, tab, pane, onClose, closable, focused = tru
             <MenuGroupLabel>Open beside</MenuGroupLabel>
             {ref &&
               agentPresets(ref.box, ref.location).map((p) => (
-                <MenuItem key={p.id} onClick={() => void startSession(p.command, beside("row"), p.name)}>
+                <MenuItem key={p.id} onClick={() => void startSession(p.command, beside("row"), p.name, undefined, p.id)}>
                   <span className="flex size-4 items-center justify-center">
                     <AgentIcon agent={p.id} />
                   </span>

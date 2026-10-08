@@ -223,7 +223,7 @@ export function worktreeActions(box: string, loc: Location, wt: Worktree): Actio
       items: presets.map((p) =>
         item(p.name, slot(<AgentIcon agent={p.id} />), () => {
           select();
-          void startSession(p.command, { kind: "tab" }, p.name, key);
+          void startSession(p.command, { kind: "tab" }, p.name, key, p.id);
         }),
       ),
     },

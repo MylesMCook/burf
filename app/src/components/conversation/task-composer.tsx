@@ -28,6 +28,7 @@ import { sessionLocation } from "@/lib/orchestrate";
 import { handoffPrompt, reviewPrompt } from "@/lib/orchestrate";
 import { loadProjects, projectActions, useProjects } from "@/lib/project-groups";
 import { promptFor, type ResolveKind, worktreeSlug } from "@/lib/projects";
+import { hasRemoteCodex } from "@/lib/remote-chat";
 import { askedVariables, builtinValues, fill as fillPrompt, isBuiltin, usePrompts, variablesIn } from "@/lib/prompts";
 import { boxHasRuns } from "@/lib/runs";
 import { AGENT_WORDS } from "@/lib/state-model";
@@ -307,7 +308,8 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
   // What the box lacks to run an agent (tmux, the agent's CLI), from the
   // box itself, before anything is created: its card says how to install it.
   const reqAgent = picks.length === 1 && !template?.command ? picks[0].agent : undefined;
-  const reqCard = useRequirementsCard(box || undefined, { agent: reqAgent, noAgent });
+  const structuredCodex = reqAgent === "codex" && !from && hasRemoteCodex(box, presets.find((p) => p.id === "codex")?.command ?? "");
+  const reqCard = useRequirementsCard(box || undefined, { agent: reqAgent, noAgent, enabled: !structuredCodex });
 
   const name = worktreeSlug(wt.name || resolution?.name || (resolveError ? input : ""));
   const blocker = !box
@@ -316,9 +318,9 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
       : "Waiting for a box"
     : !locName
       ? "Choose a project"
-      : reqCard === "tmux"
+      : !structuredCodex && reqCard === "tmux"
         ? `tmux isn't installed on ${box}`
-        : !noAgent && (!picks.length || reqCard === "agent")
+        : !noAgent && (!picks.length || (!structuredCodex && reqCard === "agent"))
         ? `No agent CLI on ${box}`
         : !noAgent && !text.trim() && (attempts || from || !dialog)
           ? attempts
@@ -540,7 +542,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
       options={options}
       notice={
         <>
-          {box && <RequirementsCard box={box} agent={reqAgent} noAgent={noAgent} className="mx-1 mt-1" />}
+          {box && !structuredCodex && <RequirementsCard box={box} agent={reqAgent} noAgent={noAgent} className="mx-1 mt-1" />}
           {pendingTrust?.wants && fresh && (
             <Alert variant="warning" className="mt-1">
               <ShieldAlertIcon />

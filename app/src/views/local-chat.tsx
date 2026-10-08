@@ -1,5 +1,5 @@
 import { ArrowUpIcon, RotateCwIcon, SquareIcon, XIcon } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Markdown } from "@/components/conversation/markdown";
 import { Button } from "@/components/ui/button";
 import { Tip } from "@/components/tip";
@@ -8,8 +8,29 @@ import { errorMessage } from "@/lib/format";
 import { localApi, type LocalChat as Chat, type LocalSession } from "@/lib/local-computer";
 
 export function LocalChat({ client, session, onChange }: { client: Client; session: LocalSession; onChange(session: LocalSession): void }) {
+  const transport = useMemo(() => ({
+    read: (signal?: AbortSignal) => localApi.chat(client, session.id, signal),
+    message: (text: string) => localApi.message(client, session.id, text),
+    stop: () => localApi.stopChat(client, session.id),
+    interrupt: () => localApi.interruptChat(client, session.id),
+    approve: (id: string, decision: "accept" | "decline") => localApi.approveChat(client, session.id, id, decision),
+  }), [client, session.id]);
+  return <StructuredChat transport={transport} session={session} onChange={onChange} />;
+}
+
+export interface ChatTransport {
+  read(signal?: AbortSignal): Promise<Chat>;
+  message(text: string): Promise<unknown>;
+  stop(): Promise<unknown>;
+  interrupt(): Promise<unknown>;
+  approve(id: string, decision: "accept" | "decline"): Promise<unknown>;
+}
+
+export function StructuredChat({ transport, session, onChange, testId = "local-chat", initialDraft = "", onDraftChange }: { transport: ChatTransport; session: LocalSession; onChange(session: LocalSession): void; testId?: string; initialDraft?: string; onDraftChange?(text: string): void }) {
   const [chat, setChat] = useState<Chat>();
-  const [draft, setDraft] = useState("");
+  const [draft, setDraft] = useState(initialDraft);
+  const draftRef = useRef(initialDraft);
+  const updateDraft = (text: string) => { draftRef.current = text; setDraft(text); onDraftChange?.(text); };
   const [error, setError] = useState("");
   const [readError, setReadError] = useState("");
   const [offline, setOffline] = useState(false);
@@ -24,12 +45,12 @@ export function LocalChat({ client, session, onChange }: { client: Client; sessi
     request.current?.abort();
     const controller = new AbortController(); request.current = controller;
     try {
-      const value = await localApi.chat(client, session.id, controller.signal);
+      const value = await transport.read(controller.signal);
       if (controller.signal.aborted) return;
       setChat(value); setOffline(false); setReadError("");
       if (value.state !== state.current) { state.current = value.state; onChange(value); }
     } catch (e) { if (!controller.signal.aborted) { setOffline(true); setReadError(errorMessage(e)); } }
-  }, [client, session.id, onChange]);
+  }, [transport, onChange]);
   useEffect(() => {
     alive.current = true;
     let timer: ReturnType<typeof setTimeout>;
@@ -46,12 +67,12 @@ export function LocalChat({ client, session, onChange }: { client: Client; sessi
     finally { if (alive.current) await load(); pending.current = false; if (alive.current) setBusy(false); }
   };
   const running = chat?.state === "running" || chat?.state === "waiting";
-  return <div data-testid="local-chat" className="flex min-h-0 min-w-0 flex-1 flex-col">
+  return <div data-testid={testId} className="flex min-h-0 min-w-0 flex-1 flex-col">
     <header className="flex flex-wrap items-center gap-2 border-b px-4 py-3 text-sm">
       <h2 className="font-medium">Codex</h2><span role="status" className="text-xs text-muted-foreground">{offline ? "Disconnected" : chat?.state ?? "Connecting"}</span><span className="text-xs text-muted-foreground">Read-only sandbox</span>
       <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={session.cwd}>{session.cwd}</span>
       <Tip label="Refresh chat"><Button size="icon-sm" variant="ghost" aria-label="Refresh chat" disabled={busy} onClick={() => void load()}><RotateCwIcon /></Button></Tip>
-      {chat?.state !== "exited" && <Tip label="Stop chat"><Button size="icon-sm" variant="ghost" aria-label="Stop chat" disabled={busy || !chat} onClick={() => void mutate(() => localApi.stopChat(client, session.id))}><XIcon /></Button></Tip>}
+      {chat?.state !== "exited" && <Tip label="Stop chat"><Button size="icon-sm" variant="ghost" aria-label="Stop chat" disabled={busy || !chat} onClick={() => void mutate(() => transport.stop())}><XIcon /></Button></Tip>}
     </header>
     {(error || chat?.error || readError) && <p role="alert" className="shrink-0 px-4 py-2 text-sm text-destructive">{error || chat?.error || readError}</p>}
     <div ref={scroll} onScroll={() => { const el = scroll.current; if (el) following.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; }} className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
@@ -63,18 +84,18 @@ export function LocalChat({ client, session, onChange }: { client: Client; sessi
           <h3 className="text-sm font-medium">{approval.kind === "files" ? "Allow file changes?" : "Allow this command?"}</h3>
           {approval.reason && <p className="mt-2 text-sm">{approval.reason}</p>}
           <pre className="my-3 max-h-80 overflow-auto whitespace-pre-wrap break-words text-xs">{approval.detail}</pre>
-          <div className="flex gap-2"><Button size="sm" variant="outline" disabled={busy || offline} onClick={() => void mutate(() => localApi.approveChat(client, session.id, approval.id, "decline"))}>Deny</Button><Button size="sm" disabled={busy || offline} onClick={() => void mutate(() => localApi.approveChat(client, session.id, approval.id, "accept"))}>Allow once</Button></div>
+          <div className="flex gap-2"><Button size="sm" variant="outline" disabled={busy || offline} onClick={() => void mutate(() => transport.approve(approval.id, "decline"))}>Deny</Button><Button size="sm" disabled={busy || offline} onClick={() => void mutate(() => transport.approve(approval.id, "accept"))}>Allow once</Button></div>
         </section>)}
       </div>
     </div>
     <form className="shrink-0 px-4 pb-4 pt-2 sm:px-6" onSubmit={(event) => {
       event.preventDefault(); if (!draft.trim() || busy || offline || chat?.state !== "idle") return;
       const text = draft; following.current = true;
-      void mutate(async () => { await localApi.message(client, session.id, text); if (alive.current) setDraft((current) => current === text ? "" : current); });
+      void mutate(async () => { await transport.message(text); if (alive.current && draftRef.current === text) updateDraft(""); });
     }}>
       <div className="mx-auto flex w-full max-w-(--berth-chat-w) items-end gap-2 rounded-md border bg-background p-2 focus-within:ring-1 focus-within:ring-ring">
-        <textarea aria-label="Message Codex" placeholder="Message Codex" value={draft} disabled={!chat || busy} readOnly={chat?.state === "exited"} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} rows={3} className="max-h-48 min-h-20 min-w-0 flex-1 resize-y bg-transparent p-2 text-sm outline-none disabled:opacity-50" />
-        {running ? <Tip label="Interrupt turn"><Button type="button" size="icon-sm" variant="outline" aria-label="Interrupt turn" disabled={busy || offline || !chat?.turn_id} onClick={() => void mutate(() => localApi.interruptChat(client, session.id))}><SquareIcon /></Button></Tip> : <Tip label="Send message"><Button type="submit" size="icon-sm" aria-label="Send message" disabled={busy || offline || chat?.state !== "idle" || !draft.trim()}><ArrowUpIcon /></Button></Tip>}
+        <textarea aria-label="Message Codex" placeholder="Message Codex" value={draft} disabled={!chat || busy} readOnly={chat?.state === "exited"} onChange={(event) => updateDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} rows={3} className="max-h-48 min-h-20 min-w-0 flex-1 resize-y bg-transparent p-2 text-sm outline-none disabled:opacity-50" />
+        {running ? <Tip label="Interrupt turn"><Button type="button" size="icon-sm" variant="outline" aria-label="Interrupt turn" disabled={busy || offline || !chat?.turn_id} onClick={() => void mutate(() => transport.interrupt())}><SquareIcon /></Button></Tip> : <Tip label="Send message"><Button type="submit" size="icon-sm" aria-label="Send message" disabled={busy || offline || chat?.state !== "idle" || !draft.trim()}><ArrowUpIcon /></Button></Tip>}
       </div>
     </form>
   </div>;

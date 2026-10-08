@@ -15,6 +15,7 @@ import { resolveBrowserInput } from "@/lib/browser-url";
 import { closeCompare } from "@/lib/compare-actions";
 import { currentSpace, focusSession, here, hereRef, homeBox, openTab, refFor, removePane, setPaneContent, showWorktree, splitPane, useWorkspaces, type WorktreeRef, wsKey } from "@/lib/workspaces";
 import { refuseHome } from "@/lib/box-home";
+import { hasRemoteCodex, remoteChatApi } from "@/lib/remote-chat";
 
 // Agents offered when a box does not list its own.
 export const DEFAULT_AGENTS: AgentPreset[] = [
@@ -79,7 +80,7 @@ function place(content: PaneContent, target: Target, wt: string): { key: string;
 // worktree you are acting in (or, beside a pane, that pane's; or the one
 // given) and shows it in a new tab, a split, or an existing pane. It resolves to the new
 // session's name, or undefined when it did not start.
-export async function startSession(command: string, target: Target = { kind: "tab" }, label = command || "Terminal", worktree?: string): Promise<string | undefined> {
+export async function startSession(command: string, target: Target = { kind: "tab" }, label = command || "Terminal", worktree?: string, presetId?: string): Promise<string | undefined> {
   const wt = worktree ?? targetWorktree(target);
   const ref = refFor(wt);
   // A box's home has no worktree: it starts in the box user's home folder.
@@ -90,6 +91,11 @@ export async function startSession(command: string, target: Target = { kind: "ta
   const at = place({ kind: "starting", label }, target, wt);
   if (!at) return;
   try {
+    if (ref && presetId === "codex" && hasRemoteCodex(box, command)) {
+      const chat = await remoteChatApi.start(client, box, refLocation(ref));
+      setPaneContent(at.key, at.tab, at.pane, { kind: "remote-chat", box, chat: chat.id, cwd: chat.cwd });
+      return chat.id;
+    }
     const s = await boxApi.startSession(client, box, ref ? { location: refLocation(ref), command: command || undefined } : { home: true, command: command || undefined });
     setPaneContent(at.key, at.tab, at.pane, { kind: "terminal", box, session: s.name });
     scheduleRefresh(box, ["sessions"]);

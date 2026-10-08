@@ -78,7 +78,7 @@ export function NewTabMenu() {
         : []),
     ];
     const agents: Item[] = ws
-      ? agentPresets(ws.ref.box, ws.ref.location).map((p) => ({ value: `agent:${p.id}`, label: p.name, icon: <AgentIcon agent={p.id} />, run: done(() => void startSession(p.command, { kind: "tab" }, p.name)) }))
+      ? agentPresets(ws.ref.box, ws.ref.location).map((p) => ({ value: `agent:${p.id}`, label: p.name, icon: <AgentIcon agent={p.id} />, run: done(() => void startSession(p.command, { kind: "tab" }, p.name, undefined, p.id)) }))
       : [];
     const panelItems: Item[] = ws
       ? panels.map(({ plugin, item }) => ({

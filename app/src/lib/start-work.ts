@@ -18,6 +18,7 @@ import { boxHasRuns, runs, scheduleRuns } from "@/lib/runs";
 import { save } from "@/lib/storage";
 import { useStore } from "@/lib/store";
 import { findSession, focusSession, selectWorktree, setPaneContent, splitPane } from "@/lib/workspaces";
+import { hasRemoteCodex, openRemoteChat, remoteChatApi } from "@/lib/remote-chat";
 
 // startWork does what the composer gathered (lib/composer): a task in a new
 // worktree, an agent in the main checkout or a worktree already open, a
@@ -103,6 +104,28 @@ export async function startWork(d: StartDraft): Promise<boolean> {
   if (d.picks.length > 1) return startAttempts(d);
   const pick = d.picks[0];
   const presets = agentPresets(d.box, d.location);
+  const structured = pick?.agent === "codex" && hasRemoteCodex(d.box, presets.find((p) => p.id === "codex")?.command ?? "");
+  if (structured && !d.worktree?.command) {
+    if (pick.model || pick.effort) return fail("Choose Codex defaults", new Error("Structured Codex chats currently use the box's configured model and effort. Clear these overrides before starting."), d.box);
+    if (d.where === "new") return fail("Open a worktree first", new Error("Create the worktree without an agent, then start Codex chat inside it."), d.box);
+    const location = d.where === "here" ? (d.at ?? d.location) : d.location;
+    const loc = useStore.getState().boxes[d.box]?.locations?.find((l) => l.name === d.location);
+    const wt = loc?.worktrees?.find((w) => (w.main ? loc.name : `${loc.name}/${w.name}`) === location);
+    if (!wt) return fail("Couldn't start Codex", new Error("Refresh the project before starting a chat."), d.box);
+    try {
+      const chat = await remoteChatApi.start(client, d.box, location);
+      const ref = { box: d.box, location: d.location, worktree: wt.name, path: wt.path, main: wt.main };
+      try {
+        if (d.text.trim()) await remoteChatApi.message(client, d.box, chat.id, d.text);
+      } catch (error) {
+        openRemoteChat(d.box, chat, ref, d.text);
+        return fail("Could not confirm the message", error, d.box);
+      }
+      openRemoteChat(d.box, chat, ref);
+      save(`berth.composer.picks.${d.box}/${d.location}`, d.picks);
+      return true;
+    } catch (error) { return fail("Couldn't start Codex", error, d.box); }
+  }
   // An agent can't start without tmux: say so before a worktree is made.
   if (pick && tmuxMissing(d.box)) return fail("Couldn't start it", new ApiError("tmux is not installed on this box", 503, "tmux_missing"), d.box);
   try {
