@@ -45,8 +45,51 @@ with the command that installs them.
 - **OpenCode**: a small plugin, `~/.config/opencode/plugin/berth.js`, that
   runs the hook when a session gets busy, asks for a permission, or goes idle.
 
-After an upgrade, berthd brings hooks it installed before up to date when it
-starts. Every session Shipyard starts has `BERTH_SESSION` (and, for an agent
+### Every account
+
+A box can have several logins per agent (the [Usage & accounts](/guides/plugins) plugin):
+each Claude Code account is a config folder that `CLAUDE_CONFIG_DIR` picks,
+each Codex account a home that `CODEX_HOME` picks, and an agent reads its
+hooks (and Claude Code its skills and MCP servers) from that folder alone.
+So Shipyard installs them in every account folder:
+
+- the default, `~/.claude` and `~/.codex` (or berthd's own
+  `CLAUDE_CONFIG_DIR` and `CODEX_HOME`);
+- every folder in `~/.berth/accounts/claude/` and `~/.berth/accounts/codex/`,
+  where the Usage plugin's **Add account…** makes them;
+- any folder in your home that `CLAUDE_CONFIG_DIR` or `CODEX_HOME` names in
+  the box's `~/.berth/env.json` or a project's box-local config.
+
+Only folders that exist count. In another account's folder, Claude Code's
+settings go in `settings.json`, its skills in `skills/` and its MCP server
+in `.claude.json`; Codex's hooks go in `hooks.json` and `config.toml`. Codex
+reads user skills from `~/.agents/skills/` whatever `CODEX_HOME` is, so all
+its accounts share one copy. `berthd integrations` shows where they are:
+
+```text
+Claude Code: hooks and 7 skills in ~/.claude, ~/.berth/accounts/claude/personal
+Codex: hooks in ~/.codex, ~/.berth/accounts/codex/work; 7 skills in ~/.agents/skills
+```
+
+`berthd doctor` says the same, and warns about an account without them.
+A new account gets them without a command: **Add account…** installs them
+in the folder it makes, and when berthd starts a session whose
+`CLAUDE_CONFIG_DIR` or `CODEX_HOME` names a folder without them, it installs
+them there before the agent starts (a file read when they're there
+already). That happens only for an agent whose default account has
+Shipyard's hooks, and the new account gets the skills the default has.
+Installing or removing user skills (`berthd skills`, Settings → Agents) does
+it for every Claude Code account.
+
+An account folder other than `~/.claude` or `~/.codex` may be one a project
+names, so Shipyard never writes there through a symbolic link: a
+`settings.json` that is a link is left as it is, and that account is
+reported as not installed.
+
+### After an upgrade
+
+berthd brings hooks it installed before up to date when it starts, in every
+account, and gives an account added since the default's hooks and skills. Every session Shipyard starts has `BERTH_SESSION` (and, for an agent
 preset, `BERTH_AGENT`) in its environment; the hook sends it along, so Shipyard
 knows which session a hook came from when agents share a worktree. When
 berthd is down, `berthd hook` keeps the event in `~/.berth/box/spool/` and
@@ -89,7 +132,7 @@ berth skills devl install                             # the same from a laptop
 
 | Target | Claude Code | Codex |
 | --- | --- | --- |
-| user | `~/.claude/skills/<skill>/` | `~/.agents/skills/<skill>/` |
+| user | `~/.claude/skills/<skill>/`, and `skills/<skill>/` in [each account's folder](#every-account) | `~/.agents/skills/<skill>/`, which every account reads |
 | project | `<repo>/.claude/skills/<skill>/` | `<repo>/.agents/skills/<skill>/` |
 
 Project skills are listed in the repository's `.git/info/exclude` so they are

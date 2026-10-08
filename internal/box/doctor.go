@@ -43,10 +43,29 @@ func (b *Box) Doctor(ctx context.Context) []doctor.Check {
 				continue
 			}
 			c := doctor.Check{Area: "Agents", Name: t.Name + " hooks", Status: doctor.OK, Detail: "installed"}
-			if !t.Hooked(home) {
-				c.Status, c.Detail, c.Fix = doctor.Warn, "not installed, so Shipyard cannot show when this agent is done or needs you", "berthd integrations install "+t.ID
+			fix := "berthd integrations install " + t.ID
+			if _, ok := integrations.AccountVars[t.ID]; ok {
+				// Per account folder: "hooks and 7 skills in ~/.claude, ~/.berth/accounts/claude/work".
+				summary, missing, outdated := integrations.AccountSummary(home, t.ID)
+				c.Detail = summary
+				switch {
+				case !t.Hooked(home):
+					c.Status, c.Detail, c.Fix = doctor.Warn, "not installed, so Shipyard cannot show when this agent is done or needs you", fix
+					if !strings.HasPrefix(summary, "none in ") {
+						// Some other account has them.
+						c.Detail += " (" + summary + ")"
+					}
+				case len(missing) > 0:
+					c.Status, c.Fix = doctor.Warn, fix
+					c.Detail += ", so Shipyard cannot show when an agent on those accounts is done or needs you"
+				case len(outdated) > 0:
+					c.Status, c.Fix = doctor.Warn, fix
+					c.Detail += "; from an older berth in " + strings.Join(outdated, ", ") + ": turns start and approvals clear late"
+				}
+			} else if !t.Hooked(home) {
+				c.Status, c.Detail, c.Fix = doctor.Warn, "not installed, so Shipyard cannot show when this agent is done or needs you", fix
 			} else if !t.Current(home) {
-				c.Status, c.Detail, c.Fix = doctor.Warn, "from an older berth: turns start and approvals clear late", "berthd integrations install "+t.ID
+				c.Status, c.Detail, c.Fix = doctor.Warn, "from an older berth: turns start and approvals clear late", fix
 			}
 			checks = append(checks, c)
 		}

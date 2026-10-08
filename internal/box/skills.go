@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/cosscom/shipyard/internal/integrations"
 )
@@ -101,7 +102,7 @@ func (b *Box) SkillsReport(r *http.Request, location string) (SkillsReport, erro
 			row.Project, row.Excluded = SkillTargets{}, map[string]bool{}
 		}
 		for _, agent := range out.Agents {
-			row.User[agent], _ = integrations.SkillStatus(home, agent, s.Name)
+			row.User[agent], _ = integrations.UserSkillStatus(home, agent, s.Name)
 			if repo != "" {
 				row.Project[agent], _ = integrations.SkillStatus(repo, agent, s.Name)
 				row.Excluded[agent] = integrations.Excluded(repo, agent, s.Name)
@@ -179,11 +180,12 @@ func (b *Box) changeSkills(w http.ResponseWriter, r *http.Request, install bool)
 		case install && repo != "":
 			done, err = integrations.InstallProjectSkills(root, agent, names)
 		case install:
-			done, err = integrations.InstallSkills(root, agent, names)
+			// Every Claude Code account folder gets them (integrations/accounts.go).
+			done, err = integrations.InstallUserSkills(root, agent, names)
 		case repo != "":
 			done, err = integrations.UninstallProjectSkills(root, agent, names)
 		default:
-			done, err = integrations.UninstallSkills(root, agent, names)
+			done, err = integrations.UninstallUserSkills(root, agent, names)
 		}
 		paths = append(paths, done...)
 		if err != nil {
@@ -197,7 +199,7 @@ func (b *Box) changeSkills(w http.ResponseWriter, r *http.Request, install bool)
 		}
 	}
 	for i, p := range paths {
-		if rel, err := filepath.Rel(root, p); err == nil {
+		if rel, err := filepath.Rel(root, p); err == nil && !strings.HasPrefix(rel, "..") {
 			paths[i] = rel
 		}
 	}

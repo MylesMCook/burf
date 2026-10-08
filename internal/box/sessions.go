@@ -113,6 +113,11 @@ type Sessions struct {
 	// envs keeps what EnvVar read: a session's environment is set when it
 	// starts and never changes.
 	envs sync.Map
+
+	// Prepare, when set, sees a new session's environment before its
+	// program starts: berthd installs berth's hooks and skills in an agent
+	// account folder it picks (Box.PrepareAccounts).
+	Prepare func(env []string)
 }
 
 // EnvVar is the value key had in session sess's environment when it
@@ -314,6 +319,9 @@ func (s *Sessions) create(ctx context.Context, name, location, dir, command, age
 		// install under nvm is on an interactive shell's PATH, which a
 		// login shell alone (-l) never reads.
 		argv = []string{shell, "-lc", withPATH(shell, launchPATH(command, agent), sourceCommand(shell, file))}
+	}
+	if s.Prepare != nil {
+		s.Prepare(env)
 	}
 	args := []string{"new-session", "-d", "-s", name, "-c", dir, "-x", "200", "-y", "50"}
 	env = append(withAgentBrowserIdle(append([]string(nil), env...)), "BERTH_SESSION="+name)

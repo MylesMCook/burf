@@ -239,8 +239,8 @@ export function mockInstallTerminal(req: GuidedInstallRequest, _cols: number, _r
       step("integrations", "start");
       out(`\n${B}==> Agent integrations${X}\n`);
       await wait(400);
-      if (req.agents.includes("claude")) out(`    Claude Code: skills in /home/${user}/.claude/skills; hooks added in /home/${user}/.claude/settings.json\n`);
-      if (req.agents.includes("codex")) out(`    Codex: skills in /home/${user}/.codex/skills; hooks added in /home/${user}/.codex/hooks.json\n`);
+      if (req.agents.includes("claude")) out(`    Claude Code: hooks and 7 skills in ~/.claude\n`);
+      if (req.agents.includes("codex")) out(`    Codex: hooks in ~/.codex; 7 skills in ~/.agents/skills, which every Codex account reads\n`);
       step("integrations", "done");
     }
     step("pair", "start");
@@ -400,7 +400,7 @@ export async function mockInstallAgents(box: string, agents: string[], onValue: 
   }
   onValue({ step: { step: "integrations", state: "start" } });
   await wait(400);
-  onValue({ line: "Claude Code: skills in /home/me/.claude/skills; hooks added in /home/me/.claude/settings.json" });
+  onValue({ line: "Claude Code: hooks and 7 skills in ~/.claude" });
   onValue({ step: { step: "integrations", state: "done" } });
   onValue({ done: true });
 }

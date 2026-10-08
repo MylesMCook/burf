@@ -1464,10 +1464,12 @@ function mockIntegrations(box: string, method: string, path: string, body?: unkn
   });
   if (method === "GET" && path === "integrations") return delay(report());
   if (method !== "POST" || path !== "integrations/install") return undefined;
-  const tool = (body as { tool: string }).tool;
-  mockHooked[`${box}:${tool}`] = true;
-  setTimeout(() => emit({ type: "integrations.installed", box, data: { tool } }), 50);
-  return new Promise((resolve) => setTimeout(() => resolve({ ...report(), output: `Claude Code: skills in /home/dev/.claude/skills; hooks added in /home/dev/.claude/settings.json` }), 450));
+  const { tool, account } = body as { tool: string; account?: string };
+  // One account folder (the Usage plugin's "Add account…") leaves the default as it was.
+  if (!account) mockHooked[`${box}:${tool}`] = true;
+  setTimeout(() => emit({ type: "integrations.installed", box, data: account ? { tool, account } : { tool } }), 50);
+  const where = account ?? "~/.claude";
+  return new Promise((resolve) => setTimeout(() => resolve({ ...report(), output: `Claude Code: hooks and 7 skills in ${where}\n  hooks added in ${where}/settings.json` }), 450));
 }
 
 // mockAgentOpens plays an agent on a box running
