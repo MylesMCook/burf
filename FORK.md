@@ -35,6 +35,23 @@ paid fallback belongs in this workflow. Surface provider login/limit errors
 clearly. Provider account settings still govern charges; do not claim that
 subscription authentication guarantees zero overages or change those settings.
 
+### Core Providers
+
+Codex, Claude Code, Cursor and Grok are the four first-class provider targets.
+Each should have native Burf chat, streaming/tool activity, supported human
+approvals/questions, Stop, account isolation and reconnect without replay.
+ACP connections are part of the product, not a requirement to force every
+provider through ACP: Codex uses its official app-server; Cursor and Grok have
+official ACP interfaces. Claude needs a supported structured adapter selected
+against its current official CLI/SDK contract, not terminal-screen emulation.
+Claude is core scope alongside the other three, not an optional extra.
+
+This is scope, not a claim of completed parity: Codex structured chat is
+implemented; structured Claude, Cursor and Grok remain planned. Preserve
+existing other-provider compatibility, but defer new integrations and broader
+provider expansion until these four workflows are reliable. Generic ACP support
+must not displace first-class behavior and verification for the core four.
+
 The first UI step promotes the existing remote Claude Code and Codex chat view
 out of Labs. Fresh profiles default to Chat; saved preferences and explicit pane
 choices are preserved. General settings controls the default, while switching a
@@ -127,7 +144,7 @@ Research intake: Codex thread `01a11c98-4c22-7b43-a088-520e5fbaba4f`,
 "Research Grok and Cursor integration", October 8, 2026. This is a planned
 integration, not implemented or verified provider behavior in Burf.
 
-Prefer the official [Cursor ACP](https://cursor.com/docs/cli/acp) interface
+For the ACP-specific workstream, prefer the official [Cursor ACP](https://cursor.com/docs/cli/acp) interface
 (`agent acp`) first, then [Grok Build ACP](https://docs.x.ai/build/cli/headless-scripting)
 (`grok agent stdio`). Keep ACP parsing separate from Codex app-server while
 reusing chat presentation and owned-process lifecycle where their contracts fit.
