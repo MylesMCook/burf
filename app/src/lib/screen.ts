@@ -84,11 +84,17 @@ export function questionFormIn(screen: string): boolean {
 // Claude Code 2.1 follows its "❯" with a no-break space, which \s takes.
 const PROMPT_RULE = /^\s*[─━]{8,}\s*$/;
 const KEY_HINT = /(esc to (cancel|close|go back|exit|clear|dismiss)|enter to (confirm|select|continue|change|set|submit|save|toggle)|press enter|space to (select|toggle)|↑\/↓|←\/→|to navigate|to switch|type to (filter|search))/i;
+const CODEX_KEY_HINT = /^\s*enter continue\s*·\s*esc back\s*$/i;
 
 export function screenAt(agent: string | undefined, screen: string): "prompt" | "interactive" | "unknown" {
   const lines = screen.replace(/\s+$/, "").split("\n").map((l) => l.replace(/\s+$/, ""));
   const tail = lines.slice(-16);
-  const hinted = tail.filter((l) => l.trim()).slice(-4).some((l) => KEY_HINT.test(l));
+  const hinted = tail.filter((l) => l.trim()).slice(-4).some((l) => KEY_HINT.test(l) || (agent === "codex" && CODEX_KEY_HINT.test(l)));
+  const choices = choicesIn(screen);
+  // A selected numbered option uses the same arrow as Codex's prompt.
+  // Ordinary numbered output above an empty prompt is not a menu.
+  const codexArrow = tail.filter((l) => /^\s*›(?:\s|$)/.test(l)).at(-1);
+  if (agent === "codex" && choices.length && codexArrow && /^\s*›\s+\d[.)]\s+\S/.test(codexArrow)) return "interactive";
   let prompt = false;
   if (agent === "codex") {
     // The input line sits within the last few lines, over the footer.
@@ -101,7 +107,7 @@ export function screenAt(agent: string | undefined, screen: string): "prompt" | 
     }
   }
   if (prompt) return "prompt";
-  if (hinted || choicesIn(screen).length) return "interactive";
+  if (hinted || choices.length) return "interactive";
   return "unknown";
 }
 

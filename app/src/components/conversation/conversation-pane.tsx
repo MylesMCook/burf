@@ -490,7 +490,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
         ) : (
           <ChatScope value={{ who, send: reply, showTerminal: onShowTerminal, startAgain: again }}>
             <QuestionsContext value={{ live: formAsk ? openQ?.tool : undefined, canAnswer: canAnswer && agent === "claude", stuck: stuckNow, submit: submitQuestions }}>
-              <ConversationView chat={{ box, session, agent, visible, idle: state !== "running" && state !== "waiting" }} items={shown} onAnswer={answer} edits={edits} who={who} tail={tail} tailSize={queue.items.length + (untaken ? 1 : 0)} />
+              <ConversationView chat={{ box, session, agent, visible, idle: state !== "running" && state !== "waiting" }} items={live.show ? shown.filter((it) => it.kind !== "thinking") : shown} onAnswer={answer} edits={edits} who={who} tail={tail} tailSize={queue.items.length + (untaken ? 1 : 0)} />
             </QuestionsContext>
           </ChatScope>
         )}
