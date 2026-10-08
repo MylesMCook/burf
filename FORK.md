@@ -43,6 +43,23 @@ imported-history continuations still use owned terminals; imported histories
 remain read-only. Never infer provider conversation identity from the latest
 transcript in a folder. Evaluate future upstream features against this direction.
 
+### Next: Structured Remote Codex
+
+Codex app-server is the intended integration on every supported machine, not
+only Windows. The next slice is new Codex chats on registered Mac/Linux
+projects, over Burf's existing authenticated box connection. It is not yet
+implemented or deployed. Reuse the local protocol manager and chat view;
+do not expose a raw provider socket or attach to a shared Codex daemon.
+
+Resolve the project's account and environment explicitly without copying
+credentials. Keep imported history and existing terminal sessions separate.
+Preserve explicit approvals, conservative sandboxing, stable provider IDs,
+and no replay after uncertain sends. An active or starting structured chat
+must prevent daemon replacement until it is explicitly stopped. Desktop
+reconnection should recover the same remote chat; daemon restart persistence
+is a separate capability. Unix process ownership and crash cleanup need
+native tests before delivery, not assumptions based on Windows job objects.
+
 ### Structured Local Codex
 
 - New Codex chats launch an owned `codex app-server --listen stdio://` process,
