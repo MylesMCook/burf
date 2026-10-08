@@ -422,7 +422,15 @@ func listBoxes(l laptop, args []string) error {
 		if b.LatencyMs > 0 {
 			latency = strconv.FormatInt(b.LatencyMs, 10) + "ms"
 		}
-		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", b.Name, b.State, b.Address, latency, b.Fingerprint[:12])
+		state := b.State
+		if b.State == agent.StateOnline && b.Link.Slow {
+			// Online over a slow link: berth doctor BOX says why.
+			state = "online (slow)"
+		}
+		if p := b.Link.Path; p != nil && p.Relayed() {
+			latency += " relayed"
+		}
+		fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n", b.Name, state, b.Address, latency, b.Fingerprint[:12])
 	}
 	return w.Flush()
 }

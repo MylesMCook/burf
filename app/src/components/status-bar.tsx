@@ -37,6 +37,8 @@ export function StatusBar() {
   const outdated = useOutdatedBoxes();
   const online = status?.boxes.filter((b) => b.state === "online") ?? [];
   const total = status?.boxes.length ?? 0;
+  // Online, over a slow link: still online, said quietly.
+  const slow = online.filter((b) => b.link?.slow).length;
   const forwards = status?.forwards.length ?? 0;
 
   return (
@@ -130,9 +132,10 @@ export function StatusBar() {
         })}
         onClick={() => go({ kind: "settings", section: "boxes" })}
       >
-        {/* Green when every box is up, grey when some aren't: amber is only ever "needs you". */}
-        <StatusDot state={online.length === total && total > 0 ? "online" : "offline"} />
+        {/* Green when every box is up (fainter while one's link is slow), grey when some aren't: amber is only ever "needs you". */}
+        <StatusDot state={online.length === total && total > 0 ? (slow > 0 ? "slow" : "online") : "offline"} />
         {online.length}/{total} {total === 1 ? "box" : "boxes"} online
+        {slow > 0 && <span data-testid="boxes-slow">· {slow === 1 && total > 1 ? `${online.find((b) => b.link?.slow)?.name} slow` : "slow"}</span>}
       </Item>
       <Tip label="Refresh" align="end">
         <button

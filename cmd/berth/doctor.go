@@ -46,6 +46,15 @@ func runDoctor(l laptop, args []string) error {
 		if checks, err = box.NewClient(wc).Doctor(context.Background()); err != nil {
 			return fmt.Errorf("%s: %w", fs.Arg(0), err)
 		}
+		// How this laptop reaches it, as the agent sees it: slow or not,
+		// and whether Tailscale relays it.
+		if st, err := agent.NewClient(l.socket()).Status(context.Background()); err == nil {
+			for _, b := range st.Boxes {
+				if b.Name == fs.Arg(0) {
+					checks = append(agent.LinkChecks("Link from this computer", b), checks...)
+				}
+			}
+		}
 	} else {
 		checks = laptopChecks(context.Background(), l)
 	}
@@ -115,6 +124,14 @@ func laptopChecks(ctx context.Context, l laptop) []doctor.Check {
 	}
 	for _, b := range status.Boxes {
 		check := doctor.Check{Area: "Boxes", Name: b.Name, Status: doctor.OK, Detail: fmt.Sprintf("online, %dms", b.LatencyMs)}
+		if b.Link.Path != nil && b.Link.Path.Relayed() {
+			check.Detail += ", relayed by Tailscale"
+			check.Fix = "berth doctor " + b.Name + "  (says why and what fixes it)"
+		}
+		if b.Link.Slow {
+			check.Status, check.Detail = doctor.Warn, fmt.Sprintf("online but slow: %s", b.Link.Reason)
+			check.Fix = "berth doctor " + b.Name
+		}
 		switch b.State {
 		case agent.StateOffline:
 			check.Status, check.Detail, check.Fix = doctor.Warn, "offline: "+b.Error, "Check the box is on, then on it: berthd doctor"
