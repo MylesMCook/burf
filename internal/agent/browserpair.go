@@ -18,6 +18,7 @@ import (
 	"sync"
 	"time"
 
+	box "github.com/MylesMCook/burf/internal/boxclient"
 	"github.com/MylesMCook/burf/internal/statefile"
 )
 
@@ -287,6 +288,62 @@ func (a *Agent) browserAuthorize(token string, r *http.Request) (int, string) {
 	if r.Method == http.MethodPost && browserMessage.MatchString(r.URL.EscapedPath()) {
 		return browserMessageBody(r)
 	}
+	if m := browserApproval.FindStringSubmatch(r.URL.EscapedPath()); m != nil && r.Method == http.MethodPost {
+		return a.browserApprovalBody(r, m[1], m[2])
+	}
+	return 0, ""
+}
+
+var browserApproval = regexp.MustCompile(`^/v1/boxes/([A-Za-z0-9._-]{1,64})/api/chats/([0-9a-f]{32})/approvals$`)
+
+// browserApprovalBody lets a paired browser refuse any approval, and grant
+// only one for its own browser tools. Granting a command or a file change
+// lets it happen on the box, so for now that is answered in Burf. Widening
+// this is a product choice: the check is here, in one place.
+func (a *Agent) browserApprovalBody(r *http.Request, boxName, chat string) (int, string) {
+	var req struct {
+		ID       string `json:"id"`
+		Decision string `json:"decision"`
+	}
+	d := json.NewDecoder(io.LimitReader(r.Body, 64<<10))
+	d.DisallowUnknownFields()
+	if d.Decode(&req) != nil || d.Decode(new(any)) != io.EOF {
+		return http.StatusBadRequest, "invalid request"
+	}
+	if req.Decision != "decline" {
+		a.sync()
+		c, ok := a.client(boxName)
+		if !ok {
+			return http.StatusNotFound, "no paired box named " + boxName
+		}
+		resp, err := c.DoWithHeader(r.Context(), http.MethodGet, "/v1/chats/"+chat, nil, http.Header{box.OriginHeader: {"app"}})
+		if err != nil {
+			return http.StatusBadGateway, "the approval could not be checked: " + err.Error()
+		}
+		defer resp.Body.Close()
+		var current struct {
+			Approvals []struct {
+				ID   string `json:"id"`
+				Kind string `json:"kind"`
+			} `json:"approvals"`
+		}
+		if resp.StatusCode != http.StatusOK || json.NewDecoder(io.LimitReader(resp.Body, 8<<20)).Decode(&current) != nil {
+			return http.StatusConflict, "the approval could not be checked"
+		}
+		kind := ""
+		for _, approval := range current.Approvals {
+			if approval.ID == req.ID {
+				kind = approval.Kind
+			}
+		}
+		if kind != "browser" {
+			return http.StatusForbidden, "a paired browser can deny this but not allow it; allow commands and file changes in Burf"
+		}
+	}
+	// The box gets exactly what was checked, not the bytes that were sent.
+	body, _ := json.Marshal(req)
+	r.Body = io.NopCloser(bytes.NewReader(body))
+	r.ContentLength = int64(len(body))
 	return 0, ""
 }
 
