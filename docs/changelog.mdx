@@ -11,6 +11,10 @@ again.
 
 ## Unreleased
 
+- **The Browser tab's address follows the page.** An app that changes pages
+  on the client (Next.js, React Router: `history.pushState`) left the
+  address bar on the first URL, since nothing loaded. It now shows where the
+  page is, within half a second.
 - **A chat on another account reads its conversation.** An agent started on
   another Claude Code or Codex account (the Usage plugin's accounts, which
   set `CLAUDE_CONFIG_DIR` or `CODEX_HOME`) wrote its conversation to that

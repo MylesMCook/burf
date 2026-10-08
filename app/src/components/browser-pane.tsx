@@ -358,7 +358,9 @@ interface NativeProps {
 interface Navigated {
   id: string;
   url: string;
-  state: "started" | "committed" | "finished";
+  // "moved": the page changed its address without loading (client-side
+  // routing), so only the address bar follows.
+  state: "started" | "committed" | "finished" | "moved";
 }
 
 // NativeSurface reserves the pane's space and keeps a child webview of the
@@ -418,6 +420,13 @@ function NativeSurface({ id, url, visible, onUrl, onLoading, onReloadLoop, onFai
     let gone = false;
     void listen<Navigated>("berth://browser", (e) => {
       if (e.payload.id !== id) return;
+      if (e.payload.state === "moved") {
+        if (e.payload.url !== reported.current) {
+          reported.current = e.payload.url;
+          callbacks.current.onUrl(e.payload.url);
+        }
+        return;
+      }
       note(e.payload.state, e.payload.url);
       if (e.payload.state === "finished") {
         reported.current = e.payload.url;
