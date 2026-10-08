@@ -22,9 +22,9 @@ const mono = localFont({
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: { default: 'Berth docs', template: '%s · Berth docs' },
-  description: 'Documentation for Berth: run coding agents on your own dev boxes, and work with them as if they were on your laptop.',
-  openGraph: { siteName: 'Berth docs', type: 'website' },
+  title: { default: 'Shipyard docs', template: '%s · Shipyard docs' },
+  description: 'Documentation for Shipyard: run coding agents on your own dev boxes, and work with them as if they were on your laptop.',
+  openGraph: { siteName: 'Shipyard docs', type: 'website' },
 };
 
 export const viewport: Viewport = {
