@@ -32,6 +32,7 @@ export const remoteChatApi = {
 
 // Older daemons reject unknown message fields, so options go only to boxes that say they take them.
 export const hasChatOptions = (box: string) => !!useStore.getState().boxes[box]?.info?.capabilities?.includes("chat.options");
+export const hasFullAccess = (box: string) => !!useStore.getState().boxes[box]?.info?.capabilities?.includes("chat.full-access");
 
 // The account's own model list for the launcher, asked once per project while Codex is the chosen agent.
 const listed = new Map<string, ChatModel[]>();

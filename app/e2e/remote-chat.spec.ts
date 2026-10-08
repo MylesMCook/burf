@@ -10,7 +10,7 @@ async function openWorktree(app: App) {
   await app.openWorktree(`${BOX}/fix`);
 }
 
-async function fixture(context: BrowserContext, supported = true, options = false) {
+async function fixture(context: BrowserContext, supported = true, options = false, fullAccess = false) {
   const agent = await fakeAgent();
   const base = `/v1/boxes/${BOX}/api/`;
   const calls: { method: string; path: string; body: unknown }[] = [];
@@ -20,7 +20,7 @@ async function fixture(context: BrowserContext, supported = true, options = fals
     const path = new URL(route.request().url()).pathname.slice(base.length);
     const method = route.request().method();
     calls.push({ method, path, body: route.request().postDataJSON() });
-    if (path === "info") return route.fulfill({ json: { name: BOX, version: "test", capabilities: supported ? ["chat.codex", "transcript", ...(options ? ["chat.options"] : [])] : ["transcript"], agents: [{ id: "codex", name: "Codex", command: "codex" }, { id: "custom", name: "Custom Codex", command: "codex --model custom" }] } });
+    if (path === "info") return route.fulfill({ json: { name: BOX, version: "test", capabilities: supported ? ["chat.codex", "transcript", ...(options ? ["chat.options"] : []), ...(fullAccess ? ["chat.full-access"] : [])] : ["transcript"], agents: [{ id: "codex", name: "Codex", command: "codex" }, { id: "custom", name: "Custom Codex", command: "codex --model custom" }] } });
     if (path === "sessions") return route.fulfill({ json: method === "POST" ? { name: "legacy-codex" } : [] });
     if (!path.startsWith("chats")) return route.continue();
     if (control.offline) return route.abort("connectionreset");
@@ -197,6 +197,8 @@ test("the launcher offers the account's Codex models and a permission mode on bo
     await app.page.getByRole("menuitemradio", { name: "Beta", exact: true }).click();
     await expect(composer.getByRole("button", { name: "Reasoning: Default", exact: true })).toBeVisible();
     await composer.getByRole("button", { name: "Permissions: Ask every time", exact: true }).click();
+    // This box does not say it takes full access, so it is not offered.
+    await expect(app.page.getByRole("menuitemradio", { name: "Full access", exact: true })).toHaveCount(0);
     await app.page.getByRole("menuitemradio", { name: "Edit workspace", exact: true }).click();
     await composer.getByRole("textbox", { name: "What should your agents work on?" }).fill("Make the change");
     await app.page.getByRole("button", { name: "Start", exact: true }).click();
@@ -204,6 +206,37 @@ test("the launcher offers the account's Codex models and a permission mode on bo
     expect(f.calls.filter((c) => c.path.endsWith("/messages")).map((c) => c.body)).toEqual([{ text: "Make the change", options: { model: "beta", permission: "workspace" } }]);
     expect(f.calls.filter((c) => c.path === "chats/models")).toHaveLength(1);
     expect(await app.stored("berth.chat.permission")).toBe("workspace");
+  } finally { await f.agent.close(); }
+});
+
+test("full access is an explicit launcher choice and is remembered like the other modes", async ({ app }) => {
+  const f = await fixture(app.context, true, true, true);
+  try {
+    await app.open({ agent: f.agent });
+    await openWorktree(app);
+    const composer = app.page.getByTestId("task-composer");
+    await composer.getByRole("button", { name: "Permissions: Ask every time", exact: true }).click();
+    await app.page.getByRole("menuitemradio", { name: "Full access", exact: true }).click();
+    await composer.getByRole("textbox", { name: "What should your agents work on?" }).fill("Do anything");
+    await app.page.getByRole("button", { name: "Start", exact: true }).click();
+    await expect(app.page.getByTestId("remote-chat")).toBeVisible();
+    expect(f.calls.filter((c) => c.path.endsWith("/messages")).map((c) => c.body)).toEqual([{ text: "Do anything", options: { permission: "full-access" } }]);
+    expect(await app.stored("berth.chat.permission")).toBe("full-access");
+  } finally { await f.agent.close(); }
+});
+
+test("a remembered full access falls back to asking on a box that does not take it", async ({ app }) => {
+  const f = await fixture(app.context, true, true);
+  await app.context.addInitScript(() => localStorage.setItem("berth.chat.permission", JSON.stringify("full-access")));
+  try {
+    await app.open({ agent: f.agent });
+    await openWorktree(app);
+    const composer = app.page.getByTestId("task-composer");
+    await expect(composer.getByRole("button", { name: "Permissions: Ask every time", exact: true })).toBeVisible();
+    await composer.getByRole("textbox", { name: "What should your agents work on?" }).fill("Stay careful");
+    await app.page.getByRole("button", { name: "Start", exact: true }).click();
+    await expect(app.page.getByTestId("remote-chat")).toBeVisible();
+    expect(f.calls.filter((c) => c.path.endsWith("/messages")).map((c) => c.body)).toEqual([{ text: "Stay careful" }]);
   } finally { await f.agent.close(); }
 });
 

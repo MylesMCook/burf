@@ -105,6 +105,8 @@ type Session struct {
 	Truncated bool        `json:"truncated,omitempty"`
 	Options   TurnOptions `json:"options"`
 	Composer  bool        `json:"composer"`
+	// Permission modes the composer may offer for the next message.
+	Permissions []string `json:"permissions,omitempty"`
 	// Browser is set only for a chat started with browser tools.
 	Browser *BrowserState `json:"browser,omitempty"`
 }
@@ -250,7 +252,7 @@ func (m *Manager) startProcess(ctx context.Context, options LaunchOptions) (*run
 		return nil, err
 	}
 	r := &running{process: p, writes: make(chan []byte, 16), done: make(chan struct{}), pending: make(map[string]chan packet), approvals: make(map[string]json.RawMessage), browser: make(map[string]chan BrowserResult), browserWake: make(chan struct{})}
-	r.session = Session{ID: hex.EncodeToString(bytes[:]), Agent: "codex", Mode: "chat", CWD: cwd, State: "starting", StartedAt: time.Now().UTC(), Items: []Item{}, Approvals: []Approval{}, Options: TurnOptions{Permission: "strict"}, Composer: true}
+	r.session = Session{ID: hex.EncodeToString(bytes[:]), Agent: "codex", Mode: "chat", CWD: cwd, State: "starting", StartedAt: time.Now().UTC(), Items: []Item{}, Approvals: []Approval{}, Options: TurnOptions{Permission: "strict"}, Composer: true, Permissions: Permissions}
 	if options.Browser != nil {
 		r.session.Browser = &BrowserState{Tools: append([]BrowserTool{}, options.Browser.Tools...), Calls: []BrowserCall{}}
 	}
@@ -287,6 +289,7 @@ func (r *running) snapshot() Session {
 	s := r.session
 	s.Items = append([]Item{}, s.Items...)
 	s.Approvals = append([]Approval{}, s.Approvals...)
+	s.Permissions = append([]string(nil), s.Permissions...)
 	for i := range s.Approvals {
 		s.Approvals[i].Execpolicy = append([]string(nil), s.Approvals[i].Execpolicy...)
 	}

@@ -28,8 +28,8 @@ import { sessionLocation } from "@/lib/orchestrate";
 import { handoffPrompt, reviewPrompt } from "@/lib/orchestrate";
 import { loadProjects, projectActions, useProjects } from "@/lib/project-groups";
 import { promptFor, type ResolveKind, worktreeSlug } from "@/lib/projects";
-import { chatPermissions, savedChatPermission, saveChatPermission } from "@/lib/local-computer";
-import { hasChatOptions, hasRemoteCodex, useChatModels } from "@/lib/remote-chat";
+import { BASE_PERMISSIONS, chatPermissions, savedChatPermission, saveChatPermission } from "@/lib/local-computer";
+import { hasChatOptions, hasFullAccess, hasRemoteCodex, useChatModels } from "@/lib/remote-chat";
 import { askedVariables, builtinValues, fill as fillPrompt, isBuiltin, usePrompts, variablesIn } from "@/lib/prompts";
 import { boxHasRuns } from "@/lib/runs";
 import { AGENT_WORDS } from "@/lib/state-model";
@@ -372,7 +372,9 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
   // A structured chat on a box that takes options: the account's own models, and a permission mode.
   const chatControls = structuredCodex && hasChatOptions(box);
   const codexModels = useChatModels(box, locName, chatControls);
-  const [permission, setPermission] = useState<keyof typeof chatPermissions>(() => savedChatPermission() ?? "strict");
+  const [chosenPermission, setPermission] = useState<keyof typeof chatPermissions>(() => savedChatPermission() ?? "strict");
+  // Full access is offered only where the box takes it.
+  const permission = chosenPermission === "full-access" && !hasFullAccess(box) ? "strict" : chosenPermission;
   const pickerPresets = !codexModels?.length
     ? presets
     : // Structured chats take these as message options, so the preset needs no CLI flag for them.
@@ -691,6 +693,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
               onNone={setNoAgent}
               onCompare={!from ? switchComparison : undefined}
               permission={chatControls && !comparison ? permission : undefined}
+              permissions={hasFullAccess(box) ? Object.keys(chatPermissions) : BASE_PERMISSIONS}
               onPermission={(p) => { saveChatPermission(p); setPermission(p); }}
             />
             <SendButton label={action} dialog={dialog} blocker={blocker} busy={busy} onClick={() => void submit()} />

@@ -130,7 +130,8 @@ func (b *Box) Capabilities() []string {
 	if b.Chats != nil {
 		// chat.options: messages take per-turn model, effort and permission,
 		// and approvals take scoped decisions. Older daemons reject both.
-		caps = append(caps, "chat.codex", "chat.options")
+		// chat.full-access: the permission option also takes "full-access".
+		caps = append(caps, "chat.codex", "chat.options", "chat.full-access")
 		// chat.browser: POST /v1/chats takes the client's browser tools, and
 		// the chat offers their calls for that browser to answer
 		// (chatbrowser.go).
