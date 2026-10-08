@@ -20,7 +20,7 @@ export function SiteHeader() {
     <header className="berth-site-header">
       <Link href="/" className="berth-brand berth-site-brand" aria-label="Burf docs, home">
         <Mark className="berth-brand-mark" />
-        <span className="berth-brand-word">berth</span>
+        <span className="berth-brand-word">Burf</span>
         <span className="berth-brand-docs">docs</span>
       </Link>
       <nav aria-label="Burf" className="berth-site-nav">

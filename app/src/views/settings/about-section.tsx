@@ -31,6 +31,7 @@ export function AboutSection() {
 
   return (
     <SettingsPage title="About Burf" description="Agents on your own boxes, watched from here. Closing this window never stops one.">
+      <img src={`${import.meta.env.BASE_URL}branding/burf-app-icon.svg`} alt="Burf" width="64" height="64" className="size-16" />
       <SettingsGroup title="Versions">
         <SettingsRow label="App">
           <span className="font-mono text-muted-foreground text-xs">{version}</span>

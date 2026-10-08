@@ -212,9 +212,9 @@ code {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 }
-.brand svg {
-  width: 17px;
-  height: 21px;
+.brand img {
+  width: 28px;
+  height: 28px;
 }
 .site-header nav {
   display: flex;

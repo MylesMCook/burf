@@ -52,11 +52,8 @@ export function Avatar({ from, color, className }: { from: MessageSender; color:
 // BerthAvatar is Burf's own mark, for its reports.
 export function BerthAvatar() {
   return (
-    <span aria-hidden className="am-c-slate am-avatar inline-flex size-5 shrink-0 items-center justify-center rounded-md">
-      <svg viewBox="0 0 512 512" className="size-3">
-        <path d="M116 84 H300 a96 96 0 0 1 0 192 H116 Z M116 276 H324 a104 104 0 0 1 0 208 H116 Z" transform="translate(0,-28)" fill="none" stroke="currentColor" strokeWidth="68" strokeLinejoin="round" />
-        <circle cx="296" cy="152" r="28" fill="#f5a524" />
-      </svg>
+    <span aria-hidden className="inline-flex size-5 shrink-0 items-center justify-center rounded-sm bg-[#F4EAD5]">
+      <img src={`${import.meta.env.BASE_URL}branding/burf-mark.svg`} alt="" width="16" height="16" className="size-4" />
     </span>
   );
 }

@@ -24,3 +24,11 @@ Playwright starts and stops its own preview server; `E2E_PORT` can select a free
 port from 1421-1439. Build before running Playwright so it tests current source.
 Native Windows execution and signed-in provider behavior require separate
 evidence; a Chromium fixture run or cross-build does not verify either.
+
+## Branding
+
+Approved masters live in `design/branding`; read `PRODUCTION.md` there.
+Never use its review previews as production exports or change the master art.
+Run `node scripts/export-branding.mjs` to regenerate and synchronize assets,
+then `node --test scripts/branding.test.mjs` to verify them. This uses existing
+app dependencies and does not update installed applications.
