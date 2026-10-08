@@ -108,7 +108,7 @@ func runFakeGH(args []string) int {
 
 func fakeGit(repo string, args ...string) ([]byte, error) {
 	cmd := exec.Command("git", append([]string{"--git-dir", repo}, args...)...)
-	cmd.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_CONFIG_SYSTEM="+os.DevNull)
+	cmd.Env = append(os.Environ(), NoGitConfig()...)
 	return cmd.Output()
 }
 

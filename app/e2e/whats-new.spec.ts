@@ -25,7 +25,7 @@ async function fromAbout(app: App) {
 }
 
 async function fromPalette(page: Page) {
-  await page.keyboard.press("Meta+k");
+  await page.keyboard.press("ControlOrMeta+k");
   await page.getByRole("combobox").fill("what's new");
   await page.getByRole("option", { name: "What's new in Burf" }).click();
   await expect(card(page)).toBeVisible();

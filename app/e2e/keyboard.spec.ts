@@ -152,7 +152,7 @@ test("⌘P opens a file in the editor, which takes the keyboard, and ⌘S saves 
   await app.open();
   await app.openWorktree("devl/checkout-fix");
   const page = app.page;
-  await page.keyboard.press("Meta+p");
+  await page.keyboard.press("ControlOrMeta+p");
   const picker = page.getByTestId("file-picker");
   await expect(picker.getByRole("combobox")).toBeFocused();
   await page.keyboard.type("webhook.ts");
@@ -162,10 +162,10 @@ test("⌘P opens a file in the editor, which takes the keyboard, and ⌘S saves 
   await expect(editor).toBeFocused();
   await page.keyboard.press("ControlOrMeta+End");
   await page.keyboard.type("// read\n");
-  await page.keyboard.press("Meta+s");
+  await page.keyboard.press("ControlOrMeta+s");
   await expect(page.getByTestId("file-saved")).toBeVisible();
   // Esc in the picker gives the keyboard back, not to <body>.
-  await page.keyboard.press("Meta+p");
+  await page.keyboard.press("ControlOrMeta+p");
   await expect(picker).toBeVisible();
   await page.keyboard.press("Escape");
   await expect(picker).toHaveCount(0);
@@ -180,7 +180,7 @@ test("⌘⇧E puts the keyboard in the Files panel, and New file names one there
   const page = app.page;
   // From its terminal, which takes the keyboard as it attaches.
   await expect.poll(() => focused(page).then((f) => f?.label)).toBe("Terminal input");
-  await page.keyboard.press("Meta+Shift+E");
+  await page.keyboard.press("ControlOrMeta+Shift+E");
   const panel = page.getByTestId("files-panel");
   await expect(panel).toBeVisible();
   await expect.poll(() => page.evaluate(() => !!document.activeElement?.closest("[data-testid=files-panel]"))).toBe(true);
@@ -193,7 +193,7 @@ test("⌘⇧E puts the keyboard in the Files panel, and New file names one there
   await notLost(page);
   // ⌘⇧E again hides it; the keyboard goes home.
   await panel.getByRole("tree").or(panel.getByTestId("file-tree")).first().focus().catch(() => {});
-  await page.keyboard.press("Meta+Shift+E");
+  await page.keyboard.press("ControlOrMeta+Shift+E");
   await notLost(page);
 });
 
@@ -201,14 +201,14 @@ test("split, switch tabs and move between panes with the keyboard", async ({ app
   await app.open({ params: { view: "conversation" } });
   await app.openWorktree(await agentWorktree(app, "devl/checkout-fix"));
   const page = app.page;
-  await page.keyboard.press("Meta+d");
+  await page.keyboard.press("ControlOrMeta+d");
   await expect(app.panes).toHaveCount(2);
-  await page.keyboard.press("Meta+Alt+ArrowLeft");
+  await page.keyboard.press("ControlOrMeta+Alt+ArrowLeft");
   await notLost(page);
   // Tabs: the strip's arrows move between them, Enter shows one.
   const tabs = page.locator("[data-tab-strip] [role=tab]");
   const count = await tabs.count();
-  await page.keyboard.press("Meta+1");
+  await page.keyboard.press("ControlOrMeta+1");
   await expect(tabs.first()).toHaveAttribute("aria-selected", "true");
   if (count > 1) {
     await tabs.first().focus();
@@ -273,14 +273,14 @@ test("the sidebar's edge resizes from the keyboard, and shows it has it", async 
 test("⌘K reaches Settings and a theme is chosen with the keyboard", async ({ app }) => {
   await app.open();
   const page = app.page;
-  await page.keyboard.press("Meta+k");
+  await page.keyboard.press("ControlOrMeta+k");
   const input = page.getByRole("combobox", { name: "Search sessions, worktrees and commands" });
   await expect(input).toBeFocused();
   // Esc closes it, and the keyboard isn't lost.
   await page.keyboard.press("Escape");
   await expect(input).toHaveCount(0);
   await notLost(page);
-  await page.keyboard.press("Meta+k");
+  await page.keyboard.press("ControlOrMeta+k");
   await page.keyboard.type("Settings: Appearance");
   await page.keyboard.press("Enter");
   const appearance = page.getByTestId("settings-appearance");
@@ -297,7 +297,7 @@ test("⌘K lists what the menus and shortcuts do", async ({ app }) => {
   await app.open();
   await app.openWorktree(await agentWorktree(app, "devl/checkout-fix"));
   const page = app.page;
-  await page.keyboard.press("Meta+k");
+  await page.keyboard.press("ControlOrMeta+k");
   const list = page.getByRole("listbox");
   for (const [query, name] of [
     ["files panel", "Files panel"],
@@ -326,7 +326,7 @@ test("Team setup to its first step with the keyboard", async ({ app }) => {
   mockOnly("reads a team's setup");
   await app.open({ params: { team: "acme" } });
   const page = app.page;
-  await page.keyboard.press("Meta+k");
+  await page.keyboard.press("ControlOrMeta+k");
   await page.keyboard.type("Team setup");
   await page.keyboard.press("Enter");
   const org = page.getByRole("textbox", { name: "GitHub org or link" });
@@ -342,7 +342,7 @@ test("⌘⌥I puts the keyboard in the console drawer; arrows switch its tabs", 
   await app.open();
   const page = app.page;
   const pane = await openBrowser(app);
-  await page.keyboard.press("Meta+Alt+KeyI");
+  await page.keyboard.press("ControlOrMeta+Alt+KeyI");
   const drawer = pane.getByTestId("devtools-drawer");
   await expect(drawer).toBeVisible();
   const consoleTab = drawer.getByRole("tab", { name: /Console/ });
@@ -357,7 +357,7 @@ test("⌘⌥I puts the keyboard in the console drawer; arrows switch its tabs", 
   await page.keyboard.press("ArrowUp");
   await expect(edge).toHaveAttribute("aria-valuenow", String(before + 16));
   // ⌘⌥I again closes it and the keyboard goes home.
-  await page.keyboard.press("Meta+Alt+KeyI");
+  await page.keyboard.press("ControlOrMeta+Alt+KeyI");
   await expect(drawer).toHaveCount(0);
   await notLost(page);
 });
@@ -366,7 +366,7 @@ test("the shortcuts sheet traps the keyboard while open, and Esc gives it back",
   await app.open();
   const page = app.page;
   await page.getByTestId("nav-home").focus();
-  await page.keyboard.press("Meta+Slash");
+  await page.keyboard.press("ControlOrMeta+Slash");
   const sheet = page.getByRole("dialog", { name: "Keyboard shortcuts" });
   await expect(sheet).toBeVisible();
   for (let i = 0; i < 8; i++) {

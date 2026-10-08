@@ -121,7 +121,7 @@ test("the board shows the worktree's artifacts, filters by kind, and opens one",
 test("Compare's Artifacts lane shows each side's board", async ({ app }) => {
   await app.open({ params: { view: "conversation" } });
   await app.openWorktree("devl/search-perf");
-  await app.page.keyboard.press("Meta+Alt+KeyC");
+  await app.page.keyboard.press("ControlOrMeta+Alt+KeyC");
   const input = app.page.getByPlaceholder("Compare search-perf with…");
   await input.fill("checkout-fix");
   await input.press("Enter");

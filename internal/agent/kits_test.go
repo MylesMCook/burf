@@ -13,13 +13,16 @@ import (
 	"testing"
 
 	box "github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/team/teamtest"
 )
 
 // kitRepo makes a git repository holding a kit in kits/cal.
 func kitRepo(t *testing.T, version string) string {
 	t.Helper()
-	t.Setenv("GIT_CONFIG_GLOBAL", os.DevNull)
-	t.Setenv("GIT_CONFIG_SYSTEM", os.DevNull)
+	for _, kv := range teamtest.NoGitConfig() {
+		k, v, _ := strings.Cut(kv, "=")
+		t.Setenv(k, v)
+	}
 	repo := t.TempDir()
 	dir := filepath.Join(repo, "kits", "cal")
 	os.MkdirAll(filepath.Join(dir, "scripts"), 0o755)

@@ -172,7 +172,7 @@ func (g *GitHub) git(dir string, args ...string) string {
 	if dir != "" {
 		cmd.Dir = dir
 	}
-	cmd.Env = append(os.Environ(), "GIT_CONFIG_GLOBAL="+os.DevNull, "GIT_CONFIG_SYSTEM="+os.DevNull)
+	cmd.Env = append(os.Environ(), NoGitConfig()...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
 		g.t.Fatalf("git %v: %v\n%s", args, err, out)
@@ -182,4 +182,19 @@ func (g *GitHub) git(dir string, args ...string) string {
 
 func (g *GitHub) try(args ...string) bool {
 	return exec.Command("git", args...).Run() == nil
+}
+
+// NoGitConfig is the environment that keeps the person's and the machine's
+// git settings out of a test's git. Git for Windows cannot read the null
+// device as a config file ("unable to access 'NUL'"), so there it is an
+// empty file.
+func NoGitConfig() []string {
+	empty := os.DevNull
+	if runtime.GOOS == "windows" {
+		empty = filepath.Join(os.TempDir(), "burf-test-empty.gitconfig")
+		if _, err := os.Stat(empty); err != nil {
+			_ = os.WriteFile(empty, nil, 0o600)
+		}
+	}
+	return []string{"GIT_CONFIG_GLOBAL=" + empty, "GIT_CONFIG_SYSTEM=" + empty}
 }

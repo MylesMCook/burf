@@ -52,9 +52,9 @@ test("at rest the app asks the agent little, and nothing at all while hidden", a
   const pane = page.locator("[data-testid=browser-pane]:visible");
   await pane.getByRole("textbox", { name: "Address" }).fill("http://checkout-fix.shop.devl.localhost:1377/");
   await pane.getByRole("textbox", { name: "Address" }).press("Enter");
-  await page.keyboard.press("Meta+Alt+KeyI");
+  await page.keyboard.press("ControlOrMeta+Alt+KeyI");
   await expect(pane.getByTestId("devtools-drawer")).toBeVisible();
-  await page.keyboard.press("Meta+Shift+E");
+  await page.keyboard.press("ControlOrMeta+Shift+E");
   await expect(page.getByTestId("files-panel")).toBeVisible();
   await page.clock.pauseAt(Date.now() + 1000);
 
@@ -101,7 +101,7 @@ test("opening and closing tabs again and again leaves nothing behind", async ({ 
   const round = async () => {
     const n = await strip.locator("[data-tab]").count();
     // A terminal, a Browser tab and a Preview tab, then each closed.
-    await page.keyboard.press("Meta+KeyT");
+    await page.keyboard.press("ControlOrMeta+KeyT");
     await expect(strip.locator("[data-tab]")).toHaveCount(n + 1);
     await expect(page.locator("[data-testid=pane]:visible [data-terminal] canvas")).toHaveCount(1);
     await page.getByRole("button", { name: "New tab" }).click();
@@ -110,7 +110,7 @@ test("opening and closing tabs again and again leaves nothing behind", async ({ 
     await page.getByRole("option", { name: /^Preview/ }).click();
     await expect(strip.locator("[data-tab]")).toHaveCount(n + 3);
     for (let i = 0; i < 3; i++) {
-      await page.keyboard.press("Meta+KeyW");
+      await page.keyboard.press("ControlOrMeta+KeyW");
       const confirm = page.getByRole("alertdialog");
       if (await confirm.isVisible().catch(() => false)) await confirm.getByRole("button", { name: /Close/ }).click();
       await expect(strip.locator("[data-tab]")).toHaveCount(n + 2 - i);
@@ -149,7 +149,7 @@ test("terminals in hidden tabs don't draw, and catch up when shown", async ({ ap
   await app.openWorktree("devl/checkout-fix");
   const strip = page.locator("[data-tab-strip]");
   const first = await strip.locator('[data-tab][aria-selected="true"]').getAttribute("data-tab");
-  for (let i = 0; i < 3; i++) await page.keyboard.press("Meta+KeyT");
+  for (let i = 0; i < 3; i++) await page.keyboard.press("ControlOrMeta+KeyT");
   await expect.poll(() => page.locator("[data-terminal] canvas").count()).toBeGreaterThanOrEqual(4);
   await page.waitForTimeout(1000);
 

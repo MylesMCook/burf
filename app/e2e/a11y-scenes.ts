@@ -104,7 +104,7 @@ export const scenes: Scene[] = [
     key: true,
     async run(app, theme) {
       await app.open({ theme });
-      await app.page.keyboard.press("Meta+k");
+      await app.page.keyboard.press("ControlOrMeta+k");
       await expect(app.page.getByRole("dialog")).toBeVisible();
     },
   },
@@ -133,7 +133,7 @@ export const scenes: Scene[] = [
     id: "shortcuts-sheet",
     async run(app, theme) {
       await app.open({ theme });
-      await app.page.keyboard.press("Meta+Slash");
+      await app.page.keyboard.press("ControlOrMeta+Slash");
       await expect(app.page.getByRole("dialog")).toBeVisible();
     },
   },
@@ -141,7 +141,7 @@ export const scenes: Scene[] = [
     id: "notifications",
     async run(app, theme) {
       await app.open({ theme });
-      await app.page.keyboard.press("Meta+Shift+n");
+      await app.page.keyboard.press("ControlOrMeta+Shift+n");
       await expect(app.page.getByRole("dialog").or(app.page.getByTestId("notification-center"))).toBeVisible();
     },
   },
@@ -186,7 +186,7 @@ export const scenes: Scene[] = [
       await app.context.route(/^https?:\/\/[^/]+\.localhost:1377(?:\/|$)/, (r) => r.fulfill({ status: 200, contentType: "text/html", body: CART }));
       await app.open({ theme });
       const pane = await openBrowser(app);
-      await app.page.keyboard.press("Meta+Alt+KeyI");
+      await app.page.keyboard.press("ControlOrMeta+Alt+KeyI");
       await expect(pane.getByTestId("devtools-drawer")).toBeVisible();
     },
   },
@@ -204,7 +204,7 @@ export const scenes: Scene[] = [
     id: "compare",
     async run(app, theme) {
       await chat(app, theme, "devl/checkout-fix");
-      await app.page.keyboard.press("Meta+Alt+KeyC");
+      await app.page.keyboard.press("ControlOrMeta+Alt+KeyC");
       const input = app.page.getByPlaceholder("Compare checkout-fix with…");
       await input.fill("search-perf");
       await input.press("Enter");
@@ -216,7 +216,7 @@ export const scenes: Scene[] = [
     async run(app, theme) {
       await app.open({ theme });
       await app.openWorktree("devl/checkout-fix");
-      await app.page.keyboard.press("Meta+p");
+      await app.page.keyboard.press("ControlOrMeta+p");
       await expect(app.page.getByTestId("file-picker")).toBeVisible();
     },
   },
@@ -225,7 +225,7 @@ export const scenes: Scene[] = [
     async run(app, theme) {
       await app.open({ theme });
       await app.openWorktree("devl/checkout-fix");
-      await app.page.keyboard.press("Meta+p");
+      await app.page.keyboard.press("ControlOrMeta+p");
       await expect(app.page.getByTestId("file-picker")).toBeVisible();
       await app.page.keyboard.press("Enter");
       await expect(app.page.getByTestId("file-crumbs")).toBeVisible();
@@ -236,7 +236,7 @@ export const scenes: Scene[] = [
     async run(app, theme) {
       await app.open({ theme });
       await app.openWorktree("devl/checkout-fix");
-      await app.page.keyboard.press("Meta+Shift+E");
+      await app.page.keyboard.press("ControlOrMeta+Shift+E");
       await expect(app.page.getByTestId("files-panel")).toBeVisible();
     },
   },
@@ -395,7 +395,7 @@ export const scenes: Scene[] = [
     extra: true,
     async run(app, theme) {
       await chat(app, theme, "devl/search-perf");
-      await app.page.keyboard.press("Meta+Alt+KeyC");
+      await app.page.keyboard.press("ControlOrMeta+Alt+KeyC");
       const input = app.page.getByPlaceholder("Compare search-perf with…");
       await input.fill("checkout-fix");
       await input.press("Enter");
@@ -521,7 +521,7 @@ export const scenes: Scene[] = [
     id: "new-task",
     async run(app, theme) {
       await app.open({ theme });
-      await app.page.keyboard.press("Meta+n");
+      await app.page.keyboard.press("ControlOrMeta+n");
       await expect(app.page.getByRole("dialog")).toBeVisible();
     },
   },

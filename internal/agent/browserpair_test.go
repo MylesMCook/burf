@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -136,7 +137,8 @@ func TestABrowserPairsWithAOneTimeCodeAndGetsItsOwnCredential(t *testing.T) {
 	if err != nil || strings.Contains(string(stored), paired.Token) || strings.Contains(string(stored), strings.TrimPrefix(paired.Token, "brw_")) || !strings.Contains(string(stored), `"hash"`) {
 		t.Fatalf("stored pairings: %v %s", err, stored)
 	}
-	if st, _ := os.Stat(file); st.Mode().Perm()&0o077 != 0 {
+	// Windows has no mode bits to check: the file takes the profile folder's access list.
+	if st, _ := os.Stat(file); runtime.GOOS != "windows" && st.Mode().Perm()&0o077 != 0 {
 		t.Fatalf("pairings file is readable by others: %v", st.Mode())
 	}
 	var listed struct {

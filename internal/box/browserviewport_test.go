@@ -135,6 +135,8 @@ func TestABrowserSizeIsKeptPerWorktreeUntilChanged(t *testing.T) {
 }
 
 func TestBrowserResizeOverTheAPI(t *testing.T) {
+	// The status reads the machine's own sandbox setting, which an Ubuntu runner has on.
+	fakeUserns(t, "0")
 	dir := t.TempDir()
 	c, _ := servedBox(t, func(b *Box) { b.NewBrowsers(filepath.Join(dir, "browser"), 1) })
 	repo := gitRepo(t)
