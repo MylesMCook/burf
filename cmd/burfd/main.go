@@ -361,6 +361,8 @@ func serve(b boxHome, args []string) error {
 		},
 	}
 	bx.AutoFix = &box.AutoFixStore{Path: filepath.Join(b.dir, "autofix.json")}
+	bx.EnableChats()
+	defer bx.CloseChats()
 	bx.Triggers = &box.TriggerSecrets{Path: filepath.Join(b.dir, "trigger-secrets.json")}
 	rc := box.LoadRunsConfig(filepath.Join(userDir, "runs.json"))
 	bx.NewRuns(filepath.Join(b.dir, "runs"), rc.MaxConcurrentRuns, rc.MaxConcurrentAgents, logger.Printf)

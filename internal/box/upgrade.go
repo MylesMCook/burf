@@ -127,6 +127,9 @@ func (b *Box) Capabilities() []string {
 	// worktree.titles: worktrees carry a display name (PATCH
 	// /v1/locations/{name}/worktrees/{worktree} names one, worktreetitles.go).
 	caps := []string{"transcript", "diff", "titles", "sample", "history", "commands", "service.terminal", "answer", "session.home", "files", "files.dir", "agents.install", "worktree.titles"}
+	if b.Chats != nil {
+		caps = append(caps, "chat.codex")
+	}
 	if b.Turns != nil {
 		// controls: POST .../keys, .../interrupt and .../mode, GET
 		// .../controls (controls.go).
@@ -170,7 +173,11 @@ func (b *Box) handleUpgrade(w http.ResponseWriter, r *http.Request) error {
 	if err := b.before(r, "box.upgrade", map[string]any{"build": BuildID(binary)}); err != nil {
 		return err
 	}
+	if err := b.beginChatUpgrade(); err != nil {
+		return err
+	}
 	if err := b.Update.Install(r.Context(), binary); err != nil {
+		b.endChatUpgrade()
 		return err
 	}
 	b.publish(r, "box.upgraded", map[string]any{"build": BuildID(binary)})
@@ -183,6 +190,7 @@ func (b *Box) handleUpgrade(w http.ResponseWriter, r *http.Request) error {
 			b.Update.BeforeRestart()
 		}
 		if err := b.Update.restart(); err != nil {
+			b.endChatUpgrade()
 			fmt.Fprintf(os.Stderr, "berthd: restarting into the new build failed: %v\n", err)
 		}
 	}()

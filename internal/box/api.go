@@ -21,6 +21,7 @@ import (
 	"github.com/MylesMCook/burf/internal/events"
 	"github.com/MylesMCook/burf/internal/hooks"
 	"github.com/MylesMCook/burf/internal/integrations/adapters"
+	"github.com/MylesMCook/burf/internal/localchat"
 	"github.com/MylesMCook/burf/internal/terminal"
 	"github.com/MylesMCook/burf/internal/wire"
 )
@@ -91,6 +92,10 @@ type Box struct {
 	Reports *Notifier
 	// Team runs team setups (team.go); nil on a box without them.
 	Team *TeamRunner
+	// Chats owns structured provider processes until explicitly stopped or
+	// the daemon exits. These are separate from terminal-backed Sessions.
+	Chats     *localchat.Manager
+	chatState chatState
 }
 
 func (b *Box) own(path string) {
@@ -213,6 +218,7 @@ func (b *Box) Mount(s *wire.Server) {
 	route("GET /v1/events", b.streamEvents)
 	route("POST /v1/events", b.emit)
 	b.mountRuns(route)
+	b.mountChats(route)
 	b.mountHistory(route)
 	b.mountAnswer(route)
 	b.mountBrowser(route)
