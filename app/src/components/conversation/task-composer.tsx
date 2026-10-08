@@ -647,8 +647,11 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
       }
       footer={
         <>
+          {/* One wrapping row of everything: a pick that does not fit starts the next row at the left edge, whole, and Send ends the last row. */}
+          <div data-slot="launch-toolbar" className="flex w-full min-w-0 flex-wrap items-center gap-x-0.5 gap-y-1">
+          <div data-slot="launch-place" className="contents">
           {fixed && (
-            <span className="flex min-w-0 items-center gap-1.5 px-2.5 text-muted-foreground text-xs">
+            <span className="flex h-8 min-w-0 items-center gap-1.5 px-2.5 text-muted-foreground text-xs">
               <GitBranchIcon className="size-3.5 shrink-0" />
               <span className="truncate">{attempts ? "Each attempt in a new worktree from this branch" : `In ${fixed.name}`}</span>
             </span>
@@ -680,7 +683,8 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
             </>
           )}
           {(!pinned || from?.kind === "handoff") && !attempts && <Pick label="Where" icon={<GitBranchIcon />} value={where} options={whereOptions} onPick={(v) => setWhere(v as "new" | "main" | "here")} />}
-          <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1">
+          </div>
+          <div data-slot="launch-agent" className="contents">
             <AgentsPicker
               presets={pickerPresets}
               sel={sel}
@@ -696,7 +700,10 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
               permissions={hasFullAccess(box) ? Object.keys(chatPermissions) : BASE_PERMISSIONS}
               onPermission={(p) => { saveChatPermission(p); setPermission(p); }}
             />
-            <SendButton label={action} dialog={dialog} blocker={blocker} busy={busy} onClick={() => void submit()} />
+            <span className="ml-auto flex shrink-0">
+              <SendButton label={action} dialog={dialog} blocker={blocker} busy={busy} onClick={() => void submit()} />
+            </span>
+          </div>
           </div>
         </>
       }

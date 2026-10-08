@@ -261,8 +261,10 @@ function SingleAgentPicker({ presets, sel, none, allowNone, onChange, onNone, on
   };
   const provider = (p: PickerPreset) => (
     <MenuRadioItem key={p.id} value={p.id} closeOnClick>
-      <AgentIcon agent={p.id} />
-      {p.name}
+      <span className="flex min-w-0 items-center gap-2">
+        <AgentIcon agent={p.id} />
+        <span className="truncate">{p.name}</span>
+      </span>
     </MenuRadioItem>
   );
   const others = presets.filter((p) => !coreProviders.has(p.id));
@@ -323,7 +325,7 @@ function AgentOption({ label, value, values, labels, required, onChange }: { lab
   const shown = text(value);
   return (
     <Menu>
-      <MenuTrigger render={<Button size="sm" variant="ghost" aria-label={`${label}: ${shown}`} className="min-w-0 max-w-44 shrink text-muted-foreground" />}>
+      <MenuTrigger render={<Button size="sm" variant="ghost" aria-label={`${label}: ${shown}`} className="min-w-0 max-w-64 text-muted-foreground" />}>
         <span className="truncate">
           {label}: {shown}
         </span>

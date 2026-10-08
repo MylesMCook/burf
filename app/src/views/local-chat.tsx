@@ -1,10 +1,17 @@
 import { ArrowUpIcon, RotateCwIcon, SquareIcon, XIcon } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { WorktreeArtChip } from "@/components/art/board-buttons";
+import { ArtifactCard } from "@/components/conversation/artifacts";
 import { Markdown } from "@/components/conversation/markdown";
 import { Button } from "@/components/ui/button";
 import { Tip } from "@/components/tip";
 import type { Client } from "@/lib/api";
+import { loadArtifacts, useArt, useHasArtifacts } from "@/lib/art/model";
+import { chatArtifacts } from "@/lib/chat-artifacts";
 import { errorMessage } from "@/lib/format";
+import { PaneContext } from "@/lib/pane-context";
+import { refFor } from "@/lib/workspaces";
+import { useTitleAt } from "@/lib/worktree-names";
 import { BASE_PERMISSIONS, chatPermissions, localApi, savedChatPermission, saveChatPermission, type LocalChat as Chat, type LocalSession, type ChatOptions, type ChatModel, type ChatDecision } from "@/lib/local-computer";
 
 export function LocalChat({ client, session, onChange }: { client: Client; session: LocalSession; onChange(session: LocalSession): void }) {
@@ -100,6 +107,20 @@ export function StructuredChat({ transport, session, onChange, testId = "local-c
     return { ...o, model: next || undefined, effort: m ? (listed.includes(effort) ? effort : m.defaultReasoningEffort || listed[0]) || undefined : undefined };
   });
   const changed = !!(options.model || options.effort || options.permission);
+  // Artifacts belong to the worktree the chat's pane is in. A chat on this computer has no pane, and no artifacts.
+  const worktree = useContext(PaneContext)?.worktree;
+  const artifacts = useHasArtifacts(worktree?.split(":")[0]) ? worktree : undefined;
+  // The name a person gave the worktree stands for its folder here as it does everywhere else.
+  const named = useTitleAt(worktree?.split(":")[0], session.cwd);
+  const made = useMemo(() => new Map((artifacts ? chat?.items ?? [] : []).filter((item) => item.kind === "tool").map((item) => [item.id, chatArtifacts(item)] as const).filter(([, list]) => list.length)), [artifacts, chat?.items]);
+  // The list is read when the pane opens; one made since is read as its line arrives, should the box's event not come.
+  const madeIds = [...made.values()].flat().map((a) => `${a.local}@${a.version}`).join(" ");
+  useEffect(() => {
+    if (!artifacts || !madeIds) return;
+    const have = new Map((useArt.getState().byWt[artifacts] ?? []).map((a) => [a.id, a.versions.at(-1)?.n ?? 0]));
+    const ref = refFor(artifacts);
+    if (ref && madeIds.split(" ").some((key) => { const [id, n] = key.split("@"); return (have.get(id) ?? 0) < Number(n); })) void loadArtifacts(ref);
+  }, [artifacts, madeIds]);
   const groups: Chat["items"][] = [];
   for (const item of chat?.items ?? []) {
     const last = groups[groups.length - 1];
@@ -108,7 +129,8 @@ export function StructuredChat({ transport, session, onChange, testId = "local-c
   return <div data-testid={testId} className="flex min-h-0 min-w-0 flex-1 flex-col">
     <header className="flex flex-wrap items-center gap-2 border-b px-4 py-3 text-sm">
       <h2 className="font-medium">Codex</h2><span role="status" className="text-xs text-muted-foreground">{offline ? "Disconnected" : chat?.state === "running" ? "Working" : chat?.state === "waiting" ? `Waiting for approval (${chat.approvals.length})` : chat?.state === "idle" ? "Ready" : chat?.state === "exited" ? "Stopped" : "Starting"}</span><span className={accepted === "full-access" ? "text-xs font-medium text-warning" : "text-xs text-muted-foreground"}>{chatPermissions[accepted].label}</span>{(chat?.options?.model || chat?.options?.effort) && <span className="text-xs text-muted-foreground">{[chat.options.model, chat.options.effort].filter(Boolean).join(" · ")}</span>}
-      <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={session.cwd}>{session.cwd}</span>
+      <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={session.cwd}>{named ?? session.cwd}</span>
+      <WorktreeArtChip wt={artifacts} className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded px-1.5 text-xs text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring" />
       <Tip label="Refresh chat"><Button size="icon-sm" variant="ghost" aria-label="Refresh chat" disabled={busy} onClick={() => void load()}><RotateCwIcon /></Button></Tip>
       {chat?.state !== "exited" && <Tip label="Stop chat"><Button size="icon-sm" variant="ghost" aria-label="Stop chat" disabled={busy || !chat} onClick={() => void mutate(() => transport.stop())}><XIcon /></Button></Tip>}
     </header>
@@ -117,7 +139,7 @@ export function StructuredChat({ transport, session, onChange, testId = "local-c
       <div className="mx-auto w-full max-w-(--berth-chat-w) space-y-5 text-sm leading-relaxed text-foreground">
         {chat?.truncated && <p className="text-xs text-muted-foreground">Earlier output is no longer in this live view.</p>}
         {chat?.items.length === 0 && !submitted && <h3 className="py-8 text-center text-lg font-medium">{running ? "Codex is working…" : chat.state === "starting" ? "Starting Codex…" : "New chat"}</h3>}
-        {groups.map((group) => group[0].kind === "tool" ? <details key={group[0].id} className="min-w-0 text-xs"><summary className="cursor-pointer text-muted-foreground">Tool activity · {group.length}{group.some((i) => i.status === "inProgress") ? " · working" : ""}</summary>{group.map((item) => <pre key={item.id} className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-words border-l pl-3">{item.text}</pre>)}</details> : <article key={group[0].id} className="min-w-0" aria-label={group[0].kind === "user" ? "You" : "Codex"}><h3 className="mb-2 text-xs font-medium text-muted-foreground">{group[0].kind === "user" ? "You" : "Codex"}</h3><Markdown text={group[0].text} /></article>)}
+        {groups.map((group) => group[0].kind === "tool" ? <div key={group[0].id} className="min-w-0"><details className="min-w-0 text-xs"><summary className="cursor-pointer text-muted-foreground">Tool activity · {group.length}{group.some((i) => i.status === "inProgress") ? " · working" : ""}</summary>{group.map((item) => <pre key={item.id} className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-words border-l pl-3">{item.text}</pre>)}</details>{group.flatMap((item) => made.get(item.id) ?? []).map((artifact) => <div key={artifact.id} className="mt-2 flex text-sm"><ArtifactCard it={artifact} /></div>)}</div> : <article key={group[0].id} className="min-w-0" aria-label={group[0].kind === "user" ? "You" : "Codex"}><h3 className="mb-2 text-xs font-medium text-muted-foreground">{group[0].kind === "user" ? "You" : "Codex"}</h3><Markdown text={group[0].text} /></article>)}
         {submitted && !chat?.items.some((item) => item.kind === "user" && !submittedItems.current.has(item.id)) && <article aria-label="Sending message"><h3 className="mb-2 text-xs text-muted-foreground">You · sending</h3><Markdown text={submitted} /></article>}
         {!!chat?.approvals.length && <p className="text-xs font-medium text-warning">{chat.approvals.length} pending {chat.approvals.length === 1 ? "approval" : "approvals"}</p>}
         {chat?.approvals.map((approval, index) => <section key={approval.id} aria-label="Approval required" className="border-l-2 border-warning pl-3">

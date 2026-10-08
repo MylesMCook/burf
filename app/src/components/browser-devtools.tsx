@@ -6,12 +6,10 @@ import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { toastManager } from "@/components/ui/toast";
 import type { BrowserContext } from "@/lib/browser-url";
-import { agentOf } from "@/lib/derive";
 import { clearLog, type PaneLog, setDrawerTab, toggleDrawer, useDrawerOpen, useDrawerTab, useErrorCount, useErrorCountOf, useLog } from "@/lib/devtools";
 import { badgeText, type ConsoleEntry, consoleMessage, failed, formatMs, formatSize, isError, type NetEntry, requestMessage, shortAt, statusText } from "@/lib/devtools-model";
-import { send as sendPrompt } from "@/lib/orchestrate";
+import { useAgentTarget } from "@/lib/agent-target";
 import { keysFor } from "@/lib/shortcuts";
-import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 // The Browser tab's developer tools: WebKit's own Web Inspector for the
@@ -550,17 +548,17 @@ function RequestDetail({ n, pageUrl }: { n: NetEntry; pageUrl: string }) {
 // an optional note.
 function Sender({ sending, pageUrl, ctx, agent, onDone }: { sending: Sending; pageUrl: string; ctx: BrowserContext; agent?: boolean; onDone(): void }) {
   const ref = ctx.ref;
-  const session = useStore((s) => (ref ? s.boxes[ref.box]?.sessions?.find((x) => x.dir === ref.path && !x.exited && agentOf(x)) : undefined));
+  const target = useAgentTarget(ref);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const page = agent ? `${pageUrl} (in your own browser on the box)` : pageUrl;
   const message = sending.kind === "console" ? consoleMessage(sending.entry, page, note) : requestMessage(sending.entry, page, note);
   const summary = sending.kind === "console" ? sending.entry.text : `${sending.entry.method} ${sending.entry.path} → ${statusText(sending.entry)}`;
   const submit = async () => {
-    if (!session || !ref) return;
+    if (!target || target.blocked) return;
     setBusy(true);
     try {
-      await sendPrompt(ref.box, session.name, message, { when: "idle" });
+      await target.send(message);
       toastManager.add({ type: "success", title: "Sent to the agent", description: summary.slice(0, 120) });
       onDone();
     } catch (err) {
@@ -587,11 +585,11 @@ function Sender({ sending, pageUrl, ctx, agent, onDone }: { sending: Sending; pa
         aria-label="A note for the agent"
         value={note}
         onChange={(e) => setNote(e.target.value)}
-        placeholder={session ? "Add a note (optional)" : "No agent runs in this worktree"}
-        disabled={!session}
+        placeholder={target ? (target.blocked ?? "Add a note (optional)") : "No agent runs in this worktree"}
+        disabled={!target || !!target.blocked}
         className="h-6 min-w-0 flex-1 rounded border bg-background px-2 text-xs outline-none focus:border-ring"
       />
-      <Button type="submit" size="xs" disabled={!session || busy}>
+      <Button type="submit" size="xs" disabled={!target || !!target.blocked || busy}>
         <SendIcon />
         Send to agent
       </Button>
