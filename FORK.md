@@ -29,8 +29,20 @@ screen scraping or simulated terminal keystrokes when implementing this.
 Keep terminals as a fallback for shell work and unsupported agent interactions.
 Preserve source-history isolation, agent permissions and no-replay guarantees.
 
-This is an accepted product direction, not implemented functionality or a
-selected provider protocol. Evaluate future upstream features against it.
+The first UI step promotes the existing remote Claude Code and Codex chat view
+out of Labs. Fresh profiles default to Chat; saved preferences and explicit pane
+choices are preserved. General settings controls the default, while switching a
+pane to Terminal affects only that pane. Shells, unsupported agents and older
+boxes without transcripts default to Terminal. New remote chats use a bottom
+composer, like ongoing conversations.
+
+Remote chat is still terminal-backed: messages and some approvals use the
+existing box protocol and terminal controls. Windows-local owned sessions still
+use terminals, and imported histories remain read-only. Structured local chat
+needs provider-owned conversation identity, events, message submission,
+interruption and approvals; matching the latest transcript in a folder is not
+safe. No provider protocol has been selected. Evaluate future upstream features
+against this direction.
 
 ## First Milestone
 

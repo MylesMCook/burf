@@ -10,16 +10,23 @@ import { errorMessage } from "@/lib/format";
 import { setPrefs, usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { ConfirmButton } from "@/views/settings/confirm";
+import { Segmented } from "@/views/settings/controls";
 import { Code, SettingsGroup, SettingsPage, SettingsRow, Value } from "@/views/settings/rows";
 
 export function GeneralSection() {
   const confirmClose = usePrefs((p) => p.confirmCloseShells);
   const closeAgents = usePrefs((p) => p.closeAgents);
+  const agentView = usePrefs((p) => p.agentView);
   const proxy = useStore((s) => s.status?.proxy);
   const port = proxy?.url_port ?? 1377;
 
   return (
     <SettingsPage title="General">
+      <SettingsGroup title="Chats">
+        <SettingsRow label="Open supported agents as">
+          <Segmented value={agentView} options={[{ value: "conversation", label: "Chat" }, { value: "terminal", label: "Terminal" }]} onChange={(value) => setPrefs({ agentView: value })} />
+        </SettingsRow>
+      </SettingsGroup>
       <SettingsGroup title="Notifications">
         <SettingsRow label="Notifications and Do not disturb" description="What shows in the centre, as toasts and as system notifications, and quiet hours.">
           <Button size="sm" variant="outline" onClick={() => useStore.getState().setView({ kind: "settings", section: "notifications" })}>
@@ -28,7 +35,7 @@ export function GeneralSection() {
         </SettingsRow>
       </SettingsGroup>
 
-      <SettingsGroup title="Terminals">
+      <SettingsGroup title="Sessions">
         <SettingsRow
           label="Closing an agent's tab"
           description={

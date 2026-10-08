@@ -35,13 +35,12 @@ export interface Prefs {
   // How many times closing explained itself ("keeps running", "stopped"); it
   // stops after a few.
   agentCloseTips: number;
-  // Labs: the harbour home (no worktree open) and the Terminal |
-  // Conversation switch on agent panes. On by default since version 3.
+  // Labs: the harbour home and experimental tools. On by default since v3.
   labs: boolean;
   // Set once the person turns Labs on or off in Settings, so a change of
   // default never overrides them.
   labsChosen: boolean;
-  // Labs: how an agent's pane opens, until switched.
+  // How supported remote agents open; a pane can override this independently.
   agentView: "terminal" | "conversation";
   // Labs: zen (⌘.): no sidebar or status bar, a switcher for a tab strip,
   // agents as conversations.
@@ -89,7 +88,7 @@ const DEFAULTS: Prefs = {
   agentCloseTips: 0,
   labs: true,
   labsChosen: false,
-  agentView: "terminal",
+  agentView: "conversation",
   zen: false,
   autoUpdateBoxes: false,
   chatBackground: DEFAULT_CHAT_BACKGROUND,
