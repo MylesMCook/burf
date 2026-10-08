@@ -114,9 +114,10 @@ const locations: Record<string, Location[]> = {
         { name: "checkout-fix", path: "/home/me/work/shop-checkout-fix", branch: "me/checkout-fix" },
         { name: "qa-deck", path: "/home/me/work/shop-qa-deck", branch: "me/qa-deck" },
         { name: "search-perf", path: "/home/me/work/shop-search-perf", branch: "me/search-perf" },
-        { name: "order-export", path: "/home/me/work/shop-order-export", branch: "me/order-export" },
+        // Handed off from checkout-fix's agent, and on from there: nested.
+        { name: "order-export", path: "/home/me/work/shop-order-export", branch: "me/order-export", parent: "/home/me/work/shop-checkout-fix" },
         // Named after a pasted link, as a worktree made from one is.
-        { name: "https-linear-app-acme", path: "/home/me/work/shop-https-linear-app-acme", branch: "https-linear-app-acme" },
+        { name: "https-linear-app-acme", path: "/home/me/work/shop-https-linear-app-acme", branch: "https-linear-app-acme", parent: "/home/me/work/shop-order-export" },
       ],
     },
     {

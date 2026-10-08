@@ -107,6 +107,9 @@ export interface Worktree {
   // A display name a person gave it, shown in its place; its branch and
   // folder keep name. Boxes that list "worktree.titles" carry it.
   title?: string;
+  // The path of the worktree whose agent handed this one off, to nest it
+  // under; another worktree of the same location.
+  parent?: string;
 }
 
 export interface Scripts {
