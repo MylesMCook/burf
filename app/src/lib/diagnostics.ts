@@ -9,7 +9,7 @@ import { rendererOutcome } from "@/lib/terminal";
 import { appVersion } from "@/views/settings/app-version";
 
 // Copy diagnostics (Settings › About, and an error's Details): what this
-// app, the laptop agent, `berth doctor`, the local box and each box say
+// app, the laptop agent, `burf doctor`, the local box and each box say
 // about themselves, and the last errors and toasts, as one short redacted
 // text to paste into a chat (lib/diagnostics-format). Every part that
 // can't be read says so on its line; nothing here throws.
@@ -33,7 +33,7 @@ interface LocalBoxStatus {
   name?: string;
 }
 
-// The app's own part, kept on the laptop so `berth doctor --report` has it.
+// The app's own part, kept on the laptop so `burf doctor --report` has it.
 export const APP_DIAGNOSTICS_DOC = "/v1/app/diagnostics";
 
 const within = <T,>(p: Promise<T>, ms: number, what: string): Promise<T> =>
@@ -74,13 +74,13 @@ export async function collectDiagnostics(): Promise<Diagnostics> {
 
   if (!client) {
     d.agent = { state: st.connection.state === "connecting" ? "connecting" : "not answering", error: st.connection.error };
-    d.doctor_error = "the agent isn't answering, so its checks can't run; try `berth doctor` in a terminal";
+    d.doctor_error = "the agent isn't answering, so its checks can't run; try `burf doctor` in a terminal";
     app.os = browserOS();
     return d;
   }
   d.agent.state = "running";
 
-  const [doctor, local] = await Promise.allSettled([within(client.laptop<DoctorReport>("GET", "/v1/doctor"), 20_000, "berth doctor"), within(client.laptop<LocalBoxStatus>("GET", "/v1/boxes/local"), 5_000, "the local box")]);
+  const [doctor, local] = await Promise.allSettled([within(client.laptop<DoctorReport>("GET", "/v1/doctor"), 20_000, "burf doctor"), within(client.laptop<LocalBoxStatus>("GET", "/v1/boxes/local"), 5_000, "the local box")]);
   if (doctor.status === "fulfilled") {
     const r = doctor.value;
     Object.assign(d.agent, { version: r.version, build: r.build });
@@ -90,7 +90,7 @@ export async function collectDiagnostics(): Promise<Diagnostics> {
     app.arch = r.arch;
   } else {
     const err = doctor.reason;
-    d.doctor_error = err instanceof ApiError && (err.status === 404 || err.status === 405) ? "this agent has no /v1/doctor (it is older); run berth doctor in a terminal" : `couldn't run: ${errorMessage(err)}`;
+    d.doctor_error = err instanceof ApiError && (err.status === 404 || err.status === 405) ? "this agent has no /v1/doctor (it is older); run burf doctor in a terminal" : `couldn't run: ${errorMessage(err)}`;
     app.os = browserOS();
   }
 
@@ -125,7 +125,7 @@ export async function collectDiagnostics(): Promise<Diagnostics> {
   // A box on this computer runs as this account, so its home is ours too.
   d.home ||= name ? (st.boxes[name]?.info as { home?: string } | undefined)?.home : undefined;
 
-  // Kept on the laptop, so `berth doctor --report` shows the app's part.
+  // Kept on the laptop, so `burf doctor --report` shows the app's part.
   void client.laptop("PUT", APP_DIAGNOSTICS_DOC, app).catch(() => {});
   return d;
 }

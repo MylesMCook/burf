@@ -6,12 +6,12 @@ description: Set a new engineer's box up the way the team's are, from a reposito
 A team setup sets a box up the way your team's boxes are: the tools it
 needs once, then the team's repositories, each cloned and set up. An org
 publishes it on GitHub in a repository called `.berth` (`github.com/<org>/.berth`),
-and an engineer runs it from Berth by typing the org's name or opening a
+and an engineer runs it from Burf by typing the org's name or opening a
 link such as `berth://team?org=acme`. Under the hood it is a workspace
 kit: a [kit](/guides/kits) for a whole box, not one project.
 
 Any GitHub org (or user) can publish one. The worked example,
-[`examples/team/acme-dot-berth`](https://github.com/sean-brydon/berthd/tree/main/examples/team/acme-dot-berth),
+[`examples/team/acme-dot-berth`](https://github.com/MylesMCook/burf/tree/main/examples/team/acme-dot-berth),
 is for Acme, a made-up org whose one repository, `acme/shop`, needs Node,
 Postgres and Redis, a migration and a seed. Copy it and change the names to
 make your own.
@@ -23,14 +23,14 @@ Open the Team setup page one of three ways:
 - On the welcome screen, **Joining a team?**: type your company's GitHub org.
 - **Add a box** → **Set this box up for a team**.
 - A link from your team, `berth://team?org=<org>`, often in an onboarding
-  doc. It opens Berth on the page.
+  doc. It opens Burf on the page.
 
 The page reads like the org's repository on GitHub: the org's avatar and
 name, **Published by Acme on GitHub**, `acme / .berth`, who changed it
-last and when, and the commit Berth will run. **What you'll get** lists:
+last and when, and the commit Burf will run. **What you'll get** lists:
 
 - **On your box, once**: the box steps, those that ask for your password
-  marked **sudo**, then Berth's own steps: **GitHub on the box** and, when
+  marked **sudo**, then Burf's own steps: **GitHub on the box** and, when
   the keys are 1Password references, **1Password on the box**. Open any line
   for its exact commands; **Read every command** shows every file of `.berth`
   as it is at that commit.
@@ -47,7 +47,7 @@ progress, so what you read is what runs.
 
 ### GitHub, through the GitHub CLI
 
-Berth has no GitHub sign-in of its own and keeps no GitHub token. On your
+Burf has no GitHub sign-in of its own and keeps no GitHub token. On your
 laptop it reads the team setup and the repositories with your own `gh`:
 
 - Without `gh`, the page says how to install it (`brew install gh` on a
@@ -77,7 +77,7 @@ setup**: ask an admin of the org for access, accept the invitation, then
 ### Your password
 
 Steps that need root run `sudo` in a terminal on the box, as you; you type
-your password there. Berth never sees it and nothing keeps it. The page
+your password there. Burf never sees it and nothing keeps it. The page
 shows that terminal inline on the step that is waiting (and **Open
 terminal** opens it as a tab). There is no root-over-SSH path, and the
 runner refuses to run as root.
@@ -107,17 +107,17 @@ No secrets live in git. A team setup lists, per repository:
 ### 1Password on the box
 
 When a team setup's shared keys are `op://` references, the box reads them
-with its own 1Password CLI, `op`, so op must be signed in there. Berth adds a
+with its own 1Password CLI, `op`, so op must be signed in there. Burf adds a
 step for it after GitHub's: `berthd secret signin` runs `op signin` in the
 box's terminal. If the box has no account yet, op asks for your sign-in
 address, email, Secret Key and password; you answer there, the page shows
-the terminal inline while op waits, and Berth never sees what you type. It
+the terminal inline while op waits, and Burf never sees what you type. It
 keeps only op's session, in `box/op-session` in the state directory (`~/.config/berth` on Linux, readable by you
 alone), which berthd passes to op when it reads a key. A box that is already
 signed in (or has `OP_SERVICE_ACCOUNT_TOKEN` in `~/.berth/env.json`) skips
 the step.
 
-op ends a session after 30 minutes unused. Berth never lets op ask anything
+op ends a session after 30 minutes unused. Burf never lets op ask anything
 outside that step: it runs op with no terminal, so a read on a box that
 isn't signed in fails at once, the service or terminal starts without that
 key, and the box says **1Password isn't signed in on devbox: sign in from
@@ -153,7 +153,7 @@ why. Without it, or with `"optional"`, engineers may skip.
 ### Agent CLIs on the box
 
 A team setup can name the agent CLIs every engineer's box gets
-(`"agents": ["claude", "codex"]`). Berth installs them as a step of its own,
+(`"agents": ["claude", "codex"]`). Burf installs them as a step of its own,
 after the team's steps and before GitHub, like the GitHub and 1Password
 steps: **Claude Code and Codex on devbox**, which runs `berthd agents
 install --integrations claude codex` in the same terminal. They go in
@@ -166,9 +166,9 @@ which a team's own step can install.
 
 ### What the box needs first
 
-Berth runs the steps in a terminal on the box, and that terminal is tmux's,
+Burf runs the steps in a terminal on the box, and that terminal is tmux's,
 so the box needs tmux (and git). [Adding the box over SSH](/getting-started/add-a-box#over-ssh)
-gives it both: Berth's own tmux (no sudo) and git in the guided terminal,
+gives it both: Burf's own tmux (no sudo) and git in the guided terminal,
 where `sudo` asks for your password; the install command installs both when
 it can, or says the command to run. The Team setup page checks the box too,
 and says **Install tmux on devbox**, with the command, until it is there.
@@ -176,16 +176,16 @@ and says **Install tmux on devbox**, with the command, until it is there.
 Adding a box from Team setup (the **+** beside the box, or **Add a box**
 while the page is open) is the full [guided install](/getting-started/add-a-box#the-guided-install),
 not the quick one: the whole plan, full screen, with the team's steps listed
-after Berth's, then one terminal on this computer for Berth's steps. When the
+after Burf's, then one terminal on this computer for Burf's steps. When the
 box is ready, the team's setup starts on it in the same screen, its steps
-under Berth's and its terminal beside them, and **Back to Team setup** goes
+under Burf's and its terminal beside them, and **Back to Team setup** goes
 on from there. Anywhere else, adding a box is
 [quiet](/getting-started/add-a-box#over-ssh).
 
 ### Groups a step adds you to
 
 A step that adds you to a group, such as `docker`, can't give it to
-processes already running: groups are read at login. Berth carries on as a
+processes already running: groups are read at login. Burf carries on as a
 new login would. The steps left in the team's terminal run with the new
 group (through `sg`, which needs no password for a group you are in), and so
 does what berthd starts afterwards: the repos' init scripts, terminals,
@@ -194,14 +194,14 @@ help: under systemd it gets the groups your user's service manager started
 with, and the terminals it already runs would keep theirs. `berthd doctor`
 says when this is happening; it ends at the next reboot.
 
-The keys a repository needs come from its `.env.example`. Berth only sets
+The keys a repository needs come from its `.env.example`. Burf only sets
 what is its business (ports, URLs, databases, through the repository's
 config or kit); everything else stays as the repository has it. When
 nothing is missing, the keys line is skipped.
 
 ### Updates
 
-When the team changes `.berth`, Berth notices the newer commit (it checks
+When the team changes `.berth`, Burf notices the newer commit (it checks
 every few hours) and shows **Acme's setup changed · Review update**. It
 never runs by itself. Reviewing opens the same page with what changed:
 steps added or changed (one that now asks for your password is called
@@ -210,22 +210,22 @@ out), repositories added, kits moved to a new commit, keys. **Update**, with you
 ### An org with no .berth
 
 If the org has no `.berth` you can read, the page lists its repositories you
-can read, with those that carry their own `.berth/config.json` picked. Berth
+can read, with those that carry their own `.berth/config.json` picked. Burf
 clones the ones you choose and sets each up from its own config, after the
 box's GitHub sign-in.
 
 ### From the command line
 
 ```sh
-berth team show acme                      # the org, the commit, the steps, each repo and whether you can read it
-berth team setup acme devbox              # run it on devbox; prints progress, and where to type your password
-berth team status                         # each team setup you accepted, and how it stands
-berth team retry acme --from postgres     # start again from a step (or a repo)
-berth team setup acme devbox --no-1password   # skip 1Password: type the shared keys once (Enter leaves one missing)
+burf team show acme                      # the org, the commit, the steps, each repo and whether you can read it
+burf team setup acme devbox              # run it on devbox; prints progress, and where to type your password
+burf team status                         # each team setup you accepted, and how it stands
+burf team retry acme --from postgres     # start again from a step (or a repo)
+burf team setup acme devbox --no-1password   # skip 1Password: type the shared keys once (Enter leaves one missing)
 ```
 
-`berth team setup` follows the setup until it ends; the steps run in the
-box's terminal, which `berth attach devbox/team-acme` opens.
+`burf team setup` follows the setup until it ends; the steps run in the
+box's terminal, which `burf attach devbox/team-acme` opens.
 
 ## Publishing a team setup
 
@@ -255,8 +255,8 @@ github.com/<owner>/<repo>/tree/<ref>/<folder>  a folder holding team.json
 berth://team?src=<one of those, URL-encoded>   the same, as a link to share
 ```
 
-Type one where Berth asks for an org, open the `berth://` link, or run
-`berth team show|setup <link>`. Everything else is the same: it is read with
+Type one where Burf asks for an org, open the `berth://` link, or run
+`burf team show|setup <link>`. Everything else is the same: it is read with
 your `gh`, pinned to the commit you reviewed, and the access check covers
 each repository. The page names where it came from, for example
 **jo-acme/acme-setup · team-setup branch · team/**, and does not
@@ -313,7 +313,7 @@ branch is offered as an update, like the org's own.
 | `box.os` | the systems the script supports; shown, not enforced |
 | `box.script` | a path inside `.berth`; see below |
 | `box.steps[]` | `id` (a subcommand of the script), `title`, `detail`, `sudo` (it asks for the password). `all`, `check`, `plan`, `agents`, `github` and `1password` are reserved |
-| `agents` | optional: the agent CLIs Berth installs on the box as its own step, `claude`, `codex`, `cursor` and `opencode` ([above](#agent-clis-on-the-box)) |
+| `agents` | optional: the agent CLIs Burf installs on the box as its own step, `claude`, `codex`, `cursor` and `opencode` ([above](#agent-clis-on-the-box)) |
 | `box.settings` | values the team keeps in one place for its script (versions, ports), name → string. Each reaches the script, and each project's `init`, as `BERTH_SETTING_<NAME>`. Names are letters, digits and `_`; values are one line, at most 4096 bytes; at most 64 settings |
 | `projects[]` | `id` (the project's name on the box), `repo` (`owner/name`), `path` (default `~/code/<id>`), `required`, `kit`, `init`, `init_detail`, `first_task` |
 | `projects[].id` | lowercase letters, digits and dashes, not starting or ending with a dash. It is part of every worktree's URL (`<worktree>.<id>.<box>.localhost`), so an id with a dot is refused: for `acme/acme.com`, use `"id": "site"` with `"path": "~/code/acme.com"` to keep the folder. (An org without a `.berth` names each picked repo this way itself: `acme.com` becomes `acme-com`.) |
@@ -323,7 +323,7 @@ branch is offered as an update, like the org's own.
 | `updates.notify` | default `true`: offer newer commits as updates |
 
 Fields starting with `$` are comments, at any level (`"$why"` inside
-`box.settings` too). Fields Berth does not know are reported as warnings and
+`box.settings` too). Fields Burf does not know are reported as warnings and
 ignored.
 
 ### The box script
@@ -334,13 +334,13 @@ subcommands:
 | Subcommand | |
 | --- | --- |
 | `<step>` | do one step |
-| `check <step>` | exit 0 when the step is already done; Berth skips it then |
+| `check <step>` | exit 0 when the step is already done; Burf skips it then |
 | `plan` | print the steps, one per line, `sudo` after those that need it |
 | `all` | every step, in order, for running it by hand |
 
 Write each step so it is safe to run again, and let it call `sudo` itself
 for what needs root: the engineer types the password in that terminal. The
-script should refuse to run as root. Berth runs `check <step>` then `<step>`
+script should refuse to run as root. Burf runs `check <step>` then `<step>`
 for each step in order, and stops at the first that fails; Retry starts
 again from it.
 

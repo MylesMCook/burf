@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/integrations"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/integrations"
 )
 
 // What a waiting agent asks for, from its PermissionRequest hook, goes on

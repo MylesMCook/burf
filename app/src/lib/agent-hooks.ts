@@ -100,7 +100,7 @@ export async function offerAgentHooks(box: string, agentOrCommand: string, sessi
   if (!t || t.hooked || asked.has(key)) return;
   remember(key);
   const id = toastManager.add({
-    title: `Berth can't see when ${t.name} needs you on ${box}`,
+    title: `Burf can't see when ${t.name} needs you on ${box}`,
     description: `${t.name}'s hooks aren't installed there, so its agents show no working, done or needs-you state. Installing takes a second and keeps your agents running.`,
     type: "warning",
     // Stays until answered: 0 turns off the timer.

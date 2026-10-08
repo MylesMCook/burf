@@ -7,7 +7,7 @@ import (
 
 func TestLeadingWords(t *testing.T) {
 	for in, want := range map[string]string{
-		"usage: berth upgrade BOX [--check [--json]]":          "upgrade",
+		"usage: burf upgrade BOX [--check [--json]]":          "upgrade",
 		"session send NAME TEXT [--no-enter]":                  "session send",
 		"service list|start|stop|restart|log LOC/WORKTREE":     "service list|start|stop|restart|log",
 		"usage: berthd secret exec [--socket PATH] -- PROGRAM": "secret exec",

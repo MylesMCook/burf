@@ -411,12 +411,12 @@ export function projectActions(box: string, loc: Location): Action[] {
   items.push(
     sep,
     item(
-      "Remove project from Berth…",
+      "Remove project from Burf…",
       <Trash2Icon />,
       () =>
         confirm({
-          title: `Remove ${loc.name} from Berth?`,
-          description: `Berth stops listing it. Files on ${box} are not touched, and its worktrees stay on disk.`,
+          title: `Remove ${loc.name} from Burf?`,
+          description: `Burf stops listing it. Files on ${box} are not touched, and its worktrees stay on disk.`,
           detail: loc.path,
           confirm: "Remove project",
           destructive: true,
@@ -583,12 +583,12 @@ export function projectGroupActions(p: Project): Action[] {
     });
   } else if (def) items.push(item("Project settings", <Settings2Icon />, () => st.setView({ kind: "project", box: def.box.name, location: def.loc.name })));
 
-  // How Berth shows it: its name, its section, and which projects it joins.
+  // How Burf shows it: its name, its section, and which projects it joins.
   const organise: Action[] = [
     item("Rename…", <PencilIcon />, () =>
       confirm({
         title: `Rename ${p.name}`,
-        description: "Only how Berth shows it; folders and repositories keep their names.",
+        description: "Only how Burf shows it; folders and repositories keep their names.",
         input: { label: "Name", initial: p.name },
         confirm: "Rename",
         run: (_c, v) => groupActions.rename(p, v),

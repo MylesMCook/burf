@@ -11,7 +11,7 @@ The screen shows how many tokens Claude Code and Codex used on your boxes. Pick 
 - by project or worktree;
 - by session.
 
-Each session has **Open** if it is still running in Berth, or **Resume** (`claude --resume <id>`, `codex resume <id>`) in its worktree.
+Each session has **Open** if it is still running in Burf, or **Resume** (`claude --resume <id>`, `codex resume <id>`) in its worktree.
 
 **All boxes** is the default; the box picker remembers your last choice.
 

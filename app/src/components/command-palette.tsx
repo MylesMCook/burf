@@ -27,7 +27,7 @@ import {
   UsersIcon,
   WorkflowIcon,
 } from "lucide-react";
-import { isMock } from "@/hooks/use-berth-connection";
+import { isMock } from "@/hooks/use-burf-connection";
 import { openAddKit } from "@/views/kits/kits-store";
 import { useMemo, useRef, useState } from "react";
 

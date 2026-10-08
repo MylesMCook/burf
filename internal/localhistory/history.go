@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/transcript"
+	"github.com/MylesMCook/burf/internal/transcript"
 )
 
 const (

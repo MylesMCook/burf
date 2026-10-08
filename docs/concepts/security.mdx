@@ -1,11 +1,11 @@
 ---
 title: Security model
-description: Who Berth trusts and for what, how laptops and boxes prove who they are, what guards repository config, kits, flows and plugins, and what is still open.
+description: Who Burf trusts and for what, how laptops and boxes prove who they are, what guards repository config, kits, flows and plugins, and what is still open.
 ---
 
-Every connection in Berth is between two keys that have met before. Nothing
+Every connection in Burf is between two keys that have met before. Nothing
 on a box is reachable without a paired laptop, and nothing is public unless
-someone shares it. Inside that, Berth runs other people's code and data (a
+someone shares it. Inside that, Burf runs other people's code and data (a
 repository's config, a kit, a plugin, a pull request's comments), and asks
 before any of it runs.
 
@@ -54,7 +54,7 @@ whatever the reason. A trust store that cannot be read authorizes nobody.
 
 The [install script](/getting-started/add-a-box#with-the-install-command)
 runs on the box itself and ends with step 1, so the laptop needs no SSH at
-all. `berth add ssh HOST` does all of this over one SSH session instead: it
+all. `burf add ssh HOST` does all of this over one SSH session instead: it
 detects the box's platform, uploads the matching berthd, installs the
 service, and pairs. It checks box and network names before they reach an SSH
 command line, and a host key is trusted without asking only when you pass
@@ -63,12 +63,12 @@ tailnet machine whose key Tailscale reports.
 
 On the box, `berthd clients` lists paired laptops and
 `berthd revoke <name|fingerprint>` stops trusting one. On the laptop,
-`berth forget BOX` removes a box.
+`burf forget BOX` removes a box.
 
 ### Inviting another computer
 
 A paired laptop can ask a box for a pairing code for another computer of the
-same person (`berth invite`, Settings → Computers). The box issues it over
+same person (`burf invite`, Settings → Computers). The box issues it over
 the laptop's own pinned connection, exactly as `berthd pair` would: one
 code, single use, ten minutes, consumed under the same lock and proven the
 same way (step 3), so the code still never crosses the network from the new
@@ -104,10 +104,10 @@ listens on.
 
 A laptop's system Tailscale can be on only one tailnet. For boxes on another
 (a personal tailnet while the Mac is on a work one), the agent runs an
-embedded Tailscale node per named network (`berth network login personal`, a
+embedded Tailscale node per named network (`burf network login personal`, a
 one-time browser sign-in). Each paired box records the network it is reached
 through; pairing, the agent's connections and `add ssh` all dial through it.
-Berth's own pinned TLS still runs on top: the tailnet only provides the route.
+Burf's own pinned TLS still runs on top: the tailnet only provides the route.
 
 ## On the laptop
 
@@ -125,7 +125,7 @@ Berth's own pinned TLS still runs on top: the tailnet only provides the route.
   which a browser can't give headers, may carry it in the query string. See
   [the app's API](/reference/app-api#transport).
 - **What the app runs.** The packaged app starts the laptop agent only from
-  the `berth` it carries (`Contents/MacOS/berth-cli`), and only while that is
+  the `berth` it carries (`Contents/MacOS/burf-cli`), and only while that is
   signed by the same Developer ID team as the app: never one on `PATH`, in
   `~/.local/bin` or named by `BERTH_CLI`, where anything running as you could
   plant one. Only a dev build looks elsewhere. The same goes for
@@ -134,7 +134,7 @@ Berth's own pinned TLS still runs on top: the tailnet only provides the route.
   before it is copied out, and the copy is checked again
   (`codesign --verify`) before launchd runs it. That box listens on
   `127.0.0.1` only.
-- **SSH config.** `berth ssh-config --write` writes a host per box for
+- **SSH config.** `burf ssh-config --write` writes a host per box for
   editors. The SSH user a box reports is checked against a strict pattern
   first, so a box can't add lines of its own to your SSH config.
 
@@ -151,13 +151,13 @@ tell them never to share a port unless a person asked.
 - **The Mac app** is signed with a Developer ID and notarized by Apple.
   [Its updates](/getting-started/install#updates) come from the latest GitHub
   release, over HTTPS, and are installed only if they carry a valid
-  signature from Berth's updater key, whose public half is built into the
+  signature from Burf's updater key, whose public half is built into the
   app. Nothing installs until you choose **Restart to update**.
 - **berthd and the CLI** from a release are checked against the release's
   `checksums.txt` by the install script. That catches a broken or truncated
   download, but the checksums come from the same release, so they don't
   prove who made it (see [known limits](#known-limits)).
-- **`berth upgrade BOX`** uploads the matching daemon over Berth's own
+- **`burf upgrade BOX`** uploads the matching daemon over Burf's own
   connection. The box runs the upload once to check it starts and reads the
   box's own identity, swaps it in, and re-executes in place, keeping its PID
   so the supervisor sees no restart and sessions are untouched. Public shares
@@ -174,7 +174,7 @@ it. So a box runs none of that until someone trusts the file on that box,
 for that project, and only the exact bytes they saw (its SHA-256 hash): any
 change to the file waits to be trusted again. Until then only its port count
 applies, and the app shows what it wants to run (**This repository wants to
-run …**). From a terminal, `berth location config BOX/LOC` shows it and its
+run …**). From a terminal, `burf location config BOX/LOC` shows it and its
 hash, and `--trust HASH` or `--untrust` decide. A kit you apply and the box's
 own config are yours and need no trust. See
 [trusting a repository's config](/guides/project-config#trusting-a-repositorys-config).
@@ -220,7 +220,7 @@ output. That data is only ever text:
   `ssh` and `git` transports, so a link can't use `file://` to read a local
   repository or `ext::` to run a command. (A kit can still come from a
   folder on your laptop, which is copied, not cloned.)
-- Installing Berth's [skills](/guides/agent-integrations#skills) into a
+- Installing Burf's [skills](/guides/agent-integrations#skills) into a
   repository refuses to follow symbolic links, so a repository can't
   redirect the write to a file elsewhere on the box.
 
@@ -236,7 +236,7 @@ output. That data is only ever text:
   step, the phone) never appears in events or logs: `session.sent` carries
   only the session's name, and agent tool hooks forward only identifiers
   and paths.
-- A **first** prompt is different: `berth task new --prompt` and a flow's
+- A **first** prompt is different: `burf task new --prompt` and a flow's
   `start_agent` put it on the agent's command line, so it is part of the
   session's command, which `session.started`, `before:session.start` and the
   sessions list carry (see [known limits](#known-limits)).
@@ -310,7 +310,7 @@ attach to. Opening, scripting, watching and widening it go through
   references (`op://`, `env://`) are not: they are resolved inside the
   session. Keep anything sensitive in a secret reference.
 - **Release archives are not signed.** `checksums.txt` proves a download is
-  intact, not who published it, and `berth upgrade` trusts the laptop that
+  intact, not who published it, and `burf upgrade` trusts the laptop that
   sends the binary. Signed checksums and signed daemon upgrades are planned.
 - **The tailnet address is found by its range.** berthd listens on the first
   address in `100.64.0.0/10`, Tailscale's range. On a network that also uses

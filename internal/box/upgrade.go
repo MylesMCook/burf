@@ -14,9 +14,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/boxclient"
-	"github.com/sean-brydon/berthd/internal/integrations/adapters"
-	"github.com/sean-brydon/berthd/internal/version"
+	"github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/integrations/adapters"
+	"github.com/MylesMCook/burf/internal/version"
 )
 
 // maxDaemonSize bounds an uploaded daemon; real builds are under 10 MB.

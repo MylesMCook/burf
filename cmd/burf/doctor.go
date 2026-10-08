@@ -1,0 +1,212 @@
+package main
+
+import (
+	"bytes"
+	"context"
+	"flag"
+	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"time"
+
+	"github.com/MylesMCook/burf/internal/agent"
+	box "github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/doctor"
+	"github.com/MylesMCook/burf/internal/pfredirect"
+	"github.com/MylesMCook/burf/internal/service"
+)
+
+// runDoctor checks this laptop, or with a box name, asks that box for its own
+// report. It never changes anything.
+func runDoctor(l laptop, args []string) error {
+	var report bool
+	fs, asJSON, err := flags("doctor", args, func(fs *flag.FlagSet) {
+		fs.BoolVar(&report, "report", false, "print a short, redacted report to paste into a chat (the app's Copy diagnostics)")
+	})
+	if err != nil {
+		return err
+	}
+	if report {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		fmt.Print(doctor.FormatReport(gatherDiagnostics(ctx, l)))
+		return nil
+	}
+	var checks []doctor.Check
+	if fs.NArg() == 1 {
+		wc, err := l.boxClient(fs.Arg(0))
+		if err != nil {
+			return err
+		}
+		defer wc.Reset()
+		if checks, err = box.NewClient(wc).Doctor(context.Background()); err != nil {
+			return fmt.Errorf("%s: %w", fs.Arg(0), err)
+		}
+	} else {
+		checks = laptopChecks(context.Background(), l)
+	}
+	if asJSON {
+		return printJSON(checks)
+	}
+	if problems := doctor.Print(os.Stdout, checks); problems > 0 {
+		fmt.Printf("\n%d thing(s) to fix.\n", problems)
+	} else {
+		fmt.Println("\nAll good.")
+	}
+	return nil
+}
+
+func laptopChecks(ctx context.Context, l laptop) []doctor.Check {
+	const mac = "This computer"
+	var checks []doctor.Check
+	c := agent.NewClient(l.socket())
+	if spec, err := agentService(l); err == nil && service.Installed(spec) {
+		checks = append(checks, doctor.Check{Area: mac, Name: "starts at login", Status: doctor.OK, Detail: "background agent installed"})
+	} else {
+		checks = append(checks, doctor.Check{Area: mac, Name: "starts at login", Status: doctor.Warn, Detail: "the agent only runs while something starts it", Fix: "burf agent install  (or burf agent to start it now)"})
+	}
+	status, err := c.Status(ctx)
+	if err != nil {
+		return append(checks, doctor.Check{Area: mac, Name: "agent", Status: doctor.Fail, Detail: "not running", Fix: "burf status  (starts it)"})
+	}
+	checks = append(checks, doctor.Check{Area: mac, Name: "agent", Status: doctor.OK, Detail: "running"})
+	if status.Proxy.Error != "" {
+		checks = append(checks, doctor.Check{Area: mac, Name: "local URLs", Status: doctor.Fail, Detail: status.Proxy.Error, Fix: "Free port 1377, then: burf stop && burf status"})
+	} else {
+		checks = append(checks, doctor.Check{Area: mac, Name: "local URLs", Status: doctor.OK, Detail: serviceURLFor("PORT", "BOX", status.Proxy.URLPort)})
+	}
+	var term terminalRenderer
+	if c.Call(ctx, "GET", "/v1/app/terminal-renderer", nil, &term) == nil {
+		if check, ok := term.check(mac); ok {
+			checks = append(checks, check)
+		}
+	}
+	if runtime.GOOS == "darwin" {
+		switch {
+		case !pfredirect.Installed(status.Proxy.Port):
+			checks = append(checks, doctor.Check{Area: mac, Name: "short URLs", Status: doctor.Info, Detail: "URLs include :1377", Fix: "burf setup port80"})
+		default:
+			checks = append(checks, port80Checks(mac)...)
+		}
+	}
+
+	var nets []map[string]any
+	c.Call(ctx, "GET", "/v1/networks", nil, &nets)
+	for _, n := range nets {
+		name, _ := n["name"].(string)
+		state, _ := n["state"].(string)
+		check := doctor.Check{Area: "Networks", Name: name, Status: doctor.OK, Detail: fmt.Sprintf("%v", n["tailnet"])}
+		switch state {
+		case "Running":
+		case "NeedsLogin":
+			check.Status, check.Detail, check.Fix = doctor.Fail, "signed out", "burf network login "+name
+		default:
+			check.Status, check.Detail = doctor.Warn, state
+		}
+		checks = append(checks, check)
+	}
+
+	if len(status.Boxes) == 0 {
+		checks = append(checks, doctor.Check{Area: "Boxes", Name: "boxes", Status: doctor.Info, Detail: "none paired", Fix: "burf add ssh HOST"})
+	}
+	for _, b := range status.Boxes {
+		check := doctor.Check{Area: "Boxes", Name: b.Name, Status: doctor.OK, Detail: fmt.Sprintf("online, %dms", b.LatencyMs)}
+		switch b.State {
+		case agent.StateOffline:
+			check.Status, check.Detail, check.Fix = doctor.Warn, "offline: "+b.Error, "Check the box is on, then on it: burfd doctor"
+		case agent.StateUntrusted:
+			check.Status, check.Detail, check.Fix = doctor.Fail, "revoked this laptop", "burf add ssh "+b.Name+"  (pairs again)"
+		case agent.StateConnecting:
+			check.Status, check.Detail = doctor.Info, "connecting"
+		}
+		checks = append(checks, check)
+	}
+
+	home, _ := os.UserHomeDir()
+	integration := func(name, file, marker, fix string) doctor.Check {
+		b, err := os.ReadFile(filepath.Join(home, file))
+		if err == nil && bytes.Contains(b, []byte(marker)) {
+			return doctor.Check{Area: "Tools on this computer", Name: name, Status: doctor.OK, Detail: "connected"}
+		}
+		return doctor.Check{Area: "Tools on this computer", Name: name, Status: doctor.Info, Detail: "not connected", Fix: fix}
+	}
+	return append(checks,
+		integration("Claude Code", ".claude/settings.json", "hook claude Stop", "burf integrations install claude"),
+		integration("Cursor", ".cursor/hooks.json", "hook cursor stop", "burf integrations install cursor"),
+		integration("Codex", ".agents/skills/berth/SKILL.md", "name: berth", "burf integrations install codex"),
+	)
+}
+
+// port80Checks asks port 80 on each loopback address who answers, because an
+// installed redirect proves nothing until requests actually arrive.
+func port80Checks(area string) []doctor.Check {
+	var checks []doctor.Check
+	for _, addr := range []string{"[::1]:80", "127.0.0.1:80"} {
+		name := "short URLs via " + strings.Trim(strings.TrimSuffix(addr, ":80"), "[]")
+		switch who := whoAnswers(addr); who {
+		case "berth":
+			checks = append(checks, doctor.Check{Area: area, Name: name, Status: doctor.OK, Detail: "reaches berth"})
+		case "":
+			checks = append(checks, doctor.Check{Area: area, Name: name, Status: doctor.Warn, Detail: "nothing answers, so browsers fall back to the other address", Fix: "burf setup port80"})
+		default:
+			// Naming the launchd job turns "stop that program" into commands
+			// that can be run: the scope it sits in decides whether freeing it
+			// needs root, and that is not visible from the response.
+			detail, fix := "answered by another program: "+who, "Stop that program, then: burf setup port80"
+			if h, ok := portHolder(80); ok {
+				detail, fix = holderDetail(h), holderFix(h)
+			}
+			checks = append(checks, doctor.Check{Area: area, Name: name, Status: doctor.Warn, Detail: detail, Fix: fix})
+		}
+	}
+	return checks
+}
+
+func whoAnswers(addr string) string {
+	client := &http.Client{Timeout: 2 * time.Second, CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	req, _ := http.NewRequest(http.MethodGet, "http://"+addr+"/", nil)
+	req.Host = "localhost"
+	resp, err := client.Do(req)
+	if err != nil {
+		return ""
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+	if strings.Contains(string(body), "<h1 style=\"font-size:20px\">berth</h1>") {
+		return "berth"
+	}
+	if s := resp.Header.Get("Server"); s != "" {
+		return s
+	}
+	return "an unknown web server"
+}
+
+// terminalRenderer is what the app last recorded about its terminals
+// (app/src/lib/terminal-health.ts): ghostty-web, or xterm.js and why.
+type terminalRenderer struct {
+	Renderer string `json:"renderer"`
+	Chosen   string `json:"chosen"`
+	Reason   string `json:"reason"`
+	At       string `json:"at"`
+}
+
+func (t terminalRenderer) check(area string) (doctor.Check, bool) {
+	switch {
+	case t.Renderer == "":
+		return doctor.Check{}, false
+	case t.Renderer == "xterm" && t.Chosen == "ghostty":
+		reason := t.Reason
+		if reason == "" {
+			reason = "no reason given"
+		}
+		return doctor.Check{Area: area, Name: "app terminal", Status: doctor.Warn, Detail: "xterm.js: ghostty-web couldn't start (" + reason + ")", Fix: "Settings → Terminal → Copy details, and send them to us"}, true
+	case t.Renderer == "xterm":
+		return doctor.Check{Area: area, Name: "app terminal", Status: doctor.Info, Detail: "xterm.js, as chosen in Settings → Terminal"}, true
+	default:
+		return doctor.Check{Area: area, Name: "app terminal", Status: doctor.OK, Detail: "ghostty-web"}, true
+	}
+}

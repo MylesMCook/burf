@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/boxclient"
-	"github.com/sean-brydon/berthd/internal/groups"
+	"github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/groups"
 )
 
 // Scripts are a location's worktree lifecycle commands. They get

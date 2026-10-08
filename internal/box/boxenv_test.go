@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sean-brydon/berthd/internal/events"
+	"github.com/MylesMCook/burf/internal/events"
 )
 
 func TestTheBoxEnvironmentReachesWorktreesUnderTheProjects(t *testing.T) {

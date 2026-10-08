@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	box "github.com/sean-brydon/berthd/internal/boxclient"
-	"github.com/sean-brydon/berthd/internal/wire"
+	box "github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 // A box names itself (its hostname, or the name given at install), and a

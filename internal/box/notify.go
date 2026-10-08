@@ -14,11 +14,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/box/runs"
-	"github.com/sean-brydon/berthd/internal/boxclient"
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/statefile"
-	"github.com/sean-brydon/berthd/internal/wire"
+	"github.com/MylesMCook/burf/internal/box/runs"
+	"github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/statefile"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 // Reporting back: when an agent starts work through berth (a task, a

@@ -63,7 +63,7 @@ berthd session screen shop-fix-login-claude-1a2b --history 200
 - Start agents with `--agent ID --prompt TEXT` (ids from `berthd agents`),
   never `-- claude "…"`: berth builds and quotes the command for that agent.
 - `--open split` (beside the user's focused terminal) or `--open tab` shows
-  it in the user's Berth app when they are looking at that worktree, and
+  it in the user's Burf app when they are looking at that worktree, and
   offers it otherwise. Use it whenever the user asks for an agent "beside
   me", "in a split" or "in a new tab".
 - A new agent may stop at a question before it is ready, such as "do you
@@ -77,7 +77,7 @@ berthd session screen shop-fix-login-claude-1a2b --history 200
 
 A branch that already exists, locally or on origin, is checked out as it is.
 Session names are printed when they start and listed by `sessions`. Do not run
-`berthd session attach` or `berth attach` yourself: they are interactive and
+`berthd session attach` or `burf attach` yourself: they are interactive and
 meant for humans.
 
 ## A repository's config
@@ -112,7 +112,7 @@ A box runs none of the repository's file (only its `ports`) until a person
 trusts it on that box, and again after every change to it: `location config`
 then shows `repo_trust.state` as `untrusted` or `changed`. Never trust it
 yourself (`--trust`); tell the user what it wants to run and let them decide
-in the app or with `berth location config BOX/LOC --trust HASH`.
+in the app or with `burf location config BOX/LOC --trust HASH`.
 
 ## Share publicly — only when a human asks
 
@@ -123,7 +123,7 @@ URL and how to stop it.
 
 ## When something fails
 
-- `no paired box named X` (laptop): run `berth boxes`; the name may differ.
+- `no paired box named X` (laptop): run `burf boxes`; the name may differ.
 - `berthd serve is not running` (box): `berthd install` starts it.
 - `a "before:…" hook stopped …`: the user's hooks refused the action. The
   message says why; do not try to work around it.

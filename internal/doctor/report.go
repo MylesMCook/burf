@@ -12,7 +12,7 @@ import (
 )
 
 // Diagnostics is everything "Copy diagnostics" (the app) and
-// `berth doctor --report` (the CLI) put in one report someone can paste
+// `burf doctor --report` (the CLI) put in one report someone can paste
 // into a chat: the app, the agent, this laptop's checks, the local box,
 // each box, and the last errors and toasts. The app writes its own part
 // to the agent (GET /v1/app/diagnostics), so the CLI can show it too.
@@ -93,9 +93,9 @@ var marks = map[Status]string{OK: "✓", Warn: "!", Fail: "✗", Info: "·"}
 func FormatReport(d Diagnostics) string {
 	var l []string
 	add := func(s string) { l = append(l, s) }
-	add("Berth diagnostics · " + stamp(d.Generated))
+	add("Burf diagnostics · " + stamp(d.Generated))
 	if a := d.App; a == nil {
-		add("App: not recorded (open Berth once)")
+		add("App: not recorded (open Burf once)")
 	} else {
 		line := "App: " + or(a.Version, "unknown")
 		if a.Build != "" {
@@ -130,7 +130,7 @@ func FormatReport(d Diagnostics) string {
 	}
 
 	add("")
-	add("Laptop (berth doctor)")
+	add("Laptop (burf doctor)")
 	switch {
 	case d.DoctorError != "":
 		add("  " + clip(d.DoctorError))

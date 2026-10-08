@@ -15,9 +15,9 @@ import (
 )
 
 var windowsSpec = Spec{
-	Name: "berth-agent-home", Description: "Berth agent", Program: `C:\Users\Alex\Berth Apps\berth.exe`,
+	Name: "berth-agent-home", Description: "Burf agent", Program: `C:\Users\Alex\Burf Apps\berth.exe`,
 	Args: []string{"agent", "", `quote"and\`, "O'Brien & $HOME"},
-	Env:  map[string]string{"BERTH_HOME": `C:\Users\Alex\Berth State`, "ODD": "a'b$c`d\ne"},
+	Env:  map[string]string{"BERTH_HOME": `C:\Users\Alex\Burf State`, "ODD": "a'b$c`d\ne"},
 }
 
 type fakeScheduler struct {
@@ -102,7 +102,7 @@ func TestWindowsTaskOwnershipSurvivesOlderLauncherBytes(t *testing.T) {
 		t.Fatalf("older launcher was rejected: %+v ok=%v err=%v", u, ok, err)
 	}
 	updated := windowsSpec
-	updated.Program = `C:\Users\Alex\Updated Berth\berth.exe`
+	updated.Program = `C:\Users\Alex\Updated Burf\berth.exe`
 	if _, err := Install(updated); err != nil {
 		t.Fatalf("could not replace the owned older launcher: %v", err)
 	}
@@ -301,7 +301,7 @@ func TestWindowsTaskInstallReadUpdateRemoveAndStatePreservation(t *testing.T) {
 		t.Fatalf("Read = %+v, %v, %v", u, ok, err)
 	}
 	s := windowsSpec
-	s.Program = `C:\Users\Alex\New Berth\berth.exe`
+	s.Program = `C:\Users\Alex\New Burf\berth.exe`
 	if _, err := Install(s); err != nil {
 		t.Fatal(err)
 	}

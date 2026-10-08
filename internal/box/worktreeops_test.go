@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/events"
+	"github.com/MylesMCook/burf/internal/events"
 )
 
 // cloneWithWorktree makes an origin, a clone of it as a location, and a

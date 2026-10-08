@@ -1,7 +1,12 @@
 # site
 
-Berth's landing page: static HTML and CSS, no build step. Open
+Burf's landing page: static HTML and CSS, no build step. Open
 `index.html`, or serve the folder as it is.
+
+This is an unpublished fork preview. The recorded footage and `demo/` are
+legacy Berth references from upstream, retained without editing generated
+assets. They are not evidence of a Burf release. Build instructions point
+to this fork; no signed Burf download is advertised until one exists.
 
 - `index.html`, `styles.css`: the page. Light and dark follow the system.
 - `assets/harbour.js` and `assets/harbour/`: the hero's harbour, the same

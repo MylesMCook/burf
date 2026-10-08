@@ -1,17 +1,17 @@
 # Third-party notices
 
-Code in Berth derived from other projects, with their copyright notices.
+Code in Burf derived from other projects, with their copyright notices.
 The themes ported from VS Code themes are listed in
 [THIRD_PARTY_THEMES.md](THIRD_PARTY_THEMES.md).
 
 ## Beautiful UI
 
-| Used in Berth | Source | Author | Licence |
+| Used in Burf | Source | Author | Licence |
 |---|---|---|---|
 | The pixel-grid loader (`app/src/components/pixel-loader.tsx`, `pixel-loader.css`): the 3×3 grid, its chevron delays and timing | Loading State, [beautifului.dev](https://www.beautifului.dev/) ([licence](https://www.beautifului.dev/license)) | Copyright (c) 2026 Shane Levine | MIT |
 
-Berth's version is written for its own tokens and motion rules; only the
-grid's design and timing come from Beautiful UI. Berth's code block head
+Burf's version is written for its own tokens and motion rules; only the
+grid's design and timing come from Beautiful UI. Burf's code block head
 and the bar offered by selected words in a chat take visual ideas from
 Beautiful UI's Code Block and Selection Actions, with no code from them.
 
@@ -38,10 +38,10 @@ Beautiful UI's Code Block and Selection Actions, with no code from them.
 > OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 > USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-## Berth's tmux for Linux boxes
+## Burf's tmux for Linux boxes
 
 `berth` and the app carry a static tmux for Linux boxes (`tmux-linux-amd64`,
-`tmux-linux-arm64`), which `berth add ssh` uploads to a box that has no tmux.
+`tmux-linux-arm64`), which `burf add ssh` uploads to a box that has no tmux.
 It is tmux, libevent and ncurses, unmodified, built from their release
 tarballs by `scripts/build-tmux.sh` and linked statically against musl libc.
 

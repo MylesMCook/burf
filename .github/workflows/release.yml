@@ -21,7 +21,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # Berth's static tmux for Linux boxes, which berth and the app carry for
+  # Burf's static tmux for Linux boxes, which berth and the app carry for
   # boxes without one. Built in Docker (zig cross-compiles both
   # architectures from pinned, checksummed sources), on a hosted runner,
   # which has Docker, for the release and macos jobs to download.
@@ -86,8 +86,8 @@ jobs:
         run: make release VERSION="$GITHUB_REF_NAME"
       - name: Check the stamped version
         run: |
-          tar -xzf dist/berthd-linux-amd64.tar.gz -C "$RUNNER_TEMP" berthd
-          "$RUNNER_TEMP/berthd" version | tee /dev/stderr | grep -q "^berthd $GITHUB_REF_NAME "
+          tar -xzf dist/burfd-linux-amd64.tar.gz -C "$RUNNER_TEMP" berthd
+          "$RUNNER_TEMP/berthd" version | tee /dev/stderr | grep -q "^burfd $GITHUB_REF_NAME "
       - name: Publish to the release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -100,12 +100,12 @@ jobs:
             # "latest" link skips drafts, so installed apps and the install
             # script keep using the last full release meanwhile, instead of a
             # latest.json that 404s.
-            gh release create "$TAG" dist/*.tar.gz dist/checksums.txt --verify-tag --draft --title "Berth $TAG" --generate-notes
+            gh release create "$TAG" dist/*.tar.gz dist/checksums.txt --verify-tag --draft --title "Burf $TAG" --generate-notes
           fi
 
   macos:
     # After the release job, which has made the release by then; it takes
-    # Berth's tmux from the tmux job, since a Mac runner has no Docker. Safe to
+    # Burf's tmux from the tmux job, since a Mac runner has no Docker. Safe to
     # re-run: it skips when the release's latest.json already announces this
     # version (scripts/publish.sh uploaded it, or an earlier run did), and
     # otherwise replaces only its own four assets, the feed last, so the feed
@@ -243,9 +243,9 @@ jobs:
             exit 0
           fi
           gh release upload "$TAG" --clobber \
-            dist/mac/Berth-macos-universal.dmg \
-            dist/mac/Berth-macos-universal.app.tar.gz \
-            dist/mac/Berth-macos-universal.app.tar.gz.sig
+            dist/mac/Burf-macos-universal.dmg \
+            dist/mac/Burf-macos-universal.app.tar.gz \
+            dist/mac/Burf-macos-universal.app.tar.gz.sig
           gh release upload "$TAG" --clobber dist/mac/latest.json
       - name: Publish the release
         # Last: the feed and the app are up, so it can become "latest".
@@ -297,7 +297,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
-          gh release upload $env:TAG --clobber dist/windows/Berth-windows-x64-setup.exe dist/windows/Berth-windows-x64-setup.exe.sig dist/windows/berth-windows-amd64.zip dist/windows/windows-checksums.txt
+          gh release upload $env:TAG --clobber dist/windows/Burf-windows-x64-setup.exe dist/windows/Burf-windows-x64-setup.exe.sig dist/windows/burf-windows-amd64.zip dist/windows/windows-checksums.txt
           if ($LASTEXITCODE -ne 0) { throw 'Windows asset upload failed.' }
           gh release upload $env:TAG --clobber dist/windows/latest-windows.json
           if ($LASTEXITCODE -ne 0) { throw 'Windows feed upload failed.' }

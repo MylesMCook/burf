@@ -34,7 +34,7 @@ func TestARestartLetsWorkUnderWayFinishFirst(t *testing.T) {
 	}()
 	eventually(t, "the upgrade under way", func() bool {
 		info, _ := a.client.Info(ctx)
-		return len(info.Busy) == 1 && info.Busy[0] == "berth upgrade devl"
+		return len(info.Busy) == 1 && info.Busy[0] == "burf upgrade devl"
 	})
 
 	if err := a.client.StopDrained(ctx); err != nil {
@@ -84,7 +84,7 @@ func TestARestartLetsWorkUnderWayFinishFirst(t *testing.T) {
 // own program replaced (the app updated under it), or an older release, or
 // one from before agents said what they run.
 func TestStaleAgents(t *testing.T) {
-	app := "/Applications/Berth.app/Contents/MacOS/berth-cli"
+	app := "/Applications/Burf.app/Contents/MacOS/burf-cli"
 	for _, c := range []struct {
 		name  string
 		info  AgentInfo

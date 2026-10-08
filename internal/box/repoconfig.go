@@ -13,9 +13,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/sean-brydon/berthd/internal/boxclient"
-	"github.com/sean-brydon/berthd/internal/hooks"
-	"github.com/sean-brydon/berthd/internal/statefile"
+	"github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/hooks"
+	"github.com/MylesMCook/burf/internal/statefile"
 )
 
 // What a repository asks of every worktree: its own ports, environment,

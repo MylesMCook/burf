@@ -89,14 +89,14 @@ test("repeated continuation clicks and returning to history reuse the owned sess
   try {
     await app.page.getByTestId("nav-local").click();
     await app.page.getByRole("button", { name: /Checkout history/ }).click();
-    const start = app.page.getByRole("button", { name: "Continue in Berth", exact: true });
+    const start = app.page.getByRole("button", { name: "Continue in Burf", exact: true });
     await start.evaluate((button) => { if (button instanceof HTMLButtonElement) { button.click(); button.click(); } });
     await expect(app.page.getByRole("button", { name: "Starting...", exact: true })).toBeDisabled();
     await expect.poll(() => calls.filter((c) => c.path.endsWith("/fork")).length).toBe(1);
     release();
     await expect(app.page.getByTestId("local-terminal")).toBeVisible();
     await app.page.getByRole("button", { name: /Checkout history/ }).click();
-    await app.page.getByRole("button", { name: "Continue in Berth", exact: true }).click();
+    await app.page.getByRole("button", { name: "Continue in Burf", exact: true }).click();
     await expect(app.page.getByTestId("local-terminal")).toBeVisible();
     expect(calls.filter((c) => c.path.endsWith("/fork"))).toHaveLength(2);
     expect(launches()).toBe(1);
@@ -109,7 +109,7 @@ test("an interrupted continuation response is uncertain and refresh finds its ow
   try {
     await app.page.getByTestId("nav-local").click();
     await app.page.getByRole("button", { name: /Checkout history/ }).click();
-    await app.page.getByRole("button", { name: "Continue in Berth", exact: true }).click();
+    await app.page.getByRole("button", { name: "Continue in Burf", exact: true }).click();
     await expect(app.page.getByRole("alert")).toContainText("The agent may have started");
     await expect(app.page.getByText("Saved response", { exact: true })).toBeVisible();
     await app.page.screenshot({ path: info.outputPath("continuation-uncertain.png") });
@@ -128,7 +128,7 @@ for (const reason of ["Local conversation no longer exists", "Local conversation
     try {
       await app.page.getByTestId("nav-local").click();
       await app.page.getByRole("button", { name: /Checkout history/ }).click();
-      await app.page.getByRole("button", { name: "Continue in Berth", exact: true }).click();
+      await app.page.getByRole("button", { name: "Continue in Burf", exact: true }).click();
       await expect(app.page.getByRole("alert")).toContainText(reason);
       await expect(app.page.getByText("Saved response", { exact: true })).toBeVisible();
       await app.page.getByRole("button", { name: "Refresh local conversations", exact: true }).click();
@@ -166,7 +166,7 @@ test("explicit continuation opens an owned terminal without answering historical
     await app.page.getByRole("button", { name: /Checkout history/ }).click();
     await expect(app.page.getByText("Saved response", { exact: true })).toBeVisible();
     expect(calls.filter((c) => c.method !== "GET")).toEqual([]);
-    await app.page.getByRole("button", { name: "Continue in Berth", exact: true }).click();
+    await app.page.getByRole("button", { name: "Continue in Burf", exact: true }).click();
     await expect(app.page.getByTestId("local-terminal")).toBeVisible();
     await expect(app.page.getByRole("heading", { name: "Codex", exact: true })).toBeVisible();
     await expect(app.page.locator("[data-testid=local-terminal] .xterm-rows")).toContainText("Local terminal ready");
@@ -180,7 +180,7 @@ test("Claude continuation uses the selected history source", async ({ app }) => 
   try {
     await app.page.getByTestId("nav-local").click();
     await app.page.getByRole("button", { name: /Checkout history/ }).click();
-    await app.page.getByRole("button", { name: "Continue in Berth", exact: true }).click();
+    await app.page.getByRole("button", { name: "Continue in Burf", exact: true }).click();
     await expect(app.page.getByTestId("local-terminal")).toBeVisible();
     await expect(app.page.getByRole("heading", { name: "Claude Code", exact: true })).toBeVisible();
     expect(calls.filter((c) => c.method === "POST" && c.path.endsWith("/fork"))).toHaveLength(1);
@@ -195,7 +195,7 @@ test("leaving a pending continuation keeps the newly selected view", async ({ ap
   try {
     await app.page.getByTestId("nav-local").click();
     await app.page.getByRole("button", { name: /Checkout history/ }).click();
-    await app.page.getByRole("button", { name: "Continue in Berth", exact: true }).click();
+    await app.page.getByRole("button", { name: "Continue in Burf", exact: true }).click();
     await expect.poll(() => calls.filter((c) => c.path.endsWith("/fork")).length).toBe(1);
     await app.page.getByRole("button", { name: "New agent", exact: true }).click();
     release();
@@ -228,10 +228,10 @@ test("failed continuation preserves readable history and permits retry", async (
   try {
     await app.page.getByTestId("nav-local").click();
     await app.page.getByRole("button", { name: /Checkout history/ }).click();
-    await app.page.getByRole("button", { name: "Continue in Berth", exact: true }).click();
+    await app.page.getByRole("button", { name: "Continue in Burf", exact: true }).click();
     await expect(app.page.getByRole("alert")).toContainText("Project folder does not exist");
     await expect(app.page.getByText("Saved response", { exact: true })).toBeVisible();
-    await expect(app.page.getByRole("button", { name: "Continue in Berth", exact: true })).toBeEnabled();
+    await expect(app.page.getByRole("button", { name: "Continue in Burf", exact: true })).toBeEnabled();
     expect(calls.filter((c) => c.method === "POST" && c.path.endsWith("/fork"))).toHaveLength(1);
   } finally { await agent.close(); }
 });
@@ -242,7 +242,7 @@ test("an older CLI keeps history readable but cannot continue it", async ({ app 
     await app.page.getByTestId("nav-local").click();
     await app.page.getByRole("button", { name: /Checkout history/ }).click();
     await expect(app.page.getByText("Saved response", { exact: true })).toBeVisible();
-    await expect(app.page.getByRole("button", { name: "Continue in Berth", exact: true })).toBeDisabled();
+    await expect(app.page.getByRole("button", { name: "Continue in Burf", exact: true })).toBeDisabled();
     expect(calls.filter((c) => c.method !== "GET")).toEqual([]);
   } finally { await agent.close(); }
 });
@@ -280,7 +280,7 @@ test("reconnecting a missing terminal reports the error without recreating its a
   } finally { await agent.close(); }
 });
 
-test("launches and stops only a Berth-owned local terminal", async ({ app }, info) => {
+test("launches and stops only a Burf-owned local terminal", async ({ app }, info) => {
   const { agent, calls } = await localFixture(app);
   try {
     await app.page.getByTestId("nav-local").click();
@@ -304,7 +304,7 @@ test("local-only computer does not require remote pairing first", async ({ app }
   const { agent } = await localFixture(app, { noBoxes: true });
   try {
     await expect(app.page.getByRole("heading", { name: "work-hp" })).toBeVisible();
-    await expect(app.page.getByRole("heading", { name: "Welcome to Berth" })).toHaveCount(0);
+    await expect(app.page.getByRole("heading", { name: "Welcome to Burf" })).toHaveCount(0);
     await expect(app.page.getByTestId("nav-local")).toBeVisible();
   } finally { await agent.close(); }
 });

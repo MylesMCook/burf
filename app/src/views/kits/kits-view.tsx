@@ -120,7 +120,7 @@ function KitCard({ kit, installed }: { kit: KitInfo; installed: InstalledKitOn[]
   const copyLink = () => {
     if (!kit.source?.src) return;
     void navigator.clipboard.writeText(kitLink(kit.source.src));
-    toastManager.add({ title: "Copied the kit's link", description: "Anyone with Berth can open it to review the kit and apply it.", type: "success" });
+    toastManager.add({ title: "Copied the kit's link", description: "Anyone with Burf can open it to review the kit and apply it.", type: "success" });
   };
 
   return (
@@ -257,7 +257,7 @@ function AddFromLinkDialog({ open, onOpenChange }: { open: boolean; onOpenChange
             className="font-mono text-xs"
           />
           <p className="text-muted-foreground text-xs leading-relaxed">
-            A Berth kit link, a git repository (a folder in it with <code className="font-mono">…/tree/main/dir</code> or <code className="font-mono">URL#dir</code>), a gist, a URL to a{" "}
+            A Burf kit link, a git repository (a folder in it with <code className="font-mono">…/tree/main/dir</code> or <code className="font-mono">URL#dir</code>), a gist, a URL to a{" "}
             <code className="font-mono">kit.json</code>, or a folder on this laptop.
           </p>
         </DialogPanel>

@@ -16,7 +16,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/service"
+	"github.com/MylesMCook/burf/internal/service"
 )
 
 // The whole of Use this Mac with the real berth and berthd, opt in:
@@ -65,7 +65,8 @@ func TestUseThisMacEndToEnd(t *testing.T) {
 		if cmd == "berthd" {
 			out = filepath.Join(bin, "berthd-real")
 		}
-		if b, err := exec.Command("go", "build", "-o", out, "../../cmd/"+cmd).CombinedOutput(); err != nil {
+		pkg := strings.Replace(cmd, "berth", "burf", 1)
+		if b, err := exec.Command("go", "build", "-o", out, "../../cmd/"+pkg).CombinedOutput(); err != nil {
 			t.Fatalf("go build %s: %v\n%s", cmd, err, b)
 		}
 	}

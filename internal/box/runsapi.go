@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sean-brydon/berthd/internal/box/runs"
-	"github.com/sean-brydon/berthd/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/box/runs"
+	"github.com/MylesMCook/burf/internal/boxclient"
 )
 
 // The runs API:

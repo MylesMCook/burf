@@ -28,7 +28,7 @@ import { SelectionActions } from "@/components/conversation/selection-actions";
 import { PromptActions, PromptActionsContext, type PromptContext } from "@/components/conversation/prompt-actions";
 import { HelperSheetHost, openHelper } from "@/components/conversation/subagent-view";
 import { PaneContext } from "@/lib/pane-context";
-import { isMock } from "@/hooks/use-berth-connection";
+import { isMock } from "@/hooks/use-burf-connection";
 import { keyOf } from "@/lib/conversation-store";
 import { rowKeyOf } from "@/lib/draft-text";
 import { applyCut, dropOlder, loadOlder, meta, restoreOlder, setCut, useHasHistory, useHistory, useOlder } from "@/lib/history";
@@ -414,7 +414,7 @@ function foldTurns(items: TranscriptItem[], c: FoldCache = newFoldCache()): Bloc
   for (let i = 0; i < items.length; i++) {
     const it = items[i];
     // A command typed to the agent is the person's, like a prompt; a report
-    // from Berth starts a turn too, as does a message from another agent or
+    // from Burf starts a turn too, as does a message from another agent or
     // Claude Code: each is something the agent answers.
     if (it.kind === "user" || it.kind === "command" || it.kind === "report" || it.kind === "agent-message" || it.kind === "ping") {
       flush(i, false);

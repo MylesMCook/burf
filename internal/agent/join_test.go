@@ -23,7 +23,7 @@ func TestTheAppInvitesAndJoinsThroughTheCLI(t *testing.T) {
 	}
 
 	const link = "berth://join?v=1&d=AAAA"
-	resp, body = uiSend(t, a, "POST", "/v1/join", tok, `{"link":"On the other computer: berth join '`+link+`'\n"}`)
+	resp, body = uiSend(t, a, "POST", "/v1/join", tok, `{"link":"On the other computer: burf join '`+link+`'\n"}`)
 	var joined struct{ Args, Stdin string }
 	if err := json.Unmarshal([]byte(body), &joined); err != nil {
 		t.Fatal(err)

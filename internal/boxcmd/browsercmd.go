@@ -9,7 +9,7 @@ import (
 	"os"
 	"strings"
 
-	box "github.com/sean-brydon/berthd/internal/boxclient"
+	box "github.com/MylesMCook/burf/internal/boxclient"
 )
 
 // The agent browser from the command line. Every command prints the short

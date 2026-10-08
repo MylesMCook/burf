@@ -9,15 +9,15 @@ import { Spinner } from "@/components/ui/spinner";
 import { type AgentBinary, findAgentBinary, retryConnection, startAgent } from "@/lib/agent-start";
 import { plainError } from "@/lib/errors";
 
-// Any berth command starts the agent when it is not running.
-const START = "berth status";
+// Any burf command starts the agent when it is not running.
+const START = "burf status";
 
 // How long to wait for a started agent to answer before saying so.
 const ANSWER_TIMEOUT = 15_000;
 
 // Connecting is shown until the laptop agent answers. When it is not
 // running, the app offers to start it (asking before it installs anything
-// that starts at login); without a berth command to run, it says how to
+// that starts at login); without a burf command to run, it says how to
 // start it from a terminal. Either way this window connects by itself once
 // the agent is up.
 export function Connecting({ state, error }: { state: string; error?: string }) {
@@ -29,7 +29,7 @@ export function Connecting({ state, error }: { state: string; error?: string }) 
             <EmptyMedia>
               <Scene name="lighthouse" />
             </EmptyMedia>
-            <EmptyTitle>Finding the Berth agent…</EmptyTitle>
+            <EmptyTitle>Finding the Burf agent…</EmptyTitle>
           </EmptyHeader>
         </Empty>
       </div>
@@ -41,7 +41,7 @@ export function Connecting({ state, error }: { state: string; error?: string }) 
 type Phase = { kind: "idle" } | { kind: "starting" } | { kind: "waiting" } | { kind: "failed"; message: string };
 
 function AgentOffline({ error }: { error?: string }) {
-  // undefined while looking, null when there is no berth command to run.
+  // undefined while looking, null when there is no burf command to run.
   const [binary, setBinary] = useState<AgentBinary | null>();
   const [atLogin, setAtLogin] = useState(false);
   const [phase, setPhase] = useState<Phase>({ kind: "idle" });
@@ -54,7 +54,7 @@ function AgentOffline({ error }: { error?: string }) {
   useEffect(() => {
     if (phase.kind !== "waiting") return;
     const t = window.setTimeout(
-      () => setPhase({ kind: "failed", message: "The agent started, but Berth can't reach it on 127.0.0.1:1378. Its log, agent.log in Berth's state folder, says why." }),
+      () => setPhase({ kind: "failed", message: "The agent started, but Burf can't reach it on 127.0.0.1:1378. Its log, agent.log in Burf's state folder, says why." }),
       ANSWER_TIMEOUT,
     );
     return () => window.clearTimeout(t);
@@ -79,11 +79,11 @@ function AgentOffline({ error }: { error?: string }) {
           <EmptyMedia>
             <Scene name="offline" />
           </EmptyMedia>
-          <EmptyTitle>The Berth agent isn't running</EmptyTitle>
+          <EmptyTitle>The Burf agent isn't running</EmptyTitle>
           <EmptyDescription>
             {binary === null
-              ? "It keeps your boxes connected while this window is closed. Run this in a terminal to start it; Berth connects as soon as it is up."
-              : "It keeps your boxes connected while this window is closed, and keeps running after you quit Berth."}
+              ? "It keeps your boxes connected while this window is closed. Run this in a terminal to start it; Burf connects as soon as it is up."
+              : "It keeps your boxes connected while this window is closed, and keeps running after you quit Burf."}
           </EmptyDescription>
         </EmptyHeader>
         <EmptyContent>
@@ -92,7 +92,7 @@ function AgentOffline({ error }: { error?: string }) {
             <div className="flex w-full flex-col items-center gap-3">
               <Button className="w-full" disabled={busy} onClick={() => void start()}>
                 {busy ? <Spinner /> : <PlayIcon />}
-                {phase.kind === "starting" ? "Starting the Berth agent…" : phase.kind === "waiting" ? "Connecting…" : "Start the Berth agent"}
+                {phase.kind === "starting" ? "Starting the Burf agent…" : phase.kind === "waiting" ? "Connecting…" : "Start the Burf agent"}
               </Button>
               <label className="flex w-full items-start gap-2.5 text-left text-sm">
                 <Checkbox className="mt-0.5" checked={atLogin} disabled={busy} onCheckedChange={(v) => setAtLogin(!!v)} />
@@ -122,7 +122,7 @@ function AgentOffline({ error }: { error?: string }) {
             <details className="w-full text-left text-muted-foreground text-xs">
               <summary className="cursor-default select-none hover:text-foreground">Details</summary>
               <pre className="mt-2 rounded-md bg-muted p-2 font-mono whitespace-pre-wrap">{error}</pre>
-              {binary && <p className="mt-2">Berth starts it with {binary.path}</p>}
+              {binary && <p className="mt-2">Burf starts it with {binary.path}</p>}
             </details>
           )}
         </EmptyContent>

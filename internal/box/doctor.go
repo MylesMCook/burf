@@ -8,9 +8,9 @@ import (
 	"os"
 	"strings"
 
-	"github.com/sean-brydon/berthd/internal/doctor"
-	"github.com/sean-brydon/berthd/internal/groups"
-	"github.com/sean-brydon/berthd/internal/integrations"
+	"github.com/MylesMCook/burf/internal/doctor"
+	"github.com/MylesMCook/burf/internal/groups"
+	"github.com/MylesMCook/burf/internal/integrations"
 )
 
 // Doctor reports what this box can do and what is missing. Daemon-level
@@ -43,7 +43,7 @@ func (b *Box) Doctor(ctx context.Context) []doctor.Check {
 			}
 			c := doctor.Check{Area: "Agents", Name: t.Name + " hooks", Status: doctor.OK, Detail: "installed"}
 			if !t.Hooked(home) {
-				c.Status, c.Detail, c.Fix = doctor.Warn, "not installed, so Berth cannot show when this agent is done or needs you", "berthd integrations install "+t.ID
+				c.Status, c.Detail, c.Fix = doctor.Warn, "not installed, so Burf cannot show when this agent is done or needs you", "berthd integrations install "+t.ID
 			} else if !t.Current(home) {
 				c.Status, c.Detail, c.Fix = doctor.Warn, "from an older berth: turns start and approvals clear late", "berthd integrations install "+t.ID
 			}
@@ -87,7 +87,7 @@ func (b *Box) Doctor(ctx context.Context) []doctor.Check {
 // browserSandboxChecks say when Chromium's sandbox stops agents' browsers,
 // with the same two ways out the app offers, or that they run without it.
 func browserSandboxChecks(h BrowserHealth) []doctor.Check {
-	const off = "Run without Chromium's sandbox in Berth (Settings → Boxes); Berth's proxy still confines it to the worktree's own pages"
+	const off = "Run without Chromium's sandbox in Burf (Settings → Boxes); Burf's proxy still confines it to the worktree's own pages"
 	switch {
 	case h.State == "sandbox" && h.Fix != "":
 		detail := "Ubuntu's sandbox setting (kernel.apparmor_restrict_unprivileged_userns=1) stops Chromium's sandbox, so agents' browsers can't start"
@@ -95,7 +95,7 @@ func browserSandboxChecks(h BrowserHealth) []doctor.Check {
 			detail = "Ubuntu's sandbox setting (kernel.apparmor_restrict_unprivileged_userns=1) will stop Chromium's sandbox, so agents' browsers won't start"
 		}
 		return []doctor.Check{{Area: "Agents", Name: "browser sandbox", Status: doctor.Warn, Detail: detail,
-			Fix: "Fix it from Berth (Settings → Boxes), or run `" + h.Fix + "`. Or: " + off}}
+			Fix: "Fix it from Burf (Settings → Boxes), or run `" + h.Fix + "`. Or: " + off}}
 	case h.State == "sandbox":
 		return []doctor.Check{{Area: "Agents", Name: "browser sandbox", Status: doctor.Warn, Detail: "Chromium could not start its sandbox on this box, so agents' browsers can't start", Fix: off}}
 	case h.State == "error":
@@ -105,7 +105,7 @@ func browserSandboxChecks(h BrowserHealth) []doctor.Check {
 		if h.NoSandboxFrom == "env" {
 			from = "BERTH_BROWSER_NO_SANDBOX=1"
 		}
-		return []doctor.Check{{Area: "Agents", Name: "browser sandbox", Status: doctor.Info, Detail: "agents' browsers run without Chromium's sandbox, by " + from + "; Berth's proxy still confines them to the worktree's own pages"}}
+		return []doctor.Check{{Area: "Agents", Name: "browser sandbox", Status: doctor.Info, Detail: "agents' browsers run without Chromium's sandbox, by " + from + "; Burf's proxy still confines them to the worktree's own pages"}}
 	}
 	return nil
 }

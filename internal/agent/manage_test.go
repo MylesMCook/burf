@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sean-brydon/berthd/internal/hooks"
-	"github.com/sean-brydon/berthd/internal/sshsetup"
+	"github.com/MylesMCook/burf/internal/hooks"
+	"github.com/MylesMCook/burf/internal/sshsetup"
 )
 
 // fakeCLI stands in for the berth binary the agent runs.

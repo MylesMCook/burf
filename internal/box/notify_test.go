@@ -11,8 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/box/runs"
-	"github.com/sean-brydon/berthd/internal/transcript"
+	"github.com/MylesMCook/burf/internal/box/runs"
+	"github.com/MylesMCook/burf/internal/transcript"
 )
 
 // fakeNotifyHost is a box as the notifier sees it, run by the test.
@@ -459,7 +459,7 @@ func TestTheNotificationIsTaggedTrimmedAndSafe(t *testing.T) {
 		Path: "/w/fix", Repo: "/w/shop", Base: "main", Ahead: 1, Uncommitted: 2, Answer: long, Transcript: "/home/u/.claude/projects/x/abc.jsonl",
 		Files: []ReviewFile{{Path: "a.go", Added: 10, Removed: 1}, {Path: "b.go", Added: 2, Removed: 1}}, Added: 12, Removed: 2,
 	}}, 0)
-	if !strings.HasPrefix(text, "<berth-notification>\nThis comes from Berth, not from the user") || !strings.HasSuffix(text, "</berth-notification>") {
+	if !strings.HasPrefix(text, "<berth-notification>\nThis comes from Burf, not from the user") || !strings.HasSuffix(text, "</berth-notification>") {
 		t.Fatalf("not one tagged block from Berth:\n%s", text)
 	}
 	if strings.Count(text, "</answer>") != 1 || strings.Count(text, "</report>") != 1 || strings.Count(text, "</berth-notification>") != 1 {

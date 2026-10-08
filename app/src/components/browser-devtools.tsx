@@ -15,7 +15,7 @@ import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 // The Browser tab's developer tools: WebKit's own Web Inspector for the
-// native page (Inspect), and Berth's Console and Network drawer under the
+// native page (Inspect), and Burf's Console and Network drawer under the
 // page, whose rows go to the worktree's agent in a click.
 
 // Tooltips in the drawer open downward: above it is the page, which in the
@@ -23,9 +23,9 @@ import { cn } from "@/lib/utils";
 const DOWN = "bottom" as const;
 
 // InspectButton opens WebKit's Web Inspector for the pane's native page, in
-// a window of its own. A frame (outside the Berth app) has none.
+// a window of its own. A frame (outside the Burf app) has none.
 export function InspectButton({ id, native, disabled }: { id: string; native: boolean; disabled?: boolean }) {
-  const label = native ? "Inspect: the Web Inspector for this page (or right-click it → Inspect Element)" : "The Web Inspector is in the Berth app's own browser";
+  const label = native ? "Inspect: the Web Inspector for this page (or right-click it → Inspect Element)" : "The Web Inspector is in the Burf app's own browser";
   return (
     <Tip label={label}>
       <button
@@ -287,7 +287,7 @@ function ConsoleList({ log, agent, sending, onSend }: { log?: PaneLog; agent?: b
                 ? "The agent's page hasn't logged anything."
                 : log?.heard
                   ? "Nothing logged since the page loaded. What it logs, and any error it throws, shows here."
-                  : "Waiting for the page. Its console shows here once it loads in the Berth app, or through a worktree's address."}
+                  : "Waiting for the page. Its console shows here once it loads in the Burf app, or through a worktree's address."}
           </p>
         )}
         <div ref={end} />
@@ -454,7 +454,7 @@ function NetworkList({ log, pageUrl, proxied, agent, sending, onSend }: { log?: 
                 ? "No failed requests in the agent's browser."
                 : proxied
                   ? "No requests since the page loaded."
-                  : "Requests show here for a worktree's page, which goes through Berth's proxy. This page doesn't: use the Web Inspector's Network tab for it."}
+                  : "Requests show here for a worktree's page, which goes through Burf's proxy. This page doesn't: use the Web Inspector's Network tab for it."}
           </p>
         )}
       </div>

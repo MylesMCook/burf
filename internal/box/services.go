@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/sean-brydon/berthd/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/boxclient"
 )
 
 // Service is a listening port that belongs to a worktree, found by where its

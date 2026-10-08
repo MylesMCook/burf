@@ -14,10 +14,10 @@ import (
 
 	"github.com/coder/websocket"
 
-	box "github.com/sean-brydon/berthd/internal/boxclient"
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/hooks"
-	"github.com/sean-brydon/berthd/internal/terminal"
+	box "github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/hooks"
+	"github.com/MylesMCook/burf/internal/terminal"
 )
 
 // uiCall makes a request to the agent's app API with the laptop's token.

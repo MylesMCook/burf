@@ -13,13 +13,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/doctor"
+	"github.com/MylesMCook/burf/internal/doctor"
 )
 
 // tmuxDirs are searched for tmux after PATH. berthd started by the app or
 // launchd on a Mac inherits a minimal PATH without Homebrew's, so a tmux
 // installed there would otherwise look missing; and the guided install puts
-// Berth's own tmux in ~/.local/bin when a box has none, which a service's
+// Burf's own tmux in ~/.local/bin when a box has none, which a service's
 // PATH may lack. A variable so tests can point it elsewhere.
 var tmuxDirs = append([]string{"/opt/homebrew/bin", "/usr/local/bin", "/home/linuxbrew/.linuxbrew/bin"}, localBin()...)
 
@@ -235,7 +235,7 @@ func TmuxCheck() doctor.Check {
 		return doctor.Check{Area: "Worktrees and sessions", Name: "tmux", Status: doctor.OK, Detail: p}
 	}
 	return doctor.Check{Area: "Worktrees and sessions", Name: "tmux", Status: doctor.Fail,
-		Detail: "not installed (or not on berthd's PATH, nor in " + strings.Join(tmuxDirs, ", ") + "); Berth runs every agent in tmux", Fix: tmuxInstallHint()}
+		Detail: "not installed (or not on berthd's PATH, nor in " + strings.Join(tmuxDirs, ", ") + "); Burf runs every agent in tmux", Fix: tmuxInstallHint()}
 }
 
 // requirements answers GET /v1/requirements: what this box needs to run

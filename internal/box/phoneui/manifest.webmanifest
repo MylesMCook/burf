@@ -1,6 +1,6 @@
 {
-  "name": "Berth",
-  "short_name": "Berth",
+  "name": "Burf",
+  "short_name": "Burf",
   "description": "See which agents need you, and answer them.",
   "start_url": "./",
   "scope": "./",

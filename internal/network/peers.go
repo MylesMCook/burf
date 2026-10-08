@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/backgroundcmd"
+	"github.com/MylesMCook/burf/internal/backgroundcmd"
 
 	"tailscale.com/ipn/ipnstate"
 )

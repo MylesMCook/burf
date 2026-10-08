@@ -5,12 +5,12 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/box/runs"
-	"github.com/sean-brydon/berthd/internal/hooks"
-	"github.com/sean-brydon/berthd/internal/integrations"
-	"github.com/sean-brydon/berthd/internal/integrations/adapters"
-	"github.com/sean-brydon/berthd/internal/team"
-	"github.com/sean-brydon/berthd/internal/version"
+	"github.com/MylesMCook/burf/internal/box/runs"
+	"github.com/MylesMCook/burf/internal/hooks"
+	"github.com/MylesMCook/burf/internal/integrations"
+	"github.com/MylesMCook/burf/internal/integrations/adapters"
+	"github.com/MylesMCook/burf/internal/team"
+	"github.com/MylesMCook/burf/internal/version"
 )
 
 // AgentBrowserSession is one agent-browser session a berth session started:
@@ -809,16 +809,16 @@ type TeamBundle struct {
 	// Script runs the steps (team.Box.Script, inside Files).
 	Script string      `json:"script,omitempty"`
 	Steps  []team.Step `json:"steps"`
-	// GitHub adds Berth's own step: gh auth login on the box.
+	// GitHub adds Burf's own step: gh auth login on the box.
 	GitHub bool `json:"github"`
-	// OnePassword adds Berth's other step, after GitHub, when the keys are
+	// OnePassword adds Burf's other step, after GitHub, when the keys are
 	// 1Password references: op signed in on the box, in its terminal.
 	OnePassword bool `json:"onepassword,omitempty"`
 	// OnePasswordSkipped says the engineer skipped 1Password: the shared
 	// keys' references are kept aside (each project's Deferred), op is
 	// never called for them, and Use 1Password puts them back later.
 	OnePasswordSkipped bool `json:"onepassword_skipped,omitempty"`
-	// Agents adds Berth's agents step, after the team's own: these agent
+	// Agents adds Burf's agents step, after the team's own: these agent
 	// CLIs installed on the box, with their hooks and skills.
 	Agents []string `json:"agents,omitempty"`
 	// Settings are team.json's box.settings, which the script (and each

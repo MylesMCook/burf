@@ -3,7 +3,8 @@
   "bundle": {
     "externalBin": ["binaries/berth-cli"],
     "resources": {
-      "binaries/berth-windows-amd64.exe": "cli/berth.exe",
+      "binaries/burf-windows-amd64.exe": "cli/burf.exe",
+      "binaries/burf-windows-legacy.exe": "cli/berth.exe",
       "binaries/berthd-linux-amd64": "berthd-linux-amd64",
       "binaries/berthd-linux-arm64": "berthd-linux-arm64",
       "binaries/tmux-linux-amd64": "tmux-linux-amd64",

@@ -48,7 +48,7 @@ func TestFindJoinLinkInPastedText(t *testing.T) {
 	for _, text := range []string{
 		link,
 		"  " + link + "\n",
-		"On the other computer:  berth join '" + link + "'",
+		"On the other computer:  burf join '" + link + "'",
 		"here you go: " + link + ".",
 	} {
 		if got := FindJoinLink(text); got != link {

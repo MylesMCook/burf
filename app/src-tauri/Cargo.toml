@@ -1,14 +1,14 @@
 [package]
-name = "berth"
+name = "burf"
 version = "0.3.9"
-description = "Berth: agents on your boxes"
+description = "Burf: agents on your boxes"
 authors = ["Sean Brydon"]
 edition = "2021"
 
 [lib]
 # The `_lib` suffix keeps the lib name distinct from the bin name, which
 # matters on Windows (rust-lang/cargo#8519).
-name = "berth_lib"
+name = "burf_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
@@ -19,7 +19,7 @@ tauri-build = { version = "2", features = [] }
 # keeps WebKit's Web Inspector in release builds, for a Browser tab's Inspect
 # button and its page's Inspect Element (browser.rs). On macOS that is a
 # private WebKit API (developerExtrasEnabled), which the App Store refuses;
-# Berth ships notarized outside it.
+# Burf ships notarized outside it.
 tauri = { version = "2", features = ["unstable", "devtools"] }
 tauri-plugin-notification = "2"
 tauri-plugin-shell = "2"

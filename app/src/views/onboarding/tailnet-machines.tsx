@@ -18,9 +18,9 @@ import { discoverNetwork, type SystemTailnet, sortMachines, type TailnetSource }
 const TAILSCALE_DOWNLOAD = "https://tailscale.com/download";
 
 // TailnetMachines lists the machines on a tailnet this computer reaches,
-// each with Set up: Berth logs in over SSH once, installs berthd (which
+// each with Set up: Burf logs in over SSH once, installs berthd (which
 // listens on the machine's tailnet address only) and pairs. With more than
-// one tailnet (this Mac's, and ones Berth signed in to), tabs switch.
+// one tailnet (this Mac's, and ones Burf signed in to), tabs switch.
 export function TailnetMachines({
   sources,
   system,
@@ -97,7 +97,7 @@ export function TailnetMachines({
 type Found = { state: "loading" } | { state: "error"; message: string; retry(): void } | { state: "ok"; discovery: Discovery };
 
 // useDiscovery is the machine list for a source: this Mac's tailnet comes
-// with the screen; a Berth network's is read when its tab is chosen.
+// with the screen; a Burf network's is read when its tab is chosen.
 function useDiscovery(source: TailnetSource | undefined, system?: SystemTailnet): Found {
   const client = useStore((s) => s.client);
   const [found, setFound] = useState<Found>({ state: "loading" });
@@ -165,7 +165,7 @@ function MachineList({
     const login = /needs a login/i.test(found.message);
     return (
       <div className="flex min-h-24 flex-col items-start justify-center gap-2 rounded-lg border px-3.5 py-3 text-sm">
-        <span>{login ? `Berth is signed out of ${source.label}.` : `Couldn't list the machines on ${source.label}.`}</span>
+        <span>{login ? `Burf is signed out of ${source.label}.` : `Couldn't list the machines on ${source.label}.`}</span>
         {!login && <span className="text-muted-foreground text-xs">{found.message}</span>}
         <Button size="xs" variant="outline" onClick={login ? onSignIn : found.retry}>
           {login ? "Sign in again" : "Try again"}
@@ -294,7 +294,7 @@ function MachineSetup({
   team?: TeamAfterInstall;
 }) {
   const [agents, setAgents] = useAgentChoice();
-  // A Berth network is dialed by address; this Mac's tailnet by name.
+  // A Burf network is dialed by address; this Mac's tailnet by name.
   const host = network ? m.ip : m.dns_name || m.ip;
   const sshSupported = useStore((s) => !s.status || !("ssh_setup_supported" in s.status) || s.status.ssh_setup_supported !== false);
   const plan = useSshPlan(sshSupported && m.os === "linux" ? host : "", network);
@@ -330,7 +330,7 @@ function MachineSetup({
     if (/[\s@]/.test(u)) return;
     install.open({ host: `${u ? `${u}@` : ""}${host}`, name: name.trim() || undefined, network, knownHostKeys: m.host_keys });
   };
-  const userError = /@/.test(user) ? `Only the user: Berth connects to ${m.name}.` : /\s/.test(user.trim()) ? "A user name has no spaces." : undefined;
+  const userError = /@/.test(user) ? `Only the user: Burf connects to ${m.name}.` : /\s/.test(user.trim()) ? "A user name has no spaces." : undefined;
 
   return (
     <div className="border-t p-3">
@@ -390,7 +390,7 @@ function MachineSetup({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="after its hostname"
-            aria-label="Name in Berth"
+            aria-label="Name in Burf"
             spellCheck={false}
             disabled={running}
             className="h-5 w-28 border-input border-b bg-transparent px-0.5 text-foreground outline-none placeholder:text-muted-foreground/72 focus:border-ring"
@@ -400,7 +400,7 @@ function MachineSetup({
       {!team && <InlineAgents value={agents} onChange={setAgents} disabled={running} />}
       {state === "ready" && (
         <p className="mt-1 text-muted-foreground text-xs leading-relaxed">
-          Berth logs in once to install berthd for that user. It listens on {m.name}'s tailnet address only, and Berth never needs SSH for it again.
+          Burf logs in once to install berthd for that user. It listens on {m.name}'s tailnet address only, and Burf never needs SSH for it again.
         </p>
       )}
       {team ? (
@@ -442,7 +442,7 @@ export function UseTailscale({ system, onRefresh, onSignIn }: { system?: SystemT
           ? "Tailscale is on this computer, but not connected. Connect from its app and your machines show up here."
           : state === "running"
             ? `Nothing on ${system?.name || "your tailnet"} can be a box yet: berthd runs on Linux and macOS.`
-            : "Berth couldn't ask Tailscale on this computer for its machines.";
+            : "Burf couldn't ask Tailscale on this computer for its machines.";
   return (
     <div className="space-y-3">
       <p className="text-muted-foreground text-xs leading-relaxed">
@@ -460,7 +460,7 @@ export function UseTailscale({ system, onRefresh, onSignIn }: { system?: SystemT
           </Button>
         )}
         <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={onSignIn}>
-          Sign in to a tailnet in Berth
+          Sign in to a tailnet in Burf
         </Button>
       </div>
     </div>

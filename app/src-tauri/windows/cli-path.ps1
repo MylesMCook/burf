@@ -25,7 +25,7 @@ try {
         exit 0
     }
     if ($Action -eq 'Add') {
-        if (!(Test-Path -LiteralPath (Join-Path $directory 'berth.exe') -PathType Leaf)) { throw 'The bundled berth.exe is missing.' }
+        if (!(Test-Path -LiteralPath (Join-Path $directory 'burf.exe') -PathType Leaf)) { throw 'The bundled burf.exe is missing.' }
         if ($present) { exit 0 }
         $next = Add-BerthPathValue $path $directory
     } elseif ($owned -ieq $directory) {

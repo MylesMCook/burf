@@ -26,7 +26,7 @@ func stub(t *testing.T, os_ string) (home string, calls *[]string) {
 
 var spec = Spec{
 	Name:        "berth-agent",
-	Description: "berth agent",
+	Description: "burf agent",
 	Program:     "/opt/berth/bin/berth",
 	Args:        []string{"agent"},
 	Env:         map[string]string{"BERTH_HOME": "/Users/alex/Library/Application Support/berth"},

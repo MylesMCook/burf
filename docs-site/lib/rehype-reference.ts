@@ -2,7 +2,7 @@
 //
 // - A two-column "Command | What it does" table becomes a list: each command's
 //   signature on its own line, full width, with its description under it, and
-//   an id from the command's words (`berth task new` is #berth-task-new).
+//   an id from the command's words (`burf task new` is #berth-task-new).
 //   Long signatures no longer wrap in a narrow column.
 // - A "Field", "Event" or "Gate" table keeps its columns, and each row gets an
 //   id (#setup, #agent-finished); the name in its first cell links to it. A
@@ -29,9 +29,9 @@ export const slug = (s: string) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 
-// The command's own words: `berth task new BOX/LOC/NAME [--agent ID]` is
-// "berth task new". A subcommand written as alternatives right after the
-// command (`berth agent install|uninstall|status`) takes the first one.
+// The command's own words: `burf task new BOX/LOC/NAME [--agent ID]` is
+// "burf task new". A subcommand written as alternatives right after the
+// command (`burf agent install|uninstall|status`) takes the first one.
 export function commandId(signature: string): string {
   const words: string[] = [];
   for (const token of signature.trim().split(/\s+/)) {

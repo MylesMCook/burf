@@ -87,7 +87,7 @@ fn fill<R: Runtime>(
 
 pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     let table = table();
-    // "Berth", as the window and the Dock name it, not the crate's "berth".
+    // "Burf", as the window and the Dock name it, not the crate's "berth".
     let name = app
         .config()
         .product_name

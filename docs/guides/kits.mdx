@@ -17,13 +17,13 @@ to that.
 ## Using one
 
 ```sh
-berth kit add https://github.com/acme/kits/tree/main/shop-dev    # shows what it does, then asks
-berth kit show shop-dev                                          # everything it does, every file it carries
-berth kit apply shop-dev devl/shop gpu/shop                      # install on projects on any box
-berth kit list                                                   # where each is installed, and if it is out of date
-berth kit update shop-dev && berth kit apply shop-dev devl/shop  # take a newer version
-berth kit remove devl/shop                                       # uninstall from a project
-berth kit rm shop-dev                                            # forget it on this laptop
+burf kit add https://github.com/acme/kits/tree/main/shop-dev    # shows what it does, then asks
+burf kit show shop-dev                                          # everything it does, every file it carries
+burf kit apply shop-dev devl/shop gpu/shop                      # install on projects on any box
+burf kit list                                                   # where each is installed, and if it is out of date
+burf kit update shop-dev && burf kit apply shop-dev devl/shop  # take a newer version
+burf kit remove devl/shop                                       # uninstall from a project
+burf kit rm shop-dev                                            # forget it on this laptop
 ```
 
 In the app, **Kits** (under **More** in the sidebar) lists the kits you
@@ -45,10 +45,10 @@ A link can be:
 - a folder on this laptop, as an absolute path or one starting with `~`
 
 A link to GitHub, a gist, GitLab, Bitbucket or Codeberg works without
-`https://` (`berth kit add github.com/acme/shop-kit`). Git links are fetched
+`https://` (`burf kit add github.com/acme/shop-kit`). Git links are fetched
 over `https`, `http`, `ssh` or `git` only.
 
-Berth remembers the link and the commit, so `update` fetches the newest
+Burf remembers the link and the commit, so `update` fetches the newest
 version and the app flags projects running an older one. Kits you add live
 in `~/.berth/kits/` on the laptop.
 
@@ -116,7 +116,7 @@ Matching projects are picked for you when you review the kit, and adding
 such a project to a box (or cloning it onto another) offers to apply the
 kit. It only suggests: you can apply a kit to any project.
 
-`berth kit save devl/shop my-kit` turns how a project is set up on a box into
+`burf kit save devl/shop my-kit` turns how a project is set up on a box into
 a kit in `~/.berth/kits/my-kit/`; push that folder to a git repository to
 share it.
 
@@ -124,7 +124,7 @@ share it.
 complete example, published as its own repository: a Postgres database per
 worktree (a copy of the main one when migrations match), its own `.env`, two
 ports, a dev server and Prisma Studio, with a daily sweep of old databases.
-Add it with `berth kit add github.com/sean-brydon/berth-kit-calcom`.
+Add it with `burf kit add github.com/sean-brydon/berth-kit-calcom`.
 
 ## How it applies
 
@@ -145,7 +145,7 @@ A plugin can ship kits by listing their folders under `"kits"` in its
 ## Safety
 
 A kit runs its scripts on the boxes you apply it to, with your account's
-access. Berth never applies one silently: adding shows everything it does
+access. Burf never applies one silently: adding shows everything it does
 and every file, and applying is a separate step you choose projects for.
 
 - **You keep what you reviewed.** The review shows a hash of everything the
@@ -158,11 +158,11 @@ and every file, and applying is a separate step you choose projects for.
   [trust prompt](/guides/project-config#trusting-a-repositorys-config) a
   repository's own `.berth/config.json` needs.
 - **`update` fetches a newer version** but doesn't apply it: run
-  `berth kit apply` again once you've looked (`berth kit show`).
+  `burf kit apply` again once you've looked (`burf kit show`).
 
 On a box, kit files can only be written inside the kit's own folder, and
 `before:kit.install` / `before:kit.remove` [gates](/guides/hooks#gates) can
 refuse them.
 
-`berth kit help` lists every kit command; [the CLI reference](/reference/cli#kits)
+`burf kit help` lists every kit command; [the CLI reference](/reference/cli#kits)
 has them too.

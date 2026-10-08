@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/backgroundcmd"
-	"github.com/sean-brydon/berthd/internal/localagent"
+	"github.com/MylesMCook/burf/internal/backgroundcmd"
+	"github.com/MylesMCook/burf/internal/localagent"
 )
 
 // Resolve installed native CLIs, never execute an npm batch shim through a shell.

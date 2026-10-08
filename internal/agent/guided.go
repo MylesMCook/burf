@@ -17,13 +17,13 @@ import (
 
 	"github.com/coder/websocket"
 
-	"github.com/sean-brydon/berthd/internal/agentcli"
-	"github.com/sean-brydon/berthd/internal/guided"
-	"github.com/sean-brydon/berthd/internal/terminal"
-	"github.com/sean-brydon/berthd/internal/trust"
+	"github.com/MylesMCook/burf/internal/agentcli"
+	"github.com/MylesMCook/burf/internal/guided"
+	"github.com/MylesMCook/burf/internal/terminal"
+	"github.com/MylesMCook/burf/internal/trust"
 )
 
-// Adding a box over SSH: the app runs `berth add ssh` in a pseudo-terminal
+// Adding a box over SSH: the app runs `burf add ssh` in a pseudo-terminal
 // here. Quiet by default (Add a box): the steps run on their own and the
 // app shows the terminal only while sudo asks for a password. Guided
 // (guided=1, from Team setup): the app shows the plan (GET
@@ -129,7 +129,7 @@ func (a *Agent) guidedRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/boxes/add-ssh/terminal", a.addSSHTerminal)
 }
 
-// bundledTmux is whether berth carries Berth's tmux for Linux boxes, beside
+// bundledTmux is whether berth carries Burf's tmux for Linux boxes, beside
 // it as it carries the daemons.
 func bundledTmux(exe string) bool {
 	for _, arch := range []string{"amd64", "arm64"} {
@@ -150,7 +150,7 @@ func (a *Agent) addSSHTerminal(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-	finished, err := a.work.begin("berth add ssh")
+	finished, err := a.work.begin("burf add ssh")
 	if err != nil {
 		writeCoded(w, http.StatusServiceUnavailable, err.Error(), "agent_restarting")
 		return
@@ -247,7 +247,7 @@ func (w *wsWriter) Write(p []byte) (int, error) {
 }
 
 // besideCLI reports whether a file berth uploads to boxes is beside it (or
-// in the app's Resources), where readDaemon in cmd/berth looks.
+// in the app's Resources), where readDaemon in cmd/burf looks.
 func besideCLI(exe, name string) bool {
 	if exe == "" {
 		return false

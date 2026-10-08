@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sean-brydon/berthd/internal/box"
+	"github.com/MylesMCook/burf/internal/box"
 )
 
 // callerBox answers the calls that start work and keeps who each named as

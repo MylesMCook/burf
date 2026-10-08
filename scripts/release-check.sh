@@ -86,7 +86,7 @@ TESTS="$SRC_TREE/scripts"
 # The tests check the dmg was built from this commit, and print it.
 export BERTH_RELEASE_TEST_REV=$REV
 {
-	echo "# Berth release checks"
+	echo "# Burf release checks"
 	echo
 	echo "Commit tested: \`$TESTED\` ($(git -C "$REPO_DIR" log -1 --format='%s' "$REV"))"
 	echo
@@ -114,7 +114,7 @@ build_app() {
 		CARGO_TARGET_DIR="$cache" make -C "$SRC_TREE" app-build ${UNIVERSAL:+APP_TARGET=universal-apple-darwin} >>"$OUT/app-build.log" 2>&1; then
 		built=$(ls -t "$cache"/release/bundle/dmg/*.dmg "$cache"/*/release/bundle/dmg/*.dmg 2>/dev/null | head -1)
 		if [ -n "$built" ]; then
-			DMG="$OUT/Berth-${REV:0:9}.dmg"
+			DMG="$OUT/Burf-${REV:0:9}.dmg"
 			cp "$built" "$DMG" && return 0
 		fi
 	fi

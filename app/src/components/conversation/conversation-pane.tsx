@@ -24,7 +24,7 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { InputGroup, InputGroupAddon, InputGroupTextarea } from "@/components/ui/input-group";
 import { Kbd } from "@/components/ui/kbd";
 import { toastManager } from "@/components/ui/toast";
-import { isMock } from "@/hooks/use-berth-connection";
+import { isMock } from "@/hooks/use-burf-connection";
 import { startSession } from "@/lib/actions";
 import { ApiError, boxApi, type QueuedPrompt } from "@/lib/api";
 import { type AttachTarget, withAttachments } from "@/lib/attachments";
@@ -300,7 +300,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
         title={feed === "none" ? `${agent ? agentLabel(agent) : "This agent"} works in its terminal` : `${box} needs an update for this`}
         description={
           feed === "none"
-            ? "Berth can show Claude Code's and Codex's conversations here. This agent's work is in its terminal."
+            ? "Burf can show Claude Code's and Codex's conversations here. This agent's work is in its terminal."
             : `${box} runs an older berthd that doesn't stream agents' conversations. Updating keeps your agents running.`
         }
       >

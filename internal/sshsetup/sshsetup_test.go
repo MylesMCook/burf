@@ -71,7 +71,7 @@ func TestClassify(t *testing.T) {
 		{noRoute, "unreachable", "no route"},
 		{unresolved, "resolve", "Could not resolve dev-box.example"},
 		{unresolvedLinux, "resolve", "Could not resolve"},
-		{denied, "auth", "Berth offered me@laptop (1Password's SSH agent), /Users/me/.ssh/id_ed25519"},
+		{denied, "auth", "Burf offered me@laptop (1Password's SSH agent), /Users/me/.ssh/id_ed25519"},
 		{deniedNoKeys, "auth", "the keys in 1Password's SSH agent, ~/.ssh/id_ed25519"},
 		{passwordOnly, "password", "only accepts passwords"},
 		{unknownKey, "host-key-unknown", "hasn't connected to dev-box.example before"},
@@ -326,7 +326,7 @@ func TestFetchHostKeyReadsWhatSSHRecorded(t *testing.T) {
 		t.Fatalf("ran %s", name)
 		return nil, nil
 	}
-	hk, err := FetchHostKey(context.Background(), run, nil, []string{"-o", "ProxyCommand=berth network proxy personal %h %p"}, "me@dev-box.example")
+	hk, err := FetchHostKey(context.Background(), run, nil, []string{"-o", "ProxyCommand=burf network proxy personal %h %p"}, "me@dev-box.example")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -334,7 +334,7 @@ func TestFetchHostKeyReadsWhatSSHRecorded(t *testing.T) {
 		t.Errorf("host key = %+v", hk)
 	}
 	joined := strings.Join(sshArgs, " ")
-	for _, want := range []string{"StrictHostKeyChecking=accept-new", "PubkeyAuthentication=no", "BatchMode=yes", "ProxyCommand=berth network proxy", "me@dev-box.example true"} {
+	for _, want := range []string{"StrictHostKeyChecking=accept-new", "PubkeyAuthentication=no", "BatchMode=yes", "ProxyCommand=burf network proxy", "me@dev-box.example true"} {
 		if !strings.Contains(joined, want) {
 			t.Errorf("ssh args miss %q: %s", want, joined)
 		}

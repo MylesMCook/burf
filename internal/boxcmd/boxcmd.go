@@ -16,8 +16,8 @@ import (
 	"text/tabwriter"
 	"time"
 
-	box "github.com/sean-brydon/berthd/internal/boxclient"
-	"github.com/sean-brydon/berthd/internal/events"
+	box "github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/events"
 )
 
 // usageColumn is where descriptions start in Usage; a command line too long
@@ -40,7 +40,7 @@ var usageSections = []struct {
 		{"%[1]s location config %[2]sNAME [--json] [--trust HASH|--untrust]", "The repo's, the box's and the effective config; trust the repo's to run it"},
 		{"%[1]s services%[3]s [--json]", "Which worktree each running server belongs to"},
 		{"%[1]s service list|start|stop|restart|log %[2]sLOC/WORKTREE [SERVICE]", "A worktree's services from the repo's config"},
-		{"%[1]s preview %[2]s[LOC/WORKTREE] [PORT] [--path /x]", "Open a worktree's page in the Berth app"},
+		{"%[1]s preview %[2]s[LOC/WORKTREE] [PORT] [--path /x]", "Open a worktree's page in the Burf app"},
 		{"%[1]s worktree new %[2]sLOC/NAME [--branch B] [--base REF]", "Create a git worktree and run its setup"},
 		{"%[1]s worktree rm %[2]sLOC/NAME [--force]", "Remove a worktree"},
 		{"%[1]s worktree rename %[2]sLOC/NAME [TITLE]", "Give a worktree a display name (its branch and folder keep\ntheir names; no TITLE clears it)"},
@@ -363,7 +363,7 @@ func Run(ctx context.Context, c *box.Client, args []string, out io.Writer) error
 		if err != nil {
 			// An older berthd has DELETE on this path but not PATCH.
 			if strings.Contains(err.Error(), "405") {
-				return fmt.Errorf("this box runs an older berthd without worktree names; update it (berth upgrade) and try again")
+				return fmt.Errorf("this box runs an older berthd without worktree names; update it (burf upgrade) and try again")
 			}
 			return err
 		}
@@ -409,7 +409,7 @@ func Run(ctx context.Context, c *box.Client, args []string, out io.Writer) error
 				return qerr
 			}
 			return show(out, *asJSON, map[string]any{"queued": true, "id": id}, func() {
-				fmt.Fprintf(out, "Could not reach the box (%v).\nQueued as %s: the berth agent types it into %s once the box is back. See berth queue.\n", err, id, pos[0])
+				fmt.Fprintf(out, "Could not reach the box (%v).\nQueued as %s: the burf agent types it into %s once the box is back. See burf queue.\n", err, id, pos[0])
 			})
 		}
 		if !*wait {
@@ -874,7 +874,7 @@ func sessionNew(ctx context.Context, c *box.Client, args []string, out io.Writer
 	fs.StringVar(&req.Name, "name", "", "session name (default: location, command, and a suffix)")
 	fs.StringVar(&req.Agent, "agent", "", "start this agent (see: agents) instead of a command")
 	fs.StringVar(&req.Prompt, "prompt", "", "the agent's first prompt")
-	fs.StringVar(&req.Open, "open", "", "show it in the Berth app: split (beside the current terminal) or tab")
+	fs.StringVar(&req.Open, "open", "", "show it in the Burf app: split (beside the current terminal) or tab")
 	fs.StringVar(&req.Title, "title", "", "name the work (default: the prompt's first line)")
 	pos, err := parse(fs, args)
 	if err != nil || len(pos) != 1 {
@@ -1091,7 +1091,7 @@ func taskNew(ctx context.Context, c *box.Client, args []string, out io.Writer) e
 	fs, asJSON := flags(args)
 	fs.StringVar(&req.Agent, "agent", "", "agent to start (see: agents)")
 	fs.StringVar(&req.Prompt, "prompt", "", "the agent's first prompt")
-	fs.StringVar(&req.Open, "open", "", "show it in the Berth app: split or tab")
+	fs.StringVar(&req.Open, "open", "", "show it in the Burf app: split or tab")
 	fs.StringVar(&req.Branch, "branch", "", "branch to create (default: the worktree name)")
 	fs.StringVar(&req.Base, "base", "", "ref to branch from")
 	fs.StringVar(&req.Title, "title", "", "name the work (default: the prompt's first line)")

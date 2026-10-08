@@ -46,7 +46,7 @@ export interface Prefs {
   // Labs: zen (⌘.): no sidebar or status bar, a switcher for a tab strip,
   // agents as conversations.
   zen: boolean;
-  // Update a box's berthd as soon as Berth ships a newer one
+  // Update a box's berthd as soon as Burf ships a newer one
   // (lib/outdated.ts). Off: the status bar offers it instead.
   autoUpdateBoxes: boolean;
   // The picture behind conversations and its effects (Settings ›
@@ -107,7 +107,7 @@ const PREFS_VERSION = 3;
 
 type Saved = Partial<Prefs> & { version?: number };
 
-// migrate brings prefs saved by an older Berth up to date. Prefs are saved
+// migrate brings prefs saved by an older Burf up to date. Prefs are saved
 // whole, so a "keep" saved before version 2 is only the old default unless
 // the person chose it, which closeAgentsChosen records from now on.
 export function migratePrefs(saved: Saved): Saved {

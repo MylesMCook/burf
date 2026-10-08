@@ -7,7 +7,7 @@ import { vscodeThemes } from "./vscode.ts";
 
 export const berthDark: Theme = {
   id: "berth-dark",
-  name: "Berth Dark",
+  name: "Burf Dark",
   appearance: "dark",
   colors: {
     background: "#1d1e22",
@@ -61,7 +61,7 @@ export const berthDark: Theme = {
 
 export const berthLight: Theme = {
   id: "berth-light",
-  name: "Berth Light",
+  name: "Burf Light",
   appearance: "light",
   colors: {
     background: "#ffffff",
@@ -224,7 +224,7 @@ export const paper: Theme = {
   },
 };
 
-// Berth's own, which the picker lists first.
+// Burf's own, which the picker lists first.
 export const berthThemes: Theme[] = [berthDark, berthLight, midnight, paper];
 
 export const builtinThemes: Theme[] = [...berthThemes, ...vscodeThemes];

@@ -1,21 +1,21 @@
 #!/bin/sh
-# Install berthd, Berth's box daemon, on this machine, start it as a service,
+# Install berthd, Burf's box daemon, on this machine, start it as a service,
 # and print a link to pair your laptop with it:
 #
-#   curl -fsSL https://berthd.app/install | sh
-#   curl -fsSL https://berthd.app/install | sh -s -- --listen 0.0.0.0:7444
+#   curl -fsSL https://raw.githubusercontent.com/MylesMCook/burf/main/site/install.sh | sh
+#   curl -fsSL https://raw.githubusercontent.com/MylesMCook/burf/main/site/install.sh | sh -s -- --listen 0.0.0.0:7444
 #
 # Run it on the box, as the user your agents will run as. It needs no root:
 # berthd goes in ~/.local/bin and runs as a systemd user service (Linux) or a
 # launchd agent (macOS), set up by `berthd install`, the same step
-# `berth add ssh` runs over SSH. That also installs hooks and skills for the
+# `burf add ssh` runs over SSH. That also installs hooks and skills for the
 # agent CLIs it finds (Claude Code, Codex, Cursor Agent), so the app can show
 # when an agent needs you. Running it again upgrades in place.
 #
 # Every download is checked against the release's checksums.txt before it
 # runs. If the release (or the version asked for) doesn't exist, it says
 # so, and prints how to install berthd over SSH from a source build instead.
-# Source: https://github.com/sean-brydon/berthd/blob/main/site/install.sh
+# Source: https://github.com/MylesMCook/burf/blob/main/site/install.sh
 #
 # Options (or the environment variable after each):
 #   --version vX.Y.Z   a release instead of the latest      BERTH_VERSION
@@ -37,7 +37,7 @@
 # otherwise stops, saying the command to run.
 set -eu
 
-repo="sean-brydon/berthd"
+repo="MylesMCook/burf"
 version=${BERTH_VERSION:-latest}
 listen=${BERTHD_LISTEN:-}
 pair=1
@@ -83,7 +83,7 @@ while [ $# -gt 0 ]; do
 	--system) system=1 && shift ;;
 	-h | --help)
 		usage
-		say "Usage: curl -fsSL https://berthd.app/install | sh -s -- [--version vX.Y.Z] [--listen ADDR] [--no-pair] [--no-integrations] [--yes] [--system]"
+		say "Usage: curl -fsSL https://raw.githubusercontent.com/MylesMCook/burf/main/site/install.sh | sh -s -- [--version vX.Y.Z] [--listen ADDR] [--no-pair] [--no-integrations] [--yes] [--system]"
 		exit 0
 		;;
 	*) die "unknown option $1 (try --help)" ;;
@@ -150,7 +150,7 @@ if ! mkdir -p "$bin_dir" 2>/dev/null || [ ! -w "$bin_dir" ]; then
 fi
 as_owner() { if [ "$use_sudo" = 1 ]; then sudo "$@"; else "$@"; fi; }
 
-asset="berthd-$os-$arch.tar.gz"
+asset="burfd-$os-$arch.tar.gz"
 if [ -n "${BERTH_DOWNLOAD_BASE:-}" ]; then
 	base=${BERTH_DOWNLOAD_BASE%/}
 elif [ "$version" = latest ]; then
@@ -182,22 +182,22 @@ no_release() {
 	{
 		say ""
 		if [ "$version" = latest ]; then
-			say "${bold}There's no Berth release yet${reset}, so there's no berthd to download."
+			say "${bold}There's no Burf release yet${reset}, so there's no berthd to download."
 		else
-			say "${bold}Berth $version isn't released${reset}, so there's no berthd to download."
+			say "${bold}Burf $version isn't released${reset}, so there's no berthd to download."
 			say "Releases: https://github.com/$repo/releases"
 		fi
 		say ""
-		say "Instead, build Berth on your laptop (Go 1.27) and let it install berthd on"
+		say "Instead, build Burf on your laptop (Go 1.27) and let it install berthd on"
 		say "this box over SSH. It uploads berthd, starts it and pairs, in one step:"
 		say ""
 		say "  git clone https://github.com/$repo"
-		say "  cd berthd && make all"
+		say "  cd burf && make all"
 		if [ "$os" = darwin ]; then
 			# make all builds the Linux daemons only.
-			say "  CGO_ENABLED=0 GOOS=darwin GOARCH=$arch go build -o bin/berthd-darwin-$arch ./cmd/berthd"
+			say "  CGO_ENABLED=0 GOOS=darwin GOARCH=$arch go build -o bin/berthd-darwin-$arch ./cmd/burfd"
 		fi
-		say "  bin/berth add ssh $user@$host"
+		say "  bin/burf add ssh $user@$host"
 		say ""
 		say "Use however you SSH to this box in place of $user@$host. Step by step:"
 		say "https://docs.berthd.app/getting-started/add-a-box"
@@ -285,21 +285,21 @@ if [ -n "$tools" ]; then
 	them=them
 	case $tools in *" "*) ;; *) them=it ;; esac
 	case $tools_cmd in
-	"") die "Berth needs $tools_say on this box, and there is no package manager this knows: install $them, then run this again" ;;
+	"") die "Burf needs $tools_say on this box, and there is no package manager this knows: install $them, then run this again" ;;
 	sudo\ *)
 		if [ "$uid" = 0 ] || { command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; }; then
 			say "  $tools_say: not installed; installing $them with the service"
 		elif can_ask; then
 			say ""
-			say "Berth needs $tools_say on this box: every terminal and agent runs in tmux, and"
+			say "Burf needs $tools_say on this box: every terminal and agent runs in tmux, and"
 			say "worktrees are git's. Installing $them needs root, so sudo asks for your password."
 			if ask "Install $them now? (runs: $tools_cmd)" y; then
 				sh -c "$tools_cmd" </dev/tty || die "could not install $tools_say. Run this, then run the install again: $tools_cmd"
 			else
-				die "stopped before installing. Berth needs $tools_say; run this, then run the install again: $tools_cmd"
+				die "stopped before installing. Burf needs $tools_say; run this, then run the install again: $tools_cmd"
 			fi
 		else
-			die "Berth needs $tools_say on this box, and installing $them needs sudo's password, which this can't ask for (--yes, or no terminal). Run this, then run the install again: $tools_cmd"
+			die "Burf needs $tools_say on this box, and installing $them needs sudo's password, which this can't ask for (--yes, or no terminal). Run this, then run the install again: $tools_cmd"
 		fi
 		;;
 	*) say "  $tools_say: not installed; installing $them with the service ($tools_cmd)" ;;
@@ -319,7 +319,7 @@ none*)
 		listen=0.0.0.0:7444
 		planned=$listen
 	else
-		die "stopped before installing. To listen on every interface, run: curl -fsSL https://berthd.app/install | sh -s -- --listen 0.0.0.0:7444"
+		die "stopped before installing. To listen on every interface, run: curl -fsSL https://raw.githubusercontent.com/MylesMCook/burf/main/site/install.sh | sh -s -- --listen 0.0.0.0:7444"
 	fi
 	;;
 esac
@@ -371,11 +371,11 @@ if [ -z "$link" ]; then
 fi
 dial=$(printf '%s\n' "$pairing" | sed -n 's/^Laptops will dial \([^;]*\);.*/\1/p')
 say ""
-say "${bold}berthd $new_version is running.${reset} Paste this link into Berth on your laptop"
+say "${bold}berthd $new_version is running.${reset} Paste this link into Burf on your laptop"
 say "(Add a box). It works once, for ten minutes:"
 say ""
 say "  ${bold}$link${reset}"
 say ""
-say "Or on your laptop:  berth pair '$link'"
+say "Or on your laptop:  burf pair '$link'"
 say ""
 say "${dim}Your laptop will dial ${dial:-the address in the link}. A new link any time: berthd pair${reset}"

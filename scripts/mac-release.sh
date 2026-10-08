@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Build Berth for macOS the way a release ships it, check it, and put what a
+# Build Burf for macOS the way a release ships it, check it, and put what a
 # GitHub release carries in dist/mac/:
 #
-#   Berth-macos-universal.dmg              the download (Apple silicon and Intel)
-#   Berth-macos-universal.app.tar.gz(.sig) the in-app updater's archive and signature
+#   Burf-macos-universal.dmg              the download (Apple silicon and Intel)
+#   Burf-macos-universal.app.tar.gz(.sig) the in-app updater's archive and signature
 #   latest.json                            the feed installed apps update from
 #
 #   scripts/mac-release.sh v1.2.3 [--no-notarize]
@@ -18,7 +18,7 @@
 #                              an App Store Connect API key, for notarization
 # and the Rust targets aarch64-apple-darwin and x86_64-apple-darwin.
 #
-# Tauri signs the app and its berth-cli sidecar with the hardened runtime,
+# Tauri signs the app and its burf-cli sidecar with the hardened runtime,
 # notarizes the app and staples it, then makes the dmg and the updater
 # archive from the stapled app. The berthd for the Mac itself
 # (Contents/Resources/berthd, which Use this Mac copies out of the app and
@@ -43,7 +43,7 @@ version="${version#v}"
 tag="v$version"
 notarize=1
 [ "${2:-}" = "--no-notarize" ] && notarize=0
-repo="sean-brydon/berthd"
+repo="MylesMCook/burf"
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
 
@@ -87,15 +87,15 @@ cleanup() {
 }
 trap cleanup EXIT
 
-step "Building Berth $version for Apple silicon and Intel"
+step "Building Burf $version for Apple silicon and Intel"
 rm -rf "$bundle"
 make app-build APP_TARGET="$target" VERSION="$version"
 
-app="$bundle/macos/Berth.app"
+app="$bundle/macos/Burf.app"
 dmgs=("$bundle"/dmg/*.dmg)
 [ -d "$app" ] || die "no $app"
 if [ "${#dmgs[@]}" != 1 ] || [ ! -f "${dmgs[0]}" ]; then die "expected one dmg in $bundle/dmg"; fi
-tarball="$bundle/macos/Berth.app.tar.gz"
+tarball="$bundle/macos/Burf.app.tar.gz"
 [ -f "$tarball" ] || die "no updater archive at $tarball (is createUpdaterArtifacts on?)"
 [ -f "$tarball.sig" ] || die "the updater archive was not signed"
 
@@ -112,7 +112,7 @@ check_app() {
   fi
   grep -Eq "^CodeDirectory .*flags=.*runtime" <<<"$info" ||
     die "$app lacks the hardened runtime, which notarization requires"
-  for exe in "$app/Contents/MacOS/berth" "$app/Contents/MacOS/berth-cli" "$app/Contents/Resources/berthd"; do
+  for exe in "$app/Contents/MacOS/Burf" "$app/Contents/MacOS/burf-cli" "$app/Contents/Resources/berthd"; do
     [ -x "$exe" ] || die "no $exe"
     codesign --verify --strict "$exe" || die "$exe: the signature does not verify"
     local archs
@@ -169,10 +169,10 @@ step "Checking the app"
 check_app "$app"
 
 rm -rf "$out" && mkdir -p "$out"
-dmg="$out/Berth-macos-universal.dmg"
+dmg="$out/Burf-macos-universal.dmg"
 cp "${dmgs[0]}" "$dmg"
-cp "$tarball" "$out/Berth-macos-universal.app.tar.gz"
-cp "$tarball.sig" "$out/Berth-macos-universal.app.tar.gz.sig"
+cp "$tarball" "$out/Burf-macos-universal.app.tar.gz"
+cp "$tarball.sig" "$out/Burf-macos-universal.app.tar.gz.sig"
 
 step "Signing the dmg"
 if codesign --verify --strict "$dmg" 2>/dev/null; then
@@ -205,20 +205,20 @@ if [ "$notarize" = 1 ]; then
 fi
 mkdir -p "$mnt"
 hdiutil attach -quiet -nobrowse -readonly -mountpoint "$mnt" "$dmg"
-[ -L "$mnt/Applications" ] || die "the dmg has no Applications link to drag Berth to"
-check_app "$mnt/Berth.app"
+[ -L "$mnt/Applications" ] || die "the dmg has no Applications link to drag Burf to"
+check_app "$mnt/Burf.app"
 hdiutil detach -quiet "$mnt"
 ok "$dmg"
 
 step "Checking the updater archive"
 mkdir -p "$work/tar"
-tar -xzf "$out/Berth-macos-universal.app.tar.gz" -C "$work/tar"
-check_app "$work/tar/Berth.app"
+tar -xzf "$out/Burf-macos-universal.app.tar.gz" -C "$work/tar"
+check_app "$work/tar/Burf.app"
 if command -v minisign >/dev/null; then
   pubkey="$(python3 -c 'import json; print(json.load(open("app/src-tauri/tauri.conf.json"))["plugins"]["updater"]["pubkey"])')"
   base64 -d <<<"$pubkey" >"$work/updater.pub"
-  base64 -d <"$out/Berth-macos-universal.app.tar.gz.sig" >"$work/updater.minisig"
-  minisign -Vq -p "$work/updater.pub" -x "$work/updater.minisig" -m "$out/Berth-macos-universal.app.tar.gz" ||
+  base64 -d <"$out/Burf-macos-universal.app.tar.gz.sig" >"$work/updater.minisig"
+  minisign -Vq -p "$work/updater.pub" -x "$work/updater.minisig" -m "$out/Burf-macos-universal.app.tar.gz" ||
     die "the updater signature does not match the public key in tauri.conf.json, so installed apps would refuse this update"
   ok "signed with the key the app trusts"
 fi
@@ -227,13 +227,13 @@ step "Writing latest.json"
 python3 - "$version" "$tag" "$repo" "${NOTES:-}" "$out" <<'PY'
 import datetime, json, sys
 version, tag, repo, notes, out = sys.argv[1:6]
-sig = open(f"{out}/Berth-macos-universal.app.tar.gz.sig").read().strip()
-url = f"https://github.com/{repo}/releases/download/{tag}/Berth-macos-universal.app.tar.gz"
+sig = open(f"{out}/Burf-macos-universal.app.tar.gz.sig").read().strip()
+url = f"https://github.com/{repo}/releases/download/{tag}/Burf-macos-universal.app.tar.gz"
 # One universal archive serves both kinds of Mac.
 platform = {"signature": sig, "url": url}
 feed = {
     "version": version,
-    "notes": notes or f"Berth {version}: https://github.com/{repo}/releases/tag/{tag}",
+    "notes": notes or f"Burf {version}: https://github.com/{repo}/releases/tag/{tag}",
     "pub_date": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
     "platforms": {"darwin-aarch64": platform, "darwin-x86_64": platform},
 }

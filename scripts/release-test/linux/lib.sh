@@ -27,9 +27,9 @@ build_dist() {
 	local dir=$1 version=$2 arch
 	arch=$(docker_arch) || return 1
 	mkdir -p "$dir/stage/berthd" "$dir/stage/berth"
-	local ld="-s -w -X github.com/sean-brydon/berthd/internal/version.Version=$version"
-	(cd "$REPO" && CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -ldflags "$ld" -o "$dir/stage/berthd/berthd" ./cmd/berthd) || return 1
-	(cd "$REPO" && CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -ldflags "$ld" -o "$dir/stage/berth/berth" ./cmd/berth) || return 1
+	local ld="-s -w -X github.com/MylesMCook/burf/internal/version.Version=$version"
+	(cd "$REPO" && CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -ldflags "$ld" -o "$dir/stage/berthd/berthd" ./cmd/burfd) || return 1
+	(cd "$REPO" && CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -ldflags "$ld" -o "$dir/stage/berth/berth" ./cmd/burf) || return 1
 	cp "$dir/stage/berthd/berthd" "$dir/stage/berth/berthd-linux-$arch"
 	# As build-release.sh: macOS's tar would add extended attributes.
 	local flags=()
@@ -59,7 +59,7 @@ download_dist() {
 	local tag=$1 dir=$2 arch
 	arch=$(docker_arch) || return 1
 	mkdir -p "$dir"
-	gh release download "$tag" --repo sean-brydon/berthd --dir "$dir" --clobber \
+	gh release download "$tag" --repo MylesMCook/burf --dir "$dir" --clobber \
 		--pattern "berthd-linux-$arch.tar.gz" --pattern "berth-linux-$arch.tar.gz" --pattern checksums.txt || return 1
 	cp "$REPO/site/install.sh" "$dir/install.sh"
 }
@@ -118,7 +118,7 @@ laptop_cli() {
 
 # laptop_api METHOD PATH [JSON]: the laptop agent's app API.
 laptop_api() {
-	lp "tok=\$(berth ui-token | python3 -c 'import json,sys; print(json.load(sys.stdin)[\"token\"])'); curl -sS --max-time 60 -X $1 -H \"Authorization: Bearer \$tok\" -H 'Content-Type: application/json' ${3:+--data '$3'} http://127.0.0.1:1378$2"
+	lp "tok=\$(burf ui-token | python3 -c 'import json,sys; print(json.load(sys.stdin)[\"token\"])'); curl -sS --max-time 60 -X $1 -H \"Authorization: Bearer \$tok\" -H 'Content-Type: application/json' ${3:+--data '$3'} http://127.0.0.1:1378$2"
 }
 
 linux_cleanup() {

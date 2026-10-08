@@ -1,7 +1,7 @@
 // Package sshconfig gives every paired box an SSH host, berth-<box>, so
 // editors' remote SSH (VS Code, Cursor, Windsurf, Zed) and plain ssh reach
 // the box the same way berth does: a box on another tailnet goes through
-// berth's own network with `berth network proxy`.
+// berth's own network with `burf network proxy`.
 //
 // Nothing is written without being shown first: Plan says exactly which
 // files change and how, and Apply writes that plan.
@@ -24,10 +24,10 @@ type Host struct {
 	// Address is the box's address; any port is berth's, not SSH's.
 	Address string
 	User    string
-	// Network is the berth network the box is reached through; empty means
+	// Network is the burf network the box is reached through; empty means
 	// this computer's own, which SSH reaches directly.
 	Network string
-	// Berth is the berth executable that carries a network's connection.
+	// Burf is the berth executable that carries a network's connection.
 	Berth string
 	// IdentityAgent, when set, is the SSH agent to log in with, such as
 	// 1Password's, which the shell's default agent may not be.
@@ -51,7 +51,7 @@ func OnePasswordAgent() string {
 func HostName(box string) string { return "berth-" + box }
 
 // header marks files berth wrote, so it only ever removes its own.
-const header = "# Written by berth ssh-config for the box %s; berth rewrites it.\n"
+const header = "# Written by burf ssh-config for the box %s; berth rewrites it.\n"
 
 // ValidUser reports whether name is a plain account name. The box reports
 // its user, and a box is not trusted to write ssh_config: a newline in it
@@ -172,7 +172,7 @@ func (c Config) Plan(hosts []Host) ([]Change, error) {
 			continue
 		}
 		b, err := os.ReadFile(f)
-		if err != nil || !strings.HasPrefix(string(b), "# Written by berth ssh-config") {
+		if err != nil || !strings.HasPrefix(string(b), "# Written by burf ssh-config") {
 			continue
 		}
 		out = append(out, Change{Path: f, Action: "remove", Old: string(b), Diff: diff(string(b), "")})

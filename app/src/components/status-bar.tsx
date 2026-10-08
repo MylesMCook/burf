@@ -7,7 +7,7 @@ import { Tip } from "@/components/tip";
 import { Spinner } from "@/components/ui/spinner";
 import { useUpdateAll } from "@/components/upgrade-box";
 import { useAgentCounts } from "@/hooks/use-agent-counts";
-import { isMock } from "@/hooks/use-berth-connection";
+import { isMock } from "@/hooks/use-burf-connection";
 import { bytes } from "@/lib/format";
 import { useOutdatedBoxes } from "@/lib/outdated";
 import { AGENT_WORDS, BOX_WORDS, boxState } from "@/lib/state-model";
@@ -54,7 +54,7 @@ export function StatusBar() {
       {connection.state === "offline" && restarting ? (
         <span className="flex items-center gap-1.5">
           <Spinner className="size-3" />
-          Restarting the Berth agent…
+          Restarting the Burf agent…
         </span>
       ) : connection.state === "offline" ? (
         <Tip label={connection.error}>
@@ -182,7 +182,7 @@ function WorktreeItem() {
   );
 }
 
-// UpdateItem shows once a newer Berth is downloaded, and restarts into it
+// UpdateItem shows once a newer Burf is downloaded, and restarts into it
 // when clicked. Checking and downloading stay out of sight.
 function UpdateItem() {
   const update = useUpdater();
@@ -192,7 +192,7 @@ function UpdateItem() {
     <Item
       className="text-foreground"
       disabled={installing}
-      tip={`Berth ${update.version} is downloaded. Restarting reopens this window; agents keep running on their boxes.`}
+      tip={`Burf ${update.version} is downloaded. Restarting reopens this window; agents keep running on their boxes.`}
       onClick={() => void restartToUpdate()}
     >
       <CircleArrowUpIcon className="size-3 text-success" />
@@ -218,7 +218,7 @@ function OutdatedItem() {
   const n = outdated.length;
   return (
     <span className="flex items-center gap-1.5">
-      <Item tip={`${outdated.join(", ")} ${n === 1 ? "runs" : "run"} an older berthd than this Berth ships.`} onClick={() => useStore.getState().setView({ kind: "settings", section: "boxes" })}>
+      <Item tip={`${outdated.join(", ")} ${n === 1 ? "runs" : "run"} an older berthd than this Burf ships.`} onClick={() => useStore.getState().setView({ kind: "settings", section: "boxes" })}>
         <CircleArrowUpIcon className="size-3 text-info" />
         {n === 1 ? `${outdated[0]} runs` : `${n} boxes run`} an older berthd
       </Item>

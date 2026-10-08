@@ -20,7 +20,7 @@ const ADDRESS = "127.0.0.1:7445";
 
 const local: LocalBoxStatus = { supported: true, available: mode !== "none", installed: false, owned: false, running: false, name: NAME };
 if (new URLSearchParams(location.search).get("client") === "windows") Object.assign(local, { supported: false, available: false });
-if (mode === "none") local.reason = "this copy of Berth carries no berthd for this computer";
+if (mode === "none") local.reason = "this copy of Burf carries no berthd for this computer";
 
 export function initMockLocalBox(d: Deps) {
   deps = d;

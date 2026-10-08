@@ -28,7 +28,7 @@ index, generate a disposable compatible index rather than changing a real one.
 Hash every source file and record timestamps before launch. No private chat data
 is needed to construct or verify this context.
 
-Discover the source through an isolated Berth client, read it, then explicitly
+Discover the source through an isolated Burf client, read it, then explicitly
 continue via the authenticated local API. Expected native argv:
 
 ```text

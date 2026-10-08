@@ -1,6 +1,6 @@
 ---
 title: Agent integrations
-description: Claude Code, Codex, Cursor, Gemini CLI and OpenCode hooks, the skills Berth teaches agents, and announcing events from any tool.
+description: Claude Code, Codex, Cursor, Gemini CLI and OpenCode hooks, the skills Burf teaches agents, and announcing events from any tool.
 ---
 
 berth works with the tools around it in both directions: tools drive
@@ -18,10 +18,10 @@ berthd integrations install claude    # on a box, where agents usually run
 berth integrations install all
 ```
 
-`berthd install` (which `berth add ssh` and the install script run) already
+`berthd install` (which `burf add ssh` and the install script run) already
 does this on a box for every agent CLI it finds there, unless given
 `--no-integrations`; for one installed later, the app offers to when it
-first starts that agent on the box, and `berth doctor BOX` (or
+first starts that agent on the box, and `burf doctor BOX` (or
 `berthd doctor` on the box) warns about each agent CLI without its hooks,
 with the command that installs them.
 
@@ -70,7 +70,7 @@ berth ships four skills, embedded in the binary:
 | --- | --- |
 | `berth` | find their way around: boxes, repos, worktrees, tasks, sessions, the worktree's `$BERTH_*` variables and ports, `.berth/config.json`, services |
 | `berth-orchestrate` | prompt, wait for, check, loop, hand off to and review with other agents, and never answer for the human |
-| `berth-preview` | run the dev server on the worktree's port and open it in the user's Berth app (`berthd preview`) |
+| `berth-preview` | run the dev server on the worktree's port and open it in the user's Burf app (`berthd preview`) |
 | `berth-hooks` | write hooks and gates at the right scope, with the event catalog |
 
 Install them for the box's user, or inside one repository for just that
@@ -110,7 +110,7 @@ and never to answer an agent's question on the user's behalf.
 Any script can announce an event:
 
 ```sh
-berth emit agent.finished path="$PWD" --origin=mytool     # on a laptop
+burf emit agent.finished path="$PWD" --origin=mytool     # on a laptop
 berthd emit deploy.done url=https://… --origin mytool      # on a box
 ```
 
@@ -128,5 +128,5 @@ built into it: a hook on `worktree.created` can register the worktree with
 any tool that has a CLI, and a plugin can ship those hooks along with its UI.
 See [hooks](/guides/hooks) and [plugins](/guides/plugins).
 
-`berth events` streams every event from the laptop and all its boxes; the
+`burf events` streams every event from the laptop and all its boxes; the
 full list is in [events and gates](/reference/events).

@@ -1,6 +1,6 @@
 package box
 
-import "github.com/sean-brydon/berthd/internal/boxclient"
+import "github.com/MylesMCook/burf/internal/boxclient"
 
 type Doer = boxclient.Doer
 type Client = boxclient.Client

@@ -16,7 +16,7 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/sean-brydon/berthd/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/boxclient"
 )
 
 // Attachments are files pasted or dropped into the app for an agent: a

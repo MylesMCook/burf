@@ -15,14 +15,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/box/runs"
-	"github.com/sean-brydon/berthd/internal/boxclient"
-	"github.com/sean-brydon/berthd/internal/doctor"
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/hooks"
-	"github.com/sean-brydon/berthd/internal/integrations/adapters"
-	"github.com/sean-brydon/berthd/internal/terminal"
-	"github.com/sean-brydon/berthd/internal/wire"
+	"github.com/MylesMCook/burf/internal/box/runs"
+	"github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/doctor"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/hooks"
+	"github.com/MylesMCook/burf/internal/integrations/adapters"
+	"github.com/MylesMCook/burf/internal/terminal"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 // OriginHeader names the tool a request comes from, so the events it causes
@@ -74,7 +74,7 @@ type Box struct {
 	// report back through.
 	Socket string
 	// Invites, when set, lets paired laptops mint pairing codes for another
-	// computer (berth invite).
+	// computer (burf invite).
 	Invites *Invites
 	// Runs executes durable runs (loops, attempts, flows); nil on a box
 	// without them.

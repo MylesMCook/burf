@@ -1,5 +1,5 @@
 // Package integrations connects berth to the tools around it: it turns
-// agent tools' hook payloads into berth events, installs those hooks, and
+// agent tools' hook payloads into burf events, installs those hooks, and
 // ships the skill that teaches agents to drive berth.
 package integrations
 
@@ -7,8 +7,8 @@ import (
 	"encoding/json"
 	"strings"
 
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/integrations/adapters"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/integrations/adapters"
 )
 
 // Translate turns a tool's hook payload into a berth event, through the

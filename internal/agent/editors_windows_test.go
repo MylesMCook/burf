@@ -6,9 +6,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sean-brydon/berthd/internal/openurl"
-	"github.com/sean-brydon/berthd/internal/sshconfig"
-	"github.com/sean-brydon/berthd/internal/trust"
+	"github.com/MylesMCook/burf/internal/openurl"
+	"github.com/MylesMCook/burf/internal/sshconfig"
+	"github.com/MylesMCook/burf/internal/trust"
 )
 
 func TestWindowsEditorBatchLaunchersUseFolderURLsAndNativeExecutablesKeepLines(t *testing.T) {

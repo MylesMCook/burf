@@ -1,6 +1,6 @@
 // The diagnostics report: one short, redacted text someone can paste into a
 // chat when something is wrong. The app's Copy diagnostics (lib/diagnostics)
-// and `berth doctor --report` print the same text: this file mirrors
+// and `burf doctor --report` print the same text: this file mirrors
 // internal/doctor/report.go line for line, and both are held to
 // internal/doctor/testdata/diagnostics.golden (diagnostics.test.ts).
 // No imports, so node's test runner reads it as it is.
@@ -59,9 +59,9 @@ const MARKS: Record<string, string> = { ok: "✓", warn: "!", fail: "✗", info:
 export function formatDiagnostics(d: Diagnostics): string {
   const l: string[] = [];
   const add = (s: string) => l.push(s);
-  add(`Berth diagnostics · ${stamp(d.generated)}`);
+  add(`Burf diagnostics · ${stamp(d.generated)}`);
   const a = d.app ?? undefined;
-  if (!a) add("App: not recorded (open Berth once)");
+  if (!a) add("App: not recorded (open Burf once)");
   else {
     let line = `App: ${or(a.version, "unknown")}`;
     if (a.build) line += ` (build ${a.build})`;
@@ -82,7 +82,7 @@ export function formatDiagnostics(d: Diagnostics): string {
   }
 
   add("");
-  add("Laptop (berth doctor)");
+  add("Laptop (burf doctor)");
   const checks = d.doctor ?? [];
   if (d.doctor_error) add(`  ${clip(d.doctor_error)}`);
   else if (!checks.length) add("  no checks");

@@ -9,7 +9,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/sean-brydon/berthd/internal/statefile"
+	"github.com/MylesMCook/burf/internal/statefile"
 )
 
 // Forward keeps a local port on the laptop pointed at a port on a box. Pin is

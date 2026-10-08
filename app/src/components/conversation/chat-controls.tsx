@@ -27,7 +27,7 @@ import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuRadioGroup, M
 import { Popover, PopoverPopup, PopoverTrigger } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
 import { toastManager } from "@/components/ui/toast";
-import { isMock } from "@/hooks/use-berth-connection";
+import { isMock } from "@/hooks/use-burf-connection";
 import { agentPresets } from "@/lib/actions";
 import {
   type ChatJob,

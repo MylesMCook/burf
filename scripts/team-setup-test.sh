@@ -11,12 +11,12 @@
 # Acme example's box/setup.sh plan and check subcommands (and that it
 # refuses root); the laptop reads acme/.berth with its gh (access check: 2 of
 # 3 repos); op, not signed in, fails at once and never asks; setup on the
-# box runs the steps in a terminal there, where the password is typed (Berth
+# box runs the steps in a terminal there, where the password is typed (Burf
 # never sees it), with box.settings in the script's environment; the tools
 # step adds dev to a group and the steps after it have it (same terminal,
 # then through sg in terminals berthd starts); a failed step, then Retry from
 # it; berthd restarting mid-step and resuming; the box's own gh sign-in by
-# device code; Berth's 1Password step, op's question answered in the
+# device code; Burf's 1Password step, op's question answered in the
 # terminal; the repos cloned, the web repo's own config trusted at the
 # reviewed hash, the api repo's team kit (its requires found on a login
 # shell's PATH) and init (with BERTH_KIT_DIR); keys on the box; a second run
@@ -44,7 +44,7 @@ while [ $# -gt 0 ]; do
 done
 export KEEP
 OUT=${OUT:-$REPO/dist/release-test/team-setup-$(date +%Y%m%d-%H%M%S)}
-rt_init "Berth team setup test (Linux, Docker)" "$OUT"
+rt_init "Burf team setup test (Linux, Docker)" "$OUT"
 WORK=$(mktemp -d "${TMPDIR:-/tmp}/berth-team-test.XXXXXX")
 trap 'linux_cleanup >>"$RT_LOG" 2>&1; rm -rf "$WORK"' EXIT
 trap 'exit 130' INT TERM
@@ -90,7 +90,7 @@ s_install() {
 	local out
 	out=$(box_install 2>&1) && fail "install.sh went ahead without tmux: $out" && return 1
 	echo "$out" | tail -3
-	echo "$out" | grep -q "Berth needs tmux on this box, and installing it needs sudo's password" || fail "install.sh said: $out" || return 1
+	echo "$out" | grep -q "Burf needs tmux on this box, and installing it needs sudo's password" || fail "install.sh said: $out" || return 1
 	echo "$out" | grep -q "sudo apt-get update -q && sudo apt-get install -y -q tmux" || fail "install.sh named no command: $out" || return 1
 	bx "test ! -e ~/.local/bin/berthd" || fail "berthd was installed all the same" || return 1
 	# Where sudo needs no password, berthd install gets tmux itself.
@@ -99,9 +99,9 @@ s_install() {
 	docker exec "$BOXC" sh -c "echo 'dev ALL=(ALL) ALL' >/etc/sudoers.d/dev" || return 1
 	bx "command -v tmux" || fail "install.sh did not install tmux" || return 1
 	laptop_cli || fail "could not install berth on the laptop" || return 1
-	lp "berth pair '$PAIR_LINK' --json" || fail "berth pair failed" || return 1
-	BOX=$(lp "berth boxes --json" | jq_py '[b["name"] for b in j][0]') || fail "no box after pairing" || return 1
-	until_ok 30 lp "berth ping $BOX" || fail "$BOX does not answer" || return 1
+	lp "burf pair '$PAIR_LINK' --json" || fail "burf pair failed" || return 1
+	BOX=$(lp "burf boxes --json" | jq_py '[b["name"] for b in j][0]') || fail "no box after pairing" || return 1
+	until_ok 30 lp "burf ping $BOX" || fail "$BOX does not answer" || return 1
 	detail "without tmux, install.sh stopped with the command (sudo asks for a password); with sudo that needs none it installed tmux; paired with $BOX"
 }
 
@@ -197,7 +197,7 @@ s_retry_restart() {
 	# step finishes while berthd is away.
 	bx "systemctl --user restart berthd" || return 1
 	bx "touch /tmp/go"
-	until_ok 30 lp "berth ping $BOX" || fail "$BOX did not come back" || return 1
+	until_ok 30 lp "burf ping $BOX" || fail "$BOX did not come back" || return 1
 	until_ok 60 team_is 'j["steps"][2]["state"] == "done"' || fail "slow was not resumed: $(team_json)" || return 1
 	# berthd itself still lacks the group (a systemd user unit gets the
 	# user manager's groups): the terminal it started for Retry had it.
@@ -215,7 +215,7 @@ s_box_github() {
 	detail "the box signed in with its own gh (device code 4F2A-9C1E shown to the laptop); the laptop's credential never left it"
 }
 
-# Berth's own 1Password step: op's question waits in the box's terminal.
+# Burf's own 1Password step: op's question waits in the box's terminal.
 s_op_signin() {
 	until_ok 60 team_is 'j["steps"][4]["id"] == "1password" and j["steps"][4]["state"] == "waiting"' || fail "1Password never waited: $(team_json); $(screen | tail -5)" || return 1
 	screen | tail -2
@@ -276,35 +276,35 @@ s_update() {
 
 s_cli() {
 	local out
-	out=$(lp "berth team show acme") || fail "berth team show failed" || return 1
+	out=$(lp "burf team show acme") || fail "burf team show failed" || return 1
 	echo "$out"
 	echo "$out" | grep -q "Acme team setup" || fail "show: $out" || return 1
 	echo "$out" | grep -q "Repos (2 of 3 you can read)" || fail "show: no access line" || return 1
 	echo "$out" | grep -q "Update: ${COMMIT:0:7} →" || fail "show: no update" || return 1
-	out=$(lp "berth team status") || fail "berth team status failed" || return 1
+	out=$(lp "burf team status") || fail "burf team status failed" || return 1
 	echo "$out"
 	echo "$out" | grep -q "Acme (acme) *$BOX *${COMMIT:0:7} *set up *5/5 steps, 2/2 repos" || fail "status: $out" || return 1
-	detail "berth team show lists the plan, access and the update; berth team status: set up, 5/5 steps, 2/2 repos"
+	detail "burf team show lists the plan, access and the update; burf team status: set up, 5/5 steps, 2/2 repos"
 }
 
 s_link() {
 	local link=github.com/draft/kits/tree/team-setup/team out
-	out=$(lp "berth team show $link") || fail "berth team show $link failed" || return 1
+	out=$(lp "burf team show $link") || fail "burf team show $link failed" || return 1
 	echo "$out"
 	echo "$out" | grep -q "From draft/kits · team-setup branch · team/ on GitHub" || fail "the card does not name the repo it came from" || return 1
 	echo "$out" | grep -q "Published by" && fail "a link's setup claims the org published it" && return 1
-	out=$(lp "berth team setup $link $BOX --yes" 2>&1) || fail "berth team setup $link failed: $out" || return 1
+	out=$(lp "burf team setup $link $BOX --yes" 2>&1) || fail "burf team setup $link failed: $out" || return 1
 	echo "$out"
 	echo "$out" | grep -q "is set up for Acme" || fail "setup from the link did not finish" || return 1
 	team_is 'j["commit"] == "'"$(lp "git --git-dir ~/.fake-gh/draft/kits.git rev-parse team-setup")"'"' >/dev/null || fail "the box is not at the branch's commit: $(team_json)" || return 1
-	detail "berth team show/setup with a link to a branch and folder of another repo: the card says where it came from, and the box ran it at that branch's commit"
+	detail "burf team show/setup with a link to a branch and folder of another repo: the card says where it came from, and the box ran it at that branch's commit"
 }
 
 # A project id with a dot can't be part of a worktree's URL: refused, with
 # the fix.
 s_ids() {
 	local out
-	out=$(lp "berth team show github.com/draft/kits/tree/dotted/team" 2>&1) && fail "a dotted project id was accepted: $out" && return 1
+	out=$(lp "burf team show github.com/draft/kits/tree/dotted/team" 2>&1) && fail "a dotted project id was accepted: $out" && return 1
 	echo "$out"
 	echo "$out" | grep -q 'id "web.app" can.t be part of a URL' || fail "it said: $out" || return 1
 	echo "$out" | grep -q '"web-app"' || fail "no suggestion: $out" || return 1
@@ -346,11 +346,11 @@ RT_CRITICAL=1 step "sudo asks in the box's terminal" s_sudo
 RT_CRITICAL=1 step "A failing step stops the setup" s_fail
 RT_CRITICAL=1 step "Retry from it; berthd restarts mid-step" s_retry_restart
 RT_CRITICAL=1 step "The box's own GitHub sign-in" s_box_github
-RT_CRITICAL=1 step "Berth's 1Password step" s_op_signin
+RT_CRITICAL=1 step "Burf's 1Password step" s_op_signin
 step "Repos cloned and set up" s_projects
 step "A second run skips what is done" s_rerun
 step "A newer .berth is an update to review" s_update
-step "berth team show and status" s_cli
+step "burf team show and status" s_cli
 step "A team setup from a direct link" s_link
 step "A project id with a dot is refused" s_ids
 step "Terminals read op:// keys; signed out, they say so" s_op_terminals

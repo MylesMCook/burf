@@ -240,7 +240,7 @@ function OwnImages({ selected }: { selected?: string }) {
     const now = usePrefs.getState().chatBackground;
     if (now.source === "image" && now.image?.id === img.id) setChatBackground({ source: "none", image: undefined });
   };
-  // A picture not chosen yet is shown as it would land: Berth's preset.
+  // A picture not chosen yet is shown as it would land: Burf's preset.
   return images.map((img) => (
     <Tile
       key={img.id}
@@ -416,7 +416,7 @@ function Generate({ onClose }: { onClose(): void }) {
   const [now, setNow] = useState(Date.now());
   const [error, setError] = useState<string>();
   const check = () => {
-    if (!client) return setGens(new Error("Berth isn't connected to its agent on this computer."));
+    if (!client) return setGens(new Error("Burf isn't connected to its agent on this computer."));
     setGens("loading");
     imageGenApi.list(client).then(setGens, (err: unknown) => setGens(err instanceof Error ? err : new Error(String(err))));
   };
@@ -468,7 +468,7 @@ function Generate({ onClose }: { onClose(): void }) {
           <TriangleAlertIcon />
           <AlertTitle>{gens instanceof Error ? "Can't look for an image generator" : !gen ? "No image generator found" : !gen.installed ? "Codex isn't installed" : "Codex isn't signed in"}</AlertTitle>
           <AlertDescription>
-            <p>{gens instanceof Error ? gens.message : (gen?.note ?? "Berth generates backgrounds with Codex's CLI.")} Meanwhile, you can add a picture of your own.</p>
+            <p>{gens instanceof Error ? gens.message : (gen?.note ?? "Burf generates backgrounds with Codex's CLI.")} Meanwhile, you can add a picture of your own.</p>
             <Button size="xs" variant="outline" className="mt-2 w-fit" onClick={check}>
               <RefreshCwIcon />
               Check again

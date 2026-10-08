@@ -33,7 +33,7 @@ const PROXIED = /^https?:\/\/[^/]+\.localhost:1377(?:\/|$)/;
 export const STUB_PAGE = "<!doctype html><title>stub</title><h1>Stub dev server</h1>";
 
 export interface OpenOptions {
-  // berth.prefs as an older Berth saved it (lib/prefs.ts), before the app starts.
+  // berth.prefs as an older Burf saved it (lib/prefs.ts), before the app starts.
   prefs?: Record<string, unknown>;
   // berth.ui's theme (lib/store.ts).
   theme?: string;

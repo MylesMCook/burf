@@ -16,7 +16,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/boxclient"
 )
 
 // Agents often drive a browser with Vercel's agent-browser CLI (npx
@@ -26,7 +26,7 @@ import (
 // agents forget. On a box that runs agents all day they pile up, each Chrome
 // burning CPU rendering in software.
 //
-// Berth keeps them in check from both ends. Every session it starts gets
+// Burf keeps them in check from both ends. Every session it starts gets
 // AGENT_BROWSER_IDLE_TIMEOUT_MS, so an idle daemon closes its browser and
 // exits by itself; and when a berth session ends (stopped, its program
 // exited, its worktree archived), the agent-browser sessions it started are
@@ -449,7 +449,7 @@ func (b *Box) browserReap(w http.ResponseWriter, r *http.Request) error {
 		found, err = b.AgentBrowsers.Reap(r.Context(), "")
 	}
 	if errors.Is(err, errNoProcs) {
-		writeJSON(w, map[string]any{"sessions": []AgentBrowserSession{}, "text": "Berth can't see other processes' environment on this system, so it can't find agent-browser sessions."})
+		writeJSON(w, map[string]any{"sessions": []AgentBrowserSession{}, "text": "Burf can't see other processes' environment on this system, so it can't find agent-browser sessions."})
 		return nil
 	}
 	if err != nil {

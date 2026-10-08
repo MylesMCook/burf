@@ -11,7 +11,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sean-brydon/berthd/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/boxclient"
 )
 
 func gitIn(t *testing.T, dir string, args ...string) {

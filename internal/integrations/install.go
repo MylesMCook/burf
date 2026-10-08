@@ -9,8 +9,8 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/sean-brydon/berthd/internal/integrations/adapters"
-	"github.com/sean-brydon/berthd/internal/statefile"
+	"github.com/MylesMCook/burf/internal/integrations/adapters"
+	"github.com/MylesMCook/burf/internal/statefile"
 )
 
 // InstallClaudeHooks adds berth's hooks to a Claude Code settings file,

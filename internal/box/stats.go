@@ -12,7 +12,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/sean-brydon/berthd/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/boxclient"
 )
 
 // Stats is a box at a glance: how loaded it is, and what its agents are doing.

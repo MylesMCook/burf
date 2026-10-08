@@ -18,7 +18,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/boxclient"
 )
 
 // Share makes one port on the box public through a Cloudflare quick tunnel.

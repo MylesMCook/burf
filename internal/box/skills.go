@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/sean-brydon/berthd/internal/boxclient"
-	"github.com/sean-brydon/berthd/internal/integrations"
+	"github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/integrations"
 )
 
 // Skills teach agent tools on this box to use berth. They install for the

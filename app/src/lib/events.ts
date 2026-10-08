@@ -202,7 +202,7 @@ function notifyFor(e: BerthEvent) {
     const [loc, wt] = (str(d.location) ?? "").split("/");
     route({
       category: "notify",
-      title: str(d.title) ?? "Berth",
+      title: str(d.title) ?? "Burf",
       detail: str(d.body),
       box,
       path,

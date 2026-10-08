@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/boxclient"
 )
 
 // A kit packages how a project is set up — scripts, environment, ports,

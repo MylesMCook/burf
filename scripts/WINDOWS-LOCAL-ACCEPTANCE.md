@@ -75,7 +75,7 @@ dependencies or deployment are needed. Never attach to an external chat process.
    disposable process. Only the owned tree stops, within the timeout. Restart
    and drain refuse while any owned local agent remains active.
 9. Confirm This computer is separate from remote trusted boxes. Tailscale
-   reachability alone grants no Berth pairing. Check local/remote identity,
+   reachability alone grants no Burf pairing. Check local/remote identity,
    conflicting box aliases, transcript identity and preview routing. Exercise
    existing remote reconnection without stopping live sessions or services.
 10. Record Windows-native GUI evidence for keyboard/clipboard, terminal

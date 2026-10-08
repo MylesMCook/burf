@@ -89,7 +89,7 @@ export default definePlugin((berth) => {
   void sample();
   const timer = setInterval(() => void sample(), EVERY);
 
-  berth.addScreen({ id: "boxes", title: "Box monitor", description: "Memory, disk and load on every online box, sampled every 15 seconds while Berth is open.", Component: MonitorScreen });
+  berth.addScreen({ id: "boxes", title: "Box monitor", description: "Memory, disk and load on every online box, sampled every 15 seconds while Burf is open.", Component: MonitorScreen });
   berth.addSidebarItem({ id: "boxes", title: "Box monitor", icon: "Activity", screen: "boxes" });
   berth.addCommand({ id: "boxes", title: "Show box monitor", group: "Boxes", run: () => berth.openScreen("boxes") });
   return () => clearInterval(timer);

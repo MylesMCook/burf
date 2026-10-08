@@ -16,9 +16,9 @@ import (
 	"sync"
 	"time"
 
-	box "github.com/sean-brydon/berthd/internal/boxclient"
-	"github.com/sean-brydon/berthd/internal/openurl"
-	"github.com/sean-brydon/berthd/internal/sshconfig"
+	box "github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/openurl"
+	"github.com/MylesMCook/burf/internal/sshconfig"
 )
 
 // Opening a worktree, or a file at a line, in the editor on this computer.
@@ -155,7 +155,7 @@ func (a *Agent) boxUser(ctx context.Context, name string) string {
 }
 
 // identityAgent is the SSH agent editors log in with: 1Password's when it
-// runs, as berth add ssh falls back to.
+// runs, as burf add ssh falls back to.
 func (a *Agent) identityAgent() string {
 	if a.cfg.SSHDir != "" {
 		return "" // tests use their own SSH folder and no agent
@@ -223,7 +223,7 @@ type OpenResult struct {
 	Note    string   `json:"note,omitempty"`
 }
 
-var errSSHSetup = errors.New("set up SSH for editors first: berth ssh-config --write, or Settings → Boxes")
+var errSSHSetup = errors.New("set up SSH for editors first: burf ssh-config --write, or Settings → Boxes")
 
 // folderFor finds the folder a location names on a box.
 func (a *Agent) folderFor(ctx context.Context, boxName, ref string) (string, error) {

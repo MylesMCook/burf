@@ -10,7 +10,7 @@ mod cli_link;
 mod cli_link;
 mod menu;
 
-// The app is a view over the laptop agent (`berth agent`), which serves it on
+// The app is a view over the laptop agent (`burf agent`), which serves it on
 // loopback. The agent writes a token to its state directory; this shell reads
 // it and hands it to the webview, which sends it with every request.
 
@@ -39,7 +39,7 @@ fn token_path() -> Result<PathBuf, String> {
 fn ui_endpoint() -> Result<Endpoint, String> {
     let path = token_path()?;
     let token = std::fs::read_to_string(&path)
-        .map_err(|e| format!("the Berth agent has not started yet ({}: {e})", path.display()))?;
+        .map_err(|e| format!("the Burf agent has not started yet ({}: {e})", path.display()))?;
     Ok(Endpoint {
         url: AGENT_URL.to_string(),
         token: token.trim().to_string(),
@@ -55,7 +55,7 @@ fn open_devtools(webview: tauri::Webview) -> Result<(), String> {
     Ok(())
 }
 
-// restart_app relaunches Berth, after the webview has installed a
+// restart_app relaunches Burf, after the webview has installed a
 // downloaded update (Settings → About, or the status bar's "Restart to
 // update"). Only ever on that click: agents run on their boxes, so a
 // restart stops none of them, but it still closes the window.
@@ -145,4 +145,17 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod config_tests {
+    #[test]
+    fn fork_updater_config_loads_without_an_upstream_feed() {
+        let config: serde_json::Value =
+            serde_json::from_str(include_str!("../tauri.conf.json")).unwrap();
+        let updater: tauri_plugin_updater::Config =
+            serde_json::from_value(config["plugins"]["updater"].clone()).unwrap();
+        assert!(updater.endpoints.is_empty());
+        assert!(updater.pubkey.is_empty());
+    }
 }

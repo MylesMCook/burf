@@ -1,9 +1,20 @@
 # Maintained Windows Fork
 
-This fork adds native Windows desktop workflows to Berth. The upstream project
+This fork is Burf, maintained at https://github.com/MylesMCook/burf. It adds
+native Windows desktop workflows to the original Berth project. The upstream project
 is now [Shipyard](https://github.com/cosscom/shipyard). Original authorship and
-the MIT license are retained. Go module paths remain unchanged to keep the
-patches small and upstream contributions straightforward.
+the MIT license are retained. The Go module is `github.com/MylesMCook/burf`.
+
+The desktop app and CLI ship as Burf and `burf`; the daemon command is `burfd`.
+Existing `.berth` and OS `berth` state directories, `BERTH_*` environment
+variables, protocol keys and links, plugin SDK names, service identities,
+Windows fork application identifier and PATH ownership registry key remain
+compatible. Build outputs retain `berth` and `berthd` aliases for existing
+integrations. Bundled daemon resources retain their legacy names because
+existing clients and hooks discover them by name. Pairings and user settings
+are not reset. No new update feed is enabled until Burf has signed releases.
+Windows also retains its internal `berth-cli.exe` sidecar and a `cli/berth.exe`
+alias so existing owned login tasks keep the executable paths they trust.
 
 ## First Milestone
 
@@ -12,14 +23,14 @@ patches small and upstream contributions straightforward.
   project and readable without modifying their source files.
 - Imported history is read-only. It is not represented as a running agent,
   and opening it never resumes or takes over another application's process.
-- **Continue in Berth** explicitly starts an interactive copy using the installed
+- **Continue in Burf** explicitly starts an interactive copy using the installed
   CLI's fork command. The original conversation stays unchanged, even if another
   application still has it open. Repeated clicks reuse a running continuation.
   The original project directory must still exist and the CLI must support forks.
   Replaced, truncated, deleted or mismatched source files fail until refreshed.
   Source checks run after waiting for the launch lock; canceled pending requests
   do not start agents when that lock becomes available.
-- Installed native agent CLIs can run in a Berth-owned Windows terminal,
+- Installed native agent CLIs can run in a Burf-owned Windows terminal,
   receive input, resize, and stop without affecting externally started agents.
 - Local sessions belong to the client backend. They survive closing a view,
   but stop when that backend stops. They do not yet provide tmux-like recovery
@@ -31,17 +42,19 @@ sessions, archived Codex sessions or cloud-only conversations. Agent
 authentication and permission prompts remain the installed CLI's responsibility.
 The fork does not install CLIs, bypass agent approvals, or change host security.
 
-If terminal input loses its response, Berth reports that it may have arrived.
+If terminal input loses its response, Burf reports that it may have arrived.
 Reconnecting reads output from the same owned session and never resends input.
-If a launch response is lost, Berth reports that an agent may have started and
+If a launch response is lost, Burf reports that an agent may have started and
 asks the user to refresh This computer before intentionally trying again.
 Canceling a request after the process already started cannot undo that launch;
 refresh This computer to find the owned session before intentionally trying again.
 
 When an installed Codex CLI advertises `--no-daemon`, local terminals use that
-mode so their process stays owned by Berth instead of a shared Codex server.
+mode so their process stays owned by Burf instead of a shared Codex server.
 
 ## Updates
+
+See [UPSTREAM.md](UPSTREAM.md) for the maintained upstream intake workflow.
 
 Keep `upstream` pointing to the original project and `origin` pointing to this
 fork. Fetch upstream changes into a review branch, merge, then run the existing

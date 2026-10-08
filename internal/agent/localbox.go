@@ -18,27 +18,27 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/identity"
-	"github.com/sean-brydon/berthd/internal/service"
-	"github.com/sean-brydon/berthd/internal/statefile"
-	"github.com/sean-brydon/berthd/internal/trust"
-	"github.com/sean-brydon/berthd/internal/version"
+	"github.com/MylesMCook/burf/internal/identity"
+	"github.com/MylesMCook/burf/internal/service"
+	"github.com/MylesMCook/burf/internal/statefile"
+	"github.com/MylesMCook/burf/internal/trust"
+	"github.com/MylesMCook/burf/internal/version"
 )
 
 // Use this Mac: the laptop as a box of its own, set up from the app with no
-// terminal. The app carries a berthd for macOS (Berth.app/Contents/Resources
+// terminal. The app carries a berthd for macOS (Burf.app/Contents/Resources
 // /berthd; bin/berthd beside bin/berth in a checkout). Setting up copies it
 // to BERTH_HOME/bin/berthd, which on a Mac is
 // ~/Library/Application Support/berth/bin/berthd, and runs `berthd install`
 // from there listening on loopback only, then pairs this laptop with it
-// through `berthd pair --json` and `berth pair`: nothing to copy or paste.
+// through `berthd pair --json` and `burf pair`: nothing to copy or paste.
 //
 // Why that copy, and why there: launchd re-runs the program its plist
-// names, and a path inside Berth.app changes or disappears when the app is
+// names, and a path inside Burf.app changes or disappears when the app is
 // updated, moved or run from its disk image. Application Support is where a
 // Mac app keeps what it manages for itself, beside the box's own state
 // (BERTH_HOME/box). It is deliberately not ~/.local/bin, where the install
-// script puts the berthd a person manages by hand: Berth never shadows or
+// script puts the berthd a person manages by hand: Burf never shadows or
 // overwrites that one. When the install script did put berthd on this Mac,
 // that install is found by its service (dev.berth.berthd) and reused, not
 // installed a second time.
@@ -49,7 +49,7 @@ import (
 // --keep-listen`. Agent sessions keep running through it.
 
 // The first port tried for this Mac's berthd. 7444, berthd's usual port, is
-// often held by another berthd on a developer's Mac; Berth never takes it.
+// often held by another berthd on a developer's Mac; Burf never takes it.
 const defaultLocalBoxPort = 7445
 
 // How often the agent checks whether the app now carries a newer berthd.
@@ -73,7 +73,7 @@ type localBoxRecord struct {
 	// Program is the berthd the service runs, and Home its BERTH_HOME.
 	Program string `json:"program"`
 	Home    string `json:"home"`
-	// Owned is whether Berth put Program there (BERTH_HOME/bin/berthd), as
+	// Owned is whether Burf put Program there (BERTH_HOME/bin/berthd), as
 	// opposed to reusing a berthd the install script installed.
 	Owned bool `json:"owned"`
 }
@@ -99,7 +99,7 @@ type LocalBoxStatus struct {
 	// Available is whether there is a berthd to install; Reason says why not.
 	Available bool   `json:"available"`
 	Reason    string `json:"reason,omitempty"`
-	// Installed: a berthd service is installed for this user. Owned: Berth
+	// Installed: a berthd service is installed for this user. Owned: Burf
 	// installed it, rather than the install script.
 	Installed bool   `json:"installed"`
 	Owned     bool   `json:"owned"`
@@ -167,10 +167,10 @@ func (a *Agent) isLocal(p trust.Peer) bool {
 	return r != nil && r.Fingerprint == p.Fingerprint.String()
 }
 
-var errNoBerthd = errors.New("this copy of Berth carries no berthd for this computer; install Berth from its disk image, or build one with make build")
+var errNoBerthd = errors.New("this copy of Burf carries no berthd for this computer; install Burf from its disk image, or build one with make build")
 
 // bundledBerthd is the berthd the app carries: Config.Berthd (tests), else,
-// when this agent is the berth inside Berth.app, only the app's own
+// when this agent is the berth inside Burf.app, only the app's own
 // Contents/Resources/berthd (checkBundled holds it to the app's signature),
 // else the berthd beside this berth (bin/ in a checkout). Nothing on PATH
 // or in another folder is ever considered (security audit M-4).
@@ -226,12 +226,12 @@ func (a *Agent) checkBundled(ctx context.Context, src string) error {
 	}
 	req := fmt.Sprintf("=anchor apple generic and certificate leaf[subject.OU] = %q", team)
 	if out, err := localTool(ctx, "/usr/bin/codesign", "--verify", "--strict", "-R", req, src); err != nil {
-		return fmt.Errorf("%s is not signed by Berth's team (%s), so Berth will not install it; reinstall Berth from its disk image", src, strings.TrimSpace(string(out)))
+		return fmt.Errorf("%s is not signed by Burf's team (%s), so Burf will not install it; reinstall Burf from its disk image", src, strings.TrimSpace(string(out)))
 	}
 	return nil
 }
 
-// stableBerthd is where Berth keeps its own copy of berthd for this
+// stableBerthd is where Burf keeps its own copy of berthd for this
 // computer's box.
 func stableBerthd(home string) string { return filepath.Join(home, "bin", "berthd") }
 
@@ -324,17 +324,17 @@ func (a *Agent) setUpLocalBox(ctx context.Context, say sayFunc) (string, error) 
 	prog, owned := stable, true
 	unit, have, home, err := a.installedUnit()
 	if err != nil {
-		say("The installed berthd service can't be read (%v); Berth replaces it.", err)
+		say("The installed berthd service can't be read (%v); Burf replaces it.", err)
 		have, home = false, a.localHome()
 	}
 	if have && unit.Program != stable {
 		if isFile(unit.Program) {
-			// The install script (or berth add ssh) installed berthd here
+			// The install script (or burf add ssh) installed berthd here
 			// already: one berthd per computer, so use that one.
 			prog, owned = unit.Program, false
 			say("berthd is already installed on this computer (%s); using it rather than installing a second one.", unit.Program)
 		} else {
-			say("A berthd service is installed, but its program (%s) is gone; Berth replaces it.", unit.Program)
+			say("A berthd service is installed, but its program (%s) is gone; Burf replaces it.", unit.Program)
 			have, home = false, a.localHome()
 		}
 	}
@@ -383,7 +383,7 @@ func (a *Agent) setUpLocalBox(ctx context.Context, say sayFunc) (string, error) 
 }
 
 // updateLocalBerthd puts the bundled berthd at dst when dst is missing or
-// another build, and says whether it changed anything. Berth's own copy
+// another build, and says whether it changed anything. Burf's own copy
 // follows the app (but is never downgraded below a newer release someone
 // upgraded it to); a berthd the install script put there is only replaced
 // by a newer release.
@@ -395,7 +395,7 @@ func (a *Agent) updateLocalBerthd(ctx context.Context, src, dst, home string, ow
 		have, _ := berthdVersion(ctx, dst, home)
 		next, _ := berthdVersion(ctx, src, home)
 		if owned && newerRelease(have, next) {
-			say("Keeping berthd %s at %s: it is newer than the %s Berth carries.", have, dst, next)
+			say("Keeping berthd %s at %s: it is newer than the %s Burf carries.", have, dst, next)
 			return false, nil
 		}
 		if !owned && !newerRelease(next, have) {
@@ -427,7 +427,7 @@ func orUnknown(v string) string {
 // copy is cleared, and only then: the copy is byte for byte the berthd
 // inside an app Gatekeeper already let run, its signature was just
 // verified, and launchd starts it with no window to ask for approval in, so
-// a quarantined copy could be refused silently. Berth writes the copy
+// a quarantined copy could be refused silently. Burf writes the copy
 // itself, so macOS normally sets no such flag; this is a guard.
 func checkCopy(ctx context.Context, src, dst string, say sayFunc) error {
 	if localGOOS != "darwin" {
@@ -439,7 +439,7 @@ func checkCopy(ctx context.Context, src, dst string, say sayFunc) error {
 	}
 	if out, err := localTool(ctx, "/usr/bin/codesign", "--verify", "--strict", dst); err != nil {
 		os.Remove(dst)
-		return fmt.Errorf("the copy of berthd at %s fails its code signature check (%s), so it was removed; reinstall Berth from its disk image and try again", dst, strings.TrimSpace(string(out)))
+		return fmt.Errorf("the copy of berthd at %s fails its code signature check (%s), so it was removed; reinstall Burf from its disk image and try again", dst, strings.TrimSpace(string(out)))
 	}
 	if _, err := localTool(ctx, "/usr/bin/xattr", "-p", "com.apple.quarantine", dst); err == nil {
 		if out, err := localTool(ctx, "/usr/bin/xattr", "-d", "com.apple.quarantine", dst); err != nil {
@@ -589,7 +589,7 @@ func dialAddress(home string) string {
 
 // pairLocal pairs this laptop with the berthd under home, unless it already
 // is, and returns the box's name here. The pairing link goes from berthd
-// straight to berth pair: the same pairing a pasted link makes.
+// straight to burf pair: the same pairing a pasted link makes.
 func (a *Agent) pairLocal(ctx context.Context, prog, home string, owned bool, say sayFunc) (string, error) {
 	out, err := berthdOutput(ctx, prog, home, "id")
 	if err != nil {
@@ -655,7 +655,7 @@ func (a *Agent) pairLocal(ctx context.Context, prog, home string, owned bool, sa
 		Name string `json:"name"`
 	}
 	if err := json.Unmarshal(paired, &peer); err != nil || peer.Name == "" {
-		return "", fmt.Errorf("berth pair printed %q", strings.TrimSpace(string(paired)))
+		return "", fmt.Errorf("burf pair printed %q", strings.TrimSpace(string(paired)))
 	}
 	say("Paired as %s.", peer.Name)
 	rec.Name = peer.Name
@@ -666,7 +666,7 @@ func (a *Agent) pairLocal(ctx context.Context, prog, home string, owned bool, sa
 // berthd service stops and is removed. With removeData, the box's state
 // (BERTH_HOME/box: its keys, project list and session records) goes too.
 // Repositories are never touched, and nor is a berthd the install script
-// put on this computer: only Berth's own copy is deleted.
+// put on this computer: only Burf's own copy is deleted.
 func (a *Agent) removeLocalBox(ctx context.Context, removeData bool, say sayFunc) error {
 	rec := a.localRecord()
 	unit, have, home, err := a.installedUnit()
@@ -853,7 +853,7 @@ func runBerthd(ctx context.Context, say sayFunc, prog, home string, args ...stri
 			failure = append(failure, line)
 			continue
 		}
-		// Berth pairs on its own; there is no link to make.
+		// Burf pairs on its own; there is no link to make.
 		if strings.HasPrefix(line, "Next: berthd pair") || strings.TrimSpace(line) == "" {
 			continue
 		}

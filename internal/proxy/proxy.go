@@ -65,7 +65,7 @@ func (p *Proxy) serve(w http.ResponseWriter, r *http.Request) {
 		}
 		detail := "Use http://PORT.BOX.localhost or http://WORKTREE.LOCATION.BOX.localhost"
 		if why == "" {
-			why = "Berth doesn't know this address"
+			why = "Burf doesn't know this address"
 		} else if nothing, ok := strings.CutPrefix(why, nothingRunning); ok {
 			why = "Nothing is running in " + nothing + " yet"
 			detail = "Start its dev server in the worktree's terminal (npm start, npm run dev…) on $BERTH_PORT: berth sets PORT to it there, and a server started in the worktree's folder shows up here within seconds. Any other port on the box is http://PORT.BOX.localhost."

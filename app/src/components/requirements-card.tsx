@@ -4,7 +4,7 @@ import { type ReactNode, useEffect, useState } from "react";
 import { create } from "zustand";
 
 import { Button } from "@/components/ui/button";
-import { isMock } from "@/hooks/use-berth-connection";
+import { isMock } from "@/hooks/use-burf-connection";
 import { ApiError, isTauri } from "@/lib/api";
 import { useIsLocalBox } from "@/lib/local-box";
 import { openUrl } from "@/lib/open-url";
@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 
 // The card that says what a box is missing before an agent can start on it
 // (lib/requirements.ts says why), with the command to install it, typed out
-// to copy and never run by Berth, and Check again. One answer per box,
+// to copy and never run by Burf, and Check again. One answer per box,
 // shared by onboarding and the composer, so either shows the other's.
 
 interface Entry {
@@ -153,7 +153,7 @@ export function RequirementsCard({ box, agent, noAgent, team, className }: { box
         ? "Copied step 1. Paste it in Terminal (⌘V), read it, and press Enter. When Homebrew is done, run step 2 there, then check again."
         : "Copied. Paste it in Terminal (⌘V), read it, and press Enter. When it's done, check again."
       : line
-        ? `Run ${two ? "them" : "it"} in ${copyText.where}, then check again. Berth never runs ${two ? "them" : "it"} for you.`
+        ? `Run ${two ? "them" : "it"} in ${copyText.where}, then check again. Burf never runs ${two ? "them" : "it"} for you.`
         : `Install it on ${box}, then check again.`;
 
   return (

@@ -34,7 +34,7 @@ var (
 // address. Addresses are fixed loopback literals, never user input.
 func Rules(port int, ipv4 bool) []byte {
 	var b bytes.Buffer
-	fmt.Fprintf(&b, "# berth: http://<port>.<box>.localhost/ without a port. Remove with: berth setup port80 --remove\n")
+	fmt.Fprintf(&b, "# berth: http://<port>.<box>.localhost/ without a port. Remove with: burf setup port80 --remove\n")
 	fmt.Fprintf(&b, "rdr pass on lo0 inet6 proto tcp from any to ::1 port 80 -> ::1 port %d\n", port)
 	if ipv4 {
 		fmt.Fprintf(&b, "rdr pass on lo0 inet proto tcp from any to 127.0.0.1 port 80 -> 127.0.0.1 port %d\n", port)
