@@ -77,6 +77,20 @@ merged wholesale; individual adaptations are recorded below.
 
 ## Accepted Fixes
 
+### Follow-Up Snapshot
+
+Fetched `4783caa` on 2026-10-08 while integrating branding and local chat.
+Against local `46e8219`, this is 156 upstream-only commits (128 non-merge).
+Two new feature commits since `b140a0f` remain deferred:
+
+- `232929c`: task/handoff/explicit-parent worktree nesting. Review with the
+  existing nesting prerequisites and Windows path tests after local chat.
+- `dde6407`: upstream Homebrew cask. Do not adopt unchanged: it installs
+  Shipyard and links the upstream CLI, conflicting with Burf's identity and
+  disabled updater boundary. A signed Burf distribution is separate work.
+
+Neither commit was merged or deployed.
+
 - `150ffc9b1ff972e43d5c408da6f488af1243e47e`: account-specific Claude and
   Codex transcripts on remote boxes. Adapted locally without provider config
   writes or live daemon updates. Keep account assignment grouped by resolved
