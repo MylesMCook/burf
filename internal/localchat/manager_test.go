@@ -6,11 +6,63 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"os"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 )
+
+func TestStartWithKeepsProjectOptionsIndependent(t *testing.T) {
+	var mu sync.Mutex
+	var launched []LaunchOptions
+	m := New("synthetic.exe", func(options LaunchOptions) (Process, error) {
+		mu.Lock()
+		launched = append(launched, options)
+		mu.Unlock()
+		return nil, fmt.Errorf("synthetic launch boundary")
+	})
+	t.Cleanup(m.Close)
+	cwd := t.TempDir()
+	var wg sync.WaitGroup
+	for _, name := range []string{"first", "second"} {
+		wg.Add(1)
+		go func(name string) {
+			defer wg.Done()
+			_, _ = m.StartWith(context.Background(), LaunchOptions{Program: name, CWD: cwd, Env: []string{"CODEX_HOME=" + name}})
+		}(name)
+	}
+	wg.Wait()
+	_, _ = m.Start(context.Background(), cwd)
+	if len(launched) != 3 {
+		t.Fatal(launched)
+	}
+	for _, options := range launched[:2] {
+		if options.CWD != cwd || len(options.Env) != 1 || options.Env[0] != "CODEX_HOME="+options.Program {
+			t.Fatal("account options mixed", options)
+		}
+	}
+	if launched[2].Program != "synthetic.exe" || strings.Join(launched[2].Env, "\n") != strings.Join(os.Environ(), "\n") {
+		t.Fatal("default launch changed")
+	}
+}
+
+func TestFailedHandshakeReturnsOwnedSession(t *testing.T) {
+	m := New("synthetic", func(LaunchOptions) (Process, error) {
+		client, server := net.Pipe()
+		server.Close()
+		return client, nil
+	})
+	t.Cleanup(m.Close)
+	s, err := m.StartWith(context.Background(), LaunchOptions{Program: "synthetic", CWD: t.TempDir()})
+	if err == nil || s.ID == "" || s.State != "exited" || s.Error == "" {
+		t.Fatalf("failed handshake lost owned session: %#v, %v", s, err)
+	}
+	stored, err := m.Get(s.ID)
+	if err != nil || stored.ID != s.ID || stored.State != "exited" {
+		t.Fatal(stored, err)
+	}
+}
 
 type fakeServer struct {
 	conn    net.Conn
@@ -32,7 +84,7 @@ func (f *fakeServer) event(method string, params any) {
 func newTestChat(t *testing.T) (*Manager, *fakeServer, Session) {
 	t.Helper()
 	f := &fakeServer{}
-	m := New("synthetic.exe", func(program, cwd string) (Process, error) {
+	m := New("synthetic.exe", func(LaunchOptions) (Process, error) {
 		client, server := net.Pipe()
 		f.conn = server
 		go func() {
@@ -228,7 +280,7 @@ func TestUncertainSendStopsAndNeverRetries(t *testing.T) {
 func TestCancelledStartDoesNotLaunchAndRestartProtectsChats(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	m := New("synthetic", func(string, string) (Process, error) { t.Fatal("launched canceled request"); return nil, nil })
+	m := New("synthetic", func(LaunchOptions) (Process, error) { t.Fatal("launched canceled request"); return nil, nil })
 	if _, e := m.Start(ctx, t.TempDir()); e == nil {
 		t.Fatal("accepted cancellation")
 	}
@@ -326,7 +378,7 @@ func TestSlowHandshakeDoesNotBlockOtherChats(t *testing.T) {
 	m, _, first := newTestChat(t)
 	entered := make(chan struct{})
 	m.mu.Lock()
-	m.launch = func(string, string) (Process, error) {
+	m.launch = func(LaunchOptions) (Process, error) {
 		client, server := net.Pipe()
 		go func() {
 			defer server.Close()

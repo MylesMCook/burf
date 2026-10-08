@@ -6,8 +6,10 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"sync"
+	"unicode/utf16"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -22,7 +24,8 @@ type stdioProcess struct {
 
 // StartProcess creates a hidden app-server with private pipes, already owned by
 // a kill-on-close job before it can create descendants. No shared daemon proxy.
-func StartProcess(program, cwd string) (_ Process, err error) {
+func StartProcess(options LaunchOptions) (_ Process, err error) {
+	program, cwd := options.Program, options.CWD
 	if !filepath.IsAbs(program) || !strings.EqualFold(filepath.Ext(program), ".exe") {
 		return nil, errors.New("Codex must be an absolute native executable path")
 	}
@@ -37,6 +40,14 @@ func StartProcess(program, cwd string) (_ Process, err error) {
 	dir, err := windows.UTF16PtrFromString(cwd)
 	if err != nil {
 		return nil, err
+	}
+	environment, err := environmentBlock(options.Env)
+	if err != nil {
+		return nil, err
+	}
+	var envPtr *uint16
+	if environment != nil {
+		envPtr = &environment[0]
 	}
 	p := &stdioProcess{done: make(chan struct{})}
 	defer func() {
@@ -102,8 +113,8 @@ func StartProcess(program, cwd string) (_ Process, err error) {
 	si.StdOutput = outW
 	si.StdErr = errW
 	var pi windows.ProcessInformation
-	flags := uint32(windows.EXTENDED_STARTUPINFO_PRESENT | windows.CREATE_NO_WINDOW | windows.CREATE_SUSPENDED)
-	if err = windows.CreateProcess(app, command, nil, nil, true, flags, nil, dir, &si.StartupInfo, &pi); err != nil {
+	flags := uint32(windows.EXTENDED_STARTUPINFO_PRESENT | windows.CREATE_NO_WINDOW | windows.CREATE_SUSPENDED | windows.CREATE_UNICODE_ENVIRONMENT)
+	if err = windows.CreateProcess(app, command, nil, nil, true, flags, envPtr, dir, &si.StartupInfo, &pi); err != nil {
 		return nil, fmt.Errorf("start Codex app-server: %w", err)
 	}
 	defer windows.CloseHandle(pi.Thread)
@@ -133,3 +144,37 @@ func (p *stdioProcess) finish() {
 	p.once.Do(func() { windows.CloseHandle(p.job); p.input.Close(); p.output.Close(); p.stderr.Close() })
 }
 func (p *stdioProcess) Close() error { p.finish(); <-p.done; return nil }
+
+func environmentBlock(env []string) ([]uint16, error) {
+	if env == nil {
+		return nil, nil
+	}
+	values := make(map[string]string, len(env))
+	for _, entry := range env {
+		if strings.ContainsRune(entry, 0) {
+			return nil, errors.New("environment contains NUL")
+		}
+		i := strings.IndexByte(entry, '=')
+		if i == 0 {
+			i = strings.IndexByte(entry[1:], '=') + 1
+		}
+		if i < 1 {
+			return nil, errors.New("invalid environment entry")
+		}
+		values[strings.ToUpper(entry[:i])] = entry
+	}
+	keys := make([]string, 0, len(values))
+	for key := range values {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	var block []uint16
+	for _, key := range keys {
+		block = append(block, utf16.Encode([]rune(values[key]))...)
+		block = append(block, 0)
+	}
+	if len(block) == 0 {
+		block = append(block, 0)
+	}
+	return append(block, 0), nil
+}

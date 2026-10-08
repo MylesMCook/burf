@@ -17,7 +17,7 @@ import (
 func TestLocalChatRoutesAndRestartBoundary(t *testing.T) {
 	a := &Agent{ctx: context.Background()}
 	a.localClient.manager = localagent.New(nil, nil)
-	a.localClient.chats = localchat.New("synthetic.exe", func(string, string) (localchat.Process, error) {
+	a.localClient.chats = localchat.New("synthetic.exe", func(localchat.LaunchOptions) (localchat.Process, error) {
 		c, s := net.Pipe()
 		go func() {
 			defer s.Close()

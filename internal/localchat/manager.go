@@ -25,7 +25,13 @@ const maxItems = 200
 const maxSnapshot = 4 << 20
 
 type Process interface{ io.ReadWriteCloser }
-type Launch func(program, cwd string) (Process, error)
+type LaunchOptions struct {
+	Program string
+	CWD     string
+	// Env replaces the provider environment; nil inherits the current environment.
+	Env []string
+}
+type Launch func(LaunchOptions) (Process, error)
 type Item struct {
 	ID         string `json:"id"`
 	Kind       string `json:"kind"`
@@ -117,7 +123,13 @@ func New(program string, launch Launch) *Manager {
 }
 
 func (m *Manager) Start(ctx context.Context, cwd string) (Session, error) {
-	r, err := m.startProcess(ctx, cwd)
+	return m.StartWith(ctx, LaunchOptions{Program: m.program, CWD: cwd, Env: os.Environ()})
+}
+
+// StartWith binds one chat to its resolved project executable and account
+// environment without changing the defaults used by other concurrent chats.
+func (m *Manager) StartWith(ctx context.Context, options LaunchOptions) (Session, error) {
+	r, err := m.startProcess(ctx, options)
 	if err != nil {
 		return Session{}, err
 	}
@@ -146,7 +158,7 @@ func (m *Manager) Start(ctx context.Context, cwd string) (Session, error) {
 	}
 	if err != nil {
 		r.finish("Codex chat could not start: " + err.Error())
-		return Session{}, err
+		return r.snapshot(), err
 	}
 	r.mu.Lock()
 	r.session.ThreadID = reply.Thread.ID
@@ -159,7 +171,7 @@ func (m *Manager) Start(ctx context.Context, cwd string) (Session, error) {
 
 // Publish a starting process before its handshake. Slow provider startup must
 // not hold the registry lock needed to inspect or stop another owned chat.
-func (m *Manager) startProcess(ctx context.Context, cwd string) (*running, error) {
+func (m *Manager) startProcess(ctx context.Context, options LaunchOptions) (*running, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if err := ctx.Err(); err != nil {
@@ -168,13 +180,17 @@ func (m *Manager) startProcess(ctx context.Context, cwd string) (*running, error
 	if m.closed {
 		return nil, errors.New("local chats are shutting down")
 	}
-	if m.program == "" {
+	if options.Program == "" {
 		return nil, errors.New("installed Codex CLI does not support app-server chat")
 	}
-	if !filepath.IsAbs(cwd) {
+	if !filepath.IsAbs(options.CWD) {
 		return nil, errors.New("project directory must be absolute")
 	}
-	cwd = filepath.Clean(cwd)
+	cwd := filepath.Clean(options.CWD)
+	options.CWD = cwd
+	if options.Env != nil {
+		options.Env = append([]string{}, options.Env...)
+	}
 	st, err := os.Stat(cwd)
 	if err != nil || !st.IsDir() {
 		return nil, errors.New("project directory does not exist")
@@ -194,7 +210,7 @@ func (m *Manager) startProcess(ctx context.Context, cwd string) (*running, error
 	if _, err = rand.Read(bytes[:]); err != nil {
 		return nil, err
 	}
-	p, err := m.launch(m.program, cwd)
+	p, err := m.launch(options)
 	if err != nil {
 		return nil, err
 	}
