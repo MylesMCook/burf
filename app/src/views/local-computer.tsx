@@ -11,6 +11,7 @@ import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { ViewHeader } from "@/views/view-header";
 import { LocalTerminal } from "@/views/local-terminal";
+import { LocalChat } from "@/views/local-chat";
 
 type Selection = { kind: "history"; conversation: LocalConversation } | { kind: "session"; session: LocalSession } | { kind: "new" };
 
@@ -58,19 +59,19 @@ export function LocalComputerView() {
     select((current) => current?.kind === "session" && current.session.id === session.id ? { kind: "session", session } : current);
   }, []);
 
-  return <div className="flex h-full min-w-0 flex-col">
+  return <div className="@container/local flex h-full min-w-0 flex-col">
     <ViewHeader title={local?.name || "This computer"} description="This computer" actions={<>
       <Tip label="Refresh local conversations"><Button size="icon-sm" variant="ghost" aria-label="Refresh local conversations" disabled={loading} onClick={() => void refresh()}><RotateCwIcon className={cn("size-4", loading && "animate-spin")} /></Button></Tip>
       <Button size="sm" disabled={!local?.supported} onClick={() => select({ kind: "new" })}><PlusIcon />New agent</Button>
     </>} />
     {error && <div role="alert" className="border-b px-4 py-2 text-sm text-destructive">{error}</div>}
     {local && !local.supported ? <p className="p-6 text-sm text-muted-foreground">Local agents are unavailable on this computer.</p> : <div className="flex min-h-0 flex-1">
-      <aside aria-label="Local conversations" className={cn("w-full shrink-0 overflow-y-auto border-r sm:w-64 lg:w-72", selection && "hidden sm:block")}>
+      <aside aria-label="Local conversations" className={cn("w-full shrink-0 overflow-y-auto border-r @min-[600px]/local:w-64 @min-[900px]/local:w-72", selection && "hidden @min-[600px]/local:block")}>
         <div className="p-3"><Input aria-label="Search local conversations" placeholder="Search conversations" value={search} onChange={(e) => setSearch(e.target.value)} /></div>
         {!!local?.sessions?.length && <section className="pb-3">
           <h2 className="px-3 py-1 text-xs font-medium text-muted-foreground">Started in Burf</h2>
           {local.sessions.map((s) => <button key={s.id} type="button" onClick={() => select({ kind: "session", session: s })} className={cn("flex w-full items-center gap-2 px-3 py-2 text-left text-xs hover:bg-accent", selection?.kind === "session" && selection.session.id === s.id && "bg-accent")}>
-            <TerminalIcon className="size-4 shrink-0" /><span className="min-w-0 flex-1"><span className="block truncate">{localAgentName(s.agent)}</span><span className="block truncate text-muted-foreground" title={s.cwd}>{s.cwd}</span></span><span className="text-muted-foreground">{s.state}</span>
+            {s.mode === "chat" ? <MessageSquareIcon className="size-4 shrink-0" /> : <TerminalIcon className="size-4 shrink-0" />}<span className="min-w-0 flex-1"><span className="block truncate">{localAgentName(s.agent)}</span><span className="block truncate text-muted-foreground" title={s.cwd}>{s.cwd}</span></span><span className="text-muted-foreground">{s.state}</span>
           </button>)}
         </section>}
         <h2 className="px-3 py-1 text-xs font-medium text-muted-foreground">Existing conversations</h2>
@@ -82,13 +83,13 @@ export function LocalComputerView() {
         </section>)}
         {!loading && !projects.length && <p className="px-3 py-4 text-xs text-muted-foreground">{search ? "No matching conversations." : "No local conversations found."}</p>}
       </aside>
-      <section className={cn("flex min-h-0 min-w-0 flex-1 flex-col", !selection && "hidden sm:flex")}>
-        {selection && <div className="border-b px-3 py-1 sm:hidden"><Button size="sm" variant="ghost" onClick={() => select(undefined)}><ArrowLeftIcon />Conversations</Button></div>}
+      <section className={cn("flex min-h-0 min-w-0 flex-1 flex-col", !selection && "hidden @min-[600px]/local:flex")}>
+        {selection && <div className="border-b px-3 py-1 @min-[600px]/local:hidden"><Button size="sm" variant="ghost" onClick={() => select(undefined)}><ArrowLeftIcon />Conversations</Button></div>}
         {selection?.kind === "history" && <LocalHistory key={selection.conversation.id} client={client} conversation={selection.conversation} canFork={!!local?.agents.find((a) => a.id === selection.conversation.source)?.can_fork} onStart={(session, conversationID) => {
           changeSession(session);
           select((current) => current?.kind === "history" && current.conversation.id === conversationID ? { kind: "session", session } : current);
         }} />}
-        {selection?.kind === "session" && <LocalTerminal key={selection.session.id} client={client} session={selection.session} onChange={changeSession} />}
+        {selection?.kind === "session" && (selection.session.mode === "chat" ? <LocalChat key={selection.session.id} client={client} session={selection.session} onChange={changeSession} /> : <LocalTerminal key={selection.session.id} client={client} session={selection.session} onChange={changeSession} />)}
         {selection?.kind === "new" && local && <NewLocalAgent client={client} local={local} onStart={(session) => { changeSession(session); select({ kind: "session", session }); }} />}
         {!selection && <div className="m-auto px-6 text-sm text-muted-foreground">Select a conversation or start an agent.</div>}
       </section>
@@ -154,9 +155,10 @@ function LocalHistory({ client, conversation, canFork, onStart }: { client: Clie
 }
 
 function NewLocalAgent({ client, local, onStart }: { client: Client; local: LocalComputer; onStart(session: LocalSession): void }) {
-  const [agent, setAgent] = useState<LocalAgent | "">(local.agents.find((a) => a.available)?.id ?? "");
+  const [agent, setAgent] = useState<LocalAgent | "">(local.agents.find((a) => a.available && a.can_chat)?.id ?? local.agents.find((a) => a.available)?.id ?? "");
   const [cwd, setCwd] = useState(local.home);
   const [busy, setBusy] = useState(false);
+  const structured = agent === "codex" && !!local.agents.find((a) => a.id === agent)?.can_chat;
   const [error, setError] = useState("");
   const launch = useRef<AbortController | null>(null);
   useEffect(() => () => launch.current?.abort(), [client]);
@@ -167,7 +169,7 @@ function NewLocalAgent({ client, local, onStart }: { client: Client; local: Loca
     launch.current = controller;
     setBusy(true); setError("");
     try {
-      const session = await localApi.start(client, agent, cwd.trim(), controller.signal);
+      const session = structured ? await localApi.startChat(client, cwd.trim(), controller.signal) : await localApi.start(client, agent, cwd.trim(), controller.signal);
       if (!controller.signal.aborted) onStart(session);
     }
     catch (e) { if (!controller.signal.aborted) setError(errorMessage(e)); }
@@ -180,6 +182,6 @@ function NewLocalAgent({ client, local, onStart }: { client: Client; local: Loca
       {local.agents.map((a) => <option key={a.id} value={a.id} disabled={!a.available}>{localAgentName(a.id)}{!a.available && " (not installed)"}</option>)}
     </select></label>
     {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-    <Button type="submit" disabled={busy || !agent || !cwd.trim()}><TerminalIcon />{busy ? "Starting..." : "Start agent"}</Button>
+    <Button type="submit" disabled={busy || !agent || !cwd.trim()}>{structured ? <MessageSquareIcon /> : <TerminalIcon />}{busy ? "Starting..." : structured ? "Start chat" : "Start agent"}</Button>
   </form>;
 }

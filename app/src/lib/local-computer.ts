@@ -9,7 +9,8 @@ export interface LocalSession {
   id: string;
   agent: LocalAgent;
   cwd: string;
-  state: "running" | "exited";
+  state: "running" | "exited" | "idle" | "waiting" | "starting";
+  mode?: "chat";
   started_at: string;
   exit_error?: string;
 }
@@ -17,7 +18,7 @@ export interface LocalComputer {
   supported: boolean;
   name: string;
   home: string;
-  agents: { id: LocalAgent; available: boolean; can_fork?: boolean }[];
+  agents: { id: LocalAgent; available: boolean; can_fork?: boolean; can_chat?: boolean }[];
   sessions: LocalSession[];
 }
 export interface LocalConversation {
@@ -41,6 +42,24 @@ export interface LocalOutput {
   exit_error?: string;
 }
 
+export interface LocalChat extends LocalSession {
+  thread_id: string;
+  turn_id?: string;
+  items: { id: string; kind: "user" | "assistant" | "tool"; text: string; status?: string }[];
+  approvals: { id: string; kind: "command" | "files"; detail: string; reason?: string }[];
+  error?: string;
+  truncated?: boolean;
+}
+
+const chatPath = (id: string) => `/v1/local/chats/${encodeURIComponent(id)}`;
+async function chatMutation(request: Promise<unknown>) {
+  try { return await request; }
+  catch (e) {
+    if (e instanceof ApiError && e.status >= 400 && e.status < 500) throw e;
+    throw new Error("The request may have arrived. Refresh the chat before acting again; nothing will be resent automatically.");
+  }
+}
+
 async function launch<T>(request: Promise<T>, signal?: AbortSignal): Promise<T> {
   try { return await request; }
   catch (e) {
@@ -50,6 +69,12 @@ async function launch<T>(request: Promise<T>, signal?: AbortSignal): Promise<T> 
 }
 
 export const localApi = {
+  startChat: (c: Client, cwd: string, signal?: AbortSignal) => launch(c.laptop<LocalChat>("POST", "/v1/local/chats", { cwd }, signal), signal),
+  chat: (c: Client, id: string, signal?: AbortSignal) => c.laptop<LocalChat>("GET", chatPath(id), undefined, signal),
+  message: (c: Client, id: string, text: string) => chatMutation(c.laptop("POST", `${chatPath(id)}/messages`, { text })),
+  interruptChat: (c: Client, id: string) => chatMutation(c.laptop("POST", `${chatPath(id)}/interrupt`)),
+  approveChat: (c: Client, id: string, approval: string, decision: "accept" | "decline") => chatMutation(c.laptop("POST", `${chatPath(id)}/approvals`, { id: approval, decision })),
+  stopChat: (c: Client, id: string) => chatMutation(c.laptop("DELETE", chatPath(id))),
   status: (c: Client, signal?: AbortSignal) => c.laptop<LocalComputer>("GET", "/v1/local", undefined, signal),
   conversations: (c: Client, signal?: AbortSignal) => c.laptop<LocalConversation[]>("GET", "/v1/local/conversations", undefined, signal),
   history: (c: Client, id: string, before?: number, signal?: AbortSignal) => c.laptop<LocalHistoryPage>("GET", `/v1/local/conversations/${encodeURIComponent(id)}${before === undefined ? "" : `?before=${before}`}`, undefined, signal),

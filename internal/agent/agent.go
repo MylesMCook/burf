@@ -275,6 +275,9 @@ func Run(ctx context.Context, cfg Config) error {
 		if a.localClient.manager != nil {
 			a.localClient.manager.Close()
 		}
+		if a.localClient.chats != nil {
+			a.localClient.chats.Close()
+		}
 	}()
 	a.queue = newPromptQueue(ctx, filepath.Join(cfg.Dir, "queue.json"), agentBoxes{a}, a.publish, cfg.Now, cfg.Log.Printf, cfg.QueueIdleTimeout, cfg.QueueWaitStep)
 

@@ -33,6 +33,7 @@ type Command struct {
 	Program string
 	Args    []string
 	CanFork bool
+	CanChat bool
 }
 
 type Session struct {

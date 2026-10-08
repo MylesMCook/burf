@@ -56,6 +56,7 @@ func localAgentCommands() map[string]localagent.Command {
 				command.Args = []string{"--no-daemon"}
 			}
 			command.CanFork = strings.Contains(localCommandHelp(command.Program, "fork", "--help"), "[SESSION_ID]")
+			command.CanChat = strings.Contains(localCommandHelp(command.Program, "app-server", "--help"), "--listen")
 		} else {
 			command.CanFork = strings.Contains(help, "--fork-session") && strings.Contains(help, "--resume")
 		}

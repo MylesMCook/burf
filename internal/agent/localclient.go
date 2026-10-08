@@ -10,13 +10,16 @@ import (
 	"sync"
 
 	"github.com/MylesMCook/burf/internal/localagent"
+	"github.com/MylesMCook/burf/internal/localchat"
 	"github.com/MylesMCook/burf/internal/localhistory"
 	"github.com/MylesMCook/burf/internal/localpty"
 )
 
 type localClient struct {
 	once     sync.Once
+	launchMu sync.Mutex
 	manager  *localagent.Manager
+	chats    *localchat.Manager
 	history  *localhistory.Store
 	commands map[string]localagent.Command
 }
@@ -24,6 +27,11 @@ type localClient struct {
 func (a *Agent) initLocalClient() {
 	a.localClient.once.Do(func() {
 		a.localClient.commands = localAgentCommands()
+		program := ""
+		if command := a.localClient.commands["codex"]; command.CanChat {
+			program = command.Program
+		}
+		a.localClient.chats = localchat.New(program, localchat.StartProcess)
 		a.localClient.history = localhistory.New(localhistory.Config{})
 		a.localClient.manager = localagent.New(a.localClient.commands, func(program string, args []string, dir string, env []string, cols, rows int) (localagent.Process, error) {
 			return localpty.Start(program, args, dir, env, cols, rows)
@@ -43,9 +51,18 @@ func (a *Agent) localClientRoutes(mux *http.ServeMux) {
 		agents := make([]map[string]any, 0, 2)
 		for _, id := range []string{"claude", "codex"} {
 			command := a.localClient.commands[id]
-			agents = append(agents, map[string]any{"id": id, "available": command.Program != "", "can_fork": command.CanFork})
+			agents = append(agents, map[string]any{"id": id, "available": command.Program != "", "can_fork": command.CanFork, "can_chat": command.CanChat})
 		}
-		writeJSON(w, http.StatusOK, map[string]any{"supported": true, "name": name, "home": home, "agents": agents, "sessions": a.localClient.manager.List()})
+		sessions := make([]any, 0)
+		for _, s := range a.localClient.manager.List() {
+			sessions = append(sessions, s)
+		}
+		if a.localClient.chats != nil {
+			for _, s := range a.localClient.chats.List() {
+				sessions = append(sessions, s)
+			}
+		}
+		writeJSON(w, http.StatusOK, map[string]any{"supported": true, "name": name, "home": home, "agents": agents, "sessions": sessions})
 	})
 	handle := func(pattern string, fn http.HandlerFunc) {
 		mux.HandleFunc(pattern, func(w http.ResponseWriter, r *http.Request) {
@@ -85,6 +102,8 @@ func (a *Agent) localClientRoutes(mux *http.ServeMux) {
 		writeJSON(w, 200, result)
 	})
 	handle("POST /v1/local/conversations/{id}/fork", func(w http.ResponseWriter, r *http.Request) {
+		a.localClient.launchMu.Lock()
+		defer a.localClient.launchMu.Unlock()
 		done, err := a.work.begin("continuing a local conversation")
 		if err != nil {
 			writeCoded(w, 503, err.Error(), "agent_restarting")
@@ -102,6 +121,8 @@ func (a *Agent) localClientRoutes(mux *http.ServeMux) {
 		writeJSON(w, http.StatusCreated, s)
 	})
 	handle("POST /v1/local/sessions", func(w http.ResponseWriter, r *http.Request) {
+		a.localClient.launchMu.Lock()
+		defer a.localClient.launchMu.Unlock()
 		var req struct {
 			Agent string `json:"agent"`
 			CWD   string `json:"cwd"`
@@ -173,11 +194,12 @@ func (a *Agent) localClientRoutes(mux *http.ServeMux) {
 		}
 		writeJSON(w, 200, map[string]bool{"ok": true})
 	})
+	a.localChatRoutes(handle)
 }
 
 func localClientError(w http.ResponseWriter, err error) {
 	status := http.StatusBadRequest
-	if errors.Is(err, localagent.ErrNotFound) || errors.Is(err, localhistory.ErrNotFound) {
+	if errors.Is(err, localagent.ErrNotFound) || errors.Is(err, localhistory.ErrNotFound) || errors.Is(err, localchat.ErrNotFound) {
 		status = http.StatusNotFound
 	}
 	writeError(w, status, err.Error())

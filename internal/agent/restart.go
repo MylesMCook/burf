@@ -224,7 +224,7 @@ func (a *Agent) restartRoutes(mux *http.ServeMux, stop context.CancelFunc) {
 		drain := r.URL.Query().Get("drain") != ""
 		if drain && runtime.GOOS == "windows" {
 			a.initLocalClient()
-			if err := a.localClient.manager.PrepareRestart(); err != nil {
+			if err := a.prepareLocalRestart(); err != nil {
 				writeCoded(w, http.StatusConflict, err.Error(), "local_sessions_running")
 				return
 			}

@@ -23,7 +23,7 @@ import (
 func TestLocalRoutesRequireAuthAndLoopback(t *testing.T) {
 	a := &Agent{}
 	h := a.ui("local-test-token", "127.0.0.1:1378", http.NotFoundHandler())
-	for _, endpoint := range [][2]string{{"GET", "/v1/local"}, {"GET", "/v1/local/conversations"}, {"GET", "/v1/local/sessions/foreign/output"}, {"POST", "/v1/local/conversations/foreign/fork"}} {
+	for _, endpoint := range [][2]string{{"GET", "/v1/local"}, {"GET", "/v1/local/conversations"}, {"GET", "/v1/local/sessions/foreign/output"}, {"POST", "/v1/local/conversations/foreign/fork"}, {"POST", "/v1/local/chats"}, {"GET", "/v1/local/chats/foreign"}, {"POST", "/v1/local/chats/foreign/messages"}, {"POST", "/v1/local/chats/foreign/approvals"}, {"POST", "/v1/local/chats/foreign/interrupt"}, {"DELETE", "/v1/local/chats/foreign"}} {
 		for _, tc := range []struct {
 			host, token string
 			status      int
