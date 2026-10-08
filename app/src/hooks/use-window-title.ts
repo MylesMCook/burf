@@ -6,14 +6,14 @@ import { homeBox, useWorkspaces } from "@/lib/workspaces";
 import { placeLabel } from "@/lib/worktree-names";
 
 // useWindowTitle names the window after the worktree in front, by its
-// display name when it was given one ("shop / Fix checkout — Berth"), for
+// display name when it was given one ("shop / Fix checkout — Shipyard"), for
 // the Window menu, Mission Control and the browser tab in mock mode.
 export function useWindowTitle() {
   const ref = useWorkspaces((s) => (s.current && !homeBox(s.current) ? s.spaces[s.current]?.ref : undefined));
   const inWorkspace = useStore((s) => s.view.kind === "workspace");
   const label = useStore((s) => (ref?.path ? placeLabel(ref, s.boxes) : undefined));
   useEffect(() => {
-    const title = inWorkspace && label ? `${label} — Berth` : "Berth";
+    const title = inWorkspace && label ? `${label} — Shipyard` : "Shipyard";
     if (document.title !== title) document.title = title;
     if (isTauri())
       void import("@tauri-apps/api/window")

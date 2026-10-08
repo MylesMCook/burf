@@ -62,8 +62,8 @@ export function BoxesSection() {
       </SettingsGroup>
       {boxes.length > 0 && (
         <SettingsGroup>
-          <SettingsRow label="Update boxes automatically when Berth updates" description="Each box gets the berthd this Berth ships as soon as it's online. Agents keep running through an update.">
-            <Switch checked={auto} onCheckedChange={(autoUpdateBoxes) => usePrefs.setState({ autoUpdateBoxes })} aria-label="Update boxes automatically when Berth updates" />
+          <SettingsRow label="Update boxes automatically when Shipyard updates" description="Each box gets the berthd this Shipyard ships as soon as it's online. Agents keep running through an update.">
+            <Switch checked={auto} onCheckedChange={(autoUpdateBoxes) => usePrefs.setState({ autoUpdateBoxes })} aria-label="Update boxes automatically when Shipyard updates" />
           </SettingsRow>
         </SettingsGroup>
       )}
