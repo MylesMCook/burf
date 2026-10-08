@@ -101,6 +101,43 @@ task templates, themes, plugins, kits. The full list is in
 Next: [the security model](/concepts/security), how the agent and your boxes
 trust each other.
 
+## Routes to a box
+
+A box can be reachable more than one way: over Tailscale, which may relay
+it through a server on another continent when both networks are strict; over
+SSH, which often goes direct; or at an address on your LAN. The agent knows
+each route to a box and sends new requests over the fastest one that works.
+
+- **Where routes come from.** The address the box was paired at is one. A box
+  added with `berth add ssh` also gets an SSH route to the host it was added
+  with, on by default. A host in your `~/.ssh/config` with the box's own name
+  is offered, off. You can add an SSH host or an address, and turn any route
+  off, in **Settings › Boxes › Routes**.
+- **SSH routes use your ssh.** The agent runs `ssh -W` to berthd's port with
+  your `~/.ssh/config`, agent and keys (1Password's agent included), as `ssh
+  HOST` would in a terminal. It never reads, stores or asks for a key, and
+  never edits your SSH config: ssh runs in batch mode, so a login that would
+  need you (a password, an unknown host key) fails instead, and the route
+  shows as down. One login is shared by the route's connections.
+- **Every route is only a transport.** The same TLS, pinned to the key the
+  box was paired with, runs on every route. A route that reaches anything
+  else is refused, as the paired address would be.
+- **Measuring.** While you use a box, each route not carrying its traffic is
+  measured every 30 to 45 seconds; a box you aren't using isn't. A route
+  clearly faster than the one in use (a quarter quicker) takes over.
+- **Failing over.** The agent checks each box every 10 seconds, and at once
+  when a request is slow to answer or typing gets no echo. If the route in
+  use doesn't answer within 3 seconds, the others are asked, and the first
+  to answer carries new requests from then on. Open terminals and the event
+  stream stay on the old route in case it was a hiccup; if it fails again
+  (about 5 seconds later), it is down, and they move to the new route:
+  a terminal attaches again inside the same tab, the box redraws it, and
+  keys that may not have reached the box are sent again. A route that comes
+  back is used again if it is the faster one.
+
+`berth boxes` shows the route each box is reached by, and `berth doctor BOX`
+lists them all with their latency.
+
 ## Slow and dropping networks
 
 Boxes are often far away (100–900 ms over Tailscale), and links drop. A
@@ -184,6 +221,11 @@ What fixes it, best first:
   41641 on the host (or the provider's NAT, router or load balancer) to the
   VM. `ufw` on the VM is often inactive and is rarely the blocker; check
   with `sudo ufw status` before changing it.
+- **Another route.** If SSH to the box goes direct (it often does, as SSH
+  doesn't need the NAT traversal Tailscale's direct connections do), an
+  [SSH route](#routes-to-a-box) carries Shipyard's traffic instead while it
+  is the faster one. A box added with `berth add ssh` has one already; add
+  one in **Settings › Boxes › Routes**.
 - **A nearer relay, or a peer relay.** If a direct connection isn't
   possible, a Tailscale peer relay on a
   machine with an open UDP port near you both, or a custom DERP server

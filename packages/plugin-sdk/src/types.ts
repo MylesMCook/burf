@@ -21,6 +21,30 @@ export interface BoxStatus {
   // How well the laptop reaches it: slow (requests still go through), the
   // latency's recent max and jitter, and whether Tailscale relays it.
   link?: BoxLink;
+  // The route new requests take (a BoxRoute's id), and every way the
+  // laptop knows to reach the box. A box on this computer has none.
+  route?: string;
+  routes?: BoxRoute[];
+}
+
+// One way the laptop reaches a box: the address it was paired at (kind
+// "tailscale", or "direct" off a tailnet), SSH ("ssh", detail the host),
+// or another address ("direct"). Every route carries the same pinned TLS.
+export interface BoxRoute {
+  id: string;
+  kind: "tailscale" | "ssh" | "direct" | (string & {});
+  label: string;
+  detail?: string;
+  // up; stalled (didn't answer once: new requests go elsewhere); down;
+  // unknown (not tried yet); off (turned off, or only suggested).
+  state: "up" | "stalled" | "down" | "unknown" | "off" | (string & {});
+  latency_ms?: number;
+  active?: boolean;
+  error?: string;
+  // Turned on because the box was added over SSH.
+  auto?: boolean;
+  // A host in ~/.ssh/config named like the box, offered but off.
+  suggested?: boolean;
 }
 
 export interface BoxLink {

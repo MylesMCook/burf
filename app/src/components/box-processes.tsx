@@ -62,11 +62,11 @@ async function stop(box: string, id: string): Promise<boolean> {
 
 // BoxMeter is a box's memory in the status bar; clicked, it lists the box's
 // browsers and heavy sessions. A box without the list opens Settings.
-export function BoxMeter({ box, mem, className }: { box: string; mem: { used: number; total: number }; className?: string }) {
+export function BoxMeter({ box, mem, route, className }: { box: string; mem: { used: number; total: number }; route?: string; className?: string }) {
   const has = useBoxHasProcesses(box);
   const [open, setOpen] = useState(false);
   const used = mem.used / mem.total;
-  const tip = `${box} memory: ${bytes(mem.used)} of ${bytes(mem.total)} in use`;
+  const tip = [`${box} memory: ${bytes(mem.used)} of ${bytes(mem.total)} in use`, route].filter(Boolean).join(" · ");
   const body = (
     <>
       {box}
