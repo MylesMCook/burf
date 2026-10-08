@@ -30,6 +30,8 @@ type LaunchOptions struct {
 	CWD     string
 	// Env replaces the provider environment; nil inherits the current environment.
 	Env []string
+	// Browser, when set, offers one client's browser tools to this chat only.
+	Browser *Browser
 }
 type Launch func(LaunchOptions) (Process, error)
 
@@ -58,6 +60,8 @@ type Approval struct {
 	SessionAllowed bool     `json:"session_allowed,omitempty"`
 	Execpolicy     []string `json:"execpolicy,omitempty"`
 	itemID         string
+	// elicitation marks a request answered with an action, not a decision.
+	elicitation bool
 }
 
 type fileChange struct {
@@ -103,6 +107,8 @@ type Session struct {
 	Composer  bool        `json:"composer"`
 	// Permission modes the composer may offer for the next message.
 	Permissions []string `json:"permissions,omitempty"`
+	// Browser is set only for a chat started with browser tools.
+	Browser *BrowserState `json:"browser,omitempty"`
 }
 type packet struct {
 	ID     json.RawMessage `json:"id,omitempty"`
@@ -126,6 +132,9 @@ type running struct {
 	pending   map[string]chan packet
 	approvals map[string]json.RawMessage
 	submitted string
+	// browser holds the provider calls waiting for the chat's browser.
+	browser     map[string]chan BrowserResult
+	browserWake chan struct{}
 }
 type Manager struct {
 	mu       sync.Mutex
@@ -162,7 +171,11 @@ func (m *Manager) StartWith(ctx context.Context, options LaunchOptions) (Session
 	}
 	var result json.RawMessage
 	if err == nil {
-		result, err = r.call(initCtx, "thread/start", map[string]any{"cwd": r.session.CWD, "approvalPolicy": "untrusted", "sandbox": "read-only", "approvalsReviewer": "user"})
+		params := map[string]any{"cwd": r.session.CWD, "approvalPolicy": "untrusted", "sandbox": "read-only", "approvalsReviewer": "user"}
+		if options.Browser != nil {
+			params["config"] = options.Browser.threadConfig(r.session.ID)
+		}
+		result, err = r.call(initCtx, "thread/start", params)
 	}
 	var reply struct {
 		Thread struct {
@@ -214,6 +227,11 @@ func (m *Manager) startProcess(ctx context.Context, options LaunchOptions) (*run
 	if err != nil || !st.IsDir() {
 		return nil, errors.New("project directory does not exist")
 	}
+	if options.Browser != nil {
+		if err = options.Browser.validate(); err != nil {
+			return nil, err
+		}
+	}
 	active := 0
 	for _, r := range m.sessions {
 		r.mu.Lock()
@@ -233,8 +251,11 @@ func (m *Manager) startProcess(ctx context.Context, options LaunchOptions) (*run
 	if err != nil {
 		return nil, err
 	}
-	r := &running{process: p, writes: make(chan []byte, 16), done: make(chan struct{}), pending: make(map[string]chan packet), approvals: make(map[string]json.RawMessage)}
+	r := &running{process: p, writes: make(chan []byte, 16), done: make(chan struct{}), pending: make(map[string]chan packet), approvals: make(map[string]json.RawMessage), browser: make(map[string]chan BrowserResult), browserWake: make(chan struct{})}
 	r.session = Session{ID: hex.EncodeToString(bytes[:]), Agent: "codex", Mode: "chat", CWD: cwd, State: "starting", StartedAt: time.Now().UTC(), Items: []Item{}, Approvals: []Approval{}, Options: TurnOptions{Permission: "strict"}, Composer: true, Permissions: Permissions}
+	if options.Browser != nil {
+		r.session.Browser = &BrowserState{Tools: append([]BrowserTool{}, options.Browser.Tools...), Calls: []BrowserCall{}}
+	}
 	if len(m.sessions) >= 32 {
 		var oldest string
 		var at time.Time
@@ -272,6 +293,9 @@ func (r *running) snapshot() Session {
 	for i := range s.Approvals {
 		s.Approvals[i].Execpolicy = append([]string(nil), s.Approvals[i].Execpolicy...)
 	}
+	if s.Browser != nil {
+		s.Browser = &BrowserState{Tools: append([]BrowserTool{}, s.Browser.Tools...), Calls: append([]BrowserCall{}, s.Browser.Calls...)}
+	}
 	return s
 }
 func (m *Manager) Get(id string) (Session, error) {
@@ -289,6 +313,9 @@ func (m *Manager) List() []Session {
 		s := r.snapshot()
 		s.Items = nil
 		s.Approvals = nil
+		if s.Browser != nil {
+			s.Browser.Tools = nil
+		}
 		out = append(out, s)
 	}
 	sort.Slice(out, func(i, j int) bool { return out[i].StartedAt.After(out[j].StartedAt) })
@@ -412,10 +439,12 @@ func (m *Manager) Decide(id, approval, decision string) error {
 		return errors.New("approval is no longer pending")
 	}
 	var value any = decision
+	elicitation := false
 	for _, a := range r.session.Approvals {
 		if a.ID != approval {
 			continue
 		}
+		elicitation = a.elicitation
 		if decision == "acceptForSession" && !a.SessionAllowed {
 			r.mu.Unlock()
 			return errors.New("session approval is not supported for this request")
@@ -438,7 +467,14 @@ func (m *Manager) Decide(id, approval, decision string) error {
 	if len(r.approvals) == 0 {
 		r.session.State = "running"
 	}
-	e = r.queue(map[string]any{"id": raw, "result": map[string]any{"decision": value}})
+	result := map[string]any{"decision": value}
+	if elicitation {
+		result = map[string]any{"action": "decline"}
+		if decision == "accept" {
+			result = map[string]any{"action": "accept", "content": map[string]any{}}
+		}
+	}
+	e = r.queue(map[string]any{"id": raw, "result": result})
 	r.mu.Unlock()
 	if e != nil {
 		r.finish("Approval delivery could not be confirmed; chat stopped without replay.")
@@ -493,6 +529,7 @@ func (r *running) invalidate(reason string) {
 	r.session.TurnID = ""
 	r.session.Approvals = []Approval{}
 	r.approvals = map[string]json.RawMessage{}
+	r.cancelBrowser()
 	if reason != "" {
 		r.session.Error = reason
 	}
@@ -628,6 +665,10 @@ func (r *running) approval(p packet) {
 		Execpolicy []string `json:"proposedExecpolicyAmendment"`
 	}
 	_ = json.Unmarshal(p.Params, &v)
+	if p.Method == "mcpServer/elicitation/request" {
+		r.browserApproval(p)
+		return
+	}
 	r.mu.Lock()
 	supported := v.ThreadID == r.session.ThreadID && v.TurnID != "" && v.TurnID == r.session.TurnID && (p.Method == "item/commandExecution/requestApproval" || p.Method == "item/fileChange/requestApproval")
 	if p.Method == "item/commandExecution/requestApproval" && (v.Command == "" || (v.Kind != "" && v.Kind != "command")) {
@@ -754,6 +795,7 @@ func (r *running) event(p packet) {
 		r.session.State = "idle"
 		r.session.Approvals = []Approval{}
 		r.approvals = map[string]json.RawMessage{}
+		r.cancelBrowser()
 		if v.Turn.Error != nil {
 			r.session.Error = clip(v.Turn.Error.Message)
 		}

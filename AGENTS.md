@@ -37,7 +37,9 @@ app dependencies and does not update installed applications.
 
 Structured chat: `GORACE=atexit_sleep_ms=0 go test -race
 ./internal/localchat ./internal/agent ./internal/localagent ./internal/box
-./cmd/burfd` and `go vet` over the same packages. `internal/localchat` uses
+./cmd/burfd` and `go vet` over the same packages plus `./internal/browsermcp`
+(the browser bridge process, exercised by the box tests). Browser pairing adds
+`./cmd/burf` to both. `internal/localchat` uses
 synthetic protocol peers; its native Windows/Mac/Linux pipe/process tests
 launch only the test executable. Unix tests include parent-death cleanup.
 Box chat tests cover authentication, account environment and upgrade guards.
