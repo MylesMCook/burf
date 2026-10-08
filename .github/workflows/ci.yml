@@ -229,9 +229,9 @@ jobs:
           set -euo pipefail
           deb="$(ls app/src-tauri/target/debug/bundle/deb/*.deb)"
           appimage="$(ls app/src-tauri/target/debug/bundle/appimage/*.AppImage)"
-          dpkg-deb -c "$deb" | grep -q './usr/bin/berth-app$'
-          dpkg-deb --ctrl-tarfile "$deb" >/dev/null
+          # Extracted first: grep -q on a pipe would cut dpkg-deb off (pipefail).
           dpkg-deb -x "$deb" "$RUNNER_TEMP/deb"
+          test -x "$RUNNER_TEMP/deb/usr/bin/berth-app"
           grep -q '^MimeType=.*x-scheme-handler/berth' "$RUNNER_TEMP"/deb/usr/share/applications/*.desktop
           grep -q '^Exec=berth-app %u$' "$RUNNER_TEMP"/deb/usr/share/applications/*.desktop
           file "$appimage" | grep -q 'ELF 64-bit'
