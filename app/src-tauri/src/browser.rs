@@ -43,7 +43,9 @@ struct Navigated {
     // "started": a navigation is about to begin, in the page or in a frame
     // inside it (the navigation policy is asked for every frame, and a
     // frame's load never finishes the page); "committed": the page itself
-    // began showing a new document; "finished": the page itself finished.
+    // began showing a new document; "finished": the page itself finished;
+    // "moved": the page changed its own address without loading (an app's
+    // client-side routing: history.pushState, replaceState, a #hash).
     state: &'static str,
 }
 
@@ -99,9 +101,22 @@ fn watch_console(app: AppHandle, id: String, label: String) {
     }
     std::thread::spawn(move || {
         let asked = Arc::new(AtomicU64::new(0));
+        let mut at = String::new();
         loop {
             std::thread::sleep(Duration::from_millis(500));
             let Some(wv) = app.get_webview(&label) else { break };
+            // An app that routes on the client (history.pushState) changes
+            // its address without a navigation or a load, so neither hook
+            // hears it: the address bar follows the webview's own URL.
+            if let Ok(u) = wv.url() {
+                let u = u.to_string();
+                if u != at {
+                    if !at.is_empty() {
+                        let _ = app.emit(EVENT, Navigated { id: id.clone(), url: u.clone(), state: "moved" });
+                    }
+                    at = u;
+                }
+            }
             let since = asked.load(Ordering::SeqCst);
             if since != 0 && now_ms().saturating_sub(since) < 5000 {
                 continue;
