@@ -71,6 +71,8 @@ func chatFixture(t *testing.T, actions ...*atomic.Int32) (*Box, http.Handler, *a
 					result = map[string]any{"thread": map[string]string{"id": "owned-thread"}}
 				case "turn/start":
 					result = map[string]any{"turn": map[string]string{"id": "owned-turn"}}
+				case "model/list":
+					result = map[string]any{"data": []any{map[string]any{"model": "synthetic", "displayName": "Synthetic"}}}
 				}
 				if len(p.ID) > 0 {
 					data, _ := json.Marshal(map[string]any{"id": p.ID, "result": result})
@@ -527,5 +529,23 @@ func TestChatRoutesRejectUnpairedClients(t *testing.T) {
 	}
 	if count.Load() != 0 {
 		t.Fatal("unpaired client launched provider")
+	}
+}
+
+func TestChatModelsAreListedForALocationWithoutStartingAChat(t *testing.T) {
+	b, h, launches := chatFixture(t)
+	w := chatRequest(h, "GET", "/v1/chats/models?location=project", "")
+	var models []localchat.Model
+	if err := json.Unmarshal(w.Body.Bytes(), &models); w.Code != 200 || err != nil || len(models) != 1 || models[0].Model != "synthetic" {
+		t.Fatalf("models: %d %s", w.Code, w.Body)
+	}
+	if len(b.Chats.List()) != 0 || launches.Load() != 1 {
+		t.Fatal("listing models opened a chat", launches.Load())
+	}
+	if w := chatRequest(h, "GET", "/v1/chats/models?location=unregistered", ""); w.Code != 400 {
+		t.Fatalf("unregistered location: %d %s", w.Code, w.Body)
+	}
+	if w := chatRequest(h, "GET", "/v1/chats/models", ""); w.Code != 400 {
+		t.Fatalf("missing location: %d %s", w.Code, w.Body)
 	}
 }

@@ -48,14 +48,15 @@ test("composer sends supported choices and reconciles a pending prompt without r
   try {
     await app.open({ agent }); await app.page.getByTestId("nav-local").click(); await app.page.getByRole("button", { name: /Codex.*idle/ }).click();
     const pane = app.page.getByTestId("local-chat");
-    expect(modelReads).toBe(0);
-    await pane.getByRole("button", { name: "Chat options" }).click();
+    // The selectors sit in the composer; the provider's models are read once, after the chat is ready.
+    await expect(pane.getByLabel("Chat permissions")).toHaveValue("strict");
     await expect(pane.getByRole("option", { name: "Synthetic model" })).toHaveCount(1);
     await pane.getByLabel("Chat model").selectOption("synthetic");
     await expect(pane.getByLabel("Chat reasoning")).toHaveValue("medium");
     await pane.getByLabel("Chat reasoning").selectOption("high");
     await pane.getByLabel("Chat permissions").selectOption("workspace");
-    await expect(pane.locator("header").getByText("Strict read-only", { exact: true })).toBeVisible();
+    await expect(pane.locator("header").getByText("Ask every time", { exact: true })).toBeVisible();
+    await expect(pane.getByText(/From your next message: Codex edits files in this workspace/)).toBeVisible();
     await app.page.screenshot({ path: info.outputPath("chat-composer-options.png"), animations: "disabled" });
     await pane.getByRole("textbox", { name: "Message Codex" }).fill("Visible immediately");
     await pane.getByRole("button", { name: "Send message" }).click();
@@ -64,6 +65,8 @@ test("composer sends supported choices and reconciles a pending prompt without r
     await expect(pane.getByRole("article").filter({ hasText: "Visible immediately" })).toHaveCount(1);
     expect(sent).toEqual({ text: "Visible immediately", options: { model: "synthetic", effort: "high", permission: "workspace" } });
     release?.(); await expect(pane.getByRole("textbox", { name: "Message Codex" })).toHaveValue(""); expect(sends).toBe(1);
+    expect(modelReads).toBe(1);
+    expect(await app.stored("berth.chat.permission")).toBe("workspace");
   } finally { release?.(); await agent.close(); }
 });
 
@@ -81,7 +84,74 @@ test("older backends retain chat without unsupported composer controls", async (
     const pane = app.page.getByTestId("local-chat");
     await expect(pane.getByRole("heading", { name: "Codex is working…" })).toBeVisible();
     await expect(pane.getByRole("heading", { name: "New chat" })).toHaveCount(0);
-    await expect(pane.getByRole("button", { name: "Chat options" })).toHaveCount(0);
+    await expect(pane.getByLabel("Chat permissions")).toHaveCount(0);
+    await expect(pane.getByLabel("Chat model")).toHaveCount(0);
     expect(reads.some((p) => p.endsWith("/models"))).toBe(false);
+  } finally { await agent.close(); }
+});
+
+test("a new chat offers the permission last chosen and an existing chat keeps its own", async ({ app }) => {
+  await app.context.addInitScript(() => localStorage.setItem("berth.chat.permission", JSON.stringify("read-only")));
+  const agent = await fakeAgent();
+  const base = { agent: "codex", mode: "chat", cwd: "C:\\Projects\\shop", state: "idle", started_at: "2026-10-08T12:00:00Z", thread_id: "thread", composer: true, options: { permission: "strict" }, approvals: [] };
+  const fresh = { ...base, id: "fresh", items: [] as unknown[] };
+  const used = { ...base, id: "used", started_at: "2026-10-08T11:00:00Z", items: [{ id: "u", kind: "user", text: "Earlier" }] };
+  const sent: unknown[] = [];
+  await app.context.route(`${agent.url}/v1/local**`, async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === "/v1/local") return route.fulfill({ json: { supported: true, name: "work-hp", home: base.cwd, agents: [], sessions: [fresh, used] } });
+    if (path.endsWith("/conversations")) return route.fulfill({ json: [] });
+    if (path.endsWith("/models")) return route.fulfill({ json: [] });
+    if (path.endsWith("/messages")) sent.push(route.request().postDataJSON());
+    return route.fulfill({ json: path.includes("/used") ? used : fresh });
+  });
+  try {
+    await app.open({ agent }); await app.page.getByTestId("nav-local").click();
+    const pane = app.page.getByTestId("local-chat");
+    await app.page.getByRole("button", { name: /Codex.*idle/ }).last().click();
+    await expect(pane.getByRole("article", { name: "You" })).toContainText("Earlier");
+    await expect(pane.getByLabel("Chat permissions")).toHaveValue("strict");
+    await app.page.getByRole("button", { name: /Codex.*idle/ }).first().click();
+    await expect(pane.getByRole("heading", { name: "New chat" })).toBeVisible();
+    await expect(pane.getByLabel("Chat permissions")).toHaveValue("read-only");
+    await expect(pane.locator("header").getByText("Ask every time", { exact: true })).toBeVisible();
+    await pane.getByRole("textbox", { name: "Message Codex" }).fill("Look around");
+    await pane.getByRole("button", { name: "Send message" }).click();
+    await expect.poll(() => sent).toEqual([{ text: "Look around", options: { permission: "read-only" } }]);
+  } finally { await agent.close(); }
+});
+
+test("a turn the provider refuses keeps the chat, the draft and the previous settings", async ({ app }) => {
+  const agent = await fakeAgent();
+  const chat = { id: "refused", agent: "codex", mode: "chat", cwd: "C:\\Projects\\shop", state: "idle", started_at: "2026-10-08T12:00:00Z", thread_id: "thread", composer: true, options: { permission: "strict" }, items: [] as unknown[], approvals: [], error: "" };
+  let sends = 0;
+  await app.context.route(`${agent.url}/v1/local**`, async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    if (path === "/v1/local") return route.fulfill({ json: { supported: true, name: "work-hp", home: chat.cwd, agents: [], sessions: [chat] } });
+    if (path.endsWith("/conversations")) return route.fulfill({ json: [] });
+    if (path.endsWith("/models")) return route.fulfill({ json: [{ model: "synthetic", displayName: "Synthetic model", defaultReasoningEffort: "medium", supportedReasoningEfforts: [{ reasoningEffort: "medium" }] }] });
+    if (path.endsWith("/messages")) {
+      if (++sends === 1) { chat.error = "Codex did not start this turn: unsupported model"; return route.fulfill({ status: 400, json: { error: chat.error } }); }
+      chat.error = ""; chat.items = [{ id: "u", kind: "user", text: "Try this" }];
+    }
+    return route.fulfill({ json: chat });
+  });
+  try {
+    await app.open({ agent }); await app.page.getByTestId("nav-local").click(); await app.page.getByRole("button", { name: /Codex.*idle/ }).click();
+    const pane = app.page.getByTestId("local-chat");
+    await pane.getByLabel("Chat model").selectOption("synthetic");
+    const draft = pane.getByRole("textbox", { name: "Message Codex" });
+    await draft.fill("Try this");
+    await pane.getByRole("button", { name: "Send message" }).click();
+    await expect(pane.getByText(/Codex did not start this turn: unsupported model/).first()).toBeVisible();
+    await expect(pane.getByRole("status")).toHaveText("Ready");
+    await expect(draft).toHaveValue("Try this");
+    await expect(pane.getByRole("article")).toHaveCount(0);
+    await expect(pane.getByLabel("Chat model")).toHaveValue("synthetic");
+    expect(sends).toBe(1);
+    await pane.getByRole("button", { name: "Send message" }).click();
+    await expect(pane.getByRole("article", { name: "You" })).toContainText("Try this");
+    await expect(draft).toHaveValue("");
+    expect(sends).toBe(2);
   } finally { await agent.close(); }
 });

@@ -1,11 +1,11 @@
-import { ArrowUpIcon, RotateCwIcon, SquareIcon, XIcon, SlidersHorizontalIcon } from "lucide-react";
+import { ArrowUpIcon, RotateCwIcon, SquareIcon, XIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Markdown } from "@/components/conversation/markdown";
 import { Button } from "@/components/ui/button";
 import { Tip } from "@/components/tip";
 import type { Client } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
-import { localApi, type LocalChat as Chat, type LocalSession, type ChatOptions, type ChatModel, type ChatDecision } from "@/lib/local-computer";
+import { chatPermissions, localApi, savedChatPermission, saveChatPermission, type LocalChat as Chat, type LocalSession, type ChatOptions, type ChatModel, type ChatDecision } from "@/lib/local-computer";
 
 export function LocalChat({ client, session, onChange }: { client: Client; session: LocalSession; onChange(session: LocalSession): void }) {
   const transport = useMemo(() => ({
@@ -33,7 +33,6 @@ export function StructuredChat({ transport, session, onChange, testId = "local-c
   // Choices for the next message only. A confirmed send makes them the chat's own, shown from chat.options.
   const [options, setOptionState] = useState<ChatOptions>(initialOptions ?? {});
   const setOptions = (change: (current: ChatOptions) => ChatOptions) => { const next = change(options); setOptionState(next); onOptionsChange?.(next); };
-  const [settings, setSettings] = useState(false);
   const [models, setModels] = useState<ChatModel[]>();
   const [modelsError, setModelsError] = useState("");
   const [submitted, setSubmitted] = useState("");
@@ -69,6 +68,17 @@ export function StructuredChat({ transport, session, onChange, testId = "local-c
     return () => { alive.current = false; clearTimeout(timer); request.current?.abort(); };
   }, [load]);
   useEffect(() => { if (following.current && scroll.current) scroll.current.scrollTop = scroll.current.scrollHeight; }, [chat]);
+  // Once the provider has answered its handshake: its model list, and for a chat with no messages yet, the permission last chosen.
+  const prepared = useRef(false);
+  const ready = !!chat?.composer && chat.state !== "starting" && chat.state !== "exited";
+  useEffect(() => {
+    if (!ready || !chat || prepared.current) return;
+    prepared.current = true;
+    if (transport.models) void transport.models().then((list) => { if (alive.current) setModels(Array.isArray(list) ? list : []); }).catch(() => { if (alive.current) setModelsError("Model choices are unavailable. Current settings are unchanged."); });
+    const saved = savedChatPermission();
+    if (saved && !chat.items.length && !options.permission && saved !== (chat.options?.permission ?? "strict")) setOptions((o) => ({ ...o, permission: saved }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready]);
   const mutate = async (action: () => Promise<unknown>) => {
     if (pending.current) return false;
     pending.current = true; setBusy(true); setError("");
@@ -77,7 +87,9 @@ export function StructuredChat({ transport, session, onChange, testId = "local-c
     finally { if (alive.current) await load(); pending.current = false; if (alive.current) setBusy(false); }
   };
   const running = chat?.state === "running" || chat?.state === "waiting";
-  const permissionLabels = { strict: "Strict read-only", "read-only": "Read-only · ask on escalation", workspace: "Workspace edits · ask on escalation" };
+  const accepted = chat?.options?.permission ?? "strict";
+  const permission = options.permission ?? accepted;
+  const pickPermission = (next: NonNullable<ChatOptions["permission"]>) => { saveChatPermission(next); setOptions((o) => ({ ...o, permission: next === accepted ? undefined : next })); };
   const model = options.model ?? chat?.options?.model ?? "";
   const effort = options.effort ?? chat?.options?.effort ?? "";
   const efforts = models?.find((m) => m.model === model)?.supportedReasoningEfforts?.map((e) => e.reasoningEffort) ?? [];
@@ -87,7 +99,7 @@ export function StructuredChat({ transport, session, onChange, testId = "local-c
     const listed = m?.supportedReasoningEfforts?.map((e) => e.reasoningEffort) ?? [];
     return { ...o, model: next || undefined, effort: m ? (listed.includes(effort) ? effort : m.defaultReasoningEffort || listed[0]) || undefined : undefined };
   });
-  const next = [options.model, options.effort, options.permission && permissionLabels[options.permission]].filter(Boolean).join(" · ");
+  const changed = !!(options.model || options.effort || options.permission);
   const groups: Chat["items"][] = [];
   for (const item of chat?.items ?? []) {
     const last = groups[groups.length - 1];
@@ -95,7 +107,7 @@ export function StructuredChat({ transport, session, onChange, testId = "local-c
   }
   return <div data-testid={testId} className="flex min-h-0 min-w-0 flex-1 flex-col">
     <header className="flex flex-wrap items-center gap-2 border-b px-4 py-3 text-sm">
-      <h2 className="font-medium">Codex</h2><span role="status" className="text-xs text-muted-foreground">{offline ? "Disconnected" : chat?.state === "running" ? "Working" : chat?.state === "waiting" ? `Waiting for approval (${chat.approvals.length})` : chat?.state === "idle" ? "Ready" : chat?.state === "exited" ? "Stopped" : "Starting"}</span><span className="text-xs text-muted-foreground">{permissionLabels[chat?.options?.permission ?? "strict"]}</span>{(chat?.options?.model || chat?.options?.effort) && <span className="text-xs text-muted-foreground">{[chat.options.model, chat.options.effort].filter(Boolean).join(" · ")}</span>}
+      <h2 className="font-medium">Codex</h2><span role="status" className="text-xs text-muted-foreground">{offline ? "Disconnected" : chat?.state === "running" ? "Working" : chat?.state === "waiting" ? `Waiting for approval (${chat.approvals.length})` : chat?.state === "idle" ? "Ready" : chat?.state === "exited" ? "Stopped" : "Starting"}</span><span className="text-xs text-muted-foreground">{chatPermissions[accepted].label}</span>{(chat?.options?.model || chat?.options?.effort) && <span className="text-xs text-muted-foreground">{[chat.options.model, chat.options.effort].filter(Boolean).join(" · ")}</span>}
       <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={session.cwd}>{session.cwd}</span>
       <Tip label="Refresh chat"><Button size="icon-sm" variant="ghost" aria-label="Refresh chat" disabled={busy} onClick={() => void load()}><RotateCwIcon /></Button></Tip>
       {chat?.state !== "exited" && <Tip label="Stop chat"><Button size="icon-sm" variant="ghost" aria-label="Stop chat" disabled={busy || !chat} onClick={() => void mutate(() => transport.stop())}><XIcon /></Button></Tip>}
@@ -127,20 +139,20 @@ export function StructuredChat({ transport, session, onChange, testId = "local-c
       void mutate(async () => { await transport.message(text, chat.composer ? options : undefined); if (!alive.current) return; if (draftRef.current === text) updateDraft(""); setOptions(() => ({})); }).finally(() => { if (alive.current) setSubmitted(""); });
     }}>
       <div className="mx-auto w-full max-w-(--berth-chat-w)">
-      {settings && chat?.composer && <fieldset className="mb-2 flex flex-wrap gap-3 border-t py-3 text-xs" disabled={busy || running || chat.state !== "idle"}>
-        <legend>Next message</legend>
-        <label className="flex min-w-0 flex-col gap-1">Model<select aria-label="Chat model" className="max-w-56 rounded border bg-background p-1" value={model} onChange={(e) => pickModel(e.target.value)}><option value="">Current provider model</option>{model && !models?.some((m) => m.model === model) && <option value={model}>{model}</option>}{models?.map((m) => <option key={m.model} value={m.model}>{m.displayName || m.model}</option>)}</select></label>
-        <label className="flex flex-col gap-1">Reasoning<select aria-label="Chat reasoning" className="rounded border bg-background p-1" value={effort} onChange={(e) => setOptions((o) => ({ ...o, effort: e.target.value || undefined }))}><option value="">Current effort</option>{[...new Set([effort, ...efforts].filter(Boolean))].map((e) => <option key={e} value={e}>{e}</option>)}</select></label>
-        <label className="flex min-w-0 flex-col gap-1">Permissions<select aria-label="Chat permissions" className="max-w-full rounded border bg-background p-1" value={options.permission ?? chat.options?.permission ?? "strict"} onChange={(e) => setOptions((o) => ({ ...o, permission: e.target.value as ChatOptions["permission"] }))}>{Object.entries(permissionLabels).map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select></label>
-        {options.permission === "workspace" && <p className="w-full">The next message permits edits in this workspace. Network access still requires approval.</p>}
-        {modelsError && <p role="alert" className="w-full text-destructive">{modelsError}</p>}
-      </fieldset>}
-      {next && chat?.composer && !settings && <p className="mb-1 truncate text-xs text-muted-foreground">Next message: {next}</p>}
-      <div className="flex w-full items-end gap-2 rounded-md border bg-background p-2 focus-within:ring-1 focus-within:ring-ring">
-        <textarea aria-label="Message Codex" placeholder="Message Codex" value={draft} disabled={!chat || busy} readOnly={chat?.state === "exited"} onChange={(event) => updateDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} rows={3} className="max-h-48 min-h-20 min-w-0 flex-1 resize-y bg-transparent p-2 text-sm outline-none disabled:opacity-50" />
-        {chat?.composer && <Tip label="Chat options"><Button type="button" size="icon-sm" variant="ghost" aria-label="Chat options" aria-expanded={settings} onClick={() => { setSettings(!settings); if (!settings && !models && transport.models) void transport.models().then(setModels).catch(() => setModelsError("Model choices are unavailable. Current settings are unchanged.")); }}><SlidersHorizontalIcon /></Button></Tip>}
-        {running ? <Tip label="Interrupt turn"><Button type="button" size="icon-sm" variant="outline" aria-label="Interrupt turn" disabled={busy || offline || !chat?.turn_id} onClick={() => void mutate(() => transport.interrupt())}><SquareIcon /></Button></Tip> : <Tip label="Send message"><Button type="submit" size="icon-sm" aria-label="Send message" disabled={busy || offline || chat?.state !== "idle" || !draft.trim()}><ArrowUpIcon /></Button></Tip>}
-      </div>
+        <div className="rounded-md border bg-background focus-within:ring-1 focus-within:ring-ring">
+          <textarea aria-label="Message Codex" placeholder="Message Codex" value={draft} disabled={!chat || busy} readOnly={chat?.state === "exited"} onChange={(event) => updateDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} rows={3} className="block max-h-48 min-h-20 w-full resize-y bg-transparent p-3 text-sm outline-none disabled:opacity-50" />
+          <div className="flex flex-wrap items-center gap-1 px-2 pb-2">
+            {chat?.composer && <>
+              <select aria-label="Chat permissions" title={chatPermissions[permission].hint} className="h-7 min-w-0 rounded border-0 bg-transparent px-1 text-xs text-muted-foreground outline-none hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 max-w-40" disabled={busy || chat.state === "exited"} value={permission} onChange={(e) => pickPermission(e.target.value as NonNullable<ChatOptions["permission"]>)}>{Object.entries(chatPermissions).map(([id, p]) => <option key={id} value={id}>{p.label}</option>)}</select>
+              <select aria-label="Chat model" className="h-7 min-w-0 rounded border-0 bg-transparent px-1 text-xs text-muted-foreground outline-none hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 max-w-48" disabled={busy || chat.state === "exited"} value={model} onChange={(e) => pickModel(e.target.value)}><option value="">Default model</option>{model && !models?.some((m) => m.model === model) && <option value={model}>{model}</option>}{models?.map((m) => <option key={m.model} value={m.model}>{m.displayName || m.model}</option>)}</select>
+              {(effort || efforts.length > 0) && <select aria-label="Chat reasoning" className="h-7 min-w-0 rounded border-0 bg-transparent px-1 text-xs text-muted-foreground outline-none hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 max-w-36" disabled={busy || chat.state === "exited"} value={effort} onChange={(e) => setOptions((o) => ({ ...o, effort: e.target.value || undefined }))}><option value="">Default reasoning</option>{[...new Set([effort, ...efforts].filter(Boolean))].map((e) => <option key={e} value={e}>{e}</option>)}</select>}
+            </>}
+            <span className="flex-1" />
+            {running ? <Tip label="Interrupt turn"><Button type="button" size="icon-sm" variant="outline" aria-label="Interrupt turn" disabled={busy || offline || !chat?.turn_id} onClick={() => void mutate(() => transport.interrupt())}><SquareIcon /></Button></Tip> : <Tip label="Send message"><Button type="submit" size="icon-sm" aria-label="Send message" disabled={busy || offline || chat?.state !== "idle" || !draft.trim()}><ArrowUpIcon /></Button></Tip>}
+          </div>
+        </div>
+        {chat?.composer && changed && <p className="mt-1 text-xs text-muted-foreground">From your next message{options.permission ? `: ${chatPermissions[options.permission].hint}` : "."}</p>}
+        {modelsError && <p role="alert" className="mt-1 text-xs text-destructive">{modelsError}</p>}
       </div>
     </form>
   </div>;

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { load, save } from "@/lib/storage";
 import { ApiError, type Client } from "@/lib/api";
 import { useStore } from "@/lib/store";
 import type { TranscriptItem } from "@/lib/transcript";
@@ -44,6 +45,19 @@ export interface LocalOutput {
 
 export type ChatDecision = "accept" | "decline" | "acceptForSession" | "acceptAlways";
 export interface ChatOptions { model?: string; effort?: string; permission?: "strict" | "read-only" | "workspace" }
+// What Codex may do without asking. Network stays off in every mode and unrestricted access is not offered.
+export const chatPermissions = {
+  strict: { label: "Ask every time", hint: "Codex asks before any command it does not already trust. No edits." },
+  "read-only": { label: "Read only", hint: "Codex reads and runs sandboxed commands without asking. Edits need approval." },
+  workspace: { label: "Edit workspace", hint: "Codex edits files in this workspace without asking. Anything outside it needs approval." },
+} as const;
+const CHAT_PERMISSION = "berth.chat.permission";
+// The mode last chosen, offered to the next new chat. It is applied by a message, never on its own.
+export function savedChatPermission(): ChatOptions["permission"] {
+  const saved = load<string>(CHAT_PERMISSION, "");
+  return saved in chatPermissions ? (saved as ChatOptions["permission"]) : undefined;
+}
+export const saveChatPermission = (permission: NonNullable<ChatOptions["permission"]>) => save(CHAT_PERMISSION, permission);
 export interface ChatModel { model: string; displayName: string; defaultReasoningEffort: string; supportedReasoningEfforts: { reasoningEffort: string }[] }
 export interface LocalChat extends LocalSession {
   composer?: boolean;

@@ -33,6 +33,25 @@ export const remoteChatApi = {
 // Older daemons reject unknown message fields, so options go only to boxes that say they take them.
 export const hasChatOptions = (box: string) => !!useStore.getState().boxes[box]?.info?.capabilities?.includes("chat.options");
 
+// The account's own model list for the launcher, asked once per project while Codex is the chosen agent.
+const listed = new Map<string, ChatModel[]>();
+const asking = new Set<string>();
+export function useChatModels(box: string, location: string, enabled: boolean): ChatModel[] | undefined {
+  const client = useStore((s) => s.client);
+  const key = `${box}/${location}`;
+  const [, shown] = useState(0);
+  useEffect(() => {
+    if (!client || !enabled || !location || listed.has(key) || asking.has(key)) return;
+    asking.add(key);
+    client.box<ChatModel[]>(box, "GET", `chats/models?location=${encodeURIComponent(location)}`)
+      .then((models) => { listed.set(key, Array.isArray(models) ? models : []); shown((n) => n + 1); })
+      // Without a list the launcher keeps the provider's default model; the chat's own selector can still ask.
+      .catch(() => {})
+      .finally(() => asking.delete(key));
+  }, [client, box, location, key, enabled]);
+  return enabled ? listed.get(key) : undefined;
+}
+
 export function hasRemoteCodex(box: string, command: string): boolean {
   return command === "codex" && !!useStore.getState().boxes[box]?.info?.capabilities?.includes("chat.codex");
 }

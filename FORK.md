@@ -85,8 +85,10 @@ remote views share the structured message/approval interface below.
 The box resolves the registered location, effective project/box environment and
 `CODEX_HOME` before launch. Invalid configuration, unresolved secrets and custom
 Codex commands fail closed. Credentials are not copied. A box that advertises
-`chat.options` takes the composer's model and effort with the first message, or
-holds them as the opened chat's next-message choices when no message was written.
+`chat.options` takes the composer's model, effort and permission with the first
+message, or holds model and effort as the opened chat's next-message choices
+when no message was written. There the composer lists the account's own Codex
+models.
 Older boxes use the provider's configured model/effort; explicit choices are
 rejected before launch, not silently discarded. Create/open a worktree before
 starting structured chat.
@@ -99,7 +101,10 @@ accepts only `{ "location": "project[/worktree]" }`. Individual chats support
 GET, DELETE, and POST to `/messages` (`text`), `/interrupt`, and `/approvals`
 (`id`, `decision`: `accept` or `decline`). With `chat.options`, `/messages` also
 takes `options` (`model`, `effort`, `permission`), `GET /models` lists the owned
-provider's models, and approvals take the scoped decisions described under
+provider's models, `GET /v1/chats/models?location=` lists them before a chat
+exists (a short-lived owned provider process with no thread, behind the same
+start gate, cached ten minutes per account), and approvals take the scoped
+decisions described under
 Structured Local Codex. Older daemons reject unknown request fields, so clients
 omit `options` entirely unless the session reports `composer`. Session responses
 include stable provider thread/turn IDs, location and the last options the
@@ -139,13 +144,20 @@ installed box upgrade. `tasks.md` records those separate delivery gates.
   owned process without granting permission. A login or unsupported interaction
   must be resolved outside this initial chat integration. The first slice does
   not claim native edit capability or loosen a restrictive provider profile.
-- Chat options apply from the next message: model, reasoning effort and one of
-  Strict read-only (the default), Read-only that asks on escalation, or Workspace
-  edits that asks on escalation. Network stays off and unrestricted access is
-  not offered. The header shows only what the provider accepted; pending choices
-  are labelled Next message. A submitted message is visible at once and is
-  replaced by the provider's echo, never duplicated.
-- Launch/send failures never automatically retry. An uncertain send stops the
+- The composer always shows permission, model and reasoning selectors. They
+  apply from the next message. Permission is one of Ask every time (the
+  starting mode: read-only sandbox, untrusted commands ask), Read only
+  (sandboxed reads run unasked) or Edit workspace (edits inside the project run
+  unasked). Network stays off and unrestricted access is not offered. The last
+  permission chosen is remembered and offered to the next empty chat, where it
+  takes effect only with that chat's first message; chats with history keep
+  their own. The header shows only what the provider accepted. A submitted
+  message is visible at once and is replaced by the provider's echo, never
+  duplicated.
+- Launch/send failures never automatically retry. A turn the provider answers
+  with an error (for example an unsupported model or effort) did not start: the
+  chat stays open, the draft and previous settings are kept, and the provider's
+  reason is shown. A send whose reply is lost is uncertain and still stops the
   owned chat rather than risking replay. Refresh reads the same in-memory session.
   Closing its view does not stop the process; Stop chat and backend shutdown do.
   Windows kill-on-close jobs contain the process and its descendants.

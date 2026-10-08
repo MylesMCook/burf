@@ -32,6 +32,16 @@ type LaunchOptions struct {
 	Env []string
 }
 type Launch func(LaunchOptions) (Process, error)
+
+// ErrRejected marks a request the provider answered with an error. Nothing
+// started, so the chat stays usable; a lost reply is the uncertain case.
+var ErrRejected = errors.New("Codex rejected the request")
+
+type rejection string
+
+func (e rejection) Error() string   { return string(e) }
+func (e rejection) Is(t error) bool { return t == ErrRejected }
+
 type Item struct {
 	ID         string `json:"id"`
 	Kind       string `json:"kind"`
@@ -121,6 +131,8 @@ type Manager struct {
 	launch   Launch
 	sessions map[string]*running
 	closed   bool
+	probe    sync.Mutex
+	listed   map[string]listedModels
 }
 
 func New(program string, launch Launch) *Manager {
@@ -306,13 +318,34 @@ func (m *Manager) SendWith(ctx context.Context, id, text string, options TurnOpt
 	thread := r.session.ThreadID
 	params := map[string]any{"threadId": thread, "input": []any{map[string]any{"type": "text", "text": text}}}
 	options.apply(params, r.session.CWD)
-	r.submitted = fmt.Sprintf("submitted-%d", r.next+1)
-	params["clientUserMessageId"] = r.submitted
-	r.put(Item{ID: r.submitted, Kind: "user", Text: text})
+	submitted := fmt.Sprintf("submitted-%d", r.next+1)
+	r.submitted = submitted
+	params["clientUserMessageId"] = submitted
+	r.put(Item{ID: submitted, Kind: "user", Text: text})
 	r.session.State = "running"
 	r.session.Error = ""
 	r.mu.Unlock()
 	result, e := r.call(ctx, "turn/start", params)
+	if errors.Is(e, ErrRejected) {
+		// A refused model, effort or permission must not cost the conversation.
+		reason := "Codex did not start this turn: " + clip(e.Error())
+		r.mu.Lock()
+		for i, it := range r.session.Items {
+			if it.ID == submitted {
+				r.session.Items = append(r.session.Items[:i], r.session.Items[i+1:]...)
+				break
+			}
+		}
+		if r.submitted == submitted {
+			r.submitted = ""
+		}
+		if r.session.State == "running" && r.session.TurnID == "" {
+			r.session.State = "idle"
+			r.session.Error = reason
+		}
+		r.mu.Unlock()
+		return errors.New(reason)
+	}
 	if e != nil {
 		r.finish("Message delivery is uncertain; this chat was stopped and will not replay the message. " + e.Error())
 		return errors.New("message may have arrived; chat stopped without replay")
@@ -495,7 +528,7 @@ func (r *running) call(ctx context.Context, method string, params any) (json.Raw
 	select {
 	case p := <-ch:
 		if p.Error != nil {
-			return nil, errors.New(p.Error.Message)
+			return nil, rejection(p.Error.Message)
 		}
 		return p.Result, nil
 	case <-ctx.Done():

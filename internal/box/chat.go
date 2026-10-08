@@ -101,6 +101,31 @@ func (b *Box) mountChats(route func(string, func(http.ResponseWriter, *http.Requ
 		return nil
 	})
 	add("POST /v1/chats", b.startChat)
+	// The account's models for a location, before any chat exists there.
+	add("GET /v1/chats/models", func(w http.ResponseWriter, r *http.Request) error {
+		location := r.URL.Query().Get("location")
+		dir, err := b.Locations.Dir(r.Context(), location)
+		if err != nil {
+			return badRequest("%v", err)
+		}
+		// It launches the provider, so it passes the same gate as a chat start.
+		if err := b.before(r, "session.start", map[string]any{
+			"location": location, "path": dir, "agent": "codex", "mode": "models",
+			"command": "codex app-server --listen stdio://",
+		}); err != nil {
+			return err
+		}
+		opts, err := b.chatOptions(r.Context(), location)
+		if err != nil {
+			return badRequest("%v", err)
+		}
+		models, err := b.Chats.ListModels(r.Context(), opts)
+		if err != nil {
+			return chatError(err)
+		}
+		writeJSON(w, models)
+		return nil
+	})
 	add("GET /v1/chats/{id}", func(w http.ResponseWriter, r *http.Request) error {
 		s, err := b.Chats.Get(r.PathValue("id"))
 		if err != nil {

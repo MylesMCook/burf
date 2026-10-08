@@ -28,7 +28,8 @@ import { sessionLocation } from "@/lib/orchestrate";
 import { handoffPrompt, reviewPrompt } from "@/lib/orchestrate";
 import { loadProjects, projectActions, useProjects } from "@/lib/project-groups";
 import { promptFor, type ResolveKind, worktreeSlug } from "@/lib/projects";
-import { hasRemoteCodex } from "@/lib/remote-chat";
+import { chatPermissions, savedChatPermission, saveChatPermission } from "@/lib/local-computer";
+import { hasChatOptions, hasRemoteCodex, useChatModels } from "@/lib/remote-chat";
 import { askedVariables, builtinValues, fill as fillPrompt, isBuiltin, usePrompts, variablesIn } from "@/lib/prompts";
 import { boxHasRuns } from "@/lib/runs";
 import { AGENT_WORDS } from "@/lib/state-model";
@@ -209,8 +210,11 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
     }
     const id = Object.keys(c)[0];
     const remembered = load<Chosen>(providerChoicesKey(box, locName), {});
+    // A reasoning level chosen for one Codex model may not exist on another.
+    const listedEfforts = id === "codex" ? codexModels?.find((m) => m.model === c.codex.models[0])?.supportedReasoningEfforts?.map((e) => e.reasoningEffort) : undefined;
+    if (listedEfforts && c.codex.effort && !listedEfforts.includes(c.codex.effort)) c = { codex: { ...c.codex, effort: "" } };
     if (id !== Object.keys(sel)[0] && remembered[id]) {
-      const p = presets.find((p) => p.id === id);
+      const p = pickerPresets.find((p) => p.id === id);
       const old = remembered[id];
       c = { [id]: {
         models: [p?.model_flag && p.models?.includes(old.models[0]) ? old.models[0] : ""],
@@ -365,6 +369,14 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
   // box itself, before anything is created: its card says how to install it.
   const reqAgent = picks.length === 1 && !template?.command ? picks[0].agent : undefined;
   const structuredCodex = reqAgent === "codex" && !from && hasRemoteCodex(box, presets.find((p) => p.id === "codex")?.command ?? "");
+  // A structured chat on a box that takes options: the account's own models, and a permission mode.
+  const chatControls = structuredCodex && hasChatOptions(box);
+  const codexModels = useChatModels(box, locName, chatControls);
+  const [permission, setPermission] = useState<keyof typeof chatPermissions>(() => savedChatPermission() ?? "strict");
+  const pickerPresets = !codexModels?.length
+    ? presets
+    : // Structured chats take these as message options, so the preset needs no CLI flag for them.
+      presets.map((p) => (p.id !== "codex" ? p : { ...p, model_flag: p.model_flag || "--model", effort_flag: p.effort_flag || "--effort", models: codexModels.map((m) => m.model), model_names: Object.fromEntries(codexModels.map((m) => [m.model, m.displayName || m.model])), efforts: codexModels.find((m) => m.model === sel.codex?.models[0])?.supportedReasoningEfforts?.map((e) => e.reasoningEffort) ?? p.efforts }));
   const reqCard = useRequirementsCard(box || undefined, { agent: reqAgent, noAgent, enabled: !structuredCodex });
 
   const name = worktreeSlug(wt.name || resolution?.name || (resolveError ? input : ""));
@@ -428,6 +440,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
       where,
       at: pinned?.at,
       picks,
+      permission: chatControls ? permission : undefined,
       worktree: fresh
         ? {
             name: name || undefined,
@@ -667,7 +680,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
           {(!pinned || from?.kind === "handoff") && !attempts && <Pick label="Where" icon={<GitBranchIcon />} value={where} options={whereOptions} onPick={(v) => setWhere(v as "new" | "main" | "here")} />}
           <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-1">
             <AgentsPicker
-              presets={presets}
+              presets={pickerPresets}
               sel={sel}
               copies={copies}
               none={noAgent}
@@ -677,6 +690,8 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
               onCopies={(n) => { setCopies(n); save(comparisonKey(box, locName), expand(sel, n)); }}
               onNone={setNoAgent}
               onCompare={!from ? switchComparison : undefined}
+              permission={chatControls && !comparison ? permission : undefined}
+              onPermission={(p) => { saveChatPermission(p); setPermission(p); }}
             />
             <SendButton label={action} dialog={dialog} blocker={blocker} busy={busy} onClick={() => void submit()} />
           </div>

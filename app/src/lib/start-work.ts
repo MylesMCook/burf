@@ -1,3 +1,4 @@
+import type { ChatOptions } from "@/lib/local-computer";
 import { toastError } from "@/components/error-note";
 import { noteTmuxMissing, tmuxMissing } from "@/components/requirements-card";
 import { toastManager } from "@/components/ui/toast";
@@ -41,6 +42,8 @@ export interface StartDraft {
   worktree?: { name?: string; branch?: string; base?: string; pr?: number; ref?: string; command?: string };
   attempts?: AttemptOptions;
   from?: { kind: "handoff" | "review"; box: string; session: string };
+  // What a structured chat may do without asking, on boxes that take chat options.
+  permission?: ChatOptions["permission"];
 }
 
 export interface AttemptOptions {
@@ -106,8 +109,9 @@ export async function startWork(d: StartDraft): Promise<boolean> {
   const presets = agentPresets(d.box, d.location);
   const structured = pick?.agent === "codex" && hasRemoteCodex(d.box, presets.find((p) => p.id === "codex")?.command ?? "");
   if (structured && !d.worktree?.command) {
-    const options = { ...(pick.model ? { model: pick.model } : {}), ...(pick.effort ? { effort: pick.effort } : {}) };
-    const chosen = Object.keys(options).length > 0;
+    const chosen = !!(pick.model || pick.effort);
+    // Strict is every chat's starting mode, so only another choice needs sending.
+    const options: ChatOptions = { ...(pick.model ? { model: pick.model } : {}), ...(pick.effort ? { effort: pick.effort } : {}), ...(d.permission && d.permission !== "strict" ? { permission: d.permission } : {}) };
     if (chosen && !hasChatOptions(d.box)) return fail("Choose Codex defaults", new Error(`${d.box} runs an older Burf that starts Codex chats with its configured model and effort. Clear these choices or update the box.`), d.box);
     if (d.where === "new") return fail("Open a worktree first", new Error("Create the worktree without an agent, then start Codex chat inside it."), d.box);
     const location = d.where === "here" ? (d.at ?? d.location) : d.location;
@@ -120,11 +124,12 @@ export async function startWork(d: StartDraft): Promise<boolean> {
       try {
         if (d.text.trim()) await remoteChatApi.message(client, d.box, chat.id, d.text, options);
       } catch (error) {
-        openRemoteChat(d.box, chat, ref, d.text, chosen ? options : undefined);
+        openRemoteChat(d.box, chat, ref, d.text, chosen ? { model: options.model, effort: options.effort } : undefined);
         return fail("Could not confirm the message", error, d.box);
       }
       // Without a first message nothing has confirmed the choices yet: the chat's first send carries them.
-      openRemoteChat(d.box, chat, ref, undefined, chosen && !d.text.trim() ? options : undefined);
+      // The permission is not held with the pane; an empty chat offers the one last chosen.
+      openRemoteChat(d.box, chat, ref, undefined, chosen && !d.text.trim() ? { model: options.model, effort: options.effort } : undefined);
       return true;
     } catch (error) { return fail("Couldn't start Codex", error, d.box); }
   }

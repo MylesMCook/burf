@@ -24,6 +24,10 @@ async function fixture(context: BrowserContext, supported = true, options = fals
     if (path === "sessions") return route.fulfill({ json: method === "POST" ? { name: "legacy-codex" } : [] });
     if (!path.startsWith("chats")) return route.continue();
     if (control.offline) return route.abort("connectionreset");
+    if (path === "chats/models") return route.fulfill({ json: [
+      { model: "alpha", displayName: "Alpha", defaultReasoningEffort: "medium", supportedReasoningEfforts: [{ reasoningEffort: "medium" }, { reasoningEffort: "high" }] },
+      { model: "beta", displayName: "Beta", defaultReasoningEffort: "low", supportedReasoningEfforts: [{ reasoningEffort: "low" }] },
+    ] });
     if (path === "chats") {
       if (method === "GET") return route.fulfill({ json: { chats: control.listed ? [{ ...chat, items: null, approvals: null }] : [] } });
       control.listed = true;
@@ -175,6 +179,44 @@ test("the composer carries a chosen effort into the first message on boxes that 
     const sends = f.calls.filter((c) => c.path.endsWith("/messages"));
     expect(sends.map((c) => c.body)).toEqual([{ text: "Think carefully", options: { effort: "high" } }]);
     expect(f.calls.some((c) => c.method === "POST" && c.path === "sessions")).toBe(false);
+  } finally { await f.agent.close(); }
+});
+
+test("the launcher offers the account's Codex models and a permission mode on boxes that take options", async ({ app }) => {
+  const f = await fixture(app.context, true, true);
+  try {
+    await app.open({ agent: f.agent });
+    await openWorktree(app);
+    const composer = app.page.getByTestId("task-composer");
+    await composer.getByRole("button", { name: "Model: Default", exact: true }).click();
+    await app.page.getByRole("menuitemradio", { name: "Alpha", exact: true }).click();
+    await composer.getByRole("button", { name: "Reasoning: Default", exact: true }).click();
+    await app.page.getByRole("menuitemradio", { name: "High", exact: true }).click();
+    // Beta lists no High: the choice does not follow it there.
+    await composer.getByRole("button", { name: "Model: Alpha", exact: true }).click();
+    await app.page.getByRole("menuitemradio", { name: "Beta", exact: true }).click();
+    await expect(composer.getByRole("button", { name: "Reasoning: Default", exact: true })).toBeVisible();
+    await composer.getByRole("button", { name: "Permissions: Ask every time", exact: true }).click();
+    await app.page.getByRole("menuitemradio", { name: "Edit workspace", exact: true }).click();
+    await composer.getByRole("textbox", { name: "What should your agents work on?" }).fill("Make the change");
+    await app.page.getByRole("button", { name: "Start", exact: true }).click();
+    await expect(app.page.getByTestId("remote-chat")).toBeVisible();
+    expect(f.calls.filter((c) => c.path.endsWith("/messages")).map((c) => c.body)).toEqual([{ text: "Make the change", options: { model: "beta", permission: "workspace" } }]);
+    expect(f.calls.filter((c) => c.path === "chats/models")).toHaveLength(1);
+    expect(await app.stored("berth.chat.permission")).toBe("workspace");
+  } finally { await f.agent.close(); }
+});
+
+test("older boxes show no chat permission or provider model choices in the launcher", async ({ app }) => {
+  const f = await fixture(app.context);
+  try {
+    await app.open({ agent: f.agent });
+    await openWorktree(app);
+    const composer = app.page.getByTestId("task-composer");
+    await expect(composer.getByRole("button", { name: /^Provider: Codex/ })).toBeVisible();
+    await expect(composer.getByRole("button", { name: /^Permissions:/ })).toHaveCount(0);
+    await expect(composer.getByRole("button", { name: /^Model:/ })).toHaveCount(0);
+    expect(f.calls.some((c) => c.path === "chats/models")).toBe(false);
   } finally { await f.agent.close(); }
 });
 

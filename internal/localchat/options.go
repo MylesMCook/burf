@@ -69,6 +69,64 @@ func (m *Manager) Models(ctx context.Context, id string) ([]Model, error) {
 	if err != nil {
 		return nil, err
 	}
+	return r.models(ctx)
+}
+
+// ListModels asks a short-lived owned provider process, bound to no chat or
+// thread, which models this account offers, so one can be chosen before a
+// chat exists. Answers are kept briefly per executable and account.
+func (m *Manager) ListModels(ctx context.Context, options LaunchOptions) ([]Model, error) {
+	key := options.Program
+	for _, kv := range options.Env {
+		if strings.HasPrefix(kv, "CODEX_HOME=") || strings.HasPrefix(kv, "HOME=") || strings.HasPrefix(kv, "USERPROFILE=") {
+			key += "\x00" + kv
+		}
+	}
+	m.probe.Lock()
+	defer m.probe.Unlock()
+	if c, ok := m.listed[key]; ok && time.Since(c.at) < 10*time.Minute {
+		return c.models, nil
+	}
+	m.mu.Lock()
+	closed := m.closed
+	m.mu.Unlock()
+	if closed || options.Program == "" {
+		return nil, errors.New("installed Codex CLI does not support app-server chat")
+	}
+	ctx, cancel := context.WithTimeout(ctx, 20*time.Second)
+	defer cancel()
+	p, err := m.launch(options)
+	if err != nil {
+		return nil, err
+	}
+	r := &running{process: p, writes: make(chan []byte, 16), done: make(chan struct{}), pending: make(map[string]chan packet), approvals: make(map[string]json.RawMessage)}
+	r.session = Session{State: "starting", Items: []Item{}, Approvals: []Approval{}}
+	defer r.finish("")
+	go r.read()
+	go r.write()
+	if _, err = r.call(ctx, "initialize", map[string]any{"clientInfo": map[string]string{"name": "burf", "title": "Burf", "version": "1"}}); err != nil {
+		return nil, err
+	}
+	if err = r.queue(map[string]any{"method": "initialized"}); err != nil {
+		return nil, err
+	}
+	models, err := r.models(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if m.listed == nil {
+		m.listed = map[string]listedModels{}
+	}
+	m.listed[key] = listedModels{at: time.Now(), models: models}
+	return models, nil
+}
+
+type listedModels struct {
+	at     time.Time
+	models []Model
+}
+
+func (r *running) models(ctx context.Context) ([]Model, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	raw, err := r.call(ctx, "model/list", map[string]any{"limit": 100, "includeHidden": false})

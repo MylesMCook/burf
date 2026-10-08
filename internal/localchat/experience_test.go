@@ -1,8 +1,13 @@
 package localchat
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
+	"net"
+	"strings"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -134,19 +139,106 @@ func TestPersistentProposalSnapshotCannotBeMutated(t *testing.T) {
 	}
 }
 
-func TestRejectedTurnDoesNotClaimChangedPermissions(t *testing.T) {
+func TestRejectedTurnKeepsTheChatAndClaimsNothing(t *testing.T) {
 	m, f, s := newTestChat(t)
 	f.mu.Lock()
 	f.onTurn = func(p packet) {
-		f.send(map[string]any{"id": p.ID, "error": map[string]any{"code": -1, "message": "rejected"}})
+		f.send(map[string]any{"id": p.ID, "error": map[string]any{"code": -1, "message": "unsupported effort"}})
 	}
 	f.mu.Unlock()
-	if err := m.SendWith(context.Background(), s.ID, "test", TurnOptions{Permission: "workspace"}); err == nil {
-		t.Fatal("accepted rejection")
+	err := m.SendWith(context.Background(), s.ID, "test", TurnOptions{Permission: "workspace", Effort: "ultra"})
+	if err == nil || !strings.Contains(err.Error(), "unsupported effort") {
+		t.Fatal("rejection not reported", err)
 	}
 	got, _ := m.Get(s.ID)
-	if got.Options.Permission != "strict" || got.State != "exited" || len(got.Items) != 1 {
-		t.Fatal(got)
+	if got.Options != (TurnOptions{Permission: "strict"}) || got.State != "idle" || len(got.Items) != 0 || got.Error == "" {
+		t.Fatalf("rejected turn changed the chat: %#v", got)
+	}
+	f.mu.Lock()
+	f.onTurn = nil
+	f.mu.Unlock()
+	if err := m.Send(context.Background(), s.ID, "again"); err != nil {
+		t.Fatal("chat unusable after a rejection", err)
+	}
+	if got, _ = m.Get(s.ID); len(got.Items) != 1 || got.Items[0].Text != "again" || got.Error != "" {
+		t.Fatalf("deliberate resend: %#v", got)
+	}
+}
+
+func TestLostTurnReplyStillStopsWithoutReplay(t *testing.T) {
+	m, f, s := newTestChat(t)
+	f.mu.Lock()
+	f.onTurn = func(packet) { _ = f.conn.Close() }
+	f.mu.Unlock()
+	if err := m.Send(context.Background(), s.ID, "uncertain"); err == nil {
+		t.Fatal("lost reply reported as sent")
+	}
+	if got, _ := m.Get(s.ID); got.State != "exited" || len(got.Items) != 1 {
+		t.Fatalf("uncertain send must stop and keep its message: %#v", got)
+	}
+}
+
+func TestModelsAreListedBeforeAnyChatWithoutAThread(t *testing.T) {
+	var launches atomic.Int32
+	var methods []string
+	var mu sync.Mutex
+	closed := make(chan struct{}, 4)
+	m := New("synthetic.exe", func(LaunchOptions) (Process, error) {
+		launches.Add(1)
+		client, server := net.Pipe()
+		go func() {
+			defer func() { server.Close(); closed <- struct{}{} }()
+			sc := bufio.NewScanner(server)
+			for sc.Scan() {
+				var p packet
+				_ = json.Unmarshal(sc.Bytes(), &p)
+				mu.Lock()
+				methods = append(methods, p.Method)
+				mu.Unlock()
+				var result any = map[string]any{}
+				if p.Method == "model/list" {
+					result = map[string]any{"data": []any{
+						map[string]any{"model": "alpha", "displayName": "Alpha", "defaultReasoningEffort": "medium", "supportedReasoningEfforts": []any{map[string]string{"reasoningEffort": "medium"}}},
+						map[string]any{"model": "secret", "hidden": true},
+					}}
+				}
+				if len(p.ID) > 0 {
+					b, _ := json.Marshal(map[string]any{"id": p.ID, "result": result})
+					_, _ = server.Write(append(b, '\n'))
+				}
+			}
+		}()
+		return client, nil
+	})
+	t.Cleanup(m.Close)
+	options := LaunchOptions{Program: "synthetic.exe", CWD: t.TempDir(), Env: []string{"CODEX_HOME=/accounts/one"}}
+	for range 2 {
+		models, err := m.ListModels(context.Background(), options)
+		if err != nil || len(models) != 1 || models[0].Model != "alpha" {
+			t.Fatal(models, err)
+		}
+	}
+	select {
+	case <-closed:
+	case <-time.After(2 * time.Second):
+		t.Fatal("listing left its provider process running")
+	}
+	options.Env = []string{"CODEX_HOME=/accounts/two"}
+	if _, err := m.ListModels(context.Background(), options); err != nil {
+		t.Fatal(err)
+	}
+	if launches.Load() != 2 {
+		t.Fatal("expected one launch per account, cached", launches.Load())
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	for _, method := range methods {
+		if method == "thread/start" || method == "turn/start" {
+			t.Fatal("model listing opened a conversation", methods)
+		}
+	}
+	if len(m.List()) != 0 {
+		t.Fatal("model listing registered a chat")
 	}
 }
 

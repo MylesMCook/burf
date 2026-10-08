@@ -22,6 +22,7 @@ import {
 import type { SessionEntry } from "@/hooks/use-agent-counts";
 import type { AgentPreset } from "@/lib/api";
 import type { AgentPick } from "@/lib/composer";
+import { chatPermissions } from "@/lib/local-computer";
 import { sessionAgent, sessionName, sessionPlace } from "@/lib/derive";
 import { promptsFor, usePrompts } from "@/lib/prompts";
 import { useStore } from "@/lib/store";
@@ -95,8 +96,10 @@ export function AgentsPicker({
   onCopies,
   onNone,
   onCompare,
+  permission,
+  onPermission,
 }: {
-  presets: AgentPreset[];
+  presets: PickerPreset[];
   sel: Chosen;
   copies: number;
   none?: boolean;
@@ -106,8 +109,11 @@ export function AgentsPicker({
   onCopies(n: number): void;
   onNone?(on: boolean): void;
   onCompare?(on: boolean): void;
+  // A structured chat's permission mode, where the box takes one.
+  permission?: ChatPermission;
+  onPermission?(p: ChatPermission): void;
 }) {
-  if (single) return <SingleAgentPicker presets={presets} sel={sel} none={none} allowNone={allowNone} onChange={onChange} onNone={onNone} onCompare={onCompare} />;
+  if (single) return <SingleAgentPicker presets={presets} sel={sel} none={none} allowNone={allowNone} onChange={onChange} onNone={onNone} onCompare={onCompare} permission={permission} onPermission={onPermission} />;
   const label = none ? "No agent" : pickLabel(sel, copies, presets);
   const ids = none ? [] : Object.keys(sel);
   // Unticking the last pick leaves it: there is always one agent, unless
@@ -224,14 +230,21 @@ export function AgentsPicker({
 
 const coreProviders = new Set(["codex", "claude", "cursor", "grok"]);
 
-function SingleAgentPicker({ presets, sel, none, allowNone, onChange, onNone, onCompare }: {
-  presets: AgentPreset[];
+type ChatPermission = keyof typeof chatPermissions;
+// What a structured provider calls its models, by id; CLI presets have only the ids.
+export type PickerPreset = AgentPreset & { model_names?: Record<string, string> };
+const permissionLabels = Object.fromEntries(Object.entries(chatPermissions).map(([id, p]) => [id, p.label]));
+
+function SingleAgentPicker({ presets, sel, none, allowNone, onChange, onNone, onCompare, permission, onPermission }: {
+  presets: PickerPreset[];
   sel: Chosen;
   none?: boolean;
   allowNone?: boolean;
   onChange(c: Chosen): void;
   onNone?(on: boolean): void;
   onCompare?(on: boolean): void;
+  permission?: ChatPermission;
+  onPermission?(p: ChatPermission): void;
 }) {
   const id = Object.keys(sel)[0] ?? "";
   const preset = presets.find((p) => p.id === id);
@@ -243,7 +256,7 @@ function SingleAgentPicker({ presets, sel, none, allowNone, onChange, onNone, on
     onNone?.(false);
     onChange({ [String(next)]: sel[String(next)] ?? { models: [""], effort: "" } });
   };
-  const provider = (p: AgentPreset) => (
+  const provider = (p: PickerPreset) => (
     <MenuRadioItem key={p.id} value={p.id} closeOnClick>
       <AgentIcon agent={p.id} />
       {p.name}
@@ -295,14 +308,16 @@ function SingleAgentPicker({ presets, sel, none, allowNone, onChange, onNone, on
           )}
         </MenuPopup>
       </Menu>
-      {!none && preset?.model_flag && !!preset.models?.length && <AgentOption label="Model" value={choice.models[0] ?? ""} values={preset.models} onChange={(model) => onChange({ [id]: { ...choice, models: [model] } })} />}
+      {!none && preset?.model_flag && !!preset.models?.length && <AgentOption label="Model" value={choice.models[0] ?? ""} values={preset.models} labels={preset.model_names} onChange={(model) => onChange({ [id]: { ...choice, models: [model] } })} />}
       {!none && preset?.effort_flag && !!preset.efforts?.length && <AgentOption label="Reasoning" value={choice.effort} values={preset.efforts} onChange={(effort) => onChange({ [id]: { ...choice, effort } })} />}
+      {!none && permission && onPermission && <AgentOption label="Permissions" value={permission} values={Object.keys(chatPermissions)} labels={permissionLabels} required onChange={(p) => onPermission(p as ChatPermission)} />}
     </>
   );
 }
 
-function AgentOption({ label, value, values, onChange }: { label: string; value: string; values: string[]; onChange(value: string): void }) {
-  const shown = value ? nice(value) : "Default";
+function AgentOption({ label, value, values, labels, required, onChange }: { label: string; value: string; values: string[]; labels?: Record<string, string>; required?: boolean; onChange(value: string): void }) {
+  const text = (option: string) => labels?.[option] ?? (option ? nice(option) : "Default");
+  const shown = text(value);
   return (
     <Menu>
       <MenuTrigger render={<Button size="sm" variant="ghost" aria-label={`${label}: ${shown}`} className="min-w-0 max-w-44 shrink text-muted-foreground" />}>
@@ -315,9 +330,9 @@ function AgentOption({ label, value, values, onChange }: { label: string; value:
         <MenuGroup>
           <MenuGroupLabel>{label}</MenuGroupLabel>
           <MenuRadioGroup value={value} onValueChange={(next) => onChange(String(next))}>
-            {["", ...new Set(values.filter(Boolean))].map((option) => (
+            {[...(required ? [] : [""]), ...new Set(values.filter(Boolean))].map((option) => (
               <MenuRadioItem key={option || "default"} value={option} closeOnClick>
-                {option ? nice(option) : "Default"}
+                {text(option)}
               </MenuRadioItem>
             ))}
           </MenuRadioGroup>
