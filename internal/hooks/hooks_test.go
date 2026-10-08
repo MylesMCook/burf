@@ -98,7 +98,8 @@ func TestRunnerRunsMatchingHooksWithTheEventOnStdin(t *testing.T) {
 	time.Sleep(50 * time.Millisecond)
 	bus.Publish(events.Event{Type: "worktree.created", Box: "devl", Data: map[string]any{"name": "billing"}})
 
-	deadline := time.Now().Add(5 * time.Second)
+	// A first PowerShell on a hosted Windows runner can take longer than five seconds.
+	deadline := time.Now().Add(30 * time.Second)
 	for {
 		got, _ := os.ReadFile(out)
 		if strings.Contains(string(got), `"name":"billing"`) && strings.Contains(string(got), " herdr") {

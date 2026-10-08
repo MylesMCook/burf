@@ -20,10 +20,13 @@ test("different bundled builds do not claim version ordering or update automatic
 
 test("a failed build comparison is visible without claiming the online box is current", async ({ app }) => {
   const agent = await fakeAgent();
+  // The comparison fails until the bundled daemon is back. The app also checks on its own (on connect, and when the
+  // online boxes change), so how many checks precede Settings is not fixed.
   let checks = 0;
+  let failing = true;
   await app.context.route(`${agent.url}/v1/boxes/outdated**`, (route) => {
     checks++;
-    return route.fulfill({ json: { boxes: [checks === 1 ? { box: BOX, error: "bundled daemon unavailable for darwin/arm64" } : { box: BOX, current: "e2e", available: "e2e", outdated: false }] } });
+    return route.fulfill({ json: { boxes: [failing ? { box: BOX, error: "bundled daemon unavailable for darwin/arm64" } : { box: BOX, current: "e2e", available: "e2e", outdated: false }] } });
   });
   try {
     await app.open({ agent });
@@ -33,9 +36,12 @@ test("a failed build comparison is visible without claiming the online box is cu
     await settings.getByRole("button", { name: `${BOX} actions` }).click();
     await expect(app.page.getByRole("menuitem", { name: "Install bundled box agent" })).toBeDisabled();
     await app.page.keyboard.press("Escape");
+    failing = false;
+    const before = checks;
     await settings.getByRole("button", { name: "Retry build check" }).click();
     await expect(settings.getByText("Build comparison unavailable", { exact: true })).toHaveCount(0);
-    expect(checks).toBe(2);
+    // Retry asked again; nothing was assumed from the failed answer.
+    expect(checks).toBeGreaterThan(before);
   } finally { await agent.close(); }
 });
 

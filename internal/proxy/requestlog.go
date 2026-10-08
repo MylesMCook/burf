@@ -61,7 +61,9 @@ type requestLog struct {
 
 type hostLog struct {
 	list []Request
-	used time.Time
+	// used is the log's seq when the host was last logged to: a clock can
+	// give two hosts the same instant (Windows ticks coarsely), a count cannot.
+	used int64
 }
 
 func (l *requestLog) add(req Request, hosts ...string) {
@@ -72,7 +74,6 @@ func (l *requestLog) add(req Request, hosts ...string) {
 	if l.hosts == nil {
 		l.hosts = map[string]*hostLog{}
 	}
-	now := time.Now()
 	seen := map[string]bool{}
 	for _, h := range hosts {
 		if h == "" || seen[h] {
@@ -87,7 +88,7 @@ func (l *requestLog) add(req Request, hosts ...string) {
 			hl = &hostLog{}
 			l.hosts[h] = hl
 		}
-		hl.used = now
+		hl.used = l.seq
 		hl.list = append(hl.list, req)
 		if len(hl.list) > logLimit {
 			hl.list = append([]Request(nil), hl.list[len(hl.list)-logLimit:]...)
@@ -97,9 +98,9 @@ func (l *requestLog) add(req Request, hosts ...string) {
 
 func (l *requestLog) evictLocked() {
 	var oldest string
-	var at time.Time
+	var at int64
 	for h, hl := range l.hosts {
-		if oldest == "" || hl.used.Before(at) {
+		if oldest == "" || hl.used < at {
 			oldest, at = h, hl.used
 		}
 	}
