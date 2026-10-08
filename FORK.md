@@ -16,6 +16,9 @@ patches small and upstream contributions straightforward.
   CLI's fork command. The original conversation stays unchanged, even if another
   application still has it open. Repeated clicks reuse a running continuation.
   The original project directory must still exist and the CLI must support forks.
+  Replaced, truncated, deleted or mismatched source files fail until refreshed.
+  Source checks run after waiting for the launch lock; canceled pending requests
+  do not start agents when that lock becomes available.
 - Installed native agent CLIs can run in a Berth-owned Windows terminal,
   receive input, resize, and stop without affecting externally started agents.
 - Local sessions belong to the client backend. They survive closing a view,
@@ -27,6 +30,11 @@ Local discovery currently indexes top-level active transcripts, not helper
 sessions, archived Codex sessions or cloud-only conversations. Agent
 authentication and permission prompts remain the installed CLI's responsibility.
 The fork does not install CLIs, bypass agent approvals, or change host security.
+
+If terminal input loses its response, Berth reports that it may have arrived.
+Reconnecting reads output from the same owned session and never resends input.
+Canceling a request after the process already started cannot undo that launch;
+refresh This computer to find the owned session before intentionally trying again.
 
 When an installed Codex CLI advertises `--no-daemon`, local terminals use that
 mode so their process stays owned by Berth instead of a shared Codex server.
@@ -59,7 +67,7 @@ Focused checks:
 ```sh
 GORACE=atexit_sleep_ms=0 go test -race ./internal/agent ./internal/localagent ./internal/localhistory ./internal/localpty ./internal/transcript
 go vet ./internal/agent ./internal/localagent ./internal/localhistory ./internal/localpty ./internal/transcript
-cd app && pnpm test && pnpm test:e2e -- local-computer.spec.ts windows-client.spec.ts first-run.spec.ts chat.spec.ts
+cd app && pnpm test && pnpm run test:e2e local-computer.spec.ts windows-client.spec.ts first-run.spec.ts chat.spec.ts --workers=2
 ```
 
 The race setting removes the race runtime's exit delay from synthetic CLI
@@ -73,3 +81,9 @@ local client and starts available CLIs with synthetic agent homes, without
 submitting prompts. `-ExistingHistory` instead discovers the current user's local
 conversations and parses one page per source, printing counts only. It does not
 start a coding agent, edit transcripts, register a login task or change pairings.
+
+`scripts/test-windows-continuation.ps1 -Artifacts <directory>` runs cross-compiled
+synthetic localagent, localhistory, localpty and agent test binaries natively.
+Installed-provider smoke is disabled. See the
+[native acceptance checklist](scripts/WINDOWS-LOCAL-ACCEPTANCE.md) for the
+remaining desktop and actual CLI fork checks.

@@ -43,13 +43,29 @@ func TestLocalContinuationAPI(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("native local API is Windows only")
 	}
+	for _, provider := range []string{"codex", "claude"} {
+		t.Run(provider, func(t *testing.T) { testLocalContinuationAPI(t, provider) })
+	}
+}
+
+func testLocalContinuationAPI(t *testing.T, provider string) {
+	t.Helper()
 	dir := t.TempDir()
 	const sourceID = "12345678-1234-4321-8123-123456789abc"
 	path := filepath.Join(dir, "sessions", "2026", "10", "07", "rollout-test.jsonl")
+	entry := map[string]any{"type": "session_meta", "payload": map[string]any{"id": sourceID, "cwd": dir, "source": "cli"}}
+	wantArgs := []string{"--no-daemon", "fork", sourceID}
+	command := localagent.Command{Program: "synthetic.exe", Args: []string{"--no-daemon"}, CanFork: true}
+	if provider == "claude" {
+		path = filepath.Join(dir, "projects", "project", sourceID+".jsonl")
+		entry = map[string]any{"type": "user", "sessionId": sourceID, "cwd": dir, "message": map[string]any{"role": "user", "content": "Synthetic saved request"}}
+		wantArgs = []string{"--resume", sourceID, "--fork-session"}
+		command.Args = nil
+	}
 	if err := os.MkdirAll(filepath.Dir(path), 0700); err != nil {
 		t.Fatal(err)
 	}
-	meta, _ := json.Marshal(map[string]any{"type": "session_meta", "payload": map[string]any{"id": sourceID, "cwd": dir, "source": "cli"}})
+	meta, _ := json.Marshal(entry)
 	if err := os.WriteFile(path, append(meta, '\n'), 0600); err != nil {
 		t.Fatal(err)
 	}
@@ -57,11 +73,11 @@ func TestLocalContinuationAPI(t *testing.T) {
 	a := &Agent{ctx: context.Background()}
 	calls := 0
 	a.localClient.once.Do(func() {
-		a.localClient.commands = map[string]localagent.Command{"codex": {Program: "synthetic.exe", CanFork: true}}
+		a.localClient.commands = map[string]localagent.Command{provider: command}
 		a.localClient.history = localhistory.New(localhistory.Config{CodexHome: dir, ClaudeHome: dir})
 		a.localClient.manager = localagent.New(a.localClient.commands, func(_ string, args []string, cwd string, _ []string, _, _ int) (localagent.Process, error) {
 			calls++
-			if !reflect.DeepEqual(args, []string{"fork", sourceID}) || cwd != dir {
+			if !reflect.DeepEqual(args, wantArgs) || cwd != dir {
 				t.Fatalf("unexpected launch: %q %q", args, cwd)
 			}
 			r, w := io.Pipe()
@@ -87,8 +103,13 @@ func TestLocalContinuationAPI(t *testing.T) {
 	}
 	endpoint := "/v1/local/conversations/" + list[0].ID + "/fork"
 	for i := 0; i < 2; i++ {
-		if w := call("POST", endpoint); w.Code != 201 {
+		w := call("POST", endpoint)
+		if w.Code != 201 {
 			t.Fatal(w.Code, w.Body.String())
+		}
+		var session localagent.Session
+		if err := json.Unmarshal(w.Body.Bytes(), &session); err != nil || session.Agent != provider || session.CWD != dir {
+			t.Fatalf("wrong owned source: %+v, %v", session, err)
 		}
 	}
 	if calls != 1 {

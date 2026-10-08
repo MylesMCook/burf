@@ -171,6 +171,22 @@ func TestPTYConcurrentCloseStopsTreeWithoutReader(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer windows.CloseHandle(child)
+	// A sibling process outside this terminal's job must survive its close.
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	unrelated := exec.Command(exe, "-test.run=^TestPTYHelper$")
+	unrelated.Env = append(os.Environ(), "BERTH_LOCALPTY_HELPER=idle")
+	if err := unrelated.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { unrelated.Process.Kill(); unrelated.Wait() }()
+	sibling, err := windows.OpenProcess(windows.SYNCHRONIZE, false, uint32(unrelated.Process.Pid))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer windows.CloseHandle(sibling)
 	if err := bounded(t, func() error {
 		var wg sync.WaitGroup
 		for range 8 {
@@ -185,6 +201,10 @@ func TestPTYConcurrentCloseStopsTreeWithoutReader(t *testing.T) {
 	status, err := windows.WaitForSingleObject(child, 5000)
 	if err != nil || status != windows.WAIT_OBJECT_0 {
 		t.Fatalf("descendant survived close: %d %v", status, err)
+	}
+	status, err = windows.WaitForSingleObject(sibling, 0)
+	if err != nil || status != uint32(windows.WAIT_TIMEOUT) {
+		t.Fatalf("unrelated process was stopped: %d %v", status, err)
 	}
 	if _, err := p.Write([]byte("x")); err == nil {
 		t.Fatal("write after close succeeded")

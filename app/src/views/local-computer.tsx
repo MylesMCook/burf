@@ -103,6 +103,7 @@ function LocalHistory({ client, conversation, canFork, onStart }: { client: Clie
   const [starting, setStarting] = useState(false);
   const [startError, setStartError] = useState("");
   const startingRef = useRef(false);
+  const launch = useRef<AbortController | null>(null);
   const request = useRef<AbortController | null>(null);
   const load = useCallback(async (before?: number) => {
     request.current?.abort();
@@ -122,6 +123,7 @@ function LocalHistory({ client, conversation, canFork, onStart }: { client: Clie
     finally { if (!controller.signal.aborted) setLoading(false); }
   }, [client, conversation.id]);
   useEffect(() => { void load(); return () => request.current?.abort(); }, [load]);
+  useEffect(() => () => launch.current?.abort(), [client, conversation.id]);
   const before = page?.start ?? page?.items[0]?.off;
   return <>
     <div className="flex min-w-0 flex-wrap items-center gap-3 border-b px-4 py-3"><h2 className="min-w-0 flex-1 truncate text-sm font-medium" title={conversation.title}>{conversation.title}</h2><span className="shrink-0 text-xs text-muted-foreground">Read-only</span></div>
@@ -130,9 +132,14 @@ function LocalHistory({ client, conversation, canFork, onStart }: { client: Clie
         <Button size="sm" variant="outline" disabled={!canFork || starting} onClick={async () => {
           if (startingRef.current) return;
           startingRef.current = true;
+          const controller = new AbortController();
+          launch.current = controller;
           setStarting(true); setStartError("");
-          try { onStart(await localApi.fork(client, conversation.id), conversation.id); }
-          catch (e) { setStartError(errorMessage(e)); }
+          try {
+            const session = await localApi.fork(client, conversation.id, controller.signal);
+            if (!controller.signal.aborted) onStart(session, conversation.id);
+          }
+          catch (e) { if (!controller.signal.aborted) setStartError(errorMessage(e)); }
           finally { startingRef.current = false; setStarting(false); }
         }}><GitForkIcon />{starting ? "Starting..." : "Continue in Berth"}</Button>
       </Tip>
@@ -151,13 +158,20 @@ function NewLocalAgent({ client, local, onStart }: { client: Client; local: Loca
   const [cwd, setCwd] = useState(local.home);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const launch = useRef<AbortController | null>(null);
+  useEffect(() => () => launch.current?.abort(), [client]);
   return <form className="w-full max-w-xl space-y-4 p-6" onSubmit={async (e) => {
     e.preventDefault();
-    if (!agent || !cwd.trim() || busy) return;
+    if (!agent || !cwd.trim() || busy || launch.current && !launch.current.signal.aborted) return;
+    const controller = new AbortController();
+    launch.current = controller;
     setBusy(true); setError("");
-    try { onStart(await localApi.start(client, agent, cwd.trim())); }
-    catch (e) { setError(errorMessage(e)); }
-    finally { setBusy(false); }
+    try {
+      const session = await localApi.start(client, agent, cwd.trim(), controller.signal);
+      if (!controller.signal.aborted) onStart(session);
+    }
+    catch (e) { if (!controller.signal.aborted) setError(errorMessage(e)); }
+    finally { if (launch.current === controller) launch.current = null; setBusy(false); }
   }}>
     <h2 className="text-base font-medium">New local agent</h2>
     <label className="block space-y-1.5 text-sm"><span>Project directory</span><Input value={cwd} onChange={(e) => setCwd(e.target.value)} required disabled={busy} /></label>

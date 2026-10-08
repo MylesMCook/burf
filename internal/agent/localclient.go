@@ -91,12 +91,10 @@ func (a *Agent) localClientRoutes(mux *http.ServeMux) {
 			return
 		}
 		defer done()
-		source, err := a.localClient.history.Continuation(r.Context(), r.PathValue("id"))
-		if err != nil {
-			localClientError(w, err)
-			return
-		}
-		s, err := a.localClient.manager.Fork(source.Source, source.Cwd, source.SessionID)
+		s, err := a.localClient.manager.ForkFrom(r.Context(), func() (string, string, string, error) {
+			source, err := a.localClient.history.Continuation(r.Context(), r.PathValue("id"))
+			return source.Source, source.Cwd, source.SessionID, err
+		})
 		if err != nil {
 			localClientError(w, err)
 			return
@@ -117,7 +115,7 @@ func (a *Agent) localClientRoutes(mux *http.ServeMux) {
 			return
 		}
 		defer done()
-		s, err := a.localClient.manager.Start(req.Agent, req.CWD)
+		s, err := a.localClient.manager.StartContext(r.Context(), req.Agent, req.CWD)
 		if err != nil {
 			localClientError(w, err)
 			return

@@ -16,7 +16,7 @@
     "check:csp": "node scripts/check-csp.mjs",
     "check:themes": "node --experimental-strip-types --test src/themes/contrast.test.ts",
     "test:platform": "node --experimental-strip-types --test src/lib/platform.test.ts",
-    "test:e2e": "tsc --noEmit -p e2e && pnpm -s build && playwright test",
+    "test:e2e": "tsc --noEmit -p e2e && pnpm run build && playwright test",
     "smoke:live": "node e2e/live.mjs",
     "perf": "node perf/bench.mjs",
     "perf:guard": "node perf/guard.mjs",

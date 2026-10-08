@@ -54,6 +54,7 @@ type record struct {
 	home     string
 	path     string
 	identity string
+	fileInfo os.FileInfo
 }
 
 type Store struct {
@@ -118,8 +119,9 @@ func (s *Store) List(ctx context.Context) ([]Conversation, error) {
 					continue
 				}
 				id, cwd, title := metadata(f, source.name)
+				info, statErr := f.Stat()
 				f.Close()
-				if id == "" || cwd == "" {
+				if id == "" || cwd == "" || statErr != nil {
 					continue
 				}
 				if source.name == "claude" && strings.TrimSuffix(filepath.Base(candidate.path), ".jsonl") != id {
@@ -134,6 +136,7 @@ func (s *Store) List(ctx context.Context) ([]Conversation, error) {
 					candidate.Title = source.name + " conversation"
 				}
 				candidate.home, candidate.identity = source.home, id
+				candidate.fileInfo = info
 				all = append(all, candidate)
 			}
 		}
@@ -221,7 +224,8 @@ func (s *Store) openRecord(ctx context.Context, id string) (record, *os.File, er
 		return record{}, nil, ErrNotFound
 	}
 	identity, cwd, _ := metadata(f, r.Source)
-	if identity != r.identity || cwd != r.Cwd {
+	info, statErr := f.Stat()
+	if identity != r.identity || cwd != r.Cwd || statErr != nil || !os.SameFile(r.fileInfo, info) || info.Size() < r.fileInfo.Size() {
 		f.Close()
 		return record{}, nil, ErrNotFound
 	}

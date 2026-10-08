@@ -2,6 +2,7 @@
 package localagent
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/hex"
@@ -78,21 +79,49 @@ func New(commands map[string]Command, launch Launch) *Manager {
 }
 
 func (m *Manager) Start(agent, cwd string) (Session, error) {
-	return m.start(agent, cwd, "")
+	return m.StartContext(context.Background(), agent, cwd)
+}
+
+func (m *Manager) StartContext(ctx context.Context, agent, cwd string) (Session, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return Session{}, err
+	}
+	return m.startLocked(agent, cwd, "")
 }
 
 // Fork continues saved history under a new CLI session ID. Never resume an
 // externally owned session in place: another application may still write it.
 func (m *Manager) Fork(agent, cwd, sourceID string) (Session, error) {
+	return m.ForkFrom(context.Background(), func() (string, string, string, error) {
+		return agent, cwd, sourceID, nil
+	})
+}
+
+// ForkFrom resolves and revalidates saved history under the launch lock. A
+// request waiting behind another launch must not use an earlier source check,
+// and a cancelled request must not create a process when the lock is released.
+func (m *Manager) ForkFrom(ctx context.Context, source func() (agent, cwd, sourceID string, err error)) (Session, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if err := ctx.Err(); err != nil {
+		return Session{}, err
+	}
+	agent, cwd, sourceID, err := source()
+	if err != nil {
+		return Session{}, err
+	}
 	if !conversationID.MatchString(sourceID) {
 		return Session{}, errors.New("this conversation has no supported session ID")
 	}
-	return m.start(agent, cwd, sourceID)
+	if err := ctx.Err(); err != nil {
+		return Session{}, err
+	}
+	return m.startLocked(agent, cwd, sourceID)
 }
 
-func (m *Manager) start(agent, cwd, sourceID string) (Session, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
+func (m *Manager) startLocked(agent, cwd, sourceID string) (Session, error) {
 	if m.closed {
 		return Session{}, errors.New("local agent is shutting down")
 	}

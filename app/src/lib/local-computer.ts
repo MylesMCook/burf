@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { Client } from "@/lib/api";
+import { ApiError, type Client } from "@/lib/api";
 import { useStore } from "@/lib/store";
 import type { TranscriptItem } from "@/lib/transcript";
 
@@ -45,11 +45,17 @@ export const localApi = {
   status: (c: Client, signal?: AbortSignal) => c.laptop<LocalComputer>("GET", "/v1/local", undefined, signal),
   conversations: (c: Client, signal?: AbortSignal) => c.laptop<LocalConversation[]>("GET", "/v1/local/conversations", undefined, signal),
   history: (c: Client, id: string, before?: number, signal?: AbortSignal) => c.laptop<LocalHistoryPage>("GET", `/v1/local/conversations/${encodeURIComponent(id)}${before === undefined ? "" : `?before=${before}`}`, undefined, signal),
-  start: (c: Client, agent: LocalAgent, cwd: string) => c.laptop<LocalSession>("POST", "/v1/local/sessions", { agent, cwd }),
-  fork: (c: Client, id: string) => c.laptop<LocalSession>("POST", `/v1/local/conversations/${encodeURIComponent(id)}/fork`),
+  start: (c: Client, agent: LocalAgent, cwd: string, signal?: AbortSignal) => c.laptop<LocalSession>("POST", "/v1/local/sessions", { agent, cwd }, signal),
+  fork: (c: Client, id: string, signal?: AbortSignal) => c.laptop<LocalSession>("POST", `/v1/local/conversations/${encodeURIComponent(id)}/fork`, undefined, signal),
   stop: (c: Client, id: string) => c.laptop("DELETE", `/v1/local/sessions/${encodeURIComponent(id)}`),
   output: (c: Client, id: string, after: number, signal?: AbortSignal) => c.laptop<LocalOutput>("GET", `/v1/local/sessions/${encodeURIComponent(id)}/output?after=${after}`, undefined, signal),
-  input: (c: Client, id: string, data: string, signal?: AbortSignal) => c.laptop("POST", `/v1/local/sessions/${encodeURIComponent(id)}/input`, { data }, signal),
+  input: async (c: Client, id: string, data: string, signal?: AbortSignal) => {
+    try { return await c.laptop("POST", `/v1/local/sessions/${encodeURIComponent(id)}/input`, { data }, signal); }
+    catch (e) {
+      if (e instanceof ApiError && e.status > 0 && e.status < 500) throw e;
+      throw new Error("Terminal input may have arrived. Check the agent before sending it again. Reconnecting will not resend it.");
+    }
+  },
   resize: (c: Client, id: string, cols: number, rows: number, signal?: AbortSignal) => c.laptop("POST", `/v1/local/sessions/${encodeURIComponent(id)}/resize`, { cols, rows }, signal),
 };
 
