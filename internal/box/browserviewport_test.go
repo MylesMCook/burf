@@ -286,6 +286,7 @@ func TestTheBrowserSizeReachesARealChromium(t *testing.T) {
 	checkFrame := func(wantW, wantH, pxW, pxH int) {
 		t.Helper()
 		deadline := time.After(10 * time.Second)
+		last := ""
 		for {
 			select {
 			case f := <-frames:
@@ -298,10 +299,16 @@ func TestTheBrowserSizeReachesARealChromium(t *testing.T) {
 					t.Fatalf("frame: %v", err)
 				}
 				if img.Width != pxW || img.Height != pxH {
-					t.Fatalf("a %dx%d frame is %dx%d pixels, want %dx%d", f.Width, f.Height, img.Width, img.Height, pxW, pxH)
+					// Named for the new size but drawn before Chromium had
+					// laid out at it: the next one is drawn at it, or none is.
+					last = fmt.Sprintf("a %dx%d frame is %dx%d pixels, want %dx%d", f.Width, f.Height, img.Width, img.Height, pxW, pxH)
+					continue
 				}
 				return
 			case <-deadline:
+				if last != "" {
+					t.Fatal(last)
+				}
 				t.Fatalf("no %dx%d frame", wantW, wantH)
 			}
 		}

@@ -24,7 +24,10 @@ const advance = (page: Page, name: string) => page.evaluate((n) => (window as un
 async function openPlan(app: App, host: string) {
   const { page } = app;
   await app.open({ params: { team: "acme", "team-page": "acme" } });
-  await page.getByRole("button", { name: "Add a box" }).locator("visible=true").first().click();
+  // The team's own button, once its page is there. Before that, the first "Add a box" in sight is the
+  // sidebar's "Add a box…", which opens the plain dialog and no guided install.
+  await expect(page.getByTestId("team-page")).toBeVisible();
+  await page.getByRole("button", { name: "Add a box", exact: true }).locator("visible=true").first().click();
   await page.getByText("Or let Burf set it up over SSH").click();
   await page.getByLabel("SSH host, like me@my-box").fill(host);
   // Team setup's add a box has the agents in the plan, not inline.

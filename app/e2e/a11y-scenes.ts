@@ -268,7 +268,9 @@ export const scenes: Scene[] = [
     async run(app, theme) {
       const { page } = app;
       await app.open({ theme, params: { team: "acme", "team-page": "acme" } });
-      await page.getByRole("button", { name: "Add a box" }).locator("visible=true").first().click();
+      // The team's own button, not the sidebar's "Add a box…" that is there first (guided-install.spec.ts).
+      await expect(page.getByTestId("team-page")).toBeVisible();
+      await page.getByRole("button", { name: "Add a box", exact: true }).locator("visible=true").first().click();
       await page.getByText("Or let Burf set it up over SSH").click();
       await page.getByLabel("SSH host, like me@my-box").fill("dev@acme-box");
       await page.getByTestId("ssh-set-up").click();
