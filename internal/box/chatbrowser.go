@@ -26,7 +26,7 @@ import (
 // prompt.
 
 const (
-	maxChatStartBody     = 256 << 10
+	maxChatStartBody     = 512 << 10
 	maxBrowserCallBody   = 512 << 10
 	maxBrowserResultBody = 3 << 20
 	maxBrowserPoll       = 25

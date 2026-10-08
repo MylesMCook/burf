@@ -19,7 +19,7 @@ const BrowserServer = "burf_browser"
 
 const (
 	maxBrowserTools       = 16
-	maxBrowserDescription = 2 << 10
+	maxBrowserDescription = 16 << 10
 	maxBrowserSchema      = 8 << 10
 	maxBrowserArguments   = 256 << 10
 	maxBrowserPending     = 4
@@ -91,7 +91,7 @@ func (b *Browser) validate() error {
 		}
 		seen[t.Name] = true
 		if t.Description == "" || len(t.Description) > maxBrowserDescription || strings.ContainsRune(t.Description, 0) {
-			return errors.New("browser tool " + t.Name + " needs a description of at most 2048 bytes")
+			return errors.New("browser tool " + t.Name + " needs a description of at most 16 KiB")
 		}
 		if len(t.InputSchema) == 0 {
 			b.Tools[i].InputSchema = json.RawMessage(`{"type":"object"}`)
