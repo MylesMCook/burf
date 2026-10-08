@@ -11,6 +11,12 @@ again.
 
 ## Unreleased
 
+- **A chat on another account reads its conversation.** An agent started on
+  another Claude Code or Codex account (the Usage plugin's accounts, which
+  set `CLAUDE_CONFIG_DIR` or `CODEX_HOME`) wrote its conversation to that
+  account's folder, and the box only looked in its own: the chat said "Its
+  conversation can't be read here yet" and emptied after every message. The
+  box now reads each session's conversation from the account it started on.
 - **Berth is now Shipyard.** A new name, nothing else: the same app, the
   same CLI and the same boxes, with your data where it was. The commands are
   still `berth` and `berthd`, and their files (`~/.berth`, a repository's

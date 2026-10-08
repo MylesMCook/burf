@@ -24,9 +24,17 @@ func home(env, dflt string) string {
 	return filepath.Join(h, dflt)
 }
 
-// ClaudeDir is the folder Claude Code keeps dir's transcripts in.
-func ClaudeDir(dir string) string {
-	return filepath.Join(home("CLAUDE_CONFIG_DIR", ".claude"), "projects", nonAlnum.ReplaceAllString(dir, "-"))
+// ClaudeDir is the folder Claude Code keeps dir's transcripts in, under
+// berthd's own CLAUDE_CONFIG_DIR or ~/.claude.
+func ClaudeDir(dir string) string { return ClaudeDirIn("", dir) }
+
+// ClaudeDirIn is that folder under configDir, the CLAUDE_CONFIG_DIR a
+// session started with (another account's folder, say); "" is berthd's own.
+func ClaudeDirIn(configDir, dir string) string {
+	if configDir == "" {
+		configDir = home("CLAUDE_CONFIG_DIR", ".claude")
+	}
+	return filepath.Join(configDir, "projects", nonAlnum.ReplaceAllString(dir, "-"))
 }
 
 // ClaudePath finds Claude Code's transcript for a session in dir: by its
@@ -44,8 +52,15 @@ func ClaudePath(dir, id string, started time.Time) string {
 
 // CodexPath finds a Codex session file: by ID, else the newest one started
 // in dir since the session began.
-func CodexPath(dir, id string, started time.Time) string {
-	sessions := filepath.Join(home("CODEX_HOME", ".codex"), "sessions")
+func CodexPath(dir, id string, started time.Time) string { return CodexPathIn("", dir, id, started) }
+
+// CodexPathIn is CodexPath under codexHome, the CODEX_HOME a session started
+// with; "" is berthd's own.
+func CodexPathIn(codexHome, dir, id string, started time.Time) string {
+	if codexHome == "" {
+		codexHome = home("CODEX_HOME", ".codex")
+	}
+	sessions := filepath.Join(codexHome, "sessions")
 	if id != "" && validID(id) {
 		if m, _ := filepath.Glob(filepath.Join(sessions, "*", "*", "*", "rollout-*"+id+".jsonl")); len(m) > 0 {
 			return m[len(m)-1]
@@ -103,6 +118,9 @@ type Claim struct {
 	Name    string
 	ID      string
 	Started time.Time
+	// ConfigDir is the CLAUDE_CONFIG_DIR the session started with ("" for
+	// berthd's own): each account keeps its own conversations.
+	ConfigDir string
 }
 
 // AssignClaude gives each Claude Code session in dir its own transcript.
@@ -111,7 +129,22 @@ type Claim struct {
 // after the session did. Several agents in one worktree so read their own
 // conversations, never one shared file.
 func AssignClaude(dir string, claims []Claim) map[string]string {
-	proj := ClaudeDir(dir)
+	// Sessions on different accounts never share a file: each account's
+	// folder is matched on its own.
+	byDir := map[string][]Claim{}
+	for _, c := range claims {
+		byDir[c.ConfigDir] = append(byDir[c.ConfigDir], c)
+	}
+	out := map[string]string{}
+	for configDir, cs := range byDir {
+		for name, p := range assignClaudeIn(ClaudeDirIn(configDir, dir), cs) {
+			out[name] = p
+		}
+	}
+	return out
+}
+
+func assignClaudeIn(proj string, claims []Claim) map[string]string {
 	out := map[string]string{}
 	taken := map[string]bool{}
 	for _, c := range claims {

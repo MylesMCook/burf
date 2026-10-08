@@ -89,6 +89,31 @@ type Sessions struct {
 
 	sweepMu   sync.Mutex
 	lastSweep time.Time
+
+	// envs keeps what EnvVar read: a session's environment is set when it
+	// starts and never changes.
+	envs sync.Map
+}
+
+// EnvVar is the value key had in session sess's environment when it
+// started ("" when it had none), as its agent sees it: the account folder
+// a session was started on (CLAUDE_CONFIG_DIR, CODEX_HOME), say.
+func (s *Sessions) EnvVar(ctx context.Context, sess Session, key string) string {
+	cacheKey := sess.Name + "\x00" + sess.Created.Format(time.RFC3339Nano) + "\x00" + key
+	if v, ok := s.envs.Load(cacheKey); ok {
+		return v.(string)
+	}
+	out, err := s.tmux(ctx, "show-environment", "-t", "="+sess.Name, key)
+	if err != nil {
+		// Unset, or the session is gone: nothing to remember.
+		return ""
+	}
+	v, ok := strings.CutPrefix(strings.TrimSpace(string(out)), key+"=")
+	if !ok {
+		v = "" // "-KEY": removed from the session's environment
+	}
+	s.envs.Store(cacheKey, v)
+	return v
 }
 
 const tmuxSocket = "berth"
