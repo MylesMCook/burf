@@ -62,6 +62,13 @@ releases download in the background, and **Restart to update** in the
 status bar or Settings → About applies one; it never restarts on its own,
 and restarting never stops an agent.
 
+Or, with Homebrew (it links `berth` into Homebrew's `bin` too):
+
+```sh
+brew tap cosscom/shipyard https://github.com/cosscom/shipyard
+brew install --cask cosscom/shipyard/shipyard
+```
+
 For `berth` in a terminal, **Settings → General → Command line → Install**
 links `~/.local/bin/berth` to the app's copy (it asks first). On a Linux
 laptop, or for the CLI alone, download it from the release (use
