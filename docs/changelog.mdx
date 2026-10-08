@@ -21,6 +21,14 @@ again.
   worktree new … --parent NAME` nests one by hand, such as a stacked branch
   under the branch it builds on.
 
+- **GitHub flows see every worktree's PR.** One poll looks at no more than
+  20 PRs, and it always started from the same worktree, so on a box with
+  more worktrees than that the rest were never looked at: a merge, review or
+  failed check there started nothing. Each poll now starts where the last
+  one stopped. Merged and closed PRs no longer take a turn every poll
+  either; a flow looks at them again once an hour, in case one is reopened.
+  [GitHub triggers](/guides/automations#on-github).
+
 ## v0.3.11
 
 Most of this needs each box's new `berthd`: use **Update all** in the status
