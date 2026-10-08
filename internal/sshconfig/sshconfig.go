@@ -16,8 +16,6 @@ import (
 	"regexp"
 	"sort"
 	"strings"
-
-	"github.com/MylesMCook/burf/internal/statefile"
 )
 
 // Host is how SSH reaches one box.
@@ -218,16 +216,16 @@ func (c Config) Apply(plan []Change) error {
 				continue
 			}
 			if len(old) > 0 {
-				if err := statefile.Write(ch.Path+".berth-backup", old); err != nil {
+				if err := writeConfig(ch.Path+".berth-backup", old); err != nil {
 					return err
 				}
 			}
-			if err := statefile.Write(ch.Path, append([]byte(includeBlock), old...)); err != nil {
+			if err := writeConfig(ch.Path, append([]byte(includeBlock), old...)); err != nil {
 				return err
 			}
 			continue
 		}
-		if err := statefile.Write(ch.Path, []byte(ch.New)); err != nil {
+		if err := writeConfig(ch.Path, []byte(ch.New)); err != nil {
 			return err
 		}
 	}
