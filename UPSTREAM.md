@@ -72,8 +72,42 @@ Recommended intake order:
 Upstream also renamed its module/app to Shipyard (`406d44f`, `ecb22f8`,
 `d102843`). Resolve those changes to Burf intentionally, while retaining the
 underlying behavior. Upstream currently makes E2E non-blocking (`24c19c6`);
-that policy is not adopted as Burf acceptance. No commits from this snapshot
-have been merged yet.
+that policy is not adopted as Burf acceptance. The snapshot has not been
+merged wholesale; individual adaptations are recorded below.
+
+## Accepted Fixes
+
+- `150ffc9b1ff972e43d5c408da6f488af1243e47e`: account-specific Claude and
+  Codex transcripts on remote boxes. Adapted locally without provider config
+  writes or live daemon updates. Keep account assignment grouped by resolved
+  project folder, including the default and explicit form of the same home.
+  Unlike upstream, do not cache by second-resolution session creation time;
+  read the session's effective home with tmux's single-value format and fail
+  closed when that lookup fails. Tests cover alternate and empty accounts,
+  same-ID histories, session replacement, multiline unrelated variables,
+  cancellation, and the paired transcript API using synthetic content.
+
+## Release Guide
+
+Use the [upstream release guide](https://docs.berthd.app/contributing/releasing)
+as a reference, not authorization to publish or run host-changing tests. The
+source reviewed is `docs/contributing/releasing.mdx` at upstream commit `b140a0f`.
+In particular:
+
+- Verify artifacts against the exact tested commit, not a leftover build.
+- Test fresh installation and upgrades with separate state; preserve running
+  sessions, preferences, layouts and pairings.
+- Upload and verify signed artifacts before publishing an update feed.
+- Burf's updater remains disabled until fork-owned signing and feeds are
+  configured and verified. Upstream release instructions do not supply our
+  signing credentials or establish Windows acceptance.
+- `make publish` and tag pushes perform external writes. The Mac release
+  acceptance scripts also use GUI automation and service supervisors; do not
+  run them under the current CLI-only/live-host preservation constraints.
+
+Native Windows packaging, provider replies and upgrade acceptance remain
+separate gates from Go tests or cross-compilation. Existing installed previews
+are not updated by importing source changes.
 
 Two concrete integration risks found in the reviewed source:
 

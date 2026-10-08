@@ -86,6 +86,47 @@ func TestSessionsStartWithNoLocale(t *testing.T) {
 	}
 }
 
+func TestSessionAccountEnvironment(t *testing.T) {
+	s := testSessions(t)
+	ctx := context.Background()
+	account := filepath.Join(t.TempDir(), "Account with spaces")
+	sess, err := s.Create(ctx, "account-env", "cal", t.TempDir(), "sleep 30", []string{"CODEX_HOME=" + account, "AAA_BURF_TEST=first\nCODEX_HOME=/wrong-account"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, err := s.EnvVar(ctx, sess, "CODEX_HOME"); err != nil || got != account {
+		t.Fatalf("account home = %q, %v, want %q", got, err, account)
+	}
+	if got, err := s.EnvVar(ctx, sess, "BURF_TEST_ABSENT"); err != nil || got != "" {
+		t.Fatalf("absent variable = %q, %v", got, err)
+	}
+	// An absent value must not poison later reads.
+	if _, err := s.tmux(ctx, "set-environment", "-t", "="+sess.Name, "BURF_TEST_ABSENT", "now-present"); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := s.EnvVar(ctx, sess, "BURF_TEST_ABSENT"); err != nil || got != "now-present" {
+		t.Fatalf("retried variable = %q, %v", got, err)
+	}
+	if err := s.Kill(ctx, sess.Name); err != nil {
+		t.Fatal(err)
+	}
+	replacementHome := t.TempDir()
+	replacement, err := s.Create(ctx, sess.Name, "cal", t.TempDir(), "sleep 30", []string{"CODEX_HOME=" + replacementHome})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Model a same-second replacement deterministically, even on slow CI.
+	replacement.Created = sess.Created
+	if got, err := s.EnvVar(ctx, replacement, "CODEX_HOME"); err != nil || got != replacementHome {
+		t.Fatalf("replacement reused old account: %q, %v", got, err)
+	}
+	canceled, cancel := context.WithCancel(ctx)
+	cancel()
+	if _, err := s.EnvVar(canceled, replacement, "CODEX_HOME"); err == nil {
+		t.Fatal("canceled lookup silently selected the default account")
+	}
+}
+
 func TestSessionsLifecycle(t *testing.T) {
 	s := testSessions(t)
 	ctx := context.Background()

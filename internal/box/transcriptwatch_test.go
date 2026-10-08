@@ -1,7 +1,9 @@
 package box
 
 import (
+	"context"
 	"encoding/json"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -15,6 +17,44 @@ import (
 	"github.com/MylesMCook/burf/internal/wire"
 )
 
+func TestUnavailableSessionEnvironmentDoesNotReadDefaultAccount(t *testing.T) {
+	t.Setenv("CLAUDE_CONFIG_DIR", t.TempDir())
+	t.Setenv("CODEX_HOME", t.TempDir())
+	dir := "/w/shop"
+	at := time.Now().UTC()
+	for _, provider := range []string{"claude", "codex"} {
+		var path string
+		if provider == "claude" {
+			path = filepath.Join(transcript.ClaudeDir(dir), "aaaaaaaa-1.jsonl")
+		} else {
+			path = filepath.Join(os.Getenv("CODEX_HOME"), "sessions", "2026", "10", "08", "rollout-aaaaaaaa-1.jsonl")
+		}
+		if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+			t.Fatal(err)
+		}
+		line, err := json.Marshal(map[string]any{"type": "user", "timestamp": at.Format(time.RFC3339Nano), "payload": map[string]string{"cwd": dir}, "message": map[string]string{"role": "user", "content": "default account"}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		appendTo(t, path, string(line)+"\n")
+	}
+	b := &Box{Sessions: testSessions(t)}
+	for _, provider := range []string{"claude", "codex"} {
+		for _, canceled := range []bool{false, true} {
+			ctx, cancel := context.WithCancel(context.Background())
+			if canceled {
+				cancel()
+			}
+			r := httptest.NewRequest("GET", "/", nil).WithContext(ctx)
+			_, path, _ := b.transcriptFile(r, Session{Name: "missing", Preset: provider, Dir: dir, Created: at})
+			cancel()
+			if path != "" {
+				t.Fatalf("%s canceled=%v: unavailable session read %q", provider, canceled, path)
+			}
+		}
+	}
+}
+
 // clockWatch is a watcher on a clock the test moves, driven by hand.
 func clockWatch(t *testing.T) (*transcriptWatch, *time.Time, *[]string) {
 	now := time.Unix(1_700_000_000, 0)
@@ -23,6 +63,44 @@ func clockWatch(t *testing.T) (*transcriptWatch, *time.Time, *[]string) {
 	w.manual = true
 	w.now = func() time.Time { return now }
 	return w, &now, &sent
+}
+
+func TestATranscriptOnAnotherAccountIsRead(t *testing.T) {
+	bin := t.TempDir()
+	if err := os.WriteFile(filepath.Join(bin, "claude"), []byte("#!/bin/sh\nexec sleep 600\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("CLAUDE_CONFIG_DIR", t.TempDir())
+	account := t.TempDir()
+	envFile := filepath.Join(t.TempDir(), "env.json")
+	if err := saveBoxEnv(envFile, BoxEnv{Env: map[string]string{"CLAUDE_CONFIG_DIR": account}}); err != nil {
+		t.Fatal(err)
+	}
+	c, _ := servedBox(t, func(b *Box) { b.EnvFile = envFile })
+	call(t, c, "POST", "/v1/locations", "", map[string]string{"name": "shop", "path": gitRepo(t)}, nil)
+	call(t, c, "POST", "/v1/locations/shop/worktrees", "", WorktreeRequest{Name: "fix"}, nil)
+	var sess Session
+	if status := call(t, c, "POST", "/v1/sessions", "", SessionRequest{Location: "shop/fix", Command: "claude"}, &sess); status != 200 {
+		t.Fatalf("session: %d", status)
+	}
+	proj := filepath.Join(account, "projects", filepath.Base(transcript.ClaudeDir(sess.Dir)))
+	if err := os.MkdirAll(proj, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	at := time.Now().UTC().Add(time.Second).Format(time.RFC3339Nano)
+	b, err := json.Marshal(map[string]any{"type": "user", "timestamp": at, "message": map[string]any{"role": "user", "content": "Fix the flaky test"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	appendTo(t, filepath.Join(proj, "conv.jsonl"), string(b)+"\n")
+	var res transcript.Result
+	if status := call(t, c, "GET", "/v1/sessions/"+url.PathEscape(sess.Name)+"/transcript?since=0", "", nil, &res); status != 200 || len(res.Items) != 1 {
+		t.Fatalf("transcript: %d %+v", status, res)
+	}
+	if res.Items[0].Text != "Fix the flaky test" {
+		t.Fatalf("wrong account content: %+v", res.Items)
+	}
 }
 
 func appendTo(t *testing.T, path, s string) {

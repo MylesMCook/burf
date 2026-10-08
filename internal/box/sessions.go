@@ -54,6 +54,21 @@ type Sessions struct {
 	lastSweep time.Time
 }
 
+// EnvVar reads a key from the session's effective tmux environment, such as
+// its CLAUDE_CONFIG_DIR or CODEX_HOME. An unset key returns an empty value.
+func (s *Sessions) EnvVar(ctx context.Context, sess Session, key string) (string, error) {
+	// Do not cache by name/Created: tmux timestamps have second precision,
+	// so a quickly replaced session can have the same pair on another account.
+	// A format reads one effective environment value, with an empty result
+	// for unset keys. Unlike show-environment KEY, failure is not also used
+	// to report an absent key. No unrelated variables need to be read.
+	out, err := s.tmux(ctx, "display-message", "-p", "-t", "="+sess.Name+":", "#{"+key+"}")
+	if err != nil {
+		return "", fmt.Errorf("read session environment: %w", err)
+	}
+	return strings.TrimSuffix(string(out), "\n"), nil
+}
+
 const tmuxSocket = "berth"
 
 // tmuxConfig is berth's own tmux server's. The status line is off because
