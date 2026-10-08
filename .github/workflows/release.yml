@@ -10,6 +10,16 @@ name: release
 # finds the newest. The checks job (all of ci.yml) must pass first. The
 # release job runs on omarchy, the owner's self-hosted
 # runner (ci/runner/), when the repository variable SELF_HOSTED is true.
+#
+# The linux job builds the Linux desktop app, an alpha, for x86_64 on a
+# hosted Ubuntu runner (scripts/linux-release.sh): an AppImage, which updates
+# itself, and a .deb. It uploads them and keeps its entries for latest.json
+# as a workflow artifact. The feed job, after both, merges those into the
+# Mac's latest.json (scripts/merge-feed.py), only once the Linux bundles are
+# on the release, and last makes the release "latest". The Mac and Linux
+# jobs can finish in either order; a failed Linux build leaves the Mac's feed
+# as it is, and the release still goes out. arm64 Linux could follow on a
+# ubuntu-24.04-arm runner.
 on:
   push:
     tags: ["v*"]
@@ -248,13 +258,115 @@ jobs:
             dist/mac/Berth-macos-universal.app.tar.gz \
             dist/mac/Berth-macos-universal.app.tar.gz.sig
           gh release upload "$TAG" --clobber dist/mac/latest.json
-      - name: Publish the release
-        # Last: the feed and the app are up, so it can become "latest".
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh release edit "$TAG" --draft=false --latest
       - name: Remove the keychain and the API key
         if: always()
         run: |
           if [ -n "${KEYCHAIN_PATH:-}" ]; then security delete-keychain "$KEYCHAIN_PATH" || true; fi
           rm -f "$RUNNER_TEMP/berth-notary.p8" "$RUNNER_TEMP/berth-signing.p12"
+
+  linux:
+    # The Linux app, an alpha: x86_64 only for now. Built on 22.04 so its
+    # AppImage runs on distributions with an older glibc too. Safe to re-run:
+    # it replaces only its own assets, which no feed points at until the
+    # feed job has checked they are there.
+    needs: [tmux, release]
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ github.ref_name }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+        with:
+          version: 11
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev file minisign
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: tmux
+          path: bin
+      - run: chmod +x bin/tmux-linux-amd64 bin/tmux-linux-arm64
+      - name: Install the app's dependencies
+        working-directory: app
+        run: pnpm install --frozen-lockfile
+      - name: Build and check the app
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+          # linuxdeploy is an AppImage itself; this runs it without FUSE.
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+        run: scripts/linux-release.sh "$TAG"
+      - name: Add the app to the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release view "$TAG" >/dev/null
+          shopt -s nullglob
+          gh release upload "$TAG" --clobber dist/linux/Berth-linux-*-alpha.AppImage dist/linux/Berth-linux-*-alpha.deb dist/linux/*.sig
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: latest-linux
+          path: dist/linux/latest-linux.json
+          if-no-files-found: error
+
+  feed:
+    # After the Mac and Linux jobs, whichever finished first: the Mac's
+    # latest.json gets the Linux entries, then the release becomes "latest".
+    # Runs when the Mac app is published even if the Linux build failed; then
+    # the feed stays the Mac's alone.
+    needs: [macos, linux]
+    if: ${{ !cancelled() && needs.macos.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ github.ref_name }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - if: needs.linux.result == 'success'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: latest-linux
+          path: ${{ runner.temp }}/feed
+      - name: Add the Linux app to latest.json
+        if: needs.linux.result == 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/feed"
+          gh release download "$TAG" --pattern latest.json --output "$dir/latest.json" --clobber
+          # The Mac's feed for this very version, never an older one.
+          python3 -c 'import json, os, sys; sys.exit(json.load(open(sys.argv[1])).get("version") != os.environ["TAG"][1:])' "$dir/latest.json" ||
+            { echo "::error::$TAG's latest.json is not for $TAG"; exit 1; }
+          gh release view "$TAG" --json assets --jq '.assets[].name' >"$dir/assets"
+          scripts/merge-feed.py "$dir/latest.json" "$dir/latest-linux.json" --assets "$dir/assets" >"$dir/merged.json"
+          cp "$dir/merged.json" "$dir/latest.json"
+          gh release upload "$TAG" --clobber "$dir/latest.json"
+      - if: needs.linux.result != 'success'
+        run: echo "::warning::The Linux app was not built; latest.json stays the Mac's alone"
+      - name: Publish the release
+        # Last: the feed and the apps are up, so it can become "latest".
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "$TAG" --draft=false --latest

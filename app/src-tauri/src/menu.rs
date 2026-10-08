@@ -85,6 +85,8 @@ fn fill<R: Runtime>(
     Ok(())
 }
 
+// Only the Mac app has a menu bar (lib.rs).
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     let table = table();
     // "Shipyard", as the window and the Dock name it, not the crate's "berth".

@@ -1,8 +1,12 @@
 import type * as React from "react";
+import { platformKeys } from "@/lib/platform";
 import { cn } from "@/lib/utils";
 
+// A key hint as a string is written for this platform (lib/platform.ts):
+// ⌘K on a Mac, Ctrl+K on Linux.
 export function Kbd({
   className,
+  children,
   ...props
 }: React.ComponentProps<"kbd">): React.ReactElement {
   return (
@@ -13,7 +17,9 @@ export function Kbd({
       )}
       data-slot="kbd"
       {...props}
-    />
+    >
+      {typeof children === "string" ? platformKeys(children) : children}
+    </kbd>
   );
 }
 

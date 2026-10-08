@@ -1,12 +1,14 @@
 import { Children, cloneElement, createContext, Fragment, isValidElement, type ReactElement, type ReactNode, useContext, useId } from "react";
 
+import { platformKeys } from "@/lib/platform";
 import { cn } from "@/lib/utils";
 import { ViewHeader } from "@/views/view-header";
 
 // The pieces every settings section is made of: a titled page, groups of
 // rows, and rows of label, description and control.
 
-export function SettingsPage({ title, description, actions, children }: { title: string; description?: ReactNode; actions?: ReactNode; children: ReactNode }) {
+// badge sits beside the title (the Linux app's Alpha, in About).
+export function SettingsPage({ title, badge, description, actions, children }: { title: string; badge?: ReactNode; description?: ReactNode; actions?: ReactNode; children: ReactNode }) {
   return (
     <div className="mx-auto w-full max-w-2xl px-8 pt-6 pb-16 max-[1200px]:px-6">
       {/* The section names itself in the view's strip, after "Settings". */}
@@ -16,6 +18,7 @@ export function SettingsPage({ title, description, actions, children }: { title:
             <span className="text-muted-foreground">Settings</span>
             <span className="text-muted-foreground/60">/</span>
             {title}
+            {badge && <span className="self-center">{badge}</span>}
           </span>
         }
         actions={actions}
@@ -81,7 +84,7 @@ export function SettingsRow({ label, description, children, className }: { label
         </div>
         {description && (
           <div id={describedBy} className="mt-0.5 text-muted-foreground text-xs leading-relaxed">
-            {description}
+            {typeof description === "string" ? platformKeys(description) : description}
           </div>
         )}
       </div>

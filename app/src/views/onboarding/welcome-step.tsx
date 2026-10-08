@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
 import { JoinTeamCard } from "@/views/team/team-entry";
+import { thisComputer } from "@/lib/platform";
 
 // WelcomeStep says what Shipyard is in a line and offers the quickest way in:
 // this Mac as the box, a sample project on it and a first task, in about a
@@ -26,12 +27,12 @@ export function WelcomeStep({ local, onThisMac, onRemote, onJoin }: { local?: bo
           <Way
             primary
             icon={<LaptopIcon />}
-            title="Use this Mac"
-            detail="Agents run here while this Mac is awake. Your first agent is about a minute away; add a server whenever you like."
+            title={thisComputer("Use this Mac")}
+            detail={thisComputer("Agents run here while this Mac is awake. Your first agent is about a minute away; add a server whenever you like.")}
             action={
               <Button autoFocus disabled={local === undefined} onClick={onThisMac}>
                 {local === undefined ? <Spinner className="size-3.5" /> : null}
-                Start on this Mac <ArrowRightIcon />
+                {thisComputer("Start on this Mac")} <ArrowRightIcon />
               </Button>
             }
           />
@@ -40,7 +41,7 @@ export function WelcomeStep({ local, onThisMac, onRemote, onJoin }: { local?: bo
           primary={local === false}
           icon={<ServerIcon />}
           title="Connect a remote box"
-          detail="A VPS or dev machine, over your tailnet, SSH or a pairing link. Agents keep going when this Mac sleeps."
+          detail={thisComputer("A VPS or dev machine, over your tailnet, SSH or a pairing link. Agents keep going when this Mac sleeps.")}
           action={
             <Button variant={local === false ? "default" : "outline"} autoFocus={local === false} onClick={onRemote}>
               Connect a box

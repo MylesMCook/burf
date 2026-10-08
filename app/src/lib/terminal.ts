@@ -38,6 +38,8 @@ export interface TermHandle {
   onData(fn: (data: string) => void): void;
   onResize(fn: (size: { cols: number; rows: number }) => void): void;
   hasSelection(): boolean;
+  // The selected text ("" with none).
+  selection(): string;
   // Types text as a paste: bracketed when the program asked for that, as
   // Claude Code does, so it sees a pasted image's path as an image.
   paste(text: string): void;
@@ -187,6 +189,7 @@ function gated(t: RawHandle, hiddenFlushMs = HIDDEN_FLUSH_MS): TermHandle {
     onData: (fn) => t.onData(fn),
     onResize: (fn) => t.onResize(fn),
     hasSelection: () => t.hasSelection(),
+    selection: () => t.selection(),
     paste: (text) => t.paste(text),
     registerLinkFinder: (find) => t.registerLinkFinder(find),
     setVisible(v) {
@@ -523,6 +526,7 @@ async function createGhostty(host: HTMLElement, colors: TerminalColors, prefs: T
     onData: (fn) => void t.onData(fn),
     onResize: (fn) => void t.onResize(fn),
     hasSelection: () => t.hasSelection(),
+    selection: () => t.getSelection(),
     paste: (text) => {
       t.paste(text);
       frames?.kick();
@@ -601,6 +605,7 @@ async function createXterm(host: HTMLElement, colors: TerminalColors, prefs: Ter
     onData: (fn) => void t.onData(fn),
     onResize: (fn) => void t.onResize(fn),
     hasSelection: () => t.hasSelection(),
+    selection: () => t.getSelection(),
     paste: (text) => t.paste(text),
     registerLinkFinder: (find) =>
       void t.registerLinkProvider({

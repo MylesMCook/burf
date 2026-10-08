@@ -8,6 +8,7 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { Spinner } from "@/components/ui/spinner";
 import { type AgentBinary, findAgentBinary, retryConnection, startAgent } from "@/lib/agent-start";
 import { plainError } from "@/lib/errors";
+import { thisComputer } from "@/lib/platform";
 
 // Any berth command starts the agent when it is not running.
 const START = "berth status";
@@ -98,7 +99,7 @@ function AgentOffline({ error }: { error?: string }) {
                 <Checkbox className="mt-0.5" checked={atLogin} disabled={busy} onCheckedChange={(v) => setAtLogin(!!v)} />
                 <span>
                   Start at login
-                  <span className="block text-muted-foreground text-xs">Also starts it whenever you log in to this Mac, and restarts it if it stops.</span>
+                  <span className="block text-muted-foreground text-xs">{thisComputer("Also starts it whenever you log in to this Mac, and restarts it if it stops.")}</span>
                 </span>
               </label>
               {phase.kind === "failed" && (

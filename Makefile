@@ -45,9 +45,11 @@ clean:
 # and `cargo check` work without them; in dev the app starts the agent from
 # bin/berth, and Use this Mac finds bin/berthd beside it.
 #
-# make app-build builds Shipyard.app and a dmg for this Mac. Releases build
-# APP_TARGET=universal-apple-darwin, one app for Apple silicon and Intel, with
-# berth-cli and berthd made universal by lipo (scripts/mac-release.sh). The
+# make app-build builds Shipyard.app and a dmg for this Mac, or on Linux the
+# alpha's AppImage and .deb (tauri.linux.conf.json, scripts/linux-release.sh).
+# Mac releases build APP_TARGET=universal-apple-darwin, one app for Apple
+# silicon and Intel, with berth-cli and berthd made universal by lipo
+# (scripts/mac-release.sh). The
 # Mac berthd runs as its own process outside the app, so with
 # APPLE_SIGNING_IDENTITY set it is signed here, with the hardened runtime and
 # a timestamp, before Tauri seals it into the app. With VERSION set
@@ -59,6 +61,9 @@ APP_TARGET ?= $(TRIPLE)
 SIDECAR := app/src-tauri/binaries
 APP_VERSION := $(if $(filter dev,$(VERSION)),,$(patsubst v%,%,$(VERSION)))
 APP_GOARCH := $(if $(findstring aarch64,$(APP_TARGET)),arm64,$(if $(findstring x86_64,$(APP_TARGET)),amd64))
+# The Linux app (an alpha) carries static builds, like the release archives,
+# so one AppImage runs on any distribution's libc.
+APP_GOENV := $(if $(findstring linux,$(APP_TARGET)),CGO_ENABLED=0 GOOS=linux) $(if $(APP_GOARCH),GOARCH=$(APP_GOARCH))
 
 .PHONY: app-binaries app-dev app-build
 app-binaries: daemons
@@ -71,8 +76,8 @@ ifeq ($(APP_TARGET),universal-apple-darwin)
 	GOOS=darwin GOARCH=amd64 $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(SIDECAR)/berthd-darwin-amd64 ./cmd/berthd
 	lipo -create -output $(SIDECAR)/berthd-local $(SIDECAR)/berthd-darwin-arm64 $(SIDECAR)/berthd-darwin-amd64
 else
-	$(if $(APP_GOARCH),GOARCH=$(APP_GOARCH)) $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(SIDECAR)/berth-cli-$(APP_TARGET) ./cmd/berth
-	$(if $(APP_GOARCH),GOARCH=$(APP_GOARCH)) $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(SIDECAR)/berthd-local ./cmd/berthd
+	$(APP_GOENV) $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(SIDECAR)/berth-cli-$(APP_TARGET) ./cmd/berth
+	$(APP_GOENV) $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(SIDECAR)/berthd-local ./cmd/berthd
 endif
 	if [ -n "$$APPLE_SIGNING_IDENTITY" ]; then \
 		codesign --force --options runtime --timestamp --identifier dev.berth.berthd \

@@ -16,6 +16,7 @@ import {
 } from "react";
 
 import { focusFromKeyboard, Tooltip, TooltipPopup, TooltipTrigger } from "@/components/ui/tooltip";
+import { platformKeys } from "@/lib/platform";
 import { cn } from "@/lib/utils";
 
 // Tip gives an element a tooltip: the app's own, not the browser's title,
@@ -52,6 +53,8 @@ export function Tip({
 }) {
   const layer = useContext(TipLayerContext);
   if (label == null || label === false || label === "") return children;
+  // "Search (⌘K)" is "Search (Ctrl+K)" on Linux.
+  if (typeof label === "string") label = platformKeys(label);
   const disabled = !!(children.props as { disabled?: unknown }).disabled;
   const trigger = disabled ? (
     <span data-slot="tip-disabled" className={cn("inline-flex", wrapClassName)}>

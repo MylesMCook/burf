@@ -22,6 +22,7 @@ import {
   useNotifyPrefs,
 } from "@/lib/notifications";
 import { SettingsGroup, SettingsPage, SettingsRow } from "@/views/settings/rows";
+import { IS_LINUX } from "@/lib/platform";
 
 const DAYS = ["S", "M", "T", "W", "T", "F", "S"];
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
@@ -45,7 +46,7 @@ function daysOf(days: number[]): string {
 export function NotificationsSection() {
   const prefs = useNotifyPrefs();
   const count = useNotifications((s) => s.notes.length);
-  const mac = isTauri();
+  const mac = isTauri() && !IS_LINUX;
   const dnd = prefs.dnd;
   // Re-render each minute, so a schedule that starts or ends shows.
   const now = new Date(useMinute());

@@ -1,10 +1,12 @@
-import { ClipboardListIcon } from "lucide-react";
+import { BugIcon, ClipboardListIcon } from "lucide-react";
 import { useState } from "react";
 
+import { AlphaBadge } from "@/components/alpha-badge";
 import { Button } from "@/components/ui/button";
 import { copyDiagnostics } from "@/lib/diagnostics";
 import { ago, bytes } from "@/lib/format";
 import { openDocs, openUrl } from "@/lib/open-url";
+import { LINUX_ALPHA, LINUX_BUGS } from "@/lib/platform";
 import { NONE, useStore } from "@/lib/store";
 import { checkForUpdate, restartToUpdate, updatesSupported, useUpdater } from "@/lib/updater";
 import { useAppVersion } from "@/views/settings/app-version";
@@ -31,7 +33,7 @@ export function AboutSection() {
   const proxy = useStore((s) => s.status?.proxy);
 
   return (
-    <SettingsPage title="About Shipyard" description="Agents on your own boxes, watched from here. Closing this window never stops one.">
+    <SettingsPage badge={LINUX_ALPHA && <AlphaBadge />} title="About Shipyard" description="Agents on your own boxes, watched from here. Closing this window never stops one.">
       <SettingsGroup title="Versions">
         <SettingsRow label="App">
           <span className="font-mono text-muted-foreground text-xs">{version}</span>
@@ -95,6 +97,17 @@ function HelpGroup() {
           Copy diagnostics
         </Button>
       </SettingsRow>
+      {LINUX_ALPHA && (
+        <SettingsRow
+          label="Report a Linux bug"
+          description="The Linux app is an alpha. Tell us what breaks in a GitHub issue on cosscom/shipyard, with your distribution and desktop, and the diagnostics above pasted in."
+        >
+          <Button size="xs" variant="outline" data-testid="report-linux-bug" onClick={() => void openUrl(LINUX_BUGS)}>
+            <BugIcon />
+            Report a Linux bug
+          </Button>
+        </SettingsRow>
+      )}
     </SettingsGroup>
   );
 }
