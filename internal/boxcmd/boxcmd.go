@@ -11,6 +11,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 	"text/tabwriter"
@@ -41,7 +42,7 @@ var usageSections = []struct {
 		{"%[1]s services%[3]s [--json]", "Which worktree each running server belongs to"},
 		{"%[1]s service list|start|stop|restart|log %[2]sLOC/WORKTREE [SERVICE]", "A worktree's services from the repo's config"},
 		{"%[1]s preview %[2]s[LOC/WORKTREE] [PORT] [--path /x]", "Open a worktree's page in the Shipyard app"},
-		{"%[1]s worktree new %[2]sLOC/NAME [--branch B] [--base REF]", "Create a git worktree and run its setup"},
+		{"%[1]s worktree new %[2]sLOC/NAME [--branch B] [--base REF] [--parent NAME]", "Create a git worktree and run its setup; --parent nests it\nunder another worktree of the location"},
 		{"%[1]s worktree rm %[2]sLOC/NAME [--force]", "Remove a worktree"},
 		{"%[1]s worktree rename %[2]sLOC/NAME [TITLE]", "Give a worktree a display name (its branch and folder keep\ntheir names; no TITLE clears it)"},
 	}},
@@ -825,9 +826,10 @@ func worktreeNew(ctx context.Context, c *box.Client, args []string, out io.Write
 	var req box.WorktreeRequest
 	fs.StringVar(&req.Branch, "branch", "", "branch to create (default: the worktree name)")
 	fs.StringVar(&req.Base, "base", "", "ref to branch from")
+	fs.StringVar(&req.Parent, "parent", "", "another worktree of the location to nest this one under")
 	pos, err := parse(fs, args)
 	if err != nil || len(pos) != 1 {
-		return usageErr("worktree new LOC/NAME [--branch B] [--base REF]")
+		return usageErr("worktree new LOC/NAME [--branch B] [--base REF] [--parent NAME]")
 	}
 	loc, name, ok := strings.Cut(pos[0], "/")
 	if !ok || name == "" {
@@ -1127,6 +1129,8 @@ func taskNew(ctx context.Context, c *box.Client, args []string, out io.Writer) e
 		return usageErr(usage)
 	}
 	req.Location, req.Name = loc, name
+	// From an agent's session, the new worktree nests under that agent's.
+	req.FromSession = os.Getenv("BERTH_SESSION")
 	task, err := reportBack(c, *noNotify).AddTask(ctx, req)
 	if err != nil {
 		return err

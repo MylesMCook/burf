@@ -370,6 +370,12 @@ func (h *runHost) startAgent(ctx context.Context, x *runs.StepCtx) runs.Result {
 			}
 			wt = nw
 		}
+		// Handed off from an agent's worktree: it nests under that one.
+		if parent := parentAt(loc, x.Vars["handoff.dir"]); s.Handoff && parent != "" && parent != wt.Path {
+			if err := b.Locations.SetWorktreeParent(loc.Name, wt.Path, parent); err == nil {
+				wt.Parent = parent
+			}
+		}
 		dir = wt.Path
 	}
 	if dir == "" {

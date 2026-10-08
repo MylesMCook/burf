@@ -4,6 +4,8 @@ import (
 	"context"
 	"path/filepath"
 	"testing"
+
+	"github.com/cosscom/shipyard/internal/wire"
 )
 
 func TestWorktreeParentIsListedAndForgottenWithTheWorktree(t *testing.T) {
@@ -114,11 +116,71 @@ func TestATaskHandedOffFromAnAgentNestsUnderItsWorktree(t *testing.T) {
 	}
 
 	// The listing says so too.
-	var loc Location
-	call(t, c, "GET", "/v1/locations/cal", "", nil, &loc)
-	for _, w := range loc.Worktrees {
+	listed := worktreesOf(t, c, "cal")
+	if len(listed) < 4 {
+		t.Fatalf("listed %d worktrees", len(listed))
+	}
+	for _, w := range listed {
 		if want := map[string]string{"listing-service": first.Worktree.Path}[w.Name]; w.Parent != want {
 			t.Fatalf("%s: parent = %q, want %q", w.Name, w.Parent, want)
 		}
 	}
+}
+
+func TestAWorktreeMadeWithAParentNestsUnderIt(t *testing.T) {
+	c, _ := servedBox(t)
+	repo := gitRepo(t)
+	call(t, c, "POST", "/v1/locations", "", map[string]string{"name": "cal", "path": repo}, nil)
+
+	var base, layer Worktree
+	if status := call(t, c, "POST", "/v1/locations/cal/worktrees", "", WorktreeRequest{Name: "listing"}, &base); status != 200 {
+		t.Fatalf("base: %d", status)
+	}
+	if status := call(t, c, "POST", "/v1/locations/cal/worktrees", "", WorktreeRequest{Name: "listing-service", Base: base.Branch, Parent: "listing"}, &layer); status != 200 {
+		t.Fatalf("layer: %d", status)
+	}
+	if layer.Parent != base.Path {
+		t.Fatalf("parent = %q, want %q", layer.Parent, base.Path)
+	}
+
+	// No such worktree, or the main checkout: refused, and nothing is made.
+	var main string
+	for _, w := range worktreesOf(t, c, "cal") {
+		if w.Main {
+			main = w.Name
+		}
+	}
+	for _, parent := range []string{"no-such", main} {
+		if status := call(t, c, "POST", "/v1/locations/cal/worktrees", "", WorktreeRequest{Name: "orphan", Parent: parent}, nil); status != 400 {
+			t.Fatalf("parent %q: %d, want 400", parent, status)
+		}
+	}
+	nested := false
+	for _, w := range worktreesOf(t, c, "cal") {
+		if w.Name == "orphan" {
+			t.Fatal("a refused worktree was made")
+		}
+		if w.Name == "listing-service" {
+			nested = w.Parent == base.Path
+		}
+	}
+	if !nested {
+		t.Fatal("the listing does not nest listing-service under listing")
+	}
+}
+
+// worktreesOf lists location name's worktrees as the box does.
+func worktreesOf(t *testing.T, c *wire.Client, name string) []Worktree {
+	t.Helper()
+	var all []Location
+	if status := call(t, c, "GET", "/v1/locations", "", nil, &all); status != 200 {
+		t.Fatalf("locations: %d", status)
+	}
+	for _, l := range all {
+		if l.Name == name {
+			return l.Worktrees
+		}
+	}
+	t.Fatalf("no location %q", name)
+	return nil
 }
