@@ -16,6 +16,22 @@ are not reset. No new update feed is enabled until Burf has signed releases.
 Windows also retains its internal `berth-cli.exe` sidecar and a `cli/berth.exe`
 alias so existing owned login tasks keep the executable paths they trust.
 
+## Product Direction: Chat First
+
+The intended primary experience is a conventional LLM chat UI, not an embedded
+terminal or TUI. Users should read conversations and send replies in Burf's own
+chat view on local and remote computers. Terminal hosting is the current
+compatibility foundation, not the long-term default chat experience.
+
+Plan toward a message composer, streamed replies, visible tool activity and
+explicit approval controls. Prefer supported structured agent interfaces over
+screen scraping or simulated terminal keystrokes when implementing this.
+Keep terminals as a fallback for shell work and unsupported agent interactions.
+Preserve source-history isolation, agent permissions and no-replay guarantees.
+
+This is an accepted product direction, not implemented functionality or a
+selected provider protocol. Evaluate future upstream features against it.
+
 ## First Milestone
 
 - This computer appears alongside the paired remote computers.
