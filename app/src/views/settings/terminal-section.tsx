@@ -70,6 +70,20 @@ export function TerminalSection() {
         <SettingsRow label="Scrollback" description="Lines kept in the app. The box's tmux keeps 50,000 more, redrawn when you reattach.">
           <Stepper value={t.scrollback} min={1000} max={100000} step={1000} onChange={(scrollback) => set({ scrollback })} />
         </SettingsRow>
+        <SettingsRow
+          label="Predict typing"
+          description="On a slow link, what you type shows before the box echoes it, underlined until the box agrees, as in Mosh. Adaptive does it only when the round trip is over about 60 ms."
+        >
+          <Segmented
+            value={t.predict}
+            options={[
+              { value: "adaptive", label: "Adaptive" },
+              { value: "always", label: "Always" },
+              { value: "never", label: "Never" },
+            ]}
+            onChange={(predict) => set({ predict })}
+          />
+        </SettingsRow>
         <SettingsRow label="Copy on select" description="Selecting text copies it, as in most Linux terminals.">
           <Switch checked={copyOnSelect} onCheckedChange={(copyOnSelect) => setPrefs({ copyOnSelect })} />
         </SettingsRow>

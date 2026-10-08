@@ -16,6 +16,7 @@ import { useStore } from "@/lib/store";
 import { openEditor } from "@/components/editors/open";
 import { findPaths, resolveIn } from "@/lib/editor-paths";
 import { OVERLAYS } from "@/lib/overlays";
+import { EchoPredictor } from "@/lib/predict-overlay";
 import { createTerminal, type TermHandle } from "@/lib/terminal";
 import { cn } from "@/lib/utils";
 import { WheelBatcher, wheelPixels } from "@/lib/wheel";
@@ -39,6 +40,9 @@ interface Props {
   pane: string;
   visible: boolean;
   focused: boolean;
+  // Predictive local echo on a slow link (lib/predict): for terminals people
+  // type in, not an agent's own screen.
+  predict?: boolean;
   onFocus(): void;
   onClose(): void;
 }
@@ -47,9 +51,10 @@ interface Props {
 // while hidden, so its screen and connection survive switching tabs and
 // worktrees, and it reattaches on its own when the connection drops: the
 // session keeps running on the box, and attaching again redraws it.
-export function TerminalView({ box, session, agent, command, wsKey, tab, pane, visible, focused, onFocus, onClose }: Props) {
+export function TerminalView({ box, session, agent, command, wsKey, tab, pane, visible, focused, predict = false, onFocus, onClose }: Props) {
   const host = useRef<HTMLDivElement>(null);
   const [term, setTerm] = useState<TermHandle>();
+  const predictor = useRef<EchoPredictor>(null);
   const conn = useRef<TerminalConnection>(null);
   const wheel = useRef<WheelBatcher>(null);
   const [state, setState] = useState<ConnState>("connecting");
@@ -72,6 +77,8 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
   const themeRef = useRef(theme);
   themeRef.current = theme;
   const prefs = usePrefs((p) => p.terminal);
+  const prefsRef = useRef(prefs);
+  prefsRef.current = prefs;
 
   const client = useStore((s) => s.client);
   const boxState = useStore((s) => s.status?.boxes.find((b) => b.name === box)?.state);
@@ -106,8 +113,9 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
   useEffect(() => {
     let disposed = false;
     let t: TermHandle | undefined;
+    let echo: EchoPredictor | undefined;
     const mount = document.createElement("div");
-    mount.className = "h-full w-full";
+    mount.className = "relative h-full w-full";
     host.current!.appendChild(mount);
     void createTerminal(mount, themeRef.current.terminal, prefs).then((made) => {
       if (disposed) {
@@ -115,6 +123,8 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
         return;
       }
       t = made;
+      echo = new EchoPredictor(made, mount, themeRef.current.terminal, prefsRef.current);
+      predictor.current = echo;
       t.onData((d) => {
         if (!open.current) {
           const h = held.current;
@@ -125,6 +135,7 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
           }
           return;
         }
+        echo?.typed(d);
         conn.current?.send(d);
         if (!typedAt.current || typedAt.current <= heardAt.current) typedAt.current = Date.now();
       });
@@ -152,6 +163,8 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
     });
     return () => {
       disposed = true;
+      echo?.dispose();
+      if (predictor.current === echo) predictor.current = null;
       t?.dispose();
       mount.remove();
       setTerm(undefined);
@@ -161,6 +174,7 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
   }, [prefs.renderer, prefs.fontFamily, prefs.fontSize, prefs.lineHeight, prefs.cursorStyle, prefs.cursorBlink, prefs.scrollback, prefs.renderer === "ghostty" ? theme.id : ""]);
 
   useEffect(() => term?.setTheme(theme.terminal), [term, theme]);
+  useEffect(() => predictor.current?.setStyle(theme.terminal, prefs), [term, theme, prefs]);
 
   // Hidden, it draws nothing and takes its output in batches; shown, it
   // catches up and redraws (lib/terminal, lib/term-output). The agent
@@ -169,6 +183,8 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
   const windowShown = useWindowShown();
   useEffect(() => term?.setVisible(visible), [term, visible]);
   useEffect(() => conn.current?.pace?.(visible && windowShown ? 0 : HIDDEN_PACE), [visible, windowShown, state]);
+  // Guesses only while it shows, attached, in a terminal for typing in.
+  useEffect(() => predictor.current?.setActive(predict && visible && windowShown && state === "open"), [term, predict, visible, windowShown, state]);
 
   // A pasted or dropped image (a PDF, a text file, a file copied in Finder)
   // can't be typed: it goes up to the session's worktree on the box and its
@@ -275,6 +291,7 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
           open.current = true;
           // The box redraws the whole screen on attach; start from a clean one.
           term.reset();
+          predictor.current?.reset();
           setState("open");
           mine.resize(term.cols, term.rows);
           const h = held.current;
