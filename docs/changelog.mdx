@@ -9,7 +9,13 @@ upgrades with `berth upgrade BOX`, or by running the
 [install command](/getting-started/add-a-box#with-the-install-command)
 again.
 
-## Unreleased
+## v0.3.12
+
+- **The Linux alpha's downloads.** v0.3.11's Linux build stopped before it
+  began (Ubuntu 22.04, which it builds on for older systems, has no
+  `minisign`), so v0.3.11 shipped for the Mac only. This release carries the
+  AppImage and `.deb` for x86-64 and adds Linux to the update feed; see
+  [Linux (alpha)](/getting-started/install#linux-alpha).
 
 - **Install with Homebrew.** `brew tap cosscom/shipyard https://github.com/cosscom/shipyard`,
   then `brew install --cask cosscom/shipyard/shipyard`, installs the Mac app
