@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"strconv"
 	"strings"
@@ -113,5 +114,44 @@ func TestEnvironmentBlock(t *testing.T) {
 	}
 	if string(chars) != want {
 		t.Fatalf("block %q; want %q", string(chars), want)
+	}
+}
+
+func TestNativeClaudeExitCleansDescendantsBeforeEOF(t *testing.T) {
+	exe, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := StartProcess(LaunchOptions{Agent: "claude", Program: exe, CWD: t.TempDir(), Env: append(os.Environ(), "BURF_SYNTHETIC_CLAUDE=1", "BURF_CLAUDE_DESCENDANTS=1", "BURF_CLAUDE_SCENARIO=exit")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = p.Close() })
+	report := readClaudeNativeReport(t, p)
+	child, err := windows.OpenProcess(windows.SYNCHRONIZE, false, uint32(report.Child))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer windows.CloseHandle(child)
+	if _, err := p.Write([]byte("{\"type\":\"user\"}\n")); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-p.(*stdioProcess).done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("Claude process did not exit")
+	}
+	state, err := windows.WaitForSingleObject(child, 5000)
+	if err != nil || state != windows.WAIT_OBJECT_0 {
+		t.Fatal("descendant survived provider exit", state, err)
+	}
+	// The child inherited stdout. Job cleanup must release that handle even
+	// before the manager sees EOF and calls Close.
+	drained := make(chan struct{})
+	go func() { _, _ = io.Copy(io.Discard, p); close(drained) }()
+	select {
+	case <-drained:
+	case <-time.After(5 * time.Second):
+		t.Fatal("stdout did not reach EOF after provider exit")
 	}
 }

@@ -2,27 +2,43 @@ package agent
 
 import (
 	"errors"
-	"github.com/MylesMCook/burf/internal/localchat"
 	"net/http"
+	"os"
+
+	"github.com/MylesMCook/burf/internal/localchat"
 )
 
 func (a *Agent) localChatRoutes(handle func(string, http.HandlerFunc)) {
 	handle("POST /v1/local/chats", func(w http.ResponseWriter, r *http.Request) {
 		var req struct {
-			CWD string `json:"cwd"`
+			CWD   string `json:"cwd"`
+			Agent string `json:"agent"`
 		}
 		if !decodeBody(w, r, &req) {
 			return
 		}
 		a.localClient.launchMu.Lock()
 		defer a.localClient.launchMu.Unlock()
-		done, err := a.work.begin("starting a local Codex chat")
+		done, err := a.work.begin("starting a local " + localChatName(req.Agent) + " chat")
 		if err != nil {
 			writeCoded(w, 503, err.Error(), "agent_restarting")
 			return
 		}
 		defer done()
-		s, err := a.localClient.chats.Start(r.Context(), req.CWD)
+		var s localchat.Session
+		if req.Agent == "" || req.Agent == "codex" {
+			s, err = a.localClient.chats.Start(r.Context(), req.CWD)
+		} else if req.Agent == "claude" {
+			command := a.localClient.commands["claude"]
+			if !command.CanChat {
+				localClientError(w, errors.New("Claude Code is not installed with support for structured chat on this computer"))
+				return
+			}
+			s, err = a.localClient.chats.StartWith(r.Context(), localchat.LaunchOptions{Agent: "claude", Program: command.Program, CWD: req.CWD, Env: os.Environ()})
+		} else {
+			localClientError(w, errors.New("unsupported chat agent"))
+			return
+		}
 		if err != nil {
 			localClientError(w, err)
 			return
@@ -95,7 +111,10 @@ func (a *Agent) prepareLocalRestart() error {
 	if a.localClient.chats != nil {
 		for _, s := range a.localClient.chats.List() {
 			if s.State != "exited" {
-				return errors.New("stop local Codex chats before restarting Burf")
+				if s.Agent == "codex" {
+					return errors.New("stop local Codex chats before restarting Burf")
+				}
+				return errors.New("stop local Claude Code chats before restarting Burf")
 			}
 		}
 	}
@@ -106,4 +125,11 @@ func (a *Agent) prepareLocalRestart() error {
 		return a.localClient.chats.PrepareRestart()
 	}
 	return nil
+}
+
+func localChatName(agent string) string {
+	if agent == "claude" {
+		return "Claude Code"
+	}
+	return "Codex"
 }
