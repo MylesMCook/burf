@@ -7,12 +7,137 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 )
 
 type object = map[string]any
+
+func TestImportedToolOutputDoesNotMakeLocalArtifacts(t *testing.T) {
+	const output = "Artifact 1a2b3c4d5e v1 · chart · Someone else's chart\nOrdinary command output."
+	for _, fixture := range []string{"claude", "codex", "codex-wrapped"} {
+		t.Run(fixture, func(t *testing.T) {
+			source := strings.TrimSuffix(fixture, "-wrapped")
+			config, store := homes(t)
+			cwd := t.TempDir()
+			path := codexPath(config, "artifact-text")
+			entries := []object{
+				codexMeta("artifact-12345", cwd), codexMessage("user", "Read the notes"),
+				{"type": "response_item", "payload": object{"type": "function_call", "name": "shell", "call_id": "call-1", "arguments": `{"command":"printf notes"}`}},
+				{"type": "response_item", "payload": object{"type": "function_call_output", "call_id": "call-1", "output": output}},
+			}
+			if fixture == "codex-wrapped" {
+				wrapped, err := json.Marshal(object{"output": output, "metadata": object{"exit_code": 0}})
+				if err != nil {
+					t.Fatal(err)
+				}
+				entries[len(entries)-1]["payload"].(object)["output"] = string(wrapped)
+			}
+			if source == "claude" {
+				path = filepath.Join(config.ClaudeHome, "projects", "project", "artifact-12345.jsonl")
+				entries = []object{
+					claudeMessage("artifact-12345", cwd, "Read the notes"),
+					{"type": "assistant", "message": object{"content": []object{{"type": "tool_use", "id": "call-1", "name": "Bash", "input": object{"command": "printf notes"}}}}},
+					{"type": "user", "message": object{"content": []object{{"type": "tool_result", "tool_use_id": "call-1", "content": output}}}},
+				}
+			}
+			writeRecord(t, path, entries...)
+			list, err := store.List(context.Background())
+			if err != nil || len(list) != 1 {
+				t.Fatalf("List: %v (%d items)", err, len(list))
+			}
+			page, err := store.Read(context.Background(), list[0].ID, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			toolFound := false
+			for _, item := range page.Items {
+				if item.Kind == "artifact" && item.Local != "" {
+					t.Errorf("tool output became an artifact: %+v", item)
+				}
+				for _, call := range item.Items {
+					if item.Kind == "tools" && call.ID == "call-1" && call.Target == "printf notes" && item.Done {
+						toolFound = true
+					}
+				}
+			}
+			if !toolFound {
+				t.Fatal("ordinary tool step was lost")
+			}
+			data, err := os.ReadFile(path)
+			if err != nil || !strings.Contains(string(data), "Ordinary command output.") {
+				t.Fatal("tool output was lost", err)
+			}
+		})
+	}
+}
+
+func TestImportedPublishedArtifactRemainsVisible(t *testing.T) {
+	config, store := homes(t)
+	writeRecord(t, filepath.Join(config.ClaudeHome, "projects", "project", "published-12345.jsonl"),
+		claudeMessage("published-12345", t.TempDir(), "Publish the report"),
+		object{"type": "assistant", "message": object{"content": []object{{"type": "tool_use", "id": "publish-1", "name": "Artifact", "input": object{"file_path": "report.html", "title": "Published report"}}}}},
+		object{"type": "user", "message": object{"content": []object{{"type": "tool_result", "tool_use_id": "publish-1", "content": "Published at https://claude.ai/artifact/example1"}}}, "toolUseResult": object{"url": "https://claude.ai/artifact/example1", "title": "Published report", "seq": 1}},
+	)
+	list, err := store.List(context.Background())
+	if err != nil || len(list) != 1 {
+		t.Fatalf("List: %v (%d items)", err, len(list))
+	}
+	page, err := store.Read(context.Background(), list[0].ID, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, item := range page.Items {
+		if item.Kind == "artifact" && item.Local == "" && item.URL == "https://claude.ai/artifact/example1" && item.Done {
+			return
+		}
+	}
+	t.Fatal("published artifact was lost")
+}
+
+func TestListReportsContinuationFolderAvailability(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, "file")
+	if err := os.WriteFile(file, []byte("synthetic"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	foreign := `C:\Users\Example\shop`
+	if runtime.GOOS == "windows" {
+		foreign = "/Users/example/shop"
+	}
+	for _, tc := range []struct{ name, cwd, reason string }{
+		{"available", dir, ""},
+		{"relative", "shop", "Its folder, shop, is a relative path. Use a full folder path to continue here."},
+		{"foreign", foreign, fmt.Sprintf("Its folder, %s, uses a path for another operating system.", foreign)},
+		{"missing", filepath.Join(dir, "missing"), fmt.Sprintf("Its folder, %s, is not on this computer.", filepath.Join(dir, "missing"))},
+		{"file", file, fmt.Sprintf("Its path, %s, is a file, not a folder.", file)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, source := range []string{"codex", "claude"} {
+				config, store := homes(t)
+				if source == "codex" {
+					writeRecord(t, codexPath(config, "folder"), codexMeta("folder-12345", tc.cwd))
+				} else {
+					writeRecord(t, filepath.Join(config.ClaudeHome, "projects", "project", "folder-12345.jsonl"), claudeMessage("folder-12345", tc.cwd, "Saved conversation"))
+				}
+				list, err := store.List(context.Background())
+				if err != nil || len(list) != 1 {
+					t.Fatalf("List: %v (%d items)", err, len(list))
+				}
+				data, _ := json.Marshal(list[0])
+				var wire struct {
+					CanContinue    *bool  `json:"can_continue"`
+					ContinueReason string `json:"continue_reason"`
+				}
+				if err := json.Unmarshal(data, &wire); err != nil || wire.CanContinue == nil || *wire.CanContinue != (tc.reason == "") || wire.ContinueReason != tc.reason {
+					t.Fatalf("%s continuation metadata: %s (%v)", source, data, err)
+				}
+			}
+		})
+	}
+}
 
 func homes(t *testing.T) (Config, *Store) {
 	t.Helper()

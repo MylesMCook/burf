@@ -22,7 +22,7 @@ var localArtifactLine = regexp.MustCompile(`(?m)(?:^|\\n|"output":")Artifact ([0
 // localArtifacts adds an item for each artifact a result says was added
 // or updated.
 func (c *conv) localArtifacts(toolID, text string) {
-	if !strings.Contains(text, "Artifact ") {
+	if c.ignoreLocalArtifacts || !strings.Contains(text, "Artifact ") {
 		return
 	}
 	for _, m := range localArtifactLine.FindAllStringSubmatch(text, 4) {
