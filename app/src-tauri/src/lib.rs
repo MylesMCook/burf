@@ -13,6 +13,7 @@ mod cli_link;
 #[cfg(target_os = "linux")]
 mod linux;
 mod menu;
+mod ui_assets;
 
 // The app is a view over the laptop agent (`burf agent`), which serves it on
 // loopback. The agent writes a token to its state directory; this shell reads
@@ -26,24 +27,41 @@ struct Endpoint {
     token: String,
 }
 
-// The agent's state directory: $BERTH_HOME/client when set, otherwise the
-// OS config directory's berth/client (~/Library/Application Support on macOS),
+// The state directory: $BERTH_HOME when set, otherwise the
+// OS config directory's berth (~/Library/Application Support on macOS),
 // matching statefile.Home in the Go code.
-fn token_path() -> Result<PathBuf, String> {
+fn state_home() -> Result<PathBuf, String> {
     if let Ok(home) = std::env::var("BERTH_HOME") {
         if !home.is_empty() {
-            return Ok(PathBuf::from(home).join("client").join("ui-token"));
+            let home = PathBuf::from(home);
+            if !home.is_absolute() {
+                return Err("BERTH_HOME must be an absolute path".into());
+            }
+            return Ok(home);
         }
     }
     let base = dirs::config_dir().ok_or("no config directory on this system")?;
-    Ok(base.join("berth").join("client").join("ui-token"))
+    Ok(base.join("berth"))
+}
+
+fn token_path() -> Result<PathBuf, String> {
+    Ok(state_home()?.join("client").join("ui-token"))
+}
+
+#[tauri::command]
+fn ui_interface(info: tauri::State<ui_assets::InterfaceInfo>) -> ui_assets::InterfaceInfo {
+    info.inner().clone()
 }
 
 #[tauri::command]
 fn ui_endpoint() -> Result<Endpoint, String> {
     let path = token_path()?;
-    let token = std::fs::read_to_string(&path)
-        .map_err(|e| format!("the Burf agent has not started yet ({}: {e})", path.display()))?;
+    let token = std::fs::read_to_string(&path).map_err(|e| {
+        format!(
+            "the Burf agent has not started yet ({}: {e})",
+            path.display()
+        )
+    })?;
     Ok(Endpoint {
         url: AGENT_URL.to_string(),
         token: token.trim().to_string(),
@@ -84,7 +102,8 @@ fn open_terminal() -> Result<(), String> {
     }
     #[cfg(target_os = "windows")]
     {
-        let root = std::env::var_os("SystemRoot").ok_or("Windows system directory is unavailable")?;
+        let root =
+            std::env::var_os("SystemRoot").ok_or("Windows system directory is unavailable")?;
         std::process::Command::new(PathBuf::from(root).join("System32/cmd.exe"))
             .spawn()
             .map(|_| ())
@@ -112,7 +131,26 @@ pub fn run() {
     }
     #[cfg(target_os = "linux")]
     linux::prefer_compatible_rendering();
-    let builder = tauri::Builder::default();
+    let mut context = tauri::generate_context!();
+    let embedded = context.set_assets(Box::new(tauri::utils::assets::EmbeddedAssets::new(
+        Default::default(),
+        &[],
+        Default::default(),
+    )));
+    let folder = state_home().map(|home| home.join("ui/current"));
+    let assets = ui_assets::InterfaceAssets::select(
+        embedded,
+        folder.as_deref().map_err(Clone::clone),
+        std::env::var_os(ui_assets::BUILTIN_ENV).is_some(),
+        env!("CARGO_PKG_VERSION"),
+    );
+    eprintln!(
+        "burf: interface {} {}: {}",
+        assets.info.source, assets.info.version, assets.info.reason
+    );
+    let info = assets.info.clone();
+    context.set_assets(Box::new(assets));
+    let builder = tauri::Builder::default().manage(info);
     // On Linux a berth:// link starts the app again with the link as its
     // argument: one already running takes it instead (and comes to the
     // front), and the deep-link plugin hands it to the webview. Registered
@@ -151,6 +189,7 @@ pub fn run() {
         .on_menu_event(|app, event| menu::on_event(app, event.id().as_ref()))
         .invoke_handler(tauri::generate_handler![
             ui_endpoint,
+            ui_interface,
             open_devtools,
             restart_app,
             open_terminal,
@@ -173,7 +212,7 @@ pub fn run() {
             browser::browser_inspect,
             browser::browser_close,
         ])
-        .run(tauri::generate_context!())
+        .run(context)
         .expect("error while running tauri application");
 }
 

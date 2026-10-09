@@ -99,6 +99,8 @@ Agent
   burf stop                             Stop the agent (and every forward)
   burf id                               Print this laptop's fingerprint
   burf version                          Print this build's version
+  burf ui install PATH|status [--json]|rollback|remove
+                                         Manage the desktop interface folder; no native build
   burf ui-token                         The desktop app's API address and token, as JSON
   burf browser pair|list|revoke ID      Pair a browser extension with a one-time code; it gets a
                                          credential for chats and their browser tools only
@@ -156,6 +158,8 @@ func run(args []string) error {
 	l := laptop{dir: filepath.Join(home, "client")}
 	cmd, rest := args[0], args[1:]
 	switch cmd {
+	case "ui":
+		return uiCommand(home, rest)
 	case "pair":
 		return pair(l, rest)
 	case "invite":
