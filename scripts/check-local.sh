@@ -34,6 +34,7 @@ if has '^app/'; then
 	specs="$(printf '%s\n' "$changed" | node scripts/e2e-pick.mjs | tr '\n' ' ')"
 	(
 		cd app
+		mkdir -p node_modules/.cache
 		# The type-check and the unit tests run beside the browser specs.
 		(pnpm exec tsc --noEmit -p . && pnpm exec tsc --noEmit -p e2e) > node_modules/.cache/check-tsc.log 2>&1 &
 		tsc=$!
