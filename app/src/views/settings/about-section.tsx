@@ -1,15 +1,18 @@
+import { invoke } from "@tauri-apps/api/core";
 import { BugIcon, ClipboardListIcon } from "lucide-react";
 import { useState } from "react";
 
 import { AlphaBadge } from "@/components/alpha-badge";
 import { Button } from "@/components/ui/button";
+import { toastManager } from "@/components/ui/toast";
+import { isTauri } from "@/lib/api";
 import { copyDiagnostics } from "@/lib/diagnostics";
-import { ago, bytes } from "@/lib/format";
+import { ago, bytes, errorMessage } from "@/lib/format";
 import { openDocs, openUrl } from "@/lib/open-url";
 import { LINUX_ALPHA, LINUX_BUGS } from "@/lib/platform";
 import { NONE, useStore } from "@/lib/store";
 import { checkForUpdate, restartToUpdate, updatesSupported, useUpdater } from "@/lib/updater";
-import { useAppVersion } from "@/views/settings/app-version";
+import { useAppVersion, useInterfaceVersion } from "@/views/settings/app-version";
 import { hasWhatsNew, openWhatsNew } from "@/lib/whats-new";
 import { SettingsGroup, SettingsPage, SettingsRow } from "@/views/settings/rows";
 
@@ -28,6 +31,7 @@ const DOCS: [path: string, title: string, what: string][] = [
 
 export function AboutSection() {
   const version = useAppVersion();
+  const interfaceVersion = useInterfaceVersion();
   const boxes = useStore((s) => s.status?.boxes ?? NONE);
   const data = useStore((s) => s.boxes);
   const proxy = useStore((s) => s.status?.proxy);
@@ -41,6 +45,14 @@ export function AboutSection() {
           {hasWhatsNew() && (
             <Button size="xs" variant="outline" data-testid="about-whats-new" onClick={() => openWhatsNew("about")}>
               What's new
+            </Button>
+          )}
+        </SettingsRow>
+        <SettingsRow label="Interface" description="Reload closes and reopens this window to use the installed interface. Agents keep running.">
+          <span className="font-mono text-muted-foreground text-xs">{interfaceVersion}</span>
+          {isTauri() && (
+            <Button size="xs" variant="outline" onClick={() => void invoke("restart_app").catch((err) => toastManager.add({ title: "Could not reload interface", description: errorMessage(err), type: "error" }))}>
+              Reload interface
             </Button>
           )}
         </SettingsRow>

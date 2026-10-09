@@ -432,6 +432,45 @@ refresh This computer to find the owned session before intentionally trying agai
 When an installed Codex CLI advertises `--no-daemon`, local terminals use that
 mode so their process stays owned by Burf instead of a shared Codex server.
 
+## The interface folder
+
+Once this shell ships, a frontend-only release needs `pnpm run build`,
+`node scripts/ui-manifest.mjs`, copying dist or its zip, then `burf ui install PATH` on each computer. The initial shell still needs a native build and install.
+The folder is `~/Library/Application Support/berth/ui/current` on macOS,
+`%APPDATA%\berth\ui\current` on Windows and
+`${XDG_CONFIG_HOME:-~/.config}/berth/ui/current` on Linux. `BERTH_HOME`
+overrides the state root on every OS.
+
+`manifest.json` is `{ "shell": "1", "version": "0.3.12+<commit>", "files":
+{ "index.html": "<sha256>", "assets/app.js": "<sha256>" } }`. Every regular
+file except the manifest must have its original bytes' lowercase SHA-256.
+The script uses `app/package.json` plus the Git commit; installing a build
+without a manifest generates one in staging with version `unversioned`.
+`internal/uicontract/shell.txt` is the single contract, embedded by Go, included
+at Rust compile time and read by the script. Bump it when a native command's
+name or arguments, an event payload or a capability used by the frontend
+changes. Frontend-only changes using the same contract keep it.
+
+Missing, unreadable, damaged or incompatible files select the compiled-in
+frontend for the whole process. Links, absolute names and traversal are refused.
+Verified bytes stay in memory, so installs cannot mix versions in an open window.
+The page keeps Tauri's origin, CSP and command permissions. Folder HTML gets its
+own inline script hashes, including the import map, and Tauri's nonce processing;
+compiled HTML's inline hashes are not reused. No HTTP listener or updater feed
+is added. This is the person's own executable interface, with the same authority
+as the built-in frontend. Hashes guard against damage or half-copied files, not
+someone who can already write that person's files.
+
+Install stages beside `current` and renames it, keeping `ui/previous`. A launch
+between renames safely uses the built-in frontend. `burf ui status [--json]`
+reports version, shell, completeness and compatibility with that CLI; the window
+checks its own contract. `burf ui rollback` exchanges previous and current.
+`burf ui remove` removes current and keeps previous. Set `BERTH_UI_BUILTIN=1`
+for one launch to force the built-in frontend. The shell logs its choice and why;
+Settings, About shows its version and source. Relaunch or choose About, Reload
+interface to pick up an install. That action uses the existing native restart
+command; a WebView-only reload keeps the same snapshot.
+
 ## Updates
 
 See [UPSTREAM.md](UPSTREAM.md) for the maintained upstream intake workflow.
