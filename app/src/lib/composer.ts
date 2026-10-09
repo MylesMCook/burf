@@ -24,6 +24,8 @@ export interface ComposerTarget {
 export interface ComposerDraft {
   // start: new work; send: a prompt for agents already running.
   mode?: "start" | "send";
+  // Local folders are not registered box projects or worktrees.
+  place?: { kind: "local" } | { kind: "box"; box: string };
   box?: string;
   location?: string;
   where?: "new" | "main";

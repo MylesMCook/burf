@@ -22,8 +22,9 @@ test("a new local Codex chat sends messages without terminal input and reconnect
     await app.open({ agent });
     await app.page.getByTestId("nav-local").click();
     await app.page.getByRole("button", { name: "New agent", exact: true }).click();
-    await expect(app.page.getByRole("combobox", { name: "Agent", exact: true })).toHaveValue("codex");
-    await app.page.getByRole("button", { name: "Start chat", exact: true }).click();
+    const composer = app.page.getByRole("dialog").getByTestId("task-composer");
+    await expect(composer.getByTestId("task-composer-summary")).toContainText("on work-hp · this folder · Codex");
+    await composer.getByRole("button", { name: "Start ⏎", exact: true }).click();
     await expect(app.page.getByTestId("local-chat")).toBeVisible();
     await expect(app.page.getByTestId("local-terminal")).toHaveCount(0);
     await app.page.getByRole("textbox", { name: "Message Codex" }).fill("Hello Codex");
