@@ -94,12 +94,12 @@ function TranscriptRuntime({ turns, who, onAnswer, edits, readOnly, children }: 
   );
 }
 
-export function TranscriptThread({ items, who = "The agent", readOnly = false, onAnswer = sent, edits, composer = none, welcome = none, after }: { items: readonly TranscriptItem[]; readOnly?: boolean; composer?: ReactNode; welcome?: ReactNode; after?: ReactNode } & Partial<Acts>) {
+export function TranscriptThread({ items, who = "The agent", readOnly = false, onAnswer = sent, edits, welcome = none, after }: { items: readonly TranscriptItem[]; readOnly?: boolean; welcome?: ReactNode; after?: ReactNode } & Partial<Acts>) {
   const turns = useTurns(items, readOnly);
   const speakers = useMemo(() => ({ user: "You", assistant: who }), [who]);
   return (
     <TranscriptRuntime turns={turns} who={who} onAnswer={onAnswer} edits={edits} readOnly={readOnly}>
-      <Thread components={components} autoFocus={false} composer={composer} welcome={welcome} after={after} speakers={speakers} loadEarlier={false} />
+      <Thread components={components} autoFocus={false} readOnly welcome={welcome} after={after} speakers={speakers} loadEarlier={false} />
     </TranscriptRuntime>
   );
 }

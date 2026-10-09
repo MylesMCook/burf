@@ -29,10 +29,13 @@ export default defineConfig({
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
   },
+  // E2E_DEV=1 serves the source through Vite's dev server, and reuses one
+  // already running: no build between an edit and a look. The suite of
+  // record still runs against the built app.
   webServer: {
-    command: `pnpm exec vite preview --port ${port} --strictPort`,
+    command: process.env.E2E_DEV === "1" ? `pnpm exec vite --port ${port} --strictPort` : `pnpm exec vite preview --port ${port} --strictPort`,
     url: `http://localhost:${port}/`,
-    reuseExistingServer: false,
+    reuseExistingServer: process.env.E2E_DEV === "1",
     timeout: 30_000,
   },
 });

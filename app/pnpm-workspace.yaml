@@ -1,2 +1,6 @@
 allowBuilds:
   esbuild: true
+# pnpm holds a package back for a day after it is published unless told
+# otherwise. An hour is enough here: assistant-ui ships often and the app
+# follows it closely.
+minimumReleaseAge: 60

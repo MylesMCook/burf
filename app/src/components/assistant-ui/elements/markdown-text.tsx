@@ -19,6 +19,7 @@ import { cn } from "@/lib/utils";
 
 type MarkdownTextProps = Partial<TextMessagePartProps> & {
   components?: Parameters<typeof memoizeMarkdownComponents>[0];
+  containerProps?: React.ComponentProps<typeof MarkdownTextPrimitive>["containerProps"] & { "data-status"?: string };
 };
 
 const useShallowStable = <T extends Record<string, unknown> | undefined>(
@@ -37,7 +38,7 @@ const useShallowStable = <T extends Record<string, unknown> | undefined>(
   return ref.current;
 };
 
-const MarkdownTextImpl: FC<MarkdownTextProps> = ({ components }) => {
+const MarkdownTextImpl: FC<MarkdownTextProps> = ({ components, containerProps }) => {
   const stableComponents = useShallowStable(components);
   const markdownComponents = useMemo(() => {
     if (!stableComponents) return defaultComponents;
@@ -51,6 +52,7 @@ const MarkdownTextImpl: FC<MarkdownTextProps> = ({ components }) => {
     <MarkdownTextPrimitive
       remarkPlugins={[remarkGfm]}
       className="aui-md"
+      containerProps={containerProps}
       components={markdownComponents}
       defer
     />

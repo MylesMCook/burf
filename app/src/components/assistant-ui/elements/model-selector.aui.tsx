@@ -1,5 +1,6 @@
 "use client";
 
+import { Tip } from "@/components/tip";
 import { memo, useEffect } from "react";
 import { useAui } from "@assistant-ui/react";
 import {
@@ -17,6 +18,7 @@ import {
   ModelSelectorEffort,
   useModelSelectorContext,
   type ModelSelectorProps,
+  type ModelSelectorTriggerProps,
 } from "./model-selector";
 
 export {
@@ -84,21 +86,29 @@ const ModelSelectorImpl = ({
   align,
   className,
   contentClassName,
+  triggerProps, tooltip, effortLabel, effortDisabled,
   ...rootProps
-}: ModelSelectorProps) => {
+}: ModelSelectorProps & { triggerProps?: ModelSelectorTriggerProps; tooltip?: string; effortLabel?: string; effortDisabled?: boolean }) => {
   return (
     <ModelSelectorRoot {...rootProps}>
       <ModelSelectorModelContext />
-      <ModelSelectorTrigger
+      {/* The tip's trigger is a span around the picker's own trigger: one
+          element cannot be the trigger of both a tooltip and a popup. */}
+      <Tip label={tooltip}><span className="inline-flex shrink-0"><ModelSelectorTrigger
+        {...triggerProps}
         variant={variant}
         size={size}
         className={className}
-      />
+      /></span></Tip>
       <ModelSelectorContent
         {...(align !== undefined ? { align } : {})}
         className={contentClassName}
         searchable={searchable ?? false}
-      />
+      >
+        {searchable && <ModelSelectorSearch />}
+        <ModelSelectorList />
+        <ModelSelectorEffort label={effortLabel} disabled={effortDisabled} />
+      </ModelSelectorContent>
     </ModelSelectorRoot>
   );
 };

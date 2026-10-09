@@ -127,7 +127,7 @@ for (const width of [1440, 720]) test(`existing remote chats expose approvals an
     await expect(app.page.getByRole("textbox", { name: "Message Codex" })).toBeInViewport();
     expect(f.calls.filter((c) => c.method !== "GET" && c.path.startsWith("chats"))).toHaveLength(0);
     await app.page.getByRole("button", { name: "Deny", exact: true }).click();
-    await app.page.getByRole("button", { name: "Interrupt turn", exact: true }).click();
+    await app.page.getByRole("button", { name: "Stop generating", exact: true }).click();
     expect(f.calls.filter((c) => c.path.endsWith("/approvals"))).toEqual([{ method: "POST", path: "chats/remote-1/approvals", body: { id: "approval-1", decision: "decline" } }]);
     expect(f.calls.filter((c) => c.path.endsWith("/interrupt"))).toHaveLength(1);
   } finally { await f.agent.close(); }
@@ -147,7 +147,7 @@ test("uncertain remote sends retain the draft and reconnect never replays it", a
     await expect(draft).toHaveValue("Do not replay");
     f.control.offline = true;
     await app.page.getByRole("button", { name: "Refresh chat", exact: true }).click();
-    await expect(app.page.getByTestId("remote-chat").getByRole("status")).toHaveText("Connection lost. The run kept going on the server.Reconnect");
+    await expect(app.page.getByTestId("remote-chat").getByRole("status")).toHaveText("Disconnected");
     await expect(app.page.getByRole("button", { name: "Send message", exact: true })).toBeDisabled();
     f.control.offline = false;
     await app.page.getByRole("button", { name: "Refresh chat", exact: true }).click();
@@ -902,7 +902,7 @@ for (const lost of [false, true]) test(`a ${lost ? "lost" : "rejected"} queued s
     await app.page.getByRole("region", { name: "Codex chats" }).getByRole("button", { name: /Codex chat/ }).click();
     const pane = app.page.getByTestId("remote-chat");
     const draft = pane.getByRole("textbox", { name: "Message Codex" });
-    for (const text of ["uncertain", "later"]) { await draft.fill(text); await pane.getByRole("button", { name: "Queue message", exact: true }).click(); await expect(draft).toHaveValue(""); }
+    for (const text of ["uncertain", "later"]) { await draft.fill(text); await draft.press("Enter"); await expect(draft).toHaveValue(""); }
     f.chat.state = "idle"; f.chat.turn_id = "";
     await pane.getByRole("button", { name: "Refresh chat", exact: true }).click();
     await expect(draft).toHaveValue("uncertain");
@@ -957,16 +957,21 @@ for (const options of [false, true]) test(`structured pickers stay visible ${opt
     const pane = app.page.getByTestId("remote-chat");
     await expect(pane.getByLabel("Chat model")).toBeVisible();
     await expect(pane.getByLabel("Chat permissions")).toBeVisible();
-    await expect(pane.getByRole("radiogroup", { name: "Chat reasoning" })).toBeVisible();
+    await expect(pane.getByLabel("Chat model")).toContainText("Default model");
     await expect.poll(() => f.calls.filter((call) => call.path === "chats/remote-1/models").length).toBe(1);
     if (options) {
       await pane.getByLabel("Chat model").click(); await app.page.getByRole("option", { name: "Alpha", exact: true }).click();
-      await pane.getByRole("radiogroup", { name: "Chat reasoning" }).getByRole("radio", { name: "high", exact: true }).click();
+      await pane.getByLabel("Chat model").click();
+      await expect(app.page.getByRole("radiogroup", { name: "Chat reasoning" })).toBeVisible();
+      await app.page.getByRole("radiogroup", { name: "Chat reasoning" }).getByRole("radio", { name: "high", exact: true }).click();
+      await app.page.keyboard.press("Escape");
       await pane.getByLabel("Chat permissions").click(); await app.page.getByRole("option", { name: "Edit workspace", exact: true }).click();
     } else {
       await expect(pane.getByLabel("Chat model")).toBeDisabled(); await expect(pane.getByLabel("Chat permissions")).toBeDisabled();
-      await expect(pane.getByRole("radiogroup", { name: "Chat reasoning" }).getByRole("radio")).toBeDisabled();
-      await expect(pane.getByText("This chat cannot change model, reasoning or permissions. Its backend does not support chat options.")).toBeVisible();
+      await pane.getByLabel("Chat model").locator("..").hover();
+      await expect(app.page.locator("[data-slot=tooltip-popup]")).toHaveText("This chat cannot change model, reasoning or permissions. Its backend does not support chat options.");
+      // Reasoning is inside the same disabled model picker, so it cannot be changed either.
+      await expect(app.page.getByRole("radiogroup", { name: "Chat reasoning" })).toHaveCount(0);
     }
     await pane.getByRole("textbox", { name: "Message Codex" }).fill("Use these settings");
     await pane.getByRole("button", { name: "Send message", exact: true }).click();
@@ -998,7 +1003,7 @@ for (const supported of [false, true]) test(`voice input is ${supported ? "usabl
     await draft.fill("Existing draft");
     await pane.getByRole("button", { name: "Start voice input", exact: true }).click();
     await expect(pane.getByRole("button", { name: "Send message", exact: true })).toBeDisabled();
-    await pane.getByRole("button", { name: "Stop recording", exact: true }).click();
+    await pane.getByRole("button", { name: "Stop voice input", exact: true }).click();
     await expect(draft).toHaveValue("Existing draft Spoken words");
     await pane.getByRole("button", { name: "Send message", exact: true }).click();
     await expect.poll(() => f.calls.filter((call) => call.path.endsWith("/messages")).map((call) => call.body)).toEqual([{ text: "Existing draft Spoken words" }]);

@@ -1,8 +1,9 @@
 "use client";
 
-import { memo, useRef, type ComponentPropsWithoutRef, type FC } from "react";
+import { memo, useRef, useEffect, type ComponentPropsWithoutRef, type FC } from "react";
 import {
   ComposerPrimitive,
+  unstable_useTriggerPopoverScopeContext,
   defaultDirectiveFormatter,
   type DirectiveFormatter,
   type TriggerItem,
@@ -47,6 +48,7 @@ type ComposerTriggerPopoverBaseProps = Omit<
   emptyItemsLabel?: string;
   /** Label shown while an async adapter is resolving items. @default "Loading…" */
   loadingLabel?: string;
+  onQueryChange?: (query: string | undefined) => void;
 };
 
 type ComposerTriggerPopoverProps = ComposerTriggerPopoverBaseProps &
@@ -182,6 +184,12 @@ const Items: FC<ItemsProps> = ({
   );
 };
 
+function QueryState({ onChange }: { onChange?: (query: string | undefined) => void }) {
+  const { query, open } = unstable_useTriggerPopoverScopeContext();
+  useEffect(() => onChange?.(open ? query : undefined), [query, open, onChange]);
+  return null;
+}
+
 /**
  * Pre-built popover UI for a trigger-driven picker (mentions, slash commands, etc).
  * Pass exactly one of `directive` (inserts a chip) or `action` (fires a handler).
@@ -197,6 +205,7 @@ const ComposerTriggerPopoverImpl: FC<ComposerTriggerPopoverProps> = ({
   className,
   directive,
   action,
+  onQueryChange,
   ...props
 }) => {
   const warnedRef = useRef(false);
@@ -221,6 +230,7 @@ const ComposerTriggerPopoverImpl: FC<ComposerTriggerPopoverProps> = ({
       isLoading={isLoading}
       {...props}
     >
+      <QueryState onChange={onQueryChange} />
       {directive ? (
         <ComposerPrimitive.TriggerPopover.Directive
           formatter={directive.formatter ?? defaultDirectiveFormatter}

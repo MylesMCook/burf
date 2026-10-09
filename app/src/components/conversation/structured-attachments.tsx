@@ -1,5 +1,5 @@
-import { useAui, useAuiState, type Attachment, type AttachmentAdapter, type PendingAttachment } from "@assistant-ui/react";
-import { useEffect, useImperativeHandle, useMemo, type Ref } from "react";
+import { type AttachmentAdapter, type PendingAttachment } from "@assistant-ui/react";
+import { useEffect, useMemo } from "react";
 
 import type { Client } from "@/lib/api";
 import { attachable, isImage, MAX_ATTACHMENT, named, uploadAttachment, type AttachTarget } from "@/lib/attachments";
@@ -32,26 +32,5 @@ export function useWorktreeAttachments(client: Client | null | undefined, target
       return { ...attachment, content: attachment.content, status: { type: "complete" } };
     },
   } : undefined, [client, target, uploads]);
-}
-
-export interface StructuredAttachmentControl {
-  items(): readonly Attachment[];
-  add(files: File[]): void;
-  remove(id: string): void;
-  clear(): void;
-}
-
-// The thread's runtime owns the stock attachment UI; Burf sends its uploaded paths.
-export function StructuredAttachmentState({ control, onChange }: { control: Ref<StructuredAttachmentControl>; onChange(items: readonly Attachment[]): void }) {
-  const aui = useAui();
-  const items = useAuiState((s) => s.composer.attachments);
-  useEffect(() => onChange(items), [items, onChange]);
-  useImperativeHandle(control, () => ({
-    items: () => aui.composer().getState().attachments,
-    add: (files) => { for (const file of files) void aui.composer().addAttachment(named(file)).catch(() => {}); },
-    remove: (id) => { void aui.composer().attachment({ id }).remove(); },
-    clear: () => { void aui.composer().clearAttachments(); },
-  }), [aui]);
-  return null;
 }
 
