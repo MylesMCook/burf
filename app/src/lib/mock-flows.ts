@@ -224,7 +224,7 @@ function serviceList(box: string, loc: string, wt: string): ServiceStatus[] {
 }
 
 // The resource guard, per box: devl starts on and has acted once.
-const guards: Record<string, GuardStatus["config"]> = { devl: { enabled: true, memory_percent: 90, sustain: "1m" } };
+const guards: Record<string, GuardStatus["config"]> = { devl: { enabled: true, memory_percent: 90, sustain: "1m", session_memory_gb: 12 } };
 
 function guardStatus(box: string): GuardStatus {
   const used = box === "devl" ? 0.92 : 0.41;
@@ -233,6 +233,8 @@ function guardStatus(box: string): GuardStatus {
     config: guards[box] ?? { enabled: false },
     memory: { total, used: Math.round(total * used) },
     memory_percent: used * 100,
+    // gpu's older berthd has no session scopes.
+    session_scopes: box !== "gpu",
     actions:
       box === "devl"
         ? [{ at: new Date(Date.now() - 18 * 60_000).toISOString(), action: "stop_services", location: "shop", worktree: "search-perf", services: ["web"], memory_percent: 93, reason: "no agent is working there" }]

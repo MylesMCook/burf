@@ -263,7 +263,7 @@ func unknownFields(data []byte) []string {
 			if strings.HasPrefix(k, "$") || contains(known[kind], k) {
 				continue
 			}
-			out = append(out, fmt.Sprintf("%s: %q is not a field this Burf knows; it is ignored", where, k))
+			out = append(out, fmt.Sprintf("%s: %q is not a field this version of Burf knows; it is ignored", where, k))
 		}
 	}
 	check("team.json", "", raw)
@@ -332,9 +332,9 @@ func InsidePath(p string) (string, error) {
 func (s *Setup) Validate() error {
 	if s.Schema != Schema {
 		if s.Schema == "" {
-			return fmt.Errorf(`team.json has no "schema"; this Burf reads %q`, Schema)
+			return fmt.Errorf(`team.json has no "schema"; this version of Burf reads %q`, Schema)
 		}
-		return fmt.Errorf("team.json is %q; this Burf reads %q (a newer Burf may read it)", s.Schema, Schema)
+		return fmt.Errorf("team.json is %q; this version of Burf reads %q (a newer one may read it)", s.Schema, Schema)
 	}
 	if !idPattern.MatchString(s.ID) {
 		return fmt.Errorf("id %q must be lowercase letters, digits and dashes", s.ID)

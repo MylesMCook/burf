@@ -1,4 +1,5 @@
 import { mockFileBlob, mockFilesCall } from "@/lib/mock-files";
+import { LINEAR_USAGE, processesCall } from "./mock-processes";
 import type { BerthEvent, Client, Hook, HooksFile, Location, Service, Session, SshFailure, Stats, Status, TerminalHandlers, Turn } from "@/lib/api";
 import { flowsCall } from "@/lib/mock-flows";
 import { runsCall } from "@/lib/mock-runs";
@@ -39,9 +40,45 @@ const GB = 1024 ** 3;
 
 const status: Status = {
   boxes: [
-    { name: "devl", address: "100.64.0.4:7444", fingerprint: "sha256:9f2c…", state: "online", latency_ms: 38, since: ago(140) },
-    { name: "gpu", address: "100.64.0.19:7444", network: "personal", fingerprint: "sha256:41ab…", state: "online", latency_ms: 112, since: ago(30) },
-    { name: "old-vps", address: "203.0.113.7:7444", fingerprint: "sha256:c0de…", state: "offline", error: "dial tcp: i/o timeout", since: ago(600) },
+    {
+      name: "devl",
+      address: "100.64.0.4:7444",
+      fingerprint: "sha256:9f2c…",
+      state: "online",
+      latency_ms: 24,
+      since: ago(140),
+      // Added over SSH: SSH is the faster route, Tailscale relays.
+      link: { path: { via: "relay", relay: "nyc", relay_name: "New York", nearest: "London" } },
+      route: "ssh",
+      routes: [
+        { id: "ssh", kind: "ssh", label: "SSH", detail: "alex@devl", state: "up", latency_ms: 24, active: true, auto: true },
+        { id: "paired", kind: "tailscale", label: "Tailscale relayed", detail: "100.64.0.4:7444", state: "up", latency_ms: 140 },
+      ],
+    },
+    {
+      name: "gpu",
+      address: "100.64.0.19:7444",
+      network: "personal",
+      fingerprint: "sha256:41ab…",
+      state: "online",
+      latency_ms: 112,
+      since: ago(30),
+      route: "paired",
+      routes: [
+        { id: "paired", kind: "tailscale", label: "Tailscale (personal)", detail: "100.64.0.19:7444", state: "up", latency_ms: 112, active: true },
+        { id: "ssh", kind: "ssh", label: "SSH", detail: "gpu", state: "off", suggested: true },
+      ],
+    },
+    {
+      name: "old-vps",
+      address: "203.0.113.7:7444",
+      fingerprint: "sha256:c0de…",
+      state: "offline",
+      error: "dial tcp: i/o timeout",
+      since: ago(600),
+      route: "paired",
+      routes: [{ id: "paired", kind: "direct", label: "Direct", detail: "203.0.113.7:7444", state: "down", active: true, error: "dial tcp: i/o timeout" }],
+    },
   ],
   forwards: [{ id: "f1", box: "devl", local: 5432, remote: 5432, state: "listening" }],
   routes: [],
@@ -78,9 +115,10 @@ const locations: Record<string, Location[]> = {
         { name: "checkout-fix", path: "/home/me/work/shop-checkout-fix", branch: "me/checkout-fix" },
         { name: "qa-deck", path: "/home/me/work/shop-qa-deck", branch: "me/qa-deck" },
         { name: "search-perf", path: "/home/me/work/shop-search-perf", branch: "me/search-perf" },
-        { name: "order-export", path: "/home/me/work/shop-order-export", branch: "me/order-export" },
+        // Handed off from checkout-fix's agent, and on from there: nested.
+        { name: "order-export", path: "/home/me/work/shop-order-export", branch: "me/order-export", parent: "/home/me/work/shop-checkout-fix" },
         // Named after a pasted link, as a worktree made from one is.
-        { name: "https-linear-app-acme", path: "/home/me/work/shop-https-linear-app-acme", branch: "https-linear-app-acme" },
+        { name: "https-linear-app-acme", path: "/home/me/work/shop-https-linear-app-acme", branch: "https-linear-app-acme", parent: "/home/me/work/shop-order-export" },
       ],
     },
     {
@@ -136,7 +174,9 @@ const sessions: Record<string, Session[]> = {
     { name: "order-export-claude", title: "Export orders as CSV from the admin", location: "shop/order-export", dir: "/home/me/work/shop-order-export", command: "claude 'Export orders as CSV from the admin'", created: ago(1700), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(1560) },
     { name: "order-export-claude-2", location: "shop/order-export", dir: "/home/me/work/shop-order-export", command: "claude", created: ago(320), attached: 0, exited: false, agent: "claude", agent_state: "idle", state_since: ago(290) },
     { name: "order-export-claude-3", title: "Add tests for the export job", location: "shop/order-export", dir: "/home/me/work/shop-order-export", command: "claude 'Add tests for the export job'", created: ago(140), attached: 0, exited: false, agent: "claude", agent_state: "finished", state_since: ago(75) },
-    { name: "https-linear-app-acme-claude", title: "Fix the cart badge after a refund", location: "shop/https-linear-app-acme", dir: "/home/me/work/shop-https-linear-app-acme", command: "claude", created: ago(44), attached: 0, exited: false, agent: "claude", agent_state: "idle", state_since: ago(40) },
+    // Its repository's Playwright tests run near its 12 GB memory limit
+    // (mock-processes).
+    { name: "https-linear-app-acme-claude", title: "Fix the cart badge after a refund", location: "shop/https-linear-app-acme", dir: "/home/me/work/shop-https-linear-app-acme", command: "claude", created: ago(44), attached: 0, exited: false, agent: "claude", agent_state: "idle", state_since: ago(40), scope: "berth-https-linear-app-acme-claude-tq1.scope", usage: LINEAR_USAGE },
     { name: "notes-claude", location: "notes", dir: "/home/me/work/notes", command: "claude", created: ago(700), attached: 0, exited: true, agent: "claude" },
   ],
   gpu: [
@@ -604,6 +644,12 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
   if (runs) return runs;
   const browser = browserCall(box, method, path);
   if (browser) return delay(browser);
+  try {
+    const procs = processesCall(box, method, path, emit);
+    if (procs !== undefined) return delay(procs);
+  } catch (err) {
+    return Promise.reject(new ApiError((err as Error).message, /didn't start/.test((err as Error).message) ? 403 : 404));
+  }
   const computers = computersBoxCall(box, method, path);
   if (computers) return computers;
   const thisMac = localBoxFolders(box, method, path);
@@ -683,7 +729,7 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
       tools: ["claude", "codex"],
       home: HOME,
       // gpu runs an older berthd (mockBuilds): it can't keep worktree names.
-      capabilities: ["diff", "turns", "queue", "ask", "answer", "journal", "runs", "exec.detach", "browser", "browser.devtools", "titles", "sample", "service.terminal", "session.home", "agents.install", "artifacts", ...(box === "gpu" ? [] : ["worktree.titles", "agents.paths"])],
+      capabilities: ["diff", "turns", "queue", "ask", "answer", "journal", "runs", "exec.detach", "browser", "browser.devtools", "titles", "sample", "service.terminal", "session.home", "agents.install", "artifacts", "processes", ...(box === "gpu" ? [] : ["worktree.titles", "agents.paths"])],
       // Claude Code from npm under nvm, as the person's shell finds it;
       // Codex from Burf's own installer.
       agent_paths: [
@@ -823,6 +869,10 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
 
 // A fake terminal: a short Claude-like transcript, then an echoing prompt.
 // The live demo's terminals follow their agent instead, and answer.
+// ?echoDelay=300 holds every echo of typing back that many ms, like a slow
+// link to the box, for predictive echo (lib/predict) to show.
+const ECHO_DELAY = Number(new URLSearchParams(location.search).get("echoDelay")) || 0;
+
 function mockAttach(box: string, session: string, h: TerminalHandlers) {
   // A service's own terminal (lib/mock-services).
   if (sessions[box]?.some((x) => x.name === session && x.service)) return mockServiceAttach(box, session, h);
@@ -868,7 +918,9 @@ function mockAttach(box: string, session: string, h: TerminalHandlers) {
   return {
     send(data: Uint8Array | string) {
       const text = typeof data === "string" ? data : new TextDecoder().decode(data);
-      h.onData(text.replace(/\r/g, "\r\n\x1b[2m(mock: nothing runs here)\x1b[0m\r\n\x1b[1m❯\x1b[0m ").replace(/\x7f/g, "\b \b"));
+      const echo = text.replace(/\r/g, "\r\n\x1b[2m(mock: nothing runs here)\x1b[0m\r\n\x1b[1m❯\x1b[0m ").replace(/\x7f/g, "\b \b");
+      if (!ECHO_DELAY) h.onData(echo);
+      else timers.push(window.setTimeout(() => open && h.onData(echo), ECHO_DELAY));
     },
     resize() {},
     close() {
@@ -983,7 +1035,60 @@ function mockSshFailure(host: string, trusted?: string) {
   return undefined;
 }
 
+// mockRoutes changes a box's routes the way the agent does (boxroutes.go):
+// an added route is measured at once, and a box keeps one route on.
+function mockRoutes(method: string, path: string, body: unknown): Promise<unknown> | undefined {
+  const m = /^\/v1\/boxes\/([^/]+)\/routes(?:\/([^/]+))?$/.exec(path);
+  const box = m && status.boxes.find((b) => b.name === decodeURIComponent(m[1]));
+  if (!m || !box) return undefined;
+  const routes = (box.routes ??= []);
+  const id = m[2] && decodeURIComponent(m[2]);
+  const settle = () => {
+    // Adding or removing a route replaces the array on the box.
+    const routes = box.routes ?? [];
+    if (!routes.some((r) => r.active && r.state !== "off")) {
+      for (const r of routes) r.active = false;
+      const next = routes.filter((r) => r.state === "up").sort((a, b) => (a.latency_ms ?? 0) - (b.latency_ms ?? 0))[0];
+      if (next) next.active = true;
+    }
+    box.route = routes.find((r) => r.active)?.id;
+    emit({ type: "box.route", box: box.name });
+    return delay(routes);
+  };
+  if (method === "POST" && !id) {
+    const r = body as { kind: string; host?: string; address?: string };
+    if (r.kind === "ssh") {
+      if (!r.host || r.host.startsWith("-")) return Promise.reject(new ApiError(`"${r.host ?? ""}" is not an SSH host`, 400));
+      box.routes = routes.filter((x) => x.kind !== "ssh");
+      box.routes.push({ id: "ssh", kind: "ssh", label: "SSH", detail: r.host, state: "up", latency_ms: 31 });
+      return settle();
+    }
+    if (!r.address || !/:\d+$/.test(r.address)) return Promise.reject(new ApiError(`"${r.address ?? ""}" is not a host:port`, 400));
+    box.routes = routes.filter((x) => x.id !== `direct:${r.address}`);
+    box.routes.push({ id: `direct:${r.address}`, kind: "direct", label: "Direct", detail: r.address, state: "up", latency_ms: 9 });
+    return settle();
+  }
+  const route = routes.find((r) => r.id === id);
+  if (!route) return Promise.reject(new ApiError("the box has no route with that id", 404));
+  if (method === "PATCH") {
+    const off = (body as { off: boolean }).off;
+    if (off && !routes.some((r) => r.id !== id && r.state !== "off")) return Promise.reject(new ApiError("a box needs one route on: turn another on first", 400));
+    route.state = off ? "off" : "up";
+    route.latency_ms = off ? undefined : (route.latency_ms ?? 30);
+    if (off) route.active = false;
+    return settle();
+  }
+  if (method === "DELETE") {
+    if (id === "paired") return Promise.reject(new ApiError("the address the box was paired at can be turned off, not removed", 400));
+    box.routes = routes.filter((r) => r.id !== id);
+    return settle();
+  }
+  return undefined;
+}
+
 function laptopBoxes(method: string, path: string, body: unknown): Promise<unknown> | undefined {
+  const routed = path.includes("/routes") ? mockRoutes(method, path, body) : undefined;
+  if (routed) return routed;
   if (method === "GET" && path.startsWith("/v1/discover")) {
     const network = new URLSearchParams(path.split("?")[1] ?? "").get("network");
     return delay(network ? discoverNetwork(network) : discovery);
@@ -1363,10 +1468,12 @@ function mockIntegrations(box: string, method: string, path: string, body?: unkn
   });
   if (method === "GET" && path === "integrations") return delay(report());
   if (method !== "POST" || path !== "integrations/install") return undefined;
-  const tool = (body as { tool: string }).tool;
-  mockHooked[`${box}:${tool}`] = true;
-  setTimeout(() => emit({ type: "integrations.installed", box, data: { tool } }), 50);
-  return new Promise((resolve) => setTimeout(() => resolve({ ...report(), output: `Claude Code: skills in /home/dev/.claude/skills; hooks added in /home/dev/.claude/settings.json` }), 450));
+  const { tool, account } = body as { tool: string; account?: string };
+  // One account folder (the Usage plugin's "Add account…") leaves the default as it was.
+  if (!account) mockHooked[`${box}:${tool}`] = true;
+  setTimeout(() => emit({ type: "integrations.installed", box, data: account ? { tool, account } : { tool } }), 50);
+  const where = account ?? "~/.claude";
+  return new Promise((resolve) => setTimeout(() => resolve({ ...report(), output: `Claude Code: hooks and 7 skills in ${where}\n  hooks added in ${where}/settings.json` }), 450));
 }
 
 // mockAgentOpens plays an agent on a box running

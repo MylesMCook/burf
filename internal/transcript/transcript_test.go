@@ -474,3 +474,24 @@ func TestPastedPromptShowsAsTyped(t *testing.T) {
 		t.Fatalf("got %+v", res.Items)
 	}
 }
+
+// Agents on different accounts (another CLAUDE_CONFIG_DIR) in one worktree
+// each read their own account's conversation.
+func TestAssignClaudeLooksInEachSessionsAccount(t *testing.T) {
+	t.Setenv("CLAUDE_CONFIG_DIR", t.TempDir())
+	personal := t.TempDir()
+	dir := "/w/shop"
+	at := m{"type": "user", "timestamp": "2026-10-04T10:00:05Z", "message": m{"role": "user", "content": "hi"}}
+	os.MkdirAll(ClaudeDir(dir), 0o700)
+	os.MkdirAll(ClaudeDirIn(personal, dir), 0o700)
+	write(t, filepath.Join(ClaudeDir(dir), "aaaaaaaa-1.jsonl"), at)
+	write(t, filepath.Join(ClaudeDirIn(personal, dir), "bbbbbbbb-2.jsonl"), at)
+	t0, _ := time.Parse(time.RFC3339, "2026-10-04T10:00:00Z")
+	got := AssignClaude(dir, []Claim{
+		{Name: "default", Started: t0},
+		{Name: "personal", Started: t0, ConfigDir: personal},
+	})
+	if filepath.Base(got["default"]) != "aaaaaaaa-1.jsonl" || got["personal"] != filepath.Join(ClaudeDirIn(personal, dir), "bbbbbbbb-2.jsonl") {
+		t.Fatalf("%v", got)
+	}
+}

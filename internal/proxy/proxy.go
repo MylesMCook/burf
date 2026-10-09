@@ -288,6 +288,6 @@ func page(w http.ResponseWriter, status int, title, detail string) {
 	noteFailure(w, title)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(status)
-	fmt.Fprintf(w, `<!doctype html><html lang="en"><meta charset="utf-8"><title>%s</title>%s<body><h1>%s</h1><p>%s</p><footer>%d %s · berth</footer>`,
+	fmt.Fprintf(w, `<!doctype html><html lang="en"><meta charset="utf-8"><title>%s</title>%s<body><h1>%s</h1><p>%s</p><footer>%d %s · Burf</footer>`,
 		html.EscapeString(title), PageStyle, html.EscapeString(title), html.EscapeString(detail), status, html.EscapeString(http.StatusText(status)))
 }

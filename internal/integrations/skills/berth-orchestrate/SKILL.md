@@ -134,7 +134,8 @@ berthd run start --template handoff --param session=NAME --param name=checkout-t
 
 You are asked to write `.berth/handoff/<run>.md` (Done, Left, Decisions,
 Gotchas; at most 30 lines, paths not code); berth adds the diffstat, commits
-and turn log and points the new agent at it. On an older box, `task new
+and turn log and points the new agent at it. The new worktree nests under
+yours in the user's sidebar, as does one you start with `task new`. On an older box, `task new
 … --prompt "Continue from … : …"` and commit what the other agent needs
 first: worktrees do not share uncommitted changes.
 

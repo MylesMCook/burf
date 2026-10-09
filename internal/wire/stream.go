@@ -15,7 +15,18 @@ type streamConn struct {
 	pw     *io.PipeWriter
 	cancel context.CancelFunc
 	remote net.Addr
-	once   sync.Once
+	// route is the route the stream rides (routes.go).
+	route string
+	once  sync.Once
+}
+
+// StreamRoute is the ID of the route a stream from OpenStream or DialPort
+// rides, or "" for any other connection.
+func StreamRoute(c net.Conn) string {
+	if s, ok := c.(*streamConn); ok {
+		return s.route
+	}
+	return ""
 }
 
 func (s *streamConn) Read(b []byte) (int, error)  { return s.body.Read(b) }

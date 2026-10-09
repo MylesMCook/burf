@@ -3,6 +3,7 @@
 import { ContextMenu as ContextMenuPrimitive } from "@base-ui/react/context-menu";
 import { ChevronRightIcon } from "lucide-react";
 import type * as React from "react";
+import { platformKeys } from "@/lib/platform";
 import { cn } from "@/lib/utils";
 
 export const ContextMenu: typeof ContextMenuPrimitive.Root =
@@ -267,6 +268,7 @@ export function ContextMenuSeparator({
 
 export function ContextMenuShortcut({
   className,
+  children,
   ...props
 }: React.ComponentProps<"kbd">): React.ReactElement {
   return (
@@ -277,7 +279,9 @@ export function ContextMenuShortcut({
       )}
       data-slot="context-menu-shortcut"
       {...props}
-    />
+    >
+      {typeof children === "string" ? platformKeys(children) : children}
+    </kbd>
   );
 }
 

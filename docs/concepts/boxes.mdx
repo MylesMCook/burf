@@ -110,6 +110,13 @@ berth ports devl     # what is listening, and which process
 burf doctor devl    # git, tmux, cloudflared, agent CLIs, listen address, lingering, paired laptops
 ```
 
+Click a box's memory meter in the status bar for the
+[browsers running on it](/guides/agent-browser#every-browser-on-a-box), who
+started each and what it costs, with **Stop** for the ones Burf or its
+sessions started; `berth ps devl` lists them in a terminal. A session's
+processes [go with it](/concepts/sessions-and-agents#sessions-clean-up-after-themselves)
+when it ends.
+
 The built-in **Box monitor** plugin keeps an hour of history and warns before
 a box runs out. The [resource guard](/guides/resource-guard) can stop idle
 dev servers and pause idle agents when memory runs short.

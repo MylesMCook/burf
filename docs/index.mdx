@@ -11,19 +11,14 @@ stops them; the app is a view you can close and reopen at any time.
 
 <Stage title="Get started">
 
-```sh
-curl -fsSL https://berthd.app/install | sh
-```
+Burf is a fork preview. Signed Burf downloads and automatic updates are
+not available. [Build from source](/getting-started/install#build-from-source),
+then use `burf add ssh` from macOS or Linux to install and pair a box,
+or pair with an existing compatible Berth daemon. Windows clients pair
+with an already-running box.
 
-Run that on your box, as the user your agents will run as. It installs
-`berthd` with no root, starts it, installs the hooks that let agents report
-their state, and prints a link: paste it into **Add a box** in the desktop
-app, or into `burf pair` on your laptop.
-
-On your Mac, [download Burf](https://github.com/MylesMCook/burf/releases/latest/download/Burf-macos-universal.dmg),
-drag it to Applications and open it. It's signed and notarized, runs on
-Apple silicon and Intel, carries the `berth` CLI, and updates itself. Every
-step is in [install](/getting-started/install).
+The app and the `burf` CLI share the same background agent. The `berth`
+and `berthd` aliases, pairing links and existing state remain compatible.
 
 </Stage>
 
@@ -62,11 +57,10 @@ step is in [install](/getting-started/install).
 
 | Piece | What it is |
 | --- | --- |
-| `berthd` | The daemon on each box: worktrees, sessions (tmux), services, hooks, flows, kits. |
-| `berth` | The laptop CLI and background agent: connections, private URLs, the app's API. |
+| `burfd` | The daemon on each box: worktrees, sessions (tmux), services, hooks, flows, kits. |
+| `burf` | The laptop CLI and background agent: connections, private URLs, the app's API. |
 | `app/` | The desktop app (Tauri, React, coss ui). |
 | `plugins/` | Built-in plugins, written against `packages/plugin-sdk`. |
-| `kits/` | Pointers to kits kept in their own repositories, such as [the Cal.com kit](https://github.com/sean-brydon/berth-kit-calcom). |
 
 Read [how Burf works](/concepts/architecture) for the whole picture, or
 [the security model](/concepts/security) before you pair a box you care
@@ -75,6 +69,6 @@ about.
 <Cards>
   <Card icon={<Compass />} title="Concepts" href="/concepts/architecture" description="Boxes, projects, worktrees, sessions and the laptop agent." />
   <Card icon={<BookOpen />} title="Guides" href="/guides/orchestration" description="Orchestration, automations, hooks, kits, secrets, the phone, plugins." />
-  <Card icon={<Terminal />} title="CLI reference" href="/reference/cli" description="Every berth and berthd command." />
+  <Card icon={<Terminal />} title="CLI reference" href="/reference/cli" description="Every burf and burfd command." />
   <Card icon={<FileCode />} title="Config reference" href="/reference/config" description="Every field of .berth/config.json and kit.json." />
 </Cards>

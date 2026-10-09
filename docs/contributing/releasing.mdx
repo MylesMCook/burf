@@ -1,180 +1,50 @@
 ---
 title: Releasing
-description: How a Burf release is cut, built, signed and published, from a tag or from a Mac.
+description: Burf preview builds, release boundaries and the upstream reference.
 ---
 
-For maintainers. A release is a GitHub release on
-[MylesMCook/burf](https://github.com/MylesMCook/burf/releases), cut by
-pushing a `v*` tag. CI builds everything from the tag; a Mac with the signing
-credentials can publish the app itself instead with `make publish`.
+Burf is a fork preview. There is no fork-owned signed application release or
+update feed configured. The updater key and endpoints remain empty. Upstream's
+Homebrew cask, Linux release/feed jobs, signing identities and release secrets
+are not Burf distribution.
 
-## What a release carries
+## Local builds
 
-No asset name carries a version, so
-`https://github.com/MylesMCook/burf/releases/latest/download/<name>`
-always finds the newest. The version is stamped into each binary instead
-(`berthd version`, `burf version`).
-
-| Asset | Made by | Used by |
-| --- | --- | --- |
-| `berthd-<os>-<arch>.tar.gz` | `make release` | The [install command](/getting-started/add-a-box#with-the-install-command) on a box |
-| `berth-<os>-<arch>.tar.gz` | `make release` | [The CLI without the app](/getting-started/install#the-cli-without-the-app): `berth` and the Linux daemons |
-| `checksums.txt` | `make release` | The install command checks its download against it |
-| `Burf-macos-universal.dmg` | `scripts/mac-release.sh` | [The download](/getting-started/install#install-the-app) |
-| `Burf-macos-universal.app.tar.gz`, `.sig` | `scripts/mac-release.sh` | The app's updater: the new app and its signature |
-| `latest.json` | `scripts/mac-release.sh` | The feed installed apps check for [updates](/getting-started/install#updates) |
-
-`<os>-<arch>` is `linux-amd64`, `linux-arm64`, `darwin-arm64` or
-`darwin-amd64`. The landing page's `https://berthd.app/install` is
-[`site/install.sh`](https://github.com/MylesMCook/burf/blob/main/site/install.sh),
-which downloads from the latest release.
-
-## Full release checks
-
-The bugs new users hit showed only on a fresh install of the release: the
-release CSP blocking the built-in plugins, launchd's PATH without Homebrew's
-tmux, no `PORT` for worktree servers, App Transport Security blocking the
-Browser tab, tmux 3.7 without a locale. A set of tests goes through Burf the
-way a new user meets it. They aren't part of releasing: run them by hand
-now and then, for instance before a release that changes installing,
-onboarding or upgrading:
+Use the repository's existing toolchains and locked dependencies:
 
 ```sh
-make release-check      # builds HEAD, as committed, in a clean checkout, then tests it
-make release-check REF=1a2b3c4        # another commit; DIRTY=1 tests uncommitted changes instead
-make release-check UNIVERSAL=1        # both architectures, as the release workflow builds it
-make release-check DMG=path FROM=v0.3.0   # a dmg already built from HEAD; upgrade from another release
+make all
+make app-build
 ```
 
-Uncommitted changes in your checkout are never tested by accident: the
-build happens in `dist/release-test/check-<time>/src`, a checkout of the
-commit alone, and every report starts with the commit it tested. Every
-test checks the dmg first: it must carry `berthd`, as a release
-does, and its `berth-cli` must say it was built from the commit under test (Go
-records the commit in the binary). A dmg left in `target/` from an older build is
-refused by name, rather than tested as if it were this one.
+The macOS app build produces an unsigned local `Burf.app` and disk image.
+Windows packaging follows the [Windows guide](/contributing/windows).
+Linux desktop platform support is imported, but publishing fork-owned Linux
+bundles and feeds remains separate work. Build outputs and daemon resources
+retain the legacy names required by existing clients and integrations.
 
-[`scripts/release-check.sh`](https://github.com/MylesMCook/burf/blob/main/scripts/release-check.sh)
-runs three tests, each in its own home, ports and launchd labels, removed
-afterwards, so they never touch the Burf you use (ports 1377-1379,
-`~/.berth`, `~/Library/Application Support/berth`, `dev.berth.berthd`):
+## Verification before publishing
 
-| Test | What it does |
-| --- | --- |
-| [`scripts/fresh-user-test.sh`](https://github.com/MylesMCook/burf/blob/main/scripts/fresh-user-test.sh) (macOS) | Installs the app from the dmg (`--dmg`, or `--tag vX.Y.Z` to download one) and goes through a new user's first run: the agent started from the app, onboarding with this Mac (a real launchd box), the sample's first task sent to a stand-in for Claude Code (no tokens), the worktree, its dev server on `$BERTH_PORT`, the worktree URL with curl and in the Browser tab's native webview, the chat's turn, the terminal (ghostty, not the fallback), the built-in plugins loaded, the Diff panel, and archiving the worktree. A screenshot per step. |
-| [`scripts/linux-box-test.sh`](https://github.com/MylesMCook/burf/blob/main/scripts/linux-box-test.sh) (Docker) | A fresh Ubuntu 24.04 box with systemd: `install.sh` with this build's archives, `berth` pairing from a fresh laptop home, a task with the stand-in, the worktree URL through the proxy, and the agent browser blocked by Chromium's sandbox: berthd must say so with the fixes, not crash. |
-| [`scripts/upgrade-test.sh`](https://github.com/MylesMCook/burf/blob/main/scripts/upgrade-test.sh) | The last release (`--from`) set up and used (a running task, preferences, plugins on and off, a layout with tab groups, a kit), then upgraded to this build, on a Linux box in Docker and on this Mac's own box. The session must keep running and answer again; preferences, layout and kit must survive. |
+Verify the exact commit used to build the artifacts. Go race tests, frontend
+unit/type/build checks, blocking browser acceptance, branding checks and
+platform packaging checks are required. Native Windows/Linux execution,
+signed-in providers and installed-app upgrades require separate evidence;
+cross-builds and synthetic browser fixtures do not establish them.
 
-Reports and screenshots go to `dist/release-test/`. The app is driven
-through the macOS accessibility API, so the terminal running the tests needs
-**Accessibility** and **Screen Recording** (System Settings → Privacy &
-Security), and the app's window comes to the front for the minute it takes.
-The tests run on a copy of the app with its own bundle identifier and its
-agent's port moved, signed again ad hoc for that: the frontend, its CSP, App
-Transport Security and the bundled `berth` and `berthd` are the release's.
+Fresh installs and upgrades must preserve settings, pairings and running
+sessions. Use isolated state and verify a rollback path. The existing Mac
+release-acceptance scripts use GUI automation and service supervisors, so
+running them is a host-changing action requiring separate authorization.
 
-CI runs the Linux tests weekly, or on demand from the **release tests**
-workflow (`.github/workflows/release-test.yml`); the macOS ones need a Mac.
+Do not enable an updater until fork-owned signing and feeds are configured and
+verified. Upload and verify signed artifacts before publishing a feed.
+Tag pushes, `make publish`, uploads and deployments perform external writes;
+source integration does not authorize them.
 
-## Cut a release with a tag
+## Upstream reference
 
-1. On `main`, with CI green, set the version in `app/package.json`,
-   `app/src-tauri/tauri.conf.json` and `app/src-tauri/Cargo.toml` (and
-   `Cargo.lock`), and commit it (`chore: v0.1.2`). The app is built with the
-   tag's version either way; this keeps the repository saying the same.
-2. Tag and push:
-
-   ```sh
-   git tag v0.1.2
-   git push origin main v0.1.2
-   ```
-
-The tag starts [`.github/workflows/release.yml`](https://github.com/MylesMCook/burf/blob/main/.github/workflows/release.yml):
-
-- **release** (Linux): `go vet`, `go test -race`, shellcheck on the
-  release scripts and `site/install.sh`, then `make release
-  VERSION=<tag>`, which builds the CLI and daemon archives and
-  `checksums.txt` into `dist/`. It checks the stamped version, then creates
-  the GitHub release with generated notes (or adds to it, if it exists).
-- **macos**, after it: builds the app as one universal binary, signs it
-  with the Developer ID, notarizes and staples it, checks it
-  ([below](#what-scriptsmac-releasesh-checks)), and uploads the dmg, the
-  updater archive and its signature, and `latest.json` last, so the feed
-  never points at an archive that isn't there yet. It skips the build when
-  the release's `latest.json` already announces this version, so re-running
-  it is safe.
-
-Once `latest.json` is up, installed apps offer the update within a few hours
-(they check every four), or at once from **Settings → About → Check now**.
-
-### Secrets CI needs
-
-| Secret | What it is |
-| --- | --- |
-| `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD` | The Developer ID Application certificate with its private key, as a base64 `.p12`, and its password |
-| `KEYCHAIN_PASSWORD` | Any password, for the temporary keychain the job makes |
-| `APPLE_API_ISSUER`, `APPLE_API_KEY`, `APPLE_API_KEY_P8` | An App Store Connect API key (issuer, key ID, and the `.p8`), for notarization |
-| `TAURI_SIGNING_PRIVATE_KEY` | The updater's signing key. Its public half is `plugins.updater.pubkey` in `tauri.conf.json`; installed apps refuse an update signed with any other key |
-
-## Publish from a Mac
-
-```sh
-make publish VERSION=0.1.2 [NOTES="What changed"]
-```
-
-[`scripts/publish.sh`](https://github.com/MylesMCook/burf/blob/main/scripts/publish.sh)
-does the whole release from a clean `main`:
-
-1. sets the version in the app's `package.json`, `tauri.conf.json` and
-   `Cargo.toml`;
-2. builds, signs, notarizes and checks the app with `scripts/mac-release.sh`;
-3. commits `chore: release v0.1.2`, tags it, and pushes `main` and the tag;
-4. creates the GitHub release with the dmg and the updater archive, and
-   uploads `latest.json` last.
-
-The tag push still runs the workflow: its release job adds the CLI and
-daemon archives, and its macos job finds `latest.json` already announcing
-the version and builds nothing.
-
-Credentials come from the environment (`APPLE_SIGNING_IDENTITY`,
-`APPLE_API_ISSUER`, `APPLE_API_KEY`, `APPLE_API_KEY_PATH`,
-`TAURI_SIGNING_PRIVATE_KEY`), else from 1Password with the `op` CLI. With
-one Developer ID Application identity in the keychain, it is found without
-`APPLE_SIGNING_IDENTITY`. It refuses to run with uncommitted changes, off
-`main`, or for a version already tagged or released.
-
-## What scripts/mac-release.sh checks
-
-```sh
-scripts/mac-release.sh v0.1.2 [--no-notarize]
-```
-
-CI and `make publish` both run it, so a release built on a Mac and one built
-in CI are the same. It needs Rust's `aarch64-apple-darwin` and
-`x86_64-apple-darwin` targets, and `minisign` to check the updater
-signature (CI always does). It fails unless every copy of the app (the
-built one, the one in the dmg, and the one in the updater archive):
-
-- verifies with `codesign --verify --deep --strict`, signed with a Developer
-  ID, a team identifier and the hardened runtime;
-- is accepted by Gatekeeper (`spctl`) as **Notarized Developer ID**, with a
-  stapled ticket;
-- has both architectures in its executables, and carries the Linux daemons;
-- says it is the version being released.
-
-It also signs, notarizes and staples the dmg, checks the dmg has an
-**Applications** link to drag to, checks the updater archive's signature
-against the public key in `tauri.conf.json`, and writes `latest.json`.
-
-`--no-notarize` skips Apple, for trying a signed build locally. Its output
-must not be published.
-
-## After a release
-
-- The docs at [docs.berthd.app](https://docs.berthd.app) deploy from `main`
-  on their own; add the release to the [changelog](/changelog).
-- Boxes pick up the new berthd with `burf upgrade BOX`, or by running the
-  install command again.
-- Without the signing credentials, `make app-build` still builds an
-  unsigned `Burf.app` and dmg for trying locally; see
-  [build from source](/getting-started/install#build-from-source).
+[Shipyard's release guide](https://github.com/cosscom/shipyard/blob/9ae4747452f59f4c51a4b78854cc1b6020d1c674/docs/contributing/releasing.mdx)
+describes upstream's own archives, cask, signing and feed workflow. It is a
+reference for future Burf release work, not an installation or publication
+procedure for this fork. Upstream release history is retained in the
+[changelog](/changelog).

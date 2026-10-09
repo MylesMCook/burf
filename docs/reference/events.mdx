@@ -49,6 +49,7 @@ and dashes.
 | `task.created` | `location`, `name`, `path`, `branch`, `session`, `agent`, `from_session` |
 | `session.started` | `name`, `location`, `path`, `command` |
 | `session.stopped` | `name` |
+| `session.memory` | `name`, `location`, `memory`, `memory_high`, `near_limit`, `text`: a session came near its [memory limit](/concepts/sessions-and-agents#sessions-clean-up-after-themselves) (`near_limit: true`), or went well below it again |
 | `session.renamed` | `name`: its title changed (a rename, or its first prompt named it); never the title or the prompt |
 | `session.sent` | `name`, `from`, `idem_key?`, `turn?`: a prompt was typed in (never the prompt) |
 | `session.queued` | `name`, `turn`: a prompt is held until the agent is idle (`when: "idle"`) |
@@ -103,6 +104,7 @@ Burf reads the terminal and sends these itself with `origin: "screen"` and
 | `browser.shot` | `location`, `name`, `path`, `file`, `url` |
 | `notify` | `title`, `body`, `flow`, `path`, `location`: a flow's or the guard's notification |
 | `guard.acted` | `action`, `location`, `name`, `path`, `services`, `sessions`, `memory_percent`, `reason` |
+| `process.stopped` | `id`, `text`: a browser (or a session) was stopped from the [box's browsers](/guides/agent-browser#every-browser-on-a-box) |
 | `config.changed` | what changed: `location`, `flows`, `env` or `guard`; with `location`, `trust` (`trusted` or `untrusted`) when the repository's config was trusted or no longer is |
 | `hooks.changed` | |
 | `kit.installed` | `location`, `kit`, `version`, `source`, `warnings` |
@@ -114,7 +116,7 @@ Burf reads the terminal and sends these itself with `origin: "screen"` and
 | `team.failed` | `team`, `step` or `project`, `error` |
 | `team.retry` | `team`, `from` |
 | `skills.installed`, `skills.removed` | `skills`, `agents`, `target`, `location`, `paths` |
-| `integrations.installed` | `tool`: an agent CLI's hooks and skills were installed from the app or the API |
+| `integrations.installed` | `tool`, `account?`: an agent CLI's hooks and skills were installed from the app or the API, or by berthd in an account folder a new session uses |
 | `agents.installed` | `agents`: agent CLIs were added to the box from the app (**Add agents…**) or `POST /v1/agents/install` |
 | `secret.failed` | `location`, `name`, `path`, `variable`, `ref`, `reason`: a [secret reference](/guides/secrets) could not be read, so the variable was left unset; never the value |
 | `secret.resolved` | `location`, `name`, `path`, `variable`, `ref`: one that failed reads again |
@@ -143,6 +145,8 @@ runs, so `flow` and `scope` name one flow.
 | `laptop.started` | |
 | `box.connected` | |
 | `box.disconnected`, `box.untrusted` | none; the envelope's `error` says why |
+| `box.link` | `slow`, `reason` when a box's link turns slow or steady again; none when Tailscale starts or stops relaying it. The box stays online either way |
+| `box.route` | `route` (the id of the route now in use), `from`, `down` (a route declared down, whose streams moved); none when a route was added or turned on or off |
 | `forward.started`, `forward.failed`, `forward.removed` | `id`, `local`, `remote` (and the envelope's `error` on a failure) |
 | `queue.changed` | `queued`, `failed` |
 | `queue.delivered` | `id`, `box`, `session`, `attempts` |
@@ -182,6 +186,7 @@ exits non-zero refuses it with what it printed. Gates in a laptop's
 | `before:browser.open` | `location`, `name`, `path`, `url`: an agent browser opening a page |
 | `before:browser.eval`, `before:browser.watch` | `location`, `name`, `path`: running JavaScript in it, watching it live |
 | `before:browser.allow` | `origin`: letting agents' browsers load a public origin |
+| `before:process.stop` | `id`: stopping a browser or session from the box's browsers list |
 | `before:kit.install` | `location`, `kit`, `source` |
 | `before:kit.remove` | `location` |
 | `before:team.setup` | `team`, `org`, `commit`: a team setup about to start on the box |

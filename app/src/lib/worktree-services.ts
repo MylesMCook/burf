@@ -4,7 +4,7 @@ import { type BrowserContext, portUrl } from "./browser-url.ts";
 
 // What runs in a worktree, as the box sees it (GET services: what listens
 // in the worktree's folder or port block, with its command line), named for
-// people: its dev server (the port berth gave it, $BERTH_PORT), the tools
+// people: its dev server (the port Burf gave it, $BERTH_PORT), the tools
 // dev servers bring along, known by command or usual port, and the rest:
 // helpers (an agent's headless Chrome, language servers, inspectors) that
 // listen without being anything to open.

@@ -3,7 +3,8 @@
 Burf is a personal fork, not a disconnected rewrite. `origin` is
 <https://github.com/MylesMCook/burf>; `upstream` remains
 <https://github.com/cosscom/shipyard>. Preserve upstream history and authorship.
-The local development branch is currently `codex/windows-client`.
+The current intake branch is `codex/upstream-9ae4747`; its working tree is
+resolved and awaits reviewer staging and a merge commit.
 
 ## Intake Routine
 
@@ -49,7 +50,7 @@ status. Do not mark a commit integrated just because it was fetched or reviewed.
 - Keep upstream security protections, attribution and license notices. Do not
   inherit skipped/soft-failing acceptance checks as proof of correctness.
 
-## Review Snapshot: 2026-10-08
+## Archived Review Snapshot: 2026-10-08
 
 Fetched upstream `b140a0f` (including release `v0.3.11`). Relative to local
 `5274d96`, upstream has 152 unique commits (126 excluding merges), and the fork
@@ -71,15 +72,15 @@ Recommended intake order:
 
 Upstream also renamed its module/app to Shipyard (`406d44f`, `ecb22f8`,
 `d102843`). Resolve those changes to Burf intentionally, while retaining the
-underlying behavior. Upstream currently makes E2E non-blocking (`24c19c6`);
-that policy is not adopted as Burf acceptance. The snapshot has not been
-merged wholesale; individual adaptations are recorded below.
+underlying behavior. At that snapshot upstream made E2E non-blocking (`24c19c6`);
+that policy is not adopted as Burf acceptance. This archived review preceded
+the integrations recorded below.
 
-## Follow-Up Snapshot
+## Archived Follow-Up Snapshot
 
 Fetched `4783caa` on 2026-10-08 while integrating branding and local chat.
 Against local `46e8219`, this is 156 upstream-only commits (128 non-merge).
-Two new feature commits since `b140a0f` remain deferred:
+Two new feature commits since `b140a0f` were deferred at that snapshot:
 
 - `232929c`: task/handoff/explicit-parent worktree nesting. Review with the
   existing nesting prerequisites and Windows path tests after local chat.
@@ -87,14 +88,15 @@ Two new feature commits since `b140a0f` remain deferred:
   Shipyard and links the upstream CLI, conflicting with Burf's identity and
   disabled updater boundary. A signed Burf distribution is separate work.
 
-Neither commit was merged or deployed.
+Both commits are included in the prepared `9ae4747` intake below; the cask
+is omitted. Neither snapshot describes the current prepared tree.
 
 ## Integrated: `add33bd` (2026-10-08)
 
 Merged upstream `add33bd` (the fork's `main`, 103 commits past the common
 ancestor `5c74cf4`) into `codex/windows-client`, keeping ancestry. Upstream is
-now 58 commits further (`v0.3.12`), beginning with its rename to Shipyard; that
-remains a separate intake.
+58 commits further (`v0.3.12`) at the time, beginning with its rename to
+Shipyard. Those commits are part of the prepared intake below.
 
 Arrived with this merge: artifacts and charts, visual diffs (`shots`), browser
 viewport sizes, agent CLI discovery from the login shell (`agentpath`,
@@ -126,6 +128,86 @@ Adapted to Burf rather than taken as written:
   opens agents as chat, where a new pane does not yet take the keyboard.
 
 Not deployed: no installed client or daemon was updated by this merge.
+
+## Integrated: `9ae4747` (2026-10-08)
+
+Merged on `codex/upstream-9ae4747` from fork
+`846bf2d3fdf0c74ed2f7cb7b5459128a81b3c2e9`. The merge's second parent is not
+upstream's own tree but a name-translated copy of it,
+`a5810d43f0e96aff9438ae8acaebb4e84563db8f` (Shipyard written Burf,
+`cosscom/shipyard` written `MylesMCook/burf`), whose parent is real upstream
+`9ae4747452f59f4c51a4b78854cc1b6020d1c674`; upstream ancestry is preserved.
+Merging upstream's own spelling conflicted in 539 files on names alone; the
+translated copy left 158 files and 237 hunks, each resolved by hand. The next
+intake can use the same step.
+At intake the common ancestor was `add33bd`; upstream contributed 58 unique
+commits. The old review snapshots above are historical and superseded here.
+
+Arrived: slower-link health and route failover, alternate SSH/address routes
+and latency diagnostics, remote terminal recovery and predictive echo,
+session descendant cleanup and Linux scopes/resource notices, browser process
+inspection/Stop, per-account provider hooks/skills, nested task/handoff and
+explicit-parent worktrees, fair GitHub PR polling, browser navigation tracking,
+and Linux desktop alpha support. This records source behavior, not live
+acceptance or a deployment.
+
+Adapted to Burf rather than taken as written:
+
+- Preserve Burf commands, package/window/artwork identity and `dev.myles.burf`,
+  Windows identity/PATH ownership, legacy aliases, state, services, scheme,
+  plugin SDK names and wire proofs. App versions follow upstream 0.3.12.
+- Combine upstream graceful shutdown/GOAWAY/stopping ping with the fork's
+  stores lock, serving count, revocation-watch join and stopped 503 behavior.
+  Pairing accepts both proof names and retries the renamed proof once.
+  Stopping state is per listener, so another or later Serve stays healthy.
+  The pairing-name and shutdown regression files are unchanged.
+- Preserve uncached fail-closed account lookups and portable boxclient wire
+  types; add scope/process/parent fields without Windows importing box.
+  Strict account reads gain Windows reparse-point-safe handling through the
+  existing platform helpers, including not-exist error classification.
+  Background SSH/Tailscale probes stay hidden.
+- Preserve structured chat, source-history isolation and local no-replay.
+  Upstream's bounded remote-terminal recovery journal stays confined to
+  remote terminals: it can duplicate uncertain keys after a one-way failure,
+  because output/pings are not input acknowledgements. It is not a promise
+  of exactly-once remote input.
+- Recognize Windows separately from Mac/Linux in keyboard and settings UI.
+  Combine Linux platform support with Windows PATH/uninstall behavior.
+  Linux staging runs burf and retains berth as an alias in legacy state.
+- Keep main-push CI and blocking E2E. Combine fixture TestMain handlers, rename a
+  duplicate upstream transcript test, adapt two private process literal keys
+  to portable PanePID, and fix a stale route fixture without weakening checks.
+- A box that has stopped serving answers with upstream's `box_stopping` code:
+  the fork's stores guard answers before a ping can, and a laptop tells a box
+  on its way down by that code (`internal/wire/stopped_unix_test.go`).
+- Upstream's process list put its empty state, a paragraph, straight inside a
+  list, which fails the accessibility check for Settings › Boxes; it is a list
+  item here. Upstream's slow-link case matches the reconnecting "Retry" button
+  by its exact name, because Burf also has "Retry build check" on that page.
+- Two upstream cases pressed keys before the page was ready for them and
+  failed now and then: the predictive-echo case typed a box's name into the
+  New terminal picker before its list had come down to that box, and the
+  tab-churn case pressed the close shortcut while the New tab menu was still
+  closing. Each now waits for that state first; no assertion changed.
+- Correct translated docs/repository links and release claims, retain honest
+  Shipyard attribution/history, and freeze historical design/demo assets.
+
+Deferred: upstream Homebrew cask (including destructive legacy-state zap),
+Linux signed-release helper, merged-feed helper/test and release workflow
+Linux/feed jobs. The existing fork workflow/scripts are retained. No upstream
+signing identity, release secret, installer or feed is adopted. Updater key
+and endpoints remain empty; signed fork distribution is separate work.
+The discontinued kit README is removed as upstream intended.
+
+Verified on the merged tree (macOS arm64): `go build` and `go vet` for
+darwin and linux, and for windows amd64 and arm64 over the client packages;
+`go test -race ./...` with no failures; 291 frontend units; app and e2e type
+checks; the production build; titles, CSP, themes, platform and plugin-consent
+checks; the documented Playwright acceptance list (107 passed); the whole
+Playwright suite (356 passed, 3 failed: the two Settings › Boxes cases fixed
+as above and rerun green, and the notifications race already fixed on `main`).
+Not verified: native Windows or Linux execution, the Linux desktop bundle, the
+Rust tests, signed-in providers, installed clients or daemons. Not deployed.
 
 ## Accepted Fixes
 
@@ -163,14 +245,14 @@ are not updated by importing source changes.
 
 Two concrete integration risks found in the reviewed source:
 
-- `internal/agentpath/agentpath.go` uses Unix-only `SysProcAttr.Setsid` and
-  `syscall.Kill` without a Windows build boundary. Port/guard these paths before
-  adopting that package; this is source inspection, not an upstream Windows
-  build result.
+- The earlier agentpath Windows boundary is retained. The new SSH route and
+  Tailscale path probes use the existing hidden-background command helper;
+  native Windows no-console behavior still needs execution evidence.
 - `internal/agent/attachkeys.go` intentionally retains and resends recently
-  unconfirmed terminal keys during route recovery. Review the delivery contract
-  and test ambiguous disconnects before adopting it. Keep it distinct from the
-  Windows local-session path, which must never replay uncertain input.
+  unconfirmed terminal keys during route recovery. The prepared intake adopts
+  this only for remote terminals and documents possible repetition after an
+  ambiguous disconnect. Exactly-once remote delivery is not established.
+  Local owned sessions and structured chat must never replay uncertain input.
 
 ## Verification Before Adoption
 

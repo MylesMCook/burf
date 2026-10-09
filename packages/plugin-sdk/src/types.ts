@@ -18,6 +18,55 @@ export interface BoxStatus {
   // in a row have failed.
   retry_at?: string;
   attempts?: number;
+  // How well the laptop reaches it: slow (requests still go through), the
+  // latency's recent max and jitter, and whether Tailscale relays it.
+  link?: BoxLink;
+  // The route new requests take (a BoxRoute's id), and every way the
+  // laptop knows to reach the box. A box on this computer has none.
+  route?: string;
+  routes?: BoxRoute[];
+}
+
+// One way the laptop reaches a box: the address it was paired at (kind
+// "tailscale", or "direct" off a tailnet), SSH ("ssh", detail the host),
+// or another address ("direct"). Every route carries the same pinned TLS.
+export interface BoxRoute {
+  id: string;
+  kind: "tailscale" | "ssh" | "direct" | (string & {});
+  label: string;
+  detail?: string;
+  // up; stalled (didn't answer once: new requests go elsewhere); down;
+  // unknown (not tried yet); off (turned off, or only suggested).
+  state: "up" | "stalled" | "down" | "unknown" | "off" | (string & {});
+  latency_ms?: number;
+  active?: boolean;
+  error?: string;
+  // Turned on because the box was added over SSH.
+  auto?: boolean;
+  // A host in ~/.ssh/config named like the box, offered but off.
+  suggested?: boolean;
+}
+
+export interface BoxLink {
+  slow?: boolean;
+  // Why it's slow ("health check took 1.9s"), or why it went away.
+  reason?: string;
+  max_ms?: number;
+  jitter_ms?: number;
+  path?: BoxPath;
+}
+
+// How the box is reached over Tailscale, when that can be told.
+export interface BoxPath {
+  via: "direct" | "relay" | "peer-relay";
+  // The relay (DERP) region: "nyc", and its city, "New York".
+  relay?: string;
+  relay_name?: string;
+  // This computer's own nearest relay region's city.
+  nearest?: string;
+  endpoint?: string;
+  // The agent network the box is reached on; absent for this computer's own Tailscale.
+  tailnet?: string;
 }
 
 export interface Forward {
@@ -59,6 +108,9 @@ export interface Worktree {
   // A display name a person gave it, shown in its place; its branch and
   // folder keep name. Boxes that list "worktree.titles" carry it.
   title?: string;
+  // The path of the worktree whose agent handed this one off, to nest it
+  // under; another worktree of the same location.
+  parent?: string;
 }
 
 export interface Scripts {
@@ -129,6 +181,13 @@ export interface Session {
   // true, from boxes with the "service.terminal" capability): the service's
   // name. It never runs an agent, and closing its tab never stops it.
   service?: string;
+  // The systemd scope its processes run in, on boxes where sessions get
+  // one (Linux with systemd), and what they use: memory (bytes, page cache
+  // included), its ceiling if the box sets one (Settings → Boxes), processor
+  // seconds, and near_limit from 90% of the ceiling. Near it, the box slows
+  // the session down; nothing is stopped.
+  scope?: string;
+  usage?: { memory: number; memory_high?: number; cpu_s: number; cpu_percent?: number; processes?: number; near_limit?: boolean; throttled?: number; scoped?: boolean };
 }
 
 // A waiting agent's request, from its hooks rather than its screen: the

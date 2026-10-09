@@ -137,7 +137,7 @@ func TestInstallSetsUpIntegrationsForAgentsOnThisBox(t *testing.T) {
 	if err != nil || !strings.Contains(string(settings), "/home/alex/.local/bin/berthd hook claude Stop") {
 		t.Fatalf("settings.json = %s, %v", settings, err)
 	}
-	for _, want := range []string{"Claude Code: skills in", "hooks added in", "Codex: skills in", "notify added in", "Cursor: hooks added"} {
+	for _, want := range []string{"Claude Code: hooks and 7 skills in ~/.claude", "hooks added in", "Codex: hooks in ~/.codex; 7 skills in", "notify added in", "Cursor: hooks added"} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("output missing %q:\n%s", want, out.String())
 		}

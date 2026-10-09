@@ -30,6 +30,7 @@ func (a *Agent) api(stop context.CancelFunc) http.Handler {
 	a.imageGenRoutes(mux)
 	a.queueRoutes(mux)
 	a.browserRoutes(mux)
+	a.boxRouteAPI(mux)
 	mux.HandleFunc("GET /v1/status", func(w http.ResponseWriter, r *http.Request) {
 		a.sync()
 		writeJSON(w, http.StatusOK, a.status())

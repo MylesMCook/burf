@@ -113,7 +113,7 @@ export function agentToInstall(r: Requirements, agent?: string): AgentRequiremen
 // team is a team setup about to run, whose steps run in a terminal there.
 export function requirementsCopy(card: RequirementsCard, r: Requirements | undefined, box: string, o: { local?: boolean; agent?: string; team?: boolean } = {}): RequirementsCopy | undefined {
   if (!r || card === "hidden") return undefined;
-  const where = o.local ? "Terminal on this Mac" : `a terminal on ${box} (over SSH)`;
+  const where = o.local ? (isMac(r) ? "Terminal on this Mac" : "a terminal on this computer") : `a terminal on ${box} (over SSH)`;
   if (card === "tmux") {
     const t = r.tmux;
     const why = o.team ? "Burf runs the team setup's steps, and later your agents, in tmux on the box." : "Burf runs agents in tmux, so they keep going when you close it.";

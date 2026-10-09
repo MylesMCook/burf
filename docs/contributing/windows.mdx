@@ -3,7 +3,7 @@ title: Windows client
 description: Building and checking the native Windows desktop and command-line client.
 ---
 
-Burf on Windows x64 connects to already-running Linux and macOS boxes. The first Windows release includes the desktop app and `berth.exe` client. Windows cannot be a box. Install and start `berthd` on a Unix box, then paste its pairing link into Burf or use `burf pair`. Remote terminals, agents, previews, files, and port forwards run through the local client.
+Burf on Windows x64 connects to already-running Linux and macOS boxes. The first Windows release includes the desktop app and `burf.exe` client (with a `berth.exe` alias). Windows cannot be a box. Install and start `berthd` on a Unix box, then paste its pairing link into Burf or use `burf pair`. Remote terminals, agents, previews, files, and port forwards run through the local client.
 
 ## SSH provisioning and editors
 
@@ -25,11 +25,15 @@ Build the pinned Linux tmux helpers on a Docker host with `scripts/build-tmux.sh
 ./scripts/windows-build.ps1 -Version 0.3.9 -StageOnly
 ```
 
-`make app-build-windows` invokes the same script. `make app-build APP_TARGET=x86_64-pc-windows-msvc` selects it too. A debug app finds only `bin/berth.exe` after its explicit development override and bundled copy. A release app executes only its adjacent `berth-cli.exe`; it never finds an agent executable on PATH. The terminal command lives separately at `cli/berth.exe`, avoiding a case-insensitive collision with the app's `Burf.exe`.
+`make app-build-windows` invokes the same script. `make app-build APP_TARGET=x86_64-pc-windows-msvc` selects it too. A debug app finds only `bin/burf.exe` after its explicit development override and bundled copy. A release app executes only its adjacent `berth-cli.exe`; it never finds an agent executable on PATH. The terminal command lives separately at `cli/berth.exe`, avoiding a case-insensitive collision with the app's `Burf.exe`.
 
 The script writes `dist/windows/Burf-windows-x64-setup.exe`, `berth-windows-amd64.zip`, and `windows-checksums.txt`. The CLI archive includes the Linux daemon and tmux helpers used when upgrading remote boxes. It contains no Windows daemon.
 
 ## Install and update
+
+The application updater remains disabled while the fork has no signed release
+feed. The installer behavior below also applies to an intentional local
+installer upgrade; it does not establish an enabled feed.
 
 NSIS installs for the current user without elevation. Installation does not change PATH or register a login task. The app's **Start at login** checkbox explicitly enables the per-user login task. Settings > General > Command line explicitly adds the `cli` folder to the user's PATH, with a removal control. Uninstall removes only Burf's owned PATH entry and login task. Agent keys and paired-box state remain in the user's Burf config directory.
 
@@ -37,7 +41,12 @@ The installer checks both bundled CLI candidates and stops only a process owned 
 
 Both a normal higher-version installer and the in-app updater replace files in place, preserving explicit PATH and login consent. The build script obtains the exact locked Tauri CLI's NSIS template, verifies its pinned SHA256, and generates a small maintenance-page patch in the ignored `binaries` directory. No copy of the full template is maintained in the repository. A CLI update requires reviewing that patch and its pinned template version. PATH integration uses a command embedded in the app, and uninstall runs the old app's headless cleanup mode. No unsigned PowerShell script file is executed and no execution-policy setting changes.
 
-Only the maintainer's `v*` tag release job receives the existing `TAURI_SIGNING_PRIVATE_KEY`. Pass `-Release` to make a signed updater artifact. Windows uses `latest-windows.json` and the `windows-x86_64` platform key. macOS keeps `latest.json`. The Tauri updater signature authenticates updates; this release does not require or create an Authenticode certificate. Windows may show its standard unsigned-app warning.
+A future Windows feed would use `latest-windows.json` and the
+`windows-x86_64` platform key, separate from macOS. `-Release` produces
+a signed updater artifact only with explicitly supplied fork-owned signing
+configuration. No upstream signing identity or feed is adopted. Local builds
+do not require or create an Authenticode certificate; Windows may show its
+standard unsigned-app warning.
 
 ## Verify
 

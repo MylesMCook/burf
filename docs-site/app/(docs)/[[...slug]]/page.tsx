@@ -43,7 +43,7 @@ function PageFoot() {
     <footer className="berth-foot">
       <span>Burf is open source.</span>
       <nav aria-label="Elsewhere">
-        <a href={landingUrl}>berthd.app</a>
+        <a href={landingUrl}>Burf on GitHub</a>
         <a href={githubUrl}>GitHub</a>
         <a href={`${githubUrl}/issues`}>Report an issue</a>
       </nav>

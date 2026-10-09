@@ -1,3 +1,4 @@
+import { BoxProcessesCard } from "@/components/box-processes";
 import { ArrowUpCircleIcon, BotIcon, CopyIcon, EllipsisIcon, PlusIcon, RefreshCwIcon, ShieldIcon, Trash2Icon } from "lucide-react";
 import { useState } from "react";
 
@@ -15,6 +16,8 @@ import { OutdatedNotice, UpgradeBox } from "@/components/upgrade-box";
 import { type AgentPath, type BoxStatus, laptopApi } from "@/lib/api";
 import { explain } from "@/lib/errors";
 import { errorMessage } from "@/lib/format";
+import { latencyText, RELAYED_DOCS, relayNote, slowNote } from "@/lib/link";
+import { openDocs } from "@/lib/open-url";
 import { refreshOutdated, updateBoxes, useOutdated } from "@/lib/outdated";
 import { usePrefs } from "@/lib/prefs";
 import { BOX_WORDS, boxWhy } from "@/lib/state-model";
@@ -22,11 +25,14 @@ import { NONE, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
 import { AddAgents } from "@/views/onboarding/guided-install";
+import { BoxRouteList, BoxRoutes } from "@/views/settings/box-routes";
+import { activeRoute, viaRoute } from "@/lib/box-routes";
 import { BoxOnePasswordNote } from "@/views/team/team-keys-note";
 import { CommandLog } from "@/views/settings/command-log";
 import { ConfirmDialog } from "@/views/settings/confirm";
 import { RemoveLocalBoxDialog } from "@/views/settings/local-box-remove";
 import { Code, SettingsGroup, SettingsPage, SettingsRow } from "@/views/settings/rows";
+import { thisComputer } from "@/lib/platform";
 
 export function BoxesSection() {
   const boxes = useStore((s) => s.status?.boxes ?? NONE);
@@ -96,6 +102,7 @@ function BoxRow({ box }: { box: BoxStatus }) {
   const [addingAgents, setAddingAgents] = useState(false);
   const canAddAgents = !!info?.capabilities?.includes("agents.install");
   const [retrying, setRetrying] = useState(false);
+  const [routesOpen, setRoutesOpen] = useState(false);
   const online = box.state === "online";
   const state = useBoxState(box.name);
   const upgrading = update?.state === "queued" || update?.state === "running";
@@ -116,10 +123,12 @@ function BoxRow({ box }: { box: BoxStatus }) {
             <span>{box.name}</span>
             {box.local && <span className="rounded border px-1 text-[10px] text-muted-foreground uppercase tracking-wide">This Mac</span>}
             <span className={cn("text-xs", state === "online" ? "text-muted-foreground" : state === "outdated" ? "text-info-foreground" : state === "unreachable" ? "text-destructive-foreground" : "text-muted-foreground")}>
-              {state === "online" && box.latency_ms != null ? `${box.latency_ms} ms` : BOX_WORDS[state].word}
+              {state === "online" && box.latency_ms != null ? latencyText(box.latency_ms, box.link) : BOX_WORDS[state].word}
             </span>
           </div>
           <div className="truncate font-mono text-[11px] text-muted-foreground">{details.join(" · ")}</div>
+          <BoxRoutes box={box} open={routesOpen} onOpenChange={setRoutesOpen} />
+          {online && <LinkNotes box={box} />}
           {problem && (
             <div className="mt-0.5 text-[11px] text-muted-foreground">
               {problem.message}
@@ -176,7 +185,7 @@ function BoxRow({ box }: { box: BoxStatus }) {
             {box.local && (
               <MenuItem variant="destructive" onClick={() => setRemovingLocal(true)}>
                 <Trash2Icon />
-                Stop using this Mac…
+                {thisComputer("Stop using this Mac…")}
               </MenuItem>
             )}
             <MenuItem variant="destructive" onClick={() => setForgetting(true)}>
@@ -200,8 +209,10 @@ function BoxRow({ box }: { box: BoxStatus }) {
         </div>
       )}
       {online && check?.outdated && check.available && !check.error && <p className="mt-1 text-xs text-muted-foreground">Bundled agent: <span className="font-mono">{check.available}</span>. Installing replaces this box's agent with Burf's bundled build.</p>}
+      {routesOpen && !box.local && <BoxRouteList box={box} />}
       {/* The agent's browser can't start here (Chromium's sandbox), or runs without it. */}
       {online && <BrowserSandboxCard box={box.name} full className="mt-3" />}
+      {online && <BoxProcessesCard box={box.name} className="mt-3" />}
       {online && <BoxAgents box={box.name} />}
       {online && <BoxOnePasswordNote box={box.name} />}
       {update && update.state !== "queued" && <CommandLog className="mt-3" lines={update.lines ?? []} done={update.state === "done"} error={update.error} />}
@@ -232,6 +243,34 @@ function BoxRow({ box }: { box: BoxStatus }) {
           }
         }}
       />
+    </div>
+  );
+}
+
+// LinkNotes say, quietly, why a box's link is slow and whether Tailscale
+// relays it: still connected, so no banner, only what to do about it.
+function LinkNotes({ box }: { box: BoxStatus }) {
+  const slow = slowNote(box.link);
+  const relay = relayNote(box.link?.path);
+  if (!slow && !relay) return null;
+  const latency = box.link?.slow ? latencyText(box.latency_ms, box.link) : undefined;
+  return (
+    <div className="mt-0.5 space-y-0.5 text-[11px] text-muted-foreground" data-testid="box-link">
+      {slow && (
+        <div>
+          {slow}
+          {latency && <span className="tabular-nums"> Latency {latency}.</span>}
+        </div>
+      )}
+      {relay && (
+        <div data-testid="box-relayed">
+          {relay}
+          {box.route && box.route !== "paired" && activeRoute(box) ? `; Burf goes ${viaRoute(box)} instead` : ""}.{" "}
+          <button type="button" onClick={() => void openDocs(RELAYED_DOCS)} className="underline underline-offset-2 hover:text-foreground">
+            Learn more
+          </button>
+        </div>
+      )}
     </div>
   );
 }

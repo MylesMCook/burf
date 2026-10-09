@@ -1,5 +1,7 @@
 use serde::Serialize;
 use std::path::PathBuf;
+#[cfg(target_os = "linux")]
+use tauri::Manager;
 
 mod agent;
 mod browser;
@@ -8,6 +10,8 @@ mod cli_link;
 #[cfg(target_os = "windows")]
 #[path = "cli_path_windows.rs"]
 mod cli_link;
+#[cfg(target_os = "linux")]
+mod linux;
 mod menu;
 
 // The app is a view over the laptop agent (`burf agent`), which serves it on
@@ -86,9 +90,13 @@ fn open_terminal() -> Result<(), String> {
             .map(|_| ())
             .map_err(|e| format!("couldn't open Command Prompt: {e}"))
     }
-    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    #[cfg(target_os = "linux")]
     {
-        Err("opening a terminal is only for macOS".into())
+        linux::open_terminal()
+    }
+    #[cfg(not(any(target_os = "macos", target_os = "linux", target_os = "windows")))]
+    {
+        Err("opening a terminal is only for macOS, Windows and Linux".into())
     }
 }
 
@@ -97,25 +105,47 @@ pub fn run() {
     #[cfg(target_os = "windows")]
     if std::env::args_os().nth(1).as_deref() == Some(std::ffi::OsStr::new("--remove-cli-path")) {
         if let Err(error) = cli_link::remove_for_installer() {
-            eprintln!("berth: {error}");
+            eprintln!("burf: {error}");
             std::process::exit(1);
         }
         return;
     }
-    tauri::Builder::default()
+    #[cfg(target_os = "linux")]
+    linux::prefer_compatible_rendering();
+    let builder = tauri::Builder::default();
+    // On Linux a berth:// link starts the app again with the link as its
+    // argument: one already running takes it instead (and comes to the
+    // front), and the deep-link plugin hands it to the webview. Registered
+    // first, as the plugin asks.
+    #[cfg(target_os = "linux")]
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+        if let Some(w) = app.get_webview_window("main") {
+            let _ = w.unminimize();
+            let _ = w.set_focus();
+        }
+    }));
+    builder
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_notification::init())
         // berth://kit?src=… links someone shares open a kit's review.
         .plugin(tauri_plugin_deep_link::init())
-        // Updates come from the latest GitHub release's latest.json and must
-        // carry a signature from the key in tauri.conf.json. The webview
-        // checks, downloads and installs (lib/updater.ts); see restart_app.
+        // The updater API stays available for a future signed Burf feed.
+        // tauri.conf.json keeps its key and endpoints empty until then.
         .plugin(tauri_plugin_updater::Builder::new().build())
         // The menu bar carries every shortcut (menu.rs), so macOS cannot
-        // take one first; each item tells the webview as berth://menu.
+        // take one first; each item tells the webview as berth://menu. The
+        // Linux app has none: GTK would put a menu bar inside the window,
+        // and its accelerators would take Ctrl+W, Ctrl+D and the rest from
+        // terminals before the page sees them. The webview handles the keys
+        // there (hooks/use-shortcuts.ts).
         .setup(|app| {
-            let menu = menu::build(app.handle())?;
-            app.set_menu(menu)?;
+            #[cfg(not(target_os = "linux"))]
+            {
+                let menu = menu::build(app.handle())?;
+                app.set_menu(menu)?;
+            }
+            #[cfg(target_os = "linux")]
+            linux::setup(app.handle());
             Ok(())
         })
         .on_menu_event(|app, event| menu::on_event(app, event.id().as_ref()))

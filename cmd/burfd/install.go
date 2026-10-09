@@ -121,7 +121,7 @@ func install(b boxHome, args []string) error {
 }
 
 // installIntegrations sets up the hooks that report agents' needs-you,
-// working and done states, and berth's skills, for each agent CLI on this
+// working and done states, and Burf's skills, for each agent CLI on this
 // box, running the berthd at bin. A failure is reported, not fatal: berthd
 // itself is installed and serving.
 func installIntegrations(out io.Writer, bin string) {

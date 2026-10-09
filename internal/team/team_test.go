@@ -146,7 +146,7 @@ const minimal = `{"schema":"berth.team/v1","id":"acme","name":"Acme","org":"acme
 
 func TestParseRejects(t *testing.T) {
 	cases := []struct{ from, to, want string }{
-		{`"berth.team/v1"`, `"berth.team/v2"`, "this Burf reads"},
+		{`"berth.team/v1"`, `"berth.team/v2"`, "this version of Burf reads"},
 		{`"id":"acme"`, `"id":"Acme Co"`, "lowercase"},
 		{`"name":"Acme"`, `"name":" "`, "name is empty"},
 		{`"org":"acme"`, `"org":"ac me"`, "not a GitHub org"},

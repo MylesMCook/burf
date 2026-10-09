@@ -42,6 +42,9 @@ export interface FakeAgent {
   // The box as the agent's status shows it: online, or away with when the
   // agent tries it next. Away, the box's API answers 503 as the agent does.
   away?: { state: "offline" | "connecting"; retryAt?: string; attempts?: number; since?: string };
+  // Fields laid over the box's status while it is online: its latency and
+  // link (slow, why, how Tailscale reaches it).
+  online: Record<string, unknown>;
   // The bodies of POST sessions/fix-claude/send, in order, and how the box
   // answers each: "drop" ends the connection without an answer (the link
   // dropped once the box had it).
@@ -68,6 +71,7 @@ export async function fakeAgent(): Promise<FakeAgent> {
     url: "",
     token: "e2e-token",
     calls: [],
+    online: {},
     sends: [],
     send: () => ({ body: { sent: true, turn: `${SESSION}#2`, seq: 9, at: now() } }),
     dropStreams() {
@@ -96,7 +100,7 @@ export async function fakeAgent(): Promise<FakeAgent> {
     boxes: [
       agent.away
         ? { name: BOX, address: "devl:7444", fingerprint: "e2e", state: agent.away.state, since: agent.away.since ?? created, retry_at: agent.away.retryAt, attempts: agent.away.attempts, error: "dial tcp 100.64.0.4:7444: i/o timeout" }
-        : { name: BOX, address: "devl:7444", fingerprint: "e2e", state: "online", since: created, latency_ms: 3 },
+        : { name: BOX, address: "devl:7444", fingerprint: "e2e", state: "online", since: created, latency_ms: 3, ...agent.online },
     ],
     forwards: [],
     routes: [],

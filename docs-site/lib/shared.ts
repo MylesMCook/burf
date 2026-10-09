@@ -1,10 +1,11 @@
 export const appName = 'Burf';
-export const siteUrl = 'https://docs.berthd.app';
-export const landingUrl = 'https://berthd.app';
+// No fork-owned docs host has been configured yet.
+export const siteUrl = process.env.NEXT_PUBLIC_DOCS_URL || 'http://localhost:3333';
+export const landingUrl = 'https://github.com/MylesMCook/burf';
 
 export const gitConfig = {
-  user: 'sean-brydon',
-  repo: 'berthd',
+  user: 'MylesMCook',
+  repo: 'burf',
   branch: 'main',
 };
 

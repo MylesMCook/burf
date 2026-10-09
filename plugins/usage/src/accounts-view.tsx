@@ -122,11 +122,24 @@ export function AccountsView({
     berth.openTerminal(box, s.name);
   };
 
+  // Burf's hooks and skills go in the new folder before the agent first
+  // runs there, when the box has them for this agent at all. A box whose
+  // berthd predates accounts installs them when a session starts on it.
+  const addIntegrations = async (agent: Agent, dir: string) => {
+    try {
+      const rep = await berth.api.request<{ tools?: { id: string; hooked: boolean }[] }>(box, "GET", "integrations");
+      if (rep?.tools?.find((t) => t.id === agent)?.hooked) await berth.api.request(box, "POST", "integrations/install", { tool: agent, account: dir });
+    } catch {
+      // Not worth failing the sign-in over.
+    }
+  };
+
   const add = (agent: Agent, name: string) =>
     run(`add:${agent}`, async () => {
       const location = here ? worktreeLocation(here) : locations[0]?.name;
       if (!location) throw new Error(`${box} has no projects yet`);
       const made = await runScript<{ dir: string }>(berth, box, location, ["mkaccount", agent, name], "30s");
+      await addIntegrations(agent, made.dir);
       setAdding(undefined);
       await signIn({ agent, dir: made.dir });
     });

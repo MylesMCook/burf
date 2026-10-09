@@ -32,6 +32,15 @@ fn link_path() -> Result<PathBuf, String> {
 }
 
 fn bundled() -> Option<PathBuf> {
+    // On Linux, the app's staged copy, which outlives it (linux.rs).
+    #[cfg(target_os = "linux")]
+    return crate::linux::staged_cli().filter(|p| crate::linux::stage_dir().is_some_and(|d| p.starts_with(d)));
+    #[cfg(not(target_os = "linux"))]
+    bundled_in_app()
+}
+
+#[cfg(not(target_os = "linux"))]
+fn bundled_in_app() -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?;
     let dir = exe.parent()?;
     // Only a packaged app: Contents/MacOS/burf-cli.

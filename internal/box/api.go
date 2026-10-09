@@ -38,7 +38,9 @@ type Box struct {
 	// leave behind; nil leaves them alone.
 	AgentBrowsers *AgentBrowsers
 	Shares        *Shares
-	Events        *events.Bus
+	// procSampler says how busy processes are, for GET /v1/processes.
+	procSampler cpuSampler
+	Events      *events.Bus
 	// Watcher, when set, is told about berth's own worktree changes so it
 	// does not announce them a second time.
 	Watcher *Watcher
@@ -213,6 +215,8 @@ func (b *Box) Mount(s *wire.Server) {
 	route("POST /v1/units/{name}/restart", b.restartUnit)
 	route("GET /v1/units/{name}/log", b.unitLog)
 	route("GET /v1/stats", b.handleStats)
+	route("GET /v1/processes", b.listProcesses)
+	route("POST /v1/processes/{id}/stop", b.stopProcess)
 	route("GET /v1/review", b.review)
 	route("GET /v1/info", b.handleInfo)
 	route("GET /v1/doctor", b.handleDoctor)
@@ -394,6 +398,13 @@ func (b *Box) addWorktree(w http.ResponseWriter, r *http.Request) error {
 // createWorktree makes a git worktree once the hooks allow it, then runs the
 // location's setup script in the background.
 func (b *Box) createWorktree(r *http.Request, loc Location, req WorktreeRequest) (Worktree, error) {
+	parent := ""
+	if req.Parent != "" {
+		var err error
+		if parent, err = namedParent(loc, req.Parent); err != nil {
+			return Worktree{}, err
+		}
+	}
 	if err := b.before(r, "worktree.create", map[string]any{
 		"location": loc.Name, "name": req.Name, "branch": req.Branch, "base": req.Base,
 	}); err != nil {
@@ -404,6 +415,11 @@ func (b *Box) createWorktree(r *http.Request, loc Location, req WorktreeRequest)
 		return Worktree{}, err
 	}
 	b.own(wt.Path)
+	if parent != "" {
+		if err := b.Locations.SetWorktreeParent(loc.Name, wt.Path, parent); err == nil {
+			wt.Parent = parent
+		}
+	}
 	created := map[string]any{
 		"location": loc.Name, "name": wt.Name, "path": wt.Path, "branch": wt.Branch,
 	}

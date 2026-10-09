@@ -10,16 +10,18 @@ import (
 )
 
 // Integrations are the hooks agent CLIs on this box run to report their
-// needs-you, working and done states, and berth's skills. berthd install
+// needs-you, working and done states, and Burf's skills. berthd install
 // sets them up for the CLIs it finds; these let the app add them for a CLI
 // installed since.
 
 // IntegrationTool is one agent CLI and whether berth's hooks are in its
-// settings for this box's user.
+// settings for this box's user: Hooked for its default account, and for
+// Claude Code and Codex each account folder in Accounts.
 type IntegrationTool struct {
 	integrations.Tool
-	Present bool `json:"present"`
-	Hooked  bool `json:"hooked"`
+	Present  bool                        `json:"present"`
+	Hooked   bool                        `json:"hooked"`
+	Accounts []integrations.AccountState `json:"accounts,omitempty"`
 }
 
 // IntegrationsReport lists the agent CLIs berth has integrations for.
@@ -36,7 +38,11 @@ func integrationsReport() (IntegrationsReport, error) {
 	}
 	out := IntegrationsReport{Tools: []IntegrationTool{}}
 	for _, t := range integrations.Tools {
-		out.Tools = append(out.Tools, IntegrationTool{Tool: t, Present: t.Present(home), Hooked: t.Hooked(home)})
+		it := IntegrationTool{Tool: t, Present: t.Present(home), Hooked: t.Hooked(home)}
+		if _, ok := integrations.AccountVars[t.ID]; ok && it.Present {
+			it.Accounts = integrations.AccountStates(home, t.ID)
+		}
+		out.Tools = append(out.Tools, it)
 	}
 	return out, nil
 }
@@ -51,10 +57,12 @@ func (b *Box) listIntegrations(w http.ResponseWriter, r *http.Request) error {
 }
 
 // installIntegrations installs one tool's hooks and skills for this box's
-// user, as `berthd integrations install TOOL` does.
+// user, as `berthd integrations install TOOL` does: in every account folder,
+// or with Account, in that one (the Usage plugin's "Add account…").
 func (b *Box) installIntegrations(w http.ResponseWriter, r *http.Request) error {
 	var req struct {
-		Tool string `json:"tool"`
+		Tool    string `json:"tool"`
+		Account string `json:"account,omitempty"`
 	}
 	if err := decode(r, &req); err != nil {
 		return err
@@ -71,13 +79,21 @@ func (b *Box) installIntegrations(w http.ResponseWriter, r *http.Request) error 
 		return err
 	}
 	data := map[string]any{"tool": req.Tool}
+	if req.Account != "" {
+		data["account"] = req.Account
+	}
 	if err := b.before(r, "integrations.install", data); err != nil {
 		return err
 	}
 	// One installed since berthd last looked counts.
 	b.refreshAgents(r.Context())
 	var out bytes.Buffer
-	if err := integrations.InstallTool(home, req.Tool, self, &out); err != nil {
+	if req.Account != "" {
+		err = integrations.InstallAccount(home, req.Tool, req.Account, self, &out)
+	} else {
+		err = integrations.InstallTool(home, req.Tool, self, &out)
+	}
+	if err != nil {
 		return badRequest("%v", err)
 	}
 	b.publish(r, "integrations.installed", data)

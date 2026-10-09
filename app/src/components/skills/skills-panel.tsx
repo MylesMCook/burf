@@ -20,7 +20,7 @@ const agentNames: Record<SkillAgent, string> = {
   codex: "Codex",
 };
 
-// SkillsPanel shows berth's skills on one box, for its user or, with a
+// SkillsPanel shows Burf's skills on one box, for its user or, with a
 // location, inside that repository, and installs, updates or removes them.
 // hideTitle drops the panel's own title where the page around it already
 // names it, as Settings → Agents does.

@@ -460,7 +460,7 @@ func TestTheNotificationIsTaggedTrimmedAndSafe(t *testing.T) {
 		Files: []ReviewFile{{Path: "a.go", Added: 10, Removed: 1}, {Path: "b.go", Added: 2, Removed: 1}}, Added: 12, Removed: 2,
 	}}, 0)
 	if !strings.HasPrefix(text, "<berth-notification>\nThis comes from Burf, not from the user") || !strings.HasSuffix(text, "</berth-notification>") {
-		t.Fatalf("not one tagged block from Berth:\n%s", text)
+		t.Fatalf("not one tagged block from Burf:\n%s", text)
 	}
 	if strings.Count(text, "</answer>") != 1 || strings.Count(text, "</report>") != 1 || strings.Count(text, "</berth-notification>") != 1 {
 		t.Fatalf("the answer closed the tags it sits in:\n%s", text)

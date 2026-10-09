@@ -21,6 +21,9 @@ func fakeMachine(t *testing.T, tools ...string) string {
 	}
 	t.Setenv("HOME", home)
 	t.Setenv("PATH", bin)
+	// berthd's own account picks, which a test never follows.
+	t.Setenv("CLAUDE_CONFIG_DIR", "")
+	t.Setenv("CODEX_HOME", "")
 	old, oldAsk := systemBinDirs, askShell
 	systemBinDirs, askShell = nil, false
 	t.Cleanup(func() { systemBinDirs, askShell = old, oldAsk })
@@ -60,8 +63,9 @@ func TestInstallDetectedInstallsOnlyWhatIsThereAndOnlyOnce(t *testing.T) {
 	}
 	first := out.String()
 	for _, want := range []string{
-		"Claude Code: skills in " + filepath.Join(home, ".claude", "skills") + "; hooks added",
-		"Codex: skills in " + filepath.Join(home, ".agents", "skills") + "; notify added",
+		"Claude Code: hooks and 7 skills in ~/.claude\n    hooks added in ~/.claude/settings.json",
+		"Codex: hooks in ~/.codex; 7 skills in ~/.agents/skills",
+		"notify added in ~/.codex/config.toml",
 		"Not found: Cursor Agent, Gemini CLI, OpenCode. After installing one, run: berthd integrations install cursor|gemini|opencode",
 	} {
 		if !strings.Contains(first, want) {

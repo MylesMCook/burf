@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 
 import { cn } from "@/lib/utils";
 import { TERMINAL_SIZES, UI_SIZES, useZoomHud } from "@/lib/zoom";
+import { platformKeys } from "@/lib/platform";
 
 // ZoomHud shows the text size for a moment after ⌘+, ⌘− or ⌘0 (lib/zoom.ts):
 // what changed, its size, and where that sits in the range. It is sized in
@@ -55,7 +56,7 @@ export function ZoomHud() {
       <div className="flex items-center justify-between text-[11px] text-muted-foreground leading-[14px]">
         <span>{edge ?? `${size > range.default ? "+" : "−"}${Math.abs(size - range.default)} from default`}</span>
         <span>
-          <kbd className="font-sans">⌘0</kbd> resets
+          <kbd className="font-sans">{platformKeys("⌘0")}</kbd> resets
         </span>
       </div>
     </div>

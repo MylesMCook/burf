@@ -1,13 +1,148 @@
 ---
 title: Changelog
-description: What changed in each Berth release, newest first.
+description: Burf changes and retained upstream release history, newest first.
 ---
 
-Releases are on [GitHub](https://github.com/cosscom/shipyard/releases).
-The Mac app [updates itself](/getting-started/install#updates); a box
-upgrades with `berth upgrade BOX`, or by running the
-[install command](/getting-started/add-a-box#with-the-install-command)
-again.
+Burf is a fork preview; automatic application updates are disabled.
+The versioned entries below retain upstream release history from
+[Shipyard](https://github.com/cosscom/shipyard/releases). Distribution claims
+in those entries apply to upstream, not to Burf.
+
+## Unreleased
+
+- Imported route failover and latency diagnostics, session descendant cleanup,
+  browser process controls, account-specific integrations, nested worktrees,
+  terminal performance improvements and Linux desktop platform support.
+  Burf branding, Windows workflows, structured chat and existing state remain
+  compatible; upstream cask, signed release bundles and update feeds are deferred.
+
+## v0.3.12
+
+- **The Linux alpha's downloads.** v0.3.11's Linux build stopped before it
+  began (Ubuntu 22.04, which it builds on for older systems, has no
+  `minisign`), so v0.3.11 shipped for the Mac only. This release carries the
+  AppImage and `.deb` for x86-64 and adds Linux to the update feed; see
+  [Linux (alpha)](/getting-started/install#linux-alpha).
+
+- **Install with Homebrew.** `brew tap cosscom/shipyard https://github.com/cosscom/shipyard`,
+  then `brew install --cask cosscom/shipyard/shipyard`, installs the Mac app
+  and puts `berth` on your `PATH`.
+
+- **Handed-off worktrees nest under the one they came from.** When an
+  agent starts a task, or hands its work off, the new worktree shows under
+  the agent's own in the sidebar, folded behind a "1 child" pill. `berthd
+  worktree new … --parent NAME` nests one by hand, such as a stacked branch
+  under the branch it builds on.
+
+- **GitHub flows see every worktree's PR.** One poll looks at no more than
+  20 PRs, and it always started from the same worktree, so on a box with
+  more worktrees than that the rest were never looked at: a merge, review or
+  failed check there started nothing. Each poll now starts where the last
+  one stopped. Merged and closed PRs no longer take a turn every poll
+  either; a flow looks at them again once an hour, in case one is reopened.
+  [GitHub triggers](/guides/automations#on-github).
+
+## v0.3.11
+
+Most of this needs each box's new `berthd`: use **Update all** in the status
+bar, or `berth upgrade BOX`. Agents keep running through the update.
+
+- **More than one way to each box.** Burf can now reach a box over SSH
+  and at other addresses as well as over Tailscale, and sends new requests
+  over the fastest route that works. When the route in use stops answering,
+  requests move to another within seconds; open terminals follow once it is
+  clearly down, without closing, and keys typed meanwhile still arrive. A
+  box you added over SSH gets its SSH route on its own. Settings › Boxes
+  shows each box's routes with their latency ("via SSH, 24 ms · Tailscale,
+  140 ms"), and turns them on or off; `berth boxes` shows the route in use
+  and `berth doctor BOX` lists them all.
+- **Sessions clean up after themselves.** Ending a session now stops
+  everything it started, such as a repository's Playwright tests and their
+  browsers or a dev server, even ones left running in the background after
+  the agent was killed. On Linux with systemd each new session runs in a
+  scope of its own, which also lets it outlive berthd as before; elsewhere
+  Burf finds the session's processes by their tree (and, on Linux, the
+  session's marker). Your own processes and tmux are never touched.
+- **See and stop a box's browsers.** Click a box's memory meter in the
+  status bar to see every Chromium, Chrome and Firefox on it, with who
+  started it (Burf's agent browser, an agent-browser session, a
+  session's tests, one left behind, or yours), its CPU, memory and age, and
+  **Stop** for Burf's and its sessions'. The sessions using the most
+  memory are below. Settings → Boxes shows the same, and agents see it with
+  `berthd ps` and in `berthd doctor`.
+- **A memory limit per session.** Settings → Boxes can hold each session on
+  a box under a limit, such as 12 GB (Linux with systemd). A session near it
+  is slowed down, never stopped, and its chat and tab say "using 11.8 GB,
+  near its 12 GB limit".
+- **A lighter agent browser.** It closes after 5 idle minutes instead of 10
+  (agent-browser sessions too), keeps to two renderer processes, and caps a
+  page's JavaScript heap at 512 MB, which saves about 35 MB per browser
+  (`BERTH_BROWSER_JS_HEAP_MB` raises it).
+- **A slow or relayed link to a box stays connected and says why.** A box
+  reached through a Tailscale relay far away (80 ms, then 2 s) used to flip
+  to offline and back: the agent called a box away after one health check
+  with no answer, and checked it whenever a request had waited 5 s. Now a
+  slow or unanswered check marks the box **slow**, not offline: requests to
+  it still go through and its connection, with the terminals on it, is
+  kept. Only a second failure in a row takes it away (a refused connection,
+  a changed key or berthd stopping still does at once), so a box that
+  really went shows Reconnecting in about 20 s. A request now waits 10 s
+  before it has the box checked. The status bar and sidebar say "slow",
+  quietly; **Settings › Boxes** shows the latency, why it's slow, and when
+  Tailscale relays the box: "Relayed through Tailscale's New York server:
+  no direct connection", with what fixes it. `berth doctor BOX` says so
+  too, and the agent's log has a line for every change of a box's state,
+  with why. [A relayed link](/concepts/laptop-agent#a-relayed-link).
+- **`berth ping` says a box's latency.** It printed one number that was
+  connecting, TLS and a request together (about three round trips), so a box
+  100 ms away read as 300 ms. It now says how long connecting took, then
+  pings on the open connection, as the app uses it: `cal: 88ms 90ms 118ms
+  (min 88ms, avg 99ms, max 118ms on the open connection)`. `-c N` sets how
+  many.
+- **Typing in a terminal keeps up on a slow link.** On a box 80 ms to 2 s
+  away (a relayed Tailscale link), a shell showed each key only once the box
+  had echoed it. Now what you type shows at once, underlined until the box's
+  echo agrees, as in Mosh; anything the box draws differently takes every
+  prediction back, and password prompts never show one. It turns on by
+  itself when the round trip is over about 60 ms: **Settings → Terminal →
+  Predict typing** has Always and Never too. See
+  [Terminals](/guides/terminals#typing-on-a-slow-link).
+- **The Browser tab's address follows the page.** An app that changes pages
+  on the client (Next.js, React Router: `history.pushState`) left the
+  address bar on the first URL, since nothing loaded. It now shows where the
+  page is, within half a second.
+- **Every agent account gets Burf's hooks and skills.** A Claude Code or
+  Codex session started on another account (the Usage plugin's accounts,
+  which set `CLAUDE_CONFIG_DIR` or `CODEX_HOME`) ran without Burf's
+  hooks, so the box guessed from the screen when it was working, done or
+  needed you, and without Burf's skills. `berthd integrations install`
+  now puts them in every account folder (the default, those in
+  `~/.berth/accounts`, and any the box or a project picks), **Add account…**
+  puts them in the new one, and berthd adds them to an account a session
+  starts on before its agent runs. `berthd integrations` and `berthd doctor`
+  list them per account. See
+  [Agent integrations](/guides/agent-integrations#every-account).
+- **A chat on another account reads its conversation.** An agent started on
+  another Claude Code or Codex account (the Usage plugin's accounts, which
+  set `CLAUDE_CONFIG_DIR` or `CODEX_HOME`) wrote its conversation to that
+  account's folder, and the box only looked in its own: the chat said "Its
+  conversation can't be read here yet" and emptied after every message. The
+  box now reads each session's conversation from the account it started on.
+- **Berth is now Burf.** A new name, nothing else: the same app, the
+  same CLI and the same boxes, with your data where it was. The commands are
+  still `berth` and `berthd`, and their files (`~/.berth`, a repository's
+  `.berth/`, `BERTH_*` variables, `berth://` links) keep their names for now.
+  A new download is `Burf.app`; an installed `Berth.app` updates in
+  place and keeps its folder name. Releases before this one went out as
+  Berth.
+- **Burf for Linux, an alpha.** The desktop app now ships for x86-64
+  Linux as an AppImage, which updates itself from the same feed as the Mac
+  app, and as a .deb. It's an alpha: less tested than the Mac app, and its
+  sidebar and **Settings → About** say so, with **Report a Linux bug** in
+  About. Ctrl stands in for ⌘ (in a terminal, add Shift: Ctrl+Shift+T, and
+  Ctrl+Shift+C and V copy and paste); there's no menu bar; **Start at
+  login** makes the agent a systemd user service. arm64 isn't built yet.
+  [Linux (alpha)](/getting-started/install#linux-alpha).
 
 ## v0.3.10
 
@@ -935,8 +1070,7 @@ October 3, 2026.
   lists that tailnet's machines too. `berth discover --json` reports
   Tailscale's state and each machine's Tailscale SSH and host keys. See
   [add a box](/getting-started/add-a-box#on-your-tailnet).
-- **The Cal.com kit has its own repository**,
-  [berth-kit-calcom](https://github.com/sean-brydon/berth-kit-calcom).
+- **A kit can live in a repository of its own.**
   Kit links to GitHub, GitLab, Bitbucket and Codeberg work without
   `https://` (`berth kit add github.com/me/kit`). See [kits](/guides/kits).
 - **Add another computer** with a join link, and **use this Mac as a box**

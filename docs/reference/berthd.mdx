@@ -52,7 +52,7 @@ starts.
 | `berthd services [--json]` | Which worktree each running server belongs to |
 | `berthd service list\|start\|stop\|restart\|log LOC/WORKTREE [SERVICE]` | A worktree's services from the repo's config |
 | `berthd preview [LOC/WORKTREE] [PORT] [--path /x]` | Open a worktree's page in the Burf app |
-| `berthd worktree new LOC/NAME [--branch B] [--base REF]` | Create a git worktree and run its setup |
+| `berthd worktree new LOC/NAME [--branch B] [--base REF] [--parent NAME]` | Create a git worktree and run its setup; `--parent` nests it under another worktree of the location |
 | `berthd worktree rm LOC/NAME [--force]` | Remove a worktree |
 | `berthd worktree rename LOC/NAME [TITLE]` | Give a worktree a display name (no TITLE clears it) |
 
@@ -67,7 +67,7 @@ asks the app to open the page as a browser tab beside the agent; the
 | --- | --- |
 | `berthd sessions [--json]` | List sessions |
 | `berthd agents [--json]` | Agent CLIs this box can start |
-| `berthd task new LOC/NAME [--agent ID] [--prompt TEXT] [--open split\|tab] [--branch B] [--base REF] [--no-notify] [-- COMMAND...]` | A worktree with an agent (or a command) running in it; from an agent's session, that agent [hears back](/guides/orchestration#hearing-back) when its first turn ends |
+| `berthd task new LOC/NAME [--agent ID] [--prompt TEXT] [--open split\|tab] [--branch B] [--base REF] [--no-notify] [-- COMMAND...]` | A worktree with an agent (or a command) running in it; from an agent's session, that agent [hears back](/guides/orchestration#hearing-back) when its first turn ends, and the new worktree nests under that agent's |
 | `berthd session new LOC[/WORKTREE] [--name N] [--agent ID [--prompt TEXT]] [--open split\|tab] [-- COMMAND...]` | Start an agent or a command (default: a shell) there |
 | `berthd session screen NAME [--history N]` | Print what the session shows |
 | `berthd session send NAME TEXT [--when now\|idle] [--force] [--idem KEY] [--no-enter] [--wait [--timeout 30m]] [--no-notify]` | Type a prompt into a session (or hold it until the agent is idle), and wait for its turn; without `--wait`, an agent sending it hears back when the turn ends |
@@ -92,6 +92,8 @@ asks the app to open the page as a browser tab beside the agent; the
 | --- | --- |
 | `berthd ports [--json]` | What is listening on the box |
 | `berthd stats [--json]` | Memory, disk, load, and agents running or waiting |
+| `berthd ps [--json]` | Every [browser on the box](/guides/agent-browser#every-browser-on-a-box) with who started it, its CPU, memory and age, and what each session's processes use |
+| `berthd ps stop ID` | Stop a browser from that list (an ID like `b-4182-…`), or end a session (`s-NAME`) and everything it started |
 | `berthd info` | The box's name, OS, build, tools and agent presets, as JSON |
 | `berthd share PORT` | Make a port public (Cloudflare quick tunnel; needs `cloudflared`) |
 | `berthd shares [--json]` | List public shares |
@@ -127,7 +129,8 @@ owns, not the journal.
 
 | Command | What it does |
 | --- | --- |
-| `berthd integrations install claude\|cursor\|codex\|gemini\|opencode\|all\|present` | Install Burf's skills and agent hooks for a tool (`present`: every agent CLI on this box, quietly skipping the rest), and `berthd mcp` as an MCP server for Claude Code, Codex and Gemini CLI |
+| `berthd integrations [status]` | Where Burf's hooks and skills are for each agent CLI on this box, per Claude Code and Codex account (`Claude Code: hooks and 7 skills in ~/.claude, ~/.berth/accounts/claude/personal`), and the command that adds them where they're missing |
+| `berthd integrations install claude\|cursor\|codex\|gemini\|opencode\|all\|present` | Install Burf's skills and agent hooks for a tool (`present`: every agent CLI on this box, quietly skipping the rest), and `berthd mcp` as an MCP server for Claude Code, Codex and Gemini CLI. Claude Code and Codex get them in [every account folder](/guides/agent-integrations#every-account) |
 | `berthd hook TOOL EVENT [PAYLOAD]` | What those hooks run: turns a tool's hook into a Burf event (`agent.finished`, `agent.waiting`), naming the session from `$BERTH_SESSION`. While berthd is down it keeps the event in `~/.berth/box/spool/`, published when berthd starts |
 
 See [agent integrations](/guides/agent-integrations) for what the hooks and

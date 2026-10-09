@@ -8,6 +8,7 @@ import { plainError } from "@/lib/errors";
 import { localBoxApi, useLocalBoxName } from "@/lib/local-box";
 import { useStore } from "@/lib/store";
 import { CommandLog } from "@/views/settings/command-log";
+import { IS_LINUX, thisComputer } from "@/lib/platform";
 
 // RemoveLocalBoxDialog stops using this Mac as a box (Use this Mac,
 // undone): Burf forgets the box, stops berthd here and removes its launch
@@ -40,9 +41,9 @@ export function RemoveLocalBoxDialog({ box, open, onOpenChange }: { box: string;
     <AlertDialog open={open} onOpenChange={(o) => !running && onOpenChange(o)}>
       <AlertDialogPopup>
         <AlertDialogHeader>
-          <AlertDialogTitle>Stop using this Mac as a box?</AlertDialogTitle>
+          <AlertDialogTitle>{thisComputer("Stop using this Mac as a box?")}</AlertDialogTitle>
           <AlertDialogDescription>
-            Burf forgets {box}, stops berthd on this Mac and removes its launch agent. Your repositories and files stay where they are, and agents still running here keep going until they finish.
+            Burf forgets {box}, stops berthd on {thisComputer("this Mac")} and removes its {IS_LINUX ? "systemd user unit" : "launch agent"}. Your repositories and files stay where they are, and agents still running here keep going until they finish.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <div className="px-6">
@@ -50,7 +51,7 @@ export function RemoveLocalBoxDialog({ box, open, onOpenChange }: { box: string;
             <Checkbox className="mt-0.5" checked={removeData} disabled={running} onCheckedChange={(v) => setRemoveData(v === true)} />
             <span>
               Also delete its data
-              <span className="mt-0.5 block text-muted-foreground text-xs leading-relaxed">The box's keys, its list of projects and its session records. Keep them to set this Mac up again as the same box.</span>
+              <span className="mt-0.5 block text-muted-foreground text-xs leading-relaxed">{thisComputer("The box's keys, its list of projects and its session records. Keep them to set this Mac up again as the same box.")}</span>
             </span>
           </label>
           {lines && <CommandLog className="mt-3" lines={lines} error={error} />}
@@ -58,7 +59,7 @@ export function RemoveLocalBoxDialog({ box, open, onOpenChange }: { box: string;
         <AlertDialogFooter>
           <AlertDialogClose render={<Button variant="ghost" disabled={running} />}>Cancel</AlertDialogClose>
           <Button variant="destructive" loading={running} onClick={() => void remove()}>
-            {error ? "Try again" : "Stop using this Mac"}
+            {error ? "Try again" : thisComputer("Stop using this Mac")}
           </Button>
         </AlertDialogFooter>
       </AlertDialogPopup>

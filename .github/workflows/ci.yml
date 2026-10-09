@@ -1,9 +1,11 @@
 name: ci
 
+# Pull requests and main pushes run blocking verification.
 on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
   # release.yml runs all of this on the tag first, and fails the release on
   # any failure.
   workflow_call:
@@ -11,7 +13,7 @@ on:
 permissions:
   contents: read
 
-# A newer push cancels the run still going for an older one, on main too.
+# A newer push to a pull request cancels the run still going for the older one.
 # A release's checks (workflow_call) run under the tag's ref, so they are
 # never cancelled by a push to main.
 concurrency:
@@ -103,6 +105,10 @@ jobs:
       - run: command -v tmux >/dev/null || { sudo apt-get update && sudo apt-get install -y tmux; }
       - run: go vet ./...
       - run: go test -race ./...
+        # GitHub's Ubuntu runners stop Chromium's sandbox (user namespaces),
+        # which changes what the agent browser's status says.
+        env:
+          BERTH_BROWSER_NO_SANDBOX: "1"
       # A real Chromium alone, without the race detector or every other
       # package's tests starving it: it times out starting otherwise.
       - run: go test ./internal/box/ -run 'TestAgentBrowserDrivesARealChromium|TestTheBrowserSizeReachesARealChromium' -count=1 -v
@@ -213,7 +219,7 @@ jobs:
               finally:
                   s.close()
           ')" >> "$GITHUB_ENV"
-      # A release (a tag) skips the e2e suite for now; main runs it.
+      # Tags use release verification; pull requests and main pushes require E2E success.
       - run: pnpm test:e2e
         if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         env:
@@ -226,6 +232,60 @@ jobs:
           path: app/node_modules/.e2e-results
           include-hidden-files: true
           retention-days: 7
+
+  # The Linux desktop app (an alpha) builds, bundles and passes its Rust
+  # tests, so a change that breaks it shows here rather than at a release.
+  # A debug build with no updater signature; signed Burf Linux releases
+  # remain deferred. Cached, it takes a few minutes,
+  # beside the app job's longer e2e suite.
+  linux-app:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+        with:
+          version: 11
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+      - name: Install the system libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: app/src-tauri
+      - run: pnpm install --frozen-lockfile
+        working-directory: app
+      - name: Rust tests
+        working-directory: app/src-tauri
+        run: cargo test --locked
+      # The release build's own code (cfg(not(debug_assertions))) compiles.
+      - name: Check the release configuration
+        working-directory: app/src-tauri
+        run: cargo check --locked --release
+      - name: Build the AppImage and the .deb
+        working-directory: app
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+        run: pnpm tauri build --config src-tauri/tauri.linux.conf.json --debug --bundles deb,appimage
+      - name: Check the bundles
+        run: |
+          set -euo pipefail
+          deb="$(ls app/src-tauri/target/debug/bundle/deb/*.deb)"
+          appimage="$(ls app/src-tauri/target/debug/bundle/appimage/*.AppImage)"
+          # Extracted first: grep -q on a pipe would cut dpkg-deb off (pipefail).
+          dpkg-deb -x "$deb" "$RUNNER_TEMP/deb"
+          test -x "$RUNNER_TEMP/deb/usr/bin/burf-app"
+          grep -q '^MimeType=.*x-scheme-handler/berth' "$RUNNER_TEMP"/deb/usr/share/applications/*.desktop
+          grep -q '^Exec=burf-app %u$' "$RUNNER_TEMP"/deb/usr/share/applications/*.desktop
+          file "$appimage" | grep -q 'ELF 64-bit'
+          ls -la "$deb" "$appimage"
 
   docs-site:
     runs-on: ${{ (vars.SELF_HOSTED == 'true' && github.event_name == 'push' && github.actor == github.repository_owner) && fromJSON('["self-hosted","omarchy"]') || 'ubuntu-latest' }}

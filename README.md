@@ -35,40 +35,24 @@ stops them; the app is a view you can close and reopen at any time.
 | `burf` | The laptop CLI and background agent: connections, private URLs, the app's API. |
 | `app/` | The desktop app (Tauri, React, coss ui). |
 | `plugins/` | Built-in plugins, written against `packages/plugin-sdk`. |
-| `kits/` | Pointers to kits kept in their own repositories, such as [the Cal.com kit](https://github.com/sean-brydon/berth-kit-calcom). |
 
 ## Getting started
 
-**On each box**, as the user your agents will run as:
+Burf is a fork preview. Signed Burf releases, a Homebrew cask and an
+application update feed are not available. Build the fork using the commands
+below. The app carries the `burf` CLI and Linux daemons for `burf add ssh`
+and `burf upgrade`; automatic application updates stay disabled.
+
+On a Linux or macOS box, the fork installer downloads only fork-owned
+releases. If none is published, it stops and prints build instructions:
 
 ```sh
 curl -fsSL https://raw.githubusercontent.com/MylesMCook/burf/main/site/install.sh | sh
 ```
 
-It downloads `burfd` from the [latest release](https://github.com/MylesMCook/burf/releases/latest),
-checks it against the release's checksums, installs it for that user (no
-root), starts it as a systemd user service (launchd on macOS), installs the
-hooks that let Claude Code, Codex and Cursor report their state
-(`--no-integrations` skips them), and prints a pairing link. The link works
-once, for ten minutes. Run it again to upgrade in place; `sh -s -- --help`
-lists the options.
-
-**On your Mac**, build the fork using the development commands below.
-Burf is currently a fork preview; signed Burf releases are not available.
-The app carries the `burf` CLI and Linux daemons `burf add ssh` uploads.
-Automatic application updates stay disabled until the fork has its own
-signed releases and update feed.
-
 For `burf` in a terminal, **Settings → General → Command line → Install**
-links `~/.local/bin/burf` to the app's copy (it asks first). On a Linux
-laptop, or for the CLI alone, build with `make all`. When Burf releases are
-available, download a matching archive from the fork release (use
-`linux-arm64`, `darwin-arm64` or `darwin-amd64` to match):
-
-```sh
-mkdir -p ~/.local/bin
-curl -fsSL https://github.com/MylesMCook/burf/releases/latest/download/burf-linux-amd64.tar.gz | tar -xz -C ~/.local/bin
-```
+links `~/.local/bin/burf` to the app's copy (it asks first). For the CLI
+alone, build with `make all`.
 
 Paste the box's link into the app (**Add a box**), or:
 
@@ -76,7 +60,7 @@ Paste the box's link into the app (**Add a box**), or:
 burf pair 'berth://100.101.102.103:7444?code=…&fp=…'
 ```
 
-Instead of the install line, `burf add ssh` can install and pair a box over
+With a local build, `burf add ssh` can install and pair a box over
 SSH in one step. Then add a project and start an agent, in the app or here:
 
 ```sh
@@ -104,8 +88,9 @@ Linux daemons inside.
 
 ## Docs
 
-The documentation is at [docs.berthd.app](https://docs.berthd.app). Its pages
-are the [`docs/`](docs) folder here, built by [`docs-site/`](docs-site):
+The fork's documentation lives in [`docs/`](docs), built locally by
+[`docs-site/`](docs-site). [Shipyard](https://github.com/cosscom/shipyard)
+is the upstream project; its hosted docs describe its own releases.
 
 - [Install](docs/getting-started/install.mdx), [add a box](docs/getting-started/add-a-box.mdx), [first project](docs/getting-started/first-project.mdx), [first agent](docs/getting-started/first-agent.mdx)
 - [How Burf works](docs/concepts/architecture.mdx) and [the security model](docs/concepts/security.mdx)

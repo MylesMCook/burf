@@ -9,7 +9,7 @@ that worktree (`$BERTH_URL`, such as
 `http://checkout.shop.devl.localhost:1377`), and which an agent drives with
 `berthd browser` commands that print a few hundred bytes each.
 
-- It starts the first time an agent uses it and closes after 10 idle
+- It starts the first time an agent uses it and closes after 5 idle
   minutes. Its profile is a throwaway folder deleted when it closes, so its
   cookies are its own, never yours.
 - It reaches only the worktree's own pages, through a proxy inside berthd.
@@ -64,7 +64,7 @@ the error when it doesn't start ends with what Chromium itself said.
 
 ## Commands
 
-Inside a berth session, commands act on the session's worktree; elsewhere,
+Inside a Burf session, commands act on the session's worktree; elsewhere,
 name it as `LOC/WT` (and from a laptop, `berth browser open BOX/LOC/WT`).
 
 | Command | Prints |
@@ -204,8 +204,8 @@ run `agent-browser close` when they use agent-browser anyway. Burf also
 cleans up after them:
 
 - **Idle timeout.** Every session Burf starts gets
-  `AGENT_BROWSER_IDLE_TIMEOUT_MS=600000`, so an agent-browser left idle for
-  10 minutes closes its Chrome, removes its profile and exits, like Burf's
+  `AGENT_BROWSER_IDLE_TIMEOUT_MS=300000`, so an agent-browser left idle for
+  5 minutes closes its Chrome, removes its profile and exits, like Burf's
   own browser. Set the variable in the box's `~/.berth/env.json`, the
   project's `env` in `.berth/config.json`, or berthd's own environment to
   change it; `0` turns the timeout off. Burf never replaces a value you
@@ -225,6 +225,37 @@ cleans up after them:
 `berthd doctor` lists agent-browser sessions whose Burf session has ended
 under **agent-browser sessions**, and `berthd browser reap` closes them now
 (`--dry-run` only lists them).
+
+### Browsers a session's programs start
+
+A repository's own tests start browsers too: Playwright's or Puppeteer's
+Chromium, a Cypress run, a dev server's own. They belong to the session that
+ran them, and [go with it](/concepts/sessions-and-agents#sessions-clean-up-after-themselves)
+when Burf ends the session, even if the agent was killed mid-run.
+
+## Every browser on a box
+
+Click a box's memory meter in the status bar (`devl ▬ 59%`) to see every
+Chromium, Chrome and Firefox running on it, each grouped as one browser with
+its helper processes, busiest first, with its CPU (100% is one core), memory
+and age, and who started it:
+
+- **Burf**: a worktree's agent browser, or the visual-diff browser.
+- **agent-browser**: a session's agent-browser, and which session.
+- **Session**: started by a session's programs, such as "Playwright tests in
+  shop/checkout".
+- **Left behind**: started by a session that has ended, or by an earlier
+  berthd.
+- **Not Burf's**: the box user's own browser. It is listed, so you can
+  see what it costs, but never stopped.
+
+**Stop** stops a browser and every process in it: an agent browser closes as
+when idle, an agent-browser session loses its profile folder too, and the
+rest get `SIGTERM`, then `SIGKILL`. Below the browsers are the sessions
+using the most memory. **Settings → Boxes** shows the same list for each
+box. Agents and scripts see it with `berthd ps` (or `berth ps BOX`), stop
+one with `berthd ps stop ID`, and `berthd doctor` warns about a browser using
+a core or more, or one left behind.
 
 ## Watching it
 
@@ -265,8 +296,14 @@ errors.
 
 ## Memory
 
-Each browser is one Chromium: about 300–350 MB with a Next.js dev page open
-(the process tree's resident memory; Playwright's headless shell). At most
+Each browser is one Chromium: about 380 MB with a React app's pages open,
+counting shared memory once (PSS; about 620 MB resident across its six
+processes), on Linux with Playwright's headless shell. Burf caps each
+page's JavaScript heap at 512 MB, which makes it collect sooner and saves
+about 35 MB; a page that needs more crashes its tab, and
+`BERTH_BROWSER_JS_HEAP_MB` in berthd's environment raises the cap (`0` for
+none). It also keeps a browser to two renderer processes, whatever a page
+opens. At most
 1 runs on a box under 2 GB of memory, 2 up to 4 GB, 3 up to 8 GB and 4 above
 (`max_browsers` in `~/.berth/runs.json`); one more closes the least recently
 used. When the box runs low on memory, the [resource guard](/guides/resource-guard)

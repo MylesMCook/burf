@@ -120,11 +120,11 @@ kit. It only suggests: you can apply a kit to any project.
 a kit in `~/.berth/kits/my-kit/`; push that folder to a git repository to
 share it.
 
-[berth-kit-calcom](https://github.com/sean-brydon/berth-kit-calcom) is a
-complete example, published as its own repository: a Postgres database per
-worktree (a copy of the main one when migrations match), its own `.env`, two
-ports, a dev server and Prisma Studio, with a daily sweep of old databases.
-Add it with `burf kit add github.com/sean-brydon/berth-kit-calcom`.
+A kit in a repository of its own is that folder at the repository's top:
+`kit.json` and the scripts it runs. Add it with its link, such as
+`burf kit add github.com/acme/berth-kit-web`, pinned to a commit with
+`@<sha>`. A team's kits can also live in its
+[`.berth` repository](/guides/team-setup), next to `team.json`.
 
 ## How it applies
 

@@ -5,6 +5,7 @@ import { readTimeout, reconnectDelay, STREAM_SILENCE_MS } from "@/lib/net";
 import type {
   BerthEvent,
   BoxInfo,
+  BoxRoute,
   ExecResult,
   QueuedPrompt,
   SendResult,
@@ -448,6 +449,13 @@ export const laptopApi = {
   pair: (c: Client, link: string, name?: string, network?: string) =>
     c.laptop<{ name: string; address?: string; network?: string }>("POST", "/v1/boxes/pair", { link, name: name || undefined, network: network || undefined }),
   forget: (c: Client, box: string) => c.laptop("DELETE", `/v1/boxes/${encodeURIComponent(box)}`),
+  // A box's routes (Settings › Boxes): add an SSH host or an address, turn
+  // one on or off, remove one. Each answers with the box's routes now.
+  addRoute: (c: Client, box: string, route: { kind: "ssh"; host: string } | { kind: "direct"; address: string }) =>
+    c.laptop<BoxRoute[]>("POST", `/v1/boxes/${encodeURIComponent(box)}/routes`, route),
+  setRoute: (c: Client, box: string, id: string, on: boolean) =>
+    c.laptop<BoxRoute[]>("PATCH", `/v1/boxes/${encodeURIComponent(box)}/routes/${encodeURIComponent(id)}`, { off: !on }),
+  removeRoute: (c: Client, box: string, id: string) => c.laptop<BoxRoute[]>("DELETE", `/v1/boxes/${encodeURIComponent(box)}/routes/${encodeURIComponent(id)}`),
   upgrade: (c: Client, box: string, onLine: (line: string) => void, signal?: AbortSignal) =>
     runCommand(c, "POST", `/v1/boxes/${encodeURIComponent(box)}/upgrade`, undefined, onLine, signal),
   // outdated says which online boxes run a different agent build than this Burf

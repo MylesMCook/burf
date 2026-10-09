@@ -62,7 +62,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
             <circle cx="286" cy="16" r="7" fill={amber} />
             <path d="M0 68 C 30 64, 60 72, 90 68 S 150 64, 180 68 S 240 72, 270 68 S 330 64, 360 68 S 400 72, 420 68" stroke={line} strokeWidth="2" opacity="0.6" />
           </svg>
-          <div style={{ fontSize: 22, color: muted }}>docs.berthd.app</div>
+          <div style={{ fontSize: 22, color: muted }}>MylesMCook/burf</div>
         </div>
       </div>
     ),

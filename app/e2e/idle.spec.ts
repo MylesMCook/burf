@@ -109,6 +109,9 @@ test("opening and closing tabs again and again leaves nothing behind", async ({ 
     await page.getByRole("button", { name: "New tab" }).click();
     await page.getByRole("option", { name: /^Preview/ }).click();
     await expect(strip.locator("[data-tab]")).toHaveCount(n + 3);
+    // The New tab menu is still closing for a moment after its tab shows,
+    // and a key pressed while it is goes to the menu, not the tab.
+    await expect(page.getByRole("option", { name: /^Preview/ })).toHaveCount(0);
     for (let i = 0; i < 3; i++) {
       await page.keyboard.press("ControlOrMeta+KeyW");
       const confirm = page.getByRole("alertdialog");

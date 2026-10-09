@@ -1,4 +1,5 @@
 import type { TerminalColors } from "@/lib/api";
+import type { PredictMode, Screen } from "./predict.ts";
 import { HIDDEN_FLUSH_MS, OutputGate } from "./term-output.ts";
 
 // One small interface over the terminal emulator, so the renderer can be
@@ -15,6 +16,9 @@ export interface TerminalPrefs {
   cursorStyle: "block" | "bar" | "underline";
   cursorBlink: boolean;
   scrollback: number;
+  // Predictive local echo (lib/predict): adaptive shows typing before the
+  // box echoes it on a slow link only.
+  predict: PredictMode;
 }
 
 export const DEFAULT_TERMINAL_PREFS: TerminalPrefs = {
@@ -25,7 +29,18 @@ export const DEFAULT_TERMINAL_PREFS: TerminalPrefs = {
   cursorStyle: "block",
   cursorBlink: true,
   scrollback: 10000,
+  predict: "adaptive",
 };
+
+// Where the terminal draws its cells, for an overlay on top of them
+// (lib/predict-overlay): the element holding the grid, a cell's size and
+// where its text's baseline is, in CSS pixels.
+export interface ScreenGeometry {
+  el: HTMLElement;
+  cellWidth: number;
+  cellHeight: number;
+  baseline: number;
+}
 
 export interface TermHandle {
   readonly cols: number;
@@ -38,6 +53,8 @@ export interface TermHandle {
   onData(fn: (data: string) => void): void;
   onResize(fn: (size: { cols: number; rows: number }) => void): void;
   hasSelection(): boolean;
+  // The selected text ("" with none).
+  selection(): string;
   // Types text as a paste: bracketed when the program asked for that, as
   // Claude Code does, so it sees a pasted image's path as an image.
   paste(text: string): void;
@@ -48,6 +65,14 @@ export interface TermHandle {
   // its output in batches (lib/term-output); shown again, it catches up and
   // redraws at once. A terminal starts shown.
   setVisible(visible: boolean): void;
+  // The active screen as the emulator has it now, for predictive echo; null
+  // while scrolled back into the history, or before it can be read.
+  screen(): Screen | null;
+  geometry(): ScreenGeometry | null;
+  // fn runs once output written has been parsed into the screen, and after
+  // each frame the terminal draws.
+  onParsed(fn: () => void): void;
+  onDrawn(fn: () => void): void;
   dispose(): void;
 }
 
@@ -187,8 +212,13 @@ function gated(t: RawHandle, hiddenFlushMs = HIDDEN_FLUSH_MS): TermHandle {
     onData: (fn) => t.onData(fn),
     onResize: (fn) => t.onResize(fn),
     hasSelection: () => t.hasSelection(),
+    selection: () => t.selection(),
     paste: (text) => t.paste(text),
     registerLinkFinder: (find) => t.registerLinkFinder(find),
+    screen: () => t.screen(),
+    geometry: () => t.geometry(),
+    onParsed: (fn) => t.onParsed(fn),
+    onDrawn: (fn) => t.onDrawn(fn),
     setVisible(v) {
       shown = v;
       sync();
@@ -257,6 +287,7 @@ function drawOnDemand(t: object, host: HTMLElement, blink: boolean) {
   let full = false;
   let inputAt = -Infinity;
   let drawn = -Infinity;
+  const afterDraw: (() => void)[] = [];
   const draw = (now: number) => {
     frame = 0;
     if (g.isDisposed || !shown || !g.wasmTerm) return;
@@ -267,6 +298,7 @@ function drawOnDemand(t: object, host: HTMLElement, blink: boolean) {
     drawn = now;
     r.render(g.wasmTerm, full, g.viewportY, g, g.scrollbarOpacity);
     full = false;
+    for (const fn of afterDraw) fn();
     const y = g.wasmTerm.getCursor().y;
     if (y !== g.lastCursorY) {
       g.lastCursorY = y;
@@ -326,6 +358,7 @@ function drawOnDemand(t: object, host: HTMLElement, blink: boolean) {
 
   return {
     kick,
+    onDrawn: (fn: () => void) => void afterDraw.push(fn),
     show(v: boolean) {
       shown = v;
       if (v) {
@@ -489,6 +522,8 @@ async function createGhostty(host: HTMLElement, colors: TerminalColors, prefs: T
   // Output still on its way when the terminal is replaced (a new font size,
   // ⌘+) is dropped: ghostty-web throws on a write after dispose.
   let disposed = false;
+  const parsed: (() => void)[] = [];
+  const gs = t as unknown as GhosttyScreen;
   return {
     get cols() {
       return t.cols;
@@ -500,6 +535,7 @@ async function createGhostty(host: HTMLElement, colors: TerminalColors, prefs: T
       if (disposed) return;
       t.write(d);
       frames?.kick(BUSY_MS, true);
+      for (const fn of parsed) fn();
     },
     // Full reset, then erase the scrollback: see createGhostty.
     reset: () => {
@@ -523,11 +559,23 @@ async function createGhostty(host: HTMLElement, colors: TerminalColors, prefs: T
     onData: (fn) => void t.onData(fn),
     onResize: (fn) => void t.onResize(fn),
     hasSelection: () => t.hasSelection(),
+    selection: () => t.getSelection(),
     paste: (text) => {
       t.paste(text);
       frames?.kick();
     },
     show: (v) => frames?.show(v),
+    screen: () => (disposed ? null : ghosttyScreen(gs)),
+    geometry: () => {
+      const canvas = gs.renderer?.getCanvas?.();
+      const m = gs.renderer?.getMetrics?.();
+      if (!canvas || !m || !canvas.isConnected) return null;
+      return { el: canvas, cellWidth: m.width, cellHeight: m.height, baseline: m.baseline };
+    },
+    onParsed: (fn) => void parsed.push(fn),
+    // Without the frame loop (a ghostty-web that changed inside), a frame
+    // is assumed a moment after output.
+    onDrawn: (fn) => (frames ? frames.onDrawn(fn) : void parsed.push(() => requestAnimationFrame(() => requestAnimationFrame(fn)))),
     registerLinkFinder: (find) =>
       t.registerLinkProvider({
         provideLinks(y, callback) {
@@ -601,7 +649,19 @@ async function createXterm(host: HTMLElement, colors: TerminalColors, prefs: Ter
     onData: (fn) => void t.onData(fn),
     onResize: (fn) => void t.onResize(fn),
     hasSelection: () => t.hasSelection(),
+    selection: () => t.getSelection(),
     paste: (text) => t.paste(text),
+    screen: () => xtermScreen(t),
+    geometry: () => {
+      const el = t.element?.querySelector<HTMLElement>(".xterm-screen");
+      if (!el || !t.cols || !t.rows || !el.isConnected) return null;
+      const cellWidth = el.clientWidth / t.cols;
+      const cellHeight = el.clientHeight / t.rows;
+      if (!cellWidth || !cellHeight) return null;
+      return { el, cellWidth, cellHeight, baseline: centredBaseline(prefs, cellHeight) };
+    },
+    onParsed: (fn) => void t.onWriteParsed(fn),
+    onDrawn: (fn) => void t.onRender(fn),
     registerLinkFinder: (find) =>
       void t.registerLinkProvider({
         provideLinks(y, callback) {
@@ -616,4 +676,79 @@ async function createXterm(host: HTMLElement, colors: TerminalColors, prefs: Ter
       }),
     dispose: () => t.dispose(),
   };
+}
+
+// The parts of ghostty-web 0.4 a Screen reads: the WASM terminal's cursor
+// and cells (getViewport reads the active screen whole, in one call), and
+// how far the view is scrolled back.
+interface GhosttyScreen {
+  viewportY: number;
+  wasmTerm?: {
+    cols: number;
+    rows: number;
+    getCursor(): { x: number; y: number; visible: boolean };
+    getViewport(): { codepoint: number }[];
+    isAlternateScreen(): boolean;
+  };
+  renderer?: {
+    getCanvas?(): HTMLCanvasElement;
+    getMetrics?(): { width: number; height: number; baseline: number };
+  };
+}
+
+function ghosttyScreen(t: GhosttyScreen): Screen | null {
+  const w = t.wasmTerm;
+  if (!w || t.viewportY !== 0) return null;
+  // getCursor brings the render state up to date first; then the cells.
+  const c = w.getCursor();
+  const cols = w.cols;
+  let cells: { codepoint: number }[] | undefined;
+  return {
+    cols,
+    rows: w.rows,
+    cursorX: c.x,
+    cursorY: c.y,
+    cursorVisible: c.visible,
+    alternate: w.isAlternateScreen(),
+    cell(x, y) {
+      cells ??= w.getViewport();
+      const cp = cells[y * cols + x]?.codepoint;
+      return cp ? String.fromCodePoint(cp) : " ";
+    },
+  };
+}
+
+// The parts of xterm.js 5 a Screen reads. Whether the cursor shows is only
+// kept inside (coreService); it counts as shown if that ever moves.
+type XtermLike = {
+  cols: number;
+  rows: number;
+  buffer: { active: { type: string; cursorX: number; cursorY: number; viewportY: number; baseY: number; getLine(y: number): { getCell(x: number): { getChars(): string } | undefined } | undefined } };
+};
+
+function xtermScreen(t: XtermLike): Screen | null {
+  const b = t.buffer.active;
+  if (b.viewportY !== b.baseY) return null;
+  const hidden = (t as { _core?: { coreService?: { isCursorHidden?: boolean } } })._core?.coreService?.isCursorHidden;
+  return {
+    cols: t.cols,
+    rows: t.rows,
+    cursorX: b.cursorX,
+    cursorY: b.cursorY,
+    cursorVisible: hidden !== true,
+    alternate: b.type === "alternate",
+    cell: (x, y) => b.getLine(b.baseY + y)?.getCell(x)?.getChars() || " ",
+  };
+}
+
+// xterm.js's DOM renderer centres each line's text in its cell: the
+// baseline sits half the leftover height below the font's ascent.
+function centredBaseline(prefs: TerminalPrefs, cellHeight: number): number {
+  const ctx = document.createElement("canvas").getContext("2d");
+  if (!ctx) return cellHeight * 0.75;
+  ctx.font = `${prefs.fontSize}px ${prefs.fontFamily}`;
+  const m = ctx.measureText("M");
+  const ascent = m.fontBoundingBoxAscent || prefs.fontSize * 0.8;
+  const descent = m.fontBoundingBoxDescent || prefs.fontSize * 0.2;
+  return (cellHeight - ascent - descent) / 2 + ascent;
 }

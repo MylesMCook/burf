@@ -8,7 +8,7 @@ import { submitConfirm } from "@/components/sidebar/confirm";
 import { toastManager } from "@/components/ui/toast";
 import { closePane, openBrowserAt, startSession } from "@/lib/actions";
 import { isTauri } from "@/lib/api";
-import { primaryModifier } from "@/lib/platform";
+import { IS_LINUX, primaryModifier } from "@/lib/platform";
 import { toggleNotifications } from "@/lib/notifications";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
@@ -260,6 +260,24 @@ function fromKey(e: KeyboardEvent): [string, (number | Dir)?] | undefined {
   return undefined;
 }
 
+// fromLinuxKey is fromKey with Ctrl for ⌘. A shell needs its Ctrl keys
+// (Ctrl+W, Ctrl+D, Ctrl+K…), so in a terminal Ctrl and a letter are the
+// shell's, and Ctrl+Shift and the letter are the app's instead, as in other
+// Linux terminals: Ctrl+Shift+T is a new terminal, Ctrl+Shift+K the palette.
+// Where ⌘⇧ and the letter is a shortcut of its own (⌘⇧D, ⌘⇧W, ⌘⇧N…), it
+// keeps that meaning. Ctrl+Shift+C and V stay the terminal's copy and paste.
+function fromLinuxKey(e: KeyboardEvent): [string, (number | Dir)?] | undefined {
+  const inTerminal = e.target instanceof Element && !!e.target.closest("[data-terminal]");
+  if (!inTerminal || e.altKey) return fromKey(e);
+  const letter = /^Key[A-Z]$/.test(e.code) || e.key === "\\";
+  if (!letter) return fromKey(e);
+  if (!e.shiftKey) return undefined;
+  if (e.code === "KeyC" || e.code === "KeyV") return undefined;
+  const shifted = fromKey(e);
+  if (shifted) return shifted;
+  return fromKey(new KeyboardEvent("keydown", { key: e.key.toLowerCase(), code: e.code, ctrlKey: true }));
+}
+
 // fromMenu is the shortcut a menu bar item's id is ("tab-3" is tab 3).
 function fromMenu(id: string): [string, number?] {
   const m = /^tab-(\d)$/.exec(id);
@@ -285,9 +303,9 @@ export function useShortcuts() {
         e.stopPropagation();
         return;
       }
-      // In the live demo on Windows and Linux, Ctrl stands in for ⌘.
+      // Ctrl stands in for ⌘ on Windows and Linux. Linux terminals keep shell keys.
       if (!primaryModifier(e)) return;
-      const hit = fromKey(e);
+      const hit = IS_LINUX ? fromLinuxKey(e) : fromKey(e);
       if (!hit || !runShortcut(hit[0], "key", hit[1])) return;
       e.preventDefault();
       e.stopPropagation();

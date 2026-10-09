@@ -23,6 +23,9 @@ export interface GuardConfig {
   sustain?: string;
   stop_services?: boolean;
   pause_agents?: boolean;
+  // A memory ceiling for each session's processes, in GB (Settings ›
+  // Boxes, "Browsers and sessions"); kept here, applied by systemd.
+  session_memory_gb?: number;
 }
 
 export interface GuardAction {
@@ -42,6 +45,8 @@ export interface GuardStatus {
   memory_percent: number;
   over_since?: string;
   actions: GuardAction[];
+  // Sessions run in systemd scopes here, so session_memory_gb applies.
+  session_scopes?: boolean;
 }
 
 const SUSTAIN = [

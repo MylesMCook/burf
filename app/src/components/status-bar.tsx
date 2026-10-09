@@ -2,13 +2,14 @@ import { CircleArrowUpIcon, GitBranchIcon, RefreshCwIcon } from "lucide-react";
 import { useState } from "react";
 
 import { StatusDot } from "@/components/agent-glyph";
+import { BoxMeter } from "@/components/box-processes";
 import { QueueIndicator } from "@/components/queue/queue-indicator";
 import { Tip } from "@/components/tip";
 import { Spinner } from "@/components/ui/spinner";
 import { useUpdateAll } from "@/components/upgrade-box";
 import { useAgentCounts } from "@/hooks/use-agent-counts";
 import { isMock } from "@/hooks/use-burf-connection";
-import { bytes } from "@/lib/format";
+import { viaRoute } from "@/lib/box-routes";
 import { useOutdatedBoxes } from "@/lib/outdated";
 import { AGENT_WORDS, BOX_WORDS, boxState } from "@/lib/state-model";
 import { useStore } from "@/lib/store";
@@ -37,6 +38,8 @@ export function StatusBar() {
   const outdated = useOutdatedBoxes();
   const online = status?.boxes.filter((b) => b.state === "online") ?? [];
   const total = status?.boxes.length ?? 0;
+  // Online, over a slow link: still online, said quietly.
+  const slow = online.filter((b) => b.link?.slow).length;
   const forwards = status?.forwards.length ?? 0;
 
   return (
@@ -101,17 +104,10 @@ export function StatusBar() {
       {online.map((b) => {
         const mem = boxes[b.name]?.stats?.memory;
         if (!mem?.total) return null;
-        const used = mem.used / mem.total;
-        return (
-          // Each box's memory goes first when the bar runs short of room.
-          <Item key={b.name} className={cn("@max-[900px]:hidden", used > 0.85 && "text-warning-foreground dark:text-warning")} tip={`${b.name} memory: ${bytes(mem.used)} of ${bytes(mem.total)} in use`} onClick={() => go({ kind: "settings", section: "boxes" })}>
-            {b.name}
-            <span className="relative h-1.5 w-6 overflow-hidden rounded-full bg-muted-foreground/20">
-              <span className={cn("absolute inset-y-0 left-0 rounded-full", used > 0.85 ? "bg-warning" : "bg-muted-foreground/60")} style={{ width: `${Math.round(used * 100)}%` }} />
-            </span>
-            <span className="tabular-nums">{Math.round(used * 100)}%</span>
-          </Item>
-        );
+        // Each box's memory goes first when the bar runs short of room.
+        // Clicked, it lists the box's browsers and heavy sessions; its tip
+        // names the route Burf reaches the box by.
+        return <BoxMeter key={b.name} box={b.name} mem={mem} route={viaRoute(b)} className="@max-[900px]:hidden" />;
       })}
       {forwards > 0 && (
         <Item tip="Ports forwarded to this computer" onClick={() => go({ kind: "settings", section: "developer" })}>
@@ -125,14 +121,16 @@ export function StatusBar() {
             <span key={b.name} className="flex items-center gap-1.5">
               <StatusDot state={st} />
               {b.name}: {BOX_WORDS[st].lower}
+              {b.state === "online" && viaRoute(b) && <span className="text-muted-foreground">· {viaRoute(b)}</span>}
             </span>
           );
         })}
         onClick={() => go({ kind: "settings", section: "boxes" })}
       >
-        {/* Green when every box is up, grey when some aren't: amber is only ever "needs you". */}
-        <StatusDot state={online.length === total && total > 0 ? "online" : "offline"} />
+        {/* Green when every box is up (fainter while one's link is slow), grey when some aren't: amber is only ever "needs you". */}
+        <StatusDot state={online.length === total && total > 0 ? (slow > 0 ? "slow" : "online") : "offline"} />
         {online.length}/{total} {total === 1 ? "box" : "boxes"} online
+        {slow > 0 && <span data-testid="boxes-slow">· {slow === 1 && total > 1 ? `${online.find((b) => b.link?.slow)?.name} slow` : "slow"}</span>}
       </Item>
       <Tip label="Refresh" align="end">
         <button

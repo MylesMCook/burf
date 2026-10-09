@@ -43,7 +43,9 @@ struct Navigated {
     // "started": a navigation is about to begin, in the page or in a frame
     // inside it (the navigation policy is asked for every frame, and a
     // frame's load never finishes the page); "committed": the page itself
-    // began showing a new document; "finished": the page itself finished.
+    // began showing a new document; "finished": the page itself finished;
+    // "moved": the page changed its own address without loading (an app's
+    // client-side routing: history.pushState, replaceState, a #hash).
     state: &'static str,
 }
 
@@ -99,9 +101,22 @@ fn watch_console(app: AppHandle, id: String, label: String) {
     }
     std::thread::spawn(move || {
         let asked = Arc::new(AtomicU64::new(0));
+        let mut at = String::new();
         loop {
             std::thread::sleep(Duration::from_millis(500));
             let Some(wv) = app.get_webview(&label) else { break };
+            // An app that routes on the client (history.pushState) changes
+            // its address without a navigation or a load, so neither hook
+            // hears it: the address bar follows the webview's own URL.
+            if let Ok(u) = wv.url() {
+                let u = u.to_string();
+                if u != at {
+                    if !at.is_empty() {
+                        let _ = app.emit(EVENT, Navigated { id: id.clone(), url: u.clone(), state: "moved" });
+                    }
+                    at = u;
+                }
+            }
             let since = asked.load(Ordering::SeqCst);
             if since != 0 && now_ms().saturating_sub(since) < 5000 {
                 continue;
@@ -154,13 +169,92 @@ fn inspector_in_own_window(wv: &Webview) {
     });
 }
 
+// On Linux, Tauri packs every webview of a window into the window's GtkBox,
+// one under the other, and cannot place a child webview over the app's
+// (wry moves a webview only inside a gtk::Fixed). So the Linux app lays them
+// out itself: the app's webview moves into a gtk::Layout that fills the
+// window, and each pane's webview moves from the box into that layout, on
+// top, where place puts it. A Layout, unlike a Fixed, does not ask for its
+// children's size, so the window still shrinks. GTK runs on the main thread
+// only, which is where with_webview's closures run.
+#[cfg(target_os = "linux")]
+mod stage {
+    use gtk::prelude::*;
+    use std::cell::RefCell;
+
+    thread_local! {
+        static LAYOUT: RefCell<Option<gtk::Layout>> = const { RefCell::new(None) };
+    }
+
+    // install moves the app's webview into the layout, once.
+    pub fn install(main: &webkit2gtk::WebView) {
+        LAYOUT.with(|l| {
+            if l.borrow().is_some() {
+                return;
+            }
+            let Some(parent) = main.parent().and_then(|p| p.downcast::<gtk::Box>().ok()) else {
+                eprintln!("burf: the app's webview is not in a GtkBox; browser panes stay below it");
+                return;
+            };
+            let layout = gtk::Layout::new(None::<&gtk::Adjustment>, None::<&gtk::Adjustment>);
+            parent.remove(main);
+            layout.put(main, 0, 0);
+            parent.pack_start(&layout, true, true, 0);
+            // The app's webview fills the layout: allocated here, after the
+            // layout has allocated its children, rather than by a size
+            // request, which would ask for another layout pass from inside
+            // this one (and the window could not shrink below it).
+            let app = main.clone();
+            layout.connect_size_allocate(move |layout, a| {
+                let (w, h) = (a.width().max(1), a.height().max(1));
+                if layout.size() != (w as u32, h as u32) {
+                    layout.set_size(w as u32, h as u32);
+                }
+                app.size_allocate(&gtk::Allocation::new(0, 0, w, h));
+            });
+            layout.show_all();
+            *l.borrow_mut() = Some(layout);
+        });
+    }
+
+    // place puts a pane's webview at x, y (logical pixels, as the page
+    // measures them) and sizes it, moving it into the layout the first time.
+    pub fn place(pane: &webkit2gtk::WebView, x: f64, y: f64, w: f64, h: f64) {
+        LAYOUT.with(|l| {
+            let Some(layout) = l.borrow().clone() else { return };
+            let (x, y) = (x.round() as i32, y.round() as i32);
+            let (w, h) = (w.round().max(1.0) as i32, h.round().max(1.0) as i32);
+            pane.set_size_request(w, h);
+            let parent = pane.parent();
+            if parent.as_ref() == Some(layout.upcast_ref::<gtk::Widget>()) {
+                layout.move_(pane, x, y);
+                return;
+            }
+            if let Some(container) = parent.and_then(|p| p.downcast::<gtk::Container>().ok()) {
+                container.remove(pane);
+            }
+            layout.put(pane, x, y);
+            pane.show();
+        });
+    }
+}
+
+// place_linux lays a pane out on Linux (stage, above).
+#[cfg(target_os = "linux")]
+fn place_linux(app: &AppHandle, wv: &Webview, x: f64, y: f64, w: f64, h: f64) -> Result<(), String> {
+    if let Some(main) = app.get_webview("main") {
+        main.with_webview(|pv| stage::install(&pv.inner())).map_err(|e| e.to_string())?;
+    }
+    wv.with_webview(move |pv| stage::place(&pv.inner(), x, y, w, h)).map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 pub async fn browser_open(app: AppHandle, id: String, url: String, x: f64, y: f64, w: f64, h: f64) -> Result<(), String> {
     let label = label(&id)?;
     let url = parse(&url)?;
     if let Some(existing) = app.get_webview(&label) {
         existing.navigate(url).map_err(|e| e.to_string())?;
-        return place(&existing, x, y, w, h);
+        return place(&app, &existing, x, y, w, h);
     }
     let window = app.get_window("main").ok_or("the main window is gone")?;
     let nav_app = app.clone();
@@ -192,18 +286,25 @@ pub async fn browser_open(app: AppHandle, id: String, url: String, x: f64, y: f6
         .map_err(|e| e.to_string())?;
     #[cfg(target_os = "macos")]
     inspector_in_own_window(&_wv);
+    #[cfg(target_os = "linux")]
+    place_linux(&app, &_wv, x, y, w, h)?;
     watch_console(app.clone(), id, label);
     Ok(())
 }
 
-fn place(wv: &Webview, x: f64, y: f64, w: f64, h: f64) -> Result<(), String> {
-    wv.set_position(LogicalPosition::new(x, y)).map_err(|e| e.to_string())?;
-    wv.set_size(LogicalSize::new(w.max(1.0), h.max(1.0))).map_err(|e| e.to_string())
+fn place(_app: &AppHandle, wv: &Webview, x: f64, y: f64, w: f64, h: f64) -> Result<(), String> {
+    #[cfg(target_os = "linux")]
+    return place_linux(_app, wv, x, y, w, h);
+    #[cfg(not(target_os = "linux"))]
+    {
+        wv.set_position(LogicalPosition::new(x, y)).map_err(|e| e.to_string())?;
+        wv.set_size(LogicalSize::new(w.max(1.0), h.max(1.0))).map_err(|e| e.to_string())
+    }
 }
 
 #[tauri::command]
 pub async fn browser_set_bounds(app: AppHandle, id: String, x: f64, y: f64, w: f64, h: f64) -> Result<(), String> {
-    place(&find(&app, &id)?, x, y, w, h)
+    place(&app, &find(&app, &id)?, x, y, w, h)
 }
 
 #[tauri::command]
