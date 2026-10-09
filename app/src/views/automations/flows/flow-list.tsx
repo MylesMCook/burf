@@ -1,4 +1,4 @@
-import { LockIcon, PackageIcon, PlusIcon, Settings2Icon, WorkflowIcon } from "lucide-react";
+import { LockIcon, PlusIcon, Settings2Icon, WorkflowIcon } from "lucide-react";
 
 import { Scene } from "@/components/art/scenes";
 import { openProjectSettings } from "@/components/skills/project-settings-dialog";
@@ -54,7 +54,7 @@ export function FlowList({
   const total = loaded.reduce((n, b) => n + (byBox[b].flows?.length ?? 0), 0);
   const firstBox = boxes[0];
   // A flow for a project on every box lives in the project's committed
-  // config (.berth/config.json) or its kit, which every box layers in.
+  // config (.berth/config.json), which every box layers in.
   const many = projects.filter((p) => new Set(p.members.map((m) => m.box.name)).size > 1);
 
   return (
@@ -105,7 +105,7 @@ export function FlowList({
       {many.length > 0 && (
         <p className="rounded-xl border bg-muted/40 px-4 py-3 text-muted-foreground text-xs">
           To run a flow for {many[0].name}
-          {many.length > 1 ? " and other projects" : ""} on every box that has it, commit it to the repository's <code>.berth/config.json</code> (or the project's kit): each box runs it from there. A flow saved here belongs to one box.
+          {many.length > 1 ? " and other projects" : ""} on every box that has it, commit it to the repository's <code>.berth/config.json</code>: each box runs it from there. A flow saved here belongs to one box.
         </p>
       )}
 
@@ -139,7 +139,7 @@ function ScopeGroup({
 }) {
   const { box, scope, flows } = group;
   const loc = scopeLocation(scope);
-  // A committed or kit flow overridden on this box shows once, as the
+  // A committed flow overridden on this box shows once, as the
   // override: the box runs only that one.
   const shown = flows.filter((f) => !isOverridden(f, flows));
 
@@ -213,14 +213,6 @@ function FlowRow({ f, run, onEdit, onToggle, overridden }: { f: ScopedFlow; run?
               <span className="inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-px text-[11px] text-muted-foreground">
                 <LockIcon className="size-2.5" />
                 In repo
-              </span>
-            </Tip>
-          )}
-          {f.source === "kit" && (
-            <Tip label="From the project's kit">
-              <span className="inline-flex shrink-0 items-center gap-1 rounded-md border px-1.5 py-px text-[11px] text-muted-foreground">
-                <PackageIcon className="size-2.5" />
-                From kit
               </span>
             </Tip>
           )}

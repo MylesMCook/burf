@@ -4,7 +4,6 @@ import type { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
-import { JoinTeamCard } from "@/views/team/team-entry";
 import { thisComputer } from "@/lib/platform";
 
 // WelcomeStep says what Burf is in a line and offers the quickest way in:
@@ -49,7 +48,6 @@ export function WelcomeStep({ local, onThisMac, onRemote, onJoin }: { local?: bo
           }
         />
       </div>
-      <JoinTeamCard />
       {onJoin && (
         <Button variant="ghost" className="mt-4 -ml-3 text-muted-foreground" onClick={onJoin}>
           I already use Burf on another computer

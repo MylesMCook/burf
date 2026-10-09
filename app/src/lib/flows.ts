@@ -1,9 +1,8 @@
 import type { AgentPreset, BerthEvent, Client, Hook } from "@/lib/api";
-import type { InstalledKit } from "@/lib/kits";
 
 // Flows are a box's automations: a trigger event, then steps run in order,
 // each on the previous step's success, failure, or always. They live on a
-// box (its own, or a repository's: committed, its kit's, or this box's) and
+// box (its own, or a repository's: committed or this box's) and
 // the box runs them; the app only edits and watches them. See
 // internal/box/flows.go.
 
@@ -70,10 +69,10 @@ export const DEFAULT_MAX_RUNS_PER_HOUR = 20;
 export type Scope = string;
 
 // "box": the box's own. A repository's flows come in layers, merged in this
-// order: "repo" (committed in .berth/config.json), "kit" (the project's kit),
-// "local" (this box's config for the repository). Repo and kit flows are
+// order: "repo" (committed in .berth/config.json), then "local" (this box's
+// config for the repository). Repo flows are
 // read-only here; a local flow with the same id overrides them.
-export type FlowSource = "box" | "repo" | "kit" | "local";
+export type FlowSource = "box" | "repo" | "local";
 
 export interface ScopedFlow {
   scope: Scope;
@@ -84,7 +83,7 @@ export interface ScopedFlow {
   flow: Flow;
 }
 
-const layer: Record<FlowSource, number> = { box: 0, repo: 0, kit: 1, local: 2 };
+const layer: Record<FlowSource, number> = { box: 0, repo: 0, local: 2 };
 const sameFlow = (a: ScopedFlow, b: ScopedFlow) => a.scope === b.scope && a.flow.id === b.flow.id;
 
 // isOverridden says whether a more local layer replaces f, so the box never
@@ -170,8 +169,6 @@ export interface LocationConfig {
   local: RepoConfig;
   // What applies: local laid over repo.
   effective: RepoConfig;
-  // The project's kit, a layer between repo and local.
-  kit?: InstalledKit;
 }
 
 export interface ServiceStatus extends WorktreeService {

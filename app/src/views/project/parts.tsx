@@ -1,10 +1,8 @@
-import { GitCommitHorizontalIcon, LaptopMinimalIcon, PackageIcon, ServerIcon, Undo2Icon } from "lucide-react";
-import { createContext, type ReactNode, useContext } from "react";
+import { GitCommitHorizontalIcon, LaptopMinimalIcon, ServerIcon, Undo2Icon } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import type { RepoConfig } from "@/lib/flows";
-import { kitHas } from "@/lib/kits";
 import { cn } from "@/lib/utils";
 import { Tip } from "@/components/tip";
 
@@ -25,24 +23,13 @@ export function Section({ id, title, description, actions, children }: { id: str
   );
 }
 
-export type Source = "repo" | "kit" | "box" | "override";
-
-// KitLayer is the project's kit, when it has one: its layer sits between the
-// committed config and this box's own, so a value under this box's can come
-// from either. The sections pass "repo" for that layer, and the badge tells
-// which by asking the kit.
-export const KitLayer = createContext<{ config?: RepoConfig; name?: string }>({});
-
-type KitField = Parameters<typeof kitHas>[1];
+export type Source = "repo" | "box" | "override";
 
 // SourceBadge says where a value comes from: committed in the repository,
-// the project's kit, set on this box, or this box overriding what's below.
-export function SourceBadge({ source, box, field, entry }: { source: Source; box: string; field?: KitField; entry?: string }) {
-  const kit = useContext(KitLayer);
-  if (source === "repo" && field && kitHas(kit.config, field, entry)) source = "kit";
+// set on this box, or this box overriding the committed value.
+export function SourceBadge({ source, box }: { source: Source; box: string }) {
   const map = {
     repo: { Icon: GitCommitHorizontalIcon, label: "Repo", cls: "text-muted-foreground", title: "Committed in the repository's .berth/config.json" },
-    kit: { Icon: PackageIcon, label: "Kit", cls: "text-violet-600 border-violet-500/25 dark:text-violet-400", title: `From the ${kit.name ?? "project's"} kit` },
     box: { Icon: ServerIcon, label: box, cls: "text-sky-400 border-sky-400/25", title: `Set on ${box} only` },
     override: { Icon: ServerIcon, label: `${box} override`, cls: "text-warning-foreground border-warning/30", title: `${box} replaces the committed value` },
   }[source];
@@ -66,9 +53,7 @@ export function LayeredScript({
   box,
   placeholder,
   onChange,
-  field,
 }: {
-  field?: KitField;
   label: string;
   hint: ReactNode;
   repo?: string;
@@ -83,7 +68,7 @@ export function LayeredScript({
     <div className="px-4 py-3.5">
       <div className="mb-1.5 flex items-center gap-2">
         <span className="font-medium text-sm">{label}</span>
-        {source && <SourceBadge source={source} box={box} field={field} />}
+        {source && <SourceBadge source={source} box={box} />}
         <span className="ml-auto flex gap-1">
           {repo && !overriding && (
             <Button size="xs" variant="ghost" onClick={() => onChange(repo)}>

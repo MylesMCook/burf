@@ -195,7 +195,7 @@ export function forgetPullRequest(key: string) {
 }
 
 // Events that can change what is waiting for review.
-const RELEVANT = /^(agent\.|worktree\.|session\.(started|stopped)|flow\.finished|exec\.finished|kit\.)/;
+const RELEVANT = /^(agent\.|worktree\.|session\.(started|stopped)|flow\.finished|exec\.finished)/;
 let started = false;
 
 // watchReview keeps the inbox current: on relevant events (debounced) and

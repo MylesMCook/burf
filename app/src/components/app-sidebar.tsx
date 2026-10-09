@@ -29,7 +29,6 @@ import { SIDEBAR_DEFAULT, SIDEBAR_MAX, SIDEBAR_MIN } from "@/lib/sidebar-width";
 import { WhatsNewNudge } from "@/components/whats-new/whats-new-dialog";
 import { cn } from "@/lib/utils";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
-import { TeamSidebarCard } from "@/views/team/team-entry";
 import { AlphaBadge } from "@/components/alpha-badge";
 import { LINUX_ALPHA, platformKeys } from "@/lib/platform";
 
@@ -90,8 +89,6 @@ export function AppSidebar() {
           </button>
           <PlacesNav />
         </div>
-        {/* A team setup while it runs, or a newer commit of one to review. */}
-        <TeamSidebarCard />
 
         <div className={cn("flex items-center justify-between pt-4 pr-2 pb-1 pl-3", noBoxes && "hidden")}>
           <span className="font-medium text-[11px] text-muted-foreground">Projects</span>

@@ -165,7 +165,6 @@ pub fn run() {
     builder
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_notification::init())
-        // berth://kit?src=… links someone shares open a kit's review.
         .plugin(tauri_plugin_deep_link::init())
         // The updater API stays available for a future signed Burf feed.
         // tauri.conf.json keeps its key and endpoints empty until then.

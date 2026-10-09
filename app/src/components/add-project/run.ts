@@ -2,22 +2,19 @@ import { basename, dirname } from "@/components/add-project/intent";
 import { shortPath } from "@/components/add-project/unique-name";
 import type { Plan } from "@/components/add-project/use-plan";
 import type { Location } from "@/lib/api";
-import { errorMessage } from "@/lib/format";
 import { plainError } from "@/lib/errors";
-import { type KitInfo, kitsApi } from "@/lib/kits";
 import { projectsApi } from "@/lib/projects";
 import { useStore } from "@/lib/store";
 
 // runPlan does what the plan says on the chosen box, then sets the same
 // repository up on the other boxes picked ("also on"), by cloning its remote
-// there, and applies the project's kit everywhere it landed. A project on
-// several boxes is one project: the copies join by their remote.
+// there. A project on several boxes is one project: the copies join by
+// their remote.
 
 export interface RunOptions {
   box: string;
   home?: string;
   also: string[];
-  kit?: KitInfo;
   signal: AbortSignal;
   onLine(box: string, line: string): void;
 }
@@ -75,28 +72,6 @@ export async function runPlan(plan: Plan, o: RunOptions): Promise<RunResult> {
         }
       }),
     );
-  }
-
-  // The kit goes wherever the project is new: a project that was already
-  // here keeps the setup it has.
-  const targets = [...(plan.do === "open" ? [] : [{ box, location: loc.name }]), ...extras.flatMap((e) => (e.loc ? [{ box: e.box, location: e.loc.name }] : []))];
-  if (o.kit && targets.length) {
-    o.onLine(targets[0].box, `Applying the ${o.kit.name} kit…`);
-    try {
-      const end = await kitsApi.apply(
-        client,
-        o.kit.id,
-        targets,
-        (l) => {
-          if (l.error) o.onLine(l.box ?? box, `kit: ${l.error}`);
-          l.warnings?.forEach((w) => o.onLine(l.box ?? box, `kit: ${w}`));
-        },
-        o.signal,
-      );
-      o.onLine(targets[0].box, end.error ? `kit: ${end.error}` : `Applied ${o.kit.name}.`);
-    } catch (err) {
-      o.onLine(targets[0].box, `kit: ${errorMessage(err)}`);
-    }
   }
 
   return { loc, extras };

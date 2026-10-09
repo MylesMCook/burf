@@ -16,17 +16,13 @@ import { Stepper } from "@/views/settings/controls";
 import { AgentsSection } from "@/views/project/agents-section";
 import { EnvSection } from "@/views/project/env-section";
 import { FlowsSection } from "@/views/project/flows-section";
-import { mergeConfig } from "@/lib/kits";
-import { KitSection } from "@/views/project/kit-section";
-import { KitLayer, LayeredScript, Section, SourceBadge } from "@/views/project/parts";
+import { LayeredScript, Section, SourceBadge } from "@/views/project/parts";
 import { ServicesSection } from "@/views/project/services-section";
-import { ProjectTeamKeys } from "@/views/team/team-keys-note";
 import { clean, useProjectConfig } from "@/views/project/use-project-config";
 import { ViewHeader } from "@/views/view-header";
 import { ErrorText } from "@/components/error-note";
 
 const SECTIONS = [
-  { id: "kit", label: "Kit" },
   { id: "scripts", label: "Setup & teardown" },
   { id: "env", label: "Environment" },
   { id: "ports", label: "Ports" },
@@ -43,9 +39,6 @@ export function ProjectView({ box, location }: { box: string; location: string }
   const { config, draft, setDraft, dirty, save, saving, discard, error, reload } = useProjectConfig(box, location);
   const urlPort = useStore((s) => s.status?.proxy.url_port ?? 1377);
   const repo = config?.repo ?? null;
-  // What this box's own layer sits on: the committed config, then the kit's.
-  const kit = config?.kit;
-  const base = kit ? mergeConfig(repo, kit.config) : repo;
 
   const trust = config?.repo_trust;
   const untrust = async () => {
@@ -154,16 +147,14 @@ export function ProjectView({ box, location }: { box: string; location: string }
                 <Skeleton className="h-56 rounded-xl" />
               </div>
             ) : (
-              <KitLayer.Provider value={{ config: kit?.config, name: kit?.name }}>
+              <>
                 <RepoTrustBanner box={box} location={location} config={config} onChanged={() => void reload()} />
-                <KitSection box={box} location={location} kit={kit} onChanged={() => void reload()} />
                 <Section id="scripts" title="Setup & teardown" description="Run in a new worktree after it is made, and before one is removed. A failing teardown keeps the worktree.">
                   <div className="divide-y divide-border/70">
                     <LayeredScript
                       label="Setup"
-                      field="setup"
                       hint="Install dependencies, create the worktree's database, seed it."
-                      repo={base?.setup}
+                      repo={repo?.setup}
                       local={draft.setup}
                       box={box}
                       placeholder="pnpm install && createdb $BERTH_WORKTREE_SLUG"
@@ -171,9 +162,8 @@ export function ProjectView({ box, location }: { box: string; location: string }
                     />
                     <LayeredScript
                       label="Teardown"
-                      field="archive"
                       hint="Drop what setup made, so a removed worktree leaves nothing behind."
-                      repo={base?.archive}
+                      repo={repo?.archive}
                       local={draft.archive}
                       box={box}
                       placeholder="dropdb --if-exists $BERTH_WORKTREE_SLUG"
@@ -182,16 +172,15 @@ export function ProjectView({ box, location }: { box: string; location: string }
                   </div>
                 </Section>
 
-                <ProjectTeamKeys box={box} location={location} env={{ ...(base?.env ?? {}), ...(draft.env ?? {}) }} onAdd={(keys) => setDraft({ ...draft, env: { ...Object.fromEntries(keys.map((k) => [k, ""])), ...(draft.env ?? {}) } })} />
-                <EnvSection repo={base} draft={draft} setDraft={setDraft} box={box} />
-                <PortsSection repo={base} draft={draft} setDraft={setDraft} box={box} />
-                <ServicesSection repo={base} draft={draft} setDraft={setDraft} box={box} location={location} urlPort={urlPort} />
-                <AgentsSection repo={base} draft={draft} setDraft={setDraft} box={box} />
+                <EnvSection repo={repo} draft={draft} setDraft={setDraft} box={box} />
+                <PortsSection repo={repo} draft={draft} setDraft={setDraft} box={box} />
+                <ServicesSection repo={repo} draft={draft} setDraft={setDraft} box={box} location={location} urlPort={urlPort} />
+                <AgentsSection repo={repo} draft={draft} setDraft={setDraft} box={box} />
                 <FlowsSection box={box} location={location} />
                 <section id="skills" className="scroll-mt-6">
                   <SkillsPanel box={box} location={location} />
                 </section>
-              </KitLayer.Provider>
+              </>
             )}
           </div>
         </div>
@@ -210,7 +199,7 @@ function PortsSection({ repo, draft, setDraft, box }: { repo: RepoConfig | null;
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 text-sm">
             Ports per worktree
-            {source && <SourceBadge source={source} box={box} field="ports" />}
+            {source && <SourceBadge source={source} box={box} />}
           </div>
           <div className="mt-1 flex flex-wrap gap-1">
             {names.map((n) => (

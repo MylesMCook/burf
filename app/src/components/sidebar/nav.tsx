@@ -10,7 +10,6 @@ import {
   InboxIcon,
   LayoutDashboardIcon,
   ListIcon,
-  PackageIcon,
   PinIcon,
   PinOffIcon,
   RotateCcwIcon,
@@ -79,7 +78,6 @@ export function useNavItems(): NavItem[] {
       { id: "worktrees", label: "Worktrees", icon: <GitBranchIcon />, go: open({ kind: "worktrees" }), active: view.kind === "worktrees" },
       { id: "automations", label: "Automations", icon: <WorkflowIcon />, go: open({ kind: "automations" }), active: view.kind === "automations" },
       ...(labs ? [{ id: "dashboard", ...dashboard }] : []),
-      { id: "kits", label: "Kits", icon: <PackageIcon />, go: open({ kind: "kits" }), active: view.kind === "kits" },
       ...plugins.map(({ plugin, item }) => ({
         id: `plugin:${plugin}:${item.id}`,
         label: item.title,

@@ -44,7 +44,6 @@ import { type StartDraft, sendWork, startWork } from "@/lib/start-work";
 import { load, save } from "@/lib/storage";
 import { NONE, useStore } from "@/lib/store";
 import { fill as fillTemplate, templateVariables } from "@/lib/templates";
-import { type InstalledKitOn, kitsApi } from "@/lib/kits";
 import { cn } from "@/lib/utils";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
 
@@ -619,29 +618,14 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
     if (!keepOpen) onDone?.({ mode: "start" });
   };
 
-  // Which box to choose, said in words: how loaded each is, whether its
-  // kit is there and current, and which is the project's default.
+  // Which box to choose: how loaded each is and which is the project's default.
   const multi = (project?.places.length ?? 0) > 1;
-  const [kits, setKits] = useState<InstalledKitOn[]>([]);
-  useEffect(() => {
-    const client = useStore.getState().client;
-    if (!multi || !client) return;
-    let live = true;
-    kitsApi.installed(client).then(
-      (k) => live && setKits(k),
-      () => {},
-    );
-    return () => {
-      live = false;
-    };
-  }, [multi]);
-  const boxDetail = (b: string, loc: string) => {
+  const boxDetail = (b: string) => {
     if (!multi) return undefined;
     const stats = boxesData[b]?.stats;
     const memory = stats?.memory.total ? Math.round((stats.memory.used / stats.memory.total) * 100) : undefined;
     const working = stats?.agents.filter((a) => a.state === "running").length ?? 0;
-    const kit = kits.find((k) => k.box === b && k.location === loc);
-    return [b === project?.defaultBox && "default", memory !== undefined && `${memory}% memory`, working > 0 && `${working} working`, kit && (kit.outdated ? "kit outdated" : `${kit.kit.name} kit`)].filter(Boolean).join(" · ") || undefined;
+    return [b === project?.defaultBox && "default", memory !== undefined && `${memory}% memory`, working > 0 && `${working} working`].filter(Boolean).join(" · ") || undefined;
   };
 
   // Nothing to start work in: say why, and offer the one way on.
@@ -842,7 +826,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
                 icon={<StatusDot state="online" />}
                 value={local ? `box:${box}` : box}
                 options={[
-                  ...(project?.places ?? []).map((m) => ({ value: local ? `box:${m.box.name}` : m.box.name, label: m.box.name, detail: boxDetail(m.box.name, m.loc.name) })),
+                  ...(project?.places ?? []).map((m) => ({ value: local ? `box:${m.box.name}` : m.box.name, label: m.box.name, detail: boxDetail(m.box.name) })),
                   ...(local ? [{ value: "local", label: `${local.name} · This computer` }] : []),
                 ]}
                 onPick={(value) => {

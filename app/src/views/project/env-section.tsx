@@ -235,7 +235,7 @@ export function EnvSection({ repo, draft, setDraft, box }: { repo: RepoConfig | 
                     {committed[k]}
                   </code>
                 )}
-                <SourceBadge source={source} box={box} field="env" entry={k} />
+                <SourceBadge source={source} box={box} />
                 <span className="flex justify-end">
                   {!mine && (
                     <Tip label={`Override on ${box}`}>

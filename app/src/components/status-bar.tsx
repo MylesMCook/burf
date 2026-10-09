@@ -16,7 +16,6 @@ import { useStore } from "@/lib/store";
 import { restartToUpdate, useAgentRestart, useUpdater } from "@/lib/updater";
 import { cn } from "@/lib/utils";
 import { PluginBoundary, pluginContexts } from "@/plugins/plugin-boundary";
-import { TeamStatusItem } from "@/views/team/team-entry";
 import { useRegistry } from "@/plugins/registry";
 import { openRenameWorktree } from "@/components/sidebar/rename-worktree";
 import { homeBox, useWorkspaces } from "@/lib/workspaces";
@@ -80,7 +79,6 @@ export function StatusBar() {
         </>
       )}
       <WorktreeItem />
-      <TeamStatusItem />
       <QueueIndicator />
       {items
         .filter((i) => i.item.align !== "right")

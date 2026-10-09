@@ -34,7 +34,7 @@ export function AutomationsView() {
 
   // Every place a new flow can live: each box, and each repo on it. A flow
   // for a project on every box is committed to the repository's
-  // .berth/config.json (or its kit), which each box runs from.
+  // .berth/config.json, which each box runs from.
   const scopes = useMemo(
     () => boxes.flatMap((box) => [{ box, scope: "box" as Scope }, ...(boxesData[box]?.locations ?? NONE).map((l) => ({ box, scope: `repo:${l.name}` }))]),
     [boxes, boxesData],
@@ -66,7 +66,7 @@ export function AutomationsView() {
       settle();
       return;
     }
-    // The flow that runs: an override, not the committed or kit flow it replaces.
+    // The flow that runs: an override, not the committed flow it replaces.
     const all = byBox[request.box]?.flows ?? [];
     const f = all.find((x) => x.scope === request.scope && x.flow.id === request.id && !isOverridden(x, all));
     if (f) {

@@ -165,7 +165,7 @@ export interface GuidedInstallRequest {
   agents: string[];
   // Start from this step; the ones before it are kept.
   from?: string;
-  // The whole plan and one terminal (Team setup's add a box); without it
+  // The whole plan and one terminal; without it
   // the install is quiet and a terminal shows only while sudo asks.
   guided?: boolean;
 }
