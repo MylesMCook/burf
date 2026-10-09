@@ -1,6 +1,6 @@
 import type { Page } from "@playwright/test";
 
-import { expect, mockOnly, test } from "./fixtures";
+import { expect, mockOnly, openTaskPickers, test } from "./fixtures";
 
 // Files dragged in from Finder (components/file-drop-guard.tsx): a file let
 // fall where nothing takes it must never open in the window's place, and
@@ -61,6 +61,7 @@ test("files dropped on Home's composer attach, and Start takes them", async ({ a
   const composer = page.getByTestId("task-composer");
   const editor = composer.getByRole("textbox", { name: "What should your agents work on?" });
   await expect(editor).toBeVisible();
+  await openTaskPickers(composer);
   // The files go to the project's box: wait until there is one (not
   // "Loading…" or "Connecting…" while the fixtures arrive).
   await expect(composer.getByRole("button", { name: /^Project: (?!Loading)/ })).toBeVisible();
