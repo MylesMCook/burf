@@ -138,7 +138,7 @@ test("uncertain remote sends retain the draft and reconnect never replays it", a
     await expect(draft).toHaveValue("Do not replay");
     f.control.offline = true;
     await app.page.getByRole("button", { name: "Refresh chat", exact: true }).click();
-    await expect(app.page.getByTestId("remote-chat").getByRole("status")).toHaveText("Disconnected");
+    await expect(app.page.getByTestId("remote-chat").getByRole("status")).toHaveText("Connection lost. The run kept going on the server.Reconnect");
     await expect(app.page.getByRole("button", { name: "Send message", exact: true })).toBeDisabled();
     f.control.offline = false;
     await app.page.getByRole("button", { name: "Refresh chat", exact: true }).click();
@@ -662,15 +662,15 @@ test("an artifact Codex adds shows as a card in its chat and opens from there", 
     await app.page.getByRole("region", { name: "Codex chats" }).getByRole("button", { name: /Codex chat/ }).click();
     const chat = app.page.getByTestId("remote-chat");
     const card = chat.locator('[data-art-card="a1b2c3d4e5"]');
-    await expect(card.locator("[data-art-title]")).toHaveText("Search speed-up plan");
-    await expect(card.locator("[data-art-version]")).toHaveText("v1");
+    await expect(card.getByText("Search speed-up plan", { exact: true })).toBeVisible();
+    await expect(card.locator("p").last()).toHaveText("Notes · v1");
     await expect(chat.locator("[data-art-card]")).toHaveCount(1);
     await expect(chat.getByText("“Not on the box” is no longer on the box")).toBeVisible();
-    // The command stays readable under Tool activity, and the chat's header leads to the worktree's board.
-    await expect(chat.getByText("Tool activity · 2")).toBeVisible();
+    // The command stays readable under the stock tool group, and the chat's header leads to the worktree's board.
+    await expect(chat.getByRole("button", { name: "2 tool calls", exact: true })).toBeVisible();
     await expect(chat.getByRole("button", { name: "1 artifact in this worktree" })).toBeVisible();
     await app.page.screenshot({ path: test.info().outputPath("chat-artifact.png") });
-    await card.getByRole("button", { name: "Open", exact: true }).click();
+    await chat.getByRole("button", { name: "Open Search speed-up plan", exact: true }).click();
     const pane = app.page.locator("[data-testid=pane][data-pane-kind=artifact]:visible");
     await expect(pane.getByRole("heading", { name: "Search speed-up plan" })).toBeVisible();
     await expect(pane).toContainText("Index first, then cache.");
@@ -688,7 +688,7 @@ test("a box that keeps no artifacts shows the command and no card", async ({ app
     await openWorktree(app);
     await app.page.getByRole("region", { name: "Codex chats" }).getByRole("button", { name: /Codex chat/ }).click();
     const chat = app.page.getByTestId("remote-chat");
-    await expect(chat.getByText("Tool activity · 1")).toBeVisible();
+    await expect(chat.getByRole("button", { name: "1 tool call", exact: true })).toBeVisible();
     await expect(chat.locator("[data-art-card], [data-testid=art-chip]")).toHaveCount(0);
     await expect(chat.getByText("no longer on the box")).toHaveCount(0);
   } finally { await f.agent.close(); }
@@ -765,11 +765,11 @@ test("Burf's own tool asks in the chat before it acts, once or not at all", asyn
     await app.page.getByRole("region", { name: "Codex chats" }).getByRole("button", { name: /Codex chat/ }).click();
     const ask = app.page.getByRole("region", { name: "Approval required" });
     // The question is in the person's words, with exactly what would run.
-    await expect(ask.getByRole("heading", { name: "Run this command outside the sandbox?" })).toBeVisible();
+    await expect(ask.getByRole("group", { name: "Run this command outside the sandbox?" })).toBeVisible();
     await expect(ask.locator("pre")).toHaveText("location: shop/fix\n$ make deploy");
     await expect(ask).toContainText("outside Codex's sandbox");
     // No standing yes for a tool.
-    await expect(ask.getByRole("button", { name: "Always in this chat" })).toHaveCount(0);
+    await expect(ask.getByRole("button", { name: "Allow for chat" })).toHaveCount(0);
     await expect(ask.getByRole("button", { name: "Allow always" })).toHaveCount(0);
     await expect(ask.getByRole("button", { name: "Deny", exact: true })).toBeVisible();
     await ask.getByRole("button", { name: "Allow once", exact: true }).click();

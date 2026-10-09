@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/popover";
 import {
   Command,
+  CommandCollection,
   CommandEmpty,
   CommandGroup,
   CommandInput,
@@ -28,7 +29,8 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
-import { RadioGroup as RadioGroupPrimitive } from "radix-ui";
+import { Radio as RadioPrimitive } from "@base-ui/react/radio";
+import { RadioGroup as RadioGroupPrimitive } from "@base-ui/react/radio-group";
 
 export type ModelSelectorEffortOption = {
   id: string;
@@ -411,11 +413,7 @@ function useLazyFlipSide(): {
   return { side, popupRef };
 }
 
-/**
- * Hidden input that anchors cmdk's keyboard navigation, keeping the list
- * keyboard-operable without a visible search box. ModelSelectorContent renders
- * one automatically when unfiltered.
- */
+// Base UI's input anchors keyboard navigation when search is hidden.
 function ModelSelectorFocusAnchor() {
   return (
     <div className="sr-only">
@@ -433,7 +431,7 @@ function ModelSelectorContent({
   children,
   ...props
 }: ModelSelectorContentProps) {
-  const { value } = useModelSelectorContext();
+  const { models } = useModelSelectorContext();
   const { side: renderedSide, popupRef } = useLazyFlipSide();
   const unfiltered =
     searchable === false || (!searchable && children === undefined);
@@ -446,15 +444,18 @@ function ModelSelectorContent({
       side={renderedSide ?? side ?? "bottom"}
       sideOffset={sideOffset}
       className={cn(
-        "bg-popover w-72 min-w-(--radix-popover-trigger-width) overflow-hidden rounded-xl p-0",
+        "bg-popover w-72 min-w-(--anchor-width) overflow-hidden rounded-xl p-0",
         className,
       )}
       {...props}
     >
       <Command
-        className="bg-transparent"
-        shouldFilter={!unfiltered}
-        {...(value !== undefined ? { defaultValue: value } : {})}
+        items={models}
+        itemToStringValue={(item) => (item as ModelOption).name}
+        filter={unfiltered ? null : (item, query) => {
+          const model = item as ModelOption;
+          return [model.id, model.name, ...(model.keywords ?? [])].some((term) => term.toLowerCase().includes(query.toLowerCase()));
+        }}
       >
         {unfiltered && <ModelSelectorFocusAnchor />}
         {children ?? (
@@ -495,8 +496,6 @@ function ModelSelectorList({
   children,
   ...props
 }: ModelSelectorListProps) {
-  const { models } = useModelSelectorContext();
-
   return (
     <CommandList
       data-slot="model-selector-list"
@@ -510,9 +509,7 @@ function ModelSelectorList({
         <>
           <ModelSelectorEmpty />
           <CommandGroup>
-            {models.map((model) => (
-              <ModelSelectorItem key={model.id} model={model} />
-            ))}
+            <CommandCollection>{(model: ModelOption) => <ModelSelectorItem key={model.id} model={model} />}</CommandCollection>
           </CommandGroup>
         </>
       )}
@@ -559,7 +556,7 @@ function ModelSelectorItem({
   model,
   className,
   children,
-  onSelect,
+  onClick,
   ...props
 }: ModelSelectorItemProps) {
   const { value, setValue, setOpen } = useModelSelectorContext();
@@ -568,13 +565,12 @@ function ModelSelectorItem({
   return (
     <CommandItem
       data-slot="model-selector-item"
-      value={model.id}
-      keywords={[model.name, ...(model.keywords ?? [])]}
+      value={model}
       {...(model.disabled ? { disabled: true } : undefined)}
-      onSelect={(selectedValue) => {
+      onClick={(event) => {
         setValue(model.id);
         setOpen(false);
-        onSelect?.(selectedValue);
+        onClick?.(event);
       }}
       className={cn(
         "relative items-start gap-2 rounded-lg py-2 ps-3 pe-9 [&_svg:not([class*='size-'])]:size-3.5",
@@ -608,10 +604,12 @@ function ModelSelectorItem({
 
 export type ModelSelectorEffortProps = ComponentPropsWithoutRef<"div"> & {
   label?: ReactNode;
+  disabled?: boolean;
 };
 
 function ModelSelectorEffort({
   label = "Thinking",
+  disabled,
   className,
   onKeyDown,
   ...props
@@ -630,43 +628,38 @@ function ModelSelectorEffort({
       onKeyDown={(e) => {
         onKeyDown?.(e);
         if (e.defaultPrevented) return;
-        // cmdk's Command root claims Home/End to jump the model list; stop
-        // them here so only the radiogroup reacts.
+        // Keep the model list from handling the reasoning group's keys.
         if (e.key === "Home" || e.key === "End") e.stopPropagation();
-        // Vertical arrows refocus cmdk's input before the event bubbles to
-        // the Command root: the same keypress then moves the list highlight,
-        // and Enter selects again (cmdk's Enter is inert while a radio has
-        // focus, so the highlight would otherwise move with no way to act).
         if (e.key === "ArrowUp" || e.key === "ArrowDown") {
           e.currentTarget
-            .closest("[cmdk-root]")
-            ?.querySelector<HTMLInputElement>("[cmdk-input]")
+            .closest('[data-slot="model-selector-content"]')
+            ?.querySelector<HTMLInputElement>('[data-slot="autocomplete-input"]')
             ?.focus();
         }
       }}
       {...props}
     >
       <span className="text-muted-foreground text-xs">{label}</span>
-      <RadioGroupPrimitive.Root
+      <RadioGroupPrimitive
+        disabled={disabled}
         value={effort ?? ""}
         onValueChange={setEffort}
-        orientation="horizontal"
         aria-label={typeof label === "string" ? label : "Reasoning effort"}
         className="flex items-center gap-0.5"
       >
         {efforts.map((option) => (
-          <RadioGroupPrimitive.Item
+          <RadioPrimitive.Root
             key={option.id}
             value={option.id}
             className={cn(
               "focus-visible:ring-ring/50 text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer rounded-md px-2 py-1 text-xs transition-colors outline-none focus-visible:ring-1",
-              "data-[state=checked]:bg-accent data-[state=checked]:text-accent-foreground data-[state=checked]:font-medium",
+              "data-checked:bg-accent data-checked:text-accent-foreground data-checked:font-medium",
             )}
           >
             {option.name}
-          </RadioGroupPrimitive.Item>
+          </RadioPrimitive.Root>
         ))}
-      </RadioGroupPrimitive.Root>
+      </RadioGroupPrimitive>
     </div>
   );
 }
