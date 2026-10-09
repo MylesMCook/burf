@@ -15,7 +15,7 @@ import { tryNow } from "@/lib/reconnect";
 import { useStore } from "@/lib/store";
 import { openEditor } from "@/components/editors/open";
 import { findPaths, resolveIn } from "@/lib/editor-paths";
-import { OVERLAYS } from "@/lib/overlays";
+import { somethingElseHasFocus } from "@/lib/focus-home";
 import { EchoPredictor } from "@/lib/predict-overlay";
 import { createTerminal, type TermHandle } from "@/lib/terminal";
 import { cn } from "@/lib/utils";
@@ -467,14 +467,4 @@ function useWindowShown(): boolean {
     return () => document.removeEventListener("visibilitychange", sync);
   }, []);
   return shown;
-}
-
-function somethingElseHasFocus(mine: HTMLElement | null): boolean {
-  if (document.querySelector(OVERLAYS)) return true;
-  const a = document.activeElement;
-  if (a?.closest(OVERLAYS)) return true;
-  if (!a || a === document.body || (mine && mine.contains(a))) return false;
-  // Another terminal is editable too, but the focused pane is this one.
-  if (a.closest("[data-terminal]")) return false;
-  return a instanceof HTMLInputElement || a instanceof HTMLTextAreaElement || a instanceof HTMLSelectElement || (a as HTMLElement).isContentEditable;
 }

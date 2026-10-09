@@ -69,6 +69,11 @@ pane to Terminal affects only that pane. Shells, unsupported agents and older
 boxes without transcripts default to Terminal. New remote chats use a bottom
 composer, like ongoing conversations.
 
+An agent chat opened in this window takes keyboard focus in its composer, or
+its first available control, using the terminal's selected-pane and editable-field
+guards. Background arrivals and restored layouts leave an existing draft or
+dialog's keyboard focus alone.
+
 New Windows-local Codex chats use the installed CLI's structured app-server
 protocol. New remote Codex chats do too when the Mac/Linux box advertises
 `chat.codex`. Existing remote terminal sessions, older boxes, Claude and

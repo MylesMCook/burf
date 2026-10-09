@@ -68,6 +68,7 @@ test("new remote Codex uses structured requests and reload recovers the same cha
     await app.page.getByRole("button", { name: "New Codex", exact: true }).click();
     await expect(app.page.getByTestId("remote-chat")).toBeVisible();
     await expect(app.page.getByRole("group", { name: "Show the agent as" })).toHaveCount(0);
+    await expect(app.page.getByRole("textbox", { name: "Message Codex" })).toBeFocused();
     await app.page.getByRole("textbox", { name: "Message Codex" }).fill("Exactly once");
     await app.page.getByRole("button", { name: "Send message", exact: true }).click();
     await expect(app.page.getByRole("article", { name: "Codex", exact: true })).toContainText("Structured reply");
@@ -131,6 +132,26 @@ test("uncertain remote sends retain the draft and reconnect never replays it", a
     await openWorktree(app);
     await expect(app.page.getByRole("textbox", { name: "Message Codex" })).toHaveValue("Do not replay");
     expect(f.calls.filter((c) => c.path.endsWith("/messages"))).toHaveLength(1);
+  } finally { await f.agent.close(); }
+});
+
+test("a structured chat's failed first read focuses Refresh chat and recovery keeps that focus", async ({ app }) => {
+  const f = await fixture(app.context);
+  const read = `${f.agent.url}/v1/boxes/${BOX}/api/chats/${f.chat.id}`;
+  await app.page.route(read, (route) => route.fulfill({ status: 503, json: { error: "Synthetic first-read failure" } }));
+  try {
+    await app.open({ agent: f.agent });
+    await openWorktree(app);
+    await app.page.getByRole("button", { name: "New Codex", exact: true }).click();
+    const refresh = app.page.getByRole("button", { name: "Refresh chat", exact: true });
+    const message = app.page.getByRole("textbox", { name: "Message Codex" });
+    await expect(app.page.getByTestId("remote-chat").getByRole("alert")).toContainText("Synthetic first-read failure");
+    await expect(message).toBeDisabled();
+    await expect(refresh).toBeFocused();
+    await app.page.unroute(read);
+    await refresh.press("Enter");
+    await expect(message).toBeEnabled();
+    await expect(refresh).toBeFocused();
   } finally { await f.agent.close(); }
 });
 
