@@ -126,17 +126,17 @@ export const localApi = {
 };
 
 // Older agents have no local API. Its absence must not hide paired boxes.
-export function useLocalComputer() {
+export function useLocalComputer(enabled = true) {
   const client = useStore((s) => s.client);
   const [local, setLocal] = useState<LocalComputer>();
   useEffect(() => {
     setLocal(undefined);
-    if (!client) return;
+    if (!client || !enabled) return;
     const controller = new AbortController();
     void localApi.status(client, controller.signal).then((value) => {
       if (!controller.signal.aborted) setLocal(value);
     }).catch(() => {});
     return () => controller.abort();
-  }, [client]);
+  }, [client, enabled]);
   return local;
 }

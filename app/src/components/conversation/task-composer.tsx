@@ -16,8 +16,11 @@ import { Tip } from "@/components/tip";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Frame, FrameFooter, FramePanel } from "@/components/ui/frame";
+import { Input } from "@/components/ui/input";
+import { MenuItem, MenuSeparator } from "@/components/ui/menu";
 import { Kbd } from "@/components/ui/kbd";
 import { toastManager } from "@/components/ui/toast";
+import { copyText } from "@/lib/clipboard";
 import { type SessionEntry, useAllSessions } from "@/hooks/use-agent-counts";
 import { agentPresets } from "@/lib/actions";
 import type { Worktree } from "@/lib/api";
@@ -30,7 +33,9 @@ import { handoffPrompt, reviewPrompt } from "@/lib/orchestrate";
 import { loadProjects, projectActions, useProjects } from "@/lib/project-groups";
 import { setPrefs, usePrefs } from "@/lib/prefs";
 import { promptFor, type ResolveKind, worktreeSlug } from "@/lib/projects";
-import { BASE_PERMISSIONS, chatPermissions, savedChatPermission, saveChatPermission } from "@/lib/local-computer";
+import { BASE_PERMISSIONS, chatPermissions, localAgentName, localApi, useLocalComputer, type LocalComputer, type LocalConversation, type LocalSession, savedChatPermission, saveChatPermission } from "@/lib/local-computer";
+import { errorMessage } from "@/lib/format";
+import { folderName, localFolders } from "@/lib/local-folders";
 import { hasChatOptions, hasFullAccess, hasRemoteCodex, useChatModels } from "@/lib/remote-chat";
 import { askedVariables, builtinValues, fill as fillPrompt, isBuiltin, usePrompts, variablesIn } from "@/lib/prompts";
 import { boxHasRuns } from "@/lib/runs";
@@ -96,6 +101,8 @@ export function defaultCheck(box: string, loc: string): string {
 
 export function TaskComposer(props: TaskComposerProps) {
   const draft = props.draft ?? EMPTY;
+  const local = useLocalComputer(!props.fixed && !props.to && !draft.from);
+  const [place, setPlace] = useState(draft.place);
   const [mode, setMode] = useState<"start" | "send">(draft.mode ?? "start");
   // What to do is kept across the two modes.
   const [text, setText] = useState(() => {
@@ -109,7 +116,11 @@ export function TaskComposer(props: TaskComposerProps) {
   };
   if (props.to) return <ToBody {...props} to={props.to} />;
   const tabs = !props.fixed && !draft.from ? <ModeTabs mode={mode} onMode={switchMode} /> : null;
-  return mode === "send" ? <SendBody {...props} draft={draft} text={text} setText={setText} tabs={tabs} /> : <StartBody {...props} draft={draft} text={text} setText={setText} tabs={tabs} />;
+  if (mode === "start" && local?.supported && place?.kind === "local") {
+    return <LocalStartBody {...props} draft={draft} text={text} setText={setText} tabs={tabs} local={local} onPlace={setPlace} />;
+  }
+  const startDraft = place?.kind === "box" ? { ...draft, box: place.box } : draft;
+  return mode === "send" ? <SendBody {...props} draft={draft} text={text} setText={setText} tabs={tabs} /> : <StartBody key={place?.kind === "box" ? place.box : "remote"} {...props} draft={startDraft} text={text} setText={setText} tabs={tabs} local={local?.supported ? local : undefined} onLocal={() => setPlace({ kind: "local" })} />;
 }
 
 interface BodyProps extends TaskComposerProps {
@@ -117,11 +128,122 @@ interface BodyProps extends TaskComposerProps {
   text: string;
   setText(t: string): void;
   tabs: React.ReactNode;
+  local?: LocalComputer;
+  onLocal?(): void;
+}
+
+// Local work uses the same editor, frame and pickers, with folders instead of worktrees.
+function LocalStartBody({ local, draft, text, setText, tabs, dialog, autoFocus, placeholder, onDone, onKind, className, onPlace }: BodyProps & { local: LocalComputer; onPlace(place: NonNullable<ComposerDraft["place"]>): void }) {
+  const client = useStore((s) => s.client)!;
+  const boxes = useStore((s) => s.status?.boxes ?? NONE_BOXES);
+  const [conversations, setConversations] = useState<LocalConversation[]>([]);
+  const [foldersReady, setFoldersReady] = useState(false);
+  const [historyError, setHistoryError] = useState("");
+  const folders = useMemo(() => localFolders(conversations, local.sessions ?? []), [conversations, local.sessions]);
+  const [cwd, setCwd] = useState(local.home);
+  const folderTouched = useRef(false);
+  const [typingFolder, setTypingFolder] = useState(false);
+  const [agentChoice, setAgent] = useState<string>(draft.agents?.[0]?.agent ?? "");
+  const available = local.agents.filter((a) => a.available);
+  const agent = available.find((a) => a.id === agentChoice) ?? available.find((a) => a.id === "codex" && a.can_chat) ?? available[0];
+  const structured = agent?.id === "codex" && !!agent.can_chat;
+  const presets: PickerPreset[] = available.map((a) => ({ id: a.id, name: localAgentName(a.id), command: a.id }));
+  const sel = agent ? toChosen([{ agent: agent.id }]) : {};
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [started, setStarted] = useState<LocalSession>();
+  const startedSession = useRef<LocalSession | undefined>(undefined);
+  const launch = useRef<AbortController | null>(null);
+  const inFlight = useRef(false);
+  const expanded = usePrefs((s) => s.taskComposerExpanded) || !agent;
+  const pickersId = useId();
+  useEffect(() => onKind?.("start"), [onKind]);
+  useEffect(() => {
+    const controller = new AbortController();
+    void localApi.conversations(client, controller.signal).then((history) => {
+      if (!controller.signal.aborted) setConversations(history ?? []);
+    }).catch(() => {
+      if (!controller.signal.aborted) setHistoryError("Recent folders are unavailable. You can still enter a folder path.");
+    }).finally(() => { if (!controller.signal.aborted) setFoldersReady(true); });
+    return () => controller.abort();
+  }, [client]);
+  useEffect(() => {
+    if (!folderTouched.current) setCwd(folders[0] ?? local.home);
+  }, [folders, local.home]);
+  useEffect(() => () => launch.current?.abort(), [client]);
+  const chooseFolder = (path: string) => { folderTouched.current = true; setCwd(path); };
+  const openSession = (session: LocalSession) => {
+    useStore.getState().setView({ kind: "local", session });
+    onDone?.({ mode: "start" });
+  };
+  const blocker = started ? "Open the agent already started" : !agent ? "No installed agent available" : !cwd.trim() ? "Choose a folder" : !foldersReady ? "Reading recent folders" : !structured && /[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]/.test(text) ? "Remove control characters from the prompt" : undefined;
+  const submit = async () => {
+    if (blocker || inFlight.current || startedSession.current || !agent) return;
+    inFlight.current = true;
+    const controller = new AbortController();
+    launch.current = controller;
+    setBusy(true); setError("");
+    try {
+      const session = structured
+        ? await localApi.startChat(client, cwd.trim(), controller.signal)
+        : await localApi.start(client, agent.id, cwd.trim(), controller.signal);
+      if (controller.signal.aborted) return;
+      startedSession.current = session;
+      setStarted(session);
+      let kept = false;
+      if (text.trim()) {
+        if (structured) await localApi.message(client, session.id, text);
+        // Nothing is typed into a terminal agent for the person: what its
+        // screen shows as it starts is not known here (a first-run question
+        // would take a Return as its answer). The prompt goes with them on
+        // the clipboard instead.
+        else kept = !(await copyText(text, `Prompt copied: paste it into ${localAgentName(agent.id)}'s terminal`));
+      }
+      if (controller.signal.aborted) return;
+      // A prompt that could not be copied stays here to be copied by hand.
+      if (!kept) setText("");
+      openSession(session);
+    } catch (e) {
+      if (!controller.signal.aborted) setError(errorMessage(e));
+    } finally {
+      inFlight.current = false;
+      if (!controller.signal.aborted) setBusy(false);
+    }
+  };
+  const summary = `${folderName(cwd) || "Choose folder"} on ${local.name} · this folder · ${agent ? localAgentName(agent.id) : "Choose agent"}`;
+  const folderOptions = [...new Set([...folders, cwd].filter(Boolean))].map((path) => ({ value: path, label: folderName(path), detail: path }));
+  return <fieldset disabled={busy} className="w-full min-w-0">
+    <Shell className={className} head={tabs}
+      editor={<Editor value={text} onChange={setText} onSubmit={() => void submit()} autoFocus={autoFocus} label="What should your agents work on?" placeholder={placeholder ?? "Describe a task, a bug to fix, an idea to try…"} />}
+      summary={<div className="flex min-w-0 items-center gap-1 px-1 pt-1">
+        <button type="button" data-testid="task-composer-summary" aria-expanded={expanded} aria-controls={pickersId} onClick={() => setPrefs({ taskComposerExpanded: !expanded })} className="flex min-h-8 min-w-0 items-center gap-1 rounded-md px-2.5 py-1 text-left text-muted-foreground text-xs outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
+          <span className="min-w-0 truncate">{summary}</span><ChevronDownIcon aria-hidden className={cn("size-3.5 shrink-0 opacity-72 transition-transform", expanded && "rotate-180")} />
+        </button>
+        {!expanded && <span className="ml-auto flex shrink-0"><SendButton label="Start" dialog={dialog} blocker={blocker} busy={busy} onClick={() => void submit()} /></span>}
+      </div>}
+      notice={<>
+        {!structured && agent && <p className="px-3 pt-2 text-xs text-muted-foreground">{localAgentName(agent.id)} starts in its terminal. Your prompt is copied for you to paste there.</p>}
+        {historyError && <p className="px-3 pt-2 text-xs text-muted-foreground">{historyError}</p>}
+        {error && <p role="alert" className="px-3 pt-2 text-sm text-destructive">{error}</p>}
+        {started && !busy && <Button size="sm" variant="outline" onClick={() => openSession(started)}>Open started {started.mode === "chat" ? "chat" : "terminal"}</Button>}
+      </>}
+      footer={<div id={pickersId} hidden={!expanded} className="w-full min-w-0">
+        {typingFolder && <label className="block px-2 pb-2 text-xs text-muted-foreground">Folder path<Input aria-label="Project directory" value={cwd} onChange={(e) => chooseFolder(e.target.value)} placeholder="Full folder path" /></label>}
+        <div data-slot="launch-toolbar" className="flex w-full min-w-0 flex-wrap items-center gap-x-0.5 gap-y-1">
+          <Pick label="Project" icon={<FolderIcon />} value={cwd} options={folderOptions} onPick={chooseFolder} footer={<><MenuSeparator /><MenuItem onClick={() => setTypingFolder(true)}>Type folder path…</MenuItem></>} />
+          <Pick label="Place" icon={<ServerIcon />} value="local" options={[{ value: "local", label: `${local.name} · This computer` }, ...boxes.filter((b) => b.state === "online").map((b) => ({ value: `box:${b.name}`, label: b.name }))]} onPick={(value) => { if (!busy && value !== "local") onPlace({ kind: "box", box: value.slice(4) }); }} />
+          <span className="px-2.5 text-xs text-muted-foreground">this folder</span>
+          <AgentsPicker presets={presets} sel={sel} copies={1} single onChange={(value) => { if (!busy) setAgent(Object.keys(value)[0] ?? ""); }} onCopies={() => {}} />
+          <span className="ml-auto flex shrink-0"><SendButton label="Start" dialog={dialog} blocker={blocker} busy={busy} onClick={() => void submit()} /></span>
+        </div>
+      </div>}
+    />
+  </fieldset>;
 }
 
 // ---- Starting work ------------------------------------------------------
 
-function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, placeholder, onDone, onKind, keepOpen, className }: BodyProps) {
+function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, placeholder, onDone, onKind, keepOpen, className, local, onLocal }: BodyProps) {
   const collapsible = !fixed && !draft.from;
   const rememberedExpanded = usePrefs((s) => s.taskComposerExpanded);
   const pickersId = useId();
@@ -523,7 +645,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
   };
 
   // Nothing to start work in: say why, and offer the one way on.
-  const noProjects = !pinned && settled && projects.length === 0;
+  const noProjects = !local && !pinned && settled && projects.length === 0;
 
   const setDefault = async (b: string) => {
     if (!project) return;
@@ -715,14 +837,20 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
                 footer={<AddProjectItem box={box} />}
               />
               {/* With one box there is nothing to choose or tell apart. */}
-              {(status?.boxes.length ?? 0) > 1 && <Pick
-                label="Box"
+              {((status?.boxes.length ?? 0) > 1 || local) && <Pick
+                label={local ? "Place" : "Box"}
                 icon={<StatusDot state="online" />}
-                value={box}
-                options={(project?.places ?? []).map((m) => ({ value: m.box.name, label: m.box.name, detail: boxDetail(m.box.name, m.loc.name) }))}
-                onPick={setBoxChoice}
+                value={local ? `box:${box}` : box}
+                options={[
+                  ...(project?.places ?? []).map((m) => ({ value: local ? `box:${m.box.name}` : m.box.name, label: m.box.name, detail: boxDetail(m.box.name, m.loc.name) })),
+                  ...(local ? [{ value: "local", label: `${local.name} · This computer` }] : []),
+                ]}
+                onPick={(value) => {
+                  if (local && value === "local") onLocal?.();
+                  else setBoxChoice(local ? value.slice(4) : value);
+                }}
+                footer={local && !project?.places.length ? <span className="sr-only">Choose a place</span> : project && project.places.length > 1 && box !== project.defaultBox ? <DefaultBoxItem box={box} onSet={() => void setDefault(box)} /> : undefined}
                 empty={status ? "No box online" : "Connecting…"}
-                footer={project && project.places.length > 1 && box !== project.defaultBox ? <DefaultBoxItem box={box} onSet={() => void setDefault(box)} /> : undefined}
               />}
             </>
           )}

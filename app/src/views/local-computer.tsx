@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tip } from "@/components/tip";
 import { type Client } from "@/lib/api";
+import { openComposer } from "@/lib/composer";
 import { errorMessage } from "@/lib/format";
-import { localAgentName, localApi, type LocalAgent, type LocalComputer, type LocalConversation, type LocalHistoryPage, type LocalSession } from "@/lib/local-computer";
+import { localAgentName, localApi, type LocalComputer, type LocalConversation, type LocalHistoryPage, type LocalSession } from "@/lib/local-computer";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { ViewHeader } from "@/views/view-header";
@@ -15,13 +16,15 @@ import { LocalChat } from "@/views/local-chat";
 
 const EMPTY: LocalHistoryPage["items"] = [];
 
-type Selection = { kind: "history"; conversation: LocalConversation } | { kind: "session"; session: LocalSession } | { kind: "new" };
+type Selection = { kind: "history"; conversation: LocalConversation } | { kind: "session"; session: LocalSession };
 
 export function LocalComputerView() {
   const client = useStore((s) => s.client)!;
   const [local, setLocal] = useState<LocalComputer>();
   const [conversations, setConversations] = useState<LocalConversation[]>([]);
-  const [selection, select] = useState<Selection>();
+  const view = useStore((s) => s.view);
+  const opened = view.kind === "local" ? view.session : undefined;
+  const [selection, select] = useState<Selection | undefined>(() => opened ? { kind: "session", session: opened } : undefined);
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -60,11 +63,16 @@ export function LocalComputerView() {
     setLocal((value) => value ? { ...value, sessions: [session, ...(value.sessions ?? []).filter((s) => s.id !== session.id)] } : value);
     select((current) => current?.kind === "session" && current.session.id === session.id ? { kind: "session", session } : current);
   }, []);
+  useEffect(() => {
+    if (!opened) return;
+    changeSession(opened);
+    select({ kind: "session", session: opened });
+  }, [opened, changeSession]);
 
   return <div className="@container/local flex h-full min-w-0 flex-col">
     <ViewHeader title={local?.name || "This computer"} description="This computer" actions={<>
       <Tip label="Refresh local conversations"><Button size="icon-sm" variant="ghost" aria-label="Refresh local conversations" disabled={loading} onClick={() => void refresh()}><RotateCwIcon className={cn("size-4", loading && "animate-spin")} /></Button></Tip>
-      <Button size="sm" disabled={!local?.supported} onClick={() => select({ kind: "new" })}><PlusIcon />New agent</Button>
+      <Button size="sm" disabled={!local?.supported} onClick={() => { select(undefined); openComposer({ place: { kind: "local" } }); }}><PlusIcon />New agent</Button>
     </>} />
     {error && <div role="alert" className="border-b px-4 py-2 text-sm text-destructive">{error}</div>}
     {local && !local.supported ? <p className="p-6 text-sm text-muted-foreground">Local agents are unavailable on this computer.</p> : <div className="flex min-h-0 flex-1">
@@ -92,7 +100,6 @@ export function LocalComputerView() {
           select((current) => current?.kind === "history" && current.conversation.id === conversationID ? { kind: "session", session } : current);
         }} />}
         {selection?.kind === "session" && (selection.session.mode === "chat" ? <LocalChat key={selection.session.id} client={client} session={selection.session} onChange={changeSession} /> : <LocalTerminal key={selection.session.id} client={client} session={selection.session} onChange={changeSession} />)}
-        {selection?.kind === "new" && local && <NewLocalAgent client={client} local={local} onStart={(session) => { changeSession(session); select({ kind: "session", session }); }} />}
         {!selection && <div className="m-auto px-6 text-sm text-muted-foreground">Select a conversation or start an agent.</div>}
       </section>
     </div>}
@@ -158,36 +165,4 @@ function LocalHistory({ client, conversation, canFork, onStart }: { client: Clie
     {startError && <p role="alert" className="px-4 py-2 text-sm text-destructive">{startError}</p>}
     <div className="min-h-0 flex-1" data-testid="local-history"><TranscriptThread items={page?.items ?? EMPTY} who={localAgentName(conversation.source)} readOnly /></div>
   </>;
-}
-
-function NewLocalAgent({ client, local, onStart }: { client: Client; local: LocalComputer; onStart(session: LocalSession): void }) {
-  const [agent, setAgent] = useState<LocalAgent | "">(local.agents.find((a) => a.available && a.can_chat)?.id ?? local.agents.find((a) => a.available)?.id ?? "");
-  const [cwd, setCwd] = useState(local.home);
-  const [busy, setBusy] = useState(false);
-  const structured = agent === "codex" && !!local.agents.find((a) => a.id === agent)?.can_chat;
-  const [error, setError] = useState("");
-  const launch = useRef<AbortController | null>(null);
-  useEffect(() => () => launch.current?.abort(), [client]);
-  return <form className="w-full max-w-xl space-y-4 p-6" onSubmit={async (e) => {
-    e.preventDefault();
-    if (!agent || !cwd.trim() || busy || launch.current && !launch.current.signal.aborted) return;
-    const controller = new AbortController();
-    launch.current = controller;
-    setBusy(true); setError("");
-    try {
-      const session = structured ? await localApi.startChat(client, cwd.trim(), controller.signal) : await localApi.start(client, agent, cwd.trim(), controller.signal);
-      if (!controller.signal.aborted) onStart(session);
-    }
-    catch (e) { if (!controller.signal.aborted) setError(errorMessage(e)); }
-    finally { if (launch.current === controller) launch.current = null; setBusy(false); }
-  }}>
-    <h2 className="text-base font-medium">New local agent</h2>
-    <label className="block space-y-1.5 text-sm"><span>Project directory</span><Input value={cwd} onChange={(e) => setCwd(e.target.value)} required disabled={busy} /></label>
-    <label className="block space-y-1.5 text-sm"><span>Agent</span><select className="h-9 w-full rounded-md border bg-background px-2 text-sm" value={agent} onChange={(e) => setAgent(e.target.value as LocalAgent)} disabled={busy}>
-      {!agent && <option value="">No installed agent available</option>}
-      {local.agents.map((a) => <option key={a.id} value={a.id} disabled={!a.available}>{localAgentName(a.id)}{!a.available && " (not installed)"}</option>)}
-    </select></label>
-    {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
-    <Button type="submit" disabled={busy || !agent || !cwd.trim()}>{structured ? <MessageSquareIcon /> : <TerminalIcon />}{busy ? "Starting..." : structured ? "Start chat" : "Start agent"}</Button>
-  </form>;
 }

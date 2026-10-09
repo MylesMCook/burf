@@ -4,6 +4,7 @@ import { boxApi, type BoxInfo, type Client, type Location, type Service, type Se
 import { closeComposer, fromOrchestrateDraft, fromWorktreeDraft, openComposer } from "@/lib/composer";
 import { errorMessage } from "@/lib/format";
 import { withLocalTitles } from "@/lib/local-titles";
+import type { LocalSession } from "@/lib/local-computer";
 import { coalesce } from "@/lib/net";
 import { share } from "@/lib/share";
 import { load, save } from "@/lib/storage";
@@ -26,7 +27,7 @@ export interface BoxData {
 export type View =
   | { kind: "workspace" }
   | { kind: "dashboard" }
-  | { kind: "local" }
+  | { kind: "local"; session?: LocalSession }
   // open, when set, opens the flow editor: a flow by id, or a new one there.
   | { kind: "automations"; open?: { box: string; scope: string; id?: string } }
   | { kind: "project"; box: string; location: string }
