@@ -62,9 +62,7 @@ const chat = async (app: App, wt: string) => {
 
 test("start a task from Home with the keyboard", async ({ app }) => {
   mockOnly("starts an agent");
-  // Burf opens agents as chat by default, where a new pane does not yet take
-  // the keyboard; upstream's assertion holds for the terminal view it assumes.
-  await app.open({ params: { view: "terminal" } });
+  await app.open();
   const page = app.page;
   const box = page.getByTestId("task-composer").getByRole("textbox").first();
   await box.focus();
@@ -79,7 +77,9 @@ test("start a task from Home with the keyboard", async ({ app }) => {
   await page.keyboard.press("Enter");
   // The new task's pane opens and has the keyboard.
   await expect(app.panes.first()).toBeVisible();
+  await expect(app.composer.getByRole("textbox", { name: "Reply" })).toBeFocused();
   await notLost(page);
+  expect(await shows(page)).toBe(true);
 });
 
 test("Tab and Shift-Tab on Home: every stop shows, none is lost", async ({ app }) => {
@@ -174,12 +174,11 @@ test("⌘P opens a file in the editor, which takes the keyboard, and ⌘S saves 
 
 test("⌘⇧E puts the keyboard in the Files panel, and New file names one there", async ({ app }) => {
   mockOnly("writes a file on a box");
-  // Burf opens agents as chat by default; this path is the terminal's.
-  await app.open({ params: { view: "terminal" } });
+  await app.open();
   await app.openWorktree("devl/checkout-fix");
   const page = app.page;
-  // From its terminal, which takes the keyboard as it attaches.
-  await expect.poll(() => focused(page).then((f) => f?.label)).toBe("Terminal input");
+  // From its chat composer, which takes the keyboard when the pane opens.
+  await expect(app.composer.getByRole("textbox", { name: "Reply" })).toBeFocused();
   await page.keyboard.press("ControlOrMeta+Shift+E");
   const panel = page.getByTestId("files-panel");
   await expect(panel).toBeVisible();

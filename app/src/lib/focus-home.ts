@@ -25,10 +25,49 @@ export function firstFocusable(root: ParentNode | null | undefined, keep: (el: H
   for (const sel of ["[data-autofocus]", FIELD, CONTROL]) {
     // data-focus-skip: a way back, or a toolbar's refresh, which is never
     // where a step starts.
-    const hit = [...root.querySelectorAll(sel)].find((el): el is HTMLElement => shown(el) && keep(el) && !el.closest("[data-focus-skip]"));
+    const hit = [...root.querySelectorAll(sel)].find((el): el is HTMLElement => shown(el) && !el.matches(":disabled") && keep(el) && !el.closest("[data-focus-skip]"));
     if (hit) return hit;
   }
   return undefined;
+}
+
+// Shared with the terminal: a selected pane never takes the keyboard from
+// an overlay or another editable field.
+export function somethingElseHasFocus(mine: HTMLElement | null): boolean {
+  if (document.querySelector(OVERLAYS)) return true;
+  const a = document.activeElement;
+  if (a?.closest(OVERLAYS)) return true;
+  if (!a || a === document.body || (mine && mine.contains(a))) return false;
+  // Another terminal is editable too, but the focused pane is this one.
+  if (a.closest("[data-terminal]")) return false;
+  return a instanceof HTMLInputElement || a instanceof HTMLTextAreaElement || a instanceof HTMLSelectElement || (a as HTMLElement).isContentEditable;
+}
+
+// A chat takes focus once per selection, as soon as its content is ready.
+// Background tabs/splits aren't selected. Stop observing after the first
+// target or competing field, so later replies never move the keyboard.
+export function useChatPaneFocus(ref: RefObject<HTMLElement | null>, active: boolean) {
+  useEffect(() => {
+    const root = ref.current;
+    if (!active || !root) return;
+    const focus = () => {
+      if (root.contains(document.activeElement) || somethingElseHasFocus(root)) {
+        observer.disconnect();
+        return;
+      }
+      // A structured chat draws its disabled composer before its first read.
+      // Wait for that composer rather than taking a toolbar button instead.
+      const composer = root.querySelector<HTMLElement>("[data-autofocus]");
+      const target = composer ? (shown(composer) && !composer.matches(":disabled") ? composer : undefined) : firstFocusable(root);
+      if (!target) return;
+      target.focus({ preventScroll: true });
+      observer.disconnect();
+    };
+    const observer = new MutationObserver(focus);
+    observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ["disabled", "data-autofocus"] });
+    focus();
+    return () => observer.disconnect();
+  }, [ref, active]);
 }
 
 export function homeTarget(): HTMLElement | undefined {
