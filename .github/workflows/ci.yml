@@ -29,7 +29,9 @@ jobs:
   # and a push to main with what main was. A release's checks and a run
   # started by hand have nothing to compare with: they run everything.
   # A push to main whose tree is a pull request's, already green here, has
-  # nothing left to prove and runs nothing.
+  # only the browser suite left to prove: that suite runs before a push, on
+  # the owner's machine (scripts/check-local.sh), and here once per merge,
+  # not on every push to a pull request.
   changes:
     runs-on: ubuntu-latest
     permissions:
@@ -68,8 +70,8 @@ jobs:
               # same tree passed there, under the same rule.
               if head="$(git rev-parse -q --verify HEAD^2)" && [ "$(git rev-parse HEAD^{tree})" = "$(git rev-parse "$head^{tree}")" ] &&
                 [ "$(gh api "repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$head&event=pull_request&status=success&per_page=1" --jq .total_count)" -gt 0 ]; then
-                echo "main is $head's tree, which passed on its pull request"
-                : | pick
+                echo "main is $head's tree, which passed on its pull request: the browser suite is left"
+                git diff --name-only HEAD^1 HEAD | pick --only=e2e
               elif git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
                 git diff --name-only "$BEFORE" HEAD | pick
               else
@@ -203,7 +205,7 @@ jobs:
           fi
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       # ubuntu-latest ships shellcheck. install.sh is served at berthd.app/install.
-      - run: shellcheck site/install.sh scripts/build-release.sh scripts/build-tmux.sh scripts/publish.sh scripts/mac-release.sh
+      - run: shellcheck scripts/check-local.sh site/install.sh scripts/build-release.sh scripts/build-tmux.sh scripts/publish.sh scripts/mac-release.sh
       # The release tests (warnings and errors; their style is their own).
       - run: shellcheck -x -S warning scripts/release-check.sh scripts/fresh-user-test.sh scripts/linux-box-test.sh scripts/upgrade-test.sh scripts/release-test/common.sh scripts/release-test/macos/lib.sh scripts/release-test/macos/launchctl scripts/release-test/linux/lib.sh scripts/release-test/linux/fake-chromium
       - run: sh -n site/install.sh && dash -n site/install.sh
@@ -261,11 +263,13 @@ jobs:
 
   # The browser suite (e2e/): the production build in Playwright's Chromium,
   # on the mock fixtures, with no page error allowed, in three parts side by
-  # side. Tags use release verification instead; pull requests and pushes to
-  # main require every part to pass.
+  # side. Tags use release verification instead. A pull request's change
+  # passes it on the owner's machine before the push (scripts/check-local.sh);
+  # here it runs once per merge to main, and every part must pass.
   e2e:
     needs: changes
-    if: ${{ needs.changes.outputs.e2e == 'true' && !startsWith(github.ref, 'refs/tags/') }}
+    # Not on a pull request: see the changes job.
+    if: ${{ needs.changes.outputs.e2e == 'true' && github.event_name != 'pull_request' && !startsWith(github.ref, 'refs/tags/') }}
     strategy:
       fail-fast: false
       matrix:
