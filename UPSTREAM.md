@@ -184,6 +184,11 @@ Adapted to Burf rather than taken as written:
   list, which fails the accessibility check for Settings › Boxes; it is a list
   item here. Upstream's slow-link case matches the reconnecting "Retry" button
   by its exact name, because Burf also has "Retry build check" on that page.
+- Two upstream cases pressed keys before the page was ready for them and
+  failed now and then: the predictive-echo case typed a box's name into the
+  New terminal picker before its list had come down to that box, and the
+  tab-churn case pressed the close shortcut while the New tab menu was still
+  closing. Each now waits for that state first; no assertion changed.
 - Correct translated docs/repository links and release claims, retain honest
   Shipyard attribution/history, and freeze historical design/demo assets.
 

@@ -15,7 +15,13 @@ async function openShell(page: Page) {
   await page.keyboard.press("Meta+KeyT");
   const picker = page.getByRole("dialog", { name: "New terminal on a box" });
   await expect(picker).toBeVisible();
+  // Its field takes the keyboard a moment after the dialog shows; typed
+  // before then, the box's name goes nowhere and Enter picks nothing.
+  await expect(picker.getByPlaceholder("New terminal on…")).toBeFocused();
   await page.keyboard.type("gpu");
+  // Enter opens the box the list has come down to, once it has.
+  await expect(picker.locator("[data-box]")).toHaveCount(1);
+  await expect(picker.locator("[data-box=gpu]")).toBeVisible();
   await page.keyboard.press("Enter");
   await expect(picker).toBeHidden();
   const pane = page.locator("[data-testid=pane][data-pane-kind=terminal]:visible");
