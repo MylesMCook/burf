@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 import { type ChatBackground, DEFAULT_CHAT_BACKGROUND, normalizeChatBackground } from "@/lib/chat-background";
+import type { CustomFontInfo } from "@/lib/custom-font-file";
 import type { HomeLayout } from "@/lib/home-layout";
 import { clampWidth, SIDEBAR_DEFAULT } from "@/lib/sidebar-width";
 import { load, save } from "@/lib/storage";
@@ -10,6 +11,11 @@ import { DEFAULT_TERMINAL_PREFS, type TerminalPrefs } from "@/lib/terminal";
 
 export interface Prefs {
   terminal: TerminalPrefs;
+  // Custom font bytes live in IndexedDB, not in these preferences.
+  customFonts: CustomFontInfo[];
+  interfaceFont: string | null;
+  codeFont: string | null;
+  terminalFont: string | null;
   notify: { waiting: boolean; finished: boolean; setupFailed: boolean; sound: boolean };
   density: "compact" | "comfortable";
   uiFontSize: number;
@@ -80,6 +86,10 @@ export const CHAT_WIDTHS: Record<ChatWidth, string> = { narrow: "640px", default
 
 const DEFAULTS: Prefs = {
   terminal: DEFAULT_TERMINAL_PREFS,
+  customFonts: [],
+  interfaceFont: null,
+  codeFont: null,
+  terminalFont: null,
   notify: { waiting: true, finished: true, setupFailed: true, sound: false },
   density: "compact",
   uiFontSize: 13,

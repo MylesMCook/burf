@@ -10,6 +10,7 @@ import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { berthThemes } from "@/themes/builtin";
 import { ChatBackgroundSettings, ChatWidthSettings } from "@/views/settings/chat-background-section";
+import { CustomFontSettings } from "@/views/settings/custom-font-section";
 import { Segmented } from "@/views/settings/controls";
 import { Code, SettingsGroup, SettingsPage, SettingsRow } from "@/views/settings/rows";
 import { IS_MAC } from "@/lib/platform";
@@ -87,6 +88,8 @@ export function AppearanceSection() {
           />
         </SettingsRow>
       </SettingsGroup>
+
+      <CustomFontSettings />
 
       <ChatWidthSettings />
 
