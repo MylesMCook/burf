@@ -121,6 +121,21 @@ export const NONE: never[] = [];
 
 const persisted = load<{ themeId?: string }>("berth.ui", {});
 
+// When the session rows a box holds were asked for: the start of that read,
+// not its arrival, which can be late (lib/notification-state.ts). Kept beside
+// the store, not in it: it changes with every read, and a read that changes
+// no rows must draw nothing.
+const sessionsAskedAt = new Map<string, string>();
+export const sessionsAsked = (box: string) => sessionsAskedAt.get(box);
+
+// onSessionsRead calls fn after each successful session read of a box,
+// whether or not its rows changed.
+const sessionReads = new Set<(box: string) => void>();
+export function onSessionsRead(fn: (box: string) => void) {
+  sessionReads.add(fn);
+  return () => void sessionReads.delete(fn);
+}
+
 export const useStore = create<State & Actions>()((set, get) => ({
   connection: { state: "connecting" },
   boxes: {},
@@ -153,7 +168,12 @@ export const useStore = create<State & Actions>()((set, get) => ({
   async refreshBox(box, parts = ALL_PARTS) {
     const { client } = get();
     if (!client) return;
+    const asked = new Date().toISOString();
     const results = await Promise.allSettled(parts.map((p) => fetchers[p](client, box)));
+    // The rows about to be kept are the ones asked for then, even if a read
+    // started later has already landed.
+    const readSessions = results[parts.indexOf("sessions")]?.status === "fulfilled";
+    if (readSessions) sessionsAskedAt.set(box, asked);
     set((s) => {
       const prev = s.boxes[box];
       const next: BoxData = { ...prev, error: undefined };
@@ -168,6 +188,7 @@ export const useStore = create<State & Actions>()((set, get) => ({
       if (prev && prev.error === next.error && parts.every((p) => prev[p] === next[p])) return s;
       return { boxes: { ...s.boxes, [box]: next } };
     });
+    if (readSessions) for (const fn of sessionReads) fn(box);
   },
 
   // One at a time: a reconnect, a focus, an event and the poll landing
