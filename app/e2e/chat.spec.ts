@@ -13,6 +13,10 @@ test("a worktree's agent opens as its chat", async ({ app }) => {
   await expect(app.chat).toBeVisible();
   await expect(app.chat.locator("[data-testid=chat-item]").first()).toBeVisible();
   await expect(app.composer.getByRole("textbox", { name: "Reply" })).toBeVisible();
+  // An agent waiting on the person says so with its own card, and nothing
+  // else marks the turn as running.
+  await expect(app.chat.getByLabel("Assistant is working")).toHaveCount(0);
+  await expect(app.chat.getByText("●", { exact: true })).toHaveCount(0);
   // The tab strip names the agent's tab; with one worktree there are no groups.
   await expect(app.page.locator("[data-tab-strip] [data-tab]").first()).toBeVisible();
   await expect(app.page.locator("[data-tab-strip] [data-group]")).toHaveCount(0);

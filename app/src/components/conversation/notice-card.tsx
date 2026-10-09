@@ -1,5 +1,5 @@
 import { CircleAlertIcon, GaugeIcon, KeyRoundIcon, OctagonXIcon, PlayIcon, RotateCwIcon, SquareIcon, SquareTerminalIcon, TriangleAlertIcon, WebhookIcon } from "lucide-react";
-import { createContext, type ReactNode, useContext, useEffect, useState } from "react";
+import { createContext, type ReactNode, useContext, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import type { NoticeKind, TranscriptItem } from "@/lib/transcript";
@@ -20,9 +20,27 @@ export interface ChatActions {
 
 const Scope = createContext<ChatActions | undefined>(undefined);
 
-// ChatScope gives the notices in a conversation their next steps.
+// ChatScope gives the notices in a conversation their next steps. What a
+// notice holds stays the same from one draw of the pane to the next (the
+// pane makes its actions afresh each time), so a notice draws again only
+// when who it speaks of changes, not with every word the agent streams.
 export function ChatScope({ value, children }: { value: ChatActions; children: ReactNode }) {
-  return <Scope.Provider value={value}>{children}</Scope.Provider>;
+  const now = useRef(value);
+  now.current = value;
+  const { who } = value;
+  const send = !!value.send;
+  const showTerminal = !!value.showTerminal;
+  const startAgain = !!value.startAgain;
+  const held = useMemo<ChatActions>(
+    () => ({
+      who,
+      send: send ? (text) => now.current.send?.(text) : undefined,
+      showTerminal: showTerminal ? () => now.current.showTerminal?.() : undefined,
+      startAgain: startAgain ? () => now.current.startAgain?.() : undefined,
+    }),
+    [who, send, showTerminal, startAgain],
+  );
+  return <Scope.Provider value={held}>{children}</Scope.Provider>;
 }
 
 type Notice = Extract<TranscriptItem, { kind: "notice" }>;

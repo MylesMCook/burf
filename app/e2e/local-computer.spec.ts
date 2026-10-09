@@ -80,7 +80,7 @@ test("local computer opens read-only history and older messages without session 
     // Older messages join the same thread, each named for who said it.
     const history = app.page.getByTestId("local-history");
     await expect(history.getByRole("article", { name: "You", exact: true }).filter({ hasText: "Earlier request" })).toBeVisible();
-    await expect(history.getByRole("article", { name: "You", exact: true })).toHaveText(["Earlier request", "My saved request"]);
+    await expect(history.getByRole("article", { name: "You", exact: true }).locator("[data-prompt-text]")).toHaveText(["Earlier request", "My saved request"]);
     await expect(history.getByRole("article", { name: "Codex", exact: true })).toContainText("Saved response");
     await expect(history).toContainText("Historical permission");
     // A record that ended on an unanswered question is not an agent at work.

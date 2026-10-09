@@ -12,6 +12,7 @@ import { keyOf, useConversations } from "@/lib/conversation-store";
 import { ago } from "@/lib/format";
 import { openUrl } from "@/lib/open-url";
 import type { Artifact, TranscriptItem } from "@/lib/transcript";
+import { turnItems, type TranscriptTurn } from "@/lib/transcript-thread";
 import { cn } from "@/lib/utils";
 
 // Artifacts are the pages an agent published on claude.ai with Claude
@@ -181,17 +182,16 @@ let jumps = 0;
 const jumpTo = (chat: string, tool: string) => useJump.setState({ to: { chat, tool, n: ++jumps } });
 export const showInChat = (chat: string, item: string) => useJump.setState({ to: { chat, item, n: ++jumps } });
 
-type Row = { kind: "item"; it: TranscriptItem } | { kind: "fold" | "pings" };
-
 // ArtifactJumper brings a card the list asked for into view and marks it
 // for a moment. A card further back than the chat holds loads the older
 // turns, a page at a time, until it is found or the chat begins.
-export function ArtifactJumper({ api, chat, rows, older, onLoadOlder }: { api: ChatListApi; chat: string; rows: Row[]; older?: { loading: boolean; more: boolean }; onLoadOlder?(): void }) {
+export function ArtifactJumper({ api, chat, rows, older, onLoadOlder }: { api: ChatListApi; chat: string; rows: TranscriptTurn[]; older?: { loading: boolean; more: boolean }; onLoadOlder?(): void }) {
   const to = useJump((s) => (s.to?.chat === chat ? s.to : undefined));
   const handled = useRef(0);
   useEffect(() => {
     if (!to || handled.current === to.n) return;
-    const i = rows.findIndex((r) => r.kind === "item" && (to.item ? r.it.id === to.item : r.it.kind === "artifact" && r.it.tool === to.tool));
+    const matches = (it: TranscriptItem) => to.item ? it.id === to.item : it.kind === "artifact" && it.tool === to.tool;
+    const i = rows.findIndex((turn) => turnItems(turn).some(matches));
     if (i < 0) {
       if (older?.loading) return;
       if (older?.more && onLoadOlder) return void onLoadOlder();
@@ -202,7 +202,7 @@ export function ArtifactJumper({ api, chat, rows, older, onLoadOlder }: { api: C
     }
     handled.current = to.n;
     api.scrollToRow(i);
-    const id = (rows[i] as { it: TranscriptItem }).it.id;
+    const id = turnItems(rows[i]).find(matches)!.id;
     // Once it is drawn where it was scrolled to.
     window.setTimeout(() => {
       const el = api.scroller?.querySelector<HTMLElement>(`[data-item-id="${CSS.escape(id)}"] > *`);

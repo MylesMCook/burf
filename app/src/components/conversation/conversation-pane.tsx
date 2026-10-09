@@ -6,7 +6,8 @@ import { AttachmentChips, useAttachments } from "@/components/conversation/attac
 import { Scene, type SceneName } from "@/components/art/scenes";
 import { ChatBackground } from "@/components/conversation/chat-background";
 import { ChatControls } from "@/components/conversation/chat-controls";
-import { ConversationView, type EditActions, QueuedBubble } from "@/components/conversation/conversation-view";
+import { TranscriptList } from "@/components/conversation/transcript-thread";
+import { type EditActions, QueuedBubble } from "@/components/conversation/transcript-item";
 import { ChatScope } from "@/components/conversation/notice-card";
 import { PixelLoader } from "@/components/pixel-loader";
 import { useComposerMenu } from "@/components/conversation/command-menu";
@@ -126,6 +127,12 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
   const [stuck, setStuck] = useState<{ at?: string; why: string }>();
   const stuckNow = stuck && stuck.at === s?.state_since ? stuck.why : undefined;
   const answerable = formAsk && canAnswer && agent === "claude" && !stuckNow;
+  // What a question card reads: the same object from one draw to the next
+  // unless one of these changed, so a card draws again only then.
+  const submitNow = useRef<(tool: string, answers: QuestionAnswer[]) => Promise<void>>(async () => {});
+  const liveTool = formAsk ? openQ?.tool : undefined;
+  const mayAnswer = canAnswer && agent === "claude";
+  const questions = useMemo(() => ({ live: liveTool, canAnswer: mayAnswer, stuck: stuckNow, submit: (tool: string, answers: QuestionAnswer[]) => submitNow.current(tool, answers) }), [liveTool, mayAnswer, stuckNow]);
   // Comments on the diff are kept per worktree, as Review keys them.
   const wt = s ? worktreeOf(locations, s) : undefined;
   const reviewKey = wt ? `${box}|${wt.worktree.path}` : undefined;
@@ -353,6 +360,8 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
     }
   };
 
+  submitNow.current = submitQuestions;
+
   const reply = async (text: string) => {
     if (mock && state !== "running") {
       useConversations.getState().push(key, { kind: "user", id: `u${Date.now()}`, text });
@@ -502,8 +511,8 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
           </div>
         ) : (
           <ChatScope value={{ who, send: reply, showTerminal: onShowTerminal, startAgain: again }}>
-            <QuestionsContext value={{ live: formAsk ? openQ?.tool : undefined, canAnswer: canAnswer && agent === "claude", stuck: stuckNow, submit: submitQuestions }}>
-              <ConversationView chat={{ box, session, agent, visible, idle: state !== "running" && state !== "waiting" }} items={live.show ? shown.filter((it) => it.kind !== "thinking") : shown} onAnswer={answer} edits={edits} who={who} tail={tail} tailSize={queue.items.length + (untaken ? 1 : 0)} />
+            <QuestionsContext value={questions}>
+              <TranscriptList chat={{ box, session, agent, visible, idle: state !== "running" && state !== "waiting" }} items={live.show ? shown.filter((it) => it.kind !== "thinking") : shown} onAnswer={answer} edits={edits} who={who} tail={tail} tailSize={queue.items.length + (untaken ? 1 : 0)} />
             </QuestionsContext>
           </ChatScope>
         )}

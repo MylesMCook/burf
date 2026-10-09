@@ -8,7 +8,7 @@ import {
 import { File } from "@/components/assistant-ui/elements/file";
 import { ThreadFollowupSuggestions } from "@/components/assistant-ui/elements/follow-up-suggestions.aui";
 import { Image } from "@/components/assistant-ui/elements/image";
-import { MarkdownText } from "@/components/assistant-ui/elements/markdown-text";
+import { Markdown } from "@/components/conversation/markdown";
 import {
   Reasoning,
   ReasoningContent,
@@ -91,6 +91,8 @@ const reasoningDuration = (timing: ThreadGroupPart["timing"]) =>
  */
 export type ThreadComponents = {
   AssistantMessage?: ComponentType | undefined;
+  UserMessage?: ComponentType | undefined;
+  Text?: TextMessagePartComponent | undefined;
   Welcome?: ComponentType | undefined;
   ToolFallback?: ToolCallMessagePartComponent | undefined;
   ToolGroup?:
@@ -292,8 +294,10 @@ const ThreadRoot: FC<{ isEmpty: boolean; autoFocus: boolean }> = ({
   );
 };
 
+const BurfText: TextMessagePartComponent = ({ text }) => <Markdown text={text} />;
+
 const ThreadMessage: FC = () => {
-  const { AssistantMessage: AssistantMessageComponent = AssistantMessage } =
+  const { AssistantMessage: AssistantMessageComponent = AssistantMessage, UserMessage: UserMessageComponent = UserMessage } =
     useContext(ThreadComponentsContext);
   const role = useAuiState((s) => s.message.role);
   const isEditing = useAuiState((s) => s.message.composer.isEditing);
@@ -301,7 +305,7 @@ const ThreadMessage: FC = () => {
 
   if (isEditing) return <EditComposer />;
   if (isSpoken) return <SpokenMessage />;
-  if (role === "user") return <UserMessage />;
+  if (role === "user") return <UserMessageComponent />;
   return <AssistantMessageComponent />;
 };
 
@@ -657,6 +661,7 @@ const MessageError: FC = () => {
 
 export const AssistantMessage: FC = () => {
   const {
+    Text: TextComponent = BurfText,
     ToolFallback: ToolFallbackComponent = ToolFallback,
     ToolGroup,
     ReasoningGroup,
@@ -723,7 +728,7 @@ export const AssistantMessage: FC = () => {
                 );
               }
               case "text":
-                return <MarkdownText />;
+                return <TextComponent {...part} />;
               case "reasoning":
                 return <Reasoning {...part} />;
               case "tool-call":
