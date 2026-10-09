@@ -18,7 +18,7 @@ async function fixture(context: BrowserContext, supported = true, options = fals
   const calls: { method: string; path: string; body: unknown }[] = [];
   const chat = { id: "remote-1", agent: "codex", mode: "chat", location: "shop/fix", cwd: DIR, state: "idle", started_at: "2026-10-08T12:00:00Z", thread_id: "remote-provider-thread", turn_id: "", items: [] as { id: string; kind: string; text: string }[], approvals: [] as { id: string; kind: string; detail: string }[], reports: undefined as Record<string, object[]> | undefined };
   // art: what the box keeps for the worktree (berthd artifact add), with each one's content. Unset, the box keeps none.
-  const control = { listed: false, lostSend: false, lostStart: false, offline: false, startDelay: 0, art: undefined as { id: string; title: string; kind: string; format: string; body: string }[] | undefined, title: "" };
+  const control = { listed: false, lostSend: false, lostStart: false, offline: false, startDelay: 0, readHeld: undefined as Promise<void> | undefined, art: undefined as { id: string; title: string; kind: string; format: string; body: string }[] | undefined, title: "" };
   await context.route(`${agent.url}${base}**`, async (route) => {
     const path = new URL(route.request().url()).pathname.slice(base.length);
     const method = route.request().method();
@@ -55,6 +55,8 @@ async function fixture(context: BrowserContext, supported = true, options = fals
     if (path.endsWith("/approvals")) { chat.approvals = []; chat.state = "running"; }
     if (path.endsWith("/interrupt")) { chat.state = "idle"; chat.turn_id = ""; }
     if (method === "DELETE") chat.state = "exited";
+    // A read the box is slow to answer.
+    if (method === "GET") await control.readHeld;
     return route.fulfill({ json: chat });
   });
   return { agent, chat, calls, control };
@@ -153,6 +155,42 @@ test("a structured chat's failed first read focuses Refresh chat and recovery ke
     await expect(message).toBeEnabled();
     await expect(refresh).toBeFocused();
   } finally { await f.agent.close(); }
+});
+
+// The first read can fail and the next succeed with nobody touching anything
+// (a slow box, a chat still being made). The keyboard was only parked on
+// Refresh; it goes on to the composer once there is one to type in.
+test("a first read that fails and then recovers by itself ends with the keyboard in the composer", async ({ app }) => {
+  const f = await fixture(app.context);
+  const read = `${f.agent.url}/v1/boxes/${BOX}/api/chats/${f.chat.id}`;
+  await app.page.route(read, (route) => route.fulfill({ status: 503, json: { error: "Synthetic first-read failure" } }), { times: 1 });
+  try {
+    await app.open({ agent: f.agent });
+    await openWorktree(app);
+    await app.page.getByRole("button", { name: "New Codex", exact: true }).click();
+    const message = app.page.getByRole("textbox", { name: "Message Codex" });
+    await expect(app.page.getByRole("button", { name: "Refresh chat", exact: true })).toBeFocused();
+    await expect(message).toBeEnabled();
+    await expect(message).toBeFocused();
+  } finally { await f.agent.close(); }
+});
+
+test("a first read slow enough for the window to rescue the keyboard still ends with it in the composer", async ({ app }) => {
+  const f = await fixture(app.context);
+  let release = () => {};
+  f.control.readHeld = new Promise<void>((resolve) => { release = resolve; });
+  try {
+    await app.open({ agent: f.agent });
+    await openWorktree(app);
+    await app.page.getByRole("button", { name: "New Codex", exact: true }).click();
+    const message = app.page.getByRole("textbox", { name: "Message Codex" });
+    // The button that opened the chat is gone, so the window sends the
+    // keyboard home: to the pane's first control, its composer not ready.
+    await expect(app.page.getByRole("button", { name: "Refresh chat", exact: true })).toBeFocused();
+    release();
+    await expect(message).toBeEnabled();
+    await expect(message).toBeFocused();
+  } finally { release(); await f.agent.close(); }
 });
 
 test("a lost start is not retried and the owned chat can be recovered", async ({ app }) => {
