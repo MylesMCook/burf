@@ -3,6 +3,7 @@ package transcript
 import (
 	"bufio"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -94,6 +95,15 @@ func newest(glob string, since time.Time, ok func(string) bool) string {
 	return best
 }
 
+// wholeLines reads a session file's opening lines whole. Codex writes its
+// instructions into the first one, so it runs to tens of kilobytes: a
+// reader with a fixed buffer hands back a piece of it, which is not JSON.
+// The megabytes read are bounded, so a file that is not a transcript costs
+// no more than that.
+func wholeLines(f *os.File) *bufio.Reader {
+	return bufio.NewReader(io.LimitReader(f, 8<<20))
+}
+
 // codexCwd reads the working directory from a session file's first line.
 func codexCwd(p string) string {
 	f, err := os.Open(p)
@@ -101,8 +111,7 @@ func codexCwd(p string) string {
 		return ""
 	}
 	defer f.Close()
-	r := bufio.NewReaderSize(f, 16<<10)
-	line, _ := r.ReadSlice('\n')
+	line, _ := wholeLines(f).ReadBytes('\n')
 	var l struct {
 		Payload struct {
 			Cwd string `json:"cwd"`
@@ -243,9 +252,9 @@ func readStart(p string) (time.Time, bool) {
 		return time.Time{}, false
 	}
 	defer f.Close()
-	r := bufio.NewReaderSize(f, 32<<10)
+	r := wholeLines(f)
 	for i := 0; i < 20; i++ {
-		line, err := r.ReadSlice('\n')
+		line, err := r.ReadBytes('\n')
 		var l struct {
 			Timestamp string `json:"timestamp"`
 		}
@@ -254,7 +263,7 @@ func readStart(p string) (time.Time, bool) {
 				return t, true
 			}
 		}
-		if err != nil && err != bufio.ErrBufferFull {
+		if err != nil {
 			break
 		}
 	}
