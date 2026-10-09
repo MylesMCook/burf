@@ -149,7 +149,13 @@ func (s *Server) Serve(ctx context.Context, ln net.Listener) error {
 	protocols := new(http.Protocols)
 	protocols.SetHTTP1(true)
 	protocols.SetHTTP2(true)
+	// A stopping listener must not mark another listener, or a later
+	// Serve on this Server, as stopping while it still serves requests.
+	stopping := new(atomic.Bool)
 	srv := &http.Server{
+		BaseContext: func(net.Listener) context.Context {
+			return context.WithValue(context.Background(), stoppingKey{}, stopping)
+		},
 		Handler:           s.mux,
 		TLSConfig:         serverConfig(s.Identity),
 		Protocols:         protocols,
@@ -163,7 +169,19 @@ func (s *Server) Serve(ctx context.Context, ln net.Listener) error {
 			return context.WithValue(ctx, connKey{}, c)
 		},
 	}
-	stop := context.AfterFunc(ctx, func() { srv.Close() })
+	stopped := make(chan struct{})
+	stop := context.AfterFunc(ctx, func() {
+		defer close(stopped)
+		// Say so before going: Shutdown stops listening and sends each
+		// laptop's connection a GOAWAY, so a laptop knows the box is
+		// stopping rather than that its link went quiet. Then close
+		// whatever is still open (event streams, terminals).
+		stopping.Store(true)
+		grace, cancel := context.WithTimeout(context.Background(), stopGrace)
+		defer cancel()
+		srv.Shutdown(grace)
+		srv.Close()
+	})
 	defer stop()
 	watchCtx, endWatch := context.WithCancel(ctx)
 	watched := make(chan struct{})
@@ -183,10 +201,15 @@ func (s *Server) Serve(ctx context.Context, ln net.Listener) error {
 	s.serving--
 	s.stores.Unlock()
 	if errors.Is(err, http.ErrServerClosed) && ctx.Err() != nil {
+		if !stop() {
+			<-stopped
+		}
 		return nil
 	}
 	return err
 }
+
+type stoppingKey struct{}
 
 type peerKey struct{}
 
@@ -204,9 +227,11 @@ func (s *Server) authenticated(h http.Handler) http.Handler {
 			return
 		}
 		// A box that has stopped serving cannot check anyone, and says so:
-		// "unauthorized" would tell a laptop it trusts to pair again.
+		// "unauthorized" would tell a laptop it trusts to pair again. It says
+		// so as a stopping box's ping does, since by now no ping gets that
+		// far, and a laptop tells a box on its way down by that code.
 		if !s.useStores() {
-			writeError(w, http.StatusServiceUnavailable, errStopped)
+			writeJSON(w, http.StatusServiceUnavailable, errorResponse{Error: errStopped, Code: codeStopping})
 			return
 		}
 		peer, ok := s.authorize(fp)
@@ -337,6 +362,10 @@ func (s *Server) pin(req pairRequest, exporter []byte, peer identity.Fingerprint
 }
 
 func (s *Server) handlePing(w http.ResponseWriter, r *http.Request) {
+	if stopping, _ := r.Context().Value(stoppingKey{}).(*atomic.Bool); stopping != nil && stopping.Load() {
+		writeJSON(w, http.StatusServiceUnavailable, errorResponse{Error: ErrStopping.Error(), Code: codeStopping})
+		return
+	}
 	writeJSON(w, http.StatusOK, nameResponse{Name: s.Name})
 }
 
@@ -414,7 +443,15 @@ func (f flushWriter) Write(b []byte) (int, error) {
 
 type errorResponse struct {
 	Error string `json:"error"`
+	Code  string `json:"code,omitempty"`
 }
+
+// codeStopping marks a ping answered by a box on its way down.
+const codeStopping = "box_stopping"
+
+// stopGrace is how long a stopping box waits for its laptops to take its
+// GOAWAY before it closes their connections.
+const stopGrace = 250 * time.Millisecond
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
 	w.Header().Set("Content-Type", "application/json")

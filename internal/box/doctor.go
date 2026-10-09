@@ -43,10 +43,29 @@ func (b *Box) Doctor(ctx context.Context) []doctor.Check {
 				continue
 			}
 			c := doctor.Check{Area: "Agents", Name: t.Name + " hooks", Status: doctor.OK, Detail: "installed"}
-			if !t.Hooked(home) {
-				c.Status, c.Detail, c.Fix = doctor.Warn, "not installed, so Burf cannot show when this agent is done or needs you", "berthd integrations install "+t.ID
+			fix := "berthd integrations install " + t.ID
+			if _, ok := integrations.AccountVars[t.ID]; ok {
+				// Per account folder: "hooks and 7 skills in ~/.claude, ~/.berth/accounts/claude/work".
+				summary, missing, outdated := integrations.AccountSummary(home, t.ID)
+				c.Detail = summary
+				switch {
+				case !t.Hooked(home):
+					c.Status, c.Detail, c.Fix = doctor.Warn, "not installed, so Burf cannot show when this agent is done or needs you", fix
+					if !strings.HasPrefix(summary, "none in ") {
+						// Some other account has them.
+						c.Detail += " (" + summary + ")"
+					}
+				case len(missing) > 0:
+					c.Status, c.Fix = doctor.Warn, fix
+					c.Detail += ", so Burf cannot show when an agent on those accounts is done or needs you"
+				case len(outdated) > 0:
+					c.Status, c.Fix = doctor.Warn, fix
+					c.Detail += "; from an older berth in " + strings.Join(outdated, ", ") + ": turns start and approvals clear late"
+				}
+			} else if !t.Hooked(home) {
+				c.Status, c.Detail, c.Fix = doctor.Warn, "not installed, so Burf cannot show when this agent is done or needs you", fix
 			} else if !t.Current(home) {
-				c.Status, c.Detail, c.Fix = doctor.Warn, "from an older berth: turns start and approvals clear late", "berthd integrations install "+t.ID
+				c.Status, c.Detail, c.Fix = doctor.Warn, "from an older berth: turns start and approvals clear late", fix
 			}
 			checks = append(checks, c)
 		}
@@ -82,7 +101,47 @@ func (b *Box) Doctor(ctx context.Context) []doctor.Check {
 	if c, ok := b.agentBrowserCheck(ctx); ok {
 		checks = append(checks, c)
 	}
-	return checks
+	return append(checks, b.processChecks(ctx)...)
+}
+
+// processChecks say how sessions are cleaned up here and which browsers
+// run on the box, so an agent reading doctor sees a runaway one.
+func (b *Box) processChecks(ctx context.Context) []doctor.Check {
+	var checks []doctor.Check
+	if b.Sessions != nil {
+		c := doctor.Check{Area: "Worktrees and sessions", Name: "session cleanup", Status: doctor.OK}
+		switch {
+		case b.Sessions.Scopes != nil && b.Sessions.Scopes.Available(ctx):
+			c.Detail = "each new session runs in a systemd scope of its own; ending it stops everything it started"
+			if g := b.Guard.SessionMemoryHigh(); g > 0 {
+				c.Detail += fmt.Sprintf(", and its memory is held under %s", gbOrMB(g))
+			}
+		case useMarkers:
+			c.Detail = "no systemd user manager, so ending a session stops the processes in its tree and those that carry its BERTH_SESSION"
+		default:
+			c.Detail = "ending a session stops the processes in its tree"
+		}
+		checks = append(checks, c)
+	}
+	list, err := b.Processes(ctx, false)
+	if err != nil {
+		return checks
+	}
+	c := doctor.Check{Area: "Agents", Name: "browsers", Status: doctor.OK, Detail: "none running"}
+	var busy, lines []string
+	for _, br := range list.Browsers {
+		lines = append(lines, br.describe())
+		if br.Stoppable && (br.CPUPercent >= 100 || br.Owner == OwnerOrphan) {
+			busy = append(busy, br.Label)
+		}
+	}
+	if len(lines) > 0 {
+		c.Detail = fmt.Sprintf("%d running: %s", len(lines), strings.Join(lines, "; "))
+	}
+	if len(busy) > 0 {
+		c.Status, c.Fix = doctor.Warn, "See them with `berthd ps`, stop one with `berthd ps stop ID`"
+	}
+	return append(checks, c)
 }
 
 // browserSandboxChecks say when Chromium's sandbox stops agents' browsers,
@@ -102,7 +161,7 @@ func browserSandboxChecks(h BrowserHealth) []doctor.Check {
 	case h.State == "error":
 		return []doctor.Check{{Area: "Agents", Name: "browser start", Status: doctor.Warn, Detail: h.Error}}
 	case h.NoSandbox:
-		from := "the box's setting (Berth: Settings → Boxes)"
+		from := "the box's setting (Burf: Settings → Boxes)"
 		if h.NoSandboxFrom == "env" {
 			from = "BERTH_BROWSER_NO_SANDBOX=1"
 		}

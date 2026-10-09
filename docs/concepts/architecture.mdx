@@ -56,7 +56,7 @@ if they were local. Nothing is public unless someone explicitly shares it.
   box's locations, sessions, services, shares, hooks and flows. Tools on the
   box reach it through a private Unix socket with the same API. See
   [boxes](/concepts/boxes).
-- **The burf agent** runs on the laptop. It keeps a connection to every box,
+- **The Burf agent** (`burf agent`) runs on the laptop. It keeps a connection to every box,
   runs forwards and the `*.localhost` proxy, relays every box's events, runs
   laptop hooks, holds the offline prompt queue, and owns the embedded tailnet
   nodes. The CLI and the app talk to it, so closing the app drops nothing.

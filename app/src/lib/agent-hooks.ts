@@ -22,7 +22,7 @@ interface IntegrationsReport {
   output?: string;
 }
 
-// The commands berth has hooks for, by the tool they install for.
+// The commands Burf has hooks for, by the tool they install for.
 const TOOLS: Record<string, string> = { claude: "claude", codex: "codex", "cursor-agent": "cursor", cursor: "cursor" };
 
 // hookToolFor is the tool an agent preset ID or command line needs hooks for.

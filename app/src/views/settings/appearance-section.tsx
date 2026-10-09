@@ -12,6 +12,7 @@ import { berthThemes } from "@/themes/builtin";
 import { ChatBackgroundSettings, ChatWidthSettings } from "@/views/settings/chat-background-section";
 import { Segmented } from "@/views/settings/controls";
 import { Code, SettingsGroup, SettingsPage, SettingsRow } from "@/views/settings/rows";
+import { IS_MAC } from "@/lib/platform";
 
 const BERTH = new Set(berthThemes.map((t) => t.id));
 
@@ -124,14 +125,14 @@ function SystemCard({ selected, themes }: { selected: boolean; themes: Theme[] }
         <span className="flex min-w-0 flex-1 items-center gap-2 px-3.5 text-[13px]">
           <span className="min-w-0 flex-1">
             <span className="block">Match system</span>
-            <span className="block truncate text-[11px] text-muted-foreground">Follows macOS</span>
+            <span className="block truncate text-[11px] text-muted-foreground">{IS_MAC ? "Follows macOS" : "Follows your desktop"}</span>
           </span>
           {selected && <CheckIcon className="size-3.5" />}
         </span>
       </button>
       <div className="flex shrink-0 items-center gap-2 px-3 max-[800px]:hidden">
         <SimpleSelect size="sm" className="w-40" aria-label="Theme by day" value={light.id} options={options("light")} onChange={(id) => id && pick("light", id)} />
-        <SimpleSelect size="sm" className="w-40" aria-label="Theme when macOS is dark" value={dark.id} options={options("dark")} onChange={(id) => id && pick("dark", id)} />
+        <SimpleSelect size="sm" className="w-40" aria-label={IS_MAC ? "Theme when macOS is dark" : "Theme when your desktop is dark"} value={dark.id} options={options("dark")} onChange={(id) => id && pick("dark", id)} />
       </div>
     </div>
   );

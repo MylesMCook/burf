@@ -141,10 +141,14 @@ appear in the list under a tab of their own, set up the same way.
 
 ## With the install command
 
+Burf is a fork preview. This command downloads only fork-owned releases;
+if none is published, it stops and shows the build-from-source alternative.
+
+
 On the box, as the user your agents will run as (no root needed):
 
 ```sh
-curl -fsSL https://berthd.app/install | sh
+curl -fsSL https://raw.githubusercontent.com/MylesMCook/burf/main/site/install.sh | sh
 ```
 
 It downloads the latest `berthd` for the box's platform from GitHub, checks
@@ -158,8 +162,10 @@ go in for the agent CLIs it finds. Then it prints a pairing link:
 ==> Installing berthd v0.1.0 to /home/me/.local/bin/berthd
 ==> Starting the service
   Installed /home/me/.config/systemd/user/berthd.service; berthd is serving on 100.101.102.103:7444.
-  Agent integrations (hooks for needs-you, working and done; berth's skills):
-    Claude Code: skills in /home/me/.claude/skills; hooks added in /home/me/.claude/settings.json
+  Agent integrations (hooks for needs-you, working and done; Burf's skills):
+    Claude Code: hooks and 7 skills in ~/.claude
+      hooks added in ~/.claude/settings.json
+      MCP server added in ~/.claude.json
     Not found: Codex, Cursor Agent. After installing one, run: /home/me/.local/bin/berthd integrations install codex|cursor
 
 berthd v0.1.0 is running. Paste this link into Burf on your laptop
@@ -179,7 +185,7 @@ output is in [install](/getting-started/install#put-berthd-on-a-box).
 ### Installer options
 
 Pass options after `sh -s --`, for example
-`curl -fsSL https://berthd.app/install | sh -s -- --listen 0.0.0.0:7444`:
+`curl -fsSL https://raw.githubusercontent.com/MylesMCook/burf/main/site/install.sh | sh -s -- --listen 0.0.0.0:7444`:
 
 | Option | Environment | |
 | --- | --- | --- |

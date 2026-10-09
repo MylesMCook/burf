@@ -113,7 +113,7 @@ export interface BerthReport {
   needs?: string;
 }
 
-export type NoticeKind = "api_error" | "limit" | "rate_limit" | "auth" | "billing" | "hook" | "interrupted" | "stop_failure" | "exited";
+export type NoticeKind = "api_error" | "limit" | "rate_limit" | "auth" | "billing" | "hook" | "interrupted" | "stop_failure" | "exited" | "memory";
 
 export interface ToolCall {
   verb: string;

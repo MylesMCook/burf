@@ -317,6 +317,8 @@ type Worktree struct {
 	// Title is the name a person gave the worktree to show in its place
 	// (worktreetitles.go): a label only, its branch and folder keep Name.
 	Title string `json:"title,omitempty"`
+	// Parent identifies the worktree this one is nested under.
+	Parent string `json:"parent,omitempty"`
 }
 
 // CallerHeader names the agent session that asks for work, from its
@@ -638,6 +640,14 @@ type Session struct {
 	// never an agent, whatever it runs.
 	Service string `json:"service,omitempty"`
 
+	// Scope is the systemd scope unit the session runs in; Usage describes
+	// the processes it owns.
+	Scope string     `json:"scope,omitempty"`
+	Usage *ProcUsage `json:"usage,omitempty"`
+
+	// PanePID is box-side process bookkeeping and never crosses the wire.
+	PanePID int `json:"-"`
+
 	// CommandFile is box-side bookkeeping for its stored command. It never
 	// crosses the wire.
 	CommandFile string `json:"-"`
@@ -950,6 +960,8 @@ type WorktreeRequest struct {
 	// pull/<PR>/head) is fetched into Branch when origin has no such branch.
 	PR  int    `json:"pr,omitempty"`
 	Ref string `json:"ref,omitempty"`
+	// Parent identifies the worktree this one is nested under.
+	Parent string `json:"parent,omitempty"`
 }
 
 // Turn is one prompt-to-end-of-turn of one agent session.
@@ -1174,3 +1186,76 @@ var validOrigin = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,31}$`)
 
 // ValidOrigin reports whether origin can be sent in a box request header.
 func ValidOrigin(origin string) bool { return validOrigin.MatchString(origin) }
+
+// ProcUsage is what a session's processes use, from its scope's cgroup
+// or, without one, summed over the processes berth finds for it.
+type ProcUsage struct {
+	// Memory is in bytes: the cgroup's memory.current (page cache
+	// included, as its ceiling counts it), or resident memory summed.
+	Memory uint64 `json:"memory"`
+	// MemoryHigh is its ceiling, 0 for none.
+	MemoryHigh uint64 `json:"memory_high,omitempty"`
+	// CPUSeconds is the processor time it has used; CPUPercent how busy it
+	// is now (100 is one core), when known.
+	CPUSeconds float64 `json:"cpu_s"`
+	CPUPercent float64 `json:"cpu_percent,omitempty"`
+	Processes  int     `json:"processes,omitempty"`
+	// NearLimit is set from 90% of its ceiling; Throttled counts the
+	// times the kernel held it back at the ceiling.
+	NearLimit bool   `json:"near_limit,omitempty"`
+	Throttled uint64 `json:"throttled,omitempty"`
+	// Scoped says the numbers are its cgroup's.
+	Scoped bool `json:"scoped,omitempty"`
+}
+
+// BoxBrowser is one browser: its main process and every helper under it.
+type BoxBrowser struct {
+	// ID names it for POST /v1/processes/{id}/stop.
+	ID string `json:"id"`
+	// Engine is Chromium, Headless Chromium, Chrome, Edge or Firefox.
+	Engine string `json:"engine"`
+	// Owner is one of the Owner constants; Label says it in words
+	// ("Playwright tests in cal/billing").
+	Owner string `json:"owner"`
+	Label string `json:"label"`
+	// Via is what drives it, when that shows: Playwright, Puppeteer,
+	// agent-browser, Cypress, ….
+	Via string `json:"via,omitempty"`
+	// Session is the berth session it belongs to, Location and Worktree
+	// where (for berth's own browser, the worktree's).
+	Session  string `json:"session,omitempty"`
+	Location string `json:"location,omitempty"`
+	Worktree string `json:"worktree,omitempty"`
+	// PID is its main process; Processes how many it has.
+	PID       int   `json:"pid"`
+	PIDs      []int `json:"pids"`
+	Processes int   `json:"processes"`
+	// CPUPercent (100 is one core) and Memory (resident, bytes) are summed
+	// over its processes.
+	CPUPercent float64   `json:"cpu_percent"`
+	Memory     uint64    `json:"memory"`
+	Started    time.Time `json:"started,omitzero"`
+	Exe        string    `json:"exe,omitempty"`
+	// Stoppable is false for a browser Burf did not start.
+	Stoppable bool `json:"stoppable"`
+}
+
+// BoxSessionProcs is what one session's processes use.
+type BoxSessionProcs struct {
+	ID       string    `json:"id"`
+	Name     string    `json:"name"`
+	Location string    `json:"location,omitempty"`
+	Title    string    `json:"title,omitempty"`
+	Agent    string    `json:"agent,omitempty"`
+	Scope    string    `json:"scope,omitempty"`
+	Usage    ProcUsage `json:"usage"`
+}
+
+// BoxProcesses is GET /v1/processes.
+type BoxProcesses struct {
+	Browsers []BoxBrowser      `json:"browsers"`
+	Sessions []BoxSessionProcs `json:"sessions,omitempty"`
+	// Scopes says new sessions on this box get a systemd scope.
+	Scopes bool      `json:"scopes"`
+	At     time.Time `json:"at"`
+}

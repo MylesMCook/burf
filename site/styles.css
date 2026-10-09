@@ -433,6 +433,16 @@ code {
   width: 13px;
   height: 13px;
 }
+/* The Linux app is an alpha: a quiet line under the Mac download. */
+.note.linux-alpha {
+  margin-top: 4px;
+  font-size: 12px;
+}
+.note.linux-alpha a {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: var(--muted);
+}
 
 .kicker {
   display: flex;
@@ -940,6 +950,12 @@ code {
   .night-body .clip img,
   .night-body .clip video {
     object-position: 12% 50%;
+  }
+}
+/* Below 400px the name stands alone, so a phone's header fits. */
+@media (max-width: 400px) {
+  .brand svg {
+    display: none;
   }
 }
 /* A phone's header keeps "Close the laptop" on one line. */

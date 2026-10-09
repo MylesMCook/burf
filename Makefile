@@ -40,15 +40,16 @@ test:
 clean:
 	rm -rf $(BIN) $(DIST)
 
-# The desktop app bundles berth as a Tauri sidecar, burf-cli (named for the
-# target triple; "berth" is the app's own executable), the Linux daemons as
+# The desktop app bundles burf as a Tauri sidecar, burf-cli (named for the
+# target triple; "Burf" is the app's own executable), the Linux daemons as
 # resources for `add ssh`, and a berthd for the Mac itself as the resource
 # berthd, which Use this Mac installs (internal/agent/localbox.go).
 # tauri.bundle.conf.json adds them to release builds only, so `pnpm tauri dev`
 # and `cargo check` work without them; in dev the app starts the agent from
-# bin/berth, and Use this Mac finds bin/berthd beside it.
+# bin/burf, and Use this Mac finds bin/berthd beside it.
 #
-# make app-build builds Burf.app and a dmg for this Mac. Releases build
+# make app-build builds Burf.app and a dmg on Mac, or the Linux alpha
+# AppImage and .deb with tauri.linux.conf.json. Mac releases build
 # APP_TARGET=universal-apple-darwin, one app for Apple silicon and Intel, with
 # burf-cli and berthd made universal by lipo (scripts/mac-release.sh). The
 # Mac berthd runs as its own process outside the app, so with
@@ -64,6 +65,8 @@ APP_VERSION := $(if $(filter dev,$(VERSION)),,$(patsubst v%,%,$(VERSION)))
 APP_GOARCH := $(if $(findstring aarch64,$(APP_TARGET)),arm64,$(if $(findstring x86_64,$(APP_TARGET)),amd64))
 APP_GOOS := $(if $(findstring windows,$(APP_TARGET)),windows,$(if $(findstring apple-darwin,$(APP_TARGET)),darwin,$(if $(findstring linux,$(APP_TARGET)),linux)))
 APP_EXE := $(if $(filter windows,$(APP_GOOS)),.exe,)
+# Linux sidecars are static, so bundles work across libc implementations.
+APP_GOENV := $(if $(filter linux,$(APP_GOOS)),CGO_ENABLED=0) $(if $(APP_GOOS),GOOS=$(APP_GOOS)) $(if $(APP_GOARCH),GOARCH=$(APP_GOARCH))
 
 .PHONY: app-binaries app-dev app-build
 app-binaries: daemons
@@ -76,16 +79,16 @@ ifeq ($(APP_TARGET),universal-apple-darwin)
 	GOOS=darwin GOARCH=amd64 $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(SIDECAR)/berthd-darwin-amd64 ./cmd/burfd
 	lipo -create -output $(SIDECAR)/berthd-local $(SIDECAR)/berthd-darwin-arm64 $(SIDECAR)/berthd-darwin-amd64
 else
-	$(if $(APP_GOOS),GOOS=$(APP_GOOS)) $(if $(APP_GOARCH),GOARCH=$(APP_GOARCH)) $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(SIDECAR)/burf-cli-$(APP_TARGET)$(APP_EXE) ./cmd/burf
+	$(APP_GOENV) $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(SIDECAR)/burf-cli-$(APP_TARGET)$(APP_EXE) ./cmd/burf
 ifeq ($(APP_GOOS),windows)
 	cp $(SIDECAR)/burf-cli-$(APP_TARGET).exe $(SIDECAR)/burf-windows-amd64.exe
 	cp $(SIDECAR)/burf-cli-$(APP_TARGET).exe $(SIDECAR)/berth-cli-$(APP_TARGET).exe
 	cp $(SIDECAR)/burf-cli-$(APP_TARGET).exe $(SIDECAR)/burf-windows-legacy.exe
 else
-	$(if $(APP_GOOS),GOOS=$(APP_GOOS)) $(if $(APP_GOARCH),GOARCH=$(APP_GOARCH)) $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(SIDECAR)/berthd-local ./cmd/burfd
+	$(APP_GOENV) $(GO) build -trimpath -ldflags="$(LDFLAGS)" -o $(SIDECAR)/berthd-local ./cmd/burfd
 endif
 endif
-ifneq ($(APP_GOOS),windows)
+ifeq ($(APP_GOOS),darwin)
 	if [ -n "$$APPLE_SIGNING_IDENTITY" ]; then \
 		codesign --force --options runtime --timestamp --identifier dev.berth.berthd \
 			--sign "$$APPLE_SIGNING_IDENTITY" $(SIDECAR)/berthd-local; \
@@ -105,6 +108,7 @@ app-build:
 else
 app-build: app-binaries
 	cd app && pnpm tauri build --config src-tauri/tauri.bundle.conf.json \
+		$(if $(filter linux,$(APP_GOOS)),--config src-tauri/tauri.linux.conf.json) \
 		$(if $(APP_VERSION),--config '{"version":"$(APP_VERSION)"}') \
 		$(if $(filter $(TRIPLE),$(APP_TARGET)),,--target $(APP_TARGET)) \
 		$$([ -z "$$TAURI_SIGNING_PRIVATE_KEY" ] || echo --config src-tauri/tauri.updater.conf.json)

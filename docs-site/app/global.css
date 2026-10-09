@@ -1007,7 +1007,7 @@ figure.shiki > div.absolute {
    ------------------------------------------------------------------------ */
 
 /* The product header (components/site-header.tsx): the landing page's
-   lockup, and the way back to berthd.app. Laptop-sized screens only; the
+   lockup, and the way back to Burf on GitHub. Laptop-sized screens only; the
    docs layout sits under it through --fd-banner-height. */
 .berth-site-header {
   display: none;
@@ -1057,6 +1057,14 @@ figure.shiki > div.absolute {
   text-decoration: none;
 }
 
+/* On the narrowest phones "docs" gives way, so the header's buttons fit
+   beside the name. */
+@media (max-width: 340px) {
+  .berth-brand-docs {
+    display: none;
+  }
+}
+
 .berth-site-nav {
   display: flex;
   align-items: center;
@@ -1098,7 +1106,7 @@ a.berth-head-site svg {
   color: currentColor;
 }
 
-/* On a phone the docs' header carries "berthd.app ↗" beside the lockup. */
+/* On a phone the docs' header carries "Burf on GitHub ↗" beside the lockup. */
 #nd-subnav > div.flex-1 {
   display: flex;
   justify-content: flex-end;

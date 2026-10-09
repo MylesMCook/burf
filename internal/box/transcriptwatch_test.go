@@ -323,3 +323,38 @@ func TestDraftEndpointReadsTheScreen(t *testing.T) {
 		t.Fatalf("shell: %d %+v", status, none)
 	}
 }
+
+// A session started on another account (the usage plugin's
+// CLAUDE_CONFIG_DIR in the box's env.json) reads its conversation from
+// that account's folder, not berthd's own.
+func TestConfiguredAccountTranscriptIsReadFromItsOwnHome(t *testing.T) {
+	bin := t.TempDir()
+	os.WriteFile(filepath.Join(bin, "claude"), []byte("#!/bin/sh\nexec sleep 600\n"), 0o755)
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	t.Setenv("CLAUDE_CONFIG_DIR", t.TempDir())
+	account := t.TempDir()
+	envFile := filepath.Join(t.TempDir(), "env.json")
+	if err := saveBoxEnv(envFile, BoxEnv{Env: map[string]string{"CLAUDE_CONFIG_DIR": account}}); err != nil {
+		t.Fatal(err)
+	}
+	c, _ := servedBox(t, func(b *Box) { b.EnvFile = envFile })
+	call(t, c, "POST", "/v1/locations", "", map[string]string{"name": "shop", "path": gitRepo(t)}, nil)
+	call(t, c, "POST", "/v1/locations/shop/worktrees", "", WorktreeRequest{Name: "fix"}, nil)
+	var sess Session
+	if status := call(t, c, "POST", "/v1/sessions", "", SessionRequest{Location: "shop/fix", Command: "claude"}, &sess); status != 200 {
+		t.Fatalf("session: %d", status)
+	}
+	proj := transcript.ClaudeDirIn(account, sess.Dir)
+	os.MkdirAll(proj, 0o755)
+	at := time.Now().UTC().Add(time.Second).Format(time.RFC3339Nano)
+	b, _ := json.Marshal(map[string]any{"type": "user", "timestamp": at, "message": map[string]any{"role": "user", "content": "Fix the flaky test"}})
+	appendTo(t, filepath.Join(proj, "conv.jsonl"), string(b)+"\n")
+
+	var res struct {
+		Items  []map[string]any
+		Reason string
+	}
+	if status := call(t, c, "GET", "/v1/sessions/"+url.PathEscape(sess.Name)+"/transcript?since=0", "", nil, &res); status != 200 || len(res.Items) != 1 {
+		t.Fatalf("transcript: %d %v %s", status, res.Items, res.Reason)
+	}
+}

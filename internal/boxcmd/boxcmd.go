@@ -11,6 +11,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 	"text/tabwriter"
@@ -41,7 +42,7 @@ var usageSections = []struct {
 		{"%[1]s services%[3]s [--json]", "Which worktree each running server belongs to"},
 		{"%[1]s service list|start|stop|restart|log %[2]sLOC/WORKTREE [SERVICE]", "A worktree's services from the repo's config"},
 		{"%[1]s preview %[2]s[LOC/WORKTREE] [PORT] [--path /x]", "Open a worktree's page in the Burf app"},
-		{"%[1]s worktree new %[2]sLOC/NAME [--branch B] [--base REF]", "Create a git worktree and run its setup"},
+		{"%[1]s worktree new %[2]sLOC/NAME [--branch B] [--base REF] [--parent NAME]", "Create a git worktree and run its setup; --parent nests it\nunder another worktree of the location"},
 		{"%[1]s worktree rm %[2]sLOC/NAME [--force]", "Remove a worktree"},
 		{"%[1]s worktree rename %[2]sLOC/NAME [TITLE]", "Give a worktree a display name (its branch and folder keep\ntheir names; no TITLE clears it)"},
 	}},
@@ -100,6 +101,8 @@ var usageSections = []struct {
 	{"Ports and sharing", [][2]string{
 		{"%[1]s ports%[3]s [--json]", "What is listening on the box"},
 		{"%[1]s stats%[3]s [--json]", "Memory, disk, load, and agents running or waiting"},
+		{"%[1]s ps%[3]s [--json]", "Browsers on the box (who started each, CPU, memory, age) and\nwhat each session's processes use"},
+		{"%[1]s ps stop%[3]s ID", "Stop a browser from that list, or end a session (s-NAME)"},
 		{"%[1]s info%[3]s", "The box's name, OS, build, tools and agent presets, as JSON"},
 		{"%[1]s share%[3]s PORT", "Make a port public (Cloudflare quick tunnel)"},
 		{"%[1]s shares%[3]s [--json]", "List public shares"},
@@ -168,7 +171,7 @@ var Queue func(ctx context.Context, session, text string, enter bool, cause erro
 var Commands = map[string]int{
 	"locations": 1, "location": 2, "worktree": 2,
 	"sessions": 1, "session": 2, "task": 2, "agents": 1, "exec": 1, "loop": 1,
-	"services": 1, "info": 1, "stats": 1,
+	"services": 1, "info": 1, "stats": 1, "ps": 1,
 	"ports": 1, "share": 1, "shares": 1, "unshare": 1,
 	"emit": 1, "events": 1,
 	"skills": 1, "preview": 1, "service": 2,
@@ -309,6 +312,8 @@ func Run(ctx context.Context, c *box.Client, args []string, out io.Writer) error
 			return err
 		}
 		return show(out, true, i, func() {})
+	case "ps":
+		return ps(ctx, c, rest, out)
 	case "stats":
 		fs, asJSON := flags(rest)
 		parse(fs, rest)
@@ -821,9 +826,10 @@ func worktreeNew(ctx context.Context, c *box.Client, args []string, out io.Write
 	var req box.WorktreeRequest
 	fs.StringVar(&req.Branch, "branch", "", "branch to create (default: the worktree name)")
 	fs.StringVar(&req.Base, "base", "", "ref to branch from")
+	fs.StringVar(&req.Parent, "parent", "", "another worktree of the location to nest this one under")
 	pos, err := parse(fs, args)
 	if err != nil || len(pos) != 1 {
-		return usageErr("worktree new LOC/NAME [--branch B] [--base REF]")
+		return usageErr("worktree new LOC/NAME [--branch B] [--base REF] [--parent NAME]")
 	}
 	loc, name, ok := strings.Cut(pos[0], "/")
 	if !ok || name == "" {
@@ -1123,6 +1129,8 @@ func taskNew(ctx context.Context, c *box.Client, args []string, out io.Writer) e
 		return usageErr(usage)
 	}
 	req.Location, req.Name = loc, name
+	// From an agent's session, the new worktree nests under that agent's.
+	req.FromSession = os.Getenv("BERTH_SESSION")
 	task, err := reportBack(c, *noNotify).AddTask(ctx, req)
 	if err != nil {
 		return err

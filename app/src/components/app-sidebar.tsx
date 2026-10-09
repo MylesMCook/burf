@@ -30,6 +30,8 @@ import { WhatsNewNudge } from "@/components/whats-new/whats-new-dialog";
 import { cn } from "@/lib/utils";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
 import { TeamSidebarCard } from "@/views/team/team-entry";
+import { AlphaBadge } from "@/components/alpha-badge";
+import { LINUX_ALPHA, platformKeys } from "@/lib/platform";
 
 // The sidebar is always open on a desktop window; coss ui's menu pieces only
 // need to know that.
@@ -69,8 +71,10 @@ export function AppSidebar() {
         className="@container/side relative flex shrink-0 flex-col border-sidebar-border border-r bg-sidebar text-sidebar-foreground"
       >
         <SidebarResizeHandle />
-        {/* Room for the macOS traffic lights; the strip drags the window. */}
+        {/* Room for the macOS traffic lights; the strip drags the window. The
+            Linux app has none, and says it is an alpha there instead. */}
         <div data-tauri-drag-region className="flex h-10 shrink-0 items-center justify-end px-2">
+          {LINUX_ALPHA && <AlphaBadge link className="mr-auto ml-1" />}
           <NotificationBell />
         </div>
 
@@ -101,7 +105,7 @@ export function AppSidebar() {
               <MenuItem onClick={() => useStore.getState().openNewWorktree()}>
                 <GitBranchPlusIcon />
                 New task…
-                <span className="ml-auto text-muted-foreground text-xs">⌘N</span>
+                <span className="ml-auto text-muted-foreground text-xs">{platformKeys("⌘N")}</span>
               </MenuItem>
               <MenuItem onClick={() => useStore.getState().openAddLocation()}>
                 <FolderPlusIcon />

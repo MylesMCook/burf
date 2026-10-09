@@ -25,7 +25,7 @@ import (
 func TestWithAgentBrowserIdle(t *testing.T) {
 	t.Setenv(AgentBrowserIdleEnv, "")
 	os.Unsetenv(AgentBrowserIdleEnv)
-	if got := withAgentBrowserIdle([]string{"A=1"}); !slices.Equal(got, []string{"A=1", AgentBrowserIdleEnv + "=600000"}) {
+	if got := withAgentBrowserIdle([]string{"A=1"}); !slices.Equal(got, []string{"A=1", AgentBrowserIdleEnv + "=" + AgentBrowserIdleDefault}) {
 		t.Fatalf("default: %v", got)
 	}
 	if got := withAgentBrowserIdle([]string{AgentBrowserIdleEnv + "=0"}); !slices.Equal(got, []string{AgentBrowserIdleEnv + "=0"}) {
@@ -74,13 +74,13 @@ func TestSessionsGetAgentBrowserIdleTimeout(t *testing.T) {
 		_, err := b.createAgentSession(ctx, name, "hello/idle", wt.Path, command, "")
 		return err
 	}
-	if v := valueIn(wt.Path, inWorktree); v != "600000" {
+	if v := valueIn(wt.Path, inWorktree); v != AgentBrowserIdleDefault {
 		t.Fatalf("a worktree's session got %q", v)
 	}
 	if v := valueIn(dir, func(name, command string) error {
 		_, err := b.Sessions.Create(ctx, name, "", dir, command, nil)
 		return err
-	}); v != "600000" {
+	}); v != AgentBrowserIdleDefault {
 		t.Fatalf("a session outside any worktree got %q", v)
 	}
 	if err := saveBoxEnv(b.EnvFile, BoxEnv{Env: map[string]string{AgentBrowserIdleEnv: "120000"}}); err != nil {

@@ -45,3 +45,19 @@ synthetic protocol peers; its native Windows/Mac/Linux pipe/process tests
 launch only the test executable. Unix tests include parent-death cleanup.
 Box chat tests cover authentication, account environment and upgrade guards.
 No model prompt or installed provider is needed for this regression suite.
+
+## Additional Checks and Guardrails
+
+Run `go vet ./...`, `GORACE=atexit_sleep_ms=0 go test -race ./...`, and the
+app scripts `typecheck:plugins`, `check:titles`, `check:csp`, `check:themes`,
+`test:platform` and `test`. Run the Windows packaging/installer template tests
+with `node --test scripts/windows-installer-template.test.mjs scripts/windows-packaging.test.mjs`.
+Use the existing Playwright suite; acceptance failures remain blocking in CI.
+For this intake, every Playwright run uses `E2E_PORT=1435`.
+
+Do not use reserved ports 1420 or 1377-1379, live state in `~/.berth`, or
+installed services. New unit tests belong in the app test script. Use `<Tip>`
+instead of HTML `title` attributes. Fixtures stay synthetic. Build docs-site
+when docs change. Commands are `cmd/burf` and `cmd/burfd`; compatibility aliases
+and state/protocol names follow `FORK.md`. Release or publication requires a
+direct request. `CLAUDE.md` only points at this canonical policy.

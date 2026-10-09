@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 
 import { isTauri } from "@/lib/api";
+import { LINUX_ALPHA } from "@/lib/platform";
 import { useStore } from "@/lib/store";
 import { homeBox, useWorkspaces } from "@/lib/workspaces";
 import { placeLabel } from "@/lib/worktree-names";
@@ -13,7 +14,9 @@ export function useWindowTitle() {
   const inWorkspace = useStore((s) => s.view.kind === "workspace");
   const label = useStore((s) => (ref?.path ? placeLabel(ref, s.boxes) : undefined));
   useEffect(() => {
-    const title = inWorkspace && label ? `${label} — Burf` : "Burf";
+    let title = inWorkspace && label ? `${label} — Burf` : "Burf";
+    // The Linux app is an alpha, and its title bar says so.
+    if (LINUX_ALPHA) title += " (alpha)";
     if (document.title !== title) document.title = title;
     if (isTauri())
       void import("@tauri-apps/api/window")

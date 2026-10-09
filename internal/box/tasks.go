@@ -268,6 +268,12 @@ func (b *Box) addTask(w http.ResponseWriter, r *http.Request) error {
 	if err != nil {
 		return err
 	}
+	// Handed off from an agent's worktree: it nests under that one.
+	if parent := b.parentFor(ctx, loc, req.FromSession); parent != "" {
+		if err := b.Locations.SetWorktreeParent(req.Location, wt.Path, parent); err == nil {
+			wt.Parent = parent
+		}
+	}
 	where := req.Location + "/" + wt.Name
 	preset := ""
 	if req.Command == "" {
@@ -325,6 +331,9 @@ func gateOrigin(r *http.Request) string {
 func (b *Box) enrich(ctx context.Context, all []Session) []Session {
 	for i := range all {
 		s := &all[i]
+		if u, ok := b.Sessions.scopeUsage(ctx, *s); ok && !s.Exited {
+			s.Usage = &u
+		}
 		s.Agent = agentFor(*s)
 		if s.Agent == "" {
 			continue

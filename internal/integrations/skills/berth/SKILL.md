@@ -55,6 +55,8 @@ berthd session new "$BERTH_LOCATION/$BERTH_WORKTREE_NAME" --agent claude --promp
 berthd task new shop/fix-login --agent claude --prompt "Fix the login redirect loop" --open tab
 # A worktree alone, or any command in a terminal:
 berthd worktree new shop/fix-login --base main
+# A stacked branch, nested under the worktree it builds on:
+berthd worktree new shop/fix-login-tests --base fix-login --parent fix-login
 berthd session new shop/fix-login -- pnpm dev
 # Read a terminal:
 berthd session screen shop-fix-login-claude-1a2b --history 200

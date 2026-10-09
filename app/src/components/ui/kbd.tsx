@@ -1,7 +1,9 @@
 import type * as React from "react";
+import { platformKeys } from "@/lib/platform";
 import { cn } from "@/lib/utils";
-import { shortcutLabel } from "@/lib/platform";
 
+// A key hint as a string is written for this platform (lib/platform.ts):
+// ⌘K on a Mac, Ctrl+K on Linux.
 export function Kbd({
   className,
   children,
@@ -16,7 +18,7 @@ export function Kbd({
       data-slot="kbd"
       {...props}
     >
-      {typeof children === "string" ? shortcutLabel(children) : children}
+      {typeof children === "string" ? platformKeys(children) : children}
     </kbd>
   );
 }

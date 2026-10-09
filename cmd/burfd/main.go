@@ -168,6 +168,13 @@ func run(args []string) error {
 		return err
 	}
 	b := boxHome{dir: filepath.Join(home, "box")}
+	// Agent accounts the box's env.json and projects' local configs pick
+	// get berth's hooks and skills too (integrations/accounts.go).
+	if userDir, err := statefile.UserDir(); err == nil {
+		integrations.ConfiguredAccounts = func() map[string][]string {
+			return box.ConfiguredAccountDirs(filepath.Join(userDir, "env.json"), filepath.Join(b.dir, "locations.json"))
+		}
+	}
 	switch args[0] {
 	case "serve":
 		return serve(b, args[1:])
@@ -412,6 +419,13 @@ func serve(b boxHome, args []string) error {
 	// agent-browser sessions (Vercel's CLI) go with the burf session that
 	// started them.
 	bx.AgentBrowsers = box.NewAgentBrowsers(bx.Sessions)
+	// Each new session runs in a systemd scope of its own where the box
+	// has a user manager, so ending it stops all it started.
+	bx.Sessions.Scopes = box.NewSystemdScopes()
+	bx.Sessions.MemoryHigh = bx.Guard.SessionMemoryHigh
+	// A session on an agent account without berth's hooks and skills gets
+	// them before its agent starts.
+	bx.Sessions.Prepare = bx.PrepareAccounts
 	bx.Artifacts = &box.ArtifactStore{Dir: filepath.Join(b.dir, "artifacts"), Events: bus, Box: hostname}
 	go bx.Artifacts.Run(ctx)
 	go bx.RunShots(ctx)
@@ -468,6 +482,7 @@ func serve(b boxHome, args []string) error {
 	}
 	go bx.Phone.Run(ctx, bx)
 	go bx.Guard.Run(ctx, bx)
+	go bx.WatchSessionMemory(ctx)
 
 	os.Remove(b.socket())
 	local, err := net.Listen("unix", b.socket())

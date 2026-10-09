@@ -30,12 +30,13 @@ build_dist() {
 	local ld="-s -w -X github.com/MylesMCook/burf/internal/version.Version=$version"
 	(cd "$REPO" && CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -ldflags "$ld" -o "$dir/stage/berthd/berthd" ./cmd/burfd) || return 1
 	(cd "$REPO" && CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -ldflags "$ld" -o "$dir/stage/berth/berth" ./cmd/burf) || return 1
+	cp "$dir/stage/berth/berth" "$dir/stage/berth/burf"
 	cp "$dir/stage/berthd/berthd" "$dir/stage/berth/berthd-linux-$arch"
 	# As build-release.sh: macOS's tar would add extended attributes.
 	local flags=()
 	tar --version 2>/dev/null | grep -q bsdtar && flags=(--no-mac-metadata --no-xattrs)
 	tar "${flags[@]}" -czf "$dir/berthd-linux-$arch.tar.gz" -C "$dir/stage/berthd" berthd || return 1
-	tar "${flags[@]}" -czf "$dir/berth-linux-$arch.tar.gz" -C "$dir/stage/berth" berth "berthd-linux-$arch" || return 1
+	tar "${flags[@]}" -czf "$dir/berth-linux-$arch.tar.gz" -C "$dir/stage/berth" burf berth "berthd-linux-$arch" || return 1
 	rm -rf "$dir/stage"
 	(cd "$dir" && shasum -a 256 ./*.tar.gz | sed 's|  \./|  |' >checksums.txt) || return 1
 	cp "$REPO/site/install.sh" "$dir/install.sh"
@@ -113,7 +114,7 @@ laptop_cli() {
 	arch=$(docker_arch) || return 1
 	lp "set -e; mkdir -p ~/.local/bin; cd /tmp; curl -fsSL -O http://$BOXC:8000/berth-linux-$arch.tar.gz -O http://$BOXC:8000/checksums.txt
 		grep ' berth-linux-$arch.tar.gz\$' checksums.txt | sha256sum -c -
-		tar -xzf berth-linux-$arch.tar.gz -C ~/.local/bin berth"
+		tar -xzf berth-linux-$arch.tar.gz -C ~/.local/bin burf berth"
 }
 
 # laptop_api METHOD PATH [JSON]: the laptop agent's app API.

@@ -3,12 +3,12 @@ title: Agent integrations
 description: Claude Code, Codex, Cursor, Gemini CLI and OpenCode hooks, the skills Burf teaches agents, and announcing events from any tool.
 ---
 
-berth works with the tools around it in both directions: tools drive
-berth through its CLI, and berth drives tools through hooks. Every event
+Burf works with the tools around it in both directions: tools drive
+Burf through its CLI, `berth`, and Burf drives tools through hooks. Every event
 records the tool it came from, so a change never bounces back and forth
 between two tools.
 
-## Agent tools → berth
+## Agent tools → Burf
 
 ### Claude Code, Codex, Cursor, Gemini CLI, OpenCode
 
@@ -25,33 +25,76 @@ first starts that agent on the box, and `burf doctor BOX` (or
 `berthd doctor` on the box) warns about each agent CLI without its hooks,
 with the command that installs them.
 
-- **Claude Code**: installs berth's skills in `~/.claude/skills/` and
+- **Claude Code**: installs Burf's skills in `~/.claude/skills/` and
   `SessionStart` / `UserPromptSubmit` / `PostToolUse` / `PermissionRequest` /
   `Notification` / `Stop` / `StopFailure` / `SessionEnd` hooks in
   `~/.claude/settings.json`. Only permission and question notifications mean
   "needs you"; the idle reminder and login notices are ignored.
 - **Cursor**: appends `sessionStart`, `beforeSubmitPrompt` and `stop` hooks to
   `~/.cursor/hooks.json`, after any hooks already there (Orca's are kept).
-- **Codex**: installs berth's skills in `~/.agents/skills/`, where Codex
-  reads user skills (a copy an older berth left in `~/.codex/skills/` is
+- **Codex**: installs Burf's skills in `~/.agents/skills/`, where Codex
+  reads user skills (a copy an older version left in `~/.codex/skills/` is
   removed), adds `SessionStart` / `UserPromptSubmit` / `PermissionRequest` /
   `Stop` hooks to `~/.codex/hooks.json` (trust them once in Codex with
   `/hooks`), and a `notify` line to `~/.codex/config.toml` for versions
   without hooks. Codex runs a single notify program, so when the config
-  already sets one to something else, berth leaves it and prints the line to
+  already sets one to something else, Burf leaves it and prints the line to
   change yourself.
 - **Gemini CLI**: `SessionStart` / `BeforeAgent` / `Notification` /
   `AfterAgent` / `SessionEnd` hooks in `~/.gemini/settings.json`.
 - **OpenCode**: a small plugin, `~/.config/opencode/plugin/berth.js`, that
   runs the hook when a session gets busy, asks for a permission, or goes idle.
 
-After an upgrade, berthd brings hooks it installed before up to date when it
-starts. Every session berth starts has `BERTH_SESSION` (and, for an agent
-preset, `BERTH_AGENT`) in its environment; the hook sends it along, so berth
+### Every account
+
+A box can have several logins per agent (the [Usage & accounts](/guides/plugins) plugin):
+each Claude Code account is a config folder that `CLAUDE_CONFIG_DIR` picks,
+each Codex account a home that `CODEX_HOME` picks, and an agent reads its
+hooks (and Claude Code its skills and MCP servers) from that folder alone.
+So Burf installs them in every account folder:
+
+- the default, `~/.claude` and `~/.codex` (or berthd's own
+  `CLAUDE_CONFIG_DIR` and `CODEX_HOME`);
+- every folder in `~/.berth/accounts/claude/` and `~/.berth/accounts/codex/`,
+  where the Usage plugin's **Add account…** makes them;
+- any folder in your home that `CLAUDE_CONFIG_DIR` or `CODEX_HOME` names in
+  the box's `~/.berth/env.json` or a project's box-local config.
+
+Only folders that exist count. In another account's folder, Claude Code's
+settings go in `settings.json`, its skills in `skills/` and its MCP server
+in `.claude.json`; Codex's hooks go in `hooks.json` and `config.toml`. Codex
+reads user skills from `~/.agents/skills/` whatever `CODEX_HOME` is, so all
+its accounts share one copy. `berthd integrations` shows where they are:
+
+```text
+Claude Code: hooks and 7 skills in ~/.claude, ~/.berth/accounts/claude/personal
+Codex: hooks in ~/.codex, ~/.berth/accounts/codex/work; 7 skills in ~/.agents/skills
+```
+
+`berthd doctor` says the same, and warns about an account without them.
+A new account gets them without a command: **Add account…** installs them
+in the folder it makes, and when berthd starts a session whose
+`CLAUDE_CONFIG_DIR` or `CODEX_HOME` names a folder without them, it installs
+them there before the agent starts (a file read when they're there
+already). That happens only for an agent whose default account has
+Burf's hooks, and the new account gets the skills the default has.
+Installing or removing user skills (`berthd skills`, Settings → Agents) does
+it for every Claude Code account.
+
+An account folder other than `~/.claude` or `~/.codex` may be one a project
+names, so Burf never writes there through a symbolic link: a
+`settings.json` that is a link is left as it is, and that account is
+reported as not installed.
+
+### After an upgrade
+
+berthd brings hooks it installed before up to date when it starts, in every
+account, and gives an account added since the default's hooks and skills. Every session Burf starts has `BERTH_SESSION` (and, for an agent
+preset, `BERTH_AGENT`) in its environment; the hook sends it along, so Burf
 knows which session a hook came from when agents share a worktree. When
 berthd is down, `berthd hook` keeps the event in `~/.berth/box/spool/` and
 berthd publishes it, in order, when it starts. What each agent can report,
-and how berth fills the gaps, is in
+and how Burf fills the gaps, is in
 [turns](/concepts/sessions-and-agents#turns).
 
 Installs are idempotent, keep every existing setting, back up the previous
@@ -64,7 +107,7 @@ leave the tool. A hook never fails or blocks the tool that called it.
 
 ### Skills
 
-berth ships its skills embedded in the binary:
+Burf ships its skills embedded in the binary:
 
 | Skill | Teaches agents to |
 | --- | --- |
@@ -89,14 +132,14 @@ berth skills devl install                             # the same from a laptop
 
 | Target | Claude Code | Codex |
 | --- | --- | --- |
-| user | `~/.claude/skills/<skill>/` | `~/.agents/skills/<skill>/` |
+| user | `~/.claude/skills/<skill>/`, and `skills/<skill>/` in [each account's folder](#every-account) | `~/.agents/skills/<skill>/`, which every account reads |
 | project | `<repo>/.claude/skills/<skill>/` | `<repo>/.agents/skills/<skill>/` |
 
 Project skills are listed in the repository's `.git/info/exclude` so they are
 not committed, unless installed with `--commit`. `berthd skills` reports each
-copy as installed, outdated (berth has a newer version: install again) or
+copy as installed, outdated (Burf has a newer version: install again) or
 missing; the app shows the same in Settings → Agents and in a project's
-settings. Removing only deletes a folder whose `SKILL.md` is berth's skill of
+settings. Removing only deletes a folder whose `SKILL.md` is Burf's skill of
 that name.
 
 The API is `GET /v1/skills[?location=L]`, and `POST /v1/skills/install` and
@@ -119,13 +162,13 @@ berthd emit deploy.done url=https://… --origin mytool      # on a box
 ## Worktrees from any tool
 
 berthd watches its locations. A worktree created by another app, an agent,
-or plain `git worktree add` shows up in berth and produces a
+or plain `git worktree add` shows up in Burf and produces a
 `worktree.created` event with origin `detected`. Nothing needs configuring in
 those tools.
 
-## berth → tools
+## Burf → tools
 
-berth drives other tools through hooks and plugins rather than adapters
+Burf drives other tools through hooks and plugins rather than adapters
 built into it: a hook on `worktree.created` can register the worktree with
 any tool that has a CLI, and a plugin can ship those hooks along with its UI.
 See [hooks](/guides/hooks) and [plugins](/guides/plugins).

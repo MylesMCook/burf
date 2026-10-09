@@ -1,7 +1,10 @@
 # Burf docs site
 
-The documentation at [docs.berthd.app](https://docs.berthd.app), built with
+The fork documentation, built locally with
 [Fumadocs](https://fumadocs.dev) on Next.js.
+
+Set `NEXT_PUBLIC_DOCS_URL` when a fork-owned public docs host is configured.
+Until then, metadata uses the local development URL.
 
 ## Where the content lives
 
@@ -92,7 +95,7 @@ to click, and the area to keep. The script's header lists its options.
 | `lib/sections.ts` | A page's section name, for the label above its title |
 | `lib/rehype-nowrap-tokens.ts` | Keeps inline code from breaking after a flag's hyphens |
 | `lib/rehype-reference.ts` | Makes reference tables linkable: "Command" tables become a list with an id per command (`#berth-task-new`); "Field", "Event" and "Gate" rows get ids (`#setup`) |
-| `components/site-header.tsx` | The product header (lockup, berthd.app, GitHub) above the docs on wider screens, and the labelled links in the phone's header and menu |
+| `components/site-header.tsx` | The product header (lockup, Burf on GitHub, GitHub) above the docs on wider screens, and the labelled links in the phone's header and menu |
 
 The look follows the landing page (`site/`) and the brand board
 (`design/brand/`): Inter and JetBrains Mono (ligatures off), cool neutrals,

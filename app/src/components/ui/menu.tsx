@@ -3,6 +3,7 @@
 import { Menu as MenuPrimitive } from "@base-ui/react/menu";
 import { ChevronRightIcon } from "lucide-react";
 import type * as React from "react";
+import { platformKeys } from "@/lib/platform";
 import { cn } from "@/lib/utils";
 
 export const MenuCreateHandle: typeof MenuPrimitive.createHandle =
@@ -264,6 +265,7 @@ export function MenuSeparator({
 
 export function MenuShortcut({
   className,
+  children,
   ...props
 }: React.ComponentProps<"kbd">): React.ReactElement {
   return (
@@ -274,7 +276,9 @@ export function MenuShortcut({
       )}
       data-slot="menu-shortcut"
       {...props}
-    />
+    >
+      {typeof children === "string" ? platformKeys(children) : children}
+    </kbd>
   );
 }
 

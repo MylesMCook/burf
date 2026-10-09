@@ -46,7 +46,7 @@ each other. Burf makes them with git, next to the repository:
 ```
 
 ```sh
-berth worktree new devl/shop/checkout [--branch B] [--base REF]
+berth worktree new devl/shop/checkout [--branch B] [--base REF] [--parent NAME]
 berth worktree rm devl/shop/checkout [--force]
 ```
 
@@ -55,6 +55,10 @@ berth worktree rm devl/shop/checkout [--force]
 - The branch defaults to the name. An existing branch, local or on
   `origin`, is checked out as it is (tracking `origin`); a new one starts from
   `--base`, or from what the repository has checked out.
+- `--parent` nests the new worktree under another of the location's in the
+  sidebar, such as a stacked branch under the one it builds on. A task an
+  agent starts, or hands its work off to, nests under that agent's worktree
+  by itself. The main checkout is no parent.
 - Worktrees made by any other tool appear too, with a `worktree.created`
   event whose origin is `detected`.
 

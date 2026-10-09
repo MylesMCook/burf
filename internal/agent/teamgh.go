@@ -187,7 +187,7 @@ func (a *Agent) openGHLogin() (bool, error) {
 		return false, err
 	}
 	script := filepath.Join(dir, "gh-login.command")
-	body := fmt.Sprintf("#!/bin/sh\n# Berth: sign this computer's GitHub CLI in, so Burf can read your team's setup.\n# Burf keeps no token; gh does, and you can sign out with: gh auth logout\nclear\n%q auth login --hostname github.com --git-protocol https --web\necho\necho \"Done. Burf checks again on its own; you can close this window.\"\n", g.bin)
+	body := fmt.Sprintf("#!/bin/sh\n# Burf: sign this computer's GitHub CLI in, so Burf can read your team's setup.\n# Burf keeps no token; gh does, and you can sign out with: gh auth logout\nclear\n%q auth login --hostname github.com --git-protocol https --web\necho\necho \"Done. Burf checks again on its own; you can close this window.\"\n", g.bin)
 	if err := os.WriteFile(script, []byte(body), 0o700); err != nil {
 		return false, err
 	}

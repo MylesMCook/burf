@@ -3,9 +3,9 @@ import { Logo } from '@/components/logo';
 import { DrawerLinks, SiteLink } from '@/components/site-header';
 
 // On a laptop-sized screen the product header (components/site-header.tsx)
-// carries the lockup, berthd.app and GitHub, and the sidebar starts at
+// carries the lockup, Burf on GitHub and GitHub, and the sidebar starts at
 // search. On a phone, the docs' header has the lockup and a labelled
-// "berthd.app ↗", and the menu drawer starts with labelled links to the
+// "Burf on GitHub ↗", and the menu drawer starts with labelled links to the
 // website and GitHub.
 export function baseOptions(): BaseLayoutProps {
   return {

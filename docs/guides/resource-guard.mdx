@@ -18,6 +18,13 @@ in `~/.berth/guard.json` on the box:
 | `sustain` | For how long, at most `1h` | `1m` |
 | `stop_services` | May stop dev servers | `true` |
 | `pause_agents` | May pause idle agents | `true` |
+| `session_memory_gb` | A memory limit for each session, in GB, whether or not the guard is on; see below | none |
+
+`session_memory_gb` is set in Settings → Boxes, under **Browsers and
+sessions**. It applies on Linux boxes with systemd, where each session runs
+in a [scope of its own](/concepts/sessions-and-agents#sessions-clean-up-after-themselves):
+a session near it is slowed down, and Burf says so in its chat, on its
+tab and in a notification. Nothing is stopped for it.
 
 ## What it does
 

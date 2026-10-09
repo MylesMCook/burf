@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/MylesMCook/burf/internal/sshroute/sshtest"
 	"time"
 )
 
@@ -19,6 +21,8 @@ type cliFixture struct {
 
 // TestMain lets copies of this test executable stand in for delegated CLIs.
 func TestMain(m *testing.M) {
+	// Upstream route tests use this executable as an isolated SSH peer.
+	sshtest.MaybeRun()
 	name := strings.TrimSuffix(filepath.Base(os.Args[0]), ".exe")
 	if name == "fake-berth" || name == "codex" {
 		data, err := os.ReadFile(os.Args[0] + ".json")

@@ -25,6 +25,7 @@ import (
 	"github.com/MylesMCook/burf/internal/pairing"
 	"github.com/MylesMCook/burf/internal/trust"
 	"github.com/MylesMCook/burf/internal/wire"
+	"tailscale.com/ipn/ipnstate"
 )
 
 // testBox is a real berthd server on the loopback, restartable on the same
@@ -206,6 +207,13 @@ func startAgent(t *testing.T, dir string) *runningAgent {
 
 func startAgentWith(t *testing.T, dir string, nets Networks) *runningAgent {
 	t.Helper()
+	return startAgentConfig(t, dir, nets, nil)
+}
+
+// startAgentConfig is startAgentWith with changes to the agent's Config,
+// such as its log or how long a health check waits.
+func startAgentConfig(t *testing.T, dir string, nets Networks, change func(*Config)) *runningAgent {
+	t.Helper()
 	proxyLn, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -217,23 +225,27 @@ func startAgentWith(t *testing.T, dir string, nets Networks) *runningAgent {
 	clk := &clock{}
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
-	go func() {
-		done <- Run(ctx, Config{
-			Dir:            dir,
-			Socket:         socket,
-			ProxyAddrs:     []string{proxyAddr},
-			HealthInterval: 50 * time.Millisecond,
-			Log:            log.New(io.Discard, "", 0),
-			Now:            clk.Now,
-			Networks:       nets,
-			UIAddr:         uiAddr,
-			CLI:            cliFixturePath(dir, "fake-berth"),
-			SSHDir:         filepath.Join(dir, "ssh"),
-			EditorRoots:    []string{filepath.Join(dir, "apps")},
-			Run:            recordRun,
-			UserDir:        filepath.Join(dir, "user"),
-		})
-	}()
+	cfg := Config{
+		Dir:            dir,
+		Socket:         socket,
+		ProxyAddrs:     []string{proxyAddr},
+		HealthInterval: 50 * time.Millisecond,
+		Log:            log.New(io.Discard, "", 0),
+		Now:            clk.Now,
+		Networks:       nets,
+		UIAddr:         uiAddr,
+		CLI:            cliFixturePath(dir, "fake-berth"),
+		SSHDir:         filepath.Join(dir, "ssh"),
+		EditorRoots:    []string{filepath.Join(dir, "apps")},
+		Run:            recordRun,
+		UserDir:        filepath.Join(dir, "user"),
+		// Tests never ask this computer's own Tailscale.
+		TailscaleStatus: func(context.Context) (*ipnstate.Status, error) { return nil, errors.New("no Tailscale in tests") },
+	}
+	if change != nil {
+		change(&cfg)
+	}
+	go func() { done <- Run(ctx, cfg) }()
 	a := &runningAgent{client: NewClient(socket), cancel: cancel, done: done, proxy: proxyAddr, ui: uiAddr, dir: dir, now: clk}
 	deadline := time.Now().Add(5 * time.Second)
 	for !a.client.Running(context.Background()) {
@@ -615,6 +627,10 @@ func (f *fakeNetworks) List(context.Context) []network.Info {
 func (f *fakeNetworks) Close() {}
 
 func (f *fakeNetworks) Peers(context.Context, string) ([]network.Peer, error) { return nil, nil }
+
+func (f *fakeNetworks) Status(context.Context, string) (*ipnstate.Status, error) {
+	return nil, errors.New("no tailnet in tests")
+}
 
 func TestABoxOnAnotherTailnetIsReachedThroughItsNetwork(t *testing.T) {
 	b := newBox(t)

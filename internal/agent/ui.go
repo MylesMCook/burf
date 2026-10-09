@@ -17,6 +17,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/coder/websocket"
@@ -300,6 +301,12 @@ func (a *Agent) relayBox(w http.ResponseWriter, r *http.Request, c *wire.Client,
 // messages are keystrokes, text messages are resizes and the pace the app
 // wants output at (termpace.go); the box's output comes back as binary
 // messages. Closing either side detaches.
+//
+// When the route the terminal rides is declared down (boxroutes.go), the
+// agent attaches again over the route now active, inside the same
+// WebSocket: the box redraws the screen, and the keys that may not have
+// reached it (attachkeys.go) go first. Only if no route answers does the
+// WebSocket close, for the app to attach again when it can.
 func (a *Agent) uiAttach(w http.ResponseWriter, r *http.Request) {
 	a.sync()
 	c, ok := a.client(r.PathValue("box"))
@@ -318,20 +325,46 @@ func (a *Agent) uiAttach(w http.ResponseWriter, r *http.Request) {
 	defer ws.CloseNow()
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
-	stream, err := c.OpenStream(ctx, "/v1/sessions/"+r.PathValue("name")+"/attach?cols="+strconv.Itoa(max(cols, 20))+"&rows="+strconv.Itoa(max(rows, 5)), "attach")
+	box, session := r.PathValue("box"), r.PathValue("name")
+	// mu guards the stream keys go to, the journal of them, and the size
+	// an attach asks for.
+	var mu sync.Mutex
+	size := [2]int{max(cols, 20), max(rows, 5)}
+	open := func() (net.Conn, error) {
+		mu.Lock()
+		path := "/v1/sessions/" + session + "/attach?cols=" + strconv.Itoa(size[0]) + "&rows=" + strconv.Itoa(size[1])
+		mu.Unlock()
+		return c.OpenStream(ctx, path, "attach")
+	}
+	stream, err := open()
 	if err != nil {
 		ws.Close(websocket.StatusTryAgainLater, truncate(err.Error(), 120))
 		return
 	}
-	defer stream.Close()
+	defer func() { stream.Close() }()
+	// What was typed and heard, for a route going down: keys an earlier
+	// attach kept go first.
+	keys := &keyJournal{}
+	if held := a.held.take(box, session); len(held) > 0 {
+		keys.typed(held)
+		if err := terminal.WriteData(stream, held); err != nil {
+			a.held.put(box, session, held)
+			ws.Close(websocket.StatusTryAgainLater, "the box went away")
+			return
+		}
+	}
 	out := newPacedOutput()
+	reading := make(chan struct{})
 	go func() {
+		defer close(reading)
 		defer cancel()
 		for {
 			typ, msg, err := ws.Read(ctx)
 			if err != nil {
 				return
 			}
+			// A write to a stream that just ended fails; the output side
+			// sees it end too and decides what comes next.
 			if typ == websocket.MessageText {
 				var m struct {
 					Type       string `json:"type"`
@@ -343,24 +376,73 @@ func (a *Agent) uiAttach(w http.ResponseWriter, r *http.Request) {
 				if json.Unmarshal(msg, &m) == nil {
 					switch m.Type {
 					case "resize":
-						err = terminal.WriteResize(stream, m.Cols, m.Rows)
+						mu.Lock()
+						size = [2]int{max(m.Cols, 20), max(m.Rows, 5)}
+						to := stream
+						mu.Unlock()
+						terminal.WriteResize(to, m.Cols, m.Rows)
 					case "pace":
 						out.setPace(m.MS)
 					}
 				}
-			} else {
-				err = terminal.WriteData(stream, msg)
+				continue
 			}
-			if err != nil {
-				return
+			mu.Lock()
+			if keys.typed(msg) {
+				terminal.WriteData(stream, msg)
 			}
+			mu.Unlock()
 		}
 	}()
-	go out.read(ctx, stream)
-	err = out.write(ctx, func(b []byte) error { return ws.Write(ctx, websocket.MessageBinary, b) })
-	if err != nil && ctx.Err() == nil {
-		ws.Close(websocket.StatusNormalClosure, "session detached")
+	send := func(b []byte) error { return ws.Write(ctx, websocket.MessageBinary, b) }
+	for {
+		mu.Lock()
+		from, journal := stream, keys
+		mu.Unlock()
+		go out.read(ctx, heardReader{from, journal})
+		err = out.write(ctx, send)
+		if err == nil || ctx.Err() != nil {
+			return
+		}
+		state, confirmed := c.RouteState(wire.StreamRoute(from))
+		if state != wire.RouteDown {
+			ws.Close(websocket.StatusNormalClosure, "session detached")
+			return
+		}
+		// Its route went down: attach again over the one now active.
+		journal.seal(confirmed)
+		next, err := open()
+		if err != nil {
+			ws.Close(websocket.StatusTryAgainLater, "Burf is reconnecting")
+			cancel()
+			<-reading
+			a.held.put(box, session, journal.unsent())
+			return
+		}
+		mu.Lock()
+		stream, keys = next, &keyJournal{}
+		if unsent := journal.unsent(); len(unsent) > 0 {
+			keys.typed(unsent)
+			terminal.WriteData(next, unsent)
+		}
+		mu.Unlock()
+		from.Close()
+		out.resume()
 	}
+}
+
+// heardReader notes each time the box writes to a terminal.
+type heardReader struct {
+	r    io.Reader
+	keys *keyJournal
+}
+
+func (h heardReader) Read(b []byte) (int, error) {
+	n, err := h.r.Read(b)
+	if n > 0 {
+		h.keys.output()
+	}
+	return n, err
 }
 
 func truncate(s string, n int) string {

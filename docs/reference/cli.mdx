@@ -28,8 +28,8 @@ the `BOX/` prefix.
 | `burf network proxy NAME HOST PORT` | Connect stdin and stdout to HOST:PORT through that network, for SSH's `ProxyCommand` |
 | `burf networks [--json]` | Joined networks |
 | `burf discover [--network NET] [--json]` | Machines on the tailnet that could be boxes |
-| `burf boxes [--json]` | Paired boxes and whether they are online |
-| `burf ping BOX` | Check a box answers and still trusts you |
+| `burf boxes [--json]` | Paired boxes, whether they are online, and the [route](/concepts/laptop-agent#routes-to-a-box) each is reached by |
+| `burf ping BOX [-c N]` | Check a box answers and still trusts you: how long connecting took, then N−1 round trips on the open connection (its latency) |
 | `burf upgrade BOX [--check] [--json]` | Upgrade the box's daemon over Burf's own connection (no SSH); `--check` only reports whether it is older |
 | `burf edit BOX/PROJECT[/WT] [FILE[:LINE[:COL]]] [--in cursor\|vscode\|windsurf\|zed]` | Open a worktree, or a file at a line, in your editor (default: the first installed) |
 | `burf ssh-config [--write] [--json]` | Show (then write) the SSH hosts editors use: `berth-<box>`. Windows entries require native Windows OpenSSH. |
@@ -99,11 +99,11 @@ signs in with its own. See [team setup](/guides/team-setup).
 | Command | What it does |
 | --- | --- |
 | `burf status [--json]` | Boxes, forwards and the proxy at a glance |
-| `burf doctor [BOX] [--json]` | Check this computer (or a box) and how to fix it |
+| `burf doctor [BOX] [--json]` | Check this computer (or a box, with the routes to it) and how to fix it |
 | `burf events [BOX] [--json]` | Stream events from this laptop and every box as they happen (box events carry `box`); with `BOX`, only that box's |
 | `burf agent` | Run the agent in the foreground |
 | `burf agent start` | Start the agent in the background if it isn't running (what the app's **Start the Burf agent** runs) |
-| `burf agent restart [--if-stale] [--json]` | Restart the agent once its work under way is done; `--if-stale` only when it's older than this `berth` (what the app runs as it starts, after an update) |
+| `burf agent restart [--if-stale] [--json]` | Restart the agent once its work under way is done; `--if-stale` only when it's older than this `burf` (what the app runs as it starts, after an update) |
 | `burf agent install\|uninstall\|status` | Run the agent at login, restart it on crashes |
 | `burf setup port80 [--remove]` | Drop `:1377` from URLs (macOS; asks for your admin password once) |
 | `burf stop` | Stop the agent (and every forward) |
@@ -123,7 +123,7 @@ signs in with its own. See [team setup](/guides/team-setup).
 | `berth services BOX [--json]` | Which worktree each running server belongs to |
 | `berth service list\|start\|stop\|restart\|log BOX/LOC/WORKTREE [SERVICE]` | A worktree's services from the repo's config |
 | `berth preview BOX/[LOC/WORKTREE] [PORT] [--path /x]` | Open a worktree's page in the Burf app |
-| `berth worktree new BOX/LOC/NAME [--branch B] [--base REF]` | Create a git worktree and run its setup |
+| `burf worktree new BOX/LOC/NAME [--branch B] [--base REF] [--parent NAME]` | Create a git worktree and run its setup; `--parent` nests it under another worktree of the location |
 | `berth worktree rm BOX/LOC/NAME [--force]` | Remove a worktree |
 | `berth worktree rename BOX/LOC/NAME [TITLE]` | Give a worktree a [display name](/concepts/projects-and-worktrees#display-names); its branch and folder keep their names, and no TITLE clears it |
 
@@ -179,6 +179,8 @@ See [orchestration](/guides/orchestration) and
 | --- | --- |
 | `berth ports BOX [--json]` | What is listening on the box |
 | `berth stats BOX [--json]` | Memory, disk, load, and agents running or waiting |
+| `berth ps BOX [--json]` | The box's browsers with who started each, and what its sessions use |
+| `berth ps BOX stop ID` | Stop one of them (Burf's or its sessions' only) |
 | `berth info BOX` | The box's name, OS, build, tools and agent presets, as JSON |
 | `berth share BOX PORT` | Make a port public (a Cloudflare quick tunnel run by the box) |
 | `berth shares BOX [--json]` | List public shares |
@@ -197,7 +199,8 @@ See [orchestration](/guides/orchestration) and
 
 | Command | What it does |
 | --- | --- |
-| `berth integrations install claude\|cursor\|codex\|gemini\|opencode\|all` | Install Burf's skills and agent hooks for a tool, on this laptop |
+| `burf integrations [status]` | Where Burf's hooks and skills are for each agent CLI on this laptop, per Claude Code and Codex account |
+| `burf integrations install claude\|cursor\|codex\|gemini\|opencode\|all` | Install Burf's skills and agent hooks for a tool, on this laptop, in every account folder it has |
 | `berth hook TOOL EVENT [PAYLOAD]` | What those hooks run: turns a tool's hook into a Burf event |
 
 See [agent integrations](/guides/agent-integrations).

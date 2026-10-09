@@ -12,8 +12,8 @@ function GitHubIcon() {
 }
 
 // The product header above the docs on a laptop-sized screen: the landing
-// page's lockup (the mark and "berth"), "docs", and the way back to
-// berthd.app. On a phone the docs' own header takes its place
+// page's lockup (the mark and "Burf"), "docs", and the way back to
+// Burf on GitHub. On a phone the docs' own header takes its place
 // (lib/layout.shared.tsx).
 export function SiteHeader() {
   return (
@@ -25,7 +25,7 @@ export function SiteHeader() {
       </Link>
       <nav aria-label="Burf" className="berth-site-nav">
         <a href={landingUrl}>
-          berthd.app
+          Burf on GitHub
           <ArrowUpRight aria-hidden="true" />
         </a>
         <a href={githubUrl} className="berth-site-gh">
@@ -37,11 +37,11 @@ export function SiteHeader() {
   );
 }
 
-// "berthd.app ↗", for the phone's header and the menu drawer.
+// "Burf on GitHub ↗", for the phone's header and the menu drawer.
 export function SiteLink({ className }: { className?: string }) {
   return (
     <a href={landingUrl} className={className}>
-      berthd.app
+      Burf on GitHub
       <ArrowUpRight aria-hidden="true" />
     </a>
   );
@@ -53,7 +53,7 @@ export function DrawerLinks() {
     <nav aria-label="Burf" className="berth-drawer-links">
       <a href={landingUrl}>
         <Mark className="berth-drawer-mark" />
-        berthd.app
+        Burf on GitHub
         <ArrowUpRight aria-hidden="true" className="berth-drawer-arrow" />
       </a>
       <a href={githubUrl}>

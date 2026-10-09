@@ -82,13 +82,16 @@ export function StateGlyph({ state, className }: { state: SessionState; classNam
   }
 }
 
-// StatusDot is a box's state (lib/state-model.ts): green online, green with
+// StatusDot is a box's state (lib/state-model.ts): green online, faded
+// green when its link is slow, green with
 // a blue ring when outdated, red when unreachable, a grey ring while
 // connecting, grey when offline. Agent states (amber included) never use it.
 export function StatusDot({ state, className }: { state?: BoxState | "untrusted"; className?: string }) {
   const s: BoxState = state === "untrusted" ? "unreachable" : (state ?? "offline");
   const color = {
     online: "bg-success",
+    // Still online: green, quieter.
+    slow: "bg-success/45",
     outdated: "bg-success ring-[1.5px] ring-info ring-offset-1 ring-offset-background",
     unreachable: "bg-destructive",
     connecting: "border border-muted-foreground/70 animate-pulse motion-reduce:animate-none",

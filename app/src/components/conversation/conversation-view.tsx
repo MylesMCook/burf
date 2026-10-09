@@ -36,6 +36,7 @@ import { seedLongChat } from "@/lib/mock-history";
 import "@/components/conversation/conversation.css";
 import "@/components/conversation/history.css";
 import { TurnSync } from "@/components/workspace/compare-sync";
+import { platformKeys } from "@/lib/platform";
 
 // ConversationView draws an agent's turn as a calm transcript rather than a
 // terminal: what was asked, what the agent says, its tool calls folded into
@@ -567,7 +568,7 @@ function HelperChip({ name, tool }: { name: string; tool?: string }) {
   if (!ctx?.claude) return <Badge variant="secondary">{label}</Badge>;
   const from = pane && { wsKey: pane.wsKey, tab: pane.tab, pane: pane.pane };
   return (
-    <Tip label={<span className="flex flex-col"><span>Open its conversation in a tab</span><span className="text-muted-foreground">⌘-click beside the chat · ⌥-click to peek</span></span>}>
+    <Tip label={<span className="flex flex-col"><span>Open its conversation in a tab</span><span className="text-muted-foreground">{platformKeys("⌘-click beside the chat · ⌥-click to peek")}</span></span>}>
       <Badge variant="secondary" render={<button type="button" data-helper-chip={label} onClick={(e) => openHelper(ctx.box, ctx.session, tool ?? label, { from, title: label, event: e })} />} className="cursor-pointer outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring">
         {label}
         <ChevronRightIcon className="-mr-0.5 size-3 opacity-60" />

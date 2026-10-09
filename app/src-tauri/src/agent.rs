@@ -34,6 +34,7 @@ pub struct AgentBinary {
     source: &'static str,
 }
 
+#[cfg_attr(all(target_os = "linux", not(debug_assertions)), allow(dead_code))]
 fn is_executable(path: &Path) -> bool {
     #[cfg(unix)]
     {
@@ -89,8 +90,17 @@ pub fn find_berth() -> Option<(PathBuf, &'static str)> {
 
 // bundled_sidecar is burf-cli beside the app's own executable. In a release
 // build on macOS that must be Burf.app/Contents/MacOS, and burf-cli must be
-// signed by the app's team.
+// signed by the app's team. On Linux it is the staged copy, which
+// outlives the app (linux.rs).
 fn bundled_sidecar() -> Option<PathBuf> {
+    #[cfg(target_os = "linux")]
+    return crate::linux::staged_cli();
+    #[cfg(not(target_os = "linux"))]
+    bundled_beside_app()
+}
+
+#[cfg(not(target_os = "linux"))]
+fn bundled_beside_app() -> Option<PathBuf> {
     let exe = std::env::current_exe().ok()?;
     let exe = exe.canonicalize().unwrap_or(exe);
     let dir = exe.parent()?;
@@ -186,8 +196,10 @@ pub fn agent_binary() -> Option<AgentBinary> {
 
 // start_agent starts the agent now (`burf agent start`, which outlives the
 // app), or with at_login installs it as a login service that starts it now
-// and at every login (`burf agent install`). The screen asks first: nothing
-// is installed unless the person ticks "Start at login".
+// and at every login (`burf agent install`: launchd on macOS, a login task
+// on Windows, or a systemd user unit on Linux). The screen asks first.
+// A Linux desktop without systemd --user falls back to starting the agent
+// without a login service.
 #[tauri::command]
 pub async fn start_agent(at_login: bool) -> Result<String, String> {
     let (bin, _) = find_berth().ok_or("Burf could not find its burf command")?;
@@ -196,9 +208,18 @@ pub async fn start_agent(at_login: bool) -> Result<String, String> {
     } else {
         &["agent", "start"]
     };
-    tauri::async_runtime::spawn_blocking(move || run(&bin, args))
-        .await
-        .map_err(|e| e.to_string())?
+    tauri::async_runtime::spawn_blocking(move || {
+        let out = run(&bin, args);
+        if cfg!(target_os = "linux") && at_login {
+            if let Err(why) = &out {
+                let started = run(&bin, &["agent", "start"])?;
+                return Ok(format!("{started} It won't start at login: {why}"));
+            }
+        }
+        out
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 // restart_stale_agent restarts the agent when it is older than the berth

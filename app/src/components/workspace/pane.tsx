@@ -1,4 +1,4 @@
-import { AppWindowIcon, ArchiveIcon, ChartColumnIcon, FileTextIcon, LayoutGridIcon, TableIcon, WorkflowIcon, ArrowLeftRightIcon, BotIcon, Columns2Icon, EllipsisIcon, GlobeIcon, ImageIcon, MessagesSquareIcon, MonitorSmartphoneIcon, PencilIcon, ScrollTextIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, SquareTerminalIcon, XIcon } from "lucide-react";
+import { AppWindowIcon, ArchiveIcon, ChartColumnIcon, FileTextIcon, GaugeIcon, LayoutGridIcon, TableIcon, WorkflowIcon, ArrowLeftRightIcon, BotIcon, Columns2Icon, EllipsisIcon, GlobeIcon, ImageIcon, MessagesSquareIcon, MonitorSmartphoneIcon, PencilIcon, ScrollTextIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, SquareTerminalIcon, XIcon } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo } from "react";
 
 
@@ -37,8 +37,10 @@ import { usePrefs } from "@/lib/prefs";
 import { useRemoval } from "@/lib/removing";
 import { useStore } from "@/lib/store";
 import { startRenaming } from "@/lib/session-title";
+import { memory, memoryNote } from "@/lib/processes";
 import { cn } from "@/lib/utils";
 import { focusPane, paneBeside, paneToTab, setPaneContent, splitKey, useWorkspaces, useWorktreeRef } from "@/lib/workspaces";
+import { platformKeys } from "@/lib/platform";
 
 export { agentLabel };
 
@@ -128,7 +130,10 @@ export function Pane({ wsKey, tab, pane, visible, focused, split, mixed, compare
               hidden input, where it would type a tab and keep the focus. */}
           {c.kind === "terminal" && (
             <div className="contents" inert={view === "conversation" || undefined}>
-              <TerminalView box={c.box} session={c.session} agent={c.agent} command={c.command} wsKey={wsKey} tab={tab} pane={pane.id} visible={visible && view !== "conversation"} focused={focused && view !== "conversation"} onFocus={focus} onClose={close} />
+              {/* Typing shows before the box echoes it on a slow link, in a
+                  shell; an agent's own screen (Claude Code, Codex) draws
+                  its input its own way, so it gets none. */}
+              <TerminalView box={c.box} session={c.session} agent={c.agent} command={c.command} wsKey={wsKey} tab={tab} pane={pane.id} visible={visible && view !== "conversation"} focused={focused && view !== "conversation"} predict={!c.agent && !agent} onFocus={focus} onClose={close} />
             </div>
           )}
           {/* The terminal stays connected underneath, so switching back is instant. */}
@@ -314,13 +319,21 @@ function PaneTitle({ pane }: { pane: Leaf }) {
   const gone = useStore((s) => c.kind === "terminal" && !session && !!s.boxes[c.box]?.sessions);
   const helper = useHelperState(c);
   const state = helper ?? (away ? undefined : session ? sessionState(session, stats) : gone ? "exited" : undefined);
+  // Near the box's per-session memory ceiling: said here and in its chat.
+  const near = away ? undefined : memoryNote(session?.usage);
   return (
-    <Tip label={c.kind === "terminal" ? `${c.session} on ${c.box}${away ? ` · ${c.box} is offline` : ""}` : undefined} align="start">
+    <Tip label={c.kind === "terminal" ? `${c.session} on ${c.box}${away ? ` · ${c.box} is offline` : ""}${near ? ` · ${near}` : ""}` : undefined} align="start">
       <span className="flex min-w-0 items-center gap-1.5">
         <PaneIcon content={c} agent={agent} />
         <span className="truncate">{label}</span>
         {secondary && <span className="shrink-0 text-muted-foreground">{secondary}</span>}
         {state && <StateGlyph state={state} className="size-3" />}
+        {near && session?.usage && (
+          <span data-testid="pane-memory" className="flex shrink-0 items-center gap-1 text-[11px] text-warning-foreground tabular-nums dark:text-warning">
+            <GaugeIcon className="size-3" aria-hidden />
+            {memory(session.usage.memory)} of {memory(session.usage.memory_high ?? 0)}
+          </span>
+        )}
       </span>
     </Tip>
   );
@@ -473,7 +486,7 @@ function HeaderButton({ label, keys, onClick, children }: { label: string; keys?
       label={
         <span className="flex items-center gap-2">
           {label}
-          {keys && <span className="text-muted-foreground">{keys}</span>}
+          {keys && <span className="text-muted-foreground">{platformKeys(keys)}</span>}
         </span>
       }
     >

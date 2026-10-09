@@ -29,15 +29,18 @@ import (
 	"github.com/MylesMCook/burf/internal/network"
 	"github.com/MylesMCook/burf/internal/pfredirect"
 	"github.com/MylesMCook/burf/internal/proxy"
+	"github.com/MylesMCook/burf/internal/sshroute"
+	"github.com/MylesMCook/burf/internal/sshsetup"
 	"github.com/MylesMCook/burf/internal/statefile"
 	"github.com/MylesMCook/burf/internal/trust"
 	"github.com/MylesMCook/burf/internal/wire"
+	"tailscale.com/ipn/ipnstate"
 )
 
 const (
 	DefaultProxyPort      = 1377
 	defaultHealthInterval = 10 * time.Second
-	pingTimeout           = 8 * time.Second
+	defaultPingTimeout    = 8 * time.Second
 	// A tick arriving this much later than scheduled means the laptop slept.
 	wakeSkew = 20 * time.Second
 	// A box's event stream that ends is followed again after a wait that
@@ -62,6 +65,14 @@ type Config struct {
 	// 1377 on both loopback addresses.
 	ProxyAddrs     []string
 	HealthInterval time.Duration
+	// PingTimeout is how long a health check waits for the box (default
+	// 8s). The check that confirms a failed one waits a quarter longer
+	// (10s): a box that stops answering shows away within about 20s.
+	PingTimeout time.Duration
+	// TailscaleStatus reads this computer's Tailscale (`tailscale status
+	// --json`), to tell a box reached directly from one relayed; defaults to
+	// the tailscale CLI. It is asked at most every couple of minutes.
+	TailscaleStatus func(ctx context.Context) (*ipnstate.Status, error)
 	// UIAddr is where the desktop app's API listens; "off" turns it off.
 	// Defaults to 127.0.0.1:1378.
 	UIAddr string
@@ -102,6 +113,15 @@ type Config struct {
 	// Doctor runs `burf doctor`'s checks of this laptop, for the app's
 	// Copy diagnostics (GET /v1/doctor); nil answers that there are none.
 	Doctor func(ctx context.Context) []doctor.Check
+	// Routes to boxes (boxroutes.go): SSH is the ssh program SSH routes run
+	// ("ssh" on the PATH), SSHFinder finds the SSH agent it uses when this
+	// process has none (nil: this computer's), SSHHosts lists the hosts
+	// ~/.ssh/config names (nil reads it), and RouteTiming how quickly
+	// routes are judged (zero: wire.DefaultRouteTiming).
+	SSH         string
+	SSHFinder   *sshsetup.Finder
+	SSHHosts    func() []string
+	RouteTiming wire.RouteTiming
 }
 
 // Networks is the set of other tailnets the agent can dial through.
@@ -110,6 +130,8 @@ type Networks interface {
 	Login(ctx context.Context, name string, onURL func(string)) (network.Info, error)
 	List(ctx context.Context) []network.Info
 	Peers(ctx context.Context, name string) ([]network.Peer, error)
+	// Status is a network's view of its tailnet, for how it reaches a box.
+	Status(ctx context.Context, name string) (*ipnstate.Status, error)
 	Close()
 }
 
@@ -133,6 +155,12 @@ func (c *Config) defaults() {
 	}
 	if c.HealthInterval == 0 {
 		c.HealthInterval = defaultHealthInterval
+	}
+	if c.PingTimeout == 0 {
+		c.PingTimeout = defaultPingTimeout
+	}
+	if c.TailscaleStatus == nil {
+		c.TailscaleStatus = network.SystemStatus
 	}
 	if c.Log == nil {
 		c.Log = log.New(os.Stderr, "", log.LstdFlags)
@@ -163,6 +191,13 @@ type BoxStatus struct {
 	// it ("Reconnecting to devl… next try in 6s").
 	RetryAt  *time.Time `json:"retry_at,omitempty"`
 	Attempts int        `json:"attempts,omitempty"`
+	// Link is how well the laptop reaches it (link.go): slow or not, the
+	// latency's recent max and jitter, and whether Tailscale relays it.
+	Link Link `json:"link,omitzero"`
+	// Route is the ID of the route new requests to the box take, and Routes
+	// every way the agent knows to reach it (boxroutes.go).
+	Route  string        `json:"route,omitempty"`
+	Routes []RouteStatus `json:"routes,omitempty"`
 }
 
 type ForwardStatus struct {
@@ -219,6 +254,20 @@ type Agent struct {
 	// it rather than under the request that created them.
 	ctx context.Context
 
+	// tsMu guards this computer's Tailscale status, read at most every
+	// couple of minutes (link.go).
+	tsMu     sync.Mutex
+	tsAt     time.Time
+	tsStatus *ipnstate.Status
+	tsErr    error
+	// held keeps a terminal's typing that a route going down may have
+	// lost, for its next attach (attachkeys.go); hosts the hosts
+	// ~/.ssh/config names, read now and then (boxroutes.go).
+	held    heldKeys
+	hostsMu sync.Mutex
+	hostsAt time.Time
+	hosts   []string
+
 	mu      sync.Mutex
 	svc     map[string]serviceCache
 	clients map[string]*boxState
@@ -242,6 +291,15 @@ type boxState struct {
 	// back wakes the event relay waiting out its backoff when the box
 	// answers again.
 	back chan struct{}
+	// samples are the latest checks' latencies, and pathAt when the agent
+	// last asked Tailscale how it reaches the box (learning: asking now).
+	samples  []time.Duration
+	pathAt   time.Time
+	learning bool
+	// routeKey is the routes the client was given, and ssh the SSH route's
+	// dialer, if it has one (boxroutes.go).
+	routeKey string
+	ssh      *sshroute.Dialer
 }
 
 type runningForward struct {
@@ -319,6 +377,7 @@ func Run(ctx context.Context, cfg Config) error {
 	a.sync()
 	a.startSavedForwards(ctx)
 	go a.healthLoop(ctx)
+	go a.routeLoop(ctx)
 	go a.keepLocalBoxCurrent(ctx)
 	go a.watchTeamUpdates(ctx)
 	a.hooks = &hooks.Runner{Path: filepath.Join(cfg.UserDir, "hooks.json"), PluginsDir: filepath.Join(cfg.UserDir, "plugins"), Log: cfg.Log}
@@ -438,12 +497,14 @@ func (a *Agent) sync() {
 		a.cfg.Log.Printf("reading paired boxes: %v", err)
 		return
 	}
+	settings := a.routeSettings()
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	seen := map[string]bool{}
 	for _, p := range peers {
 		seen[p.Name] = true
 		if st, ok := a.clients[p.Name]; ok && st.peer == p {
+			a.applyRoutesLocked(p.Name, st, settings[p.Name].forPeer(p))
 			continue
 		}
 		if st, ok := a.clients[p.Name]; ok {
@@ -455,6 +516,7 @@ func (a *Agent) sync() {
 			back:   make(chan struct{}, 1),
 			status: BoxStatus{Name: p.Name, Address: p.Address, Network: p.Network, Fingerprint: p.Fingerprint.String(), State: StateConnecting, Since: a.cfg.Now()},
 		}
+		a.applyRoutesLocked(p.Name, a.clients[p.Name], settings[p.Name].forPeer(p))
 	}
 	for name, st := range a.clients {
 		if !seen[name] {
@@ -472,6 +534,9 @@ func (st *boxState) close() {
 		st.retry.Stop()
 	}
 	st.client.Reset()
+	if st.ssh != nil {
+		go st.ssh.Close()
+	}
 }
 
 // scheduleRetryLocked sets when a box that failed its check is tried next:
@@ -485,6 +550,11 @@ func (a *Agent) scheduleRetryLocked(name string, st *boxState) {
 	st.retryAt = time.Now().Add(d)
 	at := a.cfg.Now().Add(d)
 	st.status.RetryAt, st.status.Attempts = &at, st.fails
+	if st.status.State == StateOnline {
+		// A slow box is checked again soon, but isn't reconnecting: the
+		// app counts down only for a box that's away.
+		st.status.RetryAt, st.status.Attempts = nil, 0
+	}
 	if st.retry != nil {
 		st.retry.Stop()
 	}
@@ -503,6 +573,8 @@ func (a *Agent) scheduleRetryLocked(name string, st *boxState) {
 // reconnects until the box is removed.
 func (a *Agent) relay(ctx context.Context, name string, c *wire.Client, back <-chan struct{}) {
 	bc := box.NewClient(c)
+	// The agent's own stream doesn't make the box count as in use.
+	ctx = wire.Background(ctx)
 	// The last event seen: a reconnect (after sleep, say) asks the box's
 	// journal for what it missed, up to the box's replay limit. It is kept
 	// on disk, so a restart of the agent catches up too.
@@ -584,8 +656,9 @@ func (a *Agent) healthLoop(ctx context.Context) {
 }
 
 // slowAnswer is how long a request to a box may wait for its answer to
-// begin before the box is checked, in case it went away.
-const slowAnswer = 5 * time.Second
+// begin before the box is checked, in case it went away. Long enough that a
+// relayed link's spikes (2s and more) don't set it off.
+const slowAnswer = 10 * time.Second
 
 // away says whether the agent knows a box is offline, how to say so, and
 // how long until it tries the box again.
@@ -670,38 +743,48 @@ func (a *Agent) check(ctx context.Context, name string, st *boxState) {
 		st.checking = false
 		a.mu.Unlock()
 	}()
-	ctx, cancel := context.WithTimeout(ctx, pingTimeout)
+	a.mu.Lock()
+	timeout := a.cfg.PingTimeout
+	if st.fails > 0 {
+		// Confirming a failed check: give a slow link longer.
+		timeout = timeout * 5 / 4
+	}
+	a.mu.Unlock()
+	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
-	start := time.Now()
-	_, err := st.client.Ping(ctx)
-	latency := time.Since(start)
+	// Over the active route, or the first other one to answer when it
+	// stalls (boxroutes.go): latency is the route's that answered.
+	_, latency, err := st.client.PingTimed(ctx)
 	if ctx.Err() != nil && errors.Is(ctx.Err(), context.Canceled) {
 		return
-	}
-	state := StateOnline
-	switch {
-	case errors.Is(err, wire.ErrUntrusted):
-		state = StateUntrusted
-	case err != nil:
-		state = StateOffline
 	}
 	a.mu.Lock()
 	if a.clients[name] != st {
 		a.mu.Unlock()
 		return
 	}
-	prev := st.status.State
+	prev, wasSlow := st.status.State, st.status.Link.Slow
+	step := stepLink(prev, st.fails, latency, timeout, err)
+	state := step.State
 	if prev != state {
 		st.status.Since = a.cfg.Now()
 	}
 	st.status.State = state
 	st.status.Error = ""
-	st.status.LatencyMs = 0
+	st.status.Link.Slow = step.Slow
+	st.status.Link.Reason = ""
+	if step.Slow || state != StateOnline {
+		st.status.Link.Reason = step.Reason
+	}
 	if err != nil {
-		st.status.Error = err.Error()
+		if state != StateOnline {
+			st.status.Error = err.Error()
+			st.status.LatencyMs = 0
+		}
 		a.scheduleRetryLocked(name, st)
 	} else {
 		st.status.LatencyMs = latency.Milliseconds()
+		st.samples, st.status.Link.MaxMs, st.status.Link.JitterMs = noteSample(st.samples, latency)
 		st.fails, st.retryAt, st.status.RetryAt, st.status.Attempts = 0, time.Time{}, nil, 0
 		if st.retry != nil {
 			st.retry.Stop()
@@ -710,12 +793,25 @@ func (a *Agent) check(ctx context.Context, name string, st *boxState) {
 	}
 	a.mu.Unlock()
 
-	if err != nil {
-		// Whatever connection we had is suspect; the next attempt dials fresh.
+	// Every change of state is logged with why, once: not every check.
+	from, to := linkLabel(prev, wasSlow), linkLabel(state, step.Slow)
+	if from != to {
+		a.cfg.Log.Printf("box %s: %s → %s (%s)", name, from, to, step.Reason)
+	}
+	if err != nil && state != StateOnline {
+		// Away: whatever connection we had is suspect, and the next attempt
+		// dials fresh. A box that is only slow keeps its connection, so the
+		// requests and terminals on it ride the hiccup out.
 		st.client.Reset()
 		a.proxy.ResetBox(name)
 	}
+	if state == StateOnline || state == StateOffline {
+		a.learnPath(name, st)
+	}
 	if prev == state {
+		if state == StateOnline && wasSlow != step.Slow {
+			a.publish(Event{Type: EventBoxLink, Box: name, Data: map[string]any{"slow": step.Slow, "reason": step.Reason}})
+		}
 		return
 	}
 	if state == StateOnline {
@@ -852,6 +948,8 @@ func (a *Agent) removeForward(id string) (Forward, error) {
 }
 
 func (a *Agent) status() Status {
+	settings := a.routeSettings()
+	hosts := a.configHosts()
 	a.mu.Lock()
 	defer a.mu.Unlock()
 	s := Status{SSHSetupSupported: runtime.GOOS != "windows", Boxes: []BoxStatus{}, Forwards: []ForwardStatus{}, Routes: []Route{}, Proxy: a.proxySt}
@@ -865,6 +963,8 @@ func (a *Agent) status() Status {
 	for _, st := range a.clients {
 		b := st.status
 		b.Local = a.isLocal(st.peer)
+		b.Route, b.Routes = a.routeStatusLocked(st, settings[b.Name].forPeer(st.peer), hosts)
+		markRelayed(&b)
 		s.Boxes = append(s.Boxes, b)
 	}
 	for _, rf := range a.running {

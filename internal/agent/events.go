@@ -8,9 +8,12 @@ const (
 	EventBoxConnected    = "box.connected"
 	EventBoxDisconnected = "box.disconnected"
 	EventBoxUntrusted    = "box.untrusted"
-	EventForwardStarted  = "forward.started"
-	EventForwardFailed   = "forward.failed"
-	EventForwardRemoved  = "forward.removed"
+	// EventBoxLink: a box's link got slow or steady again, or Tailscale
+	// started or stopped relaying it (link.go).
+	EventBoxLink        = "box.link"
+	EventForwardStarted = "forward.started"
+	EventForwardFailed  = "forward.failed"
+	EventForwardRemoved = "forward.removed"
 )
 
 type Event = events.Event

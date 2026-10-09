@@ -16,8 +16,12 @@ import (
 )
 
 const Usage = `Integrations
+  %[1]s integrations [status]
+                         Where Burf's hooks and skills are, per agent
+                         and per Claude Code or Codex account
   %[1]s integrations install claude|cursor|codex|gemini|opencode|all|present
-                         Install berth's skills and agent hooks for a tool
+                         Install Burf's skills and agent hooks for a
+                         tool, in every account folder it has
   %[1]s hook TOOL EVENT [PAYLOAD]
                          What those hooks run: turns a tool's hook into a
                          berth event (agent.finished, agent.waiting)
@@ -61,12 +65,16 @@ func Hook(args []string, stdin *os.File, stdout, stderr io.Writer, emit Emit) {
 
 // Install handles `integrations install TOOL...` for the binary at bin.
 func Install(args []string, bin string, out io.Writer) error {
-	if len(args) < 2 || args[0] != "install" {
-		return errors.New("usage: integrations install claude|cursor|codex|gemini|opencode|all|present")
-	}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return err
+	}
+	if len(args) == 0 || (len(args) == 1 && args[0] == "status") {
+		Status(home, filepath.Base(bin), out)
+		return nil
+	}
+	if len(args) < 2 || args[0] != "install" {
+		return errors.New("usage: integrations [status] | integrations install claude|cursor|codex|gemini|opencode|all|present")
 	}
 	tools := args[1:]
 	if len(tools) == 1 && tools[0] == "all" {
@@ -86,30 +94,15 @@ func Install(args []string, bin string, out io.Writer) error {
 	return nil
 }
 
-// InstallTool installs berth's skills and hooks for one tool in home, for
-// the binary at bin, and says what it did on out. Running it again changes
-// nothing that is already in place.
+// InstallTool installs Burf's skills and hooks for one tool in home, for
+// the binary at bin, and says what it did on out: for Claude Code and Codex,
+// in every account folder (accounts.go). Running it again changes nothing
+// that is already in place.
 func InstallTool(home, tool, bin string, out io.Writer) error {
 	switch tool {
-	case "claude":
-		skills, err := installAllSkills(home, "claude")
-		if err != nil {
-			return err
-		}
-		settings := filepath.Join(home, ".claude", "settings.json")
-		changed, err := InstallClaudeHooks(settings, bin)
-		if err != nil {
-			return err
-		}
-		fmt.Fprintf(out, "Claude Code: skills in %s; hooks %s in %s\n", skills, verb(changed), settings)
-		if mcpBin(bin) {
-			cfg := filepath.Join(home, ".claude.json")
-			changed, err := InstallMCP(cfg, bin, true)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(out, "Claude Code: MCP server %s in %s\n", verb(changed), cfg)
-		}
+	case "claude", "codex":
+		// Every account folder: the default and each other login (accounts.go).
+		return installAccounts(home, tool, bin, out)
 	case "cursor":
 		hooks := filepath.Join(home, ".cursor", "hooks.json")
 		changed, err := InstallCursorHooks(hooks, bin)
@@ -117,37 +110,6 @@ func InstallTool(home, tool, bin string, out io.Writer) error {
 			return err
 		}
 		fmt.Fprintf(out, "Cursor: hooks %s in %s (existing hooks kept)\n", verb(changed), hooks)
-	case "codex":
-		skills, err := installAllSkills(home, "codex")
-		if err != nil {
-			return err
-		}
-		config := filepath.Join(home, ".codex", "config.toml")
-		hooksFile := filepath.Join(home, ".codex", "hooks.json")
-		hooksChanged, herr := InstallCodexHooks(hooksFile, bin)
-		if herr != nil {
-			return herr
-		}
-		fmt.Fprintf(out, "Codex: hooks %s in %s (trust them once in Codex with /hooks)\n", verb(hooksChanged), hooksFile)
-		changed, err := InstallCodexNotify(config, bin)
-		switch {
-		case errors.Is(err, ErrNotifyTaken):
-			// config.toml has a single notify setting, and the user already
-			// uses it for something else: suggest rather than overwrite.
-			fmt.Fprintf(out, "Codex: skills in %s\n", skills)
-			fmt.Fprintf(out, "  %s already sets notify, so berth left it alone. To announce finished turns, make it:\n    %s\n", config, codexNotify(bin))
-		case err != nil:
-			return err
-		default:
-			fmt.Fprintf(out, "Codex: skills in %s; notify %s in %s\n", skills, verb(changed), config)
-		}
-		if mcpBin(bin) {
-			changed, err := InstallCodexMCP(config, bin)
-			if err != nil {
-				return err
-			}
-			fmt.Fprintf(out, "Codex: MCP server %s in %s\n", verb(changed), config)
-		}
 	case "gemini":
 		settings := filepath.Join(home, ".gemini", "settings.json")
 		changed, err := InstallGeminiHooks(settings, bin)
@@ -173,6 +135,37 @@ func InstallTool(home, tool, bin string, out io.Writer) error {
 		return fmt.Errorf("unknown tool %q; use claude, cursor, codex, gemini, opencode, or all", tool)
 	}
 	return nil
+}
+
+// Status says, for each agent CLI on this machine, where Burf's hooks
+// and skills are: for Claude Code and Codex, per account folder. command
+// is how to run this binary, for the fix.
+func Status(home, command string, out io.Writer) {
+	for _, t := range Tools {
+		if !t.Present(home) {
+			fmt.Fprintf(out, "%s: not found\n", t.Name)
+			continue
+		}
+		if _, ok := AccountVars[t.ID]; ok {
+			summary, missing, outdated := AccountSummary(home, t.ID)
+			fmt.Fprintf(out, "%s: %s\n", t.Name, summary)
+			if len(outdated) > 0 {
+				fmt.Fprintf(out, "  from an older berth in %s\n", strings.Join(outdated, ", "))
+			}
+			if len(missing) > 0 || len(outdated) > 0 {
+				fmt.Fprintf(out, "  To fix: %s integrations install %s\n", command, t.ID)
+			}
+			continue
+		}
+		switch {
+		case !t.Hooked(home):
+			fmt.Fprintf(out, "%s: no hooks. To fix: %s integrations install %s\n", t.Name, command, t.ID)
+		case !t.Current(home):
+			fmt.Fprintf(out, "%s: hooks from an older berth in ~/%s. To fix: %s integrations install %s\n", t.Name, filepath.ToSlash(t.hookFile), command, t.ID)
+		default:
+			fmt.Fprintf(out, "%s: hooks in ~/%s\n", t.Name, filepath.ToSlash(t.hookFile))
+		}
+	}
 }
 
 // installAllSkills installs every skill berth ships for agent in home and

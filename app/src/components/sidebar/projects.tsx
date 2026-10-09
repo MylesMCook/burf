@@ -10,6 +10,7 @@ import {
   ServerOffIcon,
   SquareTerminalIcon,
   Trash2Icon,
+  WorkflowIcon,
 } from "lucide-react";
 import { memo, useMemo, useState } from "react";
 
@@ -36,6 +37,7 @@ import { usePrefs } from "@/lib/prefs";
 import { removalLabel, removalOf, useRemoval, useRemovals } from "@/lib/removing";
 import { WorktreeNameField } from "@/components/sidebar/rename-worktree";
 import { renameKey, startRenamingWorktree, stopRenamingWorktree, useRenamingWorktree, worktreeLabel } from "@/lib/worktree-names";
+import { below, MAX_INDENT, nest, prune, size, type TreeNode } from "@/lib/worktree-tree";
 
 // Projects lists repositories, as Orca does: one group per repository on a
 // box (the same repository on two boxes is two groups, told apart by the
@@ -106,8 +108,9 @@ export function Projects({ prefs, update }: { prefs: SidebarPrefs; update(p: Par
   const group = (list: Repo[], chip: boolean) => list.map((r) => <RepoGroup key={r.key} repo={r} chip={chip} prefs={prefs} update={update} />);
 
   // By repository, boxes only appear when there is something to say: an
-  // empty box, or one that is not online.
-  const notable = boxes.filter((b) => b.state !== "online" || !data[b.name]?.locations?.length);
+  // empty box, one that is not online, or one whose link is slow (below the
+  // projects, so nothing above it moves).
+  const notable = boxes.filter((b) => b.state !== "online" || b.link?.slow || !data[b.name]?.locations?.length);
 
   return (
     <>
@@ -149,7 +152,7 @@ function BoxHeader({ box, empty }: { box: BoxStatus; empty: boolean }) {
       <div
         tabIndex={0}
         role="group"
-        aria-label={`${box.name}, ${online ? "online" : awayText(box)}`}
+        aria-label={`${box.name}, ${online ? (box.link?.slow ? "online, slow link" : "online") : awayText(box)}`}
         className="group/row relative flex h-7 outline-none focus-visible:ring-2 focus-visible:ring-ring items-center gap-1.5 rounded-md pr-1 pl-2 font-medium text-[11px] text-muted-foreground hover:bg-sidebar-accent"
       >
         {online ? <ServerIcon className="size-3" /> : <ServerOffIcon className="size-3" />}
@@ -157,7 +160,8 @@ function BoxHeader({ box, empty }: { box: BoxStatus; empty: boolean }) {
         {online ? (
           <span className="ml-auto flex items-center gap-1.5 font-normal normal-case tracking-normal tabular-nums">
             {empty && <span>no projects</span>}
-            {box.latency_ms !== undefined && <span>{box.latency_ms} ms</span>}
+            {/* A slow link says so instead of its latency: still online, not alarming. */}
+            {box.link?.slow ? <span data-testid="box-slow">slow</span> : box.latency_ms !== undefined && <span>{box.latency_ms} ms</span>}
             <BoxStateDot box={box.name} />
           </span>
         ) : (
@@ -195,10 +199,12 @@ function BoxChip({ box }: { box: BoxStatus }) {
       )}
     >
       {!online && <span className="size-1.5 rounded-full bg-muted-foreground/50" />}
+      {online && box.link?.slow && <span className="size-1.5 rounded-full bg-success/45" />}
       {box.name}
     </span>
   );
   // The name says it all while the box is up; otherwise say why it is dim.
+  if (online && box.link?.slow) return <Tip label={`${box.name}'s link is slow; requests still go through`}>{chip}</Tip>;
   return online ? chip : <Tip label={`${box.name} is ${awayText(box)}`}>{chip}</Tip>;
 }
 
@@ -215,10 +221,21 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
 
   const mainSessions = main ? worktreeSessions(data?.sessions, main) : [];
   const mainSel = !!main && inWorkspace && current === wsKey(box.name, main.path);
-  const rows = worktrees.map((wt) => ({ wt, sessions: worktreeSessions(data?.sessions, wt), selected: inWorkspace && current === wsKey(box.name, wt.path) }));
-  const active = rows.filter((r) => r.sessions.some((s) => !s.exited) || r.selected || removalOf(removals, box.name, r.wt.path));
-  const shown = expanded ? rows : active;
-  const hidden = rows.length - shown.length;
+  const rows: TreeRow[] = worktrees.map((wt) => ({
+    key: wt.path,
+    box: box.name,
+    loc,
+    wt,
+    data,
+    sessions: worktreeSessions(data?.sessions, wt),
+    selected: inWorkspace && current === wsKey(box.name, wt.path),
+    away: online ? undefined : box,
+  }));
+  const isActive = (r: TreeRow) => r.sessions.some((s) => !s.exited) || r.selected || !!removalOf(removals, box.name, r.wt.path);
+  const active = rows.filter(isActive);
+  const tree = nest(rows, (r) => r.key, (r) => r.wt.parent);
+  const shown = expanded ? tree : prune(tree, isActive);
+  const hidden = rows.length - size(shown);
   const open = (wt: Worktree) => selectWorktree(refOf(box.name, loc, wt));
   const toggle = () => update({ collapsed: { ...prefs.collapsed, [repo.key]: !collapsed } });
 
@@ -270,9 +287,7 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
       {!collapsed && (all || shown.length > 0 || hidden > 0) && (
         <SidebarMenuSub className="mx-0 ml-[17px] gap-px py-0.5 pr-0 pl-1.5">
           {all && main && <WorktreeRow box={box.name} loc={loc} wt={main} sessions={mainSessions} data={data} selected={mainSel} onOpen={() => open(main)} away={online ? undefined : box} />}
-          {shown.map(({ wt, sessions, selected }) => (
-            <WorktreeRow key={wt.path} box={box.name} loc={loc} wt={wt} sessions={sessions} data={data} selected={selected} onOpen={() => open(wt)} away={online ? undefined : box} />
-          ))}
+          <WorktreeNodes nodes={shown} depth={0} prefs={prefs} update={update} />
           {hidden > 0 && (
             <SidebarMenuSubItem>
               <SidebarMenuSubButton
@@ -415,6 +430,75 @@ const WorktreeRow = memo(function WorktreeRow({ box, loc, wt, sessions, data, se
     </SidebarMenuSubItem>
   );
 }, sameRow);
+
+// TreeRow is one worktree as a project's tree holds it; key is unique
+// across the project's boxes.
+interface TreeRow {
+  key: string;
+  box: string;
+  loc: Location;
+  wt: Worktree;
+  data?: BoxData;
+  sessions: Session[];
+  selected: boolean;
+  chip?: BoxStatus;
+  away?: BoxStatus;
+}
+
+// WorktreeNodes draws worktrees with the ones handed off from each under
+// it (lib/worktree-tree.ts).
+function WorktreeNodes({ nodes, depth, prefs, update }: { nodes: TreeNode<TreeRow>[]; depth: number; prefs: SidebarPrefs; update(p: Partial<SidebarPrefs>): void }) {
+  return nodes.map((n) => <WorktreeNode key={n.key} node={n} depth={depth} prefs={prefs} update={update} />);
+}
+
+// WorktreeNode is a worktree and, under a pill saying how many, its
+// children. The pill folds them; a fold never hides the worktree you have
+// open, and while folded it shows the most urgent agent inside.
+function WorktreeNode({ node, depth, prefs, update }: { node: TreeNode<TreeRow>; depth: number; prefs: SidebarPrefs; update(p: Partial<SidebarPrefs>): void }) {
+  const r = node.row;
+  const row = (
+    <WorktreeRow box={r.box} loc={r.loc} wt={r.wt} sessions={r.sessions} data={r.data} selected={r.selected} chip={r.chip} away={r.away} onOpen={() => selectWorktree(refOf(r.box, r.loc, r.wt))} />
+  );
+  if (!node.children.length) return row;
+  const fold = `wt:${node.key}`;
+  const inside = below(node);
+  const closed = (prefs.collapsed[fold] ?? false) && !inside.some((c) => c.selected);
+  const n = node.children.length;
+  const what = `${n} ${n === 1 ? "child" : "children"}`;
+  const { state } = closed ? summary(inside.flatMap((c) => (c.away ? [] : c.sessions)), r.data) : {};
+  return (
+    <>
+      {row}
+      <SidebarMenuSubItem>
+        <button
+          type="button"
+          data-testid="worktree-children"
+          aria-expanded={!closed}
+          aria-label={`${closed ? "Show" : "Hide"} ${what} of ${worktreeLabel(r.wt)}`}
+          onClick={() => update({ collapsed: { ...prefs.collapsed, [fold]: !closed } })}
+          // A 24px target around a 20px pill.
+          className="group/pill ml-6 flex h-6 w-max items-center rounded-md text-[11px] text-muted-foreground outline-none hover:text-foreground"
+        >
+          <span className="flex h-5 items-center gap-1 rounded-md border border-sidebar-border px-1.5 group-hover/pill:bg-sidebar-accent group-focus-visible/pill:ring-2 group-focus-visible/pill:ring-ring [&_svg]:size-3">
+            <WorkflowIcon />
+            <span className="tabular-nums">{what}</span>
+            {(state === "running" || state === "waiting" || state === "finished") && <StateGlyph state={state} className="size-3" />}
+            <ChevronRightIcon className={cn("transition-transform", !closed && "rotate-90")} />
+          </span>
+        </button>
+      </SidebarMenuSubItem>
+      {!closed && (
+        <SidebarMenuSubItem>
+          {/* Up to MAX_INDENT levels step in, with a guide; deeper ones line
+              up with their parent. */}
+          <SidebarMenuSub className={cn("mx-0 gap-px py-0 pr-0", depth + 1 < MAX_INDENT ? "ml-[9px] pl-1.5" : "ml-0 border-l-0 pl-0")}>
+            <WorktreeNodes nodes={node.children} depth={depth + 1} prefs={prefs} update={update} />
+          </SidebarMenuSub>
+        </SidebarMenuSubItem>
+      )}
+    </>
+  );
+}
 
 // LeavingRow is a worktree being archived or removed, in the row's place
 // and size so nothing shifts when it goes.
@@ -683,11 +767,25 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
     return (m.loc.worktrees ?? [])
       .filter((w) => (multi ? true : !w.main))
       .sort((a, b) => Number(!!b.main) - Number(!!a.main) || worktreeLabel(a).localeCompare(worktreeLabel(b)))
-      .map((wt) => ({ m, wt, data, sessions: worktreeSessions(data?.sessions, wt), selected: inWorkspace && current === wsKey(m.box.name, wt.path) }));
+      .map(
+        (wt): TreeRow => ({
+          key: `${m.box.name}:${wt.path}`,
+          box: m.box.name,
+          loc: m.loc,
+          wt,
+          data,
+          sessions: worktreeSessions(data?.sessions, wt),
+          selected: inWorkspace && current === wsKey(m.box.name, wt.path),
+          chip: multi ? m.box : undefined,
+          away: m.box.state === "online" ? undefined : m.box,
+        }),
+      );
   });
-  const active = rows.filter((r) => r.sessions.some((s) => !s.exited) || r.selected || removalOf(removals, r.m.box.name, r.wt.path));
-  const shown = expanded ? rows : active;
-  const hidden = rows.length - shown.length;
+  const isActive = (r: TreeRow) => r.sessions.some((s) => !s.exited) || r.selected || !!removalOf(removals, r.box, r.wt.path);
+  const active = rows.filter(isActive);
+  const tree = nest(rows, (r) => r.key, (r) => (r.wt.parent ? `${r.box}:${r.wt.parent}` : undefined));
+  const shown = expanded ? tree : prune(tree, isActive);
+  const hidden = rows.length - size(shown);
   // With one box, the row itself is the main checkout.
   const mainSel = !multi && !!defMain && inWorkspace && current === wsKey(def.box.name, defMain.path);
   const allSessions = p.members.flatMap((m) => (boxes[m.box.name]?.sessions ?? []).filter((s) => !s.service && m.loc.worktrees?.some((w) => w.path === s.dir)));
@@ -771,20 +869,7 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
               away={def.box.state === "online" ? undefined : def.box}
             />
           )}
-          {shown.map(({ m, wt, data, sessions, selected }) => (
-            <WorktreeRow
-              key={`${m.box.name}:${wt.path}`}
-              box={m.box.name}
-              loc={m.loc}
-              wt={wt}
-              sessions={sessions}
-              data={data}
-              selected={selected}
-              chip={multi ? m.box : undefined}
-              onOpen={() => selectWorktree(refOf(m.box.name, m.loc, wt))}
-              away={m.box.state === "online" ? undefined : m.box}
-            />
-          ))}
+          <WorktreeNodes nodes={shown} depth={0} prefs={prefs} update={update} />
           {hidden > 0 && (
             <SidebarMenuSubItem>
               <SidebarMenuSubButton

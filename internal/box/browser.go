@@ -25,14 +25,14 @@ import (
 )
 
 // The agent browser: a headless Chromium on the box, one per active
-// worktree, started on first use and closed after 10 idle minutes. It opens
+// worktree, started on first use and closed after 5 idle minutes. It opens
 // exactly the URL the human sees for the worktree, through the worktree's
 // browser proxy, which is its only way out. berthd drives it over a pipe
 // and gives agents short text: a compact accessibility snapshot with refs,
 // a delta after each action, screenshots as files, console errors only.
 
 // BrowserIdle is how long a browser lives unused.
-const BrowserIdle = 10 * time.Minute
+const BrowserIdle = 5 * time.Minute
 
 // Output caps: what an agent reads costs it tokens every step.
 const (
@@ -369,6 +369,20 @@ func (m *Browsers) CloseLRU(why string) (*BrowserStatus, bool) {
 	return &st, true
 }
 
+// mains is every running browser's main process and worktree, without
+// the cost of status (its memory, its proxy).
+func (m *Browsers) mains() []BrowserStatus {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var out []BrowserStatus
+	for _, br := range m.open {
+		if br.cmd.Process != nil {
+			out = append(out, BrowserStatus{Location: br.location, Worktree: br.worktree, Path: br.path, PID: br.cmd.Process.Pid})
+		}
+	}
+	return out
+}
+
 // List is every running browser's status.
 func (m *Browsers) List() []BrowserStatus {
 	m.mu.Lock()
@@ -454,7 +468,7 @@ func (m *Browsers) start(ctx context.Context, bin, proxy, path string, v Viewpor
 		}
 	}
 	off, _ := m.noSandbox()
-	args := append(chromiumArgs(profile, proxy, off, v), "about:blank")
+	args := append(append(chromiumArgs(profile, proxy, off, v), agentBrowserArgs()...), "about:blank")
 	toChrome, ours, err := os.Pipe() // chrome reads fd 3
 	if err != nil {
 		return nil, err
@@ -466,7 +480,8 @@ func (m *Browsers) start(ctx context.Context, bin, proxy, path string, v Viewpor
 	cmd := exec.Command(bin, args...)
 	cmd.ExtraFiles = []*os.File{toChrome, fromChrome}
 	cmd.Dir = profile
-	cmd.Env = append(os.Environ(), "HOME="+profile)
+	// BERTH_BROWSER marks it as berth's own, in the box's processes list.
+	cmd.Env = append(os.Environ(), "HOME="+profile, "BERTH_BROWSER=agent")
 	stderr := &stderrTail{max: 4 << 10}
 	cmd.Stderr = stderr
 	if err := cmd.Start(); err != nil {
@@ -521,6 +536,25 @@ func chromiumArgs(profile, proxy string, noSandbox bool, v Viewport) []string {
 	// to its worktree by the proxy.
 	if noSandbox {
 		args = append(args, "--no-sandbox")
+	}
+	return args
+}
+
+// agentBrowserArgs are what only the agents' browser adds (not the
+// visual-diff one, which opens a tab per shot): at most two renderers
+// whatever a page opens, and a ceiling on each page's JavaScript heap,
+// which makes V8 collect sooner. Measured on Linux with a React app's
+// pages, a shot and the live view: about 35 MB less (PSS 418 → 380 MB);
+// a 1 GB ceiling saved nothing measurable. BERTH_BROWSER_JS_HEAP_MB
+// changes it (0: none) for a page that needs more.
+func agentBrowserArgs() []string {
+	args := []string{"--renderer-process-limit=2"}
+	heap := 512
+	if v, err := strconv.Atoi(os.Getenv("BERTH_BROWSER_JS_HEAP_MB")); err == nil && v >= 0 {
+		heap = v
+	}
+	if heap > 0 {
+		args = append(args, "--js-flags=--max-old-space-size="+strconv.Itoa(heap))
 	}
 	return args
 }

@@ -85,9 +85,11 @@ fn fill<R: Runtime>(
     Ok(())
 }
 
+// Mac and Windows keep their menu bar; Linux handles shortcuts in the page.
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     let table = table();
-    // "Burf", as the window and the Dock name it, not the crate's "berth".
+    // "Burf", as the window and the Dock name it, not the crate's "burf".
     let name = app
         .config()
         .product_name

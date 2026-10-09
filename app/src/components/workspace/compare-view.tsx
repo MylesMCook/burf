@@ -17,6 +17,7 @@ import { exec } from "@/lib/orchestrate";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { focusPane, leadAgent, splitKey, useWorkspaces, useWorktreeRef, type WsTab } from "@/lib/workspaces";
+import { platformKeys } from "@/lib/platform";
 
 // The Compare tab's chrome (lib/compare.ts): one bar over its two panes,
 // with each side's worktree, its agent's state and what it changed, the
@@ -204,7 +205,7 @@ function Keys({ label, keys }: { label: string; keys: string }) {
   return (
     <span className="flex items-center gap-2">
       {label}
-      <span className="text-muted-foreground">{keys}</span>
+      <span className="text-muted-foreground">{platformKeys(keys)}</span>
     </span>
   );
 }
