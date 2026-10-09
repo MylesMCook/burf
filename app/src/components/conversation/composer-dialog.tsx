@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 import { focusSession } from "@/lib/workspaces";
 
 // ComposerDialog is the composer in a dialog (⌘N and every "start" or
-// "send" entry): the same frame as on home, its options open, and, after a
+// "send" entry): the same frame and saved pickers as on home, and, after a
 // prompt to several agents, how each of them got on.
 export function ComposerDialog() {
   const draft = useComposer((s) => s.draft);

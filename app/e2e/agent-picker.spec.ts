@@ -1,5 +1,5 @@
 import { BOX, fakeAgent } from "./fake-agent";
-import { expect, mockOnly, test, type App } from "./fixtures";
+import { expect, mockOnly, openTaskPickers, test, type App } from "./fixtures";
 
 test.beforeEach(() => mockOnly("isolated launch picker"));
 
@@ -14,6 +14,7 @@ async function fixture(app: App) {
   const agent = await fakeAgent();
   await app.context.route(`${agent.url}/v1/boxes/${BOX}/api/info`, (route) => route.fulfill({ json: { name: BOX, version: "test", capabilities: ["runs"], agents: presets } }));
   await app.open({ agent });
+  await openTaskPickers(composer(app));
   return agent;
 }
 
