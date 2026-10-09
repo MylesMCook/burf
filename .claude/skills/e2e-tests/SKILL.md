@@ -5,24 +5,24 @@ description: Write or fix the existing Playwright acceptance tests in app/e2e us
 
 # Browser tests (app/e2e)
 
-The suite runs the production build in Playwright's Chromium on mock fixtures (`?mock=1`). The helpers are in `fixtures.ts`: `app.open()`, `app.openWorktree()`, `app.chat`, `app.composer`, `app.panes`.
+The suite runs in Playwright's Chromium on mock fixtures (`?mock=1`). The helpers are in `fixtures.ts`: `app.open()`, `app.openWorktree()`, `app.chat`, `app.composer`, `app.panes`. The speed budgets in `AGENTS.md` ("Speed Is A Requirement") bind every case here.
 
 ## Running
 
 ```sh
-cd app && pnpm build
-E2E_PORT=1435 pnpm exec playwright test e2e/thing.spec.ts --workers=2
+cd app && E2E_DEV=1 pnpm exec playwright test thing.spec.ts   # one spec, dev server, no build
+scripts/check-local.sh                                        # before a push: only the specs the change reaches
 ```
 
-`E2E_WORKERS` sets the worker count; CI uses 6 on omarchy and 2 on hosted runners.
+Never run the whole suite locally: it runs on the hosted runner after a merge and blocks nothing. `E2E_WORKERS` overrides the worker count.
 
 ## Assertions and permissions
 
-Use observable assertions for the accepted behavior. Do not weaken existing
-assertions, skip a failing case, add retries/sleeps or extend timeouts to get a
-pass. Tests that cannot run because of the environment remain unverified;
-record the error and actual counts. Zero tests or skipped cases do not prove
-acceptance. Main-push and pull-request E2E remain blocking in CI.
+Use observable assertions for the accepted behavior. No fixed waits, retries
+or longer timeouts to get a pass. A case over 5 seconds is fixed or deleted;
+logic that needs no real page belongs in a Node unit test; a cut feature's
+cases go in the same change. Zero tests or skipped cases do not prove
+acceptance.
 
 Keep `BERTH_E2E_LIVE` unset for mutation acceptance tests. Live fleet checks,
 installed providers and signed-in browsers require their own explicit scope;

@@ -16,6 +16,7 @@ import (
 	"runtime"
 	"sort"
 	"strings"
+	"time"
 )
 
 type Spec struct {
@@ -49,6 +50,7 @@ var (
 		return cmd.CombinedOutput()
 	}
 	lookPath   = exec.LookPath
+	pause      = time.Sleep
 	runUserDir = "/run/user"
 )
 
@@ -356,10 +358,18 @@ func launchdTarget(s Spec) string { return fmt.Sprintf("gui/%d/%s", os.Getuid(),
 func load(s Spec, path string) error {
 	if goos == "darwin" {
 		command("launchctl", "bootout", launchdTarget(s))
-		if out, err := command("launchctl", "bootstrap", fmt.Sprintf("gui/%d", os.Getuid()), path); err != nil {
-			return fmt.Errorf("launchctl bootstrap: %v: %s", err, strings.TrimSpace(string(out)))
+		// bootout returns before launchd has let go of the old job, and until
+		// it has, bootstrap fails ("5: Input/output error"). Stopping there
+		// leaves the service unloaded, so wait for launchd and try again.
+		var out []byte
+		var err error
+		for try := 0; try < 20; try++ {
+			if out, err = command("launchctl", "bootstrap", fmt.Sprintf("gui/%d", os.Getuid()), path); err == nil {
+				return nil
+			}
+			pause(250 * time.Millisecond)
 		}
-		return nil
+		return fmt.Errorf("launchctl bootstrap: %v: %s", err, strings.TrimSpace(string(out)))
 	}
 	if out, err := command("systemctl", "--user", "daemon-reload"); err != nil {
 		return fmt.Errorf("systemctl daemon-reload: %v: %s", err, strings.TrimSpace(string(out)))

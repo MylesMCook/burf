@@ -1,11 +1,13 @@
 package service
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 func stub(t *testing.T, os_ string) (home string, calls *[]string) {
@@ -242,5 +244,36 @@ func TestPreflightOnAMacNeedsALoginSession(t *testing.T) {
 	}
 	if err := Preflight(); err == nil || !strings.Contains(err.Error(), "no login session") {
 		t.Errorf("without a GUI session: %v", err)
+	}
+}
+
+// launchd answers "Bootstrap failed: 5: Input/output error" while the job
+// just booted out is still being torn down. Giving up there leaves the
+// service unloaded: the reinstall has to wait for launchd and try again.
+func TestAReinstallWaitsForLaunchdToLetGoOfTheOldJob(t *testing.T) {
+	_, calls := stub(t, "darwin")
+	oldPause := pause
+	pause = func(time.Duration) {}
+	t.Cleanup(func() { pause = oldPause })
+	record, refused := command, 2
+	command = func(name string, args ...string) ([]byte, error) {
+		record(name, args...)
+		if len(args) > 0 && args[0] == "bootstrap" && refused > 0 {
+			refused--
+			return []byte("Bootstrap failed: 5: Input/output error"), errors.New("exit status 5")
+		}
+		return nil, nil
+	}
+	if err := load(Spec{Name: "dev.berth.berthd"}, "/tmp/x.plist"); err != nil {
+		t.Fatalf("load gave up while launchd was still busy: %v", err)
+	}
+	if n := strings.Count(strings.Join(*calls, "\n"), "launchctl bootstrap"); n != 3 {
+		t.Errorf("bootstrap attempts = %d, want 3", n)
+	}
+
+	refused = 1 << 30
+	err := load(Spec{Name: "dev.berth.berthd"}, "/tmp/x.plist")
+	if err == nil || !strings.Contains(err.Error(), "Input/output error") {
+		t.Errorf("a launchd that never accepts the job: %v", err)
 	}
 }
