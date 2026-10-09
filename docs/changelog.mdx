@@ -1,9 +1,9 @@
 ---
 title: Changelog
-description: What changed in each Shipyard release, newest first.
+description: What changed in each Burf release, newest first.
 ---
 
-Releases are on [GitHub](https://github.com/cosscom/shipyard/releases).
+Releases are on [GitHub](https://github.com/MylesMCook/burf/releases).
 The Mac app [updates itself](/getting-started/install#updates); a box
 upgrades with `berth upgrade BOX`, or by running the
 [install command](/getting-started/add-a-box#with-the-install-command)
@@ -17,8 +17,8 @@ again.
   AppImage and `.deb` for x86-64 and adds Linux to the update feed; see
   [Linux (alpha)](/getting-started/install#linux-alpha).
 
-- **Install with Homebrew.** `brew tap cosscom/shipyard https://github.com/cosscom/shipyard`,
-  then `brew install --cask cosscom/shipyard/shipyard`, installs the Mac app
+- **Install with Homebrew.** `brew tap MylesMCook/burf https://github.com/MylesMCook/burf`,
+  then `brew install --cask MylesMCook/burf/burf`, installs the Mac app
   and puts `berth` on your `PATH`.
 
 - **Handed-off worktrees nest under the one they came from.** When an
@@ -40,7 +40,7 @@ again.
 Most of this needs each box's new `berthd`: use **Update all** in the status
 bar, or `berth upgrade BOX`. Agents keep running through the update.
 
-- **More than one way to each box.** Shipyard can now reach a box over SSH
+- **More than one way to each box.** Burf can now reach a box over SSH
   and at other addresses as well as over Tailscale, and sends new requests
   over the fastest route that works. When the route in use stops answering,
   requests move to another within seconds; open terminals follow once it is
@@ -54,13 +54,13 @@ bar, or `berth upgrade BOX`. Agents keep running through the update.
   browsers or a dev server, even ones left running in the background after
   the agent was killed. On Linux with systemd each new session runs in a
   scope of its own, which also lets it outlive berthd as before; elsewhere
-  Shipyard finds the session's processes by their tree (and, on Linux, the
+  Burf finds the session's processes by their tree (and, on Linux, the
   session's marker). Your own processes and tmux are never touched.
 - **See and stop a box's browsers.** Click a box's memory meter in the
   status bar to see every Chromium, Chrome and Firefox on it, with who
-  started it (Shipyard's agent browser, an agent-browser session, a
+  started it (Burf's agent browser, an agent-browser session, a
   session's tests, one left behind, or yours), its CPU, memory and age, and
-  **Stop** for Shipyard's and its sessions'. The sessions using the most
+  **Stop** for Burf's and its sessions'. The sessions using the most
   memory are below. Settings → Boxes shows the same, and agents see it with
   `berthd ps` and in `berthd doctor`.
 - **A memory limit per session.** Settings → Boxes can hold each session on
@@ -104,11 +104,11 @@ bar, or `berth upgrade BOX`. Agents keep running through the update.
   on the client (Next.js, React Router: `history.pushState`) left the
   address bar on the first URL, since nothing loaded. It now shows where the
   page is, within half a second.
-- **Every agent account gets Shipyard's hooks and skills.** A Claude Code or
+- **Every agent account gets Burf's hooks and skills.** A Claude Code or
   Codex session started on another account (the Usage plugin's accounts,
-  which set `CLAUDE_CONFIG_DIR` or `CODEX_HOME`) ran without Shipyard's
+  which set `CLAUDE_CONFIG_DIR` or `CODEX_HOME`) ran without Burf's
   hooks, so the box guessed from the screen when it was working, done or
-  needed you, and without Shipyard's skills. `berthd integrations install`
+  needed you, and without Burf's skills. `berthd integrations install`
   now puts them in every account folder (the default, those in
   `~/.berth/accounts`, and any the box or a project picks), **Add account…**
   puts them in the new one, and berthd adds them to an account a session
@@ -121,14 +121,14 @@ bar, or `berth upgrade BOX`. Agents keep running through the update.
   account's folder, and the box only looked in its own: the chat said "Its
   conversation can't be read here yet" and emptied after every message. The
   box now reads each session's conversation from the account it started on.
-- **Berth is now Shipyard.** A new name, nothing else: the same app, the
+- **Berth is now Burf.** A new name, nothing else: the same app, the
   same CLI and the same boxes, with your data where it was. The commands are
   still `berth` and `berthd`, and their files (`~/.berth`, a repository's
   `.berth/`, `BERTH_*` variables, `berth://` links) keep their names for now.
-  A new download is `Shipyard.app`; an installed `Berth.app` updates in
+  A new download is `Burf.app`; an installed `Berth.app` updates in
   place and keeps its folder name. Releases before this one went out as
   Berth.
-- **Shipyard for Linux, an alpha.** The desktop app now ships for x86-64
+- **Burf for Linux, an alpha.** The desktop app now ships for x86-64
   Linux as an AppImage, which updates itself from the same feed as the Mac
   app, and as a .deb. It's an alpha: less tested than the Mac app, and its
   sidebar and **Settings → About** say so, with **Report a Linux bug** in

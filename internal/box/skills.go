@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cosscom/shipyard/internal/integrations"
+	"github.com/MylesMCook/burf/internal/integrations"
 )
 
 // Skills teach agent tools on this box to use berth. They install for the

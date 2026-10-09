@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/netfault"
+	"github.com/MylesMCook/burf/internal/netfault"
 )
 
 var quickTiming = RouteTiming{

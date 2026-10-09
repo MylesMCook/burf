@@ -27,7 +27,7 @@ build_dist() {
 	local dir=$1 version=$2 arch
 	arch=$(docker_arch) || return 1
 	mkdir -p "$dir/stage/berthd" "$dir/stage/berth"
-	local ld="-s -w -X github.com/cosscom/shipyard/internal/version.Version=$version"
+	local ld="-s -w -X github.com/MylesMCook/burf/internal/version.Version=$version"
 	(cd "$REPO" && CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -ldflags "$ld" -o "$dir/stage/berthd/berthd" ./cmd/berthd) || return 1
 	(cd "$REPO" && CGO_ENABLED=0 GOOS=linux GOARCH=$arch go build -trimpath -ldflags "$ld" -o "$dir/stage/berth/berth" ./cmd/berth) || return 1
 	cp "$dir/stage/berthd/berthd" "$dir/stage/berth/berthd-linux-$arch"
@@ -59,7 +59,7 @@ download_dist() {
 	local tag=$1 dir=$2 arch
 	arch=$(docker_arch) || return 1
 	mkdir -p "$dir"
-	gh release download "$tag" --repo cosscom/shipyard --dir "$dir" --clobber \
+	gh release download "$tag" --repo MylesMCook/burf --dir "$dir" --clobber \
 		--pattern "berthd-linux-$arch.tar.gz" --pattern "berth-linux-$arch.tar.gz" --pattern checksums.txt || return 1
 	cp "$REPO/site/install.sh" "$dir/install.sh"
 }

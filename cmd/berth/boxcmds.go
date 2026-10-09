@@ -14,10 +14,10 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/cosscom/shipyard/internal/box"
-	"github.com/cosscom/shipyard/internal/boxcmd"
-	"github.com/cosscom/shipyard/internal/terminal"
-	"github.com/cosscom/shipyard/internal/wire"
+	"github.com/MylesMCook/burf/internal/box"
+	"github.com/MylesMCook/burf/internal/boxcmd"
+	"github.com/MylesMCook/burf/internal/terminal"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 // splitBox finds the box a command targets: the first argument after the

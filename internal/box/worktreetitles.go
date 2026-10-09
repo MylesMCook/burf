@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/cosscom/shipyard/internal/integrations/adapters"
+	"github.com/MylesMCook/burf/internal/integrations/adapters"
 )
 
 // A worktree is named by its folder, which is often a slug made from a

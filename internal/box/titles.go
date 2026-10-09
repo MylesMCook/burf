@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/cosscom/shipyard/internal/events"
-	"github.com/cosscom/shipyard/internal/integrations/adapters"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/integrations/adapters"
 )
 
 // A session is named after its work: "Fix checkout webhook", not "Claude

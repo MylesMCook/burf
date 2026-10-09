@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/transcript"
+	"github.com/MylesMCook/burf/internal/transcript"
 )
 
 // A conversation's history beyond its live end (the "history" capability):

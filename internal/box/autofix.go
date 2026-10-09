@@ -9,9 +9,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/box/runs"
-	"github.com/cosscom/shipyard/internal/events"
-	"github.com/cosscom/shipyard/internal/statefile"
+	"github.com/MylesMCook/burf/internal/box/runs"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/statefile"
 )
 
 // "Auto-fix this PR": one toggle per worktree that has its pull request's

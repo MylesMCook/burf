@@ -14,7 +14,7 @@ import { hasWhatsNew, openWhatsNew } from "@/lib/whats-new";
 import { SettingsGroup, SettingsPage, SettingsRow } from "@/views/settings/rows";
 
 const DOCS: [path: string, title: string, what: string][] = [
-  ["/concepts/architecture", "How Shipyard works", "The box serves, the laptop connects, and the app is only a view"],
+  ["/concepts/architecture", "How Burf works", "The box serves, the laptop connects, and the app is only a view"],
   ["/concepts/security", "Security model", "Identity, pinned mutual TLS, pairing, and where berthd listens"],
   ["/guides/hooks", "Hooks", "Run a command when something happens, or gate an action"],
   ["/reference/events", "Events", "Every event and gate, and what each carries"],
@@ -33,7 +33,7 @@ export function AboutSection() {
   const proxy = useStore((s) => s.status?.proxy);
 
   return (
-    <SettingsPage badge={LINUX_ALPHA && <AlphaBadge />} title="About Shipyard" description="Agents on your own boxes, watched from here. Closing this window never stops one.">
+    <SettingsPage badge={LINUX_ALPHA && <AlphaBadge />} title="About Burf" description="Agents on your own boxes, watched from here. Closing this window never stops one.">
       <SettingsGroup title="Versions">
         <SettingsRow label="App">
           <span className="font-mono text-muted-foreground text-xs">{version}</span>
@@ -100,7 +100,7 @@ function HelpGroup() {
       {LINUX_ALPHA && (
         <SettingsRow
           label="Report a Linux bug"
-          description="The Linux app is an alpha. Tell us what breaks in a GitHub issue on cosscom/shipyard, with your distribution and desktop, and the diagnostics above pasted in."
+          description="The Linux app is an alpha. Tell us what breaks in a GitHub issue on MylesMCook/burf, with your distribution and desktop, and the diagnostics above pasted in."
         >
           <Button size="xs" variant="outline" data-testid="report-linux-bug" onClick={() => void openUrl(LINUX_BUGS)}>
             <BugIcon />
@@ -112,9 +112,9 @@ function HelpGroup() {
   );
 }
 
-const RELEASES = "https://github.com/cosscom/shipyard/releases";
+const RELEASES = "https://github.com/MylesMCook/burf/releases";
 
-// UpdatesGroup says where the app's own updates stand. Shipyard checks when it
+// UpdatesGroup says where the app's own updates stand. Burf checks when it
 // opens and every few hours, and downloads quietly; the only step left to
 // the person is the restart (lib/updater.ts).
 function UpdatesGroup() {
@@ -122,7 +122,7 @@ function UpdatesGroup() {
   if (!updatesSupported()) {
     return (
       <SettingsGroup title="Updates">
-        <SettingsRow label="Updates come with the Shipyard app" description="This page is running in a browser, which has nothing to update." />
+        <SettingsRow label="Updates come with the Burf app" description="This page is running in a browser, which has nothing to update." />
       </SettingsGroup>
     );
   }
@@ -137,7 +137,7 @@ function UpdatesGroup() {
     case "ready":
     case "installing":
       row = (
-        <SettingsRow label={`Shipyard ${u.version} is ready`} description="Restarting closes and reopens this window. Agents keep running on their boxes.">
+        <SettingsRow label={`Burf ${u.version} is ready`} description="Restarting closes and reopens this window. Agents keep running on their boxes.">
           <Button size="xs" variant="ghost" onClick={() => void openUrl(`${RELEASES}/tag/v${u.version}`)}>
             What's new
           </Button>
@@ -149,14 +149,14 @@ function UpdatesGroup() {
       break;
     case "downloading":
       row = (
-        <SettingsRow label={`Downloading Shipyard ${u.version}`} description={u.total ? `${bytes(u.received)} of ${bytes(u.total)}` : bytes(u.received)}>
+        <SettingsRow label={`Downloading Burf ${u.version}`} description={u.total ? `${bytes(u.received)} of ${bytes(u.total)}` : bytes(u.received)}>
           {checkNow}
         </SettingsRow>
       );
       break;
     case "current":
       row = (
-        <SettingsRow label="Shipyard is up to date" description={`Checked ${ago(new Date(u.checkedAt).toISOString())}.`}>
+        <SettingsRow label="Burf is up to date" description={`Checked ${ago(new Date(u.checkedAt).toISOString())}.`}>
           {checkNow}
         </SettingsRow>
       );
@@ -170,13 +170,13 @@ function UpdatesGroup() {
       break;
     default:
       row = (
-        <SettingsRow label={u.status === "checking" ? "Checking for updates…" : "Not checked yet"} description="Shipyard checks when it opens and every few hours.">
+        <SettingsRow label={u.status === "checking" ? "Checking for updates…" : "Not checked yet"} description="Burf checks when it opens and every few hours.">
           {checkNow}
         </SettingsRow>
       );
   }
   return (
-    <SettingsGroup title="Updates" description="New versions download in the background. Shipyard never restarts by itself: it waits for you to choose Restart to update.">
+    <SettingsGroup title="Updates" description="New versions download in the background. Burf never restarts by itself: it waits for you to choose Restart to update.">
       {row}
     </SettingsGroup>
   );

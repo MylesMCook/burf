@@ -10,8 +10,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cosscom/shipyard/internal/sshroute/sshtest"
-	"github.com/cosscom/shipyard/internal/sshsetup"
+	"github.com/MylesMCook/burf/internal/sshroute/sshtest"
+	"github.com/MylesMCook/burf/internal/sshsetup"
 )
 
 func TestMain(m *testing.M) {

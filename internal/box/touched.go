@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/transcript"
+	"github.com/MylesMCook/burf/internal/transcript"
 )
 
 // What the agents in a worktree changed in their latest turn, for ⌘P

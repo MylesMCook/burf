@@ -1,6 +1,6 @@
 package agent
 
-import "github.com/cosscom/shipyard/internal/events"
+import "github.com/MylesMCook/burf/internal/events"
 
 // Event types the agent publishes. Box events are relayed with their own.
 const (

@@ -204,7 +204,7 @@ export function CommandPalette() {
       { value: "home harbour start", label: "Home", icon: slot(<HouseIcon />), run: go(goHome) },
       { value: "review inbox approve changes", label: "Review", icon: slot(<InboxIcon />), run: go(() => st.setView({ kind: "review" })) },
       { value: "dashboard", label: "Agent Dashboard", icon: slot(<LayoutDashboardIcon />), shortcut: keysFor("dashboard"), run: go(() => st.setView({ kind: "dashboard" })) },
-      ...(hasWhatsNew() ? [{ value: "whats new release notes changes update", label: "What's new in Shipyard", icon: slot(<SparkleIcon />), run: go(() => openWhatsNew("palette")) }] : []),
+      ...(hasWhatsNew() ? [{ value: "whats new release notes changes update", label: "What's new in Burf", icon: slot(<SparkleIcon />), run: go(() => openWhatsNew("palette")) }] : []),
       { value: "keyboard shortcuts keys help", label: "Keyboard shortcuts", icon: slot(<KeyboardIcon />), shortcut: keysFor("shortcuts"), run: go(openShortcuts) },
       { value: "notifications inbox bell", label: "Notifications", icon: slot(<BellIcon />), shortcut: keysFor("notifications"), run: go(() => setNotificationsOpen(true)) },
       { value: "notification settings", label: "Notification settings", icon: slot(<BellIcon />), run: go(() => st.setView({ kind: "settings", section: "notifications" })) },

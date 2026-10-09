@@ -17,7 +17,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/trust"
+	"github.com/MylesMCook/burf/internal/trust"
 	"tailscale.com/tsnet"
 )
 

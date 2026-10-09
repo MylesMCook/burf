@@ -322,7 +322,7 @@ type AccountState struct {
 	// Hooked: berth's hooks are there; Current: they are this release's.
 	Hooked  bool `json:"hooked"`
 	Current bool `json:"current"`
-	// Skills counts Shipyard's skills installed for the account, current
+	// Skills counts Burf's skills installed for the account, current
 	// or not. Codex's are shared by every account (~/.agents/skills).
 	Skills int `json:"skills"`
 }

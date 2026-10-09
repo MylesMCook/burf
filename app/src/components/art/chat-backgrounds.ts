@@ -4,7 +4,7 @@ import night from "@/components/art/backgrounds/night.webp";
 import openSea from "@/components/art/backgrounds/open-sea.webp";
 import { HARBOUR, type HarbourLight } from "@/components/art/harbour-art";
 
-// The chat backgrounds Shipyard ships (lib/chat-background.ts). Patterns and
+// The chat backgrounds Burf ships (lib/chat-background.ts). Patterns and
 // gradients are drawn in code, in the theme's colours
 // (lib/chat-background-fields.ts); scenes are paintings, dithered into the
 // theme's colours at a low contrast unless shown as they are.
@@ -28,7 +28,7 @@ export const BUILTINS: Builtin[] = [
   { id: "g-dusk", name: "Dusk", kind: "gradient" },
   { id: "g-deep", name: "Deep sea", kind: "gradient" },
   // The first-prompt painting, by the time of day; the rest were generated
-  // with Codex for Shipyard.
+  // with Codex for Burf.
   { id: "harbour", name: "Harbour", kind: "scene", src: (l) => HARBOUR[l] },
   { id: "dawn", name: "Lighthouse at dawn", kind: "scene", src: () => dawn },
   { id: "night", name: "Moorings at night", kind: "scene", src: () => night },

@@ -16,10 +16,10 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/cosscom/shipyard/internal/groups"
-	"github.com/cosscom/shipyard/internal/integrations/adapters"
-	"github.com/cosscom/shipyard/internal/statefile"
-	"github.com/cosscom/shipyard/internal/terminal"
+	"github.com/MylesMCook/burf/internal/groups"
+	"github.com/MylesMCook/burf/internal/integrations/adapters"
+	"github.com/MylesMCook/burf/internal/statefile"
+	"github.com/MylesMCook/burf/internal/terminal"
 )
 
 // Session is a long-running program, usually a coding agent, started at a
@@ -337,7 +337,7 @@ func (s *Sessions) create(ctx context.Context, name, location, dir, command, age
 	var scopeArgs []string
 	if s.Scopes != nil && s.Scopes.Available(ctx) {
 		scope = scopeUnit(name, time.Now())
-		scopeArgs = s.Scopes.Wrap(scope, "Shipyard session "+name, s.memoryHigh())
+		scopeArgs = s.Scopes.Wrap(scope, "Burf session "+name, s.memoryHigh())
 		// systemd-run finds the user's manager by these.
 		for _, k := range []string{"XDG_RUNTIME_DIR", "DBUS_SESSION_BUS_ADDRESS"} {
 			if v := os.Getenv(k); v != "" {

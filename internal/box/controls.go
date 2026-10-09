@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/events"
-	"github.com/cosscom/shipyard/internal/integrations/adapters"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/integrations/adapters"
 )
 
 // The chat's controls: keys pressed into an agent's terminal (Esc to stop

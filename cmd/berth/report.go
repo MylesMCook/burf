@@ -7,10 +7,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/agent"
-	"github.com/cosscom/shipyard/internal/box"
-	"github.com/cosscom/shipyard/internal/doctor"
-	"github.com/cosscom/shipyard/internal/version"
+	"github.com/MylesMCook/burf/internal/agent"
+	"github.com/MylesMCook/burf/internal/box"
+	"github.com/MylesMCook/burf/internal/doctor"
+	"github.com/MylesMCook/burf/internal/version"
 )
 
 // gatherDiagnostics is `berth doctor --report`: the same report as the

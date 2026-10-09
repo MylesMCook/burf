@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/agentcli"
-	"github.com/cosscom/shipyard/internal/guided"
+	"github.com/MylesMCook/burf/internal/agentcli"
+	"github.com/MylesMCook/burf/internal/guided"
 )
 
 // Adding agent CLIs to a box that is already paired: the app's "Add agents"

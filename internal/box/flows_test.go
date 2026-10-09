@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/box/runs"
-	"github.com/cosscom/shipyard/internal/events"
+	"github.com/MylesMCook/burf/internal/box/runs"
+	"github.com/MylesMCook/burf/internal/events"
 )
 
 func TestFlowsAreValidated(t *testing.T) {

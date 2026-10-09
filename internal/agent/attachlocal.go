@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cosscom/shipyard/internal/box"
+	"github.com/MylesMCook/burf/internal/box"
 )
 
 // A path pasted into the app (a screenshot's /var/folders/…/Screenshot.png,

@@ -17,9 +17,9 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/cosscom/shipyard/internal/events"
-	"github.com/cosscom/shipyard/internal/statefile"
-	"github.com/cosscom/shipyard/internal/wire"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/statefile"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 // Secrets: an environment value can name a secret instead of holding it, so

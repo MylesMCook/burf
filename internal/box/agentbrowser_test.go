@@ -18,8 +18,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/doctor"
-	"github.com/cosscom/shipyard/internal/events"
+	"github.com/MylesMCook/burf/internal/doctor"
+	"github.com/MylesMCook/burf/internal/events"
 )
 
 func TestWithAgentBrowserIdle(t *testing.T) {

@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/box"
-	"github.com/cosscom/shipyard/internal/wire"
+	"github.com/MylesMCook/burf/internal/box"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 type sentPrompt struct{ box, session, text string }

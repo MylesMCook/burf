@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/cosscom/shipyard/internal/agent"
-	"github.com/cosscom/shipyard/internal/doctor"
+	"github.com/MylesMCook/burf/internal/agent"
+	"github.com/MylesMCook/burf/internal/doctor"
 )
 
 // activeRoute names the route a box's requests take, as `berth boxes`
@@ -53,7 +53,7 @@ func routeChecks(b agent.BoxStatus) []doctor.Check {
 			if r.Suggested {
 				words = append(words, "found in ~/.ssh/config")
 			}
-			c.Fix = "turn it on in Shipyard: Settings › Boxes"
+			c.Fix = "turn it on in Burf: Settings › Boxes"
 		default:
 			c.Status = doctor.Info
 			words = append(words, "not tried yet (measured while the box is in use)")

@@ -14,8 +14,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/transcript"
-	"github.com/cosscom/shipyard/internal/wire"
+	"github.com/MylesMCook/burf/internal/transcript"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 // fileBox serves a box with one repository location, "shop", and a

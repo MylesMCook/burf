@@ -21,7 +21,7 @@ export function Logo() {
   return (
     <span className="berth-brand">
       <Mark className="berth-brand-mark" />
-      <span className="berth-brand-word">shipyard</span>
+      <span className="berth-brand-word">burf</span>
       <span className="berth-brand-docs">docs</span>
     </span>
   );

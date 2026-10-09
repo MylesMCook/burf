@@ -13,9 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/events"
-	"github.com/cosscom/shipyard/internal/team"
-	"github.com/cosscom/shipyard/internal/team/teamtest"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/team"
+	"github.com/MylesMCook/burf/internal/team/teamtest"
 )
 
 // The team's box script, as Acme's is written: one subcommand per
@@ -300,7 +300,7 @@ func TestAFailedStepKeepsTheStepsBeforeItAndRetriesFromIt(t *testing.T) {
 	}
 	// The terminal says what happened and stays, with the output.
 	screen, _ := f.b.Sessions.Screen(context.Background(), "team-acme", 50)
-	if !strings.Contains(screen, "port 5450 is taken") || !strings.Contains(screen, "Shipyard stopped at db") {
+	if !strings.Contains(screen, "port 5450 is taken") || !strings.Contains(screen, "Burf stopped at db") {
 		t.Fatalf("terminal:\n%s", screen)
 	}
 	// Persisted: a new runner (berthd restarted) reads the same state.
@@ -432,7 +432,7 @@ func TestTheTeamRunnerRefusesRoot(t *testing.T) {
 		t.Skip("runs as root")
 	}
 	script := teamRunScript(TeamBundle{Name: "Acme", Org: "acme", Commit: "abc", Script: "box/setup.sh"})
-	if !strings.Contains(script, `"$(id -u)" -eq 0`) || !strings.Contains(script, "Shipyard never sees it") {
+	if !strings.Contains(script, `"$(id -u)" -eq 0`) || !strings.Contains(script, "Burf never sees it") {
 		t.Fatal(script)
 	}
 	if out, err := exec.Command("sh", "-n", "-c", script).CombinedOutput(); err != nil {

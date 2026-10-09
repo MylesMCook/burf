@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/events"
+	"github.com/MylesMCook/burf/internal/events"
 )
 
 // WatchSessionMemory says when a session nears its memory ceiling: once,

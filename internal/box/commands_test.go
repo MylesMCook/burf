@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/cosscom/shipyard/internal/events"
+	"github.com/MylesMCook/burf/internal/events"
 )
 
 func write(t *testing.T, path, body string) {

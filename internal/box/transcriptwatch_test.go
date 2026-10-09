@@ -9,10 +9,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/events"
-	"github.com/cosscom/shipyard/internal/hooks"
-	"github.com/cosscom/shipyard/internal/transcript"
-	"github.com/cosscom/shipyard/internal/wire"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/hooks"
+	"github.com/MylesMCook/burf/internal/transcript"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 // clockWatch is a watcher on a clock the test moves, driven by hand.

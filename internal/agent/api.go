@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/forward"
-	"github.com/cosscom/shipyard/internal/proxy"
+	"github.com/MylesMCook/burf/internal/forward"
+	"github.com/MylesMCook/burf/internal/proxy"
 )
 
 var (

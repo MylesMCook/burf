@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/events"
+	"github.com/MylesMCook/burf/internal/events"
 )
 
 func TestBrowserSizesParseWithClearErrors(t *testing.T) {

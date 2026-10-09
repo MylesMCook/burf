@@ -26,9 +26,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/events"
-	"github.com/cosscom/shipyard/internal/groups"
-	"github.com/cosscom/shipyard/internal/statefile"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/groups"
+	"github.com/MylesMCook/burf/internal/statefile"
 )
 
 type Hook struct {

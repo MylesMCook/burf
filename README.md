@@ -1,9 +1,9 @@
-# Shipyard
+# Burf
 https://www.berthd.app/
 Run coding agents on your dev boxes, and work with them as if they were on
 your laptop.
 
-Shipyard connects a laptop to any number of development machines (a VPS, a
+Burf connects a laptop to any number of development machines (a VPS, a
 cloud VM, a desktop under your desk) and gives each repository on them
 worktrees, terminals, agents, dev servers and automations. The agents run on
 the boxes, so closing the app, sleeping the laptop or losing Wi-Fi never
@@ -24,7 +24,7 @@ stops them; the app is a view you can close and reopen at any time.
 - **Plugins**: React plugins for the app, with built-ins for git changes,
   pull requests, dev servers, box monitoring, activity and notes.
 - **Boxes without the fuss**: pinned mutual TLS, pairing by link, boxes on
-  other tailnets, self-upgrade over Shipyard's own connection, and a phone
+  other tailnets, self-upgrade over Burf's own connection, and a phone
   companion served by each box.
 
 ## Pieces
@@ -44,7 +44,7 @@ stops them; the app is a view you can close and reopen at any time.
 curl -fsSL https://berthd.app/install | sh
 ```
 
-It downloads `berthd` from the [latest release](https://github.com/cosscom/shipyard/releases/latest),
+It downloads `berthd` from the [latest release](https://github.com/MylesMCook/burf/releases/latest),
 checks it against the release's checksums, installs it for that user (no
 root), starts it as a systemd user service (launchd on macOS), installs the
 hooks that let Claude Code, Codex and Cursor report their state
@@ -52,7 +52,7 @@ hooks that let Claude Code, Codex and Cursor report their state
 once, for ten minutes. Run it again to upgrade in place; `sh -s -- --help`
 lists the options.
 
-**On your Mac**, [download Shipyard](https://github.com/cosscom/shipyard/releases/latest/download/Berth-macos-universal.dmg)
+**On your Mac**, [download Burf](https://github.com/MylesMCook/burf/releases/latest/download/Berth-macos-universal.dmg)
 (`Berth-macos-universal.dmg`, for Apple silicon and Intel, signed and
 notarized), drag it to Applications and open it. The app carries the
 `berth` CLI and the Linux daemons `berth add ssh` uploads, and offers to
@@ -64,8 +64,8 @@ and restarting never stops an agent.
 Or, with Homebrew (it links `berth` into Homebrew's `bin` too):
 
 ```sh
-brew tap cosscom/shipyard https://github.com/cosscom/shipyard
-brew install --cask cosscom/shipyard/shipyard
+brew tap MylesMCook/burf https://github.com/MylesMCook/burf
+brew install --cask MylesMCook/burf/burf
 ```
 
 For `berth` in a terminal, **Settings → General → Command line → Install**
@@ -75,7 +75,7 @@ laptop, or for the CLI alone, download it from the release (use
 
 ```sh
 mkdir -p ~/.local/bin
-curl -fsSL https://github.com/cosscom/shipyard/releases/latest/download/berth-linux-amd64.tar.gz | tar -xz -C ~/.local/bin
+curl -fsSL https://github.com/MylesMCook/burf/releases/latest/download/berth-linux-amd64.tar.gz | tar -xz -C ~/.local/bin
 ```
 
 Paste the box's link into the app (**Add a box**), or:
@@ -102,12 +102,12 @@ With Go 1.27, Node 22, pnpm and Rust. `make all` builds `berth` and
 agent:
 
 ```sh
-git clone https://github.com/cosscom/shipyard
+git clone https://github.com/MylesMCook/burf
 cd berthd && make all
 cd app && pnpm install && pnpm tauri dev
 ```
 
-`make app-build` builds `Shipyard.app` and its disk image, with the CLI and the
+`make app-build` builds `Burf.app` and its disk image, with the CLI and the
 Linux daemons inside.
 
 ## Docs
@@ -116,7 +116,7 @@ The documentation is at [docs.berthd.app](https://docs.berthd.app). Its pages
 are the [`docs/`](docs) folder here, built by [`docs-site/`](docs-site):
 
 - [Install](docs/getting-started/install.mdx), [add a box](docs/getting-started/add-a-box.mdx), [first project](docs/getting-started/first-project.mdx), [first agent](docs/getting-started/first-agent.mdx)
-- [How Shipyard works](docs/concepts/architecture.mdx) and [the security model](docs/concepts/security.mdx)
+- [How Burf works](docs/concepts/architecture.mdx) and [the security model](docs/concepts/security.mdx)
 - [Orchestration](docs/guides/orchestration.mdx): agents driving agents, and [the offline queue](docs/guides/offline-queue.mdx)
 - [Automations](docs/guides/automations.mdx): flows, schedules, GitHub triggers; [hooks and gates](docs/guides/hooks.mdx)
 - [Project config](docs/guides/project-config.mdx) (`.berth/config.json`), [kits](docs/guides/kits.mdx), [secrets](docs/guides/secrets.mdx)

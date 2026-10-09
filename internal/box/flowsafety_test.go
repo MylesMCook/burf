@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"github.com/cosscom/shipyard/internal/box/runs"
+	"github.com/MylesMCook/burf/internal/box/runs"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/events"
-	"github.com/cosscom/shipyard/internal/hooks"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/hooks"
 )
 
 // payloads are values an attacker can put in a PR comment, a PR title, a

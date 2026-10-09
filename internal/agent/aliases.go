@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/box"
-	"github.com/cosscom/shipyard/internal/wire"
+	"github.com/MylesMCook/burf/internal/box"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 // A box names itself (its hostname, or the name given at install), and a

@@ -14,7 +14,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/statefile"
+	"github.com/MylesMCook/burf/internal/statefile"
 )
 
 // Managing worktrees in bulk: where each stands against its base, its

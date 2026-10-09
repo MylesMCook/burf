@@ -59,7 +59,7 @@ export interface TeamSetup {
   docs?: string;
   // settings reach the box script as BERTH_SETTING_<NAME>.
   box?: { os?: string[]; script?: string; steps?: TeamStep[]; settings?: Record<string, string> };
-  // The agent CLIs Shipyard installs on the box, as a step of its own.
+  // The agent CLIs Burf installs on the box, as a step of its own.
   agents?: string[];
   projects?: TeamProjectSpec[];
   keys?: Record<string, TeamKeys>;
@@ -75,7 +75,7 @@ export interface TeamFile {
   text?: string;
 }
 
-// A box step as the plan shows it, with Shipyard's own steps among them:
+// A box step as the plan shows it, with Burf's own steps among them:
 // "github" (the box's own gh auth login) and, when the keys are 1Password
 // references, "1password" (op signed in on the box).
 export interface PlanStep {

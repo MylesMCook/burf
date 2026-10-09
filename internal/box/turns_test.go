@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/events"
-	"github.com/cosscom/shipyard/internal/integrations"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/integrations"
 )
 
 // ledger is a turn ledger following a sequenced bus, with sessions tracked

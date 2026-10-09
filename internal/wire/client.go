@@ -16,9 +16,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/identity"
-	"github.com/cosscom/shipyard/internal/pairing"
-	"github.com/cosscom/shipyard/internal/trust"
+	"github.com/MylesMCook/burf/internal/identity"
+	"github.com/MylesMCook/burf/internal/pairing"
+	"github.com/MylesMCook/burf/internal/trust"
 )
 
 const dialTimeout = 15 * time.Second

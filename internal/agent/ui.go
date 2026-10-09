@@ -22,11 +22,11 @@ import (
 
 	"github.com/coder/websocket"
 
-	"github.com/cosscom/shipyard/internal/box"
-	"github.com/cosscom/shipyard/internal/hooks"
-	"github.com/cosscom/shipyard/internal/statefile"
-	"github.com/cosscom/shipyard/internal/terminal"
-	"github.com/cosscom/shipyard/internal/wire"
+	"github.com/MylesMCook/burf/internal/box"
+	"github.com/MylesMCook/burf/internal/hooks"
+	"github.com/MylesMCook/burf/internal/statefile"
+	"github.com/MylesMCook/burf/internal/terminal"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 // DefaultUIPort is where the agent serves the desktop app, on loopback only.
@@ -403,7 +403,7 @@ func (a *Agent) uiAttach(w http.ResponseWriter, r *http.Request) {
 		journal.seal(confirmed)
 		next, err := open()
 		if err != nil {
-			ws.Close(websocket.StatusTryAgainLater, "Shipyard is reconnecting")
+			ws.Close(websocket.StatusTryAgainLater, "Burf is reconnecting")
 			cancel()
 			<-reading
 			a.held.put(box, session, journal.unsent())

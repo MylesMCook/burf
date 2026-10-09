@@ -1,10 +1,10 @@
-export const appName = 'Shipyard';
+export const appName = 'Burf';
 export const siteUrl = 'https://docs.berthd.app';
 export const landingUrl = 'https://berthd.app';
 
 export const gitConfig = {
   user: 'cosscom',
-  repo: 'shipyard',
+  repo: 'burf',
   branch: 'main',
 };
 

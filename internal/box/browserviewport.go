@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/statefile"
+	"github.com/MylesMCook/burf/internal/statefile"
 )
 
 // The agent browser's size: the page's viewport in CSS pixels and its

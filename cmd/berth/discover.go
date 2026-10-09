@@ -11,7 +11,7 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/network"
+	"github.com/MylesMCook/burf/internal/network"
 )
 
 // candidate is a tailnet machine offered as a box.

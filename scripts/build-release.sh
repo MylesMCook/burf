@@ -3,7 +3,7 @@
 #
 #   berthd-<os>-<arch>.tar.gz   berthd, for linux/amd64, linux/arm64, darwin/arm64, darwin/amd64
 #   berth-<os>-<arch>.tar.gz    berth, plus the Linux daemons `berth add ssh` and
-#                               `berth upgrade` upload, and Shipyard's static tmux
+#                               `berth upgrade` upload, and Burf's static tmux
 #                               for Linux boxes (tmux-linux-amd64, -arm64), for
 #                               the same four platforms
 #   checksums.txt               sha256 of every archive, as sha256sum prints it
@@ -25,14 +25,14 @@ esac
 root=$(cd "$(dirname "$0")/.." && pwd)
 dist="$root/dist"
 go=${GO:-go}
-ldflags="-s -w -X github.com/cosscom/shipyard/internal/version.Version=$version"
+ldflags="-s -w -X github.com/MylesMCook/burf/internal/version.Version=$version"
 platforms="linux/amd64 linux/arm64 darwin/arm64 darwin/amd64"
 
 rm -rf "$dist"
 mkdir -p "$dist/stage"
 cd "$root"
 
-# Shipyard's tmux, built once into bin/ (scripts/build-tmux.sh, which needs
+# Burf's tmux, built once into bin/ (scripts/build-tmux.sh, which needs
 # Docker), or put there by the release workflow's tmux job.
 tmux_dir=${TMUX_DIR:-$root/bin}
 if [ ! -x "$tmux_dir/tmux-linux-amd64" ] || [ ! -x "$tmux_dir/tmux-linux-arm64" ]; then

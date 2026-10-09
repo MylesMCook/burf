@@ -12,7 +12,7 @@ import (
 
 	"github.com/coder/websocket"
 
-	"github.com/cosscom/shipyard/internal/guided"
+	"github.com/MylesMCook/burf/internal/guided"
 )
 
 // The guided install runs berth add ssh in a terminal here: the app gets

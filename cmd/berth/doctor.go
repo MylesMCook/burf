@@ -13,11 +13,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/agent"
-	"github.com/cosscom/shipyard/internal/box"
-	"github.com/cosscom/shipyard/internal/doctor"
-	"github.com/cosscom/shipyard/internal/pfredirect"
-	"github.com/cosscom/shipyard/internal/service"
+	"github.com/MylesMCook/burf/internal/agent"
+	"github.com/MylesMCook/burf/internal/box"
+	"github.com/MylesMCook/burf/internal/doctor"
+	"github.com/MylesMCook/burf/internal/pfredirect"
+	"github.com/MylesMCook/burf/internal/service"
 )
 
 // runDoctor checks this laptop, or with a box name, asks that box for its own

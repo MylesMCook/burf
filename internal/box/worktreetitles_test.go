@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/events"
+	"github.com/MylesMCook/burf/internal/events"
 )
 
 func TestWorktreeTitleIsSetClearedAndKeptWithTheLocation(t *testing.T) {

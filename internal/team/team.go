@@ -19,7 +19,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cosscom/shipyard/internal/agentcli"
+	"github.com/MylesMCook/burf/internal/agentcli"
 )
 
 // Schema is the only team.json schema this build reads.
@@ -31,17 +31,17 @@ const File = "team.json"
 // Repo is the repository an org publishes its team setup in.
 const Repo = ".berth"
 
-// GitHubStep is the step Shipyard adds after the team's own: the box signs in
+// GitHubStep is the step Burf adds after the team's own: the box signs in
 // to GitHub with its own gh, so it has a credential of its own to clone
 // with, which can be revoked on its own.
 const GitHubStep = "github"
 
-// AgentsStep is the step Shipyard adds after the team's own when a team setup
+// AgentsStep is the step Burf adds after the team's own when a team setup
 // names agents: it installs those agent CLIs on the box, as the engineer,
 // without sudo, and their hooks and skills (berthd agents install).
 const AgentsStep = "agents"
 
-// OnePasswordStep is the step Shipyard adds after GitHub when a team setup's
+// OnePasswordStep is the step Burf adds after GitHub when a team setup's
 // keys read 1Password (op:// references): the box's own op is signed in, in
 // the terminal, by the engineer, so berthd can read the shared keys
 // without ever asking in a service's terminal.
@@ -64,7 +64,7 @@ type Setup struct {
 	Docs    string `json:"docs,omitempty"`
 	Box     Box    `json:"box"`
 	// Agents are the agent CLIs every engineer's box gets ("claude",
-	// "codex", "cursor", "opencode"), installed by Shipyard as a step of its
+	// "codex", "cursor", "opencode"), installed by Burf as a step of its
 	// own. Signing in to each stays the engineer's.
 	Agents   []string  `json:"agents,omitempty"`
 	Projects []Project `json:"projects"`
@@ -141,7 +141,7 @@ type Step struct {
 	Title  string `json:"title"`
 	Detail string `json:"detail,omitempty"`
 	// Sudo says the step asks for the engineer's password: sudo prompts in
-	// the terminal, they type it, and Shipyard never sees or keeps it.
+	// the terminal, they type it, and Burf never sees or keeps it.
 	Sudo bool `json:"sudo,omitempty"`
 }
 
@@ -263,7 +263,7 @@ func unknownFields(data []byte) []string {
 			if strings.HasPrefix(k, "$") || contains(known[kind], k) {
 				continue
 			}
-			out = append(out, fmt.Sprintf("%s: %q is not a field this version of Shipyard knows; it is ignored", where, k))
+			out = append(out, fmt.Sprintf("%s: %q is not a field this version of Burf knows; it is ignored", where, k))
 		}
 	}
 	check("team.json", "", raw)
@@ -332,9 +332,9 @@ func InsidePath(p string) (string, error) {
 func (s *Setup) Validate() error {
 	if s.Schema != Schema {
 		if s.Schema == "" {
-			return fmt.Errorf(`team.json has no "schema"; this version of Shipyard reads %q`, Schema)
+			return fmt.Errorf(`team.json has no "schema"; this version of Burf reads %q`, Schema)
 		}
-		return fmt.Errorf("team.json is %q; this version of Shipyard reads %q (a newer one may read it)", s.Schema, Schema)
+		return fmt.Errorf("team.json is %q; this version of Burf reads %q (a newer one may read it)", s.Schema, Schema)
 	}
 	if !idPattern.MatchString(s.ID) {
 		return fmt.Errorf("id %q must be lowercase letters, digits and dashes", s.ID)

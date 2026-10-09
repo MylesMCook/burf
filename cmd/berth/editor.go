@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cosscom/shipyard/internal/agent"
-	"github.com/cosscom/shipyard/internal/sshconfig"
+	"github.com/MylesMCook/burf/internal/agent"
+	"github.com/MylesMCook/burf/internal/sshconfig"
 )
 
 // sshConfigCommand shows, and with --write makes, the SSH hosts editors use

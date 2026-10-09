@@ -12,10 +12,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/agent"
-	"github.com/cosscom/shipyard/internal/doctor"
-	"github.com/cosscom/shipyard/internal/service"
-	"github.com/cosscom/shipyard/internal/version"
+	"github.com/MylesMCook/burf/internal/agent"
+	"github.com/MylesMCook/burf/internal/doctor"
+	"github.com/MylesMCook/burf/internal/service"
+	"github.com/MylesMCook/burf/internal/version"
 )
 
 func agentService(l laptop) (service.Spec, error) {

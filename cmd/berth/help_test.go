@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/agent"
-	"github.com/cosscom/shipyard/internal/usagecheck"
+	"github.com/MylesMCook/burf/internal/agent"
+	"github.com/MylesMCook/burf/internal/usagecheck"
 )
 
 // Every flag a command defines is in its usage error and in berth help (or

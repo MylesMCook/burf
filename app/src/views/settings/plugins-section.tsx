@@ -43,11 +43,11 @@ export function PluginsSection() {
       title="Plugins"
       description={
         <>
-          Plugins live in <Code>~/.berth/plugins/&lt;id&gt;/</Code> beside a <Code>berth-plugin.json</Code>. They aren't sandboxed: a plugin runs with the app's access to every box, and its hooks run on this computer. Each stays off until you allow it, and Shipyard asks again whenever its code changes.
+          Plugins live in <Code>~/.berth/plugins/&lt;id&gt;/</Code> beside a <Code>berth-plugin.json</Code>. They aren't sandboxed: a plugin runs with the app's access to every box, and its hooks run on this computer. Each stays off until you allow it, and Burf asks again whenever its code changes.
         </>
       }
     >
-      <SettingsGroup title="Built in" description="Ship with Shipyard and use the same plugin API as yours. A plugin of yours with the same id replaces one.">
+      <SettingsGroup title="Built in" description="Ship with Burf and use the same plugin API as yours. A plugin of yours with the same id replaces one.">
         {builtins === undefined ? (
           <div className="px-4 py-6 text-center text-muted-foreground text-sm">Loading…</div>
         ) : builtins.length === 0 ? (

@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cosscom/shipyard/internal/integrations/adapters"
+	"github.com/MylesMCook/burf/internal/integrations/adapters"
 )
 
 func TestTranslate(t *testing.T) {

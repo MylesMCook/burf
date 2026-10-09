@@ -13,8 +13,8 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/box"
-	"github.com/cosscom/shipyard/internal/box/runs"
+	"github.com/MylesMCook/burf/internal/box"
+	"github.com/MylesMCook/burf/internal/box/runs"
 )
 
 // Durable runs from the command line: start one from a template, follow

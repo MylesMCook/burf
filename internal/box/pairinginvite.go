@@ -6,8 +6,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/trust"
-	"github.com/cosscom/shipyard/internal/wire"
+	"github.com/MylesMCook/burf/internal/trust"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 // A paired laptop can ask the box for a pairing code for another computer of

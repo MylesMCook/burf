@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/cosscom/shipyard/internal/integrations/adapters"
+	"github.com/MylesMCook/burf/internal/integrations/adapters"
 	"io"
 	"net/http"
 	"os"
@@ -15,7 +15,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/version"
+	"github.com/MylesMCook/burf/internal/version"
 )
 
 // maxDaemonSize bounds an uploaded daemon; real builds are under 10 MB.

@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cosscom/shipyard/internal/box"
+	"github.com/MylesMCook/burf/internal/box"
 )
 
 // berthd shots: visual before/after of a worktree's pages (box/shots.go).

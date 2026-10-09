@@ -9,7 +9,7 @@ merge="$root/scripts/merge-feed.py"
 t="$(mktemp -d)"
 trap 'rm -rf "$t"' EXIT
 fail() { echo "FAIL: $*" >&2; exit 1; }
-base=https://github.com/cosscom/shipyard/releases/download/v1.2.3
+base=https://github.com/MylesMCook/burf/releases/download/v1.2.3
 
 cat >"$t/mac.json" <<JSON
 {

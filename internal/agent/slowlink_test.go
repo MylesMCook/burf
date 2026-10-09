@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/trust"
+	"github.com/MylesMCook/burf/internal/trust"
 )
 
 // faultProxy sits between the agent and a test box and does to the link

@@ -15,12 +15,12 @@ import (
 
 	"github.com/coder/websocket"
 
-	"github.com/cosscom/shipyard/internal/netfault"
-	"github.com/cosscom/shipyard/internal/sshroute/sshtest"
-	"github.com/cosscom/shipyard/internal/sshsetup"
-	"github.com/cosscom/shipyard/internal/terminal"
-	"github.com/cosscom/shipyard/internal/trust"
-	"github.com/cosscom/shipyard/internal/wire"
+	"github.com/MylesMCook/burf/internal/netfault"
+	"github.com/MylesMCook/burf/internal/sshroute/sshtest"
+	"github.com/MylesMCook/burf/internal/sshsetup"
+	"github.com/MylesMCook/burf/internal/terminal"
+	"github.com/MylesMCook/burf/internal/trust"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 func TestMain(m *testing.M) {

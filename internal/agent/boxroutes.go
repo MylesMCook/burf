@@ -13,11 +13,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/sshroute"
-	"github.com/cosscom/shipyard/internal/sshsetup"
-	"github.com/cosscom/shipyard/internal/statefile"
-	"github.com/cosscom/shipyard/internal/trust"
-	"github.com/cosscom/shipyard/internal/wire"
+	"github.com/MylesMCook/burf/internal/sshroute"
+	"github.com/MylesMCook/burf/internal/sshsetup"
+	"github.com/MylesMCook/burf/internal/statefile"
+	"github.com/MylesMCook/burf/internal/trust"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 // Routes to a box: besides the address it was paired at, the agent can

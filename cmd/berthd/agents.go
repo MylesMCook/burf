@@ -12,10 +12,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/agentcli"
-	"github.com/cosscom/shipyard/internal/guided"
-	"github.com/cosscom/shipyard/internal/integrations"
-	"github.com/cosscom/shipyard/internal/service"
+	"github.com/MylesMCook/burf/internal/agentcli"
+	"github.com/MylesMCook/burf/internal/guided"
+	"github.com/MylesMCook/burf/internal/integrations"
+	"github.com/MylesMCook/burf/internal/service"
 )
 
 const agentsUsage = "usage: berthd agents install [--integrations] [--markers] claude|codex|cursor|opencode ... | berthd agents list [--json]"

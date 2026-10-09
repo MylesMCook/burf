@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/cosscom/shipyard/internal/statefile"
+	"github.com/MylesMCook/burf/internal/statefile"
 )
 
 // The box's own environment, ~/.berth/env.json: variables every worktree on

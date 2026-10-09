@@ -14,10 +14,10 @@ import (
 
 	"github.com/coder/websocket"
 
-	"github.com/cosscom/shipyard/internal/box"
-	"github.com/cosscom/shipyard/internal/events"
-	"github.com/cosscom/shipyard/internal/hooks"
-	"github.com/cosscom/shipyard/internal/terminal"
+	"github.com/MylesMCook/burf/internal/box"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/hooks"
+	"github.com/MylesMCook/burf/internal/terminal"
 )
 
 // uiCall makes a request to the agent's app API with the laptop's token.

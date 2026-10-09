@@ -16,8 +16,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/proxy"
-	"github.com/cosscom/shipyard/internal/statefile"
+	"github.com/MylesMCook/burf/internal/proxy"
+	"github.com/MylesMCook/burf/internal/statefile"
 )
 
 // The browser proxy: every page an agent's browser loads goes through a

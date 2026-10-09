@@ -4,8 +4,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cosscom/shipyard/internal/agent"
-	"github.com/cosscom/shipyard/internal/doctor"
+	"github.com/MylesMCook/burf/internal/agent"
+	"github.com/MylesMCook/burf/internal/doctor"
 )
 
 func TestDoctorListsABoxsRoutesAndBoxesNamesTheOneInUse(t *testing.T) {

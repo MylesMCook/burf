@@ -57,7 +57,7 @@ export function StatusBar() {
       {connection.state === "offline" && restarting ? (
         <span className="flex items-center gap-1.5">
           <Spinner className="size-3" />
-          Restarting the Shipyard agent…
+          Restarting the Burf agent…
         </span>
       ) : connection.state === "offline" ? (
         <Tip label={connection.error}>
@@ -106,7 +106,7 @@ export function StatusBar() {
         if (!mem?.total) return null;
         // Each box's memory goes first when the bar runs short of room.
         // Clicked, it lists the box's browsers and heavy sessions; its tip
-        // names the route Shipyard reaches the box by.
+        // names the route Burf reaches the box by.
         return <BoxMeter key={b.name} box={b.name} mem={mem} route={viaRoute(b)} className="@max-[900px]:hidden" />;
       })}
       {forwards > 0 && (
@@ -180,7 +180,7 @@ function WorktreeItem() {
   );
 }
 
-// UpdateItem shows once a newer Shipyard is downloaded, and restarts into it
+// UpdateItem shows once a newer Burf is downloaded, and restarts into it
 // when clicked. Checking and downloading stay out of sight.
 function UpdateItem() {
   const update = useUpdater();
@@ -190,7 +190,7 @@ function UpdateItem() {
     <Item
       className="text-foreground"
       disabled={installing}
-      tip={`Shipyard ${update.version} is downloaded. Restarting reopens this window; agents keep running on their boxes.`}
+      tip={`Burf ${update.version} is downloaded. Restarting reopens this window; agents keep running on their boxes.`}
       onClick={() => void restartToUpdate()}
     >
       <CircleArrowUpIcon className="size-3 text-success" />
@@ -216,7 +216,7 @@ function OutdatedItem() {
   const n = outdated.length;
   return (
     <span className="flex items-center gap-1.5">
-      <Item tip={`${outdated.join(", ")} ${n === 1 ? "runs" : "run"} an older berthd than this Shipyard ships.`} onClick={() => useStore.getState().setView({ kind: "settings", section: "boxes" })}>
+      <Item tip={`${outdated.join(", ")} ${n === 1 ? "runs" : "run"} an older berthd than this Burf ships.`} onClick={() => useStore.getState().setView({ kind: "settings", section: "boxes" })}>
         <CircleArrowUpIcon className="size-3 text-info" />
         {n === 1 ? `${outdated[0]} runs` : `${n} boxes run`} an older berthd
       </Item>

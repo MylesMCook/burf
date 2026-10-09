@@ -18,9 +18,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/box"
-	"github.com/cosscom/shipyard/internal/statefile"
-	"github.com/cosscom/shipyard/internal/wire"
+	"github.com/MylesMCook/burf/internal/box"
+	"github.com/MylesMCook/burf/internal/statefile"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 // The offline prompt queue. Boxes drop off — the laptop sleeps, Wi-Fi goes,
@@ -223,7 +223,7 @@ func (q *promptQueue) load() {
 		switch it.State {
 		case QueueSending:
 			it.State = QueueFailed
-			it.Error = "Shipyard stopped while sending this, so it may have arrived. Check the session, then retry or discard it."
+			it.Error = "Burf stopped while sending this, so it may have arrived. Check the session, then retry or discard it."
 			interrupted = append(interrupted, *it)
 		case QueueWaiting, "":
 			it.State = QueueQueued

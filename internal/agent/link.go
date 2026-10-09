@@ -13,10 +13,10 @@ import (
 
 	"tailscale.com/ipn/ipnstate"
 
-	"github.com/cosscom/shipyard/internal/doctor"
-	"github.com/cosscom/shipyard/internal/network"
-	"github.com/cosscom/shipyard/internal/trust"
-	"github.com/cosscom/shipyard/internal/wire"
+	"github.com/MylesMCook/burf/internal/doctor"
+	"github.com/MylesMCook/burf/internal/network"
+	"github.com/MylesMCook/burf/internal/trust"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 // A link to a box can be slow without being gone: a box reached through a
@@ -305,7 +305,7 @@ func LinkChecks(area string, b BoxStatus) []doctor.Check {
 		lat.Detail += fmt.Sprintf(", up to %dms lately (±%dms)", b.Link.MaxMs, b.Link.JitterMs)
 	}
 	if b.Link.Slow {
-		lat.Status, lat.Detail = doctor.Warn, "slow: "+b.Link.Reason+"; Shipyard stays connected and requests still go through"
+		lat.Status, lat.Detail = doctor.Warn, "slow: "+b.Link.Reason+"; Burf stays connected and requests still go through"
 	}
 	checks = append(checks, lat)
 	if p := b.Link.Path; p != nil {

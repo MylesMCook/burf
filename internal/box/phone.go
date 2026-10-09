@@ -21,10 +21,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/box/runs"
-	"github.com/cosscom/shipyard/internal/events"
-	"github.com/cosscom/shipyard/internal/integrations/adapters"
-	"github.com/cosscom/shipyard/internal/statefile"
+	"github.com/MylesMCook/burf/internal/box/runs"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/integrations/adapters"
+	"github.com/MylesMCook/burf/internal/statefile"
 )
 
 // Phone access: berthd serves a small web app for a phone on the box's
@@ -447,7 +447,7 @@ func (p *Phone) Handler(b *Box, listenAddr string) http.Handler {
 		got, _ := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
 		if want == "" || subtle.ConstantTimeCompare([]byte(got), []byte(want)) != 1 {
 			p.limited(ip, true)
-			writeError(w, http.StatusUnauthorized, "missing or wrong phone token; pair this phone again from Shipyard's settings")
+			writeError(w, http.StatusUnauthorized, "missing or wrong phone token; pair this phone again from Burf's settings")
 			return
 		}
 		api.ServeHTTP(w, r)

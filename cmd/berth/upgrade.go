@@ -8,7 +8,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/box"
+	"github.com/MylesMCook/burf/internal/box"
 )
 
 // upgrade replaces a box's daemon with the build shipped beside this berth,

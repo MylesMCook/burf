@@ -35,7 +35,7 @@ version="${version#v}"
 tag="v$version"
 signed=1
 [ "${2:-}" = "--unsigned" ] && signed=0
-repo="cosscom/shipyard"
+repo="MylesMCook/burf"
 root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$root"
 
@@ -72,7 +72,7 @@ out="dist/linux"
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
-step "Building Shipyard $version for Linux ($arch), an alpha"
+step "Building Burf $version for Linux ($arch), an alpha"
 rm -rf "$bundle"
 make app-build VERSION="$version"
 

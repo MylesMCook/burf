@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/events"
-	"github.com/cosscom/shipyard/internal/hooks"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/hooks"
 )
 
 func TestATaskIsAWorktreeWithItsAgentRunning(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cosscom/shipyard/internal/agentpath"
+	"github.com/MylesMCook/burf/internal/agentpath"
 )
 
 // Tool is an agent CLI berth has integrations for.
@@ -165,7 +165,7 @@ func Detect(home string) (present, missing []Tool) {
 // returned names every failure.
 func InstallDetected(home, bin, command string, out io.Writer) error {
 	present, missing := Detect(home)
-	fmt.Fprintln(out, "Agent integrations (hooks for needs-you, working and done; Shipyard's skills):")
+	fmt.Fprintln(out, "Agent integrations (hooks for needs-you, working and done; Burf's skills):")
 	var failed []string
 	for _, t := range present {
 		var buf bytes.Buffer
@@ -204,7 +204,7 @@ func InstallDetected(home, bin, command string, out io.Writer) error {
 func InstallPresent(home, bin string, out io.Writer) error {
 	present, _ := Detect(home)
 	if len(present) == 0 {
-		fmt.Fprintln(out, "No agent CLIs on this box yet; Shipyard adds their hooks when you add one from the box's settings.")
+		fmt.Fprintln(out, "No agent CLIs on this box yet; Burf adds their hooks when you add one from the box's settings.")
 		return nil
 	}
 	var failed []string

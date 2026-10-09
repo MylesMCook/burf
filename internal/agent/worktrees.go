@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/box"
+	"github.com/MylesMCook/burf/internal/box"
 )
 
 // serviceTTL bounds how stale the map of servers to worktrees may be; a dev

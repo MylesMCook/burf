@@ -7,7 +7,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cosscom/shipyard/internal/pairing"
+	"github.com/MylesMCook/burf/internal/pairing"
 )
 
 // The laptop agent pairs with this computer's own berthd (Use this Mac)

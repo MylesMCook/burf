@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/events"
+	"github.com/MylesMCook/burf/internal/events"
 )
 
 // browserBox is a box with one repository, a worktree "billing", and a dev

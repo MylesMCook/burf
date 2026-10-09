@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/events"
+	"github.com/MylesMCook/burf/internal/events"
 )
 
 func TestServiceSessionNamesAreValidUniqueAndShort(t *testing.T) {

@@ -10,7 +10,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/transcript"
+	"github.com/MylesMCook/burf/internal/transcript"
 )
 
 // Answering an agent's questions from the chat (the "answer" capability):

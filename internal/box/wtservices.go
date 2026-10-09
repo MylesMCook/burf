@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cosscom/shipyard/internal/events"
-	"github.com/cosscom/shipyard/internal/groups"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/groups"
 )
 
 // A repository's services run in each worktree as managed units, so they

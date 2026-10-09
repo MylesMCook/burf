@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/events"
+	"github.com/MylesMCook/burf/internal/events"
 )
 
 // Watcher notices worktrees that appear in or vanish from a location without

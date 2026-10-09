@@ -11,8 +11,8 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/agent"
-	"github.com/cosscom/shipyard/internal/wire"
+	"github.com/MylesMCook/burf/internal/agent"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 // Prompts for boxes that are away wait in the laptop agent's queue

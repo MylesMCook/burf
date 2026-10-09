@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/cosscom/shipyard/internal/agentpath"
+	"github.com/MylesMCook/burf/internal/agentpath"
 )
 
 // Rebases and merges make commits, which git refuses without an identity;

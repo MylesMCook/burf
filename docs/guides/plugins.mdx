@@ -6,19 +6,19 @@ description: Add screens, worktree panels, commands, status bar items and themes
 A plugin is an ES module whose default export receives a
 `BerthPluginContext`, registers what it adds, and may return a cleanup
 function. Plugin components are ordinary React components in the app's own
-tree, using the app's own UI kit, so they look like the rest of Shipyard.
+tree, using the app's own UI kit, so they look like the rest of Burf.
 
-Shipyard's built-ins are written the same way, against the same SDK: Git
+Burf's built-ins are written the same way, against the same SDK: Git
 changes, Diff, Pull request, Dev servers, Box monitor, Activity, Notes, Issues and
 Prompt library (see
-[`plugins/`](https://github.com/cosscom/shipyard/tree/main/plugins)).
+[`plugins/`](https://github.com/MylesMCook/burf/tree/main/plugins)).
 They ship inside the app and are on from the first launch, with no prompt:
 Settings → Plugins turns one off, and the app remembers that. A plugin of
 yours with the same id replaces a built-in.
 
 <Callout type="warn" title="Plugins run with the app's access">
   Plugins are not sandboxed. A plugin can do anything the app can, on every
-  box, and its hooks run on your computer. Shipyard asks before a plugin you
+  box, and its hooks run on your computer. Burf asks before a plugin you
   installed first runs, and again whenever its code changes. Allow only
   plugins you trust. See [Trust and consent](#trust-and-consent).
 </Callout>
@@ -42,7 +42,7 @@ those from `activate` is optional.
 
 ## Set up a project
 
-Copy [`plugins/hello-ports`](https://github.com/cosscom/shipyard/tree/main/plugins/hello-ports),
+Copy [`plugins/hello-ports`](https://github.com/MylesMCook/burf/tree/main/plugins/hello-ports),
 the smallest complete example: a screen listing every dev server on every
 box, a sidebar item, a command and an event handler. Its pieces:
 
@@ -62,7 +62,7 @@ box, a sidebar item, a command and an event handler. Its pieces:
 ```
 
 `@berth/plugin` is the SDK in
-[`packages/plugin-sdk`](https://github.com/cosscom/shipyard/tree/main/packages/plugin-sdk):
+[`packages/plugin-sdk`](https://github.com/MylesMCook/burf/tree/main/packages/plugin-sdk):
 types only, since the app provides the real thing at runtime.
 
 ```js title="build.mjs"
@@ -122,13 +122,13 @@ too, once it is allowed there (see below).
 A plugin's code runs inside the app's own page, with the app's own access.
 Once on, a plugin can:
 
-- use the Shipyard agent's API, and its API token, exactly as the app does;
+- use the Burf agent's API, and its API token, exactly as the app does;
 - run commands and open shells on every box you've paired;
 - read whatever boxes return: files, logs, environment and session output;
 - send anything it can read to any website;
 - run its hooks as you, on this computer and on a box that has it installed.
 
-So Shipyard never turns on a plugin you installed by itself. The first time you
+So Burf never turns on a plugin you installed by itself. The first time you
 turn one on, the app shows what it can do, its hooks, and a hash of its code,
 and runs it only if you choose **Allow and turn on**. What you allow is that
 exact code: the agent records a SHA-256 hash of the plugin's
@@ -249,4 +249,4 @@ the same `where`.
 For every call, hook and component, see
 [the plugin SDK reference](/reference/plugin-sdk); for more complete
 examples, read the built-ins in
-[`plugins/`](https://github.com/cosscom/shipyard/tree/main/plugins).
+[`plugins/`](https://github.com/MylesMCook/burf/tree/main/plugins).

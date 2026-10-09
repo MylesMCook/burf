@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/sshconfig"
-	"github.com/cosscom/shipyard/internal/trust"
+	"github.com/MylesMCook/burf/internal/sshconfig"
+	"github.com/MylesMCook/burf/internal/trust"
 )
 
 var ran struct {

@@ -17,8 +17,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/events"
-	"github.com/cosscom/shipyard/internal/statefile"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/statefile"
 )
 
 // Webhook triggers: POST /v1/triggers/<flow> starts a flow whose trigger is

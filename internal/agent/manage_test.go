@@ -9,8 +9,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cosscom/shipyard/internal/hooks"
-	"github.com/cosscom/shipyard/internal/sshsetup"
+	"github.com/MylesMCook/burf/internal/hooks"
+	"github.com/MylesMCook/burf/internal/sshsetup"
 )
 
 // fakeCLI stands in for the berth binary the agent runs: it prints its

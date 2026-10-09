@@ -1,13 +1,13 @@
-# Working on Shipyard
+# Working on Burf
 
-Shipyard (formerly Berth) runs coding agents on your own machines. This repo has:
+Burf (formerly Berth) runs coding agents on your own machines. This repo has:
 
 - `cmd/berthd`, `internal/box`: the box daemon. It runs agents, terminals and services in its own tmux server.
 - `cmd/berth`, `internal/agent`: the laptop CLI and agent (UI API on 1378, proxy on 1377, phone on 1379).
 - `app/`: the Tauri 2 + React desktop app (coss-ui, 23 themes). `app/e2e` holds the Playwright suite on mock fixtures.
 - `docs/`: the docs as MDX, built by `docs-site/` (Fumadocs). `site/` is the landing page and `install.sh`.
 
-**Names:** "Shipyard" is the brand in everything people read. `berth`, `berthd`, `~/.berth`, `BERTH_*`, `berth://`, `dev.berth.app`, `berth.prefs` and the `berth-*` skill ids are identifiers. Don't rename them; a later change will, with migrations.
+**Names:** "Burf" is the brand in everything people read. `berth`, `berthd`, `~/.berth`, `BERTH_*`, `berth://`, `dev.berth.app`, `berth.prefs` and the `berth-*` skill ids are identifiers. Don't rename them; a later change will, with migrations.
 
 ## Checks
 
@@ -38,6 +38,6 @@ Browser tests: run the specs you touched, not the whole suite (`E2E_PORT=14xx np
 
 ## Changes
 
-- **Work on a branch and open a PR** against `main` on `cosscom/shipyard`. CI runs on pull requests. Browser tests report there but don't block yet; Go, shell, the app's checks and build, and the docs build do.
+- **Work on a branch and open a PR** against `main` on `MylesMCook/burf`. CI runs on pull requests. Browser tests report there but don't block yet; Go, shell, the app's checks and build, and the docs build do.
 - **Commit messages** are lowercase conventional (`feat(app): …`, `fix(box): …`, `test: …`). The subject says what the user gets, in prose.
 - **Releases** are in `.claude/skills/release`. Merging several branches is in `.claude/skills/integrate-branches`. Writing browser tests that don't flake is in `.claude/skills/e2e-tests`.

@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/agentpath"
-	"github.com/cosscom/shipyard/internal/doctor"
+	"github.com/MylesMCook/burf/internal/agentpath"
+	"github.com/MylesMCook/burf/internal/doctor"
 )
 
 // Agent CLIs are found as the person's own terminal finds them
@@ -155,7 +155,7 @@ func agentChecks() []doctor.Check {
 	if found == 0 {
 		checks = append(checks, doctor.Check{Area: "Agents", Name: "agent CLIs", Status: doctor.Info,
 			Detail: "none found (claude, codex, opencode, gemini, cursor-agent), through your shell or where installers put them",
-			Fix:    "Add agents from Shipyard (Settings → Boxes), or: berthd agents install claude"})
+			Fix:    "Add agents from Burf (Settings → Boxes), or: berthd agents install claude"})
 	}
 	st := agentFinder().Status()
 	if st.Shell != "" && !st.OK {

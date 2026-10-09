@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/events"
-	"github.com/cosscom/shipyard/internal/statefile"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/statefile"
 )
 
 // Flows that start on a schedule, or on something happening to a worktree's

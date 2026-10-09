@@ -73,7 +73,7 @@ export default function App() {
   useBerthConnection();
   useShortcuts();
   useWindowTitle();
-  // Checks for a newer Shipyard on launch and every few hours (lib/updater.ts).
+  // Checks for a newer Burf on launch and every few hours (lib/updater.ts).
   useEffect(startUpdater, []);
   // Spinners and shimmers hold still while the window is in the background.
   useEffect(watchStillness, []);

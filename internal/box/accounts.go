@@ -3,8 +3,8 @@ package box
 import (
 	"os"
 
-	"github.com/cosscom/shipyard/internal/events"
-	"github.com/cosscom/shipyard/internal/integrations"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/integrations"
 )
 
 // Agent accounts: a box can have several Claude Code and Codex logins, each

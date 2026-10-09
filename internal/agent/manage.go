@@ -13,9 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/hooks"
-	"github.com/cosscom/shipyard/internal/sshsetup"
-	"github.com/cosscom/shipyard/internal/trust"
+	"github.com/MylesMCook/burf/internal/hooks"
+	"github.com/MylesMCook/burf/internal/sshsetup"
+	"github.com/MylesMCook/burf/internal/trust"
 )
 
 // Adding, pairing, upgrading and forgetting boxes are the CLI's job, and the

@@ -20,21 +20,21 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/box"
-	"github.com/cosscom/shipyard/internal/debugserver"
-	"github.com/cosscom/shipyard/internal/doctor"
-	"github.com/cosscom/shipyard/internal/events"
-	"github.com/cosscom/shipyard/internal/forward"
-	"github.com/cosscom/shipyard/internal/hooks"
-	"github.com/cosscom/shipyard/internal/identity"
-	"github.com/cosscom/shipyard/internal/network"
-	"github.com/cosscom/shipyard/internal/pfredirect"
-	"github.com/cosscom/shipyard/internal/proxy"
-	"github.com/cosscom/shipyard/internal/sshroute"
-	"github.com/cosscom/shipyard/internal/sshsetup"
-	"github.com/cosscom/shipyard/internal/statefile"
-	"github.com/cosscom/shipyard/internal/trust"
-	"github.com/cosscom/shipyard/internal/wire"
+	"github.com/MylesMCook/burf/internal/box"
+	"github.com/MylesMCook/burf/internal/debugserver"
+	"github.com/MylesMCook/burf/internal/doctor"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/forward"
+	"github.com/MylesMCook/burf/internal/hooks"
+	"github.com/MylesMCook/burf/internal/identity"
+	"github.com/MylesMCook/burf/internal/network"
+	"github.com/MylesMCook/burf/internal/pfredirect"
+	"github.com/MylesMCook/burf/internal/proxy"
+	"github.com/MylesMCook/burf/internal/sshroute"
+	"github.com/MylesMCook/burf/internal/sshsetup"
+	"github.com/MylesMCook/burf/internal/statefile"
+	"github.com/MylesMCook/burf/internal/trust"
+	"github.com/MylesMCook/burf/internal/wire"
 	"tailscale.com/ipn/ipnstate"
 )
 
@@ -650,7 +650,7 @@ func (a *Agent) away(name string) (string, time.Duration, bool) {
 		return "", 0, false
 	}
 	retry := time.Until(st.retryAt)
-	msg := name + " is offline; Shipyard is reconnecting"
+	msg := name + " is offline; Burf is reconnecting"
 	if retry > 0 {
 		msg += fmt.Sprintf(" (next try in %ds)", int(retry.Round(time.Second)/time.Second))
 	}

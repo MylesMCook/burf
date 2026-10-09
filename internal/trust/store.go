@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/identity"
-	"github.com/cosscom/shipyard/internal/statefile"
+	"github.com/MylesMCook/burf/internal/identity"
+	"github.com/MylesMCook/burf/internal/statefile"
 )
 
 type Peer struct {

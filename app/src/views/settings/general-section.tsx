@@ -57,7 +57,7 @@ export function GeneralSection() {
       <CommandLineGroup />
 
       <SettingsGroup title="Startup">
-        <SettingsRow label="Open Shipyard at login" description="Not available yet. Your boxes keep running either way: closing Shipyard never stops an agent.">
+        <SettingsRow label="Open Burf at login" description="Not available yet. Your boxes keep running either way: closing Burf never stops an agent.">
           <Switch checked={false} disabled />
         </SettingsRow>
       </SettingsGroup>
@@ -75,10 +75,10 @@ export function GeneralSection() {
           label="Port"
           description={
             port === 80 ? (
-              "URLs have no port: port 80 on this computer points at Shipyard."
+              "URLs have no port: port 80 on this computer points at Burf."
             ) : (
               <>
-                URLs end in <Code>:{port}</Code>. To drop it, <Code>berth setup port80</Code> points port 80 on this computer at Shipyard (it asks for your password once; skip it if something else already uses port 80).
+                URLs end in <Code>:{port}</Code>. To drop it, <Code>berth setup port80</Code> points port 80 on this computer at Burf (it asks for your password once; skip it if something else already uses port 80).
               </>
             )
           }
@@ -92,7 +92,7 @@ export function GeneralSection() {
 
 const LINK = "~/.local/bin/berth";
 
-// CommandLineGroup puts the berth CLI that Shipyard.app carries on the PATH, as
+// CommandLineGroup puts the berth CLI that Burf.app carries on the PATH, as
 // a link at ~/.local/bin/berth, so a terminal runs the same berth as the app
 // and it updates with the app. It asks first, and says what it replaces.
 function CommandLineGroup() {
@@ -107,13 +107,13 @@ function CommandLineGroup() {
   if (!cli?.bundled) {
     description = (
       <>
-        The Shipyard app carries its own <Code>berth</Code>; this build has none. From a clone, run <Code>bin/berth</Code> after <Code>make all</Code>.
+        The Burf app carries its own <Code>berth</Code>; this build has none. From a clone, run <Code>bin/berth</Code> after <Code>make all</Code>.
       </>
     );
   } else if (cli.state === "linked") {
     description = (
       <>
-        <Code>{LINK}</Code> runs the copy inside Shipyard.app, so it updates with the app. If a terminal can't find <Code>berth</Code>, add <Code>~/.local/bin</Code> to your <Code>PATH</Code>.
+        <Code>{LINK}</Code> runs the copy inside Burf.app, so it updates with the app. If a terminal can't find <Code>berth</Code>, add <Code>~/.local/bin</Code> to your <Code>PATH</Code>.
       </>
     );
     control = <Value>Installed</Value>;
@@ -132,7 +132,7 @@ function CommandLineGroup() {
       ) : null;
     description = cli.blocked ?? (
       <>
-        Links <Code>{LINK}</Code> to the copy inside Shipyard.app, so <Code>berth</Code> in a terminal is the one the app runs, and updates with it.{replaces}
+        Links <Code>{LINK}</Code> to the copy inside Burf.app, so <Code>berth</Code> in a terminal is the one the app runs, and updates with it.{replaces}
       </>
     );
     control = (
@@ -149,7 +149,7 @@ function CommandLineGroup() {
         onConfirm={async () => {
           try {
             setCli(await installCliLink());
-            toastManager.add({ title: "Installed the berth command", description: `${LINK} now runs Shipyard's copy.`, type: "success" });
+            toastManager.add({ title: "Installed the berth command", description: `${LINK} now runs Burf's copy.`, type: "success" });
           } catch (e) {
             toastManager.add({ title: "Could not install the berth command", description: errorMessage(e), type: "error" });
           }

@@ -43,7 +43,7 @@ export function AgentsSection() {
       title="Agents"
       description={
         <>
-          The agent CLIs each box can start, and the skills that teach them to use Shipyard. A repository adds its own agents, or changes how one starts, in <Code>.berth/config.json</Code>.
+          The agent CLIs each box can start, and the skills that teach them to use Burf. A repository adds its own agents, or changes how one starts, in <Code>.berth/config.json</Code>.
         </>
       }
     >

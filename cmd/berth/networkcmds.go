@@ -10,8 +10,8 @@ import (
 	"runtime"
 	"text/tabwriter"
 
-	"github.com/cosscom/shipyard/internal/forward"
-	"github.com/cosscom/shipyard/internal/wire"
+	"github.com/MylesMCook/burf/internal/forward"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 // networkDialer reaches addresses through the agent's named network, so the

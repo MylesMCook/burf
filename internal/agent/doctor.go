@@ -8,8 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/doctor"
-	"github.com/cosscom/shipyard/internal/version"
+	"github.com/MylesMCook/burf/internal/doctor"
+	"github.com/MylesMCook/burf/internal/version"
 )
 
 // DoctorReport answers GET /v1/doctor: `berth doctor`'s checks of this

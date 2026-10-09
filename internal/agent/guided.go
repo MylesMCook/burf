@@ -16,10 +16,10 @@ import (
 
 	"github.com/coder/websocket"
 
-	"github.com/cosscom/shipyard/internal/agentcli"
-	"github.com/cosscom/shipyard/internal/guided"
-	"github.com/cosscom/shipyard/internal/terminal"
-	"github.com/cosscom/shipyard/internal/trust"
+	"github.com/MylesMCook/burf/internal/agentcli"
+	"github.com/MylesMCook/burf/internal/guided"
+	"github.com/MylesMCook/burf/internal/terminal"
+	"github.com/MylesMCook/burf/internal/trust"
 )
 
 // Adding a box over SSH: the app runs `berth add ssh` in a pseudo-terminal
@@ -128,7 +128,7 @@ func (a *Agent) guidedRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/boxes/add-ssh/terminal", a.addSSHTerminal)
 }
 
-// bundledTmux is whether berth carries Shipyard's tmux for Linux boxes, beside
+// bundledTmux is whether berth carries Burf's tmux for Linux boxes, beside
 // it as it carries the daemons.
 func bundledTmux(exe string) bool {
 	for _, arch := range []string{"amd64", "arm64"} {

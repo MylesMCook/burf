@@ -6,7 +6,7 @@ import (
 	"crypto/tls"
 	"errors"
 
-	"github.com/cosscom/shipyard/internal/identity"
+	"github.com/MylesMCook/burf/internal/identity"
 )
 
 // ErrPinMismatch means the box answered with a key other than the one it

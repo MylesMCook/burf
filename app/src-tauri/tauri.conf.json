@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Shipyard",
+  "productName": "Burf",
   "version": "0.3.12",
   "identifier": "dev.berth.app",
   "build": {
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Shipyard",
+        "title": "Burf",
         "width": 1400,
         "height": 900,
         "minWidth": 900,
@@ -56,7 +56,7 @@
     "updater": {
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQyRjgwQTIwQzRFOTQyMjMKUldRalF1bkVJQXI0MGxrUFdXL1ZZM0JwSW9rQm85ZTZnR1NlbWlPN1piUjVsUmxGMS9RM2RBeHAK",
       "endpoints": [
-        "https://github.com/cosscom/shipyard/releases/latest/download/latest.json"
+        "https://github.com/MylesMCook/burf/releases/latest/download/latest.json"
       ]
     }
   }

@@ -16,10 +16,10 @@ import (
 	"tailscale.com/ipn/ipnstate"
 	"tailscale.com/types/key"
 
-	"github.com/cosscom/shipyard/internal/doctor"
-	"github.com/cosscom/shipyard/internal/network"
-	"github.com/cosscom/shipyard/internal/trust"
-	"github.com/cosscom/shipyard/internal/wire"
+	"github.com/MylesMCook/burf/internal/doctor"
+	"github.com/MylesMCook/burf/internal/network"
+	"github.com/MylesMCook/burf/internal/trust"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 // As a ping fails: wrapped in the request, then the dial.

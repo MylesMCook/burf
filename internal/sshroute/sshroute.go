@@ -24,7 +24,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/sshsetup"
+	"github.com/MylesMCook/burf/internal/sshsetup"
 )
 
 // Dialer opens connections to a box's berthd over SSH.

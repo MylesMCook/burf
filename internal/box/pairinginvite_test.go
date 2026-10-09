@@ -10,11 +10,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/hooks"
-	"github.com/cosscom/shipyard/internal/identity"
-	"github.com/cosscom/shipyard/internal/pairing"
-	"github.com/cosscom/shipyard/internal/trust"
-	"github.com/cosscom/shipyard/internal/wire"
+	"github.com/MylesMCook/burf/internal/hooks"
+	"github.com/MylesMCook/burf/internal/identity"
+	"github.com/MylesMCook/burf/internal/pairing"
+	"github.com/MylesMCook/burf/internal/trust"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 // newLaptop is another computer, with its own key and nothing paired.

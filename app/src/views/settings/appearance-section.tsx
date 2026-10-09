@@ -23,12 +23,12 @@ export function AppearanceSection() {
   const uiFontSize = usePrefs((p) => p.uiFontSize);
   const [query, setQuery] = useState("");
 
-  // Shipyard's own, then every other theme (built-in ports, yours, plugins')
+  // Burf's own, then every other theme (built-in ports, yours, plugins')
   // by appearance; a search narrows them by name.
   const q = query.trim().toLowerCase();
   const shown = q ? themes.filter((t) => t.name.toLowerCase().includes(q) || t.id.includes(q)) : themes;
   const groups = [
-    { title: "Shipyard", themes: shown.filter((t) => BERTH.has(t.id)) },
+    { title: "Burf", themes: shown.filter((t) => BERTH.has(t.id)) },
     { title: "Dark", themes: shown.filter((t) => !BERTH.has(t.id) && t.appearance === "dark") },
     { title: "Light", themes: shown.filter((t) => !BERTH.has(t.id) && t.appearance !== "dark") },
   ].filter((g) => g.themes.length);
@@ -96,7 +96,7 @@ export function AppearanceSection() {
 }
 
 // SystemCard follows the computer's appearance: one theme by day, another
-// when macOS is dark (Shipyard Light and Shipyard Dark unless picked here). Its
+// when macOS is dark (Burf Light and Burf Dark unless picked here). Its
 // preview is half of each.
 function SystemCard({ selected, themes }: { selected: boolean; themes: Theme[] }) {
   const picks = usePrefs((p) => p.systemThemes);

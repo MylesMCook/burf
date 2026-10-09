@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/cosscom/shipyard/internal/events"
-	"github.com/cosscom/shipyard/internal/integrations/adapters"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/integrations/adapters"
 )
 
 // A PermissionRequest names the tool and sums up its input (Claude Code's

@@ -12,15 +12,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/events"
+	"github.com/MylesMCook/burf/internal/events"
 )
 
 const Usage = `Integrations
   %[1]s integrations [status]
-                         Where Shipyard's hooks and skills are, per agent
+                         Where Burf's hooks and skills are, per agent
                          and per Claude Code or Codex account
   %[1]s integrations install claude|cursor|codex|gemini|opencode|all|present
-                         Install Shipyard's skills and agent hooks for a
+                         Install Burf's skills and agent hooks for a
                          tool, in every account folder it has
   %[1]s hook TOOL EVENT [PAYLOAD]
                          What those hooks run: turns a tool's hook into a
@@ -94,7 +94,7 @@ func Install(args []string, bin string, out io.Writer) error {
 	return nil
 }
 
-// InstallTool installs Shipyard's skills and hooks for one tool in home, for
+// InstallTool installs Burf's skills and hooks for one tool in home, for
 // the binary at bin, and says what it did on out: for Claude Code and Codex,
 // in every account folder (accounts.go). Running it again changes nothing
 // that is already in place.
@@ -137,7 +137,7 @@ func InstallTool(home, tool, bin string, out io.Writer) error {
 	return nil
 }
 
-// Status says, for each agent CLI on this machine, where Shipyard's hooks
+// Status says, for each agent CLI on this machine, where Burf's hooks
 // and skills are: for Claude Code and Codex, per account folder. command
 // is how to run this binary, for the fix.
 func Status(home, command string, out io.Writer) {

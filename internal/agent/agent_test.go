@@ -17,13 +17,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/box"
-	"github.com/cosscom/shipyard/internal/events"
-	"github.com/cosscom/shipyard/internal/identity"
-	"github.com/cosscom/shipyard/internal/network"
-	"github.com/cosscom/shipyard/internal/pairing"
-	"github.com/cosscom/shipyard/internal/trust"
-	"github.com/cosscom/shipyard/internal/wire"
+	"github.com/MylesMCook/burf/internal/box"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/identity"
+	"github.com/MylesMCook/burf/internal/network"
+	"github.com/MylesMCook/burf/internal/pairing"
+	"github.com/MylesMCook/burf/internal/trust"
+	"github.com/MylesMCook/burf/internal/wire"
 	"tailscale.com/ipn/ipnstate"
 )
 

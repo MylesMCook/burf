@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cosscom/shipyard/internal/events"
-	"github.com/cosscom/shipyard/internal/wire"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 const barChart = `{"$schema": "berth.chart/v1", "type": "bar", "title": "p95", "x": "endpoint",
