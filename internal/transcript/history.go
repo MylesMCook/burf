@@ -51,6 +51,16 @@ func Before(source, path, dir string, before int64, limit int) (Result, error) {
 // file access with os.Root can retain that protection without reopening a path.
 // The caller owns f; this function changes its offset but does not close it.
 func BeforeFile(source string, f *os.File, dir string, before int64, limit int) (Result, error) {
+	return BeforeFileWithOptions(source, f, dir, before, limit, HistoryOptions{})
+}
+
+type HistoryOptions struct {
+	// Imported history has no box whose local artifact IDs it can resolve.
+	IgnoreLocalArtifacts bool
+}
+
+// BeforeFileWithOptions reads a page with the caller's history constraints.
+func BeforeFileWithOptions(source string, f *os.File, dir string, before int64, limit int, options HistoryOptions) (Result, error) {
 	st, err := f.Stat()
 	if err != nil {
 		return Result{}, err
@@ -66,6 +76,7 @@ func BeforeFile(source string, f *os.File, dir string, before int64, limit int) 
 		// One more than asked: read from the middle of a file, the first
 		// item may be the tail of a group begun before it.
 		c := &conv{source: source, dir: dir, side: isHelper(f.Name()), paged: true, limit: limit + 1, p: parserFor(source), byTool: map[string]int{}, crewByID: map[string]int{}}
+		c.ignoreLocalArtifacts = options.IgnoreLocalArtifacts
 		if err := c.scan(f, start, before); err != nil {
 			return Result{}, err
 		}

@@ -87,7 +87,7 @@ export function LocalComputerView() {
       </aside>
       <section className={cn("flex min-h-0 min-w-0 flex-1 flex-col", !selection && "hidden @min-[600px]/local:flex")}>
         {selection && <div className="border-b px-3 py-1 @min-[600px]/local:hidden"><Button size="sm" variant="ghost" onClick={() => select(undefined)}><ArrowLeftIcon />Conversations</Button></div>}
-        {selection?.kind === "history" && <LocalHistory key={selection.conversation.id} client={client} conversation={selection.conversation} canFork={!!local?.agents.find((a) => a.id === selection.conversation.source)?.can_fork} onStart={(session, conversationID) => {
+        {selection?.kind === "history" && <LocalHistory key={selection.conversation.id} client={client} conversation={conversations.find((c) => c.id === selection.conversation.id) ?? selection.conversation} canFork={!!local?.agents.find((a) => a.id === selection.conversation.source)?.can_fork} onStart={(session, conversationID) => {
           changeSession(session);
           select((current) => current?.kind === "history" && current.conversation.id === conversationID ? { kind: "session", session } : current);
         }} />}
@@ -128,12 +128,15 @@ function LocalHistory({ client, conversation, canFork, onStart }: { client: Clie
   useEffect(() => { void load(); return () => request.current?.abort(); }, [load]);
   useEffect(() => () => launch.current?.abort(), [client, conversation.id]);
   const before = page?.start ?? page?.items[0]?.off;
+  const usable = conversation.can_continue !== false;
+  const canContinue = canFork && usable;
+  const continueReason = usable ? undefined : conversation.continue_reason;
   return <>
     <div className="flex min-w-0 flex-wrap items-center gap-3 border-b px-4 py-3"><h2 className="min-w-0 flex-1 truncate text-sm font-medium" title={conversation.title}>{conversation.title}</h2><span className="shrink-0 text-xs text-muted-foreground">Read-only</span></div>
     <div className="flex flex-wrap items-center gap-2 px-4 py-2">
       <Tip label={canFork ? "Continue as a new chat; the original stays unchanged" : "Installed CLI does not support continuing a copy"}>
-        <Button size="sm" variant="outline" disabled={!canFork || starting} onClick={async () => {
-          if (startingRef.current) return;
+        <Button size="sm" variant="outline" disabled={!canContinue || starting} aria-describedby={continueReason ? "local-continue-reason" : undefined} onClick={async () => {
+          if (!canContinue || startingRef.current) return;
           startingRef.current = true;
           const controller = new AbortController();
           launch.current = controller;
@@ -146,6 +149,7 @@ function LocalHistory({ client, conversation, canFork, onStart }: { client: Clie
           finally { startingRef.current = false; setStarting(false); }
         }}><GitForkIcon />{starting ? "Starting..." : "Continue in Burf"}</Button>
       </Tip>
+      {continueReason && <p id="local-continue-reason" role="status" className="text-xs text-muted-foreground">{continueReason}</p>}
       {page?.more && before !== undefined && <Button size="sm" variant="outline" disabled={loading} onClick={() => void load(before)}>Load older messages</Button>}
       <Tip label="Refresh conversation"><Button size="icon-sm" variant="ghost" aria-label="Refresh conversation" disabled={loading} onClick={() => void load()}><RotateCwIcon className="size-4" /></Button></Tip>
       {loading && <span role="status" className="text-xs text-muted-foreground">Loading conversation...</span>}
