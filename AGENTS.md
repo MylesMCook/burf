@@ -60,6 +60,31 @@ Close what is yours to close. Bring the owner only what only they can do,
 once, with the exact step. A report does not end with a list of things you
 could have done.
 
+## assistant-ui
+
+Every chat is drawn by assistant-ui (`FORK.md`), so look a part up before
+writing one. Its documentation is made for assistants to read:
+
+- Index of every page: <https://www.assistant-ui.com/llms.txt>. Add `.md`
+  to a page's URL for Markdown; <https://www.assistant-ui.com/llms-full.txt>
+  is everything in one file.
+- Docs server: <https://www.assistant-ui.com/mcp> (`search_docs`,
+  `read_page`), set up for Claude Code in `.mcp.json`. It only reads
+  documentation. Other assistants fetch the pages above.
+
+How Burf uses it, which narrows what applies:
+
+- The runtime is `useExternalStoreRuntime`, fed by a `ChatTransport`
+  (`app/src/components/chat`). There is no AI SDK, model route, API key or
+  assistant-ui cloud: pages about `useChatRuntime` and transports to a model
+  do not apply.
+- Stock parts come from the registry
+  (<https://r.assistant-ui.com/registry.json>) into
+  `app/src/components/assistant-ui`, and are fed through their props and
+  slots. Do not write a look-alike of one.
+- The lockfile pins the version. Check that an API a page describes exists
+  in the installed version before using it; do not bump it in passing.
+
 ## Frontend Checks
 
 From `app/`:

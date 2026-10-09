@@ -42,13 +42,14 @@ Preserve source-history isolation, agent permissions and no-replay guarantees.
 ### One Chat Surface
 
 Every chat in Burf is the same chat to look at and to use: a session's
-transcript in a worktree, a structured Codex chat on a box or on this computer,
+transcript in a worktree, a structured Codex or Claude Code chat on a box or on
+this computer,
 and a conversation opened from this computer's history. They differ only where
 one can do less (history is read-only until it is continued).
 
 They draw through one thread, built on assistant-ui (`@assistant-ui/react`,
-components under `app/src/components/assistant-ui`, Burf's wrapper in
-`app/src/components/conversation/chat-thread.tsx`). Burf feeds it its own chat
+components under `app/src/components/assistant-ui`, Burf's `Chat` and its
+`ChatTransport` in `app/src/components/chat`). Burf feeds it its own chat
 data through assistant-ui's external-store runtime: there is no model API
 route, provider package or API key, and agents keep their own sign-in. Burf's
 controls stay Burf's (Base UI): no second control library comes with it.
