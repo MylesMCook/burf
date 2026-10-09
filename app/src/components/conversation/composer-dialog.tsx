@@ -41,7 +41,7 @@ export function ComposerDialog() {
 }
 
 const titles = {
-  start: { title: "New task", description: "One agent is a task; pick several to try it several ways. No agent makes the worktree alone." },
+  start: { title: "New task", description: "" },
   worktree: { title: "New worktree", description: "Just the worktree, from a name, a branch, a pull request or an issue. Pick an agent to start one in it too." },
   attempts: { title: "Try N ways", description: "Each agent tries the task in its own worktree; a check verifies them, a judge ranks them, and you pick one." },
   send: { title: "Prompt running agents", description: "One prompt, filled in for each agent, typed in one after another." },

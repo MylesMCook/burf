@@ -36,7 +36,6 @@ import {
   ErrorPrimitive,
   groupPartByType,
   MessagePrimitive,
-  useAui,
   ThreadPrimitive,
   type FileMessagePartComponent,
   type ImageMessagePartComponent,
@@ -45,7 +44,6 @@ import {
   useAuiState,
 } from "@assistant-ui/react";
 import {
-  ChartColumnIcon, CodeXmlIcon, PencilLineIcon, LightbulbIcon,
   ArrowDownIcon,
   ArrowUpIcon,
   AudioLinesIcon,
@@ -64,7 +62,6 @@ import {
   ThumbsUpIcon,
 } from "lucide-react";
 import {
-  useState,
   createContext,
   useContext,
   useLayoutEffect,
@@ -296,11 +293,6 @@ const ThreadRoot: FC<{ isEmpty: boolean; autoFocus: boolean }> = ({
             <ThreadFollowupSuggestions />
             {beforeComposer}
             {!readOnly && <Composer autoFocus={autoFocus} />}
-            {!readOnly &&
-              <AuiIf condition={(s) => isNewChatView(s) && s.composer.isEmpty}>
-                <ThreadSuggestions />
-              </AuiIf>
-            }
           </ThreadPrimitive.ViewportFooter>
         </div>
       </ThreadPrimitive.Viewport>
@@ -506,123 +498,7 @@ const ThreadScrollToBottom: FC = () => {
   );
 };
 
-const ThreadWelcome: FC = () => {
-  return (
-    <div className="aui-thread-welcome-root mb-6 flex flex-col items-center px-2 text-center">
-      <p className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both text-2xl font-medium tracking-tight duration-200">
-        How can I help you today?
-      </p>
-    </div>
-  );
-};
-
-type SuggestionGroup = {
-  label: string;
-  icon: ReactNode;
-  options: { label: string; prompt: string }[];
-};
-
-const SUGGESTION_GROUPS: SuggestionGroup[] = [
-  {
-    label: "Explain",
-    icon: <LightbulbIcon />,
-    options: [
-      { label: "this project", prompt: "Explain how this project is laid out and where its main pieces are." },
-      { label: "the recent changes", prompt: "Summarize what changed in the last few commits and why." },
-      { label: "a file", prompt: "Explain what this file does: " },
-    ],
-  },
-  {
-    label: "Fix",
-    icon: <CodeXmlIcon />,
-    options: [
-      { label: "the failing tests", prompt: "Run the tests, find what fails and fix it." },
-      { label: "a bug", prompt: "There is a bug: " },
-      { label: "the build", prompt: "The build is failing. Find out why and fix it." },
-    ],
-  },
-  {
-    label: "Review",
-    icon: <ChartColumnIcon />,
-    options: [
-      { label: "my changes", prompt: "Review my uncommitted changes and point out problems." },
-      { label: "this branch", prompt: "Review everything on this branch against main." },
-    ],
-  },
-  {
-    label: "Write",
-    icon: <PencilLineIcon />,
-    options: [
-      { label: "tests", prompt: "Write tests for the code changed on this branch." },
-      { label: "a commit message", prompt: "Write a commit message for my staged changes." },
-    ],
-  },
-];
-
-const suggestionChipClass =
-  "aui-thread-welcome-suggestion border-foreground/10 hover:bg-foreground/[0.03] hover:border-foreground/25 rounded-md border px-2.5 py-1 text-sm whitespace-nowrap transition-colors ease-in motion-reduce:transition-none [&_svg]:size-4";
-
-const ThreadSuggestions: FC = () => {
-  const aui = useAui();
-  const [expandedLabel, setExpandedLabel] = useState<string | null>(null);
-  const expandedGroup = SUGGESTION_GROUPS.find(
-    (group) => group.label === expandedLabel,
-  );
-
-  const sendPrompt = (prompt: string) => {
-    if (aui.thread.getState().isRunning) return;
-    aui.thread.append({
-      content: [{ type: "text", text: prompt }],
-      runConfig: aui.composer.getState().runConfig,
-    });
-  };
-
-  return (
-    <div className="aui-thread-welcome-suggestions flex w-full flex-col gap-2 px-4">
-      <div className="w-full scrollbar-none overflow-x-auto">
-        <div className="mx-auto flex w-max items-center gap-2">
-          {SUGGESTION_GROUPS.map((group) => (
-            <Button
-              key={group.label}
-              variant="ghost"
-              className={cn(
-                suggestionChipClass,
-                group.label === expandedLabel && "bg-muted",
-              )}
-              onClick={() =>
-                setExpandedLabel(
-                  group.label === expandedLabel ? null : group.label,
-                )
-              }
-            >
-              {group.icon}
-              {group.label}
-            </Button>
-          ))}
-        </div>
-      </div>
-      {expandedGroup && (
-        <div
-          key={expandedGroup.label}
-          className="fade-in slide-in-from-top-1 animate-in w-full scrollbar-none overflow-x-auto duration-200"
-        >
-          <div className="mx-auto flex w-max items-center gap-2">
-            {expandedGroup.options.map((option) => (
-              <Button
-                key={option.label}
-                variant="ghost"
-                className={suggestionChipClass}
-                onClick={() => sendPrompt(option.prompt)}
-              >
-                {option.label}
-              </Button>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
+const ThreadWelcome: FC = () => null;
 
 const Composer: FC<{ autoFocus: boolean }> = ({ autoFocus }) => {
   const { composerInput, composerTriggers } = useContext(ThreadSlotsContext);

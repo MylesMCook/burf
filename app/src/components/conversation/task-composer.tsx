@@ -2,6 +2,7 @@ import { ArrowUpIcon, ChevronDownIcon, FolderIcon, GitBranchIcon, SendIcon, Serv
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { AgentIcon, StatusDot } from "@/components/agent-glyph";
+import { Composer, ComposerActions, ComposerBar, ComposerInput, ComposerMenu as AuiComposerMenu, ComposerMenuItem as AuiComposerMenuItem, ComposerModelTrigger, ComposerSend, ComposerToolbar } from "@/components/assistant-ui/elements/composer";
 import { Scene } from "@/components/art/scenes";
 import { AttemptsOptions, type AttemptValues, SendOptions, type SendValues, WorktreeOptions, type WorktreeValues } from "@/components/conversation/composer-options";
 import { AddProjectItem, AgentsPicker, type Chosen, DefaultBoxItem, entryKey, expand, nice, Pick, type PickerPreset, SavedPrompts, TargetsPicker, toChosen } from "@/components/conversation/composer-pickers";
@@ -17,7 +18,6 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Frame, FrameFooter, FramePanel } from "@/components/ui/frame";
 import { Input } from "@/components/ui/input";
-import { MenuItem, MenuSeparator } from "@/components/ui/menu";
 import { Kbd } from "@/components/ui/kbd";
 import { toastManager } from "@/components/ui/toast";
 import { copyText } from "@/lib/clipboard";
@@ -33,9 +33,9 @@ import { handoffPrompt, reviewPrompt } from "@/lib/orchestrate";
 import { loadProjects, projectActions, useProjects } from "@/lib/project-groups";
 import { setPrefs, usePrefs } from "@/lib/prefs";
 import { promptFor, type ResolveKind, worktreeSlug } from "@/lib/projects";
-import { BASE_PERMISSIONS, chatPermissions, localAgentName, localApi, useLocalComputer, type LocalComputer, type LocalConversation, type LocalSession, savedChatPermission, saveChatPermission } from "@/lib/local-computer";
+import { BASE_PERMISSIONS, chatPermissions, inheritedChatPermission, localAgentName, localApi, useLocalComputer, type LocalComputer, type LocalConversation, type LocalSession, saveChatPermission } from "@/lib/local-computer";
 import { errorMessage } from "@/lib/format";
-import { folderName, localFolders } from "@/lib/local-folders";
+import { folderChoices, folderName, localFolders } from "@/lib/local-folders";
 import { hasChatOptions, hasFullAccess, hasRemoteChat, useChatModels } from "@/lib/remote-chat";
 import { askedVariables, builtinValues, fill as fillPrompt, isBuiltin, usePrompts, variablesIn } from "@/lib/prompts";
 import { boxHasRuns } from "@/lib/runs";
@@ -132,7 +132,7 @@ interface BodyProps extends TaskComposerProps {
 }
 
 // Local work uses the same editor, frame and pickers, with folders instead of worktrees.
-function LocalStartBody({ local, draft, text, setText, tabs, dialog, autoFocus, placeholder, onDone, onKind, className, onPlace }: BodyProps & { local: LocalComputer; onPlace(place: NonNullable<ComposerDraft["place"]>): void }) {
+function LocalStartBody({ local, draft, text, setText, tabs, autoFocus, placeholder, onDone, onKind, className, onPlace }: BodyProps & { local: LocalComputer; onPlace(place: NonNullable<ComposerDraft["place"]>): void }) {
   const client = useStore((s) => s.client)!;
   const boxes = useStore((s) => s.status?.boxes ?? NONE_BOXES);
   const [conversations, setConversations] = useState<LocalConversation[]>([]);
@@ -147,15 +147,12 @@ function LocalStartBody({ local, draft, text, setText, tabs, dialog, autoFocus, 
   const agent = available.find((a) => a.id === agentChoice) ?? available.find((a) => a.id === "codex" && a.can_chat) ?? available[0];
   const structured = !!agent?.can_chat;
   const presets: PickerPreset[] = available.map((a) => ({ id: a.id, name: localAgentName(a.id), command: a.id }));
-  const sel = agent ? toChosen([{ agent: agent.id }]) : {};
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [started, setStarted] = useState<LocalSession>();
   const startedSession = useRef<LocalSession | undefined>(undefined);
   const launch = useRef<AbortController | null>(null);
   const inFlight = useRef(false);
-  const expanded = usePrefs((s) => s.taskComposerExpanded) || !agent;
-  const pickersId = useId();
   useEffect(() => onKind?.("start"), [onKind]);
   useEffect(() => {
     const controller = new AbortController();
@@ -210,33 +207,50 @@ function LocalStartBody({ local, draft, text, setText, tabs, dialog, autoFocus, 
     }
   };
   const summary = `${folderName(cwd) || "Choose folder"} on ${local.name} · this folder · ${agent ? localAgentName(agent.id) : "Choose agent"}`;
-  const folderOptions = [...new Set([...folders, cwd].filter(Boolean))].map((path) => ({ value: path, label: folderName(path), detail: path }));
-  return <fieldset disabled={busy} className="w-full min-w-0">
-    <Shell className={className} head={tabs}
-      editor={<Editor value={text} onChange={setText} onSubmit={() => void submit()} autoFocus={autoFocus} label="What should your agents work on?" placeholder={placeholder ?? "Describe a task, a bug to fix, an idea to try…"} />}
-      summary={<div className="flex min-w-0 items-center gap-1 px-1 pt-1">
-        <button type="button" data-testid="task-composer-summary" aria-expanded={expanded} aria-controls={pickersId} onClick={() => setPrefs({ taskComposerExpanded: !expanded })} className="flex min-h-8 min-w-0 items-center gap-1 rounded-md px-2.5 py-1 text-left text-muted-foreground text-xs outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring">
-          <span className="min-w-0 truncate">{summary}</span><ChevronDownIcon aria-hidden className={cn("size-3.5 shrink-0 opacity-72 transition-transform", expanded && "rotate-180")} />
-        </button>
-        {!expanded && <span className="ml-auto flex shrink-0"><SendButton label="Start" dialog={dialog} blocker={blocker} busy={busy} onClick={() => void submit()} /></span>}
-      </div>}
-      notice={<>
-        {!structured && agent && <p className="px-3 pt-2 text-xs text-muted-foreground">{localAgentName(agent.id)} starts in its terminal. Your prompt is copied for you to paste there.</p>}
-        {historyError && <p className="px-3 pt-2 text-xs text-muted-foreground">{historyError}</p>}
-        {error && <p role="alert" className="px-3 pt-2 text-sm text-destructive">{error}</p>}
-        {started && !busy && <Button size="sm" variant="outline" onClick={() => openSession(started)}>Open started {started.mode === "chat" ? "chat" : "terminal"}</Button>}
-      </>}
-      footer={<div id={pickersId} hidden={!expanded} className="w-full min-w-0">
-        {typingFolder && <label className="block px-2 pb-2 text-xs text-muted-foreground">Folder path<Input aria-label="Project directory" value={cwd} onChange={(e) => chooseFolder(e.target.value)} placeholder="Full folder path" /></label>}
-        <div data-slot="launch-toolbar" className="flex w-full min-w-0 flex-wrap items-center gap-x-0.5 gap-y-1">
-          <Pick label="Project" icon={<FolderIcon />} value={cwd} options={folderOptions} onPick={chooseFolder} footer={<><MenuSeparator /><MenuItem onClick={() => setTypingFolder(true)}>Type folder path…</MenuItem></>} />
-          <Pick label="Place" icon={<ServerIcon />} value="local" options={[{ value: "local", label: `${local.name} · This computer` }, ...boxes.filter((b) => b.state === "online").map((b) => ({ value: `box:${b.name}`, label: b.name }))]} onPick={(value) => { if (!busy && value !== "local") onPlace({ kind: "box", box: value.slice(4) }); }} />
-          <span className="px-2.5 text-xs text-muted-foreground">this folder</span>
-          <AgentsPicker presets={presets} sel={sel} copies={1} single onChange={(value) => { if (!busy) setAgent(Object.keys(value)[0] ?? ""); }} onCopies={() => {}} />
-          <span className="ml-auto flex shrink-0"><SendButton label="Start" dialog={dialog} blocker={blocker} busy={busy} onClick={() => void submit()} /></span>
-        </div>
-      </div>}
-    />
+  const folderOptions = folderChoices([...new Set([...folders, cwd].filter(Boolean))]);
+  const [menu, setMenu] = useState<"folder" | "place" | "agent" | null>(null);
+  const [folderQuery, setFolderQuery] = useState("");
+  const q = folderQuery.trim().toLowerCase();
+  const shownFolders = !q ? folderOptions : folderOptions.filter((o) => `${o.label} ${o.hint}`.toLowerCase().includes(q));
+  const openMenu = (next: "folder" | "place" | "agent") => setMenu(menu === next ? null : next);
+  return <fieldset data-testid="task-composer" disabled={busy} className={cn("w-full min-w-0", className)}>
+    {tabs}
+    <span data-testid="task-composer-summary" aria-expanded="true" className="sr-only">{summary}</span>
+    <Composer className="max-w-none">
+      <AuiComposerMenu open={menu === "folder"} className="max-h-72 w-full max-w-none overflow-y-auto">
+        {folderOptions.length > 6 && <Input aria-label="Search Project" value={folderQuery} placeholder="Search" onChange={(e) => setFolderQuery(e.target.value)} onKeyDown={(e) => e.stopPropagation()} className="mb-1 h-7" />}
+        {shownFolders.map((o) => (
+          <AuiComposerMenuItem key={o.value} title={o.hint} active={o.value === cwd} onClick={() => { chooseFolder(o.value); setMenu(null); setFolderQuery(""); }}>
+            <span className="min-w-0 flex-1 truncate text-start">{o.label}</span>
+          </AuiComposerMenuItem>
+        ))}
+        {q && shownFolders.length === 0 && <p className="px-2 py-1.5 text-muted-foreground text-xs">No matches.</p>}
+        <AuiComposerMenuItem onClick={() => { setTypingFolder(true); setMenu(null); }}>Type folder path…</AuiComposerMenuItem>
+      </AuiComposerMenu>
+      <AuiComposerMenu open={menu === "place"}>
+        <AuiComposerMenuItem active onClick={() => setMenu(null)}>{local.name}</AuiComposerMenuItem>
+        {boxes.filter((b) => b.state === "online").map((b) => <AuiComposerMenuItem key={b.name} onClick={() => { if (!busy) onPlace({ kind: "box", box: b.name }); setMenu(null); }}>{b.name}</AuiComposerMenuItem>)}
+      </AuiComposerMenu>
+      <AuiComposerMenu open={menu === "agent"}>
+        {presets.map((p) => <AuiComposerMenuItem key={p.id} active={p.id === agent?.id} onClick={() => { if (!busy) setAgent(p.id); setMenu(null); }}>{p.name}</AuiComposerMenuItem>)}
+      </AuiComposerMenu>
+      <ComposerBar>
+        {typingFolder && <label className="block px-1 text-xs text-muted-foreground">Folder path<Input aria-label="Project directory" value={cwd} onChange={(e) => chooseFolder(e.target.value)} placeholder="Full folder path" /></label>}
+        <ComposerInput aria-label="What should your agents work on?" placeholder={placeholder ?? "Describe a task, a bug to fix, an idea to try…"} value={text} autoFocus={autoFocus} onChange={(e) => setText(e.target.value)} onSubmit={() => void submit()} />
+        <ComposerToolbar>
+          <ComposerActions>
+            <ComposerModelTrigger aria-label={`Project: ${folderName(cwd) || "Choose folder"}`} model={folderName(cwd) || "Folder"} open={menu === "folder"} onClick={() => openMenu("folder")} />
+            <ComposerModelTrigger aria-label={`Place: ${local.name}`} model={local.name} open={menu === "place"} onClick={() => openMenu("place")} />
+            <ComposerModelTrigger aria-label={`Provider: ${agent ? localAgentName(agent.id) : "Choose agent"}`} model={agent ? localAgentName(agent.id) : "Agent"} open={menu === "agent"} onClick={() => openMenu("agent")} />
+          </ComposerActions>
+          <ComposerSend aria-label="Start" streaming={busy} idle={!text.trim() || !!blocker} disabled={!!blocker || busy} onClick={() => void submit()} />
+        </ComposerToolbar>
+      </ComposerBar>
+    </Composer>
+    {!structured && agent && <p className="px-1 pt-2 text-xs text-muted-foreground">{localAgentName(agent.id)} starts in its terminal. Your prompt is copied for you to paste there.</p>}
+    {historyError && <p className="px-1 pt-2 text-xs text-muted-foreground">{historyError}</p>}
+    {error && <p role="alert" className="px-1 pt-2 text-sm text-destructive">{error}</p>}
+    {started && !busy && <Button size="sm" variant="outline" className="mt-2" onClick={() => openSession(started)}>Open started {started.mode === "chat" ? "chat" : "terminal"}</Button>}
   </fieldset>;
 }
 
@@ -500,7 +514,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
   // A structured chat on a box that takes options: the account's own models, and a permission mode.
   const chatControls = structuredChat && hasChatOptions(box);
   const chatModels = useChatModels(box, locName, chatControls, reqAgent);
-  const [chosenPermission, setPermission] = useState<keyof typeof chatPermissions>(() => savedChatPermission() ?? "strict");
+  const [chosenPermission, setPermission] = useState<keyof typeof chatPermissions>(() => inheritedChatPermission() ?? "strict");
   // Full access is offered only where the box takes it.
   const permission = chosenPermission === "full-access" && !hasFullAccess(box) ? "strict" : chosenPermission;
   const pickerPresets: PickerPreset[] = !chatModels?.length
@@ -750,8 +764,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
           onClick={() => setPrefs({ taskComposerExpanded: !expanded })}
           className="flex min-h-8 min-w-0 items-center gap-1 rounded-md px-2.5 py-1 text-left text-muted-foreground text-xs outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <span className="min-w-0 truncate">{summary}</span>
-          {/* Says the line opens: it reads as plain words otherwise. */}
+          <span className="sr-only">{summary}</span>
           <ChevronDownIcon aria-hidden className={cn("size-3.5 shrink-0 opacity-72 transition-transform", expanded && "rotate-180")} />
         </button>
         {!expanded && <span className="ml-auto flex shrink-0"><SendButton label={action} dialog={dialog} blocker={blocker} busy={busy} onClick={() => void submit()} /></span>}

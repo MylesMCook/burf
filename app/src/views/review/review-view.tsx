@@ -129,7 +129,7 @@ export function ReviewView() {
     <div className="flex h-full min-h-0 flex-col">
       <ViewHeader
         title="Review"
-        description="Agents' finished work on every box, to approve, send back or discard."
+        description={loaded && entries.length ? `${entries.length} item${entries.length === 1 ? "" : "s"} waiting` : undefined}
         actions={
           <Button size="sm" variant="ghost" onClick={() => void refreshReview()} disabled={loading} aria-label="Refresh">
             <RefreshCwIcon className={cn(loading && "animate-spin")} />
@@ -159,7 +159,7 @@ export function ReviewView() {
               <Scene name="calm" />
             </EmptyMedia>
             <EmptyTitle>Nothing to review</EmptyTitle>
-            <EmptyDescription>When an agent finishes its turn and leaves changes, its work shows up here to approve, send back or discard.</EmptyDescription>
+            <EmptyDescription>Finished turns with changes to look at will show up here.</EmptyDescription>
           </EmptyHeader>
         </Empty>
       ) : (

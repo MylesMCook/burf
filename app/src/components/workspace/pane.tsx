@@ -1,5 +1,5 @@
 import { AppWindowIcon, ArchiveIcon, ChartColumnIcon, FileTextIcon, GaugeIcon, LayoutGridIcon, TableIcon, WorkflowIcon, ArrowLeftRightIcon, Columns2Icon, EllipsisIcon, GlobeIcon, MonitorSmartphoneIcon, PencilIcon, ScrollTextIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, XIcon } from "lucide-react";
-import { lazy, Suspense, useEffect, useMemo, useRef } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 
 import { Tip } from "@/components/tip";
@@ -24,6 +24,8 @@ import { openWorktreePicker } from "@/components/workspace/worktree-picker";
 import { useLabel, useTone, WtChip } from "@/components/workspace/worktree-tone";
 import { closePane, openBrowserAt, openPreviewAt, startSession } from "@/lib/actions";
 import { agentLabel, agentOf, sessionAgent, sessionName, sessionState } from "@/lib/derive";
+import { errorMessage } from "@/lib/format";
+import { hasRemoteChat, remoteChatApi } from "@/lib/remote-chat";
 import { nameFromKey } from "@/lib/groups";
 import { type Leaf, leaves, paneWorktree } from "@/lib/layout";
 import { useChatPaneFocus } from "@/lib/focus-home";
@@ -38,6 +40,44 @@ import { focusPane, paneBeside, paneToTab, setPaneContent, splitKey, useWorkspac
 import { platformKeys } from "@/lib/platform";
 
 export { agentLabel };
+
+// An agent is a structured chat. A terminal session is not drawn as one,
+// and it is not left on screen: the pane becomes the box's chat, or says
+// that this box has none. A shell stays a terminal.
+function OpenStructuredChat({ box, session, wsKey, tab, pane, focused }: { box: string; session: string; wsKey: string; tab: string; pane: string; focused: boolean }) {
+  const [error, setError] = useState("");
+  useEffect(() => {
+    if (!focused) return;
+    const client = useStore.getState().client;
+    const listed = useStore.getState().boxes[box]?.sessions?.find((s) => s.name === session);
+    const agent = listed ? agentOf(listed) : undefined;
+    const location = listed?.location;
+    if (!client || !listed || !location || (agent !== "claude" && agent !== "codex")) {
+      setError("This session has no structured chat.");
+      return;
+    }
+    const command = (listed.command ?? agent).trim().split(/\s+/)[0]?.split("/").pop() ?? agent;
+    if (!hasRemoteChat(box, agent, command)) {
+      setError(`${agentLabel(agent)} on ${box} has no structured chat.`);
+      return;
+    }
+    let cancel = false;
+    void (async () => {
+      try {
+        const result = await remoteChatApi.list(client, box);
+        const found = result.chats.find((chat) => chat.location === location && (chat.agent ?? "codex") === agent);
+        const chat = found ?? await remoteChatApi.start(client, box, location, agent);
+        if (cancel) return;
+        setPaneContent(wsKey, tab, pane, { kind: "remote-chat", box, chat: chat.id, cwd: chat.cwd || listed.dir, agent: chat.agent ?? agent });
+      } catch (err) {
+        if (!cancel) setError(errorMessage(err));
+      }
+    })();
+    return () => { cancel = true };
+  }, [focused, box, session, wsKey, tab, pane]);
+  if (!focused) return <p className="p-4 text-sm text-muted-foreground">Open this chat to continue.</p>;
+  return <p role="status" className="p-4 text-sm text-muted-foreground">{error || "Opening chat..."}</p>;
+}
 
 // A File tab's pane and its editor load the first time one shows.
 // An artifact or a worktree's board (components/art), loaded when first shown.
@@ -87,7 +127,8 @@ export function Pane({ wsKey, tab, pane, visible, focused, split, mixed, compare
   // once the session itself is gone.
   const agent = session ? agentOf(session) : undefined;
   const content = useRef<HTMLDivElement>(null);
-  useChatPaneFocus(content, visible && focused && c.kind === "remote-chat");
+  const agentChat = c.kind === "terminal" && !session?.service && !!(agent || c.agent);
+  useChatPaneFocus(content, visible && focused && (c.kind === "remote-chat" || agentChat));
   // Lifted: being dragged by its header, so it fades while it moves.
   const lifted = useTabDrag((s) => s.source?.kind === "pane" && s.source.pane === pane.id);
   useEffect(() => {
@@ -121,12 +162,10 @@ export function Pane({ wsKey, tab, pane, visible, focused, split, mixed, compare
         )}
         <div ref={content} className={cn("relative flex min-h-0 flex-1 flex-col transition-opacity", split && !focused && "opacity-85", lifted && "opacity-40")}>
           {gone && <GonePane name={gone} onClose={close} />}
-          {c.kind === "remote-chat" && <RemoteChatPane box={c.box} id={c.chat} cwd={c.cwd} agent={c.agent} draft={c.draft} options={c.options} onSaved={(saved) => setPaneContent(wsKey, tab, pane.id, { ...c, ...saved })} />}
-          {c.kind === "terminal" && (
-            // Shells show typing before the box echoes it on a slow link.
-            // An agent draws its own input, so it gets no predictive echo.
-            <TerminalView box={c.box} session={c.session} agent={c.agent} command={c.command} wsKey={wsKey} tab={tab} pane={pane.id} visible={visible} focused={focused} predict={!c.agent && !agent} onFocus={focus} onClose={close} />
-          )}
+          {c.kind === "remote-chat" && <RemoteChatPane box={c.box} id={c.chat} cwd={c.cwd} agent={c.agent} draft={c.draft} options={c.options} onSaved={(saved) => setPaneContent(wsKey, tab, pane.id, { ...c, ...saved })} onGone={close} />}
+          {c.kind === "terminal" && (agentChat ? <OpenStructuredChat box={c.box} session={c.session} wsKey={wsKey} tab={tab} pane={pane.id} focused={focused} /> : (
+            <TerminalView box={c.box} session={c.session} agent={c.agent} command={c.command} wsKey={wsKey} tab={tab} pane={pane.id} visible={visible} focused={focused} predict onFocus={focus} onClose={close} />
+          ))}
           {c.kind === "browser" && <BrowserPane id={pane.id} url={c.url} visible={visible} worktree={owner} onNavigate={(url) => setPaneContent(wsKey, tab, pane.id, { kind: "browser", url })} onLoading={compare ? (l) => pageLoading(pane.id, l) : undefined} />}
           {c.kind === "preview" && <PreviewPane url={c.url} visible={visible} worktree={owner} onNavigate={(url) => setPaneContent(wsKey, tab, pane.id, { kind: "preview", url })} />}
           {c.kind === "file" && (

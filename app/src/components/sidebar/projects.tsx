@@ -3,6 +3,7 @@ import {
   FolderGitIcon,
   GitBranchIcon,
   HomeIcon,
+  MessageSquareIcon,
   PencilIcon,
   PlusIcon,
   RefreshCwIcon,
@@ -24,6 +25,8 @@ import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, Sideba
 import { startSession } from "@/lib/actions";
 import { type BoxStatus, type Location, type Session, type Worktree } from "@/lib/api";
 import { agentOf, type SessionState, sessionName, sessionState, worktreeSessions } from "@/lib/derive";
+import { leaves } from "@/lib/layout";
+import { chatBelongsToWorktree, openRemoteChat, useBoxRemoteChats, type RemoteChatSummary } from "@/lib/remote-chat";
 import { load, save } from "@/lib/storage";
 import { type BoxData, NONE, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -47,7 +50,7 @@ import { below, MAX_INDENT, nest, prune, size, type TreeNode } from "@/lib/workt
 export type GroupBy = "project" | "box";
 export type Show = "active" | "all";
 
-interface SidebarPrefs {
+export interface SidebarPrefs {
   groupBy: GroupBy;
   show: Show;
   collapsed: Record<string, boolean>;
@@ -217,9 +220,13 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
   const collapsed = prefs.collapsed[repo.key] ?? false;
   const all = prefs.show === "all";
   const expanded = all || (prefs.expanded[repo.key] ?? false);
+  const { chats: boxChats } = useBoxRemoteChats(box.name);
+  const away = online ? undefined : box;
+  const chatsFor = (wt: Worktree) => (away ? [] : boxChats.filter((c) => chatBelongsToWorktree(c, loc, wt)));
 
   const mainSessions = main ? worktreeSessions(data?.sessions, main) : [];
   const mainSel = !!main && inWorkspace && current === wsKey(box.name, main.path);
+  const mainChats = main && !away ? chatsFor(main) : [];
   const rows: TreeRow[] = worktrees.map((wt) => ({
     key: wt.path,
     box: box.name,
@@ -227,10 +234,11 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
     wt,
     data,
     sessions: worktreeSessions(data?.sessions, wt),
+    chats: chatsFor(wt),
     selected: inWorkspace && current === wsKey(box.name, wt.path),
-    away: online ? undefined : box,
+    away,
   }));
-  const isActive = (r: TreeRow) => r.sessions.some((s) => !s.exited) || r.selected || !!removalOf(removals, box.name, r.wt.path);
+  const isActive = (r: TreeRow) => r.sessions.some((s) => !s.exited) || r.chats.length > 0 || r.selected || !!removalOf(removals, box.name, r.wt.path);
   const active = rows.filter(isActive);
   const tree = nest(rows, (r) => r.key, (r) => r.wt.parent);
   const shown = expanded ? tree : prune(tree, isActive);
@@ -283,9 +291,10 @@ function RepoGroup({ repo, chip, prefs, update }: { repo: Repo; chip: boolean; p
         )}
       </ContextRow>
 
-      {!collapsed && (all || shown.length > 0 || hidden > 0) && (
+      {!collapsed && (all || shown.length > 0 || hidden > 0 || mainChats.length > 0) && (
         <SidebarMenuSub className="mx-0 ml-[17px] gap-px py-0.5 pr-0 pl-1.5">
-          {all && main && <WorktreeRow box={box.name} loc={loc} wt={main} sessions={mainSessions} data={data} selected={mainSel} onOpen={() => open(main)} away={online ? undefined : box} />}
+          {all && main && <WorktreeRow box={box.name} loc={loc} wt={main} sessions={mainSessions} chats={mainChats} data={data} selected={mainSel} onOpen={() => open(main)} away={away} />}
+          {!all && main && mainChats.length > 0 && <WorktreeChatRows box={box.name} loc={loc} wt={main} chats={mainChats} />}
           <WorktreeNodes nodes={shown} depth={0} prefs={prefs} update={update} />
           {hidden > 0 && (
             <SidebarMenuSubItem>
@@ -324,6 +333,7 @@ interface WorktreeRowProps {
   loc: Location;
   wt: Worktree;
   sessions: Session[];
+  chats?: RemoteChatSummary[];
   data?: BoxData;
   selected: boolean;
   onOpen(): void;
@@ -341,6 +351,8 @@ interface WorktreeRowProps {
 // the store keeps what a refresh didn't change (lib/share.ts), so a rename
 // or an agent's new state draws one row, not hundreds.
 const sameList = (a: Session[], b: Session[]) => a.length === b.length && a.every((s, i) => s === b[i]);
+const sameChats = (a: RemoteChatSummary[] | undefined, b: RemoteChatSummary[] | undefined) =>
+  (a?.length ?? 0) === (b?.length ?? 0) && (a ?? []).every((c, i) => c === (b ?? [])[i]);
 const sameRow = (a: WorktreeRowProps, b: WorktreeRowProps) =>
   a.box === b.box &&
   a.loc === b.loc &&
@@ -350,9 +362,16 @@ const sameRow = (a: WorktreeRowProps, b: WorktreeRowProps) =>
   a.chip?.name === b.chip?.name &&
   a.chip?.state === b.chip?.state &&
   a.data?.stats?.agents === b.data?.stats?.agents &&
-  sameList(a.sessions, b.sessions);
+  sameList(a.sessions, b.sessions) &&
+  sameChats(a.chats, b.chats);
 
-const WorktreeRow = memo(function WorktreeRow({ box, loc, wt, sessions, data, selected, onOpen, chip, away }: WorktreeRowProps) {
+const WorktreeRow = memo(function WorktreeRow({ box, loc, wt, sessions, chats: chatsProp, data, selected, onOpen, chip, away }: WorktreeRowProps) {
+  const { chats: boxChats } = useBoxRemoteChats(box);
+  const chats = useMemo(() => {
+    if (away) return [];
+    if (chatsProp) return chatsProp;
+    return boxChats.filter((c) => chatBelongsToWorktree(c, loc, wt));
+  }, [away, chatsProp, boxChats, loc, wt]);
   // Its agents by what they work on ("Fix checkout webhook · Claude Code").
   const agents = away ? [] : sessions.filter((s) => agentOf(s) && !s.exited).map((s) => sessionName(s, { sessions, agent: true }));
   // A renamed worktree's tip says its own name and branch under the title.
@@ -382,53 +401,95 @@ const WorktreeRow = memo(function WorktreeRow({ box, loc, wt, sessions, data, se
       </SidebarMenuSubItem>
     );
   return (
-    <SidebarMenuSubItem>
-      <ContextRow items={() => (away ? awayActions(away) : worktreeActions(box, loc, wt))} className="group/row relative">
-        <Tip side="right" delay={700} label={where}>
-          <SidebarMenuSubButton
-            render={<button type="button" />}
-            data-testid="worktree-row"
-            data-worktree={`${box}/${wt.main ? loc.name : wt.name}`}
-            data-title={wt.title || undefined}
-            isActive={selected}
-            // Labs: ⌥-click adds its tabs to the strip as a group; dragged
-            // onto the strip it does the same, onto a pane it splits its
-            // agent in (tab-drag.tsx).
-            onClick={(e: React.MouseEvent) => (e.altKey && labs ? void addGroup(key) : onOpen())}
-            // Double-click or F2 renames it in place.
-            onDoubleClick={() => canRename && startRenamingWorktree(box, wt.path)}
-            onKeyDown={(e: React.KeyboardEvent) => {
-              if (e.key === "F2" && canRename) {
-                e.preventDefault();
-                startRenamingWorktree(box, wt.path);
-              }
-            }}
-            onPointerDown={(e: React.PointerEvent<HTMLElement>) => labs && !away && armDrag(e, { kind: "worktree", key }, wt.main ? loc.name : name, wt.main ? <HomeIcon className="size-3" /> : <GitBranchIcon className="size-3" />)}
-            className={cn("h-side-row w-full text-[13px] sm:h-side-row [&>svg]:text-muted-foreground", away && "text-muted-foreground")}
-          >
-            <LeadIcon sessions={away ? [] : sessions} data={data} icon={wt.main ? <HomeIcon /> : <GitBranchIcon />} />
-            <span className={cn("min-w-0 truncate", away && "opacity-70")}>{name}</span>
-            {/* Its own name beside the title, when the sidebar is wide enough. */}
-            {!wt.main && wt.title && <span data-testid="worktree-row-name" className="hidden min-w-0 max-w-max grow basis-0 truncate font-mono text-[10px] text-muted-foreground @min-[17rem]/side:inline">{wt.name}</span>}
-            {/* On screen beside another worktree: its colour. */}
-            <WtDot wsKey={key} className="size-1.5" />
-            {/* Narrower than the default the name needs the room more; the
-                tip still says which box. */}
-            {chip && (
-              <span className="hidden shrink-0 @min-[14rem]/side:inline-flex">
-                <BoxChip box={chip} />
-              </span>
-            )}
-            {!away && <SetupMark box={box} wt={wt} />}
-            <span className="ml-auto" />
-            {away ? <AwayMark box={away} short={!!chip} /> : <Glyphs sessions={sessions} data={data} />}
-          </SidebarMenuSubButton>
-        </Tip>
-        {!away && <RowActions box={box} loc={loc} wt={wt} />}
-      </ContextRow>
-    </SidebarMenuSubItem>
+    <>
+      <SidebarMenuSubItem>
+        <ContextRow items={() => (away ? awayActions(away) : worktreeActions(box, loc, wt))} className="group/row relative">
+          <Tip side="right" delay={700} label={where}>
+            <SidebarMenuSubButton
+              render={<button type="button" />}
+              data-testid="worktree-row"
+              data-worktree={`${box}/${wt.main ? loc.name : wt.name}`}
+              data-title={wt.title || undefined}
+              isActive={selected}
+              // Labs: ⌥-click adds its tabs to the strip as a group; dragged
+              // onto the strip it does the same, onto a pane it splits its
+              // agent in (tab-drag.tsx).
+              onClick={(e: React.MouseEvent) => (e.altKey && labs ? void addGroup(key) : onOpen())}
+              // Double-click or F2 renames it in place.
+              onDoubleClick={() => canRename && startRenamingWorktree(box, wt.path)}
+              onKeyDown={(e: React.KeyboardEvent) => {
+                if (e.key === "F2" && canRename) {
+                  e.preventDefault();
+                  startRenamingWorktree(box, wt.path);
+                }
+              }}
+              onPointerDown={(e: React.PointerEvent<HTMLElement>) => labs && !away && armDrag(e, { kind: "worktree", key }, wt.main ? loc.name : name, wt.main ? <HomeIcon className="size-3" /> : <GitBranchIcon className="size-3" />)}
+              className={cn("h-side-row w-full text-[13px] sm:h-side-row [&>svg]:text-muted-foreground", away && "text-muted-foreground")}
+            >
+              <LeadIcon sessions={away ? [] : sessions} data={data} icon={wt.main ? <HomeIcon /> : <GitBranchIcon />} />
+              <span className={cn("min-w-0 truncate", away && "opacity-70")}>{name}</span>
+              {/* Its own name beside the title, when the sidebar is wide enough. */}
+              {!wt.main && wt.title && <span data-testid="worktree-row-name" className="hidden min-w-0 max-w-max grow basis-0 truncate font-mono text-[10px] text-muted-foreground @min-[17rem]/side:inline">{wt.name}</span>}
+              {/* On screen beside another worktree: its colour. */}
+              <WtDot wsKey={key} className="size-1.5" />
+              {/* Narrower than the default the name needs the room more; the
+                  tip still says which box. */}
+              {chip && (
+                <span className="hidden shrink-0 @min-[14rem]/side:inline-flex">
+                  <BoxChip box={chip} />
+                </span>
+              )}
+              {!away && <SetupMark box={box} wt={wt} />}
+              <span className="ml-auto" />
+              {away ? <AwayMark box={away} short={!!chip} /> : <Glyphs sessions={sessions} data={data} />}
+            </SidebarMenuSubButton>
+          </Tip>
+          {!away && <RowActions box={box} loc={loc} wt={wt} />}
+        </ContextRow>
+      </SidebarMenuSubItem>
+      {!away && chats.length > 0 && <WorktreeChatRows box={box} loc={loc} wt={wt} chats={chats} />}
+    </>
   );
 }, sameRow);
+
+function useActiveRemoteChatId(box: string, path: string): string | undefined {
+  return useWorkspaces((s) => {
+    const key = wsKey(box, path);
+    if (s.current !== key) return undefined;
+    const space = s.spaces[key];
+    if (!space) return undefined;
+    const tab = space.tabs.find((t) => t.id === space.active) ?? space.tabs[0];
+    if (!tab) return undefined;
+    for (const leaf of leaves(tab.root)) {
+      if (leaf.content.kind === "remote-chat" && leaf.content.box === box) return leaf.content.chat;
+    }
+    return undefined;
+  });
+}
+
+function WorktreeChatRows({ box, loc, wt, chats }: { box: string; loc: Location; wt: Worktree; chats: RemoteChatSummary[] }) {
+  const activeId = useActiveRemoteChatId(box, wt.path);
+  const ref = refOf(box, loc, wt);
+  return (
+    <>
+      {chats.map((chat) => (
+        <SidebarMenuSubItem key={chat.id}>
+          <SidebarMenuSubButton
+            render={<button type="button" />}
+            data-testid="remote-chat-row"
+            data-chat={chat.id}
+            isActive={activeId === chat.id}
+            onClick={() => openRemoteChat(box, chat, ref)}
+            className="h-side-row w-full pl-6 text-[13px] [&>svg]:text-muted-foreground"
+          >
+            <MessageSquareIcon className="size-3.5 shrink-0" />
+            <span className="min-w-0 flex-1 truncate">{chat.title?.trim() || "Untitled chat"}</span>
+          </SidebarMenuSubButton>
+        </SidebarMenuSubItem>
+      ))}
+    </>
+  );
+}
 
 // TreeRow is one worktree as a project's tree holds it; key is unique
 // across the project's boxes.
@@ -439,6 +500,7 @@ interface TreeRow {
   wt: Worktree;
   data?: BoxData;
   sessions: Session[];
+  chats: RemoteChatSummary[];
   selected: boolean;
   chip?: BoxStatus;
   away?: BoxStatus;
@@ -456,7 +518,7 @@ function WorktreeNodes({ nodes, depth, prefs, update }: { nodes: TreeNode<TreeRo
 function WorktreeNode({ node, depth, prefs, update }: { node: TreeNode<TreeRow>; depth: number; prefs: SidebarPrefs; update(p: Partial<SidebarPrefs>): void }) {
   const r = node.row;
   const row = (
-    <WorktreeRow box={r.box} loc={r.loc} wt={r.wt} sessions={r.sessions} data={r.data} selected={r.selected} chip={r.chip} away={r.away} onOpen={() => selectWorktree(refOf(r.box, r.loc, r.wt))} />
+    <WorktreeRow box={r.box} loc={r.loc} wt={r.wt} sessions={r.sessions} chats={r.chats} data={r.data} selected={r.selected} chip={r.chip} away={r.away} onOpen={() => selectWorktree(refOf(r.box, r.loc, r.wt))} />
   );
   if (!node.children.length) return row;
   const fold = `wt:${node.key}`;
@@ -746,13 +808,14 @@ function ProjectGroup({ project: p, chips, prefs, update }: { project: Project; 
           wt,
           data,
           sessions: worktreeSessions(data?.sessions, wt),
+          chats: [],
           selected: inWorkspace && current === wsKey(m.box.name, wt.path),
           chip: multi ? m.box : undefined,
           away: m.box.state === "online" ? undefined : m.box,
         }),
       );
   });
-  const isActive = (r: TreeRow) => r.sessions.some((s) => !s.exited) || r.selected || !!removalOf(removals, r.box, r.wt.path);
+  const isActive = (r: TreeRow) => r.sessions.some((s) => !s.exited) || r.chats.length > 0 || r.selected || !!removalOf(removals, r.box, r.wt.path);
   const active = rows.filter(isActive);
   const tree = nest(rows, (r) => r.key, (r) => (r.wt.parent ? `${r.box}:${r.wt.parent}` : undefined));
   const shown = expanded ? tree : prune(tree, isActive);

@@ -1,9 +1,10 @@
 import { BookMarkedIcon, ChevronsUpDownIcon, CloudOffIcon, FolderPlusIcon, PinIcon, UsersIcon } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Menu,
   MenuCheckboxItem,
@@ -351,6 +352,8 @@ export interface PickOption {
   value: string;
   label: string;
   detail?: string;
+  // The full value, shown on hover, not as a second column.
+  hint?: string;
   disabled?: boolean;
 }
 
@@ -375,10 +378,13 @@ export function Pick({
   className?: string;
 }) {
   const shown = options.find((o) => o.value === value)?.label ?? empty ?? "";
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const listed = !q ? options : options.filter((o) => `${o.label} ${o.detail ?? ""} ${o.hint ?? ""}`.toLowerCase().includes(q));
   // One choice and nothing else to do: a label, not a menu.
   const fixed = options.length <= 1 && !footer;
   return (
-    <Menu>
+    <Menu onOpenChange={(open) => { if (!open) setQuery(""); }}>
       <MenuTrigger
         render={<Button size="sm" variant="ghost" aria-label={`${label}: ${shown}`} disabled={fixed && !options.length} className={cn("min-w-0 max-w-44 shrink-0 text-muted-foreground hover:text-foreground", fixed && "pointer-events-none", className)} />}
       >
@@ -386,19 +392,29 @@ export function Pick({
         <span className="truncate">{shown}</span>
         {!fixed && <ChevronsUpDownIcon className="opacity-60" />}
       </MenuTrigger>
-      <MenuPopup align="start" className="min-w-52">
+      <MenuPopup align="start" className="w-72 max-w-[min(20rem,calc(100vw-2rem))]">
+        {options.length > 6 && (
+          <div className="px-2 pb-1">
+            <Input aria-label={`Search ${label}`} value={query} placeholder="Search" onChange={(e) => setQuery(e.target.value)} onKeyDown={(e) => e.stopPropagation()} className="h-7" />
+          </div>
+        )}
         <MenuGroup>
           <MenuGroupLabel>{label}</MenuGroupLabel>
-          <MenuRadioGroup value={value} onValueChange={(v) => onPick(String(v))}>
-            {options.map((o) => (
-              <MenuRadioItem key={o.value} value={o.value} disabled={o.disabled} closeOnClick>
-                <span className="flex min-w-0 flex-1 items-baseline justify-between gap-3">
-                  <span className="truncate">{o.label}</span>
-                  {o.detail && <span className="shrink-0 text-muted-foreground text-xs">{o.detail}</span>}
-                </span>
-              </MenuRadioItem>
-            ))}
-          </MenuRadioGroup>
+          <div className="max-h-60 overflow-y-auto">
+            <MenuRadioGroup value={value} onValueChange={(v) => onPick(String(v))}>
+              {listed.map((o) => (
+                <MenuRadioItem key={o.value} value={o.value} disabled={o.disabled} closeOnClick>
+                  <Tip label={o.hint}>
+                    <span className="flex min-w-0 flex-1 items-baseline justify-between gap-3">
+                      <span className="min-w-0 truncate">{o.label}</span>
+                      {o.detail && <span className="min-w-0 max-w-28 truncate text-muted-foreground text-xs">{o.detail}</span>}
+                    </span>
+                  </Tip>
+                </MenuRadioItem>
+              ))}
+            </MenuRadioGroup>
+            {q && listed.length === 0 && <p className="px-2 py-1.5 text-muted-foreground text-xs">No matches.</p>}
+          </div>
         </MenuGroup>
         {footer}
       </MenuPopup>

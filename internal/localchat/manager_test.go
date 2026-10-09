@@ -485,3 +485,40 @@ func TestInvalidationRevokesApprovalBeforeTeardown(t *testing.T) {
 		t.Fatal("approval accepted between invalidation and teardown")
 	}
 }
+
+func TestForkBranchesTheSavedThread(t *testing.T) {
+	f := &fakeServer{}
+	m := New("synthetic.exe", func(LaunchOptions) (Process, error) {
+		client, server := net.Pipe()
+		f.conn = server
+		go func() {
+			defer server.Close()
+			sc := bufio.NewScanner(server)
+			for sc.Scan() {
+				var p packet
+				_ = json.Unmarshal(sc.Bytes(), &p)
+				switch p.Method {
+				case "initialize":
+					f.send(map[string]any{"id": p.ID, "result": map[string]any{}})
+				case "thread/fork":
+					var params map[string]any
+					_ = json.Unmarshal(p.Params, &params)
+					if params["threadId"] != "12345678-1234-4321-8123-123456789abc" || params["sandbox"] != "read-only" || params["excludeTurns"] != true {
+						t.Errorf("fork params %s", p.Params)
+					}
+					f.send(map[string]any{"id": p.ID, "result": map[string]any{"thread": map[string]string{"id": "forked-thread"}}})
+				}
+			}
+		}()
+		return client, nil
+	})
+	t.Cleanup(m.Close)
+	s, err := m.StartFork(context.Background(), t.TempDir(), "12345678-1234-4321-8123-123456789abc")
+	if err != nil || s.ThreadID != "forked-thread" || s.Mode != "chat" {
+		t.Fatal(err, s)
+	}
+	again, err := m.StartFork(context.Background(), s.CWD, "12345678-1234-4321-8123-123456789abc")
+	if err != nil || again.ID != s.ID {
+		t.Fatal("second continue", err, again.ID, s.ID)
+	}
+}

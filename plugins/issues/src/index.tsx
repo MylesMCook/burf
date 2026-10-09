@@ -200,7 +200,7 @@ function IssuesScreen({ berth }: ScreenProps) {
       ))}
       <ViewHeader
         title="Issues"
-        description={busyRuns > 0 ? `${busyRuns} agent${busyRuns === 1 ? " is" : "s are"} on issues right now.` : "Open GitHub issues, and an agent on any of them in one step."}
+        description={busyRuns > 0 ? `${busyRuns} agent${busyRuns === 1 ? " is" : "s are"} on issues right now.` : undefined}
         actions={
           <>
             <ProjectPicker projects={projects} scope={scope} onChange={(id) => (setStored(id), setChecked(new Set()))} />

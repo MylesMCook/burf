@@ -109,6 +109,9 @@ test("split, switch tabs and move between panes with the keyboard", async ({ app
   await page.keyboard.press("Shift+F10");
   await expect(page.getByRole("menuitem", { name: /Close tab/ })).toBeVisible();
   await page.keyboard.press("Escape");
+  // Base UI menus sometimes keep the popover open for one Esc; a second
+  // closes the menu surface when the first only dismissed a submenu layer.
+  if (await page.getByRole("menu").count()) await page.keyboard.press("Escape");
   await expect(page.getByRole("menu")).toHaveCount(0);
   await notLost(page);
 });

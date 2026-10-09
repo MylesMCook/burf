@@ -253,9 +253,7 @@ function MainView() {
   );
 }
 
-// NoWorktree is the workspace before any worktree is picked: the composer,
-// to start work, and the agents and worktrees to go back to. Labs adds the
-// harbour across the top.
+// NoWorktree is the workspace before any worktree is picked: the composer.
 function NoWorktree() {
   return <HomeView />;
 }

@@ -6,7 +6,7 @@ import { useStore } from "@/lib/store";
 import type { SavedTranscriptItem } from "@/lib/saved-chat";
 
 export type LocalAgent = "claude" | "codex";
-export const localAgentName = (id: string) => id === "claude" ? "Claude Code" : "Codex";
+export const localAgentName = (id: string) => id === "claude" ? "Claude Code" : id === "cursor" ? "Cursor" : "Codex";
 export interface LocalSession {
   id: string;
   agent: LocalAgent;
@@ -15,6 +15,8 @@ export interface LocalSession {
   mode?: "chat";
   started_at: string;
   exit_error?: string;
+  title?: string;
+  history_id?: string;
 }
 export interface LocalComputer {
   supported: boolean;
@@ -66,6 +68,7 @@ export function savedChatPermission(): ChatOptions["permission"] {
   const saved = load<string>(CHAT_PERMISSION, "");
   return saved in chatPermissions ? (saved as ChatOptions["permission"]) : undefined;
 }
+export { inheritedChatPermission } from "./local-computer-inherit.ts";
 export const saveChatPermission = (permission: NonNullable<ChatOptions["permission"]>) => save(CHAT_PERMISSION, permission);
 export interface ChatModel { model: string; displayName: string; defaultReasoningEffort: string; supportedReasoningEfforts: { reasoningEffort: string }[] }
 export interface LocalChat extends LocalSession {
@@ -79,7 +82,7 @@ export interface LocalChat extends LocalSession {
   // The work each report item tells of, by item id.
   reports?: Record<string, BerthReport[]>;
   // browser and tool: one of Burf's own tools asks before it acts.
-  approvals: { id: string; kind: "command" | "files" | "browser" | "tool"; detail: string; reason?: string; session_allowed?: boolean; execpolicy?: string[] }[];
+  approvals: { id: string; kind: "command" | "files" | "browser" | "tool"; detail: string; reason?: string; session_allowed?: boolean; execpolicy?: string[]; always?: boolean }[];
   error?: string;
   truncated?: boolean;
 }
@@ -114,6 +117,7 @@ export const localApi = {
   history: (c: Client, id: string, before?: number, signal?: AbortSignal) => c.laptop<LocalHistoryPage>("GET", `/v1/local/conversations/${encodeURIComponent(id)}${before === undefined ? "" : `?before=${before}`}`, undefined, signal),
   start: (c: Client, agent: LocalAgent, cwd: string, signal?: AbortSignal) => launch(c.laptop<LocalSession>("POST", "/v1/local/sessions", { agent, cwd }, signal), signal),
   fork: (c: Client, id: string, signal?: AbortSignal) => launch(c.laptop<LocalSession>("POST", `/v1/local/conversations/${encodeURIComponent(id)}/fork`, undefined, signal), signal),
+  continueChat: (c: Client, id: string, signal?: AbortSignal) => launch(c.laptop<LocalChat>("POST", `/v1/local/conversations/${encodeURIComponent(id)}/continue`, {}, signal), signal),
   stop: (c: Client, id: string) => c.laptop("DELETE", `/v1/local/sessions/${encodeURIComponent(id)}`),
   output: (c: Client, id: string, after: number, signal?: AbortSignal) => c.laptop<LocalOutput>("GET", `/v1/local/sessions/${encodeURIComponent(id)}/output?after=${after}`, undefined, signal),
   input: async (c: Client, id: string, data: string, signal?: AbortSignal) => {

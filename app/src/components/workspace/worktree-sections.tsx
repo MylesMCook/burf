@@ -10,7 +10,6 @@ import { boxApi, type WorktreeService } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
 import { toastManager } from "@/components/ui/toast";
 import { openBrowserAt, openPreviewAt } from "@/lib/actions";
-import { hostSuffix, worktreeHost } from "@/lib/browser-url";
 import { copyText } from "@/lib/clipboard";
 import { NONE, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
@@ -84,7 +83,6 @@ function LiveServices({ worktree: ref }: { worktree: WorktreeRef }) {
   const rows = useMemo(() => liveServices(named, { ref, services: named, urlPort }, devPort), [named, ref, urlPort, devPort]);
   const [showOther, setShowOther] = useState(false);
   const name = useTitleAt(ref.box, ref.path) ?? (ref.main ? ref.location : ref.worktree);
-  const host = worktreeHost(ref);
   const main = rows.filter((r) => r.kind !== "other");
   const other = rows.filter((r) => r.kind === "other");
 
@@ -99,17 +97,7 @@ function LiveServices({ worktree: ref }: { worktree: WorktreeRef }) {
           ))}
         </ul>
       ) : (
-        <p className="px-2 text-muted-foreground text-xs leading-relaxed">
-          Nothing to open yet.{" "}
-          {devPort ? (
-            <>
-              A dev server on <code className="font-mono text-[11px] text-foreground/80">$BERTH_PORT</code> ({devPort}) opens at{" "}
-              {host ? <code className="break-all font-mono text-[11px] text-foreground/80">{`http://${host}${hostSuffix(urlPort)}/`}</code> : "its private URL"}.
-            </>
-          ) : (
-            "Start a dev server here and its private URL shows up."
-          )}
-        </p>
+        <p className="px-2 text-muted-foreground text-xs leading-relaxed">Nothing to open yet.</p>
       )}
       {other.length > 0 && (
         <div className="mt-1">

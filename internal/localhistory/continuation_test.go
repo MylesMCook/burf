@@ -20,7 +20,7 @@ func TestContinuationRevalidatesDiscoveredSourceWithoutMutation(t *testing.T) {
 	}
 	original, _ := os.ReadFile(path)
 	ref, err := store.Continuation(ctx, list[0].ID)
-	if err != nil || ref.Source != "codex" || ref.SessionID != id || ref.Cwd != "/project" {
+	if err != nil || ref.Source != "codex" || ref.SessionID != id || ref.Cwd != "/project" || ref.Title != "Saved request" {
 		t.Fatalf("source: %+v, %v", ref, err)
 	}
 	after, _ := os.ReadFile(path)

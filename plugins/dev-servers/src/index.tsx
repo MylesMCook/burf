@@ -160,7 +160,7 @@ function ServersScreen({ berth }: ScreenProps) {
     <div className="space-y-4">
       <ViewHeader
         title="Dev servers"
-        description="Everything listening in a worktree on every box, and the services each repository runs."
+        description={listening && groups.length ? `${groups.length} worktree${groups.length === 1 ? "" : "s"} with listeners` : undefined}
         actions={
           <>
             <Input className="w-56" size="sm" placeholder="Filter by worktree, port…" value={query} onChange={(e: React.ChangeEvent<HTMLInputElement>) => setQuery(e.target.value)} />

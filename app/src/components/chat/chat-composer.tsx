@@ -8,6 +8,7 @@ import { MessageQueue } from "@/components/assistant-ui/elements/message-queue";
 import { Select, SelectTrigger, SelectValue, SelectPopup, SelectItem } from "@/components/ui/select";
 import { Tip } from "@/components/tip";
 import { chatPermissions, type ChatModel, type ChatOptions } from "@/lib/local-computer";
+import { cn } from "@/lib/utils";
 import { joinDraft } from "@/lib/chat-quote";
 import { usePromptRecall } from "@/lib/history";
 import type { ChatTransport } from "./chat-transport";
@@ -48,7 +49,7 @@ export function ChatChoices({ agentName, models, model, effort, permission, acce
     <Select value={permission} disabled={!!reason} onValueChange={(value) => { if (value) onPermission(value as NonNullable<ChatOptions["permission"]>); }}>
       <Tip label={reason || `Current permission: ${chatPermissions[accepted].label}. From your next message: ${agentName} ${chatPermissions[permission].hint}`}>
         <span className="inline-flex shrink-0">
-        <SelectTrigger aria-label="Chat permissions" disabled={!!reason} size="sm" className="h-7 w-auto min-w-0 shrink-0 justify-start gap-1 rounded-full border-0 bg-transparent px-2 text-xs shadow-none hover:bg-muted"><SelectValue>{chatPermissions[permission].label}</SelectValue></SelectTrigger>
+        <SelectTrigger aria-label="Chat permissions" disabled={!!reason} size="sm" className={cn("h-7 w-auto min-w-0 shrink-0 justify-start gap-1 rounded-full border-0 bg-transparent px-2 text-xs shadow-none hover:bg-muted", permission === "full-access" && "text-warning")}><SelectValue>{chatPermissions[permission].label}</SelectValue></SelectTrigger>
         </span>
       </Tip>
       <SelectPopup>{Object.entries(chatPermissions).filter(([id]) => permissions.includes(id) || id === permission).map(([id, p]) => <SelectItem key={id} value={id}>{p.label}</SelectItem>)}</SelectPopup>

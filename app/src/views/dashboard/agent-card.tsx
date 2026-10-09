@@ -2,21 +2,18 @@ import { SquareIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { AgentIcon } from "@/components/agent-glyph";
-import { openOrchestrate, SessionActions } from "@/components/orchestrate/session-actions";
+import { SessionActions } from "@/components/orchestrate/session-actions";
 import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { toastManager } from "@/components/ui/toast";
 import type { SessionEntry } from "@/hooks/use-agent-counts";
-import { boxApi } from "@/lib/api";
 import { agentOf } from "@/lib/derive";
-import { errorMessage } from "@/lib/format";
 import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { focusSession } from "@/lib/workspaces";
 import { describeAgent, startedAt } from "@/views/dashboard/names";
 import { confirmStop, StopMenuItems } from "@/views/dashboard/stop";
-import { type Choice, useScreenTail } from "@/views/dashboard/use-screen-tail";
+import { useScreenTail } from "@/views/dashboard/use-screen-tail";
 
 // One clock for every card, so a board of them re-renders once a second at
 // most, not once per card.
@@ -60,7 +57,7 @@ export function AgentCard({ entry, selecting, selected, onSelect }: { entry: Ses
   const title = work ?? place;
   const now = useNow();
   // A ready agent has said nothing yet: its screen is only a banner.
-  const { tail, choices } = useScreenTail(box, session, 3, state === "running", state !== "ready");
+  const { tail } = useScreenTail(box, session, 3, state === "running", state !== "ready");
   const since = session.state_since ?? session.created;
   const [shown, setShown] = useState(false);
   useEffect(() => {
@@ -69,9 +66,7 @@ export function AgentCard({ entry, selecting, selected, onSelect }: { entry: Ses
   }, []);
 
   const open = () => void focusSession(box, session.name);
-  const asking = state === "waiting" && choices.length > 0;
-  // The question, without the options the chips below already show.
-  const lines = asking ? (tail ?? []).filter((l) => !/^\s*(?:[❯›>]\s*)?\d[.)]\s/.test(l)) : tail;
+  const lines = tail;
 
   return (
     <article
@@ -126,7 +121,6 @@ export function AgentCard({ entry, selecting, selected, onSelect }: { entry: Ses
             ))}
           </div>
         )}
-        {asking && <Answers box={box} session={session.name} choices={choices} />}
       </div>
 
       <footer className="mt-2 flex items-center gap-1 border-t px-1.5 py-1">
@@ -148,54 +142,11 @@ export function AgentCard({ entry, selecting, selected, onSelect }: { entry: Ses
           <Button size="xs" variant="ghost" className="h-6 text-[11px]" onClick={open}>
             Open
           </Button>
-          <Button size="xs" variant="ghost" className="h-6 text-[11px]" onClick={() => openOrchestrate("send", box, session.name)}>
-            {state === "ready" ? "Prompt…" : "Reply…"}
-          </Button>
           <SessionActions box={box} session={session.name}>
             <StopMenuItems entry={entry} />
           </SessionActions>
         </span>
       </footer>
     </article>
-  );
-}
-
-// Answers are the agent's numbered options as buttons: one click types the
-// number into its session, which is how Claude Code takes an answer.
-function Answers({ box, session, choices }: { box: string; session: string; choices: Choice[] }) {
-  const client = useStore((s) => s.client);
-  const [sent, setSent] = useState<string>();
-  const answer = async (c: Choice) => {
-    if (!client) return;
-    setSent(c.key);
-    try {
-      // The person is answering the question, so the box may type into it.
-      await boxApi.send(client, box, session, c.key, false, { when: "now", force: true });
-      toastManager.add({ title: `Answered ${c.key}`, description: c.label, type: "success" });
-    } catch (err) {
-      setSent(undefined);
-      toastManager.add({ title: "Couldn't answer", description: errorMessage(err), type: "error" });
-    }
-  };
-  return (
-    <div className="mt-2 flex flex-wrap gap-1" onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()}>
-      {choices.map((c) => (
-        // The whole answer when it is cut short.
-        <Tip key={c.key} label={c.label.length > 28 ? c.label : undefined} wrapClassName="max-w-full">
-          <button
-            type="button"
-            disabled={!!sent}
-            onClick={() => void answer(c)}
-            className={cn(
-              "inline-flex h-6 max-w-full items-center gap-1.5 rounded-md border bg-background px-2 text-[11px] transition-colors hover:border-ring/50 disabled:opacity-50",
-              sent === c.key && "border-success/50 text-success",
-            )}
-          >
-            <span className="font-mono text-muted-foreground">{c.key}</span>
-            <span className="truncate">{c.label.length > 28 ? `${c.label.slice(0, 27)}…` : c.label}</span>
-          </button>
-        </Tip>
-      ))}
-    </div>
   );
 }

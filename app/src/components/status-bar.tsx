@@ -7,7 +7,7 @@ import { QueueIndicator } from "@/components/queue/queue-indicator";
 import { Tip } from "@/components/tip";
 import { Spinner } from "@/components/ui/spinner";
 import { useUpdateAll } from "@/components/upgrade-box";
-import { useAgentCounts } from "@/hooks/use-agent-counts";
+import { useAgentCounts, useAllSessions } from "@/hooks/use-agent-counts";
 import { isMock } from "@/hooks/use-burf-connection";
 import { viaRoute } from "@/lib/box-routes";
 import { useOutdatedBoxes } from "@/lib/outdated";
@@ -18,7 +18,9 @@ import { cn } from "@/lib/utils";
 import { PluginBoundary, pluginContexts } from "@/plugins/plugin-boundary";
 import { useRegistry } from "@/plugins/registry";
 import { openRenameWorktree } from "@/components/sidebar/rename-worktree";
-import { homeBox, useWorkspaces } from "@/lib/workspaces";
+import { leaves } from "@/lib/layout";
+import { attentionTarget } from "@/lib/session-decision";
+import { focusSession, goHome, homeBox, useWorkspaces } from "@/lib/workspaces";
 import { findWorktree } from "@/lib/worktree-names";
 
 // StatusBar is the strip along the bottom: what agents are doing on the
@@ -30,6 +32,7 @@ export function StatusBar() {
   // The agent restarting after an update (lib/updater.ts) is away a moment.
   const restarting = useAgentRestart((s) => s.restarting);
   const counts = useAgentCounts();
+  const sessions = useAllSessions();
   const items = useRegistry((s) => s.statusBarItems);
   const [syncing, setSyncing] = useState(false);
   const go = useStore((s) => s.setView);
@@ -40,6 +43,24 @@ export function StatusBar() {
   // Online, over a slow link: still online, said quietly.
   const slow = online.filter((b) => b.link?.slow).length;
   const forwards = status?.forwards.length ?? 0;
+  // A count opens that agent: the one in the worktree in front, or the one
+  // that has been in this state longest. A second click moves to the next.
+  const openAgents = (state: "waiting" | "running") => {
+    const view = useStore.getState().view.kind;
+    const wsState = useWorkspaces.getState();
+    const ws = view === "workspace" && wsState.current ? wsState.spaces[wsState.current] : undefined;
+    const ref = ws && !homeBox(wsState.current) ? ws.ref : undefined;
+    const tab = ws?.tabs.find((t) => t.id === ws.active);
+    const leaf = tab ? (leaves(tab.root).find((l) => l.id === tab.focus) ?? leaves(tab.root)[0]) : undefined;
+    const focused = leaf?.content.kind === "terminal" ? { box: leaf.content.box, name: leaf.content.session } : undefined;
+    const target = attentionTarget(
+      sessions.filter((e) => e.state === state).map((e) => ({ box: e.box, name: e.session.name, dir: e.session.dir, since: e.session.state_since })),
+      ref ? { box: ref.box, dir: ref.path } : undefined,
+      focused,
+    );
+    if (target) void focusSession(target.box, target.name);
+    else goHome();
+  };
 
   return (
     <footer className="@container flex h-6.5 shrink-0 items-center gap-3 overflow-hidden whitespace-nowrap border-t bg-sidebar px-3 text-[11px] text-muted-foreground">
@@ -68,12 +89,12 @@ export function StatusBar() {
       ) : (
         <>
           {counts.waiting > 0 && (
-            <Item className="text-warning-foreground dark:text-warning" onClick={() => go({ kind: "dashboard" })} tip="Agents waiting for your answer or permission">
+            <Item className="text-warning-foreground dark:text-warning" onClick={() => openAgents("waiting")} tip="Open the agent that needs you">
               <span className="size-1.5 rounded-full bg-warning" />
               {counts.waiting} {AGENT_WORDS["needs-you"].lower}
             </Item>
           )}
-          <Item onClick={() => go({ kind: "dashboard" })} tip="Open the agent dashboard">
+          <Item onClick={() => openAgents("running")} tip="Open a working agent">
             {counts.running} {AGENT_WORDS.working.lower}
           </Item>
         </>

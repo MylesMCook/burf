@@ -10,6 +10,32 @@ import { errorMessage } from "@/lib/format";
 import { localAgentName, localApi, type LocalSession } from "@/lib/local-computer";
 import "@xterm/xterm/css/xterm.css";
 
+// xterm's FitAddon can throw when the render service has no cell metrics yet.
+const fitProto = FitAddon.prototype as FitAddon & {
+  fit(): void;
+  proposeDimensions(): { cols: number; rows: number } | undefined;
+};
+const origFit = fitProto.fit;
+const origPropose = fitProto.proposeDimensions;
+fitProto.proposeDimensions = function patchedProposeDimensions(this: FitAddon) {
+  try {
+    return origPropose.call(this);
+  } catch {
+    return undefined;
+  }
+};
+fitProto.fit = function patchedFit(this: FitAddon) {
+  try {
+    origFit.call(this);
+  } catch {
+    /* render service not ready */
+  }
+};
+
+function safeFit(fit: FitAddon) {
+  fit.fit();
+}
+
 export function LocalTerminal({ client, session, onChange }: { client: Client; session: LocalSession; onChange(session: LocalSession): void }) {
   const container = useRef<HTMLDivElement>(null);
   const theme = useActiveTheme();
@@ -50,12 +76,18 @@ export function LocalTerminal({ client, session, onChange }: { client: Client; s
     };
     const resize = () => {
       if (signal.aborted || failed || latest.current.state !== "running") return;
-      fit.fit();
+      const host = container.current;
+      if (!host || host.clientWidth < 2 || host.clientHeight < 2) return;
+      safeFit(fit);
+      if (!terminal.cols || !terminal.rows) return;
       void localApi.resize(client, session.id, terminal.cols, terminal.rows, signal).catch(fail);
     };
     const observer = new ResizeObserver(() => {
+      if (signal.aborted) return;
       clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(resize, 100);
+      resizeTimer = setTimeout(() => {
+        if (!signal.aborted) resize();
+      }, 100);
     });
     observer.observe(container.current);
     const input = terminal.onData((data) => {
@@ -83,7 +115,7 @@ export function LocalTerminal({ client, session, onChange }: { client: Client; s
         if (result.state === "running" && !failed) timer = setTimeout(() => void poll(), 250);
       } catch (e) { fail(e); }
     };
-    fit.fit();
+    resize();
     terminal.focus();
     void poll();
     return () => {

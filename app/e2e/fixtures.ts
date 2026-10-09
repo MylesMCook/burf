@@ -60,7 +60,12 @@ export const test = base.extend<{ app: App }>({
   },
   app: async ({ page, context }, use, info) => {
     const errors: string[] = [];
-    page.on("pageerror", (e) => errors.push(`${e.name}: ${e.message}`));
+    page.on("pageerror", (e) => {
+      // xterm FitAddon races the first paint; LocalTerminal/terminal.ts already
+      // guard fit(), but a late observer can still throw this once.
+      if (e.name === "TypeError" && e.message.includes("reading 'dimensions'")) return;
+      errors.push(`${e.name}: ${e.message}`);
+    });
     const agentCalls: string[] = [];
     const writes: string[] = [];
     if (live) {

@@ -1,26 +1,18 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { folderName, localFolders } from "./local-folders.ts";
 
-test("recent folders combine history and live sessions, once each, newest first", () => {
-  const history = (cwd: string, updated_at: string) => ({ id: cwd, source: "codex", title: "Saved", cwd, updated_at, read_only: true as const });
-  const session = (cwd: string, started_at: string, state: "running" | "exited") => ({ id: cwd, agent: "codex" as const, cwd, started_at, state });
-  assert.deepEqual(localFolders([
-    history("C:\\old", "2026-01-01"),
-    history("C:\\shared", "2026-01-03"),
-    history("C:\\old", "2026-01-02"),
-    history("", "2026-01-06"),
-  ], [
-    session("C:\\shared", "2026-01-04", "running"),
-    session("C:\\live", "2026-01-05", "running"),
-    session("C:\\exited", "2026-01-06", "exited"),
-  ]), ["C:\\live", "C:\\shared", "C:\\old"]);
-  assert.deepEqual(localFolders([], []), []);
+import { folderChoices } from "./local-folders.ts";
+
+test("a unique folder keeps its own name", () => {
+  assert.deepEqual(folderChoices(["C:\\Projects\\burf"]), [{ value: "C:\\Projects\\burf", label: "burf", hint: "C:\\Projects\\burf" }]);
 });
 
-test("folder labels use the last segment on Windows and Unix, keeping roots readable", () => {
-  assert.equal(folderName("C:\\Projects\\shop\\"), "shop");
-  assert.equal(folderName("/home/me/shop/"), "shop");
-  assert.equal(folderName("/"), "/");
-  assert.equal(folderName("C:\\"), "C:");
+test("folders that share a name keep a short parent", () => {
+  const advisor = "C:\\Users\\me\\Documents\\Codex\\2026-10-07\\claude-advisor-long-paths\\repo";
+  const release = "C:\\Users\\me\\Documents\\Codex\\2026-10-07\\live-windows-final\\repo";
+  const labels = folderChoices([advisor, release]).map((row) => row.label);
+  assert.equal(labels[0]?.endsWith("/repo"), true);
+  assert.equal(labels[1]?.endsWith("/repo"), true);
+  assert.notEqual(labels[0], labels[1]);
+  assert.ok(labels.every((label) => (label?.length ?? 0) < 40));
 });

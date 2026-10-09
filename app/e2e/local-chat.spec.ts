@@ -27,16 +27,15 @@ for (const provider of ["codex", "claude"] as const) test(`a new local ${provide
   try {
     await app.open({ agent });
     await app.page.getByTestId("nav-local").click();
-    await app.page.getByRole("button", { name: "New agent", exact: true }).click();
-    const composer = app.page.getByRole("dialog").getByTestId("task-composer");
+    await app.page.getByTestId("local-new-agent").click();
+    const composer = app.page.getByTestId("task-composer");
     await expect(composer.getByTestId("task-composer-summary")).toContainText(`on work-hp · this folder · ${name}`);
-    await composer.getByRole("button", { name: "Start ⏎", exact: true }).click();
+    await composer.getByRole("button", { name: "Start", exact: true }).click();
     await expect(app.page.getByTestId("local-chat")).toBeVisible();
     await expect(app.page.getByTestId("local-terminal")).toHaveCount(0);
     await app.page.getByRole("textbox", { name: `Message ${name}` }).fill(`Hello ${name}`);
     await app.page.getByRole("button", { name: "Send message", exact: true }).click();
     await expect(app.page.getByText(`Hello from structured ${name}`, { exact: true })).toBeVisible();
-    await app.page.getByRole("button", { name: "Refresh local conversations", exact: true }).click();
     disconnected = true;
     await app.page.getByRole("button", { name: "Refresh chat", exact: true }).click();
     await expect(app.page.getByTestId("local-chat").getByRole("status")).toHaveText("Disconnected");
@@ -67,6 +66,7 @@ for (const width of [1440, 720]) test(`local approvals are explicit and the comp
   try {
     await app.open({ agent });
     await app.page.getByTestId("nav-local").click();
+    await expect(app.page.getByRole("button", { name: /Codex.*waiting/ })).toBeVisible();
     await app.page.getByRole("button", { name: /Codex.*waiting/ }).click();
     await expect(app.page.getByRole("region", { name: "Approval required" })).toBeVisible();
     expect(calls.filter((c) => c.method !== "GET")).toHaveLength(0);
@@ -105,6 +105,7 @@ for (const failure of ["connectionreset", "rejected"] as const) test(`a ${failur
   try {
     await app.open({ agent });
     await app.page.getByTestId("nav-local").click();
+    await expect(app.page.getByRole("button", { name: /Codex.*idle/ })).toBeVisible();
     await app.page.getByRole("button", { name: /Codex.*idle/ }).click();
     await app.page.getByRole("textbox", { name: "Message Codex" }).fill("Exactly once");
     await app.page.getByRole("button", { name: "Send message", exact: true }).click();
