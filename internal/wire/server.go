@@ -2,7 +2,6 @@ package wire
 
 import (
 	"context"
-	"crypto/hmac"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -256,7 +255,7 @@ func (s *Server) handlePair(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	matched, err := s.Pending.Consume(s.now(), func(code pairing.Code) bool {
-		return hmac.Equal(req.Proof, pairing.Proof(code, exporter, peer))
+		return pairing.ProofMatches(req.Proof, code, exporter, peer)
 	})
 	if err != nil {
 		s.logf("pairing store error: %v", err)
