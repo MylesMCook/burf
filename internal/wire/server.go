@@ -25,6 +25,7 @@ import (
 const (
 	errPairingRejected = "pairing rejected"
 	errUnauthorized    = "unauthorized"
+	errStopped         = "this box is restarting"
 	errTooManyPairings = "too many pairing attempts; try again in a minute"
 )
 
@@ -202,7 +203,14 @@ func (s *Server) authenticated(h http.Handler) http.Handler {
 			writeError(w, http.StatusUnauthorized, errUnauthorized)
 			return
 		}
+		// A box that has stopped serving cannot check anyone, and says so:
+		// "unauthorized" would tell a laptop it trusts to pair again.
+		if !s.useStores() {
+			writeError(w, http.StatusServiceUnavailable, errStopped)
+			return
+		}
 		peer, ok := s.authorize(fp)
+		s.stores.RUnlock()
 		if !ok {
 			writeError(w, http.StatusUnauthorized, errUnauthorized)
 			return
@@ -238,13 +246,8 @@ func (s *Server) useStores() bool {
 	return true
 }
 
-// authorize fails closed: a trust store that cannot be read authorizes
-// nobody, and neither does a box that has stopped serving.
+// authorize fails closed: a trust store that cannot be read authorizes nobody.
 func (s *Server) authorize(peer identity.Fingerprint) (trust.Peer, bool) {
-	if !s.useStores() {
-		return trust.Peer{}, false
-	}
-	defer s.stores.RUnlock()
 	p, ok, err := s.Clients.Trusted(peer)
 	if err != nil {
 		s.logf("trust store unreadable, refusing %s: %v", peer.Short(), err)

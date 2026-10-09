@@ -4,6 +4,7 @@ package wire
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -28,6 +29,7 @@ type servedBox struct {
 	server  *Server
 	address string
 	clients string
+	ln      net.Listener
 	stop    context.CancelFunc
 	done    chan error
 }
@@ -53,7 +55,7 @@ func serveBox(t *testing.T, configure func(*Server)) *servedBox {
 	if err != nil {
 		t.Fatal(err)
 	}
-	b.address = ln.Addr().String()
+	b.address, b.ln = ln.Addr().String(), ln
 	ctx, cancel := context.WithCancel(context.Background())
 	b.stop = cancel
 	go func() { b.done <- b.server.Serve(ctx, ln) }()
@@ -134,11 +136,44 @@ func TestServeReturnsAfterARequestBeingCheckedHasLeftTheTrustStore(t *testing.T)
 	b.stillServing(t, "a request was still reading the trust store")
 	finish([]byte("[]\n"))
 	b.stopped(t)
+}
 
-	// A request that arrives at the check after that is refused without a
-	// look at the store: the pipe has no reader to wait for.
-	if _, ok := b.server.authorize(me.Fingerprint()); ok {
-		t.Fatal("a stopped box authorized a request")
+// A box updating itself closes its listener and goes on answering the
+// connections it has until the new build takes over. It reads its stores no
+// more, so it says it has stopped; it does not call a laptop it cannot check
+// untrusted, which that laptop would take as a reason to pair again.
+func TestABoxThatStoppedServingDoesNotCallItsLaptopsUntrusted(t *testing.T) {
+	b := serveBox(t, nil)
+	me := laptop(t)
+	code, err := b.server.Pending.Issue(time.Minute, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	box := trust.Peer{Name: "dev-test", Address: b.address, Fingerprint: b.server.Identity.Fingerprint()}
+	if _, err := Pair(context.Background(), me, pairing.Token{Address: box.Address, Fingerprint: box.Fingerprint, Code: code}, "laptop"); err != nil {
+		t.Fatal(err)
+	}
+	c := NewClient(me, box)
+	defer c.Reset()
+	if _, err := c.Ping(context.Background()); err != nil {
+		t.Fatal(err)
+	}
+	b.ln.Close()
+	select {
+	case <-b.done:
+	case <-time.After(5 * time.Second):
+		t.Fatal("Serve did not return when its listener closed")
+	}
+	if _, err := c.Ping(context.Background()); err == nil || errors.Is(err, ErrUntrusted) {
+		t.Fatalf("a ping on the open connection: %v, want an error that is not ErrUntrusted", err)
+	}
+	resp, err := c.Do(context.Background(), http.MethodGet, "/v1/ping", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusServiceUnavailable {
+		t.Fatalf("status %d, want 503", resp.StatusCode)
 	}
 }
 

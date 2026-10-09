@@ -54,6 +54,8 @@ func TestARestartLetsWorkUnderWayFinishFirst(t *testing.T) {
 	time.Sleep(200 * time.Millisecond)
 	select {
 	case <-a.done:
+		// It has stopped: its cleanup must not wait for that again.
+		a.cancel = nil
 		t.Fatal("the agent stopped before the upgrade under way finished")
 	default:
 	}
