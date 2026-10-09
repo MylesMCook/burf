@@ -105,18 +105,8 @@ func (l *Locations) Config(ctx context.Context, name string) (Config, error) {
 		out.Local.Archive = saved.Archive
 	}
 	out.Kit = saved.Kit
-	out.Effective = layered(repo, saved.Kit, out.Local)
+	out.Effective = merge(repo, out.Local)
 	return out, nil
-}
-
-// layered is what a location runs with: the repository's config, then its
-// kit's, then this box's own. repo must be what repoLayer gives, so an
-// untrusted repository adds nothing that runs.
-func layered(repo RepoConfig, kit *InstalledKit, local RepoConfig) RepoConfig {
-	if kit != nil {
-		repo = merge(repo, kit.Config)
-	}
-	return merge(repo, local)
 }
 
 func (l *Locations) saved(name string) (savedLocation, error) {
@@ -274,9 +264,6 @@ func (b *Box) worktreeEnv(ctx context.Context, location string, wt Worktree) (wo
 		// Safe in database and container names: shop_fix_checkout.
 		"BERTH_WORKTREE_SLUG": strings.Trim(nonIdent.ReplaceAllString(strings.ToLower(loc.Name+"_"+wt.Name), "_"), "_"),
 		"BERTH_BRANCH":        wt.Branch,
-	}
-	if cfg.Kit != nil {
-		vars["BERTH_KIT_DIR"] = cfg.Kit.Dir
 	}
 	// BERTH_URL is the worktree's private URL as the human opens it on the
 	// laptop (its proxy on :1377), which the agent's browser opens too.

@@ -42,8 +42,7 @@ and `berthd` aliases, pairing links and existing state remain compatible.
   from the app, the CLI, or other agents.
 - **Projects set up the same everywhere.** Each worktree gets its own ports,
   environment, services, hooks and flows, from the repository's
-  [`.berth/config.json`](/guides/project-config), a shareable
-  [kit](/guides/kits), or the box's own config.
+  [`.berth/config.json`](/guides/project-config) or the box's own config.
 - **Automations.** [Flows](/guides/automations) on events, schedules or GitHub
   activity, running on the box; plus plain shell [hooks and gates](/guides/hooks).
 - **Plugins.** [React plugins](/guides/plugins) for the app, with built-ins
@@ -57,7 +56,7 @@ and `berthd` aliases, pairing links and existing state remain compatible.
 
 | Piece | What it is |
 | --- | --- |
-| `burfd` | The daemon on each box: worktrees, sessions (tmux), services, hooks, flows, kits. |
+| `burfd` | The daemon on each box: worktrees, sessions (tmux), services, hooks, flows. |
 | `burf` | The laptop CLI and background agent: connections, private URLs, the app's API. |
 | `app/` | The desktop app (Tauri, React, coss ui). |
 | `plugins/` | Built-in plugins, written against `packages/plugin-sdk`. |
@@ -68,7 +67,7 @@ about.
 
 <Cards>
   <Card icon={<Compass />} title="Concepts" href="/concepts/architecture" description="Boxes, projects, worktrees, sessions and the laptop agent." />
-  <Card icon={<BookOpen />} title="Guides" href="/guides/orchestration" description="Orchestration, automations, hooks, kits, secrets, the phone, plugins." />
+  <Card icon={<BookOpen />} title="Guides" href="/guides/orchestration" description="Orchestration, automations, hooks, secrets, the phone, plugins." />
   <Card icon={<Terminal />} title="CLI reference" href="/reference/cli" description="Every burf and burfd command." />
-  <Card icon={<FileCode />} title="Config reference" href="/reference/config" description="Every field of .berth/config.json and kit.json." />
+  <Card icon={<FileCode />} title="Config reference" href="/reference/config" description="Every field of .berth/config.json and the box's own config." />
 </Cards>

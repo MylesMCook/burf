@@ -41,13 +41,11 @@ func scriptsFor(saved savedLocation) Scripts {
 	if saved.Config != nil {
 		local = merge(local, *saved.Config)
 	}
-	c := layered(repo, saved.Kit, local)
+	c := merge(repo, local)
 	from := ""
 	switch {
 	case local.Setup != "" || local.Archive != "":
 		from = "berth"
-	case saved.Kit != nil && (saved.Kit.Config.Setup != "" || saved.Kit.Config.Archive != ""):
-		from = "kit"
 	case repo.Setup != "" || repo.Archive != "":
 		from = "repo"
 	}
@@ -56,8 +54,8 @@ func scriptsFor(saved savedLocation) Scripts {
 
 // runScript runs a lifecycle script in the worktree through a login shell, so
 // tools the user installed are on PATH, logging to logPath.
-// quietEnv keeps setup that runs unattended (a team project's init, a
-// worktree's setup script) from stopping at a question nobody sees:
+// quietEnv keeps an unattended worktree setup script from stopping at a
+// question nobody sees:
 // corepack asks before it downloads the yarn or pnpm a repository pins.
 var quietEnv = []string{"COREPACK_ENABLE_DOWNLOAD_PROMPT=0"}
 

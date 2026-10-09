@@ -24,7 +24,7 @@ import (
 )
 
 // Secrets: an environment value can name a secret instead of holding it, so
-// a kit or a repository's .berth/config.json can be shared, even publicly,
+// a repository's .berth/config.json can be shared, even publicly,
 // without containing one.
 //
 //	"DATABASE_PASSWORD": "op://dev/shop-db/password"   1Password, through the box's op CLI
@@ -109,7 +109,7 @@ func signedOutError(box string) error {
 	if box == "" {
 		box, _ = os.Hostname()
 	}
-	return fmt.Errorf("%w on %s: sign in from Team setup or run `berthd secret signin` on the box", ErrOpSignedOut, box)
+	return fmt.Errorf("%w on %s: run `berthd secret signin` on the box", ErrOpSignedOut, box)
 }
 
 // Secrets resolves references and keeps what it resolved, briefly.

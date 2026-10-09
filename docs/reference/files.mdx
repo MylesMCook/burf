@@ -10,7 +10,11 @@ Burf keeps two kinds of files:
   a Mac, `~/.config/berth` (or `$XDG_CONFIG_HOME/berth`) on Linux.
   `BERTH_HOME` moves it; it must be an absolute path.
 - **Things you write**, by hand or through the app: hooks, flows, templates,
-  themes, plugins, kits. They live in `~/.berth/`; `BERTH_USER_DIR` moves it.
+  themes, plugins. They live in `~/.berth/`; `BERTH_USER_DIR` moves it.
+
+Team setup and Kits have been removed. Existing `team/` and `kits/` folders
+are left on disk and ignored. The legacy `kit` field in `locations.json` is
+preserved when other location settings are saved, but is never applied.
 
 ## On the laptop
 
@@ -37,7 +41,6 @@ Yours, in `~/.berth/`:
 | `themes/*.json` | [Themes](/guides/themes) |
 | `plugins/<id>/` | [Plugins](/guides/plugins), each with a `berth-plugin.json` |
 | `plugins.json` | The plugins you allowed, each with the hash of the code you reviewed ([trust and consent](/guides/plugins#trust-and-consent)) |
-| `kits/<id>/` | Your [kits](/guides/kits) library: `kit.json`, its files, and where it came from |
 | `app/<key>.json` | The app's settings documents: saved prompts, projects, the sidebar, notifications |
 
 ## On a box
@@ -51,11 +54,10 @@ State, in `<state>/box/`:
 | `pairing.json` | Pairing codes not yet used |
 | `listen` | The address berthd serves on |
 | `berthd.sock`, `berthd.log` | The local socket (mode 0600) and the log |
-| `locations.json` | Locations, each with the box's own config, its kit, and the hash of the repository config trusted there |
+| `locations.json` | Locations, each with the box's own config and the hash of the repository config trusted there |
 | `ports.json` | Each worktree's block of ports |
 | `logs/` | Setup and archive logs |
 | `units/` | Unit and service logs |
-| `kits/<location>/<kit>/` | Installed kits' files (`$BERTH_KIT_DIR`) |
 | `paused.json` | Paused worktrees |
 | `agent-states.json` | What each agent last reported, by working directory |
 | `tmux.conf` | The configuration of Burf's tmux server |
@@ -71,7 +73,6 @@ State, in `<state>/box/`:
 | `browser-proxies.json` | Each worktree's browser proxy port |
 | `trigger-secrets.json` | Webhook flows' signing secrets (0600) |
 | `op-session` | The 1Password CLI session `berthd secret signin` made (0600), passed to `op` for `op://` reads; op ends it after 30 minutes unused |
-| `team/<id>/` | A [team setup](/guides/team-setup): what the laptop sent, its runner script, the progress file and its state |
 | `turns.json`, `turns-archive.jsonl`, `inbox.json`, `journal/`, `spool/` | The turn ledger, the event journal and hooks kept while berthd was down |
 | `flow-github.json` | What GitHub-triggered flows have already seen |
 
@@ -97,7 +98,6 @@ agents, `exec`, repository hooks, flow steps, services):
 | `BERTH_PORT`, `BERTH_PORT_1`, … | Its ports |
 | `BERTH_URL` | Its private URL as the laptop opens it: `http://WT.LOC.BOX.localhost:1377` |
 | `BERTH_BROWSER_PROXY`, `PLAYWRIGHT_MCP_PROXY_SERVER`, `PLAYWRIGHT_MCP_PROXY_BYPASS` | Its [browser proxy](/guides/agent-browser#a-browser-you-run-yourself) |
-| `BERTH_KIT_DIR` | Its kit's files, when it has a kit |
 | then | the box's `env.json`, the project's `env`, and resolved secrets |
 | `PORT` | `$BERTH_PORT`, for servers that read `PORT`, unless the box or `env` sets it |
 | `AGENT_BROWSER_IDLE_TIMEOUT_MS` | Terminals and agents: `300000`, so an [agent-browser](/guides/agent-browser#agent-browser) left idle closes after 5 minutes, unless the box, `env` or berthd's environment sets it |

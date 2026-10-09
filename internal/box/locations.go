@@ -52,8 +52,8 @@ type savedLocation struct {
 	// Config is this box's own config for the location, laid over the
 	// repository's.
 	Config *RepoConfig `json:"config,omitempty"`
-	// Kit is a kit installed for the location, between the two.
-	Kit *InstalledKit `json:"kit,omitempty"`
+	// Kit preserves legacy state through location saves. It is never applied.
+	Kit json.RawMessage `json:"kit,omitempty"`
 	// RepoTrust is the sha256 of the repository's .berth/config.json as
 	// someone trusted it here; any other version of the file does not run.
 	RepoTrust string `json:"repo_trust,omitempty"`
@@ -340,13 +340,12 @@ func describe(ctx context.Context, s savedLocation) Location {
 	loc.Remote = remoteURL(ctx, s.Path)
 	loc.Slug = slugOf(loc.Remote)
 	loc.DefaultBranch = defaultBranch(ctx, s.Path)
-	// Agent presets come from every layer: the repository's, its kit's,
-	// and this box's own.
+	// Agent presets come from the repository and this box's own config.
 	local := RepoConfig{}
 	if s.Config != nil {
 		local = *s.Config
 	}
-	all := layered(repo, s.Kit, local)
+	all := merge(repo, local)
 	loc.Agents = all.Agents
 	if all.Check != "" {
 		loc.Check, loc.CheckFrom = all.Check, "config"

@@ -20,8 +20,8 @@ import (
 // otherwise run commands here the moment a worktree is made. So a box runs a
 // repository's config only once someone has trusted it for that location,
 // and only the exact bytes they trusted: a change to the file asks again.
-// Until then the config is shown, never run. A kit's layer and the box's own
-// config are the user's, and apply regardless.
+// Until then the config is shown, never run. The box's own config is the
+// user's, and applies regardless.
 
 // Repo trust states.
 const (

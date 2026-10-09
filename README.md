@@ -18,7 +18,7 @@ stops them; the app is a view you can close and reopen at any time.
   or other agents.
 - **Projects set up the same everywhere**: each worktree gets its own ports,
   environment, services, hooks and flows, from the repository's
-  `.berth/config.json`, a shareable kit, or the box's own config.
+  `.berth/config.json` or the box's own config.
 - **Automations**: Zapier-style flows on events, schedules or GitHub
   activity, running on the box; plus plain shell hooks and `before:` gates.
 - **Plugins**: React plugins for the app, with built-ins for git changes,
@@ -31,7 +31,7 @@ stops them; the app is a view you can close and reopen at any time.
 
 | | |
 | --- | --- |
-| `burfd` | The daemon on each box: worktrees, sessions (tmux), services, hooks, flows, kits. |
+| `burfd` | The daemon on each box: worktrees, sessions (tmux), services, hooks, flows. |
 | `burf` | The laptop CLI and background agent: connections, private URLs, the app's API. |
 | `app/` | The desktop app (Tauri, React, coss ui). |
 | `plugins/` | Built-in plugins, written against `packages/plugin-sdk`. |
@@ -96,7 +96,7 @@ is the upstream project; its hosted docs describe its own releases.
 - [How Burf works](docs/concepts/architecture.mdx) and [the security model](docs/concepts/security.mdx)
 - [Orchestration](docs/guides/orchestration.mdx): agents driving agents, and [the offline queue](docs/guides/offline-queue.mdx)
 - [Automations](docs/guides/automations.mdx): flows, schedules, GitHub triggers; [hooks and gates](docs/guides/hooks.mdx)
-- [Project config](docs/guides/project-config.mdx) (`.berth/config.json`), [kits](docs/guides/kits.mdx), [secrets](docs/guides/secrets.mdx)
+- [Project config](docs/guides/project-config.mdx) (`.berth/config.json`), [secrets](docs/guides/secrets.mdx)
 - [The phone companion](docs/guides/phone.mdx), [agent integrations](docs/guides/agent-integrations.mdx), [plugins](docs/guides/plugins.mdx)
 - Reference: [CLI](docs/reference/cli.mdx), [berthd](docs/reference/berthd.mdx), [config](docs/reference/config.mdx), [events](docs/reference/events.mdx), [the app's API](docs/reference/app-api.mdx), [plugin SDK](docs/reference/plugin-sdk.mdx)
 - [Changelog](docs/changelog.mdx), and [releasing](docs/contributing/releasing.mdx) for maintainers

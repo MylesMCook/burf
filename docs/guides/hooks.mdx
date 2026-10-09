@@ -107,8 +107,6 @@ berthd emit deploy.finished url=https://…       # on a box
 | `before:session.start` | `name`, `location`, `path`, `command` |
 | `before:session.send` | `name`; from the phone also `from: "phone"`, and `key` for a key press |
 | `before:exec` | `location`, `path`, `command` |
-| `before:kit.install` | `location`, `kit`, `source` |
-| `before:kit.remove` | `location` |
 | `before:config.change` | what changes: a location's config, flows, env or the guard |
 
 Every other change has a gate too (`before:hooks.change`,

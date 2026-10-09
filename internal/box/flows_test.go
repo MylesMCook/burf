@@ -206,9 +206,6 @@ func echoFlow(id, says string, enabled bool) Flow {
 func TestFlowLayersMergeByIDTheMostLocalWinning(t *testing.T) {
 	ctx := context.Background()
 	b, _, _ := flowBox(t, []Flow{echoFlow("check", "repo", true), echoFlow("repo-only", "repo", true), echoFlow("lint", "repo", true)})
-	if err := b.Locations.setKit("cal", &InstalledKit{ID: "cal-dev", Name: "Cal dev", Config: RepoConfig{Flows: []Flow{echoFlow("check", "kit", true), echoFlow("kit-only", "kit", true), echoFlow("lint", "kit", true)}}}); err != nil {
-		t.Fatal(err)
-	}
 	if err := b.Locations.SetLocalConfig("cal", RepoConfig{Flows: []Flow{echoFlow("check", "local", false)}}); err != nil {
 		t.Fatal(err)
 	}
@@ -227,7 +224,7 @@ func TestFlowLayersMergeByIDTheMostLocalWinning(t *testing.T) {
 		}
 		listed = append(listed, s)
 	}
-	want := "repo/check (overridden),repo/repo-only,repo/lint (overridden),kit/check (overridden),kit/kit-only,kit/lint,local/check"
+	want := "repo/check (overridden),repo/repo-only,repo/lint,local/check"
 	if got := strings.Join(listed, ","); got != want {
 		t.Fatalf("listed %s\nwant   %s", got, want)
 	}
@@ -236,20 +233,16 @@ func TestFlowLayersMergeByIDTheMostLocalWinning(t *testing.T) {
 	for _, sf := range active {
 		running = append(running, sf.Source+"/"+sf.Flow.ID)
 	}
-	if got := strings.Join(running, ","); got != "repo/repo-only,kit/kit-only,kit/lint,local/check" {
+	if got := strings.Join(running, ","); got != "repo/repo-only,repo/lint,local/check" {
 		t.Fatalf("active = %s", got)
 	}
 }
 
-func TestKitFlowsRunAndAnOverrideRunsInsteadOfTheCommittedFlow(t *testing.T) {
+func TestAnOverrideRunsInsteadOfTheCommittedFlow(t *testing.T) {
 	b, _, wt := flowBox(t, []Flow{echoFlow("check", "committed", true)})
-	b.Locations.setKit("cal", &InstalledKit{ID: "cal-dev", Name: "Cal dev", Config: RepoConfig{Flows: []Flow{echoFlow("kit-check", "from-the-kit", true)}}})
 	b.Locations.SetLocalConfig("cal", RepoConfig{Flows: []Flow{echoFlow("check", "overridden-here", true)}})
 	b.Events.Publish(events.Event{Type: "agent.finished", Data: map[string]any{"path": wt.Path}})
 
-	if run := waitRun(t, b, "kit-check"); run.Status != "succeeded" || strings.TrimSpace(run.Steps[0].Output) != "from-the-kit" || run.Scope != "repo:cal" {
-		t.Fatalf("kit run = %+v", run)
-	}
 	if run := waitRun(t, b, "check"); strings.TrimSpace(run.Steps[0].Output) != "overridden-here" {
 		t.Fatalf("check ran %q, want the override", run.Steps[0].Output)
 	}
@@ -260,9 +253,8 @@ func TestKitFlowsRunAndAnOverrideRunsInsteadOfTheCommittedFlow(t *testing.T) {
 }
 
 func TestADisabledOverrideStopsTheFlowItReplaces(t *testing.T) {
-	b, _, wt := flowBox(t, []Flow{echoFlow("check", "committed", true), echoFlow("sentinel", "ok", true)})
-	b.Locations.setKit("cal", &InstalledKit{ID: "cal-dev", Name: "Cal dev", Config: RepoConfig{Flows: []Flow{echoFlow("lint", "kit", true)}}})
-	b.Locations.SetLocalConfig("cal", RepoConfig{Flows: []Flow{echoFlow("check", "committed", false), echoFlow("lint", "kit", false)}})
+	b, _, wt := flowBox(t, []Flow{echoFlow("check", "committed", true), echoFlow("lint", "repo", true), echoFlow("sentinel", "ok", true)})
+	b.Locations.SetLocalConfig("cal", RepoConfig{Flows: []Flow{echoFlow("check", "committed", false), echoFlow("lint", "repo", false)}})
 	b.Events.Publish(events.Event{Type: "agent.finished", Data: map[string]any{"path": wt.Path}})
 
 	waitRun(t, b, "sentinel")

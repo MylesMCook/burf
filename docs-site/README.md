@@ -18,12 +18,12 @@ docs/
   meta.json              sidebar order and section labels
   getting-started/       install, add a box, first project, first agent
   concepts/              how Burf works, boxes, projects, sessions, security
-  guides/                orchestration, automations, hooks, kits, plugins, …
+  guides/                orchestration, automations, hooks, plugins, …
   reference/             CLI, berthd, config, events, app API, plugin SDK
 ```
 
 - Each page is MDX with `title` and `description` frontmatter. The file's
-  path is its URL: `docs/guides/kits.mdx` is `/guides/kits`.
+  path is its URL: `docs/guides/hooks.mdx` is `/guides/hooks`.
 - Each folder's `meta.json` orders its pages; the root one lists the sections.
 - Link between pages by URL (`/guides/hooks#gates`).
 - Components available in pages without importing: `Callout`

@@ -1,12 +1,12 @@
 ---
 title: Config reference
-description: Every field of .berth/config.json, kit.json, and the box's own config files.
+description: Every field of .berth/config.json and the box's own config files.
 ---
 
 ## `.berth/config.json`
 
 A repository's config, committed at `.berth/config.json`. The same shape is
-a kit's `config` and a box's own config for a location. A missing file means
+a box's own config for a location. A missing file means
 no config; a file that doesn't parse is an error the app and CLI show. A
 guide is in [project config](/guides/project-config).
 
@@ -129,8 +129,8 @@ Defaults for [visual diffs](/guides/visual-diffs). Flags on
 
 ## How layers merge
 
-A location's effective config is the repository's file, then its kit's
-`config`, then the box's own config for it:
+A location's effective config is the repository's file, then the box's own
+config for it:
 
 | Field | Merge |
 | --- | --- |
@@ -138,7 +138,7 @@ A location's effective config is the repository's file, then its kit's
 | `ports` | The later one wins if set |
 | `env` | Key by key; the later one wins |
 | `services`, `agents`, `flows` | By `name` or `id`: a later one replaces, new ones are added |
-| `hooks` | Added up: the file's, the kit's, then the box's |
+| `hooks` | Added up: the file's, then the box's |
 
 Only the effective flows run: a flow replaced by `id` never does, and a
 replacement with `enabled: false` switches the flow off on that box.
@@ -156,25 +156,8 @@ trust. Trusting and untrusting run `before:config.change` gates and announce
 
 `burf location config BOX/LOC` prints the effective config, and what an
 untrusted file would run with its hash; `--json` shows each layer (`repo`,
-`kit`, `local`, `effective`, `repo_trust`). `--trust HASH` trusts the file
+`local`, `effective`, `repo_trust`). `--trust HASH` trusts the file
 as shown, `--untrust` stops running it.
-
-## `kit.json`
-
-| Field | Type | Meaning |
-| --- | --- | --- |
-| `id` | string | Required. `[a-z0-9][a-z0-9-]*`, at most 48 characters. |
-| `name` | string | Default: the id. |
-| `description` | string | |
-| `version` | string | Shown. A project is flagged as running an older kit when its installed contents (their hash) differ from the kit on this laptop. |
-| `match` | object | `slug`: the `owner/repo` it is for. Selects matching projects in the app; nothing enforces it. |
-| `requires` | array | `{ "tool": "psql", "hint": "how to install it" }`. A missing tool is a warning when the kit is applied. |
-| `config` | object | A `.berth/config.json`, validated by the same rules. |
-| `files` | object | Small files inline, `{ "scripts/setup.sh": "…" }`. Paths stay inside the kit. |
-
-A kit's files are copied to each box it is applied to, and
-`$BERTH_KIT_DIR` points at them. Files starting with `#!` are made
-executable. See [kits](/guides/kits).
 
 ## Task templates
 

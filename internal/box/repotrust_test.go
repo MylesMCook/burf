@@ -35,10 +35,6 @@ func TestAnUntrustedRepoConfigIsShownButNothingOfItRuns(t *testing.T) {
 	writeRepoConfig(t, repo, hostile(filepath.Join(t.TempDir(), "x")))
 	l := NewLocations(filepath.Join(t.TempDir(), "locations.json"))
 	l.Add(ctx, "cal", repo)
-	kit := &InstalledKit{ID: "k", Name: "k", Config: RepoConfig{Setup: "kit-setup", Env: map[string]string{"KIT": "1"}}}
-	if err := l.setKit("cal", kit); err != nil {
-		t.Fatal(err)
-	}
 	l.SetLocalConfig("cal", RepoConfig{Env: map[string]string{"OWN": "1"}})
 
 	c, err := l.Config(ctx, "cal")
@@ -49,19 +45,19 @@ func TestAnUntrustedRepoConfigIsShownButNothingOfItRuns(t *testing.T) {
 		t.Fatalf("trust = %+v", c.RepoTrust)
 	}
 	e := c.Effective
-	// The kit and the box's own config still apply; the repository's
-	// ports do, and nothing else of it.
-	if e.Setup != "kit-setup" || e.Archive != "" || e.Ports != 3 || len(e.Services) != 0 || len(e.Hooks) != 0 || len(e.Flows) != 0 || len(e.Agents) != 0 {
+	// The box's own config and the repository's ports apply, and nothing
+	// else from the repository does.
+	if e.Setup != "" || e.Archive != "" || e.Ports != 3 || len(e.Services) != 0 || len(e.Hooks) != 0 || len(e.Flows) != 0 || len(e.Agents) != 0 {
 		t.Fatalf("effective = %+v", e)
 	}
-	if e.Env["KIT"] != "1" || e.Env["OWN"] != "1" || e.Env["BASH_ENV"] != "" || e.Env["DB_PASSWORD"] != "" {
+	if e.Env["OWN"] != "1" || e.Env["BASH_ENV"] != "" || e.Env["DB_PASSWORD"] != "" {
 		t.Fatalf("env = %v", e.Env)
 	}
 	if c.Repo == nil || configRunsAnything(*c.Repo) {
 		t.Fatalf("repo layer = %+v", c.Repo)
 	}
 	loc, _ := l.Get(ctx, "cal")
-	if loc.RepoTrust != RepoTrustUntrusted || loc.Scripts.Setup != "kit-setup" || loc.Scripts.From != "kit" {
+	if loc.RepoTrust != RepoTrustUntrusted || loc.Scripts.Setup != "" || loc.Scripts.From != "" {
 		t.Fatalf("location = %+v", loc)
 	}
 	if len(loc.Agents) != 0 {

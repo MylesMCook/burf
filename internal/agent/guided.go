@@ -26,7 +26,7 @@ import (
 // Adding a box over SSH: the app runs `burf add ssh` in a pseudo-terminal
 // here. Quiet by default (Add a box): the steps run on their own and the
 // app shows the terminal only while sudo asks for a password. Guided
-// (guided=1, from Team setup): the app shows the plan (GET
+// (guided=1): the app shows the plan (GET
 // /v1/ssh/install-plan) first, then runs it, on the laptop,
 // relayed over a WebSocket (GET /v1/boxes/add-ssh/terminal) to a terminal
 // it shows full screen. The person presses Enter there to start and types
@@ -41,8 +41,8 @@ type installRequest struct {
 	Host, Name, Network, Address, Identity, TrustHostKey, Listen, From string
 	Agents                                                             []string
 	NoIntegrations                                                     bool
-	// Guided asks for the whole plan and one terminal (Team setup's add a
-	// box); without it the install is quiet, and a terminal shows only for
+	// Guided asks for the whole plan and one terminal; without it the
+	// install is quiet, and a terminal shows only for
 	// a step that needs sudo's password.
 	Guided bool
 }
