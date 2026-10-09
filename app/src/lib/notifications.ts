@@ -5,10 +5,11 @@ import { type BerthEvent, isTauri } from "@/lib/api";
 import { plainError } from "@/lib/errors";
 import { usePrefs } from "@/lib/prefs";
 import { load, save } from "@/lib/storage";
-import { useStore } from "@/lib/store";
+import { onSessionsRead, sessionsAsked, useStore } from "@/lib/store";
 import { focusSession, refOf, selectWorktree } from "@/lib/workspaces";
 import { titleAt } from "@/lib/worktree-names";
 import { announce } from "@/lib/announce";
+import { waitingCleared } from "@/lib/notification-state";
 
 // The notification centre: one router every event-driven notification goes
 // through, so the person's settings decide where each kind shows (the
@@ -544,20 +545,19 @@ export const secretKey = (box?: string, location?: unknown, variable?: unknown) 
 export const flowKey = (box?: string, flow?: unknown, scope?: unknown) => `flowFailed|${box}|${scope ?? ""}|${flow}`;
 
 // A waiting note also clears when the box reports its agent working again,
-// in case the event was missed.
-useStore.subscribe((s, prev) => {
-  if (s.boxes === prev.boxes) return;
+// or no longer lists its session, in case the event was missed.
+function settleWaiting() {
   const open = useNotifications.getState().notes.filter((n) => n.category === "waiting" && !n.resolved && n.box && n.session);
   if (!open.length) return;
-  resolve((n) => {
-    if (!open.includes(n)) return false;
-    const sessions = s.boxes[n.box!]?.sessions;
-    if (!sessions) return false;
-    const live = sessions.find((x) => x.name === n.session);
-    if (!live || live.exited) return true;
-    return live.agent_state !== "waiting" && !!live.state_since && live.state_since > n.time;
-  });
+  const boxes = useStore.getState().boxes;
+  resolve((n) => open.includes(n) && waitingCleared(n, boxes[n.box!]?.sessions, sessionsAsked(n.box!)));
+}
+useStore.subscribe((s, prev) => {
+  if (s.boxes !== prev.boxes) settleWaiting();
 });
+// A read that changes no rows changes nothing in the store, and can still be
+// the first one new enough to show a session is gone.
+onSessionsRead(settleWaiting);
 
 // ---- Persistence -------------------------------------------------------
 
