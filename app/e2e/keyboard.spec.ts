@@ -371,8 +371,10 @@ test("the shortcuts sheet traps the keyboard while open, and Esc gives it back",
   for (let i = 0; i < 8; i++) {
     await page.keyboard.press("Tab");
     // The trap's own guards sit just outside the popup and send the keyboard
-    // round to its start; anything else outside is a leak.
-    expect(await page.evaluate(() => !!document.activeElement?.closest("[role=dialog], [data-floating-ui-focus-guard], [data-base-ui-focus-guard], span[aria-hidden=true]")), "Tab left the open sheet").toBe(true);
+    // round to its start; anything else outside is a leak. On the way round
+    // the keyboard is on the page itself for an instant, so this is where it
+    // comes to rest, not where it is the moment Tab returns.
+    await expect.poll(() => page.evaluate(() => !!document.activeElement?.closest("[role=dialog], [data-floating-ui-focus-guard], [data-base-ui-focus-guard], span[aria-hidden=true]")), "Tab left the open sheet").toBe(true);
   }
   await page.keyboard.press("Escape");
   await expect(sheet).toHaveCount(0);
