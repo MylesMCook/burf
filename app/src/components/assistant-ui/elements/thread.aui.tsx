@@ -70,6 +70,7 @@ import {
   type ComponentType,
   type FC,
   type PropsWithChildren,
+  type ReactNode,
 } from "react";
 
 export type ThreadGroupPart = MessagePrimitive.GroupedParts.GroupPart;
@@ -134,7 +135,27 @@ const taskAwareGroupBy = (
 export type ThreadProps = {
   components?: ThreadComponents | undefined;
   autoFocus?: boolean | undefined;
+  // Burf's own parts of the page. Elements, not components: a view passes
+  // what it already holds the state for, and they keep their place (and a
+  // field its keyboard) from one draw to the next.
+  // composer stands in for assistant-ui's own; welcome for its greeting on
+  // an empty thread; after comes below the messages, above the composer.
+  composer?: ReactNode | undefined;
+  welcome?: ReactNode | undefined;
+  after?: ReactNode | undefined;
+  // Who is speaking, for someone who cannot see which side a message is on:
+  // each message is an article named for its speaker.
+  speakers?: { user: string; assistant: string } | undefined;
+  // false for a thread whose whole history is already here: no "load
+  // earlier" control, and no live region of its own to say it is loading.
+  loadEarlier?: boolean | undefined;
 };
+
+type ThreadSlots = Pick<
+  ThreadProps,
+  "composer" | "welcome" | "after" | "speakers" | "loadEarlier"
+>;
+const ThreadSlotsContext = createContext<ThreadSlots>({});
 
 const EMPTY_COMPONENTS: ThreadComponents = {};
 
@@ -178,12 +199,21 @@ const ThreadHistorySkeleton: FC = () => (
 export const Thread: FC<ThreadProps> = ({
   components = EMPTY_COMPONENTS,
   autoFocus = true,
+  composer,
+  welcome,
+  after,
+  speakers,
+  loadEarlier,
 }) => {
   const isEmpty = useAuiState(isNewChatView);
 
   return (
     <ThreadComponentsContext.Provider value={components}>
-      <ThreadRoot isEmpty={isEmpty} autoFocus={autoFocus} />
+      <ThreadSlotsContext.Provider
+        value={{ composer, welcome, after, speakers, loadEarlier }}
+      >
+        <ThreadRoot isEmpty={isEmpty} autoFocus={autoFocus} />
+      </ThreadSlotsContext.Provider>
     </ThreadComponentsContext.Provider>
   );
 };
@@ -193,12 +223,14 @@ const ThreadRoot: FC<{ isEmpty: boolean; autoFocus: boolean }> = ({
   autoFocus,
 }) => {
   const { Welcome = ThreadWelcome } = useContext(ThreadComponentsContext);
+  const { composer, welcome, after, loadEarlier } =
+    useContext(ThreadSlotsContext);
 
   return (
     <ThreadPrimitive.Root
-      className="aui-root aui-thread-root bg-background @container flex h-full flex-col"
+      className="aui-root aui-thread-root bg-background @container flex h-full min-h-0 flex-col"
       style={{
-        ["--thread-max-width" as string]: "44rem",
+        ["--thread-max-width" as string]: "var(--berth-chat-w, 44rem)",
         ["--composer-bg" as string]:
           "color-mix(in oklab, var(--color-muted) 30%, transparent)",
         ["--composer-radius" as string]: "1rem",
@@ -217,22 +249,26 @@ const ThreadRoot: FC<{ isEmpty: boolean; autoFocus: boolean }> = ({
           )}
         >
           <AuiIf condition={isNewChatView}>
-            <Welcome />
+            {welcome ?? <Welcome />}
           </AuiIf>
           <AuiIf condition={isHistoryLoadingView}>
             <ThreadHistorySkeleton />
           </AuiIf>
 
-          <ThreadLoadEarlier />
+          {loadEarlier !== false && <ThreadLoadEarlier />}
 
           <div
             data-slot="aui_message-group"
-            className="mb-14 flex flex-col gap-y-6 empty:hidden"
+            className={cn(
+              "flex flex-col gap-y-6 empty:hidden",
+              after ? "mb-6" : "mb-14",
+            )}
           >
             <ThreadPrimitive.Messages>
               {() => <ThreadMessage />}
             </ThreadPrimitive.Messages>
           </div>
+          {after && <div className="mb-14 empty:hidden">{after}</div>}
 
           <ThreadPrimitive.ViewportFooter
             className={cn(
@@ -243,10 +279,12 @@ const ThreadRoot: FC<{ isEmpty: boolean; autoFocus: boolean }> = ({
           >
             <ThreadScrollToBottom />
             <ThreadFollowupSuggestions />
-            <Composer autoFocus={autoFocus} />
-            <AuiIf condition={(s) => isNewChatView(s) && s.composer.isEmpty}>
-              <ThreadSuggestions />
-            </AuiIf>
+            {composer ?? <Composer autoFocus={autoFocus} />}
+            {composer === undefined && (
+              <AuiIf condition={(s) => isNewChatView(s) && s.composer.isEmpty}>
+                <ThreadSuggestions />
+              </AuiIf>
+            )}
           </ThreadPrimitive.ViewportFooter>
         </div>
       </ThreadPrimitive.Viewport>
@@ -617,7 +655,7 @@ const MessageError: FC = () => {
   );
 };
 
-const AssistantMessage: FC = () => {
+export const AssistantMessage: FC = () => {
   const {
     ToolFallback: ToolFallbackComponent = ToolFallback,
     ToolGroup,
@@ -626,6 +664,7 @@ const AssistantMessage: FC = () => {
   } = useContext(ThreadComponentsContext);
   const groupBy = TaskGroupComponent ? taskAwareGroupBy : messageGroupBy;
 
+  const { speakers } = useContext(ThreadSlotsContext);
   const ACTION_BAR_PT = "pt-1.5";
   // Keep the action bar inside the contained root's paint box, then cancel its reserved space in flow.
   const ACTION_BAR_HEIGHT = `min-h-7.5 ${ACTION_BAR_PT}`;
@@ -634,6 +673,8 @@ const AssistantMessage: FC = () => {
     <MessagePrimitive.Root
       data-slot="aui_assistant-message-root"
       data-role="assistant"
+      role={speakers ? "article" : undefined}
+      aria-label={speakers?.assistant}
       className="fade-in slide-in-from-bottom-1 animate-in relative -mb-7.5 pb-7.5 duration-150 [contain-intrinsic-size:auto_200px] [content-visibility:auto]"
     >
       <div
@@ -765,11 +806,13 @@ const AssistantActionBar: FC = () => {
           </TooltipIconButton>
         </ActionBarPrimitive.FeedbackNegative>
       </AuiIf>
-      <ActionBarPrimitive.Reload asChild>
-        <TooltipIconButton tooltip="Refresh">
-          <RefreshCwIcon />
-        </TooltipIconButton>
-      </ActionBarPrimitive.Reload>
+      <AuiIf condition={(s) => s.thread.capabilities.reload}>
+        <ActionBarPrimitive.Reload asChild>
+          <TooltipIconButton tooltip="Refresh">
+            <RefreshCwIcon />
+          </TooltipIconButton>
+        </ActionBarPrimitive.Reload>
+      </AuiIf>
       <ActionBarMorePrimitive.Root>
         <ActionBarMorePrimitive.Trigger asChild>
           <TooltipIconButton
@@ -810,9 +853,12 @@ const UserImagePart: ImageMessagePartComponent = (part) => (
 );
 
 const UserMessage: FC = () => {
+  const { speakers } = useContext(ThreadSlotsContext);
   return (
     <MessagePrimitive.Root
       data-slot="aui_user-message-root"
+      role={speakers ? "article" : undefined}
+      aria-label={speakers?.user}
       className="fade-in slide-in-from-bottom-1 animate-in grid auto-rows-auto grid-cols-[minmax(72px,1fr)_auto] content-start gap-y-2 px-2 duration-150 [contain-intrinsic-size:auto_200px] [content-visibility:auto] [&:where(>*)]:col-start-2"
       data-role="user"
     >
@@ -844,11 +890,13 @@ const UserActionBar: FC = () => {
       autohide="not-last"
       className="aui-user-action-bar-root flex flex-col items-end"
     >
-      <ActionBarPrimitive.Edit asChild>
-        <TooltipIconButton tooltip="Edit" className="aui-user-action-edit">
-          <PencilIcon />
-        </TooltipIconButton>
-      </ActionBarPrimitive.Edit>
+      <AuiIf condition={(s) => s.thread.capabilities.edit}>
+        <ActionBarPrimitive.Edit asChild>
+          <TooltipIconButton tooltip="Edit" className="aui-user-action-edit">
+            <PencilIcon />
+          </TooltipIconButton>
+        </ActionBarPrimitive.Edit>
+      </AuiIf>
     </ActionBarPrimitive.Root>
   );
 };

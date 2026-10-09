@@ -2,13 +2,14 @@ import { ArrowUpIcon, RotateCwIcon, SquareIcon, XIcon } from "lucide-react";
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { WorktreeArtChip } from "@/components/art/board-buttons";
 import { ArtifactCard } from "@/components/conversation/artifacts";
-import { Markdown } from "@/components/conversation/markdown";
+import { ChatThread } from "@/components/conversation/chat-thread";
 import { ReportCard } from "@/components/conversation/report-card";
 import { Button } from "@/components/ui/button";
 import { Tip } from "@/components/tip";
 import type { Client } from "@/lib/api";
 import { loadArtifacts, useArt, useHasArtifacts } from "@/lib/art/model";
 import { chatArtifacts } from "@/lib/chat-artifacts";
+import { threadTurns } from "@/lib/chat-thread";
 import { toolAsk } from "@/lib/chat-tools";
 import { errorMessage } from "@/lib/format";
 import { PaneContext } from "@/lib/pane-context";
@@ -57,8 +58,6 @@ export function StructuredChat({ transport, session, onChange, testId = "local-c
   const alive = useRef(true);
   const state = useRef(session.state);
   const request = useRef<AbortController | null>(null);
-  const scroll = useRef<HTMLDivElement>(null);
-  const following = useRef(true);
   const load = useCallback(async () => {
     request.current?.abort();
     const controller = new AbortController(); request.current = controller;
@@ -76,7 +75,6 @@ export function StructuredChat({ transport, session, onChange, testId = "local-c
     void poll();
     return () => { alive.current = false; clearTimeout(timer); request.current?.abort(); };
   }, [load]);
-  useEffect(() => { if (following.current && scroll.current) scroll.current.scrollTop = scroll.current.scrollHeight; }, [chat]);
   // Once the provider has answered its handshake: its model list, and for a chat with no messages yet, the permission last chosen.
   const prepared = useRef(false);
   const ready = !!chat?.composer && chat.state !== "starting" && chat.state !== "exited";
@@ -123,11 +121,10 @@ export function StructuredChat({ transport, session, onChange, testId = "local-c
     const ref = refFor(artifacts);
     if (ref && madeIds.split(" ").some((key) => { const [id, n] = key.split("@"); return (have.get(id) ?? 0) < Number(n); })) void loadArtifacts(ref);
   }, [artifacts, madeIds]);
-  const groups: Chat["items"][] = [];
-  for (const item of chat?.items ?? []) {
-    const last = groups[groups.length - 1];
-    if (item.kind === "tool" && last?.[0].kind === "tool") last.push(item); else groups.push([item]);
-  }
+  const turns = useMemo(() => threadTurns(chat?.items ?? [], running, submitted ? { text: submitted, before: submittedItems.current } : undefined), [chat?.items, running, submitted]);
+  const toolExtra = useCallback((id: string) => made.get(id)?.map((artifact) => <div key={artifact.id} className="mt-2 flex text-sm"><ArtifactCard it={artifact} /></div>), [made]);
+  const reports = chat?.reports;
+  const reportCards = useCallback((id: string) => (reports?.[id]?.length ? reports[id].map((report, index) => <ReportCard key={index} it={{ kind: "report", id: `${id}:${index}`, report }} />) : undefined), [reports]);
   return <div data-testid={testId} className="flex min-h-0 min-w-0 flex-1 flex-col">
     <header className="flex flex-wrap items-center gap-2 border-b px-4 py-3 text-sm">
       <h2 className="font-medium">Codex</h2><span role="status" className="text-xs text-muted-foreground">{offline ? "Disconnected" : chat?.state === "running" ? "Working" : chat?.state === "waiting" ? `Waiting for approval (${chat.approvals.length})` : chat?.state === "idle" ? "Ready" : chat?.state === "exited" ? "Stopped" : "Starting"}</span><span className={accepted === "full-access" ? "text-xs font-medium text-warning" : "text-xs text-muted-foreground"}>{chatPermissions[accepted].label}</span>{(chat?.options?.model || chat?.options?.effort) && <span className="text-xs text-muted-foreground">{[chat.options.model, chat.options.effort].filter(Boolean).join(" · ")}</span>}
@@ -137,12 +134,15 @@ export function StructuredChat({ transport, session, onChange, testId = "local-c
       {chat?.state !== "exited" && <Tip label="Stop chat"><Button size="icon-sm" variant="ghost" aria-label="Stop chat" disabled={busy || !chat} onClick={() => void mutate(() => transport.stop())}><XIcon /></Button></Tip>}
     </header>
     {(error || chat?.error || readError) && <p role="alert" className="shrink-0 px-4 py-2 text-sm text-destructive">{error || chat?.error || readError}</p>}
-    <div ref={scroll} onScroll={() => { const el = scroll.current; if (el) following.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80; }} className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
-      <div className="mx-auto w-full max-w-(--berth-chat-w) space-y-5 text-sm leading-relaxed text-foreground">
-        {chat?.truncated && <p className="text-xs text-muted-foreground">Earlier output is no longer in this live view.</p>}
-        {chat?.items.length === 0 && !submitted && <h3 className="py-8 text-center text-lg font-medium">{running ? "Codex is working…" : chat.state === "starting" ? "Starting Codex…" : "New chat"}</h3>}
-        {groups.map((group) => group[0].kind === "tool" ? <div key={group[0].id} className="min-w-0"><details className="min-w-0 text-xs"><summary className="cursor-pointer text-muted-foreground">Tool activity · {group.length}{group.some((i) => i.status === "inProgress") ? " · working" : ""}</summary>{group.map((item) => <pre key={item.id} className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-words border-l pl-3">{item.text}</pre>)}</details>{group.flatMap((item) => made.get(item.id) ?? []).map((artifact) => <div key={artifact.id} className="mt-2 flex text-sm"><ArtifactCard it={artifact} /></div>)}</div> : group[0].kind === "report" ? <section key={group[0].id} aria-label="From Burf" className="flex min-w-0 flex-col gap-2"><h3 className="text-xs font-medium text-muted-foreground">Burf · work this chat started</h3>{chat?.reports?.[group[0].id]?.length ? chat.reports[group[0].id].map((report, index) => <ReportCard key={index} it={{ kind: "report", id: `${group[0].id}:${index}`, report }} />) : <p className="whitespace-pre-wrap break-words text-xs text-muted-foreground">{group[0].text}</p>}</section> : <article key={group[0].id} className="min-w-0" aria-label={group[0].kind === "user" ? "You" : "Codex"}><h3 className="mb-2 text-xs font-medium text-muted-foreground">{group[0].kind === "user" ? "You" : "Codex"}</h3><Markdown text={group[0].text} /></article>)}
-        {submitted && !chat?.items.some((item) => item.kind === "user" && !submittedItems.current.has(item.id)) && <article aria-label="Sending message"><h3 className="mb-2 text-xs text-muted-foreground">You · sending</h3><Markdown text={submitted} /></article>}
+    {chat?.truncated && <p className="shrink-0 px-4 pt-2 text-xs text-muted-foreground sm:px-6">Earlier output is no longer in this live view.</p>}
+    <ChatThread
+      turns={turns}
+      working={running}
+      agent="Codex"
+      tool={toolExtra}
+      report={reportCards}
+      welcome={chat ? <h3 className="py-8 text-center text-lg font-medium">{running ? "Codex is working…" : chat.state === "starting" ? "Starting Codex…" : "New chat"}</h3> : <></>}
+      after={<div className="space-y-5 px-2 pb-6 text-sm leading-relaxed text-foreground empty:hidden">
         {!!chat?.approvals.length && <p className="text-xs font-medium text-warning">{chat.approvals.length} pending {chat.approvals.length === 1 ? "approval" : "approvals"}</p>}
         {chat?.approvals.map((approval, index) => { const ask = approval.kind === "tool" ? toolAsk(approval.detail) : undefined; return <section key={approval.id} aria-label="Approval required" className="border-l-2 border-warning pl-3">
           <details open={index === 0}><summary className="cursor-pointer truncate text-xs font-medium">{ask ? `Burf · ${ask.tool}` : approval.kind === "files" ? "File changes" : approval.detail.split("\n")[0]}</summary>
@@ -155,30 +155,32 @@ export function StructuredChat({ transport, session, onChange, testId = "local-c
           {approval.session_allowed && <p className="mt-2 text-xs text-muted-foreground">Chat-only approval applies to {approval.kind === "files" ? "these files" : "matching commands in Codex's approval cache"}, until this chat stops.</p>}
           </details>
         </section>; })}
-      </div>
-    </div>
-    <form className="shrink-0 px-4 pb-4 pt-2 sm:px-6" onSubmit={(event) => {
-      event.preventDefault(); if (!draft.trim() || busy || offline || chat?.state !== "idle") return;
-      const text = draft; following.current = true;
-      submittedItems.current = new Set(chat.items.map((item) => item.id)); setSubmitted(text);
-      void mutate(async () => { await transport.message(text, chat.composer ? options : undefined); if (!alive.current) return; if (draftRef.current === text) updateDraft(""); setOptions(() => ({})); }).finally(() => { if (alive.current) setSubmitted(""); });
-    }}>
-      <div className="mx-auto w-full max-w-(--berth-chat-w)">
-        <div className="rounded-md border bg-background focus-within:ring-1 focus-within:ring-ring">
-          <textarea data-autofocus aria-label="Message Codex" placeholder="Message Codex" value={draft} disabled={!chat || busy} readOnly={chat?.state === "exited"} onChange={(event) => updateDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} rows={3} className="block max-h-48 min-h-20 w-full resize-y bg-transparent p-3 text-sm outline-none disabled:opacity-50" />
-          <div className="flex flex-wrap items-center gap-1 px-2 pb-2">
-            {chat?.composer && <>
-              <select aria-label="Chat permissions" className="h-7 min-w-0 rounded border-0 bg-transparent px-1 text-xs text-muted-foreground outline-none hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 max-w-40" disabled={busy || chat.state === "exited"} value={permission} onChange={(e) => pickPermission(e.target.value as NonNullable<ChatOptions["permission"]>)}>{Object.entries(chatPermissions).filter(([id]) => (chat.permissions ?? BASE_PERMISSIONS).includes(id) || id === permission).map(([id, p]) => <option key={id} value={id}>{p.label}</option>)}</select>
-              <select aria-label="Chat model" className="h-7 min-w-0 rounded border-0 bg-transparent px-1 text-xs text-muted-foreground outline-none hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 max-w-48" disabled={busy || chat.state === "exited"} value={model} onChange={(e) => pickModel(e.target.value)}><option value="">Default model</option>{model && !models?.some((m) => m.model === model) && <option value={model}>{model}</option>}{models?.map((m) => <option key={m.model} value={m.model}>{m.displayName || m.model}</option>)}</select>
-              {(effort || efforts.length > 0) && <select aria-label="Chat reasoning" className="h-7 min-w-0 rounded border-0 bg-transparent px-1 text-xs text-muted-foreground outline-none hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 max-w-36" disabled={busy || chat.state === "exited"} value={effort} onChange={(e) => setOptions((o) => ({ ...o, effort: e.target.value || undefined }))}><option value="">Default reasoning</option>{[...new Set([effort, ...efforts].filter(Boolean))].map((e) => <option key={e} value={e}>{e}</option>)}</select>}
-            </>}
-            <span className="flex-1" />
-            {running ? <Tip label="Interrupt turn"><Button type="button" size="icon-sm" variant="outline" aria-label="Interrupt turn" disabled={busy || offline || !chat?.turn_id} onClick={() => void mutate(() => transport.interrupt())}><SquareIcon /></Button></Tip> : <Tip label="Send message"><Button type="submit" size="icon-sm" aria-label="Send message" disabled={busy || offline || chat?.state !== "idle" || !draft.trim()}><ArrowUpIcon /></Button></Tip>}
+      </div>}
+      composer={
+      <form className="shrink-0" onSubmit={(event) => {
+        event.preventDefault(); if (!draft.trim() || busy || offline || chat?.state !== "idle") return;
+        const text = draft;
+        submittedItems.current = new Set(chat.items.map((item) => item.id)); setSubmitted(text);
+        void mutate(async () => { await transport.message(text, chat.composer ? options : undefined); if (!alive.current) return; if (draftRef.current === text) updateDraft(""); setOptions(() => ({})); }).finally(() => { if (alive.current) setSubmitted(""); });
+      }}>
+        <div className="w-full">
+          <div className="rounded-md border bg-background focus-within:ring-1 focus-within:ring-ring">
+            <textarea data-autofocus aria-label="Message Codex" placeholder="Message Codex" value={draft} disabled={!chat || busy} readOnly={chat?.state === "exited"} onChange={(event) => updateDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} rows={3} className="block max-h-48 min-h-20 w-full resize-y bg-transparent p-3 text-sm outline-none disabled:opacity-50" />
+            <div className="flex flex-wrap items-center gap-1 px-2 pb-2">
+              {chat?.composer && <>
+                <select aria-label="Chat permissions" className="h-7 min-w-0 rounded border-0 bg-transparent px-1 text-xs text-muted-foreground outline-none hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 max-w-40" disabled={busy || chat.state === "exited"} value={permission} onChange={(e) => pickPermission(e.target.value as NonNullable<ChatOptions["permission"]>)}>{Object.entries(chatPermissions).filter(([id]) => (chat.permissions ?? BASE_PERMISSIONS).includes(id) || id === permission).map(([id, p]) => <option key={id} value={id}>{p.label}</option>)}</select>
+                <select aria-label="Chat model" className="h-7 min-w-0 rounded border-0 bg-transparent px-1 text-xs text-muted-foreground outline-none hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 max-w-48" disabled={busy || chat.state === "exited"} value={model} onChange={(e) => pickModel(e.target.value)}><option value="">Default model</option>{model && !models?.some((m) => m.model === model) && <option value={model}>{model}</option>}{models?.map((m) => <option key={m.model} value={m.model}>{m.displayName || m.model}</option>)}</select>
+                {(effort || efforts.length > 0) && <select aria-label="Chat reasoning" className="h-7 min-w-0 rounded border-0 bg-transparent px-1 text-xs text-muted-foreground outline-none hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 max-w-36" disabled={busy || chat.state === "exited"} value={effort} onChange={(e) => setOptions((o) => ({ ...o, effort: e.target.value || undefined }))}><option value="">Default reasoning</option>{[...new Set([effort, ...efforts].filter(Boolean))].map((e) => <option key={e} value={e}>{e}</option>)}</select>}
+              </>}
+              <span className="flex-1" />
+              {running ? <Tip label="Interrupt turn"><Button type="button" size="icon-sm" variant="outline" aria-label="Interrupt turn" disabled={busy || offline || !chat?.turn_id} onClick={() => void mutate(() => transport.interrupt())}><SquareIcon /></Button></Tip> : <Tip label="Send message"><Button type="submit" size="icon-sm" aria-label="Send message" disabled={busy || offline || chat?.state !== "idle" || !draft.trim()}><ArrowUpIcon /></Button></Tip>}
+            </div>
           </div>
+          {chat?.composer && changed && <p className={options.permission === "full-access" ? "mt-1 text-xs font-medium text-warning" : "mt-1 text-xs text-muted-foreground"}>From your next message{options.permission ? `: ${chatPermissions[options.permission].hint}` : "."}</p>}
+          {modelsError && <p role="alert" className="mt-1 text-xs text-destructive">{modelsError}</p>}
         </div>
-        {chat?.composer && changed && <p className={options.permission === "full-access" ? "mt-1 text-xs font-medium text-warning" : "mt-1 text-xs text-muted-foreground"}>From your next message{options.permission ? `: ${chatPermissions[options.permission].hint}` : "."}</p>}
-        {modelsError && <p role="alert" className="mt-1 text-xs text-destructive">{modelsError}</p>}
-      </div>
-    </form>
+      </form>
+      }
+    />
   </div>;
 }
