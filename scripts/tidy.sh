@@ -9,7 +9,9 @@
 #
 # Then it lists what is left: open pull requests, branches that are not in
 # main, checkouts with uncommitted work, and whether this computer's
-# interface folder is main's. Nothing unmerged or uncommitted is touched.
+# interface folder is main's. Nothing unmerged or uncommitted is touched,
+# and one removal that git refuses does not stop the rest: it is listed
+# under "skipped" with the reason.
 #
 #   scripts/tidy.sh            do it
 #   scripts/tidy.sh --dry-run  say what it would do
@@ -17,24 +19,36 @@ set -eu
 cd "$(dirname "$0")/.."
 dry=0
 [ "${1:-}" != "--dry-run" ] || dry=1
-run() { if [ "$dry" = 1 ]; then echo "would: $*"; else "$@"; fi; }
+notes="$(mktemp)"
+trap 'rm -f "$notes"' EXIT
+# try makes one removal. A refusal (a locked worktree, a branch a worktree
+# still holds) is noted with git's own reason and the run goes on.
+try() {
+	if [ "$dry" = 1 ]; then
+		echo "would: $*"
+	elif ! out="$("$@" 2>&1)"; then
+		echo "$* ($(printf '%s' "$out" | tail -1))" >> "$notes"
+	fi
+}
 in_main() { git merge-base --is-ancestor "$1" origin/main 2> /dev/null; }
 
 git fetch -q --prune origin
 here="$(git branch --show-current)"
+# As git names it, which is not $PWD when a folder on the way is a link.
+top="$(git rev-parse --show-toplevel)"
 
 # Worktrees first: a branch checked out in one cannot be deleted.
 git worktree list --porcelain | sed -n 's/^worktree //p' | while read -r wt; do
-	[ "$wt" != "$PWD" ] || continue
+	[ "$wt" != "$top" ] || continue
 	if [ -z "$(git -C "$wt" status --porcelain 2> /dev/null)" ] && in_main "$(git -C "$wt" rev-parse HEAD)"; then
-		run git worktree remove "$wt"
+		try git worktree remove "$wt"
 	fi
 done
 [ "$dry" = 1 ] || git worktree prune
 
 for b in $(git for-each-ref --format='%(refname:short)' refs/heads); do
 	case "$b" in main | trunk | "$here") continue ;; esac
-	if in_main "$b"; then run git branch -q -D "$b"; fi
+	if in_main "$b"; then try git branch -q -D "$b"; fi
 done
 
 gone=""
@@ -44,7 +58,7 @@ for r in $(git for-each-ref --format='%(refname:short)' refs/remotes/origin); do
 	if in_main "$r"; then gone="$gone $b"; fi
 done
 # shellcheck disable=SC2086 # the branch names are separate words
-[ -z "$gone" ] || run git push -q origin --delete $gone
+[ -z "$gone" ] || try git push -q origin --delete $gone
 
 echo "== open pull requests"
 # origin's, not the upstream this fork came from.
@@ -69,10 +83,22 @@ for d in $(printf '%s\n' $(git worktree list --porcelain | sed -n 's/^worktree /
 done
 
 echo "== interface on this computer"
+# The same interface is the same source, whatever commit it was built at:
+# only what the bundle is made from counts, not Go, docs or tests.
 burf="$(command -v burf || true)"
-main="$(git rev-parse --short=12 origin/main)"
-if [ -n "$burf" ] && "$burf" ui status 2> /dev/null | grep -q "+$main"; then
-	echo "main's ($main)"
+have=""
+[ -z "$burf" ] || have="$("$burf" ui status 2> /dev/null | sed -n 's/^Version: .*+//p')"
+if [ -z "$have" ]; then
+	echo "none installed: scripts/ship-ui.sh"
+elif ! git cat-file -e "$have^{commit}" 2> /dev/null; then
+	echo "built at $have, which this checkout does not have: scripts/ship-ui.sh"
+elif git diff --quiet "$have" origin/main -- app ':(exclude)app/e2e' ':(exclude)app/src-tauri' ':(exclude)app/playwright.config.ts' ':(exclude,glob)app/**/*.test.ts'; then
+	echo "main's (built at $have; the interface has not changed since)"
 else
-	echo "not main's ($main): scripts/ship-ui.sh"
+	echo "behind main (built at $have): scripts/ship-ui.sh"
+fi
+
+if [ -s "$notes" ]; then
+	echo "== skipped"
+	cat "$notes"
 fi
