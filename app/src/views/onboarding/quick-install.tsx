@@ -19,8 +19,7 @@ import { FailurePanel } from "@/views/onboarding/ssh-setup";
 // step: sudo asking for the password (git missing, or lingering the box
 // won't allow without root), whether to keep berthd running after logout
 // when that alone needs the password (it can be skipped), or a question
-// the box can't answer for them. Team setup's add a box is the guided
-// install instead (guided-install.tsx): the whole plan, full screen.
+// the box can't answer for them.
 
 export function QuickInstall({ target, onClose, onReady, readyLabel }: { target?: InstallTarget & { agents: string[] }; onClose(): void; onReady(box: string): void; readyLabel?: string }) {
   const run = useInstallRun();

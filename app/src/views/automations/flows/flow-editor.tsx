@@ -27,8 +27,7 @@ export interface EditTarget {
   // The id it was saved under; absent for a new flow.
   savedId?: string;
   readOnly?: boolean;
-  // Where it comes from; a read-only flow is committed ("repo") or the
-  // project's kit's ("kit").
+  // Where it comes from; a read-only flow is committed ("repo").
   source?: FlowSource;
 }
 
@@ -150,13 +149,7 @@ export function FlowEditor({
             <div className="mb-5 flex items-center gap-3 rounded-xl border bg-muted/40 px-4 py-3 text-sm">
               <LockIcon className="size-4 shrink-0 text-muted-foreground" />
               <span className="min-w-0 flex-1">
-                {target.source === "kit" ? (
-                  <>From the project's kit. Change it in the kit, or override it on this box.</>
-                ) : (
-                  <>
-                    Committed in the repository's <code className="font-mono text-xs">.berth/config.json</code>. Change it there, or override it on this box.
-                  </>
-                )}
+                Committed in the repository's <code className="font-mono text-xs">.berth/config.json</code>. Change it there, or override it on this box.
               </span>
               {onOverride && (
                 <Button size="sm" variant="outline" onClick={onOverride}>
@@ -171,7 +164,7 @@ export function FlowEditor({
 
           <p className="mb-4 text-muted-foreground text-sm">{summary(flow)}</p>
 
-          <TriggerCard flow={flow} setFlow={setFlow} readOnly={readOnly} source={target.source} where={where} setWhere={setWhere} scopes={scopes} />
+          <TriggerCard flow={flow} setFlow={setFlow} readOnly={readOnly} where={where} setWhere={setWhere} scopes={scopes} />
 
           {flow.steps.map((s, i) => (
             <Fragment key={i}>
@@ -232,7 +225,6 @@ function TriggerCard({
   flow,
   setFlow,
   readOnly,
-  source,
   where,
   setWhere,
   scopes,
@@ -240,7 +232,6 @@ function TriggerCard({
   flow: Flow;
   setFlow(f: Flow): void;
   readOnly?: boolean;
-  source?: FlowSource;
   where: { box: string; scope: Scope };
   setWhere(w: { box: string; scope: Scope }): void;
   scopes: { box: string; scope: Scope }[];
@@ -275,7 +266,7 @@ function TriggerCard({
         <div className="col-span-2">
           <span className="mb-1 block font-medium text-muted-foreground text-xs">Runs for</span>
           <RunsFor value={where} options={scopes} disabled={readOnly} onChange={setWhere} />
-          <p className="mt-1.5 text-muted-foreground text-xs">{savedWhere(where.box, where.scope, readOnly ? (source === "kit" ? "kit" : "repo") : undefined)}</p>
+          <p className="mt-1.5 text-muted-foreground text-xs">{savedWhere(where.box, where.scope, readOnly ? "repo" : undefined)}</p>
           {where.scope === "box" && w.location && (
             <p className="mt-1 flex items-center gap-1.5 text-muted-foreground text-xs">
               Only events from {w.location}.

@@ -110,13 +110,12 @@ export function agentToInstall(r: Requirements, agent?: string): AgentRequiremen
 
 // requirementsCopy is what the card says, in plain words. box is how the
 // box is named to the person ("this Mac" for the local one).
-// team is a team setup about to run, whose steps run in a terminal there.
-export function requirementsCopy(card: RequirementsCard, r: Requirements | undefined, box: string, o: { local?: boolean; agent?: string; team?: boolean } = {}): RequirementsCopy | undefined {
+export function requirementsCopy(card: RequirementsCard, r: Requirements | undefined, box: string, o: { local?: boolean; agent?: string } = {}): RequirementsCopy | undefined {
   if (!r || card === "hidden") return undefined;
   const where = o.local ? (isMac(r) ? "Terminal on this Mac" : "a terminal on this computer") : `a terminal on ${box} (over SSH)`;
   if (card === "tmux") {
     const t = r.tmux;
-    const why = o.team ? "Burf runs the team setup's steps, and later your agents, in tmux on the box." : "Burf runs agents in tmux, so they keep going when you close it.";
+    const why = "Burf runs agents in tmux, so they keep going when you close it.";
     if (isMac(r) && t.manager_missing)
       return {
         title: `Install tmux on ${box}`,

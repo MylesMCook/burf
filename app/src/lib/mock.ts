@@ -8,8 +8,6 @@ import { browserCall, mockScreencast, mockShotSvg } from "@/lib/mock-browser";
 import { mockDevtoolsCall } from "@/lib/mock-devtools";
 import { phoneCall } from "@/lib/mock-phone";
 import { worktreesCall } from "@/lib/mock-worktrees";
-import { kitsCall, kitsStream } from "@/lib/mock-kits";
-import { initTeamMock, isTeamSession, teamAttach, teamBoxCall, teamLaptopCall } from "@/lib/mock-team";
 import { reviewCall, reviewExec } from "@/lib/mock-review";
 import { editorsCall } from "@/lib/mock-editors";
 import { imageGenCall } from "@/lib/mock-imagegen";
@@ -636,8 +634,6 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
       const r = m.shotsMockCall(method, path, body);
       return r === undefined ? Promise.reject(new ApiError("no visual diffs here", 404)) : delay(r);
     });
-  const team = teamBoxCall(box, method, path, body, delay);
-  if (team) return team;
   const flows = flowsCall(box, method, path, body, emit, delay);
   if (flows) return flows;
   const runs = runsCall(box, method, path, body, emit, delay);
@@ -876,8 +872,6 @@ const ECHO_DELAY = Number(new URLSearchParams(location.search).get("echoDelay"))
 function mockAttach(box: string, session: string, h: TerminalHandlers) {
   // A service's own terminal (lib/mock-services).
   if (sessions[box]?.some((x) => x.name === session && x.service)) return mockServiceAttach(box, session, h);
-  // A team setup's runner (lib/mock-team).
-  if (isTeamSession(box, session)) return teamAttach(box, session, h);
   if (__BERTH_DEMO__) {
     return demoAttach(box, session, h, {
       session: () => sessions[box]?.find((x) => x.name === session),
@@ -1140,7 +1134,6 @@ function laptopBoxes(method: string, path: string, body: unknown): Promise<unkno
 // mockStream plays a long command's output a line at a time, as the agent
 // streams the CLI's.
 async function mockStream(method: string, path: string, body: unknown, onValue: (v: unknown) => void, signal?: AbortSignal) {
-  if (method === "POST" && (await kitsStream(path, body, onValue, emit, signal))) return;
   if (method === "GET" && path.endsWith("/browser/screencast")) return mockScreencast(onValue, signal);
   if (await localBoxStream(method, path, body, onValue, signal)) return;
   const wait = (ms: number) =>
@@ -1243,13 +1236,8 @@ initMockInstall({
 // The offline prompt queue and its box-offline simulator (lib/mock-queue).
 initMockQueue({ status, sessions, emit, delay, send: (box, session, text, enter) => boxCall(box, "POST", `sessions/${encodeURIComponent(session)}/send`, { text, enter, when: "now" }) }, fresh);
 
-let teamWired = false;
 
 export function mockClient(): Client {
-  if (!teamWired) {
-    teamWired = true;
-    initTeamMock({ status, locations, sessions, emit, delay, addBox: (name, address) => addMockBox(name, address) });
-  }
   return counted(mockAgent());
 }
 
@@ -1365,10 +1353,6 @@ function mockAgent(): Client {
       if (computers) return computers as Promise<T>;
       const queued = queueCall(method, path, body);
       if (queued) return queued as Promise<T>;
-      const kits = kitsCall(method, path, body, emit, delay);
-      if (kits) return kits as Promise<T>;
-      const team = teamLaptopCall(method, path, body, delay);
-      if (team) return team as Promise<T>;
       const eds = editorsCall(method, path, body, delay);
       if (eds) return eds as Promise<T>;
       const gen = imageGenCall(method, path, delay);
@@ -1491,7 +1475,7 @@ export function mockAgentOpens(box: string, location: string, dir: string, open:
 // mockNotifications plays one of every event the notification centre turns
 // into a notification, a moment apart, so each kind shows: a waiting agent,
 // one that finished three times (one collapsed row), failures, the guard, a
-// kit with warnings, a flow's message, and an agent opening things.
+// a flow's message and an agent opening things.
 export function mockNotifications() {
   const devl = "devl";
   const plays: [number, Omit<BerthEvent, "time">][] = [
@@ -1503,7 +1487,6 @@ export function mockNotifications() {
     [750, { type: "worktree.setup.failed", box: devl, data: { location: "shop", name: "qa-deck", path: "/home/me/work/shop-qa-deck" }, error: "pnpm install exited with status 1: ERR_PNPM_FETCH_404" }],
     [900, { type: "service.failed", box: devl, data: { location: "shop", name: "qa-deck", service: "storybook", error: "port 6006 is already in use" } }],
     [1050, { type: "guard.acted", box: "gpu", origin: "guard", data: { action: "stop_services", location: "evals", name: "judge-v2", path: "/home/me/evals-judge-v2", services: ["web", "worker"], memory_percent: 93.4, reason: "Memory at 93% for 2 minutes" } }],
-    [1200, { type: "kit.installed", box: devl, data: { location: "shop", kit: "shop-dev", version: "3", source: "https://example.com/kits/shop-dev.json", warnings: ["The .env.example has keys this kit does not set: PAYMENTS_WEBHOOK_SECRET", "pnpm is older than the repository asks for (9.1 < 9.4)"] } }],
     [1350, { type: "notify", box: devl, origin: "flow:nightly-e2e", data: { title: "Nightly e2e passed", body: "412 tests in 9m 12s", flow: "nightly-e2e", location: "shop" } }],
     // One of three Claude Codes in one worktree: named by its session, it
     // reads as "Claude Code 3", not just "Claude Code".

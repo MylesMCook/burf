@@ -27,7 +27,6 @@ import { openAddBox } from "@/views/onboarding/add-box-dialog";
 import { AddAgents } from "@/views/onboarding/guided-install";
 import { BoxRouteList, BoxRoutes } from "@/views/settings/box-routes";
 import { activeRoute, viaRoute } from "@/lib/box-routes";
-import { BoxOnePasswordNote } from "@/views/team/team-keys-note";
 import { CommandLog } from "@/views/settings/command-log";
 import { ConfirmDialog } from "@/views/settings/confirm";
 import { RemoveLocalBoxDialog } from "@/views/settings/local-box-remove";
@@ -214,7 +213,6 @@ function BoxRow({ box }: { box: BoxStatus }) {
       {online && <BrowserSandboxCard box={box.name} full className="mt-3" />}
       {online && <BoxProcessesCard box={box.name} className="mt-3" />}
       {online && <BoxAgents box={box.name} />}
-      {online && <BoxOnePasswordNote box={box.name} />}
       {update && update.state !== "queued" && <CommandLog className="mt-3" lines={update.lines ?? []} done={update.state === "done"} error={update.error} />}
       {update?.state === "queued" && <p className="mt-2 text-muted-foreground text-xs">Waiting for the box before it to finish updating…</p>}
       <GuardDialog box={box.name} open={guarding} onOpenChange={setGuarding} />

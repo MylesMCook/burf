@@ -84,7 +84,7 @@ export function PluginConsentDialog() {
             <dt className="text-muted-foreground">Folder</dt>
             <dd className="truncate font-mono">~/.berth/plugins/{plugin?.id}</dd>
             <dt className="text-muted-foreground">Code</dt>
-            <dd className="truncate font-mono">{files ? (files.mainPath ? `${files.mainPath} · ${(files.main.length / 1024).toFixed(1)} KB` : "none (hooks, themes or kits only)") : "Reading…"}</dd>
+            <dd className="truncate font-mono">{files ? (files.mainPath ? `${files.mainPath} · ${(files.main.length / 1024).toFixed(1)} KB` : "none (hooks or themes only)") : "Reading…"}</dd>
             <dt className="text-muted-foreground">Hash</dt>
             <dd className="truncate font-mono">{files ? files.hash.slice(0, 7 + 16) : "…"}</dd>
           </dl>

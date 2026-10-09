@@ -32,12 +32,8 @@ import { openUrl } from "@/lib/open-url";
 import { setPrefs, usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { createTerminal, type TermHandle } from "@/lib/terminal";
-import { putRun, runFor, type TeamAfterInstall, type TeamStatus, useTeam } from "@/lib/team";
 import { cn } from "@/lib/utils";
-import { TerminalView } from "@/components/workspace/terminal-view";
 import { FailurePanel } from "@/views/onboarding/ssh-setup";
-
-export type { TeamAfterInstall };
 
 // The guided install: adding a box over SSH as one flow the person can see
 // through. First the plan, in words, with the exact commands a click away
@@ -60,7 +56,7 @@ export interface InstallTarget {
 
 type Stage = "plan" | "run";
 
-export function GuidedInstall({ target, onClose, onReady, readyLabel, team }: { target: InstallTarget | undefined; onClose(): void; onReady(box: string): void; readyLabel?: string; team?: TeamAfterInstall }) {
+export function GuidedInstall({ target, onClose, onReady, readyLabel }: { target: InstallTarget | undefined; onClose(): void; onReady(box: string): void; readyLabel?: string }) {
   const [stage, setStage] = useState<Stage>("plan");
   const [agents, setAgents] = useAgentChoice();
   const run = useInstallRun();
@@ -92,7 +88,7 @@ export function GuidedInstall({ target, onClose, onReady, readyLabel, team }: { 
       <DialogPrimitive.Portal>
         <DialogPrimitive.Backdrop className="fixed inset-0 z-50 bg-background" />
         <DialogPrimitive.Popup aria-label={`Set up ${target?.host ?? "a box"}`} data-testid="guided-install" data-stage={stage} className="fixed inset-0 z-50 flex flex-col bg-background text-foreground outline-none">
-          {target && stage === "plan" && <PlanStage target={target} agents={agents} onAgents={setAgents} onStart={start} onClose={onClose} team={team} />}
+          {target && stage === "plan" && <PlanStage target={target} agents={agents} onAgents={setAgents} onStart={start} onClose={onClose} />}
           {target && stage === "run" && (
             <RunStage
               target={target}
@@ -101,7 +97,6 @@ export function GuidedInstall({ target, onClose, onReady, readyLabel, team }: { 
               onClose={onClose}
               onReady={onReady}
               readyLabel={readyLabel}
-              team={team}
               onBack={() => {
                 run.reset();
                 setStage("plan");
@@ -171,9 +166,9 @@ function CloseButton({ onClick, disabled, label = "Close" }: { onClick(): void; 
 
 // ---------------------------------------------------------------- the plan
 
-function PlanStage({ target, agents, onAgents, onStart, onClose, team }: { target: InstallTarget; agents: string[]; onAgents(ids: string[]): void; onStart(): void; onClose(): void; team?: TeamAfterInstall }) {
+function PlanStage({ target, agents, onAgents, onStart, onClose }: { target: InstallTarget; agents: string[]; onAgents(ids: string[]): void; onStart(): void; onClose(): void }) {
   const { plan, error } = useInstallPlan(target.host, agents);
-  const sudo = [...(plan?.steps.filter((s) => s.sudo) ?? []), ...(team?.steps.filter((s) => s.sudo) ?? [])];
+  const sudo = plan?.steps.filter((s) => s.sudo) ?? [];
   const primary = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     if (plan) primary.current?.focus();
@@ -182,8 +177,8 @@ function PlanStage({ target, agents, onAgents, onStart, onClose, team }: { targe
     <>
       <Header
         icon={<ServerIcon className="size-4" />}
-        title={team ? `Set up ${target.host} for ${team.name}` : `Set up ${target.host}`}
-        sub={team ? `Burf installs what the box needs, then runs ${team.name}'s setup on it, in a terminal here. Nothing runs until you start it.` : "Burf installs what this box needs, in a terminal here. Nothing runs until you start it."}
+        title={`Set up ${target.host}`}
+        sub="Burf installs what this box needs, in a terminal here. Nothing runs until you start it."
         right={<CloseButton onClick={onClose} />}
       />
       <div className="min-h-0 flex-1 overflow-y-auto">
@@ -216,21 +211,6 @@ function PlanStage({ target, agents, onAgents, onStart, onClose, team }: { targe
                 ))}
               </ol>
             )}
-            {plan && team && (
-              <>
-                <div className="mt-6 flex items-baseline gap-2">
-                  <h2 className="font-medium text-sm">Then {team.name}'s setup</h2>
-                  <span className="text-muted-foreground text-xs">
-                    on the box, in its own terminal · then {team.repos === 1 ? "1 repo" : `${team.repos} repos`}
-                  </span>
-                </div>
-                <ol data-testid="install-plan-team" className="mt-3 divide-y overflow-hidden rounded-xl border bg-card">
-                  {team.steps.map((s, i) => (
-                    <PlanRow key={s.id} step={{ id: `team-${s.id}`, title: s.title, detail: s.detail, sudo: s.sudo, where: "box", commands: s.commands }} n={plan.steps.length + i + 1} bundledTmux={false} />
-                  ))}
-                </ol>
-              </>
-            )}
           </section>
         </div>
       </div>
@@ -242,7 +222,6 @@ function PlanStage({ target, agents, onAgents, onStart, onClose, team }: { targe
               {sudo.length > 0 ? (
                 <>
                   <span className="text-foreground">{sudo.length === 1 ? "One step" : `${sudo.length} steps`} may ask for your password.</span> sudo asks on the box, in the terminal; Burf never sees it or keeps it.
-                  {team ? ` It may ask again for ${team.name}'s steps: they run in berthd's own terminal on the box.` : ""}
                 </>
               ) : (
                 "Nothing here needs your password."
@@ -559,7 +538,6 @@ function RunStage({
   onReady,
   onBack,
   readyLabel,
-  team,
 }: {
   target: InstallTarget;
   run: InstallRun;
@@ -568,7 +546,6 @@ function RunStage({
   onReady(box: string): void;
   onBack(): void;
   readyLabel?: string;
-  team?: TeamAfterInstall;
 }) {
   const narrow = useMediaQuery("(max-width: 1000px)");
   const [identity, setIdentity] = useState(target.identity ?? "");
@@ -582,42 +559,6 @@ function RunStage({
     // Once, when the run stage opens.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // From Team setup, the box being ready starts the team's setup on it, in
-  // this same screen: its steps under the install's, its terminal here.
-  const [teamStart, setTeamStart] = useState<{ state: "no" | "starting" | "started" | "error"; error?: string }>({ state: "no" });
-  const teamRun = useTeam((s) => (team && run.box && teamStart.state === "started" ? runFor(s, team.org, run.box) : undefined));
-  const startTeam = async () => {
-    if (!team || !run.box) return;
-    setTeamStart({ state: "starting" });
-    try {
-      putRun(await team.start(run.box));
-      setTeamStart({ state: "started" });
-    } catch (err) {
-      setTeamStart({ state: "error", error: plainError(err) });
-    }
-  };
-  useEffect(() => {
-    if (ready && team && teamStart.state === "no") void startTeam();
-    // Once, when the box is ready.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready]);
-  if (team && ready) {
-    return (
-      <TeamPhase
-        team={team}
-        box={run.box!}
-        run={run}
-        teamRun={teamRun}
-        start={teamStart}
-        onStart={() => void startTeam()}
-        onClose={onClose}
-        onReady={() => onReady(run.box!)}
-        readyLabel={readyLabel}
-        narrow={narrow}
-      />
-    );
-  }
 
   const status = ready ? (
     <Badge variant="success" size="lg" data-testid="install-status">
@@ -676,184 +617,6 @@ function RunStage({
         <section className="flex min-h-0 min-w-0 flex-1 flex-col">
           <Banner run={run} ready={ready} readyLabel={readyLabel} onReady={() => run.box && onReady(run.box)} onBack={onBack} agents={agents} />
           <InstallTerminal run={run} />
-        </section>
-      </div>
-    </>
-  );
-}
-
-// TeamPhase is the second phase of adding a box from Team setup: the
-// install is done, and the team's setup runs on the box in berthd's own
-// terminal, shown here, with its steps under the install's.
-function TeamPhase({
-  team,
-  box,
-  run,
-  teamRun,
-  start,
-  onStart,
-  onClose,
-  onReady,
-  readyLabel,
-  narrow,
-}: {
-  team: TeamAfterInstall;
-  box: string;
-  run: InstallRun;
-  teamRun?: TeamStatus;
-  start: { state: "no" | "starting" | "started" | "error"; error?: string };
-  onStart(): void;
-  onClose(): void;
-  onReady(): void;
-  readyLabel?: string;
-  narrow: boolean;
-}) {
-  const steps = teamRun?.steps ?? [];
-  const boxDone = !!teamRun && (teamRun.phase === "projects" || teamRun.phase === "done");
-  const failed = steps.find((s) => s.state === "failed");
-  const waiting = steps.find((s) => s.state === "waiting");
-  const current = steps.findIndex((s) => s.state === "running" || s.state === "waiting");
-  const busy = !boxDone && !failed && start.state !== "error";
-  const go = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    if (boxDone) go.current?.focus();
-  }, [boxDone]);
-  const retry = async (from: string) => {
-    try {
-      putRun(await team.retry(box, from));
-    } catch (err) {
-      toastManager.add({ type: "error", title: "Couldn't retry", description: plainError(err) });
-    }
-  };
-  const rows: StepRow[] = steps.map((s) => ({
-    id: s.id,
-    title: s.title,
-    sudo: s.sudo,
-    state: s.state === "running" || s.state === "waiting" ? "running" : s.state === "skipped" ? "skip" : s.state === "failed" ? "fail" : s.state === "done" ? "done" : "todo",
-    message: s.state === "skipped" ? "already done" : s.state === "failed" ? s.error : undefined,
-  }));
-
-  let tone = "";
-  let text: ReactNode;
-  let action: ReactNode = null;
-  if (start.state === "error") {
-    tone = "bg-destructive/6";
-    text = <>Couldn't start {team.name}'s setup: {start.error}</>;
-    action = (
-      <Button size="sm" variant="outline" onClick={onStart}>
-        <RotateCwIcon /> Try again
-      </Button>
-    );
-  } else if (!teamRun) {
-    text = (
-      <span className="flex items-center gap-2">
-        <Spinner className="size-3.5" /> Starting {team.name}'s setup on {box}…
-      </span>
-    );
-  } else if (boxDone) {
-    tone = "bg-success/6";
-    const repos = teamRun.projects.filter((p) => p.state !== "skipped").length;
-    text = (
-      <>
-        <span className="font-medium">{box} is set up for {team.name}.</span> {repos ? `${repos === 1 ? "The repo is" : `${repos} repos are`} cloning and setting up; Team setup shows how far.` : ""}
-      </>
-    );
-    action = (
-      <Button ref={go} size="sm" data-testid="install-continue" onClick={onReady}>
-        {readyLabel ?? "Back to Team setup"} <ArrowRightIcon />
-      </Button>
-    );
-  } else if (failed) {
-    tone = "bg-destructive/6";
-    text = <>Stopped at {failed.title}. The terminal says why; fix it on {box}, then retry from it. The steps before it are kept.</>;
-    action = (
-      <Button size="sm" data-testid="team-phase-retry" onClick={() => void retry(failed.id)}>
-        <RotateCwIcon /> Retry from {failed.title.replace(/ (with|in|and|on) .*/, "")}
-      </Button>
-    );
-  } else if (waiting?.id === "github" && waiting.code) {
-    tone = "bg-info/8";
-    text = (
-      <>
-        <span className="font-medium">The box signs in to GitHub on its own.</span> Enter <span className="font-mono font-semibold tracking-wider">{waiting.code}</span> at github.com/login/device.
-      </>
-    );
-    action = (
-      <Button size="sm" onClick={() => void openUrl(waiting.url ?? "https://github.com/login/device")}>
-        Open github.com/login/device
-      </Button>
-    );
-  } else if (waiting?.id === "1password") {
-    tone = "bg-warning/8";
-    text = <>op on {box} is asking you to sign in to 1Password. Answer it in the terminal: what you type stays on the box.</>;
-  } else if (waiting) {
-    tone = "bg-warning/8";
-    text = (
-      <>
-        <span className="font-medium">sudo is asking for your password on {box}.</span> Type it in the terminal and press <Kbd>↵</Kbd>. Burf never sees it.
-      </>
-    );
-  } else {
-    text = (
-      <>
-        <span className="text-muted-foreground">
-          {team.name}'s step {Math.max(1, current + 1)} of {steps.length}
-        </span>{" "}
-        · {steps[current]?.title ?? "starting"}
-      </>
-    );
-  }
-
-  return (
-    <>
-      <Header
-        icon={<SquareTerminalIcon className="size-4" />}
-        title={boxDone ? `${box} is set up for ${team.name}` : `Setting up ${box} for ${team.name}`}
-        sub={boxDone ? "berthd, the agents and the team's tools are on the box. The repos come next." : `${box} is ready. Now ${team.name}'s steps, in berthd's own terminal on the box: it keeps going if you close this.`}
-        right={
-          <div className="flex items-center gap-2">
-            {busy ? (
-              <span data-testid="install-status" className="flex items-center gap-1.5 text-muted-foreground text-xs">
-                <Spinner className="size-3" /> {team.name}'s setup
-              </span>
-            ) : boxDone ? (
-              <Badge variant="success" size="lg" data-testid="install-status">
-                <CheckIcon /> Set up
-              </Badge>
-            ) : null}
-            <CloseButton onClick={onClose} label={busy ? "Close: it keeps going on the box" : "Close"} />
-          </div>
-        }
-      />
-      <div data-testid="team-phase" data-phase={teamRun?.phase ?? start.state} className={cn("flex min-h-0 flex-1", narrow ? "flex-col" : "flex-row")}>
-        <aside className={cn("shrink-0 overflow-y-auto", narrow ? "max-h-[38%] border-b" : "w-[320px] border-r")}>
-          <StepList steps={run.steps} narrow={narrow} onRetry={() => {}} busy={false} />
-          <h3 className="mx-4 mt-1 border-t pt-3 font-medium text-muted-foreground text-xs">{team.name}'s setup</h3>
-          <ol data-testid="team-phase-steps" className={cn("px-2 py-2", narrow && "grid grid-cols-2 gap-x-2")}>
-            {rows.map((s) => (
-              <li key={s.id} data-testid={`team-step-${s.id}`} data-state={s.state} className={cn("rounded-lg px-2.5 py-2", s.state === "running" && "bg-accent/50", s.state === "fail" && "bg-destructive/6")}>
-                <div className="flex items-center gap-2.5">
-                  <StepIcon state={s.state} />
-                  <span className={cn("min-w-0 flex-1 truncate text-[13px]", (s.state === "todo" || s.state === "skip") && "text-muted-foreground", s.state === "running" && "font-medium")}>{s.title}</span>
-                  {s.sudo && s.state !== "skip" && <KeyRoundIcon aria-label="needs sudo" className="size-3 shrink-0 text-warning-foreground" />}
-                </div>
-                {s.message && !narrow && <p className={cn("mt-0.5 ml-7.5 text-xs leading-relaxed", s.state === "fail" ? "text-destructive-foreground" : "text-muted-foreground")}>{s.message}</p>}
-              </li>
-            ))}
-          </ol>
-        </aside>
-        <section className="flex min-h-0 min-w-0 flex-1 flex-col">
-          <div data-testid="team-phase-banner" aria-live="polite" className={cn("flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-b px-5 py-2.5 text-sm", tone)}>
-            <p className="min-w-0 flex-1 basis-72 leading-relaxed">{text}</p>
-            {action}
-          </div>
-          {teamRun?.session ? (
-            <div className="relative min-h-0 flex-1">
-              <TerminalView box={box} session={teamRun.session} wsKey="" tab="" pane={`team:${teamRun.session}`} visible focused={!!waiting} onFocus={() => {}} onClose={() => {}} />
-            </div>
-          ) : (
-            <InstallTerminal run={run} />
-          )}
         </section>
       </div>
     </>

@@ -8,7 +8,6 @@ import { flowKey, resolveFromEvent, route, secretKey, serviceKey } from "@/lib/n
 import { handlePreview } from "@/lib/preview";
 import { handleQueueEvent } from "@/lib/queue";
 import { scheduleRuns } from "@/lib/runs";
-import { handleTeamEvent } from "@/lib/team";
 import { handleSessionOpen } from "@/lib/session-open";
 import { archiveFailed, worktreeGone } from "@/lib/remove-worktree";
 import { markRemoving, markScript, removalOf, useRemovals } from "@/lib/removing";
@@ -58,8 +57,6 @@ export function handleEvent(e: BerthEvent) {
 
   // Prompts queued for a box that was away: the list, and what came of them.
   if (e.type.startsWith("queue.")) handleQueueEvent(e);
-  // A team setup's runner on a box, or a newer commit of one (lib/team).
-  if (e.type.startsWith("team.") || e.type === "box.connected") handleTeamEvent(e);
   notifyFor(e);
 }
 
@@ -168,19 +165,6 @@ function notifyFor(e: BerthEvent) {
       worktree: d.name !== d.location ? str(d.name) : undefined,
       action: { kind: "worktree", box, path: str(d.path), location: str(d.location), worktree: str(d.name) },
       key: `guard|${box}|${d.action}|${d.path ?? place}`,
-    });
-  }
-  if (e.type === "kit.installed" && box && Array.isArray(d.warnings) && d.warnings.length) {
-    const warnings = d.warnings as string[];
-    route({
-      category: "kit",
-      title: `${str(d.kit) ?? "A kit"} installed with ${warnings.length === 1 ? "a warning" : `${warnings.length} warnings`}`,
-      detail: warnings[0],
-      tone: "warning",
-      box,
-      project: str(d.location),
-      action: d.location ? { kind: "project", box, location: String(d.location) } : undefined,
-      key: `kit|${box}|${d.location}|${d.kit}`,
     });
   }
   // A variable naming a secret was left unset. The event never carries the

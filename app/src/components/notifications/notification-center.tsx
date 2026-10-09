@@ -15,7 +15,6 @@ import {
   MailOpenIcon,
   MegaphoneIcon,
   MessageCircleQuestionIcon,
-  PackageIcon,
   PuzzleIcon,
   SendIcon,
   ServerCrashIcon,
@@ -140,7 +139,6 @@ const icons: Record<Category, React.ComponentType<{ className?: string }>> = {
   setupFailed: WrenchIcon,
   serviceFailed: ServerCrashIcon,
   guard: ShieldAlertIcon,
-  kit: PackageIcon,
   notify: MegaphoneIcon,
   opened: SquareTerminalIcon,
   plugin: PuzzleIcon,
@@ -168,7 +166,6 @@ const kinds: Partial<Record<Category, Kind>> = {
   secret: "problems",
   queueFailed: "problems",
   guard: "problems",
-  kit: "problems",
 };
 const kindOf = (c: Category): Kind => kinds[c] ?? "messages";
 
