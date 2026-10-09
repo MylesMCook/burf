@@ -18,6 +18,12 @@ pnpm run build --logLevel error
 pnpm exec playwright test remote-chat.spec.ts local-chat.spec.ts chat-first.spec.ts chat.spec.ts chat-feed.spec.ts first-run.spec.ts local-computer.spec.ts windows-client.spec.ts diagnostics.spec.ts trust.spec.ts workspace.spec.ts chat-experience.spec.ts agent-picker.spec.ts --workers=2
 ```
 
+Before a push, `scripts/check-local.sh` runs the suites the change reaches
+(Go, the app's checks, the whole browser suite) on this machine, by the
+commands CI uses. A pull request's hosted run leaves the browser suite out;
+main runs it once per merge. So a push without a local pass of that suite is
+unverified.
+
 These acceptance tests use synthetic fixtures and isolated loopback servers.
 Leave `BERTH_E2E_LIVE` unset. Never point mutation tests at a real agent.
 Playwright starts and stops its own preview server; `E2E_PORT` can select a free

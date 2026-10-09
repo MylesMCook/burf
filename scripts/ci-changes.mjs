@@ -50,9 +50,15 @@ export function suitesFor(paths) {
   return out;
 }
 
+// only keeps the named suites of what was picked: a run that has just one
+// left to prove (--only=e2e, a merge whose other suites passed already).
+export const only = (picked, names) => new Set([...picked].filter((s) => names.includes(s)));
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const all = process.argv.includes("--all");
+  const names = process.argv.find((a) => a.startsWith("--only="))?.slice(7).split(",");
   const paths = all ? [] : readFileSync(0, "utf8").split("\n").map((l) => l.trim()).filter(Boolean);
-  const picked = all ? new Set(SUITES) : suitesFor(paths);
+  const reached = all ? new Set(SUITES) : suitesFor(paths);
+  const picked = names ? only(reached, names) : reached;
   for (const s of SUITES) console.log(`${s}=${picked.has(s)}`);
 }
