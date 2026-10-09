@@ -63,6 +63,8 @@ export interface Prefs {
   // Home's widgets, in order and size (lib/home-layout.ts). Null until the
   // person customises Home: they get the default layout, which can change.
   home: HomeLayout | null;
+  // The new-task composer's project and agent pickers, folded by default.
+  taskComposerExpanded: boolean;
   // The agent CLIs the guided install last put on a box (Add a box ›
   // Agents); null until the person chooses, when Claude Code is ticked.
   installAgents: string[] | null;
@@ -103,6 +105,7 @@ const DEFAULTS: Prefs = {
   filesPanel: false,
   systemThemes: { light: "berth-light", dark: "berth-dark" },
   home: null,
+  taskComposerExpanded: false,
   installAgents: null,
   whatsNewSeen: null,
   cliLinkOffered: false,

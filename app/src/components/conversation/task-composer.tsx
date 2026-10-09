@@ -1,10 +1,10 @@
-import { ArrowUpIcon, FolderIcon, GitBranchIcon, SendIcon, ServerIcon, ShieldAlertIcon, SlidersHorizontalIcon } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { ArrowUpIcon, ChevronDownIcon, FolderIcon, GitBranchIcon, SendIcon, ServerIcon, ShieldAlertIcon, SlidersHorizontalIcon } from "lucide-react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { AgentIcon, StatusDot } from "@/components/agent-glyph";
 import { Scene } from "@/components/art/scenes";
 import { AttemptsOptions, type AttemptValues, SendOptions, type SendValues, WorktreeOptions, type WorktreeValues } from "@/components/conversation/composer-options";
-import { AddProjectItem, AgentsPicker, type Chosen, DefaultBoxItem, entryKey, expand, Pick, SavedPrompts, TargetsPicker, toChosen } from "@/components/conversation/composer-pickers";
+import { AddProjectItem, AgentsPicker, type Chosen, DefaultBoxItem, entryKey, expand, nice, Pick, type PickerPreset, SavedPrompts, TargetsPicker, toChosen } from "@/components/conversation/composer-pickers";
 import { useBranches, useResolve } from "@/components/new-worktree/use-resolve";
 import { withDefaults } from "@/components/prompts/shared";
 import { RepoWants, trustRepo, useRepoTrustFor } from "@/components/repo-trust";
@@ -27,6 +27,7 @@ import { plainError } from "@/lib/errors";
 import { sessionLocation } from "@/lib/orchestrate";
 import { handoffPrompt, reviewPrompt } from "@/lib/orchestrate";
 import { loadProjects, projectActions, useProjects } from "@/lib/project-groups";
+import { setPrefs, usePrefs } from "@/lib/prefs";
 import { promptFor, type ResolveKind, worktreeSlug } from "@/lib/projects";
 import { BASE_PERMISSIONS, chatPermissions, savedChatPermission, saveChatPermission } from "@/lib/local-computer";
 import { hasChatOptions, hasFullAccess, hasRemoteCodex, useChatModels } from "@/lib/remote-chat";
@@ -48,7 +49,7 @@ export type { AgentPick } from "@/lib/composer";
 // which agents (one is a task, several are attempts, none is the worktree
 // alone); or, as "Running agents", a prompt for agents already at work. The
 // same frame sits on home, in an empty worktree, before an agent's first
-// prompt, and in the ⌘N dialog, where its options are open.
+// prompt, and in the ⌘N dialog.
 
 export interface TaskComposerProps {
   draft?: ComposerDraft;
@@ -61,7 +62,7 @@ export interface TaskComposerProps {
   onSend?(text: string): Promise<void>;
   // How a failed first prompt is told (the pane's toast with next steps).
   onFail?(err: unknown): void;
-  // In the dialog: its options start open, and it says when it is done.
+  // In the dialog: it says when it is done.
   dialog?: boolean;
   onMode?(mode: "start" | "send"): void;
   // What it would do now, for the dialog's title.
@@ -120,6 +121,9 @@ interface BodyProps extends TaskComposerProps {
 // ---- Starting work ------------------------------------------------------
 
 function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, placeholder, onDone, onKind, keepOpen, className }: BodyProps) {
+  const collapsible = !fixed && !draft.from;
+  const rememberedExpanded = usePrefs((s) => s.taskComposerExpanded);
+  const pickersId = useId();
   const status = useStore((s) => s.status);
   const templates = useStore((s) => s.templates);
   const { projects: all } = useProjects();
@@ -375,7 +379,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
   const [chosenPermission, setPermission] = useState<keyof typeof chatPermissions>(() => savedChatPermission() ?? "strict");
   // Full access is offered only where the box takes it.
   const permission = chosenPermission === "full-access" && !hasFullAccess(box) ? "strict" : chosenPermission;
-  const pickerPresets = !codexModels?.length
+  const pickerPresets: PickerPreset[] = !codexModels?.length
     ? presets
     : // Structured chats take these as message options, so the preset needs no CLI flag for them.
       presets.map((p) => (p.id !== "codex" ? p : { ...p, model_flag: p.model_flag || "--model", effort_flag: p.effort_flag || "--effort", models: codexModels.map((m) => m.model), model_names: Object.fromEntries(codexModels.map((m) => [m.model, m.displayName || m.model])), efforts: codexModels.find((m) => m.model === sel.codex?.models[0])?.supportedReasoningEfforts?.map((e) => e.reasoningEffort) ?? p.efforts }));
@@ -405,6 +409,21 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
               : undefined;
 
   const action = from ? (from.kind === "review" ? "Start review" : "Hand off") : noAgent ? "Create worktree" : attempts ? `Try ${picks.length} ways` : "Start";
+  // Missing configuration stays visible without changing the saved preference.
+  const needsPickers = (settled && (!box || !locName || (!noAgent && !picks.length)))
+    || (!structuredCodex && (reqCard === "tmux" || reqCard === "agent"))
+    || (attempts && !!box && !boxHasRuns(box));
+  const expanded = rememberedExpanded || needsPickers;
+  const summaryAgents = noAgent ? "No agent" : picks.map((pick) => {
+    const preset = pickerPresets.find((p) => p.id === pick.agent);
+    return [preset?.name ?? agentLabel(pick.agent), pick.model && (preset?.model_names?.[pick.model] ?? nice(pick.model)), pick.effort && nice(pick.effort)].filter(Boolean).join(" · ");
+  }).join(" + ") || "Choose agent";
+  const summary = [
+    `${project?.name ?? "Choose project"} on ${box || "choose box"}`,
+    fresh ? "new worktree" : "main checkout",
+    summaryAgents,
+    chatControls && !comparison && permission !== "strict" && chatPermissions[permission].label,
+  ].filter(Boolean).join(" · ");
 
   // Trust alone: the repository's config runs from the next worktree on,
   // with or without a task typed yet.
@@ -498,7 +517,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
   };
 
   // Nothing to start work in: say why, and offer the one way on.
-  if (!pinned && settled && projects.length === 0) return <NoProjects className={className} tabs={tabs} />;
+  const noProjects = !pinned && settled && projects.length === 0;
 
   const setDefault = async (b: string) => {
     if (!project) return;
@@ -572,7 +591,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
       className={className}
       drop={files}
       head={
-        (tabs || followed || hasOptions) && (
+        (tabs || followed || ((!collapsible || expanded) && hasOptions)) && (
           <>
             {tabs}
             {followed && (
@@ -585,8 +604,8 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
               </span>
             )}
             <span className="ml-auto" />
-            {!noAgent && <SavedPrompts onPick={(_, body) => setText(text.trim() ? `${text.trimEnd()}\n\n${body}` : body)} />}
-            {hasOptions && <OptionsToggle open={optionsOpen} onOpen={setOptionsOpen} />}
+            {(!collapsible || expanded) && !noAgent && <SavedPrompts onPick={(_, body) => setText(text.trim() ? `${text.trimEnd()}\n\n${body}` : body)} />}
+            {(!collapsible || expanded) && hasOptions && <OptionsToggle open={optionsOpen} onOpen={setOptionsOpen} />}
           </>
         )
       }
@@ -610,9 +629,25 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
           hint={noAgent && input.trim() ? <Resolved resolution={resolution} pending={pending} error={resolveError} /> : undefined}
         />
       }
-      options={options}
+      summary={collapsible && <div className="flex min-w-0 items-center gap-1 px-1 pt-1">
+        <button
+          type="button"
+          data-testid="task-composer-summary"
+          aria-expanded={expanded}
+          aria-controls={pickersId}
+          onClick={() => setPrefs({ taskComposerExpanded: !expanded })}
+          className="flex min-h-8 min-w-0 items-center gap-1 rounded-md px-2.5 py-1 text-left text-muted-foreground text-xs outline-none hover:bg-accent hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <span className="min-w-0 truncate">{summary}</span>
+          {/* Says the line opens: it reads as plain words otherwise. */}
+          <ChevronDownIcon aria-hidden className={cn("size-3.5 shrink-0 opacity-72 transition-transform", expanded && "rotate-180")} />
+        </button>
+        {!expanded && <span className="ml-auto flex shrink-0"><SendButton label={action} dialog={dialog} blocker={blocker} busy={busy} onClick={() => void submit()} /></span>}
+      </div>}
+      options={!collapsible && options}
       notice={
         <>
+          {noProjects && <NoProjects />}
           {box && !structuredCodex && <RequirementsCard box={box} agent={reqAgent} noAgent={noAgent} className="mx-1 mt-1" />}
           {pendingTrust?.wants && fresh && (
             <Alert variant="warning" className="mt-1">
@@ -646,7 +681,9 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
         </>
       }
       footer={
-        <>
+        <div className="w-full min-w-0">
+          <div id={collapsible ? pickersId : undefined} hidden={collapsible && !expanded}>
+          {collapsible && options && <FramePanel className="mb-1 flex max-h-[min(46vh,30rem)] flex-col gap-4 overflow-y-auto p-3.5">{options}</FramePanel>}
           {/* One wrapping row of everything: a pick that does not fit starts the next row at the left edge, whole, and Send ends the last row. */}
           <div data-slot="launch-toolbar" className="flex w-full min-w-0 flex-wrap items-center gap-x-0.5 gap-y-1">
           <div data-slot="launch-place" className="contents">
@@ -705,7 +742,8 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
             </span>
           </div>
           </div>
-        </>
+          </div>
+        </div>
       }
     />
   );
@@ -1005,11 +1043,12 @@ function ToBody({ to, onSend, onFail, autoFocus, className }: TaskComposerProps 
 
 // drop: the composer's attachments, which a file dropped anywhere on the
 // frame joins; while one is held over it, the frame is outlined.
-function Shell({ head, editor, options, notice, footer, drop, className }: { head?: React.ReactNode; editor: React.ReactNode; options?: React.ReactNode; notice?: React.ReactNode; footer: React.ReactNode; drop?: Attachments; className?: string }) {
+function Shell({ head, editor, summary, options, notice, footer, drop, className }: { head?: React.ReactNode; editor: React.ReactNode; summary?: React.ReactNode; options?: React.ReactNode; notice?: React.ReactNode; footer: React.ReactNode; drop?: Attachments; className?: string }) {
   return (
     <Frame data-testid="task-composer" data-dragging={drop?.dragging || undefined} {...drop?.dropProps} className={cn("w-full shadow-lg/5", drop?.dragging && "outline-2 outline-ring/60 outline-dashed outline-offset-4", className)}>
       {head && <div className="-mt-0.5 mb-0.5 flex h-8 min-w-0 items-center gap-0.5 px-0.5">{head}</div>}
       <FramePanel className="p-0 ring-ring/24 transition-shadow has-[textarea:focus-visible]:border-ring has-[textarea:focus-visible]:ring-[3px]">{editor}</FramePanel>
+      {summary}
       {options && <FramePanel className="flex max-h-[min(46vh,30rem)] flex-col gap-4 overflow-y-auto p-3.5">{options}</FramePanel>}
       {notice}
       <FrameFooter className="flex min-w-0 items-center gap-0.5 px-1 pt-1 pb-0">{footer}</FrameFooter>

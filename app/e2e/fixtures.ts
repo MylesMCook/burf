@@ -162,6 +162,13 @@ export const mockOnly = (why = "needs the mock fixtures") => test.skip(live, why
 
 export { expect };
 
+export async function openTaskPickers(composer: Locator): Promise<void> {
+  const summary = composer.getByTestId("task-composer-summary");
+  await expect(summary).toBeVisible();
+  if (await summary.getAttribute("aria-expanded") === "false") await summary.click();
+  await expect(summary).toHaveAttribute("aria-expanded", "true");
+}
+
 // A worktree with an agent in it, for live runs: the first one the sidebar
 // lists with an agent's glyph, unless BERTH_E2E_WORKTREE names one.
 export async function agentWorktree(app: App, mock: string): Promise<string> {
