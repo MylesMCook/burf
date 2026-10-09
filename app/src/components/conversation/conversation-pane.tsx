@@ -611,7 +611,7 @@ function CommentsStrip({ count, who, onSend }: { count: number; who: string; onS
 // (components/conversation/attachments), and their paths go with the reply.
 // "/" and "@" open the agent's commands and the worktree's files
 // (command-menu).
-function Reply({ onSend, onFail, who, mode, blocked, hint, attach, agent, autoFocus }: { onSend(text: string): Promise<void>; onFail(err: unknown): void; who: string; mode: "send" | "queue" | "answer"; blocked?: boolean; hint?: string; attach?: AttachTarget; agent?: string; autoFocus?: boolean }) {
+function Reply({ onSend, onFail, who, mode, blocked, hint, attach, agent }: { onSend(text: string): Promise<void>; onFail(err: unknown): void; who: string; mode: "send" | "queue" | "answer"; blocked?: boolean; hint?: string; attach?: AttachTarget; agent?: string }) {
   const [text, setText] = useState("");
   const att = useAttachments(attach);
   const menu = useComposerMenu({ box: attach?.box, session: attach && "session" in attach ? attach.session : undefined, agent, text, setText });
@@ -680,7 +680,7 @@ function Reply({ onSend, onFail, who, mode, blocked, hint, attach, agent, autoFo
         )}
         <InputGroupTextarea
           ref={input}
-          autoFocus={autoFocus}
+          data-autofocus
           rows={1}
           onPaste={att.onPaste}
           value={text}
@@ -792,7 +792,7 @@ function FirstPrompt({ box, session, agent, name, branch, onSend, onFail }: { bo
       </div>
       <div className="shrink-0 px-4 pb-4 pt-2 sm:px-6">
         <div className="mx-auto w-full max-w-(--berth-chat-w)">
-          <Reply attach={{ box, session }} agent={agent} who={who} mode="send" onSend={onSend} onFail={onFail} hint={`Message ${who}`} autoFocus />
+          <Reply attach={{ box, session }} agent={agent} who={who} mode="send" onSend={onSend} onFail={onFail} hint={`Message ${who}`} />
         </div>
       </div>
     </div>

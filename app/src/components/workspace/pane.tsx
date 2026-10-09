@@ -1,5 +1,5 @@
 import { AppWindowIcon, ArchiveIcon, ChartColumnIcon, FileTextIcon, LayoutGridIcon, TableIcon, WorkflowIcon, ArrowLeftRightIcon, BotIcon, Columns2Icon, EllipsisIcon, GlobeIcon, ImageIcon, MessagesSquareIcon, MonitorSmartphoneIcon, PencilIcon, ScrollTextIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, SquareTerminalIcon, XIcon } from "lucide-react";
-import { lazy, Suspense, useEffect, useMemo } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef } from "react";
 
 
 import { Tip } from "@/components/tip";
@@ -32,6 +32,7 @@ import { agentPresets, closePane, openBrowserAt, openPreviewAt, startSession } f
 import { agentLabel, agentOf, restartCommand, sessionAgent, sessionName, sessionState } from "@/lib/derive";
 import { nameFromKey } from "@/lib/groups";
 import { type Leaf, leaves, paneWorktree } from "@/lib/layout";
+import { useChatPaneFocus } from "@/lib/focus-home";
 import { PaneContext } from "@/lib/pane-context";
 import { usePrefs } from "@/lib/prefs";
 import { useRemoval } from "@/lib/removing";
@@ -90,6 +91,8 @@ export function Pane({ wsKey, tab, pane, visible, focused, split, mixed, compare
   // once the session itself is gone.
   const agent = session ? agentOf(session) : undefined;
   const view = usePaneView(pane);
+  const content = useRef<HTMLDivElement>(null);
+  useChatPaneFocus(content, visible && focused && (c.kind === "remote-chat" || (c.kind === "terminal" && view === "conversation")));
   // Lifted: being dragged by its header, so it fades while it moves.
   const lifted = useTabDrag((s) => s.source?.kind === "pane" && s.source.pane === pane.id);
   useEffect(() => {
@@ -121,7 +124,7 @@ export function Pane({ wsKey, tab, pane, visible, focused, split, mixed, compare
             </div>
           </div>
         )}
-        <div className={cn("relative flex min-h-0 flex-1 flex-col transition-opacity", split && !focused && "opacity-85", lifted && "opacity-40")}>
+        <div ref={content} className={cn("relative flex min-h-0 flex-1 flex-col transition-opacity", split && !focused && "opacity-85", lifted && "opacity-40")}>
           {gone && <GonePane name={gone} onClose={close} />}
           {c.kind === "remote-chat" && <RemoteChatPane box={c.box} id={c.chat} cwd={c.cwd} draft={c.draft} options={c.options} onSaved={(saved) => setPaneContent(wsKey, tab, pane.id, { ...c, ...saved })} />}
           {/* Under a chat the terminal is out of reach: Tab never lands in its

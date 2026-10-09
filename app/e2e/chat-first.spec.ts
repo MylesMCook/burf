@@ -1,4 +1,4 @@
-import { BOX, SESSION, fakeAgent, type FakeAgent } from "./fake-agent";
+import { BOX, DIR, SESSION, fakeAgent, type FakeAgent } from "./fake-agent";
 import { expect, mockOnly, test } from "./fixtures";
 
 let agent: FakeAgent;
@@ -20,6 +20,7 @@ test("a fresh profile opens a remote agent as chat without Labs", async ({ app }
   await expect(app.chat).toBeVisible();
   await expect(app.chat.getByText("The retry loop never backs off; fixed it.")).toBeVisible();
   await expect(app.composer.getByRole("textbox", { name: "Reply" })).toBeVisible();
+  await expect(app.composer.getByRole("textbox", { name: "Reply" })).toBeFocused();
   await expect(app.page.getByRole("button", { name: "Chat", exact: true })).toHaveAttribute("aria-pressed", "true");
 });
 
@@ -37,6 +38,103 @@ test("Codex opens as chat without requiring a demo override", async ({ app }) =>
   await app.openWorktree(`${BOX}/fix`);
   await expect(app.chat).toBeVisible();
   await expect(app.composer.getByRole("textbox", { name: "Reply" })).toBeVisible();
+  await expect(app.composer.getByRole("textbox", { name: "Reply" })).toBeFocused();
+});
+
+for (const arrival of ["refresh", "split", "tab"] as const) {
+  test(`a chat arriving by background ${arrival} keeps the keyboard in the current draft`, async ({ app }) => {
+    let appeared = false;
+    const background = "background-claude";
+    await app.page.route(`${agent.url}/v1/boxes/${BOX}/api/sessions`, async (route) => {
+      const sessions = await (await route.fetch()).json();
+      await route.fulfill({ json: appeared ? [...sessions, { ...sessions[0], name: background, title: "", agent_state: "idle" }] : sessions });
+    });
+    await app.page.route(`${agent.url}/v1/boxes/${BOX}/api/sessions/${background}/transcript**`, (route) =>
+      route.fulfill({ json: { source: "none", items: [], next: 0, crew: [] } }));
+    await app.page.route(`${agent.url}/v1/boxes/${BOX}/api/sessions/${background}/screen`, (route) =>
+      route.fulfill({ json: { screen: "" } }));
+    await app.open({ agent });
+    await app.openWorktree(`${BOX}/fix`);
+    const reply = app.chat.filter({ hasText: "The retry loop never backs off; fixed it." }).getByRole("textbox", { name: "Reply" });
+    await reply.fill("Keep writing here");
+    const selected = app.page.locator("[data-tab-strip] [role=tab][aria-selected=true]");
+    const tab = await selected.getAttribute("data-tab");
+    await expect.poll(() => agent.calls.includes("GET /v1/events")).toBe(true);
+    appeared = true;
+    agent.event({ type: arrival === "refresh" ? "session.started" : "session.open", data: { name: background, location: "shop/fix", path: DIR, open: arrival === "refresh" ? undefined : arrival, agent: "claude" } });
+    if (arrival === "split") {
+      await expect(app.panes).toHaveCount(2);
+      await expect(app.chat.getByRole("heading", { name: "New chat" })).toBeVisible();
+    } else {
+      await expect(app.page.locator("[data-tab-strip] [role=tab]")).toHaveCount(2);
+      await expect(app.panes).toHaveCount(1);
+    }
+    await expect(selected).toHaveAttribute("data-tab", tab!);
+    await expect(reply).toBeFocused();
+    await app.page.keyboard.type(" without interruption");
+    await expect(reply).toHaveValue("Keep writing here without interruption");
+    expect(agent.sends).toEqual([]);
+  });
+}
+
+test("a restored chat finishing its first read does not take the keyboard from a dialog", async ({ app }) => {
+  newChat();
+  await app.open({ agent });
+  await app.openWorktree(`${BOX}/fix`);
+  await expect(app.composer.getByRole("textbox", { name: "Reply" })).toBeVisible();
+  let release!: () => void;
+  const reading = new Promise<void>((resolve) => { release = resolve; });
+  let requested = false;
+  agent.transcript = async () => {
+    requested = true;
+    await reading;
+    return { body: { source: "none", items: [], next: 0, crew: [] } };
+  };
+  try {
+    await app.page.reload();
+    await expect.poll(() => requested).toBe(true);
+    await app.page.keyboard.press("ControlOrMeta+k");
+    const search = app.page.getByRole("combobox", { name: "Search sessions, worktrees and commands" });
+    await search.fill("Settings");
+    release();
+    // Behind the dialog the composer has no role to find it by.
+    await expect(app.composer.locator("textarea")).toBeVisible();
+    await expect(search).toBeFocused();
+    await app.page.keyboard.type(": Appearance");
+    await expect(search).toHaveValue("Settings: Appearance");
+  } finally { release(); }
+});
+
+// A chat is ready a moment after its pane opens. If the person has moved the
+// keyboard anywhere else by then, even to a plain button, it stays there.
+test("a chat that becomes ready later leaves the keyboard where the person moved it", async ({ app }) => {
+  newChat();
+  let release!: () => void;
+  const reading = new Promise<void>((resolve) => { release = resolve; });
+  let requested = false;
+  agent.transcript = async () => {
+    requested = true;
+    await reading;
+    return { body: { source: "none", items: [], next: 0, crew: [] } };
+  };
+  try {
+    await app.open({ agent });
+    await app.openWorktree(`${BOX}/fix`);
+    await expect.poll(() => requested).toBe(true);
+    const home = app.page.getByTestId("nav-home");
+    await home.focus();
+    release();
+    await expect(app.composer.getByRole("textbox", { name: "Reply" })).toBeVisible();
+    await expect(home).toBeFocused();
+  } finally { release(); }
+});
+
+test("a chat without a composer focuses its recovery control", async ({ app }) => {
+  agent.transcript = () => ({ status: 500, body: { error: "Synthetic unreadable transcript" } });
+  await app.open({ agent });
+  await app.openWorktree(`${BOX}/fix`);
+  await expect(app.panes.getByRole("button", { name: "Retry", exact: true })).toBeFocused();
+  await expect(app.composer).toHaveCount(0);
 });
 
 test("an older box defaults to terminal but keeps an explicit chat choice", async ({ app }) => {
