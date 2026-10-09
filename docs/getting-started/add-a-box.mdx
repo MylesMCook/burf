@@ -43,7 +43,7 @@ with, so an npm CLI finds the `node` beside it. `berthd doctor` and
 **Settings → Boxes** show which one, with its version and how it was
 installed, such as `Claude Code 2.1.3 · ~/.nvm/…/bin/claude (npm)`. berthd
 keeps the answer: it looks again when doctor runs, after **Add agents…**,
-an integrations install or a team setup's steps, and when you click **Look
+an integrations install, and when you click **Look
 again** under the box in **Settings → Boxes**.
 
 ## This Mac
@@ -254,9 +254,6 @@ kept. **Show what the box printed** opens its output. A login problem stops
 at the first step with what to do: trust a new host key, try another key
 file, or install with the command on the box instead.
 
-Adding a box from [Team setup](/guides/team-setup) is
-[the guided install](#the-guided-install) instead.
-
 ### From a terminal
 
 The same, in your own terminal:
@@ -304,14 +301,10 @@ service and pairs again.
 
 ### The guided install
 
-`burf add ssh --guided`, and adding a box from [Team setup](/guides/team-setup),
-show the whole plan first: what will run, step by step, the exact commands,
-and which steps may need `sudo`. In the app it is full screen, with the
-agents to choose and, from Team setup, the team's own steps listed after
-Burf's. Then every step runs in one terminal, full screen beside a
-checklist: press **Enter** in it to start, and type your password when
-`sudo` asks. From Team setup, when the box is ready the team's setup starts
-on it in the same screen, and **Back to Team setup** goes on from there.
+`burf add ssh --guided` shows the whole plan first, then runs every step
+in one terminal. The plan shows the box's fingerprint, tools, network and
+agents to choose. Press Enter in that terminal to start and type a password
+when `sudo` asks.
 
 ```text title="burf add ssh me@my-box --agents claude,codex --guided"
 Burf will set this box up:
@@ -404,7 +397,7 @@ Options:
 | --- | --- |
 | `--name N` | What to call the box in Burf (default: its hostname). It becomes part of URLs like `3000.N.localhost`. |
 | `--agents LIST` | The agent CLIs to install: `claude`, `codex`, `cursor`, `opencode`, comma-separated, or `none` (default `claude`). |
-| `--guided` | Show the whole plan first, wait for Enter, and run every step in one terminal (what Team setup does). Without it, steps run on their own and only one that needs `sudo`'s password asks. |
+| `--guided` | Show the whole plan first, wait for Enter, and run every step in one terminal. Without it, steps run on their own and only one that needs `sudo`'s password asks. |
 | `--yes` | Ask nothing, and stop with the command to run where `sudo` would ask for a password. |
 | `--from STEP` | Start from a step (`berthd`, `linger`, `tools`, `agents`, `integrations`, `pair`), keeping the ones before it. It still connects first. |
 | `--network NET` | Reach the box through one of [your other tailnets](#boxes-on-another-tailnet). |

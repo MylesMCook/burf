@@ -31,7 +31,7 @@ a forward or a queued prompt.
 - holds the [offline prompt queue](/guides/offline-queue) and delivers it
   when boxes come back;
 - runs an embedded Tailscale node for each [other tailnet](/getting-started/add-a-box#boxes-on-another-tailnet);
-- keeps your **kits** library and serves your themes, task templates and
+- serves your themes, task templates and
   plugins to the app.
 
 ## A box's own name
@@ -95,7 +95,7 @@ State is in `~/Library/Application Support/berth/client/` on a Mac and
 `~/.config/berth/client/` on Linux (`$BERTH_HOME` moves it): its identity,
 paired boxes, forwards, routes, the queue, logs and the app's token. Things
 you write by hand are in `~/.berth/` (`$BERTH_USER_DIR` moves it): hooks,
-task templates, themes, plugins, kits. The full list is in
+task templates, themes, plugins. The full list is in
 [files and environment](/reference/files).
 
 Next: [the security model](/concepts/security), how the agent and your boxes

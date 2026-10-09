@@ -52,22 +52,20 @@ fails**.
 | Any project on a box | `~/.berth/flows.json` on the box | Every event on that box. Narrow it with `where.location`. |
 | A project on a box | The box's own config for that location | Only that repository's events. Not committed. |
 | A repository, everywhere | `flows` in its committed `.berth/config.json` | Every box with the repository. Read-only in the app: change it in the repository. |
-| A project's kit | `flows` in the [kit's](/guides/kits) `config` | Every box the kit is applied to. Read-only in the app: change it in the kit. |
 
 A repository's flows only ever see that repository's events.
 
 A repository's flows layer like the rest of its
-[config](/reference/config#how-layers-merge): committed, then the kit's, then
+[config](/reference/config#how-layers-merge): committed, then
 the box's own. A flow with the same `id` in a later layer replaces the earlier
 one, and only the replacement runs. **Override on _box_** in the editor of a
-committed or kit flow does this: it copies the flow into the box's own config,
+committed flow does this: it copies the flow into the box's own config,
 where you can change it or switch it off.
 
 ### A flow for a project on every box
 
-Commit it to the repository's `.berth/config.json` (or put it in the
-project's [kit](/guides/kits)): every box with the repository layers it in
-and runs it, including boxes that get the project later. Earlier versions of
+Commit it to the repository's `.berth/config.json`: every box with the
+repository layers it in and runs it, including boxes that get the project later. Earlier versions of
 the app could keep a copy in each box's own config; that is gone. Copies it
 wrote stay on each box as that box's own flows: to keep one, move it into
 the repository's config and delete the copies.

@@ -43,16 +43,15 @@ func TestAServiceTitleIsOneShortLine(t *testing.T) {
 			t.Errorf("title %q was accepted", title)
 		}
 	}
-	// The option rides through every layer: a kit's service, overridden by
-	// the box, keeps what the box says.
-	kit := RepoConfig{Services: []WorktreeService{{Name: "web", Run: "pnpm dev", Terminal: true, Title: "Next.js"}}}
+	// A repository's service, overridden by the box, keeps what the box says.
+	repo := RepoConfig{Services: []WorktreeService{{Name: "web", Run: "pnpm dev", Terminal: true, Title: "Next.js"}}}
 	local := RepoConfig{Services: []WorktreeService{{Name: "web", Run: "pnpm dev --turbo", Terminal: true}}}
-	got := layered(RepoConfig{}, &InstalledKit{Config: kit}, local).Services
+	got := merge(repo, local).Services
 	if len(got) != 1 || !got[0].Terminal || got[0].Title != "" || got[0].Run != "pnpm dev --turbo" {
 		t.Fatalf("layered services = %+v", got)
 	}
-	if got := layered(RepoConfig{}, &InstalledKit{Config: kit}, RepoConfig{}).Services; len(got) != 1 || !got[0].Terminal || serviceTitle(got[0]) != "Next.js" {
-		t.Fatalf("kit services = %+v", got)
+	if got := merge(repo, RepoConfig{}).Services; len(got) != 1 || !got[0].Terminal || serviceTitle(got[0]) != "Next.js" {
+		t.Fatalf("repo services = %+v", got)
 	}
 }
 

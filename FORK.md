@@ -39,6 +39,15 @@ screen scraping or simulated terminal keystrokes when implementing this.
 Keep terminals as a fallback for shell work and unsupported agent interactions.
 Preserve source-history isolation, agent permissions and no-replay guarantees.
 
+### Removed Team Setup and Kits
+
+Team setup and Kits are no longer product features. Their CLI commands, API
+routes and the box's `team` capability are removed. Older clients receive
+ordinary not-found responses. Existing team and kit files remain untouched.
+The legacy `kit` field in shared location state and config responses is kept
+as opaque JSON for mixed-version peers and location saves; it contributes
+nothing to effective config, scripts, environment, presets or flows.
+
 ### One Chat Surface
 
 Every chat in Burf is the same chat to look at and to use: a session's

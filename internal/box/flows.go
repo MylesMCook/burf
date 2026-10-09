@@ -28,7 +28,7 @@ import (
 // or failure. They run on the box, so they keep going while the laptop
 // sleeps. A box has its own flows, and a repository's config can carry flows
 // for its own worktrees, layered like the rest of its config: committed in
-// the repository, then its kit's, then this box's own, the most local flow
+// the repository, then this box's own, the most local flow
 // with an id replacing the others.
 
 type Flow = boxclient.Flow
@@ -213,7 +213,7 @@ type Flows struct {
 type ScopedFlow struct {
 	Scope string `json:"scope"` // "box" or "repo:<location>"
 	// Source is "box", or for a repository's flow its layer: "repo"
-	// (committed), "kit" (the location's kit) or "local" (this box's).
+	// (committed) or "local" (this box's).
 	Source   string `json:"source"`
 	Editable bool   `json:"editable"`
 	// Overridden is set on a flow a more local layer replaces with a flow of
@@ -259,7 +259,7 @@ func (f *Flows) SaveBox(flows []Flow) error {
 }
 
 // AllFlows lists every flow on the box: its own, then each repository's
-// layers in the order its config merges them (committed, its kit's, this
+// layers in the order its config merges them (committed, then this
 // box's). A flow replaced by id in a more local layer is marked Overridden;
 // ActiveFlows leaves those out.
 func (b *Box) AllFlows(ctx context.Context) ([]ScopedFlow, error) {
@@ -285,9 +285,6 @@ func (b *Box) AllFlows(ctx context.Context) ([]ScopedFlow, error) {
 		}
 		if cfg.Repo != nil {
 			add("repo", false, cfg.Repo.Flows)
-		}
-		if cfg.Kit != nil {
-			add("kit", false, cfg.Kit.Config.Flows)
 		}
 		add("local", true, cfg.Local.Flows)
 		// Like merge: a later layer's flow replaces an earlier one's by id.

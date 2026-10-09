@@ -392,7 +392,6 @@ func serve(b boxHome, args []string) error {
 		Turns:        turns,
 		Hooks:        hookRunner,
 		Flows:        box.FlowsAt(userDir, b.dir),
-		KitsDir:      filepath.Join(b.dir, "kits"),
 		EnvFile:      filepath.Join(userDir, "env.json"),
 		Paused:       &box.PauseStore{Path: filepath.Join(b.dir, "paused.json")},
 		Secrets:      b.boxSecrets(),
@@ -429,10 +428,7 @@ func serve(b boxHome, args []string) error {
 	bx.Artifacts = &box.ArtifactStore{Dir: filepath.Join(b.dir, "artifacts"), Events: bus, Box: hostname}
 	go bx.Artifacts.Run(ctx)
 	go bx.RunShots(ctx)
-	bx.Team = &box.TeamRunner{Dir: filepath.Join(b.dir, "team")}
-	defer bx.Team.Stop()
 	bx.Mount(s)
-	bx.ResumeTeams()
 	// Hooks that ran while berthd was down, in order, before anything new.
 	if n := integrations.DrainSpool(b.spool(), func(e events.Event) { bus.Publish(e) }); n > 0 {
 		logger.Printf("published %d agent hooks spooled while berthd was down", n)

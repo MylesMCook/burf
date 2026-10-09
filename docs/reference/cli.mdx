@@ -5,7 +5,7 @@ description: Every command of berth, the laptop CLI.
 
 `berth` runs on your laptop. It talks to the [laptop agent](/concepts/laptop-agent),
 starting it if needed, and through it to every box. `burf help` prints this
-list; `burf kit help` the kit commands, `burf team help` the team setup ones.
+list.
 
 - **Addressing.** A box is `devl`; a location on it `devl/shop`; a worktree
   `devl/shop/checkout`; a session `devl/SESSION`.
@@ -46,35 +46,6 @@ anything but `running` lists no machines rather than failing), and
 fingerprints of the SSH host keys the tailnet reports for it) and `box`
 (the box it is paired as, if any). With `--network`, the machines are that
 network's, and `tailscale` and `tailnet` are left out.
-
-## Kits
-
-| Command | What it does |
-| --- | --- |
-| `burf kit list [--json]` | Kits on this laptop, and where each is installed |
-| `burf kit add LINK [--yes]` | Fetch a kit (git repo, `…/tree/REF/DIR`, gist, `kit.json` URL or folder), show what it does, and keep it |
-| `burf kit show ID` | Everything a kit does and every file it carries |
-| `burf kit apply ID BOX/PROJECT...` | Install it on projects |
-| `burf kit update ID` | Fetch it again from its link |
-| `burf kit rm ID` | Forget a kit on this laptop |
-| `burf kit remove BOX/PROJECT` | Uninstall a project's kit |
-| `burf kit save BOX/PROJECT ID [--name N]` | Make a kit of how a project is set up on a box |
-
-See [kits](/guides/kits).
-
-## Team setup
-
-| Command | What it does |
-| --- | --- |
-| `burf team show ORG [--box BOX] [--json]` | What `<org>/.berth` does: the org, the pinned commit, each box step (and which ask for your password), each repo and whether you can read it, the keys, and an update if there is one |
-| `burf team setup ORG BOX [--yes] [--only ID,…] [--no-1password] [--key PROJECT/KEY=VALUE]…` | Run it on BOX: the steps in a terminal on the box (`burf attach BOX/team-<id>` to type your password), then the repos; asks for keys it needs, and follows the progress. `--no-1password` [skips 1Password](/guides/team-setup#skipping-1password): the shared keys are asked for once instead (Enter leaves one missing) and op is never signed in on the box; refused when the team's `team.json` says `"onepassword": "required"` |
-| `burf team status [--json]` | Each team setup you accepted, its box, commit, state and progress |
-| `burf team retry ORG [--from STEP\|PROJECT] [--box BOX]` | Start a failed setup again from a step or a repo |
-
-`ORG` is a GitHub org, whose `<org>/.berth` holds the team setup, or a link
-to one anywhere: `github.com/OWNER/REPO[@REF]` or
-`github.com/OWNER/REPO/tree/REF/FOLDER`. GitHub goes through `gh`: this laptop's reads the team setup, and the box
-signs in with its own. See [team setup](/guides/team-setup).
 
 ## Reaching services
 

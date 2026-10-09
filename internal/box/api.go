@@ -59,8 +59,6 @@ type Box struct {
 	Hooks *hooks.Runner
 	// Flows runs the box's and its repositories' automations.
 	Flows *Flows
-	// KitsDir holds installed kits' files, one folder per location and kit.
-	KitsDir string
 	// EnvFile is the box's own environment for every worktree,
 	// ~/.berth/env.json.
 	EnvFile string
@@ -94,8 +92,6 @@ type Box struct {
 	Browsers *Browsers
 	// Reports tells an agent when work it started ends (notify.go).
 	Reports *Notifier
-	// Team runs team setups (team.go); nil on a box without them.
-	Team *TeamRunner
 	// Chats owns structured provider processes until explicitly stopped or
 	// the daemon exits. These are separate from terminal-backed Sessions.
 	Chats     *localchat.Manager
@@ -128,11 +124,6 @@ func (b *Box) Mount(s *wire.Server) {
 	route("PUT /v1/locations/{name}/scripts", b.setScripts)
 	route("POST /v1/locations/{name}/worktrees", b.addWorktree)
 	route("POST /v1/locations/clone", b.cloneLocation)
-	route("GET /v1/team", b.listTeams)
-	route("POST /v1/team", b.postTeam)
-	route("GET /v1/team/{id}", b.getTeam)
-	route("POST /v1/team/{id}/retry", b.retryTeam)
-	route("POST /v1/team/{id}/onepassword", b.useOnePassword)
 	route("POST /v1/locations/new", b.newLocation)
 	route("POST /v1/locations/{name}/resolve", b.resolve)
 	route("GET /v1/locations/{name}/branches", b.listBranches)
@@ -154,9 +145,6 @@ func (b *Box) Mount(s *wire.Server) {
 	route("POST /v1/locations/{name}/worktrees/{worktree}/{action}", b.pauseAction)
 	route("GET /v1/phone", b.getPhone)
 	route("PUT /v1/phone", b.putPhone)
-	route("GET /v1/kits", b.listKits)
-	route("PUT /v1/locations/{name}/kit", b.putKit)
-	route("DELETE /v1/locations/{name}/kit", b.deleteKit)
 	route("GET /v1/env", b.getBoxEnv)
 	route("PUT /v1/env", b.putBoxEnv)
 	route("POST /v1/secrets/test", b.testSecret)

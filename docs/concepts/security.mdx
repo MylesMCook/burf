@@ -1,12 +1,12 @@
 ---
 title: Security model
-description: Who Burf trusts and for what, how laptops and boxes prove who they are, what guards repository config, kits, flows and plugins, and what is still open.
+description: Who Burf trusts and for what, how laptops and boxes prove who they are, what guards repository config, flows and plugins, and what is still open.
 ---
 
 Every connection in Burf is between two keys that have met before. Nothing
 on a box is reachable without a paired laptop, and nothing is public unless
 someone shares it. Inside that, Burf runs other people's code and data (a
-repository's config, a kit, a plugin, a pull request's comments), and asks
+repository's config, a plugin, a pull request's comments), and asks
 before any of it runs.
 
 ## Who is trusted with what
@@ -16,13 +16,12 @@ before any of it runs.
 | A **paired laptop** | Everything the box's user can: start shells and agents, run commands, change config, upgrade berthd | Pairing (one code, used once), pinned keys, `berthd revoke` |
 | **Anything running as the box's user** (agents, scripts, hooks) | The same, through berthd's socket and `~/.berth` | Nothing beyond the operating system: it is you on that box |
 | Someone who can **commit to a repository** on a box | Nothing, until you trust its `.berth/config.json` on that box | [Repository trust](#repository-config), per content hash |
-| A **kit's** author | Nothing, until you apply the kit you reviewed | [Kit review](#kits), pinned to a hash |
 | A **plugin's** author | Everything the app can, once you allow the plugin | [Plugin consent](#plugins), pinned to a hash |
 | Whoever writes **event data** (a PR title, a review comment, a branch name, an agent's output) | Text in your flows, never commands | [How flows fill in values](#flows-and-event-data) |
 | Someone with a box's **phone token** | Read agents' screens and type into sessions on that box, from your tailnet | [The phone](#the-phone) |
 | The **network** | Nothing: it sees encrypted traffic between pinned keys | [Identity and transport](#identity-and-transport) |
 
-Pair only laptops you own, and only trust repositories, kits and plugins
+Pair only laptops you own, and only trust repositories and plugins
 whose authors you would let run commands as you.
 
 ## Identity and transport
@@ -175,22 +174,9 @@ for that project, and only the exact bytes they saw (its SHA-256 hash): any
 change to the file waits to be trusted again. Until then only its port count
 applies, and the app shows what it wants to run (**This repository wants to
 run …**). From a terminal, `burf location config BOX/LOC` shows it and its
-hash, and `--trust HASH` or `--untrust` decide. A kit you apply and the box's
-own config are yours and need no trust. See
+hash, and `--trust HASH` or `--untrust` decide. The box's
+own config is yours and needs no trust. See
 [trusting a repository's config](/guides/project-config#trusting-a-repositorys-config).
-
-## Kits
-
-A [kit](/guides/kits) runs its scripts on the boxes you apply it to, so
-nothing in one runs until you have seen it:
-
-- Adding a kit shows everything it does and every file it carries, with a
-  hash of all of it. What is kept is exactly what you saw: the link is
-  fetched again when you confirm, and refused if it now hashes differently.
-- Applying is a separate step, and applying from the review goes ahead only
-  while the kept copy still has the hash you reviewed.
-- On a box, a kit's files are written only inside its own folder, and
-  `before:kit.install` and `before:kit.remove` gates can refuse them.
 
 ## Flows and event data
 
@@ -216,10 +202,9 @@ output. That data is only ever text:
 
 ## Git and files on the box
 
-- Cloning a repository and fetching a kit allow only git's `https`, `http`,
+- Cloning a repository allows only git's `https`, `http`,
   `ssh` and `git` transports, so a link can't use `file://` to read a local
-  repository or `ext::` to run a command. (A kit can still come from a
-  folder on your laptop, which is copied, not cloned.)
+  repository or `ext::` to run a command.
 - Installing Burf's [skills](/guides/agent-integrations#skills) into a
   repository refuses to follow symbolic links, so a repository can't
   redirect the write to a file elsewhere on the box.
@@ -251,7 +236,7 @@ with a token per box. Its threat model is on [the phone page](/guides/phone#thre
 ## Gates
 
 `before:` hooks on a box can refuse actions (creating worktrees, starting
-sessions, sending prompts, running `exec`, installing kits, changing config,
+sessions, sending prompts, running `exec`, changing config,
 replacing the hooks themselves), whoever asks: the app, the CLI, a flow, an
 agent or the phone. Every API route that changes something runs one; see
 [the list](/reference/events#gates).

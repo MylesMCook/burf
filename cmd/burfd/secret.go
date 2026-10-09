@@ -90,9 +90,8 @@ func (b boxHome) boxSecrets() *box.Secrets {
 }
 
 // secretSignin signs the box's op in to 1Password, in the terminal it runs
-// in, and keeps the session for berthd: a team setup's 1Password step runs
-// it, and so can the box's user. `op signin` on its own only signs in the
-// shell it runs in, which berthd can't see. With --check it only says
+// in, and keeps the session for berthd. The box's user runs it. `op signin`
+// on its own only signs in the shell it runs in, which berthd can't see. With --check it only says
 // whether berthd can read 1Password now (exit 0) or not (exit 1), asking
 // nothing.
 func secretSignin(b boxHome, args []string) error {
@@ -122,7 +121,7 @@ func secretSignin(b boxHome, args []string) error {
 	fmt.Println("Sign op in to your 1Password account. If this box has none yet, op asks to add")
 	fmt.Println("one: your sign-in address (such as my.1password.com), email, Secret Key and")
 	fmt.Println("password. You type them here; Burf never sees them. It keeps only op's session,")
-	fmt.Println("readable by you alone, so the box can read the team's shared keys.")
+	fmt.Println("readable by you alone, so the box can read shared keys.")
 	fmt.Println()
 	cmd := exec.Command(bin, "signin")
 	cmd.Env = append(os.Environ(), opEnv...)

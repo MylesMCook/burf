@@ -349,10 +349,8 @@ func chartValue(v any) string {
 	return fmt.Sprint(v)
 }
 
-// Secrets. Burf has no secret scanner of its own elsewhere (the Team
-// setup refuses a shared key that isn't a reference, op:// or env://, and
-// doctor reports redact by pattern), so artifacts get a simple pattern
-// check of their own: well-known token formats, private keys, and
+// Secrets. Doctor reports redact by pattern, so artifacts get a simple
+// pattern check of their own: well-known token formats, private keys, and
 // .env-style assignments of a secret-sounding name to a long value. It
 // errs towards refusing; the agent hears what matched and can leave it
 // out.

@@ -48,8 +48,7 @@ without trust is a plain checkout.
   it: the box keeps the file's SHA-256 hash. When a commit changes the file,
   none of it runs again until it is trusted again.
 - A file with nothing but `ports` needs no trust.
-- A [kit](/guides/kits) you apply, and the box's own config below, are
-  yours, and apply without asking.
+- The box's own config below is yours, and applies without asking.
 - Only trust a repository if you trust everyone who can commit to it.
 
 From a terminal, `burf location config devl/shop` prints what the file
@@ -103,7 +102,6 @@ The box's API is `POST /v1/locations/{name}/config/trust` with
 | `BERTH_PORT`, `BERTH_PORT_1`, … | Its ports |
 | `BERTH_URL` | The worktree's private URL as you open it on your laptop, such as `http://fix-checkout.shop.devl.localhost:1377` (the main checkout: `shop.devl.localhost`). Use it for an app's own base URL, not `localhost:$BERTH_PORT`, which the laptop never sees |
 | `BERTH_BROWSER_PROXY` | The worktree's [browser proxy](/guides/agent-browser#what-it-can-reach), for a browser an agent runs itself |
-| `BERTH_KIT_DIR` | Where the project's [kit](/guides/kits) keeps its files, if it has one |
 
 A value in `env` can use `$NAME` for those variables or berthd's own
 environment, and can be a [secret reference](/guides/secrets) instead of a
@@ -148,7 +146,7 @@ shown as a tab in its worktree:
   from the app. It ends when its worktree is removed.
 - It is never counted as an agent.
 
-The option works the same in `.berth/config.json`, a kit and a box's own
+The option works the same in `.berth/config.json` and a box's own
 config for the project.
 
 ## Agents
@@ -193,8 +191,7 @@ same, for models only that box has.
 ## This box only
 
 Some of it should not be committed: a database password, one box's paths.
-Each box keeps its own config for a location, laid over the file (and over
-the project's kit, if it has one):
+Each box keeps its own config for a location, laid over the file:
 
 - `setup`, `archive`, `ports` and each `env` entry replace the file's;
 - `services`, `agents` and `flows` replace the file's by name or id, and add
@@ -203,8 +200,8 @@ the project's kit, if it has one):
 
 Edit it in the app's Project settings, or `PUT /v1/locations/{name}/config`
 on the box. `burf location config devl/shop` shows the effective config
-(and what an untrusted file would run); with `--json`, the repository's, the
-kit's and the box's layers too.
+(and what an untrusted file would run); with `--json`, the repository's and the
+box's layers too.
 
 ```sh
 burf location scripts devl/shop --setup "make bootstrap"   # just the scripts
@@ -216,8 +213,6 @@ A box can also give every worktree on it some environment, in
 
 ## Next
 
-- [Kits](/guides/kits) carry this same config to a repository you can't
-  commit to, or to several at once.
 - [Secrets](/guides/secrets) keep passwords out of `env`.
 - [Task templates](/guides/task-templates) fill in the agent, branch and
   prompt for kinds of task you start often.

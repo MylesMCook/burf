@@ -3,7 +3,7 @@
 //
 // A process's groups are fixed when it starts: they come from its parent,
 // and only a login (login, sshd, su) reads the group database again. So when
-// a team setup's docker step adds the box's user to the docker group,
+// installing docker adds the box's user to the docker group,
 // berthd keeps the groups it started with, and so does everything it starts:
 // tmux and every terminal, services, scripts. A login shell started by
 // berthd (`$SHELL -lc`) is no help, since it inherits them too, and nor is

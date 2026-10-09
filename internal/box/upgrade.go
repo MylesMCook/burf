@@ -186,11 +186,6 @@ func (b *Box) Capabilities() []string {
 			caps = append(caps, "visualdiff")
 		}
 	}
-	if b.Team != nil {
-		// team: GET/POST /v1/team and POST /v1/team/{id}/retry run team
-		// setups (team.go).
-		caps = append(caps, "team")
-	}
 	if b.Browsers != nil {
 		// browser.health: GET /v1/browser/health, PUT /v1/browser/settings
 		// and POST /v1/browser/check (browsersandbox.go).

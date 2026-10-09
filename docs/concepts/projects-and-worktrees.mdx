@@ -95,7 +95,7 @@ When a worktree is created, the repository's **setup** script runs in it (in
 the background, up to 30 minutes, logged on the box); once it succeeds, its
 `autostart` services start. Before one is removed, its services stop and the **archive**
 script runs; if that fails, the worktree stays. Both come from
-[`.berth/config.json`](/guides/project-config), a [kit](/guides/kits), or the
+[`.berth/config.json`](/guides/project-config) or the
 box's own config for the location (`burf location scripts`). A
 repository's own file runs only once it is
 [trusted on that box](/guides/project-config#trusting-a-repositorys-config),

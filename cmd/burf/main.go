@@ -59,9 +59,6 @@ Boxes
   burf boxes [--json]                   List paired boxes and whether they are online
   burf ping BOX [-c N]                  Check a box answers and still trusts you, and its latency
   burf upgrade BOX [--check] [--json]   Upgrade the box's daemon over burf (no SSH); --check only reports
-  burf kit add|apply|list|save …        Set projects up the same way on every box; see burf kit help
-  burf team show|setup|status|retry …   Set a box up the way your team's are, from <org>/.burf
-                                         on GitHub (read with gh); see burf team help
   burf edit BOX/PROJECT[/WT] [FILE[:LINE[:COL]]] [--in EDITOR]
                                          Open a worktree, or a file at a line, in your editor
                                          (EDITOR: cursor, vscode, windsurf or zed; default: the first installed)
@@ -180,10 +177,6 @@ func run(args []string) error {
 		return networkCommand(l, rest)
 	case "upgrade":
 		return upgrade(l, rest)
-	case "kit", "kits":
-		return kitCommand(l, rest)
-	case "team":
-		return teamCommand(l, rest)
 	case "ssh-config":
 		return sshConfigCommand(l, rest)
 	case "edit":

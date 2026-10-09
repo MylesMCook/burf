@@ -589,7 +589,7 @@ exit 1
 	s := &Secrets{Op: op, SessionFile: session, Box: "devbox", Timeout: 5 * time.Second}
 	start := time.Now()
 	_, err := s.Resolve(context.Background(), "op://dev/db/password", nil, true)
-	if err == nil || !errors.Is(err, ErrOpSignedOut) || err.Error() != "1Password isn't signed in on devbox: sign in from Team setup or run `berthd secret signin` on the box" {
+	if err == nil || !errors.Is(err, ErrOpSignedOut) || err.Error() != "1Password isn't signed in on devbox: run `berthd secret signin` on the box" {
 		t.Fatalf("got %v", err)
 	}
 	if time.Since(start) > 3*time.Second {

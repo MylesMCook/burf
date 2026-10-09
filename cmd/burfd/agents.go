@@ -22,8 +22,7 @@ const agentsUsage = "usage: burfd agents install [--integrations] [--markers] cl
 
 // agents installs agent CLIs here, as this user, into ~/.local/bin, with no
 // sudo: `burfd agents install claude codex`. The guided install runs it on
-// a new box, a team setup's agents step runs it, and the app's "Add agents"
-// on a box runs it through the box API. --integrations then installs their
+// a new box, and the app's "Add agents" runs it through the box API. --integrations then installs their
 // hooks and skills; --markers prints a step marker for each agent, for a
 // checklist.
 func agents(args []string, out io.Writer) error {

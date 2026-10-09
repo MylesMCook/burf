@@ -7,7 +7,7 @@ import "strings"
 // nothing from the person runs over SSH without a terminal; only a step
 // that truly needs sudo's password (git missing, or lingering that the box
 // won't allow without root) runs in a terminal, where sudo asks. The guided
-// install (--guided, and the app's Team setup) shows the plan first and
+// install (--guided) shows the plan first and
 // runs every step in one terminal.
 
 // LingerTry turns lingering on for the user without asking anything: with

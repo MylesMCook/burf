@@ -17,7 +17,7 @@ import (
 // install under nvm, fnm, volta or a custom prefix counts, then in the
 // folders installers use. berthd's own PATH, a service's, sees neither.
 // What is found is kept until something may have changed it: doctor, Add
-// agents, integrations, a team setup's steps, and the app's Look again
+// agents, integrations, and the app's Look again
 // (POST /v1/agents/refresh).
 
 // agentFinder finds agent CLIs; tests replace it.
