@@ -59,6 +59,13 @@ type Server struct {
 	streams   atomic.Int64
 	open      openConns
 	recheck   chan struct{}
+
+	// stores is held for reading across each use of Clients and Pending by
+	// a request, and taken for writing as Serve returns: by then whatever
+	// was in them has left, and with serving back at zero nothing enters
+	// again. Whoever stopped the box may remove its state at once.
+	stores  sync.RWMutex
+	serving int
 }
 
 // ActiveStreams reports how many port streams are open right now.
@@ -158,9 +165,22 @@ func (s *Server) Serve(ctx context.Context, ln net.Listener) error {
 	stop := context.AfterFunc(ctx, func() { srv.Close() })
 	defer stop()
 	watchCtx, endWatch := context.WithCancel(ctx)
-	defer endWatch()
-	go s.watchRevocations(watchCtx)
+	watched := make(chan struct{})
+	go func() {
+		defer close(watched)
+		s.watchRevocations(watchCtx)
+	}()
+	s.stores.Lock()
+	s.serving++
+	s.stores.Unlock()
 	err := srv.ServeTLS(ln, "", "")
+	// Closing the server ends its connections, not the requests they
+	// carried: wait for the watch and for any request inside the stores.
+	endWatch()
+	<-watched
+	s.stores.Lock()
+	s.serving--
+	s.stores.Unlock()
 	if errors.Is(err, http.ErrServerClosed) && ctx.Err() != nil {
 		return nil
 	}
@@ -206,8 +226,25 @@ func clientFingerprint(r *http.Request) (identity.Fingerprint, bool) {
 	return identity.FingerprintOf(r.TLS.PeerCertificates[0]), true
 }
 
-// authorize fails closed: a trust store that cannot be read authorizes nobody.
+// useStores takes the stores for one use, to be given back with
+// stores.RUnlock, or reports that the box has stopped serving and they are
+// no longer its to touch.
+func (s *Server) useStores() bool {
+	s.stores.RLock()
+	if s.serving == 0 {
+		s.stores.RUnlock()
+		return false
+	}
+	return true
+}
+
+// authorize fails closed: a trust store that cannot be read authorizes
+// nobody, and neither does a box that has stopped serving.
 func (s *Server) authorize(peer identity.Fingerprint) (trust.Peer, bool) {
+	if !s.useStores() {
+		return trust.Peer{}, false
+	}
+	defer s.stores.RUnlock()
 	p, ok, err := s.Clients.Trusted(peer)
 	if err != nil {
 		s.logf("trust store unreadable, refusing %s: %v", peer.Short(), err)
@@ -254,24 +291,8 @@ func (s *Server) handlePair(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, errPairingRejected)
 		return
 	}
-	matched, err := s.Pending.Consume(s.now(), func(code pairing.Code) bool {
-		return pairing.ProofMatches(req.Proof, code, exporter, peer)
-	})
-	if err != nil {
-		s.logf("pairing store error: %v", err)
-	}
-	if err != nil || !matched {
-		s.logf("pairing rejected for %s", peer.Short())
-		writeError(w, http.StatusForbidden, errPairingRejected)
-		return
-	}
-	name := req.Name
-	if !trust.ValidName(name) || strings.EqualFold(name, LocalPeer.Name) {
-		name = "client"
-	}
-	name, err = s.Clients.AddWithFreeName(trust.Peer{Name: name, Fingerprint: peer, PairedAt: s.now().UTC()})
-	if err != nil {
-		s.logf("pairing succeeded but pinning %s failed: %v", peer.Short(), err)
+	name, ok := s.pin(req, exporter, peer)
+	if !ok {
 		writeError(w, http.StatusForbidden, errPairingRejected)
 		return
 	}
@@ -281,6 +302,35 @@ func (s *Server) handlePair(w http.ResponseWriter, r *http.Request) {
 		s.OnPaired(trust.Peer{Name: name, Fingerprint: peer, PairedAt: s.now().UTC()})
 	}
 	writeJSON(w, http.StatusOK, nameResponse{Name: s.Name})
+}
+
+// pin spends the code req proves and pins peer under the name it was given,
+// or a free variant of it.
+func (s *Server) pin(req pairRequest, exporter []byte, peer identity.Fingerprint) (string, bool) {
+	if !s.useStores() {
+		return "", false
+	}
+	defer s.stores.RUnlock()
+	matched, err := s.Pending.Consume(s.now(), func(code pairing.Code) bool {
+		return pairing.ProofMatches(req.Proof, code, exporter, peer)
+	})
+	if err != nil {
+		s.logf("pairing store error: %v", err)
+	}
+	if err != nil || !matched {
+		s.logf("pairing rejected for %s", peer.Short())
+		return "", false
+	}
+	name := req.Name
+	if !trust.ValidName(name) || strings.EqualFold(name, LocalPeer.Name) {
+		name = "client"
+	}
+	name, err = s.Clients.AddWithFreeName(trust.Peer{Name: name, Fingerprint: peer, PairedAt: s.now().UTC()})
+	if err != nil {
+		s.logf("pairing succeeded but pinning %s failed: %v", peer.Short(), err)
+		return "", false
+	}
+	return name, true
 }
 
 func (s *Server) handlePing(w http.ResponseWriter, r *http.Request) {
