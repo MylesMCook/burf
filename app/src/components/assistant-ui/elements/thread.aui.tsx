@@ -8,7 +8,7 @@ import {
 import { File } from "@/components/assistant-ui/elements/file";
 import { ThreadFollowupSuggestions } from "@/components/assistant-ui/elements/follow-up-suggestions.aui";
 import { Image } from "@/components/assistant-ui/elements/image";
-import { Markdown } from "@/components/conversation/markdown";
+import { MarkdownText } from "@/components/assistant-ui/elements/markdown-text";
 import {
   Reasoning,
   ReasoningContent,
@@ -36,7 +36,7 @@ import {
   ErrorPrimitive,
   groupPartByType,
   MessagePrimitive,
-  SuggestionPrimitive,
+  useAui,
   ThreadPrimitive,
   type FileMessagePartComponent,
   type ImageMessagePartComponent,
@@ -45,6 +45,7 @@ import {
   useAuiState,
 } from "@assistant-ui/react";
 import {
+  ChartColumnIcon, CodeXmlIcon, PencilLineIcon, LightbulbIcon,
   ArrowDownIcon,
   ArrowUpIcon,
   AudioLinesIcon,
@@ -63,6 +64,7 @@ import {
   ThumbsUpIcon,
 } from "lucide-react";
 import {
+  useState,
   createContext,
   useContext,
   useLayoutEffect,
@@ -93,6 +95,7 @@ export type ThreadComponents = {
   AssistantMessage?: ComponentType | undefined;
   UserMessage?: ComponentType | undefined;
   Text?: TextMessagePartComponent | undefined;
+  UserText?: TextMessagePartComponent | undefined;
   Welcome?: ComponentType | undefined;
   ToolFallback?: ToolCallMessagePartComponent | undefined;
   ToolGroup?:
@@ -140,9 +143,9 @@ export type ThreadProps = {
   // Burf's own parts of the page. Elements, not components: a view passes
   // what it already holds the state for, and they keep their place (and a
   // field its keyboard) from one draw to the next.
-  // composer stands in for assistant-ui's own; welcome for its greeting on
-  // an empty thread; after comes below the messages, above the composer.
-  composer?: ReactNode | undefined;
+  // messageList keeps virtualized history; after comes below messages,
+  // above the stock composer. Its controls all share one action row.
+  messageList?: ReactNode;
   welcome?: ReactNode | undefined;
   after?: ReactNode | undefined;
   // Who is speaking, for someone who cannot see which side a message is on:
@@ -151,11 +154,17 @@ export type ThreadProps = {
   // false for a thread whose whole history is already here: no "load
   // earlier" control, and no live region of its own to say it is loading.
   loadEarlier?: boolean | undefined;
+  composerInput?: ComposerPrimitive.Input.Props & { "data-autofocus"?: boolean; ref?: React.Ref<HTMLTextAreaElement> };
+  composerControls?: ReactNode;
+  composerTriggers?: ReactNode;
+  beforeComposer?: ReactNode;
+  // A thread that is only read (a saved conversation) has no composer.
+  readOnly?: boolean | undefined;
 };
 
 type ThreadSlots = Pick<
   ThreadProps,
-  "composer" | "welcome" | "after" | "speakers" | "loadEarlier"
+  "messageList" | "welcome" | "after" | "speakers" | "loadEarlier" | "composerInput" | "composerControls" | "composerTriggers" | "beforeComposer" | "readOnly"
 >;
 const ThreadSlotsContext = createContext<ThreadSlots>({});
 
@@ -201,18 +210,19 @@ const ThreadHistorySkeleton: FC = () => (
 export const Thread: FC<ThreadProps> = ({
   components = EMPTY_COMPONENTS,
   autoFocus = true,
-  composer,
+  messageList,
   welcome,
   after,
   speakers,
   loadEarlier,
+  composerInput, composerControls, composerTriggers, beforeComposer, readOnly,
 }) => {
   const isEmpty = useAuiState(isNewChatView);
 
   return (
     <ThreadComponentsContext.Provider value={components}>
       <ThreadSlotsContext.Provider
-        value={{ composer, welcome, after, speakers, loadEarlier }}
+        value={{ messageList, welcome, after, speakers, loadEarlier, composerInput, composerControls, composerTriggers, beforeComposer, readOnly }}
       >
         <ThreadRoot isEmpty={isEmpty} autoFocus={autoFocus} />
       </ThreadSlotsContext.Provider>
@@ -225,7 +235,7 @@ const ThreadRoot: FC<{ isEmpty: boolean; autoFocus: boolean }> = ({
   autoFocus,
 }) => {
   const { Welcome = ThreadWelcome } = useContext(ThreadComponentsContext);
-  const { composer, welcome, after, loadEarlier } =
+  const { messageList, welcome, after, loadEarlier, beforeComposer, readOnly } =
     useContext(ThreadSlotsContext);
 
   return (
@@ -242,7 +252,10 @@ const ThreadRoot: FC<{ isEmpty: boolean; autoFocus: boolean }> = ({
       <ThreadPrimitive.Viewport
         turnAnchor="top"
         data-slot="aui_thread-viewport"
-        className="relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll scroll-smooth"
+        // scroll-pb: what is scrolled or tabbed into view (an approval's
+        // buttons, say) stops above the composer, which stays on top of
+        // the foot of the thread.
+        className="relative flex flex-1 scroll-pb-80 flex-col overflow-x-auto overflow-y-scroll scroll-smooth"
       >
         <div
           className={cn(
@@ -266,9 +279,9 @@ const ThreadRoot: FC<{ isEmpty: boolean; autoFocus: boolean }> = ({
               after ? "mb-6" : "mb-14",
             )}
           >
-            <ThreadPrimitive.Messages>
+            {messageList ?? <ThreadPrimitive.Messages>
               {() => <ThreadMessage />}
-            </ThreadPrimitive.Messages>
+            </ThreadPrimitive.Messages>}
           </div>
           {after && <div className="mb-14 empty:hidden">{after}</div>}
 
@@ -281,12 +294,13 @@ const ThreadRoot: FC<{ isEmpty: boolean; autoFocus: boolean }> = ({
           >
             <ThreadScrollToBottom />
             <ThreadFollowupSuggestions />
-            {composer ?? <Composer autoFocus={autoFocus} />}
-            {composer === undefined && (
+            {beforeComposer}
+            {!readOnly && <Composer autoFocus={autoFocus} />}
+            {
               <AuiIf condition={(s) => isNewChatView(s) && s.composer.isEmpty}>
                 <ThreadSuggestions />
               </AuiIf>
-            )}
+            }
           </ThreadPrimitive.ViewportFooter>
         </div>
       </ThreadPrimitive.Viewport>
@@ -294,7 +308,7 @@ const ThreadRoot: FC<{ isEmpty: boolean; autoFocus: boolean }> = ({
   );
 };
 
-const BurfText: TextMessagePartComponent = ({ text }) => <Markdown text={text} />;
+
 
 const ThreadMessage: FC = () => {
   const { AssistantMessage: AssistantMessageComponent = AssistantMessage, UserMessage: UserMessageComponent = UserMessage } =
@@ -494,7 +508,7 @@ const ThreadScrollToBottom: FC = () => {
 
 const ThreadWelcome: FC = () => {
   return (
-    <div className="aui-thread-welcome-root mb-6 flex flex-col px-2">
+    <div className="aui-thread-welcome-root mb-6 flex flex-col items-center px-2 text-center">
       <p className="aui-thread-welcome-message-inner fade-in slide-in-from-bottom-1 animate-in fill-mode-both text-2xl font-medium tracking-tight duration-200">
         How can I help you today?
       </p>
@@ -502,43 +516,119 @@ const ThreadWelcome: FC = () => {
   );
 };
 
-const ThreadSuggestions: FC = () => {
-  return (
-    <div className="aui-thread-welcome-suggestions flex w-full flex-col">
-      <ThreadPrimitive.Suggestions>
-        {() => <ThreadSuggestionItem />}
-      </ThreadPrimitive.Suggestions>
-    </div>
-  );
+type SuggestionGroup = {
+  label: string;
+  icon: ReactNode;
+  options: { label: string; prompt: string }[];
 };
 
-const ThreadSuggestionItem: FC = () => {
+const SUGGESTION_GROUPS: SuggestionGroup[] = [
+  {
+    label: "Explain",
+    icon: <LightbulbIcon />,
+    options: [
+      { label: "this project", prompt: "Explain how this project is laid out and where its main pieces are." },
+      { label: "the recent changes", prompt: "Summarize what changed in the last few commits and why." },
+      { label: "a file", prompt: "Explain what this file does: " },
+    ],
+  },
+  {
+    label: "Fix",
+    icon: <CodeXmlIcon />,
+    options: [
+      { label: "the failing tests", prompt: "Run the tests, find what fails and fix it." },
+      { label: "a bug", prompt: "There is a bug: " },
+      { label: "the build", prompt: "The build is failing. Find out why and fix it." },
+    ],
+  },
+  {
+    label: "Review",
+    icon: <ChartColumnIcon />,
+    options: [
+      { label: "my changes", prompt: "Review my uncommitted changes and point out problems." },
+      { label: "this branch", prompt: "Review everything on this branch against main." },
+    ],
+  },
+  {
+    label: "Write",
+    icon: <PencilLineIcon />,
+    options: [
+      { label: "tests", prompt: "Write tests for the code changed on this branch." },
+      { label: "a commit message", prompt: "Write a commit message for my staged changes." },
+    ],
+  },
+];
+
+const suggestionChipClass =
+  "aui-thread-welcome-suggestion border-foreground/10 hover:bg-foreground/[0.03] hover:border-foreground/25 rounded-md border px-2.5 py-1 text-sm whitespace-nowrap transition-colors ease-in motion-reduce:transition-none [&_svg]:size-4";
+
+const ThreadSuggestions: FC = () => {
+  const aui = useAui();
+  const [expandedLabel, setExpandedLabel] = useState<string | null>(null);
+  const expandedGroup = SUGGESTION_GROUPS.find(
+    (group) => group.label === expandedLabel,
+  );
+
+  const sendPrompt = (prompt: string) => {
+    if (aui.thread.getState().isRunning) return;
+    aui.thread.append({
+      content: [{ type: "text", text: prompt }],
+      runConfig: aui.composer.getState().runConfig,
+    });
+  };
+
   return (
-    <div className="aui-thread-welcome-suggestion-display fade-in slide-in-from-bottom-2 animate-in fill-mode-both duration-200">
-      <SuggestionPrimitive.Trigger send asChild>
-        <button
-          type="button"
-          className="aui-thread-welcome-suggestion group hover:bg-foreground/[0.03] focus-visible:ring-ring/50 flex w-full items-baseline gap-2.5 rounded-md px-2 py-2 text-start text-sm transition-colors outline-none focus-visible:ring-1 motion-reduce:transition-none"
+    <div className="aui-thread-welcome-suggestions flex w-full flex-col gap-2 px-4">
+      <div className="w-full scrollbar-none overflow-x-auto">
+        <div className="mx-auto flex w-max items-center gap-2">
+          {SUGGESTION_GROUPS.map((group) => (
+            <Button
+              key={group.label}
+              variant="ghost"
+              className={cn(
+                suggestionChipClass,
+                group.label === expandedLabel && "bg-muted",
+              )}
+              onClick={() =>
+                setExpandedLabel(
+                  group.label === expandedLabel ? null : group.label,
+                )
+              }
+            >
+              {group.icon}
+              {group.label}
+            </Button>
+          ))}
+        </div>
+      </div>
+      {expandedGroup && (
+        <div
+          key={expandedGroup.label}
+          className="fade-in slide-in-from-top-1 animate-in w-full scrollbar-none overflow-x-auto duration-200"
         >
-          <span
-            aria-hidden
-            className="text-muted-foreground/60 group-hover:text-foreground font-mono text-xs transition-colors motion-reduce:transition-none"
-          >
-            {">"}
-          </span>
-          <span className="min-w-0 flex-1 truncate">
-            <SuggestionPrimitive.Title className="aui-thread-welcome-suggestion-text-1 text-foreground" />{" "}
-            <SuggestionPrimitive.Description className="aui-thread-welcome-suggestion-text-2 text-muted-foreground empty:hidden" />
-          </span>
-        </button>
-      </SuggestionPrimitive.Trigger>
+          <div className="mx-auto flex w-max items-center gap-2">
+            {expandedGroup.options.map((option) => (
+              <Button
+                key={option.label}
+                variant="ghost"
+                className={suggestionChipClass}
+                onClick={() => sendPrompt(option.prompt)}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
 const Composer: FC<{ autoFocus: boolean }> = ({ autoFocus }) => {
+  const { composerInput, composerTriggers } = useContext(ThreadSlotsContext);
   return (
-    <ComposerPrimitive.Root className="aui-composer-root relative flex w-full flex-col">
+    <ComposerPrimitive.TriggerPopoverRoot>
+    <ComposerPrimitive.Root data-testid="composer" className="aui-composer-root relative flex w-full flex-col">
       <ComposerPrimitive.AttachmentDropzone asChild>
         <div
           data-slot="aui_composer-shell"
@@ -552,15 +642,22 @@ const Composer: FC<{ autoFocus: boolean }> = ({ autoFocus }) => {
             autoFocus={autoFocus}
             enterKeyHint="send"
             aria-label="Message input"
+            unstable_focusOnRunStart={false}
+            unstable_focusOnScrollToBottom={false}
+            unstable_focusOnThreadSwitched={false}
+            {...composerInput}
           />
           <ComposerAction />
         </div>
       </ComposerPrimitive.AttachmentDropzone>
+      {composerTriggers}
     </ComposerPrimitive.Root>
+    </ComposerPrimitive.TriggerPopoverRoot>
   );
 };
 
 const ComposerAction: FC = () => {
+  const { composerControls } = useContext(ThreadSlotsContext);
   // The stop control only cancels the send while no run it could stop is going.
   const isSending = useAuiState(
     (s) =>
@@ -570,8 +667,11 @@ const ComposerAction: FC = () => {
 
   return (
     <div className="aui-composer-action-wrapper relative flex items-center justify-between">
-      <ComposerAddAttachment />
-      <div className="flex items-center gap-1.5">
+      <div className="flex min-w-0 flex-1 items-center gap-1">
+        <ComposerAddAttachment />
+        {composerControls}
+      </div>
+      <div className="flex shrink-0 items-center gap-1.5">
         <AuiIf condition={(s) => s.thread.capabilities.dictation}>
           <AuiIf condition={(s) => s.composer.dictation == null}>
             <ComposerPrimitive.Dictate asChild>
@@ -661,7 +761,7 @@ const MessageError: FC = () => {
 
 export const AssistantMessage: FC = () => {
   const {
-    Text: TextComponent = BurfText,
+    Text: TextComponent = MarkdownText,
     ToolFallback: ToolFallbackComponent = ToolFallback,
     ToolGroup,
     ReasoningGroup,
@@ -857,8 +957,9 @@ const UserImagePart: ImageMessagePartComponent = (part) => (
   </div>
 );
 
-const UserMessage: FC = () => {
+export const UserMessage: FC = () => {
   const { speakers } = useContext(ThreadSlotsContext);
+  const { UserText } = useContext(ThreadComponentsContext);
   return (
     <MessagePrimitive.Root
       data-slot="aui_user-message-root"
@@ -872,7 +973,7 @@ const UserMessage: FC = () => {
       <div className="aui-user-message-content-wrapper relative col-start-2 min-w-0">
         <div className="aui-user-message-content peer bg-muted text-foreground rounded-(--composer-radius) px-4 py-2 wrap-break-word empty:hidden">
           <MessagePrimitive.Parts
-            components={{ File: UserFilePart, Image: UserImagePart }}
+            components={{ Text: UserText, File: UserFilePart, Image: UserImagePart }}
           />
         </div>
         <div className="aui-user-action-bar-wrapper absolute start-0 top-1/2 -translate-x-full -translate-y-1/2 pe-2 peer-empty:hidden rtl:translate-x-full">

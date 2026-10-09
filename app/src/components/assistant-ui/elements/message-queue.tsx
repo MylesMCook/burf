@@ -12,6 +12,7 @@ export interface QueuedMessage {
 
 export function MessageQueue({
   running,
+  paused = false,
   queued,
   onCancel,
   className,
@@ -21,25 +22,27 @@ export function MessageQueue({
   "children" | "running" | "queued" | "onCancel"
 > & {
   running: string;
+  paused?: boolean;
   queued: readonly QueuedMessage[];
   onCancel?: (id: string) => void;
 }) {
   return (
     <div
       data-slot="message-queue"
+      data-state={paused ? "held" : "running"}
       className={cn("flex w-full max-w-sm flex-col gap-2", className)}
 
       {...props}
     >
       <div className={cn(paper, "flex items-center gap-2.5 rounded-2xl p-3")}>
         <span className="relative flex size-2 shrink-0">
-          <span className="absolute inline-flex size-full animate-ping rounded-full bg-blue-500/60 motion-reduce:hidden" />
+          {!paused && <span className="absolute inline-flex size-full animate-ping rounded-full bg-blue-500/60 motion-reduce:hidden" />}
           <span className="relative inline-flex size-2 rounded-full bg-blue-500 dark:bg-blue-400" />
         </span>
         <span className="text-foreground/90 min-w-0 flex-1 truncate text-[13.5px]">
           {running}
         </span>
-        <span className={cn(mono, "text-foreground/35 shrink-0")}>running</span>
+        <span className={cn(mono, "text-foreground/35 shrink-0")}>{paused ? "held" : "running"}</span>
       </div>
 
       {queued.length > 0 && (
@@ -48,7 +51,7 @@ export function MessageQueue({
             {queued.length} queued
           </span>
           <span className={cn(mono, "text-foreground/35")}>
-            sends when this finishes
+            {paused ? "held until you send" : "sends when this finishes"}
           </span>
         </div>
       )}

@@ -68,7 +68,7 @@ for (const width of [1440, 720]) test(`local approvals are explicit and the comp
     await app.page.getByRole("button", { name: "Deny", exact: true }).click();
     await expect(app.page.getByRole("region", { name: "Approval required" })).toHaveCount(0);
     expect(calls.filter((c) => c.path.endsWith("/approvals"))).toEqual([{ method: "POST", path: "/v1/local/chats/chat-2/approvals", body: { id: "7", decision: "decline" } }]);
-    await app.page.getByRole("button", { name: "Interrupt turn", exact: true }).click();
+    await app.page.getByRole("button", { name: "Stop generating", exact: true }).click();
     await expect(app.page.getByRole("button", { name: "Send message", exact: true })).toBeVisible();
     expect(calls.filter((c) => c.path.endsWith("/interrupt"))).toHaveLength(1);
   } finally { await agent.close(); }

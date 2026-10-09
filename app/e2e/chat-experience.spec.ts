@@ -24,8 +24,8 @@ for (const width of [1440, 720]) test(`scoped approvals and compact activity at 
     await expect(pane.getByRole("button", { name: "3 tool calls", exact: true })).toHaveAttribute("aria-expanded", "false");
     await pane.getByRole("button", { name: "3 tool calls", exact: true }).click();
     await pane.getByRole("button", { name: /^Running tool: git status 1(?:\s|$)/ }).click();
-    await expect(pane.locator('[data-slot="terminal-block"]')).toHaveAttribute("data-state", "running");
-    await expect(pane.locator('[data-slot="terminal-block"]')).toContainText("git status 1");
+    await expect(pane.locator('[data-slot="tool-fallback-trigger-icon"]').first()).toHaveClass(/animate-spin/);
+    await expect(pane.locator('[data-slot="tool-fallback-content"]').first()).toContainText("git status 1");
     await pane.getByRole("button", { name: "3 tool calls", exact: true }).click();
     await expect(pane.getByText(/including other chats and projects/)).toBeVisible();
     expect(decisions).toEqual([]);
@@ -39,23 +39,34 @@ for (const width of [1440, 720]) test(`scoped approvals and compact activity at 
   } finally { await agent.close(); }
 });
 
-test("older backends retain chat without unsupported composer controls", async ({ app }) => {
-  const agent = await fakeAgent(); const reads: string[] = [];
+test("older backends show disabled choices and keep unsupported options out of messages", async ({ app }) => {
+  const agent = await fakeAgent(); const reads: string[] = []; const sent: unknown[] = [];
   const chat = { id: "old", agent: "codex", mode: "chat", cwd: "C:\\Projects\\shop", state: "running", started_at: "2026-10-08T12:00:00Z", thread_id: "thread", items: [], approvals: [] };
   await app.context.route(`${agent.url}/v1/local**`, async (route) => {
     const path = new URL(route.request().url()).pathname; reads.push(path);
     if (path === "/v1/local") return route.fulfill({ json: { supported: true, name: "work-hp", home: chat.cwd, agents: [], sessions: [chat] } });
     if (path.endsWith("/conversations")) return route.fulfill({ json: [] });
+    if (path.endsWith("/models")) return route.fulfill({ status: 404, json: { error: "Model choices unavailable" } });
+    if (path.endsWith("/messages")) sent.push(route.request().postDataJSON());
     return route.fulfill({ json: chat });
   });
   try {
     await app.open({ agent }); await app.page.getByTestId("nav-local").click(); await app.page.getByRole("button", { name: /Codex.*running/ }).click();
     const pane = app.page.getByTestId("local-chat");
-    await expect(pane.getByRole("heading", { name: "Codex is working…" })).toBeVisible();
-    await expect(pane.getByRole("heading", { name: "New chat" })).toHaveCount(0);
-    await expect(pane.getByLabel("Chat permissions")).toHaveCount(0);
-    await expect(pane.getByLabel("Chat model")).toHaveCount(0);
-    expect(reads.some((p) => p.endsWith("/models"))).toBe(false);
+    await expect(pane.getByRole("status")).toHaveText("Working");
+    // A chat already at work is not a new chat: no greeting.
+    await expect(pane.getByText("How can I help you today?", { exact: true })).toHaveCount(0);
+    await expect(pane.getByLabel("Chat permissions")).toBeDisabled();
+    await expect(pane.getByLabel("Chat model")).toBeDisabled();
+    await expect(app.page.getByRole("radiogroup", { name: "Chat reasoning" })).toHaveCount(0);
+    await pane.getByLabel("Chat model").locator("..").hover();
+    await expect(app.page.locator("[data-slot=tooltip-popup]")).toHaveText("This chat cannot change model, reasoning or permissions. Its backend does not support chat options.");
+    await expect.poll(() => reads.some((p) => p.endsWith("/models"))).toBe(true);
+    chat.state = "idle";
+    await pane.getByRole("button", { name: "Refresh chat", exact: true }).click();
+    await pane.getByRole("textbox", { name: "Message Codex" }).fill("Keep default settings");
+    await pane.getByRole("button", { name: "Send message", exact: true }).click();
+    await expect.poll(() => sent).toEqual([{ text: "Keep default settings" }]);
   } finally { await agent.close(); }
 });
 
@@ -81,9 +92,10 @@ test("a new chat offers the permission last chosen and an existing chat keeps it
     await expect(pane.getByRole("article", { name: "You" })).toContainText("Earlier");
     await expect(pane.getByLabel("Chat permissions")).toHaveText("Ask every time");
     await app.page.getByRole("button", { name: /Codex.*idle/ }).first().click();
-    await expect(pane.getByRole("heading", { name: "New chat" })).toBeVisible();
+    await expect(pane.getByText("How can I help you today?", { exact: true })).toBeVisible();
     await expect(pane.getByLabel("Chat permissions")).toHaveText("Read only");
-    await expect(pane.getByRole("group", { name: "Accepted chat settings" }).getByText("Ask every time", { exact: true })).toBeVisible();
+    await pane.getByLabel("Chat permissions").hover();
+    await expect(app.page.locator("[data-slot=tooltip-popup]")).toContainText("Current permission: Ask every time.");
     await pane.getByRole("textbox", { name: "Message Codex" }).fill("Look around");
     await pane.getByRole("button", { name: "Send message" }).click();
     await expect.poll(() => sent).toEqual([{ text: "Look around", options: { permission: "read-only" } }]);
@@ -117,7 +129,7 @@ test("a turn the provider refuses keeps the chat, the draft and the previous set
     await expect(pane.getByRole("status")).toHaveText("Ready");
     await expect(draft).toHaveValue("Try this");
     await expect(pane.getByRole("article")).toHaveCount(0);
-    await expect(pane.getByLabel("Chat model")).toHaveText("Synthetic model");
+    await expect(pane.getByLabel("Chat model")).toHaveText("Synthetic modelmedium");
     expect(sends).toBe(1);
     await pane.getByRole("button", { name: "Send message" }).click();
     await expect(pane.getByRole("article", { name: "You" })).toContainText("Try this");
@@ -153,18 +165,20 @@ test("full access is offered only where the backend lists it, warns before it ap
     await app.page.keyboard.press("Escape");
     await pane.getByLabel("Chat permissions").click();
     await app.page.getByRole("option", { name: "Full access", exact: true }).click();
-    await expect(pane.getByText(/From your next message: Codex runs any command and changes any file/)).toBeVisible();
-    await expect(pane.getByRole("group", { name: "Accepted chat settings" }).getByText("Ask every time", { exact: true })).toBeVisible();
+    await pane.getByLabel("Chat permissions").hover();
+    await expect(app.page.locator("[data-slot=tooltip-popup]").filter({ hasText: /From your next message: Codex runs any command and changes any file/ })).toBeVisible();
+    await expect(app.page.locator("[data-slot=tooltip-popup]")).toContainText("Current permission: Ask every time.");
     expect(sent).toEqual([]);
     await pane.getByRole("textbox", { name: "Message Codex" }).fill("Go");
     await pane.getByRole("button", { name: "Send message" }).click();
-    await expect(pane.getByRole("group", { name: "Accepted chat settings" }).getByText("Full access", { exact: true })).toBeVisible();
+    await pane.getByLabel("Chat permissions").hover();
+    await expect(app.page.locator("[data-slot=tooltip-popup]")).toContainText("Current permission: Full access.");
     expect(sent).toEqual([{ text: "Go", options: { permission: "full-access" } }]);
     expect(await app.stored("berth.chat.permission")).toBe("full-access");
     // The empty chat on a backend that does not list it is not offered the remembered mode.
     await app.page.reload(); await app.page.getByTestId("nav-local").click();
     await app.page.getByRole("button", { name: /Codex.*idle/ }).last().click();
-    await expect(pane.getByRole("heading", { name: "New chat" })).toBeVisible();
+    await expect(pane.getByText("How can I help you today?", { exact: true })).toBeVisible();
     await expect(pane.getByLabel("Chat permissions")).toHaveText("Ask every time");
   } finally { await agent.close(); }
 });
