@@ -3,7 +3,7 @@ title: Introduction
 description: Run coding agents on your own dev boxes, and work with them as if they were on your laptop.
 ---
 
-Berth connects a laptop to any number of development machines (a VPS, a
+Burf connects a laptop to any number of development machines (a VPS, a
 cloud VM, a desktop under your desk) and gives each repository on them
 worktrees, terminals, agents, dev servers and automations. The agents run on
 the boxes, so closing the app, sleeping the laptop or losing Wi-Fi never
@@ -18,9 +18,9 @@ curl -fsSL https://berthd.app/install | sh
 Run that on your box, as the user your agents will run as. It installs
 `berthd` with no root, starts it, installs the hooks that let agents report
 their state, and prints a link: paste it into **Add a box** in the desktop
-app, or into `berth pair` on your laptop.
+app, or into `burf pair` on your laptop.
 
-On your Mac, [download Berth](https://github.com/cosscom/shipyard/releases/latest/download/Berth-macos-universal.dmg),
+On your Mac, [download Burf](https://github.com/MylesMCook/burf/releases/latest/download/Burf-macos-universal.dmg),
 drag it to Applications and open it. It's signed and notarized, runs on
 Apple silicon and Intel, carries the `berth` CLI, and updates itself. Every
 step is in [install](/getting-started/install).
@@ -55,7 +55,7 @@ step is in [install](/getting-started/install).
   for git changes, pull requests, dev servers, box monitoring, activity and
   notes.
 - **Boxes without the fuss.** Pinned mutual TLS, pairing by link, boxes on
-  other tailnets, self-upgrade over Berth's own connection, and a
+  other tailnets, self-upgrade over Burf's own connection, and a
   [phone companion](/guides/phone) served by each box.
 
 ## The pieces
@@ -68,7 +68,7 @@ step is in [install](/getting-started/install).
 | `plugins/` | Built-in plugins, written against `packages/plugin-sdk`. |
 | `kits/` | Pointers to kits kept in their own repositories, such as [the Cal.com kit](https://github.com/sean-brydon/berth-kit-calcom). |
 
-Read [how Berth works](/concepts/architecture) for the whole picture, or
+Read [how Burf works](/concepts/architecture) for the whole picture, or
 [the security model](/concepts/security) before you pair a box you care
 about.
 

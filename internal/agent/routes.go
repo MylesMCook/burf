@@ -7,8 +7,8 @@ import (
 	"os"
 	"sort"
 
-	"github.com/sean-brydon/berthd/internal/proxy"
-	"github.com/sean-brydon/berthd/internal/statefile"
+	"github.com/MylesMCook/burf/internal/proxy"
+	"github.com/MylesMCook/burf/internal/statefile"
 )
 
 // Route sends every host matching Pattern to one port on a box with the Host

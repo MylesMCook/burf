@@ -11,19 +11,20 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/box"
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/identity"
-	"github.com/sean-brydon/berthd/internal/network"
-	"github.com/sean-brydon/berthd/internal/pairing"
-	"github.com/sean-brydon/berthd/internal/trust"
-	"github.com/sean-brydon/berthd/internal/wire"
+	box "github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/identity"
+	"github.com/MylesMCook/burf/internal/network"
+	"github.com/MylesMCook/burf/internal/pairing"
+	"github.com/MylesMCook/burf/internal/trust"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 // testBox is a real berthd server on the loopback, restartable on the same
@@ -186,7 +187,11 @@ func (c *clock) jump(d time.Duration) {
 // longer than the 104-byte limit for Unix socket paths.
 func shortSocket(t *testing.T) string {
 	t.Helper()
-	dir, err := os.MkdirTemp("/tmp", "cp")
+	base := "/tmp"
+	if runtime.GOOS == "windows" {
+		base = os.TempDir()
+	}
+	dir, err := os.MkdirTemp(base, "cp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,7 +227,7 @@ func startAgentWith(t *testing.T, dir string, nets Networks) *runningAgent {
 			Now:            clk.Now,
 			Networks:       nets,
 			UIAddr:         uiAddr,
-			CLI:            filepath.Join(dir, "fake-berth"),
+			CLI:            cliFixturePath(dir, "fake-berth"),
 			SSHDir:         filepath.Join(dir, "ssh"),
 			EditorRoots:    []string{filepath.Join(dir, "apps")},
 			Run:            recordRun,

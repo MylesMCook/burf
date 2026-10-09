@@ -13,8 +13,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/sean-brydon/berthd/internal/hooks"
-	"github.com/sean-brydon/berthd/internal/statefile"
+	"github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/hooks"
+	"github.com/MylesMCook/burf/internal/statefile"
 )
 
 // What a repository asks of every worktree: its own ports, environment,
@@ -25,25 +26,15 @@ import (
 // WorktreeService is a long-running program each worktree runs, such as its dev
 // server. It gets the worktree's environment, so it can listen on
 // $BERTH_PORT.
-type WorktreeService struct {
-	Name string `json:"name"`
-	Run  string `json:"run"`
-	// Autostart starts it when the worktree is created, after setup.
-	Autostart bool `json:"autostart,omitempty"`
-	// Terminal runs it in a terminal of its own (a tmux session) instead of
-	// in the background, which the app shows as a tab: its output live, and
-	// Ctrl-C there stops it. Title names that tab; the name does otherwise.
-	Terminal bool   `json:"terminal,omitempty"`
-	Title    string `json:"title,omitempty"`
-}
+type WorktreeService = boxclient.WorktreeService
 
 // serviceTitleMax is the longest a service's tab title can be.
 const serviceTitleMax = 48
 
 var serviceName = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,31}$`)
 
-// validate reports what is wrong with config someone wrote.
-func (c RepoConfig) validate() error {
+// validateConfig reports what is wrong with config someone wrote.
+func validateConfig(c RepoConfig) error {
 	if c.Ports < 0 || c.Ports > maxPortsPerWorktree {
 		return fmt.Errorf("ports must be between 0 and %d", maxPortsPerWorktree)
 	}
@@ -80,75 +71,12 @@ func (c RepoConfig) validate() error {
 var envName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 
 // Merge lays local over repo, as a box does with its own config.
-func Merge(repo, local RepoConfig) RepoConfig { return merge(repo, local) }
+func Merge(repo, local RepoConfig) RepoConfig { return boxclient.Merge(repo, local) }
 
-// merge lays local over repo: scalars and env entries replace, services and
-// agents replace by name, and hooks add up.
-func merge(repo, local RepoConfig) RepoConfig {
-	out := repo
-	if local.Setup != "" {
-		out.Setup = local.Setup
-	}
-	if local.Archive != "" {
-		out.Archive = local.Archive
-	}
-	if local.Check != "" {
-		out.Check = local.Check
-	}
-	if local.Ports != 0 {
-		out.Ports = local.Ports
-	}
-	if len(local.Env) > 0 {
-		out.Env = map[string]string{}
-		for k, v := range repo.Env {
-			out.Env[k] = v
-		}
-		for k, v := range local.Env {
-			out.Env[k] = v
-		}
-	}
-	out.Services = mergeBy(repo.Services, local.Services, func(s WorktreeService) string { return s.Name })
-	out.Agents = mergeBy(repo.Agents, local.Agents, func(a AgentPreset) string { return a.ID })
-	out.Hooks = append(append([]hooks.Hook{}, repo.Hooks...), local.Hooks...)
-	out.Flows = mergeBy(repo.Flows, local.Flows, func(f Flow) string { return f.ID })
-	out.BrowserAllow = append(append([]string{}, repo.BrowserAllow...), local.BrowserAllow...)
-	if local.Shots != nil {
-		out.Shots = local.Shots
-	}
-	return out
-}
-
-func mergeBy[T any](base, over []T, key func(T) string) []T {
-	out := append([]T{}, base...)
-	for _, o := range over {
-		replaced := false
-		for i := range out {
-			if key(out[i]) == key(o) {
-				out[i], replaced = o, true
-			}
-		}
-		if !replaced {
-			out = append(out, o)
-		}
-	}
-	return out
-}
+func merge(repo, local RepoConfig) RepoConfig { return boxclient.Merge(repo, local) }
 
 // Config is a location's config as the app shows and edits it.
-type Config struct {
-	// Repo is the repository's .berth/config.json as this box applies it,
-	// read-only here. Until the file is trusted that is its ports alone;
-	// RepoTrust.Wants holds the rest.
-	Repo     *RepoConfig `json:"repo"`
-	RepoPath string      `json:"repo_path"`
-	// RepoTrust says whether this box runs the repository's config.
-	RepoTrust RepoTrust `json:"repo_trust"`
-	// Kit is the kit installed for the location, if any.
-	Kit *InstalledKit `json:"kit,omitempty"`
-	// Local is this box's own config for the location.
-	Local     RepoConfig `json:"local"`
-	Effective RepoConfig `json:"effective"`
-}
+type Config = boxclient.Config
 
 // Config reads a location's config. A broken repository file is reported
 // rather than silently ignored, since it would change what worktrees get.
@@ -206,7 +134,7 @@ func (l *Locations) saved(name string) (savedLocation, error) {
 
 // SetLocalConfig replaces this box's own config for a location.
 func (l *Locations) SetLocalConfig(name string, c RepoConfig) error {
-	if err := c.validate(); err != nil {
+	if err := validateConfig(c); err != nil {
 		return err
 	}
 	return l.update(func(all []savedLocation) ([]savedLocation, error) {

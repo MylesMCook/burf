@@ -39,6 +39,38 @@ const QUESTION = [
 
 const PROMPT = "Fix the flaky checkout test: the retry loop never backs off, so it hammers the payments sandbox.";
 
+test("Codex folder access interrupts a falsely running empty chat without granting trust", async ({ app, context }) => {
+  const question = ["Folder access", DIR, "Trust this folder? Codex can read, edit, and run files here.", "", "› 1. Trust and continue", "  2. Back to Agent Command Center", "", "  enter continue · esc back"];
+  // Older daemons report running before Codex can reach its first hook.
+  agent.session = { agent_state: "running", preset: "codex", agent: "codex", command: "codex", turn: `${SESSION}#1` };
+  agent.transcript = () => ({ body: { source: "none", items: [], next: 0, crew: [], reason: "No codex conversation yet" } });
+  agent.screen = () => question.join("\n");
+  const inputs: unknown[] = [];
+  const sends: string[] = [];
+  app.page.on("request", (request) => {
+    if (request.method() === "POST" && /\/sessions\/[^/]+\/(send|queue)(?:\?|$)/.test(request.url())) sends.push(request.url());
+  });
+  await context.routeWebSocket(/\/attach(?:\?|$)/, (ws) => {
+    ws.onMessage((message) => inputs.push(message));
+    ws.send(`\x1b[2J\x1b[H${question.join("\r\n")}`);
+  });
+  await app.open({ agent, params: { view: "conversation" } });
+  await app.openWorktree(`${BOX}/fix`);
+  const screen = app.page.getByRole("region", { name: "Codex's own screen" });
+  await expect(screen).toBeVisible();
+  await expect(screen.getByText("Attaching…")).toHaveCount(0);
+  await expect(app.chat.locator("[data-testid=chat-item][data-kind=thinking]")).toHaveCount(0);
+  const reply = app.chat.getByRole("textbox", { name: "Reply", exact: true });
+  await expect(reply).toHaveAttribute("placeholder", "Codex is showing its own screen: answer it above");
+  await reply.fill("Do not send this into the trust question");
+  await expect(app.chat.getByRole("button", { name: "Queue", exact: true })).toBeDisabled();
+  await reply.press("Enter");
+  await expect(reply).toHaveValue("Do not send this into the trust question");
+  expect(sends).toEqual([]);
+  // Attachment may size and pace its terminal (text control messages), but it must never send a key (binary).
+  expect(inputs.every((message) => typeof message === "string" && ["resize", "pace"].includes(JSON.parse(message).type))).toBe(true);
+});
+
 for (const theme of ["berth-dark", "berth-light"]) {
   test(`the trust question shows in place, its first prompt as sent (${theme})`, async ({ app, context }) => {
     agent.session = { agent_state: "waiting", preset: "claude", command: `claude --model sonnet '${PROMPT.replaceAll("'", "'\\''")}'`, turn: `${SESSION}#1` };

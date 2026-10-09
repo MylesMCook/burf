@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/events"
+	"github.com/MylesMCook/burf/internal/events"
 )
 
 func shotOf(img *image.NRGBA, status int) shot {

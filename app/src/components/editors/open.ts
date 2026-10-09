@@ -15,10 +15,10 @@ export async function openEditor(req: { box: string; path?: string; location?: s
   } catch (err) {
     if (err instanceof SSHSetupNeeded) {
       toastManager.add({
-        title: "Set up SSH for editors",
-        description: `Your editor reaches boxes over SSH, as berth-${req.box}. Berth can write those hosts for you.`,
+        title: "External editor needs SSH setup",
+        description: `Review the SSH entry for ${req.box} before writing it. This is only for your external editor; chats in Burf do not need it.`,
         type: "warning",
-        actionProps: { children: "Set up", onClick: () => openSettings("boxes") },
+        actionProps: { children: "Review setup", onClick: () => openSettings("boxes") },
       });
       return;
     }

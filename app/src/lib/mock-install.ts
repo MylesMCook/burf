@@ -1,7 +1,7 @@
 import type { AgentChoice, GuidedInstallRequest, InstallHandlers, InstallPlan, InstallPlanStep, InstallStepState, SshFailure, TerminalConnection } from "@/lib/api";
 
 // The guided install in mock mode (?mock=1): the plan as the agent gives it
-// before connecting, and a terminal that plays `berth add ssh` on a fresh
+// before connecting, and a terminal that plays `burf add ssh` on a fresh
 // Ubuntu box, waiting for Enter and for sudo's password as the real one
 // does. A word in the host picks a path, as mockSshFailure does for logins:
 // "flaky" fails the tmux and git step once (Retry from it then works),
@@ -30,7 +30,7 @@ export const MOCK_AGENTS: AgentChoice[] = [
     command: "gemini",
     offered: false,
     install: "npm install -g @google/gemini-cli",
-    why: "it installs with npm and needs Node.js 20 or newer, which Berth doesn't install; install Node, then run the command",
+    why: "it installs with npm and needs Node.js 20 or newer, which Burf doesn't install; install Node, then run the command",
   },
 ];
 
@@ -43,12 +43,12 @@ function names(ids: string[]) {
 export function mockInstallPlan(host: string, agents: string[]): InstallPlan {
   const user = host.includes("@") ? host.slice(0, host.lastIndexOf("@")) : "$USER";
   const steps: InstallPlanStep[] = [
-    { id: "connect", title: `Connect to ${host}`, where: "laptop", detail: "Over SSH, with your own keys and agent, this once. After this Berth never needs SSH for the box.", commands: [`ssh ${host}`] },
+    { id: "connect", title: `Connect to ${host}`, where: "laptop", detail: "Over SSH, with your own keys and agent, this once. After this Burf never needs SSH for the box.", commands: [`ssh ${host}`] },
     {
       id: "berthd",
       title: "Install berthd",
       where: "box",
-      detail: "Berth's daemon, in ~/.local/bin, running as your own user service. No root.",
+      detail: "Burf's daemon, in ~/.local/bin, running as your own user service. No root.",
       commands: ["upload berthd-linux-<arch> → ~/.local/bin/berthd", "~/.local/bin/berthd install --no-tools --no-integrations --keep-listen"],
     },
     {
@@ -67,7 +67,7 @@ export function mockInstallPlan(host: string, agents: string[]): InstallPlan {
       sudo: true,
       when: "only if git is missing",
       detail: "Every terminal and agent runs in tmux, and worktrees are git's.",
-      commands: ["upload Berth's tmux (tmux-linux-<arch>) → ~/.local/bin/tmux   (only if tmux is missing)", "sudo apt-get install -y -q git   (or dnf, pacman…; only if git is missing)"],
+      commands: ["upload Burf's tmux (tmux-linux-<arch>) → ~/.local/bin/tmux   (only if tmux is missing)", "sudo apt-get install -y -q git   (or dnf, pacman…; only if git is missing)"],
     },
   ];
   if (agents.length)
@@ -79,8 +79,8 @@ export function mockInstallPlan(host: string, agents: string[]): InstallPlan {
       commands: [`~/.local/bin/berthd agents install ${agents.join(" ")}`, ...agents.map((id) => `  ${MOCK_AGENTS.find((a) => a.id === id)?.name}: ${MOCK_AGENTS.find((a) => a.id === id)?.install}`)],
     });
   steps.push(
-    { id: "integrations", title: "Agent integrations", where: "box", detail: "Hooks that tell Berth when an agent is working, done or needs you, and Berth's skills.", commands: ["~/.local/bin/berthd integrations install present"] },
-    { id: "pair", title: "Pair with this computer", where: "laptop", detail: "The laptop and the box pin each other's keys; from then on they talk directly.", commands: ["~/.local/bin/berthd pair", "berth pair <the link it prints>"] },
+    { id: "integrations", title: "Agent integrations", where: "box", detail: "Hooks that tell Burf when an agent is working, done or needs you, and Burf's skills.", commands: ["~/.local/bin/berthd integrations install present"] },
+    { id: "pair", title: "Pair with this computer", where: "laptop", detail: "The laptop and the box pin each other's keys; from then on they talk directly.", commands: ["~/.local/bin/berthd pair", "burf pair <the link it prints>"] },
   );
   return { steps, agents: MOCK_AGENTS, tmux: { bundled: true } };
 }
@@ -147,12 +147,12 @@ export function mockInstallTerminal(req: GuidedInstallRequest, _cols: number, _r
     if (req.trust_host_key) out(`    Trusted ${where}'s host key (${req.trust_host_key}).\n`);
     step("connect", "done", `${user}@${where}, linux/arm64`);
     if (!req.guided) return quiet();
-    out(`\n${B}Berth will set this box up:${X}\n`);
+    out(`\n${B}Burf will set this box up:${X}\n`);
     out(` 1. Install berthd\n      ${D}upload berthd-linux-arm64 → ~/.local/bin/berthd${X}\n`);
     out(` 2. Keep berthd running after you log out${Y}  [sudo]${X}\n      ${D}sudo loginctl enable-linger ${user}${X}\n`);
-    out(` 3. tmux and git${Y}  [sudo]${X}\n      ${D}upload tmux-linux-arm64 → ~/.local/bin/tmux   (Berth's own build: no sudo)${X}\n      ${D}sudo apt-get update -q${X}\n      ${D}sudo apt-get install -y -q git${X}\n`);
+    out(` 3. tmux and git${Y}  [sudo]${X}\n      ${D}upload tmux-linux-arm64 → ~/.local/bin/tmux   (Burf's own build: no sudo)${X}\n      ${D}sudo apt-get update -q${X}\n      ${D}sudo apt-get install -y -q git${X}\n`);
     if (req.agents.length) out(` 4. ${names(req.agents)}\n      ${D}~/.local/bin/berthd agents install ${req.agents.join(" ")}${X}\n`);
-    out(`\n2 steps need root (Keep berthd running after you log out; tmux and git): sudo asks for your password on the box, in this terminal.\nBerth never sees it or keeps it.\n`);
+    out(`\n2 steps need root (Keep berthd running after you log out; tmux and git): sudo asks for your password on the box, in this terminal.\nBurf never sees it or keeps it.\n`);
     if (from === 0) {
       out(`\n${B}Press Enter to start, or Ctrl-C to stop.${X} `);
       await readLine();
@@ -172,7 +172,7 @@ export function mockInstallTerminal(req: GuidedInstallRequest, _cols: number, _r
     if (pending("linger")) {
       step("linger", "start");
       out(`\n${B}==> Keeping berthd running after you log out${X}\n`);
-      out(`    This needs root: sudo asks for ${user}'s password on this box.\n    Type it and press Enter. It goes to sudo here; Berth never sees it or keeps it.\n`);
+      out(`    This needs root: sudo asks for ${user}'s password on this box.\n    Type it and press Enter. It goes to sudo here; Burf never sees it or keeps it.\n`);
       out(`[sudo] password for ${user}: `);
       echo = false;
       await readLine();
@@ -184,8 +184,8 @@ export function mockInstallTerminal(req: GuidedInstallRequest, _cols: number, _r
     }
     if (pending("tools")) {
       step("tools", "start");
-      out(`    Uploading Berth's tmux for linux/arm64 (1 MB) to ~/.local/bin/tmux\n`);
-      out(`\n${B}==> tmux and git${X}\n    tmux: Berth's own build, tmux 3.7c, in /home/${user}/.local/bin (no sudo needed)\n    Installing git with apt-get\n`);
+      out(`    Uploading Burf's tmux for linux/arm64 (1 MB) to ~/.local/bin/tmux\n`);
+      out(`\n${B}==> tmux and git${X}\n    tmux: Burf's own build, tmux 3.7c, in /home/${user}/.local/bin (no sudo needed)\n    Installing git with apt-get\n`);
       await wait(400);
       for (const l of ["Hit:1 http://ports.ubuntu.com/ubuntu-ports noble InRelease", "Get:2 http://ports.ubuntu.com/ubuntu-ports noble-updates InRelease [126 kB]", "Reading package lists..."]) {
         out(`${l}\n`);
@@ -204,8 +204,8 @@ export function mockInstallTerminal(req: GuidedInstallRequest, _cols: number, _r
       if (/nosudo/.test(host)) {
         const cmd = "sudo apt-get update -q && sudo apt-get install -y -q git";
         step("tools", "cmd", cmd);
-        step("tools", "fail", "Installing git needs root, and sudo asks for a password, which Berth can't type without a terminal.");
-        out(`\n${R}Installing git needs root, and sudo asks for a password, which Berth can't type without a terminal.${X}\nRun this on the box, then set it up again:\n  ${cmd}\n`);
+        step("tools", "fail", "Installing git needs root, and sudo asks for a password, which Burf can't type without a terminal.");
+        out(`\n${R}Installing git needs root, and sudo asks for a password, which Burf can't type without a terminal.${X}\nRun this on the box, then set it up again:\n  ${cmd}\n`);
         exit(1);
         return;
       }
@@ -264,7 +264,7 @@ export function mockInstallTerminal(req: GuidedInstallRequest, _cols: number, _r
     const password = async (id: string) => {
       if (!told) {
         step(id, "sudo");
-        out(`    This needs root: sudo asks for ${user}'s password on this box.\n    Type it and press Enter. It goes to sudo here; Berth never sees it or keeps it.\n`);
+        out(`    This needs root: sudo asks for ${user}'s password on this box.\n    Type it and press Enter. It goes to sudo here; Burf never sees it or keeps it.\n`);
         out(`[sudo] password for ${user}: `);
         echo = false;
         await readLine();
@@ -306,7 +306,7 @@ export function mockInstallTerminal(req: GuidedInstallRequest, _cols: number, _r
     }
     if (pending("tools")) {
       step("tools", "start");
-      out(`    Uploading Berth's tmux for linux/arm64 (1 MB) to ~/.local/bin/tmux\n\n${B}==> tmux and git${X}\n    tmux: Berth's own build, tmux 3.7c (no sudo needed)\n`);
+      out(`    Uploading Burf's tmux for linux/arm64 (1 MB) to ~/.local/bin/tmux\n\n${B}==> tmux and git${X}\n    tmux: Burf's own build, tmux 3.7c (no sudo needed)\n`);
       if (nogit) {
         out("    Installing git with apt-get\n");
         await password("tools");

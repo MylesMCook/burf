@@ -8,18 +8,19 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"sync"
-	"syscall"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/version"
+	"github.com/MylesMCook/burf/internal/statefile"
+	"github.com/MylesMCook/burf/internal/version"
 )
 
 // Restarting the agent cleanly, for an update. The app's updater replaces
-// Berth.app under a running agent, which goes on running the old code (and
+// Burf.app under a running agent, which goes on running the old code (and
 // keeps this computer's box on the old berthd) until it restarts. The
-// updated app asks `berth agent restart --if-stale`, which reads what the
+// updated app asks `burf agent restart --if-stale`, which reads what the
 // agent runs (GET /v1/agent), and when it is older than the berth asking,
 // stops it with ?drain=1 and starts the new one.
 //
@@ -87,7 +88,7 @@ func (c *Client) WaitStopped(ctx context.Context, dir string) error {
 		}
 		select {
 		case <-ctx.Done():
-			return fmt.Errorf("the berth agent did not stop: %w", ctx.Err())
+			return fmt.Errorf("the burf agent did not stop: %w", ctx.Err())
 		case <-time.After(100 * time.Millisecond):
 		}
 	}
@@ -95,18 +96,16 @@ func (c *Client) WaitStopped(ctx context.Context, dir string) error {
 
 // lockFree says whether no agent holds dir's agent lock.
 func lockFree(dir string) bool {
-	f, err := os.OpenFile(filepath.Join(dir, "agent.lock"), os.O_RDWR, 0)
-	if errors.Is(err, os.ErrNotExist) {
+	if _, err := os.Stat(filepath.Join(dir, "agent.lock")); errors.Is(err, os.ErrNotExist) {
 		return true
-	}
-	if err != nil {
+	} else if err != nil {
 		return false
 	}
-	defer f.Close()
-	if syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB) != nil {
+	unlock, acquired, err := statefile.TryLock(filepath.Join(dir, "agent"))
+	if err != nil || !acquired {
 		return false
 	}
-	syscall.Flock(int(f.Fd()), syscall.LOCK_UN)
+	unlock()
 	return true
 }
 
@@ -139,7 +138,7 @@ type workSet struct {
 	wg       sync.WaitGroup
 }
 
-var errDraining = errors.New("the berth agent is restarting; try again in a moment")
+var errDraining = errors.New("the burf agent is restarting; try again in a moment")
 
 // begin starts a piece of work, unless the agent is draining.
 func (w *workSet) begin(what string) (done func(), err error) {
@@ -223,6 +222,13 @@ func (a *Agent) restartRoutes(mux *http.ServeMux, stop context.CancelFunc) {
 	})
 	mux.HandleFunc("POST /v1/stop", func(w http.ResponseWriter, r *http.Request) {
 		drain := r.URL.Query().Get("drain") != ""
+		if drain && runtime.GOOS == "windows" {
+			a.initLocalClient()
+			if err := a.prepareLocalRestart(); err != nil {
+				writeCoded(w, http.StatusConflict, err.Error(), "local_sessions_running")
+				return
+			}
+		}
 		busy, _ := a.work.busy()
 		writeJSON(w, http.StatusOK, map[string]any{"stopping": true, "busy": busy})
 		// Reply before stopping, or the caller would see a dropped connection.

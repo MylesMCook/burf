@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+
+	"github.com/MylesMCook/burf/internal/boxclient"
 )
 
 // A repository's committed .berth/config.json is code: its setup script,
@@ -23,32 +25,14 @@ import (
 
 // Repo trust states.
 const (
-	// RepoTrustNone: the repository has no .berth/config.json.
-	RepoTrustNone = "none"
-	// RepoTrustTrusted: this box runs the config as it is.
-	RepoTrustTrusted = "trusted"
-	// RepoTrustUntrusted: nobody has trusted the config on this box.
-	RepoTrustUntrusted = "untrusted"
-	// RepoTrustChanged: an earlier version was trusted; this one is not.
-	RepoTrustChanged = "changed"
+	RepoTrustNone      = boxclient.RepoTrustNone
+	RepoTrustTrusted   = boxclient.RepoTrustTrusted
+	RepoTrustUntrusted = boxclient.RepoTrustUntrusted
+	RepoTrustChanged   = boxclient.RepoTrustChanged
 )
 
 // RepoTrust says whether a box runs a repository's committed config.
-type RepoTrust struct {
-	State string `json:"state"`
-	// Hash is the sha256 of the file as it is now; trusting it means
-	// sending this hash back.
-	Hash string `json:"hash,omitempty"`
-	// Wants is everything the committed config would run, set while it is
-	// not trusted.
-	Wants *RepoConfig `json:"wants,omitempty"`
-}
-
-// Pending reports whether the repository asks for something the box does not
-// run yet.
-func (t RepoTrust) Pending() bool {
-	return t.State == RepoTrustUntrusted || t.State == RepoTrustChanged
-}
+type RepoTrust = boxclient.RepoTrust
 
 // readRepoFile reads repo's .berth/config.json and the hash of its bytes.
 func readRepoFile(repo string) (c RepoConfig, hash string, ok bool, err error) {
@@ -67,9 +51,9 @@ func readRepoFile(repo string) (c RepoConfig, hash string, ok bool, err error) {
 	return c, hash, true, nil
 }
 
-// runsAnything reports whether c holds anything that runs or changes what
+// configRunsAnything reports whether c holds anything that runs or changes what
 // runs. Ports alone only reserve ports.
-func (c RepoConfig) runsAnything() bool {
+func configRunsAnything(c RepoConfig) bool {
 	return c.Setup != "" || c.Archive != "" || len(c.Env) > 0 || len(c.Services) > 0 ||
 		len(c.Hooks) > 0 || len(c.Flows) > 0 || len(c.Agents) > 0 || len(c.BrowserAllow) > 0
 }
@@ -87,7 +71,7 @@ func repoLayer(saved savedLocation) (RepoConfig, RepoTrust, error) {
 	if !ok {
 		return RepoConfig{}, RepoTrust{State: RepoTrustNone}, nil
 	}
-	if saved.RepoTrust == hash || !full.runsAnything() {
+	if saved.RepoTrust == hash || !configRunsAnything(full) {
 		return full, RepoTrust{State: RepoTrustTrusted, Hash: hash}, nil
 	}
 	t := RepoTrust{State: RepoTrustUntrusted, Hash: hash, Wants: &full}

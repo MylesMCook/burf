@@ -22,6 +22,7 @@ import {
 import type { SessionEntry } from "@/hooks/use-agent-counts";
 import type { AgentPreset } from "@/lib/api";
 import type { AgentPick } from "@/lib/composer";
+import { BASE_PERMISSIONS, chatPermissions } from "@/lib/local-computer";
 import { sessionAgent, sessionName, sessionPlace } from "@/lib/derive";
 import { promptsFor, usePrompts } from "@/lib/prompts";
 import { useStore } from "@/lib/store";
@@ -94,8 +95,12 @@ export function AgentsPicker({
   onChange,
   onCopies,
   onNone,
+  onCompare,
+  permission,
+  permissions,
+  onPermission,
 }: {
-  presets: AgentPreset[];
+  presets: PickerPreset[];
   sel: Chosen;
   copies: number;
   none?: boolean;
@@ -104,7 +109,13 @@ export function AgentsPicker({
   onChange(c: Chosen): void;
   onCopies(n: number): void;
   onNone?(on: boolean): void;
+  onCompare?(on: boolean): void;
+  // A structured chat's permission mode, where the box takes one.
+  permission?: ChatPermission;
+  permissions?: string[];
+  onPermission?(p: ChatPermission): void;
 }) {
+  if (single) return <SingleAgentPicker presets={presets} sel={sel} none={none} allowNone={allowNone} onChange={onChange} onNone={onNone} onCompare={onCompare} permission={permission} permissions={permissions} onPermission={onPermission} />;
   const label = none ? "No agent" : pickLabel(sel, copies, presets);
   const ids = none ? [] : Object.keys(sel);
   // Unticking the last pick leaves it: there is always one agent, unless
@@ -134,6 +145,7 @@ export function AgentsPicker({
         <ChevronsUpDownIcon className="opacity-60" />
       </MenuTrigger>
       <MenuPopup align="end" className="min-w-64">
+        {onCompare && <><MenuItem onClick={() => onCompare(false)}>Use one agent</MenuItem><MenuSeparator /></>}
         <MenuGroup>
           <MenuGroupLabel>{single ? "Agent" : "Agents"}</MenuGroupLabel>
           {presets.length === 0 && <p className="px-2 py-1.5 text-muted-foreground text-xs">No agent CLI on this box. Settings → Agents shows how to add one.</p>}
@@ -213,6 +225,123 @@ export function AgentsPicker({
             </MenuGroup>
           </>
         )}
+      </MenuPopup>
+    </Menu>
+  );
+}
+
+const coreProviders = new Set(["codex", "claude", "cursor", "grok"]);
+
+type ChatPermission = keyof typeof chatPermissions;
+// What a structured provider calls its models, by id; CLI presets have only the ids.
+export type PickerPreset = AgentPreset & { model_names?: Record<string, string> };
+const permissionLabels = Object.fromEntries(Object.entries(chatPermissions).map(([id, p]) => [id, p.label]));
+
+function SingleAgentPicker({ presets, sel, none, allowNone, onChange, onNone, onCompare, permission, permissions, onPermission }: {
+  presets: PickerPreset[];
+  sel: Chosen;
+  none?: boolean;
+  allowNone?: boolean;
+  onChange(c: Chosen): void;
+  onNone?(on: boolean): void;
+  onCompare?(on: boolean): void;
+  permission?: ChatPermission;
+  permissions?: string[];
+  onPermission?(p: ChatPermission): void;
+}) {
+  const id = Object.keys(sel)[0] ?? "";
+  const preset = presets.find((p) => p.id === id);
+  const choice = sel[id] ?? { models: [""], effort: "" };
+  const label = none ? "No agent" : (preset?.name ?? "Choose agent");
+  const value = none ? "__none__" : id;
+  const select = (next: unknown) => {
+    if (next === "__none__") return onNone?.(true);
+    onNone?.(false);
+    onChange({ [String(next)]: sel[String(next)] ?? { models: [""], effort: "" } });
+  };
+  const provider = (p: PickerPreset) => (
+    <MenuRadioItem key={p.id} value={p.id} closeOnClick>
+      <span className="flex min-w-0 items-center gap-2">
+        <AgentIcon agent={p.id} />
+        <span className="truncate">{p.name}</span>
+      </span>
+    </MenuRadioItem>
+  );
+  const others = presets.filter((p) => !coreProviders.has(p.id));
+  return (
+    <>
+      <Menu>
+        <MenuTrigger render={<Button size="sm" variant="ghost" aria-label={`Provider: ${label}`} className="min-w-0 max-w-48 shrink" />}>
+          {!none && preset && <AgentIcon agent={id} />}
+          <span className="truncate">{label}</span>
+          <ChevronsUpDownIcon className="opacity-60" />
+        </MenuTrigger>
+        <MenuPopup align="end" className="min-w-52">
+          <MenuGroup>
+            <MenuGroupLabel>Provider</MenuGroupLabel>
+            {presets.length === 0 && <p className="px-2 py-1.5 text-muted-foreground text-xs">No agent CLI on this box. Settings → Agents shows how to add one.</p>}
+            <MenuRadioGroup value={value} onValueChange={select}>
+              {presets.filter((p) => coreProviders.has(p.id)).map(provider)}
+              {others.length > 0 && (
+                <MenuSub>
+                  <MenuSubTrigger>Other providers</MenuSubTrigger>
+                  <MenuSubPopup>
+                    <MenuRadioGroup value={value} onValueChange={select}>
+                      {others.map(provider)}
+                    </MenuRadioGroup>
+                  </MenuSubPopup>
+                </MenuSub>
+              )}
+              {allowNone && (
+                <>
+                  <MenuSeparator />
+                  <MenuRadioItem value="__none__" closeOnClick>
+                    No agent · Worktree only
+                  </MenuRadioItem>
+                </>
+              )}
+            </MenuRadioGroup>
+          </MenuGroup>
+          {onCompare && (
+            <>
+              <MenuSeparator />
+              <MenuItem disabled={presets.length < 1} onClick={() => onCompare(true)}>
+                <UsersIcon />
+                Compare agents…
+              </MenuItem>
+            </>
+          )}
+        </MenuPopup>
+      </Menu>
+      {!none && preset?.model_flag && !!preset.models?.length && <AgentOption label="Model" value={choice.models[0] ?? ""} values={preset.models} labels={preset.model_names} onChange={(model) => onChange({ [id]: { ...choice, models: [model] } })} />}
+      {!none && preset?.effort_flag && !!preset.efforts?.length && <AgentOption label="Reasoning" value={choice.effort} values={preset.efforts} onChange={(effort) => onChange({ [id]: { ...choice, effort } })} />}
+      {!none && permission && onPermission && <AgentOption label="Permissions" value={permission} values={permissions ?? BASE_PERMISSIONS} labels={permissionLabels} required onChange={(p) => onPermission(p as ChatPermission)} />}
+    </>
+  );
+}
+
+function AgentOption({ label, value, values, labels, required, onChange }: { label: string; value: string; values: string[]; labels?: Record<string, string>; required?: boolean; onChange(value: string): void }) {
+  const text = (option: string) => labels?.[option] ?? (option ? nice(option) : "Default");
+  const shown = text(value);
+  return (
+    <Menu>
+      <MenuTrigger render={<Button size="sm" variant="ghost" aria-label={`${label}: ${shown}`} className="min-w-0 max-w-64 text-muted-foreground" />}>
+        <span className="truncate">
+          {label}: {shown}
+        </span>
+        <ChevronsUpDownIcon className="opacity-60" />
+      </MenuTrigger>
+      <MenuPopup align="end">
+        <MenuGroup>
+          <MenuGroupLabel>{label}</MenuGroupLabel>
+          <MenuRadioGroup value={value} onValueChange={(next) => onChange(String(next))}>
+            {[...(required ? [] : [""]), ...new Set(values.filter(Boolean))].map((option) => (
+              <MenuRadioItem key={option || "default"} value={option} closeOnClick>
+                {text(option)}
+              </MenuRadioItem>
+            ))}
+          </MenuRadioGroup>
+        </MenuGroup>
       </MenuPopup>
     </Menu>
   );

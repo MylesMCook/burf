@@ -5,19 +5,13 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/MylesMCook/burf/internal/boxclient"
 )
 
 // Service is a listening port that belongs to a worktree, found by where its
 // process runs: Next.js in ~/work/shop-checkout/apps/web serves shop/checkout.
-type Service struct {
-	Location string `json:"location"`
-	Worktree string `json:"worktree"`
-	Path     string `json:"path"`
-	Port     int    `json:"port"`
-	Process  string `json:"process,omitempty"`
-	// Main marks the location's own checkout, reachable as LOCATION.BOX.
-	Main bool `json:"main,omitempty"`
-}
+type Service = boxclient.Service
 
 // Services joins listening ports with location worktrees. A port in a
 // worktree's own block ($BERTH_PORT…) is that worktree's, whatever runs it;

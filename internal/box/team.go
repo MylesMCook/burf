@@ -18,11 +18,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/agentcli"
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/groups"
-	"github.com/sean-brydon/berthd/internal/statefile"
-	"github.com/sean-brydon/berthd/internal/team"
+	"github.com/MylesMCook/burf/internal/agentcli"
+	"github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/groups"
+	"github.com/MylesMCook/burf/internal/statefile"
+	"github.com/MylesMCook/burf/internal/team"
 )
 
 // A team setup on a box. The laptop sends what it read of <org>/.berth
@@ -31,10 +32,10 @@ import (
 //
 //  1. Steps. One terminal session on the box, in the home folder, as the
 //     box's user, runs the team's script once per step (`<script> check
-//     <step>` first, to skip what is done), then Berth's own step: the box's
+//     <step>` first, to skip what is done), then Burf's own step: the box's
 //     own `gh auth login`. It is a terminal the engineer can see and type in,
 //     because steps that need root call sudo, which asks them for their
-//     password there; Berth never sees it. The runner script appends each
+//     password there; Burf never sees it. The runner script appends each
 //     step's state to a progress file, which berthd follows, so progress
 //     survives berthd restarting (tmux keeps the session) and a failure
 //     leaves the steps before it done: Retry starts again from the step.
@@ -363,7 +364,7 @@ func (b *Box) runSteps(st TeamStatus, from int) (TeamStatus, error) {
 	}
 	sess, err := b.Sessions.Create(ctx, name, "", home, command, env)
 	if errors.Is(err, errTmuxMissing) {
-		return st, fmt.Errorf("%w, and Berth runs the team setup's steps in a terminal there (tmux): install it with `%s`, then set up again", errTmuxMissing, tmuxInstallHint())
+		return st, fmt.Errorf("%w, and Burf runs the team setup's steps in a terminal there (tmux): install it with `%s`, then set up again", errTmuxMissing, tmuxInstallHint())
 	}
 	if err != nil {
 		return st, err
@@ -392,9 +393,9 @@ func teamRunScript(tb TeamBundle) string {
 		short = short[:7]
 	}
 	return fmt.Sprintf(`#!/bin/sh
-# Berth runs %[1]s's team setup here (%[2]s/.berth at %[3]s), as you, in
+# Burf runs %[1]s's team setup here (%[2]s/.berth at %[3]s), as you, in
 # this terminal. Steps that need root ask for your password with sudo: type
-# it here. Berth never sees it or keeps it.
+# it here. Burf never sees it or keeps it.
 T=$(cd "$(dirname "$0")" && pwd)
 P="$T/progress"
 SCRIPT=%[4]s
@@ -402,7 +403,7 @@ GH=${BERTH_TEAM_GH:-gh}
 BERTHD=${BERTH_TEAM_BERTHD:-berthd}
 mark() { printf '%%s %%s %%s %%s\n' "$1" "$2" "$(date +%%s)" "${3:-}" >>"$P"; }
 stop() {
-  printf '\n\033[31mBerth stopped at %%s (exit %%s).\033[0m Fix it, then press Retry from it in Berth; the steps before it are kept.\n' "$1" "$2"
+  printf '\n\033[31mBurf stopped at %%s (exit %%s).\033[0m Fix it, then press Retry from it in Burf; the steps before it are kept.\n' "$1" "$2"
   mark - end fail
   exit "$2"
 }
@@ -433,12 +434,12 @@ regroup() {
   eval "$cmd"
 }
 if [ "$(id -u)" -eq 0 ]; then
-  echo "Berth runs team setups as you, not as root; steps that need root ask for your password with sudo."
+  echo "Burf runs team setups as you, not as root; steps that need root ask for your password with sudo."
   mark - end fail
   exit 1
 fi
 cd "$T/files" || exit 1
-[ -n "${BERTH_TEAM_REGROUPED:-}" ] || printf '\033[1mBerth: %[1]s team setup\033[0m (%[2]s/.berth at %[3]s)\n'
+[ -n "${BERTH_TEAM_REGROUPED:-}" ] || printf '\033[1mBurf: %[1]s team setup\033[0m (%[2]s/.berth at %[3]s)\n'
 while [ $# -gt 0 ]; do
   s=$1
   shift
@@ -492,7 +493,7 @@ while [ $# -gt 0 ]; do
     mark 1password running
     printf '\n\033[1m==> 1Password on this box\033[0m\n'
     printf "    The team's shared keys are 1Password references (op://...). Sign op in\n"
-    printf '    here, once, so Berth can read them when a worktree needs them.\n\n'
+    printf '    here, once, so Burf can read them when a worktree needs them.\n\n'
     if "$BERTHD" secret signin; then
       mark 1password done
     else
@@ -518,7 +519,7 @@ while [ $# -gt 0 ]; do
   fi
 done
 mark - end ok
-printf '\n\033[32mBerth: the box is set up.\033[0m The repos are next, in Berth; you can close this tab.\n'
+printf '\n\033[32mBurf: the box is set up.\033[0m The repos are next, in Burf; you can close this tab.\n'
 `, tb.Name, tb.Org, short, shellQuote(tb.Script))
 }
 
@@ -958,7 +959,7 @@ func gitClone(ctx context.Context, url, dest string, line func(string)) error {
 	ctx, cancel := context.WithTimeout(ctx, 60*time.Minute)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, "git", "clone", "--progress", "--", url, dest)
-	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "GIT_ALLOW_PROTOCOL="+GitProtocols)
+	cmd.Env = append(os.Environ(), "GIT_TERMINAL_PROMPT=0", "GIT_ALLOW_PROTOCOL="+boxclient.GitProtocols)
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		return err
@@ -1059,7 +1060,7 @@ func (b *Box) runInit(ctx context.Context, tb TeamBundle, p TeamProjectPlan, loc
 		}
 		os.Remove(status)
 		script := filepath.Join(t.dir(tb.ID), "files", filepath.FromSlash(p.Init))
-		command := fmt.Sprintf("cd %s && %s; c=$?; echo $c > %s; [ $c = 0 ] && echo && echo 'Berth: %s is set up.'", shellQuote(dest), shellQuote(script), shellQuote(status), p.ID)
+		command := fmt.Sprintf("cd %s && %s; c=$?; echo $c > %s; [ $c = 0 ] && echo && echo 'Burf: %s is set up.'", shellQuote(dest), shellQuote(script), shellQuote(status), p.ID)
 		env := initEnv(ctx, b, tb, location, dest, filepath.Join(t.dir(tb.ID), "files"))
 		if _, err := b.Sessions.Create(ctx, name, location, dest, command, env); err != nil {
 			return fmt.Errorf("init: %w", err)

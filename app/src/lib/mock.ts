@@ -47,8 +47,9 @@ const status: Status = {
   routes: [],
   proxy: { port: 1377, url_port: 1377 },
 };
+if (new URLSearchParams(location.search).get("client") === "windows") Object.assign(status, { ssh_setup_supported: false });
 
-// The berthd build each box runs, and the one this Berth ships: gpu is
+// The berthd build each box runs, and the one this Burf ships: gpu is
 // behind until it is updated (GET /v1/boxes/outdated).
 const SHIPPED_BUILD = "b9758a308077";
 const mockBuilds: Record<string, string> = { devl: SHIPPED_BUILD, gpu: "304337b99a15" };
@@ -684,7 +685,7 @@ function boxCall(box: string, method: string, path: string, body?: unknown): Pro
       // gpu runs an older berthd (mockBuilds): it can't keep worktree names.
       capabilities: ["diff", "turns", "queue", "ask", "answer", "journal", "runs", "exec.detach", "browser", "browser.devtools", "titles", "sample", "service.terminal", "session.home", "agents.install", "artifacts", ...(box === "gpu" ? [] : ["worktree.titles", "agents.paths"])],
       // Claude Code from npm under nvm, as the person's shell finds it;
-      // Codex from Berth's own installer.
+      // Codex from Burf's own installer.
       agent_paths: [
         { id: "claude", name: "Claude Code", command: "claude", path: `${HOME}/.nvm/versions/node/v22.9.0/bin/claude`, version: "2.1.3 (Claude Code)", install: "npm", via: "shell" },
         { id: "codex", name: "Codex", command: "codex", path: `${HOME}/.local/bin/codex`, version: "codex-cli 0.46.0", via: "shell" },
@@ -905,7 +906,7 @@ if (discovery.tailscale !== "running") {
   delete (discovery as { tailnet?: string }).tailnet;
 }
 
-// The machines on tailnets Berth signed in to itself, by network.
+// The machines on tailnets Burf signed in to itself, by network.
 const networkMachines: MockMachine[] = [
   { name: "homelab", dns_name: "homelab.example-home.ts.net", ip: "100.80.0.2", os: "linux", online: true },
   { name: "nas", dns_name: "nas.example-home.ts.net", ip: "100.80.0.3", os: "linux", online: true, ssh: true },
@@ -933,7 +934,7 @@ function addMockBox(name: string, address: string, network?: string) {
   emit({ type: "box.connected", box: name });
 }
 
-// mockSshPlan is how Berth would log in: 1Password's agent for most hosts,
+// mockSshPlan is how Burf would log in: 1Password's agent for most hosts,
 // keys on disk for one with "nokey" in its name. Invented paths only.
 function mockSshPlan(host: string) {
   const at = host.lastIndexOf("@");
@@ -951,7 +952,7 @@ function mockSshPlan(host: string) {
   };
 }
 
-// mockSshFailure fails an add-ssh by a word in the host, the way berth add
+// mockSshFailure fails an add-ssh by a word in the host, the way burf add
 // ssh explains each kind. A new host key succeeds once trusted.
 function mockSshFailure(host: string, trusted?: string) {
   const where = host.split("@").pop() ?? host;
@@ -964,7 +965,7 @@ function mockSshFailure(host: string, trusted?: string) {
       host: where,
       port: "22",
       tried: ["the keys in 1Password's SSH agent", "~/.ssh/id_ed25519"],
-      message: `${where} refused the login. Berth offered the keys in 1Password's SSH agent, ~/.ssh/id_ed25519. Make the right key available: unlock your key manager's SSH agent, name it with IdentityAgent for this host in ~/.ssh/config, or choose the key file. Or add this computer's public key to ~/.ssh/authorized_keys on the box.`,
+      message: `${where} refused the login. Burf offered the keys in 1Password's SSH agent, ~/.ssh/id_ed25519. Make the right key available: unlock your key manager's SSH agent, name it with IdentityAgent for this host in ~/.ssh/config, or choose the key file. Or add this computer's public key to ~/.ssh/authorized_keys on the box.`,
     };
   if (/build-01/.test(host) && trusted !== BUILD_KEY)
     return { kind: "host-key-unknown", host: where, port: "22", fingerprint: BUILD_KEY, message: `This computer hasn't connected to ${where} before. Check its host key fingerprint, then trust it to continue.` };
@@ -976,7 +977,7 @@ function mockSshFailure(host: string, trusted?: string) {
       host: where,
       port: "22",
       fingerprint: fp,
-      message: `${where}'s host key has changed since this computer last connected, so Berth did not log in. If the box was rebuilt, remove the old key with \`ssh-keygen -R ${where}\` and try again; if not, someone may be in the way, so don't connect.`,
+      message: `${where}'s host key has changed since this computer last connected, so Burf did not log in. If the box was rebuilt, remove the old key with \`ssh-keygen -R ${where}\` and try again; if not, someone may be in the way, so don't connect.`,
     };
   if (/nohost/.test(host)) return { kind: "resolve", host: where, port: "22", message: `Could not resolve ${where}: no machine by that name is reachable from this computer. Check the spelling, or use its IP or tailnet address.` };
   return undefined;
@@ -1286,11 +1287,11 @@ function mockAgent(): Client {
 // every state shows. Project copies start missing and are kept out of git.
 const skillCatalog = [
   { name: "berth", description: "Use berth to work across development boxes — repos, worktrees, tasks, sessions, ports and the repo's config.", version: "eb32be71b151" },
-  { name: "berth-artifacts", description: "Show the user data as a chart, table, diagram, notes or a small page in their Berth app instead of a wall of text.", version: "3b7e9c41d2a0" },
+  { name: "berth-artifacts", description: "Show the user data as a chart, table, diagram, notes or a small page in their Burf app instead of a wall of text.", version: "3b7e9c41d2a0" },
   { name: "berth-browser", description: "Use the worktree's own page in a headless browser on the box: snapshot, click, fill, screenshot, console errors and the page's size.", version: "a84f0d27c6e3" },
   { name: "berth-hooks", description: "Automate berth with hooks and gates at the right scope.", version: "f20829fe718c" },
   { name: "berth-orchestrate", description: "Drive other coding agents: prompt, wait, check, loop, hand off, review.", version: "66660a4b14c8" },
-  { name: "berth-preview", description: "Run the worktree's dev server on its port and show it in the Berth app.", version: "e1454dda1a21" },
+  { name: "berth-preview", description: "Run the worktree's dev server on its port and show it in the Burf app.", version: "e1454dda1a21" },
   { name: "berth-visual-diff", description: "Screenshot the worktree's pages and main's, diff them, and show what moved.", version: "5d0c1a9e7f42" },
 ];
 type MockSkillState = "installed" | "outdated" | "missing";

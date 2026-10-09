@@ -7,8 +7,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/integrations/adapters"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/integrations/adapters"
 )
 
 // A new agent can't read a prompt yet. It is still drawing, or, in a
@@ -47,6 +47,10 @@ var stillLoading = regexp.MustCompile(`model:\s+loading\b`)
 // never taken for the question.
 var startupHints = []string{"enter to confirm", "press enter to continue"}
 
+var codexTrustFooter = regexp.MustCompile(`(?im)^\s*enter continue\s*·\s*esc back\s*$`)
+var codexTrustChoice = regexp.MustCompile(`(?m)^\s*›?\s*1\. Trust and continue\s*$`)
+var codexBackChoice = regexp.MustCompile(`(?m)^\s*›?\s*2\. Back to Agent Command Center\s*$`)
+
 // startupQuestion says whether screen shows an agent's startup question,
 // and whether to say it waits.
 func startupQuestion(screen string) (asked, notify bool) {
@@ -56,6 +60,11 @@ func startupQuestion(screen string) (asked, notify bool) {
 	}
 	foot := strings.Join(lines, "\n")
 	low := strings.ToLower(foot)
+	// Current Codex shortens its footer and uses new trust-menu wording.
+	// Require the complete menu so quoted words cannot hold queued input.
+	if strings.Contains(foot, "Trust this folder?") && codexTrustFooter.MatchString(foot) && codexTrustChoice.MatchString(foot) && codexBackChoice.MatchString(foot) {
+		return true, false
+	}
 	hinted := false
 	for _, h := range startupHints {
 		if strings.Contains(low, h) {

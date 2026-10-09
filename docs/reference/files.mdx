@@ -1,11 +1,11 @@
 ---
 title: Files and environment
-description: Where Berth keeps its state on the laptop and on boxes, and the variables it sets and reads.
+description: Where Burf keeps its state on the laptop and on boxes, and the variables it sets and reads.
 ---
 
-Berth keeps two kinds of files:
+Burf keeps two kinds of files:
 
-- **State**, which Berth writes: identities, trust stores, sockets, logs.
+- **State**, which Burf writes: identities, trust stores, sockets, logs.
   It lives in the state directory: `~/Library/Application Support/berth` on
   a Mac, `~/.config/berth` (or `$XDG_CONFIG_HOME/berth`) on Linux.
   `BERTH_HOME` moves it; it must be an absolute path.
@@ -56,7 +56,7 @@ State, in `<state>/box/`:
 | `kits/<location>/<kit>/` | Installed kits' files (`$BERTH_KIT_DIR`) |
 | `paused.json` | Paused worktrees |
 | `agent-states.json` | What each agent last reported, by working directory |
-| `tmux.conf` | The configuration of Berth's tmux server |
+| `tmux.conf` | The configuration of Burf's tmux server |
 | `commands/<session>.cmd` | Each session's command, prompt and all (0600), which its login shell runs; removed with the session |
 | `phone.json` | The phone companion: on or off, its token, notifications |
 | `runs/index.json`, `runs/<id>.jsonl` | [Runs](/guides/runs): the index, and each run's journal; finished runs past 100 per flow or template, or 30 days, are removed |
@@ -105,7 +105,7 @@ agents, `exec`, repository hooks, flow steps, services):
 
 See [events and gates](/reference/events#what-a-hook-gets).
 
-### What Berth reads
+### What Burf reads
 
 | Variable | Meaning |
 | --- | --- |
@@ -115,7 +115,7 @@ See [events and gates](/reference/events#what-a-hook-gets).
 | `BERTH_OP` | Where the 1Password CLI is |
 | `OP_SERVICE_ACCOUNT_TOKEN`, other `OP_*` | Passed to `op`, from berthd's environment or `env.json` |
 | `SHELL` | The shell scripts, sessions and `exec` run in |
-| `BERTH_PROXY_ADDR`, `BERTH_UI_ADDR` | `berth agent` only: where a second agent (a test, a throwaway home) listens instead of 1377 and 1378 |
+| `BERTH_PROXY_ADDR`, `BERTH_UI_ADDR` | `burf agent` only: where a second agent (a test, a throwaway home) listens instead of 1377 and 1378 |
 | `BERTH_CHROMIUM` | berthd: the Chromium for [agents' browsers](/guides/agent-browser) |
 | `BERTH_CLI` | A dev build of the desktop app (`pnpm tauri dev`): the `berth` to run for the laptop agent. The packaged app ignores it and runs only the copy it carries |
 

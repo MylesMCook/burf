@@ -10,8 +10,8 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/sean-brydon/berthd/internal/box/runs"
-	"github.com/sean-brydon/berthd/internal/transcript"
+	"github.com/MylesMCook/burf/internal/box/runs"
+	"github.com/MylesMCook/burf/internal/transcript"
 )
 
 // What a parent reads: one <berth-notification> holding a <report> for
@@ -24,6 +24,7 @@ const (
 	answerLimit = 1500
 	needsLimit  = 400
 	outputLimit = 800
+	titleLimit  = 200
 	filesListed = 8
 )
 
@@ -32,7 +33,7 @@ const (
 func NotificationText(reps []Report, dropped int) string {
 	var b strings.Builder
 	b.WriteString("<berth-notification>\n")
-	b.WriteString("This comes from Berth, not from the user: news of agent work you started. Carry on with your task using it. If an agent waits for a person, tell the user who and why; never answer for them.\n")
+	b.WriteString("This comes from Burf, not from the user: news of agent work you started. Carry on with your task using it. If an agent waits for a person, tell the user who and why; never answer for them.\n")
 	if dropped > 0 {
 		fmt.Fprintf(&b, "(%d earlier updates were dropped: too many came at once. berth_sessions lists every agent's state.)\n", dropped)
 	}
@@ -51,7 +52,7 @@ func writeReport(b *strings.Builder, r Report) {
 	if r.Run != "" {
 		attrs = append(attrs, [2]string{"run", r.Run}, [2]string{"template", r.Template})
 		if r.Title != "" {
-			attrs = append(attrs, [2]string{"title", r.Title})
+			attrs = append(attrs, [2]string{"title", trim(r.Title, titleLimit)})
 		}
 	}
 	if r.Worktree != "" {
@@ -89,7 +90,7 @@ func writeReport(b *strings.Builder, r Report) {
 		fmt.Fprintf(b, "<%s>\n%s\n</%s>\n", name, inner(text), name)
 	}
 	tag("summary", reportSummary(r))
-	tag("error", r.Error)
+	tag("error", trim(r.Error, outputLimit))
 	tag("needs", trim(r.Needs, needsLimit))
 	block("answer", trim(r.Answer, answerLimit))
 	tag("changes", changesText(r))
@@ -102,7 +103,7 @@ func writeReport(b *strings.Builder, r Report) {
 func reportSummary(r Report) string {
 	who := firstNonEmpty(r.Worktree, r.Session)
 	if r.Kind == "run" {
-		who = "run " + r.Run + " (" + firstNonEmpty(r.Title, r.Template) + ")"
+		who = "run " + r.Run + " (" + trim(firstNonEmpty(r.Title, r.Template), titleLimit) + ")"
 		if r.Worktree != "" {
 			who += " in " + r.Worktree
 		}
@@ -296,10 +297,19 @@ func (h *boxNotifyHost) sessions(ctx context.Context) (map[string]liveSession, e
 	for _, s := range all {
 		out[s.Name] = liveSession{Agent: agentFor(s) != "", Exited: s.Exited}
 	}
+	// A structured chat hears back too. Its name can never be a session's.
+	if h.b.Chats != nil {
+		for _, s := range h.b.Chats.List() {
+			out[chatCaller+s.ID] = liveSession{Agent: true, Exited: s.State == "exited"}
+		}
+	}
 	return out, nil
 }
 
 func (h *boxNotifyHost) ready(session string) bool {
+	if chat, ok := h.b.chatOf(session); ok {
+		return chat.State == "idle"
+	}
 	if h.b.Turns == nil {
 		return true
 	}
@@ -315,6 +325,14 @@ func (h *boxNotifyHost) run(id string) (runs.Run, bool) {
 }
 
 func (h *boxNotifyHost) deliver(ctx context.Context, parent, text string) error {
+	if id, ok := strings.CutPrefix(parent, chatCaller); ok && h.b.Chats != nil {
+		// More than a chat takes as one message would fail every time, until
+		// the chat was given up on with all it waits to hear. Say that much.
+		if len(text) > maxChatReport {
+			text = "<berth-notification>\nThis comes from Burf, not from the user: news of agent work you started. It was too long to pass on in full. berth_sessions and berth_run_get say where each piece stands.\n</berth-notification>"
+		}
+		return h.b.reportToChat(ctx, id, text)
+	}
 	_, err := h.b.sendPrompt(ctx, parent, SendRequest{Text: text, When: "idle"}, "berth", "berth:report")
 	return err
 }
@@ -337,6 +355,8 @@ func (h *boxNotifyHost) describe(ctx context.Context, r *Report) {
 	var parentDir string
 	if p, err := b.Sessions.Get(ctx, r.Parent); err == nil {
 		parentDir = p.Dir
+	} else if chat, ok := b.chatOf(r.Parent); ok {
+		parentDir = chat.CWD
 	}
 	if dir != "" {
 		if loc, wt, ok := b.worktreeAt(ctx, dir); ok {

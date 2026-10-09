@@ -1,11 +1,11 @@
-// Package guided is Berth's guided install of a box over SSH: the plan a
+// Package guided is Burf's guided install of a box over SSH: the plan a
 // person reads before anything runs, the script that runs the steps on the
 // box (in a terminal the person can type sudo's password into), and the
 // step markers that script prints for the checklist beside it.
 //
-// The same flow serves `berth add ssh` in the person's own terminal and the
+// The same flow serves `burf add ssh` in the person's own terminal and the
 // app, which runs that command in a pseudo-terminal on the laptop and shows
-// it full screen. Berth never sees the password: sudo asks for it on the
+// it full screen. Burf never sees the password: sudo asks for it on the
 // box's terminal, and the bytes only pass through.
 package guided
 
@@ -29,11 +29,11 @@ import (
 // terminal's input: y or n).
 const MarkerPrefix = "::berth-step "
 
-// FailurePrefix starts the line `berth add ssh` prints a failed SSH login
+// FailurePrefix starts the line `burf add ssh` prints a failed SSH login
 // on as JSON (sshsetup.FailurePrefix); the filter takes it out too.
 const FailurePrefix = "berth-failure: "
 
-// StepsEnv set to 1 asks `berth add ssh` for its steps as markers, for the
+// StepsEnv set to 1 asks `burf add ssh` for its steps as markers, for the
 // laptop agent to turn into the app's checklist, rather than drawn as lines
 // for a person.
 const StepsEnv = "BERTH_STEPS"

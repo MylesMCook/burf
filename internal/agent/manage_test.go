@@ -9,30 +9,14 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sean-brydon/berthd/internal/hooks"
-	"github.com/sean-brydon/berthd/internal/sshsetup"
+	"github.com/MylesMCook/burf/internal/hooks"
+	"github.com/MylesMCook/burf/internal/sshsetup"
 )
 
-// fakeCLI stands in for the berth binary the agent runs: it prints its
-// arguments, and fails when the first one is "fail".
+// fakeCLI stands in for the berth binary the agent runs.
 func fakeCLI(t *testing.T, a *runningAgent) {
 	t.Helper()
-	script := `#!/bin/sh
-if [ "$3" = "fail.example" ]; then echo "Checking $3…"; echo "berth: ssh: could not resolve fail.example" >&2; exit 1; fi
-if [ "$3" = "refused.example" ]; then
-  echo "Using your SSH agent"
-  [ "$BERTH_FAILURE_JSON" = 1 ] && echo 'berth-failure: {"kind":"refused","host":"refused.example","port":"22","message":"Nothing is accepting SSH on refused.example (port 22)."}' >&2
-  echo "berth: Nothing is accepting SSH on refused.example (port 22)." >&2
-  exit 1
-fi
-case "$1" in
-  pair) printf '{"name":"devl","args":"%s","home":"%s"}\n' "$*" "$BERTH_HOME" ;;
-  *) echo "step one"; echo "ran $*" ;;
-esac
-`
-	if err := os.WriteFile(filepath.Join(a.dir, "fake-berth"), []byte(script), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	installCLI(t, cliFixturePath(a.dir, "fake-berth"), cliFixture{Mode: "manage"})
 }
 
 func uiSend(t *testing.T, a *runningAgent, method, path, token, body string) (*http.Response, string) {
@@ -59,7 +43,11 @@ func TestTheAppAddsAndPairsBoxesThroughTheCLI(t *testing.T) {
 	fakeCLI(t, a)
 
 	resp, body := uiSend(t, a, "POST", "/v1/boxes/pair", tok, `{"link":"berth://1.2.3.4:7444?code=x","name":"devl","network":"personal"}`)
-	if resp.StatusCode != 200 || !strings.Contains(body, "pair berth://1.2.3.4:7444?code=x --json --name devl --network personal") || !strings.Contains(body, filepath.Dir(a.dir)) {
+	var pair struct{ Args, Home string }
+	if err := json.Unmarshal([]byte(body), &pair); err != nil {
+		t.Fatal(err)
+	}
+	if resp.StatusCode != 200 || pair.Args != "pair berth://1.2.3.4:7444?code=x --json --name devl --network personal" || pair.Home != filepath.Dir(a.dir) {
 		t.Fatalf("pair: %d %s", resp.StatusCode, body)
 	}
 	if resp, _ := uiSend(t, a, "POST", "/v1/boxes/pair", tok, `{"link":"--help"}`); resp.StatusCode != 400 {

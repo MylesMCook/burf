@@ -7,7 +7,12 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"github.com/sean-brydon/berthd/internal/wire"
+	"github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/wire"
+)
+
+type (
+	AddArtifactResult = boxclient.AddArtifactResult
 )
 
 // The artifacts API (artifacts.go):
@@ -63,15 +68,6 @@ type addArtifactRequest struct {
 	Session string `json:"session,omitempty"`
 	Agent   string `json:"agent,omitempty"`
 	Helper  string `json:"helper,omitempty"`
-}
-
-// AddArtifactResult is what an add answers.
-type AddArtifactResult struct {
-	Artifact Artifact `json:"artifact"`
-	// Changed: the content was new (a new version), not a retitle.
-	Changed bool `json:"changed"`
-	// Added: a new artifact, not a version of one.
-	Added bool `json:"added"`
 }
 
 func (b *Box) addArtifact(w http.ResponseWriter, r *http.Request) error {
@@ -189,9 +185,9 @@ func (b *Box) artifactContent(w http.ResponseWriter, r *http.Request) error {
 	h.Set("Content-Type", "text/plain; charset=utf-8")
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("Content-Security-Policy", "default-src 'none'; sandbox")
-	h.Set("X-Berth-Artifact-Kind", a.Kind)
-	h.Set("X-Berth-Artifact-Format", a.Format)
-	h.Set("X-Berth-Artifact-Version", strconv.Itoa(v.N))
+	h.Set("X-Burf-Artifact-Kind", a.Kind)
+	h.Set("X-Burf-Artifact-Format", a.Format)
+	h.Set("X-Burf-Artifact-Version", strconv.Itoa(v.N))
 	if n != 0 {
 		// A version never changes.
 		h.Set("Cache-Control", "private, max-age=31536000, immutable")

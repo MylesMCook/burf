@@ -9,18 +9,12 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/MylesMCook/burf/internal/boxclient"
 )
 
 // WorktreeRequest asks for a new git worktree at a location.
-type WorktreeRequest struct {
-	Name   string `json:"name"`
-	Branch string `json:"branch,omitempty"`
-	Base   string `json:"base,omitempty"`
-	// PR and Ref check out a pull or merge request: Ref (by default
-	// pull/<PR>/head) is fetched into Branch when origin has no such branch.
-	PR  int    `json:"pr,omitempty"`
-	Ref string `json:"ref,omitempty"`
-}
+type WorktreeRequest = boxclient.WorktreeRequest
 
 // toolPath finds a tool on PATH or in ~/.local/bin, where agent CLIs install
 // themselves but which a systemd unit's PATH omits.

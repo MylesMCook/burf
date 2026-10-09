@@ -9,8 +9,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/forward"
-	"github.com/sean-brydon/berthd/internal/proxy"
+	"github.com/MylesMCook/burf/internal/forward"
+	"github.com/MylesMCook/burf/internal/proxy"
 )
 
 var (
@@ -29,6 +29,7 @@ func (a *Agent) api(stop context.CancelFunc) http.Handler {
 	a.editorRoutes(mux)
 	a.imageGenRoutes(mux)
 	a.queueRoutes(mux)
+	a.browserRoutes(mux)
 	mux.HandleFunc("GET /v1/status", func(w http.ResponseWriter, r *http.Request) {
 		a.sync()
 		writeJSON(w, http.StatusOK, a.status())

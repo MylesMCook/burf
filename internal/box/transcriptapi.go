@@ -3,11 +3,12 @@ package box
 import (
 	"errors"
 	"net/http"
+	"path/filepath"
 	"strconv"
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/transcript"
+	"github.com/MylesMCook/burf/internal/transcript"
 )
 
 // transcriptFile is which agent a session runs and the file holding its
@@ -35,8 +36,14 @@ func (b *Box) transcriptFile(r *http.Request, sess Session) (agent, path, where 
 	}
 	switch agent {
 	case "claude":
-		// Every Claude session in this folder gets its own transcript.
-		claims := []transcript.Claim{{Name: sess.Name, ID: id, Started: sess.Created}}
+		// Every Claude session in this folder gets its own transcript, in
+		// the folder of the account it started on (the usage plugin's
+		// accounts set CLAUDE_CONFIG_DIR per box or project).
+		configDir, err := b.Sessions.EnvVar(r.Context(), sess, "CLAUDE_CONFIG_DIR")
+		if err != nil {
+			return agent, "", "an unavailable session environment"
+		}
+		claims := []transcript.Claim{{Name: sess.Name, ID: id, Started: sess.Created, ConfigDir: configDir}}
 		if all, err := b.Sessions.List(r.Context()); err == nil {
 			for _, o := range all {
 				if o.Name == sess.Name || o.Dir != sess.Dir || o.Exited || o.Service != "" {
@@ -51,14 +58,22 @@ func (b *Box) transcriptFile(r *http.Request, sess Session) (agent, path, where 
 						oid = st.AgentSessionID
 					}
 				}
-				claims = append(claims, transcript.Claim{Name: o.Name, ID: oid, Started: o.Created})
+				otherConfig, err := b.Sessions.EnvVar(r.Context(), o, "CLAUDE_CONFIG_DIR")
+				if err != nil {
+					return agent, "", "an unavailable session environment"
+				}
+				claims = append(claims, transcript.Claim{Name: o.Name, ID: oid, Started: o.Created, ConfigDir: otherConfig})
 			}
 		}
 		path = transcript.AssignClaude(sess.Dir, claims)[sess.Name]
-		where = transcript.ClaudeDir(sess.Dir)
+		where = transcript.ClaudeDirIn(configDir, sess.Dir)
 	case "codex":
-		path = transcript.CodexPath(sess.Dir, id, sess.Created)
-		where = "~/.codex/sessions"
+		codexHome, err := b.Sessions.EnvVar(r.Context(), sess, "CODEX_HOME")
+		if err != nil {
+			return agent, "", "an unavailable session environment"
+		}
+		path = transcript.CodexPathIn(codexHome, sess.Dir, id, sess.Created)
+		where = filepath.Join(firstNonEmpty(codexHome, "~/.codex"), "sessions")
 	}
 	return agent, path, where
 }
@@ -87,7 +102,7 @@ func (b *Box) transcript(w http.ResponseWriter, r *http.Request) error {
 	}
 	switch {
 	case agent != "claude" && agent != "codex":
-		return none("Berth reads Claude Code's and Codex's conversations; this session runs " + firstNonEmpty(agent, "no agent") + ".")
+		return none("Burf reads Claude Code's and Codex's conversations; this session runs " + firstNonEmpty(agent, "no agent") + ".")
 	case path == "":
 		return none("No " + agent + " conversation for " + sess.Dir + " since " + sess.Created.Format(time.RFC3339) + " in " + where + ".")
 	}

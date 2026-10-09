@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/sean-brydon/berthd/internal/agentpath"
+	"github.com/MylesMCook/burf/internal/agentpath"
 )
 
 // Tool is an agent CLI berth has integrations for.
@@ -191,7 +191,7 @@ func InstallDetected(home, bin, command string, out io.Writer) error {
 func InstallPresent(home, bin string, out io.Writer) error {
 	present, _ := Detect(home)
 	if len(present) == 0 {
-		fmt.Fprintln(out, "No agent CLIs on this box yet; Berth adds their hooks when you add one from the box's settings.")
+		fmt.Fprintln(out, "No agent CLIs on this box yet; Burf adds their hooks when you add one from the box's settings.")
 		return nil
 	}
 	var failed []string

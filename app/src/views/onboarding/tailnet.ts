@@ -5,7 +5,7 @@ import { errorMessage } from "@/lib/format";
 import { useStore } from "@/lib/store";
 
 // The tailnets Add a box lists machines from: this computer's own, through
-// the Tailscale app, and the ones Berth signed in to itself (networks). Both
+// the Tailscale app, and the ones Burf signed in to itself (networks). Both
 // are read once when the flow is on its way (onboarding's welcome, opening
 // the dialog), so the screen is laid out once, with the answer in hand.
 
@@ -52,7 +52,7 @@ export function prefetchTailnets(client: Client | undefined, force = false) {
   return cached;
 }
 
-// discoverNetwork lists the machines on one of Berth's own networks.
+// discoverNetwork lists the machines on one of Burf's own networks.
 export function discoverNetwork(client: Client, name: string, force = false): Promise<Discovery> {
   const hit = byNetwork.get(name);
   if (!force && hit && Date.now() - hit.at < FRESH_MS) return hit.found;
@@ -104,17 +104,17 @@ export function useTailnets() {
   return { ready: waited || (!!system && !!networks), system, networks: networks ?? [], refresh };
 }
 
-// A tailnet the list can show: this computer's, or one of Berth's networks.
+// A tailnet the list can show: this computer's, or one of Burf's networks.
 export interface TailnetSource {
   key: string;
   label: string;
-  // The Berth network to reach it through; none for this computer's own.
+  // The Burf network to reach it through; none for this computer's own.
   network?: string;
 }
 
 export function sourcesOf(system: SystemTailnet | undefined, networks: NetworkInfo[]): TailnetSource[] {
   const out: TailnetSource[] = [];
-  if (system?.state === "running") out.push({ key: "system", label: system.name || "This Mac's tailnet" });
+  if (system?.state === "running") out.push({ key: "system", label: system.name || "This computer's tailnet" });
   for (const n of networks) out.push({ key: `network:${n.name}`, label: n.name, network: n.name });
   return out;
 }

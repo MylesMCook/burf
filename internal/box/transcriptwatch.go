@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/events"
+	"github.com/MylesMCook/burf/internal/events"
 )
 
 // A chat shows each step the moment the agent writes it: the box watches

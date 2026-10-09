@@ -5,9 +5,10 @@
 // What a pane shows. Other parts of the app make these through the actions
 // in lib/workspaces (openTerminal, openBrowser, focusSession).
 export type PaneContent =
+  | { kind: "remote-chat"; box: string; chat: string; cwd: string; draft?: string; options?: { model?: string; effort?: string } }
   // agent and command are remembered from the session, so a pane can say
   // what ended and start it again after the session is gone.
-  // view: an agent's pane shown as its terminal or as a conversation (Labs);
+  // view: an agent's pane shown as its terminal or as a conversation;
   // unset follows the person's default.
   // title: the session's title while it ran, so an ended pane keeps its name.
   | { kind: "terminal"; box: string; session: string; agent?: string; command?: string; title?: string; view?: "terminal" | "conversation" }

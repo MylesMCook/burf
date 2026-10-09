@@ -29,7 +29,7 @@ jobs:
   checks:
     uses: ./.github/workflows/ci.yml
 
-  # Berth's static tmux for Linux boxes, which berth and the app carry for
+  # Burf's static tmux for Linux boxes, which berth and the app carry for
   # boxes without one. Built in Docker (zig cross-compiles both
   # architectures from pinned, checksummed sources), on a hosted runner,
   # which has Docker, for the release and macos jobs to download.
@@ -87,8 +87,8 @@ jobs:
         run: make release VERSION="$GITHUB_REF_NAME"
       - name: Check the stamped version
         run: |
-          tar -xzf dist/berthd-linux-amd64.tar.gz -C "$RUNNER_TEMP" berthd
-          "$RUNNER_TEMP/berthd" version | tee /dev/stderr | grep -q "^berthd $GITHUB_REF_NAME "
+          tar -xzf dist/burfd-linux-amd64.tar.gz -C "$RUNNER_TEMP" berthd
+          "$RUNNER_TEMP/berthd" version | tee /dev/stderr | grep -q "^burfd $GITHUB_REF_NAME "
       - name: Publish to the release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -101,17 +101,17 @@ jobs:
             # "latest" link skips drafts, so installed apps and the install
             # script keep using the last full release meanwhile, instead of a
             # latest.json that 404s.
-            gh release create "$TAG" dist/*.tar.gz dist/checksums.txt --verify-tag --draft --title "Berth $TAG" --generate-notes
+            gh release create "$TAG" dist/*.tar.gz dist/checksums.txt --verify-tag --draft --title "Burf $TAG" --generate-notes
           fi
 
   macos:
     # After the release job, which has made the release by then; it takes
-    # Berth's tmux from the tmux job, since a Mac runner has no Docker. Safe to
+    # Burf's tmux from the tmux job, since a Mac runner has no Docker. Safe to
     # re-run: it skips when the release's latest.json already announces this
     # version (scripts/publish.sh uploaded it, or an earlier run did), and
     # otherwise replaces only its own four assets, the feed last, so the feed
     # never points at an archive that is not there yet.
-    needs: [tmux, release]
+    needs: [tmux, release, windows]
     runs-on: macos-latest
     timeout-minutes: 90
     permissions:
@@ -244,9 +244,9 @@ jobs:
             exit 0
           fi
           gh release upload "$TAG" --clobber \
-            dist/mac/Berth-macos-universal.dmg \
-            dist/mac/Berth-macos-universal.app.tar.gz \
-            dist/mac/Berth-macos-universal.app.tar.gz.sig
+            dist/mac/Burf-macos-universal.dmg \
+            dist/mac/Burf-macos-universal.app.tar.gz \
+            dist/mac/Burf-macos-universal.app.tar.gz.sig
           gh release upload "$TAG" --clobber dist/mac/latest.json
       - name: Publish the release
         # Last: the feed and the app are up, so it can become "latest".
@@ -258,3 +258,47 @@ jobs:
         run: |
           if [ -n "${KEYCHAIN_PATH:-}" ]; then security delete-keychain "$KEYCHAIN_PATH" || true; fi
           rm -f "$RUNNER_TEMP/berth-notary.p8" "$RUNNER_TEMP/berth-signing.p12"
+
+  windows:
+    needs: [tmux, release]
+    runs-on: windows-2022
+    timeout-minutes: 90
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
+        with:
+          version: 11
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: tmux
+          path: bin
+      - run: pnpm install --frozen-lockfile
+        working-directory: app
+      - name: Build the signed updater installer
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ""
+          TAG: ${{ github.ref_name }}
+        run: ./scripts/windows-build.ps1 -Version $env:TAG -Release
+      - name: Add Windows assets and feed to the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release upload $env:TAG --clobber dist/windows/Burf-windows-x64-setup.exe dist/windows/Burf-windows-x64-setup.exe.sig dist/windows/burf-windows-amd64.zip dist/windows/windows-checksums.txt
+          if ($LASTEXITCODE -ne 0) { throw 'Windows asset upload failed.' }
+          gh release upload $env:TAG --clobber dist/windows/latest-windows.json
+          if ($LASTEXITCODE -ne 0) { throw 'Windows feed upload failed.' }

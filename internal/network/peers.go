@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/MylesMCook/burf/internal/backgroundcmd"
+
 	"tailscale.com/ipn/ipnstate"
 )
 
@@ -188,7 +190,7 @@ func System(ctx context.Context) (SystemTailnet, error) {
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	// stdout only: a client and daemon of different versions warn on stderr.
-	out, err := exec.CommandContext(ctx, cli, "status", "--json").Output()
+	out, err := backgroundcmd.CommandContext(ctx, cli, "status", "--json").Output()
 	if err != nil && len(out) == 0 {
 		// The app isn't running, so nothing answers.
 		return SystemTailnet{State: "stopped"}, nil

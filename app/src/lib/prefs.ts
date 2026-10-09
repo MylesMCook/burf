@@ -35,18 +35,17 @@ export interface Prefs {
   // How many times closing explained itself ("keeps running", "stopped"); it
   // stops after a few.
   agentCloseTips: number;
-  // Labs: the harbour home (no worktree open) and the Terminal |
-  // Conversation switch on agent panes. On by default since version 3.
+  // Labs: the harbour home and experimental tools. On by default since v3.
   labs: boolean;
   // Set once the person turns Labs on or off in Settings, so a change of
   // default never overrides them.
   labsChosen: boolean;
-  // Labs: how an agent's pane opens, until switched.
+  // How supported remote agents open; a pane can override this independently.
   agentView: "terminal" | "conversation";
   // Labs: zen (⌘.): no sidebar or status bar, a switcher for a tab strip,
   // agents as conversations.
   zen: boolean;
-  // Update a box's berthd as soon as Berth ships a newer one
+  // Update a box's berthd as soon as Burf ships a newer one
   // (lib/outdated.ts). Off: the status bar offers it instead.
   autoUpdateBoxes: boolean;
   // The picture behind conversations and its effects (Settings ›
@@ -70,6 +69,9 @@ export interface Prefs {
   // The newest version whose What's new card was shown, or that was
   // running when the card had nothing to show (lib/whats-new.ts).
   whatsNewSeen: string | null;
+  // Set once an installed Burf has decided about putting its burf command on
+  // the PATH (lib/cli-setup.ts), so removing it in Settings stays removed.
+  cliLinkOffered: boolean;
 }
 
 export type ChatWidth = "narrow" | "default" | "wide" | "xwide" | "full";
@@ -92,7 +94,7 @@ const DEFAULTS: Prefs = {
   agentCloseTips: 0,
   labs: true,
   labsChosen: false,
-  agentView: "terminal",
+  agentView: "conversation",
   zen: false,
   autoUpdateBoxes: false,
   chatBackground: DEFAULT_CHAT_BACKGROUND,
@@ -103,6 +105,7 @@ const DEFAULTS: Prefs = {
   home: null,
   installAgents: null,
   whatsNewSeen: null,
+  cliLinkOffered: false,
 };
 
 // PREFS_VERSION counts changes of default that saved prefs are moved to
@@ -111,7 +114,7 @@ const PREFS_VERSION = 3;
 
 type Saved = Partial<Prefs> & { version?: number };
 
-// migrate brings prefs saved by an older Berth up to date. Prefs are saved
+// migrate brings prefs saved by an older Burf up to date. Prefs are saved
 // whole, so a "keep" saved before version 2 is only the old default unless
 // the person chose it, which closeAgentsChosen records from now on.
 export function migratePrefs(saved: Saved): Saved {

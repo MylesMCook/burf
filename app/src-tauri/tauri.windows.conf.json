@@ -1,0 +1,41 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "identifier": "dev.myles.berth.windows",
+  "mainBinaryName": "Burf",
+  "app": {
+    "windows": [
+      {
+        "title": "Burf",
+        "width": 1400,
+        "height": 900,
+        "minWidth": 900,
+        "minHeight": 560,
+        "titleBarStyle": "Visible",
+        "hiddenTitle": false,
+        "dragDropEnabled": false,
+        "zoomHotkeysEnabled": false
+      }
+    ]
+  },
+  "bundle": {
+    "targets": [
+      "nsis"
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "template": "binaries/windows-installer.nsi",
+        "installerHooks": "windows/hooks.nsh"
+      }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": [],
+      "windows": {
+        "installMode": "passive"
+      }
+    }
+  },
+  "productName": "Burf"
+}

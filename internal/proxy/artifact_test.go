@@ -36,7 +36,7 @@ func (f *fakeBox) fetch(_ context.Context, box, id, version string) (*http.Respo
 	if id != "0123456789" {
 		return &http.Response{StatusCode: 404, Body: io.NopCloser(strings.NewReader("no such artifact")), Header: http.Header{}}, nil
 	}
-	h := http.Header{"X-Berth-Artifact-Kind": {f.kind}, "Set-Cookie": {"box=secret"}, "Content-Type": {"text/plain; charset=utf-8"}}
+	h := http.Header{"X-Burf-Artifact-Kind": {f.kind}, "Set-Cookie": {"box=secret"}, "Content-Type": {"text/plain; charset=utf-8"}}
 	return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(f.body)), Header: h}, nil
 }
 
@@ -197,7 +197,7 @@ func TestArtifactLibrariesArePinned(t *testing.T) {
 	p, _ := artProxy(&fakeBox{kind: "page"})
 	// A library whose bytes differ from the pin is not served.
 	resp := get(t, p, artHost, "/_lib/chart.js@4.4.1/dist/chart.umd.js?leak=data", nil)
-	if resp.StatusCode != 502 || !strings.Contains(read(t, resp), "isn't what Berth pinned") {
+	if resp.StatusCode != 502 || !strings.Contains(read(t, resp), "isn't what Burf pinned") {
 		t.Fatalf("tampered library: %d", resp.StatusCode)
 	}
 	// The right bytes are, from the canonical address, whatever the query.

@@ -1,4 +1,5 @@
 import table from "@/lib/shortcuts.json";
+import { shortcutLabel } from "@/lib/platform";
 
 // The app's keyboard shortcuts, from shortcuts.json: the one table the key
 // handler (hooks/use-shortcuts), the Keyboard shortcuts sheet, Settings →
@@ -22,13 +23,13 @@ export interface Shortcut {
   labs?: boolean;
 }
 
-export const SHORTCUTS = table.shortcuts as Shortcut[];
+export const SHORTCUTS = (table.shortcuts as Shortcut[]).map((s) => ({ ...s, keys: shortcutLabel(s.keys) }));
 
 // The menu bar's order, which the lists follow too.
 export const SHORTCUT_GROUPS: ShortcutGroup[] = ["File", "View", "Go", "Help"];
 
 // describe is what a list of shortcuts calls one.
-export const describe = (s: Shortcut) => s.what ?? s.label.replace(/…$/, "");
+export const describe = (s: Shortcut) => shortcutLabel(s.what ?? s.label.replace(/…$/, ""));
 
 // keysFor is the keys of a shortcut, for a menu item or a hint to show.
 export const keysFor = (id: string) => SHORTCUTS.find((s) => s.id === id)?.keys;

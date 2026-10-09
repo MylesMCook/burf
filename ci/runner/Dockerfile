@@ -1,4 +1,4 @@
-# The self-hosted GitHub Actions runner for cosscom/shipyard: Ubuntu 24.04,
+# The self-hosted GitHub Actions runner for MylesMCook/burf: Ubuntu 24.04,
 # like GitHub's ubuntu-latest, with the tools the CI and release jobs use.
 # Build and run it with install.sh / update.sh; see README.md.
 FROM ubuntu:24.04

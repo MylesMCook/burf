@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The upgrade release test: set Berth up with the previous release, use it,
+# The upgrade release test: set Burf up with the previous release, use it,
 # upgrade to this build, and check that everything survived. Run by hand
 # now and then (make release-check); its Linux half weekly in CI.
 #
@@ -65,7 +65,7 @@ if [ -z "$FROM" ]; then
 	cur="v$(python3 -c 'import json; print(json.load(open("'"$REPO"'/app/package.json"))["version"])')"
 	FROM=$(git -C "$REPO" tag --list 'v*' --sort=-v:refname | grep -v -x "$cur" | head -1 || true)
 	# A shallow checkout (CI) has no tags: ask GitHub.
-	[ -n "$FROM" ] || FROM=$(gh release list --repo cosscom/shipyard --exclude-drafts --json tagName --jq '.[].tagName' 2>/dev/null | grep -v -x "$cur" | head -1 || true)
+	[ -n "$FROM" ] || FROM=$(gh release list --repo MylesMCook/burf --exclude-drafts --json tagName --jq '.[].tagName' 2>/dev/null | grep -v -x "$cur" | head -1 || true)
 	[ -n "$FROM" ] || {
 		echo "no earlier release to upgrade from; pass --from vX.Y.Z" >&2
 		exit 2
@@ -81,7 +81,7 @@ PROMPT='Add a /health endpoint to server.js that returns {"ok": true}, with a te
 run_linux() {
 	# shellcheck source=release-test/linux/lib.sh
 	source "$here/release-test/linux/lib.sh"
-	rt_init "Berth upgrade test (Linux box, $FROM → this build)" "${OUT:-$REPO/dist/release-test/upgrade-linux-$stamp}"
+	rt_init "Burf upgrade test (Linux box, $FROM → this build)" "${OUT:-$REPO/dist/release-test/upgrade-linux-$stamp}"
 	WORK=$(mktemp -d "${TMPDIR:-/tmp}/berth-upgrade-test.XXXXXX")
 	trap 'linux_cleanup >>"$RT_LOG" 2>&1; rm -rf "$WORK"' EXIT
 	trap 'exit 130' INT TERM
@@ -212,7 +212,7 @@ l_url() {
 run_mac() {
 	# shellcheck source=release-test/macos/lib.sh
 	source "$here/release-test/macos/lib.sh"
-	rt_init "Berth upgrade test (this Mac's box, $FROM → this build)" "${OUT:-$REPO/dist/release-test/upgrade-mac-$stamp}"
+	rt_init "Burf upgrade test (this Mac's box, $FROM → this build)" "${OUT:-$REPO/dist/release-test/upgrade-mac-$stamp}"
 	trap 'mac_cleanup >>"$RT_LOG" 2>&1' EXIT
 	trap 'exit 130' INT TERM
 	BOX="" LOC=hello WT="" SESSION="" PID0="" AGENT_PID="" NO_SESSION=0 TABS_BEFORE="" PLUGIN_OFF="" PLUGIN_ON=""
@@ -242,28 +242,28 @@ m_prepare() {
 	# Never a downgrade: an older build "upgrading" a newer release loses
 	# what the newer one keeps, and looks like a regression.
 	if [ "$(printf '%s\n%s\n' "${FROM#v}" "$DMG_VERSION" | sort -V | head -1)" != "${FROM#v}" ]; then
-		fail "$(basename "$DMG") is Berth $DMG_VERSION, older than $FROM: that's a downgrade, not an upgrade"
+		fail "$(basename "$DMG") is Burf $DMG_VERSION, older than $FROM: that's a downgrade, not an upgrade"
 		return 1
 	fi
-	detail "$FROM → $(basename "$DMG"): Berth $DMG_VERSION built from ${DMG_REVISION:0:9}"
+	detail "$FROM → $(basename "$DMG"): Burf $DMG_VERSION built from ${DMG_REVISION:0:9}"
 }
 
 m_old() {
 	install_dmg "$OLD_DMG" "$ROOT/Applications" || return 1
-	APP_UNDER_TEST="$ROOT/app/Berth Test.app"
+	APP_UNDER_TEST="$ROOT/app/Burf Test.app"
 	mkdir -p "$ROOT/app"
-	test_copy "$ROOT/Applications/Berth.app" "$APP_UNDER_TEST" || return 1
+	test_copy "$ROOT/Applications/Burf.app" "$APP_UNDER_TEST" || return 1
 	# The old box gets a UTF-8 locale (see the top of this file).
 	export BERTH_RELEASE_TEST_LANG=en_US.UTF-8
 	launch_app "$APP_UNDER_TEST" || return 1
 	front
-	if ax wait "Start the Berth agent" --timeout 15 >/dev/null 2>&1; then ax press "Start the Berth agent" --role AXButton || return 1; fi
+	if ax wait "Start the Burf agent" --timeout 15 >/dev/null 2>&1; then ax press "Start the Burf agent" --role AXButton || return 1; fi
 	ax press "Start on this Mac" --role AXButton --timeout 30 || return 1
 	ax wait "Try the sample project" --timeout 180 || fail "$FROM: setting up this Mac never finished" || return 1
 	BOX=$(api GET /v1/status | jq_py 'j["boxes"][0]["name"]') || return 1
 	ax press "Use the sample" --role AXButton || return 1
 	ax wait "Start your first agent" --timeout 60 || return 1
-	detail "Berth $(app_version "$APP_UNDER_TEST"), box $BOX"
+	detail "Burf $(app_version "$APP_UNDER_TEST"), box $BOX"
 }
 
 m_task() {
@@ -391,8 +391,8 @@ print("|".join(sorted(out)))
 m_kit() {
 	mkdir -p "$ROOT/kits/release-test"
 	echo "$KIT_JSON" >"$ROOT/kits/release-test/kit.json"
-	berth_cli kit add "$ROOT/kits/release-test" --yes || fail "berth kit add failed on $FROM" || return 1
-	berth_cli kit apply release-test "$BOX/$LOC" || fail "berth kit apply failed on $FROM" || return 1
+	berth_cli kit add "$ROOT/kits/release-test" --yes || fail "burf kit add failed on $FROM" || return 1
+	berth_cli kit apply release-test "$BOX/$LOC" || fail "burf kit apply failed on $FROM" || return 1
 	detail "release-test applied to $BOX/$LOC"
 }
 
@@ -400,14 +400,14 @@ agent_gone() { ! kill -0 "$AGENT_PID" 2>/dev/null; }
 # new_agent: the agent answers as one of this build (GET /v1/agent).
 new_agent() { api GET /v1/agent | jq_py "j['pid'] != $AGENT_PID" >/dev/null; }
 m_upgrade() {
-	AGENT_PID=$(pgrep -f "$ROOT/app/Berth Test.app/Contents/MacOS/berth-cli agent" | head -1)
+	AGENT_PID=$(pgrep -f "$ROOT/app/Burf Test.app/Contents/MacOS/burf-cli agent" | head -1)
 	[ -n "$AGENT_PID" ] || fail "no agent from $FROM is running" || return 1
 	# The box's berthd before: the new agent replaces it soon after it starts.
 	OLD_BUILD=$(box_build)
 	quit_app
 	unset BERTH_RELEASE_TEST_LANG
 	install_dmg "$DMG" "$ROOT/Applications" || return 1
-	test_copy "$ROOT/Applications/Berth.app" "$APP_UNDER_TEST" || return 1
+	test_copy "$ROOT/Applications/Burf.app" "$APP_UNDER_TEST" || return 1
 	launch_app "$APP_UNDER_TEST" || return 1
 	local version
 	version=$(app_version "$APP_UNDER_TEST")
@@ -417,7 +417,7 @@ m_upgrade() {
 	until_ok 30 new_agent || fail "no agent of this build answers after the restart: $(api GET /v1/agent | head -c 300)" || return 1
 	front
 	ax wait "$LOC actions" --role AXPopUpButton --timeout 30 || fail "the upgraded app doesn't show the project (onboarding again?)" || return 1
-	detail "Berth $version started, said \"Updated to v$version\", and restarted the agent from $FROM (pid $AGENT_PID → $(api GET /v1/agent | jq_py 'j["pid"]'))"
+	detail "Burf $version started, said \"Updated to v$version\", and restarted the agent from $FROM (pid $AGENT_PID → $(api GET /v1/agent | jq_py 'j["pid"]'))"
 }
 
 m_layout() {

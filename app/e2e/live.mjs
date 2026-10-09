@@ -1,10 +1,10 @@
 // pnpm smoke:live runs the smoke suite (e2e/) against this laptop's own
-// Berth agent instead of the mock fixtures, for a check before a release.
+// Burf agent instead of the mock fixtures, for a check before a release.
 // It is read only: the tests only GET from the agent (anything else is
 // refused in e2e/fixtures.ts), never attach a terminal, and skip what needs
 // a fixture or would write.
 //
-//   VITE_BERTH_TOKEN=$(berth ui-token | jq -r .token) pnpm smoke:live
+//   VITE_BERTH_TOKEN=$(burf ui-token | jq -r .token) pnpm smoke:live
 //
 // VITE_BERTH_URL picks another agent (default http://127.0.0.1:1378);
 // BERTH_E2E_WORKTREE=box/name the worktree with an agent to open (default:
@@ -14,7 +14,7 @@ import process from "node:process";
 
 const token = process.env.VITE_BERTH_TOKEN;
 if (!token) {
-  console.error("smoke:live needs the agent's token in VITE_BERTH_TOKEN; `berth ui-token` prints it.");
+  console.error("smoke:live needs the agent's token in VITE_BERTH_TOKEN; `burf ui-token` prints it.");
   process.exit(2);
 }
 // The token goes to the page in its address, never into the build.

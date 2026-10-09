@@ -9,7 +9,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sean-brydon/berthd/internal/box"
+	box "github.com/MylesMCook/burf/internal/boxclient"
 )
 
 // berthd shots: visual before/after of a worktree's pages (box/shots.go).

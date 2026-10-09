@@ -21,7 +21,7 @@ import "@/components/conversation/agent-message.css";
 // A message to the agent from someone other than the person: a helper's
 // hand-back, a teammate, another session, the lead, or Claude Code's own
 // ping about a background task (internal/transcript/peer.go). Each is a
-// card beside Berth's report cards (report-card): who sent it and what kind
+// card beside Burf's report cards (report-card): who sent it and what kind
 // it is in the head, its gist under it, and the whole report a click away,
 // drawn as the agent wrote it. Left-aligned and bordered, so nobody takes
 // it for something they typed. Pings are one line.
@@ -49,14 +49,11 @@ export function Avatar({ from, color, className }: { from: MessageSender; color:
   );
 }
 
-// BerthAvatar is Berth's own mark, for its reports.
+// BerthAvatar is Burf's own mark, for its reports.
 export function BerthAvatar() {
   return (
-    <span aria-hidden className="am-c-slate am-avatar inline-flex size-5 shrink-0 items-center justify-center rounded-md">
-      <svg viewBox="0 0 512 512" className="size-3">
-        <path d="M116 84 H300 a96 96 0 0 1 0 192 H116 Z M116 276 H324 a104 104 0 0 1 0 208 H116 Z" transform="translate(0,-28)" fill="none" stroke="currentColor" strokeWidth="68" strokeLinejoin="round" />
-        <circle cx="296" cy="152" r="28" fill="#f5a524" />
-      </svg>
+    <span aria-hidden className="inline-flex size-5 shrink-0 items-center justify-center rounded-sm bg-[#F4EAD5]">
+      <img src={`${import.meta.env.BASE_URL}branding/burf-mark.svg`} alt="" width="16" height="16" className="size-4" />
     </span>
   );
 }
@@ -103,7 +100,7 @@ export function KindChip({ chip, className }: { chip: Chip; className?: string }
   );
 }
 
-// CardHead is the head every card to the agent shares, Berth's reports
+// CardHead is the head every card to the agent shares, Burf's reports
 // included: avatar, name, what kind of sender, a kind chip, what else it
 // says (a diff, a count), the time it took, "to Claude" and Open.
 export function CardHead({ avatar, name, kind, chip, extra, took, tip, open }: { avatar: ReactNode; name: string; kind?: string; chip: Chip; extra?: ReactNode; took?: string; tip: string; open?: ReactNode }) {
@@ -137,7 +134,7 @@ export function CardHead({ avatar, name, kind, chip, extra, took, tip, open }: {
 
 // useSender is what the chat knows about a sender: its colour, how long it
 // took (a helper, from the crew), and how to open it: a helper's
-// conversation in a tab, or a session Berth runs.
+// conversation in a tab, or a session Burf runs.
 function useSender(from: MessageSender) {
   const ctx = useContext(PromptActionsContext);
   const pane = useContext(PaneContext);

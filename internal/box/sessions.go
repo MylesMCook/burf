@@ -15,53 +15,16 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/sean-brydon/berthd/internal/groups"
-	"github.com/sean-brydon/berthd/internal/integrations/adapters"
-	"github.com/sean-brydon/berthd/internal/statefile"
-	"github.com/sean-brydon/berthd/internal/terminal"
+	"github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/groups"
+	"github.com/MylesMCook/burf/internal/integrations/adapters"
+	"github.com/MylesMCook/burf/internal/statefile"
+	"github.com/MylesMCook/burf/internal/terminal"
 )
 
 // Session is a long-running program, usually a coding agent, started at a
 // location on the box. It keeps running when no one is attached.
-type Session struct {
-	Name     string    `json:"name"`
-	Location string    `json:"location,omitempty"`
-	Dir      string    `json:"dir"`
-	Command  string    `json:"command,omitempty"`
-	Created  time.Time `json:"created"`
-	Attached int       `json:"attached"`
-	Exited   bool      `json:"exited"`
-	// Agent is the coding agent the command runs, if any, and AgentState
-	// what its hooks said last: idle, running, waiting, or finished.
-	Agent      string    `json:"agent,omitempty"`
-	AgentState string    `json:"agent_state,omitempty"`
-	StateSince time.Time `json:"state_since,omitzero"`
-	// Preset is the agent preset the session was started with, which berth
-	// keeps (@berth_agent) so a wrapped command is still known as an agent.
-	Preset string `json:"preset,omitempty"`
-	// Turn is the agent's current (or last) turn, StateSeq the journal Seq
-	// of its state, and Fidelity how well berth knows it: hooks, partial or
-	// screen.
-	Turn     string `json:"turn,omitempty"`
-	StateSeq int64  `json:"state_seq,omitempty"`
-	Fidelity string `json:"fidelity,omitempty"`
-	// Title names the work: the first line of the prompt it started with
-	// (or the first one it was sent), or what someone renamed it to. Kept
-	// as @berth_title; empty until there is one.
-	Title string `json:"title,omitempty"`
-	// Queued is how many prompts the box holds for the agent until it is
-	// idle (GET .../queue lists them); Ask is what it waits on, from its
-	// hooks, when they said.
-	Queued int  `json:"queued,omitempty"`
-	Ask    *Ask `json:"ask,omitempty"`
-	// Service is set on a worktree service's own terminal (a service with
-	// "terminal": true): the service's name, kept as @berth_service. It is
-	// never an agent, whatever it runs.
-	Service string `json:"service,omitempty"`
-
-	// commandFile is where the session's command is kept, when it is.
-	commandFile string
-}
+type Session = boxclient.Session
 
 var (
 	ErrUnknownSession = errors.New("no session with that name")
@@ -89,6 +52,21 @@ type Sessions struct {
 
 	sweepMu   sync.Mutex
 	lastSweep time.Time
+}
+
+// EnvVar reads a key from the session's effective tmux environment, such as
+// its CLAUDE_CONFIG_DIR or CODEX_HOME. An unset key returns an empty value.
+func (s *Sessions) EnvVar(ctx context.Context, sess Session, key string) (string, error) {
+	// Do not cache by name/Created: tmux timestamps have second precision,
+	// so a quickly replaced session can have the same pair on another account.
+	// A format reads one effective environment value, with an empty result
+	// for unset keys. Unlike show-environment KEY, failure is not also used
+	// to report an absent key. No unrelated variables need to be read.
+	out, err := s.tmux(ctx, "display-message", "-p", "-t", "="+sess.Name+":", "#{"+key+"}")
+	if err != nil {
+		return "", fmt.Errorf("read session environment: %w", err)
+	}
+	return strings.TrimSuffix(string(out), "\n"), nil
 }
 
 const tmuxSocket = "berth"
@@ -183,10 +161,10 @@ func (s *Sessions) list(ctx context.Context) ([]Session, error) {
 	}
 	all := parseSessions(out)
 	for i := range all {
-		if all[i].commandFile == "" {
+		if all[i].CommandFile == "" {
 			continue
 		}
-		if command, err := readCommand(all[i].commandFile); err == nil {
+		if command, err := readCommand(all[i].CommandFile); err == nil {
 			all[i].Command = command
 		}
 	}
@@ -223,7 +201,7 @@ func parseSessions(out []byte) []Session {
 			Title:    f[9],
 			Service:  f[10],
 
-			commandFile: f[11],
+			CommandFile: f[11],
 		})
 	}
 	return sessions

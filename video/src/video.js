@@ -1,4 +1,4 @@
-/* Berth launch video: every frame is a pure function of t (seconds).
+/* Burf launch video: every frame is a pure function of t (seconds).
 
    window.seek(t) puts the page at time t; nothing moves by itself (no CSS
    animations or transitions), so headless Chrome can step it frame by frame.

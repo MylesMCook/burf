@@ -24,6 +24,7 @@ import { cn } from "@/lib/utils";
 import { openSession, type WorktreeRef } from "@/lib/workspaces";
 import { sessionWord } from "@/lib/state-model";
 import { useTitleAt } from "@/lib/worktree-names";
+import { openRemoteChat, useRemoteChats } from "@/lib/remote-chat";
 
 // The model's words (lib/state-model.ts); a shell is just "open".
 const stateWords = (s: SessionState) => (s === "idle" ? "open" : sessionWord(s, true));
@@ -62,13 +63,14 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
   const name = useTitleAt(ref.box, ref.path) ?? (ref.main ? ref.location : ref.worktree);
   const labs = usePrefs((p) => p.labs);
   const light = useHarbourLight();
+  const remote = useRemoteChats(ref.box, ref.main ? ref.location : `${ref.location}/${ref.worktree}`);
 
   const rows: Row[] = [
     ...agentPresets(ref.box, ref.location).map((p) => ({
       key: `agent:${p.id}`,
       icon: <AgentIcon agent={p.id} className="size-4" />,
       label: `New ${p.name}`,
-      run: () => void startSession(p.command, { kind: "tab" }, p.name),
+      run: () => void startSession(p.command, { kind: "tab" }, p.name, undefined, p.id),
     })),
     { key: "shell", icon: <SquareTerminalIcon />, label: "New shell", keys: "⌘T", run: () => void startSession("") },
     { key: "browser", icon: <GlobeIcon />, label: "New browser tab", keys: "⌘⇧B", run: () => openBrowserAt("") },
@@ -199,6 +201,13 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
 
           {/* What runs here, each with its URL, then plugins' sections. */}
           <WorktreeSections worktree={ref} className="mt-6" />
+          {remote.error && <p role="alert" className="mt-4 text-sm text-destructive">{remote.error}</p>}
+          {remote.chats.length > 0 && <section aria-label="Codex chats" className="mt-6">
+            <h2 className="mb-1 px-2 text-xs font-medium text-muted-foreground">Codex chats</h2>
+            {remote.chats.map((chat) => <button key={chat.id} type="button" onClick={() => openRemoteChat(ref.box, chat, ref)} className="flex min-h-10 w-full items-center gap-3 rounded-md px-2 text-left text-sm hover:bg-accent">
+              <AgentIcon agent="codex" /><span className="min-w-0 flex-1 truncate">Codex chat <span className="text-xs text-muted-foreground">{chat.id.slice(-8)}</span></span><span className="text-xs text-muted-foreground">{chat.state}</span>
+            </button>)}
+          </section>}
 
           {closed.length > 0 && (
             <section className="mt-6">

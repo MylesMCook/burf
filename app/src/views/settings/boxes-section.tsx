@@ -15,7 +15,7 @@ import { OutdatedNotice, UpgradeBox } from "@/components/upgrade-box";
 import { type AgentPath, type BoxStatus, laptopApi } from "@/lib/api";
 import { explain } from "@/lib/errors";
 import { errorMessage } from "@/lib/format";
-import { updateBoxes, useOutdated } from "@/lib/outdated";
+import { refreshOutdated, updateBoxes, useOutdated } from "@/lib/outdated";
 import { usePrefs } from "@/lib/prefs";
 import { BOX_WORDS, boxWhy } from "@/lib/state-model";
 import { NONE, useStore } from "@/lib/store";
@@ -36,7 +36,7 @@ export function BoxesSection() {
       title="Boxes"
       description={
         <>
-          The machines your agents run on. Each runs berthd; this computer only connects to them. <Code>berth boxes</Code> shows the same.
+          Paired machines running a box agent. Local agents and chats are under This computer. <Code>burf boxes</Code> lists these connections.
         </>
       }
     >
@@ -62,8 +62,8 @@ export function BoxesSection() {
       </SettingsGroup>
       {boxes.length > 0 && (
         <SettingsGroup>
-          <SettingsRow label="Update boxes automatically when Berth updates" description="Each box gets the berthd this Berth ships as soon as it's online. Agents keep running through an update.">
-            <Switch checked={auto} onCheckedChange={(autoUpdateBoxes) => usePrefs.setState({ autoUpdateBoxes })} aria-label="Update boxes automatically when Berth updates" />
+          <SettingsRow label="Install bundled agents automatically" description="When a connected box has a different build, replace its box agent with the one bundled with this Burf. This is not a check for the latest upstream release.">
+            <Switch checked={auto} onCheckedChange={(autoUpdateBoxes) => usePrefs.setState({ autoUpdateBoxes })} aria-label="Install bundled agents automatically" />
           </SettingsRow>
         </SettingsGroup>
       )}
@@ -88,6 +88,8 @@ function BoxRow({ box }: { box: BoxStatus }) {
   const info = useStore((s) => s.boxes[box.name]?.info);
   const update = useOutdated((s) => s.updating[box.name]);
   const check = useOutdated((s) => s.boxes[box.name]);
+  const unsupported = useOutdated((s) => s.unsupported);
+  const [checking, setChecking] = useState(false);
   const [forgetting, setForgetting] = useState(false);
   const [removingLocal, setRemovingLocal] = useState(false);
   const [guarding, setGuarding] = useState(false);
@@ -100,7 +102,7 @@ function BoxRow({ box }: { box: BoxStatus }) {
   // What went wrong reaching it, in plain words, with the raw text behind Details.
   const problem = box.error && !online ? explain(box.error, { box: box.name }) : undefined;
 
-  const build = info?.build && (state === "outdated" && check?.available ? `berthd ${info.build} → ${check.available}` : `berthd ${info.build}`);
+  const build = info?.build && `agent ${info.build}`;
   const details = [box.address, box.network && `via ${box.network}`, build, info?.os && info.arch && `${info.os}/${info.arch}`].filter(Boolean);
 
   return (
@@ -125,7 +127,7 @@ function BoxRow({ box }: { box: BoxStatus }) {
             </div>
           )}
         </div>
-        {state === "outdated" && <UpgradeBox box={box.name} size="xs" variant="outline" label="Update" />}
+        {state === "outdated" && !check?.error && <UpgradeBox box={box.name} size="xs" variant="outline" label="Install bundled" />}
         {!online && (
           <Button
             size="xs"
@@ -145,9 +147,9 @@ function BoxRow({ box }: { box: BoxStatus }) {
             <EllipsisIcon />
           </MenuTrigger>
           <MenuPopup align="end" className="min-w-48">
-            <MenuItem disabled={!online || upgrading} onClick={() => void updateBoxes([box.name])}>
+            <MenuItem disabled={!online || upgrading || !!check?.error || !!unsupported} onClick={() => void updateBoxes([box.name])}>
               <ArrowUpCircleIcon />
-              {online ? "Update berthd" : "Update berthd (offline)"}
+              {online ? "Install bundled box agent" : "Install bundled box agent (offline)"}
             </MenuItem>
             <MenuItem
               onClick={() =>
@@ -184,6 +186,20 @@ function BoxRow({ box }: { box: BoxStatus }) {
           </MenuPopup>
         </Menu>
       </div>
+      {online && (check?.error || unsupported) && (
+        <div className="mt-2 flex flex-wrap items-start gap-2 text-xs text-muted-foreground">
+          <div className="min-w-0 flex-1">
+            <p>Build comparison unavailable</p>
+            <p>The connection is online, but Burf could not compare its agent with a bundled build.</p>
+            <ErrorDetails text={check?.error ?? "This client backend does not support build comparisons."} />
+          </div>
+          <Button size="xs" variant="ghost" loading={checking} onClick={async () => {
+            setChecking(true);
+            try { await refreshOutdated(true); } finally { setChecking(false); }
+          }}><RefreshCwIcon /> Retry build check</Button>
+        </div>
+      )}
+      {online && check?.outdated && check.available && !check.error && <p className="mt-1 text-xs text-muted-foreground">Bundled agent: <span className="font-mono">{check.available}</span>. Installing replaces this box's agent with Burf's bundled build.</p>}
       {/* The agent's browser can't start here (Chromium's sandbox), or runs without it. */}
       {online && <BrowserSandboxCard box={box.name} full className="mt-3" />}
       {online && <BoxAgents box={box.name} />}
@@ -200,7 +216,7 @@ function BoxRow({ box }: { box: BoxStatus }) {
         title={`Forget ${box.name}?`}
         description={
           <>
-            This computer stops connecting to {box.name}. Nothing on the box changes: its agents, worktrees and berthd keep running, and you can pair again with <Code>berthd pair</Code>.
+            This computer stops connecting to {box.name}. Nothing on the box changes: its agents, worktrees and box agent keep running, and you can pair again with <Code>berthd pair</Code>.
           </>
         }
         confirm="Forget"

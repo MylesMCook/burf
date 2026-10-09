@@ -1,10 +1,10 @@
 # shellcheck shell=bash
 # The Mac half of the release tests: a home, ports, launchd labels and an
-# app of their own, so a test never touches this Mac's own Berth. Sourced
+# app of their own, so a test never touches this Mac's own Burf. Sourced
 # by scripts/fresh-user-test.sh and scripts/upgrade-test.sh after common.sh.
 #
 # What "its own" means:
-#  - HOME is a fresh folder: Berth's state (~/Library/Application Support/
+#  - HOME is a fresh folder: Burf's state (~/Library/Application Support/
 #    berth), ~/.berth, ~/.claude, the sample project in ~/work all land in it.
 #  - The agent listens on free ports (the app's on BERTH_UI_PORT, from 9378
 #    up; the proxy from 9377 up), never 1377-1379.
@@ -13,12 +13,12 @@
 #    in the person's tmux server.
 #  - The app is a copy of the one in the dmg with its own bundle identifier,
 #    so its webview storage (where the layout and preferences live) is not
-#    the installed Berth's, and with the agent's port changed from 1378 to
+#    the installed Burf's, and with the agent's port changed from 1378 to
 #    BERTH_UI_PORT: the same length, in the binary and its CSP, which the
 #    app has no setting for. Changing it breaks the Developer ID signature,
 #    so the copy is signed again ad hoc, with the hardened runtime; its
-#    berth-cli and berthd keep their own signatures, and the agent still
-#    checks berthd's against berth-cli's team as it would in the real app.
+#    burf-cli and berthd keep their own signatures, and the agent still
+#    checks berthd's against burf-cli's team as it would in the real app.
 #    Info.plist (App Transport Security), the CSP, the frontend and the
 #    bundled binaries are otherwise the release's own.
 
@@ -110,7 +110,7 @@ in_test_env() {
 }
 
 # dmg_info DMG: what a dmg holds, as KEY=VALUE lines: version (the app's),
-# revision (the commit its berth-cli was built from, which Go records in
+# revision (the commit its burf-cli was built from, which Go records in
 # the binary), modified (whether that checkout had changes), and berthd
 # (yes when it carries Contents/Resources/berthd, as a release does).
 dmg_info() {
@@ -120,10 +120,10 @@ dmg_info() {
 		rmdir "$mnt"
 		return 1
 	}
-	app="$mnt/Berth.app"
+	app="$mnt/Burf.app"
 	echo "version=$(plutil -extract CFBundleShortVersionString raw -o - "$app/Contents/Info.plist" 2>/dev/null)"
-	echo "revision=$(LC_ALL=C grep -a -o -m1 'vcs\.revision=[0-9a-f]\{40\}' "$app/Contents/MacOS/berth-cli" 2>/dev/null | head -1 | cut -d= -f2)"
-	echo "modified=$(LC_ALL=C grep -a -o -m1 'vcs\.modified=[a-z]*' "$app/Contents/MacOS/berth-cli" 2>/dev/null | head -1 | cut -d= -f2)"
+	echo "revision=$(LC_ALL=C grep -a -o -m1 'vcs\.revision=[0-9a-f]\{40\}' "$app/Contents/MacOS/burf-cli" 2>/dev/null | head -1 | cut -d= -f2)"
+	echo "modified=$(LC_ALL=C grep -a -o -m1 'vcs\.modified=[a-z]*' "$app/Contents/MacOS/burf-cli" 2>/dev/null | head -1 | cut -d= -f2)"
 	if [ -x "$app/Contents/Resources/berthd" ]; then echo "berthd=yes"; else echo "berthd=no"; fi
 	hdiutil detach "$mnt" >/dev/null 2>&1 || hdiutil detach -force "$mnt" >/dev/null 2>&1
 	rmdir "$mnt" 2>/dev/null
@@ -140,7 +140,7 @@ find_dmg() {
 	local found
 	# Newest first; the paths have no spaces (target/ and dist/ are ours).
 	# shellcheck disable=SC2012
-	found=$(ls -t "$REPO"/dist/mac/Berth-macos-universal.dmg \
+	found=$(ls -t "$REPO"/dist/mac/Burf-macos-universal.dmg \
 		"$REPO"/app/src-tauri/target/*/release/bundle/dmg/*.dmg \
 		"$REPO"/app/src-tauri/target/release/bundle/dmg/*.dmg 2>/dev/null)
 	for d in $found; do
@@ -149,13 +149,13 @@ find_dmg() {
 			echo "$d"
 			return 0
 		fi
-		echo "  not $d: Berth $(info_of "$info" version), built from $(info_of "$info" revision | cut -c1-9), not HEAD ${head:0:9}" >&2
+		echo "  not $d: Burf $(info_of "$info" version), built from $(info_of "$info" revision | cut -c1-9), not HEAD ${head:0:9}" >&2
 	done
 	echo "no dmg built from HEAD (${head:0:9}): build one with make app-build (scripts/release-check.sh does), or pass --dmg PATH" >&2
 	return 1
 }
 
-# check_dmg DMG [ANY]: a dmg shaped as a release (the app, its berth-cli
+# check_dmg DMG [ANY]: a dmg shaped as a release (the app, its burf-cli
 # and berthd) and built from HEAD, unless ANY. Says what it holds.
 check_dmg() {
 	local info head rev
@@ -170,22 +170,22 @@ check_dmg() {
 	# The commit under test: release-check's, else HEAD.
 	head=${BERTH_RELEASE_TEST_REV:-$(git -C "$REPO" rev-parse HEAD 2>/dev/null)}
 	if [ "$(info_of "$info" berthd)" != yes ]; then
-		echo "$1 (Berth $DMG_VERSION, built from ${rev:0:9}) has no Contents/Resources/berthd: it isn't a release build. Build one with make app-build or scripts/mac-release.sh" >&2
+		echo "$1 (Burf $DMG_VERSION, built from ${rev:0:9}) has no Contents/Resources/berthd: it isn't a release build. Build one with make app-build or scripts/mac-release.sh" >&2
 		return 1
 	fi
 	if [ -z "${2:-}" ] && [ -n "$head" ] && [ "$rev" != "$head" ]; then
-		echo "$1 is Berth $DMG_VERSION built from ${rev:0:9}, not ${head:0:9}, the commit under test: build it with make app-build, or pass --any-build to test it anyway" >&2
+		echo "$1 is Burf $DMG_VERSION built from ${rev:0:9}, not ${head:0:9}, the commit under test: build it with make app-build, or pass --any-build to test it anyway" >&2
 		return 1
 	fi
 	return 0
 }
 # download_dmg TAG DIR: the release's dmg.
 download_dmg() {
-	gh release download "$1" --repo cosscom/shipyard --pattern Berth-macos-universal.dmg --dir "$2" --clobber >&2 || return 1
-	echo "$2/Berth-macos-universal.dmg"
+	gh release download "$1" --repo MylesMCook/burf --pattern Burf-macos-universal.dmg --dir "$2" --clobber >&2 || return 1
+	echo "$2/Burf-macos-universal.dmg"
 }
 
-# install_dmg DMG DEST: what a person does: open the dmg, drag Berth to
+# install_dmg DMG DEST: what a person does: open the dmg, drag Burf to
 # Applications (DEST here). Checks the dmg is laid out for that.
 install_dmg() {
 	local dmg=$1 dest=$2 mnt
@@ -196,13 +196,13 @@ install_dmg() {
 		return 1
 	}
 	local ok=0
-	if [ ! -d "$mnt/Berth.app" ]; then
-		echo "the dmg has no Berth.app" >&2
+	if [ ! -d "$mnt/Burf.app" ]; then
+		echo "the dmg has no Burf.app" >&2
 	elif [ ! -L "$mnt/Applications" ]; then
-		echo "the dmg has no Applications link to drag Berth to" >&2
+		echo "the dmg has no Applications link to drag Burf to" >&2
 	else
-		rm -rf "$dest/Berth.app"
-		ditto "$mnt/Berth.app" "$dest/Berth.app" && ok=1
+		rm -rf "$dest/Burf.app"
+		ditto "$mnt/Burf.app" "$dest/Burf.app" && ok=1
 	fi
 	hdiutil detach "$mnt" >/dev/null 2>&1 || hdiutil detach -force "$mnt" >/dev/null 2>&1
 	rmdir "$mnt" 2>/dev/null
@@ -214,7 +214,7 @@ test_copy() {
 	local app=$1 dest=$2
 	rm -rf "$dest"
 	ditto "$app" "$dest" || return 1
-	local exe="$dest/Contents/MacOS/berth"
+	local exe="$dest/Contents/MacOS/Burf"
 	local n
 	n=$(LC_ALL=C grep -c -a '127\.0\.0\.1:1378' "$exe")
 	[ "$n" -gt 0 ] || {
@@ -224,9 +224,9 @@ test_copy() {
 	LC_ALL=C perl -pi -e "s/127\\.0\\.0\\.1:1378/127.0.0.1:$UI_PORT/g" "$exe" || return 1
 	local plist="$dest/Contents/Info.plist"
 	plutil -replace CFBundleIdentifier -string "dev.berth.releasetest" "$plist" &&
-		plutil -replace CFBundleName -string "Berth Test" "$plist" &&
-		plutil -replace CFBundleDisplayName -string "Berth Test" "$plist" || return 1
-	# berth:// links stay the installed Berth's.
+		plutil -replace CFBundleName -string "Burf Test" "$plist" &&
+		plutil -replace CFBundleDisplayName -string "Burf Test" "$plist" || return 1
+	# berth:// links stay the installed Burf's.
 	plutil -remove CFBundleURLTypes "$plist" 2>/dev/null || true
 	codesign --force --sign - --options runtime --preserve-metadata=entitlements "$dest" 2>&1 || return 1
 	codesign --verify "$dest" || return 1
@@ -241,7 +241,7 @@ launch_app() {
 	local app=$1 vars=()
 	while IFS= read -r l; do vars+=("$l"); done < <(test_env)
 	# env execs the app, so $! is the app.
-	env -i "${vars[@]}" "$app/Contents/MacOS/berth" >>"$ROOT/app.log" 2>&1 &
+	env -i "${vars[@]}" "$app/Contents/MacOS/Burf" >>"$ROOT/app.log" 2>&1 &
 	APP_PID=$!
 	echo "$APP_PID" >>"$ROOT/pids"
 	local i=0
@@ -289,7 +289,7 @@ api() { # api METHOD PATH [JSON]
 	curl -sS --max-time "${API_TIMEOUT:-30}" -X "$1" -H "Authorization: Bearer $tok" -H 'Content-Type: application/json' \
 		${3:+--data "$3"} "http://127.0.0.1:$UI_PORT$2"
 }
-berth_cli() { in_test_env "$APP_UNDER_TEST/Contents/MacOS/berth-cli" "$@"; }
+berth_cli() { in_test_env "$APP_UNDER_TEST/Contents/MacOS/burf-cli" "$@"; }
 
 # ax ARGS…: the accessibility driver on the app.
 ax() {

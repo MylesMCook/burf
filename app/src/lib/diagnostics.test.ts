@@ -7,7 +7,7 @@ import { type Diagnostics, formatDiagnostics, redact } from "./diagnostics-forma
 
 const testdata = new URL("../../../internal/doctor/testdata/", import.meta.url);
 
-// Copy diagnostics and `berth doctor --report` print the same text: both
+// Copy diagnostics and `burf doctor --report` print the same text: both
 // are held to the one golden file (internal/doctor/report_test.go).
 test("the app's report is the CLI's, byte for byte", () => {
   const d = JSON.parse(readFileSync(new URL("diagnostics.json", testdata), "utf8")) as Diagnostics;
@@ -36,7 +36,7 @@ test("redact takes out homes, references, emails and tokens, and keeps the rest"
     ["node_modules/.bin/agent-browser-linux-x64/daemon", "", "node_modules/.bin/agent-browser-linux-x64/daemon"],
     ["internationalization-and-localization-settings", "", "internationalization-and-localization-settings"],
     ["12345678901234567890123456789012345", "", "12345678901234567890123456789012345"],
-    ["7.1k tokens · berth ui-token", "", "7.1k tokens · berth ui-token"],
+    ["7.1k tokens · burf ui-token", "", "7.1k tokens · burf ui-token"],
   ];
   for (const [input, home, want] of cases) assert.equal(redact(input, home), want, input);
 });

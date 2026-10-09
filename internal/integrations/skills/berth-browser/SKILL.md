@@ -82,7 +82,7 @@ berthd browser open /cart --size 390x844 # set it and open in one step
 - Do not run your own Chromium or Playwright against other hosts; if you do
   use one, it is routed through `$BERTH_BROWSER_PROXY` and confined the same.
 - If `open` says the box's browser is blocked (Ubuntu's sandbox setting),
-  stop and tell the user: they fix it from Berth (Settings → Boxes) or in a
+  stop and tell the user: they fix it from Burf (Settings → Boxes) or in a
   terminal on the box. Don't run sudo, pass `--no-sandbox`, or start a
   browser of your own to get around it.
-- The user may be watching your browser live in their Berth app.
+- The user may be watching your browser live in their Burf app.

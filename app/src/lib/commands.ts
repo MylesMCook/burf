@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { isMock } from "@/hooks/use-berth-connection";
+import { isMock } from "@/hooks/use-burf-connection";
 import type { Client } from "@/lib/api";
 import { useStore } from "@/lib/store";
 

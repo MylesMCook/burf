@@ -18,10 +18,8 @@ func TestARestartLetsWorkUnderWayFinishFirst(t *testing.T) {
 	a := startAgent(t, b.pairLaptop())
 	tok := uiToken(t, a)
 	release := filepath.Join(a.dir, "release")
-	script := "#!/bin/sh\necho started\nwhile [ ! -e " + release + " ]; do sleep 0.05; done\necho \"ran $*\"\n"
-	if err := os.WriteFile(filepath.Join(a.dir, "fake-berth"), []byte(script), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	installCLI(t, cliFixturePath(a.dir, "fake-berth"), cliFixture{Mode: "restart", Release: release})
+
 	ctx := context.Background()
 
 	info, err := a.client.Info(ctx)
@@ -36,7 +34,7 @@ func TestARestartLetsWorkUnderWayFinishFirst(t *testing.T) {
 	}()
 	eventually(t, "the upgrade under way", func() bool {
 		info, _ := a.client.Info(ctx)
-		return len(info.Busy) == 1 && info.Busy[0] == "berth upgrade devl"
+		return len(info.Busy) == 1 && info.Busy[0] == "burf upgrade devl"
 	})
 
 	if err := a.client.StopDrained(ctx); err != nil {
@@ -86,7 +84,7 @@ func TestARestartLetsWorkUnderWayFinishFirst(t *testing.T) {
 // own program replaced (the app updated under it), or an older release, or
 // one from before agents said what they run.
 func TestStaleAgents(t *testing.T) {
-	app := "/Applications/Berth.app/Contents/MacOS/berth-cli"
+	app := "/Applications/Burf.app/Contents/MacOS/burf-cli"
 	for _, c := range []struct {
 		name  string
 		info  AgentInfo

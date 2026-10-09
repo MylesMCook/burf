@@ -44,6 +44,13 @@ func Before(source, path, dir string, before int64, limit int) (Result, error) {
 		return Result{}, err
 	}
 	defer f.Close()
+	return BeforeFile(source, f, dir, before, limit)
+}
+
+// BeforeFile reads a page from an already-open record. Callers which confine
+// file access with os.Root can retain that protection without reopening a path.
+// The caller owns f; this function changes its offset but does not close it.
+func BeforeFile(source string, f *os.File, dir string, before int64, limit int) (Result, error) {
 	st, err := f.Stat()
 	if err != nil {
 		return Result{}, err
@@ -58,7 +65,7 @@ func Before(source, path, dir string, before int64, limit int) (Result, error) {
 		start := max(0, before-span)
 		// One more than asked: read from the middle of a file, the first
 		// item may be the tail of a group begun before it.
-		c := &conv{source: source, dir: dir, side: isHelper(path), paged: true, limit: limit + 1, p: parserFor(source), byTool: map[string]int{}, crewByID: map[string]int{}}
+		c := &conv{source: source, dir: dir, side: isHelper(f.Name()), paged: true, limit: limit + 1, p: parserFor(source), byTool: map[string]int{}, crewByID: map[string]int{}}
 		if err := c.scan(f, start, before); err != nil {
 			return Result{}, err
 		}

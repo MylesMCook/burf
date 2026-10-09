@@ -16,8 +16,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/proxy"
-	"github.com/sean-brydon/berthd/internal/statefile"
+	"github.com/MylesMCook/burf/internal/proxy"
+	"github.com/MylesMCook/burf/internal/statefile"
 )
 
 // The browser proxy: every page an agent's browser loads goes through a

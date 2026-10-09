@@ -18,8 +18,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/statefile"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/statefile"
 )
 
 // Storage for visual diffs: images by content hash, so a re-run adds only

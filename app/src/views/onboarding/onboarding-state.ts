@@ -34,21 +34,25 @@ function forcedAtStart(): boolean {
   }
 }
 
-const useOnboarding = create<{ forced: boolean; inProgress: boolean }>()(() => ({ forced: forcedAtStart(), inProgress: false }));
+const useOnboarding = create<{ forced: boolean; inProgress: boolean; localAvailable: boolean }>()(() => ({ forced: forcedAtStart(), inProgress: false, localAvailable: false }));
+
+export function setLocalAvailable(localAvailable: boolean) {
+  useOnboarding.setState({ localAvailable });
+}
 
 const noBoxes = (s: ReturnType<typeof useStore.getState>) => !!s.status && s.connection.state === "online" && s.status.boxes.length === 0;
 
 // useOnboardingActive reports whether the onboarding should be on screen.
 export function useOnboardingActive(): boolean {
-  const { forced, inProgress } = useOnboarding();
+  const { forced, inProgress, localAvailable } = useOnboarding();
   const none = useStore(noBoxes);
-  return forced || inProgress || none;
+  return forced || inProgress || (none && !localAvailable);
 }
 
 // isOnboardingActive is the same answer outside React (shortcuts, say).
 export function isOnboardingActive(): boolean {
-  const { forced, inProgress } = useOnboarding.getState();
-  return forced || inProgress || noBoxes(useStore.getState());
+  const { forced, inProgress, localAvailable } = useOnboarding.getState();
+  return forced || inProgress || (noBoxes(useStore.getState()) && !localAvailable);
 }
 
 // markOnboardingStarted is called when the person leaves the welcome step:

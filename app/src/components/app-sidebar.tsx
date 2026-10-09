@@ -1,5 +1,6 @@
 import {
   EllipsisIcon,
+  MonitorIcon,
   FolderPlusIcon,
   GitBranchPlusIcon,
   PanelLeftCloseIcon,
@@ -22,6 +23,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { SidebarContext, type SidebarContextProps } from "@/components/ui/sidebar";
 import { usePrefs } from "@/lib/prefs";
+import { useLocalComputer } from "@/lib/local-computer";
 import { useStore } from "@/lib/store";
 import { SIDEBAR_DEFAULT, SIDEBAR_MAX, SIDEBAR_MIN } from "@/lib/sidebar-width";
 import { WhatsNewNudge } from "@/components/whats-new/whats-new-dialog";
@@ -134,6 +136,7 @@ export function AppSidebar() {
 
         {/* One context menu and one tooltip for every row in it. */}
         <RowLayer className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
+          <LocalComputerLink />
           <Projects prefs={prefs} update={update} />
         </RowLayer>
 
@@ -168,6 +171,22 @@ export function AppSidebar() {
   );
 }
 
+function LocalComputerLink({ compact = false }: { compact?: boolean }) {
+  const local = useLocalComputer();
+  const active = useStore((s) => s.view.kind === "local");
+  if (!local?.supported) return null;
+  return (
+    <Tip label={`This computer: ${local.name}`} side="right">
+      <button type="button" data-testid="nav-local" aria-label={`This computer: ${local.name}`} aria-current={active ? "page" : undefined}
+        onClick={() => useStore.getState().setView({ kind: "local" })}
+        className={cn("flex items-center gap-2 rounded-md text-left text-xs text-muted-foreground hover:bg-sidebar-accent hover:text-foreground", compact ? "size-8 justify-center" : "mb-2 w-full px-2 py-2", active && "bg-sidebar-accent text-foreground")}>
+        <MonitorIcon className="size-3.5 shrink-0" />
+        {!compact && <span className="min-w-0"><span className="block truncate">{local.name}</span><span className="block text-[10px] text-muted-foreground">This computer</span></span>}
+      </button>
+    </Tip>
+  );
+}
+
 // Rail is the sidebar folded away (⌘\): the window's controls, the places
 // in the sidebar's own order, the agents by state (sidebar/rail.tsx), and a
 // way back. It keeps clear of the traffic lights like the full one, which is
@@ -197,6 +216,7 @@ function Rail() {
       <div className="flex flex-col items-center gap-1">
         {item("Search (⌘K)", <SearchIcon />, false, () => useStore.getState().setPaletteOpen(true))}
         <NotificationBell size="rail" />
+        <LocalComputerLink compact />
         {pinned.map((n) => (
           <span key={n.id}>{item(n.label, n.icon, n.active, n.go, n.badge)}</span>
         ))}

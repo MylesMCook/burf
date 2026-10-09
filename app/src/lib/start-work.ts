@@ -1,7 +1,8 @@
+import type { ChatOptions } from "@/lib/local-computer";
 import { toastError } from "@/components/error-note";
 import { noteTmuxMissing, tmuxMissing } from "@/components/requirements-card";
 import { toastManager } from "@/components/ui/toast";
-import { isMock } from "@/hooks/use-berth-connection";
+import { isMock } from "@/hooks/use-burf-connection";
 import { agentPresets } from "@/lib/actions";
 import { offerAgentHooks } from "@/lib/agent-hooks";
 import type { Session, TaskResult, Worktree } from "@/lib/api";
@@ -18,6 +19,7 @@ import { boxHasRuns, runs, scheduleRuns } from "@/lib/runs";
 import { save } from "@/lib/storage";
 import { useStore } from "@/lib/store";
 import { findSession, focusSession, selectWorktree, setPaneContent, splitPane } from "@/lib/workspaces";
+import { hasChatOptions, hasRemoteCodex, openRemoteChat, remoteChatApi } from "@/lib/remote-chat";
 
 // startWork does what the composer gathered (lib/composer): a task in a new
 // worktree, an agent in the main checkout or a worktree already open, a
@@ -40,6 +42,8 @@ export interface StartDraft {
   worktree?: { name?: string; branch?: string; base?: string; pr?: number; ref?: string; command?: string };
   attempts?: AttemptOptions;
   from?: { kind: "handoff" | "review"; box: string; session: string };
+  // What a structured chat may do without asking, on boxes that take chat options.
+  permission?: ChatOptions["permission"];
 }
 
 export interface AttemptOptions {
@@ -103,6 +107,32 @@ export async function startWork(d: StartDraft): Promise<boolean> {
   if (d.picks.length > 1) return startAttempts(d);
   const pick = d.picks[0];
   const presets = agentPresets(d.box, d.location);
+  const structured = pick?.agent === "codex" && hasRemoteCodex(d.box, presets.find((p) => p.id === "codex")?.command ?? "");
+  if (structured && !d.worktree?.command) {
+    const chosen = !!(pick.model || pick.effort);
+    // Strict is every chat's starting mode, so only another choice needs sending.
+    const options: ChatOptions = { ...(pick.model ? { model: pick.model } : {}), ...(pick.effort ? { effort: pick.effort } : {}), ...(d.permission && d.permission !== "strict" ? { permission: d.permission } : {}) };
+    if (chosen && !hasChatOptions(d.box)) return fail("Choose Codex defaults", new Error(`${d.box} runs an older Burf that starts Codex chats with its configured model and effort. Clear these choices or update the box.`), d.box);
+    if (d.where === "new") return fail("Open a worktree first", new Error("Create the worktree without an agent, then start Codex chat inside it."), d.box);
+    const location = d.where === "here" ? (d.at ?? d.location) : d.location;
+    const loc = useStore.getState().boxes[d.box]?.locations?.find((l) => l.name === d.location);
+    const wt = loc?.worktrees?.find((w) => (w.main ? loc.name : `${loc.name}/${w.name}`) === location);
+    if (!wt) return fail("Couldn't start Codex", new Error("Refresh the project before starting a chat."), d.box);
+    try {
+      const chat = await remoteChatApi.start(client, d.box, location);
+      const ref = { box: d.box, location: d.location, worktree: wt.name, path: wt.path, main: wt.main };
+      try {
+        if (d.text.trim()) await remoteChatApi.message(client, d.box, chat.id, d.text, options);
+      } catch (error) {
+        openRemoteChat(d.box, chat, ref, d.text, chosen ? { model: options.model, effort: options.effort } : undefined);
+        return fail("Could not confirm the message", error, d.box);
+      }
+      // Without a first message nothing has confirmed the choices yet: the chat's first send carries them.
+      // The permission is not held with the pane; an empty chat offers the one last chosen.
+      openRemoteChat(d.box, chat, ref, undefined, chosen && !d.text.trim() ? { model: options.model, effort: options.effort } : undefined);
+      return true;
+    } catch (error) { return fail("Couldn't start Codex", error, d.box); }
+  }
   // An agent can't start without tmux: say so before a worktree is made.
   if (pick && tmuxMissing(d.box)) return fail("Couldn't start it", new ApiError("tmux is not installed on this box", 503, "tmux_missing"), d.box);
   try {
@@ -143,7 +173,6 @@ export async function startWork(d: StartDraft): Promise<boolean> {
     if (isMock() && d.text) void playTurn(d.box, session, d.text);
     await useStore.getState().refreshBox(d.box, ["locations", "sessions"]);
     await focusSession(d.box, session);
-    save(`berth.composer.picks.${d.box}/${d.location}`, d.picks);
     void offerAgentHooks(d.box, d.worktree?.command ?? presets.find((p) => p.id === pick.agent)?.command ?? pick.agent, session);
     return true;
   } catch (err) {
@@ -191,7 +220,8 @@ async function startAttempts(d: StartDraft): Promise<boolean> {
       scheduleRuns(box, 0);
       first ??= { box, id: run.id };
     }
-    save(`berth.composer.picks.${d.box}/${d.location}`, d.picks);
+    // Comparison history must not replace the normal new-chat preference.
+    save(`berth.composer.comparison.${d.box}/${d.location}`, d.picks);
     const run = first!;
     toastManager.add({
       type: "success",

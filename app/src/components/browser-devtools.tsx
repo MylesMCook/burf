@@ -6,16 +6,14 @@ import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { toastManager } from "@/components/ui/toast";
 import type { BrowserContext } from "@/lib/browser-url";
-import { agentOf } from "@/lib/derive";
 import { clearLog, type PaneLog, setDrawerTab, toggleDrawer, useDrawerOpen, useDrawerTab, useErrorCount, useErrorCountOf, useLog } from "@/lib/devtools";
 import { badgeText, type ConsoleEntry, consoleMessage, failed, formatMs, formatSize, isError, type NetEntry, requestMessage, shortAt, statusText } from "@/lib/devtools-model";
-import { send as sendPrompt } from "@/lib/orchestrate";
+import { useAgentTarget } from "@/lib/agent-target";
 import { keysFor } from "@/lib/shortcuts";
-import { useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
 
 // The Browser tab's developer tools: WebKit's own Web Inspector for the
-// native page (Inspect), and Berth's Console and Network drawer under the
+// native page (Inspect), and Burf's Console and Network drawer under the
 // page, whose rows go to the worktree's agent in a click.
 
 // Tooltips in the drawer open downward: above it is the page, which in the
@@ -23,9 +21,9 @@ import { cn } from "@/lib/utils";
 const DOWN = "bottom" as const;
 
 // InspectButton opens WebKit's Web Inspector for the pane's native page, in
-// a window of its own. A frame (outside the Berth app) has none.
+// a window of its own. A frame (outside the Burf app) has none.
 export function InspectButton({ id, native, disabled }: { id: string; native: boolean; disabled?: boolean }) {
-  const label = native ? "Inspect: the Web Inspector for this page (or right-click it → Inspect Element)" : "The Web Inspector is in the Berth app's own browser";
+  const label = native ? "Inspect: the Web Inspector for this page (or right-click it → Inspect Element)" : "The Web Inspector is in the Burf app's own browser";
   return (
     <Tip label={label}>
       <button
@@ -327,7 +325,7 @@ function ConsoleList({ log, agent, sending, onSend }: { log?: PaneLog; agent?: b
                 ? "The agent's page hasn't logged anything."
                 : log?.heard
                   ? "Nothing logged since the page loaded. What it logs, and any error it throws, shows here."
-                  : "Waiting for the page. Its console shows here once it loads in the Berth app, or through a worktree's address."}
+                  : "Waiting for the page. Its console shows here once it loads in the Burf app, or through a worktree's address."}
           </p>
         )}
         <div ref={end} />
@@ -509,7 +507,7 @@ function NetworkList({ log, pageUrl, proxied, agent, sending, onSend }: { log?: 
                 ? "No failed requests in the agent's browser."
                 : proxied
                   ? "No requests since the page loaded."
-                  : "Requests show here for a worktree's page, which goes through Berth's proxy. This page doesn't: use the Web Inspector's Network tab for it."}
+                  : "Requests show here for a worktree's page, which goes through Burf's proxy. This page doesn't: use the Web Inspector's Network tab for it."}
           </p>
         )}
       </div>
@@ -550,17 +548,17 @@ function RequestDetail({ n, pageUrl }: { n: NetEntry; pageUrl: string }) {
 // an optional note.
 function Sender({ sending, pageUrl, ctx, agent, onDone }: { sending: Sending; pageUrl: string; ctx: BrowserContext; agent?: boolean; onDone(): void }) {
   const ref = ctx.ref;
-  const session = useStore((s) => (ref ? s.boxes[ref.box]?.sessions?.find((x) => x.dir === ref.path && !x.exited && agentOf(x)) : undefined));
+  const target = useAgentTarget(ref);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const page = agent ? `${pageUrl} (in your own browser on the box)` : pageUrl;
   const message = sending.kind === "console" ? consoleMessage(sending.entry, page, note) : requestMessage(sending.entry, page, note);
   const summary = sending.kind === "console" ? sending.entry.text : `${sending.entry.method} ${sending.entry.path} → ${statusText(sending.entry)}`;
   const submit = async () => {
-    if (!session || !ref) return;
+    if (!target || target.blocked) return;
     setBusy(true);
     try {
-      await sendPrompt(ref.box, session.name, message, { when: "idle" });
+      await target.send(message);
       toastManager.add({ type: "success", title: "Sent to the agent", description: summary.slice(0, 120) });
       onDone();
     } catch (err) {
@@ -587,11 +585,11 @@ function Sender({ sending, pageUrl, ctx, agent, onDone }: { sending: Sending; pa
         aria-label="A note for the agent"
         value={note}
         onChange={(e) => setNote(e.target.value)}
-        placeholder={session ? "Add a note (optional)" : "No agent runs in this worktree"}
-        disabled={!session}
+        placeholder={target ? (target.blocked ?? "Add a note (optional)") : "No agent runs in this worktree"}
+        disabled={!target || !!target.blocked}
         className="h-6 min-w-0 flex-1 rounded border bg-background px-2 text-xs outline-none focus:border-ring"
       />
-      <Button type="submit" size="xs" disabled={!session || busy}>
+      <Button type="submit" size="xs" disabled={!target || !!target.blocked || busy}>
         <SendIcon />
         Send to agent
       </Button>

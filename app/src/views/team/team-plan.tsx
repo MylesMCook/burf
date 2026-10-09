@@ -173,8 +173,8 @@ export function Plan(p: PlanProps) {
                       <p className="flex items-start gap-1.5 font-medium text-warning-foreground text-xs">
                         <KeyRoundIcon className="mt-0.5 size-3.5 shrink-0" />
                         {s.id === "1password"
-                          ? `op on ${run.box} is asking you to sign in to 1Password. Answer it in the terminal below: what you type stays on the box, and Berth keeps only op's session there, for the team's shared keys.`
-                          : `sudo on ${run.box} is asking for your password. Type it in the terminal below; Berth doesn't see or keep it.`}
+                          ? `op on ${run.box} is asking you to sign in to 1Password. Answer it in the terminal below: what you type stays on the box, and Burf keeps only op's session there, for the team's shared keys.`
+                          : `sudo on ${run.box} is asking for your password. Type it in the terminal below; Burf doesn't see or keep it.`}
                       </p>
                       {run.session && <Terminal box={run.box} session={run.session} />}
                     </div>
@@ -363,7 +363,7 @@ export function UpdateDiff({ update }: { update: TeamUpdate }) {
       </ul>
       <p className={cn("mt-2 flex items-start gap-1.5 text-xs", update.sudo.length ? "text-warning-foreground" : "text-muted-foreground")}>
         <KeyRoundIcon className="mt-0.5 size-3.5 shrink-0" />
-        {update.sudo.length ? `${update.sudo.join(", ")} ${update.sudo.length === 1 ? "is a new step that asks" : "ask"} for your password on the box. You type it there; Berth doesn't keep it.` : "Nothing here asks for your password."} Nothing runs until you press Update; steps you already have are skipped.
+        {update.sudo.length ? `${update.sudo.join(", ")} ${update.sudo.length === 1 ? "is a new step that asks" : "ask"} for your password on the box. You type it there; Burf doesn't keep it.` : "Nothing here asks for your password."} Nothing runs until you press Update; steps you already have are skipped.
       </p>
     </Section>
   );

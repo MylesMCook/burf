@@ -12,8 +12,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/wire"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 const barChart = `{"$schema": "berth.chart/v1", "type": "bar", "title": "p95", "x": "endpoint",
@@ -364,7 +364,7 @@ func TestArtifactRoutes(t *testing.T) {
 		}
 		body, _ := io.ReadAll(resp.Body)
 		resp.Body.Close()
-		if resp.StatusCode != 200 || resp.Header.Get("Content-Type") != "text/plain; charset=utf-8" || resp.Header.Get("X-Content-Type-Options") != "nosniff" || !strings.Contains(resp.Header.Get("Content-Security-Policy"), "sandbox") || resp.Header.Get("X-Berth-Artifact-Kind") != "chart" {
+		if resp.StatusCode != 200 || resp.Header.Get("Content-Type") != "text/plain; charset=utf-8" || resp.Header.Get("X-Content-Type-Options") != "nosniff" || !strings.Contains(resp.Header.Get("Content-Security-Policy"), "sandbox") || resp.Header.Get("X-Burf-Artifact-Kind") != "chart" {
 			t.Fatalf("%s: %d %v", path, resp.StatusCode, resp.Header)
 		}
 		if strings.HasSuffix(path, "/v/1") != (string(body) == barChart) {

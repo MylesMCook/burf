@@ -14,11 +14,11 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/box"
+	box "github.com/MylesMCook/burf/internal/boxclient"
 )
 
 // Artifacts from the command line: an agent registers a file it made for
-// the person to look at, and Berth shows it (box/artifacts.go). add's
+// the person to look at, and Burf shows it (box/artifacts.go). add's
 // first line is the one the chat recognises to place the card
 // (transcript/localartifacts.go): keep its form.
 

@@ -31,7 +31,8 @@ import { BoxPicker } from "@/components/box-picker";
 import { FakeTrafficLights, ZenBar } from "@/components/workspace/zen";
 import { Announcer } from "@/components/announcer";
 import { fakeTrafficLights } from "@/lib/api";
-import { useBerthConnection } from "@/hooks/use-berth-connection";
+import { linkCliOnce } from "@/lib/cli-setup";
+import { useBerthConnection } from "@/hooks/use-burf-connection";
 import { useShortcuts } from "@/hooks/use-shortcuts";
 import { useWindowTitle } from "@/hooks/use-window-title";
 import { useApplyTheme } from "@/hooks/use-theme";
@@ -55,26 +56,37 @@ import { ProjectView } from "@/views/project/project-view";
 import { DashboardView } from "@/views/dashboard";
 import { PluginScreenView } from "@/views/plugin-screen-view";
 import { AddBoxDialog } from "@/views/onboarding/add-box-dialog";
-import { useOnboardingActive } from "@/views/onboarding/onboarding-state";
+import { setLocalAvailable, useOnboardingActive } from "@/views/onboarding/onboarding-state";
 import { OnboardingView } from "@/views/onboarding/onboarding-view";
 import { SettingsView } from "@/views/settings/settings-view";
 import { HomeView } from "@/views/home/home-view";
 import { usePrefs } from "@/lib/prefs";
+import { useLocalComputer } from "@/lib/local-computer";
 import { placeLabel } from "@/lib/worktree-names";
 import { useRescueRemovedFocus } from "@/lib/focus-home";
 
 // The live demo's guide and script (pnpm build:demo); not in the app.
 const DemoGuide = __BERTH_DEMO__ ? lazy(() => import("@/demo/guide")) : null;
+const LocalComputerView = lazy(() => import("@/views/local-computer").then((m) => ({ default: m.LocalComputerView })));
 
-const viewTitles = { team: "Team setup", dashboard: "Agent Dashboard", review: "Review", worktrees: "Worktrees", automations: "Automations", kits: "Kits", project: "Project settings", settings: "Settings", plugin: "" } as const;
+const viewTitles = { team: "Team setup", dashboard: "Agent Dashboard", local: "This computer", review: "Review", worktrees: "Worktrees", automations: "Automations", kits: "Kits", project: "Project settings", settings: "Settings", plugin: "" } as const;
 
 export default function App() {
   useApplyTheme();
   useBerthConnection();
+  const local = useLocalComputer();
+  const noBoxes = useStore((s) => !!s.status && s.status.boxes.length === 0);
+  useEffect(() => {
+    setLocalAvailable(!!local?.supported);
+    if (local?.supported && noBoxes && useStore.getState().view.kind === "workspace") useStore.getState().setView({ kind: "local" });
+  }, [local?.supported, noBoxes]);
   useShortcuts();
   useWindowTitle();
-  // Checks for a newer Berth on launch and every few hours (lib/updater.ts).
+  // Checks for a newer Burf on launch and every few hours (lib/updater.ts).
   useEffect(startUpdater, []);
+  // First run of an installed Burf: its burf command goes on the PATH, once
+  // (lib/cli-setup.ts).
+  useEffect(() => void linkCliOnce(), []);
   // Spinners and shimmers hold still while the window is in the background.
   useEffect(watchStillness, []);
   // Runs on the boxes (loops, attempts, flows): kept fresh for the loops
@@ -241,6 +253,7 @@ function MainView() {
     // centred, rather than stretching across the window.
     <div className={cn("absolute inset-0 bg-background", zen && "mx-auto max-w-[1280px] min-[1300px]:border-x")}>
       {view.kind === "dashboard" && <DashboardView />}
+      {view.kind === "local" && <Suspense fallback={<p role="status" className="p-6 text-sm text-muted-foreground">Loading this computer...</p>}><LocalComputerView /></Suspense>}
       {view.kind === "automations" && <AutomationsView />}
       {view.kind === "review" && <ReviewView />}
       {view.kind === "kits" && <KitsView />}

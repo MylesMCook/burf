@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Publish a Berth release from this Mac, with the same build the release
+# Publish a Burf release from this Mac, with the same build the release
 # workflow makes in CI:
 #
 #   make publish VERSION=0.3.0 [NOTES="What changed"]
@@ -29,7 +29,7 @@ set -euo pipefail
 version="${VERSION:?set VERSION, e.g. make publish VERSION=0.3.0}"
 version="${version#v}"
 tag="v$version"
-repo="cosscom/shipyard"
+repo="MylesMCook/burf"
 updater_op="${BERTH_UPDATER_KEY_OP:-op://Personal/Calport updater signing key/private key}"
 apple_op="${BERTH_APPLE_OP_ITEM:-op://Personal/Berth Developer Id}"
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -99,14 +99,14 @@ committed=1
 git tag "$tag"
 git push -q origin main "$tag"
 
-assets=(dist/mac/Berth-macos-universal.dmg dist/mac/Berth-macos-universal.app.tar.gz dist/mac/Berth-macos-universal.app.tar.gz.sig)
+assets=(dist/mac/Burf-macos-universal.dmg dist/mac/Burf-macos-universal.app.tar.gz dist/mac/Burf-macos-universal.app.tar.gz.sig)
 # The release workflow may have made the release already, for its archives.
 if gh release view "$tag" --repo "$repo" >/dev/null 2>&1; then
   gh release upload "$tag" --repo "$repo" --clobber "${assets[@]}"
 elif [ -n "${NOTES:-}" ]; then
-  gh release create "$tag" --repo "$repo" --verify-tag --draft --title "Berth $tag" --notes "$NOTES" "${assets[@]}"
+  gh release create "$tag" --repo "$repo" --verify-tag --draft --title "Burf $tag" --notes "$NOTES" "${assets[@]}"
 else
-  gh release create "$tag" --repo "$repo" --verify-tag --draft --title "Berth $tag" --generate-notes "${assets[@]}"
+  gh release create "$tag" --repo "$repo" --verify-tag --draft --title "Burf $tag" --generate-notes "${assets[@]}"
 fi
 # Last, so the feed never points at an archive that is not there yet.
 gh release upload "$tag" --repo "$repo" --clobber dist/mac/latest.json

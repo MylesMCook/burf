@@ -26,6 +26,7 @@ export interface BoxData {
 export type View =
   | { kind: "workspace" }
   | { kind: "dashboard" }
+  | { kind: "local" }
   // open, when set, opens the flow editor: a flow by id, or a new one there.
   | { kind: "automations"; open?: { box: string; scope: string; id?: string } }
   | { kind: "project"; box: string; location: string }

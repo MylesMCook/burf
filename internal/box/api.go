@@ -15,20 +15,20 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/box/runs"
-	"github.com/sean-brydon/berthd/internal/doctor"
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/hooks"
-	"github.com/sean-brydon/berthd/internal/integrations/adapters"
-	"github.com/sean-brydon/berthd/internal/terminal"
-	"github.com/sean-brydon/berthd/internal/wire"
+	"github.com/MylesMCook/burf/internal/box/runs"
+	"github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/doctor"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/hooks"
+	"github.com/MylesMCook/burf/internal/integrations/adapters"
+	"github.com/MylesMCook/burf/internal/localchat"
+	"github.com/MylesMCook/burf/internal/terminal"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 // OriginHeader names the tool a request comes from, so the events it causes
 // carry that origin and hooks driving the same tool skip them.
-const OriginHeader = "X-Berth-Origin"
-
-var validOrigin = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,31}$`)
+const OriginHeader = boxclient.OriginHeader
 
 type Box struct {
 	Name      string
@@ -75,7 +75,7 @@ type Box struct {
 	// report back through.
 	Socket string
 	// Invites, when set, lets paired laptops mint pairing codes for another
-	// computer (berth invite).
+	// computer (burf invite).
 	Invites *Invites
 	// Runs executes durable runs (loops, attempts, flows); nil on a box
 	// without them.
@@ -94,6 +94,10 @@ type Box struct {
 	Reports *Notifier
 	// Team runs team setups (team.go); nil on a box without them.
 	Team *TeamRunner
+	// Chats owns structured provider processes until explicitly stopped or
+	// the daemon exits. These are separate from terminal-backed Sessions.
+	Chats     *localchat.Manager
+	chatState chatState
 	// Artifacts keeps what agents made for the person to look at
 	// (artifacts.go); nil on a box without them.
 	Artifacts *ArtifactStore
@@ -220,6 +224,7 @@ func (b *Box) Mount(s *wire.Server) {
 	route("GET /v1/events", b.streamEvents)
 	route("POST /v1/events", b.emit)
 	b.mountRuns(route)
+	b.mountChats(route)
 	b.mountHistory(route)
 	b.mountAnswer(route)
 	b.mountBrowser(route)
@@ -255,7 +260,7 @@ func statusFor(err error) int {
 }
 
 func origin(r *http.Request) string {
-	if o := r.Header.Get(OriginHeader); validOrigin.MatchString(o) {
+	if o := r.Header.Get(OriginHeader); boxclient.ValidOrigin(o) {
 		return o
 	}
 	return "berth"
@@ -532,23 +537,7 @@ func (b *Box) listSessions(w http.ResponseWriter, r *http.Request) error {
 
 // SessionRequest starts a session: Command, or the Agent preset with its
 // first Prompt. Open asks the app to show it ("split" or "tab").
-type SessionRequest struct {
-	Name     string `json:"name,omitempty"`
-	Location string `json:"location"`
-	Command  string `json:"command,omitempty"`
-	Agent    string `json:"agent,omitempty"`
-	Prompt   string `json:"prompt,omitempty"`
-	// Model and Effort, with an agent: see TaskRequest.
-	Model  string `json:"model,omitempty"`
-	Effort string `json:"effort,omitempty"`
-	Open   string `json:"open,omitempty"`
-	// Title names the work; without one, the prompt's first line does.
-	Title string `json:"title,omitempty"`
-	// Home starts it in the box user's home folder rather than a
-	// location: a terminal on the box, tied to no worktree. It takes a
-	// command or a shell, never an agent preset, and no location.
-	Home bool `json:"home,omitempty"`
-}
+type SessionRequest = boxclient.SessionRequest
 
 func (b *Box) addSession(w http.ResponseWriter, r *http.Request) error {
 	var req SessionRequest

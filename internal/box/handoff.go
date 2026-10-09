@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/box/runs"
+	"github.com/MylesMCook/burf/internal/box/runs"
 )
 
 // A handoff packet is what the next agent needs and no more: the source

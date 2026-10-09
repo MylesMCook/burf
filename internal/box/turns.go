@@ -14,9 +14,10 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/integrations/adapters"
-	"github.com/sean-brydon/berthd/internal/statefile"
+	"github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/integrations/adapters"
+	"github.com/MylesMCook/burf/internal/statefile"
 )
 
 // The turn ledger: what every agent session is doing, turn by turn, kept
@@ -26,54 +27,17 @@ import (
 // agent runs in, or on catching an event live.
 
 // Turn is one prompt-to-end-of-turn of one agent session.
-type Turn struct {
-	ID      string `json:"id"` // "<session>#<n>"
-	Session string `json:"session"`
-	Agent   string `json:"agent,omitempty"`
-	N       int    `json:"n"`
-	// Origin says who prompted: laptop:<peer>, flow:<id>, phone, terminal.
-	Origin string `json:"origin,omitempty"`
-	// SentSeq is the journal Seq of the send (0 if typed by a person),
-	// Sent its time.
-	SentSeq int64     `json:"sent_seq,omitempty"`
-	Sent    time.Time `json:"sent,omitzero"`
-	EndSeq  int64     `json:"end_seq,omitempty"`
-	// State is queued (held in the inbox), pending (sent, not started),
-	// running, waiting, finished, exited or lost.
-	State   string    `json:"state"`
-	Queued  time.Time `json:"queued,omitzero"`
-	Started time.Time `json:"started,omitzero"`
-	Ended   time.Time `json:"ended,omitzero"`
-	// Waits are the spans it spent waiting for a person.
-	Waits []Span `json:"waits,omitempty"`
-	// Fidelity is how well berth knows its edges: hooks (the agent said),
-	// partial (it started when sent, as the agent cannot say) or screen.
-	Fidelity string `json:"fidelity,omitempty"`
-	IdemKey  string `json:"idem_key,omitempty"`
-	// Status is "error" for a turn the agent ended on a failure.
-	Status string `json:"status,omitempty"`
-}
+type Turn = boxclient.Turn
 
 // Span is a time the agent waited for someone.
-type Span struct {
-	Start  time.Time `json:"start"`
-	End    time.Time `json:"end,omitzero"`
-	Reason string    `json:"reason,omitempty"`
-	// Ask is what the agent asked for, from its own hooks, when it said.
-	Ask *Ask `json:"ask,omitempty"`
-}
+type Span = boxclient.Span
 
 // Ask is a waiting agent's request, from its hooks rather than its screen:
 // the tool it wants to use, a short summary of the input (the command, or
 // the file's path; never what it would write), its reason, and the
 // message it showed. Each is at most adapters.AskLimit long. It is kept
 // only here, in the ledger's private file: never in events.
-type Ask struct {
-	Tool    string `json:"tool,omitempty"`
-	Input   string `json:"input,omitempty"`
-	Why     string `json:"why,omitempty"`
-	Message string `json:"message,omitempty"`
-}
+type Ask = boxclient.Ask
 
 // SessionState is what an agent session is doing now.
 type SessionState struct {
@@ -92,11 +56,11 @@ type SessionState struct {
 	Ask    *Ask `json:"ask,omitempty"`
 }
 
-func (t Turn) open() bool {
+func turnOpen(t *Turn) bool {
 	return t.State == "pending" || t.State == "running" || t.State == "waiting"
 }
 
-func (t Turn) ended() bool {
+func turnEnded(t *Turn) bool {
 	return t.State == "finished" || t.State == "exited" || t.State == "lost"
 }
 
@@ -235,7 +199,7 @@ func (t *Turns) Attach(bus *events.Bus) {
 	// Turns open now were open when berthd stopped: if no spooled hook
 	// settles them, the screen does.
 	for _, s := range t.sess {
-		if tr := s.current(); tr != nil && tr.open() {
+		if tr := s.current(); tr != nil && turnOpen(tr) {
 			s.Reconcile = true
 		}
 	}
@@ -370,7 +334,7 @@ func (t *Turns) newTurn(s *sessTrack, state, origin string) *Turn {
 	s.Turns = append(s.Turns, tr)
 	for len(s.Turns) > maxTurnsKept {
 		i := 0
-		for i < len(s.Turns)-1 && !s.Turns[i].ended() {
+		for i < len(s.Turns)-1 && !turnEnded(s.Turns[i]) {
 			i++
 		}
 		t.archive = append(t.archive, *s.Turns[i])
@@ -465,7 +429,7 @@ func (t *Turns) drop(name string, e events.Event) {
 		return
 	}
 	for _, tr := range s.Turns {
-		if tr.open() || tr.State == "queued" {
+		if turnOpen(tr) || tr.State == "queued" {
 			s.end(tr, "exited", e)
 		}
 	}
@@ -706,7 +670,7 @@ func (t *Turns) agentEvent(e events.Event) {
 		t.kickInbox()
 	case adapters.Exited:
 		for _, tr := range s.Turns {
-			if tr.open() {
+			if turnOpen(tr) {
 				s.end(tr, "exited", e)
 			}
 		}
@@ -866,7 +830,7 @@ func (t *Turns) Exited(name string) {
 	}
 	e := events.Event{Time: time.Now().UTC(), Seq: t.applied}
 	for _, tr := range s.Turns {
-		if tr.open() {
+		if turnOpen(tr) {
 			s.end(tr, "exited", e)
 		}
 	}
@@ -1204,7 +1168,7 @@ func (s *sessTrack) idle() bool {
 		return false
 	}
 	for _, tr := range s.Turns {
-		if tr.open() {
+		if turnOpen(tr) {
 			return false
 		}
 	}
@@ -1259,7 +1223,7 @@ func (t *Turns) WaitTurn(ctx context.Context, id string, untilWaiting bool) (tr 
 		if !ok {
 			return Turn{}, false, errUnknownTurn
 		}
-		if tr.ended() || (untilWaiting && tr.State == "waiting") {
+		if turnEnded(&tr) || (untilWaiting && tr.State == "waiting") {
 			return tr, false, nil
 		}
 		select {

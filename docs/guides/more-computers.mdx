@@ -1,9 +1,9 @@
 ---
 title: More than one computer
-description: Use Berth on a second computer, a Mac mini beside your MacBook say, with the same boxes. Both stay paired and work at once.
+description: Use Burf on a second computer, a Mac mini beside your MacBook say, with the same boxes. Both stay paired and work at once.
 ---
 
-Every computer you use Berth on pairs with your boxes with its own key. To
+Every computer you use Burf on pairs with your boxes with its own key. To
 set up another one, the computer you already use makes a **join link**: one
 fresh, single-use pairing code from each box, in one link. The new computer
 pairs with every box in it. Nothing changes for the first computer; both
@@ -19,8 +19,8 @@ On the computer you already use:
 3. Read what the link gives away, then **Make the link**. You get the link,
    a QR code of it, and how long it lasts.
 
-On the new computer, install Berth, and on the welcome screen choose **I
-already use Berth on another computer**. Paste the link (the whole message
+On the new computer, install Burf, and on the welcome screen choose **I
+already use Burf on another computer**. Paste the link (the whole message
 is fine), check the boxes it lists, and **Pair**. Its projects are already on
 the boxes, so setup ends there.
 
@@ -34,26 +34,26 @@ devices, Universal Clipboard pastes it on the Mac).
 
 ```bash
 # On the computer you use now
-berth invite                       # every paired box
-berth invite --boxes devl,build    # only these
+burf invite                       # every paired box
+burf invite --boxes devl,build    # only these
 
 # On the new one
-berth join 'berth://join?v=1&d=…'
-berth join --check '…'             # what the link holds, without pairing
+burf join 'berth://join?v=1&d=…'
+burf join --check '…'             # what the link holds, without pairing
 ```
 
-`berth invite` asks before it makes the link; `--yes` doesn't. `berth join -`
+`burf invite` asks before it makes the link; `--yes` doesn't. `burf join -`
 reads the link from stdin.
 
 ## Boxes on another tailnet
 
-A box the first computer reaches through a [Berth network](/getting-started/add-a-box#boxes-on-another-tailnet)
+A box the first computer reaches through a [Burf network](/getting-started/add-a-box#boxes-on-another-tailnet)
 (another tailnet) carries that network's name and tailnet in the link. The
 new computer reaches it through a network of its own by that name when it
 has one, and otherwise directly, which works when its own Tailscale is on
 that tailnet. When neither does, the box waits with **Sign in**: sign in to
-that tailnet in the browser, and Berth pairs with it then. In a terminal,
-`berth join` offers the same sign-in.
+that tailnet in the browser, and Burf pairs with it then. In a terminal,
+`burf join` offers the same sign-in.
 
 ## Who can reach a box
 

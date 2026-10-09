@@ -42,7 +42,7 @@ test("the folded rail and a sheet open without moving", async ({ app }) => {
   await app.open();
   await app.page.getByRole("button", { name: "Hide the sidebar" }).click();
   await expect(app.page.getByRole("navigation", { name: "Agents" })).toBeVisible();
-  await app.page.keyboard.press("Meta+Slash");
+  await app.page.keyboard.press("ControlOrMeta+Slash");
   await expect(app.page.getByRole("dialog", { name: "Keyboard shortcuts" })).toBeVisible();
   expect(await moving(app.page)).toEqual([]);
 });

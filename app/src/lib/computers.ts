@@ -1,7 +1,7 @@
 import type { Client } from "@/lib/api";
 
 // More than one computer on the same boxes: this one makes a join link
-// (berth invite), another of yours pairs with every box in it (berth join),
+// (burf invite), another of yours pairs with every box in it (burf join),
 // and both keep working. Each box lists the computers it trusts and can stop
 // trusting one. See docs/guides/more-computers.mdx.
 
@@ -10,7 +10,7 @@ import type { Client } from "@/lib/api";
 export interface InvitedBox {
   name: string;
   addresses: string[];
-  // The Berth network (another tailnet) this computer reaches it through,
+  // The Burf network (another tailnet) this computer reaches it through,
   // and that tailnet's name.
   network?: string;
   tailnet?: string;
@@ -71,7 +71,7 @@ export const computersApi = {
 const JOIN_LINK = /berth:\/\/join\?[^\s'"`<>]+/;
 
 // findJoinLink pulls a join link out of pasted text: a message, the whole
-// output of berth invite, or the link in quotes.
+// output of burf invite, or the link in quotes.
 export function findJoinLink(text: string): string | undefined {
   return JOIN_LINK.exec(text)?.[0].replace(/[.,;:)\]]+$/, "");
 }

@@ -4,7 +4,7 @@ import { type App, expect, mockOnly, test } from "./fixtures";
 
 // The guided install (views/onboarding/guided-install.tsx) is adding a box
 // from Team setup: the plan, full screen, with the agents to choose and the
-// team's steps after Berth's, then berth add ssh --guided in a terminal here
+// team's steps after Burf's, then burf add ssh --guided in a terminal here
 // beside a checklist the step markers keep up to date, then the team's
 // setup on the new box in the same screen. (Adding a box anywhere else is
 // the quick install: quick-install.spec.ts.) The mock (lib/mock-install.ts)
@@ -24,8 +24,11 @@ const advance = (page: Page, name: string) => page.evaluate((n) => (window as un
 async function openPlan(app: App, host: string) {
   const { page } = app;
   await app.open({ params: { team: "acme", "team-page": "acme" } });
-  await page.getByRole("button", { name: "Add a box" }).locator("visible=true").first().click();
-  await page.getByText("Or let Berth set it up over SSH").click();
+  // The team's own button, once its page is there. Before that, the first "Add a box" in sight is the
+  // sidebar's "Add a box…", which opens the plain dialog and no guided install.
+  await expect(page.getByTestId("team-page")).toBeVisible();
+  await page.getByRole("button", { name: "Add a box", exact: true }).locator("visible=true").first().click();
+  await page.getByText("Or let Burf set it up over SSH").click();
   await page.getByLabel("SSH host, like me@my-box").fill(host);
   // Team setup's add a box has the agents in the plan, not inline.
   await expect(page.getByTestId("inline-agents")).toHaveCount(0);
@@ -60,7 +63,7 @@ test("from Team setup: the whole plan, the terminal, sudo's password, then the t
   // Claude Code is ticked the first time.
   await expect(page.getByTestId("agent-claude")).toHaveAttribute("data-checked", "true");
   await expect(plan.getByTestId("plan-agents")).toContainText("Claude Code");
-  // Then the team's own steps, after Berth's.
+  // Then the team's own steps, after Burf's.
   const team = page.getByTestId("install-plan-team");
   await expect(guided(page)).toContainText("Then Acme's setup");
   await expect(team.getByTestId("plan-team-packages")).toContainText("System packages");
@@ -79,6 +82,9 @@ test("from Team setup: the whole plan, the terminal, sudo's password, then the t
   await expect(phase).toBeVisible({ timeout: 30_000 });
   for (const id of ["connect", "berthd", "linger", "tools", "agents", "integrations", "pair"]) await expect(guided(page).getByTestId(`step-${id}`)).toHaveAttribute("data-state", "done");
   await expect(phase.getByTestId("team-step-update")).toHaveAttribute("data-state", "running", { timeout: 10_000 });
+  // The checklist renders both running and waiting as running. Wait for the
+  // actual password prompt before acknowledging the mock's password gate.
+  await expect(phase.getByText("sudo is asking for your password on my-box.")).toBeVisible();
   await advance(page, "sudo");
   await expect(phase.getByTestId("team-step-github")).toHaveAttribute("data-state", /done|running/, { timeout: 15_000 });
   await expect(guided(page).getByTestId("install-continue")).toBeVisible({ timeout: 20_000 });
@@ -96,7 +102,7 @@ test("the agents chosen are installed, and remembered for the next box", async (
   await openPlan(app, "demo@my-box");
   await page.getByTestId("agent-codex").click();
   await expect(page.getByTestId("plan-agents")).toContainText("Claude Code and Codex");
-  // Gemini needs Node, so Berth says how instead of offering it.
+  // Gemini needs Node, so Burf says how instead of offering it.
   await expect(page.getByTestId("agent-gemini")).toContainText("npm install -g @google/gemini-cli");
   expect(((await app.stored("berth.prefs")) as { installAgents: string[] }).installAgents).toEqual(["claude", "codex"]);
   await page.getByTestId("agent-claude").click();

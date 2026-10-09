@@ -31,7 +31,7 @@ import (
 //
 // Two documents:
 //
-//   - "/" is the shell, Berth's own few lines: it frames the page and
+//   - "/" is the shell, Burf's own few lines: it frames the page and
 //     forwards the app's theme messages to it. Its policy lets it frame
 //     only this origin's /v/ pages, so a page that navigates itself
 //     anywhere else (location = "https://…?data") is stopped by the
@@ -52,7 +52,7 @@ import (
 // /v1/artifacts/{id}/v/{version}.
 type ArtifactFunc func(ctx context.Context, box, id, version string) (*http.Response, error)
 
-// AppOrigins are the origins Berth's app runs on, which alone may frame an
+// AppOrigins are the origins Burf's app runs on, which alone may frame an
 // artifact: the bundled app, and the dev server's ports (1420–1439).
 var AppOrigins = func() []string {
 	out := []string{"tauri://localhost", "http://tauri.localhost", "https://tauri.localhost"}
@@ -146,7 +146,7 @@ func (p *Proxy) artifactPage(w http.ResponseWriter, r *http.Request, box, id, v,
 		artText(w, resp.StatusCode, "The box has no such artifact or version.")
 		return
 	}
-	if resp.Header.Get("X-Berth-Artifact-Kind") != "page" {
+	if resp.Header.Get("X-Burf-Artifact-Kind") != "page" {
 		// Data artifacts are drawn by the app, never served as a page.
 		artText(w, http.StatusNotFound, "This artifact isn't a page.")
 		return
@@ -375,7 +375,7 @@ func (c *libCache) get(ctx context.Context, l artLib, fetch func(ctx context.Con
 	}
 	sum := sha256.Sum256(b)
 	if hex.EncodeToString(sum[:]) != l.sha256 {
-		return nil, fmt.Errorf("%s isn't what Berth pinned (its hash differs); not served", l.path)
+		return nil, fmt.Errorf("%s isn't what Burf pinned (its hash differs); not served", l.path)
 	}
 	c.mu.Lock()
 	c.got[l.path] = b

@@ -3,6 +3,7 @@ import { lazy, Suspense, useEffect, useMemo } from "react";
 
 
 import { Tip } from "@/components/tip";
+import { RemoteChatPane } from "@/views/remote-chat";
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
 import { BrowserPane } from "@/components/browser-pane";
 import { PreviewPane } from "@/components/preview-pane";
@@ -18,6 +19,7 @@ import { SessionActionItems } from "@/components/orchestrate/session-actions";
 import { Button } from "@/components/ui/button";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuShortcut, MenuTrigger } from "@/components/ui/menu";
 import { Spinner } from "@/components/ui/spinner";
+import { isMock } from "@/hooks/use-burf-connection";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { LogView } from "@/components/workspace/log-view";
 import { PanelIcon, PanelPane } from "@/components/workspace/panel-pane";
@@ -121,6 +123,7 @@ export function Pane({ wsKey, tab, pane, visible, focused, split, mixed, compare
         )}
         <div className={cn("relative flex min-h-0 flex-1 flex-col transition-opacity", split && !focused && "opacity-85", lifted && "opacity-40")}>
           {gone && <GonePane name={gone} onClose={close} />}
+          {c.kind === "remote-chat" && <RemoteChatPane box={c.box} id={c.chat} cwd={c.cwd} draft={c.draft} options={c.options} onSaved={(saved) => setPaneContent(wsKey, tab, pane.id, { ...c, ...saved })} />}
           {/* Under a chat the terminal is out of reach: Tab never lands in its
               hidden input, where it would type a tab and keep the focus. */}
           {c.kind === "terminal" && (
@@ -197,22 +200,22 @@ function GonePane({ name, onClose }: { name: string; onClose(): void }) {
   );
 }
 
-// usePaneView is how an agent's pane shows: its terminal, or (Labs) its
-// conversation. Shells and other panes are always what they are.
+// Supported remote agents have Chat and Terminal views, independently of Labs.
+// Shells and agents without readable conversations remain terminals.
 export function usePaneView(pane: Leaf): "terminal" | "conversation" | undefined {
   const c = pane.content;
-  const labs = usePrefs((p) => p.labs);
   const fallback = usePrefs((p) => (p.zen ? "conversation" : p.agentView));
   // A pane made for a new session doesn't record its agent; the box's
   // session list says whether it runs one.
-  const runsAgent = useStore((st) => {
-    if (c.kind !== "terminal") return false;
-    if (c.agent) return true;
+  const agent = useStore((st) => {
+    if (c.kind !== "terminal") return undefined;
     const s = st.boxes[c.box]?.sessions?.find((x) => x.name === c.session);
-    return !!(s && agentOf(s));
+    return s ? agentOf(s) : c.agent;
   });
-  if (c.kind !== "terminal" || !labs || !runsAgent) return undefined;
-  return c.view ?? fallback;
+  const info = useStore((st) => c.kind === "terminal" ? st.boxes[c.box]?.info : undefined);
+  if (c.kind !== "terminal" || (agent !== "claude" && agent !== "codex")) return undefined;
+  const unsupportedBox = !isMock() && info && !info.capabilities?.includes("transcript");
+  return c.view ?? (unsupportedBox ? "terminal" : fallback);
 }
 
 // ViewSwitch flips an agent's pane between its terminal and its
@@ -230,20 +233,18 @@ export function ViewSwitch({ wsKey, tab, pane }: { wsKey: string; tab: string; p
         const next = v[0] as "terminal" | "conversation" | undefined;
         if (!next) return;
         setPaneContent(wsKey, tab, pane.id, { ...c, view: next });
-        // The way you last chose to see an agent is how new ones open.
-        usePrefs.setState({ agentView: next });
       }}
       aria-label="Show the agent as"
       className="mr-1"
     >
-      <Tip label="Terminal">
-        <ToggleGroupItem value="terminal" aria-label="Terminal" className="h-6! min-w-7! px-1!">
-          <SquareTerminalIcon className="size-3.5" />
+      <Tip label="Chat">
+        <ToggleGroupItem value="conversation" aria-label="Chat" className="h-7! gap-1.5 px-2!">
+          <MessagesSquareIcon className="size-3.5" /><span>Chat</span>
         </ToggleGroupItem>
       </Tip>
-      <Tip label="Conversation">
-        <ToggleGroupItem value="conversation" aria-label="Conversation" className="h-6! min-w-7! px-1!">
-          <MessagesSquareIcon className="size-3.5" />
+      <Tip label="Terminal">
+        <ToggleGroupItem value="terminal" aria-label="Terminal" className="h-7! gap-1.5 px-2!">
+          <SquareTerminalIcon className="size-3.5" /><span className="hidden sm:inline">Terminal</span>
         </ToggleGroupItem>
       </Tip>
     </ToggleGroup>
@@ -254,6 +255,8 @@ export function ViewSwitch({ wsKey, tab, pane }: { wsKey: string; tab: string; p
 // "Shell", "Browser", or the plugin panel's title.
 export function paneLabel(c: Leaf["content"], agent?: string): string {
   switch (c.kind) {
+    case "remote-chat":
+      return "Codex chat";
     case "terminal":
       return agent || c.agent ? agentLabel((agent ?? c.agent)!) : "Shell";
     case "browser":
@@ -280,6 +283,7 @@ export function paneLabel(c: Leaf["content"], agent?: string): string {
 export function PaneIcon({ content, agent, className }: { content: Leaf["content"]; agent?: string; className?: string }) {
   const c = content;
   const service = useStore((s) => c.kind === "terminal" && !!s.boxes[c.box]?.sessions?.find((x) => x.name === c.session)?.service);
+  if (c.kind === "remote-chat") return <AgentIcon agent="codex" className={className} />;
   if (c.kind === "browser") return <GlobeIcon className={cn("size-3.5 shrink-0", className)} />;
   if (c.kind === "file") return <FileGlyph path={c.path} className={className} />;
   if (c.kind === "preview") return <MonitorSmartphoneIcon className={cn("size-3.5 shrink-0", className)} />;
@@ -380,7 +384,7 @@ export function PaneActions({ wsKey, tab, pane, onClose, closable, focused = tru
             <MenuGroupLabel>Open beside</MenuGroupLabel>
             {ref &&
               agentPresets(ref.box, ref.location).map((p) => (
-                <MenuItem key={p.id} onClick={() => void startSession(p.command, beside("row"), p.name)}>
+                <MenuItem key={p.id} onClick={() => void startSession(p.command, beside("row"), p.name, undefined, p.id)}>
                   <span className="flex size-4 items-center justify-center">
                     <AgentIcon agent={p.id} />
                   </span>

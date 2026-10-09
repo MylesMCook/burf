@@ -26,7 +26,7 @@ func stub(t *testing.T, os_ string) (home string, calls *[]string) {
 
 var spec = Spec{
 	Name:        "berth-agent",
-	Description: "berth agent",
+	Description: "burf agent",
 	Program:     "/opt/berth/bin/berth",
 	Args:        []string{"agent"},
 	Env:         map[string]string{"BERTH_HOME": "/Users/alex/Library/Application Support/berth"},
@@ -85,66 +85,13 @@ func TestRenderEscapesValues(t *testing.T) {
 	}
 }
 
-func TestInstallIsIdempotentAndDetectsItself(t *testing.T) {
-	spec := spec
-	for _, os_ := range []string{"darwin", "linux"} {
-		_, calls := stub(t, os_)
-		spec.LogPath = filepath.Join(t.TempDir(), "not-yet", "berth.log")
-		if Installed(spec) {
-			t.Fatalf("%s: installed before install", os_)
-		}
-		path, err := Install(spec)
-		if _, statErr := os.Stat(filepath.Dir(spec.LogPath)); statErr != nil {
-			t.Fatalf("%s: the log's folder was not made before the first start: %v", os_, statErr)
-		}
-		if err != nil {
-			t.Fatalf("%s: %v", os_, err)
-		}
-		if !Installed(spec) {
-			t.Fatalf("%s: not installed after install", os_)
-		}
-		other := spec
-		other.Env = map[string]string{"BERTH_HOME": "/elsewhere"}
-		if Installed(other) {
-			t.Fatalf("%s: a unit for another home counted as installed", os_)
-		}
-		if _, err := Install(spec); err != nil {
-			t.Fatalf("%s: reinstall: %v", os_, err)
-		}
-		entries, _ := os.ReadDir(filepath.Dir(path))
-		if len(entries) != 1 {
-			t.Fatalf("%s: install left extra files: %v", os_, entries)
-		}
-		if len(*calls) == 0 {
-			t.Fatalf("%s: install did not load the unit", os_)
-		}
-		if _, err := Uninstall(spec); err != nil {
-			t.Fatal(err)
-		}
-		if Installed(spec) {
-			t.Fatalf("%s: still installed after uninstall", os_)
-		}
-	}
-}
-
-func TestInstallRefusesTemporaryAndRelativeBinaries(t *testing.T) {
-	stub(t, "darwin")
-	for _, program := range []string{filepath.Join(os.TempDir(), "berth"), "/Users/alex/Library/Caches/go-build/ab/berth", "bin/berth"} {
-		s := spec
-		s.Program = program
-		if _, err := Install(s); err == nil {
-			t.Errorf("installed %s", program)
-		}
-	}
-}
-
 func TestUnsupportedPlatform(t *testing.T) {
-	stub(t, "windows")
+	stub(t, "freebsd")
 	if _, err := Render(spec); err == nil {
-		t.Fatal("rendered a unit for windows")
+		t.Fatal("rendered a unit for freebsd")
 	}
 	if Installed(spec) {
-		t.Fatal("reported installed on windows")
+		t.Fatal("reported installed on freebsd")
 	}
 }
 

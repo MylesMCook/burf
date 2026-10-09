@@ -15,6 +15,8 @@ import (
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/MylesMCook/burf/internal/boxclient"
 )
 
 // Attachments are files pasted or dropped into the app for an agent: a
@@ -27,7 +29,7 @@ import (
 // .git/info/exclude, never its .gitignore.
 
 // MaxAttachment is the largest file the box takes.
-const MaxAttachment = 20 << 20
+const MaxAttachment = boxclient.MaxAttachment
 
 // attachmentDir is where a worktree keeps its attachments.
 const attachmentDir = ".berth/attachments"

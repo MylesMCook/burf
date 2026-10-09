@@ -10,26 +10,18 @@ import (
 	"regexp"
 	"sort"
 
-	"github.com/sean-brydon/berthd/internal/doctor"
-	"github.com/sean-brydon/berthd/internal/service"
+	"github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/doctor"
+	"github.com/MylesMCook/burf/internal/service"
 )
 
 // Unit is a long-lived program berthd runs on the box under the platform's
 // service manager, so it survives reboots and restarts on failure. Its output
 // goes to a file berthd owns rather than the journal, because a program's
 // output can contain credentials.
-type Unit struct {
-	Name    string `json:"name"`
-	State   string `json:"state"`
-	LogPath string `json:"log_path"`
-}
+type Unit = boxclient.Unit
 
-type UnitRequest struct {
-	Name    string            `json:"name"`
-	Program string            `json:"program"`
-	Args    []string          `json:"args"`
-	Env     map[string]string `json:"env"`
-}
+type UnitRequest = boxclient.UnitRequest
 
 var (
 	ErrUnknownUnit = errors.New("no unit with that name")

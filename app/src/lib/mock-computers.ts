@@ -66,7 +66,7 @@ function readLink(text: string) {
   const link = findJoinLink(text);
   if (!link) return { error: "no join link in that; it starts with berth://join? (Settings → Computers → Add another computer makes one)" };
   const inv = made.get(link) ?? demoInvite();
-  if (/expired/.test(text) || Date.parse(inv.expires) < Date.now()) return { error: `this join link expired; make a new one on ${inv.from} with berth invite` };
+  if (/expired/.test(text) || Date.parse(inv.expires) < Date.now()) return { error: `this join link expired; make a new one on ${inv.from} with burf invite` };
   return { link, inv };
 }
 
@@ -107,7 +107,7 @@ export function computersCall(method: string, path: string, body: unknown): Prom
     const used = /used/.test(link);
     const boxes = inv.boxes.map((b): JoinResult => {
       if (paired(b.name)) return { name: b.name, status: "already", address: b.address };
-      if (used) return { name: b.name, status: "failed", error: "the box refused the code: this link was used already or has expired; make a new one with berth invite" };
+      if (used) return { name: b.name, status: "failed", error: "the box refused the code: this link was used already or has expired; make a new one with burf invite" };
       if (!signedIn(b.network)) return { name: b.name, status: "needs-network", network: b.network, tailnet: b.tailnet, error: `sign in to the ${b.network} network to reach it` };
       c.addBox(b.name, b.address, b.network);
       return { name: b.name, status: "paired", address: b.address, network: b.network };

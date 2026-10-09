@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/sean-brydon/berthd/internal/integrations/adapters"
 	"io"
 	"net/http"
 	"os"
@@ -15,7 +14,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/version"
+	"github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/integrations/adapters"
+	"github.com/MylesMCook/burf/internal/version"
 )
 
 // maxDaemonSize bounds an uploaded daemon; real builds are under 10 MB.
@@ -23,27 +24,7 @@ const maxDaemonSize = 64 << 20
 
 // Info describes the running daemon, so a laptop can pick the right build to
 // upload and tell whether the box already runs it.
-type Info struct {
-	Name  string `json:"name"`
-	OS    string `json:"os"`
-	Arch  string `json:"arch"`
-	Build string `json:"build"`
-	// User and Home are the account berthd runs as, which is the one to
-	// log in as over SSH, for editors.
-	User  string   `json:"user,omitempty"`
-	Home  string   `json:"home,omitempty"`
-	Tools []string `json:"tools"`
-	// Agents are the agent presets this box can start.
-	Agents []AgentPreset `json:"agents"`
-	// AgentPaths say where each built-in agent's CLI was found.
-	AgentPaths []AgentPath `json:"agent_paths,omitempty"`
-	// Capabilities name the API features this box has, so clients can use
-	// them when present: "turns" (turn IDs from send, turn waits),
-	// "journal" (GET /v1/events?since=SEQ).
-	Capabilities []string `json:"capabilities"`
-	// Adapters say what each agent can report, for the app.
-	Adapters map[string]adapters.Caps `json:"adapters,omitempty"`
-}
+type Info = boxclient.Info
 
 // BuildID identifies a daemon build by its bytes.
 func BuildID(binary []byte) string { return version.BuildID(binary) }
@@ -148,6 +129,21 @@ func (b *Box) Capabilities() []string {
 	// agents.paths: info says where each agent CLI was found
 	// (agent_paths), and POST /v1/agents/refresh looks again (agentpaths.go).
 	caps := []string{"transcript", "diff", "titles", "sample", "history", "commands", "service.terminal", "answer", "session.home", "files", "files.dir", "agents.install", "worktree.titles", "agents.paths"}
+	if b.Chats != nil {
+		// chat.options: messages take per-turn model, effort and permission,
+		// and approvals take scoped decisions. Older daemons reject both.
+		// chat.full-access: the permission option also takes "full-access".
+		caps = append(caps, "chat.codex", "chat.options", "chat.full-access")
+		// chat.browser: POST /v1/chats takes the client's browser tools, and
+		// the chat offers their calls for that browser to answer
+		// (chatbrowser.go).
+		// chat.tools: a chat has Burf's own tools, asks its person before
+		// one acts (an approval of kind "tool"), and takes reports of the
+		// work it started as items of kind "report" (chattools.go).
+		if b.Socket != "" {
+			caps = append(caps, "chat.browser", "chat.tools")
+		}
+	}
 	if b.Turns != nil {
 		// controls: POST .../keys, .../interrupt and .../mode, GET
 		// .../controls (controls.go).
@@ -204,7 +200,11 @@ func (b *Box) handleUpgrade(w http.ResponseWriter, r *http.Request) error {
 	if err := b.before(r, "box.upgrade", map[string]any{"build": BuildID(binary)}); err != nil {
 		return err
 	}
+	if err := b.beginChatUpgrade(); err != nil {
+		return err
+	}
 	if err := b.Update.Install(r.Context(), binary); err != nil {
+		b.endChatUpgrade()
 		return err
 	}
 	b.publish(r, "box.upgraded", map[string]any{"build": BuildID(binary)})
@@ -217,6 +217,7 @@ func (b *Box) handleUpgrade(w http.ResponseWriter, r *http.Request) error {
 			b.Update.BeforeRestart()
 		}
 		if err := b.Update.restart(); err != nil {
+			b.endChatUpgrade()
 			fmt.Fprintf(os.Stderr, "berthd: restarting into the new build failed: %v\n", err)
 		}
 	}()

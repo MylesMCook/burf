@@ -85,11 +85,11 @@ test("every line opens to its commands, and Read every command shows the .berth 
   await expect(step(page, "docker")).toContainText("sudo usermod -aG docker $USER");
   await repo(page, "shop").getByRole("button").first().click();
   await expect(repo(page, "shop")).toContainText("git clone https://github.com/acme/shop");
-  await expect(step(page, "github")).toContainText("Berth");
-  // The keys are 1Password references: Berth signs op in on the box, as a
+  await expect(step(page, "github")).toContainText("Burf");
+  // The keys are 1Password references: Burf signs op in on the box, as a
   // step of its own after GitHub's.
   await expect(step(page, "1password")).toContainText("1Password on the box");
-  await expect(step(page, "1password")).toContainText("Berth");
+  await expect(step(page, "1password")).toContainText("Burf");
   await step(page, "1password").getByRole("button").first().click();
   await expect(step(page, "1password")).toContainText("berthd secret signin");
   await page.getByTestId("read-every-command").click();
@@ -132,11 +132,11 @@ test("running: sudo waits in the box's terminal, then the box signs in to GitHub
   const { page } = app;
   await app.open({ params: { team: "acme", teamhold: "github", "team-page": "acme" } });
   await startRun(page);
-  await expect(step(page, "update")).toContainText("Type it in the terminal below; Berth doesn't see or keep it");
+  await expect(step(page, "update")).toContainText("Type it in the terminal below; Burf doesn't see or keep it");
   // The sidebar and the status bar show it from the start.
   await expect(page.getByTestId("team-status")).toContainText("Setting up sean-dev for Acme · waiting for your password");
   await expect(page.getByTestId("team-sidebar")).toContainText("queued");
-  // The password goes to the terminal, never to Berth.
+  // The password goes to the terminal, never to Burf.
   await step(page, "update").locator("[data-pane-kind], .xterm, canvas, [contenteditable]").first().click().catch(() => {});
   await page.keyboard.type("hunter2");
   await page.keyboard.press("Enter");
@@ -154,7 +154,7 @@ test("1Password: op asks in the box's terminal, which the step shows, then the s
   await advance(page, "sudo");
   await expect(step(page, "1password")).toHaveAttribute("data-state", "waiting", { timeout: 15_000 });
   await expect(step(page, "1password")).toContainText("op on sean-dev is asking you to sign in to 1Password");
-  await expect(step(page, "1password")).toContainText("Berth keeps only op's session there");
+  await expect(step(page, "1password")).toContainText("Burf keeps only op's session there");
   await expect(page.getByTestId("team-runcard").locator("visible=true")).toContainText("Sign the box in to 1Password");
   await expect(page.getByTestId("team-status")).toContainText("waiting for 1Password");
   await advance(page, "1password");
@@ -169,7 +169,7 @@ test("a box without tmux: the Box check says how to install it, and setup waits 
   const box = page.getByTestId("check-box").locator("visible=true");
   await expect(box).toHaveAttribute("data-state", "warn");
   await expect(box).toContainText("Install tmux on sean-dev");
-  await expect(box).toContainText("Berth runs the team setup's steps, and later your agents, in tmux on the box.");
+  await expect(box).toContainText("Burf runs the team setup's steps, and later your agents, in tmux on the box.");
   await expect(box).toContainText("sudo apt install tmux");
   await expect(checklist(page).getByTestId("team-run")).toBeDisabled();
   await expect(checklist(page)).toContainText("Install tmux on sean-dev first");
@@ -245,7 +245,7 @@ test("You're set up: the team's first task and each repo", async ({ app }) => {
   await expect(done.getByLabel("First task", { exact: true })).toHaveValue(/good first issue/);
   await expect(done.getByTestId("start-first-task")).toBeEnabled();
   await expect(done).toContainText("acme/billing-api");
-  await expect(done).toContainText("Berth never had it, and nothing kept it");
+  await expect(done).toContainText("Burf never had it, and nothing kept it");
 });
 
 test("an update shows on this page as a diff, and runs only when asked", async ({ app }) => {
@@ -265,7 +265,7 @@ test("an update shows on this page as a diff, and runs only when asked", async (
   await expect(card).toHaveCount(0);
 });
 
-test("an org without .berth: its repos, the Berth-configured ones picked", async ({ app }) => {
+test("an org without .berth: its repos, the Burf-configured ones picked", async ({ app }) => {
   const { page } = app;
   await app.open({ params: { team: "acme", "team-page": "northwind" } });
   await expect(page.getByTestId("team-none")).toHaveText("Northwind Labs");

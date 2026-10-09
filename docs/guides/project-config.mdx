@@ -52,7 +52,7 @@ without trust is a plain checkout.
   yours, and apply without asking.
 - Only trust a repository if you trust everyone who can commit to it.
 
-From a terminal, `berth location config devl/shop` prints what the file
+From a terminal, `burf location config devl/shop` prints what the file
 wants and its hash; `--trust HASH` trusts that version, `--untrust` stops it.
 The box's API is `POST /v1/locations/{name}/config/trust` with
 `{"hash": "…"}` (refused with 409 if the file no longer has that hash) and
@@ -65,7 +65,7 @@ The box's API is `POST /v1/locations/{name}/config/trust` with
   shell (up to 30 minutes, with its output in a log on the box).
 - `check` is how to tell the work is right (`"pnpm test && pnpm lint"`):
   Try N ways and loops verify with it unless you give another. Without one,
-  Berth suggests what the repository suggests: `package.json`'s `test`
+  Burf suggests what the repository suggests: `package.json`'s `test`
   script run by the package manager its lockfile names, `go test ./...`,
   `cargo test`, or a Makefile's `test` target. It is only a default; nothing
   runs it until you start a run with it.
@@ -161,8 +161,8 @@ built-in one with the same `id` (`claude`, `codex`, `opencode`, `gemini`,
 ### Models and effort
 
 A task, a session or an attempt can pick its agent's `model` and `effort`
-(`berth task … --agent claude` through the API, or the app's agent picker).
-Berth passes them with each CLI's own flags, checked against its `--help`:
+(`burf task … --agent claude` through the API, or the app's agent picker).
+Burf passes them with each CLI's own flags, checked against its `--help`:
 
 | Agent | Model | Effort | Models offered |
 |---|---|---|---|
@@ -179,7 +179,7 @@ built-in agent with only its `id`; its command and flags stay:
 { "agents": [ { "id": "codex", "models": ["gpt-5-codex", "gpt-5"] } ] }
 ```
 
-The box's own config for the repository (`berth location config`) can do the
+The box's own config for the repository (`burf location config`) can do the
 same, for models only that box has.
 
 ## Hooks and flows
@@ -202,13 +202,13 @@ the project's kit, if it has one):
 - `hooks` add up.
 
 Edit it in the app's Project settings, or `PUT /v1/locations/{name}/config`
-on the box. `berth location config devl/shop` shows the effective config
+on the box. `burf location config devl/shop` shows the effective config
 (and what an untrusted file would run); with `--json`, the repository's, the
 kit's and the box's layers too.
 
 ```sh
-berth location scripts devl/shop --setup "make bootstrap"   # just the scripts
-berth location scripts devl/shop --clear
+burf location scripts devl/shop --setup "make bootstrap"   # just the scripts
+burf location scripts devl/shop --clear
 ```
 
 A box can also give every worktree on it some environment, in

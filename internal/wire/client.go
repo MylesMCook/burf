@@ -16,9 +16,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/identity"
-	"github.com/sean-brydon/berthd/internal/pairing"
-	"github.com/sean-brydon/berthd/internal/trust"
+	"github.com/MylesMCook/burf/internal/identity"
+	"github.com/MylesMCook/burf/internal/pairing"
+	"github.com/MylesMCook/burf/internal/trust"
 )
 
 const dialTimeout = 15 * time.Second

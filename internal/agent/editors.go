@@ -8,14 +8,17 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/box"
-	"github.com/sean-brydon/berthd/internal/sshconfig"
+	box "github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/openurl"
+	"github.com/MylesMCook/burf/internal/sshconfig"
 )
 
 // Opening a worktree, or a file at a line, in the editor on this computer.
@@ -82,6 +85,13 @@ func (a *Agent) editors() []Editor {
 				}
 			}
 		}
+		// Batch launchers cannot be started as native Windows process images.
+		if runtime.GOOS == "windows" {
+			switch strings.ToLower(filepath.Ext(e.CLI)) {
+			case ".cmd", ".bat":
+				e.CLI = ""
+			}
+		}
 		// VS Code's remote URLs open folders only; the CLI goes to a line.
 		e.Lines = e.CLI != "" && e.vscode
 		out = append(out, e)
@@ -91,7 +101,7 @@ func (a *Agent) editors() []Editor {
 
 func isExecutable(p string) bool {
 	info, err := os.Stat(p)
-	return err == nil && !info.IsDir() && info.Mode()&0o111 != 0
+	return err == nil && info.Mode().IsRegular() && (runtime.GOOS == "windows" || info.Mode()&0o111 != 0)
 }
 
 // lookPath also looks where Homebrew and installers put CLIs, since the
@@ -145,7 +155,7 @@ func (a *Agent) boxUser(ctx context.Context, name string) string {
 }
 
 // identityAgent is the SSH agent editors log in with: 1Password's when it
-// runs, as berth add ssh falls back to.
+// runs, as burf add ssh falls back to.
 func (a *Agent) identityAgent() string {
 	if a.cfg.SSHDir != "" {
 		return "" // tests use their own SSH folder and no agent
@@ -213,7 +223,7 @@ type OpenResult struct {
 	Note    string   `json:"note,omitempty"`
 }
 
-var errSSHSetup = errors.New("set up SSH for editors first: berth ssh-config --write, or Settings → Boxes")
+var errSSHSetup = errors.New("set up SSH for editors first: burf ssh-config --write, or Settings → Boxes")
 
 // folderFor finds the folder a location names on a box.
 func (a *Agent) folderFor(ctx context.Context, boxName, ref string) (string, error) {
@@ -246,7 +256,7 @@ func cleanAbs(p string) (string, bool) {
 	if p == "" || !strings.HasPrefix(p, "/") || strings.ContainsAny(p, "\x00\n\r") {
 		return "", false
 	}
-	return filepath.Clean(p), true
+	return path.Clean(p), true
 }
 
 // openCommand works out how to open req: a CLI command, or a URL for open.
@@ -295,7 +305,7 @@ func (a *Agent) openCommand(ctx context.Context, req OpenRequest) (OpenResult, e
 		}
 		return f
 	}
-	open := func(u string) OpenResult { return OpenResult{Command: []string{"open", u}} }
+	open := func(u string) OpenResult { return OpenResult{Command: openurl.Command(runtime.GOOS, u)} }
 
 	if sshconfig.Local(peer.Address) {
 		switch {
@@ -329,6 +339,9 @@ func (a *Agent) openCommand(ctx context.Context, req OpenRequest) (OpenResult, e
 		r := open(ed.scheme + "://vscode-remote/ssh-remote+" + host + (&url.URL{Path: folder}).EscapedPath())
 		if file != "" {
 			r.Note = "Opened the folder: " + ed.Name + "'s links open folders only. Install its command line tool to jump to files."
+			if runtime.GOOS == "windows" {
+				r.Note = "Opened the folder: " + ed.Name + "'s links open folders only. A native .exe command line tool is needed to jump to files."
+			}
 		}
 		return r, nil
 	}
@@ -354,7 +367,10 @@ func (a *Agent) runOpen(r OpenResult) error {
 		return a.cfg.Run(r.Command)
 	}
 	cmd := exec.Command(r.Command[0], r.Command[1:]...)
-	cmd.Env = append(os.Environ(), "PATH="+os.Getenv("PATH")+":/opt/homebrew/bin:/usr/local/bin")
+	cmd.Env = os.Environ()
+	if runtime.GOOS != "windows" {
+		cmd.Env = append(cmd.Env, "PATH="+os.Getenv("PATH")+":/opt/homebrew/bin:/usr/local/bin")
+	}
 	if err := cmd.Start(); err != nil {
 		return err
 	}

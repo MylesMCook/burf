@@ -58,7 +58,7 @@ export const RELEASES: Release[] = [
       {
         id: "speed",
         title: "Quicker and steadier",
-        body: "Chats of 2,000 turns stay quick. With 300 worktrees the sidebar is ready in 0.07 s, not 2.48 s. When the link to a box is slow or drops, Berth says so and reconnects.",
+        body: "Chats of 2,000 turns stay quick. With 300 worktrees the sidebar is ready in 0.07 s, not 2.48 s. When the link to a box is slow or drops, Burf says so and reconnects.",
         art: "speed",
         docs: "/concepts/laptop-agent#slow-and-dropping-networks",
       },

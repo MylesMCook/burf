@@ -5,9 +5,9 @@ description: Start Claude Code, Codex or another agent in a worktree, see what i
 
 ## Let the box report agent state
 
-Berth knows whether an agent is working, waiting for you or done from the
+Burf knows whether an agent is working, waiting for you or done from the
 agents' own hooks, installed on the box where the agents run. `berthd
-install` (which `berth add ssh` and the install script run) installs them for
+install` (which `burf add ssh` and the install script run) installs them for
 every agent CLI it finds on the box, and says so:
 
 ```text title="Example output"
@@ -30,10 +30,10 @@ else; then it prints the line to change yourself. The full path matters: a
 command over SSH may not have `~/.local/bin`, where berthd lives, on its
 `PATH`. To skip all this, install with `--no-integrations`.
 
-This also installs Berth's [skills](/guides/agent-integrations#skills), so
-agents on the box know how to use Berth themselves. The hooks record
+This also installs Burf's [skills](/guides/agent-integrations#skills), so
+agents on the box know how to use Burf themselves. The hooks record
 berthd's full path, so they work whatever `PATH` the agent has. Without them
-an agent still runs; Berth just can't tell what state it is in (apart from
+an agent still runs; Burf just can't tell what state it is in (apart from
 Claude Code's "trust this folder" question at startup, which it spots on the
 screen).
 
@@ -43,7 +43,7 @@ A **task** is a worktree with an agent already running in it, made in one
 step:
 
 ```sh
-berth task new my-box/app/fix-login --agent claude --prompt "Fix the login redirect"
+burf task new my-box/app/fix-login --agent claude --prompt "Fix the login redirect"
 ```
 
 | Flag | What it does |
@@ -98,7 +98,7 @@ berth session new my-box/app/fix-login              # a shell
 ```sh
 berth sessions my-box                  # every session, with its agent's state
 berth session screen my-box/SESSION    # what it shows right now
-berth attach my-box/SESSION            # take over this terminal; Ctrl-b d detaches
+burf attach my-box/SESSION            # take over this terminal; Ctrl-b d detaches
 ```
 
 Sessions run in tmux on the box. Detaching, closing the app or sleeping the

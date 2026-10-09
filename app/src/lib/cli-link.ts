@@ -2,12 +2,12 @@ import { invoke } from "@tauri-apps/api/core";
 
 import { isTauri } from "@/lib/api";
 
-// The berth command in a terminal: Berth.app carries the CLI, and Settings →
+// The berth command in a terminal: Burf.app carries the CLI, and Settings →
 // General can link ~/.local/bin/berth to it (src-tauri/src/cli_link.rs).
 
 export interface CliLink {
   link: string;
-  // The CLI inside this copy of Berth.app; null in a dev build or a browser.
+  // The CLI inside this copy of Burf.app; null in a dev build or a browser.
   bundled: string | null;
   // Why it cannot be linked yet (running from the disk image, say).
   blocked: string | null;
@@ -22,4 +22,8 @@ export async function cliLinkStatus(): Promise<CliLink | null> {
 
 export async function installCliLink(): Promise<CliLink> {
   return invoke<CliLink>("install_cli_link");
+}
+
+export async function removeCliLink(): Promise<CliLink> {
+  return invoke<CliLink>("remove_cli_link");
 }

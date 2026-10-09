@@ -9,31 +9,14 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/wire"
+	"github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 // AgentPreset is a way to start a coding agent: what the app offers when it
 // starts one, and what a task runs.
-type AgentPreset struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Command string `json:"command"`
-	// PromptFlag passes a first prompt; empty means it is the last argument.
-	PromptFlag string `json:"prompt_flag,omitempty"`
-	// ModelFlag passes a model ("--model"); empty means berth offers no
-	// model choice for this agent.
-	ModelFlag string `json:"model_flag,omitempty"`
-	// EffortFlag passes an effort: a flag ("--effort"), or a word ending in
-	// "=" that takes the value with no space ("-c model_reasoning_effort=").
-	EffortFlag string `json:"effort_flag,omitempty"`
-	// Models and Efforts are what the app offers, as the CLI's own names
-	// (aliases where it has them, so the list does not go stale). Leaving one
-	// out means the CLI's default. A repository's .berth/config.json can set
-	// them for a built-in agent by giving its id and no command.
-	Models  []string `json:"models,omitempty"`
-	Efforts []string `json:"efforts,omitempty"`
-}
+type AgentPreset = boxclient.AgentPreset
 
 // builtinAgents are the agent CLIs berth knows how to start, by binary.
 // The model and effort flags are each CLI's own, from its --help: Claude
@@ -243,33 +226,9 @@ func agentFor(s Session) string {
 }
 
 // TaskRequest makes a worktree and starts an agent in it, in one step.
-type TaskRequest struct {
-	Location string `json:"location"`
-	Name     string `json:"name"`
-	Branch   string `json:"branch,omitempty"`
-	Base     string `json:"base,omitempty"`
-	PR       int    `json:"pr,omitempty"`
-	Ref      string `json:"ref,omitempty"`
-	// Agent is a preset ID; Command, when set, is run instead.
-	Agent   string `json:"agent,omitempty"`
-	Command string `json:"command,omitempty"`
-	Prompt  string `json:"prompt,omitempty"`
-	// Model and Effort pick the agent's model and effort, by the CLI's own
-	// names (see AgentPreset); empty is the CLI's default.
-	Model  string `json:"model,omitempty"`
-	Effort string `json:"effort,omitempty"`
-	// FromSession names the session handing this work off, if any.
-	FromSession string `json:"from_session,omitempty"`
-	// Open asks the app to show the new session: "split" or "tab".
-	Open string `json:"open,omitempty"`
-	// Title names the work; without one, the prompt's first line does.
-	Title string `json:"title,omitempty"`
-}
+type TaskRequest = boxclient.TaskRequest
 
-type Task struct {
-	Worktree Worktree `json:"worktree"`
-	Session  Session  `json:"session"`
-}
+type Task = boxclient.Task
 
 func (b *Box) addTask(w http.ResponseWriter, r *http.Request) error {
 	var req TaskRequest

@@ -21,13 +21,15 @@ import { toastManager } from "@/components/ui/toast";
 import { type SessionEntry, useAllSessions } from "@/hooks/use-agent-counts";
 import { agentPresets } from "@/lib/actions";
 import { type AttachTarget, withAttachments } from "@/lib/attachments";
-import { type ComposerDraft, openComposer } from "@/lib/composer";
+import { type AgentPick, type ComposerDraft, openComposer } from "@/lib/composer";
 import { agentLabel, agentOf, sessionName, sessionState } from "@/lib/derive";
 import { plainError } from "@/lib/errors";
 import { sessionLocation } from "@/lib/orchestrate";
 import { handoffPrompt, reviewPrompt } from "@/lib/orchestrate";
 import { loadProjects, projectActions, useProjects } from "@/lib/project-groups";
 import { promptFor, type ResolveKind, worktreeSlug } from "@/lib/projects";
+import { BASE_PERMISSIONS, chatPermissions, savedChatPermission, saveChatPermission } from "@/lib/local-computer";
+import { hasChatOptions, hasFullAccess, hasRemoteCodex, useChatModels } from "@/lib/remote-chat";
 import { askedVariables, builtinValues, fill as fillPrompt, isBuiltin, usePrompts, variablesIn } from "@/lib/prompts";
 import { boxHasRuns } from "@/lib/runs";
 import { AGENT_WORDS } from "@/lib/state-model";
@@ -76,6 +78,9 @@ const EMPTY: ComposerDraft = {};
 const LAST_PROJECT = "berth.newWorktree.project.v2";
 const lastBoxKey = (project: string) => `berth.newWorktree.box.${project}`;
 const picksKey = (box: string, loc: string) => `berth.composer.picks.${box}/${loc}`;
+const defaultAgentKey = (box: string, loc: string) => `berth.composer.default.${box}/${loc}`;
+const providerChoicesKey = (box: string, loc: string) => `berth.composer.providers.${box}/${loc}`;
+const comparisonKey = (box: string, loc: string) => `berth.composer.comparison.${box}/${loc}`;
 const checkKey = (box: string, loc: string) => `berth.loop.check.${box}/${loc.split("/")[0]}`;
 
 // defaultCheck is the check last used for a project, else the one its box
@@ -174,27 +179,83 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
       return other ? toChosen([{ agent: other.id }]) : {};
     }
     if (from) return fromSession && agentOf(fromSession) ? toChosen([{ agent: agentOf(fromSession)! }]) : {};
-    const saved = box ? load<{ agent: string; model?: string; effort?: string }[]>(picksKey(box, locName), []) : [];
-    return saved.length === 1 ? toChosen(saved) : {};
+    const saved = box ? load<AgentPick[]>(picksKey(box, locName), []) : [];
+    const preferred = box ? load<AgentPick | undefined>(defaultAgentKey(box, locName), undefined) : undefined;
+    // Older multi-picks are retained for explicit comparison, never auto-launched.
+    return preferred ? toChosen([preferred]) : saved.length ? toChosen(saved.slice(0, 1)) : {};
   };
+  const [comparison, setComparison] = useState(!from && (!!draft.attempts || (draft.agents?.length ?? 0) > 1));
+  const singleChoice = useRef<Chosen | undefined>(undefined);
   const [chosen, setChosen] = useState<Chosen>(initialAgents);
   const agentsTouched = useRef(false);
+  const agentScope = `${box}/${locName}`;
+  const previousScope = useRef(agentScope);
   const agentPlace = `${box}/${locName}/${presets.map((p) => p.id).join(",")}/${fromSession ? agentOf(fromSession) : ""}`;
   useEffect(() => {
+    if (previousScope.current !== agentScope) {
+      agentsTouched.current = false;
+      singleChoice.current = undefined;
+      previousScope.current = agentScope;
+    }
     if (!agentsTouched.current) setChosen(initialAgents());
     // Only when where they would come from changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agentPlace]);
   const pickAgents = (c: Chosen) => {
     agentsTouched.current = true;
+    if (comparison) {
+      setChosen(c);
+      save(comparisonKey(box, locName), expand(c, copies));
+      return;
+    }
+    const id = Object.keys(c)[0];
+    const remembered = load<Chosen>(providerChoicesKey(box, locName), {});
+    // A reasoning level chosen for one Codex model may not exist on another.
+    const listedEfforts = id === "codex" ? codexModels?.find((m) => m.model === c.codex.models[0])?.supportedReasoningEfforts?.map((e) => e.reasoningEffort) : undefined;
+    if (listedEfforts && c.codex.effort && !listedEfforts.includes(c.codex.effort)) c = { codex: { ...c.codex, effort: "" } };
+    if (id !== Object.keys(sel)[0] && remembered[id]) {
+      const p = pickerPresets.find((p) => p.id === id);
+      const old = remembered[id];
+      c = { [id]: {
+        models: [p?.model_flag && p.models?.includes(old.models[0]) ? old.models[0] : ""],
+        effort: p?.effort_flag && p.efforts?.includes(old.effort) ? old.effort : "",
+      } };
+    }
     setChosen(c);
+    // Explicit drafts, handoffs and templates are one-off choices, not defaults.
+    if (!from && !draft.agents?.length && !draft.template && !wt.template) {
+      save(defaultAgentKey(box, locName), expand(c, 1)[0]);
+      save(providerChoicesKey(box, locName), { ...remembered, ...c });
+    }
   };
   const [copies, setCopies] = useState(1);
   const [noAgent, setNoAgent] = useState(!!draft.noAgent);
   const live: Chosen = Object.fromEntries(Object.entries(chosen).filter(([id, c]) => c.models.length && presets.some((p) => p.id === id)));
   const sel: Chosen = Object.keys(live).length ? live : presets[0] ? { [presets[0].id]: { models: [""], effort: "" } } : {};
-  const picks = noAgent ? [] : expand(sel, from ? 1 : copies).slice(0, from ? 1 : undefined);
+  const picks = noAgent ? [] : expand(sel, comparison ? copies : 1).slice(0, comparison ? undefined : 1);
   const attempts = picks.length > 1;
+  const switchComparison = (on: boolean) => {
+    agentsTouched.current = true;
+    setNoAgent(false);
+    setComparison(on);
+    setOptionsOpen(on);
+    if (!on) {
+      setChosen(singleChoice.current ?? toChosen(expand(sel, 1).slice(0, 1)));
+      setCopies(1);
+      return;
+    }
+    singleChoice.current = toChosen(expand(sel, 1).slice(0, 1));
+    const saved = load<AgentPick[]>(comparisonKey(box, locName), load<AgentPick[]>(picksKey(box, locName), []));
+    const available = saved.filter((p) => presets.some((a) => a.id === p.agent));
+    const initial = available.length > 1 ? toChosen(available) : { ...sel };
+    if (expand(initial, 1).length === 1) {
+      const other = presets.find((p) => !(p.id in initial));
+      if (other) initial[other.id] = { models: [""], effort: "" };
+    }
+    const restored = expand(initial, 1).length;
+    setChosen(initial);
+    setCopies(available.length > restored && available.length % restored === 0 ? Math.min(3, available.length / restored) : restored < 2 ? 2 : 1);
+  };
   useEffect(() => onKind?.(noAgent ? "worktree" : attempts ? "attempts" : "start"), [onKind, noAgent, attempts]);
 
   // A hand-off or a review starts from what the agent should read.
@@ -307,7 +368,18 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
   // What the box lacks to run an agent (tmux, the agent's CLI), from the
   // box itself, before anything is created: its card says how to install it.
   const reqAgent = picks.length === 1 && !template?.command ? picks[0].agent : undefined;
-  const reqCard = useRequirementsCard(box || undefined, { agent: reqAgent, noAgent });
+  const structuredCodex = reqAgent === "codex" && !from && hasRemoteCodex(box, presets.find((p) => p.id === "codex")?.command ?? "");
+  // A structured chat on a box that takes options: the account's own models, and a permission mode.
+  const chatControls = structuredCodex && hasChatOptions(box);
+  const codexModels = useChatModels(box, locName, chatControls);
+  const [chosenPermission, setPermission] = useState<keyof typeof chatPermissions>(() => savedChatPermission() ?? "strict");
+  // Full access is offered only where the box takes it.
+  const permission = chosenPermission === "full-access" && !hasFullAccess(box) ? "strict" : chosenPermission;
+  const pickerPresets = !codexModels?.length
+    ? presets
+    : // Structured chats take these as message options, so the preset needs no CLI flag for them.
+      presets.map((p) => (p.id !== "codex" ? p : { ...p, model_flag: p.model_flag || "--model", effort_flag: p.effort_flag || "--effort", models: codexModels.map((m) => m.model), model_names: Object.fromEntries(codexModels.map((m) => [m.model, m.displayName || m.model])), efforts: codexModels.find((m) => m.model === sel.codex?.models[0])?.supportedReasoningEfforts?.map((e) => e.reasoningEffort) ?? p.efforts }));
+  const reqCard = useRequirementsCard(box || undefined, { agent: reqAgent, noAgent, enabled: !structuredCodex });
 
   const name = worktreeSlug(wt.name || resolution?.name || (resolveError ? input : ""));
   const blocker = !box
@@ -316,9 +388,9 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
       : "Waiting for a box"
     : !locName
       ? "Choose a project"
-      : reqCard === "tmux"
+      : !structuredCodex && reqCard === "tmux"
         ? `tmux isn't installed on ${box}`
-        : !noAgent && (!picks.length || reqCard === "agent")
+        : !noAgent && (!picks.length || (!structuredCodex && reqCard === "agent"))
         ? `No agent CLI on ${box}`
         : !noAgent && !text.trim() && (attempts || from || !dialog)
           ? attempts
@@ -370,6 +442,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
       where,
       at: pinned?.at,
       picks,
+      permission: chatControls ? permission : undefined,
       worktree: fresh
         ? {
             name: name || undefined,
@@ -540,7 +613,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
       options={options}
       notice={
         <>
-          {box && <RequirementsCard box={box} agent={reqAgent} noAgent={noAgent} className="mx-1 mt-1" />}
+          {box && !structuredCodex && <RequirementsCard box={box} agent={reqAgent} noAgent={noAgent} className="mx-1 mt-1" />}
           {pendingTrust?.wants && fresh && (
             <Alert variant="warning" className="mt-1">
               <ShieldAlertIcon />
@@ -574,8 +647,11 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
       }
       footer={
         <>
+          {/* One wrapping row of everything: a pick that does not fit starts the next row at the left edge, whole, and Send ends the last row. */}
+          <div data-slot="launch-toolbar" className="flex w-full min-w-0 flex-wrap items-center gap-x-0.5 gap-y-1">
+          <div data-slot="launch-place" className="contents">
           {fixed && (
-            <span className="flex min-w-0 items-center gap-1.5 px-2.5 text-muted-foreground text-xs">
+            <span className="flex h-8 min-w-0 items-center gap-1.5 px-2.5 text-muted-foreground text-xs">
               <GitBranchIcon className="size-3.5 shrink-0" />
               <span className="truncate">{attempts ? "Each attempt in a new worktree from this branch" : `In ${fixed.name}`}</span>
             </span>
@@ -607,19 +683,27 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
             </>
           )}
           {(!pinned || from?.kind === "handoff") && !attempts && <Pick label="Where" icon={<GitBranchIcon />} value={where} options={whereOptions} onPick={(v) => setWhere(v as "new" | "main" | "here")} />}
-          <div className="ml-auto flex min-w-0 items-center gap-1">
+          </div>
+          <div data-slot="launch-agent" className="contents">
             <AgentsPicker
-              presets={presets}
+              presets={pickerPresets}
               sel={sel}
               copies={copies}
               none={noAgent}
-              single={!!from}
+              single={!comparison}
               allowNone={fresh && !from && !fixed}
               onChange={pickAgents}
-              onCopies={setCopies}
+              onCopies={(n) => { setCopies(n); save(comparisonKey(box, locName), expand(sel, n)); }}
               onNone={setNoAgent}
+              onCompare={!from ? switchComparison : undefined}
+              permission={chatControls && !comparison ? permission : undefined}
+              permissions={hasFullAccess(box) ? Object.keys(chatPermissions) : BASE_PERMISSIONS}
+              onPermission={(p) => { saveChatPermission(p); setPermission(p); }}
             />
-            <SendButton label={action} dialog={dialog} blocker={blocker} busy={busy} onClick={() => void submit()} />
+            <span className="ml-auto flex shrink-0">
+              <SendButton label={action} dialog={dialog} blocker={blocker} busy={busy} onClick={() => void submit()} />
+            </span>
+          </div>
           </div>
         </>
       }

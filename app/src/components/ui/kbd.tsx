@@ -1,8 +1,10 @@
 import type * as React from "react";
 import { cn } from "@/lib/utils";
+import { shortcutLabel } from "@/lib/platform";
 
 export function Kbd({
   className,
+  children,
   ...props
 }: React.ComponentProps<"kbd">): React.ReactElement {
   return (
@@ -13,7 +15,9 @@ export function Kbd({
       )}
       data-slot="kbd"
       {...props}
-    />
+    >
+      {typeof children === "string" ? shortcutLabel(children) : children}
+    </kbd>
   );
 }
 

@@ -15,37 +15,37 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/events"
+	"github.com/MylesMCook/burf/internal/events"
 )
 
 func TestBrowserSizesParseWithClearErrors(t *testing.T) {
-	if DefaultViewport != (Viewport{1920, 1080, 1}) || DefaultViewport.String() != "1920×1080" {
+	if DefaultViewport != (Viewport{Width: 1920, Height: 1080, Scale: 1}) || DefaultViewport.String() != "1920×1080" {
 		t.Fatalf("default %+v %s", DefaultViewport, DefaultViewport)
 	}
-	cur := Viewport{1280, 800, 2}
+	cur := Viewport{Width: 1280, Height: 800, Scale: 2}
 	for _, c := range []struct {
 		size, scale string
 		want        Viewport
 	}{
-		{"1280x800", "", Viewport{1280, 800, 2}}, // the scale stays
-		{"390X844", "3", Viewport{390, 844, 3}},
-		{"390×844", "2x", Viewport{390, 844, 2}},
-		{" 1440x900 ", "1.5", Viewport{1440, 900, 1.5}},
-		{"phone", "", Viewport{390, 844, 1}}, // a preset brings its scale
-		{"phone", "3", Viewport{390, 844, 3}},
-		{"Tablet", "", Viewport{820, 1180, 1}},
-		{"phone-max", "", Viewport{430, 932, 1}},
+		{"1280x800", "", Viewport{Width: 1280, Height: 800, Scale: 2}}, // the scale stays
+		{"390X844", "3", Viewport{Width: 390, Height: 844, Scale: 3}},
+		{"390×844", "2x", Viewport{Width: 390, Height: 844, Scale: 2}},
+		{" 1440x900 ", "1.5", Viewport{Width: 1440, Height: 900, Scale: 1.5}},
+		{"phone", "", Viewport{Width: 390, Height: 844, Scale: 1}}, // a preset brings its scale
+		{"phone", "3", Viewport{Width: 390, Height: 844, Scale: 3}},
+		{"Tablet", "", Viewport{Width: 820, Height: 1180, Scale: 1}},
+		{"phone-max", "", Viewport{Width: 430, Height: 932, Scale: 1}},
 		{"default", "", DefaultViewport},
-		{"", "1", Viewport{1280, 800, 1}}, // only the scale
-		{"320x240", "", Viewport{320, 240, 2}},
-		{"3840x2160", "", Viewport{3840, 2160, 2}},
+		{"", "1", Viewport{Width: 1280, Height: 800, Scale: 1}}, // only the scale
+		{"320x240", "", Viewport{Width: 320, Height: 240, Scale: 2}},
+		{"3840x2160", "", Viewport{Width: 3840, Height: 2160, Scale: 2}},
 	} {
 		got, err := cur.Resolve(c.size, c.scale)
 		if err != nil || got != c.want {
 			t.Errorf("Resolve(%q, %q) = %+v, %v; want %+v", c.size, c.scale, got, err, c.want)
 		}
 	}
-	if got, _ := (Viewport{}).Resolve("800x600", ""); got != (Viewport{800, 600, 1}) {
+	if got, _ := (Viewport{}).Resolve("800x600", ""); got != (Viewport{Width: 800, Height: 600, Scale: 1}) {
 		t.Errorf("from nothing: %+v", got)
 	}
 	for _, c := range []struct{ size, scale, says string }{
@@ -68,19 +68,19 @@ func TestBrowserSizesParseWithClearErrors(t *testing.T) {
 			t.Errorf("Resolve(%q, %q) = %v; want it to say %q", c.size, c.scale, err, c.says)
 		}
 	}
-	if s := (Viewport{390, 844, 3}).String(); s != "390×844 @3x" {
+	if s := (Viewport{Width: 390, Height: 844, Scale: 3}).String(); s != "390×844 @3x" {
 		t.Errorf("String %q", s)
 	}
-	if w, h := (Viewport{390, 844, 3}).Pixels(); w != 1170 || h != 2532 {
+	if w, h := (Viewport{Width: 390, Height: 844, Scale: 3}).Pixels(); w != 1170 || h != 2532 {
 		t.Errorf("Pixels %d×%d", w, h)
 	}
 	// A big page at 2x casts at most maxCastSide pixels on its longer side.
 	br := &browser{}
-	p := br.castParams(Viewport{3840, 2160, 2})
+	p := br.castParams(Viewport{Width: 3840, Height: 2160, Scale: 2})
 	if p["maxWidth"] != maxCastSide || p["maxHeight"] != 1440 {
 		t.Errorf("cast %v", p)
 	}
-	if p := br.castParams(Viewport{390, 844, 2}); p["maxWidth"] != 780 || p["maxHeight"] != 1688 {
+	if p := br.castParams(Viewport{Width: 390, Height: 844, Scale: 2}); p["maxWidth"] != 780 || p["maxHeight"] != 1688 {
 		t.Errorf("cast %v", p)
 	}
 }
@@ -92,11 +92,11 @@ func TestABrowserSizeIsKeptPerWorktreeUntilChanged(t *testing.T) {
 	if v := m.Viewport("/w/cal-billing"); v != DefaultViewport {
 		t.Fatalf("before any: %+v", v)
 	}
-	phone := Viewport{390, 844, 3}
+	phone := Viewport{Width: 390, Height: 844, Scale: 3}
 	if br, err := m.Resize(context.Background(), "/w/cal-billing", phone); err != nil || br != nil {
 		t.Fatalf("resize with no browser: %v %v", br, err)
 	}
-	if _, err := m.Resize(context.Background(), "/w/cal-other", Viewport{100, 100, 1}); err == nil {
+	if _, err := m.Resize(context.Background(), "/w/cal-other", Viewport{Width: 100, Height: 100, Scale: 1}); err == nil {
 		t.Fatal("a size out of range was kept")
 	}
 	// Kept on disk: a berthd that restarts still has it.
@@ -135,6 +135,8 @@ func TestABrowserSizeIsKeptPerWorktreeUntilChanged(t *testing.T) {
 }
 
 func TestBrowserResizeOverTheAPI(t *testing.T) {
+	// The status reads the machine's own sandbox setting, which an Ubuntu runner has on.
+	fakeUserns(t, "0")
 	dir := t.TempDir()
 	c, _ := servedBox(t, func(b *Box) { b.NewBrowsers(filepath.Join(dir, "browser"), 1) })
 	repo := gitRepo(t)
@@ -169,7 +171,7 @@ func TestBrowserResizeOverTheAPI(t *testing.T) {
 		t.Fatalf("resize: %d %+v", status, res)
 	}
 	call(t, c, "GET", base+"status", "", nil, &st)
-	if st.Size != "390×844 @3x" || st.Viewport != (Viewport{390, 844, 3}) {
+	if st.Size != "390×844 @3x" || st.Viewport != (Viewport{Width: 390, Height: 844, Scale: 3}) {
 		t.Fatalf("status after: %+v", st)
 	}
 	// Only the scale: the size stays.
@@ -260,7 +262,7 @@ func TestTheBrowserSizeReachesARealChromium(t *testing.T) {
 	}
 
 	// A phone at 2x, applied to the running page at once.
-	if _, err := m.Resize(ctx, wt.Path, Viewport{390, 844, 2}); err != nil {
+	if _, err := m.Resize(ctx, wt.Path, Viewport{Width: 390, Height: 844, Scale: 2}); err != nil {
 		t.Fatal(err)
 	}
 	if got := inner(); got != `"390 844 2"` {
@@ -284,6 +286,7 @@ func TestTheBrowserSizeReachesARealChromium(t *testing.T) {
 	checkFrame := func(wantW, wantH, pxW, pxH int) {
 		t.Helper()
 		deadline := time.After(10 * time.Second)
+		last := ""
 		for {
 			select {
 			case f := <-frames:
@@ -296,10 +299,16 @@ func TestTheBrowserSizeReachesARealChromium(t *testing.T) {
 					t.Fatalf("frame: %v", err)
 				}
 				if img.Width != pxW || img.Height != pxH {
-					t.Fatalf("a %dx%d frame is %dx%d pixels, want %dx%d", f.Width, f.Height, img.Width, img.Height, pxW, pxH)
+					// Named for the new size but drawn before Chromium had
+					// laid out at it: the next one is drawn at it, or none is.
+					last = fmt.Sprintf("a %dx%d frame is %dx%d pixels, want %dx%d", f.Width, f.Height, img.Width, img.Height, pxW, pxH)
+					continue
 				}
 				return
 			case <-deadline:
+				if last != "" {
+					t.Fatal(last)
+				}
 				t.Fatalf("no %dx%d frame", wantW, wantH)
 			}
 		}
@@ -313,7 +322,7 @@ func TestTheBrowserSizeReachesARealChromium(t *testing.T) {
 	br.Eval(ctx, "document.querySelector('h1').textContent = 'Changed'")
 	checkFrame(390, 844, 780, 1688)
 	// A size changed while someone watches reaches them.
-	if _, err := m.Resize(ctx, wt.Path, Viewport{1280, 800, 1}); err != nil {
+	if _, err := m.Resize(ctx, wt.Path, Viewport{Width: 1280, Height: 800, Scale: 1}); err != nil {
 		t.Fatal(err)
 	}
 	checkFrame(1280, 800, 1280, 800)

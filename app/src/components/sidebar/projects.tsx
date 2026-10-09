@@ -532,7 +532,7 @@ function RowActions({ box, loc, wt, project, onNewWorktree }: { box: string; loc
                   key={p.id}
                   onClick={() => {
                     select();
-                    void startSession(p.command, { kind: "tab" }, p.name, wsKey(box, wt.path));
+                    void startSession(p.command, { kind: "tab" }, p.name, wsKey(box, wt.path), p.id);
                   }}
                 >
                   <span className="flex size-4 items-center justify-center">

@@ -1,5 +1,6 @@
 import type { ToolDetail } from "@/lib/transcript";
 import { invoke } from "@tauri-apps/api/core";
+import { isMac } from "@/lib/platform";
 import { readTimeout, reconnectDelay, STREAM_SILENCE_MS } from "@/lib/net";
 import type {
   BerthEvent,
@@ -38,7 +39,7 @@ export interface Endpoint {
 }
 
 // OutdatedBox is GET /v1/boxes/outdated's answer for one online box:
-// whether it runs an older berthd than this Berth ships. error is set when
+// whether its agent differs from Burf's bundled build. error is set when
 // the check couldn't tell.
 export interface OutdatedBox {
   box: string;
@@ -54,7 +55,7 @@ export const isTauri = (): boolean => "__TAURI_INTERNALS__" in window;
 // left (the Tauri window's overlay title bar), so a strip there leaves them
 // room. ?traffic=1 in the mock draws and counts them, for screenshots.
 export const fakeTrafficLights = (): boolean => !isTauri() && new URLSearchParams(location.search).has("mock") && new URLSearchParams(location.search).has("traffic");
-export const hasTrafficLights = (): boolean => isTauri() || fakeTrafficLights();
+export const hasTrafficLights = (): boolean => (isTauri() && isMac()) || fakeTrafficLights();
 
 // endpoint finds the agent and its token: from the Tauri shell, which reads
 // the token file, or in a plain browser from ?token= or the Vite env.
@@ -63,7 +64,7 @@ export async function endpoint(): Promise<Endpoint> {
   const params = new URLSearchParams(location.search);
   const token = params.get("token") ?? import.meta.env.VITE_BERTH_TOKEN;
   const url = params.get("agent") ?? import.meta.env.VITE_BERTH_URL ?? "http://127.0.0.1:1378";
-  if (!token) throw new Error("No agent token. Open with ?token=… (berth ui-token prints it).");
+  if (!token) throw new Error("No agent token. Open with ?token=… (burf ui-token prints it).");
   return { url, token };
 }
 
@@ -120,7 +121,7 @@ export interface TerminalHandlers {
   onClose(byUs: boolean): void;
 }
 
-// The guided install (berth add ssh in a terminal on this computer, shown
+// The guided install (burf add ssh in a terminal on this computer, shown
 // full screen): its plan, the agents to choose from, and what the terminal's
 // socket says besides the screen.
 export interface InstallPlanStep {
@@ -143,7 +144,7 @@ export interface AgentChoice {
   install?: string;
   verified?: string;
   default?: boolean;
-  // false: Berth leaves it to the person; why says why.
+  // false: Burf leaves it to the person; why says why.
   offered: boolean;
   why?: string;
 }
@@ -201,7 +202,7 @@ export interface Client {
   // when signal aborts.
   upload<T = unknown>(box: string, path: string, body: Blob, onProgress?: (sent: number, total: number) => void, signal?: AbortSignal): Promise<T>;
   // Any laptop API call, such as "GET", "/v1/hooks".
-  laptop<T = unknown>(method: string, path: string, body?: unknown): Promise<T>;
+  laptop<T = unknown>(method: string, path: string, body?: unknown, signal?: AbortSignal): Promise<T>;
   // A laptop API call that answers NDJSON, one value per line, as long
   // commands do (adding a box, upgrading, signing in to a tailnet).
   stream(method: string, path: string, body: unknown, onValue: (v: unknown) => void, signal?: AbortSignal): Promise<void>;
@@ -210,7 +211,7 @@ export interface Client {
   // runs on every (re)connect so callers can catch up on what they missed.
   events(onEvent: (e: BerthEvent) => void, onConnect: () => void, signal: AbortSignal): void;
   attach(box: string, session: string, cols: number, rows: number, handlers: TerminalHandlers): TerminalConnection;
-  // The guided install's terminal: berth add ssh in a pseudo-terminal on
+  // The guided install's terminal: burf add ssh in a pseudo-terminal on
   // this computer. Its steps come as events beside the screen's bytes.
   installTerminal(req: GuidedInstallRequest, cols: number, rows: number, handlers: InstallHandlers): TerminalConnection;
   // The laptop proxy's URL for a port on a box.
@@ -329,7 +330,7 @@ export interface SecretTest {
 export const SECRET_SCHEMES = ["op", "env"] as const;
 export const isSecretRef = (v: string | undefined): boolean => !!v && SECRET_SCHEMES.some((s) => v.startsWith(`${s}://`));
 
-// A machine on a tailnet that could be a box (berth discover).
+// A machine on a tailnet that could be a box (burf discover).
 export interface Machine {
   name: string;
   dns_name?: string;
@@ -348,7 +349,7 @@ export interface Discovery {
   // The SSH user to suggest: this computer's.
   user: string;
   machines: Machine[];
-  // This computer's own Tailscale, when not listing a Berth network.
+  // This computer's own Tailscale, when not listing a Burf network.
   tailscale?: "running" | "stopped" | "logged-out" | "missing";
   // Its tailnet's name, while running.
   tailnet?: string;
@@ -368,7 +369,7 @@ export interface StreamLine {
   line?: string;
   done?: boolean;
   error?: string;
-  // A failed SSH login, explained (berth add ssh).
+  // A failed SSH login, explained (burf add ssh).
   ssh?: SshFailure;
 }
 
@@ -389,7 +390,7 @@ export type SshFailure = {
   detail?: string;
 };
 
-// SshPlan is how Berth will log in to a host, worked out before connecting
+// SshPlan is how Burf will log in to a host, worked out before connecting
 // from ~/.ssh/config (ssh -G) and the key agents that answer.
 export type SshPlan = {
   host: string;
@@ -449,7 +450,7 @@ export const laptopApi = {
   forget: (c: Client, box: string) => c.laptop("DELETE", `/v1/boxes/${encodeURIComponent(box)}`),
   upgrade: (c: Client, box: string, onLine: (line: string) => void, signal?: AbortSignal) =>
     runCommand(c, "POST", `/v1/boxes/${encodeURIComponent(box)}/upgrade`, undefined, onLine, signal),
-  // outdated says which online boxes run an older berthd than this Berth
+  // outdated says which online boxes run a different agent build than this Burf
   // ships (lib/outdated.ts).
   outdated: (c: Client, fresh?: boolean) => c.laptop<{ boxes: OutdatedBox[] }>("GET", `/v1/boxes/outdated${fresh ? "?fresh=1" : ""}`),
   // addSsh installs berthd on a host over SSH and pairs with it. It rejects
@@ -466,7 +467,7 @@ export const laptopApi = {
   // agent CLIs to choose from.
   installPlan: (c: Client, host: string, agents: string[]) =>
     c.laptop<InstallPlan>("GET", `/v1/ssh/install-plan?${new URLSearchParams({ host, agents: agents.join(",") || "none" })}`),
-  // sshPlan says how Berth will log in to a host, without connecting.
+  // sshPlan says how Burf will log in to a host, without connecting.
   sshPlan: (c: Client, host: string, network?: string) =>
     c.laptop<SshPlan>("GET", `/v1/ssh/plan?host=${encodeURIComponent(host)}${network ? `&network=${encodeURIComponent(network)}` : ""}`),
   // sshHosts are the hosts ~/.ssh/config names, for completing a host field.
@@ -522,7 +523,7 @@ export function httpClient(ep: Endpoint): Client {
     } catch (err) {
       if (timer?.aborted && !signal?.aborted) {
         const box = /^\/v1\/boxes\/([^/]+)\//.exec(path)?.[1];
-        throw new ApiError(`${box ? decodeURIComponent(box) : "Berth's agent"} didn't answer in ${Math.round(limit! / 1000)}s`, 504, "box_timeout");
+        throw new ApiError(`${box ? decodeURIComponent(box) : "Burf's agent"} didn't answer in ${Math.round(limit! / 1000)}s`, 504, "box_timeout");
       }
       throw err;
     }
@@ -586,7 +587,7 @@ export function httpClient(ep: Endpoint): Client {
         };
         xhr.onerror = () => {
           done();
-          reject(new ApiError("The upload didn't reach the Berth agent", 0));
+          reject(new ApiError("The upload didn't reach the Burf agent", 0));
         };
         xhr.onabort = () => {
           done();
@@ -594,7 +595,7 @@ export function httpClient(ep: Endpoint): Client {
         };
         xhr.send(body);
       }),
-    laptop: (method, path, body) => request(method, path, body),
+    laptop: (method, path, body, signal) => request(method, path, body, signal),
     async stream(method, path, body, onValue, signal) {
       const res = await fetch(ep.url + path, {
         method,

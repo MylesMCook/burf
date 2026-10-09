@@ -10,7 +10,7 @@ import (
 
 // Which boxes run an older berthd than the one this berth ships, so the app
 // can say so once, calmly, and update them in one go. The CLI answers it
-// (berth upgrade BOX --check --json), as it does the upgrade itself, so the
+// (burf upgrade BOX --check --json), as it does the upgrade itself, so the
 // two can never disagree about what "older" means.
 
 // OutdatedBox is one box's answer. Outdated is false, with Error, when the

@@ -15,12 +15,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/identity"
-	"github.com/sean-brydon/berthd/internal/pairing"
-	"github.com/sean-brydon/berthd/internal/terminal"
-	"github.com/sean-brydon/berthd/internal/trust"
-	"github.com/sean-brydon/berthd/internal/wire"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/identity"
+	"github.com/MylesMCook/burf/internal/pairing"
+	"github.com/MylesMCook/burf/internal/terminal"
+	"github.com/MylesMCook/burf/internal/trust"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 // servedBox runs berthd's server with the box routes mounted and returns a

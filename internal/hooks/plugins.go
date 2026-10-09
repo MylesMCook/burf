@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/statefile"
+	"github.com/MylesMCook/burf/internal/statefile"
 )
 
 // A plugin in ~/.berth/plugins runs with the app's full access and its hooks

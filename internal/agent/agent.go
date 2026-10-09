@@ -17,22 +17,21 @@ import (
 	"sort"
 	"strconv"
 	"sync"
-	"syscall"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/box"
-	"github.com/sean-brydon/berthd/internal/debugserver"
-	"github.com/sean-brydon/berthd/internal/doctor"
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/forward"
-	"github.com/sean-brydon/berthd/internal/hooks"
-	"github.com/sean-brydon/berthd/internal/identity"
-	"github.com/sean-brydon/berthd/internal/network"
-	"github.com/sean-brydon/berthd/internal/pfredirect"
-	"github.com/sean-brydon/berthd/internal/proxy"
-	"github.com/sean-brydon/berthd/internal/statefile"
-	"github.com/sean-brydon/berthd/internal/trust"
-	"github.com/sean-brydon/berthd/internal/wire"
+	box "github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/debugserver"
+	"github.com/MylesMCook/burf/internal/doctor"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/forward"
+	"github.com/MylesMCook/burf/internal/hooks"
+	"github.com/MylesMCook/burf/internal/identity"
+	"github.com/MylesMCook/burf/internal/network"
+	"github.com/MylesMCook/burf/internal/pfredirect"
+	"github.com/MylesMCook/burf/internal/proxy"
+	"github.com/MylesMCook/burf/internal/statefile"
+	"github.com/MylesMCook/burf/internal/trust"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 const (
@@ -100,7 +99,7 @@ type Config struct {
 	// where it keeps its images; default to the one on PATH and ~/.codex.
 	Codex     string
 	CodexHome string
-	// Doctor runs `berth doctor`'s checks of this laptop, for the app's
+	// Doctor runs `burf doctor`'s checks of this laptop, for the app's
 	// Copy diagnostics (GET /v1/doctor); nil answers that there are none.
 	Doctor func(ctx context.Context) []doctor.Check
 }
@@ -116,7 +115,7 @@ type Networks interface {
 
 func (c *Config) defaults() {
 	if c.Socket == "" {
-		c.Socket = filepath.Join(c.Dir, "agent.sock")
+		c.Socket = SocketPath(c.Dir)
 	}
 	if c.ProxyAddrs == nil {
 		port := strconv.Itoa(DefaultProxyPort)
@@ -181,25 +180,29 @@ type ProxyStatus struct {
 }
 
 type Status struct {
-	Boxes    []BoxStatus     `json:"boxes"`
-	Forwards []ForwardStatus `json:"forwards"`
-	Routes   []Route         `json:"routes"`
-	Proxy    ProxyStatus     `json:"proxy"`
+	SSHSetupSupported bool            `json:"ssh_setup_supported"`
+	Boxes             []BoxStatus     `json:"boxes"`
+	Forwards          []ForwardStatus `json:"forwards"`
+	Routes            []Route         `json:"routes"`
+	Proxy             ProxyStatus     `json:"proxy"`
 }
 
 type Agent struct {
-	seqs     *seqStore
-	cfg      Config
-	hooks    *hooks.Runner
-	id       *identity.Identity
-	boxes    *trust.Store
-	forwards forwardStore
-	routes   routeStore
-	bus      events.Bus
-	proxy    *proxy.Proxy
-	proxySt  ProxyStatus
-	queue    *promptQueue
-	local    localBox
+	seqs        *seqStore
+	cfg         Config
+	hooks       *hooks.Runner
+	id          *identity.Identity
+	boxes       *trust.Store
+	forwards    forwardStore
+	routes      routeStore
+	bus         events.Bus
+	proxy       *proxy.Proxy
+	proxySt     ProxyStatus
+	queue       *promptQueue
+	local       localBox
+	localClient localClient
+	// browser holds the paired browser extensions (browserpair.go).
+	browser browserPairs
 	// imageGenBusy lets one chat background generate at a time.
 	imageGenBusy sync.Mutex
 	// outdated remembers which boxes run an older berthd (outdated.go).
@@ -249,13 +252,18 @@ type runningForward struct {
 }
 
 // ErrAlreadyRunning means another agent owns this state directory.
-var ErrAlreadyRunning = errors.New("another berth agent is already running")
+var ErrAlreadyRunning = errors.New("another burf agent is already running")
 
 // Run serves until ctx is cancelled or a client asks the agent to stop.
 func Run(ctx context.Context, cfg Config) error {
 	cfg.defaults()
 	if len(cfg.Socket) > 100 {
 		return fmt.Errorf("agent socket path %s is too long for a Unix socket; set a shorter BERTH_HOME", cfg.Socket)
+	}
+	if runtime.GOOS == "windows" && cfg.Socket == SocketPath(cfg.Dir) && filepath.Dir(cfg.Socket) != cfg.Dir {
+		if err := statefile.EnsurePrivateDir(filepath.Dir(cfg.Socket)); err != nil {
+			return err
+		}
 	}
 	unlock, err := lockAgent(cfg.Dir)
 	if err != nil {
@@ -281,6 +289,19 @@ func Run(ctx context.Context, cfg Config) error {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	a.ctx = ctx
+	defer func() {
+		// Joining initialization prevents a late HTTP request starting a process
+		// after shutdown has already closed the manager.
+		if runtime.GOOS == "windows" {
+			a.initLocalClient()
+		}
+		if a.localClient.manager != nil {
+			a.localClient.manager.Close()
+		}
+		if a.localClient.chats != nil {
+			a.localClient.chats.Close()
+		}
+	}()
 	a.queue = newPromptQueue(ctx, filepath.Join(cfg.Dir, "queue.json"), agentBoxes{a}, a.publish, cfg.Now, cfg.Log.Printf, cfg.QueueIdleTimeout, cfg.QueueWaitStep)
 
 	// Holding the agent lock means any socket file left here is stale.
@@ -290,7 +311,7 @@ func Run(ctx context.Context, cfg Config) error {
 		return err
 	}
 	defer os.Remove(cfg.Socket)
-	if err := os.Chmod(cfg.Socket, 0o600); err != nil {
+	if err := statefile.Private(cfg.Socket); err != nil {
 		apiLn.Close()
 		return err
 	}
@@ -311,7 +332,7 @@ func Run(ctx context.Context, cfg Config) error {
 	stop := context.AfterFunc(ctx, func() { api.Close() })
 	defer stop()
 	a.publish(Event{Type: EventAgentStarted})
-	a.cfg.Log.Printf("berth agent running; API %s, proxy port %d", cfg.Socket, a.proxySt.Port)
+	a.cfg.Log.Printf("burf agent running; API %s, proxy port %d", cfg.Socket, a.proxySt.Port)
 	err = api.Serve(apiLn)
 	a.shutdown()
 	if errors.Is(err, http.ErrServerClosed) {
@@ -324,18 +345,17 @@ func Run(ctx context.Context, cfg Config) error {
 // is reported to the caller, which exits cleanly so a supervisor does not
 // restart it against the winner forever.
 func lockAgent(dir string) (func(), error) {
-	if err := os.MkdirAll(dir, 0o700); err != nil {
+	if err := statefile.EnsurePrivateDir(dir); err != nil {
 		return nil, err
 	}
-	f, err := os.OpenFile(filepath.Join(dir, "agent.lock"), os.O_CREATE|os.O_RDWR, 0o600)
+	unlock, acquired, err := statefile.TryLock(filepath.Join(dir, "agent"))
 	if err != nil {
 		return nil, err
 	}
-	if err := syscall.Flock(int(f.Fd()), syscall.LOCK_EX|syscall.LOCK_NB); err != nil {
-		f.Close()
+	if !acquired {
 		return nil, ErrAlreadyRunning
 	}
-	return func() { syscall.Flock(int(f.Fd()), syscall.LOCK_UN); f.Close() }, nil
+	return unlock, nil
 }
 
 func (a *Agent) publish(e Event) {
@@ -577,7 +597,7 @@ func (a *Agent) away(name string) (string, time.Duration, bool) {
 		return "", 0, false
 	}
 	retry := time.Until(st.retryAt)
-	msg := name + " is offline; Berth is reconnecting"
+	msg := name + " is offline; Burf is reconnecting"
 	if retry > 0 {
 		msg += fmt.Sprintf(" (next try in %ds)", int(retry.Round(time.Second)/time.Second))
 	}
@@ -834,7 +854,7 @@ func (a *Agent) removeForward(id string) (Forward, error) {
 func (a *Agent) status() Status {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	s := Status{Boxes: []BoxStatus{}, Forwards: []ForwardStatus{}, Routes: []Route{}, Proxy: a.proxySt}
+	s := Status{SSHSetupSupported: runtime.GOOS != "windows", Boxes: []BoxStatus{}, Forwards: []ForwardStatus{}, Routes: []Route{}, Proxy: a.proxySt}
 	if routes, err := a.routes.list(); err == nil && routes != nil {
 		s.Routes = routes
 	}

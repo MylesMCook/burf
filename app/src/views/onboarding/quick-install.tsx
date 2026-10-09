@@ -13,7 +13,7 @@ import { CommandLine, type InstallRun, type InstallTarget, InstallTerminal, type
 import { FailurePanel } from "@/views/onboarding/ssh-setup";
 
 // QuickInstall is adding a box the usual way: no plan to read, no Enter to
-// press. Once the person has said where (and which agents), berth add ssh
+// press. Once the person has said where (and which agents), burf add ssh
 // runs quietly and this compact dialog shows a short checklist. Only a step
 // that truly needs the person opens the terminal, inline, for just that
 // step: sudo asking for the password (git missing, or lingering the box
@@ -57,14 +57,14 @@ export function QuickInstall({ target, onClose, onReady, readyLabel }: { target?
 
   const title = ready ? `${run.box} is ready` : run.state === "failed" ? `${where} isn't set up yet` : `Setting up ${where}`;
   const sub = ready
-    ? "Paired with this computer. Berth no longer needs SSH for it."
+    ? "Paired with this computer. Burf no longer needs SSH for it."
     : needed
       ? `sudo needs ${user}'s password on ${where} for this step.`
       : asking
-        ? "One question before Berth goes on."
+        ? "One question before Burf goes on."
         : run.state === "failed"
           ? "It stopped at the step below. The steps before it are kept."
-          : "Berth installs what the box needs. It only stops if sudo needs your password.";
+          : "Burf installs what the box needs. It only stops if sudo needs your password.";
 
   return (
     <Dialog open={!!target} onOpenChange={(o) => !o && !busy && onClose()}>
@@ -143,7 +143,7 @@ function hint(s: StepRow, agents: string[]): string | undefined {
     case "linger":
       return "so berthd runs after you log out";
     case "tools":
-      return s.sudo ? "git, with sudo" : "Berth's own tmux, no sudo";
+      return s.sudo ? "git, with sudo" : "Burf's own tmux, no sudo";
     case "agents":
       return agents.length === 1 ? "into ~/.local/bin, no sudo" : `${agents.length} agents, no sudo`;
     case "integrations":
@@ -172,7 +172,7 @@ function QuickRow({ step: s, run, host, user, busy, agents, needed, onRetry }: {
       </div>
       {needed && (
         <p data-testid="quick-password" className="mt-1 ml-7.5 text-xs leading-relaxed">
-          Type it in the terminal below and press <Kbd>↵</Kbd>; nothing shows as you type. It goes to sudo on {host}: Berth never sees it or keeps it.
+          Type it in the terminal below and press <Kbd>↵</Kbd>; nothing shows as you type. It goes to sudo on {host}: Burf never sees it or keeps it.
         </p>
       )}
       {s.needs === "ask" && s.state === "running" && <LingerChoice run={run} user={user} host={host} question={s.question} />}
@@ -240,7 +240,7 @@ const ORDER = ["claude", "codex", "cursor", "opencode"];
 const order = (id: string) => (ORDER.indexOf(id) + 1 || 99) as number;
 const busyHint = (v: string[]) => (v.length === 0 ? <span className="text-muted-foreground">none: add them later in Settings</span> : null);
 
-// The agent CLIs Berth can install, as the laptop agent lists them; asked
+// The agent CLIs Burf can install, as the laptop agent lists them; asked
 // once per window.
 let catalog: Promise<AgentChoice[]> | undefined;
 function useAgentCatalog(): AgentChoice[] {

@@ -50,6 +50,9 @@ func TestStartupQuestionsAreReadOffTheScreen(t *testing.T) {
   Press enter to continue
 `, true, false},
 		{"words without the question's keys", "❯ grep -r 'Yes, I trust this folder' src\n  src/onboarding.ts:12: Yes, I trust this folder\n\n❯ \n  ? for shortcuts\n", false, false},
+		{"codex folder access", "Folder access\n/w/shop-fix\nTrust this folder? Codex can read, edit, and run files here.\n\n› 1. Trust and continue\n  2. Back to Agent Command Center\n\n  enter continue · esc back\n", true, false},
+		{"codex words without menu", "Trust this folder?\n  enter continue · esc back\n", false, false},
+		{"codex quoted footer", "Trust this folder?\n› 1. Trust and continue\n  2. Back to Agent Command Center\n› explain enter continue · esc back\n", false, false},
 		{"its prompt", "❯ fix the flaky test\n\n✻ Working… (3s · esc to interrupt)\n", false, false},
 	} {
 		asked, notify := startupQuestion(c.screen)

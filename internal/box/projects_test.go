@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/MylesMCook/burf/internal/boxclient"
 )
 
 func gitIn(t *testing.T, dir string, args ...string) {
@@ -98,9 +100,9 @@ func TestAWorktreeCanCheckOutAPullRequestsHead(t *testing.T) {
 
 // allowFileClones lets a test clone from a folder, which a box refuses.
 func allowFileClones(t *testing.T) {
-	old := GitProtocols
-	GitProtocols += ":file"
-	t.Cleanup(func() { GitProtocols = old })
+	old := boxclient.GitProtocols
+	boxclient.GitProtocols += ":file"
+	t.Cleanup(func() { boxclient.GitProtocols = old })
 }
 
 // A clone link only gets network transports: not ext:: (a command) nor a

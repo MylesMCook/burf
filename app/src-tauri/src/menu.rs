@@ -87,7 +87,7 @@ fn fill<R: Runtime>(
 
 pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
     let table = table();
-    // "Berth", as the window and the Dock name it, not the crate's "berth".
+    // "Burf", as the window and the Dock name it, not the crate's "berth".
     let name = app
         .config()
         .product_name
@@ -132,8 +132,11 @@ pub fn build<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<Menu<R>> {
         "Edit",
         true,
         &[
+            #[cfg(target_os = "macos")]
             &PredefinedMenuItem::undo(app, None)?,
+            #[cfg(target_os = "macos")]
             &PredefinedMenuItem::redo(app, None)?,
+            #[cfg(target_os = "macos")]
             &PredefinedMenuItem::separator(app)?,
             &PredefinedMenuItem::cut(app, None)?,
             &PredefinedMenuItem::copy(app, None)?,

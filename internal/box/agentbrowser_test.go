@@ -18,8 +18,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/doctor"
-	"github.com/sean-brydon/berthd/internal/events"
+	"github.com/MylesMCook/burf/internal/doctor"
+	"github.com/MylesMCook/burf/internal/events"
 )
 
 func TestWithAgentBrowserIdle(t *testing.T) {
@@ -147,6 +147,13 @@ func fakeAgentBrowser(args []string) int {
 		if err := chrome.Start(); err != nil {
 			return 1
 		}
+		// A failed socket bind must not orphan the synthetic browser child.
+		defer func() {
+			if chrome.ProcessState == nil {
+				chrome.Process.Kill()
+				chrome.Wait()
+			}
+		}()
 		ln, err := net.Listen("unix", sock)
 		if err != nil {
 			return 1

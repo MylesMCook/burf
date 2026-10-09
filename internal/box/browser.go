@@ -20,7 +20,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/events"
+	"github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/events"
 )
 
 // The agent browser: a headless Chromium on the box, one per active
@@ -793,7 +794,7 @@ func (br *browser) onEvent(method, session string, params json.RawMessage) {
 		json.Unmarshal(params, &p)
 		go br.cdp.call(context.Background(), br.session, "Page.screencastFrameAck", map[string]any{"sessionId": p.SessionID}, nil)
 		br.mu.Lock()
-		if br.viewport.scale() != 1 {
+		if br.viewport.DeviceScale() != 1 {
 			// Chromium casts at the window's own scale, 1, whatever the
 			// page's: a frame says the page changed, and a capture at
 			// the page's scale is sent instead, so the view stays sharp.
@@ -801,7 +802,7 @@ func (br *browser) onEvent(method, session string, params json.RawMessage) {
 			br.mu.Unlock()
 			return
 		}
-		f := frame{Data: p.Data, Width: int(p.Metadata.DeviceWidth), Height: int(p.Metadata.DeviceHeight), Scale: br.viewport.scale(), URL: br.url}
+		f := frame{Data: p.Data, Width: int(p.Metadata.DeviceWidth), Height: int(p.Metadata.DeviceHeight), Scale: br.viewport.DeviceScale(), URL: br.url}
 		for ch := range br.watchers {
 			// A slow watcher misses frames rather than holding the rest.
 			select {
@@ -923,21 +924,7 @@ func (br *browser) settle(ctx context.Context, max time.Duration) {
 }
 
 // BrowserStatus is a browser as status and lists show it.
-type BrowserStatus struct {
-	Location string    `json:"location"`
-	Worktree string    `json:"worktree"`
-	Path     string    `json:"path"`
-	URL      string    `json:"url,omitempty"`
-	PID      int       `json:"pid"`
-	RSS      uint64    `json:"rss_bytes,omitempty"`
-	Started  time.Time `json:"started"`
-	LastUsed time.Time `json:"last_used"`
-	Watchers int       `json:"watchers"`
-	Refused  int       `json:"refused,omitempty"`
-	// Viewport is the page's size, and Size it as text (1920×1080).
-	Viewport Viewport `json:"viewport"`
-	Size     string   `json:"size"`
-}
+type BrowserStatus = boxclient.BrowserStatus
 
 func (br *browser) status() BrowserStatus {
 	br.mu.Lock()
@@ -1481,7 +1468,7 @@ func (br *browser) Shot(ctx context.Context, el string, full bool, width int, na
 	}
 	width = min(width, maxViewportW*int(maxViewportScale))
 	v := br.currentViewport()
-	dpr := v.scale()
+	dpr := v.DeviceScale()
 	var metrics struct {
 		CSSLayoutViewport struct {
 			ClientWidth  float64 `json:"clientWidth"`

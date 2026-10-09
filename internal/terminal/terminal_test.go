@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"os/exec"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
@@ -43,6 +44,9 @@ func TestReadFramesRejectsGarbage(t *testing.T) {
 }
 
 func TestStartGivesTheProgramATerminalOfTheRequestedSize(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("Unix process PTYs are tested on macOS and Linux")
+	}
 	cmd := exec.Command("sh", "-c", "stty size; tty >/dev/null && echo is-a-tty; read line; echo got:$line")
 	master, err := Start(cmd, 91, 27)
 	if err != nil {

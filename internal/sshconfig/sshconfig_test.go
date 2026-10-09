@@ -3,6 +3,7 @@ package sshconfig
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -10,7 +11,7 @@ import (
 func hosts() []Host {
 	return []Host{
 		{Box: "cal", Address: "100.64.0.12:7444", User: "sean"},
-		{Box: "devl", Address: "100.64.0.11:7444", User: "sean", Network: "personal", Berth: "/Applications/Berth.app/Contents/MacOS/berth"},
+		{Box: "devl", Address: "100.64.0.11:7444", User: "sean", Network: "personal", Berth: "/Applications/Burf.app/Contents/MacOS/burf-cli"},
 	}
 }
 
@@ -25,7 +26,7 @@ func TestPlanShowsEverythingAndWritesNothing(t *testing.T) {
 		t.Fatalf("plan = %+v", plan)
 	}
 	devl := plan[1]
-	if devl.Action != "create" || !strings.Contains(devl.Diff, "+   ProxyCommand /Applications/Berth.app/Contents/MacOS/berth network proxy personal %h %p") {
+	if devl.Action != "create" || !strings.Contains(devl.Diff, "+   ProxyCommand /Applications/Burf.app/Contents/MacOS/burf-cli network proxy personal %h %p") {
 		t.Fatalf("devl change = %+v", devl)
 	}
 	if strings.Contains(plan[0].New, "ProxyCommand") || !strings.Contains(plan[0].New, "HostName 100.64.0.12\n") {
@@ -82,8 +83,19 @@ func TestOnlyBerthsOwnFilesAreRemoved(t *testing.T) {
 
 func TestPathsWithSpacesAreQuoted(t *testing.T) {
 	h := Host{Box: "b", Address: "10.0.0.1", Network: "work net", Berth: "/Applications/My Apps/berth"}
-	if got := h.Render(); !strings.Contains(got, "ProxyCommand '/Applications/My Apps/berth' network proxy 'work net' %h %p") {
+	want := "ProxyCommand '/Applications/My Apps/berth' network proxy 'work net' %h %p"
+	if runtime.GOOS == "windows" {
+		want = `ProxyCommand "/Applications/My Apps/berth" network proxy "work net" %h %p`
+	}
+	if got := h.Render(); !strings.Contains(got, want) {
 		t.Fatalf("render = %q", got)
+	}
+}
+
+func TestProxyCommandKeepsLiteralPercentTokens(t *testing.T) {
+	command := ProxyCommand("/opt/berth%h", "net%p")
+	if !strings.Contains(command, "berth%%h") || !strings.Contains(command, "net%%p") || !strings.HasSuffix(command, " %h %p") {
+		t.Fatalf("OpenSSH tokens were not separated from literal arguments: %q", command)
 	}
 }
 

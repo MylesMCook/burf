@@ -1,4 +1,4 @@
-import { isMock } from "@/hooks/use-berth-connection";
+import { isMock } from "@/hooks/use-burf-connection";
 import { hostSuffix } from "@/lib/browser-url";
 import { useStore } from "@/lib/store";
 

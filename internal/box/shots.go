@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/MylesMCook/burf/internal/boxclient"
 	"image"
 	"net"
 	"net/http"
@@ -17,6 +18,11 @@ import (
 	"strings"
 	"sync"
 	"time"
+)
+
+type (
+	ShotsRequest = boxclient.ShotsRequest
+	ShotsResult  = boxclient.ShotsResult
 )
 
 // Visual before/after: `berthd shots compare` screenshots a worktree's
@@ -152,34 +158,6 @@ func viewportHeight(w int) int {
 	}
 }
 
-// ShotsRequest is what `berthd shots compare` asks for; empty fields come
-// from the repository's "shots" config, then the defaults.
-type ShotsRequest struct {
-	Pages []string `json:"pages,omitempty"`
-	Sizes []int    `json:"sizes,omitempty"`
-	Mask  []string `json:"mask,omitempty"`
-	// Base is main (the default), turn-start, accepted, or a baseline's
-	// name.
-	Base        string `json:"base,omitempty"`
-	ColorScheme string `json:"color_scheme,omitempty"`
-	Session     string `json:"session,omitempty"`
-	Agent       string `json:"agent,omitempty"`
-	Title       string `json:"title,omitempty"`
-	Note        string `json:"note,omitempty"`
-	New         bool   `json:"new,omitempty"` // a new visual diff, not a new version
-	// Save, for `shots baseline`: shoot the worktree only and keep it as
-	// this baseline.
-	Save string `json:"save,omitempty"`
-}
-
-// ShotsResult is the text an agent reads, and where the result is.
-type ShotsResult struct {
-	Text     string `json:"text"`
-	Artifact string `json:"artifact,omitempty"`
-	Version  int    `json:"version,omitempty"`
-	Dir      string `json:"dir,omitempty"`
-}
-
 // shotsDir is the box's folder for baselines (and, without an artifact
 // store, visual diffs).
 func (b *Box) shotsDir() string {
@@ -194,7 +172,7 @@ func (b *Box) shotsDir() string {
 
 func shotsConfigFor(wt Worktree) ShotsConfig {
 	if c, ok, _ := ReadRepoConfig(wt.Path); ok && c.Shots != nil {
-		return *c.Shots
+		return ShotsConfig(*c.Shots)
 	}
 	return ShotsConfig{}
 }
@@ -343,7 +321,7 @@ func (b *Box) planShots(ctx context.Context, locName, wtName string, req ShotsRe
 	p.savedDir = b.baselineDir(loc, p.wt, p.base)
 	saved, err := readBaseline(p.savedDir)
 	if err != nil {
-		return nil, badRequest("%s/%s has no %q baseline yet; take one with `berthd shots baseline --name %s` (or Accept as baseline in Berth, for accepted)", loc.Name, p.wt.Name, p.base, p.base)
+		return nil, badRequest("%s/%s has no %q baseline yet; take one with `berthd shots baseline --name %s` (or Accept as baseline in Burf, for accepted)", loc.Name, p.wt.Name, p.base, p.base)
 	}
 	p.saved = saved
 	return p, nil

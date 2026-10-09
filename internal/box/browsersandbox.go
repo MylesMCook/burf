@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/statefile"
+	"github.com/MylesMCook/burf/internal/statefile"
 )
 
 // Chromium's sandbox. Ubuntu 24.04 (and others) stop unprivileged programs
@@ -20,9 +20,9 @@ import (
 // can't start there. berthd remembers why a browser last failed to start,
 // reads the setting's current value, and says so cheaply, without starting
 // Chromium to find out. The fix needs the box's owner: either allow it with
-// sudo (SandboxFix, which Berth types into a terminal for them and never
+// sudo (SandboxFix, which Burf types into a terminal for them and never
 // runs itself), or turn on the box's no_sandbox setting, which starts
-// Chromium without its sandbox; Berth's proxy still confines it to the
+// Chromium without its sandbox; Burf's proxy still confines it to the
 // worktree's own pages.
 
 // usernsPath is the sysctl's file. BERTH_TEST_USERNS_SYSCTL names another
@@ -44,9 +44,9 @@ var ErrBrowserSandbox = errors.New("the box's browser is blocked")
 
 func sandboxError(userns string) error {
 	if userns == "1" {
-		return fmt.Errorf("%w by Ubuntu's sandbox setting (kernel.apparmor_restrict_unprivileged_userns=1); ask the person to fix it from Berth (Settings → Boxes), or to run `sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0` in a terminal on the box. Don't work around it", ErrBrowserSandbox)
+		return fmt.Errorf("%w by Ubuntu's sandbox setting (kernel.apparmor_restrict_unprivileged_userns=1); ask the person to fix it from Burf (Settings → Boxes), or to run `sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0` in a terminal on the box. Don't work around it", ErrBrowserSandbox)
 	}
-	return fmt.Errorf("%w: Chromium could not start its sandbox on this box; ask the person to fix it from Berth (Settings → Boxes). Don't work around it", ErrBrowserSandbox)
+	return fmt.Errorf("%w: Chromium could not start its sandbox on this box; ask the person to fix it from Burf (Settings → Boxes). Don't work around it", ErrBrowserSandbox)
 }
 
 // BrowserSettings are the box owner's choices for agents' browsers, in
@@ -198,7 +198,7 @@ func (m *Browsers) Health() BrowserHealth {
 	case h.State == "error":
 		h.Text = "the last browser failed to start: " + h.Error
 	case h.NoSandbox:
-		h.Text = "browsers start without Chromium's sandbox; Berth's proxy still confines them to the worktree's own pages"
+		h.Text = "browsers start without Chromium's sandbox; Burf's proxy still confines them to the worktree's own pages"
 	default:
 		h.Text = "browsers can start; pages open at " + DefaultViewport.String() + " unless an agent sets a size"
 	}
@@ -243,6 +243,13 @@ func profileAllowsUserns(bin string) bool {
 	if strings.HasPrefix(bin, "/snap/") {
 		return true
 	}
+	profileBins := []string{bin}
+	// Google's packaged launcher execs this ELF binary. AppArmor grants
+	// namespaces to the binary, not the shell script found on PATH. Keep
+	// this specific to the known launcher, not arbitrary adjacent files.
+	if bin == "/opt/google/chrome/google-chrome" {
+		profileBins = append(profileBins, "/opt/google/chrome/chrome")
+	}
 	entries, err := os.ReadDir(apparmorDir)
 	if err != nil {
 		return false
@@ -256,8 +263,12 @@ func profileAllowsUserns(bin string) bool {
 			continue
 		}
 		s := string(b)
-		if strings.Contains(s, bin) && strings.Contains(s, "userns") {
-			return true
+		if strings.Contains(s, "userns") {
+			for _, candidate := range profileBins {
+				if strings.Contains(s, candidate) {
+					return true
+				}
+			}
 		}
 	}
 	return false

@@ -5,13 +5,13 @@ import { explain } from "@/lib/errors";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 
-// Boxes that run an older berthd than this Berth ships. The laptop agent
-// answers (GET /v1/boxes/outdated, which asks `berth upgrade BOX --check`);
+// Boxes whose agent build differs from the one Burf ships. The laptop agent
+// answers (GET /v1/boxes/outdated, which asks `burf upgrade BOX --check`);
 // the app says so once, calmly, in the status bar and Settings → Boxes, and
 // Update all runs the same upgrade as Settings → Boxes → Update, one box at
 // a time. Sessions keep running through an upgrade: berthd replaces itself
 // in place. With "Update boxes automatically" on, each outdated box is
-// updated once per build Berth ships.
+// updated once per build Burf ships.
 
 // lines is the upgrade's output so far (the last 40), line its newest.
 export type UpdateState = { state: "queued" | "running" | "done" | "failed"; line?: string; lines?: string[]; error?: string; details?: string };
@@ -31,7 +31,7 @@ const NO_BOXES: string[] = [];
 let lastKey = "";
 let lastList: string[] = NO_BOXES;
 
-// useOutdatedBoxes is the online boxes that run an older berthd, by name.
+// useOutdatedBoxes keeps the legacy API name; hashes do not order versions.
 export function useOutdatedBoxes(): string[] {
   const boxes = useOutdated((s) => s.boxes);
   const online = useStore((s) => s.status?.boxes);
@@ -129,10 +129,10 @@ async function announce(todo: string[], failed: string[]) {
       actionProps: { children: "Retry", onClick: () => void updateBoxes(failed) },
     });
   }
-  if (ok.length) toastManager.add({ type: "success", title: ok.length === 1 ? `${ok[0]} is up to date` : `${ok.length} boxes are up to date`, description: ok.length === 1 ? "Its agents kept running." : "Their agents kept running." });
+  if (ok.length) toastManager.add({ type: "success", title: ok.length === 1 ? `Bundled agent installed on ${ok[0]}` : `Bundled agents installed on ${ok.length} boxes`, description: "The box agent build now matches this Burf's bundle." });
 }
 
-// Each box is updated automatically once per build Berth ships, so a box
+// Each box is updated automatically once per build Burf ships, so a box
 // whose update fails is not retried in a loop.
 const tried = new Set<string>();
 

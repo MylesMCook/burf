@@ -1,4 +1,4 @@
-// Package hooks runs user commands when berth events happen, which is how
+// Package hooks runs user commands when burf events happen, which is how
 // berth drives other tools and how people script it.
 //
 // Hooks live in ~/.berth/hooks.json on the machine that should run them, and
@@ -26,9 +26,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/groups"
-	"github.com/sean-brydon/berthd/internal/statefile"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/statefile"
 )
 
 type Hook struct {
@@ -341,7 +340,10 @@ func Exec(ctx context.Context, h Hook, e events.Event, def time.Duration, extra 
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	payload, _ := json.Marshal(e)
-	cmd := groups.CommandContext(ctx, "/bin/sh", "-c", h.Run)
+	cmd, err := shellCommand(ctx, h.Run)
+	if err != nil {
+		return nil, err
+	}
 	cmd.Dir = h.Dir
 	cmd.Env = append(os.Environ(), Env(e, h.Tool)...)
 	if strings.HasPrefix(h.Source, "plugin:") {

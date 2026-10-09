@@ -17,8 +17,16 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/statefile"
+	"github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/statefile"
+)
+
+// The stored shapes are protocol types, shared with the CLI on every platform.
+type (
+	Artifact        = boxclient.Artifact
+	ArtifactBy      = boxclient.ArtifactBy
+	ArtifactVersion = boxclient.ArtifactVersion
 )
 
 // Artifacts are things an agent made for the person to look at — a chart,
@@ -83,59 +91,6 @@ func ArtifactKinds() []string {
 }
 
 var formatExt = map[string]string{"visualdiff": "json", "chart": "json", "csv": "csv", "tsv": "tsv", "json": "json", "mermaid": "mmd", "markdown": "md", "html": "html"}
-
-// ArtifactBy is who made an artifact: the berth session (and its agent)
-// the command ran in, and a helper's name when a helper said it.
-type ArtifactBy struct {
-	Session string `json:"session,omitempty"`
-	Agent   string `json:"agent,omitempty"`
-	Helper  string `json:"helper,omitempty"`
-}
-
-// ArtifactVersion is one version kept.
-type ArtifactVersion struct {
-	N      int       `json:"n"`
-	At     time.Time `json:"at"`
-	Size   int       `json:"size"`
-	SHA256 string    `json:"sha256"`
-	Note   string    `json:"note,omitempty"`
-}
-
-// Artifact is one artifact and the versions kept of it.
-type Artifact struct {
-	ID       string `json:"id"`
-	Title    string `json:"title"`
-	Kind     string `json:"kind"`
-	Format   string `json:"format"`
-	Location string `json:"location"`
-	Worktree string `json:"worktree"`
-	// Path is the worktree's folder; Source the file it was registered
-	// from, and File that file relative to the worktree when it's in it.
-	Path    string     `json:"path"`
-	Source  string     `json:"source,omitempty"`
-	File    string     `json:"file,omitempty"`
-	By      ArtifactBy `json:"by"`
-	Created time.Time  `json:"created"`
-	Updated time.Time  `json:"updated"`
-	// Watched: a rewrite of Source becomes a new version.
-	Watched bool `json:"watched,omitempty"`
-	// Key makes a re-run a new version of this artifact rather than a new
-	// one: a visual diff's is visualdiff:<base>.
-	Key string `json:"key,omitempty"`
-	// Problem is why the source's latest rewrite wasn't taken (it didn't
-	// parse, grew too big, looked like a secret); cleared by the next
-	// version.
-	Problem  string            `json:"problem,omitempty"`
-	Versions []ArtifactVersion `json:"versions"`
-}
-
-// Latest is the newest version kept.
-func (a Artifact) Latest() ArtifactVersion {
-	if len(a.Versions) == 0 {
-		return ArtifactVersion{}
-	}
-	return a.Versions[len(a.Versions)-1]
-}
 
 // ArtifactInput is an add: the content and what it is.
 type ArtifactInput struct {

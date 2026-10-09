@@ -6,12 +6,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/trust"
-	"github.com/sean-brydon/berthd/internal/wire"
+	"github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/trust"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 // A paired laptop can ask the box for a pairing code for another computer of
-// the same person (berth invite), and see and remove the laptops the box
+// the same person (burf invite), and see and remove the laptops the box
 // trusts. A code minted here is the same as one `berthd pair` prints: single
 // use, ten minutes, and proven over the new laptop's own TLS session rather
 // than sent. It is never logged or put in an event.
@@ -64,13 +65,7 @@ func (i *Invites) allow(now time.Time) bool {
 }
 
 // PairingInvite is a fresh pairing code and what a new laptop needs with it.
-type PairingInvite struct {
-	Box         string    `json:"box"`
-	Fingerprint string    `json:"fingerprint"`
-	Addresses   []string  `json:"addresses"`
-	Code        string    `json:"code"`
-	Expires     time.Time `json:"expires"`
-}
+type PairingInvite = boxclient.PairingInvite
 
 // ClientInfo is one laptop the box trusts.
 type ClientInfo struct {

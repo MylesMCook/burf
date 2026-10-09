@@ -76,7 +76,7 @@ function loadGhostty() {
 // RendererOutcome is what the first terminal of a run started with: ghostty,
 // or xterm.js because ghostty-web failed (reason and details say why) or
 // because Settings asked for it. lib/terminal-health.ts tells the person
-// about a fallback once and records it for berth doctor.
+// about a fallback once and records it for burf doctor.
 export interface RendererOutcome {
   renderer: Renderer;
   chosen: Renderer;

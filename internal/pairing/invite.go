@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/identity"
+	"github.com/MylesMCook/burf/internal/identity"
 )
 
 // A join link carries one pairing code per box, so another computer of
@@ -29,7 +29,7 @@ import (
 //	  fingerprint [32]byte  the key the box must present (pinned)
 //	  code        [32]byte  its single-use pairing code
 //	  name        str       what the inviting computer calls it
-//	  network     str       the Berth network it is reached through, or ""
+//	  network     str       the Burf network it is reached through, or ""
 //	  tailnet     str       that network's tailnet, for the sign-in prompt
 //	  addresses   uint8 count, then str each (host:port)
 //
@@ -53,7 +53,7 @@ type InviteBox struct {
 	Addresses   []string             `json:"addresses"`
 	Fingerprint identity.Fingerprint `json:"fingerprint"`
 	Code        Code                 `json:"-"`
-	// Network is the name of the Berth network (an embedded tailnet node)
+	// Network is the name of the Burf network (an embedded tailnet node)
 	// the inviting computer reaches the box through; empty for its own
 	// network. Tailnet is that network's tailnet name.
 	Network string `json:"network,omitempty"`
@@ -67,7 +67,7 @@ type Invite struct {
 	Boxes   []InviteBox `json:"boxes"`
 }
 
-var errMalformedInvite = errors.New("malformed join link; copy it again from the computer that made it (berth invite)")
+var errMalformedInvite = errors.New("malformed join link; copy it again from the computer that made it (burf invite)")
 
 // String encodes the invite as a berth://join link.
 func (inv Invite) String() string {
@@ -90,7 +90,7 @@ func (inv Invite) String() string {
 }
 
 // Valid reports whether the invite can be encoded and parsed back: it is
-// what berth invite checks before printing a link.
+// what burf invite checks before printing a link.
 func (inv Invite) Valid() error {
 	if len(inv.Boxes) == 0 || len(inv.Boxes) > MaxInviteBoxes || len(inv.From) > maxStr {
 		return errMalformedInvite
@@ -124,7 +124,7 @@ func ParseInvite(s string) (Invite, error) {
 	}
 	q := u.Query()
 	if q.Get("v") != JoinVersion {
-		return Invite{}, errors.New("this join link is from a newer version of Berth; update Berth on this computer")
+		return Invite{}, errors.New("this join link is from a newer version of Burf; update Burf on this computer")
 	}
 	b, err := base64.RawURLEncoding.DecodeString(q.Get("d"))
 	if err != nil {

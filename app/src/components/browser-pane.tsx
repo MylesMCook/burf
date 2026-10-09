@@ -11,9 +11,8 @@ import { Spinner } from "@/components/ui/spinner";
 import { isTauri } from "@/lib/api";
 import { openPreviewAt } from "@/lib/actions";
 import { agentBrowserStatus, boxHasBrowser, fitFrame, type Frame, sizeLabel, watchAgentBrowser } from "@/lib/agent-browser";
-import { agentOf } from "@/lib/derive";
+import { useAgentTarget } from "@/lib/agent-target";
 import { DEVTOOLS_FRAME, proxiedHost, useAgentDevtoolsFeed, useDevtoolsFeed, useDrawerOpen, withDevtoolsFlag } from "@/lib/devtools";
-import { send as sendPrompt } from "@/lib/orchestrate";
 import { PICKER_SCRIPT, type Pick, parsePick, pickMessage } from "@/lib/picker";
 import { toastManager } from "@/components/ui/toast";
 import { berthUrlLabel, boxAliases, type BrowserContext, describeBerthUrl, hostSuffix, resolveBrowserInput, suggestions, worktreeHost } from "@/lib/browser-url";
@@ -175,7 +174,7 @@ export function BrowserPane({ id: paneId, url, visible, onNavigate, worktree, on
       (window as unknown as { __berthPick?: (p: Pick) => void }).__berthPick = (p: Pick) => setPicked(p);
       w.eval(PICKER_SCRIPT);
     } catch {
-      toastManager.add({ type: "info", title: "This page can't be picked from here", description: "Picking works in the Berth app's own browser panes." });
+      toastManager.add({ type: "info", title: "This page can't be picked from here", description: "Picking works in the Burf app's own browser panes." });
     }
   };
 
@@ -614,7 +613,7 @@ function FramedPage({ id, url, devtools, onReload, onLoading }: { id: string; ur
       <div className="flex min-h-0 flex-1 items-center justify-center p-6">
         <div className="flex max-w-sm flex-col items-center gap-2 text-center">
           <GlobeIcon className="size-6 text-muted-foreground" />
-          <p className="font-medium text-sm">{state === "blocked" ? `${host} can't be shown inside Berth` : `${host} isn't loading`}</p>
+          <p className="font-medium text-sm">{state === "blocked" ? `${host} can't be shown inside Burf` : `${host} isn't loading`}</p>
           <p className="text-muted-foreground text-xs">
             {state === "blocked" ? "Most sites refuse to be embedded in other apps. Open it in your browser instead." : "It has not answered in 15 seconds. It may still be starting, or it may refuse to be embedded."}
           </p>
@@ -921,14 +920,14 @@ function AgentView({ ctx, visible, onUrl, onSize }: { ctx: BrowserContext; visib
 // PickSender sends a picked element to the worktree's agent, with a note.
 function PickSender({ pick, ctx, onDone }: { pick: Pick; ctx: BrowserContext; onDone(): void }) {
   const ref = ctx.ref!;
-  const session = useStore((s) => s.boxes[ref.box]?.sessions?.find((x) => x.dir === ref.path && !x.exited && agentOf(x)));
+  const target = useAgentTarget(ref);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const submit = async () => {
-    if (!session) return;
+    if (!target || target.blocked) return;
     setBusy(true);
     try {
-      await sendPrompt(ref.box, session.name, pickMessage(pick, note), { when: "idle" });
+      await target.send(pickMessage(pick, note));
       toastManager.add({ type: "success", title: "Sent to the agent", description: `${pick.role}${pick.name ? ` "${pick.name}"` : ""}` });
       onDone();
     } catch (err) {
@@ -954,11 +953,11 @@ function PickSender({ pick, ctx, onDone }: { pick: Pick; ctx: BrowserContext; on
         autoFocus
         value={note}
         onChange={(e) => setNote(e.target.value)}
-        placeholder={session ? "What about it? (optional)" : "No agent runs in this worktree"}
-        disabled={!session}
+        placeholder={target ? (target.blocked ?? "What about it? (optional)") : "No agent runs in this worktree"}
+        disabled={!target || !!target.blocked}
         className="h-6 min-w-0 flex-1 rounded border bg-background px-2 outline-none focus:border-ring"
       />
-      <Button type="submit" size="xs" disabled={!session || busy}>
+      <Button type="submit" size="xs" disabled={!target || !!target.blocked || busy}>
         <SendIcon />
         Send to agent
       </Button>

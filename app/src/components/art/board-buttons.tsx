@@ -25,7 +25,11 @@ export function useSessionArt(box: string, session: string) {
 
 export function ArtBoardChip({ box, session, className }: { box: string; session: string; className?: string }) {
   const dir = useStore((s) => s.boxes[box]?.sessions?.find((x) => x.name === session)?.dir);
-  const wt = dir ? wsKey(box, dir) : undefined;
+  return <WorktreeArtChip wt={dir ? wsKey(box, dir) : undefined} className={className} />;
+}
+
+// WorktreeArtChip is the same chip for a chat that names its worktree itself (a structured chat has no session).
+export function WorktreeArtChip({ wt, className }: { wt?: string; className?: string }) {
   const list = useWorktreeArt(wt);
   const fresh = useFresh(list);
   const pane = useContext(PaneContext);

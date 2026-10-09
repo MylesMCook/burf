@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/sean-brydon/berthd/internal/identity"
+	"github.com/MylesMCook/burf/internal/identity"
 )
 
 const (
@@ -20,7 +20,7 @@ const (
 	// ExporterLabel derives the TLS keying material a proof is bound to.
 	ExporterLabel = "EXPORTER-berth-pair-v1"
 	ExporterSize  = 32
-	proofContext  = "berth pair v1"
+	proofContext  = "burf pair v1"
 )
 
 // Code is a single-use pairing secret. It is never sent over the wire; the

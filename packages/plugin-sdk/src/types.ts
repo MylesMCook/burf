@@ -40,6 +40,7 @@ export interface Route {
 }
 
 export interface Status {
+  ssh_setup_supported?: boolean;
   boxes: BoxStatus[];
   forwards: ForwardStatus[];
   routes: Route[];

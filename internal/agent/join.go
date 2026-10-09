@@ -6,12 +6,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/pairing"
-	"github.com/sean-brydon/berthd/internal/trust"
+	"github.com/MylesMCook/burf/internal/pairing"
+	"github.com/MylesMCook/burf/internal/trust"
 )
 
-// The app's "Add another computer" and "I already use Berth on another
-// computer": berth invite and berth join, run by the agent like the rest of
+// The app's "Add another computer" and "I already use Burf on another
+// computer": burf invite and burf join, run by the agent like the rest of
 // box management. The join link goes to the CLI on its stdin, never in its
 // arguments, where other users of this computer could read it in ps.
 

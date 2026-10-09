@@ -9,8 +9,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/hooks"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/hooks"
 )
 
 // fakeUserns stands in for Ubuntu's setting, as BERTH_TEST_USERNS_SYSCTL
@@ -118,7 +118,7 @@ func TestTheSandboxErrorIsShortAndTellsTheAgentWhoFixesIt(t *testing.T) {
 	if !errors.Is(err, ErrBrowserSandbox) || statusFor(err) != 503 || codeFor(err) != CodeBrowserBlock {
 		t.Fatalf("%v: status %d, code %s", err, statusFor(err), codeFor(err))
 	}
-	for _, want := range []string{"blocked by Ubuntu's sandbox setting", "ask the person to fix it from Berth (Settings → Boxes)", "sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0", "Don't work around it"} {
+	for _, want := range []string{"blocked by Ubuntu's sandbox setting", "ask the person to fix it from Burf (Settings → Boxes)", "sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0", "Don't work around it"} {
 		if !strings.Contains(msg, want) {
 			t.Errorf("lacks %q: %s", want, msg)
 		}
@@ -147,6 +147,34 @@ func TestAProfileOrASnapLetsChromiumMakeNamespaces(t *testing.T) {
 		if got := profileAllowsUserns(bin); got != want {
 			t.Errorf("%s: %v, want %v", bin, got, want)
 		}
+	}
+}
+
+func TestChromeLauncherUsesBrowserProfileForSandboxPrediction(t *testing.T) {
+	dir := t.TempDir()
+	was := apparmorDir
+	apparmorDir = dir
+	t.Cleanup(func() { apparmorDir = was })
+	profile := filepath.Join(dir, "chrome")
+	for _, tc := range []struct {
+		name, contents string
+		want           bool
+	}{
+		{"browser allowed", "profile chrome /opt/google/chrome/chrome flags=(unconfined) {\n userns,\n}\n", true},
+		{"browser not allowed", "profile chrome /opt/google/chrome/chrome {\n}\n", false},
+		{"different browser allowed", "profile other /opt/other/chrome {\n userns,\n}\n", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := os.WriteFile(profile, []byte(tc.contents), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			if got := profileAllowsUserns("/opt/google/chrome/google-chrome"); got != tc.want {
+				t.Fatalf("Chrome launcher: %v, want %v", got, tc.want)
+			}
+			if profileAllowsUserns("/tmp/google-chrome") {
+				t.Fatal("an unrelated launcher must not inherit Chrome's profile")
+			}
+		})
 	}
 }
 

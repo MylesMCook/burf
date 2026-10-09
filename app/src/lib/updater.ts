@@ -7,11 +7,11 @@ import { toastManager } from "@/components/ui/toast";
 import { isTauri } from "@/lib/api";
 import { useStore } from "@/lib/store";
 
-// Updates to the app itself. Berth checks the latest GitHub release's
+// Updates to the app itself. Burf checks the latest GitHub release's
 // latest.json when it opens and every few hours after, and downloads a newer
 // version quietly. Nothing changes on disk until the person clicks "Restart
 // to update" (the status bar, or Settings → About): then the download is
-// installed over Berth.app and the app relaunches. It never restarts by
+// installed over Burf.app and the app relaunches. It never restarts by
 // itself. Restarting stops no agent (they run on their boxes), but it does
 // close the window, which is the person's call.
 //
@@ -20,7 +20,7 @@ import { useStore } from "@/lib/store";
 // as it starts, has it restart (afterLaunch): the agent finishes its work
 // under way, stops, and the new one starts, through the login service when
 // it is installed at login, and brings this Mac's box up to date. A short
-// note says Berth was updated.
+// note says Burf was updated.
 //
 // The update must carry a signature from the key in tauri.conf.json
 // (plugins.updater.pubkey); the plugin refuses anything else.
@@ -40,16 +40,17 @@ const EVERY = 4 * 60 * 60 * 1000;
 let pending: Update | null = null;
 let running: Promise<void> | null = null;
 
-// updatesSupported is whether this copy of Berth can update itself: the
+// updatesSupported is whether this copy of Burf can update itself: the
 // packaged app. A dev build (pnpm tauri dev) can check, but only by hand.
-export const updatesSupported = () => isTauri();
+// Fork builds stay off the upstream feed until they have their own signed updates.
+export const updatesSupported = () => isTauri() && import.meta.env.VITE_BURF_UPDATES === "true";
 
 // checkForUpdate checks once, and downloads what it finds. A check while
 // one runs joins it. `manual` is a click on Check now: only then is a
 // failure worth showing; a failed check in the background waits for the
 // next one.
 export function checkForUpdate({ manual = false } = {}): Promise<void> {
-  if (!isTauri()) return Promise.resolve();
+  if (!updatesSupported()) return Promise.resolve();
   running ??= run(manual).finally(() => {
     running = null;
   });
@@ -91,18 +92,28 @@ async function run(manual: boolean) {
   }
 }
 
-// restartToUpdate installs the downloaded update and relaunches Berth. Only
+// restartToUpdate installs the downloaded update and relaunches Burf. Only
 // ever from a click.
 export async function restartToUpdate() {
   const update = pending;
   const state = useUpdater.getState();
   if (!update || state.status !== "ready") return;
   useUpdater.setState({ status: "installing", version: state.version }, true);
+  let restartAgent = false;
   try {
+    restartAgent = await invoke<boolean>("prepare_app_update");
     await update.install();
     await invoke("restart_app");
   } catch (e) {
-    useUpdater.setState({ status: "error", error: e instanceof Error ? e.message : String(e), checkedAt: Date.now() }, true);
+    let error = e instanceof Error ? e.message : String(e);
+    if (restartAgent) {
+      try {
+        await invoke("start_agent", { atLogin: false });
+      } catch (restartError) {
+        error += ` The previous agent could not restart: ${String(restartError)}`;
+      }
+    }
+    useUpdater.setState({ status: "error", error, checkedAt: Date.now() }, true);
     pending = null;
   }
 }
@@ -110,7 +121,7 @@ export async function restartToUpdate() {
 // The agent's restart as the app starts, for the status bar.
 export const useAgentRestart = create<{ restarting: boolean }>(() => ({ restarting: false }));
 
-// What `berth agent restart --if-stale --json` reports.
+// What `burf agent restart --if-stale --json` reports.
 interface AgentRestart {
   restarted: boolean;
   reason?: string;
@@ -122,7 +133,7 @@ const LAST_VERSION = "berth.app-version";
 
 // afterLaunch restarts an agent older than this app (an update replaced the
 // app under it, or this app was installed over an older one), and says when
-// Berth was updated: this version is not the one that ran last, or the
+// Burf was updated: this version is not the one that ran last, or the
 // agent was older.
 async function afterLaunch() {
   const version = await getVersion().catch(() => "");
@@ -148,7 +159,7 @@ async function afterLaunch() {
   toastManager.add({
     type: "success",
     title: `Updated to v${version}`,
-    description: r?.restarted ? "The Berth agent restarted with it. Your agents kept running." : undefined,
+    description: r?.restarted ? "The Burf agent restarted with it. Your agents kept running." : undefined,
   });
 }
 
@@ -158,7 +169,7 @@ let started = false;
 // only: a dev build would otherwise offer to replace itself with a release.
 // A dev build leaves the agent alone too (it is often the one you run).
 export function startUpdater() {
-  if (started || !isTauri() || import.meta.env.DEV) return;
+  if (started || !updatesSupported() || import.meta.env.DEV) return;
   started = true;
   void afterLaunch();
   // Let the window and the agent connection settle first.

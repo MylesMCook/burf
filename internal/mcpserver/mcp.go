@@ -24,9 +24,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/box"
-	"github.com/sean-brydon/berthd/internal/box/runs"
-	"github.com/sean-brydon/berthd/internal/version"
+	"github.com/MylesMCook/burf/internal/box"
+	"github.com/MylesMCook/burf/internal/box/runs"
+	"github.com/MylesMCook/burf/internal/version"
 )
 
 type request struct {
@@ -65,6 +65,11 @@ type Server struct {
 	// MCP servers with a bare environment.
 	Caller   string
 	AgentPid int
+	// Chat is the structured chat the server works for, when a chat's
+	// provider started it (chat.go): the chat is then the caller.
+	Chat string
+	cwd  string
+	loc  string
 }
 
 // caller is the session the server works for, found once.
@@ -129,7 +134,7 @@ func with(props map[string]any) map[string]any {
 }
 
 // told is what the tools that start work say about hearing back.
-const told = " Berth tells you when it ends, needs a person or hits a gate: a <berth-notification> message arrives in your session at your next idle. So end your turn instead of polling; berth_wait_turn is for short waits."
+const told = " Burf tells you when it ends, needs a person or hits a gate: a <berth-notification> message arrives in your session at your next idle. So end your turn instead of polling; berth_wait_turn is for short waits."
 
 // Tools are berth's MCP tools.
 var Tools = []Tool{
@@ -197,12 +202,12 @@ func (s *Server) handle(ctx context.Context, req request) (any, *rpcError) {
 			"protocolVersion": v,
 			"capabilities":    map[string]any{"tools": map[string]any{}},
 			"serverInfo":      map[string]any{"name": "berth", "version": version.Version},
-			"instructions":    "Tools for this box's agents, worktrees and durable runs. Never block: wait_turn takes at most 90 s and returns a cursor. Work you start (task_new, send, exec, run_start, attempts) reports back: a <berth-notification> message from Berth, not the user, arrives at your next idle when it ends, needs a person or reaches a gate. So end your turn rather than polling.",
+			"instructions":    s.chatInstructions() + "Tools for this box's agents, worktrees and durable runs. Never block: wait_turn takes at most 90 s and returns a cursor. Work you start (task_new, send, exec, run_start, attempts) reports back: a <berth-notification> message from Burf, not the user, arrives at your next idle when it ends, needs a person or reaches a gate. So end your turn rather than polling.",
 		}, nil
 	case "ping":
 		return map[string]any{}, nil
 	case "tools/list":
-		return map[string]any{"tools": Tools}, nil
+		return map[string]any{"tools": s.tools()}, nil
 	case "tools/call":
 		var p struct {
 			Name      string         `json:"name"`
@@ -211,13 +216,26 @@ func (s *Server) handle(ctx context.Context, req request) (any, *rpcError) {
 		if err := json.Unmarshal(req.Params, &p); err != nil {
 			return nil, &rpcError{-32602, "invalid params"}
 		}
-		for _, t := range Tools {
+		for _, t := range s.tools() {
 			if t.Name == p.Name {
+				failed := func(text string) (any, *rpcError) {
+					return map[string]any{"content": []any{map[string]any{"type": "text", "text": text}}, "isError": true}, nil
+				}
+				// The wait for a person is its own, before the call's.
+				if final, err := s.ask(ctx, t.Name, p.Arguments); err != nil {
+					if !final {
+						return failed("Not done: " + err.Error() + ".")
+					}
+					return failed("Not done: " + err.Error() + ". This answer is final: say so instead of trying another way.")
+				}
 				cctx, cancel := context.WithTimeout(ctx, 100*time.Second)
 				defer cancel()
 				out, err := t.call(cctx, s, p.Arguments)
 				if err != nil {
-					return map[string]any{"content": []any{map[string]any{"type": "text", "text": err.Error()}}, "isError": true}, nil
+					return failed(err.Error())
+				}
+				if text, ok := out.(plain); ok {
+					return map[string]any{"content": []any{map[string]any{"type": "text", "text": string(text)}}}, nil
 				}
 				b, _ := json.Marshal(out)
 				return map[string]any{"content": []any{map[string]any{"type": "text", "text": string(b)}}}, nil

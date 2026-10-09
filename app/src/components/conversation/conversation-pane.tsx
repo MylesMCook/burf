@@ -2,10 +2,7 @@ import { ArrowUpIcon, ListPlusIcon, MessageSquareTextIcon, MessagesSquareIcon, R
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
-import { DitherBand } from "@/components/art/dither-band";
-import { TaskComposer } from "@/components/conversation/task-composer";
 import { AttachmentChips, useAttachments } from "@/components/conversation/attachments";
-import { HARBOUR, HARBOUR_MUTE, useHarbourLight } from "@/components/art/harbour-art";
 import { Scene, type SceneName } from "@/components/art/scenes";
 import { ChatBackground } from "@/components/conversation/chat-background";
 import { ChatControls } from "@/components/conversation/chat-controls";
@@ -25,7 +22,7 @@ import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTi
 import { InputGroup, InputGroupAddon, InputGroupTextarea } from "@/components/ui/input-group";
 import { Kbd } from "@/components/ui/kbd";
 import { toastManager } from "@/components/ui/toast";
-import { isMock } from "@/hooks/use-berth-connection";
+import { isMock } from "@/hooks/use-burf-connection";
 import { startSession } from "@/lib/actions";
 import { ApiError, boxApi, type QueuedPrompt } from "@/lib/api";
 import { tryNow } from "@/lib/reconnect";
@@ -311,7 +308,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
         title={feed === "none" ? `${agent ? agentLabel(agent) : "This agent"} works in its terminal` : `${box} needs an update for this`}
         description={
           feed === "none"
-            ? "Berth can show Claude Code's and Codex's conversations here. This agent's work is in its terminal."
+            ? "Burf can show Claude Code's and Codex's conversations here. This agent's work is in its terminal."
             : `${box} runs an older berthd that doesn't stream agents' conversations. Updating keeps your agents running.`
         }
       >
@@ -506,7 +503,7 @@ export function ConversationPane({ box, session, agent: remembered, visible, onS
         ) : (
           <ChatScope value={{ who, send: reply, showTerminal: onShowTerminal, startAgain: again }}>
             <QuestionsContext value={{ live: formAsk ? openQ?.tool : undefined, canAnswer: canAnswer && agent === "claude", stuck: stuckNow, submit: submitQuestions }}>
-              <ConversationView chat={{ box, session, agent, visible, idle: state !== "running" && state !== "waiting" }} items={shown} onAnswer={answer} edits={edits} who={who} tail={tail} tailSize={queue.items.length + (untaken ? 1 : 0)} />
+              <ConversationView chat={{ box, session, agent, visible, idle: state !== "running" && state !== "waiting" }} items={live.show ? shown.filter((it) => it.kind !== "thinking") : shown} onAnswer={answer} edits={edits} who={who} tail={tail} tailSize={queue.items.length + (untaken ? 1 : 0)} />
             </QuestionsContext>
           </ChatScope>
         )}
@@ -614,7 +611,7 @@ function CommentsStrip({ count, who, onSend }: { count: number; who: string; onS
 // (components/conversation/attachments), and their paths go with the reply.
 // "/" and "@" open the agent's commands and the worktree's files
 // (command-menu).
-function Reply({ onSend, onFail, who, mode, blocked, hint, attach, agent }: { onSend(text: string): Promise<void>; onFail(err: unknown): void; who: string; mode: "send" | "queue" | "answer"; blocked?: boolean; hint?: string; attach?: AttachTarget; agent?: string }) {
+function Reply({ onSend, onFail, who, mode, blocked, hint, attach, agent, autoFocus }: { onSend(text: string): Promise<void>; onFail(err: unknown): void; who: string; mode: "send" | "queue" | "answer"; blocked?: boolean; hint?: string; attach?: AttachTarget; agent?: string; autoFocus?: boolean }) {
   const [text, setText] = useState("");
   const att = useAttachments(attach);
   const menu = useComposerMenu({ box: attach?.box, session: attach && "session" in attach ? attach.session : undefined, agent, text, setText });
@@ -683,6 +680,7 @@ function Reply({ onSend, onFail, who, mode, blocked, hint, attach, agent }: { on
         )}
         <InputGroupTextarea
           ref={input}
+          autoFocus={autoFocus}
           rows={1}
           onPaste={att.onPaste}
           value={text}
@@ -774,26 +772,27 @@ function Reading() {
 
 const boxWord = (state?: string) => (state === "untrusted" ? "unreachable" : (state ?? "offline"));
 
-// FirstPrompt is an agent that hasn't been asked anything yet: the harbour
-// band, the worktree, and the composer for its first task, as everywhere
-// work starts.
+// A new conversation keeps the same bottom composer as an ongoing chat.
 function FirstPrompt({ box, session, agent, name, branch, onSend, onFail }: { box: string; session: string; agent?: string; name: string; branch?: string; onSend(text: string): Promise<void>; onFail(err: unknown): void }) {
-  const light = useHarbourLight();
+  const who = agent ? agentLabel(agent) : "Agent";
   return (
-    <div className="absolute inset-0 overflow-y-auto bg-background">
-      <DitherBand src={HARBOUR[light]} position={0.45} fade={0.5} mute={HARBOUR_MUTE[light]} className="absolute inset-x-0 top-0 h-[clamp(160px,30vh,280px)]" />
-      <div className="relative flex min-h-full items-start justify-center px-6 pt-[clamp(120px,24vh,230px)] pb-10">
-        <div className="w-full max-w-[calc(var(--berth-chat-w)-120px)]">
-          <header className="mb-4 px-2 [text-shadow:0_0_6px_var(--background),0_0_14px_var(--background)]">
-            <h1 className="truncate font-semibold text-lg tracking-tight">{name}</h1>
-            <div className="mt-1 flex min-w-0 items-center gap-1.5 text-muted-foreground text-xs">
-              {branch && <span className="min-w-0 truncate rounded bg-accent px-1.5 py-px font-mono text-[0.6875rem]">{branch}</span>}
-              <span className="shrink-0 rounded bg-accent px-1.5 py-px font-mono text-[0.6875rem]">{box}</span>
-            </div>
-          </header>
-          <TaskComposer to={{ box, session, agent }} onSend={onSend} onFail={onFail} autoFocus />
-          {/* What runs in the worktree, and plugins' sections. */}
-          <SessionWorktreeSections box={box} session={session} className="mt-6" />
+    <div data-testid="chat" className="flex min-h-0 flex-1 flex-col bg-background">
+      <header className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1 border-b px-4 py-3 text-xs">
+        <span className="flex items-center gap-1.5 font-medium"><AgentIcon agent={agent} className="size-3.5" />{who}</span>
+        <span className="min-w-0 truncate text-muted-foreground" title={`${name} on ${box}`}>{name} / {box}</span>
+        {branch && <span className="min-w-0 truncate font-mono text-muted-foreground" title={branch}>{branch}</span>}
+      </header>
+      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6">
+        <div className="mx-auto flex min-h-full w-full max-w-(--berth-chat-w) flex-col">
+          <div className="my-auto py-8 text-center">
+            <h2 className="text-lg font-medium">New chat</h2>
+          </div>
+          <SessionWorktreeSections box={box} session={session} />
+        </div>
+      </div>
+      <div className="shrink-0 px-4 pb-4 pt-2 sm:px-6">
+        <div className="mx-auto w-full max-w-(--berth-chat-w)">
+          <Reply attach={{ box, session }} agent={agent} who={who} mode="send" onSend={onSend} onFail={onFail} hint={`Message ${who}`} autoFocus />
         </div>
       </div>
     </div>

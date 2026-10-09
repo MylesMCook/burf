@@ -11,47 +11,20 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"time"
+
+	"github.com/MylesMCook/burf/internal/boxclient"
 )
 
 // Stats is a box at a glance: how loaded it is, and what its agents are doing.
-type Stats struct {
-	Hostname string    `json:"hostname"`
-	Uptime   int64     `json:"uptime_s,omitempty"`
-	CPUs     int       `json:"cpus"`
-	Load     []float64 `json:"load,omitempty"`
-	Memory   Usage     `json:"memory"`
-	Swap     Usage     `json:"swap"`
-	Disks    []Disk    `json:"disks"`
-	Agents   []Agent   `json:"agents"`
-	// Hooks is true when an agent tool on the box reports to berthd, so
-	// an agent's waiting or finished state is known.
-	Hooks bool `json:"hooks"`
-}
+type Stats = boxclient.Stats
 
 // Usage is bytes in use out of a total.
-type Usage struct {
-	Total uint64 `json:"total"`
-	Used  uint64 `json:"used"`
-}
+type Usage = boxclient.Usage
 
-type Disk struct {
-	Mount string `json:"mount"`
-	Usage
-}
+type Disk = boxclient.Disk
 
 // Agent is a coding agent process running on the box.
-type Agent struct {
-	Tool     string `json:"tool"`
-	PID      int    `json:"pid"`
-	Path     string `json:"path,omitempty"`
-	Location string `json:"location,omitempty"`
-	Worktree string `json:"worktree,omitempty"`
-	// State is "idle", "waiting" or "finished" when its hooks said so
-	// last, and "running" otherwise.
-	State string    `json:"state"`
-	Since time.Time `json:"since,omitempty"`
-}
+type Agent = boxclient.Agent
 
 // agentTools are the process names counted as agents.
 var agentTools = map[string]string{"claude": "claude", "codex": "codex", "cursor-agent": "cursor"}

@@ -1,0 +1,4 @@
+# One set of bytes on every machine: Go embeds scripts and tests compare
+# generated fixtures byte for byte, and a Windows checkout with autocrlf
+# would otherwise change both.
+* text=auto eol=lf

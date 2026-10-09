@@ -9,10 +9,10 @@ queue instead of failing:
 
 ```sh
 berth session send devl/checkout-claude "Rebase on main" --queue
-berth queue                # what is waiting, and why anything failed
-berth queue rm ID          # discard one
-berth queue retry ID       # put a failed one back in line
-berth queue send ID        # send one now, without waiting for the agent's turn
+burf queue                # what is waiting, and why anything failed
+burf queue rm ID          # discard one
+burf queue retry ID       # put a failed one back in line
+burf queue send ID        # send one now, without waiting for the agent's turn
 ```
 
 The app offers the same thing ("Queue for when devl is back") in Send a

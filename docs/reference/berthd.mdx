@@ -31,7 +31,7 @@ flows, skills) can drive it directly. `berthd help` prints this list.
 | `berthd doctor [--json]` | Check this box's setup and how to fix it. It looks for the agent CLIs afresh, and names each one's version, path and how it was installed |
 | `berthd version` | Print this build's version |
 | `berthd session attach NAME` | Attach to a session in this terminal |
-| `berthd mcp` | A stdio MCP server of Berth's tools for agents on this box, talking to its socket; `integrations install` adds it to Claude Code, Codex and Gemini CLI ([runs](/guides/runs#from-an-agent-mcp)) |
+| `berthd mcp` | A stdio MCP server of Burf's tools for agents on this box, talking to its socket; `integrations install` adds it to Claude Code, Codex and Gemini CLI ([runs](/guides/runs#from-an-agent-mcp)) |
 | `berthd headless --agent A --out FILE.jsonl --prompt-file FILE [--read-only] [--add-dir D]` | One non-interactive agent turn, as runs start in tmux for judges and reviewers |
 
 `~/.berth/runs.json` on the box sets `max_concurrent_runs` (10),
@@ -51,7 +51,7 @@ starts.
 | `berthd location config NAME [--json] [--trust HASH\|--untrust]` | The repo's, the box's and the effective config; trust the repo's to run it |
 | `berthd services [--json]` | Which worktree each running server belongs to |
 | `berthd service list\|start\|stop\|restart\|log LOC/WORKTREE [SERVICE]` | A worktree's services from the repo's config |
-| `berthd preview [LOC/WORKTREE] [PORT] [--path /x]` | Open a worktree's page in the Berth app |
+| `berthd preview [LOC/WORKTREE] [PORT] [--path /x]` | Open a worktree's page in the Burf app |
 | `berthd worktree new LOC/NAME [--branch B] [--base REF]` | Create a git worktree and run its setup |
 | `berthd worktree rm LOC/NAME [--force]` | Remove a worktree |
 | `berthd worktree rename LOC/NAME [TITLE]` | Give a worktree a display name (no TITLE clears it) |
@@ -78,7 +78,7 @@ asks the app to open the page as a browser tab beside the agent; the
 | `berthd runs`, `berthd run start\|get\|logs\|approve\|reject\|cancel\|templates …` | [Runs](/guides/runs), as `berth run` without the box |
 | `berthd browser open\|snapshot\|click\|fill\|press\|select\|hover\|check\|wait\|shot\|console\|network\|eval\|status\|close [LOC/WT] …` | The worktree's [agent browser](/guides/agent-browser); inside a session, its own worktree |
 | `berthd browser list`, `berthd browser allow ORIGIN`, `berthd browser install` | Browsers running; allow a public origin; download a Chromium |
-| `berthd browser reap [--dry-run] [--json]` | Close the [agent-browser](/guides/agent-browser#agent-browser) sessions (Vercel's CLI) that Berth sessions which have ended left running; `--dry-run` only lists them. `berthd doctor` reports them too |
+| `berthd browser reap [--dry-run] [--json]` | Close the [agent-browser](/guides/agent-browser#agent-browser) sessions (Vercel's CLI) that Burf sessions which have ended left running; `--dry-run` only lists them. `berthd doctor` reports them too |
 | `berthd shots compare [LOC/WT] [--pages / /login] [--sizes 375 768 1280] [--base main\|turn-start\|accepted\|NAME] [--mask SEL]... [--color-scheme light\|dark\|both] [--title T] [--note N] [--new]` | Screenshot the worktree's pages and the base's, diff them, and keep a [visual diff](/guides/visual-diffs); a re-run is its next version. Prints what changed, in about 450 tokens |
 | `berthd shots baseline [LOC/WT] [--name turn-start] [--pages …] [--sizes …] [--color-scheme …]` | Save the worktree's pages as a baseline to compare with later |
 | `berthd shots accept [LOC/WT] ID` | Keep a visual diff's after-shots as the worktree's `accepted` baseline (the app's **Accept as baseline**) |
@@ -116,7 +116,7 @@ owns, not the journal.
 
 | Command | What it does |
 | --- | --- |
-| `berthd skills [list\|install\|uninstall] [SKILL...] [--agent claude\|codex\|all] [--target user\|project] [--location LOC] [--commit]` | Teach Claude Code and Codex to use Berth |
+| `berthd skills [list\|install\|uninstall] [SKILL...] [--agent claude\|codex\|all] [--target user\|project] [--location LOC] [--commit]` | Teach Claude Code and Codex to use Burf |
 | `berthd secret test REF` | Check this box can resolve `op://vault/item/field` or `env://NAME` (prints the value's length, never the value) |
 | `berthd secret exec [--socket PATH] -- PROGRAM [ARGS...]` | Used by sessions and services: resolves secret references, then runs the program. See [secrets](/guides/secrets#how-values-are-handled). |
 | `berthd secret signin [--check]` | Signs the box's `op` in to 1Password in this terminal (`op signin`) and keeps its session for berthd's `op://` reads; a team setup's 1Password step runs it. `--check` asks nothing and exits 0 when berthd can read 1Password now. See [secrets](/guides/secrets#setting-up-1password-on-a-box). |
@@ -127,8 +127,8 @@ owns, not the journal.
 
 | Command | What it does |
 | --- | --- |
-| `berthd integrations install claude\|cursor\|codex\|gemini\|opencode\|all\|present` | Install Berth's skills and agent hooks for a tool (`present`: every agent CLI on this box, quietly skipping the rest), and `berthd mcp` as an MCP server for Claude Code, Codex and Gemini CLI |
-| `berthd hook TOOL EVENT [PAYLOAD]` | What those hooks run: turns a tool's hook into a Berth event (`agent.finished`, `agent.waiting`), naming the session from `$BERTH_SESSION`. While berthd is down it keeps the event in `~/.berth/box/spool/`, published when berthd starts |
+| `berthd integrations install claude\|cursor\|codex\|gemini\|opencode\|all\|present` | Install Burf's skills and agent hooks for a tool (`present`: every agent CLI on this box, quietly skipping the rest), and `berthd mcp` as an MCP server for Claude Code, Codex and Gemini CLI |
+| `berthd hook TOOL EVENT [PAYLOAD]` | What those hooks run: turns a tool's hook into a Burf event (`agent.finished`, `agent.waiting`), naming the session from `$BERTH_SESSION`. While berthd is down it keeps the event in `~/.berth/box/spool/`, published when berthd starts |
 
 See [agent integrations](/guides/agent-integrations) for what the hooks and
 skills do, and [the berth CLI](/reference/cli) for the laptop's side.

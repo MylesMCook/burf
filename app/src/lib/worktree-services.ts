@@ -30,7 +30,7 @@ type Kind = LiveService["kind"];
 const BY_COMMAND: [RegExp, string, Kind][] = [
   [/--remote-debugging-port|\bchrom(e|ium)\b|headless_shell/i, "Chrome (DevTools)", "other"],
   [/agent-browser/i, "Agent browser", "other"],
-  [/(^|\/)berthd?(\s|$)/i, "Berth", "other"],
+  [/(^|\/)berthd?(\s|$)/i, "Burf", "other"],
   [/language-?server|tsserver|\bgopls\b|rust-analyzer|pyright|eslint_d|copilot|\bvscode/i, "Language server", "other"],
   [/--inspect\b|--inspect=/i, "Node inspector", "other"],
   [/prisma(\.js)?\s+studio|prisma-studio/i, "Prisma Studio", "web"],

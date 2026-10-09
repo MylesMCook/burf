@@ -3,7 +3,7 @@
 // defines, and reports a flag its usage error or the program's help leaves
 // out, and a flag the help offers that the command does not define.
 //
-// It is for tests: cmd/berth and cmd/berthd each check their own help.
+// It is for tests: cmd/burf and cmd/burfd each check their own help.
 package usagecheck
 
 import (
@@ -195,11 +195,11 @@ func describe(scope ast.Node, consts map[string]string) (string, []string) {
 	return name, usages
 }
 
-// leadingWords is the command in a usage text: "usage: berth upgrade BOX"
+// leadingWords is the command in a usage text: "usage: burf upgrade BOX"
 // gives "upgrade", "session send NAME TEXT" gives "session send".
 func leadingWords(usage string) string {
 	words := strings.Fields(strings.TrimPrefix(usage, "usage:"))
-	if len(words) > 0 && (words[0] == "berth" || words[0] == "berthd") {
+	if len(words) > 0 && (words[0] == "berth" || words[0] == "berthd" || words[0] == "burf" || words[0] == "burfd") {
 		words = words[1:]
 	}
 	var cmd []string

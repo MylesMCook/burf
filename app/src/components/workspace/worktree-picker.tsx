@@ -183,7 +183,7 @@ export function WorktreePicker() {
     const fresh: Item[] = target
       ? [
           { value: "terminal", label: "New terminal", icon: slot(<SquareTerminalIcon />), run: done(() => void startSession("", target, "Terminal", key)) },
-          ...agentPresets(ref.box, ref.location).map((p) => ({ value: `agent:${p.id}`, label: `New ${p.name}`, icon: slot(<AgentIcon agent={p.id} />), run: done(() => void startSession(p.command, target, p.name, key)) })),
+          ...agentPresets(ref.box, ref.location).map((p) => ({ value: `agent:${p.id}`, label: `New ${p.name}`, icon: slot(<AgentIcon agent={p.id} />), run: done(() => void startSession(p.command, target, p.name, key, p.id)) })),
         ]
       : [];
     return [

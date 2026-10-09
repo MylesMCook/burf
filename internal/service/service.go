@@ -1,5 +1,6 @@
 // Package service installs a berth process as a per-user OS service: a
-// launchd agent on macOS or a systemd user unit on Linux. The service starts
+// launchd agent on macOS, a systemd user unit on Linux, or an interactive
+// login task on Windows. The service starts
 // at login, restarts after a crash, and stays stopped after a clean exit, so a
 // deliberate stop is never fought by the supervisor.
 package service
@@ -18,7 +19,8 @@ import (
 )
 
 type Spec struct {
-	// Name is the launchd label and the systemd unit name without ".service".
+	// Name is the launchd label, systemd unit name without ".service", or
+	// Windows task identity within the current user's namespace.
 	Name        string
 	Description string
 	Program     string
@@ -42,13 +44,15 @@ var (
 	goos    = runtime.GOOS
 	homeDir = os.UserHomeDir
 	command = func(name string, args ...string) ([]byte, error) {
-		return exec.Command(name, args...).CombinedOutput()
+		cmd := exec.Command(name, args...)
+		configureCommand(cmd)
+		return cmd.CombinedOutput()
 	}
 	lookPath   = exec.LookPath
 	runUserDir = "/run/user"
 )
 
-// UnitPath is where Install writes the service's unit or plist.
+// UnitPath is the service's unit/plist path, or its Windows task path.
 func UnitPath(s Spec) (string, error) { return unitPath(s) }
 
 // Preflight checks that this user can run a service here at all, before
@@ -57,6 +61,8 @@ func UnitPath(s Spec) (string, error) { return unitPath(s) }
 // account, or a container without systemd.
 func Preflight() error {
 	switch goos {
+	case "windows":
+		return windowsPreflight()
 	case "linux":
 		if _, err := lookPath("systemctl"); err != nil {
 			return errors.New("this machine has no systemd (systemctl is missing), so berthd cannot install itself as a user service; " +
@@ -76,7 +82,7 @@ func Preflight() error {
 		}
 		return nil
 	}
-	return fmt.Errorf("services are supported on macOS and Linux, not %s", goos)
+	return fmt.Errorf("services are supported on macOS, Linux and Windows, not %s", goos)
 }
 
 // findRuntimeDir points systemctl at the user's manager when the login did
@@ -109,6 +115,9 @@ func userName() string {
 }
 
 func unitPath(s Spec) (string, error) {
+	if goos == "windows" {
+		return windowsTaskName(s.Name)
+	}
 	home, err := homeDir()
 	if err != nil {
 		return "", err
@@ -128,6 +137,9 @@ func unitPath(s Spec) (string, error) {
 
 // Render produces the unit file for the current platform.
 func Render(s Spec) ([]byte, error) {
+	if goos == "windows" {
+		return renderWindowsTask(s)
+	}
 	keys := make([]string, 0, len(s.Env))
 	for k := range s.Env {
 		keys = append(keys, k)
@@ -210,6 +222,9 @@ func systemdQuote(s string) string {
 // Installed reports whether the unit on disk is exactly the one Render would
 // write, so a unit left behind for another binary or home does not count.
 func Installed(s Spec) bool {
+	if goos == "windows" {
+		return windowsInstalled(s)
+	}
 	path, err := unitPath(s)
 	if err != nil {
 		return false
@@ -233,6 +248,10 @@ func Installed(s Spec) bool {
 // written from lives on the box - where an exact compare would render an empty
 // Spec and report every installed unit as missing.
 func InstalledByName(name string) bool {
+	if goos == "windows" {
+		_, ok, err := windowsRead(name)
+		return ok && err == nil
+	}
 	path, err := unitPath(Spec{Name: name})
 	if err != nil {
 		return false
@@ -243,6 +262,9 @@ func InstalledByName(name string) bool {
 
 // Install writes the unit and (re)loads it, which starts the service.
 func Install(s Spec) (string, error) {
+	if goos == "windows" {
+		return windowsInstall(s)
+	}
 	if !filepath.IsAbs(s.Program) {
 		return "", fmt.Errorf("service program must be an absolute path, got %s", s.Program)
 	}
@@ -280,6 +302,9 @@ func Install(s Spec) (string, error) {
 }
 
 func Uninstall(s Spec) (string, error) {
+	if goos == "windows" {
+		return windowsUninstall(s)
+	}
 	path, err := unitPath(s)
 	if err != nil {
 		return "", err
@@ -297,6 +322,10 @@ func Uninstall(s Spec) (string, error) {
 // and telling those apart is the difference between "it is configured" and
 // "it is working".
 func Running(s Spec) bool {
+	if goos == "windows" {
+		task, _, err := readWindowsTask(s.Name)
+		return err == nil && task.Found && task.State == 4
+	}
 	if goos == "darwin" {
 		out, err := command("launchctl", "print", launchdTarget(s))
 		return err == nil && strings.Contains(string(out), "state = running")
@@ -306,6 +335,9 @@ func Running(s Spec) bool {
 }
 
 func Start(s Spec) error {
+	if goos == "windows" {
+		return windowsStart(s)
+	}
 	var out []byte
 	var err error
 	if goos == "darwin" {

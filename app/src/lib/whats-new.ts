@@ -1,14 +1,14 @@
 import { useEffect } from "react";
 import { create } from "zustand";
 
-import { isMock } from "@/hooks/use-berth-connection";
+import { isMock } from "@/hooks/use-burf-connection";
 import { overlayOpen } from "@/lib/overlays";
 import { firstRun, setPrefs, usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
 import { decide, latestRelease, type Release } from "@/lib/whats-new-model";
 import { RELEASES } from "@/lib/whats-new-releases";
 
-// The What's new card (components/whats-new): once after Berth updates,
+// The What's new card (components/whats-new): once after Burf updates,
 // with the release's highlights, and again from Settings › About or ⌘K.
 // A new install doesn't get it: it has nothing to catch up on. Prefs keep
 // the newest version seen (whatsNewSeen); lib/whats-new-model.ts decides.

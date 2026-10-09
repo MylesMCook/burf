@@ -82,6 +82,9 @@ function notifyFor(e: BerthEvent) {
     if (!looped && d.source !== "interrupt") {
       route({
         category: waiting ? "waiting" : "finished",
+        // Global hooks also report agents running outside Berth. Their own
+        // client handles attention; only named Berth sessions interrupt here.
+        silent: !where.session,
         title: waiting ? `${where.agent} needs you` : `${where.agent} is done`,
         tone: waiting ? "warning" : "success",
         box,
@@ -204,7 +207,7 @@ function notifyFor(e: BerthEvent) {
     const [loc, wt] = (str(d.location) ?? "").split("/");
     route({
       category: "notify",
-      title: str(d.title) ?? "Berth",
+      title: str(d.title) ?? "Burf",
       detail: str(d.body),
       box,
       path,
@@ -218,17 +221,14 @@ function notifyFor(e: BerthEvent) {
 
 // describeAgent names an agent event's agent and place the same way every
 // time: "Claude Code 2" in "shop / qa-deck · devl". The event names its
-// session when berth started the agent; otherwise the agent in that
-// worktree is it, when there is only one. With several and no name, the
-// agent's plain name is all that can be said.
+// session when berth started the agent. Sharing a folder does not make an
+// external agent the same session.
 function describeAgent(e: BerthEvent): { agent: string; place: string; session?: string; path?: string; project?: string; worktree?: string } {
   const path = e.data?.path as string | undefined;
   const named = e.data?.session as string | undefined;
   const data = e.box ? useStore.getState().boxes[e.box] : undefined;
   const kind = (e.data?.agent as string | undefined) ?? e.origin;
-  const here = (data?.sessions ?? []).filter((s) => s.dir === path && !s.exited);
-  const agents = here.filter((s) => agentOf(s) && (!kind || agentOf(s) === kind || (kind === "cursor" && agentOf(s) === "cursor-agent")));
-  const session = (named ? data?.sessions?.find((s) => s.name === named) : undefined) ?? (agents.length === 1 ? agents[0] : here.length === 1 ? here[0] : undefined);
+  const session = named ? data?.sessions?.find((s) => s.name === named) : undefined;
   const loc = data?.locations?.find((l) => l.worktrees?.some((w) => w.path === path));
   const wt = loc?.worktrees?.find((w) => w.path === path);
   const raw = (session && agentOf(session)) ?? kind ?? "an agent";
@@ -237,5 +237,5 @@ function describeAgent(e: BerthEvent): { agent: string; place: string; session?:
   // finished"), its agent then first in the place below it.
   const place = [session && sessionAgent(session), where, e.box].filter(Boolean).join(" · ");
   const agent = session ? sessionName(session, { sessions: data?.sessions }) : agentLabel(raw);
-  return { agent, place, session: session?.name, path, project: loc?.name ?? path?.split("/").pop(), worktree: wt && !wt.main ? wt.name : undefined };
+  return { agent, place, session: named, path, project: loc?.name ?? path?.split("/").pop(), worktree: wt && !wt.main ? wt.name : undefined };
 }

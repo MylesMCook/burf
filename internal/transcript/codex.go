@@ -20,6 +20,7 @@ type codexLine struct {
 type codexItem struct {
 	Type      string `json:"type"`
 	Role      string `json:"role"`
+	Channel   string `json:"channel"`
 	Name      string `json:"name"`
 	Arguments string `json:"arguments"`
 	Input     string `json:"input"`
@@ -52,6 +53,11 @@ func (codexParser) line(c *conv, b []byte) {
 	}
 	switch it.Type {
 	case "message":
+		// Desktop rollouts also contain internal reasoning and compaction
+		// messages. Only user-facing assistant channels belong in the chat.
+		if it.Role == "assistant" && it.Channel != "" && it.Channel != "final" && it.Channel != "commentary" {
+			return
+		}
 		var parts []string
 		for _, p := range it.Content {
 			if p.Text != "" {
@@ -63,7 +69,9 @@ func (codexParser) line(c *conv, b []byte) {
 		case "user":
 			// Codex writes its environment and instructions as user
 			// messages wrapped in tags.
-			userText(c, text)
+			if !strings.HasPrefix(text, "# AGENTS.md instructions") {
+				userText(c, text)
+			}
 		case "assistant":
 			if text != "" {
 				c.add(Item{Kind: "text", ID: c.id(), Text: clip(text, maxText)})

@@ -11,9 +11,9 @@ across your boxes is a **project**. Agents work in its **worktrees**.
 A **location** is a named directory on one box, usually a git repository:
 
 ```sh
-berth location add devl/shop ~/work/shop
+burf location add devl/shop ~/work/shop
 berth locations devl
-berth location rm devl/shop      # forgets it; files are untouched
+burf location rm devl/shop      # forgets it; files are untouched
 ```
 
 The box API, the CLI and hooks address things on a box by location:
@@ -37,7 +37,7 @@ locations. A flow can still run for
 
 Agents work in **worktrees**: separate checkouts of the same repository, each
 on its own branch, so several agents can work at once without stepping on
-each other. Berth makes them with git, next to the repository:
+each other. Burf makes them with git, next to the repository:
 
 ```text
 ~/work/shop             the repository (location "shop")
@@ -92,7 +92,7 @@ the background, up to 30 minutes, logged on the box); once it succeeds, its
 `autostart` services start. Before one is removed, its services stop and the **archive**
 script runs; if that fails, the worktree stays. Both come from
 [`.berth/config.json`](/guides/project-config), a [kit](/guides/kits), or the
-box's own config for the location (`berth location scripts`). A
+box's own config for the location (`burf location scripts`). A
 repository's own file runs only once it is
 [trusted on that box](/guides/project-config#trusting-a-repositorys-config),
 and again after it changes.
@@ -128,7 +128,7 @@ box connection, with nothing exposed on the box:
 | `http://checkout.shop.localhost:1377/` | The `checkout` worktree's dev server, when only one box has it |
 | `http://localhost:1377/` | An index of what is reachable |
 
-`berth setup port80` on a Mac drops the `:1377`. Dev servers need no
+`burf setup port80` on a Mac drops the `:1377`. Dev servers need no
 configuration: the proxy presents requests to them as `localhost:<port>` and
 rewrites their redirects back.
 
@@ -136,23 +136,23 @@ For a program that needs a fixed local port (a database client, say), forward
 one:
 
 ```sh
-berth forward devl 5432          # localhost:5432 → devl:5432
-berth forward devl 8080:3000     # localhost:8080 → devl:3000
-berth forwards
-berth unforward ID
+burf forward devl 5432          # localhost:5432 → devl:5432
+burf forward devl 8080:3000     # localhost:8080 → devl:3000
+burf forwards
+burf unforward ID
 ```
 
 And for a router on the box that dispatches by host name:
 
 ```sh
-berth route add '*.app.localhost' devl 8080    # Host header passed unchanged
+burf route add '*.app.localhost' devl 8080    # Host header passed unchanged
 ```
 
 ## Editors
 
 ```sh
-berth ssh-config --write                     # an SSH host per box, berth-<box>, for editors
-berth edit devl/shop/checkout src/app.ts:42  # open a file at a line (--in cursor|vscode|windsurf|zed)
+burf ssh-config --write                     # an SSH host per box, berth-<box>, for editors
+burf edit devl/shop/checkout src/app.ts:42  # open a file at a line (--in cursor|vscode|windsurf|zed)
 ```
 
 Next: [sessions and agents](/concepts/sessions-and-agents), what runs in a

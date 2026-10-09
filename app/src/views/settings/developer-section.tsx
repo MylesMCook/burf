@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toastManager } from "@/components/ui/toast";
-import { isMock } from "@/hooks/use-berth-connection";
+import { isMock } from "@/hooks/use-burf-connection";
 import { endpoint, isTauri } from "@/lib/api";
 import { useEventLog } from "@/lib/events";
 import { errorMessage } from "@/lib/format";
@@ -85,7 +85,7 @@ export function DeveloperSection() {
   return (
     <SettingsPage
       title="Developer"
-      description="Tools for working on Berth itself. Resets only clear this window's own memory of tabs and preferences; your agent, ~/.berth and every box stay exactly as they are. Shift-click Settings in the sidebar to come straight here."
+      description="Tools for working on Burf itself. Resets only clear this window's own memory of tabs and preferences; your agent, ~/.berth and every box stay exactly as they are. Shift-click Settings in the sidebar to come straight here."
     >
       <SettingsGroup title="Reset">
         <SettingsRow label="Reset workspaces" description="Forget open tabs, splits and each worktree's layout. Sessions keep running on their boxes.">
@@ -146,7 +146,7 @@ export function DeveloperSection() {
           </Button>
         </SettingsRow>
         {isTauri() && (
-          <SettingsRow label="Developer tools" description="The Web Inspector for Berth's own window. A Browser tab's page has its own: Inspect in its toolbar.">
+          <SettingsRow label="Developer tools" description="The Web Inspector for Burf's own window. A Browser tab's page has its own: Inspect in its toolbar.">
             <Button
               size="xs"
               variant="outline"
@@ -177,7 +177,7 @@ export function DeveloperSection() {
           <Value>{mock ? "mock" : (ep?.url ?? "127.0.0.1:1378")}</Value>
         </SettingsRow>
         {ep && (
-          <SettingsRow label="Token" description="Anyone with it can drive your boxes from this computer. berth ui-token prints it too.">
+          <SettingsRow label="Token" description="Anyone with it can drive your boxes from this computer. burf ui-token prints it too.">
             <button type="button" onClick={() => setReveal((r) => !r)} className="flex items-center gap-1.5 font-mono text-muted-foreground text-xs hover:text-foreground">
               {reveal ? ep.token : `${ep.token.slice(0, 4)}${"•".repeat(12)}`}
               {reveal ? <EyeOffIcon className="size-3.5" /> : <EyeIcon className="size-3.5" />}

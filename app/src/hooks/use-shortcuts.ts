@@ -8,6 +8,7 @@ import { submitConfirm } from "@/components/sidebar/confirm";
 import { toastManager } from "@/components/ui/toast";
 import { closePane, openBrowserAt, startSession } from "@/lib/actions";
 import { isTauri } from "@/lib/api";
+import { primaryModifier } from "@/lib/platform";
 import { toggleNotifications } from "@/lib/notifications";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
@@ -285,8 +286,7 @@ export function useShortcuts() {
         return;
       }
       // In the live demo on Windows and Linux, Ctrl stands in for ⌘.
-      const meta = e.metaKey || (__BERTH_DEMO__ && e.ctrlKey && !/Mac|iPhone|iPad/.test(navigator.platform));
-      if (!meta || (e.metaKey && e.ctrlKey)) return;
+      if (!primaryModifier(e)) return;
       const hit = fromKey(e);
       if (!hit || !runShortcut(hit[0], "key", hit[1])) return;
       e.preventDefault();

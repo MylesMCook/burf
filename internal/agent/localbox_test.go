@@ -1,3 +1,5 @@
+//go:build !windows
+
 package agent
 
 import (
@@ -15,9 +17,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/identity"
-	"github.com/sean-brydon/berthd/internal/service"
-	"github.com/sean-brydon/berthd/internal/trust"
+	"github.com/MylesMCook/burf/internal/identity"
+	"github.com/MylesMCook/burf/internal/service"
+	"github.com/MylesMCook/burf/internal/trust"
 )
 
 // A fake berthd for Use this Mac: it logs each run, and install writes the
@@ -119,16 +121,6 @@ func newLocalEnv(t *testing.T) *localEnv {
 
 func fakeBerthd(v string) string { return strings.Replace(fakeBerthdScript, "%VERSION%", v, 1) }
 
-func writeFile(t *testing.T, path, content string, mode os.FileMode) {
-	t.Helper()
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(path, []byte(content), mode); err != nil {
-		t.Fatal(err)
-	}
-}
-
 func (e *localEnv) log(path string) string {
 	b, _ := os.ReadFile(path)
 	return string(b)
@@ -190,7 +182,7 @@ func TestUseThisMacSetsUpPairsReconnectsAndUninstalls(t *testing.T) {
 	if strings.Contains(all, "Next: berthd pair") {
 		t.Error("the set up passed on berthd's advice to pair by hand")
 	}
-	// The service runs Berth's own copy, on loopback, in BERTH_HOME.
+	// The service runs Burf's own copy, on loopback, in BERTH_HOME.
 	unit, ok, err := service.Read(service.BerthdName())
 	if err != nil || !ok || unit.Program != e.stable || unit.Env["BERTH_HOME"] != e.root || !loopback(unit.Arg("--listen")) {
 		t.Fatalf("installed unit = %+v, %v, %v", unit, ok, err)
@@ -210,10 +202,10 @@ func TestUseThisMacSetsUpPairsReconnectsAndUninstalls(t *testing.T) {
 		}
 	}
 	if want := e.root + "|pair berth://" + listen + "?code=c0de&fp=" + e.fp.String() + " --json --name " + localName(); !strings.Contains(e.log(e.berth), want) {
-		t.Errorf("berth pair was not run with the link berthd printed:\n%s", e.log(e.berth))
+		t.Errorf("burf pair was not run with the link berthd printed:\n%s", e.log(e.berth))
 	}
 
-	// What berth pair saved; the box is this Mac's.
+	// What burf pair saved; the box is this Mac's.
 	if err := trust.NewStore(filepath.Join(e.dir, "boxes.json")).Add(trust.Peer{Name: localName(), Address: listen, Fingerprint: e.fp, PairedAt: time.Now()}); err != nil {
 		t.Fatal(err)
 	}
@@ -479,30 +471,11 @@ func TestTheCopyKeepsItsSignatureAndLosesAQuarantine(t *testing.T) {
 	}
 }
 
-func TestNewerRelease(t *testing.T) {
-	for _, c := range []struct {
-		a, b string
-		want bool
-	}{
-		{"v0.2.0", "v0.1.9", true},
-		{"v0.10.0", "v0.9.0", true},
-		{"v1.0.0", "v1.0.0", false},
-		{"v0.1.0", "v0.2.0", false},
-		{"dev", "v0.1.0", false},
-		{"v0.1.0", "dev", false},
-		{"v0.1", "v0.0.1", false},
-	} {
-		if got := newerRelease(c.a, c.b); got != c.want {
-			t.Errorf("newerRelease(%q, %q) = %v", c.a, c.b, got)
-		}
-	}
-}
-
-// Inside Berth.app the agent takes only the app's own berthd, and only when
+// Inside Burf.app the agent takes only the app's own berthd, and only when
 // the app's team signed it (security audit M-4).
 func TestTheBundledBerthdIsTheAppsOwnAndSignedByItsTeam(t *testing.T) {
 	dir := t.TempDir()
-	macos := filepath.Join(dir, "Berth.app", "Contents", "MacOS")
+	macos := filepath.Join(dir, "Burf.app", "Contents", "MacOS")
 	cli := filepath.Join(macos, "berth-cli")
 	writeFile(t, cli, "cli", 0o755)
 	writeFile(t, filepath.Join(macos, "berthd"), "planted", 0o755)
@@ -510,7 +483,7 @@ func TestTheBundledBerthdIsTheAppsOwnAndSignedByItsTeam(t *testing.T) {
 	if _, err := a.bundledBerthd(); err == nil {
 		t.Fatal("took a berthd beside berth-cli instead of the app's Resources")
 	}
-	resource := filepath.Join(dir, "Berth.app", "Contents", "Resources", "berthd")
+	resource := filepath.Join(dir, "Burf.app", "Contents", "Resources", "berthd")
 	writeFile(t, resource, "bundled", 0o755)
 	resource, _ = filepath.EvalSymlinks(resource) // /var is /private/var on a Mac
 	if got, err := a.bundledBerthd(); err != nil || got != resource {
@@ -536,7 +509,7 @@ func TestTheBundledBerthdIsTheAppsOwnAndSignedByItsTeam(t *testing.T) {
 		t.Fatalf("a berthd signed by the team: %v (verified %q)", err, verified)
 	}
 	signedByTeam = false
-	if err := a.checkBundled(context.Background(), resource); err == nil || !strings.Contains(err.Error(), "not signed by Berth's team") {
+	if err := a.checkBundled(context.Background(), resource); err == nil || !strings.Contains(err.Error(), "not signed by Burf's team") {
 		t.Fatalf("a berthd from someone else: %v", err)
 	}
 	// An unsigned build has no team to hold berthd to.

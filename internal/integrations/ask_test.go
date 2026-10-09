@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/integrations/adapters"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/integrations/adapters"
 )
 
 // A PermissionRequest names the tool and sums up its input (Claude Code's

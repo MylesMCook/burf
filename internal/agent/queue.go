@@ -18,9 +18,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sean-brydon/berthd/internal/box"
-	"github.com/sean-brydon/berthd/internal/statefile"
-	"github.com/sean-brydon/berthd/internal/wire"
+	box "github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/statefile"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 // The offline prompt queue. Boxes drop off — the laptop sleeps, Wi-Fi goes,
@@ -223,7 +223,7 @@ func (q *promptQueue) load() {
 		switch it.State {
 		case QueueSending:
 			it.State = QueueFailed
-			it.Error = "Berth stopped while sending this, so it may have arrived. Check the session, then retry or discard it."
+			it.Error = "Burf stopped while sending this, so it may have arrived. Check the session, then retry or discard it."
 			interrupted = append(interrupted, *it)
 		case QueueWaiting, "":
 			it.State = QueueQueued

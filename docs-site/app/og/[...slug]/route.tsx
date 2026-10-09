@@ -31,6 +31,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
 
   const dir = join(process.cwd(), 'assets/og');
   const [regular, semibold] = await Promise.all([readFile(join(dir, 'inter-400.ttf')), readFile(join(dir, 'inter-600.ttf'))]);
+  const icon = await readFile(join(process.cwd(), 'public/branding/burf-app-icon-512.png'));
   const section = sections[page.slugs[0] ?? ''] ?? 'Documentation';
   const description = page.data.description ?? '';
 
@@ -38,13 +39,9 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
     (
       <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: bg, padding: '64px 72px', fontFamily: 'Inter' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 18 }}>
-          <svg width="52" height="52" viewBox="100 100 824 824">
-            <rect x="100" y="100" width="824" height="824" rx="185" fill="#121417" />
-            <path d="M332 268 H556 a118 118 0 0 1 0 236 H332 Z M332 504 H584 a128 128 0 0 1 0 256 H332 Z" fill="none" stroke="#ecebe7" strokeWidth="84" strokeLinejoin="round" />
-            <circle cx="548" cy="386" r="34" fill={amber} />
-          </svg>
+          <img width={52} height={52} src={`data:image/png;base64,${icon.toString('base64')}`} alt="" />
           <div style={{ display: 'flex', fontSize: 30, fontWeight: 600, color: fg }}>
-            berth<span style={{ color: muted, fontWeight: 400, marginLeft: 10 }}>docs</span>
+            Burf<span style={{ color: muted, fontWeight: 400, marginLeft: 10 }}>docs</span>
           </div>
         </div>
 

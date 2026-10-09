@@ -17,9 +17,10 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/sean-brydon/berthd/internal/events"
-	"github.com/sean-brydon/berthd/internal/statefile"
-	"github.com/sean-brydon/berthd/internal/wire"
+	"github.com/MylesMCook/burf/internal/boxclient"
+	"github.com/MylesMCook/burf/internal/events"
+	"github.com/MylesMCook/burf/internal/statefile"
+	"github.com/MylesMCook/burf/internal/wire"
 )
 
 // Secrets: an environment value can name a secret instead of holding it, so
@@ -509,19 +510,9 @@ func (b *Box) announceSecrets(location string, wt Worktree, refs map[string]stri
 // SecretReport is what `berthd secret exec` tells the box after resolving a
 // session's or service's references in its own process: which resolved, and
 // which failed and why. Never a value.
-type SecretReport struct {
-	Location string         `json:"location"`
-	Name     string         `json:"name"`
-	Path     string         `json:"path"`
-	Results  []SecretResult `json:"results"`
-}
+type SecretReport = boxclient.SecretReport
 
-type SecretResult struct {
-	Variable string `json:"variable"`
-	Ref      string `json:"ref"`
-	// Reason is why it could not be resolved; empty when it was.
-	Reason string `json:"reason,omitempty"`
-}
+type SecretResult = boxclient.SecretResult
 
 // reportSecrets takes a wrapper's report, from the box's own socket only.
 func (b *Box) reportSecrets(w http.ResponseWriter, r *http.Request) error {
@@ -549,11 +540,7 @@ func (b *Box) reportSecrets(w http.ResponseWriter, r *http.Request) error {
 
 // SecretTest is what testing a reference reports: whether it resolved, and
 // the value's length, never the value.
-type SecretTest struct {
-	OK     bool   `json:"ok"`
-	Length *int   `json:"length,omitempty"`
-	Error  string `json:"error,omitempty"`
-}
+type SecretTest = boxclient.SecretTest
 
 func (b *Box) testSecret(w http.ResponseWriter, r *http.Request) error {
 	var req struct {

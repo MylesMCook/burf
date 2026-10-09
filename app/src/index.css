@@ -263,7 +263,7 @@
     @apply font-sans antialiased;
     }
 }
-/* Berth: a desktop app, dense like Orca. */
+/* Burf: a desktop app, dense like Orca. */
 @layer base {
   html, body, #root {
     height: 100%;

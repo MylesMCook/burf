@@ -9,7 +9,7 @@ import { Dialog, DialogClose, DialogDescription, DialogFooter, DialogHeader, Dia
 import { Radio, RadioGroup } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { toastManager } from "@/components/ui/toast";
-import { isMock } from "@/hooks/use-berth-connection";
+import { isMock } from "@/hooks/use-burf-connection";
 import { withAttachments } from "@/lib/attachments";
 import { historyApi, meta, putDraft, setCut } from "@/lib/history";
 import { useStore } from "@/lib/store";

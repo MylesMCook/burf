@@ -100,3 +100,14 @@ test("a trust question is answered with keys, never a word", () => {
   assert.equal(keysOnly(numbered), false);
   assert.equal(keysOnly("Overwrite the lockfile? (y/n)"), false);
 });
+
+test("Codex folder access is an interactive menu, not its message prompt", () => {
+  const trust = ["Folder access", "/w/shop-fix", "Trust this folder? Codex can read, edit, and run files here.", "", "› 1. Trust and continue", "  2. Back to Agent Command Center", "", "  enter continue · esc back", ""].join("\n");
+  assert.equal(screenAt("codex", trust), "interactive");
+  assert.equal(screenAt("codex", trust.replace("  enter continue · esc back", "")), "interactive");
+  assert.equal(screenAt("codex", "Pick a model\n› gpt-example\n  enter continue · esc back"), "interactive");
+  assert.equal(screenAt("codex", "› explain enter continue in this sentence"), "prompt");
+  assert.equal(screenAt("codex", "› \n  ? for shortcuts"), "prompt");
+  assert.equal(screenAt("codex", "1. First result\n2. Second result\n› \n  ? for shortcuts"), "prompt");
+  assert.equal(screenAt("codex", "› 1. First result\n  2. Second result\n› \n  ? for shortcuts"), "prompt");
+});
