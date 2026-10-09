@@ -12,12 +12,14 @@
 #   BURF_SHIP_HOSTS="work-hp mc-pc" scripts/ship-ui.sh
 #
 # A host is an ssh name. On it the burf command is looked for on PATH, then
-# where the Windows preview keeps it. `burf ui rollback` on a machine puts
-# the previous interface back.
+# where the Windows preview keeps it. A host that refuses the interface is
+# named and the script fails. `burf ui rollback` on a machine puts the
+# previous interface back.
 set -eu
 cd "$(dirname "$0")/.."
 T0="$(date +%s)"
 hosts="${*:-${BURF_SHIP_HOSTS:-}}"
+failed=0
 
 (cd app && pnpm exec vite build --logLevel error)
 node scripts/ui-manifest.mjs app/dist
@@ -30,25 +32,44 @@ burf="$(command -v burf || true)"
 "$burf" ui status
 
 if [ -n "$hosts" ]; then
-	zip="$(mktemp -d)/burf-ui.zip"
+	work="$(mktemp -d)"
+	zip="$work/burf-ui.zip"
 	(cd app/dist && zip -qr "$zip" .)
-	for host in $hosts; do
-		(
-			scp -q -o ConnectTimeout=10 "$zip" "$host:burf-ui.zip"
-			# One line for a POSIX shell or for Windows' cmd: both run powershell
-			# or sh as they have it; the CLI is on PATH or in the preview's folder.
-			ssh -o ConnectTimeout=10 "$host" 'powershell -NoProfile -Command -' <<'EOF' 2>/dev/null || ssh -o ConnectTimeout=10 "$host" 'burf ui install burf-ui.zip && burf ui status && rm -f burf-ui.zip'
+	# What a Windows host runs. The CLI is on PATH or in the preview's folder.
+	cat > "$work/install.ps1" <<'PS'
 $cli = (Get-Command burf -ErrorAction SilentlyContinue).Source
 if (!$cli) { $cli = Join-Path $env:LOCALAPPDATA 'BerthLocalPreview\cli\burf.exe' }
 $zip = Join-Path $HOME 'burf-ui.zip'
 & $cli ui install $zip
-if ($LASTEXITCODE) { exit $LASTEXITCODE }
 & $cli ui status
 Remove-Item $zip -Force
-EOF
-			echo "$host: installed"
+PS
+	# A host has it only when its own status names this version, whole and
+	# compatible: neither shell's exit status is proof of that.
+	has_it() { grep -q "Version: $version" "$1" && grep -q "Whole: true; compatible: true" "$1"; }
+	for host in $hosts; do
+		(
+			# A Windows host runs the PowerShell lines; any other runs burf itself.
+			log="$work/$host.log"
+			scp -q -o ConnectTimeout=10 "$zip" "$host:burf-ui.zip" > "$log" 2>&1 || true
+			ssh -o ConnectTimeout=10 "$host" 'powershell -NoProfile -Command -' < "$work/install.ps1" >> "$log" 2>&1 || true
+			has_it "$log" ||
+				ssh -o ConnectTimeout=10 "$host" 'burf ui install burf-ui.zip; burf ui status; rm -f burf-ui.zip' >> "$log" 2>&1 || true
+			if has_it "$log"; then
+				echo "$host: installed"
+			else
+				echo "$host: FAILED"
+				tr -d '\r' < "$log" | grep -v '^ *$' | tail -5 | sed 's/^/  /'
+				touch "$work/failed"
+			fi
 		) &
 	done
 	wait
+	[ ! -e "$work/failed" ] || failed=1
+fi
+
+if [ "$failed" = 1 ]; then
+	echo "NOT shipped everywhere ($version, $(($(date +%s) - T0)) s): see the hosts marked FAILED above."
+	exit 1
 fi
 echo "shipped $version in $(($(date +%s) - T0)) s. Reload each window (Settings, About, Reload interface) or open it again."
