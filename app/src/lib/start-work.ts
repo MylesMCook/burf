@@ -40,6 +40,9 @@ export interface StartDraft {
   // The new worktree: its name, branch and base, the pull request or ref it
   // checks out, and a template's command instead of the agent's.
   worktree?: { name?: string; branch?: string; base?: string; pr?: number; ref?: string; command?: string };
+  // Keep a worktree that was created before its chat could start, for a manual retry.
+  createdWorktree?: Worktree;
+  onWorktreeCreated?: (worktree: Worktree) => void;
   attempts?: AttemptOptions;
   from?: { kind: "handoff" | "review"; box: string; session: string };
   // What a structured chat may do without asking, on boxes that take chat options.
@@ -113,10 +116,26 @@ export async function startWork(d: StartDraft): Promise<boolean> {
     // Strict is every chat's starting mode, so only another choice needs sending.
     const options: ChatOptions = { ...(pick.model ? { model: pick.model } : {}), ...(pick.effort ? { effort: pick.effort } : {}), ...(d.permission && d.permission !== "strict" ? { permission: d.permission } : {}) };
     if (chosen && !hasChatOptions(d.box)) return fail("Choose Codex defaults", new Error(`${d.box} runs an older Burf that starts Codex chats with its configured model and effort. Clear these choices or update the box.`), d.box);
-    if (d.where === "new") return fail("Open a worktree first", new Error("Create the worktree without an agent, then start Codex chat inside it."), d.box);
-    const location = d.where === "here" ? (d.at ?? d.location) : d.location;
+    let location = d.where === "here" ? (d.at ?? d.location) : d.location;
     const loc = useStore.getState().boxes[d.box]?.locations?.find((l) => l.name === d.location);
-    const wt = loc?.worktrees?.find((w) => (w.main ? loc.name : `${loc.name}/${w.name}`) === location);
+    let wt = loc?.worktrees?.find((w) => (w.main ? loc.name : `${loc.name}/${w.name}`) === location);
+    if (d.where === "new") {
+      wt = d.createdWorktree;
+      if (!wt) {
+        try {
+          wt = await client.box<Worktree>(d.box, "POST", `locations/${encodeURIComponent(d.location)}/worktrees`, {
+            name: d.worktree?.name || freeName(d.box, d.location, d.text ? slug(d.text) : randomName()),
+            branch: d.worktree?.branch || undefined,
+            base: d.worktree?.base || undefined,
+            pr: d.worktree?.pr,
+            ref: d.worktree?.ref,
+          });
+        } catch (error) { return fail("Couldn't create the worktree", error, d.box); }
+        d.onWorktreeCreated?.(wt);
+      }
+      location = `${d.location}/${wt.name}`;
+      await useStore.getState().refreshBox(d.box, ["locations"]);
+    }
     if (!wt) return fail("Couldn't start Codex", new Error("Refresh the project before starting a chat."), d.box);
     try {
       const chat = await remoteChatApi.start(client, d.box, location);
@@ -124,11 +143,13 @@ export async function startWork(d: StartDraft): Promise<boolean> {
       try {
         if (d.text.trim()) await remoteChatApi.message(client, d.box, chat.id, d.text, options);
       } catch (error) {
+        if (d.where === "new") selectWorktree(ref);
         openRemoteChat(d.box, chat, ref, d.text, chosen ? { model: options.model, effort: options.effort } : undefined);
         return fail("Could not confirm the message", error, d.box);
       }
       // Without a first message nothing has confirmed the choices yet: the chat's first send carries them.
       // The permission is not held with the pane; an empty chat offers the one last chosen.
+      if (d.where === "new") selectWorktree(ref);
       openRemoteChat(d.box, chat, ref, undefined, chosen && !d.text.trim() ? { model: options.model, effort: options.effort } : undefined);
       return true;
     } catch (error) { return fail("Couldn't start Codex", error, d.box); }

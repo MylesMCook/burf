@@ -20,6 +20,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { toastManager } from "@/components/ui/toast";
 import { type SessionEntry, useAllSessions } from "@/hooks/use-agent-counts";
 import { agentPresets } from "@/lib/actions";
+import type { Worktree } from "@/lib/api";
 import { type AttachTarget, withAttachments } from "@/lib/attachments";
 import { type AgentPick, type ComposerDraft, openComposer } from "@/lib/composer";
 import { agentLabel, agentOf, sessionName, sessionState } from "@/lib/derive";
@@ -170,6 +171,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
   // worktree for a hand-off; the worktree itself when it is fixed.
   const [where, setWhere] = useState<"new" | "main" | "here">(pinned ? "here" : (draft.where ?? "new"));
   const fresh = where === "new";
+  const [createdWorktree, setCreatedWorktree] = useState<{ box: string; location: string; worktree: Worktree }>();
 
   // The agents: as the draft says; for Try N ways the first two; for a
   // review another agent than the author; otherwise the one used last here
@@ -373,6 +375,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
   // box itself, before anything is created: its card says how to install it.
   const reqAgent = picks.length === 1 && !template?.command ? picks[0].agent : undefined;
   const structuredCodex = reqAgent === "codex" && !from && hasRemoteCodex(box, presets.find((p) => p.id === "codex")?.command ?? "");
+  const retryWorktree = structuredCodex && fresh && createdWorktree?.box === box && createdWorktree.location === locName ? createdWorktree.worktree : undefined;
   // A structured chat on a box that takes options: the account's own models, and a permission mode.
   const chatControls = structuredCodex && hasChatOptions(box);
   const codexModels = useChatModels(box, locName, chatControls);
@@ -462,6 +465,8 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
       at: pinned?.at,
       picks,
       permission: chatControls ? permission : undefined,
+      createdWorktree: retryWorktree,
+      onWorktreeCreated: (worktree) => setCreatedWorktree({ box, location: locName, worktree }),
       worktree: fresh
         ? {
             name: name || undefined,
@@ -478,6 +483,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
     const ok = await startWork(d);
     setBusy(false);
     if (!ok) return;
+    setCreatedWorktree(undefined);
     if (project) {
       save(LAST_PROJECT, project.id);
       save(lastBoxKey(project.id), box);
@@ -648,6 +654,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
       notice={
         <>
           {noProjects && <NoProjects />}
+          {retryWorktree && !busy && <p className="px-3 pt-2 text-sm">The worktree is at {retryWorktree.path} on {box}. Start again to use it without creating another worktree.</p>}
           {box && !structuredCodex && <RequirementsCard box={box} agent={reqAgent} noAgent={noAgent} className="mx-1 mt-1" />}
           {pendingTrust?.wants && fresh && (
             <Alert variant="warning" className="mt-1">
