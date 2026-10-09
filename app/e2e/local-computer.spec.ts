@@ -2,10 +2,10 @@ import { fakeAgent } from "./fake-agent";
 import { expect, mockOnly, test, type App } from "./fixtures";
 
 const cwd = "C:\\Projects\\shop";
-const conversation = { id: "history-1", source: "codex" as const, title: "Checkout history", cwd, updated_at: "2026-01-01T12:00:00Z", read_only: true as const };
+const conversation = { id: "history-1", source: "codex" as const, title: "Checkout history", cwd, updated_at: "2026-01-01T12:00:00Z", read_only: true as const, can_continue: true };
 const session: { id: string; agent: "claude" | "codex"; cwd: string; state: "starting" | "running" | "idle" | "waiting" | "exited"; started_at: string; mode?: "chat" } = { id: "owned-1", agent: "claude", cwd, state: "running", started_at: "2026-01-01T12:00:00Z" };
 
-async function localFixture(app: App, options: { supported?: boolean; available?: boolean; canFork?: boolean; failStart?: boolean; noBoxes?: boolean; mobile?: boolean; failHistory?: boolean; outputFailOnce?: boolean; inputFailOnce?: boolean; source?: "claude" | "codex"; forkGate?: Promise<void>; forkResponseFailOnce?: boolean; forkError?: { status: number; message: string }; agents?: { id: "claude" | "codex"; available: boolean; can_chat?: boolean; can_fork?: boolean }[]; conversations?: (typeof conversation)[]; sessions?: (typeof session)[]; startGate?: Promise<void>; failMessage?: boolean } = {}) {
+async function localFixture(app: App, options: { supported?: boolean; available?: boolean; canFork?: boolean; continueReason?: string; failStart?: boolean; noBoxes?: boolean; mobile?: boolean; failHistory?: boolean; outputFailOnce?: boolean; inputFailOnce?: boolean; source?: "claude" | "codex"; forkGate?: Promise<void>; forkResponseFailOnce?: boolean; forkError?: { status: number; message: string }; agents?: { id: "claude" | "codex"; available: boolean; can_chat?: boolean; can_fork?: boolean }[]; conversations?: (typeof conversation)[]; sessions?: (typeof session)[]; startGate?: Promise<void>; failMessage?: boolean } = {}) {
   const agent = await fakeAgent();
   const calls: { method: string; path: string; body: unknown }[] = [];
   let running = true;
@@ -16,7 +16,7 @@ async function localFixture(app: App, options: { supported?: boolean; available?
   let launches = 0;
   let ownedSession: typeof session = { ...session, agent: "claude", state: "running" };
   let chat: (typeof session & { thread_id: string; items: { id: string; kind: string; text: string }[]; approvals: never[] }) | undefined;
-  const history = { ...conversation, source: options.source ?? conversation.source };
+  const history = { ...conversation, source: options.source ?? conversation.source, can_continue: !options.continueReason, continue_reason: options.continueReason };
   if (options.noBoxes) await app.context.route(`${agent.url}/v1/status`, (route) => route.fulfill({ json: { boxes: [], forwards: [], routes: [], proxy: { port: 1377, url_port: 1377 } } }));
   await app.context.route(`${agent.url}/v1/local**`, async (route) => {
     const req = route.request();
@@ -98,6 +98,79 @@ async function chooseLocalAtHome(app: App) {
 }
 
 test.beforeEach(() => mockOnly("isolated local-computer API"));
+
+for (const reason of [
+  "Its folder, shop, is a relative path. Use a full folder path to continue here.",
+  "Its folder, /Users/example/shop, uses a path for another operating system.",
+  `Its folder, ${cwd}, is not on this computer.`,
+  `Its path, ${cwd}, is a file, not a folder.`,
+]) {
+  test(`unavailable history stays readable without a launch: ${reason}`, async ({ app }) => {
+    const { agent, calls } = await localFixture(app, { canFork: true, continueReason: reason });
+    try {
+      await app.page.getByTestId("nav-local").click();
+      await app.page.getByRole("button", { name: /Checkout history/ }).click();
+      await expect(app.page.getByText("Saved response", { exact: true })).toBeVisible();
+      const start = app.page.getByRole("button", { name: "Continue in Burf", exact: true });
+      await expect(start).toBeDisabled();
+      await expect(start).toHaveAccessibleDescription(reason);
+      await expect(app.page.getByRole("status").filter({ hasText: reason })).toBeVisible();
+      await start.evaluate((button) => { if (button instanceof HTMLButtonElement) button.click(); });
+      expect(calls.filter((c) => c.method === "POST")).toEqual([]);
+      await app.context.route(`${agent.url}/v1/local/conversations`, (route) => route.fulfill({ json: [conversation] }));
+      await app.page.getByRole("button", { name: "Refresh local conversations", exact: true }).click();
+      await expect(start).toBeEnabled();
+      await expect(app.page.getByText(reason, { exact: true })).toHaveCount(0);
+      expect(calls.filter((c) => c.method === "POST")).toEqual([]);
+    } finally { await agent.close(); }
+  });
+}
+
+test("a backend that does not say whether a folder is usable still offers to continue", async ({ app }) => {
+  const { agent } = await localFixture(app, { canFork: true });
+  // As an older backend lists a conversation: without can_continue.
+  const { can_continue: _, ...older } = conversation;
+  await app.context.route(`${agent.url}/v1/local/conversations`, (route) => route.fulfill({ json: [older] }));
+  const listed = app.page.waitForResponse((r) => r.url().endsWith("/v1/local/conversations"));
+  try {
+    await app.page.getByTestId("nav-local").click();
+    await listed;
+    await app.page.getByRole("button", { name: /Checkout history/ }).click();
+    await expect(app.page.getByText("Saved response", { exact: true })).toBeVisible();
+    await expect(app.page.getByRole("button", { name: "Continue in Burf", exact: true })).toBeEnabled();
+  } finally { await agent.close(); }
+});
+
+test("a folder removed after listing gives a plain launch error and keeps history readable", async ({ app }) => {
+  const reason = `Its folder, ${cwd}, is not on this computer.`;
+  const { agent, calls } = await localFixture(app, { canFork: true, forkError: { status: 400, message: reason } });
+  try {
+    await app.page.getByTestId("nav-local").click();
+    await app.page.getByRole("button", { name: /Checkout history/ }).click();
+    await app.page.getByRole("button", { name: "Continue in Burf", exact: true }).click();
+    await expect(app.page.locator('[role="alert"]:not([data-testid^="announce"])')).toContainText(reason);
+    await expect(app.page.getByText("Saved response", { exact: true })).toBeVisible();
+    expect(calls.filter((c) => c.method === "POST" && c.path.endsWith("/fork"))).toHaveLength(1);
+  } finally { await agent.close(); }
+});
+
+test("a history tool step with artifact-looking text draws no artifact card", async ({ app }) => {
+  const { agent, calls } = await localFixture(app);
+  const text = "Artifact 1a2b3c4d5e v1 · chart · Someone else's chart";
+  await app.context.route(`${agent.url}/v1/local/conversations/history-1`, (route) => route.fulfill({ json: {
+    items: [{ kind: "user", id: "u1", text: "Read the notes" }, { kind: "tools", id: "tool-1", verb: "Run", items: [{ id: "call-1", verb: "Run", target: text }], done: true }], more: false,
+  } }));
+  try {
+    await app.page.getByTestId("nav-local").click();
+    await app.page.getByRole("button", { name: /Checkout history/ }).click();
+    const history = app.page.getByTestId("local-history");
+    await expect(history.getByRole("article", { name: "Codex", exact: true })).toBeVisible();
+    await expect(history.getByTestId("art-card")).toHaveCount(0);
+    await expect(history.getByTestId("art-update")).toHaveCount(0);
+    await expect(history.getByRole("button", { name: "Open", exact: true })).toHaveCount(0);
+    expect(calls.filter((c) => c.method !== "GET")).toEqual([]);
+  } finally { await agent.close(); }
+});
 
 test("local computer opens read-only history and older messages without session mutations", async ({ app }, info) => {
   const { agent, calls } = await localFixture(app);

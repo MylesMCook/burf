@@ -144,14 +144,10 @@ func (m *Manager) startLocked(agent, cwd, sourceID string) (Session, error) {
 			return Session{}, errors.New("agent does not support conversation continuation")
 		}
 	}
-	if !filepath.IsAbs(cwd) {
-		return Session{}, errors.New("project directory must be an absolute path")
+	if err := ValidateProjectDirectory(cwd); err != nil {
+		return Session{}, err
 	}
 	cwd = filepath.Clean(cwd)
-	st, err := os.Stat(cwd)
-	if err != nil || !st.IsDir() {
-		return Session{}, errors.New("project directory does not exist")
-	}
 	active := 0
 	for _, r := range m.sessions {
 		r.mu.Lock()

@@ -30,6 +30,10 @@ export interface LocalConversation {
   cwd: string;
   updated_at: string;
   read_only: true;
+  // Whether its folder can be used here, and when not, why. An older
+  // backend says neither: then it is tried, and the launch says if not.
+  can_continue?: boolean;
+  continue_reason?: string;
 }
 export interface LocalHistoryPage {
   items: (TranscriptItem & { off?: number })[];

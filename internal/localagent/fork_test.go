@@ -3,13 +3,67 @@ package localagent
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
 )
+
+func TestForkFolderErrorsArePlainAndDoNotLaunch(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, "file")
+	if err := os.WriteFile(file, []byte("synthetic"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	foreign := `C:\Users\Example\shop`
+	if runtime.GOOS == "windows" {
+		foreign = "/Users/example/shop"
+	}
+	m := New(map[string]Command{"codex": {Program: "synthetic.exe", CanFork: true}}, func(string, []string, string, []string, int, int) (Process, error) {
+		t.Fatal("unavailable folder launched a process")
+		return nil, nil
+	})
+	defer m.Close()
+	for _, tc := range []struct{ name, cwd, reason string }{
+		{"relative", "shop", "Its folder, shop, is a relative path. Use a full folder path to continue here."},
+		{"foreign", foreign, fmt.Sprintf("Its folder, %s, uses a path for another operating system.", foreign)},
+		{"missing", filepath.Join(dir, "missing"), fmt.Sprintf("Its folder, %s, is not on this computer.", filepath.Join(dir, "missing"))},
+		{"file", file, fmt.Sprintf("Its path, %s, is a file, not a folder.", file)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			_, err := m.Fork("codex", tc.cwd, "12345678-1234-4321-8123-123456789abc")
+			if err == nil || err.Error() != tc.reason {
+				t.Fatalf("folder error: %v, want %q", err, tc.reason)
+			}
+		})
+	}
+}
+
+func TestForkRechecksFolderAfterItDisappears(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "project")
+	if err := os.Mkdir(dir, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateProjectDirectory(dir); err != nil {
+		t.Fatal("available folder was refused", err)
+	}
+	if err := os.Remove(dir); err != nil {
+		t.Fatal(err)
+	}
+	m := New(map[string]Command{"codex": {Program: "synthetic.exe", CanFork: true}}, func(string, []string, string, []string, int, int) (Process, error) {
+		t.Fatal("removed folder launched a process")
+		return nil, nil
+	})
+	defer m.Close()
+	_, err := m.Fork("codex", dir, "12345678-1234-4321-8123-123456789abc")
+	if want := fmt.Sprintf("Its folder, %s, is not on this computer.", dir); err == nil || err.Error() != want {
+		t.Fatalf("removed folder: %v, want %q", err, want)
+	}
+}
 
 func TestForkPreservesOriginalAndReusesRunningSession(t *testing.T) {
 	const id = "12345678-1234-4321-8123-123456789abc"

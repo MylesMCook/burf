@@ -213,6 +213,8 @@ type conv struct {
 	// wherever its reading began.
 	paged bool
 	limit int
+	// Imported history cannot resolve a box's local artifacts.
+	ignoreLocalArtifacts bool
 	// side reads a helper's own record, whose every line is a sidechain.
 	side bool
 	// prompts are where each kept prompt picks up (its parent entry) →

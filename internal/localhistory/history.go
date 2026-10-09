@@ -20,6 +20,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/MylesMCook/burf/internal/localagent"
 	"github.com/MylesMCook/burf/internal/transcript"
 )
 
@@ -41,12 +42,14 @@ type Config struct {
 }
 
 type Conversation struct {
-	ID        string    `json:"id"`
-	Source    string    `json:"source"`
-	Title     string    `json:"title"`
-	Cwd       string    `json:"cwd"`
-	UpdatedAt time.Time `json:"updated_at"`
-	ReadOnly  bool      `json:"read_only"`
+	ID             string    `json:"id"`
+	Source         string    `json:"source"`
+	Title          string    `json:"title"`
+	Cwd            string    `json:"cwd"`
+	UpdatedAt      time.Time `json:"updated_at"`
+	ReadOnly       bool      `json:"read_only"`
+	CanContinue    bool      `json:"can_continue"`
+	ContinueReason string    `json:"continue_reason,omitempty"`
 }
 
 type record struct {
@@ -135,6 +138,11 @@ func (s *Store) List(ctx context.Context) ([]Conversation, error) {
 				if candidate.Title == "" {
 					candidate.Title = source.name + " conversation"
 				}
+				candidate.CanContinue = true
+				if err := localagent.ValidateProjectDirectory(cwd); err != nil {
+					candidate.CanContinue = false
+					candidate.ContinueReason = err.Error()
+				}
 				candidate.home, candidate.identity = source.home, id
 				candidate.fileInfo = info
 				all = append(all, candidate)
@@ -177,7 +185,7 @@ func (s *Store) Read(ctx context.Context, id string, before int64) (transcript.R
 		return transcript.Result{}, err
 	}
 	defer f.Close()
-	result, err := transcript.BeforeFile(r.Source, f, r.Cwd, before, pageSize)
+	result, err := transcript.BeforeFileWithOptions(r.Source, f, r.Cwd, before, pageSize, transcript.HistoryOptions{IgnoreLocalArtifacts: true})
 	if err != nil {
 		return transcript.Result{}, errors.New("cannot read local conversation")
 	}
