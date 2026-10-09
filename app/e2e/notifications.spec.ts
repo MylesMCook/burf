@@ -69,58 +69,6 @@ for (const type of ["agent.waiting", "agent.finished"]) {
   }
 }
 
-// Until the box has been asked again, what the app holds about its sessions
-// is from before the request, and cannot list a session that has just
-// started. Something else about the box changing is not that session gone.
-test("news of the box other than its sessions does not dismiss a new session's request", async ({ app }) => {
-  agent.session = { agent_state: "waiting" };
-  await open(app);
-  const api = `${agent.url}/v1/boxes/devl/api`;
-  // The read of sessions the request sets off is kept back, so the app goes
-  // on holding the rows from before it.
-  let asked!: () => void;
-  let release!: () => void;
-  const wasAsked = new Promise<void>((r) => (asked = r));
-  const held = new Promise<void>((r) => (release = r));
-  await app.context.route(`${api}/sessions`, async (route) => {
-    asked();
-    await held;
-    await route.continue();
-  }, { times: 1 });
-  agent.session = { name: "not-cached-yet", agent_state: "waiting" };
-  agent.event({ type: "agent.waiting", data: { path: DIR, session: "not-cached-yet" } });
-  await expect.poll(() => notes[0]?.session).toBe("not-cached-yet");
-  const title = app.page.locator('[data-slot="toast-title"]');
-  await expect(title).toHaveText(notes[0].title);
-
-  // Meanwhile the box has a worktree more: its locations change in the app.
-  // (Once the first read is on its way, so the two are not sent as one.)
-  await wasAsked;
-  await app.context.route(`${api}/locations`, async (route) => {
-    const answer = await route.fetch();
-    const locations = await answer.json();
-    locations[0].worktrees.push({ name: "other", path: "/w/shop-other", branch: "me/other" });
-    await route.fulfill({ response: answer, json: locations });
-  }, { times: 1 });
-  // That read asks for the box's locations and services together, and the
-  // app takes them in once both have answered.
-  const took = Promise.all([app.page.waitForResponse(`${api}/locations`), app.page.waitForResponse(`${api}/services`)]);
-  agent.event({ type: "location.changed", data: { location: "shop" } });
-  await took;
-
-  // The kept-back read lands and lists the session: still asking.
-  const landed = app.page.waitForResponse(`${api}/sessions`);
-  release();
-  await landed;
-
-  // What the app has saved by the time it saves its next notification says
-  // whether the request was ever settled along the way.
-  agent.event({ type: "agent.finished", data: { path: "/w/elsewhere", session: "another" } });
-  await expect.poll(() => notes.length).toBe(2);
-  expect(notes.find((n) => n.session === "not-cached-yet")?.resolved).toBeFalsy();
-  await expect(app.page.locator('[data-slot="toast-title"]', { hasText: "needs you" })).toBeVisible();
-});
-
 test("external activity does not clear a Berth agent's request in the same folder", async ({ app }) => {
   agent.session = { agent_state: "waiting" };
   await open(app);

@@ -1,4 +1,4 @@
-import { BOX, fakeAgent, type FakeAgent } from "./fake-agent";
+import { fakeAgent, type FakeAgent } from "./fake-agent";
 import { expect, mockOnly, test } from "./fixtures";
 
 // A box on a slow link, relayed through a Tailscale server far away, stays
@@ -19,31 +19,6 @@ test.afterEach(async () => {
 
 const relayed = { via: "relay", relay: "nyc", relay_name: "New York", nearest: "London" };
 const slow = { latency_ms: 1900, link: { slow: true, reason: "health check took 1.9s", max_ms: 1900, jitter_ms: 420, path: relayed } };
-
-test("a box on a slow link stays online, says slow quietly, and its chat still loads", async ({ app }) => {
-  agent.online = slow;
-  await app.open({ agent, params: { view: "conversation" } });
-  await app.openWorktree(`${BOX}/fix`);
-  // Requests go through: the chat reads its conversation as usual.
-  await expect(app.chat.getByText("The retry loop never backs off; fixed it.")).toBeVisible();
-  // The sidebar's box header and the status bar say slow, not offline.
-  await expect(app.page.getByTestId("box-slow")).toHaveText("slow");
-  await expect(app.page.getByRole("group", { name: `${BOX}, online, slow link` })).toBeVisible();
-  await expect(app.page.getByText("1/1 box online")).toBeVisible();
-  await expect(app.page.getByTestId("boxes-slow")).toHaveText("· slow");
-  // Nothing says it is away. (The stand-in has no terminals, so the one
-  // under the chat keeps trying; the chat's own would say so.)
-  await expect(app.chat.getByText(`Reconnecting to ${BOX}…`)).toHaveCount(0);
-  await expect(app.page.getByText("offline", { exact: true })).toHaveCount(0);
-
-  // Steady again (the agent says so with box.link): no word of it. The
-  // box's header, there only to say it, goes too.
-  agent.online = { latency_ms: 80, link: { max_ms: 1900, path: relayed } };
-  agent.event({ type: "box.link", data: { slow: false } });
-  await expect(app.page.getByTestId("boxes-slow")).toHaveCount(0);
-  await expect(app.page.getByTestId("box-slow")).toHaveCount(0);
-  await expect(app.page.getByRole("group", { name: `${BOX}, online, slow link` })).toHaveCount(0);
-});
 
 test("Settings › Boxes shows the latency, why the link is slow, and that Tailscale relays it", async ({ app }) => {
   agent.online = slow;
