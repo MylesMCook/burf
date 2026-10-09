@@ -77,7 +77,14 @@ test("local computer opens read-only history and older messages without session 
     await expect(app.page.getByTestId("composer")).toHaveCount(0);
     await app.page.getByRole("button", { name: "Load older messages" }).click();
     await expect.poll(() => calls.some((c) => c.path === "/v1/local/conversations/history-1?before=100")).toBe(true);
-    await expect(app.page.getByRole("list", { name: "Conversation" }).getByRole("listitem").filter({ hasText: "Earlier request" })).toBeVisible();
+    // Older messages join the same thread, each named for who said it.
+    const history = app.page.getByTestId("local-history");
+    await expect(history.getByRole("article", { name: "You", exact: true }).filter({ hasText: "Earlier request" })).toBeVisible();
+    await expect(history.getByRole("article", { name: "You", exact: true })).toHaveText(["Earlier request", "My saved request"]);
+    await expect(history.getByRole("article", { name: "Codex", exact: true })).toContainText("Saved response");
+    await expect(history).toContainText("Historical permission");
+    // A record that ended on an unanswered question is not an agent at work.
+    await expect(history.getByLabel("Assistant is working")).toHaveCount(0);
     expect(calls.filter((c) => c.method !== "GET")).toEqual([]);
   } finally { await agent.close(); }
 });

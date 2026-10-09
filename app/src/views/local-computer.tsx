@@ -1,6 +1,6 @@
 import { ArrowLeftIcon, FolderIcon, GitForkIcon, MessageSquareIcon, PlusIcon, RotateCwIcon, TerminalIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ConversationView } from "@/components/conversation/conversation-view";
+import { TranscriptThread } from "@/components/conversation/transcript-thread";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tip } from "@/components/tip";
@@ -12,6 +12,8 @@ import { cn } from "@/lib/utils";
 import { ViewHeader } from "@/views/view-header";
 import { LocalTerminal } from "@/views/local-terminal";
 import { LocalChat } from "@/views/local-chat";
+
+const EMPTY: LocalHistoryPage["items"] = [];
 
 type Selection = { kind: "history"; conversation: LocalConversation } | { kind: "session"; session: LocalSession } | { kind: "new" };
 
@@ -150,7 +152,7 @@ function LocalHistory({ client, conversation, canFork, onStart }: { client: Clie
     </div>
     {error && <p role="alert" className="px-4 py-2 text-sm text-destructive">{error}</p>}
     {startError && <p role="alert" className="px-4 py-2 text-sm text-destructive">{startError}</p>}
-    <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3" data-testid="local-history"><ConversationView items={page?.items ?? []} onAnswer={() => {}} who={localAgentName(conversation.source)} readOnly /></div>
+    <div className="min-h-0 flex-1" data-testid="local-history"><TranscriptThread items={page?.items ?? EMPTY} who={localAgentName(conversation.source)} readOnly /></div>
   </>;
 }
 

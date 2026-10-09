@@ -45,6 +45,9 @@ status. Do not mark a commit integrated just because it was fetched or reviewed.
 - Background discovery opens no Windows console windows or steals focus.
 - Existing state, pairings, pinned TLS identities and old daemon connections
   survive branding and upgrades. Preserve documented compatibility names.
+- Chats draw through Burf's one thread on assistant-ui (FORK.md, "One Chat
+  Surface"). Upstream's chat changes are re-made there by behaviour; its
+  conversation components are not merged back over it.
 - Burf branding and fork-specific updater isolation survive merges. Never
   silently install upstream binaries over the fork.
 - Keep upstream security protections, attribution and license notices. Do not
