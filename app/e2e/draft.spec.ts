@@ -162,6 +162,9 @@ test.describe("on a box with drafts", () => {
     const at = Date.now();
     agent.event({ type: "transcript.changed", data: { session: SESSION, name: SESSION, path: DIR, size: 4096 } });
     await expect(draft).toHaveCount(0);
+    // The draft may already be gone by the read before the event, so the
+    // event's own read is waited for, then timed.
+    await expect.poll(() => reads.some((t) => t >= at)).toBe(true);
     expect(reads.find((t) => t >= at)! - at).toBeLessThan(800);
     await expect(app.chat.locator("[data-e2e-mark=draft] [data-kind=text]")).toContainText("gives up after five tries");
   });

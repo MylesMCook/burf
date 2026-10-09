@@ -177,7 +177,10 @@ Adapted to Burf rather than taken as written:
 - Recognize Windows separately from Mac/Linux in keyboard and settings UI.
   Combine Linux platform support with Windows PATH/uninstall behavior.
   Linux staging runs burf and retains berth as an alias in legacy state.
-- Keep main-push CI and blocking E2E. Combine fixture TestMain handlers, rename a
+- Keep CI on pushes to main and a blocking browser suite (since then CI runs
+  only the suites a change's files reach, and not at all for a main whose tree
+  already passed as a pull request: `scripts/ci-changes.mjs`; nothing is
+  allowed to fail). Combine fixture TestMain handlers, rename a
   duplicate upstream transcript test, adapt two private process literal keys
   to portable PanePID, and fix a stale route fixture without weakening checks.
 - A box that has stopped serving answers with upstream's `box_stopping` code:
