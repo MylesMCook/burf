@@ -1,5 +1,7 @@
 # Burf Development
 
+Taking this project over? Read `HANDOFF.md` first.
+
 Read `FORK.md` for product direction and compatibility boundaries, `UPSTREAM.md`
 for upstream intake, `DESIGN.md` before drawing or changing a screen, and the
 local `tasks.md` for cross-session status.
