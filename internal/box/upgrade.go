@@ -11,11 +11,13 @@ import (
 	"os/user"
 	"runtime"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
 	"github.com/MylesMCook/burf/internal/boxclient"
 	"github.com/MylesMCook/burf/internal/integrations/adapters"
+	"github.com/MylesMCook/burf/internal/localchat"
 	"github.com/MylesMCook/burf/internal/version"
 )
 
@@ -134,6 +136,21 @@ func (b *Box) Capabilities() []string {
 		// and approvals take scoped decisions. Older daemons reject both.
 		// chat.full-access: the permission option also takes "full-access".
 		caps = append(caps, "chat.codex", "chat.options", "chat.full-access")
+		// chat.claude requires an installed CLI with the streaming flags.
+		env := map[string]string{}
+		for _, entry := range os.Environ() {
+			key, value, _ := strings.Cut(entry, "=")
+			env[key] = value
+		}
+		if program, err := chatProviderPath(env, "claude"); err == nil {
+			values := []string{}
+			for key, value := range env {
+				values = append(values, key+"="+value)
+			}
+			if claudeSupportsChat(program, values) {
+				caps = append(caps, "chat.claude")
+			}
+		}
 		// chat.browser: POST /v1/chats takes the client's browser tools, and
 		// the chat offers their calls for that browser to answer
 		// (chatbrowser.go).
@@ -227,4 +244,32 @@ func (b *Box) handleUpgrade(w http.ResponseWriter, r *http.Request) error {
 		}
 	}()
 	return nil
+}
+
+// claudeChatSupport remembers whether the installed Claude Code can run a
+// structured chat. Finding out runs `claude --help`, and every info request
+// asks; so the answer is kept until the program's file changes, or for five
+// minutes.
+var claudeChatSupport struct {
+	sync.Mutex
+	program string
+	mod     time.Time
+	at      time.Time
+	ok      bool
+}
+
+func claudeSupportsChat(program string, env []string) bool {
+	st, err := os.Stat(program)
+	if err != nil {
+		return false
+	}
+	c := &claudeChatSupport
+	c.Lock()
+	defer c.Unlock()
+	if c.program == program && c.mod.Equal(st.ModTime()) && time.Since(c.at) < 5*time.Minute {
+		return c.ok
+	}
+	c.program, c.mod, c.at = program, st.ModTime(), time.Now()
+	c.ok = localchat.ClaudeSupportsChat(context.Background(), program, env)
+	return c.ok
 }

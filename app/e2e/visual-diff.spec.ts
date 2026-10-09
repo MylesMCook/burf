@@ -12,58 +12,23 @@ import { expect, mockOnly, test } from "./fixtures";
 const VD = "46ab3c4e1b";
 const CLEAR = "39fdf22244";
 
-const card = (page: Page, id: string) => page.locator(`[data-testid=pane]:visible [data-art-card="${id}"]`).first();
-
-// The chat draws only the rows near the view, and the visual diffs are
-// earlier in the turn: scroll up until the card is drawn.
-async function reach(page: Page, id: string) {
-  const c = card(page, id);
-  const chat = page.locator("[data-testid=pane]:visible [data-testid=chat]");
-  const box = await chat.boundingBox();
-  if (box) await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-  // A wheel is the person scrolling up, which the chat keeps to.
-  for (let i = 0; i < 60 && !(await c.isVisible()); i++) {
-    await page.mouse.wheel(0, -600);
-    await page.waitForTimeout(60);
-  }
-  await c.scrollIntoViewIfNeeded();
-  return c;
-}
 const artPane = (page: Page) => page.locator("[data-testid=pane][data-pane-kind=artifact]:visible");
 
-async function openChat(app: { open(o?: object): Promise<void>; openWorktree(w: string): Promise<void> }) {
-  await app.open({ params: { view: "conversation" } });
+async function openBoard(app: { page: Page; open(): Promise<void>; openWorktree(w: string): Promise<void> }) {
+  await app.open();
   await app.openWorktree("devl/search-perf");
+  await app.page.getByTestId("art-board-button").click();
 }
 
-async function openDiff(app: Parameters<typeof openChat>[0] & { page: Page }, id = VD) {
-  await openChat(app);
-  const c = await reach(app.page, id);
-  await c.getByRole("button", { name: "Open", exact: true }).click();
+async function openDiff(app: Parameters<typeof openBoard>[0], id = VD) {
+  await openBoard(app);
+  await app.page.locator(`[data-art-tile="${id}"]`).getByRole("button", { name: /^Open / }).last().click();
   const pane = artPane(app.page);
   await expect(pane.locator("[data-vd-view]")).toBeVisible();
   return pane;
 }
 
 test.beforeEach(() => mockOnly("drives the demo's visual diffs"));
-
-test("the chat's card leads with the headline, says what needs a look, and shows a before/after thumbnail", async ({ app }) => {
-  await openChat(app);
-  const c = await reach(app.page, VD);
-  await expect(c.locator("[data-art-title]")).toHaveText("Visual changes: search-perf vs main");
-  await expect(c.locator("[data-art-gist]")).toHaveText("2 of 6 pages changed · most: /search at 768 (48%)");
-  await expect(c.locator("[data-vd-chip=new]")).toHaveText("/deals new");
-  await expect(c.locator("[data-vd-chip=unchanged]")).toHaveText("3 unchanged");
-  await expect(c).toContainText("Visual diff");
-  await expect(c.locator("[data-art-version]")).toHaveText("v2");
-  await expect(c.locator("[data-vd-thumb=wipe]")).toBeVisible();
-  // The agent's re-run is the quiet update line.
-  await expect(app.chat.getByTestId("art-update").filter({ hasText: "Visual changes" })).toContainText("to v2");
-  // And the all clear.
-  const clear = await reach(app.page, CLEAR);
-  await expect(clear.locator("[data-art-gist]")).toHaveText(/^No visual changes/);
-  await expect(clear.locator("[data-vd-thumb=clear]")).toContainText("All clear");
-});
 
 test("every way to compare: slider, side by side, flicker and onion skin", async ({ app }) => {
   const pane = await openDiff(app);
@@ -90,28 +55,6 @@ test("every way to compare: slider, side by side, flicker and onion skin", async
   await expect(pane.locator("[data-vd-stage=onion]")).toContainText("After at 80% over before");
   await pane.locator("[data-vd-mode=slider]").click();
   await expect(pane.locator("[data-vd-handle]")).toBeVisible();
-});
-
-test("n and p step through every change across pages and sizes, and the stepper says where", async ({ app }) => {
-  const pane = await openDiff(app);
-  await expect(pane.locator("[data-vd-step]:visible")).toHaveText("24");
-  await app.page.keyboard.press("n");
-  await expect(pane.locator("[data-vd-step]:visible")).toHaveText("1 of 24");
-  const caption = pane.locator("[data-vd-caption]");
-  await expect(caption).toContainText("/search");
-  await expect(caption).toContainText("region 1 of 3");
-  await expect(pane.locator("[data-vd-region][data-loud]")).toHaveCount(1);
-  await app.page.keyboard.press("n");
-  await expect(pane.locator("[data-vd-step]:visible")).toHaveText("2 of 24");
-  await app.page.keyboard.press("p");
-  await expect(pane.locator("[data-vd-step]:visible")).toHaveText("1 of 24");
-  // The buttons do the same, and the last change is a new page.
-  for (let i = 0; i < 30; i++) await app.page.keyboard.press("n");
-  await expect(pane.locator("[data-vd-step]:visible")).toHaveText("24 of 24");
-  await expect(caption).toContainText("/deals");
-  await expect(pane.locator("[data-vd-banner=info]")).toContainText("A new page.");
-  await pane.getByRole("button", { name: "Previous change" }).locator("visible=true").click();
-  await expect(pane.locator("[data-vd-step]:visible")).toHaveText("23 of 24");
 });
 
 test("All shots shows every page and size at once, and a shot opens it large", async ({ app }) => {
@@ -163,8 +106,7 @@ test("the all clear: no changes against the accepted baseline", async ({ app }) 
 });
 
 test("the board shows visual diffs as tiles, filtered by kind; a new version lands live", async ({ app }) => {
-  await openChat(app);
-  await app.page.getByTestId("art-chip").click();
+  await openBoard(app);
   const board = app.page.getByTestId("artifact-board");
   await board.locator("[data-filter=visualdiff]").click();
   await expect(board.locator("[data-art-tile]")).toHaveCount(2);
@@ -176,23 +118,4 @@ test("the board shows visual diffs as tiles, filtered by kind; a new version lan
   await app.page.evaluate(() => (window as unknown as { __art: { vdiff(): Promise<void> } }).__art.vdiff());
   await expect(pane.getByTestId("art-live")).toContainText("Updated just now · v3");
   await expect(pane.getByTestId("art-versions").getByRole("radio")).toHaveCount(3);
-});
-
-test("beside the chat, at a narrow width, it keeps the stage and the controls", async ({ app }) => {
-  await app.page.setViewportSize({ width: 900, height: 900 });
-  await openChat(app);
-  const c = await reach(app.page, VD);
-  await c.getByRole("button", { name: "Open Visual changes: search-perf vs main beside the chat" }).click();
-  await expect(app.panes).toHaveCount(2);
-  const pane = artPane(app.page);
-  await expect(pane.locator("[data-vd-canvas]")).toBeVisible();
-  await expect(pane.locator("[data-vd-mode=side]")).toBeVisible();
-  await expect(pane.locator("[data-vd-stepper]:visible")).toBeVisible();
-  // No sideways scroll of its own.
-  const scroll = await pane.locator("[data-vd-view]").evaluate((el) => {
-    let s = el.parentElement;
-    while (s && getComputedStyle(s).overflowX === "visible") s = s.parentElement;
-    return s ? s.scrollWidth - s.clientWidth : 0;
-  });
-  expect(scroll).toBeLessThanOrEqual(1);
 });

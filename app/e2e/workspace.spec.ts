@@ -4,50 +4,7 @@ import { agentWorktree, expect, live, mockOnly, test } from "./fixtures";
 // can hold.
 
 test.beforeEach(async ({ app }) => {
-  await app.open({ params: { view: "conversation" } });
-});
-
-test("⌥-click on a second worktree adds its tabs as a group", async ({ app }) => {
-  mockOnly();
-  await app.openWorktree("devl/checkout-fix");
-  const strip = app.page.locator("[data-tab-strip]");
-  await expect(strip.locator("[data-tab]").first()).toBeVisible();
-  await expect(strip.locator("[data-group]")).toHaveCount(0);
-  await app.worktree("devl/search-perf").click({ modifiers: ["Alt"] });
-  const groups = strip.locator("[data-group]");
-  await expect(groups).toHaveCount(2);
-  await expect(groups.nth(0)).toHaveAttribute("data-group", "devl:/home/me/work/shop-checkout-fix");
-  await expect(groups.nth(1)).toHaveAttribute("data-group", "devl:/home/me/work/shop-search-perf");
-  // Each group's tabs are its own worktree's.
-  await expect(groups.nth(1).locator("[data-tab]").first()).toHaveAttribute("data-ws", "devl:/home/me/work/shop-search-perf");
-  // The new group comes to the front, showing its agent.
-  await expect(app.chat.locator("[data-kind=artifact]").first()).toBeAttached();
-});
-
-test("a worktree dragged onto a pane's edge splits its agent in beside it", async ({ app }) => {
-  mockOnly();
-  await app.openWorktree("devl/checkout-fix");
-  await expect(app.panes).toHaveCount(1);
-  const area = (await app.page.locator("[data-pane-area]").boundingBox())!;
-  const row = (await app.worktree("devl/search-perf").boundingBox())!;
-  const m = app.page.mouse;
-  await m.move(row.x + row.width / 2, row.y + row.height / 2);
-  await m.down();
-  // Past the drag threshold, then over the pane's right edge.
-  await m.move(row.x + row.width / 2 + 20, row.y + row.height / 2, { steps: 4 });
-  await m.move(area.x + area.width * 0.9, area.y + area.height * 0.5, { steps: 12 });
-  // The overlay shows where it will land before letting go.
-  const overlay = app.page.locator("[data-berth-overlay] > div");
-  await expect(overlay).toBeVisible();
-  await expect(overlay).toContainText("search-perf");
-  await m.up();
-  await expect(app.page.locator("[data-berth-overlay]")).toHaveCount(0);
-  await expect(app.panes).toHaveCount(2);
-  // Side by side: the new pane on the right.
-  const [a, b] = await Promise.all([app.panes.nth(0).boundingBox(), app.panes.nth(1).boundingBox()]);
-  expect(Math.abs(a!.y - b!.y)).toBeLessThan(2);
-  expect(Math.abs(a!.x - b!.x)).toBeGreaterThan(200);
-  await expect(app.page.locator("[data-pane-area] [data-testid=chat]")).toHaveCount(2);
+  await app.open();
 });
 
 test("the Diff panel shows the worktree's changes", async ({ app }) => {

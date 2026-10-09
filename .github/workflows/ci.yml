@@ -28,10 +28,12 @@ jobs:
   # run only when it reaches them. A pull request is compared with its base
   # and a push to main with what main was. A release's checks and a run
   # started by hand have nothing to compare with: they run everything.
-  # A push to main whose tree is a pull request's, already green here, has
-  # only the browser suite left to prove: that suite runs before a push, on
-  # the owner's machine (scripts/check-local.sh), and here once per merge,
-  # not on every push to a pull request.
+  # A pull request's run is the quick checks only, under two minutes: the
+  # app's type-check, unit tests and build, go vet with the tests of the
+  # packages it changed, shellcheck, the docs build. The long suites (the
+  # browser suite, the Go race suite, both desktop builds, native Windows)
+  # run once per merge to main, where they hold nobody up. A push to main
+  # whose tree is a pull request's, already green here, runs only those.
   changes:
     runs-on: ubuntu-latest
     permissions:
@@ -70,8 +72,8 @@ jobs:
               # same tree passed there, under the same rule.
               if head="$(git rev-parse -q --verify HEAD^2)" && [ "$(git rev-parse HEAD^{tree})" = "$(git rev-parse "$head^{tree}")" ] &&
                 [ "$(gh api "repos/$REPO/actions/workflows/ci.yml/runs?head_sha=$head&event=pull_request&status=success&per_page=1" --jq .total_count)" -gt 0 ]; then
-                echo "main is $head's tree, which passed on its pull request: the browser suite is left"
-                git diff --name-only HEAD^1 HEAD | pick --only=e2e
+                echo "main is $head's tree, whose quick checks passed on its pull request: the long suites are left"
+                git diff --name-only HEAD^1 HEAD | pick --only=e2e,go,windows,desktop
               elif git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
                 git diff --name-only "$BEFORE" HEAD | pick
               else
@@ -85,7 +87,8 @@ jobs:
 
   windows-helpers:
     needs: changes
-    if: needs.changes.outputs.windows == 'true'
+    # After a merge only: a pull request's run is the quick checks.
+    if: needs.changes.outputs.windows == 'true' && github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -100,7 +103,8 @@ jobs:
 
   windows:
     needs: [changes, windows-helpers]
-    if: needs.changes.outputs.windows == 'true'
+    # After a merge only: a pull request's run is the quick checks.
+    if: needs.changes.outputs.windows == 'true' && github.event_name != 'pull_request'
     runs-on: windows-2022
     timeout-minutes: 60
     steps:
@@ -159,6 +163,8 @@ jobs:
             exit 1
           fi
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          fetch-depth: 2
       - uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
         with:
           go-version-file: go.mod
@@ -168,14 +174,25 @@ jobs:
       # omarchy's image has it; apt's mirrors are slow from there.
       - run: command -v tmux >/dev/null || { sudo apt-get update && sudo apt-get install -y tmux; }
       - run: go vet ./...
-      - run: go test -race ./...
+      # A pull request gets the tests of the packages it changed, and no race
+      # detector; the whole race suite runs after the merge.
+      - name: Tests of the changed packages
+        if: github.event_name == 'pull_request'
+        env:
+          BERTH_BROWSER_NO_SANDBOX: "1"
+        run: |
+          pkgs="$(git diff --name-only HEAD^1 HEAD -- '*.go' | xargs -r -n1 dirname | sort -u | while read -r d; do [ -d "$d" ] && printf './%s ' "$d"; done)"
+          [ -z "$pkgs" ] || go test $pkgs
+      - if: github.event_name != 'pull_request'
+        run: go test -race ./...
         # GitHub's Ubuntu runners stop Chromium's sandbox (user namespaces),
         # which changes what the agent browser's status says.
         env:
           BERTH_BROWSER_NO_SANDBOX: "1"
       # A real Chromium alone, without the race detector or every other
       # package's tests starving it: it times out starting otherwise.
-      - run: go test ./internal/box/ -run 'TestAgentBrowserDrivesARealChromium|TestTheBrowserSizeReachesARealChromium' -count=1 -v
+      - if: github.event_name != 'pull_request'
+        run: go test ./internal/box/ -run 'TestAgentBrowserDrivesARealChromium|TestTheBrowserSizeReachesARealChromium' -count=1 -v
         # GitHub's Ubuntu runners stop Chromium's sandbox (user namespaces).
         env:
           BERTH_BROWSER_NO_SANDBOX: "1"
@@ -335,7 +352,7 @@ jobs:
       - run: pnpm exec playwright test --shard=${{ matrix.shard }}/3
         env:
           # omarchy has 16 cores; a hosted runner has 4.
-          E2E_WORKERS: ${{ runner.environment == 'self-hosted' && '6' || '2' }}
+          E2E_WORKERS: ${{ runner.environment == 'self-hosted' && '6' || '4' }}
       - if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -351,7 +368,8 @@ jobs:
   # beside the app job's longer e2e suite.
   linux-app:
     needs: changes
-    if: needs.changes.outputs.desktop == 'true'
+    # After a merge only: a pull request's run is the quick checks.
+    if: needs.changes.outputs.desktop == 'true' && github.event_name != 'pull_request'
     runs-on: ubuntu-22.04
     timeout-minutes: 45
     steps:

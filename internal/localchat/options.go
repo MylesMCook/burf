@@ -78,13 +78,25 @@ func (m *Manager) Models(ctx context.Context, id string) ([]Model, error) {
 	if err != nil {
 		return nil, err
 	}
-	return r.models(ctx)
+	return r.provider.models(ctx, r)
 }
 
 // ListModels asks a short-lived owned provider process, bound to no chat or
 // thread, which models this account offers, so one can be chosen before a
 // chat exists. Answers are kept briefly per executable and account.
 func (m *Manager) ListModels(ctx context.Context, options LaunchOptions) ([]Model, error) {
+	if options.Agent == "claude" {
+		m.mu.Lock()
+		closed := m.closed
+		m.mu.Unlock()
+		if closed {
+			return nil, errors.New("local chats are shutting down")
+		}
+		return ClaudeModels(ctx, options.Program, options.Env)
+	}
+	if options.Agent != "" && options.Agent != "codex" {
+		return nil, errors.New("unsupported chat agent")
+	}
 	key := options.Program
 	for _, kv := range options.Env {
 		if strings.HasPrefix(kv, "CODEX_HOME=") || strings.HasPrefix(kv, "HOME=") || strings.HasPrefix(kv, "USERPROFILE=") {
@@ -108,7 +120,7 @@ func (m *Manager) ListModels(ctx context.Context, options LaunchOptions) ([]Mode
 	if err != nil {
 		return nil, err
 	}
-	r := &running{process: p, writes: make(chan []byte, 16), done: make(chan struct{}), pending: make(map[string]chan packet), approvals: make(map[string]json.RawMessage)}
+	r := &running{provider: codexProvider{}, process: p, writes: make(chan []byte, 16), done: make(chan struct{}), pending: make(map[string]chan packet), approvals: make(map[string]json.RawMessage)}
 	r.session = Session{State: "starting", Items: []Item{}, Approvals: []Approval{}}
 	defer r.finish("")
 	go r.read()
@@ -135,7 +147,9 @@ type listedModels struct {
 	models []Model
 }
 
-func (r *running) models(ctx context.Context) ([]Model, error) {
+func (r *running) models(ctx context.Context) ([]Model, error) { return r.provider.models(ctx, r) }
+
+func (codexProvider) models(ctx context.Context, r *running) ([]Model, error) {
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	raw, err := r.call(ctx, "model/list", map[string]any{"limit": 100, "includeHidden": false})

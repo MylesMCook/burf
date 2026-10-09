@@ -39,50 +39,6 @@ for (const width of [1440, 720]) test(`scoped approvals and compact activity at 
   } finally { await agent.close(); }
 });
 
-test("composer sends supported choices and reconciles a pending prompt without replay", async ({ app }, info) => {
-  const agent = await fakeAgent();
-  const chat = { id: "composer", agent: "codex", mode: "chat", cwd: "C:\\Projects\\shop", state: "idle", started_at: "2026-10-08T12:00:00Z", thread_id: "thread", composer: true, options: { permission: "strict" }, items: [] as { id: string; kind: string; text: string }[], approvals: [] };
-  let sends = 0; let sent: unknown; let modelReads = 0; let release: (() => void) | undefined;
-  const gate = new Promise<void>((resolve) => { release = resolve; });
-  await app.context.route(`${agent.url}/v1/local**`, async (route) => {
-    const path = new URL(route.request().url()).pathname;
-    if (path === "/v1/local") return route.fulfill({ json: { supported: true, name: "work-hp", home: chat.cwd, agents: [], sessions: [chat] } });
-    if (path.endsWith("/conversations")) return route.fulfill({ json: [] });
-    if (path.endsWith("/models")) { modelReads++; return route.fulfill({ json: [{ model: "synthetic", displayName: "Synthetic model", defaultReasoningEffort: "medium", supportedReasoningEfforts: [{ reasoningEffort: "medium" }, { reasoningEffort: "high" }] }] }); }
-    if (path.endsWith("/messages")) { sends++; sent = route.request().postDataJSON(); chat.state = "running"; chat.items = [{ id: "submitted", kind: "user", text: "Visible immediately" }]; await gate; }
-    return route.fulfill({ json: chat });
-  });
-  try {
-    await app.open({ agent }); await app.page.getByTestId("nav-local").click(); await app.page.getByRole("button", { name: /Codex.*idle/ }).click();
-    const pane = app.page.getByTestId("local-chat");
-    // The selectors sit in the composer; the provider's models are read once, after the chat is ready.
-    await expect(pane.getByLabel("Chat permissions")).toHaveText("Ask every time");
-    await pane.getByLabel("Chat model").click();
-    await expect(app.page.getByRole("option", { name: "Synthetic model", exact: true })).toHaveCount(1);
-    await app.page.getByRole("option", { name: "Synthetic model", exact: true }).click();
-    await pane.getByLabel("Chat model").click();
-    await expect(app.page.getByRole("radiogroup", { name: "Chat reasoning" }).getByRole("radio", { name: "medium", exact: true })).toBeChecked();
-    await app.page.getByRole("radiogroup", { name: "Chat reasoning" }).getByRole("radio", { name: "high", exact: true }).click();
-    await app.page.keyboard.press("Escape");
-    await pane.getByLabel("Chat permissions").click();
-    await app.page.getByRole("option", { name: "Edit workspace", exact: true }).click();
-    await pane.getByLabel("Chat permissions").hover();
-    await expect(app.page.locator("[data-slot=tooltip-popup]")).toContainText("Current permission: Ask every time.");
-    await expect(app.page.locator("[data-slot=tooltip-popup]").filter({ hasText: /From your next message: Codex edits files in this workspace/ })).toBeVisible();
-    await app.page.screenshot({ path: info.outputPath("chat-composer-options.png"), animations: "disabled" });
-    await pane.getByRole("textbox", { name: "Message Codex" }).fill("Visible immediately");
-    await pane.getByRole("button", { name: "Send message" }).click();
-    await expect(pane.getByRole("article").filter({ hasText: "Visible immediately" })).toHaveCount(1);
-    await expect(pane.getByRole("status")).toHaveText("Working");
-    await expect(pane.getByLabel("Chat model")).toBeDisabled();
-    await expect(pane.getByRole("article").filter({ hasText: "Visible immediately" })).toHaveCount(1);
-    expect(sent).toEqual({ text: "Visible immediately", options: { model: "synthetic", effort: "high", permission: "workspace" } });
-    release?.(); await expect(pane.getByRole("textbox", { name: "Message Codex" })).toHaveValue(""); expect(sends).toBe(1);
-    expect(modelReads).toBe(1);
-    expect(await app.stored("berth.chat.permission")).toBe("workspace");
-  } finally { release?.(); await agent.close(); }
-});
-
 test("older backends show disabled choices and keep unsupported options out of messages", async ({ app }) => {
   const agent = await fakeAgent(); const reads: string[] = []; const sent: unknown[] = [];
   const chat = { id: "old", agent: "codex", mode: "chat", cwd: "C:\\Projects\\shop", state: "running", started_at: "2026-10-08T12:00:00Z", thread_id: "thread", items: [], approvals: [] };

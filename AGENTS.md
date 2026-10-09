@@ -6,30 +6,51 @@ Preserve legacy state/protocol names and the disabled updater when changing
 branding or packaging. Local checks do not authorize replacing installed apps
 or restarting live agents.
 
+## Speed Is A Requirement
+
+These are budgets, measured on the Mini. A change that breaks one is a
+regression, the same as a failing test.
+
+- **Edit to seeing it: under 10 seconds.** Use the dev server (`pnpm dev`, or
+  a spec with `E2E_DEV=1`, which reuses a running one). No build in this loop.
+- **Check before a push: under 60 seconds.** `scripts/check-local.sh` runs the
+  type-check (kept warm), the Node unit tests, and only the browser spec
+  files the change reaches (`scripts/e2e-pick.mjs`), against a two-second
+  bundle. A path nothing knows runs the smoke set, never everything.
+- **No full local run before a merge.** The whole browser suite, the Go race
+  suite, both desktop builds and native Windows run on the hosted runner once
+  per merge to main, and nothing waits for them.
+- **A pull request's hosted run: under 2 minutes**, and only what it reaches.
+- **Anything over a minute runs in the background.** Do not hold a merge or
+  the owner's attention for a run that is not needed.
+
+Keeping it so:
+
+- A browser case is for what needs a real page. Logic that a function can
+  answer is a Node unit test beside it.
+- No fixed waits or sleeps in `app/e2e`: wait for a condition, or the case
+  goes.
+- A case that takes over 5 seconds is fixed or deleted. So is one that
+  fails by itself now and then. Fewer tests beat slow ones.
+- When a feature is cut, its cases go in the same change.
+- Workers handed a task run the type-check and unit tests only. They do not
+  run production builds or the browser suite.
+
 ## Frontend Checks
 
-Use existing lockfiles and the existing Playwright Test suite; do not add a
-second browser-test stack. From `app/`:
+From `app/`:
 
 ```sh
+pnpm exec tsc --noEmit -p . && pnpm exec tsc --noEmit -p e2e
 pnpm test
-pnpm exec tsc --noEmit -p e2e
-pnpm run build --logLevel error
-pnpm exec playwright test remote-chat.spec.ts local-chat.spec.ts chat-first.spec.ts chat.spec.ts chat-feed.spec.ts first-run.spec.ts local-computer.spec.ts windows-client.spec.ts diagnostics.spec.ts trust.spec.ts workspace.spec.ts chat-experience.spec.ts agent-picker.spec.ts --workers=2
+E2E_DEV=1 pnpm exec playwright test <spec files>   # look at a change, no build
 ```
 
-Before a push, `scripts/check-local.sh` runs the suites the change reaches
-(Go, the app's checks, the whole browser suite) on this machine, by the
-commands CI uses. A pull request's hosted run leaves the browser suite out;
-main runs it once per merge. So a push without a local pass of that suite is
-unverified.
-
-These acceptance tests use synthetic fixtures and isolated loopback servers.
+The browser cases use synthetic fixtures and isolated loopback servers.
 Leave `BERTH_E2E_LIVE` unset. Never point mutation tests at a real agent.
-Playwright starts and stops its own preview server; `E2E_PORT` can select a free
-port from 1421-1439. Build before running Playwright so it tests current source.
-Native Windows execution and signed-in provider behavior require separate
-evidence; a Chromium fixture run or cross-build does not verify either.
+`E2E_PORT` can select a free port from 1421-1439. Native Windows execution
+and signed-in provider behavior require separate evidence; a Chromium
+fixture run or cross-build does not verify either.
 
 ## Branding
 
