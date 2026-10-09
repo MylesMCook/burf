@@ -3,7 +3,8 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { create } from "zustand";
 
 import { StateGlyph } from "@/components/agent-glyph";
-import { ConversationView, type EditActions } from "@/components/conversation/conversation-view";
+import { TranscriptList } from "@/components/conversation/transcript-thread";
+import type { EditActions } from "@/components/conversation/transcript-item";
 import { Markdown } from "@/components/conversation/markdown";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -296,7 +297,7 @@ export function HelperChat({ box, session, h, wide }: { box: string; session: st
         </div>
       )}
       {state === "ready" && !shown.length && <p className="text-muted-foreground text-sm">It hasn't done anything yet.</p>}
-      {state === "ready" && shown.length > 0 && <ConversationView items={shown} onAnswer={() => {}} edits={edits} who="The helper" className="max-w-none" />}
+      {state === "ready" && shown.length > 0 && <TranscriptList items={shown} onAnswer={() => {}} edits={edits} who="The helper" className="max-w-none" />}
       </div>
     </div>
   );

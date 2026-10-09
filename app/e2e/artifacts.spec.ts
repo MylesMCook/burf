@@ -73,7 +73,8 @@ test("a new version lands live: the pill pulses, the card says v2, and the versi
   await expect(pane.locator("[data-art-gist]")).toHaveText("/search 1,240 → 180 ms (−85%)");
   // The chat: the card is v2, and the agent's update is a line of its own.
   await expect(card(app.page, P95).first().locator("[data-art-version]")).toHaveText("v2");
-  await expect(app.chat.getByTestId("art-update")).toContainText("to v2");
+  // (A turn draws whole, so another artifact's update can be in view too.)
+  await expect(app.chat.locator(`[data-testid=art-update][data-art-card="${P95}"]`)).toContainText("to v2");
   // Back to v1, and to the latest again.
   const strip = pane.getByTestId("art-versions");
   await expect(strip.getByRole("radio")).toHaveCount(2);

@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { withDraft } from "./draft-text.ts";
 import type { TranscriptItem } from "./transcript.ts";
-import { transcriptTurns } from "./transcript-thread.ts";
+import { estimateTurn, newTurnCache, transcriptMessage, transcriptSearchEntries, turnItems, transcriptTurns } from "./transcript-thread.ts";
 
 const user = (id: string, text = "Do it"): TranscriptItem => ({ kind: "user", id, text });
 const text = (id: string, words: string): TranscriptItem => ({ kind: "text", id, text: words });
@@ -68,4 +69,128 @@ test("finished pings in a row are one line; a single one, or one that failed, st
 
 test("nothing recorded, no turns", () => {
   assert.deepEqual(transcriptTurns([]), []);
+});
+
+
+test("streaming replaces only its turn and keeps unchanged steps and shown items", () => {
+  const cache = newTurnCache();
+  const items = [user("u1"), text("a1", "Done."), user("u2"), tools("t1"), edit("e1"), text("draft", "First words"), thinking("k1")];
+  const before = transcriptTurns(items, cache);
+  const after = transcriptTurns([...items.slice(0, -2), text("draft", "First words and more"), items.at(-1)!], cache);
+  for (let i = 0; i < before.length - 1; i++) assert.equal(after[i], before[i]);
+  assert.notEqual(after.at(-1), before.at(-1));
+  const a = before.at(-1)!;
+  const b = after.at(-1)!;
+  assert.equal(a.kind, "agent");
+  assert.equal(b.kind, "agent");
+  if (a.kind !== "agent" || b.kind !== "agent") return;
+  assert.equal(a.steps, b.steps);
+  assert.equal(a.shown[0], b.shown[0]);
+  assert.equal(transcriptTurns([...items], cache).length, before.length);
+});
+
+test("unchanged turns and grouped pings retain identity when history is prepended", () => {
+  const cache = newTurnCache();
+  const items = [user("u1"), tools("t1"), text("a1", "Done."), ping("p1"), ping("p2")];
+  const before = transcriptTurns(items, cache);
+  const again = transcriptTurns([...items], cache);
+  before.forEach((turn, i) => assert.equal(again[i], turn));
+  const after = transcriptTurns([user("old"), text("old-a", "Earlier."), ...items], cache);
+  before.forEach((turn, i) => assert.equal(after[i + 2], turn));
+});
+
+test("ending work changes only the final turn, and read-only history never works", () => {
+  const cache = newTurnCache();
+  const items = [user("u"), tools("t"), { kind: "ask", id: "q", tool: "Bash", detail: "test" } satisfies TranscriptItem];
+  const before = transcriptTurns(items, cache);
+  const after = transcriptTurns(items, cache, true);
+  assert.equal(before[0], after[0]);
+  assert.notEqual(before[1], after[1]);
+  assert.equal(after[1].kind === "agent" && after[1].working, false);
+});
+
+test("turn heights sum the folded work, each visible item's old estimate and the gaps between them", () => {
+  const turns = transcriptTurns([user("u"), tools("t"), text("a", "Done."), edit("e")]);
+  assert.equal(estimateTurn(turns[0]), 42);
+  // The fold, the answer and the edit, with a gap after each but the last.
+  assert.equal(estimateTurn(turns[1]), 28 + 31 + 32 + 2 * 16);
+  assert.equal(estimateTurn(transcriptTurns([ping("p1"), ping("p2")])[0]), 22);
+  // One part has no gap.
+  assert.equal(estimateTurn(transcriptTurns([user("u"), text("a", "Done.")])[1]), 31);
+});
+
+test("search targets each item's turn and reveals its fold and tool group", () => {
+  const turns = transcriptTurns([user("u"), tools("t"), text("n", "Looking."), tools("t2"), text("a", "Done."), edit("e"), ping("p1"), ping("p2")]);
+  const entries = transcriptSearchEntries(turns, (it) => it.id);
+  assert.deepEqual(entries, [
+    { row: 0, item: "u", text: "u", open: [] },
+    { row: 1, item: "t", text: "t", open: ["fold-t", "t"] },
+    { row: 1, item: "n", text: "n", open: ["fold-t"] },
+    { row: 1, item: "t2", text: "t2", open: ["fold-t", "t2"] },
+    { row: 1, item: "a", text: "a", open: [] },
+    { row: 1, item: "e", text: "e", open: [] },
+    { row: 2, item: "p1", text: "p1", open: [] },
+    { row: 2, item: "p2", text: "p2", open: [] },
+  ]);
+  assert.deepEqual(transcriptSearchEntries(turns, () => ""), []);
+});
+
+
+test("runtime messages reuse unchanged parts, and every prompt and reply uses Item", () => {
+  const cache = newTurnCache();
+  const items = [user("u"), tools("t"), edit("e"), text("draft", "Writing"), thinking("k")];
+  const before = transcriptTurns(items, cache);
+  const after = transcriptTurns([...items.slice(0, -2), text("draft", "Writing more"), items.at(-1)!], cache);
+  const prompt = transcriptMessage(before[0]);
+  assert.equal(transcriptMessage(after[0]), prompt);
+  assert.equal(prompt.role, "user");
+  assert.deepEqual(prompt.content, [{ type: "data-item", data: items[0] }]);
+  const a = transcriptMessage(before[1]);
+  const b = transcriptMessage(after[1]);
+  assert.notEqual(a, b);
+  assert.equal(transcriptMessage(after[1]), b);
+  assert.notEqual(a.content, b.content);
+  assert.equal(typeof a.content, "object");
+  assert.equal(typeof b.content, "object");
+  if (typeof a.content === "string" || typeof b.content === "string") return;
+  assert.equal(a.content[0], b.content[0]);
+  assert.equal(a.content[1], b.content[1]);
+  assert.notEqual(a.content[2], b.content[2]);
+  assert.equal(a.content[3], b.content[3]);
+  assert.deepEqual(b.content.map((part) => part.type), ["data-steps", "data-item", "data-item", "data-item"]);
+  assert.deepEqual(b.status, { type: "running" });
+});
+
+test("a landed reply keeps the draft's turn id even when it is the first item", () => {
+  const draft = { id: "draft-turn", text: "A long enough answer to recognize once it lands.", clipped: false };
+  const before = transcriptTurns(withDraft([], draft).items);
+  const landed = text("landed-turn", draft.text);
+  const after = transcriptTurns(withDraft([landed], draft).items);
+  assert.equal(before[0].id, draft.id);
+  assert.equal(after[0].id, before[0].id);
+  assert.deepEqual(transcriptMessage(after[0]).content, [{ type: "data-item", data: landed }]);
+});
+
+test("artifact lookup can reach each turn's visible and folded items", () => {
+  const items = [user("u"), tools("t"), { kind: "artifact", id: "r", text: "Plan" } satisfies TranscriptItem, text("a", "Done."), ping("p1"), ping("p2")];
+  const turns = transcriptTurns(items);
+  assert.deepEqual(turnItems(turns[0]), [items[0]]);
+  assert.deepEqual(turnItems(turns[1]), items.slice(1, 4));
+  assert.deepEqual(turnItems(turns[2]), items.slice(4));
+});
+
+test("a 2,000-prompt transcript changes only its final runtime message while streaming", () => {
+  const cache = newTurnCache();
+  const items = Array.from({ length: 2000 }, (_, i) => [user(`u-${i}`), tools(`t-${i}`), text(`a-${i}`, "Done.")]).flat();
+  const before = transcriptTurns(items, cache);
+  const after = transcriptTurns([...items.slice(0, -1), text("a-1999", "Done, with more words.")], cache);
+  assert.equal(after.length, 4000);
+  const changed = after.filter((turn, i) => transcriptMessage(turn) !== transcriptMessage(before[i]));
+  assert.deepEqual(changed.map((turn) => turn.id), ["t-1999"]);
+});
+
+
+test("commands and incoming reports keep their own cards without the agent's speaker label", () => {
+  const turns = transcriptTurns([{ kind: "command", id: "c", command: "/model" }, { kind: "report", id: "r", report: {} as never }, ping("p1"), ping("p2")]);
+  for (const turn of turns) assert.equal(transcriptMessage(turn).metadata?.custom?.own, true);
 });
