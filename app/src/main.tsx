@@ -6,6 +6,7 @@ import { ErrorBoundary } from "@/components/error-boundary";
 // Error toasts in plain English, with the box's own words behind Details.
 import "@/components/error-note";
 import { isTauri } from "@/lib/api";
+import { initCustomFonts } from "@/lib/custom-fonts";
 import { openUrl } from "@/lib/open-url";
 // Says once when terminals fall back to xterm.js, and why.
 import "@/lib/terminal-health";
@@ -15,6 +16,7 @@ import "@/index.css";
 // Plugins resolve React and the SDK through globals; set them before any
 // plugin can load.
 installGlobals();
+initCustomFonts();
 
 // Links clicked in a terminal open with window.open; in the app that would
 // navigate the webview, so send them to the system browser instead.

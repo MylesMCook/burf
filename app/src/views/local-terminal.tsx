@@ -5,9 +5,9 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useActiveTheme } from "@/hooks/use-theme";
 import { type Client } from "@/lib/api";
+import { useCustomTerminalPrefs } from "@/lib/custom-fonts";
 import { errorMessage } from "@/lib/format";
 import { localAgentName, localApi, type LocalSession } from "@/lib/local-computer";
-import { usePrefs } from "@/lib/prefs";
 import "@xterm/xterm/css/xterm.css";
 
 export function LocalTerminal({ client, session, onChange }: { client: Client; session: LocalSession; onChange(session: LocalSession): void }) {
@@ -16,7 +16,7 @@ export function LocalTerminal({ client, session, onChange }: { client: Client; s
   const colors = useRef(theme.terminal);
   colors.current = theme.terminal;
   const terminalRef = useRef<Terminal | null>(null);
-  const prefs = usePrefs((s) => s.terminal);
+  const prefs = useCustomTerminalPrefs();
   const latest = useRef(session);
   latest.current = session;
   const [error, setError] = useState("");

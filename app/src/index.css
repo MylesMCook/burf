@@ -7,6 +7,12 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Font utilities keep the variables so custom fonts reach every surface. */
+@theme {
+    --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
+    --font-sans: 'Inter Variable', sans-serif;
+}
+
 @theme inline {
     --animate-skeleton: skeleton 2s -1s infinite linear;
     --animate-caret-blink: 1s ease-out infinite caret-blink;
@@ -14,9 +20,7 @@
     --animate-toast-success-even: toast-success-even 0.32s cubic-bezier(0.5, 1, 0.89, 1);
     --animate-toast-error-odd: toast-error-odd 0.28s cubic-bezier(0.5, 1, 0.89, 1);
     --animate-toast-error-even: toast-error-even 0.28s cubic-bezier(0.5, 1, 0.89, 1);
-    --font-heading: 'Inter Variable', sans-serif;
-    --font-mono: 'JetBrains Mono Variable', ui-monospace, monospace;
-    --font-sans: 'Inter Variable', sans-serif;
+    --font-heading: var(--font-sans);
     --color-sidebar-ring: var(--sidebar-ring);
     --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
     --color-sidebar-primary: var(--sidebar-primary);

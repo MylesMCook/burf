@@ -7,10 +7,10 @@ import { BoxOffline, SessionEnded } from "@/components/workspace/pane-state";
 import { ServiceStopped } from "@/components/workspace/service-terminal";
 import { useActiveTheme } from "@/hooks/use-theme";
 import { ApiError, type TerminalConnection } from "@/lib/api";
+import { useCustomTerminalPrefs } from "@/lib/custom-fonts";
 import { attachable, localPaths, named, onThisComputer, pastedFiles, shrinkImage, uploadAttachment, uploadLocalFile } from "@/lib/attachments";
 import { copyText } from "@/lib/clipboard";
 import { IS_LINUX } from "@/lib/platform";
-import { usePrefs } from "@/lib/prefs";
 import { tryNow } from "@/lib/reconnect";
 import { useStore } from "@/lib/store";
 import { openEditor } from "@/components/editors/open";
@@ -76,7 +76,7 @@ export function TerminalView({ box, session, agent, command, wsKey, tab, pane, v
   const theme = useActiveTheme();
   const themeRef = useRef(theme);
   themeRef.current = theme;
-  const prefs = usePrefs((p) => p.terminal);
+  const prefs = useCustomTerminalPrefs();
   const prefsRef = useRef(prefs);
   prefsRef.current = prefs;
 
