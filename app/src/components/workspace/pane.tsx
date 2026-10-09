@@ -1,4 +1,4 @@
-import { AppWindowIcon, ArchiveIcon, ChartColumnIcon, FileTextIcon, GaugeIcon, LayoutGridIcon, TableIcon, WorkflowIcon, ArrowLeftRightIcon, BotIcon, Columns2Icon, EllipsisIcon, GlobeIcon, ImageIcon, MessagesSquareIcon, MonitorSmartphoneIcon, PencilIcon, ScrollTextIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, SquareTerminalIcon, XIcon } from "lucide-react";
+import { AppWindowIcon, ArchiveIcon, ChartColumnIcon, FileTextIcon, GaugeIcon, LayoutGridIcon, TableIcon, WorkflowIcon, ArrowLeftRightIcon, Columns2Icon, EllipsisIcon, GlobeIcon, MonitorSmartphoneIcon, PencilIcon, ScrollTextIcon, SquareSplitHorizontalIcon, SquareSplitVerticalIcon, XIcon } from "lucide-react";
 import { lazy, Suspense, useEffect, useMemo, useRef } from "react";
 
 
@@ -10,17 +10,11 @@ import { PreviewPane } from "@/components/preview-pane";
 import { FileGlyph } from "@/components/files/file-bits";
 import { EmptySide } from "@/components/workspace/compare-view";
 import { CompareSideContext, type CompareSide, pageLoading } from "@/lib/compare-actions";
-import { openChatBackgroundSettings } from "@/components/conversation/chat-background";
-import { ConversationPane } from "@/components/conversation/conversation-pane";
-import { HelperPane } from "@/components/conversation/helper-pane";
-import { helperKey, useHelperInfo } from "@/components/conversation/subagent-view";
 import { ErrorText } from "@/components/error-note";
 import { SessionActionItems } from "@/components/orchestrate/session-actions";
 import { Button } from "@/components/ui/button";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuShortcut, MenuTrigger } from "@/components/ui/menu";
 import { Spinner } from "@/components/ui/spinner";
-import { isMock } from "@/hooks/use-burf-connection";
-import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { LogView } from "@/components/workspace/log-view";
 import { PanelIcon, PanelPane } from "@/components/workspace/panel-pane";
 import { ServiceIcon } from "@/components/workspace/service-terminal";
@@ -28,8 +22,8 @@ import { armDrag, useTabDrag } from "@/components/workspace/tab-drag";
 import { TerminalView } from "@/components/workspace/terminal-view";
 import { openWorktreePicker } from "@/components/workspace/worktree-picker";
 import { useLabel, useTone, WtChip } from "@/components/workspace/worktree-tone";
-import { agentPresets, closePane, openBrowserAt, openPreviewAt, startSession } from "@/lib/actions";
-import { agentLabel, agentOf, restartCommand, sessionAgent, sessionName, sessionState } from "@/lib/derive";
+import { closePane, openBrowserAt, openPreviewAt, startSession } from "@/lib/actions";
+import { agentLabel, agentOf, sessionAgent, sessionName, sessionState } from "@/lib/derive";
 import { nameFromKey } from "@/lib/groups";
 import { type Leaf, leaves, paneWorktree } from "@/lib/layout";
 import { useChatPaneFocus } from "@/lib/focus-home";
@@ -92,9 +86,8 @@ export function Pane({ wsKey, tab, pane, visible, focused, split, mixed, compare
   // Remember what runs here, so the pane can name it and start it again
   // once the session itself is gone.
   const agent = session ? agentOf(session) : undefined;
-  const view = usePaneView(pane);
   const content = useRef<HTMLDivElement>(null);
-  useChatPaneFocus(content, visible && focused && (c.kind === "remote-chat" || (c.kind === "terminal" && view === "conversation")));
+  useChatPaneFocus(content, visible && focused && c.kind === "remote-chat");
   // Lifted: being dragged by its header, so it fades while it moves.
   const lifted = useTabDrag((s) => s.source?.kind === "pane" && s.source.pane === pane.id);
   useEffect(() => {
@@ -129,21 +122,10 @@ export function Pane({ wsKey, tab, pane, visible, focused, split, mixed, compare
         <div ref={content} className={cn("relative flex min-h-0 flex-1 flex-col transition-opacity", split && !focused && "opacity-85", lifted && "opacity-40")}>
           {gone && <GonePane name={gone} onClose={close} />}
           {c.kind === "remote-chat" && <RemoteChatPane box={c.box} id={c.chat} cwd={c.cwd} agent={c.agent} draft={c.draft} options={c.options} onSaved={(saved) => setPaneContent(wsKey, tab, pane.id, { ...c, ...saved })} />}
-          {/* Under a chat the terminal is out of reach: Tab never lands in its
-              hidden input, where it would type a tab and keep the focus. */}
           {c.kind === "terminal" && (
-            <div className="contents" inert={view === "conversation" || undefined}>
-              {/* Typing shows before the box echoes it on a slow link, in a
-                  shell; an agent's own screen (Claude Code, Codex) draws
-                  its input its own way, so it gets none. */}
-              <TerminalView box={c.box} session={c.session} agent={c.agent} command={c.command} wsKey={wsKey} tab={tab} pane={pane.id} visible={visible && view !== "conversation"} focused={focused && view !== "conversation"} predict={!c.agent && !agent} onFocus={focus} onClose={close} />
-            </div>
-          )}
-          {/* The terminal stays connected underneath, so switching back is instant. */}
-          {c.kind === "terminal" && view === "conversation" && (
-            <div className="absolute inset-0 z-10 flex flex-col">
-              <ConversationPane box={c.box} session={c.session} agent={c.agent} visible={visible} onStartAgain={() => void startSession(restartCommand(c.command) ?? c.agent ?? "", { kind: "replace", tab, pane: pane.id }, c.agent ? agentLabel(c.agent) : "Agent")} onShowTerminal={() => setPaneContent(wsKey, tab, pane.id, { ...c, view: "terminal" })} />
-            </div>
+            // Shells show typing before the box echoes it on a slow link.
+            // An agent draws its own input, so it gets no predictive echo.
+            <TerminalView box={c.box} session={c.session} agent={c.agent} command={c.command} wsKey={wsKey} tab={tab} pane={pane.id} visible={visible} focused={focused} predict={!c.agent && !agent} onFocus={focus} onClose={close} />
           )}
           {c.kind === "browser" && <BrowserPane id={pane.id} url={c.url} visible={visible} worktree={owner} onNavigate={(url) => setPaneContent(wsKey, tab, pane.id, { kind: "browser", url })} onLoading={compare ? (l) => pageLoading(pane.id, l) : undefined} />}
           {c.kind === "preview" && <PreviewPane url={c.url} visible={visible} worktree={owner} onNavigate={(url) => setPaneContent(wsKey, tab, pane.id, { kind: "preview", url })} />}
@@ -157,7 +139,6 @@ export function Pane({ wsKey, tab, pane, visible, focused, split, mixed, compare
               <ArtifactPane id={c.id} focus={c.focus} />
             </Suspense>
           )}
-          {c.kind === "helper" && <HelperPane box={c.box} session={c.session} helper={c.helper} title={c.title} onClose={close} onResolve={(id, title) => setPaneContent(wsKey, tab, pane.id, { ...c, helper: id, title })} />}
           {c.kind === "empty" && <EmptySide owner={owner} tab={tab} pane={pane.id} label={c.label} />}
           {c.kind === "log" && <LogView box={c.box} location={c.location} worktree={c.worktree} service={c.service} visible={visible} />}
           {c.kind === "panel" && <PanelPane wsKey={owner} plugin={c.plugin} panel={c.panel} />}
@@ -208,57 +189,6 @@ function GonePane({ name, onClose }: { name: string; onClose(): void }) {
   );
 }
 
-// Supported remote agents have Chat and Terminal views, independently of Labs.
-// Shells and agents without readable conversations remain terminals.
-export function usePaneView(pane: Leaf): "terminal" | "conversation" | undefined {
-  const c = pane.content;
-  const fallback = usePrefs((p) => (p.zen ? "conversation" : p.agentView));
-  // A pane made for a new session doesn't record its agent; the box's
-  // session list says whether it runs one.
-  const agent = useStore((st) => {
-    if (c.kind !== "terminal") return undefined;
-    const s = st.boxes[c.box]?.sessions?.find((x) => x.name === c.session);
-    return s ? agentOf(s) : c.agent;
-  });
-  const info = useStore((st) => c.kind === "terminal" ? st.boxes[c.box]?.info : undefined);
-  if (c.kind !== "terminal" || (agent !== "claude" && agent !== "codex")) return undefined;
-  const unsupportedBox = !isMock() && info && !info.capabilities?.includes("transcript");
-  return c.view ?? (unsupportedBox ? "terminal" : fallback);
-}
-
-// ViewSwitch flips an agent's pane between its terminal and its
-// conversation.
-export function ViewSwitch({ wsKey, tab, pane }: { wsKey: string; tab: string; pane: Leaf }) {
-  const view = usePaneView(pane);
-  const c = pane.content;
-  if (!view || c.kind !== "terminal") return null;
-  return (
-    <ToggleGroup
-      size="sm"
-      variant="outline"
-      value={[view]}
-      onValueChange={(v) => {
-        const next = v[0] as "terminal" | "conversation" | undefined;
-        if (!next) return;
-        setPaneContent(wsKey, tab, pane.id, { ...c, view: next });
-      }}
-      aria-label="Show the agent as"
-      className="mr-1"
-    >
-      <Tip label="Chat">
-        <ToggleGroupItem value="conversation" aria-label="Chat" className="h-7! gap-1.5 px-2!">
-          <MessagesSquareIcon className="size-3.5" /><span>Chat</span>
-        </ToggleGroupItem>
-      </Tip>
-      <Tip label="Terminal">
-        <ToggleGroupItem value="terminal" aria-label="Terminal" className="h-7! gap-1.5 px-2!">
-          <SquareTerminalIcon className="size-3.5" /><span className="hidden sm:inline">Terminal</span>
-        </ToggleGroupItem>
-      </Tip>
-    </ToggleGroup>
-  );
-}
-
 // paneLabel is what a pane is called in headers and tabs: the agent's name,
 // "Shell", "Browser", or the plugin panel's title.
 export function paneLabel(c: Leaf["content"], agent?: string): string {
@@ -275,8 +205,6 @@ export function paneLabel(c: Leaf["content"], agent?: string): string {
       return c.path.slice(c.path.lastIndexOf("/") + 1);
     case "log":
       return `${c.service} log`;
-    case "helper":
-      return c.title || "Helper";
     case "artifact":
       return c.id ? c.title || "Artifact" : "Artifacts";
     case "panel":
@@ -295,7 +223,6 @@ export function PaneIcon({ content, agent, className }: { content: Leaf["content
   if (c.kind === "browser") return <GlobeIcon className={cn("size-3.5 shrink-0", className)} />;
   if (c.kind === "file") return <FileGlyph path={c.path} className={className} />;
   if (c.kind === "preview") return <MonitorSmartphoneIcon className={cn("size-3.5 shrink-0", className)} />;
-  if (c.kind === "helper") return <BotIcon className={cn("size-3.5 shrink-0", className)} />;
   if (c.kind === "artifact") {
     const Icon = c.id ? (ART_ICONS[c.art ?? ""] ?? ChartColumnIcon) : LayoutGridIcon;
     return <Icon className={cn("size-3.5 shrink-0", className)} />;
@@ -320,8 +247,7 @@ function PaneTitle({ pane }: { pane: Leaf }) {
   // once the box no longer lists the session.
   const away = useStore((s) => c.kind === "terminal" && !!s.status && s.status.boxes.find((b) => b.name === c.box)?.state !== "online");
   const gone = useStore((s) => c.kind === "terminal" && !session && !!s.boxes[c.box]?.sessions);
-  const helper = useHelperState(c);
-  const state = helper ?? (away ? undefined : session ? sessionState(session, stats) : gone ? "exited" : undefined);
+  const state = away ? undefined : session ? sessionState(session, stats) : gone ? "exited" : undefined;
   // Near the box's per-session memory ceiling: said here and in its chat.
   const near = away ? undefined : memoryNote(session?.usage);
   return (
@@ -342,12 +268,6 @@ function PaneTitle({ pane }: { pane: Leaf }) {
   );
 }
 
-// useHelperState is how a helper's pane's helper is doing: working, or
-// back.
-export function useHelperState(c: Leaf["content"]): "running" | "finished" | undefined {
-  return useHelperInfo((s) => (c.kind === "helper" ? s[helperKey(c.box, c.session, c.helper)]?.state : undefined));
-}
-
 // PaneActions are a pane's split buttons and its ⋯ menu: in the pane's own
 // header when the tab is split, and in the tab strip when it is not.
 // ⌘W and ⌘D act on the focused pane, so only its buttons name them.
@@ -356,8 +276,6 @@ export function useHelperState(c: Leaf["content"]): "running" | "finished" | und
 export function PaneActions({ wsKey, tab, pane, onClose, closable, focused = true, compact }: { wsKey: string; tab: string; pane: Leaf; onClose?: () => void; closable?: boolean; focused?: boolean; compact?: boolean }) {
   const c = pane.content;
   const session = useStore((s) => (c.kind === "terminal" ? s.boxes[c.box]?.sessions?.find((x) => x.name === c.session) : undefined));
-  // Agents to open beside it are its own worktree's repository's.
-  const ref = useWorktreeRef(paneWorktree(wsKey, pane));
   const agent = session && agentOf(session);
   const close = onClose ?? (() => void closePane(wsKey, tab, pane.id));
   const labs = usePrefs((p) => p.labs);
@@ -372,7 +290,6 @@ export function PaneActions({ wsKey, tab, pane, onClose, closable, focused = tru
 
   return (
     <>
-      <ViewSwitch wsKey={wsKey} tab={tab} pane={pane} />
       {!compact && (
         <>
           <HeaderButton label="Split right" keys={focused ? "⌘D" : undefined} onClick={() => void startSession("", beside("row"))}>
@@ -398,15 +315,6 @@ export function PaneActions({ wsKey, tab, pane, onClose, closable, focused = tru
           )}
           <MenuGroup>
             <MenuGroupLabel>Open beside</MenuGroupLabel>
-            {ref &&
-              agentPresets(ref.box, ref.location).map((p) => (
-                <MenuItem key={p.id} onClick={() => void startSession(p.command, beside("row"), p.name, undefined, p.id)}>
-                  <span className="flex size-4 items-center justify-center">
-                    <AgentIcon agent={p.id} />
-                  </span>
-                  {p.name}
-                </MenuItem>
-              ))}
             <MenuItem onClick={() => void startSession("", beside("row"))}>
               <span className="flex size-4 items-center justify-center">
                 <AgentIcon />
@@ -445,12 +353,6 @@ export function PaneActions({ wsKey, tab, pane, onClose, closable, focused = tru
             <MenuItem onClick={() => startRenaming(c.box, c.session)}>
               <PencilIcon />
               Rename…
-            </MenuItem>
-          )}
-          {c.kind === "terminal" && agent && (
-            <MenuItem onClick={openChatBackgroundSettings}>
-              <ImageIcon />
-              Chat background…
             </MenuItem>
           )}
           {others.length > 0 && (

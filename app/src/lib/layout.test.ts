@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { adopt, bounds, leaf, leaves, mixed, moveBetween, movePane, type PaneNode, paneWorktree, place, remove, sessionsShown, sideAt, split, swap, worktreesOf } from "./layout.ts";
+import { adopt, bounds, leaf, leaves, mixed, moveBetween, movePane, type PaneNode, paneWorktree, place, remove, restorePane, sessionsShown, sideAt, split, swap, worktreesOf } from "./layout.ts";
 
 const term = (s: string) => leaf({ kind: "terminal", box: "b", session: s });
 const names = (n: PaneNode) => leaves(n).map((l) => (l.content.kind === "terminal" ? l.content.session : "?"));
@@ -161,4 +161,20 @@ test("moveBetween takes one pane out and leaves the rest of its tab", () => {
   assert.equal(got[A].active, "t2");
   // Into its own tab, or onto itself, makes no sense.
   assert.equal(moveBetween(spaces, { key: A, tab: "t1", pane: b.id }, { key: A, tab: "t1", pane: a.id, side: "left" }), undefined);
+});
+
+test("a saved terminal chat restores its session and layout as a terminal", () => {
+  const a = term("a");
+  const old = { ...a, wt: "other:worktree", content: { ...a.content, view: "conversation" } };
+  const tree = split(old, old.id, "row", leaf({ kind: "browser", url: "http://localhost:3000" }));
+  const restored = restorePane(tree);
+  const [terminal, browser] = leaves(restored);
+  assert.deepEqual(terminal, { ...a, wt: "other:worktree" });
+  assert.deepEqual(browser, leaves(tree)[1]);
+  assert.equal(restored.id, tree.id);
+});
+
+test("a saved helper transcript restores its parent terminal", () => {
+  const old = { kind: "leaf", id: "helper", wt: "other:worktree", content: { kind: "helper", box: "b", session: "parent", helper: "subagent" } };
+  assert.deepEqual(restorePane(old as PaneNode), { kind: "leaf", id: "helper", wt: "other:worktree", content: { kind: "terminal", box: "b", session: "parent" } });
 });

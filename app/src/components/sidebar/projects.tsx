@@ -20,9 +20,8 @@ import { confirm } from "@/components/sidebar/confirm";
 import { type Project, projectActions as groupActions, useProjects } from "@/lib/project-groups";
 import { Tip } from "@/components/tip";
 import { Spinner } from "@/components/ui/spinner";
-import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuTrigger } from "@/components/ui/menu";
 import { SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem } from "@/components/ui/sidebar";
-import { agentPresets, startSession } from "@/lib/actions";
+import { startSession } from "@/lib/actions";
 import { type BoxStatus, type Location, type Session, type Worktree } from "@/lib/api";
 import { agentOf, type SessionState, sessionName, sessionState, worktreeSessions } from "@/lib/derive";
 import { load, save } from "@/lib/storage";
@@ -604,40 +603,12 @@ function RowActions({ box, loc, wt, project, onNewWorktree }: { box: string; loc
         </RowButton>
       )}
       {!onNewWorktree && (
-        <Menu>
-          <MenuTrigger render={<RowButton label={`Start in ${worktreeLabel(wt, loc)}`} />}>
-            <PlusIcon />
-          </MenuTrigger>
-          <MenuPopup align="start" className="min-w-48">
-            <MenuGroup>
-              <MenuGroupLabel>Start in {worktreeLabel(wt, loc)}</MenuGroupLabel>
-              {agentPresets(box, loc).map((p) => (
-                <MenuItem
-                  key={p.id}
-                  onClick={() => {
-                    select();
-                    void startSession(p.command, { kind: "tab" }, p.name, wsKey(box, wt.path), p.id);
-                  }}
-                >
-                  <span className="flex size-4 items-center justify-center">
-                    <AgentIcon agent={p.id} />
-                  </span>
-                  {p.name}
-                </MenuItem>
-              ))}
-              <MenuSeparator />
-              <MenuItem
-                onClick={() => {
-                  select();
-                  void startSession("", { kind: "tab" }, "Terminal", wsKey(box, wt.path));
-                }}
-              >
-                <SquareTerminalIcon />
-                Shell
-              </MenuItem>
-            </MenuGroup>
-          </MenuPopup>
-        </Menu>
+        <RowButton label={`New shell in ${worktreeLabel(wt, loc)}`} onClick={() => {
+          select();
+          void startSession("", { kind: "tab" }, "Terminal", wsKey(box, wt.path));
+        }}>
+          <SquareTerminalIcon />
+        </RowButton>
       )}
       <DotsMenu label={`${worktreeLabel(wt, loc)} actions`} items={() => (project ? projectActions(box, loc) : worktreeActions(box, loc, wt))} />
     </RowOverlay>

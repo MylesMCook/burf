@@ -105,8 +105,8 @@ export async function setup(page) {
   const views = {};
   const row = (w) => page.locator(`[data-testid=worktree-row][data-worktree="${w}"]`);
   await row("devl/checkout-fix").click();
-  await page.locator("[data-testid=pane]:visible [data-testid=chat]").first().waitFor();
-  // The second chat, split in beside the first (dragged onto its edge).
+  await page.locator("[data-testid=pane]:visible [data-terminal]").first().waitFor();
+  // The second terminal, split in beside the first (dragged onto its edge).
   const area = await page.locator("[data-pane-area]").boundingBox();
   const r = await row("devl/search-perf").boundingBox();
   const m = page.mouse;
@@ -116,8 +116,8 @@ export async function setup(page) {
   await m.move(area.x + area.width * 0.9, area.y + area.height * 0.5, { steps: 12 });
   await page.waitForTimeout(200);
   await m.up();
-  await page.locator("[data-pane-area] [data-testid=chat]:visible").nth(1).waitFor();
-  views.chats = await activeTab(page);
+  await page.locator("[data-pane-area] [data-terminal]:visible").nth(1).waitFor();
+  views.terminals = await activeTab(page);
   // Back to checkout-fix's own tabs, where its dev server is.
   await row("devl/checkout-fix").click();
 
@@ -216,4 +216,3 @@ export async function wakeups(pids, secs) {
     return null;
   }
 }
-

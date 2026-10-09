@@ -9,7 +9,7 @@ const SLUG = "devl/https-linear-app-acme";
 
 test("renamed from its menu, it is called by the new name everywhere, and ⌘K still finds its own", async ({ app }) => {
   mockOnly();
-  await app.open({ params: { view: "conversation" } });
+  await app.open();
   const page = app.page;
   const row = app.worktree(SLUG);
   await expect(row).toContainText("https-linear-app-acme");

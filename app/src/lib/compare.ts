@@ -6,7 +6,7 @@
 //
 // A lane is what both sides show: their agents' chats, their diffs, their
 // dev servers' pages, their agents' terminals, or their artifacts' boards. Chat and Terminal are one
-// pane per side (the agent's), seen as its conversation or its terminal.
+// pane per side (the agent's), always shown as its terminal.
 // The panes of a lane not showing are parked, still mounted, so coming back
 // to it reloads nothing. These are the pure parts; lib/compare-actions.ts
 // applies them to the store. No imports but layout: pnpm test runs this.
@@ -49,14 +49,6 @@ export interface CompareTab {
 // What a new pane of a lane shows for one side (a worktree's key).
 export type Make = (kind: Kind, side: string) => PaneContent;
 
-// withView shows an agent's pane as the lane asks: its conversation in
-// Chat, its terminal in Terminal. Other panes are as they are.
-export function withView(c: PaneContent, lane: Lane): PaneContent {
-  if (c.kind !== "terminal" || kindOf(lane) !== "agent") return c;
-  const view = lane === "chat" ? "conversation" : "terminal";
-  return c.view === view ? c : { ...c, view };
-}
-
 const sideLeaf = (owner: string, side: string, content: PaneContent): Leaf => leaf(content, side !== owner ? side : undefined);
 
 const pair = (a: Leaf, b: Leaf, id = newId(), ratio = 0.5): PaneNode => ({ kind: "split", id, dir: "row", ratio, a, b });
@@ -73,8 +65,8 @@ export function sides(t: Pick<CompareTab, "root" | "compare">): [Leaf, Leaf] | u
 // owner, showing lane, with its focus on the left.
 export function newCompare(owner: string, a: string, b: string, lane: Lane, make: Make, sync = true): CompareTab & { compare: Compare } {
   const k = kindOf(lane);
-  const l = sideLeaf(owner, a, withView(make(k, a), lane));
-  const r = sideLeaf(owner, b, withView(make(k, b), lane));
+  const l = sideLeaf(owner, a, make(k, a));
+  const r = sideLeaf(owner, b, make(k, b));
   return { id: newId(), root: pair(l, r), focus: l.id, compare: { a, b, lane, sync, panes: { [k]: [l.id, r.id] }, parked: [] } };
 }
 
@@ -93,8 +85,7 @@ export function setLane<T extends CompareTab>(t: T, owner: string, lane: Lane, m
   const side = focusedSide(t);
   const ratio = t.root.kind === "split" ? t.root.ratio : 0.5;
   if (from === to) {
-    const [l, r] = now.map((x) => ({ ...x, content: withView(x.content, lane) }));
-    return { ...t, root: pair(l, r, t.root.id, ratio), compare: { ...c, lane } };
+    return { ...t, compare: { ...c, lane } };
   }
   let parked = [...(c.parked ?? []).filter((p) => p.id !== now[0].id && p.id !== now[1].id), ...now];
   const ids = c.panes?.[to];
@@ -107,8 +98,6 @@ export function setLane<T extends CompareTab>(t: T, owner: string, lane: Lane, m
     l = sideLeaf(owner, c.a, make(to, c.a));
     r = sideLeaf(owner, c.b, make(to, c.b));
   } else parked = parked.filter((p) => p !== l && p !== r);
-  l = { ...l, content: withView(l.content, lane) };
-  r = { ...r, content: withView(r.content, lane) };
   const panes = { ...c.panes, [to]: [l.id, r.id] as [string, string] };
   return { ...t, root: pair(l, r, t.root.id, ratio), focus: side ? r.id : l.id, compare: { ...c, lane, panes, parked } };
 }

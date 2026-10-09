@@ -5,7 +5,6 @@ import {
   ArchiveIcon,
   ArrowUpCircleIcon,
   ArrowUpRightIcon,
-  BotIcon,
   CheckIcon,
   FolderInputIcon,
   MergeIcon,
@@ -37,7 +36,6 @@ import {
 } from "lucide-react";
 import { type ComponentProps, createContext, type KeyboardEvent, type MouseEvent as ReactMouseEvent, type ReactNode, type TouchEvent, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 
-import { AgentIcon } from "@/components/agent-glyph";
 import { EditorMenuItems } from "@/components/editors/editor-menu";
 import { AutoFixItems } from "@/components/sidebar/autofix-items";
 import { boxHasRuns } from "@/lib/runs";
@@ -49,7 +47,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuSub, MenuSubPopup, MenuSubTrigger, MenuTrigger } from "@/components/ui/menu";
 import { Spinner } from "@/components/ui/spinner";
 import { toastManager } from "@/components/ui/toast";
-import { agentPresets, openBrowserAt, startSession, stopSession } from "@/lib/actions";
+import { openBrowserAt, startSession, stopSession } from "@/lib/actions";
 import { boxApi, type BoxStatus, laptopApi, type Location, type Worktree, type WorktreeService } from "@/lib/api";
 import { portUrl } from "@/lib/browser-url";
 import { agentOf, worktreeSessions } from "@/lib/derive";
@@ -334,7 +332,6 @@ export function worktreeActions(box: string, loc: Location, wt: Worktree): Actio
   const select = () => selectWorktree(refOf(box, loc, wt));
   // What these start is this worktree's, whatever pane has the focus there.
   const key = wsKey(box, wt.path);
-  const presets = agentPresets(box, loc);
 
   // Labs: its tabs beside the worktree in front, as a group of the strip.
   const ws = useWorkspaces.getState();
@@ -348,17 +345,6 @@ export function worktreeActions(box: string, loc: Location, wt: Worktree): Actio
       select();
       void startSession("", { kind: "tab" }, "Terminal", key);
     }),
-    {
-      type: "sub",
-      label: "New agent",
-      icon: <BotIcon />,
-      items: presets.map((p) =>
-        item(p.name, slot(<AgentIcon agent={p.id} />), () => {
-          select();
-          void startSession(p.command, { kind: "tab" }, p.name, key, p.id);
-        }),
-      ),
-    },
     { type: "sub", label: "Run", icon: <PlayIcon />, items: () => <RunItems box={box} loc={loc} wt={wt} /> },
     item(url ? "Open dev server in browser tab" : "New browser tab", <GlobeIcon />, () => {
       select();
@@ -638,19 +624,6 @@ export function projectGroupActions(p: Project): Action[] {
   const mm = def && main(def);
   if (mm) items.push(item(multi ? `Open main checkout on ${def.box.name}` : "Open main checkout", <HomeIcon />, () => selectWorktree(refOf(def.box.name, def.loc, mm))));
   if (def) items.push(item(multi ? `New task on ${def.box.name}…` : "New task…", <GitBranchPlusIcon />, () => st.openNewWorktree({ box: def.box.name, location: def.loc.name }), { shortcut: "⌘N" }));
-  if (def && mm && def.box.state === "online") {
-    items.push({
-      type: "sub",
-      label: multi ? `New agent on ${def.box.name}` : "New agent",
-      icon: <BotIcon />,
-      items: agentPresets(def.box.name, def.loc).map((pr) =>
-        item(pr.name, slot(<AgentIcon agent={pr.id} />), () => {
-          selectWorktree(refOf(def.box.name, def.loc, mm));
-          void startSession(pr.command, { kind: "tab" }, pr.name, wsKey(def.box.name, mm.path));
-        }),
-      ),
-    });
-  }
 
   // Its boxes: where to make a worktree, which box is the default, and
   // adding it to another.

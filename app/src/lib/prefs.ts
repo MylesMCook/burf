@@ -46,10 +46,7 @@ export interface Prefs {
   // Set once the person turns Labs on or off in Settings, so a change of
   // default never overrides them.
   labsChosen: boolean;
-  // How supported remote agents open; a pane can override this independently.
-  agentView: "terminal" | "conversation";
-  // Labs: zen (⌘.): no sidebar or status bar, a switcher for a tab strip,
-  // agents as conversations.
+  // Labs: zen (⌘.): no sidebar or status bar, a switcher for a tab strip.
   zen: boolean;
   // Update a box's berthd as soon as Burf ships a newer one
   // (lib/outdated.ts). Off: the status bar offers it instead.
@@ -59,9 +56,6 @@ export interface Prefs {
   chatBackground: ChatBackground;
   // How wide the conversation's column is (Settings › Appearance › Chat).
   chatWidth: ChatWidth;
-  // Show the reply Claude is writing as it grows (lib/draft), read from its
-  // screen. Off: replies appear once written (Settings › Appearance › Chat).
-  chatDrafts: boolean;
   // The Files panel beside the worktree's tabs (⌘⇧E), for every worktree.
   filesPanel: boolean;
   // The themes "Match system" uses by day and when macOS is dark.
@@ -106,12 +100,10 @@ const DEFAULTS: Prefs = {
   agentCloseTips: 0,
   labs: true,
   labsChosen: false,
-  agentView: "conversation",
   zen: false,
   autoUpdateBoxes: false,
   chatBackground: DEFAULT_CHAT_BACKGROUND,
   chatWidth: "default",
-  chatDrafts: true,
   filesPanel: false,
   systemThemes: { light: "berth-light", dark: "berth-dark" },
   home: null,
@@ -125,13 +117,13 @@ const DEFAULTS: Prefs = {
 // once. 2: closing an agent's tab stops it ("keep" was the default before).
 const PREFS_VERSION = 3;
 
-type Saved = Partial<Prefs> & { version?: number };
+type Saved = Partial<Prefs> & { version?: number; agentView?: unknown; chatDrafts?: unknown };
 
 // migrate brings prefs saved by an older Burf up to date. Prefs are saved
 // whole, so a "keep" saved before version 2 is only the old default unless
 // the person chose it, which closeAgentsChosen records from now on.
 export function migratePrefs(saved: Saved): Saved {
-  const out = { ...saved };
+  const { agentView: _agentView, chatDrafts: _chatDrafts, ...out } = saved;
   if ((saved.version ?? 1) < 2 && Object.keys(saved).length) {
     if ((saved.closeAgents ?? "keep") === "keep" && !saved.closeAgentsChosen) {
       out.closeAgents = "stop";
@@ -165,14 +157,11 @@ usePrefs.subscribe((p) => save("berth.prefs", { ...p, version: PREFS_VERSION }))
 // The migration is kept at once, not only on the next change.
 save("berth.prefs", { ...usePrefs.getState(), version: PREFS_VERSION });
 
-// ?labs=1 turns Labs on, ?zen=1 zen, and ?view=conversation opens agents
-// as conversations, for the demo.
+// ?labs=1 turns Labs on and ?zen=1 turns zen on for the demo.
 {
   const q = new URLSearchParams(location.search);
   if (q.has("labs")) usePrefs.setState({ labs: q.get("labs") !== "0" });
   if (q.has("zen")) usePrefs.setState({ zen: q.get("zen") !== "0" });
-  const v = q.get("view");
-  if (v === "terminal" || v === "conversation") usePrefs.setState({ agentView: v });
 }
 
 // The interface's text size scales everything sized in rem, from 13px as

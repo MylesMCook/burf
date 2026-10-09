@@ -14,7 +14,6 @@ import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { Spinner } from "@/components/ui/spinner";
 import { Menu, MenuGroup, MenuGroupLabel, MenuItem, MenuPopup, MenuSeparator, MenuShortcut, MenuSub, MenuSubPopup, MenuSubTrigger, MenuTrigger } from "@/components/ui/menu";
-import { ViewSwitch } from "@/components/workspace/pane";
 import { TitleInput } from "@/components/workspace/tab-strip";
 import { renameSession, startRenaming, useRenaming } from "@/lib/session-title";
 import { useAllSessions } from "@/hooks/use-agent-counts";
@@ -351,18 +350,6 @@ function WorktreeMenu() {
   );
 }
 
-// FocusedViewSwitch is the Terminal | Conversation switch of the focused
-// pane, for zen, where panes have no header.
-function FocusedViewSwitch() {
-  const key = useWorkspaces((s) => s.current);
-  const ws = useWorkspaces((s) => (s.current ? s.spaces[s.current] : undefined));
-  const workspace = useStore((s) => s.view.kind === "workspace");
-  const tab = ws?.tabs.find((t) => t.id === ws.active);
-  const pane = tab ? leaves(tab.root).find((l) => l.id === tab.focus) : undefined;
-  if (!workspace || !key || !tab || !pane) return null;
-  return <ViewSwitch wsKey={key} tab={tab.id} pane={pane} />;
-}
-
 // ZenBar stands in for the sidebar and the tab strip on every view: the
 // switcher at its left, clear of the window's buttons, then search,
 // notifications and the way out. It drags the window. At home it lies
@@ -391,7 +378,6 @@ export function ZenBar() {
       )}
       <WorktreeMenu />
       <div data-tauri-drag-region className="flex-1 self-stretch" />
-      <FocusedViewSwitch />
       <Button size="sm" variant="ghost" className="text-muted-foreground" onClick={() => useStore.getState().setPaletteOpen(true)}>
         Search
         <Kbd>⌘K</Kbd>

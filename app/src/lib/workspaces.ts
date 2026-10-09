@@ -4,7 +4,7 @@ import { create } from "zustand";
 import type { Location, Session, Worktree } from "@/lib/api";
 import { type Compare, rehomeCompares } from "@/lib/compare";
 import { agentOf, sessionState } from "@/lib/derive";
-import { findLeaf, type Leaf, leaf, leaves, mapLeaf, moveBetween, movePane, neighbor, newId, type PaneContent, type PaneNode, paneWorktree, place, remove, sessionsShown, setRatio, type Side, split, swap, worktreesOf } from "@/lib/layout";
+import { findLeaf, type Leaf, leaf, leaves, mapLeaf, moveBetween, movePane, neighbor, newId, type PaneContent, type PaneNode, paneWorktree, place, remove, sessionsShown, restorePane, setRatio, type Side, split, swap, worktreesOf } from "@/lib/layout";
 import { foldedOf, groupsOf, NARROW, stepGroup, stripTabs, withGroup, withoutGroup } from "@/lib/groups";
 import { usePrefs } from "@/lib/prefs";
 import { load, save } from "@/lib/storage";
@@ -123,10 +123,11 @@ function sanitize(spaces: Record<string, Workspace>): Record<string, Workspace> 
   for (const [k, ws] of Object.entries(spaces)) {
     const tabs: WsTab[] = [];
     for (const t of ws.tabs) {
-      let root: PaneNode | undefined = t.root;
+      const restored = restorePane(t.root);
+      let root: PaneNode | undefined = restored;
       // A Compare tab keeps its two sides: one that was starting is empty.
-      if (t.compare) root = mapLeaves(t.root, (l) => (l.content.kind === "starting" || l.content.kind === "error" ? { ...l, content: { kind: "empty", label: "Agent" } } : l));
-      else for (const l of leaves(t.root)) if (l.content.kind === "starting" || l.content.kind === "error") root = root && remove(root, l.id);
+      if (t.compare) root = mapLeaves(restored, (l) => (l.content.kind === "starting" || l.content.kind === "error" ? { ...l, content: { kind: "empty", label: "Agent" } } : l));
+      else for (const l of leaves(restored)) if (l.content.kind === "starting" || l.content.kind === "error") root = root && remove(root, l.id);
       if (root) tabs.push({ ...t, root, focus: leaves(root).some((l) => l.id === t.focus) ? t.focus : leaves(root)[0].id });
     }
     out[k] = { ...ws, tabs, active: tabs.some((t) => t.id === ws.active) ? ws.active : tabs[0]?.id, hidden: ws.hidden ?? [] };
@@ -763,82 +764,6 @@ export function recentWorktrees(spaces: Record<string, Workspace>, n = 3): Works
 }
 
 if (import.meta.env.DEV) Object.assign(window as unknown as Record<string, unknown>, { __berthWorkspaces: { useWorkspaces, selectWorktree, goHome, focusSession } });
-
-// ---- Helpers' tabs ----
-
-// A helper as its opener names it: by its id, the call that started it, or
-// its name ("Sent out 2 helpers" knows only names in older records).
-export interface HelperRef {
-  box: string;
-  session: string;
-  ref: string;
-}
-
-const isHelper = (l: Leaf, h: HelperRef) =>
-  l.content.kind === "helper" && l.content.box === h.box && l.content.session === h.session && (l.content.helper === h.ref || l.content.title === h.ref.replace(/^Explore:\s*/, ""));
-
-// findHelper locates the pane showing a helper's conversation, in any
-// workspace.
-export function findHelper(h: HelperRef): { key: string; tab: string; pane: Leaf } | undefined {
-  for (const [key, ws] of Object.entries(useWorkspaces.getState().spaces)) {
-    for (const t of ws.tabs) {
-      if (t.compare) continue;
-      const l = leaves(t.root).find((x) => isHelper(x, h));
-      if (l) return { key, tab: t.id, pane: l };
-    }
-  }
-  return undefined;
-}
-
-// openHelperPane shows a helper's conversation beside the chat of the agent
-// that sent it out (from, the pane it was opened from, else wherever that
-// chat shows): as a tab just after the chat's (after any of its helpers
-// already there), or with split, beside the chat in its tab. A helper
-// already open is brought to the front instead; with split, one open in a
-// tab of its own moves in beside the chat. Without the chat on screen it
-// opens in the worktree you are acting in.
-export function openHelperPane(h: HelperRef & { title?: string }, how: "tab" | "split" = "tab", from?: { wsKey: string; tab: string; pane: string }) {
-  const s = useWorkspaces.getState();
-  const fromLeaf = from && s.spaces[from.wsKey]?.tabs.find((t) => t.id === from.tab && findLeaf(t.root, from.pane));
-  const found = findSession(h.box, h.session);
-  const parent = fromLeaf && from ? { key: from.wsKey, tab: from.tab, pane: findLeaf(fromLeaf.root, from.pane)! } : found;
-  const content: PaneContent = { kind: "helper", box: h.box, session: h.session, helper: h.ref, title: h.title?.replace(/^Explore:\s*/, "") };
-  const open = findHelper(h);
-  useStore.getState().setView({ kind: "workspace" });
-  if (open && (how === "tab" || !parent || (open.key === parent.key && open.tab === parent.tab))) {
-    if (!isShown(open.key)) showWorktree(open.key);
-    else focusGroup(open.key);
-    activateTab(open.key, open.tab);
-    focusPane(open.key, open.tab, open.pane.id);
-    return;
-  }
-  if (open && parent) {
-    moveInto({ key: open.key, tab: open.tab, pane: open.pane.id }, { key: parent.key, tab: parent.tab, pane: parent.pane.id, side: "right" });
-    return;
-  }
-  if (!parent) {
-    openFor(content, how === "split" ? { split: "row" } : {});
-    return;
-  }
-  // The helper belongs to its chat's worktree.
-  const wt = paneWorktree(parent.key, parent.pane);
-  if (isShown(parent.key)) focusGroup(parent.key);
-  else showWorktree(parent.key);
-  if (how === "split") {
-    splitPane(parent.key, parent.tab, parent.pane.id, "row", content, wt);
-    return;
-  }
-  const l = leaf(content, wt !== parent.key ? wt : undefined);
-  const tab: WsTab = { id: newId(), root: l, focus: l.id };
-  update(parent.key, (ws) => {
-    const tabs = [...ws.tabs];
-    let i = tabs.findIndex((t) => t.id === parent.tab);
-    // After the chat's helpers already open beside it, in the order opened.
-    while (i >= 0 && i + 1 < tabs.length && leaves(tabs[i + 1].root).every((x) => x.content.kind === "helper" && x.content.box === h.box && x.content.session === h.session)) i++;
-    tabs.splice(i < 0 ? tabs.length : i + 1, 0, tab);
-    return { ...ws, tabs, active: tab.id };
-  });
-}
 
 // openArtifactPane shows an artifact of worktree wt (or with no id, wt's
 // board): the pane already showing it is brought forward; otherwise beside
