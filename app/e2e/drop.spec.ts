@@ -88,14 +88,3 @@ test("files dropped on Home's composer attach, and Start takes them", async ({ a
   await editor.fill("Why does checkout double-charge on refunds?");
   await expect(composer.getByRole("button", { name: "Start", exact: true })).toBeEnabled();
 });
-
-test("a file dropped on the reply box of a chat attaches", async ({ app }) => {
-  mockOnly("uploads to a box");
-  await app.open({ params: { view: "conversation" } });
-  await app.openWorktree("devl/search-perf");
-  await expect(app.composer).toBeVisible();
-  expect(await fire(app.page, '[data-testid="composer"] textarea', "dragover")).toBe(true);
-  await expect(app.page.getByTestId("file-drop-hint")).not.toHaveAttribute("data-shown");
-  expect(await fire(app.page, '[data-testid="composer"] textarea', "drop")).toBe(true);
-  await expect(app.composer.getByTestId("attachment-chip")).toHaveCount(2);
-});

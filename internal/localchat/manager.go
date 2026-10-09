@@ -1,4 +1,4 @@
-// Package localchat owns new Codex app-server threads, never externally started chats.
+// Package localchat owns structured provider chats, never externally started chats.
 package localchat
 
 import (
@@ -26,6 +26,9 @@ const maxSnapshot = 4 << 20
 
 type Process interface{ io.ReadWriteCloser }
 type LaunchOptions struct {
+	// Agent defaults to codex for callers predating structured Claude chat.
+	Agent   string
+	chatID  string
 	Program string
 	CWD     string
 	// Env replaces the provider environment; nil inherits the current environment.
@@ -123,17 +126,19 @@ type packet struct {
 	} `json:"error,omitempty"`
 }
 type running struct {
-	mu        sync.Mutex
-	op        sync.Mutex
-	session   Session
-	process   Process
-	writes    chan []byte
-	done      chan struct{}
-	once      sync.Once
-	next      uint64
-	pending   map[string]chan packet
-	approvals map[string]json.RawMessage
-	submitted string
+	provider      provider
+	launchOptions LaunchOptions
+	mu            sync.Mutex
+	op            sync.Mutex
+	session       Session
+	process       Process
+	writes        chan []byte
+	done          chan struct{}
+	once          sync.Once
+	next          uint64
+	pending       map[string]chan packet
+	approvals     map[string]json.RawMessage
+	submitted     string
 	// browser holds the provider calls waiting for the chat's browser.
 	browser     map[string]chan BrowserResult
 	browserWake chan struct{}
@@ -178,6 +183,15 @@ func (m *Manager) StartWith(ctx context.Context, options LaunchOptions) (Session
 	}
 	go r.read()
 	go r.write()
+	if err = r.provider.start(ctx, r, options); err != nil {
+		r.finish(err.Error())
+		return r.snapshot(), err
+	}
+	return r.snapshot(), nil
+}
+
+func (codexProvider) start(ctx context.Context, r *running, options LaunchOptions) error {
+	var err error
 	initCtx, cancel := context.WithTimeout(ctx, 20*time.Second)
 	defer cancel()
 	_, err = r.call(initCtx, "initialize", map[string]any{"clientInfo": map[string]string{"name": "burf", "title": "Burf", "version": "1"}})
@@ -212,7 +226,7 @@ func (m *Manager) StartWith(ctx context.Context, options LaunchOptions) (Session
 	}
 	if err != nil {
 		r.finish("Codex chat could not start: " + err.Error())
-		return r.snapshot(), err
+		return err
 	}
 	r.mu.Lock()
 	r.session.ThreadID = reply.Thread.ID
@@ -220,7 +234,7 @@ func (m *Manager) StartWith(ctx context.Context, options LaunchOptions) (Session
 		r.session.State = "idle"
 	}
 	r.mu.Unlock()
-	return r.snapshot(), nil
+	return nil
 }
 
 // Publish a starting process before its handshake. Slow provider startup must
@@ -234,7 +248,22 @@ func (m *Manager) startProcess(ctx context.Context, options LaunchOptions) (*run
 	if m.closed {
 		return nil, errors.New("local chats are shutting down")
 	}
+	if options.Agent == "" {
+		options.Agent = "codex"
+	}
+	var backend provider
+	switch options.Agent {
+	case "codex":
+		backend = codexProvider{}
+	case "claude":
+		backend = newClaudeProvider()
+	default:
+		return nil, errors.New("unsupported chat agent")
+	}
 	if options.Program == "" {
+		if options.Agent == "claude" {
+			return nil, errors.New("Claude Code is not installed with support for structured chat")
+		}
 		return nil, errors.New("installed Codex CLI does not support app-server chat")
 	}
 	if !filepath.IsAbs(options.CWD) {
@@ -272,12 +301,13 @@ func (m *Manager) startProcess(ctx context.Context, options LaunchOptions) (*run
 	if _, err = rand.Read(bytes[:]); err != nil {
 		return nil, err
 	}
+	options.chatID = hex.EncodeToString(bytes[:])
 	p, err := m.launch(options)
 	if err != nil {
 		return nil, err
 	}
-	r := &running{process: p, writes: make(chan []byte, 16), done: make(chan struct{}), pending: make(map[string]chan packet), approvals: make(map[string]json.RawMessage), browser: make(map[string]chan BrowserResult), browserWake: make(chan struct{}), tools: options.Tools != nil, toolAsks: make(map[string]chan bool), idle: m.Idle}
-	r.session = Session{ID: hex.EncodeToString(bytes[:]), Agent: "codex", Mode: "chat", CWD: cwd, State: "starting", StartedAt: time.Now().UTC(), Items: []Item{}, Approvals: []Approval{}, Options: TurnOptions{Permission: "strict"}, Composer: true, Permissions: Permissions}
+	r := &running{provider: backend, launchOptions: options, process: p, writes: make(chan []byte, 16), done: make(chan struct{}), pending: make(map[string]chan packet), approvals: make(map[string]json.RawMessage), browser: make(map[string]chan BrowserResult), browserWake: make(chan struct{}), tools: options.Tools != nil, toolAsks: make(map[string]chan bool), idle: m.Idle}
+	r.session = Session{ID: hex.EncodeToString(bytes[:]), Agent: options.Agent, Mode: "chat", CWD: cwd, State: "starting", StartedAt: time.Now().UTC(), Items: []Item{}, Approvals: []Approval{}, Options: TurnOptions{Permission: "strict"}, Composer: true, Permissions: Permissions}
 	if options.Browser != nil {
 		r.session.Browser = &BrowserState{Tools: append([]BrowserTool{}, options.Browser.Tools...), Calls: []BrowserCall{}}
 	}
@@ -371,6 +401,11 @@ func (m *Manager) send(ctx context.Context, id, text string, options TurnOptions
 	if e = ctx.Err(); e != nil {
 		return e
 	}
+	return r.provider.send(ctx, r, text, options, kind)
+}
+
+func (codexProvider) send(ctx context.Context, r *running, text string, options TurnOptions, kind string) error {
+	var e error
 	r.mu.Lock()
 	if r.session.State != "idle" {
 		r.mu.Unlock()
@@ -451,7 +486,11 @@ func (m *Manager) Interrupt(ctx context.Context, id string) error {
 	if s.TurnID == "" || s.State == "idle" || s.State == "exited" {
 		return errors.New("no active turn to interrupt")
 	}
-	_, e = r.call(ctx, "turn/interrupt", map[string]string{"threadId": s.ThreadID, "turnId": s.TurnID})
+	return r.provider.interrupt(ctx, r, s)
+}
+
+func (codexProvider) interrupt(ctx context.Context, r *running, s Session) error {
+	_, e := r.call(ctx, "turn/interrupt", map[string]string{"threadId": s.ThreadID, "turnId": s.TurnID})
 	if e != nil {
 		r.finish("Interrupt could not be confirmed; chat stopped.")
 	}
@@ -472,6 +511,12 @@ func (m *Manager) Decide(id, approval, decision string) error {
 		r.mu.Unlock()
 		return err
 	}
+	r.mu.Unlock()
+	return r.provider.decide(r, approval, decision)
+}
+
+func (codexProvider) decide(r *running, approval, decision string) error {
+	r.mu.Lock()
 	raw, ok := r.approvals[approval]
 	if !ok || r.session.State == "exited" {
 		r.mu.Unlock()
@@ -513,7 +558,7 @@ func (m *Manager) Decide(id, approval, decision string) error {
 			result = map[string]any{"action": "accept", "content": map[string]any{}}
 		}
 	}
-	e = r.queue(map[string]any{"id": raw, "result": result})
+	e := r.queue(map[string]any{"id": raw, "result": result})
 	r.mu.Unlock()
 	if e != nil {
 		r.finish("Approval delivery could not be confirmed; chat stopped without replay.")
@@ -543,8 +588,12 @@ func (m *Manager) PrepareRestart() error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	for _, r := range m.sessions {
-		if r.snapshot().State != "exited" {
-			return errors.New("stop local Codex chats before restarting Burf")
+		s := r.snapshot()
+		if s.State != "exited" {
+			if s.Agent == "codex" {
+				return errors.New("stop local Codex chats before restarting Burf")
+			}
+			return errors.New("stop local Claude Code chats before restarting Burf")
 		}
 	}
 	m.closed = true
@@ -581,10 +630,16 @@ func (r *running) queue(v any) error {
 	}
 	select {
 	case <-r.done:
+		if r.session.Agent == "claude" {
+			return errors.New("Claude Code chat has stopped")
+		}
 		return errors.New("Codex chat has stopped")
 	case r.writes <- append(b, '\n'):
 		return nil
 	default:
+		if r.session.Agent == "claude" {
+			return errors.New("Claude Code protocol input is busy")
+		}
 		return errors.New("Codex protocol input is busy")
 	}
 }
@@ -624,7 +679,11 @@ func (r *running) write() {
 			return
 		case b := <-r.writes:
 			if _, e := r.process.Write(b); e != nil {
-				r.finish("Codex app-server input disconnected")
+				reason := "Codex app-server input disconnected"
+				if r.session.Agent == "claude" {
+					reason = "Claude Code input disconnected; messages are not replayed"
+				}
+				r.finish(reason)
 				return
 			}
 		}
@@ -634,31 +693,50 @@ func (r *running) read() {
 	scanner := bufio.NewScanner(r.process)
 	scanner.Buffer(make([]byte, 4096), 2<<20)
 	for scanner.Scan() {
-		var p packet
-		if json.Unmarshal(scanner.Bytes(), &p) != nil {
-			r.finish("Codex sent invalid protocol data")
+		if err := r.provider.receive(r, scanner.Bytes()); err != nil {
+			r.finish(err.Error())
 			return
 		}
-		if p.Method == "" {
-			r.mu.Lock()
-			ch := r.pending[string(p.ID)]
-			r.mu.Unlock()
-			if ch != nil {
-				select {
-				case ch <- p:
-				default:
-				}
-			}
-			continue
+	}
+	s := r.snapshot()
+	reason := "Codex app-server disconnected; messages are not replayed"
+	if s.Agent == "claude" {
+		reason = "Claude Code process exited; messages are not replayed"
+		if s.Error != "" {
+			reason = s.Error + "\n" + reason
 		}
-		if len(p.ID) > 0 {
-			r.approval(p)
-		} else {
-			r.event(p)
+		if scanner.Err() != nil {
+			reason += ": " + scanner.Err().Error()
 		}
 	}
-	r.finish("Codex app-server disconnected; messages are not replayed")
+	r.finish(reason)
 }
+
+func (codexProvider) receive(r *running, data []byte) error {
+	var p packet
+	if json.Unmarshal(data, &p) != nil {
+		return errors.New("Codex sent invalid protocol data")
+	}
+	if p.Method == "" {
+		r.mu.Lock()
+		ch := r.pending[string(p.ID)]
+		r.mu.Unlock()
+		if ch != nil {
+			select {
+			case ch <- p:
+			default:
+			}
+		}
+		return nil
+	}
+	if len(p.ID) > 0 {
+		r.approval(p)
+	} else {
+		r.event(p)
+	}
+	return nil
+}
+
 func clip(s string) string {
 	if len(s) > maxText {
 		return s[:maxText] + "\n[output truncated]"

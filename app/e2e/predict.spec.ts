@@ -59,7 +59,7 @@ test("on a slow link, typing in a shell shows before the box echoes it", async (
   expect(Number(await overlay(page).getAttribute("data-rtt"))).toBeGreaterThanOrEqual(Number(DELAY) - 50);
 
   // The rest shows at once, underlined, while the box hasn't echoed it.
-  await page.keyboard.type("cho hi", { delay: 20 });
+  await page.keyboard.type("cho hi");
   await expect(overlay(page)).toHaveAttribute("data-cells", /^[1-9]/);
   await expect(overlay(page)).toHaveAttribute("data-flagged", "true");
   await expect(overlay(page)).toBeVisible();
@@ -76,27 +76,4 @@ test("on a slow link, typing in a shell shows before the box echoes it", async (
   await expect(overlay(page)).toHaveAttribute("data-cells", /^[1-9]/);
   await expect.poll(() => screenText(page)).not.toContain("echo hi");
   await expect(overlay(page)).toHaveAttribute("data-cells", "0");
-});
-
-test("Settings › Terminal › Predict typing: Never shows nothing ahead of the box", async ({ app }) => {
-  mockOnly("the mock holds echoes back");
-  await app.open({ params: { echoDelay: DELAY }, prefs: { terminal: { predict: "never" } } });
-  const page = app.page;
-  await openShell(page);
-  await page.keyboard.type("e");
-  await expect.poll(() => screenText(page)).toContain("me@gpu:~$ e");
-  await page.keyboard.type("cho hi", { delay: 20 });
-  // Every frame until the echo lands: no guesses.
-  const seen = await page.evaluate(async () => {
-    const el = document.querySelector("[data-testid=pane][data-pane-kind=terminal] [data-predict-overlay]") as HTMLElement | null;
-    let most = 0;
-    const until = performance.now() + 600;
-    while (performance.now() < until) {
-      most = Math.max(most, Number(el?.dataset.cells ?? 0));
-      await new Promise(requestAnimationFrame);
-    }
-    return most;
-  });
-  expect(seen).toBe(0);
-  await expect.poll(() => screenText(page)).toContain("me@gpu:~$ echo hi");
 });

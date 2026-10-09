@@ -1,13 +1,8 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 
-// A stand-in for the laptop agent's HTTP API, for tests of what the mock
-// fixtures can't act out: the app's own reading of a box (the transcript
-// feed, its timing, its failures). It serves one online box, "devl", with
-// one project ("shop") whose worktree "fix" has a Claude session in it, and
-// answers anything else with a 404 the app takes as "not on this agent".
-// Tests open the app with app.open({ agent }) and steer the box's answers
-// with transcript(), and send events with event().
+// A stand-in for the agent HTTP API and event stream. Tests override
+// structured/local routes through their browser context.
 //
 // It listens on a free loopback port, never the agent's 1377-1379.
 
@@ -15,43 +10,16 @@ export const BOX = "devl";
 export const SESSION = "fix-claude";
 export const DIR = "/w/shop-fix";
 
-export interface Answer {
-  status?: number;
-  body: unknown;
-  // How long the box takes to answer (ms).
-  delay?: number;
-}
-
 export interface FakeAgent {
   url: string;
   token: string;
-  // The box's answer to GET sessions/fix-claude/transcript?…; the query
-  // is given. Default: two items, from a fresh reading.
-  transcript: (query: URLSearchParams) => Answer | Promise<Answer>;
-  // The box's answer to GET sessions/fix-claude/draft (boxes with "draft"
-  // in capabilities): the reply its screen shows being written.
-  draft: () => Answer;
-  // What the box says it can do (info). Default: transcript and turns.
-  capabilities: string[];
   // Fields laid over the session as the box lists it (its state, command…).
   session: Record<string, unknown>;
-  // The session's screen (GET sessions/fix-claude/screen). Default: blank.
-  screen: () => string;
   // Every request, as "METHOD path?query".
   calls: string[];
-  // The box as the agent's status shows it: online, or away with when the
-  // agent tries it next. Away, the box's API answers 503 as the agent does.
-  away?: { state: "offline" | "connecting"; retryAt?: string; attempts?: number; since?: string };
   // Fields laid over the box's status while it is online: its latency and
   // link (slow, why, how Tailscale reaches it).
   online: Record<string, unknown>;
-  // The bodies of POST sessions/fix-claude/send, in order, and how the box
-  // answers each: "drop" ends the connection without an answer (the link
-  // dropped once the box had it).
-  sends: Record<string, unknown>[];
-  send: (body: Record<string, unknown>) => Answer | "drop";
-  // Ends every event stream, as an agent restarting does.
-  dropStreams(): void;
   // Sends an event to the app's stream.
   event(e: { type: string; data?: Record<string, unknown> }): void;
   close(): Promise<void>;
@@ -59,7 +27,7 @@ export interface FakeAgent {
 
 const now = () => new Date().toISOString();
 
-export const ITEMS = [
+const ITEMS = [
   { kind: "user", id: "u1", text: "Fix the flaky checkout test", off: 10 },
   { kind: "text", id: "t1", text: "The retry loop never backs off; fixed it.", off: 200 },
 ];
@@ -72,17 +40,7 @@ export async function fakeAgent(): Promise<FakeAgent> {
     token: "e2e-token",
     calls: [],
     online: {},
-    sends: [],
-    send: () => ({ body: { sent: true, turn: `${SESSION}#2`, seq: 9, at: now() } }),
-    dropStreams() {
-      for (const s of streams) s.destroy();
-      streams.clear();
-    },
-    transcript: () => ({ body: { source: "claude", items: ITEMS, next: 2, crew: [], gen: "1.0", start: 10, file: "abc" } }),
-    draft: () => ({ body: { agent: "claude" } }),
-    capabilities: ["transcript", "turns"],
     session: {},
-    screen: () => "",
     event(e) {
       const ev = { seq: ++seq, time: now(), box: BOX, origin: "claude", ...e };
       for (const s of streams) s.write(`data: ${JSON.stringify(ev)}\n\n`);
@@ -98,16 +56,14 @@ export async function fakeAgent(): Promise<FakeAgent> {
   const created = new Date(Date.now() - 10 * 60_000).toISOString();
   const status = () => ({
     boxes: [
-      agent.away
-        ? { name: BOX, address: "devl:7444", fingerprint: "e2e", state: agent.away.state, since: agent.away.since ?? created, retry_at: agent.away.retryAt, attempts: agent.away.attempts, error: "dial tcp 100.64.0.4:7444: i/o timeout" }
-        : { name: BOX, address: "devl:7444", fingerprint: "e2e", state: "online", since: created, latency_ms: 3, ...agent.online },
+      { name: BOX, address: "devl:7444", fingerprint: "e2e", state: "online", since: created, latency_ms: 3, ...agent.online },
     ],
     forwards: [],
     routes: [],
     proxy: { port: 1377, url_port: 1377 },
   });
   const box: Record<string, () => unknown> = {
-    info: () => ({ name: BOX, version: "0.3.7", build: "e2e", tools: ["claude"], capabilities: agent.capabilities, agents: [{ id: "claude", name: "Claude Code", command: "claude" }] }),
+    info: () => ({ name: BOX, version: "0.3.7", build: "e2e", tools: ["claude"], capabilities: ["transcript", "turns"], agents: [{ id: "claude", name: "Claude Code", command: "claude" }] }),
     locations: () => [
       {
         name: "shop",
@@ -152,32 +108,14 @@ export async function fakeAgent(): Promise<FakeAgent> {
     }
     if (req.method === "GET" && p === "/v1/status") return send(res, 200, status());
     if (req.method === "POST" && p === "/v1/refresh") return send(res, 200, status());
-    if (agent.away && p.startsWith(`/v1/boxes/${BOX}/api/`)) return send(res, 503, { error: `${BOX} is offline; Burf is reconnecting`, code: "box_unreachable" });
-    if (req.method === "POST" && p === `/v1/boxes/${BOX}/api/sessions/${SESSION}/send`) {
-      let raw = "";
-      for await (const c of req) raw += c;
-      const body = JSON.parse(raw || "{}") as Record<string, unknown>;
-      agent.sends.push(body);
-      const a = agent.send(body);
-      if (a === "drop") return void res.destroy();
-      if (a.delay) await new Promise((r) => setTimeout(r, a.delay));
-      return send(res, a.status ?? 200, a.body);
-    }
     if (req.method === "GET" && (p === "/v1/themes" || p === "/v1/templates" || p === "/v1/plugins")) return send(res, 200, []);
     const m = /^\/v1\/boxes\/([^/]+)\/api\/(.*)$/.exec(p);
     if (m && m[1] === BOX && req.method === "GET") {
       const rest = m[2];
       if (rest === `sessions/${SESSION}/transcript`) {
-        const a = await agent.transcript(u.searchParams);
-        if (a.delay) await new Promise((r) => setTimeout(r, a.delay));
-        if (res.destroyed) return;
-        return send(res, a.status ?? 200, a.body);
+        return send(res, 200, { source: "claude", items: ITEMS, next: 2, crew: [], gen: "1.0", start: 10, file: "abc" });
       }
-      if (rest === `sessions/${SESSION}/screen`) return send(res, 200, { screen: agent.screen() });
-      if (rest === `sessions/${SESSION}/draft`) {
-        const a = agent.draft();
-        return send(res, a.status ?? 200, a.body);
-      }
+      if (rest === `sessions/${SESSION}/screen`) return send(res, 200, { screen: "" });
       if (box[rest]) return send(res, 200, box[rest]());
     }
     send(res, 404, { error: "not on this agent", code: "not_found" });

@@ -45,8 +45,8 @@ test("300 worktrees: the sidebar stays small and its rows make no menus or toolt
   info.annotations.push({ type: "sidebar DOM nodes", description: String(nodes) });
   expect(nodes).toBeLessThan(6500);
 
-  // The start's long tasks, reported: timings move with the machine.
-  await page.waitForTimeout(1000);
+  // Record startup work once offscreen rows have been marked.
+  await expect.poll(() => sidebar.locator("[data-row-menu][data-offscreen]").count()).toBeGreaterThan(200);
   info.annotations.push({ type: "start-up long tasks (ms)", description: String(Math.round(await longTasks(page))) });
 
   // Rows out of sight don't spin or pulse.

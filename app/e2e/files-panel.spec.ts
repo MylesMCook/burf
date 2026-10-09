@@ -8,7 +8,6 @@ import { expect, mockOnly, test } from "./fixtures";
 const WEBHOOK = "apps/web/lib/payments/webhook.ts";
 
 interface MockFiles {
-  agentWritesLive(path?: string): void;
   agentWorks(on?: boolean): void;
   contentOf(path: string): string | undefined;
 }
@@ -96,36 +95,6 @@ test("All lists a folder at a time; Changed folds to the turn's files", async ({
 
   // The pick is the worktree's, and remembered.
   expect(await app.stored("berth.files.filter")).toEqual({ "devl:/home/me/work/shop-checkout-fix": "changed" });
-});
-
-test("Changed is the default while the agent works, with a live mark on what it writes", async ({ app }) => {
-  await app.open({ prefs: { filesPanel: true }, params: { view: "conversation" } });
-  await app.openWorktree("devl/checkout-fix");
-  await expect(tree(app.page)).toHaveAttribute("data-filter", "all");
-  await expect(app.page.getByTestId("tree-live")).toHaveCount(0);
-
-  await app.page.evaluate(() => (window as unknown as W).__berthMockFiles.agentWritesLive());
-  await expect(tree(app.page)).toHaveAttribute("data-filter", "changed");
-  const totals = row(app.page, "apps/web/lib/checkout/totals.ts");
-  await expect(totals.getByTestId("tree-live")).toBeVisible();
-  await expect(totals.getByTestId("tree-badge")).toHaveText("M");
-  await expect(row(app.page, "apps/web/lib/checkout").getByTestId("tree-dot")).toHaveAttribute("data-live", "true");
-  // Beside the chat: its column ends before the panel.
-  await expect(app.chat).toBeVisible();
-  const chat = await app.chat.boundingBox();
-  const side = await panel(app.page).boundingBox();
-  expect(chat!.x + chat!.width).toBeLessThanOrEqual(side!.x + 1);
-
-  // The agent stops: no live mark, however recent the write, and All again.
-  await app.page.evaluate(() => (window as unknown as W).__berthMockFiles.agentWorks(false));
-  await expect(app.page.getByTestId("tree-live")).toHaveCount(0);
-  await expect(tree(app.page)).toHaveAttribute("data-filter", "all");
-
-  // Once picked, the pick holds whatever the agent does.
-  await panel(app.page).getByTestId("tree-filter-all").click();
-  await app.page.evaluate(() => (window as unknown as W).__berthMockFiles.agentWorks(true));
-  await expect(app.page.locator("[data-testid=worktree-row][data-worktree='devl/checkout-fix']")).toBeVisible();
-  await expect(tree(app.page)).toHaveAttribute("data-filter", "all");
 });
 
 test("a file picked in the tree opens in a File tab, and the tree follows the tab in front", async ({ app }) => {

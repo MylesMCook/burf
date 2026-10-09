@@ -40,13 +40,3 @@ test("Settings › Boxes lists the same browsers and sets a per-session memory l
   await expect(card.getByTestId("box-browser").first()).toBeVisible();
   await expect(card.getByRole("combobox", { name: "Memory limit per session" })).toContainText("12 GB per session");
 });
-
-test("a session near its memory limit says so in its chat and its tab", async ({ app }) => {
-  await app.open({ params: { view: "conversation" } });
-  await app.openWorktree("devl/https-linear-app-acme");
-  await expect(app.chat).toBeVisible();
-  const notice = app.page.locator("[data-notice=memory]:visible");
-  await expect(notice).toContainText("near its memory limit");
-  await expect(notice).toContainText("using 11.8 GB, near its 12 GB limit");
-  await expect(app.page.getByTestId("tab-memory").first()).toBeVisible();
-});

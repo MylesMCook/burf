@@ -153,7 +153,7 @@ func TestChatRoutesOwnSessionAndLocation(t *testing.T) {
 
 func TestChatRejectsUnregisteredAndCustomInputs(t *testing.T) {
 	b, h, count := chatFixture(t)
-	for _, body := range []string{`{"location":"/tmp"}`, `{"location":"project/../other"}`, `{"location":"project/"}`, `{"location":"project","cwd":"/tmp"}`, `{"location":"project","program":"sh"}`, `{"location":"project","agent":"claude"}`, `{"location":"project"}{}`} {
+	for _, body := range []string{`{"location":"/tmp"}`, `{"location":"project/../other"}`, `{"location":"project/"}`, `{"location":"project","cwd":"/tmp"}`, `{"location":"project","program":"sh"}`, `{"location":"project","agent":"unknown"}`, `{"location":"project"}{}`} {
 		if w := chatRequest(h, "POST", "/v1/chats", body); w.Code != 400 {
 			t.Fatalf("%s: %d", body, w.Code)
 		}

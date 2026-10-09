@@ -19,7 +19,7 @@ const ownedHelper = "--burf-owned-codex-app-server"
 // lifeline reaches EOF even if the backend is killed, unlike a parent goroutine.
 // Provider children inherit the group but never the lifeline descriptor.
 func init() {
-	if len(os.Args) != 3 || os.Args[1] != ownedHelper {
+	if len(os.Args) < 3 || os.Args[1] != ownedHelper {
 		return
 	}
 	group, err := syscall.Getpgid(0)
@@ -34,7 +34,11 @@ func init() {
 		os.Exit(125)
 	}
 	go func() { _, _ = io.Copy(io.Discard, lifeline); stop() }()
-	cmd := exec.Command(os.Args[2], "app-server", "--listen", "stdio://")
+	args := os.Args[3:]
+	if len(args) == 0 {
+		args = []string{"app-server", "--listen", "stdio://"}
+	}
+	cmd := exec.Command(os.Args[2], args...)
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = os.Stdin, os.Stdout, os.Stderr
 	_ = cmd.Run()
 	stop()
@@ -93,7 +97,11 @@ func StartProcess(options LaunchOptions) (_ Process, err error) {
 		return nil, err
 	}
 	p.input, p.output, p.stderr, p.lifeline = inW, outR, errR, lifeW
-	cmd := exec.Command(exe, ownedHelper, options.Program)
+	args, err := processArguments(options)
+	if err != nil {
+		return nil, err
+	}
+	cmd := exec.Command(exe, append([]string{ownedHelper, options.Program}, args...)...)
 	cmd.Dir, cmd.Env = options.CWD, options.Env
 	cmd.Stdin, cmd.Stdout, cmd.Stderr = inR, outW, errW
 	cmd.ExtraFiles = []*os.File{lifeR}
@@ -108,7 +116,11 @@ func StartProcess(options LaunchOptions) (_ Process, err error) {
 	go func() { _, _ = io.Copy(io.Discard, p.stderr) }()
 	go func() {
 		_ = cmd.Wait()
-		p.finish()
+		// Claude may send its actionable error immediately before exiting.
+		// Keep stdout open until the reader has drained the final lines.
+		if options.Agent != "claude" {
+			p.finish()
+		}
 		close(p.done)
 	}()
 	return p, nil

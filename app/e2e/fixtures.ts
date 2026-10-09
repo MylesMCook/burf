@@ -11,14 +11,7 @@ import { type BrowserContext, expect, type Locator, type Page, test as base } fr
 // terminals don't attach, and tests that need a fixture or would write
 // something skip themselves (mockOnly).
 //
-// Stable hooks, so tests never click text that moves: data-testid where
-// nothing else was stable (worktree-row with data-worktree="box/name",
-// nav-<id>, pane with data-pane-kind, chat, chat-item with data-kind,
-// composer, question-form, queued-reply, artifacts-chip/-popover,
-// attachment-chip, panel with data-panel, browser-pane with data-mode,
-// chat-background, settings-nav-<id>, settings-<id>, theme-option with
-// data-theme-id, zoom-hud), and the attributes the app already keys on
-// (data-tab, data-ws, data-group, data-tab-strip, data-pane-area).
+// Stable hooks use data-testid, roles, and existing workspace attributes.
 
 export const live = process.env.BERTH_E2E_LIVE === "1";
 const token = process.env.BERTH_E2E_TOKEN ?? "";
@@ -37,7 +30,7 @@ export interface OpenOptions {
   prefs?: Record<string, unknown>;
   // berth.ui's theme (lib/store.ts).
   theme?: string;
-  // Extra query parameters: view=conversation, fresh, labs…
+  // Extra query parameters: fresh, labs…
   params?: Record<string, string>;
   // A stand-in agent (e2e/fake-agent.ts) to connect to instead of the
   // mock fixtures.
@@ -51,10 +44,8 @@ export interface App {
   // A worktree in the sidebar, as box/name (the main checkout by its project's name).
   worktree(boxAndName: string): Locator;
   openWorktree(boxAndName: string): Promise<void>;
-  // The panes showing now, and the conversation in the one in front.
+  // The panes showing now.
   panes: Locator;
-  chat: Locator;
-  composer: Locator;
   openSettings(section: string): Promise<Locator>;
   // What the app has saved, as JSON.
   stored(key: string): Promise<unknown>;
@@ -136,8 +127,6 @@ export const test = base.extend<{ app: App }>({
         await expect(row).toHaveAttribute("data-active", "true");
       },
       panes: page.locator("[data-testid=pane]:visible"),
-      chat: page.locator("[data-testid=pane]:visible [data-testid=chat]"),
-      composer: page.locator("[data-testid=pane]:visible [data-testid=composer]"),
       async openSettings(section) {
         await page.getByTestId("nav-settings").click();
         await page.getByTestId(`settings-nav-${section}`).click();
