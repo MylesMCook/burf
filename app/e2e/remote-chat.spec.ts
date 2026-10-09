@@ -155,6 +155,24 @@ test("a structured chat's failed first read focuses Refresh chat and recovery ke
   } finally { await f.agent.close(); }
 });
 
+// The first read can fail and the next succeed with nobody touching anything
+// (a slow box, a chat still being made). The keyboard was only parked on
+// Refresh; it goes on to the composer once there is one to type in.
+test("a first read that fails and then recovers by itself ends with the keyboard in the composer", async ({ app }) => {
+  const f = await fixture(app.context);
+  const read = `${f.agent.url}/v1/boxes/${BOX}/api/chats/${f.chat.id}`;
+  await app.page.route(read, (route) => route.fulfill({ status: 503, json: { error: "Synthetic first-read failure" } }), { times: 1 });
+  try {
+    await app.open({ agent: f.agent });
+    await openWorktree(app);
+    await app.page.getByRole("button", { name: "New Codex", exact: true }).click();
+    const message = app.page.getByRole("textbox", { name: "Message Codex" });
+    await expect(app.page.getByRole("button", { name: "Refresh chat", exact: true })).toBeFocused();
+    await expect(message).toBeEnabled();
+    await expect(message).toBeFocused();
+  } finally { await f.agent.close(); }
+});
+
 test("a lost start is not retried and the owned chat can be recovered", async ({ app }) => {
   const f = await fixture(app.context);
   f.control.lostStart = true;

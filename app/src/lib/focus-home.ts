@@ -43,30 +43,53 @@ export function somethingElseHasFocus(mine: HTMLElement | null): boolean {
   return a instanceof HTMLInputElement || a instanceof HTMLTextAreaElement || a instanceof HTMLSelectElement || (a as HTMLElement).isContentEditable;
 }
 
-// A chat takes focus once per selection, as soon as its content is ready.
-// Background tabs/splits aren't selected. Stop observing after the first
-// target or competing field, so later replies never move the keyboard.
+// A chat takes focus once per selection, as soon as its content is ready:
+// in its composer, the field a person types into. Background tabs and
+// splits aren't selected. Until there is a composer to type in (its first
+// read is slow, or failed) the keyboard is parked on the pane's recovery
+// control, or its first control when it has no composer at all; parked, not
+// given: it goes on to the composer when one is ready, unless the person
+// has used the pane or moved the keyboard meanwhile. After that nothing
+// here moves it again, so later replies never do.
+const COMPOSER = "textarea[data-autofocus], input[data-autofocus], [contenteditable=true][data-autofocus]";
+
 export function useChatPaneFocus(ref: RefObject<HTMLElement | null>, active: boolean) {
   useEffect(() => {
     const root = ref.current;
     if (!active || !root) return;
-    const focus = () => {
-      if (root.contains(document.activeElement) || somethingElseHasFocus(root)) {
-        observer.disconnect();
-        return;
-      }
-      // A structured chat draws its disabled composer before its first read.
-      // Wait for that composer rather than taking a toolbar button instead.
-      const composer = root.querySelector<HTMLElement>("[data-autofocus]");
-      const target = composer ? (shown(composer) && !composer.matches(":disabled") ? composer : undefined) : firstFocusable(root);
-      if (!target) return;
-      target.focus({ preventScroll: true });
+    let parked: HTMLElement | undefined;
+    const stop = () => {
       observer.disconnect();
+      root.removeEventListener("keydown", stop, true);
+      root.removeEventListener("pointerdown", stop, true);
+    };
+    const usable = (el: HTMLElement | null | undefined): el is HTMLElement => !!el && shown(el) && !el.matches(":disabled");
+    const focus = () => {
+      const at = document.activeElement;
+      if (at !== parked && (root.contains(at) || somethingElseHasFocus(root))) return stop();
+      if (parked && at === parked && somethingElseHasFocus(null)) return stop();
+      const composer = root.querySelector<HTMLElement>(COMPOSER);
+      if (usable(composer)) {
+        composer.focus({ preventScroll: true });
+        return stop();
+      }
+      if (parked) return;
+      // A structured chat draws its disabled composer before its first
+      // read: wait for it rather than take a toolbar button, unless the
+      // pane marks a control for when that read fails.
+      const marked = [...root.querySelectorAll<HTMLElement>("[data-autofocus]")].find((el) => !el.matches(COMPOSER) && usable(el));
+      const first = marked ?? (composer ? undefined : firstFocusable(root));
+      if (!first) return;
+      first.focus({ preventScroll: true });
+      parked = first;
     };
     const observer = new MutationObserver(focus);
     observer.observe(root, { childList: true, subtree: true, attributes: true, attributeFilter: ["disabled", "data-autofocus"] });
+    // Using the pane, by key or pointer, is the person taking the keyboard.
+    root.addEventListener("keydown", stop, true);
+    root.addEventListener("pointerdown", stop, true);
     focus();
-    return () => observer.disconnect();
+    return stop;
   }, [ref, active]);
 }
 
