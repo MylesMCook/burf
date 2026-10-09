@@ -7,16 +7,16 @@
 //   pnpm build && node perf/soak.mjs [--minutes 60] [--port 1432]
 //        [--out dir] [--label before] [--compress 480]
 //
-// The workspace: devl/checkout-fix's chat split with devl/search-perf's
-// (which streams a reply while busy), two Browser tabs on a stand-in dev
+// The workspace: devl/checkout-fix's terminal split with devl/search-perf's
+// terminal, two Browser tabs on a stand-in dev
 // server's pages that log to the console, one with its Network drawer open
 // and one its Console, a Preview tab, the Files panel, a second worktree's
 // tabs as a group, and Home.
 //
-// It runs in cycles of five minutes, each showing one view (chats, a
+// It runs in cycles of five minutes, each showing one view (terminals, a
 // Browser tab, the Preview tab, Home, in turn):
 //
-//   busy    2 min   a reply streams in the second chat and lands; pages log
+//   busy    2 min   pages log
 //   quiet   2 min   nothing changes anywhere: what the app costs at rest
 //   hidden  1 min   the page is hidden (document.hidden, visibilitychange),
 //                   as a minimised or covered window is
@@ -139,26 +139,6 @@ function delta(a, b) {
   };
 }
 
-// The second chat's streaming reply, while busy: a few words every 250ms,
-// landing every 20s as a message.
-const WORDS = "The ledger retries now carry an idempotency key, so a slow answer from the payment provider can't make a second order; the test sends the same webhook twice and checks there is one order and one charge.".split(" ");
-async function stream(ms) {
-  const end = Date.now() + ms;
-  let n = 0;
-  let landed = Date.now();
-  while (Date.now() < end) {
-    n = (n + 3) % (WORDS.length + 3);
-    await page.evaluate((t) => window.__berthDraft?.show("devl", "search-perf-claude", t), WORDS.slice(0, n).join(" ")).catch(() => {});
-    if (Date.now() - landed > 20_000) {
-      landed = Date.now();
-      await page.evaluate((t) => window.__berthDraft?.land("devl", "search-perf-claude", t), WORDS.join(" ")).catch(() => {});
-      await page.evaluate(() => window.__berthDraft?.clear("devl", "search-perf-claude")).catch(() => {});
-    }
-    await page.waitForTimeout(250);
-  }
-  await page.evaluate(() => window.__berthDraft?.clear("devl", "search-perf-claude")).catch(() => {});
-}
-
 async function noise(on) {
   for (const f of page.frames()) if (f !== page.mainFrame()) await f.evaluate((v) => (window.__noise = v), on).catch(() => {});
 }
@@ -210,16 +190,16 @@ async function phase(name, view, ms, during) {
 
 const summary = { at: new Date().toISOString(), label: args.label ?? "", machine: `${process.platform} ${process.arch}`, minutes, compress, sampleS };
 try {
-  await page.goto(`${base}/?mock=1&still&view=conversation`);
+  await page.goto(`${base}/?mock=1&still`);
   await page.getByTestId("nav-home").waitFor();
   await page.locator("[aria-disabled=true]:has([data-testid=nav-home])").waitFor({ state: "detached" }).catch(() => {});
   if (compress) await page.clock.pauseAt(Date.now() + 1000);
   const views = compress ? await setupOnClock() : await setup(page);
   summary.views = views;
   log("workspace ready", JSON.stringify(views));
-  await snapshot("start", "chats", { detached: await detached(cdp) });
+  await snapshot("start", "terminals", { detached: await detached(cdp) });
 
-  const order = ["chats", "browser", "preview", "home"];
+  const order = ["terminals", "browser", "preview", "home"];
   const cycleMin = 5;
   const cycles = Math.max(1, Math.floor((compress || minutes) / cycleMin));
   const deadline = started + minutes * 60_000;
@@ -228,7 +208,7 @@ try {
     const view = order[c % order.length];
     await show(page, views, view);
     await noise(true);
-    await phase("busy", view, 2 * 60_000, compress ? null : stream);
+    await phase("busy", view, 2 * 60_000, null);
     await noise(false);
     await phase("quiet", view, 2 * 60_000);
     await page.evaluate(() => window.__soakHide(true));

@@ -66,7 +66,7 @@ export async function collectDiagnostics(): Promise<Diagnostics> {
     theme: st.themeId,
     labs: prefs.labs,
     zen: prefs.zen,
-    agent_view: prefs.agentView,
+    agent_view: "terminal",
     errors,
     toasts,
   };

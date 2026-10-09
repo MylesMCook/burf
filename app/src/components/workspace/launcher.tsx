@@ -15,7 +15,7 @@ import { Tip } from "@/components/tip";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { Spinner } from "@/components/ui/spinner";
-import { agentPresets, openBrowserAt, startSession, usePendingStops } from "@/lib/actions";
+import { openBrowserAt, startSession, usePendingStops } from "@/lib/actions";
 import { agentLabel, agentOf, type SessionState, sessionName, sessionState } from "@/lib/derive";
 import { ago } from "@/lib/format";
 import { useRemoval } from "@/lib/removing";
@@ -66,12 +66,6 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
   const remote = useRemoteChats(ref.box, ref.main ? ref.location : `${ref.location}/${ref.worktree}`);
 
   const rows: Row[] = [
-    ...agentPresets(ref.box, ref.location).map((p) => ({
-      key: `agent:${p.id}`,
-      icon: <AgentIcon agent={p.id} className="size-4" />,
-      label: `New ${p.name}`,
-      run: () => void startSession(p.command, { kind: "tab" }, p.name, undefined, p.id),
-    })),
     { key: "shell", icon: <SquareTerminalIcon />, label: "New shell", keys: "⌘T", run: () => void startSession("") },
     { key: "browser", icon: <GlobeIcon />, label: "New browser tab", keys: "⌘⇧B", run: () => openBrowserAt("") },
     { key: "editor", icon: <CodeXmlIcon />, label: "Open in editor", keys: "⌘⇧O", run: () => void openEditor({ box: ref.box, path: ref.path }) },

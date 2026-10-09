@@ -8,21 +8,14 @@ export type PaneContent =
   | { kind: "remote-chat"; box: string; chat: string; cwd: string; agent?: "codex" | "claude"; draft?: string; options?: { model?: string; effort?: string } }
   // agent and command are remembered from the session, so a pane can say
   // what ended and start it again after the session is gone.
-  // view: an agent's pane shown as its terminal or as a conversation;
-  // unset follows the person's default.
   // title: the session's title while it ran, so an ended pane keeps its name.
-  | { kind: "terminal"; box: string; session: string; agent?: string; command?: string; title?: string; view?: "terminal" | "conversation" }
+  | { kind: "terminal"; box: string; session: string; agent?: string; command?: string; title?: string }
   | { kind: "browser"; url: string }
   // The same page at several sizes at once (components/preview-pane).
   | { kind: "preview"; url: string }
   | { kind: "log"; box: string; location: string; worktree: string; service: string }
   // A file of the pane's worktree, in the File tab's editor (lib/files.ts).
   | { kind: "file"; path: string }
-  // A helper's own conversation (a subagent its agent sent out), read-only
-  // (components/conversation/helper-pane.tsx). helper is its id once known
-  // (the call's id or its name until then); title is its name, kept so the
-  // tab is named before the box answers, and after a restart.
-  | { kind: "helper"; box: string; session: string; helper: string; title?: string }
   // A plugin's worktree panel, shown for the pane's worktree (paneWorktree).
   | { kind: "panel"; plugin: string; panel: string; title: string }
   // An artifact an agent made in the pane's worktree (components/art): one
@@ -266,4 +259,15 @@ export function moveBetween<S extends SpaceLike>(
   const focus = src.pane ?? t.focus;
   out[dst.key] = { ...to, tabs: to.tabs.map((x) => (x === d ? { ...x, root: place(d.root, dst.pane, dst.side, moved), focus } : x)), active: d.id };
   return out;
+}
+
+// Older layouts can ask for a terminal chat or a helper's transcript.
+// Both now show the terminal session that owns them.
+export function restorePane(node: PaneNode): PaneNode {
+  if (node.kind === "split") return { ...node, a: restorePane(node.a), b: restorePane(node.b) };
+  const c = node.content as PaneContent | { kind: "helper"; box: string; session: string };
+  if (c.kind === "helper") return { ...node, content: { kind: "terminal", box: c.box, session: c.session } };
+  if (c.kind !== "terminal") return node;
+  const { view: _view, ...content } = c as typeof c & { view?: unknown };
+  return { ...node, content };
 }

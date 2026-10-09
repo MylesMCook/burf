@@ -127,17 +127,17 @@ test("a Compare tab holds a pane of each worktree, left and right, the right one
   assert.equal(r.wt, KB);
   assert.equal(l.wt, undefined);
   assert.equal(t.focus, l.id);
-  assert.deepEqual(content(t).map((c) => c.kind === "terminal" && c.view), ["conversation", "conversation"]);
+  assert.deepEqual(content(t).map((c) => c.kind), ["terminal", "terminal"]);
   assert.deepEqual(t.compare.panes, { agent: [l.id, r.id] });
 });
 
-test("Chat and Terminal are one pane per side, seen two ways; nothing is made again", () => {
+test("agent lanes reuse their terminal panes; nothing is made again", () => {
   const { make, made } = maker();
   const t = newCompare(KA, KA, KB, "chat", make);
   const ids = sides(t)!.map((l) => l.id);
   const u = setLane(t, KA, "terminal", make);
   assert.deepEqual(sides(u)!.map((l) => l.id), ids);
-  assert.deepEqual(content(u).map((c) => c.kind === "terminal" && c.view), ["terminal", "terminal"]);
+  assert.deepEqual(content(u), content(t));
   assert.equal(made.length, 2);
   assert.equal(u.compare!.lane, "terminal");
 });

@@ -25,6 +25,8 @@ export const RULES = [
   { paths: ["app/src/views/onboarding/"], specs: ["first-run", "quick-install", "windows-client"] },
   { paths: ["app/src/components/sidebar/", "app/src/components/app-sidebar"], specs: ["sidebar-names", "sidebar-nesting", "sidebar-resize", "sidebar-fleet", "rail"] },
   { paths: ["app/src/components/files/", "app/src/components/diff/", "app/src/lib/git/"], specs: ["files", "files-panel"] },
+  { paths: ["app/src/components/workspace/launcher", "app/src/components/workspace/new-tab-menu", "app/src/components/workspace/worktree-picker"], specs: ["remote-chat", "home-composer", "workspace", "keyboard"] },
+  { paths: ["app/src/components/workspace/pane", "app/src/components/workspace/tab-strip", "app/src/components/workspace/zen", "app/src/lib/layout", "app/src/lib/workspaces", "app/src/lib/actions", "app/src/lib/compare", "app/src/components/conversation/"], specs: ["workspace", "keyboard", "predict", "remote-chat", "chat-experience", "local-computer"] },
   { paths: ["app/src/components/workspace/"], specs: ["workspace", "files-panel", "preview"] },
   { paths: ["app/src/components/notifications/", "app/src/lib/notification"], specs: ["notifications"] },
   { paths: ["app/src/components/art/", "app/src/components/charts/", "app/src/lib/art/"], specs: ["artifacts", "visual-diff"] },

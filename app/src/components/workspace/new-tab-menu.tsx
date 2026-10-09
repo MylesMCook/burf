@@ -6,7 +6,7 @@ import { AgentIcon } from "@/components/agent-glyph";
 import { Command, CommandCollection, CommandEmpty, CommandGroup, CommandGroupLabel, CommandInput, CommandItem, CommandList, CommandSeparator } from "@/components/ui/command";
 import { Kbd } from "@/components/ui/kbd";
 import { Popover, PopoverPopup, PopoverTrigger } from "@/components/ui/popover";
-import { agentPresets, openBrowserAt, openPreviewAt, resolveUrl, startSession } from "@/lib/actions";
+import { openBrowserAt, openPreviewAt, resolveUrl, startSession } from "@/lib/actions";
 import { guessSessionName, sessionName } from "@/lib/derive";
 import { focusNewPane } from "@/lib/focus-home";
 import { leaves } from "@/lib/layout";
@@ -37,14 +37,14 @@ interface Group {
 }
 
 // NewTabMenu is the tab strip's "+", as in Orca: a search over open tabs,
-// dev servers, recent pages and agents, then quick ways to start a terminal,
-// a browser, or any agent in the worktree you are acting in (the focused
+// dev servers and recent pages, then quick ways to start a terminal
+// or a browser in the worktree you are acting in (the focused
 // pane's).
 export function NewTabMenu() {
   const open = useStore((s) => s.newTabMenuOpen);
   const setOpen = useStore((s) => s.setNewTabMenuOpen);
   const [query, setQuery] = useState("");
-  // Agents, panels and dev servers are the focused pane's worktree's.
+  // Panels and dev servers are the focused pane's worktree's.
   const hereRef = useHereRef();
   const spaces = useWorkspaces((s) => s.spaces);
   const recent = useWorkspaces((s) => s.recentUrls);
@@ -77,9 +77,6 @@ export function NewTabMenu() {
           ]
         : []),
     ];
-    const agents: Item[] = ws
-      ? agentPresets(ws.ref.box, ws.ref.location).map((p) => ({ value: `agent:${p.id}`, label: p.name, icon: <AgentIcon agent={p.id} />, run: done(() => void startSession(p.command, { kind: "tab" }, p.name, undefined, p.id)) }))
-      : [];
     const panelItems: Item[] = ws
       ? panels.map(({ plugin, item }) => ({
           value: `panel:${plugin}:${item.id}`,
@@ -98,7 +95,6 @@ export function NewTabMenu() {
     if (!q) {
       return [
         { value: "new", label: "New", items: actions },
-        { value: "agents", label: "Agents", items: agents },
         { value: "panels", label: "Panels", items: panelItems },
         { value: "recent", label: "Recent pages", items: history.slice(0, 3) },
       ].filter((g) => g.items.length);
@@ -110,7 +106,7 @@ export function NewTabMenu() {
         const focus = leaves(t.root).find((l) => l.id === t.focus) ?? leaves(t.root)[0];
         const c = focus.content;
         // Terminals by what the app calls them everywhere: "Claude Code 2".
-        const what = c.kind === "terminal" ? terminalName(c.box, c.session) : c.kind === "browser" ? c.url.replace(/^https?:\/\//, "") || "Browser" : c.kind === "preview" ? `Preview ${c.url.replace(/^https?:\/\//, "")}`.trim() : c.kind === "helper" ? `Helper ${c.title ?? ""}`.trim() : "Starting";
+        const what = c.kind === "terminal" ? terminalName(c.box, c.session) : c.kind === "browser" ? c.url.replace(/^https?:\/\//, "") || "Browser" : c.kind === "preview" ? `Preview ${c.url.replace(/^https?:\/\//, "")}`.trim() : "Starting";
         return {
           value: `tab:${key}:${t.id}`,
           label: `${what} — ${shortLabel(space.ref)}`,
@@ -139,7 +135,6 @@ export function NewTabMenu() {
       { value: "tabs", label: "Open tabs", items: tabs },
       { value: "servers", label: "Dev servers", items: servers },
       { value: "history", label: "Recent", items: history },
-      { value: "agents", label: "Agents", items: agents },
       { value: "panels", label: "Panels", items: panelItems },
       { value: "actions", items: [...actions, ...settings] },
     ].filter((g) => g.items.length);
@@ -164,7 +159,7 @@ export function NewTabMenu() {
       </Tip>
       <PopoverPopup aria-label="New tab" align="start" sideOffset={2} className="w-88 p-0 [&_[data-slot=popover-viewport]]:p-0">
         <Command items={groups} value={query} onValueChange={setQuery} itemToStringValue={(i: unknown) => `${(i as Item).label} ${(i as Item).detail ?? ""} ${(i as Item).search ?? ""}`}>
-          <CommandInput aria-label="Search open tabs, history, URLs and agents" placeholder="Search open tabs, history, URLs, agents…" className="text-sm" />
+          <CommandInput aria-label="Search open tabs, history and URLs" placeholder="Search open tabs, history and URLs…" className="text-sm" />
           <CommandSeparator className="my-0" />
           <CommandEmpty>Nothing matches. Type a port or a URL to open it.</CommandEmpty>
           <CommandList className="max-h-96">

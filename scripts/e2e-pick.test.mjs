@@ -25,3 +25,11 @@ test("nothing in the page changed: no browser spec", () => {
 test("a spec that no longer exists is not asked for", () => {
   assert.deepEqual(specsFor(["app/src/views/home/home-view.tsx"], (s) => s !== "home-terminal"), ["home-composer", "home-widgets"]);
 });
+
+test("launcher deletions reach the composer and workspace specs", () => {
+  assert.deepEqual(specsFor(["app/src/components/workspace/launcher.tsx"], all), ["home-composer", "keyboard", "remote-chat", "workspace"]);
+});
+
+test("terminal pane changes reach restoration, terminal and surviving chat specs", () => {
+  assert.deepEqual(specsFor(["app/src/components/workspace/pane.tsx"], all), ["chat-experience", "keyboard", "local-computer", "predict", "remote-chat", "workspace"]);
+});

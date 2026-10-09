@@ -2,7 +2,7 @@ import { createContext } from "react";
 import { create } from "zustand";
 
 import { portUrl } from "@/lib/browser-url";
-import { findCompare, kindOf, type Kind, type Lane, newCompare, setLane, sides, swapSides, syncPreview, withPath, withView } from "@/lib/compare";
+import { findCompare, kindOf, type Kind, type Lane, newCompare, setLane, sides, swapSides, syncPreview, withPath } from "@/lib/compare";
 import type { PaneContent } from "@/lib/layout";
 import { useStore } from "@/lib/store";
 import { activateTab, leadAgent, refFor, showWorktree, splitKey, useWorkspaces, type Workspace, type WsTab } from "@/lib/workspaces";
@@ -111,7 +111,7 @@ export function compareShowing(): { key: string; tab: WsTab } | undefined {
 }
 
 // Keeping Compare tabs right as things change: an agent pane started from
-// an empty side shows as its lane asks, an empty side takes up an agent
+// an empty side shows its agent, an empty side takes up an agent
 // that starts in its worktree, and with sync, a page that moved on one side
 // sends the other to the same place.
 
@@ -125,11 +125,11 @@ function tidy(t: WsTab): WsTab {
   if (!c || !s) return t;
   let next = t;
   const fixed = s.map((l, i) => {
-    let content = withView(l.content, c.lane);
+    let content = l.content;
     if (content.kind === "empty" && content.label === "Agent" && kindOf(c.lane) === "agent") {
       const side = i === 0 ? c.a : c.b;
       const session = leadAgent(side);
-      if (session) content = withView({ kind: "terminal", box: splitKey(side).box, session }, c.lane);
+      if (session) content = { kind: "terminal", box: splitKey(side).box, session };
     }
     return content === l.content ? l : { ...l, content };
   });
@@ -189,9 +189,9 @@ export interface Place {
   n: number;
 }
 
-export const useCompareSync = create<{ file: Record<string, Place>; turn: Record<string, Place> }>()(() => ({ file: {}, turn: {} }));
+export const useCompareSync = create<{ file: Record<string, Place> }>()(() => ({ file: {} }));
 
-export function sendPlace(what: "file" | "turn", tab: string, from: string, at: string | number) {
+export function sendPlace(what: "file", tab: string, from: string, at: string | number) {
   useCompareSync.setState((s) => ({ [what]: { ...s[what], [tab]: { from, at, n: (s[what][tab]?.n ?? 0) + 1 } } }));
 }
 

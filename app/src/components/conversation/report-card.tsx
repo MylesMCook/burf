@@ -1,14 +1,9 @@
-import { ArrowUpRightIcon, CheckIcon, ChevronDownIcon, CircleDotIcon, CircleStopIcon, CircleXIcon, MilestoneIcon } from "lucide-react";
-import { useContext, useState } from "react";
+import { CheckIcon, ChevronDownIcon, CircleDotIcon, CircleStopIcon, CircleXIcon, MilestoneIcon } from "lucide-react";
+import { useState } from "react";
 
 import { BerthAvatar, CardHead, type Chip } from "@/components/conversation/agent-message";
-import { PromptActionsContext } from "@/components/conversation/prompt-actions";
-import { Tip } from "@/components/tip";
-import { Button } from "@/components/ui/button";
-import { useStore } from "@/lib/store";
 import type { BerthReport, TranscriptItem } from "@/lib/transcript";
 import { cn } from "@/lib/utils";
-import { openSession } from "@/lib/workspaces";
 
 // A report is Burf telling this agent that work it started has ended,
 // needs a person, or reached a gate: what the box typed into the session as
@@ -63,9 +58,6 @@ const Dot = () => (
 
 export function ReportCard({ it }: { it: Extract<TranscriptItem, { kind: "report" }> }) {
   const r = it.report;
-  const ctx = useContext(PromptActionsContext);
-  const box = ctx?.box;
-  const session = useStore((s) => (box && r.session ? s.boxes[box]?.sessions?.find((x) => x.name === r.session) : undefined));
   const [open, setOpen] = useState(false);
   const tone = WORDS[r.status]?.[1] ?? "ended";
   const name = reportName(r);
@@ -101,17 +93,6 @@ export function ReportCard({ it }: { it: Extract<TranscriptItem, { kind: "report
         }
         took={r.duration}
         tip={`Burf reported back on ${about}, which this agent started, and sent it to the agent. You didn't type it.`}
-        open={
-          session &&
-          box && (
-            <Tip label={`Open ${session.title || session.name}`}>
-              <Button size="xs" variant="ghost" className="shrink-0 text-muted-foreground hover:text-foreground" onClick={() => openSession(box, session)}>
-                Open
-                <ArrowUpRightIcon />
-              </Button>
-            </Tip>
-          )
-        }
       />
       {detail && (
         <button

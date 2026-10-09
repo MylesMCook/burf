@@ -77,7 +77,7 @@ export function formatDiagnostics(d: Diagnostics): string {
   if (a) {
     add(`Terminal: ${terminal(a)}`);
     let look = `Look: theme ${or(a.theme, "default")} · Labs ${onOff(a.labs)}`;
-    look += ` (agents as ${or(a.agent_view, "conversation")}, zen ${onOff(a.zen)})`;
+    look += ` (agents as ${or(a.agent_view, "terminal")}, zen ${onOff(a.zen)})`;
     add(look);
   }
 

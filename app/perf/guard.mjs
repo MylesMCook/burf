@@ -1,16 +1,6 @@
 #!/usr/bin/env node
-// A reported check of the benchmark against generous limits: a 2,000-turn
-// chat and a sidebar of 300 worktrees on CI-class hardware. It prints each
-// number beside its limit and, with --strict, fails when one is over.
-// Timings move with the machine, so it reports by default; the parts that
-// don't (rows drawn, rows a draft redraws, the sidebar's elements and its
-// per-row menus) are checked by e2e/chat-long.spec.ts and
-// e2e/sidebar-fleet.spec.ts, which fail.
-//
-//   pnpm build && pnpm perf:guard [--from perf-results/numbers.json] [--strict]
-//
-// Without --from it runs perf/bench.mjs for the chat at 2,000 turns and the
-// fleet at 300 worktrees first.
+// Check fleet benchmark output against limits. --strict fails when one is over.
+// Without --from, run the fleet benchmark first.
 
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -29,31 +19,14 @@ let file = flag("from");
 if (!file) {
   const out = resolve(here, "../node_modules/.perf/guard");
   const port = flag("port") ?? process.env.E2E_PORT ?? "1431";
-  const r = spawnSync(process.execPath, [join(here, "bench.mjs"), "--turns", "2000", "--only", "chat,fleet", "--worktrees", "300", "--port", String(port), "--out", out], { stdio: "inherit" });
+  const r = spawnSync(process.execPath, [join(here, "bench.mjs"), "--only", "fleet", "--worktrees", "300", "--port", String(port), "--out", out], { stdio: "inherit" });
   if (r.status !== 0) process.exit(r.status ?? 1);
   file = join(out, "numbers.json");
 }
 
 const res = JSON.parse(readFileSync(resolve(String(file)), "utf8"));
-const chat = res.chat.find((c) => c.turns === 2000) ?? res.chat[res.chat.length - 1];
 const fleet = (res.fleet ?? []).find((f) => f.worktrees === 300) ?? res.fleet?.[0];
-if (!chat && !fleet) throw new Error(`no chat or fleet results in ${file}`);
-
-// [what, value, limit]: lower is better for each.
-const chatChecks = () => [
-  ["open: first render (ms)", chat.open.firstRenderMs, 3000],
-  ["open: interactive (ms)", chat.open.interactiveMs, 4000],
-  ["scroll at reading speed: dropped frames (%)", chat.scrollRead.droppedPct, 25],
-  ["scroll sweep, top to foot: dropped frames (%)", chat.scrollSweep.droppedPct, 50],
-  ["draft update: main thread (ms)", chat.draft.mainThreadMsPerTick, 60],
-  ["draft update: chat rows drawn again", chat.draft.rowsRenderedPerCommitMax, 2],
-  ["typing: input to paint, p95 (ms)", chat.typing.p95, 100],
-  ["typing while a draft streams, p95 (ms)", chat.typingWhileDraft.p95, 120],
-  ["switch to another long chat (ms)", chat.switch.toOther.interactiveMs, 2000],
-  ["JS heap (MB)", chat.memory.heapMB, 250],
-  ["DOM nodes", chat.memory.domNodes, 8000],
-  ["chat rows drawn", chat.memory.chatRows, 60],
-];
+if (!fleet) throw new Error(`no fleet results in ${file}`);
 
 // The sidebar, the folded rail and Home with 300 worktrees, each with an
 // agent: 1.2 s of long tasks at start and 120 MB before rows made their
@@ -75,11 +48,11 @@ const fleetChecks = () => [
   ["folded rail start: long tasks (ms)", fleet.rail?.longTaskMs, 600],
 ];
 
-const checks = [...(chat ? chatChecks() : []), ...(fleet ? fleetChecks() : [])];
+const checks = fleetChecks();
 
 let over = 0;
 const pad = Math.max(...checks.map(([k]) => k.length));
-console.log(`${[chat && `${chat.turns} turns`, fleet && `${fleet.worktrees} worktrees`].filter(Boolean).join(", ")}, ${res.machine}, ${res.at}`);
+console.log(`${fleet.worktrees} worktrees, ${res.machine}, ${res.at}`);
 for (const [k, v, limit] of checks) {
   const bad = !(v <= limit);
   if (bad) over++;
