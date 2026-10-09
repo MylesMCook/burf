@@ -1,6 +1,7 @@
 import { ArrowLeftIcon, FolderIcon, GitForkIcon, MessageSquareIcon, PlusIcon, RotateCwIcon, TerminalIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { TranscriptThread } from "@/components/conversation/transcript-thread";
+import { Chat } from "@/components/chat/chat";
+import type { ChatTransport } from "@/components/chat/chat-transport";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tip } from "@/components/tip";
@@ -9,6 +10,7 @@ import { openComposer } from "@/lib/composer";
 import { errorMessage } from "@/lib/format";
 import { localAgentName, localApi, type LocalComputer, type LocalConversation, type LocalHistoryPage, type LocalSession } from "@/lib/local-computer";
 import { useStore } from "@/lib/store";
+import { savedChatMessages } from "@/lib/saved-chat";
 import { cn } from "@/lib/utils";
 import { ViewHeader } from "@/views/view-header";
 import { LocalTerminal } from "@/views/local-terminal";
@@ -138,6 +140,17 @@ function LocalHistory({ client, conversation, canFork, onStart }: { client: Clie
   const usable = conversation.can_continue !== false;
   const canContinue = canFork && usable;
   const continueReason = usable ? undefined : conversation.continue_reason;
+  const messages = useMemo(() => savedChatMessages(page?.items ?? EMPTY), [page?.items]);
+  const transport = useMemo<ChatTransport>(() => {
+    const session = { id: conversation.id, agent: conversation.source, cwd: conversation.cwd, state: "idle" as const, started_at: conversation.updated_at };
+    const snapshot = { ...session, thread_id: conversation.id, items: [], approvals: [], messages };
+    return {
+      session, snapshot, agentName: localAgentName(conversation.source), testId: "local-history", readOnly: true,
+      loading: loading && !page, hasEarlier: !!page?.more && before !== undefined,
+      loadEarlier: async () => { if (!loading && before !== undefined) await load(before); },
+      read: async () => snapshot,
+    };
+  }, [conversation, messages, loading, page, before, load]);
   return <>
     <div className="flex min-w-0 flex-wrap items-center gap-3 border-b px-4 py-3"><h2 className="min-w-0 flex-1 truncate text-sm font-medium" title={conversation.title}>{conversation.title}</h2><span className="shrink-0 text-xs text-muted-foreground">Read-only</span></div>
     <div className="flex flex-wrap items-center gap-2 px-4 py-2">
@@ -157,12 +170,11 @@ function LocalHistory({ client, conversation, canFork, onStart }: { client: Clie
         }}><GitForkIcon />{starting ? "Starting..." : "Continue in Burf"}</Button>
       </Tip>
       {continueReason && <p id="local-continue-reason" role="status" className="text-xs text-muted-foreground">{continueReason}</p>}
-      {page?.more && before !== undefined && <Button size="sm" variant="outline" disabled={loading} onClick={() => void load(before)}>Load older messages</Button>}
       <Tip label="Refresh conversation"><Button size="icon-sm" variant="ghost" aria-label="Refresh conversation" disabled={loading} onClick={() => void load()}><RotateCwIcon className="size-4" /></Button></Tip>
       {loading && <span role="status" className="text-xs text-muted-foreground">Loading conversation...</span>}
     </div>
     {error && <p role="alert" className="px-4 py-2 text-sm text-destructive">{error}</p>}
     {startError && <p role="alert" className="px-4 py-2 text-sm text-destructive">{startError}</p>}
-    <div className="min-h-0 flex-1" data-testid="local-history"><TranscriptThread items={page?.items ?? EMPTY} who={localAgentName(conversation.source)} readOnly /></div>
+    <Chat transport={transport} />
   </>;
 }

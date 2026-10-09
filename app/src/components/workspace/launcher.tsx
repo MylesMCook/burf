@@ -202,10 +202,10 @@ export function Launcher({ worktree: ref }: { worktree: WorktreeRef }) {
           {/* What runs here, each with its URL, then plugins' sections. */}
           <WorktreeSections worktree={ref} className="mt-6" />
           {remote.error && <p role="alert" className="mt-4 text-sm text-destructive">{remote.error}</p>}
-          {remote.chats.length > 0 && <section aria-label="Codex chats" className="mt-6">
-            <h2 className="mb-1 px-2 text-xs font-medium text-muted-foreground">Codex chats</h2>
+          {remote.chats.length > 0 && <section aria-label="Chats" className="mt-6">
+            <h2 className="mb-1 px-2 text-xs font-medium text-muted-foreground">Chats</h2>
             {remote.chats.map((chat) => <button key={chat.id} type="button" onClick={() => openRemoteChat(ref.box, chat, ref)} className="flex min-h-10 w-full items-center gap-3 rounded-md px-2 text-left text-sm hover:bg-accent">
-              <AgentIcon agent="codex" /><span className="min-w-0 flex-1 truncate">Codex chat <span className="text-xs text-muted-foreground">{chat.id.slice(-8)}</span></span><span className="text-xs text-muted-foreground">{chat.state}</span>
+              <AgentIcon agent={chat.agent} /><span className="min-w-0 flex-1 truncate">{agentLabel(chat.agent)} chat <span className="text-xs text-muted-foreground">{chat.id.slice(-8)}</span></span><span className="text-xs text-muted-foreground">{chat.state}</span>
             </button>)}
           </section>}
 

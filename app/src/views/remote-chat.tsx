@@ -1,4 +1,4 @@
-import { useContext, useMemo, useRef } from "react";
+import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "@/lib/store";
 import { remoteChatApi } from "@/lib/remote-chat";
 import { Chat } from "@/components/chat/chat";
@@ -6,13 +6,15 @@ import { useWorktreeAttachments } from "@/components/conversation/structured-att
 import { PaneContext } from "@/lib/pane-context";
 import { useWorktreeRef } from "@/lib/workspaces";
 import { filesApi } from "@/lib/files";
-import type { ChatDecision, ChatOptions } from "@/lib/local-computer";
+import { localAgentName, type LocalAgent, type ChatDecision, type ChatOptions } from "@/lib/local-computer";
 
 type Saved = { draft?: string; options?: { model?: string; effort?: string } };
 
-export function RemoteChatPane({ box, id, cwd, draft, options, onSaved }: { box: string; id: string; cwd: string; onSaved(saved: Saved): void } & Saved) {
+export function RemoteChatPane({ box, id, cwd, agent, draft, options, onSaved }: { box: string; id: string; cwd: string; agent?: LocalAgent; onSaved(saved: Saved): void } & Saved) {
   // A send clears the draft and its choices together: each save carries both, so neither restores the other.
+  const [provider, setProvider] = useState(agent);
   const key = `${box}/${id}`;
+  useEffect(() => setProvider(agent), [key, agent]);
   const saved = useRef({ key, draft, options });
   if (saved.current.key !== key) saved.current = { key, draft, options };
   const save = (change: Saved) => { saved.current = { ...saved.current, ...change }; onSaved({ draft: saved.current.draft, options: saved.current.options }); };
@@ -25,19 +27,19 @@ export function RemoteChatPane({ box, id, cwd, draft, options, onSaved }: { box:
   const target = paneRef && paneRef.box === box && paneRef.path === cwd ? paneRef : undefined;
   const attachments = useWorktreeAttachments(client, target);
   const transport = useMemo(() => client && ({
-    session: { id, agent: "codex" as const, mode: "chat" as const, cwd, state: "starting" as const, started_at: "" },
-    agentName: "Codex", testId: "remote-chat", initialDraft: initial.current.draft, initialOptions: initial.current.options,
+    session: { id, agent: provider ?? "unknown", mode: "chat" as const, cwd, state: "starting" as const, started_at: "" },
+    agentName: provider ? localAgentName(provider) : "Agent", testId: "remote-chat", initialDraft: initial.current.draft, initialOptions: initial.current.options,
     onDraftChange: (text: string) => saveRef.current({ draft: text || undefined }),
     onOptionsChange: (o: ChatOptions) => saveRef.current({ options: o.model || o.effort ? { model: o.model, effort: o.effort } : undefined }),
     attachments,
     searchFiles: target ? async (query: string, signal?: AbortSignal) => (await filesApi.list(client, target, query, 8, signal)).files ?? [] : undefined,
-    read: (signal?: AbortSignal) => remoteChatApi.read(client, box, id, signal),
+    read: async (signal?: AbortSignal) => { const chat = await remoteChatApi.read(client, box, id, signal); if (!signal?.aborted) setProvider(chat.agent ?? "codex"); return chat; },
     message: (text: string, options?: ChatOptions) => remoteChatApi.message(client, box, id, text, options),
     models: () => remoteChatApi.models(client, box, id),
     stop: () => remoteChatApi.stop(client, box, id),
     interrupt: () => remoteChatApi.interrupt(client, box, id),
     approve: (approval: string, decision: ChatDecision) => remoteChatApi.approve(client, box, id, approval, decision),
-  }), [client, box, id, cwd, attachments, target]);
+  }), [client, box, id, cwd, provider, attachments, target]);
   return transport
     ? <Chat key={key} transport={transport} />
     : <p role="status" className="p-4 text-sm">Connecting to {box}...</p>;
