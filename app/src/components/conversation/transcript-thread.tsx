@@ -2,7 +2,6 @@ import { AssistantRuntimeProvider, makeAssistantDataUI, MessagePrimitive, Thread
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ClockIcon, RotateCwIcon } from "lucide-react";
 
-import { Thread } from "@/components/assistant-ui/elements/thread.aui";
 import { PingGroup } from "@/components/conversation/agent-message";
 import { type EditActions, Item, ReadOnlyContext, RevealContext, WorkFold } from "@/components/conversation/transcript-item";
 import { ChatList, type ChatListProps } from "@/components/conversation/chat-list";
@@ -63,7 +62,6 @@ function Message() {
 }
 const components = { UserMessage: Message, AssistantMessage: Message };
 const sent = async () => {};
-const none = <></>;
 const said = (turn: TranscriptTurn) => turn.kind !== "said" || turn.item.kind !== "user" || !!withoutReminders(turn.item.text);
 const rowKey = (turn: TranscriptTurn) => turn.id;
 const isTurn = (turn: TranscriptTurn) => turn.kind === "said" && turn.item.kind === "user";
@@ -91,16 +89,6 @@ function TranscriptRuntime({ turns, who, onAnswer, edits, readOnly, children }: 
         </ActsContext.Provider>
       </ReadOnlyContext.Provider>
     </AssistantRuntimeProvider>
-  );
-}
-
-export function TranscriptThread({ items, who = "The agent", readOnly = false, onAnswer = sent, edits, welcome = none, after }: { items: readonly TranscriptItem[]; readOnly?: boolean; welcome?: ReactNode; after?: ReactNode } & Partial<Acts>) {
-  const turns = useTurns(items, readOnly);
-  const speakers = useMemo(() => ({ user: "You", assistant: who }), [who]);
-  return (
-    <TranscriptRuntime turns={turns} who={who} onAnswer={onAnswer} edits={edits} readOnly={readOnly}>
-      <Thread components={components} autoFocus={false} readOnly welcome={welcome} after={after} speakers={speakers} loadEarlier={false} />
-    </TranscriptRuntime>
   );
 }
 

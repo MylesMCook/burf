@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { load, save } from "@/lib/storage";
 import { ApiError, type Client } from "@/lib/api";
 import { useStore } from "@/lib/store";
-import type { TranscriptItem } from "@/lib/transcript";
+import type { SavedTranscriptItem } from "@/lib/saved-chat";
 
 export type LocalAgent = "claude" | "codex";
 export const localAgentName = (id: string) => id === "claude" ? "Claude Code" : "Codex";
@@ -36,7 +36,7 @@ export interface LocalConversation {
   continue_reason?: string;
 }
 export interface LocalHistoryPage {
-  items: (TranscriptItem & { off?: number })[];
+  items: (SavedTranscriptItem & { off?: number })[];
   start?: number;
   more?: boolean;
 }
@@ -50,12 +50,13 @@ export interface LocalOutput {
 
 export type ChatDecision = "accept" | "decline" | "acceptForSession" | "acceptAlways";
 export interface ChatOptions { model?: string; effort?: string; permission?: "strict" | "read-only" | "workspace" | "full-access" }
-// What Codex may do without asking. Network stays off in every mode but Full access.
+// What the agent may do without asking. Network stays off in every mode but Full access.
+// A hint follows the agent's name: "Codex asks before…".
 export const chatPermissions = {
-  strict: { label: "Ask every time", hint: "Codex asks before any command it does not already trust. No edits." },
-  "read-only": { label: "Read only", hint: "Codex reads and runs sandboxed commands without asking. Edits need approval." },
-  workspace: { label: "Edit workspace", hint: "Codex edits files in this workspace without asking. Anything outside it needs approval." },
-  "full-access": { label: "Full access", hint: "Codex runs any command and changes any file this account can reach, with network access, without asking." },
+  strict: { label: "Ask every time", hint: "asks before any command it does not already trust. No edits." },
+  "read-only": { label: "Read only", hint: "reads and runs sandboxed commands without asking. Edits need approval." },
+  workspace: { label: "Edit workspace", hint: "edits files in this workspace without asking. Anything outside it needs approval." },
+  "full-access": { label: "Full access", hint: "runs any command and changes any file this account can reach, with network access, without asking." },
 } as const;
 // Backends that predate a mode do not list it, and are never sent it.
 export const BASE_PERMISSIONS = ["strict", "read-only", "workspace"];
@@ -101,7 +102,7 @@ async function launch<T>(request: Promise<T>, signal?: AbortSignal): Promise<T> 
 }
 
 export const localApi = {
-  startChat: (c: Client, cwd: string, signal?: AbortSignal) => launch(c.laptop<LocalChat>("POST", "/v1/local/chats", { cwd }, signal), signal),
+  startChat: (c: Client, cwd: string, signal?: AbortSignal, agent: LocalAgent = "codex") => launch(c.laptop<LocalChat>("POST", "/v1/local/chats", { cwd, ...(agent === "claude" ? { agent } : {}) }, signal), signal),
   chat: (c: Client, id: string, signal?: AbortSignal) => c.laptop<LocalChat>("GET", chatPath(id), undefined, signal),
   message: (c: Client, id: string, text: string, options?: ChatOptions) => chatMutation(c.laptop("POST", `${chatPath(id)}/messages`, { text, ...(options && Object.keys(options).length ? { options } : {}) })),
   models: (c: Client, id: string) => c.laptop<ChatModel[]>("GET", `${chatPath(id)}/models`),

@@ -36,7 +36,7 @@ import { promptFor, type ResolveKind, worktreeSlug } from "@/lib/projects";
 import { BASE_PERMISSIONS, chatPermissions, localAgentName, localApi, useLocalComputer, type LocalComputer, type LocalConversation, type LocalSession, savedChatPermission, saveChatPermission } from "@/lib/local-computer";
 import { errorMessage } from "@/lib/format";
 import { folderName, localFolders } from "@/lib/local-folders";
-import { hasChatOptions, hasFullAccess, hasRemoteCodex, useChatModels } from "@/lib/remote-chat";
+import { hasChatOptions, hasFullAccess, hasRemoteChat, useChatModels } from "@/lib/remote-chat";
 import { askedVariables, builtinValues, fill as fillPrompt, isBuiltin, usePrompts, variablesIn } from "@/lib/prompts";
 import { boxHasRuns } from "@/lib/runs";
 import { AGENT_WORDS } from "@/lib/state-model";
@@ -145,7 +145,7 @@ function LocalStartBody({ local, draft, text, setText, tabs, dialog, autoFocus, 
   const [agentChoice, setAgent] = useState<string>(draft.agents?.[0]?.agent ?? "");
   const available = local.agents.filter((a) => a.available);
   const agent = available.find((a) => a.id === agentChoice) ?? available.find((a) => a.id === "codex" && a.can_chat) ?? available[0];
-  const structured = agent?.id === "codex" && !!agent.can_chat;
+  const structured = !!agent?.can_chat;
   const presets: PickerPreset[] = available.map((a) => ({ id: a.id, name: localAgentName(a.id), command: a.id }));
   const sel = agent ? toChosen([{ agent: agent.id }]) : {};
   const [busy, setBusy] = useState(false);
@@ -184,7 +184,7 @@ function LocalStartBody({ local, draft, text, setText, tabs, dialog, autoFocus, 
     setBusy(true); setError("");
     try {
       const session = structured
-        ? await localApi.startChat(client, cwd.trim(), controller.signal)
+        ? await localApi.startChat(client, cwd.trim(), controller.signal, agent.id)
         : await localApi.start(client, agent.id, cwd.trim(), controller.signal);
       if (controller.signal.aborted) return;
       startedSession.current = session;
@@ -337,9 +337,9 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
     }
     const id = Object.keys(c)[0];
     const remembered = load<Chosen>(providerChoicesKey(box, locName), {});
-    // A reasoning level chosen for one Codex model may not exist on another.
-    const listedEfforts = id === "codex" ? codexModels?.find((m) => m.model === c.codex.models[0])?.supportedReasoningEfforts?.map((e) => e.reasoningEffort) : undefined;
-    if (listedEfforts && c.codex.effort && !listedEfforts.includes(c.codex.effort)) c = { codex: { ...c.codex, effort: "" } };
+    // A reasoning level chosen for one model may not exist on another.
+    const listedEfforts = id === reqAgent ? chatModels?.find((m) => m.model === c[id].models[0])?.supportedReasoningEfforts?.map((e) => e.reasoningEffort) : undefined;
+    if (listedEfforts && c[id].effort && !listedEfforts.includes(c[id].effort)) c = { [id]: { ...c[id], effort: "" } };
     if (id !== Object.keys(sel)[0] && remembered[id]) {
       const p = pickerPresets.find((p) => p.id === id);
       const old = remembered[id];
@@ -495,19 +495,19 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
   // What the box lacks to run an agent (tmux, the agent's CLI), from the
   // box itself, before anything is created: its card says how to install it.
   const reqAgent = picks.length === 1 && !template?.command ? picks[0].agent : undefined;
-  const structuredCodex = reqAgent === "codex" && !from && hasRemoteCodex(box, presets.find((p) => p.id === "codex")?.command ?? "");
-  const retryWorktree = structuredCodex && fresh && createdWorktree?.box === box && createdWorktree.location === locName ? createdWorktree.worktree : undefined;
+  const structuredChat = !from && hasRemoteChat(box, reqAgent, presets.find((p) => p.id === reqAgent)?.command ?? "");
+  const retryWorktree = structuredChat && fresh && createdWorktree?.box === box && createdWorktree.location === locName ? createdWorktree.worktree : undefined;
   // A structured chat on a box that takes options: the account's own models, and a permission mode.
-  const chatControls = structuredCodex && hasChatOptions(box);
-  const codexModels = useChatModels(box, locName, chatControls);
+  const chatControls = structuredChat && hasChatOptions(box);
+  const chatModels = useChatModels(box, locName, chatControls, reqAgent);
   const [chosenPermission, setPermission] = useState<keyof typeof chatPermissions>(() => savedChatPermission() ?? "strict");
   // Full access is offered only where the box takes it.
   const permission = chosenPermission === "full-access" && !hasFullAccess(box) ? "strict" : chosenPermission;
-  const pickerPresets: PickerPreset[] = !codexModels?.length
+  const pickerPresets: PickerPreset[] = !chatModels?.length
     ? presets
     : // Structured chats take these as message options, so the preset needs no CLI flag for them.
-      presets.map((p) => (p.id !== "codex" ? p : { ...p, model_flag: p.model_flag || "--model", effort_flag: p.effort_flag || "--effort", models: codexModels.map((m) => m.model), model_names: Object.fromEntries(codexModels.map((m) => [m.model, m.displayName || m.model])), efforts: codexModels.find((m) => m.model === sel.codex?.models[0])?.supportedReasoningEfforts?.map((e) => e.reasoningEffort) ?? p.efforts }));
-  const reqCard = useRequirementsCard(box || undefined, { agent: reqAgent, noAgent, enabled: !structuredCodex });
+      presets.map((p) => (p.id !== reqAgent ? p : { ...p, model_flag: p.model_flag || "--model", effort_flag: p.effort_flag || "--effort", models: chatModels.map((m) => m.model), model_names: Object.fromEntries(chatModels.map((m) => [m.model, m.displayName || m.model])), efforts: chatModels.find((m) => m.model === sel[reqAgent!]?.models[0])?.supportedReasoningEfforts?.map((e) => e.reasoningEffort) ?? p.efforts }));
+  const reqCard = useRequirementsCard(box || undefined, { agent: reqAgent, noAgent, enabled: !structuredChat });
 
   const name = worktreeSlug(wt.name || resolution?.name || (resolveError ? input : ""));
   const blocker = !box
@@ -516,9 +516,9 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
       : "Waiting for a box"
     : !locName
       ? "Choose a project"
-      : !structuredCodex && reqCard === "tmux"
+      : !structuredChat && reqCard === "tmux"
         ? `tmux isn't installed on ${box}`
-        : !noAgent && (!picks.length || (!structuredCodex && reqCard === "agent"))
+        : !noAgent && (!picks.length || (!structuredChat && reqCard === "agent"))
         ? `No agent CLI on ${box}`
         : !noAgent && !text.trim() && (attempts || from || !dialog)
           ? attempts
@@ -535,7 +535,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
   const action = from ? (from.kind === "review" ? "Start review" : "Hand off") : noAgent ? "Create worktree" : attempts ? `Try ${picks.length} ways` : "Start";
   // Missing configuration stays visible without changing the saved preference.
   const needsPickers = (settled && (!box || !locName || (!noAgent && !picks.length)))
-    || (!structuredCodex && (reqCard === "tmux" || reqCard === "agent"))
+    || (!structuredChat && (reqCard === "tmux" || reqCard === "agent"))
     || (attempts && !!box && !boxHasRuns(box));
   const expanded = rememberedExpanded || needsPickers;
   const summaryAgents = noAgent ? "No agent" : picks.map((pick) => {
@@ -761,7 +761,7 @@ function StartBody({ draft, text, setText, tabs, fixed, dialog, autoFocus, place
         <>
           {noProjects && <NoProjects />}
           {retryWorktree && !busy && <p className="px-3 pt-2 text-sm">The worktree is at {retryWorktree.path} on {box}. Start again to use it without creating another worktree.</p>}
-          {box && !structuredCodex && <RequirementsCard box={box} agent={reqAgent} noAgent={noAgent} className="mx-1 mt-1" />}
+          {box && !structuredChat && <RequirementsCard box={box} agent={reqAgent} noAgent={noAgent} className="mx-1 mt-1" />}
           {pendingTrust?.wants && fresh && (
             <Alert variant="warning" className="mt-1">
               <ShieldAlertIcon />

@@ -31,8 +31,8 @@ export function ChatRuntimeState({ initialDraft, onDraftChange, onBlocked, trans
   return null;
 }
 
-export function ChatChoices({ models, model, effort, permission, accepted, permissions, reason, modelsError, onModel, onEffort, onPermission }: {
-  models?: ChatModel[]; model: string; effort: string; permission: NonNullable<ChatOptions["permission"]>; accepted: NonNullable<ChatOptions["permission"]>; permissions: string[]; reason: string; modelsError: string;
+export function ChatChoices({ agentName, models, model, effort, permission, accepted, permissions, reason, modelsError, onModel, onEffort, onPermission }: {
+  agentName: string; models?: ChatModel[]; model: string; effort: string; permission: NonNullable<ChatOptions["permission"]>; accepted: NonNullable<ChatOptions["permission"]>; permissions: string[]; reason: string; modelsError: string;
   onModel(value: string): void; onEffort(value: string): void; onPermission(value: NonNullable<ChatOptions["permission"]>): void;
 }) {
   const efforts = models?.find((m) => m.model === model)?.supportedReasoningEfforts.map((e) => e.reasoningEffort) ?? [];
@@ -46,7 +46,7 @@ export function ChatChoices({ models, model, effort, permission, accepted, permi
     <ModelSelector models={choices} value={model} effort={effort} onValueChange={onModel} onEffortChange={onEffort}
       variant="ghost" size="sm" className="h-7 shrink-0 rounded-full" triggerProps={{ "aria-label": "Chat model", disabled: !!modelReason }} tooltip={modelReason || "Chat model. Applies from your next message."} effortLabel="Chat reasoning" effortDisabled={!!reason} />
     <Select value={permission} disabled={!!reason} onValueChange={(value) => { if (value) onPermission(value as NonNullable<ChatOptions["permission"]>); }}>
-      <Tip label={reason || `Current permission: ${chatPermissions[accepted].label}. From your next message: ${chatPermissions[permission].hint}`}>
+      <Tip label={reason || `Current permission: ${chatPermissions[accepted].label}. From your next message: ${agentName} ${chatPermissions[permission].hint}`}>
         <span className="inline-flex shrink-0">
         <SelectTrigger aria-label="Chat permissions" disabled={!!reason} size="sm" className="h-7 w-auto min-w-0 shrink-0 justify-start gap-1 rounded-full border-0 bg-transparent px-2 text-xs shadow-none hover:bg-muted"><SelectValue>{chatPermissions[permission].label}</SelectValue></SelectTrigger>
         </span>

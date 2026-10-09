@@ -1,11 +1,11 @@
 import { useMemo } from "react";
 import { Chat } from "@/components/chat/chat";
 import type { Client } from "@/lib/api";
-import { localApi, type LocalSession, type ChatOptions, type ChatDecision } from "@/lib/local-computer";
+import { localApi, localAgentName, type LocalSession, type ChatOptions, type ChatDecision } from "@/lib/local-computer";
 
 export function LocalChat({ client, session, onChange }: { client: Client; session: LocalSession; onChange(session: LocalSession): void }) {
   const transport = useMemo(() => ({
-    session, agentName: "Codex", testId: "local-chat", onChange: (value: { state: LocalSession["state"] }) => onChange({ ...session, state: value.state }),
+    session, agentName: localAgentName(session.agent), testId: "local-chat", onChange: (value: { state: LocalSession["state"] }) => onChange({ ...session, state: value.state }),
     read: (signal?: AbortSignal) => localApi.chat(client, session.id, signal),
     message: (text: string, options?: ChatOptions) => localApi.message(client, session.id, text, options),
     models: () => localApi.models(client, session.id),

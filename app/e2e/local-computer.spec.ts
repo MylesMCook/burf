@@ -183,7 +183,7 @@ test("local computer opens read-only history and older messages without session 
     await app.page.screenshot({ path: info.outputPath("local-history.png") });
     await expect(app.page.getByRole("button", { name: "Allow", exact: true })).toHaveCount(0);
     await expect(app.page.getByTestId("composer")).toHaveCount(0);
-    await app.page.getByRole("button", { name: "Load older messages" }).click();
+    await app.page.getByRole("button", { name: "Load earlier messages" }).click();
     await expect.poll(() => calls.some((c) => c.path === "/v1/local/conversations/history-1?before=100")).toBe(true);
     // Older messages join the same thread, each named for who said it.
     const history = app.page.getByTestId("local-history");
@@ -193,6 +193,41 @@ test("local computer opens read-only history and older messages without session 
     await expect(history).toContainText("Historical permission");
     // A record that ended on an unanswered question is not an agent at work.
     await expect(history.getByLabel("Assistant is working")).toHaveCount(0);
+    expect(calls.filter((c) => c.method !== "GET")).toEqual([]);
+  } finally { await agent.close(); }
+});
+
+test("saved Claude history uses the shared read-only chat and stock tool group", async ({ app }) => {
+  const { agent, calls } = await localFixture(app, { source: "claude" });
+  await app.context.route(`${agent.url}/v1/local/conversations/history-1**`, (route) => route.fulfill({ json: new URL(route.request().url()).searchParams.has("before")
+    ? { items: [{ kind: "user", id: "older", off: 0, text: "Earlier request" }], more: false, start: 0 }
+    : { items: [
+      { kind: "user", id: "u", off: 100, text: "My saved request" },
+      { kind: "text", id: "a", off: 200, text: "Saved Claude response" },
+      { kind: "tools", id: "tools", off: 250, verb: "Run", done: true, items: [{ id: "call", verb: "Bash", target: "git status", output: "Saved tool output" }] },
+      { kind: "ask", id: "ask", off: 300, tool: "Run", detail: "Historical permission" },
+    ], more: true, start: 100 },
+  }));
+  try {
+    await app.page.getByTestId("nav-local").click();
+    await app.page.getByRole("button", { name: /Checkout history/ }).click();
+    const history = app.page.getByTestId("local-history");
+    await expect(history.getByRole("article", { name: "Claude Code", exact: true })).toContainText("Saved Claude response");
+    await expect(history.locator(".aui-thread-root")).toHaveCount(1);
+    await expect(history.getByRole("textbox")).toHaveCount(0);
+    await expect(history.getByTestId("composer")).toHaveCount(0);
+    const group = history.locator('[data-slot="tool-group-root"]');
+    await group.getByRole("button", { name: "1 tool call", exact: true }).click();
+    await group.getByRole("button", { name: "Used tool: Bash", exact: true }).click();
+    await expect(group).toContainText("git status");
+    await expect(group).toContainText("Saved tool output");
+    await expect(history).toContainText("Recorded permission · Run · Historical permission · Not answered");
+    await expect(history.getByRole("region", { name: "Approval required" })).toHaveCount(0);
+    await expect(history.getByLabel("Assistant is working")).toHaveCount(0);
+    await history.getByRole("button", { name: "Load earlier messages", exact: true }).click();
+    await expect(history.getByRole("article", { name: "You", exact: true }).filter({ hasText: "Earlier request" })).toBeVisible();
+    await expect(history).not.toContainText("Codex");
+    await expect(app.page.getByRole("button", { name: "Continue in Burf", exact: true })).toBeVisible();
     expect(calls.filter((c) => c.method !== "GET")).toEqual([]);
   } finally { await agent.close(); }
 });
