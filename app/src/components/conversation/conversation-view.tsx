@@ -191,7 +191,7 @@ export function ConversationView({ items: live, onAnswer, edits, who = "The agen
 
 // What search opens to show a match: folds and tool groups, by id.
 const RevealContext = createContext<Set<string>>(new Set());
-const ReadOnlyContext = createContext(false);
+export const ReadOnlyContext = createContext(false);
 
 // A message that replaced a draft keeps the draft's row (lib/draft-text).
 const blockKey = (b: Block) => (b.kind === "item" ? rowKeyOf(b.it.id) : b.id);
@@ -451,7 +451,7 @@ function workSummary(steps: TranscriptItem[]): string {
   return parts.join(", ");
 }
 
-function WorkFold({ id, steps, live, onAnswer, edits, who }: { id: string; steps: TranscriptItem[]; live: boolean; onAnswer(id: string, key: string): void; edits?: EditActions; who: string }) {
+export function WorkFold({ id, steps, live, onAnswer, edits, who }: { id: string; steps: TranscriptItem[]; live: boolean; onAnswer(id: string, key: string): void; edits?: EditActions; who: string }) {
   const [opened, setOpen] = useState(false);
   // Search opens it to a match inside.
   const forced = useContext(RevealContext).has(id);
@@ -480,7 +480,7 @@ function WorkFold({ id, steps, live, onAnswer, edits, who }: { id: string; steps
 }
 
 // Item is one item, marked with its id for search.
-function Item(props: { it: TranscriptItem; onAnswer(id: string, key: string): void; edits?: EditActions; who: string }) {
+export function Item(props: { it: TranscriptItem; onAnswer(id: string, key: string): void; edits?: EditActions; who: string }) {
   return (
     <div data-item-id={props.it.id} data-testid="chat-item" data-kind={props.it.kind} data-draft={props.it.kind === "text" && props.it.live ? "" : undefined} className="contents">
       <ItemBody {...props} />
