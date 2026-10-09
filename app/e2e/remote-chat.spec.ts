@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 
 import { BOX, DIR, fakeAgent } from "./fake-agent";
-import { expect, mockOnly, test, type App } from "./fixtures";
+import { expect, mockOnly, openTaskPickers, test, type App } from "./fixtures";
 import type { BrowserContext } from "@playwright/test";
 
 test.beforeEach(() => mockOnly("isolated structured remote Codex chat"));
@@ -18,18 +18,30 @@ async function fixture(context: BrowserContext, supported = true, options = fals
   const calls: { method: string; path: string; body: unknown }[] = [];
   const chat = { id: "remote-1", agent: "codex", mode: "chat", location: "shop/fix", cwd: DIR, state: "idle", started_at: "2026-10-08T12:00:00Z", thread_id: "remote-provider-thread", turn_id: "", items: [] as { id: string; kind: string; text: string }[], approvals: [] as { id: string; kind: string; detail: string }[], reports: undefined as Record<string, object[]> | undefined };
   // art: what the box keeps for the worktree (berthd artifact add), with each one's content. Unset, the box keeps none.
-  const control = { listed: false, lostSend: false, lostStart: false, offline: false, startDelay: 0, readHeld: undefined as Promise<void> | undefined, art: undefined as { id: string; title: string; kind: string; format: string; body: string }[] | undefined, title: "" };
+  const control = { listed: false, lostSend: false, lostStart: false, worktreeError: false, startError: false, runs: false, offline: false, startDelay: 0, readHeld: undefined as Promise<void> | undefined, art: undefined as { id: string; title: string; kind: string; format: string; body: string }[] | undefined, title: "" };
+  let createdWorktree: { name: string; path: string; branch: string } | undefined;
   await context.route(`${agent.url}${base}**`, async (route) => {
     const path = new URL(route.request().url()).pathname.slice(base.length);
     const method = route.request().method();
     calls.push({ method, path, body: route.request().postDataJSON() });
-    if (path === "info") return route.fulfill({ json: { name: BOX, version: "test", capabilities: supported ? ["chat.codex", "transcript", ...(options ? ["chat.options"] : []), ...(fullAccess ? ["chat.full-access"] : []), ...(control.art ? ["artifacts"] : [])] : ["transcript"], agents: [{ id: "codex", name: "Codex", command: "codex" }, { id: "custom", name: "Custom Codex", command: "codex --model custom" }] } });
-    if (path === "locations" && method === "GET" && control.title) {
+    if (path === "info") return route.fulfill({ json: { name: BOX, version: "test", capabilities: supported ? ["chat.codex", "transcript", ...(options ? ["chat.options"] : []), ...(fullAccess ? ["chat.full-access"] : []), ...(control.art ? ["artifacts"] : []), ...(control.runs ? ["runs"] : [])] : ["transcript"], agents: [{ id: "codex", name: "Codex", command: "codex" }, { id: "custom", name: "Custom Codex", command: "codex --model custom" }] } });
+    if (path === "locations" && method === "GET" && (control.title || createdWorktree)) {
       // The worktree as the box lists it once a person has named it.
-      const listed = await (await route.fetch()).json() as { worktrees?: { path: string; title?: string }[] }[];
-      for (const loc of listed) for (const wt of loc.worktrees ?? []) if (wt.path === DIR) wt.title = control.title;
+      const listed = await (await route.fetch()).json() as { name: string; worktrees?: { path: string; title?: string }[] }[];
+      for (const loc of listed) {
+        if (loc.name === "shop" && createdWorktree) loc.worktrees?.push(createdWorktree);
+        for (const wt of loc.worktrees ?? []) if (wt.path === DIR && control.title) wt.title = control.title;
+      }
       return route.fulfill({ json: listed });
     }
+    if (path === "locations/shop/worktrees" && method === "POST") {
+      if (control.worktreeError) return route.fulfill({ status: 400, json: { error: "The branch already exists" } });
+      const body = route.request().postDataJSON() as { name: string; branch?: string };
+      createdWorktree = { name: body.name, path: `/w/shop-${body.name}`, branch: body.branch || `me/${body.name}` };
+      return route.fulfill({ json: createdWorktree });
+    }
+    if (path === "tasks" && method === "POST") return route.fulfill({ json: { session: { name: "legacy-codex" } } });
+    if (path === "runs" && control.runs) return route.fulfill({ json: method === "POST" ? { id: "compare-1" } : [] });
     if (path === "sessions") return route.fulfill({ json: method === "POST" ? { name: "legacy-codex" } : [] });
     const art = control.art && /^locations\/([^/]+)\/worktrees\/([^/]+)\/artifacts(?:\/([0-9a-f]+)\/v\/1)?$/.exec(path);
     if (art?.[3]) return route.fulfill({ contentType: "text/plain", body: control.art!.find((a) => a.id === art[3])?.body ?? "" });
@@ -42,6 +54,9 @@ async function fixture(context: BrowserContext, supported = true, options = fals
     ] });
     if (path === "chats") {
       if (method === "GET") return route.fulfill({ json: { chats: control.listed ? [{ ...chat, items: null, approvals: null }] : [] } });
+      if (control.startError) return route.fulfill({ status: 400, json: { error: "Codex could not start" } });
+      chat.location = (route.request().postDataJSON() as { location: string }).location;
+      chat.cwd = createdWorktree?.path ?? (chat.location === "shop" ? "/w/shop" : DIR);
       control.listed = true;
       if (control.lostStart) return route.abort("connectionreset");
       if (control.startDelay) await new Promise((resolve) => setTimeout(resolve, control.startDelay));
@@ -339,16 +354,198 @@ for (const override of ["model", "effort"]) test(`the composer rejects an explic
   } finally { await f.agent.close(); }
 });
 
-test("new-worktree structured launch is explicitly blocked and preserves its draft", async ({ app }) => {
+// What a Start asked the box to do: every POST but Home's own read of the
+// person's pull requests, which it makes through exec whenever it is shown.
+const started = (calls: { method: string; path: string; body: unknown }[]) =>
+  calls.filter((c) => c.method === "POST" && !(c.path === "exec" && String((c.body as { command?: string } | null)?.command ?? "").endsWith("# berth-home:prs")));
+
+test("Home creates a worktree then starts structured Codex and sends once without a terminal", async ({ app }) => {
   const f = await fixture(app.context);
   try {
     await app.open({ agent: f.agent });
     const draft = app.page.getByRole("textbox", { name: "What should your agents work on?" });
     await draft.fill("Create something");
     await app.page.getByRole("button", { name: "Start", exact: true }).click();
-    await expect(app.page.getByText("Open a worktree first", { exact: true })).toBeVisible();
-    await expect(draft).toHaveValue("Create something");
-    expect(f.calls.some((c) => c.method === "POST" && ["tasks", "chats", "sessions"].includes(c.path))).toBe(false);
+    await expect(app.page.getByTestId("remote-chat")).toBeVisible();
+    await expect(app.page.getByRole("article", { name: "You", exact: true })).toHaveCount(1);
+    expect(started(f.calls)).toEqual([
+      { method: "POST", path: "locations/shop/worktrees", body: { name: "create-something" } },
+      { method: "POST", path: "chats", body: { location: "shop/create-something" } },
+      { method: "POST", path: "chats/remote-1/messages", body: { text: "Create something" } },
+    ]);
+  } finally { await f.agent.close(); }
+});
+
+test("Home's main checkout still starts structured Codex without creating a worktree", async ({ app }) => {
+  const f = await fixture(app.context);
+  try {
+    await app.open({ agent: f.agent });
+    const composer = app.page.getByTestId("task-composer");
+    await openTaskPickers(composer);
+    await composer.getByRole("button", { name: "Where: New worktree", exact: true }).click();
+    await app.page.getByRole("menuitemradio", { name: "Main checkout", exact: true }).click();
+    await composer.getByRole("textbox", { name: "What should your agents work on?" }).fill("Explain the main checkout");
+    await app.page.getByRole("button", { name: "Start", exact: true }).click();
+    await expect(app.page.getByTestId("remote-chat")).toBeVisible();
+    expect(started(f.calls)).toEqual([
+      { method: "POST", path: "chats", body: { location: "shop" } },
+      { method: "POST", path: "chats/remote-1/messages", body: { text: "Explain the main checkout" } },
+    ]);
+  } finally { await f.agent.close(); }
+});
+
+for (const source of [{ pr: 42 }, { ref: "refs/merge-requests/42/head" }]) test(`Home carries the resolved ${"pr" in source ? "PR" : "ref"} and edited worktree details into creation`, async ({ app }) => {
+  const f = await fixture(app.context);
+  await app.page.route(`${f.agent.url}/v1/boxes/${BOX}/api/locations/shop/resolve`, (route) => route.fulfill({ json: { kind: "pr", name: "review-42", branch: "review-branch", base: "main", ...source } }));
+  try {
+    await app.open({ agent: f.agent });
+    const composer = app.page.getByTestId("task-composer");
+    await openTaskPickers(composer);
+    await composer.getByRole("button", { name: "Options", exact: true }).click();
+    await composer.getByRole("textbox", { name: "Start from", exact: true }).fill("#42");
+    await expect(composer.getByRole("textbox", { name: "Folder", exact: true })).toHaveValue("review-42");
+    await composer.getByRole("textbox", { name: "Folder", exact: true }).fill("chosen-folder");
+    await composer.getByRole("textbox", { name: "Branch", exact: true }).fill("chosen-branch");
+    await composer.getByRole("textbox", { name: "From", exact: true }).fill("chosen-base");
+    await composer.getByRole("textbox", { name: "What should your agents work on?" }).fill("Review these changes");
+    await app.page.getByRole("button", { name: "Start", exact: true }).click();
+    await expect(app.page.getByTestId("remote-chat")).toBeVisible();
+    expect(started(f.calls)).toEqual([
+      { method: "POST", path: "locations/shop/worktrees", body: { name: "chosen-folder", branch: "chosen-branch", base: "chosen-base", ...source } },
+      { method: "POST", path: "chats", body: { location: "shop/chosen-folder" } },
+      { method: "POST", path: "chats/remote-1/messages", body: { text: "Review these changes" } },
+    ]);
+  } finally { await f.agent.close(); }
+});
+
+test("Home applies model, reasoning and permission to the first message in its new worktree", async ({ app }) => {
+  const f = await fixture(app.context, true, true);
+  try {
+    await app.open({ agent: f.agent });
+    const composer = app.page.getByTestId("task-composer");
+    await openTaskPickers(composer);
+    await composer.getByRole("button", { name: "Model: Default", exact: true }).click();
+    await app.page.getByRole("menuitemradio", { name: "Alpha", exact: true }).click();
+    await composer.getByRole("button", { name: "Reasoning: Default", exact: true }).click();
+    await app.page.getByRole("menuitemradio", { name: "High", exact: true }).click();
+    await composer.getByRole("button", { name: "Permissions: Ask every time", exact: true }).click();
+    await app.page.getByRole("menuitemradio", { name: "Edit workspace", exact: true }).click();
+    await composer.getByRole("textbox", { name: "What should your agents work on?" }).fill("Make the change");
+    await app.page.getByRole("button", { name: "Start", exact: true }).click();
+    await expect(app.page.getByTestId("remote-chat")).toBeVisible();
+    expect(started(f.calls)).toEqual([
+      { method: "POST", path: "locations/shop/worktrees", body: { name: "make-the-change" } },
+      { method: "POST", path: "chats", body: { location: "shop/make-the-change" } },
+      { method: "POST", path: "chats/remote-1/messages", body: { text: "Make the change", options: { model: "alpha", effort: "high", permission: "workspace" } } },
+    ]);
+  } finally { await f.agent.close(); }
+});
+
+for (const override of ["model", "effort"]) test(`Home refuses a chosen ${override} without chat.options before creating a worktree`, async ({ app }) => {
+  const f = await fixture(app.context);
+  await app.context.addInitScript(({ box, override }) => localStorage.setItem(`berth.composer.picks.${box}/shop`, JSON.stringify([{ agent: "codex", [override]: "custom" }])), { box: BOX, override });
+  try {
+    await app.open({ agent: f.agent });
+    const draft = app.page.getByRole("textbox", { name: "What should your agents work on?" });
+    await draft.fill("Keep my choices");
+    await app.page.getByRole("button", { name: "Start", exact: true }).click();
+    await expect(app.page.getByText("Choose Codex defaults", { exact: true })).toBeVisible();
+    await expect(draft).toHaveValue("Keep my choices");
+    expect(started(f.calls)).toEqual([]);
+  } finally { await f.agent.close(); }
+});
+
+test("Home keeps a custom Codex command on the terminal task path", async ({ app }) => {
+  const f = await fixture(app.context);
+  await app.context.addInitScript((box) => localStorage.setItem(`berth.composer.picks.${box}/shop`, JSON.stringify([{ agent: "custom" }])), BOX);
+  try {
+    await app.open({ agent: f.agent });
+    await app.page.getByRole("textbox", { name: "What should your agents work on?" }).fill("Use my command");
+    await app.page.getByRole("button", { name: "Start", exact: true }).click();
+    await expect.poll(() => started(f.calls).map((c) => ({ path: c.path, body: c.body }))).toEqual([
+      { path: "tasks", body: { location: "shop", name: "use-my-command", agent: "custom", prompt: "Use my command" } },
+    ]);
+    await expect(app.page.getByTestId("remote-chat")).toHaveCount(0);
+  } finally { await f.agent.close(); }
+});
+
+test("Home comparison keeps the terminal attempts path", async ({ app }) => {
+  const f = await fixture(app.context);
+  f.control.runs = true;
+  await app.context.addInitScript((box) => localStorage.setItem(`berth.composer.picks.${box}/shop`, JSON.stringify([{ agent: "codex" }, { agent: "custom" }])), BOX);
+  try {
+    await app.open({ agent: f.agent });
+    const composer = app.page.getByTestId("task-composer");
+    await openTaskPickers(composer);
+    await composer.getByRole("button", { name: /^Provider:/ }).click();
+    await app.page.getByRole("menuitem", { name: "Compare agents…", exact: true }).click();
+    await composer.getByRole("textbox", { name: "What should your agents work on?" }).fill("Compare these agents");
+    await app.page.getByRole("button", { name: "Try 2 ways", exact: true }).click();
+    await expect(app.page.getByText(`Trying 2 ways on ${BOX}`, { exact: true })).toBeVisible();
+    const mutations = started(f.calls);
+    expect(mutations.map((c) => c.path)).toEqual(["runs"]);
+    expect(mutations[0].body).toMatchObject({ template: "attempts", params: { prompt: "Compare these agents", attempts: [{ agent: "codex" }, { agent: "custom" }] } });
+    await expect(app.page.getByTestId("remote-chat")).toHaveCount(0);
+  } finally { await f.agent.close(); }
+});
+
+test("Home keeps the prompt and attempts nothing else when worktree creation fails", async ({ app }) => {
+  const f = await fixture(app.context);
+  f.control.worktreeError = true;
+  try {
+    await app.open({ agent: f.agent });
+    const draft = app.page.getByRole("textbox", { name: "What should your agents work on?" });
+    await draft.fill("Keep this prompt");
+    await app.page.getByRole("button", { name: "Start", exact: true }).click();
+    await expect(app.page.getByText("Couldn't create the worktree", { exact: true })).toBeVisible();
+    await expect(draft).toHaveValue("Keep this prompt");
+    expect(started(f.calls).map((c) => c.path)).toEqual(["locations/shop/worktrees"]);
+    await expect(app.page.getByTestId("remote-chat")).toHaveCount(0);
+  } finally { await f.agent.close(); }
+});
+
+for (const lost of [false, true]) test(`Home retains its worktree and prompt after a ${lost ? "lost" : "refused"} chat start and reuses the worktree on manual retry`, async ({ app }) => {
+  const f = await fixture(app.context);
+  f.control.startError = !lost;
+  f.control.lostStart = lost;
+  try {
+    await app.open({ agent: f.agent });
+    const draft = app.page.getByRole("textbox", { name: "What should your agents work on?" });
+    await draft.fill("Keep this worktree");
+    await app.page.getByRole("button", { name: "Start", exact: true }).click();
+    await expect(app.page.getByText("Couldn't start Codex", { exact: true })).toBeVisible();
+    await expect(app.page.getByText(`The worktree is at /w/shop-keep-this-worktree on ${BOX}. Start again to use it without creating another worktree.`, { exact: true })).toBeVisible();
+    if (lost) await expect(app.page.getByText(/Codex may have started/)).toBeVisible();
+    await expect(draft).toHaveValue("Keep this worktree");
+    expect(started(f.calls).map((c) => c.path)).toEqual(["locations/shop/worktrees", "chats"]);
+    f.control.startError = false;
+    f.control.lostStart = false;
+    await app.page.getByRole("button", { name: "Start", exact: true }).click();
+    await expect(app.page.getByTestId("remote-chat")).toBeVisible();
+    expect(started(f.calls).map((c) => c.path)).toEqual(["locations/shop/worktrees", "chats", "chats", "chats/remote-1/messages"]);
+    expect(f.calls.filter((c) => c.method === "POST" && c.path === "chats").map((c) => c.body)).toEqual([{ location: "shop/keep-this-worktree" }, { location: "shop/keep-this-worktree" }]);
+  } finally { await f.agent.close(); }
+});
+
+test("Home opens its new chat with the prompt kept after a lost first-message response and never resends", async ({ app }) => {
+  const f = await fixture(app.context);
+  f.control.lostSend = true;
+  try {
+    await app.open({ agent: f.agent });
+    await app.page.getByRole("textbox", { name: "What should your agents work on?" }).fill("Do not resend this");
+    await app.page.getByRole("button", { name: "Start", exact: true }).click();
+    await expect(app.page.getByTestId("remote-chat")).toBeVisible();
+    await expect(app.page.getByRole("textbox", { name: "Message Codex" })).toHaveValue("Do not resend this");
+    await expect(app.page.getByText("Could not confirm the message", { exact: true })).toBeVisible();
+    await expect(app.page.getByRole("article", { name: "You", exact: true })).toContainText("Do not resend this");
+    await app.page.getByRole("button", { name: "Refresh chat", exact: true }).click();
+    await expect(app.page.getByTestId("remote-chat").getByRole("status")).toHaveText("Ready");
+    await expect(app.page.getByRole("textbox", { name: "Message Codex" })).toHaveValue("Do not resend this");
+    expect(started(f.calls)).toEqual([
+      { method: "POST", path: "locations/shop/worktrees", body: { name: "do-not-resend-this" } },
+      { method: "POST", path: "chats", body: { location: "shop/do-not-resend-this" } },
+      { method: "POST", path: "chats/remote-1/messages", body: { text: "Do not resend this" } },
+    ]);
   } finally { await f.agent.close(); }
 });
 
