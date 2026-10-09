@@ -242,7 +242,10 @@ const ThreadRoot: FC<{ isEmpty: boolean; autoFocus: boolean }> = ({
       <ThreadPrimitive.Viewport
         turnAnchor="top"
         data-slot="aui_thread-viewport"
-        className="relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll scroll-smooth"
+        // scroll-pb: what is scrolled or tabbed into view (an approval's
+        // buttons, say) stops above the composer, which stays on top of
+        // the foot of the thread.
+        className="relative flex flex-1 scroll-pb-80 flex-col overflow-x-auto overflow-y-scroll scroll-smooth"
       >
         <div
           className={cn(

@@ -1,4 +1,4 @@
-import { AssistantRuntimeProvider, useAuiState, useExternalStoreRuntime, type ThreadMessageLike, type ToolCallMessagePartComponent } from "@assistant-ui/react";
+import { AssistantRuntimeProvider, useAuiState, useExternalStoreRuntime, type AttachmentAdapter, type ThreadMessageLike, type ToolCallMessagePartComponent } from "@assistant-ui/react";
 import { createContext, useContext, useMemo, type PropsWithChildren, type ReactNode } from "react";
 
 import { AssistantMessage, Thread, type ThreadGroupPart } from "@/components/assistant-ui/elements/thread.aui";
@@ -86,12 +86,12 @@ function Message() {
 const components = { AssistantMessage: Message, ToolFallback: CommandCall, ToolGroup: CallsWithArtifacts };
 const sent = async () => {};
 
-export function ChatThread({ turns, working, agent, composer, welcome, after, tool, report }: { turns: ThreadTurn[]; working: boolean; agent: string; composer: ReactNode; welcome?: ReactNode; after?: ReactNode } & Extras) {
+export function ChatThread({ turns, working, agent, composer, welcome, after, tool, report, attachments }: { turns: ThreadTurn[]; working: boolean; agent: string; composer: ReactNode; welcome?: ReactNode; after?: ReactNode; attachments?: AttachmentAdapter } & Extras) {
   // The view sends its own messages (its composer is Burf's), so the
   // runtime's own send is never reached.
   // With nothing said yet there is no turn to be under way: the view's own
   // heading says the agent is starting or working.
-  const runtime = useExternalStoreRuntime({ messages: turns, isRunning: working && turns.length > 0, convertMessage: message, onNew: sent });
+  const runtime = useExternalStoreRuntime({ messages: turns, isRunning: working && turns.length > 0, convertMessage: message, onNew: sent, adapters: { attachments } });
   const extras = useMemo(() => ({ tool, report }), [tool, report]);
   const speakers = useMemo(() => ({ user: "You", assistant: agent }), [agent]);
   return (

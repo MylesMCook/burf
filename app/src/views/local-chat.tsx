@@ -1,8 +1,17 @@
-import { RotateCwIcon, XIcon } from "lucide-react";
-import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { RotateCwIcon, SquareIcon, XIcon } from "lucide-react";
+import { useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from "react";
 import { ApprovalCard } from "@/components/assistant-ui/elements/approval-card";
-import { Composer, ComposerBar, ComposerToolbar, ComposerActions, ComposerSend } from "@/components/assistant-ui/elements/composer";
+import { Composer, ComposerBar, ComposerToolbar, ComposerActions, ComposerSend, ComposerMenu, ComposerMenuItem, ComposerCommandItem, ComposerVoice, ComposerVoiceButton, useSlashMatches } from "@/components/assistant-ui/elements/composer";
 import { ModelSelectorRoot, ModelSelectorTrigger, ModelSelectorValue, ModelSelectorContent, ModelSelectorList, ModelSelectorEffort } from "@/components/assistant-ui/elements/model-selector";
+import { MessageQueue } from "@/components/assistant-ui/elements/message-queue";
+import { ComposerAttachments, ComposerAddAttachment } from "@/components/assistant-ui/elements/attachment.aui";
+import { StructuredAttachmentState, useWorktreeAttachments, type StructuredAttachmentControl } from "@/components/conversation/structured-attachments";
+import type { Attachment } from "@assistant-ui/react";
+import { useVoiceInput } from "@/hooks/use-voice-input";
+import { withAttachments, pastedFiles } from "@/lib/attachments";
+import { ChatQueue, fileMention, insertFileMention, attachmentPaths } from "@/lib/chat-composer";
+import { filesApi } from "@/lib/files";
+import { useStore } from "@/lib/store";
 import { ConnectionState } from "@/components/assistant-ui/elements/connection-state";
 import { EmptyState, EmptyStateGreeting } from "@/components/assistant-ui/elements/empty-state";
 import { ErrorState } from "@/components/assistant-ui/elements/error-state";
@@ -21,7 +30,7 @@ import { threadTurns } from "@/lib/chat-thread";
 import { toolAsk } from "@/lib/chat-tools";
 import { errorMessage } from "@/lib/format";
 import { PaneContext } from "@/lib/pane-context";
-import { refFor } from "@/lib/workspaces";
+import { refFor, useWorktreeRef } from "@/lib/workspaces";
 import { useTitleAt } from "@/lib/worktree-names";
 import { BASE_PERMISSIONS, chatPermissions, localApi, savedChatPermission, saveChatPermission, type LocalChat as Chat, type LocalSession, type ChatOptions, type ChatModel, type ChatDecision } from "@/lib/local-computer";
 
@@ -38,6 +47,7 @@ export function LocalChat({ client, session, onChange }: { client: Client; sessi
 }
 
 export interface ChatTransport {
+  box?: string;
   read(signal?: AbortSignal): Promise<Chat>;
   message(text: string, options?: ChatOptions): Promise<unknown>;
   models?(): Promise<ChatModel[]>;
@@ -50,7 +60,9 @@ export function StructuredChat({ transport, session, onChange, testId = "local-c
   const [chat, setChat] = useState<Chat>();
   // Choices for the next message only. A confirmed send makes them the chat's own, shown from chat.options.
   const [options, setOptionState] = useState<ChatOptions>(initialOptions ?? {});
-  const setOptions = (change: (current: ChatOptions) => ChatOptions) => { const next = change(options); setOptionState(next); onOptionsChange?.(next); };
+  const optionRef = useRef(options);
+  optionRef.current = options;
+  const setOptions = (change: (current: ChatOptions) => ChatOptions) => { const next = change(optionRef.current); optionRef.current = next; setOptionState(next); onOptionsChange?.(next); };
   const [models, setModels] = useState<ChatModel[]>();
   const [modelsError, setModelsError] = useState("");
   const [submitted, setSubmitted] = useState("");
@@ -85,13 +97,13 @@ export function StructuredChat({ transport, session, onChange, testId = "local-c
   }, [load]);
   // Once the provider has answered its handshake: its model list, and for a chat with no messages yet, the permission last chosen.
   const prepared = useRef(false);
-  const ready = !!chat?.composer && chat.state !== "starting" && chat.state !== "exited";
+  const ready = !!chat && chat.state !== "starting" && chat.state !== "exited";
   useEffect(() => {
     if (!ready || !chat || prepared.current) return;
     prepared.current = true;
     if (transport.models) void transport.models().then((list) => { if (alive.current) setModels(Array.isArray(list) ? list : []); }).catch(() => { if (alive.current) setModelsError("Model choices are unavailable. Current settings are unchanged."); });
     const saved = savedChatPermission();
-    if (saved && (chat.permissions ?? BASE_PERMISSIONS).includes(saved) && !chat.items.length && !options.permission && saved !== (chat.options?.permission ?? "strict")) setOptions((o) => ({ ...o, permission: saved }));
+    if (chat.composer && saved && (chat.permissions ?? BASE_PERMISSIONS).includes(saved) && !chat.items.length && !options.permission && saved !== (chat.options?.permission ?? "strict")) setOptions((o) => ({ ...o, permission: saved }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready]);
   const mutate = async (action: () => Promise<unknown>) => {
@@ -133,19 +145,107 @@ export function StructuredChat({ transport, session, onChange, testId = "local-c
   const toolExtra = useCallback((id: string) => made.get(id)?.map((artifact) => <div key={artifact.id} className="mt-2 flex items-center gap-1 text-sm"><ChatArtifact it={artifact} /></div>), [made]);
   const reports = chat?.reports;
   const reportCards = useCallback((id: string) => (reports?.[id]?.length ? reports[id].map((report, index) => <ReportCard key={index} it={{ kind: "report", id: `${id}:${index}`, report }} />) : undefined), [reports]);
-  const send = () => {
-    if (!draft.trim() || busy || offline || chat?.state !== "idle") return;
-    const text = draft;
+  const client = useStore((s) => s.client);
+  const paneRef = useWorktreeRef(worktree);
+  // The pane must belong to this chat's box and folder before a file goes there.
+  const target = paneRef && paneRef.box === transport.box && paneRef.path === chat?.cwd ? paneRef : undefined;
+  const attachmentAdapter = useWorktreeAttachments(client, target);
+  const attachmentControl = useRef<StructuredAttachmentControl>(null);
+  const [attachmentItems, setAttachmentItems] = useState<readonly Attachment[]>([]);
+  const paths = attachmentPaths(attachmentItems);
+  const attachmentBlocker = attachmentItems.some((item) => item.status.type === "running") ? "Uploading attachments. You can write your message meanwhile." : attachmentItems.some((item) => item.status.type === "incomplete") ? "An attachment did not upload. Remove it and attach it again." : undefined;
+  const [dragging, setDragging] = useState(false);
+  const input = useRef<HTMLTextAreaElement>(null);
+  const voice = useVoiceInput((text) => { if (text.trim()) updateDraft([draftRef.current, text].filter(Boolean).join(" ")); }, !!chat && chat.state !== "exited");
+  const queue = useRef(new ChatQueue<ChatOptions>());
+  const [queued, setQueued] = useState(queue.current.items);
+  const [queuePaused, setQueuePaused] = useState(false);
+  const showQueue = () => { setQueued([...queue.current.items]); setQueuePaused(queue.current.paused); };
+  const submit = async (text: string, choices: ChatOptions) => {
+    if (!chat || pending.current) return false;
     submittedItems.current = new Set(chat.items.map((item) => item.id)); setSubmitted(text);
-    void mutate(async () => { await transport.message(text, chat.composer ? options : undefined); if (!alive.current) return; if (draftRef.current === text) updateDraft(""); setOptions(() => ({})); }).finally(() => { if (alive.current) setSubmitted(""); });
+    const sent = await mutate(() => transport.message(text, chat.composer ? choices : undefined));
+    if (alive.current) setSubmitted("");
+    return sent;
   };
-  const choicesDisabled = busy || chat?.state === "exited";
+  const send = () => {
+    const items = attachmentControl.current?.items() ?? [];
+    const text = withAttachments(draftRef.current, attachmentPaths(items));
+    if (!text.trim() || pending.current || offline || items.some((item) => item.status.type === "running" || item.status.type === "incomplete") || voice.recording || !chat || !(running || chat.state === "idle")) return;
+    if (running || queued.length && !queuePaused) {
+      queue.current.add(text, { ...options }); showQueue(); updateDraft(""); attachmentControl.current?.clear();
+      return;
+    }
+    const ids = items.map((item) => item.id);
+    const kept = draftRef.current;
+    void submit(text, { ...options }).then((sent) => {
+      if (!sent || !alive.current) return;
+      if (draftRef.current === kept) updateDraft("");
+      ids.forEach((id) => attachmentControl.current?.remove(id)); setOptions(() => ({}));
+      queue.current.resume(); showQueue();
+    });
+  };
+  useEffect(() => {
+    if (!chat || chat.state !== "idle" || busy || pending.current || offline || chat.error) return;
+    const next = queue.current.take();
+    if (!next) return;
+    showQueue();
+    void submit(next.text, next.options).then((sent) => {
+      queue.current.finish(sent);
+      if (!alive.current) return;
+      if (!sent) { updateDraft([next.text, draftRef.current].filter(Boolean).join("\n\n")); setOptions(() => next.options); }
+      else if ((["model", "effort", "permission"] as const).every((key) => optionRef.current[key] === next.options[key])) setOptions(() => ({}));
+      showQueue();
+    });
+    // A fresh read and the queue changing are the only drain triggers.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chat, busy, offline, queued]);
+  const [caret, setCaret] = useState(initialDraft.length);
+  const menuId = useId();
+  const [menuIndex, setMenuIndex] = useState(0);
+  const [dismissed, setDismissed] = useState(false);
+  const [files, setFiles] = useState<string[]>([]);
+  const mention = fileMention(draft, caret);
+  const query = mention?.query;
+  useEffect(() => {
+    setFiles([]);
+    if (!target || !client || query === undefined) return;
+    const abort = new AbortController();
+    const timer = setTimeout(() => void filesApi.list(client, target, query, 8, abort.signal).then((result) => { if (!abort.signal.aborted) setFiles(result.files ?? []); }).catch(() => {}), 150);
+    return () => { clearTimeout(timer); abort.abort(); };
+  }, [client, target, query]);
+  const commands = !offline && !busy && chat?.state !== "exited" ? [
+    ...(running && chat?.turn_id ? [{ name: "interrupt", description: "Interrupt this turn", icon: SquareIcon }] : []),
+    ...(chat ? [{ name: "stop", description: "Stop this chat", icon: XIcon }] : []),
+  ] : [];
+  const slash = useSlashMatches(draft, commands);
+  const entries = slash.length ? slash.map((command) => command.name) : mention ? files : [];
+  const menuOpen = !dismissed && entries.length > 0;
+  const activeIndex = Math.min(menuIndex, entries.length - 1);
+  const choose = (index: number) => {
+    const entry = entries[index];
+    if (!entry) return;
+    if (slash.length) {
+      updateDraft("");
+      void mutate(() => entry === "interrupt" ? transport.interrupt() : transport.stop());
+    } else {
+      const text = insertFileMention(draft, caret, entry);
+      updateDraft(text);
+      const end = (mention?.start ?? 0) + entry.length + 1;
+      setCaret(end);
+      requestAnimationFrame(() => { input.current?.focus(); input.current?.setSelectionRange(end, end); });
+    }
+    setDismissed(true);
+  };
+  const choicesReason = !chat?.composer ? "This chat cannot change model, reasoning or permissions. Its backend does not support chat options." : offline ? "Reconnect to change settings." : chat.state === "exited" ? "This chat has stopped." : busy ? "A request is in progress." : "";
+  const choicesDisabled = !!choicesReason;
+  const modelDisabled = choicesDisabled || !models?.length;
   const reasoningChoices = [...new Set([effort, ...efforts].filter(Boolean))];
   const modelChoices = [
     { id: "", name: "Default model" },
     ...(model && !models?.some((m) => m.model === model) ? [{ id: model, name: model }] : []),
     ...(models ?? []).map((m) => ({ id: m.model, name: m.displayName || m.model })),
-  ].map((m) => ({ ...m, disabled: choicesDisabled, efforts: m.id === model && reasoningChoices.length ? [{ id: "", name: "Default reasoning" }, ...reasoningChoices.map((id) => ({ id, name: id }))] : undefined }));
+  ].map((m) => ({ ...m, disabled: modelDisabled, efforts: m.id === model ? [{ id: "", name: "Default reasoning" }, ...reasoningChoices.map((id) => ({ id, name: id }))] : undefined }));
   return <div data-testid={testId} className="flex min-h-0 min-w-0 flex-1 flex-col">
     <header className="flex items-center gap-2 px-4 py-2 text-sm">
       <h2 className="sr-only">Codex</h2>
@@ -163,6 +263,7 @@ export function StructuredChat({ transport, session, onChange, testId = "local-c
     {chat?.truncated && <p className="shrink-0 px-4 pt-2 text-xs text-muted-foreground sm:px-6">Earlier output is no longer in this live view.</p>}
     <ChatThread
       turns={turns}
+      attachments={attachmentAdapter}
       working={running}
       agent="Codex"
       tool={toolExtra}
@@ -201,29 +302,55 @@ export function StructuredChat({ transport, session, onChange, testId = "local-c
           </section>;
         })}
       </div>}
-      composer={<Composer className="max-w-none">
-        <ComposerBar>
-          <textarea data-autofocus aria-label="Message Codex" placeholder="Message Codex" value={draft} disabled={!chat || busy} readOnly={chat?.state === "exited"} onChange={(event) => updateDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(); } }} rows={3} className="field-sizing-content block max-h-48 min-h-12 w-full resize-none bg-transparent p-3 text-sm outline-none disabled:opacity-50" />
+      composer={<Composer className="max-w-none" onDragOver={(event) => { if (target && !busy && chat?.state !== "exited" && event.dataTransfer.types.includes("Files")) { event.preventDefault(); setDragging(true); } }} onDragLeave={() => setDragging(false)} onDrop={(event) => { setDragging(false); if (!target || busy || chat?.state === "exited") return; const files = pastedFiles(event.dataTransfer); if (files.length) { event.preventDefault(); attachmentControl.current?.add(files); } }}>
+        <StructuredAttachmentState control={attachmentControl} onChange={setAttachmentItems} />
+        {queued.length > 0 && <MessageQueue className="mb-2 max-w-none" running={queuePaused ? "Queue held after a failed send" : "Codex"} paused={queuePaused || offline || chat?.state === "exited"} queued={queued} onCancel={(id) => { queue.current.cancel(id); showQueue(); }} />}
+        {menuOpen && <ComposerMenu id={menuId} open role="listbox" aria-label={slash.length ? "Chat commands" : "Worktree files"}>
+          {slash.length ? slash.map((command, index) => <ComposerCommandItem key={command.name} id={`${menuId}-${index}`} command={command} active={activeIndex === index} role="option" aria-selected={activeIndex === index} onMouseDown={(event) => event.preventDefault()} onClick={() => choose(index)} />) : files.map((path, index) => <ComposerMenuItem key={path} id={`${menuId}-${index}`} active={activeIndex === index} role="option" aria-selected={activeIndex === index} onMouseDown={(event) => event.preventDefault()} onClick={() => choose(index)}>{path}</ComposerMenuItem>)}
+        </ComposerMenu>}
+        <ComposerBar dragActive={dragging}>
+          <ComposerAttachments />
+          {voice.recording && <ComposerVoice recording seconds={voice.seconds} />}
+          <textarea ref={input} data-autofocus aria-autocomplete="list" aria-controls={menuOpen ? menuId : undefined} aria-activedescendant={menuOpen ? `${menuId}-${activeIndex}` : undefined} aria-label="Message Codex" placeholder={running ? "Message Codex, queued until this turn ends" : "Message Codex"} value={draft} disabled={!chat || busy} readOnly={chat?.state === "exited"} onPaste={(event) => { if (!target) return; const files = pastedFiles(event.clipboardData); if (files.length) { event.preventDefault(); attachmentControl.current?.add(files); } }} onChange={(event) => { updateDraft(event.target.value); setCaret(event.target.selectionStart); setMenuIndex(0); setDismissed(false); }} onSelect={(event) => setCaret(event.currentTarget.selectionStart)} onKeyDown={(event) => {
+            if (event.nativeEvent.isComposing) return;
+            if (menuOpen && ["ArrowDown", "ArrowUp", "Escape", "Enter", "Tab"].includes(event.key) && !event.shiftKey) {
+              event.preventDefault();
+              if (event.key === "Escape") setDismissed(true);
+              else if (event.key === "Enter" || event.key === "Tab") choose(activeIndex);
+              else setMenuIndex((index) => (index + (event.key === "ArrowDown" ? 1 : -1) + entries.length) % entries.length);
+              return;
+            }
+            if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); send(); }
+          }} rows={3} className="field-sizing-content block max-h-48 min-h-12 w-full resize-none bg-transparent p-3 text-sm outline-none disabled:opacity-50" />
           <ComposerToolbar>
             <div className="min-w-0 flex-1">
-            <ComposerActions>
-              {chat?.composer && <fieldset disabled={choicesDisabled} className="flex min-w-0 flex-wrap items-center gap-1">
+            <ComposerActions className="flex-wrap">
+              {target && !busy && chat?.state !== "exited" && <ComposerAddAttachment />}
+              {voice.available && <ComposerVoiceButton active={voice.recording} disabled={!voice.recording && (busy || !chat || chat.state === "exited")} onClick={voice.toggle} />}
+              {chat && <fieldset disabled={choicesDisabled} className="contents">
                 <Select value={permission} disabled={choicesDisabled} onValueChange={(value) => { if (value) pickPermission(value as NonNullable<ChatOptions["permission"]>); }}>
-                  <SelectTrigger aria-label="Chat permissions"><SelectValue>{chatPermissions[permission].label}</SelectValue></SelectTrigger>
+                  <SelectTrigger aria-label="Chat permissions" size="sm" className="w-auto min-w-0 shrink"><SelectValue>{chatPermissions[permission].label}</SelectValue></SelectTrigger>
                   <SelectPopup>{Object.entries(chatPermissions).filter(([id]) => (chat.permissions ?? BASE_PERMISSIONS).includes(id) || id === permission).map(([id, p]) => <SelectItem key={id} value={id}>{p.label}</SelectItem>)}</SelectPopup>
                 </Select>
                 <ModelSelectorRoot models={modelChoices} value={model} onValueChange={pickModel} effort={effort} onEffortChange={(value) => { if (!choicesDisabled) setOptions((o) => ({ ...o, effort: value || undefined })); }}>
-                  <ModelSelectorTrigger aria-label="Chat model" disabled={choicesDisabled}><ModelSelectorValue showEffort={false} /></ModelSelectorTrigger>
+                  <ModelSelectorTrigger aria-label="Chat model" disabled={modelDisabled}><ModelSelectorValue showEffort={false} /></ModelSelectorTrigger>
                   <ModelSelectorContent searchable={false}><ModelSelectorList /></ModelSelectorContent>
-                  <ModelSelectorEffort label="Chat reasoning" disabled={choicesDisabled} />
+                  <ModelSelectorEffort label="Chat reasoning" disabled={choicesDisabled || !reasoningChoices.length} />
                 </ModelSelectorRoot>
               </fieldset>}
             </ComposerActions>
             </div>
-            <ComposerSend aria-label={running ? "Interrupt turn" : "Send message"} streaming={running} idle={!draft.trim()} disabled={running ? busy || offline || !chat?.turn_id : busy || offline || chat?.state !== "idle" || !draft.trim()} onClick={running ? () => void mutate(() => transport.interrupt()) : send} />
+            {running && <ComposerSend aria-label="Queue message" streaming={false} idle={!draft.trim() && !paths.length} disabled={busy || offline || attachmentBlocker !== undefined || voice.recording || !draft.trim() && !paths.length} onClick={send} />}
+            <ComposerSend aria-label={running ? "Interrupt turn" : "Send message"} streaming={running} idle={!draft.trim() && !paths.length} disabled={running ? busy || offline || !chat?.turn_id : busy || offline || chat?.state !== "idle" || !draft.trim() && !paths.length || !!attachmentBlocker || voice.recording} onClick={running ? () => void mutate(() => transport.interrupt()) : send} />
           </ComposerToolbar>
         </ComposerBar>
         {chat?.composer && changed && <p className={options.permission === "full-access" ? "mt-1 text-xs font-medium text-warning" : "mt-1 text-xs text-muted-foreground"}>From your next message{options.permission ? `: ${chatPermissions[options.permission].hint}` : "."}</p>}
+        {choicesReason && chat && <p className="mt-1 text-xs text-muted-foreground">{choicesReason}</p>}
+        {!choicesDisabled && !models?.length && !modelsError && <p className="mt-1 text-xs text-muted-foreground">{models ? "This chat has no model choices." : "Loading model choices."}</p>}
+        {!choicesDisabled && !reasoningChoices.length && <p className="mt-1 text-xs text-muted-foreground">Select a model with reasoning choices to change reasoning.</p>}
+        {attachmentBlocker && <p role="status" className="mt-1 text-xs text-muted-foreground">{attachmentBlocker}</p>}
+        {queuePaused && <p className="mt-1 text-xs text-muted-foreground">Remaining messages are held. Cancel them or send a message to continue.</p>}
+        {voice.error && <p role="alert" className="mt-1 text-xs text-destructive">{voice.error}</p>}
         {modelsError && <p role="alert" className="mt-1 text-xs text-destructive">{modelsError}</p>}
       </Composer>}
     />

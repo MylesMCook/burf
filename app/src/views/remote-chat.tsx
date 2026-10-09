@@ -14,6 +14,7 @@ export function RemoteChatPane({ box, id, cwd, draft, options, onSaved }: { box:
   const save = (change: Saved) => { saved.current = { ...saved.current, ...change }; onSaved({ draft: saved.current.draft, options: saved.current.options }); };
   const client = useStore((s) => s.client);
   const transport = useMemo(() => client && ({
+    box,
     read: (signal?: AbortSignal) => remoteChatApi.read(client, box, id, signal),
     message: (text: string, options?: ChatOptions) => remoteChatApi.message(client, box, id, text, options),
     models: () => remoteChatApi.models(client, box, id),

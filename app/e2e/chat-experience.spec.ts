@@ -80,13 +80,15 @@ test("composer sends supported choices and reconciles a pending prompt without r
   } finally { release?.(); await agent.close(); }
 });
 
-test("older backends retain chat without unsupported composer controls", async ({ app }) => {
-  const agent = await fakeAgent(); const reads: string[] = [];
+test("older backends show disabled choices and keep unsupported options out of messages", async ({ app }) => {
+  const agent = await fakeAgent(); const reads: string[] = []; const sent: unknown[] = [];
   const chat = { id: "old", agent: "codex", mode: "chat", cwd: "C:\\Projects\\shop", state: "running", started_at: "2026-10-08T12:00:00Z", thread_id: "thread", items: [], approvals: [] };
   await app.context.route(`${agent.url}/v1/local**`, async (route) => {
     const path = new URL(route.request().url()).pathname; reads.push(path);
     if (path === "/v1/local") return route.fulfill({ json: { supported: true, name: "work-hp", home: chat.cwd, agents: [], sessions: [chat] } });
     if (path.endsWith("/conversations")) return route.fulfill({ json: [] });
+    if (path.endsWith("/models")) return route.fulfill({ status: 404, json: { error: "Model choices unavailable" } });
+    if (path.endsWith("/messages")) sent.push(route.request().postDataJSON());
     return route.fulfill({ json: chat });
   });
   try {
@@ -94,9 +96,16 @@ test("older backends retain chat without unsupported composer controls", async (
     const pane = app.page.getByTestId("local-chat");
     await expect(pane.getByRole("heading", { name: "Codex is working…" })).toBeVisible();
     await expect(pane.getByRole("heading", { name: "New chat" })).toHaveCount(0);
-    await expect(pane.getByLabel("Chat permissions")).toHaveCount(0);
-    await expect(pane.getByLabel("Chat model")).toHaveCount(0);
-    expect(reads.some((p) => p.endsWith("/models"))).toBe(false);
+    await expect(pane.getByLabel("Chat permissions")).toBeDisabled();
+    await expect(pane.getByLabel("Chat model")).toBeDisabled();
+    await expect(pane.getByRole("radiogroup", { name: "Chat reasoning" }).getByRole("radio")).toBeDisabled();
+    await expect(pane.getByText("This chat cannot change model, reasoning or permissions. Its backend does not support chat options.")).toBeVisible();
+    await expect.poll(() => reads.some((p) => p.endsWith("/models"))).toBe(true);
+    chat.state = "idle";
+    await pane.getByRole("button", { name: "Refresh chat", exact: true }).click();
+    await pane.getByRole("textbox", { name: "Message Codex" }).fill("Keep default settings");
+    await pane.getByRole("button", { name: "Send message", exact: true }).click();
+    await expect.poll(() => sent).toEqual([{ text: "Keep default settings" }]);
   } finally { await agent.close(); }
 });
 
