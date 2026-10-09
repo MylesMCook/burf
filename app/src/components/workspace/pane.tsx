@@ -128,7 +128,7 @@ export function Pane({ wsKey, tab, pane, visible, focused, split, mixed, compare
         )}
         <div ref={content} className={cn("relative flex min-h-0 flex-1 flex-col transition-opacity", split && !focused && "opacity-85", lifted && "opacity-40")}>
           {gone && <GonePane name={gone} onClose={close} />}
-          {c.kind === "remote-chat" && <RemoteChatPane box={c.box} id={c.chat} cwd={c.cwd} draft={c.draft} options={c.options} onSaved={(saved) => setPaneContent(wsKey, tab, pane.id, { ...c, ...saved })} />}
+          {c.kind === "remote-chat" && <RemoteChatPane box={c.box} id={c.chat} cwd={c.cwd} agent={c.agent} draft={c.draft} options={c.options} onSaved={(saved) => setPaneContent(wsKey, tab, pane.id, { ...c, ...saved })} />}
           {/* Under a chat the terminal is out of reach: Tab never lands in its
               hidden input, where it would type a tab and keep the focus. */}
           {c.kind === "terminal" && (
@@ -264,7 +264,7 @@ export function ViewSwitch({ wsKey, tab, pane }: { wsKey: string; tab: string; p
 export function paneLabel(c: Leaf["content"], agent?: string): string {
   switch (c.kind) {
     case "remote-chat":
-      return "Codex chat";
+      return `${agentLabel(c.agent ?? "codex")} chat`;
     case "terminal":
       return agent || c.agent ? agentLabel((agent ?? c.agent)!) : "Shell";
     case "browser":
@@ -291,7 +291,7 @@ export function paneLabel(c: Leaf["content"], agent?: string): string {
 export function PaneIcon({ content, agent, className }: { content: Leaf["content"]; agent?: string; className?: string }) {
   const c = content;
   const service = useStore((s) => c.kind === "terminal" && !!s.boxes[c.box]?.sessions?.find((x) => x.name === c.session)?.service);
-  if (c.kind === "remote-chat") return <AgentIcon agent="codex" className={className} />;
+  if (c.kind === "remote-chat") return <AgentIcon agent={c.agent ?? "codex"} className={className} />;
   if (c.kind === "browser") return <GlobeIcon className={cn("size-3.5 shrink-0", className)} />;
   if (c.kind === "file") return <FileGlyph path={c.path} className={className} />;
   if (c.kind === "preview") return <MonitorSmartphoneIcon className={cn("size-3.5 shrink-0", className)} />;

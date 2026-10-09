@@ -55,7 +55,7 @@ function CallsWithArtifacts({ group, children }: PropsWithChildren<{ group: Thre
   );
 }
 
-// Burf's own report of work the chat started is not something Codex said:
+// Burf's own report of work the chat started is not something the agent said:
 // it stands apart from the agent's messages, under Burf's name.
 function Message() {
   const extras = useContext(ExtrasContext);

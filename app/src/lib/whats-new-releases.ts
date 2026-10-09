@@ -65,7 +65,6 @@ export const RELEASES: Release[] = [
     ],
     also: [
       { text: "Agent CLIs installed with npm are found on new boxes.", show: "settings-boxes" },
-      { text: "Team setup shows each repo's setup, and when it waits for you." },
       { text: "Drag the sidebar's edge to resize it." },
     ],
   },

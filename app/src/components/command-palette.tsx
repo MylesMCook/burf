@@ -27,13 +27,10 @@ import {
   SettingsIcon,
   SlidersHorizontalIcon,
   SquareTerminalIcon,
-  PackageIcon,
-  PackagePlusIcon,
   UsersIcon,
   WorkflowIcon,
 } from "lucide-react";
 import { isMock } from "@/hooks/use-burf-connection";
-import { openAddKit } from "@/views/kits/kits-store";
 import { useMemo, useRef, useState } from "react";
 
 import { AgentIcon, StateGlyph } from "@/components/agent-glyph";
@@ -67,7 +64,6 @@ import { openBroadcast, openPromptPicker } from "@/lib/prompts";
 import { quietNow, setDoNotDisturb, setNotificationsOpen } from "@/lib/notifications";
 import { usePrefs } from "@/lib/prefs";
 import { useStore } from "@/lib/store";
-import { isLink, teamRef } from "@/lib/team-ref";
 import { focusedPane, focusSession, goHome, hereRef, recentWorktrees, refOf, selectWorktree, useWorkspaces } from "@/lib/workspaces";
 import { openShortcuts } from "@/components/shortcuts-sheet";
 import { hasWhatsNew, openWhatsNew } from "@/lib/whats-new";
@@ -222,15 +218,8 @@ export function CommandPalette() {
       }),
       { value: "worktrees", label: "Worktrees", icon: slot(<GitBranchIcon />), run: go(() => st.setView({ kind: "worktrees" })) },
       { value: "automations", label: "Automations", icon: slot(<WorkflowIcon />), run: go(() => st.setView({ kind: "automations" })) },
-      { value: "kits", label: "Kits", icon: slot(<PackageIcon />), run: go(() => st.setView({ kind: "kits" })) },
-      { value: "add kit from link", label: "Add a kit from a link…", icon: slot(<PackagePlusIcon />), run: go(() => openAddKit()) },
       { value: "settings", label: "Settings", icon: slot(<SettingsIcon />), run: go(() => st.setView({ kind: "settings" })) },
       { value: "add-box", label: "Add a box…", icon: slot(<ServerIcon />), run: go(openAddBox) },
-      { value: "team setup github org berth workspace kit onboarding", label: "Team setup…", icon: slot(<UsersIcon />), run: go(() => st.setView({ kind: "team", from: "palette" })) },
-      // A link to a team setup pasted here opens it.
-      ...(q.includes("/") && teamRef(q) && isLink(teamRef(q)!)
-        ? [{ value: `team setup link ${q}`, label: "Open team setup from link", detail: teamRef(q), search: q, icon: slot(<UsersIcon />), run: go(() => st.setView({ kind: "team", org: teamRef(q), from: "palette" })) }]
-        : []),
       { value: "settings-developer", label: "Developer settings", icon: slot(<CodeIcon />), run: go(() => st.setView({ kind: "settings", section: "developer" })) },
       // Each part of Settings, by name ("appearance", "theme", "terminal").
       ...SETTINGS_SECTIONS.map(([section, label, words]) => ({ value: `settings ${section} ${words}`, label: `Settings: ${label}`, icon: slot(<SettingsIcon />), run: go(() => st.setView({ kind: "settings", section })) })),

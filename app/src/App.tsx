@@ -46,11 +46,6 @@ import { cn } from "@/lib/utils";
 import { homeBox, useWorkspaces } from "@/lib/workspaces";
 import { AutomationsView } from "@/views/automations";
 import { WorktreesView } from "@/views/worktrees/worktrees-view";
-import { useKitDeepLinks } from "@/views/kits/deep-link";
-import { useTeamDeepLinks, useTeamWatch } from "@/views/team/team-entry";
-import { TeamSetupView } from "@/views/team/team-view";
-import { KitsView } from "@/views/kits/kits-view";
-import { ReviewSheet } from "@/views/kits/review-sheet";
 import { ReviewView } from "@/views/review/review-view";
 import { ProjectView } from "@/views/project/project-view";
 import { DashboardView } from "@/views/dashboard";
@@ -69,7 +64,7 @@ import { useRescueRemovedFocus } from "@/lib/focus-home";
 const DemoGuide = __BERTH_DEMO__ ? lazy(() => import("@/demo/guide")) : null;
 const LocalComputerView = lazy(() => import("@/views/local-computer").then((m) => ({ default: m.LocalComputerView })));
 
-const viewTitles = { team: "Team setup", dashboard: "Agent Dashboard", local: "This computer", review: "Review", worktrees: "Worktrees", automations: "Automations", kits: "Kits", project: "Project settings", settings: "Settings", plugin: "" } as const;
+const viewTitles = { dashboard: "Agent Dashboard", local: "This computer", review: "Review", worktrees: "Worktrees", automations: "Automations", project: "Project settings", settings: "Settings", plugin: "" } as const;
 
 export default function App() {
   useApplyTheme();
@@ -95,10 +90,6 @@ export default function App() {
   useEffect(() => (connectedToAgent ? startRunsWatch() : undefined), [connectedToAgent]);
   // Which boxes run an older berthd (lib/outdated.ts).
   useEffect(() => (connectedToAgent ? startOutdatedWatch() : undefined), [connectedToAgent]);
-  useKitDeepLinks();
-  // Team setup: berth://team?org= links, and setups running on boxes.
-  useTeamDeepLinks();
-  useTeamWatch();
   const view = useStore((s) => s.view);
   const workspace = view.kind === "workspace";
   // Labs: zen (⌘.) puts away the sidebar, the tab strip and the status bar.
@@ -120,8 +111,7 @@ export default function App() {
   // never over onboarding.
   useWhatsNewAfterUpdate(!gated);
   useEffect(() => {
-    // Team setup is the one page first run opens over the welcome.
-    if (gated && !["workspace", "team"].includes(useStore.getState().view.kind)) useStore.getState().setView({ kind: "workspace" });
+    if (gated && useStore.getState().view.kind !== "workspace") useStore.getState().setView({ kind: "workspace" });
   }, [gated]);
 
   if (gated) {
@@ -133,7 +123,7 @@ export default function App() {
             <div data-tauri-drag-region className="h-10 shrink-0" />
             <main className="relative min-h-0 flex-1">
               <ErrorBoundary scope="onboarding">
-                {view.kind === "team" ? <TeamSetupView org={view.org} from={view.from ?? "onboarding"} box={view.box} onBack={() => useStore.getState().setView({ kind: "workspace" })} /> : <OnboardingView />}
+                <OnboardingView />
               </ErrorBoundary>
             </main>
           </div>
@@ -209,7 +199,6 @@ export default function App() {
           <PluginConsentDialog />
           <CustomizeSidebarSheet />
           <ShortcutsSheet />
-          <ReviewSheet />
           <NotificationCenter />
           <WhatsNewDialog />
         </ErrorBoundary>
@@ -256,12 +245,10 @@ function MainView() {
       {view.kind === "local" && <Suspense fallback={<p role="status" className="p-6 text-sm text-muted-foreground">Loading this computer...</p>}><LocalComputerView /></Suspense>}
       {view.kind === "automations" && <AutomationsView />}
       {view.kind === "review" && <ReviewView />}
-      {view.kind === "kits" && <KitsView />}
       {view.kind === "worktrees" && <WorktreesView />}
       {view.kind === "project" && <ProjectView key={`${view.box}/${view.location}`} box={view.box} location={view.location} />}
       {view.kind === "settings" && <SettingsView />}
       {view.kind === "plugin" && <PluginScreenView screen={view.screen} />}
-      {view.kind === "team" && <TeamSetupView key={`${view.org ?? ""}${view.update ? ":update" : ""}`} org={view.org} from={view.from} box={view.box} update={view.update} />}
     </div>
   );
 }

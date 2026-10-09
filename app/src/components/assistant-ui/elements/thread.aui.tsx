@@ -296,7 +296,7 @@ const ThreadRoot: FC<{ isEmpty: boolean; autoFocus: boolean }> = ({
             <ThreadFollowupSuggestions />
             {beforeComposer}
             {!readOnly && <Composer autoFocus={autoFocus} />}
-            {
+            {!readOnly &&
               <AuiIf condition={(s) => isNewChatView(s) && s.composer.isEmpty}>
                 <ThreadSuggestions />
               </AuiIf>

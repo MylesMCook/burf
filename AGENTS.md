@@ -1,7 +1,8 @@
 # Burf Development
 
 Read `FORK.md` for product direction and compatibility boundaries, `UPSTREAM.md`
-for upstream intake, and the local `tasks.md` for cross-session status.
+for upstream intake, `DESIGN.md` before drawing or changing a screen, and the
+local `tasks.md` for cross-session status.
 Preserve legacy state/protocol names and the disabled updater when changing
 branding or packaging. Local checks do not authorize replacing installed apps
 or restarting live agents.
@@ -35,6 +36,29 @@ Keeping it so:
 - When a feature is cut, its cases go in the same change.
 - Workers handed a task run the type-check and unit tests only. They do not
   run production builds or the browser suite.
+
+## Leave Nothing Behind
+
+The owner does not ask for cleanup. A piece of work is finished when all of
+this is true, and you make it true before you report:
+
+- It is merged, or its pull request is open and `tasks.md` says what it
+  waits for.
+- Its branch is gone here and on origin, and its worktree or worker clone is
+  free. `scripts/tidy.sh` does that for whatever is already in main and
+  lists what is left; run it when you take over and before you report.
+- A merged frontend change is on the owner's machines:
+  `scripts/ship-ui.sh` with the hosts `tasks.md` names. A machine that
+  refuses is fixed, or named with the one step it needs.
+- No process you started is still running, and nothing sits uncommitted in
+  a checkout without a line in `tasks.md` saying why.
+- `tasks.md` gives the current state in under 60 lines: what is open, who
+  owns it, the next action. Finished work is deleted from it; Git and the
+  pull requests are the history.
+
+Close what is yours to close. Bring the owner only what only they can do,
+once, with the exact step. A report does not end with a list of things you
+could have done.
 
 ## Frontend Checks
 
@@ -75,15 +99,15 @@ No model prompt or installed provider is needed for this regression suite.
 
 ## Additional Checks and Guardrails
 
-Run `go vet ./...`, `GORACE=atexit_sleep_ms=0 go test -race ./...`, and the
-app scripts `typecheck:plugins`, `check:titles`, `check:csp`, `check:themes`,
-`test:platform` and `test`. Run the Windows packaging/installer template tests
-with `node --test scripts/windows-installer-template.test.mjs scripts/windows-packaging.test.mjs`.
-Use the existing Playwright suite; acceptance failures remain blocking in CI.
-For this intake, every Playwright run uses `E2E_PORT=1435`.
+The hosted runner runs these once per merge, and nothing waits for them:
+`go vet ./...`, `GORACE=atexit_sleep_ms=0 go test -race ./...`, the app
+scripts `typecheck:plugins`, `check:titles`, `check:csp`, `check:themes`,
+`test:platform` and `test`, and the Windows packaging/installer template
+tests (`node --test scripts/windows-installer-template.test.mjs scripts/windows-packaging.test.mjs`).
+Run one locally only when the change is about what it checks.
 
 Do not use reserved ports 1420 or 1377-1379, live state in `~/.berth`, or
-installed services. New unit tests belong in the app test script. Use `<Tip>`
+installed services. A unit test is a `*.test.ts` beside its code; the app test script finds it by pattern. Use `<Tip>`
 instead of HTML `title` attributes. Fixtures stay synthetic. Build docs-site
 when docs change. Commands are `cmd/burf` and `cmd/burfd`; compatibility aliases
 and state/protocol names follow `FORK.md`. Release or publication requires a

@@ -49,7 +49,7 @@ export function AgentsSection({ repo, draft, setDraft, box }: { repo: RepoConfig
                 ) : (
                   <code className="truncate px-2.5 font-mono text-muted-foreground text-xs">{a.command}</code>
                 )}
-                <SourceBadge source={source} box={box} field="agents" entry={id} />
+                <SourceBadge source={source} box={box} />
                 <span className="flex justify-end">
                   {!mine && (
                     <Tip label={`Override on ${box}`}>

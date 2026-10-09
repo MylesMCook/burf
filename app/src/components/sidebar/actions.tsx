@@ -9,7 +9,6 @@ import {
   CheckIcon,
   FolderInputIcon,
   MergeIcon,
-  PackageIcon,
   PencilIcon,
   PlusIcon,
   ServerIcon,
@@ -69,9 +68,7 @@ import { openRenameWorktree } from "@/components/sidebar/rename-worktree";
 import { renameWorktree, shortLabel, worktreeLabel } from "@/lib/worktree-names";
 import { openHomeTerminal } from "@/components/box-picker";
 import { boxLoad } from "@/components/sidebar/box-load";
-import { kitsApi } from "@/lib/kits";
 import { deriveProjects, type Member, type Project, projectActions as groupActions, useProjectsDoc } from "@/lib/project-groups";
-import { reloadKits, useKits } from "@/views/kits/kits-store";
 
 // The sidebar's actions are defined once and drawn into either menu: the
 // ⋯ button on a row, or the row's right-click menu. Both show the same
@@ -630,16 +627,13 @@ export function projectGroupActions(p: Project): Action[] {
   const def = p.members.find((m) => m.box.name === p.defaultBox) ?? online[0] ?? p.members[0];
   const multi = p.members.length > 1;
   const main = (m: Member) => m.loc.worktrees?.find((w) => w.main);
-  const { kits, installed } = useKits.getState();
-  const kit = kits?.find((k) => k.match?.slug && p.slug && k.match.slug.toLowerCase() === p.slug.toLowerCase());
-  const kitOn = (installed ?? []).filter((i) => p.members.some((m) => m.box.name === i.box && m.loc.name === i.location));
   const others = deriveProjects(st.status?.boxes ?? [], st.boxes, useProjectsDoc.getState().doc).filter((x) => x.id !== p.id);
   const sections = useProjectsDoc.getState().doc.sections;
   const gh = p.slug && p.remote && /github\.com/i.test(p.remote) ? p.slug : undefined;
   const items: Action[] = [];
 
   // Kept to about ten entries: what you open or start first, then one
-  // submenu per object (its boxes, its kit, how it is organised), then
+  // submenu per object (its boxes, how it is organised), then
   // removing, last and in red, never inside a submenu.
   const mm = def && main(def);
   if (mm) items.push(item(multi ? `Open main checkout on ${def.box.name}` : "Open main checkout", <HomeIcon />, () => selectWorktree(refOf(def.box.name, def.loc, mm))));
@@ -679,34 +673,6 @@ export function projectGroupActions(p: Project): Action[] {
     items.push({ type: "sub", label: "Boxes", icon: <ServerIcon />, items: boxes });
   } else if (addToBox) {
     items.push(item("Add to box…", <ServerIcon />, () => openAddToBox(p)));
-  }
-
-  // Its kit, across its boxes.
-  if (kit) {
-    const outdated = kitOn.filter((i) => i.outdated).map((i) => i.box);
-    const missing = online.filter((m) => !kitOn.some((i) => i.box === m.box.name && i.location === m.loc.name)).map((m) => m.box.name);
-    const parts = [outdated.length && `outdated on ${outdated.join(", ")}`, missing.length && `not on ${missing.join(", ")}`].filter(Boolean);
-    const state = parts.length ? parts.join(" · ") : multi ? "on every box" : "applied";
-    const kitItems: Action[] = [{ type: "label", label: `${kit.name} · ${state}` }];
-    if (outdated.length || missing.length) {
-      kitItems.push(
-        item(multi ? "Apply to all boxes" : "Apply", <PackageIcon />, () => {
-          const client = useStore.getState().client;
-          if (!client) return;
-          const targets = online.map((m) => ({ box: m.box.name, location: m.loc.name }));
-          const id = toastManager.add({ title: `Applying ${kit.name} to ${p.name}…`, type: "loading" });
-          kitsApi.apply(client, kit.id, targets, () => {}).then(
-            (end) => {
-              toastManager.update(id, { title: end.error ? `${kit.name}: ${end.error}` : `Applied ${kit.name} to ${p.name}`, type: end.error ? "error" : "success" });
-              void reloadKits();
-            },
-            (e) => toastManager.update(id, { title: `Could not apply ${kit.name}`, description: errorMessage(e), type: "error" }),
-          );
-        }),
-      );
-    }
-    kitItems.push(item("Open Kits", <ArrowUpRightIcon />, () => st.setView({ kind: "kits" })));
-    items.push({ type: "sub", label: outdated.length || missing.length ? "Kit (needs applying)" : "Kit", icon: <PackageIcon />, items: kitItems });
   }
 
   if (multi) {

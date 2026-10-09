@@ -7,7 +7,6 @@ import { Collapsible, CollapsiblePanel, CollapsibleTrigger } from "@/components/
 import { DialogPanel } from "@/components/ui/dialog";
 import { offerLocalBox, useLocalBox } from "@/lib/local-box";
 import { useStore } from "@/lib/store";
-import { useTeamAddBox } from "@/lib/team";
 import { cn } from "@/lib/utils";
 import { InstallCommand } from "@/views/onboarding/install-command";
 import { UseThisMac } from "@/views/onboarding/local-box";
@@ -41,11 +40,8 @@ export function AddBoxFlow({
   onDone,
   onExit,
   onStage,
-  lead,
 }: {
   intro: { title: ReactNode; description: ReactNode };
-  // lead, when given, comes first on the first screen: another way in.
-  lead?: ReactNode;
   variant: "dialog" | "page";
   onDone(box: string): void;
   onExit?(): void;
@@ -61,15 +57,8 @@ export function AddBoxFlow({
   const [retry, setRetry] = useState({ link: 0, ssh: 0 });
   const done = useRef(onDone);
   done.current = onDone;
-  // The guided install's last button: on to the next step of the first
-  // run, back to Team setup when it opened this, else to the box.
-  const fromTeam = useStore((s) => s.view.kind === "team");
   const sshSupported = useStore((s) => !s.status || !("ssh_setup_supported" in s.status) || s.status.ssh_setup_supported !== false);
-  const readyLabel = variant === "page" ? "Continue" : fromTeam ? "Back to Team setup" : undefined;
-  // From Team setup, adding a box is the guided install, with the team's
-  // steps after Burf's; anywhere else it is the quick one.
-  const teamCtx = useTeamAddBox((s) => s.ctx);
-  const team = fromTeam ? teamCtx : undefined;
+  const readyLabel = variant === "page" ? "Continue" : undefined;
 
   const tailnets = useTailnets();
   const sources = sourcesOf(tailnets.system, tailnets.networks);
@@ -116,7 +105,6 @@ export function AddBoxFlow({
       onPaired={setPaired}
       onSignIn={() => setSigningIn("tailnet")}
       readyLabel={readyLabel}
-      team={team}
     />
   );
 
@@ -153,7 +141,6 @@ export function AddBoxFlow({
       )}
       {placement && (
         <div hidden={!!signingIn}>
-          {lead}
           {placement === "top" && (
             <>
               {machines}
@@ -199,7 +186,7 @@ export function AddBoxFlow({
               <Trigger>Or let Burf set it up over SSH</Trigger>
               <CollapsiblePanel>
                 <div className="pt-3">
-                  <SshSetup network={network} retry={retry.ssh} onRunning={setBusy} onPaired={setPaired} onSignIn={() => setSigningIn("ssh")} readyLabel={readyLabel} team={team} />
+                  <SshSetup network={network} retry={retry.ssh} onRunning={setBusy} onPaired={setPaired} onSignIn={() => setSigningIn("ssh")} readyLabel={readyLabel} />
                 </div>
               </CollapsiblePanel>
             </Collapsible>}

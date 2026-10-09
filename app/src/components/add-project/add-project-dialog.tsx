@@ -1,4 +1,4 @@
-import { ArrowRightIcon, CheckIcon, ChevronRightIcon, CloudDownloadIcon, FolderGit2Icon, FolderIcon, FolderOpenIcon, FolderPlusIcon, GitBranchIcon, PackageIcon, ServerIcon, TriangleAlertIcon } from "lucide-react";
+import { ArrowRightIcon, CheckIcon, ChevronRightIcon, CloudDownloadIcon, FolderGit2Icon, FolderIcon, FolderOpenIcon, FolderPlusIcon, GitBranchIcon, ServerIcon, TriangleAlertIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { FolderBrowser } from "@/components/add-project/folder-browser";
@@ -20,7 +20,6 @@ import { useStore } from "@/lib/store";
 import { Tip } from "@/components/tip";
 import { cn } from "@/lib/utils";
 import { selectWorktree } from "@/lib/workspaces";
-import { reloadKits, useKits } from "@/views/kits/kits-store";
 import { openAddBox } from "@/views/onboarding/add-box-dialog";
 import { ErrorText } from "@/components/error-note";
 
@@ -29,7 +28,7 @@ import { ErrorText } from "@/components/error-note";
 // whatever the person has (a path, a git URL, owner/repo, a PR link, a new
 // name) and the box says what Enter will do there. Folders on the box and
 // projects on the other boxes are offered below it, and the same repository
-// can be set up on more boxes at once, with its kit.
+// can be set up on more boxes at once.
 export function AddProjectDialog() {
   const draft = useStore((s) => s.locationDraft);
   return (
@@ -56,7 +55,6 @@ function Body({ startBox }: { startBox?: string }) {
   const [dest, setDest] = useState<Destination>({});
   const [active, setActive] = useState(-1);
   const [also, setAlso] = useState<string[]>([]);
-  const [withKit, setWithKit] = useState(true);
   const [phase, setPhase] = useState<"idle" | "running" | "failed">("idle");
   const [logs, setLogs] = useState<Log[]>([]);
   const [error, setError] = useState<string>();
@@ -69,10 +67,8 @@ function Body({ startBox }: { startBox?: string }) {
     if (!box && firstOnline) setBox(firstOnline);
   }, [box, firstOnline]);
   useEffect(() => () => abort.current?.abort(), []);
-  useEffect(() => void reloadKits(), []);
 
   const { intent, plan, rows, pending, home } = usePlan(box, input, dest, online && !browsing);
-  const kits = useKits((s) => s.kits);
 
   // A new repository starts from its own folder name and ~/work again.
   const repoKey = intent.kind === "repo" ? intent.url : "";
@@ -103,8 +99,6 @@ function Body({ startBox }: { startBox?: string }) {
   );
   const others = useMemo(() => (othersKey ? othersKey.split(",").map((x) => ({ name: x.slice(0, x.lastIndexOf(":")), has: x.endsWith(":1") })) : []), [othersKey]);
   const spreadTo = canSpread ? also.filter((b) => others.some((o) => o.name === b && !o.has)) : [];
-  const kit = slug ? kits?.find((k) => k.match?.slug?.toLowerCase() === slug.toLowerCase()) : undefined;
-  const kitOn = !!kit && withKit && plan?.do !== "create" && (plan?.do !== "open" || spreadTo.length > 0);
 
   const busy = phase === "running";
   const actionable = !!plan && plan.do !== "blocked" && plan.do !== "look" && !busy;
@@ -142,7 +136,6 @@ function Body({ startBox }: { startBox?: string }) {
         home,
         // The boxes picked below are for the plan shown, not a row picked instead.
         also: p === plan ? spreadTo : [],
-        kit: kitOn ? kit : undefined,
         signal,
         onLine: (b, line) =>
           setLogs((ls) => {
@@ -308,12 +301,6 @@ function Body({ startBox }: { startBox?: string }) {
                   {o.has && <span className="text-muted-foreground">has it</span>}
                 </Chip>
               ))}
-              {kit && (
-                <Chip on={kitOn} disabled={busy || (plan?.do === "open" && !spreadTo.length)} title={kit.description ?? `Set it up with the ${kit.name} kit`} onClick={() => setWithKit((v) => !v)}>
-                  <PackageIcon className="size-3" />
-                  {kit.name} kit
-                </Chip>
-              )}
             </>
           ) : online ? (
             <span className="flex items-center gap-1.5 text-muted-foreground text-xs">

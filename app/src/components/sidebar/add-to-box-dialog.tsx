@@ -4,30 +4,25 @@ import { create } from "zustand";
 
 import { type Option, SimpleSelect } from "@/components/simple-select";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Dialog, DialogClose, DialogDescription, DialogFooter, DialogHeader, DialogPanel, DialogPopup, DialogTitle } from "@/components/ui/dialog";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { toastManager } from "@/components/ui/toast";
 import type { Location } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
-import { kitsApi } from "@/lib/kits";
 import type { Project } from "@/lib/project-groups";
 import { scheduleRefresh, useStore } from "@/lib/store";
 import { cn } from "@/lib/utils";
-import { reloadKits, useKits } from "@/views/kits/kits-store";
 import { boxLoad } from "@/components/sidebar/box-load";
 import { ErrorText } from "@/components/error-note";
 
 // Add to box clones a project's repository onto a box that does not have it
-// yet, with git's progress as it goes, then applies the project's kit there
-// when there is one. The new copy joins the project by its remote.
+// yet, with git's progress as it goes. The new copy joins the project by its remote.
 
 const useAddToBox = create<{ project?: Project }>()(() => ({}));
 
 export function openAddToBox(project: Project) {
   useAddToBox.setState({ project });
-  void reloadKits();
 }
 
 export function AddToBoxDialog() {
@@ -41,15 +36,12 @@ export function AddToBoxDialog() {
 
 function Body({ project }: { project: Project }) {
   const status = useStore((s) => s.status);
-  const kits = useKits((s) => s.kits);
   const has = new Set(project.members.map((m) => m.box.name));
   const candidates = (status?.boxes ?? []).filter((b) => b.state === "online" && !has.has(b.name));
   const [box, setBox] = useState(candidates[0]?.name ?? "");
   const [parent, setParent] = useState("~/work");
-  const kit = kits?.find((k) => k.match?.slug && project.slug && k.match.slug.toLowerCase() === project.slug.toLowerCase());
-  const [applyKit, setApplyKit] = useState(true);
   const [lines, setLines] = useState<string[]>([]);
-  const [phase, setPhase] = useState<"form" | "cloning" | "kit" | "done" | "failed">("form");
+  const [phase, setPhase] = useState<"form" | "cloning" | "done" | "failed">("form");
   const [error, setError] = useState<string>();
   const log = useRef<HTMLPreElement>(null);
   const abort = useRef<AbortController>(null);
@@ -101,25 +93,11 @@ function Body({ project }: { project: Project }) {
       return;
     }
     scheduleRefresh(box, ["locations"]);
-    if (kit && applyKit) {
-      setPhase("kit");
-      add(`Applying the ${kit.name} kit…`);
-      try {
-        const end = await kitsApi.apply(client, kit.id, [{ box, location: loc.name }], (l) => {
-          if (l.error) add(`kit: ${l.error}`);
-          l.warnings?.forEach((w) => add(`kit: ${w}`));
-        });
-        if (end.error) add(`kit: ${end.error}`);
-        else add(`Applied ${kit.name}.`);
-      } catch (err) {
-        add(`kit: ${errorMessage(err)}`);
-      }
-    }
     setPhase("done");
     toastManager.add({ title: `${project.name} is on ${box}`, description: loc.path, type: "success" });
   };
 
-  const busy = phase === "cloning" || phase === "kit";
+  const busy = phase === "cloning";
   return (
     <>
       <DialogHeader>
@@ -143,15 +121,6 @@ function Body({ project }: { project: Project }) {
                   Clones <span className="font-mono">{project.remote}</span>
                 </FieldDescription>
               </Field>
-              {kit && (
-                <label className="flex items-start gap-2.5 text-sm">
-                  <Checkbox className="mt-0.5" checked={applyKit} onCheckedChange={(v) => setApplyKit(!!v)} />
-                  <span>
-                    Also apply the {kit.name} kit
-                    <span className="block text-muted-foreground text-xs">Its setup, services and agents for this repository.</span>
-                  </span>
-                </label>
-              )}
             </>
           )
         ) : (

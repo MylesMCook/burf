@@ -122,7 +122,7 @@ export function Chat({ transport, messageList, after, children }: { transport: C
   const queueRunning = useRef(false);
   const pause = () => { queue.hold(); setQueuePaused(true); };
   const send = async (message: AppendMessage) => {
-    if (!chat || !transport.message || pending.current || offline || chat.state === "exited") return;
+    if (transport.readOnly || !chat || !transport.message || pending.current || offline || chat.state === "exited") return;
     // Retire before the request: a response can be lost after the provider accepted it.
     queue.notifyBusy(); queueRunning.current = true;
     const text = withAttachments(message.content.flatMap((p) => p.type === "text" ? [p.text] : []).join("\n"), attachmentPaths(message.attachments ?? []));
@@ -179,9 +179,10 @@ export function Chat({ transport, messageList, after, children }: { transport: C
   const messages = useMemo(() => chat?.messages ?? turns.map(chatMessage), [chat?.messages, turns]);
   const runtime = useExternalStoreRuntime({
     messages, convertMessage: (message) => message,
-    isRunning: running, isLoading: !chat && !offline,
-    isDisabled: !chat || !transport.message || chat.state === "exited",
-    isSendDisabled: busy || offline || transport.sendDisabled || composerBlocked || !chat || !(running || chat.state === "idle"),
+    isRunning: running, isLoading: transport.loading ?? (!chat && !offline),
+    hasEarlier: transport.hasEarlier, onLoadEarlier: transport.loadEarlier,
+    isDisabled: transport.readOnly ? false : !chat || !transport.message || chat.state === "exited",
+    isSendDisabled: transport.readOnly || busy || offline || transport.sendDisabled || composerBlocked || !chat || !(running || chat.state === "idle"),
     onNew: transport.queueOnServer ? async (message) => { await send(message); } : send,
     onCancel: transport.interrupt ? async () => { if (!transport.queueOnServer) pause(); await mutate(() => transport.interrupt!()); } : undefined,
     queue: transport.message ? (transport.queueOnServer ? { ...queueAdapter, enqueue: (message) => void send({ ...message, runConfig: { ...message.runConfig, custom: { choices: { ...optionRef.current } } } }), steer: (message) => void send({ ...message, runConfig: { ...message.runConfig, custom: { choices: { ...optionRef.current } } } }) } : queueAdapter) : undefined,
@@ -195,16 +196,16 @@ export function Chat({ transport, messageList, after, children }: { transport: C
     ...(running && chat?.turn_id && transport.interrupt ? [{ id: "interrupt", description: "Interrupt this turn", execute: () => runtime.thread.cancelRun() }] : []),
     ...(chat && transport.stop ? [{ id: "stop", description: "Stop this chat", execute: () => void mutate(() => transport.stop!()) }] : []),
   ] : [];
-  const approvals = chat?.approvals.length ? <div className="space-y-5 px-2 pb-6 text-sm leading-relaxed text-foreground empty:hidden">
+  const approvals = !transport.readOnly && transport.approve && chat?.approvals.length ? <div className="space-y-5 px-2 pb-6 text-sm leading-relaxed text-foreground empty:hidden">
         {!!chat?.approvals.length && <p className="text-xs font-medium text-warning">{chat.approvals.length} pending {chat.approvals.length === 1 ? "approval" : "approvals"}</p>}
         {chat?.approvals.map((approval, index) => {
           const ask = approval.kind === "tool" ? toolAsk(approval.detail) : undefined;
           const detail = ask ? ask.what : approval.detail;
           const preformatted = !!detail && /[\r\n\t]| {2}/.test(detail);
           const notes = [
-            ask ? "Codex asked Burf to do this. It runs on the box, outside Codex's sandbox." : "",
-            approval.execpolicy?.length ? `Allow always saves this command prefix to the Codex account's rules, including other chats and projects: ${JSON.stringify(approval.execpolicy)}` : "",
-            approval.session_allowed ? `Chat-only approval applies to ${approval.kind === "files" ? "these files" : "matching commands in Codex's approval cache"}, until this chat stops.` : "",
+            ask ? `${transport.agentName} asked Burf to do this. It runs on the box, outside ${transport.agentName}'s sandbox.` : "",
+            approval.execpolicy?.length ? `Allow always saves this command prefix to the ${transport.agentName} account's rules, including other chats and projects: ${JSON.stringify(approval.execpolicy)}` : "",
+            approval.session_allowed ? `Chat-only approval applies to ${approval.kind === "files" ? "these files" : `matching commands in ${transport.agentName}'s approval cache`}, until this chat stops.` : "",
           ].filter(Boolean).join(" ");
           return <section key={approval.id} aria-label="Approval required">
             <details open={index === 0}><summary className="cursor-pointer truncate text-xs font-medium text-muted-foreground">{ask ? `Burf · ${ask.tool}` : approval.kind === "files" ? "File changes" : approval.detail.split("\n")[0]}</summary>
@@ -229,7 +230,7 @@ export function Chat({ transport, messageList, after, children }: { transport: C
         })}
       </div> : undefined;
   return <div data-testid={transport.testId} className="flex min-h-0 min-w-0 flex-1 flex-col">
-    <header className="flex h-12 shrink-0 items-center gap-2 px-4 text-sm">
+    {!transport.readOnly && <header className="flex h-12 shrink-0 items-center gap-2 px-4 text-sm">
       <span className="min-w-0 truncate font-medium" title={session.cwd}>{named ?? session.cwd.split(/[\\/]/).filter(Boolean).at(-1) ?? session.cwd}</span>
       <span role="status" className="shrink-0 text-xs text-muted-foreground">{offline ? "Disconnected" : chat?.state === "waiting" ? chat.approvals.length ? `Waiting for approval (${chat.approvals.length})` : "Waiting for your answer" : running ? "Working" : chat?.state === "idle" ? "Ready" : chat?.state === "exited" ? "Stopped" : "Starting"}</span>
       <div className="ml-auto flex shrink-0 items-center gap-1">
@@ -237,18 +238,19 @@ export function Chat({ transport, messageList, after, children }: { transport: C
         <Tip label="Refresh chat"><Button data-autofocus={!chat || undefined} size="icon-sm" variant="ghost" aria-label="Refresh chat" disabled={busy} onClick={() => void load()}><RotateCwIcon /></Button></Tip>
         {transport.stop && chat?.state !== "exited" && <Tip label="Stop chat"><Button size="icon-sm" variant="ghost" aria-label="Stop chat" disabled={busy || !chat} onClick={() => void mutate(() => transport.stop!())}><XIcon /></Button></Tip>}
       </div>
-    </header>
+    </header>}
     {(error || chat?.error || readError || modelsError || voiceError) && <ErrorState title="Chat error" detail={error || chat?.error || readError || modelsError || voiceError} retrying={false} onRetry={() => { if (!busy) void load(); }} />}
     {chat?.truncated && <p className="shrink-0 px-4 pt-2 text-xs text-muted-foreground">Earlier output is no longer in this live view.</p>}
     <AssistantRuntimeProvider runtime={runtime}>
       {children}
-      <ChatRuntimeState initialDraft={initialDraft} onDraftChange={onDraftChange} onBlocked={setComposerBlocked} transport={transport} input={input} keyDown={keyDown} />
+      {!transport.readOnly && <ChatRuntimeState initialDraft={initialDraft} onDraftChange={onDraftChange} onBlocked={setComposerBlocked} transport={transport} input={input} keyDown={keyDown} />}
       <ChatMessages extras={extras}>
-        <Thread autoFocus={false} components={ChatMessages.components} after={approvals || after ? <>{approvals}{after}</> : undefined} messageList={messageList} speakers={speakers} loadEarlier={false}
+        <Thread autoFocus={false} components={ChatMessages.components} after={approvals || after ? <>{approvals}{after}</> : undefined} messageList={messageList} speakers={speakers} readOnly={transport.readOnly} loadEarlier={!!transport.loadEarlier}
+          welcome={transport.readOnly ? <p className="text-sm text-muted-foreground">No saved messages.</p> : undefined}
           composerInput={{ ref: input, onKeyDown: (event) => keyDown.current?.(event), "aria-label": transport.inputLabel ?? `Message ${transport.agentName}`, "data-autofocus": true, placeholder: transport.placeholder ?? "Send a message..." }}
-          composerControls={<ChatChoices models={models} model={model} effort={effort} permission={permission} accepted={accepted} permissions={chat?.permissions ?? BASE_PERMISSIONS} reason={choicesReason} modelsError={modelsError} onModel={pickModel} onEffort={(value) => setOptions((o) => ({ ...o, effort: value || undefined }))} onPermission={pickPermission} />}
+          composerControls={<ChatChoices agentName={transport.agentName} models={models} model={model} effort={effort} permission={permission} accepted={accepted} permissions={chat?.permissions ?? BASE_PERMISSIONS} reason={choicesReason} modelsError={modelsError} onModel={pickModel} onEffort={(value) => setOptions((o) => ({ ...o, effort: value || undefined }))} onPermission={pickPermission} />}
           composerTriggers={<ChatTriggers searchFiles={chat?.cwd === session.cwd ? transport.searchFiles : undefined} commands={commands} catalog={transport.commands} />}
-          beforeComposer={<ChatWaiting paused={queuePaused} agent={transport.agentName} />}
+          beforeComposer={transport.readOnly ? undefined : <ChatWaiting paused={queuePaused} agent={transport.agentName} />}
         />
       </ChatMessages>
     </AssistantRuntimeProvider>

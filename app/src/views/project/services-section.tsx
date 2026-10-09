@@ -96,7 +96,7 @@ export function ServicesSection({ repo, draft, setDraft, box, location, urlPort 
                 )}
                 <Switch checked={!!s.autostart} disabled={!mine} onCheckedChange={(v) => update(name, { autostart: v })} aria-label={`Start ${name} with each new worktree`} />
                 {terminals && <Switch checked={!!s.terminal} disabled={!mine} onCheckedChange={(v) => update(name, { terminal: v })} aria-label={`Run ${name} in a terminal tab`} />}
-                <SourceBadge source={source} box={box} field="services" entry={name} />
+                <SourceBadge source={source} box={box} />
                 <span className="flex justify-end">
                   {!mine && (
                     <Tip label={`Override on ${box}`}>

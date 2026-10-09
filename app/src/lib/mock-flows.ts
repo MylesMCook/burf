@@ -3,8 +3,6 @@ import type { BerthEvent } from "@/lib/api";
 import type { Flow, FlowRun, LocationConfig, RepoConfig, ScopedFlow, ServiceStatus, Step, StepRun } from "@/lib/flows";
 import type { GuardStatus } from "@/components/guard-dialog";
 import { triggerType } from "@/lib/flows";
-import { mergeConfig } from "@/lib/kits";
-import { kitOn } from "@/lib/mock-kits";
 
 // Mock mode's flows, repository config and worktree services, behaving like
 // internal/box/flows.go and repoconfig.go closely enough to build the UI on.
@@ -132,8 +130,7 @@ const runs: Record<string, FlowRun[]> = {
 const services: Record<string, ServiceStatus[]> = {};
 
 function merged(box: string, loc: string): RepoConfig {
-  // The kit's layer sits between the committed config and this box's own.
-  const repo = mergeConfig(committed[box]?.[loc], kitOn(box, loc)?.config);
+  const repo = committed[box]?.[loc] ?? {};
   const own = local[box]?.[loc] ?? {};
   const by = <T,>(a: T[] = [], b: T[] = [], key: (x: T) => string) => [...a.filter((x) => !b.some((y) => key(y) === key(x))), ...b];
   return {
@@ -154,7 +151,6 @@ function listFlows(box: string): ScopedFlow[] {
     const scope = `repo:${loc}`;
     const layers: [ScopedFlow["source"], Flow[] | undefined][] = [
       ["repo", committed[box]?.[loc]?.flows],
-      ["kit", kitOn(box, loc)?.config.flows],
       ["local", local[box]?.[loc]?.flows],
     ];
     for (const [source, flows] of layers) for (const flow of flows ?? []) out.push({ scope, source, editable: source === "local", flow });
@@ -283,7 +279,7 @@ export function flowsCall(box: string, method: string, path: string, body: unkno
       local[box] = { ...local[box], [loc]: next };
       setTimeout(() => emit({ type: "config.changed", box, data: { location: loc } }), 20);
     }
-    const cfg: LocationConfig = { repo: committed[box]?.[loc] ?? null, repo_path: `/home/me/work/${loc}/.berth/config.json`, kit: kitOn(box, loc), local: local[box]?.[loc] ?? {}, effective: merged(box, loc) };
+    const cfg: LocationConfig = { repo: committed[box]?.[loc] ?? null, repo_path: `/home/me/work/${loc}/.berth/config.json`, local: local[box]?.[loc] ?? {}, effective: merged(box, loc) };
     return delay(cfg);
   }
   m = route.match(/^locations\/([^/]+)\/worktrees\/([^/]+)\/services(?:\/([^/]+)(?:\/([^/]+))?)?$/);

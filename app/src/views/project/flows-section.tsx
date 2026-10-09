@@ -26,7 +26,7 @@ export function FlowsSection({ box, location }: { box: string; location: string 
   }, [client, box, scope, changed]);
 
   const open = (id?: string) => useStore.getState().setView({ kind: "automations", open: { box, scope, id } });
-  // An override hides the committed or kit flow it replaces.
+  // An override hides the committed flow it replaces.
   const shown = (flows ?? []).filter((f) => !isOverridden(f, flows!));
 
   return (

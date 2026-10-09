@@ -20,6 +20,10 @@ export interface ChatTransport {
   // Terminal-backed transports already own their queue and its idempotency keys.
   queueOnServer?: boolean;
   snapshot?: ChatSnapshot;
+  readOnly?: boolean;
+  loading?: boolean;
+  hasEarlier?: boolean;
+  loadEarlier?(): Promise<void>;
   refresh?(): Promise<void>;
   initialOptions?: ChatOptions;
   onChange?(session: ChatSession): void;

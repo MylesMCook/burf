@@ -15,7 +15,7 @@ import { resolveBrowserInput } from "@/lib/browser-url";
 import { closeCompare } from "@/lib/compare-actions";
 import { currentSpace, focusSession, here, hereRef, homeBox, openTab, refFor, removePane, setPaneContent, showWorktree, splitPane, useWorkspaces, type WorktreeRef, wsKey } from "@/lib/workspaces";
 import { refuseHome } from "@/lib/box-home";
-import { hasRemoteCodex, remoteChatApi } from "@/lib/remote-chat";
+import { hasRemoteChat, remoteChatApi } from "@/lib/remote-chat";
 
 // Agents offered when a box does not list its own.
 export const DEFAULT_AGENTS: AgentPreset[] = [
@@ -91,9 +91,9 @@ export async function startSession(command: string, target: Target = { kind: "ta
   const at = place({ kind: "starting", label }, target, wt);
   if (!at) return;
   try {
-    if (ref && presetId === "codex" && hasRemoteCodex(box, command)) {
-      const chat = await remoteChatApi.start(client, box, refLocation(ref));
-      setPaneContent(at.key, at.tab, at.pane, { kind: "remote-chat", box, chat: chat.id, cwd: chat.cwd });
+    if (ref && presetId === "codex" && hasRemoteChat(box, presetId, command)) {
+      const chat = await remoteChatApi.start(client, box, refLocation(ref), presetId);
+      setPaneContent(at.key, at.tab, at.pane, { kind: "remote-chat", box, chat: chat.id, cwd: chat.cwd, agent: chat.agent });
       return chat.id;
     }
     const s = await boxApi.startSession(client, box, ref ? { location: refLocation(ref), command: command || undefined } : { home: true, command: command || undefined });

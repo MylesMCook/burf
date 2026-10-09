@@ -9,7 +9,6 @@ import { useStore } from "@/lib/store";
 import { loadNav } from "@/lib/nav";
 import { loadNotifications } from "@/lib/notifications";
 import { loadProjects } from "@/lib/project-groups";
-import { reloadKits } from "@/views/kits/kits-store";
 import { loadPlugins } from "@/plugins/host";
 
 // The live demo (pnpm build:demo) is always mock mode.
@@ -56,8 +55,6 @@ export function useBerthConnection() {
       void loadProjects();
       void loadNav();
       void loadNotifications();
-      // Project menus show each project's kit status.
-      void reloadKits();
       client.events(handleEvent, () => void refreshAll(), abort.signal);
       // The backstop: events say what changed, so this only catches what
       // one missed. Not while the window is hidden; coming back refreshes.

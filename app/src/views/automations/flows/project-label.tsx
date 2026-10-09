@@ -32,11 +32,9 @@ function OneBoxLabel({ box, scope, className, chip }: { box: string; scope: Scop
 }
 
 // savedWhere says in a line where a flow lives, so it is never a surprise.
-// A read-only flow says which layer it comes from: committed ("repo") or the
-// project's kit ("kit").
-export function savedWhere(box: string, scope: Scope, readOnlyFrom?: "repo" | "kit"): string {
+// A read-only flow is committed in the repository.
+export function savedWhere(box: string, scope: Scope, readOnlyFrom?: "repo"): string {
   const loc = scopeLocation(scope);
-  if (readOnlyFrom === "kit") return "From the project's kit, applied on this box";
   if (readOnlyFrom) return "Saved in the repo's .berth/config.json";
   return loc ? `Saved on ${box} for ${loc} · not committed` : `Saved on ${box} · runs for every project there`;
 }

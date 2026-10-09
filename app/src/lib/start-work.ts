@@ -19,7 +19,7 @@ import { boxHasRuns, runs, scheduleRuns } from "@/lib/runs";
 import { save } from "@/lib/storage";
 import { useStore } from "@/lib/store";
 import { findSession, focusSession, selectWorktree, setPaneContent, splitPane } from "@/lib/workspaces";
-import { hasChatOptions, hasRemoteCodex, openRemoteChat, remoteChatApi } from "@/lib/remote-chat";
+import { hasChatOptions, hasRemoteChat, openRemoteChat, remoteChatApi } from "@/lib/remote-chat";
 
 // startWork does what the composer gathered (lib/composer): a task in a new
 // worktree, an agent in the main checkout or a worktree already open, a
@@ -110,12 +110,12 @@ export async function startWork(d: StartDraft): Promise<boolean> {
   if (d.picks.length > 1) return startAttempts(d);
   const pick = d.picks[0];
   const presets = agentPresets(d.box, d.location);
-  const structured = pick?.agent === "codex" && hasRemoteCodex(d.box, presets.find((p) => p.id === "codex")?.command ?? "");
-  if (structured && !d.worktree?.command) {
+  const structured = hasRemoteChat(d.box, pick?.agent, presets.find((p) => p.id === pick?.agent)?.command ?? "");
+  if (structured && pick && !d.worktree?.command) {
     const chosen = !!(pick.model || pick.effort);
     // Strict is every chat's starting mode, so only another choice needs sending.
     const options: ChatOptions = { ...(pick.model ? { model: pick.model } : {}), ...(pick.effort ? { effort: pick.effort } : {}), ...(d.permission && d.permission !== "strict" ? { permission: d.permission } : {}) };
-    if (chosen && !hasChatOptions(d.box)) return fail("Choose Codex defaults", new Error(`${d.box} runs an older Burf that starts Codex chats with its configured model and effort. Clear these choices or update the box.`), d.box);
+    if (chosen && !hasChatOptions(d.box)) return fail(`Choose ${agentLabel(pick.agent)} defaults`, new Error(`${d.box} runs an older Burf that starts ${agentLabel(pick.agent)} chats with its configured model and effort. Clear these choices or update the box.`), d.box);
     let location = d.where === "here" ? (d.at ?? d.location) : d.location;
     const loc = useStore.getState().boxes[d.box]?.locations?.find((l) => l.name === d.location);
     let wt = loc?.worktrees?.find((w) => (w.main ? loc.name : `${loc.name}/${w.name}`) === location);
@@ -136,9 +136,9 @@ export async function startWork(d: StartDraft): Promise<boolean> {
       location = `${d.location}/${wt.name}`;
       await useStore.getState().refreshBox(d.box, ["locations"]);
     }
-    if (!wt) return fail("Couldn't start Codex", new Error("Refresh the project before starting a chat."), d.box);
+    if (!wt) return fail(`Couldn't start ${agentLabel(pick.agent)}`, new Error("Refresh the project before starting a chat."), d.box);
     try {
-      const chat = await remoteChatApi.start(client, d.box, location);
+      const chat = await remoteChatApi.start(client, d.box, location, pick.agent as "codex" | "claude");
       const ref = { box: d.box, location: d.location, worktree: wt.name, path: wt.path, main: wt.main };
       try {
         if (d.text.trim()) await remoteChatApi.message(client, d.box, chat.id, d.text, options);
@@ -152,7 +152,7 @@ export async function startWork(d: StartDraft): Promise<boolean> {
       if (d.where === "new") selectWorktree(ref);
       openRemoteChat(d.box, chat, ref, undefined, chosen && !d.text.trim() ? { model: options.model, effort: options.effort } : undefined);
       return true;
-    } catch (error) { return fail("Couldn't start Codex", error, d.box); }
+    } catch (error) { return fail(`Couldn't start ${agentLabel(pick.agent)}`, error, d.box); }
   }
   // An agent can't start without tmux: say so before a worktree is made.
   if (pick && tmuxMissing(d.box)) return fail("Couldn't start it", new ApiError("tmux is not installed on this box", 503, "tmux_missing"), d.box);

@@ -60,7 +60,7 @@ if has '^app/'; then
 fi
 
 if has '\.go$'; then
-	pkgs="$(printf '%s\n' "$changed" | grep '\.go$' | xargs -n1 dirname | sort -u | while read -r d; do [ -d "$d" ] && printf './%s ' "$d"; done)"
+	pkgs="$(printf '%s\n' "$changed" | grep '\.go$' | xargs -n1 dirname | sort -u | while read -r d; do if [ -d "$d" ]; then printf './%s ' "$d"; fi; done)"
 	if [ -n "$pkgs" ]; then
 		# shellcheck disable=SC2086 # the package paths are separate words
 		{ go vet $pkgs && go test $pkgs; } || fail=1

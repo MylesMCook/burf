@@ -27,7 +27,6 @@ export type Category =
   | "setupFailed"
   | "serviceFailed"
   | "guard"
-  | "kit"
   | "notify"
   | "opened"
   | "plugin"
@@ -63,7 +62,6 @@ export const CATEGORIES: CategoryInfo[] = [
   { id: "setupFailed", label: "A worktree's setup or archive failed", description: "Its setup or archive script exited with an error; an archive leaves the worktree as it was.", needs: true, defaults: all },
   { id: "serviceFailed", label: "A service failed", description: "A worktree's dev server or service would not start.", needs: true, defaults: quietly },
   { id: "guard", label: "The resource guard acted", description: "It stopped services or paused a worktree to free memory.", needs: false, defaults: quietly },
-  { id: "kit", label: "A kit installed with warnings", description: "Some of a kit's steps need a look.", needs: false, defaults: quietly },
   { id: "notify", label: "Messages from automations", description: "A flow's notify step.", needs: false, defaults: all },
   { id: "opened", label: "An agent opened something", description: "A terminal or preview it asked to show while you were elsewhere.", needs: false, defaults: quietly },
   { id: "plugin", label: "Messages from plugins", description: "What plugins send with notify().", needs: false, defaults: all },
@@ -588,7 +586,7 @@ export async function loadNotifications() {
   if (!client) return;
   try {
     const doc = await client.laptop<Doc | null>("GET", DOC);
-    const stored = Array.isArray(doc?.notes) ? doc.notes.filter((n) => n && n.id && n.title) : [];
+    const stored = Array.isArray(doc?.notes) ? doc.notes.filter((n) => n && n.id && n.title && CATEGORIES.some((c) => c.id === n.category)) : [];
     useNotifications.setState((s) => {
       const fresh = s.notes.filter((n) => !stored.some((x) => x.id === n.id || (x.key === n.key && !x.resolved)));
       return { notes: [...fresh, ...stored].sort((a, b) => b.time.localeCompare(a.time)).slice(0, MAX), loaded: true, error: undefined };
