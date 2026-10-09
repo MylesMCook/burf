@@ -93,7 +93,20 @@ func Pair(ctx context.Context, id *identity.Identity, tok pairing.Token, clientN
 }
 
 // PairVia is Pair over a specific dialer, such as another tailnet.
+//
+// A box built from Burf's renamed builds knows the proof under their name
+// only (pairing.RenamedProof), so a refusal under the protocol's name is
+// tried once more under that one. A refused proof leaves the code unused,
+// and each proof is bound to its own connection.
 func PairVia(ctx context.Context, id *identity.Identity, tok pairing.Token, clientName string, dial DialFunc) (string, error) {
+	name, err := pairWith(ctx, id, tok, clientName, dial, pairing.Proof)
+	if errors.Is(err, ErrPairingRefused) {
+		return pairWith(ctx, id, tok, clientName, dial, pairing.RenamedProof)
+	}
+	return name, err
+}
+
+func pairWith(ctx context.Context, id *identity.Identity, tok pairing.Token, clientName string, dial DialFunc, proof func(pairing.Code, []byte, identity.Fingerprint) []byte) (string, error) {
 	cfg := clientConfig(id, tok.Fingerprint)
 	cfg.NextProtos = []string{"http/1.1"}
 	conn, err := dialTLSVia(ctx, cfg, tok.Address, dial)
@@ -106,7 +119,7 @@ func PairVia(ctx context.Context, id *identity.Identity, tok pairing.Token, clie
 	if err != nil {
 		return "", err
 	}
-	body, _ := json.Marshal(pairRequest{Name: clientName, Proof: pairing.Proof(tok.Code, exporter, id.Fingerprint())})
+	body, _ := json.Marshal(pairRequest{Name: clientName, Proof: proof(tok.Code, exporter, id.Fingerprint())})
 	resp, err := exchange(ctx, conn, tok.Address, "/v1/pair", body)
 	if err != nil {
 		return "", err

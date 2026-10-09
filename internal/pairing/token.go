@@ -20,7 +20,17 @@ const (
 	// ExporterLabel derives the TLS keying material a proof is bound to.
 	ExporterLabel = "EXPORTER-berth-pair-v1"
 	ExporterSize  = 32
-	proofContext  = "burf pair v1"
+)
+
+// A proof is made under a name. proofName is the protocol's own: upstream
+// and every Berth release prove under it. Burf's builds from its rename
+// until it came back to that name proved under renamedProofName, and those
+// boxes and clients know no other. So a box accepts a proof under either
+// (ProofMatches), and a client refused under the first tries the second
+// (wire.PairVia).
+const (
+	proofName        = "berth pair v1"
+	renamedProofName = "burf pair v1"
 )
 
 // Code is a single-use pairing secret. It is never sent over the wire; the
@@ -86,8 +96,27 @@ func ParseToken(s string) (Token, error) {
 // keying material) and to the client key being pinned, so it cannot be replayed
 // on another connection or used to pin a different key.
 func Proof(code Code, exporter []byte, client identity.Fingerprint) []byte {
+	return proofUnder(proofName, code, exporter, client)
+}
+
+// RenamedProof is the same proof under the name Burf's renamed builds used:
+// the only one a box of those builds accepts.
+func RenamedProof(code Code, exporter []byte, client identity.Fingerprint) []byte {
+	return proofUnder(renamedProofName, code, exporter, client)
+}
+
+// ProofMatches reports whether got is the proof for code under either name.
+// Both are always worked out and compared, so the time taken says nothing
+// about which name, if any, came close.
+func ProofMatches(got []byte, code Code, exporter []byte, client identity.Fingerprint) bool {
+	protocol := hmac.Equal(got, Proof(code, exporter, client))
+	renamed := hmac.Equal(got, RenamedProof(code, exporter, client))
+	return protocol || renamed
+}
+
+func proofUnder(name string, code Code, exporter []byte, client identity.Fingerprint) []byte {
 	m := hmac.New(sha256.New, code[:])
-	m.Write([]byte(proofContext))
+	m.Write([]byte(name))
 	m.Write(exporter)
 	m.Write(client[:])
 	return m.Sum(nil)

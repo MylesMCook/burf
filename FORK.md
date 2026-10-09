@@ -16,6 +16,16 @@ are not reset. No new update feed is enabled until Burf has signed releases.
 Windows also retains its internal `berth-cli.exe` sidecar and a `cli/berth.exe`
 alias so existing owned login tasks keep the executable paths they trust.
 
+One protocol name did change with the rename and has been put back: a pairing
+proof is made under `berth pair v1`, as upstream and every Berth release make
+it. Burf builds between the rename and that correction proved under
+`burf pair v1` and know nothing else, so a new pairing between one of them and
+an upstream or Berth build is refused as a used or expired code. Builds from
+the correction on pair with all of them: a box accepts a proof under either
+name, and a client refused under the protocol's name tries the other once, on
+a new connection. A code still pairs once. Existing pairings were never
+affected.
+
 ## Product Direction: Chat First
 
 The intended primary experience is a conventional LLM chat UI, not an embedded
