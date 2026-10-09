@@ -1,7 +1,15 @@
-import { ArrowUpIcon, RotateCwIcon, SquareIcon, XIcon } from "lucide-react";
+import { RotateCwIcon, XIcon } from "lucide-react";
 import { useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { ApprovalCard } from "@/components/assistant-ui/elements/approval-card";
+import { Composer, ComposerBar, ComposerToolbar, ComposerActions, ComposerSend } from "@/components/assistant-ui/elements/composer";
+import { ModelSelectorRoot, ModelSelectorTrigger, ModelSelectorValue, ModelSelectorContent, ModelSelectorList, ModelSelectorEffort } from "@/components/assistant-ui/elements/model-selector";
+import { ConnectionState } from "@/components/assistant-ui/elements/connection-state";
+import { EmptyState, EmptyStateGreeting } from "@/components/assistant-ui/elements/empty-state";
+import { ErrorState } from "@/components/assistant-ui/elements/error-state";
+import { ThinkingIndicator } from "@/components/assistant-ui/elements/thinking-indicator";
+import { Select, SelectTrigger, SelectValue, SelectPopup, SelectItem } from "@/components/ui/select";
 import { WorktreeArtChip } from "@/components/art/board-buttons";
-import { ArtifactCard } from "@/components/conversation/artifacts";
+import { ChatArtifact } from "@/components/conversation/chat-artifact";
 import { ChatThread } from "@/components/conversation/chat-thread";
 import { ReportCard } from "@/components/conversation/report-card";
 import { Button } from "@/components/ui/button";
@@ -122,18 +130,36 @@ export function StructuredChat({ transport, session, onChange, testId = "local-c
     if (ref && madeIds.split(" ").some((key) => { const [id, n] = key.split("@"); return (have.get(id) ?? 0) < Number(n); })) void loadArtifacts(ref);
   }, [artifacts, madeIds]);
   const turns = useMemo(() => threadTurns(chat?.items ?? [], running, submitted ? { text: submitted, before: submittedItems.current } : undefined), [chat?.items, running, submitted]);
-  const toolExtra = useCallback((id: string) => made.get(id)?.map((artifact) => <div key={artifact.id} className="mt-2 flex text-sm"><ArtifactCard it={artifact} /></div>), [made]);
+  const toolExtra = useCallback((id: string) => made.get(id)?.map((artifact) => <div key={artifact.id} className="mt-2 flex items-center gap-1 text-sm"><ChatArtifact it={artifact} /></div>), [made]);
   const reports = chat?.reports;
   const reportCards = useCallback((id: string) => (reports?.[id]?.length ? reports[id].map((report, index) => <ReportCard key={index} it={{ kind: "report", id: `${id}:${index}`, report }} />) : undefined), [reports]);
+  const send = () => {
+    if (!draft.trim() || busy || offline || chat?.state !== "idle") return;
+    const text = draft;
+    submittedItems.current = new Set(chat.items.map((item) => item.id)); setSubmitted(text);
+    void mutate(async () => { await transport.message(text, chat.composer ? options : undefined); if (!alive.current) return; if (draftRef.current === text) updateDraft(""); setOptions(() => ({})); }).finally(() => { if (alive.current) setSubmitted(""); });
+  };
+  const choicesDisabled = busy || chat?.state === "exited";
+  const reasoningChoices = [...new Set([effort, ...efforts].filter(Boolean))];
+  const modelChoices = [
+    { id: "", name: "Default model" },
+    ...(model && !models?.some((m) => m.model === model) ? [{ id: model, name: model }] : []),
+    ...(models ?? []).map((m) => ({ id: m.model, name: m.displayName || m.model })),
+  ].map((m) => ({ ...m, disabled: choicesDisabled, efforts: m.id === model && reasoningChoices.length ? [{ id: "", name: "Default reasoning" }, ...reasoningChoices.map((id) => ({ id, name: id }))] : undefined }));
   return <div data-testid={testId} className="flex min-h-0 min-w-0 flex-1 flex-col">
-    <header className="flex flex-wrap items-center gap-2 border-b px-4 py-3 text-sm">
-      <h2 className="font-medium">Codex</h2><span role="status" className="text-xs text-muted-foreground">{offline ? "Disconnected" : chat?.state === "running" ? "Working" : chat?.state === "waiting" ? `Waiting for approval (${chat.approvals.length})` : chat?.state === "idle" ? "Ready" : chat?.state === "exited" ? "Stopped" : "Starting"}</span><span className={accepted === "full-access" ? "text-xs font-medium text-warning" : "text-xs text-muted-foreground"}>{chatPermissions[accepted].label}</span>{(chat?.options?.model || chat?.options?.effort) && <span className="text-xs text-muted-foreground">{[chat.options.model, chat.options.effort].filter(Boolean).join(" · ")}</span>}
-      <span className="min-w-0 flex-1 truncate text-xs text-muted-foreground" title={session.cwd}>{named ?? session.cwd}</span>
+    <header className="flex items-center gap-2 px-4 py-2 text-sm">
+      <h2 className="sr-only">Codex</h2>
+      <span className="min-w-0 truncate text-xs text-muted-foreground" title={session.cwd}>{named ?? session.cwd}</span>
+      {offline ? <ConnectionState role="status" phase="dropped" onRetry={() => { if (!busy) void load(); }} /> : running ? <ThinkingIndicator role="status" label={chat?.state === "waiting" ? `Waiting for approval (${chat.approvals.length})` : "Working"} /> : <span role="status" className="text-xs text-muted-foreground">{chat?.state === "idle" ? "Ready" : chat?.state === "exited" ? "Stopped" : "Starting"}</span>}
+      <div role="group" aria-label="Accepted chat settings" className="flex min-w-0 flex-1 flex-wrap gap-2 text-xs text-muted-foreground">
+        <span className={accepted === "full-access" ? "font-medium text-warning" : undefined}>{chatPermissions[accepted].label}</span>
+        {(chat?.options?.model || chat?.options?.effort) && <span>{[chat.options.model, chat.options.effort].filter(Boolean).join(" · ")}</span>}
+      </div>
       <WorktreeArtChip wt={artifacts} className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded px-1.5 text-xs text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-1 focus-visible:ring-ring" />
       <Tip label="Refresh chat"><Button data-autofocus={offline && !chat || undefined} size="icon-sm" variant="ghost" aria-label="Refresh chat" disabled={busy} onClick={() => void load()}><RotateCwIcon /></Button></Tip>
       {chat?.state !== "exited" && <Tip label="Stop chat"><Button size="icon-sm" variant="ghost" aria-label="Stop chat" disabled={busy || !chat} onClick={() => void mutate(() => transport.stop())}><XIcon /></Button></Tip>}
     </header>
-    {(error || chat?.error || readError) && <p role="alert" className="shrink-0 px-4 py-2 text-sm text-destructive">{error || chat?.error || readError}</p>}
+    {(error || chat?.error || readError) && <ErrorState title="Chat error" detail={error || chat?.error || readError} retrying={false} onRetry={() => { if (!busy) void load(); }} />}
     {chat?.truncated && <p className="shrink-0 px-4 pt-2 text-xs text-muted-foreground sm:px-6">Earlier output is no longer in this live view.</p>}
     <ChatThread
       turns={turns}
@@ -141,46 +167,65 @@ export function StructuredChat({ transport, session, onChange, testId = "local-c
       agent="Codex"
       tool={toolExtra}
       report={reportCards}
-      welcome={chat ? <h3 className="py-8 text-center text-lg font-medium">{running ? "Codex is working…" : chat.state === "starting" ? "Starting Codex…" : "New chat"}</h3> : <></>}
+      welcome={chat ? <EmptyState><EmptyStateGreeting>{running ? "Codex is working…" : chat.state === "starting" ? "Starting Codex…" : "New chat"}</EmptyStateGreeting></EmptyState> : <></>}
       after={<div className="space-y-5 px-2 pb-6 text-sm leading-relaxed text-foreground empty:hidden">
         {!!chat?.approvals.length && <p className="text-xs font-medium text-warning">{chat.approvals.length} pending {chat.approvals.length === 1 ? "approval" : "approvals"}</p>}
-        {chat?.approvals.map((approval, index) => { const ask = approval.kind === "tool" ? toolAsk(approval.detail) : undefined; return <section key={approval.id} aria-label="Approval required" className="border-l-2 border-warning pl-3">
-          <details open={index === 0}><summary className="cursor-pointer truncate text-xs font-medium">{ask ? `Burf · ${ask.tool}` : approval.kind === "files" ? "File changes" : approval.detail.split("\n")[0]}</summary>
-          <h3 className="text-sm font-medium">{ask ? ask.question : approval.kind === "files" ? "Allow file changes?" : approval.kind === "browser" ? "Allow this in your browser?" : "Allow this command?"}</h3>
-          {approval.reason && <p className="mt-2 text-sm">{approval.reason}</p>}
-          {(!ask || ask.what) && <pre className="my-3 max-h-80 overflow-auto whitespace-pre-wrap break-words text-xs">{ask ? ask.what : approval.detail}</pre>}
-          {ask && <p className="mb-2 text-xs text-muted-foreground">Codex asked Burf to do this. It runs on the box, outside Codex's sandbox.</p>}
-          {approval.execpolicy?.length ? <p className="mb-2 break-words text-xs text-muted-foreground">Allow always saves this command prefix to the Codex account's rules, including other chats and projects: <code>{JSON.stringify(approval.execpolicy)}</code></p> : null}
-          <div className="flex flex-wrap gap-2"><Button size="sm" variant="outline" disabled={busy || offline} onClick={() => void mutate(() => transport.approve(approval.id, "decline"))}>Deny</Button><Button size="sm" disabled={busy || offline} onClick={() => void mutate(() => transport.approve(approval.id, "accept"))}>Allow once</Button>{approval.session_allowed && <Button size="sm" variant="outline" disabled={busy || offline} onClick={() => void mutate(() => transport.approve(approval.id, "acceptForSession"))}>Always in this chat</Button>}{!!approval.execpolicy?.length && <Button size="sm" variant="outline" disabled={busy || offline} onClick={() => void mutate(() => transport.approve(approval.id, "acceptAlways"))}>Allow always</Button>}</div>
-          {approval.session_allowed && <p className="mt-2 text-xs text-muted-foreground">Chat-only approval applies to {approval.kind === "files" ? "these files" : "matching commands in Codex's approval cache"}, until this chat stops.</p>}
-          </details>
-        </section>; })}
+        {chat?.approvals.map((approval, index) => {
+          const ask = approval.kind === "tool" ? toolAsk(approval.detail) : undefined;
+          const detail = ask ? ask.what : approval.detail;
+          const preformatted = !!detail && /[\r\n\t]| {2}/.test(detail);
+          const notes = [
+            ask ? "Codex asked Burf to do this. It runs on the box, outside Codex's sandbox." : "",
+            approval.execpolicy?.length ? `Allow always saves this command prefix to the Codex account's rules, including other chats and projects: ${JSON.stringify(approval.execpolicy)}` : "",
+            approval.session_allowed ? `Chat-only approval applies to ${approval.kind === "files" ? "these files" : "matching commands in Codex's approval cache"}, until this chat stops.` : "",
+          ].filter(Boolean).join(" ");
+          return <section key={approval.id} aria-label="Approval required">
+            <details open={index === 0}><summary className="cursor-pointer truncate text-xs font-medium text-muted-foreground">{ask ? `Burf · ${ask.tool}` : approval.kind === "files" ? "File changes" : approval.detail.split("\n")[0]}</summary>
+            <fieldset disabled={busy || offline}>
+              {preformatted && <pre className="my-3 max-h-80 overflow-auto whitespace-pre-wrap break-words text-xs">{detail}</pre>}
+              <ApprovalCard
+                state="request"
+                title={ask ? ask.question : approval.kind === "files" ? "Allow file changes?" : approval.kind === "browser" ? "Allow this in your browser?" : "Allow this command?"}
+                subtitle={ask ? `Burf · ${ask.tool}` : approval.reason || "Approval required"}
+                command={preformatted ? undefined : detail}
+                details={ask && approval.reason ? [{ label: "Reason", value: approval.reason }] : undefined}
+                description={notes || undefined}
+                onDeny={() => void mutate(() => transport.approve(approval.id, "decline"))}
+                onAllowOnce={() => void mutate(() => transport.approve(approval.id, "accept"))}
+                onAlwaysAllow={approval.session_allowed ? () => void mutate(() => transport.approve(approval.id, "acceptForSession")) : approval.execpolicy?.length ? () => void mutate(() => transport.approve(approval.id, "acceptAlways")) : undefined}
+                alwaysAllowLabel={approval.session_allowed ? "Allow for chat" : "Allow always"}
+              />
+              {approval.session_allowed && !!approval.execpolicy?.length && <Button size="sm" variant="outline" onClick={() => void mutate(() => transport.approve(approval.id, "acceptAlways"))}>Allow always</Button>}
+            </fieldset>
+            </details>
+          </section>;
+        })}
       </div>}
-      composer={
-      <form className="shrink-0" onSubmit={(event) => {
-        event.preventDefault(); if (!draft.trim() || busy || offline || chat?.state !== "idle") return;
-        const text = draft;
-        submittedItems.current = new Set(chat.items.map((item) => item.id)); setSubmitted(text);
-        void mutate(async () => { await transport.message(text, chat.composer ? options : undefined); if (!alive.current) return; if (draftRef.current === text) updateDraft(""); setOptions(() => ({})); }).finally(() => { if (alive.current) setSubmitted(""); });
-      }}>
-        <div className="w-full">
-          <div className="rounded-md border bg-background focus-within:ring-1 focus-within:ring-ring">
-            <textarea data-autofocus aria-label="Message Codex" placeholder="Message Codex" value={draft} disabled={!chat || busy} readOnly={chat?.state === "exited"} onChange={(event) => updateDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); event.currentTarget.form?.requestSubmit(); } }} rows={3} className="block max-h-48 min-h-20 w-full resize-y bg-transparent p-3 text-sm outline-none disabled:opacity-50" />
-            <div className="flex flex-wrap items-center gap-1 px-2 pb-2">
-              {chat?.composer && <>
-                <select aria-label="Chat permissions" className="h-7 min-w-0 rounded border-0 bg-transparent px-1 text-xs text-muted-foreground outline-none hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 max-w-40" disabled={busy || chat.state === "exited"} value={permission} onChange={(e) => pickPermission(e.target.value as NonNullable<ChatOptions["permission"]>)}>{Object.entries(chatPermissions).filter(([id]) => (chat.permissions ?? BASE_PERMISSIONS).includes(id) || id === permission).map(([id, p]) => <option key={id} value={id}>{p.label}</option>)}</select>
-                <select aria-label="Chat model" className="h-7 min-w-0 rounded border-0 bg-transparent px-1 text-xs text-muted-foreground outline-none hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 max-w-48" disabled={busy || chat.state === "exited"} value={model} onChange={(e) => pickModel(e.target.value)}><option value="">Default model</option>{model && !models?.some((m) => m.model === model) && <option value={model}>{model}</option>}{models?.map((m) => <option key={m.model} value={m.model}>{m.displayName || m.model}</option>)}</select>
-                {(effort || efforts.length > 0) && <select aria-label="Chat reasoning" className="h-7 min-w-0 rounded border-0 bg-transparent px-1 text-xs text-muted-foreground outline-none hover:bg-accent focus-visible:ring-1 focus-visible:ring-ring disabled:opacity-50 max-w-36" disabled={busy || chat.state === "exited"} value={effort} onChange={(e) => setOptions((o) => ({ ...o, effort: e.target.value || undefined }))}><option value="">Default reasoning</option>{[...new Set([effort, ...efforts].filter(Boolean))].map((e) => <option key={e} value={e}>{e}</option>)}</select>}
-              </>}
-              <span className="flex-1" />
-              {running ? <Tip label="Interrupt turn"><Button type="button" size="icon-sm" variant="outline" aria-label="Interrupt turn" disabled={busy || offline || !chat?.turn_id} onClick={() => void mutate(() => transport.interrupt())}><SquareIcon /></Button></Tip> : <Tip label="Send message"><Button type="submit" size="icon-sm" aria-label="Send message" disabled={busy || offline || chat?.state !== "idle" || !draft.trim()}><ArrowUpIcon /></Button></Tip>}
+      composer={<Composer className="max-w-none">
+        <ComposerBar>
+          <textarea data-autofocus aria-label="Message Codex" placeholder="Message Codex" value={draft} disabled={!chat || busy} readOnly={chat?.state === "exited"} onChange={(event) => updateDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); send(); } }} rows={3} className="field-sizing-content block max-h-48 min-h-12 w-full resize-none bg-transparent p-3 text-sm outline-none disabled:opacity-50" />
+          <ComposerToolbar>
+            <div className="min-w-0 flex-1">
+            <ComposerActions>
+              {chat?.composer && <fieldset disabled={choicesDisabled} className="flex min-w-0 flex-wrap items-center gap-1">
+                <Select value={permission} disabled={choicesDisabled} onValueChange={(value) => { if (value) pickPermission(value as NonNullable<ChatOptions["permission"]>); }}>
+                  <SelectTrigger aria-label="Chat permissions"><SelectValue>{chatPermissions[permission].label}</SelectValue></SelectTrigger>
+                  <SelectPopup>{Object.entries(chatPermissions).filter(([id]) => (chat.permissions ?? BASE_PERMISSIONS).includes(id) || id === permission).map(([id, p]) => <SelectItem key={id} value={id}>{p.label}</SelectItem>)}</SelectPopup>
+                </Select>
+                <ModelSelectorRoot models={modelChoices} value={model} onValueChange={pickModel} effort={effort} onEffortChange={(value) => { if (!choicesDisabled) setOptions((o) => ({ ...o, effort: value || undefined })); }}>
+                  <ModelSelectorTrigger aria-label="Chat model" disabled={choicesDisabled}><ModelSelectorValue showEffort={false} /></ModelSelectorTrigger>
+                  <ModelSelectorContent searchable={false}><ModelSelectorList /></ModelSelectorContent>
+                  <ModelSelectorEffort label="Chat reasoning" disabled={choicesDisabled} />
+                </ModelSelectorRoot>
+              </fieldset>}
+            </ComposerActions>
             </div>
-          </div>
-          {chat?.composer && changed && <p className={options.permission === "full-access" ? "mt-1 text-xs font-medium text-warning" : "mt-1 text-xs text-muted-foreground"}>From your next message{options.permission ? `: ${chatPermissions[options.permission].hint}` : "."}</p>}
-          {modelsError && <p role="alert" className="mt-1 text-xs text-destructive">{modelsError}</p>}
-        </div>
-      </form>
-      }
+            <ComposerSend aria-label={running ? "Interrupt turn" : "Send message"} streaming={running} idle={!draft.trim()} disabled={running ? busy || offline || !chat?.turn_id : busy || offline || chat?.state !== "idle" || !draft.trim()} onClick={running ? () => void mutate(() => transport.interrupt()) : send} />
+          </ComposerToolbar>
+        </ComposerBar>
+        {chat?.composer && changed && <p className={options.permission === "full-access" ? "mt-1 text-xs font-medium text-warning" : "mt-1 text-xs text-muted-foreground"}>From your next message{options.permission ? `: ${chatPermissions[options.permission].hint}` : "."}</p>}
+        {modelsError && <p role="alert" className="mt-1 text-xs text-destructive">{modelsError}</p>}
+      </Composer>}
     />
   </div>;
 }

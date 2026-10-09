@@ -2,13 +2,12 @@ import { AssistantRuntimeProvider, useAuiState, useExternalStoreRuntime, type Th
 import { createContext, useContext, useMemo, type PropsWithChildren, type ReactNode } from "react";
 
 import { AssistantMessage, Thread, type ThreadGroupPart } from "@/components/assistant-ui/elements/thread.aui";
+import { TerminalBlock } from "@/components/assistant-ui/elements/terminal-block";
+import { ToolFallback } from "@/components/assistant-ui/elements/tool-fallback.aui";
+import { ToolGroupRoot, ToolGroupTrigger, ToolGroupContent } from "@/components/assistant-ui/elements/tool-group.aui";
 import type { ThreadTurn } from "@/lib/chat-thread";
 
-// A structured chat drawn by assistant-ui's thread (components/assistant-ui):
-// its viewport, its messages and its markdown, fed by Burf's own chat rather
-// than a model route. The view keeps what is Burf's: the composer with its
-// permission, model and effort, the approvals, and what Burf adds to a tool
-// call or a report (lib/chat-thread.ts makes the turns).
+// Burf supplies the turns and the controls; assistant-ui draws the thread.
 
 interface Extras {
   // Under a tool call: the artifacts it made, say.
@@ -33,44 +32,45 @@ function message(turn: ThreadTurn): ThreadMessageLike {
     content: turn.parts.map((p) =>
       p.type === "text"
         ? { type: "text" as const, text: p.text }
-        : { type: "tool-call" as const, toolCallId: p.id, toolName: "run", args: { command: p.command }, argsText: p.command, result: p.running ? undefined : p.output },
+        : { type: "tool-call" as const, toolCallId: p.id, toolName: "run", args: { command: p.command, output: p.output, running: p.running }, argsText: p.command, result: p.running ? undefined : p.output },
     ),
   };
 }
 
-// What the agent ran and what it printed, as the box told it: the command,
-// then its output, in one block a person can scroll.
-const Tool: ToolCallMessagePartComponent = ({ args, result }) => {
+// The runtime tool call has a content slot for the stock terminal block.
+const CommandCall: ToolCallMessagePartComponent = ({ args }) => {
   const command = String((args as { command?: unknown }).command ?? "");
-  const output = typeof result === "string" ? result : "";
-  return <pre data-testid="chat-tool" className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-words border-l pl-3">{output ? `${command}\n${output}` : command}</pre>;
+  const output = String((args as { output?: unknown }).output ?? "");
+  const running = (args as { running?: unknown }).running === true;
+  const lines = output ? output.split("\n") : [];
+  return <ToolFallback.Root>
+    <ToolFallback.Trigger toolName={command} status={running ? { type: "running" } : { type: "complete" }} />
+    <ToolFallback.Content>
+      {running ? <TerminalBlock command={command} lines={lines} visibleCount={lines.length} done={false} /> : <pre data-testid="chat-tool" className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-words border-l pl-3">{output ? `${command}\n${output}` : command}</pre>}
+    </ToolFallback.Content>
+  </ToolFallback.Root>;
 };
 
-// A run of tool calls folds into one line that says how many, and whether
-// one is still going.
-// What Burf adds for a call (an artifact it made) stays in view below the
-// fold, whether or not the run is open.
-function ToolGroup({ group, children }: PropsWithChildren<{ group: ThreadGroupPart }>) {
+// Artifacts stay outside the stock group's fold, as they did before.
+function CallsWithArtifacts({ group, children }: PropsWithChildren<{ group: ThreadGroupPart }>) {
   const extras = useContext(ExtrasContext);
   const parts = useAuiState((s) => s.message.parts);
   return (
-    <div className="min-w-0 py-1">
-      <details className="min-w-0 text-xs">
-        <summary className="cursor-pointer text-muted-foreground">
-          Tool activity · {group.indices.length}
-          {group.status.type === "running" ? " · working" : ""}
-        </summary>
-        {children}
-      </details>
+    <>
+      <ToolGroupRoot variant="ghost">
+        <ToolGroupTrigger count={group.indices.length} active={group.status.type === "running"} />
+        <ToolGroupContent>{children}</ToolGroupContent>
+      </ToolGroupRoot>
       {group.indices.map((i) => {
         const part = parts[i];
         return part?.type === "tool-call" ? extras.tool?.(part.toolCallId) : null;
       })}
-    </div>
+    </>
   );
 }
 
-// Burf's own report stands apart from what the agent said.
+// Burf's own report of work the chat started is not something Codex said:
+// it stands apart from the agent's messages, under Burf's name.
 function Message() {
   const extras = useContext(ExtrasContext);
   const custom = useAuiState((s) => s.message.metadata.custom) as { report?: string; text?: string } | undefined;
@@ -83,7 +83,7 @@ function Message() {
   );
 }
 
-const components = { AssistantMessage: Message, ToolFallback: Tool, ToolGroup };
+const components = { AssistantMessage: Message, ToolFallback: CommandCall, ToolGroup: CallsWithArtifacts };
 const sent = async () => {};
 
 export function ChatThread({ turns, working, agent, composer, welcome, after, tool, report }: { turns: ThreadTurn[]; working: boolean; agent: string; composer: ReactNode; welcome?: ReactNode; after?: ReactNode } & Extras) {
