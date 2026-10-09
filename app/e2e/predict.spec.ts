@@ -12,7 +12,7 @@ const DELAY = "400";
 // A shell on gpu's home, opened from Home with ⌘T.
 async function openShell(page: Page) {
   await expect(page.getByRole("heading", { name: "What should your agents work on?" })).toBeVisible();
-  await page.keyboard.press("Meta+KeyT");
+  await page.keyboard.press("ControlOrMeta+KeyT");
   const picker = page.getByRole("dialog", { name: "New terminal on a box" });
   await expect(picker).toBeVisible();
   // Its field takes the keyboard a moment after the dialog shows; typed
