@@ -98,12 +98,24 @@ func stepLink(prev string, fails int, took, timeout time.Duration, err error) li
 // than a slow link: the connection refused (nothing listens there), a key
 // other than the pairing's, or the box saying it is stopping.
 func hardFailure(err error) bool {
-	return errors.Is(err, syscall.ECONNREFUSED) ||
+	return refused(err) ||
 		// Another tailnet's node (gVisor) says it in words.
 		strings.Contains(err.Error(), "connection refused") ||
 		strings.Contains(err.Error(), "connection was refused") ||
 		errors.Is(err, wire.ErrPinMismatch) ||
 		wire.Stopping(err)
+}
+
+// refused reports whether err is a connection nothing was listening for.
+// Windows has a number of its own for that (WSAECONNREFUSED, 10061): there
+// syscall.ECONNREFUSED is a value Go made up, which no socket call returns,
+// so a box that was plainly down took two checks to show as away.
+func refused(err error) bool {
+	if errors.Is(err, syscall.ECONNREFUSED) {
+		return true
+	}
+	var errno syscall.Errno
+	return errors.As(err, &errno) && errno == 10061
 }
 
 // shortErr is err without the request around it: "i/o timeout", not
@@ -112,7 +124,7 @@ func shortErr(err error, timeout time.Duration) string {
 	switch {
 	case errors.Is(err, context.DeadlineExceeded):
 		return "no answer in " + roundDur(timeout)
-	case errors.Is(err, syscall.ECONNREFUSED):
+	case refused(err):
 		return "connection refused"
 	case errors.Is(err, wire.ErrPinMismatch):
 		return "the box answered with a key other than its pairing's"

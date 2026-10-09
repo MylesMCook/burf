@@ -80,9 +80,11 @@ func TestAHardFailureTakesTheBoxAwayAtOnce(t *testing.T) {
 	for name, err := range map[string]error{
 		"refused":         pingErr(&os.SyscallError{Syscall: "connect", Err: syscall.ECONNREFUSED}),
 		"refused (tsnet)": pingErr(errors.New("connect tcp 100.64.0.4:7444: connection was refused")),
-		"wrong key":       pingErr(wire.ErrPinMismatch),
-		"stopping":        wire.ErrStopping,
-		"goaway":          errors.New("http2: server sent GOAWAY and closed the connection; LastStreamID=3, ErrCode=NO_ERROR"),
+		// Windows numbers it differently, and words it "actively refused it".
+		"refused (Windows)": pingErr(&os.SyscallError{Syscall: "connectex", Err: syscall.Errno(10061)}),
+		"wrong key":         pingErr(wire.ErrPinMismatch),
+		"stopping":          wire.ErrStopping,
+		"goaway":            errors.New("http2: server sent GOAWAY and closed the connection; LastStreamID=3, ErrCode=NO_ERROR"),
 	} {
 		s := stepLink(StateOnline, 0, time.Millisecond, 8*time.Second, err)
 		if s.State != StateOffline || s.Fails != 1 {
@@ -92,6 +94,9 @@ func TestAHardFailureTakesTheBoxAwayAtOnce(t *testing.T) {
 	s := stepLink(StateOnline, 0, time.Millisecond, 8*time.Second, pingErr(&os.SyscallError{Syscall: "connect", Err: syscall.ECONNREFUSED}))
 	if s.Reason != "connection refused" {
 		t.Fatalf("reason %q", s.Reason)
+	}
+	if s := stepLink(StateOnline, 0, time.Millisecond, 8*time.Second, pingErr(&os.SyscallError{Syscall: "connectex", Err: syscall.Errno(10061)})); s.Reason != "connection refused" {
+		t.Fatalf("reason on Windows %q", s.Reason)
 	}
 	// A box that no longer trusts this laptop is untrusted, as before.
 	if s := stepLink(StateOnline, 0, time.Millisecond, 8*time.Second, wire.ErrUntrusted); s.State != StateUntrusted {
