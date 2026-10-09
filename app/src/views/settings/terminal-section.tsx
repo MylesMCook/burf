@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { SimpleSelect } from "@/components/simple-select";
 import { Switch } from "@/components/ui/switch";
 import { setPrefs, setTerminalPrefs, usePrefs } from "@/lib/prefs";
+import { useCustomFonts, useCustomTerminalPrefs } from "@/lib/custom-fonts";
 import { copyText } from "@/lib/clipboard";
 import { DEFAULT_TERMINAL_PREFS, onRendererOutcome, rendererOutcome, type TerminalPrefs } from "@/lib/terminal";
 import { useActiveTheme } from "@/hooks/use-theme";
@@ -11,7 +12,7 @@ import { Segmented, Stepper } from "@/views/settings/controls";
 import { SettingsGroup, SettingsPage, SettingsRow } from "@/views/settings/rows";
 
 const FONTS = [
-  { value: DEFAULT_TERMINAL_PREFS.fontFamily, label: "JetBrains Mono" },
+  { value: DEFAULT_TERMINAL_PREFS.fontFamily, label: "Code font" },
   { value: '"SF Mono", ui-monospace, Menlo, monospace', label: "SF Mono" },
   { value: 'Menlo, ui-monospace, monospace', label: "Menlo" },
   { value: '"Berkeley Mono", ui-monospace, Menlo, monospace', label: "Berkeley Mono (if installed)" },
@@ -19,27 +20,36 @@ const FONTS = [
 ];
 
 export function TerminalSection() {
-  const t = usePrefs((p) => p.terminal);
+  const t = useCustomTerminalPrefs();
+  const saved = usePrefs((p) => p.terminal);
+  const chosen = usePrefs((p) => p.terminalFont);
+  const custom = usePrefs((p) => p.customFonts);
+  const status = useCustomFonts((s) => s.status);
   const copyOnSelect = usePrefs((p) => p.copyOnSelect);
   const set = (patch: Partial<TerminalPrefs>) => setTerminalPrefs(patch);
   const outcome = useSyncExternalStore(onRendererOutcome, rendererOutcome);
   const fellBack = outcome?.chosen === "ghostty" && outcome.renderer === "xterm";
-  const fonts = FONTS.some((f) => f.value === t.fontFamily) ? FONTS : [{ value: t.fontFamily, label: t.fontFamily }, ...FONTS];
+  const builtins = FONTS.some((f) => f.value === saved.fontFamily) ? FONTS : [{ value: saved.fontFamily, label: saved.fontFamily }, ...FONTS];
+  const fonts = [...builtins, ...custom.filter((f) => status[f.id] === "loaded").map((f) => ({ value: f.id, label: f.name }))];
+  const pickFont = (value: string) => {
+    const isCustom = custom.some((f) => f.id === value);
+    setPrefs({ terminalFont: isCustom ? value : null, terminal: { ...saved, fontFamily: isCustom ? DEFAULT_TERMINAL_PREFS.fontFamily : value } });
+  };
 
   return (
     <SettingsPage
       title="Terminal"
       description="Applies to every terminal pane; open ones update as you change these."
       actions={
-        <Button size="xs" variant="ghost" className="text-muted-foreground" onClick={() => setTerminalPrefs(DEFAULT_TERMINAL_PREFS)}>
+        <Button size="xs" variant="ghost" className="text-muted-foreground" onClick={() => setPrefs({ terminal: DEFAULT_TERMINAL_PREFS, terminalFont: null })}>
           Restore defaults
         </Button>
       }
     >
       <TerminalPreview prefs={t} />
       <SettingsGroup title="Text">
-        <SettingsRow label="Font">
-          <SimpleSelect className="w-56" options={fonts} value={t.fontFamily} onChange={(fontFamily) => set({ fontFamily })} />
+        <SettingsRow label="Font" description="Uses Code font from Appearance unless you choose another font here.">
+          <SimpleSelect className="w-56" options={fonts} value={chosen ?? saved.fontFamily} onChange={pickFont} />
         </SettingsRow>
         <SettingsRow label="Size" description="Or ⌘+ and ⌘− with a terminal focused; ⌘0 resets it.">
           <Stepper value={t.fontSize} min={9} max={24} onChange={(fontSize) => set({ fontSize })} />
@@ -129,6 +139,7 @@ function TerminalPreview({ prefs }: { prefs: TerminalPrefs }) {
       // A picture of a terminal in the theme's ANSI colours, the programs'
       // own choice: the axe spec leaves it out (the app's text it checks).
       data-a11y-skip
+      data-testid="terminal-preview"
       className="overflow-hidden rounded-xl border px-4 py-3"
       style={{ background: t.background, color: t.foreground, fontFamily: prefs.fontFamily, fontSize: prefs.fontSize, lineHeight: prefs.lineHeight }}
     >
