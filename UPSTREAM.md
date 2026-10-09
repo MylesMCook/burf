@@ -131,12 +131,15 @@ Not deployed: no installed client or daemon was updated by this merge.
 
 ## Integrated: `9ae4747` (2026-10-08)
 
-Prepared in the working tree of `codex/upstream-9ae4747` from fork
-`846bf2d3fdf0c74ed2f7cb7b5459128a81b3c2e9`. This is **not yet a merge
-commit**: the reviewer must stage the resolutions and finish the existing
-merge. The second parent is the name-translated copy
-`a5810d43f0e96aff9438ae8acaebb4e84563db8f`, whose parent is real upstream
+Merged on `codex/upstream-9ae4747` from fork
+`846bf2d3fdf0c74ed2f7cb7b5459128a81b3c2e9`. The merge's second parent is not
+upstream's own tree but a name-translated copy of it,
+`a5810d43f0e96aff9438ae8acaebb4e84563db8f` (Shipyard written Burf,
+`cosscom/shipyard` written `MylesMCook/burf`), whose parent is real upstream
 `9ae4747452f59f4c51a4b78854cc1b6020d1c674`; upstream ancestry is preserved.
+Merging upstream's own spelling conflicted in 539 files on names alone; the
+translated copy left 158 files and 237 hunks, each resolved by hand. The next
+intake can use the same step.
 At intake the common ancestor was `add33bd`; upstream contributed 58 unique
 commits. The old review snapshots above are historical and superseded here.
 
@@ -171,10 +174,16 @@ Adapted to Burf rather than taken as written:
 - Recognize Windows separately from Mac/Linux in keyboard and settings UI.
   Combine Linux platform support with Windows PATH/uninstall behavior.
   Linux staging runs burf and retains berth as an alias in legacy state.
-- Keep main-push CI and blocking E2E. Preserve immediate keyboard assertions
-  rather than upstream polling. Combine fixture TestMain handlers, rename a
+- Keep main-push CI and blocking E2E. Combine fixture TestMain handlers, rename a
   duplicate upstream transcript test, adapt two private process literal keys
   to portable PanePID, and fix a stale route fixture without weakening checks.
+- A box that has stopped serving answers with upstream's `box_stopping` code:
+  the fork's stores guard answers before a ping can, and a laptop tells a box
+  on its way down by that code (`internal/wire/stopped_unix_test.go`).
+- Upstream's process list put its empty state, a paragraph, straight inside a
+  list, which fails the accessibility check for Settings › Boxes; it is a list
+  item here. Upstream's slow-link case matches the reconnecting "Retry" button
+  by its exact name, because Burf also has "Retry build check" on that page.
 - Correct translated docs/repository links and release claims, retain honest
   Shipyard attribution/history, and freeze historical design/demo assets.
 
@@ -185,11 +194,15 @@ signing identity, release secret, installer or feed is adopted. Updater key
 and endpoints remain empty; signed fork distribution is separate work.
 The discontinued kit README is removed as upstream intended.
 
-Verification is recorded with exact counts and gaps in
-[the intake report](UPSTREAM-9ae4747.md). Sandbox socket/browser restrictions
-and unavailable offline dependencies prevent full acceptance here. Native
-Windows/Linux execution, signed-in providers, installed clients/daemons,
-releases, deployment and upgrades are not verified or changed.
+Verified on the merged tree (macOS arm64): `go build` and `go vet` for
+darwin and linux, and for windows amd64 and arm64 over the client packages;
+`go test -race ./...` with no failures; 291 frontend units; app and e2e type
+checks; the production build; titles, CSP, themes, platform and plugin-consent
+checks; the documented Playwright acceptance list (107 passed); the whole
+Playwright suite (356 passed, 3 failed: the two Settings › Boxes cases fixed
+as above and rerun green, and the notifications race already fixed on `main`).
+Not verified: native Windows or Linux execution, the Linux desktop bundle, the
+Rust tests, signed-in providers, installed clients or daemons. Not deployed.
 
 ## Accepted Fixes
 

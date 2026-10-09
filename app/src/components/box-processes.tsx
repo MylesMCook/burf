@@ -143,7 +143,7 @@ function ProcessesBody({ box, data, error, reload }: { box: string; data?: BoxPr
   return (
     <>
       <Section title="Browsers">
-        {data.browsers.length === 0 && <p className="px-4 py-3 text-muted-foreground text-xs">No browsers running on {box}.</p>}
+        {data.browsers.length === 0 && <li className="px-4 py-3 text-muted-foreground text-xs">No browsers running on {box}.</li>}
         {data.browsers.map((b) => (
           <BrowserRow key={b.id} box={box} b={b} onStopped={reload} />
         ))}

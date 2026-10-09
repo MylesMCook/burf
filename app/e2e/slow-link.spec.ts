@@ -56,8 +56,9 @@ test("Settings › Boxes shows the latency, why the link is slow, and that Tails
   const relay = boxes.getByTestId("box-relayed");
   await expect(relay).toContainText("Relayed through Tailscale's New York server: no direct connection (this computer's nearest is London).");
   await expect(relay.getByRole("button", { name: "Learn more" })).toBeVisible();
-  // Online, so no Retry: it isn't reconnecting.
-  await expect(boxes.getByRole("button", { name: "Retry" })).toHaveCount(0);
+  // Online, so no Retry: it isn't reconnecting. (Burf's own "Retry build
+  // check" is another button, for a box whose build could not be compared.)
+  await expect(boxes.getByRole("button", { name: "Retry", exact: true })).toHaveCount(0);
 
   // Steady but still relayed: the latency, how high it went, and the relay.
   agent.online = { latency_ms: 80, link: { max_ms: 1900, path: relayed } };
