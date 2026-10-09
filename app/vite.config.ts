@@ -152,7 +152,14 @@ export default defineConfig(({ mode }) => ({
   build:
     mode === "demo"
       ? { chunkSizeWarningLimit: 2000, outDir: path.resolve(import.meta.dirname, "../site/demo"), emptyOutDir: true }
-      : { chunkSizeWarningLimit: 2000 },
+      : {
+          chunkSizeWarningLimit: 2000,
+          // lucide's icons are a module each, and left alone they are a
+          // file each: some 290 requests before the app's first draw, which
+          // is most of its start-up (and of every browser test's). One file
+          // holds them all.
+          rolldownOptions: { output: { codeSplitting: { groups: [{ name: "icons", test: /node_modules[\\/]lucide-react[\\/]/ }] } } },
+        },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //

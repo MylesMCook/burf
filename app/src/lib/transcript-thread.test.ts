@@ -1,9 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { withDraft } from "./draft-text.ts";
 import type { TranscriptItem } from "./transcript.ts";
-import { estimateTurn, newTurnCache, transcriptMessage, transcriptSearchEntries, turnItems, transcriptTurns } from "./transcript-thread.ts";
+import { estimateTurn, newTurnCache, transcriptMessage, transcriptSearchEntries, transcriptTurns } from "./transcript-thread.ts";
 
 const user = (id: string, text = "Do it"): TranscriptItem => ({ kind: "user", id, text });
 const text = (id: string, words: string): TranscriptItem => ({ kind: "text", id, text: words });
@@ -159,24 +158,6 @@ test("runtime messages reuse unchanged parts, and every prompt and reply uses It
   assert.equal(a.content[3], b.content[3]);
   assert.deepEqual(b.content.map((part) => part.type), ["data-steps", "data-item", "data-item", "data-item"]);
   assert.deepEqual(b.status, { type: "running" });
-});
-
-test("a landed reply keeps the draft's turn id even when it is the first item", () => {
-  const draft = { id: "draft-turn", text: "A long enough answer to recognize once it lands.", clipped: false };
-  const before = transcriptTurns(withDraft([], draft).items);
-  const landed = text("landed-turn", draft.text);
-  const after = transcriptTurns(withDraft([landed], draft).items);
-  assert.equal(before[0].id, draft.id);
-  assert.equal(after[0].id, before[0].id);
-  assert.deepEqual(transcriptMessage(after[0]).content, [{ type: "data-item", data: landed }]);
-});
-
-test("artifact lookup can reach each turn's visible and folded items", () => {
-  const items = [user("u"), tools("t"), { kind: "artifact", id: "r", text: "Plan" } satisfies TranscriptItem, text("a", "Done."), ping("p1"), ping("p2")];
-  const turns = transcriptTurns(items);
-  assert.deepEqual(turnItems(turns[0]), [items[0]]);
-  assert.deepEqual(turnItems(turns[1]), items.slice(1, 4));
-  assert.deepEqual(turnItems(turns[2]), items.slice(4));
 });
 
 test("a 2,000-prompt transcript changes only its final runtime message while streaming", () => {

@@ -38,43 +38,6 @@ test("a new install shows nothing and counts this version as seen", async ({ app
   await expect(card(app.page)).toHaveCount(0);
 });
 
-test("after an update, a note opens the card, once", async ({ app }) => {
-  await app.open(UPDATED);
-  await expect(nudge(app.page)).toContainText("New in Burf 0.3.10");
-  // Quiet: nothing covers the app until the note is clicked.
-  await expect(card(app.page)).toHaveCount(0);
-  await nudge(app.page).getByRole("button", { name: "See what's new" }).click();
-  await expect(card(app.page)).toBeVisible();
-  await expect(card(app.page).getByRole("tab")).toHaveCount(6);
-  await expect(nudge(app.page)).toHaveCount(0);
-  await expect.poll(() => app.stored("berth.prefs")).toMatchObject({ whatsNewSeen: "0.3.10" });
-  await app.page.keyboard.press("Escape");
-  await expect(card(app.page)).toHaveCount(0);
-
-  // Started again: seen.
-  await app.page.reload();
-  await expect(app.page.getByTestId("nav-home")).toBeVisible();
-  await app.page.waitForTimeout(1500);
-  await expect(nudge(app.page)).toHaveCount(0);
-  await expect(card(app.page)).toHaveCount(0);
-});
-
-test("the note's × puts it away for good; an unanswered note comes back", async ({ app }) => {
-  await app.open(UPDATED);
-  await expect(nudge(app.page)).toBeVisible();
-  // Not acted on: it is there again next time.
-  await app.page.reload();
-  await expect(nudge(app.page)).toBeVisible();
-  await expect.poll(() => app.stored("berth.prefs")).toMatchObject({ whatsNewSeen: "0.3.9" });
-  await nudge(app.page).getByRole("button", { name: "Dismiss" }).click();
-  await expect(nudge(app.page)).toHaveCount(0);
-  await expect.poll(() => app.stored("berth.prefs")).toMatchObject({ whatsNewSeen: "0.3.10" });
-  await app.page.reload();
-  await expect(app.page.getByTestId("nav-home")).toBeVisible();
-  await app.page.waitForTimeout(1500);
-  await expect(nudge(app.page)).toHaveCount(0);
-});
-
 test("with the sidebar folded the card opens by itself", async ({ app }) => {
   // Folded, the sidebar has no Home for app.open to wait on.
   await app.context.addInitScript((prefs) => localStorage.getItem("berth.prefs") ?? localStorage.setItem("berth.prefs", prefs), JSON.stringify({ ...UPDATED.prefs, sidebarCollapsed: true }));

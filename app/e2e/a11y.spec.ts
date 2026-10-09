@@ -1,4 +1,4 @@
-import { appendFileSync, readFileSync } from "node:fs";
+import { appendFileSync } from "node:fs";
 
 import AxeBuilder from "@axe-core/playwright";
 
@@ -10,12 +10,9 @@ import { expect, mockOnly, test } from "./fixtures";
 // out (it isn't ours), as are the terminal's canvas rows.
 //
 // A11Y_REPORT=file.jsonl writes every violation, minor ones too, instead of
-// failing; A11Y_FULL=1 adds Burf Light and every screen's other states
-// (scenes marked extra); A11Y_THEMES=all checks the key screens' contrast in
-// every built-in theme. check:themes covers each theme's contrast on every run.
+// failing; A11Y_FULL=1 includes the extra states in the same dark theme.
 
 const report = process.env.A11Y_REPORT;
-const allThemes = process.env.A11Y_THEMES === "all";
 const full = process.env.A11Y_FULL === "1";
 // Reduce motion from the start, so what animates itself as it mounts (an
 // artifact's bklit chart, its heatmap cells) is read at rest, not mid-fade.
@@ -23,30 +20,24 @@ test.use({ reducedMotion: "reduce" });
 
 const TAGS = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa", "best-practice"];
 
-async function audit(page: import("@playwright/test").Page, only?: string[]) {
+async function audit(page: import("@playwright/test").Page) {
   // Animations finish first, so contrast is read at rest.
   await page.emulateMedia({ reducedMotion: "reduce" });
-  await page.waitForTimeout(250);
-  let b = new AxeBuilder({ page }).withTags(TAGS).exclude("iframe").exclude(".xterm-rows").exclude("[data-a11y-skip]");
-  if (only) b = b.withRules(only);
+  await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== "running" || a.effect?.getComputedTiming().iterations === Infinity));
+  const b = new AxeBuilder({ page }).withTags(TAGS).exclude("iframe").exclude(".xterm-rows").exclude("[data-a11y-skip]");
   const r = await b.analyze();
   return r.violations;
 }
 
-// Every built-in theme's id, read from its source (the app's modules don't
-// load in the spec's node).
-const builtinIds = () => ["builtin.ts", "vscode.ts"].flatMap((f) => [...readFileSync(new URL(`../src/themes/${f}`, import.meta.url), "utf8").matchAll(/^\s{2,4}id: "([^"]+)",$/gm)].map((m) => m[1]));
-const themes = allThemes ? builtinIds() : full ? ["berth-dark", "berth-light"] : ["berth-dark"];
-
-for (const theme of themes) {
+// One theme per scene; the Node contrast suite covers the theme palette.
+for (const theme of ["berth-dark"]) {
   for (const scene of scenes) {
-    if (allThemes && !scene.key) continue;
-    if (scene.extra && !full && !allThemes) continue;
+    if (scene.extra && !full) continue;
     test(`${scene.id} in ${theme} has no serious accessibility problems`, async ({ app }) => {
       mockOnly();
       test.setTimeout(90_000);
       await scene.run(app, theme);
-      const v = await audit(app.page, allThemes ? ["color-contrast"] : undefined);
+      const v = await audit(app.page);
       if (report) {
         for (const x of v) {
           appendFileSync(

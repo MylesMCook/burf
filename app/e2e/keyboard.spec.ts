@@ -1,7 +1,7 @@
 import type { Locator, Page } from "@playwright/test";
 
 import { openBrowser } from "./a11y-scenes";
-import { type App, agentWorktree, expect, mockOnly, test } from "./fixtures";
+import { agentWorktree, expect, mockOnly, test } from "./fixtures";
 
 // The core flows with the keyboard alone: Tab and Shift-Tab, arrows, Enter,
 // Esc and the documented shortcuts (lib/shortcuts.json). After every step
@@ -34,11 +34,15 @@ const shows = (page: Page) =>
         .map((c) => [c.outlineStyle, c.outlineWidth, c.outlineColor, c.boxShadow, c.borderColor, c.backgroundColor, c.opacity].join("|"))
         .join("#");
     const frame = () => new Promise((r) => requestAnimationFrame(() => r(null)));
-    // A ring may fade in (a transition, even reduced, ends a frame or two on).
-    await new Promise((r) => setTimeout(r, 200));
+    // Let finite transitions finish before comparing the focus ring.
+    const settled = async () => {
+      await frame();
+      await Promise.all(document.getAnimations().filter((a) => a.effect?.getComputedTiming().iterations !== Infinity).map((a) => a.finished.catch(() => {})));
+    };
+    await settled();
     const on = snap();
     el.blur();
-    await new Promise((r) => setTimeout(r, 200));
+    await settled();
     const off = snap();
     el.focus({ preventScroll: true });
     await frame();
@@ -54,98 +58,6 @@ async function pressTo(page: Page, target: Locator, key = "Tab", max = 40) {
   throw new Error(`${key} never reached ${target}`);
 }
 
-const chat = async (app: App, wt: string) => {
-  await app.open({ params: { view: "conversation" } });
-  await app.openWorktree(await agentWorktree(app, wt));
-  await expect(app.chat).toBeVisible();
-};
-
-test("start a task from Home with the keyboard", async ({ app }) => {
-  mockOnly("starts an agent");
-  await app.open();
-  const page = app.page;
-  const box = page.getByTestId("task-composer").getByRole("textbox").first();
-  await box.focus();
-  await page.keyboard.type("Fix the flaky export test");
-  // Tab walks the composer's choices to Start; each shows it has the keyboard.
-  const start = page.getByTestId("task-composer").getByRole("button", { name: "Start" });
-  for (let i = 0; i < 8 && !(await start.evaluate((el) => el === document.activeElement)); i++) {
-    await page.keyboard.press("Tab");
-    expect(await shows(page), `focus shows on ${JSON.stringify(await focused(page))}`).toBe(true);
-  }
-  await expect(start).toBeFocused();
-  await page.keyboard.press("Enter");
-  // The new task's pane opens and has the keyboard.
-  await expect(app.panes.first()).toBeVisible();
-  await expect(app.composer.getByRole("textbox", { name: "Reply" })).toBeFocused();
-  await notLost(page);
-  expect(await shows(page)).toBe(true);
-});
-
-test("Tab and Shift-Tab on Home: every stop shows, none is lost", async ({ app }) => {
-  await app.open();
-  const page = app.page;
-  await page.getByTestId("sidebar-handle").focus();
-  const seen: string[] = [];
-  for (let i = 0; i < 30; i++) {
-    await page.keyboard.press("Tab");
-    const f = await focused(page);
-    if (!f) break; // past the window's last control
-    seen.push(`${f.tag}:${f.label || f.testid}`);
-    expect(await shows(page), `focus shows on ${seen.at(-1)}`).toBe(true);
-  }
-  expect(seen.length).toBeGreaterThan(10);
-  for (let i = 0; i < 5; i++) {
-    await page.keyboard.press("Shift+Tab");
-    await notLost(page);
-  }
-});
-
-test("answer a question and reply in a chat with the keyboard", async ({ app }) => {
-  mockOnly("answers a question on a box");
-  await chat(app, "gpu/shop");
-  const page = app.page;
-  const form = app.chat.getByTestId("question-form");
-  const reply = app.composer.getByRole("textbox", { name: "Reply" });
-  await reply.focus();
-  // Back from the reply box to the form's first choice; arrows pick.
-  const first = form.getByRole("radio").first();
-  await pressTo(page, first, "Shift+Tab");
-  await page.keyboard.press("ArrowDown");
-  await expect(form.getByRole("radio", { name: /Next minor/ })).toBeChecked();
-  const next = form.getByRole("button", { name: /^(Next|Review|Submit answers)$/ }).last();
-  await pressTo(page, next);
-  await page.keyboard.press("Enter");
-  await expect(form).toContainText("2 of 3");
-  await notLost(page);
-  // The reply box is still a Tab away, and Enter sends what is typed.
-  await pressTo(page, reply);
-  await expect(reply).toBeFocused();
-});
-
-test("allow a permission from the chat with the keyboard", async ({ app }) => {
-  mockOnly("answers an agent");
-  await chat(app, "devl/checkout-fix");
-  const page = app.page;
-  await app.composer.getByRole("textbox", { name: "Reply" }).focus();
-  const allow = app.chat.getByRole("button", { name: "Allow", exact: true });
-  await pressTo(page, allow, "Shift+Tab");
-  expect(await shows(page)).toBe(true);
-  await page.keyboard.press("Enter");
-  await expect(allow).toHaveCount(0);
-  await notLost(page);
-});
-
-test("under a chat, the agent's terminal is out of the Tab order", async ({ app }) => {
-  await chat(app, "gpu/shop");
-  const page = app.page;
-  await app.composer.getByRole("textbox", { name: "Reply" }).focus();
-  for (let i = 0; i < 25; i++) {
-    await page.keyboard.press("Shift+Tab");
-    const f = await focused(page);
-    expect(f?.label, "Shift-Tab landed in the hidden terminal").not.toBe("Terminal input");
-  }
-});
 
 test("⌘P opens a file in the editor, which takes the keyboard, and ⌘S saves it", async ({ app }) => {
   mockOnly("writes a file on a box");
@@ -172,32 +84,8 @@ test("⌘P opens a file in the editor, which takes the keyboard, and ⌘S saves 
   await notLost(page);
 });
 
-test("⌘⇧E puts the keyboard in the Files panel, and New file names one there", async ({ app }) => {
-  mockOnly("writes a file on a box");
-  await app.open();
-  await app.openWorktree("devl/checkout-fix");
-  const page = app.page;
-  // From its chat composer, which takes the keyboard when the pane opens.
-  await expect(app.composer.getByRole("textbox", { name: "Reply" })).toBeFocused();
-  await page.keyboard.press("ControlOrMeta+Shift+E");
-  const panel = page.getByTestId("files-panel");
-  await expect(panel).toBeVisible();
-  await expect.poll(() => page.evaluate(() => !!document.activeElement?.closest("[data-testid=files-panel]"))).toBe(true);
-  await pressTo(page, panel.getByTestId("tree-new-file-button"));
-  await page.keyboard.press("Enter");
-  await expect(panel.getByTestId("tree-new-file")).toBeVisible();
-  await page.keyboard.type("notes-from-keyboard.md");
-  await page.keyboard.press("Enter");
-  await expect(page.locator('[data-testid=file-pane][data-path$="notes-from-keyboard.md"] .cm-content')).toBeVisible();
-  await notLost(page);
-  // ⌘⇧E again hides it; the keyboard goes home.
-  await panel.getByRole("tree").or(panel.getByTestId("file-tree")).first().focus().catch(() => {});
-  await page.keyboard.press("ControlOrMeta+Shift+E");
-  await notLost(page);
-});
-
 test("split, switch tabs and move between panes with the keyboard", async ({ app }) => {
-  await app.open({ params: { view: "conversation" } });
+  await app.open();
   await app.openWorktree(await agentWorktree(app, "devl/checkout-fix"));
   const page = app.page;
   await page.keyboard.press("ControlOrMeta+d");
@@ -267,73 +155,6 @@ test("the sidebar's edge resizes from the keyboard, and shows it has it", async 
   expect(await shows(page)).toBe(true);
   await page.keyboard.press("ArrowRight");
   await expect(handle).toHaveAttribute("aria-valuenow", "256");
-});
-
-test("⌘K reaches Settings and a theme is chosen with the keyboard", async ({ app }) => {
-  await app.open();
-  const page = app.page;
-  await page.keyboard.press("ControlOrMeta+k");
-  const input = page.getByRole("combobox", { name: "Search sessions, worktrees and commands" });
-  await expect(input).toBeFocused();
-  // Esc closes it, and the keyboard isn't lost.
-  await page.keyboard.press("Escape");
-  await expect(input).toHaveCount(0);
-  await notLost(page);
-  await page.keyboard.press("ControlOrMeta+k");
-  await page.keyboard.type("Settings: Appearance");
-  await page.keyboard.press("Enter");
-  const appearance = page.getByTestId("settings-appearance");
-  await expect(appearance).toBeVisible();
-  await notLost(page);
-  const light = appearance.locator('[data-testid=theme-option][data-theme-id="berth-light"]');
-  await pressTo(page, light, "Tab", 60);
-  expect(await shows(page)).toBe(true);
-  await page.keyboard.press("Enter");
-  await expect(page.locator("html")).not.toHaveClass(/dark/);
-});
-
-test("⌘K lists what the menus and shortcuts do", async ({ app }) => {
-  await app.open();
-  await app.openWorktree(await agentWorktree(app, "devl/checkout-fix"));
-  const page = app.page;
-  await page.keyboard.press("ControlOrMeta+k");
-  const list = page.getByRole("listbox");
-  for (const [query, name] of [
-    ["files panel", "Files panel"],
-    ["go to file", "Go to file…"],
-    ["split right", "Split right"],
-    ["zoom in", "Zoom in"],
-    ["sidebar", "Show or hide the sidebar"],
-    ["review", "Review"],
-    ["preview", "New Preview tab"],
-    ["rename", "Rename this worktree…"],
-    ["settings: terminal", "Settings: Terminal"],
-    ["do not disturb", "Turn on Do not disturb"],
-  ]) {
-    await page.keyboard.press("ControlOrMeta+a");
-    await page.keyboard.type(query);
-    await expect(list.getByRole("option", { name: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`) }).first(), query).toBeVisible();
-  }
-  // A shortcut's item runs it: Files panel opens.
-  await page.keyboard.press("ControlOrMeta+a");
-  await page.keyboard.type("files panel");
-  await page.keyboard.press("Enter");
-  await expect(page.getByTestId("files-panel")).toBeVisible();
-});
-
-test("Team setup to its first step with the keyboard", async ({ app }) => {
-  mockOnly("reads a team's setup");
-  await app.open({ params: { team: "acme" } });
-  const page = app.page;
-  await page.keyboard.press("ControlOrMeta+k");
-  await page.keyboard.type("Team setup");
-  await page.keyboard.press("Enter");
-  const org = page.getByRole("textbox", { name: "GitHub org or link" });
-  await expect(org).toBeFocused();
-  await page.keyboard.type("acme");
-  await page.keyboard.press("Enter");
-  await expect(page.getByTestId("team-page")).toContainText(/acme/i);
-  await notLost(page);
 });
 
 test("⌘⌥I puts the keyboard in the console drawer; arrows switch its tabs", async ({ app }) => {

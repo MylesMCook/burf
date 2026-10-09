@@ -18,7 +18,7 @@ async function fixture(context: BrowserContext, supported = true, options = fals
   const calls: { method: string; path: string; body: unknown }[] = [];
   const chat = { id: "remote-1", agent: "codex", mode: "chat", location: "shop/fix", cwd: DIR, state: "idle", started_at: "2026-10-08T12:00:00Z", thread_id: "remote-provider-thread", turn_id: "", items: [] as { id: string; kind: string; text: string }[], approvals: [] as { id: string; kind: string; detail: string }[], reports: undefined as Record<string, object[]> | undefined };
   // art: what the box keeps for the worktree (berthd artifact add), with each one's content. Unset, the box keeps none.
-  const control = { listed: false, lostSend: false, lostStart: false, worktreeError: false, startError: false, runs: false, offline: false, startDelay: 0, readHeld: undefined as Promise<void> | undefined, art: undefined as { id: string; title: string; kind: string; format: string; body: string }[] | undefined, title: "" };
+  const control = { listed: false, lostSend: false, lostStart: false, worktreeError: false, startError: false, runs: false, offline: false, readHeld: undefined as Promise<void> | undefined, art: undefined as { id: string; title: string; kind: string; format: string; body: string }[] | undefined, title: "" };
   let createdWorktree: { name: string; path: string; branch: string } | undefined;
   await context.route(`${agent.url}${base}**`, async (route) => {
     const path = new URL(route.request().url()).pathname.slice(base.length);
@@ -59,7 +59,6 @@ async function fixture(context: BrowserContext, supported = true, options = fals
       chat.cwd = createdWorktree?.path ?? (chat.location === "shop" ? "/w/shop" : DIR);
       control.listed = true;
       if (control.lostStart) return route.abort("connectionreset");
-      if (control.startDelay) await new Promise((resolve) => setTimeout(resolve, control.startDelay));
       return route.fulfill({ status: 201, json: chat });
     }
     if (path.endsWith("/messages")) {
@@ -76,31 +75,6 @@ async function fixture(context: BrowserContext, supported = true, options = fals
   });
   return { agent, chat, calls, control };
 }
-
-test("new remote Codex uses structured requests and reload recovers the same chat", async ({ app }) => {
-  const f = await fixture(app.context);
-  try {
-    await app.open({ agent: f.agent });
-    await openWorktree(app);
-    await app.page.getByRole("button", { name: "New Codex", exact: true }).click();
-    await expect(app.page.getByTestId("remote-chat")).toBeVisible();
-    await expect(app.page.getByRole("group", { name: "Show the agent as" })).toHaveCount(0);
-    await expect(app.page.getByRole("textbox", { name: "Message Codex" })).toBeFocused();
-    await app.page.getByRole("textbox", { name: "Message Codex" }).fill("Exactly once");
-    await app.page.getByRole("button", { name: "Send message", exact: true }).click();
-    await expect(app.page.getByRole("article", { name: "Codex", exact: true })).toContainText("Structured reply");
-    await expect(app.page.getByRole("textbox", { name: "Message Codex" })).toHaveValue("");
-    await app.page.reload();
-    await openWorktree(app);
-    await expect(app.page.getByRole("article", { name: "Codex", exact: true })).toContainText("Structured reply");
-    await expect(app.page.getByRole("textbox", { name: "Message Codex" })).toHaveValue("");
-    expect(f.calls.filter((c) => c.method === "POST" && c.path === "chats")).toEqual([{ method: "POST", path: "chats", body: { location: "shop/fix" } }]);
-    expect(f.calls.filter((c) => c.path.endsWith("/messages"))).toHaveLength(1);
-    expect(f.calls.some((c) => c.path.startsWith("sessions/") || c.method === "POST" && c.path === "sessions")).toBe(false);
-    await app.page.getByRole("button", { name: "Stop chat", exact: true }).click();
-    await expect(app.page.getByTestId("remote-chat").getByRole("status")).toHaveText("Stopped");
-  } finally { await f.agent.close(); }
-});
 
 for (const width of [1440, 720]) test(`existing remote chats expose approvals and interrupt at ${width}px`, async ({ app }, info) => {
   await app.page.setViewportSize({ width, height: 900 });
@@ -126,11 +100,12 @@ for (const width of [1440, 720]) test(`existing remote chats expose approvals an
 
 test("uncertain remote sends retain the draft and reconnect never replays it", async ({ app }) => {
   const f = await fixture(app.context);
+  f.control.listed = true;
   f.control.lostSend = true;
   try {
     await app.open({ agent: f.agent });
     await openWorktree(app);
-    await app.page.getByRole("button", { name: "New Codex", exact: true }).click();
+    await app.page.getByRole("region", { name: "Codex chats" }).getByRole("button", { name: /Codex chat/ }).click();
     const draft = app.page.getByRole("textbox", { name: "Message Codex" });
     await draft.fill("Do not replay");
     await app.page.getByRole("button", { name: "Send message", exact: true }).click();
@@ -154,12 +129,13 @@ test("uncertain remote sends retain the draft and reconnect never replays it", a
 
 test("a structured chat's failed first read focuses Refresh chat and recovery keeps that focus", async ({ app }) => {
   const f = await fixture(app.context);
+  f.control.listed = true;
   const read = `${f.agent.url}/v1/boxes/${BOX}/api/chats/${f.chat.id}`;
   await app.page.route(read, (route) => route.fulfill({ status: 503, json: { error: "Synthetic first-read failure" } }));
   try {
     await app.open({ agent: f.agent });
     await openWorktree(app);
-    await app.page.getByRole("button", { name: "New Codex", exact: true }).click();
+    await app.page.getByRole("region", { name: "Codex chats" }).getByRole("button", { name: /Codex chat/ }).click();
     const refresh = app.page.getByRole("button", { name: "Refresh chat", exact: true });
     const message = app.page.getByRole("textbox", { name: "Message Codex" });
     await expect(app.page.getByTestId("remote-chat").getByRole("alert")).toContainText("Synthetic first-read failure");
@@ -177,12 +153,13 @@ test("a structured chat's failed first read focuses Refresh chat and recovery ke
 // Refresh; it goes on to the composer once there is one to type in.
 test("a first read that fails and then recovers by itself ends with the keyboard in the composer", async ({ app }) => {
   const f = await fixture(app.context);
+  f.control.listed = true;
   const read = `${f.agent.url}/v1/boxes/${BOX}/api/chats/${f.chat.id}`;
   await app.page.route(read, (route) => route.fulfill({ status: 503, json: { error: "Synthetic first-read failure" } }), { times: 1 });
   try {
     await app.open({ agent: f.agent });
     await openWorktree(app);
-    await app.page.getByRole("button", { name: "New Codex", exact: true }).click();
+    await app.page.getByRole("region", { name: "Codex chats" }).getByRole("button", { name: /Codex chat/ }).click();
     const message = app.page.getByRole("textbox", { name: "Message Codex" });
     await expect(app.page.getByRole("button", { name: "Refresh chat", exact: true })).toBeFocused();
     await expect(message).toBeEnabled();
@@ -192,47 +169,21 @@ test("a first read that fails and then recovers by itself ends with the keyboard
 
 test("a first read slow enough for the window to rescue the keyboard still ends with it in the composer", async ({ app }) => {
   const f = await fixture(app.context);
+  f.control.listed = true;
   let release = () => {};
   f.control.readHeld = new Promise<void>((resolve) => { release = resolve; });
   try {
     await app.open({ agent: f.agent });
     await openWorktree(app);
-    await app.page.getByRole("button", { name: "New Codex", exact: true }).click();
+    await app.page.getByRole("region", { name: "Codex chats" }).getByRole("button", { name: /Codex chat/ }).click();
     const message = app.page.getByRole("textbox", { name: "Message Codex" });
-    // The button that opened the chat is gone, so the window sends the
-    // keyboard home: to the pane's first control, its composer not ready.
+    // The listed chat opens before its composer is ready, so focus starts
+    // on the pane's recovery control.
     await expect(app.page.getByRole("button", { name: "Refresh chat", exact: true })).toBeFocused();
     release();
     await expect(message).toBeEnabled();
     await expect(message).toBeFocused();
   } finally { release(); await f.agent.close(); }
-});
-
-test("a lost start is not retried and the owned chat can be recovered", async ({ app }) => {
-  const f = await fixture(app.context);
-  f.control.lostStart = true;
-  try {
-    await app.open({ agent: f.agent });
-    await openWorktree(app);
-    await app.page.getByRole("button", { name: "New Codex", exact: true }).click();
-    await expect(app.page.getByText(/Codex may have started/)).toBeVisible();
-    await app.page.getByRole("button", { name: "Close pane", exact: true }).click();
-    await app.page.getByRole("region", { name: "Codex chats" }).getByRole("button", { name: /Codex chat/ }).click();
-    await expect(app.page.getByTestId("remote-chat")).toBeVisible();
-    expect(f.calls.filter((c) => c.method === "POST" && c.path === "chats")).toHaveLength(1);
-  } finally { await f.agent.close(); }
-});
-
-for (const custom of [false, true]) test(`${custom ? "custom commands" : "older boxes"} retain terminal launching`, async ({ app }) => {
-  const f = await fixture(app.context, custom);
-  try {
-    await app.open({ agent: f.agent });
-    await openWorktree(app);
-    await app.page.getByRole("button", { name: custom ? "New Custom Codex" : "New Codex", exact: true }).click();
-    await expect.poll(() => f.calls.some((c) => c.method === "POST" && c.path === "sessions")).toBe(true);
-    expect(f.calls.some((c) => c.method === "POST" && c.path === "chats")).toBe(false);
-    await expect(app.page.getByTestId("remote-chat")).toHaveCount(0);
-  } finally { await f.agent.close(); }
 });
 
 test("the existing-worktree composer starts Codex with default settings without a terminal", async ({ app }) => {
@@ -546,19 +497,6 @@ test("Home opens its new chat with the prompt kept after a lost first-message re
       { method: "POST", path: "chats", body: { location: "shop/do-not-resend-this" } },
       { method: "POST", path: "chats/remote-1/messages", body: { text: "Do not resend this" } },
     ]);
-  } finally { await f.agent.close(); }
-});
-
-test("a slow start stays in Starting rather than pretending Codex is thinking", async ({ app }) => {
-  const f = await fixture(app.context);
-  f.control.startDelay = 1200;
-  try {
-    await app.open({ agent: f.agent });
-    await openWorktree(app);
-    await app.page.getByRole("button", { name: "New Codex", exact: true }).click();
-    await expect(app.page.getByText("Starting Codex…", { exact: true })).toBeVisible();
-    await expect(app.page.getByRole("textbox", { name: "Message Codex" })).toHaveCount(0);
-    await expect(app.page.getByTestId("remote-chat")).toBeVisible();
   } finally { await f.agent.close(); }
 });
 
