@@ -10,6 +10,7 @@ import (
 
 	"github.com/MylesMCook/burf/internal/backgroundcmd"
 	"github.com/MylesMCook/burf/internal/localagent"
+	"github.com/MylesMCook/burf/internal/localchat"
 )
 
 // Resolve installed native CLIs, never execute an npm batch shim through a shell.
@@ -59,6 +60,7 @@ func localAgentCommands() map[string]localagent.Command {
 			command.CanChat = strings.Contains(localCommandHelp(command.Program, "app-server", "--help"), "--listen")
 		} else {
 			command.CanFork = strings.Contains(help, "--fork-session") && strings.Contains(help, "--resume")
+			command.CanChat = localchat.ClaudeHelpSupportsChat(help)
 		}
 		out[id] = command
 	}

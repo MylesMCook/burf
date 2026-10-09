@@ -19,6 +19,7 @@ type stdioProcess struct {
 	input, output, stderr *os.File
 	job                   windows.Handle
 	once                  sync.Once
+	jobOnce               sync.Once
 	done                  chan struct{}
 }
 
@@ -33,7 +34,11 @@ func StartProcess(options LaunchOptions) (_ Process, err error) {
 	if err != nil {
 		return nil, err
 	}
-	command, err := windows.UTF16PtrFromString(windows.ComposeCommandLine([]string{program, "app-server", "--listen", "stdio://"}))
+	args, err := processArguments(options)
+	if err != nil {
+		return nil, err
+	}
+	command, err := windows.UTF16PtrFromString(windows.ComposeCommandLine(append([]string{program}, args...)))
 	if err != nil {
 		return nil, err
 	}
@@ -133,15 +138,23 @@ func StartProcess(options LaunchOptions) (_ Process, err error) {
 	go func() {
 		_, _ = windows.WaitForSingleObject(pi.Process, windows.INFINITE)
 		windows.CloseHandle(pi.Process)
-		p.finish()
+		// Revoke the job immediately, even if a descendant holds stdout open.
+		// Keep the pipe until the protocol reader has drained the last lines.
+		if options.Agent == "claude" {
+			p.closeJob()
+		} else {
+			p.finish()
+		}
 		close(p.done)
 	}()
 	return p, nil
 }
 func (p *stdioProcess) Read(b []byte) (int, error)  { return p.output.Read(b) }
 func (p *stdioProcess) Write(b []byte) (int, error) { return p.input.Write(b) }
+func (p *stdioProcess) closeJob()                   { p.jobOnce.Do(func() { windows.CloseHandle(p.job) }) }
+
 func (p *stdioProcess) finish() {
-	p.once.Do(func() { windows.CloseHandle(p.job); p.input.Close(); p.output.Close(); p.stderr.Close() })
+	p.once.Do(func() { p.closeJob(); p.input.Close(); p.output.Close(); p.stderr.Close() })
 }
 func (p *stdioProcess) Close() error { p.finish(); <-p.done; return nil }
 

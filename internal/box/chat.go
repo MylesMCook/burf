@@ -128,18 +128,25 @@ func (b *Box) mountChats(route func(string, func(http.ResponseWriter, *http.Requ
 	// The account's models for a location, before any chat exists there.
 	add("GET /v1/chats/models", func(w http.ResponseWriter, r *http.Request) error {
 		location := r.URL.Query().Get("location")
+		agent := r.URL.Query().Get("agent")
+		if agent == "" {
+			agent = "codex"
+		}
+		if agent != "codex" && agent != "claude" {
+			return badRequest("unsupported chat agent")
+		}
 		dir, err := b.Locations.Dir(r.Context(), location)
 		if err != nil {
 			return badRequest("%v", err)
 		}
 		// It launches the provider, so it passes the same gate as a chat start.
 		if err := b.before(r, "session.start", map[string]any{
-			"location": location, "path": dir, "agent": "codex", "mode": "models",
-			"command": "codex app-server --listen stdio://",
+			"location": location, "path": dir, "agent": agent, "mode": "models",
+			"command": localchat.ChatCommand(agent),
 		}); err != nil {
 			return err
 		}
-		opts, err := b.chatOptions(r.Context(), location)
+		opts, err := b.chatOptionsFor(r.Context(), location, agent)
 		if err != nil {
 			return badRequest("%v", err)
 		}
@@ -227,11 +234,18 @@ func (b *Box) mountChats(route func(string, func(http.ResponseWriter, *http.Requ
 func (b *Box) startChat(w http.ResponseWriter, r *http.Request) error {
 	var req struct {
 		Location string `json:"location"`
+		Agent    string `json:"agent"`
 		// Browser, with chat.browser, offers the client's browser tools.
 		Browser *chatBrowserRequest `json:"browser"`
 	}
 	if err := decodeChatLimit(r, &req, maxChatStartBody); err != nil {
 		return err
+	}
+	if req.Agent == "" {
+		req.Agent = "codex"
+	}
+	if req.Agent != "codex" && req.Agent != "claude" {
+		return badRequest("unsupported chat agent")
 	}
 	b.chatState.mu.Lock()
 	if b.chatState.upgrading {
@@ -248,12 +262,12 @@ func (b *Box) startChat(w http.ResponseWriter, r *http.Request) error {
 	// Structured launches obey the same gates as terminal agent launches.
 	// Gate before resolving the launch environment or invoking provider help.
 	if err := b.before(r, "session.start", map[string]any{
-		"location": req.Location, "path": dir, "agent": "codex", "mode": "chat",
-		"command": "codex app-server --listen stdio://",
+		"location": req.Location, "path": dir, "agent": req.Agent, "mode": "chat",
+		"command": localchat.ChatCommand(req.Agent),
 	}); err != nil {
 		return err
 	}
-	opts, err := b.chatOptions(r.Context(), req.Location)
+	opts, err := b.chatOptionsFor(r.Context(), req.Location, req.Agent)
 	if err != nil {
 		return badRequest("%v", err)
 	}
@@ -291,6 +305,16 @@ func (b *Box) startChat(w http.ResponseWriter, r *http.Request) error {
 }
 
 func (b *Box) chatOptions(ctx context.Context, ref string) (localchat.LaunchOptions, error) {
+	return b.chatOptionsFor(ctx, ref, "codex")
+}
+
+func (b *Box) chatOptionsFor(ctx context.Context, ref, agent string) (localchat.LaunchOptions, error) {
+	if agent == "" {
+		agent = "codex"
+	}
+	if agent != "codex" && agent != "claude" {
+		return localchat.LaunchOptions{}, errors.New("unsupported chat agent")
+	}
 	var opts localchat.LaunchOptions
 	name, wtName, hasWT := strings.Cut(ref, "/")
 	if name == "" || (hasWT && wtName == "") {
@@ -305,8 +329,11 @@ func (b *Box) chatOptions(ctx context.Context, ref string) (localchat.LaunchOpti
 		return opts, err
 	}
 	for _, p := range cfg.Effective.Agents {
-		if p.ID == "codex" && p.Command != "" && p.Command != "codex" {
-			return opts, errors.New("this project's custom Codex command requires a terminal")
+		if p.ID == agent && p.Command != "" && p.Command != agent {
+			if agent == "codex" {
+				return opts, errors.New("this project's custom Codex command requires a terminal")
+			}
+			return opts, errors.New("this project's custom Claude Code command requires a terminal")
 		}
 	}
 	loc, err := b.Locations.Get(ctx, name)
@@ -336,13 +363,17 @@ func (b *Box) chatOptions(ctx context.Context, ref string) (localchat.LaunchOpti
 	for k, v := range values {
 		env[k] = v
 	}
-	if home, ok := env["CODEX_HOME"]; ok {
+	accountVar := "CODEX_HOME"
+	if agent == "claude" {
+		accountVar = "CLAUDE_CONFIG_DIR"
+	}
+	if home, ok := env[accountVar]; ok {
 		st, e := os.Stat(home)
 		if !filepath.IsAbs(home) || e != nil || !st.IsDir() {
-			return opts, errors.New("CODEX_HOME must name an existing absolute account directory")
+			return opts, fmt.Errorf("%s must name an existing absolute account directory", accountVar)
 		}
 	}
-	program, err := chatCodexPath(env)
+	program, err := chatProviderPath(env, agent)
 	if err != nil {
 		return opts, err
 	}
@@ -351,12 +382,15 @@ func (b *Box) chatOptions(ctx context.Context, ref string) (localchat.LaunchOpti
 		keys = append(keys, k)
 	}
 	sort.Strings(keys)
-	opts = localchat.LaunchOptions{Program: program, CWD: dir}
+	opts = localchat.LaunchOptions{Agent: agent, Program: program, CWD: dir}
 	for _, k := range keys {
 		opts.Env = append(opts.Env, k+"="+env[k])
 	}
-	// The owned, timeout-bounded initialize handshake validates the actual CLI.
-	// Spawning a second process for --help delayed every new chat.
+	if agent == "claude" && !localchat.ClaudeSupportsChat(ctx, program, opts.Env) {
+		return opts, errors.New("Claude Code is not installed with support for structured chat on this box")
+	}
+	// Codex's owned initialize handshake validates its actual CLI without
+	// a second help probe. Claude's streaming flags are checked above.
 	return opts, nil
 }
 
@@ -365,7 +399,9 @@ func (b *Box) chatOptions(ctx context.Context, ref string) (localchat.LaunchOpti
 // (agentFound: the person's shell finds an npm install under nvm, which no
 // service's PATH has). That one is launched with the PATH it was found
 // with, before the project's own, so it finds its node.
-func chatCodexPath(env map[string]string) (string, error) {
+func chatCodexPath(env map[string]string) (string, error) { return chatProviderPath(env, "codex") }
+
+func chatProviderPath(env map[string]string, agent string) (string, error) {
 	dirs := filepath.SplitList(env["PATH"])
 	if home := env["HOME"]; filepath.IsAbs(home) {
 		dirs = append(dirs, filepath.Join(home, ".local", "bin"))
@@ -374,19 +410,23 @@ func chatCodexPath(env map[string]string) (string, error) {
 		if !filepath.IsAbs(dir) {
 			continue
 		}
-		p := filepath.Join(dir, "codex")
+		p := filepath.Join(dir, agent)
 		st, err := os.Stat(p)
 		if err == nil && st.Mode().IsRegular() && st.Mode().Perm()&0111 != 0 {
 			return p, nil
 		}
 	}
-	if f, ok := agentFound("codex"); ok && filepath.IsAbs(f.Path) {
+	if f, ok := agentFound(agent); ok && filepath.IsAbs(f.Path) {
 		if f.PATH != "" {
 			env["PATH"] = strings.TrimSuffix(f.PATH+string(os.PathListSeparator)+env["PATH"], string(os.PathListSeparator))
 		}
 		return f.Path, nil
 	}
-	return "", fmt.Errorf("Codex is not installed on this project's executable path")
+	name := "Codex"
+	if agent == "claude" {
+		name = "Claude Code"
+	}
+	return "", fmt.Errorf("%s is not installed on this project's executable path", name)
 }
 
 // Starts register before config resolution; neither a slow probe nor a slow
@@ -400,7 +440,10 @@ func (b *Box) beginChatUpgrade() error {
 	if b.Chats != nil {
 		for _, s := range b.Chats.List() {
 			if s.State != "exited" {
-				return httpError{409, "stop structured Codex chats before updating this box"}
+				if s.Agent == "codex" {
+					return httpError{409, "stop structured Codex chats before updating this box"}
+				}
+				return httpError{409, "stop structured Claude Code chats before updating this box"}
 			}
 		}
 	}
