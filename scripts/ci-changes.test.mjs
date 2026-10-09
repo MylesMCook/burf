@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { SUITES, suitesFor } from "./ci-changes.mjs";
+import { only, SUITES, suitesFor } from "./ci-changes.mjs";
 
 const picked = (...paths) => [...suitesFor(paths)].sort();
 
@@ -46,4 +46,10 @@ test("CI itself, and a path nothing knows, run everything", () => {
 
 test("nothing changed runs nothing", () => {
   assert.deepEqual(picked(), []);
+});
+
+test("a merge with one suite left to prove runs that suite when the change reaches it, and no other", () => {
+  assert.deepEqual([...only(suitesFor(["app/src/views/home.tsx"]), ["e2e"])], ["e2e"]);
+  assert.deepEqual([...only(suitesFor(["internal/wire/server.go"]), ["e2e"])], []);
+  assert.deepEqual([...only(suitesFor([".github/workflows/ci.yml"]), ["e2e"])], ["e2e"]);
 });

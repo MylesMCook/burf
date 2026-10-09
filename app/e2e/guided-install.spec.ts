@@ -28,6 +28,9 @@ async function openPlan(app: App, host: string) {
   // sidebar's "Add a box…", which opens the plain dialog and no guided install.
   await expect(page.getByTestId("team-page")).toBeVisible();
   await page.getByRole("button", { name: "Add a box", exact: true }).locator("visible=true").first().click();
+  // The tailnet's machines arrive a moment after the dialog and push what is
+  // below them down: a click aimed before that lands where the button was.
+  await expect(page.getByRole("list", { name: /^Machines on / })).toBeVisible();
   await page.getByText("Or let Burf set it up over SSH").click();
   await page.getByLabel("SSH host, like me@my-box").fill(host);
   // Team setup's add a box has the agents in the plan, not inline.
