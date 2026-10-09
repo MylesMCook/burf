@@ -26,6 +26,7 @@ import { toastManager } from "@/components/ui/toast";
 import { useActiveTheme } from "@/hooks/use-theme";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { type AgentChoice, boxApi, type GuidedInstallRequest, type InstallEvent, type InstallPlan, type InstallPlanStep, laptopApi, type SshFailure, type TerminalConnection } from "@/lib/api";
+import { useCustomTerminalPrefs } from "@/lib/custom-fonts";
 import { plainError } from "@/lib/errors";
 import { openUrl } from "@/lib/open-url";
 import { setPrefs, usePrefs } from "@/lib/prefs";
@@ -1042,7 +1043,7 @@ export function agentNames(ids: string[]) {
 export function InstallTerminal({ run, className, fontSize }: { run: InstallRun; className?: string; fontSize?: number }) {
   const host = useRef<HTMLDivElement>(null);
   const theme = useActiveTheme();
-  const prefs = usePrefs((p) => p.terminal);
+  const prefs = useCustomTerminalPrefs();
   const [term, setTerm] = useState<TermHandle>();
   const pendingRef = (run as InstallRun & { pendingRef: React.RefObject<(string | Uint8Array)[]> }).pendingRef;
 
@@ -1242,7 +1243,7 @@ export function AddAgents({ box, open, onClose }: { box: string; open: boolean; 
 function OutputTerminal({ term, pending }: { term: React.RefObject<TermHandle | null>; pending: React.RefObject<string[]> }) {
   const host = useRef<HTMLDivElement>(null);
   const theme = useActiveTheme();
-  const prefs = usePrefs((p) => p.terminal);
+  const prefs = useCustomTerminalPrefs();
   useEffect(() => {
     let t: TermHandle | undefined;
     let disposed = false;
