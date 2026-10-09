@@ -16,14 +16,16 @@ async function fixture(context: BrowserContext, supported = true, options = fals
   const agent = await fakeAgent();
   const base = `/v1/boxes/${BOX}/api/`;
   const calls: { method: string; path: string; body: unknown }[] = [];
-  const chat = { id: "remote-1", agent: "codex", mode: "chat", location: "shop/fix", cwd: DIR, state: "idle", started_at: "2026-10-08T12:00:00Z", thread_id: "remote-provider-thread", turn_id: "", items: [] as { id: string; kind: string; text: string }[], approvals: [] as { id: string; kind: string; detail: string }[], reports: undefined as Record<string, object[]> | undefined };
+  const chat = { id: "remote-1", agent: "codex", mode: "chat", location: "shop/fix", cwd: DIR, state: "idle", started_at: "2026-10-08T12:00:00Z", thread_id: "remote-provider-thread", composer: options, turn_id: "", items: [] as { id: string; kind: string; text: string }[], approvals: [] as { id: string; kind: string; detail: string }[], reports: undefined as Record<string, object[]> | undefined };
   // art: what the box keeps for the worktree (berthd artifact add), with each one's content. Unset, the box keeps none.
-  const control = { listed: false, lostSend: false, lostStart: false, worktreeError: false, startError: false, runs: false, offline: false, readHeld: undefined as Promise<void> | undefined, art: undefined as { id: string; title: string; kind: string; format: string; body: string }[] | undefined, title: "" };
+  const control = { listed: false, lostSend: false, lostStart: false, worktreeError: false, startError: false, runs: false, offline: false, startDelay: 0, readHeld: undefined as Promise<void> | undefined, art: undefined as { id: string; title: string; kind: string; format: string; body: string }[] | undefined, title: "", holdTurns: false, refuseSend: false };
   let createdWorktree: { name: string; path: string; branch: string } | undefined;
   await context.route(`${agent.url}${base}**`, async (route) => {
     const path = new URL(route.request().url()).pathname.slice(base.length);
     const method = route.request().method();
-    calls.push({ method, path, body: route.request().postDataJSON() });
+    let body: unknown = route.request().postData();
+    try { body = route.request().postDataJSON(); } catch { /* Raw attachment bytes. */ }
+    calls.push({ method, path, body });
     if (path === "info") return route.fulfill({ json: { name: BOX, version: "test", capabilities: supported ? ["chat.codex", "transcript", ...(options ? ["chat.options"] : []), ...(fullAccess ? ["chat.full-access"] : []), ...(control.art ? ["artifacts"] : []), ...(control.runs ? ["runs"] : [])] : ["transcript"], agents: [{ id: "codex", name: "Codex", command: "codex" }, { id: "custom", name: "Custom Codex", command: "codex --model custom" }] } });
     if (path === "locations" && method === "GET" && (control.title || createdWorktree)) {
       // The worktree as the box lists it once a person has named it.
@@ -46,9 +48,14 @@ async function fixture(context: BrowserContext, supported = true, options = fals
     const art = control.art && /^locations\/([^/]+)\/worktrees\/([^/]+)\/artifacts(?:\/([0-9a-f]+)\/v\/1)?$/.exec(path);
     if (art?.[3]) return route.fulfill({ contentType: "text/plain", body: control.art!.find((a) => a.id === art[3])?.body ?? "" });
     if (art) return route.fulfill({ json: control.art!.map(({ body, ...a }) => ({ ...a, location: decodeURIComponent(art[1]), worktree: decodeURIComponent(art[2]), path: DIR, by: { agent: "codex" }, created: "2026-10-08T12:00:00Z", updated: "2026-10-08T12:00:00Z", versions: [{ n: 1, at: "2026-10-08T12:00:00Z", size: body.length, sha256: "test" }] })) });
+    if (path === "locations/shop/worktrees/fix/attachments") {
+      const name = new URL(route.request().url()).searchParams.get("name") ?? "note.txt";
+      return route.fulfill({ json: { path: `${DIR}/.berth/attachments/${name}`, name, type: name.endsWith(".png") ? "image/png" : "text/plain", size: route.request().postDataBuffer()?.length ?? 0 } });
+    }
+    if (path === "locations/shop/worktrees/fix/files") return route.fulfill({ json: { files: ["src/app.ts", "README.md"].filter((file) => file.includes(new URL(route.request().url()).searchParams.get("q") ?? "")) } });
     if (!path.startsWith("chats")) return route.continue();
     if (control.offline) return route.abort("connectionreset");
-    if (path === "chats/models") return route.fulfill({ json: [
+    if (path === "chats/models" || path.endsWith("/models")) return route.fulfill({ json: [
       { model: "alpha", displayName: "Alpha", defaultReasoningEffort: "medium", supportedReasoningEfforts: [{ reasoningEffort: "medium" }, { reasoningEffort: "high" }] },
       { model: "beta", displayName: "Beta", defaultReasoningEffort: "low", supportedReasoningEfforts: [{ reasoningEffort: "low" }] },
     ] });
@@ -59,10 +66,13 @@ async function fixture(context: BrowserContext, supported = true, options = fals
       chat.cwd = createdWorktree?.path ?? (chat.location === "shop" ? "/w/shop" : DIR);
       control.listed = true;
       if (control.lostStart) return route.abort("connectionreset");
+      if (control.startDelay) await new Promise((resolve) => setTimeout(resolve, control.startDelay));
       return route.fulfill({ status: 201, json: chat });
     }
     if (path.endsWith("/messages")) {
       const body = route.request().postDataJSON() as { text: string };
+      if (control.refuseSend) return route.fulfill({ status: 400, json: { error: "Synthetic rejected turn" } });
+      if (control.holdTurns) { chat.state = "running"; chat.turn_id = `turn-${calls.filter((call) => call.path.endsWith("/messages")).length}`; }
       chat.items = [{ id: "u", kind: "user", text: body.text }, { id: "a", kind: "assistant", text: "Structured reply from the remote box" }];
       if (control.lostSend) return route.abort("connectionreset");
     }
@@ -92,7 +102,7 @@ for (const width of [1440, 720]) test(`existing remote chats expose approvals an
     await expect(app.page.getByRole("textbox", { name: "Message Codex" })).toBeInViewport();
     expect(f.calls.filter((c) => c.method !== "GET" && c.path.startsWith("chats"))).toHaveLength(0);
     await app.page.getByRole("button", { name: "Deny", exact: true }).click();
-    await app.page.getByRole("button", { name: "Interrupt turn", exact: true }).click();
+    await app.page.getByRole("button", { name: "Stop generating", exact: true }).click();
     expect(f.calls.filter((c) => c.path.endsWith("/approvals"))).toEqual([{ method: "POST", path: "chats/remote-1/approvals", body: { id: "approval-1", decision: "decline" } }]);
     expect(f.calls.filter((c) => c.path.endsWith("/interrupt"))).toHaveLength(1);
   } finally { await f.agent.close(); }
@@ -100,12 +110,11 @@ for (const width of [1440, 720]) test(`existing remote chats expose approvals an
 
 test("uncertain remote sends retain the draft and reconnect never replays it", async ({ app }) => {
   const f = await fixture(app.context);
-  f.control.listed = true;
   f.control.lostSend = true;
   try {
     await app.open({ agent: f.agent });
     await openWorktree(app);
-    await app.page.getByRole("region", { name: "Codex chats" }).getByRole("button", { name: /Codex chat/ }).click();
+    await app.page.getByRole("button", { name: "New Codex", exact: true }).click();
     const draft = app.page.getByRole("textbox", { name: "Message Codex" });
     await draft.fill("Do not replay");
     await app.page.getByRole("button", { name: "Send message", exact: true }).click();
@@ -113,7 +122,7 @@ test("uncertain remote sends retain the draft and reconnect never replays it", a
     await expect(draft).toHaveValue("Do not replay");
     f.control.offline = true;
     await app.page.getByRole("button", { name: "Refresh chat", exact: true }).click();
-    await expect(app.page.getByTestId("remote-chat").getByRole("status")).toHaveText("Connection lost. The run kept going on the server.Reconnect");
+    await expect(app.page.getByTestId("remote-chat").getByRole("status")).toHaveText("Disconnected");
     await expect(app.page.getByRole("button", { name: "Send message", exact: true })).toBeDisabled();
     f.control.offline = false;
     await app.page.getByRole("button", { name: "Refresh chat", exact: true }).click();
@@ -129,13 +138,12 @@ test("uncertain remote sends retain the draft and reconnect never replays it", a
 
 test("a structured chat's failed first read focuses Refresh chat and recovery keeps that focus", async ({ app }) => {
   const f = await fixture(app.context);
-  f.control.listed = true;
   const read = `${f.agent.url}/v1/boxes/${BOX}/api/chats/${f.chat.id}`;
   await app.page.route(read, (route) => route.fulfill({ status: 503, json: { error: "Synthetic first-read failure" } }));
   try {
     await app.open({ agent: f.agent });
     await openWorktree(app);
-    await app.page.getByRole("region", { name: "Codex chats" }).getByRole("button", { name: /Codex chat/ }).click();
+    await app.page.getByRole("button", { name: "New Codex", exact: true }).click();
     const refresh = app.page.getByRole("button", { name: "Refresh chat", exact: true });
     const message = app.page.getByRole("textbox", { name: "Message Codex" });
     await expect(app.page.getByTestId("remote-chat").getByRole("alert")).toContainText("Synthetic first-read failure");
@@ -153,13 +161,12 @@ test("a structured chat's failed first read focuses Refresh chat and recovery ke
 // Refresh; it goes on to the composer once there is one to type in.
 test("a first read that fails and then recovers by itself ends with the keyboard in the composer", async ({ app }) => {
   const f = await fixture(app.context);
-  f.control.listed = true;
   const read = `${f.agent.url}/v1/boxes/${BOX}/api/chats/${f.chat.id}`;
   await app.page.route(read, (route) => route.fulfill({ status: 503, json: { error: "Synthetic first-read failure" } }), { times: 1 });
   try {
     await app.open({ agent: f.agent });
     await openWorktree(app);
-    await app.page.getByRole("region", { name: "Codex chats" }).getByRole("button", { name: /Codex chat/ }).click();
+    await app.page.getByRole("button", { name: "New Codex", exact: true }).click();
     const message = app.page.getByRole("textbox", { name: "Message Codex" });
     await expect(app.page.getByRole("button", { name: "Refresh chat", exact: true })).toBeFocused();
     await expect(message).toBeEnabled();
@@ -169,21 +176,32 @@ test("a first read that fails and then recovers by itself ends with the keyboard
 
 test("a first read slow enough for the window to rescue the keyboard still ends with it in the composer", async ({ app }) => {
   const f = await fixture(app.context);
-  f.control.listed = true;
   let release = () => {};
   f.control.readHeld = new Promise<void>((resolve) => { release = resolve; });
   try {
     await app.open({ agent: f.agent });
     await openWorktree(app);
-    await app.page.getByRole("region", { name: "Codex chats" }).getByRole("button", { name: /Codex chat/ }).click();
+    await app.page.getByRole("button", { name: "New Codex", exact: true }).click();
     const message = app.page.getByRole("textbox", { name: "Message Codex" });
-    // The listed chat opens before its composer is ready, so focus starts
-    // on the pane's recovery control.
+    // The button that opened the chat is gone, so the window sends the
+    // keyboard home: to the pane's first control, its composer not ready.
     await expect(app.page.getByRole("button", { name: "Refresh chat", exact: true })).toBeFocused();
     release();
     await expect(message).toBeEnabled();
     await expect(message).toBeFocused();
   } finally { release(); await f.agent.close(); }
+});
+
+for (const custom of [false, true]) test(`${custom ? "custom commands" : "older boxes"} retain terminal launching`, async ({ app }) => {
+  const f = await fixture(app.context, custom);
+  try {
+    await app.open({ agent: f.agent });
+    await openWorktree(app);
+    await app.page.getByRole("button", { name: custom ? "New Custom Codex" : "New Codex", exact: true }).click();
+    await expect.poll(() => f.calls.some((c) => c.method === "POST" && c.path === "sessions")).toBe(true);
+    expect(f.calls.some((c) => c.method === "POST" && c.path === "chats")).toBe(false);
+    await expect(app.page.getByTestId("remote-chat")).toHaveCount(0);
+  } finally { await f.agent.close(); }
 });
 
 test("the existing-worktree composer starts Codex with default settings without a terminal", async ({ app }) => {
@@ -742,5 +760,259 @@ test("what became of work the chat started arrives as Burf's card, not as the pe
     await expect(chat.getByRole("article", { name: "You", exact: true })).toHaveCount(1);
     await expect(chat.getByRole("article", { name: "Codex", exact: true })).toHaveCount(1);
     await app.page.screenshot({ path: test.info().outputPath("chat-report.png") });
+  } finally { await f.agent.close(); }
+});
+
+
+for (const via of ["picker", "paste", "drop"] as const) test(`structured chat sends an attached file through ${via}`, async ({ app }) => {
+  const f = await fixture(app.context);
+  try {
+    await app.open({ agent: f.agent }); await openWorktree(app);
+    await app.page.getByRole("button", { name: "New Codex", exact: true }).click();
+    const pane = app.page.getByTestId("remote-chat");
+    const draft = pane.getByRole("textbox", { name: "Message Codex" });
+    await expect(pane.getByRole("button", { name: "Add Attachment", exact: true })).toBeVisible();
+    await draft.fill("Read this file");
+    if (via === "picker") {
+      const choosing = app.page.waitForEvent("filechooser");
+      await pane.getByRole("button", { name: "Add Attachment", exact: true }).click();
+      await (await choosing).setFiles({ name: "note.txt", mimeType: "text/plain", buffer: Buffer.from("Synthetic attachment") });
+    } else {
+      await draft.evaluate((field, method) => {
+        const data = new DataTransfer(); data.items.add(new File(["Synthetic attachment"], "note.txt", { type: "text/plain" }));
+        field.dispatchEvent(method === "paste" ? new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true }) : new DragEvent("drop", { dataTransfer: data, bubbles: true, cancelable: true }));
+      }, via);
+    }
+    await expect(pane.getByLabel("File attachment note.txt", { exact: true })).toBeVisible();
+    await expect(pane.getByRole("button", { name: "Send message", exact: true })).toBeEnabled();
+    await pane.getByRole("button", { name: "Send message", exact: true }).click();
+    await expect.poll(() => f.calls.filter((call) => call.path.endsWith("/messages")).map((call) => call.body)).toEqual([{ text: `Read this file\n\n${DIR}/.berth/attachments/note.txt` }]);
+    expect(f.calls.filter((call) => call.path.endsWith("/attachments")).map((call) => call.body)).toEqual(["Synthetic attachment"]);
+    await expect(pane.getByLabel("File attachment note.txt", { exact: true })).toHaveCount(0);
+  } finally { await f.agent.close(); }
+});
+
+test("structured chat previews and removes an attached image without sending it", async ({ app }) => {
+  const f = await fixture(app.context);
+  try {
+    await app.open({ agent: f.agent }); await openWorktree(app);
+    await app.page.getByRole("button", { name: "New Codex", exact: true }).click();
+    const pane = app.page.getByTestId("remote-chat");
+    const choosing = app.page.waitForEvent("filechooser");
+    await pane.getByRole("button", { name: "Add Attachment", exact: true }).click();
+    await (await choosing).setFiles({ name: "shot.png", mimeType: "image/png", buffer: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/l9sAAAAASUVORK5CYII=", "base64") });
+    await expect(pane.getByRole("button", { name: "Send message", exact: true })).toBeEnabled();
+    // Its lower left: the tile's remove button takes the upper right.
+    await pane.getByLabel("Preview shot.png", { exact: true }).click({ position: { x: 8, y: 40 } });
+    await expect(app.page.getByRole("dialog")).toContainText("Preview shot.png");
+    await app.page.keyboard.press("Escape");
+    await pane.getByRole("button", { name: "Remove shot.png", exact: true }).click();
+    await expect(pane.getByRole("button", { name: "Send message", exact: true })).toBeDisabled();
+    expect(f.calls.filter((call) => call.path.endsWith("/messages"))).toHaveLength(0);
+  } finally { await f.agent.close(); }
+});
+
+test("queued messages send once in order after each turn and can be cancelled", async ({ app }) => {
+  const f = await fixture(app.context, true, true);
+  f.control.listed = true; f.control.holdTurns = true;
+  f.chat.state = "running"; f.chat.turn_id = "original";
+  try {
+    await app.open({ agent: f.agent }); await openWorktree(app);
+    await app.page.getByRole("region", { name: "Codex chats" }).getByRole("button", { name: /Codex chat/ }).click();
+    const pane = app.page.getByTestId("remote-chat");
+    const draft = pane.getByRole("textbox", { name: "Message Codex" });
+    await expect(draft).toBeEnabled();
+    for (const text of ["first", "cancel", "second"]) { await draft.fill(text); await draft.press("Enter"); await expect(draft).toHaveValue(""); }
+    await pane.getByRole("button", { name: 'Remove "cancel" from the queue', exact: true }).click();
+    expect(f.calls.filter((call) => call.path.endsWith("/messages"))).toHaveLength(0);
+    f.chat.state = "idle"; f.chat.turn_id = "";
+    await pane.getByRole("button", { name: "Refresh chat", exact: true }).click();
+    await expect.poll(() => f.calls.filter((call) => call.path.endsWith("/messages")).map((call) => call.body)).toEqual([{ text: "first" }]);
+    await expect(pane.getByRole("button", { name: 'Remove "second" from the queue', exact: true })).toBeVisible();
+    await pane.getByRole("button", { name: "Refresh chat", exact: true }).click();
+    expect(f.calls.filter((call) => call.path.endsWith("/messages"))).toHaveLength(1);
+    f.chat.state = "idle"; f.chat.turn_id = "";
+    await pane.getByRole("button", { name: "Refresh chat", exact: true }).click();
+    await expect.poll(() => f.calls.filter((call) => call.path.endsWith("/messages")).map((call) => call.body)).toEqual([{ text: "first" }, { text: "second" }]);
+    await expect(pane.locator('[data-slot="message-queue"]')).toHaveCount(0);
+    await pane.getByRole("button", { name: "Refresh chat", exact: true }).click();
+    expect(f.calls.filter((call) => call.path.endsWith("/messages"))).toHaveLength(2);
+  } finally { await f.agent.close(); }
+});
+
+for (const lost of [false, true]) test(`a ${lost ? "lost" : "rejected"} queued send is held without replay`, async ({ app }) => {
+  const f = await fixture(app.context);
+  f.control.listed = true; f.chat.state = "running"; f.chat.turn_id = "original";
+  f.control.lostSend = lost; f.control.refuseSend = !lost;
+  try {
+    await app.open({ agent: f.agent }); await openWorktree(app);
+    await app.page.getByRole("region", { name: "Codex chats" }).getByRole("button", { name: /Codex chat/ }).click();
+    const pane = app.page.getByTestId("remote-chat");
+    const draft = pane.getByRole("textbox", { name: "Message Codex" });
+    for (const text of ["uncertain", "later"]) { await draft.fill(text); await draft.press("Enter"); await expect(draft).toHaveValue(""); }
+    f.chat.state = "idle"; f.chat.turn_id = "";
+    await pane.getByRole("button", { name: "Refresh chat", exact: true }).click();
+    await expect(draft).toHaveValue("uncertain");
+    await expect(pane.getByText("Remaining messages are held. Cancel them or send a message to continue.")).toBeVisible();
+    await pane.getByRole("button", { name: "Refresh chat", exact: true }).click();
+    await pane.getByRole("button", { name: "Refresh chat", exact: true }).click();
+    expect(f.calls.filter((call) => call.path.endsWith("/messages"))).toHaveLength(1);
+    await pane.getByRole("button", { name: 'Remove "later" from the queue', exact: true }).click();
+    await expect(pane.locator('[data-slot="message-queue"]')).toHaveCount(0);
+  } finally { await f.agent.close(); }
+});
+
+test("a worktree mention inserts its file path and preserves the draft on reload", async ({ app }) => {
+  const f = await fixture(app.context);
+  try {
+    await app.open({ agent: f.agent }); await openWorktree(app);
+    await app.page.getByRole("button", { name: "New Codex", exact: true }).click();
+    const pane = app.page.getByTestId("remote-chat");
+    const draft = pane.getByRole("textbox", { name: "Message Codex" });
+    await draft.fill("Read @src");
+    await pane.getByRole("option", { name: "src/app.ts", exact: true }).click();
+    await expect(draft).toHaveValue("Read src/app.ts ");
+    expect(f.calls.filter((call) => call.path.endsWith("/messages"))).toHaveLength(0);
+    await app.page.reload(); await openWorktree(app);
+    await expect(app.page.getByRole("textbox", { name: "Message Codex" })).toHaveValue("Read src/app.ts ");
+  } finally { await f.agent.close(); }
+});
+
+test("slash actions interrupt or stop this chat without sending terminal input", async ({ app }) => {
+  const f = await fixture(app.context);
+  f.control.listed = true; f.chat.state = "running"; f.chat.turn_id = "original";
+  try {
+    await app.open({ agent: f.agent }); await openWorktree(app);
+    await app.page.getByRole("region", { name: "Codex chats" }).getByRole("button", { name: /Codex chat/ }).click();
+    const pane = app.page.getByTestId("remote-chat");
+    const draft = pane.getByRole("textbox", { name: "Message Codex" });
+    await draft.fill("/interrupt"); await draft.press("Enter");
+    await expect(pane.getByRole("status")).toHaveText("Ready");
+    await draft.fill("/stop"); await draft.press("Enter");
+    await expect(pane.getByRole("status")).toHaveText("Stopped");
+    expect(f.calls.filter((call) => call.path.endsWith("/interrupt"))).toHaveLength(1);
+    expect(f.calls.filter((call) => call.method === "DELETE" && call.path.startsWith("chats/"))).toHaveLength(1);
+    expect(f.calls.some((call) => call.path.endsWith("/messages") || call.path.includes("/input"))).toBe(false);
+  } finally { await f.agent.close(); }
+});
+
+for (const options of [false, true]) test(`structured pickers stay visible ${options ? "with" : "without"} chat options`, async ({ app }) => {
+  const f = await fixture(app.context, true, options);
+  try {
+    await app.open({ agent: f.agent }); await openWorktree(app);
+    await app.page.getByRole("button", { name: "New Codex", exact: true }).click();
+    const pane = app.page.getByTestId("remote-chat");
+    await expect(pane.getByLabel("Chat model")).toBeVisible();
+    await expect(pane.getByLabel("Chat permissions")).toBeVisible();
+    await expect(pane.getByLabel("Chat model")).toContainText("Default model");
+    await expect.poll(() => f.calls.filter((call) => call.path === "chats/remote-1/models").length).toBe(1);
+    if (options) {
+      await pane.getByLabel("Chat model").click(); await app.page.getByRole("option", { name: "Alpha", exact: true }).click();
+      await pane.getByLabel("Chat model").click();
+      await expect(app.page.getByRole("radiogroup", { name: "Chat reasoning" })).toBeVisible();
+      await app.page.getByRole("radiogroup", { name: "Chat reasoning" }).getByRole("radio", { name: "high", exact: true }).click();
+      await app.page.keyboard.press("Escape");
+      await pane.getByLabel("Chat permissions").click(); await app.page.getByRole("option", { name: "Edit workspace", exact: true }).click();
+    } else {
+      await expect(pane.getByLabel("Chat model")).toBeDisabled(); await expect(pane.getByLabel("Chat permissions")).toBeDisabled();
+      await pane.getByLabel("Chat model").locator("..").hover();
+      await expect(app.page.locator("[data-slot=tooltip-popup]")).toHaveText("This chat cannot change model, reasoning or permissions. Its backend does not support chat options.");
+      // Reasoning is inside the same disabled model picker, so it cannot be changed either.
+      await expect(app.page.getByRole("radiogroup", { name: "Chat reasoning" })).toHaveCount(0);
+    }
+    await pane.getByRole("textbox", { name: "Message Codex" }).fill("Use these settings");
+    await pane.getByRole("button", { name: "Send message", exact: true }).click();
+    await expect.poll(() => f.calls.filter((call) => call.path.endsWith("/messages")).map((call) => call.body)).toEqual([options ? { text: "Use these settings", options: { model: "alpha", effort: "high", permission: "workspace" } } : { text: "Use these settings" }]);
+  } finally { await f.agent.close(); }
+});
+
+for (const supported of [false, true]) test(`voice input is ${supported ? "usable" : "absent"} with the browser API ${supported ? "present" : "missing"}`, async ({ app }) => {
+  await app.context.addInitScript((enabled) => {
+    class Recognition extends EventTarget {
+      start() { this.dispatchEvent(new Event("start")); }
+      stop() {
+        const result = Object.assign([{ transcript: "Spoken words", confidence: 1 }], { isFinal: true });
+        this.dispatchEvent(Object.assign(new Event("result"), { results: [result], resultIndex: 0 }));
+        this.dispatchEvent(new Event("end"));
+      }
+      abort() { this.dispatchEvent(new Event("end")); }
+    }
+    Object.defineProperty(window, "SpeechRecognition", { configurable: true, value: enabled ? Recognition : undefined });
+    Object.defineProperty(window, "webkitSpeechRecognition", { configurable: true, value: undefined });
+  }, supported);
+  const f = await fixture(app.context);
+  try {
+    await app.open({ agent: f.agent }); await openWorktree(app);
+    await app.page.getByRole("button", { name: "New Codex", exact: true }).click();
+    const pane = app.page.getByTestId("remote-chat");
+    if (!supported) { await expect(pane.getByRole("button", { name: "Start voice input", exact: true })).toHaveCount(0); return; }
+    const draft = pane.getByRole("textbox", { name: "Message Codex" });
+    await draft.fill("Existing draft");
+    await pane.getByRole("button", { name: "Start voice input", exact: true }).click();
+    await expect(pane.getByRole("button", { name: "Send message", exact: true })).toBeDisabled();
+    await pane.getByRole("button", { name: "Stop voice input", exact: true }).click();
+    await expect(draft).toHaveValue("Existing draft Spoken words");
+    await pane.getByRole("button", { name: "Send message", exact: true }).click();
+    await expect.poll(() => f.calls.filter((call) => call.path.endsWith("/messages")).map((call) => call.body)).toEqual([{ text: "Existing draft Spoken words" }]);
+  } finally { await f.agent.close(); }
+});
+
+test("failed attachment uploads block sending until the failed file is removed", async ({ app }) => {
+  const f = await fixture(app.context);
+  await app.context.route(`${f.agent.url}/v1/boxes/${BOX}/api/locations/shop/worktrees/fix/attachments**`, (route) => route.fulfill({ status: 503, json: { error: "Synthetic upload failure" } }));
+  try {
+    await app.open({ agent: f.agent }); await openWorktree(app);
+    await app.page.getByRole("button", { name: "New Codex", exact: true }).click();
+    const pane = app.page.getByTestId("remote-chat");
+    await pane.getByRole("textbox", { name: "Message Codex" }).fill("Keep these words");
+    const choosing = app.page.waitForEvent("filechooser");
+    await pane.getByRole("button", { name: "Add Attachment", exact: true }).click();
+    await (await choosing).setFiles({ name: "note.txt", mimeType: "text/plain", buffer: Buffer.from("Synthetic attachment") });
+    await expect(pane.getByLabel("File attachment note.txt, upload failed", { exact: true })).toBeVisible();
+    await expect(pane.getByRole("button", { name: "Send message", exact: true })).toBeDisabled();
+    await pane.getByRole("button", { name: "Remove note.txt", exact: true }).click();
+    await pane.getByRole("button", { name: "Send message", exact: true }).click();
+    await expect.poll(() => f.calls.filter((call) => call.path.endsWith("/messages")).map((call) => call.body)).toEqual([{ text: "Keep these words" }]);
+  } finally { await f.agent.close(); }
+});
+
+test("voice permission errors leave the typed draft available to send", async ({ app }) => {
+  await app.context.addInitScript(() => {
+    class Recognition extends EventTarget {
+      start() { queueMicrotask(() => { this.dispatchEvent(Object.assign(new Event("error"), { error: "not-allowed" })); this.dispatchEvent(new Event("end")); }); }
+      stop() { this.dispatchEvent(new Event("end")); }
+      abort() { this.dispatchEvent(new Event("end")); }
+    }
+    Object.defineProperty(window, "SpeechRecognition", { configurable: true, value: Recognition });
+  });
+  const f = await fixture(app.context);
+  try {
+    await app.open({ agent: f.agent }); await openWorktree(app);
+    await app.page.getByRole("button", { name: "New Codex", exact: true }).click();
+    const pane = app.page.getByTestId("remote-chat");
+    const draft = pane.getByRole("textbox", { name: "Message Codex" });
+    await draft.fill("Keep this draft");
+    await pane.getByRole("button", { name: "Start voice input", exact: true }).click();
+    await expect(pane.getByRole("alert").filter({ hasText: "Voice input failed" })).toBeVisible();
+    await expect(draft).toHaveValue("Keep this draft");
+    await pane.getByRole("button", { name: "Send message", exact: true }).click();
+    await expect.poll(() => f.calls.filter((call) => call.path.endsWith("/messages")).map((call) => call.body)).toEqual([{ text: "Keep this draft" }]);
+  } finally { await f.agent.close(); }
+});
+
+test("structured composer keeps Shift Enter and IME input and sends on Enter", async ({ app }) => {
+  const f = await fixture(app.context);
+  try {
+    await app.open({ agent: f.agent }); await openWorktree(app);
+    await app.page.getByRole("button", { name: "New Codex", exact: true }).click();
+    const draft = app.page.getByRole("textbox", { name: "Message Codex" });
+    await draft.fill("first"); await draft.press("Shift+Enter");
+    await expect(draft).toHaveValue("first\n");
+    await draft.pressSequentially("second");
+    await draft.evaluate((field) => field.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter", isComposing: true, bubbles: true, cancelable: true })));
+    expect(f.calls.filter((call) => call.path.endsWith("/messages"))).toHaveLength(0);
+    await expect(draft).toHaveValue("first\nsecond");
+    await draft.press("Enter");
+    await expect.poll(() => f.calls.filter((call) => call.path.endsWith("/messages")).map((call) => call.body)).toEqual([{ text: "first\nsecond" }]);
   } finally { await f.agent.close(); }
 });
