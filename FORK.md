@@ -39,6 +39,27 @@ screen scraping or simulated terminal keystrokes when implementing this.
 Keep terminals as a fallback for shell work and unsupported agent interactions.
 Preserve source-history isolation, agent permissions and no-replay guarantees.
 
+### One Chat Surface
+
+Every chat in Burf is the same chat to look at and to use: a session's
+transcript in a worktree, a structured Codex chat on a box or on this computer,
+and a conversation opened from this computer's history. They differ only where
+one can do less (history is read-only until it is continued).
+
+They draw through one thread, built on assistant-ui (`@assistant-ui/react`,
+components under `app/src/components/assistant-ui`, Burf's wrapper in
+`app/src/components/conversation/chat-thread.tsx`). Burf feeds it its own chat
+data through assistant-ui's external-store runtime: there is no model API
+route, provider package or API key, and agents keep their own sign-in. Burf's
+controls stay Burf's (Base UI): no second control library comes with it.
+
+This is a deliberate divergence from upstream, decided 2026-10-09: upstream's
+conversation components are being replaced, surface by surface, not wrapped.
+Upstream's later chat changes arrive by behaviour, re-made here, not by merge;
+expect conflicts in `app/src/components/conversation` at every intake and
+resolve them in favour of this section. The structured Codex chat moved first;
+the transcript chat and the history viewer follow.
+
 For every provider, use its existing official CLI sign-in without making Burf
 a billing manager. No billing dashboard, required API-key setup or automatic
 paid fallback belongs in this workflow. Surface provider login/limit errors
