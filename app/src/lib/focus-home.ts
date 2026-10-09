@@ -43,13 +43,26 @@ export function somethingElseHasFocus(mine: HTMLElement | null): boolean {
   return a instanceof HTMLInputElement || a instanceof HTMLTextAreaElement || a instanceof HTMLSelectElement || (a as HTMLElement).isContentEditable;
 }
 
+// put is this file moving the keyboard by itself, and placed is where it
+// last left it, until the keyboard moves on. A chat pane waiting for its
+// composer can then tell the window's own rescue from a person's choice.
+let placed: HTMLElement | undefined;
+function put(el: HTMLElement | undefined) {
+  if (!el) return;
+  el.focus({ preventScroll: true });
+  if (document.activeElement !== el) return;
+  placed = el;
+  el.addEventListener("blur", () => { if (placed === el) placed = undefined; }, { once: true });
+}
+
 // A chat takes focus once per selection, as soon as its content is ready:
 // in its composer, the field a person types into. Background tabs and
 // splits aren't selected. Until there is a composer to type in (its first
 // read is slow, or failed) the keyboard is parked on the pane's recovery
-// control, or its first control when it has no composer at all; parked, not
-// given: it goes on to the composer when one is ready, unless the person
-// has used the pane or moved the keyboard meanwhile. After that nothing
+// control, or its first control when it has no composer at all, or where
+// the window's rescue left it; parked, not given: it goes on to the
+// composer when one is ready, unless the person has used the pane or moved
+// the keyboard meanwhile. After that nothing
 // here moves it again, so later replies never do.
 const COMPOSER = "textarea[data-autofocus], input[data-autofocus], [contenteditable=true][data-autofocus]";
 
@@ -66,8 +79,9 @@ export function useChatPaneFocus(ref: RefObject<HTMLElement | null>, active: boo
     const usable = (el: HTMLElement | null | undefined): el is HTMLElement => !!el && shown(el) && !el.matches(":disabled");
     const focus = () => {
       const at = document.activeElement;
-      if (at !== parked && (root.contains(at) || somethingElseHasFocus(root))) return stop();
-      if (parked && at === parked && somethingElseHasFocus(null)) return stop();
+      const ours = !!at && (at === parked || at === placed);
+      if (!ours && (root.contains(at) || somethingElseHasFocus(root))) return stop();
+      if (ours && somethingElseHasFocus(null)) return stop();
       const composer = root.querySelector<HTMLElement>(COMPOSER);
       if (usable(composer)) {
         composer.focus({ preventScroll: true });
@@ -121,7 +135,7 @@ const lost = () => {
 export function focusHome(): boolean {
   if (document.querySelector(OVERLAYS)) return false;
   const t = homeTarget();
-  t?.focus({ preventScroll: true });
+  put(t);
   return !!t && document.activeElement === t;
 }
 
@@ -141,7 +155,7 @@ export function rescueFocus(delay = 60) {
 export function focusWithin(get: () => ParentNode | null | undefined, delay = 0) {
   window.setTimeout(() => {
     if (document.querySelector(OVERLAYS)) return;
-    firstFocusable(get())?.focus({ preventScroll: true });
+    put(firstFocusable(get()));
   }, delay);
 }
 
@@ -165,7 +179,7 @@ export function useKeepFocusIn(ref: RefObject<HTMLElement | null>) {
     const check = () => {
       window.clearTimeout(timer);
       timer = window.setTimeout(() => {
-        if (lost() && !document.querySelector(OVERLAYS)) firstFocusable(el)?.focus({ preventScroll: true });
+        if (lost() && !document.querySelector(OVERLAYS)) put(firstFocusable(el));
       }, 30);
     };
     const mo = new MutationObserver(check);
@@ -195,7 +209,7 @@ export function focusNewPane() {
     const keep = (el: HTMLElement) => !el.closest(".group\\/header") && (Date.now() > fieldsFirst || el.matches(`[data-autofocus], ${FIELD}`));
     const t = !document.querySelector(OVERLAYS) && pane ? firstFocusable(pane, keep) : undefined;
     if (t) {
-      t.focus({ preventScroll: true });
+      put(t);
       // Writing carries on from the end, not above what is there.
       if (t instanceof HTMLTextAreaElement || t instanceof HTMLInputElement) {
         try {
