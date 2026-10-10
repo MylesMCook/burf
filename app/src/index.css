@@ -2,6 +2,30 @@
 @import "@fontsource-variable/jetbrains-mono";
 @stylex;
 
+@font-face {
+  font-family: "Paper Mono";
+  src: url("./assets/fonts/paper-mono.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Newsreader";
+  src: url("./assets/fonts/newsreader-regular.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Newsreader";
+  src: url("./assets/fonts/newsreader-italic.ttf") format("truetype");
+  font-style: italic;
+  font-weight: 200 800;
+  font-display: swap;
+}
+
 /* Every target owns this value. A button inside window chrome must never
    inherit dragging from its parent. */
 * { --wails-draggable: no-drag; }
@@ -72,8 +96,9 @@
   --color-white: #fff;
   --color-black: #000;
   --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
-  --font-sans: "Inter Variable", sans-serif;
-  --font-heading: var(--font-sans);
+  --font-sans: "Paper Mono", ui-monospace, monospace;
+  --font-heading: "Newsreader", ui-serif, Georgia, serif;
+  --font-reading: "Newsreader", ui-serif, Georgia, serif;
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);

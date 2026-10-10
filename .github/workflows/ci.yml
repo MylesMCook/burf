@@ -14,11 +14,12 @@ permissions:
   contents: read
 
 # A newer push to a pull request cancels the run still going for the older one.
+# Main's post-merge checks finish even if a later change selects other suites.
 # A release's checks (workflow_call) run under the tag's ref, so they are
 # never cancelled by a push to main.
 concurrency:
-  group: ci-${{ github.workflow_ref }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.workflow_ref }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 # Jobs run on omarchy, the owner's self-hosted runner (ci/runner/), when the
 # repository variable SELF_HOSTED is true and the event is the owner's push;

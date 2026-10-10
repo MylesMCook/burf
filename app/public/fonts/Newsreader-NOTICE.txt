@@ -1,0 +1,8 @@
+Newsreader
+Copyright 2020 The Newsreader Project Authors
+https://github.com/productiontype/Newsreader
+
+Unmodified variable normal and italic fonts from Google Fonts:
+https://github.com/google/fonts/tree/main/ofl/newsreader
+Weight axis 200 through 800; optical-size axis 6 through 72.
+Licensed under SIL Open Font License 1.1. See Newsreader-OFL.txt.
