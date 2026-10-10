@@ -573,6 +573,11 @@ func (m *Manager) Interrupt(ctx context.Context, id string) error {
 }
 
 func (codexProvider) interrupt(ctx context.Context, r *running, s Session) error {
+	// Stop withdraws unanswered input before the protocol round trip. Its
+	// acknowledgement need not be followed immediately by turn/completed.
+	r.mu.Lock()
+	r.cancelForms()
+	r.mu.Unlock()
 	_, e := r.call(ctx, "turn/interrupt", map[string]string{"threadId": s.ThreadID, "turnId": s.TurnID})
 	if e != nil {
 		r.finish("Interrupt could not be confirmed; chat stopped.")
